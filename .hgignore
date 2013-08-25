@@ -1,0 +1,17 @@
+syntax: glob
+*.orig
+*~
+*.o
+*.so
+*.mod
+*.pyc
+*.kate-swp
+*.pyc
+
+syntax: regexp
+^.settings$
+^archive$
+^bin$
+^test$
+^gmon\.out$
+
