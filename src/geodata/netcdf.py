@@ -37,22 +37,27 @@ class VarNC(Variable):
     self.__dict__['ncvar'] = ncvar
     if load: self.load() # load data here 
     
-  def load(self, data=None):
+  def load(self, data=None, scale=True):
     ''' Method to load data from NetCDF file into RAM. '''
     if data is None: 
       data = self.ncvar[:] # load everything
     elif all(checkIndex(data)):
       if isinstance(data,tuple):
         assert len(data)==len(self.shape), 'Length of index tuple has to equal to the number of dimensions!'       
-        for ax,i in zip(self.axes,data): ax.updateCoord(i)
+        for ax,idx in zip(self.axes,data): ax.updateCoord(idx)
         data = self.ncvar.__getitem__(data) # load slice
       else: 
         assert 1==len(self.shape), 'Multi-dimensional variable have to be indexed using tuples!'
-        data = self.ncvar.__getitem__(data) # load slice
         if self != self.axes[0]: ax.updateCoord(data) # prevent infinite loop due to self-reference 
+        data = self.ncvar.__getitem__(data) # load slice
     else:
       assert isinstance(data,np.ndarray) 
       data = data
+    # apply scale factor and offset
+    if scale:
+      if 'scale_factor' in self.atts: data *= self.atts['scale_factor']
+      if 'add_offset' in self.atts: data += self.atts['add_offset']
+    # load data
     super(VarNC,self).load(data, mask=None) # load actual data using parent method
     # no need to return anything...
 

@@ -61,19 +61,24 @@ def isFloat(arg): return isinstance(arg,float)
 floateps = np.finfo(np.float).eps
 # check if an array is zero within machine precision
 def isZero(array, eps=None):
-  ''' This function checks if a numpy array is zero within machine precision, and returns a scalar logical. '''
-  assert isinstance(array,np.ndarray), 'Function \'isZero\' can only check numpy arrays!'
-  if array.dtype == 'float':
-    if eps is None: eps = 100.*floateps # default
-    return ( np.absolute(array) <= eps ).all()
-  elif array.dtype == 'int' or array.dtype == 'bool':
-    return all( array == 0 )
+  ''' This function checks if a numpy array (or scalar) is zero within machine precision, and returns a scalar logical. '''
+  if isinstance(array,np.ndarray):
+    if array.dtype == 'float':
+      if eps is None: eps = 100.*floateps # default
+      return ( np.absolute(array) <= eps ).all()
+    elif array.dtype == 'int' or array.dtype == 'bool':
+      return all( array == 0 )
+  elif isinstance(array,float):
+      if eps is None: eps = 100.*floateps # default
+      return np.absolute(array) <= eps
+  elif isinstance(array,(int,bool)):
+      return array == 0
 # check if two arrays are equal within machine precision
 def isEqual(left, right, eps=None):
   ''' This function checks if two numpy arrays are equal within machine precision, and returns a scalar logical. '''
   assert left.dtype==right.dtype, 'Both arguments to function \'isEqual\' must be of the same type!'
   assert left.__class__==right.__class__, 'Both arguments to function \'isEqual\' must be of the same class!'
-  if left.dtype == 'bool' and right.dtype == 'bool':
+  if (left.dtype == 'bool') or (left.dtype == 'int'):
     return ( left == right ).all()
   else:
     return isZero(left - right, eps=eps)

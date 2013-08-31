@@ -9,6 +9,7 @@ Unittest for the PyGeoDat main package geodata.
 import unittest
 import netCDF4 as nc
 import numpy as np
+import numpy.ma as ma
 
 # import modules to be tested
 from geodata.misc import isZero, isEqual
@@ -34,6 +35,8 @@ class BaseTest(unittest.TestCase):
     self.axes = (t,y,x)
     # create axis and variable instances (make *copies* of data and attributes!)
     self.var = Variable(name=self.atts['name'],units=self.atts['units'],axes=self.axes,
+                        data=self.data.copy(),atts=self.atts.copy())
+    self.rav = Variable(name=self.atts['name'],units=self.atts['units'],axes=self.axes,
                         data=self.data.copy(),atts=self.atts.copy())
     # check if data is loaded (future subclasses may initialize without loading data by default)
     if not self.var.data: self.var.load(self.data.copy()) # again, use copy!
@@ -69,12 +72,12 @@ class BaseTest(unittest.TestCase):
     ''' test indexing and slicing '''
     # get test objects
     var = self.var
-    # indexing (getitem) test
-    assert self.data[1,1,1] == var[1,1,1].filled(0)
-    assert isEqual(self.data[:,1,1:-1], var[:,1,1:-1].filled(0))
+    # indexing (getitem) test    
+    assert ma.allclose(self.data[1,1,1], var[1,1,1], masked_equal=True)
+    assert ma.allclose(self.data[1,:,1:-1], var[1,:,1:-1], masked_equal=True)
       
-  def testArithmetic(self):
-    ''' test arithmetic functions '''
+  def testUnaryArithmetic(self):
+    ''' test unary arithmetic functions '''
     # get test objects
     var = self.var
     # arithmetic test
@@ -84,7 +87,7 @@ class BaseTest(unittest.TestCase):
     var /= 2.
     # test results
     #     print (self.data.filled() - var.data_array.filled()).max()
-    assert isEqual(self.data, var.data_array.filled(0))
+    assert isEqual(self.data, var.data_array)
     
   def testAxis(self):
     ''' test stuff related to axes '''
@@ -95,6 +98,35 @@ class BaseTest(unittest.TestCase):
       assert ax in var
       assert len(ax) == n
 #       if ax in var: print '%s is the %i. axis and has length %i'%(ax.name,var[ax]+1,len(ax))
+
+  def testMask(self):
+    ''' test masking and unmasking of data '''
+    # get test objects
+    var = self.var
+    mask = var.getMask()
+    data = var.get(unmask=True, fillValue=-9999)
+    # test unmasking and masking again
+    var.unmask(fillValue=-9999)
+    assert ma.allclose(data, var[:])
+    var.mask(mask=mask)
+    assert ma.allclose(self.data, var[:])
+    
+  def testBinaryArithmetic(self):
+    ''' test binary arithmetic functions '''
+    # get test objects
+    var = self.var
+    rav = self.rav
+    # arithmetic test
+    a = var + rav
+    s = var - rav
+    m = var * rav
+    d = var / rav
+    # test results
+    #     print (self.data.filled() - var.data_array.filled()).max()
+    assert isEqual(self.data*2, a.data_array)
+    assert isZero(s.data_array)
+    assert isEqual(self.data**2, m.data_array)
+    assert isEqual(np.ones_like(self.data), d.data_array)  
 
 
 # import modules to be tested
@@ -117,7 +149,7 @@ class NetCDFTest(BaseTest):
     # need to implement non-coordinate dimensions: maybe just Axis? 
     # and what about mixing Axis and AxisNC?
     te = len(self.ncdata.dimensions['time'])
-    time = Axis(name='time', length=te) # twelve month 
+    time = AxisNC(self.ncdata.variables['time'], length=te) # twelve month 
     xe = len(self.ncdata.dimensions['lon'])
     lon = AxisNC(self.ncdata.variables['lon'], length=xe)
     ye = len(self.ncdata.dimensions['lat'])
@@ -127,8 +159,9 @@ class NetCDFTest(BaseTest):
     # initialize netcdf variable 
     self.ncvar = self.ncdata.variables['rain']
     self.var = VarNC(self.ncvar, axes=self.axes, load=True)    
+    self.rav = VarNC(self.ncvar, axes=self.axes, load=True)    
     # save the original netcdf data
-    self.data = self.ncdata.variables['rain'][:].filled(0)
+    self.data = self.ncdata.variables['rain'][:].copy() #.filled(0)
     # construct attributes dictionary from netcdf attributes
     self.atts = { key : self.ncvar.getncattr(key) for key in self.ncvar.ncattrs() }
     self.atts['name'] = self.ncvar._name
@@ -140,6 +173,48 @@ class NetCDFTest(BaseTest):
   
   ## specific NetCDF test cases
 
+  def testLoad(self):
+    ''' test data loading and unloading '''
+    # get test objects
+    var = self.var
+    # unload and load test
+    var.unload()
+    var.load()
+    assert self.size == var.shape
+    assert isEqual(self.data, var.data_array)
+
+  def testScaling(self):
+    ''' test scale and offset operations '''
+    # get test objects
+    var = self.var
+    # unload and change scale factors    
+    var.unload()
+    var.scale_factor = 2.
+    var.add_offset = 100.
+    # load data with new scaling
+    var.load(scale=True)
+    assert self.size == var.shape
+    assert isEqual(self.data*2+100., var.data_array)
+  
+  def testLoadSlice(self):
+    ''' test loading of slices '''
+    # get test objects
+    var = self.var
+    var.unload()
+    # load slice
+    sl = (slice(0,12,1),slice(20,50,5),slice(70,140,15))
+    var.load(sl)
+    assert (12,6,5) == var.shape
+    assert isEqual(self.data.__getitem__(sl), var.data_array)
+  
+  def testIndexing(self):
+    ''' test indexing and slicing '''
+    # get test objects
+    var = self.var
+    # indexing (getitem) test    
+    assert ma.allclose(self.data[1,1,1], var[1,1,1], masked_equal=True)
+    assert ma.allclose(self.data[1,:,1:-1], var[1,:,1:-1], masked_equal=True)
+    # test axes
     
     
 if __name__ == "__main__":
@@ -153,7 +228,7 @@ if __name__ == "__main__":
 
     # list of tests to be performed
     tests = ['Base'] 
-    tests = ['NetCDF']
+#     tests = ['NetCDF']
     
     # run tests
     for test in tests:

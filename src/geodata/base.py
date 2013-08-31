@@ -13,6 +13,58 @@ import numpy.ma as ma # masked arrays
 from atmdyn.properties import variablePlotatts # import plot properties from different file
 from misc import VariableError, DataError, checkIndex, isFloat
 
+import numbers
+import functools
+class UnaryCheck(object):
+  ''' Decorator class that implements some sanity checks for unary arithmetic operations. '''
+  def __init__(self, op):
+    ''' Save original operation. '''
+    self.op = op
+  def __call__(self, orig, arg):
+    ''' Perform sanity checks, then execute operation, and return result. '''
+    if isinstance(arg,np.ndarray): 
+      assert orig.shape == arg.shape, 'Arrays need to have the same shape!' 
+      assert orig.dtype == arg.dtype, 'Arrays need to have the same type!'
+    else: assert isinstance(arg, numbers.Number), 'Can only operate with numerical types!'
+    if not orig.data: orig.load()
+    var = self.op(orig,arg)
+    assert isinstance(var,Variable)
+    return var # return function result
+  def __get__(self, obj, objtype):
+    ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
+    return functools.partial(self.__call__, obj)
+
+def BinaryCheckAndCreateVar(sameUnits=True):
+  ''' A decorator to perform similarity checks before binary operations and create a new variable instance 
+      afterwards; name and units are modified; only non-conflicting attributes are kept. '''
+  # first decorator, that processes arguments 
+  # N.B.: basically the first wrapper produces a decorator function with fixed parameter values
+  def decorator_wrapper(binOp):
+    # define method wrapper (this is now the actual decorator)
+    def function_wrapper(self, other):
+      # initial sanity checks
+      assert isinstance(other,Variable), 'Can only add two \'Variable\' instances!' 
+      if sameUnits: assert self.units == other.units, 'Variable units have to be identical for addition!'
+      assert self.shape == other.shape, 'Variables need to have the same shape and compatible axes!'
+      if not self.data: self.load()
+      if not other.data: other.load()
+      for lax,rax in zip(self.axes,other.axes):
+        assert (lax.coord == rax.coord).all(), 'Variables need to have identical coordinate arrays!'
+      # call original method
+      data, name, units = binOp(self, other)
+      # construct common dict of attributes
+      tmp = self.atts.copy(); tmp.update(other.atts)
+      atts = {key:value for key,value in tmp.iteritems() if value == self.atts[key]}
+      atts['name'] = name; atts['units'] = units
+      # assign axes (copy from self)
+      axes = [ax for ax in self.axes]
+      var = Variable(name=name, units=units, axes=axes, data=data, atts=atts)
+      return var # return new variable instance
+    # return wrapper
+    return function_wrapper
+  return decorator_wrapper
+
+
 ## Variable class and derivatives 
 
 class Variable(object):
@@ -30,10 +82,11 @@ class Variable(object):
   dtype = '' # data type (string)
   # optional/advanced attributes
   masked = False # whether or not the array in self.data is a masked array
+  fillValue = None # value to fill in for masked values
   atts = None # dictionary with additional attributes
   plotatts = None # attributed used for displaying the data
 
-  def __init__(self, name='N/A', units='N/A', axes=None, data=None, mask=None, atts=None, plotatts=None):
+  def __init__(self, name='N/A', units='N/A', axes=None, data=None, mask=None, fillValue=None, atts=None, plotatts=None):
     ''' Initialize variable and attributes. '''
     # basic input check
     if data is None:
@@ -53,7 +106,7 @@ class Variable(object):
     self.__dict__['data'] = ldata
     self.__dict__['shape'] = shape
     self.__dict__['dtype'] = dtype
-    self.__dict__['masked'] = False # handled in self.load() method
+    self.__dict__['masked'] = False # handled in self.load() method    
     # figure out axes
     if axes is not None:
       assert isinstance(axes, (list, tuple))
@@ -70,9 +123,6 @@ class Variable(object):
     self.__dict__['axes'] = tuple(axes) 
     # create shortcuts to axes (using names as member attributes) 
     for ax in axes: self.__dict__[ax.name] = ax
-    # assign data, if present (can initialize without data)
-    if data is not None: 
-      self.load(data, mask=mask) # member method defined below
     # assign attributes
     if atts is None: atts = dict(name=self.name, units=self.units)
     self.__dict__['atts'] = atts
@@ -80,6 +130,16 @@ class Variable(object):
       if variablePlotatts.has_key(self.name): plotatts = variablePlotatts[self.name]
       else: plotatts = dict(plotname=self.name, plotunits=self.units, plottitle=self.name) 
     self.__dict__['plotatts'] = plotatts
+    # guess fillValue
+    if fillValue is None:
+      if 'fillValue' in atts: fillValue = atts['fillValue']
+      elif '_fillValue' in atts: fillValue = atts['_fillValue']
+      else: fillValue = None
+    self.__dict__['fillValue'] = fillValue
+    # assign data, if present (can initialize without data)
+    if data is not None: 
+      self.load(data, mask=mask, fillValue=fillValue) # member method defined below
+    
     
   def __getattr__(self, name):
     ''' Return contents of atts or plotatts dictionaries as if they were attributes. '''
@@ -153,9 +213,10 @@ class Variable(object):
       # if nothing applies, raise index error
       raise IndexError, 'Invalid index/key type for class \'%s\'!'%(self.__class__.__name__)
 
-  def load(self, data, mask=None):
+  def load(self, data=None, mask=None, fillValue=None):
     ''' Method to attach numpy data array to variable instance (also used in constructor). '''
-    assert isinstance(data,np.ndarray), 'The data argument must be a numpy array!'      
+    assert data is not None, 'A basic \'Variable\' instance requires external data to load!'
+    assert isinstance(data,np.ndarray), 'The data argument must be a numpy array!'          
     if mask: 
       self.__dict__['data_array'] = ma.array(data, mask=mask)
     else: 
@@ -165,47 +226,139 @@ class Variable(object):
     self.__dict__['data'] = True
     self.__dict__['shape'] = data.shape
     self.__dict__['dtype'] = data.dtype
+    if self.masked: # figure out fill value for masked array
+      if fillValue is None: self.__dict__['fillValue'] = ma.default_fill_value(data)
+      else: self.__dict__['fillValue'] = fillValue
     # some more checks
     # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple; hence
     #       the coordinate vector has to be assigned before the dimensions size can be checked 
     assert len(self.axes) == len(self.shape), 'Dimensions of data array and variable must be identical!'
     for ax,n in zip(self.axes,self.shape): 
-      ax.updateLength(n) # update length is all we can do without a coordinate vector      
-
+      ax.updateLength(n) # update length is all we can do without a coordinate vector       
+     
   def unload(self):
     ''' Method to unlink data array. '''
     self.__dict__['data_array'] = None # unlink data array
     self.__dict__['data'] = False # set data flag
+    self.__dict__['fillValue'] = None
     # self.__dict__['shape'] = None # retain shape for later use
     
+  def get(self, idx=None, unmask=True, fillValue=None):
+    ''' Copy the entire data array or a slice; with some extra options. '''
+    if all(checkIndex(idx, floatOK=True)): datacopy = self.__getitem__(idx).copy() # use __getitem__ to get slice
+    else: datacopy = self.data_array.copy()
+    if unmask and self.masked:
+      if fillValue is None: fillValue=self.fillValue
+      datacopy = datacopy.filled(fill_value=fillValue)
+    return datacopy
+    
+  def mask(self, mask=None, fillValue=None, merge=True):
+    ''' A method to add a mask to an unmasked array, or extend or replace an existing mask. '''
+    if mask is not None:
+      assert isinstance(mask,np.ndarray), 'Mask has to be a numpy array!'  
+      assert len(self.shape) == len(mask.shape) and self.shape == mask.shape, 'Data array and mask have to be of the same shape!'
+      # create new data array
+      if merge and self.masked: # the first mask is usually the land-sea mask, which we want to keep
+        data = self.get(unmask=False) # get data with mask
+        mask = ma.mask_or(data.mask, mask, copy=True, shrink=False) # merge masks
+      else: 
+        data = self.get(unmask=True) # get data without mask
+      self.__dict__['data_array'] = ma.array(data, mask=mask)
+      # change meta data
+      self.__dict__['masked'] = True
+      if fillValue: 
+        self.data_array.set_fill_value(fillValue)
+        self.__dict__['fillValue'] = fillValue
+      else:  
+        self.__dict__['fillValue'] = self.data_array.get_fill_value() # probably just the default
+    
+  def unmask(self, fillValue=None):
+    ''' A method to remove and existing mask and fill the gaps with fillValue. '''
+    if self.masked:
+      if fillValue is None: fillValue = self.fillValue # default
+      self.__dict__['data_array'] = self.data_array.filled(fill_value=fillValue)
+      # change meta data
+      self.__dict__['masked'] = False
+      self.__dict__['fillValue'] = None  
+    
+  def getMask(self, nomask=False):
+    ''' Get the mask of a masked array or return a boolean array of False (no mask). '''
+    if nomask: return ma.getmask(self.data_array)
+    else: return ma.getmaskarray(self.data_array)    
+
+  @UnaryCheck    
   def __iadd__(self, a):
     ''' Add a number or an array to the existing data. '''      
-    if self.data: # only do this when data is loaded
-#       if isinstance(a,np.ndarray): assert self.shape == a.shape # also handled by numpy
-      self.data_array += a
-    else: raise DataError, self    
+    self.data_array += a    
     return self # return self as result
 
+  @UnaryCheck
   def __isub__(self, a):
     ''' Subtract a number or an array from the existing data. '''      
-    if self.data: # only do this when data is loaded
-      self.data_array -= a
-    else: raise DataError, self    
+    self.data_array -= a
     return self # return self as result
   
+  @UnaryCheck
   def __imul__(self, a):
     ''' Multiply the existing data with a number or an array. '''      
-    if self.data: # only do this when data is loaded
-      self.data_array *= a
-    else: raise DataError, self    
+    self.data_array *= a
     return self # return self as result
 
+  @UnaryCheck
   def __idiv__(self, a):
     ''' Divide the existing data by a number or an array. '''      
-    if self.data: # only do this when data is loaded
-      self.data_array /= a
-    else: raise DataError, self    
+#     if self.data: # only do this when data is loaded
+    self.data_array /= a
+#     else: raise DataError, self    
     return self # return self as result
+  
+  @BinaryCheckAndCreateVar(sameUnits=True)
+  def __add__(self, other):
+    ''' Add two variables and return a new variable. '''
+#     # initial sanity checks
+#     assert isinstance(other,Variable), 'Can only add two \'Variable\' instances!' 
+#     assert self.units == other.units, 'Variable units have to be identical for addition!'
+#     assert self.shape == other.shape, 'Variables need to have the same shape and compatible axes!'
+#     if not self.data: self.load()
+#     if not other.data: other.load()
+#     for lax,rax in zip(self.axes,other.axes):
+#       assert (lax.coord == rax.coord).all(), 'Variables need to have identical coordinate arrays!'
+#     # create new variable
+    data = self.data_array + other.data_array
+    name = '%s + %s'%(self.name,other.name)
+    units = self.units
+#     # construct common dict of attributes
+#     keys = set(self.atts.keys()).intersection(set(other.atts.keys()))
+#     atts = {key:self.atts[key] for key in keys}
+#     # assign axes (copy from self)
+#     axes = [ax for ax in self.axes]
+#     var = Variable(name=name, units=units, axes=axes, data=data, atts=atts)
+#     return var # return new variable instance
+    return data, name, units
+
+  @BinaryCheckAndCreateVar(sameUnits=True)
+  def __sub__(self, other):
+    ''' Subtract two variables and return a new variable. '''
+    data = self.data_array - other.data_array
+    name = '%s - %s'%(self.name,other.name)
+    units = self.units
+    return data, name, units
+  
+  @BinaryCheckAndCreateVar(sameUnits=False)
+  def __mul__(self, other):
+    ''' Multiply two variables and return a new variable. '''
+    data = self.data_array * other.data_array
+    name = '%s x %s'%(self.name,other.name)
+    units = '%s %s'%(self.units,other.units)
+    return data, name, units
+
+  @BinaryCheckAndCreateVar(sameUnits=False)
+  def __div__(self, other):
+    ''' Divide two variables and return a new variable. '''
+    data = self.data_array / other.data_array
+    name = '%s / %s'%(self.name,other.name)
+    units = '%s / (%s)'%(self.units,other.units)
+    return data, name, units
 
 
 class Axis(Variable):
@@ -263,7 +416,7 @@ class Axis(Variable):
         data = coord
       elif isinstance(coord,tuple) or isinstance(coord,list):
         data = np.asarray(coord)
-      else: 
+      else: #data = coord
         raise TypeError, 'Data type not supported for coordinate values.'
       # load data
       self.load(data, mask=None, **varargs)
