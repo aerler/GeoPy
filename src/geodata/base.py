@@ -30,39 +30,79 @@ class UnaryCheck(object):
     var = self.op(orig,arg)
     assert isinstance(var,Variable)
     return var # return function result
-  def __get__(self, obj, objtype):
+  def __get__(self, instance, klass):
     ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
-    return functools.partial(self.__call__, obj)
+    # N.B.: similar implementation to 'partial': need to return a callable that behaves like the instance method
+    # def f(arg):
+    #  return self.__call__(instance, arg)
+    # return f    
+    return functools.partial(self.__call__, instance) # but using 'partial' is simpler
 
 def BinaryCheckAndCreateVar(sameUnits=True):
-  ''' A decorator to perform similarity checks before binary operations and create a new variable instance 
+  ''' A decorator function that accepts arguments and returns a decorator class with fixed parameter values. '''
+  class BinaryCheckAndCreateVar_Class(object):
+    ''' A decorator to perform similarity checks before binary operations and create a new variable instance 
       afterwards; name and units are modified; only non-conflicting attributes are kept. '''
-  # first decorator, that processes arguments 
-  # N.B.: basically the first wrapper produces a decorator function with fixed parameter values
-  def decorator_wrapper(binOp):
+    def __init__(self, binOp):
+      ''' Save original operation and parameters. '''
+      self.binOp = binOp
+      self.sameUnits = sameUnits # passed to constructor function
     # define method wrapper (this is now the actual decorator)
-    def function_wrapper(self, other):
-      # initial sanity checks
+    def __call__(self, orig, other):
+      ''' Perform sanity checks, then execute operation, and return result. '''
       assert isinstance(other,Variable), 'Can only add two \'Variable\' instances!' 
-      if sameUnits: assert self.units == other.units, 'Variable units have to be identical for addition!'
-      assert self.shape == other.shape, 'Variables need to have the same shape and compatible axes!'
-      if not self.data: self.load()
+      if self.sameUnits: assert orig.units == other.units, 'Variable units have to be identical for addition!'
+      assert orig.shape == other.shape, 'Variables need to have the same shape and compatible axes!'
+      if not orig.data: orig.load()
       if not other.data: other.load()
-      for lax,rax in zip(self.axes,other.axes):
+      for lax,rax in zip(orig.axes,other.axes):
         assert (lax.coord == rax.coord).all(), 'Variables need to have identical coordinate arrays!'
       # call original method
-      data, name, units = binOp(self, other)
+      data, name, units = self.binOp(orig, other)
       # construct common dict of attributes
-      tmp = self.atts.copy(); tmp.update(other.atts)
-      atts = {key:value for key,value in tmp.iteritems() if value == self.atts[key]}
+      tmp = orig.atts.copy(); tmp.update(other.atts)
+      atts = {key:value for key,value in tmp.iteritems() if value == orig.atts[key]}
       atts['name'] = name; atts['units'] = units
-      # assign axes (copy from self)
-      axes = [ax for ax in self.axes]
+      # assign axes (copy from orig)
+      axes = [ax for ax in orig.axes]
       var = Variable(name=name, units=units, axes=axes, data=data, atts=atts)
       return var # return new variable instance
-    # return wrapper
-    return function_wrapper
-  return decorator_wrapper
+    def __get__(self, instance, klass):
+      ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
+      return functools.partial(self.__call__, instance)
+  # return decorator class  
+  return BinaryCheckAndCreateVar_Class
+
+
+# def BinaryCheckAndCreateVar(sameUnits=True):
+#   ''' A decorator to perform similarity checks before binary operations and create a new variable instance 
+#       afterwards; name and units are modified; only non-conflicting attributes are kept. '''
+#   # first decorator, that processes arguments 
+#   # N.B.: basically the first wrapper produces a decorator function with fixed parameter values
+#   def decorator_wrapper(binOp):
+#     # define method wrapper (this is now the actual decorator)
+#     def function_wrapper(self, other):
+#       # initial sanity checks
+#       assert isinstance(other,Variable), 'Can only add two \'Variable\' instances!' 
+#       if sameUnits: assert self.units == other.units, 'Variable units have to be identical for addition!'
+#       assert self.shape == other.shape, 'Variables need to have the same shape and compatible axes!'
+#       if not self.data: self.load()
+#       if not other.data: other.load()
+#       for lax,rax in zip(self.axes,other.axes):
+#         assert (lax.coord == rax.coord).all(), 'Variables need to have identical coordinate arrays!'
+#       # call original method
+#       data, name, units = binOp(self, other)
+#       # construct common dict of attributes
+#       tmp = self.atts.copy(); tmp.update(other.atts)
+#       atts = {key:value for key,value in tmp.iteritems() if value == self.atts[key]}
+#       atts['name'] = name; atts['units'] = units
+#       # assign axes (copy from self)
+#       axes = [ax for ax in self.axes]
+#       var = Variable(name=name, units=units, axes=axes, data=data, atts=atts)
+#       return var # return new variable instance
+#     # return wrapper
+#     return function_wrapper
+#   return decorator_wrapper
 
 
 ## Variable class and derivatives 
