@@ -136,6 +136,7 @@ class NetCDFTest(BaseTest):
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'GPCC' # dataset to use (also the folder name)
+  variable = 'rain' # variable to test
   RAM = True # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
@@ -146,22 +147,18 @@ class NetCDFTest(BaseTest):
     if self.dataset == 'GPCC':
       # load a netcdf dataset, so that we have something to play with
       self.ncdata = nc.Dataset(folder+'gpccavg/gpcc_25_clim_1979-1988.nc',mode='r')
-    # need to implement non-coordinate dimensions: maybe just Axis? 
-    # and what about mixing Axis and AxisNC?
-    te = len(self.ncdata.dimensions['time'])
-    time = AxisNC(self.ncdata.variables['time'], length=te) # twelve month 
-    xe = len(self.ncdata.dimensions['lon'])
-    lon = AxisNC(self.ncdata.variables['lon'], length=xe)
-    ye = len(self.ncdata.dimensions['lat'])
-    lat = AxisNC(self.ncdata.variables['lat'], length=ye)
-    self.size = (te,ye,xe)
-    self.axes = (time,lat,lon)
+    # load variable
+    ncvar = self.ncdata.variables[self.variable]      
+    # get dimensions and coordinate variables
+    size = [len(self.ncdata.dimensions[dim]) for dim in ncvar.dimensions] 
+    axes = [AxisNC(self.ncdata.variables[dim], length=le) for dim,le in zip(ncvar.dimensions,size)] 
     # initialize netcdf variable 
-    self.ncvar = self.ncdata.variables['rain']
-    self.var = VarNC(self.ncvar, axes=self.axes, load=True)    
-    self.rav = VarNC(self.ncvar, axes=self.axes, load=True)    
+    self.ncvar = ncvar; self.axes = axes
+    self.var = VarNC(ncvar, axes=axes, load=True)    
+    self.rav = VarNC(ncvar, axes=axes, load=True) # second variable for binary operations    
     # save the original netcdf data
-    self.data = self.ncdata.variables['rain'][:].copy() #.filled(0)
+    self.data = self.ncdata.variables[self.variable][:].copy() #.filled(0)
+    self.size = tuple([len(ax) for ax in axes])
     # construct attributes dictionary from netcdf attributes
     self.atts = { key : self.ncvar.getncattr(key) for key in self.ncvar.ncattrs() }
     self.atts['name'] = self.ncvar._name
@@ -172,16 +169,6 @@ class NetCDFTest(BaseTest):
     self.ncdata.close()
   
   ## specific NetCDF test cases
-
-  def testLoad(self):
-    ''' test data loading and unloading '''
-    # get test objects
-    var = self.var
-    # unload and load test
-    var.unload()
-    var.load()
-    assert self.size == var.shape
-    assert isEqual(self.data, var.data_array)
 
   def testScaling(self):
     ''' test scale and offset operations '''
@@ -215,6 +202,38 @@ class NetCDFTest(BaseTest):
     assert ma.allclose(self.data[1,1,1], var[1,1,1], masked_equal=True)
     assert ma.allclose(self.data[1,:,1:-1], var[1,:,1:-1], masked_equal=True)
     # test axes
+
+
+# import modules to be tested
+from geodata.gdal import addGDAL 
+
+class GDALTest(NetCDFTest):  
+  
+  # some test parameters (TestCase does not take any arguments)
+  dataset = 'GPCC' # dataset to use (also the folder name)
+  RAM = True # base folder for file operations
+  plot = False # whether or not to display plots 
+  stats = False # whether or not to compute stats on data
+  # some projection settings for tests
+  projection = ''
+  
+  def setUp(self):
+    super(GDALTest,self).setUp() 
+      
+  def tearDown(self):  
+    super(GDALTest,self).tearDown()
+  
+  ## specific NetCDF test cases
+
+  def testAddProjection(self):
+    ''' test function that adds projection features '''
+    # get test objects
+    var = self.var # NCVar object
+    # add GDAL functionality to variable
+    var = addGDAL(var)
+    # trivial tests 
+    assert self.size == var.shape
+    assert isEqual(self.data, var.data_array)
     
     
 if __name__ == "__main__":
@@ -228,7 +247,7 @@ if __name__ == "__main__":
 
     # list of tests to be performed
     tests = ['Base'] 
-#     tests = ['NetCDF']
+    tests = ['NetCDF']
     
     # run tests
     for test in tests:

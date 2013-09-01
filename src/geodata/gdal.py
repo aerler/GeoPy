@@ -18,6 +18,9 @@ ramdrv = gdal.GetDriverByName('MEM')
 # import all base functionality from PyGeoDat
 from geodata.base import *
 
+def addGDAL():
+  return 
+
 class VarGDAL(Variable):
   '''
     An extension to the Variable class that adds some GDAL-based geographic projection features.
@@ -97,9 +100,9 @@ class VarGDAL(Variable):
         for i in xrange(self.bands):
           dataset.GetRasterBand(i+1).WriteArray(data[i,:,:])
           if missing: dataset.GetRasterBand(i+1).SetNoDataValue(missing)
-    else: dset = None
+    else: dataset = None
     # return dataset
-    return dset
+    return dataset
     
   def load(self, data):
     ''' Load new data array. '''
