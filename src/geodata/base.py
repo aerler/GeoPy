@@ -569,7 +569,6 @@ class Dataset(object):
     ''' Check if the Dataset instance has a particular Variable or Axis. '''
     # variable or axis
     return self.hasVariable(var) or self.hasAxis(var)
-
   
   def __len__(self):
     ''' Get the number of Variables in the Dataset. '''
