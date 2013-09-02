@@ -134,7 +134,7 @@ def addGDAL(var, projection=None, geotransform=None):
     # update new instance attributes
     def load(self, data):
       ''' Load new data array. '''
-      super(VarGDAL,self).load(data, mask=None)    
+      super(var.__class__,self).load(data, mask=None)    
       if len(data.shape) >= 2: # 2D or more
         self.__dict__['mapSize'] = data.shape[-2:] # need to update
       else: # less than 2D can't be GDAL enabled
@@ -146,7 +146,7 @@ def addGDAL(var, projection=None, geotransform=None):
     # maybe needed in the future...
     def unload(self):
       ''' Remove coordinate vector. '''
-      super(VarGDAL,self).unload()      
+      super(var.__class__,self).unload()      
     # add new method to object
     var.unload = types.MethodType(unload,var)
   

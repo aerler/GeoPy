@@ -11,7 +11,7 @@ import numpy as np
 import numpy.ma as ma # masked arrays
 # my own imports
 from atmdyn.properties import variablePlotatts # import plot properties from different file
-from misc import VariableError, DataError, checkIndex, isFloat
+from misc import VariableError, DatasetError, checkIndex, isFloat, AttrDict
 
 import numbers
 import functools
@@ -134,7 +134,7 @@ class Variable(object):
     '''
     # basic input check
     if data is None:
-      ldata = False; shape = None; ndim = None; dtype = ''
+      ldata = False; shape = None; dtype = ''
     else:
       assert isinstance(data,np.ndarray), 'The data argument must be a numpy array!'
       ldata = True; shape = data.shape; dtype = data.dtype
@@ -168,13 +168,13 @@ class Variable(object):
     self.__dict__['ndim'] = len(axes)  
     # create shortcuts to axes (using names as member attributes) 
     for ax in axes: self.__dict__[ax.name] = ax
-    # assign attributes
+    # cast attributes dicts as AttrDict to fcilitate easy access 
     if atts is None: atts = dict(name=self.name, units=self.units)
-    self.__dict__['atts'] = atts
+    self.__dict__['atts'] = AttrDict(**atts)
     if plotatts is None: # try to find sensible default values 
       if variablePlotatts.has_key(self.name): plotatts = variablePlotatts[self.name]
       else: plotatts = dict(plotname=self.name, plotunits=self.units, plottitle=self.name) 
-    self.__dict__['plotatts'] = plotatts
+    self.__dict__['plot'] = AttrDict(**plotatts)
     # guess fillValue
     if fillValue is None:
       if 'fillValue' in atts: fillValue = atts['fillValue']
@@ -186,32 +186,32 @@ class Variable(object):
       self.load(data, mask=mask, fillValue=fillValue) # member method defined below
     
     
-  def __getattr__(self, name):
-    ''' Return contents of atts or plotatts dictionaries as if they were attributes. '''
-    # N.B.: before this method is called, instance attributes are checked automatically
-    if self.__dict__.has_key(name): # check instance attributes first
-      return self.__dict__[name]
-    elif self.__dict__['atts'].has_key(name): # try atts second
-      return self.__dict__['atts'][name] 
-    elif self.__dict__['plotatts'].has_key(name): # then try plotatts
-      return self.__dict__['plotatts'][name]
-    else: # or throw attribute error
-      raise AttributeError, '\'%s\' object has no attribute \'%s\''%(self.__class__.__name__,name)
+#   def __getattr__(self, name):
+#     ''' Return contents of atts or plotatts dictionaries as if they were attributes. '''
+#     # N.B.: before this method is called, instance attributes are checked automatically
+#     if self.__dict__.has_key(name): # check instance attributes first
+#       return self.__dict__[name]
+#     elif self.__dict__['atts'].has_key(name): # try atts second
+#       return self.__dict__['atts'][name] 
+#     elif self.__dict__['plotatts'].has_key(name): # then try plotatts
+#       return self.__dict__['plotatts'][name]
+#     else: # or throw attribute error
+#       raise AttributeError, '\'%s\' object has no attribute \'%s\''%(self.__class__.__name__,name)
     
-  def __setattr__(self, name, value):
-    ''' Change the value of class existing class attributes, atts, or plotatts entries,
-      or store a new attribute in the 'atts' dictionary. '''
-    if self.__dict__.has_key(name): # class attributes come first
-      self.__dict__[name] = value # need to use __dict__ to prevent recursive function call
-    elif self.__dict__['atts'].has_key(name): # try atts second
-      self.__dict__['atts'][name] = value    
-    elif self.__dict__['plotatts'].has_key(name): # then try plotatts
-      self.__dict__['plotatts'][name] = value
-    else: # if the attribute does not exist yet, add it to atts or plotatts
-      if name[0:4] == 'plot':
-        self.plotatts[name] = value
-      else:
-        self.atts[name] = value
+#   def __setattr__(self, name, value):
+#     ''' Change the value of class existing class attributes, atts, or plotatts entries,
+#       or store a new attribute in the 'atts' dictionary. '''
+#     if self.__dict__.has_key(name): # class attributes come first
+#       self.__dict__[name] = value # need to use __dict__ to prevent recursive function call
+#     elif self.__dict__['atts'].has_key(name): # try atts second
+#       self.__dict__['atts'][name] = value    
+#     elif self.__dict__['plotatts'].has_key(name): # then try plotatts
+#       self.__dict__['plotatts'][name] = value
+#     else: # if the attribute does not exist yet, add it to atts or plotatts
+#       if name[0:4] == 'plot':
+#         self.plotatts[name] = value
+#       else:
+#         self.atts[name] = value
   
   def hasAxis(self, axis):
     ''' Check if the variable instance has a particular axis. '''
@@ -465,6 +465,126 @@ class Axis(Variable):
         'Coordinate vector of Axis instance \'%s\' is incompatible with given length: %i != %i'%(self.name,len(self),length)
     else:
       self.__dict__['len'] = length
+      
+
+class Dataset(object):
+  '''
+    A container class for variable and axes objects, as well as some meta information. This class also 
+    implements collective operations on all variables in the dataset.
+  '''
+  
+  def __init__(self, varlist=None, atts=None):
+    ''' 
+      Create a dataset from a list of variables. The basic dataset class has no capability to create variables.
+      
+      Basic Attributes:
+        variables = dict() # dictionary holding Variable instances
+        axes = dict() # dictionary holding Axis instances (inferred from Variables)
+        atts = AttrDict() # dictionary containing global attributes / meta data
+    '''
+    # create instance attributes
+    self.__dict__['variables'] = dict()
+    self.__dict__['axes'] = dict()
+    # load global attributes, if given
+    if atts: self.__dict__['atts'] = AttrDict(**atts)
+    else: self.__dict__['atts'] = AttrDict()
+    # load variables (automatically adds axes linked to varaibles)
+    for var in varlist: self.addVariable(var)
+    
+  def addAxis(self, ax):
+    ''' Method to add an Axis to the Dataset. If the Axis is already present, check that it is the same. '''
+    assert isinstance(ax,Axis)
+    if ax.name not in self.axes: # add new axis, if it does not already exist        
+      assert ax.name not in self.__dict__, "Cannot add Axis '%s' to Dataset, because an attribute of the same name already exits!"%(ax.name) 
+      self.axes[ax.name] = ax
+      self.__dict__[ax.name] = self.axes[ax.name] # create shortcut
+    else: # make sure the axes are consistent between variable (i.e. same name, same axis)
+      assert ax is self.axes[ax.name], "Error: Axis '%s' in Variable '%s' and Dataset are different!"%(ax.name,var.name)
+    # double-check
+    return self.axes.has_key(ax.name)       
+    
+  def addVariable(self, var):
+    ''' Method to add a Variable to the Dataset. If the variable is already present, abort. '''
+    assert isinstance(var,Variable)
+    assert var.name not in self.__dict__, "Cannot add Variable '%s' to Dataset, because an attribute of the same name already exits!"%(var.name)
+    # add axes, if necessary (or check, if already present)
+    for ax in var.axes: self.addAxis(ax) # implemented slightly differently
+    # finally, if everything is OK, add variable
+    self.variables[var.name] = var
+    self.__dict__[var.name] = self.variables[var.name] # create shortcut
+    # double-check
+    return self.variables.has_key(var.name) 
+    
+  def removeAxis(self, ax):
+      ''' Method to remove an Axis from the Dataset, provided it is no longer needed. '''
+      if isinstance(ax,Axis): ax = ax.name # only work with string arguments
+      assert isinstance(ax,str) 
+      if ax in self.axes: # remove axis, if it does exist
+        # make sure no variable still needs axis
+        if any([var.hasAxis(ax) for var in self.variables]):
+          # delete axis from dataset   
+          del self.axes[ax.name]
+          del self.__dict__[ax.name]
+          return True
+        # don't delete, if still needed
+      # double-check (return True, if axis is not present, False, if it is)
+      return not self.axes.has_key(ax.name)       
+  
+  def removeVariable(self, var):
+    ''' Method to remove a Variable from the Dataset. '''
+    if isinstance(var,Variable): var = var.name # only work with string arguments
+    assert isinstance(var,str) 
+    if var in self.variables: # add new variable if it does not already exist
+      # delete variable from dataset   
+      del self.variables[var.name]
+      del self.__dict__[var.name]
+    # double-check (return True, if variable is not present, False, if it is)
+    return not self.variables.has_key(var.name)
+  
+  def hasVariable(self, var):
+    ''' Method to check, if a Variable is present in the Dataset. '''
+    if isinstance(var,str):
+      return self.variables.has_key(var) # look up by name
+    elif isinstance(var,Variable):
+      if self.variables.has_key(var.name):
+        assert self.variables[var.name] is var, "The Dataset contains a different Variable of the same name!"
+        return True # name found and identity verified 
+      else: return False # not found
+    else: # invalid input
+      raise DatasetError, "Need a Variable instance or name to check for a Variable in the Dataset!"
+  
+  def hasAxis(self, ax):
+    ''' Method to check, if an Axis is present in the Dataset. '''
+    if isinstance(ax,str):
+      return self.axes.has_key(ax) # look up by name
+    elif isinstance(ax,Axis):
+      if self.axes.has_key(ax.name):
+        assert self.axes[ax.name] is ax, "The Dataset contains a different Variable of the same name!"
+        return True # name found and identity verified 
+      else: return False # not found
+    else: # invalid input
+      raise DatasetError, "Need a Axis instance or name to check for an Axis in the Dataset!"
+    
+  def __contains__(self, var):
+    ''' Check if the Dataset instance has a particular Variable or Axis. '''
+    # variable or axis
+    return self.hasVariable(var) or self.hasAxis(var)
+
+  
+  def __len__(self):
+    ''' Get the number of Variables in the Dataset. '''
+    return len(self.variables)
+    
+  def __iadd__(self, var):
+    ''' Add a Variable to an existing dataset. '''      
+    assert self.addVariable(var), "A proble occurred adding Variable '%s' to Dataset."%(var.name)    
+    return self # return self as result
+
+  def __isub__(self, var):
+    ''' Remove a Variable to an existing dataset. '''      
+    assert self.removeVariable(var), "A proble occurred removing Variable '%s' from Dataset."%(var.name)
+    return self # return self as result
+        
 
 ## run a test    
 if __name__ == '__main__':

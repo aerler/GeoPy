@@ -64,7 +64,8 @@ class BaseTest(unittest.TestCase):
     # test getattr
     assert (atts['name'],atts['units']) == (var.name,var.units)
     # test setattr
-    var.Comments = 'test'; var.plotComments = 'test' 
+    var.atts.comments = 'test'; var.plot['comments'] = 'test'
+    assert var.plot.comments == var.atts['comments']      
     #     print 'Name: %s, Units: %s, Missing Values: %s'%(var.name, var.units, var._FillValue)
     #     print 'Comments: %s, Plot Comments: %s'%(var.Comments,var.plotatts['plotComments'])
 
@@ -187,8 +188,8 @@ class NetCDFTest(BaseTest):
     var = self.var
     # unload and change scale factors    
     var.unload()
-    var.scale_factor = 2.
-    var.add_offset = 100.
+    var.atts.scale_factor = 2.
+    var.atts.add_offset = 100.
     # load data with new scaling
     var.load(scale=True)
     assert self.size == var.shape

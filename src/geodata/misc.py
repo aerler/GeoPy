@@ -209,6 +209,9 @@ class DataError(VariableError):
     else: # fallback
       return super(VariableError,self).__str__() 
 
+class DatasetError(VariableError):
+  ''' Base class for exceptions occurring in Dataset methods. '''
+  pass
 
 ## simple application code
 if __name__ == '__main__':
