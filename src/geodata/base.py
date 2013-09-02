@@ -112,25 +112,29 @@ class Variable(object):
     The basic variable class; it mainly implements arithmetic operations and indexing/slicing.
   '''
   
-  # basic attributes
-  name = '' # short name, e.g. used in datasets
-  units = '' # physical units
-  data = False # logical indicating whether a data array is present/loaded 
-  axes = None # a tuple of references to coordinate variables (also Variable instances)
-  data_array = None # actual data array (None if not loaded)
-  shape = None # length of dimensions, like an array
-  dtype = '' # data type (string)
-  # optional/advanced attributes
-  masked = False # whether or not the array in self.data is a masked array
-  fillValue = None # value to fill in for masked values
-  atts = None # dictionary with additional attributes
-  plotatts = None # attributed used for displaying the data
-
   def __init__(self, name='N/A', units='N/A', axes=None, data=None, mask=None, fillValue=None, atts=None, plotatts=None):
-    ''' Initialize variable and attributes. '''
+    ''' 
+      Initialize variable and attributes.
+      
+      Basic Attributes:
+        name = '' # short name, e.g. used in datasets
+        units = '' # physical units
+        data = False # logical indicating whether a data array is present/loaded 
+        axes = None # a tuple of references to coordinate variables (also Variable instances)
+        data_array = None # actual data array (None if not loaded)
+        shape = None # length of dimensions, like an array
+        ndim = None # number of dimensions
+        dtype = '' # data type (string)
+        
+      Optional/Advanced Attributes:
+        masked = False # whether or not the array in self.data is a masked array
+        fillValue = None # value to fill in for masked values
+        atts = None # dictionary with additional attributes
+        plotatts = None # attributed used for displaying the data       
+    '''
     # basic input check
     if data is None:
-      ldata = False; shape = None; dtype = ''
+      ldata = False; shape = None; ndim = None; dtype = ''
     else:
       assert isinstance(data,np.ndarray), 'The data argument must be a numpy array!'
       ldata = True; shape = data.shape; dtype = data.dtype
@@ -161,6 +165,7 @@ class Variable(object):
     else: 
       raise VariableError, 'Cannot initialize %s instance \'%s\': no axes declared'%(self.var.__class__.__name__,self.name)
     self.__dict__['axes'] = tuple(axes) 
+    self.__dict__['ndim'] = len(axes)  
     # create shortcuts to axes (using names as member attributes) 
     for ax in axes: self.__dict__[ax.name] = ax
     # assign attributes
@@ -224,6 +229,10 @@ class Variable(object):
     # same as class method
     return self.hasAxis(axis)
   
+  def __len__(self):
+    ''' Return number of dimensions. '''
+    return self.__dict__['ndim']
+  
   def axisIndex(self, axis):
     ''' Return the index of a particular axis. (return None if not found) '''
     if isinstance(axis,str): # by name
@@ -265,6 +274,7 @@ class Variable(object):
       self.__dict__['masked'] = True # set masked flag
     self.__dict__['data'] = True
     self.__dict__['shape'] = data.shape
+    assert len(self.shape) == self.ndim, 'Variable dimensions and data dimensions incompatible!'
     self.__dict__['dtype'] = data.dtype
     if self.masked: # figure out fill value for masked array
       if fillValue is None: self.__dict__['fillValue'] = ma.default_fill_value(data)
@@ -347,33 +357,15 @@ class Variable(object):
   @UnaryCheck
   def __idiv__(self, a):
     ''' Divide the existing data by a number or an array. '''      
-#     if self.data: # only do this when data is loaded
     self.data_array /= a
-#     else: raise DataError, self    
     return self # return self as result
   
   @BinaryCheckAndCreateVar(sameUnits=True)
   def __add__(self, other):
     ''' Add two variables and return a new variable. '''
-#     # initial sanity checks
-#     assert isinstance(other,Variable), 'Can only add two \'Variable\' instances!' 
-#     assert self.units == other.units, 'Variable units have to be identical for addition!'
-#     assert self.shape == other.shape, 'Variables need to have the same shape and compatible axes!'
-#     if not self.data: self.load()
-#     if not other.data: other.load()
-#     for lax,rax in zip(self.axes,other.axes):
-#       assert (lax.coord == rax.coord).all(), 'Variables need to have identical coordinate arrays!'
-#     # create new variable
     data = self.data_array + other.data_array
     name = '%s + %s'%(self.name,other.name)
     units = self.units
-#     # construct common dict of attributes
-#     keys = set(self.atts.keys()).intersection(set(other.atts.keys()))
-#     atts = {key:self.atts[key] for key in keys}
-#     # assign axes (copy from self)
-#     axes = [ax for ax in self.axes]
-#     var = Variable(name=name, units=units, axes=axes, data=data, atts=atts)
-#     return var # return new variable instance
     return data, name, units
 
   @BinaryCheckAndCreateVar(sameUnits=True)
@@ -484,7 +476,7 @@ if __name__ == '__main__':
   
   # variable test
   print
-  var += np.ones(1)
+  var += 1
   # test getattr
   print 'Name: %s, Units: %s, Missing Values: %s'%(var.name, var.units, var._FillValue)
   # test setattr

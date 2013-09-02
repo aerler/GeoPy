@@ -10,16 +10,148 @@ and methods to an existing object/class instance.
 @author: Andre R. Erler, GPL v3
 '''
 
+import numpy as np
+import types # needed to bind functions to objects
+
 # gdal imports
 from osgeo import gdal, osr
 # register RAM driver
 ramdrv = gdal.GetDriverByName('MEM')
 
 # import all base functionality from PyGeoDat
-from geodata.base import *
+from geodata.base import Variable, Axis
+from misc import isEqual, isZero, isFloat, DataError
 
-def addGDAL():
-  return 
+
+def addGDAL(var, projection=None, geotransform=None):
+  ''' 
+    A function that adds GDAL-based geographic projection features to an existing Variable instance.
+    
+    New Instance Attributes: 
+      gdal = False # whether or not this instance possesses any GDAL functionality and is map-like
+      isProjected = False # whether lat/lon spherical (False) or a geographic projection (True)
+      projection = None # a GDAL spatial reference object
+      geotransform = None # a GDAL geotransform vector (can e inferred from coordinate vectors)
+      mapSize = None # size of horizontal dimensions
+      bands = None # all dimensions except, the map coordinates 
+      xlon = None # West-East axis
+      ylat = None # South-North axis  
+  '''
+  # check some special conditions
+  assert isinstance(var,Variable), 'This function can only be used to add GDAL functionality to \'Variable\' instances!'
+  lgdal = False; isProjected = None; mapSize = None; bands = None; xlon = None; ylat = None # defaults
+  # only for 2D variables!
+  shape = var.shape; ndim = var.ndim
+  if ndim >= 2: # else not a map-type
+    mapSize = var.shape[-2:]
+    assert all(mapSize), 'Horizontal dimensions have to be of finite, non-zero length.'
+    if ndim==2: bands = 1 
+    else: bands = np.prod(shape[:-2])
+    if projection is not None: # figure out projection 
+      assert isinstance(projection,osr.SpatialReference), '\'projection\' has to be a GDAL SpatialReference object.'              
+      isProjected =  projection.IsProjected
+      if isProjected: 
+        assert ('x' in self) and ('y' in self), 'Horizontal axes for projected GDAL variables have to \'x\' and \'y\'.'
+        xlon = var.x; ylat = var.y
+      else: 
+        assert ('lon' in self) and ('lat' in self), 'Horizontal axes for non-projected GDAL variables have to \'lon\' and \'lat\''
+        xlon = var.lon; ylat = var.lat    
+    else: # can still infer some useful info
+      if ('x' in var) and ('y' in var):
+        isProjected = True; xlon = var.x; ylat = var.y
+      elif ('lon' in var) and ('lat' in var):
+        isProjected = False; xlon = var.lon; ylat = var.lat
+        projection = osr.SpatialReference(); projection.ImportFromEPSG(4326) # normal lat/lon projection       
+    # if the variable is map-like, add GDAL properties
+    if xlon is not None and ylat is not None:
+      lgdal = True
+      # check axes
+      assert (var[xlon] in [var.ndim-1,var.ndim-2]) and (var[ylat] in [var.ndim-1,var.ndim-2]),\
+         'Horizontal axes (\'lon\' and \'lat\') have to be the innermost indices.'
+      if isProjected: assert isinstance(xlon,Axis) and isinstance(ylat,Axis), 'Error: attributes \'x\' and \'y\' have to be axes.'
+      else: assert isinstance(xlon,Axis) and isinstance(ylat,Axis), 'Error: attributes \'lon\' and \'lat\' have to be axes.'   
+
+  # modify Variable instance
+  var.__dict__['gdal'] = lgdal # all variables have this after going through this process
+  if lgdal:
+    
+    # infer or check geotransform
+    if geotransform is None: 
+      # infer GDAL geotransform vector from  coordinate vectors (axes)
+      dx = xlon[1]-xlon[0]; dy = ylat[1]-ylat[0]
+      assert (np.diff(xlon) == dx).all() and (np.diff(ylat) == dy).all(), 'Coordinate vectors have to be uniform!'
+      ulx = xlon[0]-dx/2.; uly = ylat[0]-dy/2. # coordinates of upper left corner (same for source and sink)
+      # GT(2) & GT(4) are zero for North-up; GT(1) & GT(5) are pixel width and height; (GT(0),GT(3)) is the top left corner
+      geotransform = (ulx, dx, 0., uly, 0., dy)
+    elif xlon.data or ylat.data:
+      # check if GDAL geotransform vector is consistent with coordinate vectors
+      assert len(geotransform) == 6, '\'geotransform\' has to be a vector or list with 6 elements.'
+      dx = geotransform[1]; dy = geotransform[5]; ulx = geotransform[0]; uly = geotransform[3] 
+      assert isZero(np.diff(xlon)-dx) and isZero(np.diff(ylat)-dy), 'Coordinate vectors have to be compatible with geotransform!'
+      assert isEqual(uly+dx/2,xlon[0]) and isEqual(uly+dy/2,ylat[0]) # coordinates of upper left corner (same for source and sink)       
+    else: assert len(geotransform) == 6 and all(isFloat(geotransform)), '\'geotransform\' has to be a vector or list of 6 floating-point numbers.'
+    # add new instance attributes (projection parameters)
+    var.__dict__['isProjected'] = isProjected    
+    var.__dict__['projection'] = projection
+    var.__dict__['geotransform'] = geotransform
+    var.__dict__['mapSize'] = mapSize
+    var.__dict__['bands'] = bands
+    var.__dict__['xlon'] = xlon
+    var.__dict__['ylat'] = ylat
+      
+    # define GDAL-related 'class methods'  
+    def getGDAL(self, load=True):
+      ''' Method that returns a gdal dataset, ready for use with GDAL routines. '''
+      if self.gdal:
+        # determine GDAL data type
+        if self.dtype == 'float32': gdt = gdal.GDT_Float32
+        elif self.dtype == 'float64': gdt = gdal.GDT_Float64
+        elif self.dtype == 'int16': gdt = gdal.GDT_Int16
+        elif self.dtype == 'int32': gdt = gdal.GDT_Int32
+        else: raise TypeError, 'Cannot translate numpy data type into GDAL data type!'        
+        # create GDAL dataset 
+        xe = len(self.xlon); ye = len(self.ylat) 
+        dataset = ramdrv.Create(self.name, int(xe), int(ye), int(self.bands), int(gdt)) 
+        # N.B.: for some reason a dataset is always initialized with 6 bands
+        # set projection parameters
+        dataset.SetGeoTransform(self.geotransform) # does the order matter?
+        dataset.SetProjection(self.projection.ExportToWkt()) # is .ExportToWkt() necessary?        
+        if load:
+          if not self.data: self.load()
+          if not self.data: raise DataError, 'Need data in Variable instance in order to load data into GDAL dataset!'
+          data = self.get(unmask=True) # get unmasked data
+          data = data.reshape(self.bands,self.mapSize[0],self.mapSize[1]) # reshape to fit bands
+          # assign data
+          for i in xrange(self.bands):
+            dataset.GetRasterBand(i+1).WriteArray(data[i,:,:])
+            if self.masked: dataset.GetRasterBand(i+1).SetNoDataValue(float(self.fillValue))
+      else: dataset = None
+      # return dataset
+      return dataset
+    # add new method to object
+    var.getGDAL = types.MethodType(getGDAL,var)
+    
+    # update new instance attributes
+    def load(self, data):
+      ''' Load new data array. '''
+      super(VarGDAL,self).load(data, mask=None)    
+      if len(data.shape) >= 2: # 2D or more
+        self.__dict__['mapSize'] = data.shape[-2:] # need to update
+      else: # less than 2D can't be GDAL enabled
+        self.__dict__['mapSize'] = None
+        self.__dict__['gdal'] = False
+    # add new method to object
+    var.load = types.MethodType(load,var)
+    
+    # maybe needed in the future...
+    def unload(self):
+      ''' Remove coordinate vector. '''
+      super(VarGDAL,self).unload()      
+    # add new method to object
+    var.unload = types.MethodType(unload,var)
+  
+  # the return value is actually not necessary, since the object is modified immediately
+  return var
 
 class VarGDAL(Variable):
   '''

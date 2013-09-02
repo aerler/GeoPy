@@ -12,7 +12,7 @@ import numpy as np
 import numpy.ma as ma
 
 # import modules to be tested
-from geodata.misc import isZero, isEqual
+from geodata.misc import isZero, isOne, isEqual
 from geodata import Variable, Axis
 
 class BaseTest(unittest.TestCase):  
@@ -72,9 +72,10 @@ class BaseTest(unittest.TestCase):
     ''' test indexing and slicing '''
     # get test objects
     var = self.var
-    # indexing (getitem) test    
-    assert ma.allclose(self.data[1,1,1], var[1,1,1], masked_equal=True)
-    assert ma.allclose(self.data[1,:,1:-1], var[1,:,1:-1], masked_equal=True)
+    # indexing (getitem) test  
+    if len(var) == 3:  
+      assert isEqual(self.data[1,1,1], var[1,1,1], masked_equal=True)
+      assert isEqual(self.data[1,:,1:-1], var[1,:,1:-1], masked_equal=True)
       
   def testUnaryArithmetic(self):
     ''' test unary arithmetic functions '''
@@ -103,13 +104,17 @@ class BaseTest(unittest.TestCase):
     ''' test masking and unmasking of data '''
     # get test objects
     var = self.var
+    masked = var.masked
     mask = var.getMask()
     data = var.get(unmask=True, fillValue=-9999)
     # test unmasking and masking again
     var.unmask(fillValue=-9999)
-    assert ma.allclose(data, var[:])
+    assert isEqual(data, var[:])
     var.mask(mask=mask)
-    assert ma.allclose(self.data, var[:])
+    if masked:
+      assert isEqual(self.data, var[:])
+    else:
+      assert isEqual(self.data, var.get(unmask=True))
     
   def testBinaryArithmetic(self):
     ''' test binary arithmetic functions '''
@@ -118,15 +123,21 @@ class BaseTest(unittest.TestCase):
     rav = self.rav
     # arithmetic test
     a = var + rav
+    assert isEqual(self.data*2, a.data_array)
     s = var - rav
+    assert isZero(s.data_array)
     m = var * rav
+    assert isEqual(self.data**2, m.data_array)
+    if (rav.data_array == 0).any(): # can't divide by zero!
+      if (rav.data_array != 0).any():  # test masking: mask zeros
+        rav.mask(np.logical_not(rav.data_array), fillValue=rav.fillValue, merge=True)
+      else: raise TypeError, 'Cannot divide by all-zero field!' 
     d = var / rav
+    assert isOne(d.data_array)
     # test results
     #     print (self.data.filled() - var.data_array.filled()).max()
-    assert isEqual(self.data*2, a.data_array)
-    assert isZero(s.data_array)
-    assert isEqual(self.data**2, m.data_array)
-    assert isEqual(np.ones_like(self.data), d.data_array)  
+#     assert isEqual(np.ones_like(self.data), d.data_array)
+#     assert isOne(d.data_array)  
 
 
 # import modules to be tested
@@ -136,7 +147,7 @@ class NetCDFTest(BaseTest):
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'GPCC' # dataset to use (also the folder name)
-  variable = 'rain' # variable to test
+  variable = 'landmask' # variable to test
   RAM = True # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
@@ -189,18 +200,20 @@ class NetCDFTest(BaseTest):
     var = self.var
     var.unload()
     # load slice
-    sl = (slice(0,12,1),slice(20,50,5),slice(70,140,15))
-    var.load(sl)
-    assert (12,6,5) == var.shape
-    assert isEqual(self.data.__getitem__(sl), var.data_array)
+    if len(var) == 3:
+      sl = (slice(0,12,1),slice(20,50,5),slice(70,140,15))
+      var.load(sl)
+      assert (12,6,5) == var.shape
+      assert isEqual(self.data.__getitem__(sl), var.data_array)
   
   def testIndexing(self):
     ''' test indexing and slicing '''
     # get test objects
     var = self.var
     # indexing (getitem) test    
-    assert ma.allclose(self.data[1,1,1], var[1,1,1], masked_equal=True)
-    assert ma.allclose(self.data[1,:,1:-1], var[1,:,1:-1], masked_equal=True)
+    if len(var) == 3:
+      assert isEqual(self.data[1,1,1], var[1,1,1])
+      assert isEqual(self.data[1,:,1:-1], var[1,:,1:-1])
     # test axes
 
 
@@ -211,6 +224,7 @@ class GDALTest(NetCDFTest):
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'GPCC' # dataset to use (also the folder name)
+  variable = 'rain'
   RAM = True # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
@@ -230,10 +244,13 @@ class GDALTest(NetCDFTest):
     # get test objects
     var = self.var # NCVar object
     # add GDAL functionality to variable
-    var = addGDAL(var)
-    # trivial tests 
-    assert self.size == var.shape
-    assert isEqual(self.data, var.data_array)
+    addGDAL(var)
+    # trivial tests
+    assert var.gdal
+    assert var.isProjected == False
+    assert var.getGDAL()
+    data = var.getGDAL()
+    assert data.ReadAsArray()[:,:,:].shape == (var.bands,)+var.mapSize 
     
     
 if __name__ == "__main__":
@@ -248,6 +265,7 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = ['Base'] 
     tests = ['NetCDF']
+    tests = ['GDAL']
     
     # run tests
     for test in tests:

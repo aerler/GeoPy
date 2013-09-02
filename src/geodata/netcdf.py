@@ -21,10 +21,13 @@ class VarNC(Variable):
     A variable class that implements access to data from a NetCDF variable object.
   '''
   
-  ncvar = None # the associated netcdf variable
-  
   def __init__(self, ncvar, axes=None, mask=None, plotatts=None, load=False):
-    ''' Initialize Variable instance based on NetCDF variable. '''
+    ''' 
+      Initialize Variable instance based on NetCDF variable.
+      
+      New Instance Attributes:
+        ncvar = None # the associated netcdf variable 
+    '''
     # construct attribute dictionary from netcdf attributes
     atts = { key : ncvar.getncattr(key) for key in ncvar.ncattrs() } 
     name = ncvar.__dict__.get('name',ncvar._name)

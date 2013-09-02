@@ -8,6 +8,7 @@ Miscellaneous decorators, methods. and classes, as well as exception classes.
 
 # numpy imports
 import numpy as np
+import numpy.ma as ma
 import collections as col
 
 ## useful decorators
@@ -60,28 +61,48 @@ def isFloat(arg): return isinstance(arg,float)
 # define machine precision
 floateps = np.finfo(np.float).eps
 # check if an array is zero within machine precision
-def isZero(array, eps=None):
-  ''' This function checks if a numpy array (or scalar) is zero within machine precision, and returns a scalar logical. '''
-  if isinstance(array,np.ndarray):
-    if array.dtype == 'float':
+def isZero(data, eps=None, masked_equal=True):
+  ''' This function checks if a numpy array or scalar is zero within machine precision, and returns a scalar logical. '''
+  if isinstance(data,np.ndarray):
+    if data.dtype == 'float':
+      return ma.allclose(np.zeros_like(data), data, masked_equal=True)
+#     if eps is None: eps = 100.*floateps # default
+#       return ( np.absolute(array) <= eps ).all()
+    elif data.dtype == 'int' or data.dtype == 'bool':
+      return all( data == 0 )
+  elif isinstance(data,float):
       if eps is None: eps = 100.*floateps # default
-      return ( np.absolute(array) <= eps ).all()
-    elif array.dtype == 'int' or array.dtype == 'bool':
-      return all( array == 0 )
-  elif isinstance(array,float):
+      return np.absolute(data) <= eps
+  elif isinstance(data,(int,bool)):
+      return data == 0
+# check if an array is one within machine precision
+def isOne(data, eps=None, masked_equal=True):
+  ''' This function checks if a numpy array or scalar is one within machine precision, and returns a scalar logical. '''
+  if isinstance(data,np.ndarray):
+    if data.dtype == 'float':
+      return ma.allclose(np.ones_like(data), data, masked_equal=True)
+    elif data.dtype == 'int' or data.dtype == 'bool':
+      return all( data == 1 )
+  elif isinstance(data,float):
       if eps is None: eps = 100.*floateps # default
-      return np.absolute(array) <= eps
-  elif isinstance(array,(int,bool)):
-      return array == 0
+      return np.absolute(data-1) <= eps
+  elif isinstance(data,(int,bool)):
+      return data == 1
 # check if two arrays are equal within machine precision
-def isEqual(left, right, eps=None):
-  ''' This function checks if two numpy arrays are equal within machine precision, and returns a scalar logical. '''
+def isEqual(left, right, eps=None, masked_equal=True):
+  ''' This function checks if two numpy arrays or scalars are equal within machine precision, and returns a scalar logical. '''
   assert left.dtype==right.dtype, 'Both arguments to function \'isEqual\' must be of the same type!'
   assert left.__class__==right.__class__, 'Both arguments to function \'isEqual\' must be of the same class!'
-  if (left.dtype == 'bool') or (left.dtype == 'int'):
-    return ( left == right ).all()
-  else:
-    return isZero(left - right, eps=eps)
+  if isinstance(left,np.ndarray):
+    if left.dtype == 'float':
+      return ma.allclose(left, right, masked_equal=True)
+    elif left.dtype == 'int' or left.dtype == 'bool':
+      return all( left == right )
+  elif isinstance(left,float):
+      if eps is None: eps = 100.*floateps # default
+      return np.absolute(left-right) <= eps
+  elif isinstance(left,(int,bool)):
+      return left == right
 
 
 # import definitions from a script into global namespace
