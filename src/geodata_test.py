@@ -13,9 +13,9 @@ import numpy.ma as ma
 
 # import modules to be tested
 from geodata.misc import isZero, isOne, isEqual
-from geodata import Variable, Axis
+from geodata.base import Variable, Axis, Dataset
 
-class BaseTest(unittest.TestCase):  
+class BaseVarTest(unittest.TestCase):  
   
   # some test parameters (TestCase does not take any arguments)  
   plot = False # whether or not to display plots 
@@ -40,10 +40,12 @@ class BaseTest(unittest.TestCase):
                         data=self.data.copy(),atts=self.atts.copy())
     # check if data is loaded (future subclasses may initialize without loading data by default)
     if not self.var.data: self.var.load(self.data.copy()) # again, use copy!
+    if not self.rav.data: self.rav.load(self.data.copy()) # again, use copy!
         
   def tearDown(self):
     ''' clean up '''     
     self.var.unload() # just to do something... free memory
+    self.rav.unload()
     
   ## basic tests every variable class should pass
 
@@ -104,18 +106,21 @@ class BaseTest(unittest.TestCase):
   def testMask(self):
     ''' test masking and unmasking of data '''
     # get test objects
-    var = self.var
+    var = self.var; rav = self.rav
     masked = var.masked
     mask = var.getMask()
     data = var.get(unmask=True, fillValue=-9999)
     # test unmasking and masking again
     var.unmask(fillValue=-9999)
-    assert isEqual(data, var[:])
+    assert isEqual(data, var[:]) # trivial
     var.mask(mask=mask)
-    if masked:
-      assert isEqual(self.data, var[:])
-    else:
-      assert isEqual(self.data, var.get(unmask=True))
+    assert isEqual(self.data, var.get(unmask=(not masked)))
+    # test masking with a variable
+    var.unmask(fillValue=-9999)
+    assert isEqual(data, var[:]) # trivial
+    var.mask(mask=rav)
+    assert isEqual(ma.array(self.data,mask=(rav.data_array>0)), var.get(unmask=False))
+    
     
   def testBinaryArithmetic(self):
     ''' test binary arithmetic functions '''
@@ -141,10 +146,82 @@ class BaseTest(unittest.TestCase):
 #     assert isOne(d.data_array)  
 
 
+class BaseDatasetTest(unittest.TestCase):  
+  
+  # some test parameters (TestCase does not take any arguments)  
+  plot = False # whether or not to display plots 
+  stats = False # whether or not to compute stats on data
+  
+  def setUp(self):
+    ''' create Dataset with Axes and a Variables for testing '''
+    # some setting that will be saved for comparison
+    self.size = (3,3,3) # size of the data array and axes
+    te, ye, xe = self.size
+    self.atts = dict(name = 'var',units = 'n/a',FillValue=-9999)
+    self.data = np.random.random(self.size)   
+    # create axis instances
+    t = Axis(name='t', units='none', coord=(1,te,te))
+    y = Axis(name='y', units='none', coord=(1,ye,ye))
+    x = Axis(name='x', units='none', coord=(1,xe,xe))
+    self.axes = (t,y,x)
+    # create axis and variable instances (make *copies* of data and attributes!)
+    var = Variable(name='var',units=self.atts['units'],axes=self.axes,
+                        data=self.data.copy(),atts=self.atts.copy())
+    rav = Variable(name='rav',units=self.atts['units'],axes=self.axes,
+                        data=self.data.copy(),atts=self.atts.copy())
+    self.var = var; self.rav = rav 
+    # make dataset
+    self.dataset = Dataset(varlist=[var, rav])
+    # check if data is loaded (future subclasses may initialize without loading data by default)
+    if not self.var.data: self.var.load(self.data.copy()) # again, use copy!
+    if not self.rav.data: self.rav.load(self.data.copy()) # again, use copy!
+        
+  def tearDown(self):
+    ''' clean up '''     
+    self.var.unload() # just to do something... free memory
+    self.rav.unload()
+    
+  ## basic tests every variable class should pass
+  
+  def testAddRemove(self):
+    ''' test adding and removing variables '''
+    # test objects: var and ax
+    name='test'
+    ax = Axis(name='ax', units='none')
+    var = Variable(name=name,units='none',axes=(ax,))
+    dataset = self.dataset
+    le = len(dataset)
+    # add/remove axes
+    dataset.addVariable(var)
+    assert dataset.hasVariable(var)
+    assert dataset.hasAxis(ax)
+    assert len(dataset) == le + 1
+    dataset.removeAxis(ax) # should not work now
+    assert dataset.hasAxis(ax)    
+    dataset.removeVariable(var)
+    assert dataset.hasVariable(name) == False
+    assert len(dataset) == le
+    dataset.removeAxis(ax)
+    assert dataset.hasAxis(ax) == False
+    
+  def testContainer(self):
+    ''' test basic container functionality '''
+    # test objects: vars and axes
+    dataset = self.dataset
+    # check container properties 
+    assert len(dataset.variables) == len(dataset)
+    for varname,varobj in dataset.variables.iteritems():
+      assert varname in dataset
+      assert varobj in dataset
+    for axname,axobj in dataset.axes.iteritems():
+      assert axname in dataset
+      assert axobj in dataset
+
+
 # import modules to be tested
 from geodata.netcdf import VarNC, AxisNC
 
-class NetCDFTest(BaseTest):  
+class NetCDFVarTest(BaseVarTest):  
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'GPCC' # dataset to use (also the folder name)
@@ -217,11 +294,10 @@ class NetCDFTest(BaseTest):
       assert isEqual(self.data[1,:,1:-1], var[1,:,1:-1])
     # test axes
 
-
 # import modules to be tested
 from geodata.gdal import addGDAL 
 
-class GDALTest(NetCDFTest):  
+class GDALVarTest(NetCDFVarTest):  
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'GPCC' # dataset to use (also the folder name)
@@ -233,10 +309,10 @@ class GDALTest(NetCDFTest):
   projection = ''
   
   def setUp(self):
-    super(GDALTest,self).setUp() 
+    super(GDALVarTest,self).setUp() 
       
   def tearDown(self):  
-    super(GDALTest,self).tearDown()
+    super(GDALVarTest,self).tearDown()
   
   ## specific NetCDF test cases
 
@@ -263,10 +339,15 @@ if __name__ == "__main__":
       if key[-4:] == 'Test':
         test_classes[key[:-4]] = val
 
-    # list of tests to be performed
-    tests = ['Base'] 
-    tests = ['NetCDF']
-    tests = ['GDAL']
+    # tests to be performed
+    # list of variable tests
+    tests = ['BaseVar'] 
+#     tests = ['NetCDFVar']
+#     tests = ['GDALVar']
+    # list of dataset tests
+#     tests = ['BaseDataset'] 
+#     tests = ['NetCDFDataset']
+#     tests = ['GDALDataset']    
     
     # run tests
     for test in tests:

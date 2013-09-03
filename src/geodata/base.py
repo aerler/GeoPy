@@ -293,20 +293,96 @@ class Variable(object):
     self.__dict__['fillValue'] = None
     # self.__dict__['shape'] = None # retain shape for later use
     
-  def get(self, idx=None, unmask=True, fillValue=None):
-    ''' Copy the entire data array or a slice; with some extra options. '''
-    if all(checkIndex(idx, floatOK=True)): datacopy = self.__getitem__(idx).copy() # use __getitem__ to get slice
-    else: datacopy = self.data_array.copy()
+  def get(self, idx=None, axes=None, unmask=True, fillValue=None):
+    ''' Copy the entire data array or a slice; option to unmask and to reorder/reshape to specified axes. '''
+    # get data
+    if all(checkIndex(idx, floatOK=True)):
+      if not self.data: self.load(data=idx) 
+      datacopy = self.__getitem__(idx).copy() # use __getitem__ to get slice
+    else:
+      if not self.data: self.load() 
+      datacopy = self.data_array.copy()
+    # unmask    
     if unmask and self.masked:
       if fillValue is None: fillValue=self.fillValue
       datacopy = datacopy.filled(fill_value=fillValue)
+    # broadcast to desired shape
+    if axes is not None:
+      if idx is not None: raise NotImplementedError
+      for ax in self.axes:
+        assert ax in axes, "Can not broadcast Variable '%s' to dimension '%s' "%(self.name,ax.name)
+      axidx = [axes.index(ax) for ax in self.axes] # get indices present axes in broadcast list
+      # order dimensions as in this variable
+      datacopy = np.transpose(datacopy,axes=np.argsort(axidx))
+      axidx.sort() # also index list
+      # adapt shape for broadcasting
+      shape = []; oi = 0
+      for i in xrange(len(self)):
+        if i == oi: 
+          shape.append(datacopy.shape[oi])
+          oi += 1
+        else: shape.append(1) # a size of '1' will be expanded by broadcast later
+      assert oi == datacopy.ndim
+      datacopy = datacopy.reshape(shape)
     return datacopy
     
   def mask(self, mask=None, fillValue=None, merge=True):
     ''' A method to add a mask to an unmasked array, or extend or replace an existing mask. '''
     if mask is not None:
-      assert isinstance(mask,np.ndarray), 'Mask has to be a numpy array!'  
-      assert len(self.shape) == len(mask.shape) and self.shape == mask.shape, 'Data array and mask have to be of the same shape!'
+      assert isinstance(mask,np.ndarray) or isinstance(mask,Variable), 'Mask has to be a numpy array or a Variable instance!'
+      # 'mask' can be a variable
+      if isinstance(mask,Variable):
+        mask = (mask.get(unmask=True,axes=self.axes) > 0) # convert to a boolean numpy array
+#         for ax in mask.axes: 
+#           assert ax in self, "Variable '%s' does not have mask '%s' dimension '%s' "%(self.name,mask.name,ax.name)
+#         axidx = [self.axisIndex(ax) for ax in mask.axes] # get indices in this variable array
+#         mask = (mask.get(unmask=True) > 0) # convert to a boolean numpy array
+#         # order dimensions as in this variable
+#         mask = np.transpose(mask,axes=np.argsort(axidx))
+#         axidx.sort() # also index list
+#         # adapt shape for broadcasting
+#         shape = []; oi = 0
+#         for i in xrange(len(self)):
+#           if i == oi: 
+#             shape.append(mask.shape[oi])
+#             oi += 1
+#           else: shape.append(1) # a size of '1' will be expanded by broadcast later
+#         assert oi == mask.ndim
+#         mask = mask.reshape(shape)        
+#         # check order of dimensions
+#         if mask.ndim == 1: pass
+#         elif mask.ndim == 2:
+#           if axidx[0] == axidx[1]+1: 
+#             mask = mask.swapaxes(0,1)  
+#             axidx.reverse()  
+#           elif axidx[0]+1 == axidx[1]: pass
+#           else:
+#             raise NotImplementedError
+#         else:
+#           order = range(axidx[0], axidx[0]+len(axidx))
+#           assert order == axidx, "Incompatible axis order that can not be resolved."
+#         # extend mask to the right, if necessary
+#         if axidx[-1] < len(self)-1:
+#           rext = self.shape[axidx[-1]+1:]
+#           mask.reshape(mask.shape+(1,)*len(rext))
+#           mask.tile((1,)*len(axidx)+rext)
+#       else:
+#         # or a numbpy array
+#         assert isinstance(mask,np.ndarray)
+#         axidx = range(len(self)-mask.ndim,len(self)) # assume it is the innermost dimensions      
+#         for i in xrange(len(axidx)):
+#           assert self.shape[axidx[i]] == mask.shape[i], "Shape of mask and Variable are incompatible!"   
+#       # expand array to the left, if necessary
+#       if axidx[0] > 0:
+#           lext = self.shape[0:axidx[0]]
+#           mask.reshape((1,)*len(lext)+mask.shape)
+#           mask.tile(lext+(1,)*len(axidx))
+      assert isinstance(mask,np.ndarray), 'Mask has to be convertible to a numpy array!'      
+      # if 'mask' has less dimensions than the variable, it can be extended      
+      assert len(self.shape) >= len(mask.shape), 'Data array needs to have the same number of dimensions or more than the mask!'
+      assert self.shape[self.ndim-mask.ndim:] == mask.shape, 'Data array and mask have to be of the same shape!'
+      # broadcast mask to data array
+      mask = np.broadcast_arrays(mask,self.data_array)[0] # only need first element (the broadcasted mask)
       # create new data array
       if merge and self.masked: # the first mask is usually the land-sea mask, which we want to keep
         data = self.get(unmask=False) # get data with mask
@@ -517,11 +593,11 @@ class Dataset(object):
     
   def removeAxis(self, ax):
       ''' Method to remove an Axis from the Dataset, provided it is no longer needed. '''
-      if isinstance(ax,Axis): ax = ax.name # only work with string arguments
-      assert isinstance(ax,str) 
-      if ax in self.axes: # remove axis, if it does exist
+      if isinstance(ax,str): ax = self.axes[ax] # only work with Axis objects
+      assert isinstance(ax,Axis), "Argument 'ax' has to be an Axis instance or a string representing the name of an axis." 
+      if ax.name in self.axes: # remove axis, if it does exist
         # make sure no variable still needs axis
-        if any([var.hasAxis(ax) for var in self.variables]):
+        if not any([var.hasAxis(ax) for var in self.variables.itervalues()]):
           # delete axis from dataset   
           del self.axes[ax.name]
           del self.__dict__[ax.name]
@@ -532,9 +608,9 @@ class Dataset(object):
   
   def removeVariable(self, var):
     ''' Method to remove a Variable from the Dataset. '''
-    if isinstance(var,Variable): var = var.name # only work with string arguments
-    assert isinstance(var,str) 
-    if var in self.variables: # add new variable if it does not already exist
+    if isinstance(var,str): var = self.variable[var] # only work with Variable objects
+    assert isinstance(var,Variable), "Argument 'var' has to be a Variable instance or a string representing the name of a variable."
+    if var.name in self.variables: # add new variable if it does not already exist
       # delete variable from dataset   
       del self.variables[var.name]
       del self.__dict__[var.name]
@@ -583,6 +659,28 @@ class Dataset(object):
     ''' Remove a Variable to an existing dataset. '''      
     assert self.removeVariable(var), "A proble occurred removing Variable '%s' from Dataset."%(var.name)
     return self # return self as result
+  
+  def load(self, data=None, mask=None, fillValue=None, **kwargs):
+    ''' Issue load() command to all variable; pass on any keyword arguments. '''
+    for var in self.variables.itervalues():
+      var.load(data=data, mask=mask, fillValue=fillValue, **kwargs)
+      
+  def unload(self, **kwargs):
+    ''' Unload all data arrays currently loaded in memory. '''
+    for var in self.variables.itervalues():
+      var.unload(**kwargs)
+      
+  def mask(self, mask=None, **kwargs):
+    ''' Apply 'mask' to all variables and add the mask, if it is a variable. '''
+    if isinstance(mask,Variable): self.addVariable(mask)
+    for var in self.variables.itervalues():
+      if var.ndim >= mask.ndim:
+        var.load(mask=mask, **kwargs)
+    
+  def unmask(self, fillValue=None, **kwargs):
+    ''' Unmask all Variables in the Dataset. '''
+    for var in self.variables.itervalues():
+      var.load(fillValue=fillValue, **kwargs)
         
 
 ## run a test    
