@@ -159,7 +159,7 @@ class Variable(object):
           for ax,n in zip(axes,shape): ax.updateLength(n)
         if not ldata and all([len(ax) for ax in axes]):
           self.__dict__['shape'] = [len(ax) for ax in axes] # get shape from axes
-      elif all([isinstance(ax,str) for ax in axes]):
+      elif all([isinstance(ax,basestring) for ax in axes]):
         if ldata: axes = [Axis(name=ax, len=n) for ax,n in zip(axes,shape)] # use shape from data
         else: axes = [Axis(name=ax) for ax in axes] # initialize without shape
     else: 
@@ -215,7 +215,7 @@ class Variable(object):
   
   def hasAxis(self, axis):
     ''' Check if the variable instance has a particular axis. '''
-    if isinstance(axis,str): # by name
+    if isinstance(axis,basestring): # by name
       for i in xrange(len(self.axes)):
         if self.axes[i].name == axis: return True
     elif isinstance(axis,Variable): # by object ID
@@ -235,7 +235,7 @@ class Variable(object):
   
   def axisIndex(self, axis):
     ''' Return the index of a particular axis. (return None if not found) '''
-    if isinstance(axis,str): # by name
+    if isinstance(axis,basestring): # by name
       for i in xrange(len(self.axes)):
         if self.axes[i].name == axis: return i
     elif isinstance(axis,Variable): # by object ID
@@ -255,7 +255,7 @@ class Variable(object):
         return self.data_array.__getitem__(idx) # valid array slicing
       else: 
         raise IndexError, 'Variable instance \'%s\' has no associated data array!'%(self.name) 
-    elif isinstance(idx,str) or isinstance(idx,Axis):
+    elif isinstance(idx,basestring) or isinstance(idx,Axis):
       # dictionary-type key: return index of dimension with that name
       return self.axisIndex(idx)
     else:    
@@ -573,7 +573,9 @@ class Dataset(object):
     if atts: self.__dict__['atts'] = AttrDict(**atts)
     else: self.__dict__['atts'] = AttrDict()
     # load variables (automatically adds axes linked to varaibles)
-    for var in varlist: self.addVariable(var)
+    for var in varlist:
+      #print var.name
+      self.addVariable(var)
     
   def addAxis(self, ax):
     ''' Method to add an Axis to the Dataset. If the Axis is already present, check that it is the same. '''
@@ -601,7 +603,7 @@ class Dataset(object):
     
   def removeAxis(self, ax):
       ''' Method to remove an Axis from the Dataset, provided it is no longer needed. '''
-      if isinstance(ax,str): ax = self.axes[ax] # only work with Axis objects
+      if isinstance(ax,basestring): ax = self.axes[ax] # only work with Axis objects
       assert isinstance(ax,Axis), "Argument 'ax' has to be an Axis instance or a string representing the name of an axis." 
       if ax.name in self.axes: # remove axis, if it does exist
         # make sure no variable still needs axis
@@ -616,7 +618,7 @@ class Dataset(object):
   
   def removeVariable(self, var):
     ''' Method to remove a Variable from the Dataset. '''
-    if isinstance(var,str): var = self.variable[var] # only work with Variable objects
+    if isinstance(var,basestring): var = self.variable[var] # only work with Variable objects
     assert isinstance(var,Variable), "Argument 'var' has to be a Variable instance or a string representing the name of a variable."
     if var.name in self.variables: # add new variable if it does not already exist
       # delete variable from dataset   
@@ -627,7 +629,7 @@ class Dataset(object):
   
   def hasVariable(self, var):
     ''' Method to check, if a Variable is present in the Dataset. '''
-    if isinstance(var,str):
+    if isinstance(var,basestring):
       return self.variables.has_key(var) # look up by name
     elif isinstance(var,Variable):
       if self.variables.has_key(var.name):
@@ -639,7 +641,7 @@ class Dataset(object):
   
   def hasAxis(self, ax):
     ''' Method to check, if an Axis is present in the Dataset. '''
-    if isinstance(ax,str):
+    if isinstance(ax,basestring):
       return self.axes.has_key(ax) # look up by name
     elif isinstance(ax,Axis):
       if self.axes.has_key(ax.name):
@@ -680,10 +682,9 @@ class Dataset(object):
       
   def mask(self, mask=None, **kwargs):
     ''' Apply 'mask' to all variables and add the mask, if it is a variable. '''
-    if isinstance(mask,Variable): self.addVariable(mask)
+    if isinstance(mask,Variable) and not self.hasVariable(mask): self.addVariable(mask)
     for var in self.variables.itervalues():
-      if var.ndim >= mask.ndim:
-        var.load(mask=mask, **kwargs)
+      if var.ndim >= mask.ndim: var.load(mask=mask, **kwargs)
     
   def unmask(self, fillValue=None, **kwargs):
     ''' Unmask all Variables in the Dataset. '''

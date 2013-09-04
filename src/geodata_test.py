@@ -242,7 +242,7 @@ class BaseDatasetTest(unittest.TestCase):
 
 
 # import modules to be tested
-from geodata.netcdf import VarNC, AxisNC
+from geodata.netcdf import VarNC, AxisNC, NetCDFDataset
 
 class NetCDFVarTest(BaseVarTest):  
   
@@ -317,6 +317,46 @@ class NetCDFVarTest(BaseVarTest):
       assert isEqual(self.data[1,:,1:-1], var[1,:,1:-1])
     # test axes
 
+
+class NetCDFDatasetTest(BaseDatasetTest):  
+  
+  # some test parameters (TestCase does not take any arguments)
+  dataset = 'GPCC' # dataset to use (also the folder name)
+  variables = ['landmask', 'rain'] # variable to test
+  RAM = True # base folder for file operations
+  plot = False # whether or not to display plots 
+  stats = False # whether or not to compute stats on data
+  
+  def setUp(self):
+    if self.RAM: folder = '/media/tmp/'
+    else: folder = '/home/DATA/DATA/%s/'%self.dataset # dataset name is also in folder name
+    if self.dataset == 'GPCC':
+      # load a netcdf dataset, so that we have something to play with
+      self.ncdata = nc.Dataset(folder+'gpccavg/gpcc_25_clim_1979-1988.nc',mode='r')
+      self.dataset = NetCDFDataset(dataset=self.ncdata)
+    # load variable
+    ncvar = self.ncdata.variables[self.variables[0]]      
+    # get dimensions and coordinate variables
+    size = [len(self.ncdata.dimensions[dim]) for dim in ncvar.dimensions] 
+    axes = [AxisNC(self.ncdata.variables[dim], length=le) for dim,le in zip(ncvar.dimensions,size)] 
+    # initialize netcdf variable 
+    self.ncvar = ncvar; self.axes = axes
+    self.var = VarNC(ncvar, axes=axes, load=True)    
+    self.rav = VarNC(ncvar, axes=axes, load=True) # second variable for binary operations    
+    # save the original netcdf data
+    self.data = self.ncdata.variables[self.variables[0]][:].copy() #.filled(0)
+    self.size = tuple([len(ax) for ax in axes])
+    # construct attributes dictionary from netcdf attributes
+    self.atts = { key : self.ncvar.getncattr(key) for key in self.ncvar.ncattrs() }
+    self.atts['name'] = self.ncvar._name
+    if 'units' not in self.atts: self.atts['units'] = '' 
+      
+  def tearDown(self):  
+    self.var.unload()   
+    self.ncdata.close()
+  
+
+
 # import modules to be tested
 from geodata.gdal import addGDAL 
 
@@ -364,12 +404,12 @@ if __name__ == "__main__":
 
     # tests to be performed
     # list of variable tests
-    tests = ['BaseVar'] 
+#     tests = ['BaseVar'] 
 #     tests = ['NetCDFVar']
 #     tests = ['GDALVar']
     # list of dataset tests
 #     tests = ['BaseDataset'] 
-#     tests = ['NetCDFDataset']
+    tests = ['NetCDFDataset']
 #     tests = ['GDALDataset']    
     
     # run tests

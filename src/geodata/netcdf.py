@@ -13,8 +13,8 @@ import netCDF4 as nc # netcdf python module
 
 # import all base functionality from PyGeoDat
 # from nctools import * # my own netcdf toolkit
-from geodata.base import Variable, Axis
-from geodata.misc import checkIndex
+from geodata.base import Variable, Axis, Dataset
+from geodata.misc import checkIndex, isEqual, DatasetError
 
 class VarNC(Variable):
   '''
@@ -101,6 +101,79 @@ class AxisNC(Axis,VarNC):
     else:
       # use parent constructor
       super(AxisNC,self).updateCoord(coord=coord)
+      
+
+class NetCDFDataset(Dataset):
+  '''
+    A container class for variable and axes objects, as well as some meta information. This class also 
+    implements collective operations on all variables in the dataset.
+  '''
+  
+  def __init__(self, folder='', dataset=None, filelist=None, varlist=None, varatts=None, atts=None, multifile=False):
+    ''' 
+      Create a Dataset from one or more NetCDF files; Variables are created from NetCDF variables. 
+      
+      NetCDF Attributes:
+        datasets = [] # list of NetCDF datasets 
+      Basic Attributes:        
+        variables = dict() # dictionary holding Variable instances
+        axes = dict() # dictionary holding Axis instances (inferred from Variables)
+        atts = AttrDict() # dictionary containing global attributes / meta data
+    '''
+    # create netcdf datasets
+    if dataset: # from netcdf datasets
+      assert filelist is None
+      if isinstance(dataset,nc.Dataset): datasets = [dataset]
+      elif isinstance(dataset,(list,tuple)): 
+        assert all([isinstance(ds,nc.Dataset) for ds in dataset])
+        datasets = dataset
+    else: # or directly from netcdf files
+      assert filelist is not None
+      datasets = []
+      for ncfile in filelist:
+        if multifile: 
+          if isinstance(ncfile,(list,tuple)): tmpfile = [folder+ncf for ncf in ncfile]
+          else: tmpfile = folder+ncfile  
+          tmpds = nc.MFDataset(tmpfile)        
+        else:
+          nc.Dataset(folder+ncfile)
+        datasets.append(tmpds)
+    # create axes from netcdf dimensions and coordinate variables
+    axes = dict()
+    for ds in datasets:
+      for dim in ds.dimensions.keys():
+        if dim in ds.variables: # skip dimensions that have no associated variable 
+          if axes.has_key(dim): # if already present, make sure axes are essentially the same
+            if not isEqual(axes[dim][:],ds.variable[dim][:]): raise DatasetError,\
+               'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
+          else: # if this is a new axis, add it to the list
+            axes[dim] = AxisNC(ncvar=ds.variables[dim])
+    # create variables from netcdf variables
+    variables = dict()
+    for ds in datasets:
+      for var in ds.variables.keys():
+        if axes.has_key(var): pass # do not treat coordinate variables as real variables 
+        elif variables.has_key(var): # if already present, make sure variables are essentially the same
+          if not isEqual(variables[var][:],ds.variable[var][:]): raise DatasetError,\
+             'Error constructing Dataset: NetCDF files have incompatible Variables.' 
+        else: # if this is a new axis, add it to the list
+          if all([axes.has_key(dim) for dim in ds.variables[var].dimensions]):
+            varaxes = [axes[dim] for dim in ds.variables[var].dimensions]
+            variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes)
+    # get attributes from NetCDF dataset
+    ncattrs = dict(); conflicting = set()
+    for ds in datasets:
+      for attr in ds.ncattrs():
+        if attr in ncattrs: 
+          if ds.__dict__[attr] != ncattrs[attr]: conflicting.add(attr)
+        else: # is it does not yet exist
+          ncattrs[attr] = ds.__dict__[attr]
+    for attr in conflicting: del ncattrs[attr] # remove conflicting items
+    if atts: ncattrs.update(atts) # update with attributes passed to constructor
+    # initialize Dataset using parent constructor
+    super(NetCDFDataset,self).__init__(varlist=variables.values(), atts=ncattrs)
+    # add NetCDF attributes
+    self.__dict__['datasets'] = datasets
 
 ## run a test    
 if __name__ == '__main__':
