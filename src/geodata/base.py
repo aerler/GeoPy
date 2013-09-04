@@ -293,7 +293,7 @@ class Variable(object):
     self.__dict__['fillValue'] = None
     # self.__dict__['shape'] = None # retain shape for later use
     
-  def getArray(self, idx=None, axes=None, unmask=True, fillValue=None, copy=True):
+  def getArray(self, idx=None, axes=None, broadcast=False, unmask=True, fillValue=None, copy=True):
     ''' Copy the entire data array or a slice; option to unmask and to reorder/reshape to specified axes. '''
     # get data
     if all(checkIndex(idx, floatOK=True)):
@@ -308,7 +308,7 @@ class Variable(object):
     if unmask and self.masked:
       if fillValue is None: fillValue=self.fillValue
       datacopy = datacopy.filled(fill_value=fillValue) # I don't know if this generates a copy or not...
-    # broadcast to desired shape
+    # reorder and reshape to match axes (add missing dimensions as singleton dimensions)
     if axes is not None:
       if idx is not None: raise NotImplementedError
       for ax in self.axes:
@@ -324,6 +324,14 @@ class Variable(object):
           z += 1
       assert z == datacopy.ndim 
       datacopy = datacopy.reshape(shape)
+    # true broadcasting: extend array to match given axes and dimensions
+    if broadcast:
+      assert all([isinstance(ax,Axis) and len(ax)>0 for ax in axes]),\
+         'All axes need to have a defined length in order broadcast the array.'
+      # get tiling list
+      tiling = [len(ax) if l == 1 else 1 for ax,l in zip(axes,datacopy.shape)]
+      datacopy = np.tile(datacopy, reps=tiling)
+    # return array
     return datacopy
     
   def mask(self, mask=None, fillValue=None, merge=True):

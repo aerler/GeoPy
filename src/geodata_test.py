@@ -72,22 +72,36 @@ class BaseVarTest(unittest.TestCase):
     #     print 'Comments: %s, Plot Comments: %s'%(var.Comments,var.plotatts['plotComments'])
 
   def testIndexing(self):
-    ''' test indexing, slicing, and broadcasting '''
+    ''' test indexing and slicing '''
     # get test objects
     var = self.var
     # indexing (getitem) test  
     if len(var) == 3:  
       assert isEqual(self.data[1,1,1], var[1,1,1], masked_equal=True)
       assert isEqual(self.data[1,:,1:-1], var[1,:,1:-1], masked_equal=True)
-    # test getArray and broadcasting (reordering and reshaping/extending) 
+      
+  def testBroadcast(self):
+    ''' test reordering, reshaping, and broadcasting '''
+    # get test objects
+    var = self.var
+    # test reordering and reshaping/extending (getArray)
+    new_axes = ('t','z','y','x')
+    new_shape = tuple([var.shape[var.axisIndex(ax)] if var.hasAxis(ax) else 1 for ax in new_axes]) 
+    data = var.getArray(axes=new_axes, broadcast=False, copy=True)
+    #print var.shape # this is what it was
+    #print data.shape # this is what it is
+    #print new_shape 
+    assert data.shape == new_shape 
+    # test broadcasting to a new shape  
     z = Axis(name='z', units='none', coord=(1,5,5)) # new axis
-    t,x,y = self.axes 
+    t,x,y = self.axes
     new_axes = (t,z,y,x)
-    data = var.getArray(axes=new_axes, copy=True)
-    #     print var.shape # this is what it was
-    #     print data.shape # this is what it is
-    #     print tuple([len(ax) if ax in var.axes else 1 for ax in new_axes]) # this is what it should be
-    assert data.shape == tuple([len(ax) if ax in var.axes else 1 for ax in new_axes])
+    new_shape = tuple([len(ax) for ax in new_axes]) # this is the shape we should get
+    data = var.getArray(axes=new_axes, broadcast=True, copy=True)
+    #print var.shape # this is what it was
+    #print data.shape # this is what it is
+    #print new_shape # this is what it should be
+    assert data.shape == new_shape 
       
   def testUnaryArithmetic(self):
     ''' test unary arithmetic functions '''
