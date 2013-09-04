@@ -24,7 +24,7 @@ class BaseVarTest(unittest.TestCase):
   def setUp(self):
     ''' create Axis and a Variable instance for testing '''
     # some setting that will be saved for comparison
-    self.size = (3,3,3) # size of the data array and axes
+    self.size = (2,3,4) # size of the data array and axes
     te, ye, xe = self.size
     self.atts = dict(name = 'test',units = 'n/a',FillValue=-9999)
     self.data = np.random.random(self.size)   
@@ -72,13 +72,22 @@ class BaseVarTest(unittest.TestCase):
     #     print 'Comments: %s, Plot Comments: %s'%(var.Comments,var.plotatts['plotComments'])
 
   def testIndexing(self):
-    ''' test indexing and slicing '''
+    ''' test indexing, slicing, and broadcasting '''
     # get test objects
     var = self.var
     # indexing (getitem) test  
     if len(var) == 3:  
       assert isEqual(self.data[1,1,1], var[1,1,1], masked_equal=True)
       assert isEqual(self.data[1,:,1:-1], var[1,:,1:-1], masked_equal=True)
+    # test getArray and broadcasting (reordering and reshaping/extending) 
+    z = Axis(name='z', units='none', coord=(1,5,5)) # new axis
+    t,x,y = self.axes 
+    new_axes = (t,z,y,x)
+    data = var.getArray(axes=new_axes, copy=True)
+    #     print var.shape # this is what it was
+    #     print data.shape # this is what it is
+    #     print tuple([len(ax) if ax in var.axes else 1 for ax in new_axes]) # this is what it should be
+    assert data.shape == tuple([len(ax) if ax in var.axes else 1 for ax in new_axes])
       
   def testUnaryArithmetic(self):
     ''' test unary arithmetic functions '''
@@ -109,17 +118,17 @@ class BaseVarTest(unittest.TestCase):
     var = self.var; rav = self.rav
     masked = var.masked
     mask = var.getMask()
-    data = var.get(unmask=True, fillValue=-9999)
+    data = var.getArray(unmask=True, fillValue=-9999)
     # test unmasking and masking again
     var.unmask(fillValue=-9999)
     assert isEqual(data, var[:]) # trivial
     var.mask(mask=mask)
-    assert isEqual(self.data, var.get(unmask=(not masked)))
+    assert isEqual(self.data, var.getArray(unmask=(not masked)))
     # test masking with a variable
     var.unmask(fillValue=-9999)
     assert isEqual(data, var[:]) # trivial
     var.mask(mask=rav)
-    assert isEqual(ma.array(self.data,mask=(rav.data_array>0)), var.get(unmask=False))
+    assert isEqual(ma.array(self.data,mask=(rav.data_array>0)), var.getArray(unmask=False))
     
     
   def testBinaryArithmetic(self):

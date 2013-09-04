@@ -293,36 +293,36 @@ class Variable(object):
     self.__dict__['fillValue'] = None
     # self.__dict__['shape'] = None # retain shape for later use
     
-  def get(self, idx=None, axes=None, unmask=True, fillValue=None):
+  def getArray(self, idx=None, axes=None, unmask=True, fillValue=None, copy=True):
     ''' Copy the entire data array or a slice; option to unmask and to reorder/reshape to specified axes. '''
     # get data
     if all(checkIndex(idx, floatOK=True)):
       if not self.data: self.load(data=idx) 
-      datacopy = self.__getitem__(idx).copy() # use __getitem__ to get slice
+      if copy: datacopy = self.__getitem__(idx).copy() # use __getitem__ to get slice
+      else: datacopy = self.__getitem__(idx) # just get a view
     else:
       if not self.data: self.load() 
-      datacopy = self.data_array.copy()
+      if copy: datacopy = self.data_array.copy() # copy entire array
+      else: datacopy = self.data_array
     # unmask    
     if unmask and self.masked:
       if fillValue is None: fillValue=self.fillValue
-      datacopy = datacopy.filled(fill_value=fillValue)
+      datacopy = datacopy.filled(fill_value=fillValue) # I don't know if this generates a copy or not...
     # broadcast to desired shape
     if axes is not None:
       if idx is not None: raise NotImplementedError
       for ax in self.axes:
-        assert ax in axes, "Can not broadcast Variable '%s' to dimension '%s' "%(self.name,ax.name)
-      axidx = [axes.index(ax) for ax in self.axes] # get indices present axes in broadcast list
-      # order dimensions as in this variable
-      datacopy = np.transpose(datacopy,axes=np.argsort(axidx))
-      axidx.sort() # also index list
-      # adapt shape for broadcasting
-      shape = []; oi = 0
-      for i in xrange(len(self)):
-        if i == oi: 
-          shape.append(datacopy.shape[oi])
-          oi += 1
-        else: shape.append(1) # a size of '1' will be expanded by broadcast later
-      assert oi == datacopy.ndim
+        assert (ax in axes) or (ax.name in axes), "Can not broadcast Variable '%s' to dimension '%s' "%(self.name,ax.name)
+      # order dimensions as in broadcast axes list
+      order = [self.axisIndex(ax) for ax in axes if self.hasAxis(ax)] # indices of broadcast list axes in instance axes list (self.axes)
+      datacopy = np.transpose(datacopy,axes=order) # reorder dimensions to match broadcast list
+      # adapt shape for broadcasting (i.e. expand shape with singleton dimensions)
+      shape = [1]*len(axes); z = 0
+      for i in xrange(len(axes)):
+        if self.hasAxis(axes[i]): 
+          shape[i] = datacopy.shape[z] # indices of instance axes in broadcast axes list
+          z += 1
+      assert z == datacopy.ndim 
       datacopy = datacopy.reshape(shape)
     return datacopy
     
@@ -332,11 +332,11 @@ class Variable(object):
       assert isinstance(mask,np.ndarray) or isinstance(mask,Variable), 'Mask has to be a numpy array or a Variable instance!'
       # 'mask' can be a variable
       if isinstance(mask,Variable):
-        mask = (mask.get(unmask=True,axes=self.axes) > 0) # convert to a boolean numpy array
+        mask = (mask.getArray(unmask=True,axes=self.axes) > 0) # convert to a boolean numpy array
 #         for ax in mask.axes: 
 #           assert ax in self, "Variable '%s' does not have mask '%s' dimension '%s' "%(self.name,mask.name,ax.name)
 #         axidx = [self.axisIndex(ax) for ax in mask.axes] # get indices in this variable array
-#         mask = (mask.get(unmask=True) > 0) # convert to a boolean numpy array
+#         mask = (mask.getArray(unmask=True) > 0) # convert to a boolean numpy array
 #         # order dimensions as in this variable
 #         mask = np.transpose(mask,axes=np.argsort(axidx))
 #         axidx.sort() # also index list
@@ -385,10 +385,10 @@ class Variable(object):
       mask = np.broadcast_arrays(mask,self.data_array)[0] # only need first element (the broadcasted mask)
       # create new data array
       if merge and self.masked: # the first mask is usually the land-sea mask, which we want to keep
-        data = self.get(unmask=False) # get data with mask
+        data = self.getArray(unmask=False) # get data with mask
         mask = ma.mask_or(data.mask, mask, copy=True, shrink=False) # merge masks
       else: 
-        data = self.get(unmask=True) # get data without mask
+        data = self.getArray(unmask=True) # get data without mask
       self.__dict__['data_array'] = ma.array(data, mask=mask)
       # change meta data
       self.__dict__['masked'] = True
