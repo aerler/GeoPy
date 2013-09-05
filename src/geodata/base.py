@@ -11,10 +11,11 @@ import numpy as np
 import numpy.ma as ma # masked arrays
 # my own imports
 from atmdyn.properties import variablePlotatts # import plot properties from different file
-from misc import VariableError, DatasetError, checkIndex, isFloat, AttrDict
+from misc import VariableError, DatasetError, checkIndex, isFloat, AttrDict, joinDicts
 
 import numbers
 import functools
+
 class UnaryCheck(object):
   ''' Decorator class that implements some sanity checks for unary arithmetic operations. '''
   def __init__(self, op):
@@ -60,8 +61,7 @@ def BinaryCheckAndCreateVar(sameUnits=True):
       # call original method
       data, name, units = self.binOp(orig, other)
       # construct common dict of attributes
-      tmp = orig.atts.copy(); tmp.update(other.atts)
-      atts = {key:value for key,value in tmp.iteritems() if value == orig.atts[key]}
+      atts = joinDicts(orig.atts, other.atts)
       atts['name'] = name; atts['units'] = units
       # assign axes (copy from orig)
       axes = [ax for ax in orig.axes]
@@ -72,37 +72,6 @@ def BinaryCheckAndCreateVar(sameUnits=True):
       return functools.partial(self.__call__, instance)
   # return decorator class  
   return BinaryCheckAndCreateVar_Class
-
-
-# def BinaryCheckAndCreateVar(sameUnits=True):
-#   ''' A decorator to perform similarity checks before binary operations and create a new variable instance 
-#       afterwards; name and units are modified; only non-conflicting attributes are kept. '''
-#   # first decorator, that processes arguments 
-#   # N.B.: basically the first wrapper produces a decorator function with fixed parameter values
-#   def decorator_wrapper(binOp):
-#     # define method wrapper (this is now the actual decorator)
-#     def function_wrapper(self, other):
-#       # initial sanity checks
-#       assert isinstance(other,Variable), 'Can only add two \'Variable\' instances!' 
-#       if sameUnits: assert self.units == other.units, 'Variable units have to be identical for addition!'
-#       assert self.shape == other.shape, 'Variables need to have the same shape and compatible axes!'
-#       if not self.data: self.load()
-#       if not other.data: other.load()
-#       for lax,rax in zip(self.axes,other.axes):
-#         assert (lax.coord == rax.coord).all(), 'Variables need to have identical coordinate arrays!'
-#       # call original method
-#       data, name, units = binOp(self, other)
-#       # construct common dict of attributes
-#       tmp = self.atts.copy(); tmp.update(other.atts)
-#       atts = {key:value for key,value in tmp.iteritems() if value == self.atts[key]}
-#       atts['name'] = name; atts['units'] = units
-#       # assign axes (copy from self)
-#       axes = [ax for ax in self.axes]
-#       var = Variable(name=name, units=units, axes=axes, data=data, atts=atts)
-#       return var # return new variable instance
-#     # return wrapper
-#     return function_wrapper
-#   return decorator_wrapper
 
 
 ## Variable class and derivatives 
@@ -157,8 +126,8 @@ class Variable(object):
       if all([isinstance(ax,Axis) for ax in axes]):
         if ldata: 
           for ax,n in zip(axes,shape): ax.updateLength(n)
-        if not ldata and all([len(ax) for ax in axes]):
-          self.__dict__['shape'] = [len(ax) for ax in axes] # get shape from axes
+        if not ldata and all([len(ax) for ax in axes]): # length not zero
+          self.__dict__['shape'] = tuple([len(ax) for ax in axes]) # get shape from axes
       elif all([isinstance(ax,basestring) for ax in axes]):
         if ldata: axes = [Axis(name=ax, len=n) for ax,n in zip(axes,shape)] # use shape from data
         else: axes = [Axis(name=ax) for ax in axes] # initialize without shape
@@ -176,10 +145,7 @@ class Variable(object):
       else: plotatts = dict(plotname=self.name, plotunits=self.units, plottitle=self.name) 
     self.__dict__['plot'] = AttrDict(**plotatts)
     # guess fillValue
-    if fillValue is None:
-      if 'fillValue' in atts: fillValue = atts['fillValue']
-      elif '_fillValue' in atts: fillValue = atts['_fillValue']
-      else: fillValue = None
+    if fillValue is None: fillValue = atts.pop('fillValue',None)
     self.__dict__['fillValue'] = fillValue
     # assign data, if present (can initialize without data)
     if data is not None: 
@@ -224,10 +190,10 @@ class Variable(object):
     # if all fails
     return False
 
-  def __contains__(self, axis):
-    ''' Check if the variable instance has a particular axis. '''
-    # same as class method
-    return self.hasAxis(axis)
+#   def __contains__(self, axis):
+#     ''' Check if the variable instance has a particular axis. '''
+#     # same as class method
+#     return self.hasAxis(axis)
   
   def __len__(self):
     ''' Return number of dimensions. '''
@@ -255,9 +221,9 @@ class Variable(object):
         return self.data_array.__getitem__(idx) # valid array slicing
       else: 
         raise IndexError, 'Variable instance \'%s\' has no associated data array!'%(self.name) 
-    elif isinstance(idx,basestring) or isinstance(idx,Axis):
-      # dictionary-type key: return index of dimension with that name
-      return self.axisIndex(idx)
+#     elif isinstance(idx,basestring) or isinstance(idx,Axis):
+#       # dictionary-type key: return index of dimension with that name
+#       return self.axisIndex(idx)
     else:    
       # if nothing applies, raise index error
       raise IndexError, 'Invalid index/key type for class \'%s\'!'%(self.__class__.__name__)
@@ -274,7 +240,9 @@ class Variable(object):
       self.__dict__['masked'] = True # set masked flag
     self.__dict__['data'] = True
     self.__dict__['shape'] = data.shape
-    assert len(self.shape) == self.ndim, 'Variable dimensions and data dimensions incompatible!'
+    assert len(self.shape) == self.ndim or (self.ndim == 0 and data.size == 1),\
+       'Variable dimensions and data dimensions incompatible!'
+    # N.B.: the second statement is necessary, so that scalars don't cause a crash
     self.__dict__['dtype'] = data.dtype
     if self.masked: # figure out fill value for masked array
       if fillValue is None: self.__dict__['fillValue'] = ma.default_fill_value(data)
@@ -282,9 +250,10 @@ class Variable(object):
     # some more checks
     # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple; hence
     #       the coordinate vector has to be assigned before the dimensions size can be checked 
-    assert len(self.axes) == len(self.shape), 'Dimensions of data array and variable must be identical!'
-    for ax,n in zip(self.axes,self.shape): 
-      ax.updateLength(n) # update length is all we can do without a coordinate vector       
+    if len(self.axes) == len(self.shape): # update length is all we can do without a coordinate vector
+      for ax,n in zip(self.axes,self.shape): ax.updateLength(n) 
+    else: # this should only happen with scalar variables!
+      assert self.ndim == 0 and data.size == 1, 'Dimensions of data array and variable must be identical, except for scalars!'       
      
   def unload(self):
     ''' Method to unlink data array. '''
@@ -340,51 +309,7 @@ class Variable(object):
       assert isinstance(mask,np.ndarray) or isinstance(mask,Variable), 'Mask has to be a numpy array or a Variable instance!'
       # 'mask' can be a variable
       if isinstance(mask,Variable):
-        mask = (mask.getArray(unmask=True,axes=self.axes) > 0) # convert to a boolean numpy array
-#         for ax in mask.axes: 
-#           assert ax in self, "Variable '%s' does not have mask '%s' dimension '%s' "%(self.name,mask.name,ax.name)
-#         axidx = [self.axisIndex(ax) for ax in mask.axes] # get indices in this variable array
-#         mask = (mask.getArray(unmask=True) > 0) # convert to a boolean numpy array
-#         # order dimensions as in this variable
-#         mask = np.transpose(mask,axes=np.argsort(axidx))
-#         axidx.sort() # also index list
-#         # adapt shape for broadcasting
-#         shape = []; oi = 0
-#         for i in xrange(len(self)):
-#           if i == oi: 
-#             shape.append(mask.shape[oi])
-#             oi += 1
-#           else: shape.append(1) # a size of '1' will be expanded by broadcast later
-#         assert oi == mask.ndim
-#         mask = mask.reshape(shape)        
-#         # check order of dimensions
-#         if mask.ndim == 1: pass
-#         elif mask.ndim == 2:
-#           if axidx[0] == axidx[1]+1: 
-#             mask = mask.swapaxes(0,1)  
-#             axidx.reverse()  
-#           elif axidx[0]+1 == axidx[1]: pass
-#           else:
-#             raise NotImplementedError
-#         else:
-#           order = range(axidx[0], axidx[0]+len(axidx))
-#           assert order == axidx, "Incompatible axis order that can not be resolved."
-#         # extend mask to the right, if necessary
-#         if axidx[-1] < len(self)-1:
-#           rext = self.shape[axidx[-1]+1:]
-#           mask.reshape(mask.shape+(1,)*len(rext))
-#           mask.tile((1,)*len(axidx)+rext)
-#       else:
-#         # or a numbpy array
-#         assert isinstance(mask,np.ndarray)
-#         axidx = range(len(self)-mask.ndim,len(self)) # assume it is the innermost dimensions      
-#         for i in xrange(len(axidx)):
-#           assert self.shape[axidx[i]] == mask.shape[i], "Shape of mask and Variable are incompatible!"   
-#       # expand array to the left, if necessary
-#       if axidx[0] > 0:
-#           lext = self.shape[0:axidx[0]]
-#           mask.reshape((1,)*len(lext)+mask.shape)
-#           mask.tile(lext+(1,)*len(axidx))
+        mask = (mask.getArray(unmask=True,axes=self.axes,broadcast=False) > 0) # convert to a boolean numpy array
       assert isinstance(mask,np.ndarray), 'Mask has to be convertible to a numpy array!'      
       # if 'mask' has less dimensions than the variable, it can be extended      
       assert len(self.shape) >= len(mask.shape), 'Data array needs to have the same number of dimensions or more than the mask!'
@@ -475,6 +400,14 @@ class Variable(object):
     name = '%s / %s'%(self.name,other.name)
     units = '%s / (%s)'%(self.units,other.units)
     return data, name, units
+  
+  def __copy__(self):
+    ''' A method to copy the Variable without the data. '''
+    raise NotImplementedError
+  
+  def __deepcopy__(self):
+    ''' A method to copy the Variable and the data. '''
+    raise NotImplementedError
 
 
 class Axis(Variable):
@@ -618,7 +551,7 @@ class Dataset(object):
   
   def removeVariable(self, var):
     ''' Method to remove a Variable from the Dataset. '''
-    if isinstance(var,basestring): var = self.variable[var] # only work with Variable objects
+    if isinstance(var,basestring): var = self.variables[var] # only work with Variable objects
     assert isinstance(var,Variable), "Argument 'var' has to be a Variable instance or a string representing the name of a variable."
     if var.name in self.variables: # add new variable if it does not already exist
       # delete variable from dataset   
@@ -651,10 +584,35 @@ class Dataset(object):
     else: # invalid input
       raise DatasetError, "Need a Axis instance or name to check for an Axis in the Dataset!"
     
+  def __getitem__(self, varname):
+    ''' Yet another way to access variables by name... conforming to the container protocol. '''
+    if not isinstance(varname, basestring): raise TypeError
+    if not self.hasVariable(varname): raise KeyError
+    return self.variables[varname]
+  
+  def __setitem__(self, varname, var):
+    ''' Yet another way to add a variable, this time by name... conforming to the container protocol. '''
+    if not isinstance(var, Variable) or not isinstance(varname, basestring): raise TypeError
+    var.name = varname # change name to varname
+    if 'name' in var.atts: var.atts['name'] = varname
+    check = self.addVariable(var) # add variable
+    if not check: raise KeyError # raise error if variable is not present
+    
+  def __delitem__(self, varname):
+    ''' A way to delete variables by name... conforming to the container protocol. '''
+    if not isinstance(varname, basestring): raise TypeError
+    if not self.hasVariable(varname): raise KeyError
+    check = self.removeVariable(varname)
+    if not check: raise KeyError # raise error if variable has not disappeared
+  
+  def __iter__(self):
+    ''' Return an iterator over all variables... conforming to the container protocol. '''
+    return self.variables.itervalues() # just the iterator from the variables dictionary
+    
   def __contains__(self, var):
-    ''' Check if the Dataset instance has a particular Variable or Axis. '''
-    # variable or axis
-    return self.hasVariable(var) or self.hasAxis(var)
+    ''' Check if the Dataset instance has a particular Variable... conforming to the container protocol. '''
+    if not (isinstance(var, Variable) or isinstance(var, basestring)): raise TypeError
+    return self.hasVariable(var) # variable only
   
   def __len__(self):
     ''' Get the number of Variables in the Dataset. '''
@@ -670,10 +628,10 @@ class Dataset(object):
     assert self.removeVariable(var), "A proble occurred removing Variable '%s' from Dataset."%(var.name)
     return self # return self as result
   
-  def load(self, data=None, mask=None, fillValue=None, **kwargs):
+  def load(self, data=None, **kwargs):
     ''' Issue load() command to all variable; pass on any keyword arguments. '''
     for var in self.variables.itervalues():
-      var.load(data=data, mask=mask, fillValue=fillValue, **kwargs)
+      var.load(data=data, **kwargs) # there is only one argument to the base method
       
   def unload(self, **kwargs):
     ''' Unload all data arrays currently loaded in memory. '''
@@ -695,28 +653,4 @@ class Dataset(object):
 ## run a test    
 if __name__ == '__main__':
 
-  # initialize test objects
-  x = Axis(name='x', units='none', coord=(1,5,5))
-  y = Axis(name='y', units='none', coord=(1,5,5))
-  var = Variable(name='test',units='none',axes=(x,y),data=np.zeros((5,5)),atts=dict(_FillValue=-9999))
-  
-  # variable test
-  print
-  var += 1
-  # test getattr
-  print 'Name: %s, Units: %s, Missing Values: %s'%(var.name, var.units, var._FillValue)
-  # test setattr
-  var.Comments = 'test'; var.plotComments = 'test' 
-  print 'Comments: %s, Plot Comments: %s'%(var.Comments,var.plotatts['plotComments'])
-#   print var[:]
-  # indexing (getitem) test
-  print var.shape, var[2,2:5:2]
-  var.unload()
-#   print var.data
-  
-  # axis test
-  print 
-  # test contains 
-  print var[x]
-  for ax in (x,y):
-    if ax in var: print '%s is the %i. axis and has length %i'%(ax.name,var[ax]+1,len(ax))
+  pass

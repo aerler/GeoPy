@@ -64,45 +64,48 @@ floateps = np.finfo(np.float).eps
 def isZero(data, eps=None, masked_equal=True):
   ''' This function checks if a numpy array or scalar is zero within machine precision, and returns a scalar logical. '''
   if isinstance(data,np.ndarray):
-    if data.dtype == 'float':
+    if np.issubdtype(data.dtype, np.inexact): # also catch float32 etc
       return ma.allclose(np.zeros_like(data), data, masked_equal=True)
 #     if eps is None: eps = 100.*floateps # default
 #       return ( np.absolute(array) <= eps ).all()
-    elif data.dtype == 'int' or data.dtype == 'bool':
+    elif np.issubdtype(data.dtype, np.integer) or np.issubdtype(data.dtype, np.bool):
       return all( data == 0 )
   elif isinstance(data,float):
       if eps is None: eps = 100.*floateps # default
       return np.absolute(data) <= eps
   elif isinstance(data,(int,bool)):
       return data == 0
+  else: raise TypeError
 # check if an array is one within machine precision
 def isOne(data, eps=None, masked_equal=True):
   ''' This function checks if a numpy array or scalar is one within machine precision, and returns a scalar logical. '''
   if isinstance(data,np.ndarray):
-    if data.dtype == 'float':
+    if np.issubdtype(data.dtype, np.inexact): # also catch float32 etc
       return ma.allclose(np.ones_like(data), data, masked_equal=True)
-    elif data.dtype == 'int' or data.dtype == 'bool':
+    elif np.issubdtype(data.dtype, np.integer) or np.issubdtype(data.dtype, np.bool):
       return all( data == 1 )
   elif isinstance(data,float):
       if eps is None: eps = 100.*floateps # default
       return np.absolute(data-1) <= eps
   elif isinstance(data,(int,bool)):
       return data == 1
+  else: raise TypeError
 # check if two arrays are equal within machine precision
 def isEqual(left, right, eps=None, masked_equal=True):
   ''' This function checks if two numpy arrays or scalars are equal within machine precision, and returns a scalar logical. '''
   assert left.dtype==right.dtype, 'Both arguments to function \'isEqual\' must be of the same type!'
   assert left.__class__==right.__class__, 'Both arguments to function \'isEqual\' must be of the same class!'
   if isinstance(left,np.ndarray):
-    if left.dtype == 'float':
+    if np.issubdtype(left.dtype, np.inexact): # also catch float32 etc
       return ma.allclose(left, right, masked_equal=True)
-    elif left.dtype == 'int' or left.dtype == 'bool':
+    elif np.issubdtype(left.dtype, np.integer) or np.issubdtype(left.dtype, np.bool):
       return all( left == right )
   elif isinstance(left,float):
       if eps is None: eps = 100.*floateps # default
       return np.absolute(left-right) <= eps
   elif isinstance(left,(int,bool)):
       return left == right
+  else: raise TypeError
 
 
 # import definitions from a script into global namespace
@@ -146,6 +149,22 @@ class AttrDict(dict):
     dict.__init__(self, *args, **kwargs) # initialize as dictionary
     self.__dict__ = self # use itself (i.e. its own entries) as instance attributes
 
+def joinDicts(*dicts):
+      ''' Join dictionaries, but remove all entries that are conflicting. '''      
+      joined = dict(); conflicting = set()
+      for d in dicts:
+        for key,value in d.iteritems():
+          if key in conflicting: pass # conflicting entry
+          elif key in joined: # either conflicting or same
+            if value.__class__ != joined[key].__class__: equal = False  
+            elif isinstance(value,basestring): equal = (value == joined[key])
+            else: equal = isEqual(value,joined[key])              
+            if not equal:
+              del joined[key] # remove conflicting
+              conflicting.add(key)
+          else: joined[key] = value # new entry
+      # return joined dictionary
+      return joined    
 
 ## Error handling classes
 # from base import Variable

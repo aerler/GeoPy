@@ -84,18 +84,18 @@ class BaseVarTest(unittest.TestCase):
     ''' test reordering, reshaping, and broadcasting '''
     # get test objects
     var = self.var
-    # test reordering and reshaping/extending (getArray)
-    new_axes = ('t','z','y','x')
+    z = Axis(name='z', units='none', coord=(1,5,5)) # new axis    
+    new_axes = var.axes[0:1] + (z,) + var.axes[-1:0:-1] # dataset independent
+    new_axes_names = tuple([ax.name for ax in new_axes])
+    print new_axes_names
+    # test reordering and reshaping/extending (using axis names)
     new_shape = tuple([var.shape[var.axisIndex(ax)] if var.hasAxis(ax) else 1 for ax in new_axes]) 
-    data = var.getArray(axes=new_axes, broadcast=False, copy=True)
+    data = var.getArray(axes=new_axes_names, broadcast=False, copy=True)
     #print var.shape # this is what it was
     #print data.shape # this is what it is
     #print new_shape 
     assert data.shape == new_shape 
-    # test broadcasting to a new shape  
-    z = Axis(name='z', units='none', coord=(1,5,5)) # new axis
-    t,x,y = self.axes
-    new_axes = (t,z,y,x)
+    # test broadcasting to a new shape (using Axis instances) 
     new_shape = tuple([len(ax) for ax in new_axes]) # this is the shape we should get
     data = var.getArray(axes=new_axes, broadcast=True, copy=True)
     #print var.shape # this is what it was
@@ -122,7 +122,7 @@ class BaseVarTest(unittest.TestCase):
     var = self.var
     # test contains 
     for ax,n in zip(self.axes,self.size):
-      assert ax in var
+      assert ax in var.axes
       assert len(ax) == n
 #       if ax in var: print '%s is the %i. axis and has length %i'%(ax.name,var[ax]+1,len(ax))
 
@@ -236,10 +236,14 @@ class BaseDatasetTest(unittest.TestCase):
     for varname,varobj in dataset.variables.iteritems():
       assert varname in dataset
       assert varobj in dataset
-    for axname,axobj in dataset.axes.iteritems():
-      assert axname in dataset
-      assert axobj in dataset
-
+    # test get, del, set
+    varname = dataset.variables.keys()[0]
+    var = dataset[varname]
+    assert isinstance(var,Variable) and var.name == varname
+    del dataset[varname]
+    assert not dataset.hasVariable(varname)
+    dataset[varname] = var
+    assert dataset.hasVariable(varname)
 
 # import modules to be tested
 from geodata.netcdf import VarNC, AxisNC, NetCDFDataset
@@ -248,7 +252,7 @@ class NetCDFVarTest(BaseVarTest):
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'GPCC' # dataset to use (also the folder name)
-  variable = 'landmask' # variable to test
+  variable = 'rain' # variable to test
   RAM = True # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
@@ -262,8 +266,8 @@ class NetCDFVarTest(BaseVarTest):
     # load variable
     ncvar = self.ncdata.variables[self.variable]      
     # get dimensions and coordinate variables
-    size = [len(self.ncdata.dimensions[dim]) for dim in ncvar.dimensions] 
-    axes = [AxisNC(self.ncdata.variables[dim], length=le) for dim,le in zip(ncvar.dimensions,size)] 
+    size = tuple([len(self.ncdata.dimensions[dim]) for dim in ncvar.dimensions])
+    axes = tuple([AxisNC(self.ncdata.variables[dim], length=le) for dim,le in zip(ncvar.dimensions,size)]) 
     # initialize netcdf variable 
     self.ncvar = ncvar; self.axes = axes
     self.var = VarNC(ncvar, axes=axes, load=True)    
@@ -321,8 +325,7 @@ class NetCDFVarTest(BaseVarTest):
 class NetCDFDatasetTest(BaseDatasetTest):  
   
   # some test parameters (TestCase does not take any arguments)
-  dataset = 'GPCC' # dataset to use (also the folder name)
-  variables = ['landmask', 'rain'] # variable to test
+  dataset = 'NARR' # dataset to use (also the folder name)
   RAM = True # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
@@ -330,21 +333,28 @@ class NetCDFDatasetTest(BaseDatasetTest):
   def setUp(self):
     if self.RAM: folder = '/media/tmp/'
     else: folder = '/home/DATA/DATA/%s/'%self.dataset # dataset name is also in folder name
-    if self.dataset == 'GPCC':
-      # load a netcdf dataset, so that we have something to play with
-      self.ncdata = nc.Dataset(folder+'gpccavg/gpcc_25_clim_1979-1988.nc',mode='r')
-      self.dataset = NetCDFDataset(dataset=self.ncdata)
-    # load variable
-    ncvar = self.ncdata.variables[self.variables[0]]      
+    # select dataset
+    if self.dataset == 'GPCC': # single file
+      filelist = ['gpccavg/gpcc_25_clim_1979-1988.nc'] # variable to test
+      varlist = ['rain']
+      ncfile = filelist[0]; ncvar = varlist[0]       
+    elif self.dataset == 'NARR': # multiple files
+      filelist = ['narr_test/air.2m.mon.ltm.nc', 'narr_test/prate.mon.ltm.nc', 'narr_test/prmsl.mon.ltm.nc'] # variable to test
+      varlist = ['air','prate','prmsl']
+      ncfile = filelist[0]; ncvar = varlist[0]
+    # load a netcdf dataset, so that we have something to play with      
+    self.ncdata = nc.Dataset(folder+ncfile,mode='r')
+    self.dataset = NetCDFDataset(folder=folder,filelist=filelist)
+    # load a sample variable directly
+    ncvar = self.ncdata.variables[ncvar]
     # get dimensions and coordinate variables
-    size = [len(self.ncdata.dimensions[dim]) for dim in ncvar.dimensions] 
-    axes = [AxisNC(self.ncdata.variables[dim], length=le) for dim,le in zip(ncvar.dimensions,size)] 
+    size = tuple([len(self.ncdata.dimensions[dim]) for dim in ncvar.dimensions])
+    axes = tuple([AxisNC(self.ncdata.variables[dim], length=le) for dim,le in zip(ncvar.dimensions,size)]) 
     # initialize netcdf variable 
     self.ncvar = ncvar; self.axes = axes
     self.var = VarNC(ncvar, axes=axes, load=True)    
-    self.rav = VarNC(ncvar, axes=axes, load=True) # second variable for binary operations    
     # save the original netcdf data
-    self.data = self.ncdata.variables[self.variables[0]][:].copy() #.filled(0)
+    self.data = ncvar[:].copy() #.filled(0)
     self.size = tuple([len(ax) for ax in axes])
     # construct attributes dictionary from netcdf attributes
     self.atts = { key : self.ncvar.getncattr(key) for key in self.ncvar.ncattrs() }
@@ -355,6 +365,18 @@ class NetCDFDatasetTest(BaseDatasetTest):
     self.var.unload()   
     self.ncdata.close()
   
+  ## specific NetCDF test cases
+      
+  def testLoad(self):
+    ''' test loading and unloading of data '''
+    # test objects: vars and axes
+    dataset = self.dataset
+    # load data
+    dataset.load()
+    assert all([var.data for var in dataset])
+    # unload data
+    dataset.unload()
+    assert all([not var.data for var in dataset])
 
 
 # import modules to be tested
@@ -377,7 +399,7 @@ class GDALVarTest(NetCDFVarTest):
   def tearDown(self):  
     super(GDALVarTest,self).tearDown()
   
-  ## specific NetCDF test cases
+  ## specific GDAL test cases
 
   def testAddProjection(self):
     ''' test function that adds projection features '''
@@ -408,7 +430,7 @@ if __name__ == "__main__":
 #     tests = ['NetCDFVar']
 #     tests = ['GDALVar']
     # list of dataset tests
-#     tests = ['BaseDataset'] 
+    tests = ['BaseDataset'] 
     tests = ['NetCDFDataset']
 #     tests = ['GDALDataset']    
     

@@ -14,7 +14,7 @@ import netCDF4 as nc # netcdf python module
 # import all base functionality from PyGeoDat
 # from nctools import * # my own netcdf toolkit
 from geodata.base import Variable, Axis, Dataset
-from geodata.misc import checkIndex, isEqual, DatasetError
+from geodata.misc import checkIndex, isEqual, DatasetError, joinDicts
 
 class VarNC(Variable):
   '''
@@ -29,13 +29,16 @@ class VarNC(Variable):
         ncvar = None # the associated netcdf variable 
     '''
     # construct attribute dictionary from netcdf attributes
-    atts = { key : ncvar.getncattr(key) for key in ncvar.ncattrs() } 
-    name = ncvar.__dict__.get('name',ncvar._name)
+    atts = { key : ncvar.getncattr(key) for key in ncvar.ncattrs() }
+    # handle some netcdf conventions
+    fillValue = atts.pop('fillValue',atts.pop('_fillValue',None))
+    for key in ['scale_factor', 'add_offset']: atts.pop(key,None) # already handled by NetCDf Python interface
+    name = ncvar.__dict__.get('name',ncvar._name) # name in attributes has precedence
     units = ncvar.__dict__.get('units','') # units are not mandatory
     # construct axes, based on netcdf dimensions
     if axes is None: axes = tuple([str(dim) for dim in ncvar.dimensions]) # have to get rid of unicode
     # call parent constructor
-    super(VarNC,self).__init__(name=name, units=units, axes=axes, data=None, mask=mask, atts=atts, plotatts=plotatts)
+    super(VarNC,self).__init__(name=name, units=units, axes=axes, data=None, mask=mask, fillValue=fillValue, atts=atts, plotatts=plotatts)
     # assign special attributes
     self.__dict__['ncvar'] = ncvar
     if load: self.load() # load data here 
@@ -61,7 +64,7 @@ class VarNC(Variable):
       if 'scale_factor' in self.atts: data *= self.atts['scale_factor']
       if 'add_offset' in self.atts: data += self.atts['add_offset']
     # load data
-    super(VarNC,self).load(data, mask=None) # load actual data using parent method
+    super(VarNC,self).load(data=data, mask=None) # load actual data using parent method
     # no need to return anything...
 
 
@@ -134,18 +137,17 @@ class NetCDFDataset(Dataset):
         if multifile: 
           if isinstance(ncfile,(list,tuple)): tmpfile = [folder+ncf for ncf in ncfile]
           else: tmpfile = folder+ncfile  
-          tmpds = nc.MFDataset(tmpfile)        
+          datasets.append(nc.MFDataset(tmpfile))        
         else:
-          nc.Dataset(folder+ncfile)
-        datasets.append(tmpds)
+          datasets.append(nc.Dataset(folder+ncfile))
     # create axes from netcdf dimensions and coordinate variables
     axes = dict()
     for ds in datasets:
       for dim in ds.dimensions.keys():
         if dim in ds.variables: # skip dimensions that have no associated variable 
           if axes.has_key(dim): # if already present, make sure axes are essentially the same
-            if not isEqual(axes[dim][:],ds.variable[dim][:]): raise DatasetError,\
-               'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
+            if not isEqual(axes[dim][:],ds.variables[dim][:]): 
+              raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
           else: # if this is a new axis, add it to the list
             axes[dim] = AxisNC(ncvar=ds.variables[dim])
     # create variables from netcdf variables
@@ -154,66 +156,25 @@ class NetCDFDataset(Dataset):
       for var in ds.variables.keys():
         if axes.has_key(var): pass # do not treat coordinate variables as real variables 
         elif variables.has_key(var): # if already present, make sure variables are essentially the same
-          if not isEqual(variables[var][:],ds.variable[var][:]): raise DatasetError,\
-             'Error constructing Dataset: NetCDF files have incompatible Variables.' 
-        else: # if this is a new axis, add it to the list
+          if not variables[var].shape == ds.variables[var].shape: 
+            raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible variables.' 
+        else: # if this is a new variable, add it to the list
           if all([axes.has_key(dim) for dim in ds.variables[var].dimensions]):
             varaxes = [axes[dim] for dim in ds.variables[var].dimensions]
             variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes)
     # get attributes from NetCDF dataset
-    ncattrs = dict(); conflicting = set()
-    for ds in datasets:
-      for attr in ds.ncattrs():
-        if attr in ncattrs: 
-          if ds.__dict__[attr] != ncattrs[attr]: conflicting.add(attr)
-        else: # is it does not yet exist
-          ncattrs[attr] = ds.__dict__[attr]
-    for attr in conflicting: del ncattrs[attr] # remove conflicting items
+    ncattrs = joinDicts(*[ds.__dict__ for ds in datasets])
     if atts: ncattrs.update(atts) # update with attributes passed to constructor
     # initialize Dataset using parent constructor
     super(NetCDFDataset,self).__init__(varlist=variables.values(), atts=ncattrs)
     # add NetCDF attributes
     self.__dict__['datasets'] = datasets
+    
+  def close(self):
+    ''' Call this method before deleting the Dataset: close netcdf files. '''
+    for ds in self.datasets: ds.close()
 
 ## run a test    
 if __name__ == '__main__':
   
-  # initialize a netcdf variable
-  ncdata = nc.Dataset('/media/tmp/gpccavg/gpcc_25_clim_1979-1988.nc',mode='r')
-  time = AxisNC(ncdata.variables['time'], length=len(ncdata.dimensions['time'])) 
-  lat = AxisNC(ncdata.variables['lat'], length=len(ncdata.dimensions['lat']))
-  lon = AxisNC(ncdata.variables['lon'], length=len(ncdata.dimensions['lon']))
-  ncvar = VarNC(ncdata.variables['rain'], axes=(time,lat,lon))
-  # NetCDF test
-  ncvar.load((slice(0,12,1),slice(20,50,5),slice(70,140,15)))
-#   ncvar.load((slice(20,50,5),slice(70,140,15)))
-  print 'NetCDF variable:'
-  print ncvar
-  print 'VarNC MRO:', VarNC.mro()
-  print 'NetCDF axis:'
-  print time
-  print 'AxisNC MRO:', AxisNC.mro()
-  print time[:]
-  
-  # variable test
-  print
-  ncvar += np.ones(1)
-  # test getattr
-#   print ncvar.ncvar
-  ncvar._FillValue = 0
-  print 'Name: %s, Units: %s, Missing Values: %s'%(ncvar.name, ncvar.units, ncvar._FillValue)
-  # test setattr
-  ncvar.Comments = 'test'; ncvar.plotComments = 'test' 
-  print 'Comments: %s, Plot Comments: %s'%(ncvar.Comments,ncvar.plotatts['plotComments'])
-#   print var[:]
-  # indexing (getitem) test
-#   print ncvar.shape, ncvar[:,:], lon[:], lat[:] # [20:50:5,70:140:15]
-  ncvar.unload()
-#   print ncvar.data
-
-  # axis test
-  print 
-  # test contains 
-#   print ncvar[lon]
-  for ax in (lon,lat):
-    if ax in ncvar: print '%s is the %i. axis and has length %i'%(ax.name,ncvar[ax]+1,len(ax))
+  pass
