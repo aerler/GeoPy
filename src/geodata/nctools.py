@@ -6,14 +6,66 @@ Some simple functions built on top of the netCDF4-python module.
 @author: Andre R. Erler, GPL v3
 '''
 
-# ## netCDF4-python module: Dataset is probably all we need
-# from netCDF4 import Dataset
+## netCDF4-python module: Dataset is probably all we need
+import netCDF4 as nc
+import numpy as np
+from geodata.misc import isNumber
 
 ## definitions
 # NC4 compression options
 zlib_default = dict(zlib=True, complevel=1, shuffle=True) # my own default compression settings
 
-## functions
+## generic functions
+
+# add a new dimension with coordinate variable
+def add_coord(dst, name, values=None, atts=None, dtype=None, zlib=True, fillValue=None, **kwargs):
+  # all remaining kwargs are passed on to dst.createVariable()
+  # create dimension
+  if dst.dimensions.has_key(name):
+    assert len(values) == len(dst.dimensions[name]), '\nWARNING: Dimensions %s already present and size does not match!\n'%(name,) 
+  else:
+    if values is not None:
+      if not dtype: dtype = values.dtype # should be standard... 
+      dst.createDimension(name, size=len(values))
+    else:
+      dst.createDimension(name, size=None) # unlimited dimension
+  # create coordinate variable
+  varargs = dict() # arguments to be passed to createVariable
+  if zlib: varargs.update(zlib_default)
+  varargs.update(kwargs)
+  if atts and atts.has_key('_FillValue'): fillValue = atts.pop('_FillValue') 
+  coord = dst.createVariable(name, dtype, (name,), fill_value=fillValue,  **varargs)
+  if values is not None: coord[:] = values # assign coordinate values if given  
+  if atts: # add attributes
+    for key,value in atts.iteritems():
+      coord.setncattr(key,value) 
+      
+def add_var(dst, name, dims, values=None, atts=None, dtype=None, zlib=True, fillValue=None, **kwargs):
+  # all remaining kwargs are passed on to dst.createVariable()
+  # use values array to infer dimensions and data type
+  if not values is None: 
+    # check/create dimension
+    assert len(dims) == values.ndim, '\nWARNING: Number of dimensions does not match (%s)!\n'%(name,)    
+    for i in xrange(len(dims)):
+      if dst.dimensions.has_key(dims[i]):
+        assert values.shape[i] == len(dst.dimensions[dims[i]]), \
+              '\nWARNING: Size of dimension %s does not match!\n'%(dims[i],)
+      else: dst.createDimension(dims[i], size=values.shape[i])
+    if not dtype: dtype = values.dtype # infer data type, if not specified 
+  # create coordinate variable
+  varargs = dict() # arguments to be passed to createVariable
+  if zlib: varargs.update(zlib_default)
+  varargs.update(kwargs)
+  if atts and atts.has_key('_FillValue'): fillValue = atts.pop('_FillValue')
+  var = dst.createVariable(name, dtype, dims, fill_value=fillValue, **varargs)
+  if atts: # add attributes
+    for key,value in atts.iteritems():
+#       print key, value
+      if key[0] != '_': var.setncattr(key,value)  
+  if values is not None: var[:] = values # assign coordinate values if given  
+
+
+## copy functions
 
 # copy attributes from a variable or dataset to another
 def copy_ncatts(dst, src, prefix = '', incl_=True):
@@ -23,7 +75,7 @@ def copy_ncatts(dst, src, prefix = '', incl_=True):
       
 # copy variables from one dataset to another
 def copy_vars(dst, src, varlist=None, namemap=None, dimmap=None, remove_dims=None, copy_data=True, copy_atts=True, \
-              zlib=True, prefix='', incl_=True, fill_value=None, **kwargs):
+              zlib=True, prefix='', incl_=True, fillValue=None, **kwargs):
   # prefix is passed to copy_ncatts, the remaining kwargs are passed to dst.createVariable()
   if not varlist: varlist = src.variables.keys() # just copy all
   if dimmap: midmap = dict(zip(dimmap.values(),dimmap.keys())) # reverse mapping
@@ -41,8 +93,8 @@ def copy_vars(dst, src, varlist=None, namemap=None, dimmap=None, remove_dims=Non
       if not (remove_dims and dim in remove_dims): dims.append(dim)
     # create new variable
     dtype = dtype or rav.dtype
-    if '_FillValue' in rav.ncattrs(): fill_value = rav.getncattr('_FillValue')
-    var = dst.createVariable(name, dtype, dims, fill_value=fill_value, **varargs)
+    if '_FillValue' in rav.ncattrs(): fillValue = rav.getncattr('_FillValue')
+    var = dst.createVariable(name, dtype, dims, fill_value=fillValue, **varargs)
     if copy_data: var[:] = rav[:] # copy actual data, if desired (default)
     if copy_atts: copy_ncatts(var, rav, prefix=prefix, incl_=incl_) # copy attributes, if desired (default) 
 
@@ -62,51 +114,40 @@ def copy_dims(dst, src, dimlist=None, namemap=None, copy_coords=True, **kwargs):
     remove_dims = [dim for dim in src.dimensions.keys() if dim not in dimlist] # remove_dims=remove_dims
     copy_vars(dst, src, varlist=dimlist, namemap=namemap, dimmap=namemap, remove_dims=remove_dims, **kwargs)
     
-# add a new dimension with coordinate variable
-def add_coord(dst, name, values=None, atts=None, dtype=None, zlib=True, fill_value=None, **kwargs):
-  # all remaining kwargs are passed on to dst.createVariable()
-  # create dimension
-  if dst.dimensions.has_key(name):
-    assert len(values) == len(dst.dimensions[name]), '\nWARNING: Dimensions %s already present and size does not match!\n'%(name,) 
-  else:
-    if values is not None:
-      if not dtype: dtype = values.dtype # should be standard... 
-      dst.createDimension(name, size=len(values))
-    else:
-      dst.createDimension(name, size=None) # unlimited dimension
-  # create coordinate variable
-  varargs = dict() # arguments to be passed to createVariable
-  if zlib: varargs.update(zlib_default)
-  varargs.update(kwargs)
-  if atts and atts.has_key('_FillValue'): fill_value = atts.pop('_FillValue') 
-  coord = dst.createVariable(name, dtype, (name,), fill_value=fill_value,  **varargs)
-  if values is not None: coord[:] = values # assign coordinate values if given  
-  if atts: # add attributes
-    for key,value in atts.iteritems():
-      coord.setncattr(key,value) 
-      
-def add_var(dst, name, dims, values=None, atts=None, dtype=None, zlib=True, fill_value=None, **kwargs):
-  # all remaining kwargs are passed on to dst.createVariable()
-  # use values array to infer dimensions and data type
-  if not values is None: 
-    # check/create dimension
-    assert len(dims) == values.ndim, '\nWARNING: Number of dimensions does not match (%s)!\n'%(name,)    
-    for i in xrange(len(dims)):
-      if dst.dimensions.has_key(dims[i]):
-        assert values.shape[i] == len(dst.dimensions[dims[i]]), \
-              '\nWARNING: Size of dimension %s does not match!\n'%(dims[i],)
-      else: dst.createDimension(dims[i], size=values.shape[i])
-    if not dtype: dtype = values.dtype # infer data type, if not specified 
-  # create coordinate variable
-  varargs = dict() # arguments to be passed to createVariable
-  if zlib: varargs.update(zlib_default)
-  varargs.update(kwargs)
-  if atts and atts.has_key('_FillValue'): fill_value = atts.pop('_FillValue')
-  var = dst.createVariable(name, dtype, dims, fill_value=fill_value, **varargs)
-  if atts: # add attributes
-    for key,value in atts.iteritems():
-#       print key, value
-      if key[0] != '_': var.setncattr(key,value)  
-  if values is not None: var[:] = values # assign coordinate values if given  
-  
 
+## Dataset functions
+
+def coerceAtts(atts):
+  ''' Convert an attribute dictionary to a NetCDF compatible format. '''
+  if not isinstance(atts,dict): raise TypeError
+  ncatts = atts.copy()
+  # loop over items
+  for key,value in ncatts.iteritems():
+    if not isinstance(value,(basestring,np.ndarray,float,int)):
+      if isinstance(value,(list,tuple)):
+        if len(value) == 0: ncatts[key] = '' # empty attribute
+        elif all(isNumber(value)): ncatts[key] = np.array(value)
+        else:
+          l = '(' # fake list representation
+          for elt in value[0:-1]: l += '{0:s}, '.format(str(elt))
+          l += '{0:s})'.format(str(value[-1]))
+          ncatts[key] = l          
+      else: ncatts[key] = str(value) 
+  return ncatts
+
+def writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True):
+  ''' A function to write the data in a generic Dataset to a NetCDF file. '''
+  # open file
+  ncfile = nc.Dataset(filename, mode='w', format=ncformat)
+  ncfile.setncatts(coerceAtts(dataset.atts))
+  # add coordinate variables first
+  for name,ax in dataset.axes.iteritems():
+    if ax.data: # only need to add real coordinate axes; simple dimensions are added on-the-fly below
+      add_coord(ncfile, name, values=ax.data_array, atts=coerceAtts(ax.atts), dtype=ax.dtype, zlib=zlib, fillValue=ax.fillValue)
+  # now add variables
+  for name,var in dataset.variables.iteritems():
+    dims = tuple([ax.name for ax in var.axes]) 
+    add_var(ncfile, name, dims=dims, values=var.getArray(unmask=True), atts=coerceAtts(ax.atts), dtype=var.dtype, zlib=zlib, fillValue=var.fillValue)
+  # close file
+  ncfile.close()
+  

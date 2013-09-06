@@ -10,6 +10,7 @@ Miscellaneous decorators, methods. and classes, as well as exception classes.
 import numpy as np
 import numpy.ma as ma
 import collections as col
+import numbers as num
 
 ## useful decorators
 
@@ -54,9 +55,17 @@ def checkIndex(idx, floatOK=False):
   # return logical 
   return isIdx
 
+# check if input is an integer
+@ElementWise
+def isInt(arg): return isinstance(arg,int)
+
 # check if input is a float
 @ElementWise
 def isFloat(arg): return isinstance(arg,float)
+
+# check if input is a number
+@ElementWise
+def isNumber(arg): return isinstance(arg,num.Number)
 
 # define machine precision
 floateps = np.finfo(np.float).eps

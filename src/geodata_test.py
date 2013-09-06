@@ -10,8 +10,10 @@ import unittest
 import netCDF4 as nc
 import numpy as np
 import numpy.ma as ma
+import os
 
 # import modules to be tested
+from geodata.nctools import writeNetCDF
 from geodata.misc import isZero, isOne, isEqual
 from geodata.base import Variable, Axis, Dataset
 
@@ -218,6 +220,20 @@ class BaseDatasetTest(unittest.TestCase):
     print('')
     print(self.dataset)
     print('')
+    
+  def testWrite(self):
+    ''' write test dataset to a netcdf file '''    
+    folder = '/media/tmp/' # RAM disk
+    filename = folder + 'test.nc'
+    # add non-conforming attribute
+    self.dataset.atts['test'] = [1,'test',3]
+    # write file
+    writeNetCDF(self.dataset,filename)
+    # check that it is OK
+    assert os.path.exists(filename)
+    ncfile = nc.Dataset(filename)
+    assert ncfile
+    print(ncfile)
   
   def testAddRemove(self):
     ''' test adding and removing variables '''
@@ -446,8 +462,8 @@ if __name__ == "__main__":
 #     tests = ['NetCDFVar']
 #     tests = ['GDALVar']
     # list of dataset tests
-#     tests = ['BaseDataset']
-    tests = ['NetCDFDataset']
+    tests = ['BaseDataset']
+#     tests = ['NetCDFDataset']
 #     tests = ['GDALDataset']    
     
     # run tests

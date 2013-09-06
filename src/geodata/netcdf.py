@@ -105,7 +105,7 @@ class NetCDFDataset(Dataset):
     implements collective operations on all variables in the dataset.
   '''
   
-  def __init__(self, folder='', dataset=None, filelist=None, varlist=None, varatts=None, atts=None, multifile=False):
+  def __init__(self, folder='', dataset=None, filelist=None, varlist=None, varatts=None, atts=None, multifile=False, ncformat='NETCDF4'):
     ''' 
       Create a Dataset from one or more NetCDF files; Variables are created from NetCDF variables. 
       
@@ -131,10 +131,10 @@ class NetCDFDataset(Dataset):
         if multifile: 
           if isinstance(ncfile,(list,tuple)): tmpfile = [folder+ncf for ncf in ncfile]
           else: tmpfile = folder+ncfile # multifile via regular expressions
-          datasets.append(nc.MFDataset(tmpfile))
+          datasets.append(nc.MFDataset(tmpfile), mode='r', format=ncformat)
         else: 
           tmpfile = folder+ncfile
-          datasets.append(nc.Dataset(tmpfile))
+          datasets.append(nc.Dataset(tmpfile), mode='r', format=ncformat)
         files.append(tmpfile)
       filelist = files # original file list, including folders        
     # create axes from netcdf dimensions and coordinate variables
