@@ -134,7 +134,7 @@ class NetCDFDataset(Dataset):
           datasets.append(nc.MFDataset(tmpfile), mode='r', format=ncformat)
         else: 
           tmpfile = folder+ncfile
-          datasets.append(nc.Dataset(tmpfile), mode='r', format=ncformat)
+          datasets.append(nc.Dataset(tmpfile, mode='r', format=ncformat))
         files.append(tmpfile)
       filelist = files # original file list, including folders        
     # create axes from netcdf dimensions and coordinate variables

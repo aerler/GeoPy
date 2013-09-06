@@ -462,8 +462,8 @@ if __name__ == "__main__":
 #     tests = ['NetCDFVar']
 #     tests = ['GDALVar']
     # list of dataset tests
-    tests = ['BaseDataset']
-#     tests = ['NetCDFDataset']
+#     tests = ['BaseDataset']
+    tests = ['NetCDFDataset']
 #     tests = ['GDALDataset']    
     
     # run tests

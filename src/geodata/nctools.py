@@ -33,7 +33,9 @@ def add_coord(dst, name, values=None, atts=None, dtype=None, zlib=True, fillValu
   varargs = dict() # arguments to be passed to createVariable
   if zlib: varargs.update(zlib_default)
   varargs.update(kwargs)
-  if atts and atts.has_key('_FillValue'): fillValue = atts.pop('_FillValue') 
+  if fillValue is not None: atts['_FillValue'] = fillValue
+  elif atts and '_FillValue' in atts: fillValue = atts['_FillValue']
+  else: fillValue = None # masked array handling could go here 
   coord = dst.createVariable(name, dtype, (name,), fill_value=fillValue,  **varargs)
   if values is not None: coord[:] = values # assign coordinate values if given  
   if atts: # add attributes
@@ -56,7 +58,9 @@ def add_var(dst, name, dims, values=None, atts=None, dtype=None, zlib=True, fill
   varargs = dict() # arguments to be passed to createVariable
   if zlib: varargs.update(zlib_default)
   varargs.update(kwargs)
-  if atts and atts.has_key('_FillValue'): fillValue = atts.pop('_FillValue')
+  if fillValue is not None: atts['_FillValue'] = fillValue
+  elif atts and '_FillValue' in atts: fillValue = atts['_FillValue']
+  else: fillValue = None # masked array handling could go here 
   var = dst.createVariable(name, dtype, dims, fill_value=fillValue, **varargs)
   if atts: # add attributes
     for key,value in atts.iteritems():
@@ -147,7 +151,7 @@ def writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True):
   # now add variables
   for name,var in dataset.variables.iteritems():
     dims = tuple([ax.name for ax in var.axes]) 
-    add_var(ncfile, name, dims=dims, values=var.getArray(unmask=True), atts=coerceAtts(ax.atts), dtype=var.dtype, zlib=zlib, fillValue=var.fillValue)
+    add_var(ncfile, name, dims=dims, values=var.getArray(unmask=True), atts=coerceAtts(var.atts), dtype=var.dtype, zlib=zlib, fillValue=var.fillValue)
   # close file
   ncfile.close()
   
