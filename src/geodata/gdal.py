@@ -51,22 +51,22 @@ def addGDAL(var, projection=None, geotransform=None):
       assert isinstance(projection,osr.SpatialReference), '\'projection\' has to be a GDAL SpatialReference object.'              
       isProjected =  projection.IsProjected
       if isProjected: 
-        assert ('x' in self) and ('y' in self), 'Horizontal axes for projected GDAL variables have to \'x\' and \'y\'.'
+        assert var.hasAxis('x') and var.hasAxis('y'), 'Horizontal axes for projected GDAL variables have to \'x\' and \'y\'.'
         xlon = var.x; ylat = var.y
       else: 
-        assert ('lon' in self) and ('lat' in self), 'Horizontal axes for non-projected GDAL variables have to \'lon\' and \'lat\''
+        assert var.hasAxis('lon') and var.hasAxis('lat'), 'Horizontal axes for non-projected GDAL variables have to \'lon\' and \'lat\''
         xlon = var.lon; ylat = var.lat    
     else: # can still infer some useful info
-      if ('x' in var) and ('y' in var):
+      if var.hasAxis('x') and var.hasAxis('y'):
         isProjected = True; xlon = var.x; ylat = var.y
-      elif ('lon' in var) and ('lat' in var):
+      elif var.hasAxis('lon') and var.hasAxis('lat'):
         isProjected = False; xlon = var.lon; ylat = var.lat
         projection = osr.SpatialReference(); projection.ImportFromEPSG(4326) # normal lat/lon projection       
     # if the variable is map-like, add GDAL properties
     if xlon is not None and ylat is not None:
       lgdal = True
       # check axes
-      assert (var[xlon] in [var.ndim-1,var.ndim-2]) and (var[ylat] in [var.ndim-1,var.ndim-2]),\
+      assert (var.axisIndex(xlon) in [var.ndim-1,var.ndim-2]) and (var.axisIndex(ylat) in [var.ndim-1,var.ndim-2]),\
          'Horizontal axes (\'lon\' and \'lat\') have to be the innermost indices.'
       if isProjected: assert isinstance(xlon,Axis) and isinstance(ylat,Axis), 'Error: attributes \'x\' and \'y\' have to be axes.'
       else: assert isinstance(xlon,Axis) and isinstance(ylat,Axis), 'Error: attributes \'lon\' and \'lat\' have to be axes.'   
@@ -119,7 +119,7 @@ def addGDAL(var, projection=None, geotransform=None):
         if load:
           if not self.data: self.load()
           if not self.data: raise DataError, 'Need data in Variable instance in order to load data into GDAL dataset!'
-          data = self.get(unmask=True) # get unmasked data
+          data = self.getArray(unmask=True) # get unmasked data
           data = data.reshape(self.bands,self.mapSize[0],self.mapSize[1]) # reshape to fit bands
           # assign data
           for i in xrange(self.bands):
@@ -166,10 +166,10 @@ class VarGDAL(Variable):
   xlon = None # West-East axis
   ylat = None # South-North axis
   
-  def __init__(self, name='N/A', units='N/A', axes=None, data=None, mask=None, projection=None, geotransform=None, atts=None, plotatts=None):
+  def __init__(self, name='N/A', units='N/A', axes=None, data=None, mask=None, projection=None, geotransform=None, atts=None, plot=None):
     ''' Initialize Variable Instance with GDAL projection features. '''
     # initialize standard Variable
-    super(VarGDAL,self).__init__(name=name, units=units, axes=axes, data=data, mask=mask, atts=atts, plotatts=plotatts)
+    super(VarGDAL,self).__init__(name=name, units=units, axes=axes, data=data, mask=mask, atts=atts, plot=plot)
     # check some special conditions
     lgdal = False; isProjected = None; mapSize = None; bands = None; xlon = None; ylat = None # defaults
     # only for 2D variables!
@@ -253,26 +253,4 @@ class VarGDAL(Variable):
 ## run a test    
 if __name__ == '__main__':
 
-  # initialize test objects
-  x = Axis(name='x', units='none', coord=(1,5,5))
-  y = Axis(name='y', units='none', coord=(1,5,5))
-  var = Variable(name='test',units='none',axes=(x,y),data=np.zeros((5,5)),atts=dict(_FillValue=-9999))
-    
-  # GDAL test
-  gdal = var.getGDAL(load=True)
-  print 'GDAL projection object:'
-  print gdal
-  
-  # variable test
-  print
-  var += np.ones(1)
-  # test getattr
-  print 'Name: %s, Units: %s, Missing Values: %s'%(var.name, var.units, var._FillValue)
-  # test setattr
-  var.Comments = 'test'; var.plotComments = 'test' 
-  print 'Comments: %s, Plot Comments: %s'%(var.Comments,var.plotatts['plotComments'])
-#   print var[:]
-  # indexing (getitem) test
-  print var.shape, var[2,2:5:2]
-  var.unload()
-#   print var.data
+  pass

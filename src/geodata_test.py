@@ -49,6 +49,13 @@ class BaseVarTest(unittest.TestCase):
     
   ## basic tests every variable class should pass
 
+  def testPrint(self):
+    ''' just print the string representation '''
+    assert self.var.__str__()
+    print('')
+    print(self.var)
+    print('')
+
   def testLoad(self):
     ''' test data loading and unloading '''
     # get test objects
@@ -87,7 +94,6 @@ class BaseVarTest(unittest.TestCase):
     z = Axis(name='z', units='none', coord=(1,5,5)) # new axis    
     new_axes = var.axes[0:1] + (z,) + var.axes[-1:0:-1] # dataset independent
     new_axes_names = tuple([ax.name for ax in new_axes])
-    print new_axes_names
     # test reordering and reshaping/extending (using axis names)
     new_shape = tuple([var.shape[var.axisIndex(ax)] if var.hasAxis(ax) else 1 for ax in new_axes]) 
     data = var.getArray(axes=new_axes_names, broadcast=False, copy=True)
@@ -205,6 +211,13 @@ class BaseDatasetTest(unittest.TestCase):
     self.rav.unload()
     
   ## basic tests every variable class should pass
+
+  def testPrint(self):
+    ''' just print the string representation '''
+    assert self.dataset.__str__()
+    print('')
+    print(self.dataset)
+    print('')
   
   def testAddRemove(self):
     ''' test adding and removing variables '''
@@ -244,6 +257,7 @@ class BaseDatasetTest(unittest.TestCase):
     assert not dataset.hasVariable(varname)
     dataset[varname] = var
     assert dataset.hasVariable(varname)
+
 
 # import modules to be tested
 from geodata.netcdf import VarNC, AxisNC, NetCDFDataset
@@ -292,10 +306,10 @@ class NetCDFVarTest(BaseVarTest):
     var = self.var
     # unload and change scale factors    
     var.unload()
-    var.atts.scale_factor = 2.
-    var.atts.add_offset = 100.
+    var.scalefactor = 2.
+    var.offset = 100.
     # load data with new scaling
-    var.load(scale=True)
+    var.load()
     assert self.size == var.shape
     assert isEqual(self.data*2+100., var.data_array)
   
@@ -336,15 +350,16 @@ class NetCDFDatasetTest(BaseDatasetTest):
     # select dataset
     if self.dataset == 'GPCC': # single file
       filelist = ['gpccavg/gpcc_25_clim_1979-1988.nc'] # variable to test
-      varlist = ['rain']
-      ncfile = filelist[0]; ncvar = varlist[0]       
+      varlist = ['rain']; varatts = None
+      ncfile = filelist[0]; ncvar = varlist[0]      
     elif self.dataset == 'NARR': # multiple files
       filelist = ['narr_test/air.2m.mon.ltm.nc', 'narr_test/prate.mon.ltm.nc', 'narr_test/prmsl.mon.ltm.nc'] # variable to test
-      varlist = ['air','prate','prmsl']
+      varlist = ['air','prate','prmsl','lon','lat']
+      varatts = dict(air=dict(name='T2'),prmsl=dict(name='pmsl'))
       ncfile = filelist[0]; ncvar = varlist[0]
     # load a netcdf dataset, so that we have something to play with      
     self.ncdata = nc.Dataset(folder+ncfile,mode='r')
-    self.dataset = NetCDFDataset(folder=folder,filelist=filelist)
+    self.dataset = NetCDFDataset(folder=folder,filelist=filelist,varlist=varlist,varatts=varatts)
     # load a sample variable directly
     ncvar = self.ncdata.variables[ncvar]
     # get dimensions and coordinate variables
@@ -408,6 +423,7 @@ class GDALVarTest(NetCDFVarTest):
     # add GDAL functionality to variable
     addGDAL(var)
     # trivial tests
+    print [ax.name for ax in var.axes]
     assert var.gdal
     assert var.isProjected == False
     assert var.getGDAL()
@@ -430,7 +446,7 @@ if __name__ == "__main__":
 #     tests = ['NetCDFVar']
 #     tests = ['GDALVar']
     # list of dataset tests
-    tests = ['BaseDataset'] 
+#     tests = ['BaseDataset']
     tests = ['NetCDFDataset']
 #     tests = ['GDALDataset']    
     

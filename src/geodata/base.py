@@ -81,7 +81,7 @@ class Variable(object):
     The basic variable class; it mainly implements arithmetic operations and indexing/slicing.
   '''
   
-  def __init__(self, name='N/A', units='N/A', axes=None, data=None, mask=None, fillValue=None, atts=None, plotatts=None):
+  def __init__(self, name='N/A', units='N/A', axes=None, data=None, mask=None, fillValue=None, atts=None, plot=None):
     ''' 
       Initialize variable and attributes.
       
@@ -99,7 +99,7 @@ class Variable(object):
         masked = False # whether or not the array in self.data is a masked array
         fillValue = None # value to fill in for masked values
         atts = None # dictionary with additional attributes
-        plotatts = None # attributed used for displaying the data       
+        plot = None # attributed used for displaying the data       
     '''
     # basic input check
     if data is None:
@@ -114,7 +114,7 @@ class Variable(object):
     # set basic variable 
     self.__dict__['name'] = name
     self.__dict__['units'] = units
-    # set defaults - make all of them instance variables! (atts and plotatts are set below)
+    # set defaults - make all of them instance variables! (atts and plot are set below)
     self.__dict__['data_array'] = None
     self.__dict__['data'] = ldata
     self.__dict__['shape'] = shape
@@ -140,10 +140,10 @@ class Variable(object):
     # cast attributes dicts as AttrDict to fcilitate easy access 
     if atts is None: atts = dict(name=self.name, units=self.units)
     self.__dict__['atts'] = AttrDict(**atts)
-    if plotatts is None: # try to find sensible default values 
-      if variablePlotatts.has_key(self.name): plotatts = variablePlotatts[self.name]
-      else: plotatts = dict(plotname=self.name, plotunits=self.units, plottitle=self.name) 
-    self.__dict__['plot'] = AttrDict(**plotatts)
+    if plot is None: # try to find sensible default values 
+      if variablePlotatts.has_key(self.name): plot = variablePlotatts[self.name]
+      else: plot = dict(plotname=self.name, plotunits=self.units, plottitle=self.name) 
+    self.__dict__['plot'] = AttrDict(**plot)
     # guess fillValue
     if fillValue is None: fillValue = atts.pop('fillValue',None)
     self.__dict__['fillValue'] = fillValue
@@ -151,34 +151,34 @@ class Variable(object):
     if data is not None: 
       self.load(data, mask=mask, fillValue=fillValue) # member method defined below
     
-    
-#   def __getattr__(self, name):
-#     ''' Return contents of atts or plotatts dictionaries as if they were attributes. '''
-#     # N.B.: before this method is called, instance attributes are checked automatically
-#     if self.__dict__.has_key(name): # check instance attributes first
-#       return self.__dict__[name]
-#     elif self.__dict__['atts'].has_key(name): # try atts second
-#       return self.__dict__['atts'][name] 
-#     elif self.__dict__['plotatts'].has_key(name): # then try plotatts
-#       return self.__dict__['plotatts'][name]
-#     else: # or throw attribute error
-#       raise AttributeError, '\'%s\' object has no attribute \'%s\''%(self.__class__.__name__,name)
-    
-#   def __setattr__(self, name, value):
-#     ''' Change the value of class existing class attributes, atts, or plotatts entries,
-#       or store a new attribute in the 'atts' dictionary. '''
-#     if self.__dict__.has_key(name): # class attributes come first
-#       self.__dict__[name] = value # need to use __dict__ to prevent recursive function call
-#     elif self.__dict__['atts'].has_key(name): # try atts second
-#       self.__dict__['atts'][name] = value    
-#     elif self.__dict__['plotatts'].has_key(name): # then try plotatts
-#       self.__dict__['plotatts'][name] = value
-#     else: # if the attribute does not exist yet, add it to atts or plotatts
-#       if name[0:4] == 'plot':
-#         self.plotatts[name] = value
-#       else:
-#         self.atts[name] = value
+
+  def __str__(self, short=False):
+    ''' Print a string representation of the Variable. '''
+    if short: 
+      name = "{0:s} [{1:s}]".format(self.name,self.units) # name and units
+      shape = '(' # shape
+      for l in self.shape: shape += '{0:d},'.format(l)
+      shape += ')'
+      if not self in self.axes:
+        axes = 'Axes: '
+        for ax in self.axes: axes += '{0:s},'.format(ax.name)
+      else: axes = self.__class__.__name__ # Class in this case
+      string = '{:<20}  {:>14s}  {:s}'.format(name,shape,axes)
+    else:
+      string = '{0:s} {1:s} [{2:s}]   {3:s}\n'.format(self.__class__.__name__,self.name,self.units,self.__class__)
+      for ax in self.axes: string += '  {0:s}\n'.format(ax.__str__(short=True))
+      string += 'Attributes: {0:s}\n'.format(str(self.atts))
+      string += 'Plot Attributes: {0:s}\n'.format(str(self.plot))
+    return string
   
+  def __copy__(self):
+    ''' A method to copy the Variable without the data. '''
+    raise NotImplementedError
+  
+  def __deepcopy__(self):
+    ''' A method to copy the Variable and the data. '''
+    raise NotImplementedError
+
   def hasAxis(self, axis):
     ''' Check if the variable instance has a particular axis. '''
     if isinstance(axis,basestring): # by name
@@ -400,14 +400,33 @@ class Variable(object):
     name = '%s / %s'%(self.name,other.name)
     units = '%s / (%s)'%(self.units,other.units)
     return data, name, units
-  
-  def __copy__(self):
-    ''' A method to copy the Variable without the data. '''
-    raise NotImplementedError
-  
-  def __deepcopy__(self):
-    ''' A method to copy the Variable and the data. '''
-    raise NotImplementedError
+     
+#   def __getattr__(self, name):
+#     ''' Return contents of atts or plot dictionaries as if they were attributes. '''
+#     # N.B.: before this method is called, instance attributes are checked automatically
+#     if self.__dict__.has_key(name): # check instance attributes first
+#       return self.__dict__[name]
+#     elif self.__dict__['atts'].has_key(name): # try atts second
+#       return self.__dict__['atts'][name] 
+#     elif self.__dict__['plot'].has_key(name): # then try plot
+#       return self.__dict__['plot'][name]
+#     else: # or throw attribute error
+#       raise AttributeError, '\'%s\' object has no attribute \'%s\''%(self.__class__.__name__,name)
+    
+#   def __setattr__(self, name, value):
+#     ''' Change the value of class existing class attributes, atts, or plot entries,
+#       or store a new attribute in the 'atts' dictionary. '''
+#     if self.__dict__.has_key(name): # class attributes come first
+#       self.__dict__[name] = value # need to use __dict__ to prevent recursive function call
+#     elif self.__dict__['atts'].has_key(name): # try atts second
+#       self.__dict__['atts'][name] = value    
+#     elif self.__dict__['plot'].has_key(name): # then try plot
+#       self.__dict__['plot'][name] = value
+#     else: # if the attribute does not exist yet, add it to atts or plot
+#       if name[0:4] == 'plot':
+#         self.plot[name] = value
+#       else:
+#         self.atts[name] = value
 
 
 class Axis(Variable):
@@ -583,6 +602,18 @@ class Dataset(object):
       else: return False # not found
     else: # invalid input
       raise DatasetError, "Need a Axis instance or name to check for an Axis in the Dataset!"
+  
+  def __str__(self, short=False):
+    ''' Print a string representation of the Dataset. '''
+    if short: pass 
+    else:
+      string = '{0:s}   {1:s}\n'.format(self.__class__.__name__,str(self.__class__))
+      string += 'Variables:\n'
+      for var in self.variables.values(): string += '  {0:s}\n'.format(var.__str__(short=True))
+      string += 'Axes:\n'
+      for ax in self.axes.values(): string += '  {0:s}\n'.format(ax.__str__(short=True))
+      string += 'Attributes: {0:s}\n'.format(str(self.atts))
+    return string
     
   def __getitem__(self, varname):
     ''' Yet another way to access variables by name... conforming to the container protocol. '''

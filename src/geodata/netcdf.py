@@ -21,29 +21,37 @@ class VarNC(Variable):
     A variable class that implements access to data from a NetCDF variable object.
   '''
   
-  def __init__(self, ncvar, axes=None, mask=None, plotatts=None, load=False):
+  def __init__(self, ncvar, name=None, units=None, axes=None, scalefactor=1, offset=0, atts=None, plot=None, fillValue=None, load=False):
     ''' 
       Initialize Variable instance based on NetCDF variable.
       
       New Instance Attributes:
-        ncvar = None # the associated netcdf variable 
+        ncvar = None # the associated netcdf variable
+        scalefactor = 1 # linear scale factor w.r.t. values in netcdf file
+        offset = 0 # constant offset w.r.t. values in netcdf file 
     '''
     # construct attribute dictionary from netcdf attributes
-    atts = { key : ncvar.getncattr(key) for key in ncvar.ncattrs() }
+    ncatts = { key : ncvar.getncattr(key) for key in ncvar.ncattrs() }
     # handle some netcdf conventions
-    fillValue = atts.pop('fillValue',atts.pop('_fillValue',None))
-    for key in ['scale_factor', 'add_offset']: atts.pop(key,None) # already handled by NetCDf Python interface
-    name = ncvar.__dict__.get('name',ncvar._name) # name in attributes has precedence
-    units = ncvar.__dict__.get('units','') # units are not mandatory
+    if fillValue is not None: fillValue = ncatts.pop('fillValue',ncatts.pop('_fillValue',None))
+    for key in ['scale_factor', 'add_offset']: ncatts.pop(key,None) # already handled by NetCDf Python interface
+    if name is None: name = ncatts.get('name',ncvar._name) # name in attributes has precedence
+    else: ncatts[name] = name
+    if units is None: units = ncatts.get('units','') # units are not mandatory
+    else: ncatts[units] = units
+    # update netcdf attributes with custom override
+    if atts is not None: ncatts.update(atts)
     # construct axes, based on netcdf dimensions
     if axes is None: axes = tuple([str(dim) for dim in ncvar.dimensions]) # have to get rid of unicode
     # call parent constructor
-    super(VarNC,self).__init__(name=name, units=units, axes=axes, data=None, mask=mask, fillValue=fillValue, atts=atts, plotatts=plotatts)
+    super(VarNC,self).__init__(name=name, units=units, axes=axes, data=None, mask=None, fillValue=fillValue, atts=ncatts, plot=plot)
     # assign special attributes
     self.__dict__['ncvar'] = ncvar
+    self.__dict__['scalefactor'] = scalefactor
+    self.__dict__['offset'] = offset
     if load: self.load() # load data here 
     
-  def load(self, data=None, scale=True):
+  def load(self, data=None):
     ''' Method to load data from NetCDF file into RAM. '''
     if data is None: 
       data = self.ncvar[:] # load everything
@@ -59,10 +67,9 @@ class VarNC(Variable):
     else:
       assert isinstance(data,np.ndarray) 
       data = data
-    # apply scale factor and offset
-    if scale:
-      if 'scale_factor' in self.atts: data *= self.atts['scale_factor']
-      if 'add_offset' in self.atts: data += self.atts['add_offset']
+    # apply scalefactor and offset
+    if self.scalefactor != 1: data *= self.scalefactor
+    if self.offset != 0: data += self.offset
     # load data
     super(VarNC,self).load(data=data, mask=None) # load actual data using parent method
     # no need to return anything...
@@ -73,24 +80,10 @@ class AxisNC(Axis,VarNC):
     A NetCDF Variable representing a coordinate axis.
   '''
   
-  def __init__(self, ncvar, plotatts=None, load=True, **axargs):
+  def __init__(self, ncvar, load=True, **axargs):
     ''' Initialize a coordinate axis with appropriate values. '''
     # initialize as an Axis subclass and pass arguments down the inheritance chain
-    super(AxisNC,self).__init__(ncvar=ncvar, plotatts=plotatts, load=load, **axargs)
-#   def __init__(self, ncvar, plotatts=None, load=True):
-#     ''' Initialize a coordinate axis with appropriate values. '''
-#     # initialize dimensions
-#     axes = (self,)
-#     # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple
-#     self.__dict__['coord'] = None
-#     self.__dict__['len'] = ncvar.shape[0] 
-#     # initialize as netcdf variable
-# #     super(AxisNC,self).__init__(ncvar, axes=axes, mask=None, plotatts=plotatts, load=False)
-#     super(AxisNC,self).__init__(ncvar, axes=axes, mask=None, plotatts=plotatts, load=False)
-#     ## N.B.: Apparently the super(Class,self)-syntax does not work with multiple inheritance...
-#     # add coordinate vector
-#     if load: self.updateCoord(slice(ncvar.shape[0]))
-#     self.updateLength(ncvar.shape[0])
+    super(AxisNC,self).__init__(ncvar=ncvar, load=load, **axargs)
     
   def updateCoord(self, coord=None):
     ''' Update the coordinate vector from NetCDF file. '''    
@@ -117,7 +110,8 @@ class NetCDFDataset(Dataset):
       Create a Dataset from one or more NetCDF files; Variables are created from NetCDF variables. 
       
       NetCDF Attributes:
-        datasets = [] # list of NetCDF datasets 
+        datasets = [] # list of NetCDF datasets
+        filelist = None # files used to create datasets 
       Basic Attributes:        
         variables = dict() # dictionary holding Variable instances
         axes = dict() # dictionary holding Axis instances (inferred from Variables)
@@ -132,36 +126,53 @@ class NetCDFDataset(Dataset):
         datasets = dataset
     else: # or directly from netcdf files
       assert filelist is not None
-      datasets = []
+      datasets = []; files = []
       for ncfile in filelist:
         if multifile: 
           if isinstance(ncfile,(list,tuple)): tmpfile = [folder+ncf for ncf in ncfile]
-          else: tmpfile = folder+ncfile  
-          datasets.append(nc.MFDataset(tmpfile))        
-        else:
-          datasets.append(nc.Dataset(folder+ncfile))
+          else: tmpfile = folder+ncfile # multifile via regular expressions
+          datasets.append(nc.MFDataset(tmpfile))
+        else: 
+          tmpfile = folder+ncfile
+          datasets.append(nc.Dataset(tmpfile))
+        files.append(tmpfile)
+      filelist = files # original file list, including folders        
     # create axes from netcdf dimensions and coordinate variables
+    if varatts is None: varatts = dict() # empty dictionary means no parameters... 
     axes = dict()
     for ds in datasets:
       for dim in ds.dimensions.keys():
-        if dim in ds.variables: # skip dimensions that have no associated variable 
-          if axes.has_key(dim): # if already present, make sure axes are essentially the same
+        if dim in ds.variables: # dimensions with an associated coordinate variable 
+          if dim in axes: # if already present, make sure axes are essentially the same
             if not isEqual(axes[dim][:],ds.variables[dim][:]): 
               raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
           else: # if this is a new axis, add it to the list
-            axes[dim] = AxisNC(ncvar=ds.variables[dim])
+            axes[dim] = AxisNC(ncvar=ds.variables[dim], **varatts.get(dim,{})) # also use overrride parameters
+        else: # initialize dimensions without associated variable as regular Axis (not AxisNC)
+          if dim in axes: # if already present, make sure axes are essentially the same
+            if len(axes[dim]) != len(ds.dimensions[dim]): 
+              raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
+          else: # if this is a new axis, add it to the list
+            params = dict(name=dim,length=len(ds.dimensions[dim])); params.update(varatts.get(dim,{})) 
+            axes[dim] = Axis(**params) # also use overrride parameters          
     # create variables from netcdf variables
     variables = dict()
     for ds in datasets:
-      for var in ds.variables.keys():
-        if axes.has_key(var): pass # do not treat coordinate variables as real variables 
-        elif variables.has_key(var): # if already present, make sure variables are essentially the same
-          if not variables[var].shape == ds.variables[var].shape: 
+      if varlist is None: dsvars = ds.variables.keys()
+      else: dsvars = [var for var in varlist if ds.variables.has_key(var)]
+      # loop over variables in dataset
+      for var in dsvars:
+        if var in axes: pass # do not treat coordinate variables as real variables 
+        elif var in variables: # if already present, make sure variables are essentially the same
+          if (variables[var].shape != ds.variables[var].shape) or \
+             (variables[var].ncvar.dimensions != ds.variables[var].dimensions): 
             raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible variables.' 
         else: # if this is a new variable, add it to the list
           if all([axes.has_key(dim) for dim in ds.variables[var].dimensions]):
-            varaxes = [axes[dim] for dim in ds.variables[var].dimensions]
-            variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes)
+            varaxes = [axes[dim] for dim in ds.variables[var].dimensions] # collect axes
+            # create new variable using the override parameters in varatts
+            variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, **varatts.get(var,{}))
+          else: raise DatasetError, 'Error constructing Variable: Axes/coordinates not found.'
     # get attributes from NetCDF dataset
     ncattrs = joinDicts(*[ds.__dict__ for ds in datasets])
     if atts: ncattrs.update(atts) # update with attributes passed to constructor
@@ -169,6 +180,7 @@ class NetCDFDataset(Dataset):
     super(NetCDFDataset,self).__init__(varlist=variables.values(), atts=ncattrs)
     # add NetCDF attributes
     self.__dict__['datasets'] = datasets
+    self.__dict__['filelist'] = filelist
     
   def close(self):
     ''' Call this method before deleting the Dataset: close netcdf files. '''
