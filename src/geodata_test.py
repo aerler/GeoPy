@@ -282,7 +282,7 @@ class NetCDFVarTest(BaseVarTest):
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'GPCC' # dataset to use (also the folder name)
-  variable = 'rain' # variable to test
+  variable = 'p' # variable to test
   RAM = True # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
@@ -292,7 +292,7 @@ class NetCDFVarTest(BaseVarTest):
     else: folder = '/home/DATA/DATA/%s/'%self.dataset # dataset name is also in folder name
     if self.dataset == 'GPCC':
       # load a netcdf dataset, so that we have something to play with
-      self.ncdata = nc.Dataset(folder+'gpccavg/gpcc_25_clim_1979-1988.nc',mode='r')
+      self.ncdata = nc.Dataset(folder+'gpcc_test/full_data_v6_precip_25.nc',mode='r')
     # load variable
     ncvar = self.ncdata.variables[self.variable]      
     # get dimensions and coordinate variables
@@ -458,12 +458,12 @@ if __name__ == "__main__":
 
     # tests to be performed
     # list of variable tests
-#     tests = ['BaseVar'] 
-#     tests = ['NetCDFVar']
+    tests = ['BaseVar'] 
+    tests = ['NetCDFVar']
 #     tests = ['GDALVar']
     # list of dataset tests
 #     tests = ['BaseDataset']
-    tests = ['NetCDFDataset']
+#     tests = ['NetCDFDataset']
 #     tests = ['GDALDataset']    
     
     # run tests

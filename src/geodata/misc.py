@@ -79,10 +79,10 @@ def isZero(data, eps=None, masked_equal=True):
 #       return ( np.absolute(array) <= eps ).all()
     elif np.issubdtype(data.dtype, np.integer) or np.issubdtype(data.dtype, np.bool):
       return all( data == 0 )
-  elif isinstance(data,float):
+  elif isinstance(data,float) or isinstance(data, np.inexact):
       if eps is None: eps = 100.*floateps # default
       return np.absolute(data) <= eps
-  elif isinstance(data,(int,bool)):
+  elif isinstance(data,(int,bool)) or isinstance(data, (np.integer,np.bool)):
       return data == 0
   else: raise TypeError
 # check if an array is one within machine precision
@@ -93,10 +93,10 @@ def isOne(data, eps=None, masked_equal=True):
       return ma.allclose(np.ones_like(data), data, masked_equal=True)
     elif np.issubdtype(data.dtype, np.integer) or np.issubdtype(data.dtype, np.bool):
       return all( data == 1 )
-  elif isinstance(data,float):
+  elif isinstance(data,float) or isinstance(data, np.inexact):
       if eps is None: eps = 100.*floateps # default
       return np.absolute(data-1) <= eps
-  elif isinstance(data,(int,bool)):
+  elif isinstance(data,(int,bool)) or isinstance(data, (np.integer,np.bool)):
       return data == 1
   else: raise TypeError
 # check if two arrays are equal within machine precision
@@ -109,10 +109,10 @@ def isEqual(left, right, eps=None, masked_equal=True):
       return ma.allclose(left, right, masked_equal=True)
     elif np.issubdtype(left.dtype, np.integer) or np.issubdtype(left.dtype, np.bool):
       return all( left == right )
-  elif isinstance(left,float):
+  elif isinstance(left,float) or isinstance(left, np.inexact):
       if eps is None: eps = 100.*floateps # default
       return np.absolute(left-right) <= eps
-  elif isinstance(left,(int,bool)):
+  elif isinstance(left,(int,bool)) or isinstance(left, (np.integer,np.bool)):
       return left == right
   else: raise TypeError
 

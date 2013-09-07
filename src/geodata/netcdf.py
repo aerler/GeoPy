@@ -50,6 +50,20 @@ class VarNC(Variable):
     self.__dict__['scalefactor'] = scalefactor
     self.__dict__['offset'] = offset
     if load: self.load() # load data here 
+  
+  def __getitem__(self, idx=None):
+    ''' Method implementing access to the actual data; if data is not loaded, give direct access to NetCDF file. '''
+    # default
+    if idx is None: idx = slice(None,None,None) # first, last, step          
+    # determine what to do
+    if self.data:
+      # call parent method
+      data = super(VarNC,self).__getitem__(idx) # load actual data using parent method
+    else:
+      # provide direct access to netcdf data on file
+      data = self.ncvar.__getitem__(idx) # exceptions handled by netcdf module
+    # return data
+    return data
     
   def load(self, data=None):
     ''' Method to load data from NetCDF file into RAM. '''

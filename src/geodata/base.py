@@ -11,7 +11,7 @@ import numpy as np
 import numpy.ma as ma # masked arrays
 # my own imports
 from atmdyn.properties import variablePlotatts # import plot properties from different file
-from misc import VariableError, DatasetError, checkIndex, isFloat, AttrDict, joinDicts
+from misc import VariableError, DataError, DatasetError, checkIndex, isFloat, AttrDict, joinDicts
 
 import numbers
 import functools
@@ -210,20 +210,19 @@ class Variable(object):
     # if all fails
     return None
         
-  def __getitem__(self, idx):
-    ''' Method implementing access to the actual data, plus some extras. '''          
+  def __getitem__(self, idx=None):
+    ''' Method implementing access to the actual data. '''
+    # default
+    if idx is None: idx = slice(None,None,None) # first, last, step     
     # determine what to do
-    if all(checkIndex(idx, floatOK=True)):      
+    if all(checkIndex(idx, floatOK=True)):
+      # check if data is loaded      
+      if not self.data:
+        raise DataError, 'Variable instance \'%s\' has no associated data array or it is not loaded!'%(self.name) 
       # array indexing: return array slice
-      if self.data:
-        if any(isFloat(idx)): raise NotImplementedError, \
-          'Floating-point indexing is not implemented yet for \'%s\' class.'%(self.__class__.__name__)
-        return self.data_array.__getitem__(idx) # valid array slicing
-      else: 
-        raise IndexError, 'Variable instance \'%s\' has no associated data array!'%(self.name) 
-#     elif isinstance(idx,basestring) or isinstance(idx,Axis):
-#       # dictionary-type key: return index of dimension with that name
-#       return self.axisIndex(idx)
+      if any(isFloat(idx)): raise NotImplementedError, \
+        'Floating-point indexing is not implemented yet for \'%s\' class.'%(self.__class__.__name__)
+      return self.data_array.__getitem__(idx) # valid array slicing
     else:    
       # if nothing applies, raise index error
       raise IndexError, 'Invalid index/key type for class \'%s\'!'%(self.__class__.__name__)
@@ -264,15 +263,9 @@ class Variable(object):
     
   def getArray(self, idx=None, axes=None, broadcast=False, unmask=True, fillValue=None, copy=True):
     ''' Copy the entire data array or a slice; option to unmask and to reorder/reshape to specified axes. '''
-    # get data
-    if all(checkIndex(idx, floatOK=True)):
-      if not self.data: self.load(data=idx) 
-      if copy: datacopy = self.__getitem__(idx).copy() # use __getitem__ to get slice
-      else: datacopy = self.__getitem__(idx) # just get a view
-    else:
-      if not self.data: self.load() 
-      if copy: datacopy = self.data_array.copy() # copy entire array
-      else: datacopy = self.data_array
+    # get data (idx=None will return the entire data array)
+    if copy: datacopy = self.__getitem__(idx).copy() # use __getitem__ to get slice
+    else: datacopy = self.__getitem__(idx) # just get a view
     # unmask    
     if unmask and self.masked:
       if fillValue is None: fillValue=self.fillValue
