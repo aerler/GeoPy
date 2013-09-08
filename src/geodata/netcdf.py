@@ -65,7 +65,7 @@ class VarNC(Variable):
     # return data
     return data
     
-  def load(self, data=None):
+  def load(self, data=None, **kwargs):
     ''' Method to load data from NetCDF file into RAM. '''
     if data is None: 
       data = self.ncvar[:] # load everything
@@ -84,8 +84,8 @@ class VarNC(Variable):
     # apply scalefactor and offset
     if self.scalefactor != 1: data *= self.scalefactor
     if self.offset != 0: data += self.offset
-    # load data
-    super(VarNC,self).load(data=data, mask=None) # load actual data using parent method
+    # load data    
+    super(VarNC,self).load(data=data, **kwargs) # load actual data using parent method
     # no need to return anything...
 
 

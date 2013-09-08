@@ -150,9 +150,12 @@ class Variable(object):
     # assign data, if present (can initialize without data)
     if data is not None: 
       self.load(data, mask=mask, fillValue=fillValue) # member method defined below
-    
+  
+  def __str__(self):
+    ''' Built-in method; we just overwrite to call 'prettyPrint()'. '''
+    return self.prettyPrint(short=False) # print is a reserved word  
 
-  def __str__(self, short=False):
+  def prettyPrint(self, short=False):
     ''' Print a string representation of the Variable. '''
     if short: 
       name = "{0:s} [{1:s}]".format(self.name,self.units) # name and units
@@ -166,9 +169,9 @@ class Variable(object):
       string = '{:<20}  {:>14s}  {:s}'.format(name,shape,axes)
     else:
       string = '{0:s} {1:s} [{2:s}]   {3:s}\n'.format(self.__class__.__name__,self.name,self.units,self.__class__)
-      for ax in self.axes: string += '  {0:s}\n'.format(ax.__str__(short=True))
+      for ax in self.axes: string += '  {0:s}\n'.format(ax.prettyPrint(short=True))
       string += 'Attributes: {0:s}\n'.format(str(self.atts))
-      string += 'Plot Attributes: {0:s}\n'.format(str(self.plot))
+      string += 'Plot Attributes: {0:s}'.format(str(self.plot))
     return string
   
   def __copy__(self):
@@ -237,6 +240,7 @@ class Variable(object):
       self.__dict__['data_array'] = data
     if isinstance(self.data_array, ma.MaskedArray): 
       self.__dict__['masked'] = True # set masked flag
+    else: self.__dict__['masked'] = False
     self.__dict__['data'] = True
     self.__dict__['shape'] = data.shape
     assert len(self.shape) == self.ndim or (self.ndim == 0 and data.size == 1),\

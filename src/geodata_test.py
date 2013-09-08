@@ -53,9 +53,10 @@ class BaseVarTest(unittest.TestCase):
 
   def testPrint(self):
     ''' just print the string representation '''
-    assert self.var.__str__()
+    assert self.var.prettyPrint()
     print('')
-    print(self.var)
+    s = str(self.var)
+    print s
     print('')
 
   def testLoad(self):
@@ -281,8 +282,7 @@ from geodata.netcdf import VarNC, AxisNC, NetCDFDataset
 class NetCDFVarTest(BaseVarTest):  
   
   # some test parameters (TestCase does not take any arguments)
-  dataset = 'GPCC' # dataset to use (also the folder name)
-  variable = 'p' # variable to test
+  dataset = 'NARR' # dataset to use (also the folder name)
   RAM = True # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
@@ -290,11 +290,19 @@ class NetCDFVarTest(BaseVarTest):
   def setUp(self):
     if self.RAM: folder = '/media/tmp/'
     else: folder = '/home/DATA/DATA/%s/'%self.dataset # dataset name is also in folder name
-    if self.dataset == 'GPCC':
-      # load a netcdf dataset, so that we have something to play with
-      self.ncdata = nc.Dataset(folder+'gpcc_test/full_data_v6_precip_25.nc',mode='r')
+    # select dataset
+    if self.dataset == 'GPCC': # single file
+      filelist = ['gpcc_test/full_data_v6_precip_25.nc'] # variable to test
+      varlist = ['p']
+      ncfile = filelist[0]; ncvar = varlist[0]      
+    elif self.dataset == 'NARR': # multiple files
+      filelist = ['narr_test/air.2m.mon.ltm.nc', 'narr_test/prate.mon.ltm.nc', 'narr_test/prmsl.mon.ltm.nc'] # variable to test
+      varlist = ['air','prate','prmsl','lon','lat']
+      ncfile = filelist[0]; ncvar = varlist[0]
+    # load a netcdf dataset, so that we have something to play with      
+    self.ncdata = nc.Dataset(folder+ncfile,mode='r')
     # load variable
-    ncvar = self.ncdata.variables[self.variable]      
+    ncvar = self.ncdata.variables[ncvar]      
     # get dimensions and coordinate variables
     size = tuple([len(self.ncdata.dimensions[dim]) for dim in ncvar.dimensions])
     axes = tuple([AxisNC(self.ncdata.variables[dim], length=le) for dim,le in zip(ncvar.dimensions,size)]) 
@@ -303,7 +311,7 @@ class NetCDFVarTest(BaseVarTest):
     self.var = VarNC(ncvar, axes=axes, load=True)    
     self.rav = VarNC(ncvar, axes=axes, load=True) # second variable for binary operations    
     # save the original netcdf data
-    self.data = self.ncdata.variables[self.variable][:].copy() #.filled(0)
+    self.data = ncvar[:].copy() #.filled(0)
     self.size = tuple([len(ax) for ax in axes])
     # construct attributes dictionary from netcdf attributes
     self.atts = { key : self.ncvar.getncattr(key) for key in self.ncvar.ncattrs() }
@@ -339,7 +347,10 @@ class NetCDFVarTest(BaseVarTest):
       sl = (slice(0,12,1),slice(20,50,5),slice(70,140,15))
       var.load(sl)
       assert (12,6,5) == var.shape
-      assert isEqual(self.data.__getitem__(sl), var.data_array)
+      if var.masked:
+        assert isEqual(self.data.__getitem__(sl), var.data_array)
+      else:
+        assert isEqual(self.data.__getitem__(sl).filled(var.fillValue), var.data_array)
   
   def testIndexing(self):
     ''' test indexing and slicing '''
@@ -351,6 +362,19 @@ class NetCDFVarTest(BaseVarTest):
       assert isEqual(self.data[1,:,1:-1], var[1,:,1:-1])
     # test axes
 
+  def testFileAccess(self):
+    ''' test access to data without loading '''
+    # get test objects
+    var = self.var
+    var.unload()
+    # access data
+    data = var[:]
+    assert data.shape == self.data.shape
+    assert isEqual(self.data[:], data)
+    # assert no data
+    assert not var.data
+    assert var.data_array is None
+  
 
 class NetCDFDatasetTest(BaseDatasetTest):  
   
@@ -365,8 +389,8 @@ class NetCDFDatasetTest(BaseDatasetTest):
     else: folder = '/home/DATA/DATA/%s/'%self.dataset # dataset name is also in folder name
     # select dataset
     if self.dataset == 'GPCC': # single file
-      filelist = ['gpccavg/gpcc_25_clim_1979-1988.nc'] # variable to test
-      varlist = ['rain']; varatts = None
+      filelist = [['gpcc_test/full_data_v6_precip_25.nc']] # variable to test
+      varlist = ['p']; varatts = None
       ncfile = filelist[0]; ncvar = varlist[0]      
     elif self.dataset == 'NARR': # multiple files
       filelist = ['narr_test/air.2m.mon.ltm.nc', 'narr_test/prate.mon.ltm.nc', 'narr_test/prmsl.mon.ltm.nc'] # variable to test
@@ -411,13 +435,12 @@ class NetCDFDatasetTest(BaseDatasetTest):
 
 
 # import modules to be tested
-from geodata.gdal import addGDAL 
+from geodata.gdal import addGDAL, getProjNARR
 
 class GDALVarTest(NetCDFVarTest):  
   
   # some test parameters (TestCase does not take any arguments)
-  dataset = 'GPCC' # dataset to use (also the folder name)
-  variable = 'rain'
+  dataset = 'NARR' # dataset to use (also the folder name)
   RAM = True # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
@@ -425,7 +448,12 @@ class GDALVarTest(NetCDFVarTest):
   projection = ''
   
   def setUp(self):
-    super(GDALVarTest,self).setUp() 
+    super(GDALVarTest,self).setUp()
+    # add GDAL functionality to variable
+    if self.dataset == 'NARR':
+      self.var = addGDAL(self.var, projection=getProjNARR())
+    else: 
+      self.var = addGDAL(self.var)
       
   def tearDown(self):  
     super(GDALVarTest,self).tearDown()
@@ -436,14 +464,16 @@ class GDALVarTest(NetCDFVarTest):
     ''' test function that adds projection features '''
     # get test objects
     var = self.var # NCVar object
-    # add GDAL functionality to variable
-    addGDAL(var)
+#     print var.xlon[:]
+#     print var.ylat[:]
+    print var.geotransform # need to subtract false easting and northing!
     # trivial tests
-    print [ax.name for ax in var.axes]
     assert var.gdal
-    assert var.isProjected == False
-    assert var.getGDAL()
+    if self.dataset == 'NARR': assert var.isProjected == True
+    if self.dataset == 'GPCC': assert var.isProjected == False
+    assert var.geotransform
     data = var.getGDAL()
+    assert data is not None
     assert data.ReadAsArray()[:,:,:].shape == (var.bands,)+var.mapSize 
     
     
@@ -460,7 +490,7 @@ if __name__ == "__main__":
     # list of variable tests
     tests = ['BaseVar'] 
     tests = ['NetCDFVar']
-#     tests = ['GDALVar']
+    tests = ['GDALVar']
     # list of dataset tests
 #     tests = ['BaseDataset']
 #     tests = ['NetCDFDataset']
