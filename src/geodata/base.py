@@ -600,16 +600,20 @@ class Dataset(object):
     else: # invalid input
       raise DatasetError, "Need a Axis instance or name to check for an Axis in the Dataset!"
   
-  def __str__(self, short=False):
+  def __str__(self):
+    ''' Built-in method; we just overwrite to call 'prettyPrint()'. '''
+    return self.prettyPrint(short=False) # print is a reserved word  
+
+  def prettyPrint(self, short=False):
     ''' Print a string representation of the Dataset. '''
     if short: pass 
     else:
       string = '{0:s}   {1:s}\n'.format(self.__class__.__name__,str(self.__class__))
       string += 'Variables:\n'
-      for var in self.variables.values(): string += '  {0:s}\n'.format(var.__str__(short=True))
+      for var in self.variables.values(): string += '  {0:s}\n'.format(var.prettyPrint(short=True))
       string += 'Axes:\n'
-      for ax in self.axes.values(): string += '  {0:s}\n'.format(ax.__str__(short=True))
-      string += 'Attributes: {0:s}\n'.format(str(self.atts))
+      for ax in self.axes.values(): string += '  {0:s}\n'.format(ax.prettyPrint(short=True))
+      string += 'Attributes: {0:s}'.format(str(self.atts))
     return string
     
   def __getitem__(self, varname):

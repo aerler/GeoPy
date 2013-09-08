@@ -2,6 +2,7 @@
 Created on 2011-05-29, adapted on 2013-08-24
 
 Properties of commonly used meteorological and climate variables.
+Note that default scale-factors assume that the data is in SI units.
 
 @author: Andre R. Erler, GPL v3
 '''
@@ -234,42 +235,42 @@ variablePlotatts['Q2'] = tmp
 ## Accumulated Cumulus Precipitation
 tmp = defaultPlotatts.copy() 
 # specific properties
-tmp['plotname'] = 'precip (cu)'
+tmp['plotname'] = 'acc. precip (cu)'
 tmp['plottitle'] = 'Accumulated Cumulus Precipitation'
-tmp['plotunits'] = 'mm'
+tmp['plotunits'] = 'mm' # = kg/m^2
 tmp['scalefactor'] = 1
 # add to collection
-variablePlotatts['accrainc'] = tmp
+variablePlotatts['acpreccu'] = tmp
 
 ## Accumulated Grid-scale Precipitation
 tmp = defaultPlotatts.copy() 
 # specific properties
-tmp['plotname'] = 'precip (grid)'
+tmp['plotname'] = 'acc. precip (grid)'
 tmp['plottitle'] = 'Accumulated Grid-scale Precipitation'
 tmp['plotunits'] = 'mm'
 tmp['scalefactor'] = 1
 # add to collection
-variablePlotatts['accrainnc'] = tmp
+variablePlotatts['acprecnc'] = tmp
 
 ## Accumulated Total Precipitation
 tmp = defaultPlotatts.copy() 
 # specific properties
-tmp['plotname'] = 'precip'
+tmp['plotname'] = 'acc. precip'
 tmp['plottitle'] = 'Accumulated Total Precipitation'
 tmp['plotunits'] = 'mm'
 tmp['scalefactor'] = 1
 # add to collection
-variablePlotatts['accrain'] = tmp
+variablePlotatts['acprec'] = tmp
 
 ## Cumulus Precipitation Rate
 tmp = defaultPlotatts.copy() 
 # specific properties
 tmp['plotname'] = 'precip (cu)'
 tmp['plottitle'] = 'Cumulus Precipitation Rate'
-tmp['plotunits'] = 'mm/day'
-tmp['scalefactor'] = 1
+tmp['plotunits'] = 'mm/day' # = kg/m^2/(86400s)
+tmp['scalefactor'] = 86400
 # add to collection
-variablePlotatts['rainc'] = tmp
+variablePlotatts['preccu'] = tmp
 
 ## Accumulated Grid-scale Precipitation
 tmp = defaultPlotatts.copy() 
@@ -277,9 +278,9 @@ tmp = defaultPlotatts.copy()
 tmp['plotname'] = 'precip (grid)'
 tmp['plottitle'] = 'Grid-scale Precipitation Rate'
 tmp['plotunits'] = 'mm/day'
-tmp['scalefactor'] = 1
+tmp['scalefactor'] = 86400
 # add to collection
-variablePlotatts['rainnc'] = tmp
+variablePlotatts['precnc'] = tmp
 
 ## Total Precipitation Rate
 tmp = defaultPlotatts.copy() 
@@ -287,9 +288,9 @@ tmp = defaultPlotatts.copy()
 tmp['plotname'] = 'precip'
 tmp['plottitle'] = 'Total Precipitation Rate'
 tmp['plotunits'] = 'mm/day'
-tmp['scalefactor'] = 1
+tmp['scalefactor'] = 86400
 # add to collection
-variablePlotatts['rain'] = tmp
+variablePlotatts['precip'] = tmp
 
 ## Surface Sensible Heat Flux
 tmp = defaultPlotatts.copy() 

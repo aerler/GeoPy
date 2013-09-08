@@ -158,7 +158,8 @@ class NetCDFDataset(Dataset):
       for dim in ds.dimensions.keys():
         if dim in ds.variables: # dimensions with an associated coordinate variable 
           if dim in axes: # if already present, make sure axes are essentially the same
-            if not isEqual(axes[dim][:],ds.variables[dim][:]): 
+            tmpax = AxisNC(ncvar=ds.variables[dim], **varatts.get(dim,{})) # apply all correction factors...
+            if not isEqual(axes[dim][:],tmpax[:]): 
               raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
           else: # if this is a new axis, add it to the list
             axes[dim] = AxisNC(ncvar=ds.variables[dim], **varatts.get(dim,{})) # also use overrride parameters

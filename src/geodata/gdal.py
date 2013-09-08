@@ -24,31 +24,30 @@ gdal.UseExceptions()
 from geodata.base import Variable, Axis, Dataset
 from misc import isEqual, isZero, isFloat, DataError
 
-## functions to get projections from specific datasets
+## function to generate a projection object from a dictionary
 # (geographic coordinates are handled automatically, if lat/lon vectors are supplied)
 
-# NARR: Lambert Conformal Conic
-def getProjNARR():
-  ''' Get the projection parameters from NARR NetCDF files, and return a OSR SpatialReference instance. '''
-  # Info from http://www.remotesensing.org/geotiff/proj_list/lambert_conic_conformal_2sp.html
-  # what we already know without looking in the file
-  projection = osr.SpatialReference() 
-#   projection.ImportFromEPSG(9801) # EPSG code for Lambert Conformal Conic with one standard parallel
-  # specific parameters
-  lat1 =   50 # Latitude of first standard parallel
-  lat2 =   50 # Latitude of second standard parallel
-  lat0 =   50 # Latitude of natural origin
-  lon0 = -107 # Longitude of natural origin
-  x0   = 5632642.22547 # False Origin Easting
-  y0   = 4612545.65137 # False Origin Northing
-  wkt = '+proj=lcc +lat_1={0:f} +lat_2={1:f} +lat_0={2:f} +lon_0={3:f} +x_0={4:f} +y_0={5:f}'.format(lat1,lat2,lat0,lon0,x0,y0)
-  projection.ImportFromProj4(wkt)
+def getProjFromDict(projdict, name='', GeoCS='WGS84'):
+  ''' Initialize a projected OSR SpatialReference instance from a dictionary using Proj4 conventions. 
+      Valid parameters are documented here: http://trac.osgeo.org/proj/wiki/GenParms
+      Projections are described here: http://www.remotesensing.org/geotiff/proj_list/ '''
+  # start with projection, which is usually a string
+  projstr = '+proj={0:s}'.format(projdict['proj']) 
+  # loop over entries
+  for key,value in projdict.iteritems():
+    if key is not 'proj':
+      if not isinstance(key,str): raise TypeError
+      if not isinstance(value,float): raise TypeError
+      # translate dict entries to string
+      projstr = '{0:s} +{1:s}={2:f}'.format(projstr,key,value)
+  # initialize
+  projection = osr.SpatialReference()
+  projection.ImportFromProj4(projstr)
   # more meta data
-  projection.SetProjCS('NARR Coordinate System') # establish that this is a projected system
-  projection.SetWellKnownGeogCS('WGS84') # default reference datum/geoid
+  projection.SetProjCS(name) # establish that this is a projected system
+  projection.SetWellKnownGeogCS(GeoCS) # default reference datum/geoid
   # return finished projection object (geotransform can be inferred from coordinate vectors)
   return projection
- 
 
 ## functions to add GDAL functionality
 
@@ -213,6 +212,9 @@ def GDALDataset(dataset, projection=None, geotransform=None):
   # only for 2D variables!
   if len(dataset.axes) >= 2: # else not a map-type
     if projection is not None: # figure out projection 
+      # figure out projection
+      if isinstance(projection,dict): projection = getProjFromDict(projection)
+      # assume projection is set
       assert isinstance(projection,osr.SpatialReference), '\'projection\' has to be a GDAL SpatialReference object.'              
       isProjected =  projection.IsProjected
       if isProjected: 
@@ -242,7 +244,7 @@ def GDALDataset(dataset, projection=None, geotransform=None):
     if geotransform is None: 
       # infer GDAL geotransform vector from  coordinate vectors (axes)
       dx = xlon[1]-xlon[0]; dy = ylat[1]-ylat[0]
-      assert (np.diff(xlon) == dx).all() and (np.diff(ylat) == dy).all(), 'Coordinate vectors have to be uniform!'
+#       assert (np.diff(xlon) == dx).all() and (np.diff(ylat) == dy).all(), 'Coordinate vectors have to be uniform!'
       ulx = xlon[0]-dx/2.; uly = ylat[0]-dy/2. # coordinates of upper left corner (same for source and sink)
       # GT(2) & GT(4) are zero for North-up; GT(1) & GT(5) are pixel width and height; (GT(0),GT(3)) is the top left corner
       geotransform = (ulx, dx, 0., uly, 0., dy)
@@ -299,29 +301,21 @@ def GDALDataset(dataset, projection=None, geotransform=None):
       # return dataset
       return dataset
     # add new method to object
-    var.getGDAL = types.MethodType(getGDAL,var)
+    dataset.getGDAL = types.MethodType(getGDAL,dataset)
     
-    # update new instance attributes
-    def load(self, data):
-      ''' Load new data array. '''
-      super(var.__class__,self).load(data, mask=None)    
-      if len(data.shape) >= 2: # 2D or more
-        self.__dict__['mapSize'] = data.shape[-2:] # need to update
-      else: # less than 2D can't be GDAL enabled
-        self.__dict__['mapSize'] = None
-        self.__dict__['gdal'] = False
+    # append projection info  
+    def prettyPrint(self, short=False):
+      ''' Add projection information in to string in long format. '''
+      string = super(dataset.__class__,self).prettyPrint(short=short)
+      if not short:
+        if dataset.projection is not None:
+          string += '\nProjection: {0:s}'.format(self.projection.ExportToWkt())
+      return string
     # add new method to object
-    var.load = types.MethodType(load,var)
-    
-    # maybe needed in the future...
-    def unload(self):
-      ''' Remove coordinate vector. '''
-      super(var.__class__,self).unload()      
-    # add new method to object
-    var.unload = types.MethodType(unload,var)
-  
+    dataset.prettyPrint = types.MethodType(prettyPrint,dataset)
+            
   ## the return value is actually not necessary, since the object is modified immediately
-  return var
+  return dataset
   
 
 ## run a test    
