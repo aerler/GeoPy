@@ -76,6 +76,9 @@ def addGDAL(var, projection=None, geotransform=None):
     if ndim==2: bands = 1 
     else: bands = np.prod(shape[:-2])
     if projection is not None: # figure out projection 
+      # figure out projection
+      if isinstance(projection,dict): projection = getProjFromDict(projection)
+      # assume projection is set
       assert isinstance(projection,osr.SpatialReference), '\'projection\' has to be a GDAL SpatialReference object.'              
       isProjected =  projection.IsProjected()
       if isProjected: 

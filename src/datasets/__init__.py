@@ -8,4 +8,4 @@ submodules also contain meta data and projection parameters.
 @author: Andre R. Erler, GPL v3
 '''
 
-from datasets.NARR import loadNARRclim
+from datasets.NARR import loadNARRLTM

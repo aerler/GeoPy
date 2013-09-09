@@ -47,8 +47,8 @@ class VarNC(Variable):
     super(VarNC,self).__init__(name=name, units=units, axes=axes, data=None, mask=None, fillValue=fillValue, atts=ncatts, plot=plot)
     # assign special attributes
     self.__dict__['ncvar'] = ncvar
-    self.__dict__['scalefactor'] = scalefactor
     self.__dict__['offset'] = offset
+    self.__dict__['scalefactor'] = scalefactor
     if load: self.load() # load data here 
   
   def __getitem__(self, idx=None):
@@ -82,8 +82,8 @@ class VarNC(Variable):
       assert isinstance(data,np.ndarray) 
       data = data
     # apply scalefactor and offset
-    if self.scalefactor != 1: data *= self.scalefactor
     if self.offset != 0: data += self.offset
+    if self.scalefactor != 1: data *= self.scalefactor
     # load data    
     super(VarNC,self).load(data=data, **kwargs) # load actual data using parent method
     # no need to return anything...
@@ -119,7 +119,8 @@ class NetCDFDataset(Dataset):
     implements collective operations on all variables in the dataset.
   '''
   
-  def __init__(self, folder='', dataset=None, filelist=None, varlist=None, varatts=None, atts=None, multifile=False, ncformat='NETCDF4'):
+  def __init__(self, folder='', dataset=None, filelist=None, varlist=None, varatts=None, atts=None, axes=None, 
+               multifile=False, check_override=None, ncformat='NETCDF4'):
     ''' 
       Create a Dataset from one or more NetCDF files; Variables are created from NetCDF variables. 
       
@@ -152,14 +153,17 @@ class NetCDFDataset(Dataset):
         files.append(tmpfile)
       filelist = files # original file list, including folders        
     # create axes from netcdf dimensions and coordinate variables
-    if varatts is None: varatts = dict() # empty dictionary means no parameters... 
-    axes = dict()
+    if varatts is None: varatts = dict() # empty dictionary means no parameters...
+    if check_override is None: check_override = [] # list of variables (and axes) that is not checked for consistency 
+    if axes is None: axes = dict()
+    else: check_override += axes.keys()   
+    assert isinstance(axes,dict)
     for ds in datasets:
       for dim in ds.dimensions.keys():
         if dim in ds.variables: # dimensions with an associated coordinate variable 
           if dim in axes: # if already present, make sure axes are essentially the same
             tmpax = AxisNC(ncvar=ds.variables[dim], **varatts.get(dim,{})) # apply all correction factors...
-            if not isEqual(axes[dim][:],tmpax[:]): 
+            if dim not in check_override and not isEqual(axes[dim][:],tmpax[:]): 
               raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
           else: # if this is a new axis, add it to the list
             axes[dim] = AxisNC(ncvar=ds.variables[dim], **varatts.get(dim,{})) # also use overrride parameters
@@ -170,7 +174,7 @@ class NetCDFDataset(Dataset):
           else: # if this is a new axis, add it to the list
             params = dict(name=dim,length=len(ds.dimensions[dim])); params.update(varatts.get(dim,{})) 
             axes[dim] = Axis(**params) # also use overrride parameters          
-    # create variables from netcdf variables
+    # create variables from netcdf variables    
     variables = dict()
     for ds in datasets:
       if varlist is None: dsvars = ds.variables.keys()
@@ -179,8 +183,8 @@ class NetCDFDataset(Dataset):
       for var in dsvars:
         if var in axes: pass # do not treat coordinate variables as real variables 
         elif var in variables: # if already present, make sure variables are essentially the same
-          if (variables[var].shape != ds.variables[var].shape) or \
-             (variables[var].ncvar.dimensions != ds.variables[var].dimensions): 
+          if dim not in check_override and ( (variables[var].shape != ds.variables[var].shape) or
+                                             (variables[var].ncvar.dimensions != ds.variables[var].dimensions) ): 
             raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible variables.' 
         else: # if this is a new variable, add it to the list
           if all([axes.has_key(dim) for dim in ds.variables[var].dimensions]):

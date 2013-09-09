@@ -86,7 +86,7 @@ class BaseVarTest(unittest.TestCase):
     # get test objects
     var = self.var
     # indexing (getitem) test  
-    if len(var) == 3:  
+    if var.ndim == 3:  
       assert isEqual(self.data[1,1,1], var[1,1,1], masked_equal=True)
       assert isEqual(self.data[1,:,1:-1], var[1,:,1:-1], masked_equal=True)
       
@@ -335,7 +335,7 @@ class NetCDFVarTest(BaseVarTest):
     # load data with new scaling
     var.load()
     assert self.size == var.shape
-    assert isEqual(self.data*2+100., var.data_array)
+    assert isEqual((self.data+100.)*2, var.data_array)
   
   def testLoadSlice(self):
     ''' test loading of slices '''
@@ -343,7 +343,7 @@ class NetCDFVarTest(BaseVarTest):
     var = self.var
     var.unload()
     # load slice
-    if len(var) == 3:
+    if var.ndim == 3:
       sl = (slice(0,12,1),slice(20,50,5),slice(70,140,15))
       var.load(sl)
       assert (12,6,5) == var.shape
@@ -357,7 +357,7 @@ class NetCDFVarTest(BaseVarTest):
     # get test objects
     var = self.var
     # indexing (getitem) test    
-    if len(var) == 3:
+    if var.ndim == 3:
       assert isEqual(self.data[1,1,1], var[1,1,1])
       assert isEqual(self.data[1,:,1:-1], var[1,:,1:-1])
     # test axes
@@ -435,7 +435,8 @@ class NetCDFDatasetTest(BaseDatasetTest):
 
 
 # import modules to be tested
-from geodata.gdal import addGDAL, getProjNARR
+from geodata.gdal import addGDAL
+from datasets.NARR import projdict
 
 class GDALVarTest(NetCDFVarTest):  
   
@@ -451,7 +452,7 @@ class GDALVarTest(NetCDFVarTest):
     super(GDALVarTest,self).setUp()
     # add GDAL functionality to variable
     if self.dataset == 'NARR':
-      self.var = addGDAL(self.var, projection=getProjNARR())
+      self.var = addGDAL(self.var, projection=projdict)
     else: 
       self.var = addGDAL(self.var)
       
@@ -489,8 +490,8 @@ if __name__ == "__main__":
     # tests to be performed
     # list of variable tests
     tests = ['BaseVar'] 
-    tests = ['NetCDFVar']
-    tests = ['GDALVar']
+#     tests = ['NetCDFVar']
+#     tests = ['GDALVar']
     # list of dataset tests
 #     tests = ['BaseDataset']
 #     tests = ['NetCDFDataset']

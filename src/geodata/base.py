@@ -197,10 +197,10 @@ class Variable(object):
 #     ''' Check if the variable instance has a particular axis. '''
 #     # same as class method
 #     return self.hasAxis(axis)
-  
-  def __len__(self):
-    ''' Return number of dimensions. '''
-    return self.__dict__['ndim']
+#   
+#   def __len__(self):
+#     ''' Return number of dimensions. '''
+#     return self.__dict__['ndim']
   
   def axisIndex(self, axis):
     ''' Return the index of a particular axis. (return None if not found) '''
@@ -479,12 +479,12 @@ class Axis(Variable):
         data = np.linspace(*coord)
       elif isinstance(coord,np.ndarray) and coord.ndim == 1:
         data = coord
-      elif isinstance(coord,tuple) or isinstance(coord,list):
+      elif isinstance(coord,(list,tuple)):
         data = np.asarray(coord)
       else: #data = coord
         raise TypeError, 'Data type not supported for coordinate values.'
       # load data
-      self.load(data, mask=None, **varargs)
+      self.load(data=data, mask=None, **varargs)
       
 
   def __len__(self):
