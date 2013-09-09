@@ -8,4 +8,5 @@ submodules also contain meta data and projection parameters.
 @author: Andre R. Erler, GPL v3
 '''
 
-from datasets.NARR import loadNARRLTM
+from datasets.NARR import loadNARRLTM, loadNARRTS
+from datasets.GPCC import loadGPCCLTM, loadGPCCTS

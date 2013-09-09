@@ -92,7 +92,8 @@ def addGDAL(var, projection=None, geotransform=None):
         isProjected = True; xlon = var.x; ylat = var.y
       elif var.hasAxis('lon') and var.hasAxis('lat'):
         isProjected = False; xlon = var.lon; ylat = var.lat
-        projection = osr.SpatialReference(); projection.ImportFromEPSG(4326) # normal lat/lon projection       
+        projection = osr.SpatialReference() 
+        projection.SetWellKnownGeogCS('WGS84') # normal lat/lon projection       
     # if the variable is map-like, add GDAL properties
     if xlon is not None and ylat is not None:
       lgdal = True
@@ -231,7 +232,8 @@ def GDALDataset(dataset, projection=None, geotransform=None):
         isProjected = True; xlon = dataset.x; ylat = dataset.y
       elif dataset.hasAxis('lon') and dataset.hasAxis('lat'):
         isProjected = False; xlon = dataset.lon; ylat = dataset.lat
-        projection = osr.SpatialReference(); projection.ImportFromEPSG(4326) # normal lat/lon projection       
+        projection = osr.SpatialReference() 
+        projection.SetWellKnownGeogCS('WGS84') # normal lat/lon projection       
     # if the variable is map-like, add GDAL properties
     if xlon is not None and ylat is not None:
       lgdal = True

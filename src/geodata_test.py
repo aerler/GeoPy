@@ -489,9 +489,9 @@ if __name__ == "__main__":
 
     # tests to be performed
     # list of variable tests
-    tests = ['BaseVar'] 
+#     tests = ['BaseVar'] 
 #     tests = ['NetCDFVar']
-#     tests = ['GDALVar']
+    tests = ['GDALVar']
     # list of dataset tests
 #     tests = ['BaseDataset']
 #     tests = ['NetCDFDataset']

@@ -12,16 +12,16 @@ from geodata.netcdf import NetCDFDataset
 from geodata.gdal import GDALDataset, getProjFromDict
 from geodata.misc import DatasetError 
 
-## NARR Climatology (LTM - Long Term Mean)
+## NARR Meta-data
 
 # projection
-projdict = dict(proj = 'lcc', # Lambert Conformal Conic  
-                lat1 =   50., # Latitude of first standard parallel
-                lat2 =   50., # Latitude of second standard parallel
-                lat0 =   50., # Latitude of natural origin
-                lon0 = -107., # Longitude of natural origin
-                x0   = 5632642.22547, # False Origin Easting
-                y0   = 4612545.65137) # False Origin Northing
+projdict = dict(proj  = 'lcc', # Lambert Conformal Conic  
+                lat_1 =   50., # Latitude of first standard parallel
+                lat_2 =   50., # Latitude of second standard parallel
+                lat_0 =   50., # Latitude of natural origin
+                lon_0 = -107., # Longitude of natural origin
+                x_0   = 5632642.22547, # False Origin Easting
+                y_0   = 4612545.65137) # False Origin Northing
 
 # variable attributes and name
 varatts = dict(air   = dict(name='T2', units='K'), # 2m Temperature
@@ -31,9 +31,10 @@ varatts = dict(air   = dict(name='T2', units='K'), # 2m Temperature
                lon   = dict(name='lon', units='deg E'), # geographic longitude field
                lat   = dict(name='lat', units='deg N'), # geographic latitude field
                time  = dict(name='time', units='days', offset=-1569072, scalefactor=1./24.), # time coordinate
-               # N.B.: the time coordinate is only used for the monthly data, not the LTM, which starts in 1979   
-               x     = dict(name='x', units='m', offset=-1*projdict['x0']), # projected west-east coordinate
-               y     = dict(name='y', units='m', offset=-1*projdict['y0'])) # projected south-north coordinate
+               # N.B.: the time coordinate is only used for the monthly time-series data, not the LTM
+               #       the time offset is chose such that 1979 begins with the origin (time=0)   
+               x     = dict(name='x', units='m', offset=-1*projdict['x_0']), # projected west-east coordinate
+               y     = dict(name='y', units='m', offset=-1*projdict['y_0'])) # projected south-north coordinate
 # N.B.: At the moment Skin Temperature can not be handled this way due to a name conflict with Air Temperature
 # list of variables to load
 varlist = varatts.keys() # also includes coordinate fields    
@@ -46,7 +47,8 @@ special = dict(air='air.2m') # some variables need special treatment
 
 ## Functions to load different types of NARR datasets 
 
-def loadNARRLTM(varlist=varlist, interval='monthly', varatts=varatts, projection=projdict, filelist=None, folder=folder):
+# Climatology (LTM - Long Term Mean)
+def loadNARRLTM(varlist=varlist, interval='monthly', varatts=varatts, filelist=None, folder=folder):
   ''' Get a properly formatted dataset of daily or monthly NARR climatologies (LTM). '''
   # prepare input
   folder += 'LTM/' # LTM subfolder
@@ -73,7 +75,8 @@ def loadNARRLTM(varlist=varlist, interval='monthly', varatts=varatts, projection
   # return formatted dataset
   return dataset
 
-def loadNARR(varlist=varlist, varatts=varatts, projection=projdict, filelist=None, folder=folder):
+# Time-series (monthly)
+def loadNARRTS(varlist=varlist, varatts=varatts, filelist=None, folder=folder):
   ''' Get a properly formatted  NARR dataset with monthly mean time-series. '''
   # prepare input
   folder += 'Monthly/' # monthly subfolder
@@ -98,7 +101,7 @@ def loadNARR(varlist=varlist, varatts=varatts, projection=projdict, filelist=Non
 if __name__ == '__main__':
     
     # load dataset
-    dataset = loadNARR(varlist=['T2','precip'])
+    dataset = loadNARRTS(varlist=['T2','precip'])
     
     # print dataset
     print(dataset)
@@ -108,4 +111,4 @@ if __name__ == '__main__':
     print
     print time
     print time.scalefactor
-    print time[:]
+#     print time[:]
