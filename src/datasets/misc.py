@@ -12,6 +12,10 @@ import numpy as np
 days_per_month = np.array([31,28.2425,31,30,31,30,31,31,30,31,30,31]) # 97 leap days every 400 years
 # N.B.: the Gregorian calendar repeats every 400 years
 days_per_month_365 = np.array([31,28,31,30,31,30,31,31,30,31,30,31]) # no leap day
+# human-readable names
+months_names = ['January  ', 'February ', 'March    ', 'April    ', 'May      ', 'June     ', #
+                'July     ', 'August   ', 'September', 'October  ', 'November ', 'December ']
+
 
 def translateVarNames(varlist, varatts):
   ''' Simple function to replace names in a variable list with their original names as inferred from the 
@@ -24,6 +28,11 @@ def translateVarNames(varlist, varatts):
   # return varlist with final names replaced by original names
   return varlist
   
-
-if __name__ == '__main__':
-    pass
+# data root folder
+import socket
+hostname = socket.gethostname()
+if hostname=='komputer':
+  data_root = '/home/DATA/DATA/'
+#  root = '/media/tmp/' # RAM disk for development
+else:
+  data_root = '/home/me/DATA/PRISM/'

@@ -13,7 +13,7 @@ from geodata.base import Variable
 from geodata.netcdf import NetCDFDataset
 from geodata.gdal import GDALDataset
 from geodata.misc import DatasetError 
-from datasets.misc import translateVarNames, days_per_month
+from datasets.misc import translateVarNames, days_per_month, data_root
  
 ## GPCC Meta-data
 
@@ -25,16 +25,14 @@ varatts = dict(p    = dict(name='precip', units='mm/month'), # total precipitati
                lat  = dict(name='lat', units='deg N')) # geographic latitude field
 #                time = dict(name='time', units='days', offset=1)) # time coordinate
 # attributes of the time axis depend on type of dataset 
-ltmvaratts = dict(time=dict(name='time', units='days', offset=1), **varatts) 
-tsvaratts = dict(time=dict(name='time', units='days', offset=-28854), **varatts)
+ltmvaratts = dict(time=dict(name='time', units='month', offset=1), **varatts) 
+tsvaratts = dict(time=dict(name='time', units='day', offset=-28854), **varatts)
 # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
 # list of variables to load
 varlist = varatts.keys() # also includes coordinate fields    
 
 # variable and file lists settings
-rootfolder = '/home/DATA/DATA/GPCC/' # long-term mean folder
-nofile = ('lat','lon','time') # variables that don't have their own files
-special = dict(air='air.2m') # some variables need special treatment
+rootfolder = data_root + 'GPCC/' # long-term mean folder
 
 
 ## Functions to load different types of GPCC datasets 

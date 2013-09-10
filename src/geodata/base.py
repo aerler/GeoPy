@@ -163,10 +163,10 @@ class Variable(object):
       shape = '(' # shape
       for l in self.shape: shape += '{0:d},'.format(l)
       shape += ')'
-      if not self in self.axes:
+      if not self in self.axes: # this is to avoid code duplication in Axis class
         axes = 'Axes: '
         for ax in self.axes: axes += '{0:s},'.format(ax.name)
-      else: axes = self.__class__.__name__ # Class in this case
+      else: axes = self.__class__.__name__ # Class name (usually an Axis)
       string = '{:<20}  {:>14s}  {:s}'.format(name,shape,axes)
     else:
       string = '{0:s} {1:s} [{2:s}]   {3:s}\n'.format(self.__class__.__name__,self.name,self.units,self.__class__)

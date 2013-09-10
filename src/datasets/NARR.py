@@ -11,6 +11,7 @@ from geodata.base import Axis
 from geodata.netcdf import NetCDFDataset
 from geodata.gdal import GDALDataset, getProjFromDict
 from geodata.misc import DatasetError 
+from datasets.misc import translateVarNames, days_per_month, data_root
 
 ## NARR Meta-data
 
@@ -40,7 +41,7 @@ varatts = dict(air   = dict(name='T2', units='K'), # 2m Temperature
 varlist = varatts.keys() # also includes coordinate fields    
 
 # variable and file lists settings
-folder = '/home/DATA/DATA/NARR/' # long-term mean folder
+rootfolder = data_root + 'NARR/' # root folder
 nofile = ('lat','lon','x','y','time') # variables that don't have their own files
 special = dict(air='air.2m') # some variables need special treatment
 
@@ -48,20 +49,17 @@ special = dict(air='air.2m') # some variables need special treatment
 ## Functions to load different types of NARR datasets 
 
 # Climatology (LTM - Long Term Mean)
-def loadNARRLTM(varlist=varlist, interval='monthly', varatts=varatts, filelist=None, folder=folder):
+ltmfolder = rootfolder + 'LTM/' # LTM subfolder
+def loadNARRLTM(varlist=varlist, interval='monthly', varatts=varatts, filelist=None, folder=ltmfolder):
   ''' Get a properly formatted dataset of daily or monthly NARR climatologies (LTM). '''
   # prepare input
-  folder += 'LTM/' # LTM subfolder
   if interval == 'monthly': 
     pfx = '.mon.ltm.nc'; tlen = 12
   elif interval == 'daily': 
     pfx = '.day.ltm.nc'; tlen = 365
   else: raise DatasetError, "Selected interval '%s' is not supported!"%interval
   # translate varlist
-  if varlist and varatts:
-    for key,value in varatts.iteritems():
-      if value['name'] in varlist: 
-        varlist[varlist.index(value['name'])] = key # original name
+  if varlist and varatts: varlist = translateVarNames(varlist, varatts)  
   # axes dictionary, primarily to override time axis 
   axes = dict(time=Axis(name='time',units='day',coord=(1,tlen,tlen)),load=True)
   if filelist is None: # generate default filelist
@@ -76,16 +74,13 @@ def loadNARRLTM(varlist=varlist, interval='monthly', varatts=varatts, filelist=N
   return dataset
 
 # Time-series (monthly)
-def loadNARRTS(varlist=varlist, varatts=varatts, filelist=None, folder=folder):
+tsfolder = rootfolder + 'Monthly/' # monthly subfolder
+def loadNARRTS(varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
   ''' Get a properly formatted  NARR dataset with monthly mean time-series. '''
-  # prepare input
-  folder += 'Monthly/' # monthly subfolder
+  # prepare input  
   pfx = '.mon.mean.nc'
   # translate varlist
-  if varlist and varatts:
-    for key,value in varatts.iteritems():
-      if value['name'] in varlist: 
-        varlist[varlist.index(value['name'])] = key # original name
+  if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   if filelist is None: # generate default filelist
     filelist = [special[var]+pfx if var in special else var+pfx for var in varlist if var not in nofile]
   # load dataset
