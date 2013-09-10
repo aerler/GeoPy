@@ -102,18 +102,20 @@ def isOne(data, eps=None, masked_equal=True):
 # check if two arrays are equal within machine precision
 def isEqual(left, right, eps=None, masked_equal=True):
   ''' This function checks if two numpy arrays or scalars are equal within machine precision, and returns a scalar logical. '''
-  assert left.__class__==right.__class__, 'Both arguments to function \'isEqual\' must be of the same class!'
   if isinstance(left,np.ndarray):
+    assert isinstance(right,np.ndarray), "Both arguments to function 'isEqual' must be of the same class!"
     assert left.dtype==right.dtype, 'Both arguments to function \'isEqual\' must be of the same type!'
     if np.issubdtype(left.dtype, np.inexact): # also catch float32 etc
       return ma.allclose(left, right, masked_equal=True)
     elif np.issubdtype(left.dtype, np.integer) or np.issubdtype(left.dtype, np.bool):
       return all( left == right )
   elif isinstance(left,float) or isinstance(left, np.inexact):
-      if eps is None: eps = 100.*floateps # default
-      return np.absolute(left-right) <= eps
+    assert isinstance(right,(float,np.inexact)), "Both arguments to function 'isEqual' must be of the same class!"
+    if eps is None: eps = 100.*floateps # default
+    return np.absolute(left-right) <= eps
   elif isinstance(left,(int,bool)) or isinstance(left, (np.integer,np.bool)):
-      return left == right
+    assert isinstance(right,(int,bool,np.integer,np.bool)), "Both arguments to function 'isEqual' must be of the same class!"
+    return left == right
   else: raise TypeError
 
 
@@ -239,6 +241,10 @@ class DataError(VariableError):
 
 class DatasetError(VariableError):
   ''' Base class for exceptions occurring in Dataset methods. '''
+  pass
+
+class NetCDFError(VariableError):
+  ''' Exceptions related to NetCDF file access. '''
   pass
 
 ## simple application code

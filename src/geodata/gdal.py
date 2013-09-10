@@ -119,8 +119,8 @@ def addGDAL(var, projection=None, geotransform=None):
       # check if GDAL geotransform vector is consistent with coordinate vectors
       assert len(geotransform) == 6, '\'geotransform\' has to be a vector or list with 6 elements.'
       dx = geotransform[1]; dy = geotransform[5]; ulx = geotransform[0]; uly = geotransform[3] 
-      assert isZero(np.diff(xlon)-dx) and isZero(np.diff(ylat)-dy), 'Coordinate vectors have to be compatible with geotransform!'
-      assert isEqual(uly+dx/2,xlon[0]) and isEqual(uly+dy/2,ylat[0]) # coordinates of upper left corner (same for source and sink)       
+#       assert isZero(np.diff(xlon)-dx) and isZero(np.diff(ylat)-dy), 'Coordinate vectors have to be compatible with geotransform!'
+      assert isEqual(ulx+dx/2,xlon[0]) and isEqual(uly+dy/2,ylat[0]) # coordinates of upper left corner (same for source and sink)       
     else: assert len(geotransform) == 6 and all(isFloat(geotransform)), '\'geotransform\' has to be a vector or list of 6 floating-point numbers.'
     # add new instance attributes (projection parameters)
     var.__dict__['isProjected'] = isProjected    
@@ -134,7 +134,7 @@ def addGDAL(var, projection=None, geotransform=None):
     # append projection info  
     def prettyPrint(self, short=False):
       ''' Add projection information in to string in long format. '''
-      string = super(var.__class__,self).prettyPrint(short=short)
+      string = var.__class__.prettyPrint(self, short=short)
       if not short:
         if var.projection is not None:
           string += '\nProjection: {0:s}'.format(self.projection.ExportToWkt())
@@ -142,6 +142,14 @@ def addGDAL(var, projection=None, geotransform=None):
     # add new method to object
     var.prettyPrint = types.MethodType(prettyPrint,var)
     
+    def copy(self, **newargs):
+      ''' A method to copy the Variable with just a link to the data. '''
+      var = self.__class__.copy(self, **newargs) # use class copy() function
+      var = addGDAL(var, projection=self.projection, geotransform=self.geotransform) # add GDAL functionality      
+      return var
+    # add new method to object
+    var.copy = types.MethodType(copy,var)
+        
     # define GDAL-related 'class methods'  
     def getGDAL(self, load=True):
       ''' Method that returns a gdal dataset, ready for use with GDAL routines. '''

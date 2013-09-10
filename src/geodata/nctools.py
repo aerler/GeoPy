@@ -5,10 +5,11 @@ Some simple functions built on top of the netCDF4-python module.
 
 @author: Andre R. Erler, GPL v3
 '''
-
-## netCDF4-python module: Dataset is probably all we need
-import netCDF4 as nc
+# external imports
+import netCDF4 as nc # netCDF4-python module: Dataset is probably all we need
 import numpy as np
+import collections as col
+# internal imports
 from geodata.misc import isNumber
 
 ## definitions
@@ -18,7 +19,7 @@ zlib_default = dict(zlib=True, complevel=1, shuffle=True) # my own default compr
 ## generic functions
 
 # add a new dimension with coordinate variable
-def add_coord(dst, name, values=None, atts=None, dtype=None, zlib=True, fillValue=None, **kwargs):
+def add_coord(dst, name, values=None, length=None, atts=None, dtype=None, zlib=True, fillValue=None, **kwargs):
   # all remaining kwargs are passed on to dst.createVariable()
   # create dimension
   if dst.dimensions.has_key(name):
@@ -27,6 +28,8 @@ def add_coord(dst, name, values=None, atts=None, dtype=None, zlib=True, fillValu
     if values is not None:
       if not dtype: dtype = values.dtype # should be standard... 
       dst.createDimension(name, size=len(values))
+    elif length is not None:
+      dst.createDimension(name, size=length)
     else:
       dst.createDimension(name, size=None) # unlimited dimension
   # create coordinate variable
@@ -45,7 +48,7 @@ def add_coord(dst, name, values=None, atts=None, dtype=None, zlib=True, fillValu
 def add_var(dst, name, dims, values=None, atts=None, dtype=None, zlib=True, fillValue=None, **kwargs):
   # all remaining kwargs are passed on to dst.createVariable()
   # use values array to infer dimensions and data type
-  if not values is None: 
+  if values is not None: 
     # check/create dimension
     assert len(dims) == values.ndim, '\nWARNING: Number of dimensions does not match (%s)!\n'%(name,)    
     for i in xrange(len(dims)):
@@ -61,7 +64,7 @@ def add_var(dst, name, dims, values=None, atts=None, dtype=None, zlib=True, fill
   if fillValue is not None: atts['_FillValue'] = fillValue
   elif atts and '_FillValue' in atts: fillValue = atts['_FillValue']
   else: fillValue = None # masked array handling could go here
-  if fillValue is not None: atts['missing_value'] = fillValue # I use fillValue and missing_value the same way 
+  if fillValue is not None: atts['missing_value'] = fillValue # I use fillValue and missing_value the same way
   var = dst.createVariable(name, dtype, dims, fill_value=fillValue, **varargs)
   if atts: # add attributes
     for key,value in atts.iteritems():
@@ -129,7 +132,7 @@ def coerceAtts(atts):
   # loop over items
   for key,value in ncatts.iteritems():
     if not isinstance(value,(basestring,np.ndarray,float,int)):
-      if isinstance(value,(list,tuple)):
+      if isinstance(value,col.Iterable):
         if len(value) == 0: ncatts[key] = '' # empty attribute
         elif all(isNumber(value)): ncatts[key] = np.array(value)
         else:
@@ -140,19 +143,27 @@ def coerceAtts(atts):
       else: ncatts[key] = str(value) 
   return ncatts
 
-def writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True):
+def writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True, writeData=True, close=True):
   ''' A function to write the data in a generic Dataset to a NetCDF file. '''
   # open file
+  print filename,ncformat
   ncfile = nc.Dataset(filename, mode='w', format=ncformat)
   ncfile.setncatts(coerceAtts(dataset.atts))
   # add coordinate variables first
   for name,ax in dataset.axes.iteritems():
     if ax.data: # only need to add real coordinate axes; simple dimensions are added on-the-fly below
-      add_coord(ncfile, name, values=ax.data_array, atts=coerceAtts(ax.atts), dtype=ax.dtype, zlib=zlib, fillValue=ax.fillValue)
+      if writeData:
+        add_coord(ncfile, name, values=ax.getArray(unmask=True), atts=coerceAtts(ax.atts), dtype=ax.dtype, zlib=zlib, fillValue=ax.fillValue)
+      else:
+        add_coord(ncfile, name, length=len(ax), atts=coerceAtts(ax.atts), dtype=ax.dtype, zlib=zlib, fillValue=ax.fillValue)
   # now add variables
   for name,var in dataset.variables.iteritems():
-    dims = tuple([ax.name for ax in var.axes]) 
-    add_var(ncfile, name, dims=dims, values=var.getArray(unmask=True), atts=coerceAtts(var.atts), dtype=var.dtype, zlib=zlib, fillValue=var.fillValue)
-  # close file
-  ncfile.close()
+    dims = tuple([ax.name for ax in var.axes])
+    if writeData: 
+      add_var(ncfile, name, dims=dims, values=var.getArray(unmask=True), atts=coerceAtts(var.atts), dtype=var.dtype, zlib=zlib, fillValue=var.fillValue)
+    else: 
+      add_var(ncfile, name, dims=dims, values=None, atts=coerceAtts(var.atts), dtype=var.dtype, zlib=zlib, fillValue=var.fillValue)
+  # close file or return file handle
+  if close: ncfile.close()
+  else: return ncfile
   

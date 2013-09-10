@@ -69,6 +69,21 @@ class BaseVarTest(unittest.TestCase):
     assert self.size == var.shape
     assert isEqual(self.data, var.data_array)
     
+  def testCopy(self):
+    ''' test copy and deepcopy of variables (and axes) '''
+    # get copy of variable
+    var = self.var.deepcopy(name='different') # deepcopy calls copy
+    # check identity
+    assert var != self.var
+    assert var.name == 'different' and self.var.name != 'different'      
+    assert var.units == self.var.units
+    for key,value in var.atts.iteritems():
+      assert np.all(value == self.var.atts[key])
+    assert isEqual(var.data_array,self.var.data_array) 
+    # change array
+    var.data_array += 1 # test if we have a true copy and not just a reference 
+    assert not isEqual(var.data_array,self.var.data_array)
+    
   def testAttributes(self):
     ''' test handling of attributes '''
     # get test objects
@@ -226,15 +241,18 @@ class BaseDatasetTest(unittest.TestCase):
     ''' write test dataset to a netcdf file '''    
     folder = '/media/tmp/' # RAM disk
     filename = folder + 'test.nc'
+    if os.path.exists(filename): os.remove(filename)
     # add non-conforming attribute
     self.dataset.atts['test'] = [1,'test',3]
     # write file
-    writeNetCDF(self.dataset,filename)
+    writeNetCDF(self.dataset,filename,writeData=True)
     # check that it is OK
     assert os.path.exists(filename)
     ncfile = nc.Dataset(filename)
     assert ncfile
     print(ncfile)
+    ncfile.close()
+    if os.path.exists(filename): os.remove(filename)
   
   def testAddRemove(self):
     ''' test adding and removing variables '''
@@ -433,6 +451,27 @@ class NetCDFDatasetTest(BaseDatasetTest):
     dataset.unload()
     assert all([not var.data for var in dataset])
 
+  def testCreate(self):
+    ''' test creation of a new NetCDF dataset and file '''
+    folder = '/media/tmp/' # RAM disk
+    filename = folder + 'test.nc'
+    if os.path.exists(filename): os.remove(filename)
+    # create NetCDF Dataset
+    dataset = NetCDFDataset(filelist=[filename],mode='w')
+#     print(dataset)
+    # add some random variables and attribute
+    dataset.atts.test = 'test'
+    dataset.sync()
+#     print(dataset)
+    # synchronize with disk and close     
+    dataset.close()
+    # check that it is OK
+    assert os.path.exists(filename)
+    ncfile = nc.Dataset(filename)
+    assert ncfile
+    print(ncfile)
+    ncfile.close()
+
 
 # import modules to be tested
 from geodata.gdal import addGDAL
@@ -489,8 +528,8 @@ if __name__ == "__main__":
 
     # tests to be performed
     # list of variable tests
-#     tests = ['BaseVar'] 
-#     tests = ['NetCDFVar']
+    tests = ['BaseVar'] 
+    tests = ['NetCDFVar']
     tests = ['GDALVar']
     # list of dataset tests
 #     tests = ['BaseDataset']

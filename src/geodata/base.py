@@ -82,7 +82,7 @@ class Variable(object):
     The basic variable class; it mainly implements arithmetic operations and indexing/slicing.
   '''
   
-  def __init__(self, name='N/A', units='N/A', axes=None, data=None, mask=None, fillValue=None, atts=None, plot=None):
+  def __init__(self, name='N/A', units='N/A', axes=None, data=None, dtype='', mask=None, fillValue=None, atts=None, plot=None):
     ''' 
       Initialize variable and attributes.
       
@@ -104,10 +104,12 @@ class Variable(object):
     '''
     # basic input check
     if data is None:
-      ldata = False; shape = None; dtype = ''
+      ldata = False; shape = None
     else:
       assert isinstance(data,np.ndarray), 'The data argument must be a numpy array!'
-      ldata = True; shape = data.shape; dtype = data.dtype
+      ldata = True; shape = data.shape; 
+      if dtype and dtype is not data.dtype: 
+        raise TypeError, "Declared data type '%s' does not match the data type of the array (%s)."%(str(dtype),str(data.dtype))
       if axes is not None:
         assert len(axes) == data.ndim, 'Dimensions of data array and axes are note compatible!'
     # for completeness of MRO...
@@ -138,7 +140,7 @@ class Variable(object):
     self.__dict__['ndim'] = len(axes)  
     # create shortcuts to axes (using names as member attributes) 
     for ax in axes: self.__dict__[ax.name] = ax
-    # cast attributes dicts as AttrDict to fcilitate easy access 
+    # cast attributes dicts as AttrDict to facilitate easy access 
     if atts is None: atts = dict(name=self.name, units=self.units)
     self.__dict__['atts'] = AttrDict(**atts)
     if plot is None: # try to find sensible default values 
@@ -175,13 +177,26 @@ class Variable(object):
       string += 'Plot Attributes: {0:s}'.format(str(self.plot))
     return string
   
-  def __copy__(self):
-    ''' A method to copy the Variable without the data. '''
-    raise NotImplementedError
+  def copy(self, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
+    ''' A method to copy the Variable with just a link to the data. '''
+    args = dict(name=self.name, units=self.units, axes=self.axes, data=None, dtype=self.dtype,
+                mask=None, fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
+    if self.data: args['data'] = self.data_array
+    args.update(newargs) # apply custom arguments (also arguments related to subclasses)
+    var = Variable(**args) # create a new basic Variable instance
+    # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
+    return var
   
-  def __deepcopy__(self):
-    ''' A method to copy the Variable and the data. '''
-    raise NotImplementedError
+  def deepcopy(self, **newargs): # in almost all cases, this methods will be inherited from here
+    ''' A method to generate an entirely independent variable instance (copy meta data, data array, and axes). '''
+    # copy axes (generating ordinary Axis instances with coordinate arrays)
+    if 'axes' not in newargs: newargs['axes'] = tuple([ax.deepcopy() for ax in self.axes]) # allow override though
+    # copy meta data
+    var = self.copy(**newargs) # use instance copy() - this method can be overloaded!   
+    # replace link with new copy of data array
+    if self.data: var.load(data=self.getArray(unmask=False,copy=True))
+    # N.B.: using load() and getArray() should automatically take care of any special needs 
+    return var
 
   def hasAxis(self, axis):
     ''' Check if the variable instance has a particular axis. '''
@@ -446,11 +461,30 @@ class Axis(Variable):
     # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple
     self.__dict__['coord'] = None
     self.__dict__['len'] = length 
-    # initialize as a subclass of Variable, depending on the multiple inheritance chain
+    # initialize as a subclass of Variable, depending on the multiple inheritance chain    
     super(Axis, self).__init__(axes=axes, **varargs)
     # add coordinate vector
     if coord is not None: self.updateCoord(coord)
     elif length > 0: self.updateLength(length)
+  
+  def copy(self, **newargs): # with multiple inheritance, this method will override all others
+    ''' A method to copy the Axis with just a link to the data. '''
+    args = dict(name=self.name, units=self.units, length=self.len, data=None, coord=None, 
+                dtype=self.dtype, mask=None, fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
+    if self.data: args['data'] = self.data_array
+    if self.data: args['coord'] = self.coord # btw. don't pass axes to and Axis constructor!
+    args.update(newargs) # apply custom arguments (also arguments related to subclasses)
+    ax = Axis(**args) # create a new basic Axis instance
+    # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
+    return ax
+  
+  def deepcopy(self, **newargs): # in almost all cases, this methods will be inherited from here
+    ''' A method to copy the Axis and also copy data array. '''
+    ax = self.copy(**newargs) # copy meta data
+    # replace link with new copy of data array
+    if self.data: ax.load(data=self.getArray(unmask=False,copy=True))
+    # N.B.: using load() and getArray() should automatically take care of any special needs 
+    return ax
     
   def load(self, *args, **kwargs):
     ''' Load a coordinate vector into an axis and update related attributes. '''
@@ -603,6 +637,36 @@ class Dataset(object):
       else: return False # not found
     else: # invalid input
       raise DatasetError, "Need a Axis instance or name to check for an Axis in the Dataset!"
+    
+  def copy(self, axes=None, varargs=None, axesdeep=False, varsdeep=False): # this methods will have to be overloaded, if class-specific behavior is desired
+    ''' A method to copy the Axes and Variables in a Dataset with just a link to the data arrays. '''
+    # copy axes (shallow copy)    
+    if not axes: # allow override
+      if axesdeep: newaxes = {name:ax.deepcopy() for name,ax in self.axes.iteritems()}
+      else: newaxes = {name:ax.copy() for name,ax in self.axes.iteritems()} 
+    # check input
+    if not isinstance(axes,dict): raise TypeError
+    if varargs: # copy() arguments for individual variables
+      if not isinstance(varargs,dict): raise TypeError
+    # copy variables
+    varlist = []
+    for var in self.variables.values():
+      axes = tuple([newaxes[ax.name] for ax in var.axes])
+      if var.name in varargs: # check input again
+        if not isinstance(varargs[var.name],dict): raise TypeError
+      if varsdeep: newvar = var.deepcopy(axes=axes, **varargs[var.name])
+      else: newvar = var.copy(axes=axes, **varargs[var.name])
+      varlist.append(newvar)
+    # make new dataset
+    dataset = Dataset(varlist=varlist, atts=self.atts.copy())
+    # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
+    return dataset
+  
+  def deepcopy(self, **kwargs): # ideally this does not have to be overloaded, but can just call copy()
+    ''' A method to generate an entirely independent Dataset instance (deepcopy of all data, variables, and axes). '''
+    kwargs['axesdeep'] = True; kwargs['varsdeep'] = True 
+    dataset = self.copy(**kwargs) 
+    return dataset
   
   def __str__(self):
     ''' Built-in method; we just overwrite to call 'prettyPrint()'. '''
