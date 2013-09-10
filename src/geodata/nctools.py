@@ -60,7 +60,8 @@ def add_var(dst, name, dims, values=None, atts=None, dtype=None, zlib=True, fill
   varargs.update(kwargs)
   if fillValue is not None: atts['_FillValue'] = fillValue
   elif atts and '_FillValue' in atts: fillValue = atts['_FillValue']
-  else: fillValue = None # masked array handling could go here 
+  else: fillValue = None # masked array handling could go here
+  if fillValue is not None: atts['missing_value'] = fillValue # I use fillValue and missing_value the same way 
   var = dst.createVariable(name, dtype, dims, fill_value=fillValue, **varargs)
   if atts: # add attributes
     for key,value in atts.iteritems():

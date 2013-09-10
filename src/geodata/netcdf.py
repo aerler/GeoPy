@@ -36,9 +36,9 @@ class VarNC(Variable):
     if fillValue is not None: fillValue = ncatts.pop('fillValue',ncatts.pop('_fillValue',None))
     for key in ['scale_factor', 'add_offset']: ncatts.pop(key,None) # already handled by NetCDf Python interface
     if name is None: name = ncatts.get('name',ncvar._name) # name in attributes has precedence
-    else: ncatts[name] = name
+    else: ncatts['name'] = name
     if units is None: units = ncatts.get('units','') # units are not mandatory
-    else: ncatts[units] = units
+    else: ncatts['units'] = units
     # update netcdf attributes with custom override
     if atts is not None: ncatts.update(atts)
     # construct axes, based on netcdf dimensions

@@ -9,4 +9,4 @@ submodules also contain meta data and projection parameters.
 '''
 
 from datasets.NARR import loadNARRLTM, loadNARRTS
-from datasets.GPCC import loadGPCCLTM, loadGPCCTS
+from datasets.GPCC import loadGPCCLTM, loadGPCCTS, loadGPCC

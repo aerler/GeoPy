@@ -11,7 +11,7 @@ import numpy as np
 import numpy.ma as ma # masked arrays
 # my own imports
 from atmdyn.properties import variablePlotatts # import plot properties from different file
-from misc import VariableError, DataError, DatasetError, checkIndex, isFloat, AttrDict, joinDicts
+from misc import VariableError, DataError, DatasetError, checkIndex, isEqual, isFloat, AttrDict, joinDicts
 
 import numbers
 import functools
@@ -24,8 +24,9 @@ class UnaryCheck(object):
   def __call__(self, orig, arg):
     ''' Perform sanity checks, then execute operation, and return result. '''
     if isinstance(arg,np.ndarray): 
-      assert orig.shape == arg.shape, 'Arrays need to have the same shape!' 
-      assert orig.dtype == arg.dtype, 'Arrays need to have the same type!'
+      pass # allow broadcasting and type-casting
+#       assert orig.shape == arg.shape, 'Arrays need to have the same shape!' 
+#       assert orig.dtype == arg.dtype, 'Arrays need to have the same type!'
     else: assert isinstance(arg, numbers.Number), 'Can only operate with numerical types!'
     if not orig.data: orig.load()
     var = self.op(orig,arg)
@@ -534,7 +535,10 @@ class Dataset(object):
       self.axes[ax.name] = ax
       self.__dict__[ax.name] = self.axes[ax.name] # create shortcut
     else: # make sure the axes are consistent between variable (i.e. same name, same axis)
-      assert ax is self.axes[ax.name], "Error: Axis '%s' in Variable '%s' and Dataset are different!"%(ax.name,var.name)
+      if not ax is self.axes[ax.name]:        
+        assert len(ax) == len(self.axes[ax.name]), "Error: Axis '%s' from Variable and Dataset are different!"%ax.name
+        if ax.data and self.axes[ax.name].data:
+          assert isEqual(ax.coord,self.axes[ax.name].coord)
     # double-check
     return self.axes.has_key(ax.name)       
     
