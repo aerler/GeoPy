@@ -243,10 +243,14 @@ class BaseDatasetTest(unittest.TestCase):
     folder = '/media/tmp/' # RAM disk
     filename = folder + 'test.nc'
     if os.path.exists(filename): os.remove(filename)
+    # test object
+    dataset = self.dataset
     # add non-conforming attribute
-    self.dataset.atts['test'] = [1,'test',3]
+    dataset.atts['test'] = [1,'test',3]
     # write file
-    writeNetCDF(self.dataset,filename,writeData=True)
+#     print dataset.y
+#     print dataset.y.getArray(), len(dataset.y)
+    writeNetCDF(dataset,filename,writeData=True)
     # check that it is OK
     assert os.path.exists(filename)
     ncfile = nc.Dataset(filename)
@@ -529,13 +533,13 @@ if __name__ == "__main__":
 
     # tests to be performed
     # list of variable tests
-    tests = ['BaseVar'] 
-    tests = ['NetCDFVar']
-    tests = ['GDALVar']
+#     tests = ['BaseVar'] 
+#     tests = ['NetCDFVar']
+#     tests = ['GDALVar']
     # list of dataset tests
 #     tests = ['BaseDataset']
 #     tests = ['DatasetNetCDF']
-#     tests = ['GDALDataset']    
+    tests = ['DatasetGDAL']    
     
     # run tests
     for test in tests:

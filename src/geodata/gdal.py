@@ -204,7 +204,7 @@ def addGDAL(var, projection=None, geotransform=None):
   ## the return value is actually not necessary, since the object is modified immediately
   return var
 
-def GDALDataset(dataset, projection=None, geotransform=None):
+def DatasetGDAL(dataset, projection=None, geotransform=None):
   ''' 
     A function that adds GDAL-based geographic projection features to an existing Variable instance.
     

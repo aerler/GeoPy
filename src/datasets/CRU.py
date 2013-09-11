@@ -8,8 +8,8 @@ This module contains meta data and access functions for the CRU climatology and 
 
 
 # internal imports
-from geodata.netcdf import NetCDFDataset
-from geodata.gdal import GDALDataset
+from geodata.netcdf import DatasetNetCDF
+from geodata.gdal import DatasetGDAL
 from datasets.misc import translateVarNames, days_per_month, months_names, data_root
  
 ## CRU Meta-data
@@ -48,10 +48,10 @@ def loadCRUTS(varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
   if filelist is None: # generate default filelist
     filelist = [filename%var for var in varlist if var not in nofile]
   # load dataset
-  dataset = NetCDFDataset(folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
+  dataset = DatasetNetCDF(folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           multifile=False, ncformat='NETCDF4_CLASSIC')
   # add projection  
-  dataset = GDALDataset(dataset, projection=None, geotransform=None)
+  dataset = DatasetGDAL(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
   # return formatted dataset
   return dataset

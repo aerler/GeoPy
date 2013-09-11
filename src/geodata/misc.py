@@ -243,6 +243,10 @@ class AxisError(VariableError):
   ''' Exceptions related to Axes. '''
   pass
 
+class PermissionError(VariableError):
+  ''' Exceptions raised when permissions are missing (such as defined by 'mode'). '''
+  pass
+
 class NetCDFError(VariableError):
   ''' Exceptions related to NetCDF file access. '''
   pass

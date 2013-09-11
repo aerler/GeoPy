@@ -8,8 +8,8 @@ This module contains meta data and access functions for NARR datasets.
 
 # from atmdyn.properties import variablePlotatts
 from geodata.base import Axis
-from geodata.netcdf import NetCDFDataset
-from geodata.gdal import GDALDataset, getProjFromDict
+from geodata.netcdf import DatasetNetCDF
+from geodata.gdal import DatasetGDAL, getProjFromDict
 from geodata.misc import DatasetError 
 from datasets.misc import translateVarNames, days_per_month, data_root
 
@@ -65,11 +65,11 @@ def loadNARRLTM(varlist=varlist, interval='monthly', varatts=varatts, filelist=N
   if filelist is None: # generate default filelist
     filelist = [special[var]+pfx if var in special else var+pfx for var in varlist if var not in nofile]
   # load dataset
-  dataset = NetCDFDataset(folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
+  dataset = DatasetNetCDF(folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           axes=axes, atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
   # add projection
   projection = getProjFromDict(projdict, name='NARR Coordinate System')
-  dataset = GDALDataset(dataset, projection=projection, geotransform=None)
+  dataset = DatasetGDAL(dataset, projection=projection, geotransform=None)
   # return formatted dataset
   return dataset
 
@@ -84,11 +84,11 @@ def loadNARRTS(varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder)
   if filelist is None: # generate default filelist
     filelist = [special[var]+pfx if var in special else var+pfx for var in varlist if var not in nofile]
   # load dataset
-  dataset = NetCDFDataset(folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
+  dataset = DatasetNetCDF(folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
   # add projection
   projection = getProjFromDict(projdict, name='NARR Coordinate System')
-  dataset = GDALDataset(dataset, projection=projection, geotransform=None)
+  dataset = DatasetGDAL(dataset, projection=projection, geotransform=None)
   # return formatted dataset
   return dataset
 

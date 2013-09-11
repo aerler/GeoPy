@@ -14,8 +14,8 @@ import netCDF4 as nc # netcdf python module
 from geodata.nctools import add_coord, add_var
 from datasets.misc import translateVarNames, data_root, days_per_month, months_names
 from geodata.misc import DatasetError
-from geodata.netcdf import NetCDFDataset
-from geodata.gdal import GDALDataset
+from geodata.netcdf import DatasetNetCDF
+from geodata.gdal import DatasetGDAL
 
 ## PRISM Meta-data
 
@@ -51,8 +51,8 @@ def loadPRISM(varlist=None, resolution=None, folder=avgfolder, filelist=None, va
   # filelist
   if filelist is None: filelist = [avgfile]
   # load dataset
-  dataset = NetCDFDataset(folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')  
-  dataset = GDALDataset(dataset, projection=None, geotransform=None)
+  dataset = DatasetNetCDF(folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')  
+  dataset = DatasetGDAL(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
   # return formatted dataset
   return dataset

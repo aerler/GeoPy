@@ -16,8 +16,9 @@ import os
 # import all base functionality from PyGeoDat
 # from nctools import * # my own netcdf toolkit
 from geodata.base import Variable, Axis, Dataset
-from geodata.misc import checkIndex, isEqual, DatasetError, DataError, AxisError, NetCDFError, joinDicts
-from geodata.nctools import coerceAtts, writeNetCDF
+from geodata.misc import checkIndex, isEqual, joinDicts
+from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError 
+from geodata.nctools import coerceAtts, writeNetCDF, add_var
 
 def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs):
   ''' Simple function to cast a Variable instance as a VarNC (NetCDF-capable Variable subclass). '''
@@ -46,7 +47,7 @@ def asAxisNC(ax=None, ncvar=None, mode='rw', deepcopy=False, **kwargs):
   ''' Simple function to cast an Axis instance as a AxisNC (NetCDF-capable Axis subclass). '''
   # create new AxisNC instance (using the ncvar NetCDF Variable instance as file reference)
   if not isinstance(ax,Axis): raise TypeError
-  if not isinstance(ncvar,nc.Variable): raise TypeError # this is for the coordinate variable, not the dimension
+  if not isinstance(ncvar,(nc.Variable,nc.Dataset)): raise TypeError # this is for the coordinate variable, not the dimension
   # axes are handled automatically (self-reference)  
   axisnc = VarNC(ncvar, name=ax.name, units=ax.units, atts=ax.atts.copy(), plot=ax.plot.copy(), 
                  length=len(ax), coord=None, mode=mode, **kwargs)
@@ -60,7 +61,7 @@ class VarNC(Variable):
     A variable class that implements access to data from a NetCDF variable object.
   '''
   
-  def __init__(self, ncvar, name=None, units=None, axes=None, scalefactor=1, offset=0, atts=None, plot=None, fillValue=None, mode='r', load=False):
+  def __init__(self, ncvar, name=None, units=None, axes=None, data=None, dtype=None, scalefactor=1, offset=0, atts=None, plot=None, fillValue=None, mode='r', load=False):
     ''' 
       Initialize Variable instance based on NetCDF variable.
       
@@ -70,21 +71,36 @@ class VarNC(Variable):
         scalefactor = 1 # linear scale factor w.r.t. values in netcdf file
         offset = 0 # constant offset w.r.t. values in netcdf file 
     '''
-    # ensure we can read from the variable
-    if 'r' not in mode: raise DataError, "Cannot initialize VarNC object without reading (mode='r') enabled!"
-    # construct attribute dictionary from netcdf attributes
-    ncatts = { key : ncvar.getncattr(key) for key in ncvar.ncattrs() }
-    # handle some netcdf conventions
-    if fillValue is not None: fillValue = ncatts.pop('fillValue',ncatts.pop('_fillValue',None))
-    for key in ['scale_factor', 'add_offset']: ncatts.pop(key,None) # already handled by NetCDf Python interface
-    if name is None: name = ncatts.get('name',ncvar._name) # name in attributes has precedence
-    else: ncatts['name'] = name
-    if units is None: units = ncatts.get('units','') # units are not mandatory
-    else: ncatts['units'] = units
-    # update netcdf attributes with custom override
-    if atts is not None: ncatts.update(atts)
-    # construct axes, based on netcdf dimensions
-    if axes is None: axes = tuple([str(dim) for dim in ncvar.dimensions]) # have to get rid of unicode
+    # check mode
+    if not (mode == 'w' or mode == 'r' or mode == 'rw'): raise NetCDFError  
+    # write-only actions
+    if isinstance(ncvar,nc.Dataset):
+      if 'w' in mode:
+        # construct a new netcdf variable in the given dataset
+        ncvar = add_var(ncvar, name, dims=[ax.name for ax in axes], values=data, atts=coerceAtts(atts), 
+                dtype=dtype, zlib=True, fillValue=fillValue)
+      else: raise PermissionError
+    # some type checking
+    if not isinstance(ncvar,nc.Variable): raise TypeError, "Argument 'ncvar' has to be a NetCDF Variable or Dataset."
+    if dtype and dtype != ncvar.dtype: raise TypeError
+    if data and data.shape != ncvar.shape: raise DataError
+    # read actions
+    if 'r' in mode:
+      # construct attribute dictionary from netcdf attributes
+      ncatts = { key : ncvar.getncattr(key) for key in ncvar.ncattrs() }
+      # handle some netcdf conventions
+      if fillValue is not None: fillValue = ncatts.pop('fillValue',ncatts.pop('_fillValue',None))
+      for key in ['scale_factor', 'add_offset']: ncatts.pop(key,None) # already handled by NetCDf Python interface
+      if name is None: name = ncatts.get('name',ncvar._name) # name in attributes has precedence
+      else: ncatts['name'] = name
+      if units is None: units = ncatts.get('units','') # units are not mandatory
+      else: ncatts['units'] = units
+      # update netcdf attributes with custom override
+      if atts is not None: ncatts.update(atts)
+      # construct axes, based on netcdf dimensions
+      if axes is None: 
+        axes = tuple([str(dim) for dim in ncvar.dimensions]) # have to get rid of unicode
+      elif len(ncvar.dimensions) != len(axes): raise AxisError
     # call parent constructor
     super(VarNC,self).__init__(name=name, units=units, axes=axes, data=None, dtype=ncvar.dtype, mask=None, fillValue=fillValue, atts=ncatts, plot=plot)
     # assign special attributes
@@ -92,7 +108,12 @@ class VarNC(Variable):
     self.__dict__['mode'] = mode
     self.__dict__['offset'] = offset
     self.__dict__['scalefactor'] = scalefactor
-    if load: self.load() # load data here 
+    # handle data
+    if load and data: raise DataError, "Arguments 'load' and 'data' are mutually exclusive, i.e. only one can be used!"
+    elif load and 'r' in self.mode: self.load(data=None) # load data from file
+    elif data and 'w' in self.mode: self.load(data=data) # load data from array
+    # sync?
+    if 'w' in self.mode: self.sync() 
   
   def __getitem__(self, idx=None):
     ''' Method implementing access to the actual data; if data is not loaded, give direct access to NetCDF file. '''
@@ -160,7 +181,7 @@ class VarNC(Variable):
       ncvar.setncattr('name',self.name)
       ncvar.setncattr('units',self.units)      
     else: 
-      raise NetCDFError, "Cannot write to NetCDF variable: writing (mode = 'w') not enabled!"
+      raise PermissionError, "Cannot write to NetCDF variable: writing (mode = 'w') not enabled!"
      
 
 
@@ -299,12 +320,23 @@ class DatasetNetCDF(Dataset):
     self.__dict__['datasets'] = datasets
     self.__dict__['filelist'] = filelist
   
-  def addAxis(self, ax):
-    ''' Method to add an Axis to the Dataset. If the Axis is already present, check that it is the same. '''   
+  def addAxis(self, ax, copy=False, deepcopy=True):
+    ''' Method to add an Axis to the Dataset. (If the Axis is already present, check that it is the same.) '''   
     # cast Axis instance as AxisNC
-    asAxisNC(ax,self)
+    if copy: # make a new instance or add it as is
+      if 'w' in self.mode: ax = asAxisNC(ax=ax,ncvar=self, mode=self.mode, deepcopy=deepcopy)
+      else: ax = ax.copy(deepcopy=deepcopy)
     # hand-off to parent method and return status
     return super(DatasetNetCDF,self).addAxis(ax=ax)
+  
+  def addVar(self, var, copy=False, deepcopy=False):
+    ''' Method to add a new Variable to the Dataset. '''   
+    # cast Axis instance as AxisNC
+    if copy: # make a new instance or add it as is 
+      if 'w' in self.mode: var = asVarNC(var=var,ncvar=self, mode=self.mode, deepcopy=deepcopy)
+      else: var = var.copy(deepcopy=deepcopy)
+    # hand-off to parent method and return status
+    return super(DatasetNetCDF,self).addVariable(var=var)  
   
   def sync(self):
     ''' Synchronize variables and axes/coordinates with their associated NetCDF variables. '''
@@ -319,7 +351,8 @@ class DatasetNetCDF(Dataset):
       # synchronize NetCDF datasets with file system
       for dataset in self.datasets: 
         dataset.setncatts(coerceAtts(self.atts)) # synchronize attributes with       
-        dataset.sync() # 
+        dataset.sync() #
+    else: raise PermissionError 
     
   def close(self):
     ''' Call this method before deleting the Dataset: close netcdf files; if in write mode, also synchronizes with file system before closing. '''
