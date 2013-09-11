@@ -76,7 +76,8 @@ class BaseVarTest(unittest.TestCase):
     # check identity
     assert var != self.var
     assert var.name == 'different' and self.var.name != 'different'      
-    assert var.units == self.var.units
+    assert (var.units == self.var.units) and (var.units is self.var.units) # strings are immutable...
+    assert (var.atts is not self.var.atts) and (var.atts == self.var.atts) # ...dictionaries are not
     for key,value in var.atts.iteritems():
       assert np.all(value == self.var.atts[key])
     assert isEqual(var.data_array,self.var.data_array) 
@@ -295,7 +296,7 @@ class BaseDatasetTest(unittest.TestCase):
 
 
 # import modules to be tested
-from geodata.netcdf import VarNC, AxisNC, NetCDFDataset
+from geodata.netcdf import VarNC, AxisNC, DatasetNetCDF
 
 class NetCDFVarTest(BaseVarTest):  
   
@@ -394,7 +395,7 @@ class NetCDFVarTest(BaseVarTest):
     assert var.data_array is None
   
 
-class NetCDFDatasetTest(BaseDatasetTest):  
+class DatasetNetCDFTest(BaseDatasetTest):  
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'NARR' # dataset to use (also the folder name)
@@ -417,7 +418,7 @@ class NetCDFDatasetTest(BaseDatasetTest):
       ncfile = filelist[0]; ncvar = varlist[0]
     # load a netcdf dataset, so that we have something to play with      
     self.ncdata = nc.Dataset(folder+ncfile,mode='r')
-    self.dataset = NetCDFDataset(folder=folder,filelist=filelist,varlist=varlist,varatts=varatts)
+    self.dataset = DatasetNetCDF(folder=folder,filelist=filelist,varlist=varlist,varatts=varatts)
     # load a sample variable directly
     ncvar = self.ncdata.variables[ncvar]
     # get dimensions and coordinate variables
@@ -457,7 +458,7 @@ class NetCDFDatasetTest(BaseDatasetTest):
     filename = folder + 'test.nc'
     if os.path.exists(filename): os.remove(filename)
     # create NetCDF Dataset
-    dataset = NetCDFDataset(filelist=[filename],mode='w')
+    dataset = DatasetNetCDF(filelist=[filename],mode='w')
 #     print(dataset)
     # add some random variables and attribute
     dataset.atts.test = 'test'
@@ -533,7 +534,7 @@ if __name__ == "__main__":
     tests = ['GDALVar']
     # list of dataset tests
 #     tests = ['BaseDataset']
-#     tests = ['NetCDFDataset']
+#     tests = ['DatasetNetCDF']
 #     tests = ['GDALDataset']    
     
     # run tests

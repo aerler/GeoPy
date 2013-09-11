@@ -237,15 +237,20 @@ class DataError(VariableError):
     elif self.nodata: # check variable state
       return '%s instance \'%s\' has no data loaded!'%(self.type,self.name)
     else: # fallback
-      return super(VariableError,self).__str__() 
-
-class DatasetError(VariableError):
-  ''' Base class for exceptions occurring in Dataset methods. '''
+      return super(VariableError,self).__str__()
+     
+class AxisError(VariableError):
+  ''' Exceptions related to Axes. '''
   pass
 
 class NetCDFError(VariableError):
   ''' Exceptions related to NetCDF file access. '''
   pass
+
+class DatasetError(VariableError):
+  ''' Base class for exceptions occurring in Dataset methods. '''
+  pass
+
 
 ## simple application code
 if __name__ == '__main__':

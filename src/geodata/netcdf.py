@@ -16,8 +16,44 @@ import os
 # import all base functionality from PyGeoDat
 # from nctools import * # my own netcdf toolkit
 from geodata.base import Variable, Axis, Dataset
-from geodata.misc import checkIndex, isEqual, DatasetError, DataError, NetCDFError, joinDicts
+from geodata.misc import checkIndex, isEqual, DatasetError, DataError, AxisError, NetCDFError, joinDicts
 from geodata.nctools import coerceAtts, writeNetCDF
+
+def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs):
+  ''' Simple function to cast a Variable instance as a VarNC (NetCDF-capable Variable subclass). '''
+  # figure out axes
+  if axes:
+    if isinstance(axes,dict):
+      # use dictionary entries to replace axes of the same name with the new ones
+      axes = [axes[ax.name] if ax.name in axes else ax for ax in var.axes] 
+    elif isinstance(axes,(list,tuple)): 
+      # just use the new set of axes
+      if not len(axes) == var.ndim: raise AxisError
+      if var.shape is not None and not all(var.shape == [len(ax) for ax in axes]): raise AxisError  
+    else: 
+      raise TypeError, "Argument 'axes' has to be of type dict, list, or tuple."
+  # create new VarNC instance (using the ncvar NetCDF Variable instance as file reference)
+  if not isinstance(var,Variable): raise TypeError
+  if not isinstance(ncvar,nc.Variable): raise TypeError  
+  varnc = VarNC(ncvar, name=var.name, units=var.units, axes=axes, atts=var.atts.copy(), plot=var.plot.copy(), 
+                fillValue=var.fillValue, mode=mode, **kwargs)
+  # copy data
+  if var.data: varnc.load(data=var.getArray(copy=deepcopy))
+  # return VarNC
+  return varnc
+
+def asAxisNC(ax=None, ncvar=None, mode='rw', deepcopy=False, **kwargs):
+  ''' Simple function to cast an Axis instance as a AxisNC (NetCDF-capable Axis subclass). '''
+  # create new AxisNC instance (using the ncvar NetCDF Variable instance as file reference)
+  if not isinstance(ax,Axis): raise TypeError
+  if not isinstance(ncvar,nc.Variable): raise TypeError # this is for the coordinate variable, not the dimension
+  # axes are handled automatically (self-reference)  
+  axisnc = VarNC(ncvar, name=ax.name, units=ax.units, atts=ax.atts.copy(), plot=ax.plot.copy(), 
+                 length=len(ax), coord=None, mode=mode, **kwargs)
+  # copy data
+  if ax.data: axisnc.updateCoord(data=ax.getArray(copy=deepcopy))
+  # return AxisNC
+  return axisnc
 
 class VarNC(Variable):
   '''
@@ -152,7 +188,7 @@ class AxisNC(Axis,VarNC):
       super(AxisNC,self).updateCoord(coord=coord)
       
 
-class NetCDFDataset(Dataset):
+class DatasetNetCDF(Dataset):
   '''
     A Dataset Class that provides access to variables in one or more NetCDF files. The class supports reading
     and writing, as well as the creation of new NetCDF files.
@@ -257,11 +293,18 @@ class NetCDFDataset(Dataset):
     ncattrs = joinDicts(*[ds.__dict__ for ds in datasets])
     if atts: ncattrs.update(atts) # update with attributes passed to constructor
     # initialize Dataset using parent constructor
-    super(NetCDFDataset,self).__init__(varlist=variables.values(), atts=ncattrs)
+    super(DatasetNetCDF,self).__init__(varlist=variables.values(), atts=ncattrs)
     # add NetCDF attributes
     self.__dict__['mode'] = mode
     self.__dict__['datasets'] = datasets
     self.__dict__['filelist'] = filelist
+  
+  def addAxis(self, ax):
+    ''' Method to add an Axis to the Dataset. If the Axis is already present, check that it is the same. '''   
+    # cast Axis instance as AxisNC
+    asAxisNC(ax,self)
+    # hand-off to parent method and return status
+    return super(DatasetNetCDF,self).addAxis(ax=ax)
   
   def sync(self):
     ''' Synchronize variables and axes/coordinates with their associated NetCDF variables. '''
