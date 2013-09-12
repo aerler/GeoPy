@@ -9,9 +9,9 @@ This module contains meta data and access functions for NARR datasets.
 # from atmdyn.properties import variablePlotatts
 from geodata.base import Axis
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import DatasetGDAL, getProjFromDict
+from geodata.gdal import addGDALtoDataset, getProjFromDict
 from geodata.misc import DatasetError 
-from datasets.misc import translateVarNames, days_per_month, data_root
+from datasets.misc import translateVarNames, days_per_month, months_names, data_root
 
 ## NARR Meta-data
 
@@ -50,7 +50,7 @@ special = dict(air='air.2m') # some variables need special treatment
 
 # Climatology (LTM - Long Term Mean)
 ltmfolder = rootfolder + 'LTM/' # LTM subfolder
-def loadNARRLTM(varlist=varlist, interval='monthly', varatts=varatts, filelist=None, folder=ltmfolder):
+def loadNARR_LTM(name='NARR', varlist=varlist, interval='monthly', varatts=varatts, filelist=None, folder=ltmfolder):
   ''' Get a properly formatted dataset of daily or monthly NARR climatologies (LTM). '''
   # prepare input
   if interval == 'monthly': 
@@ -65,17 +65,17 @@ def loadNARRLTM(varlist=varlist, interval='monthly', varatts=varatts, filelist=N
   if filelist is None: # generate default filelist
     filelist = [special[var]+pfx if var in special else var+pfx for var in varlist if var not in nofile]
   # load dataset
-  dataset = DatasetNetCDF(folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           axes=axes, atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
   # add projection
-  projection = getProjFromDict(projdict, name='NARR Coordinate System')
-  dataset = DatasetGDAL(dataset, projection=projection, geotransform=None)
+  projection = getProjFromDict(projdict, name='{0:s} Coordinate System'.format(name))
+  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None)
   # return formatted dataset
   return dataset
 
 # Time-series (monthly)
 tsfolder = rootfolder + 'Monthly/' # monthly subfolder
-def loadNARRTS(varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
+def loadNARR_TS(name='NARR', varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
   ''' Get a properly formatted  NARR dataset with monthly mean time-series. '''
   # prepare input  
   pfx = '.mon.mean.nc'
@@ -84,11 +84,11 @@ def loadNARRTS(varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder)
   if filelist is None: # generate default filelist
     filelist = [special[var]+pfx if var in special else var+pfx for var in varlist if var not in nofile]
   # load dataset
-  dataset = DatasetNetCDF(folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
   # add projection
-  projection = getProjFromDict(projdict, name='NARR Coordinate System')
-  dataset = DatasetGDAL(dataset, projection=projection, geotransform=None)
+  projection = getProjFromDict(projdict, name='{0:s} Coordinate System'.format(name))
+  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None)
   # return formatted dataset
   return dataset
 
@@ -96,7 +96,7 @@ def loadNARRTS(varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder)
 if __name__ == '__main__':
     
     # load dataset
-    dataset = loadNARRTS(varlist=['T2','precip'])
+    dataset = loadNARR_TS(varlist=['T2','precip'])
     
     # print dataset
     print(dataset)

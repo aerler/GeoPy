@@ -15,7 +15,7 @@ from geodata.nctools import add_coord, add_var
 from datasets.misc import translateVarNames, data_root, days_per_month, months_names
 from geodata.misc import DatasetError
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import DatasetGDAL
+from geodata.gdal import addGDALtoDataset
 
 ## PRISM Meta-data
 
@@ -40,7 +40,7 @@ avgfolder = rootfolder + 'prismavg/' # prefix
 
 ## Functions that provide access to well-formatted PRISM NetCDF files
 
-def loadPRISM(varlist=None, resolution=None, folder=avgfolder, filelist=None, varatts=varatts):
+def loadPRISM(name='PRISM', varlist=None, resolution=None, folder=avgfolder, filelist=None, varatts=varatts):
   ''' Get the pre-processed monthly PRISM climatology as a NetCDFDataset. '''
   # prepare input
   if resolution is not None and resolution not in (): # '800m', '10km' 
@@ -51,8 +51,8 @@ def loadPRISM(varlist=None, resolution=None, folder=avgfolder, filelist=None, va
   # filelist
   if filelist is None: filelist = [avgfile]
   # load dataset
-  dataset = DatasetNetCDF(folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')  
-  dataset = DatasetGDAL(dataset, projection=None, geotransform=None)
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')  
+  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
   # return formatted dataset
   return dataset

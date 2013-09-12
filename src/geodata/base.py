@@ -541,16 +541,18 @@ class Dataset(object):
     implements collective operations on all variables in the dataset.
   '''
   
-  def __init__(self, varlist=None, atts=None):
+  def __init__(self, name='', varlist=None, atts=None):
     ''' 
       Create a dataset from a list of variables. The basic dataset class has no capability to create variables.
       
       Basic Attributes:
+        name = '' # name of the dataset
         variables = dict() # dictionary holding Variable instances
         axes = dict() # dictionary holding Axis instances (inferred from Variables)
         atts = AttrDict() # dictionary containing global attributes / meta data
     '''
     # create instance attributes
+    self.__dict__['name'] = name
     self.__dict__['variables'] = dict()
     self.__dict__['axes'] = dict()
     # load global attributes, if given

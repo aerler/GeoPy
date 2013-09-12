@@ -9,11 +9,10 @@ This module contains meta data and access functions for the GPCC climatology and
 # external imports
 import netCDF4 as nc # netcdf python module
 # internal imports
-from geodata.base import Variable
-from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import DatasetGDAL
+from geodata.netcdf import DatasetNetCDF, VarNC
+from geodata.gdal import addGDALtoDataset
 from geodata.misc import DatasetError 
-from datasets.misc import translateVarNames, days_per_month, data_root
+from datasets.misc import translateVarNames, days_per_month, months_names, data_root
  
 ## GPCC Meta-data
 
@@ -39,7 +38,7 @@ rootfolder = data_root + 'GPCC/' # long-term mean folder
 
 # climatology
 ltmfolder = rootfolder + 'climatology/' # climatology subfolder
-def loadGPCCLTM(varlist=varlist, resolution='025', varatts=ltmvaratts, filelist=None, folder=ltmfolder):
+def loadGPCC_LTM(name='GPCC', varlist=varlist, resolution='025', varatts=ltmvaratts, filelist=None, folder=ltmfolder):
   ''' Get a properly formatted dataset the monthly accumulated GPCC precipitation climatology. '''
   # prepare input
   if resolution not in ('025','05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
@@ -47,21 +46,21 @@ def loadGPCCLTM(varlist=varlist, resolution='025', varatts=ltmvaratts, filelist=
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   # load variables separately
   if 'p' in varlist:
-    dataset = DatasetNetCDF(folder=folder, filelist=['normals_v2011_%s.nc'%resolution], varlist=['p'], 
+    dataset = DatasetNetCDF(name=name, folder=folder, filelist=['normals_v2011_%s.nc'%resolution], varlist=['p'], 
                             varatts=varatts, ncformat='NETCDF4_CLASSIC')
   if 's' in varlist: 
     gauges = nc.Dataset(folder+'normals_gauges_v2011_%s.nc'%resolution, mode='r', format='NETCDF4_CLASSIC')
-    stations = Variable(data=gauges.variables['p'][0,:,:], axes=(dataset.lat,dataset.lon), **varatts['s'])
+    stations = VarNC(data=gauges.variables['p'][0,:,:], axes=(dataset.lat,dataset.lon), **varatts['s'])
   # consolidate dataset
-  dataset.addVariable(stations)  
-  dataset = DatasetGDAL(dataset, projection=None, geotransform=None)
+  dataset.addVariable(stations, copy=False)  
+  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
   # return formatted dataset
   return dataset
 
 # time-series
 tsfolder = rootfolder + 'full_data_1900-2010/' # climatology subfolder
-def loadGPCCTS(varlist=varlist, resolution='05', varatts=tsvaratts, filelist=None, folder=tsfolder):
+def loadGPCC_TS(name='GPCC', varlist=varlist, resolution='05', varatts=tsvaratts, filelist=None, folder=tsfolder):
   ''' Get a properly formatted dataset with the monthly GPCC time-series. '''
   # prepare input  
   if resolution not in ('05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
@@ -72,8 +71,8 @@ def loadGPCCTS(varlist=varlist, resolution='05', varatts=tsvaratts, filelist=Non
     if 'p' in varlist: filelist.append('full_data_v6_precip_%s.nc'%resolution)
     if 's' in varlist: filelist.append('full_data_v6_statio_%s.nc'%resolution)
   # load dataset
-  dataset = DatasetNetCDF(folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')  
-  dataset = DatasetGDAL(dataset, projection=None, geotransform=None)
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')  
+  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
   # return formatted dataset
   return dataset
@@ -81,7 +80,7 @@ def loadGPCCTS(varlist=varlist, resolution='05', varatts=tsvaratts, filelist=Non
 # pre-processed climatology files (varatts etc. should not be necessary)
 avgfolder = rootfolder + 'gpccavg/' 
 avgfile = 'gpcc%s_clim%s.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
-def loadGPCC(varlist=None, resolution='025', period=None, folder=avgfolder, filelist=None, varatts=None):
+def loadGPCC(name='GPCC', varlist=None, resolution='025', period=None, folder=avgfolder, filelist=None, varatts=None):
   ''' Get the pre-processed monthly GPCC climatology as a DatasetNetCDF. '''
   # prepare input
   if resolution not in ('025','05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
@@ -94,8 +93,8 @@ def loadGPCC(varlist=None, resolution='025', period=None, folder=avgfolder, file
     if period is None: filelist = [avgfile%('_'+resolution,'')]
     else: filelist = [avgfile%('_'+resolution,'_'+period)]
   # load dataset
-  dataset = DatasetNetCDF(folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')  
-  dataset = DatasetGDAL(dataset, projection=None, geotransform=None)
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')  
+  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
   # return formatted dataset
   return dataset
@@ -112,7 +111,7 @@ if __name__ == '__main__':
     
     # load dataset
     print('')
-    dataset = loadGPCCLTM(varlist=['stations','precip'],resolution=resolution)    
+    dataset = loadGPCC_LTM(varlist=['stations','precip'],resolution=resolution)    
     
     # convert precip data to SI units (mm/s)
     dataset.precip *= days_per_month.reshape((12,1,1)) # convert in-place

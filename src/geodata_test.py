@@ -411,8 +411,9 @@ class DatasetNetCDFTest(BaseDatasetTest):
     if self.RAM: folder = '/media/tmp/'
     else: folder = '/home/DATA/DATA/%s/'%self.dataset # dataset name is also in folder name
     # select dataset
-    if self.dataset == 'GPCC': # single file
-      filelist = [['gpcc_test/full_data_v6_precip_25.nc']] # variable to test
+    name = self.dataset
+    if self.dataset == 'GPCC': # single file      
+      filelist = ['gpcc_test/full_data_v6_precip_25.nc'] # variable to test
       varlist = ['p']; varatts = None
       ncfile = filelist[0]; ncvar = varlist[0]      
     elif self.dataset == 'NARR': # multiple files
@@ -422,7 +423,7 @@ class DatasetNetCDFTest(BaseDatasetTest):
       ncfile = filelist[0]; ncvar = varlist[0]
     # load a netcdf dataset, so that we have something to play with      
     self.ncdata = nc.Dataset(folder+ncfile,mode='r')
-    self.dataset = DatasetNetCDF(folder=folder,filelist=filelist,varlist=varlist,varatts=varatts)
+    self.dataset = DatasetNetCDF(name=name,folder=folder,filelist=filelist,varlist=varlist,varatts=varatts)
     # load a sample variable directly
     ncvar = self.ncdata.variables[ncvar]
     # get dimensions and coordinate variables
@@ -479,7 +480,7 @@ class DatasetNetCDFTest(BaseDatasetTest):
 
 
 # import modules to be tested
-from geodata.gdal import addGDAL
+from geodata.gdal import addGDALtoVar, addGDALtoDataset
 from datasets.NARR import projdict
 
 class GDALVarTest(NetCDFVarTest):  
@@ -496,9 +497,9 @@ class GDALVarTest(NetCDFVarTest):
     super(GDALVarTest,self).setUp()
     # add GDAL functionality to variable
     if self.dataset == 'NARR':
-      self.var = addGDAL(self.var, projection=projdict)
+      self.var = addGDALtoVar(self.var, projection=projdict)
     else: 
-      self.var = addGDAL(self.var)
+      self.var = addGDALtoVar(self.var)
       
   def tearDown(self):  
     super(GDALVarTest,self).tearDown()
@@ -520,7 +521,49 @@ class GDALVarTest(NetCDFVarTest):
     data = var.getGDAL()
     assert data is not None
     assert data.ReadAsArray()[:,:,:].shape == (var.bands,)+var.mapSize 
-    
+
+
+class DatasetGDALTest(DatasetNetCDFTest):  
+  
+  # some test parameters (TestCase does not take any arguments)
+  dataset = 'NARR' # dataset to use (also the folder name)
+  RAM = True # base folder for file operations
+  plot = False # whether or not to display plots 
+  stats = False # whether or not to compute stats on data
+  
+  def setUp(self):
+    super(DatasetGDALTest,self).setUp()
+    # add GDAL functionality to variable
+    if self.dataset.name == 'NARR':
+      self.dataset = addGDALtoDataset(self.dataset, projection=projdict) # projected
+    else: 
+      self.dataset.name = addGDALtoDataset(self.dataset) # not projected
+      
+  def tearDown(self):  
+    super(DatasetGDALTest,self).tearDown()
+  
+  ## specific GDAL test cases
+
+  def testAddProjection(self):
+    ''' test function that adds projection features '''
+    # get test objects
+    dataset = self.dataset # dataset object
+#     print var.xlon[:]
+#     print var.ylat[:]
+    # trivial tests
+    assert dataset.gdal
+    assert dataset.projection
+    assert dataset.geotransform
+    assert len(dataset.geotransform) == 6 # need to subtract false easting and northing!
+    if self.dataset.name == 'NARR': 
+      assert dataset.isProjected == True
+      assert dataset.xlon == dataset.x and dataset.ylat == dataset.y    
+    if self.dataset.name == 'GPCC': 
+      assert dataset.isProjected == False
+      assert dataset.xlon == dataset.lon and dataset.ylat == dataset.lat
+    # check variables
+    for var in dataset.variables.values():
+      assert (var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat)) == var.gdal
     
 if __name__ == "__main__":
 

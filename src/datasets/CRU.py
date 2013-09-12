@@ -9,7 +9,7 @@ This module contains meta data and access functions for the CRU climatology and 
 
 # internal imports
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import DatasetGDAL
+from geodata.gdal import addGDALtoDataset
 from datasets.misc import translateVarNames, days_per_month, months_names, data_root
  
 ## CRU Meta-data
@@ -40,7 +40,7 @@ filename = 'cru_ts3.20.1901.2011.%s.dat.nc' # file names, need to extend with %v
 
 # Time-series (monthly)
 tsfolder = rootfolder + 'Time-series 3.2/data/' # monthly subfolder
-def loadCRUTS(varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
+def loadCRU_TS(name='CRU', varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
   ''' Get a properly formatted  CRU dataset with monthly mean time-series. '''
   # translate varlist
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
@@ -48,10 +48,10 @@ def loadCRUTS(varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
   if filelist is None: # generate default filelist
     filelist = [filename%var for var in varlist if var not in nofile]
   # load dataset
-  dataset = DatasetNetCDF(folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           multifile=False, ncformat='NETCDF4_CLASSIC')
   # add projection  
-  dataset = DatasetGDAL(dataset, projection=None, geotransform=None)
+  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
   # return formatted dataset
   return dataset
@@ -61,7 +61,7 @@ def loadCRUTS(varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
 if __name__ == '__main__':
     
   # load dataset
-  dataset = loadCRUTS()
+  dataset = loadCRU_TS()
   
   # print dataset
   print(dataset)

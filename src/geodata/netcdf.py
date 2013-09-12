@@ -215,7 +215,7 @@ class DatasetNetCDF(Dataset):
     and writing, as well as the creation of new NetCDF files.
   '''
   
-  def __init__(self, folder='', dataset=None, filelist=None, varlist=None, varatts=None, atts=None, axes=None, 
+  def __init__(self, name='', folder='', dataset=None, filelist=None, varlist=None, varatts=None, atts=None, axes=None, 
                multifile=False, check_override=None, mode='r', ncformat='NETCDF4'):
     ''' 
       Create a Dataset from one or more NetCDF files; Variables are created from NetCDF variables. 
@@ -314,7 +314,7 @@ class DatasetNetCDF(Dataset):
     ncattrs = joinDicts(*[ds.__dict__ for ds in datasets])
     if atts: ncattrs.update(atts) # update with attributes passed to constructor
     # initialize Dataset using parent constructor
-    super(DatasetNetCDF,self).__init__(varlist=variables.values(), atts=ncattrs)
+    super(DatasetNetCDF,self).__init__(name=name, varlist=variables.values(), atts=ncattrs)
     # add NetCDF attributes
     self.__dict__['mode'] = mode
     self.__dict__['datasets'] = datasets
