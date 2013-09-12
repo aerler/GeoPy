@@ -1,16 +1,16 @@
 '''
 Created on 2013-09-09
 
-This module contains meta data and access functions for the CRU climatology and time-series. 
+This module contains meta data and access functions for the monthly CRU time-series data. 
 
 @author: Andre R. Erler, GPL v3
 '''
-
 
 # internal imports
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset
 from datasets.misc import translateVarNames, days_per_month, months_names, data_root
+
  
 ## CRU Meta-data
 

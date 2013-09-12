@@ -11,7 +11,6 @@ functionality to read PRISM data from ASCII files and write to NetCDF format.
 import numpy as np
 import netCDF4 as nc # netcdf python module
 # internal imports
-from geodata.nctools import add_coord, add_var
 from datasets.misc import translateVarNames, data_root, days_per_month, months_names
 from geodata.misc import DatasetError
 from geodata.netcdf import DatasetNetCDF
@@ -121,6 +120,9 @@ if __name__ == '__main__':
   ## convert ASCII files to NetCDF
   elif mode == 'convert_ASCII': 
     
+    # import netcdf tools
+    from geodata.nctools import add_coord, add_var
+    
     ## load data
     data = dict()
     
@@ -167,7 +169,7 @@ if __name__ == '__main__':
     for m in xrange(len(days_per_month)): 
       for n in xrange(9): coord[m,n] = months_names[m][n]
     # global attributes
-    outdata.title = 'Climatology of monthly PRISM data'
+    outdata.title = 'Climatology of Monthly PRISM Data'
     outdata.creator = 'Andre R. Erler' 
     
     # create ncatts dictionary from varatts

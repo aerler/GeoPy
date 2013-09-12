@@ -18,35 +18,6 @@ zlib_default = dict(zlib=True, complevel=1, shuffle=True) # my own default compr
 
 ## generic functions
 
-# add a new dimension with coordinate variable
-def old_add_coord(dst, name, data=None, length=None, atts=None, dtype=None, zlib=True, fillValue=None, **kwargs):
-  # all remaining kwargs are passed on to dst.createVariable()
-  # create dimension
-  if dst.dimensions.has_key(name):
-    assert len(data) == len(dst.dimensions[name]), '\nWARNING: Dimensions %s already present and size does not match!\n'%(name,) 
-  else:
-    if data is not None:
-      if not dtype: dtype = data.dtype # should be standard... 
-      dst.createDimension(name, size=len(data))
-    elif length is not None:
-      dst.createDimension(name, size=length)
-    else:
-      dst.createDimension(name, size=None) # unlimited dimension
-  # create coordinate variable
-  varargs = dict() # arguments to be passed to createVariable
-  if zlib: varargs.update(zlib_default)
-  varargs.update(kwargs)
-  if fillValue is not None: atts['_FillValue'] = fillValue
-  elif atts and '_FillValue' in atts: fillValue = atts['_FillValue']
-  else: fillValue = None # masked array handling could go here 
-  coord = dst.createVariable(name, dtype, (name,), fill_value=fillValue,  **varargs)
-  if data is not None: coord[:] = data # assign coordinate data if given  
-  if atts: # add attributes
-    for key,value in atts.iteritems():
-      coord.setncattr(key,value) 
-  # return coord reference
-  return coord
-
 def add_coord(dst, name, data=None, length=None, atts=None, dtype=None, zlib=True, fillValue=None, **kwargs):
   ''' Function to add a Coordinate Variable to a NetCDF Dataset; returns the Variable reference. '''
   # basically a simplified interface for add_var

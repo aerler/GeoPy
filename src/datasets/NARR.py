@@ -13,6 +13,7 @@ from geodata.gdal import addGDALtoDataset, getProjFromDict
 from geodata.misc import DatasetError 
 from datasets.misc import translateVarNames, days_per_month, months_names, data_root
 
+
 ## NARR Meta-data
 
 # projection
@@ -76,7 +77,7 @@ def loadNARR_LTM(name='NARR', varlist=varlist, interval='monthly', varatts=varat
 # Time-series (monthly)
 tsfolder = rootfolder + 'Monthly/' # monthly subfolder
 def loadNARR_TS(name='NARR', varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
-  ''' Get a properly formatted  NARR dataset with monthly mean time-series. '''
+  ''' Get a properly formatted NARR dataset with monthly mean time-series. '''
   # prepare input  
   pfx = '.mon.mean.nc'
   # translate varlist

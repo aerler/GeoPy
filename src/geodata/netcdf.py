@@ -278,7 +278,7 @@ class DatasetNetCDF(Dataset):
     assert isinstance(axes,dict)
     for ds in datasets:
       for dim in ds.dimensions.keys():
-        if dim in ds.variables: # dimensions with an associated coordinate variable 
+        if dim in ds.variables: # dimensions with an associated coordinate variable           
           if dim in axes: # if already present, make sure axes are essentially the same
             tmpax = AxisNC(ncvar=ds.variables[dim], mode='r', **varatts.get(dim,{})) # apply all correction factors...
             if dim not in check_override and not isEqual(axes[dim][:],tmpax[:]): 
@@ -329,7 +329,7 @@ class DatasetNetCDF(Dataset):
     # hand-off to parent method and return status
     return super(DatasetNetCDF,self).addAxis(ax=ax)
   
-  def addVar(self, var, copy=False, deepcopy=False):
+  def addVariable(self, var, copy=False, deepcopy=False):
     ''' Method to add a new Variable to the Dataset. '''   
     # cast Axis instance as AxisNC
     if copy: # make a new instance or add it as is 
