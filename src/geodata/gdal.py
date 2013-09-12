@@ -266,7 +266,7 @@ def addGDALtoDataset(dataset, projection=None, geotransform=None):
       # call variable 'constructor' for all variables
       var = addGDALtoVar(var, projection=dataset.projection, geotransform=dataset.geotransform)
       # check result
-      assert (var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat)) ==var.gdal    
+      assert (var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat)) == var.gdal    
     
     # append projection info  
     def prettyPrint(self, short=False):

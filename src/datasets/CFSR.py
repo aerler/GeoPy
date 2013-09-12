@@ -43,9 +43,11 @@ hiresstatic = dict(LAND_L1='LAND.SFC', HGT_L1='HGT.SFC')
 lowresfiles = dict(PRMSL_L101='PRMSL.MSL')
 lowresstatic = dict() # currently none available
 hiresfiles = {key:'flxf06.gdas.{0:s}.grb2.nc'.format(value) for key,value in hiresfiles.iteritems()}
+hiresstatic = {key:'flxf06.gdas.{0:s}.grb2.nc'.format(value) for key,value in hiresstatic.iteritems()}
 lowresfiles = {key:'pgbh06.gdas.{0:s}.grb2.nc'.format(value) for key,value in lowresfiles.iteritems()}
+lowresstatic = {key:'pgbh06.gdas.{0:s}.grb2.nc'.format(value) for key,value in lowresstatic.iteritems()}
 # list of variables to load
-varlist = hiresfiles.keys() + list(nofile) # hires + coordinates    
+varlist = hiresfiles.keys() + hiresstatic.keys() + list(nofile) # hires + coordinates    
 
 
 ## Functions to load different types of CFSR datasets 
@@ -67,10 +69,15 @@ def loadCFSR_TS(name='CFSR', varlist=varlist, varatts=varatts, resolution='high'
     elif resolution == 'low': files = [lowresstatic[var] for var in varlist if var in lowresstatic]
     # create singleton time axis
     staticdata = DatasetNetCDF(name=name, folder=folder, filelist=files, varlist=varlist, varatts=varatts, 
-                          multifile=False, ncformat='NETCDF4_CLASSIC')
+                               axes=dict(lon=dataset.lon, lat=dataset.lat), multifile=False, ncformat='NETCDF4_CLASSIC')
+    # N.B.: need to override the axes, so that the datasets are consistent
   if len(staticdata.variables) > 0:
     if staticdata.hasAxis('time'): staticdata.time.name = 'singleton_time'
-    for var in staticdata.variables.values(): dataset.addVariable(var)
+    for var in staticdata.variables.values(): 
+      if not dataset.hasVariable(var.name):
+        # var.load() # need to load variables into memory, in order to copy
+        var.squeeze()
+        dataset.addVariable(var, copy=False) # no need to copy...
   # add projection  
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
@@ -88,5 +95,5 @@ if __name__ == '__main__':
   print(dataset)
 
   print 
-  print dataset.T2
-  print dataset.T2[45,:,:]         
+  print dataset.lnd
+  print dataset.lnd[0,45,:]         

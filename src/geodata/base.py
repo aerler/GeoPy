@@ -177,13 +177,19 @@ class Variable(object):
       string += 'Plot Attributes: {0:s}'.format(str(self.plot))
     return string
   
-  def copy(self, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
+  def squeeze(self):
+    raise NotImplementedError
+  
+  def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Variable with just a link to the data. '''
-    args = dict(name=self.name, units=self.units, axes=self.axes, data=None, dtype=self.dtype,
-                mask=None, fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
-    if self.data: args['data'] = self.data_array
-    args.update(newargs) # apply custom arguments (also arguments related to subclasses)
-    var = Variable(**args) # create a new basic Variable instance
+    if deepcopy:
+      var = self.deepcopy( **newargs)
+    else:
+      args = dict(name=self.name, units=self.units, axes=self.axes, data=None, dtype=self.dtype,
+                  mask=None, fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
+      if self.data: args['data'] = self.data_array
+      args.update(newargs) # apply custom arguments (also arguments related to subclasses)
+      var = Variable(**args) # create a new basic Variable instance
     # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
     return var
   
