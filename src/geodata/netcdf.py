@@ -61,7 +61,8 @@ class VarNC(Variable):
     A variable class that implements access to data from a NetCDF variable object.
   '''
   
-  def __init__(self, ncvar, name=None, units=None, axes=None, data=None, dtype=None, scalefactor=1, offset=0, atts=None, plot=None, fillValue=None, mode='r', load=False):
+  def __init__(self, ncvar, name=None, units=None, axes=None, data=None, dtype=None, scalefactor=1, offset=0, 
+               atts=None, plot=None, fillValue=None, mode='r', load=False, squeeze=False):
     ''' 
       Initialize Variable instance based on NetCDF variable.
       
@@ -70,6 +71,7 @@ class VarNC(Variable):
         ncvar = None # the associated netcdf variable
         scalefactor = 1 # linear scale factor w.r.t. values in netcdf file
         offset = 0 # constant offset w.r.t. values in netcdf file 
+        squeezed = False # if True, all singleton dimensions in NetCDF Variable are silently ignored
     '''
     # check mode
     if not (mode == 'w' or mode == 'r' or mode == 'rw'): raise NetCDFError  
@@ -108,6 +110,8 @@ class VarNC(Variable):
     self.__dict__['mode'] = mode
     self.__dict__['offset'] = offset
     self.__dict__['scalefactor'] = scalefactor
+    self.__dict__['squeezed'] = False
+    if squeeze: self.squeez() # may set 'squeezed' to True
     # handle data
     if load and data: raise DataError, "Arguments 'load' and 'data' are mutually exclusive, i.e. only one can be used!"
     elif load and 'r' in self.mode: self.load(data=None) # load data from file
@@ -125,9 +129,21 @@ class VarNC(Variable):
       data = super(VarNC,self).__getitem__(idx) # load actual data using parent method
     else:
       # provide direct access to netcdf data on file
+      if self.squeezed and isinstance(idx,(list,tuple)):
+        if len(idx) != self.ndim: raise AxisError
+        # figure out slices
+        idx = list(idx) # need to insert items
+        for i in xrange(self.ncvar.ndim):
+          if self.ncvar.shape[i] == 1: idx.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
       data = self.ncvar.__getitem__(idx) # exceptions handled by netcdf module
     # return data
-    return data
+    return data  
+  
+  def squeeze(self, **kwargs):
+    ''' A method to remove singleton dimensions; special handling of __getitem__() is necessary, 
+        because NetCDF Variables cannot be squeezed directly. '''
+    self.squeezed = True
+    return super(VarNC,self).squeeze(**kwargs) # just call superior  
   
   def copy(self, **newargs):
     ''' A method to copy the Variable with just a link to the data. '''
@@ -135,18 +151,18 @@ class VarNC(Variable):
     
   def load(self, data=None, **kwargs):
     ''' Method to load data from NetCDF file into RAM. '''
-    lext = False # loadign external data?
+    lext = False # loading external data?
     if data is None: 
-      data = self.ncvar[:] # load everything
+      data = self[:] # load everything
     elif all(checkIndex(data)):
       if isinstance(data,tuple):
         assert len(data)==len(self.shape), 'Length of index tuple has to equal to the number of dimensions!'       
         for ax,idx in zip(self.axes,data): ax.updateCoord(idx)
-        data = self.ncvar.__getitem__(data) # load slice
+        data = self.__getitem__(data) # load slice
       else: 
         assert 1==len(self.shape), 'Multi-dimensional variable have to be indexed using tuples!'
         if self != self.axes[0]: ax.updateCoord(data) # prevent infinite loop due to self-reference 
-        data = self.ncvar.__getitem__(data) # load slice
+        data = self.__getitem__(data) # load slice
     else:
       assert isinstance(data,np.ndarray)
       lext = True 

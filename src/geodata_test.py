@@ -26,7 +26,7 @@ class BaseVarTest(unittest.TestCase):
   def setUp(self):
     ''' create Axis and a Variable instance for testing '''
     # some setting that will be saved for comparison
-    self.size = (2,3,4) # size of the data array and axes
+    self.size = (1,2,3) # size of the data array and axes
     te, ye, xe = self.size
     self.atts = dict(name = 'test',units = 'n/a',FillValue=-9999)
     self.data = np.random.random(self.size)   
@@ -51,40 +51,6 @@ class BaseVarTest(unittest.TestCase):
     
   ## basic tests every variable class should pass
 
-  def testPrint(self):
-    ''' just print the string representation '''
-    assert self.var.prettyPrint()
-    print('')
-    s = str(self.var)
-    print s
-    print('')
-
-  def testLoad(self):
-    ''' test data loading and unloading '''
-    # get test objects
-    var = self.var
-    # unload and load test
-    var.unload()
-    var.load(self.data.copy())
-    assert self.size == var.shape
-    assert isEqual(self.data, var.data_array)
-    
-  def testCopy(self):
-    ''' test copy and deepcopy of variables (and axes) '''
-    # get copy of variable
-    var = self.var.deepcopy(name='different') # deepcopy calls copy
-    # check identity
-    assert var != self.var
-    assert var.name == 'different' and self.var.name != 'different'      
-    assert (var.units == self.var.units) and (var.units is self.var.units) # strings are immutable...
-    assert (var.atts is not self.var.atts) and (var.atts == self.var.atts) # ...dictionaries are not
-    for key,value in var.atts.iteritems():
-      assert np.all(value == self.var.atts[key])
-    assert isEqual(var.data_array,self.var.data_array) 
-    # change array
-    var.data_array += 1 # test if we have a true copy and not just a reference 
-    assert not isEqual(var.data_array,self.var.data_array)
-    
   def testAttributes(self):
     ''' test handling of attributes '''
     # get test objects
@@ -96,50 +62,6 @@ class BaseVarTest(unittest.TestCase):
     assert var.plot.comments == var.atts['comments']      
     #     print 'Name: %s, Units: %s, Missing Values: %s'%(var.name, var.units, var._FillValue)
     #     print 'Comments: %s, Plot Comments: %s'%(var.Comments,var.plotatts['plotComments'])
-
-  def testIndexing(self):
-    ''' test indexing and slicing '''
-    # get test objects
-    var = self.var
-    # indexing (getitem) test  
-    if var.ndim == 3:  
-      assert isEqual(self.data[1,1,1], var[1,1,1], masked_equal=True)
-      assert isEqual(self.data[1,:,1:-1], var[1,:,1:-1], masked_equal=True)
-      
-  def testBroadcast(self):
-    ''' test reordering, reshaping, and broadcasting '''
-    # get test objects
-    var = self.var
-    z = Axis(name='z', units='none', coord=(1,5,5)) # new axis    
-    new_axes = var.axes[0:1] + (z,) + var.axes[-1:0:-1] # dataset independent
-    new_axes_names = tuple([ax.name for ax in new_axes])
-    # test reordering and reshaping/extending (using axis names)
-    new_shape = tuple([var.shape[var.axisIndex(ax)] if var.hasAxis(ax) else 1 for ax in new_axes]) 
-    data = var.getArray(axes=new_axes_names, broadcast=False, copy=True)
-    #print var.shape # this is what it was
-    #print data.shape # this is what it is
-    #print new_shape 
-    assert data.shape == new_shape 
-    # test broadcasting to a new shape (using Axis instances) 
-    new_shape = tuple([len(ax) for ax in new_axes]) # this is the shape we should get
-    data = var.getArray(axes=new_axes, broadcast=True, copy=True)
-    #print var.shape # this is what it was
-    #print data.shape # this is what it is
-    #print new_shape # this is what it should be
-    assert data.shape == new_shape 
-      
-  def testUnaryArithmetic(self):
-    ''' test unary arithmetic functions '''
-    # get test objects
-    var = self.var
-    # arithmetic test
-    var += 2.
-    var -= 2.
-    var *= 2.
-    var /= 2.
-    # test results
-    #     print (self.data.filled() - var.data_array.filled()).max()
-    assert isEqual(self.data, var.data_array)
     
   def testAxis(self):
     ''' test stuff related to axes '''
@@ -149,27 +71,13 @@ class BaseVarTest(unittest.TestCase):
     for ax,n in zip(self.axes,self.size):
       assert ax in var.axes
       assert len(ax) == n
-#       if ax in var: print '%s is the %i. axis and has length %i'%(ax.name,var[ax]+1,len(ax))
-
-  def testMask(self):
-    ''' test masking and unmasking of data '''
-    # get test objects
-    var = self.var; rav = self.rav
-    masked = var.masked
-    mask = var.getMask()
-    data = var.getArray(unmask=True, fillValue=-9999)
-    # test unmasking and masking again
-    var.unmask(fillValue=-9999)
-    assert isEqual(data, var[:]) # trivial
-    var.mask(mask=mask)
-    assert isEqual(self.data, var.getArray(unmask=(not masked)))
-    # test masking with a variable
-    var.unmask(fillValue=-9999)
-    assert isEqual(data, var[:]) # trivial
-    var.mask(mask=rav)
-    assert isEqual(ma.array(self.data,mask=(rav.data_array>0)), var.getArray(unmask=False))
-    
-    
+    #if ax in var: print '%s is the %i. axis and has length %i'%(ax.name,var[ax]+1,len(ax))
+    # replace axis
+    oldax = var.axes[-1]
+    newax = Axis(name='z', units='none', coord=(1,len(oldax),len(oldax)))
+    var.replaceAxis(oldax,newax)
+    assert var.hasAxis(newax) and not var.hasAxis(oldax)
+  
   def testBinaryArithmetic(self):
     ''' test binary arithmetic functions '''
     # get test objects
@@ -192,7 +100,116 @@ class BaseVarTest(unittest.TestCase):
     #     print (self.data.filled() - var.data_array.filled()).max()
 #     assert isEqual(np.ones_like(self.data), d.data_array)
 #     assert isOne(d.data_array)  
+  
+  def testBroadcast(self):
+    ''' test reordering, reshaping, and broadcasting '''
+    # get test objects
+    var = self.var
+    z = Axis(name='z', units='none', coord=(1,5,5)) # new axis    
+    new_axes = var.axes[0:1] + (z,) + var.axes[-1:0:-1] # dataset independent
+    new_axes_names = tuple([ax.name for ax in new_axes])
+    # test reordering and reshaping/extending (using axis names)
+    new_shape = tuple([var.shape[var.axisIndex(ax)] if var.hasAxis(ax) else 1 for ax in new_axes]) 
+    data = var.getArray(axes=new_axes_names, broadcast=False, copy=True)
+    #print var.shape # this is what it was
+    #print data.shape # this is what it is
+    #print new_shape 
+    assert data.shape == new_shape 
+    # test broadcasting to a new shape (using Axis instances) 
+    new_shape = tuple([len(ax) for ax in new_axes]) # this is the shape we should get
+    data = var.getArray(axes=new_axes, broadcast=True, copy=True)
+    #print var.shape # this is what it was
+    #print data.shape # this is what it is
+    #print new_shape # this is what it should be
+    assert data.shape == new_shape 
+        
+  def testCopy(self):
+    ''' test copy and deepcopy of variables (and axes) '''
+    # get copy of variable
+    var = self.var.deepcopy(name='different') # deepcopy calls copy
+    # check identity
+    assert var != self.var
+    assert var.name == 'different' and self.var.name != 'different'      
+    assert (var.units == self.var.units) and (var.units is self.var.units) # strings are immutable...
+    assert (var.atts is not self.var.atts) and (var.atts == self.var.atts) # ...dictionaries are not
+    for key,value in var.atts.iteritems():
+      assert np.all(value == self.var.atts[key])
+    assert isEqual(var.data_array,self.var.data_array) 
+    # change array
+    var.data_array += 1 # test if we have a true copy and not just a reference 
+    assert not isEqual(var.data_array,self.var.data_array)
+      
+  def testIndexing(self):
+    ''' test indexing and slicing '''
+    # get test objects
+    var = self.var
+    # indexing (getitem) test  
+    if var.ndim == 3:  
+      assert isEqual(self.data[0,1,1], var[0,1,1], masked_equal=True)
+      assert isEqual(self.data[0,:,1:-1], var[0,:,1:-1], masked_equal=True)
+  
+  def testLoad(self):
+    ''' test data loading and unloading '''
+    # get test objects
+    var = self.var
+    # unload and load test
+    var.unload()
+    var.load(self.data.copy())
+    assert self.size == var.shape
+    assert isEqual(self.data, var.data_array)
+    
+  def testMask(self):
+    ''' test masking and unmasking of data '''
+    # get test objects
+    var = self.var; rav = self.rav
+    masked = var.masked
+    mask = var.getMask()
+    data = var.getArray(unmask=True, fillValue=-9999)
+    # test unmasking and masking again
+    var.unmask(fillValue=-9999)
+    assert isEqual(data, var[:]) # trivial
+    var.mask(mask=mask)
+    assert isEqual(self.data, var.getArray(unmask=(not masked)))
+    # test masking with a variable
+    var.unmask(fillValue=-9999)
+    assert isEqual(data, var[:]) # trivial
+    var.mask(mask=rav)
+    assert isEqual(ma.array(self.data,mask=(rav.data_array>0)), var.getArray(unmask=False)) 
+    
+  def testPrint(self):
+    ''' just print the string representation '''
+    assert self.var.prettyPrint()
+    print('')
+    s = str(self.var)
+    print s
+    print('')
 
+  def testSqueeze(self):
+    ''' test removal of singleton dimensions '''
+    var = self.var
+    ndim = var.ndim
+    sdim = 0
+    for dim in var.shape: 
+      if dim == 1: sdim += 1
+    # squeeze
+    var.squeeze()
+    # test
+    assert var.ndim == ndim - sdim
+    assert all([dim > 1 for dim in var.shape]) 
+    
+  def testUnaryArithmetic(self):
+    ''' test unary arithmetic functions '''
+    # get test objects
+    var = self.var
+    # arithmetic test
+    var += 2.
+    var -= 2.
+    var *= 2.
+    var /= 2.
+    # test results
+    #     print (self.data.filled() - var.data_array.filled()).max()
+    assert isEqual(self.data, var.data_array)
+    
 
 class BaseDatasetTest(unittest.TestCase):  
   
@@ -231,6 +248,51 @@ class BaseDatasetTest(unittest.TestCase):
     
   ## basic tests every variable class should pass
 
+  def testAddRemove(self):
+    ''' test adding and removing variables '''
+    # test objects: var and ax
+    name='test'
+    ax = Axis(name='ax', units='none')
+    var = Variable(name=name,units='none',axes=(ax,))
+    dataset = self.dataset
+    le = len(dataset)
+    # add/remove axes
+    dataset.addVariable(var)
+    assert dataset.hasVariable(var)
+    assert dataset.hasAxis(ax)
+    assert len(dataset) == le + 1
+    dataset.removeAxis(ax) # should not work now
+    assert dataset.hasAxis(ax)    
+    dataset.removeVariable(var)
+    assert dataset.hasVariable(name) == False
+    assert len(dataset) == le
+    dataset.removeAxis(ax)
+    assert dataset.hasAxis(ax) == False
+    # replace axis
+    oldax = dataset.axes.values()[-1]
+    newax = Axis(name='z', units='none', coord=(1,len(oldax),len(oldax)))
+    dataset.repalceAxis(oldax,newax)
+    assert dataset.hasAxis(newax) and not dataset.hasAxis(oldax)  
+    assert not any([var.hasAxis(oldax) for var in dataset])
+    
+  def testContainer(self):
+    ''' test basic container functionality '''
+    # test objects: vars and axes
+    dataset = self.dataset
+    # check container properties 
+    assert len(dataset.variables) == len(dataset)
+    for varname,varobj in dataset.variables.iteritems():
+      assert varname in dataset
+      assert varobj in dataset
+    # test get, del, set
+    varname = dataset.variables.keys()[0]
+    var = dataset[varname]
+    assert isinstance(var,Variable) and var.name == varname
+    del dataset[varname]
+    assert not dataset.hasVariable(varname)
+    dataset[varname] = var
+    assert dataset.hasVariable(varname)
+
   def testPrint(self):
     ''' just print the string representation '''
     assert self.dataset.__str__()
@@ -259,45 +321,6 @@ class BaseDatasetTest(unittest.TestCase):
     ncfile.close()
     if os.path.exists(filename): os.remove(filename)
   
-  def testAddRemove(self):
-    ''' test adding and removing variables '''
-    # test objects: var and ax
-    name='test'
-    ax = Axis(name='ax', units='none')
-    var = Variable(name=name,units='none',axes=(ax,))
-    dataset = self.dataset
-    le = len(dataset)
-    # add/remove axes
-    dataset.addVariable(var)
-    assert dataset.hasVariable(var)
-    assert dataset.hasAxis(ax)
-    assert len(dataset) == le + 1
-    dataset.removeAxis(ax) # should not work now
-    assert dataset.hasAxis(ax)    
-    dataset.removeVariable(var)
-    assert dataset.hasVariable(name) == False
-    assert len(dataset) == le
-    dataset.removeAxis(ax)
-    assert dataset.hasAxis(ax) == False
-    
-  def testContainer(self):
-    ''' test basic container functionality '''
-    # test objects: vars and axes
-    dataset = self.dataset
-    # check container properties 
-    assert len(dataset.variables) == len(dataset)
-    for varname,varobj in dataset.variables.iteritems():
-      assert varname in dataset
-      assert varobj in dataset
-    # test get, del, set
-    varname = dataset.variables.keys()[0]
-    var = dataset[varname]
-    assert isinstance(var,Variable) and var.name == varname
-    del dataset[varname]
-    assert not dataset.hasVariable(varname)
-    dataset[varname] = var
-    assert dataset.hasVariable(varname)
-
 
 # import modules to be tested
 from geodata.netcdf import VarNC, AxisNC, DatasetNetCDF
@@ -347,19 +370,29 @@ class NetCDFVarTest(BaseVarTest):
   
   ## specific NetCDF test cases
 
-  def testScaling(self):
-    ''' test scale and offset operations '''
+  def testFileAccess(self):
+    ''' test access to data without loading '''
     # get test objects
     var = self.var
-    # unload and change scale factors    
     var.unload()
-    var.scalefactor = 2.
-    var.offset = 100.
-    # load data with new scaling
-    var.load()
-    assert self.size == var.shape
-    assert isEqual((self.data+100.)*2, var.data_array)
-  
+    # access data
+    data = var[:]
+    assert data.shape == self.data.shape
+    assert isEqual(self.data[:], data)
+    # assert no data
+    assert not var.data
+    assert var.data_array is None
+
+  def testIndexing(self):
+    ''' test indexing and slicing '''
+    # get test objects
+    var = self.var
+    # indexing (getitem) test    
+    if var.ndim == 3:
+      assert isEqual(self.data[1,1,1], var[1,1,1])
+      assert isEqual(self.data[1,:,1:-1], var[1,:,1:-1])
+    # test axes
+
   def testLoadSlice(self):
     ''' test loading of slices '''
     # get test objects
@@ -374,29 +407,19 @@ class NetCDFVarTest(BaseVarTest):
         assert isEqual(self.data.__getitem__(sl), var.data_array)
       else:
         assert isEqual(self.data.__getitem__(sl).filled(var.fillValue), var.data_array)
-  
-  def testIndexing(self):
-    ''' test indexing and slicing '''
-    # get test objects
-    var = self.var
-    # indexing (getitem) test    
-    if var.ndim == 3:
-      assert isEqual(self.data[1,1,1], var[1,1,1])
-      assert isEqual(self.data[1,:,1:-1], var[1,:,1:-1])
-    # test axes
 
-  def testFileAccess(self):
-    ''' test access to data without loading '''
+  def testScaling(self):
+    ''' test scale and offset operations '''
     # get test objects
     var = self.var
+    # unload and change scale factors    
     var.unload()
-    # access data
-    data = var[:]
-    assert data.shape == self.data.shape
-    assert isEqual(self.data[:], data)
-    # assert no data
-    assert not var.data
-    assert var.data_array is None
+    var.scalefactor = 2.
+    var.offset = 100.
+    # load data with new scaling
+    var.load()
+    assert self.size == var.shape
+    assert isEqual((self.data+100.)*2, var.data_array)
   
 
 class DatasetNetCDFTest(BaseDatasetTest):  
@@ -446,17 +469,6 @@ class DatasetNetCDFTest(BaseDatasetTest):
   
   ## specific NetCDF test cases
       
-  def testLoad(self):
-    ''' test loading and unloading of data '''
-    # test objects: vars and axes
-    dataset = self.dataset
-    # load data
-    dataset.load()
-    assert all([var.data for var in dataset])
-    # unload data
-    dataset.unload()
-    assert all([not var.data for var in dataset])
-
   def testCreate(self):
     ''' test creation of a new NetCDF dataset and file '''
     folder = '/media/tmp/' # RAM disk
@@ -477,6 +489,17 @@ class DatasetNetCDFTest(BaseDatasetTest):
     assert ncfile
     print(ncfile)
     ncfile.close()
+
+  def testLoad(self):
+    ''' test loading and unloading of data '''
+    # test objects: vars and axes
+    dataset = self.dataset
+    # load data
+    dataset.load()
+    assert all([var.data for var in dataset])
+    # unload data
+    dataset.unload()
+    assert all([not var.data for var in dataset])
 
 
 # import modules to be tested

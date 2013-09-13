@@ -96,4 +96,4 @@ if __name__ == '__main__':
 
   print 
   print dataset.lnd
-  print dataset.lnd[0,45,:]         
+  print dataset.lnd[45,:]         

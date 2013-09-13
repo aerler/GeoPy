@@ -11,7 +11,8 @@ import numpy as np
 import numpy.ma as ma # masked arrays
 # my own imports
 from atmdyn.properties import variablePlotatts # import plot properties from different file
-from misc import VariableError, DataError, DatasetError, checkIndex, isEqual, isFloat, AttrDict, joinDicts
+from misc import checkIndex, isEqual, isFloat, AttrDict, joinDicts
+from misc import VariableError, AxisError, DataError, DatasetError
 
 import numbers
 import functools
@@ -178,7 +179,23 @@ class Variable(object):
     return string
   
   def squeeze(self):
-    raise NotImplementedError
+    ''' A method to remove singleton dimensions. '''
+    # new axes tuple: only the ones longer than one element
+    axes = []; retour = []
+    for ax in self.axes:
+      if len(ax) > 1: axes.append(ax)
+      else: retour.append(ax)
+    self.axes = tuple(axes)
+    self.shape = tuple([len(ax) for ax in self.axes])
+    assert self.ndim == len(axes) + len(retour)
+    self.ndim = len(self.axes)    
+    # squeeze data array, if necessary
+    if self.data:
+      self.data_array = self.data_array.squeeze()
+      assert self.ndim == self.data_array.ndim
+      assert self.shape == self.data_array.shape        
+    # return squeezed dimensions
+    return retour
   
   def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Variable with just a link to the data. '''
@@ -214,6 +231,24 @@ class Variable(object):
         if self.axes[i] == axis: return True
     # if all fails
     return False
+  
+  def replaceAxis(self, oldaxis, newaxis=None):
+    ''' Replace an existing axis with a different one with similar general properties. '''
+    if newaxis is None: 
+      newaxis = oldaxis; oldaxis = newaxis.name # i.e. replace old axis with the same name'
+      # check axis
+    if not self.hasAxis(oldaxis): raise AxisError
+    if isinstance(oldaxis,Axis): oldname = oldaxis.name # just go by name
+    else: oldname = oldaxis
+    oldaxis = self.axes[self.axisIndex(oldname)]
+    if len(oldaxis) != len(newaxis): raise AxisError # length has to be the same!
+    if oldaxis.data: newaxis.updateCoord() # make sure data status is the same
+    # replace old axis
+    self.axes = tuple([ax if ax is not oldaxis else newaxis for ax in self.axes])
+    assert len(self.axes) == self.ndim
+    assert tuple([len(ax) for ax in self.axes]) == self.shape
+    # return confirmation, i.e. True, if replacement was successful
+    return self.hasAxis(newaxis)
 
 #   def __contains__(self, axis):
 #     ''' Check if the variable instance has a particular axis. '''
@@ -596,20 +631,57 @@ class Dataset(object):
     # double-check
     return self.variables.has_key(var.name) 
     
-  def removeAxis(self, ax):
+  def removeAxis(self, ax, force=False):
       ''' Method to remove an Axis from the Dataset, provided it is no longer needed. '''
       if isinstance(ax,basestring): ax = self.axes[ax] # only work with Axis objects
       assert isinstance(ax,Axis), "Argument 'ax' has to be an Axis instance or a string representing the name of an axis." 
       if ax.name in self.axes: # remove axis, if it does exist
         # make sure no variable still needs axis
-        if not any([var.hasAxis(ax) for var in self.variables.itervalues()]):
+        if force or not any([var.hasAxis(ax) for var in self.variables.itervalues()]):
           # delete axis from dataset   
           del self.axes[ax.name]
           del self.__dict__[ax.name]
-          return True
+          # this just removes the references, not the object; we still rely on garbage collection 
+          # to remove the object, if it is no longer needed (which is not necessarily the case!) 
         # don't delete, if still needed
       # double-check (return True, if axis is not present, False, if it is)
-      return not self.axes.has_key(ax.name)       
+      return not self.axes.has_key(ax.name)
+    
+  def repalceAxis(self, oldaxis, newaxis):    
+    ''' Replace an existing axis with a different one with similar general properties. '''
+    if newaxis is None: 
+      newaxis = oldaxis; oldaxis = newaxis.name # i.e. replace old axis with the same name'
+    # check axis
+    if not self.hasAxis(oldaxis): raise AxisError
+    if isinstance(oldaxis,Axis): oldname = oldaxis.name # just go by name
+    oldaxis = self.axes[oldname]
+    if len(oldaxis) != len(newaxis): raise AxisError # length has to be the same!
+    if oldaxis.data: newaxis.updateCoord() # make sure data status is the same
+    # remove old axis and add new to dataset
+    self.removeAxis(oldaxis, force=True)
+    self.addAxis(newaxis)
+    newaxis = self.axes[newaxis.name] # update reference
+    # loop over variables with this axis    
+    for var in self.variables.values():
+      if var.hasAxis(oldname): var.replaceAxis(oldname,newaxis)    
+    # return verification
+    return self.hasAxis(newaxis)    
+
+  def squeeze(self):
+    ''' Remove singleton axes from all variables; return axes that were entirely removed. '''
+    axes = set()
+    # squeeze variables
+    for var in self.variable.values():
+      var.squeeze() # get axes that were removed
+      axes.add(var.axes) # collect axes that are still needed
+    # remove axes that are no longer needed
+    retour = []
+    for ax in self.axes:
+      if ax not in axes: 
+        self.removeAxis(ax)
+        retour.append(ax)        
+    # return axes that were removed
+    return retour
   
   def removeVariable(self, var):
     ''' Method to remove a Variable from the Dataset. '''
@@ -756,7 +828,7 @@ class Dataset(object):
     ''' Unmask all Variables in the Dataset. '''
     for var in self.variables.itervalues():
       var.load(fillValue=fillValue, **kwargs)
-        
+      
 
 ## run a test    
 if __name__ == '__main__':
