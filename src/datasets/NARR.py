@@ -11,7 +11,7 @@ from geodata.base import Axis
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict
 from geodata.misc import DatasetError 
-from datasets.misc import translateVarNames, days_per_month, months_names, data_root
+from datasets.misc import translateVarNames, days_per_month, name_of_month, data_root
 
 
 ## NARR Meta-data

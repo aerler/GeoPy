@@ -13,8 +13,8 @@ days_per_month = np.array([31,28.2425,31,30,31,30,31,31,30,31,30,31]) # 97 leap 
 # N.B.: the Gregorian calendar repeats every 400 years
 days_per_month_365 = np.array([31,28,31,30,31,30,31,31,30,31,30,31]) # no leap day
 # human-readable names
-months_names = ['January  ', 'February ', 'March    ', 'April    ', 'May      ', 'June     ', #
-                'July     ', 'August   ', 'September', 'October  ', 'November ', 'December ']
+name_of_month = ['January  ', 'February ', 'March    ', 'April    ', 'May      ', 'June     ', #
+                 'July     ', 'August   ', 'September', 'October  ', 'November ', 'December ']
 
 
 def translateVarNames(varlist, varatts):

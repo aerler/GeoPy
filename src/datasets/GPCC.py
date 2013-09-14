@@ -7,18 +7,20 @@ This module contains meta data and access functions for the GPCC climatology and
 '''
 
 # external imports
+import numpy as np
 import netCDF4 as nc # netcdf python module
+import os
 # internal imports
-from geodata.netcdf import DatasetNetCDF, VarNC
+from geodata.netcdf import DatasetNetCDF, VarNC, AxisNC
 from geodata.gdal import addGDALtoDataset
 from geodata.misc import DatasetError 
-from datasets.misc import translateVarNames, days_per_month, months_names, data_root
+from datasets.misc import translateVarNames, days_per_month, name_of_month, data_root
  
 ## GPCC Meta-data
 
 # variable attributes and name
 varatts = dict(p    = dict(name='precip', units='mm/month'), # total precipitation rate
-               s    = dict(name='stations', units=''), # number of gauges for observation
+               s    = dict(name='stations', units='#'), # number of gauges for observation
                # axes (don't have their own file; listed in axes)
                lon  = dict(name='lon', units='deg E'), # geographic longitude field
                lat  = dict(name='lat', units='deg N')) # geographic latitude field
@@ -71,7 +73,7 @@ def loadGPCC_TS(name='GPCC', varlist=varlist, resolution='05', varatts=tsvaratts
     if 'p' in varlist: filelist.append('full_data_v6_precip_%s.nc'%resolution)
     if 's' in varlist: filelist.append('full_data_v6_statio_%s.nc'%resolution)
   # load dataset
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')  
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
   # return formatted dataset
@@ -102,25 +104,80 @@ def loadGPCC(name='GPCC', varlist=None, resolution='025', period=None, folder=av
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-  # load averaged climatology file
-  dataset = loadGPCC()
-  print dataset
+  mode = 'average_timeseries'
+#   reses = ('25',) # for testing
+  reses = ('05', '10', '25')
   
   # generate averaged climatology
-  for resolution in (): # ('025', '05', '10', '25'):    
+  for res in reses:    
     
-    # load dataset
-    print('')
-    dataset = loadGPCC_LTM(varlist=['stations','precip'],resolution=resolution)    
+    if mode == 'test_clim':
+      
+      # load averaged climatology file
+      print('')
+      dataset = loadGPCC()
+      print(dataset)
+          
+    elif mode == 'convert_climatology':
+      # load dataset
+      dataset = loadGPCC_LTM(varlist=['stations','precip'],resolution=res)    
+      
+      # convert precip data to SI units (mm/s)
+      dataset.precip *= days_per_month.reshape((12,1,1)) # convert in-place
+      dataset.precip.units = 'kg/m^2/s'
+      
+      # write data to file
+      from geodata.nctools import writeNetCDF
+      writeNetCDF(dataset, rootfolder+avgfolder+avgfile%res)
+      
+      # close...
+      dataset.close()
+      # print dataset before
+      print(dataset)     
+      
+    elif mode == 'average_timeseries':
+      
+      # load source
+      print('')
+      source = loadGPCC_TS(varlist=['stations','precip'],resolution=res)
+      print(source)
+      # prepare sink
+      filename = 'gpcc_%s_clim_avg.nc'%res
+      if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
+      sink = DatasetNetCDF(name='GPCC Climatology', folder=avgfolder, filelist=[filename], mode='w') 
+      
+      # process
+      from geodata.process import ClimatologyProcessingUnit
+      CPU = ClimatologyProcessingUnit(source, sink)
+      CPU.process()
+      
+      # convert precip data to SI units (mm/s)   
+      sink.precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
+      sink.precip.units = 'kg/m^2/s'      
+      
+      # add names of months
+      me = len(name_of_month); ne = len(name_of_month[0])
+      coord = np.ndarray((me,ne),dtype='S1') # array of strings
+      for m in xrange(me): 
+        for n in xrange(ne): coord[m,n] = name_of_month[m][n]
+      strax = AxisNC(sink.datasets[0], name='string',  units='', length=ne, dtype='S1', mode='w') # character axis
+      sink += VarNC(sink.datasets[0], name='name_of_month', units='', axes=(sink.time,strax), 
+                    data=coord, dtype='S1', mode='w')
+      
+      sink.sync()
+      newvar = sink.precip
+      print
+      print newvar.name, newvar.masked
+      print newvar.fillValue
+      print newvar.data_array.__class__
+      print
+      
+      # close...
+#       sink.load()
+      sink.sync()
+      sink.close()
+      # print dataset before
+      print('')
+      print(sink)     
+      
     
-    # convert precip data to SI units (mm/s)
-    dataset.precip *= days_per_month.reshape((12,1,1)) # convert in-place
-    dataset.precip.units = 'kg/m^2/s'
-    
-    # write data to file
-    from geodata.nctools import writeNetCDF
-    writeNetCDF(dataset, rootfolder+avgfolder+avgfile%resolution)
-    
-    # close...
-    dataset.close()
-    print(dataset) # print dataset before    

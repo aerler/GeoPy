@@ -11,7 +11,7 @@ functionality to read PRISM data from ASCII files and write to NetCDF format.
 import numpy as np
 import netCDF4 as nc # netcdf python module
 # internal imports
-from datasets.misc import translateVarNames, data_root, days_per_month, months_names
+from datasets.misc import translateVarNames, data_root, days_per_month, name_of_month
 from geodata.misc import DatasetError
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset

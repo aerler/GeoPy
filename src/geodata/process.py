@@ -1,119 +1,104 @@
 '''
-Created on 2013-08-13
+Created on 2013-08-13, adapted on 2013-09-13
 
-This module provides a class that contains definitions of source and target datasets and methods to process variables 
-in these datasets. This class can be imported and extended by modules that perform specific tasks on specific datasets.
-Simple methods for copying and averaging variables are already provided in this class.
+This module provides a class that contains definitions of source and target datasets and methods to process 
+variables in these datasets. 
+The class is designed to be imported and extended by modules that perform more specific tasks.
+Simple methods for copying and averaging variables will already be provided in this class.
 
 @author: Andre R. Erler, GPL v3
 '''
 
-# import netCDF4-python and added functionality
-from netcdf import Dataset, copy_ncatts, add_var, copy_dims, add_coord
-# numpy
+# external imports
 import numpy as np
 import numpy.ma as ma
-# misc system stuff
-from warnings import warn
-import os
+import functools
+# internal imports
+from geodata.misc import VariableError
+from geodata.base import Variable, Axis
 
-## Dataset Definition Class for NetCDF files
-class NetcdfProcessor(object):
-  
-  ## member variables
-  # input
-  infiles = [''] # path and name of all input files 
-  prefixes = [''] # prefixes associated with each input file (used to prevent naming conflicts)
-  # output
-  outfile = '' # path and name of the output file
-  zlib = False # use netcdf-4 compression feature 
-  lgrp = False # store input datasets in different groups (use prefixes as names)
-  lvarpfx = False # also use prefixes for variables, not only for global attributes  
-  
-  ## member methods
-  # constructor
-  def __init__(self, infiles=None, outfile='', folder='', infile='', prefixes=None, prefix='', **kwargs):
-    ''' Define names of input and output datasets and set general processing parameters. '''
-    # required arguments
-    if infile and not infiles: infiles = [infile] 
-    if not prefixes: 
-      if prefix: self.prefixes = [prefix]
-      else: self.prefixes = ['']*len(infiles)
-    assert len(infiles) == len(self.prefixes), 'Input file list and prefix list have to be of the same length!'
-    if folder:
-      assert os.path.exists(folder), 'Folder \'%s\' does not exist!'%folder
-      self.infiles = ['%s/%s'%(folder,infile) for infile in infiles]
-      self.outfile = '%s/%s'%(folder,outfile)
-    else:
-      self.infiles = infiles
-      self.outfile = outfile
-    # check if input files and output folder are present
-    for infile in self.infiles:
-      assert os.path.exists(infile), 'Input file \'%s\' does not exist!'%infile
-    assert os.path.exists(os.path.dirname(self.outfile)), 'Output folder \'%s\' does not exist!'%folder
-    # optional arguments, if given
-    # N.B.: at the moment all kwrgs are translated into member variables; if they don't exist, they are added
-    for key,val in kwargs.iteritems():
-      self.__dict__[key] = val # if the variable doesn't exist, it will be added
-#     varset = set(vars(self))
-#     for key,val in kwargs.iteritems():
-#       if key in varset: self.__dict__[key] = val 
-#       else: warn('invalid key-word argument \'%s\''%kwarg)
-      
-    
-  # define parameters of input dataset
-  def initInput(self):
-    ''' This method defines input parameters and initializes the input dataset(s). '''
-    # open input datasets
-    self.indatas = [Dataset(infile, 'r') for infile in self.infiles] # read only
-    self.indata = self.indatas[0] # "active dataset"
-    self.prefix = self.prefixes[0] 
-    
-  # define parameters of output dataset
-  def initOutput(self):
-    ''' This method defines output parameters and initializes the output dataset. '''
-    # create output dataset
-    self.outdata = Dataset(self.outfile, 'w', format='NETCDF4') # write new netcdf-4 file
-  
-  # set operation parameters
-  def defineOperation(self):
-    ''' This method defines the operation and the parameters for the operation performed on the dataset. '''
-    pass
-  
-  # perform operation (dummy method)
-  def performOperation(self, **kwargs):
-    ''' This method performs the actual operation on the variables; it is defined in specialized child classes. '''
-    # dummy method: look up variable in current input dataset and copy everything
-    varname = kwargs['name']
-    ncvar = self.indata.variables[varname]
-    newname = varname
-    newvals = ncvar[:]
-    newdims = ncvar.dimensions
-    newdtype = ncvar.dtype
-    newatts = dict(zip(ncvar.ncattrs(),[ncvar.getncattr(att) for att in ncvar.ncattrs()])) 
-    # this method needs to return all the information needed to create a new netcdf variable    
-    return newname, newvals, newdims, newatts, newdtype
-  
-  # main processor function
-  def processDataset(self):
-    ''' This method creates the output dataset and applies the desired operation to each variable. '''    
-    # loop over input datasets
-    for indata,prefix in zip(self.indatas,self.prefixes):
-      self.indata = indata # active file/dataset
-      self.prefixes = prefix
-      # copy global attributes
-      copy_ncatts(self.outdata, self.indata, prefix=self.prefix)
-      # loop over variables
-      for varname in self.indata.variables.keys():
-        # apply operation 
-        print varname
-        newname, newvals, newdims, newatts, newdtype = self.performOperation(name=varname)
-        # create new variable in output dataset
-        add_var(self.outdata, newname, newdims, values=newvals, atts=newatts, dtype=newdtype, zlib=self.zlib)
-        
-    # close output dataset and return handle
-    self.outdata.close()
 
+class CentralProcessingUnit(object):
+   
+  def __init__(self, source, target, function, **kwargs):
+    ''' Pass input and output datasets and define the processing function (kwargs are passed to function). 
+        The pattern for 'function' is: outvar = function(invar)
+    '''
+    self.__dict__['input'] = source
+    self.__dict__['output'] = target
+    self.__dict__['function'] = functools.partial(function, **kwargs) # already set kw-parameters
+    
+  def process(self):
+    ''' This method applies the desired operation to each variable in the input dataset. '''    
+    # loop over input variables
+    for var in self.input:
+      # check if variable already exists
+      if self.output.hasVariable(var.name):
+        newvar = self.function(var)
+        oldvar = self.output.variable[var.name]
+        if newvar.ndim != oldvar.ndim or newvar.shape != oldvar.shape: raise VariableError
+        self.output.variable[var.name].load(newvar.getArray(unmask=False,copy=False))
+      else:
+        newvar = self.function(var)
+        self.output.addVariable(newvar, copy=True)
+#         print
+#         newvar = self.output.precip     
+#         print newvar.name, newvar.masked
+#         print newvar.fillValue
+#         print newvar.data_array.__class__
+
+
+class ClimatologyProcessingUnit(CentralProcessingUnit):
+  
+  def __init__(self, source, target, timeAxis='time', climAxis=None):
+    ''' Pass input and output datasets and define the processing function (kwargs are passed to function). 
+        The pattern for 'function' is: outvar = function(invar)
+    '''
+    if climAxis is None: # construct new time axis for climatology 
+      climAxis = Axis(name=timeAxis, units='month', length=12, coord=np.arange(1,13)) # monthly climatology      
+    # call superior constructor with climatology function and parameters
+    super(ClimatologyProcessingUnit,self).__init__(source, target, Climatology, timeAxis=timeAxis, climAxis=climAxis)  
+
+# this is not actually a class method...
+def Climatology(var, timeAxis='time', climAxis=None):
+  ''' Compute a climatology from a time-series. '''
+  # process variable that have a time axis
+  if var.hasAxis(timeAxis):
+    # prepare averaging
+    tidx = var.axisIndex(timeAxis)
+    interval = len(climAxis)
+    newshape = list(var.shape)
+    newshape[tidx] = interval # shape of the climatology field  
+    dataarray = var.getArray(unmask=False,copy=False)    
+    if var.masked: avgdata = ma.zeros(newshape) # allocate array
+    else: avgdata = np.zeros(newshape) # allocate array    
+    # average data
+    timelength = len(var.getAxis(timeAxis))
+    if timelength % interval == 0:
+      # use array indexing
+      climelts = np.arange(interval)
+      for t in xrange(0,timelength,interval):      
+        avgdata += dataarray.take(t+climelts, axis=tidx)
+      # normalize
+      avgdata /= (timelength/interval) 
+    else: raise NotImplementedError
+    # create new Variable
+#     print var.name, var.masked
+#     print var.fillValue
+#     print avgdata.__class__
+    axes = tuple([climAxis if ax.name == timeAxis else ax for ax in var.axes]) # exchange time axis
+    newvar = Variable(name=var.name, units=var.units, axes=axes, data=avgdata, dtype=var.dtype, 
+                      mask=None, fillValue=var.fillValue, atts=var.atts, plot=var.plot)
+#     print newvar.name, newvar.masked
+#     print newvar.fillValue
+#     print newvar.data_array.__class__
+  else:
+    newvar = var  
+  # return variable
+  return newvar
+
+
+"""
 
 ## Class for regridding  datasets
 class NetcdfRegrid(NetcdfProcessor):
@@ -260,5 +245,5 @@ if __name__ == '__main__':
     pyl.imshow(np.flipud(vardata[i,:,:])); pyl.colorbar(); pyl.show(block=True)
 #     pyl.imshow(np.flipud(outdata[i,:,:]-likeData.variables['rain'][i,:,:])); pyl.colorbar(); pyl.show(block=True)  
     
-
+"""
   

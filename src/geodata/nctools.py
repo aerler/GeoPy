@@ -21,7 +21,7 @@ zlib_default = dict(zlib=True, complevel=1, shuffle=True) # my own default compr
 def add_coord(dst, name, data=None, length=None, atts=None, dtype=None, zlib=True, fillValue=None, **kwargs):
   ''' Function to add a Coordinate Variable to a NetCDF Dataset; returns the Variable reference. '''
   # basically a simplified interface for add_var
-  if isinstance(length,np.integer): (length,)
+  if isinstance(length,(int,np.integer)): length=(length,)
   elif length is not None: raise TypeError
   coord = add_var(dst, name, dims=(name,), data=data, shape=length, atts=atts, dtype=dtype, 
                   zlib=zlib, fillValue=fillValue, **kwargs)  
@@ -63,9 +63,10 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   if fillValue is not None: atts['missing_value'] = fillValue # I use fillValue and missing_value the same way
   var = dst.createVariable(name, dtype, dims, fill_value=fillValue, **varargs)
   if atts: # add attributes
-    for key,value in atts.iteritems():
-#       print key, value
-      if key[0] != '_': var.setncattr(key,value)  
+    var.setncatts(coerceAtts(atts))
+#     for key,value in atts.iteritems():
+# #       print key, value
+#       if key[0] != '_': var.setncattr(key,value)  
   if data is not None: var[:] = data # assign coordinate data if given  
   # return var reference
   return var
@@ -125,19 +126,21 @@ def copy_dims(dst, src, dimlist=None, namemap=None, copy_coords=True, **kwargs):
 def coerceAtts(atts):
   ''' Convert an attribute dictionary to a NetCDF compatible format. '''
   if not isinstance(atts,dict): raise TypeError
-  ncatts = atts.copy()
+  ncatts = dict()
   # loop over items
-  for key,value in ncatts.iteritems():
-    if not isinstance(value,(basestring,np.ndarray,float,int)):
+  for key,value in atts.iteritems():
+    if isinstance(key,basestring) and key[0] == '_' : pass
+    elif not isinstance(value,(basestring,np.ndarray,float,int)):
       if isinstance(value,col.Iterable):
         if len(value) == 0: ncatts[key] = '' # empty attribute
-        elif all(isNumber(value)): ncatts[key] = np.array(value)
+        elif all(isNumber(value)): ncatts[key] = np.array(value)         
         else:
           l = '(' # fake list representation
           for elt in value[0:-1]: l += '{0:s}, '.format(str(elt))
           l += '{0:s})'.format(str(value[-1]))
           ncatts[key] = l          
       else: ncatts[key] = str(value) 
+    else: ncatts[key] = value
   return ncatts
 
 def writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True, writeData=True, close=True):

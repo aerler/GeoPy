@@ -258,6 +258,10 @@ class Variable(object):
 #   def __len__(self):
 #     ''' Return number of dimensions. '''
 #     return self.__dict__['ndim']
+
+  def getAxis(self, axis):
+    ''' Return a reference to the Axis object or one with the same name. '''
+    return self.axes[self.axisIndex(axis)]
   
   def axisIndex(self, axis):
     ''' Return the index of a particular axis. (return None if not found) '''
@@ -290,7 +294,7 @@ class Variable(object):
   def load(self, data=None, mask=None, fillValue=None):
     ''' Method to attach numpy data array to variable instance (also used in constructor). '''
     assert data is not None, 'A basic \'Variable\' instance requires external data to load!'
-    assert isinstance(data,np.ndarray), 'The data argument must be a numpy array!'          
+    assert isinstance(data,np.ndarray), 'The data argument must be a numpy array!'
     if mask: 
       self.__dict__['data_array'] = ma.array(data, mask=mask)
     else: 
@@ -322,7 +326,7 @@ class Variable(object):
     self.__dict__['fillValue'] = None
     # self.__dict__['shape'] = None # retain shape for later use
     
-  def getArray(self, idx=None, axes=None, broadcast=False, unmask=True, fillValue=None, copy=True):
+  def getArray(self, idx=None, axes=None, broadcast=False, unmask=False, fillValue=None, copy=True):
     ''' Copy the entire data array or a slice; option to unmask and to reorder/reshape to specified axes. '''
     # get data (idx=None will return the entire data array)
     if copy: datacopy = self.__getitem__(idx).copy() # use __getitem__ to get slice
@@ -331,6 +335,8 @@ class Variable(object):
     if unmask and self.masked:
       if fillValue is None: fillValue=self.fillValue
       datacopy = datacopy.filled(fill_value=fillValue) # I don't know if this generates a copy or not...
+    elif not self.masked and isinstance(datacopy, ma.MaskedArray): 
+      self.__dict__['masked'] = True # update masked flag
     # reorder and reshape to match axes (add missing dimensions as singleton dimensions)
     if axes is not None:
       if idx is not None: raise NotImplementedError
@@ -357,7 +363,7 @@ class Variable(object):
     # return array
     return datacopy
     
-  def mask(self, mask=None, fillValue=None, merge=True):
+  def mask(self, mask=None, maskedValue=None, fillValue=None, merge=True):
     ''' A method to add a mask to an unmasked array, or extend or replace an existing mask. '''
     if mask is not None:
       assert isinstance(mask,np.ndarray) or isinstance(mask,Variable), 'Mask has to be a numpy array or a Variable instance!'
@@ -377,6 +383,13 @@ class Variable(object):
       else: 
         data = self.getArray(unmask=True) # get data without mask
       self.__dict__['data_array'] = ma.array(data, mask=mask)
+    elif maskedValue is not None:
+      if isinstance(self.dtype,(int,bool,np.integer,np.bool)): 
+        self.__dict__['data_array'] = ma.masked_equal(self.data_array, maskedValue, copy=False)
+      elif isinstance(self.dtype,(float,np.inexact)):
+        self.__dict__['data_array'] = ma.masked_values(self.data_array, maskedValue, copy=False)
+      if fillValue is not None: self.data_array.set_fill_value(fillValue)
+    if isinstance(self.data_array,ma.MaskedArray):
       # change meta data
       self.__dict__['masked'] = True
       if fillValue: 
@@ -492,16 +505,18 @@ class Axis(Variable):
     multiple inheritance from the Variable sub-class and this class. 
   '''
   
-  coord = None # the coordinate vector (also accessible as data_array)
-  len = 0 # the length of the dimension (integer value)
-  
   def __init__(self, length=0, coord=None, **varargs):
-    ''' Initialize a coordinate axis with appropriate values. '''
+    ''' Initialize a coordinate axis with appropriate values.
+        
+        Attributes: 
+          coord = None # the coordinate vector (also accessible as data_array)
+          len = 0 # the length of the dimension (integer value)
+    '''
     # initialize dimensions
     axes = (self,)
     # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple
     self.__dict__['coord'] = None
-    self.__dict__['len'] = length 
+    self.__dict__['len'] = length
     # initialize as a subclass of Variable, depending on the multiple inheritance chain    
     super(Axis, self).__init__(axes=axes, **varargs)
     # add coordinate vector
@@ -623,8 +638,11 @@ class Dataset(object):
     ''' Method to add a Variable to the Dataset. If the variable is already present, abort. '''
     assert isinstance(var,Variable)
     assert var.name not in self.__dict__, "Cannot add Variable '%s' to Dataset, because an attribute of the same name already exits!"%(var.name)
-    # add axes, if necessary (or check, if already present)
-    for ax in var.axes: self.addAxis(ax) # implemented slightly differently
+    # add new axes, or check, if already present; if present, replace, if different
+    for ax in var.axes: 
+      if not self.hasAxis(ax.name): self.addAxis(ax) # add new axis
+      elif ax is not self.axes[ax.name]: var.replaceAxis(ax, self.axes[ax.name]) # or use old one of the same name
+      # N.B.: replacing the axes in the variable is to ensure consistent axes within the dataset 
     # finally, if everything is OK, add variable
     self.variables[var.name] = var
     self.__dict__[var.name] = self.variables[var.name] # create shortcut

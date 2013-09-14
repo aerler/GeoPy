@@ -18,7 +18,7 @@ import os
 from geodata.base import Variable, Axis, Dataset
 from geodata.misc import checkIndex, isEqual, joinDicts
 from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError 
-from geodata.nctools import coerceAtts, writeNetCDF, add_var
+from geodata.nctools import coerceAtts, writeNetCDF, add_var, add_coord
 
 def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs):
   ''' Simple function to cast a Variable instance as a VarNC (NetCDF-capable Variable subclass). '''
@@ -33,13 +33,14 @@ def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs
       if var.shape is not None and not all(var.shape == [len(ax) for ax in axes]): raise AxisError  
     else: 
       raise TypeError, "Argument 'axes' has to be of type dict, list, or tuple."
+  else: axes = var.axes
   # create new VarNC instance (using the ncvar NetCDF Variable instance as file reference)
   if not isinstance(var,Variable): raise TypeError
-  if not isinstance(ncvar,nc.Variable): raise TypeError  
+  if not isinstance(ncvar,(nc.Variable,nc.Dataset)): raise TypeError  
   varnc = VarNC(ncvar, name=var.name, units=var.units, axes=axes, atts=var.atts.copy(), plot=var.plot.copy(), 
-                fillValue=var.fillValue, mode=mode, **kwargs)
+                fillValue=var.fillValue, dtype=var.dtype, mode=mode, **kwargs)
   # copy data
-  if var.data: varnc.load(data=var.getArray(copy=deepcopy))
+  if var.data: varnc.load(data=var.getArray(unmask=False,copy=deepcopy))
   # return VarNC
   return varnc
 
@@ -48,11 +49,11 @@ def asAxisNC(ax=None, ncvar=None, mode='rw', deepcopy=False, **kwargs):
   # create new AxisNC instance (using the ncvar NetCDF Variable instance as file reference)
   if not isinstance(ax,Axis): raise TypeError
   if not isinstance(ncvar,(nc.Variable,nc.Dataset)): raise TypeError # this is for the coordinate variable, not the dimension
-  # axes are handled automatically (self-reference)  
-  axisnc = VarNC(ncvar, name=ax.name, units=ax.units, atts=ax.atts.copy(), plot=ax.plot.copy(), 
-                 length=len(ax), coord=None, mode=mode, **kwargs)
+  # axes are handled automatically (self-reference)  )
+  axisnc = AxisNC(ncvar, name=ax.name, units=ax.units, atts=ax.atts.copy(), plot=ax.plot.copy(), 
+                 length=len(ax), coord=None, dtype=ax.dtype, mode=mode, **kwargs)
   # copy data
-  if ax.data: axisnc.updateCoord(data=ax.getArray(copy=deepcopy))
+  if ax.data: axisnc.updateCoord(coord=ax.getArray(copy=deepcopy))
   # return AxisNC
   return axisnc
 
@@ -79,19 +80,20 @@ class VarNC(Variable):
     if isinstance(ncvar,nc.Dataset):
       if 'w' in mode:
         # construct a new netcdf variable in the given dataset
-        ncvar = add_var(ncvar, name, dims=[ax.name for ax in axes], values=data, atts=coerceAtts(atts), 
-                dtype=dtype, zlib=True, fillValue=fillValue)
+        ncvar = add_var(ncvar, name, dims=[ax.name for ax in axes], shape=[len(ax) for ax in axes], 
+                        atts=atts, dtype=dtype, zlib=True)
       else: raise PermissionError
     # some type checking
     if not isinstance(ncvar,nc.Variable): raise TypeError, "Argument 'ncvar' has to be a NetCDF Variable or Dataset."
-    if dtype and dtype != ncvar.dtype: raise TypeError
-    if data and data.shape != ncvar.shape: raise DataError
+    if dtype and dtype != ncvar.dtype: raise TypeError    
+    if data is not None and data.shape != ncvar.shape: raise DataError
     # read actions
     if 'r' in mode:
       # construct attribute dictionary from netcdf attributes
       ncatts = { key : ncvar.getncattr(key) for key in ncvar.ncattrs() }
       # handle some netcdf conventions
-      if fillValue is not None: fillValue = ncatts.pop('fillValue',ncatts.pop('_fillValue',None))
+      if fillValue is None: 
+        fillValue = ncatts.pop('fillValue',ncatts.pop('_fillValue',ncatts.pop('_FillValue',None)))
       for key in ['scale_factor', 'add_offset']: ncatts.pop(key,None) # already handled by NetCDf Python interface
       if name is None: name = ncatts.get('name',ncvar._name) # name in attributes has precedence
       else: ncatts['name'] = name
@@ -103,8 +105,10 @@ class VarNC(Variable):
       if axes is None: 
         axes = tuple([str(dim) for dim in ncvar.dimensions]) # have to get rid of unicode
       elif len(ncvar.dimensions) != len(axes): raise AxisError
+    else: ncatts = atts
     # call parent constructor
-    super(VarNC,self).__init__(name=name, units=units, axes=axes, data=None, dtype=ncvar.dtype, mask=None, fillValue=fillValue, atts=ncatts, plot=plot)
+    super(VarNC,self).__init__(name=name, units=units, axes=axes, data=None, dtype=ncvar.dtype, 
+                               mask=None, fillValue=fillValue, atts=ncatts, plot=plot)
     # assign special attributes
     self.__dict__['ncvar'] = ncvar
     self.__dict__['mode'] = mode
@@ -115,7 +119,7 @@ class VarNC(Variable):
     # handle data
     if load and data: raise DataError, "Arguments 'load' and 'data' are mutually exclusive, i.e. only one can be used!"
     elif load and 'r' in self.mode: self.load(data=None) # load data from file
-    elif data and 'w' in self.mode: self.load(data=data) # load data from array
+    elif data is not None and 'w' in self.mode: self.load(data=data) # load data from array
     # sync?
     if 'w' in self.mode: self.sync() 
   
@@ -154,19 +158,19 @@ class VarNC(Variable):
     lext = False # loading external data?
     if data is None: 
       data = self[:] # load everything
-    elif all(checkIndex(data)):
-      if isinstance(data,tuple):
+    elif isinstance(data,np.ndarray):
+      lext = True 
+      data = data
+    else:
+      if not all(checkIndex(data)): raise TypeError
+      if isinstance(data,(list,tuple)):
         assert len(data)==len(self.shape), 'Length of index tuple has to equal to the number of dimensions!'       
         for ax,idx in zip(self.axes,data): ax.updateCoord(idx)
         data = self.__getitem__(data) # load slice
       else: 
         assert 1==len(self.shape), 'Multi-dimensional variable have to be indexed using tuples!'
-        if self != self.axes[0]: ax.updateCoord(data) # prevent infinite loop due to self-reference 
+        if self != self.axes[0]: ax.updateCoord(data) # prevent infinite loop due to self-reference
         data = self.__getitem__(data) # load slice
-    else:
-      assert isinstance(data,np.ndarray)
-      lext = True 
-      data = data
     # apply scalefactor and offset
     if not lext: # only scale data from ncvar...
       if self.offset != 0: data += self.offset
@@ -182,18 +186,19 @@ class VarNC(Variable):
     if 'w' in self.mode:      
       if ncvar.shape != self.shape: 
         raise NetCDFError, "Cannot write to NetCDF variable: array shape in memory and on disk are inconsistent!"
-      ncvar[:] = self.data_array # masking should be handled by the NetCDF module
-      # reset scale factors etc.
-      self.scalefactor = 1; self.offset = 0
+      if self.data:
+        ncvar[:] = self.data_array # masking should be handled by the NetCDF module
+        # reset scale factors etc.
+        self.scalefactor = 1; self.offset = 0
       # update NetCDF attributes
-      ncattrs = ncvar.ncattrs # list of current NC attributes
+      ncvar.setncatts(coerceAtts(self.atts))
+      ncattrs = ncvar.ncattrs() # list of current NC attributes
       ncvar.set_auto_maskandscale(True) # automatic handling of missing values and scaling and offset
-      ncvar.setncattr('_FillValue',self.fillValue)
-      ncvar.setncattr('missing_value',self.fillValue)
+      if self.fillValue: 
+        ncvar.setncattr('missing_value',self.fillValue)        
       if 'scale_factor' in ncattrs: ncvar.delncattr('scale_factor',ncvar.getncattr('scale_factor'))
       if 'add_offset' in ncattrs: ncvar.delncattr('add_offset',ncvar.getncattr('add_offset'))
       # set other attributes like in variable
-      ncvar.setncatts(coerceAtts(self.atts))
       ncvar.setncattr('name',self.name)
       ncvar.setncattr('units',self.units)      
     else: 
@@ -206,10 +211,18 @@ class AxisNC(Axis,VarNC):
     A NetCDF Variable representing a coordinate axis.
   '''
   
-  def __init__(self, ncvar, load=True, **axargs):
+  def __init__(self, ncvar, name=None, length=0, coord=None, dtype=None, atts=None, fillValue=None, mode='r', load=True, **axargs):
     ''' Initialize a coordinate axis with appropriate values. '''
+    if isinstance(ncvar,nc.Dataset):
+      if 'w' in mode:
+        # construct a new netcdf coordinate variable in the given dataset
+        ncvar = add_coord(ncvar, name, length=length, data=coord, dtype=dtype, atts=atts,zlib=True)
+      else: raise PermissionError
     # initialize as an Axis subclass and pass arguments down the inheritance chain
-    super(AxisNC,self).__init__(ncvar=ncvar, load=load, **axargs)
+    super(AxisNC,self).__init__(ncvar=ncvar, name=name, length=length, coord=coord, dtype=dtype, atts=atts, 
+                                fillValue=fillValue, mode=mode, load=load, **axargs)
+    # synchronize coordinate array with netcdf variable
+    if 'w' in mode: self.sync()    
     
   def updateCoord(self, coord=None):
     ''' Update the coordinate vector from NetCDF file. '''    
@@ -340,7 +353,7 @@ class DatasetNetCDF(Dataset):
     ''' Method to add an Axis to the Dataset. (If the Axis is already present, check that it is the same.) '''   
     # cast Axis instance as AxisNC
     if copy: # make a new instance or add it as is
-      if 'w' in self.mode: ax = asAxisNC(ax=ax,ncvar=self, mode=self.mode, deepcopy=deepcopy)
+      if 'w' in self.mode: ax = asAxisNC(ax=ax, ncvar=self.datasets[0], mode=self.mode, deepcopy=deepcopy)
       else: ax = ax.copy(deepcopy=deepcopy)
     # hand-off to parent method and return status
     return super(DatasetNetCDF,self).addAxis(ax=ax)
@@ -349,7 +362,10 @@ class DatasetNetCDF(Dataset):
     ''' Method to add a new Variable to the Dataset. '''   
     # cast Axis instance as AxisNC
     if copy: # make a new instance or add it as is 
-      if 'w' in self.mode: var = asVarNC(var=var,ncvar=self, mode=self.mode, deepcopy=deepcopy)
+      if 'w' in self.mode:
+        for ax in var.axes:
+          if not self.hasAxis(ax.name): self.addAxis(ax, copy=True, deepcopy=deepcopy) 
+        var = asVarNC(var=var,ncvar=self.datasets[0], mode=self.mode, deepcopy=deepcopy)
       else: var = var.copy(deepcopy=deepcopy)
     # hand-off to parent method and return status
     return super(DatasetNetCDF,self).addVariable(var=var)  
@@ -369,6 +385,21 @@ class DatasetNetCDF(Dataset):
         dataset.setncatts(coerceAtts(self.atts)) # synchronize attributes with       
         dataset.sync() #
     else: raise PermissionError 
+    
+  def load(self, **slices):
+    ''' Load all VarNC's using the slices specified as keyword arguments. '''
+    # make slices
+    for key,value in slices.itervalues():
+      if isinstance(value,col.Iterable): 
+        slices[key] = slice(*value)
+      else: 
+        if not isinstance(value,np.integer): raise TypeError
+    # load variables
+    for var in self.variables.values():
+      if isinstance(var,VarNC):
+        idx = [slices.get(ax.name,slice(None)) for ax in var.axes]
+        var.load(data=idx) # load slice, along with relevant dimensions
+    # no return value...        
     
   def close(self):
     ''' Call this method before deleting the Dataset: close netcdf files; if in write mode, also synchronizes with file system before closing. '''

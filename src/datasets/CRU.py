@@ -9,7 +9,7 @@ This module contains meta data and access functions for the monthly CRU time-ser
 # internal imports
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset
-from datasets.misc import translateVarNames, days_per_month, months_names, data_root
+from datasets.misc import translateVarNames, days_per_month, name_of_month, data_root
 
  
 ## CRU Meta-data

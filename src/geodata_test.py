@@ -73,7 +73,7 @@ class BaseVarTest(unittest.TestCase):
       assert len(ax) == n
     #if ax in var: print '%s is the %i. axis and has length %i'%(ax.name,var[ax]+1,len(ax))
     # replace axis
-    oldax = var.axes[-1]
+    oldax = var.axes[-1]    
     newax = Axis(name='z', units='none', coord=(1,len(oldax),len(oldax)))
     var.replaceAxis(oldax,newax)
     assert var.hasAxis(newax) and not var.hasAxis(oldax)
