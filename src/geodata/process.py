@@ -28,7 +28,7 @@ class CentralProcessingUnit(object):
     self.__dict__['output'] = target
     self.__dict__['function'] = functools.partial(function, **kwargs) # already set kw-parameters
     
-  def process(self):
+  def process(self, flush=True):
     ''' This method applies the desired operation to each variable in the input dataset. '''    
     # loop over input variables
     for var in self.input:
@@ -40,7 +40,12 @@ class CentralProcessingUnit(object):
         self.output.variable[var.name].load(newvar.getArray(unmask=False,copy=False))
       else:
         newvar = self.function(var)
+        var.unload() # not needed anymore
         self.output.addVariable(newvar, copy=True)
+      # sync data and free space
+      if flush:
+        self.output.sync()
+        self.output.unload()
 #         print
 #         newvar = self.output.precip     
 #         print newvar.name, newvar.masked

@@ -105,8 +105,8 @@ def loadGPCC(name='GPCC', varlist=None, resolution='025', period=None, folder=av
 if __name__ == '__main__':
   
   mode = 'average_timeseries'
-#   reses = ('25',) # for testing
-  reses = ('05', '10', '25')
+  reses = ('25',) # for testing
+#   reses = ('05', '10', '25')
   
   # generate averaged climatology
   for res in reses:    
@@ -144,16 +144,20 @@ if __name__ == '__main__':
       # prepare sink
       filename = 'gpcc_%s_clim_avg.nc'%res
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
-      sink = DatasetNetCDF(name='GPCC Climatology', folder=avgfolder, filelist=[filename], mode='w') 
+      sink = DatasetNetCDF(name='GPCC Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w') 
       
       # process
       from geodata.process import ClimatologyProcessingUnit
       CPU = ClimatologyProcessingUnit(source, sink)
-      CPU.process()
+      CPU.process(flush=False)
       
       # convert precip data to SI units (mm/s)   
       sink.precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
       sink.precip.units = 'kg/m^2/s'      
+
+      # add landmask
+      sink += VarNC(sink.dataset, name='landmask', units='', axes=('lat','lon'), data=sink.precip.getMask()[0,:,:])
+      
       
       # add names of months
       me = len(name_of_month); ne = len(name_of_month[0])

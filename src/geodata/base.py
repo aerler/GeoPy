@@ -115,16 +115,35 @@ class Variable(object):
         assert len(axes) == data.ndim, 'Dimensions of data array and axes are note compatible!'
     # for completeness of MRO...
     super(Variable,self).__init__()
-    # set basic variable 
+    ## set basic variable 
+    # cast attributes dicts as AttrDict to facilitate easy access 
+    if atts is None: atts = dict()
+    self.__dict__['atts'] = AttrDict(**atts)
+    # sync name with atts
+    if 'name' in atts and name is 'N/A': name = atts['name']
+    else: atts['name'] = name
     self.__dict__['name'] = name
-    self.__dict__['units'] = units
+    # sync units with atts
+    if 'units' in atts and name is 'N/A': units = atts['units']
+    else: atts['units'] = units
+    self.__dict__['units'] = units              
+    # sync fillValue with atts
+    if 'fillValue' in atts:
+      if fillValue is None: fillValue = atts['fillValue']
+      else: atts['fillValue'] = fillValue
+    if fillValue is not None: atts['missing_value'] = fillValue # slightly irregular treatment...
+    self.__dict__['fillValue'] = fillValue
+    if plot is None: # try to find sensible default values 
+      if variablePlotatts.has_key(self.name): plot = variablePlotatts[self.name]
+      else: plot = dict(plotname=self.name, plotunits=self.units, plottitle=self.name) 
+    self.__dict__['plot'] = AttrDict(**plot)
     # set defaults - make all of them instance variables! (atts and plot are set below)
     self.__dict__['data_array'] = None
     self.__dict__['data'] = ldata
     self.__dict__['shape'] = shape
     self.__dict__['dtype'] = dtype
     self.__dict__['masked'] = False # handled in self.load() method    
-    # figure out axes
+    ## figure out axes
     if axes is not None:
       assert isinstance(axes, (list, tuple))
       if all([isinstance(ax,Axis) for ax in axes]):
@@ -141,16 +160,6 @@ class Variable(object):
     self.__dict__['ndim'] = len(axes)  
     # create shortcuts to axes (using names as member attributes) 
     for ax in axes: self.__dict__[ax.name] = ax
-    # cast attributes dicts as AttrDict to facilitate easy access 
-    if atts is None: atts = dict(name=self.name, units=self.units)
-    self.__dict__['atts'] = AttrDict(**atts)
-    if plot is None: # try to find sensible default values 
-      if variablePlotatts.has_key(self.name): plot = variablePlotatts[self.name]
-      else: plot = dict(plotname=self.name, plotunits=self.units, plottitle=self.name) 
-    self.__dict__['plot'] = AttrDict(**plot)
-    # guess fillValue
-    if fillValue is None: fillValue = atts.pop('fillValue',None)
-    self.__dict__['fillValue'] = fillValue
     # assign data, if present (can initialize without data)
     if data is not None: 
       self.load(data, mask=mask, fillValue=fillValue) # member method defined below
@@ -295,22 +304,28 @@ class Variable(object):
     ''' Method to attach numpy data array to variable instance (also used in constructor). '''
     assert data is not None, 'A basic \'Variable\' instance requires external data to load!'
     assert isinstance(data,np.ndarray), 'The data argument must be a numpy array!'
-    if mask: 
-      self.__dict__['data_array'] = ma.array(data, mask=mask)
-    else: 
-      self.__dict__['data_array'] = data
+    # apply mask
+    if mask: data = ma.array(data, mask=mask) 
     if isinstance(self.data_array, ma.MaskedArray): 
       self.__dict__['masked'] = True # set masked flag
     else: self.__dict__['masked'] = False
+    if self.masked: # figure out fill value for masked array
+      if fillValue is not None: # override variable preset 
+        self.__dict__['fillValue'] = fillValue
+        data.set_fill_value = fillValue
+      elif self.fillValue is not None: # use variable preset
+        data.set_fill_value = self.fillValue
+      else: # use data default
+        self.__dict__['fillValue'] = data.get_fill_value()
+    # more meta data
     self.__dict__['data'] = True
+    self.__dict__['dtype'] = data.dtype
     self.__dict__['shape'] = data.shape
     assert len(self.shape) == self.ndim or (self.ndim == 0 and data.size == 1),\
        'Variable dimensions and data dimensions incompatible!'
     # N.B.: the second statement is necessary, so that scalars don't cause a crash
-    self.__dict__['dtype'] = data.dtype
-    if self.masked: # figure out fill value for masked array
-      if fillValue is None: self.__dict__['fillValue'] = ma.default_fill_value(data)
-      else: self.__dict__['fillValue'] = fillValue
+    # assign data to instance attribute array 
+    self.__dict__['data_array'] = data
     # some more checks
     # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple; hence
     #       the coordinate vector has to be assigned before the dimensions size can be checked 

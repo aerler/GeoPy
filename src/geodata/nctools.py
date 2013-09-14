@@ -8,6 +8,7 @@ Some simple functions built on top of the netCDF4-python module.
 # external imports
 import netCDF4 as nc # netCDF4-python module: Dataset is probably all we need
 import numpy as np
+import numpy.ma as ma
 import collections as col
 # internal imports
 from geodata.misc import isNumber, DataError, NetCDFError, AxisError
@@ -43,31 +44,44 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
     if dtype: 
       if dtype != data.dtype: raise DataError, "Data type in '%s' does not match data array."%(name,) 
     else: dtype = data.dtype
-  if dtype is None: raise DataError, "Cannot construct a NetCDF Variable without a data array or an abstract data type."  
+  if dtype is None: raise DataError, "Cannot construct a NetCDF Variable without a data array or an abstract data type."
+  if np.dtype(dtype) is np.dtype('bool_'): dtype = np.dtype('i1') # cast numpy bools as 8-bit integers
   # check/create dimensions
+  if shape is None: [None]*len(dims)
+  elif len(shape) != len(dims): raise AxisError 
   for i,dim in zip(xrange(len(dims)),dims):
     if dim in dst.dimensions:
-      if shape is not None:
-        if shape[i] != len(dst.dimensions[dim]): raise AxisError, 'Size of dimension %s does not match!'%(dims,)
-      else: shape[i] = len(dst.dimensions[dim])
+      if shape[i] is None: 
+        shape[i] = len(dst.dimensions[dim])
+      else: 
+        if shape[i] != len(dst.dimensions[dim]): 
+          raise AxisError, 'Size of dimension %s does not match records! %i != %i'%(dim,shape[i],len(dst.dimensions[dim]))
     else: 
-      if shape is not None: dst.createDimension(dim, size=shape[i])
+      if shape[i] is not None: dst.createDimension(dim, size=shape[i])
       else: raise AxisError, "Cannot construct dimension '%s' without size information."%(dims,)
-  # create coordinate variable
+  # figure out parameters for variable
   varargs = dict() # arguments to be passed to createVariable
   if zlib: varargs.update(zlib_default)
   varargs.update(kwargs)
-  if fillValue is not None: atts['_FillValue'] = fillValue
-  elif atts and '_FillValue' in atts: fillValue = atts['_FillValue']
-  else: fillValue = None # masked array handling could go here
-  if fillValue is not None: atts['missing_value'] = fillValue # I use fillValue and missing_value the same way
+  if fillValue is None:
+    if atts and '_FillValue' in atts: fillValue = atts['_FillValue'] # will be removed later
+    elif atts and 'missing_value' in atts: fillValue = atts['missing_value']
+    else: # defaults values for numpy masked arrays
+      fillValue = ma.default_fill_value(dtype)
+#       if isinstance(dtype,np.bool_): fillValue = True
+#       elif isinstance(dtype,np.integer): fillValue = 999999
+#       elif isinstance(dtype,np.floating): fillValue = 1.e20
+#       elif isinstance(dtype,np.complexfloating): fillValue = 1.e20+0j
+#       elif isinstance(dtype,np.flexible): fillValue = 'N/A'
+#       else: fillValue = None # for 'object'
+  else:  
+    atts['missing_value'] = fillValue # I use fillValue and missing_value the same way
+  # create netcdf variable  
   var = dst.createVariable(name, dtype, dims, fill_value=fillValue, **varargs)
-  if atts: # add attributes
-    var.setncatts(coerceAtts(atts))
-#     for key,value in atts.iteritems():
-# #       print key, value
-#       if key[0] != '_': var.setncattr(key,value)  
-  if data is not None: var[:] = data # assign coordinate data if given  
+  # add attributes
+  if atts: var.setncatts(coerceAtts(atts))
+  # assign coordinate data if given
+  if data is not None: var[:] = data   
   # return var reference
   return var
 
@@ -146,7 +160,7 @@ def coerceAtts(atts):
 def writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True, writeData=True, close=True):
   ''' A function to write the data in a generic Dataset to a NetCDF file. '''
   # open file
-  print filename,ncformat
+  #print filename,ncformat
   ncfile = nc.Dataset(filename, mode='w', format=ncformat)
   ncfile.setncatts(coerceAtts(dataset.atts))
   # add coordinate variables first

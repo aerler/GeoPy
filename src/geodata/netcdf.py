@@ -36,7 +36,7 @@ def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs
   else: axes = var.axes
   # create new VarNC instance (using the ncvar NetCDF Variable instance as file reference)
   if not isinstance(var,Variable): raise TypeError
-  if not isinstance(ncvar,(nc.Variable,nc.Dataset)): raise TypeError  
+  if not isinstance(ncvar,(nc.Variable,nc.Dataset)): raise TypeError
   varnc = VarNC(ncvar, name=var.name, units=var.units, axes=axes, atts=var.atts.copy(), plot=var.plot.copy(), 
                 fillValue=var.fillValue, dtype=var.dtype, mode=mode, **kwargs)
   # copy data
@@ -75,14 +75,17 @@ class VarNC(Variable):
         squeezed = False # if True, all singleton dimensions in NetCDF Variable are silently ignored
     '''
     # check mode
-    if not (mode == 'w' or mode == 'r' or mode == 'rw'): raise NetCDFError  
+    if not (mode == 'w' or mode == 'r' or mode == 'rw'):  raise NetCDFError  
     # write-only actions
     if isinstance(ncvar,nc.Dataset):
-      if 'w' in mode:
-        # construct a new netcdf variable in the given dataset
-        ncvar = add_var(ncvar, name, dims=[ax.name for ax in axes], shape=[len(ax) for ax in axes], 
-                        atts=atts, dtype=dtype, zlib=True)
-      else: raise PermissionError
+      if 'w' not in mode: mode += 'w'      
+      dims = [ax if isinstance(ax,basestring) else ax.name for ax in axes] # list axes names
+      dimshape = [None if isinstance(ax,basestring) else len(ax) for ax in axes]
+      if dtype is None: 
+        if data is not None: dtype = data.dtype
+        else: raise TypeError, "No data (-type) to construct NetCDF variable!"
+      # construct a new netcdf variable in the given dataset
+      ncvar = add_var(ncvar, name, dims=dims, shape=dimshape, atts=atts, dtype=dtype, fillValue=fillValue, zlib=True)
     # some type checking
     if not isinstance(ncvar,nc.Variable): raise TypeError, "Argument 'ncvar' has to be a NetCDF Variable or Dataset."
     if dtype and dtype != ncvar.dtype: raise TypeError    
@@ -92,8 +95,7 @@ class VarNC(Variable):
       # construct attribute dictionary from netcdf attributes
       ncatts = { key : ncvar.getncattr(key) for key in ncvar.ncattrs() }
       # handle some netcdf conventions
-      if fillValue is None: 
-        fillValue = ncatts.pop('fillValue',ncatts.pop('_fillValue',ncatts.pop('_FillValue',None)))
+      fillValue = ncatts.pop('_FillValue', fillValue) # this value should always be removed
       for key in ['scale_factor', 'add_offset']: ncatts.pop(key,None) # already handled by NetCDf Python interface
       if name is None: name = ncatts.get('name',ncvar._name) # name in attributes has precedence
       else: ncatts['name'] = name
@@ -133,13 +135,15 @@ class VarNC(Variable):
       data = super(VarNC,self).__getitem__(idx) # load actual data using parent method
     else:
       # provide direct access to netcdf data on file
-      if self.squeezed and isinstance(idx,(list,tuple)):
-        if len(idx) != self.ndim: raise AxisError
-        # figure out slices
-        idx = list(idx) # need to insert items
-        for i in xrange(self.ncvar.ndim):
-          if self.ncvar.shape[i] == 1: idx.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
-      data = self.ncvar.__getitem__(idx) # exceptions handled by netcdf module
+      if isinstance(idx,(list,tuple)):
+        if self.squeezed:
+          if len(idx) != self.ndim: raise AxisError
+          # figure out slices
+          idx = list(idx) # need to insert items
+          for i in xrange(self.ncvar.ndim):
+            if self.ncvar.shape[i] == 1: idx.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
+      else: idx = (idx,)
+      data = self.ncvar.__getitem__(idx) # exceptions handled by netcdf module      
     # return data
     return data  
   
@@ -157,7 +161,7 @@ class VarNC(Variable):
     ''' Method to load data from NetCDF file into RAM. '''
     lext = False # loading external data?
     if data is None: 
-      data = self[:] # load everything
+      data = self.__getitem__() # load everything
     elif isinstance(data,np.ndarray):
       lext = True 
       data = data
@@ -187,7 +191,9 @@ class VarNC(Variable):
       if ncvar.shape != self.shape: 
         raise NetCDFError, "Cannot write to NetCDF variable: array shape in memory and on disk are inconsistent!"
       if self.data:
-        ncvar[:] = self.data_array # masking should be handled by the NetCDF module
+        # special handling of numpy bools: cast as 8-bit integers
+        if isinstance(self.data_array,np.bool_): ncvar[:] = self.data_array.astype('i1')
+        else: ncvar[:] = self.data_array # masking should be handled by the NetCDF module
         # reset scale factors etc.
         self.scalefactor = 1; self.offset = 0
       # update NetCDF attributes
@@ -214,10 +220,9 @@ class AxisNC(Axis,VarNC):
   def __init__(self, ncvar, name=None, length=0, coord=None, dtype=None, atts=None, fillValue=None, mode='r', load=True, **axargs):
     ''' Initialize a coordinate axis with appropriate values. '''
     if isinstance(ncvar,nc.Dataset):
-      if 'w' in mode:
-        # construct a new netcdf coordinate variable in the given dataset
-        ncvar = add_coord(ncvar, name, length=length, data=coord, dtype=dtype, atts=atts,zlib=True)
-      else: raise PermissionError
+      if 'w' not in mode: mode += 'w'
+      # construct a new netcdf coordinate variable in the given dataset
+      ncvar = add_coord(ncvar, name, length=length, data=coord, dtype=dtype, fillValue=fillValue, atts=atts, zlib=True)
     # initialize as an Axis subclass and pass arguments down the inheritance chain
     super(AxisNC,self).__init__(ncvar=ncvar, name=name, length=length, coord=coord, dtype=dtype, atts=atts, 
                                 fillValue=fillValue, mode=mode, load=load, **axargs)
@@ -252,7 +257,8 @@ class DatasetNetCDF(Dataset):
       NetCDF Attributes:
         mode = 'r' # a string indicating whether read ('r') or write ('w') actions are intended/permitted
         datasets = [] # list of NetCDF datasets
-        filelist = None # files used to create datasets 
+        dataset = None # shortcut to first element of self.datasets
+        filelist = [] # files used to create datasets 
       Basic Attributes:        
         variables = dict() # dictionary holding Variable instances
         axes = dict() # dictionary holding Axis instances (inferred from Variables)
@@ -347,22 +353,23 @@ class DatasetNetCDF(Dataset):
     # add NetCDF attributes
     self.__dict__['mode'] = mode
     self.__dict__['datasets'] = datasets
+    self.__dict__['dataset'] = datasets[0]
     self.__dict__['filelist'] = filelist
   
-  def addAxis(self, ax, copy=False, deepcopy=True):
+  def addAxis(self, ax, asNC=True, copy=False, deepcopy=True):
     ''' Method to add an Axis to the Dataset. (If the Axis is already present, check that it is the same.) '''   
     # cast Axis instance as AxisNC
     if copy: # make a new instance or add it as is
-      if 'w' in self.mode: ax = asAxisNC(ax=ax, ncvar=self.datasets[0], mode=self.mode, deepcopy=deepcopy)
+      if asNC and 'w' in self.mode: ax = asAxisNC(ax=ax, ncvar=self.datasets[0], mode=self.mode, deepcopy=deepcopy)
       else: ax = ax.copy(deepcopy=deepcopy)
     # hand-off to parent method and return status
     return super(DatasetNetCDF,self).addAxis(ax=ax)
   
-  def addVariable(self, var, copy=False, deepcopy=False):
+  def addVariable(self, var, asNC=True, copy=False, deepcopy=False):
     ''' Method to add a new Variable to the Dataset. '''   
     # cast Axis instance as AxisNC
     if copy: # make a new instance or add it as is 
-      if 'w' in self.mode:
+      if asNC and 'w' in self.mode:
         for ax in var.axes:
           if not self.hasAxis(ax.name): self.addAxis(ax, copy=True, deepcopy=deepcopy) 
         var = asVarNC(var=var,ncvar=self.datasets[0], mode=self.mode, deepcopy=deepcopy)
