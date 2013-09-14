@@ -26,8 +26,8 @@ varatts = dict(p    = dict(name='precip', units='mm/month'), # total precipitati
                lat  = dict(name='lat', units='deg N')) # geographic latitude field
 #                time = dict(name='time', units='days', offset=1)) # time coordinate
 # attributes of the time axis depend on type of dataset 
-ltmvaratts = dict(time=dict(name='time', units='month', offset=1), **varatts) 
-tsvaratts = dict(time=dict(name='time', units='day', offset=-28854), **varatts)
+ltmvaratts = dict(time=dict(name='time', units='months', offset=1), **varatts) 
+tsvaratts = dict(time=dict(name='time', units='days', offset=-28854), **varatts)
 # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
 # list of variables to load
 varlist = varatts.keys() # also includes coordinate fields    
@@ -105,8 +105,8 @@ def loadGPCC(name='GPCC', varlist=None, resolution='025', period=None, folder=av
 if __name__ == '__main__':
   
   mode = 'average_timeseries'
-  reses = ('25',) # for testing
-#   reses = ('05', '10', '25')
+#   reses = ('25',) # for testing
+  reses = ('05', '10', '25')
   
   # generate averaged climatology
   for res in reses:    
@@ -156,31 +156,22 @@ if __name__ == '__main__':
       sink.precip.units = 'kg/m^2/s'      
 
       # add landmask
-      sink += VarNC(sink.dataset, name='landmask', units='', axes=('lat','lon'), data=sink.precip.getMask()[0,:,:])
-      
-      
-      # add names of months
-      me = len(name_of_month); ne = len(name_of_month[0])
-      coord = np.ndarray((me,ne),dtype='S1') # array of strings
-      for m in xrange(me): 
-        for n in xrange(ne): coord[m,n] = name_of_month[m][n]
-      strax = AxisNC(sink.datasets[0], name='string',  units='', length=ne, dtype='S1', mode='w') # character axis
-      sink += VarNC(sink.datasets[0], name='name_of_month', units='', axes=(sink.time,strax), 
-                    data=coord, dtype='S1', mode='w')
-      
-      sink.sync()
-      newvar = sink.precip
-      print
-      print newvar.name, newvar.masked
-      print newvar.fillValue
-      print newvar.data_array.__class__
-      print
+      sink += VarNC(sink.dataset, name='landmask', units='', axes=('lat','lon'), data=sink.precip.getMask()[0,:,:])            
+      # add names and length of months
+      sink.axisAnnotation('name_of_month', name_of_month, 'time')
+      sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=('time',), data=days_per_month)
+             
+#       newvar = sink.precip
+#       print
+#       print newvar.name, newvar.masked
+#       print newvar.fillValue
+#       print newvar.data_array.__class__
+#       print
       
       # close...
-#       sink.load()
       sink.sync()
       sink.close()
-      # print dataset before
+      # print dataset
       print('')
       print(sink)     
       

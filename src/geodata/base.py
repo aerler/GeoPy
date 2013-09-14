@@ -88,8 +88,8 @@ class Variable(object):
       Initialize variable and attributes.
       
       Basic Attributes:
-        name = '' # short name, e.g. used in datasets
-        units = '' # physical units
+        name = @property # short name, e.g. used in datasets (links to atts dictionary)
+        units = @property # physical units (links to atts dictionary)
         data = False # logical indicating whether a data array is present/loaded 
         axes = None # a tuple of references to coordinate variables (also Variable instances)
         data_array = None # actual data array (None if not loaded)
@@ -109,8 +109,10 @@ class Variable(object):
     else:
       assert isinstance(data,np.ndarray), 'The data argument must be a numpy array!'
       ldata = True; shape = data.shape; 
-      if dtype and dtype is not data.dtype: 
-        raise TypeError, "Declared data type '%s' does not match the data type of the array (%s)."%(str(dtype),str(data.dtype))
+      if dtype:
+        dtype = np.dtype(dtype) # make sure it is properly formatted.. 
+        if dtype is not data.dtype: data = data.astype(dtype) # recast as new type        
+#         raise TypeError, "Declared data type '%s' does not match the data type of the array (%s)."%(str(dtype),str(data.dtype))
       if axes is not None:
         assert len(axes) == data.ndim, 'Dimensions of data array and axes are note compatible!'
     # for completeness of MRO...
@@ -118,21 +120,23 @@ class Variable(object):
     ## set basic variable 
     # cast attributes dicts as AttrDict to facilitate easy access 
     if atts is None: atts = dict()
-    self.__dict__['atts'] = AttrDict(**atts)
-    # sync name with atts
-    if 'name' in atts and name is 'N/A': name = atts['name']
-    else: atts['name'] = name
-    self.__dict__['name'] = name
-    # sync units with atts
-    if 'units' in atts and name is 'N/A': units = atts['units']
-    else: atts['units'] = units
-    self.__dict__['units'] = units              
+    # set name in atts
+    atts['name'] = name # name can also be accessed directly as a property
+#     if 'name' in atts and name is 'N/A': name = atts['name']
+#     else: atts['name'] = name
+#     self.__dict__['name'] = name
+    # set units in atts
+    atts['units'] = units # units can also be accessed directly as a property
+#     if 'units' in atts and name is 'N/A': units = atts['units']
+#     else: atts['units'] = units
+#     self.__dict__['units'] = units              
     # sync fillValue with atts
     if 'fillValue' in atts:
       if fillValue is None: fillValue = atts['fillValue']
       else: atts['fillValue'] = fillValue
     if fillValue is not None: atts['missing_value'] = fillValue # slightly irregular treatment...
     self.__dict__['fillValue'] = fillValue
+    self.__dict__['atts'] = AttrDict(**atts)
     if plot is None: # try to find sensible default values 
       if variablePlotatts.has_key(self.name): plot = variablePlotatts[self.name]
       else: plot = dict(plotname=self.name, plotunits=self.units, plottitle=self.name) 
@@ -163,6 +167,22 @@ class Variable(object):
     # assign data, if present (can initialize without data)
     if data is not None: 
       self.load(data, mask=mask, fillValue=fillValue) # member method defined below
+      
+  @property
+  def name(self):
+    ''' The name stored in the atts dictionary. '''
+    return self.atts['name']  
+  @name.setter
+  def name(self, name):
+    self.atts['name'] = name
+  
+  @property
+  def units(self):
+    ''' The units stored in the atts dictionary. '''
+    return self.atts['units']  
+  @units.setter
+  def units(self, units):
+    self.atts['units'] = units
   
   def __str__(self):
     ''' Built-in method; we just overwrite to call 'prettyPrint()'. '''

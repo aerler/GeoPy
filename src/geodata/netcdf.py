@@ -84,6 +84,7 @@ class VarNC(Variable):
       if dtype is None: 
         if data is not None: dtype = data.dtype
         else: raise TypeError, "No data (-type) to construct NetCDF variable!"
+      else: dtype = np.dtype(dtype)
       # construct a new netcdf variable in the given dataset
       ncvar = add_var(ncvar, name, dims=dims, shape=dimshape, atts=atts, dtype=dtype, fillValue=fillValue, zlib=True)
     # some type checking
@@ -257,7 +258,7 @@ class DatasetNetCDF(Dataset):
       NetCDF Attributes:
         mode = 'r' # a string indicating whether read ('r') or write ('w') actions are intended/permitted
         datasets = [] # list of NetCDF datasets
-        dataset = None # shortcut to first element of self.datasets
+        dataset = @property # shortcut to first element of self.datasets
         filelist = [] # files used to create datasets 
       Basic Attributes:        
         variables = dict() # dictionary holding Variable instances
@@ -353,8 +354,12 @@ class DatasetNetCDF(Dataset):
     # add NetCDF attributes
     self.__dict__['mode'] = mode
     self.__dict__['datasets'] = datasets
-    self.__dict__['dataset'] = datasets[0]
     self.__dict__['filelist'] = filelist
+    
+  @property
+  def dataset(self):
+    ''' The first element of the datasets list. '''
+    return self.datasets[0] 
   
   def addAxis(self, ax, asNC=True, copy=False, deepcopy=True):
     ''' Method to add an Axis to the Dataset. (If the Axis is already present, check that it is the same.) '''   
@@ -377,22 +382,6 @@ class DatasetNetCDF(Dataset):
     # hand-off to parent method and return status
     return super(DatasetNetCDF,self).addVariable(var=var)  
   
-  def sync(self):
-    ''' Synchronize variables and axes/coordinates with their associated NetCDF variables. '''
-    # only if writing is enabled
-    if 'w' in self.mode:
-      # sync coordinates with ncvars
-      for ax in self.axes.values(): 
-        if isinstance(ax,AxisNC): ax.sync() 
-      # sync variables with ncvars
-      for var in self.variables.values(): 
-        if isinstance(var,VarNC): var.sync()
-      # synchronize NetCDF datasets with file system
-      for dataset in self.datasets: 
-        dataset.setncatts(coerceAtts(self.atts)) # synchronize attributes with       
-        dataset.sync() #
-    else: raise PermissionError 
-    
   def load(self, **slices):
     ''' Load all VarNC's using the slices specified as keyword arguments. '''
     # make slices
@@ -407,6 +396,45 @@ class DatasetNetCDF(Dataset):
         idx = [slices.get(ax.name,slice(None)) for ax in var.axes]
         var.load(data=idx) # load slice, along with relevant dimensions
     # no return value...        
+    
+  def sync(self):
+    ''' Synchronize variables and axes/coordinates with their associated NetCDF variables. '''
+    # only if writing is enabled
+    if 'w' in self.mode:
+      # sync coordinates with ncvars
+      for ax in self.axes.values(): 
+        if isinstance(ax,AxisNC): ax.sync() 
+      # sync variables with ncvars
+      for var in self.variables.values(): 
+        if isinstance(var,VarNC): var.sync()
+      # synchronize NetCDF datasets with file system
+      for dataset in self.datasets: 
+        dataset.setncatts(coerceAtts(self.atts)) # synchronize attributes with       
+        dataset.sync() #
+    else: raise PermissionError
+    
+  def axisAnnotation(self, name, strlist, dim):
+    ''' Add a list of string values along the specified axis. '''
+    # determine max length of string
+    strlen = 0 
+    for string in strlist: strlen = max(strlen,len(string))
+    # figure out dimensions
+    dimname = dim if isinstance(dim,basestring) else dim.name
+    dimlen = len(self.axes[dim]) if isinstance(dim,basestring) else len(dim)
+    # allocate array
+    chararray = np.ndarray((dimlen,strlen), dtype='S1')
+    for i in xrange(dimlen):
+      jlen = len(strlist[i])
+      for j in xrange(jlen):
+        chararray[i,j] = strlist[i][j] # unfortunately, direct assignment of sequences does not work
+      # fill remaining with spaces 
+      if jlen < strlen: chararray[i,jlen:] = ' '
+    # create netcdf dimension and variable
+    dataset = self.dataset
+    dataset.createDimension(name, strlen) # name of month string
+    strvar = dataset.createVariable(name,'S1',(dimname,name))
+    strvar[:] = chararray 
+     
     
   def close(self):
     ''' Call this method before deleting the Dataset: close netcdf files; if in write mode, also synchronizes with file system before closing. '''

@@ -131,9 +131,11 @@ class BaseVarTest(unittest.TestCase):
     assert var != self.var
     assert var.name == 'different' and self.var.name != 'different'      
     assert (var.units == self.var.units) and (var.units is self.var.units) # strings are immutable...
-    assert (var.atts is not self.var.atts) and (var.atts == self.var.atts) # ...dictionaries are not
+    assert (var.atts is not self.var.atts) and (var.atts != self.var.atts) # ...dictionaries are not
+    # N.B.: note that due to the name change, their atts are different!
     for key,value in var.atts.iteritems():
-      assert np.all(value == self.var.atts[key])
+      if key == 'name': assert np.any(value != self.var.atts[key]) 
+      else: assert np.all(value == self.var.atts[key])
     assert isEqual(var.data_array,self.var.data_array) 
     # change array
     var.data_array += 1 # test if we have a true copy and not just a reference 
@@ -605,7 +607,7 @@ if __name__ == "__main__":
     # list of dataset tests
 #     tests = ['BaseDataset']
 #     tests = ['DatasetNetCDF']
-    tests = ['DatasetGDAL']    
+#     tests = ['DatasetGDAL']    
     
     # run tests
     for test in tests:
