@@ -145,7 +145,10 @@ class VarNC(Variable):
           for i in xrange(self.ncvar.ndim):
             if self.ncvar.shape[i] == 1: idx.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
       else: idx = (idx,)
-      data = self.ncvar.__getitem__(idx) # exceptions handled by netcdf module      
+      data = self.ncvar.__getitem__(idx) # exceptions handled by netcdf module
+      # apply scalefactor and offset
+      if self.offset != 0: data += self.offset
+      if self.scalefactor != 1: data *= self.scalefactor        
     # return data
     return data  
   
@@ -161,26 +164,21 @@ class VarNC(Variable):
     
   def load(self, data=None, **kwargs):
     ''' Method to load data from NetCDF file into RAM. '''
-    lext = False # loading external data?
     if data is None: 
       data = self.__getitem__() # load everything
     elif isinstance(data,np.ndarray):
-      lext = True 
       data = data
-    else:
-      if not all(checkIndex(data)): raise TypeError
+    elif all(checkIndex(data)):
       if isinstance(data,(list,tuple)):
         assert len(data)==len(self.shape), 'Length of index tuple has to equal to the number of dimensions!'       
         for ax,idx in zip(self.axes,data): ax.updateCoord(idx)
         data = self.__getitem__(data) # load slice
       else: 
-        assert 1==len(self.shape), 'Multi-dimensional variable have to be indexed using tuples!'
-        if self != self.axes[0]: ax.updateCoord(data) # prevent infinite loop due to self-reference
-        data = self.__getitem__(data) # load slice
-    # apply scalefactor and offset
-    if not lext: # only scale data from ncvar...
-      if self.offset != 0: data += self.offset
-      if self.scalefactor != 1: data *= self.scalefactor
+        if self.ndim != 1: raise IndexError, 'Multi-dimensional variable have to be indexed using tuples!'
+        if self != self.axes[0]: ax.updateCoord(coord=data) # prevent infinite loop due to self-reference
+        data = self.__getitem__(idx=data) # load slice
+    else: 
+      raise TypeError
     # load data    
     super(VarNC,self).load(data=data, **kwargs) # load actual data using parent method
     # no need to return anything...
@@ -388,7 +386,7 @@ class DatasetNetCDF(Dataset):
     return super(DatasetNetCDF,self).addVariable(var=var)  
   
   def load(self, **slices):
-    ''' Load all VarNC's using the slices specified as keyword arguments. '''
+    ''' Load all VarNC's and AxisNC's using the slices specified as keyword arguments. '''
     # make slices
     for key,value in slices.itervalues():
       if isinstance(value,col.Iterable): 

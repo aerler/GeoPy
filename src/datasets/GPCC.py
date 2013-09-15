@@ -53,8 +53,8 @@ def loadGPCC_LTM(name='GPCC', varlist=varlist, resolution='025', varatts=ltmvara
   if 's' in varlist: 
     gauges = nc.Dataset(folder+'normals_gauges_v2011_%s.nc'%resolution, mode='r', format='NETCDF4_CLASSIC')
     stations = Variable(data=gauges.variables['p'][0,:,:], axes=(dataset.lat,dataset.lon), **varatts['s'])
-  # consolidate dataset
-  dataset.addVariable(stations, copy=False)  
+    # consolidate dataset
+    dataset.addVariable(stations, asNC=False, copy=True)  
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
   # return formatted dataset
@@ -132,24 +132,24 @@ if __name__ == '__main__':
       dataset.title = 'GPCC Long-term Climatology'
       dataset.atts.resolution = res
       
-      # convert precip data to SI units (mm/s)
+      # load data into memory
       dataset.load()
+      newvar = dataset.time
+      print
+      print newvar.name, newvar.data
+      print newvar.data_array
+      print
+
+      # convert precip data to SI units (mm/s)
       dataset.precip *= days_per_month.reshape((12,1,1)) # convert in-place
       dataset.precip.units = 'kg/m^2/s'
 
       # add landmask
-      dataset += Variable(name='landmask', units='', axes=('lat','lon'), data=dataset.precip.getMask()[0,:,:])
+      dataset += Variable(name='landmask', units='', axes=(dataset.lat,dataset.lon), data=dataset.precip.getMask()[0,:,:])
       dataset.mask(dataset.landmask)            
       # add names and length of months
-      dataset += Variable(name='length_of_month', units='days', axes=('time',), data=days_per_month)
+      dataset += Variable(name='length_of_month', units='days', axes=(dataset.time,), data=days_per_month)
       
-      newvar = dataset.time
-      print
-      print newvar.name, newvar.masked
-      print newvar.fillValue
-      print newvar.data_array.__class__
-      print
-
       # write data to a different file
       filename = avgfile%('_'+res,'')
       print filename; print
@@ -166,10 +166,12 @@ if __name__ == '__main__':
     elif mode == 'average_timeseries':
       
       # load source
-      print('')
+      print('\n')
+      print('   ***   Processing Resolution %s   ***   '%res)
+      print('\n')
       source = loadGPCC_TS(varlist=['stations','precip'],resolution=res)
       print(source)
-      print('')
+      print('\n')
       # prepare sink
       filename = avgfile%('_'+res,'_'+'1900-2010')
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
