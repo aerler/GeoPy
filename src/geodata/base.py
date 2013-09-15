@@ -156,7 +156,7 @@ class Variable(object):
         if not ldata and all([len(ax) for ax in axes]): # length not zero
           self.__dict__['shape'] = tuple([len(ax) for ax in axes]) # get shape from axes
       elif all([isinstance(ax,basestring) for ax in axes]):
-        if ldata: axes = [Axis(name=ax, len=n) for ax,n in zip(axes,shape)] # use shape from data
+        if ldata: axes = [Axis(name=ax, length=n) for ax,n in zip(axes,shape)] # use shape from data
         else: axes = [Axis(name=ax) for ax in axes] # initialize without shape
     else: 
       raise VariableError, 'Cannot initialize %s instance \'%s\': no axes declared'%(self.var.__class__.__name__,self.name)
@@ -404,7 +404,7 @@ class Variable(object):
       assert isinstance(mask,np.ndarray) or isinstance(mask,Variable), 'Mask has to be a numpy array or a Variable instance!'
       # 'mask' can be a variable
       if isinstance(mask,Variable):
-        mask = (mask.getArray(unmask=True,axes=self.axes,broadcast=False) > 0) # convert to a boolean numpy array
+        mask = (mask.getArray(unmask=True,axes=self.axes,broadcast=True) > 0) # convert to a boolean numpy array
       assert isinstance(mask,np.ndarray), 'Mask has to be convertible to a numpy array!'      
       # if 'mask' has less dimensions than the variable, it can be extended      
       assert len(self.shape) >= len(mask.shape), 'Data array needs to have the same number of dimensions or more than the mask!'
@@ -427,10 +427,14 @@ class Variable(object):
     if isinstance(self.data_array,ma.MaskedArray):
       # change meta data
       self.__dict__['masked'] = True
-      if fillValue: 
+      if fillValue:
+        # external fill value has priority 
         self.data_array.set_fill_value(fillValue)
         self.__dict__['fillValue'] = fillValue
-      else:  
+      elif self.fillValue:
+        # use fill value we already have
+        self.data_array.set_fill_value(self.fillValue)
+      else:          
         self.__dict__['fillValue'] = self.data_array.get_fill_value() # probably just the default
     
   def unmask(self, fillValue=None):
@@ -637,7 +641,8 @@ class Dataset(object):
       Create a dataset from a list of variables. The basic dataset class has no capability to create variables.
       
       Basic Attributes:
-        name = '' # name of the dataset
+        name = @property # short name (links to name in atts)
+        title = @property # descriptive name (links to name in atts)
         variables = dict() # dictionary holding Variable instances
         axes = dict() # dictionary holding Axis instances (inferred from Variables)
         atts = AttrDict() # dictionary containing global attributes / meta data
@@ -653,6 +658,22 @@ class Dataset(object):
     for var in varlist:
       #print var.name
       self.addVariable(var)
+      
+  @property
+  def name(self):
+    ''' A short name, stored in the atts dictionary. '''
+    return self.atts['name']  
+  @name.setter
+  def name(self, name):
+    self.atts['name'] = name
+  
+  @property
+  def title(self):
+    ''' A long, descriptive name, stored in the atts dictionary. '''
+    return self.atts['title']  
+  @title.setter
+  def title(self, title):
+    self.atts['title'] = title
     
   def addAxis(self, ax):
     ''' Method to add an Axis to the Dataset. If the Axis is already present, check that it is the same. '''
@@ -871,11 +892,24 @@ class Dataset(object):
     for var in self.variables.itervalues():
       var.unload(**kwargs)
       
-  def mask(self, mask=None, **kwargs):
+  def mask(self, mask=None, maskSelf=False, skipList=None, merge=True, **kwargs):
     ''' Apply 'mask' to all variables and add the mask, if it is a variable. '''
-    if isinstance(mask,Variable) and not self.hasVariable(mask): self.addVariable(mask)
+    if skipList is None: skipList = []
+    else: 
+      if not isinstance(skipList,(list,tuple)): raise TypeError
+    # iterate over all variables (not axes!) 
     for var in self.variables.itervalues():
-      if var.ndim >= mask.ndim: var.load(mask=mask, **kwargs)
+      if var.data and var.ndim >= mask.ndim and var.name not in skipList:
+        # need to have data and also the right number of dimensions 
+        lOK = False
+        if isinstance(mask,np.ndarray):
+          if all(mask.shape == var.shape[var.ndim-mask.ndim:]): lOK = True
+        elif isinstance(mask,Variable):
+          if mask is var or mask.name == var.name: lOK = maskSelf # default: False
+          elif all([var.hasAxis(ax) for ax in mask.axes]): lOK = True
+        if lOK: var.mask(mask=mask, merge=merge, **kwargs) # if everything is OK, apply mask
+    # add mask do dataset
+    if isinstance(mask,Variable) and not self.hasVariable(mask): self.addVariable(mask)
     
   def unmask(self, fillValue=None, **kwargs):
     ''' Unmask all Variables in the Dataset. '''

@@ -7,13 +7,13 @@ This module contains meta data and access functions for the GPCC climatology and
 '''
 
 # external imports
-import numpy as np
 import netCDF4 as nc # netcdf python module
 import os
 # internal imports
-from geodata.netcdf import DatasetNetCDF, VarNC, AxisNC
+from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset
-from geodata.misc import DatasetError 
+from geodata.misc import DatasetError
+from geodata.nctools import add_strvar 
 from datasets.misc import translateVarNames, days_per_month, name_of_month, data_root
  
 ## GPCC Meta-data
@@ -52,7 +52,7 @@ def loadGPCC_LTM(name='GPCC', varlist=varlist, resolution='025', varatts=ltmvara
                             varatts=varatts, ncformat='NETCDF4_CLASSIC')
   if 's' in varlist: 
     gauges = nc.Dataset(folder+'normals_gauges_v2011_%s.nc'%resolution, mode='r', format='NETCDF4_CLASSIC')
-    stations = VarNC(data=gauges.variables['p'][0,:,:], axes=(dataset.lat,dataset.lon), **varatts['s'])
+    stations = Variable(data=gauges.variables['p'][0,:,:], axes=(dataset.lat,dataset.lon), **varatts['s'])
   # consolidate dataset
   dataset.addVariable(stations, copy=False)  
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
@@ -105,8 +105,10 @@ def loadGPCC(name='GPCC', varlist=None, resolution='025', period=None, folder=av
 if __name__ == '__main__':
   
   mode = 'average_timeseries'
-#   reses = ('25',) # for testing
-  reses = ('05', '10', '25')
+#   mode = 'convert_climatology'
+  reses = ('25',) # for testing
+#   reses = ('025',) # hi-res climatology
+#   reses = ('05', '10', '25')
   
   # generate averaged climatology
   for res in reses:    
@@ -119,18 +121,44 @@ if __name__ == '__main__':
       print(dataset)
           
     elif mode == 'convert_climatology':
+      
+      from geodata.base import Variable
+      from geodata.nctools import writeNetCDF
+      
       # load dataset
-      dataset = loadGPCC_LTM(varlist=['stations','precip'],resolution=res)    
+      dataset = loadGPCC_LTM(varlist=['stations','precip'],resolution=res)
+      # change meta-data
+      dataset.name = 'GPCC'
+      dataset.title = 'GPCC Long-term Climatology'
+      dataset.atts.resolution = res
       
       # convert precip data to SI units (mm/s)
+      dataset.load()
       dataset.precip *= days_per_month.reshape((12,1,1)) # convert in-place
       dataset.precip.units = 'kg/m^2/s'
+
+      # add landmask
+      dataset += Variable(name='landmask', units='', axes=('lat','lon'), data=dataset.precip.getMask()[0,:,:])
+      dataset.mask(dataset.landmask)            
+      # add names and length of months
+      dataset += Variable(name='length_of_month', units='days', axes=('time',), data=days_per_month)
       
-      # write data to file
-      from geodata.nctools import writeNetCDF
-      writeNetCDF(dataset, rootfolder+avgfolder+avgfile%res)
+#       newvar = dataset.precip
+#       print
+#       print newvar.name, newvar.masked
+#       print newvar.fillValue
+#       print newvar.data_array.__class__
+#       print
+
+      # write data to a different file
+      filename = avgfile%('_'+res,'')
+      print filename; print
+      if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
+      ncset = writeNetCDF(dataset, avgfolder+filename, close=False)
+      add_strvar(ncset,'name_of_month', name_of_month, 'time') # add names of month
       
       # close...
+      ncset.close()
       dataset.close()
       # print dataset before
       print(dataset)     
@@ -142,7 +170,7 @@ if __name__ == '__main__':
       source = loadGPCC_TS(varlist=['stations','precip'],resolution=res)
       print(source)
       # prepare sink
-      filename = 'gpcc_%s_clim_avg.nc'%res
+      filename = avgfile%('_'+res,'_'+'1900-2010')
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
       sink = DatasetNetCDF(name='GPCC Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w') 
       
@@ -156,17 +184,18 @@ if __name__ == '__main__':
       sink.precip.units = 'kg/m^2/s'      
 
       # add landmask
-      sink += VarNC(sink.dataset, name='landmask', units='', axes=('lat','lon'), data=sink.precip.getMask()[0,:,:])            
+      sink += VarNC(sink.dataset, name='landmask', units='', axes=('lat','lon'), data=sink.precip.getMask()[0,:,:])
+      sink.mask(sink.landmask)            
       # add names and length of months
       sink.axisAnnotation('name_of_month', name_of_month, 'time')
       sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=('time',), data=days_per_month)
              
-#       newvar = sink.precip
-#       print
-#       print newvar.name, newvar.masked
-#       print newvar.fillValue
-#       print newvar.data_array.__class__
-#       print
+      newvar = sink.precip
+      print
+      print newvar.name, newvar.masked
+      print newvar.fillValue
+      print newvar.data_array.__class__
+      print
       
       # close...
       sink.sync()

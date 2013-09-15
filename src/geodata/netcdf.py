@@ -18,7 +18,7 @@ import os
 from geodata.base import Variable, Axis, Dataset
 from geodata.misc import checkIndex, isEqual, joinDicts
 from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError 
-from geodata.nctools import coerceAtts, writeNetCDF, add_var, add_coord
+from geodata.nctools import coerceAtts, writeNetCDF, add_var, add_coord, add_strvar
 
 def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs):
   ''' Simple function to cast a Variable instance as a VarNC (NetCDF-capable Variable subclass). '''
@@ -415,26 +415,11 @@ class DatasetNetCDF(Dataset):
     
   def axisAnnotation(self, name, strlist, dim):
     ''' Add a list of string values along the specified axis. '''
-    # determine max length of string
-    strlen = 0 
-    for string in strlist: strlen = max(strlen,len(string))
     # figure out dimensions
     dimname = dim if isinstance(dim,basestring) else dim.name
-    dimlen = len(self.axes[dim]) if isinstance(dim,basestring) else len(dim)
-    # allocate array
-    chararray = np.ndarray((dimlen,strlen), dtype='S1')
-    for i in xrange(dimlen):
-      jlen = len(strlist[i])
-      for j in xrange(jlen):
-        chararray[i,j] = strlist[i][j] # unfortunately, direct assignment of sequences does not work
-      # fill remaining with spaces 
-      if jlen < strlen: chararray[i,jlen:] = ' '
+    if len(strlist) != len(self.axes[dim]) if isinstance(dim,basestring) else len(dim): raise AxisError
     # create netcdf dimension and variable
-    dataset = self.dataset
-    dataset.createDimension(name, strlen) # name of month string
-    strvar = dataset.createVariable(name,'S1',(dimname,name))
-    strvar[:] = chararray 
-     
+    add_strvar(self.dataset, name, strlist, dimname)    
     
   def close(self):
     ''' Call this method before deleting the Dataset: close netcdf files; if in write mode, also synchronizes with file system before closing. '''

@@ -19,6 +19,32 @@ zlib_default = dict(zlib=True, complevel=1, shuffle=True) # my own default compr
 
 ## generic functions
 
+def add_strvar(dst, name, strlist, dim):
+  ''' Function that adds a list of string variables as a variable along a specified dimension. '''
+  # determine max length of string
+  strlen = 0 
+  for string in strlist: strlen = max(strlen,len(string))
+  # figure out dimension
+  dimlen = len(strlist) # length of dimension
+  if dim in dst.dimensions:
+    if dimlen != len(dst.dimensions[dim]): raise AxisError
+  else:
+    dst.createDimension(dim, size=dimlen) # create dimension on the fly
+  # allocate array
+  chararray = np.ndarray((dimlen,strlen), dtype='S1')
+  for i in xrange(dimlen):
+    jlen = len(strlist[i])
+    for j in xrange(jlen):
+      chararray[i,j] = strlist[i][j] # unfortunately, direct assignment of sequences does not work
+    # fill remaining with spaces 
+    if jlen < strlen: chararray[i,jlen:] = ' '
+  # create netcdf dimension and variable
+  dst.createDimension(name, strlen) # name of month string
+  strvar = dst.createVariable(name,'S1',(dim,name))
+  strvar[:] = chararray 
+  # return string variable
+  return strvar
+
 def add_coord(dst, name, data=None, length=None, atts=None, dtype=None, zlib=True, fillValue=None, **kwargs):
   ''' Function to add a Coordinate Variable to a NetCDF Dataset; returns the Variable reference. '''
   # basically a simplified interface for add_var
@@ -75,6 +101,7 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
 #       elif isinstance(dtype,np.flexible): fillValue = 'N/A'
 #       else: fillValue = None # for 'object'
   else:  
+    if data is not None and isinstance(data,ma.MaskedArray): data.set_fill_value(fillValue)    
     atts['missing_value'] = fillValue # I use fillValue and missing_value the same way
   # create netcdf variable  
   var = dst.createVariable(name, dtype, dims, fill_value=fillValue, **varargs)
