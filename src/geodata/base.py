@@ -264,14 +264,15 @@ class Variable(object):
   def replaceAxis(self, oldaxis, newaxis=None):
     ''' Replace an existing axis with a different one with similar general properties. '''
     if newaxis is None: 
-      newaxis = oldaxis; oldaxis = newaxis.name # i.e. replace old axis with the same name'
-      # check axis
-    if not self.hasAxis(oldaxis): raise AxisError
+      newaxis = oldaxis; oldaxis = oldaxis.name # i.e. replace old axis with the same name'
+    # check axis
     if isinstance(oldaxis,Axis): oldname = oldaxis.name # just go by name
+    if not self.hasAxis(oldaxis): raise AxisError
     else: oldname = oldaxis
     oldaxis = self.axes[self.axisIndex(oldname)]
     if len(oldaxis) != len(newaxis): raise AxisError # length has to be the same!
-    if oldaxis.data: newaxis.updateCoord() # make sure data status is the same
+    if oldaxis.data != newaxis.data: 
+      raise DataError # make sure data status is the same
     # replace old axis
     self.axes = tuple([ax if ax is not oldaxis else newaxis for ax in self.axes])
     assert len(self.axes) == self.ndim
@@ -677,8 +678,8 @@ class Dataset(object):
     
   def addAxis(self, ax):
     ''' Method to add an Axis to the Dataset. If the Axis is already present, check that it is the same. '''
-    assert isinstance(ax,Axis)
-    if ax.name not in self.axes: # add new axis, if it does not already exist        
+    if not isinstance(ax,Axis): raise TypeError
+    if not self.hasAxis(ax.name): # add new axis, if it does not already exist        
       assert ax.name not in self.__dict__, "Cannot add Axis '%s' to Dataset, because an attribute of the same name already exits!"%(ax.name) 
       self.axes[ax.name] = ax
       self.__dict__[ax.name] = self.axes[ax.name] # create shortcut
@@ -692,12 +693,15 @@ class Dataset(object):
     
   def addVariable(self, var):
     ''' Method to add a Variable to the Dataset. If the variable is already present, abort. '''
-    assert isinstance(var,Variable)
-    assert var.name not in self.__dict__, "Cannot add Variable '%s' to Dataset, because an attribute of the same name already exits!"%(var.name)
+    if not isinstance(var,Variable): raise TypeError
+    if var.name in self.__dict__: raise VariableError, "Cannot add Variable '%s' to Dataset, because an attribute of the same name already exits!"%(var.name)
     # add new axes, or check, if already present; if present, replace, if different
     for ax in var.axes: 
-      if not self.hasAxis(ax.name): self.addAxis(ax) # add new axis
-      elif ax is not self.axes[ax.name]: var.replaceAxis(ax, self.axes[ax.name]) # or use old one of the same name
+      if not self.hasAxis(ax.name):
+        self.addAxis(ax) # add new axis
+      elif ax is not self.axes[ax.name]: 
+        #print '   >>>   replacing a axis',ax.name
+        var.replaceAxis(ax, self.axes[ax.name]) # or use old one of the same name
       # N.B.: replacing the axes in the variable is to ensure consistent axes within the dataset 
     # finally, if everything is OK, add variable
     self.variables[var.name] = var

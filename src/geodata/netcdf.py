@@ -44,7 +44,7 @@ def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs
   # return VarNC
   return varnc
 
-def asAxisNC(ax=None, ncvar=None, mode='rw', deepcopy=False, **kwargs):
+def asAxisNC(ax=None, ncvar=None, mode='rw', deepcopy=True, **kwargs):
   ''' Simple function to cast an Axis instance as a AxisNC (NetCDF-capable Axis subclass). '''
   # create new AxisNC instance (using the ncvar NetCDF Variable instance as file reference)
   if not isinstance(ax,Axis): raise TypeError
@@ -52,8 +52,9 @@ def asAxisNC(ax=None, ncvar=None, mode='rw', deepcopy=False, **kwargs):
   # axes are handled automatically (self-reference)  )
   axisnc = AxisNC(ncvar, name=ax.name, units=ax.units, atts=ax.atts.copy(), plot=ax.plot.copy(), 
                  length=len(ax), coord=None, dtype=ax.dtype, mode=mode, **kwargs)
-  # copy data
-  if ax.data: axisnc.updateCoord(coord=ax.getArray(copy=deepcopy))
+  # copy data  
+  if ax.data:    
+    axisnc.updateCoord(coord=ax.getArray(copy=deepcopy))
   # return AxisNC
   return axisnc
 
@@ -189,7 +190,9 @@ class VarNC(Variable):
     ncvar = self.ncvar
     # update netcdf variable    
     if 'w' in self.mode:      
-      if ncvar.shape != self.shape: 
+      if not self.squeezed and ncvar.shape != self.shape: 
+        raise NetCDFError, "Cannot write to NetCDF variable: array shape in memory and on disk are inconsistent!"
+      if self.squeezed and tuple([n for n in ncvar.shape if n > 1]) != self.shape: 
         raise NetCDFError, "Cannot write to NetCDF variable: array shape in memory and on disk are inconsistent!"
       if self.data:
         # special handling of numpy bools: cast as 8-bit integers
@@ -361,22 +364,24 @@ class DatasetNetCDF(Dataset):
     ''' The first element of the datasets list. '''
     return self.datasets[0] 
   
-  def addAxis(self, ax, asNC=True, copy=False, deepcopy=True):
+  def addAxis(self, ax, asNC=True, copy=False):
     ''' Method to add an Axis to the Dataset. (If the Axis is already present, check that it is the same.) '''   
     # cast Axis instance as AxisNC
     if copy: # make a new instance or add it as is
-      if asNC and 'w' in self.mode: ax = asAxisNC(ax=ax, ncvar=self.datasets[0], mode=self.mode, deepcopy=deepcopy)
-      else: ax = ax.copy(deepcopy=deepcopy)
+      if asNC and 'w' in self.mode: ax = asAxisNC(ax=ax, ncvar=self.datasets[0], mode=self.mode, deepcopy=True)
+      else: ax = ax.copy(deepcopy=True)
     # hand-off to parent method and return status
     return super(DatasetNetCDF,self).addAxis(ax=ax)
   
   def addVariable(self, var, asNC=True, copy=False, deepcopy=False):
-    ''' Method to add a new Variable to the Dataset. '''   
+    ''' Method to add a new Variable to the Dataset. '''
+    if deepcopy: copy=True   
     # cast Axis instance as AxisNC
     if copy: # make a new instance or add it as is 
       if asNC and 'w' in self.mode:
         for ax in var.axes:
-          if not self.hasAxis(ax.name): self.addAxis(ax, copy=True, deepcopy=deepcopy) 
+          if not self.hasAxis(ax.name): 
+            self.addAxis(ax, asNC=True, copy=True) 
         var = asVarNC(var=var,ncvar=self.datasets[0], mode=self.mode, deepcopy=deepcopy)
       else: var = var.copy(deepcopy=deepcopy)
     # hand-off to parent method and return status

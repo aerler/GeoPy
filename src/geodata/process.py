@@ -44,8 +44,9 @@ class CentralProcessingUnit(object):
         self.output.addVariable(newvar, copy=True)
       # sync data and free space
       if flush:
-        self.output.sync()
-        self.output.unload()
+        newvar.sync()
+        newvar.unload()
+    
 #         print
 #         newvar = self.output.precip     
 #         print newvar.name, newvar.masked
@@ -59,8 +60,10 @@ class ClimatologyProcessingUnit(CentralProcessingUnit):
     ''' Pass input and output datasets and define the processing function (kwargs are passed to function). 
         The pattern for 'function' is: outvar = function(invar)
     '''
-    if climAxis is None: # construct new time axis for climatology 
-      climAxis = Axis(name=timeAxis, units='month', length=12, coord=np.arange(1,13)) # monthly climatology      
+    if climAxis is None: # construct new time axis for climatology       
+      climAxis = Axis(name=timeAxis, units='month', length=12, data=np.arange(1,13,1)) # monthly climatology
+    target.addAxis(climAxis, copy=True)
+    climAxis = target.axes[timeAxis] 
     # call superior constructor with climatology function and parameters
     super(ClimatologyProcessingUnit,self).__init__(source, target, Climatology, timeAxis=timeAxis, climAxis=climAxis)  
 

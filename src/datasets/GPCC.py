@@ -143,12 +143,12 @@ if __name__ == '__main__':
       # add names and length of months
       dataset += Variable(name='length_of_month', units='days', axes=('time',), data=days_per_month)
       
-#       newvar = dataset.precip
-#       print
-#       print newvar.name, newvar.masked
-#       print newvar.fillValue
-#       print newvar.data_array.__class__
-#       print
+      newvar = dataset.time
+      print
+      print newvar.name, newvar.masked
+      print newvar.fillValue
+      print newvar.data_array.__class__
+      print
 
       # write data to a different file
       filename = avgfile%('_'+res,'')
@@ -169,33 +169,47 @@ if __name__ == '__main__':
       print('')
       source = loadGPCC_TS(varlist=['stations','precip'],resolution=res)
       print(source)
+      print('')
       # prepare sink
       filename = avgfile%('_'+res,'_'+'1900-2010')
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
       sink = DatasetNetCDF(name='GPCC Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w') 
       
-      # process
+      # initialize processing
       from geodata.process import ClimatologyProcessingUnit
       CPU = ClimatologyProcessingUnit(source, sink)
+      # start processing
+      print('')
+      print('   ...   processing   ...   ') 
       CPU.process(flush=False)
+      print('')
+
+#       newvar = sink.time
+#       print
+#       print newvar.name, newvar.data 
+#       print newvar.shape
+#       print newvar.coord
+#       print
       
       # convert precip data to SI units (mm/s)   
       sink.precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
       sink.precip.units = 'kg/m^2/s'      
 
       # add landmask
-      sink += VarNC(sink.dataset, name='landmask', units='', axes=('lat','lon'), data=sink.precip.getMask()[0,:,:])
+      #print '   ===   landmask   ===   '
+      sink += VarNC(sink.dataset, name='landmask', units='', axes=(sink.lat,sink.lon), data=sink.precip.getMask()[0,:,:])
       sink.mask(sink.landmask)            
       # add names and length of months
       sink.axisAnnotation('name_of_month', name_of_month, 'time')
-      sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=('time',), data=days_per_month)
+      #print '   ===   month   ===   '
+      sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month)
              
-      newvar = sink.precip
-      print
-      print newvar.name, newvar.masked
-      print newvar.fillValue
-      print newvar.data_array.__class__
-      print
+#       newvar = sink.precip
+#       print
+#       print newvar.name, newvar.masked
+#       print newvar.fillValue
+#       print newvar.data_array.__class__
+#       print
       
       # close...
       sink.sync()
