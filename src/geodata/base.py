@@ -199,7 +199,8 @@ class Variable(object):
         axes = 'Axes: '
         for ax in self.axes: axes += '{0:s},'.format(ax.name)
       else: axes = self.__class__.__name__ # Class name (usually an Axis)
-      string = '{:<20}  {:>14s}  {:s}'.format(name,shape,axes)
+      substr = name + ' '*(max(1,35-len(name)-len(shape))) + shape # the field is 35 wide, with at least 1 space
+      string = '{:<35s}  {:s}'.format(substr,axes)
     else:
       string = '{0:s} {1:s} [{2:s}]   {3:s}\n'.format(self.__class__.__name__,self.name,self.units,self.__class__)
       for ax in self.axes: string += '  {0:s}\n'.format(ax.prettyPrint(short=True))
