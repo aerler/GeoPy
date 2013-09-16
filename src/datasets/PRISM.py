@@ -9,6 +9,7 @@ functionality to read PRISM data from ASCII files and write to NetCDF format.
 
 # external imports
 import numpy as np
+import numpy.ma as ma
 import netCDF4 as nc # netcdf python module
 # internal imports
 from datasets.misc import translateVarNames, data_root, days_per_month, name_of_month
@@ -32,9 +33,9 @@ varatts = dict(T2 = dict(name='T2', units='K', atts=dict(long_name='Average 2m T
 varlist = varatts.keys() # also includes coordinate fields    
 
 # variable and file lists settings
-rootfolder = data_root + 'PRISM/' # long-term mean folder
+prismfolder = data_root + 'PRISM/' # long-term mean folder
 avgfile = 'prism_clim.nc' # formatted NetCDF file
-avgfolder = rootfolder + 'prismavg/' # prefix
+avgfolder = prismfolder + 'prismavg/' # prefix
 
 
 ## Functions that provide access to well-formatted PRISM NetCDF files
@@ -45,12 +46,13 @@ def loadPRISM(name='PRISM', varlist=None, resolution=None, folder=avgfolder, fil
   if resolution is not None and resolution not in (): # '800m', '10km' 
     raise DatasetError, "Selected resolution '%s' is not available!"%resolution
   # varlist
-  if varlist is None: varlist = ['precip', 'T2','Tmin','Tmax'] # all variables 
+  if varlist is None: varlist = ['precip', 'T2','Tmin','Tmax','datamask','length_of_month'] # all variables 
   if varatts is not None: varlist = translateVarNames(varlist, varatts)
   # filelist
   if filelist is None: filelist = [avgfile]
   # load dataset
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')  
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, 
+                          varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')  
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
   # return formatted dataset
@@ -66,7 +68,7 @@ def loadASCII(var, fileformat='BCY_%s.%02ia', arrayshape=(601,697)):
   from numpy.ma import zeros
   from numpy import genfromtxt, flipud
   # definitions
-  datadir = rootfolder + 'Climatology/ASCII/' # data folder   
+  datadir = prismfolder + 'Climatology/ASCII/' # data folder   
   ntime = len(days_per_month) # number of month
   # allocate space
   data = zeros((ntime,)+arrayshape) # time = ntime, (x, y) = arrayshape  
@@ -75,7 +77,8 @@ def loadASCII(var, fileformat='BCY_%s.%02ia', arrayshape=(601,697)):
   for m in xrange(ntime):
     # read data into array
     filename = fileformat%(var,m+1)
-    tmp = genfromtxt(datadir+filename, dtype=float, skip_header=5, missing_values=-9999, filling_values=-9999, usemask=True)
+    tmp = genfromtxt(datadir+filename, dtype=float, skip_header=5, 
+                     missing_values=-9999, filling_values=-9999, usemask=True)
     data[m,:] = flipud(tmp)  
     # N.B.: the data is loaded in a masked array (where missing values are omitted)   
   # return array
@@ -107,8 +110,8 @@ def genCoord():
 
 if __name__ == '__main__':
     
-  mode = 'NC-test'
-#   mode = 'convert_ASCII'
+#   mode = 'NC-test'
+  mode = 'convert_ASCII'
   
   # do some tests
   if mode == 'NC-test':  
@@ -121,7 +124,7 @@ if __name__ == '__main__':
   elif mode == 'convert_ASCII': 
     
     # import netcdf tools
-    from geodata.nctools import add_coord, add_var
+    from geodata.nctools import add_coord, add_var, add_strvar
     
     ## load data
     data = dict()
@@ -160,14 +163,6 @@ if __name__ == '__main__':
     print('\nWriting data to disk: %s'%outfile)
     # create groups for different resolution
     outdata = nc.Dataset(outfile, 'w', format='NETCDF4') # outgrp.createGroup('fineres')
-    # create time dimensions and coordinate variables
-    add_coord(outdata,'time',np.arange(1,len(days_per_month)+1),dtype='i4')
-    outdata.createDimension('tstrlen', 9) # name of month string
-    outdata.createVariable('ndays','i4',('time',))[:] = days_per_month
-    # names of months (as char array)
-    coord = outdata.createVariable('month','S1',('time','tstrlen'))
-    for m in xrange(len(days_per_month)): 
-      for n in xrange(9): coord[m,n] = months_names[m][n]
     # global attributes
     outdata.title = 'Climatology of Monthly PRISM Data'
     outdata.creator = 'Andre R. Erler' 
@@ -182,15 +177,28 @@ if __name__ == '__main__':
           for key2,val2 in val1.iteritems():
             newatts[key2] = val2 
         else: newatts[key1] = val1
-      ncatts[var] = newatts
+      ncatts[var] = newatts      
+    
+    # create time dimensions and coordinate variables
+    add_coord(outdata, 'time', data=np.arange(1,len(days_per_month)+1), dtype='i4', atts=ncatts['time'])
+    add_var(outdata, 'length_of_month', ['time'], data=days_per_month, 
+            atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
+    # names of months (as char array)
+    add_strvar(outdata, 'name_of_month', name_of_month, 'time', 
+               atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
     
     # create new lat/lon dimensions and coordinate variables
-    add_coord(outdata, 'lat', values=lat, atts=ncatts['lon'])
-    add_coord(outdata, 'lon', values=lon, atts=ncatts['lat'])
+    add_coord(outdata, 'lat', data=lat, atts=ncatts['lon'])
+    add_coord(outdata, 'lon', data=lon, atts=ncatts['lat'])
     # create climatology variables  
     fillValue = -9999; axes = ('time','lat','lon')
     for name,field in data.iteritems():
-      add_var(outdata, name, axes, values=field.filled(fillValue), atts=ncatts[name], fillValue=fillValue)
+      add_var(outdata, name, axes, data=field.filled(fillValue), atts=ncatts[name], fillValue=fillValue)
+    # create land/sea/no-data mask
+    mask = ma.getmaskarray(data['precip'])[0,:,:]
+    atts = dict(name='datamask', units='', long_name='Mask for Climatology Fields', 
+                description='where this mask is non-zero, no data is available')
+    add_var(outdata, 'datamask', ['lat','lon'], data=mask, atts=atts)
     
     # dataset feedback and diagnostics
     # print dataset meta data

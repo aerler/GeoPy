@@ -147,8 +147,13 @@ class BaseVarTest(unittest.TestCase):
     var = self.var
     # indexing (getitem) test  
     if var.ndim == 3:  
+      # standard indexing
       assert isEqual(self.data[0,1,1], var[0,1,1], masked_equal=True)
       assert isEqual(self.data[0,:,1:-1], var[0,:,1:-1], masked_equal=True)
+      # value indexing
+      ax0 = var.axes[0]; ax1 = var.axes[1] 
+      kwargs = {ax0.name:(ax0.coord[0]-1,ax0.coord[-1]+1), ax1.name:ax1.coord[-1]}
+      assert isEqual(var(**kwargs), var[:,-1,:], masked_equal=True)
   
   def testLoad(self):
     ''' test data loading and unloading '''
@@ -273,6 +278,10 @@ class BaseDatasetTest(unittest.TestCase):
     # replace axis
     oldax = dataset.axes.values()[-1]
     newax = Axis(name='z', units='none', coord=(1,len(oldax),len(oldax)))
+    print oldax.name, oldax.data
+    print oldax.data_array    
+    print newax.name, newax.data
+    print newax.data_array
     dataset.repalceAxis(oldax,newax)
     assert dataset.hasAxis(newax) and not dataset.hasAxis(oldax)  
     assert not any([var.hasAxis(oldax) for var in dataset])
@@ -607,7 +616,7 @@ if __name__ == "__main__":
     # list of dataset tests
 #     tests = ['BaseDataset']
 #     tests = ['DatasetNetCDF']
-#     tests = ['DatasetGDAL']    
+    tests = ['DatasetGDAL']    
     
     # run tests
     for test in tests:

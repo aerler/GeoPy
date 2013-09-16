@@ -251,8 +251,8 @@ class DatasetNetCDF(Dataset):
     and writing, as well as the creation of new NetCDF files.
   '''
   
-  def __init__(self, name='', folder='', dataset=None, filelist=None, varlist=None, varatts=None, atts=None, axes=None, 
-               multifile=False, check_override=None, mode='r', ncformat='NETCDF4'):
+  def __init__(self, name=None, title=None, dataset=None, filelist=None, varlist=None, varatts=None, atts=None, axes=None, 
+               multifile=False, check_override=None, folder='', mode='r', ncformat='NETCDF4'):
     ''' 
       Create a Dataset from one or more NetCDF files; Variables are created from NetCDF variables. 
       
@@ -321,7 +321,9 @@ class DatasetNetCDF(Dataset):
             if dim not in check_override and not isEqual(axes[dim][:],tmpax[:]): 
               raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
           else: # if this is a new axis, add it to the list
-            axes[dim] = AxisNC(ncvar=ds.variables[dim], mode=mode, **varatts.get(dim,{})) # also use overrride parameters
+            if ds.variables[dim].dtype == '|S1': pass # Variables of type char are currently not implemented
+            else:      
+              axes[dim] = AxisNC(ncvar=ds.variables[dim], mode=mode, **varatts.get(dim,{})) # also use overrride parameters
         else: # initialize dimensions without associated variable as regular Axis (not AxisNC)
           if dim in axes: # if already present, make sure axes are essentially the same
             if len(axes[dim]) != len(ds.dimensions[dim]): 
@@ -345,13 +347,15 @@ class DatasetNetCDF(Dataset):
           if all([axes.has_key(dim) for dim in ds.variables[var].dimensions]):
             varaxes = [axes[dim] for dim in ds.variables[var].dimensions] # collect axes
             # create new variable using the override parameters in varatts
-            variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, mode=mode, **varatts.get(var,{}))
+            if ds.variables[dim].dtype == '|S1': raise NotImplementedError # Variables of type char are currently not implemented
+            else:      
+              variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, mode=mode, **varatts.get(var,{}))
           else: raise DatasetError, 'Error constructing Variable: Axes/coordinates not found.'
     # get attributes from NetCDF dataset
     ncattrs = joinDicts(*[ds.__dict__ for ds in datasets])
     if atts: ncattrs.update(atts) # update with attributes passed to constructor
     # initialize Dataset using parent constructor
-    super(DatasetNetCDF,self).__init__(name=name, varlist=variables.values(), atts=ncattrs)
+    super(DatasetNetCDF,self).__init__(name=name, title=title, varlist=variables.values(), atts=ncattrs)
     # add NetCDF attributes
     self.__dict__['mode'] = mode
     self.__dict__['datasets'] = datasets
@@ -416,13 +420,13 @@ class DatasetNetCDF(Dataset):
         dataset.sync() #
     else: raise PermissionError
     
-  def axisAnnotation(self, name, strlist, dim):
+  def axisAnnotation(self, name, strlist, dim, atts=None):
     ''' Add a list of string values along the specified axis. '''
     # figure out dimensions
     dimname = dim if isinstance(dim,basestring) else dim.name
     if len(strlist) != len(self.axes[dim]) if isinstance(dim,basestring) else len(dim): raise AxisError
     # create netcdf dimension and variable
-    add_strvar(self.dataset, name, strlist, dimname)    
+    add_strvar(self.dataset, name, strlist, dimname, atts=atts)    
     
   def close(self):
     ''' Call this method before deleting the Dataset: close netcdf files; if in write mode, also synchronizes with file system before closing. '''

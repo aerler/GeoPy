@@ -56,7 +56,7 @@ class CentralProcessingUnit(object):
 
 class ClimatologyProcessingUnit(CentralProcessingUnit):
   
-  def __init__(self, source, target, timeAxis='time', climAxis=None):
+  def __init__(self, source, target, timeAxis='time', climAxis=None, period=None, offset=0):
     ''' Pass input and output datasets and define the processing function (kwargs are passed to function). 
         The pattern for 'function' is: outvar = function(invar)
     '''
@@ -64,11 +64,15 @@ class ClimatologyProcessingUnit(CentralProcessingUnit):
       climAxis = Axis(name=timeAxis, units='month', length=12, data=np.arange(1,13,1)) # monthly climatology
     target.addAxis(climAxis, copy=True)
     climAxis = target.axes[timeAxis] 
+    if period is not None:
+      start = offset * len(climAxis); end = start + period * len(climAxis)
+      timeSlice = slice(start,end,None)      
     # call superior constructor with climatology function and parameters
-    super(ClimatologyProcessingUnit,self).__init__(source, target, Climatology, timeAxis=timeAxis, climAxis=climAxis)  
+    super(ClimatologyProcessingUnit,self).__init__(source, target, Climatology, timeAxis=timeAxis, 
+                                                   climAxis=climAxis, timeSlice=timeSlice)  
 
 # this is not actually a class method...
-def Climatology(var, timeAxis='time', climAxis=None):
+def Climatology(var, timeAxis='time', climAxis=None, timeSlice=None):
   ''' Compute a climatology from a time-series. '''
   # process variable that have a time axis
   if var.hasAxis(timeAxis):
@@ -77,15 +81,21 @@ def Climatology(var, timeAxis='time', climAxis=None):
     interval = len(climAxis)
     newshape = list(var.shape)
     newshape[tidx] = interval # shape of the climatology field  
-    dataarray = var.getArray(unmask=False,copy=False)    
+    if not (interval == 12): raise NotImplemented
+    # load data
+    if timeSlice is not None:
+      idx = tuple([timeSlice if ax.name == timeAxis else slice(None) for ax in var.axes])
+    else: idx = None
+    dataarray = var.getArray(idx=idx, unmask=False, copy=False)    
     if var.masked: avgdata = ma.zeros(newshape) # allocate array
     else: avgdata = np.zeros(newshape) # allocate array    
     # average data
-    timelength = len(var.getAxis(timeAxis))
+    timelength = dataarray.shape[tidx]
     if timelength % interval == 0:
       # use array indexing
       climelts = np.arange(interval)
-      for t in xrange(0,timelength,interval):      
+      for t in xrange(0,timelength,interval):
+        print t/interval+1
         avgdata += dataarray.take(t+climelts, axis=tidx)
       # normalize
       avgdata /= (timelength/interval) 

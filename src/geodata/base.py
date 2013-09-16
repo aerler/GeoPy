@@ -271,8 +271,7 @@ class Variable(object):
     else: oldname = oldaxis
     oldaxis = self.axes[self.axisIndex(oldname)]
     if len(oldaxis) != len(newaxis): raise AxisError # length has to be the same!
-    if oldaxis.data != newaxis.data: 
-      raise DataError # make sure data status is the same
+    if oldaxis.data != newaxis.data: raise DataError # make sure data status is the same
     # replace old axis
     self.axes = tuple([ax if ax is not oldaxis else newaxis for ax in self.axes])
     assert len(self.axes) == self.ndim
@@ -320,6 +319,29 @@ class Variable(object):
     else:    
       # if nothing applies, raise index error
       raise IndexError, 'Invalid index/key type for class \'%s\'!'%(self.__class__.__name__)
+  
+  def __call__(self, **kwargs):
+    ''' This method implements access to slices via coordinate values (as opposed to indices). '''
+    # loop over arguments and find indices of coordinate values
+    slices = dict()
+    for axname,coord in kwargs.iteritems():
+      if self.hasAxis(axname):
+        ax = self.getAxis(axname)
+        if ax.data:
+          if isinstance(coord,(list,tuple)):
+            if len(coord) == 2:
+              #l = max(ax.data_array.searchsorted(coord[0],side='right')-1,0) # choose such as to bracket coords
+              #r = ax.data_array.searchsorted(coord[1],side='left') # same value or higher index
+              slices[axname] = slice(ax.getIndex(coord[0]),ax.getIndex(coord[1]))
+            elif len(coord) == 1: slices[axname] = ax.getIndex(coord[0])
+            else: raise IndexError
+          elif isinstance(coord,np.number):
+            slices[axname] = ax.getIndex(coord)
+          else: raise TypeError
+    # assemble index tuple for axes
+    idx = tuple([slices.get(ax.name,slice(None)) for ax in self.axes])
+    print idx
+    return self.__getitem__(idx=idx) # pass on to getitem
 
   def load(self, data=None, mask=None, fillValue=None):
     ''' Method to attach numpy data array to variable instance (also used in constructor). '''
@@ -597,6 +619,21 @@ class Axis(Variable):
     # update attributes
     self.__dict__['coord'] = None
 #     self.__dict__['len'] = 0
+
+  def getIndex(self, value):
+    ''' Return the coordinate index that is closest the value. '''
+    if not self.data: raise DataError
+    # search for close index
+    idx = self.coord.searchsorted(value)
+    # refine search
+    if idx <= 0: return 0
+    elif idx >= self.len: return self.len-1
+    else:
+      dl = value - self.coord[idx-1]
+      dr = self.coord[idx] - value
+      if dr < dl: return idx
+      else: return idx-1 # can't be 0 at this point 
+      
     
   def updateCoord(self, coord=None, **varargs):
     ''' Update the coordinate vector of an axis based on certain conventions. '''
@@ -637,7 +674,7 @@ class Dataset(object):
     implements collective operations on all variables in the dataset.
   '''
   
-  def __init__(self, name='', varlist=None, atts=None):
+  def __init__(self, name=None, title=None, varlist=None, atts=None):
     ''' 
       Create a dataset from a list of variables. The basic dataset class has no capability to create variables.
       
@@ -649,9 +686,11 @@ class Dataset(object):
         atts = AttrDict() # dictionary containing global attributes / meta data
     '''
     # create instance attributes
-    self.__dict__['name'] = name
     self.__dict__['variables'] = dict()
     self.__dict__['axes'] = dict()
+    # set properties in atts
+    if name is not None: atts['name'] = name
+    if title is not None: atts['title'] = title
     # load global attributes, if given
     if atts: self.__dict__['atts'] = AttrDict(**atts)
     else: self.__dict__['atts'] = AttrDict()
@@ -734,7 +773,7 @@ class Dataset(object):
     if isinstance(oldaxis,Axis): oldname = oldaxis.name # just go by name
     oldaxis = self.axes[oldname]
     if len(oldaxis) != len(newaxis): raise AxisError # length has to be the same!
-    if oldaxis.data: newaxis.updateCoord() # make sure data status is the same
+    if oldaxis.data != newaxis.data: raise DataError # make sure data status is the same
     # remove old axis and add new to dataset
     self.removeAxis(oldaxis, force=True)
     self.addAxis(newaxis)

@@ -42,7 +42,7 @@ varatts = dict(air   = dict(name='T2', units='K'), # 2m Temperature
 varlist = varatts.keys() # also includes coordinate fields    
 
 # variable and file lists settings
-rootfolder = data_root + 'NARR/' # root folder
+narrfolder = data_root + 'NARR/' # root folder
 nofile = ('lat','lon','x','y','time') # variables that don't have their own files
 special = dict(air='air.2m') # some variables need special treatment
 
@@ -50,7 +50,7 @@ special = dict(air='air.2m') # some variables need special treatment
 ## Functions to load different types of NARR datasets 
 
 # Climatology (LTM - Long Term Mean)
-ltmfolder = rootfolder + 'LTM/' # LTM subfolder
+ltmfolder = narrfolder + 'LTM/' # LTM subfolder
 def loadNARR_LTM(name='NARR', varlist=varlist, interval='monthly', varatts=varatts, filelist=None, folder=ltmfolder):
   ''' Get a properly formatted dataset of daily or monthly NARR climatologies (LTM). '''
   # prepare input
@@ -75,7 +75,7 @@ def loadNARR_LTM(name='NARR', varlist=varlist, interval='monthly', varatts=varat
   return dataset
 
 # Time-series (monthly)
-tsfolder = rootfolder + 'Monthly/' # monthly subfolder
+tsfolder = narrfolder + 'Monthly/' # monthly subfolder
 def loadNARR_TS(name='NARR', varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
   ''' Get a properly formatted NARR dataset with monthly mean time-series. '''
   # prepare input  

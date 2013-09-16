@@ -87,15 +87,17 @@ def loadGPCC(name='GPCC', varlist=None, resolution='025', period=None, folder=av
   # prepare input
   if resolution not in ('025','05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
   if resolution == '025' and period is not None: raise DatasetError, "The highest resolution is only available for the lon-term mean!"
+  if not isinstance(period,basestring): period = '%4i-%4i'%period  
   # varlist
-  if varlist is None: varlist = ['precip', 'stations'] # all variables 
+  if varlist is None: varlist = ['precip', 'stations', 'landmask', 'length_of_month'] # all variables 
   if varatts is not None: varlist = translateVarNames(varlist, varatts)
   # filelist
   if filelist is None: 
     if period is None: filelist = [avgfile%('_'+resolution,'')]
     else: filelist = [avgfile%('_'+resolution,'_'+period)]
   # load dataset
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')  
+  #print folder+filelist[0]
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4')  
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
   # return formatted dataset
@@ -104,20 +106,22 @@ def loadGPCC(name='GPCC', varlist=None, resolution='025', period=None, folder=av
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-  mode = 'average_timeseries'
+  mode = 'test'
+#   mode = 'average_timeseries'
 #   mode = 'convert_climatology'
   reses = ('25',) # for testing
 #   reses = ('025',) # hi-res climatology
 #   reses = ('05', '10', '25')
+  period = (1979,1989)
   
   # generate averaged climatology
   for res in reses:    
     
-    if mode == 'test_clim':
+    if mode == 'test':
       
       # load averaged climatology file
       print('')
-      dataset = loadGPCC()
+      dataset = loadGPCC(resolution=res,period=period)
       print(dataset)
           
     elif mode == 'convert_climatology':
@@ -134,52 +138,64 @@ if __name__ == '__main__':
       
       # load data into memory
       dataset.load()
-      newvar = dataset.time
-      print
-      print newvar.name, newvar.data
-      print newvar.data_array
-      print
+#       newvar = dataset.time
+#       print
+#       print newvar.name, newvar.data
+#       print newvar.data_array
+#       print
 
       # convert precip data to SI units (mm/s)
       dataset.precip *= days_per_month.reshape((12,1,1)) # convert in-place
       dataset.precip.units = 'kg/m^2/s'
 
       # add landmask
-      dataset += Variable(name='landmask', units='', axes=(dataset.lat,dataset.lon), data=dataset.precip.getMask()[0,:,:])
+      tmpatts = dict(name='landmask', units='', long_name='Landmask for Climatology Fields', 
+                description='where this mask is non-zero, no data is available')
+      dataset += Variable(name='landmask', units='', axes=(dataset.lat,dataset.lon), 
+                          data=dataset.precip.getMask()[0,:,:], atts=tmpatts)
       dataset.mask(dataset.landmask)            
       # add names and length of months
-      dataset += Variable(name='length_of_month', units='days', axes=(dataset.time,), data=days_per_month)
+      dataset += Variable(name='length_of_month', units='days', axes=(dataset.time,), data=days_per_month, dtype='i4', 
+                          atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
       
       # write data to a different file
       filename = avgfile%('_'+res,'')
-      print filename; print
+      print('') 
+      print(filename)
+      print('')
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
       ncset = writeNetCDF(dataset, avgfolder+filename, close=False)
-      add_strvar(ncset,'name_of_month', name_of_month, 'time') # add names of month
+      add_strvar(ncset,'name_of_month', name_of_month, 'time', # add names of month
+                 atts=dict(name='name_of_month', units='', long_name='Name of the Month')) 
       
       # close...
       ncset.close()
       dataset.close()
       # print dataset before
-      print(dataset)     
+      print(dataset)
+      print('')           
       
     elif mode == 'average_timeseries':
       
       # load source
+      periodstr = '%4i-%4i'%period
       print('\n')
-      print('   ***   Processing Resolution %s   ***   '%res)
+      print('   ***   Processing Resolution %s from %s   ***   '%(res,periodstr))
       print('\n')
       source = loadGPCC_TS(varlist=['stations','precip'],resolution=res)
       print(source)
       print('\n')
       # prepare sink
-      filename = avgfile%('_'+res,'_'+'1900-2010')
+      filename = avgfile%('_'+res,'_'+periodstr)
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
-      sink = DatasetNetCDF(name='GPCC Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w') 
+      sink = DatasetNetCDF(name='GPCC Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
+      sink.atts.period = periodstr 
       
+      # determin averaging itnerval
+      offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
       # initialize processing
       from geodata.process import ClimatologyProcessingUnit
-      CPU = ClimatologyProcessingUnit(source, sink)
+      CPU = ClimatologyProcessingUnit(source, sink, period=period[1]-period[0], offset=offset)
       # start processing
       print('')
       print('   ...   processing   ...   ') 
@@ -192,19 +208,24 @@ if __name__ == '__main__':
 #       print newvar.shape
 #       print newvar.coord
 #       print
-      
+
       # convert precip data to SI units (mm/s)   
       sink.precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
       sink.precip.units = 'kg/m^2/s'      
 
       # add landmask
       #print '   ===   landmask   ===   '
-      sink += VarNC(sink.dataset, name='landmask', units='', axes=(sink.lat,sink.lon), data=sink.precip.getMask()[0,:,:])
+      tmpatts = dict(name='landmask', units='', long_name='Landmask for Climatology Fields', 
+                description='where this mask is non-zero, no data is available')
+      sink += VarNC(sink.dataset, name='landmask', units='', axes=(sink.lat,sink.lon), 
+                    data=sink.precip.getMask()[0,:,:], atts=tmpatts)
       sink.mask(sink.landmask)            
       # add names and length of months
-      sink.axisAnnotation('name_of_month', name_of_month, 'time')
+      sink.axisAnnotation('name_of_month', name_of_month, 'time', 
+                          atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
       #print '   ===   month   ===   '
-      sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month)
+      sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
+                    atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
              
 #       newvar = sink.precip
 #       print

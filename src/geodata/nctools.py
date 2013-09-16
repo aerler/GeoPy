@@ -19,7 +19,7 @@ zlib_default = dict(zlib=True, complevel=1, shuffle=True) # my own default compr
 
 ## generic functions
 
-def add_strvar(dst, name, strlist, dim):
+def add_strvar(dst, name, strlist, dim, atts=None):
   ''' Function that adds a list of string variables as a variable along a specified dimension. '''
   # determine max length of string
   strlen = 0 
@@ -41,15 +41,24 @@ def add_strvar(dst, name, strlist, dim):
   # create netcdf dimension and variable
   dst.createDimension(name, strlen) # name of month string
   strvar = dst.createVariable(name,'S1',(dim,name))
-  strvar[:] = chararray 
+  strvar[:] = chararray
+  # add attributes
+  if atts: strvar.setncatts(coerceAtts(atts))
   # return string variable
   return strvar
 
 def add_coord(dst, name, data=None, length=None, atts=None, dtype=None, zlib=True, fillValue=None, **kwargs):
   ''' Function to add a Coordinate Variable to a NetCDF Dataset; returns the Variable reference. '''
+  # check input
+  if data is None and length is None: 
+    raise TypeError 
+  elif length is not None:
+    if isinstance(length,(int,np.integer)): length=(length,)
+  elif data is not None and data.ndim == 1:
+    length=data.shape
+  else: 
+    raise DataError
   # basically a simplified interface for add_var
-  if isinstance(length,(int,np.integer)): length=(length,)
-  elif length is not None: raise TypeError
   coord = add_var(dst, name, dims=(name,), data=data, shape=length, atts=atts, dtype=dtype, 
                   zlib=zlib, fillValue=fillValue, **kwargs)  
   return coord
@@ -62,13 +71,11 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
     if not isinstance(data,np.ndarray): raise TypeError     
     if len(dims) != data.ndim: raise DataError, "Number of dimensions in '%s' does not match data array."%(name,)    
     if shape: 
-      print name
-      print shape
-      print data.shape
       if shape != data.shape: raise DataError, "Shape of '%s' does not match data array."%(name,)
     else: shape = data.shape
     if dtype: 
-      if dtype != data.dtype: raise DataError, "Data type in '%s' does not match data array."%(name,) 
+      if dtype != data.dtype: data.astype(dtype)
+        # raise DataError, "Data type in '%s' does not match data array."%(name,) 
     else: dtype = data.dtype
   if dtype is None: raise DataError, "Cannot construct a NetCDF Variable without a data array or an abstract data type."
   if np.dtype(dtype) is np.dtype('bool_'): dtype = np.dtype('i1') # cast numpy bools as 8-bit integers
@@ -92,14 +99,16 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   if fillValue is None:
     if atts and '_FillValue' in atts: fillValue = atts['_FillValue'] # will be removed later
     elif atts and 'missing_value' in atts: fillValue = atts['missing_value']
-    else: # defaults values for numpy masked arrays
+    elif data is not None and isinstance(data,ma.MaskedArray): # defaults values for numpy masked arrays
       fillValue = ma.default_fill_value(dtype)
-#       if isinstance(dtype,np.bool_): fillValue = True
-#       elif isinstance(dtype,np.integer): fillValue = 999999
-#       elif isinstance(dtype,np.floating): fillValue = 1.e20
-#       elif isinstance(dtype,np.complexfloating): fillValue = 1.e20+0j
-#       elif isinstance(dtype,np.flexible): fillValue = 'N/A'
-#       else: fillValue = None # for 'object'
+      atts['missing_value'] = fillValue      
+      # if isinstance(dtype,np.bool_): fillValue = True
+      # elif isinstance(dtype,np.integer): fillValue = 999999
+      # elif isinstance(dtype,np.floating): fillValue = 1.e20
+      # elif isinstance(dtype,np.complexfloating): fillValue = 1.e20+0j
+      # elif isinstance(dtype,np.flexible): fillValue = 'N/A'
+      # else: fillValue = None # for 'object'
+    else: pass # if it is not a masked array and no missing value information was passed, don't assign fillValue 
   else:  
     if data is not None and isinstance(data,ma.MaskedArray): data.set_fill_value(fillValue)    
     atts['missing_value'] = fillValue # I use fillValue and missing_value the same way
@@ -187,7 +196,6 @@ def coerceAtts(atts):
 def writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True, writeData=True, close=True):
   ''' A function to write the data in a generic Dataset to a NetCDF file. '''
   # open file
-  #print filename,ncformat
   ncfile = nc.Dataset(filename, mode='w', format=ncformat)
   ncfile.setncatts(coerceAtts(dataset.atts))
   # add coordinate variables first
