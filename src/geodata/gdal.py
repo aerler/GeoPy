@@ -221,7 +221,7 @@ def addGDALtoVar(var, projection=None, geotransform=None):
     # maybe needed in the future...
     def unload(self):
       ''' Remove coordinate vector. '''
-      super(var.__class__,self).unload()      
+      var.__class__.unload(self)      
     # add new method to object
     var.unload = types.MethodType(unload,var)
   

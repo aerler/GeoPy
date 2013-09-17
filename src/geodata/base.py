@@ -422,17 +422,19 @@ class Variable(object):
     # return array
     return datacopy
     
-  def mask(self, mask=None, maskedValue=None, fillValue=None, merge=True):
+  def mask(self, mask=None, maskedValue=None, fillValue=None, invert=False, merge=True):
     ''' A method to add a mask to an unmasked array, or extend or replace an existing mask. '''
     if mask is not None:
       assert isinstance(mask,np.ndarray) or isinstance(mask,Variable), 'Mask has to be a numpy array or a Variable instance!'
       # 'mask' can be a variable
-      if isinstance(mask,Variable):
-        mask = (mask.getArray(unmask=True,axes=self.axes,broadcast=True) > 0) # convert to a boolean numpy array
-      assert isinstance(mask,np.ndarray), 'Mask has to be convertible to a numpy array!'      
+      if isinstance(mask,Variable): mask = mask.getArray(unmask=True,axes=self.axes,broadcast=True)
+      if not isinstance(mask,np.ndarray): raise TypeError, 'Mask has to be convertible to a numpy array!'      
       # if 'mask' has less dimensions than the variable, it can be extended      
-      assert len(self.shape) >= len(mask.shape), 'Data array needs to have the same number of dimensions or more than the mask!'
-      assert self.shape[self.ndim-mask.ndim:] == mask.shape, 'Data array and mask have to be of the same shape!'
+      if len(self.shape) < len(mask.shape): raise AxisError, 'Data array needs to have the same number of dimensions or more than the mask!'
+      if self.shape[self.ndim-mask.ndim:] != mask.shape: raise AxisError, 'Data array and mask have to be of the same shape!'
+      # convert to a boolean numpy array
+      if invert: mask = ( mask == 0 ) # mask where zero or False 
+      else: mask = ( mask != 0 ) # mask where non-zero or True
       # broadcast mask to data array
       mask = np.broadcast_arrays(mask,self.data_array)[0] # only need first element (the broadcasted mask)
       # create new data array
@@ -936,14 +938,18 @@ class Dataset(object):
     for var in self.variables.itervalues():
       var.unload(**kwargs)
       
-  def mask(self, mask=None, maskSelf=False, skipList=None, merge=True, **kwargs):
+  def mask(self, mask=None, maskSelf=False, varlist=None, skiplist=None, invert=False, merge=True, **kwargs):
     ''' Apply 'mask' to all variables and add the mask, if it is a variable. '''
-    if skipList is None: skipList = []
-    else: 
-      if not isinstance(skipList,(list,tuple)): raise TypeError
+    # figure out variable list
+    if skiplist is None: skiplist = []
+    if not isinstance(skiplist,(list,tuple)): raise TypeError
+    if varlist is None: varlist = []  
+    if not isinstance(varlist,(list,tuple)): raise TypeError
+    varlist = [var for var in varlist if var not in skiplist and var in self.variables]
     # iterate over all variables (not axes!) 
-    for var in self.variables.itervalues():
-      if var.data and var.ndim >= mask.ndim and var.name not in skipList:
+    for varname in varlist:
+      var = self.variables[varname]
+      if var.data and var.ndim >= mask.ndim:
         # need to have data and also the right number of dimensions 
         lOK = False
         if isinstance(mask,np.ndarray):
@@ -951,7 +957,7 @@ class Dataset(object):
         elif isinstance(mask,Variable):
           if mask is var or mask.name == var.name: lOK = maskSelf # default: False
           elif all([var.hasAxis(ax) for ax in mask.axes]): lOK = True
-        if lOK: var.mask(mask=mask, merge=merge, **kwargs) # if everything is OK, apply mask
+        if lOK: var.mask(mask=mask,  invert=invert, merge=merge, **kwargs) # if everything is OK, apply mask
     # add mask do dataset
     if isinstance(mask,Variable) and not self.hasVariable(mask): self.addVariable(mask)
     

@@ -38,10 +38,10 @@ class CentralProcessingUnit(object):
         oldvar = self.output.variable[var.name]
         if newvar.ndim != oldvar.ndim or newvar.shape != oldvar.shape: raise VariableError
         self.output.variable[var.name].load(newvar.getArray(unmask=False,copy=False))
-      else:
+      else:        
         newvar = self.function(var)
-        var.unload() # not needed anymore
         self.output.addVariable(newvar, copy=True)
+        var.unload() # not needed anymore
       # sync data and free space
       if flush:
         newvar.sync()
@@ -76,6 +76,7 @@ def Climatology(var, timeAxis='time', climAxis=None, timeSlice=None):
   ''' Compute a climatology from a time-series. '''
   # process variable that have a time axis
   if var.hasAxis(timeAxis):
+    print('\n'+var.name),
     # prepare averaging
     tidx = var.axisIndex(timeAxis)
     interval = len(climAxis)
@@ -101,16 +102,14 @@ def Climatology(var, timeAxis='time', climAxis=None, timeSlice=None):
       avgdata /= (timelength/interval) 
     else: raise NotImplementedError
     # create new Variable
-#     print var.name, var.masked
-#     print var.fillValue
-#     print avgdata.__class__
     axes = tuple([climAxis if ax.name == timeAxis else ax for ax in var.axes]) # exchange time axis
     newvar = Variable(name=var.name, units=var.units, axes=axes, data=avgdata, dtype=var.dtype, 
                       mask=None, fillValue=var.fillValue, atts=var.atts, plot=var.plot)
-#     print newvar.name, newvar.masked
-#     print newvar.fillValue
-#     print newvar.data_array.__class__
+    #     print newvar.name, newvar.masked
+    #     print newvar.fillValue
+    #     print newvar.data_array.__class__
   else:
+    var.load() # need to load variables into memory, because we are not doing anything else...
     newvar = var  
   # return variable
   return newvar

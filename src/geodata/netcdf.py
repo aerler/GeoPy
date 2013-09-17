@@ -130,22 +130,24 @@ class VarNC(Variable):
   def __getitem__(self, idx=None):
     ''' Method implementing access to the actual data; if data is not loaded, give direct access to NetCDF file. '''
     # default
-    if idx is None: idx = slice(None,None,None) # first, last, step          
+    if idx is None: idx = [slice(None,None,None),]*self.ndim # first, last, step          
     # determine what to do
     if self.data:
-      # call parent method
-      data = super(VarNC,self).__getitem__(idx) # load actual data using parent method
+      # call parent method     
+      data = super(VarNC,self).__getitem__(idx) # load actual data using parent method      
     else:
       # provide direct access to netcdf data on file
       if isinstance(idx,(list,tuple)):
+        if len(idx) != self.ndim: raise AxisError
         if self.squeezed:
-          if len(idx) != self.ndim: raise AxisError
           # figure out slices
           idx = list(idx) # need to insert items
           for i in xrange(self.ncvar.ndim):
             if self.ncvar.shape[i] == 1: idx.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
       else: idx = (idx,)
       data = self.ncvar.__getitem__(idx) # exceptions handled by netcdf module
+      #assert self.ndim == data.ndim # make sure that squeezing works!
+      # N.B.: the shape can change dynamically when a slice is loaded, so don't check for that, or it will fail!
       # apply scalefactor and offset
       if self.offset != 0: data += self.offset
       if self.scalefactor != 1: data *= self.scalefactor        
