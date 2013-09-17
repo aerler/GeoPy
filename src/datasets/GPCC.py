@@ -15,7 +15,8 @@ from geodata.gdal import addGDALtoDataset
 from geodata.misc import DatasetError
 from geodata.nctools import add_strvar 
 from datasets.misc import translateVarNames, days_per_month, name_of_month, data_root
- 
+from geodata.process import CentralProcessingUnit
+
 ## GPCC Meta-data
 
 # variable attributes and name
@@ -106,13 +107,13 @@ def loadGPCC(name='GPCC', varlist=None, resolution='025', period=None, folder=av
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-  mode = 'test_climatology'
-#   mode = 'average_timeseries'
+#   mode = 'test_climatology'
+  mode = 'average_timeseries'
 #   mode = 'convert_climatology'
   reses = ('25',) # for testing
 #   reses = ('025',) # hi-res climatology
-#   reses = ('05', '10', '25')
-  period = (1979,1989)
+  reses = ('05', '10', '25')
+  period = (1979,1981)
   
   # generate averaged climatology
   for res in reses:    
@@ -191,16 +192,15 @@ if __name__ == '__main__':
       sink = DatasetNetCDF(name='GPCC Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
       sink.atts.period = periodstr 
       
-      # determin averaging itnerval
+      # determine averaging interval
       offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
       # initialize processing
-      from geodata.process import ClimatologyProcessingUnit
-      CPU = ClimatologyProcessingUnit(source, sink, period=period[1]-period[0], offset=offset)
-      # start processing
+      CPU = CentralProcessingUnit(source, sink)
+      # start processing      
       print('')
-      print('   ...   processing   ...   ') 
-      CPU.process(flush=False)
-      print('')
+      print('   +++   processing   +++   ') 
+      CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
+      print('\n')
 
 #       newvar = sink.time
 #       print

@@ -14,39 +14,44 @@ import numpy as np
 import numpy.ma as ma
 import functools
 # internal imports
-from geodata.misc import VariableError
-from geodata.base import Variable, Axis
+from geodata.misc import VariableError, PermissionError
+from geodata.base import Variable, Axis, Dataset
+from geodata.netcdf import DatasetNetCDF
 
 
-class CentralProcessingUnit(object):
-   
-  def __init__(self, source, target, function, **kwargs):
-    ''' Pass input and output datasets and define the processing function (kwargs are passed to function). 
-        The pattern for 'function' is: outvar = function(invar)
-    '''
-    self.__dict__['input'] = source
-    self.__dict__['output'] = target
-    self.__dict__['function'] = functools.partial(function, **kwargs) # already set kw-parameters
-    
-  def process(self, flush=True):
-    ''' This method applies the desired operation to each variable in the input dataset. '''    
-    # loop over input variables
-    for var in self.input:
-      # check if variable already exists
-      if self.output.hasVariable(var.name):
-        newvar = self.function(var)
-        oldvar = self.output.variable[var.name]
-        if newvar.ndim != oldvar.ndim or newvar.shape != oldvar.shape: raise VariableError
-        self.output.variable[var.name].load(newvar.getArray(unmask=False,copy=False))
-      else:        
-        newvar = self.function(var)
-        self.output.addVariable(newvar, copy=True)
-        var.unload() # not needed anymore
-      # sync data and free space
-      if flush:
-        newvar.sync()
-        newvar.unload()
-    
+# class CentralProcessingUnit(object):
+#    
+#   def __init__(self, source, target, function, **kwargs):
+#     ''' Pass input and output datasets and define the processing function (kwargs are passed to function). 
+#         The pattern for 'function' is: outvar = function(invar)
+#     '''
+#     self.__dict__['input'] = source
+#     self.__dict__['output'] = target
+# #     self.__dict__['function'] = functools.partial(function, **kwargs) # already set kw-parameters
+#     
+# def process(function): # this is not a class method!
+#   ''' A wrapper to provide the actual process decorator to class methods. '''
+#   def process_decorator(self, flush=True):
+#     ''' This method applies the desired operation to each variable in the input dataset. '''    
+#     # loop over input variables
+#     for var in self.input:
+#       # check if variable already exists
+#       if self.output.hasVariable(var.name):
+#         newvar = self.function(var)
+#         oldvar = self.output.variable[var.name]
+#         if newvar.ndim != oldvar.ndim or newvar.shape != oldvar.shape: raise VariableError
+#         self.output.variable[var.name].load(newvar.getArray(unmask=False,copy=False))
+#       else:        
+#         newvar = function(var)
+#         self.output.addVariable(newvar, copy=True)
+#         var.unload() # not needed anymore
+#       # sync data and free space
+#       if flush:
+#         newvar.sync()
+#         newvar.unload()
+#   # return wrapper function
+#   return process_decorator
+#   
 #         print
 #         newvar = self.output.precip     
 #         print newvar.name, newvar.masked
@@ -54,65 +59,105 @@ class CentralProcessingUnit(object):
 #         print newvar.data_array.__class__
 
 
-class ClimatologyProcessingUnit(CentralProcessingUnit):
+class CentralProcessingUnit(object):
   
-  def __init__(self, source, target, timeAxis='time', climAxis=None, period=None, offset=0):
+  def __init__(self, source, target=None, varlist=None):
     ''' Pass input and output datasets and define the processing function (kwargs are passed to function). 
         The pattern for 'function' is: outvar = function(invar)
     '''
+    # check varlist
+    if varlist is None: varlist = source.variables.keys() # all source variables
+    if not isinstance(varlist,(list,tuple)): raise TypeError
+    self.__dict__['varlist'] = varlist # list of variable to be processed
+    # check input
+    if not isinstance(source,Dataset): raise TypeError
+    if isinstance(source,DatasetNetCDF) and not 'r' in source.mode: raise PermissionError
+    self.__dict__['input'] = source
+    # check output
+    if target is None: target = source # in-place operation: overwrite source       
+    if not isinstance(target,Dataset): raise TypeError
+    if isinstance(target,DatasetNetCDF) and not 'w' in target.mode: raise PermissionError 
+    self.__dict__['output'] = target
+
+  def process(self, function, flush=False):
+    ''' This method applies the desired operation/function to each variable in varlist. '''    
+    # loop over input variables
+    for varname in self.varlist:
+      # check if variable already exists
+      if self.output.hasVariable(varname):
+        var = self.output.variables[varname] 
+        # perform operation in-place (from target)
+        newvar = self.function(var)
+        oldvar = self.output.variable[var.name]
+        if newvar.ndim != oldvar.ndim or newvar.shape != oldvar.shape: raise VariableError
+        self.output.variable[var.name].load(newvar.getArray(unmask=False,copy=False))
+      else:        
+        var = self.input.variables[varname] 
+        # perform operation from source and copy results to target
+        newvar = function(var)
+        self.output.addVariable(newvar, copy=True)
+        var.unload() # not needed anymore
+      # sync data and free space
+      if flush:
+        newvar.sync()
+        newvar.unload()
+        
+  def Climatology(self, timeAxis='time', climAxis=None, period=None, offset=0, **kwargs):
+    ''' Setup climatology and start computation; calls processClimatology. '''
     if climAxis is None: # construct new time axis for climatology       
       climAxis = Axis(name=timeAxis, units='month', length=12, data=np.arange(1,13,1)) # monthly climatology
-    target.addAxis(climAxis, copy=True)
-    climAxis = target.axes[timeAxis] 
+    self.output.addAxis(climAxis, copy=True)
+    climAxis = self.output.axes[timeAxis] 
     if period is not None:
       start = offset * len(climAxis); end = start + period * len(climAxis)
-      timeSlice = slice(start,end,None)      
-    # call superior constructor with climatology function and parameters
-    super(ClimatologyProcessingUnit,self).__init__(source, target, Climatology, timeAxis=timeAxis, 
-                                                   climAxis=climAxis, timeSlice=timeSlice)  
-
-# this is not actually a class method...
-def Climatology(var, timeAxis='time', climAxis=None, timeSlice=None):
-  ''' Compute a climatology from a time-series. '''
-  # process variable that have a time axis
-  if var.hasAxis(timeAxis):
-    print('\n'+var.name),
-    # prepare averaging
-    tidx = var.axisIndex(timeAxis)
-    interval = len(climAxis)
-    newshape = list(var.shape)
-    newshape[tidx] = interval # shape of the climatology field  
-    if not (interval == 12): raise NotImplemented
-    # load data
-    if timeSlice is not None:
-      idx = tuple([timeSlice if ax.name == timeAxis else slice(None) for ax in var.axes])
-    else: idx = None
-    dataarray = var.getArray(idx=idx, unmask=False, copy=False)    
-    if var.masked: avgdata = ma.zeros(newshape) # allocate array
-    else: avgdata = np.zeros(newshape) # allocate array    
-    # average data
-    timelength = dataarray.shape[tidx]
-    if timelength % interval == 0:
-      # use array indexing
-      climelts = np.arange(interval)
-      for t in xrange(0,timelength,interval):
-        print('.'), # t/interval+1
-        avgdata += dataarray.take(t+climelts, axis=tidx)
-      # normalize
-      avgdata /= (timelength/interval) 
-    else: raise NotImplementedError
-    # create new Variable
-    axes = tuple([climAxis if ax.name == timeAxis else ax for ax in var.axes]) # exchange time axis
-    newvar = Variable(name=var.name, units=var.units, axes=axes, data=avgdata, dtype=var.dtype, 
-                      mask=None, fillValue=var.fillValue, atts=var.atts, plot=var.plot)
-    #     print newvar.name, newvar.masked
-    #     print newvar.fillValue
-    #     print newvar.data_array.__class__
-  else:
-    var.load() # need to load variables into memory, because we are not doing anything else...
-    newvar = var  
-  # return variable
-  return newvar
+      timeSlice = slice(start,end,None)
+    # prepare function call
+    function = functools.partial(self.processClimatology, # already set parameters
+                                 timeAxis=timeAxis, climAxis=climAxis, timeSlice=timeSlice)
+    # start process
+    self.process(function, **kwargs) # currently 'flush' is the only kwarg    
+  # the previous method sets up the process, the next method performs the computation
+  def processClimatology(self, var, timeAxis='time', climAxis=None, timeSlice=None):
+    ''' Compute a climatology from a variable time-series. '''
+    # process variable that have a time axis
+    if var.hasAxis(timeAxis):
+      print('\n'+var.name),
+      # prepare averaging
+      tidx = var.axisIndex(timeAxis)
+      interval = len(climAxis)
+      newshape = list(var.shape)
+      newshape[tidx] = interval # shape of the climatology field  
+      if not (interval == 12): raise NotImplementedError
+      # load data
+      if timeSlice is not None:
+        idx = tuple([timeSlice if ax.name == timeAxis else slice(None) for ax in var.axes])
+      else: idx = None
+      dataarray = var.getArray(idx=idx, unmask=False, copy=False)    
+      if var.masked: avgdata = ma.zeros(newshape) # allocate array
+      else: avgdata = np.zeros(newshape) # allocate array    
+      # average data
+      timelength = dataarray.shape[tidx]
+      if timelength % interval == 0:
+        # use array indexing
+        climelts = np.arange(interval)
+        for t in xrange(0,timelength,interval):
+          print('.'), # t/interval+1
+          avgdata += dataarray.take(t+climelts, axis=tidx)
+        # normalize
+        avgdata /= (timelength/interval) 
+      else: raise NotImplementedError
+      # create new Variable
+      axes = tuple([climAxis if ax.name == timeAxis else ax for ax in var.axes]) # exchange time axis
+      newvar = Variable(name=var.name, units=var.units, axes=axes, data=avgdata, dtype=var.dtype, 
+                        mask=None, fillValue=var.fillValue, atts=var.atts, plot=var.plot)
+      #     print newvar.name, newvar.masked
+      #     print newvar.fillValue
+      #     print newvar.data_array.__class__
+    else:
+      var.load() # need to load variables into memory, because we are not doing anything else...
+      newvar = var  
+    # return variable
+    return newvar
 
 
 """

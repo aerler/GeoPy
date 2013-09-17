@@ -12,6 +12,7 @@ import os
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset
 from datasets.misc import translateVarNames, days_per_month, name_of_month, data_root
+from geodata.process import CentralProcessingUnit
 
  
 ## CRU Meta-data
@@ -110,17 +111,15 @@ if __name__ == '__main__':
     sink = DatasetNetCDF(name='CRU Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
     sink.atts.period = periodstr 
     
-    # determin averaging itnerval
-    offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979
-    #print offset 
+    # determine averaging interval
+    offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
     # initialize processing
-    from geodata.process import ClimatologyProcessingUnit
-    CPU = ClimatologyProcessingUnit(source, sink, period=period[1]-period[0], offset=offset)
-    # start processing
+    CPU = CentralProcessingUnit(source, sink)
+    # start processing      
     print('')
-    #print('   ...   processing   ...   ') 
-    CPU.process(flush=False)
-    print('')
+    print('   +++   processing   +++   ') 
+    CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
+    print('\n')
 
     # add landmask
     #print '   ===   landmask   ===   '
