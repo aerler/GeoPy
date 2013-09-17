@@ -106,7 +106,7 @@ def loadGPCC(name='GPCC', varlist=None, resolution='025', period=None, folder=av
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-  mode = 'test'
+  mode = 'test_climatology'
 #   mode = 'average_timeseries'
 #   mode = 'convert_climatology'
   reses = ('25',) # for testing
@@ -117,7 +117,7 @@ if __name__ == '__main__':
   # generate averaged climatology
   for res in reses:    
     
-    if mode == 'test':
+    if mode == 'test_climatology':
       
       # load averaged climatology file
       print('')

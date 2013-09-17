@@ -95,7 +95,7 @@ def Climatology(var, timeAxis='time', climAxis=None, timeSlice=None):
       # use array indexing
       climelts = np.arange(interval)
       for t in xrange(0,timelength,interval):
-        print t/interval+1
+        print('.'), # t/interval+1
         avgdata += dataarray.take(t+climelts, axis=tidx)
       # normalize
       avgdata /= (timelength/interval) 

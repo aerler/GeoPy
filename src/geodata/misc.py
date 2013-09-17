@@ -247,7 +247,11 @@ class PermissionError(VariableError):
   ''' Exceptions raised when permissions are missing (such as defined by 'mode'). '''
   pass
 
-class NetCDFError(VariableError):
+class FileError(VariableError):
+  ''' Exceptions indicating a file access problem (usually a missing file). '''
+  pass
+
+class NetCDFError(FileError):
   ''' Exceptions related to NetCDF file access. '''
   pass
 

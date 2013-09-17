@@ -17,6 +17,7 @@ name_of_month = ['January  ', 'February ', 'March    ', 'April    ', 'May      '
                  'July     ', 'August   ', 'September', 'October  ', 'November ', 'December ']
 
 
+# convenience function to invert variable name mappings
 def translateVarNames(varlist, varatts):
   ''' Simple function to replace names in a variable list with their original names as inferred from the 
       attributes dictionary. Note that this requires the dictionary to have the field 'name'. '''
@@ -27,7 +28,8 @@ def translateVarNames(varlist, varatts):
       varlist[varlist.index(atts['name'])] = key # original name is used as key in the attributes dict
   # return varlist with final names replaced by original names
   return varlist
-  
+
+ 
 # data root folder
 import socket
 hostname = socket.gethostname()

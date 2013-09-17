@@ -17,7 +17,7 @@ import os
 # from nctools import * # my own netcdf toolkit
 from geodata.base import Variable, Axis, Dataset
 from geodata.misc import checkIndex, isEqual, joinDicts
-from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError 
+from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError, FileError 
 from geodata.nctools import coerceAtts, writeNetCDF, add_var, add_coord, add_strvar
 
 def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs):
@@ -294,7 +294,11 @@ class DatasetNetCDF(Dataset):
       filelist = [dataset.filepath for dataset in datasets if 'filepath' in dir(dataset)]
     else:
       # open netcdf datasets from netcdf files
-      assert isinstance(filelist,col.Iterable)
+      if not isinstance(filelist,col.Iterable): raise TypeError
+      # check if file exists
+      for filename in filelist:
+        if not os.path.exists(folder+filename): 
+          raise FileError, "File {0:s} not found in folder {1:s}".format(filename,folder)     
       datasets = []; filenames = []
       for ncfile in filelist:
         if multifile: # open a NetCDF-4 multi-file dataset 
