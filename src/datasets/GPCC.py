@@ -112,7 +112,7 @@ if __name__ == '__main__':
 #   mode = 'convert_climatology'
   reses = ('25',) # for testing
 #   reses = ('025',) # hi-res climatology
-  reses = ('05', '10', '25')
+#   reses = ('05', '10', '25')
   period = (1979,1981)
   
   # generate averaged climatology
@@ -196,11 +196,25 @@ if __name__ == '__main__':
       offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
       # initialize processing
       CPU = CentralProcessingUnit(source, sink)
-      # start processing      
+            
+      # start processing climatology
       print('')
-      print('   +++   processing   +++   ') 
+      print('   +++   processing climatology   +++   ') 
       CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
       print('\n')
+      
+#       # shift longitude axis by 180 degrees  left (i.e. -180 - 180 -> 0 - 360)
+#       print('')
+#       print('   +++   processing shift/roll   +++   ') 
+#       CPU.Shift(lon=-180, flush=False)
+#       print('\n')
+#
+#       # shift longitude axis by 180 degrees  left (i.e. -180 - 180 -> 0 - 360)
+#       print('')
+#       print('   +++   processing shift/roll   +++   ') 
+#       CPU.Shift(shift=72, axis='lon', byteShift=True, flush=False)
+#       print('\n')      
+
 
 #       newvar = sink.time
 #       print
@@ -226,7 +240,7 @@ if __name__ == '__main__':
       #print '   ===   month   ===   '
       sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
                     atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
-             
+              
 #       newvar = sink.precip
 #       print
 #       print newvar.name, newvar.masked

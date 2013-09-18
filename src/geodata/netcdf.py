@@ -17,7 +17,7 @@ import os
 # from nctools import * # my own netcdf toolkit
 from geodata.base import Variable, Axis, Dataset
 from geodata.misc import checkIndex, isEqual, joinDicts
-from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError, FileError 
+from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError, FileError, VariableError 
 from geodata.nctools import coerceAtts, writeNetCDF, add_var, add_coord, add_strvar
 
 def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs):
@@ -30,7 +30,7 @@ def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs
     elif isinstance(axes,(list,tuple)): 
       # just use the new set of axes
       if not len(axes) == var.ndim: raise AxisError
-      if var.shape is not None and not all(var.shape == [len(ax) for ax in axes]): raise AxisError  
+      if var.shape is not None and not var.shape == tuple([len(ax) for ax in axes]): raise AxisError  
     else: 
       raise TypeError, "Argument 'axes' has to be of type dict, list, or tuple."
   else: axes = var.axes
@@ -393,7 +393,52 @@ class DatasetNetCDF(Dataset):
         var = asVarNC(var=var,ncvar=self.datasets[0], mode=self.mode, deepcopy=deepcopy)
       else: var = var.copy(deepcopy=deepcopy)
     # hand-off to parent method and return status
-    return super(DatasetNetCDF,self).addVariable(var=var)  
+    return super(DatasetNetCDF,self).addVariable(var=var)
+    
+  def repalceAxis(self, oldaxis, newaxis=None):    
+    ''' Replace an existing axis with a different one and transfer NetCDF reference to new axis. '''
+    if newaxis is None: 
+      newaxis = oldaxis; oldaxis = newaxis.name # i.e. replace old axis with the same name'
+    # check axis
+    if not self.hasAxis(oldaxis): raise AxisError
+    if isinstance(oldaxis,Axis): oldname = oldaxis.name # just go by name
+    else: oldname = oldaxis
+    oldaxis = self.axes[oldname]
+    if len(oldaxis) != len(newaxis): raise AxisError # length has to be the same!
+    # N.B.: the length of a dimension in a NetCDF file can't change!
+    if oldaxis.data != newaxis.data: raise DataError # make sure data status is the same
+    # remove old axis from dataset...
+    self.removeAxis(oldaxis, force=True)
+    # cast new axis as AxisNC and transfer old ncvar reference
+    newaxis = asAxisNC(ax=newaxis, ncvar=oldaxis.ncvar, mode=oldaxis.mode, deepcopy=True)
+    # ... and add new axis to dataset
+    self.addAxis(newaxis, copy=False)
+    # loop over variables with this axis    
+    newaxis = self.axes[newaxis.name] # update reference
+    for var in self.variables.values():
+      if var.hasAxis(oldname): var.replaceAxis(oldname,newaxis)    
+    # return verification
+    return self.hasAxis(newaxis)        
+  
+  def replaceVariable(self, oldvar, newvar=None):
+    ''' Replace an existing Variable with a different one and transfer NetCDF reference and axes. '''
+    if newvar is None: 
+      newvar = oldvar; oldvar = newvar.name # i.e. replace old var with the same name
+    # check var
+    if not self.hasVariable(oldvar): raise VariableError
+    if isinstance(oldvar,Variable): oldname = oldvar.name # just go by name
+    else: oldname = oldvar
+    oldvar = self.variables[oldname]
+    if oldvar.shape != newvar.shape: raise AxisError # shape has to be the same!
+    # N.B.: the shape of a variable in a NetCDF file can't change!
+    # remove old variable from dataset...
+    self.removeVariable(oldvar)
+    # cast new variable as VarNC and transfer old ncvar reference and axes    
+    newvar = asVarNC(var=newvar,ncvar=oldvar.ncvar, axes=oldvar.axes, mode=oldvar.mode, deepcopy=True)
+    # ... and add new axis to dataset
+    self.addVariable(newvar, copy=False)    
+    # return status of variable
+    return self.hasVariable(newvar)  
   
   def load(self, **slices):
     ''' Load all VarNC's and AxisNC's using the slices specified as keyword arguments. '''

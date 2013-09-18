@@ -232,9 +232,8 @@ class Variable(object):
     if deepcopy:
       var = self.deepcopy( **newargs)
     else:
-      args = dict(name=self.name, units=self.units, axes=self.axes, data=None, dtype=self.dtype,
+      args = dict(name=self.name, units=self.units, axes=self.axes, data=self.data_array, dtype=self.dtype,
                   mask=None, fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
-      if self.data: args['data'] = self.data_array
       args.update(newargs) # apply custom arguments (also arguments related to subclasses)
       var = Variable(**args) # create a new basic Variable instance
     # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
@@ -767,25 +766,55 @@ class Dataset(object):
       # double-check (return True, if axis is not present, False, if it is)
       return not self.axes.has_key(ax.name)
     
-  def repalceAxis(self, oldaxis, newaxis):    
+  def removeVariable(self, var):
+    ''' Method to remove a Variable from the Dataset. '''
+    if isinstance(var,basestring): var = self.variables[var] # only work with Variable objects
+    assert isinstance(var,Variable), "Argument 'var' has to be a Variable instance or a string representing the name of a variable."
+    if var.name in self.variables: # add new variable if it does not already exist
+      # delete variable from dataset   
+      del self.variables[var.name]
+      del self.__dict__[var.name]
+    # double-check (return True, if variable is not present, False, if it is)
+    return not self.variables.has_key(var.name)
+  
+  def repalceAxis(self, oldaxis, newaxis=None):    
     ''' Replace an existing axis with a different one with similar general properties. '''
     if newaxis is None: 
       newaxis = oldaxis; oldaxis = newaxis.name # i.e. replace old axis with the same name'
     # check axis
     if not self.hasAxis(oldaxis): raise AxisError
     if isinstance(oldaxis,Axis): oldname = oldaxis.name # just go by name
+    else: oldname = oldaxis
     oldaxis = self.axes[oldname]
     if len(oldaxis) != len(newaxis): raise AxisError # length has to be the same!
     if oldaxis.data != newaxis.data: raise DataError # make sure data status is the same
     # remove old axis and add new to dataset
     self.removeAxis(oldaxis, force=True)
-    self.addAxis(newaxis)
+    self.addAxis(newaxis, copy=False)
     newaxis = self.axes[newaxis.name] # update reference
     # loop over variables with this axis    
     for var in self.variables.values():
       if var.hasAxis(oldname): var.replaceAxis(oldname,newaxis)    
     # return verification
     return self.hasAxis(newaxis)    
+
+  def replaceVariable(self, oldvar, newvar=None):
+    ''' Replace an existing Variable with a different one and transfer NetCDF reference and axes. '''
+    if newvar is None: 
+      newvar = oldvar; oldvar = newvar.name # i.e. replace old var with the same name
+    # check var
+    if not self.hasVariable(oldvar): raise VariableError
+    if isinstance(oldvar,Variable): oldname = oldvar.name # just go by name
+    else: oldname = oldvar
+    oldvar = self.variables[oldname]
+    if oldvar.shape != newvar.shape: raise AxisError # shape has to be the same!
+    # N.B.: the shape of a variable in a NetCDF file can't change!
+    # remove old variable from dataset...
+    self.removeVariable(oldvar)
+    # ... and add new axis to dataset
+    self.addAxis(newvar, copy=False)    
+    # return status of variable
+    return self.hasVariable(newvar)  
 
   def squeeze(self):
     ''' Remove singleton axes from all variables; return axes that were entirely removed. '''
@@ -803,17 +832,6 @@ class Dataset(object):
     # return axes that were removed
     return retour
   
-  def removeVariable(self, var):
-    ''' Method to remove a Variable from the Dataset. '''
-    if isinstance(var,basestring): var = self.variables[var] # only work with Variable objects
-    assert isinstance(var,Variable), "Argument 'var' has to be a Variable instance or a string representing the name of a variable."
-    if var.name in self.variables: # add new variable if it does not already exist
-      # delete variable from dataset   
-      del self.variables[var.name]
-      del self.__dict__[var.name]
-    # double-check (return True, if variable is not present, False, if it is)
-    return not self.variables.has_key(var.name)
-  
   def hasVariable(self, var):
     ''' Method to check, if a Variable is present in the Dataset. '''
     if isinstance(var,basestring):
@@ -826,14 +844,15 @@ class Dataset(object):
     else: # invalid input
       raise DatasetError, "Need a Variable instance or name to check for a Variable in the Dataset!"
   
-  def hasAxis(self, ax):
-    ''' Method to check, if an Axis is present in the Dataset. '''
+  def hasAxis(self, ax, strict=True):
+    ''' Method to check, if an Axis is present in the Dataset; if strict=False, only names are compared. '''
     if isinstance(ax,basestring):
       return self.axes.has_key(ax) # look up by name
     elif isinstance(ax,Axis):
       if self.axes.has_key(ax.name):
-        assert self.axes[ax.name] is ax, "The Dataset contains a different Variable of the same name!"
-        return True # name found and identity verified 
+        if strict: # verify identity
+          return self.axes[ax.name] is ax 
+        else: return True
       else: return False # not found
     else: # invalid input
       raise DatasetError, "Need a Axis instance or name to check for an Axis in the Dataset!"

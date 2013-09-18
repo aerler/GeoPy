@@ -14,10 +14,13 @@ import numpy as np
 import numpy.ma as ma
 import functools
 # internal imports
-from geodata.misc import VariableError, PermissionError
-from geodata.base import Variable, Axis, Dataset
+from geodata.misc import VariableError, AxisError, PermissionError
+from geodata.base import Axis, Dataset
 from geodata.netcdf import DatasetNetCDF
 
+class ProcessError(Exception):
+  ''' Error class for exceptions occurring in methods of the CPU (CentralProcessingUnit). '''
+  pass
 
 # class CentralProcessingUnit(object):
 #    
@@ -85,32 +88,41 @@ class CentralProcessingUnit(object):
     for varname in self.varlist:
       # check if variable already exists
       if self.output.hasVariable(varname):
-        var = self.output.variables[varname] 
-        # perform operation in-place (from target)
-        newvar = self.function(var)
-        oldvar = self.output.variable[var.name]
-        if newvar.ndim != oldvar.ndim or newvar.shape != oldvar.shape: raise VariableError
-        self.output.variable[var.name].load(newvar.getArray(unmask=False,copy=False))
+        var = self.output.variables[varname]
+        newvar = function(var)
+        if newvar.ndim != var.ndim or newvar.shape != var.shape: raise VariableError
+        self.output.replaceVariable(var,newvar)
+#         var.load(data=newvar.getArray(unmask=False,copy=False))
       else:        
         var = self.input.variables[varname] 
         # perform operation from source and copy results to target
         newvar = function(var)
-        self.output.addVariable(newvar, copy=True)
-        var.unload() # not needed anymore
+        self.output.addVariable(newvar, copy=True) # copy=True allows recasting as, e.g., a NC variable 
       # sync data and free space
+      var.unload() # not needed anymore
       if flush:
         newvar.sync()
         newvar.unload()
         
   def Climatology(self, timeAxis='time', climAxis=None, period=None, offset=0, **kwargs):
     ''' Setup climatology and start computation; calls processClimatology. '''
-    if climAxis is None: # construct new time axis for climatology       
+    # construct new time axis for climatology
+    if climAxis is None:        
       climAxis = Axis(name=timeAxis, units='month', length=12, data=np.arange(1,13,1)) # monthly climatology
-    self.output.addAxis(climAxis, copy=True)
-    climAxis = self.output.axes[timeAxis] 
+    else: 
+      if not isinstance(climAxis,Axis): raise TypeError
+    # add axis to output dataset    
+    if self.output.hasAxis(climAxis.name): 
+      self.output.repalceAxis(climAxis, check=False) # will have different shape
+    else: 
+      self.output.addAxis(climAxis, copy=True) # copy=True allows recasting as, e.g., a NC variable
+    climAxis = self.output.axes[timeAxis] # make sure we have exactly that instance
+    # figure out time slice
     if period is not None:
       start = offset * len(climAxis); end = start + period * len(climAxis)
       timeSlice = slice(start,end,None)
+    else: 
+      if not isinstance(timeSlice,slice): raise TypeError
     # prepare function call
     function = functools.partial(self.processClimatology, # already set parameters
                                  timeAxis=timeAxis, climAxis=climAxis, timeSlice=timeSlice)
@@ -148,8 +160,7 @@ class CentralProcessingUnit(object):
       else: raise NotImplementedError
       # create new Variable
       axes = tuple([climAxis if ax.name == timeAxis else ax for ax in var.axes]) # exchange time axis
-      newvar = Variable(name=var.name, units=var.units, axes=axes, data=avgdata, dtype=var.dtype, 
-                        mask=None, fillValue=var.fillValue, atts=var.atts, plot=var.plot)
+      newvar = var.copy(axes=axes, data=avgdata) # and, of course, load new data
       #     print newvar.name, newvar.masked
       #     print newvar.fillValue
       #     print newvar.data_array.__class__
@@ -158,6 +169,59 @@ class CentralProcessingUnit(object):
       newvar = var  
     # return variable
     return newvar
+  
+  def Shift(self, shift=0, axis=None, byteShift=False, **kwargs):
+    ''' Method to initialize shift along a coordinate axis. '''
+    # kwarg input
+    if shift == 0 and axis == None:
+      for key,value in kwargs.iteritems():
+        if self.output.hasAxis(key) or self.input.hasAxis(key):
+          if axis is None: axis = key; shift = value
+          else: raise ProcessError, "Can only process one coordinate shift at a time."
+      del kwargs[axis] # remove entry 
+    # check input
+    if isinstance(axis,basestring):
+      if self.output.hasAxis(axis): axis = self.output.axes[axis]
+      elif self.input.hasAxis(axis): axis = self.input.axes[axis].copy()
+      else: raise AxisError, "Axis '%s' not found in Dataset."%axis
+    else: 
+      if not isinstance(axis,Axis): raise TypeError
+    # apply shift to new axis
+    if byteShift:
+      # shift coordinate vector like data
+      coord = np.roll(axis.getArray(unmask=False), shift=shift)      
+    else:              
+      coord = axis.getArray(unmask=False) + shift # shift coordinates
+      # transform coordinate shifts into index shifts (linear scaling)
+      shift = int( shift / (axis[1] - axis[0]) )    
+    axis.updateCoord(coord=coord)
+    # add axis to output dataset      
+    if self.output.hasAxis(axis, strict=True): pass
+    elif self.output.hasAxis(axis.name): self.output.repalceAxis(axis)
+    else: self.output.addAxis(axis, copy=True) # copy=True allows recasting as, e.g., a NC variable
+    axis = self.output.axes[axis.name] # make sure we have the right version!
+    # prepare function call
+    function = functools.partial(self.processShift, # already set parameters
+                                 shift=shift, axis=axis)
+    # start process
+    self.process(function, **kwargs) # currently 'flush' is the only kwarg
+  # the previous method sets up the process, the next method performs the computation
+  def processShift(self, var, shift=None, axis=None):
+    ''' Method that shifts a data array along a given axis. '''
+    # only process variables that have the specified axis
+    if var.hasAxis(axis.name):
+      print('\n'+var.name), # put line break before test, instead of after      
+      # shift data array
+      newdata = np.roll(var.getArray(unmask=False), shift, axis=var.axisIndex(axis))
+      # create new Variable
+      axes = tuple([axis if ax.name == axis.name else ax for ax in var.axes]) # replace axis with shifted version
+      newvar = var.copy(axes=axes, data=newdata) # and, of course, load new data
+    else:
+      var.load() # need to load variables into memory, because we are not doing anything else...
+      newvar = var  
+    # return variable
+    return newvar
+  
 
 
 """

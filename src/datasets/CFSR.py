@@ -119,7 +119,7 @@ if __name__ == '__main__':
   mode = 'average_timeseries'
   reses = ('hires',) # for testing
 #   reses = ('hires', 'lowres')
-  period = (1979,1981)
+  period = (1979,1989)
   
   # generate averaged climatology
   for res in reses:    
@@ -151,11 +151,18 @@ if __name__ == '__main__':
       offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
       # initialize processing
       CPU = CentralProcessingUnit(source, sink)
-      # start processing      
+      
+      # start processing climatology
       print('')
-      print('   +++   processing   +++   ') 
+      print('   +++   processing climatology   +++   ') 
       CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
       print('\n')
+      
+      # shift longitude axis by 180 degrees left (i.e. 0 - 360 -> -180 - 180)
+      print('')
+      print('   +++   processing shift/roll   +++   ') 
+      CPU.Shift(lon=-180, flush=False)
+      print('\n')      
 
       # make new masks
       sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)

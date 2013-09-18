@@ -166,10 +166,18 @@ def addGDALtoVar(var, projection=None, geotransform=None):
     # add new method to object
     var.prettyPrint = types.MethodType(prettyPrint,var)
     
-    def copy(self, **newargs):
+    def copy(self, projection=None, geotransform=None, **newargs):
       ''' A method to copy the Variable with just a link to the data. '''
       var = self.__class__.copy(self, **newargs) # use class copy() function
-      var = addGDALtoVar(var, projection=self.projection, geotransform=self.geotransform) # add GDAL functionality      
+      # handle geotransform
+      if geotransform is None:
+        if 'axes' in newargs: # if axes were changed, geotransform can change!
+          if var.hasAxis(self.xlon) and var.hasAxis(self.ylat): geotransform = self.geotransform
+          else: geotransform = None # infer from new axes
+        else: geotransform = self.geotransform
+      # handle projection
+      if projection is None: projection = self.projection
+      var = addGDALtoVar(var, projection=projection, geotransform=geotransform) # add GDAL functionality      
       return var
     # add new method to object
     var.copy = types.MethodType(copy,var)
