@@ -717,22 +717,26 @@ class Dataset(object):
   def title(self, title):
     self.atts['title'] = title
     
-  def addAxis(self, ax):
+  def addAxis(self, ax, copy=False):
     ''' Method to add an Axis to the Dataset. If the Axis is already present, check that it is the same. '''
     if not isinstance(ax,Axis): raise TypeError
     if not self.hasAxis(ax.name): # add new axis, if it does not already exist        
-      assert ax.name not in self.__dict__, "Cannot add Axis '%s' to Dataset, because an attribute of the same name already exits!"%(ax.name) 
-      self.axes[ax.name] = ax
+      if ax.name in self.__dict__: 
+        raise AttributeError, "Cannot add Axis '%s' to Dataset, because an attribute of the same name already exits!"%(ax.name)
+      # add variable to dictionary
+      if copy: self.axes[ax.name] = ax.copy()
+      else: self.axes[ax.name] = ax
       self.__dict__[ax.name] = self.axes[ax.name] # create shortcut
     else: # make sure the axes are consistent between variable (i.e. same name, same axis)
       if not ax is self.axes[ax.name]:        
-        assert len(ax) == len(self.axes[ax.name]), "Error: Axis '%s' from Variable and Dataset are different!"%ax.name
+        if len(ax) != len(self.axes[ax.name]): 
+          raise AxisError, "Error: Axis '%s' from Variable and Dataset are different!"%ax.name
         if ax.data and self.axes[ax.name].data:
-          assert isEqual(ax.coord,self.axes[ax.name].coord)
+          if not isEqual(ax.coord,self.axes[ax.name].coord): raise DataError
     # double-check
     return self.axes.has_key(ax.name)       
     
-  def addVariable(self, var):
+  def addVariable(self, var, copy=False):
     ''' Method to add a Variable to the Dataset. If the variable is already present, abort. '''
     if not isinstance(var,Variable): raise TypeError
     if var.name in self.__dict__: raise VariableError, "Cannot add Variable '%s' to Dataset, because an attribute of the same name already exits!"%(var.name)
@@ -745,7 +749,8 @@ class Dataset(object):
         var.replaceAxis(ax, self.axes[ax.name]) # or use old one of the same name
       # N.B.: replacing the axes in the variable is to ensure consistent axes within the dataset 
     # finally, if everything is OK, add variable
-    self.variables[var.name] = var
+    if copy: self.variables[var.name] = var.copy()
+    else: self.variables[var.name] = var
     self.__dict__[var.name] = self.variables[var.name] # create shortcut
     # double-check
     return self.variables.has_key(var.name) 
@@ -777,7 +782,7 @@ class Dataset(object):
     # double-check (return True, if variable is not present, False, if it is)
     return not self.variables.has_key(var.name)
   
-  def repalceAxis(self, oldaxis, newaxis=None):    
+  def replaceAxis(self, oldaxis, newaxis=None):    
     ''' Replace an existing axis with a different one with similar general properties. '''
     if newaxis is None: 
       newaxis = oldaxis; oldaxis = newaxis.name # i.e. replace old axis with the same name'

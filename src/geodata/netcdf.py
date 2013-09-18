@@ -401,22 +401,26 @@ class DatasetNetCDF(Dataset):
       newaxis = oldaxis; oldaxis = newaxis.name # i.e. replace old axis with the same name'
     # check axis
     if not self.hasAxis(oldaxis): raise AxisError
-    if isinstance(oldaxis,Axis): oldname = oldaxis.name # just go by name
-    else: oldname = oldaxis
-    oldaxis = self.axes[oldname]
-    if len(oldaxis) != len(newaxis): raise AxisError # length has to be the same!
-    # N.B.: the length of a dimension in a NetCDF file can't change!
-    if oldaxis.data != newaxis.data: raise DataError # make sure data status is the same
-    # remove old axis from dataset...
-    self.removeAxis(oldaxis, force=True)
-    # cast new axis as AxisNC and transfer old ncvar reference
-    newaxis = asAxisNC(ax=newaxis, ncvar=oldaxis.ncvar, mode=oldaxis.mode, deepcopy=True)
-    # ... and add new axis to dataset
-    self.addAxis(newaxis, copy=False)
-    # loop over variables with this axis    
-    newaxis = self.axes[newaxis.name] # update reference
-    for var in self.variables.values():
-      if var.hasAxis(oldname): var.replaceAxis(oldname,newaxis)    
+    # special treatment for VarNC: transfer of ownership of NetCDF variable
+    if isinstance(newaxis,AxisNC):
+      if isinstance(oldaxis,Axis): oldname = oldaxis.name # just go by name
+      else: oldname = oldaxis
+      oldaxis = self.axes[oldname]
+      if len(oldaxis) != len(newaxis): raise AxisError # length has to be the same!
+      # N.B.: the length of a dimension in a NetCDF file can't change!
+      if oldaxis.data != newaxis.data: raise DataError # make sure data status is the same
+      # remove old axis from dataset...
+      self.removeAxis(oldaxis, force=True)
+      # cast new axis as AxisNC and transfer old ncvar reference
+      newaxis = asAxisNC(ax=newaxis, ncvar=oldaxis.ncvar, mode=oldaxis.mode, deepcopy=True)
+      # ... and add new axis to dataset
+      self.addAxis(newaxis, copy=False)
+      # loop over variables with this axis    
+      newaxis = self.axes[newaxis.name] # update reference
+      for var in self.variables.values():
+        if var.hasAxis(oldname): var.replaceAxis(oldname,newaxis)    
+    else: # no need for special treatment...
+      super(DatasetNetCDF,self).replaceAxis(oldaxis, newaxis)
     # return verification
     return self.hasAxis(newaxis)        
   
@@ -426,17 +430,22 @@ class DatasetNetCDF(Dataset):
       newvar = oldvar; oldvar = newvar.name # i.e. replace old var with the same name
     # check var
     if not self.hasVariable(oldvar): raise VariableError
-    if isinstance(oldvar,Variable): oldname = oldvar.name # just go by name
-    else: oldname = oldvar
-    oldvar = self.variables[oldname]
-    if oldvar.shape != newvar.shape: raise AxisError # shape has to be the same!
-    # N.B.: the shape of a variable in a NetCDF file can't change!
-    # remove old variable from dataset...
-    self.removeVariable(oldvar)
-    # cast new variable as VarNC and transfer old ncvar reference and axes    
-    newvar = asVarNC(var=newvar,ncvar=oldvar.ncvar, axes=oldvar.axes, mode=oldvar.mode, deepcopy=True)
-    # ... and add new axis to dataset
-    self.addVariable(newvar, copy=False)    
+    # special treatment for VarNC: transfer of ownership of NetCDF variable
+    if isinstance(newvar,VarNC):
+      # resolve names
+      if isinstance(oldvar,Variable): oldname = oldvar.name # just go by name
+      else: oldname = oldvar
+      oldvar = self.variables[oldname]
+      if oldvar.shape != newvar.shape: raise AxisError # shape has to be the same!
+      # N.B.: the shape of a variable in a NetCDF file can't change!
+      # remove old variable from dataset...
+      self.removeVariable(oldvar)
+      # cast new variable as VarNC and transfer old ncvar reference and axes    
+      newvar = asVarNC(var=newvar,ncvar=oldvar.ncvar, axes=oldvar.axes, mode=oldvar.mode, deepcopy=True)
+      # ... and add new axis to dataset
+      self.addVariable(newvar, copy=False)
+    else: # no need for special treatment...
+      super(DatasetNetCDF,self).replaceVariable(oldvar, newvar)
     # return status of variable
     return self.hasVariable(newvar)  
   
