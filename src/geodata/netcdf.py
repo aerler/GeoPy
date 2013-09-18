@@ -37,8 +37,9 @@ def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs
   # create new VarNC instance (using the ncvar NetCDF Variable instance as file reference)
   if not isinstance(var,Variable): raise TypeError
   if not isinstance(ncvar,(nc.Variable,nc.Dataset)): raise TypeError
-  varnc = VarNC(ncvar, name=var.name, units=var.units, axes=axes, atts=var.atts.copy(), plot=var.plot.copy(), 
-                fillValue=var.fillValue, dtype=var.dtype, mode=mode, **kwargs)
+  atts = kwargs.pop('atts',var.atts.copy()) # name and units are also stored in atts!
+  varnc = VarNC(ncvar, axes=axes, atts=atts, plot=var.plot.copy(), fillValue=var.fillValue, 
+                dtype=var.dtype, mode=mode, **kwargs)
   # copy data
   if var.data: varnc.load(data=var.getArray(unmask=False,copy=deepcopy))
   # return VarNC
@@ -50,13 +51,32 @@ def asAxisNC(ax=None, ncvar=None, mode='rw', deepcopy=True, **kwargs):
   if not isinstance(ax,Axis): raise TypeError
   if not isinstance(ncvar,(nc.Variable,nc.Dataset)): raise TypeError # this is for the coordinate variable, not the dimension
   # axes are handled automatically (self-reference)  )
-  axisnc = AxisNC(ncvar, name=ax.name, units=ax.units, atts=ax.atts.copy(), plot=ax.plot.copy(), 
-                 length=len(ax), coord=None, dtype=ax.dtype, mode=mode, **kwargs)
+  atts = kwargs.pop('atts',ax.atts.copy()) # name and units are also stored in atts!
+  axisnc = AxisNC(ncvar, atts=atts, plot=ax.plot.copy(), length=len(ax), coord=None, dtype=ax.dtype, 
+                  mode=mode, **kwargs)
   # copy data  
   if ax.data:    
     axisnc.updateCoord(coord=ax.getArray(copy=deepcopy))
   # return AxisNC
   return axisnc
+
+def asDatasetNC(dataset=None, ncfile=None, mode='rw', deepcopy=False, writeData=False, ncformat='NETCDF4', zlib=True, **kwargs):
+  ''' Simple function to copy a dataset and cast it as a DatasetNetCDF (NetCDF-capable Dataset subclass). '''
+  if not isinstance(dataset,Dataset): raise TypeError
+  if not (mode == 'w' or mode == 'r' or mode == 'rw' or mode == 'wr'):  raise PermissionError
+  # create NetCDF file
+  ncfile = writeNetCDF(dataset, ncfile, ncformat=ncformat, zlib=zlib, writeData=writeData, close=False)
+  # initialize new dataset - kwargs: varlist, varatts, axes, check_override, atts
+  atts = kwargs.pop('atts',dataset.atts.copy()) # name and title are also stored in atts!
+  newset = DatasetNetCDF(dataset=ncfile, atts=atts, mode=mode, ncformat=ncformat, **kwargs)
+  # copy axes data/coordinates
+  for axname,ax in dataset.axes.iteritems():
+    if ax.data: newset.axes[axname].updateCoord(coord=ax.getArray(unmask=False, copy=True))
+  # copy variable data
+  for varname,var in dataset.variables.iteritems():
+    if var.data: newset.variables[varname].load(data=var.getArray(unmask=False, copy=deepcopy))
+  # return dataset
+  return newset
 
 class VarNC(Variable):
   '''
@@ -76,10 +96,11 @@ class VarNC(Variable):
         squeezed = False # if True, all singleton dimensions in NetCDF Variable are silently ignored
     '''
     # check mode
-    if not (mode == 'w' or mode == 'r' or mode == 'rw'):  raise NetCDFError  
+    if not (mode == 'w' or mode == 'r' or mode == 'rw' or mode == 'wr'):  raise PermissionError  
     # write-only actions
     if isinstance(ncvar,nc.Dataset):
-      if 'w' not in mode: mode += 'w'      
+      if 'w' not in mode: mode += 'w'
+      if name is None and isinstance(atts,dict): name = atts.pop('name',None)      
       dims = [ax if isinstance(ax,basestring) else ax.name for ax in axes] # list axes names
       dimshape = [None if isinstance(ax,basestring) else len(ax) for ax in axes]
       if dtype is None: 
@@ -225,6 +246,7 @@ class AxisNC(Axis,VarNC):
     ''' Initialize a coordinate axis with appropriate values. '''
     if isinstance(ncvar,nc.Dataset):
       if 'w' not in mode: mode += 'w'
+      if name is None and isinstance(atts,dict): name = atts.pop('name',None) 
       # construct a new netcdf coordinate variable in the given dataset
       ncvar = add_coord(ncvar, name, length=length, data=coord, dtype=dtype, fillValue=fillValue, atts=atts, zlib=True)
     # initialize as an Axis subclass and pass arguments down the inheritance chain
@@ -359,7 +381,7 @@ class DatasetNetCDF(Dataset):
           else: raise DatasetError, 'Error constructing Variable: Axes/coordinates not found.'
     # get attributes from NetCDF dataset
     ncattrs = joinDicts(*[ds.__dict__ for ds in datasets])
-    if atts: ncattrs.update(atts) # update with attributes passed to constructor
+    if atts is not None: ncattrs.update(atts) # update with attributes passed to constructor
     # initialize Dataset using parent constructor
     super(DatasetNetCDF,self).__init__(name=name, title=title, varlist=variables.values(), atts=ncattrs)
     # add NetCDF attributes
@@ -395,7 +417,7 @@ class DatasetNetCDF(Dataset):
     # hand-off to parent method and return status
     return super(DatasetNetCDF,self).addVariable(var=var)
     
-  def repalceAxis(self, oldaxis, newaxis=None):    
+  def repalceAxis(self, oldaxis, newaxis=None, deepcopy=True):    
     ''' Replace an existing axis with a different one and transfer NetCDF reference to new axis. '''
     if newaxis is None: 
       newaxis = oldaxis; oldaxis = newaxis.name # i.e. replace old axis with the same name'
@@ -412,7 +434,7 @@ class DatasetNetCDF(Dataset):
       # remove old axis from dataset...
       self.removeAxis(oldaxis, force=True)
       # cast new axis as AxisNC and transfer old ncvar reference
-      newaxis = asAxisNC(ax=newaxis, ncvar=oldaxis.ncvar, mode=oldaxis.mode, deepcopy=True)
+      newaxis = asAxisNC(ax=newaxis, ncvar=oldaxis.ncvar, mode=oldaxis.mode, deepcopy=deepcopy)
       # ... and add new axis to dataset
       self.addAxis(newaxis, copy=False)
       # loop over variables with this axis    
@@ -424,7 +446,7 @@ class DatasetNetCDF(Dataset):
     # return verification
     return self.hasAxis(newaxis)        
   
-  def replaceVariable(self, oldvar, newvar=None):
+  def replaceVariable(self, oldvar, newvar=None, deepcopy=False):
     ''' Replace an existing Variable with a different one and transfer NetCDF reference and axes. '''
     if newvar is None: 
       newvar = oldvar; oldvar = newvar.name # i.e. replace old var with the same name
@@ -441,7 +463,7 @@ class DatasetNetCDF(Dataset):
       # remove old variable from dataset...
       self.removeVariable(oldvar)
       # cast new variable as VarNC and transfer old ncvar reference and axes    
-      newvar = asVarNC(var=newvar,ncvar=oldvar.ncvar, axes=oldvar.axes, mode=oldvar.mode, deepcopy=True)
+      newvar = asVarNC(var=newvar,ncvar=oldvar.ncvar, axes=oldvar.axes, mode=oldvar.mode, deepcopy=deepcopy)
       # ... and add new axis to dataset
       self.addVariable(newvar, copy=False)
     else: # no need for special treatment...
@@ -479,6 +501,20 @@ class DatasetNetCDF(Dataset):
         dataset.setncatts(coerceAtts(self.atts)) # synchronize attributes with       
         dataset.sync() #
     else: raise PermissionError
+    
+  def copy (self, asNC=False, filename=None, varsdeep=False, **newargs):
+    ''' Copy a DatasetNetCDF, either into a normal Dataset or into a DatasetNetCDF (requires a filename). '''
+    if asNC:
+      #mode = 'wr' if 'r' in self.mode else 'w'      
+      writeData = newargs.pop('writeData',False)
+      ncformat = newargs.pop('ncformat','NETCDF4')
+      zlib = newargs.pop('zlib',True)
+      dataset = asDatasetNC(self, ncfile=filename, mode='wr', deepcopy=varsdeep, 
+                            writeData=writeData, ncformat=ncformat, zlib=zlib)
+    else: # just invoke parent method
+      dataset = super(DatasetNetCDF,self).copy(varsdeep=varsdeep, **newargs)
+    # return
+    return dataset  
     
   def axisAnnotation(self, name, strlist, dim, atts=None):
     ''' Add a list of string values along the specified axis. '''

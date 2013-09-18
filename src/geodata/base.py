@@ -83,7 +83,7 @@ class Variable(object):
     The basic variable class; it mainly implements arithmetic operations and indexing/slicing.
   '''
   
-  def __init__(self, name='N/A', units='N/A', axes=None, data=None, dtype='', mask=None, fillValue=None, atts=None, plot=None):
+  def __init__(self, name=None, units=None, axes=None, data=None, dtype='', mask=None, fillValue=None, atts=None, plot=None):
     ''' 
       Initialize variable and attributes.
       
@@ -121,15 +121,11 @@ class Variable(object):
     # cast attributes dicts as AttrDict to facilitate easy access 
     if atts is None: atts = dict()
     # set name in atts
-    atts['name'] = name # name can also be accessed directly as a property
-#     if 'name' in atts and name is 'N/A': name = atts['name']
-#     else: atts['name'] = name
-#     self.__dict__['name'] = name
+    if name is not None: atts['name'] = name # name can also be accessed directly as a property
+    elif 'name' not in atts: atts['name'] = 'N/A'
     # set units in atts
-    atts['units'] = units # units can also be accessed directly as a property
-#     if 'units' in atts and name is 'N/A': units = atts['units']
-#     else: atts['units'] = units
-#     self.__dict__['units'] = units              
+    if units is not None: atts['units'] = units # units can also be accessed directly as a property
+    elif 'units' not in atts: atts['units'] = 'N/A'
     # sync fillValue with atts
     if 'fillValue' in atts:
       if fillValue is None: fillValue = atts['fillValue']
@@ -349,7 +345,7 @@ class Variable(object):
     assert isinstance(data,np.ndarray), 'The data argument must be a numpy array!'
     # apply mask
     if mask: data = ma.array(data, mask=mask) 
-    if isinstance(self.data_array, ma.MaskedArray): 
+    if isinstance(data, ma.MaskedArray): 
       self.__dict__['masked'] = True # set masked flag
     else: self.__dict__['masked'] = False
     if self.masked: # figure out fill value for masked array
@@ -717,7 +713,7 @@ class Dataset(object):
   def title(self, title):
     self.atts['title'] = title
     
-  def addAxis(self, ax, copy=False):
+  def addAxis(self, ax, copy=False, overwrite=False):
     ''' Method to add an Axis to the Dataset. If the Axis is already present, check that it is the same. '''
     if not isinstance(ax,Axis): raise TypeError
     if not self.hasAxis(ax.name): # add new axis, if it does not already exist        
@@ -728,7 +724,9 @@ class Dataset(object):
       else: self.axes[ax.name] = ax
       self.__dict__[ax.name] = self.axes[ax.name] # create shortcut
     else: # make sure the axes are consistent between variable (i.e. same name, same axis)
-      if not ax is self.axes[ax.name]:        
+      if overwrite:
+        self.replaceAxis(ax)
+      elif not ax is self.axes[ax.name]:        
         if len(ax) != len(self.axes[ax.name]): 
           raise AxisError, "Error: Axis '%s' from Variable and Dataset are different!"%ax.name
         if ax.data and self.axes[ax.name].data:
@@ -736,22 +734,25 @@ class Dataset(object):
     # double-check
     return self.axes.has_key(ax.name)       
     
-  def addVariable(self, var, copy=False):
+  def addVariable(self, var, copy=False, deepcopy=False, overwrite=False):
     ''' Method to add a Variable to the Dataset. If the variable is already present, abort. '''
     if not isinstance(var,Variable): raise TypeError
-    if var.name in self.__dict__: raise VariableError, "Cannot add Variable '%s' to Dataset, because an attribute of the same name already exits!"%(var.name)
-    # add new axes, or check, if already present; if present, replace, if different
-    for ax in var.axes: 
-      if not self.hasAxis(ax.name):
-        self.addAxis(ax) # add new axis
-      elif ax is not self.axes[ax.name]: 
-        #print '   >>>   replacing a axis',ax.name
-        var.replaceAxis(ax, self.axes[ax.name]) # or use old one of the same name
-      # N.B.: replacing the axes in the variable is to ensure consistent axes within the dataset 
-    # finally, if everything is OK, add variable
-    if copy: self.variables[var.name] = var.copy()
-    else: self.variables[var.name] = var
-    self.__dict__[var.name] = self.variables[var.name] # create shortcut
+    if var.name in self.__dict__: 
+      if overwrite and self.hasVariable(var.name): self.replaceVariable(var)
+      else: raise AttributeError, "Cannot add Variable '%s' to Dataset, because an attribute of the same name already exits!"%(var.name)      
+    else:       
+      # add new axes, or check, if already present; if present, replace, if different
+      for ax in var.axes: 
+        if not self.hasAxis(ax.name):
+          self.addAxis(ax) # add new axis
+        elif ax is not self.axes[ax.name]: 
+          #print '   >>>   replacing a axis',ax.name
+          var.replaceAxis(ax, self.axes[ax.name]) # or use old one of the same name
+        # N.B.: replacing the axes in the variable is to ensure consistent axes within the dataset 
+      # finally, if everything is OK, add variable
+      if copy: self.variables[var.name] = var.copy(deepcopy=deepcopy)
+      else: self.variables[var.name] = var
+      self.__dict__[var.name] = self.variables[var.name] # create shortcut
     # double-check
     return self.variables.has_key(var.name) 
     
@@ -817,7 +818,7 @@ class Dataset(object):
     # remove old variable from dataset...
     self.removeVariable(oldvar)
     # ... and add new axis to dataset
-    self.addAxis(newvar, copy=False)    
+    self.addVariable(newvar, copy=False)    
     # return status of variable
     return self.hasVariable(newvar)  
 
@@ -837,13 +838,13 @@ class Dataset(object):
     # return axes that were removed
     return retour
   
-  def hasVariable(self, var):
+  def hasVariable(self, var, strict=True):
     ''' Method to check, if a Variable is present in the Dataset. '''
     if isinstance(var,basestring):
       return self.variables.has_key(var) # look up by name
     elif isinstance(var,Variable):
       if self.variables.has_key(var.name):
-        assert self.variables[var.name] is var, "The Dataset contains a different Variable of the same name!"
+        if strict: return self.variables[var.name] is var # verify identity
         return True # name found and identity verified 
       else: return False # not found
     else: # invalid input
@@ -855,40 +856,47 @@ class Dataset(object):
       return self.axes.has_key(ax) # look up by name
     elif isinstance(ax,Axis):
       if self.axes.has_key(ax.name):
-        if strict: # verify identity
-          return self.axes[ax.name] is ax 
+        if strict: return self.axes[ax.name] is ax # verify identity 
         else: return True
       else: return False # not found
     else: # invalid input
       raise DatasetError, "Need a Axis instance or name to check for an Axis in the Dataset!"
     
-  def copy(self, axes=None, varargs=None, axesdeep=False, varsdeep=False): # this methods will have to be overloaded, if class-specific behavior is desired
+  def copy(self, axes=None, varlist=None, varargs=None, axesdeep=True, varsdeep=False, **kwargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Axes and Variables in a Dataset with just a link to the data arrays. '''
     # copy axes (shallow copy)    
-    if not axes: # allow override
+    if axes is None: # allow override
       if axesdeep: newaxes = {name:ax.deepcopy() for name,ax in self.axes.iteritems()}
-      else: newaxes = {name:ax.copy() for name,ax in self.axes.iteritems()} 
-    # check input
-    if not isinstance(axes,dict): raise TypeError
-    if varargs: # copy() arguments for individual variables
-      if not isinstance(varargs,dict): raise TypeError
+      else: newaxes = {name:ax.copy() for name,ax in self.axes.iteritems()}
+    else: 
+      if not isinstance(axes,dict): raise TypeError # check input
+      newaxes = {name:ax.copy() for name,ax in axes.iteritems()}
+    # check attributes
+    if varargs is None: varargs=dict() 
+    if not isinstance(varargs,dict): raise TypeError
     # copy variables
-    varlist = []
-    for var in self.variables.values():
+    if varlist is None: varlist = self.variables.keys() 
+    variables = []
+    for varname in varlist:
+      var = self.variables[varname]
       axes = tuple([newaxes[ax.name] for ax in var.axes])
-      if var.name in varargs: # check input again
-        if not isinstance(varargs[var.name],dict): raise TypeError
-      if varsdeep: newvar = var.deepcopy(axes=axes, **varargs[var.name])
-      else: newvar = var.copy(axes=axes, **varargs[var.name])
-      varlist.append(newvar)
+      if varname in varargs: # check input again
+        if isinstance(varargs[varname],dict): args = varargs[varname]  
+        else: raise TypeError
+      else: args = dict()
+      newvar = var.deepcopy(axes=axes, deepcopy=varsdeep, **args)
+      variables.append(newvar)
+    # determine attributes
+    kwargs['varlist'] = variables
+    if 'atts' not in kwargs: kwargs['atts'] = self.atts.copy() 
     # make new dataset
-    dataset = Dataset(varlist=varlist, atts=self.atts.copy())
+    dataset = Dataset(**kwargs)
     # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
     return dataset
   
   def deepcopy(self, **kwargs): # ideally this does not have to be overloaded, but can just call copy()
     ''' A method to generate an entirely independent Dataset instance (deepcopy of all data, variables, and axes). '''
-    kwargs['axesdeep'] = True; kwargs['varsdeep'] = True 
+    kwargs['axesdeep'] = True; kwargs['varsdeep'] = True     
     dataset = self.copy(**kwargs) 
     return dataset
   

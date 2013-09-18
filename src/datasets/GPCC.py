@@ -189,13 +189,13 @@ if __name__ == '__main__':
       # prepare sink
       filename = avgfile%('_'+res,'_'+periodstr)
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
+      atts =dict(period=periodstr, name='GPCC', title='GPCC Climatology') 
       sink = DatasetNetCDF(name='GPCC Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
-      sink.atts.period = periodstr 
       
       # determine averaging interval
       offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
       # initialize processing
-      CPU = CentralProcessingUnit(source, sink)
+      CPU = CentralProcessingUnit(source, sink, tmp=True)
             
       # start processing climatology
       print('')
@@ -223,6 +223,10 @@ if __name__ == '__main__':
 #       print newvar.coord
 #       print
 
+      # get results
+      CPU.sync(flush=False, deepcopy=False)
+#       sink = CPU.getTmp(asNC=True, filename=avgfolder+filename, atts=atts)
+      
       # convert precip data to SI units (mm/s)   
       sink.precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
       sink.precip.units = 'kg/m^2/s'      

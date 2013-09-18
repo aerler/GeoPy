@@ -59,7 +59,7 @@ def add_coord(dst, name, data=None, length=None, atts=None, dtype=None, zlib=Tru
   else: 
     raise DataError
   # basically a simplified interface for add_var
-  coord = add_var(dst, name, dims=(name,), data=data, shape=length, atts=atts, dtype=dtype, 
+  coord = add_var(dst, name, (name,), data=data, shape=length, atts=atts, dtype=dtype, 
                   zlib=zlib, fillValue=fillValue, **kwargs)  
   return coord
 
@@ -80,7 +80,7 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   if dtype is None: raise DataError, "Cannot construct a NetCDF Variable without a data array or an abstract data type."
   if np.dtype(dtype) is np.dtype('bool_'): dtype = np.dtype('i1') # cast numpy bools as 8-bit integers
   # check/create dimensions
-  if shape is None: [None]*len(dims)
+  if shape is None: shape = [None]*len(dims)
   elif len(shape) != len(dims): raise AxisError 
   for i,dim in zip(xrange(len(dims)),dims):
     if dim in dst.dimensions:
@@ -193,10 +193,11 @@ def coerceAtts(atts):
     else: ncatts[key] = value
   return ncatts
 
-def writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True, writeData=True, close=True):
+def writeNetCDF(dataset, ncfile, ncformat='NETCDF4', zlib=True, writeData=True, close=True):
   ''' A function to write the data in a generic Dataset to a NetCDF file. '''
   # open file
-  ncfile = nc.Dataset(filename, mode='w', format=ncformat)
+  if isinstance(ncfile,basestring): ncfile = nc.Dataset(ncfile, mode='w', format=ncformat)
+  elif not isinstance(ncfile,nc.Dataset): raise TypeError
   ncfile.setncatts(coerceAtts(dataset.atts))
   # add coordinate variables first
   for name,ax in dataset.axes.iteritems():

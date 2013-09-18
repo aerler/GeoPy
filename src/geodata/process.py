@@ -14,60 +14,20 @@ import numpy as np
 import numpy.ma as ma
 import functools
 # internal imports
-from geodata.misc import VariableError, AxisError, PermissionError
+from geodata.misc import VariableError, AxisError, PermissionError, DatasetError
 from geodata.base import Axis, Dataset
-from geodata.netcdf import DatasetNetCDF
+from geodata.netcdf import DatasetNetCDF, asDatasetNC
+from geodata.nctools import writeNetCDF
 
 class ProcessError(Exception):
   ''' Error class for exceptions occurring in methods of the CPU (CentralProcessingUnit). '''
   pass
 
-# class CentralProcessingUnit(object):
-#    
-#   def __init__(self, source, target, function, **kwargs):
-#     ''' Pass input and output datasets and define the processing function (kwargs are passed to function). 
-#         The pattern for 'function' is: outvar = function(invar)
-#     '''
-#     self.__dict__['input'] = source
-#     self.__dict__['output'] = target
-# #     self.__dict__['function'] = functools.partial(function, **kwargs) # already set kw-parameters
-#     
-# def process(function): # this is not a class method!
-#   ''' A wrapper to provide the actual process decorator to class methods. '''
-#   def process_decorator(self, flush=True):
-#     ''' This method applies the desired operation to each variable in the input dataset. '''    
-#     # loop over input variables
-#     for var in self.input:
-#       # check if variable already exists
-#       if self.output.hasVariable(var.name):
-#         newvar = self.function(var)
-#         oldvar = self.output.variable[var.name]
-#         if newvar.ndim != oldvar.ndim or newvar.shape != oldvar.shape: raise VariableError
-#         self.output.variable[var.name].load(newvar.getArray(unmask=False,copy=False))
-#       else:        
-#         newvar = function(var)
-#         self.output.addVariable(newvar, copy=True)
-#         var.unload() # not needed anymore
-#       # sync data and free space
-#       if flush:
-#         newvar.sync()
-#         newvar.unload()
-#   # return wrapper function
-#   return process_decorator
-#   
-#         print
-#         newvar = self.output.precip     
-#         print newvar.name, newvar.masked
-#         print newvar.fillValue
-#         print newvar.data_array.__class__
-
 
 class CentralProcessingUnit(object):
   
-  def __init__(self, source, target=None, varlist=None):
-    ''' Pass input and output datasets and define the processing function (kwargs are passed to function). 
-        The pattern for 'function' is: outvar = function(invar)
-    '''
+  def __init__(self, source, target=None, varlist=None, tmp=False):
+    ''' Initialize processor and pass input and output datasets. '''
     # check varlist
     if varlist is None: varlist = source.variables.keys() # all source variables
     if not isinstance(varlist,(list,tuple)): raise TypeError
@@ -76,33 +36,89 @@ class CentralProcessingUnit(object):
     if not isinstance(source,Dataset): raise TypeError
     if isinstance(source,DatasetNetCDF) and not 'r' in source.mode: raise PermissionError
     self.__dict__['input'] = source
+    self.__dict__['source'] = source
     # check output
-    if target is None: target = source # in-place operation: overwrite source       
-    if not isinstance(target,Dataset): raise TypeError
-    if isinstance(target,DatasetNetCDF) and not 'w' in target.mode: raise PermissionError 
+    if target is not None:       
+      if not isinstance(target,Dataset): raise TypeError
+      if isinstance(target,DatasetNetCDF) and not 'w' in target.mode: raise PermissionError
+    else:
+      if not tmp: raise DatasetError, "Need target location, if temporary storage is disables (tmp=False)." 
     self.__dict__['output'] = target
+    # temporary dataset
+    self.__dict__['tmp'] = tmp
+    if tmp: self.__dict__['tmpput'] = Dataset(name='tmp', title='Temporary Dataset', varlist=[], atts={})
+    else: self.__dict__['tmpput'] = None
+    # determine if temporary storage is used and assign target dataset
+    if self.tmp: self.__dict__['target'] = self.tmpput
+    else: self.__dict__['target'] = self.output 
 
   def process(self, function, flush=False):
-    ''' This method applies the desired operation/function to each variable in varlist. '''    
+    ''' This method applies the desired operation/function to each variable in varlist. '''
+    if flush and (self.tmp or not isinstance(self.target,DatasetNetCDF)): 
+      raise ProcessError, "Flush can only be used with NetCDF Datasets (and not with temporary storage)."
     # loop over input variables
     for varname in self.varlist:
       # check if variable already exists
-      if self.output.hasVariable(varname):
-        var = self.output.variables[varname]
+      if self.target.hasVariable(varname):
+        var = self.target.variables[varname]
         newvar = function(var)
         if newvar.ndim != var.ndim or newvar.shape != var.shape: raise VariableError
-        self.output.replaceVariable(var,newvar)
-#         var.load(data=newvar.getArray(unmask=False,copy=False))
-      else:        
-        var = self.input.variables[varname] 
+        self.target.replaceVariable(var,newvar)
+      elif self.source.hasVariable(varname):        
+        var = self.source.variables[varname] 
         # perform operation from source and copy results to target
         newvar = function(var)
-        self.output.addVariable(newvar, copy=True) # copy=True allows recasting as, e.g., a NC variable 
+        self.target.addVariable(newvar, copy=True) # copy=True allows recasting as, e.g., a NC variable
+      else:
+        raise DatasetError, "Variable '%s' not found in input dataset."%varname 
       # sync data and free space
       var.unload() # not needed anymore
       if flush:
         newvar.sync()
         newvar.unload()
+        
+  def getTmp(self, asNC=False, filename=None, deepcopy=False, **kwargs):
+    ''' Get a copy of the temporary data in dataset format. '''
+    if not self.tmp: raise DatasetError
+    # make new dataset (name and title should transfer in atts dict)
+    if asNC:
+      if not isinstance(filename,basestring): raise TypeError
+      writeData = kwargs.pop('writeData',False)
+      ncformat = kwargs.pop('ncformat','NETCDF4')
+      zlib = kwargs.pop('zlib',True)
+      dataset = asDatasetNC(self.tmpput, ncfile=filename, mode='wr', deepcopy=deepcopy, 
+                            writeData=writeData, ncformat=ncformat, zlib=zlib, **kwargs)
+    else:
+      dataset = self.tmpput.copy(varsdeep=deepcopy, atts=self.input.atts.copy(), **kwargs)
+    # return dataset
+    return dataset
+  
+  def sync(self, flush=False, deepcopy=False):
+    ''' Transfer contents of temporary storage to output/target dataset. '''
+    if not isinstance(self.output,Dataset): raise DatasetError, "Cannot sync without target Dataset!"
+    if self.tmp:
+      for varname,var in self.tmpput.variables.iteritems():
+        if varname in self.output: self.output.replaceVariable(varname,var, deepcopy=deepcopy)
+        else: self.output.addVariable(var, copy=True, deepcopy=deepcopy)
+        if flush: 
+          self.tmpput.unload()
+          self.source = self.output # future operations will write to the output dataset directly
+          self.target = self.output # future operations will write to the output dataset directly                     
+        
+  def writeNetCDF(self, filename=None, ncformat='NETCDF4', zlib=True, writeData=True, close=False, flush=False):
+    ''' Write current temporary storage to a NetCDF file. '''
+    if self.tmp:
+      if not isinstance(filename,basestring): raise TypeError
+      if flush: self.tmpput.unload()
+      output = writeNetCDF(self, filename, ncformat=ncformat, zlib=zlib, writeData=writeData, close=False)
+    else: 
+      self.output.sync()
+      output = self.output.dataset # get (primary) NetCDF file
+    # flush?
+    if flush: self.output.unload()      
+    # close file or return file handle
+    if close: output.close()
+    else: return output
         
   def Climatology(self, timeAxis='time', climAxis=None, period=None, offset=0, **kwargs):
     ''' Setup climatology and start computation; calls processClimatology. '''
@@ -112,11 +128,11 @@ class CentralProcessingUnit(object):
     else: 
       if not isinstance(climAxis,Axis): raise TypeError
     # add axis to output dataset    
-    if self.output.hasAxis(climAxis.name): 
-      self.output.repalceAxis(climAxis, check=False) # will have different shape
+    if self.target.hasAxis(climAxis.name): 
+      self.target.repalceAxis(climAxis, check=False) # will have different shape
     else: 
-      self.output.addAxis(climAxis, copy=True) # copy=True allows recasting as, e.g., a NC variable
-    climAxis = self.output.axes[timeAxis] # make sure we have exactly that instance
+      self.target.addAxis(climAxis, copy=True) # copy=True allows recasting as, e.g., a NC variable
+    climAxis = self.target.axes[timeAxis] # make sure we have exactly that instance
     # figure out time slice
     if period is not None:
       start = offset * len(climAxis); end = start + period * len(climAxis)
@@ -175,13 +191,13 @@ class CentralProcessingUnit(object):
     # kwarg input
     if shift == 0 and axis == None:
       for key,value in kwargs.iteritems():
-        if self.output.hasAxis(key) or self.input.hasAxis(key):
+        if self.target.hasAxis(key) or self.input.hasAxis(key):
           if axis is None: axis = key; shift = value
           else: raise ProcessError, "Can only process one coordinate shift at a time."
       del kwargs[axis] # remove entry 
     # check input
     if isinstance(axis,basestring):
-      if self.output.hasAxis(axis): axis = self.output.axes[axis]
+      if self.target.hasAxis(axis): axis = self.target.axes[axis]
       elif self.input.hasAxis(axis): axis = self.input.axes[axis].copy()
       else: raise AxisError, "Axis '%s' not found in Dataset."%axis
     else: 
@@ -196,10 +212,10 @@ class CentralProcessingUnit(object):
       shift = int( shift / (axis[1] - axis[0]) )    
     axis.updateCoord(coord=coord)
     # add axis to output dataset      
-    if self.output.hasAxis(axis, strict=True): pass
-    elif self.output.hasAxis(axis.name): self.output.repalceAxis(axis)
-    else: self.output.addAxis(axis, copy=True) # copy=True allows recasting as, e.g., a NC variable
-    axis = self.output.axes[axis.name] # make sure we have the right version!
+    if self.target.hasAxis(axis, strict=True): pass
+    elif self.target.hasAxis(axis.name): self.target.repalceAxis(axis)
+    else: self.target.addAxis(axis, copy=True) # copy=True allows recasting as, e.g., a NC variable
+    axis = self.target.axes[axis.name] # make sure we have the right version!
     # prepare function call
     function = functools.partial(self.processShift, # already set parameters
                                  shift=shift, axis=axis)

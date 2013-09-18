@@ -40,7 +40,7 @@ class BaseVarTest(unittest.TestCase):
                         data=self.data.copy(),atts=self.atts.copy())
     self.rav = Variable(name=self.atts['name'],units=self.atts['units'],axes=self.axes,
                         data=self.data.copy(),atts=self.atts.copy())
-    # check if data is loaded (future subclasses may initialize without loading data by default)
+    # check if data is loaded (future subclasses may initialize without loading data by default)                  
     if not self.var.data: self.var.load(self.data.copy()) # again, use copy!
     if not self.rav.data: self.rav.load(self.data.copy()) # again, use copy!
         
@@ -275,14 +275,23 @@ class BaseDatasetTest(unittest.TestCase):
     assert len(dataset) == le
     dataset.removeAxis(ax)
     assert dataset.hasAxis(ax) == False
+    # replace variable
+    oldvar = dataset.variables.values()[-1]
+    newvar = Variable(name='another_test', units='none', axes=oldvar.axes, data=np.zeros_like(oldvar.getArray()))
+#     print oldvar.name, oldvar.data
+#     print oldvar.shape    
+#     print newvar.name, newvar.data
+#     print newvar.shape
+    dataset.replaceVariable(oldvar,newvar)
+    assert dataset.hasVariable(newvar) and not dataset.hasVariable(oldvar)  
     # replace axis
     oldax = dataset.axes.values()[-1]
     newax = Axis(name='z', units='none', coord=(1,len(oldax),len(oldax)))
-    print oldax.name, oldax.data
-    print oldax.data_array    
-    print newax.name, newax.data
-    print newax.data_array
-    dataset.repalceAxis(oldax,newax)
+#     print oldax.name, oldax.data
+#     print oldax.data_array    
+#     print newax.name, newax.data
+#     print newax.data_array
+    dataset.replaceAxis(oldax,newax)
     assert dataset.hasAxis(newax) and not dataset.hasAxis(oldax)  
     assert not any([var.hasAxis(oldax) for var in dataset])
     
@@ -303,6 +312,18 @@ class BaseDatasetTest(unittest.TestCase):
     assert not dataset.hasVariable(varname)
     dataset[varname] = var
     assert dataset.hasVariable(varname)
+    
+  def testCopy(self):
+    ''' test copying the entire dataset '''
+    # test object
+    dataset = self.dataset
+    # make a copy
+    copy = dataset.copy()
+    # test
+    assert copy is not dataset # should not be the same
+    assert isinstance(copy,Dataset) and not isinstance(copy,DatasetNetCDF)
+    assert all([copy.hasAxis(ax.name) for ax in dataset.axes.values()])
+    assert all([copy.hasVariable(var.name) for var in dataset.variables.values()])
 
   def testPrint(self):
     ''' just print the string representation '''
@@ -479,6 +500,23 @@ class DatasetNetCDFTest(BaseDatasetTest):
     self.ncdata.close()
   
   ## specific NetCDF test cases
+  
+  def testCopy(self):
+    ''' test copying the entire dataset '''
+    folder = '/media/tmp/' # RAM disk
+    filename = folder + 'test.nc'
+    if os.path.exists(filename): os.remove(filename)
+    # test object
+    dataset = self.dataset
+    # make a copy
+    copy = dataset.copy(asNC=True, filename=filename)
+    # test
+    assert copy is not dataset # should not be the same
+    assert isinstance(copy,DatasetNetCDF)
+    assert all([copy.hasAxis(ax.name) for ax in dataset.axes.values()])
+    assert all([copy.hasVariable(var.name) for var in dataset.variables.values()])
+    copy.close()
+    assert os.path.exists(filename) # check for file
       
   def testCreate(self):
     ''' test creation of a new NetCDF dataset and file '''
@@ -597,7 +635,7 @@ class DatasetGDALTest(DatasetNetCDFTest):
       assert dataset.xlon == dataset.lon and dataset.ylat == dataset.lat
     # check variables
     for var in dataset.variables.values():
-      assert (var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat)) == var.gdal
+      assert (var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat)) == var.gdal              
     
 if __name__ == "__main__":
 
