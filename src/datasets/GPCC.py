@@ -196,6 +196,7 @@ if __name__ == '__main__':
       offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
       # initialize processing
       CPU = CentralProcessingUnit(source, sink, tmp=True)
+#       CPU = CentralProcessingUnit(source, tmp=True)
             
       # start processing climatology
       print('')
@@ -205,8 +206,8 @@ if __name__ == '__main__':
       
 #       # shift longitude axis by 180 degrees  left (i.e. -180 - 180 -> 0 - 360)
 #       print('')
-#       print('   +++   processing shift/roll   +++   ') 
-#       CPU.Shift(lon=-180, flush=False)
+#       print('   +++   processing shift longitude   +++   ') 
+#       CPU.Shift(lon=-180, flush=True)
 #       print('\n')
 #
 #       # shift longitude axis by 180 degrees  left (i.e. -180 - 180 -> 0 - 360)
@@ -224,7 +225,7 @@ if __name__ == '__main__':
 #       print
 
       # get results
-      CPU.sync(flush=False, deepcopy=False)
+#       CPU.sync(flush=True, deepcopy=False)
 #       sink = CPU.getTmp(asNC=True, filename=avgfolder+filename, atts=atts)
       
       # convert precip data to SI units (mm/s)   

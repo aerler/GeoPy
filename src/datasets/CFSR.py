@@ -150,7 +150,7 @@ if __name__ == '__main__':
       # determine averaging interval
       offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
       # initialize processing
-      CPU = CentralProcessingUnit(source, sink)
+      CPU = CentralProcessingUnit(source, sink, tmp=True)
       
       # start processing climatology
       print('')
@@ -163,6 +163,9 @@ if __name__ == '__main__':
       print('   +++   processing shift/roll   +++   ') 
       CPU.Shift(lon=-180, flush=False)
       print('\n')      
+      
+      # sync temporary storage with output
+      CPU.sync(flush=True)
 
       # make new masks
       sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)

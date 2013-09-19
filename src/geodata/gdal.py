@@ -172,8 +172,8 @@ def addGDALtoVar(var, projection=None, geotransform=None):
       # handle geotransform
       if geotransform is None:
         if 'axes' in newargs: # if axes were changed, geotransform can change!
-          if var.hasAxis(self.xlon) and var.hasAxis(self.ylat): geotransform = self.geotransform
-          else: geotransform = None # infer from new axes
+          geotransform = None # infer from new axes
+#           if var.hasAxis(self.xlon) and var.hasAxis(self.ylat): geotransform = self.geotransform
         else: geotransform = self.geotransform
       # handle projection
       if projection is None: projection = self.projection

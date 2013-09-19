@@ -54,13 +54,19 @@ class CentralProcessingUnit(object):
 
   def process(self, function, flush=False):
     ''' This method applies the desired operation/function to each variable in varlist. '''
-    if flush and (self.tmp or not isinstance(self.target,DatasetNetCDF)): 
-      raise ProcessError, "Flush can only be used with NetCDF Datasets (and not with temporary storage)."
+    if flush: # this function is to save RAM by flushing results to disk immediately
+      if not isinstance(self.output,DatasetNetCDF):
+        raise ProcessError, "Flush can only be used with NetCDF Datasets (and not with temporary storage)."
+      if self.tmp: # flush requires output to be target
+        self.source = self.tmpput
+        self.target = self.output
+        self.tmp = False # not using temporary storage anymore
     # loop over input variables
     for varname in self.varlist:
       # check if variable already exists
       if self.target.hasVariable(varname):
-        var = self.target.variables[varname]
+        # "in-place" operations
+        var = self.target.variables[varname] 
         newvar = function(var)
         if newvar.ndim != var.ndim or newvar.shape != var.shape: raise VariableError
         self.target.replaceVariable(var,newvar)
@@ -70,12 +76,16 @@ class CentralProcessingUnit(object):
         newvar = function(var)
         self.target.addVariable(newvar, copy=True) # copy=True allows recasting as, e.g., a NC variable
       else:
-        raise DatasetError, "Variable '%s' not found in input dataset."%varname 
-      # sync data and free space
+        raise DatasetError, "Variable '%s' not found in input dataset."%varname
+      # free space (in case garbage collection fails...) 
       var.unload() # not needed anymore
+      newvar.unload() # already added to new dataset
+      # flush data to disk immediately
       if flush:
-        newvar.sync()
-        newvar.unload()
+        outvar = self.output.variables[newvar.name]
+        outvar.sync() # sync this variable
+        self.output.dataset.sync() # sync NetCDF dataset, but don't call sync on all the other variables...
+        outvar.unload() # again, free memory
         
   def getTmp(self, asNC=False, filename=None, deepcopy=False, **kwargs):
     ''' Get a copy of the temporary data in dataset format. '''
@@ -93,17 +103,19 @@ class CentralProcessingUnit(object):
     # return dataset
     return dataset
   
-  def sync(self, flush=False, deepcopy=False):
+  def sync(self, varlist=None, flush=False, deepcopy=False):
     ''' Transfer contents of temporary storage to output/target dataset. '''
     if not isinstance(self.output,Dataset): raise DatasetError, "Cannot sync without target Dataset!"
     if self.tmp:
-      for varname,var in self.tmpput.variables.iteritems():
-        if varname in self.output: self.output.replaceVariable(varname,var, deepcopy=deepcopy)
-        else: self.output.addVariable(var, copy=True, deepcopy=deepcopy)
-        if flush: 
-          self.tmpput.unload()
-          self.source = self.output # future operations will write to the output dataset directly
-          self.target = self.output # future operations will write to the output dataset directly                     
+      if varlist is None: varlist = self.tmpput.variables.keys()  
+      for varname in varlist:
+        if varname in self.tmpput.variables:
+          var = self.tmpput.variables[varname]
+          if varname in self.output: self.output.replaceVariable(varname,var, deepcopy=deepcopy)
+          else: self.output.addVariable(var, copy=True, deepcopy=deepcopy)
+          if flush: var.unload() # remove unnecessary references (unlink data)
+#           self.source = self.output # future operations will write to the output dataset directly
+#           self.target = self.output # future operations will write to the output dataset directly                     
         
   def writeNetCDF(self, filename=None, ncformat='NETCDF4', zlib=True, writeData=True, close=False, flush=False):
     ''' Write current temporary storage to a NetCDF file. '''
