@@ -255,10 +255,13 @@ class NetCDFError(FileError):
   ''' Exceptions related to NetCDF file access. '''
   pass
 
+class GDALError(VariableError):
+  ''' Base class for exceptions related to GDAL. '''
+  pass
+
 class DatasetError(VariableError):
   ''' Base class for exceptions occurring in Dataset methods. '''
   pass
-
 
 ## simple application code
 if __name__ == '__main__':

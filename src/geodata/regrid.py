@@ -79,7 +79,8 @@ class LatLonProj(ProjDataset):
 ## function to reproject and resample a 2D array
 def regridArray(data, srcprj, tgtprj, interpolation='bilinear', missing=None):
   '''
-  Function that regrids an array based on a source and a target projection object
+  A function that regrids (reproject and resample) an array based on a source and target projection object 
+  (using GDAL as a backend); the two inner-most dimensions have to be latitude/y and longitude/x. 
   '''
   # condition data (assuming a numpy array)
   dshape = data.shape[0:-2]; ndim = data.ndim

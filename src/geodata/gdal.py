@@ -50,11 +50,19 @@ def getProjFromDict(projdict, name='', GeoCS='WGS84'):
   return projection
 
 
-def getProjection(var,projection=None):
+def getProjection(var, projection=None):
   ''' Function to infere GDAL parameters from a Variable or Dataset '''
   if not isinstance(var,(Variable,Dataset)): raise TypeError
-  # infere map axes and projection parameters
-  if projection is not None:
+  # infer map axes and projection parameters
+  if projection is None: # can still infer some useful info
+    if var.hasAxis('x') and var.hasAxis('y'):
+      isProjected = True; xlon = var.x; ylat = var.y
+    elif var.hasAxis('lon') and var.hasAxis('lat'):
+      isProjected = False; xlon = var.lon; ylat = var.lat
+      projection = osr.SpatialReference() 
+      projection.SetWellKnownGeogCS('WGS84') # normal lat/lon projection
+    else: xlon = None; ylat = None
+  else: 
     # figure out projection
     if isinstance(projection,dict): projection = getProjFromDict(projection)
     # assume projection is set
@@ -66,14 +74,6 @@ def getProjection(var,projection=None):
     else: 
       assert var.hasAxis('lon') and var.hasAxis('lat'), 'Horizontal axes for non-projected GDAL variables have to \'lon\' and \'lat\''
       xlon = var.lon; ylat = var.lat    
-  else: # can still infer some useful info
-    if var.hasAxis('x') and var.hasAxis('y'):
-      isProjected = True; xlon = var.x; ylat = var.y
-    elif var.hasAxis('lon') and var.hasAxis('lat'):
-      isProjected = False; xlon = var.lon; ylat = var.lat
-      projection = osr.SpatialReference() 
-      projection.SetWellKnownGeogCS('WGS84') # normal lat/lon projection
-    else: xlon = None; ylat = None
   # if the variable is map-like, add GDAL properties
   if xlon is not None and ylat is not None:
     lgdal = True
@@ -88,9 +88,26 @@ def getProjection(var,projection=None):
   return lgdal, projection, isProjected, xlon, ylat
 
 
-def getGeotransform(xlon, ylat, geotransform=None):
+def makeAxes(geotransform, xlen=0, ylen=0, projected=False):
+  ''' Generate a set of axes based on the given geotransform and length information. '''
+  if projected: 
+    xatts = dict(name='x', long_name='easting', units='m')
+    yatts = dict(name='y', long_name='northing', units='m')
+  else: 
+    xatts = dict(name='lon', long_name='longitude', units='deg E')
+    yatts = dict(name='lat', long_name='latitude', units='deg N')
+  # create axes    
+  (x0, dx, s, y0, t, dy) = geotransform
+  xlon = Axis(length=xlen, coord=np.arange(x0+dx/2, xlen, dx), atts=xatts)
+  ylat = Axis(length=ylen, coord=np.arange(y0+dy/2, ylen, dy), atts=yatts)
+  # return tuple of axes
+  return xlon, ylat
+
+
+def getGeotransform(xlon=None, ylat=None, geotransform=None):
   ''' Function to check or infer GDAL geotransform from coordinate axes. '''
-  if geotransform is None: 
+  if geotransform is None: # infer geotransform from axes
+    if not isinstance(ylat,Axis) or not isinstance(xlon,Axis): raise TypeError     
     if xlon.data and ylat.data:
       # infer GDAL geotransform vector from  coordinate vectors (axes)
       dx = xlon[1]-xlon[0]; dy = ylat[1]-ylat[0]
@@ -213,6 +230,13 @@ def addGDALtoVar(var, projection=None, geotransform=None):
       return dataset
     # add new method to object
     var.getGDAL = types.MethodType(getGDAL,var)
+    
+    def loadGDAL(self, dataset):
+      ''' Load data from the bands of a GDAL dataset into the variable. '''
+      raise NotImplementedError
+      return self.data
+    # add new method to object
+    var.loadGDAL = types.MethodType(loadGDAL,var)    
     
     # update new instance attributes
     def load(self, data=None, mask=None):

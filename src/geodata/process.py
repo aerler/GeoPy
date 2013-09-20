@@ -13,11 +13,13 @@ Simple methods for copying and averaging variables will already be provided in t
 import numpy as np
 import numpy.ma as ma
 import functools
+from osgeo import gdal
 # internal imports
-from geodata.misc import VariableError, AxisError, PermissionError, DatasetError
+from geodata.misc import VariableError, AxisError, PermissionError, DatasetError, GDALError
 from geodata.base import Axis, Dataset
 from geodata.netcdf import DatasetNetCDF, asDatasetNC
 from geodata.nctools import writeNetCDF
+from geodata.gdal import addGDALtoDataset, getGeotransform
 
 class ProcessError(Exception):
   ''' Error class for exceptions occurring in methods of the CPU (CentralProcessingUnit). '''
@@ -69,7 +71,7 @@ class CentralProcessingUnit(object):
         var = self.target.variables[varname] 
         newvar = function(var)
         if newvar.ndim != var.ndim or newvar.shape != var.shape: raise VariableError
-        self.target.replaceVariable(var,newvar)
+        if newvar is not var: self.target.replaceVariable(var,newvar)
       elif self.source.hasVariable(varname):        
         var = self.source.variables[varname] 
         # perform operation from source and copy results to target
@@ -86,6 +88,8 @@ class CentralProcessingUnit(object):
         outvar.sync() # sync this variable
         self.output.dataset.sync() # sync NetCDF dataset, but don't call sync on all the other variables...
         outvar.unload() # again, free memory
+    # after everything is said and done:
+    self.source = self.target # set target to source for next time
         
   def getTmp(self, asNC=False, filename=None, deepcopy=False, **kwargs):
     ''' Get a copy of the temporary data in dataset format. '''
@@ -131,7 +135,11 @@ class CentralProcessingUnit(object):
     # close file or return file handle
     if close: output.close()
     else: return output
-        
+    
+    
+  ## functions (or function pairs) that perform operations on the data
+  
+  # function pair to compute a climatology from a time-series      
   def Climatology(self, timeAxis='time', climAxis=None, period=None, offset=0, **kwargs):
     ''' Setup climatology and start computation; calls processClimatology. '''
     # construct new time axis for climatology
@@ -250,6 +258,87 @@ class CentralProcessingUnit(object):
     # return variable
     return newvar
   
+  # function pair to compute a climatology from a time-series      
+  def Regrid(self, projection=None, geotransform=None, xlon=None, ylat=None, interpolation='bilinear', **kwargs):
+    ''' Setup climatology and start computation; calls processClimatology. '''
+    # make temporary gdal dataset
+    if self.source == self.target:
+      if self.tmp: assert self.source == self.tmpput and self.target == self.tmpput
+      # the operation can not be performed "in-place"!
+      tmptoo = Dataset(name='tmptoo', title='Temporary target dataset for non-in-place operations', varlist=[], atts={})
+      #tmptoo.addAxis(ylat, copy=True); tmptoo.addAxis(xlon, copy=True)
+      #tmptoo = addGDALtoDataset(tmptoo, projection=projection, geotransform=geotransform)
+      self.target = tmptoo 
+    # process input - infer target projection/coordinates
+    if ylat is not None or xlon is not None:
+      if not isinstance(ylat,Axis) or not isinstance(xlon,Axis): raise TypeError
+      geotransform = getGeotransform(xlon, ylat, geotransform=geotransform)
+      for ax in (xlon,ylat):      
+        if self.target.hasAxis(ax.name): 
+          self.target.replaceAxis(ax)
+        else: 
+          if self.target.hasVariable(ax.name): self.target.removeVariable(ax)
+          self.target.addAxis(ax)
+    # make sure target is a GDAL-enabled dataset
+    if projection is not None or geotransform is not None: # user input 
+      if self.target is self.output and 'gdal' in self.output.__dict__: raise AttributeError 
+      self.target = addGDALtoDataset(self.target, projection=projection, geotransform=geotransform)    
+    elif 'gdal' in self.output.__dict__: # gdal info in output dataset
+      if self.tmp: 
+        assert self.target is not self.output # transfer into to temporary dataset
+        self.target = addGDALtoDataset(self.target, projection=self.output.projection, geotransform=self.output.geotransform)
+      projection = self.output.projection; geotransform = self.output.geotransform  
+    else: # no user input, no output preset
+      self.target = addGDALtoDataset(self.target, projection=None, geotransform=None)
+      print self.target.name, self.target.gdal 
+      print self.target.projection
+      print self.target.geotransform
+    # use these map axes
+    if self.target.ylat is None or self.target.xlon is None: raise AxisError
+    else: xlon = self.target.xlon; ylat = self.target.ylat 
+    # prepare function call
+    function = functools.partial(self.processRegrid, # already set parameters
+                                 ylat=ylat, xlon=xlon, interpolation=interpolation)
+    # start process
+    self.process(function, **kwargs) # currently 'flush' is the only kwarg    
+  # the previous method sets up the process, the next method performs the computation
+  def processRegrid(self, var, ylat=None, xlon=None, interpolation=None):
+    ''' Compute a climatology from a variable time-series. '''
+    # process gdal variables
+    if var.gdal:
+      print('\n'+var.name),
+      # replace axes
+      axes = list(var.axes)
+      axes[var.axisIndex(var.ylat)] = ylat
+      axes[var.axisIndex(var.xlon)] = xlon
+      # create new Variable
+      newvar = var.copy(axes=axes, data=None, projection=self.target.projection) # and, of course, load new data
+      # repare regridding
+      # determine GDAL interpolation
+      if interpolation == 'bilinear': gdal_interp = gdal.GRA_Bilinear
+      elif interpolation == 'nearest': gdal_interp = gdal.GRA_NearestNeighbour
+      elif interpolation == 'lanczos': gdal_interp = gdal.GRA_Lanczos
+      elif interpolation == 'convolution': gdal_interp = gdal.GRA_Cubic # cubic convolution
+      elif interpolation == 'cubicspline': gdal_interp = gdal.GRA_CubicSpline # cubic spline
+      else: raise GDALError, 'Unknown interpolation method: %s'%interpolation
+      # get GDAL dataset instances
+      srcdata = var.getGDAL(load=True)
+      print srcdata
+      tgtdata = newvar.getGDAL(load=False)
+      print tgtdata       
+      # perform regridding
+      err = gdal.ReprojectImage(srcdata, tgtdata, None, None, gdal_interp)
+      if err != 0: raise GDALError, 'ERROR CODE %i'%err  
+      # load data into new variable
+      newvar.loadGDAL(tgtdata)
+      #     print newvar.name, newvar.masked
+      #     print newvar.fillValue
+      #     print newvar.data_array.__class__
+    else:
+      if not var.data: var.load() # need to load variables into memory, because we are not doing anything else...
+      newvar = var  
+    # return variable
+    return newvar
 
 
 """
