@@ -583,14 +583,17 @@ class Axis(Variable):
     if coord is not None: self.updateCoord(coord)
     elif length > 0: self.updateLength(length)
   
-  def copy(self, **newargs): # with multiple inheritance, this method will override all others
+  def copy(self, deepcopy=False, **newargs): # with multiple inheritance, this method will override all others
     ''' A method to copy the Axis with just a link to the data. '''
-    args = dict(name=self.name, units=self.units, length=self.len, data=None, coord=None, 
-                dtype=self.dtype, mask=None, fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
-    if self.data: args['data'] = self.data_array
-    if self.data: args['coord'] = self.coord # btw. don't pass axes to and Axis constructor!
-    args.update(newargs) # apply custom arguments (also arguments related to subclasses)
-    ax = Axis(**args) # create a new basic Axis instance
+    if deepcopy: 
+      ax = self.deepcopy(**newargs)
+    else:
+      args = dict(name=self.name, units=self.units, length=self.len, data=None, coord=None, 
+                  dtype=self.dtype, mask=None, fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
+      if self.data: args['data'] = self.data_array
+      if self.data: args['coord'] = self.coord # btw. don't pass axes to and Axis constructor!
+      args.update(newargs) # apply custom arguments (also arguments related to subclasses)
+      ax = Axis(**args) # create a new basic Axis instance
     # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
     return ax
   
@@ -975,7 +978,7 @@ class Dataset(object):
     # figure out variable list
     if skiplist is None: skiplist = []
     if not isinstance(skiplist,(list,tuple)): raise TypeError
-    if varlist is None: varlist = []  
+    if varlist is None: varlist = self.variables.keys()  
     if not isinstance(varlist,(list,tuple)): raise TypeError
     varlist = [var for var in varlist if var not in skiplist and var in self.variables]
     # iterate over all variables (not axes!) 

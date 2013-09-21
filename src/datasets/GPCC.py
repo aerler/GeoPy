@@ -10,8 +10,9 @@ This module contains meta data and access functions for the GPCC climatology and
 import netCDF4 as nc # netcdf python module
 import os
 # internal imports
+from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF, VarNC
-from geodata.gdal import addGDALtoDataset
+from geodata.gdal import addGDALtoDataset, addGDALtoVar
 from geodata.misc import DatasetError
 from geodata.nctools import add_strvar 
 from datasets.misc import translateVarNames, days_per_month, name_of_month, data_root
@@ -114,6 +115,7 @@ if __name__ == '__main__':
 #   reses = ('025',) # hi-res climatology
 #   reses = ('05', '10', '25')
   period = (1979,1981)
+  grid = 'NARR'
   
   # generate averaged climatology
   for res in reses:    
@@ -127,7 +129,6 @@ if __name__ == '__main__':
           
     elif mode == 'convert_climatology':
       
-      from geodata.base import Variable
       from geodata.nctools import writeNetCDF
       
       # load dataset
@@ -184,10 +185,28 @@ if __name__ == '__main__':
       print('   ***   Processing Resolution %s from %s   ***   '%(res,periodstr))
       print('\n')
       source = loadGPCC_TS(varlist=['stations','precip'],resolution=res)
+      # add landmask
+      #print '   ===   landmask   ===   '
+      tmp = source; source.load()
+      tmpatts = dict(name='landmask', units='', long_name='Landmask for Climatology Fields', 
+                description='where this mask is non-zero, no data is available')
+      lnd = Variable(name='landmask', units='', axes=(tmp.lat,tmp.lon), dtype='int16', 
+                    data=tmp.precip.getMask()[0,:,:], atts=tmpatts)
+      lnd = addGDALtoVar(lnd, projection=source.projection, geotransform=source.geotransform)
+      tmp += lnd
       print(source)
       print('\n')
+#       newvar = source.landmask
+#       print
+#       print newvar.name #, newvar.gdal 
+#       print newvar.shape
+#       print newvar.data
+#       print
+      
+            
       # prepare sink
-      filename = avgfile%('_'+res,'_'+periodstr)
+      if grid == 'GPCC': filename = avgfile%('_'+res,'_'+periodstr)
+      if grid == 'NARR': filename = avgfile%('_narr','_'+periodstr)
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
       atts =dict(period=periodstr, name='GPCC', title='GPCC Climatology') 
       sink = DatasetNetCDF(name='GPCC Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
@@ -203,6 +222,35 @@ if __name__ == '__main__':
       print('   +++   processing climatology   +++   ') 
       CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
       print('\n')
+
+      
+      # define new coordinates
+#       import numpy as np
+#       from geodata.base import Axis    
+#       dlon = dlat = 2.5 # resolution
+#       slon, slat, elon, elat =    -179.75, 0.75, -72.25, 85.75
+#       assert (elon-slon) % dlon == 0 
+#       lon = np.linspace(slon+dlon/2,elon-dlon/2,(elon-slon)/dlon)
+#       assert (elat-slat) % dlat == 0
+#       lat = np.linspace(slat+dlat/2,elat-dlat/2,(elat-slat)/dlat)
+#       # add new geographic coordinate axes for projected map
+#       xlon = Axis(coord=lon, atts=dict(name='lon', long_name='longitude', units='deg E'))
+#       ylat = Axis(coord=lat, atts=dict(name='lat', long_name='latitude', units='deg N'))
+
+      # get NARR coordinates
+      if grid == 'NARR':
+        from datasets.NARR import loadNARR_TS, projdict
+        from geodata.gdal import getProjFromDict
+        narr = loadNARR_TS()
+        x = narr.x.copy(deepcopy=True); y = narr.y.copy(deepcopy=True)
+        geot = narr.geotransform
+        proj = getProjFromDict(projdict)
+        # reproject and resample (regrid) dataset
+        print('')
+        print('   +++   processing regidding   +++   ') 
+        CPU.Regrid(projection=proj, geotransform=geot, xlon=x, ylat=y, flush=False)
+        print('\n')
+      
       
 #       # shift longitude axis by 180 degrees  left (i.e. -180 - 180 -> 0 - 360)
 #       print('')
@@ -217,28 +265,31 @@ if __name__ == '__main__':
 #       print('\n')      
 
 
-#       newvar = sink.time
-#       print
-#       print newvar.name, newvar.data 
-#       print newvar.shape
-#       print newvar.coord
-#       print
-
       # get results
-#       CPU.sync(flush=True, deepcopy=False)
+      CPU.sync(flush=True, deepcopy=False)
 #       sink = CPU.getTmp(asNC=True, filename=avgfolder+filename, atts=atts)
-      
+      # print dataset
+#       print('')
+#       print(sink)     
+
       # convert precip data to SI units (mm/s)   
       sink.precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
       sink.precip.units = 'kg/m^2/s'      
 
+      newvar = sink.stations
+      print
+      print newvar.name, newvar.masked 
+      print newvar.shape, newvar.data
+      print newvar.data_array.mean()
+      print newvar.data_array.__class__, newvar.fillValue
+            
       # add landmask
       #print '   ===   landmask   ===   '
-      tmpatts = dict(name='landmask', units='', long_name='Landmask for Climatology Fields', 
-                description='where this mask is non-zero, no data is available')
-      sink += VarNC(sink.dataset, name='landmask', units='', axes=(sink.lat,sink.lon), 
-                    data=sink.precip.getMask()[0,:,:], atts=tmpatts)
-      sink.mask(sink.landmask)            
+#       tmpatts = dict(name='landmask', units='', long_name='Landmask for Climatology Fields', 
+#                 description='where this mask is non-zero, no data is available')
+#       sink += VarNC(sink.dataset, name='landmask', units='', axes=(sink.lat,sink.lon), 
+#                     data=sink.precip.getMask()[0,:,:], atts=tmpatts)
+      sink.stations.mask(sink.landmask)            
       # add names and length of months
       sink.axisAnnotation('name_of_month', name_of_month, 'time', 
                           atts=dict(name='name_of_month', units='', long_name='Name of the Month'))

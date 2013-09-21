@@ -11,6 +11,7 @@ and methods to an existing object/class instance.
 '''
 
 import numpy as np
+import numpy.ma as ma
 import types # needed to bind functions to objects
 
 # gdal imports
@@ -200,7 +201,7 @@ def addGDALtoVar(var, projection=None, geotransform=None):
     var.copy = types.MethodType(copy,var)
         
     # define GDAL-related 'class methods'  
-    def getGDAL(self, load=True):
+    def getGDAL(self, load=True, allocate=True, fillValue=None):
       ''' Method that returns a gdal dataset, ready for use with GDAL routines. '''
       if self.gdal and self.projection is not None:
         # determine GDAL data type
@@ -221,6 +222,11 @@ def addGDALtoVar(var, projection=None, geotransform=None):
           if not self.data: raise DataError, 'Need data in Variable instance in order to load data into GDAL dataset!'
           data = self.getArray(unmask=True) # get unmasked data
           data = data.reshape(self.bands,self.mapSize[0],self.mapSize[1]) # reshape to fit bands
+        elif allocate: 
+          if fillValue is None and self.fillValue is not None: fillValue = self.fillValue # use default 
+          if self.fillValue is None: fillValue = ma.default_fill_value(self.dtype)
+          data = np.zeros((self.bands,)+self.mapSize, dtype=self.dtype) + fillValue
+        if load or allocate: 
           # assign data
           for i in xrange(self.bands):
             dataset.GetRasterBand(i+1).WriteArray(data[i,:,:])
@@ -231,9 +237,28 @@ def addGDALtoVar(var, projection=None, geotransform=None):
     # add new method to object
     var.getGDAL = types.MethodType(getGDAL,var)
     
-    def loadGDAL(self, dataset):
+    def loadGDAL(self, dataset, mask=True, fillValue=None):
       ''' Load data from the bands of a GDAL dataset into the variable. '''
-      raise NotImplementedError
+      # check input
+      if not isinstance(dataset,gdal.Dataset): raise TypeError
+      if self.gdal:
+        # get data field
+        if self.bands == 1: data = dataset.ReadAsArray()[:,:] # for 2D fields
+        else: data = dataset.ReadAsArray()[0:self.bands,:,:] # ReadAsArray(0,0,xe,ye)
+#         print data.__class__
+#         print self.masked, self.fillValue
+        # adjust shape (unravel bands)
+        if self.ndim == 2: data = data.squeeze()
+        else: data = data.reshape(self.shape)
+        # shift missing value to zero (for some reason ReprojectImage treats missing values as 0)                      
+        if mask:
+          # mask array where zero (in accord with ReprojectImage convention)
+          if fillValue is None and self.fillValue is not None: fillValue = self.fillValue # use default 
+          if self.fillValue is None: fillValue = ma.default_fill_value(data.dtype)
+          data = ma.masked_values(data, fillValue)
+        # load data)
+        self.load(data=data)
+      # return verification
       return self.data
     # add new method to object
     var.loadGDAL = types.MethodType(loadGDAL,var)    

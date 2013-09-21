@@ -25,9 +25,10 @@ projdict = dict(proj  = 'lcc', # Lambert Conformal Conic
                 lat_1 =   50., # Latitude of first standard parallel
                 lat_2 =   50., # Latitude of second standard parallel
                 lat_0 =   50., # Latitude of natural origin
-                lon_0 = -107., # Longitude of natural origin
-                x_0   = 5632642.22547, # False Origin Easting
-                y_0   = 4612545.65137) # False Origin Northing
+                lon_0 = -107.) # Longitude of natural origin
+                # 
+                # x_0   = 5632642.22547, # False Origin Easting
+                # y_0   = 4612545.65137) # False Origin Northing
 
 # variable attributes and name
 varatts = dict(air   = dict(name='T2', units='K'), # 2m Temperature
@@ -37,13 +38,15 @@ varatts = dict(air   = dict(name='T2', units='K'), # 2m Temperature
                pevap = dict(name='pet', units='kg/m^2'), # monthly accumulated PET (kg/m^2)
                pr_wtr = dict(name='pwtr', units='kg/m^2'), # total precipitable water (kg/m^2)
                # axes (don't have their own file; listed in axes)
-               lon   = dict(name='lon', units='deg E'), # geographic longitude field
-               lat   = dict(name='lat', units='deg N'), # geographic latitude field
+               lon   = dict(name='lon2D', units='deg E'), # geographic longitude field
+               lat   = dict(name='lat2D', units='deg N'), # geographic latitude field
                time  = dict(name='time', units='days', offset=-1569072, scalefactor=1./24.), # time coordinate
                # N.B.: the time coordinate is only used for the monthly time-series data, not the LTM
-               #       the time offset is chose such that 1979 begins with the origin (time=0)   
-               x     = dict(name='x', units='m', offset=-1*projdict['x_0']), # projected west-east coordinate
-               y     = dict(name='y', units='m', offset=-1*projdict['y_0'])) # projected south-north coordinate
+               #       the time offset is chose such that 1979 begins with the origin (time=0)
+               x     = dict(name='x', units='m', offset=-5632642), # projected west-east coordinate
+               y     = dict(name='y', units='m', offset=-4612545)) # projected south-north coordinate                 
+#                x     = dict(name='x', units='m', offset=-1*projdict['x_0']), # projected west-east coordinate
+#                y     = dict(name='y', units='m', offset=-1*projdict['y_0'])) # projected south-north coordinate
 # N.B.: At the moment Skin Temperature can not be handled this way due to a name conflict with Air Temperature
 # list of variables to load
 ltmvarlist = varatts.keys() # also includes coordinate fields    
@@ -129,7 +132,7 @@ if __name__ == '__main__':
   
 #   mode = 'test_climatology'
   mode = 'average_timeseries'
-  grid = 'NARR'
+  grid = '25'
   period = (1979,1981)
   
   if mode == 'test_climatology':
@@ -160,37 +163,47 @@ if __name__ == '__main__':
     # determine averaging interval
     offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
     # initialize processing
-    CPU = CentralProcessingUnit(source, sink, varlist=['precip', 'T2'], tmp=True)
+    CPU = CentralProcessingUnit(source, sink, varlist=['precip', 'T2'], tmp=True) # no need for lat/lon
     
     # start processing climatology
     print('')
     print('   +++   processing climatology   +++   ') 
     CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
     print('\n')      
+
+
+    if grid != 'NARR':    
+      # find new coordinate arrays
+      if grid == '025': dlon = dlat = 0.25 # resolution
+      elif grid == '05': dlon = dlat = 0.5
+      elif grid == '10': dlon = dlat = 1.0
+      elif grid == '25': dlon = dlat = 2.5 
+      slon, slat, elon, elat = -179.75, 3.25, -69.75, 85.75
+      assert (elon-slon) % dlon == 0 
+      lon = np.linspace(slon+dlon/2,elon-dlon/2,(elon-slon)/dlon)
+      assert (elat-slat) % dlat == 0
+      lat = np.linspace(slat+dlat/2,elat-dlat/2,(elat-slat)/dlat)
+      # add new geographic coordinate axes for projected map
+      xlon = Axis(coord=lon, atts=dict(name='lon', long_name='longitude', units='deg E'))
+      ylat = Axis(coord=lat, atts=dict(name='lat', long_name='latitude', units='deg N'))
+      # reproject and resample (regrid) dataset
+      print('')
+      print('   +++   processing regidding   +++   ') 
+      print('    ---   (%3.2f,  %3i x %3i)   ---   '%(dlon, len(lon), len(lat)))
+      CPU.Regrid(xlon=xlon, ylat=ylat, flush=False)
+      print('\n')
     
-    # sync temporary storage with output
-    CPU.sync(flush=False)
-    # find new coordinate arrays
-    dlon = dlat = 0.5 # resolution
-#     slon = sink.lon.getArray().min(); elon = sink.lon.getArray().max()
-#     print slon,elon
-#     slat = sink.lat.getArray().min(); elat = sink.lat.getArray().max()
-#     print slat,elat
-    slon, slat, elon, elat =    -179.75, 0.75, -0.25, 85.75 
-    lon = np.linspace(slon+dlon/2,elon-dlon/2,(elon-slon)/dlon)
-    lat = np.linspace(slat+dlat/2,elat-dlat/2,(elat-slat)/dlat)
-    # add new geographic coordinate axes for projected map
-    xlon = Axis(coord=lon, atts=dict(name='lon', long_name='longitude', units='deg E'))
-    ylat = Axis(coord=lat, atts=dict(name='lat', long_name='latitude', units='deg N'))
-    
-    # reproject and resample (regrid) dataset
-    print('')
-    print('   +++   processing regidding   +++   ') 
-    CPU.Regrid(xlon=xlon, ylat=ylat, flush=False)
-    print('\n')      
     
     # sync temporary storage with output
     CPU.sync(flush=True)
+    
+#     newvar = sink.precip
+#     print
+#     print newvar.name, newvar.masked 
+#     print newvar.shape, newvar.data
+#     print newvar.data_array.mean()
+#     print newvar.data_array.__class__
+
 
 #     # make new masks
 #     sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)
