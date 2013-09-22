@@ -10,7 +10,7 @@ Miscellaneous decorators, methods. and classes, as well as exception classes.
 import numpy as np
 import numpy.ma as ma
 import collections as col
-import numbers as num
+# import numbers as num
 
 ## useful decorators
 
@@ -30,7 +30,8 @@ class ElementWise():
     if isinstance(args[0], col.Iterable):
       l = len(args[0])
       for arg in args: # check consistency
-        assert isinstance(arg, col.Iterable) and len(arg)==l, 'All list arguments have to be of the same length!'
+        if not isinstance(arg, col.Iterable) and len(arg)==l: 
+          raise TypeError, 'All list arguments have to be of the same length!'
       results = [] # output list
       for i in xrange(l):
         eltargs = [arg[i] for arg in args] # construct argument list for this element
@@ -48,24 +49,24 @@ class ElementWise():
 def checkIndex(idx, floatOK=False):
   ''' Check if idx is a valid index or slice; if floatOK=True, floats can also be indices. '''
   # check if integer or slice object
-  if isinstance(idx,int) or isinstance(idx,slice): isIdx = True
+  if isinstance(idx,(int,np.integer)) or isinstance(idx,slice): isIdx = True
   else: isIdx = False       
   # if a float is also allowed, check that
-  if floatOK and isinstance(idx,float): isIdx = True 
+  if floatOK and isinstance(idx,(float,np.inexact)): isIdx = True 
   # return logical 
   return isIdx
 
 # check if input is an integer
 @ElementWise
-def isInt(arg): return isinstance(arg,int)
+def isInt(arg): return isinstance(arg,(int,np.integer))
 
 # check if input is a float
 @ElementWise
-def isFloat(arg): return isinstance(arg,float)
+def isFloat(arg): return isinstance(arg,(float,np.inexact))
 
 # check if input is a number
 @ElementWise
-def isNumber(arg): return isinstance(arg,num.Number)
+def isNumber(arg): return isinstance(arg,(int,np.integer,float,np.inexact))
 
 # define machine precision
 floateps = np.finfo(np.float).eps
