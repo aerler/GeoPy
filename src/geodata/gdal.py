@@ -23,7 +23,7 @@ gdal.UseExceptions()
 
 # import all base functionality from PyGeoDat
 from geodata.base import Variable, Axis, Dataset
-from geodata.misc import isEqual, isInt, isFloat, isNumber, DataError, AxisError
+from geodata.misc import isEqual, isInt, isFloat, isNumber, DataError, AxisError, GDALError
 
 
 # # utility functions and classes to handle projection information and related meta data
@@ -50,28 +50,30 @@ class GridDefinition(object):
         axes). '''
     # check projection (default is WSG84)
     if not isinstance(projection, osr.SpatialReference):
-      projection = osr.SpatialReference() 
-      projection.SetWellKnownGeogCS('WGS84')           
+      gdalsr = osr.SpatialReference() 
+      gdalsr.SetWellKnownGeogCS('WGS84')           
       if projection is None: 
         pass  # normal lat/lon projection
       elif isinstance(projection, dict): 
-        projection = getProjFromDict(projdict=projection, name='', GeoCS='WGS84')  # get projection from dictionary
+        gdalsr = getProjFromDict(projdict=projection, name='', GeoCS='WGS84')  # get projection from dictionary
       elif isinstance(projection, basestring):
-        projection.ImportFromWkt(projection)  # from Well-Known-Text
+        gdalsr.ImportFromWkt(projection)  # from Well-Known-Text
       elif isinstance(projection, np.number):
-        projection.ImportFromEpsg(projection)  # from EPSG code    
+        gdalsr.ImportFromEpsg(projection)  # from EPSG code    
       else: 
         raise TypeError, '\'projection\' has to be a GDAL SpatialReference object.'              
     # set projection attributes
-    self.projection = projection
-    self.isProjected = projection.IsProjected()
-    # figure out geotransform and axes
+    self.projection = gdalsr
+    self.isProjected = gdalsr.IsProjected()
+    # figure out geotransform and axes (axes have precedence)
     if xlon is not None or ylat is not None:
+      # use axes and check consistency with geotransform and size, if applicable
       if xlon is None or ylat is None: raise TypeError
       if not isinstance(xlon, Axis) or not isinstance(ylat, Axis): raise TypeError  
       if size is not None and not (len(xlon), len(ylat)) == size: raise AxisError
       geotransform = getGeotransform(xlon=xlon, ylat=ylat, geotransform=geotransform)  
     elif geotransform is not None and size is not None:
+      # generate new axes from size and geotransform
       if not isinstance(geotransform, (list, tuple)) and isNumber(geotransform) and len(geotransform) == 6: raise TypeError
       if not isinstance(size, (list, tuple)) and isInt(geotransform) and len(geotransform) == 2: raise TypeError
       xlon, ylat = getAxes(geotransform, xlen=size[0], ylen=size[1], projected=self.isProjected)
@@ -80,6 +82,14 @@ class GridDefinition(object):
     self.ylat = ylat
     self.geotransform = geotransform
     self.size = size
+    
+    
+def getGridDef(var):
+  ''' Get a GridDefinition instance from a GDAL enabled Variable of Dataset. '''
+  if 'gdal' not in var.__dict__: raise GDALError
+  # instantiate GridDefinition
+  return GridDefinition(projection=var.projection, geotransform=var.geotransform, size=var.mapSize, 
+                        xlon=var.xlon, ylat=var.ylat)
      
 
 def getProjFromDict(projdict, name='', GeoCS='WGS84', convention='Proj4'):
@@ -210,7 +220,8 @@ def addGDALtoVar(var, projection=None, geotransform=None):
       ylat = None # South-North axis  
   '''
   # check some special conditions
-  assert isinstance(var, Variable), 'This function can only be used to add GDAL functionality to \'Variable\' instances!'
+  if not isinstance(var, Variable): 
+    raise TypeError, 'This function can only be used to add GDAL functionality to \'Variable\' instances!'
   # only for 2D variables!
   if var.ndim >= 2:  # map-type: GDAL potential
     # infer or check projection and related parameters       
@@ -222,7 +233,7 @@ def addGDALtoVar(var, projection=None, geotransform=None):
   if lgdal:    
     # determine gdal-relevant shape parameters
     mapSize = var.shape[-2:]
-    assert all(mapSize), 'Horizontal dimensions have to be of finite, non-zero length.'
+    if not all(mapSize): raise AxisError, 'Horizontal dimensions have to be of finite, non-zero length.'
     if var.ndim == 2: bands = 1 
     else: bands = np.prod(var.shape[:-2])          
     # infer or check geotransform

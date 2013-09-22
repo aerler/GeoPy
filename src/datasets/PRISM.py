@@ -12,12 +12,26 @@ import numpy as np
 import numpy.ma as ma
 import netCDF4 as nc # netcdf python module
 # internal imports
-from datasets.misc import translateVarNames, data_root, days_per_month, name_of_month
+from datasets.common import days_per_month, name_of_month, data_root, loadClim
 from geodata.misc import DatasetError
-from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import addGDALtoDataset
+from geodata.gdal import GridDefinition
 
 ## PRISM Meta-data
+
+# PRISM grid definition
+dlat = dlon = 1./24. #  0.041666666667
+dlat2 = dlon2 = 1./48. #  0.02083333333331
+nlat = 601 # slat = 25 deg
+nlon = 697 # slon = 29 deg
+# N.B.: coordinates refer to grid points (CF convention), commented values refer to box edges (GDAL convention) 
+llclat = 47. # 46.979166666667
+# urclat = 72.; urclon = -113.
+llclon = -142. # -142.020833333333
+           
+geotransform = (llclon-dlon2, dlon, 0.0, llclat-dlat2, 0.0, dlat)
+size = (nlon,nlat) # (x,y) map size of PRISM grid
+# make GridDefinition instance
+PRISM_grid = GridDefinition(projection=None, geotransform=geotransform, size=size)
 
 # variable attributes and name (basically no alterations necessary...)
 varatts = dict(T2 = dict(name='T2', units='K', atts=dict(long_name='Average 2m Temperature')), # 2m average temperature
@@ -34,27 +48,21 @@ varlist = varatts.keys() # also includes coordinate fields
 
 # variable and file lists settings
 prismfolder = data_root + 'PRISM/' # long-term mean folder
-avgfile = 'prism_clim.nc' # formatted NetCDF file
-avgfolder = prismfolder + 'prismavg/' # prefix
 
 
 ## Functions that provide access to well-formatted PRISM NetCDF files
 
-def loadPRISM(name='PRISM', varlist=None, resolution=None, folder=avgfolder, filelist=None, varatts=varatts):
-  ''' Get the pre-processed monthly PRISM climatology as a NetCDFDataset. '''
-  # prepare input
-  if resolution is not None and resolution not in (): # '800m', '10km' 
-    raise DatasetError, "Selected resolution '%s' is not available!"%resolution
-  # varlist
-  if varlist is None: varlist = ['precip', 'T2','Tmin','Tmax','datamask','length_of_month'] # all variables 
-  if varatts is not None: varlist = translateVarNames(varlist, varatts)
-  # filelist
-  if filelist is None: filelist = [avgfile]
-  # load dataset
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, 
-                          varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')  
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
-  # N.B.: projection should be auto-detected as geographic
+# pre-processed climatology files (varatts etc. should not be necessary)
+avgfile = 'prism%s_clim%s.nc' # formatted NetCDF file
+avgfolder = prismfolder + 'prismavg/' # prefix
+# function to load these files...
+def loadPRISM(name='PRISM', period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
+  ''' Get the pre-processed monthly PRISM climatology as a DatasetNetCDF. '''
+  # only the climatology is available
+  if period is not None: raise DatasetError, 'Only the full climatology is currently available.'
+  # load standardized climatology dataset with PRISM-specific parameters  
+  dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
+                     varatts=varatts, filepattern=avgfile, filelist=filelist)
   # return formatted dataset
   return dataset
 
@@ -89,36 +97,30 @@ def loadASCII(var, fileformat='BCY_%s.%02ia', arrayshape=(601,697)):
 def genCoord():
   # imports
   from numpy import diff, finfo, arange # linspace 
-  eps = finfo(float).eps  
-  # settings / PRISM meta data
-  dlat = dlon = 1./24. #  0.041666666667  
-  nlat = 601 # slat = 25 deg
-  nlon = 697 # slon = 29 deg
-  # N.B.: coordinates refer to grid points (CF convention), commented values refer to box edges (GDAL convention) 
-  llclat = 47. # 46.979166666667
-  # urclat = 72.; urclon = -113.
-  llclon = -142. # -142.020833333333
+  eps = finfo(float).eps
+  # N.B.: PRISM meta data is defined in the header of this file  
   # generate coordinate arrays
   lat = llclat + arange(nlat)*dlat # + dlat/2.
-#   lat = linspace(llclat, llclat+(nlat-1)*dlat, nlat)
   assert (diff(lat).mean() - dlat) < eps # sanity check
   lon = llclon + arange(nlon) *dlon #  + dlon/2.
-#   lon = linspace(llclon, llclon+(nlon-1)*dlon, nlon)
   assert (diff(lon).mean() - dlon) < eps # sanity check  
   # return coordinate arrays (in degree)
   return lat, lon
 
 if __name__ == '__main__':
     
-#   mode = 'NC-test'
-  mode = 'convert_ASCII'
+  mode = 'test_climatology'
+#   mode = 'convert_ASCII'
   
   # do some tests
-  if mode == 'NC-test':  
+  if mode == 'test_climatology':  
     
     # load NetCDF dataset
     dataset = loadPRISM()
-    print dataset    
+    print(dataset)
+    print('')
+    print(dataset.geotransform)
+    
     
   ## convert ASCII files to NetCDF
   elif mode == 'convert_ASCII': 

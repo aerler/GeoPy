@@ -367,6 +367,8 @@ class DatasetNetCDF(Dataset):
       # loop over variables in dataset
       for var in dsvars:
         if var in axes: pass # do not treat coordinate variables as real variables 
+        elif ds.variables[var].dtype == '|S1': pass # just ignore strig variables for now... 
+          #raise NotImplementedError # Variables of type char are currently not implemented
         elif var in variables: # if already present, make sure variables are essentially the same
           if dim not in check_override and ( (variables[var].shape != ds.variables[var].shape) or
                                              (variables[var].ncvar.dimensions != ds.variables[var].dimensions) ): 
@@ -375,10 +377,10 @@ class DatasetNetCDF(Dataset):
           if all([axes.has_key(dim) for dim in ds.variables[var].dimensions]):
             varaxes = [axes[dim] for dim in ds.variables[var].dimensions] # collect axes
             # create new variable using the override parameters in varatts
-            if ds.variables[dim].dtype == '|S1': raise NotImplementedError # Variables of type char are currently not implemented
-            else:      
-              variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, mode=mode, **varatts.get(var,{}))
-          else: raise DatasetError, 'Error constructing Variable: Axes/coordinates not found.'
+            variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, mode=mode, **varatts.get(var,{}))
+          else: 
+            print var, ds.variables[var].dimensions
+            raise DatasetError, 'Error constructing Variable: Axes/coordinates not found.'
     # get attributes from NetCDF dataset
     ncattrs = joinDicts(*[ds.__dict__ for ds in datasets])
     if atts is not None: ncattrs.update(atts) # update with attributes passed to constructor

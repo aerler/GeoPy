@@ -12,13 +12,29 @@ import os
 # internal imports
 from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF, VarNC
-from geodata.gdal import addGDALtoDataset, addGDALtoVar
+from geodata.gdal import addGDALtoDataset, addGDALtoVar, GridDefinition
 from geodata.misc import DatasetError
 from geodata.nctools import add_strvar 
-from datasets.misc import translateVarNames, days_per_month, name_of_month, data_root
+from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim
 from geodata.process import CentralProcessingUnit
 
 ## GPCC Meta-data
+
+# GPCC grid definition           
+geotransform_025 = (-180.0, 0.25, 0.0, -90.0, 0.0, 0.25)
+size_025 = (1440,720) # (x,y) map size
+geotransform_05 = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)
+size_05 = (720,360) # (x,y) map size
+geotransform_10 = (-180.0, 1.0, 0.0, -90.0, 0.0, 1.0)
+size_10 = (360,180) # (x,y) map size
+geotransform_25 = (-180.0, 2.5, 0.0, -90.0, 0.0, 2.5)
+size_25 = (144,72) # (x,y) map size
+
+# make GridDefinition instance
+GPCC_025_grid = GridDefinition(projection=None, geotransform=geotransform_025, size=size_025)
+GPCC_05_grid = GridDefinition(projection=None, geotransform=geotransform_05, size=size_05)
+GPCC_10_grid = GridDefinition(projection=None, geotransform=geotransform_10, size=size_10)
+GPCC_25_grid = GridDefinition(projection=None, geotransform=geotransform_25, size=size_25)
 
 # variable attributes and name
 varatts = dict(p    = dict(name='precip', units='mm/month'), # total precipitation rate
@@ -84,38 +100,40 @@ def loadGPCC_TS(name='GPCC', varlist=varlist, resolution='05', varatts=tsvaratts
 # pre-processed climatology files (varatts etc. should not be necessary)
 avgfolder = rootfolder + 'gpccavg/' 
 avgfile = 'gpcc%s_clim%s.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
-def loadGPCC(name='GPCC', varlist=None, resolution='025', period=None, folder=avgfolder, filelist=None, varatts=None):
+# function to load these files...
+def loadGPCC(name='GPCC', period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly GPCC climatology as a DatasetNetCDF. '''
   # prepare input
-  if resolution not in ('025','05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
-  if resolution == '025' and period is not None: raise DatasetError, "The highest resolution is only available for the lon-term mean!"
-  if not isinstance(period,basestring): period = '%4i-%4i'%period  
-  # varlist
-  if varlist is None: varlist = ['precip', 'stations', 'landmask', 'length_of_month'] # all variables 
-  if varatts is not None: varlist = translateVarNames(varlist, varatts)
-  # filelist
-  if filelist is None: 
-    if period is None: filelist = [avgfile%('_'+resolution,'')]
-    else: filelist = [avgfile%('_'+resolution,'_'+period)]
-  # load dataset
-  #print folder+filelist[0]
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4')  
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
-  # N.B.: projection should be auto-detected as geographic
+  if grid is not None and grid[0:5].lower() == 'gpcc_': 
+    resolution = grid[5:]
+    grid = None
+  elif resolution is None: 
+    resolution = '025' if period is None else '05'
+  # check resolution
+  if grid is None:
+    # check for valid resolution 
+    if resolution not in ('025','05', '10', '25'): 
+      raise DatasetError, "Selected resolution '%s' is not available!"%resolution  
+    if resolution == '025' and period is not None: 
+      raise DatasetError, "The highest resolution is only available for the lon-term mean!"
+    grid = resolution # grid supersedes resolution  
+  # load standardized climatology dataset with GPCC-specific parameters
+  dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
+                     varatts=varatts, filepattern=avgfile, filelist=filelist)
   # return formatted dataset
   return dataset
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-#   mode = 'test_climatology'
-  mode = 'average_timeseries'
+  mode = 'test_climatology'
+#   mode = 'average_timeseries'
 #   mode = 'convert_climatology'
   reses = ('25',) # for testing
 #   reses = ('025',) # hi-res climatology
 #   reses = ('05', '10', '25')
-  period = (1979,1981)
-  grid = 'NARR'
+  period = None #(1979,1981)
+  grid = 'GPCC'
   
   # generate averaged climatology
   for res in reses:    
@@ -124,8 +142,10 @@ if __name__ == '__main__':
       
       # load averaged climatology file
       print('')
-      dataset = loadGPCC(resolution=res,period=period)
+      dataset = loadGPCC(grid='%s_%s'%(grid,res),resolution=res,period=period)
       print(dataset)
+      print('')
+      print(dataset.geotransform)
           
     elif mode == 'convert_climatology':
       

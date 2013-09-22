@@ -12,15 +12,15 @@ import os
 # from atmdyn.properties import variablePlotatts
 from geodata.base import Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
-from geodata.gdal import addGDALtoDataset, getProjFromDict
+from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition
 from geodata.misc import DatasetError 
-from datasets.misc import translateVarNames, days_per_month, name_of_month, data_root
+from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim
 from geodata.process import CentralProcessingUnit
 
 
 ## NARR Meta-data
 
-# projection
+# NARR projection
 projdict = dict(proj  = 'lcc', # Lambert Conformal Conic  
                 lat_1 =   50., # Latitude of first standard parallel
                 lat_2 =   50., # Latitude of second standard parallel
@@ -29,6 +29,12 @@ projdict = dict(proj  = 'lcc', # Lambert Conformal Conic
                 # 
                 # x_0   = 5632642.22547, # False Origin Easting
                 # y_0   = 4612545.65137) # False Origin Northing
+# NARR grid definition           
+projection = getProjFromDict(projdict)
+geotransform = (-5648873.5, 32463.0, 0.0, -4628776.5, 0.0, 32463.0)
+size = (349, 277) # (x,y) map size of NARR grid
+# make GridDefinition instance
+NARR_grid = GridDefinition(projection=projdict, geotransform=geotransform, size=size)
 
 # variable attributes and name
 varatts = dict(air   = dict(name='T2', units='K'), # 2m Temperature
@@ -107,22 +113,12 @@ def loadNARR_TS(name='NARR', varlist=tsvarlist, varatts=varatts, filelist=None, 
 # pre-processed climatology files (varatts etc. should not be necessary)
 avgfolder = narrfolder + 'narravg/' 
 avgfile = 'narr%s_clim%s.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
-def loadNARR(name='NARR', varlist=None, period=None, folder=avgfolder, filelist=None, varatts=None):
+# function to load these files...
+def loadNARR(name='NARR', period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly NARR climatology as a DatasetNetCDF. '''
-  # prepare input
-  if not isinstance(period,basestring): period = '%4i-%4i'%period  
-  # varlist
-  if varlist is None: varlist = ['precip', 'T2', 'lon', 'lat', 'time', 'length_of_month'] # all variables 
-  if varatts is not None: varlist = translateVarNames(varlist, varatts)
-  # filelist
-  if filelist is None: 
-    if period is None: filelist = [avgfile%('',)]
-    else: filelist = [avgfile%('_'+period,)]  
-  # load dataset
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
-                          multifile=False, ncformat='NETCDF4', load=False)  
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
-  # N.B.: projection should be auto-detected as geographic
+  # load standardized climatology dataset with NARR-specific parameters
+  dataset = loadClim(name=name, folder=folder, projection=projection, period=period, grid=grid, varlist=varlist, 
+                     varatts=varatts, filepattern=avgfile, filelist=filelist)
   # return formatted dataset
   return dataset
 
@@ -130,8 +126,8 @@ def loadNARR(name='NARR', varlist=None, period=None, folder=avgfolder, filelist=
 if __name__ == '__main__':
     
   
-#   mode = 'test_climatology'
-  mode = 'average_timeseries'
+  mode = 'test_climatology'
+#   mode = 'average_timeseries'
   grid = '25'
   period = (1979,1981)
   
@@ -141,6 +137,8 @@ if __name__ == '__main__':
     print('')
     dataset = loadNARR(period=period)
     print(dataset)
+    print('')
+    print(dataset.geotransform)
               
   # generate averaged climatology
   elif mode == 'average_timeseries':

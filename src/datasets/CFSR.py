@@ -11,12 +11,23 @@ import os
 # internal imports
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.misc import DatasetError
-from geodata.gdal import addGDALtoDataset
-from datasets.misc import translateVarNames, days_per_month, name_of_month, data_root
+from geodata.gdal import addGDALtoDataset, GridDefinition
+from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim
 from geodata.process import CentralProcessingUnit
 
 
 ## CRU Meta-data
+
+# CFSR grid definition           
+geotransform_03 = (-180.15625, 0.3125, 0.0, 89.915802001953125, 0.0, -0.30960083)
+size_03 = (1152,576) # (x,y) map size
+geotransform_05 = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)
+size_05 = (720,360) # (x,y) map size
+
+# make GridDefinition instance
+CFSR_033_grid = GridDefinition(projection=None, geotransform=geotransform_03, size=size_03)
+CFSR_05_grid = GridDefinition(projection=None, geotransform=geotransform_05, size=size_05)
+
 
 # variable attributes and name
 varatts = dict(TMP_L103_Avg = dict(name='T2', units='K'), # 2m average temperature
@@ -52,26 +63,34 @@ lowresfiles = {key:'pgbh06.gdas.{0:s}.grb2.nc'.format(value) for key,value in lo
 lowresstatic = {key:'pgbh06.gdas.{0:s}.grb2.nc'.format(value) for key,value in lowresstatic.iteritems()}
 # list of variables to load
 # varlist = ['precip','snowh'] + hiresstatic.keys() + list(nofile) # hires + coordinates
-varlist = hiresfiles.keys() + hiresstatic.keys() + list(nofile) # hires + coordinates    
+varlist_hires = hiresfiles.keys() + hiresstatic.keys() + list(nofile) # hires + coordinates    
+varlist_lowres = lowresfiles.keys() + lowresstatic.keys() + list(nofile) # hires + coordinates
 
 
 ## Functions to load different types of CFSR datasets 
 
 tsfolder = cfsrfolder + 'Monthly/'
-def loadCFSR_TS(name='CFSR', varlist=varlist, varatts=varatts, resolution='hires', filelist=None, folder=tsfolder):
+def loadCFSR_TS(name='CFSR', varlist=None, varatts=varatts, resolution='hires', filelist=None, folder=tsfolder):
   ''' Get a properly formatted CFSR dataset with monthly mean time-series. '''
   # translate varlist
+  if varlist is None:
+    if resolution == 'hires' or resolution == '03': varlist = varlist_hires
+    elif resolution == 'lowres' or resolution == '05': varlist = varlist_lowres     
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   if filelist is None: # generate default filelist
-    if resolution == 'hires': files = [hiresfiles[var] for var in varlist if var in hiresfiles]
-    elif resolution == 'lowres': files = [lowresfiles[var] for var in varlist if var in lowresfiles]
+    if resolution == 'hires' or resolution == '03': 
+      files = [hiresfiles[var] for var in varlist if var in hiresfiles]
+    elif resolution == 'lowres' or resolution == '05': 
+      files = [lowresfiles[var] for var in varlist if var in lowresfiles]
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=files, varlist=varlist, varatts=varatts, 
                           check_override=['time'], multifile=False, ncformat='NETCDF4_CLASSIC')
   # load static data
   if filelist is None: # generate default filelist
-    if resolution == 'hires': files = [hiresstatic[var] for var in varlist if var in hiresstatic]
-    elif resolution == 'lowres': files = [lowresstatic[var] for var in varlist if var in lowresstatic]
+    if resolution == 'hires' or resolution == '03': 
+      files = [hiresstatic[var] for var in varlist if var in hiresstatic]
+    elif resolution == 'lowres' or resolution == '05': 
+      files = [lowresstatic[var] for var in varlist if var in lowresstatic]
     # create singleton time axis
     staticdata = DatasetNetCDF(name=name, folder=folder, filelist=files, varlist=varlist, varatts=varatts, 
                                axes=dict(lon=dataset.lon, lat=dataset.lat), multifile=False, 
@@ -92,34 +111,37 @@ def loadCFSR_TS(name='CFSR', varlist=varlist, varatts=varatts, resolution='hires
 # pre-processed climatology files (varatts etc. should not be necessary)
 avgfolder = cfsrfolder + 'cfsravg/' 
 avgfile = 'cfsr%s_clim%s.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
-def loadCFSR(name='CFSR', varlist=None, resolution='hires', period=None, folder=avgfolder, filelist=None, varatts=None):
+# function to load these files...
+def loadCFSR(name='CFSR', period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly CFSR climatology as a DatasetNetCDF. '''
   # prepare input
-  if resolution not in ('hires','lowres'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
-  if not isinstance(period,basestring): period = '%4i-%4i'%period  
-  # varlist
-  if varlist is None: varlist = ['precip', 'T2', 'Ts', 'ps', 'snow', 'snowh', 'landmask', 'length_of_month'] # all variables 
-  if varatts is not None: varlist = translateVarNames(varlist, varatts)
-  # filelist
-  if filelist is None: 
-    if period is None: filelist = [avgfile%('_'+resolution,'')]
-    else: filelist = [avgfile%('_'+resolution,'_'+period)]
-  # load dataset
-  #print folder+filelist[0]
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4')  
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
-  # N.B.: projection should be auto-detected as geographic
+  if grid is not None and grid[0:5].lower() == 'cfsr_': 
+    resolution = grid[5:]
+    grid = None
+  elif resolution is None: resolution = '03'
+  # check resolution
+  if grid is None:
+    # check for valid resolution
+    if resolution == 'hires': resolution = '03' 
+    elif resolution == 'lowres': resolution = '05' 
+    elif resolution not in ('03','05'): 
+      raise DatasetError, "Selected resolution '%s' is not available!"%resolution  
+    grid = resolution # grid supersedes resolution  
+  # load standardized climatology dataset with GPCC-specific parameters
+  dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
+                     varatts=varatts, filepattern=avgfile, filelist=filelist)
   # return formatted dataset
   return dataset
+
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-#   mode = 'test_climatology'
-  mode = 'average_timeseries'
-  reses = ('hires',) # for testing
-#   reses = ('hires', 'lowres')
-  period = (1979,1989)
+  mode = 'test_climatology'
+#   mode = 'average_timeseries'
+  reses = ('05',) # for testing
+  reses = ('hires', 'lowres')
+  period = (1979,1981)
   
   # generate averaged climatology
   for res in reses:    
@@ -130,7 +152,9 @@ if __name__ == '__main__':
       print('')
       dataset = loadCFSR(resolution=res,period=period)
       print(dataset)
-                
+      print('')
+      print(dataset.geotransform)
+              
     elif mode == 'average_timeseries':
       
       # load source
@@ -168,7 +192,8 @@ if __name__ == '__main__':
       CPU.sync(flush=True)
 
       # make new masks
-      sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)
+      if sink.hasVariable('landmask'):
+        sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)
 
       # add names and length of months
       sink.axisAnnotation('name_of_month', name_of_month, 'time', 

@@ -10,12 +10,18 @@ This module contains meta data and access functions for the monthly CRU time-ser
 import os
 # internal imports
 from geodata.netcdf import DatasetNetCDF, VarNC
-from geodata.gdal import addGDALtoDataset
-from datasets.misc import translateVarNames, days_per_month, name_of_month, data_root
+from geodata.gdal import addGDALtoDataset, GridDefinition
+from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim
 from geodata.process import CentralProcessingUnit
 
  
 ## CRU Meta-data
+
+# CRU grid definition           
+geotransform = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)
+size = (720, 360) # (x,y) map size of CRU grid
+# make GridDefinition instance
+CRU_grid = GridDefinition(projection=None, geotransform=geotransform, size=size)
 
 # variable attributes and name
 varatts = dict(tmp = dict(name='T2', units='K', offset=273.15), # 2m average temperature
@@ -61,31 +67,21 @@ def loadCRU_TS(name='CRU', varlist=varlist, varatts=varatts, filelist=None, fold
 
 # pre-processed climatology files (varatts etc. should not be necessary)
 avgfolder = crufolder + 'cruavg/' 
-avgfile = 'cru_clim%s.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
-def loadCRU(name='CRU', varlist=None, period=None, folder=avgfolder, filelist=None, varatts=None):
+avgfile = 'cru%s_clim%s.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
+# function to load these files...
+def loadCRU(name='CRU', period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly CRU climatology as a DatasetNetCDF. '''
-  # prepare input
-  if not isinstance(period,basestring): period = '%4i-%4i'%period  
-  # varlist
-  if varlist is None: varlist = ['precip', 'pet', 'Q2', 'T2', 'Tmin', 'Tmax', 'landmask', 'length_of_month'] # all variables 
-  if varatts is not None: varlist = translateVarNames(varlist, varatts)
-  # filelist
-  if filelist is None: 
-    if period is None: filelist = [avgfile%('',)]
-    else: filelist = [avgfile%('_'+period,)]  
-  # load dataset
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
-                          multifile=False, ncformat='NETCDF4', load=False)  
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
-  # N.B.: projection should be auto-detected as geographic
+  # load standardized climatology dataset with CRU-specific parameters
+  dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
+                     varatts=varatts, filepattern=avgfile, filelist=filelist)
   # return formatted dataset
   return dataset
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
     
-#   mode = 'test_climatology'
-  mode = 'average_timeseries'
+  mode = 'test_climatology'
+#   mode = 'average_timeseries'
   period = (1979,1981)
 
   if mode == 'test_climatology':
@@ -94,6 +90,9 @@ if __name__ == '__main__':
     print('')
     dataset = loadCRU(period=period)
     print(dataset)
+    print('')
+    print(dataset.geotransform)
+
         
   elif mode == 'average_timeseries':
       
