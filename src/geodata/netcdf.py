@@ -405,20 +405,26 @@ class DatasetNetCDF(Dataset):
     # hand-off to parent method and return status
     return super(DatasetNetCDF,self).addAxis(ax=ax)
   
-  def addVariable(self, var, asNC=True, copy=False, deepcopy=False):
+  def addVariable(self, var, asNC=True, copy=False, overwrite=False, deepcopy=False):
     ''' Method to add a new Variable to the Dataset. '''
-    if deepcopy: copy=True   
-    # cast Axis instance as AxisNC
-    if copy: # make a new instance or add it as is 
-      if asNC and 'w' in self.mode:
-        for ax in var.axes:
-          if not self.hasAxis(ax.name): 
-            self.addAxis(ax, asNC=True, copy=True) 
-        var = asVarNC(var=var,ncvar=self.datasets[0], mode=self.mode, deepcopy=deepcopy)
-      else: var = var.copy(deepcopy=deepcopy)
-    # hand-off to parent method and return status
-    return super(DatasetNetCDF,self).addVariable(var=var)
-    
+    if var.name in self.__dict__: 
+      # replace axes, if permitted; need to use NetCDF method immediately, though
+      if overwrite and self.hasVariable(var.name): 
+        return self.replaceVariable(var.name, var, deepcopy=deepcopy)
+      else: raise AttributeError, "Cannot add Variable '%s' to Dataset, because an attribute of the same name already exits!"%(var.name)      
+    else:             
+      if deepcopy: copy=True   
+      # cast Axis instance as AxisNC
+      if copy: # make a new instance or add it as is 
+        if asNC and 'w' in self.mode:
+          for ax in var.axes:
+            if not self.hasAxis(ax.name): 
+              self.addAxis(ax, asNC=True, copy=True)             
+          var = asVarNC(var=var,ncvar=self.datasets[0], axes=self.axes, mode=self.mode, deepcopy=deepcopy)
+        else: var = var.copy(deepcopy=deepcopy)
+      # hand-off to parent method and return status
+      return super(DatasetNetCDF,self).addVariable(var=var)
+      
   def repalceAxis(self, oldaxis, newaxis=None, deepcopy=True):    
     ''' Replace an existing axis with a different one and transfer NetCDF reference to new axis. '''
     if newaxis is None: 
@@ -467,7 +473,7 @@ class DatasetNetCDF(Dataset):
       # cast new variable as VarNC and transfer old ncvar reference and axes    
       newvar = asVarNC(var=newvar,ncvar=oldvar.ncvar, axes=oldvar.axes, mode=oldvar.mode, deepcopy=deepcopy)
       # ... and add new axis to dataset
-      self.addVariable(newvar, copy=False)
+      self.addVariable(newvar, copy=False, overwrite=False)
     else: # no need for special treatment...
       super(DatasetNetCDF,self).replaceVariable(oldvar, newvar)
     # return status of variable

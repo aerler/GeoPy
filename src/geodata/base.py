@@ -341,8 +341,8 @@ class Variable(object):
 
   def load(self, data=None, mask=None, fillValue=None):
     ''' Method to attach numpy data array to variable instance (also used in constructor). '''
-    assert data is not None, 'A basic \'Variable\' instance requires external data to load!'
-    assert isinstance(data,np.ndarray), 'The data argument must be a numpy array!'
+    if data is None: raise DataError, 'A basic \'Variable\' instance requires external data to load!'
+    if not isinstance(data,np.ndarray): raise TypeError, 'The data argument must be a numpy array!'
     # apply mask
     if mask: data = ma.array(data, mask=mask) 
     if isinstance(data, ma.MaskedArray): 
@@ -360,8 +360,8 @@ class Variable(object):
     self.__dict__['data'] = True
     self.__dict__['dtype'] = data.dtype
     self.__dict__['shape'] = data.shape
-    assert len(self.shape) == self.ndim or (self.ndim == 0 and data.size == 1),\
-       'Variable dimensions and data dimensions incompatible!'
+    if len(self.shape) != self.ndim and (self.ndim != 0 or data.size != 1):
+      raise DataError, 'Variable dimensions and data dimensions incompatible!'
     # N.B.: the second statement is necessary, so that scalars don't cause a crash
     # assign data to instance attribute array 
     self.__dict__['data_array'] = data

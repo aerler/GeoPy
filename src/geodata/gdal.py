@@ -49,7 +49,9 @@ class GridDefinition(object):
         Axis instances can be specified directly (and the map size and geotransform will be inferred from the 
         axes). '''
     # check projection (default is WSG84)
-    if not isinstance(projection, osr.SpatialReference):
+    if isinstance(projection, osr.SpatialReference):
+      gdalsr = projection # use as is
+    else:
       gdalsr = osr.SpatialReference() 
       gdalsr.SetWellKnownGeogCS('WGS84')           
       if projection is None: 
@@ -90,7 +92,18 @@ def getGridDef(var):
   # instantiate GridDefinition
   return GridDefinition(projection=var.projection, geotransform=var.geotransform, size=var.mapSize, 
                         xlon=var.xlon, ylat=var.ylat)
-     
+
+
+# determine GDAL interpolation
+def gdalInterp(interpolation):
+  if interpolation == 'bilinear': gdal_interp = gdal.GRA_Bilinear
+  elif interpolation == 'nearest': gdal_interp = gdal.GRA_NearestNeighbour
+  elif interpolation == 'lanczos': gdal_interp = gdal.GRA_Lanczos
+  elif interpolation == 'convolution': gdal_interp = gdal.GRA_Cubic # cubic convolution
+  elif interpolation == 'cubicspline': gdal_interp = gdal.GRA_CubicSpline # cubic spline
+  else: raise GDALError, 'Unknown interpolation method: %s'%interpolation
+  return gdal_interp
+         
 
 def getProjFromDict(projdict, name='', GeoCS='WGS84', convention='Proj4'):
   ''' Initialize a projected OSR SpatialReference instance from a dictionary using Proj4 conventions. 
@@ -151,12 +164,14 @@ def getProjection(var, projection=None):
   if xlon is not None and ylat is not None:
     lgdal = True
     # check axes
+    if isProjected: axstr = "'x' and 'y'"
+    else: axstr = "'lon' and 'lat'"
     if isinstance(var.axes, (tuple, list)):  # only check this, if axes are ordered, as in Variables
-      assert (var.axisIndex(xlon) in [var.ndim - 1, var.ndim - 2]) and (var.axisIndex(ylat) in [var.ndim - 1, var.ndim - 2]), \
-         'Horizontal axes (\'lon\' and \'lat\') have to be the innermost indices.'
-    if isProjected: assert isinstance(xlon, Axis) and isinstance(ylat, Axis), 'Error: attributes \'x\' and \'y\' have to be axes.'
-    elif not isinstance(xlon, Axis) and isinstance(ylat, Axis): 
-      raise AxisError, 'Error: attributes \'lon\' and \'lat\' have to be axes.'
+      dmtpl = (var.ndim -1, var.ndim -2)
+      if (var.axisIndex(xlon) not in dmtpl) or (var.axisIndex(ylat) not in dmtpl):
+        raise AxisError, "Horizontal axes (%s) have to be the innermost indices."%axstr
+    if not isinstance(xlon, Axis) and not isinstance(ylat, Axis): 
+      raise AxisError, "Error: attributes %s have to be axes."%axstr
   else: lgdal = False   
   # return
   return lgdal, projection, isProjected, xlon, ylat
@@ -246,6 +261,9 @@ def addGDALtoVar(var, projection=None, geotransform=None):
     var.__dict__['bands'] = bands
     var.__dict__['xlon'] = xlon
     var.__dict__['ylat'] = ylat
+    
+    # get grid definition object
+    var.getGridDef = types.MethodType(getGridDef, var)
     
     # append projection info  
     def prettyPrint(self, short=False):
@@ -399,16 +417,42 @@ def addGDALtoDataset(dataset, projection=None, geotransform=None):
       # check result
       assert (var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat)) == var.gdal    
     
+    # get grid definition object
+    dataset.getGridDef = types.MethodType(getGridDef, dataset)
+        
     # append projection info  
     def prettyPrint(self, short=False):
       ''' Add projection information in to string in long format. '''
-      string = super(dataset.__class__, self).prettyPrint(short=short)
+      string = dataset.__class__.prettyPrint(self, short=short)
       if not short:
         if dataset.projection is not None:
           string += '\nProjection: {0:s}'.format(self.projection.ExportToWkt())
       return string
     # add new method to object
     dataset.prettyPrint = types.MethodType(prettyPrint, dataset)
+
+    def copy(self, griddef=None, projection=None, geotransform=None, **newargs):
+      ''' A method to copy the Dataset with just a link to the data. Also supports new projections. '''
+      # griddef supersedes all other arguments
+      if griddef is not None:
+        projection = griddef.projection
+        geotransform = griddef.geotransform
+        if not 'axes' in newargs: newargs['axes'] = dict()
+        newargs['axes'][self.xlon.name] = griddef.xlon
+        newargs['axes'][self.ylat.name] = griddef.ylat
+      # invoke class copy() function to copy dataset
+      dataset = self.__class__.copy(self, **newargs)
+      # handle geotransform
+      if geotransform is None:
+        if 'axes' in newargs:  # if axes were changed, geotransform can change!
+          geotransform = None  # infer from new axes
+        else: geotransform = self.geotransform
+      # handle projection
+      if projection is None: projection = self.projection
+      dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform)  # add GDAL functionality      
+      return dataset
+    # add new method to object
+    dataset.copy = types.MethodType(copy, dataset)
             
   # # the return value is actually not necessary, since the object is modified immediately
   return dataset

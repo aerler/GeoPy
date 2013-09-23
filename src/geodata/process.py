@@ -19,7 +19,7 @@ from geodata.misc import VariableError, AxisError, PermissionError, DatasetError
 from geodata.base import Axis, Dataset
 from geodata.netcdf import DatasetNetCDF, asDatasetNC
 from geodata.nctools import writeNetCDF
-from geodata.gdal import addGDALtoDataset, getGeotransform
+from geodata.gdal import addGDALtoDataset, GridDefinition, gdalInterp
 
 class ProcessError(Exception):
   ''' Error class for exceptions occurring in methods of the CPU (CentralProcessingUnit). '''
@@ -70,7 +70,7 @@ class CentralProcessingUnit(object):
     # return dataset
     return dataset
   
-  def sync(self, varlist=None, flush=False, deepcopy=False):
+  def sync(self, varlist=None, flush=False, gdal=True, deepcopy=False):
     ''' Transfer contents of temporary storage to output/target dataset. '''
     if not isinstance(self.output,Dataset): raise DatasetError, "Cannot sync without target Dataset!"
     if self.tmp:
@@ -78,9 +78,16 @@ class CentralProcessingUnit(object):
       for varname in varlist:
         if varname in self.tmpput.variables:
           var = self.tmpput.variables[varname]
-          if varname in self.output: self.output.replaceVariable(varname,var, deepcopy=deepcopy)
-          else: self.output.addVariable(var, copy=True, deepcopy=deepcopy)
+          self.output.addVariable(var, overwrite=True, deepcopy=deepcopy)
           if flush: var.unload() # remove unnecessary references (unlink data)
+      print self.output
+      if gdal and 'gdal' in self.tmpput.__dict__: 
+        if self.tmpput.gdal: 
+          projection = self.tmpput.projection; geotransform = self.tmpput.geotransform
+          #xlon = self.tmpput.xlon; ylat = self.tmpput.ylat 
+        else: 
+          projection=None; geotransform=None; #xlon = None; ylat = None 
+        self.output = addGDALtoDataset(self.output, projection=projection, geotransform=geotransform)
 #           self.source = self.output # future operations will write to the output dataset directly
 #           self.target = self.output # future operations will write to the output dataset directly                     
         
@@ -140,62 +147,58 @@ class CentralProcessingUnit(object):
   ## functions (or function pairs) that perform operations on the data
   
   # function pair to compute a climatology from a time-series      
-  def Regrid(self, projection=None, geotransform=None, xlon=None, ylat=None, interpolation='bilinear', **kwargs):
+  def Regrid(self, griddef=None, projection=None, geotransform=None, size=None, xlon=None, ylat=None, 
+             mask=True, int_interp='nearest', float_interp='bilinear', **kwargs):
     ''' Setup climatology and start computation; calls processClimatology. '''
     # make temporary gdal dataset
-    if self.source == self.target:
+    if self.source is self.target:
       if self.tmp: assert self.source == self.tmpput and self.target == self.tmpput
       # the operation can not be performed "in-place"!
-      tmptoo = Dataset(name='tmptoo', title='Temporary target dataset for non-in-place operations', varlist=[], atts={})
-      #tmptoo.addAxis(ylat, copy=True); tmptoo.addAxis(xlon, copy=True)
-      #tmptoo = addGDALtoDataset(tmptoo, projection=projection, geotransform=geotransform)
-      self.target = tmptoo 
-    # process input - infer target projection/coordinates
-    if ylat is not None or xlon is not None:
-      if not isinstance(ylat,Axis) or not isinstance(xlon,Axis): raise TypeError
-      geotransform = getGeotransform(xlon, ylat, geotransform=geotransform)
-      for ax in (xlon,ylat):      
-        if self.target.hasAxis(ax.name): 
-          self.target.replaceAxis(ax)
-        else: 
-          if self.target.hasVariable(ax.name): self.target.removeVariable(ax)
-          self.target.addAxis(ax)
-    # make sure target is a GDAL-enabled dataset
-    if projection is not None or geotransform is not None: # user input 
-      if self.target is self.output and 'gdal' in self.output.__dict__: raise AttributeError 
+      self.target = Dataset(name='tmptoo', title='Temporary target dataset for non-in-place operations', varlist=[], atts={})
+      ltmptoo = True
+    else: ltmptoo = False 
+    # make sure the target dataset is a GDAL-enabled dataset
+    if 'gdal' in self.target.__dict__: 
+      # gdal info alread present      
+      if griddef is not None or projection is not None or geotransform is not None: 
+        raise AttributeError, "Target Dataset '%s' is already GDAL enabled - cannot overwrite settings!"%self.target.name
+      if self.target.xlon is None: raise GDALError, "Map axis 'xlon' not found!"
+      if self.target.ylat is None: raise GDALError, "Map axis 'ylat' not found!"
+      xlon = self.target.xlon; ylat = self.target.ylat
+    else:
+      # need to set GDAL parameters
+      if self.tmp and 'gdal' in self.output.__dict__:
+        # transfer gdal settings from output to temporary dataset 
+        assert self.target is not self.output 
+        projection = self.output.projection; geotransform = self.output.geotransform
+        xlon = self.output.xlon; ylat = self.output.ylat
+      else:
+        # figure out grid definition from input 
+        if griddef is None: griddef = GridDefinition(projection=projection, geotransform=geotransform, 
+                                                     size=size, xlon=xlon, ylat=ylat)
+        # pass arguments through GridDefinition, if not provided
+        projection=griddef.projection; geotransform=griddef.geotransform
+        xlon=griddef.xlon; ylat=griddef.ylat                     
+      # apply GDAL settings target dataset 
+      for ax in (xlon,ylat):
+        #if self.target.hasVariable(ax.name): self.target.removeVariable(ax)
+        self.target.addAxis(ax, overwrite=True) # i.e. replace is already present
       self.target = addGDALtoDataset(self.target, projection=projection, geotransform=geotransform)
-#       print ''    
-#       print self.target.name, self.target.gdal 
-#       print self.target.projection
-#       print self.target.geotransform
-#       print ''
-    elif 'gdal' in self.output.__dict__: # gdal info in output dataset
-      if self.tmp: 
-        assert self.target is not self.output # transfer into to temporary dataset
-        self.target = addGDALtoDataset(self.target, projection=self.output.projection, geotransform=self.output.geotransform)
-      projection = self.output.projection; geotransform = self.output.geotransform  
-    else: # no user input, no output preset
-      self.target = addGDALtoDataset(self.target, projection=None, geotransform=None)
     # use these map axes
-    if self.target.ylat is None or self.target.xlon is None: raise AxisError
-    else: xlon = self.target.xlon; ylat = self.target.ylat
+    xlon = self.target.xlon; ylat = self.target.ylat
+    assert isinstance(xlon,Axis) and isinstance(ylat,Axis)
     # determine GDAL interpolation
-    if interpolation == 'bilinear': gdal_interp = gdal.GRA_Bilinear
-    elif interpolation == 'nearest': gdal_interp = gdal.GRA_NearestNeighbour
-    elif interpolation == 'lanczos': gdal_interp = gdal.GRA_Lanczos
-    elif interpolation == 'convolution': gdal_interp = gdal.GRA_Cubic # cubic convolution
-    elif interpolation == 'cubicspline': gdal_interp = gdal.GRA_CubicSpline # cubic spline
-    else: raise GDALError, 'Unknown interpolation method: %s'%interpolation     
+    int_interp = gdalInterp(int_interp)
+    float_interp = gdalInterp(float_interp)      
     # prepare function call
-    function = functools.partial(self.processRegrid, # already set parameters
-                                 ylat=ylat, xlon=xlon, gdal_interp=gdal_interp)
+    function = functools.partial(self.processRegrid, ylat=ylat, xlon=xlon, # already set parameters
+                                 mask=mask, int_interp=int_interp, float_interp=float_interp)
     # start process
     self.process(function, **kwargs) # currently 'flush' is the only kwarg
-    if self.tmp: 
-      self.tmpput = self.target
-      assert self.tmpput.name == tmptoo.name      
+    if self.tmp: self.tmpput = self.target
+    if ltmptoo: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
   # the previous method sets up the process, the next method performs the computation
-  def processRegrid(self, var, ylat=None, xlon=None, gdal_interp=None):
+  def processRegrid(self, var, ylat=None, xlon=None, mask=True, int_interp=None, float_interp=None):
     ''' Compute a climatology from a variable time-series. '''
     # process gdal variables
     if var.gdal:
@@ -206,23 +209,25 @@ class CentralProcessingUnit(object):
       axes[var.axisIndex(var.xlon)] = xlon
       # create new Variable
       newvar = var.copy(axes=axes, data=None, projection=self.target.projection) # and, of course, load new data
-      # repare regridding
+      # prepare regridding
       # get GDAL dataset instances
       srcdata = var.getGDAL(load=True)
       tgtdata = newvar.getGDAL(load=False, allocate=True, fillValue=var.fillValue)
 #       print tgtdata.ReadAsArray().mean()
-#       print newvar.projection       
+#       print newvar.projection
+      # determine GDAL interpolation
+      if 'gdal_interp' in var.__dict__: gdal_interp = var.gdal_interp
+      elif 'gdal_interp' in var.atts: gdal_interp = var.atts['gdal_interp'] 
+      else: # use default based on variable type
+        if np.issubdtype(var.dtype, np.integer): gdal_interp = int_interp # can't process logicals anyway...
+        else: gdal_interp = float_interp                          
       # perform regridding
       err = gdal.ReprojectImage(srcdata, tgtdata, var.projection.ExportToWkt(), newvar.projection.ExportToWkt(), gdal_interp)
       # N.B.: the target array should be allocated and prefilled with missing values, otherwise ReprojectImage
       #       will just fill missing values with zeros!  
       if err != 0: raise GDALError, 'ERROR CODE %i'%err  
       # load data into new variable
-      newvar.loadGDAL(tgtdata, mask=True, fillValue=var.fillValue)
-#       print newvar.name, newvar.masked
-#       print newvar.fillValue
-#       print newvar.data_array.shape
-#       print newvar.data_array.mean()
+      newvar.loadGDAL(tgtdata, mask=mask, fillValue=var.fillValue)
     else:
       if not var.data: var.load() # need to load variables into memory, because we are not doing anything else...
       newvar = var  
