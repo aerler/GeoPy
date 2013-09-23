@@ -33,12 +33,12 @@ class GridDefinition(object):
     A class that encapsulates all necessary information to fully define a grid.
     That includes GDAL spatial references and map-Axis instances with coordinates.
   '''
-  projection = None  # GDAL SpatialReference instance
-  isProjected = None  # logical; indicates whether the coordiante system is projected or geographic 
-  xlon = None  # Axis instance; the west-east axis
-  ylat = None  # Axis instance; the south-north axis
-  geotransform = None  # 6-element vector defining a GDAL GeoTransform
-  size = None  # tuple, defining the size of the x/lon and y/lat axes
+#   projection = None  # GDAL SpatialReference instance
+#   isProjected = None  # logical; indicates whether the coordiante system is projected or geographic 
+#   xlon = None  # Axis instance; the west-east axis
+#   ylat = None  # Axis instance; the south-north axis
+#   geotransform = None  # 6-element vector defining a GDAL GeoTransform
+#   size = None  # tuple, defining the size of the x/lon and y/lat axes
       
   def __init__(self, projection=None, geotransform=None, size=None, xlon=None, ylat=None):
     ''' This class can be initialized in several ways. Some form of projections has to be defined (using a 
@@ -186,9 +186,9 @@ def getAxes(geotransform, xlen=0, ylen=0, projected=False):
     xatts = dict(name='lon', long_name='longitude', units='deg E')
     yatts = dict(name='lat', long_name='latitude', units='deg N')
   # create axes    
-  (x0, dx, s, y0, t, dy) = geotransform
-  xlon = Axis(length=xlen, coord=np.arange(x0 + dx / 2, xlen, dx), atts=xatts)
-  ylat = Axis(length=ylen, coord=np.arange(y0 + dy / 2, ylen, dy), atts=yatts)
+  (x0, dx, s, y0, t, dy) = geotransform; del s,t
+  xlon = Axis(length=xlen, coord=np.arange(x0 + dx / 2, x0+xlen*dx, dx), atts=xatts)
+  ylat = Axis(length=ylen, coord=np.arange(y0 + dy / 2, y0+ylen*dy, dy), atts=yatts)
   # return tuple of axes
   return xlon, ylat
 

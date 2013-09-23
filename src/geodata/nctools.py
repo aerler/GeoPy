@@ -11,7 +11,7 @@ import numpy as np
 import numpy.ma as ma
 import collections as col
 # internal imports
-from geodata.misc import isNumber, DataError, NetCDFError, AxisError
+from geodata.misc import isNumber, DataError, AxisError
 
 ## definitions
 # NC4 compression options

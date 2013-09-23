@@ -100,7 +100,7 @@ class VarNC(Variable):
     # write-only actions
     if isinstance(ncvar,nc.Dataset):
       if 'w' not in mode: mode += 'w'
-      if name is None and isinstance(atts,dict): name = atts.pop('name',None)      
+      if name is None and isinstance(atts,dict): name = atts.get('name',None)      
       dims = [ax if isinstance(ax,basestring) else ax.name for ax in axes] # list axes names
       dimshape = [None if isinstance(ax,basestring) else len(ax) for ax in axes]
       if dtype is None: 

@@ -28,7 +28,7 @@ class ProcessError(Exception):
 
 class CentralProcessingUnit(object):
   
-  def __init__(self, source, target=None, varlist=None, tmp=False):
+  def __init__(self, source, target=None, varlist=None, tmp=True, feedback=True):
     ''' Initialize processor and pass input and output datasets. '''
     # check varlist
     if varlist is None: varlist = source.variables.keys() # all source variables
@@ -53,6 +53,8 @@ class CentralProcessingUnit(object):
     # determine if temporary storage is used and assign target dataset
     if self.tmp: self.__dict__['target'] = self.tmpput
     else: self.__dict__['target'] = self.output 
+    # whether or not to print status output
+    self.__dict__['feedback'] = feedback
         
   def getTmp(self, asNC=False, filename=None, deepcopy=False, **kwargs):
     ''' Get a copy of the temporary data in dataset format. '''
@@ -80,7 +82,6 @@ class CentralProcessingUnit(object):
           var = self.tmpput.variables[varname]
           self.output.addVariable(var, overwrite=True, deepcopy=deepcopy)
           if flush: var.unload() # remove unnecessary references (unlink data)
-      print self.output
       if gdal and 'gdal' in self.tmpput.__dict__: 
         if self.tmpput.gdal: 
           projection = self.tmpput.projection; geotransform = self.tmpput.geotransform
@@ -91,15 +92,18 @@ class CentralProcessingUnit(object):
 #           self.source = self.output # future operations will write to the output dataset directly
 #           self.target = self.output # future operations will write to the output dataset directly                     
         
-  def writeNetCDF(self, filename=None, ncformat='NETCDF4', zlib=True, writeData=True, close=False, flush=False):
+  def writeNetCDF(self, filename=None, folder=None, ncformat='NETCDF4', zlib=True, writeData=True, close=False, flush=False):
     ''' Write current temporary storage to a NetCDF file. '''
     if self.tmp:
       if not isinstance(filename,basestring): raise TypeError
+      if folder is not None: filename = folder + filename       
+      output = writeNetCDF(self.tmpput, filename, ncformat=ncformat, zlib=zlib, writeData=writeData, close=False)
       if flush: self.tmpput.unload()
-      output = writeNetCDF(self, filename, ncformat=ncformat, zlib=zlib, writeData=writeData, close=False)
+      if self.feedback: print('\nOutput written to {0:s}\n'.format(filename))
     else: 
       self.output.sync()
       output = self.output.dataset # get (primary) NetCDF file
+      if self.feedback: print('\nSynchronized dataset {0:s} with temporary storage.\n'.format(output.name))
     # flush?
     if flush: self.output.unload()      
     # close file or return file handle
@@ -190,11 +194,13 @@ class CentralProcessingUnit(object):
     # determine GDAL interpolation
     int_interp = gdalInterp(int_interp)
     float_interp = gdalInterp(float_interp)      
-    # prepare function call
+    # prepare function call    
     function = functools.partial(self.processRegrid, ylat=ylat, xlon=xlon, # already set parameters
                                  mask=mask, int_interp=int_interp, float_interp=float_interp)
     # start process
+    if self.feedback: print('\n   +++   processing regridding   +++   ') 
     self.process(function, **kwargs) # currently 'flush' is the only kwarg
+    if self.feedback: print('\n')
     if self.tmp: self.tmpput = self.target
     if ltmptoo: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
   # the previous method sets up the process, the next method performs the computation
@@ -202,7 +208,7 @@ class CentralProcessingUnit(object):
     ''' Compute a climatology from a variable time-series. '''
     # process gdal variables
     if var.gdal:
-      print('\n'+var.name),
+      if self.feedback: print('\n'+var.name),
       # replace axes
       axes = list(var.axes)
       axes[var.axisIndex(var.ylat)] = ylat
@@ -258,13 +264,15 @@ class CentralProcessingUnit(object):
     function = functools.partial(self.processClimatology, # already set parameters
                                  timeAxis=timeAxis, climAxis=climAxis, timeSlice=timeSlice)
     # start process
+    if self.feedback: print('\n   +++   processing climatology   +++   ')     
     self.process(function, **kwargs) # currently 'flush' is the only kwarg    
+    if self.feedback: print('\n')
   # the previous method sets up the process, the next method performs the computation
   def processClimatology(self, var, timeAxis='time', climAxis=None, timeSlice=None):
     ''' Compute a climatology from a variable time-series. '''
     # process variable that have a time axis
     if var.hasAxis(timeAxis):
-      print('\n'+var.name),
+      if self.feedback: print('\n'+var.name),
       # prepare averaging
       tidx = var.axisIndex(timeAxis)
       interval = len(climAxis)
@@ -284,7 +292,7 @@ class CentralProcessingUnit(object):
         # use array indexing
         climelts = np.arange(interval)
         for t in xrange(0,timelength,interval):
-          print('.'), # t/interval+1
+          if self.feedback: print('.'), # t/interval+1
           avgdata += dataarray.take(t+climelts, axis=tidx)
         # normalize
         avgdata /= (timelength/interval) 
@@ -335,13 +343,15 @@ class CentralProcessingUnit(object):
     function = functools.partial(self.processShift, # already set parameters
                                  shift=shift, axis=axis)
     # start process
-    self.process(function, **kwargs) # currently 'flush' is the only kwarg
+    if self.feedback: print('\n   +++   processing climatology   +++   ')     
+    self.process(function, **kwargs) # currently 'flush' is the only kwarg    
+    if self.feedback: print('\n')
   # the previous method sets up the process, the next method performs the computation
   def processShift(self, var, shift=None, axis=None):
     ''' Method that shifts a data array along a given axis. '''
     # only process variables that have the specified axis
     if var.hasAxis(axis.name):
-      print('\n'+var.name), # put line break before test, instead of after      
+      if self.feedback: print('\n'+var.name), # put line break before test, instead of after      
       # shift data array
       newdata = np.roll(var.getArray(unmask=False), shift, axis=var.axisIndex(axis))
       # create new Variable
@@ -353,153 +363,3 @@ class CentralProcessingUnit(object):
     # return variable
     return newvar
 
-
-"""
-
-## Class for regridding  datasets
-class NetcdfRegrid(NetcdfProcessor):
-
-  ## member variables
-  inCoords = None # names and values of input coordinate vectors (dict)
-  outCoords = None # names and values of output coordinate vectors (dict)
-  mapCoords = None # mapping of map coordinates, i.e. lon -> x / lat -> y (dict)
-
-  ## member methods
-  # constructor
-  def __init__(self, **kwargs):
-    ''' Define names of input and output datasets and set general processing parameters. '''
-    super(NetcdfRegrid,self).__init__(**kwargs)
-    self.inCoords = dict()
-    self.outCoords = dict()
-    self.mapCoords = dict()      
-  
-  # define parameters of input dataset
-  def initInput(self, epsg=4326, **kwargs):
-    ''' This method defines parameters of the input dataset. '''
-    # open input datasets
-    super(NetcdfRegrid,self).initInput(**kwargs)
-    # add regridding functionality
-    if epsg == 4326:
-      # spherical coordinates
-      from regrid import LatLonProj
-      lon = self.indata.variables['lon'][:]; self.inCoords['lon'] = lon
-      lat = self.indata.variables['lat'][:]; self.inCoords['lat'] = lat
-      self.inProj = LatLonProj(lon, lat)
-    elif epsg is None:
-      # euclidian coordinates 
-      x = self.indata.variables['x'][:]; self.inCoords['x'] = x
-      y = self.indata.variables['y'][:]; self.inCoords['y'] = y      
-    
-  # define parameters of output dataset
-  def initOutput(self, template=None, lon=None, lat=None, x=None, y=None, epsg=4326, **kwargs):
-    ''' This method defines output parameters and initializes the output dataset. '''
-    assert ( isinstance(lon,np.ndarray) and isinstance(lat,np.ndarray) ) or \
-           ( isinstance(x,np.ndarray) and isinstance(y,np.ndarray) ) or \
-           ( isinstance(template,Dataset) or isinstance(template,str) ), \
-           'Either input arguments \'lon\'/\'lat\' or \'x\'/\'y\' need to be defined (as numpy arrays)!' 
-    # create output dataset
-    super(NetcdfRegrid,self).initOutput(**kwargs)
-    # check template
-    if template: 
-      if isinstance(template,str): template = Dataset(template)
-      if template.variables.has_key('lon') and template.variables.has_key('lat') and \
-         (len(template.variables['lon'].dimensions) == 1) and \
-         (len(template.variables['lat'].dimensions) == 1): epsg = 4326 
-    # add regridding functionality
-    if epsg == 4326:
-      # spherical coordinates
-      from regrid import LatLonProj
-      if template: # get coordinate arrays from template 
-        lon = template.variables['lon'][:]; lat = template.variables['lat'][:]
-      self.outCoords['lon'] = lon; self.outCoords['lat'] = lat
-      self.outProj = LatLonProj(lon, lat)
-    elif epsg is None: 
-      # euclidian coordinates
-      if template: # get coordinate arrays from template 
-        x = template.variables['x'][:]; y = template.variables['y'][:]
-      self.outCoords['x'] = x; self.outCoords['y'] = x
-  
-  # set operation parameters
-  def defineOperation(self, interpolation='', **kwargs):
-    ''' This method defines the operation and the parameters for the operation performed on the dataset. '''
-    super(NetcdfRegrid,self).defineOperation(**kwargs)
-    self.interpolation = interpolation
-    self.mapCoords = dict(zip(self.inCoords.keys(), self.outCoords.keys()))
-  
-  # perform operation (dummy method)
-  def performOperation(self, **kwargs):
-    ''' This method performs the actual operation on the variables; it is defined in specialized child classes. '''
-    # regridding is performed by regridArray function
-    from regrid import regridArray
-    # get variable
-    varname = kwargs['name']
-    ncvar = self.indata.variables[varname]
-    # copy meta data 
-    newname = varname
-    newdims = [self.mapCoords.get(dim,dim) for dim in ncvar.dimensions] # map horizontal coordinate dimensions
-    newdtype = ncvar.dtype
-    newatts = dict(zip(ncvar.ncattrs(),[ncvar.getncattr(att) for att in ncvar.ncattrs()]))
-    # decide what to do
-#     print ncvar
-#     print self.inCoords.keys()
-#     print self.outCoords.keys()
-#     print '\n\n'
-    if self.inCoords.viewkeys() <= set(ncvar.dimensions): # 2D or more will be regridded
-      data = ncvar[:] # the netcdf module returns masked arrays! 
-      if '_FillValue' in ncvar.ncattrs(): 
-        fillValue = ncvar.getncattr('_FillValue')
-        if isinstance(data,np.ma.masked_array): data = data.filled(fillValue)
-      else: fillValue = None
-      newvals = regridArray(data, self.inProj, self.outProj, interpolation=self.interpolation, missing=fillValue)
-#       if fillValue: 
-#         newvals = np.ma.masked_where(newvals == 0, newvals)
-#       import pylab as pyl
-#       pyl.imshow(np.flipud(newvals[0,:,:])); pyl.colorbar(); pyl.show(block=True)
-    elif varname in self.inCoords: 
-      newname = self.mapCoords[varname] # new name for map coordinate
-      newvals = self.outCoords[newname] # assign new coordinate values
-    else: # other coordinate variables are left alone
-      newvals = ncvar[:]
-    # this method needs to return all the information needed to create a new netcdf variable    
-    return newname, newvals, newdims, newatts, newdtype
-
-## some code for testing 
-if __name__ == '__main__':
-
-  # input dataset
-  infolder = '/media/tmp/' # RAM disk
-  prismfile = infolder + 'prismavg/prism_clim.nc'
-  gpccfile = infolder + 'gpccavg/gpcc_05_clim_1979-1981.nc' 
-  # output dataset
-  outfolder = '/media/tmp/test/' # RAM disk
-#   outfile = outfolder + 'prism_test.nc'
-  outfile = outfolder + 'prism_10km.nc'
-
-  ## launch test
-#   ncpu = NetcdfProcessor(infile=infile, outfile=outfile, prefix='test_')
-#   ncpu.initInput(); ncpu.initOutput(); ncpu.defineOperation()
-  ncpu = NetcdfRegrid(infile=prismfile, outfile=outfile, prefix='test_')
-  ncpu.initInput()
-  dlon = dlat = 1./6.
-  lon = -142. + np.arange(int(29./dlon))*dlon # PRISM longitude: -142 to -113
-  lat = 47. + np.arange(int(25./dlat))*dlat # PRISM latitude: 47 to 72
-  ncpu.initOutput(lon=lon,lat=lat)
-  ncpu.defineOperation(interpolation='cubicspline')
-  outdata = ncpu.processDataset()
-  
-  ## show output
-  outdata = Dataset(outfile, 'r')
-  print
-  print outdata
-  
-    # display
-  import pylab as pyl
-  vardata = outdata.variables['rain']
-  for i in xrange(1):
-#     pyl.imshow(outdata[i,:,:]); pyl.colorbar(); pyl.show(block=True)
-#     pyl.imshow(np.flipud(likeData.variables['rain'][i,:,:])); pyl.colorbar(); pyl.show(block=True)
-    pyl.imshow(np.flipud(vardata[i,:,:])); pyl.colorbar(); pyl.show(block=True)
-#     pyl.imshow(np.flipud(outdata[i,:,:]-likeData.variables['rain'][i,:,:])); pyl.colorbar(); pyl.show(block=True)  
-    
-"""
-  

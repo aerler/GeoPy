@@ -8,14 +8,16 @@ This module contains meta data and access functions for the GPCC climatology and
 
 # external imports
 import netCDF4 as nc # netcdf python module
-import os
+import os # check if files are present
+import types # to add precip conversion fct. to datasets
 # internal imports
 from geodata.base import Variable
-from geodata.netcdf import DatasetNetCDF, VarNC
-from geodata.gdal import addGDALtoDataset, addGDALtoVar, GridDefinition
+from geodata.netcdf import DatasetNetCDF
+from geodata.gdal import addGDALtoDataset, GridDefinition
 from geodata.misc import DatasetError
-from geodata.nctools import add_strvar 
-from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim
+from geodata.nctools import writeNetCDF, add_strvar
+from datasets.common import days_per_month, name_of_month, data_root 
+from datasets.common import translateVarNames, loadClim, addLandMask, addLengthAndNamesOfMonth, getFileName
 from geodata.process import CentralProcessingUnit
 
 ## GPCC Meta-data
@@ -54,6 +56,13 @@ varlist = varatts.keys() # also includes coordinate fields
 rootfolder = data_root + 'GPCC/' # long-term mean folder
 
 
+def convertPrecip(dataset):
+  ''' convert GPCC precip data to SI units (mm/s) ''' 
+  dataset.precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
+  dataset.precip.units = 'kg/m^2/s'
+  return dataset      
+
+
 ## Functions to load different types of GPCC datasets 
 
 # climatology
@@ -75,6 +84,8 @@ def loadGPCC_LTM(name='GPCC', varlist=varlist, resolution='025', varatts=ltmvara
     dataset.addVariable(stations, asNC=False, copy=True)  
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
+  # add method to convert precip from per month to per second
+  dataset.convertPrecip = types.MethodType(convertPrecip, dataset)    
   # return formatted dataset
   return dataset
 
@@ -94,6 +105,8 @@ def loadGPCC_TS(name='GPCC', varlist=varlist, resolution='05', varatts=tsvaratts
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
+  # add method to convert precip from per month to per second
+  dataset.convertPrecip = types.MethodType(convertPrecip, dataset)    
   # return formatted dataset
   return dataset
 
@@ -140,52 +153,40 @@ if __name__ == '__main__':
     
     if mode == 'test_climatology':
       
+      
       # load averaged climatology file
       print('')
       dataset = loadGPCC(grid='%s_%s'%(grid,res),resolution=res,period=period)
       print(dataset)
       print('')
       print(dataset.geotransform)
-          
-    elif mode == 'convert_climatology':
       
-      from geodata.nctools import writeNetCDF
+          
+    elif mode == 'convert_climatology':      
+      
       
       # load dataset
       dataset = loadGPCC_LTM(varlist=['stations','precip'],resolution=res)
       # change meta-data
       dataset.name = 'GPCC'
       dataset.title = 'GPCC Long-term Climatology'
-      dataset.atts.resolution = res
-      
+      dataset.atts.resolution = res      
       # load data into memory
       dataset.load()
-#       newvar = dataset.time
-#       print
-#       print newvar.name, newvar.data
-#       print newvar.data_array
-#       print
 
       # convert precip data to SI units (mm/s)
-      dataset.precip *= days_per_month.reshape((12,1,1)) # convert in-place
-      dataset.precip.units = 'kg/m^2/s'
-
+      dataset.convertPrecip() # convert in-place
       # add landmask
-      tmpatts = dict(name='landmask', units='', long_name='Landmask for Climatology Fields', 
-                description='where this mask is non-zero, no data is available')
-      dataset += Variable(name='landmask', units='', axes=(dataset.lat,dataset.lon), 
-                          data=dataset.precip.getMask()[0,:,:], atts=tmpatts)
-      dataset.mask(dataset.landmask)            
-      # add names and length of months
-      dataset += Variable(name='length_of_month', units='days', axes=(dataset.time,), data=days_per_month, dtype='i4', 
-                          atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
+      addLandMask(dataset) # create landmask from precip mask
+      dataset.mask(dataset.landmask) # mask all fields using the new landmask      
+      # add length and names of month
+      addLengthAndNamesOfMonth(dataset, noleap=False) 
       
-      # write data to a different file
-      filename = avgfile%('_'+res,'')
-      print('') 
-      print(filename)
-      print('')
-      if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
+      # figure out a different filename
+      filename = getFileName(grid=res, period=period, name='GPCC', filepattern=avgfile)
+      print('\n'+filename+'\n')      
+      if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)      
+      # write data and some annotation
       ncset = writeNetCDF(dataset, avgfolder+filename, close=False)
       add_strvar(ncset,'name_of_month', name_of_month, 'time', # add names of month
                  atts=dict(name='name_of_month', units='', long_name='Name of the Month')) 
@@ -197,86 +198,40 @@ if __name__ == '__main__':
       print(dataset)
       print('')           
       
+      
     elif mode == 'average_timeseries':
       
+      
       # load source
-      if period is None: periodstr = 'Climatology' 
-      else: periodstr = '%4i-%4i'%period
-      print('\n')
-      print('   ***   Processing Resolution %s from %s   ***   '%(res,periodstr))
-      print('\n')
+      periodstr = 'Climatology' if period is None else '%4i-%4i'%period
+      print('\n\n   ***   Processing Resolution %s from %s   ***   \n\n'%(res,periodstr))
       if period is None: source = loadGPCC_LTM(varlist=['stations','precip'],resolution=res)
       else: source = loadGPCC_TS(varlist=['stations','precip'],resolution=res)
       source.load()
-#       # add landmask
-#       #print '   ===   landmask   ===   '
-#       tmp = source; source.load()
-#       tmpatts = dict(name='landmask', units='', long_name='Landmask for Climatology Fields', 
-#                 description='where this mask is non-zero, no data is available')
-#       lnd = Variable(name='landmask', units='', axes=(tmp.lat,tmp.lon), dtype='int16', 
-#                     data=tmp.precip.getMask()[0,:,:], atts=tmpatts)
-#       lnd = addGDALtoVar(lnd, projection=source.projection, geotransform=source.geotransform)
-#       tmp += lnd
       print(source)
       print('\n')
-#       newvar = source.landmask
-#       print
-#       print newvar.name #, newvar.gdal 
-#       print newvar.shape
-#       print newvar.data
-#       print
-      
             
       # prepare sink
-      grdstr = '' if grid == 'GPCC' else '_'+grid.lower()
-      prdstr = '' if period is None else '_'+periodstr
-      filename = avgfile%(grdstr,prdstr)
+      filename = getFileName(grid=grid, period=period, name='GPCC', filepattern=avgfile)
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
       atts =dict(period=periodstr, name='GPCC', title='GPCC Climatology') 
       sink = DatasetNetCDF(name='GPCC Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
       
       # initialize processing
       CPU = CentralProcessingUnit(source, sink, tmp=True)
-#       CPU = CentralProcessingUnit(source, tmp=True)
-            
+
       if period is not None:
         # determine averaging interval
         offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
         # start processing climatology
-        print('')
-        print('   +++   processing climatology   +++   ') 
         CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
-        print('\n')
-
       
-      # define new coordinates
-#       import numpy as np
-#       from geodata.base import Axis    
-#       dlon = dlat = 2.5 # resolution
-#       slon, slat, elon, elat =    -179.75, 0.75, -72.25, 85.75
-#       assert (elon-slon) % dlon == 0 
-#       lon = np.linspace(slon+dlon/2,elon-dlon/2,(elon-slon)/dlon)
-#       assert (elat-slat) % dlat == 0
-#       lat = np.linspace(slat+dlat/2,elat-dlat/2,(elat-slat)/dlat)
-#       # add new geographic coordinate axes for projected map
-#       xlon = Axis(coord=lon, atts=dict(name='lon', long_name='longitude', units='deg E'))
-#       ylat = Axis(coord=lat, atts=dict(name='lat', long_name='latitude', units='deg N'))
-
       # get NARR coordinates
       if grid == 'NARR':
-        from datasets.NARR import loadNARR_TS, projdict
-        from geodata.gdal import getProjFromDict
-        narr = loadNARR_TS()
-        x = narr.x.copy(deepcopy=True); y = narr.y.copy(deepcopy=True)
-        geot = narr.geotransform
-        proj = getProjFromDict(projdict)
+        from datasets.NARR import NARR_grid
         # reproject and resample (regrid) dataset
-        print('')
-        print('   +++   processing regidding   +++   ') 
-        CPU.Regrid(projection=proj, geotransform=geot, xlon=x, ylat=y, flush=False)
-        print('\n')
-      
-      
+        CPU.Regrid(griddef=NARR_grid, flush=False)
+            
 #       # shift longitude axis by 180 degrees  left (i.e. -180 - 180 -> 0 - 360)
 #       print('')
 #       print('   +++   processing shift longitude   +++   ') 
@@ -289,38 +244,15 @@ if __name__ == '__main__':
 #       CPU.Shift(shift=72, axis='lon', byteShift=True, flush=False)
 #       print('\n')      
 
-
       # get results
       CPU.sync(flush=True, deepcopy=True)
-#       sink = CPU.getTmp(asNC=True, filename=avgfolder+filename, atts=atts)
-      # print dataset
-#       print('')
-#       print(sink)     
-
       # convert precip data to SI units (mm/s) 
-      sink.precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
-      sink.precip.units = 'kg/m^2/s'      
-
-#       newvar = sink.stations
-#       print
-#       print newvar.name, newvar.masked 
-#       print newvar.shape, newvar.data
-#       print newvar.data_array.mean()
-#       print newvar.data_array.__class__, newvar.fillValue
-            
+      convertPrecip(sink) # convert in-place
       # add landmask
-      #print '   ===   landmask   ===   '
-      tmpatts = dict(name='landmask', units='', long_name='Landmask for Climatology Fields', 
-                description='where this mask is non-zero, no data is available')
-      sink += VarNC(sink.dataset, name='landmask', units='', axes=(sink.ylat,sink.xlon), 
-                    data=sink.precip.getMask()[0,:,:], atts=tmpatts)
-      sink.stations.mask(sink.landmask)            
-      # add names and length of months
-      sink.axisAnnotation('name_of_month', name_of_month, 'time', 
-                          atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
-      #print '   ===   month   ===   '
-      sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
-                    atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
+      addLandMask(sink) # create landmask from precip mask
+      sink.stations.mask(sink.landmask) # mask all fields using the new landmask
+      # add length and names of month
+      addLengthAndNamesOfMonth(sink, noleap=False) 
               
 #       newvar = sink.precip
 #       print

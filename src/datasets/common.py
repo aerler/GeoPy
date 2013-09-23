@@ -9,7 +9,9 @@ Some tools and data that are used by many datasets, but not much beyond that.
 # external imports
 import numpy as np
 # internal imports
-from geodata.netcdf import DatasetNetCDF
+from geodata.misc import AxisError, DatasetError
+from geodata.base import Dataset, Variable
+from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset
 
 # days per month
@@ -57,6 +59,55 @@ if hostname=='komputer':
 else:
   data_root = '/home/me/DATA/PRISM/'
 
+# convenience function to extract landmask variable from another masked variable
+def addLandMask(dataset, varname='precip', maskname='landmask', atts=None):
+  ''' Add a landmask variable with meta data from a masked variable to a dataset. '''
+  # check
+  if not isinstance(dataset,Dataset): raise TypeError
+  if dataset.hasVariable(maskname): 
+    raise DatasetError, "The Dataset '%s' already has a field called '%s'."%(dataset.name,maskname)
+  # attributes and meta data
+  if atts is None:
+    atts = default_varatts[maskname] 
+    atts['long_name'] = 'Landmask for Climatology Fields' 
+    atts['description'] = 'where this mask is non-zero, no valid data is available'
+  # axes and data
+  var = dataset.variables[varname]
+  axes = var.axes[-2:] # last two axes (i.e. map axes)
+  data = var.getMask().__getitem__((0,)*(var.ndim-2)+(slice(None),)*2)
+  if 'gdal' in dataset.__dict__ and dataset.gdal:
+    if dataset.xlon not in axes or dataset.ylat not in axes: raise AxisError
+  if not all([ax.name in ('x','y','lon','lat') for ax in axes]): raise AxisError
+  # create variable and add to dataset
+  if isinstance(dataset, DatasetNetCDF) and 'w' in dataset.mode: 
+    dataset += VarNC(dataset.dataset, axes=axes, data=data, atts=atts)
+  else: dataset += Variable(axes=axes, data=data, atts=atts)
+  # return mask variable
+  return dataset.variables[maskname]
+
+
+# annotate dataset with names and length of months (for climatology mostly)
+def addLengthAndNamesOfMonth(dataset, noleap=False, length=None, names=None):
+  ''' Function to add the names and length of month to a NetCDF dataset. '''
+  if not isinstance(dataset,Dataset): raise TypeError
+  # attributes
+  lenatts = dict(name='length_of_month', units='days',long_name='Length of Month')
+  stratts = dict(name='name_of_month', units='', long_name='Name of the Month')
+  # data
+  if length is None: # leap year or no leap year
+    if noleap: length = days_per_month_365
+    else: length = days_per_month
+  if names is None: names = name_of_month
+  # create variables
+  if isinstance(dataset, DatasetNetCDF) and 'w' in dataset.mode: 
+    dataset += VarNC(dataset.dataset, axes=(dataset.time,), data=length, atts=lenatts)
+    dataset.axisAnnotation(stratts['name'], names, 'time', atts=stratts)
+  else:
+    # N.B.: char/string arrays are currently not supported as Variables
+    dataset += Variable(axes=(dataset.time,), data=length, atts=lenatts)
+  # return length variable
+  return dataset.variables[lenatts['name']]
+
 
 # convenience function to invert variable name mappings
 def translateVarNames(varlist, varatts):
@@ -71,6 +122,25 @@ def translateVarNames(varlist, varatts):
   return varlist
 
 
+# universal function to generate file names for climatologies
+def getFileName(grid=None, period=None, name=None, filepattern=None):
+  ''' A function to generate a standardized filename for climatology files, based on grid type and period.  '''
+  if name is None: name = ''
+  # grid
+  if grid is None or grid == name: gridstr = ''
+  else: gridstr = '_%s'%grid.lowr() # only use lower case for filenames 
+  # period
+  if isinstance(period,(tuple,list)): period = '%4i-%4i'%tuple(period)  
+  if period is None or period == '': periodstr = ''
+  else: periodstr = '_%s'%period
+  # assemble filename/list
+  if filepattern is None: filepattern = name.lower() + '%s_clim%s.nc' 
+  filename = filepattern%(gridstr,periodstr)
+  # return final name
+  assert filename == filename.lower(), "By convention, climatology files only have lower-case names!"
+  return filename
+  
+  
 # universal load function that will be imported by datasets
 def loadClim(name, folder, projection=None, period=None, grid=None, varlist=None, varatts=None, filepattern=None, filelist=None):
   ''' A function to load standardized climatology datasets. '''
@@ -79,17 +149,7 @@ def loadClim(name, folder, projection=None, period=None, grid=None, varlist=None
   if varatts is None: varatts = default_varatts
   if varlist is not None: varlist = translateVarNames(varlist, varatts)
   # filelist
-  if filelist is None: 
-    # grid
-    if grid is None or grid == name: gridstr = ''
-    else: gridstr = '_%s'%grid 
-    # period
-    if isinstance(period,(tuple,list)): period = '%4i-%4i'%tuple(period)  
-    if period is None or period == '': periodstr = ''
-    else: periodstr = '_%s'%period
-    # assemble filename/list
-    if filepattern is None: filepattern = name.lower() + '%s_clim%s.nc' 
-    filelist = [filepattern%(gridstr,periodstr)] 
+  if filelist is None: filelist = [getFileName(grid=grid, period=period, name=name, filepattern=filepattern)]   
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           multifile=False, ncformat='NETCDF4')  
