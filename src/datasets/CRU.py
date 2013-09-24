@@ -17,6 +17,8 @@ from geodata.process import CentralProcessingUnit
  
 ## CRU Meta-data
 
+dataset_name = 'CRU'
+
 # CRU grid definition           
 geotransform = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)
 size = (720, 360) # (x,y) map size of CRU grid
@@ -41,15 +43,18 @@ varatts = dict(tmp = dict(name='T2', units='K', offset=273.15), # 2m average tem
 varlist = varatts.keys() # also includes coordinate fields    
 
 # variable and file lists settings
-crufolder = data_root + 'CRU/' # long-term mean folder
 nofile = ('lat','lon','time') # variables that don't have their own files
 filename = 'cru_ts3.20.1901.2011.%s.dat.nc' # file names, need to extend with %varname (original)
+
+# variable and file lists settings
+root_folder = data_root + dataset_name + '/' # long-term mean folder
+
 
 ## Functions to load different types of GPCC datasets 
 
 # Time-series (monthly)
-tsfolder = crufolder + 'Time-series 3.2/data/' # monthly subfolder
-def loadCRU_TS(name='CRU', varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
+tsfolder = root_folder + 'Time-series 3.2/data/' # monthly subfolder
+def loadCRU_TS(name=dataset_name, varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
   ''' Get a properly formatted  CRU dataset with monthly mean time-series. '''
   # translate varlist
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
@@ -66,16 +71,29 @@ def loadCRU_TS(name='CRU', varlist=varlist, varatts=varatts, filelist=None, fold
   return dataset
 
 # pre-processed climatology files (varatts etc. should not be necessary)
-avgfolder = crufolder + 'cruavg/' 
+avgfolder = root_folder + 'cruavg/' 
 avgfile = 'cru%s_clim%s.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
-def loadCRU(name='CRU', period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
+def loadCRU(name=dataset_name, period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly CRU climatology as a DatasetNetCDF. '''
   # load standardized climatology dataset with CRU-specific parameters
   dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
                      varatts=varatts, filepattern=avgfile, filelist=filelist)
   # return formatted dataset
   return dataset
+
+
+## Dataset API
+
+dataset_name # dataset name
+root_folder # root folder of the dataset
+file_pattern = avgfile # filename pattern
+data_folder = avgfolder # folder for user data
+grid_def = {0.5:CRU_grid} # standardized grid dictionary, addressed by grid resolution
+# functions to access specific datasets
+loadLongTermMean = None # climatology provided by publisher
+loadTimeSeries = loadCRU_TS # time-series data
+loadClimatology = loadCRU # pre-processed, standardized climatology
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':

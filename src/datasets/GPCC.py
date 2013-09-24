@@ -22,6 +22,8 @@ from geodata.process import CentralProcessingUnit
 
 ## GPCC Meta-data
 
+dataset_name = 'GPCC'
+
 # GPCC grid definition           
 geotransform_025 = (-180.0, 0.25, 0.0, -90.0, 0.0, 0.25)
 size_025 = (1440,720) # (x,y) map size
@@ -33,10 +35,11 @@ geotransform_25 = (-180.0, 2.5, 0.0, -90.0, 0.0, 2.5)
 size_25 = (144,72) # (x,y) map size
 
 # make GridDefinition instance
-GPCC_025_grid = GridDefinition(projection=None, geotransform=geotransform_025, size=size_025)
-GPCC_05_grid = GridDefinition(projection=None, geotransform=geotransform_05, size=size_05)
-GPCC_10_grid = GridDefinition(projection=None, geotransform=geotransform_10, size=size_10)
-GPCC_25_grid = GridDefinition(projection=None, geotransform=geotransform_25, size=size_25)
+GPCC_025_grid = GridDefinition(name='GPCC_025',projection=None, geotransform=geotransform_025, size=size_025)
+GPCC_05_grid = GridDefinition(name='GPCC_05',projection=None, geotransform=geotransform_05, size=size_05)
+GPCC_10_grid = GridDefinition(name='GPCC_10',projection=None, geotransform=geotransform_10, size=size_10)
+GPCC_25_grid = GridDefinition(name='GPCC_25',projection=None, geotransform=geotransform_25, size=size_25)
+
 
 # variable attributes and name
 varatts = dict(p    = dict(name='precip', units='mm/month'), # total precipitation rate
@@ -53,7 +56,7 @@ tsvaratts = dict(time=dict(name='time', units='days', offset=-28854), **varatts)
 varlist = varatts.keys() # also includes coordinate fields    
 
 # variable and file lists settings
-rootfolder = data_root + 'GPCC/' # long-term mean folder
+root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 
 def convertPrecip(precip):
@@ -67,8 +70,8 @@ def convertPrecip(precip):
 ## Functions to load different types of GPCC datasets 
 
 # climatology
-ltmfolder = rootfolder + 'climatology/' # climatology subfolder
-def loadGPCC_LTM(name='GPCC', varlist=varlist, resolution='025', varatts=ltmvaratts, filelist=None, folder=ltmfolder):
+ltmfolder = root_folder + 'climatology/' # climatology subfolder
+def loadGPCC_LTM(name=dataset_name, varlist=varlist, resolution='025', varatts=ltmvaratts, filelist=None, folder=ltmfolder):
   ''' Get a properly formatted dataset the monthly accumulated GPCC precipitation climatology. '''
   # prepare input
   if resolution not in ('025','05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
@@ -91,8 +94,8 @@ def loadGPCC_LTM(name='GPCC', varlist=varlist, resolution='025', varatts=ltmvara
   return dataset
 
 # time-series
-tsfolder = rootfolder + 'full_data_1900-2010/' # climatology subfolder
-def loadGPCC_TS(name='GPCC', varlist=varlist, resolution='25', varatts=tsvaratts, filelist=None, folder=tsfolder):
+tsfolder = root_folder + 'full_data_1900-2010/' # climatology subfolder
+def loadGPCC_TS(name=dataset_name, varlist=varlist, resolution='25', varatts=tsvaratts, filelist=None, folder=tsfolder):
   ''' Get a properly formatted dataset with the monthly GPCC time-series. '''
   # prepare input  
   if resolution not in ('05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
@@ -112,10 +115,10 @@ def loadGPCC_TS(name='GPCC', varlist=varlist, resolution='25', varatts=tsvaratts
   return dataset
 
 # pre-processed climatology files (varatts etc. should not be necessary)
-avgfolder = rootfolder + 'gpccavg/' 
+avgfolder = root_folder + 'gpccavg/' 
 avgfile = 'gpcc%s_clim%s.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
-def loadGPCC(name='GPCC', period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
+def loadGPCC(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly GPCC climatology as a DatasetNetCDF. '''
   # prepare input
   if grid is not None and grid[0:5].lower() == 'gpcc_': 
@@ -136,6 +139,20 @@ def loadGPCC(name='GPCC', period=None, grid=None, resolution=None, varlist=None,
                      varatts=varatts, filepattern=avgfile, filelist=filelist)
   # return formatted dataset
   return dataset
+
+
+## Dataset API
+
+dataset_name # dataset name
+root_folder # root folder of the dataset
+file_pattern = avgfile # filename pattern
+data_folder = avgfolder # folder for user data
+grid_def = {0.25:GPCC_025_grid, 0.5:GPCC_05_grid, 1.0:GPCC_10_grid, 2.5:GPCC_25_grid}
+# functions to access specific datasets
+loadLongTermMean = loadGPCC_LTM # climatology provided by publisher
+loadTimeSeries = loadGPCC_TS # time-series data
+loadClimatology = loadGPCC # pre-processed, standardized climatology
+
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':

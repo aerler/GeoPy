@@ -18,6 +18,8 @@ from geodata.gdal import GridDefinition
 
 ## PRISM Meta-data
 
+dataset_name = 'PRISM'
+
 # PRISM grid definition
 dlat = dlon = 1./24. #  0.041666666667
 dlat2 = dlon2 = 1./48. #  0.02083333333331
@@ -47,16 +49,16 @@ varatts = dict(T2 = dict(name='T2', units='K', atts=dict(long_name='Average 2m T
 varlist = varatts.keys() # also includes coordinate fields    
 
 # variable and file lists settings
-prismfolder = data_root + 'PRISM/' # long-term mean folder
+root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 
 ## Functions that provide access to well-formatted PRISM NetCDF files
 
 # pre-processed climatology files (varatts etc. should not be necessary)
 avgfile = 'prism%s_clim%s.nc' # formatted NetCDF file
-avgfolder = prismfolder + 'prismavg/' # prefix
+avgfolder = root_folder + 'prismavg/' # prefix
 # function to load these files...
-def loadPRISM(name='PRISM', period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
+def loadPRISM(name=dataset_name, period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly PRISM climatology as a DatasetNetCDF. '''
   # only the climatology is available
   if period is not None: raise DatasetError, 'Only the full climatology is currently available.'
@@ -67,6 +69,18 @@ def loadPRISM(name='PRISM', period=None, grid=None, varlist=None, varatts=None, 
   return dataset
 
 
+## Dataset API
+
+dataset_name # dataset name
+root_folder # root folder of the dataset
+file_pattern = avgfile # filename pattern
+data_folder = avgfolder # folder for user data
+grid_def = {0.04:PRISM_grid} # standardized grid dictionary, addressed by grid resolution
+# functions to access specific datasets
+loadLongTermMean = None # climatology provided by publisher
+loadTimeSeries = None # time-series data
+loadClimatology = loadPRISM # pre-processed, standardized climatology
+
 ## Functions that handle access to PRISM ASCII files
 
 # loads data from original ASCII files and returns numpy arrays
@@ -76,7 +90,7 @@ def loadASCII(var, fileformat='BCY_%s.%02ia', arrayshape=(601,697)):
   from numpy.ma import zeros
   from numpy import genfromtxt, flipud
   # definitions
-  datadir = prismfolder + 'Climatology/ASCII/' # data folder   
+  datadir = root_folder + 'Climatology/ASCII/' # data folder   
   ntime = len(days_per_month) # number of month
   # allocate space
   data = zeros((ntime,)+arrayshape) # time = ntime, (x, y) = arrayshape  

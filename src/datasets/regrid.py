@@ -18,22 +18,21 @@ if __name__ == '__main__':
   
   # datasets to process
   datasets = ['NARR','CFSR','GPCC','CRU','PRISM']
-  datasets = ['PRISM']
+  datasets = ['CRU']
   # grid to project onto
-  grid = 'NARR'
+  grid = 'NARR'  
   # period for climatology
   period = (1979,1981)
   
-  # load relevant grid definition
+  # load target grid definition
   grid_def = import_module(grid[0:4]).__dict__[grid+'_grid']
   print grid_def
   
+  # loop over datasets
   for dataset in datasets:
     
     # import dataset routines
-    ds = import_module(dataset)
-    if dataset == 'PRISM': loadDataset = ds.__dict__['load%s'%dataset]
-    else: loadDataset = ds.__dict__['load%s_TS'%dataset] # function that loads the dataset
+    ds = import_module(dataset)    
 
     periodstr = '%4i-%4i'%period
     print('\n')
@@ -42,7 +41,7 @@ if __name__ == '__main__':
     print('\n')        
     
     # load source
-    source = loadDataset() # varlist=['datamask','T2']
+    source = ds.loadClimatology(period=period) # load pre-processed climatology
     # source.load() # not really necessary
     print(source)
     print('\n')
@@ -56,11 +55,11 @@ if __name__ == '__main__':
     # initialize processing
     CPU = CentralProcessingUnit(source, sink, tmp=True)
 
-    if period is not None and dataset != 'PRISM':
-      # determine averaging interval
-      offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
-      # start processing climatology
-      CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
+#     if period is not None and dataset != 'PRISM':
+#       # determine averaging interval
+#       offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
+#       # start processing climatology
+#       CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
     
     # get NARR coordinates
     if grid != dataset:
@@ -74,10 +73,11 @@ if __name__ == '__main__':
       # convert precip data to SI units (mm/s) 
       ds.__dict__['convertPrecip'](sink.precip) # convert in-place
     # add landmask
-    addLandMask(sink) # create landmask from precip mask
-    sink.mask(sink.landmask) # mask all fields using the new landmask
+    if not sink.hasVariable('landmask'): addLandMask(sink) # create landmask from precip mask
+    linvert = True if dataset == 'CFSR' else False
+    sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=linvert, merge=False) # mask all fields using the new landmask
     # add length and names of month
-    if dataset != 'PRISM': addLengthAndNamesOfMonth(sink, noleap=False) 
+    if not sink.hasVariable('length_of_month'): addLengthAndNamesOfMonth(sink, noleap=False) 
     
     # close...
     sink.sync()

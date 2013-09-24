@@ -20,6 +20,8 @@ from geodata.process import CentralProcessingUnit
 
 ## NARR Meta-data
 
+dataset_name = 'NARR'
+
 # NARR projection
 projdict = dict(proj  = 'lcc', # Lambert Conformal Conic  
                 lat_1 =   50., # Latitude of first standard parallel
@@ -59,16 +61,17 @@ ltmvarlist = varatts.keys() # also includes coordinate fields
 tsvarlist = ['air', 'prate', 'lon', 'lat'] # 'air' is actually 2m temperature...
 
 # variable and file lists settings
-narrfolder = data_root + 'NARR/' # root folder
 nofile = ('lat','lon','x','y','time') # variables that don't have their own files
 special = dict(air='air.2m') # some variables need special treatment
 
+# variable and file lists settings
+root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 ## Functions to load different types of NARR datasets 
 
 # Climatology (LTM - Long Term Mean)
-ltmfolder = narrfolder + 'LTM/' # LTM subfolder
-def loadNARR_LTM(name='NARR', varlist=ltmvarlist, interval='monthly', varatts=varatts, filelist=None, folder=ltmfolder):
+ltmfolder = root_folder + 'LTM/' # LTM subfolder
+def loadNARR_LTM(name=dataset_name, varlist=ltmvarlist, interval='monthly', varatts=varatts, filelist=None, folder=ltmfolder):
   ''' Get a properly formatted dataset of daily or monthly NARR climatologies (LTM). '''
   # prepare input
   if interval == 'monthly': 
@@ -92,8 +95,8 @@ def loadNARR_LTM(name='NARR', varlist=ltmvarlist, interval='monthly', varatts=va
   return dataset
 
 # Time-series (monthly)
-tsfolder = narrfolder + 'Monthly/' # monthly subfolder
-def loadNARR_TS(name='NARR', varlist=tsvarlist, varatts=varatts, filelist=None, folder=tsfolder):
+tsfolder = root_folder + 'Monthly/' # monthly subfolder
+def loadNARR_TS(name=dataset_name, varlist=tsvarlist, varatts=varatts, filelist=None, folder=tsfolder):
   ''' Get a properly formatted NARR dataset with monthly mean time-series. '''
   # prepare input  
   pfx = '.mon.mean.nc'
@@ -111,16 +114,29 @@ def loadNARR_TS(name='NARR', varlist=tsvarlist, varatts=varatts, filelist=None, 
   return dataset
 
 # pre-processed climatology files (varatts etc. should not be necessary)
-avgfolder = narrfolder + 'narravg/' 
+avgfolder = root_folder + 'narravg/' 
 avgfile = 'narr%s_clim%s.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
-def loadNARR(name='NARR', period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
+def loadNARR(name=dataset_name, period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly NARR climatology as a DatasetNetCDF. '''
   # load standardized climatology dataset with NARR-specific parameters
   dataset = loadClim(name=name, folder=folder, projection=projection, period=period, grid=grid, varlist=varlist, 
                      varatts=varatts, filepattern=avgfile, filelist=filelist)
   # return formatted dataset
   return dataset
+
+
+## Dataset API
+
+dataset_name # dataset name
+root_folder # root folder of the dataset
+file_pattern = avgfile # filename pattern
+data_folder = avgfolder # folder for user data
+grid_def = {0.41:NARR_grid} # approximate NARR grid resolution at 45 degrees latitude 
+# functions to access specific datasets
+loadLongTermMean = loadNARR_LTM # climatology provided by publisher
+loadTimeSeries = loadNARR_TS # time-series data
+loadClimatology = loadNARR # pre-processed, standardized climatology
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':

@@ -18,6 +18,8 @@ from geodata.process import CentralProcessingUnit
 
 ## CRU Meta-data
 
+dataset_name = 'CFSR'
+
 # CFSR grid definition           
 geotransform_03 = (-180.15625, 0.3125, 0.0, 89.915802001953125, 0.0, -0.30960083)
 size_03 = (1152,576) # (x,y) map size
@@ -25,9 +27,8 @@ geotransform_05 = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)
 size_05 = (720,360) # (x,y) map size
 
 # make GridDefinition instance
-CFSR_033_grid = GridDefinition(projection=None, geotransform=geotransform_03, size=size_03)
+CFSR_031_grid = GridDefinition(projection=None, geotransform=geotransform_03, size=size_03)
 CFSR_05_grid = GridDefinition(projection=None, geotransform=geotransform_05, size=size_05)
-
 
 # variable attributes and name
 varatts = dict(TMP_L103_Avg = dict(name='T2', units='K'), # 2m average temperature
@@ -48,8 +49,6 @@ varatts = dict(TMP_L103_Avg = dict(name='T2', units='K'), # 2m average temperatu
                lat  = dict(name='lat', units='deg N')) # geographic latitude field
 # N.B.: the time-series begins in 1979 (time=0), so no offset is necessary
 
-# variable and file lists settings
-cfsrfolder = data_root + 'CFSR/' # long-term mean folder
 nofile = ('lat','lon','time') # variables that don't have their own files
 # file names by variable
 hiresfiles = dict(TMP_L103_Avg='TMP.2m', TMP_L1='TMP.SFC', PRATE_L1='PRATE.SFC', PRES_L1='PRES.SFC',
@@ -66,11 +65,14 @@ lowresstatic = {key:'pgbh06.gdas.{0:s}.grb2.nc'.format(value) for key,value in l
 varlist_hires = hiresfiles.keys() + hiresstatic.keys() + list(nofile) # hires + coordinates    
 varlist_lowres = lowresfiles.keys() + lowresstatic.keys() + list(nofile) # hires + coordinates
 
+# variable and file lists settings
+root_folder = data_root + dataset_name + '/' # long-term mean folder
+
 
 ## Functions to load different types of CFSR datasets 
 
-tsfolder = cfsrfolder + 'Monthly/'
-def loadCFSR_TS(name='CFSR', varlist=None, varatts=varatts, resolution='hires', filelist=None, folder=tsfolder):
+tsfolder = root_folder + 'Monthly/'
+def loadCFSR_TS(name=dataset_name, varlist=None, varatts=varatts, resolution='hires', filelist=None, folder=tsfolder):
   ''' Get a properly formatted CFSR dataset with monthly mean time-series. '''
   # translate varlist
   if varlist is None:
@@ -109,10 +111,10 @@ def loadCFSR_TS(name='CFSR', varlist=None, varatts=varatts, resolution='hires', 
 
 
 # pre-processed climatology files (varatts etc. should not be necessary)
-avgfolder = cfsrfolder + 'cfsravg/' 
+avgfolder = root_folder + 'cfsravg/' 
 avgfile = 'cfsr%s_clim%s.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
-def loadCFSR(name='CFSR', period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
+def loadCFSR(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly CFSR climatology as a DatasetNetCDF. '''
   # prepare input
   if grid is not None and grid[0:5].lower() == 'cfsr_': 
@@ -132,6 +134,19 @@ def loadCFSR(name='CFSR', period=None, grid=None, resolution=None, varlist=None,
                      varatts=varatts, filepattern=avgfile, filelist=filelist)
   # return formatted dataset
   return dataset
+
+
+## Dataset API
+
+dataset_name # dataset name
+root_folder # root folder of the dataset
+file_pattern = avgfile # filename pattern
+data_folder = avgfolder # folder for user data
+grid_def = {0.31:CFSR_031_grid, 0.5:CFSR_05_grid}  # standardized grid dictionary, addressed by grid resolution
+# functions to access specific datasets
+loadLongTermMean = None # climatology provided by publisher
+loadTimeSeries = loadCFSR_TS # time-series data
+loadClimatology = loadCFSR # pre-processed, standardized climatology
 
 
 ## (ab)use main execution for quick test
