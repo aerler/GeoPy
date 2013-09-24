@@ -120,6 +120,13 @@ def isEqual(left, right, eps=None, masked_equal=True):
   else: raise TypeError
 
 
+def printList(iterable):
+  ''' Small function to generate a sting representation of a list of numbers. '''
+  string = '('
+  for item in iterable: string += '{0:s},'.format(str(item))
+  string += ')'
+  return string
+
 # import definitions from a script into global namespace
 def loadGlobals(filename, warning=True):
   '''This method imports variables from a file into the global namespace; a common application is, to load

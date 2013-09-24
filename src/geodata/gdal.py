@@ -23,7 +23,7 @@ gdal.UseExceptions()
 
 # import all base functionality from PyGeoDat
 from geodata.base import Variable, Axis, Dataset
-from geodata.misc import isEqual, isInt, isFloat, isNumber, DataError, AxisError, GDALError
+from geodata.misc import printList, isEqual, isInt, isFloat, isNumber, DataError, AxisError, GDALError
 
 
 # # utility functions and classes to handle projection information and related meta data
@@ -33,14 +33,15 @@ class GridDefinition(object):
     A class that encapsulates all necessary information to fully define a grid.
     That includes GDAL spatial references and map-Axis instances with coordinates.
   '''
-#   projection = None  # GDAL SpatialReference instance
-#   isProjected = None  # logical; indicates whether the coordiante system is projected or geographic 
-#   xlon = None  # Axis instance; the west-east axis
-#   ylat = None  # Axis instance; the south-north axis
-#   geotransform = None  # 6-element vector defining a GDAL GeoTransform
-#   size = None  # tuple, defining the size of the x/lon and y/lat axes
+  name = '' # a name for the grid...
+  projection = None  # GDAL SpatialReference instance
+  isProjected = None  # logical; indicates whether the coordiante system is projected or geographic 
+  xlon = None  # Axis instance; the west-east axis
+  ylat = None  # Axis instance; the south-north axis
+  geotransform = None  # 6-element vector defining a GDAL GeoTransform
+  size = None  # tuple, defining the size of the x/lon and y/lat axes
       
-  def __init__(self, projection=None, geotransform=None, size=None, xlon=None, ylat=None):
+  def __init__(self, name='', projection=None, geotransform=None, size=None, xlon=None, ylat=None):
     ''' This class can be initialized in several ways. Some form of projections has to be defined (using a 
         GDAL SpatialReference, WKT, EPSG code, or Proj4 conventions), or a simple geographic (lat/lon) 
         coordinate system will be assumed. 
@@ -48,6 +49,7 @@ class GridDefinition(object):
         horizontal dimensions (and standard axes will be constructed from this information), or the horizontal 
         Axis instances can be specified directly (and the map size and geotransform will be inferred from the 
         axes). '''
+    self.name = name # just a name...
     # check projection (default is WSG84)
     if isinstance(projection, osr.SpatialReference):
       gdalsr = projection # use as is
@@ -85,13 +87,23 @@ class GridDefinition(object):
     self.geotransform = geotransform
     self.size = size
     
+  def __str__(self):
+    ''' A string representation of the grid definition '''
+    string = '{0:s}   {1:s}\n'.format(self.__class__.__name__,self.name)
+    string += 'Size: {0:s}\n'.format(printList(self.size))
+    string += 'GeoTransform: {0:s}\n'.format(printList(self.geotransform))
+    string += '  {0:s}\n'.format(self.xlon.prettyPrint(short=True))
+    string += '  {0:s}\n'.format(self.ylat.prettyPrint(short=True))
+    string += 'Projection: {0:s}\n'.format(self.projection.ExportToWkt())
+    return string
+    
     
 def getGridDef(var):
   ''' Get a GridDefinition instance from a GDAL enabled Variable of Dataset. '''
   if 'gdal' not in var.__dict__: raise GDALError
   # instantiate GridDefinition
-  return GridDefinition(projection=var.projection, geotransform=var.geotransform, size=var.mapSize, 
-                        xlon=var.xlon, ylat=var.ylat)
+  return GridDefinition(name=var.name+'_grid', projection=var.projection, geotransform=var.geotransform, 
+                        size=var.mapSize, xlon=var.xlon, ylat=var.ylat)
 
 
 # determine GDAL interpolation
@@ -296,19 +308,6 @@ def addGDALtoVar(var, projection=None, geotransform=None):
     def getGDAL(self, load=True, allocate=True, fillValue=None):
       ''' Method that returns a gdal dataset, ready for use with GDAL routines. '''
       if self.gdal and self.projection is not None:
-        # determine GDAL data type
-        if self.dtype == 'float32': gdt = gdal.GDT_Float32
-        elif self.dtype == 'float64': gdt = gdal.GDT_Float64
-        elif self.dtype == 'int16': gdt = gdal.GDT_Int16
-        elif self.dtype == 'int32': gdt = gdal.GDT_Int32
-        else: raise TypeError, 'Cannot translate numpy data type into GDAL data type!'        
-        # create GDAL dataset 
-        xe = len(self.xlon); ye = len(self.ylat) 
-        dataset = ramdrv.Create(self.name, int(xe), int(ye), int(self.bands), int(gdt)) 
-        # N.B.: for some reason a dataset is always initialized with 6 bands
-        # set projection parameters
-        dataset.SetGeoTransform(self.geotransform)  # does the order matter?
-        dataset.SetProjection(self.projection.ExportToWkt())  # is .ExportToWkt() necessary?        
         if load:
           if not self.data: self.load()
           if not self.data: raise DataError, 'Need data in Variable instance in order to load data into GDAL dataset!'
@@ -318,6 +317,26 @@ def addGDALtoVar(var, projection=None, geotransform=None):
           if fillValue is None and self.fillValue is not None: fillValue = self.fillValue  # use default 
           if self.fillValue is None: fillValue = ma.default_fill_value(self.dtype)
           data = np.zeros((self.bands,) + self.mapSize, dtype=self.dtype) + fillValue
+        # determine GDAL data type        
+        if self.dtype == 'float32': gdt = gdal.GDT_Float32
+        elif self.dtype == 'float64': gdt = gdal.GDT_Float64
+        elif self.dtype == 'int16': gdt = gdal.GDT_Int16
+        elif self.dtype == 'int32': gdt = gdal.GDT_Int32
+        elif np.issubdtype(self.dtype,(float,np.inexact)):
+          data = data.astype('f4'); gdt = gdal.GDT_Float32          
+        elif np.issubdtype(self.dtype,(int,np.integer)):
+          data = data.astype('i2'); gdt = gdal.GDT_Int16  
+        elif np.issubdtype(self.dtype,(bool,np.bool)):
+          data = data.astype('i2'); gdt = gdal.GDT_Int16  
+        else: raise TypeError, 'Cannot translate numpy data type into GDAL data type!'
+        #print self.name, self.dtype, data.dtype
+        # create GDAL dataset 
+        xe = len(self.xlon); ye = len(self.ylat) 
+        dataset = ramdrv.Create(self.name, int(xe), int(ye), int(self.bands), int(gdt)) 
+        # N.B.: for some reason a dataset is always initialized with 6 bands
+        # set projection parameters
+        dataset.SetGeoTransform(self.geotransform)  # does the order matter?
+        dataset.SetProjection(self.projection.ExportToWkt())  # is .ExportToWkt() necessary?        
         if load or allocate: 
           # assign data
           for i in xrange(self.bands):
@@ -337,6 +356,8 @@ def addGDALtoVar(var, projection=None, geotransform=None):
         # get data field
         if self.bands == 1: data = dataset.ReadAsArray()[:, :]  # for 2D fields
         else: data = dataset.ReadAsArray()[0:self.bands, :, :]  # ReadAsArray(0,0,xe,ye)
+        # convert data, if necessary
+        if self.dtype is not data.dtype: data = data.astype(self.dtype)          
 #         print data.__class__
 #         print self.masked, self.fillValue
         # adjust shape (unravel bands)

@@ -194,14 +194,6 @@ if __name__ == '__main__':
     
     # sync temporary storage with output
     CPU.sync(flush=True)
-    
-#     newvar = sink.precip
-#     print
-#     print newvar.name, newvar.masked 
-#     print newvar.shape, newvar.data
-#     print newvar.data_array.mean()
-#     print newvar.data_array.__class__
-
 
 #     # make new masks
 #     sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)

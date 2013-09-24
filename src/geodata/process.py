@@ -214,7 +214,7 @@ class CentralProcessingUnit(object):
       axes[var.axisIndex(var.ylat)] = ylat
       axes[var.axisIndex(var.xlon)] = xlon
       # create new Variable
-      newvar = var.copy(axes=axes, data=None, projection=self.target.projection) # and, of course, load new data
+      newvar = var.copy(axes=axes, data=None, dtype=var.dtype, projection=self.target.projection) # and, of course, load new data
       # prepare regridding
       # get GDAL dataset instances
       srcdata = var.getGDAL(load=True)

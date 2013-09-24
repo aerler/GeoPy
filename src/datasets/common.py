@@ -58,6 +58,7 @@ if hostname=='komputer':
 #  root = '/media/tmp/' # RAM disk for development
 else:
   data_root = '/home/me/DATA/PRISM/'
+  
 
 # convenience function to extract landmask variable from another masked variable
 def addLandMask(dataset, varname='precip', maskname='landmask', atts=None):
@@ -69,8 +70,8 @@ def addLandMask(dataset, varname='precip', maskname='landmask', atts=None):
   # attributes and meta data
   if atts is None:
     atts = default_varatts[maskname] 
-    atts['long_name'] = 'Landmask for Climatology Fields' 
-    atts['description'] = 'where this mask is non-zero, no valid data is available'
+    atts['long_name'] = 'Geographic Mask for Climatology Fields' 
+    atts['description'] = 'data are valid where this mask is zero'
   # axes and data
   var = dataset.variables[varname]
   axes = var.axes[-2:] # last two axes (i.e. map axes)
@@ -128,7 +129,7 @@ def getFileName(grid=None, period=None, name=None, filepattern=None):
   if name is None: name = ''
   # grid
   if grid is None or grid == name: gridstr = ''
-  else: gridstr = '_%s'%grid.lowr() # only use lower case for filenames 
+  else: gridstr = '_%s'%grid.lower() # only use lower case for filenames 
   # period
   if isinstance(period,(tuple,list)): period = '%4i-%4i'%tuple(period)  
   if period is None or period == '': periodstr = ''

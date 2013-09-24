@@ -56,11 +56,12 @@ varlist = varatts.keys() # also includes coordinate fields
 rootfolder = data_root + 'GPCC/' # long-term mean folder
 
 
-def convertPrecip(dataset):
-  ''' convert GPCC precip data to SI units (mm/s) ''' 
-  dataset.precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
-  dataset.precip.units = 'kg/m^2/s'
-  return dataset      
+def convertPrecip(precip):
+  ''' convert GPCC precip data to SI units (mm/s) '''
+  if precip.units == 'kg/m^2/month' or precip.units == 'mm/month':
+    precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
+    precip.units = 'kg/m^2/s'
+  return precip      
 
 
 ## Functions to load different types of GPCC datasets 
@@ -91,7 +92,7 @@ def loadGPCC_LTM(name='GPCC', varlist=varlist, resolution='025', varatts=ltmvara
 
 # time-series
 tsfolder = rootfolder + 'full_data_1900-2010/' # climatology subfolder
-def loadGPCC_TS(name='GPCC', varlist=varlist, resolution='05', varatts=tsvaratts, filelist=None, folder=tsfolder):
+def loadGPCC_TS(name='GPCC', varlist=varlist, resolution='25', varatts=tsvaratts, filelist=None, folder=tsfolder):
   ''' Get a properly formatted dataset with the monthly GPCC time-series. '''
   # prepare input  
   if resolution not in ('05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
