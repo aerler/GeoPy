@@ -307,12 +307,18 @@ def addGDALtoVar(var, projection=None, geotransform=None):
     # define GDAL-related 'class methods'  
     def getGDAL(self, load=True, allocate=True, fillValue=None):
       ''' Method that returns a gdal dataset, ready for use with GDAL routines. '''
+      lperi = False
       if self.gdal and self.projection is not None:
         if load:
+          lperi = False
           if not self.data: self.load()
           if not self.data: raise DataError, 'Need data in Variable instance in order to load data into GDAL dataset!'
           data = self.getArray(unmask=True)  # get unmasked data
           data = data.reshape(self.bands, self.mapSize[0], self.mapSize[1])  # reshape to fit bands
+          if lperi: 
+            tmp = np.zeros((self.bands, self.mapSize[0], self.mapSize[1]+1))
+            tmp[:,:,0:-1] = data; tmp[:,:,-1] = data[:,:,0]
+            data = tmp
         elif allocate: 
           if fillValue is None and self.fillValue is not None: fillValue = self.fillValue  # use default 
           if self.fillValue is None: fillValue = ma.default_fill_value(self.dtype)
@@ -332,7 +338,8 @@ def addGDALtoVar(var, projection=None, geotransform=None):
         #print self.name, self.dtype, data.dtype
         # create GDAL dataset 
         xe = len(self.xlon); ye = len(self.ylat) 
-        dataset = ramdrv.Create(self.name, int(xe), int(ye), int(self.bands), int(gdt)) 
+        if lperi: dataset = ramdrv.Create(self.name, int(xe)+1, int(ye), int(self.bands), int(gdt))
+        else: dataset = ramdrv.Create(self.name, int(xe), int(ye), int(self.bands), int(gdt)) 
         # N.B.: for some reason a dataset is always initialized with 6 bands
         # set projection parameters
         dataset.SetGeoTransform(self.geotransform)  # does the order matter?

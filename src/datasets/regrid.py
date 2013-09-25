@@ -18,7 +18,7 @@ if __name__ == '__main__':
   
   # datasets to process
   datasets = ['NARR','CFSR','GPCC','CRU','PRISM']
-  datasets = ['CRU']
+  datasets = ['CFSR']
   # grid to project onto
   grid = 'NARR'  
   # period for climatology
@@ -72,10 +72,10 @@ if __name__ == '__main__':
     if 'convertPrecip' in ds.__dict__:
       # convert precip data to SI units (mm/s) 
       ds.__dict__['convertPrecip'](sink.precip) # convert in-place
-    # add landmask
-    if not sink.hasVariable('landmask'): addLandMask(sink) # create landmask from precip mask
-    linvert = True if dataset == 'CFSR' else False
-    sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=linvert, merge=False) # mask all fields using the new landmask
+#     # add landmask
+#     if not sink.hasVariable('landmask'): addLandMask(sink) # create landmask from precip mask
+#     linvert = True if dataset == 'CFSR' else False
+#     sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=linvert, merge=False) # mask all fields using the new landmask
     # add length and names of month
     if not sink.hasVariable('length_of_month'): addLengthAndNamesOfMonth(sink, noleap=False) 
     

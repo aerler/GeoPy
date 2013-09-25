@@ -33,7 +33,7 @@ llclon = -142. # -142.020833333333
 geotransform = (llclon-dlon2, dlon, 0.0, llclat-dlat2, 0.0, dlat)
 size = (nlon,nlat) # (x,y) map size of PRISM grid
 # make GridDefinition instance
-PRISM_grid = GridDefinition(projection=None, geotransform=geotransform, size=size)
+PRISM_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotransform, size=size)
 
 # variable attributes and name (basically no alterations necessary...)
 varatts = dict(T2 = dict(name='T2', units='K', atts=dict(long_name='Average 2m Temperature')), # 2m average temperature
@@ -76,6 +76,7 @@ root_folder # root folder of the dataset
 file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
 grid_def = {0.04:PRISM_grid} # standardized grid dictionary, addressed by grid resolution
+grid_tag = {0.04:''} # no special name, since there is only one...
 # functions to access specific datasets
 loadLongTermMean = None # climatology provided by publisher
 loadTimeSeries = None # time-series data

@@ -36,7 +36,7 @@ projection = getProjFromDict(projdict)
 geotransform = (-5648873.5, 32463.0, 0.0, -4628776.5, 0.0, 32463.0)
 size = (349, 277) # (x,y) map size of NARR grid
 # make GridDefinition instance
-NARR_grid = GridDefinition(projection=projdict, geotransform=geotransform, size=size)
+NARR_grid = GridDefinition(name=dataset_name, projection=projdict, geotransform=geotransform, size=size)
 
 # variable attributes and name
 varatts = dict(air   = dict(name='T2', units='K'), # 2m Temperature
@@ -132,7 +132,8 @@ dataset_name # dataset name
 root_folder # root folder of the dataset
 file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
-grid_def = {0.41:NARR_grid} # approximate NARR grid resolution at 45 degrees latitude 
+grid_def = {0.41:NARR_grid} # approximate NARR grid resolution at 45 degrees latitude
+grid_tag = {0.41:''} # no special name, since there is only one... 
 # functions to access specific datasets
 loadLongTermMean = loadNARR_LTM # climatology provided by publisher
 loadTimeSeries = loadNARR_TS # time-series data

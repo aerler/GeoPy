@@ -21,14 +21,14 @@ from geodata.process import CentralProcessingUnit
 dataset_name = 'CFSR'
 
 # CFSR grid definition           
-geotransform_03 = (-180.15625, 0.3125, 0.0, 89.915802001953125, 0.0, -0.30960083)
-size_03 = (1152,576) # (x,y) map size
+geotransform_031 = (-180.15625, 0.3125, 0.0, 89.915802001953125, 0.0, -0.30960083)
+size_031 = (1152,576) # (x,y) map size
 geotransform_05 = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)
 size_05 = (720,360) # (x,y) map size
 
 # make GridDefinition instance
-CFSR_031_grid = GridDefinition(projection=None, geotransform=geotransform_03, size=size_03)
-CFSR_05_grid = GridDefinition(projection=None, geotransform=geotransform_05, size=size_05)
+CFSR_031_grid = GridDefinition(name='CFSR_031', projection=None, geotransform=geotransform_031, size=size_031)
+CFSR_05_grid = GridDefinition(name='CFSR_05', projection=None, geotransform=geotransform_05, size=size_05)
 
 # variable attributes and name
 varatts = dict(TMP_L103_Avg = dict(name='T2', units='K'), # 2m average temperature
@@ -143,6 +143,7 @@ root_folder # root folder of the dataset
 file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
 grid_def = {0.31:CFSR_031_grid, 0.5:CFSR_05_grid}  # standardized grid dictionary, addressed by grid resolution
+grid_tag = {0.31:'031', 0.5:'05'} # tag used in climatology files
 # functions to access specific datasets
 loadLongTermMean = None # climatology provided by publisher
 loadTimeSeries = loadCFSR_TS # time-series data
