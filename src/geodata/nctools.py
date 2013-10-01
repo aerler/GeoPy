@@ -50,8 +50,8 @@ def add_strvar(dst, name, strlist, dim, atts=None):
 def add_coord(dst, name, data=None, length=None, atts=None, dtype=None, zlib=True, fillValue=None, **kwargs):
   ''' Function to add a Coordinate Variable to a NetCDF Dataset; returns the Variable reference. '''
   # check input
-  if data is None and length is None: 
-    raise TypeError 
+  if length is None:
+    pass # that means unlimited record dimensions (can only have one of these)
   elif length is not None:
     if isinstance(length,(int,np.integer)): length=(length,)
   elif data is not None and data.ndim == 1:
@@ -133,7 +133,7 @@ def copy_ncatts(dst, src, prefix = '', incl_=True):
 def copy_vars(dst, src, varlist=None, namemap=None, dimmap=None, remove_dims=None, copy_data=True, copy_atts=True, \
               zlib=True, prefix='', incl_=True, fillValue=None, **kwargs):
   # prefix is passed to copy_ncatts, the remaining kwargs are passed to dst.createVariable()
-  if not varlist: varlist = src.variables.keys() # just copy all
+  if varlist is None: varlist = src.variables.keys() # just copy all
   if dimmap: midmap = dict(zip(dimmap.values(),dimmap.keys())) # reverse mapping
   varargs = dict() # arguments to be passed to createVariable
   if zlib: varargs.update(zlib_default)
@@ -157,8 +157,8 @@ def copy_vars(dst, src, varlist=None, namemap=None, dimmap=None, remove_dims=Non
 # copy dimensions and coordinate variables from one dataset to another
 def copy_dims(dst, src, dimlist=None, namemap=None, copy_coords=True, **kwargs):
   # all remaining kwargs are passed on to dst.createVariable()
-  if not dimlist: dimlist = src.dimensions.keys() # just copy all
-  if not namemap: namemap = dict() # a dummy - assigning pointers in argument list is dangerous! 
+  if dimlist is None: dimlist = src.dimensions.keys() # just copy all
+  if namemap is None: namemap = dict() # a dummy - assigning pointers in argument list is dangerous! 
   # loop over dimensions
   for name in dimlist:
     mid = src.dimensions[namemap.get(name,name)]
