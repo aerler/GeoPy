@@ -11,11 +11,23 @@ import numpy as np
 import numpy.ma as ma
 import collections as col
 # internal imports
-from geodata.misc import isNumber, DataError, AxisError
+# N.B.: there shuold be no dependencies on this package, so that it can be imported independently
 
 ## definitions
+
 # NC4 compression options
 zlib_default = dict(zlib=True, complevel=1, shuffle=True) # my own default compression settings
+
+# data error class
+class NCDataError(Exception):
+  ''' Exceptions related to data passed to NetCDF datasets. '''
+  pass
+
+# axis error class
+class NCAxisError(Exception):
+  ''' Exceptions related to axis/dimensions in NetCDF datasets. '''
+  pass
+
 
 ## generic functions
 
@@ -27,7 +39,7 @@ def add_strvar(dst, name, strlist, dim, atts=None):
   # figure out dimension
   dimlen = len(strlist) # length of dimension
   if dim in dst.dimensions:
-    if dimlen != len(dst.dimensions[dim]): raise AxisError
+    if dimlen != len(dst.dimensions[dim]): raise NCAxisError
   else:
     dst.createDimension(dim, size=dimlen) # create dimension on the fly
   # allocate array
@@ -57,7 +69,7 @@ def add_coord(dst, name, data=None, length=None, atts=None, dtype=None, zlib=Tru
   elif data is not None and data.ndim == 1:
     length=data.shape
   else: 
-    raise DataError
+    raise NCDataError
   # basically a simplified interface for add_var
   coord = add_var(dst, name, (name,), data=data, shape=length, atts=atts, dtype=dtype, 
                   zlib=zlib, fillValue=fillValue, **kwargs)  
@@ -69,29 +81,29 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   # use data array to infer dimensions and data type
   if data is not None:
     if not isinstance(data,np.ndarray): raise TypeError     
-    if len(dims) != data.ndim: raise DataError, "Number of dimensions in '%s' does not match data array."%(name,)    
+    if len(dims) != data.ndim: raise NCDataError, "Number of dimensions in '%s' does not match data array."%(name,)    
     if shape: 
-      if shape != data.shape: raise DataError, "Shape of '%s' does not match data array."%(name,)
+      if shape != data.shape: raise NCDataError, "Shape of '%s' does not match data array."%(name,)
     else: shape = data.shape
     if dtype: 
       if dtype != data.dtype: data.astype(dtype)
-        # raise DataError, "Data type in '%s' does not match data array."%(name,) 
+        # raise NCDataError, "Data type in '%s' does not match data array."%(name,) 
     else: dtype = data.dtype
-  if dtype is None: raise DataError, "Cannot construct a NetCDF Variable without a data array or an abstract data type."
+  if dtype is None: raise NCDataError, "Cannot construct a NetCDF Variable without a data array or an abstract data type."
   if np.dtype(dtype) is np.dtype('bool_'): dtype = np.dtype('i1') # cast numpy bools as 8-bit integers
   # check/create dimensions
   if shape is None: shape = [None]*len(dims)
-  elif len(shape) != len(dims): raise AxisError 
+  elif len(shape) != len(dims): raise NCAxisError 
   for i,dim in zip(xrange(len(dims)),dims):
     if dim in dst.dimensions:
       if shape[i] is None: 
         shape[i] = len(dst.dimensions[dim])
       else: 
         if shape[i] != len(dst.dimensions[dim]): 
-          raise AxisError, 'Size of dimension %s does not match records! %i != %i'%(dim,shape[i],len(dst.dimensions[dim]))
+          raise NCAxisError, 'Size of dimension %s does not match records! %i != %i'%(dim,shape[i],len(dst.dimensions[dim]))
     else: 
       if shape[i] is not None: dst.createDimension(dim, size=shape[i])
-      else: raise AxisError, "Cannot construct dimension '%s' without size information."%(dims,)
+      else: raise NCAxisError, "Cannot construct dimension '%s' without size information."%(dims,)
   # figure out parameters for variable
   varargs = dict() # arguments to be passed to createVariable
   if zlib: varargs.update(zlib_default)
@@ -183,7 +195,9 @@ def coerceAtts(atts):
     elif not isinstance(value,(basestring,np.ndarray,float,int)):
       if isinstance(value,col.Iterable):
         if len(value) == 0: ncatts[key] = '' # empty attribute
-        elif all(isNumber(value)): ncatts[key] = np.array(value)         
+        elif all([isinstance(val,(int,np.integer,float,np.inexact)) for val in value]):
+          # N.B.: int & float are not part of their numpy equivalents
+          ncatts[key] = np.array(value)         
         else:
           l = '(' # fake list representation
           for elt in value[0:-1]: l += '{0:s}, '.format(str(elt))
