@@ -340,7 +340,7 @@ class DatasetNetCDF(Dataset):
     if check_override is None: check_override = [] # list of variables (and axes) that is not checked for consistency 
     if axes is None: axes = dict()
     else: check_override += axes.keys()   
-    assert isinstance(axes,dict)
+    if not isinstance(axes,dict): raise TypeError
     for ds in datasets:
       for dim in ds.dimensions.keys():
         if dim in ds.variables: # dimensions with an associated coordinate variable           
