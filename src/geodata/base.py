@@ -263,13 +263,14 @@ class Variable(object):
       newaxis = oldaxis; oldaxis = oldaxis.name # i.e. replace old axis with the same name'
     # check axis
     if isinstance(oldaxis,Axis): oldname = oldaxis.name # just go by name
-    if not self.hasAxis(oldaxis): raise AxisError
     else: oldname = oldaxis
     oldaxis = self.axes[self.axisIndex(oldname)]
+    if not self.hasAxis(oldaxis): raise AxisError
     if len(oldaxis) != len(newaxis): raise AxisError # length has to be the same!
-    if oldaxis.data != newaxis.data: raise DataError # make sure data status is the same
+    #if oldaxis.data != newaxis.data: raise DataError # make sure data status is the same
     # replace old axis
-    self.axes = tuple([ax if ax is not oldaxis else newaxis for ax in self.axes])
+    self.axes = tuple([newaxis if ax.name == oldname else ax for ax in self.axes])
+    self.__dict__[oldname] = newaxis # update this reference as well
     assert len(self.axes) == self.ndim
     assert tuple([len(ax) for ax in self.axes]) == self.shape
     # return confirmation, i.e. True, if replacement was successful
@@ -791,19 +792,20 @@ class Dataset(object):
     if newaxis is None: 
       newaxis = oldaxis; oldaxis = newaxis.name # i.e. replace old axis with the same name'
     # check axis
-    if not self.hasAxis(oldaxis): raise AxisError
     if isinstance(oldaxis,Axis): oldname = oldaxis.name # just go by name
     else: oldname = oldaxis
     oldaxis = self.axes[oldname]
+    if not self.hasAxis(oldaxis): raise AxisError
     if len(oldaxis) != len(newaxis): raise AxisError # length has to be the same!
-    if oldaxis.data != newaxis.data: raise DataError # make sure data status is the same
+#     if oldaxis.data != newaxis.data: raise DataError # make sure data status is the same
     # remove old axis and add new to dataset
     self.removeAxis(oldaxis, force=True)
     self.addAxis(newaxis, copy=False)
     newaxis = self.axes[newaxis.name] # update reference
     # loop over variables with this axis    
     for var in self.variables.values():
-      if var.hasAxis(oldname): var.replaceAxis(oldname,newaxis)    
+      if var.hasAxis(oldname): 
+        var.replaceAxis(oldname,newaxis) 
     # return verification
     return self.hasAxis(newaxis)    
 

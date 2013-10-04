@@ -140,7 +140,7 @@ class VarNC(Variable):
     self.__dict__['offset'] = offset
     self.__dict__['scalefactor'] = scalefactor
     self.__dict__['squeezed'] = False
-    if squeeze: self.squeez() # may set 'squeezed' to True
+    if squeeze: self.squeeze() # may set 'squeezed' to True
     # handle data
     if load and data: raise DataError, "Arguments 'load' and 'data' are mutually exclusive, i.e. only one can be used!"
     elif load and 'r' in self.mode: self.load(data=None) # load data from file
@@ -276,7 +276,7 @@ class DatasetNetCDF(Dataset):
   '''
   
   def __init__(self, name=None, title=None, dataset=None, filelist=None, varlist=None, varatts=None, atts=None, axes=None, 
-               multifile=False, check_override=None, folder='', mode='r', ncformat='NETCDF4'):
+               multifile=False, check_override=None, folder='', mode='r', ncformat='NETCDF4', squeeze=True):
     ''' 
       Create a Dataset from one or more NetCDF files; Variables are created from NetCDF variables. 
       
@@ -357,7 +357,7 @@ class DatasetNetCDF(Dataset):
             if len(axes[dim]) != len(ds.dimensions[dim]): 
               raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
           else: # if this is a new axis, add it to the list
-            params = dict(name=dim,length=len(ds.dimensions[dim])); params.update(varatts.get(dim,{})) 
+            params = dict(name=dim,length=len(ds.dimensions[dim])); params.update(varatts.get(dim,{}))
             axes[dim] = Axis(**params) # also use overrride parameters          
     # create variables from netcdf variables    
     variables = dict()
@@ -377,7 +377,7 @@ class DatasetNetCDF(Dataset):
           if all([axes.has_key(dim) for dim in ds.variables[var].dimensions]):
             varaxes = [axes[dim] for dim in ds.variables[var].dimensions] # collect axes
             # create new variable using the override parameters in varatts
-            variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, mode=mode, **varatts.get(var,{}))
+            variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, mode=mode, squeeze=squeeze, **varatts.get(var,{}))
           else: 
             print var, ds.variables[var].dimensions
             raise DatasetError, 'Error constructing Variable: Axes/coordinates not found.'

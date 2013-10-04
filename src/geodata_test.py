@@ -458,7 +458,7 @@ class DatasetNetCDFTest(BaseDatasetTest):
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'NARR' # dataset to use (also the folder name)
-  RAM = True # base folder for file operations
+  RAM = False # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
   
@@ -559,7 +559,7 @@ class GDALVarTest(NetCDFVarTest):
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'NARR' # dataset to use (also the folder name)
-  RAM = True # base folder for file operations
+  RAM = False # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
   # some projection settings for tests
@@ -599,7 +599,7 @@ class DatasetGDALTest(DatasetNetCDFTest):
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'NARR' # dataset to use (also the folder name)
-  RAM = True # base folder for file operations
+  RAM = False # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
   

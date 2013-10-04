@@ -131,9 +131,9 @@ def getProjFromDict(projdict, name='', GeoCS='WGS84', convention='Proj4'):
     for key, value in projdict.iteritems():
       if key is not 'proj':
         if not isinstance(key, str): raise TypeError
-        if not isinstance(value, float): raise TypeError
+        if not isinstance(value, (float,np.inexact)): raise TypeError
         # translate dict entries to string
-        projstr = '{0:s} +{1:s}={2:f}'.format(projstr, key, value)
+        projstr = '{0:s} +{1:s}={2:f}'.format(projstr, key, float(value))
     # load projection from proj4 string
     projection.ImportFromProj4(projstr)
   else:
