@@ -285,9 +285,9 @@ if __name__ == '__main__':
     
   
 #   mode = 'test_climatology'
-  mode = 'test_timeseries'
-#   mode = 'average_timeseries'
-  grid = '25'
+#   mode = 'test_timeseries'
+  mode = 'average_timeseries'
+  grid = 'WRF'
   period = (1979,1981)
 
   
@@ -315,35 +315,8 @@ if __name__ == '__main__':
   # generate averaged climatology
   elif mode == 'average_timeseries':
     
-    # load source
-    periodstr = '%4i-%4i'%period
-    print('\n')
-    print('   ***   Processing Grid %s from %s   ***   '%(grid,periodstr))
-    print('\n')
-    source = loadWRF_TS()
-    print(source)
-    print('\n')
-    # prepare sink
-    gridstr = '' if grid is 'NARR' else '_'+grid
-    filename = avgfile%(gridstr,'_'+periodstr)
-    if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
-    sink = DatasetNetCDF(name='NARR Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
-    sink.atts.period = periodstr 
-    
-    # determine averaging interval
-    offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
-    # initialize processing
-    CPU = CentralProcessingUnit(source, sink, varlist=['precip', 'T2'], tmp=True) # no need for lat/lon
-    
-    # start processing climatology
-    print('')
-    print('   +++   processing climatology   +++   ') 
-    CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
-    print('\n')      
-
-
-    if grid != 'NARR':    
-      # find new coordinate arrays
+    # determine coordinate arrays
+    if grid != 'WRF':    
       if grid == '025': dlon = dlat = 0.25 # resolution
       elif grid == '05': dlon = dlat = 0.5
       elif grid == '10': dlon = dlat = 1.0
@@ -356,31 +329,66 @@ if __name__ == '__main__':
       # add new geographic coordinate axes for projected map
       xlon = Axis(coord=lon, atts=dict(name='lon', long_name='longitude', units='deg E'))
       ylat = Axis(coord=lat, atts=dict(name='lat', long_name='latitude', units='deg N'))
-      # reproject and resample (regrid) dataset
-      print('')
-      print('   +++   processing regidding   +++   ') 
-      print('    ---   (%3.2f,  %3i x %3i)   ---   '%(dlon, len(lon), len(lat)))
-      CPU.Regrid(xlon=xlon, ylat=ylat, flush=False)
+    else:
+      xlon = None; ylat = None
+    
+    # begin (loop over files)
+    periodstr = '%4i-%4i'%period
+    print('\n')
+    print('   ***   Processing Grid %s from %s   ***   '%(grid,periodstr))
+    print('\n')
+    
+    for filetype,fileclass in fileclasses.iteritems():    
+      
+      # load source
+      print('       Loading \'%s\''%filetype)
+      source = loadWRF_TS(filetypes=[filetype])
+      print(source)
       print('\n')
-    
-    
-    # sync temporary storage with output
-    CPU.sync(flush=True)
-
-#     # make new masks
-#     sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)
-
-    # add names and length of months
-    sink.axisAnnotation('name_of_month', name_of_month, 'time', 
-                        atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
-    #print '   ===   month   ===   '
-    sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
-                  atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
-    
-    # close...
-    sink.sync()
-    sink.close()
-    # print dataset
-    print('')
-    print(sink)     
-    
+      # prepare sink
+      gridstr = '' if grid is 'WRF' else '_'+grid
+      filename = fileclass.climfile%(gridstr,'_'+periodstr)
+      if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
+      sink = DatasetNetCDF(name='WRF Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
+      sink.atts.period = periodstr 
+      
+      # determine averaging interval
+      offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
+      # initialize processing
+      CPU = CentralProcessingUnit(source, sink, varlist=['precip', 'T2'], tmp=True) # no need for lat/lon
+      
+      # start processing climatology
+      print('')
+      print('   +++   processing climatology   +++   ') 
+      CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
+      print('\n')      
+  
+      # reproject and resample (regrid) dataset
+      if xlon is not None and ylat is not None:
+        print('')
+        print('   +++   processing regidding   +++   ') 
+        print('    ---   (%3.2f,  %3i x %3i)   ---   '%(dlon, len(lon), len(lat)))
+        CPU.Regrid(xlon=xlon, ylat=ylat, flush=False)
+        print('\n')
+      
+      
+      # sync temporary storage with output
+      CPU.sync(flush=True)
+  
+  #     # make new masks
+  #     sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)
+  
+      # add names and length of months
+      sink.axisAnnotation('name_of_month', name_of_month, 'time', 
+                          atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
+      #print '   ===   month   ===   '
+      sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
+                    atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
+      
+      # close...
+      sink.sync()
+      sink.close()
+      # print dataset
+      print('')
+      print(sink)     
+      

@@ -56,6 +56,8 @@ hostname = socket.gethostname()
 if hostname=='komputer':
   data_root = '/home/DATA/DATA/'
 #  root = '/media/tmp/' # RAM disk for development
+elif hostname=='cryo':
+  data_root = '/scratch/marcdo/Data/'
 else:
   data_root = '/home/me/DATA/PRISM/'
   

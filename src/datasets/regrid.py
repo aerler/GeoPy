@@ -17,7 +17,7 @@ from geodata.netcdf import DatasetNetCDF
 if __name__ == '__main__':
   
   # datasets to process
-  datasets = ['NARR','CFSR','GPCC','CRU','PRISM']
+#   datasets = ['NARR','CFSR','GPCC','CRU','PRISM']
   datasets = ['CFSR']
   # grid to project onto
   grid = 'NARR'  
@@ -25,6 +25,9 @@ if __name__ == '__main__':
   period = (1979,1981)
   
   # load target grid definition
+  from datasets.WRF import getWRFgrid
+  grid_wrf = getWRFgrid(experiment='max-ctrl', domains=[1])
+#   grid_def = grid_wrf
   grid_def = import_module(grid[0:4]).__dict__[grid+'_grid']
   print grid_def
   
