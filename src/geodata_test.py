@@ -220,12 +220,14 @@ class BaseVarTest(unittest.TestCase):
 
 class BaseDatasetTest(unittest.TestCase):  
   
-  # some test parameters (TestCase does not take any arguments)  
+  # some test parameters (TestCase does not take any arguments)
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
   
   def setUp(self):
     ''' create Dataset with Axes and a Variables for testing '''
+    if RAM: self.folder = ramdisk
+    else: self.folder = '/home/DATA/DATA/' # folder for write tests
     # some setting that will be saved for comparison
     self.size = (3,3,3) # size of the data array and axes
     te, ye, xe = self.size
@@ -334,8 +336,7 @@ class BaseDatasetTest(unittest.TestCase):
     
   def testWrite(self):
     ''' write test dataset to a netcdf file '''    
-    folder = '/media/tmp/' # RAM disk
-    filename = folder + 'test.nc'
+    filename = self.folder + 'test.nc'
     if os.path.exists(filename): os.remove(filename)
     # test object
     dataset = self.dataset
@@ -361,12 +362,11 @@ class NetCDFVarTest(BaseVarTest):
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'NARR' # dataset to use (also the folder name)
-  RAM = True # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
   
   def setUp(self):
-    if self.RAM: folder = '/media/tmp/'
+    if RAM: folder = ramdisk
     else: folder = '/home/DATA/DATA/%s/'%self.dataset # dataset name is also in folder name
     # select dataset
     if self.dataset == 'GPCC': # single file
@@ -458,13 +458,13 @@ class DatasetNetCDFTest(BaseDatasetTest):
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'NARR' # dataset to use (also the folder name)
-  RAM = False # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
   
   def setUp(self):
-    if self.RAM: folder = '/media/tmp/'
+    if RAM: folder = ramdisk
     else: folder = '/home/DATA/DATA/%s/'%self.dataset # dataset name is also in folder name
+    self.folder = folder
     # select dataset
     name = self.dataset
     if self.dataset == 'GPCC': # single file      
@@ -502,9 +502,8 @@ class DatasetNetCDFTest(BaseDatasetTest):
   ## specific NetCDF test cases
   
   def testCopy(self):
-    ''' test copying the entire dataset '''
-    folder = '/media/tmp/' # RAM disk
-    filename = folder + 'test.nc'
+    ''' test copying the entire dataset '''    
+    filename = self.folder + 'test.nc'
     if os.path.exists(filename): os.remove(filename)
     # test object
     dataset = self.dataset
@@ -520,8 +519,7 @@ class DatasetNetCDFTest(BaseDatasetTest):
       
   def testCreate(self):
     ''' test creation of a new NetCDF dataset and file '''
-    folder = '/media/tmp/' # RAM disk
-    filename = folder + 'test.nc'
+    filename = self.folder + 'test.nc'
     if os.path.exists(filename): os.remove(filename)
     # create NetCDF Dataset
     dataset = DatasetNetCDF(filelist=[filename],mode='w')
@@ -559,7 +557,6 @@ class GDALVarTest(NetCDFVarTest):
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'NARR' # dataset to use (also the folder name)
-  RAM = False # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
   # some projection settings for tests
@@ -599,7 +596,6 @@ class DatasetGDALTest(DatasetNetCDFTest):
   
   # some test parameters (TestCase does not take any arguments)
   dataset = 'NARR' # dataset to use (also the folder name)
-  RAM = False # base folder for file operations
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
   
@@ -637,6 +633,7 @@ class DatasetGDALTest(DatasetNetCDFTest):
     for var in dataset.variables.values():
       assert (var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat)) == var.gdal              
     
+    
 if __name__ == "__main__":
 
     # construct dictionary of test classes defined above
@@ -646,15 +643,20 @@ if __name__ == "__main__":
       if key[-4:] == 'Test':
         test_classes[key[:-4]] = val
 
-    # tests to be performed
+    # list of tests to be performed
+    tests = [] 
     # list of variable tests
-#     tests = ['BaseVar'] 
-#     tests = ['NetCDFVar']
-#     tests = ['GDALVar']
+    tests += ['BaseVar'] 
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
-#     tests = ['BaseDataset']
-#     tests = ['DatasetNetCDF']
-    tests = ['DatasetGDAL']    
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
+    
+    # RAM disk settings ("global" variable)
+    RAM = False # whether or not to use a RAM disk
+    ramdisk = '/media/tmp/' # folder where RAM disk is mounted
     
     # run tests
     for test in tests:

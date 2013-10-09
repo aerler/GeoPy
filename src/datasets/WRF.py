@@ -15,7 +15,7 @@ import os
 from geodata.base import Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition
-from geodata.misc import DatasetError, isInt
+from geodata.misc import DatasetError, isInt, AxisError
 from datasets.common import translateVarNames, days_per_month, name_of_month, data_root
 from geodata.process import CentralProcessingUnit
 
@@ -62,10 +62,18 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   name=experiment if isinstance(experiment,basestring) else name[0] # omit domain information, which is irrelevant
   projection = getWRFproj(dn, name=name) # same for all
   # infer size and geotransform
-  dx = dn.DX; dy = dn.DY 
-  nx = len(dn.dimensions['west_east']); ny = len(dn.dimensions['south_north'])
+  def getXYlen(ds):
+    ''' a short function to infer the length of horizontal axes from a dataset with unknown naming conventions ''' 
+    if 'west_east' in ds.dimensions and 'south_north' in ds.dimensions:
+      nx = len(ds.dimensions['west_east']); ny = len(ds.dimensions['south_north'])
+    elif 'x' in ds.dimensions and 'y' in ds.dimensions:
+      nx = len(ds.dimensions['x']); ny = len(ds.dimensions['y'])
+    else: raise AxisError, 'No horizontal axis found, necessary to infer projection/grid configuration.'
+    return nx,ny
+  dx = dn.DX; dy = dn.DY
+  nx,ny = getXYlen(dn)
   x0 = nx*dx/2; y0 = ny*dy/2 
-  size = (nx, ny); geotransform = (x0,dx,0,y0,0,dy)
+  size = (nx, ny); geotransform = (x0,dx,0.,y0,0.,dy)
   name = names[0] if 1 in domains else 'tmp'  # update name, if first domain has a name...
   griddef = GridDefinition(name=name, projection=projection, geotransform=geotransform, size=size)
   dn.close()
@@ -83,8 +91,8 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
       # infer size and geotransform      
       px0,pdx,s,py0,t,pdy = geotransforms[pid]      
       x0 = px0+dn.I_PARENT_START*pdx; y0 = py0+dn.J_PARENT_START*pdy
-      size = (len(dn.dimensions['west_east']), len(dn.dimensions['south_north'])) 
-      geotransform = (x0,dn.DX,0,y0,0,dn.DY)
+      size = getXYlen(dn) 
+      geotransform = (x0,dn.DX,0.,y0,0.,dn.DY)
       dn.close()
       geotransforms.append(geotransform) # we need that to construct the next nested domain
       if n in domains:
@@ -208,6 +216,7 @@ root_folder = data_root + 'WRF/Downscaling/' # long-term mean folder
 def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=['hydro','const'], varlist=None, varatts=None):
   ''' Get a properly formatted WRF dataset with monthly time-series. '''
   # prepare input  
+  ltuple = isinstance(domains,col.Iterable)
   folder, names, domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
   # generate filelist and attributes based on filetypes and domain
   atts = dict(); filelist = [] 
@@ -221,15 +230,14 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=['hydro','const'
   elif varatts: varlist = translateVarNames(varlist, varatts)
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
-  if 'const' in filetypes: filename = fileclasses['const'].tsfile# constants files preferred...
+  if 'const' in filetypes: filename = fileclasses['const'].tsfile # constants files preferred...
   else: filename = fileclasses.values()[0].tsfile # just use the first filetype
-  # 
   griddefs = getWRFgrid(name=names, experiment=None, domains=domains, folder=folder, filename=filename)
   assert len(griddefs) == len(domains)
   datasets = []
   for name,domain,griddef in zip(names,domains,griddefs):
     # domain-sensitive parameters
-    axes = dict(west_east=griddef.xlon, south_north=griddef.ylat) # map axes
+    axes = dict(west_east=griddef.xlon, south_north=griddef.ylat, x=griddef.xlon, y=griddef.ylat) # map axes
     filenames = [filename.format(domain) for filename in filelist] # insert domain number
     # load dataset
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, varatts=atts, 
@@ -253,11 +261,11 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=['hydro','const'
     #  yax = Axis(name='y', units='m', coord=y); dataset.replaceAxis('y', yax)
     #  dataset.x.updateCoord(coord=x); dataset.y.updateCoord(coord=y)
   # return formatted dataset
+  if not ltuple: datasets = datasets[0]
   return datasets
   
 
-# pre-processed climatology files (varatts etc. should not be necessary)
-avgfolder = root_folder + 'narravg/' 
+# pre-processed climatology files (varatts etc. should not be necessary) 
 # function to load these files...
 def loadWRF(name=None, domain=None, period=None, grid=None, varlist=None):
   ''' Get the pre-processed monthly NARR climatology as a DatasetNetCDF. '''
@@ -287,6 +295,10 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
   mode = 'average_timeseries'
+  
+  experiment = 'max-ctrl'
+  domain = 1
+  filetypes = ['srfc',]
   grid = 'WRF'
   period = (1979,1981)
 
@@ -304,7 +316,7 @@ if __name__ == '__main__':
   # load monthly time-series file
   elif mode == 'test_timeseries':
     
-    datasets = loadWRF_TS(experiment='max-ctrl', domains=(1,2))
+    datasets = loadWRF_TS(experiment='max-ctrl', domains=(2,), filetypes=['srfc'])
     for dataset in datasets:
       print('')
       print(dataset)
@@ -334,42 +346,40 @@ if __name__ == '__main__':
     
     # begin (loop over files)
     periodstr = '%4i-%4i'%period
+    avgfolder = root_folder + experiment + '/'
     print('\n')
     print('   ***   Processing Grid %s from %s   ***   '%(grid,periodstr))
-    print('\n')
     
-    for filetype,fileclass in fileclasses.iteritems():    
+    for filetype in filetypes:    
+      
+      fileclass = fileclasses[filetype]
       
       # load source
-      print('       Loading \'%s\''%filetype)
-      source = loadWRF_TS(filetypes=[filetype])
+      print('       Source: \'%s\'\n'%fileclass.tsfile.format(domain))
+      source = loadWRF_TS(experiment=experiment, filetypes=[filetype])# comes out as a tuple...
       print(source)
       print('\n')
       # prepare sink
       gridstr = '' if grid is 'WRF' else '_'+grid
-      filename = fileclass.climfile%(gridstr,'_'+periodstr)
+      filename = fileclass.climfile.format(domain,gridstr,'_'+periodstr)
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
+      assert os.path.exists(avgfolder)
       sink = DatasetNetCDF(name='WRF Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
       sink.atts.period = periodstr 
       
       # determine averaging interval
       offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
       # initialize processing
-      CPU = CentralProcessingUnit(source, sink, varlist=['precip', 'T2'], tmp=True) # no need for lat/lon
+#       CPU = CentralProcessingUnit(source, sink, varlist=['precip', 'T2'], tmp=True) # no need for lat/lon
+      CPU = CentralProcessingUnit(source, sink, varlist=None, tmp=True) # no need for lat/lon
       
       # start processing climatology
-      print('')
-      print('   +++   processing climatology   +++   ') 
       CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
-      print('\n')      
-  
+      
       # reproject and resample (regrid) dataset
       if xlon is not None and ylat is not None:
-        print('')
-        print('   +++   processing regidding   +++   ') 
-        print('    ---   (%3.2f,  %3i x %3i)   ---   '%(dlon, len(lon), len(lat)))
         CPU.Regrid(xlon=xlon, ylat=ylat, flush=False)
-        print('\n')
+        print('    ---   (%3.2f,  %3i x %3i)   ---   '%(dlon, len(lon), len(lat)))
       
       
       # sync temporary storage with output
@@ -385,7 +395,8 @@ if __name__ == '__main__':
       sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
                     atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
       
-      # close...
+      # close... and write results to file
+      print('\n Writing to: \'%s\'\n'%filename)
       sink.sync()
       sink.close()
       # print dataset

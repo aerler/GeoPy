@@ -419,9 +419,11 @@ class DatasetNetCDF(Dataset):
         if asNC and 'w' in self.mode:
           for ax in var.axes:
             if not self.hasAxis(ax.name): 
-              self.addAxis(ax, asNC=True, copy=True)             
+              self.addAxis(ax, asNC=True, copy=True)
+          # add variable as a NetCDF variable             
           var = asVarNC(var=var,ncvar=self.datasets[0], axes=self.axes, mode=self.mode, deepcopy=deepcopy)
-        else: var = var.copy(deepcopy=deepcopy)
+        else: 
+          var = var.copy(deepcopy=deepcopy) # or just add as a normal Variable
       # hand-off to parent method and return status
       return super(DatasetNetCDF,self).addVariable(var=var)
       

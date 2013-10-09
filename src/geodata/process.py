@@ -72,7 +72,7 @@ class CentralProcessingUnit(object):
     # return dataset
     return dataset
   
-  def sync(self, varlist=None, flush=False, gdal=True, deepcopy=False):
+  def sync(self, varlist=None, flush=False, gdal=True, copydata=True):
     ''' Transfer contents of temporary storage to output/target dataset. '''
     if not isinstance(self.output,Dataset): raise DatasetError, "Cannot sync without target Dataset!"
     if self.tmp:
@@ -80,7 +80,8 @@ class CentralProcessingUnit(object):
       for varname in varlist:
         if varname in self.tmpput.variables:
           var = self.tmpput.variables[varname]
-          self.output.addVariable(var, overwrite=True, deepcopy=deepcopy)
+          self.output.addVariable(var, overwrite=True, deepcopy=copydata)
+          # N.B.: without copydata/deepcopy, only the variable header is created but no data is written
           if flush: var.unload() # remove unnecessary references (unlink data)
       if gdal and 'gdal' in self.tmpput.__dict__: 
         if self.tmpput.gdal: 

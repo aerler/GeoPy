@@ -266,7 +266,7 @@ if __name__ == '__main__':
       # get results
       CPU.sync(flush=True, deepcopy=True)
       # convert precip data to SI units (mm/s) 
-      convertPrecip(sink) # convert in-place
+      convertPrecip(sink.precip) # convert in-place
       # add landmask
       addLandMask(sink) # create landmask from precip mask
       sink.stations.mask(sink.landmask) # mask all fields using the new landmask
