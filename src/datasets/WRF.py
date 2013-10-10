@@ -164,7 +164,7 @@ class Srfc(FileType):
     self.vars = self.atts.keys()    
     self.climfile = 'wrfsrfc_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfsrfc_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
-# surface variables
+# hydro variables
 class Hydro(FileType):
   ''' Variables and attributes of the hydrological files. '''
   def __init__(self):
@@ -178,6 +178,52 @@ class Hydro(FileType):
     self.vars = self.atts.keys()    
     self.climfile = 'wrfhydro_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfhydro_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
+# extreme value variables
+class Xtrm(FileType):
+  ''' Variables and attributes of the extreme value files. '''
+  def __init__(self):
+    self.atts = dict(T2MEAN = dict(name='Tmean', units='K'),  # daily mean Temperature (at 2m)
+                     T2MIN  = dict(name='Tmin', units='K'),   # daily minimum Temperature (at 2m)
+                     T2MAX  = dict(name='Tmax', units='K'),   # daily maximum Temperature (at 2m)
+                     T2STD  = dict(name='Tstd', units='K'),   # daily Temperature standard deviation (at 2m)
+                     SKINTEMPMEAN = dict(name='TSmean', units='K'),  # daily mean Skin Temperature
+                     SKINTEMPMIN  = dict(name='TSmin', units='K'),   # daily minimum Skin Temperature
+                     SKINTEMPMAX  = dict(name='TSmax', units='K'),   # daily maximum Skin Temperature
+                     SKINTEMPSTD  = dict(name='TSstd', units='K'),   # daily Skin Temperature standard deviation                     
+                     Q2MEAN = dict(name='Qmean', units='Pa'), # daily mean Water Vapor Pressure (at 2m)
+                     Q2MIN  = dict(name='Qmin', units='Pa'),  # daily minimum Water Vapor Pressure (at 2m)
+                     Q2MAX  = dict(name='Qmax', units='Pa'),  # daily maximum Water Vapor Pressure (at 2m)
+                     Q2STD  = dict(name='Qstd', units='Pa'),  # daily Water Vapor Pressure standard deviation (at 2m)
+                     SPDUV10MEAN = dict(name='U10mean', units='m/s'), # daily mean Wind Speed (at 10m)
+                     SPDUV10MAX  = dict(name='U10max', units='m/s'),  # daily maximum Wind Speed (at 10m)
+                     SPDUV10STD  = dict(name='U10std', units='m/s'),  # daily Wind Speed standard deviation (at 10m)
+                     U10MEAN = dict(name='u10mean', units='m/s'), # daily mean Westerly Wind (at 10m)
+                     V10MEAN = dict(name='v10mean', units='m/s'), # daily mean Southerly Wind (at 10m)                     
+                     RAINCVMEAN  = dict(name='preccumean', units='kg/m^2/s'), # daily mean convective precipitation rate
+                     RAINCVMAX  = dict(name='preccumax', units='kg/m^2/s'), # daily maximum convective precipitation rate
+                     RAINCVSTD  = dict(name='preccustd', units='kg/m^2/s'), # daily convective precip standard deviation
+                     RAINNCVMEAN = dict(name='precncmean', units='kg/m^2/s'), # daily mean grid-scale precipitation rate
+                     RAINNCVMAX  = dict(name='precncmax', units='kg/m^2/s'), # daily maximum grid-scale precipitation rate
+                     RAINNCVSTD  = dict(name='precncstd', units='kg/m^2/s')) # daily grid-scale precip standard deviation                     
+    self.vars = self.atts.keys()    
+    self.climfile = 'wrfxtrm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
+    self.tsfile = 'wrfxtrm_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
+# variables on selected pressure levels: 850 hPa, 700 hPa, 500 hPa, 250 hPa, 100 hPa
+class Plev3D(FileType):
+  ''' Variables and attributes of the pressure level files. '''
+  def __init__(self):
+    self.atts = dict(T_PL     = dict(name='T', units='K', fillValue=-999),   # Temperature
+                     TD_PL    = dict(name='Td', units='K', fillValue=-999),  # Dew-point Temperature
+                     RH_PL    = dict(name='RH', units='', fillValue=-999),   # Relative Humidity
+                     GHT_PL   = dict(name='Z', units='m', fillValue=-999),   # Geopotential Height 
+                     S_PL     = dict(name='U', units='m/s', fillValue=-999), # Wind Speed
+                     U_PL     = dict(name='u', units='m/s', fillValue=-999), # Zonal Wind Speed
+                     V_PL     = dict(name='v', units='m/s', fillValue=-999)) # Meridional Wind Speed
+#                      P_PL     = dict(name='p', units='Pa'))  # Pressure
+    self.vars = self.atts.keys()    
+    self.climfile = 'wrfplev3d_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
+    self.tsfile = 'wrfplev3d_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
+
 # axes (don't have their own file)
 class Axes(FileType):
   ''' A mock-filetype for axes. '''
@@ -189,31 +235,21 @@ class Axes(FileType):
                      west_east   = dict(name='x', units='m'), # projected west-east coordinate
                      south_north = dict(name='y', units='m'), # projected south-north coordinate
                      x           = dict(name='x', units='m'), # projected west-east coordinate
-                     y           = dict(name='y', units='m')) # projected south-north coordinate                 
+                     y           = dict(name='y', units='m'), # projected south-north coordinate
+                     num_press_levels_stag = dict(name='p', units='Pa')) # pressure coordinate
     self.vars = self.atts.keys()
     self.climfile = None
     self.tsfile = None
 
-# # include these variables in monthly means 
-# varlist = ['ps','T2','Ts','snow','snowh','rainnc','rainc','snownc','graupelnc',
-#            'Q2','evap','hfx','lhfx','OLR','GLW','SWDOWN'] # 'SWNORM'
-# varmap = dict(ps='PSFC',Q2='Q2',T2='T2',Ts='TSK',snow='SNOW',snowh='SNOWH', # original (WRF) names of variables
-#               rainnc='RAINNC',rainc='RAINC',rainsh='RAINSH',snownc='SNOWNC',graupelnc='GRAUPELNC',
-#               hfx='HFX',lhfx='LH',evap='QFX',OLR='OLR',GLW='GLW',SWD='SWDOWN',SWN='SWNORM') 
-
-# the projection and grid configuration will be inferred from the source file upon loading;
-# the axes variables are created on-the-fly and coordinate values are inferred from the source dimensions     
-
-
 # data source/location
-fileclasses = dict(const=Const(), srfc=Srfc(), hydro=Hydro(), axes=Axes())
+fileclasses = dict(const=Const(), srfc=Srfc(), xtrm=Xtrm(), plev3d=Plev3D(), hydro=Hydro(), axes=Axes())
 root_folder = data_root + 'WRF/Downscaling/' # long-term mean folder
 
 
 ## Functions to load different types of WRF datasets
 
 # Time-Series (monthly)
-def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=['hydro','const'], varlist=None, varatts=None):
+def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=None, varatts=None):
   ''' Get a properly formatted WRF dataset with monthly time-series. '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)
@@ -242,24 +278,18 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=['hydro','const'
     # load dataset
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, varatts=atts, 
                             axes=axes, multifile=False, ncformat='NETCDF4', squeeze=True)
+    # load pressure levels (doesn't work automatically, because variable and dimension have different names and dimensions)
+    if dataset.hasAxis('p'): 
+      dataset.axes['p'].updateCoord(dataset.dataset.variables['P_PL'][0,:])
     # add projection
     dataset = addGDALtoDataset(dataset, projection=griddef.projection, geotransform=griddef.geotransform)
     # safety checks
     assert dataset.axes['x'] == griddef.xlon
     assert dataset.axes['y'] == griddef.ylat   
-    assert all([dataset.axes['x'] == var.getAxis('x') for var in dataset.variables.values()])
-    assert all([dataset.axes['y'] == var.getAxis('y') for var in dataset.variables.values()])
+    assert all([dataset.axes['x'] == var.getAxis('x') for var in dataset.variables.values() if var.hasAxis('x')])
+    assert all([dataset.axes['y'] == var.getAxis('y') for var in dataset.variables.values() if var.hasAxis('y')])
     # append to list
     datasets.append(dataset) 
-    # figure out horizontal coordinates (from number of grid points and resolution)
-    #  dx = dataset.atts.DX; nx = len(dataset.x); dy = dataset.atts.DY; ny = len(dataset.y)
-    #  x = np.arange((1-nx)*dx/2, (nx+1)*dx/2, dx)
-    #  assert x.mean()==0 and x[0]==-1*x[-1] # print x.mean(), x[0], x[-1] # centered
-    #  y = np.arange((1-ny)*dy/2, (ny+1)*dy/2, dy)
-    #  assert y.mean()==0 and y[0]==-1*y[-1] # print y.mean(), y[0], y[-1] # centered
-    #  xax = Axis(name='x', units='m', coord=x); dataset.replaceAxis('x', xax)
-    #  yax = Axis(name='y', units='m', coord=y); dataset.replaceAxis('y', yax)
-    #  dataset.x.updateCoord(coord=x); dataset.y.updateCoord(coord=y)
   # return formatted dataset
   if not ltuple: datasets = datasets[0]
   return datasets
@@ -267,7 +297,7 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=['hydro','const'
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
 # function to load these files...
-def loadWRF(name=None, domain=None, period=None, grid=None, varlist=None):
+def loadWRF(name=None, domain=None, period=None, grid=None, varlist=None, filetypes=None):
   ''' Get the pre-processed monthly NARR climatology as a DatasetNetCDF. '''
   avgfolder = data_root + name + '/' # long-term mean folder
   # prepare input
@@ -298,7 +328,8 @@ if __name__ == '__main__':
   
   experiment = 'max-ctrl'
   domain = 1
-  filetypes = ['srfc',]
+  filetypes = ['srfc','xtrm','plev3d','hydro',]
+  filetypes = ['plev3d','hydro',]
   grid = 'WRF'
   period = (1979,1981)
 

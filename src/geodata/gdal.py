@@ -167,11 +167,15 @@ def getProjection(var, projection=None):
     if isProjected: 
       if not var.hasAxis('x') and var.hasAxis('y'): 
         raise AxisError, 'Horizontal axes for projected GDAL variables have to \'x\' and \'y\'.'
-      xlon = var.x; ylat = var.y
+      if var.hasAxis('x') and var.hasAxis('y'):
+        xlon = var.x; ylat = var.y
+      else: xlon = None; ylat = None
     else: 
       if not var.hasAxis('lon') and var.hasAxis('lat'):
         raise AxisError, 'Horizontal axes for non-projected GDAL variables have to \'lon\' and \'lat\''
-      xlon = var.lon; ylat = var.lat    
+      if var.hasAxis('lon') and var.hasAxis('lat'):
+        xlon = var.lon; ylat = var.lat
+      else: xlon = None; ylat = None    
   # if the variable is map-like, add GDAL properties
   if xlon is not None and ylat is not None:
     lgdal = True

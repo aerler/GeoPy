@@ -90,7 +90,8 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
         # raise NCDataError, "Data type in '%s' does not match data array."%(name,) 
     else: dtype = data.dtype
   if dtype is None: raise NCDataError, "Cannot construct a NetCDF Variable without a data array or an abstract data type."
-  if np.dtype(dtype) is np.dtype('bool_'): dtype = np.dtype('i1') # cast numpy bools as 8-bit integers
+  if np.dtype(dtype) is np.dtype('bool_'): 
+    dtype = np.dtype('i1') # cast numpy bools as 8-bit integers
   # check/create dimensions
   if shape is None: shape = [None]*len(dims)
   elif len(shape) != len(dims): raise NCAxisError 
