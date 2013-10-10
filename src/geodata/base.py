@@ -337,7 +337,6 @@ class Variable(object):
           else: raise TypeError
     # assemble index tuple for axes
     idx = tuple([slices.get(ax.name,slice(None)) for ax in self.axes])
-    print idx
     return self.__getitem__(idx=idx) # pass on to getitem
 
   def load(self, data=None, mask=None, fillValue=None):

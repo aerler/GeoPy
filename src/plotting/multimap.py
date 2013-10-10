@@ -24,7 +24,7 @@ from datasets.NARR import loadNARR
 from datasets.GPCC import loadGPCC
 from datasets.CRU import loadCRU
 from datasets.PRISM import loadPRISM
-from datasets.common import name_of_month # for annotation
+from datasets.common import days_per_month, days_per_month_365, name_of_month # for annotation
 # ARB project related stuff
 from plotting.ARB_settings import WRFtitle, getProjectionSettings
 
@@ -83,11 +83,11 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-  H01 = '1979'; H02 = '1979-1980'; H03 = '1979-1981'; H30 = '1979-2009' # for tests 
-  H05 = '1979-1983'; H10 = '1979-1988'; H15 = '1979-1993' # historical validation periods
-  G10 = '1969-1978'; I10 = '1989-1998'; J10 = '1999-2008' # additional historical periods
-  A03 = '2045-2047'; A05 = '2045-2049'; A10 = '2045-2054'; A15 = '2045-2059' # mid-21st century
-  B03 = '2095-2097'; B05 = '2095-2099'; B10 = '2095-2104'; B15 = '2095-2109' # late 21st century
+  H01 = '1979'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
+  H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994' # historical validation periods
+  G10 = '1969-1979'; I10 = '1989-1999'; J10 = '1999-2009' # additional historical periods
+  A03 = '2045-2048'; A05 = '2045-2050'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
+  B03 = '2095-2098'; B05 = '2095-2100'; B10 = '2095-2105'; B15 = '2095-2110' # late 21st century
   lprint = True # write plots to disk
   ltitle = True # plot/figure title
   lcontour = False # contour or pcolor plot
@@ -98,12 +98,12 @@ if __name__ == '__main__':
   ## case settings
   
   # observations
-  case = 'new' # name tag
+  case = 'nrac' # name tag
   projtype = 'lcc-new' # 'lcc-new'  
-  period = H01; dom = (1,2,)
+  period = H10; dom = (1,2,)
 #   explist = ['CRU']*3 + ['NARR', 'CRU', 'CRU']; period = [H30, G10, H10, None, I10, J10]
 #   explist = ['PRISM-10km','ctrl-1','NARR','PRISM','max','CRU']
-  explist = ['PRISM-10km','new','noah','nogulf','max','CRU']; period = [H01]*5 + [H10]  
+#   explist = ['PRISM-10km','new','noah','nogulf','max','CRU']; period = [H01]*5 + [H10]  
 #  explist = ['GPCC']; varlist = ['stns']; seasons = ['annual']
 #   explist = ['cfsr', 'ctrl-1', 'max', 'NARR', 'PRISM', 'CRU']; # period = [H10]*5 + [None]
 #   explist = ['cfsr', 'ens-Z', 'max', 'ctrl-1']
@@ -138,32 +138,33 @@ if __name__ == '__main__':
 #   explist = ['ctrl-1']
 #   explist = ['modis']
 #   explist = ['PRISM']; period = None
+  explist = ['max']
   
   ## select variables and seasons
-#   varlist = ['rainnc', 'rainc', 'T2']
+#   varlist = ['precipnc', 'precipc', 'T2']
 #  varlist = ['snowh'];  seasons = [8]
-#   varlist = ['rain']
+  varlist = ['precip']
 #   varlist = ['evap']
 #   varlist = ['snow']
-#   varlist = ['rain', 'T2', 'p-et','evap']
-#   varlist = ['p-et','rain','snow']
+#   varlist = ['precip', 'T2', 'p-et','evap']
+#   varlist = ['p-et','precip','snow']
 #   varlist = ['GLW','OLR','qtfx']
 #   varlist = ['SWDOWN','GLW','OLR']
 #   varlist = ['hfx','lhfx']
 #   varlist = ['qtfx','lhfr']
-  varlist = ['rain','T2']
+#   varlist = ['precip','T2']
 #   varlist = ['T2']
 #   varlist = ['seaice']; seasons = [8] # September seaice
-#  varlist = ['rain','T2','snow']
+#  varlist = ['precip','T2','snow']
 #   varlist = ['snow', 'snowh']
-#  varlist = ['SST','T2','rain','snow','snowh']
+#  varlist = ['SST','T2','precip','snow','snowh']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-#   seasons = ['annual']
+  seasons = ['annual']
 #   seasons = ['summer']
 #   seasons = ['winter']    
-  seasons = ['winter', 'summer', 'annual']
+#   seasons = ['winter', 'summer', 'annual']
 #   varlist = ['snow']; seasons = ['fall','winter','spring']
-#  varlist = ['rain']; seasons = ['annual']
+#  varlist = ['precip']; seasons = ['annual']
 #  varlist = ['zs']; seasons = ['hidef']
 #  varlist = ['stns']; seasons = ['annual']
 #   varlist = ['lndcls']; seasons = [''] # static
@@ -182,7 +183,7 @@ if __name__ == '__main__':
         elif exp[0:5] == 'PRISM': # all PRISM derivatives
           if exp == 'PRISM': prismfile = 'prism_clim.nc'
           elif exp == 'PRISM-10km': prismfile = 'prism_10km.nc'
-          if len(varlist) ==1 and varlist[0] == 'rain': 
+          if len(varlist) ==1 and varlist[0] == 'precip': 
             ext = (loadGPCC(resolution='0.25'), loadPRISM(filename=prismfile)); axt = 'PRISM (and GPCC)'
           else: ext = (loadCRU(period='1979-2009'), loadPRISM(filename=prismfile)); axt = 'PRISM (and CRU)'
           # ext = (loadPRISM(),)          
@@ -193,7 +194,7 @@ if __name__ == '__main__':
 #           ext = (loadCESM(exp=exp, period=prd),)
 #           axt = CESMtitle.get(exp,exp)
       else: # WRF runs are all in lower case
-        ext = loadWRF(exp=exp, period=prd, domains=dom)
+        ext = loadWRF(experiment=WRFname[exp], period=prd, domains=dom)
         axt = WRFtitle.get(exp,exp)
     exps.append(ext); axtitles.append(axt)  
   print exps[-1][-1]
@@ -258,9 +259,9 @@ if __name__ == '__main__':
       elif var == 'p-et': # moisture fluxes (kg /(m^2 s))
         # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
         clevs = np.linspace(-2,2,25); cmap = mpl.cm.PuOr; clbl = '%02.1f'
-      elif var == 'rain' or var == 'rainnc': # total precipitation 
+      elif var == 'precip' or var == 'precipnc': # total precipitation 
         clevs = np.linspace(0,20,41); clbl = '%02.1f' # mm/day
-      elif var == 'rainc': # convective precipitation 
+      elif var == 'precipc': # convective precipitation 
         clevs = np.linspace(0,5,26); clbl = '%02.1f' # mm/day
       elif oldvar=='SST' or var=='SST': # skin temperature (SST)
         clevs = np.linspace(240,300,61); clbl = '%03.0f' # K
@@ -312,7 +313,7 @@ if __name__ == '__main__':
         else: plottype = 'Average'
       # assemble plot title
       filename = '%s_%s_%s.%s'%(var,season,case,figformat)
-      plat = exps[0][0].vardict[var].plotatts 
+      plat = exps[0][0].variables[var].plot
       if plat['plotunits']: figtitle = '%s %s [%s]'%(plottype,plat['plottitle'],plat['plotunits'])
       else: figtitle = '%s %s'%(plottype,plat['plottitle'])
       
@@ -321,46 +322,49 @@ if __name__ == '__main__':
       
       ## compute data
       data = []; lons = []; lats=[]  # list of data and coordinate fields to be plotted 
-      # compute average WRF precip
-      wrfmon = np.array([31.,28.,31.,30.,31.,30.,31.,31.,30.,31.,30.,31.])
-      stdmon = np.array([31.,28.25,31.,30.,31.,30.,31.,31.,30.,31.,30.,31.])
+      # compute average WRF precip            
       print(' - loading data\n')
       for exptpl in exps:
         lontpl = []; lattpl = []; datatpl = []                
         for exp in exptpl:
+          expvar = exp.variables[var]
+          assert expvar.gdal
           # handle dimensions
-          assert (exp.lon.naxes == 2) and (exp.lat.naxes == 2), '\nWARNING: no coordinate fields found!'
-          lon = exp.lon.get(); lat = exp.lat.get()
+          if expvar.isProjected: 
+            assert (exp.lon2D.ndim == 2) and (exp.lat2D.ndim == 2), 'No coordinate fields found!'
+            lon = exp.lon2D.getArray(); lat = exp.lat2D.getArray()          
+          else: 
+            assert expvar.hasAxis('lon') and expvar.hasAxis('lat'), 'No geographic axes found!'
+            lon, lat = np.meshgrid(expvar.lon.getArray(),expvar.lat.getArray())
           lontpl.append(lon); lattpl.append(lat) # append to data list
           # figure out calendar
-          if 'WRF' in exp.atts.get('description',''): mon = wrfmon
-          else: mon = stdmon
+          if 'WRF' in exp.atts.get('description',''): mon = days_per_month_365
+          else: mon = days_per_month
           # extract data field
-          vardata = np.zeros((exp.y.size,exp.x.size)) # allocate array
+          vardata = np.zeros(expvar.mapSize) # allocate array
           # compute average over seasonal range
           days = 0
-          expvar = exp.vardict[var]
-          if expvar.hasaxis('time'):
+          if expvar.hasAxis('time'):
             for m in month:
               n = m-1 
-              vardata += expvar(time=exp.time.values[n]).get().squeeze() * mon[n]
+              vardata += expvar(time=exp.time[n]) * mon[n]
               days += mon[n]
             vardata /=  days # normalize
           else:
-            vardata = expvar.get().squeeze()
-          vardata = vardata * expvar.plotatts.get('scalefactor',1) # apply unit conversion          
+            vardata = expvar[:].squeeze()
+          vardata = vardata * expvar.plot.get('scalefactor',1) # apply plot unit conversion          
           if lmskocn: 
-            if exp.vardict.has_key('lnd'): # CESM and CFSR 
+            if exp.variables.has_key('lnd'): # CESM and CFSR 
               vardata[exp.lnd.get()<0.5] = -2. # use land fraction
-            elif exp.vardict.has_key('lndidx'): 
+            elif exp.variables.has_key('lndidx'): 
               mask = exp.lndidx.get()
               vardata[mask==16] = -2. # use land use index (ocean)  
               vardata[mask==24] = -2. # use land use index (lake)
             else : vardata = maskoceans(lon,lat,vardata,resolution=res,grid=grid)
           if lmsklnd: 
-            if exp.vardict.has_key('lnd'): # CESM and CFSR 
+            if exp.variables.has_key('lnd'): # CESM and CFSR 
               vardata[exp.lnd.get()>0.5] = 0 # use land fraction
-            elif exp.vardict.has_key('lndidx'): # use land use index (ocean and lake)
+            elif exp.variables.has_key('lndidx'): # use land use index (ocean and lake)
               mask = exp.lndidx.get(); tmp = vardata.copy(); vardata[:] = 0.
               vardata[mask==16] = tmp[mask==16]; vardata[mask==24] = tmp[mask==24]
           datatpl.append(vardata) # append to data list
@@ -454,7 +458,7 @@ if __name__ == '__main__':
           # land/sea mask
           maps[n].drawlsmask(ocean_color='blue', land_color='green',resolution=res,grid=grid)
           # black-out continents, if we have no proper land mask 
-          if lmsklnd and not (exps[n][0].vardict.has_key('lnd') or exps[n][0].vardict.has_key('lndidx')): 
+          if lmsklnd and not (exps[n][0].variables.has_key('lnd') or exps[n][0].variables.has_key('lndidx')): 
             maps[n].fillcontinents(color='black',lake_color='black') 
           # add maps stuff
           maps[n].drawcoastlines(linewidth=0.5)
