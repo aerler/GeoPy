@@ -161,11 +161,11 @@ if __name__ == '__main__':
   mode = 'test_climatology'
   mode = 'average_timeseries'
 #   mode = 'convert_climatology'
-  reses = ('025',) # for testing
+  reses = ('05',) # for testing
 #   reses = ('025',) # hi-res climatology
 #   reses = ('05', '10', '25')
-  period = None #(1979,1981)
-  grid = 'NARR'
+  period = (1979,1989)
+  grid = 'GPCC'
   
   # generate averaged climatology
   for res in reses:    
@@ -264,7 +264,7 @@ if __name__ == '__main__':
 #       print('\n')      
 
       # get results
-      CPU.sync(flush=True, deepcopy=True)
+      CPU.sync(flush=True)
       # convert precip data to SI units (mm/s) 
       convertPrecip(sink.precip) # convert in-place
       # add landmask

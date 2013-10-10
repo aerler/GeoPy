@@ -16,7 +16,7 @@ from geodata.base import Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition
 from geodata.misc import DatasetError, isInt, AxisError
-from datasets.common import translateVarNames, days_per_month, name_of_month, data_root
+from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, default_varatts
 from geodata.process import CentralProcessingUnit
 
 
@@ -255,8 +255,12 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=No
   ltuple = isinstance(domains,col.Iterable)
   folder, names, domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
   # generate filelist and attributes based on filetypes and domain
+  if filetypes is None: filetypes = fileclasses.keys()
+  elif isinstance(filetypes,list):  
+    if 'axes' not in filetypes: filetypes + ['axes']
+  else: raise TypeError  
   atts = dict(); filelist = [] 
-  for filetype in filetypes + ['axes']:
+  for filetype in filetypes:
     fileclass = fileclasses[filetype]
     if fileclass.tsfile is not None: filelist.append(fileclass.tsfile) 
     atts.update(fileclass.atts)  
@@ -296,26 +300,70 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=No
   
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
-# function to load these files...
-def loadWRF(name=None, domain=None, period=None, grid=None, varlist=None, filetypes=None):
-  ''' Get the pre-processed monthly NARR climatology as a DatasetNetCDF. '''
-  avgfolder = data_root + name + '/' # long-term mean folder
-  # prepare input
-  if domain not in ('025','05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
+def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filetypes=None, varlist=None, varatts=None):
+  ''' Get a properly formatted monthly WRF climatology as NetCDFDataset. '''
+  # prepare input  
+  ltuple = isinstance(domains,col.Iterable)
+  folder, names, domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
+  # grid
+  if grid is None or grid == name: gridstr = ''
+  else: gridstr = '_%s'%grid.lower() # only use lower case for filenames 
+  # period
+  if isinstance(period,(tuple,list)): period = '%4i-%4i'%tuple(period)  
+  if period is None or period == '': periodstr = ''
+  else: periodstr = '_%s'%period  
+  # generate filelist and attributes based on filetypes and domain
+  if filetypes is None: filetypes = fileclasses.keys()
+  elif isinstance(filetypes,list):  
+    if 'axes' not in filetypes: filetypes + ['axes']
+    if 'const' not in filetypes: filetypes + ['const']
+  else: raise TypeError  
+  atts = dict(); filelist = []; constfile = None
+  for filetype in filetypes + ['axes']:
+    fileclass = fileclasses[filetype]
+    if filetype == 'const': constfile = fileclass.tsfile
+    elif fileclass.tsfile is not None: filelist.append(fileclass.climfile) 
+    atts.update(fileclass.atts)  
+  if varatts is not None: atts.update(varatts)
+  lconst = constfile is not None
   # translate varlist
-  if varlist and varatts: varlist = translateVarNames(varlist, varatts)
-  # load variables separately
-  if 'p' in varlist:
-    dataset = DatasetNetCDF(name=name, folder=folder, filelist=['normals_v2011_%s.nc'%resolution], varlist=['p'], 
-                            varatts=varatts, ncformat='NETCDF4_CLASSIC')
-  if 's' in varlist: 
-    gauges = nc.Dataset(folder+'normals_gauges_v2011_%s.nc'%resolution, mode='r', format='NETCDF4_CLASSIC')
-    stations = Variable(data=gauges.variables['p'][0,:,:], axes=(dataset.lat,dataset.lon), **varatts['s'])
-    # consolidate dataset
-    dataset.addVariable(stations, asNC=False, copy=True)  
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
+  if varlist is None: varlist = default_varatts.keys() + atts.keys()
+  elif varatts: varlist = translateVarNames(varlist, default_varatts)
+  # infer projection and grid and generate horizontal map axes
+  # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
+  if constfile is not None: filename = constfile # constants files preferred...
+  else: filename = fileclasses.values()[0].tsfile # just use the first filetype
+  griddefs = getWRFgrid(name=names, experiment=None, domains=domains, folder=folder, filename=filename)
+  assert len(griddefs) == len(domains)
+  datasets = []
+  for name,domain,griddef in zip(names,domains,griddefs):
+    # domain-sensitive parameters
+    axes = dict(west_east=griddef.xlon, south_north=griddef.ylat, x=griddef.xlon, y=griddef.ylat) # map axes
+    # load constants
+    if lconst:
+      # load dataset
+      const = DatasetNetCDF(name=name, folder=folder, filelist=[constfile.format(domain)], varlist=varlist,  
+                              varatts=atts, axes=axes, multifile=False, ncformat='NETCDF4', squeeze=True)      
+    # load regular variables
+    filenames = [filename.format(domain,gridstr,periodstr) for filename in filelist] # insert domain number
+    # load dataset
+    dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 
+                            varatts=default_varatts, multifile=False, ncformat='NETCDF4', squeeze=True)
+    # add constants to dataset
+    if lconst:
+      for var in const: dataset.addVariable(var, asNC=False, copy=False, overwrite=False, deepcopy=False)
+    # add projection
+    dataset = addGDALtoDataset(dataset, projection=griddef.projection, geotransform=griddef.geotransform)
+    # safety checks
+    assert dataset.axes['x'] == griddef.xlon
+    assert dataset.axes['y'] == griddef.ylat   
+    assert all([dataset.axes['x'] == var.getAxis('x') for var in dataset.variables.values() if var.hasAxis('x')])
+    assert all([dataset.axes['y'] == var.getAxis('y') for var in dataset.variables.values() if var.hasAxis('y')])
+    # append to list
+    datasets.append(dataset) 
   # return formatted dataset
-  return dataset
+  if not ltuple: datasets = datasets[0]
+  return datasets
 
 
 ## (ab)use main execution for quick test
@@ -326,19 +374,20 @@ if __name__ == '__main__':
 #   mode = 'test_timeseries'
   mode = 'average_timeseries'
   
-  experiment = 'max-ctrl'
-  domain = 1
-  filetypes = ['srfc','xtrm','plev3d','hydro',]
-  filetypes = ['plev3d','hydro',]
+  experiment = 'new-ctrl'
+  domain = 2
+#   filetypes = ['srfc','xtrm','plev3d','hydro',]
+#   filetypes = ['plev3d','hydro',]
+  filetypes = ['srfc']
   grid = 'WRF'
-  period = (1979,1981)
+  period = (1979,1989)
 
   
   # load averaged climatology file
   if mode == 'test_climatology':
     
     print('')
-    dataset = loadWRF(period=period)
+    dataset = loadWRF(experiment='max-ctrl', domains=domain, filetypes=None, period=period)
     print(dataset)
     print('')
     print(dataset.geotransform)
@@ -347,7 +396,7 @@ if __name__ == '__main__':
   # load monthly time-series file
   elif mode == 'test_timeseries':
     
-    datasets = loadWRF_TS(experiment='max-ctrl', domains=(2,), filetypes=['srfc'])
+    datasets = loadWRF_TS(experiment='max-ctrl', domains=domain, filetypes=['srfc'])
     for dataset in datasets:
       print('')
       print(dataset)
@@ -387,7 +436,7 @@ if __name__ == '__main__':
       
       # load source
       print('       Source: \'%s\'\n'%fileclass.tsfile.format(domain))
-      source = loadWRF_TS(experiment=experiment, filetypes=[filetype])# comes out as a tuple...
+      source = loadWRF_TS(experiment=experiment, filetypes=[filetype], domains=domain)# comes out as a tuple...
       print(source)
       print('\n')
       # prepare sink

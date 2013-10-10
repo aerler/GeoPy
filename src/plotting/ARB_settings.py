@@ -34,6 +34,7 @@ WRFname['noah'] = 'new-noah' # ARB2 domain
 WRFname['noah35'] = 'v35-noah' # ARB2 domain
 # these are all based on the "max" configuration
 WRFname['max'] = 'max-ctrl'
+WRFname['max-2050'] = 'max-ctrl-2050'
 # these are all based on the old configuration (original + RRTMG, ARB2)
 WRFname['ctrl-1'] = 'ctrl-1'
 WRFname['tiedt'] = 'tiedtke-ctrl'

@@ -145,7 +145,8 @@ def getFileName(grid=None, period=None, name=None, filepattern=None):
   
   
 # universal load function that will be imported by datasets
-def loadClim(name, folder, projection=None, period=None, grid=None, varlist=None, varatts=None, filepattern=None, filelist=None):
+def loadClim(name, folder, period=None, grid=None, varlist=None, varatts=None, filepattern=None, filelist=None, 
+             projection=None, geotransform=None, axes=None):
   ''' A function to load standardized climatology datasets. '''
   # prepare input
   # varlist (varlist = None means all variables)
@@ -155,8 +156,8 @@ def loadClim(name, folder, projection=None, period=None, grid=None, varlist=None
   if filelist is None: filelist = [getFileName(grid=grid, period=period, name=name, filepattern=filepattern)]   
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
-                          multifile=False, ncformat='NETCDF4')  
-  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None)
+                          axes=axes, multifile=False, ncformat='NETCDF4')  
+  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform)
   # N.B.: projection should be auto-detected as geographic
   return dataset
 

@@ -26,7 +26,7 @@ from datasets.CRU import loadCRU
 from datasets.PRISM import loadPRISM
 from datasets.common import days_per_month, days_per_month_365, name_of_month # for annotation
 # ARB project related stuff
-from plotting.ARB_settings import WRFtitle, getProjectionSettings
+from plotting.ARB_settings import WRFname, WRFtitle, getProjectionSettings
 
 ## figure settings
 def getFigureSettings(nexp, cbo):
@@ -100,7 +100,7 @@ if __name__ == '__main__':
   # observations
   case = 'nrac' # name tag
   projtype = 'lcc-new' # 'lcc-new'  
-  period = H10; dom = (1,2,)
+  period = H10; dom = (2,)
 #   explist = ['CRU']*3 + ['NARR', 'CRU', 'CRU']; period = [H30, G10, H10, None, I10, J10]
 #   explist = ['PRISM-10km','ctrl-1','NARR','PRISM','max','CRU']
 #   explist = ['PRISM-10km','new','noah','nogulf','max','CRU']; period = [H01]*5 + [H10]  
@@ -138,7 +138,8 @@ if __name__ == '__main__':
 #   explist = ['ctrl-1']
 #   explist = ['modis']
 #   explist = ['PRISM']; period = None
-  explist = ['max']
+  explist = ['max','max-2050']
+  period = [H10]*3+[None]
   
   ## select variables and seasons
 #   varlist = ['precipnc', 'precipc', 'T2']
@@ -194,7 +195,7 @@ if __name__ == '__main__':
 #           ext = (loadCESM(exp=exp, period=prd),)
 #           axt = CESMtitle.get(exp,exp)
       else: # WRF runs are all in lower case
-        ext = loadWRF(experiment=WRFname[exp], period=prd, domains=dom)
+        ext = loadWRF(experiment=WRFname[exp], period=prd, domains=dom, filetypes=['const','srfc'])
         axt = WRFtitle.get(exp,exp)
     exps.append(ext); axtitles.append(axt)  
   print exps[-1][-1]
@@ -332,6 +333,7 @@ if __name__ == '__main__':
           # handle dimensions
           if expvar.isProjected: 
             assert (exp.lon2D.ndim == 2) and (exp.lat2D.ndim == 2), 'No coordinate fields found!'
+            exp.lon2D.load(); exp.lat2D.load()
             lon = exp.lon2D.getArray(); lat = exp.lat2D.getArray()          
           else: 
             assert expvar.hasAxis('lon') and expvar.hasAxis('lat'), 'No geographic axes found!'
