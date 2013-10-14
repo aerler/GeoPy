@@ -143,10 +143,10 @@ loadClimatology = loadNARR # pre-processed, standardized climatology
 if __name__ == '__main__':
     
   
-  mode = 'test_climatology'
-#   mode = 'average_timeseries'
-  grid = '25'
-  period = (1979,1981)
+#   mode = 'test_climatology'
+  mode = 'average_timeseries'
+  grid = 'NARR'
+  period = (1979,1989)
   
   if mode == 'test_climatology':
     
@@ -178,7 +178,8 @@ if __name__ == '__main__':
     # determine averaging interval
     offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
     # initialize processing
-    CPU = CentralProcessingUnit(source, sink, varlist=['precip', 'T2'], tmp=True) # no need for lat/lon
+#     CPU = CentralProcessingUnit(source, sink, varlist=['precip', 'T2'], tmp=True) # no need for lat/lon
+    CPU = CentralProcessingUnit(source, sink, varlist=None, tmp=True) # no need for lat/lon
     
     # start processing climatology
     print('')

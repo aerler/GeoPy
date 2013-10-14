@@ -374,20 +374,24 @@ if __name__ == '__main__':
 #   mode = 'test_timeseries'
   mode = 'average_timeseries'
   
-  experiment = 'new-ctrl'
-  domain = 2
+  experiments = ['max', 'new']; startdate = 1979; period = (1979,1989)
+#   experiments = ['max-2050']; startdate = 2045; period = (2045,2055)
+  from plotting.ARB_settings import WRFname
+  experiments = [WRFname[exp] for exp in experiments]
+  domains = [1,2]
 #   filetypes = ['srfc','xtrm','plev3d','hydro',]
-#   filetypes = ['plev3d','hydro',]
-  filetypes = ['srfc']
-  grid = 'WRF'
-  period = (1979,1989)
+  filetypes = ['srfc','xtrm','hydro',]
+#   filetypes = ['srfc','hydro',]
+#   filetypes = ['srfc']
+  grid = 'WRF'   
+  
 
   
   # load averaged climatology file
   if mode == 'test_climatology':
     
     print('')
-    dataset = loadWRF(experiment='max-ctrl', domains=domain, filetypes=None, period=period)
+    dataset = loadWRF(experiment='max-ctrl', domains=2, filetypes=None, period=period)
     print(dataset)
     print('')
     print(dataset.geotransform)
@@ -396,7 +400,7 @@ if __name__ == '__main__':
   # load monthly time-series file
   elif mode == 'test_timeseries':
     
-    datasets = loadWRF_TS(experiment='max-ctrl', domains=domain, filetypes=['srfc'])
+    datasets = loadWRF_TS(experiment='max-ctrl', domains=2, filetypes=['srfc'])
     for dataset in datasets:
       print('')
       print(dataset)
@@ -424,62 +428,71 @@ if __name__ == '__main__':
     else:
       xlon = None; ylat = None
     
-    # begin (loop over files)
-    periodstr = '%4i-%4i'%period
-    avgfolder = root_folder + experiment + '/'
-    print('\n')
-    print('   ***   Processing Grid %s from %s   ***   '%(grid,periodstr))
-    
-    for filetype in filetypes:    
+    ## loop over experiments and domains
+    for experiment in experiments:
       
-      fileclass = fileclasses[filetype]
+      # loop over file types
+      for filetype in filetypes:    
+
+        fileclass = fileclasses[filetype] # used for target file name
+        sources = loadWRF_TS(experiment=experiment, filetypes=[filetype], domains=domains) # comes out as a tuple...
+        
+        # effectively, loop over domains
+        for domain,source in zip(domains,sources):
+            
+          # begin (loop over files)
+          periodstr = '%4i-%4i'%period
+          avgfolder = root_folder + experiment + '/'
+          print('\n')
+          print('   ***   Processing Grid %s from %s   ***   '%(grid,periodstr))
+          
+          
+          
+          # load source
+          print('       Source: \'%s\'\n'%fileclass.tsfile.format(domain))
+          print(source)
+          print('\n')
+          # prepare sink
+          gridstr = '' if grid is 'WRF' else '_'+grid
+          filename = fileclass.climfile.format(domain,gridstr,'_'+periodstr)
+          if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
+          assert os.path.exists(avgfolder)
+          sink = DatasetNetCDF(name='WRF Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
+          sink.atts.period = periodstr 
+          
+          # determine averaging interval
+          offset = source.time.getIndex(period[0]-startdate)/12 # origin of monthly time-series is at January 1979 
+          # initialize processing
+    #       CPU = CentralProcessingUnit(source, sink, varlist=['precip', 'T2'], tmp=True) # no need for lat/lon
+          CPU = CentralProcessingUnit(source, sink, varlist=None, tmp=True) # no need for lat/lon
+          
+          # start processing climatology
+          CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
+          
+          # reproject and resample (regrid) dataset
+          if xlon is not None and ylat is not None:
+            CPU.Regrid(xlon=xlon, ylat=ylat, flush=False)
+            print('    ---   (%3.2f,  %3i x %3i)   ---   '%(dlon, len(lon), len(lat)))
+          
+          
+          # sync temporary storage with output
+          CPU.sync(flush=True)
       
-      # load source
-      print('       Source: \'%s\'\n'%fileclass.tsfile.format(domain))
-      source = loadWRF_TS(experiment=experiment, filetypes=[filetype], domains=domain)# comes out as a tuple...
-      print(source)
-      print('\n')
-      # prepare sink
-      gridstr = '' if grid is 'WRF' else '_'+grid
-      filename = fileclass.climfile.format(domain,gridstr,'_'+periodstr)
-      if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
-      assert os.path.exists(avgfolder)
-      sink = DatasetNetCDF(name='WRF Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
-      sink.atts.period = periodstr 
+      #     # make new masks
+      #     sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)
       
-      # determine averaging interval
-      offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
-      # initialize processing
-#       CPU = CentralProcessingUnit(source, sink, varlist=['precip', 'T2'], tmp=True) # no need for lat/lon
-      CPU = CentralProcessingUnit(source, sink, varlist=None, tmp=True) # no need for lat/lon
-      
-      # start processing climatology
-      CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
-      
-      # reproject and resample (regrid) dataset
-      if xlon is not None and ylat is not None:
-        CPU.Regrid(xlon=xlon, ylat=ylat, flush=False)
-        print('    ---   (%3.2f,  %3i x %3i)   ---   '%(dlon, len(lon), len(lat)))
-      
-      
-      # sync temporary storage with output
-      CPU.sync(flush=True)
-  
-  #     # make new masks
-  #     sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)
-  
-      # add names and length of months
-      sink.axisAnnotation('name_of_month', name_of_month, 'time', 
-                          atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
-      #print '   ===   month   ===   '
-      sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
-                    atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
-      
-      # close... and write results to file
-      print('\n Writing to: \'%s\'\n'%filename)
-      sink.sync()
-      sink.close()
-      # print dataset
-      print('')
-      print(sink)     
+          # add names and length of months
+          sink.axisAnnotation('name_of_month', name_of_month, 'time', 
+                              atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
+          #print '   ===   month   ===   '
+          sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
+                        atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
+          
+          # close... and write results to file
+          print('\n Writing to: \'%s\'\n'%filename)
+          sink.sync()
+          sink.close()
+          # print dataset
+          print('')
+          print(sink)     
       

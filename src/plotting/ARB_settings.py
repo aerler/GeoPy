@@ -32,9 +32,18 @@ WRFname['new'] = 'new-ctrl'
 WRFname['nogulf'] = 'new-nogulf' # ARB2 domain
 WRFname['noah'] = 'new-noah' # ARB2 domain
 WRFname['noah35'] = 'v35-noah' # ARB2 domain
-# these are all based on the "max" configuration
+WRFname['cfsr-new'] = 'cfsr-new'
+# these are all based on the "max" configuration (ARB2 domain)
 WRFname['max'] = 'max-ctrl'
+WRFname['gulf'] = 'max-gulf' # ARB3 domain
+WRFname['max-A'] = 'max-ens-A'
+WRFname['max-B'] = 'max-ens-B'
+WRFname['max-C'] = 'max-ens-C'
 WRFname['max-2050'] = 'max-ctrl-2050'
+WRFname['max-A-2050'] = 'max-ens-A-2050'
+WRFname['max-B-2050'] = 'max-ens-B-2050'
+WRFname['max-C-2050'] = 'max-ens-C-2050'
+WRFname['cfsr-max'] = 'cfsr-max'
 # these are all based on the old configuration (original + RRTMG, ARB2)
 WRFname['ctrl-1'] = 'ctrl-1'
 WRFname['tiedt'] = 'tiedtke-ctrl'
@@ -43,6 +52,7 @@ WRFname['wdm6'] = 'wdm6-ctrl'
 WRFname['milb'] = 'milbrandt-ctrl'
 WRFname['nmpsnw'] = 'nmpsnw-ctrl'
 WRFname['nmpbar'] = 'nmpbar-ctrl'
+WRFname['nmpnew'] = 'nmpnew-ctrl'
 # these are all based on the original configuration (mostly ARB1 domain)
 WRFname['cam3'] = 'cam-ctrl'
 WRFname['pbl4'] = 'pbl1-arb1'

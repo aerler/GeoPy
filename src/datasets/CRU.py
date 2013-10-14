@@ -8,6 +8,7 @@ This module contains meta data and access functions for the monthly CRU time-ser
 
 # external imports
 import os
+import types # to add precip conversion fct. to datasets
 # internal imports
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, GridDefinition
@@ -31,7 +32,7 @@ varatts = dict(tmp = dict(name='T2', units='K', offset=273.15), # 2m average tem
                tmx = dict(name='Tmax', units='K', offset=273.15), # 2m maximum temperature
                vap = dict(name='Q2', units='Pa', scalefactor=100.), # 2m water vapor pressure
                pet = dict(name='pet', units='kg/m^2/s', scalefactor=1./86400.), # potential evapo-transpiration
-               pre = dict(name='precip', units='kg/m^2/s', scalefactor=1./86400.), # total precipitation
+               pre = dict(name='precip', units='mm/month', scalefactor=1.), # total precipitation
                # axes (don't have their own file; listed in axes)
                time = dict(name='time', units='day', offset=-28854), # time coordinate
                # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
@@ -52,6 +53,13 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 ## Functions to load different types of GPCC datasets 
 
+def convertPrecip(precip):
+  ''' convert CRU precip data to SI units (mm/s) '''
+  if precip.units == 'kg/m^2/month' or precip.units == 'mm/month':
+    precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
+    precip.units = 'kg/m^2/s'
+  return precip      
+
 # Time-series (monthly)
 tsfolder = root_folder + 'Time-series 3.2/data/' # monthly subfolder
 def loadCRU_TS(name=dataset_name, varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
@@ -67,6 +75,8 @@ def loadCRU_TS(name=dataset_name, varlist=varlist, varatts=varatts, filelist=Non
   # add projection  
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
+  # add method to convert precip from per month to per second
+  dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    
   # return formatted dataset
   return dataset
 
@@ -99,9 +109,9 @@ loadClimatology = loadCRU # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
     
-  mode = 'test_climatology'
-#   mode = 'average_timeseries'
-  period = (1979,1981)
+#   mode = 'test_climatology'
+  mode = 'average_timeseries'
+  period = (1979,2009)
 
   if mode == 'test_climatology':
     
@@ -124,7 +134,7 @@ if __name__ == '__main__':
     print(source)
     print('\n')
     # prepare sink
-    filename = avgfile%('_'+periodstr,)
+    filename = avgfile%('','_'+periodstr,)
     if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
     sink = DatasetNetCDF(name='CRU Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
     sink.atts.period = periodstr 
@@ -132,15 +142,19 @@ if __name__ == '__main__':
     # determine averaging interval
     offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
     # initialize processing
-    CPU = CentralProcessingUnit(source, sink)
+    CPU = CentralProcessingUnit(source, sink, varlist=['precip'])
     # start processing      
     print('')
     print('   +++   processing   +++   ') 
     CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
+    # sync temporary storage with output
+    CPU.sync(flush=False)
+    # convert precip data to SI units (mm/s)
+    convertPrecip(sink.precip) # convert in-place    
     print('\n')
 
     # add landmask
-    #print '   ===   landmask   ===   '
+    print '   ===   landmask   ===   '
     tmpatts = dict(name='landmask', units='', long_name='Landmask for Climatology Fields', 
               description='where this mask is non-zero, no data is available')
     sink += VarNC(sink.dataset, name='landmask', units='', axes=(sink.lat,sink.lon), 

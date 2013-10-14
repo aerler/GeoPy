@@ -1,7 +1,8 @@
 '''
 Created on 2012-11-05, adapted for PyGeoDat on 2013-10-10
 
-A simple script (that mushroomed into a complex module) that reads a Datasets and displays them in a proper geographic projection.
+A simple script that mushroomed into a complex module... reads a Datasets and displays them in a proper 
+geographic projection.
 
 @author: Andre R. Erler, GPL v3
 '''
@@ -98,52 +99,14 @@ if __name__ == '__main__':
   ## case settings
   
   # observations
-  case = 'nrac' # name tag
+  case = 'max' # name tag
   projtype = 'lcc-new' # 'lcc-new'  
   period = H10; dom = (2,)
-#   explist = ['CRU']*3 + ['NARR', 'CRU', 'CRU']; period = [H30, G10, H10, None, I10, J10]
-#   explist = ['PRISM-10km','ctrl-1','NARR','PRISM','max','CRU']
-#   explist = ['PRISM-10km','new','noah','nogulf','max','CRU']; period = [H01]*5 + [H10]  
-#  explist = ['GPCC']; varlist = ['stns']; seasons = ['annual']
-#   explist = ['cfsr', 'ctrl-1', 'max', 'NARR', 'PRISM', 'CRU']; # period = [H10]*5 + [None]
-#   explist = ['cfsr', 'ens-Z', 'max', 'ctrl-1']
-#   explist = ['tom', 'ens-Z', 'max', 'ctrl-1']
-#  explist = ['CFSR', 'ctrl-1', 'CRU', 'NARR', 'CESM', 'GPCC']
-#   explist = ['ctrl-1', 'PRISM', 'Ctrl-1', 'CRU']
-#   explist = ['ctrl-1', 'grell', 'tiedt', 'PRISM', 'CRU', 'GPCC']
-#   explist = ['milb', 'PRISM', 'wdm6', 'tom', 'ctrl-1', 'max']
-#   explist = ['wdm6','tom', 'ctrl-1', 'max']
-#  explist = ['ctrl-1', 'cam3', 'noahmp', 'pwrf']
-#   explist = ['PRISM', 'max', 'ctrl-1', 'GPCC']
-#   explist = ['PRISM', 'max', 'ctrl-1', 'CFSR']
-#   explist = ['nmpbar', 'nmpsnw', 'nmpdef', 'ctrl-1']
-#   explist = ['nmpbar', 'clm4', 'max', 'ctrl-1']
-#   explist = ['PRISM', 'tom', 'tiedt', 'ctrl-1']
-#   explist = ['PRISM', 'tom', 'nmpbar', 'ctrl-1']
-#   explist = ['grell','PRISM', 'tiedt', 'nmpbar', 'ctrl-1', 'max']
-#   explist = ['ctrl-1', 'grell', 'tiedt', 'pbl4']
-#   explist = ['PRISM', 'ctrl-1-2000', 'cam3', 'Ctrl-1']
-#   explist = ['PRISM', 'nmpbar', 'tom', 'ctrl-1']
-#   explist = ['ctrl-1', 'tom', 'tiedt', 'nmpbar']
-#   explist = ['ens-Z', 'ens-B', 'ens-A', 'ens-C'];
-#   explist = ['Ens-Z', 'Ens-B', 'Ens-A', 'Ens-C']; # CESM historical
-#   explist = ['SeaIce', 'Ens-B-rcp85', 'Ens-A-rcp85', 'Ens-Z-rcp85']; # CESM RCP 8.5 projections
-#   explist = ['SeaIce']; # CESM RCP 8.5 projections
-#   explist = ['Ctrl-1', 'Ctrl-1-rcp85', 'Ctrl-1-rcp85', 'SeaIce']; period = (H10, A10, B10, A10) 
-#  explist = ['ens-Z', 'CRU', 'ens-B', 'ens-A', 'GPCC', 'ens-C']; dom = (1,)
-#   explist = ['ctrl-1', 'ctrl-1-2000','ctrl-1-2050','ctrl-2-2050']; period = (H10, H10, A10, A10)
-#  explist = ['ctrl-1', 'CRU', 'NARR', 'CESM']
-#   explist = ['max', 'PRISM', 'grell', 'ctrl-1']
-#   explist = ['ctrl-1', 'PRISM', 'GPCC', 'NARR']
-#   explist = ['ctrl-1']
-#   explist = ['modis']
-#   explist = ['PRISM']; period = None
-  explist = ['max','max-2050']
-  period = [H10]*3+[None]
+  explist = ['max','NARR','PRISM','new']
+  period = [H10, H10, A10, H10]
   
   ## select variables and seasons
 #   varlist = ['precipnc', 'precipc', 'T2']
-#  varlist = ['snowh'];  seasons = [8]
   varlist = ['precip']
 #   varlist = ['evap']
 #   varlist = ['snow']
@@ -155,7 +118,6 @@ if __name__ == '__main__':
 #   varlist = ['qtfx','lhfr']
 #   varlist = ['precip','T2']
 #   varlist = ['T2']
-#   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['precip','T2','snow']
 #   varlist = ['snow', 'snowh']
 #  varlist = ['SST','T2','precip','snow','snowh']
@@ -165,11 +127,12 @@ if __name__ == '__main__':
 #   seasons = ['winter']    
 #   seasons = ['winter', 'summer', 'annual']
 #   varlist = ['snow']; seasons = ['fall','winter','spring']
+#   varlist = ['seaice']; seasons = [8] # September seaice
+#  varlist = ['snowh'];  seasons = [8] # September snow height
 #  varlist = ['precip']; seasons = ['annual']
 #  varlist = ['zs']; seasons = ['hidef']
 #  varlist = ['stns']; seasons = ['annual']
 #   varlist = ['lndcls']; seasons = [''] # static
-
   
 
   ## load data 
@@ -182,14 +145,15 @@ if __name__ == '__main__':
         if exp == 'GPCC': ext = (loadGPCC(resolution=resolution,period=prd),); axt = 'GPCC Observations' # ,period=prd
         elif exp == 'CRU': ext = (loadCRU(period=prd),); axt = 'CRU Observations' 
         elif exp[0:5] == 'PRISM': # all PRISM derivatives
-          if exp == 'PRISM': prismfile = 'prism_clim.nc'
-          elif exp == 'PRISM-10km': prismfile = 'prism_10km.nc'
-          if len(varlist) ==1 and varlist[0] == 'precip': 
-            ext = (loadGPCC(resolution='0.25'), loadPRISM(filename=prismfile)); axt = 'PRISM (and GPCC)'
-          else: ext = (loadCRU(period='1979-2009'), loadPRISM(filename=prismfile)); axt = 'PRISM (and CRU)'
+#           if exp == 'PRISM': prismfile = 'prism_clim.nc'
+#           elif exp == 'PRISM-10km': prismfile = 'prism_10km.nc'
+          if len(varlist) == 1 and varlist[0] == 'precip' and False: 
+            ext = (loadGPCC(), loadPRISM()); axt = 'PRISM (and GPCC)'
+#             ext = (loadPRISM(),); axt = 'PRISM'
+          else: ext = (loadCRU(period='1979-2009'), loadPRISM()); axt = 'PRISM (and CRU)'
           # ext = (loadPRISM(),)          
         elif exp == 'CFSR': ext = (loadCFSR(period=prd),); axt = 'CFSR Reanalysis' 
-        elif exp == 'NARR': ext = (loadNARR(),); axt = 'NARR Reanalysis'
+        elif exp == 'NARR': ext = (loadNARR(period=prd),); axt = 'NARR Reanalysis'
         else: # all other uppercase names are CESM runs
           raise NotImplementedError, "CESM datasets are currently not supported."  
 #           ext = (loadCESM(exp=exp, period=prd),)
@@ -329,6 +293,7 @@ if __name__ == '__main__':
         lontpl = []; lattpl = []; datatpl = []                
         for exp in exptpl:
           expvar = exp.variables[var]
+          print expvar.name, exp.name
           assert expvar.gdal
           # handle dimensions
           if expvar.isProjected: 

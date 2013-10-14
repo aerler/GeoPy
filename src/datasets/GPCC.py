@@ -89,7 +89,7 @@ def loadGPCC_LTM(name=dataset_name, varlist=varlist, resolution='025', varatts=l
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
   # add method to convert precip from per month to per second
-  dataset.convertPrecip = types.MethodType(convertPrecip, dataset)    
+  dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    
   # return formatted dataset
   return dataset
 
@@ -110,7 +110,7 @@ def loadGPCC_TS(name=dataset_name, varlist=varlist, resolution='25', varatts=tsv
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
   # N.B.: projection should be auto-detected as geographic
   # add method to convert precip from per month to per second
-  dataset.convertPrecip = types.MethodType(convertPrecip, dataset)    
+  dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    
   # return formatted dataset
   return dataset
 
@@ -158,13 +158,11 @@ loadClimatology = loadGPCC # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-  mode = 'test_climatology'
-  mode = 'average_timeseries'
-#   mode = 'convert_climatology'
-  reses = ('05',) # for testing
-#   reses = ('025',) # hi-res climatology
+  mode = 'test_climatology'; reses = ('025',); period = None
+#   mode = 'average_timeseries'; reses = ('05',) # for testing
+#   mode = 'convert_climatology'; period = None; reses = ('025',) # hi-res climatology  
 #   reses = ('05', '10', '25')
-  period = (1979,1989)
+#   period = (1979,1989)
   grid = 'GPCC'
   
   # generate averaged climatology
