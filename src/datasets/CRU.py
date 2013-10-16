@@ -109,9 +109,9 @@ loadClimatology = loadCRU # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
     
-#   mode = 'test_climatology'
-  mode = 'average_timeseries'
-  period = (1979,2009)
+  mode = 'test_climatology'
+#   mode = 'average_timeseries'
+  period = (1979,1981)
 
   if mode == 'test_climatology':
     
@@ -121,6 +121,7 @@ if __name__ == '__main__':
     print(dataset)
     print('')
     print(dataset.geotransform)
+    print(dataset.precip.getArray().mean())
 
         
   elif mode == 'average_timeseries':
@@ -142,7 +143,8 @@ if __name__ == '__main__':
     # determine averaging interval
     offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
     # initialize processing
-    CPU = CentralProcessingUnit(source, sink, varlist=['precip'])
+    #CPU = CentralProcessingUnit(source, sink, varlist=['precip'])
+    CPU = CentralProcessingUnit(source, sink)
     # start processing      
     print('')
     print('   +++   processing   +++   ') 

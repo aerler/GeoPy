@@ -11,6 +11,7 @@ geographic projection.
 from copy import copy # to copy map projection objects
 # matplotlib config: size etc.
 import numpy as np
+import numpy.ma as ma
 import matplotlib.pylab as pyl
 import matplotlib as mpl
 mpl.rc('lines', linewidth=1.)
@@ -89,7 +90,7 @@ if __name__ == '__main__':
   G10 = '1969-1979'; I10 = '1989-1999'; J10 = '1999-2009' # additional historical periods
   A03 = '2045-2048'; A05 = '2045-2050'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
   B03 = '2095-2098'; B05 = '2095-2100'; B10 = '2095-2105'; B15 = '2095-2110' # late 21st century
-  lprint = True # write plots to disk
+  lprint = False # write plots to disk
   ltitle = True # plot/figure title
   lcontour = False # contour or pcolor plot
   lframe = True # draw domain boundary
@@ -102,8 +103,9 @@ if __name__ == '__main__':
   case = 'max' # name tag
   projtype = 'lcc-new' # 'lcc-new'  
   period = H10; dom = (2,)
-  explist = ['max','NARR','PRISM','new']
-  period = [H10, H10, A10, H10]
+  explist = ['PRISM']; period = [None]
+#   explist = ['max','NARR','PRISM','new']
+#   period = [H10, H10, A10, H10]
   
   ## select variables and seasons
 #   varlist = ['precipnc', 'precipc', 'T2']
@@ -145,11 +147,9 @@ if __name__ == '__main__':
         if exp == 'GPCC': ext = (loadGPCC(resolution=resolution,period=prd),); axt = 'GPCC Observations' # ,period=prd
         elif exp == 'CRU': ext = (loadCRU(period=prd),); axt = 'CRU Observations' 
         elif exp[0:5] == 'PRISM': # all PRISM derivatives
-#           if exp == 'PRISM': prismfile = 'prism_clim.nc'
-#           elif exp == 'PRISM-10km': prismfile = 'prism_10km.nc'
-          if len(varlist) == 1 and varlist[0] == 'precip' and False: 
+          if len(varlist) == 1 and varlist[0] == 'precip': 
             ext = (loadGPCC(), loadPRISM()); axt = 'PRISM (and GPCC)'
-#             ext = (loadPRISM(),); axt = 'PRISM'
+            #  ext = (loadPRISM(),); axt = 'PRISM'
           else: ext = (loadCRU(period='1979-2009'), loadPRISM()); axt = 'PRISM (and CRU)'
           # ext = (loadPRISM(),)          
         elif exp == 'CFSR': ext = (loadCFSR(period=prd),); axt = 'CFSR Reanalysis' 
@@ -288,7 +288,7 @@ if __name__ == '__main__':
       ## compute data
       data = []; lons = []; lats=[]  # list of data and coordinate fields to be plotted 
       # compute average WRF precip            
-      print(' - loading data\n')
+      print(' - loading data')
       for exptpl in exps:
         lontpl = []; lattpl = []; datatpl = []                
         for exp in exptpl:
@@ -308,15 +308,18 @@ if __name__ == '__main__':
           if 'WRF' in exp.atts.get('description',''): mon = days_per_month_365
           else: mon = days_per_month
           # extract data field
-          vardata = np.zeros(expvar.mapSize) # allocate array
+          vardata = ma.zeros(expvar.mapSize) # allocate masked array
+          #np.zeros(expvar.mapSize) # allocate array
           # compute average over seasonal range
           days = 0
           if expvar.hasAxis('time'):
             for m in month:
               n = m-1 
-              vardata += expvar(time=exp.time[n]) * mon[n]
+              tmp = expvar(time=exp.time[n])
+              vardata += tmp * mon[n]
               days += mon[n]
-            vardata /=  days # normalize
+            vardata /=  days # normalize 
+            vardata.set_fill_value(np.NaN)
           else:
             vardata = expvar[:].squeeze()
           vardata = vardata * expvar.plot.get('scalefactor',1) # apply plot unit conversion          
@@ -337,6 +340,7 @@ if __name__ == '__main__':
           datatpl.append(vardata) # append to data list
         # add tuples to master list
         lons.append(lontpl); lats.append(lattpl); data.append(datatpl)
+        print('')
               
       ## setup projection
       #print(' - setting up figure\n') 
@@ -380,8 +384,11 @@ if __name__ == '__main__':
         print(' - drawing data frames\n')
         for n in xrange(nax):
           for m in xrange(nexps[n]):   
-            bdy = np.ones_like(x[n][m]); bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0
-            maps[n].contour(x[n][m],y[n][m],bdy,[0],ax=ax[n], colors='k') # draw boundary of inner domain
+            bdy = ma.ones(data[n][m].shape); bdy[ma.getmaskarray(data[n][m])] = 0
+            # N.B.: for some reason, using np.ones_like() causes a masked data array to fill with zeros  
+            print bdy.mean(), data[n][m].__class__.__name__, data[n][m].fill_value 
+            bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
+            maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', fill=False) # draw boundary of inner domain
       # draw data
       norm = mpl.colors.Normalize(vmin=min(clevs),vmax=max(clevs),clip=True) # for colormap
       cd = []

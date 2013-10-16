@@ -374,13 +374,13 @@ if __name__ == '__main__':
 #   mode = 'test_timeseries'
   mode = 'average_timeseries'
   
-  experiments = ['max', 'new']; startdate = 1979; period = (1979,1989)
+  experiments = ['nogulf']; startdate = 1979; period = (1979,1989)
 #   experiments = ['max-2050']; startdate = 2045; period = (2045,2055)
   from plotting.ARB_settings import WRFname
   experiments = [WRFname[exp] for exp in experiments]
   domains = [1,2]
 #   filetypes = ['srfc','xtrm','plev3d','hydro',]
-  filetypes = ['srfc','xtrm','hydro',]
+  filetypes = ['srfc','hydro',]
 #   filetypes = ['srfc','hydro',]
 #   filetypes = ['srfc']
   grid = 'WRF'   

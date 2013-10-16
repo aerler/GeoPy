@@ -135,7 +135,8 @@ if __name__ == '__main__':
     print(dataset)
     print('')
     print(dataset.geotransform)
-    
+    print(dataset.precip.masked)
+    print(dataset.precip.getArray().mean())
     
   ## convert ASCII files to NetCDF
   elif mode == 'convert_ASCII': 

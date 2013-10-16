@@ -193,7 +193,7 @@ def coerceAtts(atts):
   # loop over items
   for key,value in atts.iteritems():
     if isinstance(key,basestring) and key[0] == '_' : pass
-    elif not isinstance(value,(basestring,np.ndarray,float,int)):
+    elif not isinstance(value,(basestring,np.ndarray,np.inexact,float,np.integer,int)):
       if isinstance(value,col.Iterable):
         if len(value) == 0: ncatts[key] = '' # empty attribute
         elif all([isinstance(val,(int,np.integer,float,np.inexact)) for val in value]):

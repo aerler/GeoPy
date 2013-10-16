@@ -160,8 +160,10 @@ if __name__ == '__main__':
   
   mode = 'test_climatology'; reses = ('025',); period = None
 #   mode = 'average_timeseries'; reses = ('05',) # for testing
-#   mode = 'convert_climatology'; period = None; reses = ('025',) # hi-res climatology  
+#   mode = 'convert_climatology'; reses = ('025',); period = None
+  reses = ('025','05', '10', '25')  
 #   reses = ('05', '10', '25')
+#   reses = ('05',)
 #   period = (1979,1989)
   grid = 'GPCC'
   
@@ -177,6 +179,8 @@ if __name__ == '__main__':
       print(dataset)
       print('')
       print(dataset.geotransform)
+      print(dataset.precip.getArray().mean())
+      print(dataset.precip.masked)
       
           
     elif mode == 'convert_climatology':      
@@ -207,7 +211,7 @@ if __name__ == '__main__':
       ncset = writeNetCDF(dataset, avgfolder+filename, close=False)
       add_strvar(ncset,'name_of_month', name_of_month, 'time', # add names of month
                  atts=dict(name='name_of_month', units='', long_name='Name of the Month')) 
-      
+       
       # close...
       ncset.close()
       dataset.close()
