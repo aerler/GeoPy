@@ -55,8 +55,8 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   for n in xrange(1,maxdom+1):
     dnfile = filepath.format(n)
     if not os.path.exists(dnfile):
-      if n in domains: raise IOError, 'File {} for domain {:d} not found!'.format(dnfile,domains)
-      else: raise IOError, 'File {} for domain {:d} not found; this file is necessary to infer the geotransform for other domains.'.format(dnfile)
+      if n in domains: raise IOError, 'File {} for domain {:d} not found!'.format(dnfile,n)
+      else: raise IOError, 'File {} for domain {:d} not found; this file is necessary to infer the geotransform for other domains.'.format(dnfile,n)
   # open first domain file (special treatment)
   dn = nc.Dataset(filepath.format(1), mode='r', format=ncformat)
   name=experiment if isinstance(experiment,basestring) else name[0] # omit domain information, which is irrelevant
@@ -257,7 +257,7 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=No
   # generate filelist and attributes based on filetypes and domain
   if filetypes is None: filetypes = fileclasses.keys()
   elif isinstance(filetypes,list):  
-    if 'axes' not in filetypes: filetypes + ['axes']
+    if 'axes' not in filetypes: filetypes.append('axes')
   else: raise TypeError  
   atts = dict(); filelist = [] 
   for filetype in filetypes:
@@ -373,14 +373,19 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
   mode = 'average_timeseries'
-  
-  experiments = ['nogulf']; startdate = 1979; period = (1979,1989)
-#   experiments = ['max-2050']; startdate = 2045; period = (2045,2055)
+  experiments = []; period = (1979,1989)
+  experiments = ['max']; period = (1979,1989)
+#   experiments = ['max-2050']; period = (2045,2055)
   from plotting.ARB_settings import WRFname
-  experiments = [WRFname[exp] for exp in experiments]
+  if len(experiments) > 0:    
+    experiments = [WRFname[exp] for exp in experiments]
+  else:
+    experiments = [exp for exp in WRFname.values()]
   domains = [1,2]
-#   filetypes = ['srfc','xtrm','plev3d','hydro',]
-  filetypes = ['srfc','hydro',]
+  startdate = period[0]
+  filetypes = ['srfc','xtrm','plev3d','hydro',]
+  filetypes = ['plev3d',]
+#   filetypes = ['srfc','hydro',]
 #   filetypes = ['srfc','hydro',]
 #   filetypes = ['srfc']
   grid = 'WRF'   

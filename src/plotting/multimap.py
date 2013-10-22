@@ -103,9 +103,9 @@ if __name__ == '__main__':
   case = 'max' # name tag
   projtype = 'lcc-new' # 'lcc-new'  
   period = H10; dom = (2,)
-  explist = ['PRISM']; period = [None]
-#   explist = ['max','NARR','PRISM','new']
-#   period = [H10, H10, A10, H10]
+#   explist = ['PRISM']; period = [None]
+  explist = ['max','CRU','NARR','PRISM','new','noah']
+#   period = [H10, H10, None, H10]
   
   ## select variables and seasons
 #   varlist = ['precipnc', 'precipc', 'T2']
@@ -123,8 +123,8 @@ if __name__ == '__main__':
 #  varlist = ['precip','T2','snow']
 #   varlist = ['snow', 'snowh']
 #  varlist = ['SST','T2','precip','snow','snowh']
-#   seasons = [ [i] for i in xrange(12) ] # monthly
-  seasons = ['annual']
+  seasons = [ [i] for i in xrange(12) ] # monthly
+#   seasons = ['annual']
 #   seasons = ['summer']
 #   seasons = ['winter']    
 #   seasons = ['winter', 'summer', 'annual']

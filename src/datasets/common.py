@@ -54,7 +54,7 @@ default_varatts = dict(pmsl     = dict(name='pmsl', units='Pa'), # sea-level pre
 import socket
 hostname = socket.gethostname()
 if hostname=='komputer':
-  data_root = '/home/DATA/DATA/'
+  data_root = '/data/'
 #  root = '/media/tmp/' # RAM disk for development
 elif hostname=='cryo':
   data_root = '/scratch/marcdo/Data/'
