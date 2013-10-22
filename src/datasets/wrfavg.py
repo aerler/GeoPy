@@ -27,12 +27,12 @@ if __name__ == '__main__':
   # defaults
   varlist = None # ['precip', 'T2']
   experiments = [] # WRF experiment names (passed through WRFname
-  period = (1979,1981) # averaging period
+  period = (1979,1989) # averaging period
   domains = [1,2] # domains to be processed
   filetypes = ['srfc','xtrm','plev3d','hydro',] # filetypes to be processed
   grid = 'WRF' 
   # experiments
-#   experiments = ['max']; period = (1979,1989)
+  experiments = ['gulf']; period = (1979,1989)
 #   experiments = ['max-2050']; period = (2045,2055)
 
   # inferred settings 
@@ -66,7 +66,7 @@ if __name__ == '__main__':
       fileclass = fileclasses[filetype] # used for target file name
       
       # in case anything goes wrong, just go to the next one...
-      try:
+      if True:
         sources = loadWRF_TS(experiment=experiment, filetypes=[filetype], domains=domains) # comes out as a tuple...
         
         # effectively, loop over domains
@@ -126,4 +126,4 @@ if __name__ == '__main__':
           print(sink)     
       
       # for try at line 65
-      except: pass
+#       except: pass

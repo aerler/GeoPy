@@ -8,15 +8,10 @@ Meta data related to the Athabasca River Basin downscaling project; primarily WR
 
 
 # data root folder
-from socket import gethostname
-hostname = gethostname()
-if hostname=='erlkoenig':
-  WRFroot = '/home/me/DATA/WRF/'
-elif hostname=='komputer':
-  WRFroot = '/home/DATA/DATA/WRF/' + 'Downscaling/'
+from datasets.WRF import root_folder
 
 ## Project Parameters
-projRoot = WRFroot # + 'Downscaling/' # the project root folder
+projRoot = root_folder # the project root folder
 # Experiments: define non-standard folders 
 experiment = dict() # dictionary of experiments
 # hitop
@@ -104,40 +99,49 @@ WRFtitle['tom'] = 'Thompson MP'
 WRFtitle['wdm6'] = 'WDM-6 MP'
 
 ## setup projection: lambert conformal
+# lon_0,lat_0 is central point. lat_ts is latitude of true scale.
+projection = dict()
+## Lambert Conic Conformal - New Fine Domain
+projection['lcc-new'] = dict(projection='lcc', lat_0=55, lon_0=-120, lat_1=52, rsphere=(6378137.00,6356752.3142),#
+              width=180*10e3, height=180*10e3, area_thresh = 1000., resolution='l')
+## Lambert Conic Conformal - Fine Domain
+projection['lcc-fine'] = dict(projection='lcc', lat_0=58, lon_0=-132, lat_1=53, rsphere=(6378137.00,6356752.3142),#
+              width=200*10e3, height=300*10e3, area_thresh = 1000., resolution='l')
+## Lambert Conic Conformal - Small Domain
+projection['lcc-small'] = dict(projection='lcc', lat_0=56, lon_0=-130, lat_1=53, rsphere=(6378137.00,6356752.3142),#
+              width=2500e3, height=2650e3, area_thresh = 1000., resolution='l')
+## Lambert Conic Conformal - Intermed Domain
+projection['lcc-intermed'] = dict(projection='lcc', lat_0=57, lon_0=-140, lat_1=53, rsphere=(6378137.00,6356752.3142),#
+              width=4000e3, height=3400e3, area_thresh = 1000., resolution='l')
+## Lambert Conic Conformal - Large Domain
+projection['lcc-large'] = dict(projection='lcc', lat_0=54.5, lon_0=-140, lat_1=53, #rsphere=(6378137.00,6356752.3142),#
+              width=11000e3, height=7500e3, area_thresh = 10e3, resolution='l')
+## Lambert Azimuthal Equal Area
+projection['laea'] = dict(projection='laea', lat_0=57, lon_0=-137, lat_ts=53, resolution='l', #
+              width=259*30e3, height=179*30e3, rsphere=(6378137.00,6356752.3142), area_thresh = 1000.)  
+## Orthographic Projection
+projection['ortho-NA'] = dict(projection='ortho', lat_0 = 75, lon_0 = -137, resolution = 'l', area_thresh = 1000.)
+
 def getProjectionSettings(projtype):
-  # lon_0,lat_0 is central point. lat_ts is latitude of true scale.
-  if projtype == 'lcc-new':
-    ## Lambert Conic Conformal - New Fine Domain
-    projection = dict(projection='lcc', lat_0=55, lon_0=-120, lat_1=52, rsphere=(6378137.00,6356752.3142),#
-                width=180*10e3, height=180*10e3, area_thresh = 1000., resolution='l')
-  elif projtype == 'lcc-fine':
-    ## Lambert Conic Conformal - Fine Domain
-    projection = dict(projection='lcc', lat_0=58, lon_0=-132, lat_1=53, rsphere=(6378137.00,6356752.3142),#
-                width=200*10e3, height=300*10e3, area_thresh = 1000., resolution='l')
-  elif projtype == 'lcc-small':
-    ## Lambert Conic Conformal - Small Domain
-    projection = dict(projection='lcc', lat_0=56, lon_0=-130, lat_1=53, rsphere=(6378137.00,6356752.3142),#
-                width=2500e3, height=2650e3, area_thresh = 1000., resolution='l')
-  elif projtype == 'lcc-intermed':
-    ## Lambert Conic Conformal - Intermed Domain
-    projection = dict(projection='lcc', lat_0=57, lon_0=-140, lat_1=53, rsphere=(6378137.00,6356752.3142),#
-                width=4000e3, height=3400e3, area_thresh = 1000., resolution='l')
-  elif projtype == 'lcc-large':
-    ## Lambert Conic Conformal - Large Domain
-    projection = dict(projection='lcc', lat_0=54.5, lon_0=-140, lat_1=53, #rsphere=(6378137.00,6356752.3142),#
-                width=11000e3, height=7500e3, area_thresh = 10e3, resolution='l')
-  elif projtype == 'laea': 
-    ## Lambert Azimuthal Equal Area
-    projection = dict(projection='laea', lat_0=57, lon_0=-137, lat_ts=53, resolution='l', #
-                width=259*30e3, height=179*30e3, rsphere=(6378137.00,6356752.3142), area_thresh = 1000.)  
-  elif projtype == 'ortho-NA':
-    ## Orthographic Projection
-    projection = dict(projection='ortho', lat_0 = 75, lon_0 = -137, resolution = 'l', area_thresh = 1000.)
+  ''' simple function to return elements of the projection dict and a bit more; mostly legacy '''
+  #TODO: pull creation of projection object into this function
+  #TODO: add optional loading from pickled object
+  # projection
+  proj = projection[projtype]
   # resolution of coast lines
-  grid = 10; res = projection['resolution']
+  grid = 10; res = proj['resolution']
   # return values
-  return projection, grid, res
+  return proj, grid, res
 
 
+# create pickles
 if __name__ == '__main__':
-    pass
+    
+    # loop over projections
+    for name,proj in projection.items():
+      
+      #TODO: generate projection object
+      
+      #TODO: pickle object
+      pass
+    
