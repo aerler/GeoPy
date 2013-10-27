@@ -243,7 +243,7 @@ class Axes(FileType):
 
 # data source/location
 fileclasses = dict(const=Const(), srfc=Srfc(), xtrm=Xtrm(), plev3d=Plev3D(), hydro=Hydro(), axes=Axes())
-root_folder = data_root + 'WRF/Downscaling/' # long-term mean folder
+root_folder = data_root + 'WRF/wrfavg/' # long-term mean folder
 
 
 ## Functions to load different types of WRF datasets

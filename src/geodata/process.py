@@ -25,6 +25,9 @@ class ProcessError(Exception):
   ''' Error class for exceptions occurring in methods of the CPU (CentralProcessingUnit). '''
   pass
 
+class DateError(ProcessError):
+  ''' Exception indicating invalid dates passed to processor. '''
+  pass
 
 class CentralProcessingUnit(object):
   
