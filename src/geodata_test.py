@@ -227,7 +227,7 @@ class BaseDatasetTest(unittest.TestCase):
   def setUp(self):
     ''' create Dataset with Axes and a Variables for testing '''
     if RAM: self.folder = ramdisk
-    else: self.folder = '/home/DATA/DATA/' # folder for write tests
+    else: self.folder = '/data/' # folder for write tests
     # some setting that will be saved for comparison
     self.size = (3,3,3) # size of the data array and axes
     te, ye, xe = self.size
@@ -367,7 +367,7 @@ class NetCDFVarTest(BaseVarTest):
   
   def setUp(self):
     if RAM: folder = ramdisk
-    else: folder = '/home/DATA/DATA/%s/'%self.dataset # dataset name is also in folder name
+    else: folder = '/data/%s/'%self.dataset # dataset name is also in folder name
     # select dataset
     if self.dataset == 'GPCC': # single file
       filelist = ['gpcc_test/full_data_v6_precip_25.nc'] # variable to test
@@ -463,7 +463,7 @@ class DatasetNetCDFTest(BaseDatasetTest):
   
   def setUp(self):
     if RAM: folder = ramdisk
-    else: folder = '/home/DATA/DATA/%s/'%self.dataset # dataset name is also in folder name
+    else: folder = '/data/%s/'%self.dataset # dataset name is also in folder name
     self.folder = folder
     # select dataset
     name = self.dataset
