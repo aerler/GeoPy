@@ -72,7 +72,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
     return nx,ny
   dx = dn.DX; dy = dn.DY
   nx,ny = getXYlen(dn)
-  x0 = nx*dx/2; y0 = ny*dy/2 
+  x0 = -nx*dx/2; y0 = -ny*dy/2 
   size = (nx, ny); geotransform = (x0,dx,0.,y0,0.,dy)
   name = names[0] if 1 in domains else 'tmp'  # update name, if first domain has a name...
   griddef = GridDefinition(name=name, projection=projection, geotransform=geotransform, size=size)
@@ -371,10 +371,10 @@ if __name__ == '__main__':
     
   
 #   mode = 'test_climatology'
-#   mode = 'test_timeseries'
-  mode = 'average_timeseries'
+  mode = 'test_timeseries'
+#   mode = 'average_timeseries'
   experiments = []; period = (1979,1989)
-  experiments = ['max']; period = (1979,1989)
+  experiments = ['max']; period = (1979,1981)
 #   experiments = ['max-2050']; period = (2045,2055)
   from plotting.ARB_settings import WRFname
   if len(experiments) > 0:    
@@ -384,11 +384,11 @@ if __name__ == '__main__':
   domains = [1,2]
   startdate = period[0]
   filetypes = ['srfc','xtrm','plev3d','hydro',]
-  filetypes = ['plev3d',]
+  filetypes = ['hydro',]
 #   filetypes = ['srfc','hydro',]
 #   filetypes = ['srfc','hydro',]
 #   filetypes = ['srfc']
-  grid = 'WRF'   
+  grid = '025'   
   
 
   
@@ -405,12 +405,12 @@ if __name__ == '__main__':
   # load monthly time-series file
   elif mode == 'test_timeseries':
     
-    datasets = loadWRF_TS(experiment='max-ctrl', domains=2, filetypes=['srfc'])
-    for dataset in datasets:
-      print('')
-      print(dataset)
-      print('')
-      print(dataset.geotransform)
+    dataset = loadWRF_TS(experiment='max-ctrl', domains=1, filetypes=['srfc'])
+#     for dataset in datasets:
+    print('')
+    print(dataset)
+    print('')
+    print(dataset.geotransform)
     
                         
   # generate averaged climatology
@@ -499,5 +499,5 @@ if __name__ == '__main__':
           sink.close()
           # print dataset
           print('')
-          print(sink)     
+          print(sink)          
       

@@ -223,8 +223,6 @@ class CentralProcessingUnit(object):
       # get GDAL dataset instances
       srcdata = var.getGDAL(load=True)
       tgtdata = newvar.getGDAL(load=False, allocate=True, fillValue=var.fillValue)
-#       print tgtdata.ReadAsArray().mean()
-#       print newvar.projection
       # determine GDAL interpolation
       if 'gdal_interp' in var.__dict__: gdal_interp = var.gdal_interp
       elif 'gdal_interp' in var.atts: gdal_interp = var.atts['gdal_interp'] 
@@ -233,6 +231,9 @@ class CentralProcessingUnit(object):
         else: gdal_interp = float_interp                          
       # perform regridding
       err = gdal.ReprojectImage(srcdata, tgtdata, var.projection.ExportToWkt(), newvar.projection.ExportToWkt(), gdal_interp)
+      #print srcdata.ReadAsArray().std(), tgtdata.ReadAsArray().std()
+      #print var.projection.ExportToWkt()
+      #print newvar.projection.ExportToWkt()
       # N.B.: the target array should be allocated and prefilled with missing values, otherwise ReprojectImage
       #       will just fill missing values with zeros!  
       if err != 0: raise GDALError, 'ERROR CODE %i'%err  

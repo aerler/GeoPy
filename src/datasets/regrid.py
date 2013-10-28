@@ -70,7 +70,7 @@ if __name__ == '__main__':
       CPU.Regrid(griddef=grid_def, flush=False)
 
     # get results
-    CPU.sync(flush=True, deepcopy=True)
+    CPU.sync(flush=True)
       
     if 'convertPrecip' in ds.__dict__:
       # convert precip data to SI units (mm/s) 

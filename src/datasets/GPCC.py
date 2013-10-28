@@ -10,6 +10,7 @@ This module contains meta data and access functions for the GPCC climatology and
 import netCDF4 as nc # netcdf python module
 import os # check if files are present
 import types # to add precip conversion fct. to datasets
+from importlib import import_module
 # internal imports
 from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
@@ -158,14 +159,14 @@ loadClimatology = loadGPCC # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-  mode = 'test_climatology'; reses = ('025',); period = None
-#   mode = 'average_timeseries'; reses = ('05',) # for testing
+#   mode = 'test_climatology'; reses = ('025',); period = None
+  mode = 'average_timeseries'; reses = ('05',) # for testing
 #   mode = 'convert_climatology'; reses = ('025',); period = None
   reses = ('025','05', '10', '25')  
 #   reses = ('05', '10', '25')
-#   reses = ('05',)
-#   period = (1979,1989)
-  grid = 'GPCC'
+  reses = ('25',)
+  period = (1979,1989)
+  grid = 'NARR'
   
   # generate averaged climatology
   for res in reses:    
@@ -248,10 +249,12 @@ if __name__ == '__main__':
         CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
       
       # get NARR coordinates
-      if grid == 'NARR':
-        from datasets.NARR import NARR_grid
+      if grid is not 'GPCC':
+        new_grid = import_module(grid[0:4]).__dict__[grid+'_grid']
+#       if grid == 'NARR':
+#         from datasets.NARR import NARR_grid
         # reproject and resample (regrid) dataset
-        CPU.Regrid(griddef=NARR_grid, flush=False)
+        CPU.Regrid(griddef=new_grid, flush=False)
             
 #       # shift longitude axis by 180 degrees  left (i.e. -180 - 180 -> 0 - 360)
 #       print('')

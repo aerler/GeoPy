@@ -650,6 +650,9 @@ class Axis(Variable):
         data = coord
       elif isinstance(coord,(list,tuple)):
         data = np.asarray(coord)
+      elif isinstance(coord,slice):
+        if not self.data: raise DataError, 'Cannot slice coordinate when coordinate vector is empty!'
+        data=self.coord.__getitem__(coord)
       else: #data = coord
         raise TypeError, 'Data type not supported for coordinate values.'
       # load data

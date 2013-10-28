@@ -10,6 +10,8 @@ Script to produce climatology files from monthly mean time-series' for all or a 
 import numpy as np
 import os
 import multiprocessing # parallelization
+import logging # used to control error output of sub-processes
+from datetime import datetime
 # internal
 from geodata.base import Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
@@ -22,7 +24,7 @@ from datasets.WRF import loadWRF_TS, fileclasses, root_folder
 from plotting.ARB_settings import WRFname
 
 
-def computeClimatology(pid, experiment, filetype, domain, periods=None, offset=0, griddef=None):
+def computeClimatology(experiment, filetype, domain, lparallel=False, periods=None, offset=0, griddef=None):
   ''' worker function to compute climatologies for given file parameters. '''
   # input type checks
   if not isinstance(experiment,basestring): raise TypeError
@@ -31,17 +33,29 @@ def computeClimatology(pid, experiment, filetype, domain, periods=None, offset=0
   if periods is not None and not (isinstance(periods,(tuple,list)) and isInt(periods)): raise TypeError
   if not isinstance(offset,(np.integer,int)): raise TypeError  
   if griddef is not None and not isinstance(griddef,GridDefinition): raise TypeError
+  if not isinstance(lparallel,(bool,np.bool)): raise TypeError
   # parallelism
-  if not isinstance(pid,(np.integer,int)): raise TypeError
-  pidstr = '' if pid < 0 else  '[proc%02i]'%pid # pid for parallel mode output
+  #pidstr = '' if pid < 0 else  '[proc%02i]'%pid # pid for parallel mode output
+  if lparallel:
+    #pid = multiprocessing.current_process().pid # some random number...
+    pid = int(multiprocessing.current_process().name.split('-')[-1]) # start at 1
+    pidstr = '[proc%02i]'%pid # pid for parallel mode output  
+  else:
+    pidstr = '' # don't print process ID, sicne there is only one
   
   # load source
   fileclass = fileclasses[filetype] # used for target file name
   print('\n%s   ***   Experiment: \'%s\'   ***   '%(pidstr,experiment) +
         '\n%s   ***   \'%s\'   ***   '%(pidstr,fileclass.tsfile.format(domain)))
   source = loadWRF_TS(experiment=experiment, filetypes=[filetype], domains=domain) # comes out as a tuple...
-  if pidstr == '': 
+  if not lparallel: 
     print(''); print(source); print('')
+  # determine age of oldest source file
+  if not loverwrite:
+    sourceage = datetime.today()
+    for filename in source.filelist:
+      age = datetime.fromtimestamp(os.path.getmtime(filename))
+      sourceage = age if age < sourceage else sourceage
   
   # figure out start date
   filebegin = int(source.atts.begin_date.split('-')[0]) # first element is the year
@@ -51,6 +65,7 @@ def computeClimatology(pid, experiment, filetype, domain, periods=None, offset=0
   
   ## loop over periods
   if periods is None: periods = [begindate-fileend]
+#   periods.sort(reverse=True) # reverse, so that largest chunk is done first
   for period in periods:       
             
     # figure out period
@@ -64,60 +79,98 @@ def computeClimatology(pid, experiment, filetype, domain, periods=None, offset=0
       periodstr = '%4i-%4i'%(begindate,enddate)
       avgfolder = root_folder + experiment + '/'
       print('\n%s   <<<   Processing Grid %s from %s   >>>   \n'%(pidstr,grid,periodstr))              
-      
-      # prepare sink
+
+      # determine if sink file already exists, and what to do about it      
       gridstr = '' if griddef is None or griddef.name is 'WRF' else '_'+griddef.name
       filename = fileclass.climfile.format(domain,gridstr,'_'+periodstr)
+      if ltest: filename = 'test_' + filename
       assert os.path.exists(avgfolder)
-      if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
-      sink = DatasetNetCDF(name='WRF Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
-      sink.atts.period = periodstr 
+      lskip = False # else just go ahead
+      if os.path.exists(avgfolder+filename): 
+        if not loverwrite: 
+          age = datetime.fromtimestamp(os.path.getmtime(avgfolder+filename))
+          # if sink file is newer than source file, skip (do not recompute)
+          if age > sourceage: lskip = True
+          #print sourceage, age
+        if not lskip: os.remove(avgfolder+filename) 
       
-      # initialize processing
-      CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=True) # no need for lat/lon
-      
-      # start processing climatology
-      CPU.Climatology(period=period, offset=offset, flush=False)
-      
-      # reproject and resample (regrid) dataset
-      if griddef is not None:
-        CPU.Regrid(griddef=griddef, flush=False)
-        print('%s    ---   (%3.2f,  %3i x %3i)   ---   \n'%(pidstr, dlon, len(lon), len(lat)))      
-      
-      # sync temporary storage with output
-      CPU.sync(flush=True)
-      
-      # make new masks
-      #sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)
-      
-      # add names and length of months
-      sink.axisAnnotation('name_of_month', name_of_month, 'time', 
-                          atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
-      sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
-                    atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
-      
-      # close... and write results to file
-      print('\n%s Writing to: \'%s\'\n'%(pidstr,filename))
-      sink.sync()
-      sink.close()
-      # print dataset
-      if pidstr == '':
-        print(''); print(sink); print('')     
+      # depending on last modification time of file or overwrite setting, start computation, or skip
+      if lskip:        
+        # print message
+        print('%s   >>>   Skipping: File \'%s\' already exists and is newer than source file.   <<<   \n'%(pidstr,filename))              
+      else:
+         
+        # prepare sink
+        sink = DatasetNetCDF(name='WRF Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
+        sink.atts.period = periodstr 
+        
+        # initialize processing
+        CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=True) # no need for lat/lon
+        
+        # start processing climatology
+        CPU.Climatology(period=period, offset=offset, flush=False)
+        
+        # reproject and resample (regrid) dataset
+        if griddef is not None:
+          CPU.Regrid(griddef=griddef, flush=False)
+          print('%s    ---   (%3.2f,  %3i x %3i)   ---   \n'%(pidstr, dlon, len(lon), len(lat)))      
+        
+        # sync temporary storage with output dataset (sink)
+        CPU.sync(flush=True)
+        
+        # make new masks
+        #sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)
+        
+        # add names and length of months
+        sink.axisAnnotation('name_of_month', name_of_month, 'time', 
+                            atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
+        sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
+                      atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
+        
+        # close... and write results to file
+        print('\n%s Writing to: \'%s\'\n'%(pidstr,filename))
+        sink.sync()
+        sink.close()
+        # print dataset
+        if not lparallel:
+          print(''); print(sink); print('')     
 
 if __name__ == '__main__':
   
-  NP = 4
+  ## read arguments
+  # number of processes NP 
+  if os.environ.has_key('PYAVG_THREADS'): 
+    NP = int(os.environ['PYAVG_THREADS'])
+  else: NP = None
+  # only compute whole years 
+  if os.environ.has_key('PYAVG_TEST'): 
+    ltest =  os.environ['PYAVG_TEST'] == 'TEST' 
+  else: ltest = False # i.e. append
+  # re-compute everything or just update 
+  if os.environ.has_key('PYAVG_OVERWRITE'): 
+    loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
+  else: loverwrite = ltest # False means only update old files
   
   # defaults
-  varlist = None # ['precip', 'T2']
-  experiments = [] # WRF experiment names (passed through WRFname)
-  periods = [5,10] # averaging period
-  domains = [1,2] # domains to be processed
-  filetypes = ['srfc','xtrm','plev3d','hydro',] # filetypes to be processed
-#   filetypes = ['hydro',] # filetypes to be processed
-  grid = 'WRF' 
-  # experiments
-#   experiments = ['gulf']; periods = [1]
+  if ltest:
+    NP = NP or 1
+    loverwrite = True
+    varlist = ['precip', ]
+    experiments = ['max']
+#     experiments = ['max','gulf','new','noah'] 
+    periods = [1,2]
+    domains = [1] # domains to be processed
+    filetypes = ['srfc',] # filetypes to be processed
+    grid = 'WRF' 
+  else:
+    NP = NP or 4
+    loverwrite = False
+    varlist = None
+    experiments = [] # WRF experiment names (passed through WRFname)
+    periods = [5,10] # averaging period
+    domains = [1,2] # domains to be processed
+    filetypes = ['srfc','xtrm','plev3d','hydro',] # filetypes to be processed
+    grid = 'WRF' 
 
   # expand experiments 
   if len(experiments) > 0: experiments = [WRFname[exp] for exp in experiments]
@@ -125,12 +178,13 @@ if __name__ == '__main__':
 
   ## do some fancy regridding
   # determine coordinate arrays
-  if grid != 'WRF':    
+  if grid != 'WRF':
     if grid == '025': dlon = dlat = 0.25 # resolution
     elif grid == '05': dlon = dlat = 0.5
     elif grid == '10': dlon = dlat = 1.0
     elif grid == '25': dlon = dlat = 2.5 
-    slon, slat, elon, elat = -179.75, 3.25, -69.75, 85.75
+    #slon, slat, elon, elat = -179.75, 3.25, -69.75, 85.75
+    slon, slat, elon, elat = -160.25, 32.75, -90.25, 72.75
     assert (elon-slon) % dlon == 0 
     lon = np.linspace(slon+dlon/2,elon-dlon/2,(elon-slon)/dlon)
     assert (elat-slat) % dlat == 0
@@ -142,7 +196,7 @@ if __name__ == '__main__':
   else:
     griddef = None
   
-  args = []
+  args = [] # list of arguments for workers, i.e. "work packages"
   # generate list of parameters
   for experiment in experiments:    
     # loop over file types
@@ -155,18 +209,20 @@ if __name__ == '__main__':
   ## loop over and process all job sets
   if NP is not None and NP == 1:
     # don't parallelize, if there is only one process: just loop over files    
-    for pid,arg in enumerate(args): # negative pid means serial mode
+    for arg in args: # negative pid means serial mode
       experiment, filetype, domain = arg
-      computeClimatology(pid, experiment, filetype, domain, periods=periods, griddef=griddef)
+      computeClimatology(experiment, filetype, domain, lparallel=False, periods=periods, griddef=griddef)
   else:
     if NP is None: pool = multiprocessing.Pool() 
     else: pool = multiprocessing.Pool(processes=NP)
+    if ltest:
+      multiprocessing.log_to_stderr()
+      logger = multiprocessing.get_logger()
+      logger.setLevel(logging.INFO)    
     # distribute tasks to workers
-    for pid,arg in enumerate(args): # negative pid means serial mode
+    for arg in args: # negative pid means serial mode
       experiment, filetype, domain = arg      
-      pool.apply_async(computeClimatology, (pid, experiment, filetype, domain), dict(periods=periods, griddef=griddef))
+      pool.apply_async(computeClimatology, (experiment, filetype, domain), dict(lparallel=True, periods=periods, griddef=griddef))
     pool.close()
     pool.join()
   print('')
-        
-  # loop over jobs
