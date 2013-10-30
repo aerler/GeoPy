@@ -24,7 +24,7 @@ from datasets.WRF import loadWRF_TS, fileclasses, root_folder
 from plotting.ARB_settings import WRFname
 
 
-def computeClimatology(experiment, filetype, domain, lparallel=False, periods=None, offset=0, griddef=None):
+def computeClimatology(experiment, filetype, domain, lparallel=None, periods=None, offset=0, griddef=None):
   ''' worker function to compute climatologies for given file parameters. '''
   # input type checks
   if not isinstance(experiment,basestring): raise TypeError
@@ -33,11 +33,9 @@ def computeClimatology(experiment, filetype, domain, lparallel=False, periods=No
   if periods is not None and not (isinstance(periods,(tuple,list)) and isInt(periods)): raise TypeError
   if not isinstance(offset,(np.integer,int)): raise TypeError  
   if griddef is not None and not isinstance(griddef,GridDefinition): raise TypeError
-  if not isinstance(lparallel,(bool,np.bool)): raise TypeError
+  if not isinstance(lparallel,(bool,np.bool)): raise TypeError 
   # parallelism
-  #pidstr = '' if pid < 0 else  '[proc%02i]'%pid # pid for parallel mode output
   if lparallel:
-    #pid = multiprocessing.current_process().pid # some random number...
     pid = int(multiprocessing.current_process().name.split('-')[-1]) # start at 1
     pidstr = '[proc%02i]'%pid # pid for parallel mode output  
   else:
@@ -46,7 +44,7 @@ def computeClimatology(experiment, filetype, domain, lparallel=False, periods=No
   ## start actual work: this is inclosed in a try-block, so errors don't 
   try:
     
-    raise TypeError
+    #if pid == 1: raise Exception # to test error handling
   
     # load source
     fileclass = fileclasses[filetype] # used for target file name
@@ -166,13 +164,13 @@ if __name__ == '__main__':
   # default settings
   if ldebug:
     #ldebug = False
-    NP = NP or 1
+    NP = NP or 2
     #loverwrite = True
     varlist = ['precip', ]
     experiments = ['max']
     #experiments = ['max','gulf','new','noah'] 
-    periods = [1,2]
-    domains = [1] # domains to be processed
+    periods = [1,]
+    domains = [1,2] # domains to be processed
     filetypes = ['srfc',] # filetypes to be processed
     grid = 'WRF' 
   else:
@@ -223,7 +221,7 @@ if __name__ == '__main__':
   print(datetime.today())
   print('\n Computing Climatologies for WRF experiments:\n')
   print(experiments)
-  print('\nTHREADS: %i, TEST: %s, OVERWRITE: %s'%(NP,ldebug,loverwrite))
+  print('\nTHREADS: %i, DEBUG: %s, OVERWRITE: %s'%(NP,ldebug,loverwrite))
   if grid != 'WRF': print('\nRegridding to \'%s\' grid.\n')
 
   ## loop over and process all job sets
@@ -232,30 +230,38 @@ if __name__ == '__main__':
     # don't parallelize, if there is only one process: just loop over files    
     for arg in args: # negative pid means serial mode
       experiment, filetype, domain = arg
-      exitcode = computeClimatology(experiment, filetype, domain, lparallel=False, 
+      exitcode = computeClimatology(experiment, filetype, domain, lparallel=False, # lparallel=False -> serial 
                                     periods=periods, griddef=griddef)
       exitcodes.append(exitcode)
+    # evaluate exit codes    
+    exitcode = 0
+    for ec in exitcodes:
+      assert ec >= 0 
+      exitcode += ec
   else:
+    # create pool of workers   
     if NP is None: pool = multiprocessing.Pool() 
     else: pool = multiprocessing.Pool(processes=NP)
+    # add debuggin info
     if ldebug:
       multiprocessing.log_to_stderr()
       logger = multiprocessing.get_logger()
-      logger.setLevel(logging.INFO)    
+      logger.setLevel(logging.INFO)
     # distribute tasks to workers
+    kwargs = dict(lparallel=True, periods=periods, griddef=griddef) # not job dependent
     for arg in args: # negative pid means serial mode
       experiment, filetype, domain = arg      
-      exitcode = pool.apply_async(computeClimatology, (experiment, filetype, domain), 
-                                  dict(lparallel=True, periods=periods, griddef=griddef))
-      exitcodes.append(exitcode)
+      exitcodes.append(pool.apply_async(computeClimatology, (experiment, filetype, domain), kwargs))
+    # wait until pool and queue finish
     pool.close()
-    pool.join()
-
-  # evaluate exit codes    
-  exitcode = 0
-  for ec in exitcodes:
-    assert ec >= 0 
-    exitcode += ec
+    pool.join() 
+    #print('\n   ***   all processes joined   ***   \n')
+    # evaluate exit codes    
+    exitcode = 0
+    for ec in exitcodes:
+      ec = ec.get()
+      if ec < 0: raise ValueError, 'Exit codes have to be zero or positive!' 
+      exitcode += ec
   nop = len(args) - exitcode
   # print summary
   if exitcode == 0:
