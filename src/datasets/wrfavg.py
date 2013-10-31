@@ -8,7 +8,7 @@ Script to produce climatology files from monthly mean time-series' for all or a 
 
 # external
 import numpy as np
-import os
+import os, sys
 import multiprocessing # parallelization
 import logging # used to control error output of sub-processes
 from datetime import datetime
@@ -44,12 +44,12 @@ def computeClimatology(experiment, filetype, domain, lparallel=None, periods=Non
   ## start actual work: this is inclosed in a try-block, so errors don't 
   try:
     
-    #if pid == 1: raise Exception # to test error handling
+    #if pid == 1: raise TypeError # to test error handling
   
     # load source
     fileclass = fileclasses[filetype] # used for target file name
-    print('\n\n{0:s}   ***   Processing Experiment {1:>10s}   ***   '.format(pidstr,"'%s'"%experiment) +
-          '\n{0:s}   ***   {1:^32s}   ***   \n'.format(pidstr,"'%s'"%fileclass.tsfile.format(domain)))
+    print('\n\n{0:s}   ***   Processing Experiment {1:<15s}   ***   '.format(pidstr,"'%s'"%experiment) +
+          '\n{0:s}   ***   {1:^37s}   ***   \n'.format(pidstr,"'%s'"%fileclass.tsfile.format(domain)))
     source = loadWRF_TS(experiment=experiment, filetypes=[filetype], domains=domain) # comes out as a tuple...
     if not lparallel: 
       print(''); print(source); print('')
@@ -140,10 +140,10 @@ def computeClimatology(experiment, filetype, domain, lparallel=None, periods=Non
              
     # return exit code
     return 0 # everything OK
-  except Exception:
+  except Exception: # , err
     # an error occurred
-    if ldebug: raise # raise error
-    else: return 1 # report error 
+    logging.exception(pidstr)
+    return 1
 
 if __name__ == '__main__':
   
@@ -243,10 +243,12 @@ if __name__ == '__main__':
     if NP is None: pool = multiprocessing.Pool() 
     else: pool = multiprocessing.Pool(processes=NP)
     # add debuggin info
-    if ldebug:
-      multiprocessing.log_to_stderr()
-      logger = multiprocessing.get_logger()
+    multiprocessing.log_to_stderr()
+    logger = multiprocessing.get_logger()
+    if ldebug: 
+#       logger.setLevel(logging.DEBUG)
       logger.setLevel(logging.INFO)
+    else: logger.setLevel(logging.INFO)
     # distribute tasks to workers
     kwargs = dict(lparallel=True, periods=periods, griddef=griddef) # not job dependent
     for arg in args: # negative pid means serial mode
