@@ -8,36 +8,45 @@ Script to produce climatology files from monthly mean time-series' for all or a 
 
 # external
 import numpy as np
-import os, sys
+import os
 import multiprocessing # parallelization
 import logging # used to control error output of sub-processes
 from datetime import datetime
 # internal
-from geodata.base import Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import GridDefinition
 from geodata.process import CentralProcessingUnit, DateError
+from geodata.multiprocess import asyncPoolEC
 from geodata.misc import isInt
-from datasets.common import name_of_month, days_per_month
+from datasets.common import name_of_month, days_per_month, getCommonGrid
 # WRF specific
 from datasets.WRF import loadWRF_TS, fileclasses, root_folder
 from plotting.ARB_settings import WRFname
 
 
-def computeClimatology(experiment, filetype, domain, lparallel=None, periods=None, offset=0, griddef=None):
+def computeClimatology(experiment, filetype, domain, periods=None, offset=0, griddef=None, loverwrite=False, lparallel=False, logger=None):
   ''' worker function to compute climatologies for given file parameters. '''
   # input type checks
   if not isinstance(experiment,basestring): raise TypeError
   if not isinstance(filetype,basestring): raise TypeError
   if not isinstance(domain,(np.integer,int)): raise TypeError
   if periods is not None and not (isinstance(periods,(tuple,list)) and isInt(periods)): raise TypeError
-  if not isinstance(offset,(np.integer,int)): raise TypeError  
+  if not isinstance(offset,(np.integer,int)): raise TypeError
+  if not isinstance(loverwrite,(bool,np.bool)): raise TypeError  
   if griddef is not None and not isinstance(griddef,GridDefinition): raise TypeError
-  if not isinstance(lparallel,(bool,np.bool)): raise TypeError 
+  if not isinstance(lparallel,(bool,np.bool)): raise TypeError
+  # logging
+  if logger is None:
+    logger = logging.getLogger() # new logger
+    logger.addHandler(logging.StreamHandler())
+  else: logger = logging.getLogger(name=logger) # connect to existing one 
   # parallelism
   if lparallel:
     pid = int(multiprocessing.current_process().name.split('-')[-1]) # start at 1
-    pidstr = '[proc%02i]'%pid # pid for parallel mode output  
+    pidstr = '[proc%02i]'%pid # pid for parallel mode output
+    #multiprocessing.current_process().name = 'proc%02i'%pid; pidstr = ''
+    # N.B.: the string log formatting is basically done manually here, 
+    #       so that I have better control over line spacing  
   else:
     pidstr = '' # don't print process ID, sicne there is only one
   
@@ -48,11 +57,11 @@ def computeClimatology(experiment, filetype, domain, lparallel=None, periods=Non
   
     # load source
     fileclass = fileclasses[filetype] # used for target file name
-    print('\n\n{0:s}   ***   Processing Experiment {1:<15s}   ***   '.format(pidstr,"'%s'"%experiment) +
+    logger.info('\n\n{0:s}   ***   Processing Experiment {1:<15s}   ***   '.format(pidstr,"'%s'"%experiment) +
           '\n{0:s}   ***   {1:^37s}   ***   \n'.format(pidstr,"'%s'"%fileclass.tsfile.format(domain)))
     source = loadWRF_TS(experiment=experiment, filetypes=[filetype], domains=domain) # comes out as a tuple...
     if not lparallel: 
-      print(''); print(source); print('')
+      logger.info('\n'+str(source)+'\n')
     # determine age of oldest source file
     if not loverwrite:
       sourceage = datetime.today()
@@ -75,13 +84,13 @@ def computeClimatology(experiment, filetype, domain, lparallel=None, periods=Non
       enddate = begindate + period     
       if filebegin > enddate: raise DateError    
       if enddate > fileend: 
-        print('\n%s   ---   Invalid Period: End Date %4i not in File!   ---   \n'%(pidstr,enddate))
+        logger.info('\n{0:s}   ---   Invalid Period: End Date {1:4d} not in File!   ---   \n'.format(pidstr,enddate))
         
       else:  
         ## begin actual computation
-        periodstr = '%4i-%4i'%(begindate,enddate)
+        periodstr = '{0:4d}-{1:4d}'.format(begindate,enddate)
         avgfolder = root_folder + experiment + '/'
-        print('\n%s   <<<   Computing Climatology from %s on %s grid  >>>   \n'%(pidstr,periodstr,grid))              
+        logger.info('\n{0:s}   <<<   Computing Climatology from {1:s} on {2:s} grid  >>>   \n'.format(pidstr,periodstr,grid))              
   
         # determine if sink file already exists, and what to do about it      
         gridstr = '' if griddef is None or griddef.name is 'WRF' else '_'+griddef.name
@@ -100,7 +109,7 @@ def computeClimatology(experiment, filetype, domain, lparallel=None, periods=Non
         # depending on last modification time of file or overwrite setting, start computation, or skip
         if lskip:        
           # print message
-          print('%s   >>>   Skipping: File \'%s\' already exists and is newer than source file.   <<<   \n'%(pidstr,filename))              
+          logger.info('{0:s}   >>>   Skipping: File \'{1:s}\' already exists and is newer than source file.   <<<   \n'.format(pidstr,filename))              
         else:
            
           # prepare sink
@@ -116,7 +125,7 @@ def computeClimatology(experiment, filetype, domain, lparallel=None, periods=Non
           # reproject and resample (regrid) dataset
           if griddef is not None:
             CPU.Regrid(griddef=griddef, flush=False)
-            print('%s    ---   (%3.2f,  %3i x %3i)   ---   \n'%(pidstr, dlon, len(lon), len(lat)))      
+            logger.info('%s    ---   '+str(griddef.geotansform)+'   ---   \n'%(pidstr))      
           
           # sync temporary storage with output dataset (sink)
           CPU.sync(flush=True)
@@ -131,19 +140,19 @@ def computeClimatology(experiment, filetype, domain, lparallel=None, periods=Non
                         atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
           
           # close... and write results to file
-          print('\n%s Writing to: \'%s\'\n'%(pidstr,filename))
+          logger.info('\n{0:s} Writing to: \'{1:s}\'\n'.format(pidstr,filename))
           sink.sync()
           sink.close()
           # print dataset
           if not lparallel:
-            print(''); print(sink); print('')   
+            logger.info('\n'+sink+'\n')   
              
     # return exit code
     return 0 # everything OK
   except Exception: # , err
     # an error occurred
-    logging.exception(pidstr)
-    return 1
+    logging.exception(pidstr) # print stack trace of last exception and current process ID 
+    return 1 # indicate failure
 
 if __name__ == '__main__':
   
@@ -190,23 +199,17 @@ if __name__ == '__main__':
   ## do some fancy regridding
   # determine coordinate arrays
   if grid != 'WRF':
-    if grid == '025': dlon = dlat = 0.25 # resolution
-    elif grid == '05': dlon = dlat = 0.5
-    elif grid == '10': dlon = dlat = 1.0
-    elif grid == '25': dlon = dlat = 2.5 
-    #slon, slat, elon, elat = -179.75, 3.25, -69.75, 85.75
-    slon, slat, elon, elat = -160.25, 32.75, -90.25, 72.75
-    assert (elon-slon) % dlon == 0 
-    lon = np.linspace(slon+dlon/2,elon-dlon/2,(elon-slon)/dlon)
-    assert (elat-slat) % dlat == 0
-    lat = np.linspace(slat+dlat/2,elat-dlat/2,(elat-slat)/dlat)
-    # add new geographic coordinate axes for projected map
-    xlon = Axis(coord=lon, atts=dict(name='lon', long_name='longitude', units='deg E'))
-    ylat = Axis(coord=lat, atts=dict(name='lat', long_name='latitude', units='deg N'))
-    griddef = GridDefinition(name=grid, projection=None, xlon=xlon, ylat=ylat) # projection=None >> lat/lon
+    griddef = getCommonGrid(grid)
   else:
     griddef = None
   
+  # print an announcement
+  print('\n Computing Climatologies for WRF experiments:\n')
+  print(experiments)
+  if grid != 'WRF': print('\nRegridding to \'{0:s}\' grid.\n'.format(grid))
+  print('\nOVERWRITE: {0:s}\n'.format(loverwrite))
+      
+  # assemble argument list and do regridding
   args = [] # list of arguments for workers, i.e. "work packages"
   # generate list of parameters
   for experiment in experiments:    
@@ -214,62 +217,9 @@ if __name__ == '__main__':
     for filetype in filetypes:                
       # effectively, loop over domains
       for domain in domains:
-        # call worker function
-        args.append((experiment, filetype, domain))
-        
-  # print an announcement
-  print(datetime.today())
-  print('\n Computing Climatologies for WRF experiments:\n')
-  print(experiments)
-  print('\nTHREADS: %i, DEBUG: %s, OVERWRITE: %s'%(NP,ldebug,loverwrite))
-  if grid != 'WRF': print('\nRegridding to \'%s\' grid.\n')
-
-  ## loop over and process all job sets
-  exitcodes = [] # list of results
-  if NP is not None and NP == 1:
-    # don't parallelize, if there is only one process: just loop over files    
-    for arg in args: # negative pid means serial mode
-      experiment, filetype, domain = arg
-      exitcode = computeClimatology(experiment, filetype, domain, lparallel=False, # lparallel=False -> serial 
-                                    periods=periods, griddef=griddef)
-      exitcodes.append(exitcode)
-    # evaluate exit codes    
-    exitcode = 0
-    for ec in exitcodes:
-      assert ec >= 0 
-      exitcode += ec
-  else:
-    # create pool of workers   
-    if NP is None: pool = multiprocessing.Pool() 
-    else: pool = multiprocessing.Pool(processes=NP)
-    # add debuggin info
-    multiprocessing.log_to_stderr()
-    logger = multiprocessing.get_logger()
-    if ldebug: 
-#       logger.setLevel(logging.DEBUG)
-      logger.setLevel(logging.INFO)
-    else: logger.setLevel(logging.INFO)
-    # distribute tasks to workers
-    kwargs = dict(lparallel=True, periods=periods, griddef=griddef) # not job dependent
-    for arg in args: # negative pid means serial mode
-      experiment, filetype, domain = arg      
-      exitcodes.append(pool.apply_async(computeClimatology, (experiment, filetype, domain), kwargs))
-    # wait until pool and queue finish
-    pool.close()
-    pool.join() 
-    #print('\n   ***   all processes joined   ***   \n')
-    # evaluate exit codes    
-    exitcode = 0
-    for ec in exitcodes:
-      ec = ec.get()
-      if ec < 0: raise ValueError, 'Exit codes have to be zero or positive!' 
-      exitcode += ec
-  nop = len(args) - exitcode
-  # print summary
-  if exitcode == 0:
-    print('\n   >>>   All {:d} operations completed successfully!!!   <<<   \n'.format(nop))
-  else:
-    print('\n   ===   {:2d} operations completed successfully!    ===   \n'.format(nop) +
-          '\n   ###   {:2d} operations did not complete/failed!   ###   \n'.format(exitcode))
-  print(datetime.today())
-  exit(exitcode)
+        # arguments for worker function
+        args.append( (experiment, filetype, domain) )        
+  # static keyword arguments
+  kwargs = dict(periods=periods, offset=0, griddef=None, loverwrite=loverwrite)        
+  # call parallel execution function
+  asyncPoolEC(computeClimatology, args, kwargs, NP=NP, ldebug=ldebug)

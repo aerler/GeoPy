@@ -29,6 +29,7 @@ size_05 = (720,360) # (x,y) map size
 # make GridDefinition instance
 CFSR_031_grid = GridDefinition(name='CFSR_031', projection=None, geotransform=geotransform_031, size=size_031)
 CFSR_05_grid = GridDefinition(name='CFSR_05', projection=None, geotransform=geotransform_05, size=size_05)
+CFSR_grid = CFSR_031_grid # default
 
 # variable attributes and name
 varatts = dict(TMP_L103_Avg = dict(name='T2', units='K'), # 2m average temperature

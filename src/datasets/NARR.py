@@ -125,7 +125,6 @@ def loadNARR(name=dataset_name, period=None, grid=None, varlist=None, varatts=No
   # return formatted dataset
   return dataset
 
-
 ## Dataset API
 
 dataset_name # dataset name

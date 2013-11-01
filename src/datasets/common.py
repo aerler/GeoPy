@@ -10,9 +10,9 @@ Some tools and data that are used by many datasets, but not much beyond that.
 import numpy as np
 # internal imports
 from geodata.misc import AxisError, DatasetError
-from geodata.base import Dataset, Variable
+from geodata.base import Dataset, Variable, Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
-from geodata.gdal import addGDALtoDataset
+from geodata.gdal import addGDALtoDataset, GridDefinition
 
 # days per month
 days_per_month = np.array([31,28.2425,31,30,31,30,31,31,30,31,30,31]) # 97 leap days every 400 years
@@ -161,3 +161,28 @@ def loadClim(name, folder, period=None, grid=None, varlist=None, varatts=None, f
   # N.B.: projection should be auto-detected as geographic
   return dataset
 
+# function to return grid definitions for some common grids
+def getCommonGrid(grid):
+  ''' return grid definitions of some commonly used grids '''
+  # select grid  
+  if grid == '025': dlon = dlat = 0.25 # resolution
+  elif grid == '05': dlon = dlat = 0.5
+  elif grid == '10': dlon = dlat = 1.0
+  elif grid == '25': dlon = dlat = 2.5
+  else: dlon = dlat = None
+  if dlon is not None and dlat is not None:
+    #slon, slat, elon, elat = -179.75, 3.25, -69.75, 85.75
+    slon, slat, elon, elat = -160.25, 32.75, -90.25, 72.75
+    assert (elon-slon) % dlon == 0 
+    lon = np.linspace(slon+dlon/2,elon-dlon/2,(elon-slon)/dlon)
+    assert (elat-slat) % dlat == 0
+    lat = np.linspace(slat+dlat/2,elat-dlat/2,(elat-slat)/dlat)
+    # add new geographic coordinate axes for projected map
+    xlon = Axis(coord=lon, atts=dict(name='lon', long_name='longitude', units='deg E'))
+    ylat = Axis(coord=lat, atts=dict(name='lat', long_name='latitude', units='deg N'))
+    griddef = GridDefinition(name=grid, projection=None, xlon=xlon, ylat=ylat) # projection=None >> lat/lon
+  else: 
+    griddef = None
+  # return grid definition object
+  return griddef
+  
