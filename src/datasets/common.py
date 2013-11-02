@@ -7,7 +7,9 @@ Some tools and data that are used by many datasets, but not much beyond that.
 '''
 
 # external imports
+from importlib import import_module
 import numpy as np
+import pickle
 # internal imports
 from geodata.misc import AxisError, DatasetError
 from geodata.base import Dataset, Variable, Axis
@@ -54,13 +56,13 @@ default_varatts = dict(pmsl     = dict(name='pmsl', units='Pa'), # sea-level pre
 import socket
 hostname = socket.gethostname()
 if hostname=='komputer':
-  data_root = '/data/'
+  data_root = '/data/'  
 #  root = '/media/tmp/' # RAM disk for development
 elif hostname=='cryo':
   data_root = '/scratch/marcdo/Data/'
 else:
   data_root = '/home/me/DATA/PRISM/'
-  
+ 
 
 # convenience function to extract landmask variable from another masked variable
 def addLandMask(dataset, varname='precip', maskname='landmask', atts=None):
@@ -162,27 +164,103 @@ def loadClim(name, folder, period=None, grid=None, varlist=None, varatts=None, f
   return dataset
 
 # function to return grid definitions for some common grids
-def getCommonGrid(grid):
+def getCommonGrid(grid, res=None):
   ''' return grid definitions of some commonly used grids '''
-  # select grid  
-  if grid == '025': dlon = dlat = 0.25 # resolution
-  elif grid == '05': dlon = dlat = 0.5
-  elif grid == '10': dlon = dlat = 1.0
-  elif grid == '25': dlon = dlat = 2.5
-  else: dlon = dlat = None
-  if dlon is not None and dlat is not None:
-    #slon, slat, elon, elat = -179.75, 3.25, -69.75, 85.75
-    slon, slat, elon, elat = -160.25, 32.75, -90.25, 72.75
-    assert (elon-slon) % dlon == 0 
-    lon = np.linspace(slon+dlon/2,elon-dlon/2,(elon-slon)/dlon)
-    assert (elat-slat) % dlat == 0
-    lat = np.linspace(slat+dlat/2,elat-dlat/2,(elat-slat)/dlat)
-    # add new geographic coordinate axes for projected map
-    xlon = Axis(coord=lon, atts=dict(name='lon', long_name='longitude', units='deg E'))
-    ylat = Axis(coord=lat, atts=dict(name='lat', long_name='latitude', units='deg N'))
-    griddef = GridDefinition(name=grid, projection=None, xlon=xlon, ylat=ylat) # projection=None >> lat/lon
-  else: 
-    griddef = None
+  # look in known datasets first
+  try :
+    dataset = import_module(grid)
+    if res is None:
+      griddef = dataset.default_grid
+    else:
+      griddef = dataset.grid_def[res]
+  except ImportError:
+    lgrid = True
+    # select grid
+    if grid == 'ARB_small':   slon, slat, elon, elat = -160.25, 32.75, -90.25, 72.75
+    elif grid == 'ARB_large': slon, slat, elon, elat = -179.75, 3.75, -69.75, 83.75
+    else: lgrid = False
+    # select resolution:
+    lres = True
+    if res is None: res = '025' # default    
+    if res == '025':   dlon = dlat = 0.25 # resolution
+    elif res == '05':  dlon = dlat = 0.5
+    elif res == '10':  dlon = dlat = 1.0
+    elif res == '25':  dlon = dlat = 2.5
+    else: lres = False
+    if lgrid and lres:    
+      assert (elon-slon) % dlon == 0 
+      lon = np.linspace(slon+dlon/2,elon-dlon/2,(elon-slon)/dlon)
+      assert (elat-slat) % dlat == 0
+      lat = np.linspace(slat+dlat/2,elat-dlat/2,(elat-slat)/dlat)
+      # add new geographic coordinate axes for projected map
+      xlon = Axis(coord=lon, atts=dict(name='lon', long_name='longitude', units='deg E'))
+      ylat = Axis(coord=lat, atts=dict(name='lat', long_name='latitude', units='deg N'))
+      griddef = GridDefinition(name=grid, projection=None, xlon=xlon, ylat=ylat) # projection=None >> lat/lon
+    else: 
+      griddef = None
   # return grid definition object
   return griddef
   
+# function to load pickled grid definitions
+grid_folder = data_root + '/grids/' # folder for pickled grids
+grid_pickle = '{0:s}_griddef.pickle' # file pattern for pickled grids
+def loadPickledGridDef(grid, res=None, folder=grid_folder):
+  ''' function to load pickled datasets '''
+  gridstr = grid if res is None else '{0:s}_{1:s}'.format(grid,res)
+  filename = '{0:s}/{1:s}'.format(folder,grid_pickle.format(gridstr))
+  filehandle = open(filename, 'r')
+  griddef = pickle.load(filehandle)
+  filehandle.close()
+  return griddef
+
+## (ab)use main execution for quick test
+if __name__ == '__main__':
+    
+  
+#   mode = 'test_climatology'
+#   mode = 'test_timeseries'
+  mode = 'pickle_grid'
+  grids = dict( ARB_small=['025','05','10','25'],
+                ARB_large=['025','05','10','25'],
+                CFSR=['031','05'],
+                GPCC=['025','05','10','25'],
+                CRU=[''],NARR=[''],PRISM=[''])
+    
+  # pickle grid definition
+  if mode == 'pickle_grid':
+    
+    for grid,reses in grids.items():
+      
+      if reses is None: reses = [None] # default grid
+      
+      for res in reses: 
+      
+        print('')        
+        if res is None:
+          gridstr = grid
+          print('   ***   Pickling Grid Definition for {0:s}   ***   '.format(grid))
+        else:
+          gridstr = '{0:s}_{1:s}'.format(grid,res)  
+          print('   ***   Pickling Grid Definition for {0:s} Resolution {1:s}   ***   '.format(grid,res))
+        print('')
+        
+        # load GridDefinition      
+        griddef = getCommonGrid(grid,res)         
+        
+        if griddef is None:
+          print('GridDefinition object for {0:s} not found!'.format(gridstr))         
+        else:
+          # save pickle
+          filename = '{0:s}/{1:s}_griddef.pickle'.format(grid_folder,gridstr)
+          filehandle = open(filename, 'w')
+          pickle.dump(griddef, filehandle)
+          filehandle.close()
+          
+          print('   Saving Pickle to \'{0:s}\''.format(filename))
+          print('')
+          
+          # load pickle to make sure it is right
+          del griddef
+          griddef = loadPickledGridDef(grid, res=res, folder=grid_folder)
+          print(griddef)
+        print('')

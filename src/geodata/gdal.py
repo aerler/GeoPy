@@ -74,7 +74,9 @@ class GridDefinition(object):
       # use axes and check consistency with geotransform and size, if applicable
       if xlon is None or ylat is None: raise TypeError
       if not isinstance(xlon, Axis) or not isinstance(ylat, Axis): raise TypeError  
-      if size is not None and not (len(xlon), len(ylat)) == size: raise AxisError
+      if size is not None:
+        if not (len(xlon), len(ylat)) == size: raise AxisError
+      else: size = (len(xlon), len(ylat))
       geotransform = getGeotransform(xlon=xlon, ylat=ylat, geotransform=geotransform)  
     elif geotransform is not None and size is not None:
       # generate new axes from size and geotransform

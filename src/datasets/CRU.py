@@ -99,8 +99,11 @@ dataset_name # dataset name
 root_folder # root folder of the dataset
 file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
-grid_def = {0.5:CRU_grid} # standardized grid dictionary, addressed by grid resolution
-grid_tag = {0.5:''} # no special name, since there is only one...
+grid_def = {'':CRU_grid} # standardized grid dictionary
+grid_res = {'':0.5} # no special name, since there is only one...
+default_grid = CRU_grid
+# grid_def = {0.5:CRU_grid} # standardized grid dictionary, addressed by grid resolution
+# grid_tag = {0.5:''} # no special name, since there is only one...
 # functions to access specific datasets
 loadLongTermMean = None # climatology provided by publisher
 loadTimeSeries = loadCRU_TS # time-series data

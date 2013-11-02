@@ -10,11 +10,13 @@ This module contains meta data and access functions for WRF model output.
 import netCDF4 as nc
 import collections as col
 import os
+import pickle
 # from atmdyn.properties import variablePlotatts
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition
 from geodata.misc import DatasetError, isInt, AxisError
-from datasets.common import translateVarNames, data_root, default_varatts
+from datasets.common import translateVarNames, data_root, default_varatts 
+from datasets.common import loadPickledGridDef, grid_folder, grid_pickle
 
 
 ## get WRF projection and grid definition 
@@ -368,8 +370,10 @@ dataset_name = 'WRF' # dataset name
 root_folder # root folder of the dataset
 file_pattern = 'wrf{0:s}_d{1:02d}_clim{2:s}.nc' # filename pattern
 data_folder = root_folder # folder for user data
-grid_def = {0.13:None,3.82:None} # approximate grid resolution at 45 degrees latitude
-grid_tag = {0.13:'d02',3.82:'d01'} 
+grid_def = {'d02':None,'d01':None} # there are too many... 
+grid_res = {'d02':0.13,'d01':3.82} # approximate grid resolution at 45 degrees latitude 
+# grid_def = {0.13:None,3.82:None} # approximate grid resolution at 45 degrees latitude
+# grid_tag = {0.13:'d02',3.82:'d01'} 
 # functions to access specific datasets
 loadLongTermMean = None # WRF doesn't have that...
 loadTimeSeries = loadWRF_TS # time-series data
@@ -381,13 +385,48 @@ if __name__ == '__main__':
     
   
 #   mode = 'test_climatology'
-  mode = 'test_timeseries'
+#   mode = 'test_timeseries'
+  mode = 'pickle_grid'
+  experiment = 'max-ctrl'
   domains = [1,2]
   filetypes = ['srfc','xtrm','plev3d','hydro',]
-  grid = '025'   
+  grids = ['arb1', 'arb2', 'arb3']   
+    
+  # pickle grid definition
+  if mode == 'pickle_grid':
+    
+    for grid in grids:
+      
+      for domain in domains:
+        
+        print('')
+        res = 'd{0:02d}'.format(domain) # for compatibility with dataset.common
+        folder = '{0:s}/{1:s}/'.format(root_folder,grid)
+        gridstr = '{0:s}_{1:s}'.format(grid,res) 
+        print('   ***   Pickling Grid Definition for {0:s} Domain {1:d}   ***   '.format(grid,domain))
+        print('')
+        
+        # load GridDefinition
+        
+        griddef, = getWRFgrid(name=gridstr, domains=domain, folder=folder, filename='wrfconst_d{0:0=2d}.nc')
+        print('   Loading Definition from \'{0:s}\''.format(folder))
+        # save pickle
+        filename = '{0:s}/{1:s}_griddef.pickle'.format(grid_folder,gridstr)
+        filehandle = open(filename, 'w')
+        pickle.dump(griddef, filehandle)
+        filehandle.close()
+        
+        print('   Saving Pickle to \'{0:s}\''.format(filename))
+        print('')
+        
+        # load pickle to make sure it is right
+        del griddef
+        griddef = loadPickledGridDef(grid, res=res, folder=grid_folder)
+        print(griddef)
+        print('')
     
   # load averaged climatology file
-  if mode == 'test_climatology':
+  elif mode == 'test_climatology':
     
     print('')
     dataset = loadWRF(experiment='max-ctrl', domains=2, filetypes=None, period=(1979,1988))

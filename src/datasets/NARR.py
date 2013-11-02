@@ -131,8 +131,11 @@ dataset_name # dataset name
 root_folder # root folder of the dataset
 file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
-grid_def = {0.41:NARR_grid} # approximate NARR grid resolution at 45 degrees latitude
-grid_tag = {0.41:''} # no special name, since there is only one... 
+grid_def = {'':NARR_grid} # no special name since there is only one grid 
+grid_res = {'':0.41} # approximate resolution in degrees at 45 degrees latitude
+default_grid = NARR_grid
+# grid_def = {0.41:NARR_grid} # approximate NARR grid resolution at 45 degrees latitude
+# grid_tag = {0.41:''} # no special name, since there is only one... 
 # functions to access specific datasets
 loadLongTermMean = loadNARR_LTM # climatology provided by publisher
 loadTimeSeries = loadNARR_TS # time-series data

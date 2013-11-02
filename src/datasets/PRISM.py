@@ -75,8 +75,11 @@ dataset_name # dataset name
 root_folder # root folder of the dataset
 file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
-grid_def = {0.04:PRISM_grid} # standardized grid dictionary, addressed by grid resolution
-grid_tag = {0.04:''} # no special name, since there is only one...
+grid_def = {'':PRISM_grid} # no special name, since there is only one...
+grid_res = {'':0.04} # approximate resolution in degrees at 45 degrees latitude
+default_grid = PRISM_grid
+# grid_def = {0.04:PRISM_grid} # standardized grid dictionary, addressed by grid resolution
+# grid_tag = {0.04:''} # no special name, since there is only one...
 # functions to access specific datasets
 loadLongTermMean = None # climatology provided by publisher
 loadTimeSeries = None # time-series data

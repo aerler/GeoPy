@@ -143,8 +143,11 @@ dataset_name # dataset name
 root_folder # root folder of the dataset
 file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
-grid_def = {0.31:CFSR_031_grid, 0.5:CFSR_05_grid}  # standardized grid dictionary, addressed by grid resolution
-grid_tag = {0.31:'031', 0.5:'05'} # tag used in climatology files
+grid_def = {'031':CFSR_031_grid, '05':CFSR_05_grid}
+grid_res = {'031':0.31, '05':0.5} # tag used in climatology files
+default_grid = CFSR_031_grid
+# grid_def = {0.31:CFSR_031_grid, 0.5:CFSR_05_grid}  # standardized grid dictionary, addressed by grid resolution
+# grid_tag = {0.31:'031', 0.5:'05'} # tag used in climatology files
 # functions to access specific datasets
 loadLongTermMean = None # climatology provided by publisher
 loadTimeSeries = loadCFSR_TS # time-series data

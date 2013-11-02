@@ -148,8 +148,11 @@ dataset_name # dataset name
 root_folder # root folder of the dataset
 file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
-grid_def = {0.25:GPCC_025_grid, 0.5:GPCC_05_grid, 1.0:GPCC_10_grid, 2.5:GPCC_25_grid}
-grid_tag = {0.25:'025', 0.5:'05', 1.0:'10', 2.5:'25'} 
+grid_def = {'025':GPCC_025_grid, '05':GPCC_05_grid, '10':GPCC_10_grid, '25':GPCC_25_grid}
+grid_res = {'025':0.25, '05':0.5, '10':1.0, '25':2.5}
+default_grid = GPCC_025_grid
+# grid_def = {0.25:GPCC_025_grid, 0.5:GPCC_05_grid, 1.0:GPCC_10_grid, 2.5:GPCC_25_grid}
+# grid_tag = {0.25:'025', 0.5:'05', 1.0:'10', 2.5:'25'}
 # functions to access specific datasets
 loadLongTermMean = loadGPCC_LTM # climatology provided by publisher
 loadTimeSeries = loadGPCC_TS # time-series data
