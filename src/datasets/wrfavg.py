@@ -43,7 +43,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
   # parallelism
   if lparallel:
     pid = int(multiprocessing.current_process().name.split('-')[-1]) # start at 1
-    pidstr = '[proc%02i]'%pid # pid for parallel mode output
+    pidstr = '[proc{0:02d}]'.format(pid) # pid for parallel mode output
     #multiprocessing.current_process().name = 'proc%02i'%pid; pidstr = ''
     # N.B.: the string log formatting is basically done manually here, 
     #       so that I have better control over line spacing  
@@ -145,7 +145,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
           sink.close()
           # print dataset
           if not lparallel:
-            logger.info('\n'+sink+'\n')   
+            logger.info('\n'+str(sink)+'\n')   
              
     # return exit code
     return 0 # everything OK
@@ -207,7 +207,7 @@ if __name__ == '__main__':
   print('\n Computing Climatologies for WRF experiments:\n')
   print(experiments)
   if grid != 'WRF': print('\nRegridding to \'{0:s}\' grid.\n'.format(grid))
-  print('\nOVERWRITE: {0:s}\n'.format(loverwrite))
+  print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
       
   # assemble argument list and do regridding
   args = [] # list of arguments for workers, i.e. "work packages"

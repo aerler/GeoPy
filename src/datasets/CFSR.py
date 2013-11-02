@@ -77,11 +77,11 @@ def loadCFSR_TS(name=dataset_name, varlist=None, varatts=varatts, resolution='hi
   ''' Get a properly formatted CFSR dataset with monthly mean time-series. '''
   # translate varlist
   if varlist is None:
-    if resolution == 'hires' or resolution == '03': varlist = varlist_hires
+    if resolution == 'hires' or resolution == '03' or resolution == '031': varlist = varlist_hires
     elif resolution == 'lowres' or resolution == '05': varlist = varlist_lowres     
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   if filelist is None: # generate default filelist
-    if resolution == 'hires' or resolution == '03': 
+    if resolution == 'hires' or resolution == '03' or resolution == '031': 
       files = [hiresfiles[var] for var in varlist if var in hiresfiles]
     elif resolution == 'lowres' or resolution == '05': 
       files = [lowresfiles[var] for var in varlist if var in lowresfiles]
@@ -90,7 +90,7 @@ def loadCFSR_TS(name=dataset_name, varlist=None, varatts=varatts, resolution='hi
                           check_override=['time'], multifile=False, ncformat='NETCDF4_CLASSIC')
   # load static data
   if filelist is None: # generate default filelist
-    if resolution == 'hires' or resolution == '03': 
+    if resolution == 'hires' or resolution == '03' or resolution == '031': 
       files = [hiresstatic[var] for var in varlist if var in hiresstatic]
     elif resolution == 'lowres' or resolution == '05': 
       files = [lowresstatic[var] for var in varlist if var in lowresstatic]
@@ -113,7 +113,7 @@ def loadCFSR_TS(name=dataset_name, varlist=None, varatts=varatts, resolution='hi
 
 # pre-processed climatology files (varatts etc. should not be necessary)
 avgfolder = root_folder + 'cfsravg/' 
-avgfile = 'cfsr%s_clim%s.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
+avgfile = 'cfsr{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
 def loadCFSR(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly CFSR climatology as a DatasetNetCDF. '''
@@ -125,10 +125,10 @@ def loadCFSR(name=dataset_name, period=None, grid=None, resolution=None, varlist
   # check resolution
   if grid is None:
     # check for valid resolution
-    if resolution == 'hires': resolution = '03' 
+    if resolution == 'hires' or resolution == '03': resolution = '031' 
     elif resolution == 'lowres': resolution = '05' 
-    elif resolution not in ('03','05'): 
-      raise DatasetError, "Selected resolution '%s' is not available!"%resolution  
+    elif resolution not in ('031','05'): 
+      raise DatasetError, "Selected resolution '{0:s}' is not available!".format(resolution)  
     grid = resolution # grid supersedes resolution  
   # load standardized climatology dataset with GPCC-specific parameters
   dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
@@ -154,11 +154,11 @@ loadClimatology = loadCFSR # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-  mode = 'test_climatology'
-#   mode = 'average_timeseries'
+#   mode = 'test_climatology'
+  mode = 'average_timeseries'
   reses = ('05',) # for testing
-  reses = ('hires', 'lowres')
-  period = (1979,1981)
+  reses = ( '031','05',) 
+  period = (1979,1989)
   
   # generate averaged climatology
   for res in reses:    
@@ -175,7 +175,7 @@ if __name__ == '__main__':
     elif mode == 'average_timeseries':
       
       # load source
-      periodstr = '%4i-%4i'%period
+      periodstr = '{0:4d}-{1:4d}'.format(*period)
       print('\n')
       print('   ***   Processing Resolution %s from %s   ***   '%(res,periodstr))
       print('\n')
@@ -183,7 +183,7 @@ if __name__ == '__main__':
       print(source)
       print('\n')
       # prepare sink
-      filename = avgfile%('_'+res,'_'+periodstr)
+      filename = avgfile.format('_'+res,'_'+periodstr)
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
       sink = DatasetNetCDF(name='CFSR Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
       sink.atts.period = periodstr 
@@ -194,16 +194,10 @@ if __name__ == '__main__':
       CPU = CentralProcessingUnit(source, sink, tmp=True)
       
       # start processing climatology
-      print('')
-      print('   +++   processing climatology   +++   ') 
       CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
-      print('\n')
       
       # shift longitude axis by 180 degrees left (i.e. 0 - 360 -> -180 - 180)
-      print('')
-      print('   +++   processing shift/roll   +++   ') 
       CPU.Shift(lon=-180, flush=False)
-      print('\n')      
       
       # sync temporary storage with output
       CPU.sync(flush=True)

@@ -117,7 +117,7 @@ def loadGPCC_TS(name=dataset_name, varlist=varlist, resolution='25', varatts=tsv
 
 # pre-processed climatology files (varatts etc. should not be necessary)
 avgfolder = root_folder + 'gpccavg/' 
-avgfile = 'gpcc%s_clim%s.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
+avgfile = 'gpcc{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
 def loadGPCC(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly GPCC climatology as a DatasetNetCDF. '''
@@ -166,7 +166,7 @@ if __name__ == '__main__':
 #   reses = ('05', '10', '25')
   reses = ('25',)
   period = (1979,1989)
-  grid = 'NARR'
+  grid = 'GPCC'
   
   # generate averaged climatology
   for res in reses:    
@@ -225,7 +225,7 @@ if __name__ == '__main__':
       
       
       # load source
-      periodstr = 'Climatology' if period is None else '%4i-%4i'%period
+      periodstr = 'Climatology' if period is None else '{0:4d}-{1:4d}'.format(*period)
       print('\n\n   ***   Processing Resolution %s from %s   ***   \n\n'%(res,periodstr))
       if period is None: source = loadGPCC_LTM(varlist=['stations','precip'],resolution=res)
       else: source = loadGPCC_TS(varlist=['stations','precip'],resolution=res)

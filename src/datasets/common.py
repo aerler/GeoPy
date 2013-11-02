@@ -131,14 +131,14 @@ def getFileName(grid=None, period=None, name=None, filepattern=None):
   if name is None: name = ''
   # grid
   if grid is None or grid == name: gridstr = ''
-  else: gridstr = '_%s'%grid.lower() # only use lower case for filenames 
+  else: gridstr = '_{0:s}'.format(grid.lower()) # only use lower case for filenames 
   # period
-  if isinstance(period,(tuple,list)): period = '%4i-%4i'%tuple(period)  
+  if isinstance(period,(tuple,list)): period = '{0:4d}-{1:4d}'.format(*period)  
   if period is None or period == '': periodstr = ''
-  else: periodstr = '_%s'%period
+  else: periodstr = '_{0:s}'.format(period)
   # assemble filename/list
-  if filepattern is None: filepattern = name.lower() + '%s_clim%s.nc' 
-  filename = filepattern%(gridstr,periodstr)
+  if filepattern is None: filepattern = name.lower() + '{0:s}_clim{1:s}.nc' 
+  filename = filepattern.format(gridstr,periodstr)
   # return final name
   assert filename == filename.lower(), "By convention, climatology files only have lower-case names!"
   return filename

@@ -96,6 +96,22 @@ class GridDefinition(object):
     string += '  {0:s}\n'.format(self.ylat.prettyPrint(short=True))
     string += 'Projection: {0:s}\n'.format(self.projection.ExportToWkt())
     return string
+  
+  def __getstate__(self):
+    ''' support pickling, necessary for multiprocessing: GDAL is not pickable '''
+    pickle = self.__dict__.copy()
+    pickle['_projection'] =  self.projection.ExportToWkt()  # to Well-Known-Text format
+    del pickle['projection'] # remove offensive GDAL object
+    # return instance dict to pickle
+    return pickle
+  
+  def __setstate__(self, pickle):
+    ''' support pickling, necessary for multiprocessing: GDAL is not pickable '''
+    self.projection = osr.SpatialReference() 
+    self.projection.SetWellKnownGeogCS('WGS84')           
+    self.projection.ImportFromWkt(pickle['_projection'])  # from Well-Known-Text
+    del pickle['_projection'] # not actually an attribute
+    self.__dict__.update(pickle)
     
     
 def getGridDef(var):

@@ -55,7 +55,7 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 ## Functions that provide access to well-formatted PRISM NetCDF files
 
 # pre-processed climatology files (varatts etc. should not be necessary)
-avgfile = 'prism%s_clim%s.nc' # formatted NetCDF file
+avgfile = 'prism{0:s}_clim{1:s}.nc' # formatted NetCDF file
 avgfolder = root_folder + 'prismavg/' # prefix
 # function to load these files...
 def loadPRISM(name=dataset_name, period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):

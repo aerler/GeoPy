@@ -90,6 +90,7 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=True):
   # figure out if running parallel
   if NP is not None and NP == 1: lparallel = False
   else: lparallel = True
+  #lparallel = True
   kwargs['lparallel'] = lparallel
 
   # logging level
@@ -131,7 +132,9 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=True):
     if NP is None: pool = multiprocessing.Pool() 
     else: pool = multiprocessing.Pool(processes=NP)
     # distribute tasks to workers
-    for arguments in args: 
+    #print kwargs
+    for arguments in args:
+      #print arguments 
       exitcodes.append(pool.apply_async(func, arguments, kwargs))
     # wait until pool and queue finish
     pool.close()
@@ -139,9 +142,8 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=True):
     logger.debug('\n   ***   all processes joined   ***   \n')
   else:
     # don't parallelize, if there is only one process: just loop over files    
-    for arguments in args:      
-      exitcode = func(*arguments, **kwargs)
-      exitcodes.append(exitcode)
+    for arguments in args:       
+      exitcodes.append(func(*arguments, **kwargs))
     
   # evaluate exit codes    
   exitcode = 0

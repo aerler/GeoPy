@@ -366,7 +366,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
 
 dataset_name = 'WRF' # dataset name
 root_folder # root folder of the dataset
-file_pattern = 'wrf%s_d%02i_clim_%s.nc' # filename pattern
+file_pattern = 'wrf{0:s}_d{1:02d}_clim{2:s}.nc' # filename pattern
 data_folder = root_folder # folder for user data
 grid_def = {0.13:None,3.82:None} # approximate grid resolution at 45 degrees latitude
 grid_tag = {0.13:'d02',3.82:'d01'} 

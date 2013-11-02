@@ -82,7 +82,7 @@ def loadCRU_TS(name=dataset_name, varlist=varlist, varatts=varatts, filelist=Non
 
 # pre-processed climatology files (varatts etc. should not be necessary)
 avgfolder = root_folder + 'cruavg/' 
-avgfile = 'cru%s_clim%s.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
+avgfile = 'cru{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
 def loadCRU(name=dataset_name, period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly CRU climatology as a DatasetNetCDF. '''

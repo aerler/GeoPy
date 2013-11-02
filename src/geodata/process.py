@@ -137,11 +137,12 @@ class CentralProcessingUnit(object):
         # perform operation from source and copy results to target
         newvar = function(var)
         self.target.addVariable(newvar, copy=True) # copy=True allows recasting as, e.g., a NC variable
+        newvar.unload() # free space; already added to new dataset
       else:
         raise DatasetError, "Variable '%s' not found in input dataset."%varname
       # free space (in case garbage collection fails...) 
       var.unload() # not needed anymore
-      newvar.unload() # already added to new dataset
+      #print self.target.pmsl.data_array.mean()
       # flush data to disk immediately
       if flush:
         outvar = self.output.variables[newvar.name]
@@ -348,7 +349,7 @@ class CentralProcessingUnit(object):
     function = functools.partial(self.processShift, # already set parameters
                                  shift=shift, axis=axis)
     # start process
-    if self.feedback: print('\n   +++   processing climatology   +++   ')     
+    if self.feedback: print('\n   +++   processing shift/roll   +++   ')     
     self.process(function, **kwargs) # currently 'flush' is the only kwarg    
     if self.feedback: print('\n')
   # the previous method sets up the process, the next method performs the computation

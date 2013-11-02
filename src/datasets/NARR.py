@@ -115,7 +115,7 @@ def loadNARR_TS(name=dataset_name, varlist=tsvarlist, varatts=varatts, filelist=
 
 # pre-processed climatology files (varatts etc. should not be necessary)
 avgfolder = root_folder + 'narravg/' 
-avgfile = 'narr%s_clim%s.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
+avgfile = 'narr{0:s}_clim{1:s}.nc.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
 def loadNARR(name=dataset_name, period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly NARR climatology as a DatasetNetCDF. '''
