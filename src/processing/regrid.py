@@ -11,10 +11,10 @@ from importlib import import_module
 import os # check if files are present
 import multiprocessing # parallelization
 import logging # used to control error output of sub-processes
-from geodata.multiprocess import asyncPoolEC
+from processing.multiprocess import asyncPoolEC
 from datetime import datetime
 # internal imports
-from geodata.process import CentralProcessingUnit
+from processing.process import CentralProcessingUnit
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import GDALError, GridDefinition
 from datasets.common import addLengthAndNamesOfMonth, getFileName, getCommonGrid

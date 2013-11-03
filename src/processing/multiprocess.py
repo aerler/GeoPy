@@ -11,6 +11,7 @@ import multiprocessing
 import logging
 import sys
 import types
+import numpy as np
 from datetime import datetime
 from time import sleep
 
@@ -68,10 +69,61 @@ def test_func_ec(n, wait=1, lparallel=True, logger=None):
   # return n as exit code
   return n 
 
+def test_func_dec(n, wait=1, lparallel=False, pidstr='', logger=None):
+  ''' test function for decorator '''
+  sleep(wait)
+  logger.info('\n{0:s} Current Process ID: {0:s}\n'.format(pidstr))  
+
 
 ## production functions
 
-def asyncPoolEC(func, args, kwargs, NP=1, ldebug=True):
+# a decorator class that handles loggers and exit codes for functions inside asyncPool_EC  
+class TrialNError():
+  ''' 
+    A decorator class that handles errors and returns an exit code for a pool worker function;
+    also handles loggers and some multiprocessing stuff. 
+  '''
+  
+  def __init__(self, func):
+    ''' Save original function in decorator class. '''
+    self.func = func
+    
+  def __call__(self, *args, **kwargs):
+    ''' connect to logger, figure out process ID, execute decorated function in try-block,
+        report errors, and return exit code '''
+    # input arguments
+    lparallel = kwargs['lparallel']
+    logger = kwargs['logger']
+    # type checks
+    if not isinstance(lparallel,bool): raise TypeError
+    if logger is not None and not isinstance(logger,basestring): raise TypeError
+
+    # logging
+    if logger is None: 
+      logger = logging.getLogger() # new logger
+      logger.addHandler(logging.StreamHandler())
+    else: logger = logging.getLogger(name=logger) # connect to existing one      
+    # parallelism
+    if lparallel:
+      pid = int(multiprocessing.current_process().name.split('-')[-1]) # start at 1
+      pidstr = '[proc{0:02d}]'.format(pid) # pid for parallel mode output
+    else:
+      pidstr = '' # don't print process ID, sicne there is only one
+
+    # execute decorated function in try-block
+    kwargs['logger'] = logger
+    try:
+      # decorated function
+      self.func(*args, pidstr=pidstr, **kwargs)
+      # return exit code
+      return 0 # everything OK    
+    except Exception: # , err
+      # an error occurred
+      logging.exception(pidstr) # print stack trace of last exception and current process ID 
+      return 1 # indicate failure
+
+
+def asyncPoolEC(func, args, kwargs, NP=1, ldebug=True, ltrialnerror=True):
   ''' 
     A function that executes func with arguments args (len(args) times) on NP number of processors;
     args must be a list of argument tuples; kwargs are keyword arguments to func, which do not change
@@ -85,13 +137,14 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=True):
   if not isinstance(args,list): raise TypeError
   if not isinstance(kwargs,dict): raise TypeError
   if not isinstance(NP,int): raise TypeError
-  if not isinstance(ldebug,bool): raise TypeError
+  if not isinstance(ldebug,(bool,np.bool)): raise TypeError
+  if not isinstance(ltrialnerror,(bool,np.bool)): raise TypeError
   
   # figure out if running parallel
   if NP is not None and NP == 1: lparallel = False
   else: lparallel = True
   #lparallel = True
-  kwargs['lparallel'] = lparallel
+  kwargs['lparallel'] = lparallel  
 
   # logging level
   if ldebug: loglevel = logging.DEBUG
@@ -121,6 +174,9 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=True):
 #   sch.setFormatter(fmt)
 #   sublogger.addHandler(sch)
 #   kwargs['logger'] = sublogger.name
+  
+  # apply decorator
+  if ltrialnerror: func = TrialNError(func)
   
   # print first logging message
   logger.info(datetime.today())
@@ -177,5 +233,6 @@ if __name__ == '__main__':
   # test asyncPool
   args = [(n,) for n in xrange(5)]
   kwargs = dict(wait=1)
-  asyncPoolEC(test_func_ec, args, kwargs, NP=NP, ldebug=True)
+  asyncPoolEC(test_func_dec, args, kwargs, NP=NP, ldebug=True, ltrialnerror=True)
+  #asyncPoolEC(test_func_ec, args, kwargs, NP=NP, ldebug=True)
   
