@@ -9,22 +9,21 @@ Script to produce climatology files from monthly mean time-series' for all or a 
 # external
 import numpy as np
 import os
-import multiprocessing # parallelization
-import logging # used to control error output of sub-processes
 from datetime import datetime
 # internal
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import GridDefinition
-from geodata.process import CentralProcessingUnit, DateError
-from geodata.multiprocess import asyncPoolEC
 from geodata.misc import isInt
 from datasets.common import name_of_month, days_per_month, getCommonGrid
+from processing.process import CentralProcessingUnit, DateError
+from processing.multiprocess import asyncPoolEC
 # WRF specific
 from datasets.WRF import loadWRF_TS, fileclasses, root_folder
 from plotting.ARB_settings import WRFname
 
 
-def computeClimatology(experiment, filetype, domain, periods=None, offset=0, griddef=None, loverwrite=False, lparallel=False, logger=None):
+def computeClimatology(experiment, filetype, domain, periods=None, offset=0, griddef=None, loverwrite=False,
+                       lparallel=False, pidstr='', logger=None):
   ''' worker function to compute climatologies for given file parameters. '''
   # input type checks
   if not isinstance(experiment,basestring): raise TypeError
@@ -34,125 +33,102 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
   if not isinstance(offset,(np.integer,int)): raise TypeError
   if not isinstance(loverwrite,(bool,np.bool)): raise TypeError  
   if griddef is not None and not isinstance(griddef,GridDefinition): raise TypeError
-  if not isinstance(lparallel,(bool,np.bool)): raise TypeError
-  # logging
-  if logger is None:
-    logger = logging.getLogger() # new logger
-    logger.addHandler(logging.StreamHandler())
-  else: logger = logging.getLogger(name=logger) # connect to existing one 
-  # parallelism
-  if lparallel:
-    pid = int(multiprocessing.current_process().name.split('-')[-1]) # start at 1
-    pidstr = '[proc{0:02d}]'.format(pid) # pid for parallel mode output
-    #multiprocessing.current_process().name = 'proc%02i'%pid; pidstr = ''
-    # N.B.: the string log formatting is basically done manually here, 
-    #       so that I have better control over line spacing  
-  else:
-    pidstr = '' # don't print process ID, sicne there is only one
   
-  ## start actual work: this is inclosed in a try-block, so errors don't 
-  try:
-    
-    #if pid == 1: raise TypeError # to test error handling
+  #if pidstr == '[proc01]': raise TypeError # to test error handling
+
+  # load source
+  fileclass = fileclasses[filetype] # used for target file name
+  logger.info('\n\n{0:s}   ***   Processing Experiment {1:<15s}   ***   '.format(pidstr,"'%s'"%experiment) +
+        '\n{0:s}   ***   {1:^37s}   ***   \n'.format(pidstr,"'%s'"%fileclass.tsfile.format(domain)))
+  source = loadWRF_TS(experiment=experiment, filetypes=[filetype], domains=domain) # comes out as a tuple...
+  if not lparallel: 
+    logger.info('\n'+str(source)+'\n')
+  # determine age of oldest source file
+  if not loverwrite:
+    sourceage = datetime.today()
+    for filename in source.filelist:
+      age = datetime.fromtimestamp(os.path.getmtime(filename))
+      sourceage = age if age < sourceage else sourceage
   
-    # load source
-    fileclass = fileclasses[filetype] # used for target file name
-    logger.info('\n\n{0:s}   ***   Processing Experiment {1:<15s}   ***   '.format(pidstr,"'%s'"%experiment) +
-          '\n{0:s}   ***   {1:^37s}   ***   \n'.format(pidstr,"'%s'"%fileclass.tsfile.format(domain)))
-    source = loadWRF_TS(experiment=experiment, filetypes=[filetype], domains=domain) # comes out as a tuple...
-    if not lparallel: 
-      logger.info('\n'+str(source)+'\n')
-    # determine age of oldest source file
-    if not loverwrite:
-      sourceage = datetime.today()
-      for filename in source.filelist:
-        age = datetime.fromtimestamp(os.path.getmtime(filename))
-        sourceage = age if age < sourceage else sourceage
-    
-    # figure out start date
-    filebegin = int(source.atts.begin_date.split('-')[0]) # first element is the year
-    fileend = int(source.atts.end_date.split('-')[0]) # first element is the year
-    begindate = offset + filebegin
-    if not ( filebegin <= begindate <= fileend ): raise DateError  
-    
-    ## loop over periods
-    if periods is None: periods = [begindate-fileend]
-  #   periods.sort(reverse=True) # reverse, so that largest chunk is done first
-    for period in periods:       
-              
-      # figure out period
-      enddate = begindate + period     
-      if filebegin > enddate: raise DateError    
-      if enddate > fileend: 
-        logger.info('\n{0:s}   ---   Invalid Period: End Date {1:4d} not in File!   ---   \n'.format(pidstr,enddate))
+  # figure out start date
+  filebegin = int(source.atts.begin_date.split('-')[0]) # first element is the year
+  fileend = int(source.atts.end_date.split('-')[0]) # first element is the year
+  begindate = offset + filebegin
+  if not ( filebegin <= begindate <= fileend ): raise DateError  
+  
+  ## loop over periods
+  if periods is None: periods = [begindate-fileend]
+#   periods.sort(reverse=True) # reverse, so that largest chunk is done first
+  for period in periods:       
+            
+    # figure out period
+    enddate = begindate + period     
+    if filebegin > enddate: raise DateError    
+    if enddate > fileend: 
+      logger.info('\n{0:s}   ---   Invalid Period: End Date {1:4d} not in File!   ---   \n'.format(pidstr,enddate))
+      
+    else:  
+      ## begin actual computation
+      periodstr = '{0:4d}-{1:4d}'.format(begindate,enddate)
+      avgfolder = root_folder + experiment + '/'
+      logger.info('\n{0:s}   <<<   Computing Climatology from {1:s} on {2:s} grid  >>>   \n'.format(pidstr,periodstr,grid))              
+
+      # determine if sink file already exists, and what to do about it      
+      gridstr = '' if griddef is None or griddef.name is 'WRF' else '_'+griddef.name
+      filename = fileclass.climfile.format(domain,gridstr,'_'+periodstr)
+      if ldebug: filename = 'test_' + filename
+      assert os.path.exists(avgfolder)
+      lskip = False # else just go ahead
+      if os.path.exists(avgfolder+filename): 
+        if not loverwrite: 
+          age = datetime.fromtimestamp(os.path.getmtime(avgfolder+filename))
+          # if sink file is newer than source file, skip (do not recompute)
+          if age > sourceage: lskip = True
+          #print sourceage, age
+        if not lskip: os.remove(avgfolder+filename) 
+      
+      # depending on last modification time of file or overwrite setting, start computation, or skip
+      if lskip:        
+        # print message
+        logger.info('{0:s}   >>>   Skipping: File \'{1:s}\' already exists and is newer than source file.   <<<   \n'.format(pidstr,filename))              
+      else:
+         
+        # prepare sink
+        sink = DatasetNetCDF(name='WRF Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
+        sink.atts.period = periodstr 
         
-      else:  
-        ## begin actual computation
-        periodstr = '{0:4d}-{1:4d}'.format(begindate,enddate)
-        avgfolder = root_folder + experiment + '/'
-        logger.info('\n{0:s}   <<<   Computing Climatology from {1:s} on {2:s} grid  >>>   \n'.format(pidstr,periodstr,grid))              
-  
-        # determine if sink file already exists, and what to do about it      
-        gridstr = '' if griddef is None or griddef.name is 'WRF' else '_'+griddef.name
-        filename = fileclass.climfile.format(domain,gridstr,'_'+periodstr)
-        if ldebug: filename = 'test_' + filename
-        assert os.path.exists(avgfolder)
-        lskip = False # else just go ahead
-        if os.path.exists(avgfolder+filename): 
-          if not loverwrite: 
-            age = datetime.fromtimestamp(os.path.getmtime(avgfolder+filename))
-            # if sink file is newer than source file, skip (do not recompute)
-            if age > sourceage: lskip = True
-            #print sourceage, age
-          if not lskip: os.remove(avgfolder+filename) 
+        # initialize processing
+        CPU = CentralProcessingUnit(source, sink, varlist=None, tmp=True) # no need for lat/lon
+        #CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=True) # no need for lat/lon
         
-        # depending on last modification time of file or overwrite setting, start computation, or skip
-        if lskip:        
-          # print message
-          logger.info('{0:s}   >>>   Skipping: File \'{1:s}\' already exists and is newer than source file.   <<<   \n'.format(pidstr,filename))              
-        else:
-           
-          # prepare sink
-          sink = DatasetNetCDF(name='WRF Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
-          sink.atts.period = periodstr 
-          
-          # initialize processing
-          CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=True) # no need for lat/lon
-          
-          # start processing climatology
-          CPU.Climatology(period=period, offset=offset, flush=False)
-          
-          # reproject and resample (regrid) dataset
-          if griddef is not None:
-            CPU.Regrid(griddef=griddef, flush=False)
-            logger.info('%s    ---   '+str(griddef.geotansform)+'   ---   \n'%(pidstr))      
-          
-          # sync temporary storage with output dataset (sink)
-          CPU.sync(flush=True)
-          
-          # make new masks
-          #sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)
-          
-          # add names and length of months
-          sink.axisAnnotation('name_of_month', name_of_month, 'time', 
-                              atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
-          sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
-                        atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
-          
-          # close... and write results to file
-          logger.info('\n{0:s} Writing to: \'{1:s}\'\n'.format(pidstr,filename))
-          sink.sync()
-          sink.close()
-          # print dataset
-          if not lparallel:
-            logger.info('\n'+str(sink)+'\n')   
-             
-    # return exit code
-    return 0 # everything OK
-  except Exception: # , err
-    # an error occurred
-    logging.exception(pidstr) # print stack trace of last exception and current process ID 
-    return 1 # indicate failure
+        # start processing climatology
+        CPU.Climatology(period=period, offset=offset, flush=False)
+        
+        # reproject and resample (regrid) dataset
+        if griddef is not None:
+          CPU.Regrid(griddef=griddef, flush=False)
+          logger.info('%s    ---   '+str(griddef.geotansform)+'   ---   \n'%(pidstr))      
+        
+        # sync temporary storage with output dataset (sink)
+        CPU.sync(flush=True)
+        
+        # make new masks
+        #sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)
+        
+        # add names and length of months
+        sink.axisAnnotation('name_of_month', name_of_month, 'time', 
+                            atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
+        sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
+                      atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
+        
+        # close... and write results to file
+        logger.info('\n{0:s} Writing to: \'{1:s}\'\n'.format(pidstr,filename))
+        sink.sync()
+        sink.close()
+        # print dataset
+        if not lparallel:
+          logger.info('\n'+str(sink)+'\n')   
+
 
 if __name__ == '__main__':
   
@@ -222,4 +198,4 @@ if __name__ == '__main__':
   # static keyword arguments
   kwargs = dict(periods=periods, offset=0, griddef=None, loverwrite=loverwrite)        
   # call parallel execution function
-  asyncPoolEC(computeClimatology, args, kwargs, NP=NP, ldebug=ldebug)
+  asyncPoolEC(computeClimatology, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)

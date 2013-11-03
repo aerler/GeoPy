@@ -19,7 +19,7 @@ from geodata.misc import DatasetError
 from geodata.nctools import writeNetCDF, add_strvar
 from datasets.common import days_per_month, name_of_month, data_root 
 from datasets.common import translateVarNames, loadClim, addLandMask, addLengthAndNamesOfMonth, getFileName
-from geodata.process import CentralProcessingUnit
+from processing.process import CentralProcessingUnit
 
 ## GPCC Meta-data
 

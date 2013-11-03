@@ -15,7 +15,7 @@ from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition
 from geodata.misc import DatasetError 
 from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim
-from geodata.process import CentralProcessingUnit
+from processing.process import CentralProcessingUnit
 
 
 ## NARR Meta-data

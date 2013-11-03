@@ -13,7 +13,7 @@ import types # to add precip conversion fct. to datasets
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, GridDefinition
 from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim
-from geodata.process import CentralProcessingUnit
+from processing.process import CentralProcessingUnit
 
  
 ## CRU Meta-data

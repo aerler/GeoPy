@@ -411,7 +411,7 @@ if __name__ == '__main__':
         griddef, = getWRFgrid(name=gridstr, domains=domain, folder=folder, filename='wrfconst_d{0:0=2d}.nc')
         print('   Loading Definition from \'{0:s}\''.format(folder))
         # save pickle
-        filename = '{0:s}/{1:s}_griddef.pickle'.format(grid_folder,gridstr)
+        filename = '{0:s}/{1:s}'.format(grid_folder,grid_pickle.format(gridstr))
         filehandle = open(filename, 'w')
         pickle.dump(griddef, filehandle)
         filehandle.close()

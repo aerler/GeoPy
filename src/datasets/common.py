@@ -10,6 +10,7 @@ Some tools and data that are used by many datasets, but not much beyond that.
 from importlib import import_module
 import numpy as np
 import pickle
+import os
 # internal imports
 from geodata.misc import AxisError, DatasetError
 from geodata.base import Dataset, Variable, Axis
@@ -208,10 +209,14 @@ def loadPickledGridDef(grid, res=None, folder=grid_folder):
   ''' function to load pickled datasets '''
   gridstr = grid if res is None else '{0:s}_{1:s}'.format(grid,res)
   filename = '{0:s}/{1:s}'.format(folder,grid_pickle.format(gridstr))
-  filehandle = open(filename, 'r')
-  griddef = pickle.load(filehandle)
-  filehandle.close()
+  if os.path.exists(filename):
+    filehandle = open(filename, 'r')
+    griddef = pickle.load(filehandle)
+    filehandle.close()
+  else:
+    griddef = None
   return griddef
+
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
@@ -251,7 +256,7 @@ if __name__ == '__main__':
           print('GridDefinition object for {0:s} not found!'.format(gridstr))         
         else:
           # save pickle
-          filename = '{0:s}/{1:s}_griddef.pickle'.format(grid_folder,gridstr)
+          filename = '{0:s}/{1:s}'.format(grid_folder,grid_pickle.format(gridstr))
           filehandle = open(filename, 'w')
           pickle.dump(griddef, filehandle)
           filehandle.close()
