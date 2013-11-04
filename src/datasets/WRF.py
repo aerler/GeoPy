@@ -120,7 +120,7 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
   else:
     # root folder
     if not isinstance(experiment,basestring): raise TypeError
-    if folder is None: folder = '{}/{}/'.format(root_folder,experiment)
+    if folder is None: folder = '{}/{}/'.format(avgfolder,experiment)
     elif not isinstance(folder,basestring): raise TypeError
     # expand name
     if name is None: name = '{}'.format(experiment)
@@ -242,7 +242,9 @@ class Axes(FileType):
 
 # data source/location
 fileclasses = dict(const=Const(), srfc=Srfc(), xtrm=Xtrm(), plev3d=Plev3D(), hydro=Hydro(), axes=Axes())
-root_folder = data_root + 'WRF/wrfavg/' # long-term mean folder
+root_folder = data_root + 'WRF/' # long-term mean folder
+outfolder = root_folder + 'wrfout/' # WRF output folder
+avgfolder = root_folder + 'wrfavg/' # long-term mean folder
 
 
 ## Functions to load different types of WRF datasets
@@ -348,6 +350,8 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
     # load dataset
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 
                             varatts=default_varatts, multifile=False, ncformat='NETCDF4', squeeze=True)
+    # check
+    if len(dataset) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
     # add constants to dataset
     if lconst:
       for var in const: dataset.addVariable(var, asNC=False, copy=False, overwrite=False, deepcopy=False)
@@ -368,7 +372,9 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
 
 dataset_name = 'WRF' # dataset name
 root_folder # root folder of the dataset
-file_pattern = 'wrf{0:s}_d{1:02d}_clim{2:s}.nc' # filename pattern
+avgfolder
+outfolder
+file_pattern = 'wrf{0:s}_d{1:02d}{2:s}_clim{3:s}.nc' # filename pattern: filetype, domain, grid, period
 data_folder = root_folder # folder for user data
 grid_def = {'d02':None,'d01':None} # there are too many... 
 grid_res = {'d02':0.13,'d01':3.82} # approximate grid resolution at 45 degrees latitude 

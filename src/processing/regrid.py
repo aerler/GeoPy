@@ -7,42 +7,50 @@ A script to reproject and resample datasets in this package onto a given grid.
 '''
 
 # external imports
-from importlib import import_module
 import os # check if files are present
-from processing.multiprocess import asyncPoolEC
+import numpy as np
+from importlib import import_module
 from datetime import datetime
 # internal imports
-from processing.process import CentralProcessingUnit
+from geodata.misc import DatasetError
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import GDALError, GridDefinition
 from datasets.common import addLengthAndNamesOfMonth, getFileName, getCommonGrid, loadPickledGridDef
+from processing.multiprocess import asyncPoolEC
+from processing.process import CentralProcessingUnit
 # WRF specific
 from datasets.WRF import fileclasses, getWRFgrid, loadWRF
 from plotting.ARB_settings import WRFname
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
-def performRegridding(dataset, dataargs, grid=None,  griddef=None, loverwrite=False, 
+def performRegridding(dataset, dataargs, griddef=None, loverwrite=False, 
                       lparallel=False, pidstr='', logger=None):
   ''' worker function to perform regridding for a given dataset and target grid '''
   # input checking
   if not isinstance(dataset,basestring): raise TypeError
   if not isinstance(kwargs,dict): raise TypeError # all dataset arguments are kwargs 
-  if griddef is None and grid is None: raise GDALError, 'No valid grid definition argument (griddef) found!'
   if griddef is not None and not isinstance(griddef,GridDefinition): raise TypeError
-  if grid is not None and not isinstance(grid,basestring): raise TypeError
   
   # load source
-  if dataset == 'WRF': # WRF dataset
-    dataset = datasets.WRF      
+  if dataset == 'WRF': 
+    module = import_module('datasets.{0:s}'.format(dataset))
+    dataset_name = dataargs['experiment']
+    if len(dataargs['filetypes']) > 1: raise DatasetError
+    filetype = dataargs['filetypes'][0]
+    if not isinstance(dataargs['domains'], (np.integer,int)): raise DatasetError
+    domain = dataargs['domains']
     source = loadWRF(**dataargs) # the name of the experiment is in the dataargs
-    periodstr = source.atts.period # a NetCDF attribute 
-  else:
-    dataset = import_module('datasets.{0:s}'.format(dataset))      
-    dataset_name = dataset.dataset_name
-    source = dataset.loadClimatology(**dataargs) # load pre-processed climatology
+    periodstr = source.atts.period # a NetCDF attribute    
+    datamsgstr = 'Processing WRF Experiment \'{0:s}\' from {1:s}'.format(dataset_name, periodstr) 
+  elif dataset == dataset.upper():
+    module = import_module('datasets.{0:s}'.format(dataset))      
+    dataset_name = module.dataset_name
+    source = module.loadClimatology(**dataargs) # load pre-processed climatology
     periodstr = '{0:4d}-{1:4d}'.format(*dataargs['period'])
     datamsgstr = 'Processing Dataset {0:s} from {1:s}'.format(dataset_name, periodstr)
+  else:
+    raise DatasetError, 'Dataset \'{0:s}\' not found!'.format(dataset)
   opmsgstr = 'Reprojecting and Resampling to {0:s} Grid'.format(griddef.name)      
   # print feedback to logger
   # source.load() # not really necessary
@@ -57,9 +65,13 @@ def performRegridding(dataset, dataargs, grid=None,  griddef=None, loverwrite=Fa
       sourceage = age if age < sourceage else sourceage    
           
   # prepare target dataset
-  filename = getFileName(grid=grid, period=period, name=dataset, filepattern=dataset.avgfile)
+  if dataset == 'WRF':
+    filename = module.file_pattern.format(filetype,domain,'_{}'.format(griddef.name),periodstr)
+    avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
+  elif dataset == dataset.upper(): # observational datasets
+    filename = getFileName(grid=griddef.name, period=period, name=dataset_name, filepattern=module.avgfile)
+    avgfolder = module.avgfolder
   if ldebug: filename = 'test_' + filename
-  avgfolder = dataset.avgfolder
   if not os.path.exists(avgfolder): raise IOError, 'Dataset folder \'{0:s}\' does not exist!'.format(avgfolder)
   lskip = False # else just go ahead
   if os.path.exists(avgfolder+filename): 
@@ -86,8 +98,8 @@ def performRegridding(dataset, dataargs, grid=None,  griddef=None, loverwrite=Fa
     sink = DatasetNetCDF(folder=avgfolder, filelist=[filename], atts=atts, mode='w')
     
     # initialize processing
-    CPU = CentralProcessingUnit(source, sink, varlist=None, tmp=True)
-    #CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=True)
+#     CPU = CentralProcessingUnit(source, sink, varlist=None, tmp=True)
+    CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=True)
   
     # perform regridding (if target grid is different from native grid!)
     if griddef.name != dataset:
@@ -97,9 +109,9 @@ def performRegridding(dataset, dataargs, grid=None,  griddef=None, loverwrite=Fa
     # get results
     CPU.sync(flush=True)
       
-    if 'convertPrecip' in dataset.__dict__:
+    if 'convertPrecip' in module.__dict__:
       # convert precip data to SI units (mm/s) 
-      dataset.__dict__['convertPrecip'](sink.precip) # convert in-place
+      module.__dict__['convertPrecip'](sink.precip) # convert in-place
 #     # add landmask
 #     if not sink.hasVariable('landmask'): addLandMask(sink) # create landmask from precip mask
 #     linvert = True if dataset == 'CFSR' else False
@@ -135,15 +147,15 @@ if __name__ == '__main__':
   # default settings
   if ldebug:
     #ldebug = False
-    NP = NP or 2
+    NP = NP or 1
     #loverwrite = True
-    varlist = ['precip',] # None
+    varlist = None # ['',] # None
     periods = [(1979,1989)]
-    datasets = ['GPCC']
+    datasets = []
     # WRF
-    experiments = [] # WRF experiment names (passed through WRFname)
+    experiments = ['max-ctrl'] # WRF experiment names (passed through WRFname)
     domains = [1] # domains to be processed
-    filetypes = ['srfc',] # filetypes to be processed
+    filetypes = ['plev3d',] # filetypes to be processed
     #filetypes = ['srfc','xtrm','plev3d','hydro',] # filetypes to be processed
   else:
     NP = NP or 4
@@ -163,7 +175,7 @@ if __name__ == '__main__':
   res = None # qualifier to grid (not all grids)
       
   # expand experiments 
-  if len(experiments) > 0: experiments = [WRFname[exp] for exp in experiments]
+  if len(experiments) > 0: experiments = [WRFname.get(exp,exp) for exp in experiments]
   elif not ldebug: experiments = [exp for exp in WRFname.values()] # don't do all in debug mode!    
    
   # print an announcement
@@ -192,10 +204,18 @@ if __name__ == '__main__':
   
   # assemble job packages
   args = []
+  # observational datasets
   for dataset in datasets:
     for period in periods:
       # arguments for worker function: dataset and dataargs       
       args.append( (dataset, dict(period=period)) ) # append to list               
+  # WRF datasets
+  for experiments in experiments:
+    for filetype in filetypes:
+      for domain in domains:
+        for period in periods:
+          # arguments for worker function: dataset and dataargs       
+          args.append( ('WRF', dict(experiment=experiments, filetypes=[filetype], domains=domain, period=period)) )
   # static keyword arguments
   kwargs = dict(griddef=griddef, loverwrite=loverwrite)        
   # call parallel execution function

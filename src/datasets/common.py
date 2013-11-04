@@ -32,6 +32,7 @@ default_varatts = dict(pmsl     = dict(name='pmsl', units='Pa'), # sea-level pre
                        ps       = dict(name='ps', units='Pa'), # surface pressure
                        Ts       = dict(name='Ts', units='K'), # average skin temperature
                        T2       = dict(name='T2', units='K'), # 2m average temperature
+                       T        = dict(name='T', units='K'), # average temperature
                        Tmin     = dict(name='Tmin', units='K'), # 2m minimum temperature
                        Tmax     = dict(name='Tmax', units='K'), # 2m maximum temperature
                        Q2       = dict(name='Q2', units='Pa'), # 2m water vapor pressure
