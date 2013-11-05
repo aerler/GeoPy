@@ -83,7 +83,7 @@ class Variable(object):
     The basic variable class; it mainly implements arithmetic operations and indexing/slicing.
   '''
   
-  def __init__(self, name=None, units=None, axes=None, data=None, dtype='', mask=None, fillValue=None, atts=None, plot=None):
+  def __init__(self, name=None, units=None, axes=None, data=None, dtype=None, mask=None, fillValue=None, atts=None, plot=None):
     ''' 
       Initialize variable and attributes.
       

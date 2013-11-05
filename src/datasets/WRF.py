@@ -235,6 +235,7 @@ class Axes(FileType):
                      south_north = dict(name='y', units='m'), # projected south-north coordinate
                      x           = dict(name='x', units='m'), # projected west-east coordinate
                      y           = dict(name='y', units='m'), # projected south-north coordinate
+                     soil_layers_stag = dict(name='s', units=''), # soil layer coordinate
                      num_press_levels_stag = dict(name='p', units='Pa')) # pressure coordinate
     self.vars = self.atts.keys()
     self.climfile = None
@@ -267,8 +268,8 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=No
     atts.update(fileclass.atts)  
   if varatts is not None: atts.update(varatts)
   # translate varlist
-  if varlist is None: varlist = atts.keys()
-  elif varatts: varlist = translateVarNames(varlist, varatts)
+  #if varlist is None: varlist = atts.keys()
+  if varatts: varlist = translateVarNames(varlist, varatts)
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if 'const' in filetypes: filename = fileclasses['const'].tsfile # constants files preferred...

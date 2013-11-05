@@ -18,7 +18,7 @@ from datasets.common import name_of_month, days_per_month, getCommonGrid
 from processing.process import CentralProcessingUnit, DateError
 from processing.multiprocess import asyncPoolEC
 # WRF specific
-from datasets.WRF import loadWRF_TS, fileclasses, root_folder
+from datasets.WRF import loadWRF_TS, fileclasses, avgfolder
 from plotting.ARB_settings import WRFname
 
 
@@ -70,22 +70,23 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
     else:  
       ## begin actual computation
       periodstr = '{0:4d}-{1:4d}'.format(begindate,enddate)
-      avgfolder = root_folder + experiment + '/'
+      expfolder = avgfolder + experiment + '/'
       logger.info('\n{0:s}   <<<   Computing Climatology from {1:s} on {2:s} grid  >>>   \n'.format(pidstr,periodstr,grid))              
 
       # determine if sink file already exists, and what to do about it      
       gridstr = '' if griddef is None or griddef.name is 'WRF' else '_'+griddef.name
       filename = fileclass.climfile.format(domain,gridstr,'_'+periodstr)
       if ldebug: filename = 'test_' + filename
-      assert os.path.exists(avgfolder)
+      assert os.path.exists(expfolder)
+      filepath = expfolder+filename
       lskip = False # else just go ahead
-      if os.path.exists(avgfolder+filename): 
+      if os.path.exists(filepath): 
         if not loverwrite: 
-          age = datetime.fromtimestamp(os.path.getmtime(avgfolder+filename))
+          age = datetime.fromtimestamp(os.path.getmtime(filepath))
           # if sink file is newer than source file, skip (do not recompute)
           if age > sourceage: lskip = True
           #print sourceage, age
-        if not lskip: os.remove(avgfolder+filename) 
+        if not lskip: os.remove(filepath) 
       
       # depending on last modification time of file or overwrite setting, start computation, or skip
       if lskip:        
@@ -94,7 +95,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
       else:
          
         # prepare sink
-        sink = DatasetNetCDF(name='WRF Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
+        sink = DatasetNetCDF(name='WRF Climatology', folder=expfolder, filelist=[filename], atts=source.atts, mode='w')
         sink.atts.period = periodstr 
         
         # initialize processing
@@ -151,7 +152,7 @@ if __name__ == '__main__':
     #ldebug = False
     NP = NP or 2
     #loverwrite = True
-    varlist = ['precip', ]
+    varlist = None # ['precip', ]
     experiments = ['max']
     #experiments = ['max','gulf','new','noah'] 
     periods = [1,]

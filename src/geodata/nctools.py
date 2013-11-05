@@ -70,6 +70,11 @@ def add_coord(dst, name, data=None, length=None, atts=None, dtype=None, zlib=Tru
     length=data.shape
   else: 
     raise NCDataError
+#   # create dimension
+#   if dtype is None and data is None:
+#     dst.createDimension(name, size=length[0])
+#     return None
+#   else:
   # basically a simplified interface for add_var
   coord = add_var(dst, name, (name,), data=data, shape=length, atts=atts, dtype=dtype, 
                   zlib=zlib, fillValue=fillValue, **kwargs)  

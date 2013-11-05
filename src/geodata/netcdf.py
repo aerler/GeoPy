@@ -357,7 +357,7 @@ class DatasetNetCDF(Dataset):
             if len(axes[dim]) != len(ds.dimensions[dim]): 
               raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
           else: # if this is a new axis, add it to the list
-            params = dict(name=dim,length=len(ds.dimensions[dim])); params.update(varatts.get(dim,{}))
+            params = dict(name=dim,coord=np.arange(len(ds.dimensions[dim]))); params.update(varatts.get(dim,{}))
             axes[dim] = Axis(**params) # also use overrride parameters          
     # create variables from netcdf variables    
     variables = dict()
