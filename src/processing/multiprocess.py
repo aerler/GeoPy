@@ -136,7 +136,7 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=True, ltrialnerror=True):
   if not isinstance(func,types.FunctionType): raise TypeError
   if not isinstance(args,list): raise TypeError
   if not isinstance(kwargs,dict): raise TypeError
-  if not isinstance(NP,int): raise TypeError
+  if NP is not None and not isinstance(NP,int): raise TypeError
   if not isinstance(ldebug,(bool,np.bool)): raise TypeError
   if not isinstance(ltrialnerror,(bool,np.bool)): raise TypeError
   
@@ -180,7 +180,7 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=True, ltrialnerror=True):
   
   # print first logging message
   logger.info(datetime.today())
-  logger.info('\nTHREADS: {0:d}, DEBUG: {1:s}\n'.format(NP,str(ldebug)))
+  logger.info('\nTHREADS: {0:s}, DEBUG: {1:s}\n'.format(str(NP),str(ldebug)))
   exitcodes = [] # list of results  
   ## loop over and process all job sets
   if lparallel:
