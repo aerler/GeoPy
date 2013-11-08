@@ -22,6 +22,7 @@ experiment['hitop-old'] =  projRoot + 'hitop-test/hitop-ctrl'
 ## shorthands for common experiments
 # proper names
 WRFname = dict()
+WRFname['columbia'] = 'columbia-brian'
 # these are all based on the "new" configuration (ARB3 domain)
 WRFname['new'] = 'new-ctrl'
 WRFname['nogulf'] = 'new-nogulf' # ARB2 domain
@@ -71,6 +72,7 @@ WRFtitle = dict()
 WRFtitle['cam3'] = 'CAM3 Radiation'
 WRFtitle['cfsr'] = 'CFSR Forcing (CAM3)'
 WRFtitle['clm4'] = 'CLM-4'
+WRFtitle['columbia'] = 'Columbia 1km'
 WRFtitle['ctrl-1'] = 'WRF Control'
 WRFtitle['ctrl-1-2000'] = 'Ctrl-1 Historical'
 WRFtitle['ctrl-1-2050'] = 'Ctrl-1 2050'

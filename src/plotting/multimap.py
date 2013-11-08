@@ -100,11 +100,12 @@ if __name__ == '__main__':
   ## case settings
   
   # observations
-  case = 'max' # name tag
+  case = 'columbia' # name tag
   projtype = 'lcc-new' # 'lcc-new'  
-  period = H10; dom = (2,)
+  period = '1997-1998'; dom = (3,)
+#   period = H10; dom = (2,)
 #   explist = ['PRISM']; period = [None]
-  explist = ['max','PRISM','new','noah','nogulf',]
+  explist = ['columbia','PRISM','CRU','columbia',]
 #   period = [H10, H10, None, H10]
   
   ## select variables and seasons
@@ -124,10 +125,10 @@ if __name__ == '__main__':
 #   varlist = ['snow', 'snowh']
 #  varlist = ['SST','T2','precip','snow','snowh']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-#   seasons = ['annual']
+  seasons = ['annual']
 #   seasons = ['summer']
 #   seasons = ['winter']    
-  seasons = ['winter', 'spring', 'summer', 'fall', 'annual']
+#   seasons = ['winter', 'spring', 'summer', 'fall', 'annual']
 #   varlist = ['snow']; seasons = ['fall','winter','spring']
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height
@@ -159,7 +160,7 @@ if __name__ == '__main__':
 #           ext = (loadCESM(exp=exp, period=prd),)
 #           axt = CESMtitle.get(exp,exp)
       else: # WRF runs are all in lower case
-        ext = loadWRF(experiment=WRFname[exp], period=prd, domains=dom, filetypes=['const','srfc'])
+        ext = loadWRF(experiment=WRFname[exp], period=prd, domains=dom, filetypes=['srfc'])
         axt = WRFtitle.get(exp,exp)
     exps.append(ext); axtitles.append(axt)  
   print exps[-1][-1]

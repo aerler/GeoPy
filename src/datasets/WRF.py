@@ -177,6 +177,27 @@ class Hydro(FileType):
     self.vars = self.atts.keys()    
     self.climfile = 'wrfhydro_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfhydro_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
+# lsm variables
+class LSM(FileType):
+  ''' Variables and attributes of the land surface files. '''
+  def __init__(self):
+    self.atts = dict(ALBEDO = dict(name='A', units=''), # Albedo
+                     SNOWC  = dict(name='snwcvr', units=''), # snow cover (binary)
+                     ACSNOM = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
+                     ACSNOW = dict(name='snwacc', units='kg/m^2/s'), # snow accumulation rate
+                     SFCEVP = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
+                     POTEVP = dict(name='pet', units='kg/m^2/s')) # potential evapo-transpiration rate
+    self.vars = self.atts.keys()    
+    self.climfile = 'wrflsm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
+    self.tsfile = 'wrflsm_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
+# lsm variables
+class Rad(FileType):
+  ''' Variables and attributes of the radiation files. '''
+  def __init__(self):
+    self.atts = dict() # currently empty
+    self.vars = self.atts.keys()    
+    self.climfile = 'wrfrad_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
+    self.tsfile = 'wrfrad_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
 # extreme value variables
 class Xtrm(FileType):
   ''' Variables and attributes of the extreme value files. '''
@@ -242,7 +263,7 @@ class Axes(FileType):
     self.tsfile = None
 
 # data source/location
-fileclasses = dict(const=Const(), srfc=Srfc(), xtrm=Xtrm(), plev3d=Plev3D(), hydro=Hydro(), axes=Axes())
+fileclasses = dict(const=Const(), srfc=Srfc(), hydro=Hydro(), lsm=LSM(), rad=Rad(), xtrm=Xtrm(), plev3d=Plev3D(), axes=Axes())
 root_folder = data_root + 'WRF/' # long-term mean folder
 outfolder = root_folder + 'wrfout/' # WRF output folder
 avgfolder = root_folder + 'wrfavg/' # long-term mean folder
@@ -317,11 +338,11 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   # generate filelist and attributes based on filetypes and domain
   if filetypes is None: filetypes = fileclasses.keys()
   elif isinstance(filetypes,list):  
-    if 'axes' not in filetypes: filetypes + ['axes']
-    if 'const' not in filetypes: filetypes + ['const']
+    if 'axes' not in filetypes: filetypes.append('axes')
+    if 'const' not in filetypes: filetypes.append('const')
   else: raise TypeError  
   atts = dict(); filelist = []; constfile = None
-  for filetype in filetypes + ['axes']:
+  for filetype in filetypes:
     fileclass = fileclasses[filetype]
     if filetype == 'const': constfile = fileclass.tsfile
     elif fileclass.tsfile is not None: filelist.append(fileclass.climfile) 
@@ -329,8 +350,8 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   if varatts is not None: atts.update(varatts)
   lconst = constfile is not None
   # translate varlist
-  if varlist is None: varlist = default_varatts.keys() + atts.keys()
-  elif varatts: varlist = translateVarNames(varlist, default_varatts)
+  #if varlist is None: varlist = default_varatts.keys() + atts.keys()
+  if varatts: varlist = translateVarNames(varlist, default_varatts)
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if constfile is not None: filename = constfile # constants files preferred...
@@ -344,8 +365,9 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
     # load constants
     if lconst:
       # load dataset
-      const = DatasetNetCDF(name=name, folder=folder, filelist=[constfile.format(domain)], varlist=varlist,  
-                              varatts=atts, axes=axes, multifile=False, ncformat='NETCDF4', squeeze=True)      
+      const = DatasetNetCDF(name=name, folder=folder, filelist=[constfile.format(domain)], varatts=atts,  
+                            varlist=fileclasses['const'].vars, axes=axes, multifile=False, ncformat='NETCDF4', 
+                            squeeze=True)      
     # load regular variables
     filenames = [filename.format(domain,gridstr,periodstr) for filename in filelist] # insert domain number
     # load dataset

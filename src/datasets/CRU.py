@@ -30,9 +30,13 @@ CRU_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotr
 varatts = dict(tmp = dict(name='T2', units='K', offset=273.15), # 2m average temperature
                tmn = dict(name='Tmin', units='K', offset=273.15), # 2m minimum temperature
                tmx = dict(name='Tmax', units='K', offset=273.15), # 2m maximum temperature
+               dtr = dict(name='dTd', units='K', offset=0.), # diurnal 2m temperature range
                vap = dict(name='Q2', units='Pa', scalefactor=100.), # 2m water vapor pressure
                pet = dict(name='pet', units='kg/m^2/s', scalefactor=1./86400.), # potential evapo-transpiration
                pre = dict(name='precip', units='mm/month', scalefactor=1.), # total precipitation
+               cld = dict(name='cldfrc', units='', offset=0.), # cloud cover/fraction
+               wet = dict(name='wetfrq', units='', offset=0), # number of wet days
+               frs = dict(name='frzfrq', units='', offset=0), # number of frost days 
                # axes (don't have their own file; listed in axes)
                time = dict(name='time', units='day', offset=-28854), # time coordinate
                # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
@@ -112,9 +116,10 @@ loadClimatology = loadCRU # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
     
-  mode = 'test_climatology'
-#   mode = 'average_timeseries'
-  period = (1979,1981)
+#   mode = 'test_climatology'
+  mode = 'average_timeseries'
+  period = (1979,1989)
+#   period = (1997,1998)
 
   if mode == 'test_climatology':
     
@@ -138,7 +143,7 @@ if __name__ == '__main__':
     print(source)
     print('\n')
     # prepare sink
-    filename = avgfile%('','_'+periodstr,)
+    filename = avgfile.format('','_'+periodstr,)
     if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
     sink = DatasetNetCDF(name='CRU Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
     sink.atts.period = periodstr 

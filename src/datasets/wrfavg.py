@@ -55,6 +55,9 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
   fileend = int(source.atts.end_date.split('-')[0]) # first element is the year
   begindate = offset + filebegin
   if not ( filebegin <= begindate <= fileend ): raise DateError  
+  # handle cases where the first month in the record is not January
+  firstmonth = int(source.atts.begin_date.split('-')[1]) # second element is the month
+  shift = firstmonth-1 # will be zero for January (01)
   
   ## loop over periods
   if periods is None: periods = [begindate-fileend]
@@ -103,7 +106,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
         #CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=True) # no need for lat/lon
         
         # start processing climatology
-        CPU.Climatology(period=period, offset=offset, flush=False)
+        CPU.Climatology(period=period, offset=offset, shift=shift, flush=False)
         
         # reproject and resample (regrid) dataset
         if griddef is not None:
@@ -149,15 +152,16 @@ if __name__ == '__main__':
   
   # default settings
   if ldebug:
-    #ldebug = False
-    NP = NP or 2
+    ldebug = False
+    NP = NP or 4
     #loverwrite = True
     varlist = None # ['precip', ]
-    experiments = ['max']
+    experiments = ['columbia-brian']
     #experiments = ['max','gulf','new','noah'] 
     periods = [1,]
-    domains = [1,2] # domains to be processed
-    filetypes = ['lsm',] # filetypes to be processed
+    domains = [1,2,3] # domains to be processed
+    filetypes = ['srfc','lsm'] # filetypes to be processed
+    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
     grid = 'WRF' 
   else:
     NP = NP or 4
@@ -170,7 +174,7 @@ if __name__ == '__main__':
     grid = 'WRF' 
 
   # expand experiments 
-  if len(experiments) > 0: experiments = [WRFname[exp] for exp in experiments]
+  if len(experiments) > 0: experiments = [WRFname.get(exp,exp) for exp in experiments]
   else: experiments = [exp for exp in WRFname.values()]    
 
   ## do some fancy regridding

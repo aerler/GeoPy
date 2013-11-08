@@ -146,17 +146,19 @@ if __name__ == '__main__':
   
   # default settings
   if ldebug:
-    #ldebug = False
-    NP = NP or 1
+    ldebug = False
+    NP = NP or 4
     #loverwrite = True
     varlist = None # ['',] # None
-    periods = [(1979,1989)]
+#     periods = [(1979,1989)]
+    periods = [(1997,1998)]
     datasets = []
     # WRF
-    experiments = ['max-ctrl'] # WRF experiment names (passed through WRFname)
-    domains = [1] # domains to be processed
-    filetypes = ['plev3d',] # filetypes to be processed
-    #filetypes = ['srfc','xtrm','plev3d','hydro',] # filetypes to be processed
+#     experiments = ['max-ctrl'] # WRF experiment names (passed through WRFname)
+    experiments = ['columbia-brian']
+    domains = [1,2,3] # domains to be processed
+    filetypes = ['lsm',] # filetypes to be processed
+    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
   else:
     NP = NP or 4
     #loverwrite = False
@@ -166,13 +168,13 @@ if __name__ == '__main__':
     # WRF
     experiments = [] # process all WRF experiments
     #experiments = ['max','gulf','new','noah'] # WRF experiment names (passed through WRFname) 
-    domains = [1,2] # domains to be processed
+    domains = [1,2,3] # domains to be processed
     filetypes = fileclasses.keys() # process all filetypes 
     
   # grid to project onto
   lpickle = True
-  grid = 'NARR'  
-  res = None # qualifier to grid (not all grids)
+  grid = 'ARB_small'  
+  res = '05' # qualifier to grid (not all grids)
       
   # expand experiments 
   if len(experiments) > 0: experiments = [WRFname.get(exp,exp) for exp in experiments]

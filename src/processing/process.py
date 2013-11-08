@@ -247,8 +247,11 @@ class CentralProcessingUnit(object):
     return newvar
   
   # function pair to compute a climatology from a time-series      
-  def Climatology(self, timeAxis='time', climAxis=None, period=None, offset=0, **kwargs):
+  def Climatology(self, timeAxis='time', climAxis=None, period=None, offset=0, shift=0, **kwargs):
     ''' Setup climatology and start computation; calls processClimatology. '''
+    if period is not None and not isinstance(period,(np.integer,int)): raise TypeError # period in years
+    if not isinstance(offset,(np.integer,int)): raise TypeError # offset in years (from start of record)
+    if not isinstance(shift,(np.integer,int)): raise TypeError # shift in month (if first month is not January)
     # construct new time axis for climatology
     if climAxis is None:        
       climAxis = Axis(name=timeAxis, units='month', length=12, data=np.arange(1,13,1)) # monthly climatology
@@ -268,13 +271,13 @@ class CentralProcessingUnit(object):
       if not isinstance(timeSlice,slice): raise TypeError
     # prepare function call
     function = functools.partial(self.processClimatology, # already set parameters
-                                 timeAxis=timeAxis, climAxis=climAxis, timeSlice=timeSlice)
+                                 timeAxis=timeAxis, climAxis=climAxis, timeSlice=timeSlice, shift=shift)
     # start process
     if self.feedback: print('\n   +++   processing climatology   +++   ')     
     self.process(function, **kwargs) # currently 'flush' is the only kwarg    
     if self.feedback: print('\n')
   # the previous method sets up the process, the next method performs the computation
-  def processClimatology(self, var, timeAxis='time', climAxis=None, timeSlice=None):
+  def processClimatology(self, var, timeAxis='time', climAxis=None, timeSlice=None, shift=0):
     ''' Compute a climatology from a variable time-series. '''
     # process variable that have a time axis
     if var.hasAxis(timeAxis):
@@ -303,6 +306,8 @@ class CentralProcessingUnit(object):
         # normalize
         avgdata /= (timelength/interval) 
       else: raise NotImplementedError
+      # shift data (if first month was not January)
+      if shift != 0: avgdata = np.roll(avgdata, shift, axis=tidx)
       # create new Variable
       axes = tuple([climAxis if ax.name == timeAxis else ax for ax in var.axes]) # exchange time axis
       newvar = var.copy(axes=axes, data=avgdata) # and, of course, load new data
