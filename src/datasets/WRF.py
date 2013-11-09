@@ -1,7 +1,7 @@
 '''
 Created on 2013-09-28
 
-This module contains meta data and access functions for WRF model output. 
+This module contains common meta data and access functions for WRF model output. 
 
 @author: Andre R. Erler, GPL v3
 '''
@@ -365,9 +365,8 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
     # load constants
     if lconst:
       # load dataset
-      const = DatasetNetCDF(name=name, folder=folder, filelist=[constfile.format(domain)], varatts=atts,  
-                            varlist=fileclasses['const'].vars, axes=axes, multifile=False, ncformat='NETCDF4', 
-                            squeeze=True)      
+      const = DatasetNetCDF(name=name, folder=folder, filelist=[constfile.format(domain)], varatts=atts, axes=axes,  
+                            varlist=fileclasses['const'].vars, multifile=False, ncformat='NETCDF4', squeeze=True)      
     # load regular variables
     filenames = [filename.format(domain,gridstr,periodstr) for filename in filelist] # insert domain number
     # load dataset
@@ -395,8 +394,8 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
 
 dataset_name = 'WRF' # dataset name
 root_folder # root folder of the dataset
-avgfolder
-outfolder
+avgfolder # root folder for monthly averages
+outfolder # root folder for direct WRF output
 file_pattern = 'wrf{0:s}_d{1:02d}{2:s}_clim{3:s}.nc' # filename pattern: filetype, domain, grid, period
 data_folder = root_folder # folder for user data
 grid_def = {'d02':None,'d01':None} # there are too many... 

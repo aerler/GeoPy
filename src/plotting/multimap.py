@@ -19,7 +19,8 @@ mpl.rc('font', size=10)
 from mpl_toolkits.basemap import Basemap
 from mpl_toolkits.basemap import maskoceans
 # PyGeoDat stuff
-from datasets.WRF import loadWRF #, WRFtitle
+from datasets.WRF import loadWRF
+from datasets.WRF_experiments import exps as WRF_exps
 # from datasets.CESM import loadCESM, CESMtitle
 from datasets.CFSR import loadCFSR
 from datasets.NARR import loadNARR
@@ -27,54 +28,9 @@ from datasets.GPCC import loadGPCC
 from datasets.CRU import loadCRU
 from datasets.PRISM import loadPRISM
 from datasets.common import days_per_month, days_per_month_365, name_of_month # for annotation
+from plotting.misc import getFigureSettings
 # ARB project related stuff
-from plotting.ARB_settings import WRFname, WRFtitle, getProjectionSettings
-
-## figure settings
-def getFigureSettings(nexp, cbo):
-  sf = dict(dpi=150) # print properties
-  figformat = 'png'
-  folder = '/home/me/Research/Dynamical Downscaling/Figures/' # figure directory
-  # figure out colorbar placement
-  if cbo == 'vertical':
-    margins = dict(bottom=0.02, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-    caxpos = [0.91, 0.05, 0.03, 0.9]
-  else:# 'horizontal'
-    margins = dict(bottom=0.1, left=0.065, right=.9725, top=.925, hspace=0.05, wspace=0.05)
-    caxpos = [0.05, 0.05, 0.9, 0.03]        
-  # pane settings
-  if nexp == 1:
-    ## 1 panel
-    subplot = (1,1)
-    figsize = (3.75,3.75) #figsize = (6.25,6.25)  #figsize = (7,5.5)
-    margins = dict(bottom=0.025, left=0.075, right=0.875, top=0.875, hspace=0.0, wspace=0.0)
-#     margins = dict(bottom=0.12, left=0.075, right=.9725, top=.95, hspace=0.05, wspace=0.05)
-#    margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-  elif nexp == 2:
-    ## 2 panel
-    subplot = (1,2)
-    figsize = (6.25,5.5)
-  elif nexp == 4:
-    # 4 panel
-    subplot = (2,2)
-    figsize = (6.25,6.25)
-    margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-  elif nexp == 4:
-    # 4 panel
-    subplot = (2,2)
-    figsize = (6.25,6.25)
-    margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-  elif nexp == 6:
-    # 6 panel
-    subplot = (2,3) # rows, columns
-    figsize = (9.25,6.5) # width, height (inches)
-    cbo = 'horizontal'
-    margins = dict(bottom=0.09, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
-    caxpos = [0.05, 0.025, 0.9, 0.03]
-  #    margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-  # return values
-  return sf, figformat, folder, margins, caxpos, subplot, figsize, cbo
-
+from plotting.ARB_settings import getMapSetup
 
 if __name__ == '__main__':
   
@@ -85,12 +41,16 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
+  WRFfiletypes=['srfc'] # WRF data source
+  # figure directory
+  folder = '/home/me/Research/Dynamical Downscaling/Figures/'
+  # period shortcuts
   H01 = '1979'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994' # historical validation periods
   G10 = '1969-1979'; I10 = '1989-1999'; J10 = '1999-2009' # additional historical periods
   A03 = '2045-2048'; A05 = '2045-2050'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
   B03 = '2095-2098'; B05 = '2095-2100'; B10 = '2095-2105'; B15 = '2095-2110' # late 21st century
-  lprint = False # write plots to disk
+  lprint = True # write plots to disk
   ltitle = True # plot/figure title
   lcontour = False # contour or pcolor plot
   lframe = True # draw domain boundary
@@ -100,17 +60,20 @@ if __name__ == '__main__':
   ## case settings
   
   # observations
-  case = 'columbia' # name tag
-  projtype = 'lcc-new' # 'lcc-new'  
-  period = '1997-1998'; dom = (3,)
-#   period = H10; dom = (2,)
+#   case = 'test' # name tag
+#   maptype = 'lcc-new'; lstations = True
+#   period = H10; domain = (2,)
 #   explist = ['PRISM']; period = [None]
-  explist = ['columbia','PRISM','CRU','columbia',]
+  case = 'bugaboo'; period = '1997-1998'  # name tag
+  maptype = 'lcc-coast'; lstations = False # 'lcc-new'  
+  domain = [(1,2,3),None,None,(1,2,)]
+  explist = ['coast','PRISM','CFSR','coast',]
+  exptitles = ['WRF 1km (Bugaboo)', 'PRISM Climatology', 'CFSR 1997-1998', 'WRF 5km (Bugaboo)']
 #   period = [H10, H10, None, H10]
   
   ## select variables and seasons
 #   varlist = ['precipnc', 'precipc', 'T2']
-  varlist = ['precip']
+  varlist = ['precip', 'T2']
 #   varlist = ['evap']
 #   varlist = ['snow']
 #   varlist = ['precip', 'T2', 'p-et','evap']
@@ -125,10 +88,10 @@ if __name__ == '__main__':
 #   varlist = ['snow', 'snowh']
 #  varlist = ['SST','T2','precip','snow','snowh']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-  seasons = ['annual']
+#   seasons = ['annual']
 #   seasons = ['summer']
 #   seasons = ['winter']    
-#   seasons = ['winter', 'spring', 'summer', 'fall', 'annual']
+  seasons = ['winter', 'spring', 'summer', 'fall', 'annual']
 #   varlist = ['snow']; seasons = ['fall','winter','spring']
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height
@@ -138,11 +101,17 @@ if __name__ == '__main__':
 #   varlist = ['lndcls']; seasons = [''] # static
   
 
-  ## load data 
+  # setup projection and map
+  mapSetup = getMapSetup(maptype, stations=lstations)
+  
+  ## load data   
+  if not isinstance(exptitles,(tuple,list)): exptitles = (exptitles,)*len(explist)
+  elif len(exptitles) == 0: exptitles = (None,)*len(explist) 
   if not isinstance(period,(tuple,list)): period = (period,)*len(explist)
+  if not isinstance(domain,(tuple,list)): domain = (domain,)*len(explist)
   exps = []; axtitles = []
-  for exp,prd in zip(explist,period): 
-    ext = exp; axt = ''
+  for exp,tit,prd,dom in zip(explist,exptitles,period,domain): 
+#     ext = exp; axt = ''
     if isinstance(exp,str):
       if exp[0].isupper():
         if exp == 'GPCC': ext = (loadGPCC(resolution=resolution,period=prd),); axt = 'GPCC Observations' # ,period=prd
@@ -160,9 +129,10 @@ if __name__ == '__main__':
 #           ext = (loadCESM(exp=exp, period=prd),)
 #           axt = CESMtitle.get(exp,exp)
       else: # WRF runs are all in lower case
-        ext = loadWRF(experiment=WRFname[exp], period=prd, domains=dom, filetypes=['srfc'])
-        axt = WRFtitle.get(exp,exp)
-    exps.append(ext); axtitles.append(axt)  
+        exp = WRF_exps[exp]
+        ext = loadWRF(experiment=exp.name, period=prd, domains=dom, filetypes=WRFfiletypes) 
+        axt = exp.title # defaults to name...
+    exps.append(ext); axtitles.append(tit or axt)  
   print exps[-1][-1]
   # count experiment tuples (layers per panel)
   nexps = []; nlen = len(exps)
@@ -172,10 +142,10 @@ if __name__ == '__main__':
     nexps.append(len(exps[n])) # layer counter for each panel
   
   # get figure settings
-  sf, figformat, folder, margins, caxpos, subplot, figsize, cbo = getFigureSettings(nexp=nlen, cbo=cbo)
+  sf, figformat, folder, margins, caxpos, subplot, figsize, cbo = getFigureSettings(nlen, cbo, folder)
   
   # get projections settings
-  projection, grid, res = getProjectionSettings(projtype=projtype)
+  projection, grid, res = mapSetup.getProjectionSettings()
   
   ## loop over varlist and seasons
   maps = []; x = []; y = [] # projection objects and coordinate fields (only computed once)
@@ -360,8 +330,8 @@ if __name__ == '__main__':
       # than 1000 km^2 in area.
       if not maps:
         print(' - setting up map projection\n') 
-        mastermap = Basemap(ax=ax[n],**projection)
-        for axi in ax:          
+        mastermap = Basemap(ax=ax[n],**projection) # make just one basemap with dummy axes handle
+        for axi in ax: # replace dummy axes handle with correct axes handle
           tmp = copy(mastermap)
           tmp.ax = axi  
           maps.append(tmp) # one map for each panel!!  
@@ -412,64 +382,31 @@ if __name__ == '__main__':
       #print('\n - annotating plots\n')      
       # add labels
       if ltitle: f.suptitle(figtitle,fontsize=12)
-    #  ax.set_xlabel('Longitude'); ax.set_ylabel('Latitude')
+      # add a map scale to lower left axes
       msn = len(maps)/2 # place scale 
-      if projtype == 'lcc-new':
-        maps[msn].drawmapscale(-128, 48, -120, 55, 400, barstyle='fancy', 
-                             fontsize=8, yoffset=0.01*(maps[n].ymax-maps[n].ymin))
-      elif projtype == 'lcc-small':
-        maps[msn].drawmapscale(-136, 49, -137, 57, 800, barstyle='fancy', yoffset=0.01*(maps[n].ymax-maps[n].ymin))
-      elif projtype == 'lcc-large':
-        maps[msn].drawmapscale(-171, 21, -137, 57, 2000, barstyle='fancy', yoffset=0.01*(maps[n].ymax-maps[n].ymin))
+      mapSetup.drawScale(maps[msn])
       n = -1 # axes counter
       for i in xrange(subplot[0]):
         for j in xrange(subplot[1]):
           n += 1 # count up
           ax[n].set_title(axtitles[n],fontsize=11) # axes title
-          if j == 0 : Left = True
-          else: Left = False 
-          if i == subplot[0]-1: Bottom = True
-          else: Bottom = False
-          # land/sea mask
-          maps[n].drawlsmask(ocean_color='blue', land_color='green',resolution=res,grid=grid)
+          if j == 0 : left = True
+          else: left = False 
+          if i == subplot[0]-1: bottom = True
+          else: bottom = False
+          # begin annotation
+          bmap = maps[n]
           # black-out continents, if we have no proper land mask 
-          if lmsklnd and not (exps[n][0].variables.has_key('lnd') or exps[n][0].variables.has_key('lndidx')): 
-            maps[n].fillcontinents(color='black',lake_color='black') 
-          # add maps stuff
-          maps[n].drawcoastlines(linewidth=0.5)
-          maps[n].drawcountries(linewidth=0.5)
-          maps[n].drawmapboundary(fill_color='k',linewidth=2)
-          # labels = [left,right,top,bottom]
-          if projtype=='lcc-new':
-            maps[n].drawparallels([40,50,60,70],linewidth=1, labels=[Left,False,False,False])
-            maps[n].drawparallels([45,55,65],linewidth=0.5, labels=[Left,False,False,False])
-            maps[n].drawmeridians([-180,-160,-140,-120,-100],linewidth=1, labels=[False,False,False,Bottom])
-            maps[n].drawmeridians([-170,-150,-130,-110],linewidth=0.5, labels=[False,False,False,Bottom])          
-          elif projtype=='lcc-fine' or projtype=='lcc-small' or projtype=='lcc-intermed':
-            maps[n].drawparallels([45,65],linewidth=1, labels=[Left,False,False,False])
-            maps[n].drawparallels([55,75],linewidth=0.5, labels=[Left,False,False,False])
-            maps[n].drawmeridians([-180,-160,-140,-120,-100],linewidth=1, labels=[False,False,False,Bottom])
-            maps[n].drawmeridians([-170,-150,-130,-110],linewidth=0.5, labels=[False,False,False,Bottom])
-          elif projtype == 'lcc-large':
-            maps[n].drawparallels(range(0,90,30),linewidth=1, labels=[Left,False,False,False])
-            maps[n].drawparallels(range(15,90,30),linewidth=0.5, labels=[Left,False,False,False])
-            maps[n].drawmeridians(range(-180,180,30),linewidth=1, labels=[False,False,False,Bottom])
-            maps[n].drawmeridians(range(-165,180,30),linewidth=0.5, labels=[False,False,False,Bottom])
-          elif projtype == 'ortho':
-            maps[n].drawparallels(range(-90,90,30),linewidth=1)
-            maps[n].drawmeridians(range(-180,180,30),linewidth=1)
-        
-      # mark stations
-      # ST_LINA, WESTLOCK_LITKE, JASPER, FORT_MCMURRAY, SHINING_BANK
-      sn = ['SL', 'WL', 'J', 'FM', 'SB']
-      slon = [-111.45,-113.85,-118.07,-111.22,-115.97]
-      slat = [54.3,54.15,52.88,56.65,53.85]
-      for (axn,mapt) in zip(ax,maps):
-        for (name,lon,lat) in zip(sn,slon,slat):
-          xx,yy = mapt(lon, lat)
-          mapt.plot(xx,yy,'ko',markersize=3)
-          axn.text(xx+1.5e4,yy-1.5e4,name,ha='left',va='top',fontsize=8)
-      
+          if lmsklnd and not (exps[n][0].variables.has_key('lndmsk') or exps[n][0].variables.has_key('lndidx')): 
+            blklnd = True        
+          else: blklnd = False                  
+          # misc annotatiosn
+          mapSetup.miscAnnotation(bmap, blklnd=blklnd)
+          # add parallels and meridians
+          mapSetup.drawGrid(bmap, left, bottom)
+          # mark stations
+          if lstations: mapSetup.markStations(ax[n], bmap)            
+              
       # save figure to disk
       if lprint:
         print('\nSaving figure in '+filename)

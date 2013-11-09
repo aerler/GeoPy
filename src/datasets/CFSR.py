@@ -159,9 +159,10 @@ if __name__ == '__main__':
   
 #   mode = 'test_climatology'
   mode = 'average_timeseries'
-  reses = ('05',) # for testing
+#   reses = ('05',) # for testing
   reses = ( '031','05',) 
   period = (1979,1989)
+#   period = (1997,1998)
   
   # generate averaged climatology
   for res in reses:    
