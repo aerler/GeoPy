@@ -165,9 +165,9 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'; reses = ('025',); period = None
   mode = 'average_timeseries'; reses = ('05',) # for testing
 #   mode = 'convert_climatology'; reses = ('025',); period = None
-  reses = ('025','05', '10', '25')  
-#   reses = ('05', '10', '25')
-  reses = ('25',)
+#   reses = ('025','05', '10', '25')  
+  reses = ('05', '10', '25')
+#   reses = ('25',)
   period = (1979,1989)
   grid = 'GPCC'
   
@@ -237,7 +237,8 @@ if __name__ == '__main__':
       print('\n')
             
       # prepare sink
-      filename = getFileName(grid=grid, period=period, name='GPCC', filepattern=avgfile)
+      gridstr = res if grid == 'GPCC' else grid
+      filename = getFileName(grid=gridstr, period=period, name='GPCC', filepattern=avgfile)
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
       atts =dict(period=periodstr, name='GPCC', title='GPCC Climatology') 
       sink = DatasetNetCDF(name='GPCC Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')

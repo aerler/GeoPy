@@ -20,7 +20,7 @@ from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
 # WRF specific
 from datasets.WRF import fileclasses, getWRFgrid, loadWRF
-from plotting.ARB_settings import WRFname
+from datasets.WRF_experiments import exps
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
@@ -32,14 +32,20 @@ def performRegridding(dataset, dataargs, griddef=None, loverwrite=False,
   if not isinstance(kwargs,dict): raise TypeError # all dataset arguments are kwargs 
   if griddef is not None and not isinstance(griddef,GridDefinition): raise TypeError
   
+  #TODO: make better use of Exp class
+  
   # load source
   if dataset == 'WRF': 
-    module = import_module('datasets.{0:s}'.format(dataset))
-    dataset_name = dataargs['experiment']
+    module = import_module('datasets.WRF')
+    exp = dataargs['experiment']    
+    dataset_name = exp.name
+    period = dataargs['period']
+    #TODO: calculate period boundaries from begindate and period length
     if len(dataargs['filetypes']) > 1: raise DatasetError
     filetype = dataargs['filetypes'][0]
     if not isinstance(dataargs['domains'], (np.integer,int)): raise DatasetError
     domain = dataargs['domains']
+    #TODO: resolve arguments transparently
     source = loadWRF(**dataargs) # the name of the experiment is in the dataargs
     periodstr = source.atts.period # a NetCDF attribute    
     datamsgstr = 'Processing WRF Experiment \'{0:s}\' from {1:s}'.format(dataset_name, periodstr) 
@@ -47,6 +53,7 @@ def performRegridding(dataset, dataargs, griddef=None, loverwrite=False,
     module = import_module('datasets.{0:s}'.format(dataset))      
     dataset_name = module.dataset_name
     source = module.loadClimatology(**dataargs) # load pre-processed climatology
+    #TODO: calculate period boundaries from begindate and period length
     periodstr = '{0:4d}-{1:4d}'.format(*dataargs['period'])
     datamsgstr = 'Processing Dataset {0:s} from {1:s}'.format(dataset_name, periodstr)
   else:
@@ -151,14 +158,16 @@ if __name__ == '__main__':
     #loverwrite = True
     varlist = None # ['',] # None
 #     periods = [(1979,1989)]
-    periods = [(1997,1998)]
+    periods = [5,10]
+    #TODO: use period length instead of boundaries
+#     periods = [(1997,1998)]
     datasets = []
     # WRF
-#     experiments = ['max-ctrl'] # WRF experiment names (passed through WRFname)
-    experiments = ['columbia-brian']
-    domains = [1,2,3] # domains to be processed
-    filetypes = ['lsm',] # filetypes to be processed
-    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+    experiments = ['max-ctrl'] # WRF experiment names (passed through WRFname)
+#     experiments = ['coast-brian']
+    domains = [1,2] # domains to be processed
+    filetypes = ['xtrm',] # filetypes to be processed
+    #filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
   else:
     NP = NP or 4
     #loverwrite = False
@@ -168,7 +177,7 @@ if __name__ == '__main__':
     # WRF
     experiments = [] # process all WRF experiments
     #experiments = ['max','gulf','new','noah'] # WRF experiment names (passed through WRFname) 
-    domains = [1,2,3] # domains to be processed
+    domains = [1,2] # domains to be processed
     filetypes = fileclasses.keys() # process all filetypes 
     
   # grid to project onto
@@ -176,13 +185,14 @@ if __name__ == '__main__':
   grid = 'ARB_small'  
   res = '05' # qualifier to grid (not all grids)
       
-  # expand experiments 
-  if len(experiments) > 0: experiments = [WRFname.get(exp,exp) for exp in experiments]
-  elif not ldebug: experiments = [exp for exp in WRFname.values()] # don't do all in debug mode!    
+  # expand experiments
+  if experiments is None: experiments = [] 
+  elif len(experiments) > 0: experiments = [exps[exp] for exp in experiments]
+  elif not ldebug: experiments = exps # do all, but not in debug mode!    
    
   # print an announcement
   print('\n Regridding WRF Datasets:')
-  print(experiments)
+  print([exp.name for exp in experiments])
   print(' And Observational Datasets:')
   print(datasets)
   print('\n To {0:s} Grid:'.format(grid))
@@ -212,12 +222,12 @@ if __name__ == '__main__':
       # arguments for worker function: dataset and dataargs       
       args.append( (dataset, dict(period=period)) ) # append to list               
   # WRF datasets
-  for experiments in experiments:
+  for experiment in experiments:
     for filetype in filetypes:
       for domain in domains:
         for period in periods:
           # arguments for worker function: dataset and dataargs       
-          args.append( ('WRF', dict(experiment=experiments, filetypes=[filetype], domains=domain, period=period)) )
+          args.append( ('WRF', dict(experiment=experiment, filetypes=[filetype], domains=domain, period=period)) )
   # static keyword arguments
   kwargs = dict(griddef=griddef, loverwrite=loverwrite)        
   # call parallel execution function

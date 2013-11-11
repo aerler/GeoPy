@@ -18,7 +18,6 @@ from geodata.misc import DatasetError, isInt, AxisError
 from datasets.common import translateVarNames, data_root, default_varatts 
 from datasets.common import loadPickledGridDef, grid_folder, grid_pickle
 
-
 ## get WRF projection and grid definition 
 # N.B.: Unlike with observational datasets, model Meta-data depends on the experiment and has to be 
 #       loaded from the NetCFD-file; a few conventions have to be defied, however.
@@ -103,6 +102,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
 # return name and folder
 def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
   ''' Convenience function to infer type-check the name and folder of an experiment based on various input. '''
+  # N.B.: 'experiment' can be a string name or an Exp instance   
   # check domains
   if isinstance(domains,col.Iterable):
     if not all(isInt(domains)): raise TypeError
@@ -118,12 +118,20 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
     elif isinstance(name,basestring): names = [name]
     else: raise DatasetError, "Need to specify an experiment name in order to load data."
   else:
-    # root folder
-    if not isinstance(experiment,basestring): raise TypeError
-    if folder is None: folder = '{}/{}/'.format(avgfolder,experiment)
-    elif not isinstance(folder,basestring): raise TypeError
-    # expand name
-    if name is None: name = '{}'.format(experiment)
+    from datasets.WRF_experiments import Exp # need to leave this here, to avoid circular reference...
+    if isinstance(experiment,Exp):
+      # root folder
+      if folder is None: folder = experiment.avgfolder
+      elif not isinstance(folder,basestring): raise TypeError
+      # name
+      if name is None: name = experiment.name
+    else:
+      # root folder
+      if not isinstance(experiment,basestring): raise TypeError
+      if folder is None: folder = '{}/{}/'.format(avgfolder,experiment)
+      elif not isinstance(folder,basestring): raise TypeError
+      # expand name
+      if name is None: name = experiment
     if isinstance(name,basestring): 
       names = ['{0:s}_d{1:0=2d}'.format(name,domain) for domain in domains]
     elif isinstance(name,col.Iterable):
@@ -276,6 +284,7 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=No
   ''' Get a properly formatted WRF dataset with monthly time-series. '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)
+  # N.B.: 'experiment' can be a string name or an Exp instance
   folder, names, domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
   # generate filelist and attributes based on filetypes and domain
   if filetypes is None: filetypes = fileclasses.keys()
@@ -327,6 +336,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   ''' Get a properly formatted monthly WRF climatology as NetCDFDataset. '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)
+  # N.B.: 'experiment' can be a string name or an Exp instance
   folder, names, domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
   # grid
   if grid is None or grid == name: gridstr = ''

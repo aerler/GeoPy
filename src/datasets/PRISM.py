@@ -14,6 +14,7 @@ import netCDF4 as nc # netcdf python module
 # internal imports
 from datasets.common import days_per_month, name_of_month, data_root, loadClim
 from geodata.misc import DatasetError
+from warnings import warn
 from geodata.gdal import GridDefinition
 
 ## PRISM Meta-data
@@ -61,7 +62,9 @@ avgfolder = root_folder + 'prismavg/' # prefix
 def loadPRISM(name=dataset_name, period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly PRISM climatology as a DatasetNetCDF. '''
   # only the climatology is available
-  if period is not None: raise DatasetError, 'Only the full climatology is currently available.'
+  if period is not None: 
+    warn('Only the full climatology is currently available: setting \'period\' to None.')
+    period = None
   # load standardized climatology dataset with PRISM-specific parameters  
   dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
                      varatts=varatts, filepattern=avgfile, filelist=filelist)

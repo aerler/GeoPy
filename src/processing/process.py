@@ -157,7 +157,7 @@ class CentralProcessingUnit(object):
   
   # function pair to compute a climatology from a time-series      
   def Regrid(self, griddef=None, projection=None, geotransform=None, size=None, xlon=None, ylat=None, 
-             mask=True, int_interp='nearest', float_interp='bilinear', **kwargs):
+             mask=True, int_interp=None, float_interp=None, **kwargs):
     ''' Setup climatology and start computation; calls processClimatology. '''
     # make temporary gdal dataset
     if self.source is self.target:
@@ -196,9 +196,17 @@ class CentralProcessingUnit(object):
     # use these map axes
     xlon = self.target.xlon; ylat = self.target.ylat
     assert isinstance(xlon,Axis) and isinstance(ylat,Axis)
+    # determine source dataset grid definition 
+    srcgrd = GridDefinition(projection=self.source.projection, geotransform=self.source.geotransform, 
+                            size=self.source.mapSize, xlon=self.source.xlon, ylat=self.source.ylat)
+    srcres = srcgrd.scale; tgtres = griddef.scale
     # determine GDAL interpolation
-    int_interp = gdalInterp(int_interp)
-    float_interp = gdalInterp(float_interp)      
+    if int_interp is None: int_interp = gdalInterp('nearest')
+    else: int_interp = gdalInterp(int_interp)
+    if float_interp is None:
+      if srcres < tgtres: float_interp = gdalInterp('convolution') # down-sampling
+      else: float_interp = gdalInterp('cubicspline') # up-sampling
+    else: float_interp = gdalInterp(float_interp)      
     # prepare function call    
     function = functools.partial(self.processRegrid, ylat=ylat, xlon=xlon, # already set parameters
                                  mask=mask, int_interp=int_interp, float_interp=float_interp)

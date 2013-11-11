@@ -145,10 +145,12 @@ loadClimatology = loadNARR # pre-processed, standardized climatology
 if __name__ == '__main__':
     
   
-#   mode = 'test_climatology'
-  mode = 'average_timeseries'
+  mode = 'test_climatology'
+#   mode = 'average_timeseries'
   grid = 'NARR'
+  period = (1979,2009)
   period = (1979,1989)
+#   period = (1979,1984)
   
   if mode == 'test_climatology':
     
@@ -158,6 +160,8 @@ if __name__ == '__main__':
     print(dataset)
     print('')
     print(dataset.geotransform)
+    print('')
+    print(grid_def[''].scale)
               
   # generate averaged climatology
   elif mode == 'average_timeseries':
@@ -172,7 +176,7 @@ if __name__ == '__main__':
     print('\n')
     # prepare sink
     gridstr = '' if grid is 'NARR' else '_'+grid
-    filename = avgfile%(gridstr,'_'+periodstr)
+    filename = avgfile.format(gridstr,'_'+periodstr)
     if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
     sink = DatasetNetCDF(name='NARR Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
     sink.atts.period = periodstr 
@@ -184,33 +188,7 @@ if __name__ == '__main__':
     CPU = CentralProcessingUnit(source, sink, varlist=None, tmp=True) # no need for lat/lon
     
     # start processing climatology
-    print('')
-    print('   +++   processing climatology   +++   ') 
     CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
-    print('\n')      
-
-
-    if grid != 'NARR':    
-      # find new coordinate arrays
-      if grid == '025': dlon = dlat = 0.25 # resolution
-      elif grid == '05': dlon = dlat = 0.5
-      elif grid == '10': dlon = dlat = 1.0
-      elif grid == '25': dlon = dlat = 2.5 
-      slon, slat, elon, elat = -179.75, 3.25, -69.75, 85.75
-      assert (elon-slon) % dlon == 0 
-      lon = np.linspace(slon+dlon/2,elon-dlon/2,(elon-slon)/dlon)
-      assert (elat-slat) % dlat == 0
-      lat = np.linspace(slat+dlat/2,elat-dlat/2,(elat-slat)/dlat)
-      # add new geographic coordinate axes for projected map
-      xlon = Axis(coord=lon, atts=dict(name='lon', long_name='longitude', units='deg E'))
-      ylat = Axis(coord=lat, atts=dict(name='lat', long_name='latitude', units='deg N'))
-      # reproject and resample (regrid) dataset
-      print('')
-      print('   +++   processing regidding   +++   ') 
-      print('    ---   (%3.2f,  %3i x %3i)   ---   '%(dlon, len(lon), len(lat)))
-      CPU.Regrid(xlon=xlon, ylat=ylat, flush=False)
-      print('\n')
-    
     
     # sync temporary storage with output
     CPU.sync(flush=True)

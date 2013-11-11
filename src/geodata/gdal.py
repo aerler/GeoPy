@@ -34,6 +34,7 @@ class GridDefinition(object):
     That includes GDAL spatial references and map-Axis instances with coordinates.
   '''
   name = '' # a name for the grid...
+  scale = None # approximate resolution of the grid in degrees at the domain center
   projection = None  # GDAL SpatialReference instance
   isProjected = None  # logical; indicates whether the coordiante system is projected or geographic 
   xlon = None  # Axis instance; the west-east axis
@@ -83,6 +84,24 @@ class GridDefinition(object):
       if not isinstance(geotransform, (list, tuple)) and isNumber(geotransform) and len(geotransform) == 6: raise TypeError
       if not isinstance(size, (list, tuple)) and isInt(geotransform) and len(geotransform) == 2: raise TypeError
       xlon, ylat = getAxes(geotransform, xlen=size[0], ylen=size[1], projected=self.isProjected)
+    # N.B.: [x_0, dx, 0, y_0, 0, dy]
+    #       GT(0),GT(3) are the coordinates of the bottom left corner
+    #       GT(1) & GT(5) are pixel width and height
+    #       GT(2) & GT(4) are usually zero for North-up, non-rotated maps
+    # estimate scale in degrees
+    if self.isProjected:
+      latlon = osr.SpatialReference() 
+      latlon.SetWellKnownGeogCS('WGS84') # a normal lat/lon coordinate system
+      tx = osr.CoordinateTransformation(gdalsr,latlon)
+      frac = 1./5. # the fraction that is used to calculate the effective resolution (at the domain center)
+      xs = int(size[0]*(0.5-frac/2.)); ys = int(size[1]*(0.5-frac/2.))
+      xe = int(size[0]*(0.5+frac/2.)); ye = int(size[1]*((0.5+frac/2.)))
+      (llx,lly,llz) = tx.TransformPoint(xlon.coord[xs],ylat.coord[ys])
+      (urx,ury,urz) = tx.TransformPoint(xlon.coord[xe],ylat.coord[ye])
+      dlon = ( urx - llx ) / ( xe - xs ); dlat = ( ury - lly ) / ( ye - ys )       
+      self.scale = ( dlon + dlat ) / 2
+    else:
+      self.scale = ( geotransform[1] + geotransform[5] ) / 2 # pretty straight forward 
     # set geotransform/axes attributes
     self.xlon = xlon
     self.ylat = ylat
@@ -459,6 +478,7 @@ def addGDALtoDataset(dataset, projection=None, geotransform=None):
     dataset.__dict__['geotransform'] = geotransform
     dataset.__dict__['xlon'] = xlon
     dataset.__dict__['ylat'] = ylat
+    dataset.__dict__['mapSize'] = (len(xlon),len(ylat))
     
     # add GDAL functionality to all variables!
     for var in dataset.variables.values():
