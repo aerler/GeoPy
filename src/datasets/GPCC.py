@@ -119,7 +119,8 @@ def loadGPCC_TS(name=dataset_name, varlist=varlist, resolution='25', varatts=tsv
 avgfolder = root_folder + 'gpccavg/' 
 avgfile = 'gpcc{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
-def loadGPCC(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
+def loadGPCC(name=dataset_name, resolution=None, period=None, grid=None, varlist=None, varatts=None, 
+             folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly GPCC climatology as a DatasetNetCDF. '''
   # prepare input
   if grid is not None and grid[0:5].lower() == 'gpcc_': 
@@ -127,17 +128,14 @@ def loadGPCC(name=dataset_name, period=None, grid=None, resolution=None, varlist
     grid = None
   elif resolution is None: 
     resolution = '025' if period is None else '05'
-  # check resolution
-  if grid is None:
-    # check for valid resolution 
-    if resolution not in ('025','05', '10', '25'): 
-      raise DatasetError, "Selected resolution '%s' is not available!"%resolution  
-    if resolution == '025' and period is not None: 
-      raise DatasetError, "The highest resolution is only available for the lon-term mean!"
-    grid = resolution # grid supersedes resolution  
+  # check for valid resolution 
+  if resolution not in ('025','05', '10', '25'): 
+    raise DatasetError, "Selected resolution '%s' is not available!"%resolution  
+  if resolution == '025' and period is not None: 
+    raise DatasetError, "The highest resolution is only available for the long-term mean!"
   # load standardized climatology dataset with GPCC-specific parameters
-  dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
-                     varatts=varatts, filepattern=avgfile, filelist=filelist)
+  dataset = loadClim(name=name, folder=folder, projection=None, resolution=resolution, period=period, grid=grid, 
+                     varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist)
   # return formatted dataset
   return dataset
 
@@ -164,8 +162,8 @@ loadClimatology = loadGPCC # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-#   mode = 'test_climatology'; reses = ('025',); period = None
-  mode = 'average_timeseries'; reses = ('05',) # for testing
+  mode = 'test_climatology'; reses = ('025',); period = None
+#   mode = 'average_timeseries'; reses = ('05',) # for testing
 #   mode = 'convert_climatology'; reses = ('025',); period = None
 #   reses = ('025','05', '10', '25')  
   reses = ('05', '10', '25')
@@ -173,7 +171,7 @@ if __name__ == '__main__':
   period = (1979,1984)
   period = (1979,1989)
   period = (1979,2009)
-  grid = 'GPCC'
+  grid = 'arb2_d02'
   
   # generate averaged climatology
   for res in reses:    
@@ -183,7 +181,7 @@ if __name__ == '__main__':
       
       # load averaged climatology file
       print('')
-      dataset = loadGPCC(grid='%s_%s'%(grid,res),resolution=res,period=period)
+      dataset = loadGPCC(grid=grid,resolution=res,period=period)
       print(dataset)
       print('')
       print(dataset.geotransform)

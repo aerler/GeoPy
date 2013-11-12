@@ -272,6 +272,19 @@ def getGeotransform(xlon=None, ylat=None, geotransform=None):
   return geotransform
 
 
+# a utility function
+def addGeoLocator2D(dataset, gdal=True, check=True):
+  ''' add 2D geolocator arrays to geographic datasets '''
+  if not ( check and dataset.isProjected ): # if check = False, we will just do it
+    if not ( check and dataset.hasVariable('lon2D') and dataset.hasVariable('lat2D') ):
+      if not ( dataset.hasAxis('lon') and dataset.hasAxis('lat') ): raise AxisError
+      lon2D, lat2D = np.meshgrid(dataset.lon.coord, dataset.lat.coord) # assuming we have lat/lon arrays
+      dataset += Variable('lon2D', units='deg E', axes=(dataset.lat,dataset.lon), data=lon2D)
+      dataset += Variable('lat2D', units='deg N', axes=(dataset.lat,dataset.lon), data=lat2D)
+      if gdal:
+        dataset = addGDALtoDataset(dataset, projection=dataset.projection, geotransform=dataset.geotransform)
+  return dataset
+
 # # functions to add GDAL functionality to existing Variable and Dataset instances
 
 def addGDALtoVar(var, projection=None, geotransform=None):

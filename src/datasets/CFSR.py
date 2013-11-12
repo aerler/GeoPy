@@ -122,17 +122,14 @@ def loadCFSR(name=dataset_name, period=None, grid=None, resolution=None, varlist
     resolution = grid[5:]
     grid = None
   elif resolution is None: resolution = '03'
-  # check resolution
-  if grid is None:
-    # check for valid resolution
-    if resolution == 'hires' or resolution == '03': resolution = '031' 
-    elif resolution == 'lowres': resolution = '05' 
-    elif resolution not in ('031','05'): 
-      raise DatasetError, "Selected resolution '{0:s}' is not available!".format(resolution)  
-    grid = resolution # grid supersedes resolution  
+  # check for valid resolution
+  if resolution == 'hires' or resolution == '03': resolution = '031' 
+  elif resolution == 'lowres': resolution = '05' 
+  elif resolution not in ('031','05'): 
+    raise DatasetError, "Selected resolution '{0:s}' is not available!".format(resolution)  
   # load standardized climatology dataset with GPCC-specific parameters
-  dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
-                     varatts=varatts, filepattern=avgfile, filelist=filelist)
+  dataset = loadClim(name=name, folder=folder, projection=None, resolution=resolution, period=period, grid=grid, 
+                     varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist)
   # return formatted dataset
   return dataset
 
@@ -159,14 +156,15 @@ loadClimatology = loadCFSR # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-#   mode = 'test_climatology'
-  mode = 'average_timeseries'
+  mode = 'test_climatology'
+#   mode = 'average_timeseries'
 #   reses = ('05',) # for testing
   reses = ( '031','05',)
   period = (1979,1984)
   period = (1979,1989)
 #   period = (1997,1998)
   period = (1979,2009) 
+  grid = 'arb1_d01'
   
   # generate averaged climatology
   for res in reses:    

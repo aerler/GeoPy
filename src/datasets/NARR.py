@@ -147,8 +147,8 @@ loadClimatology = loadNARR # pre-processed, standardized climatology
 if __name__ == '__main__':
     
   
-#   mode = 'test_climatology'
-  mode = 'average_timeseries'
+  mode = 'test_climatology'
+#   mode = 'average_timeseries'
 #   mode = 'convert_climatology'
   grid = 'NARR'
   period = (1979,1984)

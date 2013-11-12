@@ -14,7 +14,7 @@ from datetime import datetime
 # internal imports
 from geodata.misc import DatasetError, DateError, isInt, printList
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import GDALError, GridDefinition
+from geodata.gdal import GDALError, GridDefinition, addGeoLocator2D
 from datasets import dataset_list
 from datasets.common import addLengthAndNamesOfMonth, getFileName, getCommonGrid, loadPickledGridDef
 from processing.multiprocess import asyncPoolEC
@@ -77,6 +77,8 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False,
     if period is None: periodstr = 'Climatology' 
     else: periodstr = '{0:4d}-{1:4d}'.format(*period)
     datamsgstr = 'Processing Dataset {0:s} from {1:s}'.format(dataset_name, periodstr)
+    # add geolocator arrays
+    source = addGeoLocator2D(source, gdal=True, check=True)
   else:
     raise DatasetError, 'Dataset \'{0:s}\' not found!'.format(dataset)
   opmsgstr = 'Reprojecting and Resampling to {0:s} Grid'.format(griddef.name)      
@@ -175,14 +177,16 @@ if __name__ == '__main__':
   
   # default settings
   if ldebug:
-#     ldebug = False
+    ldebug = False
     NP = NP or 1
     #loverwrite = True
     varlist = None # ['',] # None
-    periods = [(1979,1989)]
+#     periods = [(1979,1989)]
 #     periods = [(1997,1998)]
-#     periods = None
-    datasets = ['NARR']
+    periods = None
+#     datasets = ['GPCC']
+    datasets = None
+#     resolutions = {'GPCC':['25']}
     resolutions = None
     # WRF
     experiments = []
@@ -199,8 +203,9 @@ if __name__ == '__main__':
     #loverwrite = False
     varlist = None # process all variables
     datasets = None # process all applicable
-    periods = [(1979,1984),(1979,1989),(1979,2009)] # climatology periods to process 
-#     periods = None # process only overall climatologies 
+#     periods = [(1979,1984),(1979,1989),(1979,2009)] # climatology periods to process
+#     periods = [(1979,1984),(1979,1989)] # climatology periods to process 
+    periods = None # process only overall climatologies 
     resolutions = None
     # WRF
     experiments = [] # process all WRF experiments
@@ -210,7 +215,8 @@ if __name__ == '__main__':
     # grid to project onto
     lpickle = True
     d12 = ['d01','d02']
-    grids = dict(arb1=d12, arb2=d12, arb3=d12) # dict with list of resolutions  
+    grids = dict(arb1=d12, arb2=d12, arb3=d12) # dict with list of resolutions
+    grids = dict(arb2=['d02']) # dict with list of resolutions  
     
   
   ## process arguments    

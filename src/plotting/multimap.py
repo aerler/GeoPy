@@ -50,30 +50,33 @@ if __name__ == '__main__':
   G10 = '1969-1979'; I10 = '1989-1999'; J10 = '1999-2009' # additional historical periods
   A03 = '2045-2048'; A05 = '2045-2050'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
   B03 = '2095-2098'; B05 = '2095-2100'; B10 = '2095-2105'; B15 = '2095-2110' # late 21st century
-  lprint = True # write plots to disk
+  lprint = False # write plots to disk
   ltitle = True # plot/figure title
   lcontour = False # contour or pcolor plot
   lframe = True # draw domain boundary
   cbo = 'vertical' # vertical horizontal
-  resolution=None # only for GPCC (None = default/highest)
- 
+  resolution = None # only for GPCC (None = default/highest)
+  exptitles = None
   ## case settings
   
   # observations
-#   case = 'test' # name tag
-#   maptype = 'lcc-new'; lstations = True
-#   period = H10; domain = (2,)
-#   explist = ['PRISM']; period = [None]
-  case = 'bugaboo'; period = '1997-1998'  # name tag
-  maptype = 'lcc-coast'; lstations = False # 'lcc-new'  
-  domain = [(1,2,3),None,None,(1,2,)]
-  explist = ['coast','PRISM','CFSR','coast',]
-  exptitles = ['WRF 1km (Bugaboo)', 'PRISM Climatology', 'CFSR 1997-1998', 'WRF 5km (Bugaboo)']
+  case = 'obs' # name tag
+  maptype = 'lcc-new'; lstations = True
+  grid = 'arb2_d02'; domain = (1,2,)
+#   explist = ['GPCC','PRISM','CRU','NARR']
+#   period = [None,None,H30,None]
+  explist = ['PRISM']
+  period = [None]
+#   case = 'bugaboo'; period = '1997-1998'  # name tag
+#   maptype = 'lcc-coast'; lstations = False # 'lcc-new'  
+#   domain = [(1,2,3),None,None,(1,2,)]
+#   explist = ['coast','PRISM','CFSR','coast',]
+#   exptitles = ['WRF 1km (Bugaboo)', 'PRISM Climatology', 'CFSR 1997-1998', 'WRF 5km (Bugaboo)']
 #   period = [H10, H10, None, H10]
   
   ## select variables and seasons
 #   varlist = ['precipnc', 'precipc', 'T2']
-  varlist = ['precip', 'T2']
+  varlist = ['precip']
 #   varlist = ['evap']
 #   varlist = ['snow']
 #   varlist = ['precip', 'T2', 'p-et','evap']
@@ -88,10 +91,10 @@ if __name__ == '__main__':
 #   varlist = ['snow', 'snowh']
 #  varlist = ['SST','T2','precip','snow','snowh']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-#   seasons = ['annual']
+  seasons = ['annual']
 #   seasons = ['summer']
 #   seasons = ['winter']    
-  seasons = ['winter', 'spring', 'summer', 'fall', 'annual']
+#   seasons = ['winter', 'spring', 'summer', 'fall', 'annual']
 #   varlist = ['snow']; seasons = ['fall','winter','spring']
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height
@@ -109,28 +112,29 @@ if __name__ == '__main__':
   elif len(exptitles) == 0: exptitles = (None,)*len(explist) 
   if not isinstance(period,(tuple,list)): period = (period,)*len(explist)
   if not isinstance(domain,(tuple,list)): domain = (domain,)*len(explist)
+  if not isinstance(grid,(tuple,list)): grid = (grid,)*len(explist)
   exps = []; axtitles = []
-  for exp,tit,prd,dom in zip(explist,exptitles,period,domain): 
+  for exp,tit,prd,grd in zip(explist,exptitles,period,grid): 
 #     ext = exp; axt = ''
     if isinstance(exp,str):
       if exp[0].isupper():
-        if exp == 'GPCC': ext = (loadGPCC(resolution=resolution,period=prd),); axt = 'GPCC Observations' # ,period=prd
-        elif exp == 'CRU': ext = (loadCRU(period=prd),); axt = 'CRU Observations' 
-        elif exp[0:5] == 'PRISM': # all PRISM derivatives
+        if exp == 'GPCC': ext = (loadGPCC(resolution=resolution,period=prd,grid=grd),); axt = 'GPCC Observations'
+        elif exp == 'CRU': ext = (loadCRU(period=prd,grid=grd),); axt = 'CRU Observations' 
+        elif exp == 'PRISM': # all PRISM derivatives
           if len(varlist) == 1 and varlist[0] == 'precip': 
-            ext = (loadGPCC(), loadPRISM()); axt = 'PRISM (and GPCC)'
+            ext = (loadGPCC(grid=grd), loadPRISM(grid=grd),); axt = 'PRISM (and GPCC)'
             #  ext = (loadPRISM(),); axt = 'PRISM'
-          else: ext = (loadCRU(period='1979-2009'), loadPRISM()); axt = 'PRISM (and CRU)'
+          else: ext = (loadCRU(period='1979-2009',grid=grd), loadPRISM(grid=grd)); axt = 'PRISM (and CRU)'
           # ext = (loadPRISM(),)          
-        elif exp == 'CFSR': ext = (loadCFSR(period=prd),); axt = 'CFSR Reanalysis' 
-        elif exp == 'NARR': ext = (loadNARR(period=prd),); axt = 'NARR Reanalysis'
+        elif exp == 'CFSR': ext = (loadCFSR(period=prd,grid=grd),); axt = 'CFSR Reanalysis' 
+        elif exp == 'NARR': ext = (loadNARR(period=prd,grid=grd),); axt = 'NARR Reanalysis'
         else: # all other uppercase names are CESM runs
           raise NotImplementedError, "CESM datasets are currently not supported."  
 #           ext = (loadCESM(exp=exp, period=prd),)
 #           axt = CESMtitle.get(exp,exp)
       else: # WRF runs are all in lower case
         exp = WRF_exps[exp]
-        ext = loadWRF(experiment=exp.name, period=prd, domains=dom, filetypes=WRFfiletypes) 
+        ext = loadWRF(experiment=exp.name, period=prd, grid=grd, domains=domain, filetypes=WRFfiletypes) 
         axt = exp.title # defaults to name...
     exps.append(ext); axtitles.append(tit or axt)  
   print exps[-1][-1]

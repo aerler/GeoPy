@@ -130,12 +130,14 @@ def translateVarNames(varlist, varatts):
 
 
 # universal function to generate file names for climatologies
-def getFileName(grid=None, period=None, name=None, filepattern=None):
+def getFileName(name=None, resolution=None, period=None, grid=None, filepattern=None):
   ''' A function to generate a standardized filename for climatology files, based on grid type and period.  '''
   if name is None: name = ''
-  # grid
+  # grid (this is a *non-native grid*)
   if grid is None or grid == name: gridstr = ''
-  else: gridstr = '_{0:s}'.format(grid.lower()) # only use lower case for filenames 
+  else: gridstr = '_{0:s}'.format(grid.lower()) # only use lower case for filenames
+  # resolution is the native resolution (behind dataset name, prepended to the grid 
+  if resolution: gridstr = '_{0:s}{1:s}'.format(resolution,gridstr)
   # period
   if isinstance(period,(tuple,list)): period = '{0:4d}-{1:4d}'.format(*period)  
   if period is None or period == '': periodstr = ''
@@ -149,15 +151,16 @@ def getFileName(grid=None, period=None, name=None, filepattern=None):
   
   
 # universal load function that will be imported by datasets
-def loadClim(name, folder, period=None, grid=None, varlist=None, varatts=None, filepattern=None, filelist=None, 
-             projection=None, geotransform=None, axes=None):
+def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None, varatts=None, filepattern=None, 
+             filelist=None, projection=None, geotransform=None, axes=None):
   ''' A function to load standardized climatology datasets. '''
   # prepare input
   # varlist (varlist = None means all variables)
   if varatts is None: varatts = default_varatts
   if varlist is not None: varlist = translateVarNames(varlist, varatts)
   # filelist
-  if filelist is None: filelist = [getFileName(grid=grid, period=period, name=name, filepattern=filepattern)]   
+  if filelist is None: 
+    filelist = [getFileName(name=name, resolution=resolution, period=period, grid=grid, filepattern=filepattern)]   
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           axes=axes, multifile=False, ncformat='NETCDF4')  

@@ -13,7 +13,7 @@ import numpy.ma as ma
 import netCDF4 as nc # netcdf python module
 # internal imports
 from datasets.common import days_per_month, name_of_month, data_root, loadClim
-from geodata.misc import DatasetError
+# from geodata.misc import DatasetError
 from warnings import warn
 from geodata.gdal import GridDefinition
 
