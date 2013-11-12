@@ -88,7 +88,7 @@ def loadCRU_TS(name=dataset_name, varlist=varlist, varatts=varatts, filelist=Non
 avgfolder = root_folder + 'cruavg/' 
 avgfile = 'cru{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
-def loadCRU(name=dataset_name, period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
+def loadCRU(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly CRU climatology as a DatasetNetCDF. '''
   # load standardized climatology dataset with CRU-specific parameters
   dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
@@ -104,6 +104,8 @@ root_folder # root folder of the dataset
 file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
 grid_def = {'':CRU_grid} # standardized grid dictionary
+LTM_grids = [] # grids that have long-term mean data 
+TS_grids = [''] # grids that have time-series data
 grid_res = {'':0.5} # no special name, since there is only one...
 default_grid = CRU_grid
 # grid_def = {0.5:CRU_grid} # standardized grid dictionary, addressed by grid resolution

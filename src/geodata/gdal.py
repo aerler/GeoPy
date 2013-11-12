@@ -96,8 +96,9 @@ class GridDefinition(object):
       frac = 1./5. # the fraction that is used to calculate the effective resolution (at the domain center)
       xs = int(size[0]*(0.5-frac/2.)); ys = int(size[1]*(0.5-frac/2.))
       xe = int(size[0]*(0.5+frac/2.)); ye = int(size[1]*((0.5+frac/2.)))
-      (llx,lly,llz) = tx.TransformPoint(xlon.coord[xs],ylat.coord[ys])
-      (urx,ury,urz) = tx.TransformPoint(xlon.coord[xe],ylat.coord[ye])
+      (llx,lly,llz) = tx.TransformPoint(float(xlon.coord[xs]),float(ylat.coord[ys]))
+      (urx,ury,urz) = tx.TransformPoint(float(xlon.coord[xe]),float(ylat.coord[ye]))
+      # N.B.: for some reason GDAL is very sensitive to type and does not understand numpy types
       dlon = ( urx - llx ) / ( xe - xs ); dlat = ( ury - lly ) / ( ye - ys )       
       self.scale = ( dlon + dlat ) / 2
     else:

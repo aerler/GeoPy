@@ -59,7 +59,7 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 avgfile = 'prism{0:s}_clim{1:s}.nc' # formatted NetCDF file
 avgfolder = root_folder + 'prismavg/' # prefix
 # function to load these files...
-def loadPRISM(name=dataset_name, period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
+def loadPRISM(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly PRISM climatology as a DatasetNetCDF. '''
   # only the climatology is available
   if period is not None: 
@@ -79,6 +79,8 @@ root_folder # root folder of the dataset
 file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
 grid_def = {'':PRISM_grid} # no special name, since there is only one...
+LTM_grids = [''] # grids that have long-term mean data 
+TS_grids = [] # grids that have time-series data
 grid_res = {'':0.04} # approximate resolution in degrees at 45 degrees latitude
 default_grid = PRISM_grid
 # grid_def = {0.04:PRISM_grid} # standardized grid dictionary, addressed by grid resolution

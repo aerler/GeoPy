@@ -271,6 +271,11 @@ class DatasetError(VariableError):
   ''' Base class for exceptions occurring in Dataset methods. '''
   pass
 
+class DateError(VariableError):
+  ''' Exception indicating invalid dates passed to processor. '''
+  pass
+
+
 ## simple application code
 if __name__ == '__main__':
 

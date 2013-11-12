@@ -144,6 +144,8 @@ root_folder # root folder of the dataset
 file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
 grid_def = {'031':CFSR_031_grid, '05':CFSR_05_grid}
+LTM_grids = [] # grids that have long-term mean data
+TS_grids = ['031','05'] # grids that have time-series data
 grid_res = {'031':0.31, '05':0.5} # tag used in climatology files
 default_grid = CFSR_031_grid
 # grid_def = {0.31:CFSR_031_grid, 0.5:CFSR_05_grid}  # standardized grid dictionary, addressed by grid resolution
@@ -160,9 +162,11 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
   mode = 'average_timeseries'
 #   reses = ('05',) # for testing
-  reses = ( '031','05',) 
+  reses = ( '031','05',)
+  period = (1979,1984)
   period = (1979,1989)
 #   period = (1997,1998)
+  period = (1979,2009) 
   
   # generate averaged climatology
   for res in reses:    

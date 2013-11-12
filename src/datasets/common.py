@@ -208,7 +208,7 @@ grid_folder = data_root + '/grids/' # folder for pickled grids
 grid_pickle = '{0:s}_griddef.pickle' # file pattern for pickled grids
 def loadPickledGridDef(grid, res=None, folder=grid_folder):
   ''' function to load pickled datasets '''
-  gridstr = grid if res is None else '{0:s}_{1:s}'.format(grid,res)
+  gridstr = '{0:s}_{1:s}'.format(grid,res) if res else grid 
   filename = '{0:s}/{1:s}'.format(folder,grid_pickle.format(gridstr))
   if os.path.exists(filename):
     filehandle = open(filename, 'r')

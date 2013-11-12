@@ -57,7 +57,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
       else: raise IOError, 'File {} for domain {:d} not found; this file is necessary to infer the geotransform for other domains.'.format(dnfile,n)
   # open first domain file (special treatment)
   dn = nc.Dataset(filepath.format(1), mode='r', format=ncformat)
-  name=experiment if isinstance(experiment,basestring) else name[0] # omit domain information, which is irrelevant
+  name=experiment if isinstance(experiment,basestring) else names[0] # omit domain information, which is irrelevant
   projection = getWRFproj(dn, name=name) # same for all
   # infer size and geotransform
   def getXYlen(ds):
@@ -139,7 +139,7 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
       names = name 
     else: raise TypeError      
   # check if folder exists
-  if not os.path.exists(folder): raise IOError
+  if not os.path.exists(folder): raise IOError, folder
   # return name and folder
   return folder, tuple(names), tuple(domains)
   
@@ -288,8 +288,10 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=No
   folder, names, domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
   # generate filelist and attributes based on filetypes and domain
   if filetypes is None: filetypes = fileclasses.keys()
-  elif isinstance(filetypes,list):  
+  elif isinstance(filetypes,list):
     if 'axes' not in filetypes: filetypes.append('axes')
+  elif isinstance(filetypes,tuple):
+    if 'axes' not in filetypes: filetypes = filetypes + ('axes',)
   else: raise TypeError  
   atts = dict(); filelist = [] 
   for filetype in filetypes:
@@ -427,7 +429,7 @@ if __name__ == '__main__':
   mode = 'pickle_grid'
   experiment = 'max-ctrl'
   domains = [1,2]
-  filetypes = ['srfc','xtrm','plev3d','hydro',]
+  filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']   
     
   # pickle grid definition
@@ -439,14 +441,14 @@ if __name__ == '__main__':
         
         print('')
         res = 'd{0:02d}'.format(domain) # for compatibility with dataset.common
-        folder = '{0:s}/{1:s}/'.format(root_folder,grid)
+        folder = '{0:s}/{1:s}/'.format(avgfolder,grid)
         gridstr = '{0:s}_{1:s}'.format(grid,res) 
         print('   ***   Pickling Grid Definition for {0:s} Domain {1:d}   ***   '.format(grid,domain))
         print('')
         
         # load GridDefinition
         
-        griddef, = getWRFgrid(name=gridstr, domains=domain, folder=folder, filename='wrfconst_d{0:0=2d}.nc')
+        griddef, = getWRFgrid(name=(gridstr,), domains=(domain,), folder=folder, filename='wrfconst_d{0:0=2d}.nc')
         print('   Loading Definition from \'{0:s}\''.format(folder))
         # save pickle
         filename = '{0:s}/{1:s}'.format(grid_folder,grid_pickle.format(gridstr))

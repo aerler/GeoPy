@@ -15,7 +15,7 @@ import numpy.ma as ma
 import functools
 from osgeo import gdal
 # internal imports
-from geodata.misc import VariableError, AxisError, PermissionError, DatasetError, GDALError
+from geodata.misc import VariableError, AxisError, PermissionError, DatasetError, GDALError, DateError
 from geodata.base import Axis, Dataset
 from geodata.netcdf import DatasetNetCDF, asDatasetNC
 from geodata.nctools import writeNetCDF
@@ -23,10 +23,6 @@ from geodata.gdal import addGDALtoDataset, GridDefinition, gdalInterp
 
 class ProcessError(Exception):
   ''' Error class for exceptions occurring in methods of the CPU (CentralProcessingUnit). '''
-  pass
-
-class DateError(ProcessError):
-  ''' Exception indicating invalid dates passed to processor. '''
   pass
 
 class CentralProcessingUnit(object):

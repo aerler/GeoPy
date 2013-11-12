@@ -12,9 +12,10 @@ import numpy as np
 from importlib import import_module
 from datetime import datetime
 # internal imports
-from geodata.misc import DatasetError
+from geodata.misc import DatasetError, DateError, isInt, printList
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import GDALError, GridDefinition
+from datasets import dataset_list
 from datasets.common import addLengthAndNamesOfMonth, getFileName, getCommonGrid, loadPickledGridDef
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
@@ -24,37 +25,57 @@ from datasets.WRF_experiments import exps
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
-def performRegridding(dataset, dataargs, griddef=None, loverwrite=False, 
+def performRegridding(dataset, griddef, dataargs, loverwrite=False, 
                       lparallel=False, pidstr='', logger=None):
   ''' worker function to perform regridding for a given dataset and target grid '''
   # input checking
   if not isinstance(dataset,basestring): raise TypeError
   if not isinstance(kwargs,dict): raise TypeError # all dataset arguments are kwargs 
-  if griddef is not None and not isinstance(griddef,GridDefinition): raise TypeError
-  
-  #TODO: make better use of Exp class
+  if not isinstance(griddef,GridDefinition): raise TypeError
   
   # load source
   if dataset == 'WRF': 
+    # WRF datasets
     module = import_module('datasets.WRF')
     exp = dataargs['experiment']    
     dataset_name = exp.name
+    domain = dataargs['domain']
+    # figure out period
     period = dataargs['period']
-    #TODO: calculate period boundaries from begindate and period length
-    if len(dataargs['filetypes']) > 1: raise DatasetError
+    if isinstance(period,(int,np.integer)):
+      beginyear = int(exp.begindate[0:4])
+      period = (beginyear, beginyear+period)
+    elif len(period) != 2 and all(isInt(period)): raise DateError
+    # identify file and domain
+    if len(dataargs['filetypes']) > 1: raise DatasetError # process only one file at a time
     filetype = dataargs['filetypes'][0]
-    if not isinstance(dataargs['domains'], (np.integer,int)): raise DatasetError
-    domain = dataargs['domains']
-    #TODO: resolve arguments transparently
-    source = loadWRF(**dataargs) # the name of the experiment is in the dataargs
+    if isinstance(domain,(list,tuple)): domain = domain[0]
+    if not isinstance(domain, (np.integer,int)): raise DatasetError
+    # load source data 
+    source = loadWRF(experiment=dataset_name, name=None, domains=domain, grid=None, period=period, 
+                     filetypes=[filetype], varlist=None, varatts=None)
+    # source = loadWRF(experiment, name, domains, grid, period, filetypes, varlist, varatts)
     periodstr = source.atts.period # a NetCDF attribute    
     datamsgstr = 'Processing WRF Experiment \'{0:s}\' from {1:s}'.format(dataset_name, periodstr) 
   elif dataset == dataset.upper():
+    # observational datasets
     module = import_module('datasets.{0:s}'.format(dataset))      
     dataset_name = module.dataset_name
-    source = module.loadClimatology(**dataargs) # load pre-processed climatology
-    #TODO: calculate period boundaries from begindate and period length
-    periodstr = '{0:4d}-{1:4d}'.format(*dataargs['period'])
+    resolution = dataargs['resolution']
+    if resolution: grid_name = '{0:s}_{1:s}'.format(dataset_name,resolution)
+    else: grid_name = dataset_name   
+    # figure out period
+    period = dataargs['period']
+    if isinstance(period,(int,np.integer)):
+      period = (1979, 1979+period) # they all begin in 1979
+    elif period is None: pass
+    elif len(period) != 2 and not all(isInt(period)): raise DateError
+    # load pre-processed climatology
+    source = module.loadClimatology(name=dataset_name, period=period, grid=None, resolution=resolution,  
+                                    varlist=None, varatts=None, folder=module.avgfolder, filelist=None)
+    # loadClimatology(name, period, grid, varlist, varatts, folder, filelist)
+    if period is None: periodstr = 'Climatology' 
+    else: periodstr = '{0:4d}-{1:4d}'.format(*period)
     datamsgstr = 'Processing Dataset {0:s} from {1:s}'.format(dataset_name, periodstr)
   else:
     raise DatasetError, 'Dataset \'{0:s}\' not found!'.format(dataset)
@@ -76,8 +97,9 @@ def performRegridding(dataset, dataargs, griddef=None, loverwrite=False,
     filename = module.file_pattern.format(filetype,domain,'_{}'.format(griddef.name),periodstr)
     avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
   elif dataset == dataset.upper(): # observational datasets
-    filename = getFileName(grid=griddef.name, period=period, name=dataset_name, filepattern=module.avgfile)
+    filename = getFileName(grid=griddef.name, period=period, name=grid_name, filepattern=None)
     avgfolder = module.avgfolder
+  else: raise DatasetError
   if ldebug: filename = 'test_' + filename
   if not os.path.exists(avgfolder): raise IOError, 'Dataset folder \'{0:s}\' does not exist!'.format(avgfolder)
   lskip = False # else just go ahead
@@ -116,9 +138,9 @@ def performRegridding(dataset, dataargs, griddef=None, loverwrite=False,
     # get results
     CPU.sync(flush=True)
       
-    if 'convertPrecip' in module.__dict__:
-      # convert precip data to SI units (mm/s) 
-      module.__dict__['convertPrecip'](sink.precip) # convert in-place
+#     if 'convertPrecip' in module.__dict__:
+#       # convert precip data to SI units (mm/s) 
+#       module.__dict__['convertPrecip'](sink.precip) # convert in-place
 #     # add landmask
 #     if not sink.hasVariable('landmask'): addLandMask(sink) # create landmask from precip mask
 #     linvert = True if dataset == 'CFSR' else False
@@ -153,82 +175,117 @@ if __name__ == '__main__':
   
   # default settings
   if ldebug:
-    ldebug = False
-    NP = NP or 4
+#     ldebug = False
+    NP = NP or 1
     #loverwrite = True
     varlist = None # ['',] # None
-#     periods = [(1979,1989)]
-    periods = [5,10]
-    #TODO: use period length instead of boundaries
+    periods = [(1979,1989)]
 #     periods = [(1997,1998)]
-    datasets = []
+#     periods = None
+    datasets = ['NARR']
+    resolutions = None
     # WRF
-    experiments = ['max-ctrl'] # WRF experiment names (passed through WRFname)
+    experiments = []
+    #experiments = ['max-ctrl'] # WRF experiment names (passed through WRFname)
 #     experiments = ['coast-brian']
     domains = [1,2] # domains to be processed
     filetypes = ['xtrm',] # filetypes to be processed
     #filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+    # grid to project onto
+    lpickle = True
+    grids = dict(arb2=['d02']) # dict with list of resolutions  
   else:
     NP = NP or 4
     #loverwrite = False
     varlist = None # process all variables
-    periods = [(1979,1984),(1979,1989)] # climatology periods to process 
-    datasets = ['NARR','CFSR','GPCC','CRU','PRISM'] # datasets to process
+    datasets = None # process all applicable
+    periods = [(1979,1984),(1979,1989),(1979,2009)] # climatology periods to process 
+#     periods = None # process only overall climatologies 
+    resolutions = None
     # WRF
     experiments = [] # process all WRF experiments
     #experiments = ['max','gulf','new','noah'] # WRF experiment names (passed through WRFname) 
     domains = [1,2] # domains to be processed
     filetypes = fileclasses.keys() # process all filetypes 
+    # grid to project onto
+    lpickle = True
+    d12 = ['d01','d02']
+    grids = dict(arb1=d12, arb2=d12, arb3=d12) # dict with list of resolutions  
     
-  # grid to project onto
-  lpickle = True
-  grid = 'ARB_small'  
-  res = '05' # qualifier to grid (not all grids)
-      
+  
+  ## process arguments    
   # expand experiments
-  if experiments is None: experiments = [] 
-  elif len(experiments) > 0: experiments = [exps[exp] for exp in experiments]
-  elif not ldebug: experiments = exps # do all, but not in debug mode!    
-   
+  if experiments is None: experiments = exps # do all 
+  else: experiments = [exps[exp] for exp in experiments]
+  
+  # expand datasets and resolutions
+  if datasets is None: datasets = dataset_list  
+  if resolutions is None: resolutions = dict()
+  elif not isinstance(resolutions,dict): raise TypeError 
+  new_ds = []
+  for dataset in datasets:
+    mod = import_module('datasets.{0:s}'.format(dataset))    
+    if periods is None:
+      if len(mod.LTM_grids) > 0: 
+        new_ds.append(dataset)
+        if dataset not in resolutions or resolutions[dataset] is None: resolutions[dataset] = mod.LTM_grids
+    else:
+      if len(mod.TS_grids) > 0: 
+        new_ds.append(dataset)
+        if dataset not in resolutions or resolutions[dataset] is None: resolutions[dataset] = mod.TS_grids
+  if periods is None: periods = [None]
+  datasets = new_ds      
+  
   # print an announcement
   print('\n Regridding WRF Datasets:')
   print([exp.name for exp in experiments])
   print(' And Observational Datasets:')
   print(datasets)
-  print('\n To {0:s} Grid:'.format(grid))
-  print('OVERWRITE: {0:s}\n'.format(str(loverwrite)))
+  print('\n To Grid and Resolution:')
+  for grid,reses in grids.iteritems():
+    print('   {0:s} {1:s}'.format(grid,printList(reses)))
+  print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
   
-  # load target grid definition
-  if lpickle:
-    griddef = loadPickledGridDef(grid, res=res)
-  else:
-    griddef = getCommonGrid(grid) # try this first (common grids)
-    # else, determine new grid from existing dataset
-    if griddef is None:
-      if grid == grid.lower(): # WRF grid      
-        griddef = getWRFgrid(experiment=grid, domains=[1])
-      elif grid == grid.upper(): # observations
-        griddef = import_module(grid[0:4]).__dict__[grid+'_grid']
-      else: pass # we could try CESM grids here, at a later stage
-  # check is grid was defined properly
-  if not isinstance(griddef,GridDefinition): 
-    raise GDALError, 'No valid grid defined! (grid={0:s})'.format(grid)        
-  
-  # assemble job packages
-  args = []
-  # observational datasets
-  for dataset in datasets:
-    for period in periods:
-      # arguments for worker function: dataset and dataargs       
-      args.append( (dataset, dict(period=period)) ) # append to list               
-  # WRF datasets
-  for experiment in experiments:
-    for filetype in filetypes:
-      for domain in domains:
+    
+  ## construct argument list
+  args = []  # list of job packages
+  # loop over target grids ...
+  for grid,reses in grids.iteritems():
+    # ... and resolutions
+    for res in reses:
+      
+      # load target grid definition
+      if lpickle:
+        griddef = loadPickledGridDef(grid, res=res)
+      else:
+        griddef = getCommonGrid(grid) # try this first (common grids)
+        # else, determine new grid from existing dataset
+        if griddef is None:
+          if grid == grid.lower(): # WRF grid      
+            griddef = getWRFgrid(experiment=grid, domains=[1])
+          elif grid == grid.upper(): # observations
+            griddef = import_module(grid[0:4]).__dict__[grid+'_grid']
+          else: pass # we could try CESM grids here, at a later stage
+      # check is grid was defined properly
+      if not isinstance(griddef,GridDefinition): 
+        raise GDALError, 'No valid grid defined! (grid={0:s})'.format(grid)        
+      
+      # observational datasets
+      for dataset in datasets:
         for period in periods:
-          # arguments for worker function: dataset and dataargs       
-          args.append( ('WRF', dict(experiment=experiment, filetypes=[filetype], domains=domain, period=period)) )
+          for resolution in resolutions[dataset]:
+            # arguments for worker function: dataset and dataargs       
+            args.append( (dataset, griddef, dict(period=period, resolution=resolution)) ) # append to list               
+      # WRF datasets
+      for experiment in experiments:
+        for filetype in filetypes:
+          for domain in domains:
+            for period in periods:
+              # arguments for worker function: dataset and dataargs       
+              args.append( ('WRF', griddef, dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)) )
+      
   # static keyword arguments
-  kwargs = dict(griddef=griddef, loverwrite=loverwrite)        
-  # call parallel execution function
+  kwargs = dict(loverwrite=loverwrite)
+          
+  ## call parallel execution function
   asyncPoolEC(performRegridding, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)

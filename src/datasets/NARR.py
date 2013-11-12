@@ -115,9 +115,9 @@ def loadNARR_TS(name=dataset_name, varlist=tsvarlist, varatts=varatts, filelist=
 
 # pre-processed climatology files (varatts etc. should not be necessary)
 avgfolder = root_folder + 'narravg/' 
-avgfile = 'narr{0:s}_clim{1:s}.nc.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
+avgfile = 'narr{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
-def loadNARR(name=dataset_name, period=None, grid=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
+def loadNARR(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly NARR climatology as a DatasetNetCDF. '''
   # load standardized climatology dataset with NARR-specific parameters
   dataset = loadClim(name=name, folder=folder, projection=projection, period=period, grid=grid, varlist=varlist, 
@@ -132,6 +132,8 @@ root_folder # root folder of the dataset
 file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
 grid_def = {'':NARR_grid} # no special name since there is only one grid 
+LTM_grids = [''] # grids that have long-term mean data 
+TS_grids = [''] # grids that have time-series data
 grid_res = {'':0.41} # approximate resolution in degrees at 45 degrees latitude
 default_grid = NARR_grid
 # grid_def = {0.41:NARR_grid} # approximate NARR grid resolution at 45 degrees latitude
@@ -145,12 +147,13 @@ loadClimatology = loadNARR # pre-processed, standardized climatology
 if __name__ == '__main__':
     
   
-  mode = 'test_climatology'
-#   mode = 'average_timeseries'
+#   mode = 'test_climatology'
+  mode = 'average_timeseries'
+#   mode = 'convert_climatology'
   grid = 'NARR'
-  period = (1979,2009)
+  period = (1979,1984)
   period = (1979,1989)
-#   period = (1979,1984)
+  period = (1979,2009)
   
   if mode == 'test_climatology':
     
@@ -163,6 +166,43 @@ if __name__ == '__main__':
     print('')
     print(grid_def[''].scale)
               
+
+  elif mode == 'convert_climatology':      
+      
+      from datasets.common import addLengthAndNamesOfMonth, getFileName
+      from geodata.nctools import writeNetCDF, add_strvar
+      
+      # load dataset
+      dataset = loadNARR_LTM()
+      # change meta-data
+      dataset.name = 'NARR'
+      dataset.title = 'NARR Long-term Climatology'
+      # load data into memory
+      dataset.load()
+
+#       # add landmask
+#       addLandMask(dataset) # create landmask from precip mask
+#       dataset.mask(dataset.landmask) # mask all fields using the new landmask      
+      # add length and names of month
+      addLengthAndNamesOfMonth(dataset, noleap=False) 
+      
+      # figure out a different filename
+      filename = getFileName(grid='NARR', period=None, name='NARR', filepattern=avgfile)
+      print('\n'+filename+'\n')      
+      if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)      
+      # write data and some annotation
+      ncset = writeNetCDF(dataset, avgfolder+filename, close=False)
+      add_strvar(ncset,'name_of_month', name_of_month, 'time', # add names of month
+                 atts=dict(name='name_of_month', units='', long_name='Name of the Month')) 
+       
+      # close...
+      ncset.close()
+      dataset.close()
+      # print dataset before
+      print(dataset)
+      print('')           
+      
+   
   # generate averaged climatology
   elif mode == 'average_timeseries':
     

@@ -19,7 +19,7 @@ from processing.process import CentralProcessingUnit, DateError
 from processing.multiprocess import asyncPoolEC
 # WRF specific
 from datasets.WRF import loadWRF_TS, fileclasses, avgfolder
-from plotting.ARB_settings import WRFname
+from datasets.WRF_experiments import exps
 
 
 def computeClimatology(experiment, filetype, domain, periods=None, offset=0, griddef=None, loverwrite=False,
@@ -167,15 +167,15 @@ if __name__ == '__main__':
     NP = NP or 4
     #loverwrite = False
     varlist = None
-    experiments = [] # WRF experiment names (passed through WRFname)
+    experiments = None # WRF experiment names (passed through WRFname)
     periods = [5,10] # averaging period
     domains = [1,2] # domains to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
     grid = 'WRF' 
 
-  # expand experiments 
-  if len(experiments) > 0: experiments = [WRFname.get(exp,exp) for exp in experiments]
-  else: experiments = [exp for exp in WRFname.values()]    
+  # expand experiments
+  if experiments is None: experiments = exps # do all 
+  else: experiments = [exps[exp] for exp in experiments] 
 
   ## do some fancy regridding
   # determine coordinate arrays
