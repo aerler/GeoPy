@@ -7,6 +7,9 @@ The class is intended for use the with plotting functions in this package.
 @author: Andre R. Erler, GPL v3
 '''
 
+import pickle, os
+from mpl_toolkits.basemap import Basemap
+
 rsphere = (6378137.00, 6356752.3142)
 
 class MapSetup(object):
@@ -24,6 +27,8 @@ class MapSetup(object):
       self.resolution = projection['resolution']
     else: self.resolution = resolution
     self.grid = grid
+    # initialize basemap object
+    self.basemap = Basemap(**projection) # make just one basemap with dummy axes handle
     # map grid etc.
     self.lat_full = lat_full
     self.lat_half = lat_half
@@ -79,17 +84,36 @@ class MapSetup(object):
         ax.text(xx+1.5e4,yy-1.5e4,name,ha='left',va='top',fontsize=8)
 
 
+## function that serves a MapSetup instance with complementary pickles
+def getMapSetup(lpickle=False, folder=None, name=None, **kwargs):
+  ''' function that serves a MapSetup instance with complementary pickles '''
+  # handle pickling
+  if lpickle:
+    if not isinstance(folder,basestring): raise TypeError 
+    if not os.path.exists(folder): raise IOError
+    filename = '{0:s}/{1:s}.pickle'.format(folder,name)
+    if os.path.exists(filename):
+      # open existing MapSetup from pickle
+      filehandle = open(filename, 'r')
+      mapSetup = pickle.load(filehandle)
+      filehandle.close()
+    else:
+      # create new MapSetup and also pickle it
+      mapSetup = MapSetup(name=name, **kwargs)
+      filehandle = open(filename, 'w')
+      pickle.dump(mapSetup, filehandle)
+      filehandle.close()
+  else:
+    # instantiate object
+    mapSetup = MapSetup(name=name, **kwargs)
+  # return MapSetup instance
+  return mapSetup
+
+
 ## figure settings
-def getFigureSettings(nexp, cbo, folder):
+def getFigureSettings(nexp, cbo=None):
   sf = dict(dpi=150) # print properties
   figformat = 'png'  
-  # figure out colorbar placement
-  if cbo == 'vertical':
-    margins = dict(bottom=0.02, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-    caxpos = [0.91, 0.05, 0.03, 0.9]
-  else:# 'horizontal'
-    margins = dict(bottom=0.1, left=0.065, right=.9725, top=.925, hspace=0.05, wspace=0.05)
-    caxpos = [0.05, 0.05, 0.9, 0.03]        
   # pane settings
   if nexp == 1:
     ## 1 panel
@@ -98,27 +122,32 @@ def getFigureSettings(nexp, cbo, folder):
     margins = dict(bottom=0.025, left=0.075, right=0.875, top=0.875, hspace=0.0, wspace=0.0)
 #     margins = dict(bottom=0.12, left=0.075, right=.9725, top=.95, hspace=0.05, wspace=0.05)
 #    margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+    cbo = cbo or 'vertical'
   elif nexp == 2:
     ## 2 panel
     subplot = (1,2)
     figsize = (6.25,5.5)
+    cbo = cbo or 'horizontal'
   elif nexp == 4:
     # 4 panel
     subplot = (2,2)
     figsize = (6.25,6.25)
     margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-  elif nexp == 4:
-    # 4 panel
-    subplot = (2,2)
-    figsize = (6.25,6.25)
-    margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+    cbo = cbo or 'vertical'
   elif nexp == 6:
     # 6 panel
     subplot = (2,3) # rows, columns
     figsize = (9.25,6.5) # width, height (inches)
-    cbo = 'horizontal'
-    margins = dict(bottom=0.09, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
-    caxpos = [0.05, 0.025, 0.9, 0.03]
+    cbo = cbo or 'horizontal'
+#     margins = dict(bottom=0.09, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
+#     caxpos = [0.05, 0.025, 0.9, 0.03]
   #    margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+    # figure out colorbar placement
+  if cbo == 'vertical':
+    margins = dict(bottom=0.02, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+    caxpos = [0.91, 0.05, 0.03, 0.9]
+  else: # 'horizontal'
+    margins = dict(bottom=0.1, left=0.065, right=.9725, top=.925, hspace=0.05, wspace=0.05)
+    caxpos = [0.05, 0.05, 0.9, 0.03]        
   # return values
-  return sf, figformat, folder, margins, caxpos, subplot, figsize, cbo
+  return sf, figformat, margins, caxpos, subplot, figsize, cbo

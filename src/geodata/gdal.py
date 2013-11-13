@@ -41,8 +41,11 @@ class GridDefinition(object):
   ylat = None  # Axis instance; the south-north axis
   geotransform = None  # 6-element vector defining a GDAL GeoTransform
   size = None  # tuple, defining the size of the x/lon and y/lat axes
+  geolocator = False # whether or not geolocator arrays are available
+  lon2D = None # 2D field of longitude at each grid point
+  lat2D = None # 2D field of latitude at each grid point
       
-  def __init__(self, name='', projection=None, geotransform=None, size=None, xlon=None, ylat=None):
+  def __init__(self, name='', projection=None, geotransform=None, size=None, xlon=None, ylat=None, geolocator=True):
     ''' This class can be initialized in several ways. Some form of projections has to be defined (using a 
         GDAL SpatialReference, WKT, EPSG code, or Proj4 conventions), or a simple geographic (lat/lon) 
         coordinate system will be assumed. 
@@ -88,26 +91,42 @@ class GridDefinition(object):
     #       GT(0),GT(3) are the coordinates of the bottom left corner
     #       GT(1) & GT(5) are pixel width and height
     #       GT(2) & GT(4) are usually zero for North-up, non-rotated maps
-    # estimate scale in degrees
+    # calculate projection properties    
     if self.isProjected:
       latlon = osr.SpatialReference() 
       latlon.SetWellKnownGeogCS('WGS84') # a normal lat/lon coordinate system
-      tx = osr.CoordinateTransformation(gdalsr,latlon)
+      tx = osr.CoordinateTransformation(gdalsr,latlon)      
+      # estimate scale in degrees
       frac = 1./5. # the fraction that is used to calculate the effective resolution (at the domain center)
       xs = int(size[0]*(0.5-frac/2.)); ys = int(size[1]*(0.5-frac/2.))
       xe = int(size[0]*(0.5+frac/2.)); ye = int(size[1]*((0.5+frac/2.)))
-      (llx,lly,llz) = tx.TransformPoint(float(xlon.coord[xs]),float(ylat.coord[ys]))
-      (urx,ury,urz) = tx.TransformPoint(float(xlon.coord[xe]),float(ylat.coord[ye]))
+      (llx,lly,llz) = tx.TransformPoint(xlon.coord[xs].astype(np.float64),ylat.coord[ys].astype(np.float64))
+      (urx,ury,urz) = tx.TransformPoint(xlon.coord[xe].astype(np.float64),ylat.coord[ye].astype(np.float64))
       # N.B.: for some reason GDAL is very sensitive to type and does not understand numpy types
       dlon = ( urx - llx ) / ( xe - xs ); dlat = ( ury - lly ) / ( ye - ys )       
       self.scale = ( dlon + dlat ) / 2
+      # add geolocator arrays
+      if geolocator:
+        x2D, y2D = np.meshgrid(xlon.coord, ylat.coord) # if we have x/y arrays
+        xx = x2D.flatten().astype(np.float64); yy = y2D.flatten().astype(np.float64)
+        lon2D = np.zeros_like(xx); lat2D = np.zeros_like(yy) 
+        for i in xrange(xx.size):
+          (lon2D[i],lat2D[i],zzz) = tx.TransformPoint(xx[i],yy[i])
+        # N.B.: apparently TransformPoints does not work at the moment... and the loop is not too bad...
+        #(lon2D,lat2D,zzz) = tx.TransformPoints((x2D.flatten().astype(np.float64),y2D.flatten().astype(np.float64))) 
+        lon2D = lon2D.reshape(x2D.shape); lat2D = lat2D.reshape(y2D.shape)
     else:
-      self.scale = ( geotransform[1] + geotransform[5] ) / 2 # pretty straight forward 
+      self.scale = ( geotransform[1] + geotransform[5] ) / 2 # pretty straight forward
+      if geolocator:
+        lon2D, lat2D = np.meshgrid(xlon.coord, ylat.coord) # if we have x/y arrays
     # set geotransform/axes attributes
     self.xlon = xlon
     self.ylat = ylat
     self.geotransform = geotransform
     self.size = size
+    self.geolocator = geolocator
+    if geolocator: self.lon2D = lon2D; self.lat2D = lat2D
+    else: self.lon2D = None; self.lat2D = None
     
   def __str__(self):
     ''' A string representation of the grid definition '''
@@ -117,6 +136,8 @@ class GridDefinition(object):
     string += '  {0:s}\n'.format(self.xlon.prettyPrint(short=True))
     string += '  {0:s}\n'.format(self.ylat.prettyPrint(short=True))
     string += 'Projection: {0:s}\n'.format(self.projection.ExportToWkt())
+    if self.geolocator:
+      string += 'Geolocator Center (lon/lat): {0:3.1f} / {1:3.1f}\n'.format(self.lon2D.mean(),self.lat2D.mean())
     return string
   
   def __getstate__(self):
@@ -142,6 +163,22 @@ def getGridDef(var):
   # instantiate GridDefinition
   return GridDefinition(name=var.name+'_grid', projection=var.projection, geotransform=var.geotransform, 
                         size=var.mapSize, xlon=var.xlon, ylat=var.ylat)
+
+
+# a utility function
+def addGeoLocator(dataset, griddef=None, gdal=True, check=True):
+  ''' add 2D geolocator arrays to geographic or projected datasets '''
+  # if check = False, we will just do it
+  if not ( check and dataset.hasVariable('lon2D') and dataset.hasVariable('lat2D') ):
+    if griddef is None: griddef = getGridDef(dataset) # make temporary griddef from dataset      
+    # add geolocator arrays as variables
+    axes = (dataset.ylat,dataset.xlon)
+    dataset += Variable('lon2D', units='deg E', axes=axes, data=griddef.lon2D)
+    dataset += Variable('lat2D', units='deg N', axes=axes, data=griddef.lat2D)
+    if gdal: # rerun GDAL initialization, so that the new arrays are GDAL enabled
+      dataset = addGDALtoDataset(dataset, projection=dataset.projection, geotransform=dataset.geotransform)
+  # return dataset
+  return dataset
 
 
 # determine GDAL interpolation
@@ -271,23 +308,6 @@ def getGeotransform(xlon=None, ylat=None, geotransform=None):
   # return results
   return geotransform
 
-
-# a utility function
-def addGeoLocator2D(dataset, gdal=True, check=True):
-  ''' add 2D geolocator arrays to geographic datasets '''
-  if not ( check and dataset.isProjected ): # if check = False, we will just do it
-    if not ( check and dataset.hasVariable('lon2D') and dataset.hasVariable('lat2D') ):
-      if not ( dataset.hasAxis('lon') and dataset.hasAxis('lat') ): raise AxisError
-      lon2D, lat2D = np.meshgrid(dataset.lon.coord, dataset.lat.coord) # assuming we have lat/lon arrays
-      var = dataset.variables.values()[0] # master variable
-      axes = (dataset.lat,dataset.lon); fillValue = var.fillValue      
-      dataset += Variable('lon2D', units='deg E', axes=axes, data=lon2D, fillValue=fillValue)
-      dataset += Variable('lat2D', units='deg N', axes=axes, data=lat2D, fillValue=fillValue)
-#       if var.masked:
-#         dataset.mask(dataset.datamask, maskSelf=False)
-      if gdal:
-        dataset = addGDALtoDataset(dataset, projection=dataset.projection, geotransform=dataset.geotransform)
-  return dataset
 
 # # functions to add GDAL functionality to existing Variable and Dataset instances
 

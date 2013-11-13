@@ -384,12 +384,12 @@ class DatasetNetCDF(Dataset):
     # get attributes from NetCDF dataset
     ncattrs = joinDicts(*[ds.__dict__ for ds in datasets])
     if atts is not None: ncattrs.update(atts) # update with attributes passed to constructor
-    # initialize Dataset using parent constructor
-    super(DatasetNetCDF,self).__init__(name=name, title=title, varlist=variables.values(), atts=ncattrs)
-    # add NetCDF attributes
     self.__dict__['mode'] = mode
+    # add NetCDF attributes
     self.__dict__['datasets'] = datasets
     self.__dict__['filelist'] = filelist
+    # initialize Dataset using parent constructor
+    super(DatasetNetCDF,self).__init__(name=name, title=title, varlist=variables.values(), atts=ncattrs)
     
   @property
   def dataset(self):
@@ -405,7 +405,7 @@ class DatasetNetCDF(Dataset):
     # hand-off to parent method and return status
     return super(DatasetNetCDF,self).addAxis(ax=ax)
   
-  def addVariable(self, var, asNC=True, copy=False, overwrite=False, deepcopy=False):
+  def addVariable(self, var, asNC=True, copy=True, overwrite=False, deepcopy=False):
     ''' Method to add a new Variable to the Dataset. '''
     if var.name in self.__dict__: 
       # replace axes, if permitted; need to use NetCDF method immediately, though

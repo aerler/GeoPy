@@ -701,7 +701,7 @@ class Dataset(object):
     # load variables (automatically adds axes linked to varaibles)
     for var in varlist:
       #print var.name
-      self.addVariable(var)
+      self.addVariable(var, copy=False) # don't make copies of new variables!
       
   @property
   def name(self):
@@ -959,7 +959,7 @@ class Dataset(object):
     
   def __iadd__(self, var):
     ''' Add a Variable to an existing dataset. '''      
-    assert self.addVariable(var), "A proble occurred adding Variable '%s' to Dataset."%(var.name)    
+    assert self.addVariable(var), "A problem occurred adding Variable '%s' to Dataset."%(var.name)    
     return self # return self as result
 
   def __isub__(self, var):

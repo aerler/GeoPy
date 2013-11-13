@@ -14,7 +14,7 @@ from datetime import datetime
 # internal imports
 from geodata.misc import DatasetError, DateError, isInt, printList
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import GDALError, GridDefinition, addGeoLocator2D
+from geodata.gdal import GDALError, GridDefinition, addGeoLocator
 from datasets import dataset_list
 from datasets.common import addLengthAndNamesOfMonth, getFileName, getCommonGrid, loadPickledGridDef
 from processing.multiprocess import asyncPoolEC
@@ -25,7 +25,7 @@ from datasets.WRF_experiments import exps
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
-def performRegridding(dataset, griddef, dataargs, loverwrite=False, 
+def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None, 
                       lparallel=False, pidstr='', logger=None):
   ''' worker function to perform regridding for a given dataset and target grid '''
   # input checking
@@ -77,8 +77,6 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False,
     if period is None: periodstr = 'Climatology' 
     else: periodstr = '{0:4d}-{1:4d}'.format(*period)
     datamsgstr = 'Processing Dataset {0:s} from {1:s}'.format(dataset_name, periodstr)
-    # add geolocator arrays
-    source = addGeoLocator2D(source, gdal=True, check=True)
   else:
     raise DatasetError, 'Dataset \'{0:s}\' not found!'.format(dataset)
   opmsgstr = 'Reprojecting and Resampling to {0:s} Grid'.format(griddef.name)      
@@ -129,7 +127,6 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False,
     sink = DatasetNetCDF(folder=avgfolder, filelist=[filename], atts=atts, mode='w')
     
     # initialize processing
-#     CPU = CentralProcessingUnit(source, sink, varlist=None, tmp=True)
     CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=True)
   
     # perform regridding (if target grid is different from native grid!)
@@ -139,14 +136,10 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False,
 
     # get results
     CPU.sync(flush=True)
-      
-#     if 'convertPrecip' in module.__dict__:
-#       # convert precip data to SI units (mm/s) 
-#       module.__dict__['convertPrecip'](sink.precip) # convert in-place
-#     # add landmask
-#     if not sink.hasVariable('landmask'): addLandMask(sink) # create landmask from precip mask
-#     linvert = True if dataset == 'CFSR' else False
-#     sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=linvert, merge=False) # mask all fields using the new landmask
+    
+    # add geolocators
+    sink = addGeoLocator(sink, griddef=griddef, gdal=True, check=True)
+
     # add length and names of month
     if not sink.hasVariable('length_of_month'): addLengthAndNamesOfMonth(sink, noleap=False) 
     
@@ -197,7 +190,7 @@ if __name__ == '__main__':
     #filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
     # grid to project onto
     lpickle = True
-    grids = dict(arb2=['d02']) # dict with list of resolutions  
+    grids = dict(ARB_small=['025','05']) # dict with list of resolutions  
   else:
     NP = NP or 4
     #loverwrite = False
@@ -291,7 +284,7 @@ if __name__ == '__main__':
               args.append( ('WRF', griddef, dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)) )
       
   # static keyword arguments
-  kwargs = dict(loverwrite=loverwrite)
+  kwargs = dict(loverwrite=loverwrite, varlist=varlist)
           
   ## call parallel execution function
   asyncPoolEC(performRegridding, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)

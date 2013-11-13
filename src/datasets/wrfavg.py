@@ -11,19 +11,20 @@ import numpy as np
 import os
 from datetime import datetime
 # internal
-from geodata.netcdf import DatasetNetCDF, VarNC
+from geodata.base import Variable
+from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import GridDefinition
 from geodata.misc import isInt
 from datasets.common import name_of_month, days_per_month, getCommonGrid
 from processing.process import CentralProcessingUnit, DateError
 from processing.multiprocess import asyncPoolEC
 # WRF specific
-from datasets.WRF import loadWRF_TS, fileclasses, avgfolder
+from datasets.WRF import loadWRF_TS, fileclasses
 from datasets.WRF_experiments import exps, Exp
 
 
-def computeClimatology(experiment, filetype, domain, periods=None, offset=0, griddef=None, loverwrite=False,
-                       lparallel=False, pidstr='', logger=None):
+def computeClimatology(experiment, filetype, domain, periods=None, offset=0, griddef=None, varlist=None, 
+                       loverwrite=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to compute climatologies for given file parameters. '''
   # input type checks
   if not isinstance(experiment,Exp): raise TypeError
@@ -102,8 +103,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
         sink.atts.period = periodstr 
         
         # initialize processing
-        CPU = CentralProcessingUnit(source, sink, varlist=None, tmp=True) # no need for lat/lon
-        #CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=True) # no need for lat/lon
+        CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=True) # no need for lat/lon
         
         # start processing climatology
         CPU.Climatology(period=period, offset=offset, shift=shift, flush=False)
@@ -121,9 +121,10 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
         
         # add names and length of months
         sink.axisAnnotation('name_of_month', name_of_month, 'time', 
-                            atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
-        sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
-                      atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
+                            atts=dict(name='name_of_month', units='', long_name='Name of the Month'))        
+        if not sink.hasVariable('length_of_month'):
+          sink += Variable(name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
+                        atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
         
         # close... and write results to file
         logger.info('\n{0:s} Writing to: \'{1:s}\'\n'.format(pidstr,filename))
@@ -202,6 +203,6 @@ if __name__ == '__main__':
         # arguments for worker function
         args.append( (experiment, filetype, domain) )        
   # static keyword arguments
-  kwargs = dict(periods=periods, offset=0, griddef=None, loverwrite=loverwrite)        
+  kwargs = dict(periods=periods, offset=0, griddef=None, loverwrite=loverwrite, varlist=varlist)        
   # call parallel execution function
   asyncPoolEC(computeClimatology, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)

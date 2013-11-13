@@ -6,7 +6,10 @@ Meta data related to the Athabasca River Basin downscaling project; primarily ma
 @author: Andre R. Erler, GPL v3
 '''
 
-from plotting.misc import MapSetup
+from plotting.misc import getMapSetup
+
+arb_figure_folder = '/home/me/Research/Dynamical Downscaling/Figures/'
+arb_map_folder = arb_figure_folder + '.mapsetup/'
 
 ## Annotation
 
@@ -67,8 +70,8 @@ projection_dict['laea'] = dict(projection='laea', lat_0=57, lon_0=-137, lat_ts=5
 projection_dict['ortho-NA'] = dict(projection='ortho', lat_0 = 75, lon_0 = -137, resolution = 'l', area_thresh = 1000.)
 
 
-## function to actuall get a MapSetup object for the ARB region
-def getMapSetup(projection, annotation=None, stations=True):
+## function to actually get a MapSetup object for the ARB region
+def getARBsetup(projection, annotation=None, stations=True, lpickle=False, folder=None):
   ''' return a MapSetup object with data for the chosen ARB setting '''
   # projection
   proj = projection_dict[projection]
@@ -79,11 +82,11 @@ def getMapSetup(projection, annotation=None, stations=True):
   # stations
   if stations: stat = station_list
   else: stat = None
-  # instantiate object
-  mapSetup = MapSetup(name=projection, projection=proj, grid=10, point_markers=stat, **anno)
+  mapSetup = getMapSetup(lpickle=lpickle, folder=folder, # pickle arguments; the rest is passed on to MapSetup 
+                         name=projection, projection=proj, grid=10, point_markers=stat, **anno)
   # return object
   return mapSetup
-  
+
 
 # create pickles
 if __name__ == '__main__':
@@ -96,9 +99,9 @@ if __name__ == '__main__':
   for name,proj in projection_dict.items():
     
     # test retrieval function
-    test = getMapSetup(name)
-    assert test.projection is proj
+    test = getARBsetup(name, lpickle=True, folder=arb_map_folder)
     print test.name
+    print test
     
     #TODO: generate projection object
     

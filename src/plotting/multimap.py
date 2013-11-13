@@ -16,8 +16,7 @@ import matplotlib.pylab as pyl
 import matplotlib as mpl
 mpl.rc('lines', linewidth=1.)
 mpl.rc('font', size=10)
-from mpl_toolkits.basemap import Basemap
-from mpl_toolkits.basemap import maskoceans
+from mpl_toolkits.basemap import maskoceans # used for masking data
 # PyGeoDat stuff
 from datasets.WRF import loadWRF
 from datasets.WRF_experiments import exps as WRF_exps
@@ -30,7 +29,7 @@ from datasets.PRISM import loadPRISM
 from datasets.common import days_per_month, days_per_month_365, name_of_month # for annotation
 from plotting.misc import getFigureSettings
 # ARB project related stuff
-from plotting.ARB_settings import getMapSetup
+from plotting.ARB_settings import getARBsetup, arb_figure_folder, arb_map_folder
 
 if __name__ == '__main__':
   
@@ -43,18 +42,18 @@ if __name__ == '__main__':
   ## general settings and shortcuts
   WRFfiletypes=['xtrm'] # WRF data source
   # figure directory
-  folder = '/home/me/Research/Dynamical Downscaling/Figures/'
+  folder = arb_figure_folder
   # period shortcuts
   H01 = '1979'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994' # historical validation periods
   G10 = '1969-1979'; I10 = '1989-1999'; J10 = '1999-2009' # additional historical periods
   A03 = '2045-2048'; A05 = '2045-2050'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
   B03 = '2095-2098'; B05 = '2095-2100'; B10 = '2095-2105'; B15 = '2095-2110' # late 21st century
-  lprint = False # write plots to disk
+  lprint = True # write plots to disk
   ltitle = True # plot/figure title
   lcontour = False # contour or pcolor plot
   lframe = True # draw domain boundary
-  cbo = 'vertical' # vertical horizontal
+  cbo = None # default based on figure type
   resolution = None # only for GPCC (None = default/highest)
   exptitles = None
   grid = None
@@ -62,16 +61,18 @@ if __name__ == '__main__':
   ## case settings
   
   # observations
-  case = 'obs' # name tag
-#   maptype = 'lcc-new'; lstations = True
-#   grid = 'arb2_d02'; domain = (1,2,)
-#   explist = ['GPCC','PRISM','CRU','NARR']
-#   period = [None,None,H30,None]
+  case = 'test' # name tag
+  maptype = 'lcc-new'; lstations = True
+  grid = 'ARB_small_025'; domain = (1,2,)
+  explist = ['GPCC','PRISM','CRU','GPCC']
+  period = [None,None,H30,H30]
+#   explist = ['PRISM','CRU']
+#   period = [None,H30]
 #   explist = ['PRISM']
 #   period = [None]
-  case = 'bugaboo'; period = '1997-1998'  # name tag
-  maptype = 'lcc-coast'; lstations = False # 'lcc-new'  
-  explist = ['coast']; domain = (2,)
+#   case = 'bugaboo'; period = '1997-1998'  # name tag
+#   maptype = 'lcc-coast'; lstations = False # 'lcc-new'  
+#   explist = ['coast']; domain = (2,)
 #   domain = [(1,2,3),None,(1,2),(1,)]
 #   explist = ['coast','PRISM','coast','coast',]
 #   exptitles = ['WRF 1km (Bugaboo)', 'PRISM Climatology', 'WRF 5km (Bugaboo)', 'WRF 25km (Bugaboo)']
@@ -80,9 +81,9 @@ if __name__ == '__main__':
   
   ## select variables and seasons
 #   varlist = ['precipnc', 'precipc', 'T2']
-  varlist = ['T2','Tmin', 'Tmax']
-#   varlist = ['Tmean']
-#   varlist = ['precip']
+#   varlist = ['T2','Tmin', 'Tmax']
+#   varlist = ['T2']
+  varlist = ['precip']
 #   varlist = ['evap']
 #   varlist = ['snow']
 #   varlist = ['precip', 'T2', 'p-et','evap']
@@ -111,7 +112,7 @@ if __name__ == '__main__':
   
 
   # setup projection and map
-  mapSetup = getMapSetup(maptype, stations=lstations)
+  mapSetup = getARBsetup(maptype, stations=lstations, lpickle=True, folder=arb_map_folder)
   
   ## load data   
   if not isinstance(exptitles,(tuple,list)): exptitles = (exptitles,)*len(explist)
@@ -119,29 +120,32 @@ if __name__ == '__main__':
   if not isinstance(period,(tuple,list)): period = (period,)*len(explist)
   if not isinstance(domain[0],(tuple,list)): domain = (domain,)*len(explist)
   if not isinstance(grid,(tuple,list)): grid = (grid,)*len(explist)
+  # add stuff to varlist
+  loadlist = set(varlist).union(('lon2D','lat2D'))
   exps = []; axtitles = []
   for exp,tit,prd,dom,grd in zip(explist,exptitles,period,domain,grid): 
 #     ext = exp; axt = ''
     if isinstance(exp,str):
       if exp[0].isupper():
-        if exp == 'GPCC': ext = (loadGPCC(resolution=resolution, period=prd, grid=grd, varlist=varlist),); axt = 'GPCC Observations'
-        elif exp == 'CRU': ext = (loadCRU(period=prd, grid=grd, varlist=varlist),); axt = 'CRU Observations' 
+        if exp == 'GPCC': ext = (loadGPCC(resolution=resolution, period=prd, grid=grd, varlist=loadlist),); axt = 'GPCC Observations'
+        elif exp == 'CRU': ext = (loadCRU(period=prd, grid=grd, varlist=loadlist),); axt = 'CRU Observations' 
         elif exp == 'PRISM': # all PRISM derivatives
           if len(varlist) == 1 and varlist[0] == 'precip': 
-            ext = (loadGPCC(grid=grd, varlist=varlist), loadPRISM(grid=grd, varlist=varlist),); axt = 'PRISM (and GPCC)'
+            ext = (loadGPCC(grid=grd, varlist=loadlist), loadPRISM(grid=grd, varlist=loadlist),); axt = 'PRISM (and GPCC)'
             #  ext = (loadPRISM(),); axt = 'PRISM'
-          else: ext = (loadCRU(period='1979-2009', grid=grd, varlist=varlist), loadPRISM(grid=grd, varlist=varlist)); axt = 'PRISM (and CRU)'
+          else: ext = (loadCRU(period='1979-2009', grid=grd, varlist=loadlist), loadPRISM(grid=grd, varlist=loadlist)); axt = 'PRISM (and CRU)'
           # ext = (loadPRISM(),)          
-        elif exp == 'CFSR': ext = (loadCFSR(period=prd, grid=grd, varlist=varlist),); axt = 'CFSR Reanalysis' 
-        elif exp == 'NARR': ext = (loadNARR(period=prd, grid=grd, varlist=varlist),); axt = 'NARR Reanalysis'
+        elif exp == 'CFSR': ext = (loadCFSR(period=prd, grid=grd, varlist=loadlist),); axt = 'CFSR Reanalysis' 
+        elif exp == 'NARR': ext = (loadNARR(period=prd, grid=grd, varlist=loadlist),); axt = 'NARR Reanalysis'
         else: # all other uppercase names are CESM runs
           raise NotImplementedError, "CESM datasets are currently not supported."  
 #           ext = (loadCESM(exp=exp, period=prd),)
 #           axt = CESMtitle.get(exp,exp)
       else: # WRF runs are all in lower case
-        exp = WRF_exps[exp]
+        exp = WRF_exps[exp]        
+        if 'xtrm' in WRFfiletypes: varatts = dict(Tmean=dict(name='T2'))
         ext = loadWRF(experiment=exp.name, period=prd, grid=grd, domains=dom, filetypes=WRFfiletypes, 
-                      varlist=varlist, varatts=None) # dict(Tmean=dict(name='T2')) 
+                      varlist=loadlist, varatts=varatts)  
         axt = exp.title # defaults to name...
     exps.append(ext); axtitles.append(tit or axt)  
   print exps[-1][-1]
@@ -153,7 +157,7 @@ if __name__ == '__main__':
     nexps.append(len(exps[n])) # layer counter for each panel
   
   # get figure settings
-  sf, figformat, folder, margins, caxpos, subplot, figsize, cbo = getFigureSettings(nlen, cbo, folder)
+  sf, figformat, margins, caxpos, subplot, figsize, cbo = getFigureSettings(nlen, cbo=cbo)
   
   # get projections settings
   projection, grid, res = mapSetup.getProjectionSettings()
@@ -346,7 +350,8 @@ if __name__ == '__main__':
       # than 1000 km^2 in area.
       if not maps:
         print(' - setting up map projection\n') 
-        mastermap = Basemap(ax=ax[n],**projection) # make just one basemap with dummy axes handle
+        #mastermap = Basemap(ax=ax[n],**projection) # make just one basemap with dummy axes handle
+        mastermap = mapSetup.basemap
         for axi in ax: # replace dummy axes handle with correct axes handle
           tmp = copy(mastermap)
           tmp.ax = axi  
@@ -373,7 +378,7 @@ if __name__ == '__main__':
           for m in xrange(nexps[n]):   
             bdy = ma.ones(data[n][m].shape); bdy[ma.getmaskarray(data[n][m])] = 0
             # N.B.: for some reason, using np.ones_like() causes a masked data array to fill with zeros  
-            print bdy.mean(), data[n][m].__class__.__name__, data[n][m].fill_value 
+            #print bdy.mean(), data[n][m].__class__.__name__, data[n][m].fill_value 
             bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
             maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', fill=False) # draw boundary of inner domain
       # draw data
