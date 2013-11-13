@@ -363,7 +363,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   lconst = constfile is not None
   # translate varlist
   #if varlist is None: varlist = default_varatts.keys() + atts.keys()
-  if varatts: varlist = translateVarNames(varlist, default_varatts)
+  if varatts: varlist = translateVarNames(varlist, varatts) # default_varatts
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if constfile is not None: filename = constfile # constants files preferred...
@@ -383,7 +383,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
     filenames = [filename.format(domain,gridstr,periodstr) for filename in filelist] # insert domain number
     # load dataset
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 
-                            varatts=default_varatts, multifile=False, ncformat='NETCDF4', squeeze=True)
+                            varatts=atts, multifile=False, ncformat='NETCDF4', squeeze=True)
     # check
     if len(dataset) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
     # add constants to dataset

@@ -68,6 +68,9 @@ def loadPRISM(name=dataset_name, period=None, grid=None, resolution=None, varlis
   # load standardized climatology dataset with PRISM-specific parameters  
   dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
                      varatts=varatts, filepattern=avgfile, filelist=filelist)
+#   # make sure all fields are masked
+#   dataset.load()
+#   dataset.mask(dataset.datamask, maskSelf=False)
   # return formatted dataset
   return dataset
 
@@ -139,7 +142,7 @@ if __name__ == '__main__':
   if mode == 'test_climatology':  
     
     # load NetCDF dataset
-    dataset = loadPRISM()
+    dataset = loadPRISM(grid='arb1_d02')
     print(dataset)
     print('')
     print(dataset.geotransform)

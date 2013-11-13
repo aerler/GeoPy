@@ -19,14 +19,14 @@ from processing.process import CentralProcessingUnit, DateError
 from processing.multiprocess import asyncPoolEC
 # WRF specific
 from datasets.WRF import loadWRF_TS, fileclasses, avgfolder
-from datasets.WRF_experiments import exps
+from datasets.WRF_experiments import exps, Exp
 
 
 def computeClimatology(experiment, filetype, domain, periods=None, offset=0, griddef=None, loverwrite=False,
                        lparallel=False, pidstr='', logger=None):
   ''' worker function to compute climatologies for given file parameters. '''
   # input type checks
-  if not isinstance(experiment,basestring): raise TypeError
+  if not isinstance(experiment,Exp): raise TypeError
   if not isinstance(filetype,basestring): raise TypeError
   if not isinstance(domain,(np.integer,int)): raise TypeError
   if periods is not None and not (isinstance(periods,(tuple,list)) and isInt(periods)): raise TypeError
@@ -73,7 +73,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
     else:  
       ## begin actual computation
       periodstr = '{0:4d}-{1:4d}'.format(begindate,enddate)
-      expfolder = avgfolder + experiment + '/'
+      expfolder = experiment.avgfolder
       logger.info('\n{0:s}   <<<   Computing Climatology from {1:s} on {2:s} grid  >>>   \n'.format(pidstr,periodstr,grid))              
 
       # determine if sink file already exists, and what to do about it      
@@ -156,12 +156,13 @@ if __name__ == '__main__':
     NP = NP or 4
     #loverwrite = True
     varlist = None # ['precip', ]
-    experiments = ['columbia-brian']
+    experiments = ['coast']
     #experiments = ['max','gulf','new','noah'] 
     periods = [1,]
-    domains = [1,2,3] # domains to be processed
+    domains = [3] # domains to be processed
     filetypes = ['srfc','lsm'] # filetypes to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+    filetypes = ['xtrm']
     grid = 'WRF' 
   else:
     NP = NP or 4
@@ -186,7 +187,7 @@ if __name__ == '__main__':
   
   # print an announcement
   print('\n Computing Climatologies for WRF experiments:\n')
-  print(experiments)
+  print([exp.name for exp in experiments])
   if grid != 'WRF': print('\nRegridding to \'{0:s}\' grid.\n'.format(grid))
   print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
       
