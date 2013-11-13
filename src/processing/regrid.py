@@ -184,8 +184,8 @@ if __name__ == '__main__':
 #     periods = [(1979,1989)]
 #     periods = [(1997,1998)]
     periods = None
-#     datasets = ['GPCC']
-    datasets = None
+    datasets = ['PRISM']
+#     datasets = None
 #     resolutions = {'GPCC':['25']}
     resolutions = None
     # WRF
@@ -203,7 +203,7 @@ if __name__ == '__main__':
     #loverwrite = False
     varlist = None # process all variables
     datasets = None # process all applicable
-#     periods = [(1979,1984),(1979,1989),(1979,2009)] # climatology periods to process
+    periods = [(1979,1984),(1979,1989),(1979,2009)] # climatology periods to process
 #     periods = [(1979,1984),(1979,1989)] # climatology periods to process 
     periods = None # process only overall climatologies 
     resolutions = None
@@ -216,7 +216,7 @@ if __name__ == '__main__':
     lpickle = True
     d12 = ['d01','d02']
     grids = dict(arb1=d12, arb2=d12, arb3=d12) # dict with list of resolutions
-    grids = dict(arb2=['d02']) # dict with list of resolutions  
+#     grids = dict(arb2=['d02']) # dict with list of resolutions  
     
   
   ## process arguments    

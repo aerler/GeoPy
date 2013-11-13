@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-  WRFfiletypes=['srfc'] # WRF data source
+  WRFfiletypes=['xtrm'] # WRF data source
   # figure directory
   folder = '/home/me/Research/Dynamical Downscaling/Figures/'
   # period shortcuts
@@ -57,26 +57,32 @@ if __name__ == '__main__':
   cbo = 'vertical' # vertical horizontal
   resolution = None # only for GPCC (None = default/highest)
   exptitles = None
+  grid = None
+  domain = (1,2)
   ## case settings
   
   # observations
   case = 'obs' # name tag
-  maptype = 'lcc-new'; lstations = True
-  grid = 'arb2_d02'; domain = (1,2,)
+#   maptype = 'lcc-new'; lstations = True
+#   grid = 'arb2_d02'; domain = (1,2,)
 #   explist = ['GPCC','PRISM','CRU','NARR']
 #   period = [None,None,H30,None]
-  explist = ['PRISM']
-  period = [None]
-#   case = 'bugaboo'; period = '1997-1998'  # name tag
-#   maptype = 'lcc-coast'; lstations = False # 'lcc-new'  
-#   domain = [(1,2,3),None,None,(1,2,)]
+#   explist = ['PRISM']
+#   period = [None]
+  case = 'bugaboo'; period = '1997-1998'  # name tag
+  maptype = 'lcc-coast'; lstations = False # 'lcc-new'  
+  explist = ['coast']; domain = (2,)
+#   domain = [(1,2,3),None,(1,2),(1,)]
+#   explist = ['coast','PRISM','coast','coast',]
+#   exptitles = ['WRF 1km (Bugaboo)', 'PRISM Climatology', 'WRF 5km (Bugaboo)', 'WRF 25km (Bugaboo)']
 #   explist = ['coast','PRISM','CFSR','coast',]
 #   exptitles = ['WRF 1km (Bugaboo)', 'PRISM Climatology', 'CFSR 1997-1998', 'WRF 5km (Bugaboo)']
-#   period = [H10, H10, None, H10]
   
   ## select variables and seasons
 #   varlist = ['precipnc', 'precipc', 'T2']
-  varlist = ['precip']
+  varlist = ['T2','Tmin', 'Tmax']
+#   varlist = ['Tmean']
+#   varlist = ['precip']
 #   varlist = ['evap']
 #   varlist = ['snow']
 #   varlist = ['precip', 'T2', 'p-et','evap']
@@ -111,30 +117,31 @@ if __name__ == '__main__':
   if not isinstance(exptitles,(tuple,list)): exptitles = (exptitles,)*len(explist)
   elif len(exptitles) == 0: exptitles = (None,)*len(explist) 
   if not isinstance(period,(tuple,list)): period = (period,)*len(explist)
-  if not isinstance(domain,(tuple,list)): domain = (domain,)*len(explist)
+  if not isinstance(domain[0],(tuple,list)): domain = (domain,)*len(explist)
   if not isinstance(grid,(tuple,list)): grid = (grid,)*len(explist)
   exps = []; axtitles = []
-  for exp,tit,prd,grd in zip(explist,exptitles,period,grid): 
+  for exp,tit,prd,dom,grd in zip(explist,exptitles,period,domain,grid): 
 #     ext = exp; axt = ''
     if isinstance(exp,str):
       if exp[0].isupper():
-        if exp == 'GPCC': ext = (loadGPCC(resolution=resolution,period=prd,grid=grd),); axt = 'GPCC Observations'
-        elif exp == 'CRU': ext = (loadCRU(period=prd,grid=grd),); axt = 'CRU Observations' 
+        if exp == 'GPCC': ext = (loadGPCC(resolution=resolution, period=prd, grid=grd, varlist=varlist),); axt = 'GPCC Observations'
+        elif exp == 'CRU': ext = (loadCRU(period=prd, grid=grd, varlist=varlist),); axt = 'CRU Observations' 
         elif exp == 'PRISM': # all PRISM derivatives
           if len(varlist) == 1 and varlist[0] == 'precip': 
-            ext = (loadGPCC(grid=grd), loadPRISM(grid=grd),); axt = 'PRISM (and GPCC)'
+            ext = (loadGPCC(grid=grd, varlist=varlist), loadPRISM(grid=grd, varlist=varlist),); axt = 'PRISM (and GPCC)'
             #  ext = (loadPRISM(),); axt = 'PRISM'
-          else: ext = (loadCRU(period='1979-2009',grid=grd), loadPRISM(grid=grd)); axt = 'PRISM (and CRU)'
+          else: ext = (loadCRU(period='1979-2009', grid=grd, varlist=varlist), loadPRISM(grid=grd, varlist=varlist)); axt = 'PRISM (and CRU)'
           # ext = (loadPRISM(),)          
-        elif exp == 'CFSR': ext = (loadCFSR(period=prd,grid=grd),); axt = 'CFSR Reanalysis' 
-        elif exp == 'NARR': ext = (loadNARR(period=prd,grid=grd),); axt = 'NARR Reanalysis'
+        elif exp == 'CFSR': ext = (loadCFSR(period=prd, grid=grd, varlist=varlist),); axt = 'CFSR Reanalysis' 
+        elif exp == 'NARR': ext = (loadNARR(period=prd, grid=grd, varlist=varlist),); axt = 'NARR Reanalysis'
         else: # all other uppercase names are CESM runs
           raise NotImplementedError, "CESM datasets are currently not supported."  
 #           ext = (loadCESM(exp=exp, period=prd),)
 #           axt = CESMtitle.get(exp,exp)
       else: # WRF runs are all in lower case
         exp = WRF_exps[exp]
-        ext = loadWRF(experiment=exp.name, period=prd, grid=grd, domains=domain, filetypes=WRFfiletypes) 
+        ext = loadWRF(experiment=exp.name, period=prd, grid=grd, domains=dom, filetypes=WRFfiletypes, 
+                      varlist=varlist, varatts=None) # dict(Tmean=dict(name='T2')) 
         axt = exp.title # defaults to name...
     exps.append(ext); axtitles.append(tit or axt)  
   print exps[-1][-1]
@@ -206,10 +213,12 @@ if __name__ == '__main__':
       elif oldvar=='SST' or var=='SST': # skin temperature (SST)
         clevs = np.linspace(240,300,61); clbl = '%03.0f' # K
         var = 'Ts'; lmsklnd = True # mask land
-      elif var=='T2' or var=='Ts': # 2m or skin temperature (SST)
+      elif var=='T2' or var=='Ts' or var=='Tmin' or var=='Tmax' or var=='Tmean': # 2m or skin temperature (SST)
         clevs = np.linspace(255,290,36); clbl = '%03.0f' # K
-        if season == 'winter': clevs = clevs - 10
-        elif season == 'summer': clevs = clevs + 10
+        if season == 'winter': clevs -= 10
+        elif season == 'summer': clevs += 10
+#         if var=='Tmin': clevs -= 10
+#         if var=='Tmax': clevs += 10
       elif var == 'seaice': # sea ice fraction
         lmsklnd = True # mask land        
         clevs = np.linspace(0.04,1,25); clbl = '%2.1f' # fraction
@@ -268,12 +277,15 @@ if __name__ == '__main__':
         lontpl = []; lattpl = []; datatpl = []                
         for exp in exptpl:
           expvar = exp.variables[var]
-          print expvar.name, exp.name
+#           expvar.load()
+          print expvar.name, exp.name, expvar.masked
           assert expvar.gdal
           # handle dimensions
           if expvar.isProjected: 
             assert (exp.lon2D.ndim == 2) and (exp.lat2D.ndim == 2), 'No coordinate fields found!'
             exp.lon2D.load(); exp.lat2D.load()
+#             if expvar.masked:
+#               exp.lon2D.mask(expvar.getMask()[0,:]); exp.lat2D.mask(expvar.getMask()[0,:])
             lon = exp.lon2D.getArray(); lat = exp.lat2D.getArray()          
           else: 
             assert expvar.hasAxis('lon') and expvar.hasAxis('lat'), 'No geographic axes found!'

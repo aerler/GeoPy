@@ -279,8 +279,12 @@ def addGeoLocator2D(dataset, gdal=True, check=True):
     if not ( check and dataset.hasVariable('lon2D') and dataset.hasVariable('lat2D') ):
       if not ( dataset.hasAxis('lon') and dataset.hasAxis('lat') ): raise AxisError
       lon2D, lat2D = np.meshgrid(dataset.lon.coord, dataset.lat.coord) # assuming we have lat/lon arrays
-      dataset += Variable('lon2D', units='deg E', axes=(dataset.lat,dataset.lon), data=lon2D)
-      dataset += Variable('lat2D', units='deg N', axes=(dataset.lat,dataset.lon), data=lat2D)
+      var = dataset.variables.values()[0] # master variable
+      axes = (dataset.lat,dataset.lon); fillValue = var.fillValue      
+      dataset += Variable('lon2D', units='deg E', axes=axes, data=lon2D, fillValue=fillValue)
+      dataset += Variable('lat2D', units='deg N', axes=axes, data=lat2D, fillValue=fillValue)
+#       if var.masked:
+#         dataset.mask(dataset.datamask, maskSelf=False)
       if gdal:
         dataset = addGDALtoDataset(dataset, projection=dataset.projection, geotransform=dataset.geotransform)
   return dataset
