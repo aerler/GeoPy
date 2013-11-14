@@ -156,15 +156,14 @@ if __name__ == '__main__':
   if ldebug:
     ldebug = False
     NP = NP or 4
-    #loverwrite = True
+    loverwrite = True
     varlist = None # ['precip', ]
-    experiments = ['nmpnew','new','ctrl','max','noah']
-    #experiments = ['max','gulf','new','noah'] 
+    experiments = ['new','ctrl','max','noah']
     periods = [10]
     domains = [2] # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
-    filetypes = ['srfc']
+    filetypes = ['hydro']
     grid = 'WRF' 
   else:
     NP = NP or 4

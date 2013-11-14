@@ -382,6 +382,16 @@ tmp['scalefactor'] = 1
 # add to collection
 variablePlotatts['OLR'] = tmp
 
+## Potential Evapo-Transpiration
+tmp = defaultPlotatts.copy() 
+# specific properties
+tmp['plotname'] = 'PET'
+tmp['plottitle'] = 'Potential Evapo-Transpiration'
+tmp['plotunits'] = r'$kg m^{-2} day^{-1}$'
+tmp['scalefactor'] = 86400
+# add to collection
+variablePlotatts['pet'] = tmp
+
 ## Evapo-Transpiration
 tmp = defaultPlotatts.copy() 
 # specific properties

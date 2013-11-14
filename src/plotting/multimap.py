@@ -26,8 +26,8 @@ from datasets.NARR import loadNARR
 from datasets.GPCC import loadGPCC
 from datasets.CRU import loadCRU
 from datasets.PRISM import loadPRISM
-from datasets.common import days_per_month, days_per_month_365, name_of_month # for annotation
-from plotting.misc import getFigureSettings
+from datasets.common import days_per_month, days_per_month_365 # for annotation
+from plotting.settings import getFigureSettings, getVariableSettings
 # ARB project related stuff
 from plotting.ARB_settings import getARBsetup, arb_figure_folder, arb_map_folder
 
@@ -60,15 +60,15 @@ if __name__ == '__main__':
   ## case settings
   
   # observations
-  case = 'Q'; lprint = False # write plots to disk using case as a name tag
+  case = 'maxens'; lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = True
 #   grid = 'arb2_d02'; 
   lexceptWRF = True; domain = (2,)
 #   explist = ['GPCC','PRISM','CRU','GPCC']
 #   period = [None,None,H30,H30]
-  explist = ['nmpnew','CRU','new','ctrl','max','noah']
+  explist = ['max-2050','max','max-A-2050','max-B-2050','seaice-2050','max-C-2050']
 #   explist = ['CRU']
-  period = H05
+  period = [A05,H05]+[A05]*4
 #   explist = ['PRISM','CRU']
 #   period = [None,H30]
 #   explist = ['PRISM']
@@ -88,10 +88,11 @@ if __name__ == '__main__':
 #   varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
 #   varlist += ['precip']
+  varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
-  varlist += ['Q2']
+#   varlist += ['Q2']
 #   varlist += ['evap']
-#   varlist = ['p-et']
+#   varlist += ['pet']
 #   varlist += ['snow']
 #   varlist += ['snowh']
 #   varlist += ['GLW','OLR','qtfx']
@@ -102,10 +103,10 @@ if __name__ == '__main__':
   # seasons
 #   seasons = [ [i] for i in xrange(12) ] # monthly
   seasons += ['annual']
-#   seasons += ['summer']
-#   seasons += ['winter']
-#   seasons += ['spring']    
-#   seasons += ['fall']
+  seasons += ['summer']
+  seasons += ['winter']
+  seasons += ['spring']    
+  seasons += ['fall']
   # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height
@@ -174,103 +175,9 @@ if __name__ == '__main__':
     oldvar = var
     for season in seasons:
       
-      ## settings
-      # plot variable and averaging 
-      cbl = None; clim = None       
-      lmskocn = False; lmsklnd = False # mask ocean or land?
-      # color maps and   scale (contour levels)
-      cmap = mpl.cm.gist_ncar; cmap.set_over('white'); cmap.set_under('black')
-      if var == 'snow': # snow (liquid water equivalent) 
-        lmskocn = True; clbl = '%2.0f' # kg/m^2
-        clevs = np.linspace(0,200,41)
-      elif var == 'snowh': # snow (depth/height) 
-        lmskocn = True; clbl = '%2.1f' # m
-        clevs = np.linspace(0,2,41)
-      elif var=='hfx' or var=='lhfx' or var=='qtfx': # heat fluxes (W / m^2)
-        clevs = np.linspace(-20,100,41); clbl = '%03.0f'
-        if var == 'qtfx': clevs = clevs * 2
-        if season == 'winter': clevs = clevs - 30
-        elif season == 'summer': clevs = clevs + 30
-      elif var=='GLW': # heat fluxes (W / m^2)
-        clevs = np.linspace(200,320,41); clbl = '%03.0f'
-        if season == 'winter': clevs = clevs - 40
-        elif season == 'summer': clevs = clevs + 40
-      elif var=='OLR': # heat fluxes (W / m^2)
-        clevs = np.linspace(190,240,31); clbl = '%03.0f'
-        if season == 'winter': clevs = clevs - 20
-        elif season == 'summer': clevs = clevs + 30
-      elif var=='rfx': # heat fluxes (W / m^2)
-        clevs = np.linspace(320,470,51); clbl = '%03.0f'
-        if season == 'winter': clevs = clevs - 100
-        elif season == 'summer': clevs = clevs + 80
-      elif var=='SWDOWN' or var=='SWNORM': # heat fluxes (W / m^2)
-        clevs = np.linspace(80,220,51); clbl = '%03.0f'
-        if season == 'winter': clevs = clevs - 80
-        elif season == 'summer': clevs = clevs + 120
-      elif var == 'lhfr': # relative latent heat flux (fraction)        
-        clevs = np.linspace(0,1,26); clbl = '%2.1f' # fraction
-      elif var == 'evap': # moisture fluxes (kg /(m^2 s))
-        clevs = np.linspace(-4,4,25); clbl = '%02.1f'
-        cmap = mpl.cm.PuOr
-      elif var == 'p-et': # moisture fluxes (kg /(m^2 s))
-        # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
-        clevs = np.linspace(-2,2,25); cmap = mpl.cm.PuOr; clbl = '%02.1f'
-      elif var == 'precip' or var == 'precipnc': # total precipitation 
-        clevs = np.linspace(0,20,41); clbl = '%02.1f' # mm/day
-      elif var == 'precipc': # convective precipitation 
-        clevs = np.linspace(0,5,26); clbl = '%02.1f' # mm/day
-      elif var == 'Q2':
-        clevs = np.linspace(0,15,31); clbl = '%02.1f' # mm/day
-      elif oldvar=='SST' or var=='SST': # skin temperature (SST)
-        clevs = np.linspace(240,300,61); clbl = '%03.0f' # K
-        var = 'Ts'; lmsklnd = True # mask land
-      elif var=='T2' or var=='Ts' or var=='Tmin' or var=='Tmax' or var=='Tmean': # 2m or skin temperature (SST)
-        clevs = np.linspace(255,290,36); clbl = '%03.0f' # K
-        if season == 'winter': clevs -= 10
-        elif season == 'summer': clevs += 10
-#         if var=='Tmin': clevs -= 10
-#         if var=='Tmax': clevs += 10
-      elif var == 'seaice': # sea ice fraction
-        lmsklnd = True # mask land        
-        clevs = np.linspace(0.04,1,25); clbl = '%2.1f' # fraction
-        cmap.set_under('white')
-      elif var == 'zs': # surface elevation / topography
-        if season == 'topo':
-          lmskocn = True; clim = (-1.,2.5); # nice geographic map feel
-          clevs = np.hstack((np.array((-1.5,)), np.linspace(0,2.5,26))); clbl = '%02.1f' # km
-          cmap = mpl.cm.gist_earth; cmap.set_over('white'); cmap.set_under('blue') # topography
-        elif season == 'hidef': 
-          lmskocn = True; clim = (-0.5,2.5); # good contrast for high elevation
-          clevs = np.hstack((np.array((-.5,)), np.linspace(0,2.5,26))); clbl = '%02.1f' # km
-          cmap = mpl.cm.gist_ncar; cmap.set_over('white'); cmap.set_under('blue')
-        cbl = np.linspace(0,clim[-1],6)
-      elif var=='stns': # station density
-        clevs = np.linspace(0,5,6); clbl = '%2i' # stations per grid points  
-        cmap.set_over('purple'); cmap.set_under('white')      
-      elif var=='lndcls': # land use classes (works best with contour plot)
-        clevs = np.linspace(0.5,24.5,25); cbl = np.linspace(4,24,6)  
-        clbl = '%2i'; cmap.set_over('purple'); cmap.set_under('white')
-      # time frame / season
-      if isinstance(season,str):
-        if season == 'annual':  # all month
-          month = range(1,13); plottype = 'Annual Average'
-        elif season == 'winter':# DJF
-          month = [12, 1, 2]; plottype = 'Winter Average'
-        elif season == 'spring': # MAM
-          month = [3, 4, 5]; plottype = 'Spring Average'
-        elif season == 'summer': # JJA
-          month = [6, 7, 8]; plottype = 'Summer Average'
-        elif season == 'fall': # SON
-          month = [9, 10, 11]; plottype = 'Fall Average'
-        else:
-          plottype = '' # for static fields
-          month = [1]
-      else:                
-        month = season      
-        if len(season) == 1 and isinstance(season[0],int):
-          plottype =  '%s Average'%name_of_month[season[0]].strip()
-          season = '%02i'%(season[0]+1) # number of month, used for file name
-        else: plottype = 'Average'
+      # get variable properties and additional settings
+      clevs, clim, cbl, clbl, cmap, lmskocn, lmsklnd, plottype, month = getVariableSettings(var, season, oldvar='')
+      
       # assemble plot title
       filename = '%s_%s_%s.%s'%(var,season,case,figformat)
       plat = exps[0][0].variables[var].plot
@@ -347,12 +254,6 @@ if __name__ == '__main__':
       for n in xrange(nax):
         ax.append(f.add_subplot(subplot[0],subplot[1],n+1))
       f.subplots_adjust(**margins) # hspace, wspace
-      # lat_1 is first standard parallel.
-      # lat_2 is second standard parallel (defaults to lat_1).
-      # lon_0,lat_0 is central point.
-      # rsphere=(6378137.00,6356752.3142) specifies WGS4 ellipsoid
-      # area_thresh=1000 means don't plot coastline features less
-      # than 1000 km^2 in area.
       if not maps:
         print(' - setting up map projection\n') 
         #mastermap = Basemap(ax=ax[n],**projection) # make just one basemap with dummy axes handle

@@ -163,13 +163,17 @@ class Srfc(FileType):
   ''' Variables and attributes of the surface files. '''
   def __init__(self):
     self.atts = dict(T2     = dict(name='T2', units='K'), # 2m Temperature
-                     Q2     = dict(name='Q2', units='Pa', scalefactor=Q), # 2m water vapor pressure
+                     Q2     = dict(name='q2', units='kg/kg'), # 2m water vapor mass mixing ratio
                      RAIN   = dict(name='precip', units='kg/m^2/s'), # total precipitation rate (kg/m^2/s)
                      RAINC  = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate (kg/m^2/s)
                      RAINNC = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate (kg/m^2/s)
                      SNOW   = dict(name='snow', units='kg/m^2'), # snow water equivalent
                      SNOWH  = dict(name='snowh', units='m'), # snow depth
-                     PSFC   = dict(name='ps', units='Pa')) # surface pressure
+                     PSFC   = dict(name='ps', units='Pa'), # surface pressure
+                     NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
+                     LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
+                     SolidPrecip  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
+                     WaterVapor  = dict(name='Q2', units='Pa')) # water vapor partial pressure                     
     self.vars = self.atts.keys()    
     self.climfile = 'wrfsrfc_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfsrfc_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
@@ -177,14 +181,18 @@ class Srfc(FileType):
 class Hydro(FileType):
   ''' Variables and attributes of the hydrological files. '''
   def __init__(self):
-    self.atts = dict(T2     = dict(name='T2', units='K'), # daily mean 2m Temperature
+    self.atts = dict(T2MEAN = dict(name='T2', units='K'), # daily mean 2m Temperature
                      RAIN   = dict(name='precip', units='kg/m^2/s'), # total precipitation rate
                      RAINC  = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate
                      RAINNC = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate
                      SFCEVP = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
                      ACSNOM = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
-                     POTEVP = dict(name='pet', units='kg/m^2/s')) # potential evapo-transpiration rate
-    self.vars = self.atts.keys()    
+                     POTEVP = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
+                     NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
+                     LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
+                     SolidPrecip  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
+                     NetWaterFlux = dict(name='waterflx', units='kg/m^2/s')) # total water downward flux                     
+    self.vars = self.atts.keys()
     self.climfile = 'wrfhydro_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfhydro_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
 # lsm variables
@@ -196,7 +204,10 @@ class LSM(FileType):
                      ACSNOM = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
                      ACSNOW = dict(name='snwacc', units='kg/m^2/s'), # snow accumulation rate
                      SFCEVP = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
-                     POTEVP = dict(name='pet', units='kg/m^2/s')) # potential evapo-transpiration rate
+                     POTEVP = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
+                     SFROFF = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
+                     UDROFF = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off
+                     RunOff = dict(name='runoff', units='kg/m^2/s')) # total surface and sub-surface run-off
     self.vars = self.atts.keys()    
     self.climfile = 'wrflsm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrflsm_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)

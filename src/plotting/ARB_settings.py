@@ -6,7 +6,7 @@ Meta data related to the Athabasca River Basin downscaling project; primarily ma
 @author: Andre R. Erler, GPL v3
 '''
 
-from plotting.misc import getMapSetup
+from plotting.mapsetup import getMapSetup
 
 arb_figure_folder = '/home/me/Research/Dynamical Downscaling/Figures/'
 arb_map_folder = arb_figure_folder + '.mapsetup/'
@@ -41,6 +41,12 @@ annotation_dict['ortho-NA'] = dict(scale=None, lat_full=range(-90,90,30), lat_ha
 
 
 ## setup projection: lambert conformal
+# lat_1 is first standard parallel.
+# lat_2 is second standard parallel (defaults to lat_1).
+# lon_0,lat_0 is central point.
+# rsphere=(6378137.00,6356752.3142) specifies WGS4 ellipsoid
+# area_thresh=1000 means don't plot coastline features less
+# than 1000 km^2 in area.
 # common variables
 rsphere = (6378137.00,6356752.3142); grid = 10
 # lon_0,lat_0 is central point. lat_ts is latitude of true scale.
