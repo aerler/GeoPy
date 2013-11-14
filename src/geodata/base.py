@@ -10,7 +10,7 @@ Variable and Dataset classes for handling geographical datasets.
 import numpy as np
 import numpy.ma as ma # masked arrays
 # my own imports
-from atmdyn.properties import variablePlotatts # import plot properties from different file
+from plotting.properties import variablePlotatts # import plot properties from different file
 from misc import checkIndex, isEqual, isFloat, AttrDict, joinDicts
 from misc import VariableError, AxisError, DataError, DatasetError
 

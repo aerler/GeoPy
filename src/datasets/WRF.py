@@ -145,6 +145,8 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
   
 
 ## variable attributes and name
+# convert water mass mixing ratio to water vapor partial pressure ( kg/kg -> Pa ) 
+Q = 96000.*28./18. # surface pressure * molecular weight ratio ( air / water )
 class FileType(object): pass # ''' Container class for all attributes of of the constants files. '''
 # constants
 class Const(FileType):
@@ -161,7 +163,7 @@ class Srfc(FileType):
   ''' Variables and attributes of the surface files. '''
   def __init__(self):
     self.atts = dict(T2     = dict(name='T2', units='K'), # 2m Temperature
-                     Q2     = dict(name='Q2', units='Pa'), # 2m water vapor pressure
+                     Q2     = dict(name='Q2', units='Pa', scalefactor=Q), # 2m water vapor pressure
                      RAIN   = dict(name='precip', units='kg/m^2/s'), # total precipitation rate (kg/m^2/s)
                      RAINC  = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate (kg/m^2/s)
                      RAINNC = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate (kg/m^2/s)
@@ -218,10 +220,10 @@ class Xtrm(FileType):
                      SKINTEMPMIN  = dict(name='TSmin', units='K'),   # daily minimum Skin Temperature
                      SKINTEMPMAX  = dict(name='TSmax', units='K'),   # daily maximum Skin Temperature
                      SKINTEMPSTD  = dict(name='TSstd', units='K'),   # daily Skin Temperature standard deviation                     
-                     Q2MEAN = dict(name='Qmean', units='Pa'), # daily mean Water Vapor Pressure (at 2m)
-                     Q2MIN  = dict(name='Qmin', units='Pa'),  # daily minimum Water Vapor Pressure (at 2m)
-                     Q2MAX  = dict(name='Qmax', units='Pa'),  # daily maximum Water Vapor Pressure (at 2m)
-                     Q2STD  = dict(name='Qstd', units='Pa'),  # daily Water Vapor Pressure standard deviation (at 2m)
+                     Q2MEAN = dict(name='Qmean', units='Pa', scalefactor=Q), # daily mean Water Vapor Pressure (at 2m)
+                     Q2MIN  = dict(name='Qmin', units='Pa', scalefactor=Q),  # daily minimum Water Vapor Pressure (at 2m)
+                     Q2MAX  = dict(name='Qmax', units='Pa', scalefactor=Q),  # daily maximum Water Vapor Pressure (at 2m)
+                     Q2STD  = dict(name='Qstd', units='Pa', scalefactor=Q),  # daily Water Vapor Pressure standard deviation (at 2m)
                      SPDUV10MEAN = dict(name='U10mean', units='m/s'), # daily mean Wind Speed (at 10m)
                      SPDUV10MAX  = dict(name='U10max', units='m/s'),  # daily maximum Wind Speed (at 10m)
                      SPDUV10STD  = dict(name='U10std', units='m/s'),  # daily Wind Speed standard deviation (at 10m)
@@ -305,7 +307,7 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=No
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if 'const' in filetypes: filename = fileclasses['const'].tsfile # constants files preferred...
-  else: filename = fileclasses.values()[0].tsfile # just use the first filetype
+  else: filename = fileclasses[filetypes[0]].tsfile # just use the first filetype
   griddefs = getWRFgrid(name=names, experiment=None, domains=domains, folder=folder, filename=filename)
   assert len(griddefs) == len(domains)
   datasets = []

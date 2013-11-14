@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-  WRFfiletypes=['xtrm'] # WRF data source
+  WRFfiletypes=['srfc'] # WRF data source
   # figure directory
   folder = arb_figure_folder
   # period shortcuts
@@ -48,8 +48,7 @@ if __name__ == '__main__':
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994' # historical validation periods
   G10 = '1969-1979'; I10 = '1989-1999'; J10 = '1999-2009' # additional historical periods
   A03 = '2045-2048'; A05 = '2045-2050'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
-  B03 = '2095-2098'; B05 = '2095-2100'; B10 = '2095-2105'; B15 = '2095-2110' # late 21st century
-  lprint = True # write plots to disk
+  B03 = '2095-2098'; B05 = '2095-2100'; B10 = '2095-2105'; B15 = '2095-2110' # late 21st century  
   ltitle = True # plot/figure title
   lcontour = False # contour or pcolor plot
   lframe = True # draw domain boundary
@@ -61,11 +60,15 @@ if __name__ == '__main__':
   ## case settings
   
   # observations
-  case = 'test' # name tag
+  case = 'Q'; lprint = False # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = True
-  grid = 'ARB_small_025'; domain = (1,2,)
-  explist = ['GPCC','PRISM','CRU','GPCC']
-  period = [None,None,H30,H30]
+#   grid = 'arb2_d02'; 
+  lexceptWRF = True; domain = (2,)
+#   explist = ['GPCC','PRISM','CRU','GPCC']
+#   period = [None,None,H30,H30]
+  explist = ['nmpnew','CRU','new','ctrl','max','noah']
+#   explist = ['CRU']
+  period = H05
 #   explist = ['PRISM','CRU']
 #   period = [None,H30]
 #   explist = ['PRISM']
@@ -80,32 +83,32 @@ if __name__ == '__main__':
 #   exptitles = ['WRF 1km (Bugaboo)', 'PRISM Climatology', 'CFSR 1997-1998', 'WRF 5km (Bugaboo)']
   
   ## select variables and seasons
-#   varlist = ['precipnc', 'precipc', 'T2']
-#   varlist = ['T2','Tmin', 'Tmax']
-#   varlist = ['T2']
-  varlist = ['precip']
-#   varlist = ['evap']
-#   varlist = ['snow']
-#   varlist = ['precip', 'T2', 'p-et','evap']
-#   varlist = ['p-et','precip','snow']
-#   varlist = ['GLW','OLR','qtfx']
-#   varlist = ['SWDOWN','GLW','OLR']
-#   varlist = ['hfx','lhfx']
-#   varlist = ['qtfx','lhfr']
-#   varlist = ['precip','T2']
-#   varlist = ['T2']
-#  varlist = ['precip','T2','snow']
-#   varlist = ['snow', 'snowh']
-#  varlist = ['SST','T2','precip','snow','snowh']
+  varlist = []; seasons = []
+  # variables
+#   varlist += ['T2']
+#   varlist += ['Tmin', 'Tmax']
+#   varlist += ['precip']
+#   varlist += ['precipnc', 'precipc']
+  varlist += ['Q2']
+#   varlist += ['evap']
+#   varlist = ['p-et']
+#   varlist += ['snow']
+#   varlist += ['snowh']
+#   varlist += ['GLW','OLR','qtfx']
+#   varlist += ['SWDOWN','GLW','OLR']
+#   varlist += ['hfx','lhfx']
+#   varlist += ['qtfx','lhfr']
+#   varlist += ['SST']
+  # seasons
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-  seasons = ['annual']
-#   seasons = ['summer']
-#   seasons = ['winter']    
-#   seasons = ['winter', 'spring', 'summer', 'fall', 'annual']
-#   varlist = ['snow']; seasons = ['fall','winter','spring']
+  seasons += ['annual']
+#   seasons += ['summer']
+#   seasons += ['winter']
+#   seasons += ['spring']    
+#   seasons += ['fall']
+  # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height
-#  varlist = ['precip']; seasons = ['annual']
 #  varlist = ['zs']; seasons = ['hidef']
 #  varlist = ['stns']; seasons = ['annual']
 #   varlist = ['lndcls']; seasons = [''] # static
@@ -144,6 +147,8 @@ if __name__ == '__main__':
       else: # WRF runs are all in lower case
         exp = WRF_exps[exp]        
         if 'xtrm' in WRFfiletypes: varatts = dict(Tmean=dict(name='T2'))
+        else: varatts = None
+        if lexceptWRF: grd = None
         ext = loadWRF(experiment=exp.name, period=prd, grid=grd, domains=dom, filetypes=WRFfiletypes, 
                       varlist=loadlist, varatts=varatts)  
         axt = exp.title # defaults to name...
@@ -214,6 +219,8 @@ if __name__ == '__main__':
         clevs = np.linspace(0,20,41); clbl = '%02.1f' # mm/day
       elif var == 'precipc': # convective precipitation 
         clevs = np.linspace(0,5,26); clbl = '%02.1f' # mm/day
+      elif var == 'Q2':
+        clevs = np.linspace(0,15,31); clbl = '%02.1f' # mm/day
       elif oldvar=='SST' or var=='SST': # skin temperature (SST)
         clevs = np.linspace(240,300,61); clbl = '%03.0f' # K
         var = 'Ts'; lmsklnd = True # mask land
@@ -281,15 +288,13 @@ if __name__ == '__main__':
         lontpl = []; lattpl = []; datatpl = []                
         for exp in exptpl:
           expvar = exp.variables[var]
-#           expvar.load()
+          if len(seasons) > 1: expvar.load()
           print expvar.name, exp.name, expvar.masked
           assert expvar.gdal
           # handle dimensions
           if expvar.isProjected: 
             assert (exp.lon2D.ndim == 2) and (exp.lat2D.ndim == 2), 'No coordinate fields found!'
             exp.lon2D.load(); exp.lat2D.load()
-#             if expvar.masked:
-#               exp.lon2D.mask(expvar.getMask()[0,:]); exp.lat2D.mask(expvar.getMask()[0,:])
             lon = exp.lon2D.getArray(); lat = exp.lat2D.getArray()          
           else: 
             assert expvar.hasAxis('lon') and expvar.hasAxis('lat'), 'No geographic axes found!'

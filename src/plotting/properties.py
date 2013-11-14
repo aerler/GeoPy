@@ -227,8 +227,8 @@ tmp = defaultPlotatts.copy()
 # specific properties
 tmp['plotname'] = 'Q_2m'
 tmp['plottitle'] = 'Water Vapor at 2m'
-tmp['plotunits'] = 'g/kg'
-tmp['scalefactor'] = 1e3
+tmp['plotunits'] = 'hPa'
+tmp['scalefactor'] = 1.e-2
 # add to collection
 variablePlotatts['Q2'] = tmp
 

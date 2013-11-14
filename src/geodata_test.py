@@ -266,7 +266,7 @@ class BaseDatasetTest(unittest.TestCase):
     dataset = self.dataset
     le = len(dataset)
     # add/remove axes
-    dataset.addVariable(var)
+    dataset.addVariable(var, copy=False) # add variables as is
     assert dataset.hasVariable(var)
     assert dataset.hasAxis(ax)
     assert len(dataset) == le + 1

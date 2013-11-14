@@ -75,7 +75,7 @@ experiments['max-ens-C-2050'] = Exp(shortname='max-C-2050', name='max-ens-C-2050
 experiments['max-seaice-2050'] = Exp(shortname='seaice', name='max-seaice-2050', title='Seaice (2050)', begindate='2045-01-01', grid='arb2')
 experiments['cfsr-max'] = Exp(shortname='cfsr-max', name='cfsr-max', begindate='1979-01-01', grid='arb2')
 # these are all based on the old configuration (original + RRTMG, ARB2)
-experiments['ctrl-1'] = Exp(shortname='ctrl-1', name='ctrl-1', title='Ctrl-1 (Old)', begindate='1979-01-01', grid='arb2')
+experiments['ctrl-1'] = Exp(shortname='ctrl', name='ctrl-1', title='Ctrl-1 (Old)', begindate='1979-01-01', grid='arb2')
 experiments['tiedtke-ctrl'] = Exp(shortname='tiedt', name='tiedtke-ctrl', title='Tiedtke (Old)', begindate='1979-01-01', grid='arb2') 
 experiments['tom-ctrl'] = Exp(shortname='tom', name='tom-ctrl', title='Thompson (Old)', begindate='1979-01-01', grid='arb2')
 experiments['wdm6-ctrl'] = Exp(shortname='wdm6', name='wdm6-ctrl', title='WDM6 (Old)', begindate='1979-01-01', grid='arb2')

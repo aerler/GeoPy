@@ -39,7 +39,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
 
   # load source
   fileclass = fileclasses[filetype] # used for target file name
-  logger.info('\n\n{0:s}   ***   Processing Experiment {1:<15s}   ***   '.format(pidstr,"'%s'"%experiment) +
+  logger.info('\n\n{0:s}   ***   Processing Experiment {1:<15s}   ***   '.format(pidstr,"'%s'"%experiment.name) +
         '\n{0:s}   ***   {1:^37s}   ***   \n'.format(pidstr,"'%s'"%fileclass.tsfile.format(domain)))
   source = loadWRF_TS(experiment=experiment, filetypes=[filetype], domains=domain) # comes out as a tuple...
   if not lparallel: 
@@ -68,14 +68,15 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
     # figure out period
     enddate = begindate + period     
     if filebegin > enddate: raise DateError    
-    if enddate > fileend: 
+    if enddate-1 > fileend: # if filebegin is 1979 and the simulation is 10 years, fileend will be 1988, not 1989! 
       logger.info('\n{0:s}   ---   Invalid Period: End Date {1:4d} not in File!   ---   \n'.format(pidstr,enddate))
       
     else:  
       ## begin actual computation
       periodstr = '{0:4d}-{1:4d}'.format(begindate,enddate)
       expfolder = experiment.avgfolder
-      logger.info('\n{0:s}   <<<   Computing Climatology from {1:s} on {2:s} grid  >>>   \n'.format(pidstr,periodstr,grid))              
+      logger.info('\n{0:s}   <<<   Computing Climatology from {1:s} on {2:s} grid (\'{3:s}\')  >>>   \n'.format(
+                  pidstr,periodstr,grid,experiment.name))              
 
       # determine if sink file already exists, and what to do about it      
       gridstr = '' if griddef is None or griddef.name is 'WRF' else '_'+griddef.name
@@ -157,17 +158,17 @@ if __name__ == '__main__':
     NP = NP or 4
     #loverwrite = True
     varlist = None # ['precip', ]
-    experiments = ['coast']
+    experiments = ['nmpnew','new','ctrl','max','noah']
     #experiments = ['max','gulf','new','noah'] 
-    periods = [1,]
-    domains = [3] # domains to be processed
-    filetypes = ['srfc','lsm'] # filetypes to be processed
-    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
-    filetypes = ['xtrm']
+    periods = [10]
+    domains = [2] # domains to be processed
+#     filetypes = ['srfc','lsm'] # filetypes to be processed
+#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+    filetypes = ['srfc']
     grid = 'WRF' 
   else:
     NP = NP or 4
-    #loverwrite = False
+    loverwrite = True
     varlist = None
     experiments = None # WRF experiment names (passed through WRFname)
     periods = [5,10] # averaging period
@@ -176,7 +177,7 @@ if __name__ == '__main__':
     grid = 'WRF' 
 
   # expand experiments
-  if experiments is None: experiments = exps # do all 
+  if experiments is None: experiments = exps.values() # do all 
   else: experiments = [exps[exp] for exp in experiments] 
 
   ## do some fancy regridding
