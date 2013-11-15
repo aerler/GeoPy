@@ -565,8 +565,9 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
         griddef = loadPickledGridDef(grid=griddef, res=None, filename=None, folder=folder)
       elif isinstance(griddef,GridDefinition): pass 
       else: raise TypeError
-      projection, isProjected, xlon, ylat = griddef.getProjection()
-      lgdal = xlon is not None and ylat is not None # need non-None xlon & ylat        
+      lgdal, projection, isProjected, xlon, ylat = getProjection(dataset, projection=griddef.projection)
+#       projection, isProjected, xlon, ylat = griddef.getProjection()
+#       lgdal = xlon is not None and ylat is not None # need non-None xlon & ylat        
   else: lgdal = False
   # modify instance attributes
   dataset.__dict__['gdal'] = lgdal  # all variables have this after going through this process
@@ -595,7 +596,8 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       # call variable 'constructor' for all variables
       var = addGDALtoVar(var, projection=dataset.projection, geotransform=dataset.geotransform)
       # check result
-      assert (var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat)) == var.gdal    
+      if not (var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat)) == var.gdal:
+        raise GDALError, 'Variable {0:s} violates GDAL status (gdal={1:s})'.format(var.name, str(var.gdal))    
     
     # get grid definition object
     dataset.getGridDef = types.MethodType(getGridDef, dataset)

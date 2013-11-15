@@ -178,9 +178,16 @@ def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None
     filelist = [getFileName(name=name, resolution=resolution, period=period, grid=grid, filepattern=filepattern)]   
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
-                          axes=axes, multifile=False, ncformat='NETCDF4')  
-  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform, folder=grid_folder)
-  # N.B.: projection should be auto-detected as geographic
+                          axes=axes, multifile=False, ncformat='NETCDF4')
+  # figure out grid
+  if grid is None or grid == name:
+    griddef = GridDefinition(name=name, projection=projection, geotransform=geotransform)
+  elif isinstance(grid,basestring): # load from pickle file
+        griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder)
+  else: raise TypeError
+  # add GDAL functionality to dataset 
+  dataset = addGDALtoDataset(dataset, griddef=griddef, folder=grid_folder)
+  # N.B.: projection should be auto-detected, if geographic (lat/lon)
   return dataset
 
 # function to return grid definitions for some common grids
@@ -215,7 +222,8 @@ def getCommonGrid(grid, res=None):
       # add new geographic coordinate axes for projected map
       xlon = Axis(coord=lon, atts=dict(name='lon', long_name='longitude', units='deg E'))
       ylat = Axis(coord=lat, atts=dict(name='lat', long_name='latitude', units='deg N'))
-      griddef = GridDefinition(name=grid, projection=None, xlon=xlon, ylat=ylat) # projection=None >> lat/lon
+      gridstr = '{0:s}_{1:s}'.format(grid,res) if res is not None else grid
+      griddef = GridDefinition(name=gridstr, projection=None, xlon=xlon, ylat=ylat) # projection=None >> lat/lon
     else: 
       griddef = None
   # return grid definition object

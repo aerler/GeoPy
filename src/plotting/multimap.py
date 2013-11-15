@@ -70,9 +70,9 @@ if __name__ == '__main__':
   period = [A05,H05]+[A05]*4
   explist = ['max','new','max-A','max-B','CRU','max-C']
   period = H10
-#   explist = ['CRU']
-#   explist = ['PRISM','CRU']
-#   period = [None,H30]
+  explist = ['PRISM','CRU','GPCC','NARR']
+  grid = 'ARB_small_05'
+  period = [None,H30,H30,H30]; case = 'obs'
 #   explist = ['PRISM']
 #   period = [None]
 #   case = 'bugaboo'; period = '1997-1998'  # name tag
@@ -87,9 +87,9 @@ if __name__ == '__main__':
   ## select variables and seasons
   varlist = []; seasons = []
   # variables
-  varlist += ['T2']
-  varlist += ['Tmin', 'Tmax']
-#   varlist += ['precip']
+#   varlist += ['T2']
+#   varlist += ['Tmin', 'Tmax']
+  varlist += ['precip']
 #   varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
@@ -193,7 +193,7 @@ if __name__ == '__main__':
       ## compute data
       data = []; lons = []; lats=[]  # list of data and coordinate fields to be plotted 
       # compute average WRF precip            
-      print(' - loading data')
+      print(' - loading data ({0:s})'.format(var))
       for exptpl in exps:
         lontpl = []; lattpl = []; datatpl = []                
         for exp in exptpl:

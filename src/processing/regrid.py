@@ -178,9 +178,9 @@ if __name__ == '__main__':
     varlist = None # ['',] # None
 #     periods = [(1979,1989)]
 #     periods = [(1997,1998)]
-    periods = None
-    datasets = ['PRISM']
-#     datasets = None
+    periods = [(1979,2009)]
+#     datasets = ['PRISM']
+    datasets = None
 #     resolutions = {'GPCC':['25']}
     resolutions = None
     # WRF

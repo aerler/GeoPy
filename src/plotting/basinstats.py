@@ -34,46 +34,76 @@ from plotting.ARB_settings import getARBsetup, arb_figure_folder, arb_map_folder
 if __name__ == '__main__':
   
   ## settings
-  exp = 'max'
-  varlist = ['waterflx','runoff','snwmlt']
+  exp = 'noah'
+  varlist = ['T2','Tmin','Tmax']; lsum = False; leg = 2
+#   varlist = ['p-et','precip','liqprec']; lsum = True; leg = 1
+#   varlist = ['waterflx','runoff','snwmlt','p-et','precip']; lsum = True; leg = 3
 #   varlist = ['ugroff','runoff','sfroff']
   period = 10
   domain = 2
-  filetypes = ['lsm','hydro']
-  varatts = dict(Runoff=dict(name='runoff'))
+  filetypes = ['srfc','xtrm','hydro']
+  varatts = None # dict(Runoff=dict(name='runoff'))
   
   ## load data
   exp = WRF_exps[exp] # resolve short form
   # load WRF dataset
   dataset = loadWRF(experiment=exp, domains=domain, period=period, filetypes=filetypes, varlist=varlist, varatts=varatts)
+  # observations
+  cru = loadCRU(period=period, grid='arb2_d02', varlist=varlist, varatts=varatts)
+  gpcc = loadGPCC(period=None, grid='arb2_d02', varlist=varlist, varatts=varatts)
   print dataset
   
   ## apply basin mask
-  dataset.load()
+  dataset.load(); cru.load(); gpcc.load()
+  print 
   dataset.maskShape(name='Athabasca_River_Basin')
+  if len(cru.variables) > 0: cru.maskShape(name='Athabasca_River_Basin')
+  if len(gpcc.variables) > 0: gpcc.maskShape(name='Athabasca_River_Basin')
   print 
   
   # display
-#   pyl.imshow(np.flipud(dataset.waterflx.getMapMask()))
+#   pyl.imshow(np.flipud(dataset.Athabasca_River_Basin.getArray()))
+#   pyl.imshow(np.flipud(dataset.precip.getMapMask()))
 #   pyl.colorbar(); 
   
   # scale factor
-  S = ( 1 - dataset.Athabasca_River_Basin.getArray() ).sum() * (1e4)**2 / 1e3
+  if lsum: S = ( 1 - dataset.Athabasca_River_Basin.getArray() ).sum() * (1e4)**2 / 1e3
+  else: S = 1.
   time = dataset.time.coord # time axis
-  plotdata = []
+  plotdata = []; plotlegend = []
   for var in varlist:
     # compute spatial average
-    var = dataset.variables[var].mean(x=None,y=None)
+    vardata = dataset.variables[var].mean(x=None,y=None)
     plotdata.append(time)
-    plotdata.append(S*var.getArray())
-    
+    plotdata.append(S*vardata.getArray())    
+    plotlegend.append('%s (%s)'%(var,exp.name))
     print
-    print var.name, S*var.getArray().mean()
+    print exp.name, vardata.name, S*vardata.getArray().mean()
+    if cru.hasVariable(var, strict=False):
+      # compute spatial average for CRU
+      vardata = cru.variables[var].mean(x=None,y=None)
+      plotdata.append(time)
+      plotdata.append(S*vardata.getArray())    
+      plotdata.append('-.')
+      plotlegend.append('%s (%s)'%(var,cru.name))
+      print cru.name, vardata.name, S*vardata.getArray().mean()
+    if gpcc.hasVariable(var, strict=False):
+      # compute spatial average for CRU
+      vardata = gpcc.variables[var].mean(x=None,y=None)
+      plotdata.append(time)
+      plotdata.append(S*vardata.getArray())
+      plotdata.append('--')    
+      plotlegend.append('%s (%s)'%(var,gpcc.name))
+      print gpcc.name, vardata.name, S*vardata.getArray().mean()
+      
+    
+    
+    # average discharge below Fort McMurray: 620 m^3/s
     
   # plot
   import pylab as pyl
   pyl.plot(*plotdata)
-  pyl.legend(varlist)
+  pyl.legend(plotlegend, loc=leg)
 
   pyl.show(block=True)
   
