@@ -173,7 +173,7 @@ def getGridDef(var):
 
 # function to load pickled grid definitions
 griddef_pickle = '{0:s}_griddef.pickle' # file pattern for pickled grids
-def loadPickledGridDef(grid=None, res=None, filename=None, folder=None):
+def loadPickledGridDef(grid=None, res=None, filename=None, folder=None, check=True):
   ''' function to load pickled datasets '''
   if grid is not None and not isinstance(grid,basestring): raise TypeError
   if res is not None and not isinstance(res,basestring): raise TypeError
@@ -190,8 +190,11 @@ def loadPickledGridDef(grid=None, res=None, filename=None, folder=None):
     filehandle = open(filename, 'r')
     griddef = pickle.load(filehandle)
     filehandle.close()
+  elif check: 
+    raise IOError, "GridDefinition pickle file '{0:s}' not found!".format(filename) 
   else:
     griddef = None
+  # return
   return griddef
 
 

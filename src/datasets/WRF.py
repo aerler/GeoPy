@@ -360,9 +360,10 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   # period  
   from WRF_experiments import Exp
   if isinstance(period,(tuple,list)): pass
-  elif isNumber(period) and isinstance(experiment,Exp):
-    period = (experiment.beginyear, experiment.beginyear+period)
   elif isinstance(period,basestring): pass
+  elif period is None: pass
+  elif isinstance(period,(int,np.integer)) and isinstance(experiment,Exp):
+    period = (experiment.beginyear, experiment.beginyear+period)
   else: raise DateError   
   if period is None or period == '': periodstr = ''
   elif isinstance(period,basestring): periodstr = '_{0:s}'.format(period)

@@ -68,8 +68,8 @@ if __name__ == '__main__':
 #   period = [None,None,H30,H30]
   explist = ['max-2050','max','max-A-2050','max-B-2050','seaice-2050','max-C-2050']
   period = [A05,H05]+[A05]*4
-  explist = ['max','new','max-A','max-B','noah','max-C']
-  period = H05
+  explist = ['max','new','max-A','max-B','CRU','max-C']
+  period = H10
 #   explist = ['CRU']
 #   explist = ['PRISM','CRU']
 #   period = [None,H30]
@@ -87,10 +87,10 @@ if __name__ == '__main__':
   ## select variables and seasons
   varlist = []; seasons = []
   # variables
-#   varlist += ['T2']
-#   varlist += ['Tmin', 'Tmax']
+  varlist += ['T2']
+  varlist += ['Tmin', 'Tmax']
 #   varlist += ['precip']
-  varlist += ['p-et']
+#   varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
 #   varlist += ['evap']

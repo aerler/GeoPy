@@ -89,7 +89,8 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
         if not loverwrite: 
           age = datetime.fromtimestamp(os.path.getmtime(filepath))
           # if sink file is newer than source file, skip (do not recompute)
-          if age > sourceage: lskip = True
+          if age > sourceage and os.path.getsize(filepath) > 1e6: lskip = True
+          # N.B.: NetCDF files smaller than 1MB are usually incomplete header fragments from a previous crashed
           #print sourceage, age
         if not lskip: os.remove(filepath) 
       
@@ -154,6 +155,15 @@ if __name__ == '__main__':
   if os.environ.has_key('PYAVG_OVERWRITE'): 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
+    # file types to process 
+  # domains to process
+  if os.environ.has_key('PYAVG_DOMAINS'): 
+    domains = os.environ['PYAVG_DOMAINS'].split(';') # semi-colon separated list
+  else: domains = None # defaults are set below
+  if os.environ.has_key('PYAVG_FILETYPES'): 
+    filetypes = os.environ['PYAVG_FILETYPES'].split(';') # semi-colon separated list
+  else: filetypes = None # defaults are set below
+
   
   # default settings
   if ldebug:
@@ -161,12 +171,12 @@ if __name__ == '__main__':
     NP = NP or 1
     loverwrite = False
     varlist = None # ['precip', ]
-    experiments = ['max']
+    experiments = ['max-A']
     periods = [5,10]
     domains = [1,2] # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
-#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
-    filetypes = ['srfc','xtrm']
+    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+    filetypes = ['xtrm']
     grid = 'WRF' 
   else:
     NP = NP or 4

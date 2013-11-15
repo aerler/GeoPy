@@ -14,9 +14,9 @@ from datetime import datetime
 # internal imports
 from geodata.misc import DatasetError, DateError, isInt, printList
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import GDALError, GridDefinition, addGeoLocator
+from geodata.gdal import GDALError, GridDefinition, addGeoLocator, loadPickledGridDef
 from datasets import dataset_list
-from datasets.common import addLengthAndNamesOfMonth, getFileName, getCommonGrid, loadPickledGridDef
+from datasets.common import addLengthAndNamesOfMonth, getFileName, getCommonGrid, grid_folder
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
 # WRF specific
@@ -103,13 +103,15 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
   if ldebug: filename = 'test_' + filename
   if not os.path.exists(avgfolder): raise IOError, 'Dataset folder \'{0:s}\' does not exist!'.format(avgfolder)
   lskip = False # else just go ahead
-  if os.path.exists(avgfolder+filename): 
+  filepath = avgfolder+filename
+  if os.path.exists(filepath): 
     if not loverwrite: 
-      age = datetime.fromtimestamp(os.path.getmtime(avgfolder+filename))
+      age = datetime.fromtimestamp(os.path.getmtime(filepath))
       # if sink file is newer than source file, skip (do not recompute)
-      if age > sourceage: lskip = True
+      if age > sourceage and os.path.getsize(filepath) > 1e6: lskip = True
+      # N.B.: NetCDF files smaller than 1MB are usually incomplete header fragments from a previous crashed
       #print sourceage, age
-    if not lskip: os.remove(avgfolder+filename) 
+    if not lskip: os.remove(filepath) 
   # else: lskip = False (see above)
   
   # depending on last modification time of file or overwrite setting, start computation, or skip
@@ -198,7 +200,7 @@ if __name__ == '__main__':
     datasets = None # process all applicable
     periods = [(1979,1984),(1979,1989),(1979,2009)] # climatology periods to process
 #     periods = [(1979,1984),(1979,1989)] # climatology periods to process 
-    periods = None # process only overall climatologies 
+#     periods = None # process only overall climatologies 
     resolutions = None
     # WRF
     experiments = [] # process all WRF experiments
@@ -255,7 +257,7 @@ if __name__ == '__main__':
       
       # load target grid definition
       if lpickle:
-        griddef = loadPickledGridDef(grid, res=res)
+        griddef = loadPickledGridDef(grid=grid, res=res, folder=grid_folder)
       else:
         griddef = getCommonGrid(grid) # try this first (common grids)
         # else, determine new grid from existing dataset
@@ -265,7 +267,7 @@ if __name__ == '__main__':
           elif grid == grid.upper(): # observations
             griddef = import_module(grid[0:4]).__dict__[grid+'_grid']
           else: pass # we could try CESM grids here, at a later stage
-      # check is grid was defined properly
+      # check if grid was defined properly
       if not isinstance(griddef,GridDefinition): 
         raise GDALError, 'No valid grid defined! (grid={0:s})'.format(grid)        
       

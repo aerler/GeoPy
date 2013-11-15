@@ -150,7 +150,8 @@ def getFileName(name=None, resolution=None, period=None, grid=None, filepattern=
 #   else: periodstr = '_{0:s}'.format(period)
   if isinstance(period,(tuple,list)): pass
   elif isinstance(period,basestring): pass
-  elif isNumber(period):
+  elif period is None: pass
+  elif isinstance(period,(int,np.integer)):
     period = (1979, 1979+period)
   else: raise DateError   
   if period is None or period == '': periodstr = ''

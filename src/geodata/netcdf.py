@@ -325,13 +325,16 @@ class DatasetNetCDF(Dataset):
           raise FileError, "File {0:s} not found in folder {1:s}".format(filename,folder)     
       datasets = []; filenames = []
       for ncfile in filelist:
-        if multifile: # open a NetCDF-4 multi-file dataset 
-          if isinstance(ncfile,(list,tuple)): tmpfile = [folder+ncf for ncf in ncfile]
-          else: tmpfile = folder+ncfile # multifile via regular expressions
-          datasets.append(nc.MFDataset(tmpfile), mode='r', format=ncformat)
-        else: # open a simple single-file dataset
-          tmpfile = folder+ncfile
-          datasets.append(nc.Dataset(tmpfile, mode='r', format=ncformat))
+        try: # NetCDF4 error messages are not very helpful...
+          if multifile: # open a NetCDF-4 multi-file dataset 
+            if isinstance(ncfile,(list,tuple)): tmpfile = [folder+ncf for ncf in ncfile]
+            else: tmpfile = folder+ncfile # multifile via regular expressions
+            datasets.append(nc.MFDataset(tmpfile), mode='r', format=ncformat)
+          else: # open a simple single-file dataset
+            tmpfile = folder+ncfile
+            datasets.append(nc.Dataset(tmpfile, mode='r', format=ncformat))
+        except RuntimeError:
+          raise NetCDFError, "Error reading file '{0:s}' in folder {1:s}".format(ncfile,folder)
         filenames.append(tmpfile)
       filelist = filenames # original file list, including folders        
     # from here on, dataset creation is based on the netcdf-Dataset(s) in 'datasets'
