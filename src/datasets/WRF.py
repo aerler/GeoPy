@@ -7,6 +7,7 @@ This module contains common meta data and access functions for WRF model output.
 '''
 
 # external imports
+import numpy as np
 import netCDF4 as nc
 import collections as col
 import os
@@ -14,7 +15,7 @@ import pickle
 # from atmdyn.properties import variablePlotatts
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition
-from geodata.misc import DatasetError, isInt, AxisError
+from geodata.misc import DatasetError, isInt, AxisError, DateError, isNumber
 from datasets.common import translateVarNames, data_root, grid_folder, default_varatts 
 from geodata.gdal import loadPickledGridDef, griddef_pickle
 
@@ -207,7 +208,7 @@ class LSM(FileType):
                      POTEVP = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
                      SFROFF = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
                      UDROFF = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off
-                     RunOff = dict(name='runoff', units='kg/m^2/s')) # total surface and sub-surface run-off
+                     Runoff = dict(name='runoff', units='kg/m^2/s')) # total surface and sub-surface run-off
     self.vars = self.atts.keys()    
     self.climfile = 'wrflsm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrflsm_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
@@ -333,7 +334,7 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=No
     if dataset.hasAxis('p'): 
       dataset.axes['p'].updateCoord(dataset.dataset.variables['P_PL'][0,:])
     # add projection
-    dataset = addGDALtoDataset(dataset, projection=griddef.projection, geotransform=griddef.geotransform)
+    dataset = addGDALtoDataset(dataset, griddef=griddef, folder=grid_folder)
     # safety checks
     assert dataset.axes['x'] == griddef.xlon
     assert dataset.axes['y'] == griddef.ylat   
@@ -356,10 +357,16 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   # grid
   if grid is None or grid == name: gridstr = ''
   else: gridstr = '_%s'%grid.lower() # only use lower case for filenames 
-  # period
-  if isinstance(period,(tuple,list)): period = '%4i-%4i'%tuple(period)  
+  # period  
+  from WRF_experiments import Exp
+  if isinstance(period,(tuple,list)): pass
+  elif isNumber(period) and isinstance(experiment,Exp):
+    period = (experiment.beginyear, experiment.beginyear+period)
+  elif isinstance(period,basestring): pass
+  else: raise DateError   
   if period is None or period == '': periodstr = ''
-  else: periodstr = '_%s'%period  
+  elif isinstance(period,basestring): periodstr = '_{0:s}'.format(period)
+  else: periodstr = '_{0:4d}-{1:4d}'.format(*period)  
   # generate filelist and attributes based on filetypes and domain
   if filetypes is None: filetypes = fileclasses.keys()
   elif isinstance(filetypes,list):  
@@ -369,9 +376,11 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   atts = dict(); filelist = []; constfile = None
   for filetype in filetypes:
     fileclass = fileclasses[filetype]
-    if filetype == 'const': constfile = fileclass.tsfile
-    elif fileclass.tsfile is not None: filelist.append(fileclass.climfile) 
-    atts.update(fileclass.atts)  
+    if filetype == 'const': 
+      constfile = fileclass.tsfile
+      atts.update(fileclass.atts)  
+    elif fileclass.tsfile is not None: 
+      filelist.append(fileclass.climfile) 
   if varatts is not None: atts.update(varatts)
   lconst = constfile is not None
   # translate varlist
@@ -403,7 +412,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
     if lconst:
       for var in const: dataset.addVariable(var, asNC=False, copy=False, overwrite=False, deepcopy=False)
     # add projection
-    dataset = addGDALtoDataset(dataset, projection=griddef.projection, geotransform=griddef.geotransform)
+    dataset = addGDALtoDataset(dataset, griddef=griddef, folder=grid_folder)
     # safety checks
     assert dataset.axes['x'] == griddef.xlon
     assert dataset.axes['y'] == griddef.ylat   

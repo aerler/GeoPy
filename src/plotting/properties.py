@@ -408,7 +408,7 @@ tmp = defaultPlotatts.copy()
 tmp['plotname'] = 'P - ET'
 tmp['plottitle'] = 'Precipitation - Evaporation'
 tmp['plotunits'] = r'$kg m^{-2} day^{-1}$'
-tmp['scalefactor'] = 1
+tmp['scalefactor'] = 86400
 # add to collection
 variablePlotatts['p-et'] = tmp
 

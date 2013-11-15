@@ -67,8 +67,10 @@ if __name__ == '__main__':
 #   explist = ['GPCC','PRISM','CRU','GPCC']
 #   period = [None,None,H30,H30]
   explist = ['max-2050','max','max-A-2050','max-B-2050','seaice-2050','max-C-2050']
-#   explist = ['CRU']
   period = [A05,H05]+[A05]*4
+  explist = ['max','new','max-A','max-B','noah','max-C']
+  period = H05
+#   explist = ['CRU']
 #   explist = ['PRISM','CRU']
 #   period = [None,H30]
 #   explist = ['PRISM']
@@ -180,6 +182,7 @@ if __name__ == '__main__':
       
       # assemble plot title
       filename = '%s_%s_%s.%s'%(var,season,case,figformat)
+      #print exps[0][0].name
       plat = exps[0][0].variables[var].plot
       if plat['plotunits']: figtitle = '%s %s [%s]'%(plottype,plat['plottitle'],plat['plotunits'])
       else: figtitle = '%s %s'%(plottype,plat['plottitle'])

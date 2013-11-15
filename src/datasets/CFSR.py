@@ -12,7 +12,7 @@ import os
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.misc import DatasetError
 from geodata.gdal import addGDALtoDataset, GridDefinition
-from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim
+from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim, grid_folder
 from processing.process import CentralProcessingUnit
 
 
@@ -105,7 +105,7 @@ def loadCFSR_TS(name=dataset_name, varlist=None, varatts=varatts, resolution='hi
         var.squeeze() # remove time dimension
         dataset.addVariable(var, copy=False) # no need to copy... but we can't write to the netcdf file!
   # add projection  
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
+  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, folder=grid_folder)
   # N.B.: projection should be auto-detected as geographic
   # return formatted dataset
   return dataset

@@ -11,7 +11,7 @@ from importlib import import_module
 import numpy as np
 import pickle
 # internal imports
-from geodata.misc import AxisError, DatasetError
+from geodata.misc import AxisError, DatasetError, DateError, isNumber
 from geodata.base import Dataset, Variable, Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
@@ -142,9 +142,20 @@ def getFileName(name=None, resolution=None, period=None, grid=None, filepattern=
   # resolution is the native resolution (behind dataset name, prepended to the grid 
   if resolution: gridstr = '_{0:s}{1:s}'.format(resolution,gridstr)
   # period
-  if isinstance(period,(tuple,list)): period = '{0:4d}-{1:4d}'.format(*period)  
+#   if isinstance(period,(tuple,list)): period = '{0:4d}-{1:4d}'.format(*period)
+#   elif isinstance(period,np.number):
+#     period = (1979, 1979+period) # they all have the time origin shifted to 1979, hence this makes sense 
+#   else: raise DateError     
+#   if period is None or period == '': periodstr = ''
+#   else: periodstr = '_{0:s}'.format(period)
+  if isinstance(period,(tuple,list)): pass
+  elif isinstance(period,basestring): pass
+  elif isNumber(period):
+    period = (1979, 1979+period)
+  else: raise DateError   
   if period is None or period == '': periodstr = ''
-  else: periodstr = '_{0:s}'.format(period)
+  elif isinstance(period,basestring): periodstr = '_{0:s}'.format(period)
+  else: periodstr = '_{0:4d}-{1:4d}'.format(*period)  
   # assemble filename/list
   if filepattern is None: filepattern = name.lower() + '{0:s}_clim{1:s}.nc' 
   filename = filepattern.format(gridstr,periodstr)
@@ -167,7 +178,7 @@ def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           axes=axes, multifile=False, ncformat='NETCDF4')  
-  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform)
+  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform, folder=grid_folder)
   # N.B.: projection should be auto-detected as geographic
   return dataset
 

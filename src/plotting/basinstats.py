@@ -32,4 +32,48 @@ from plotting.ARB_settings import getARBsetup, arb_figure_folder, arb_map_folder
 
 ## start computation
 if __name__ == '__main__':
-    pass
+  
+  ## settings
+  exp = 'max'
+  varlist = ['waterflx','runoff','snwmlt']
+#   varlist = ['ugroff','runoff','sfroff']
+  period = 10
+  domain = 2
+  filetypes = ['lsm','hydro']
+  varatts = dict(Runoff=dict(name='runoff'))
+  
+  ## load data
+  exp = WRF_exps[exp] # resolve short form
+  # load WRF dataset
+  dataset = loadWRF(experiment=exp, domains=domain, period=period, filetypes=filetypes, varlist=varlist, varatts=varatts)
+  print dataset
+  
+  ## apply basin mask
+  dataset.load()
+  dataset.maskShape(name='Athabasca_River_Basin')
+  print 
+  
+  # display
+#   pyl.imshow(np.flipud(dataset.waterflx.getMapMask()))
+#   pyl.colorbar(); 
+  
+  # scale factor
+  S = ( 1 - dataset.Athabasca_River_Basin.getArray() ).sum() * (1e4)**2 / 1e3
+  time = dataset.time.coord # time axis
+  plotdata = []
+  for var in varlist:
+    # compute spatial average
+    var = dataset.variables[var].mean(x=None,y=None)
+    plotdata.append(time)
+    plotdata.append(S*var.getArray())
+    
+    print
+    print var.name, S*var.getArray().mean()
+    
+  # plot
+  import pylab as pyl
+  pyl.plot(*plotdata)
+  pyl.legend(varlist)
+
+  pyl.show(block=True)
+  

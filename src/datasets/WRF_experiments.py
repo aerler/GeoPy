@@ -17,7 +17,9 @@ class Exp(object):
   parameters['shortname'] = dict(type=basestring,req=False) # short name
   parameters['title'] = dict(type=basestring,req=False) # title used in plots
   parameters['begindate'] = dict(type=basestring,req=True) # simulation start date
+  parameters['beginyear'] = dict(type=int,req=True) # simulation start year
   parameters['enddate'] = dict(type=basestring,req=False) # simulation end date (if it already finished)
+  parameters['endyear'] = dict(type=int,req=False) # simulation end year
   parameters['avgfolder'] = dict(type=basestring,req=True) # folder for monthly averages
   parameters['outfolder'] = dict(type=basestring,req=False) # folder for direct WRF averages
   # default values (functions)
@@ -26,6 +28,7 @@ class Exp(object):
   defaults['title'] = lambda atts: atts['name'] # need lambda, because parameters are not set yet  
   defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/'.format(avgfolder,atts['name'])
   defaults['begindate'] = '1979-01-01'
+  defaults['beginyear'] = lambda atts: int(atts['begindate'].split('-')[0]) # first field
   
   def __init__(self, **kwargs):
     ''' initialize values from arguments '''

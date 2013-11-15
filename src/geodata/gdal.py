@@ -523,6 +523,13 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, folder=N
       var.__class__.unload(self)      
     # add new method to object
     var.unload = types.MethodType(unload, var)
+    
+    # extension to getMask
+    def getMapMask(self, nomask=False):
+      ''' A specialized version of the getMask method that gets a 2D map mask. '''
+      return self.getMask(nomask=nomask, axes=(self.xlon, self.ylat), strict=True)      
+    # add new method to object
+    var.getMapMask = types.MethodType(getMapMask, var)    
   
   # # the return value is actually not necessary, since the object is modified immediately
   return var
@@ -553,9 +560,9 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       # use GridDefinition object 
       if isinstance(griddef,basestring): # load from pickle file
         griddef = loadPickledGridDef(grid=griddef, res=None, filename=None, folder=folder)
-      elif not isinstance(griddef,GridDefinition): pass 
+      elif isinstance(griddef,GridDefinition): pass 
       else: raise TypeError
-      projection, isProjected, xlon, ylat = griddef.getProjection
+      projection, isProjected, xlon, ylat = griddef.getProjection()
       lgdal = xlon is not None and ylat is not None # need non-None xlon & ylat        
   else: lgdal = False
   # modify instance attributes
@@ -630,9 +637,11 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       if filename is not None and not isinstance(filename,basestring): raise TypeError
       # get mask from shapefile
       shpfolder = self.folder if filename is None else None
-      mask = rasterizeShape(name=name, griddef=self.griddef, folder=shpfolder, filename=filename, invert=invert)
+      mask = rasterizeShape(name=name, griddef=self.griddef, folder=shpfolder, filename=filename, invert=invert, asVar=True)
       # apply mask to dataset 
       self.mask(mask=mask, invert=False) # kwargs: merge=True, varlist=None, skiplist=None
+      # return mask variable
+      return mask
     # add new method to object
     dataset.maskShape = types.MethodType(maskShape, dataset)
             
@@ -641,18 +650,19 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
   
   
 ## read shapefiles
-def rasterizeShape(name=None, griddef=None, folder=None, filename=None, invert=False, asVar=False):
+def rasterizeShape(name=None, griddef=None, folder=None, filename=None, invert=False, asVar=False, ldebug=False):
   ''' a method to load a shapefile and burn it on a 2D raster; returns a 2D boolean array '''
   if name is not None and not isinstance(name,basestring): raise TypeError
-#   if not isinstance(griddef,GridDefinition): raise TypeError
+  if griddef.__class__.__name__ != GridDefinition.__name__: raise TypeError 
+  #if not isinstance(griddef,GridDefinition): raise TypeError # this is always False. probably due to pickling
   if folder is not None and not isinstance(folder,basestring): raise TypeError
   if filename is not None and not isinstance(filename,basestring): raise TypeError
   if not isinstance(invert,(bool,np.bool)): raise TypeError
   # fill values
-  if invert: inside, outside = 0,1
-  else: inside, outside = 1,0
+  if invert: inside, outside = 1,0
+  else: inside, outside = 0,1
   # resolve file name and open file
-  print(' - loading shapefile')
+  if ldebug: print(' - loading shapefile')
   if filename is None: filename = name
   if name is None: name = filename
   if folder is not None: filename = folder + '/' + filename
@@ -660,7 +670,7 @@ def rasterizeShape(name=None, griddef=None, folder=None, filename=None, invert=F
   shp_ds = ogr.Open(filename)
   shp_lyr = shp_ds.GetLayer(0) # get shape layer
   # create raster to burn shape onto
-  print(' - creating raster')
+  if ldebug: print(' - creating raster')
   msk_ds = ramdrv.Create(name, griddef.size[0], griddef.size[1], 1, gdal.GDT_Byte)
   # N.B.: this is a special case: only one band (1) and always boolean (gdal.GDT_Byte)
   # set projection parameters
@@ -670,17 +680,17 @@ def rasterizeShape(name=None, griddef=None, folder=None, filename=None, invert=F
   msk_rst = msk_ds.GetRasterBand(1) # only one anyway...
   msk_rst.Fill(outside); msk_rst.SetNoDataValue(outside) # fill with zeros
   # burn shape layer onto raster band
-  print(' - burning layer to raster')
+  if ldebug: print(' - burning layer to raster')
   err = gdal.RasterizeLayer(msk_ds, [1], shp_lyr, burn_values = [inside]) # None, None, [1] # burn_value = 1
   # use argument ['ALL_TOUCHED=TRUE'] like so: None, None, [1], ['ALL_TOUCHED=TRUE']
   if err != 0: raise GDALError, 'ERROR CODE %i'%err
   #msk_ds.FlushCash()  
   # retrieve mask array from raster band
-  print(' - retrieving mask')
+  if ldebug: print(' - retrieving mask')
   mask = msk_ds.GetRasterBand(1).ReadAsArray()
   # convert to Variable object, is desired
   if asVar: 
-    mask = Variable(name=name, units='mask', axes=(griddef.xlon,griddef.ylat), data=mask, 
+    mask = Variable(name=name, units='mask', axes=(griddef.ylat,griddef.xlon), data=mask, 
                     dtype=np.bool, mask=None, fillValue=outside, atts=None, plot=None) 
   # return mask array
   return mask

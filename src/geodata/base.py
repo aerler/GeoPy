@@ -329,11 +329,13 @@ class Variable(object):
             if len(coord) == 2:
               #l = max(ax.data_array.searchsorted(coord[0],side='right')-1,0) # choose such as to bracket coords
               #r = ax.data_array.searchsorted(coord[1],side='left') # same value or higher index
-              slices[axname] = slice(ax.getIndex(coord[0]),ax.getIndex(coord[1]))
+              slices[axname] = slice(ax.getIndex(coord[0]),ax.getIndex(coord[1])+1)
             elif len(coord) == 1: slices[axname] = ax.getIndex(coord[0])
             else: raise IndexError
           elif isinstance(coord,np.number):
             slices[axname] = ax.getIndex(coord)
+          elif coord is None:
+            slices[axname] = slice(None)
           else: raise TypeError
     # assemble index tuple for axes
     idx = tuple([slices.get(ax.name,slice(None)) for ax in self.axes])
@@ -467,10 +469,59 @@ class Variable(object):
       self.__dict__['masked'] = False
       self.__dict__['fillValue'] = None  
     
-  def getMask(self, nomask=False):
-    ''' Get the mask of a masked array or return a boolean array of False (no mask). '''
-    if nomask: return ma.getmask(self.data_array)
-    else: return ma.getmaskarray(self.data_array)    
+  def getMask(self, nomask=False, axes=None, strict=False):
+    ''' Get the mask of a masked array or return a boolean array of False (no mask); axes has to be a 
+        tuple, list or set of Axis instances or names; 'strict' refers to matching of axes. '''
+    if axes is not None and not isinstance(axes,(list,tuple,set)): raise TypeError
+    # get mask    
+    if nomask: mask = ma.getmask(self.data_array)
+    else: mask = ma.getmaskarray(self.data_array)
+    # select axes (reduce)    
+    if axes is not None:
+      axes = set([ax if strict or not isinstance(ax,basestring) else self.getAxis(ax) for ax in axes])
+      slices = [slice(None) if ax in axes else 0 for ax in self.axes]
+      mask = mask.__getitem__(slices)
+    # return mask
+    return mask
+  
+  def mean(self, squeeze=True, ignore=False, asVar=True, **axes):
+    ''' Compute the mean value of the data array over the given axes and return the result in a 
+        Variable instance; axes are specified as keyword arguments with corresponding slices. '''
+    for ax,slc in axes.iteritems():
+      if not ignore and not self.hasAxis(ax): raise AxisError
+      if slc is not None and not isinstance(slc,(slice,list,tuple,int,np.integer)): raise TypeError
+    # order axes and get indices
+    axlist = [ax.name for ax in self.axes if ax.name in axes]
+    # get data
+#     slices = []
+#     for ax in self.axes:
+#       if ax.name in axes:
+#         slc = axes[ax.name]
+#         if isinstance(slc,(tuple,list)): slc = slice(*slc)
+#         elif isinstance(slc,(int,np.integer)): slc = slice(slc)
+#       else:
+#         slc = slice(None)
+#       slices.append(slc)
+#     data = self.getArray(idx=slices)
+    data = self.__call__(**axes)
+    # compute mean
+    axlist.reverse() # start from the back      
+    for axis in axlist:
+      data = data.mean(axis=self.axisIndex(axis))
+    # squeeze, if desired
+    if squeeze:
+      data = np.squeeze(data)
+      newaxes = [ax for ax in self.axes if ax.name not in axes]
+    else: newaxes = self.axes
+    # cast into Variable
+    if asVar:
+      var = Variable(name=self.name, units=self.units, axes=newaxes, data=data, 
+                     fillValue=self.fillValue, atts=self.atts, plot=self.plot)
+    else: var = data
+    # return
+    return var
+    
+       
 
   @UnaryCheck    
   def __iadd__(self, a):
@@ -622,7 +673,7 @@ class Axis(Variable):
 #     self.__dict__['len'] = 0
 
   def getIndex(self, value):
-    ''' Return the coordinate index that is closest the value. '''
+    ''' Return the coordinate index that is closest to the value. '''
     if not self.data: raise DataError
     # search for close index
     idx = self.coord.searchsorted(value)

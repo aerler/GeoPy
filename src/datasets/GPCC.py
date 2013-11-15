@@ -17,7 +17,7 @@ from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition
 from geodata.misc import DatasetError
 from geodata.nctools import writeNetCDF, add_strvar
-from datasets.common import days_per_month, name_of_month, data_root 
+from datasets.common import days_per_month, name_of_month, data_root, grid_folder 
 from datasets.common import translateVarNames, loadClim, addLandMask, addLengthAndNamesOfMonth, getFileName
 from processing.process import CentralProcessingUnit
 
@@ -87,7 +87,7 @@ def loadGPCC_LTM(name=dataset_name, varlist=varlist, resolution='025', varatts=l
     stations = Variable(data=gauges.variables['p'][0,:,:], axes=(dataset.lat,dataset.lon), **varatts['s'])
     # consolidate dataset
     dataset.addVariable(stations, asNC=False, copy=True)  
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
+  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, folder=grid_folder)
   # N.B.: projection should be auto-detected as geographic
   # add method to convert precip from per month to per second
   dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    

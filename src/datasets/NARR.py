@@ -7,14 +7,14 @@ This module contains meta data and access functions for NARR datasets.
 '''
 
 #external imports
-import numpy as np
+#import numpy as np
 import os
 # from atmdyn.properties import variablePlotatts
 from geodata.base import Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition
 from geodata.misc import DatasetError 
-from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim
+from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim, grid_folder
 from processing.process import CentralProcessingUnit
 
 
@@ -90,7 +90,7 @@ def loadNARR_LTM(name=dataset_name, varlist=ltmvarlist, interval='monthly', vara
                           axes=axes, atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
   # add projection
   projection = getProjFromDict(projdict, name='{0:s} Coordinate System'.format(name))
-  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None)
+  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None, folder=grid_folder)
   # return formatted dataset
   return dataset
 
@@ -109,7 +109,7 @@ def loadNARR_TS(name=dataset_name, varlist=tsvarlist, varatts=varatts, filelist=
                           atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
   # add projection
   projection = getProjFromDict(projdict, name='{0:s} Coordinate System'.format(name))
-  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None)
+  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None, folder=grid_folder)
   # return formatted dataset
   return dataset
 

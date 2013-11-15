@@ -12,7 +12,7 @@ import types # to add precip conversion fct. to datasets
 # internal imports
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, GridDefinition
-from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim
+from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim, grid_folder
 from processing.process import CentralProcessingUnit
 
  
@@ -77,7 +77,7 @@ def loadCRU_TS(name=dataset_name, varlist=varlist, varatts=varatts, filelist=Non
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           multifile=False, ncformat='NETCDF4_CLASSIC')
   # add projection  
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
+  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, folder=grid_folder)
   # N.B.: projection should be auto-detected as geographic
   # add method to convert precip from per month to per second
   dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    
