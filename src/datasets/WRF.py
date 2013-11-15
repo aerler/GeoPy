@@ -15,8 +15,8 @@ import pickle
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition
 from geodata.misc import DatasetError, isInt, AxisError
-from datasets.common import translateVarNames, data_root, default_varatts 
-from datasets.common import loadPickledGridDef, grid_folder, grid_pickle
+from datasets.common import translateVarNames, data_root, grid_folder, default_varatts 
+from geodata.gdal import loadPickledGridDef, griddef_pickle
 
 ## get WRF projection and grid definition 
 # N.B.: Unlike with observational datasets, model Meta-data depends on the experiment and has to be 
@@ -464,7 +464,7 @@ if __name__ == '__main__':
         griddef, = getWRFgrid(name=(gridstr,), domains=(domain,), folder=folder, filename='wrfconst_d{0:0=2d}.nc')
         print('   Loading Definition from \'{0:s}\''.format(folder))
         # save pickle
-        filename = '{0:s}/{1:s}'.format(grid_folder,grid_pickle.format(gridstr))
+        filename = '{0:s}/{1:s}'.format(grid_folder,griddef_pickle.format(gridstr))
         filehandle = open(filename, 'w')
         pickle.dump(griddef, filehandle)
         filehandle.close()

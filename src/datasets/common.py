@@ -10,12 +10,11 @@ Some tools and data that are used by many datasets, but not much beyond that.
 from importlib import import_module
 import numpy as np
 import pickle
-import os
 # internal imports
 from geodata.misc import AxisError, DatasetError
 from geodata.base import Dataset, Variable, Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
-from geodata.gdal import addGDALtoDataset, GridDefinition
+from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
 
 # days per month
 days_per_month = np.array([31,28.2425,31,30,31,30,31,31,30,31,30,31]) # 97 leap days every 400 years
@@ -64,6 +63,9 @@ elif hostname=='cryo':
   data_root = '/scratch/marcdo/Data/'
 else:
   data_root = '/home/me/DATA/PRISM/'
+# standard folder for grids and shapefiles  
+grid_folder = data_root + '/grids/' # folder for pickled grids
+
  
 
 # convenience function to extract landmask variable from another masked variable
@@ -206,22 +208,6 @@ def getCommonGrid(grid, res=None):
       griddef = None
   # return grid definition object
   return griddef
-  
-# function to load pickled grid definitions
-grid_folder = data_root + '/grids/' # folder for pickled grids
-grid_pickle = '{0:s}_griddef.pickle' # file pattern for pickled grids
-def loadPickledGridDef(grid, res=None, folder=grid_folder):
-  ''' function to load pickled datasets '''
-  gridstr = '{0:s}_{1:s}'.format(grid,res) if res else grid 
-  filename = '{0:s}/{1:s}'.format(folder,grid_pickle.format(gridstr))
-  if os.path.exists(filename):
-    filehandle = open(filename, 'r')
-    griddef = pickle.load(filehandle)
-    filehandle.close()
-  else:
-    griddef = None
-  return griddef
-
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
@@ -261,7 +247,7 @@ if __name__ == '__main__':
           print('GridDefinition object for {0:s} not found!'.format(gridstr))         
         else:
           # save pickle
-          filename = '{0:s}/{1:s}'.format(grid_folder,grid_pickle.format(gridstr))
+          filename = '{0:s}/{1:s}'.format(grid_folder,griddef_pickle.format(gridstr))
           filehandle = open(filename, 'w')
           pickle.dump(griddef, filehandle)
           filehandle.close()

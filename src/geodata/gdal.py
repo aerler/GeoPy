@@ -13,13 +13,15 @@ and methods to an existing object/class instance.
 import numpy as np
 import numpy.ma as ma
 import types  # needed to bind functions to objects
-
+import os, pickle
 # gdal imports
-from osgeo import gdal, osr
+from osgeo import gdal, osr, ogr
 # register RAM driver
 ramdrv = gdal.GetDriverByName('MEM')
 # use exceptions (off by default)
 gdal.UseExceptions()
+osr.UseExceptions()
+ogr.UseExceptions()
 
 # import all base functionality from PyGeoDat
 from geodata.base import Variable, Axis, Dataset
@@ -128,6 +130,10 @@ class GridDefinition(object):
     if geolocator: self.lon2D = lon2D; self.lat2D = lat2D
     else: self.lon2D = None; self.lat2D = None
     
+  def getProjection(self):
+    ''' Convenience method that emulates behavior of the function of the same name '''
+    return self.projection, self.isProjected, self.xlon, self.ylat
+    
   def __str__(self):
     ''' A string representation of the grid definition '''
     string = '{0:s}   {1:s}\n'.format(self.__class__.__name__,self.name)
@@ -163,6 +169,30 @@ def getGridDef(var):
   # instantiate GridDefinition
   return GridDefinition(name=var.name+'_grid', projection=var.projection, geotransform=var.geotransform, 
                         size=var.mapSize, xlon=var.xlon, ylat=var.ylat)
+
+
+# function to load pickled grid definitions
+griddef_pickle = '{0:s}_griddef.pickle' # file pattern for pickled grids
+def loadPickledGridDef(grid=None, res=None, filename=None, folder=None):
+  ''' function to load pickled datasets '''
+  if grid is not None and not isinstance(grid,basestring): raise TypeError
+  if res is not None and not isinstance(res,basestring): raise TypeError
+  if filename is not None and not isinstance(filename,basestring): raise TypeError
+  if folder is not None and not isinstance(folder,basestring): raise TypeError
+  # figure out filename
+  if filename is None:
+    tmp = '{0:s}_{1:s}'.format(grid,res) if res else grid
+    filename = griddef_pickle.format(tmp)
+  if folder is not None: 
+    filename = '{0:s}/{1:s}'.format(folder,filename)
+  # load pickle
+  if os.path.exists(filename):
+    filehandle = open(filename, 'r')
+    griddef = pickle.load(filehandle)
+    filehandle.close()
+  else:
+    griddef = None
+  return griddef
 
 
 # a utility function
@@ -311,7 +341,7 @@ def getGeotransform(xlon=None, ylat=None, geotransform=None):
 
 # # functions to add GDAL functionality to existing Variable and Dataset instances
 
-def addGDALtoVar(var, projection=None, geotransform=None):
+def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, folder=None):
   ''' 
     A function that adds GDAL-based geographic projection features to an existing Variable instance.
     
@@ -324,6 +354,8 @@ def addGDALtoVar(var, projection=None, geotransform=None):
       bands = None # all dimensions except, the map coordinates 
       xlon = None # West-East axis
       ylat = None # South-North axis  
+      griddef = None # grid definition object  
+      folder = None # default search folder for shapefiles/masks and for GridDef, if passed by name
   '''
   # check some special conditions
   if not isinstance(var, Variable): 
@@ -331,7 +363,16 @@ def addGDALtoVar(var, projection=None, geotransform=None):
   # only for 2D variables!
   if var.ndim >= 2:  # map-type: GDAL potential
     # infer or check projection and related parameters       
-    lgdal, projection, isProjected, xlon, ylat = getProjection(var, projection=projection)
+    if griddef is None:
+      lgdal, projection, isProjected, xlon, ylat = getProjection(var, projection=projection)
+    else:
+      # use GridDefinition object 
+      if isinstance(griddef,basestring): # load from pickle file
+        griddef = loadPickledGridDef(grid=griddef, res=None, filename=None, folder=folder)
+      elif not isinstance(griddef,GridDefinition): pass 
+      else: raise TypeError
+      projection, isProjected, xlon, ylat = griddef.getProjection
+      lgdal = xlon is not None and ylat is not None # need non-None xlon & ylat
   else: lgdal = False
   # add result to Variable instance
   var.__dict__['gdal'] = lgdal  # all variables have this after going through this process
@@ -352,6 +393,8 @@ def addGDALtoVar(var, projection=None, geotransform=None):
     var.__dict__['bands'] = bands
     var.__dict__['xlon'] = xlon
     var.__dict__['ylat'] = ylat
+    var.__dict__['griddef'] = griddef
+    var.__dict__['folder'] = folder
     
     # get grid definition object
     var.getGridDef = types.MethodType(getGridDef, var)
@@ -484,7 +527,7 @@ def addGDALtoVar(var, projection=None, geotransform=None):
   # # the return value is actually not necessary, since the object is modified immediately
   return var
 
-def addGDALtoDataset(dataset, projection=None, geotransform=None):
+def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, folder=None, geolocator=False):
   ''' 
     A function that adds GDAL-based geographic projection features to an existing Dataset instance
     and all its Variables.
@@ -495,21 +538,38 @@ def addGDALtoDataset(dataset, projection=None, geotransform=None):
       projection = None # a GDAL spatial reference object
       geotransform = None # a GDAL geotransform vector (can e inferred from coordinate vectors)
       xlon = None # West-East axis
-      ylat = None # South-North axis  
+      ylat = None # South-North axis
+      griddef = None # grid definition object  
+      folder = None # default search folder for shapefiles/masks and for GridDef, if passed by name
   '''
   # check some special conditions
   assert isinstance(dataset, Dataset), 'This function can only be used to add GDAL functionality to a \'Dataset\' instance!'
   # only for 2D variables!
   if len(dataset.axes) >= 2:  # else not a map-type
     # infer or check projection and related parameters       
-    lgdal, projection, isProjected, xlon, ylat = getProjection(dataset, projection=projection)
+    if griddef is None:
+      lgdal, projection, isProjected, xlon, ylat = getProjection(dataset, projection=projection)
+    else:
+      # use GridDefinition object 
+      if isinstance(griddef,basestring): # load from pickle file
+        griddef = loadPickledGridDef(grid=griddef, res=None, filename=None, folder=folder)
+      elif not isinstance(griddef,GridDefinition): pass 
+      else: raise TypeError
+      projection, isProjected, xlon, ylat = griddef.getProjection
+      lgdal = xlon is not None and ylat is not None # need non-None xlon & ylat        
   else: lgdal = False
-  # modify Variable instance
+  # modify instance attributes
   dataset.__dict__['gdal'] = lgdal  # all variables have this after going through this process
   
   if lgdal:  
     # infer or check geotransform
-    geotransform = getGeotransform(xlon, ylat, geotransform=geotransform)    
+    geotransform = getGeotransform(xlon, ylat, geotransform=geotransform)
+    # decide if addign a geolocator
+    # add grid definition object (for convenience; recreate to match axes)
+    griddef = GridDefinition(dataset.name, projection=projection, geotransform=geotransform, 
+                             size=(len(xlon),len(ylat)), xlon=xlon, ylat=ylat, geolocator=geolocator)
+    if geolocator:
+      addGeoLocator(dataset, griddef=griddef, gdal=True, check=True)
     # add new instance attributes (projection parameters)
     dataset.__dict__['isProjected'] = isProjected    
     dataset.__dict__['projection'] = projection
@@ -517,6 +577,8 @@ def addGDALtoDataset(dataset, projection=None, geotransform=None):
     dataset.__dict__['xlon'] = xlon
     dataset.__dict__['ylat'] = ylat
     dataset.__dict__['mapSize'] = (len(xlon),len(ylat))
+    dataset.__dict__['griddef'] = griddef
+    dataset.__dict__['folder'] = folder
     
     # add GDAL functionality to all variables!
     for var in dataset.variables.values():
@@ -561,12 +623,83 @@ def addGDALtoDataset(dataset, projection=None, geotransform=None):
       return dataset
     # add new method to object
     dataset.copy = types.MethodType(copy, dataset)
+    
+    def maskShape(self, name=None, filename=None, invert=False, **kwargs):
+      ''' A method that generates a raster mask from a shape file and applies it to all GDAL variables. '''
+      if name is not None and not isinstance(name,basestring): raise TypeError
+      if filename is not None and not isinstance(filename,basestring): raise TypeError
+      # get mask from shapefile
+      shpfolder = self.folder if filename is None else None
+      mask = rasterizeShape(name=name, griddef=self.griddef, folder=shpfolder, filename=filename, invert=invert)
+      # apply mask to dataset 
+      self.mask(mask=mask, invert=False) # kwargs: merge=True, varlist=None, skiplist=None
+    # add new method to object
+    dataset.maskShape = types.MethodType(maskShape, dataset)
             
   # # the return value is actually not necessary, since the object is modified immediately
   return dataset
   
+  
+## read shapefiles
+def rasterizeShape(name=None, griddef=None, folder=None, filename=None, invert=False, asVar=False):
+  ''' a method to load a shapefile and burn it on a 2D raster; returns a 2D boolean array '''
+  if name is not None and not isinstance(name,basestring): raise TypeError
+#   if not isinstance(griddef,GridDefinition): raise TypeError
+  if folder is not None and not isinstance(folder,basestring): raise TypeError
+  if filename is not None and not isinstance(filename,basestring): raise TypeError
+  if not isinstance(invert,(bool,np.bool)): raise TypeError
+  # fill values
+  if invert: inside, outside = 0,1
+  else: inside, outside = 1,0
+  # resolve file name and open file
+  print(' - loading shapefile')
+  if filename is None: filename = name
+  if name is None: name = filename
+  if folder is not None: filename = folder + '/' + filename
+  if not os.path.exists(filename): raise IOError, 'File \'{}\' not found!'.format(filename)
+  shp_ds = ogr.Open(filename)
+  shp_lyr = shp_ds.GetLayer(0) # get shape layer
+  # create raster to burn shape onto
+  print(' - creating raster')
+  msk_ds = ramdrv.Create(name, griddef.size[0], griddef.size[1], 1, gdal.GDT_Byte)
+  # N.B.: this is a special case: only one band (1) and always boolean (gdal.GDT_Byte)
+  # set projection parameters
+  msk_ds.SetGeoTransform(griddef.geotransform)  # does the order matter?
+  msk_ds.SetProjection(griddef.projection.ExportToWkt())  # is .ExportToWkt() necessary?
+  # initialize raster band        
+  msk_rst = msk_ds.GetRasterBand(1) # only one anyway...
+  msk_rst.Fill(outside); msk_rst.SetNoDataValue(outside) # fill with zeros
+  # burn shape layer onto raster band
+  print(' - burning layer to raster')
+  err = gdal.RasterizeLayer(msk_ds, [1], shp_lyr, burn_values = [inside]) # None, None, [1] # burn_value = 1
+  # use argument ['ALL_TOUCHED=TRUE'] like so: None, None, [1], ['ALL_TOUCHED=TRUE']
+  if err != 0: raise GDALError, 'ERROR CODE %i'%err
+  #msk_ds.FlushCash()  
+  # retrieve mask array from raster band
+  print(' - retrieving mask')
+  mask = msk_ds.GetRasterBand(1).ReadAsArray()
+  # convert to Variable object, is desired
+  if asVar: 
+    mask = Variable(name=name, units='mask', axes=(griddef.xlon,griddef.ylat), data=mask, 
+                    dtype=np.bool, mask=None, fillValue=outside, atts=None, plot=None) 
+  # return mask array
+  return mask
+  
+   
 
 # # run a test    
 if __name__ == '__main__':
 
-  pass
+  ## test reading shapefile
+  from datasets.common import grid_folder
+  # settings  
+#   name = 'prv_ca' # canadian provinces
+#   name = 'Mackenzie_basins'
+#   name = 'b_nwrfc'
+  name = 'Athabasca_River_Basin'
+  griddef = loadPickledGridDef('arb2', res='d02', folder=grid_folder)  
+  # get mask from shape file
+  shp_mask = rasterizeShape(name=name, griddef=griddef, folder=grid_folder, invert=False)
+  # display
+  import pylab as pyl
+  pyl.imshow(np.flipud(shp_mask[:,:])); pyl.colorbar(); pyl.show(block=True)

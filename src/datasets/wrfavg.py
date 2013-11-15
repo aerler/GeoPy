@@ -14,9 +14,9 @@ from datetime import datetime
 from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import GridDefinition
-from geodata.misc import isInt
+from geodata.misc import isInt, DateError
 from datasets.common import name_of_month, days_per_month, getCommonGrid
-from processing.process import CentralProcessingUnit, DateError
+from processing.process import CentralProcessingUnit
 from processing.multiprocess import asyncPoolEC
 # WRF specific
 from datasets.WRF import loadWRF_TS, fileclasses
@@ -133,7 +133,10 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
         sink.close()
         # print dataset
         if not lparallel:
-          logger.info('\n'+str(sink)+'\n')   
+          logger.info('\n'+str(sink)+'\n')
+          
+        # clean up (not sure if this is necessary, but there seems to be a memory leak...   
+        del sink, source, CPU  
 
 
 if __name__ == '__main__':
@@ -155,19 +158,19 @@ if __name__ == '__main__':
   # default settings
   if ldebug:
     ldebug = False
-    NP = NP or 4
-    loverwrite = True
+    NP = NP or 1
+    loverwrite = False
     varlist = None # ['precip', ]
-    experiments = ['new','ctrl','max','noah']
-    periods = [10]
-    domains = [2] # domains to be processed
+    experiments = ['max']
+    periods = [5,10]
+    domains = [1,2] # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
-    filetypes = ['hydro']
+    filetypes = ['srfc','xtrm']
     grid = 'WRF' 
   else:
     NP = NP or 4
-    loverwrite = True
+    #loverwrite = True
     varlist = None
     experiments = None # WRF experiment names (passed through WRFname)
     periods = [5,10] # averaging period

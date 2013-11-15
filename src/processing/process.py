@@ -15,7 +15,7 @@ import numpy.ma as ma
 import functools
 from osgeo import gdal
 # internal imports
-from geodata.misc import VariableError, AxisError, PermissionError, DatasetError, GDALError, DateError
+from geodata.misc import VariableError, AxisError, PermissionError, DatasetError, GDALError #, DateError
 from geodata.base import Axis, Dataset
 from geodata.netcdf import DatasetNetCDF, asDatasetNC
 from geodata.nctools import writeNetCDF
@@ -241,7 +241,8 @@ class CentralProcessingUnit(object):
       #print newvar.projection.ExportToWkt()
       # N.B.: the target array should be allocated and prefilled with missing values, otherwise ReprojectImage
       #       will just fill missing values with zeros!  
-      if err != 0: raise GDALError, 'ERROR CODE %i'%err  
+      if err != 0: raise GDALError, 'ERROR CODE %i'%err
+      #tgtdata.FlushCash()  
       # load data into new variable
       newvar.loadGDAL(tgtdata, mask=mask, fillValue=var.fillValue)
     else:
