@@ -16,6 +16,7 @@ from geodata.base import Dataset, Variable, Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
 
+
 # days per month
 days_per_month = np.array([31,28.2425,31,30,31,30,31,31,30,31,30,31]) # 97 leap days every 400 years
 # N.B.: the Gregorian calendar repeats every 400 years
@@ -189,6 +190,120 @@ def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None
   dataset = addGDALtoDataset(dataset, griddef=griddef, folder=grid_folder)
   # N.B.: projection should be auto-detected, if geographic (lat/lon)
   return dataset
+
+def checkItemList(itemlist, length, dtype, default=None, iterable=False, trim=True):
+  ''' return a list based on item and check type '''
+  if itemlist is None: itemlist = []
+  if iterable:
+    # if elements are lists or tuples etc.
+    if not isinstance(itemlist,(list,tuple,set)): raise TypeError, str(itemlist)
+    if len(itemlist) == 0: 
+      if isinstance(default,(list,tuple,set)): itemlist = [default]*length
+      else: raise TypeError, str(itemlist) # here the default has tp be a list of items
+    else:
+      if isinstance(itemlist[0],(list,tuple,set)):     
+        if trim:
+          if len(itemlist) > length: del itemlist[length:]
+          elif len(itemlist) < length: itemlist += [default]*(length-len(itemlist))
+        else:
+          if len(itemlist) != length: raise TypeError, str(itemlist)    
+        if type is not None:
+          if not all([isinstance(item,dtype) for item in itemlist if item != default]):
+            raise TypeError, str(itemlist) # only checks the non-default values
+      else:
+        if not all([isinstance(item,dtype) for item in itemlist if item is not None]): 
+          raise TypeError, str(itemlist)
+        itemlist = [itemlist]*length
+  else:
+    if isinstance(itemlist,(list,tuple,set)):     
+      if trim:
+        if len(itemlist) > length: del itemlist[length:]
+        elif len(itemlist) < length: itemlist += [default]*(length-len(itemlist))
+      else:
+        if len(itemlist) != length: raise TypeError, str(itemlist)    
+      if type is not None:
+        if not all([isinstance(item,dtype) for item in itemlist if item != default]):
+          raise TypeError, str(item) # only checks the non-default values
+    else:
+      if not isinstance(itemlist,dtype): raise TypeError, str(itemlist)
+      itemlist = [itemlist]*length
+  return itemlist
+
+# function to load a list of datasets/experiments based on names and other common parameters
+def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domains=None, grids=None,
+                 resolutions=None, filetypes=None, lWRFnative=True, ltuple=False):
+  ''' function to load a list of datasets/experiments based on names and other common parameters '''
+  # for load function (below)
+  from datasets.WRF import loadWRF
+  from datasets.WRF_experiments import WRF_exps, Exp
+  from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadNARR
+  # check and expand lists
+  if n is None: n = len(explist)
+  elif not isinstance(n, (int,np.integer)): raise TypeError
+  explist = checkItemList(explist, n, (basestring,Exp))
+  titles = checkItemList(titles, n, basestring)
+  periods  = checkItemList(periods, n, (basestring,int,np.integer), iterable=False)
+  domains  = checkItemList(domains, n, (int,np.integer), iterable=ltuple) # to return a tuple, give a tuple of domains
+  grids  = checkItemList(grids, n, basestring)
+  resolutions  = checkItemList(resolutions, n, basestring)
+  
+  # add stuff to varlist
+  dslist = []; axtitles = []
+  for exp,tit,prd,dom,grd,res in zip(explist,titles,periods,domains,grids,resolutions): 
+    if isinstance(exp,str):
+      if exp[0].isupper():
+        if exp == 'GPCC': 
+          ext = loadGPCC(resolution=res, period=prd, grid=grd, varlist=varlist)
+          if ltuple: ext = (ext,)
+          axt = 'GPCC Observations'
+        elif exp == 'CRU': 
+          ext = loadCRU(period=prd, grid=grd, varlist=varlist)
+          if ltuple: ext = (ext,) 
+          axt = 'CRU Observations' 
+        elif exp == 'PRISM': # all PRISM derivatives
+          if ltuple:
+            if len(varlist) == 1 and varlist[0] == 'precip': 
+              ext = (loadGPCC(grid=grd, varlist=varlist), loadPRISM(grid=grd, varlist=varlist),)
+              axt = 'PRISM (and GPCC)'
+              #  ext = (loadPRISM(),); axt = 'PRISM'
+            else: 
+              ext = (loadCRU(period='1979-2009', grid=grd, varlist=varlist), loadPRISM(grid=grd, varlist=varlist)) 
+              axt = 'PRISM (and CRU)'
+          else:
+            ext = loadPRISM(grid=grd, varlist=varlist); axt = 'PRISM'
+        elif exp == 'CFSR': 
+          ext = loadCFSR(period=prd, grid=grd, varlist=varlist)
+          if ltuple: ext = (ext,)
+          axt = 'CFSR Reanalysis' 
+        elif exp == 'NARR': 
+          ext = loadNARR(period=prd, grid=grd, varlist=varlist)
+          if ltuple: ext = (ext,)
+          axt = 'NARR Reanalysis'
+        else: # all other uppercase names are CESM runs
+          raise NotImplementedError, "CESM datasets are currently not supported."  
+#           ext = (loadCESM(exp=exp, period=prd),)
+#           axt = CESMtitle.get(exp,exp)
+      else: 
+        # WRF runs are all in lower case
+        exp = WRF_exps[exp]        
+        #if 'xtrm' in WRFfiletypes: varatts = dict(Tmean=dict(name='T2')) 
+        if lWRFnative: grd = None
+        ext = loadWRF(experiment=exp, period=prd, grid=grd, domains=dom, filetypes=filetypes, 
+                      varlist=varlist, varatts=None)  
+        axt = exp.title # defaults to name...
+    dslist.append(ext); axtitles.append(tit or axt)  
+  # count experiment tuples (layers per panel)
+  nlist = []; nlen = len(dslist)
+  for n in xrange(nlen):
+    if not isinstance(dslist[n],(tuple,list)) and ltuple: # should not be necessary
+      dslist[n] = (dslist[n],)
+    nlist.append(len(dslist[n])) # layer counter for each panel  
+  # return list with datasets and plot titles
+  if ltuple:
+    return dslist, axtitles, nlist
+  else:
+    return dslist, axtitles
+  
 
 # function to return grid definitions for some common grids
 def getCommonGrid(grid, res=None):

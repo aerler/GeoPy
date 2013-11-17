@@ -120,7 +120,7 @@ for key,item in experiments.items():
     exps[item.shortname] = item
   # both, short and long name are added to list
 # add aliases here
-
+WRF_exps = exps # alias for whole dict
 
 if __name__ == '__main__':
     pass
