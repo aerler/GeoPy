@@ -61,7 +61,6 @@ def addErrorPatch(ax, var, err, color, axis='p', lpygeode=True, xerr=True, alpha
 
 ## plot profile (line or scatter plot) of variable with multiplot support
 def linePlot(varlist, coord, axis=None, clevs=None,title='',subplot=(),expand=True,figargs={'figsize':(10,8)},transpose=False, mplrc=None, **plotargs):
-  from pygeode.axis import Axis, ZAxis
   from utils import multiPlot, loadMPL
   # load matplotlib and apply config dictionary
   mpl = loadMPL(mplrc)

@@ -119,7 +119,7 @@ def getVariableSettings(var, season, oldvar=''):
 
 
 ## figure settings
-def getFigureSettings(nexp, cbo=None):
+def getFigureSettings(nexp, cbar=True, cbo=None):
   sf = dict(dpi=150) # print properties
   figformat = 'png' 
   # pane settings
@@ -127,33 +127,45 @@ def getFigureSettings(nexp, cbo=None):
     ## 1 panel
     subplot = (1,1)
     figsize = (3.75,3.75) #figsize = (6.25,6.25)  #figsize = (7,5.5)
-    margins = dict(bottom=0.025, left=0.075, right=0.875, top=0.875, hspace=0.0, wspace=0.0)
-    caxpos = [0.91, 0.05, 0.03, 0.9]
+    if cbar:
+      margins = dict(bottom=0.025, left=0.075, right=0.875, top=0.875, hspace=0.0, wspace=0.0)
+      caxpos = [0.91, 0.05, 0.03, 0.9]
+      cbo = cbo or 'vertical'
+    else:
+      margins = dict(bottom=0.025, left=0.075, right=0.975, top=0.875, hspace=0.0, wspace=0.0)
     #     margins = dict(bottom=0.12, left=0.075, right=.9725, top=.95, hspace=0.05, wspace=0.05)
     #    margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-    cbo = cbo or 'vertical'
   elif nexp == 2:
     ## 2 panel
     subplot = (1,2)
     figsize = (6.25,5.5)
-    margins = dict(bottom=0.1, left=0.065, right=.9725, top=.925, hspace=0.05, wspace=0.05)
-    caxpos = [0.05, 0.05, 0.9, 0.03]
-    cbo = cbo or 'horizontal'
+    if cbar:
+      margins = dict(bottom=0.1, left=0.065, right=.9725, top=.925, hspace=0.05, wspace=0.05)
+      caxpos = [0.05, 0.05, 0.9, 0.03]
+      cbo = cbo or 'horizontal'
+    else:
+      margins = dict(bottom=0.025, left=0.065, right=.9725, top=.925, hspace=0.05, wspace=0.05)
   elif nexp == 4:
     # 4 panel
     subplot = (2,2)
     figsize = (6.25,6.25)
-    margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-    caxpos = [0.91, 0.05, 0.03, 0.9]
-    cbo = cbo or 'vertical'
+    if cbar:
+      margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+      caxpos = [0.91, 0.05, 0.03, 0.9]
+      cbo = cbo or 'vertical'
+    else:
+      margins = dict(bottom=0.025, left=0.065, right=.975, top=.925, hspace=0.05, wspace=0.05)
   elif nexp == 6:
     # 6 panel
     subplot = (2,3) # rows, columns
     figsize = (9.25,6.5) # width, height (inches)
-    cbo = cbo or 'horizontal'
-    margins = dict(bottom=0.09, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
-    #    margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-    caxpos = [0.05, 0.025, 0.9, 0.03]
+    if cbar:
+      margins = dict(bottom=0.09, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
+      cbo = cbo or 'horizontal'
+      #    margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+      caxpos = [0.05, 0.025, 0.9, 0.03]
+    else:
+      margins = dict(bottom=0.025, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
 #   # figure out colorbar placement
 #   if cbo == 'vertical':
 #     margins = dict(bottom=0.02, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
@@ -162,4 +174,7 @@ def getFigureSettings(nexp, cbo=None):
 #     margins = dict(bottom=0.1, left=0.065, right=.9725, top=.925, hspace=0.05, wspace=0.05)
 #     caxpos = [0.05, 0.05, 0.9, 0.03]        
   # return values
-  return sf, figformat, margins, caxpos, subplot, figsize, cbo
+  if cbar: 
+    return sf, figformat, margins, caxpos, subplot, figsize, cbo
+  else:
+    return sf, figformat, margins, subplot, figsize

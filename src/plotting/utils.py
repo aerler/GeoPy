@@ -44,7 +44,7 @@ def traverseList(lsl, fct):
   # traverse nested lists recursively
   if isinstance(lsl, list):
     return [traverseList(lsl[i], fct) for i in range(len(lsl))]
-  # break recursion and apply rescaling when dictionary is reached 
+  # break recursion and apply function using the list element as argument 
   else: return fct(lsl)
   
 # function to expand level lists and colorbar ticks
@@ -121,8 +121,6 @@ def sharedColorbar(f, cf, clevs, colorbar, cbls, subplot, margins):
 
 # function that creates the most "square" arrangement of subplots for a given number of plots
 def multiPlot(f,varlist,titles='',clevs=None,labels=None,legends=None,cbls=None,geos={},sharex=True,sharey=True,margins={},subplot=(),transpose=False,axargs=None,**kwargs):
-  from pygeode.plot import plotvar
-  from pygeode.axis import ZAxis
   from matplotlib.pylab import setp
   
   le = len(varlist)      

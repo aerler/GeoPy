@@ -18,15 +18,8 @@ mpl.rc('lines', linewidth=1.)
 mpl.rc('font', size=10)
 from mpl_toolkits.basemap import maskoceans # used for masking data
 # PyGeoDat stuff
-from datasets.WRF import loadWRF
-from datasets.WRF_experiments import exps as WRF_exps
-# from datasets.CESM import loadCESM, CESMtitle
-from datasets.CFSR import loadCFSR
-from datasets.NARR import loadNARR
-from datasets.GPCC import loadGPCC
-from datasets.CRU import loadCRU
-from datasets.PRISM import loadPRISM
 from datasets.common import days_per_month, days_per_month_365 # for annotation
+from datasets.common import loadDatasets
 from plotting.settings import getFigureSettings, getVariableSettings
 # ARB project related stuff
 from plotting.ARB_settings import getARBsetup, arb_figure_folder, arb_map_folder
@@ -104,11 +97,11 @@ if __name__ == '__main__':
 #   varlist += ['SST']
   # seasons
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-  seasons += ['annual']
+#   seasons += ['annual']
   seasons += ['summer']
-  seasons += ['winter']
-  seasons += ['spring']    
-  seasons += ['fall']
+#   seasons += ['winter']
+#   seasons += ['spring']    
+#   seasons += ['fall']
   # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height
@@ -120,52 +113,16 @@ if __name__ == '__main__':
   # setup projection and map
   mapSetup = getARBsetup(maptype, stations=lstations, lpickle=True, folder=arb_map_folder)
   
-  ## load data   
-  if not isinstance(exptitles,(tuple,list)): exptitles = (exptitles,)*len(explist)
-  elif len(exptitles) == 0: exptitles = (None,)*len(explist) 
-  if not isinstance(period,(tuple,list)): period = (period,)*len(explist)
-  if not isinstance(domain[0],(tuple,list)): domain = (domain,)*len(explist)
-  if not isinstance(grid,(tuple,list)): grid = (grid,)*len(explist)
-  # add stuff to varlist
+  ## load data
   loadlist = set(varlist).union(('lon2D','lat2D'))
-  exps = []; axtitles = []
-  for exp,tit,prd,dom,grd in zip(explist,exptitles,period,domain,grid): 
-#     ext = exp; axt = ''
-    if isinstance(exp,str):
-      if exp[0].isupper():
-        if exp == 'GPCC': ext = (loadGPCC(resolution=resolution, period=prd, grid=grd, varlist=loadlist),); axt = 'GPCC Observations'
-        elif exp == 'CRU': ext = (loadCRU(period=prd, grid=grd, varlist=loadlist),); axt = 'CRU Observations' 
-        elif exp == 'PRISM': # all PRISM derivatives
-          if len(varlist) == 1 and varlist[0] == 'precip': 
-            ext = (loadGPCC(grid=grd, varlist=loadlist), loadPRISM(grid=grd, varlist=loadlist),); axt = 'PRISM (and GPCC)'
-            #  ext = (loadPRISM(),); axt = 'PRISM'
-          else: ext = (loadCRU(period='1979-2009', grid=grd, varlist=loadlist), loadPRISM(grid=grd, varlist=loadlist)); axt = 'PRISM (and CRU)'
-          # ext = (loadPRISM(),)          
-        elif exp == 'CFSR': ext = (loadCFSR(period=prd, grid=grd, varlist=loadlist),); axt = 'CFSR Reanalysis' 
-        elif exp == 'NARR': ext = (loadNARR(period=prd, grid=grd, varlist=loadlist),); axt = 'NARR Reanalysis'
-        else: # all other uppercase names are CESM runs
-          raise NotImplementedError, "CESM datasets are currently not supported."  
-#           ext = (loadCESM(exp=exp, period=prd),)
-#           axt = CESMtitle.get(exp,exp)
-      else: # WRF runs are all in lower case
-        exp = WRF_exps[exp]        
-        if 'xtrm' in WRFfiletypes: varatts = dict(Tmean=dict(name='T2'))
-        else: varatts = None
-        if lexceptWRF: grd = None
-        ext = loadWRF(experiment=exp.name, period=prd, grid=grd, domains=dom, filetypes=WRFfiletypes, 
-                      varlist=loadlist, varatts=varatts)  
-        axt = exp.title # defaults to name...
-    exps.append(ext); axtitles.append(tit or axt)  
+  exps, axtitles, nexps = loadDatasets(explist, n=None, varlist=loadlist, titles=exptitles, periods=period, domains=domain, 
+                                       grids=grid, resolutions=resolution, filetypes=WRFfiletypes, lWRFnative=True, ltuple=True)
+  nlen = len(exps)
   print exps[-1][-1]
-  # count experiment tuples (layers per panel)
-  nexps = []; nlen = len(exps)
-  for n in xrange(nlen):
-    if not isinstance(exps[n],(tuple,list)): # should not be necessary
-      exps[n] = (exps[n],)
-    nexps.append(len(exps[n])) # layer counter for each panel
+  
   
   # get figure settings
-  sf, figformat, margins, caxpos, subplot, figsize, cbo = getFigureSettings(nlen, cbo=cbo)
+  sf, figformat, margins, caxpos, subplot, figsize, cbo = getFigureSettings(nlen, cbar=True, cbo=cbo)
   
   # get projections settings
   projection, grid, res = mapSetup.getProjectionSettings()
@@ -219,6 +176,8 @@ if __name__ == '__main__':
           # compute average over seasonal range
           days = 0
           if expvar.hasAxis('time'):
+#             vardata = expvar.mean(time=(min(month),max(month)), asVar=False)
+            vardata.set_fill_value(np.NaN)
             for m in month:
               n = m-1 
               tmp = expvar(time=exp.time[n])
@@ -300,6 +259,7 @@ if __name__ == '__main__':
           if lcontour: cd.append(maps[n].contourf(x[n][m],y[n][m],data[n][m],clevs,ax=ax[n],cmap=cmap, norm=norm,extend='both'))  
           else: cd.append(maps[n].pcolormesh(x[n][m],y[n][m],data[n][m],cmap=cmap,shading='gouraud'))
       # add colorbar
+      #TODO: use utils.sharedColorbar
       cax = f.add_axes(caxpos)
       for cn in cd: # [c1d1, c1d2, c2d2]:
         if clim: cn.set_clim(vmin=clim[0],vmax=clim[1])
