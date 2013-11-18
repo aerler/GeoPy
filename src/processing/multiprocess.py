@@ -114,9 +114,9 @@ class TrialNError():
     kwargs['logger'] = logger
     try:
       # decorated function
-      self.func(*args, pidstr=pidstr, **kwargs)
+      ec = self.func(*args, pidstr=pidstr, **kwargs)
       # return exit code
-      return 0 # everything OK    
+      return ec or 0 # everything OK (and ec = None is OK, too)    
     except Exception: # , err
       # an error occurred
       logging.exception(pidstr) # print stack trace of last exception and current process ID 

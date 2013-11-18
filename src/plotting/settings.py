@@ -132,7 +132,7 @@ def getFigureSettings(nexp, cbar=True, cbo=None):
       caxpos = [0.91, 0.05, 0.03, 0.9]
       cbo = cbo or 'vertical'
     else:
-      margins = dict(bottom=0.025, left=0.075, right=0.975, top=0.875, hspace=0.0, wspace=0.0)
+      margins = dict(bottom=0.085, left=0.13, right=0.975, top=0.94, hspace=0.0, wspace=0.0)
     #     margins = dict(bottom=0.12, left=0.075, right=.9725, top=.95, hspace=0.05, wspace=0.05)
     #    margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
   elif nexp == 2:
@@ -154,7 +154,7 @@ def getFigureSettings(nexp, cbar=True, cbo=None):
       caxpos = [0.91, 0.05, 0.03, 0.9]
       cbo = cbo or 'vertical'
     else:
-      margins = dict(bottom=0.025, left=0.065, right=.975, top=.925, hspace=0.05, wspace=0.05)
+      margins = dict(bottom=0.05, left=0.08, right=.985, top=.96, hspace=0.10, wspace=0.02)
   elif nexp == 6:
     # 6 panel
     subplot = (2,3) # rows, columns
