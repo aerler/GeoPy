@@ -135,9 +135,15 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
         # print dataset
         if not lparallel:
           logger.info('\n'+str(sink)+'\n')
-          
+        
         # clean up (not sure if this is necessary, but there seems to be a memory leak...   
-        del sink, source, CPU  
+        del sink, CPU  
+          
+  # this one is only loaded once for all periods    
+  del source
+  
+  # return
+  return 0 # so far, there is no measure of success, hence, no non-zero exit code...
 
 
 if __name__ == '__main__':
@@ -167,9 +173,9 @@ if __name__ == '__main__':
   
   # default settings
   if ldebug:
-    ldebug = False
-    NP = NP or 1
-    loverwrite = False
+    ldebug = True
+    NP = NP or 2
+    loverwrite = True
     varlist = None # ['precip', ]
     experiments = ['max-A']
     periods = [5,10]
