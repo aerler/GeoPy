@@ -183,7 +183,7 @@ if __name__ == '__main__':
     #loverwrite = True
     varlist = None
     experiments = None # WRF experiment names (passed through WRFname)
-    periods = [5,10,15] # averaging period
+    periods = [5,8,10,15] # averaging period
     domains = [1,2] # domains to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
     grid = 'WRF' 
