@@ -182,12 +182,12 @@ def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None
                           axes=axes, multifile=False, ncformat='NETCDF4')
   # figure out grid
   if grid is None or grid == name:
-    griddef = GridDefinition(name=name, projection=projection, geotransform=geotransform)
+    dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform, folder=grid_folder)
   elif isinstance(grid,basestring): # load from pickle file
-        griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder)
+#     griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder)
+    # add GDAL functionality to dataset 
+    dataset = addGDALtoDataset(dataset, griddef=grid, folder=grid_folder)
   else: raise TypeError
-  # add GDAL functionality to dataset 
-  dataset = addGDALtoDataset(dataset, griddef=griddef, folder=grid_folder)
   # N.B.: projection should be auto-detected, if geographic (lat/lon)
   return dataset
 
@@ -231,7 +231,7 @@ def checkItemList(itemlist, length, dtype, default=None, iterable=False, trim=Tr
 
 # function to load a list of datasets/experiments based on names and other common parameters
 def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domains=None, grids=None,
-                 resolutions=None, filetypes=None, lWRFnative=True, ltuple=False):
+                 resolutions='025', filetypes=None, lWRFnative=True, ltuple=False):
   ''' function to load a list of datasets/experiments based on names and other common parameters '''
   # for load function (below)
   from datasets.WRF import loadWRF
@@ -262,7 +262,8 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
           axt = 'CRU Observations' 
         elif exp == 'PRISM': # all PRISM derivatives
           if ltuple:
-            if len(varlist) == 1 and varlist[0] == 'precip': 
+            if (len(varlist) == 1 and 'precip' in varlist) or (len(varlist) == 3 and 
+                'precip' in varlist and 'lon2D' in varlist and 'lat2D' in varlist): 
               ext = (loadGPCC(grid=grd, varlist=varlist), loadPRISM(grid=grd, varlist=varlist),)
               axt = 'PRISM (and GPCC)'
               #  ext = (loadPRISM(),); axt = 'PRISM'

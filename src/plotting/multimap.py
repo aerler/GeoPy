@@ -33,6 +33,7 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
+#   WRFfiletypes=['hydro'] # WRF data source
   WRFfiletypes=['srfc'] # WRF data source
   # figure directory
   folder = arb_figure_folder
@@ -49,23 +50,29 @@ if __name__ == '__main__':
   resolution = None # only for GPCC (None = default/highest)
   exptitles = None
   grid = None
-  domain = (1,2)
+  domain = (1,2,)
   ## case settings
   
   # observations
-  case = 'maxens'; lprint = True # write plots to disk using case as a name tag
+  lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = True
-#   grid = 'arb2_d02'; 
+  grid = 'arb2_d02'; 
   lexceptWRF = True; domain = (2,)
+  explist = ['max','PRISM','new','ctrl']; period = H10; case = 'val'
+  explist = ['max','CRU','new','ctrl']; period = H10; case = 'val'
+  explist = ['max','CRU','cfsr','ctrl']; period = H10; case = 'val'
+  explist = ['max','PRISM','max-A','max-B','cfsr','max-C']; period = H10; case = 'ens'
+  explist = ['max','new','max-A','max-B','ctrl','max-C']; period = H10; case = 'ens'
+  explist = ['max','cfsr','new','ctrl']; period = H10; case = 'hydro'
+  explist = ['max','max-2050','gulf','seaice-2050']; period = [H10, A10, H10, A10]; case = 'mix'
 #   explist = ['GPCC','PRISM','CRU','GPCC']
 #   period = [None,None,H30,H30]
-  explist = ['max-2050','max','max-A-2050','max-B-2050','seaice-2050','max-C-2050']
-  period = [A05,H05]+[A05]*4
-  explist = ['max','new','max-A','max-B','CRU','max-C']
-  period = H10
-  explist = ['PRISM','CRU','GPCC','NARR']
-  grid = 'ARB_small_05'
-  period = [None,H30,H30,H30]; case = 'obs'
+  explist = ['max-A','max-B','max-C','max-A-2050','max-B-2050','max-C-2050']
+  period = ['1979-1987']*3+['2045-2053']*3; case = 'maxens'
+#   period = [A05,H05]+[A05]*4
+#   explist = ['PRISM','CRU','GPCC','NARR']
+#   grid = 'ARB_small_05'
+#   period = [None,H30,H30,H30]; case = 'obs'
 #   explist = ['PRISM']
 #   period = [None]
 #   case = 'bugaboo'; period = '1997-1998'  # name tag
@@ -80,9 +87,10 @@ if __name__ == '__main__':
   ## select variables and seasons
   varlist = []; seasons = []
   # variables
-#   varlist += ['T2']
+  varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
   varlist += ['precip']
+#   varlist += ['waterflx']
 #   varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
@@ -97,11 +105,11 @@ if __name__ == '__main__':
 #   varlist += ['SST']
   # seasons
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-#   seasons += ['annual']
+  seasons += ['annual']
   seasons += ['summer']
-#   seasons += ['winter']
-#   seasons += ['spring']    
-#   seasons += ['fall']
+  seasons += ['winter']
+  seasons += ['spring']    
+  seasons += ['fall']
   # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height
@@ -156,7 +164,8 @@ if __name__ == '__main__':
         for exp in exptpl:
           expvar = exp.variables[var]
           if len(seasons) > 1: expvar.load()
-          print expvar.name, exp.name, expvar.masked
+          #print expvar.name, exp.name, expvar.masked
+          print(exp.name)
           assert expvar.gdal
           # handle dimensions
           if expvar.isProjected: 

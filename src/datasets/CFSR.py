@@ -121,7 +121,7 @@ def loadCFSR(name=dataset_name, period=None, grid=None, resolution=None, varlist
   if grid is not None and grid[0:5].lower() == 'cfsr_': 
     resolution = grid[5:]
     grid = None
-  elif resolution is None: resolution = '03'
+  elif resolution is None: resolution = '031'
   # check for valid resolution
   if resolution == 'hires' or resolution == '03': resolution = '031' 
   elif resolution == 'lowres': resolution = '05' 

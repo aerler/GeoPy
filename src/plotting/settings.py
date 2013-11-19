@@ -54,7 +54,7 @@ def getVariableSettings(var, season, oldvar=''):
     clevs = np.linspace(0,6,26); clbl = '%02.1f' # mm/day
     if season == 'winter': clevs -= 2
     elif season == 'summer': clevs += 2    
-  elif var == 'p-et': # moisture fluxes (kg /(m^2 s))
+  elif var == 'p-et' or var == 'waterflx': # moisture fluxes (kg /(m^2 s))
     # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
     clevs = np.linspace(-2,2,25); cmap = mpl.cm.PuOr; clbl = '%02.1f'
   elif var == 'precip' or var == 'precipnc': # total precipitation 

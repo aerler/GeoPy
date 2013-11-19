@@ -402,7 +402,7 @@ tmp['scalefactor'] = 86400
 # add to collection
 variablePlotatts['evap'] = tmp
 
-## Net Surface Moisture Flux
+## Net Precipitation
 tmp = defaultPlotatts.copy() 
 # specific properties
 tmp['plotname'] = 'P - ET'
@@ -412,6 +412,15 @@ tmp['scalefactor'] = 86400
 # add to collection
 variablePlotatts['p-et'] = tmp
 
+## Net Surface Moisture Flux
+tmp = defaultPlotatts.copy() 
+# specific properties
+tmp['plotname'] = 'WaterFlx'
+tmp['plottitle'] = 'Net Water Flux'
+tmp['plotunits'] = r'$kg m^{-2} day^{-1}$'
+tmp['scalefactor'] = 86400
+# add to collection
+variablePlotatts['waterflx'] = tmp
 
 ## *** Standard Vars (3D) ***
 

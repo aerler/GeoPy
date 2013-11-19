@@ -142,7 +142,8 @@ if __name__ == '__main__':
   if mode == 'test_climatology':  
     
     # load NetCDF dataset
-    dataset = loadPRISM(grid='arb1_d02')
+    #dataset = loadPRISM(grid='arb1_d02')
+    dataset = loadPRISM()
     print(dataset)
     print('')
     print(dataset.geotransform)

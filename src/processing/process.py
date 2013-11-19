@@ -310,7 +310,7 @@ class CentralProcessingUnit(object):
           avgdata += dataarray.take(t+climelts, axis=tidx)
         # normalize
         avgdata /= (timelength/interval) 
-      else: raise NotImplementedError, "The length of the time series has to be divisible of {0:d}.".format(interval)
+      else: raise NotImplementedError, "The length of the time series has to be divisible by {0:d}.".format(interval)
       # shift data (if first month was not January)
       if shift != 0: avgdata = np.roll(avgdata, shift, axis=tidx)
       # create new Variable
