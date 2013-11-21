@@ -16,6 +16,7 @@ class Exp(object):
   parameters['name'] = dict(type=basestring,req=True) # name
   parameters['shortname'] = dict(type=basestring,req=False) # short name
   parameters['title'] = dict(type=basestring,req=False) # title used in plots
+  parameters['grid'] = dict(type=basestring,req=True) # name
   parameters['begindate'] = dict(type=basestring,req=True) # simulation start date
   parameters['beginyear'] = dict(type=int,req=True) # simulation start year
   parameters['enddate'] = dict(type=basestring,req=False) # simulation end date (if it already finished)

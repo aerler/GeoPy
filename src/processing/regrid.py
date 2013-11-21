@@ -94,7 +94,9 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
           
   # prepare target dataset
   if dataset == 'WRF':
-    filename = module.file_pattern.format(filetype,domain,'_{}'.format(griddef.name),periodstr)
+    gridstr = '_{}'.format(griddef.name) if griddef.name else ''
+    periodstr = '_{}'.format(periodstr) if periodstr else ''# I know, this is pointless at the moment...
+    filename = module.file_pattern.format(filetype,domain,gridstr,periodstr)
     avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
   elif dataset == dataset.upper(): # observational datasets
     filename = getFileName(grid=griddef.name, period=period, name=grid_name, filepattern=None)
@@ -173,26 +175,27 @@ if __name__ == '__main__':
   # default settings
   if ldebug:
     ldebug = False
-    NP = NP or 1
-    #loverwrite = True
+    NP = NP or 4
+    loverwrite = False
     varlist = None # ['',] # None
-#     periods = [(1979,1989)]
+    periods = [(1979,1989)]
 #     periods = [(1997,1998)]
-    periods = [(1979,2009)]
+#     periods = [(1979,2009)]
 #     datasets = ['PRISM']
-    datasets = None
+    datasets = []
 #     resolutions = {'GPCC':['25']}
     resolutions = None
     # WRF
-    experiments = []
+    experiments = ['new']
     #experiments = ['max-ctrl'] # WRF experiment names (passed through WRFname)
 #     experiments = ['coast-brian']
-    domains = [1,2] # domains to be processed
-    filetypes = ['xtrm',] # filetypes to be processed
+    domains = [2] # domains to be processed
+    filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
     #filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
     # grid to project onto
     lpickle = True
-    grids = dict(ARB_small=['025','05']) # dict with list of resolutions  
+#     grids = dict(ARB_small=['025','05']) # dict with list of resolutions
+    grids = dict(arb2=['d02']) # dict with list of resolutions  
   else:
     NP = NP or 4
     #loverwrite = False

@@ -45,11 +45,18 @@ def getWRFproj(dataset, name=''):
 # infer grid (projection and axes) from constants file
 def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='wrfconst_d{0:0=2d}.nc', ncformat='NETCDF4'):
   ''' Infer the WRF grid configuration from an output file and return a GridDefinition object. '''
+  from datasets.WRF_experiments import Exp, exps 
   # check input
-  folder, names, domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder)
+  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder)
   if isinstance(filename,basestring): filepath = '{}/{}'.format(folder,filename) # still contains formaters
   else: raise TypeError
-  maxdom = max(domains)
+  # figure out experiment
+  if experiment is None:
+    if isinstance(name,basestring): experiment = exps[name]
+    elif len(names) > 0: exps[names[0].split('_')[0]]
+  elif isinstance(experiment,basestring): experiment = exps[experiment]
+  elif not isinstance(experiment,Exp): raise TypeError  
+  maxdom = max(domains) # max domain
   # files to work with
   for n in xrange(1,maxdom+1):
     dnfile = filepath.format(n)
@@ -58,8 +65,8 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
       else: raise IOError, 'File {} for domain {:d} not found; this file is necessary to infer the geotransform for other domains.'.format(dnfile,n)
   # open first domain file (special treatment)
   dn = nc.Dataset(filepath.format(1), mode='r', format=ncformat)
-  name=experiment if isinstance(experiment,basestring) else names[0] # omit domain information, which is irrelevant
-  projection = getWRFproj(dn, name=name) # same for all
+  #name = experiment if isinstance(experiment,basestring) else names[0] # omit domain information, which is irrelevant
+  projection = getWRFproj(dn, name=experiment.grid) # same for all
   # infer size and geotransform
   def getXYlen(ds):
     ''' a short function to infer the length of horizontal axes from a dataset with unknown naming conventions ''' 
@@ -95,7 +102,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
       dn.close()
       geotransforms.append(geotransform) # we need that to construct the next nested domain
       if n in domains:
-        name = names[len(griddefs)] # current index = current length - 1  =>  next index = current length
+        name = '{0:s}_d{1:02d}'.format(experiment.grid,n) 
         griddefs.append(GridDefinition(name=name, projection=projection, geotransform=geotransform, size=size))
   # return a GridDefinition object
   return tuple(griddefs)  
@@ -103,7 +110,8 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
 # return name and folder
 def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
   ''' Convenience function to infer type-check the name and folder of an experiment based on various input. '''
-  # N.B.: 'experiment' can be a string name or an Exp instance   
+  # N.B.: 'experiment' can be a string name or an Exp instance
+  from datasets.WRF_experiments import exps, Exp # need to leave this here, to avoid circular reference...   
   # check domains
   if isinstance(domains,col.Iterable):
     if not all(isInt(domains)): raise TypeError
@@ -115,24 +123,22 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
   if experiment is None:
     if not isinstance(folder,basestring): 
       raise IOError, "Need to specify an experiment folder in order to load data."
-    if isinstance(name,col.Iterable) and all([isinstance(n,basestring) for n in name]): names = name
+    if isinstance(name,col.Iterable) and all([isinstance(n,basestring) for n in name]): 
+      names = name
+      if names[0] in exps: experiment = exps[names[0]]
+      else: name = names[0].split('_')[0]
     elif isinstance(name,basestring): names = [name]
-    else: raise DatasetError, "Need to specify an experiment name in order to load data."
+    # load experiment meta data
+    if name in exps: experiment = exps[name]
+    else: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(names[0])
   else:
-    from datasets.WRF_experiments import Exp # need to leave this here, to avoid circular reference...
-    if isinstance(experiment,Exp):
+    if isinstance(experiment,(Exp,basestring)):
+      if isinstance(experiment,basestring): experiment = exps[experiment] 
       # root folder
       if folder is None: folder = experiment.avgfolder
       elif not isinstance(folder,basestring): raise TypeError
       # name
       if name is None: name = experiment.name
-    else:
-      # root folder
-      if not isinstance(experiment,basestring): raise TypeError
-      if folder is None: folder = '{}/{}/'.format(avgfolder,experiment)
-      elif not isinstance(folder,basestring): raise TypeError
-      # expand name
-      if name is None: name = experiment
     if isinstance(name,basestring): 
       names = ['{0:s}_d{1:0=2d}'.format(name,domain) for domain in domains]
     elif isinstance(name,col.Iterable):
@@ -142,7 +148,7 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
   # check if folder exists
   if not os.path.exists(folder): raise IOError, folder
   # return name and folder
-  return folder, tuple(names), tuple(domains)
+  return folder, experiment, tuple(names), tuple(domains)
   
 
 ## variable attributes and name
@@ -299,7 +305,7 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=No
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)
   # N.B.: 'experiment' can be a string name or an Exp instance
-  folder, names, domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
+  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
   # generate filelist and attributes based on filetypes and domain
   if filetypes is None: filetypes = fileclasses.keys()
   elif isinstance(filetypes,list):
@@ -353,10 +359,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)
   # N.B.: 'experiment' can be a string name or an Exp instance
-  folder, names, domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
-  # grid
-  if grid is None or grid == name: gridstr = ''
-  else: gridstr = '_%s'%grid.lower() # only use lower case for filenames 
+  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
   # period  
   from WRF_experiments import Exp
   if isinstance(period,(tuple,list)): pass
@@ -372,7 +375,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   if filetypes is None: filetypes = fileclasses.keys()
   elif isinstance(filetypes,list):  
     if 'axes' not in filetypes: filetypes.append('axes')
-    if 'const' not in filetypes: filetypes.append('const')
+    if 'const' not in filetypes and grid is None: filetypes.append('const')
   else: raise TypeError  
   atts = dict(); filelist = []; constfile = None
   for filetype in filetypes:
@@ -391,10 +394,16 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if constfile is not None: filename = constfile # constants files preferred...
   else: filename = fileclasses.values()[0].tsfile # just use the first filetype
-  griddefs = getWRFgrid(name=names, experiment=None, domains=domains, folder=folder, filename=filename)
+  if grid is None:
+    griddefs = getWRFgrid(name=names, experiment=experiment, domains=domains, folder=folder, filename=filename)
+  else:
+    griddefs = [loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder, check=True)]*len(domains)
   assert len(griddefs) == len(domains)
+  # grid
   datasets = []
   for name,domain,griddef in zip(names,domains,griddefs):
+    if grid is None or grid.split('_')[0] == experiment.grid: gridstr = ''
+    else: gridstr = '_%s'%grid.lower() # only use lower case for filenames     
     # domain-sensitive parameters
     axes = dict(west_east=griddef.xlon, south_north=griddef.ylat, x=griddef.xlon, y=griddef.ylat) # map axes
     # load constants
@@ -411,9 +420,11 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
     if len(dataset) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
     # add constants to dataset
     if lconst:
-      for var in const: dataset.addVariable(var, asNC=False, copy=False, overwrite=False, deepcopy=False)
+      for var in const: 
+        if not dataset.hasVariable(var): # 
+          dataset.addVariable(var, asNC=False, copy=False, overwrite=False, deepcopy=False)
     # add projection
-    dataset = addGDALtoDataset(dataset, griddef=griddef, folder=grid_folder)
+    dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder)
     # safety checks
     assert dataset.axes['x'] == griddef.xlon
     assert dataset.axes['y'] == griddef.ylat   
@@ -447,10 +458,10 @@ loadClimatology = loadWRF # pre-processed, standardized climatology
 if __name__ == '__main__':
     
   
-#   mode = 'test_climatology'
+  mode = 'test_climatology'
 #   mode = 'test_timeseries'
-  mode = 'pickle_grid'
-  experiment = 'max-ctrl'
+#   mode = 'pickle_grid'
+  experiment = 'new-ctrl'
   domains = [1,2]
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']   
@@ -472,6 +483,7 @@ if __name__ == '__main__':
         # load GridDefinition
         
         griddef, = getWRFgrid(name=(gridstr,), domains=(domain,), folder=folder, filename='wrfconst_d{0:0=2d}.nc')
+        griddef.name = gridstr
         print('   Loading Definition from \'{0:s}\''.format(folder))
         # save pickle
         filename = '{0:s}/{1:s}'.format(grid_folder,griddef_pickle.format(gridstr))
@@ -492,8 +504,9 @@ if __name__ == '__main__':
   elif mode == 'test_climatology':
     
     print('')
-    dataset = loadWRF(experiment='max-ctrl', domains=2, filetypes=None, period=(1979,1988))
+    dataset = loadWRF(experiment=experiment, domains=2, grid='arb2_d02', filetypes=['srfc'], period=(1979,1989))
     print(dataset)
+    dataset.T2.load()
     print('')
     print(dataset.geotransform)
   

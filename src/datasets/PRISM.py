@@ -142,13 +142,19 @@ if __name__ == '__main__':
   if mode == 'test_climatology':  
     
     # load NetCDF dataset
-    #dataset = loadPRISM(grid='arb1_d02')
-    dataset = loadPRISM()
+    dataset = loadPRISM(grid='arb2_d02')
+#     dataset = loadPRISM()
     print(dataset)
     print('')
     print(dataset.geotransform)
     print(dataset.precip.masked)
     print(dataset.precip.getArray().mean())
+    print('')
+    # display
+    import pylab as pyl
+    pyl.imshow(np.flipud(dataset.datamask.getArray()[:,:])) 
+    pyl.colorbar(); pyl.show(block=True)
+
     
   ## convert ASCII files to NetCDF
   elif mode == 'convert_ASCII': 

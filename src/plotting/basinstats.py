@@ -17,9 +17,11 @@ mpl.rc('font', size=10)
 # PyGeoDat stuff
 from datasets.GPCC import loadGPCC
 from datasets.CRU import loadCRU
+from datasets.PRISM import loadPRISM
 from datasets.CFSR import loadCFSR
 from datasets.NARR import loadNARR
 from datasets.WRF_experiments import exps as WRF_exps
+from geodata.gdal import rasterizeShape
 from datasets.common import loadDatasets # for annotation
 from plotting.settings import getFigureSettings, getVariableSettings
 # ARB project related stuff
@@ -33,17 +35,18 @@ lprint = True
 if __name__ == '__main__':
   
   ## settings
-  expset = 'ens-2050'
-  plottype = 'temp'
+  expset = 'obs'
+  plottype = 'precip'
   tag = ''
   domain = 2
   period = 10
+  lPRISM = True
   
   ## datasets
   if expset == 'mix': 
     explist = ['max','max-2050','gulf','seaice-2050']
   elif expset == 'obs': 
-    explist = ['max','cfsr','new','ctrl']  
+    explist = ['new','max','cfsr','ctrl']  
   elif expset == 'ens': 
     explist = ['max','max-A','max-B','max-C']
   elif expset == 'ens-2050': 
@@ -59,7 +62,7 @@ if __name__ == '__main__':
   lCRU = True; lGPCC = True; lCFSR = False; lNARR = False
   
   ## variable settings
-  flxlabel = r'Water Flux [$10^6$ kg/s]'; flxlim = (-2,6)
+  flxlabel = r'Water Flux [$10^6$ kg/s]'; flxlim = (-2,4) if lPRISM else (-2,6)
   if plottype == 'flux':
     varlist = ['waterflx','snwmlt','p-et','precip']; filetypes = ['srfc','hydro']; 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
@@ -80,26 +83,42 @@ if __name__ == '__main__':
   
   ## load data  
   exps, titles = loadDatasets(explist, n=None, varlist=varlist, titles=None, periods=period, domains=domain, 
-               grids='arb2_d02', resolutions='025', filetypes=filetypes, lWRFnative=True, ltuple=False)
+               grids='arb2_d02', resolutions='025', filetypes=filetypes, lWRFnative=False, ltuple=False)
   ref = exps[0]; nlen = len(exps)
   # observations
   if lCRU: cru = loadCRU(period=10, grid='arb2_d02', varlist=varlist, varatts=varatts)
   if lGPCC: gpcc = loadGPCC(period=None, grid='arb2_d02', varlist=varlist, varatts=varatts)
+  if lPRISM: prism = loadPRISM(period=None, grid='arb2_d02', varlist=varlist+['datamask'], varatts=varatts)
   if lCFSR: cfsr = loadCFSR(period=10, grid='arb2_d02', varlist=varlist, varatts=varatts)
   if lNARR: narr = loadNARR(period=10, grid='arb2_d02', varlist=varlist, varatts=varatts)  
 #   if lCFSR: cfsr = loadCFSR(period=10, grid=None, varlist=varlist, varatts=varatts)
 #   if lNARR: narr = loadNARR(period=10, grid=None, varlist=varlist, varatts=varatts)  
   print ref
   
+  ## create averaging mask
+  shp_mask = rasterizeShape(name='Athabasca_River_Basin', griddef=ref.griddef, folder=ref.gridfolder)
+  if lPRISM: shp_mask = (shp_mask + prism.datamask.getArray(unmask=True,fillValue=1)).astype(np.bool)
+  # display
+#   pyl.imshow(np.flipud(shp_mask[:,:])); pyl.colorbar(); pyl.show(block=True)
+ 
   ## apply basin mask
   for exp in exps:
-    exp.load(); exp.maskShape(name='Athabasca_River_Basin')
+    exp.load(); 
+    exp.mask(mask=shp_mask, invert=False)
+#     exp.maskShape(name='Athabasca_River_Basin')
   print 
   
   if lCRU and len(cru.variables) > 0: 
-    cru.load(); cru.maskShape(name='Athabasca_River_Basin')
+    cru.load(); cru.mask(mask=shp_mask, invert=False)
   if lGPCC and len(gpcc.variables) > 0: 
-    gpcc.load(); gpcc.maskShape(name='Athabasca_River_Basin')
+    gpcc.load(); gpcc.mask(mask=shp_mask, invert=False)
+  if lPRISM and len(prism.variables) > 0: 
+    prism.load(); prism.mask(mask=shp_mask, invert=False)
+  if lNARR and len(narr.variables) > 0: 
+    narr.load(); narr.mask(mask=shp_mask, invert=False)
+  if lCFSR and len(cfsr.variables) > 0: 
+    cfsr.load(); cfsr.mask(mask=shp_mask, invert=False)
+  
   print 
   
   
@@ -108,7 +127,7 @@ if __name__ == '__main__':
 #   pyl.imshow(np.flipud(dataset.precip.getMapMask()))
 #   pyl.colorbar(); 
   # scale factor
-  if lsum: S = ( 1 - ref.Athabasca_River_Basin.getArray() ).sum() * (ref.atts.DY*ref.atts.DY) / 1.e6
+  if lsum: S = ( 1 - shp_mask ).sum() * (ref.atts.DY*ref.atts.DY) / 1.e6
   else: S = 1.
 
   ## setting up figure
@@ -167,6 +186,14 @@ if __name__ == '__main__':
           obsleg.append(label)
           print
           print cru.name, vardata.name, S*vardata.getArray().mean()
+        if lPRISM and prism.hasVariable(var, strict=False):
+          # compute spatial average for CRU
+          vardata = prism.variables[var].mean(x=None,y=None)
+          label = '%s (%s)'%(var,prism.name)
+          obsplt.append(ax.plot(time, S*vardata.getArray(), '-x', linewidth=1.5, markersize=6, color=color, label=label)[0])
+          obsleg.append(label)
+          print
+          print cru.name, vardata.name, S*vardata.getArray().mean()        
         if lGPCC and gpcc.hasVariable(var, strict=False):
           # compute spatial average for GPCC
           label = '%s (%s)'%(var,gpcc.name)
@@ -193,12 +220,12 @@ if __name__ == '__main__':
           print
           print gpcc.name, vardata.name, S*vardata.getArray().mean()
         # axes
-        labelpad = lambda lim: 3 # -8 if lim[0] < 0 else 3       
+        labelpad = 3 # lambda lim: -8 if lim[0] < 0 else 3       
         ax.set_xlim(xlim[0],xlim[1])
-        if left: ax.set_ylabel(ylabel, labelpad=labelpad(ylim))
+        if left: ax.set_ylabel(ylabel, labelpad=labelpad)
         else: ax.set_yticklabels([])          
         ax.set_ylim(ylim[0],ylim[1])
-        if bottom: ax.set_xlabel(xlabel, labelpad=labelpad(xlim))
+        if bottom: ax.set_xlabel(xlabel, labelpad=labelpad)
         else: ax.set_xticklabels([])
         # legend
         if not ljoined:
@@ -218,7 +245,7 @@ if __name__ == '__main__':
     ax = f.add_axes([0, 0, 1,0.1])
     ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
     margins['bottom'] = margins['bottom'] + 0.1; f.subplots_adjust(**margins)
-    legargs = dict(labelspacing=0.15, handlelength=1.5, handletextpad=0.5, fancybox=True)
+    legargs = dict(frameon=True, labelspacing=0.15, handlelength=1.5, handletextpad=0.5, fancybox=True)
     legend = ax.legend(wrfplt+obsplt, wrfleg+obsleg, loc=10, ncol=4, borderaxespad=0., **legargs)  
     
   # average discharge below Fort McMurray: 620 m^3/s

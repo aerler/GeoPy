@@ -388,7 +388,8 @@ class Variable(object):
     if copy: datacopy = self.__getitem__(idx).copy() # use __getitem__ to get slice
     else: datacopy = self.__getitem__(idx) # just get a view
     # unmask    
-    if unmask and self.masked:
+    if unmask and isinstance(datacopy, ma.MaskedArray): 
+      # N.B.: if no data is loaded, self.mask is usually false...
       if fillValue is None: fillValue=self.fillValue
       datacopy = datacopy.filled(fill_value=fillValue) # I don't know if this generates a copy or not...
     elif not self.masked and isinstance(datacopy, ma.MaskedArray): 
@@ -1043,7 +1044,7 @@ class Dataset(object):
         # need to have data and also the right number of dimensions 
         lOK = False
         if isinstance(mask,np.ndarray):
-          if all(mask.shape == var.shape[var.ndim-mask.ndim:]): lOK = True
+          if mask.shape == var.shape[var.ndim-mask.ndim:]: lOK = True
         elif isinstance(mask,Variable):
           if mask is var or mask.name == var.name: lOK = maskSelf # default: False
           elif all([var.hasAxis(ax) for ax in mask.axes]): lOK = True

@@ -344,7 +344,7 @@ def getGeotransform(xlon=None, ylat=None, geotransform=None):
 
 # # functions to add GDAL functionality to existing Variable and Dataset instances
 
-def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, folder=None):
+def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfolder=None):
   ''' 
     A function that adds GDAL-based geographic projection features to an existing Variable instance.
     
@@ -358,7 +358,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, folder=N
       xlon = None # West-East axis
       ylat = None # South-North axis  
       griddef = None # grid definition object  
-      folder = None # default search folder for shapefiles/masks and for GridDef, if passed by name
+      gridfolder = None # default search folder for shapefiles/masks and for GridDef, if passed by name
   '''
   # check some special conditions
   if not isinstance(var, Variable): 
@@ -371,7 +371,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, folder=N
     else:
       # use GridDefinition object 
       if isinstance(griddef,basestring): # load from pickle file
-        griddef = loadPickledGridDef(grid=griddef, res=None, filename=None, folder=folder)
+        griddef = loadPickledGridDef(grid=griddef, res=None, filename=None, folder=gridfolder)
       elif not isinstance(griddef,GridDefinition): pass 
       else: raise TypeError
       projection, isProjected, xlon, ylat = griddef.getProjection
@@ -397,7 +397,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, folder=N
     var.__dict__['xlon'] = xlon
     var.__dict__['ylat'] = ylat
     var.__dict__['griddef'] = griddef
-    var.__dict__['folder'] = folder
+    var.__dict__['gridfolder'] = gridfolder
     
     # get grid definition object
     var.getGridDef = types.MethodType(getGridDef, var)
@@ -537,7 +537,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, folder=N
   # # the return value is actually not necessary, since the object is modified immediately
   return var
 
-def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, folder=None, geolocator=False):
+def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, gridfolder=None, geolocator=False):
   ''' 
     A function that adds GDAL-based geographic projection features to an existing Dataset instance
     and all its Variables.
@@ -550,7 +550,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       xlon = None # West-East axis
       ylat = None # South-North axis
       griddef = None # grid definition object  
-      folder = None # default search folder for shapefiles/masks and for GridDef, if passed by name
+      gridfolder = None # default search folder for shapefiles/masks and for GridDef, if passed by name
   '''
   # check some special conditions
   assert isinstance(dataset, Dataset), 'This function can only be used to add GDAL functionality to a \'Dataset\' instance!'
@@ -562,7 +562,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
     else:
       # use GridDefinition object 
       if isinstance(griddef,basestring): # load from pickle file
-        griddef = loadPickledGridDef(grid=griddef, res=None, filename=None, folder=folder)
+        griddef = loadPickledGridDef(grid=griddef, res=None, filename=None, folder=gridfolder)
       elif isinstance(griddef,GridDefinition): pass 
       else: raise TypeError
       lgdal, projection, isProjected, xlon, ylat = getProjection(dataset, projection=griddef.projection)
@@ -589,7 +589,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
     dataset.__dict__['ylat'] = ylat
     dataset.__dict__['mapSize'] = (len(xlon),len(ylat))
     dataset.__dict__['griddef'] = griddef
-    dataset.__dict__['folder'] = folder
+    dataset.__dict__['gridfolder'] = gridfolder
     
     # add GDAL functionality to all variables!
     for var in dataset.variables.values():
@@ -641,7 +641,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       if name is not None and not isinstance(name,basestring): raise TypeError
       if filename is not None and not isinstance(filename,basestring): raise TypeError
       # get mask from shapefile
-      shpfolder = self.folder if filename is None else None
+      shpfolder = self.gridfolder if filename is None else None
       mask = rasterizeShape(name=name, griddef=self.griddef, folder=shpfolder, filename=filename, invert=invert, asVar=True)
       # apply mask to dataset 
       self.mask(mask=mask, invert=False) # kwargs: merge=True, varlist=None, skiplist=None

@@ -186,7 +186,7 @@ def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None
   elif isinstance(grid,basestring): # load from pickle file
 #     griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder)
     # add GDAL functionality to dataset 
-    dataset = addGDALtoDataset(dataset, griddef=grid, folder=grid_folder)
+    dataset = addGDALtoDataset(dataset, griddef=grid, gridfolder=grid_folder)
   else: raise TypeError
   # N.B.: projection should be auto-detected, if geographic (lat/lon)
   return dataset
