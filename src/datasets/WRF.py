@@ -340,7 +340,7 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=No
     if dataset.hasAxis('p'): 
       dataset.axes['p'].updateCoord(dataset.dataset.variables['P_PL'][0,:])
     # add projection
-    dataset = addGDALtoDataset(dataset, griddef=griddef, folder=grid_folder)
+    dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder)
     # safety checks
     assert dataset.axes['x'] == griddef.xlon
     assert dataset.axes['y'] == griddef.ylat   

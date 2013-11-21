@@ -36,11 +36,11 @@ if __name__ == '__main__':
   
   ## settings
   expset = 'obs'
-  plottype = 'precip'
+  plottype = 'runoff'
   tag = ''
   domain = 2
   period = 10
-  lPRISM = True
+  lPRISM = False
   
   ## datasets
   if expset == 'mix': 
