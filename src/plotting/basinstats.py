@@ -68,7 +68,7 @@ if __name__ == '__main__':
   ## settings
   expset = 'obs'
   plottypes = ['temp','precip','flux','runoff']
-#   plottypes = ['temp']
+  plottypes = ['temp']
   tag = 'prism'
   lPRISM = True
   domain = 2
@@ -241,10 +241,10 @@ if __name__ == '__main__':
           labelpad = 3 # lambda lim: -8 if lim[0] < 0 else 3       
           ax.set_xlim(xlim[0],xlim[1])
           if left: ax.set_ylabel(ylabel, labelpad=labelpad)
-          else: ax.set_yticklabels([])          
+          # else: ax.set_yticklabels([])          
           ax.set_ylim(ylim[0],ylim[1])
           if bottom: ax.set_xlabel(xlabel, labelpad=labelpad)
-          else: ax.set_xticklabels([])
+          # else: ax.set_xticklabels([])
           #ax.minorticks_on()
           ax.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator(2))
           # legend
