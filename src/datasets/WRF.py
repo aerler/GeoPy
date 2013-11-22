@@ -178,8 +178,8 @@ class Srfc(FileType):
                      SNOWH  = dict(name='snowh', units='m'), # snow depth
                      PSFC   = dict(name='ps', units='Pa'), # surface pressure
                      NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
-                     LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
-                     SolidPrecip  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
+                     LiquidPrecip = dict(name='liqprec_sr', units='kg/m^2/s'), # liquid precipitation rate
+                     SolidPrecip  = dict(name='solprec_sr', units='kg/m^2/s'), # solid precipitation rate
                      WaterVapor  = dict(name='Q2', units='Pa')) # water vapor partial pressure                     
     self.vars = self.atts.keys()    
     self.climfile = 'wrfsrfc_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
@@ -403,7 +403,8 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   # grid
   datasets = []
   for name,domain,griddef in zip(names,domains,griddefs):
-    if grid is None or grid.split('_')[0] == experiment.grid: gridstr = ''
+    # if grid is None or grid.split('_')[0] == experiment.grid: gridstr = ''
+    if grid is None or grid == '{0:s}_d{1:02d}'.format(experiment.grid,domain): gridstr = ''
     else: gridstr = '_%s'%grid.lower() # only use lower case for filenames     
     # domain-sensitive parameters
     axes = dict(west_east=griddef.xlon, south_north=griddef.ylat, x=griddef.xlon, y=griddef.ylat) # map axes

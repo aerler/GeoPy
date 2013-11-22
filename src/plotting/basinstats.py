@@ -68,13 +68,13 @@ if __name__ == '__main__':
   ## settings
   expset = 'obs'
   plottypes = ['temp','precip','flux','runoff']
-  plottypes = ['temp']
-  tag = 'prism'
+  plottypes = ['precip']
   lPRISM = True
   domain = 2
   period = 10
   
   ## datasets
+  tag = 'prism' if lPRISM else ''
   if expset == 'mix': 
     explist = ['max','max-2050','gulf','seaice-2050']
   elif expset == 'obs': 
@@ -88,7 +88,8 @@ if __name__ == '__main__':
   # some more settings
   if len(explist) > 1: ljoined = True
   if domain != 2: expset += '_d{0:02d}'.format(domain)
-  grid='arb2_d{0:02d}'.format(domain)
+  #grid='arb2_d{0:02d}'.format(domain)
+  grid='arb2_d02'
   varatts = None # dict(Runoff=dict(name='runoff'))
   xlabel = r'Seasonal Cycle [Month]'; xlim = (1,12)
   lCRU = True; lGPCC = True
@@ -137,7 +138,8 @@ if __name__ == '__main__':
   if lCFSR and len(cfsr.variables) > 0: 
     cfsr.load(); cfsr.mask(mask=shp_mask, invert=False)
   # surface area scale factor
-  asf = ( 1 - shp_mask ).sum() * (ref.atts.DY*ref.atts.DY) / 1.e6
+#   asf = ( 1 - shp_mask ).sum() * (ref.atts.DY*ref.atts.DY) / 1.e6
+  asf = ( 1 - shp_mask ).sum() * 100
     
   
   # display
@@ -196,7 +198,16 @@ if __name__ == '__main__':
           wrfleg.append(var)
           print
           print exp.name, vardata.name, S*vardata.getArray().mean()
-          if lCRU and cru.hasVariable(var, strict=False):
+          if lPRISM and prism.hasVariable(var, strict=False):
+            # compute spatial average for CRU
+            vardata = prism.variables[var].mean(x=None,y=None)
+            label = '%s (%s)'%(var,prism.name)
+            obsplt.append(ax.plot(time, S*vardata.getArray(), 'o', markersize=4, color=color, label=label)[0]) # , linewidth=1.5
+            obsleg.append(label)
+            print
+            print cru.name, vardata.name, S*vardata.getArray().mean()
+          # either PRISM or CRU!        
+          elif lCRU and cru.hasVariable(var, strict=False):
             # compute spatial average for CRU
             vardata = cru.variables[var].mean(x=None,y=None)
             label = '%s (%s)'%(var,cru.name)
@@ -204,14 +215,6 @@ if __name__ == '__main__':
             obsleg.append(label)
             print
             print cru.name, vardata.name, S*vardata.getArray().mean()
-          if lPRISM and prism.hasVariable(var, strict=False):
-            # compute spatial average for CRU
-            vardata = prism.variables[var].mean(x=None,y=None)
-            label = '%s (%s)'%(var,prism.name)
-            obsplt.append(ax.plot(time, S*vardata.getArray(), '-x', linewidth=1.5, markersize=6, color=color, label=label)[0])
-            obsleg.append(label)
-            print
-            print cru.name, vardata.name, S*vardata.getArray().mean()        
           if lGPCC and gpcc.hasVariable(var, strict=False):
             # compute spatial average for GPCC
             label = '%s (%s)'%(var,gpcc.name)

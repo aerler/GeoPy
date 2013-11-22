@@ -186,10 +186,10 @@ if __name__ == '__main__':
 #     resolutions = {'GPCC':['25']}
     resolutions = None
     # WRF
-    experiments = ['new','gulf']
-    #experiments = ['max-ctrl'] # WRF experiment names (passed through WRFname)
+    experiments = ['new','gulf','max','cfsr']
+    experiments = ['ctrl'] # WRF experiment names (passed through WRFname)
 #     experiments = ['coast-brian']
-    domains = [2] # domains to be processed
+    domains = [1] # domains to be processed
 #     filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
     # grid to project onto
