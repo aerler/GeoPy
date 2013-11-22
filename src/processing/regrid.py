@@ -178,7 +178,7 @@ if __name__ == '__main__':
     NP = NP or 4
     loverwrite = False
     varlist = None # ['',] # None
-    periods = [(1979,1989)]
+    periods = [(1979,1984),(1979,1989)]
 #     periods = [(1997,1998)]
 #     periods = [(1979,2009)]
 #     datasets = ['PRISM']
@@ -186,12 +186,12 @@ if __name__ == '__main__':
 #     resolutions = {'GPCC':['25']}
     resolutions = None
     # WRF
-    experiments = ['new']
+    experiments = ['new','gulf']
     #experiments = ['max-ctrl'] # WRF experiment names (passed through WRFname)
 #     experiments = ['coast-brian']
     domains = [2] # domains to be processed
-    filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
-    #filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+#     filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
+    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
     # grid to project onto
     lpickle = True
 #     grids = dict(ARB_small=['025','05']) # dict with list of resolutions

@@ -373,7 +373,8 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   else: periodstr = '_{0:4d}-{1:4d}'.format(*period)  
   # generate filelist and attributes based on filetypes and domain
   if filetypes is None: filetypes = fileclasses.keys()
-  elif isinstance(filetypes,list):  
+  elif isinstance(filetypes,(list,tuple,set)):
+    filetypes = list(filetypes)  
     if 'axes' not in filetypes: filetypes.append('axes')
     if 'const' not in filetypes and grid is None: filetypes.append('const')
   else: raise TypeError  

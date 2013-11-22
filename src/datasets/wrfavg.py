@@ -173,23 +173,23 @@ if __name__ == '__main__':
   
   # default settings
   if ldebug:
-    ldebug = True
-    NP = NP or 2
+    ldebug = False
+    NP = NP or 4
     loverwrite = True
     varlist = None # ['precip', ]
-    experiments = ['new']
-    periods = [10]
-    domains = [1,2] # domains to be processed
+    experiments = ['max-A-2050','max-B-2050','max-C-2050']
+    periods = [8]
+    domains = [2] # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
-    filetypes = ['xtrm']
+    filetypes = ['srfc']
     grid = 'WRF' 
   else:
     NP = NP or 4
     #loverwrite = True
     varlist = None
     experiments = None # WRF experiment names (passed through WRFname)
-    periods = [5,8,10,15] # averaging period
+    periods = [5,10,15] # averaging period
     domains = [1,2] # domains to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
     grid = 'WRF' 
