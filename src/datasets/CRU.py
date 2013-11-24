@@ -10,6 +10,7 @@ This module contains meta data and access functions for the monthly CRU time-ser
 import os
 import types # to add precip conversion fct. to datasets
 # internal imports
+from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, GridDefinition
 from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim, grid_folder
@@ -77,7 +78,7 @@ def loadCRU_TS(name=dataset_name, varlist=varlist, varatts=varatts, filelist=Non
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           multifile=False, ncformat='NETCDF4_CLASSIC')
   # add projection  
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, folder=grid_folder)
+  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
   # N.B.: projection should be auto-detected as geographic
   # add method to convert precip from per month to per second
   dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    
@@ -121,6 +122,7 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
   mode = 'average_timeseries'
   period = (1979,1989)
+  period = (1979,1980)
 #   period = (1997,1998)
 
   if mode == 'test_climatology':
@@ -169,15 +171,15 @@ if __name__ == '__main__':
     print '   ===   landmask   ===   '
     tmpatts = dict(name='landmask', units='', long_name='Landmask for Climatology Fields', 
               description='where this mask is non-zero, no data is available')
-    sink += VarNC(sink.dataset, name='landmask', units='', axes=(sink.lat,sink.lon), 
-                  data=sink.precip.getMask()[0,:,:], atts=tmpatts)
+    sink.addVariable(Variable(name='landmask', units='', axes=(sink.lat,sink.lon), 
+                  data=sink.precip.getMask()[0,:,:], atts=tmpatts), asNC=True)
     sink.mask(sink.landmask)            
     # add names and length of months
     sink.axisAnnotation('name_of_month', name_of_month, 'time', 
                         atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
     #print '   ===   month   ===   '
-    sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
-                  atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
+    sink.addVariable(Variable(name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
+                  atts=dict(name='length_of_month',units='days',long_name='Length of Month')), asNC=True)
     
     # close...
     sink.sync()

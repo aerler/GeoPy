@@ -176,22 +176,25 @@ if __name__ == '__main__':
   if ldebug:
     ldebug = False
     NP = NP or 4
-    loverwrite = False
+    loverwrite = True
     varlist = None # ['',] # None
     periods = [(1979,1984),(1979,1989)]
 #     periods = [(1997,1998)]
+    periods = [(1979,1980)]
 #     periods = [(1979,2009)]
-#     datasets = ['PRISM']
     datasets = []
+    datasets = ['CRU','GPCC']
 #     resolutions = {'GPCC':['25']}
     resolutions = None
     # WRF
-    experiments = ['new','gulf','max','cfsr']
-    experiments = ['ctrl'] # WRF experiment names (passed through WRFname)
-#     experiments = ['coast-brian']
-    domains = [1] # domains to be processed
+#     experiments = ['columbia']
+#     experiments = ['new','gulf','max','cfsr']
+#     experiments = ['ctrl'] # WRF experiment names (passed through WRFname)
+    experiments = []
+    domains = [1,2,3,] # domains to be processed
 #     filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+#     filetypes = ['srfc']
     # grid to project onto
     lpickle = True
 #     grids = dict(ARB_small=['025','05']) # dict with list of resolutions

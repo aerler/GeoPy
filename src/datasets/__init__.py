@@ -15,5 +15,6 @@ from datasets.CFSR import loadCFSR_TS, loadCFSR
 from datasets.GPCC import loadGPCC_LTM, loadGPCC_TS, loadGPCC
 from datasets.CRU import loadCRU_TS, loadCRU
 from datasets.PRISM import loadPRISM
+from datasets.Unity import loadUnity
 
 from datasets.common import loadDatasets

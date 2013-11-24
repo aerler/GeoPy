@@ -116,6 +116,8 @@ class CentralProcessingUnit(object):
       if not isinstance(self.output,DatasetNetCDF):
         raise ProcessError, "Flush can only be used with NetCDF Datasets (and not with temporary storage)."
       if self.tmp: # flush requires output to be target
+        if self.source.gdal and not self.tmpput.gdal:
+          self.tmpput = addGDALtoDataset(self.tmpput, projection=self.source.projection, geotransform=self.source.geotransform)
         self.source = self.tmpput
         self.target = self.output
         self.tmp = False # not using temporary storage anymore
@@ -274,6 +276,9 @@ class CentralProcessingUnit(object):
       timeSlice = slice(start,end,None)
     else: 
       if not isinstance(timeSlice,slice): raise TypeError
+    # add GDAL to target
+    if self.source.gdal: 
+      self.target = addGDALtoDataset(self.target, projection=self.source.projection, geotransform=self.source.geotransform)
     # prepare function call
     function = functools.partial(self.processClimatology, # already set parameters
                                  timeAxis=timeAxis, climAxis=climAxis, timeSlice=timeSlice, shift=shift)
@@ -310,7 +315,26 @@ class CentralProcessingUnit(object):
           avgdata += dataarray.take(t+climelts, axis=tidx)
         # normalize
         avgdata /= (timelength/interval) 
-      else: raise NotImplementedError, "The length of the time series has to be divisible by {0:d}.".format(interval)
+      else: 
+        # simple indexing
+        climcnt = np.zeros(interval)
+        for t in xrange(timelength):
+          if self.feedback: print('.'), # t/interval+1
+          idx = int(t/interval)
+          climcnt[idx] += 1
+          if dataarray.ndim == 1:
+            avgdata[idx] = avgdata[idx] + dataarray[t]
+          else: 
+            avgdata[idx,:] = avgdata[idx,:] + dataarray[t,:]
+        # normalize
+        for i in xrange(interval):
+          if avgdata.ndim == 1:
+            if climcnt[i] > 0: avgdata[i] /= climcnt[i]
+            else: avgdata[i] = np.NaN
+          else:
+            if climcnt[i] > 0: avgdata[i,:] /= climcnt[i]
+            else: avgdata[i,:] = np.NaN
+        #raise NotImplementedError, "The length of the time series has to be divisible by {0:d}.".format(interval)
       # shift data (if first month was not January)
       if shift != 0: avgdata = np.roll(avgdata, shift, axis=tidx)
       # create new Variable

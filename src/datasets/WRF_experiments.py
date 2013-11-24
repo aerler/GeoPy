@@ -58,7 +58,8 @@ class Exp(object):
 # N.B.: This is the reference list, with unambiguous, unique keys and no aliases/duplicate entries  
 experiments = dict() # dictionary of experiments
 # list of experiments
-experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindate='1997-09-01', enddate='1998-09-01', grid='cm1')
+experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindate='1979-09-01', enddate='1979-09-01', grid='coast1')
+experiments['columbia'] = Exp(shortname='columbia', name='columbia', begindate='1979-09-01', grid='columbia1')
 # these are all based on the "new" configuration (ARB3 domain)
 experiments['new-ctrl'] = Exp(shortname='new', name='new-ctrl', title='Thompson, Tiedtke, Noah-MP', begindate='1979-01-01', grid='arb3')
 experiments['new-nogulf'] = Exp(shortname='nogulf', name='new-nogulf', title='New-1 (no Gulf)', begindate='1979-01-01', grid='arb2') # ARB2 domain
@@ -93,7 +94,7 @@ experiments['2way-arb1'] = Exp(shortname='2way', name='2way-arb1', title='2-way 
 experiments['pbl1-arb1'] = Exp(shortname='pbl4', name='pbl1-arb1', title='PBL-1 (CAM)', begindate='1979-01-01', grid='arb1')
 experiments['grell3-arb1'] = Exp(shortname='grell', name='grell3-arb1', title='Grell-3 (CAM)', begindate='1979-01-01', grid='arb1')
 experiments['noahmp-arb1'] = Exp(shortname='nmpdef', name='noahmp-arb1', title='Noah-MP (CAM)', begindate='1979-01-01', grid='arb1')
-experiments['rrtmg-arb1'] = Exp(shortname='rrtmg', name='rrtmpg-arb1', title='RRTMG (Very Old)', begindate='1979-01-01', grid='arb1')
+experiments['rrtmg-arb1'] = Exp(shortname='rrtmg', name='rrtmg-arb1', title='RRTMG (Very Old)', begindate='1979-01-01', grid='arb1')
 experiments['hitop-arb1'] = Exp(shortname='hitop', name='hitop-arb1', begindate='1979-01-01', grid='arb1')
 experiments['polar-arb1'] = Exp(shortname='pwrf', name='polar-arb1', title='PolarWRF (CAM)', begindate='1979-01-01', grid='arb1')
 experiments['modis-arb1'] = Exp(shortname='modis', name='modis-arb1', title='Modis (CAM)', begindate='1979-01-01', grid='arb1')

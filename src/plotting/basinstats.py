@@ -8,24 +8,18 @@ A simple script to plot basin-averaged monthly climatologies.
 
 # external imports
 import numpy as np
-import numpy.ma as ma
 import matplotlib.pylab as pyl
 import matplotlib as mpl
 mpl.rc('lines', linewidth=1.)
 mpl.rc('font', size=10)
 # internal imports
 # PyGeoDat stuff
-from datasets.GPCC import loadGPCC
-from datasets.CRU import loadCRU
-from datasets.PRISM import loadPRISM
-from datasets.CFSR import loadCFSR
-from datasets.NARR import loadNARR
-from datasets.WRF_experiments import exps as WRF_exps
+from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadNARR, loadUnity
 from geodata.gdal import rasterizeShape
 from datasets.common import loadDatasets # for annotation
-from plotting.settings import getFigureSettings, getVariableSettings
+from plotting.settings import getFigureSettings
 # ARB project related stuff
-from plotting.ARB_settings import getARBsetup, arb_figure_folder, arb_map_folder
+from plotting.ARB_settings import arb_figure_folder
 
 # settings
 folder = arb_figure_folder + '/Athabasca River Basin/'
@@ -66,10 +60,11 @@ def getVarSettings(plottype, lPRISM=False, mode='all'):
 if __name__ == '__main__':
   
   ## settings
-  expset = 'obs'
+  expset = 'ens-2050'
   plottypes = ['temp','precip','flux','runoff']
-  plottypes = ['precip']
-  lPRISM = True
+#   plottypes = ['temp']
+  lPRISM = False
+  lUnity = True
   domain = 2
   period = 10
   
@@ -78,11 +73,11 @@ if __name__ == '__main__':
   if expset == 'mix': 
     explist = ['max','max-2050','gulf','seaice-2050']
   elif expset == 'obs': 
-    explist = ['max','cfsr','new','ctrl']  
+    explist = ['max','ctrl','new','noah']  
   elif expset == 'ens': 
     explist = ['max','max-A','max-B','max-C']
   elif expset == 'ens-2050': 
-    period = 8
+    period = 9
     explist = ['max-2050','max-A-2050','max-B-2050','max-C-2050']
 
   # some more settings
@@ -92,7 +87,7 @@ if __name__ == '__main__':
   grid='arb2_d02'
   varatts = None # dict(Runoff=dict(name='runoff'))
   xlabel = r'Seasonal Cycle [Month]'; xlim = (1,12)
-  lCRU = True; lGPCC = True
+  lCRU = False; lGPCC = False
     
   ## variable settings
   loadlist = set(['datamask']); allfiletypes = set()
@@ -109,11 +104,12 @@ if __name__ == '__main__':
                               grids=grid, resolutions='025', filetypes=allfiletypes, lWRFnative=False, ltuple=False)
   ref = exps[0]; nlen = len(exps)
   # observations  
-  if lCRU: cru = loadCRU(period=10, grid=grid, varlist=loadlist, varatts=varatts)
+  if lCRU: cru = loadCRU(period=period, grid=grid, varlist=loadlist, varatts=varatts)
   if lGPCC: gpcc = loadGPCC(period=None, grid=grid, varlist=loadlist, varatts=varatts)
   if lPRISM: prism = loadPRISM(period=None, grid=grid, varlist=loadlist, varatts=varatts)
-  if lCFSR: cfsr = loadCFSR(period=10, grid=grid, varlist=loadlist, varatts=varatts)
-  if lNARR: narr = loadNARR(period=10, grid=grid, varlist=loadlist, varatts=varatts)  
+  if lUnity: unity = loadUnity(period=period, grid=grid, varlist=loadlist, varatts=varatts)
+  if lCFSR: cfsr = loadCFSR(period=period, grid=grid, varlist=loadlist, varatts=varatts)
+  if lNARR: narr = loadNARR(period=period, grid=grid, varlist=loadlist, varatts=varatts)  
   print ref
   
   ## create averaging mask
@@ -133,6 +129,8 @@ if __name__ == '__main__':
     gpcc.load(); gpcc.mask(mask=shp_mask, invert=False)
   if lPRISM and len(prism.variables) > 0: 
     prism.load(); prism.mask(mask=shp_mask, invert=False)
+  if lUnity and len(unity.variables) > 0: 
+    unity.load(); unity.mask(mask=shp_mask, invert=False)  
   if lNARR and len(narr.variables) > 0: 
     narr.load(); narr.mask(mask=shp_mask, invert=False)
   if lCFSR and len(cfsr.variables) > 0: 
@@ -198,6 +196,7 @@ if __name__ == '__main__':
           wrfleg.append(var)
           print
           print exp.name, vardata.name, S*vardata.getArray().mean()
+          # either PRISM ...
           if lPRISM and prism.hasVariable(var, strict=False):
             # compute spatial average for CRU
             vardata = prism.variables[var].mean(x=None,y=None)
@@ -206,15 +205,25 @@ if __name__ == '__main__':
             obsleg.append(label)
             print
             print cru.name, vardata.name, S*vardata.getArray().mean()
-          # either PRISM or CRU!        
-          elif lCRU and cru.hasVariable(var, strict=False):
+          # .. or Unity        
+          elif lUnity and unity.hasVariable(var, strict=False):
+            # compute spatial average for CRU
+            vardata = unity.variables[var].mean(x=None,y=None)
+            label = '%s (%s)'%(var,'obs')
+            obsplt.append(ax.plot(time, S*vardata.getArray(), 'o', markersize=5, color=color, label=label)[0])
+            obsleg.append(label)
+            print
+            print unity.name, vardata.name, S*vardata.getArray().mean()
+          # ... or CRU, perhaps...        
+          if lCRU and cru.hasVariable(var, strict=False):
             # compute spatial average for CRU
             vardata = cru.variables[var].mean(x=None,y=None)
             label = '%s (%s)'%(var,cru.name)
-            obsplt.append(ax.plot(time, S*vardata.getArray(), 'o', markersize=4, color=color, label=label)[0])
+            obsplt.append(ax.plot(time, S*vardata.getArray(), 'x', markersize=6, color=color, label=label)[0])
             obsleg.append(label)
             print
             print cru.name, vardata.name, S*vardata.getArray().mean()
+          # the rest can be added at will...
           if lGPCC and gpcc.hasVariable(var, strict=False):
             # compute spatial average for GPCC
             label = '%s (%s)'%(var,gpcc.name)
@@ -231,7 +240,7 @@ if __name__ == '__main__':
             obsplt.append(ax.plot(time, S*vardata.getArray(), '--', color='blue', label=label)[0])
             obsleg.append(label)
             print
-            print cru.name, vardata.name, S*vardata.getArray().mean()
+            print cfsr.name, vardata.name, S*vardata.getArray().mean()
           if lNARR and narr.hasVariable(var, strict=False):
             # compute spatial average for GPCC
             label = '%s (%s)'%(var,narr.name)
@@ -239,7 +248,7 @@ if __name__ == '__main__':
             obsplt.append(ax.plot(time, S*vardata.getArray(), '--', color='red', label=label)[0])
             obsleg.append(label)
             print
-            print gpcc.name, vardata.name, S*vardata.getArray().mean()
+            print narr.name, vardata.name, S*vardata.getArray().mean()
           # axes
           labelpad = 3 # lambda lim: -8 if lim[0] < 0 else 3       
           ax.set_xlim(xlim[0],xlim[1])
@@ -269,7 +278,10 @@ if __name__ == '__main__':
       ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
       margins['bottom'] = margins['bottom'] + 0.1; fig.subplots_adjust(**margins)
       legargs = dict(frameon=True, labelspacing=0.15, handlelength=1.5, handletextpad=0.5, fancybox=True)
-      legend = ax.legend(wrfplt+obsplt, wrfleg+obsleg, loc=10, ncol=4, borderaxespad=0., **legargs)  
+      plt = wrfplt + obsplt; leg = wrfleg + obsleg
+      #ncols = 4 if len(plt) == 4 or len(plt) > 5 else 3
+      ncol = 4
+      legend = ax.legend(plt, leg, loc=10, ncol=ncol, borderaxespad=0., **legargs)  
       
     # average discharge below Fort McMurray: 620 m^3/s
       

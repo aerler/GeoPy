@@ -10,11 +10,11 @@ This module contains meta data and access functions for the GPCC climatology and
 import netCDF4 as nc # netcdf python module
 import os # check if files are present
 import types # to add precip conversion fct. to datasets
-from importlib import import_module
+#from importlib import import_module
 # internal imports
 from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import addGDALtoDataset, GridDefinition
+from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, addGeoLocator
 from geodata.misc import DatasetError
 from geodata.nctools import writeNetCDF, add_strvar
 from datasets.common import days_per_month, name_of_month, data_root, grid_folder 
@@ -72,11 +72,12 @@ def convertPrecip(precip):
 
 # climatology
 ltmfolder = root_folder + 'climatology/' # climatology subfolder
-def loadGPCC_LTM(name=dataset_name, varlist=varlist, resolution='025', varatts=ltmvaratts, filelist=None, folder=ltmfolder):
+def loadGPCC_LTM(name=dataset_name, varlist=None, resolution='025', varatts=ltmvaratts, filelist=None, folder=ltmfolder):
   ''' Get a properly formatted dataset the monthly accumulated GPCC precipitation climatology. '''
   # prepare input
   if resolution not in ('025','05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
   # translate varlist
+  if varlist is None: varlist = varatts.keys()
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   # load variables separately
   if 'p' in varlist:
@@ -96,11 +97,12 @@ def loadGPCC_LTM(name=dataset_name, varlist=varlist, resolution='025', varatts=l
 
 # time-series
 tsfolder = root_folder + 'full_data_1900-2010/' # climatology subfolder
-def loadGPCC_TS(name=dataset_name, varlist=varlist, resolution='25', varatts=tsvaratts, filelist=None, folder=tsfolder):
+def loadGPCC_TS(name=dataset_name, varlist=None, resolution='25', varatts=tsvaratts, filelist=None, folder=tsfolder):
   ''' Get a properly formatted dataset with the monthly GPCC time-series. '''
   # prepare input  
   if resolution not in ('05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
   # translate varlist
+  if varlist is None: varlist = varatts.keys()
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   if filelist is None: # generate default filelist
     filelist = []
@@ -162,8 +164,8 @@ loadClimatology = loadGPCC # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-  mode = 'test_climatology'; reses = ('025',); period = None
-#   mode = 'average_timeseries'; reses = ('05',) # for testing
+#   mode = 'test_climatology'; reses = ('025',); period = None
+  mode = 'average_timeseries'; reses = ('05',) # for testing
 #   mode = 'convert_climatology'; reses = ('025',); period = None
 #   reses = ('025','05', '10', '25')  
   reses = ('05', '10', '25')
@@ -171,7 +173,10 @@ if __name__ == '__main__':
   period = (1979,1984)
   period = (1979,1989)
   period = (1979,2009)
-  grid = 'arb2_d02'
+  period = (1997,1998)
+  period = (1979,1980)
+  
+  grid = 'GPCC' # 'arb2_d02'
   
   # generate averaged climatology
   for res in reses:    
@@ -232,8 +237,8 @@ if __name__ == '__main__':
       # load source
       periodstr = 'Climatology' if period is None else '{0:4d}-{1:4d}'.format(*period)
       print('\n\n   ***   Processing Resolution %s from %s   ***   \n\n'%(res,periodstr))
-      if period is None: source = loadGPCC_LTM(varlist=['stations','precip'],resolution=res)
-      else: source = loadGPCC_TS(varlist=['stations','precip'],resolution=res)
+      if period is None: source = loadGPCC_LTM(varlist=None,resolution=res) # ['stations','precip']
+      else: source = loadGPCC_TS(varlist=None,resolution=res)
       source.load()
       print(source)
       print('\n')
@@ -244,6 +249,7 @@ if __name__ == '__main__':
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
       atts =dict(period=periodstr, name='GPCC', title='GPCC Climatology') 
       sink = DatasetNetCDF(name='GPCC Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')
+#       sink = addGDALtoDataset(sink, griddef=source.griddef)
       
       # initialize processing
       CPU = CentralProcessingUnit(source, sink, tmp=True)
@@ -253,14 +259,19 @@ if __name__ == '__main__':
         offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
         # start processing climatology
         CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
+#         CPU.sync(flush=True)
       
       # get NARR coordinates
       if grid is not 'GPCC':
-        new_grid = import_module(grid[0:4]).__dict__[grid+'_grid']
+        griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder)
+        #new_grid = import_module(grid[0:4]).__dict__[grid+'_grid']
 #       if grid == 'NARR':
 #         from datasets.NARR import NARR_grid
         # reproject and resample (regrid) dataset
-        CPU.Regrid(griddef=new_grid, flush=False)
+        CPU.Regrid(griddef=griddef, flush=False)
+        # add geolocators
+        sink = addGeoLocator(sink, griddef=griddef, gdal=True, check=True)
+
             
 #       # shift longitude axis by 180 degrees  left (i.e. -180 - 180 -> 0 - 360)
 #       print('')
@@ -276,11 +287,14 @@ if __name__ == '__main__':
 
       # get results
       CPU.sync(flush=True)
+      
       # convert precip data to SI units (mm/s) 
       convertPrecip(sink.precip) # convert in-place
       # add landmask
+      #sink.mask(sink.landmask)
+      print sink.dataset
       addLandMask(sink) # create landmask from precip mask
-      sink.stations.mask(sink.landmask) # mask all fields using the new landmask
+      #sink.stations.mask(sink.landmask) # mask all fields using the new landmask
       # add length and names of month
       addLengthAndNamesOfMonth(sink, noleap=False) 
               

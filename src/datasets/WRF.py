@@ -14,7 +14,7 @@ import os
 import pickle
 # from atmdyn.properties import variablePlotatts
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition
+from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError
 from geodata.misc import DatasetError, isInt, AxisError, DateError, isNumber
 from datasets.common import translateVarNames, data_root, grid_folder, default_varatts 
 from geodata.gdal import loadPickledGridDef, griddef_pickle
@@ -35,10 +35,11 @@ def getWRFproj(dataset, name=''):
     lat_2 = dataset.TRUELAT2 # Latitude of second standard parallel
     lat_0 = dataset.CEN_LAT # Latitude of natural origin
     lon_0 = dataset.CEN_LON # Longitude of natural origin
-    #if dataset.CEN_LON != dataset.STAND_LON: raise GDALError  
+    lon_1 = dataset.STAND_LON
+    if dataset.CEN_LON != dataset.STAND_LON: raise NotImplementedError  
   else:
     raise NotImplementedError, "Can only infer projection parameters for Lambert Conformal Conic projection (#1)."
-  projdict = dict(proj=proj,lat_1=lat_1,lat_2=lat_2,lat_0=lat_0,lon_0=lon_0)
+  projdict = dict(proj=proj,lat_1=lat_1,lat_2=lat_2,lat_0=lat_0,lon_0=lon_0,lon_1=lon_1)
   # pass results to GDAL module to get projection object
   return getProjFromDict(projdict, name=name, GeoCS='WGS84', convention='Proj4')  
 
@@ -163,7 +164,7 @@ class Const(FileType):
                      XLONG  = dict(name='lon2D', units='deg E'), # geographic longitude field
                      XLAT   = dict(name='lat2D', units='deg N')) # geographic latitude field
     self.vars = self.atts.keys()    
-    self.climfile = 'wrfconst_d{0:0=2d}(1:s}.nc' # the filename needs to be extended by (domain,'_'+grid)
+    self.climfile = 'wrfconst_d{0:0=2d}{1:s}.nc' # the filename needs to be extended by (domain,'_'+grid)
     self.tsfile = 'wrfconst_d{0:0=2d}.nc' # the filename needs to be extended by (domain,)
 # surface variables
 class Srfc(FileType):
@@ -188,7 +189,7 @@ class Srfc(FileType):
 class Hydro(FileType):
   ''' Variables and attributes of the hydrological files. '''
   def __init__(self):
-    self.atts = dict(T2MEAN = dict(name='T2', units='K'), # daily mean 2m Temperature
+    self.atts = dict(T2MEAN = dict(name='Tmean', units='K'), # daily mean 2m Temperature
                      RAIN   = dict(name='precip', units='kg/m^2/s'), # total precipitation rate
                      RAINC  = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate
                      RAINNC = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate
@@ -376,25 +377,20 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   elif isinstance(filetypes,(list,tuple,set)):
     filetypes = list(filetypes)  
     if 'axes' not in filetypes: filetypes.append('axes')
-    if 'const' not in filetypes and grid is None: filetypes.append('const')
+    #if 'const' not in filetypes and grid is None: filetypes.append('const')
   else: raise TypeError  
   atts = dict(); filelist = []; constfile = None
   for filetype in filetypes:
     fileclass = fileclasses[filetype]
-    if filetype == 'const': 
-      constfile = fileclass.tsfile
-      atts.update(fileclass.atts)  
-    elif fileclass.tsfile is not None: 
+    if fileclass.climfile is not None: # this eliminates const files
       filelist.append(fileclass.climfile) 
   if varatts is not None: atts.update(varatts)
-  lconst = constfile is not None
   # translate varlist
   #if varlist is None: varlist = default_varatts.keys() + atts.keys()
   if varatts: varlist = translateVarNames(varlist, varatts) # default_varatts
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
-  if constfile is not None: filename = constfile # constants files preferred...
-  else: filename = fileclasses.values()[0].tsfile # just use the first filetype
+  filename = fileclasses.values()[0].tsfile # just use the first filetype
   if grid is None:
     griddefs = getWRFgrid(name=names, experiment=experiment, domains=domains, folder=folder, filename=filename)
   else:
@@ -404,15 +400,19 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   datasets = []
   for name,domain,griddef in zip(names,domains,griddefs):
     # if grid is None or grid.split('_')[0] == experiment.grid: gridstr = ''
-    if grid is None or grid == '{0:s}_d{1:02d}'.format(experiment.grid,domain): gridstr = ''
-    else: gridstr = '_%s'%grid.lower() # only use lower case for filenames     
+    if grid is None or grid == '{0:s}_d{1:02d}'.format(experiment.grid,domain): 
+      gridstr = ''; lconst = True
+    else: 
+      gridstr = '_%s'%grid.lower(); lconst = False # only use lower case for filenames     
     # domain-sensitive parameters
     axes = dict(west_east=griddef.xlon, south_north=griddef.ylat, x=griddef.xlon, y=griddef.ylat) # map axes
     # load constants
     if lconst:
+      constfile = fileclasses['const']    
+      filename = constfile.climfile.format(domain,gridstr)         
       # load dataset
-      const = DatasetNetCDF(name=name, folder=folder, filelist=[constfile.format(domain)], varatts=atts, axes=axes,  
-                            varlist=fileclasses['const'].vars, multifile=False, ncformat='NETCDF4', squeeze=True)      
+      const = DatasetNetCDF(name=name, folder=folder, filelist=[filename], varatts=constfile.atts, axes=axes,  
+                            varlist=constfile.vars, multifile=False, ncformat='NETCDF4', squeeze=True)      
     # load regular variables
     filenames = [filename.format(domain,gridstr,periodstr) for filename in filelist] # insert domain number
     # load dataset
@@ -447,9 +447,8 @@ outfolder # root folder for direct WRF output
 file_pattern = 'wrf{0:s}_d{1:02d}{2:s}_clim{3:s}.nc' # filename pattern: filetype, domain, grid, period
 data_folder = root_folder # folder for user data
 grid_def = {'d02':None,'d01':None} # there are too many... 
-grid_res = {'d02':0.13,'d01':3.82} # approximate grid resolution at 45 degrees latitude 
-# grid_def = {0.13:None,3.82:None} # approximate grid resolution at 45 degrees latitude
-# grid_tag = {0.13:'d02',3.82:'d01'} 
+grid_res = {'d02':0.13,'d01':3.82} # approximate grid resolution at 45 degrees latitude
+default_grid = None 
 # functions to access specific datasets
 loadLongTermMean = None # WRF doesn't have that...
 loadTimeSeries = loadWRF_TS # time-series data
@@ -462,16 +461,18 @@ if __name__ == '__main__':
   
   mode = 'test_climatology'
 #   mode = 'test_timeseries'
-#   mode = 'pickle_grid'
-  experiment = 'new-ctrl'
-  domains = [1,2]
+  mode = 'pickle_grid'
+  experiment = 'max-ctrl'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
-  grids = ['arb1', 'arb2', 'arb3']   
+  grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
+  experiments = ['rrtmg', 'ctrl', 'new']
+#   grids = ['coast1']; experiments = ['coast']; domains = [1,2,3]
+  grids = ['columbia1']; experiments = ['columbia']; domains = [1,2,3]   
     
   # pickle grid definition
   if mode == 'pickle_grid':
     
-    for grid in grids:
+    for grid,experiment in zip(grids,experiments):
       
       for domain in domains:
         
@@ -484,7 +485,7 @@ if __name__ == '__main__':
         
         # load GridDefinition
         
-        griddef, = getWRFgrid(name=(gridstr,), domains=(domain,), folder=folder, filename='wrfconst_d{0:0=2d}.nc')
+        griddef, = getWRFgrid(experiment=experiment, domains=domain) # , folder=folder, filename='wrfconst_d{0:0=2d}.nc'
         griddef.name = gridstr
         print('   Loading Definition from \'{0:s}\''.format(folder))
         # save pickle
@@ -506,9 +507,9 @@ if __name__ == '__main__':
   elif mode == 'test_climatology':
     
     print('')
-    dataset = loadWRF(experiment=experiment, domains=2, grid='arb2_d02', filetypes=['srfc'], period=(1979,1989))
+    dataset = loadWRF(experiment=experiment, domains=2, grid=None, filetypes=['hydro'], period=(1979,1989))
     print(dataset)
-    dataset.T2.load()
+    dataset.lon2D.load()
     print('')
     print(dataset.geotransform)
   

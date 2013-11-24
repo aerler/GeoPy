@@ -90,8 +90,8 @@ def addLandMask(dataset, varname='precip', maskname='landmask', atts=None):
   if not all([ax.name in ('x','y','lon','lat') for ax in axes]): raise AxisError
   # create variable and add to dataset
   if isinstance(dataset, DatasetNetCDF) and 'w' in dataset.mode: 
-    dataset += VarNC(dataset.dataset, axes=axes, data=data, atts=atts)
-  else: dataset += Variable(axes=axes, data=data, atts=atts)
+    dataset.addVariable(Variable(axes=axes, name=maskname, data=data, atts=atts), asNC=True)
+  else: dataset.addVariable(Variable(axes=axes, name=maskname, data=data, atts=atts))
   # return mask variable
   return dataset.variables[maskname]
 
@@ -110,11 +110,12 @@ def addLengthAndNamesOfMonth(dataset, noleap=False, length=None, names=None):
   if names is None: names = name_of_month
   # create variables
   if isinstance(dataset, DatasetNetCDF) and 'w' in dataset.mode: 
-    dataset += VarNC(dataset.dataset, axes=(dataset.time,), data=length, atts=lenatts)
+    #dataset += VarNC(dataset.dataset, axes=(dataset.time,), data=length, atts=lenatts)
+    dataset.addVariable(Variable(axes=(dataset.time,), data=length, atts=lenatts), asNC=True)
     dataset.axisAnnotation(stratts['name'], names, 'time', atts=stratts)
   else:
     # N.B.: char/string arrays are currently not supported as Variables
-    dataset += Variable(axes=(dataset.time,), data=length, atts=lenatts)
+    dataset.addVariable(Variable(axes=(dataset.time,), data=length, atts=lenatts))
   # return length variable
   return dataset.variables[lenatts['name']]
 
@@ -182,7 +183,7 @@ def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None
                           axes=axes, multifile=False, ncformat='NETCDF4')
   # figure out grid
   if grid is None or grid == name:
-    dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform, folder=grid_folder)
+    dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform, gridfolder=grid_folder)
   elif isinstance(grid,basestring): # load from pickle file
 #     griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder)
     # add GDAL functionality to dataset 
@@ -207,7 +208,7 @@ def checkItemList(itemlist, length, dtype, default=None, iterable=False, trim=Tr
           elif len(itemlist) < length: itemlist += [default]*(length-len(itemlist))
         else:
           if len(itemlist) != length: raise TypeError, str(itemlist)    
-        if type is not None:
+        if dtype is not None:
           if not all([isinstance(item,dtype) for item in itemlist if item != default]):
             raise TypeError, str(itemlist) # only checks the non-default values
       else:
@@ -221,7 +222,7 @@ def checkItemList(itemlist, length, dtype, default=None, iterable=False, trim=Tr
         elif len(itemlist) < length: itemlist += [default]*(length-len(itemlist))
       else:
         if len(itemlist) != length: raise TypeError, str(itemlist)    
-      if type is not None:
+      if dtype is not None:
         if not all([isinstance(item,dtype) for item in itemlist if item != default]):
           raise TypeError, str(item) # only checks the non-default values
     else:
@@ -229,76 +230,92 @@ def checkItemList(itemlist, length, dtype, default=None, iterable=False, trim=Tr
       itemlist = [itemlist]*length
   return itemlist
 
+
+# helper function for loadDatasets
+def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, ltuple=False, lWRFnative=True):
+  ''' A function that loads a dataset, based on specified parameters '''
+  from datasets.WRF import loadWRF
+  from datasets.WRF_experiments import WRF_exps
+  from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadNARR, loadUnity
+  if not isinstance(exp,str): raise TypeError
+  if exp[0].isupper():
+    if exp == 'Unity': 
+      ext = loadUnity(resolution=res, period=prd, grid=grd, varlist=varlist)
+      if ltuple: ext = (ext,)
+      axt = 'Merged Observations'        
+    elif exp == 'GPCC': 
+      ext = loadGPCC(resolution=res, period=prd, grid=grd, varlist=varlist)
+      if ltuple: ext = (ext,)
+      axt = 'GPCC Observations'
+    elif exp == 'CRU': 
+      ext = loadCRU(period=prd, grid=grd, varlist=varlist)
+      if ltuple: ext = (ext,) 
+      axt = 'CRU Observations' 
+    elif exp == 'PRISM': # all PRISM derivatives
+      if ltuple:
+        if (len(varlist) == 1 and 'precip' in varlist) or (len(varlist) == 3 and 
+            'precip' in varlist and 'lon2D' in varlist and 'lat2D' in varlist): 
+          ext = (loadGPCC(grid=grd, varlist=varlist), loadPRISM(grid=grd, varlist=varlist),)
+          axt = 'PRISM (and GPCC)'
+          #  ext = (loadPRISM(),); axt = 'PRISM'
+        else: 
+          ext = (loadCRU(period='1979-2009', grid=grd, varlist=varlist), loadPRISM(grid=grd, varlist=varlist)) 
+          axt = 'PRISM (and CRU)'
+      else:
+        ext = loadPRISM(grid=grd, varlist=varlist); axt = 'PRISM'
+    elif exp == 'CFSR': 
+      ext = loadCFSR(period=prd, grid=grd, varlist=varlist)
+      if ltuple: ext = (ext,)
+      axt = 'CFSR Reanalysis' 
+    elif exp == 'NARR': 
+      ext = loadNARR(period=prd, grid=grd, varlist=varlist)
+      if ltuple: ext = (ext,)
+      axt = 'NARR Reanalysis'
+    else: # all other uppercase names are CESM runs
+      raise NotImplementedError, "CESM datasets are currently not supported."  
+#           ext = (loadCESM(exp=exp, period=prd),)
+#           axt = CESMtitle.get(exp,exp)
+  else: 
+    # WRF runs are all in lower case
+    exp = WRF_exps[exp]        
+    #if 'xtrm' in WRFfiletypes: varatts = dict(Tmean=dict(name='T2')) 
+    if lWRFnative: grd = None
+    ext = loadWRF(experiment=exp, period=prd, grid=grd, domains=dom, filetypes=filetypes, 
+                  varlist=varlist, varatts=None)  
+    axt = exp.title # defaults to name...
+  # return values
+  return ext, axt    
+    
 # function to load a list of datasets/experiments based on names and other common parameters
 def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domains=None, grids=None,
                  resolutions='025', filetypes=None, lWRFnative=True, ltuple=False):
   ''' function to load a list of datasets/experiments based on names and other common parameters '''
   # for load function (below)
-  from datasets.WRF import loadWRF
-  from datasets.WRF_experiments import WRF_exps, Exp
-  from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadNARR
+  from datasets.WRF_experiments import Exp
   # check and expand lists
   if n is None: n = len(explist)
   elif not isinstance(n, (int,np.integer)): raise TypeError
   explist = checkItemList(explist, n, (basestring,Exp))
   titles = checkItemList(titles, n, basestring)
   periods  = checkItemList(periods, n, (basestring,int,np.integer), iterable=False)
-  domains  = checkItemList(domains, n, (int,np.integer), iterable=ltuple) # to return a tuple, give a tuple of domains
+  domains  = checkItemList(domains, n, (int,np.integer,tuple), iterable=ltuple) # to return a tuple, give a tuple of domains
   grids  = checkItemList(grids, n, basestring)
-  resolutions  = checkItemList(resolutions, n, basestring)
-  
-  # add stuff to varlist
+  resolutions  = checkItemList(resolutions, n, basestring)  
+  # resolve experiment list
   dslist = []; axtitles = []
   for exp,tit,prd,dom,grd,res in zip(explist,titles,periods,domains,grids,resolutions): 
-    if isinstance(exp,str):
-      if exp[0].isupper():
-        if exp == 'GPCC': 
-          ext = loadGPCC(resolution=res, period=prd, grid=grd, varlist=varlist)
-          if ltuple: ext = (ext,)
-          axt = 'GPCC Observations'
-        elif exp == 'CRU': 
-          ext = loadCRU(period=prd, grid=grd, varlist=varlist)
-          if ltuple: ext = (ext,) 
-          axt = 'CRU Observations' 
-        elif exp == 'PRISM': # all PRISM derivatives
-          if ltuple:
-            if (len(varlist) == 1 and 'precip' in varlist) or (len(varlist) == 3 and 
-                'precip' in varlist and 'lon2D' in varlist and 'lat2D' in varlist): 
-              ext = (loadGPCC(grid=grd, varlist=varlist), loadPRISM(grid=grd, varlist=varlist),)
-              axt = 'PRISM (and GPCC)'
-              #  ext = (loadPRISM(),); axt = 'PRISM'
-            else: 
-              ext = (loadCRU(period='1979-2009', grid=grd, varlist=varlist), loadPRISM(grid=grd, varlist=varlist)) 
-              axt = 'PRISM (and CRU)'
-          else:
-            ext = loadPRISM(grid=grd, varlist=varlist); axt = 'PRISM'
-        elif exp == 'CFSR': 
-          ext = loadCFSR(period=prd, grid=grd, varlist=varlist)
-          if ltuple: ext = (ext,)
-          axt = 'CFSR Reanalysis' 
-        elif exp == 'NARR': 
-          ext = loadNARR(period=prd, grid=grd, varlist=varlist)
-          if ltuple: ext = (ext,)
-          axt = 'NARR Reanalysis'
-        else: # all other uppercase names are CESM runs
-          raise NotImplementedError, "CESM datasets are currently not supported."  
-#           ext = (loadCESM(exp=exp, period=prd),)
-#           axt = CESMtitle.get(exp,exp)
-      else: 
-        # WRF runs are all in lower case
-        exp = WRF_exps[exp]        
-        #if 'xtrm' in WRFfiletypes: varatts = dict(Tmean=dict(name='T2')) 
-        if lWRFnative: grd = None
-        ext = loadWRF(experiment=exp, period=prd, grid=grd, domains=dom, filetypes=filetypes, 
-                      varlist=varlist, varatts=None)  
-        axt = exp.title # defaults to name...
+    ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=varlist, 
+                           ltuple=ltuple, lWRFnative=lWRFnative)
     dslist.append(ext); axtitles.append(tit or axt)  
   # count experiment tuples (layers per panel)
-  nlist = []; nlen = len(dslist)
-  for n in xrange(nlen):
-    if not isinstance(dslist[n],(tuple,list)) and ltuple: # should not be necessary
-      dslist[n] = (dslist[n],)
-    nlist.append(len(dslist[n])) # layer counter for each panel  
+  if ltuple:
+    nlist = [] # list of length for each element (tuple)
+    for n in xrange(len(dslist)):
+      if not isinstance(dslist[n],(tuple,list)): # should not be necessary
+        dslist[n] = (dslist[n],)
+      elif isinstance(dslist[n],list): # should not be necessary
+        dslist[n] = tuple(dslist[n])
+      nlist.append(len(dslist[n])) # layer counter for each panel  
   # return list with datasets and plot titles
   if ltuple:
     return dslist, axtitles, nlist

@@ -18,6 +18,7 @@ mpl.rc('lines', linewidth=1.)
 mpl.rc('font', size=10)
 from mpl_toolkits.basemap import maskoceans # used for masking data
 # PyGeoDat stuff
+from geodata.base import DatasetError
 from datasets.common import days_per_month, days_per_month_365 # for annotation
 from datasets.common import loadDatasets
 from plotting.settings import getFigureSettings, getVariableSettings
@@ -33,8 +34,8 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-#   WRFfiletypes=['hydro'] # WRF data source
-  WRFfiletypes=['srfc'] # WRF data source
+  WRFfiletypes=['srfc','xtrm'] # WRF data source
+#   WRFfiletypes = ['srfc','hydro','xtrm'] # WRF data source
   # figure directory
   folder = arb_figure_folder
   # period shortcuts
@@ -49,45 +50,56 @@ if __name__ == '__main__':
   cbo = None # default based on figure type
   resolution = None # only for GPCC (None = default/highest)
   exptitles = None
+  reflist = None # an additional list of experiments, that can be used to compute differences
   grid = None
-  domain = (1,2,)
+  lWRFnative = False
+  ldiff = False # compute differences
+  lfrac = False # compute fraction
+  domain = (2,)
   ## case settings
   
   # observations
   lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = True
-  grid = 'arb2_d02'; 
-  lexceptWRF = True; domain = (2,)
-  explist = ['max','PRISM','new','ctrl']; period = H10; case = 'val'
-  explist = ['max','CRU','new','ctrl']; period = H10; case = 'val'
-  explist = ['max','CRU','cfsr','ctrl']; period = H10; case = 'val'
-  explist = ['max','PRISM','max-A','max-B','cfsr','max-C']; period = H10; case = 'ens'
-  explist = ['max','new','max-A','max-B','ctrl','max-C']; period = H10; case = 'ens'
-  explist = ['max','cfsr','new','ctrl']; period = H10; case = 'hydro'
-  explist = ['max','max-2050','gulf','seaice-2050']; period = [H10, A10, H10, A10]; case = 'mix'
-#   explist = ['GPCC','PRISM','CRU','GPCC']
-#   period = [None,None,H30,H30]
-  explist = ['max-A','max-B','max-C','max-A-2050','max-B-2050','max-C-2050']
-  period = ['1979-1987']*3+['2045-2053']*3; case = 'maxens'
+  grid = 'arb2_d02'; domain = (2,)
+#   explist = ['max','PRISM','new','ctrl']; period = H10; case = 'val'
+#   explist = ['max','CRU','new','ctrl']; period = H10; case = 'val'
+#   explist = ['max','CRU','cfsr','ctrl']; period = H10; case = 'val'
+#   explist = ['max','PRISM','max-A','max-B','cfsr','max-C']; period = H10; case = 'ens'
+#   explist = ['max','new','max-A','max-B','ctrl','max-C']; period = H10; case = 'ens'
+#   explist = ['max','cfsr','new','ctrl']; period = H10; case = 'hydro'
+#   explist = ['max','max-2050','gulf','seaice-2050']; period = [H10, A10, H10, A10]; case = 'mix'
+#   explist = ['GPCC','PRISM','CRU','GPCC']; period = [None,None,H30,H30]
+#   explist = ['max-A','max-B','max-C','max-A-2050','max-B-2050','max-C-2050']
+#   period = ['1979-1987']*3+['2045-2053']*3; case = 'maxens'
 #   period = [A05,H05]+[A05]*4
 #   explist = ['PRISM','CRU','GPCC','NARR']
 #   grid = 'ARB_small_05'
 #   period = [None,H30,H30,H30]; case = 'obs'
-#   explist = ['PRISM']
-#   period = [None]
+#   explist = ['max']; period = H10; case = 'test'
+#   explist = ['max','ctrl','new','noah']; reflist = ['Unity']; period = H10; case = 'val'; ldiff=True
+
 #   case = 'bugaboo'; period = '1997-1998'  # name tag
 #   maptype = 'lcc-coast'; lstations = False # 'lcc-new'  
-#   explist = ['coast']; domain = (2,)
+#   explist = ['coast']; domain = (3,);
+  case = 'columbia'; period = ['1979-1980','1979-1984','1979-1980','1979-1980']  # name tag
+  maptype = 'lcc-new'; lstations = False # 'lcc-new'  
+  explist = ['columbia', 'cfsr','columbia','columbia']; domain = [(3,),(2,),(2,),(1,)]; 
+  exptitles = ['Max 3km', 'CFSR 10km','Max 9km','Max 27km'] 
+  ldiff = True; reflist = ['Unity']
 #   domain = [(1,2,3),None,(1,2),(1,)]
 #   explist = ['coast','PRISM','coast','coast',]
 #   exptitles = ['WRF 1km (Bugaboo)', 'PRISM Climatology', 'WRF 5km (Bugaboo)', 'WRF 25km (Bugaboo)']
 #   explist = ['coast','PRISM','CFSR','coast',]
 #   exptitles = ['WRF 1km (Bugaboo)', 'PRISM Climatology', 'CFSR 1997-1998', 'WRF 5km (Bugaboo)']
+ 
+
+  if not case: raise ValueError, 'Need to define a \'case\' name!'
   
   ## select variables and seasons
   varlist = []; seasons = []
   # variables
-  varlist += ['T2']
+#   varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
   varlist += ['precip']
 #   varlist += ['waterflx']
@@ -104,18 +116,20 @@ if __name__ == '__main__':
 #   varlist += ['qtfx','lhfr']
 #   varlist += ['SST']
   # seasons
+  seasons = [ [ 9 ] ]
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-  seasons += ['annual']
-  seasons += ['summer']
-  seasons += ['winter']
-  seasons += ['spring']    
-  seasons += ['fall']
+#   seasons += ['annual']
+#   seasons += ['summer']
+#   seasons += ['winter']
+#   seasons += ['spring']    
+#   seasons += ['fall']
   # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height
-#  varlist = ['zs']; seasons = ['hidef']
 #  varlist = ['stns']; seasons = ['annual']
 #   varlist = ['lndcls']; seasons = [''] # static
+#   varlist = ['zs']; seasons = [''] # static
+#   varlist = ['zs']; seasons = ['hidef'] # static
   
 
   # setup projection and map
@@ -124,9 +138,24 @@ if __name__ == '__main__':
   ## load data
   loadlist = set(varlist).union(('lon2D','lat2D'))
   exps, axtitles, nexps = loadDatasets(explist, n=None, varlist=loadlist, titles=exptitles, periods=period, domains=domain, 
-                                       grids=grid, resolutions=resolution, filetypes=WRFfiletypes, lWRFnative=True, ltuple=True)
+                                       grids=grid, resolutions=resolution, filetypes=WRFfiletypes, lWRFnative=lWRFnative, ltuple=True)
   nlen = len(exps)
   print exps[-1][-1]
+  # load reference list
+  if reflist is not None:
+    if not isinstance(reflist,(list,tuple)): raise TypeError
+    if len(explist) > len(reflist):
+      if len(reflist) == 1: reflist *= len(explist)  
+      else: raise DatasetError 
+    refs, a, b = loadDatasets(reflist, n=None, varlist=loadlist, titles=None, periods=period, domains=domain, grids=grid,
+                              resolutions=resolution, filetypes=WRFfiletypes, lWRFnative=lWRFnative, ltuple=True)
+    # merge lists
+    if len(exps) != len(refs): raise DatasetError, 'Experiments and reference list need to have the same length!'
+    for i in xrange(len(exps)):
+      if not isinstance(exps[i],tuple): raise TypeError 
+      if not isinstance(refs[i],tuple): raise TypeError
+      if len(exps[i]) != len(refs[i]): DatasetError, 'Experiments and reference tuples need to have the same length!'
+      exps[i] = exps[i] + refs[i] # merge lists/tuples
   
   
   # get figure settings
@@ -143,10 +172,13 @@ if __name__ == '__main__':
     for season in seasons:
       
       # get variable properties and additional settings
-      clevs, clim, cbl, clbl, cmap, lmskocn, lmsklnd, plottype, month = getVariableSettings(var, season, oldvar='')
+      clevs, clim, cbl, clbl, cmap, lmskocn, lmsklnd, plottype, month = getVariableSettings(
+                                                      var, season, oldvar=var, ldiff=ldiff, lfrac=lfrac)
       
       # assemble plot title
-      filename = '%s_%s_%s.%s'%(var,season,case,figformat)
+      if ldiff: filename = '%s_diff_%s_%s.%s'%(var,season,case,figformat)
+      elif ldiff: filename = '%s_frac_%s_%s.%s'%(var,season,case,figformat)
+      else: filename = '%s_%s_%s.%s'%(var,season,case,figformat)
       #print exps[0][0].name
       plat = exps[0][0].variables[var].plot
       if plat['plotunits']: figtitle = '%s %s [%s]'%(plottype,plat['plottitle'],plat['plotunits'])
@@ -212,6 +244,14 @@ if __name__ == '__main__':
               mask = exp.lndidx.get(); tmp = vardata.copy(); vardata[:] = 0.
               vardata[mask==16] = tmp[mask==16]; vardata[mask==24] = tmp[mask==24]
           datatpl.append(vardata) # append to data list
+        ## compute differences, if desired
+        if ldiff or lfrac:
+          assert len(datatpl)%2 == 0, 'needs to be divisible by 2'
+          ntpl = len(datatpl)/2 # assuming (exp1, exp2, ..., ref1, ref2, ...)
+          for i in xrange(ntpl):
+            if ldiff: datatpl[i] = datatpl[i] - datatpl[i+ntpl] # compute differences in place
+            elif lfrac: datatpl[i] = (datatpl[i]/datatpl[i+ntpl]-1)*100 # compute fractions in place
+          del datatpl[ntpl+1:] # delete the rest 
         # add tuples to master list
         lons.append(lontpl); lats.append(lattpl); data.append(datatpl)
         print('')
