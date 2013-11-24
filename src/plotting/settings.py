@@ -36,9 +36,9 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
   elif lfrac:
     cmap = mycmap; cmap.set_over('red'); cmap.set_under('blue')
     if var in ('T2','Ts','Tmin','Tmax','Tmean'):
-      clevs = np.linspace(-3,3,21); clbl = '%3.1f\%' 
+      clevs = np.linspace(-3,3,21); clbl = '%3.0f\%' 
     elif var in ('evap','pet','p-et','precip','precipc','precipnc'):
-      clevs = np.linspace(-100,100,21); clbl = '%3.1f'  
+      clevs = np.linspace(-100,100,21); clbl = '%3.0f'  
     else: 
       clevs = np.linspace(-50,50,21); clbl = '%3.0f'  
   else:
@@ -136,6 +136,7 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
       month = [1]
     if plottype is not '':
       if ldiff: plottype += ' Difference'
+      elif lfrac: plottype += ' Difference'
       else: plottype += ' Average'
   else:                
     month = season      
@@ -157,9 +158,10 @@ def getFigureSettings(nexp, cbar=True, cbo=None):
     subplot = (1,1)
     figsize = (3.75,3.75) #figsize = (6.25,6.25)  #figsize = (7,5.5)
     if cbar:
-      margins = dict(bottom=0.025, left=0.075, right=0.875, top=0.875, hspace=0.0, wspace=0.0)
-      caxpos = [0.91, 0.05, 0.03, 0.9]
-      cbo = cbo or 'vertical'
+      margins = dict(bottom=0.125, left=0.1, right=0.95, top=0.94, hspace=0.0, wspace=0.0)
+      caxpos = [0.05, 0.05, 0.9, 0.03]
+#       caxpos = [0.91, 0.05, 0.03, 0.9]
+      cbo = cbo or 'horizontal'
     else:
       margins = dict(bottom=0.085, left=0.13, right=0.975, top=0.94, hspace=0.0, wspace=0.0)
     #     margins = dict(bottom=0.12, left=0.075, right=.9725, top=.95, hspace=0.05, wspace=0.05)

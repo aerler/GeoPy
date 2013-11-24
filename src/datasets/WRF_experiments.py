@@ -61,13 +61,13 @@ experiments = dict() # dictionary of experiments
 experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindate='1979-09-01', enddate='1979-09-01', grid='coast1')
 experiments['columbia'] = Exp(shortname='columbia', name='columbia', begindate='1979-09-01', grid='columbia1')
 # these are all based on the "new" configuration (ARB3 domain)
-experiments['new-ctrl'] = Exp(shortname='new', name='new-ctrl', title='Thompson, Tiedtke, Noah-MP', begindate='1979-01-01', grid='arb3')
+experiments['new-ctrl'] = Exp(shortname='new', name='new-ctrl', title='New-1 (Noah-MP)', begindate='1979-01-01', grid='arb3')
 experiments['new-nogulf'] = Exp(shortname='nogulf', name='new-nogulf', title='New-1 (no Gulf)', begindate='1979-01-01', grid='arb2') # ARB2 domain
-experiments['new-noah'] = Exp(shortname='noah', name='new-noah', title='Thompson & Tiedtke', begindate='1979-01-01', grid='arb2') # ARB2 domain
+experiments['new-noah'] = Exp(shortname='noah', name='new-noah', title='New (Noah)', begindate='1979-01-01', grid='arb2') # ARB2 domain
 experiments['v35-noah'] = Exp(shortname='noah35', name='v35-noah', title='V35 & Noah (New)', begindate='1979-01-01', grid='arb2') # ARB2 domain
 experiments['cfsr-new'] = Exp(shortname='cfsr-new', name='cfsr-new', title='New (CFSR)', begindate='1979-01-01', grid='arb3')
 # these are all based on the "max" configuration (ARB2 domain)
-experiments['max-ctrl'] = Exp(shortname='max', name='max-ctrl', title='Morrison & Grell (Max-1)', begindate='1979-01-01', grid='arb2')
+experiments['max-ctrl'] = Exp(shortname='max', name='max-ctrl', title='Max-1', begindate='1979-01-01', grid='arb2')
 experiments['max-gulf'] = Exp(shortname='gulf', name='max-gulf', title='Max-1 (Gulf)', begindate='1979-01-01', grid='arb3') # ARB3 domain
 experiments['max-ens-A'] = Exp(shortname='max-A', name='max-ens-A', title='Max-A', begindate='1979-01-01', grid='arb2')
 experiments['max-ens-B'] = Exp(shortname='max-B', name='max-ens-B', title='Max-B', begindate='1979-01-01', grid='arb2')
@@ -80,7 +80,7 @@ experiments['max-ens-C-2050'] = Exp(shortname='max-C-2050', name='max-ens-C-2050
 experiments['max-seaice-2050'] = Exp(shortname='seaice-2050', name='max-seaice-2050', title='Seaice (2050)', begindate='2045-01-01', grid='arb2')
 experiments['cfsr-max'] = Exp(shortname='cfsr', name='cfsr-max', title='Max (CFSR)', begindate='1979-01-01', grid='arb2')
 # these are all based on the old configuration (original + RRTMG, ARB2)
-experiments['ctrl-1'] = Exp(shortname='ctrl', name='ctrl-1', title='Ctrl-1 (RRTMG)', begindate='1979-01-01', grid='arb2')
+experiments['ctrl-1'] = Exp(shortname='ctrl', name='ctrl-1', title='Ctrl-1', begindate='1979-01-01', grid='arb2')
 experiments['tiedtke-ctrl'] = Exp(shortname='tiedt', name='tiedtke-ctrl', title='Tiedtke (Ctrl)', begindate='1979-01-01', grid='arb2') 
 experiments['tom-ctrl'] = Exp(shortname='tom', name='tom-ctrl', title='Thompson (Ctrl)', begindate='1979-01-01', grid='arb2')
 experiments['wdm6-ctrl'] = Exp(shortname='wdm6', name='wdm6-ctrl', title='WDM6 (Ctrl)', begindate='1979-01-01', grid='arb2')

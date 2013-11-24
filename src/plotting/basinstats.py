@@ -60,7 +60,7 @@ def getVarSettings(plottype, lPRISM=False, mode='all'):
 if __name__ == '__main__':
   
   ## settings
-  expset = 'ens-2050'
+  expset = 'mix'
   plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['temp']
   lPRISM = False
@@ -104,6 +104,7 @@ if __name__ == '__main__':
                               grids=grid, resolutions='025', filetypes=allfiletypes, lWRFnative=False, ltuple=False)
   ref = exps[0]; nlen = len(exps)
   # observations  
+  if period == 9: period = 10 # nine is only because some experiments don't have 10 yet...
   if lCRU: cru = loadCRU(period=period, grid=grid, varlist=loadlist, varatts=varatts)
   if lGPCC: gpcc = loadGPCC(period=None, grid=grid, varlist=loadlist, varatts=varatts)
   if lPRISM: prism = loadPRISM(period=None, grid=grid, varlist=loadlist, varatts=varatts)

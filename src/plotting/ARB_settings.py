@@ -6,10 +6,16 @@ Meta data related to the Athabasca River Basin downscaling project; primarily ma
 @author: Andre R. Erler, GPL v3
 '''
 
+from datasets.common import grid_folder
 from plotting.mapsetup import getMapSetup
 
 arb_figure_folder = '/home/me/Research/Dynamical Downscaling/Figures/'
 arb_map_folder = arb_figure_folder + '.mapsetup/'
+arb_shapefolder = grid_folder+'/Athabasca_River_Basin/'
+arb_shapefile = arb_shapefolder+'ARB_Basins_Outline_WGS84' # basemap automatically appends '.shp'
+# N.B.: basemap can only read shapefiles in geographic projection; use this GDAL command to convert:
+#       $ogr2ogr -t_srs WGS84 new_shapefile_WGS84.shp old_shapefile_in_projected.shp
+#    or $ogr2ogr -t_srs EPSG:4326 new_shapefile_WGS84.shp old_shapefile_in_projected.shp
 
 ## Annotation
 
@@ -20,7 +26,11 @@ station_list = [('SL',-111.45,54.3), ('WL',-113.85,54.15), ('J',-118.07,52.88),
 # parallels and meridians
 annotation_dict = dict()
 ## Lambert Conic Conformal - Very High Resolution Coast Mountains
-annotation_dict['lcc-coast'] = dict()
+annotation_dict['lcc-coast'] = dict(scale=(-128, 48, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
+                             lon_full=[-160,-140,-120,-100], lon_half=[-150,-130,-110])
+## Lambert Conic Conformal - Athabasca River Basin and Columbia Icefield
+annotation_dict['lcc-arb'] = dict(scale=(-118, 48, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
+                             lon_full=[-160,-140,-120,-100], lon_half=[-150,-130,-110])
 ## Lambert Conic Conformal - New Fine Domain
 annotation_dict['lcc-new'] = dict(scale=(-128, 48, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
                              lon_full=[-180,-160,-140,-120,-100], lon_half=[-170,-150,-130,-110])
@@ -54,6 +64,9 @@ projection_dict = dict()
 ## Lambert Conic Conformal - Very High Resolution Coast Mountains
 projection_dict['lcc-coast'] = dict(projection='lcc', lat_0=51, lon_0=-125, lat_1=51, rsphere=rsphere,
               width=50*10e3, height=50*10e3, area_thresh = 500., resolution='i')
+## Lambert Conic Conformal - Athabasca River Basin and Columbia Icefield
+projection_dict['lcc-arb'] = dict(projection='lcc', lat_0=55.5, lon_0=-114.5, lat_1=55, rsphere=rsphere,
+              width=110*10e3, height=110*10e3, area_thresh = 500., resolution='l')
 ## Lambert Conic Conformal - New Fine Domain
 projection_dict['lcc-new'] = dict(projection='lcc', lat_0=55, lon_0=-120, lat_1=52, rsphere=rsphere,
               width=180*10e3, height=180*10e3, area_thresh = 1000., resolution='l')

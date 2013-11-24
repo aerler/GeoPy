@@ -23,7 +23,7 @@ from datasets.common import days_per_month, days_per_month_365 # for annotation
 from datasets.common import loadDatasets
 from plotting.settings import getFigureSettings, getVariableSettings
 # ARB project related stuff
-from plotting.ARB_settings import getARBsetup, arb_figure_folder, arb_map_folder
+from plotting.ARB_settings import getARBsetup, arb_figure_folder, arb_map_folder, arb_shapefile
 
 if __name__ == '__main__':
   
@@ -34,10 +34,11 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-  WRFfiletypes=['srfc','xtrm'] # WRF data source
+  WRFfiletypes=['srfc','xtrm','hydro'] # WRF data source
 #   WRFfiletypes = ['srfc','hydro','xtrm'] # WRF data source
   # figure directory
   folder = arb_figure_folder
+  lpickle = False
   # period shortcuts
   H01 = '1979'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994' # historical validation periods
@@ -47,6 +48,8 @@ if __name__ == '__main__':
   ltitle = True # plot/figure title
   lcontour = False # contour or pcolor plot
   lframe = True # draw domain boundary
+  lstations = True
+  lbasin = True
   cbo = None # default based on figure type
   resolution = None # only for GPCC (None = default/highest)
   exptitles = None
@@ -60,13 +63,21 @@ if __name__ == '__main__':
   
   # observations
   lprint = True # write plots to disk using case as a name tag
-  maptype = 'lcc-new'; lstations = True
+  maptype = 'lcc-new'; lstations = True; lbasin = True
   grid = 'arb2_d02'; domain = (2,)
-#   explist = ['max','PRISM','new','ctrl']; period = H10; case = 'val'
-#   explist = ['max','CRU','new','ctrl']; period = H10; case = 'val'
+#   explist = ['Unity']; exptitles = ['Merged Observations: Precipitation [mm/day]']; 
+#   period = H10; case = 'unity'; ltitle = False
+#   ldiff = True; reflist = ['Unity']
+#   lfrac = True; reflist = ['Unity']
+#   explist = ['max','ctrl','new','NARR']; period = H10; case = 'val'
+#   explist = ['CFSR','CRU','NARR','Unity']; period = H10; case = 'obs'
+#   exptitles = [None,None,None,'GPCC (no data)']
+#   explist = ['max','ctrl','noah','CRU']; period = H10; case = 'val'
+  explist = ['max','ctrl','new','noah']; period = H10; case = 'hydro'
+#   explist = ['max','ctrl','new','CRU']; period = H10; case = 'val'
 #   explist = ['max','CRU','cfsr','ctrl']; period = H10; case = 'val'
 #   explist = ['max','PRISM','max-A','max-B','cfsr','max-C']; period = H10; case = 'ens'
-#   explist = ['max','new','max-A','max-B','ctrl','max-C']; period = H10; case = 'ens'
+#   explist = ['max','CRU','max-A','max-B','NARR','max-C']; period = H10; case = 'ens'
 #   explist = ['max','cfsr','new','ctrl']; period = H10; case = 'hydro'
 #   explist = ['max','max-2050','gulf','seaice-2050']; period = [H10, A10, H10, A10]; case = 'mix'
 #   explist = ['GPCC','PRISM','CRU','GPCC']; period = [None,None,H30,H30]
@@ -82,11 +93,15 @@ if __name__ == '__main__':
 #   case = 'bugaboo'; period = '1997-1998'  # name tag
 #   maptype = 'lcc-coast'; lstations = False # 'lcc-new'  
 #   explist = ['coast']; domain = (3,);
-  case = 'columbia'; period = ['1979-1980','1979-1984','1979-1980','1979-1980']  # name tag
-  maptype = 'lcc-new'; lstations = False # 'lcc-new'  
-  explist = ['columbia', 'cfsr','columbia','columbia']; domain = [(3,),(2,),(2,),(1,)]; 
-  exptitles = ['Max 3km', 'CFSR 10km','Max 9km','Max 27km'] 
-  ldiff = True; reflist = ['Unity']
+#   case = 'columbia'; 
+#   maptype = 'lcc-arb'; lstations = True; lbasin = True # 'lcc-new'  
+#   ldiff = True; reflist = ['Unity']
+#   period = ['1979-1980']  # name tag
+#   explist = ['columbia']; domain = [(3,)]; 
+#   exptitles = ['Max 3km'] 
+#   period = ['1979-1980','1979-1984','1979-1980','1979-1980']  # name tag
+#   explist = ['columbia', 'cfsr','columbia','columbia']; domain = [(3,),(2,),(2,),(1,)]; 
+#   exptitles = ['Max 3km', 'CFSR 10km','Max 9km','Max 27km'] 
 #   domain = [(1,2,3),None,(1,2),(1,)]
 #   explist = ['coast','PRISM','coast','coast',]
 #   exptitles = ['WRF 1km (Bugaboo)', 'PRISM Climatology', 'WRF 5km (Bugaboo)', 'WRF 25km (Bugaboo)']
@@ -101,9 +116,9 @@ if __name__ == '__main__':
   # variables
 #   varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
-  varlist += ['precip']
+#   varlist += ['precip']
 #   varlist += ['waterflx']
-#   varlist += ['p-et']
+  varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
 #   varlist += ['evap']
@@ -116,12 +131,12 @@ if __name__ == '__main__':
 #   varlist += ['qtfx','lhfr']
 #   varlist += ['SST']
   # seasons
-  seasons = [ [ 9 ] ]
+#   seasons = [ [ 9 ] ]
 #   seasons = [ [i] for i in xrange(12) ] # monthly
 #   seasons += ['annual']
 #   seasons += ['summer']
 #   seasons += ['winter']
-#   seasons += ['spring']    
+  seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
@@ -133,7 +148,7 @@ if __name__ == '__main__':
   
 
   # setup projection and map
-  mapSetup = getARBsetup(maptype, stations=lstations, lpickle=True, folder=arb_map_folder)
+  mapSetup = getARBsetup(maptype, stations=lstations, lpickle=lpickle, folder=arb_map_folder)
   
   ## load data
   loadlist = set(varlist).union(('lon2D','lat2D'))
@@ -177,11 +192,12 @@ if __name__ == '__main__':
       
       # assemble plot title
       if ldiff: filename = '%s_diff_%s_%s.%s'%(var,season,case,figformat)
-      elif ldiff: filename = '%s_frac_%s_%s.%s'%(var,season,case,figformat)
+      elif lfrac: filename = '%s_frac_%s_%s.%s'%(var,season,case,figformat)
       else: filename = '%s_%s_%s.%s'%(var,season,case,figformat)
       #print exps[0][0].name
       plat = exps[0][0].variables[var].plot
-      if plat['plotunits']: figtitle = '%s %s [%s]'%(plottype,plat['plottitle'],plat['plotunits'])
+      if lfrac: figtitle = '{0:s} {1:s} [%]'.format(plottype,plat['plottitle'])
+      elif plat['plotunits']: figtitle = '%s %s [%s]'%(plottype,plat['plottitle'],plat['plotunits'])
       else: figtitle = '%s %s'%(plottype,plat['plottitle'])
       
       # feedback
@@ -328,7 +344,8 @@ if __name__ == '__main__':
       for i in xrange(subplot[0]):
         for j in xrange(subplot[1]):
           n += 1 # count up
-          ax[n].set_title(axtitles[n],fontsize=11) # axes title
+          axn = ax[n] 
+          axn.set_title(axtitles[n],fontsize=11) # axes title
           if j == 0 : left = True
           else: left = False 
           if i == subplot[0]-1: bottom = True
@@ -344,7 +361,11 @@ if __name__ == '__main__':
           # add parallels and meridians
           mapSetup.drawGrid(bmap, left, bottom)
           # mark stations
-          if lstations: mapSetup.markStations(ax[n], bmap)            
+          if lstations: mapSetup.markStations(ax[n], bmap)     
+          # add ARB basin outline
+          if lbasin: 
+            bmap.readshapefile(arb_shapefile, 'ARB', ax=axn, drawbounds=True, linewidth=0.5, color='k')
+            #print bmap.ARB_info                   
               
       # save figure to disk
       if lprint:

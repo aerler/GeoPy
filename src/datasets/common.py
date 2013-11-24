@@ -241,7 +241,7 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, ltuple=Fa
   if exp[0].isupper():
     if exp == 'Unity': 
       ext = loadUnity(resolution=res, period=prd, grid=grd, varlist=varlist)
-      if ltuple: ext = (ext,)
+      if ltuple: ext = (ext,) # loadPRISM(grid=grd, varlist=varlist)
       axt = 'Merged Observations'        
     elif exp == 'GPCC': 
       ext = loadGPCC(resolution=res, period=prd, grid=grd, varlist=varlist)
