@@ -178,7 +178,7 @@ if __name__ == '__main__':
     loverwrite = True
     varlist = None # ['precip', ]
     experiments = ['max-A-2050','max-B-2050','max-C-2050']
-    experiments = ['max-2050']
+    experiments = ['seaice-2050']
     periods = [5,10]
     periods = [9]
     domains = [2] # domains to be processed

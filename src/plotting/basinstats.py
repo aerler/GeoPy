@@ -60,7 +60,7 @@ def getVarSettings(plottype, lPRISM=False, mode='all'):
 if __name__ == '__main__':
   
   ## settings
-  expset = 'mix'
+  expset = 'ens-2050'
   plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['temp']
   lPRISM = False
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     explist = ['max','max-A','max-B','max-C']
   elif expset == 'ens-2050': 
     period = 9
-    explist = ['max-2050','max-A-2050','max-B-2050','max-C-2050']
+    explist = ['seaice-2050','max-A-2050','max-B-2050','max-C-2050']
 
   # some more settings
   if len(explist) > 1: ljoined = True

@@ -43,7 +43,7 @@ if __name__ == '__main__':
   H01 = '1979'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994' # historical validation periods
   G10 = '1969-1979'; I10 = '1989-1999'; J10 = '1999-2009' # additional historical periods
-  A03 = '2045-2048'; A05 = '2045-2050'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
+  A03 = '2045-2048'; A05 = '2045-2050'; A09 = '2045-2054'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
   B03 = '2095-2098'; B05 = '2095-2100'; B10 = '2095-2105'; B15 = '2095-2110' # late 21st century  
   ltitle = True # plot/figure title
   lcontour = False # contour or pcolor plot
@@ -53,9 +53,10 @@ if __name__ == '__main__':
   cbo = None # default based on figure type
   resolution = None # only for GPCC (None = default/highest)
   exptitles = None
-  reflist = None # an additional list of experiments, that can be used to compute differences
   grid = None
   lWRFnative = False
+  reflist = None # an additional list of experiments, that can be used to compute differences
+  refprd = None
   ldiff = False # compute differences
   lfrac = False # compute fraction
   domain = (2,)
@@ -73,13 +74,15 @@ if __name__ == '__main__':
 #   explist = ['CFSR','CRU','NARR','Unity']; period = H10; case = 'obs'
 #   exptitles = [None,None,None,'GPCC (no data)']
 #   explist = ['max','ctrl','noah','CRU']; period = H10; case = 'val'
-  explist = ['max','ctrl','new','noah']; period = H10; case = 'hydro'
+#   explist = ['max','ctrl','new','noah']; period = H10; case = 'hydro'
 #   explist = ['max','ctrl','new','CRU']; period = H10; case = 'val'
 #   explist = ['max','CRU','cfsr','ctrl']; period = H10; case = 'val'
 #   explist = ['max','PRISM','max-A','max-B','cfsr','max-C']; period = H10; case = 'ens'
 #   explist = ['max','CRU','max-A','max-B','NARR','max-C']; period = H10; case = 'ens'
 #   explist = ['max','cfsr','new','ctrl']; period = H10; case = 'hydro'
 #   explist = ['max','max-2050','gulf','seaice-2050']; period = [H10, A10, H10, A10]; case = 'mix'
+  explist = ['seaice-2050','max-A-2050','max-B-2050','max-C-2050']; period = A09; case = 'ens-2050'
+  ldiff = True; reflist = ['max','max-A','max-B','max-C']; refprd = H10
 #   explist = ['GPCC','PRISM','CRU','GPCC']; period = [None,None,H30,H30]
 #   explist = ['max-A','max-B','max-C','max-A-2050','max-B-2050','max-C-2050']
 #   period = ['1979-1987']*3+['2045-2053']*3; case = 'maxens'
@@ -117,7 +120,7 @@ if __name__ == '__main__':
 #   varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
 #   varlist += ['precip']
-#   varlist += ['waterflx']
+  varlist += ['waterflx']
   varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
@@ -133,10 +136,10 @@ if __name__ == '__main__':
   # seasons
 #   seasons = [ [ 9 ] ]
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-#   seasons += ['annual']
+  seasons += ['annual']
 #   seasons += ['summer']
 #   seasons += ['winter']
-  seasons += ['spring']    
+#   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
@@ -158,11 +161,12 @@ if __name__ == '__main__':
   print exps[-1][-1]
   # load reference list
   if reflist is not None:
+    if refprd is None: refprd = period
     if not isinstance(reflist,(list,tuple)): raise TypeError
     if len(explist) > len(reflist):
       if len(reflist) == 1: reflist *= len(explist)  
       else: raise DatasetError 
-    refs, a, b = loadDatasets(reflist, n=None, varlist=loadlist, titles=None, periods=period, domains=domain, grids=grid,
+    refs, a, b = loadDatasets(reflist, n=None, varlist=loadlist, titles=None, periods=refprd, domains=domain, grids=grid,
                               resolutions=resolution, filetypes=WRFfiletypes, lWRFnative=lWRFnative, ltuple=True)
     # merge lists
     if len(exps) != len(refs): raise DatasetError, 'Experiments and reference list need to have the same length!'

@@ -29,7 +29,7 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     cmap = mycmap; cmap.set_over('red'); cmap.set_under('blue')
     if var in ('T2','Ts','Tmin','Tmax','Tmean'):
       clevs = np.linspace(-5,5,21); clbl = '%3.1f' # K
-    elif var in ('evap','pet','p-et','precip','precipc','precipnc'):
+    elif var in ('evap','pet','p-et','precip','precipc','precipnc','waterflx'):
       clevs = np.linspace(-5,5,21); clbl = '%3.1f' # mm/day  
     else: 
       raise VariableError, 'No settings found for differencing variable \'{0:s}\' found!'.format(var)
@@ -37,7 +37,7 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     cmap = mycmap; cmap.set_over('red'); cmap.set_under('blue')
     if var in ('T2','Ts','Tmin','Tmax','Tmean'):
       clevs = np.linspace(-3,3,21); clbl = '%3.0f\%' 
-    elif var in ('evap','pet','p-et','precip','precipc','precipnc'):
+    elif var in ('evap','pet','p-et','precip','precipc','precipnc','waterflx'):
       clevs = np.linspace(-100,100,21); clbl = '%3.0f'  
     else: 
       clevs = np.linspace(-50,50,21); clbl = '%3.0f'  
