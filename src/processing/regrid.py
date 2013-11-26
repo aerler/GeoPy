@@ -183,22 +183,23 @@ if __name__ == '__main__':
     periods = [(1979,1980)]
 #     periods = [(1979,2009)]
     datasets = []
-    datasets = ['CRU','GPCC']
-#     resolutions = {'GPCC':['25']}
+#     datasets = ['CRU','GPCC','PRISM']
+#     resolutions = {'GPCC':['025']}
     resolutions = None
     # WRF
-#     experiments = ['columbia']
+#     experiments = []
+    experiments = ['columbia']
+#     experiments = ['max','ctrl','new','noah']
 #     experiments = ['new','gulf','max','cfsr']
 #     experiments = ['ctrl'] # WRF experiment names (passed through WRFname)
-    experiments = []
-    domains = [1,2,3,] # domains to be processed
-#     filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
-    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+    domains = [1,2] # domains to be processed
+    filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
+#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
 #     filetypes = ['srfc']
     # grid to project onto
     lpickle = True
 #     grids = dict(ARB_small=['025','05']) # dict with list of resolutions
-    grids = dict(arb2=['d02']) # dict with list of resolutions  
+    grids = dict(arb2=['d02'], ARB_small=['025','05']) # dict with list of resolutions  
   else:
     NP = NP or 4
     #loverwrite = False

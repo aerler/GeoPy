@@ -60,20 +60,22 @@ def getVarSettings(plottype, lPRISM=False, mode='all'):
 if __name__ == '__main__':
   
   ## settings
-  expset = 'ens-2050'
+  expset = 'hires'
   plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['temp']
   lPRISM = False
   lUnity = True
   domain = 2
-  period = 10
+  period = 1
   
   ## datasets
   tag = 'prism' if lPRISM else ''
   if expset == 'mix': 
     explist = ['max','max-2050','gulf','seaice-2050']
+  elif expset == 'hires': 
+    explist = ['columbia','cfsr-max']
   elif expset == 'obs': 
-    explist = ['max','ctrl','new','noah']  
+    explist = ['max','ctrl','new','new-noah']  
   elif expset == 'ens': 
     explist = ['max','max-A','max-B','max-C']
   elif expset == 'ens-2050': 
@@ -100,6 +102,7 @@ if __name__ == '__main__':
   #lCFSR = False; lNARR = False
       
   ## load data  
+  domain = [3,2]
   exps, titles = loadDatasets(explist, n=None, varlist=loadlist, titles=None, periods=period, domains=domain, 
                               grids=grid, resolutions='025', filetypes=allfiletypes, lWRFnative=False, ltuple=False)
   ref = exps[0]; nlen = len(exps)

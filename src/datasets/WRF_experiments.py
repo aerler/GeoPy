@@ -59,7 +59,7 @@ class Exp(object):
 experiments = dict() # dictionary of experiments
 # list of experiments
 experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindate='1979-09-01', enddate='1979-09-01', grid='coast1')
-experiments['columbia'] = Exp(shortname='columbia', name='columbia', begindate='1979-09-01', grid='columbia1')
+experiments['columbia'] = Exp(shortname='columbia', name='columbia', title='Max 3km (CFSR)', begindate='1979-09-01', grid='columbia1')
 # these are all based on the "new" configuration (ARB3 domain)
 experiments['new-ctrl'] = Exp(shortname='new', name='new-ctrl', title='New-1 (Noah-MP)', begindate='1979-01-01', grid='arb3')
 experiments['new-nogulf'] = Exp(shortname='nogulf', name='new-nogulf', title='New-1 (no Gulf)', begindate='1979-01-01', grid='arb2') # ARB2 domain

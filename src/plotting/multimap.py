@@ -81,9 +81,8 @@ if __name__ == '__main__':
 #   explist = ['max','CRU','max-A','max-B','NARR','max-C']; period = H10; case = 'ens'
 #   explist = ['max','cfsr','new','ctrl']; period = H10; case = 'hydro'
 #   explist = ['max','max-2050','gulf','seaice-2050']; period = [H10, A10, H10, A10]; case = 'mix'
-  explist = ['seaice-2050','max-A-2050','max-B-2050','max-C-2050']; period = A09; case = 'ens-2050'
-  ldiff = True; reflist = ['max','max-A','max-B','max-C']; refprd = H10
-#   explist = ['GPCC','PRISM','CRU','GPCC']; period = [None,None,H30,H30]
+#   explist = ['seaice-2050','max-A-2050','max-B-2050','max-C-2050']; period = A09; case = 'ens-2050'
+#   ldiff = True; reflist = ['max','max-A','max-B','max-C']; refprd = H10
 #   explist = ['max-A','max-B','max-C','max-A-2050','max-B-2050','max-C-2050']
 #   period = ['1979-1987']*3+['2045-2053']*3; case = 'maxens'
 #   period = [A05,H05]+[A05]*4
@@ -93,15 +92,19 @@ if __name__ == '__main__':
 #   explist = ['max']; period = H10; case = 'test'
 #   explist = ['max','ctrl','new','noah']; reflist = ['Unity']; period = H10; case = 'val'; ldiff=True
 
+#   explist = ['GPCC','PRISM','CRU','GPCC']; period = [None,None,H30,H30]; case = 'obs05'
+#   maptype = 'lcc-new'; lstations = False; lbasin = False
+#   grid = [None, 'ARB_small_05', None,None]; res = '05'
+
 #   case = 'bugaboo'; period = '1997-1998'  # name tag
 #   maptype = 'lcc-coast'; lstations = False # 'lcc-new'  
 #   explist = ['coast']; domain = (3,);
-#   case = 'columbia'; 
-#   maptype = 'lcc-arb'; lstations = True; lbasin = True # 'lcc-new'  
-#   ldiff = True; reflist = ['Unity']
-#   period = ['1979-1980']  # name tag
-#   explist = ['columbia']; domain = [(3,)]; 
-#   exptitles = ['Max 3km'] 
+  case = 'columbia'; 
+  maptype = 'lcc-arb'; lstations = True; lbasin = True # 'lcc-new'  
+  ldiff = True; reflist = ['Unity']
+  period = '1979-1980'; grid = 'arb2_d02'; domain = [(3,),(2,),(1,),(2,)]  # name tag
+  explist = ['columbia','cfsr','columbia','columbia'] 
+  exptitles = [None, None, 'Max 27km (CFSR)', 'Max 9km (CFSR)'] 
 #   period = ['1979-1980','1979-1984','1979-1980','1979-1980']  # name tag
 #   explist = ['columbia', 'cfsr','columbia','columbia']; domain = [(3,),(2,),(2,),(1,)]; 
 #   exptitles = ['Max 3km', 'CFSR 10km','Max 9km','Max 27km'] 
@@ -119,9 +122,9 @@ if __name__ == '__main__':
   # variables
 #   varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
-#   varlist += ['precip']
-  varlist += ['waterflx']
-  varlist += ['p-et']
+  varlist += ['precip']
+#   varlist += ['waterflx']
+#   varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
 #   varlist += ['evap']
@@ -134,9 +137,9 @@ if __name__ == '__main__':
 #   varlist += ['qtfx','lhfr']
 #   varlist += ['SST']
   # seasons
-#   seasons = [ [ 9 ] ]
+  seasons = [ [9,10,11,12] ] # for high-res columbia domain
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-  seasons += ['annual']
+#   seasons += ['annual']
 #   seasons += ['summer']
 #   seasons += ['winter']
 #   seasons += ['spring']    

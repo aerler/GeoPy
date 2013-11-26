@@ -319,8 +319,8 @@ class CentralProcessingUnit(object):
         # simple indexing
         climcnt = np.zeros(interval)
         for t in xrange(timelength):
-          if self.feedback: print('.'), # t/interval+1
-          idx = int(t/interval)
+          if self.feedback and t%interval == 0: print('.'), # t/interval+1
+          idx = int(t%interval)
           climcnt[idx] += 1
           if dataarray.ndim == 1:
             avgdata[idx] = avgdata[idx] + dataarray[t]
