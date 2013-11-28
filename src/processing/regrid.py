@@ -53,7 +53,7 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     if not isinstance(domain, (np.integer,int)): raise DatasetError
     # load source data 
     source = loadWRF(experiment=dataset_name, name=None, domains=domain, grid=None, period=period, 
-                     filetypes=[filetype], varlist=None, varatts=None)
+                     filetypes=[filetype], varlist=None, varatts=None, lconst=True) # still want topography...
     # source = loadWRF(experiment, name, domains, grid, period, filetypes, varlist, varatts)
     periodstr = source.atts.period # a NetCDF attribute    
     datamsgstr = 'Processing WRF Experiment \'{0:s}\' from {1:s}'.format(dataset_name, periodstr) 
@@ -94,7 +94,7 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
           
   # prepare target dataset
   if dataset == 'WRF':
-    gridstr = '_{}'.format(griddef.name) if griddef.name else ''
+    gridstr = '_{}'.format(griddef.name.lower()) if griddef.name.lower() else ''
     periodstr = '_{}'.format(periodstr) if periodstr else ''# I know, this is pointless at the moment...
     filename = module.file_pattern.format(filetype,domain,gridstr,periodstr)
     avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
@@ -142,7 +142,8 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     CPU.sync(flush=True)
     
     # add geolocators
-    sink = addGeoLocator(sink, griddef=griddef, gdal=True, check=True)
+    sink = addGeoLocator(sink, griddef=griddef, lgdal=True, lreplace=True, lcheck=True)
+    # N.B.: WRF datasets come with their own geolocator arrays - we need to replace those!
 
     # add length and names of month
     if not sink.hasVariable('length_of_month'): addLengthAndNamesOfMonth(sink, noleap=False) 
@@ -177,29 +178,32 @@ if __name__ == '__main__':
     ldebug = False
     NP = NP or 4
     loverwrite = True
-    varlist = None # ['',] # None
+    varlist = ['precip',]
+#     varlist = None
     periods = [(1979,1984),(1979,1989)]
+#     periods = [(1979,1989)]
 #     periods = [(1997,1998)]
     periods = [(1979,1980)]
 #     periods = [(1979,2009)]
     datasets = []
-#     datasets = ['CRU','GPCC','PRISM']
+#     datasets = ['PRISM']; periods = None
 #     resolutions = {'GPCC':['025']}
     resolutions = None
     # WRF
-#     experiments = []
+    experiments = []
     experiments = ['columbia']
 #     experiments = ['max','ctrl','new','noah']
 #     experiments = ['new','gulf','max','cfsr']
 #     experiments = ['ctrl'] # WRF experiment names (passed through WRFname)
-    domains = [1,2] # domains to be processed
-    filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
-#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
-#     filetypes = ['srfc']
+    domains = [1,2,3] # domains to be processed
+#     filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
+    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+    filetypes = ['srfc']
     # grid to project onto
     lpickle = True
-#     grids = dict(ARB_small=['025','05']) # dict with list of resolutions
-    grids = dict(arb2=['d02'], ARB_small=['025','05']) # dict with list of resolutions  
+#     grids = dict(arb2=['d02']) # dict with list of resolutions
+#     grids = dict(arb2=['d02'], ARB_small=['025','05']) # dict with list of resolutions
+    grids = dict(ARB_small=['05']) # dict with list of resolutions    
   else:
     NP = NP or 4
     #loverwrite = False

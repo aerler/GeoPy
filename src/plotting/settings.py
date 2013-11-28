@@ -117,12 +117,18 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     elif var=='lndcls': # land use classes (works best with contour plot)
       clevs = np.linspace(0.5,24.5,25); cbl = np.linspace(4,24,6)  
       clbl = '%2i'; cmap.set_over('purple'); cmap.set_under('white')
+    elif var=='lon2D': 
+      clevs = np.linspace(-130,-100,30); clbl = '%02.0d'
+    elif var=='lat2D': 
+      clevs = np.linspace(30,60,30); clbl = '%02.0d'            
     else: 
       raise VariableError, 'No settings for variable \'{0:s}\' found!'.format(var) 
   # time frame / season
   if isinstance(season,str):
     if season == 'annual':  # all month
       month = range(1,13); plottype = 'Annual'
+    elif season == 'OND':# DJF
+      month = [10, 11, 12]; plottype = 'Oct.-Dec.'    
     elif season == 'winter':# DJF
       month = [12, 1, 2]; plottype = 'Winter'
     elif season == 'spring': # MAM
@@ -134,16 +140,16 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     else:
       plottype = '' # for static fields
       month = [1]
-    if plottype is not '':
-      if ldiff: plottype += ' Difference'
-      elif lfrac: plottype += ' Difference'
-      else: plottype += ' Average'
   else:                
     month = season      
     if len(season) == 1 and isinstance(season[0],int):
       plottype =  '%s Average'%name_of_month[season[0]].strip()
       season = '%02i'%(season[0]+1) # number of month, used for file name
     else: plottype = 'Average'    
+  if plottype is not '':
+    if ldiff: plottype += ' Difference'
+    elif lfrac: plottype += ' Difference'
+    else: plottype += ' Average'
   # return
   return clevs, clim, cbl, clbl, cmap, lmskocn, lmsklnd, plottype, month
 

@@ -459,14 +459,14 @@ class DatasetNetCDF(Dataset):
     # return verification
     return self.hasAxis(newaxis)        
   
-  def replaceVariable(self, oldvar, newvar=None, deepcopy=False):
+  def replaceVariable(self, oldvar, newvar=None, asNC=True, deepcopy=False):
     ''' Replace an existing Variable with a different one and transfer NetCDF reference and axes. '''
     if newvar is None: 
       newvar = oldvar; oldvar = newvar.name # i.e. replace old var with the same name
     # check var
     if not self.hasVariable(oldvar): raise VariableError
     # special treatment for VarNC: transfer of ownership of NetCDF variable
-    if isinstance(newvar,VarNC):
+    if asNC or isinstance(newvar,VarNC):
       # resolve names
       if isinstance(oldvar,Variable): oldname = oldvar.name # just go by name
       else: oldname = oldvar
@@ -474,7 +474,7 @@ class DatasetNetCDF(Dataset):
       if oldvar.shape != newvar.shape: raise AxisError # shape has to be the same!
       # N.B.: the shape of a variable in a NetCDF file can't change!
       # remove old variable from dataset...
-      self.removeVariable(oldvar)
+      self.removeVariable(oldvar) # this is actually the ordinary Dataset class method that doesn't do anything to the NetCDF file
       # cast new variable as VarNC and transfer old ncvar reference and axes    
       newvar = asVarNC(var=newvar,ncvar=oldvar.ncvar, axes=oldvar.axes, mode=oldvar.mode, deepcopy=deepcopy)
       # ... and add new axis to dataset

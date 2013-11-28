@@ -34,11 +34,12 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-  WRFfiletypes=['srfc','xtrm','hydro'] # WRF data source
+  WRFfiletypes=['srfc']
+#   WRFfiletypes=['srfc','xtrm','hydro'] # WRF data source
 #   WRFfiletypes = ['srfc','hydro','xtrm'] # WRF data source
   # figure directory
   folder = arb_figure_folder
-  lpickle = False
+  lpickle = True
   # period shortcuts
   H01 = '1979'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994' # historical validation periods
@@ -48,7 +49,7 @@ if __name__ == '__main__':
   ltitle = True # plot/figure title
   lcontour = False # contour or pcolor plot
   lframe = True # draw domain boundary
-  lstations = True
+  lstations = True; stations = 'cities'
   lbasin = True
   cbo = None # default based on figure type
   resolution = None # only for GPCC (None = default/highest)
@@ -64,8 +65,8 @@ if __name__ == '__main__':
   
   # observations
   lprint = True # write plots to disk using case as a name tag
-  maptype = 'lcc-new'; lstations = True; lbasin = True
-  grid = 'arb2_d02'; domain = (2,)
+#   maptype = 'lcc-new'; lstations = True; lbasin = True
+#   grid = 'arb2_d02'; domain = (2,)
 #   explist = ['Unity']; exptitles = ['Merged Observations: Precipitation [mm/day]']; 
 #   period = H10; case = 'unity'; ltitle = False
 #   ldiff = True; reflist = ['Unity']
@@ -97,14 +98,23 @@ if __name__ == '__main__':
 #   grid = [None, 'ARB_small_05', None,None]; res = '05'
 
 #   case = 'bugaboo'; period = '1997-1998'  # name tag
-#   maptype = 'lcc-coast'; lstations = False # 'lcc-new'  
-#   explist = ['coast']; domain = (3,);
-  case = 'columbia'; 
-  maptype = 'lcc-arb'; lstations = True; lbasin = True # 'lcc-new'  
+#   maptype = 'lcc-coast'; lstations = False; 
+#   grid = 'arb2_d02'
+#   domain = [(1,2,3),None,(1,),(1,2,)]
+# #   domain = [(3,),(2,),(1,),(2,)]; lfrac = True; reflist = ['Unity']
+#   explist = ['coast','Unity','coast','coast'] #; domain = (3,);
+#   exptitles = ['WRF 1km (CFSR)', 'PRISM Canada', 'WRF 25km (CFSR)', 'WRF 5km (CFSR)']
+
+  case = 'columbia'; stations = 'cities'
+  maptype = 'lcc-col'; lstations = True; lbasin = True # 'lcc-new'  
   ldiff = True; reflist = ['Unity']
-  period = '1979-1980'; grid = 'arb2_d02'; domain = [(3,),(2,),(1,),(2,)]  # name tag
-  explist = ['columbia','cfsr','columbia','columbia'] 
-  exptitles = [None, None, 'Max 27km (CFSR)', 'Max 9km (CFSR)'] 
+  period = '1979-1980'; # 
+  grid = 'ARB_small_05'; 
+#   grid = 'arb2_d02'; 
+  domain = [(3,),(2,),(1,),(2,)]  # name tag
+  explist = ['columbia','PRISM','columbia','columbia'] 
+  exptitles = ['WRF 3km (CFSR)', 'PRISM Canada', 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
+   
 #   period = ['1979-1980','1979-1984','1979-1980','1979-1980']  # name tag
 #   explist = ['columbia', 'cfsr','columbia','columbia']; domain = [(3,),(2,),(2,),(1,)]; 
 #   exptitles = ['Max 3km', 'CFSR 10km','Max 9km','Max 27km'] 
@@ -136,8 +146,9 @@ if __name__ == '__main__':
 #   varlist += ['hfx','lhfx']
 #   varlist += ['qtfx','lhfr']
 #   varlist += ['SST']
+#   varlist += ['lat2D','lon2D']
   # seasons
-  seasons = [ [9,10,11,12] ] # for high-res columbia domain
+  seasons = ['OND'] # for high-res columbia domain
 #   seasons = [ [i] for i in xrange(12) ] # monthly
 #   seasons += ['annual']
 #   seasons += ['summer']
@@ -154,23 +165,30 @@ if __name__ == '__main__':
   
 
   # setup projection and map
-  mapSetup = getARBsetup(maptype, stations=lstations, lpickle=lpickle, folder=arb_map_folder)
+  mapSetup = getARBsetup(maptype, lpickle=lpickle, folder=arb_map_folder)
   
   ## load data
-  loadlist = set(varlist).union(('lon2D','lat2D'))
-  exps, axtitles, nexps = loadDatasets(explist, n=None, varlist=loadlist, titles=exptitles, periods=period, domains=domain, 
-                                       grids=grid, resolutions=resolution, filetypes=WRFfiletypes, lWRFnative=lWRFnative, ltuple=True)
-  nlen = len(exps)
-  print exps[-1][-1]
-  # load reference list
   if reflist is not None:
-    if refprd is None: refprd = period
     if not isinstance(reflist,(list,tuple)): raise TypeError
     if len(explist) > len(reflist):
       if len(reflist) == 1: reflist *= len(explist)  
       else: raise DatasetError 
-    refs, a, b = loadDatasets(reflist, n=None, varlist=loadlist, titles=None, periods=refprd, domains=domain, grids=grid,
-                              resolutions=resolution, filetypes=WRFfiletypes, lWRFnative=lWRFnative, ltuple=True)
+    lref = True    
+  else: lref = False
+  lbackground = not lref
+    
+  loadlist = set(varlist).union(('lon2D','lat2D'))
+  exps, axtitles, nexps = loadDatasets(explist, n=None, varlist=loadlist, titles=exptitles, periods=period, domains=domain, 
+                                       grids=grid, resolutions=resolution, filetypes=WRFfiletypes, lWRFnative=lWRFnative, 
+                                       ltuple=True, lbackground=lbackground)
+  nlen = len(exps)
+  print exps[-1][-1]
+  # load reference list
+  if lref:
+    if refprd is None: refprd = period    
+    refs, a, b = loadDatasets(reflist, n=None, varlist=loadlist, titles=None, periods=refprd, domains=domain, 
+                              grids=grid, resolutions=resolution, filetypes=WRFfiletypes, lWRFnative=lWRFnative, 
+                              ltuple=True, lbackground=lbackground)
     # merge lists
     if len(exps) != len(refs): raise DatasetError, 'Experiments and reference list need to have the same length!'
     for i in xrange(len(exps)):
@@ -368,7 +386,7 @@ if __name__ == '__main__':
           # add parallels and meridians
           mapSetup.drawGrid(bmap, left, bottom)
           # mark stations
-          if lstations: mapSetup.markStations(ax[n], bmap)     
+          if lstations: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
           # add ARB basin outline
           if lbasin: 
             bmap.readshapefile(arb_shapefile, 'ARB', ax=axn, drawbounds=True, linewidth=0.5, color='k')

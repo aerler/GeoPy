@@ -230,9 +230,9 @@ def checkItemList(itemlist, length, dtype, default=None, iterable=False, trim=Tr
       itemlist = [itemlist]*length
   return itemlist
 
-
 # helper function for loadDatasets
-def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, ltuple=False, lWRFnative=True):
+def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackground=True, 
+                lWRFnative=True):
   ''' A function that loads a dataset, based on specified parameters '''
   from datasets.WRF import loadWRF
   from datasets.WRF_experiments import WRF_exps
@@ -241,18 +241,18 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, ltuple=Fa
   if exp[0].isupper():
     if exp == 'Unity': 
       ext = loadUnity(resolution=res, period=prd, grid=grd, varlist=varlist)
-      if ltuple: ext = (ext,) # loadPRISM(grid=grd, varlist=varlist)
+#       if lbackground: ext = (ext,) # loadPRISM(grid=grd, varlist=varlist)
       axt = 'Merged Observations'        
     elif exp == 'GPCC': 
       ext = loadGPCC(resolution=res, period=prd, grid=grd, varlist=varlist)
-      if ltuple: ext = (ext,)
+#       if lbackground: ext = (ext,)
       axt = 'GPCC Observations'
     elif exp == 'CRU': 
       ext = loadCRU(period=prd, grid=grd, varlist=varlist)
-      if ltuple: ext = (ext,) 
+#       if lbackground: ext = (ext,) 
       axt = 'CRU Observations' 
     elif exp == 'PRISM': # all PRISM derivatives
-      if ltuple:
+      if lbackground:
         if (len(varlist) == 1 and 'precip' in varlist) or (len(varlist) == 3 and 
             'precip' in varlist and 'lon2D' in varlist and 'lat2D' in varlist): 
           ext = (loadGPCC(grid=grd, varlist=varlist), loadPRISM(grid=grd, varlist=varlist),)
@@ -265,11 +265,11 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, ltuple=Fa
         ext = loadPRISM(grid=grd, varlist=varlist); axt = 'PRISM'
     elif exp == 'CFSR': 
       ext = loadCFSR(period=prd, grid=grd, varlist=varlist)
-      if ltuple: ext = (ext,)
+#       if lbackground: ext = (ext,)
       axt = 'CFSR Reanalysis' 
     elif exp == 'NARR': 
       ext = loadNARR(period=prd, grid=grd, varlist=varlist)
-      if ltuple: ext = (ext,)
+#       if lbackground: ext = (ext,)
       axt = 'NARR Reanalysis'
     else: # all other uppercase names are CESM runs
       raise NotImplementedError, "CESM datasets are currently not supported."  
@@ -288,10 +288,11 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, ltuple=Fa
     
 # function to load a list of datasets/experiments based on names and other common parameters
 def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domains=None, grids=None,
-                 resolutions='025', filetypes=None, lWRFnative=True, ltuple=False):
+                 resolutions='025', filetypes=None, lbackground=True, lWRFnative=True, ltuple=True):
   ''' function to load a list of datasets/experiments based on names and other common parameters '''
   # for load function (below)
   from datasets.WRF_experiments import Exp
+  if lbackground and not ltuple: raise ValueError
   # check and expand lists
   if n is None: n = len(explist)
   elif not isinstance(n, (int,np.integer)): raise TypeError
@@ -305,7 +306,7 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
   dslist = []; axtitles = []
   for exp,tit,prd,dom,grd,res in zip(explist,titles,periods,domains,grids,resolutions): 
     ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=varlist, 
-                           ltuple=ltuple, lWRFnative=lWRFnative)
+                           lbackground=lbackground, lWRFnative=lWRFnative)
     dslist.append(ext); axtitles.append(tit or axt)  
   # count experiment tuples (layers per panel)
   if ltuple:

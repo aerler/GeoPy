@@ -10,8 +10,8 @@ This module contains common meta data and access functions for WRF model output.
 import numpy as np
 import netCDF4 as nc
 import collections as col
-import os
-import pickle
+import os, pickle
+import osr
 # from atmdyn.properties import variablePlotatts
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError
@@ -34,9 +34,8 @@ def getWRFproj(dataset, name=''):
     lat_1 = dataset.TRUELAT1 # Latitude of first standard parallel
     lat_2 = dataset.TRUELAT2 # Latitude of second standard parallel
     lat_0 = dataset.CEN_LAT # Latitude of natural origin
-    lon_0 = dataset.CEN_LON # Longitude of natural origin
-    lon_1 = dataset.STAND_LON
-    if dataset.CEN_LON != dataset.STAND_LON: raise NotImplementedError  
+    lon_0 = dataset.STAND_LON # Longitude of natural origin
+    lon_1 = dataset.CEN_LON # actual center of map
   else:
     raise NotImplementedError, "Can only infer projection parameters for Lambert Conformal Conic projection (#1)."
   projdict = dict(proj=proj,lat_1=lat_1,lat_2=lat_2,lat_0=lat_0,lon_0=lon_0,lon_1=lon_1)
@@ -68,6 +67,12 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   dn = nc.Dataset(filepath.format(1), mode='r', format=ncformat)
   #name = experiment if isinstance(experiment,basestring) else names[0] # omit domain information, which is irrelevant
   projection = getWRFproj(dn, name=experiment.grid) # same for all
+  # get coordinates of center point  
+  clon = dn.CEN_LON; clat = dn.CEN_LAT
+  wgs84 = osr.SpatialReference (); wgs84.ImportFromEPSG (4326) # regular lat/lon geographic grid
+  tx = osr.CoordinateTransformation (wgs84, projection) # transformation object
+  cx, cy, cz = tx.TransformPoint(float(clon),float(clat)) # center point in projected (WRF) coordinates
+  #print ' (CX,CY,CZ) = ', cx, cy, cz 
   # infer size and geotransform
   def getXYlen(ds):
     ''' a short function to infer the length of horizontal axes from a dataset with unknown naming conventions ''' 
@@ -77,9 +82,10 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
       nx = len(ds.dimensions['x']); ny = len(ds.dimensions['y'])
     else: raise AxisError, 'No horizontal axis found, necessary to infer projection/grid configuration.'
     return nx,ny
-  dx = dn.DX; dy = dn.DY
+  dx = float(dn.DX); dy = float(dn.DY)
   nx,ny = getXYlen(dn)
-  x0 = -nx*dx/2; y0 = -ny*dy/2 
+  x0 = -float(nx+1)*dx/2.; y0 = -float(ny+1)*dy/2.
+  x0 += cx; y0 += cy # shift center, if necessary 
   size = (nx, ny); geotransform = (x0,dx,0.,y0,0.,dy)
   name = names[0] if 1 in domains else 'tmp'  # update name, if first domain has a name...
   griddef = GridDefinition(name=name, projection=projection, geotransform=geotransform, size=size)
@@ -96,10 +102,12 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
       if not n == dn.GRID_ID: raise DatasetError # just a check
       pid = dn.PARENT_ID-1 # parent grid ID
       # infer size and geotransform      
-      px0,pdx,s,py0,t,pdy = geotransforms[pid]      
-      x0 = px0+dn.I_PARENT_START*pdx; y0 = py0+dn.J_PARENT_START*pdy
+      px0,pdx,s,py0,t,pdy = geotransforms[pid]
+      dx = float(dn.DX); dy = float(dn.DY)
+      x0 = px0+(float(dn.I_PARENT_START)+0.5)*pdx - 0.5*dx  
+      y0 = py0+float(dn.J_PARENT_START+0.5)*pdy - 0.5*dy
       size = getXYlen(dn) 
-      geotransform = (x0,dn.DX,0.,y0,0.,dn.DY)
+      geotransform = (x0,dx,0.,y0,0.,dy)
       dn.close()
       geotransforms.append(geotransform) # we need that to construct the next nested domain
       if n in domains:
@@ -355,7 +363,8 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=No
   
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
-def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filetypes=None, varlist=None, varatts=None):
+def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filetypes=None, varlist=None, 
+            varatts=None, lconst=True):
   ''' Get a properly formatted monthly WRF climatology as NetCDFDataset. '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)
@@ -401,13 +410,13 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   for name,domain,griddef in zip(names,domains,griddefs):
     # if grid is None or grid.split('_')[0] == experiment.grid: gridstr = ''
     if grid is None or grid == '{0:s}_d{1:02d}'.format(experiment.grid,domain): 
-      gridstr = ''; lconst = True
+      gridstr = ''; llconst = lconst
     else: 
-      gridstr = '_%s'%grid.lower(); lconst = False # only use lower case for filenames     
+      gridstr = '_%s'%grid.lower(); llconst = False # only use lower case for filenames     
     # domain-sensitive parameters
     axes = dict(west_east=griddef.xlon, south_north=griddef.ylat, x=griddef.xlon, y=griddef.ylat) # map axes
     # load constants
-    if lconst:
+    if llconst:
       constfile = fileclasses['const']    
       filename = constfile.climfile.format(domain,gridstr)         
       # load dataset
@@ -421,17 +430,18 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
     # check
     if len(dataset) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
     # add constants to dataset
-    if lconst:
+    if llconst:
       for var in const: 
         if not dataset.hasVariable(var): # 
           dataset.addVariable(var, asNC=False, copy=False, overwrite=False, deepcopy=False)
     # add projection
     dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder)
     # safety checks
-    assert dataset.axes['x'] == griddef.xlon
-    assert dataset.axes['y'] == griddef.ylat   
-    assert all([dataset.axes['x'] == var.getAxis('x') for var in dataset.variables.values() if var.hasAxis('x')])
-    assert all([dataset.axes['y'] == var.getAxis('y') for var in dataset.variables.values() if var.hasAxis('y')])
+    if dataset.isProjected:
+      assert dataset.axes['x'] == griddef.xlon
+      assert dataset.axes['y'] == griddef.ylat   
+      assert all([dataset.axes['x'] == var.getAxis('x') for var in dataset.variables.values() if var.hasAxis('x')])
+      assert all([dataset.axes['y'] == var.getAxis('y') for var in dataset.variables.values() if var.hasAxis('y')])
     # append to list
     datasets.append(dataset) 
   # return formatted dataset
@@ -490,6 +500,7 @@ if __name__ == '__main__':
         print('   Loading Definition from \'{0:s}\''.format(folder))
         # save pickle
         filename = '{0:s}/{1:s}'.format(grid_folder,griddef_pickle.format(gridstr))
+        if os.path.exists(filename): os.remove(filename) # overwrite 
         filehandle = open(filename, 'w')
         pickle.dump(griddef, filehandle)
         filehandle.close()

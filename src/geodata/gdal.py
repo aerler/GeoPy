@@ -25,7 +25,7 @@ ogr.UseExceptions()
 
 # import all base functionality from PyGeoDat
 from geodata.base import Variable, Axis, Dataset
-from geodata.misc import printList, isEqual, isInt, isFloat, isNumber, DataError, AxisError, GDALError
+from geodata.misc import printList, isEqual, isInt, isFloat, isNumber, DataError, AxisError, GDALError, DatasetError
 
 
 # # utility functions and classes to handle projection information and related meta data
@@ -199,17 +199,25 @@ def loadPickledGridDef(grid=None, res=None, filename=None, folder=None, check=Tr
 
 
 # a utility function
-def addGeoLocator(dataset, griddef=None, gdal=True, check=True):
+def addGeoLocator(dataset, griddef=None, lgdal=True, lreplace=False, lcheck=True):
   ''' add 2D geolocator arrays to geographic or projected datasets '''
-  # if check = False, we will just do it
-  if not ( check and dataset.hasVariable('lon2D') and dataset.hasVariable('lat2D') ):
-    if griddef is None: griddef = getGridDef(dataset) # make temporary griddef from dataset      
-    # add geolocator arrays as variables
-    axes = (dataset.ylat,dataset.xlon)
-    dataset += Variable('lon2D', units='deg E', axes=axes, data=griddef.lon2D)
-    dataset += Variable('lat2D', units='deg N', axes=axes, data=griddef.lat2D)
-    if gdal: # rerun GDAL initialization, so that the new arrays are GDAL enabled
-      dataset = addGDALtoDataset(dataset, projection=dataset.projection, geotransform=dataset.geotransform)
+  # add geolocator arrays as variables
+  if griddef is None: griddef = getGridDef(dataset) # make temporary griddef from dataset      
+  axes = (dataset.ylat,dataset.xlon)
+  # add longitude field
+  if lreplace or not dataset.hasVariable('lon2D'):
+    lon2D = Variable('lon2D', units='deg E', axes=axes, data=griddef.lon2D)
+    if dataset.hasVariable('lon2D'): dataset.replaceVariable(lon2D, deepcopy=True)
+    else: dataset.addVariable(lon2D, deepcopy=True)
+  elif lcheck: raise DatasetError
+  # add latitude field
+  if lreplace or not dataset.hasVariable('lat2D'):
+    lat2D = Variable('lat2D', units='deg N', axes=axes, data=griddef.lat2D)
+    if dataset.hasVariable('lat2D'): dataset.replaceVariable(lat2D, deepcopy=True)
+    else: dataset.addVariable(lat2D, deepcopy=True)
+  elif lcheck: raise DatasetError
+  # rerun GDAL initialization, so that the new arrays are GDAL enabled    
+  if lgdal: dataset = addGDALtoDataset(dataset, projection=dataset.projection, geotransform=dataset.geotransform)
   # return dataset
   return dataset
 
@@ -311,8 +319,8 @@ def getAxes(geotransform, xlen=0, ylen=0, projected=False):
     yatts = dict(name='lat', long_name='latitude', units='deg N')
   # create axes    
   (x0, dx, s, y0, t, dy) = geotransform; del s,t
-  xlon = Axis(length=xlen, coord=np.arange(x0 + dx / 2, x0+xlen*dx, dx), atts=xatts)
-  ylat = Axis(length=ylen, coord=np.arange(y0 + dy / 2, y0+ylen*dy, dy), atts=yatts)
+  xlon = Axis(length=xlen, coord=np.arange(x0 + dx/2., x0+xlen*dx, dx), atts=xatts)
+  ylat = Axis(length=ylen, coord=np.arange(y0 + dy/2., y0+ylen*dy, dy), atts=yatts)
   # return tuple of axes
   return xlon, ylat
 

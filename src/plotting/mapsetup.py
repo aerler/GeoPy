@@ -29,6 +29,8 @@ class MapSetup(object):
     self.grid = grid
     # initialize basemap object
     self.basemap = Basemap(**projection) # make just one basemap with dummy axes handle
+    # N.B.: class methods will still take a basemap object as an argument, because the class instance 
+    #       basemap is just a template and plots are generated from copies of this basemap. 
     # map grid etc.
     self.lat_full = lat_full
     self.lat_half = lat_half
@@ -75,29 +77,35 @@ class MapSetup(object):
     basemap.drawmapboundary(fill_color='k',linewidth=2)    
       
   # mark stations
-  def markStations(self, ax, basemap):
+  def markPoints(self, ax, basemap, pointset='default'):
     ''' mark points and label them '''
     if self.point_markers is not None:
-      for name,lon,lat in self.point_markers:
+      if isinstance(self.point_markers,dict):
+        point_markers = self.point_markers[pointset]
+      else: 
+        point_markers = self.point_markers
+      # loop over points
+      for name,lon,lat in point_markers:
         xx,yy = basemap(lon, lat)
         basemap.plot(xx,yy,'ko',markersize=3)
         ax.text(xx+1.5e4,yy-1.5e4,name,ha='left',va='top',fontsize=8)
 
 
 ## function that serves a MapSetup instance with complementary pickles
-def getMapSetup(lpickle=False, folder=None, name=None, **kwargs):
+def getMapSetup(lpickle=False, folder=None, name=None, lrm=False, **kwargs):
   ''' function that serves a MapSetup instance with complementary pickles '''
   # handle pickling
   if lpickle:
     if not isinstance(folder,basestring): raise TypeError 
     if not os.path.exists(folder): raise IOError
     filename = '{0:s}/{1:s}.pickle'.format(folder,name)
-    if os.path.exists(filename):
+    if os.path.exists(filename) and not lrm:
       # open existing MapSetup from pickle
       filehandle = open(filename, 'r')
       mapSetup = pickle.load(filehandle)
       filehandle.close()
     else:
+      if lrm and os.path.exists(filename): os.remove(filename) 
       # create new MapSetup and also pickle it
       mapSetup = MapSetup(name=name, **kwargs)
       filehandle = open(filename, 'w')

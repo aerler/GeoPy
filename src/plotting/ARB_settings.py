@@ -18,18 +18,24 @@ arb_shapefile = arb_shapefolder+'ARB_Basins_Outline_WGS84' # basemap automatical
 #    or $ogr2ogr -t_srs EPSG:4326 new_shapefile_WGS84.shp old_shapefile_in_projected.shp
 
 ## Annotation
-
+station_dict = dict()
 # ST_LINA, WESTLOCK_LITKE, JASPER, FORT_MCMURRAY, SHINING_BANK
-station_list = [('SL',-111.45,54.3), ('WL',-113.85,54.15), ('J',-118.07,52.88), 
+station_dict['ARB'] = [('SL',-111.45,54.3), ('WL',-113.85,54.15), ('J',-118.07,52.88), 
             ('FM',-111.22,56.65), ('SB',-115.97,53.85)]
+station_dict['cities'] = [('J',-118.07,52.88),('V',-123.1,49.25),('C',-114.07,51.05),
+                      ('E',-113.5,53.53),('PG',-122.75,53.92)]
+station_dict['default'] = station_dict['cities'] # default point markers
 
 # parallels and meridians
 annotation_dict = dict()
 ## Lambert Conic Conformal - Very High Resolution Coast Mountains
-annotation_dict['lcc-coast'] = dict(scale=(-128, 48, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
+annotation_dict['lcc-coast'] = dict(scale=(-127, 49.25, -125, 51, 100), lat_full=[50,55], lat_half=[48,49,51,52,53,54], 
+                             lon_full=[-125,-120], lon_half=[-127.5,-122.5,-117.5])
+## Lambert Conic Conformal - Columbia Icefield
+annotation_dict['lcc-col'] = dict(scale=(-116.75, 48.25, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
                              lon_full=[-160,-140,-120,-100], lon_half=[-150,-130,-110])
-## Lambert Conic Conformal - Athabasca River Basin and Columbia Icefield
-annotation_dict['lcc-arb'] = dict(scale=(-118, 48, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
+## Lambert Conic Conformal - Athabasca River Basin
+annotation_dict['lcc-arb'] = dict(scale=(-118, 50, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
                              lon_full=[-160,-140,-120,-100], lon_half=[-150,-130,-110])
 ## Lambert Conic Conformal - New Fine Domain
 annotation_dict['lcc-new'] = dict(scale=(-128, 48, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
@@ -64,7 +70,10 @@ projection_dict = dict()
 ## Lambert Conic Conformal - Very High Resolution Coast Mountains
 projection_dict['lcc-coast'] = dict(projection='lcc', lat_0=51, lon_0=-125, lat_1=51, rsphere=rsphere,
               width=50*10e3, height=50*10e3, area_thresh = 500., resolution='i')
-## Lambert Conic Conformal - Athabasca River Basin and Columbia Icefield
+## Lambert Conic Conformal - Columbia Icefield
+projection_dict['lcc-col'] = dict(projection='lcc', lat_0=52., lon_0=-120., lat_1=53, rsphere=rsphere,
+              width=100*10e3, height=100*10e3, area_thresh = 500., resolution='l')
+## Lambert Conic Conformal - Athabasca River Basin
 projection_dict['lcc-arb'] = dict(projection='lcc', lat_0=55.5, lon_0=-114.5, lat_1=55, rsphere=rsphere,
               width=110*10e3, height=110*10e3, area_thresh = 500., resolution='l')
 ## Lambert Conic Conformal - New Fine Domain
@@ -90,7 +99,7 @@ projection_dict['ortho-NA'] = dict(projection='ortho', lat_0 = 75, lon_0 = -137,
 
 
 ## function to actually get a MapSetup object for the ARB region
-def getARBsetup(projection, annotation=None, stations=True, lpickle=False, folder=None):
+def getARBsetup(projection, annotation=None, stations=None, lpickle=False, folder=None, lrm=False):
   ''' return a MapSetup object with data for the chosen ARB setting '''
   # projection
   proj = projection_dict[projection]
@@ -98,11 +107,14 @@ def getARBsetup(projection, annotation=None, stations=True, lpickle=False, folde
   if annotation is None:
     if projection in annotation_dict: anno = annotation_dict[projection]
   else: anno = annotation_dict[annotation]
-  # stations
-  if stations: stat = station_list
-  else: stat = None
-  mapSetup = getMapSetup(lpickle=lpickle, folder=folder, # pickle arguments; the rest is passed on to MapSetup 
-                         name=projection, projection=proj, grid=10, point_markers=stat, **anno)
+  # station markers
+  if stations is None:
+    stations = station_dict
+  else:
+    if not isinstance(stations,basestring): raise TypeError
+    stations = station_dict[stations]
+  mapSetup = getMapSetup(lpickle=lpickle, folder=folder, lrm=lrm, # pickle arguments; the rest is passed on to MapSetup 
+                         name=projection, projection=proj, grid=10, point_markers=stations, **anno)
   # return object
   return mapSetup
 
@@ -110,17 +122,21 @@ def getARBsetup(projection, annotation=None, stations=True, lpickle=False, folde
 # create pickles
 if __name__ == '__main__':
 
-  
+  proj_list = ['lcc-coast']
+#   proj_list = None
 
   #TODO: pull creation of projection object into this function
-  #TODO: add optional loading from pickled object    
+  #TODO: add optional loading from pickled object
+  if proj_list is None: proj_list = projection_dict.keys()    
   # loop over projections
-  for name,proj in projection_dict.items():
+  for name in proj_list:
+    proj = projection_dict[name]
     
     # test retrieval function
-    test = getARBsetup(name, lpickle=True, folder=arb_map_folder)
+    test = getARBsetup(name, lpickle=True, stations=None, folder=arb_map_folder, lrm=True)
     print test.name
     print test
+    print test.point_markers
     
     #TODO: generate projection object
     

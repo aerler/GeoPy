@@ -202,7 +202,7 @@ class CentralProcessingUnit(object):
     if int_interp is None: int_interp = gdalInterp('nearest')
     else: int_interp = gdalInterp(int_interp)
     if float_interp is None:
-      if srcres < tgtres: float_interp = gdalInterp('convolution') # down-sampling
+      if srcres < tgtres: float_interp = gdalInterp('bilinear') # down-sampling: 'convolution'
       else: float_interp = gdalInterp('cubicspline') # up-sampling
     else: float_interp = gdalInterp(float_interp)      
     # prepare function call    
