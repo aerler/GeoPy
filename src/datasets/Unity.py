@@ -57,11 +57,11 @@ def loadUnity(name=dataset_name, period=None, grid=None, resolution=None, varlis
   ''' Get the pre-processed monthly PRISM climatology as a DatasetNetCDF. '''
   # a climatology is not available
   if period is None: 
-    period = (1979,1989)
+    period = (1979,2009)
     warn('A climatology is not available for the Unified Dataset; loading period {0:4d}-{1:4d}.'.format(*period))
   # this dataset has not native/default grid
   if grid is None: 
-    grid = 'arb2_d02'
+    grid = 'ARB_small_025'
     warn('The Unified Dataset has no native grid; loading {0:s} grid.'.format(grid))
   # load standardized climatology dataset with PRISM-specific parameters  
   dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
@@ -94,12 +94,13 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
   
   # settings to generate dataset
-#   grid = 'arb2_d02'
-  grid = 'ARB_small_05'
+  grid = 'arb2_d02'
+  grid = 'ARB_small_025'
 #   period = (1979,1984)
 #   period = (1979,1989)
-#   period = (1997,1998)
-  period = (1979,1980)
+  period = (1997,1998)
+#   period = (1979,1980)
+#   period = (1979,2009)
 
   
   ## do some tests

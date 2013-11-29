@@ -172,9 +172,9 @@ if __name__ == '__main__':
 #   reses = ('25',)
   period = (1979,1984)
   period = (1979,1989)
-  period = (1979,2009)
-  period = (1997,1998)
-  period = (1979,1980)
+#   period = (1979,2009)
+#   period = (1997,1998)
+#   period = (1979,1980)
   
   grid = 'GPCC' # 'arb2_d02'
   

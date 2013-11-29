@@ -88,10 +88,10 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
       clevs = np.linspace(0,5,26); clbl = '%02.1f' # mm/day
     elif var == 'Q2':
       clevs = np.linspace(0,15,31); clbl = '%02.1f' # mm/day
-    elif oldvar=='SST' or var=='SST': # skin temperature (SST)
-      clevs = np.linspace(240,300,61); clbl = '%03.0f' # K
+    elif oldvar=='SST' or var=='SST' or var=='Ts': # skin temperature (SST)
+      clevs = np.linspace(260,290,31); clbl = '%03.0f' # K
       var = 'Ts'; lmsklnd = True # mask land
-    elif var=='T2' or var=='Ts' or var=='Tmin' or var=='Tmax' or var=='Tmean': # 2m or skin temperature (SST)
+    elif var=='T2' or var=='Tmin' or var=='Tmax' or var=='Tmean': # 2m or skin temperature (SST)
       clevs = np.linspace(255,290,36); clbl = '%03.0f' # K
       if season == 'winter': clevs -= 10
       elif season == 'summer': clevs += 10
@@ -127,9 +127,13 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
   if isinstance(season,str):
     if season == 'annual':  # all month
       month = range(1,13); plottype = 'Annual'
-    elif season == 'OND':# DJF
+    elif season == 'cold': # DJF
+      month = [10, 11, 12, 1, 2, 3]; plottype = 'Cold Season'    
+    elif season == 'warm': # DJF
+      month = [4, 5, 6, 7, 8, 9]; plottype = 'Warm Season'    
+    elif season == 'OND': # DJF
       month = [10, 11, 12]; plottype = 'Oct.-Dec.'    
-    elif season == 'winter':# DJF
+    elif season == 'winter': # DJF
       month = [12, 1, 2]; plottype = 'Winter'
     elif season == 'spring': # MAM
       month = [3, 4, 5]; plottype = 'Spring'

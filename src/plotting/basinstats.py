@@ -60,13 +60,13 @@ def getVarSettings(plottype, lPRISM=False, mode='all'):
 if __name__ == '__main__':
   
   ## settings
-  expset = 'hires'
+  expset = 'obs'
   plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['temp']
   lPRISM = False
   lUnity = True
   domain = 2
-  period = 1
+  period = 10
   
   ## datasets
   tag = 'prism' if lPRISM else ''
@@ -99,12 +99,13 @@ if __name__ == '__main__':
     loadlist = loadlist.union(varlist)
     allfiletypes = allfiletypes.union(filetypes)
     lCFSR = lCFSR or lcfsr; lNARR = lNARR or lnarr
-  #lCFSR = False; lNARR = False
+#   lCFSR = False; lNARR = False
       
   ## load data  
-  domain = [3,2]
+#   domain = [3,2]
   exps, titles = loadDatasets(explist, n=None, varlist=loadlist, titles=None, periods=period, domains=domain, 
-                              grids=grid, resolutions='025', filetypes=allfiletypes, lWRFnative=False, ltuple=False)
+                              grids=grid, resolutions='025', filetypes=allfiletypes, lWRFnative=False, 
+                              ltuple=False, lbackground=False)
   ref = exps[0]; nlen = len(exps)
   # observations  
   if period == 9: period = 10 # nine is only because some experiments don't have 10 yet...
@@ -115,6 +116,7 @@ if __name__ == '__main__':
   if lCFSR: cfsr = loadCFSR(period=period, grid=grid, varlist=loadlist, varatts=varatts)
   if lNARR: narr = loadNARR(period=period, grid=grid, varlist=loadlist, varatts=varatts)  
   print ref
+  print ref.name
   
   ## create averaging mask
   shp_mask = rasterizeShape(name='Athabasca_River_Basin', griddef=ref.griddef, folder=ref.gridfolder)

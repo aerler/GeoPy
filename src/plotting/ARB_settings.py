@@ -122,11 +122,9 @@ def getARBsetup(projection, annotation=None, stations=None, lpickle=False, folde
 # create pickles
 if __name__ == '__main__':
 
-  proj_list = ['lcc-coast']
-#   proj_list = None
+  proj_list = None
+#   proj_list = ['lcc-coast']
 
-  #TODO: pull creation of projection object into this function
-  #TODO: add optional loading from pickled object
   if proj_list is None: proj_list = projection_dict.keys()    
   # loop over projections
   for name in proj_list:
@@ -137,9 +135,4 @@ if __name__ == '__main__':
     print test.name
     print test
     print test.point_markers
-    
-    #TODO: generate projection object
-    
-    #TODO: pickle object
-    pass
-  
+      

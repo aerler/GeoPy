@@ -199,21 +199,21 @@ def loadPickledGridDef(grid=None, res=None, filename=None, folder=None, check=Tr
 
 
 # a utility function
-def addGeoLocator(dataset, griddef=None, lgdal=True, lreplace=False, lcheck=True):
+def addGeoLocator(dataset, griddef=None, lcheck=True, asNC=True, lgdal=False, lreplace=False):
   ''' add 2D geolocator arrays to geographic or projected datasets '''
   # add geolocator arrays as variables
   if griddef is None: griddef = getGridDef(dataset) # make temporary griddef from dataset      
-  axes = (dataset.ylat,dataset.xlon)
+  axes = (griddef.ylat,griddef.xlon)
   # add longitude field
   if lreplace or not dataset.hasVariable('lon2D'):
     lon2D = Variable('lon2D', units='deg E', axes=axes, data=griddef.lon2D)
-    if dataset.hasVariable('lon2D'): dataset.replaceVariable(lon2D, deepcopy=True)
-    else: dataset.addVariable(lon2D, deepcopy=True)
+    if dataset.hasVariable('lon2D'): dataset.replaceVariable(lon2D, deepcopy=True, asNC=asNC)
+    else: dataset.addVariable(lon2D, deepcopy=True, asNC=asNC)
   elif lcheck: raise DatasetError
   # add latitude field
   if lreplace or not dataset.hasVariable('lat2D'):
     lat2D = Variable('lat2D', units='deg N', axes=axes, data=griddef.lat2D)
-    if dataset.hasVariable('lat2D'): dataset.replaceVariable(lat2D, deepcopy=True)
+    if dataset.hasVariable('lat2D'): dataset.replaceVariable(lat2D, deepcopy=True, asNC=asNC)
     else: dataset.addVariable(lat2D, deepcopy=True)
   elif lcheck: raise DatasetError
   # rerun GDAL initialization, so that the new arrays are GDAL enabled    
@@ -588,7 +588,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
     griddef = GridDefinition(dataset.name, projection=projection, geotransform=geotransform, 
                              size=(len(xlon),len(ylat)), xlon=xlon, ylat=ylat, geolocator=geolocator)
     if geolocator:
-      addGeoLocator(dataset, griddef=griddef, gdal=True, check=True)
+      addGeoLocator(dataset, griddef=griddef, lgdal=False, lreplace=True, lcheck=True, asNC=False)
     # add new instance attributes (projection parameters)
     dataset.__dict__['isProjected'] = isProjected    
     dataset.__dict__['projection'] = projection

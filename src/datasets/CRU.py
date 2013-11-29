@@ -121,9 +121,10 @@ if __name__ == '__main__':
     
 #   mode = 'test_climatology'
   mode = 'average_timeseries'
-  period = (1979,1989)
-  period = (1979,1980)
-#   period = (1997,1998)
+#   period = (1979,2009)
+#   period = (1979,1989)
+#   period = (1979,1980)
+  period = (1997,1998)
 
   if mode == 'test_climatology':
     

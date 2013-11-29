@@ -65,20 +65,20 @@ if __name__ == '__main__':
   
   # observations
   lprint = True # write plots to disk using case as a name tag
-#   maptype = 'lcc-new'; lstations = True; lbasin = True
-#   grid = 'arb2_d02'; domain = (2,)
+  maptype = 'lcc-new'; lstations = True; lbasin = True
+  grid = 'arb2_d02'; domain = (2,); #grid = 'ARB_small_05'
 #   explist = ['Unity']; exptitles = ['Merged Observations: Precipitation [mm/day]']; 
 #   period = H10; case = 'unity'; ltitle = False
-#   ldiff = True; reflist = ['Unity']
 #   lfrac = True; reflist = ['Unity']
-#   explist = ['max','ctrl','new','NARR']; period = H10; case = 'val'
+  ldiff = True; reflist = ['Unity']
+#   explist = ['max','cfsr','new','CFSR']; period = H10; case = 'val'
 #   explist = ['CFSR','CRU','NARR','Unity']; period = H10; case = 'obs'
 #   exptitles = [None,None,None,'GPCC (no data)']
 #   explist = ['max','ctrl','noah','CRU']; period = H10; case = 'val'
 #   explist = ['max','ctrl','new','noah']; period = H10; case = 'hydro'
 #   explist = ['max','ctrl','new','CRU']; period = H10; case = 'val'
 #   explist = ['max','CRU','cfsr','ctrl']; period = H10; case = 'val'
-#   explist = ['max','PRISM','max-A','max-B','cfsr','max-C']; period = H10; case = 'ens'
+  explist = ['max','ctrl','new','milb','wdm6','tom']; period = H05; case = 'mp'
 #   explist = ['max','CRU','max-A','max-B','NARR','max-C']; period = H10; case = 'ens'
 #   explist = ['max','cfsr','new','ctrl']; period = H10; case = 'hydro'
 #   explist = ['max','max-2050','gulf','seaice-2050']; period = [H10, A10, H10, A10]; case = 'mix'
@@ -99,21 +99,24 @@ if __name__ == '__main__':
 
 #   case = 'bugaboo'; period = '1997-1998'  # name tag
 #   maptype = 'lcc-coast'; lstations = False; 
-#   grid = 'arb2_d02'
-#   domain = [(1,2,3),None,(1,),(1,2,)]
-# #   domain = [(3,),(2,),(1,),(2,)]; lfrac = True; reflist = ['Unity']
-#   explist = ['coast','Unity','coast','coast'] #; domain = (3,);
-#   exptitles = ['WRF 1km (CFSR)', 'PRISM Canada', 'WRF 25km (CFSR)', 'WRF 5km (CFSR)']
+#   domain = [(3,),(2,),(1,),(2,)]; ldiff = True; reflist = ['Unity']
+#   grid = 'arb2_d02'; grid = 'ARB_small_025' 
+#   explist = ['coast','GPCC','coast','coast'] #; domain = (3,);
+#   exptitles = ['WRF 1km (CFSR)', None, 'WRF 25km (CFSR)', 'WRF 5km (CFSR)']
+#   domain = [(1,2,3,),None,(1,),(1,2,)]
+#   explist = ['coast','PRISM','coast','coast'] #; domain = (3,);
 
-  case = 'columbia'; stations = 'cities'
-  maptype = 'lcc-col'; lstations = True; lbasin = True # 'lcc-new'  
-  ldiff = True; reflist = ['Unity']
-  period = '1979-1980'; # 
-  grid = 'ARB_small_05'; 
-#   grid = 'arb2_d02'; 
-  domain = [(3,),(2,),(1,),(2,)]  # name tag
-  explist = ['columbia','PRISM','columbia','columbia'] 
-  exptitles = ['WRF 3km (CFSR)', 'PRISM Canada', 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
+#   case = 'columbia'; stations = 'cities'
+#   maptype = 'lcc-col'; lstations = True; lbasin = True # 'lcc-new'  
+#   period = ['1979-1980']*4; period[1] = None 
+#   domain = [(3,),None,(1,),(2,)]
+# #   ldiff = True; reflist = ['Unity']
+# #   grid = 'ARB_small_025'; #   grid = 'arb2_d02'; 
+# #   explist = ['columbia','GPCC','columbia','columbia'] 
+# #   exptitles = ['WRF 3km (CFSR)', 'GPCC (Climatology)', 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
+#   explist = ['columbia','PRISM','columbia','columbia'] 
+#   exptitles = ['WRF 3km (CFSR)', None, 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
+
    
 #   period = ['1979-1980','1979-1984','1979-1980','1979-1980']  # name tag
 #   explist = ['columbia', 'cfsr','columbia','columbia']; domain = [(3,),(2,),(2,),(1,)]; 
@@ -130,6 +133,7 @@ if __name__ == '__main__':
   ## select variables and seasons
   varlist = []; seasons = []
   # variables
+#   varlist += ['Ts']
 #   varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
   varlist += ['precip']
@@ -148,7 +152,9 @@ if __name__ == '__main__':
 #   varlist += ['SST']
 #   varlist += ['lat2D','lon2D']
   # seasons
-  seasons = ['OND'] # for high-res columbia domain
+#   seasons += ['OND'] # for high-res columbia domain
+  seasons += ['cold']
+#   seasons += ['warm']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
 #   seasons += ['annual']
 #   seasons += ['summer']
@@ -243,7 +249,8 @@ if __name__ == '__main__':
           # handle dimensions
           if expvar.isProjected: 
             assert (exp.lon2D.ndim == 2) and (exp.lat2D.ndim == 2), 'No coordinate fields found!'
-            exp.lon2D.load(); exp.lat2D.load()
+            if not exp.lon2D.data: exp.lon2D.load()
+            if not exp.lat2D.data: exp.lat2D.load()
             lon = exp.lon2D.getArray(); lat = exp.lat2D.getArray()          
           else: 
             assert expvar.hasAxis('lon') and expvar.hasAxis('lat'), 'No geographic axes found!'
@@ -377,12 +384,14 @@ if __name__ == '__main__':
           else: bottom = False
           # begin annotation
           bmap = maps[n]
+          kwargs = dict()
           # black-out continents, if we have no proper land mask 
           if lmsklnd and not (exps[n][0].variables.has_key('lndmsk') or exps[n][0].variables.has_key('lndidx')): 
-            blklnd = True        
-          else: blklnd = False                  
+            kwargs['maskland'] = True
+          if ldiff or lfrac: 
+            kwargs['ocean_color'] = 'white' ; kwargs['land_color'] = 'white'
           # misc annotatiosn
-          mapSetup.miscAnnotation(bmap, blklnd=blklnd)
+          mapSetup.miscAnnotation(bmap, **kwargs)
           # add parallels and meridians
           mapSetup.drawGrid(bmap, left, bottom)
           # mark stations

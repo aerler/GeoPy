@@ -178,32 +178,33 @@ if __name__ == '__main__':
     ldebug = False
     NP = NP or 4
     loverwrite = True
-    varlist = ['precip',]
-#     varlist = None
+#     varlist = ['precip',]
+    varlist = None
     periods = [(1979,1984),(1979,1989)]
 #     periods = [(1979,1989)]
-#     periods = [(1997,1998)]
-    periods = [(1979,1980)]
-#     periods = [(1979,2009)]
+    periods = [(1997,1998)]
+#     periods = [(1979,1980)]
+    periods = [(1979,2009)]
     datasets = []
-#     datasets = ['PRISM']; periods = None
-#     resolutions = {'GPCC':['025']}
+#     datasets = ['PRISM','GPCC']; periods = None
+    datasets = ['GPCC','CRU']
+#     resolutions = {'GPCC':['025','05']}
     resolutions = None
     # WRF
     experiments = []
-    experiments = ['columbia']
+#     experiments = ['coast']
 #     experiments = ['max','ctrl','new','noah']
 #     experiments = ['new','gulf','max','cfsr']
 #     experiments = ['ctrl'] # WRF experiment names (passed through WRFname)
     domains = [1,2,3] # domains to be processed
-#     filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
-    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+    filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
+#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
     filetypes = ['srfc']
     # grid to project onto
     lpickle = True
 #     grids = dict(arb2=['d02']) # dict with list of resolutions
-#     grids = dict(arb2=['d02'], ARB_small=['025','05']) # dict with list of resolutions
-    grids = dict(ARB_small=['05']) # dict with list of resolutions    
+#     grids = dict(ARB_small=['025']) # dict with list of resolutions    
+    grids = dict(arb2=['d02'], ARB_small=['025','05']) # dict with list of resolutions
   else:
     NP = NP or 4
     #loverwrite = False

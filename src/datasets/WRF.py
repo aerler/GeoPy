@@ -14,7 +14,7 @@ import os, pickle
 import osr
 # from atmdyn.properties import variablePlotatts
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError
+from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, addGeoLocator, GDALError
 from geodata.misc import DatasetError, isInt, AxisError, DateError, isNumber
 from datasets.common import translateVarNames, data_root, grid_folder, default_varatts 
 from geodata.gdal import loadPickledGridDef, griddef_pickle
@@ -104,8 +104,8 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
       # infer size and geotransform      
       px0,pdx,s,py0,t,pdy = geotransforms[pid]
       dx = float(dn.DX); dy = float(dn.DY)
-      x0 = px0+(float(dn.I_PARENT_START)+0.5)*pdx - 0.5*dx  
-      y0 = py0+float(dn.J_PARENT_START+0.5)*pdy - 0.5*dy
+      x0 = px0+float(dn.I_PARENT_START-0.5)*pdx - 0.5*dx  
+      y0 = py0+float(dn.J_PARENT_START-0.5)*pdy - 0.5*dy
       size = getXYlen(dn) 
       geotransform = (x0,dx,0.,y0,0.,dy)
       dn.close()
@@ -179,6 +179,7 @@ class Srfc(FileType):
   ''' Variables and attributes of the surface files. '''
   def __init__(self):
     self.atts = dict(T2     = dict(name='T2', units='K'), # 2m Temperature
+                     TSK     = dict(name='Ts', units='K'), # Skin Temperature (SST)
                      Q2     = dict(name='q2', units='kg/kg'), # 2m water vapor mass mixing ratio
                      RAIN   = dict(name='precip', units='kg/m^2/s'), # total precipitation rate (kg/m^2/s)
                      RAINC  = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate (kg/m^2/s)
@@ -399,16 +400,23 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   if varatts: varlist = translateVarNames(varlist, varatts) # default_varatts
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
-  filename = fileclasses.values()[0].tsfile # just use the first filetype
   if grid is None:
-    griddefs = getWRFgrid(name=names, experiment=experiment, domains=domains, folder=folder, filename=filename)
+    griddefs = None; c = 0
+    filename = fileclasses.values()[c].tsfile # just use the first filetype
+    while griddefs is None:
+      # some experiments do not have all files... try, until one works...
+      try:
+        griddefs = getWRFgrid(name=names, experiment=experiment, domains=domains, folder=folder, filename=filename)
+      except IOError:
+        c += 1
+        filename = fileclasses.values()[c].tsfile
   else:
     griddefs = [loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder, check=True)]*len(domains)
   assert len(griddefs) == len(domains)
   # grid
   datasets = []
   for name,domain,griddef in zip(names,domains,griddefs):
-    # if grid is None or grid.split('_')[0] == experiment.grid: gridstr = ''
+#     if grid is None or grid.split('_')[0] == experiment.grid: gridstr = ''
     if grid is None or grid == '{0:s}_d{1:02d}'.format(experiment.grid,domain): 
       gridstr = ''; llconst = lconst
     else: 
@@ -435,7 +443,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
         if not dataset.hasVariable(var): # 
           dataset.addVariable(var, asNC=False, copy=False, overwrite=False, deepcopy=False)
     # add projection
-    dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder)
+    dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, geolocator=True)
     # safety checks
     if dataset.isProjected:
       assert dataset.axes['x'] == griddef.xlon
@@ -477,7 +485,7 @@ if __name__ == '__main__':
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
   experiments = ['rrtmg', 'ctrl', 'new']
 #   grids = ['coast1']; experiments = ['coast']; domains = [1,2,3]
-  grids = ['columbia1']; experiments = ['columbia']; domains = [1,2,3]   
+#   grids = ['columbia1']; experiments = ['columbia']; domains = [1,2,3]   
     
   # pickle grid definition
   if mode == 'pickle_grid':

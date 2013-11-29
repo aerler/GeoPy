@@ -278,10 +278,11 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
   else: 
     # WRF runs are all in lower case
     exp = WRF_exps[exp]        
-    #if 'xtrm' in WRFfiletypes: varatts = dict(Tmean=dict(name='T2')) 
+    #if 'xtrm' in WRFfiletypes: 
+    varatts = dict(TSK=dict(name='Ts')) 
     if lWRFnative: grd = None
     ext = loadWRF(experiment=exp, period=prd, grid=grd, domains=dom, filetypes=filetypes, 
-                  varlist=varlist, varatts=None)  
+                  varlist=varlist, varatts=varatts)  
     axt = exp.title # defaults to name...
   # return values
   return ext, axt    

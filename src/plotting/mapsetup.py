@@ -66,11 +66,11 @@ class MapSetup(object):
       basemap.drawmapscale(*self.scale, barstyle='fancy', fontsize=8, yoffset=0.01*(basemap.ymax-basemap.ymin))
       
   # misc annotations that I usually do
-  def miscAnnotation(self, basemap, blklnd=False):
+  def miscAnnotation(self, basemap, maskland=False, ocean_color='blue', land_color='green'):
     ''' add coastlines, countries, color ocean and background etc. '''
     # land/sea mask
-    basemap.drawlsmask(ocean_color='blue', land_color='green',resolution=self.resolution,grid=self.grid)
-    if blklnd: basemap.fillcontinents(color='black',lake_color='black') # mask land
+    basemap.drawlsmask(ocean_color=ocean_color, land_color=land_color,resolution=self.resolution,grid=self.grid)
+    if maskland: basemap.fillcontinents(color='black',lake_color='black') # mask land
     # add maps stuff
     basemap.drawcoastlines(linewidth=0.5)
     basemap.drawcountries(linewidth=0.5)
