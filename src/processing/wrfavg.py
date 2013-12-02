@@ -20,7 +20,7 @@ from processing.process import CentralProcessingUnit
 from processing.multiprocess import asyncPoolEC
 # WRF specific
 from datasets.WRF import loadWRF_TS, fileclasses
-from datasets.WRF_experiments import exps, Exp
+from datasets.WRF_experiments import WRF_exps, Exp, WRF_experiments
 
 
 def computeClimatology(experiment, filetype, domain, periods=None, offset=0, griddef=None, varlist=None, 
@@ -90,7 +90,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
           age = datetime.fromtimestamp(os.path.getmtime(filepath))
           # if sink file is newer than source file, skip (do not recompute)
           if age > sourceage and os.path.getsize(filepath) > 1e6: lskip = True
-          # N.B.: NetCDF files smaller than 1MB are usually incomplete header fragments from a previous crashed
+          # N.B.: NetCDF files smaller than 1MB are usually incomplete header fragments from a previous crash
           #print sourceage, age
         if not lskip: os.remove(filepath) 
       
@@ -198,8 +198,8 @@ if __name__ == '__main__':
     grid = 'WRF' 
 
   # expand experiments
-  if experiments is None: experiments = exps.values() # do all 
-  else: experiments = [exps[exp] for exp in experiments] 
+  if experiments is None: experiments = WRF_experiments.values() # do all 
+  else: experiments = [WRF_exps[exp] for exp in experiments] 
 
   ## do some fancy regridding
   # determine coordinate arrays

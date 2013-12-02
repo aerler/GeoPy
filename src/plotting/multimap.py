@@ -34,9 +34,8 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-  WRFfiletypes=['srfc']
-#   WRFfiletypes=['srfc','xtrm','hydro'] # WRF data source
-#   WRFfiletypes = ['srfc','hydro','xtrm'] # WRF data source
+#   WRFfiletypes=['srfc']
+  WRFfiletypes = ['srfc','lsm','hydro','xtrm'] # WRF data source
   # figure directory
   folder = arb_figure_folder
   lpickle = True
@@ -49,6 +48,8 @@ if __name__ == '__main__':
   ltitle = True # plot/figure title
   lcontour = False # contour or pcolor plot
   lframe = True # draw domain boundary
+  loutline = True # draw boundaries around valid (non-masked) data
+  figuretype = None
   lstations = True; stations = 'cities'
   lbasin = True
   cbo = None # default based on figure type
@@ -64,26 +65,28 @@ if __name__ == '__main__':
   ## case settings
   
   # observations
-  lprint = True # write plots to disk using case as a name tag
-  maptype = 'lcc-new'; lstations = True; lbasin = True
-  grid = 'arb2_d02'; domain = (2,); #grid = 'ARB_small_05'
+  lprint = False # write plots to disk using case as a name tag
+  maptype = 'lcc-arb'; lstations = True; lbasin = True
+#   grid = 'arb2_d02'; domain = (2,); #grid = 'ARB_small_05'
 #   explist = ['Unity']; exptitles = ['Merged Observations: Precipitation [mm/day]']; 
 #   period = H10; case = 'unity'; ltitle = False
 #   lfrac = True; reflist = ['Unity']
-  ldiff = True; reflist = ['Unity']
+#   ldiff = True; reflist = ['Unity']
+#   explist = ['max']; exptitles = ' '; domain = (2,); period = H10; case = 'test'
 #   explist = ['max','cfsr','new','CFSR']; period = H10; case = 'val'
 #   explist = ['CFSR','CRU','NARR','Unity']; period = H10; case = 'obs'
 #   exptitles = [None,None,None,'GPCC (no data)']
 #   explist = ['max','ctrl','noah','CRU']; period = H10; case = 'val'
-#   explist = ['max','ctrl','new','noah']; period = H10; case = 'hydro'
+#   explist = ['max','ctrl','cfsr','noah']; period = H10; case = 'hydro'
 #   explist = ['max','ctrl','new','CRU']; period = H10; case = 'val'
 #   explist = ['max','CRU','cfsr','ctrl']; period = H10; case = 'val'
-  explist = ['max','ctrl','new','milb','wdm6','tom']; period = H05; case = 'mp'
+#   explist = ['max','ctrl','new','milb','wdm6','tom']; period = H05; case = 'mp'
 #   explist = ['max','CRU','max-A','max-B','NARR','max-C']; period = H10; case = 'ens'
+#   explist = ['max','max-A','max-B','max-C']; period = H10; case = 'ens'
 #   explist = ['max','cfsr','new','ctrl']; period = H10; case = 'hydro'
 #   explist = ['max','max-2050','gulf','seaice-2050']; period = [H10, A10, H10, A10]; case = 'mix'
-#   explist = ['seaice-2050','max-A-2050','max-B-2050','max-C-2050']; period = A09; case = 'ens-2050'
-#   ldiff = True; reflist = ['max','max-A','max-B','max-C']; refprd = H10
+  explist = ['seaice-2050','max-A-2050','max-B-2050','max-C-2050']; period = A10; case = 'ens-2050'
+  ldiff = True; reflist = ['max','max-A','max-B','max-C']; refprd = H10
 #   explist = ['max-A','max-B','max-C','max-A-2050','max-B-2050','max-C-2050']
 #   period = ['1979-1987']*3+['2045-2053']*3; case = 'maxens'
 #   period = [A05,H05]+[A05]*4
@@ -117,17 +120,11 @@ if __name__ == '__main__':
 #   explist = ['columbia','PRISM','columbia','columbia'] 
 #   exptitles = ['WRF 3km (CFSR)', None, 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
 
-   
-#   period = ['1979-1980','1979-1984','1979-1980','1979-1980']  # name tag
-#   explist = ['columbia', 'cfsr','columbia','columbia']; domain = [(3,),(2,),(2,),(1,)]; 
-#   exptitles = ['Max 3km', 'CFSR 10km','Max 9km','Max 27km'] 
-#   domain = [(1,2,3),None,(1,2),(1,)]
-#   explist = ['coast','PRISM','coast','coast',]
-#   exptitles = ['WRF 1km (Bugaboo)', 'PRISM Climatology', 'WRF 5km (Bugaboo)', 'WRF 25km (Bugaboo)']
-#   explist = ['coast','PRISM','CFSR','coast',]
-#   exptitles = ['WRF 1km (Bugaboo)', 'PRISM Climatology', 'CFSR 1997-1998', 'WRF 5km (Bugaboo)']
- 
-
+  # maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasin = False
+#   maptype = 'lcc-arb' 
+#   case = 'arb'; period = None; lWRFnative = True; loutline = False
+#   explist = ['max']; exptitles = ' '; domain = (2,)
+  
   if not case: raise ValueError, 'Need to define a \'case\' name!'
   
   ## select variables and seasons
@@ -136,13 +133,17 @@ if __name__ == '__main__':
 #   varlist += ['Ts']
 #   varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
-  varlist += ['precip']
+#   varlist += ['precip']
 #   varlist += ['waterflx']
 #   varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
 #   varlist += ['evap']
 #   varlist += ['pet']
+  varlist += ['runoff']
+  varlist += ['sfroff']
+  varlist += ['ugroff']
+  varlist += ['snwmlt']
 #   varlist += ['snow']
 #   varlist += ['snowh']
 #   varlist += ['GLW','OLR','qtfx']
@@ -153,10 +154,11 @@ if __name__ == '__main__':
 #   varlist += ['lat2D','lon2D']
   # seasons
 #   seasons += ['OND'] # for high-res columbia domain
-  seasons += ['cold']
+#   seasons += ['cold']
 #   seasons += ['warm']
+#   seasons += ['melt']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-#   seasons += ['annual']
+  seasons += ['annual']
 #   seasons += ['summer']
 #   seasons += ['winter']
 #   seasons += ['spring']    
@@ -166,7 +168,7 @@ if __name__ == '__main__':
 #  varlist = ['snowh'];  seasons = [8] # September snow height
 #  varlist = ['stns']; seasons = ['annual']
 #   varlist = ['lndcls']; seasons = [''] # static
-#   varlist = ['zs']; seasons = [''] # static
+#   varlist = ['zs']; seasons = ['topo']; WRFfiletypes=['const'] # static
 #   varlist = ['zs']; seasons = ['hidef'] # static
   
 
@@ -205,7 +207,7 @@ if __name__ == '__main__':
   
   
   # get figure settings
-  sf, figformat, margins, caxpos, subplot, figsize, cbo = getFigureSettings(nlen, cbar=True, cbo=cbo)
+  sf, figformat, margins, caxpos, subplot, figsize, cbo = getFigureSettings(nlen, cbar=True, cbo=cbo, figuretype=figuretype)
   
   # get projections settings
   projection, grid, res = mapSetup.getProjectionSettings()
@@ -337,15 +339,20 @@ if __name__ == '__main__':
         
       ## Plot data
       # draw boundaries of inner domain
-      if lframe:
+      if loutline or lframe:
         print(' - drawing data frames\n')
         for n in xrange(nax):
           for m in xrange(nexps[n]):   
-            bdy = ma.ones(data[n][m].shape); bdy[ma.getmaskarray(data[n][m])] = 0
-            # N.B.: for some reason, using np.ones_like() causes a masked data array to fill with zeros  
-            #print bdy.mean(), data[n][m].__class__.__name__, data[n][m].fill_value 
-            bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
-            maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', fill=False) # draw boundary of inner domain
+            if loutline:
+              bdy = ma.ones(data[n][m].shape); bdy[ma.getmaskarray(data[n][m])] = 0
+              # N.B.: for some reason, using np.ones_like() causes a masked data array to fill with zeros  
+              #print bdy.mean(), data[n][m].__class__.__name__, data[n][m].fill_value 
+              bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
+              maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', fill=False) # draw boundary of domain domain
+            if lframe:
+              bdy = ma.ones(x[n][m].shape)   
+              bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
+              maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', fill=False) # draw boundary of data
       # draw data
       norm = mpl.colors.Normalize(vmin=min(clevs),vmax=max(clevs),clip=True) # for colormap
       cd = []
@@ -398,7 +405,7 @@ if __name__ == '__main__':
           if lstations: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
           # add ARB basin outline
           if lbasin: 
-            bmap.readshapefile(arb_shapefile, 'ARB', ax=axn, drawbounds=True, linewidth=0.5, color='k')
+            bmap.readshapefile(arb_shapefile, 'ARB', ax=axn, drawbounds=True, linewidth=0.75, color='k')
             #print bmap.ARB_info                   
               
       # save figure to disk

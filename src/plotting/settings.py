@@ -30,7 +30,9 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     if var in ('T2','Ts','Tmin','Tmax','Tmean'):
       clevs = np.linspace(-5,5,21); clbl = '%3.1f' # K
     elif var in ('evap','pet','p-et','precip','precipc','precipnc','waterflx'):
-      clevs = np.linspace(-5,5,21); clbl = '%3.1f' # mm/day  
+      clevs = np.linspace(-5,5,21); clbl = '%3.1f' # mm/day
+    elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff'): # moisture fluxes (kg /(m^2 s))
+      clevs = np.linspace(-3,3,21); clbl = '%3.1f' # mm/day  
     else: 
       raise VariableError, 'No settings found for differencing variable \'{0:s}\' found!'.format(var)
   elif lfrac:
@@ -82,6 +84,9 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     elif var == 'p-et' or var == 'waterflx': # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
       clevs = np.linspace(-2,2,25); cmap = mpl.cm.PuOr; clbl = '%02.1f'
+    elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff'): # moisture fluxes (kg /(m^2 s))
+      # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
+      clevs = np.linspace(0,8,25); clbl = '%02.1f'; cmap = mpl.cm.YlGnBu
     elif var == 'precip' or var == 'precipnc': # total precipitation 
       clevs = np.linspace(0,20,41); clbl = '%02.1f' # mm/day
     elif var == 'precipc': # convective precipitation 
@@ -110,6 +115,7 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
         lmskocn = True; clim = (-0.5,2.5); # good contrast for high elevation
         clevs = np.hstack((np.array((-.5,)), np.linspace(0,2.5,26))); clbl = '%02.1f' # km
         cmap = mpl.cm.gist_ncar; cmap.set_over('white'); cmap.set_under('blue')
+      else: raise ValueError, 'No map color scheme defined (use \'season\' to select color scheme).'
       cbl = np.linspace(0,clim[-1],6)
     elif var=='stns': # station density
       clevs = np.linspace(0,5,6); clbl = '%2i' # stations per grid points  
@@ -130,7 +136,9 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     elif season == 'cold': # DJF
       month = [10, 11, 12, 1, 2, 3]; plottype = 'Cold Season'    
     elif season == 'warm': # DJF
-      month = [4, 5, 6, 7, 8, 9]; plottype = 'Warm Season'    
+      month = [4, 5, 6, 7, 8, 9]; plottype = 'Warm Season'
+    elif season == 'melt': # AMJ
+      month = [4, 5, 6]; plottype = 'Melt Season'          
     elif season == 'OND': # DJF
       month = [10, 11, 12]; plottype = 'Oct.-Dec.'    
     elif season == 'winter': # DJF
@@ -159,16 +167,28 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
 
 
 ## figure settings
-def getFigureSettings(nexp, cbar=True, cbo=None):
+def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None):
   sf = dict(dpi=150) # print properties
-  figformat = 'png' 
+  figformat = 'png'
+  # some special cases 
+  if figuretype is not None:
+    if figuretype == 'largemap':
+      # copied from 6 panel figure
+      nexp = 0 # skip pane settings 
+      subplot = (1,1) # rows, columns
+      figsize = (9.25,6.5) # width, height (inches)
+      if cbar:
+        margins = dict(bottom=0.09, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
+        cbo = cbo or 'horizontal'; caxpos = [0.05, 0.025, 0.9, 0.03]
+      else:
+        margins = dict(bottom=0.025, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
   # pane settings
   if nexp == 1:
     ## 1 panel
     subplot = (1,1)
     figsize = (3.75,3.75) #figsize = (6.25,6.25)  #figsize = (7,5.5)
     if cbar:
-      margins = dict(bottom=0.125, left=0.1, right=0.95, top=0.94, hspace=0.0, wspace=0.0)
+      margins = dict(bottom=0.125, left=0.1, right=0.95, top=0.925, hspace=0.0, wspace=0.0)
       caxpos = [0.05, 0.05, 0.9, 0.03]
 #       caxpos = [0.91, 0.05, 0.03, 0.9]
       cbo = cbo or 'horizontal'

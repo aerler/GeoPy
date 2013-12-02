@@ -422,6 +422,46 @@ tmp['scalefactor'] = 86400
 # add to collection
 variablePlotatts['waterflx'] = tmp
 
+## Snowmelt (water equivalent)
+tmp = defaultPlotatts.copy() 
+# specific properties
+tmp['plotname'] = 'Snowmelt'
+tmp['plottitle'] = 'Snowmelt'
+tmp['plotunits'] = r'$kg m^{-2} day^{-1}$'
+tmp['scalefactor'] = 86400
+# add to collection
+variablePlotatts['snwmlt'] = tmp
+
+## Total Runoff
+tmp = defaultPlotatts.copy() 
+# specific properties
+tmp['plotname'] = 'Runoff'
+tmp['plottitle'] = 'Total Runoff'
+tmp['plotunits'] = r'$kg m^{-2} day^{-1}$'
+tmp['scalefactor'] = 86400
+# add to collection
+variablePlotatts['runoff'] = tmp
+
+## Surface Runoff
+tmp = defaultPlotatts.copy() 
+# specific properties
+tmp['plotname'] = 'Srfc. RO'
+tmp['plottitle'] = 'Surface Runoff'
+tmp['plotunits'] = r'$kg m^{-2} day^{-1}$'
+tmp['scalefactor'] = 86400
+# add to collection
+variablePlotatts['sfroff'] = tmp
+
+## Underground Runoff
+tmp = defaultPlotatts.copy() 
+# specific properties
+tmp['plotname'] = 'Sub-srfc. RO'
+tmp['plottitle'] = 'Underground Runoff'
+tmp['plotunits'] = r'$kg m^{-2} day^{-1}$'
+tmp['scalefactor'] = 86400
+# add to collection
+variablePlotatts['ugroff'] = tmp
+
 ## *** Standard Vars (3D) ***
 
 ## Geopotential Height

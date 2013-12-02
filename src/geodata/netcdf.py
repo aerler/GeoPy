@@ -117,15 +117,15 @@ class VarNC(Variable):
     if 'r' in mode:
       # construct attribute dictionary from netcdf attributes
       ncatts = { key : ncvar.getncattr(key) for key in ncvar.ncattrs() }
-      # handle some netcdf conventions
       fillValue = ncatts.pop('_FillValue', fillValue) # this value should always be removed
       for key in ['scale_factor', 'add_offset']: ncatts.pop(key,None) # already handled by NetCDf Python interface
+      # update netcdf attributes with custom override
+      if atts is not None: ncatts.update(atts)
+      # handle some netcdf conventions
       if name is None: name = ncatts.get('name',ncvar._name) # name in attributes has precedence
       else: ncatts['name'] = name
       if units is None: units = ncatts.get('units','') # units are not mandatory
       else: ncatts['units'] = units
-      # update netcdf attributes with custom override
-      if atts is not None: ncatts.update(atts)
       # construct axes, based on netcdf dimensions
       if axes is None: 
         axes = tuple([str(dim) for dim in ncvar.dimensions]) # have to get rid of unicode
@@ -430,14 +430,14 @@ class DatasetNetCDF(Dataset):
       # hand-off to parent method and return status
       return super(DatasetNetCDF,self).addVariable(var=var)
       
-  def repalceAxis(self, oldaxis, newaxis=None, deepcopy=True):    
+  def repalceAxis(self, oldaxis, newaxis=None, asNC=True, deepcopy=True):    
     ''' Replace an existing axis with a different one and transfer NetCDF reference to new axis. '''
     if newaxis is None: 
       newaxis = oldaxis; oldaxis = newaxis.name # i.e. replace old axis with the same name'
     # check axis
     if not self.hasAxis(oldaxis): raise AxisError
     # special treatment for VarNC: transfer of ownership of NetCDF variable
-    if isinstance(newaxis,AxisNC):
+    if asNC or isinstance(newaxis,AxisNC):
       if isinstance(oldaxis,Axis): oldname = oldaxis.name # just go by name
       else: oldname = oldaxis
       oldaxis = self.axes[oldname]

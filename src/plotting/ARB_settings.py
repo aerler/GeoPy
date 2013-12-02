@@ -35,8 +35,8 @@ annotation_dict['lcc-coast'] = dict(scale=(-127, 49.25, -125, 51, 100), lat_full
 annotation_dict['lcc-col'] = dict(scale=(-116.75, 48.25, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
                              lon_full=[-160,-140,-120,-100], lon_half=[-150,-130,-110])
 ## Lambert Conic Conformal - Athabasca River Basin
-annotation_dict['lcc-arb'] = dict(scale=(-118, 50, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
-                             lon_full=[-160,-140,-120,-100], lon_half=[-150,-130,-110])
+annotation_dict['lcc-arb'] = dict(scale=(-111, 52, -120, 55, 400), lat_full=[50,60], lat_half=[45,55,65], 
+                             lon_full=[-120,-110], lon_half=[-125,-115,-105])
 ## Lambert Conic Conformal - New Fine Domain
 annotation_dict['lcc-new'] = dict(scale=(-128, 48, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
                              lon_full=[-180,-160,-140,-120,-100], lon_half=[-170,-150,-130,-110])
@@ -48,8 +48,8 @@ annotation_dict['lcc-small'] = annotation_dict['lcc-fine']
 ## Lambert Conic Conformal - Intermed Domain
 annotation_dict['lcc-intermed'] = annotation_dict['lcc-fine']
 ## Lambert Conic Conformal - Large Domain
-annotation_dict['lcc-large'] = dict(scale=(-171, 21, -137, 57, 2000), lat_full=[0,30,60,90], lat_half=[15,45,75], 
-                               lon_full=[-180,-150,-120,-90,-60], lon_half=[-165,-135,-105,-75])
+annotation_dict['lcc-large'] = dict(scale=(-140, 22, -120, 53, 2000), lat_full=[0,30,60,90], lat_half=[15,45,75], 
+                               lon_full=[120,150,-180,-150,-120,-90,-60,-30], lon_half=[135,165,-165,-135,-105,-75,-45])
 ## Lambert Azimuthal Equal Area
 annotation_dict['laea'] = annotation_dict['lcc-large']   
 ## Orthographic Projection
@@ -89,7 +89,7 @@ projection_dict['lcc-small'] = dict(projection='lcc', lat_0=56, lon_0=-130, lat_
 projection_dict['lcc-intermed'] = dict(projection='lcc', lat_0=57, lon_0=-140, lat_1=53, rsphere=rsphere,
               width=4000e3, height=3400e3, area_thresh = 1000., resolution='l')
 ## Lambert Conic Conformal - Large Domain
-projection_dict['lcc-large'] = dict(projection='lcc', lat_0=54.5, lon_0=-140, lat_1=53, #rsphere=rsphere,
+projection_dict['lcc-large'] = dict(projection='lcc', lat_0=50, lon_0=-130, lat_1=50, #rsphere=rsphere,
               width=11000e3, height=7500e3, area_thresh = 10e3, resolution='l')
 ## Lambert Azimuthal Equal Area
 projection_dict['laea'] = dict(projection='laea', lat_0=57, lon_0=-137, lat_ts=53, resolution='l', #

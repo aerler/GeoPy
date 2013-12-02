@@ -96,7 +96,7 @@ experiments['grell3-arb1'] = Exp(shortname='grell', name='grell3-arb1', title='G
 experiments['noahmp-arb1'] = Exp(shortname='nmpdef', name='noahmp-arb1', title='Noah-MP (CAM)', begindate='1979-01-01', grid='arb1')
 experiments['rrtmg-arb1'] = Exp(shortname='rrtmg', name='rrtmg-arb1', title='RRTMG (Very Old)', begindate='1979-01-01', grid='arb1')
 experiments['hitop-arb1'] = Exp(shortname='hitop', name='hitop-arb1', begindate='1979-01-01', grid='arb1')
-experiments['polar-arb1'] = Exp(shortname='pwrf', name='polar-arb1', title='PolarWRF (CAM)', begindate='1979-01-01', grid='arb1')
+experiments['polar-arb1'] = Exp(shortname='polar', name='polar-arb1', title='PolarWRF (CAM)', begindate='1979-01-01', grid='arb1')
 experiments['modis-arb1'] = Exp(shortname='modis', name='modis-arb1', title='Modis (CAM)', begindate='1979-01-01', grid='arb1')
 experiments['moris-ctrl'] = Exp(shortname='moris', name='moris-ctrl', title='Morrison (CAM)', begindate='1979-01-01', grid='arb2')
 experiments['v35-clm'] = Exp(shortname='clm4', name='v35-clm', title='CLM (V35, CAM)', begindate='1979-01-01', grid='arb2')
@@ -116,13 +116,14 @@ experiments['cam-ctrl-2-2100'] = Exp(shortname='cam-1-2100', name='cam-ctrl-2-21
 ## an alternate dictionary using short names and aliases for referencing
 exps = dict()
 # use short names where availalbe, normal names otherwise
-for key,item in experiments.items():
+for key,item in experiments.iteritems():
   exps[item.name] = item
   if item.shortname is not None: 
     exps[item.shortname] = item
   # both, short and long name are added to list
 # add aliases here
 WRF_exps = exps # alias for whole dict
+WRF_experiments = experiments # alias for whole dict
 
 if __name__ == '__main__':
     pass

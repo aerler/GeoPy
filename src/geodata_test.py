@@ -273,10 +273,10 @@ class BaseDatasetTest(unittest.TestCase):
     dataset.removeAxis(ax) # should not work now
     assert dataset.hasAxis(ax)    
     dataset.removeVariable(var)
-    assert dataset.hasVariable(name) == False
+    assert not dataset.hasVariable(name)
     assert len(dataset) == le
     dataset.removeAxis(ax)
-    assert dataset.hasAxis(ax) == False
+    assert not dataset.hasAxis(ax)
     # replace variable
     oldvar = dataset.variables.values()[-1]
     newvar = Variable(name='another_test', units='none', axes=oldvar.axes, data=np.zeros_like(oldvar.getArray()))
@@ -285,7 +285,9 @@ class BaseDatasetTest(unittest.TestCase):
 #     print newvar.name, newvar.data
 #     print newvar.shape
     dataset.replaceVariable(oldvar,newvar)
-    assert dataset.hasVariable(newvar) and not dataset.hasVariable(oldvar)  
+    print dataset
+    assert dataset.hasVariable(newvar, strict=False)
+    assert not dataset.hasVariable(oldvar, strict=False)  
     # replace axis
     oldax = dataset.axes.values()[-1]
     newax = Axis(name='z', units='none', coord=(1,len(oldax),len(oldax)))

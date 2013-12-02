@@ -841,7 +841,7 @@ class Dataset(object):
     # double-check (return True, if variable is not present, False, if it is)
     return not self.variables.has_key(var.name)
   
-  def replaceAxis(self, oldaxis, newaxis=None):    
+  def replaceAxis(self, oldaxis, newaxis=None, **kwargs):    
     ''' Replace an existing axis with a different one with similar general properties. '''
     if newaxis is None: 
       newaxis = oldaxis; oldaxis = newaxis.name # i.e. replace old axis with the same name'
@@ -863,7 +863,7 @@ class Dataset(object):
     # return verification
     return self.hasAxis(newaxis)    
 
-  def replaceVariable(self, oldvar, newvar=None):
+  def replaceVariable(self, oldvar, newvar=None, **kwargs):
     ''' Replace an existing Variable with a different one and transfer NetCDF reference and axes. '''
     if newvar is None: 
       newvar = oldvar; oldvar = newvar.name # i.e. replace old var with the same name
