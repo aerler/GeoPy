@@ -169,8 +169,8 @@ def copy_vars(dst, src, varlist=None, namemap=None, dimmap=None, remove_dims=Non
     dtype = dtype or rav.dtype
     if '_FillValue' in rav.ncattrs(): fillValue = rav.getncattr('_FillValue')
     var = dst.createVariable(name, dtype, dims, fill_value=fillValue, **varargs)
-    if copy_data: var[:] = rav[:] # copy actual data, if desired (default)
     if copy_atts: copy_ncatts(var, rav, prefix=prefix, incl_=incl_) # copy attributes, if desired (default) 
+    if copy_data: var[:] = rav[:] # copy actual data, if desired (default)
 
 # copy dimensions and coordinate variables from one dataset to another
 def copy_dims(dst, src, dimlist=None, namemap=None, copy_coords=True, **kwargs):
@@ -186,6 +186,7 @@ def copy_dims(dst, src, dimlist=None, namemap=None, copy_coords=True, **kwargs):
   if copy_coords:
 #    if kwargs.has_key('dtype'): kwargs['datatype'] = kwargs.pop('dtype') # different convention... 
     remove_dims = [dim for dim in src.dimensions.keys() if dim not in dimlist] # remove_dims=remove_dims
+    dimlist = [dim for dim in dimlist if dim in src.variables] # only the ones that have coordinates
     copy_vars(dst, src, varlist=dimlist, namemap=namemap, dimmap=namemap, remove_dims=remove_dims, **kwargs)
     
 
