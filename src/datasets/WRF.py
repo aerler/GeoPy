@@ -118,7 +118,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
 
 # return name and folder
 def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
-  ''' Convenience function to infer type-check the name and folder of an experiment based on various input. '''
+  ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
   from datasets.WRF_experiments import exps, Exp # need to leave this here, to avoid circular reference...   
   # check domains
@@ -179,7 +179,7 @@ class Srfc(FileType):
   ''' Variables and attributes of the surface files. '''
   def __init__(self):
     self.atts = dict(T2     = dict(name='T2', units='K'), # 2m Temperature
-                     TSK     = dict(name='Ts', units='K'), # Skin Temperature (SST)
+                     TSK    = dict(name='Ts', units='K'), # Skin Temperature (SST)
                      Q2     = dict(name='q2', units='kg/kg'), # 2m water vapor mass mixing ratio
                      RAIN   = dict(name='precip', units='kg/m^2/s'), # total precipitation rate (kg/m^2/s)
                      RAINC  = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate (kg/m^2/s)
@@ -187,6 +187,13 @@ class Srfc(FileType):
                      SNOW   = dict(name='snow', units='kg/m^2'), # snow water equivalent
                      SNOWH  = dict(name='snowh', units='m'), # snow depth
                      PSFC   = dict(name='ps', units='Pa'), # surface pressure
+                     HFX    = dict(name='hfx', units='W/m^2'), # surface sensible heat flux
+                     LH     = dict(name='lhfx', units='W/m^2'), # surface latent heat flux
+                     QFX    = dict(name='evap', units='kg/m^2/s'), # surface evaporation
+                     OLR    = dict(name='OLR', units='W/m^2'), # Outgoing Longwave Radiation
+                     GLW    = dict(name='GLW', units='W/m^2'), # Ground Longwave Radiation
+                     SWDOWN = dict(name='SWD', units='W/m^2'), # Downwelling Shortwave Radiation
+                     SWNORM = dict(name='SWN', units='W/m^2'), # Downwelling Normal Shortwave Radiation
                      NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
                      LiquidPrecip = dict(name='liqprec_sr', units='kg/m^2/s'), # liquid precipitation rate
                      SolidPrecip  = dict(name='solprec_sr', units='kg/m^2/s'), # solid precipitation rate

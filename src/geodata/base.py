@@ -343,37 +343,40 @@ class Variable(object):
 
   def load(self, data=None, mask=None, fillValue=None):
     ''' Method to attach numpy data array to variable instance (also used in constructor). '''
-    if data is None: raise DataError, 'A basic \'Variable\' instance requires external data to load!'
-    if not isinstance(data,np.ndarray): raise TypeError, 'The data argument must be a numpy array!'
-    # apply mask
-    if mask: data = ma.array(data, mask=mask) 
-    if isinstance(data, ma.MaskedArray): 
-      self.__dict__['masked'] = True # set masked flag
-    else: self.__dict__['masked'] = False
-    if self.masked: # figure out fill value for masked array
-      if fillValue is not None: # override variable preset 
-        self.__dict__['fillValue'] = fillValue
-        data.set_fill_value = fillValue
-      elif self.fillValue is not None: # use variable preset
-        data.set_fill_value = self.fillValue
-      else: # use data default
-        self.__dict__['fillValue'] = data.get_fill_value()
-    # more meta data
-    self.__dict__['data'] = True
-    self.__dict__['dtype'] = data.dtype
-    self.__dict__['shape'] = data.shape
-    if len(self.shape) != self.ndim and (self.ndim != 0 or data.size != 1):
-      raise DataError, 'Variable dimensions and data dimensions incompatible!'
-    # N.B.: the second statement is necessary, so that scalars don't cause a crash
-    # assign data to instance attribute array 
-    self.__dict__['data_array'] = data
-    # some more checks
-    # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple; hence
-    #       the coordinate vector has to be assigned before the dimensions size can be checked 
-    if len(self.axes) == len(self.shape): # update length is all we can do without a coordinate vector
-      for ax,n in zip(self.axes,self.shape): ax.updateLength(n) 
-    else: # this should only happen with scalar variables!
-      assert self.ndim == 0 and data.size == 1, 'Dimensions of data array and variable must be identical, except for scalars!'       
+    if data is None:
+      if not self.data:
+        raise DataError, 'No data loaded and no external data supplied!'
+    else:
+      if not isinstance(data,np.ndarray): raise TypeError, 'The data argument must be a numpy array!'
+      # apply mask
+      if mask: data = ma.array(data, mask=mask) 
+      if isinstance(data, ma.MaskedArray): 
+        self.__dict__['masked'] = True # set masked flag
+      else: self.__dict__['masked'] = False
+      if self.masked: # figure out fill value for masked array
+        if fillValue is not None: # override variable preset 
+          self.__dict__['fillValue'] = fillValue
+          data.set_fill_value = fillValue
+        elif self.fillValue is not None: # use variable preset
+          data.set_fill_value = self.fillValue
+        else: # use data default
+          self.__dict__['fillValue'] = data.get_fill_value()
+      # more meta data
+      self.__dict__['data'] = True
+      self.__dict__['dtype'] = data.dtype
+      self.__dict__['shape'] = data.shape
+      if len(self.shape) != self.ndim and (self.ndim != 0 or data.size != 1):
+        raise DataError, 'Variable dimensions and data dimensions incompatible!'
+      # N.B.: the second statement is necessary, so that scalars don't cause a crash
+      # assign data to instance attribute array 
+      self.__dict__['data_array'] = data
+      # some more checks
+      # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple; hence
+      #       the coordinate vector has to be assigned before the dimensions size can be checked 
+      if len(self.axes) == len(self.shape): # update length is all we can do without a coordinate vector
+        for ax,n in zip(self.axes,self.shape): ax.updateLength(n) 
+      else: # this should only happen with scalar variables!
+        assert self.ndim == 0 and data.size == 1, 'Dimensions of data array and variable must be identical, except for scalars!'       
      
   def unload(self):
     ''' Method to unlink data array. '''

@@ -149,17 +149,30 @@ class GridDefinition(object):
   def __getstate__(self):
     ''' support pickling, necessary for multiprocessing: GDAL is not pickable '''
     pickle = self.__dict__.copy()
+    # handle projection
     pickle['_projection'] =  self.projection.ExportToWkt()  # to Well-Known-Text format
     del pickle['projection'] # remove offensive GDAL object
+    # handle axes
+    pickle['_geotransform'] = self.geotransform
+    pickle['_xlon'] = len(self.xlon) 
+    pickle['_ylat'] = len(self.ylat)
+    del pickle['geotransform'], pickle['xlon'], pickle['ylat']
     # return instance dict to pickle
     return pickle
   
   def __setstate__(self, pickle):
     ''' support pickling, necessary for multiprocessing: GDAL is not pickable '''
+    # handle projection
     self.projection = osr.SpatialReference() 
     self.projection.SetWellKnownGeogCS('WGS84')           
     self.projection.ImportFromWkt(pickle['_projection'])  # from Well-Known-Text
     del pickle['_projection'] # not actually an attribute
+    # handle axes
+    self.geotransform = pickle['_geotransform']
+    xlon, ylat = getAxes(geotransform=self.geotransform, xlen=pickle['_xlon'], ylen=pickle['_ylat'], projected=self.isProjected)
+    self.xlon = xlon; self.ylat = ylat
+    del pickle['_geotransform'], pickle['_xlon'], pickle['_ylat']
+    # update instance dict with pickle dict
     self.__dict__.update(pickle)
     
     
@@ -288,7 +301,7 @@ def getProjection(var, projection=None):
       else: xlon = None; ylat = None
     else: 
       if not var.hasAxis('lon') and var.hasAxis('lat'):
-        raise AxisError, 'Horizontal axes for non-projected GDAL variables have to \'lon\' and \'lat\''
+        raise AxisError, 'Horizontal axes for non-projected GDAL variables have to be \'lon\' and \'lat\''
       if var.hasAxis('lon') and var.hasAxis('lat'):
         xlon = var.lon; ylat = var.lat
       else: xlon = None; ylat = None    
