@@ -154,9 +154,10 @@ class GridDefinition(object):
     del pickle['projection'] # remove offensive GDAL object
     # handle axes
     pickle['_geotransform'] = self.geotransform
+    pickle['_isProjected'] = self.isProjected
     pickle['_xlon'] = len(self.xlon) 
     pickle['_ylat'] = len(self.ylat)
-    del pickle['geotransform'], pickle['xlon'], pickle['ylat']
+    del pickle['geotransform'], pickle['isProjected'], pickle['xlon'], pickle['ylat']
     # return instance dict to pickle
     return pickle
   
@@ -169,9 +170,11 @@ class GridDefinition(object):
     del pickle['_projection'] # not actually an attribute
     # handle axes
     self.geotransform = pickle['_geotransform']
-    xlon, ylat = getAxes(geotransform=self.geotransform, xlen=pickle['_xlon'], ylen=pickle['_ylat'], projected=self.isProjected)
+    self.isProjected = pickle['_isProjected']
+    xlon, ylat = getAxes(geotransform=self.geotransform, xlen=pickle['_xlon'], ylen=pickle['_ylat'], 
+                         projected=self.isProjected)
     self.xlon = xlon; self.ylat = ylat
-    del pickle['_geotransform'], pickle['_xlon'], pickle['_ylat']
+    del pickle['_geotransform'], pickle['_isProjected'], pickle['_xlon'], pickle['_ylat']
     # update instance dict with pickle dict
     self.__dict__.update(pickle)
     

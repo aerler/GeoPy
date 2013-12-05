@@ -16,9 +16,10 @@ import osr
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, addGeoLocator, GDALError
 from geodata.misc import DatasetError, isInt, AxisError, DateError, isNumber
-from datasets.common import translateVarNames, data_root, grid_folder, default_varatts 
+from datasets.common import translateVarNames, data_root, grid_folder, default_varatts, addLengthAndNamesOfMonth 
 from geodata.gdal import loadPickledGridDef, griddef_pickle
 from WRF_experiments import Exp
+from processing.process import CentralProcessingUnit
 
 # some meta data (needed for defaults)
 root_folder = data_root + 'CESM/' # long-term mean folder
@@ -32,11 +33,13 @@ Exp.defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/'.format(avgfolder,atts['n
 Exp.defaults['parents'] = None # not applicable here
 # list of experiments
 # historical
+experiments['ens20trcn1x1'] = Exp(shortname='CESM', name='ens20trcn1x1', title='CESM Ensemble Mean', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
 experiments['tb20trcn1x1'] = Exp(shortname='Ctrl', name='tb20trcn1x1', title='Ctrl (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
-experiments['hab20trcn1x1'] = Exp(shortname='Ens-A', name='hab20trcn1x1', title='Ens-A (CESM)', begindate='1979-01-01', enddate='1989-01-01', grid='cesm1x1')
-experiments['hbb20trcn1x1'] = Exp(shortname='Ens-B', name='hbb20trcn1x1', title='Ens-B (CESM)', begindate='1979-01-01', enddate='1989-01-01', grid='cesm1x1')
-experiments['hcb20trcn1x1'] = Exp(shortname='Ens-C', name='hcb20trcn1x1', title='Ens-C (CESM)', begindate='1979-01-01', enddate='1989-01-01', grid='cesm1x1')
+experiments['hab20trcn1x1'] = Exp(shortname='Ens-A', name='hab20trcn1x1', title='Ens-A (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
+experiments['hbb20trcn1x1'] = Exp(shortname='Ens-B', name='hbb20trcn1x1', title='Ens-B (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
+experiments['hcb20trcn1x1'] = Exp(shortname='Ens-C', name='hcb20trcn1x1', title='Ens-C (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
 # mid-21st century
+experiments['ensrcp85cn1x1'] = Exp(shortname='CESM-2050', name='ensrcp85cn1x1', title='CESM Ensemble Mean (2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
 experiments['seaice-5r-hf'] = Exp(shortname='Seaice-2050', name='seaice-5r-hf', begindate='2045-01-01', enddate='2055-01-01', grid='cesm1x1')
 experiments['htbrcp85cn1x1'] = Exp(shortname='Ctrl-2050', name='htbrcp85cn1x1', title='Ctrl (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
 experiments['habrcp85cn1x1'] = Exp(shortname='Ens-A-2050', name='habrcp85cn1x1', title='Ens-A (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
@@ -172,7 +175,7 @@ def loadCESM_TS(experiment=None, name=None, filetypes=None, varlist=None, varatt
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
 def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, 
-            varatts=None):
+            varatts=None, loadAll=False, translateVars=None):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
   # prepare input  
   folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None)
@@ -202,8 +205,11 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
     atts.update(fileclass.atts) 
   if varatts is not None: atts.update(varatts)  
   # translate varlist
-  if varlist is None: varlist = atts.keys() # default varlist
-  varlist = translateVarNames(varlist, atts) # DatasetNetCDF doesn't do this!
+  if varlist is None and not loadAll: varlist = atts.keys() # default varlist
+  elif varlist is not None:
+    if translateVars is None: varlist += translateVarNames(varlist, atts) # also aff translations, just in case
+    elif translateVars is True: varlist = translateVarNames(varlist, atts) 
+    # N.B.: DatasetNetCDF does never apply translation!
   # get grid name
   if grid is None or grid == experiment.grid: gridstr = ''
   else: gridstr = '_%s'%grid.lower() # only use lower case for filenames   
@@ -240,10 +246,11 @@ loadClimatology = loadCESM # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
 
-  mode = 'test_climatology'
+#   mode = 'test_climatology'
 #   mode = 'pickle_grid'
+  mode = 'shift_lon'
   experiment = 'Ctrl'  
-  filetypes = ['atm','lnd']
+  filetypes = ['atm','lnd',]
   grids = ['cesm1x1']; experiments = ['Ctrl']
 
   # pickle grid definition
@@ -294,3 +301,84 @@ if __name__ == '__main__':
     print('')
     print(dataset.geotransform)
   
+  # shift dataset from 0-360 to -180-180
+  elif mode == 'shift_lon':
+
+    prdlen = 10
+    experiments = ['Ctrl']
+    experiments = CESM_experiments.keys()
+    
+    # loop over experiments
+    for experiment in experiments:
+      # loop over filetypes
+      for filetype in filetypes: # ['lnd'] 
+        fileclass = fileclasses[filetype]
+        
+        # load source
+        exp = CESM_exps[experiment]
+        period = (exp.beginyear, exp.beginyear+prdlen)
+        periodstr = '{0:4d}-{1:4d}'.format(*period)
+        print('\n')
+        print('   ***   Processing Experiment {0:s} for Period {1:s}   ***   '.format(exp.title,periodstr))
+        print('\n')
+        # prepare file names
+        filename = fileclass.climfile.format('','_'+periodstr)
+        origname = 'orig'+filename[4:]; tmpname = 'tmp.nc'
+        filepath = exp.avgfolder+filename; origpath = exp.avgfolder+origname; tmppath = exp.avgfolder+tmpname
+        # load source
+        if os.path.exists(origpath) and os.path.exists(filepath): 
+          os.remove(filepath) # overwrite old file
+          os.rename(origpath,filepath) # get original source
+        source = loadCESM(experiment=exp, period=period, filetypes=[filetype], loadAll=False)
+        print(source)
+        print('\n')
+        # savety checks
+        if os.path.exists(origpath): raise IOError
+        if np.max(source.lon.getArray()) < 180.: raise AxisError
+        if not os.path.exists(filepath): raise IOError
+        # prepare sink
+        if os.path.exists(tmppath): os.remove(tmppath)
+        sink = DatasetNetCDF(name=None, folder=exp.avgfolder, filelist=[tmpname], atts=source.atts, mode='w')
+        sink.atts.period = periodstr 
+        sink.atts.name = exp.name
+        
+        # initialize processing
+        CPU = CentralProcessingUnit(source, sink, tmp=False)
+        
+        # shift longitude axis by 180 degrees left (i.e. 0 - 360 -> -180 - 180)
+        CPU.Shift(lon=-180, flush=True)
+        
+        # sync temporary storage with output
+        CPU.sync(flush=True)
+  
+        # make new masks
+  #       if sink.hasVariable('landfrac'):
+  #         # create variable and add to dataset
+  #         dataset.addVariable(Variable(axes=axes, name=maskname, data=mask, atts=atts), asNC=True)
+          
+                  
+  
+  #       # add names and length of months
+  #       sink.axisAnnotation('name_of_month', name_of_month, 'time', 
+  #                           atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
+  #       #print '   ===   month   ===   '
+  #       sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
+  #                     atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
+        
+        # add length and names of month
+        if sink.hasAxis('time', strict=False):
+          addLengthAndNamesOfMonth(sink, noleap=True)     
+  #       # add geolocators
+  #       sink = addGeoLocator(sink)  
+        # close...
+        sink.sync()
+        sink.close()
+        
+        # move files
+        os.rename(filepath, origpath)
+        os.rename(tmppath,filepath)
+        
+        # print dataset
+        print('')
+        print(sink)     
+        

@@ -451,6 +451,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
           dataset.addVariable(var, asNC=False, copy=False, overwrite=False, deepcopy=False)
     # add projection
     dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, geolocator=True)
+    print dataset
     # safety checks
     if dataset.isProjected:
       assert dataset.axes['x'] == griddef.xlon
@@ -513,6 +514,7 @@ if __name__ == '__main__':
         griddef, = getWRFgrid(experiment=experiment, domains=domain) # , folder=folder, filename='wrfconst_d{0:0=2d}.nc'
         griddef.name = gridstr
         print('   Loading Definition from \'{0:s}\''.format(folder))
+#         print(griddef)
         # save pickle
         filename = '{0:s}/{1:s}'.format(grid_folder,griddef_pickle.format(gridstr))
         if os.path.exists(filename): os.remove(filename) # overwrite 

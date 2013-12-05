@@ -237,7 +237,7 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
   from datasets.WRF import loadWRF
   from datasets.WRF_experiments import WRF_exps
   from datasets.CESM import CESM_exps, loadCESM 
-  from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadCFSR_TS, loadNARR, loadUnity
+  from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadNARR, loadUnity
   if not isinstance(exp,str): raise TypeError
   if exp[0].isupper():
     if exp == 'Unity': 
@@ -275,7 +275,8 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
       axt = 'NARR Reanalysis'
     else: # all other uppercase names are CESM runs
       #raise NotImplementedError, "CESM datasets are currently not supported."
-      exp = CESM_exps[exp]        
+      exp = CESM_exps[exp]
+      #print exp.name, exp.title
       ext = loadCESM(experiment=exp, period=prd, grid=grd, varlist=varlist)
       axt = exp.title
   else: 
@@ -283,7 +284,7 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
     exp = WRF_exps[exp]      
     parent = None
     if isinstance(dom,(list,tuple)):
-      if not lbackground: raise ValueError, 'Can only plot one domain, if lbackground=False'
+      #if not lbackground: raise ValueError, 'Can only plot one domain, if lbackground=False'
       if 0 == dom[0]:
         dom = dom[1:]
         parent, tmp = loadDataset(exp.parent, prd, dom, grd, res, varlist=varlist, lbackground=False); del tmp    
@@ -385,7 +386,7 @@ if __name__ == '__main__':
                 ARB_large=['025','05','10','25'],
                 CFSR=['031','05'],
                 GPCC=['025','05','10','25'],
-                CRU=[''],NARR=[''],PRISM=[''])
+                CRU=[None],NARR=[None],PRISM=[None])
     
   # pickle grid definition
   if mode == 'pickle_grid':

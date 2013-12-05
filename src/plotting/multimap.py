@@ -46,7 +46,7 @@ if __name__ == '__main__':
   A03 = '2045-2048'; A05 = '2045-2050'; A09 = '2045-2054'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
   B03 = '2095-2098'; B05 = '2095-2100'; B10 = '2095-2105'; B15 = '2095-2110' # late 21st century  
   ltitle = True # plot/figure title
-  lcontour = True # contour or pcolor plot
+  lcontour = False # contour or pcolor plot
   lframe = True # draw domain boundary
   loutline = True # draw boundaries around valid (non-masked) data
   figuretype = None
@@ -66,7 +66,7 @@ if __name__ == '__main__':
   
   # observations
   lprint = True # write plots to disk using case as a name tag
-  maptype = 'lcc-arb'; lstations = True; lbasin = True
+#   maptype = 'lcc-arb'; lstations = True; lbasin = True
 #   grid = 'arb2_d02'; domain = (2,); #grid = 'ARB_small_05'
 #   explist = ['Unity']; exptitles = ['Merged Observations: Precipitation [mm/day]']; 
 #   period = H10; case = 'unity'; ltitle = False
@@ -103,6 +103,19 @@ if __name__ == '__main__':
 #   maptype = 'lcc-new'; lstations = True; lbasin = True
 #   explist = ['Ctrl']; period = H10; case = 'cesm' 
 #   grid = None
+
+  ldiff = True; reflist = ['Unity']; lWRFnative = False
+#   lfrac = True; reflist = ['Unity']; lWRFnative = False
+  maptype = 'lcc-new'; lstations = False; lbasin = True
+  case = 'cesm-ens'; loutline = True; grid = None # 'cesm1x1'
+  grid = ['arb2_d02','cesm1x1','arb2_d01','arb2_d01']
+  explist = ['max-ens','CESM','max-ens','NARR']; period = H10; domain = [(2,),None,(1,),None]
+
+#   ldiff = True; reflist = ['Unity']; grid = 'cesm1x1'
+# #   lfrac = True; reflist = ['Unity']; grid = 'cesm1x1'
+#   maptype = 'lcc-new'; lstations = False; lbasin = True
+#   case = 'cesm-ens'; loutline = True; grid = 'cesm1x1'
+#   explist = ['Ctrl','CESM','Ens-A','Ens-B','CFSR','Ens-C',]; period = H10
   
 #   case = 'bugaboo'; period = '1997-1998'  # name tag
 #   maptype = 'lcc-coast'; lstations = False; 
@@ -124,10 +137,9 @@ if __name__ == '__main__':
 #   explist = ['columbia','PRISM','columbia','columbia'] 
 #   exptitles = ['WRF 3km (CFSR)', None, 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
 
-  maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasin = True; #lmskocn = True
-#   maptype = 'lcc-arb' 
-  case = 'col1'; period = None; lWRFnative = True; loutline = False; period = H10
-  explist = ['columbia']; exptitles = ' '; domain = (0,1,2,3)
+#   maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasin = False
+#   case = 'arb2'; period = None; lWRFnative = True; loutline = False; period = H10
+#   explist = ['max']; exptitles = ' '; domain = (0,1,2)
   
   if not case: raise ValueError, 'Need to define a \'case\' name!'
   
@@ -163,17 +175,17 @@ if __name__ == '__main__':
 #   seasons += ['melt']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
   seasons += ['annual']
-#   seasons += ['summer']
-#   seasons += ['winter']
-#   seasons += ['spring']    
-#   seasons += ['fall']
+  seasons += ['summer']
+  seasons += ['winter']
+  seasons += ['spring']    
+  seasons += ['fall']
   # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height
 #  varlist = ['stns']; seasons = ['annual']
 #   varlist = ['lndcls']; seasons = [''] # static
-  varlist = ['zs']; seasons = ['topo']; WRFfiletypes=['const'] # static
-#   varlist = ['zs']; seasons = ['hidef']; WRFfiletypes=['const'] # static
+#   varlist = ['zs']; seasons = ['topo']; WRFfiletypes=['const']; lcontour = True # static
+#   varlist = ['zs']; seasons = ['hidef']; WRFfiletypes=['const']; lcontour = True # static
 
   # setup projection and map
   mapSetup = getARBsetup(maptype, lpickle=lpickle, folder=arb_map_folder)
@@ -188,7 +200,7 @@ if __name__ == '__main__':
   else: lref = False
   lbackground = not lref
     
-  loadlist = set(varlist).union(('lon2D','lat2D','landfrac')) # landfrac is needed for CESM landmask
+  loadlist = set(varlist).union(('lon2D','lat2D','landmask','landfrac')) # landfrac is needed for CESM landmask
   exps, axtitles, nexps = loadDatasets(explist, n=None, varlist=loadlist, titles=exptitles, periods=period, domains=domain, 
                                        grids=grid, resolutions=resolution, filetypes=WRFfiletypes, lWRFnative=lWRFnative, 
                                        ltuple=True, lbackground=lbackground)
@@ -230,7 +242,7 @@ if __name__ == '__main__':
       if ldiff: filename = '%s_diff_%s_%s.%s'%(var,season,case,figformat)
       elif lfrac: filename = '%s_frac_%s_%s.%s'%(var,season,case,figformat)
       else: filename = '%s_%s_%s.%s'%(var,season,case,figformat)
-      #print exps[0][0].name
+      print exps[0][0].name
       plat = exps[0][0].variables[var].plot
       if lfrac: figtitle = '{0:s} {1:s} [%]'.format(plottype,plat['plottitle'])
       elif plat['plotunits']: figtitle = '%s %s [%s]'%(plottype,plat['plottitle'],plat['plotunits'])
@@ -287,11 +299,14 @@ if __name__ == '__main__':
           if 'scalefactor' in expvar.plot:
             vardata = vardata * expvar.plot['scalefactor'] # apply plot unit conversion          
           if lmskocn:
-            if exp.variables.has_key('landfrac'): # CESM and CFSR 
-              vardata[exp.landfrac.getArray()<0.5] = -2. # use land fraction
+            if exp.variables.has_key('landmask') and False:
+#               vardata = ma.masked_where(vardata, exp.landmask.getArray()>0.5)
+              vardata[exp.landmask.getArray()] = -2.
+            elif exp.variables.has_key('landfrac'): # CESM mostly 
+              vardata[exp.landfrac.getArray(unmask=True,fillValue=0)<0.75] = -2. # use land fraction
 #             elif isinstance(vardata,ma.MaskedArray): 
+#               print '********************************'              
 #               vardata = vardata.filled(-2.)
-#               print '********************************'
 #               vardata = maskoceans(lon,lat,vardata,resolution=res,grid=grid)
             elif exp.variables.has_key('lndidx'): 
               mask = exp.lndidx.getArray()
@@ -301,7 +316,7 @@ if __name__ == '__main__':
               vardata = maskoceans(lon,lat,vardata,resolution=res,grid=grid)
           if lmsklnd: 
             if exp.variables.has_key('landfrac'): # CESM and CFSR 
-              vardata[exp.lnd.getArray()>0.5] = 0 # use land fraction
+              vardata[exp.lnd.getArray(unmask=True,fillValue=0)>0.75] = 0 # use land fraction
             elif exp.variables.has_key('lndidx'): # use land use index (ocean and lake)
               mask = exp.lndidx.getArray(); tmp = vardata.copy(); vardata[:] = 0.
               vardata[mask==16] = tmp[mask==16]; vardata[mask==24] = tmp[mask==24]
@@ -325,7 +340,7 @@ if __name__ == '__main__':
       f = pyl.figure(facecolor='white', figsize=figsize)
       ax = []
       for n in xrange(nax):
-        ax.append(f.add_subplot(subplot[0],subplot[1],n+1))
+        ax.append(f.add_subplot(subplot[0],subplot[1],n+1, axisbg='blue'))
       f.subplots_adjust(**margins) # hspace, wspace
       if not maps:
         print(' - setting up map projection\n') 
@@ -361,7 +376,7 @@ if __name__ == '__main__':
               #print bdy.mean(), data[n][m].__class__.__name__, data[n][m].fill_value 
               bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
               maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', fill=False) # draw boundary of domain domain
-            if lframe:
+            if lframe and not ( domain[0] == 0 and m == 0):
               bdy = ma.ones(x[n][m].shape)   
               bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
               maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', fill=False) # draw boundary of data

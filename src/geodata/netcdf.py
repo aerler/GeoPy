@@ -370,7 +370,8 @@ class DatasetNetCDF(Dataset):
       # loop over variables in dataset
       for var in dsvars:
         if var in axes: pass # do not treat coordinate variables as real variables 
-        elif ds.variables[var].dtype == '|S1': pass # just ignore strig variables for now... 
+        elif ds.variables[var].dtype == '|S1': pass # just ignore string variables for now... 
+        elif ds.variables[var].ndim == 0: pass # also ignore scalars for now...
           #raise NotImplementedError # Variables of type char are currently not implemented
         elif var in variables: # if already present, make sure variables are essentially the same
           if dim not in check_override and ( (variables[var].shape != ds.variables[var].shape) or

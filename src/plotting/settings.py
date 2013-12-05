@@ -109,7 +109,7 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     elif var == 'zs': # surface elevation / topography
       if season == 'topo':
         lmskocn = True; clim = (-1.,2.5); # nice geographic map feel
-        clevs = np.hstack((np.array((-1.5,-1,-0.5)), np.linspace(-0,2.5,26))); clbl = '%02.1f' # km
+        clevs = np.hstack((np.array((-1.5,-1,-0.5)), np.linspace(-0,2.5,51))); clbl = '%02.1f' # km
         cmap = mpl.cm.gist_earth; cmap.set_over('white'); cmap.set_under('blue') # topography
       elif season == 'hidef': 
         lmskocn = True; clim = (-0.5,2.5); # good contrast for high elevation
