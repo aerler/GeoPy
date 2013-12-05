@@ -37,7 +37,10 @@ default_varatts = dict(pmsl     = dict(name='pmsl', units='Pa'), # sea-level pre
                        Tmax     = dict(name='Tmax', units='K'), # 2m maximum temperature
                        Q2       = dict(name='Q2', units='Pa'), # 2m water vapor pressure
                        pet      = dict(name='pet', units='kg/m^2/s'), # potential evapo-transpiration
-                       precip   = dict(name='precip', units='kg/m^2/s'), # total precipitation
+                       evap     = dict(name='evap', units='kg/m^2/s'), # actual evapo-transpiration
+                       precip   = dict(name='precip', units='kg/m^2/s'), # total precipitation                       
+                       solprec  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation
+                       liqprec  = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation
                        pwtr     = dict(name='pwtr', units='kg/m^2'), # total precipitable water (kg/m^2)
                        snow     = dict(name='snow', units='kg/m^2'), # snow water equivalent
                        snowh    = dict(name='snowh', units='m'), # snow depth
@@ -51,7 +54,8 @@ default_varatts = dict(pmsl     = dict(name='pmsl', units='Pa'), # sea-level pre
                        lon      = dict(name='lon', units='deg E'), # geographic longitude field
                        lat      = dict(name='lat', units='deg N'), # geographic latitude field
                        x        = dict(name='x', units='m'), # projected west-east coordinate
-                       y        = dict(name='y', units='m')) # projected south-north coordinate                                
+                       y        = dict(name='y', units='m')) # projected south-north coordinate
+default_varatts['p-et'] = dict(name='p-et', units='kg/m^2/s') # net precipitation; only legal as a string                                
 
 
 # data root folder

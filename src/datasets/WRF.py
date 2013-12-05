@@ -443,7 +443,9 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 
                             varatts=atts, multifile=False, ncformat='NETCDF4', squeeze=True)
     # check
-    if (len(dataset)+len(const)) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
+    if llconst: lenc = len(const)
+    else: lenc = 0 
+    if (len(dataset)+lenc) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
     # add constants to dataset
     if llconst:
       for var in const: 

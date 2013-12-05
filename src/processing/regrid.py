@@ -218,7 +218,7 @@ if __name__ == '__main__':
     datasets = []
 #     datasets = ['PRISM','GPCC']; periods = None
 #     datasets = ['GPCC','CRU']
-#     datasets = ['CFSR']
+#     datasets = ['CFSR', 'NARR']
 #     resolutions = {'GPCC':['025','05']}
     resolutions = None
     # CESM

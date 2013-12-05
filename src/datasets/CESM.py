@@ -8,14 +8,12 @@ This module contains common meta data and access functions for CESM model output
 
 # external imports
 import numpy as np
-import netCDF4 as nc
-import collections as col
 import os, pickle
-import osr
 # from atmdyn.properties import variablePlotatts
+from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, addGeoLocator, GDALError
-from geodata.misc import DatasetError, isInt, AxisError, DateError, isNumber
+from geodata.gdal import addGDALtoDataset
+from geodata.misc import DatasetError, AxisError, DateError
 from datasets.common import translateVarNames, data_root, grid_folder, default_varatts, addLengthAndNamesOfMonth 
 from geodata.gdal import loadPickledGridDef, griddef_pickle
 from WRF_experiments import Exp
@@ -40,7 +38,7 @@ experiments['hbb20trcn1x1'] = Exp(shortname='Ens-B', name='hbb20trcn1x1', title=
 experiments['hcb20trcn1x1'] = Exp(shortname='Ens-C', name='hcb20trcn1x1', title='Ens-C (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
 # mid-21st century
 experiments['ensrcp85cn1x1'] = Exp(shortname='CESM-2050', name='ensrcp85cn1x1', title='CESM Ensemble Mean (2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
-experiments['seaice-5r-hf'] = Exp(shortname='Seaice-2050', name='seaice-5r-hf', begindate='2045-01-01', enddate='2055-01-01', grid='cesm1x1')
+experiments['seaice-5r-hf'] = Exp(shortname='Seaice-2050', name='seaice-5r-hf', title='Seaice (CESM, 2050)', begindate='2045-01-01', enddate='2055-01-01', grid='cesm1x1')
 experiments['htbrcp85cn1x1'] = Exp(shortname='Ctrl-2050', name='htbrcp85cn1x1', title='Ctrl (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
 experiments['habrcp85cn1x1'] = Exp(shortname='Ens-A-2050', name='habrcp85cn1x1', title='Ens-A (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
 experiments['hbbrcp85cn1x1'] = Exp(shortname='Ens-B-2050', name='hbbrcp85cn1x1', title='Ens-B (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
@@ -162,7 +160,7 @@ class Axes(FileType):
     self.tsfile = None
 
 # data source/location
-fileclasses = dict(atm=ATM(), lnd=LND(), ice=ICE(), axes=Axes())
+fileclasses = dict(atm=ATM(), lnd=LND(), axes=Axes()) # ice=ICE() is currently not supported because of the grid
 
 
 ## Functions to load different types of WRF datasets
@@ -207,7 +205,7 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
   # translate varlist
   if varlist is None and not loadAll: varlist = atts.keys() # default varlist
   elif varlist is not None:
-    if translateVars is None: varlist += translateVarNames(varlist, atts) # also aff translations, just in case
+    if translateVars is None: varlist = list(varlist) + translateVarNames(varlist, atts) # also aff translations, just in case
     elif translateVars is True: varlist = translateVarNames(varlist, atts) 
     # N.B.: DatasetNetCDF does never apply translation!
   # get grid name
@@ -305,7 +303,7 @@ if __name__ == '__main__':
   elif mode == 'shift_lon':
 
     prdlen = 10
-    experiments = ['Ctrl']
+#     experiments = ['Ctrl']
     experiments = CESM_experiments.keys()
     
     # loop over experiments
@@ -356,7 +354,19 @@ if __name__ == '__main__':
   #         # create variable and add to dataset
   #         dataset.addVariable(Variable(axes=axes, name=maskname, data=mask, atts=atts), asNC=True)
           
-                  
+        # add new variables
+        # liquid precip
+        if sink.hasVariable('precip') and sink.hasVariable('solprec'):
+          data = sink.precip.getArray() - sink.solprec.getArray()
+          Var = Variable(axes=sink.precip.axes, name='liqprec', data=data, atts=default_varatts['liqprec'])
+          # create variable and add to dataset          
+          sink.addVariable(Var, asNC=True)
+        # net precip
+        if sink.hasVariable('precip') and sink.hasVariable('evap'):
+          data = sink.precip.getArray() - sink.evap.getArray()
+          Var = Variable(axes=sink.precip.axes, name='p-et', data=data, atts=default_varatts['p-et'])
+          # create variable and add to dataset          
+          sink.addVariable(Var, asNC=True)
   
   #       # add names and length of months
   #       sink.axisAnnotation('name_of_month', name_of_month, 'time', 

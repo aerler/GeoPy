@@ -178,14 +178,14 @@ if __name__ == '__main__':
     loverwrite = True
     varlist = None # ['precip', ]
     experiments = ['max-A-2050','max-B-2050','max-C-2050']
-    experiments = ['milb']
+#     experiments = ['max-2050']
     periods = [5,10]
-    periods = [5]
+#     periods = [5]
     domains = [1,2] # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','lsm','hydro']
-#     filetypes = ['hydro'] # filetypes to be processed
+    filetypes = ['plev3d'] # filetypes to be processed
     grid = 'WRF' 
   else:
     NP = NP or 4

@@ -60,8 +60,9 @@ def getVarSettings(plottype, lPRISM=False, mode='all'):
 if __name__ == '__main__':
   
   ## settings
-  expset = 'obs'
+  expset = 'wrf-proj'
   plottypes = ['temp','precip','flux','runoff']
+#   plottypes = ['precip']
 #   plottypes = ['temp']
   lPRISM = False
   lUnity = True
@@ -72,6 +73,14 @@ if __name__ == '__main__':
   tag = 'prism' if lPRISM else ''
   if expset == 'mix': 
     explist = ['max','max-2050','gulf','seaice-2050']
+  if expset == 'wrf-proj': 
+    explist = ['max-ens','max-ens-2050','cfsr-max','seaice-2050']  
+  if expset == 'mean-ens': 
+    explist = ['max-ens','CESM','new','cfsr-max']
+  if expset == 'mean-ens-2050': 
+    explist = ['max-ens-2050','CESM-2050','seaice-2050','Seaice-2050']
+  if expset == 'ens-proj': 
+    explist = ['max-ens','CESM','max-ens-2050','CESM-2050']
   elif expset == 'hires': 
     explist = ['columbia','cfsr-max']
   elif expset == 'obs': 
@@ -197,11 +206,12 @@ if __name__ == '__main__':
           elif var == 'Tmax': color = 'red'
           elif var == 'Tmin': color = 'blue'          
           # compute spatial average
-          vardata = exp.variables[var].mean(x=None,y=None)
-          wrfplt.append(ax.plot(time, S*vardata.getArray(), color=color, label=var)[0])
-          wrfleg.append(var)
-          print
-          print exp.name, vardata.name, S*vardata.getArray().mean()
+          if exp.hasVariable(var, strict=False):
+            vardata = exp.variables[var].mean(x=None,y=None)
+            wrfplt.append(ax.plot(time, S*vardata.getArray(), color=color, label=var)[0])
+            wrfleg.append(var)
+            print
+            print exp.name, vardata.name, S*vardata.getArray().mean()
           # either PRISM ...
           if lPRISM and prism.hasVariable(var, strict=False):
             # compute spatial average for CRU
