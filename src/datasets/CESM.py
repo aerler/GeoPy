@@ -29,6 +29,7 @@ avgfolder = root_folder + 'cesmavg/' # long-term mean folder
 # N.B.: This is the reference list, with unambiguous, unique keys and no aliases/duplicate entries  
 experiments = dict() # dictionary of experiments
 Exp.defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/'.format(avgfolder,atts['name'])
+Exp.defaults['parents'] = None # not applicable here
 # list of experiments
 # historical
 experiments['tb20trcn1x1'] = Exp(shortname='Ctrl', name='tb20trcn1x1', title='Ctrl (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
@@ -91,12 +92,12 @@ class ATM(FileType):
                      TS       = dict(name='Ts', units='K'), # Skin Temperature (SST)
                      TSMN     = dict(name='Tmin', units='K'),   # Minimum Temperature (at surface)
                      TSMX     = dict(name='Tmax', units='K'),   # Maximum Temperature (at surface)                     
-                     PRECT    = dict(name='precip', units='kg/m^2/s'), # total precipitation rate (kg/m^2/s)
-                     PRECC    = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate (kg/m^2/s)
-                     PRECL    = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate (kg/m^2/s)
+                     PRECT    = dict(name='precip', units='kg/m^2/s', scalefactor=1000.), # total precipitation rate (kg/m^2/s)
+                     PRECC    = dict(name='preccu', units='kg/m^2/s', scalefactor=1000.), # convective precipitation rate (kg/m^2/s)
+                     PRECL    = dict(name='precnc', units='kg/m^2/s', scalefactor=1000.), # grid-scale precipitation rate (kg/m^2/s)
                      #NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
                      #LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
-                     PRECSL   = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
+                     PRECSL   = dict(name='solprec', units='kg/m^2/s', scalefactor=1000.), # solid precipitation rate
                      #SNOWLND   = dict(name='snow', units='kg/m^2'), # snow water equivalent
                      SNOWHLND = dict(name='snowh', units='m'), # snow depth
                      SNOWHICE = dict(name='snowhice', units='m'), # snow depth
@@ -109,7 +110,7 @@ class ATM(FileType):
                      FSDS     = dict(name='SWD', units='W/m^2'), # Downwelling Shortwave Radiation                     
                      PS       = dict(name='ps', units='Pa'), # surface pressure
                      PSL      = dict(name='pmsl', units='Pa'), # mean sea level pressure
-                     PHIS     = dict(name='zs', units='m'), # surface elevation
+                     PHIS     = dict(name='zs', units='m', scalefactor=1./9.81), # surface elevation
                      LANDFRAC = dict(name='landfrac', units='')) # land fraction
     self.vars = self.atts.keys()    
     self.climfile = 'cesmatm{0:s}_clim{1:s}.nc' # the filename needs to be extended by ('_'+grid,'_'+period)
@@ -118,7 +119,7 @@ class ATM(FileType):
 class LND(FileType):
   ''' Variables and attributes of the land surface files. '''
   def __init__(self):
-    self.atts = dict(topo     = dict(name='zs', units='m'), # surface elevation
+    self.atts = dict(#topo     = dict(name='zs', units='m', scalefactor=0.1), # surface elevation
                      landmask = dict(name='landmask', units=''), # land mask
                      landfrac = dict(name='landfrac', units='')) # land fraction
 #                      ALBEDO = dict(name='A', units=''), # Albedo
@@ -197,21 +198,19 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
   for filetype in filetypes:
     fileclass = fileclasses[filetype]
     if fileclass.climfile is not None: # this eliminates const files
-      filelist.append(fileclass.climfile) 
-  if varatts is not None: atts.update(varatts)
-  # default varlist
-  if varlist is None: 
-    varlist = atts.keys()
-    for filetype in filetypes:
-      if not filetype == 'axes': varlist += fileclasses[filetype].atts.keys()
+      filelist.append(fileclass.climfile)
+    atts.update(fileclass.atts) 
+  if varatts is not None: atts.update(varatts)  
   # translate varlist
-  if varatts: varlist = translateVarNames(varlist, varatts) # default_varatts
+  if varlist is None: varlist = atts.keys() # default varlist
+  varlist = translateVarNames(varlist, atts) # DatasetNetCDF doesn't do this!
   # get grid name
   if grid is None or grid == experiment.grid: gridstr = ''
   else: gridstr = '_%s'%grid.lower() # only use lower case for filenames   
   # insert grid name and period
   filenames = [filename.format(gridstr,periodstr) for filename in filelist]
   # load dataset
+  #print varlist, filenames
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=None, 
                           varatts=atts, multifile=False, ncformat='NETCDF4', squeeze=True)
   # check
@@ -241,8 +240,8 @@ loadClimatology = loadCESM # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
 
-#   mode = 'test_climatology'
-  mode = 'pickle_grid'
+  mode = 'test_climatology'
+#   mode = 'pickle_grid'
   experiment = 'Ctrl'  
   filetypes = ['atm','lnd']
   grids = ['cesm1x1']; experiments = ['Ctrl']
@@ -283,9 +282,15 @@ if __name__ == '__main__':
   elif mode == 'test_climatology':
     
     print('')
-    dataset = loadCESM(experiment=experiment, grid=None, filetypes=None, period=(1979,1989)) # ['atm','lnd','ice']
+    dataset = loadCESM(experiment=experiment, varlist=['precip','zs'], grid=None, filetypes=None, period=(1979,1989)) # ['atm','lnd','ice']
     print(dataset)
     dataset.lon2D.load()
+    #     # display
+    import pylab as pyl
+#     pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.precip.getArray().mean(axis=0))
+    pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.zs.getArray())
+    pyl.colorbar()
+    pyl.show(block=True)
     print('')
     print(dataset.geotransform)
   

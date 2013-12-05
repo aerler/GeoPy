@@ -109,13 +109,14 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     elif var == 'zs': # surface elevation / topography
       if season == 'topo':
         lmskocn = True; clim = (-1.,2.5); # nice geographic map feel
-        clevs = np.hstack((np.array((-1.5,)), np.linspace(0,2.5,26))); clbl = '%02.1f' # km
+        clevs = np.hstack((np.array((-1.5,-1,-0.5)), np.linspace(-0,2.5,26))); clbl = '%02.1f' # km
         cmap = mpl.cm.gist_earth; cmap.set_over('white'); cmap.set_under('blue') # topography
       elif season == 'hidef': 
         lmskocn = True; clim = (-0.5,2.5); # good contrast for high elevation
         clevs = np.hstack((np.array((-.5,)), np.linspace(0,2.5,26))); clbl = '%02.1f' # km
         cmap = mpl.cm.gist_ncar; cmap.set_over('white'); cmap.set_under('blue')
-      else: raise ValueError, 'No map color scheme defined (use \'season\' to select color scheme).'
+      else: 
+        raise ValueError, 'No map color scheme defined (use \'season\' to select color scheme).'
       cbl = np.linspace(0,clim[-1],6)
     elif var=='stns': # station density
       clevs = np.linspace(0,5,6); clbl = '%2i' # stations per grid points  

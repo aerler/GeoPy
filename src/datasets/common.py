@@ -236,7 +236,8 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
   ''' A function that loads a dataset, based on specified parameters '''
   from datasets.WRF import loadWRF
   from datasets.WRF_experiments import WRF_exps
-  from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadNARR, loadUnity
+  from datasets.CESM import CESM_exps, loadCESM 
+  from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadCFSR_TS, loadNARR, loadUnity
   if not isinstance(exp,str): raise TypeError
   if exp[0].isupper():
     if exp == 'Unity': 
@@ -265,6 +266,7 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
         ext = loadPRISM(grid=grd, varlist=varlist); axt = 'PRISM'
     elif exp == 'CFSR': 
       ext = loadCFSR(period=prd, grid=grd, varlist=varlist)
+#       ext = loadCFSR_TS(varlist=varlist)
 #       if lbackground: ext = (ext,)
       axt = 'CFSR Reanalysis' 
     elif exp == 'NARR': 
@@ -272,17 +274,25 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
 #       if lbackground: ext = (ext,)
       axt = 'NARR Reanalysis'
     else: # all other uppercase names are CESM runs
-      raise NotImplementedError, "CESM datasets are currently not supported."  
-#           ext = (loadCESM(exp=exp, period=prd),)
-#           axt = CESMtitle.get(exp,exp)
+      #raise NotImplementedError, "CESM datasets are currently not supported."
+      exp = CESM_exps[exp]        
+      ext = loadCESM(experiment=exp, period=prd, grid=grd, varlist=varlist)
+      axt = exp.title
   else: 
     # WRF runs are all in lower case
-    exp = WRF_exps[exp]        
+    exp = WRF_exps[exp]      
+    parent = None
+    if isinstance(dom,(list,tuple)):
+      if not lbackground: raise ValueError, 'Can only plot one domain, if lbackground=False'
+      if 0 == dom[0]:
+        dom = dom[1:]
+        parent, tmp = loadDataset(exp.parent, prd, dom, grd, res, varlist=varlist, lbackground=False); del tmp    
     #if 'xtrm' in WRFfiletypes: 
     varatts = dict(TSK=dict(name='Ts')) 
     if lWRFnative: grd = None
     ext = loadWRF(experiment=exp, period=prd, grid=grd, domains=dom, filetypes=filetypes, 
-                  varlist=varlist, varatts=varatts)  
+                  varlist=varlist, varatts=varatts)
+    if parent is not None: ext = (parent,) + tuple(ext)
     axt = exp.title # defaults to name...
   # return values
   return ext, axt    

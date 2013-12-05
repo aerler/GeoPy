@@ -46,7 +46,7 @@ if __name__ == '__main__':
   A03 = '2045-2048'; A05 = '2045-2050'; A09 = '2045-2054'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
   B03 = '2095-2098'; B05 = '2095-2100'; B10 = '2095-2105'; B15 = '2095-2110' # late 21st century  
   ltitle = True # plot/figure title
-  lcontour = False # contour or pcolor plot
+  lcontour = True # contour or pcolor plot
   lframe = True # draw domain boundary
   loutline = True # draw boundaries around valid (non-masked) data
   figuretype = None
@@ -65,7 +65,7 @@ if __name__ == '__main__':
   ## case settings
   
   # observations
-  lprint = False # write plots to disk using case as a name tag
+  lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-arb'; lstations = True; lbasin = True
 #   grid = 'arb2_d02'; domain = (2,); #grid = 'ARB_small_05'
 #   explist = ['Unity']; exptitles = ['Merged Observations: Precipitation [mm/day]']; 
@@ -85,8 +85,8 @@ if __name__ == '__main__':
 #   explist = ['max','max-A','max-B','max-C']; period = H10; case = 'ens'
 #   explist = ['max','cfsr','new','ctrl']; period = H10; case = 'hydro'
 #   explist = ['max','max-2050','gulf','seaice-2050']; period = [H10, A10, H10, A10]; case = 'mix'
-  explist = ['seaice-2050','max-A-2050','max-B-2050','max-C-2050']; period = A10; case = 'ens-2050'
-  ldiff = True; reflist = ['max','max-A','max-B','max-C']; refprd = H10
+#   explist = ['seaice-2050','max-A-2050','max-B-2050','max-C-2050']; period = A10; case = 'ens-2050'
+#   ldiff = True; reflist = ['max','max-A','max-B','max-C']; refprd = H10
 #   explist = ['max-A','max-B','max-C','max-A-2050','max-B-2050','max-C-2050']
 #   period = ['1979-1987']*3+['2045-2053']*3; case = 'maxens'
 #   period = [A05,H05]+[A05]*4
@@ -100,6 +100,10 @@ if __name__ == '__main__':
 #   maptype = 'lcc-new'; lstations = False; lbasin = False
 #   grid = [None, 'ARB_small_05', None,None]; res = '05'
 
+#   maptype = 'lcc-new'; lstations = True; lbasin = True
+#   explist = ['Ctrl']; period = H10; case = 'cesm' 
+#   grid = None
+  
 #   case = 'bugaboo'; period = '1997-1998'  # name tag
 #   maptype = 'lcc-coast'; lstations = False; 
 #   domain = [(3,),(2,),(1,),(2,)]; ldiff = True; reflist = ['Unity']
@@ -120,10 +124,10 @@ if __name__ == '__main__':
 #   explist = ['columbia','PRISM','columbia','columbia'] 
 #   exptitles = ['WRF 3km (CFSR)', None, 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
 
-  # maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasin = False
+  maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasin = True; #lmskocn = True
 #   maptype = 'lcc-arb' 
-#   case = 'arb'; period = None; lWRFnative = True; loutline = False
-#   explist = ['max']; exptitles = ' '; domain = (2,)
+  case = 'col1'; period = None; lWRFnative = True; loutline = False; period = H10
+  explist = ['columbia']; exptitles = ' '; domain = (0,1,2,3)
   
   if not case: raise ValueError, 'Need to define a \'case\' name!'
   
@@ -133,17 +137,17 @@ if __name__ == '__main__':
 #   varlist += ['Ts']
 #   varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
-#   varlist += ['precip']
+  varlist += ['precip']
 #   varlist += ['waterflx']
 #   varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
 #   varlist += ['evap']
 #   varlist += ['pet']
-  varlist += ['runoff']
-  varlist += ['sfroff']
-  varlist += ['ugroff']
-  varlist += ['snwmlt']
+#   varlist += ['runoff']
+#   varlist += ['sfroff']
+#   varlist += ['ugroff']
+#   varlist += ['snwmlt']
 #   varlist += ['snow']
 #   varlist += ['snowh']
 #   varlist += ['GLW','OLR','qtfx']
@@ -168,9 +172,8 @@ if __name__ == '__main__':
 #  varlist = ['snowh'];  seasons = [8] # September snow height
 #  varlist = ['stns']; seasons = ['annual']
 #   varlist = ['lndcls']; seasons = [''] # static
-#   varlist = ['zs']; seasons = ['topo']; WRFfiletypes=['const'] # static
-#   varlist = ['zs']; seasons = ['hidef'] # static
-  
+  varlist = ['zs']; seasons = ['topo']; WRFfiletypes=['const'] # static
+#   varlist = ['zs']; seasons = ['hidef']; WRFfiletypes=['const'] # static
 
   # setup projection and map
   mapSetup = getARBsetup(maptype, lpickle=lpickle, folder=arb_map_folder)
@@ -185,7 +188,7 @@ if __name__ == '__main__':
   else: lref = False
   lbackground = not lref
     
-  loadlist = set(varlist).union(('lon2D','lat2D'))
+  loadlist = set(varlist).union(('lon2D','lat2D','landfrac')) # landfrac is needed for CESM landmask
   exps, axtitles, nexps = loadDatasets(explist, n=None, varlist=loadlist, titles=exptitles, periods=period, domains=domain, 
                                        grids=grid, resolutions=resolution, filetypes=WRFfiletypes, lWRFnative=lWRFnative, 
                                        ltuple=True, lbackground=lbackground)
@@ -262,11 +265,11 @@ if __name__ == '__main__':
           if 'WRF' in exp.atts.get('description',''): mon = days_per_month_365
           else: mon = days_per_month
           # extract data field
-          vardata = ma.zeros(expvar.mapSize) # allocate masked array
-          #np.zeros(expvar.mapSize) # allocate array
           # compute average over seasonal range
-          days = 0
           if expvar.hasAxis('time'):
+            days = 0
+            vardata = ma.zeros(expvar.mapSize) # allocate masked array
+            #np.zeros(expvar.mapSize) # allocate array
 #             vardata = expvar.mean(time=(min(month),max(month)), asVar=False)
             vardata.set_fill_value(np.NaN)
             for m in month:
@@ -275,23 +278,32 @@ if __name__ == '__main__':
               vardata += tmp * mon[n]
               days += mon[n]
             vardata /=  days # normalize 
-            vardata.set_fill_value(np.NaN)
           else:
-            vardata = expvar[:].squeeze()
-          vardata = vardata * expvar.plot.get('scalefactor',1) # apply plot unit conversion          
-          if lmskocn: 
-            if exp.variables.has_key('lnd'): # CESM and CFSR 
-              vardata[exp.lnd.get()<0.5] = -2. # use land fraction
+            vardata = ma.zeros(expvar.mapSize) # allocate masked array
+            vardata.set_fill_value(np.NaN)
+            vardata += expvar(lat=(-100,400))              
+#             vardata = expvar[:].squeeze()
+          vardata.set_fill_value(np.NaN)
+          if 'scalefactor' in expvar.plot:
+            vardata = vardata * expvar.plot['scalefactor'] # apply plot unit conversion          
+          if lmskocn:
+            if exp.variables.has_key('landfrac'): # CESM and CFSR 
+              vardata[exp.landfrac.getArray()<0.5] = -2. # use land fraction
+#             elif isinstance(vardata,ma.MaskedArray): 
+#               vardata = vardata.filled(-2.)
+#               print '********************************'
+#               vardata = maskoceans(lon,lat,vardata,resolution=res,grid=grid)
             elif exp.variables.has_key('lndidx'): 
-              mask = exp.lndidx.get()
+              mask = exp.lndidx.getArray()
               vardata[mask==16] = -2. # use land use index (ocean)  
               vardata[mask==24] = -2. # use land use index (lake)
-            else : vardata = maskoceans(lon,lat,vardata,resolution=res,grid=grid)
+            else :
+              vardata = maskoceans(lon,lat,vardata,resolution=res,grid=grid)
           if lmsklnd: 
-            if exp.variables.has_key('lnd'): # CESM and CFSR 
-              vardata[exp.lnd.get()>0.5] = 0 # use land fraction
+            if exp.variables.has_key('landfrac'): # CESM and CFSR 
+              vardata[exp.lnd.getArray()>0.5] = 0 # use land fraction
             elif exp.variables.has_key('lndidx'): # use land use index (ocean and lake)
-              mask = exp.lndidx.get(); tmp = vardata.copy(); vardata[:] = 0.
+              mask = exp.lndidx.getArray(); tmp = vardata.copy(); vardata[:] = 0.
               vardata[mask==16] = tmp[mask==16]; vardata[mask==24] = tmp[mask==24]
           datatpl.append(vardata) # append to data list
         ## compute differences, if desired

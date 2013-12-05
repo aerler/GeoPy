@@ -17,6 +17,7 @@ class Exp(object):
   parameters['shortname'] = dict(type=basestring,req=False) # short name
   parameters['title'] = dict(type=basestring,req=False) # title used in plots
   parameters['grid'] = dict(type=basestring,req=True) # name
+  parameters['parent'] = dict(type=basestring,req=True) # driving dataset
   parameters['begindate'] = dict(type=basestring,req=True) # simulation start date
   parameters['beginyear'] = dict(type=int,req=True) # simulation start year
   parameters['enddate'] = dict(type=basestring,req=False) # simulation end date (if it already finished)
@@ -26,7 +27,8 @@ class Exp(object):
   # default values (functions)
   defaults = dict()
   defaults['shortname'] = lambda atts: atts['name']
-  defaults['title'] = lambda atts: atts['name'] # need lambda, because parameters are not set yet  
+  defaults['title'] = lambda atts: atts['name'] # need lambda, because parameters are not set yet
+  defaults['parent'] = 'Ctrl' # CESM simulations that is driving most of the WRF runs   
   defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/'.format(avgfolder,atts['name'])
   defaults['begindate'] = '1979-01-01'
   defaults['beginyear'] = lambda atts: int(atts['begindate'].split('-')[0]) # first field
@@ -58,27 +60,27 @@ class Exp(object):
 # N.B.: This is the reference list, with unambiguous, unique keys and no aliases/duplicate entries  
 experiments = dict() # dictionary of experiments
 # list of experiments
-experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindate='1979-09-01', enddate='1979-09-01', grid='coast1')
-experiments['columbia'] = Exp(shortname='columbia', name='columbia', title='Max 3km (CFSR)', begindate='1979-09-01', grid='columbia1')
+experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindate='1979-09-01', enddate='1979-09-01', grid='coast1', parent='CFSR')
+experiments['columbia'] = Exp(shortname='columbia', name='columbia', title='Max 3km (CFSR)', begindate='1979-09-01', grid='columbia1', parent='CFSR')
 # these are all based on the "new" configuration (ARB3 domain)
 experiments['new-ctrl'] = Exp(shortname='new', name='new-ctrl', title='New-1 (Noah-MP)', begindate='1979-01-01', grid='arb3')
 experiments['new-nogulf'] = Exp(shortname='nogulf', name='new-nogulf', title='New-1 (no Gulf)', begindate='1979-01-01', grid='arb2') # ARB2 domain
 experiments['new-noah'] = Exp(shortname='noah', name='new-noah', title='New (Noah)', begindate='1979-01-01', grid='arb2') # ARB2 domain
 experiments['v35-noah'] = Exp(shortname='noah35', name='v35-noah', title='V35 & Noah (New)', begindate='1979-01-01', grid='arb2') # ARB2 domain
-experiments['cfsr-new'] = Exp(shortname='cfsr-new', name='cfsr-new', title='New (CFSR)', begindate='1979-01-01', grid='arb3')
+experiments['cfsr-new'] = Exp(shortname='cfsr-new', name='cfsr-new', title='New (CFSR)', begindate='1979-01-01', grid='arb3', parent='CFSR')
 # these are all based on the "max" configuration (ARB2 domain)
 experiments['max-ctrl'] = Exp(shortname='max', name='max-ctrl', title='Max-1', begindate='1979-01-01', grid='arb2')
 experiments['max-gulf'] = Exp(shortname='gulf', name='max-gulf', title='Max-1 (Gulf)', begindate='1979-01-01', grid='arb3') # ARB3 domain
-experiments['max-ens-A'] = Exp(shortname='max-A', name='max-ens-A', title='Max-A', begindate='1979-01-01', grid='arb2')
-experiments['max-ens-B'] = Exp(shortname='max-B', name='max-ens-B', title='Max-B', begindate='1979-01-01', grid='arb2')
-experiments['max-ens-C'] = Exp(shortname='max-C', name='max-ens-C', title='Max-C', begindate='1979-01-01', grid='arb2')
-experiments['max-ctrl-2050'] = Exp(shortname='max-2050', name='max-ctrl-2050', title='Max-1 (2050)', begindate='2045-01-01', grid='arb2')
-experiments['max-ctrl-2100'] = Exp(shortname='max-2100', name='max-ctrl-2100', title='Max-1 (2100)', begindate='2085-01-01', grid='arb2')
-experiments['max-ens-A-2050'] = Exp(shortname='max-A-2050', name='max-ens-A-2050', title='Max-A (2050)', begindate='2045-01-01', grid='arb2')
-experiments['max-ens-B-2050'] = Exp(shortname='max-B-2050', name='max-ens-B-2050', title='Max-B (2050)', begindate='2045-01-01', grid='arb2')
-experiments['max-ens-C-2050'] = Exp(shortname='max-C-2050', name='max-ens-C-2050', title='Max-C (2050)', begindate='2045-01-01', grid='arb2')
-experiments['max-seaice-2050'] = Exp(shortname='seaice-2050', name='max-seaice-2050', title='Seaice (2050)', begindate='2045-01-01', grid='arb2')
-experiments['cfsr-max'] = Exp(shortname='cfsr', name='cfsr-max', title='Max (CFSR)', begindate='1979-01-01', grid='arb2')
+experiments['max-ens-A'] = Exp(shortname='max-A', name='max-ens-A', title='Max-A', begindate='1979-01-01', grid='arb2', parent='Ens-A')
+experiments['max-ens-B'] = Exp(shortname='max-B', name='max-ens-B', title='Max-B', begindate='1979-01-01', grid='arb2', parent='Ens-B')
+experiments['max-ens-C'] = Exp(shortname='max-C', name='max-ens-C', title='Max-C', begindate='1979-01-01', grid='arb2', parent='Ens-C')
+experiments['max-ctrl-2050'] = Exp(shortname='max-2050', name='max-ctrl-2050', title='Max-1 (2050)', begindate='2045-01-01', grid='arb2', parent='Ctrl-2050')
+experiments['max-ctrl-2100'] = Exp(shortname='max-2100', name='max-ctrl-2100', title='Max-1 (2100)', begindate='2085-01-01', grid='arb2', parent='Ctrl-2100')
+experiments['max-ens-A-2050'] = Exp(shortname='max-A-2050', name='max-ens-A-2050', title='Max-A (2050)', begindate='2045-01-01', grid='arb2', parent='Ens-A-2050')
+experiments['max-ens-B-2050'] = Exp(shortname='max-B-2050', name='max-ens-B-2050', title='Max-B (2050)', begindate='2045-01-01', grid='arb2', parent='Ens-B-2050')
+experiments['max-ens-C-2050'] = Exp(shortname='max-C-2050', name='max-ens-C-2050', title='Max-C (2050)', begindate='2045-01-01', grid='arb2', parent='Ens-C-2050')
+experiments['max-seaice-2050'] = Exp(shortname='seaice-2050', name='max-seaice-2050', title='Seaice (2050)', begindate='2045-01-01', grid='arb2', parent='Seaice-2050')
+experiments['cfsr-max'] = Exp(shortname='cfsr', name='cfsr-max', title='Max (CFSR)', begindate='1979-01-01', grid='arb2', parent='CFSR')
 # these are all based on the old configuration (original + RRTMG, ARB2)
 experiments['ctrl-1'] = Exp(shortname='ctrl', name='ctrl-1', title='Ctrl-1', begindate='1979-01-01', grid='arb2')
 experiments['tiedtke-ctrl'] = Exp(shortname='tiedt', name='tiedtke-ctrl', title='Tiedtke (Ctrl)', begindate='1979-01-01', grid='arb2') 
@@ -101,13 +103,13 @@ experiments['modis-arb1'] = Exp(shortname='modis', name='modis-arb1', title='Mod
 experiments['moris-ctrl'] = Exp(shortname='moris', name='moris-ctrl', title='Morrison (CAM)', begindate='1979-01-01', grid='arb2')
 experiments['v35-clm'] = Exp(shortname='clm4', name='v35-clm', title='CLM (V35, CAM)', begindate='1979-01-01', grid='arb2')
 experiments['cam-ctrl'] = Exp(shortname='cam3', name='cam-ctrl', title='Ctrl (CAM)', begindate='1979-01-01', grid='arb2') 
-experiments['cfsr-cam'] = Exp(shortname='cfsr-cam', name='cfsr-cam', title='CAM-1 (CFSR)', begindate='1979-01-01', grid='arb2')
+experiments['cfsr-cam'] = Exp(shortname='cfsr-cam', name='cfsr-cam', title='CAM-1 (CFSR)', begindate='1979-01-01', grid='arb2', parent='CFSR')
 experiments['cam-ens-A'] = Exp(shortname='cam-A', name='cam-ens-A', title='Ens-A (CAM)', begindate='1979-01-01', grid='arb2')
 experiments['cam-ens-B'] = Exp(shortname='cam-B', name='cam-ens-B', title='Ens-B (CAM)', begindate='1979-01-01', grid='arb2')
 experiments['cam-ens-C'] = Exp(shortname='cam-C', name='cam-ens-C', title='Ens-C (CAM)', begindate='1979-01-01', grid='arb2')
-experiments['cam-ctrl-1-2050'] = Exp(shortname='cam-1-2050', name='cam-ctrl-1-2050', title='CAM-1 2050', begindate='2045-01-01', grid='arb2')
-experiments['cam-ctrl-2-2050'] = Exp(shortname='cam-2-2050', name='cam-ctrl-2-2050', title='CAM-2 2050', begindate='2045-01-01', grid='arb2')
-experiments['cam-ctrl-2-2100'] = Exp(shortname='cam-1-2100', name='cam-ctrl-2-2100', title='CAM-2 2100', begindate='2095-01-01', grid='arb2')
+experiments['cam-ctrl-1-2050'] = Exp(shortname='cam-1-2050', name='cam-ctrl-1-2050', title='CAM-1 2050', begindate='2045-01-01', grid='arb2', parent='Ctrl-2050')
+experiments['cam-ctrl-2-2050'] = Exp(shortname='cam-2-2050', name='cam-ctrl-2-2050', title='CAM-2 2050', begindate='2045-01-01', grid='arb2', parent='Ctrl-2050')
+experiments['cam-ctrl-2-2100'] = Exp(shortname='cam-1-2100', name='cam-ctrl-2-2100', title='CAM-2 2100', begindate='2095-01-01', grid='arb2', parent='Ctrl-2100')
 # other hitop/fdda
 # experiments['nofdda-ctrl'] = Exp(name='nofdda-ctrl', avgfolder=avgfolder+'/hitop-test/nofdda-ctrl/', begindate='1979-01-01', grid='arb1')
 # experiments['nofdda-hitop'] = Exp(name='nofdda-hitop', avgfolder=avgfolder+'/hitop-test/nofdda-hitop/', begindate='1979-01-01', grid='arb1')
