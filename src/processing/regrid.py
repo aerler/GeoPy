@@ -236,7 +236,7 @@ if __name__ == '__main__':
     WRF_filetypes = ['srfc']
     # grid to project onto
     lpickle = True
-    grids = dict(arb2=['d02']) # dict with list of resolutions
+#     grids = dict(arb2=['d02']) # dict with list of resolutions
 #     grids = dict(ARB_small=['025']) # dict with list of resolutions    
 #     grids = dict(arb2=['d02'], ARB_small=['025','05']) # dict with list of resolutions
 #     grids = dict(cesm1x1=[None]) # CESM grid

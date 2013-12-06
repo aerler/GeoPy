@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pylab as pyl
 import matplotlib as mpl
 mpl.rc('lines', linewidth=1.)
-mpl.rc('font', size=10)
+mpl.rc('font', size=12)
 # internal imports
 # PyGeoDat stuff
 from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadNARR, loadUnity
@@ -30,19 +30,22 @@ def getVarSettings(plottype, lPRISM=False, mode='all'):
   flxlim = (-2,4) if lPRISM else (-2,6)
   lCFSR = False; lNARR = False
   if plottype == 'flux':
-    varlist = ['waterflx','snwmlt','p-et','precip']; filetypes = ['srfc','hydro']; 
+    varlist = ['snwmlt','p-et','precip']; filetypes = ['srfc','hydro']; # 'waterflx' 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
   elif plottype == 'temp':
     varlist = ['T2','Tmin','Tmax']; filetypes = ['srfc','xtrm']; lCFSR = True; lNARR = True 
     lsum = False; leg = (2,8); ylabel = 'Temperature [K]'; ylim = (250,300)
   elif plottype == 'precip':
-    varlist = ['p-et','precip','liqprec','solprec']; filetypes = ['hydro']
+    varlist = ['p-et','precip','liqprec','solprec']; filetypes = ['hydro'] # 
+    lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim; lCFSR = False; lNARR = False
+  elif plottype == 'precip_alt':
+    varlist = ['p-et','precip']; filetypes = ['hydro'] # 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim; lCFSR = True; lNARR = True
   elif plottype == 'flxrof':
     varlist = ['waterflx','runoff','snwmlt','p-et','precip']; filetypes = ['srfc','hydro','lsm']; 
     lsum = True; leg = (2,1); ylabel = flxlabel; ylim = flxlim
   elif plottype == 'runoff':
-    varlist = ['ugroff','runoff','sfroff','waterflx']; filetypes = ['lsm','hydro']; 
+    varlist = ['snwmlt','runoff','sfroff','p-et']; filetypes = ['lsm','hydro']; # 'ugroff' 
     lsum = True; leg = (2,1); ylabel = flxlabel; ylim = flxlim
   else:
     raise TypeError, 'No plottype defined!'
@@ -55,19 +58,22 @@ def getVarSettings(plottype, lPRISM=False, mode='all'):
     return varlist, lsum, leg, ylabel, ylim, lCFSR, lNARR
 
 
-
 ## start computation
 if __name__ == '__main__':
   
   ## settings
-  expset = 'wrf-proj'
+  expset = 'max-ens'
   plottypes = ['temp','precip','flux','runoff']
-#   plottypes = ['precip']
-#   plottypes = ['temp']
+  plottypes = ['precip','precip_alt','flux','runoff']
+  plottypes = ['precip_alt']
   lPRISM = False
   lUnity = True
   domain = 2
   period = 10
+  # titles
+  if expset == 'max-ens-2050': titles = 'WRF Ensemble Mean (Mid-21st-Century)'
+  elif expset == 'max-ens': titles = 'WRF Ensemble Mean (Historical Period)'
+  else: titles = None
   
   ## datasets
   tag = 'prism' if lPRISM else ''
@@ -85,14 +91,21 @@ if __name__ == '__main__':
     explist = ['columbia','cfsr-max']
   elif expset == 'obs': 
     explist = ['max','ctrl','new','new-noah']  
-  elif expset == 'ens': 
+  elif expset == 'ens-wrf':
     explist = ['max','max-A','max-B','max-C']
-  elif expset == 'ens-2050': 
-    period = 9
+  elif expset == 'ens-wrf-2050': 
     explist = ['seaice-2050','max-A-2050','max-B-2050','max-C-2050']
+  elif expset == 'ens-cesm': 
+    explist = ['Ctrl','Ens-A','Ens-B','Ens-C']
+  elif expset == 'ens-cesm-2050': 
+    explist = ['Seaice-2050','Ens-A-2050','Ens-B-2050','Ens-C-2050']
+  else:
+    explist = [expset]
 
   # some more settings
-  if len(explist) > 1: ljoined = True
+#   if len(explist) > 1: ljoined = True
+#   else: ljoined = False 
+  ljoined = True
   if domain != 2: expset += '_d{0:02d}'.format(domain)
   #grid='arb2_d{0:02d}'.format(domain)
   grid='arb2_d02'
@@ -112,7 +125,7 @@ if __name__ == '__main__':
       
   ## load data  
 #   domain = [3,2]
-  exps, titles = loadDatasets(explist, n=None, varlist=loadlist, titles=None, periods=period, domains=domain, 
+  exps, titles = loadDatasets(explist, n=None, varlist=loadlist, titles=titles, periods=period, domains=domain, 
                               grids=grid, resolutions='025', filetypes=allfiletypes, lWRFnative=False, 
                               ltuple=False, lbackground=False)
   ref = exps[0]; nlen = len(exps)
@@ -164,6 +177,7 @@ if __name__ == '__main__':
   for plottype in plottypes:
     varlist, lsum, leg, ylabel, ylim, lCFSR, lNARR = getVarSettings(plottype, lPRISM=lPRISM, mode='plot')
     #lCFSR = False; lNARR = False
+#     lCFSR = lCFSR and lcfsr; lNARR = lNARR and lnarr
     S = asf if lsum else 1. # apply scale factor, depending on plot type  
    
     ## setting up figure
@@ -171,6 +185,11 @@ if __name__ == '__main__':
     sf, figformat, margins, subplot, figsize = getFigureSettings(nlen, cbar=False)
     # make figure and axes
     fig, axes = pyl.subplots(*subplot, sharex=True, sharey=True, facecolor='white', figsize=figsize)
+    axes = np.asanyarray(axes)
+    if axes.ndim == 0: axes = axes.reshape((1,1))
+    if axes.ndim == 1: axes = axes.reshape((1,len(axes)))
+#     if not isinstance(axes,(list,tuple)): axes = (axes,)
+#     if not isinstance(axes[0],(list,tuple)): axes = tuple([(ax,) for ax in axes])
     fig.subplots_adjust(**margins) # hspace, wspace
     
     # loop over axes
@@ -201,17 +220,19 @@ if __name__ == '__main__':
           elif var == 'waterflx': color = 'blue'
           elif var == 'snwmlt': color = 'coral'
           elif var == 'runoff': color = 'purple'
-          elif var == 'ugroff': color = 'green'
-          elif var == 'sfroff': color = 'coral'
+          elif var == 'ugroff': color = 'coral'
+          elif var == 'sfroff': color = 'green'
           elif var == 'Tmax': color = 'red'
           elif var == 'Tmin': color = 'blue'          
           # compute spatial average
           if exp.hasVariable(var, strict=False):
-            vardata = exp.variables[var].mean(x=None,y=None)
-            wrfplt.append(ax.plot(time, S*vardata.getArray(), color=color, label=var)[0])
-            wrfleg.append(var)
-            print
-            print exp.name, vardata.name, S*vardata.getArray().mean()
+            if 'CESM' in title and var in ('Tmin','Tmax'): pass
+            else:
+              vardata = exp.variables[var].mean(x=None,y=None)
+              wrfplt.append(ax.plot(time, S*vardata.getArray(), color=color, label=var)[0])
+              wrfleg.append(var)
+              print
+              print exp.name, vardata.name, S*vardata.getArray().mean()
           # either PRISM ...
           if lPRISM and prism.hasVariable(var, strict=False):
             # compute spatial average for CRU
@@ -295,9 +316,8 @@ if __name__ == '__main__':
       margins['bottom'] = margins['bottom'] + 0.1; fig.subplots_adjust(**margins)
       legargs = dict(frameon=True, labelspacing=0.15, handlelength=1.5, handletextpad=0.5, fancybox=True)
       plt = wrfplt + obsplt; leg = wrfleg + obsleg
-      #ncols = 4 if len(plt) == 4 or len(plt) > 5 else 3
-      ncol = 4
-      legend = ax.legend(plt, leg, loc=10, ncol=ncol, borderaxespad=0., **legargs)  
+      ncols = 4 if len(plt) == 4 or len(plt) > 5 else 3
+      legend = ax.legend(plt, leg, loc=10, ncol=ncols, borderaxespad=0., **legargs)  
       
     # average discharge below Fort McMurray: 620 m^3/s
       

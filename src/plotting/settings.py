@@ -29,10 +29,10 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     cmap = mycmap; cmap.set_over('red'); cmap.set_under('blue')
     if var in ('T2','Ts','Tmin','Tmax','Tmean'):
       clevs = np.linspace(-5,5,21); clbl = '%3.1f' # K
-    elif var in ('evap','pet','p-et','precip','precipc','precipnc','waterflx'):
+    elif var in ('evap','pet','precip','precipc','precipnc'):
       clevs = np.linspace(-5,5,21); clbl = '%3.1f' # mm/day
-    elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff'): # moisture fluxes (kg /(m^2 s))
-      clevs = np.linspace(-3,3,21); clbl = '%3.1f' # mm/day  
+    elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff','p-et','waterflx'): # moisture fluxes (kg /(m^2 s))
+      clevs = np.linspace(-2,2,21); clbl = '%3.1f' # mm/day  
     else: 
       raise VariableError, 'No settings found for differencing variable \'{0:s}\' found!'.format(var)
   elif lfrac:
@@ -168,7 +168,7 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
 
 
 ## figure settings
-def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None):
+def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True):
   sf = dict(dpi=150) # print properties
   figformat = 'png'
   # some special cases 
@@ -187,7 +187,8 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None):
   if nexp == 1:
     ## 1 panel
     subplot = (1,1)
-    figsize = (3.75,3.75) #figsize = (6.25,6.25)  #figsize = (7,5.5)
+    if sameSize: figsize = (6.25,6.25)
+    else: figsize = (3.75,3.75) # figsize = (7,5.5)
     if cbar:
       margins = dict(bottom=0.125, left=0.1, right=0.95, top=0.925, hspace=0.0, wspace=0.0)
       caxpos = [0.05, 0.05, 0.9, 0.03]
@@ -200,13 +201,14 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None):
   elif nexp == 2:
     ## 2 panel
     subplot = (1,2)
-    figsize = (6.25,5.5)
+    if sameSize: figsize = (6.25,6.25)
+    else: figsize = (6.25,5.5)    
     if cbar:
-      margins = dict(bottom=0.1, left=0.065, right=.9725, top=.925, hspace=0.05, wspace=0.05)
+      margins = dict(bottom=0.1, left=0.085, right=.975, top=.95, hspace=0.05, wspace=0.05)
       caxpos = [0.05, 0.05, 0.9, 0.03]
       cbo = cbo or 'horizontal'
     else:
-      margins = dict(bottom=0.025, left=0.065, right=.9725, top=.925, hspace=0.05, wspace=0.05)
+      margins = dict(bottom=0.055, left=0.085, right=.975, top=.95, hspace=0.05, wspace=0.05)
   elif nexp == 4:
     # 4 panel
     subplot = (2,2)

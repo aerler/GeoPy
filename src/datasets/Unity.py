@@ -61,7 +61,7 @@ def loadUnity(name=dataset_name, period=None, grid=None, resolution=None, varlis
     warn('A climatology is not available for the Unified Dataset; loading period {0:4d}-{1:4d}.'.format(*period))
   # this dataset has not native/default grid
   if grid is None: 
-    grid = 'ARB_small_025'
+    grid = 'arb2_d02'
     warn('The Unified Dataset has no native grid; loading {0:s} grid.'.format(grid))
   # load standardized climatology dataset with PRISM-specific parameters  
   dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 

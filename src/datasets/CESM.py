@@ -209,8 +209,11 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
     elif translateVars is True: varlist = translateVarNames(varlist, atts) 
     # N.B.: DatasetNetCDF does never apply translation!
   # get grid name
-  if grid is None or grid == experiment.grid: gridstr = ''
-  else: gridstr = '_%s'%grid.lower() # only use lower case for filenames   
+  if grid is None or grid == experiment.grid: 
+    gridstr = ''; griddef = None
+  else: 
+    gridstr = '_%s'%grid.lower() # only use lower case for filenames
+    griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder, check=True)   
   # insert grid name and period
   filenames = [filename.format(gridstr,periodstr) for filename in filelist]
   # load dataset
@@ -220,7 +223,7 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
   # check
   if len(dataset) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
   # add projection
-  dataset = addGDALtoDataset(dataset, gridfolder=grid_folder, geolocator=True)
+  dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, geolocator=True)
   # return formatted dataset
   return dataset
 

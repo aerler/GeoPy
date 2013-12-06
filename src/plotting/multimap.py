@@ -66,22 +66,34 @@ if __name__ == '__main__':
   
   # observations
   lprint = True # write plots to disk using case as a name tag
-#   maptype = 'lcc-arb'; lstations = True; lbasin = True
+  maptype = 'lcc-new'; lstations = False; lbasin = False
 #   grid = 'arb2_d02'; domain = (2,); #grid = 'ARB_small_05'
 #   explist = ['Unity']; exptitles = ['Merged Observations: Precipitation [mm/day]']; 
-#   period = H10; case = 'unity'; ltitle = False
-#   lfrac = True; reflist = ['Unity']
-#   ldiff = True; reflist = ['Unity']
+#   period = H10; case = 'unity'; 
+#   ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'
 #   explist = ['max']; exptitles = ' '; domain = (2,); period = H10; case = 'test'
-#   explist = ['max','cfsr','new','CFSR']; period = H10; case = 'val'
-#   explist = ['CFSR','CRU','NARR','Unity']; period = H10; case = 'obs'
+
+#   explist = ['max-ens']; exptitles = ' '; period = H10; case = 'hydro'
+  lfrac = True; reflist = ['max-ens']; refprd = H10; grid = 'arb2_d02'
+  explist = ['max-ens-2050']; exptitles = ' '; period = A10; case = 'hydro' 
+  case = 'hydro_arb'; lbasin = True
+
+#   lfrac = True; reflist = ['Unity']; grid = 'arb2_d02'
+#   explist = ['max-ens','NARR','CESM','CFSR']; period = H10; case = 'val'
+
+#   reflist = ['max-ens','CESM','max','Ctrl']; refprd = H10; lfrac = True #ldiff = True
+#   explist = ['max-ens-2050','CESM-2050','max-2050','Ctrl-2050']; period = A10; case = 'prj'
+
+#   lfrac = True; reflist = ['Unity']; grid = 'arb2_d02'
+#   explist = ['CRU','PRISM','NARR','CFSR']; period = H10; case = 'obs'
+
 #   exptitles = [None,None,None,'GPCC (no data)']
 #   explist = ['max','ctrl','noah','CRU']; period = H10; case = 'val'
 #   explist = ['max','ctrl','cfsr','noah']; period = H10; case = 'hydro'
 #   explist = ['max','ctrl','new','CRU']; period = H10; case = 'val'
 #   explist = ['max','CRU','cfsr','ctrl']; period = H10; case = 'val'
 #   explist = ['max','ctrl','new','milb','wdm6','tom']; period = H05; case = 'mp'
-#   explist = ['max','CRU','max-A','max-B','NARR','max-C']; period = H10; case = 'ens'
+#   explist = ['max','Unity','max-A','max-B','NARR','max-C']; period = H10; case = 'ens'
 #   explist = ['max','max-A','max-B','max-C']; period = H10; case = 'ens'
 #   explist = ['max','cfsr','new','ctrl']; period = H10; case = 'hydro'
 #   explist = ['max','max-2050','gulf','seaice-2050']; period = [H10, A10, H10, A10]; case = 'mix'
@@ -104,12 +116,12 @@ if __name__ == '__main__':
 #   explist = ['Ctrl']; period = H10; case = 'cesm' 
 #   grid = None
 
-  ldiff = True; reflist = ['Unity']; lWRFnative = False
-#   lfrac = True; reflist = ['Unity']; lWRFnative = False
-  maptype = 'lcc-new'; lstations = False; lbasin = True
-  case = 'cesm-ens'; loutline = True; grid = None # 'cesm1x1'
-  grid = ['arb2_d02','cesm1x1','arb2_d01','arb2_d01']
-  explist = ['max-ens','CESM','max-ens','NARR']; period = H10; domain = [(2,),None,(1,),None]
+#   ldiff = True; reflist = ['Unity']; lWRFnative = False
+# #   lfrac = True; reflist = ['Unity']; lWRFnative = False
+#   maptype = 'lcc-new'; lstations = False; lbasin = True
+#   case = 'cesm-ens'; loutline = True; grid = None # 'cesm1x1'
+#   grid = ['arb2_d02','cesm1x1','arb2_d01','arb2_d01']
+#   explist = ['max-ens','CESM','max-ens','NARR']; period = H10; domain = [(2,),None,(1,),None]
 
 #   ldiff = True; reflist = ['Unity']; grid = 'cesm1x1'
 # #   lfrac = True; reflist = ['Unity']; grid = 'cesm1x1'
@@ -140,7 +152,10 @@ if __name__ == '__main__':
 #   maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasin = False
 #   case = 'arb2'; period = None; lWRFnative = True; loutline = False; period = H10
 #   explist = ['max']; exptitles = ' '; domain = (0,1,2)
-  
+#   maptype = 'lcc-new'; lstations = False; lbasin = True
+#   case = 'arb'; period = None; lWRFnative = True; lframe = False; loutline = False
+#   explist = ['columbia']; exptitles = ' '; domain = (2,3)
+    
   if not case: raise ValueError, 'Need to define a \'case\' name!'
   
   ## select variables and seasons
@@ -149,15 +164,15 @@ if __name__ == '__main__':
 #   varlist += ['Ts']
 #   varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
-  varlist += ['precip']
+#   varlist += ['precip']
 #   varlist += ['waterflx']
 #   varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
 #   varlist += ['evap']
 #   varlist += ['pet']
-#   varlist += ['runoff']
-#   varlist += ['sfroff']
+  varlist += ['runoff']
+  varlist += ['sfroff']
 #   varlist += ['ugroff']
 #   varlist += ['snwmlt']
 #   varlist += ['snow']
@@ -176,9 +191,9 @@ if __name__ == '__main__':
 #   seasons = [ [i] for i in xrange(12) ] # monthly
   seasons += ['annual']
   seasons += ['summer']
-  seasons += ['winter']
-  seasons += ['spring']    
-  seasons += ['fall']
+#   seasons += ['winter']
+#   seasons += ['spring']    
+#   seasons += ['fall']
   # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height
