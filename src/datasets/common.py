@@ -239,10 +239,10 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
                 lWRFnative=True):
   ''' A function that loads a dataset, based on specified parameters '''
   from datasets.WRF import loadWRF
-  from datasets.WRF_experiments import WRF_exps
+  from datasets.WRF_experiments import WRF_exps, Exp
   from datasets.CESM import CESM_exps, loadCESM 
   from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadNARR, loadUnity
-  if not isinstance(exp,str): raise TypeError
+  if not isinstance(exp,(basestring,Exp)): raise TypeError
   if exp[0].isupper():
     if exp == 'Unity': 
       ext = loadUnity(resolution=res, period=prd, grid=grd, varlist=varlist)
@@ -312,16 +312,30 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
   # check and expand lists
   if n is None: n = len(explist)
   elif not isinstance(n, (int,np.integer)): raise TypeError
-  explist = checkItemList(explist, n, (basestring,Exp))
+  explist = checkItemList(explist, n, (basestring,Exp,tuple))
   titles = checkItemList(titles, n, basestring)
   periods  = checkItemList(periods, n, (basestring,int,np.integer), iterable=False)
-  domains  = checkItemList(domains, n, (int,np.integer,tuple), iterable=ltuple) # to return a tuple, give a tuple of domains
+  domains  = checkItemList(domains, n, (int,np.integer,tuple), iterable=False) # to return a tuple, give a tuple of domains
   grids  = checkItemList(grids, n, basestring)
   resolutions  = checkItemList(resolutions, n, basestring)  
   # resolve experiment list
   dslist = []; axtitles = []
   for exp,tit,prd,dom,grd,res in zip(explist,titles,periods,domains,grids,resolutions): 
-    ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=varlist, 
+    if isinstance(exp,tuple):
+      if lbackground: raise ValueError, 'Adding Background is not supported in combination with experiment tuples!'
+      if not isinstance(dom,(list,tuple)): dom =(dom,)*len(exp)
+      if len(dom) != len(exp): raise ValueError, 'Only one domain is is not supported for each experiment!'          
+      ext = []; axt = []        
+      for ex,dm in zip(exp,dom):
+        et, at = loadDataset(ex, prd, dm, grd, res, filetypes=filetypes, varlist=varlist, 
+                           lbackground=False, lWRFnative=lWRFnative)
+        #if isinstance(et,(list,tuple)): ext += list(et); else: 
+        ext.append(et)
+        #if isinstance(at,(list,tuple)): axt += list(at); else: 
+        axt.append(at)
+      ext = tuple(ext); axt = tuple(axt)
+    else:
+      ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=varlist, 
                            lbackground=lbackground, lWRFnative=lWRFnative)
     dslist.append(ext); axtitles.append(tit or axt)  
   # count experiment tuples (layers per panel)

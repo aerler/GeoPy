@@ -10,8 +10,10 @@ A simple script to plot basin-averaged monthly climatologies.
 import numpy as np
 import matplotlib.pylab as pyl
 import matplotlib as mpl
-mpl.rc('lines', linewidth=1.)
-mpl.rc('font', size=12)
+linewidth = 1.5
+mpl.rc('lines', linewidth=linewidth)
+if linewidth == 1.5: mpl.rc('font', size=12)
+else: mpl.rc('font', size=12)
 # internal imports
 # PyGeoDat stuff
 from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadNARR, loadUnity
@@ -47,6 +49,9 @@ def getVarSettings(plottype, lPRISM=False, mode='all'):
   elif plottype == 'runoff':
     varlist = ['snwmlt','runoff','sfroff','p-et']; filetypes = ['lsm','hydro']; # 'ugroff' 
     lsum = True; leg = (2,1); ylabel = flxlabel; ylim = flxlim
+  elif plottype == 'sfroff':
+    varlist = ['runoff','sfroff']; filetypes = ['lsm','hydro']; # 'ugroff' 
+    lsum = True; leg = (2,1); ylabel = flxlabel; ylim = flxlim
   else:
     raise TypeError, 'No plottype defined!'
   # return values
@@ -56,27 +61,11 @@ def getVarSettings(plottype, lPRISM=False, mode='all'):
     return varlist, filetypes, lCFSR, lNARR
   elif mode == 'plot':
     return varlist, lsum, leg, ylabel, ylim, lCFSR, lNARR
-
-
-## start computation
-if __name__ == '__main__':
   
-  ## settings
-  expset = 'max-ens'
-  plottypes = ['temp','precip','flux','runoff']
-  plottypes = ['precip','precip_alt','flux','runoff']
-  plottypes = ['precip_alt']
-  lPRISM = False
-  lUnity = True
-  domain = 2
-  period = 10
-  # titles
-  if expset == 'max-ens-2050': titles = 'WRF Ensemble Mean (Mid-21st-Century)'
-  elif expset == 'max-ens': titles = 'WRF Ensemble Mean (Historical Period)'
-  else: titles = None
-  
-  ## datasets
-  tag = 'prism' if lPRISM else ''
+def getDatasets(expset, titles=None):
+  # linestyles
+  linestyles = '-'
+  # datasets
   if expset == 'mix': 
     explist = ['max','max-2050','gulf','seaice-2050']
   if expset == 'wrf-proj': 
@@ -91,21 +80,49 @@ if __name__ == '__main__':
     explist = ['columbia','cfsr-max']
   elif expset == 'obs': 
     explist = ['max','ctrl','new','new-noah']  
-  elif expset == 'ens-wrf':
+  elif expset == 'ens-all':
     explist = ['max','max-A','max-B','max-C']
-  elif expset == 'ens-wrf-2050': 
+  elif expset == 'ens-all-2050': 
     explist = ['seaice-2050','max-A-2050','max-B-2050','max-C-2050']
   elif expset == 'ens-cesm': 
     explist = ['Ctrl','Ens-A','Ens-B','Ens-C']
   elif expset == 'ens-cesm-2050': 
     explist = ['Seaice-2050','Ens-A-2050','Ens-B-2050','Ens-C-2050']
+  elif expset == 'mean-diff':
+    explist = [('max-ens-2050','max-ens')]
+    titles = 'WRF Ensemble Mean (Mid-21st-Century)'
+    linestyles = ('-','--')
+  elif expset == 'mean-diff-cesm':
+    explist = [('CESM-2050','CESM')]  
+    titles = 'CESM Ensemble Mean (Mid-21st-Century)'
+    linestyles = ('-','--')
   else:
     explist = [expset]
+    if expset == 'max-ens-2050': titles = 'WRF Ensemble Mean (Mid-21st-Century)'
+    elif expset == 'max-ens': titles = 'WRF Ensemble Mean (Historical Period)'
+  # expand linestyles
+  linestyles = [linestyles,]*len(explist)
+  # return dataset names
+  return explist, titles, linestyles
 
+
+## start computation
+if __name__ == '__main__':
+  
+  ## settings
+  expset = 'mean-diff'
+  plottypes = ['temp','precip','flux','runoff']
+  plottypes = ['precip','precip_alt','flux','runoff','sfroff']
+#   plottypes = ['sfroff']
+  lPRISM = False
+  lUnity = True
+  titles = None
+  domain = 2
+  period = 10
+  
   # some more settings
-#   if len(explist) > 1: ljoined = True
-#   else: ljoined = False 
-  ljoined = True
+  tag = 'prism' if lPRISM else ''
+  ljoined = True # joined legend at bottom of figure
   if domain != 2: expset += '_d{0:02d}'.format(domain)
   #grid='arb2_d{0:02d}'.format(domain)
   grid='arb2_d02'
@@ -124,11 +141,11 @@ if __name__ == '__main__':
 #   lCFSR = False; lNARR = False
       
   ## load data  
-#   domain = [3,2]
-  exps, titles = loadDatasets(explist, n=None, varlist=loadlist, titles=titles, periods=period, domains=domain, 
-                              grids=grid, resolutions='025', filetypes=allfiletypes, lWRFnative=False, 
-                              ltuple=False, lbackground=False)
-  ref = exps[0]; nlen = len(exps)
+  explist, titles, linestyles = getDatasets(expset, titles=titles)
+  exps, titles, nlist = loadDatasets(explist, n=None, varlist=loadlist, titles=titles, periods=period, 
+                                     domains=domain, grids=grid, resolutions='025', filetypes=allfiletypes, 
+                                     lWRFnative=False, ltuple=True, lbackground=False)
+  ref = exps[0][0]; nlen = len(exps)
   # observations  
   if period == 9: period = 10 # nine is only because some experiments don't have 10 yet...
   if lCRU: cru = loadCRU(period=period, grid=grid, varlist=loadlist, varatts=varatts)
@@ -147,9 +164,10 @@ if __name__ == '__main__':
 #   pyl.imshow(np.flipud(shp_mask[:,:])); pyl.colorbar(); pyl.show(block=True)
  
   ## apply basin mask
-  for exp in exps:
-    exp.load(); 
-    exp.mask(mask=shp_mask, invert=False)
+  for exptpl in exps:
+    for exp in exptpl:
+      exp.load()
+      exp.mask(mask=shp_mask, invert=False)
   # apply mask to observation datasets  
   if lCRU and len(cru.variables) > 0: 
     cru.load(); cru.mask(mask=shp_mask, invert=False)
@@ -198,7 +216,7 @@ if __name__ == '__main__':
       for j in xrange(subplot[1]):
         n += 1 # count up
         # select axes
-        ax,exp,title = axes[i,j],exps[n],titles[n]
+        ax,exptpl,title,linestyle = axes[i,j],exps[n],titles[n],linestyles[n]
         # alignment
         if j == 0 : left = True
         else: left = False 
@@ -206,7 +224,7 @@ if __name__ == '__main__':
         else: bottom = False           
       
         # make plots
-        time = exp.time.coord # time axis
+        time = exptpl[0].time.coord # time axis        
         wrfplt = []; wrfleg = [] 
         obsplt = []; obsleg = []
         # loop over vars    
@@ -223,22 +241,28 @@ if __name__ == '__main__':
           elif var == 'ugroff': color = 'coral'
           elif var == 'sfroff': color = 'green'
           elif var == 'Tmax': color = 'red'
-          elif var == 'Tmin': color = 'blue'          
-          # compute spatial average
-          if exp.hasVariable(var, strict=False):
-            if 'CESM' in title and var in ('Tmin','Tmax'): pass
-            else:
-              vardata = exp.variables[var].mean(x=None,y=None)
-              wrfplt.append(ax.plot(time, S*vardata.getArray(), color=color, label=var)[0])
-              wrfleg.append(var)
-              print
-              print exp.name, vardata.name, S*vardata.getArray().mean()
+          elif var == 'Tmin': color = 'blue'
+          # loop over datasets in plot
+          if not isinstance(linestyle,tuple): linestyle = (linestyle,)*len(exptpl)
+          for z,exp,ln in zip(xrange(len(exptpl)),exptpl,linestyle):           
+            # compute spatial average
+            if exp.hasVariable(var, strict=False):
+              if 'CESM' in title and var in ('Tmin','Tmax'): pass
+              else:
+                vardata = exp.variables[var].mean(x=None,y=None)                
+                if z == 0: 
+                  wrfplt.append(ax.plot(time, S*vardata.getArray(), linestyle=ln, color=color, label=var)[0])
+                  wrfleg.append(var)
+                else:
+                  ax.plot(time, S*vardata.getArray(), linestyle=ln, color=color, label=var)
+                print
+                print exp.name, vardata.name, S*vardata.getArray().mean()
           # either PRISM ...
           if lPRISM and prism.hasVariable(var, strict=False):
             # compute spatial average for CRU
             vardata = prism.variables[var].mean(x=None,y=None)
             label = '%s (%s)'%(var,prism.name)
-            obsplt.append(ax.plot(time, S*vardata.getArray(), 'o', markersize=4, color=color, label=label)[0]) # , linewidth=1.5
+            obsplt.append(ax.plot(time, S*vardata.getArray(), 'o', markersize=4*linewidth, color=color, label=label)[0]) # , linewidth=1.5
             obsleg.append(label)
             print
             print cru.name, vardata.name, S*vardata.getArray().mean()
@@ -247,7 +271,7 @@ if __name__ == '__main__':
             # compute spatial average for CRU
             vardata = unity.variables[var].mean(x=None,y=None)
             label = '%s (%s)'%(var,'obs')
-            obsplt.append(ax.plot(time, S*vardata.getArray(), 'o', markersize=5, color=color, label=label)[0])
+            obsplt.append(ax.plot(time, S*vardata.getArray(), 'o', markersize=5*linewidth, color=color, label=label)[0])
             obsleg.append(label)
             print
             print unity.name, vardata.name, S*vardata.getArray().mean()
@@ -256,7 +280,7 @@ if __name__ == '__main__':
             # compute spatial average for CRU
             vardata = cru.variables[var].mean(x=None,y=None)
             label = '%s (%s)'%(var,cru.name)
-            obsplt.append(ax.plot(time, S*vardata.getArray(), 'x', markersize=6, color=color, label=label)[0])
+            obsplt.append(ax.plot(time, S*vardata.getArray(), 'x', markersize=6*linewidth, color=color, label=label)[0])
             obsleg.append(label)
             print
             print cru.name, vardata.name, S*vardata.getArray().mean()
@@ -265,7 +289,7 @@ if __name__ == '__main__':
             # compute spatial average for GPCC
             label = '%s (%s)'%(var,gpcc.name)
             vardata = gpcc.variables[var].mean(x=None,y=None)
-            obsplt.append(ax.plot(time, S*vardata.getArray(), 'o', markersize=4, color='purple', label=label)[0])
+            obsplt.append(ax.plot(time, S*vardata.getArray(), 'o', markersize=4*linewidth, color='purple', label=label)[0])
             obsleg.append(label)
             print
             print gpcc.name, vardata.name, S*vardata.getArray().mean()
