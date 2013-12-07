@@ -68,7 +68,7 @@ def getVarSettings(plottype, lPRISM=False, mode='all'):
   
 def getDatasets(expset, titles=None):
   # linestyles
-  linestyles = '-'
+  linestyles = ('-','--','-.')
   # datasets
   if expset == 'mix': 
     explist = ['max','max-2050','gulf','seaice-2050']
@@ -130,7 +130,7 @@ def getDatasets(expset, titles=None):
 if __name__ == '__main__':
   
   ## settings
-  expset = 'noahmp'
+  expset = ('new-grell','new')
 #   plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
   plottypes = ['temp','flux','heat']
@@ -138,7 +138,7 @@ if __name__ == '__main__':
   lUnity = False
   titles = None
   domain = 2
-  period = 10
+  period = 1
   
   # some more settings
   tag = 'prism' if lPRISM else ''

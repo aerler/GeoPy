@@ -64,6 +64,7 @@ experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindat
 experiments['columbia'] = Exp(shortname='columbia', name='columbia', title='Max 3km (CFSR)', begindate='1979-09-01', grid='col1', parent='CFSR')
 # these are all based on the "new" configuration (ARB3 domain)
 experiments['new-ctrl'] = Exp(shortname='new', name='new-ctrl', title='New-1 (Noah-MP)', begindate='1979-01-01', grid='arb3')
+experiments['new-grell'] = Exp(shortname='grell', name='new-grell', title='New-1 (Grell)', begindate='1979-01-01', grid='arb3')
 experiments['new-nogulf'] = Exp(shortname='nogulf', name='new-nogulf', title='New-1 (no Gulf)', begindate='1979-01-01', grid='arb2') # ARB2 domain
 experiments['new-noah'] = Exp(shortname='noah', name='new-noah', title='New (Noah)', begindate='1979-01-01', grid='arb2') # ARB2 domain
 experiments['v35-noah'] = Exp(shortname='noah35', name='v35-noah', title='V35 & Noah (New)', begindate='1979-01-01', grid='arb2') # ARB2 domain
