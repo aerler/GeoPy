@@ -61,7 +61,7 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     # source = loadWRF(experiment, name, domains, grid, period, filetypes, varlist, varatts)
     periodstr = source.atts.period # a NetCDF attribute    
     datamsgstr = 'Processing WRF Experiment \'{0:s}\' from {1:s}'.format(dataset_name, periodstr)
-  if dataset == 'CESM': 
+  elif dataset == 'CESM': 
     # WRF datasets
     module = import_module('datasets.CESM')
     exp = dataargs['experiment']    
@@ -121,7 +121,7 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     periodstr = '_{}'.format(periodstr) if periodstr else ''# I know, this is pointless at the moment...
     filename = module.file_pattern.format(filetype,domain,gridstr,periodstr)
     avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
-  if dataset == 'CESM':
+  elif dataset == 'CESM':
     gridstr = '_{}'.format(griddef.name.lower()) if griddef.name.lower() else ''
     periodstr = '_{}'.format(periodstr) if periodstr else ''# I know, this is pointless at the moment...
     filename = module.file_pattern.format(filetype,gridstr,periodstr)
@@ -210,7 +210,7 @@ if __name__ == '__main__':
     varlist = None
 #     varlist = ['precip',]
     periods = [5,10]
-    periods = [10]
+#     periods = [10]
 #     periods = [(1997,1998)]
 #     periods = [(1979,1980)]
 #     periods = [5,10,30]
@@ -222,21 +222,21 @@ if __name__ == '__main__':
 #     resolutions = {'GPCC':['025','05']}
     resolutions = None
     # CESM
-    CESM_experiments = None #['Ctrl']
+    CESM_experiments = [] #None #['Ctrl']
     CESM_filetypes = ['atm','lnd']
     # WRF
     WRF_experiments = []
-#     experiments = ['coast']
+    WRF_experiments = ['new']
 #     experiments = ['max','ctrl','new','noah']
 #     experiments = ['new','gulf','max','cfsr']
 #     experiments = ['ctrl'] # WRF experiment names (passed through WRFname)
-    domains = [1,2,3] # domains to be processed
+    domains = [1,2] # domains to be processed
     WRF_filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
 #     WRF_filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
     WRF_filetypes = ['srfc']
     # grid to project onto
     lpickle = True
-#     grids = dict(arb2=['d02']) # dict with list of resolutions
+    grids = dict(arb2=['d02']) # dict with list of resolutions
 #     grids = dict(ARB_small=['025']) # dict with list of resolutions    
 #     grids = dict(arb2=['d02'], ARB_small=['025','05']) # dict with list of resolutions
 #     grids = dict(cesm1x1=[None]) # CESM grid

@@ -196,8 +196,9 @@ def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None
   # N.B.: projection should be auto-detected, if geographic (lat/lon)
   return dataset
 
-def checkItemList(itemlist, length, dtype, default=None, iterable=False, trim=True):
+def checkItemList(itemlist, length, dtype, default=NotImplemented, iterable=False, trim=True):
   ''' return a list based on item and check type '''
+  # N.B.: default=None is not possible, because None may be a valid default...
   if itemlist is None: itemlist = []
   if iterable:
     # if elements are lists or tuples etc.
@@ -221,9 +222,14 @@ def checkItemList(itemlist, length, dtype, default=None, iterable=False, trim=Tr
         itemlist = [itemlist]*length
   else:
     if isinstance(itemlist,(list,tuple,set)):     
+      itemlist = list(itemlist)
+      if default is NotImplemented: 
+        if len(itemlist)>0: default = itemlist[0] # use first item
+        else: default = None   
       if trim:
         if len(itemlist) > length: del itemlist[length:]
-        elif len(itemlist) < length: itemlist += [default]*(length-len(itemlist))
+        elif len(itemlist) < length:
+          itemlist += [default]*(length-len(itemlist))
       else:
         if len(itemlist) != length: raise TypeError, str(itemlist)    
       if dtype is not None:
@@ -293,7 +299,7 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
         dom = dom[1:]
         parent, tmp = loadDataset(exp.parent, prd, dom, grd, res, varlist=varlist, lbackground=False); del tmp    
     #if 'xtrm' in WRFfiletypes: 
-    varatts = dict(TSK=dict(name='Ts')) 
+    varatts = dict(T2=dict(name='Ts')) 
     if lWRFnative: grd = None
     ext = loadWRF(experiment=exp, period=prd, grid=grd, domains=dom, filetypes=filetypes, 
                   varlist=varlist, varatts=varatts)
@@ -315,7 +321,9 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
   explist = checkItemList(explist, n, (basestring,Exp,tuple))
   titles = checkItemList(titles, n, basestring)
   periods  = checkItemList(periods, n, (basestring,int,np.integer), iterable=False)
-  domains  = checkItemList(domains, n, (int,np.integer,tuple), iterable=False) # to return a tuple, give a tuple of domains
+  if isinstance(domains,tuple): ltpl = ltuple
+  else: ltpl = False # otherwise this causes problems with expanding this  
+  domains  = checkItemList(domains, n, (int,np.integer,tuple), iterable=ltpl) # to return a tuple, give a tuple of domains
   grids  = checkItemList(grids, n, basestring)
   resolutions  = checkItemList(resolutions, n, basestring)  
   # resolve experiment list
@@ -337,7 +345,9 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
     else:
       ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=varlist, 
                            lbackground=lbackground, lWRFnative=lWRFnative)
-    dslist.append(ext); axtitles.append(tit or axt)  
+    dslist.append(ext) 
+    if tit is not None: axtitles.append(tit)
+    else: axtitles.append(axt)  
   # count experiment tuples (layers per panel)
   if ltuple:
     nlist = [] # list of length for each element (tuple)

@@ -53,7 +53,7 @@ annotation_dict['lcc-large'] = dict(scale=(-140, 22, -120, 53, 2000), lat_full=[
 ## Lambert Azimuthal Equal Area
 annotation_dict['laea'] = annotation_dict['lcc-large']   
 ## Orthographic Projection
-annotation_dict['ortho-NA'] = dict(scale=None, lat_full=range(-90,90,30), lat_half=None, lon_full=range(-90,90,30), lon_half=None)
+annotation_dict['ortho-NA'] = dict(scale=None, lat_full=range(-90,90,30), lat_half=None, lon_full=range(-180,180,30), lon_half=None)
 
 
 ## setup projection: lambert conformal
@@ -95,7 +95,7 @@ projection_dict['lcc-large'] = dict(projection='lcc', lat_0=50, lon_0=-130, lat_
 projection_dict['laea'] = dict(projection='laea', lat_0=57, lon_0=-137, lat_ts=53, resolution='l', #
               width=259*30e3, height=179*30e3, rsphere=rsphere, area_thresh = 1000.)  
 ## Orthographic Projection
-projection_dict['ortho-NA'] = dict(projection='ortho', lat_0 = 75, lon_0 = -137, resolution = 'l', area_thresh = 1000.)
+projection_dict['ortho-NA'] = dict(projection='ortho', lat_0 = 50, lon_0 = -130, resolution = 'l', area_thresh = 1000.)
 
 
 ## function to actually get a MapSetup object for the ARB region

@@ -93,9 +93,10 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
       clevs = np.linspace(0,5,26); clbl = '%02.1f' # mm/day
     elif var == 'Q2':
       clevs = np.linspace(0,15,31); clbl = '%02.1f' # mm/day
-    elif oldvar=='SST' or var=='SST' or var=='Ts': # skin temperature (SST)
-      clevs = np.linspace(260,290,31); clbl = '%03.0f' # K
-      var = 'Ts'; lmsklnd = True # mask land
+    elif oldvar=='SST' or var=='SST' or oldvar=='Ts' or var=='Ts': # skin temperature (SST)
+      clevs = np.linspace(240,305,66); clbl = '%03.0f' # K
+      if oldvar=='SST' or var=='SST': lmsklnd = True # mask land for SST
+      var = 'Ts'; oldvar = var
     elif var=='T2' or var=='Tmin' or var=='Tmax' or var=='Tmean': # 2m or skin temperature (SST)
       clevs = np.linspace(255,290,36); clbl = '%03.0f' # K
       if season == 'winter': clevs -= 10

@@ -31,7 +31,10 @@ def getVarSettings(plottype, lPRISM=False, mode='all'):
   flxlabel = r'Water Flux [$10^6$ kg/s]' 
   flxlim = (-2,4) if lPRISM else (-2,6)
   lCFSR = False; lNARR = False
-  if plottype == 'flux':
+  if plottype == 'heat':
+    varlist = ['lhfx','hfx']; filetypes = ['hydro','srfc']; 
+    lsum = False; leg = (2,3); ylabel = r'Heat Flux [W m$^{-2}$]'; ylim = (-50,150)  
+  elif plottype == 'flux':
     varlist = ['snwmlt','p-et','precip']; filetypes = ['srfc','hydro']; # 'waterflx' 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
   elif plottype == 'temp':
@@ -55,6 +58,7 @@ def getVarSettings(plottype, lPRISM=False, mode='all'):
   else:
     raise TypeError, 'No plottype defined!'
   # return values
+  lCFSR = False; lNARR = False
   if mode == 'all':
     return varlist, filetypes, lsum, leg, ylabel, ylim, lCFSR, lNARR
   elif mode == 'load':
@@ -68,13 +72,21 @@ def getDatasets(expset, titles=None):
   # datasets
   if expset == 'mix': 
     explist = ['max','max-2050','gulf','seaice-2050']
-  if expset == 'wrf-proj': 
+  elif expset == 'noahmp+': 
+    explist = [('new','noah','max')]
+    titles = 'Noah-MP vs. Noah'
+    linestyles = ('-','--','-.')
+  elif expset == 'noahmp': 
+    explist = [('new','noah')]
+    titles = 'Noah-MP vs. Noah'
+    linestyles = ('-','--')
+  elif expset == 'wrf-proj': 
     explist = ['max-ens','max-ens-2050','cfsr-max','seaice-2050']  
-  if expset == 'mean-ens': 
+  elif expset == 'mean-ens': 
     explist = ['max-ens','CESM','new','cfsr-max']
-  if expset == 'mean-ens-2050': 
+  elif expset == 'mean-ens-2050': 
     explist = ['max-ens-2050','CESM-2050','seaice-2050','Seaice-2050']
-  if expset == 'ens-proj': 
+  elif expset == 'ens-proj': 
     explist = ['max-ens','CESM','max-ens-2050','CESM-2050']
   elif expset == 'hires': 
     explist = ['columbia','cfsr-max']
@@ -113,7 +125,7 @@ if __name__ == '__main__':
   expset = 'mean-diff'
   plottypes = ['temp','precip','flux','runoff']
   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
-#   plottypes = ['sfroff']
+  plottypes = ['temp','flux','heat']
   lPRISM = False
   lUnity = True
   titles = None
@@ -138,7 +150,6 @@ if __name__ == '__main__':
     loadlist = loadlist.union(varlist)
     allfiletypes = allfiletypes.union(filetypes)
     lCFSR = lCFSR or lcfsr; lNARR = lNARR or lnarr
-#   lCFSR = False; lNARR = False
       
   ## load data  
   explist, titles, linestyles = getDatasets(expset, titles=titles)
@@ -242,6 +253,8 @@ if __name__ == '__main__':
           elif var == 'sfroff': color = 'green'
           elif var == 'Tmax': color = 'red'
           elif var == 'Tmin': color = 'blue'
+          elif var == 'hfx': color = 'red'
+          elif var == 'lhfx': color = 'blue'
           # loop over datasets in plot
           if not isinstance(linestyle,tuple): linestyle = (linestyle,)*len(exptpl)
           for z,exp,ln in zip(xrange(len(exptpl)),exptpl,linestyle):           
@@ -340,7 +353,7 @@ if __name__ == '__main__':
       margins['bottom'] = margins['bottom'] + 0.1; fig.subplots_adjust(**margins)
       legargs = dict(frameon=True, labelspacing=0.15, handlelength=1.5, handletextpad=0.5, fancybox=True)
       plt = wrfplt + obsplt; leg = wrfleg + obsleg
-      ncols = 4 if len(plt) == 4 or len(plt) > 5 else 3
+      ncols = 4 if len(plt) == 4 or len(plt) > 6 else 3
       legend = ax.legend(plt, leg, loc=10, ncol=ncols, borderaxespad=0., **legargs)  
       
     # average discharge below Fort McMurray: 620 m^3/s

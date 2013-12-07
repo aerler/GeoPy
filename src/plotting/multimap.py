@@ -46,9 +46,10 @@ if __name__ == '__main__':
   A03 = '2045-2048'; A05 = '2045-2050'; A09 = '2045-2054'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
   B03 = '2095-2098'; B05 = '2095-2100'; B10 = '2095-2105'; B15 = '2095-2110' # late 21st century  
   ltitle = True # plot/figure title
-  lcontour = False # contour or pcolor plot
+  lcontour = True # contour or pcolor plot
   lframe = True # draw domain boundary
   loutline = True # draw boundaries around valid (non-masked) data
+  framewidths = 2.5
   figuretype = None
   lstations = True; stations = 'cities'
   lbasin = True
@@ -74,9 +75,14 @@ if __name__ == '__main__':
 #   explist = ['max']; exptitles = ' '; domain = (2,); period = H10; case = 'test'
 
 #   explist = ['max-ens']; exptitles = ' '; period = H10; case = 'hydro'
-  lfrac = True; reflist = ['max-ens']; refprd = H10; grid = 'arb2_d02'
-  explist = ['max-ens-2050']; exptitles = ' '; period = A10; case = 'hydro' 
-  case = 'hydro_arb'; lbasin = True
+#   ldiff = True; reflist = ['max-ens']; refprd = H10; grid = 'arb2_d02'
+#   explist = ['max-ens-2050']; exptitles = ' '; period = A10; case = 'hydro' 
+#   case = 'hydro_arb'; lbasin = True
+
+#   explist = ['CESM']; exptitles = ' '; period = H10; case = 'cesm'
+  ldiff = True; reflist = ['CESM']; refprd = H10; grid = 'arb2_d02'
+  explist = ['CESM-2050']; exptitles = ' '; period = A10; case = 'cesm' 
+  case = 'cesm_arb'; lbasin = True
 
 #   lfrac = True; reflist = ['Unity']; grid = 'arb2_d02'
 #   explist = ['max-ens','NARR','CESM','CFSR']; period = H10; case = 'val'
@@ -86,6 +92,9 @@ if __name__ == '__main__':
 
 #   lfrac = True; reflist = ['Unity']; grid = 'arb2_d02'
 #   explist = ['CRU','PRISM','NARR','CFSR']; period = H10; case = 'obs'
+
+#   ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'; domain = (2,); WRFfiletypes=['srfc']
+#   explist = ['max','ctrl','new','milb','wdm6','tom']; period = H05; case = 'mp'
 
 #   exptitles = [None,None,None,'GPCC (no data)']
 #   explist = ['max','ctrl','noah','CRU']; period = H10; case = 'val'
@@ -115,6 +124,10 @@ if __name__ == '__main__':
 #   maptype = 'lcc-new'; lstations = True; lbasin = True
 #   explist = ['Ctrl']; period = H10; case = 'cesm' 
 #   grid = None
+
+#   maptype = 'ortho-NA'; lstations = False; lbasin = False; lframe = True; loutline = False
+#   explist = ['max-ens']; domain= (0,1); period = H10; case = 'ortho'
+#   exptitles = ['']; title = 'Dynamical Downscaling'  
 
 #   ldiff = True; reflist = ['Unity']; lWRFnative = False
 # #   lfrac = True; reflist = ['Unity']; lWRFnative = False
@@ -166,13 +179,13 @@ if __name__ == '__main__':
 #   varlist += ['Tmin', 'Tmax']
 #   varlist += ['precip']
 #   varlist += ['waterflx']
-#   varlist += ['p-et']
+  varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
 #   varlist += ['evap']
 #   varlist += ['pet']
-  varlist += ['runoff']
-  varlist += ['sfroff']
+#   varlist += ['runoff']
+#   varlist += ['sfroff']
 #   varlist += ['ugroff']
 #   varlist += ['snwmlt']
 #   varlist += ['snow']
@@ -390,11 +403,11 @@ if __name__ == '__main__':
               # N.B.: for some reason, using np.ones_like() causes a masked data array to fill with zeros  
               #print bdy.mean(), data[n][m].__class__.__name__, data[n][m].fill_value 
               bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
-              maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', fill=False) # draw boundary of domain domain
+              maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', linewidths=framewidths, fill=False) # draw boundary of domain domain
             if lframe and not ( domain[0] == 0 and m == 0):
               bdy = ma.ones(x[n][m].shape)   
               bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
-              maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', fill=False) # draw boundary of data
+              maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', linewidths=framewidths, fill=False) # draw boundary of data
       # draw data
       norm = mpl.colors.Normalize(vmin=min(clevs),vmax=max(clevs),clip=True) # for colormap
       cd = []
