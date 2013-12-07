@@ -212,10 +212,10 @@ if __name__ == '__main__':
     periods = [5,10]
 #     periods = [10]
 #     periods = [(1997,1998)]
-#     periods = [(1979,1980)]
+    periods = [1]
 #     periods = [5,10,30]
     # Observations/Reanalysis
-    datasets = []
+#     datasets = ['PRISM']; periods = [None]
 #     datasets = ['PRISM','GPCC']; periods = None
 #     datasets = ['GPCC','CRU']
 #     datasets = ['CFSR', 'NARR']
@@ -226,17 +226,18 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm','lnd']
     # WRF
     WRF_experiments = []
-    WRF_experiments = ['new']
+#     WRF_experiments = ['max-nmp',]
 #     experiments = ['max','ctrl','new','noah']
 #     experiments = ['new','gulf','max','cfsr']
 #     experiments = ['ctrl'] # WRF experiment names (passed through WRFname)
     domains = [1,2] # domains to be processed
     WRF_filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
 #     WRF_filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
-    WRF_filetypes = ['srfc']
+#     WRF_filetypes = ['srfc']
     # grid to project onto
     lpickle = True
-    grids = dict(arb2=['d02']) # dict with list of resolutions
+    grids = dict(col1=['d03']) # dict with list of resolutions
+#     grids = dict(arb2=['d02']) # dict with list of resolutions
 #     grids = dict(ARB_small=['025']) # dict with list of resolutions    
 #     grids = dict(arb2=['d02'], ARB_small=['025','05']) # dict with list of resolutions
 #     grids = dict(cesm1x1=[None]) # CESM grid

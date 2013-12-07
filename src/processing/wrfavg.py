@@ -178,9 +178,9 @@ if __name__ == '__main__':
     loverwrite = True
     varlist = None # ['precip', ]
     experiments = ['new','noah','max','max-2050']
-#     experiments = ['max-2050']
-    periods = [5,10]
-#     periods = [5]
+    experiments = ['max-nmp','max']
+#     periods = [5,10]
+    periods = [2]
     domains = [1,2] # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed

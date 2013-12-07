@@ -104,6 +104,14 @@ def getDatasets(expset, titles=None):
     explist = [('max-ens-2050','max-ens')]
     titles = 'WRF Ensemble Mean (Mid-21st-Century)'
     linestyles = ('-','--')
+  elif expset == 'max-2100-diff':
+    explist = [('max-ctrl-2100','max-ctrl')]
+    titles = 'WRF Max (End-21st-Century)'
+    linestyles = ('-','--')
+  elif expset == 'max-2050-diff':
+    explist = [('max-ctrl-2050','max-ctrl')]
+    titles = 'WRF Max (Mid-21st-Century)'
+    linestyles = ('-','--')
   elif expset == 'mean-diff-cesm':
     explist = [('CESM-2050','CESM')]  
     titles = 'CESM Ensemble Mean (Mid-21st-Century)'
@@ -122,12 +130,12 @@ def getDatasets(expset, titles=None):
 if __name__ == '__main__':
   
   ## settings
-  expset = 'mean-diff'
-  plottypes = ['temp','precip','flux','runoff']
-  plottypes = ['precip','precip_alt','flux','runoff','sfroff']
+  expset = 'noahmp'
+#   plottypes = ['temp','precip','flux','runoff']
+#   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
   plottypes = ['temp','flux','heat']
   lPRISM = False
-  lUnity = True
+  lUnity = False
   titles = None
   domain = 2
   period = 10

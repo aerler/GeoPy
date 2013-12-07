@@ -34,22 +34,22 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-#   WRFfiletypes=['srfc']
-  WRFfiletypes = ['srfc','lsm','hydro','xtrm'] # WRF data source
+  WRFfiletypes=['srfc']
+#   WRFfiletypes = ['srfc','lsm','hydro','xtrm'] # WRF data source
   # figure directory
   folder = arb_figure_folder
   lpickle = True
   # period shortcuts
-  H01 = '1979'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
+  H01 = '1979-1980'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994' # historical validation periods
   G10 = '1969-1979'; I10 = '1989-1999'; J10 = '1999-2009' # additional historical periods
   A03 = '2045-2048'; A05 = '2045-2050'; A09 = '2045-2054'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
   B03 = '2095-2098'; B05 = '2095-2100'; B10 = '2095-2105'; B15 = '2095-2110' # late 21st century  
   ltitle = True # plot/figure title
-  lcontour = True # contour or pcolor plot
+  lcontour = False # contour or pcolor plot
   lframe = True # draw domain boundary
   loutline = True # draw boundaries around valid (non-masked) data
-  framewidths = 2.5
+  framewidths = 1
   figuretype = None
   lstations = True; stations = 'cities'
   lbasin = True
@@ -67,7 +67,7 @@ if __name__ == '__main__':
   
   # observations
   lprint = True # write plots to disk using case as a name tag
-  maptype = 'lcc-new'; lstations = False; lbasin = False
+#   maptype = 'lcc-new'; lstations = False; lbasin = False
 #   grid = 'arb2_d02'; domain = (2,); #grid = 'ARB_small_05'
 #   explist = ['Unity']; exptitles = ['Merged Observations: Precipitation [mm/day]']; 
 #   period = H10; case = 'unity'; 
@@ -80,9 +80,9 @@ if __name__ == '__main__':
 #   case = 'hydro_arb'; lbasin = True
 
 #   explist = ['CESM']; exptitles = ' '; period = H10; case = 'cesm'
-  ldiff = True; reflist = ['CESM']; refprd = H10; grid = 'arb2_d02'
-  explist = ['CESM-2050']; exptitles = ' '; period = A10; case = 'cesm' 
-  case = 'cesm_arb'; lbasin = True
+#   ldiff = True; reflist = ['CESM']; refprd = H10; grid = 'arb2_d02'
+#   explist = ['CESM-2050']; exptitles = ' '; period = A10; case = 'cesm' 
+#   case = 'cesm_arb'; lbasin = True
 
 #   lfrac = True; reflist = ['Unity']; grid = 'arb2_d02'
 #   explist = ['max-ens','NARR','CESM','CFSR']; period = H10; case = 'val'
@@ -151,16 +151,16 @@ if __name__ == '__main__':
 #   domain = [(1,2,3,),None,(1,),(1,2,)]
 #   explist = ['coast','PRISM','coast','coast'] #; domain = (3,);
 
-#   case = 'columbia'; stations = 'cities'
-#   maptype = 'lcc-col'; lstations = True; lbasin = True # 'lcc-new'  
-#   period = ['1979-1980']*4; period[1] = None 
-#   domain = [(3,),None,(1,),(2,)]
-# #   ldiff = True; reflist = ['Unity']
-# #   grid = 'ARB_small_025'; #   grid = 'arb2_d02'; 
-# #   explist = ['columbia','GPCC','columbia','columbia'] 
-# #   exptitles = ['WRF 3km (CFSR)', 'GPCC (Climatology)', 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
-#   explist = ['columbia','PRISM','columbia','columbia'] 
-#   exptitles = ['WRF 3km (CFSR)', None, 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
+  case = 'columbia'; stations = 'cities'
+  maptype = 'lcc-col'; lstations = True; lbasin = True # 'lcc-new'  
+  period = [H01]*4 #; period[1] = None 
+  domain = [3,None,1,2]; lbackground = False
+  lfrac = True; reflist = ['columbia']; refdom = 3
+  grid = ['col1_d03']*4 # grid[0] = None #   grid = 'arb2_d02'; 
+#   explist = ['columbia','GPCC','columbia','columbia'] 
+#   exptitles = ['WRF 3km (CFSR)', 'GPCC (Climatology)', 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
+  explist = ['columbia','PRISM','columbia','columbia'] 
+  exptitles = ['WRF 3km (CFSR)', 'PRISM', 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
 
 #   maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasin = False
 #   case = 'arb2'; period = None; lWRFnative = True; loutline = False; period = H10
@@ -177,9 +177,9 @@ if __name__ == '__main__':
 #   varlist += ['Ts']
 #   varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
-#   varlist += ['precip']
+  varlist += ['precip']
 #   varlist += ['waterflx']
-  varlist += ['p-et']
+#   varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
 #   varlist += ['evap']
@@ -197,13 +197,13 @@ if __name__ == '__main__':
 #   varlist += ['SST']
 #   varlist += ['lat2D','lon2D']
   # seasons
-#   seasons += ['OND'] # for high-res columbia domain
+  seasons += ['OND'] # for high-res columbia domain
 #   seasons += ['cold']
 #   seasons += ['warm']
 #   seasons += ['melt']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-  seasons += ['annual']
-  seasons += ['summer']
+#   seasons += ['annual']
+#   seasons += ['summer']
 #   seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
@@ -226,7 +226,7 @@ if __name__ == '__main__':
       else: raise DatasetError 
     lref = True    
   else: lref = False
-  lbackground = not lref
+  lbackground = not lref and lbackground
     
   loadlist = set(varlist).union(('lon2D','lat2D','landmask','landfrac')) # landfrac is needed for CESM landmask
   exps, axtitles, nexps = loadDatasets(explist, n=None, varlist=loadlist, titles=exptitles, periods=period, domains=domain, 
@@ -237,7 +237,8 @@ if __name__ == '__main__':
   # load reference list
   if lref:
     if refprd is None: refprd = period    
-    refs, a, b = loadDatasets(reflist, n=None, varlist=loadlist, titles=None, periods=refprd, domains=domain, 
+    if refdom is None: refdom = domain
+    refs, a, b = loadDatasets(reflist, n=None, varlist=loadlist, titles=None, periods=refprd, domains=refdom, 
                               grids=grid, resolutions=resolution, filetypes=WRFfiletypes, lWRFnative=lWRFnative, 
                               ltuple=True, lbackground=lbackground)
     # merge lists

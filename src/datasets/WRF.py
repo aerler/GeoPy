@@ -495,7 +495,7 @@ if __name__ == '__main__':
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
   experiments = ['rrtmg', 'ctrl', 'new']
 #   grids = ['coast1']; experiments = ['coast']; domains = [1,2,3]
-#   grids = ['columbia1']; experiments = ['columbia']; domains = [1,2,3]   
+  grids = ['col1']; experiments = ['columbia']; domains = [1,2,3]   
     
   # pickle grid definition
   if mode == 'pickle_grid':

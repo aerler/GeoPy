@@ -299,7 +299,7 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
         dom = dom[1:]
         parent, tmp = loadDataset(exp.parent, prd, dom, grd, res, varlist=varlist, lbackground=False); del tmp    
     #if 'xtrm' in WRFfiletypes: 
-    varatts = dict(T2=dict(name='Ts')) 
+    varatts = None #dict(T2=dict(name='Ts')) 
     if lWRFnative: grd = None
     ext = loadWRF(experiment=exp, period=prd, grid=grd, domains=dom, filetypes=filetypes, 
                   varlist=varlist, varatts=varatts)
@@ -319,13 +319,13 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
   if n is None: n = len(explist)
   elif not isinstance(n, (int,np.integer)): raise TypeError
   explist = checkItemList(explist, n, (basestring,Exp,tuple))
-  titles = checkItemList(titles, n, basestring)
-  periods  = checkItemList(periods, n, (basestring,int,np.integer), iterable=False)
+  titles = checkItemList(titles, n, basestring, default=None)
+  periods  = checkItemList(periods, n, (basestring,int,np.integer), default=None, iterable=False)
   if isinstance(domains,tuple): ltpl = ltuple
   else: ltpl = False # otherwise this causes problems with expanding this  
-  domains  = checkItemList(domains, n, (int,np.integer,tuple), iterable=ltpl) # to return a tuple, give a tuple of domains
-  grids  = checkItemList(grids, n, basestring)
-  resolutions  = checkItemList(resolutions, n, basestring)  
+  domains  = checkItemList(domains, n, (int,np.integer,tuple), default=None, iterable=ltpl) # to return a tuple, give a tuple of domains
+  grids  = checkItemList(grids, n, basestring, default=None)
+  resolutions  = checkItemList(resolutions, n, basestring, default=None)  
   # resolve experiment list
   dslist = []; axtitles = []
   for exp,tit,prd,dom,grd,res in zip(explist,titles,periods,domains,grids,resolutions): 
