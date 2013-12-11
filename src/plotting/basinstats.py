@@ -96,6 +96,9 @@ def getDatasets(expset, titles=None):
     explist = ['max','max-A','max-B','max-C']
   elif expset == 'ens-all-2050': 
     explist = ['seaice-2050','max-A-2050','max-B-2050','max-C-2050']
+  elif expset == 'ens-all-diff':
+    explist = [('max-2050','max'),('max-A-2050','max-A'),('max-B-2050','max-B'),('max-C-2050','max-C')]
+    titles = ['Max-1 (2050)','Max-A (2050)','Max-B (2050)','Max-C (2050)']
   elif expset == 'ens-cesm': 
     explist = ['Ctrl','Ens-A','Ens-B','Ens-C']
   elif expset == 'ens-cesm-2050': 
@@ -130,15 +133,15 @@ def getDatasets(expset, titles=None):
 if __name__ == '__main__':
   
   ## settings
-  expset = ('new-grell','new')
+  expset = 'ens-all'
 #   plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
-  plottypes = ['temp','flux','heat']
+  plottypes = ['precip_alt']
   lPRISM = False
-  lUnity = False
+  lUnity = True
   titles = None
   domain = 2
-  period = 1
+  period = 10
   
   # some more settings
   tag = 'prism' if lPRISM else ''
