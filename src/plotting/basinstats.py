@@ -133,7 +133,7 @@ def getDatasets(expset, titles=None):
 if __name__ == '__main__':
   
   ## settings
-  expset = 'ens-all'
+  expset = 'max-ens'
 #   plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
   plottypes = ['precip_alt']

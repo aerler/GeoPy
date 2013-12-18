@@ -59,7 +59,7 @@ if __name__ == '__main__':
   grid = None
   lWRFnative = False
   reflist = None # an additional list of experiments, that can be used to compute differences
-  refprd = None
+  refprd = None; refdom = None
   ldiff = False # compute differences
   lfrac = False # compute fraction
   domain = (2,)
@@ -67,7 +67,7 @@ if __name__ == '__main__':
   
   # observations
   lprint = True # write plots to disk using case as a name tag
-#   maptype = 'lcc-new'; lstations = False; lbasin = False
+  maptype = 'lcc-new'; lstations = False; lbasin = False
 #   grid = 'arb2_d02'; domain = (2,); #grid = 'ARB_small_05'
 #   explist = ['Unity']; exptitles = ['Merged Observations: Precipitation [mm/day]']; 
 #   period = H10; case = 'unity'; 
@@ -84,8 +84,9 @@ if __name__ == '__main__':
 #   explist = ['CESM-2050']; exptitles = ' '; period = A10; case = 'cesm' 
 #   case = 'cesm_arb'; lbasin = True
 
-#   lfrac = True; reflist = ['Unity']; grid = 'arb2_d02'
-#   explist = ['max-ens','NARR','CESM','CFSR']; period = H10; case = 'val'
+#   ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'
+#   explist = ['CESM','CESM-2050','CFSR','max-ens','max-ens-2050','cfsr']
+#   period = [H10,A10,H10]*2; refprd = H10; case = 'val_d01'; domain = 1
 
 #   reflist = ['max-ens','CESM','max','Ctrl']; refprd = H10; lfrac = True #ldiff = True
 #   explist = ['max-ens-2050','CESM-2050','max-2050','Ctrl-2050']; period = A10; case = 'prj'
@@ -125,6 +126,13 @@ if __name__ == '__main__':
 #   explist = ['Ctrl']; period = H10; case = 'cesm' 
 #   grid = None
 
+#   lfrac = True; reflist = ['GPCC']; grid = 'ARB_large_025'
+#   maptype = 'lcc-large'; lstations = False; lbasin = False
+#   explist = ['CRU']; period = H10; case = 'cru'   
+#   lfrac = True; reflist = ['Unity']; grid = 'NARR'
+#   maptype = 'lcc-large'; lstations = False; lbasin = False
+#   explist = ['NARR']; period = H10; case = 'narr'   
+
 #   maptype = 'ortho-NA'; lstations = False; lbasin = False; lframe = True; loutline = False
 #   explist = ['max-ens']; domain= (0,1); period = H10; case = 'ortho'
 #   exptitles = ['']; title = 'Dynamical Downscaling'  
@@ -151,16 +159,16 @@ if __name__ == '__main__':
 #   domain = [(1,2,3,),None,(1,),(1,2,)]
 #   explist = ['coast','PRISM','coast','coast'] #; domain = (3,);
 
-  case = 'columbia'; stations = 'cities'
-  maptype = 'lcc-col'; lstations = True; lbasin = True # 'lcc-new'  
-  period = [H01]*4 #; period[1] = None 
-  domain = [3,None,1,2]; lbackground = False
-  lfrac = True; reflist = ['columbia']; refdom = 3
-  grid = ['col1_d03']*4 # grid[0] = None #   grid = 'arb2_d02'; 
-#   explist = ['columbia','GPCC','columbia','columbia'] 
-#   exptitles = ['WRF 3km (CFSR)', 'GPCC (Climatology)', 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
-  explist = ['columbia','PRISM','columbia','columbia'] 
-  exptitles = ['WRF 3km (CFSR)', 'PRISM', 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
+#   case = 'columbia'; stations = 'cities'
+#   maptype = 'lcc-col'; lstations = True; lbasin = True # 'lcc-new'  
+#   period = [H01]*4 #; period[1] = None 
+#   domain = [3,None,1,2]; lbackground = False
+#   lfrac = True; reflist = ['columbia']; refdom = 3
+#   grid = ['col1_d03']*4 # grid[0] = None #   grid = 'arb2_d02'; 
+# #   explist = ['columbia','GPCC','columbia','columbia'] 
+# #   exptitles = ['WRF 3km (CFSR)', 'GPCC (Climatology)', 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
+#   explist = ['columbia','PRISM','columbia','columbia'] 
+#   exptitles = ['WRF 3km (CFSR)', 'PRISM', 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
 
 #   maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasin = False
 #   case = 'arb2'; period = None; lWRFnative = True; loutline = False; period = H10
@@ -197,14 +205,14 @@ if __name__ == '__main__':
 #   varlist += ['SST']
 #   varlist += ['lat2D','lon2D']
   # seasons
-  seasons += ['OND'] # for high-res columbia domain
+#   seasons += ['OND'] # for high-res columbia domain
 #   seasons += ['cold']
 #   seasons += ['warm']
 #   seasons += ['melt']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-#   seasons += ['annual']
-#   seasons += ['summer']
-#   seasons += ['winter']
+  seasons += ['annual']
+  seasons += ['summer']
+  seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
