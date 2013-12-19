@@ -68,7 +68,7 @@ if __name__ == '__main__':
   
   # observations
   lprint = True # write plots to disk using case as a name tag
-#   maptype = 'lcc-new'; lstations = False; lbasin = False
+  maptype = 'lcc-new'; lstations = False; lbasin = False
 #   grid = 'arb2_d02'; domain = (2,); #grid = 'ARB_small_05'
 #   explist = ['Unity']; exptitles = ['Merged Observations: Precipitation [mm/day]']; 
 #   period = H10; case = 'unity'; 
@@ -85,7 +85,7 @@ if __name__ == '__main__':
 #   explist = ['CESM-2050']; exptitles = ' '; period = A10; case = 'cesm' 
 #   case = 'cesm_arb'; lbasin = True
 
-#   ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'
+#   ldiff = True; reflist = ['Unity']; grid = 'arb2_d01'
 #   explist = ['CESM','CESM-2050','CFSR','max-ens','max-ens-2050','cfsr']
 #   period = [H10,A10,H10]*2; refprd = H10; case = 'val'; domain = 2; case = 'val_d01'; domain = 1
 #   reflist = ['max-ens','max-ens-2050','cfsr']*2; refprd = period; refdom = 2; case = 'val_d02'
@@ -98,6 +98,9 @@ if __name__ == '__main__':
 
 #   ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'; domain = (2,); WRFfiletypes=['srfc']
 #   explist = ['max','ctrl','new','milb','wdm6','tom']; period = H05; case = 'mp'
+
+  ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'
+  explist = ['max','max-nmp','new','new-grell']; period = H03; case = 'mpg'
 
 #   exptitles = [None,None,None,'GPCC (no data)']
 #   explist = ['max','ctrl','noah','CRU']; period = H10; case = 'val'
@@ -161,11 +164,11 @@ if __name__ == '__main__':
 #   domain = [(1,2,3,),None,(1,),(1,2,)]
 #   explist = ['coast','PRISM','coast','coast'] #; domain = (3,);
 
-  explist = ['WRF Domain 1 (30km)','WRF Domain 2 (10km)']
-  case = 'topocf'; lstations = True; lbasin = True
-  maptype = 'lcc-col'; grid = 'col1_d03'
-  explist = ['max','max']; period = H10; domain = [1,2]
-  ldiff = True; reflist = ['columbia']; refprd = H01; refdom = 3
+#   explist = ['WRF Domain 1 (30km)','WRF Domain 2 (10km)']
+#   case = 'topocf'; lstations = True; lbasin = True
+#   maptype = 'lcc-col'; grid = 'col1_d03'
+#   explist = ['max','max']; period = H10; domain = [1,2]
+#   ldiff = True; reflist = ['columbia']; refprd = H01; refdom = 3
 
 #   case = 'columbia'; stations = 'cities'
 #   maptype = 'lcc-col'; lstations = True; lbasin = True # 'lcc-new'  
@@ -191,9 +194,9 @@ if __name__ == '__main__':
   varlist = []; seasons = []
   # variables
 #   varlist += ['Ts']
-#   varlist += ['T2']
+  varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
-  varlist += ['precip']
+#   varlist += ['precip']
 #   varlist += ['waterflx']
 #   varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
@@ -218,9 +221,9 @@ if __name__ == '__main__':
 #   seasons += ['warm']
 #   seasons += ['melt']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-#   seasons += ['annual']
-#   seasons += ['summer']
-#   seasons += ['winter']
+  seasons += ['annual']
+  seasons += ['summer']
+  seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
@@ -228,7 +231,7 @@ if __name__ == '__main__':
 #  varlist = ['snowh'];  seasons = [8] # September snow height
 #  varlist = ['stns']; seasons = ['annual']
 #   varlist = ['lndcls']; seasons = [''] # static
-  varlist = ['zs']; seasons = ['topo']; lcontour = True; WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
+#   varlist = ['zs']; seasons = ['topo']; lcontour = True; WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
 #   varlist = ['zs']; seasons = ['hidef']; WRFfiletypes=['const']; lcontour = True # static
 
   # setup projection and map

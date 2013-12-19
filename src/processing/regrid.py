@@ -210,35 +210,34 @@ if __name__ == '__main__':
     varlist = None
 #     varlist = ['precip',]
 #     periods = [5,10]
-    periods = [10]
+#     periods = [10]
 #     periods = [(1997,1998)]
-#     periods = [1]
+    periods = [3]
 #     periods = [5,10,30]
     # Observations/Reanalysis
     datasets = []
 #     datasets = ['PRISM','GPCC']; periods = None
-#     datasets = ['GPCC','CRU']
 #     datasets = ['CFSR', 'NARR']
-#     resolutions = {'GPCC':['025','05']}
-    resolutions = None
+    datasets = ['GPCC','CRU']; resolutions = {'GPCC':['05']}
+#     resolutions = None
     # CESM
     CESM_experiments = [] #None #['Ctrl']
     CESM_filetypes = ['atm','lnd']
     # WRF
-    WRF_experiments = ['max']
+    WRF_experiments = []
 #     WRF_experiments = ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-#     experiments = ['max','ctrl','new','noah']
-#     experiments = ['new','gulf','max','cfsr']
-#     experiments = ['ctrl'] # WRF experiment names (passed through WRFname)
-    domains = [1,2] # domains to be processed
+#     WRF_experiments = ['new','new-grell']
+#     WRF_experiments = ['new','gulf','max','cfsr']
+#     WRF_experiments = ['ctrl'] # WRF experiment names (passed through WRFname)
+    domains = [2] # domains to be processed
     WRF_filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
 #     WRF_filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
-    WRF_filetypes = ['srfc']
+#     WRF_filetypes = ['srfc']
     # grid to project onto
     lpickle = True
-    grids = dict(col1=['d03']) # dict with list of resolutions
-#     grids = dict(arb2=['d02']) # dict with list of resolutions
+#     grids = dict(col1=['d03']) # dict with list of resolutions
+    grids = dict(arb2=['d02']) # dict with list of resolutions
 #     grids = dict(grb1=['d01','d02']) # dict with list of resolutions
 #     grids = dict(ARB_small=['025']) # dict with list of resolutions    
 #     grids = dict(ARB_large=['025']) # dict with list of resolutions

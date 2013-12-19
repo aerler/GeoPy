@@ -80,6 +80,8 @@ def getDatasets(expset, titles=None):
     explist = [('new','noah')]
     titles = 'Noah-MP vs. Noah'
     linestyles = ('-','--')
+  elif expset == 'mpg': 
+    explist = ['max','max-nmp','new','new-grell']  
   elif expset == 'wrf-proj': 
     explist = ['max-ens','max-ens-2050','cfsr-max','seaice-2050']  
   elif expset == 'mean-ens': 
@@ -133,15 +135,15 @@ def getDatasets(expset, titles=None):
 if __name__ == '__main__':
   
   ## settings
-  expset = 'max-ens'
-#   plottypes = ['temp','precip','flux','runoff']
+  expset = 'mpg'
+  plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
-  plottypes = ['precip_alt']
+#   plottypes = ['precip_alt']
   lPRISM = False
   lUnity = True
   titles = None
   domain = 2
-  period = 10
+  period = 3
   
   # some more settings
   tag = 'prism' if lPRISM else ''
