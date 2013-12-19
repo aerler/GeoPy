@@ -33,6 +33,8 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
       clevs = np.linspace(-5,5,21); clbl = '%3.1f' # mm/day
     elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff','p-et','waterflx'): # moisture fluxes (kg /(m^2 s))
       clevs = np.linspace(-2,2,21); clbl = '%3.1f' # mm/day  
+    elif var == 'zs':
+      clevs = np.linspace(-0.5,0.5,21); clbl = '%3.1f' # mm/day
     else: 
       raise VariableError, 'No settings found for differencing variable \'{0:s}\' found!'.format(var)
   elif lfrac:

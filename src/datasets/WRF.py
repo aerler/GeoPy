@@ -52,9 +52,10 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   else: raise TypeError
   # figure out experiment
   if experiment is None:
-    if isinstance(name,basestring): experiment = exps[name]
-    elif len(names) > 0: exps[names[0].split('_')[0]]
-  elif isinstance(experiment,basestring): experiment = exps[experiment]
+    if isinstance(name,basestring) and name in exps: experiment = exps[name]
+    elif len(names) > 0: 
+      tmp = names[0].split('_')[0]
+      if tmp in exps: experiment = exps[tmp]
   elif not isinstance(experiment,Exp): raise TypeError  
   maxdom = max(domains) # max domain
   # files to work with
@@ -65,8 +66,8 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
       else: raise IOError, 'File {} for domain {:d} not found; this file is necessary to infer the geotransform for other domains.'.format(dnfile,n)
   # open first domain file (special treatment)
   dn = nc.Dataset(filepath.format(1), mode='r', format=ncformat)
-  #name = experiment if isinstance(experiment,basestring) else names[0] # omit domain information, which is irrelevant
-  projection = getWRFproj(dn, name=experiment.grid) # same for all
+  gridname = experiment.grid if isinstance(experiment,Exp) else name # use experiment name as default
+  projection = getWRFproj(dn, name=gridname) # same for all
   # get coordinates of center point  
   clon = dn.CEN_LON; clat = dn.CEN_LAT
   wgs84 = osr.SpatialReference (); wgs84.ImportFromEPSG (4326) # regular lat/lon geographic grid
@@ -111,7 +112,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
       dn.close()
       geotransforms.append(geotransform) # we need that to construct the next nested domain
       if n in domains:
-        name = '{0:s}_d{1:02d}'.format(experiment.grid,n) 
+        name = '{0:s}_d{1:02d}'.format(gridname,n) 
         griddefs.append(GridDefinition(name=name, projection=projection, geotransform=geotransform, size=size))
   # return a GridDefinition object
   return tuple(griddefs)  
@@ -136,10 +137,12 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
       names = name
       if names[0] in exps: experiment = exps[names[0]]
       else: name = names[0].split('_')[0]
-    elif isinstance(name,basestring): names = [name]
+    elif isinstance(name,basestring): 
+      names = [name]
+      folder = folder + '/' + name
     # load experiment meta data
     if name in exps: experiment = exps[name]
-    else: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(names[0])
+#     else: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(names[0])
   else:
     if isinstance(experiment,(Exp,basestring)):
       if isinstance(experiment,basestring): experiment = exps[experiment] 
@@ -172,7 +175,7 @@ class Const(FileType):
                      XLONG  = dict(name='lon2D', units='deg E'), # geographic longitude field
                      XLAT   = dict(name='lat2D', units='deg N')) # geographic latitude field
     self.vars = self.atts.keys()    
-    self.climfile = 'wrfconst_d{0:0=2d}{1:s}.nc' # the filename needs to be extended by (domain,'_'+grid)
+    self.climfile = None #'wrfconst_d{0:0=2d}{1:s}.nc' # the filename needs to be extended by (domain,'_'+grid)
     self.tsfile = 'wrfconst_d{0:0=2d}.nc' # the filename needs to be extended by (domain,)
 # surface variables
 class Srfc(FileType):
@@ -433,7 +436,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
     # load constants
     if llconst:
       constfile = fileclasses['const']    
-      filename = constfile.climfile.format(domain,gridstr)         
+      filename = constfile.tsfile.format(domain,gridstr)         
       # load dataset
       const = DatasetNetCDF(name=name, folder=folder, filelist=[filename], varatts=constfile.atts, axes=axes,  
                             varlist=constfile.vars, multifile=False, ncformat='NETCDF4', squeeze=True)      
@@ -487,7 +490,7 @@ loadClimatology = loadWRF # pre-processed, standardized climatology
 if __name__ == '__main__':
     
   
-  mode = 'test_climatology'
+#   mode = 'test_climatology'
 #   mode = 'test_timeseries'
   mode = 'pickle_grid'
   experiment = 'max-ctrl'  
@@ -495,7 +498,8 @@ if __name__ == '__main__':
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
   experiments = ['rrtmg', 'ctrl', 'new']
 #   grids = ['coast1']; experiments = ['coast']; domains = [1,2,3]
-  grids = ['col1']; experiments = ['columbia']; domains = [1,2,3]   
+#   grids = ['col1']; experiments = ['columbia']; domains = [1,2,3]   
+  grids = ['grb1']; experiments = ['']; domains = [1,2]
     
   # pickle grid definition
   if mode == 'pickle_grid':
@@ -513,7 +517,7 @@ if __name__ == '__main__':
         
         # load GridDefinition
         
-        griddef, = getWRFgrid(experiment=experiment, domains=domain) # , folder=folder, filename='wrfconst_d{0:0=2d}.nc'
+        griddef, = getWRFgrid(name=grid, folder=folder, domains=domain) # filename='wrfconst_d{0:0=2d}.nc', experiment=experiment
         griddef.name = gridstr
         print('   Loading Definition from \'{0:s}\''.format(folder))
 #         print(griddef)

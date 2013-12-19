@@ -46,6 +46,7 @@ if __name__ == '__main__':
   A03 = '2045-2048'; A05 = '2045-2050'; A09 = '2045-2054'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
   B03 = '2095-2098'; B05 = '2095-2100'; B10 = '2095-2105'; B15 = '2095-2110' # late 21st century  
   ltitle = True # plot/figure title
+  lbackground = True
   lcontour = False # contour or pcolor plot
   lframe = True # draw domain boundary
   loutline = True # draw boundaries around valid (non-masked) data
@@ -67,7 +68,7 @@ if __name__ == '__main__':
   
   # observations
   lprint = True # write plots to disk using case as a name tag
-  maptype = 'lcc-new'; lstations = False; lbasin = False
+#   maptype = 'lcc-new'; lstations = False; lbasin = False
 #   grid = 'arb2_d02'; domain = (2,); #grid = 'ARB_small_05'
 #   explist = ['Unity']; exptitles = ['Merged Observations: Precipitation [mm/day]']; 
 #   period = H10; case = 'unity'; 
@@ -86,7 +87,8 @@ if __name__ == '__main__':
 
 #   ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'
 #   explist = ['CESM','CESM-2050','CFSR','max-ens','max-ens-2050','cfsr']
-#   period = [H10,A10,H10]*2; refprd = H10; case = 'val_d01'; domain = 1
+#   period = [H10,A10,H10]*2; refprd = H10; case = 'val'; domain = 2; case = 'val_d01'; domain = 1
+#   reflist = ['max-ens','max-ens-2050','cfsr']*2; refprd = period; refdom = 2; case = 'val_d02'
 
 #   reflist = ['max-ens','CESM','max','Ctrl']; refprd = H10; lfrac = True #ldiff = True
 #   explist = ['max-ens-2050','CESM-2050','max-2050','Ctrl-2050']; period = A10; case = 'prj'
@@ -159,6 +161,12 @@ if __name__ == '__main__':
 #   domain = [(1,2,3,),None,(1,),(1,2,)]
 #   explist = ['coast','PRISM','coast','coast'] #; domain = (3,);
 
+  explist = ['WRF Domain 1 (30km)','WRF Domain 2 (10km)']
+  case = 'topocf'; lstations = True; lbasin = True
+  maptype = 'lcc-col'; grid = 'col1_d03'
+  explist = ['max','max']; period = H10; domain = [1,2]
+  ldiff = True; reflist = ['columbia']; refprd = H01; refdom = 3
+
 #   case = 'columbia'; stations = 'cities'
 #   maptype = 'lcc-col'; lstations = True; lbasin = True # 'lcc-new'  
 #   period = [H01]*4 #; period[1] = None 
@@ -210,9 +218,9 @@ if __name__ == '__main__':
 #   seasons += ['warm']
 #   seasons += ['melt']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-  seasons += ['annual']
-  seasons += ['summer']
-  seasons += ['winter']
+#   seasons += ['annual']
+#   seasons += ['summer']
+#   seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
@@ -220,7 +228,7 @@ if __name__ == '__main__':
 #  varlist = ['snowh'];  seasons = [8] # September snow height
 #  varlist = ['stns']; seasons = ['annual']
 #   varlist = ['lndcls']; seasons = [''] # static
-#   varlist = ['zs']; seasons = ['topo']; WRFfiletypes=['const']; lcontour = True # static
+  varlist = ['zs']; seasons = ['topo']; lcontour = True; WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
 #   varlist = ['zs']; seasons = ['hidef']; WRFfiletypes=['const']; lcontour = True # static
 
   # setup projection and map
@@ -413,10 +421,11 @@ if __name__ == '__main__':
               #print bdy.mean(), data[n][m].__class__.__name__, data[n][m].fill_value 
               bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
               maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', linewidths=framewidths, fill=False) # draw boundary of domain domain
-            if lframe and not ( domain[0] == 0 and m == 0):
-              bdy = ma.ones(x[n][m].shape)   
-              bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
-              maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', linewidths=framewidths, fill=False) # draw boundary of data
+            if lframe:
+              if isinstance(domain,(tuple,list)) and not ( domain[0] == 0 and m == 0):
+                bdy = ma.ones(x[n][m].shape)   
+                bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
+                maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', linewidths=framewidths, fill=False) # draw boundary of data
       # draw data
       norm = mpl.colors.Normalize(vmin=min(clevs),vmax=max(clevs),clip=True) # for colormap
       cd = []
