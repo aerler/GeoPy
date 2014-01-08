@@ -212,13 +212,13 @@ if __name__ == '__main__':
 #     periods = [5,10]
 #     periods = [10]
 #     periods = [(1997,1998)]
-    periods = [3]
+    periods = [1]
 #     periods = [5,10,30]
     # Observations/Reanalysis
     datasets = []
 #     datasets = ['PRISM','GPCC']; periods = None
 #     datasets = ['CFSR', 'NARR']
-    datasets = ['GPCC','CRU']; resolutions = {'GPCC':['05']}
+#     datasets = ['GPCC','CRU']; resolutions = {'GPCC':['05']}
 #     resolutions = None
     # CESM
     CESM_experiments = [] #None #['Ctrl']
@@ -227,7 +227,7 @@ if __name__ == '__main__':
     WRF_experiments = []
 #     WRF_experiments = ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-#     WRF_experiments = ['new','new-grell']
+    WRF_experiments = ['new-grell']
 #     WRF_experiments = ['new','gulf','max','cfsr']
 #     WRF_experiments = ['ctrl'] # WRF experiment names (passed through WRFname)
     domains = [2] # domains to be processed

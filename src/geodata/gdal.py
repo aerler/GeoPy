@@ -696,6 +696,7 @@ def rasterizeShape(name=None, griddef=None, folder=None, filename=None, invert=F
   if name is None: name = filename
   if folder is not None: filename = folder + '/' + filename
   if not os.path.exists(filename): raise IOError, 'File \'{}\' not found!'.format(filename)
+  if ldebug: print(' - using shapefile \'{}\''.format(filename))
   shp_ds = ogr.Open(filename)
   shp_lyr = shp_ds.GetLayer(0) # get shape layer
   # create raster to burn shape onto
@@ -735,10 +736,12 @@ if __name__ == '__main__':
 #   name = 'prv_ca' # canadian provinces
 #   name = 'Mackenzie_basins'
 #   name = 'b_nwrfc'
+#   name = 'ARB_Aquanty'
   name = 'Athabasca_River_Basin'
+  name = 'Fraser_River_Basin'
   griddef = loadPickledGridDef('arb2', res='d02', folder=grid_folder)  
   # get mask from shape file
-  shp_mask = rasterizeShape(name=name, griddef=griddef, folder=grid_folder, invert=False)
+  shp_mask = rasterizeShape(name=name, griddef=griddef, folder=grid_folder, invert=False, ldebug=True)
   # display
   import pylab as pyl
   pyl.imshow(np.flipud(shp_mask[:,:])); pyl.colorbar(); pyl.show(block=True)

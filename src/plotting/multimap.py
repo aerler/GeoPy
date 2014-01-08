@@ -23,7 +23,7 @@ from datasets.common import days_per_month, days_per_month_365 # for annotation
 from datasets.common import loadDatasets
 from plotting.settings import getFigureSettings, getVariableSettings
 # ARB project related stuff
-from plotting.ARB_settings import getARBsetup, arb_figure_folder, arb_map_folder, arb_shapefile
+from plotting.ARB_settings import getARBsetup, arb_figure_folder, arb_map_folder, ARB_shapefile, FRB_shapefile
 
 if __name__ == '__main__':
   
@@ -53,7 +53,7 @@ if __name__ == '__main__':
   framewidths = 1
   figuretype = None
   lstations = True; stations = 'cities'
-  lbasin = True
+  lbasins = True; basins = ('ARB','FRB')
   cbo = None # default based on figure type
   resolution = None # only for GPCC (None = default/highest)
   exptitles = None
@@ -68,7 +68,7 @@ if __name__ == '__main__':
   
   # observations
   lprint = True # write plots to disk using case as a name tag
-  maptype = 'lcc-new'; lstations = False; lbasin = False
+  maptype = 'lcc-new'; lstations = False; lbasins = False
 #   grid = 'arb2_d02'; domain = (2,); #grid = 'ARB_small_05'
 #   explist = ['Unity']; exptitles = ['Merged Observations: Precipitation [mm/day]']; 
 #   period = H10; case = 'unity'; 
@@ -78,12 +78,12 @@ if __name__ == '__main__':
 #   explist = ['max-ens']; exptitles = ' '; period = H10; case = 'hydro'
 #   ldiff = True; reflist = ['max-ens']; refprd = H10; grid = 'arb2_d02'
 #   explist = ['max-ens-2050']; exptitles = ' '; period = A10; case = 'hydro' 
-#   case = 'hydro_arb'; lbasin = True
+#   case = 'hydro_arb'; lbasins = True
 
 #   explist = ['CESM']; exptitles = ' '; period = H10; case = 'cesm'
 #   ldiff = True; reflist = ['CESM']; refprd = H10; grid = 'arb2_d02'
 #   explist = ['CESM-2050']; exptitles = ' '; period = A10; case = 'cesm' 
-#   case = 'cesm_arb'; lbasin = True
+#   case = 'cesm_arb'; lbasins = True
 
 #   ldiff = True; reflist = ['Unity']; grid = 'arb2_d01'
 #   explist = ['CESM','CESM-2050','CFSR','max-ens','max-ens-2050','cfsr']
@@ -99,8 +99,8 @@ if __name__ == '__main__':
 #   ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'; domain = (2,); WRFfiletypes=['srfc']
 #   explist = ['max','ctrl','new','milb','wdm6','tom']; period = H05; case = 'mp'
 
-  ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'
-  explist = ['max','max-nmp','new','new-grell']; period = H03; case = 'mpg'
+#   ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'
+#   explist = ['max','max-nmp','new','new-grell']; period = H01; case = 'mpg'
 
 #   exptitles = [None,None,None,'GPCC (no data)']
 #   explist = ['max','ctrl','noah','CRU']; period = H10; case = 'val'
@@ -124,34 +124,34 @@ if __name__ == '__main__':
 #   explist = ['max','ctrl','new','noah']; reflist = ['Unity']; period = H10; case = 'val'; ldiff=True
 
 #   explist = ['GPCC','PRISM','CRU','GPCC']; period = [None,None,H30,H30]; case = 'obs05'
-#   maptype = 'lcc-new'; lstations = False; lbasin = False
+#   maptype = 'lcc-new'; lstations = False; lbasins = False
 #   grid = [None, 'ARB_small_05', None,None]; res = '05'
 
-#   maptype = 'lcc-new'; lstations = True; lbasin = True
+#   maptype = 'lcc-new'; lstations = True; lbasins = True
 #   explist = ['Ctrl']; period = H10; case = 'cesm' 
 #   grid = None
 
 #   lfrac = True; reflist = ['GPCC']; grid = 'ARB_large_025'
-#   maptype = 'lcc-large'; lstations = False; lbasin = False
+#   maptype = 'lcc-large'; lstations = False; lbasins = False
 #   explist = ['CRU']; period = H10; case = 'cru'   
 #   lfrac = True; reflist = ['Unity']; grid = 'NARR'
-#   maptype = 'lcc-large'; lstations = False; lbasin = False
+#   maptype = 'lcc-large'; lstations = False; lbasins = False
 #   explist = ['NARR']; period = H10; case = 'narr'   
 
-#   maptype = 'ortho-NA'; lstations = False; lbasin = False; lframe = True; loutline = False
+#   maptype = 'ortho-NA'; lstations = False; lbasins = False; lframe = True; loutline = False
 #   explist = ['max-ens']; domain= (0,1); period = H10; case = 'ortho'
 #   exptitles = ['']; title = 'Dynamical Downscaling'  
 
 #   ldiff = True; reflist = ['Unity']; lWRFnative = False
 # #   lfrac = True; reflist = ['Unity']; lWRFnative = False
-#   maptype = 'lcc-new'; lstations = False; lbasin = True
+#   maptype = 'lcc-new'; lstations = False; lbasins = True
 #   case = 'cesm-ens'; loutline = True; grid = None # 'cesm1x1'
 #   grid = ['arb2_d02','cesm1x1','arb2_d01','arb2_d01']
 #   explist = ['max-ens','CESM','max-ens','NARR']; period = H10; domain = [(2,),None,(1,),None]
 
 #   ldiff = True; reflist = ['Unity']; grid = 'cesm1x1'
 # #   lfrac = True; reflist = ['Unity']; grid = 'cesm1x1'
-#   maptype = 'lcc-new'; lstations = False; lbasin = True
+#   maptype = 'lcc-new'; lstations = False; lbasins = True
 #   case = 'cesm-ens'; loutline = True; grid = 'cesm1x1'
 #   explist = ['Ctrl','CESM','Ens-A','Ens-B','CFSR','Ens-C',]; period = H10
   
@@ -165,13 +165,13 @@ if __name__ == '__main__':
 #   explist = ['coast','PRISM','coast','coast'] #; domain = (3,);
 
 #   explist = ['WRF Domain 1 (30km)','WRF Domain 2 (10km)']
-#   case = 'topocf'; lstations = True; lbasin = True
+#   case = 'topocf'; lstations = True; lbasins = True
 #   maptype = 'lcc-col'; grid = 'col1_d03'
 #   explist = ['max','max']; period = H10; domain = [1,2]
 #   ldiff = True; reflist = ['columbia']; refprd = H01; refdom = 3
 
 #   case = 'columbia'; stations = 'cities'
-#   maptype = 'lcc-col'; lstations = True; lbasin = True # 'lcc-new'  
+#   maptype = 'lcc-col'; lstations = True; lbasins = True # 'lcc-new'  
 #   period = [H01]*4 #; period[1] = None 
 #   domain = [3,None,1,2]; lbackground = False
 #   lfrac = True; reflist = ['columbia']; refdom = 3
@@ -181,12 +181,12 @@ if __name__ == '__main__':
 #   explist = ['columbia','PRISM','columbia','columbia'] 
 #   exptitles = ['WRF 3km (CFSR)', 'PRISM', 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
 
-#   maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasin = False
-#   case = 'arb2'; period = None; lWRFnative = True; loutline = False; period = H10
+#   maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasins = True
+#   case = 'arb2_basin'; period = None; lWRFnative = True; loutline = False; period = H10
 #   explist = ['max']; exptitles = ' '; domain = (0,1,2)
-#   maptype = 'lcc-new'; lstations = False; lbasin = True
-#   case = 'arb'; period = None; lWRFnative = True; lframe = False; loutline = False
-#   explist = ['columbia']; exptitles = ' '; domain = (2,3)
+  maptype = 'lcc-new'; lstations = False; lbasins = True
+  case = 'arb'; period = None; lWRFnative = True; lframe = False; loutline = False
+  explist = ['columbia']; exptitles = ' '; domain = (2,3)
     
   if not case: raise ValueError, 'Need to define a \'case\' name!'
   
@@ -231,7 +231,7 @@ if __name__ == '__main__':
 #  varlist = ['snowh'];  seasons = [8] # September snow height
 #  varlist = ['stns']; seasons = ['annual']
 #   varlist = ['lndcls']; seasons = [''] # static
-#   varlist = ['zs']; seasons = ['topo']; lcontour = True; WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
+  varlist = ['zs']; seasons = ['topo']; lcontour = True; WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
 #   varlist = ['zs']; seasons = ['hidef']; WRFfiletypes=['const']; lcontour = True # static
 
   # setup projection and map
@@ -480,9 +480,14 @@ if __name__ == '__main__':
           # mark stations
           if lstations: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
           # add ARB basin outline
-          if lbasin: 
-            bmap.readshapefile(arb_shapefile, 'ARB', ax=axn, drawbounds=True, linewidth=0.75, color='k')
-            #print bmap.ARB_info                   
+          if lbasins:
+            shpargs = dict(linewidth = 0.75) #shpargs = dict(linewidth = 1.)
+            for basin in basins:
+              if basin is 'ARB': 
+                bmap.readshapefile(ARB_shapefile, 'ARB', ax=axn, drawbounds=True, color='k', **shpargs)
+              elif basin is 'FRB': 
+                bmap.readshapefile(FRB_shapefile, 'FRB', ax=axn, drawbounds=True, color='k', **shpargs)            
+          #print bmap.ARB_info                   
               
       # save figure to disk
       if lprint:

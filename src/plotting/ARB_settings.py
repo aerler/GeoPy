@@ -11,8 +11,15 @@ from plotting.mapsetup import getMapSetup
 
 arb_figure_folder = '/home/me/Research/Dynamical Downscaling/Figures/'
 arb_map_folder = arb_figure_folder + '.mapsetup/'
-arb_shapefolder = grid_folder+'/Athabasca_River_Basin/'
-arb_shapefile = arb_shapefolder+'ARB_Basins_Outline_WGS84' # basemap automatically appends '.shp'
+# actual Athabasca River Basin (shape file from Aquanty)
+#ARB_shapefolder = grid_folder+'/ARB_Aquanty/' 
+#ARB_shapefile = ARB_shapefolder+'ARB_Basins_Outline_WGS84'
+# Athabasca River Basin (shape file from Atlas of Canada) 
+ARB_shapefolder = grid_folder+'/Athabasca_River_Basin/'
+ARB_shapefile = ARB_shapefolder+'Athabasca_River_Basin'
+# FraserRiver Basin
+FRB_shapefolder = grid_folder+'/Fraser_River_Basin/'
+FRB_shapefile = FRB_shapefolder+'Fraser_River_Basin' # basemap automatically appends '.shp'
 # N.B.: basemap can only read shapefiles in geographic projection; use this GDAL command to convert:
 #       $ogr2ogr -t_srs WGS84 new_shapefile_WGS84.shp old_shapefile_in_projected.shp
 #    or $ogr2ogr -t_srs EPSG:4326 new_shapefile_WGS84.shp old_shapefile_in_projected.shp

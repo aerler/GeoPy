@@ -23,14 +23,10 @@ from plotting.settings import getFigureSettings
 # ARB project related stuff
 from plotting.ARB_settings import arb_figure_folder
 
-# settings
-folder = arb_figure_folder + '/Athabasca River Basin/'
-lprint = True 
-
-def getVarSettings(plottype, lPRISM=False, mode='all'):
+def getVarSettings(plottype, basin, lPRISM=False, mode='all'):
   flxlabel = r'Water Flux [$10^6$ kg/s]' 
-  flxlim = (-2,4) if lPRISM else (-2,6)
-  lCFSR = False; lNARR = False
+  if basin == 'athabasca': flxlim = (-2,4) if lPRISM else (-2,6)
+  elif basin == 'fraser': flxlim = (-4,16)
   if plottype == 'heat':
     varlist = ['lhfx','hfx']; filetypes = ['hydro','srfc']; 
     lsum = False; leg = (2,3); ylabel = r'Heat Flux [W m$^{-2}$]'; ylim = (-50,150)  
@@ -38,19 +34,25 @@ def getVarSettings(plottype, lPRISM=False, mode='all'):
     varlist = ['snwmlt','p-et','precip']; filetypes = ['srfc','hydro']; # 'waterflx' 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
   elif plottype == 'temp':
-    varlist = ['T2','Tmin','Tmax']; filetypes = ['srfc','xtrm']; lCFSR = True; lNARR = True 
+    varlist = ['T2','Tmin','Tmax']; filetypes = ['srfc','xtrm'] 
     lsum = False; leg = (2,8); ylabel = 'Temperature [K]'; ylim = (250,300)
   elif plottype == 'precip':
-    varlist = ['p-et','precip','liqprec','solprec']; filetypes = ['hydro'] # 
-    lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim; lCFSR = False; lNARR = False
-  elif plottype == 'precip_alt':
+      varlist = ['precip','liqprec','solprec']; filetypes = ['hydro'] # 
+      lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim  
+  elif plottype == 'p-et':
     varlist = ['p-et','precip']; filetypes = ['hydro'] # 
-    lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim; lCFSR = True; lNARR = True
+    lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
+  elif plottype == 'p-et_all':
+    varlist = ['p-et','precip','liqprec','solprec']; filetypes = ['hydro'] # 
+    lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
   elif plottype == 'flxrof':
     varlist = ['waterflx','runoff','snwmlt','p-et','precip']; filetypes = ['srfc','hydro','lsm']; 
     lsum = True; leg = (2,1); ylabel = flxlabel; ylim = flxlim
   elif plottype == 'runoff':
     varlist = ['snwmlt','runoff','sfroff','p-et']; filetypes = ['lsm','hydro']; # 'ugroff' 
+    lsum = True; leg = (2,1); ylabel = flxlabel; ylim = flxlim
+  elif plottype == 'sfflx':
+    varlist = ['waterflx','runoff','sfroff']; filetypes = ['lsm','hydro']; # 'ugroff' 
     lsum = True; leg = (2,1); ylabel = flxlabel; ylim = flxlim
   elif plottype == 'sfroff':
     varlist = ['runoff','sfroff']; filetypes = ['lsm','hydro']; # 'ugroff' 
@@ -135,15 +137,20 @@ def getDatasets(expset, titles=None):
 if __name__ == '__main__':
   
   ## settings
-  expset = 'mpg'
-  plottypes = ['temp','precip','flux','runoff']
+  # settings
+  lprint = True 
+  expset = 'mean-diff'
+  plottypes = ['temp','precip','flux','sfflx']
+#   plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
 #   plottypes = ['precip_alt']
   lPRISM = False
   lUnity = True
   titles = None
+  basin = 'athabasca'
+#   basin = 'fraser'
   domain = 2
-  period = 3
+  period = 10
   
   # some more settings
   tag = 'prism' if lPRISM else ''
@@ -159,7 +166,7 @@ if __name__ == '__main__':
   loadlist = set(['datamask']); allfiletypes = set()
   lCFSR = False; lNARR = False
   for plottype in plottypes:
-    varlist, filetypes, lcfsr, lnarr = getVarSettings(plottype, lPRISM=lPRISM, mode='load')
+    varlist, filetypes, lcfsr, lnarr = getVarSettings(plottype, basin, lPRISM=lPRISM, mode='load')
     loadlist = loadlist.union(varlist)
     allfiletypes = allfiletypes.union(filetypes)
     lCFSR = lCFSR or lcfsr; lNARR = lNARR or lnarr
@@ -182,7 +189,10 @@ if __name__ == '__main__':
   print ref.name
   
   ## create averaging mask
-  shp_mask = rasterizeShape(name='Athabasca_River_Basin', griddef=ref.griddef, folder=ref.gridfolder)
+  if basin == 'athabasca': basinname='Athabasca_River_Basin'
+  elif basin == 'fraser': basinname = 'Fraser_River_Basin'
+  else: raise ValueError, 'Have to specify a river basin or other shapefile to use as mask!'
+  shp_mask = rasterizeShape(name=basinname, griddef=ref.griddef, folder=ref.gridfolder)
   if lPRISM: shp_mask = (shp_mask + prism.datamask.getArray(unmask=True,fillValue=1)).astype(np.bool)
   # display
 #   pyl.imshow(np.flipud(shp_mask[:,:])); pyl.colorbar(); pyl.show(block=True)
@@ -217,7 +227,7 @@ if __name__ == '__main__':
 
   ## loop over plottypes
   for plottype in plottypes:
-    varlist, lsum, leg, ylabel, ylim, lCFSR, lNARR = getVarSettings(plottype, lPRISM=lPRISM, mode='plot')
+    varlist, lsum, leg, ylabel, ylim, lCFSR, lNARR = getVarSettings(plottype, basin, lPRISM=lPRISM, mode='plot')
     #lCFSR = False; lNARR = False
 #     lCFSR = lCFSR and lcfsr; lNARR = lNARR and lnarr
     S = asf if lsum else 1. # apply scale factor, depending on plot type  
@@ -372,9 +382,13 @@ if __name__ == '__main__':
     # average discharge below Fort McMurray: 620 m^3/s
       
     # save figure to disk
-    if lprint:
-      if tag: filename = 'ARB_{0:s}_{1:s}_{2:s}.png'.format(plottype,expset,tag)
-      else: filename = 'ARB_{0:s}_{1:s}.png'.format(plottype,expset)
+    if lprint:        
+      if basin == 'athabasca': 
+        basintag='ARB'; folder = arb_figure_folder + '/Athabasca River Basin/' 
+      elif basin == 'fraser': 
+        basintag = 'FRB'; folder = arb_figure_folder + '/Fraser River Basin/'
+      tag = '_'+tag if tag else '' 
+      filename = '{0:s}_{1:s}_{2:s}{3:s}.png'.format(basintag,plottype,expset,tag)
       print('\nSaving figure in '+filename)
       fig.savefig(folder+filename, **sf) # save figure to pdf
       print(folder)
