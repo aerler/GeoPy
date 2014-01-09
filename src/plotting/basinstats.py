@@ -33,6 +33,9 @@ def getVarSettings(plottype, basin, lPRISM=False, mode='all'):
   elif plottype == 'flux':
     varlist = ['snwmlt','p-et','precip']; filetypes = ['srfc','hydro']; # 'waterflx' 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
+  elif plottype == 'snwmlt':
+    varlist = ['snwmlt','precip','solprec']; filetypes = ['srfc','hydro']; # 'waterflx' 
+    lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
   elif plottype == 'temp':
     varlist = ['T2','Tmin','Tmax']; filetypes = ['srfc','xtrm'] 
     lsum = False; leg = (2,8); ylabel = 'Temperature [K]'; ylim = (250,300)
@@ -58,7 +61,7 @@ def getVarSettings(plottype, basin, lPRISM=False, mode='all'):
     varlist = ['runoff','sfroff']; filetypes = ['lsm','hydro']; # 'ugroff' 
     lsum = True; leg = (2,1); ylabel = flxlabel; ylim = flxlim
   else:
-    raise TypeError, 'No plottype defined!'
+    raise TypeError, '\'{}\' is not a valid plottype!'.format(plottype)
   # return values
   lCFSR = False; lNARR = False
   if mode == 'all':
@@ -139,8 +142,9 @@ if __name__ == '__main__':
   ## settings
   # settings
   lprint = True 
-  expset = 'mean-diff'
-  plottypes = ['temp','precip','flux','sfflx']
+  expset = 'max-ens'
+  plottypes = ['temp','runoff','sfroff']
+#   plottypes = ['temp','precip','flux','sfflx','snwmlt']
 #   plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
 #   plottypes = ['precip_alt']
@@ -148,7 +152,7 @@ if __name__ == '__main__':
   lUnity = True
   titles = None
   basin = 'athabasca'
-#   basin = 'fraser'
+  basin = 'fraser'
   domain = 2
   period = 10
   

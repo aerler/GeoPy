@@ -34,8 +34,8 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-  WRFfiletypes=['srfc']
-#   WRFfiletypes = ['srfc','lsm','hydro','xtrm'] # WRF data source
+#   WRFfiletypes=['srfc']
+  WRFfiletypes = ['srfc','lsm','hydro','xtrm'] # WRF data source
   # figure directory
   folder = arb_figure_folder
   lpickle = True
@@ -44,7 +44,7 @@ if __name__ == '__main__':
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994' # historical validation periods
   G10 = '1969-1979'; I10 = '1989-1999'; J10 = '1999-2009' # additional historical periods
   A03 = '2045-2048'; A05 = '2045-2050'; A09 = '2045-2054'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
-  B03 = '2095-2098'; B05 = '2095-2100'; B10 = '2095-2105'; B15 = '2095-2110' # late 21st century  
+  B03 = '2085-2088'; B05 = '2085-2900'; B10 = '2085-2095'; B15 = '2085-2100' # late 21st century  
   ltitle = True # plot/figure title
   lbackground = True
   lcontour = False # contour or pcolor plot
@@ -75,10 +75,15 @@ if __name__ == '__main__':
 #   ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'
 #   explist = ['max']; exptitles = ' '; domain = (2,); period = H10; case = 'test'
 
-#   explist = ['max-ens']; exptitles = ' '; period = H10; case = 'hydro'
-#   ldiff = True; reflist = ['max-ens']; refprd = H10; grid = 'arb2_d02'
+# #   explist = ['max-ens']; exptitles = ' '; period = H10; case = 'hydro'
 #   explist = ['max-ens-2050']; exptitles = ' '; period = A10; case = 'hydro' 
-#   case = 'hydro_arb'; lbasins = True
+#   lfrac = True; reflist = ['max-ens']; refprd = H10; grid = 'arb2_d02'
+# #   case = 'hydro_frb'; lbasins = True; basins = ('FRB',)
+#   case = 'hydro_basins'; lbasins = True; basins = ('FRB','ARB')
+
+#   explist = ['max-2050','max-A-2050','max-B-2050','max-C-2050']; period = A10
+#   lfrac = True; refprd = H10; reflist = ['max','max-A','max-B','max-C']
+#   case = 'hydro-ens'; lbasins = True; basins = ('FRB','ARB')
 
 #   explist = ['CESM']; exptitles = ' '; period = H10; case = 'cesm'
 #   ldiff = True; reflist = ['CESM']; refprd = H10; grid = 'arb2_d02'
@@ -92,6 +97,9 @@ if __name__ == '__main__':
 
 #   reflist = ['max-ens','CESM','max','Ctrl']; refprd = H10; lfrac = True #ldiff = True
 #   explist = ['max-ens-2050','CESM-2050','max-2050','Ctrl-2050']; period = A10; case = 'prj'
+
+  reflist = ['max', 'max-ens', 'max', 'max']; refprd = H10; lfrac = True #ldiff = True
+  explist = ['max-2050','max-ens-2050','max-2100','seaice-2050']; period = [A10, A10, B10, A10]; case = 'max'
 
 #   lfrac = True; reflist = ['Unity']; grid = 'arb2_d02'
 #   explist = ['CRU','PRISM','NARR','CFSR']; period = H10; case = 'obs'
@@ -182,11 +190,14 @@ if __name__ == '__main__':
 #   exptitles = ['WRF 3km (CFSR)', 'PRISM', 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
 
 #   maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasins = True
-#   case = 'arb2_basin'; period = None; lWRFnative = True; loutline = False; period = H10
+#   period = None; lWRFnative = True; loutline = False; period = H10
 #   explist = ['max']; exptitles = ' '; domain = (0,1,2)
-  maptype = 'lcc-new'; lstations = False; lbasins = True
-  case = 'arb'; period = None; lWRFnative = True; lframe = False; loutline = False
-  explist = ['columbia']; exptitles = ' '; domain = (2,3)
+#   case = 'arb2_frb'; basins = ('FRB',)
+#   maptype = 'lcc-new'; lstations = False; lbasins = True
+#   case = 'arb'; period = None; lWRFnative = True; lframe = False; loutline = False
+#   explist = ['columbia']; exptitles = ' '; domain = (2,3)
+# #   case = 'frb'; basins = ('FRB',)
+#   case = 'arb'; basins = ('ARB',)
     
   if not case: raise ValueError, 'Need to define a \'case\' name!'
   
@@ -194,11 +205,11 @@ if __name__ == '__main__':
   varlist = []; seasons = []
   # variables
 #   varlist += ['Ts']
-  varlist += ['T2']
+#   varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
-#   varlist += ['precip']
+  varlist += ['precip']
 #   varlist += ['waterflx']
-#   varlist += ['p-et']
+  varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
 #   varlist += ['evap']
@@ -231,7 +242,7 @@ if __name__ == '__main__':
 #  varlist = ['snowh'];  seasons = [8] # September snow height
 #  varlist = ['stns']; seasons = ['annual']
 #   varlist = ['lndcls']; seasons = [''] # static
-  varlist = ['zs']; seasons = ['topo']; lcontour = True; WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
+#   varlist = ['zs']; seasons = ['topo']; lcontour = True; WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
 #   varlist = ['zs']; seasons = ['hidef']; WRFfiletypes=['const']; lcontour = True # static
 
   # setup projection and map
@@ -481,7 +492,8 @@ if __name__ == '__main__':
           if lstations: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
           # add ARB basin outline
           if lbasins:
-            shpargs = dict(linewidth = 0.75) #shpargs = dict(linewidth = 1.)
+            shpargs = dict(linewidth = 0.75) 
+#             shpargs = dict(linewidth = 1.)
             for basin in basins:
               if basin is 'ARB': 
                 bmap.readshapefile(ARB_shapefile, 'ARB', ax=axn, drawbounds=True, color='k', **shpargs)
