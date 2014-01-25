@@ -205,9 +205,9 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
     ## 2 panel
     subplot = (1,2)
     if sameSize: figsize = (6.25,6.25)
-    else: figsize = (6.25,5.5)    
+    else: figsize = (6.25,3.75)    
     if cbar:
-      margins = dict(bottom=0.1, left=0.085, right=.975, top=.95, hspace=0.05, wspace=0.05)
+      margins = dict(bottom=0.075, left=0.075, right=.975, top=.925, hspace=0.05, wspace=0.05)
       caxpos = [0.05, 0.05, 0.9, 0.03]
       cbo = cbo or 'horizontal'
     else:

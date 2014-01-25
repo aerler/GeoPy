@@ -65,7 +65,7 @@ def test_func_ec(n, wait=1, lparallel=True, logger=None):
   else: logger = logging.getLogger(name=logger) # connect to existing one
   sleep(wait)  
   pid = int(multiprocessing.current_process().name.split('-')[-1]) # start at 1
-  logger.info('Current Process ID: %i\n'%pid)
+  logger.info('Current Process ID: {0:d}\n'.format(pid))
   # return n as exit code
   return n 
 
@@ -182,6 +182,9 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=True, ltrialnerror=True):
   logger.info(datetime.today())
   logger.info('\nTHREADS: {0:s}, DEBUG: {1:s}\n'.format(str(NP),str(ldebug)))
   exitcodes = [] # list of results  
+  def callbackEC(result):
+    # custom callback function that appends the results to the list
+    exitcodes.append(result)
   ## loop over and process all job sets
   if lparallel:
     # create pool of workers   
@@ -191,7 +194,9 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=True, ltrialnerror=True):
     #print kwargs
     for arguments in args:
       #print arguments 
-      exitcodes.append(pool.apply_async(func, arguments, kwargs))
+      #exitcodes.append(pool.apply_async(func, arguments, kwargs))
+      pool.apply_async(func, arguments, kwargs, callback=callbackEC) 
+      # N.B.: we do not record result objects, since we have callback, which just extracts the exitcodes
     # wait until pool and queue finish
     pool.close()
     pool.join() 
@@ -204,7 +209,7 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=True, ltrialnerror=True):
   # evaluate exit codes    
   exitcode = 0
   for ec in exitcodes:
-    if lparallel: ec = ec.get()
+    #if lparallel: ec = ec.get() # not necessary, if callback is used
     if ec < 0: raise ValueError, 'Exit codes have to be zero or positive!' 
     elif ec > 0: ec = 1
     # else ec = 0, i.e. no errors

@@ -288,7 +288,7 @@ def getProjection(var, projection=None):
       isProjected = False; xlon = var.lon; ylat = var.lat
       projection = osr.SpatialReference() 
       projection.SetWellKnownGeogCS('WGS84')  # normal lat/lon projection
-    else: xlon = None; ylat = None
+    else: xlon = None; ylat = None; isProjected = None
   else: 
     # figure out projection
     if isinstance(projection, dict): projection = getProjFromDict(projection)

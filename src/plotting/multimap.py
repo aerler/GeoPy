@@ -52,6 +52,7 @@ if __name__ == '__main__':
   loutline = True # draw boundaries around valid (non-masked) data
   framewidths = 1
   figuretype = None
+  lsamesize = True
   lstations = True; stations = 'cities'
   lbasins = True; basins = ('ARB','FRB')
   cbo = None # default based on figure type
@@ -69,82 +70,32 @@ if __name__ == '__main__':
   # observations
   lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = False; lbasins = False
-#   grid = 'arb2_d02'; domain = (2,); #grid = 'ARB_small_05'
-#   explist = ['Unity']; exptitles = ['Merged Observations: Precipitation [mm/day]']; 
-#   period = H10; case = 'unity'; 
-#   ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'
-#   explist = ['max']; exptitles = ' '; domain = (2,); period = H10; case = 'test'
 
-# #   explist = ['max-ens']; exptitles = ' '; period = H10; case = 'hydro'
-#   explist = ['max-ens-2050']; exptitles = ' '; period = A10; case = 'hydro' 
-#   lfrac = True; reflist = ['max-ens']; refprd = H10; grid = 'arb2_d02'
-# #   case = 'hydro_frb'; lbasins = True; basins = ('FRB',)
-#   case = 'hydro_basins'; lbasins = True; basins = ('FRB','ARB')
+#   case = 'valobs'; lbasins = True
+#   explist = ['CESM', 'Unity', 'max-ens', 'max-ens']; domain = [None, None, 1, 2]; period = H10
+#   exptitles = ['CESM (80 km)', 'Merged Observations (10 km)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
 
-#   explist = ['max-2050','max-A-2050','max-B-2050','max-C-2050']; period = A10
-#   lfrac = True; refprd = H10; reflist = ['max','max-A','max-B','max-C']
-#   case = 'hydro-ens'; lbasins = True; basins = ('FRB','ARB')
+#   explist = ['CESM','max-ens']; exptitles = ['CESM Ensemble Mean', 'WRF Ensemble Mean (10 km)']
+#   case = 'val_hires'; lbasins = True; lsamesize = False; period = H10; grid = ['arb2_d02']*2
+#   lfrac = True; reflist = ['Unity']; grid = ['cesm1x1','arb2_d02']
 
-#   explist = ['CESM']; exptitles = ' '; period = H10; case = 'cesm'
-#   ldiff = True; reflist = ['CESM']; refprd = H10; grid = 'arb2_d02'
-#   explist = ['CESM-2050']; exptitles = ' '; period = A10; case = 'cesm' 
-#   case = 'cesm_arb'; lbasins = True
+#   explist = ['Ctrl','max']; exptitles = ['CESM-1', 'WRF-1 (10 km)']
+#   case = 'val'; lbasins = True; lsamesize = False; period = H10 #; grid = ['arb2_d02']*2
+#   lfrac = True; reflist = ['Unity']; grid = ['cesm1x1','arb2_d02']
 
-#   ldiff = True; reflist = ['Unity']; grid = 'arb2_d01'
-#   explist = ['CESM','CESM-2050','CFSR','max-ens','max-ens-2050','cfsr']
-#   period = [H10,A10,H10]*2; refprd = H10; case = 'val'; domain = 2; case = 'val_d01'; domain = 1
-#   reflist = ['max-ens','max-ens-2050','cfsr']*2; refprd = period; refdom = 2; case = 'val_d02'
+#   explist = ['max','max-A','max-B','max-C','max-ens','Unity']
+#   case = 'val-ens'; lbasins = True; period = H10 #; grid = ['arb2_d02']*2
 
-#   reflist = ['max-ens','CESM','max','Ctrl']; refprd = H10; lfrac = True #ldiff = True
-#   explist = ['max-ens-2050','CESM-2050','max-2050','Ctrl-2050']; period = A10; case = 'prj'
+  explist = ['Ctrl','Ens-A','Ens-B','Ens-C','CESM','Unity']
+  case = 'val-cesm'; lbasins = True; period = H10 #; grid = ['arb2_d02']*2
 
-  reflist = ['max', 'max-ens', 'max', 'max']; refprd = H10; lfrac = True #ldiff = True
-  explist = ['max-2050','max-ens-2050','max-2100','seaice-2050']; period = [A10, A10, B10, A10]; case = 'max'
+#   explist = ['CESM-2050','max-ens-2050']; exptitles = ['CESM Ensemble Mean (2050)', 'WRF Ensemble Mean (2050)']
+#   case = 'prj'; lbasins = True; lsamesize = False; period = A10
+#   ldiff = True; reflist = ['CESM','max-ens']; refprd = H10; grid = ['arb2_d02']*2 # 'cesm1x1', 
 
-#   lfrac = True; reflist = ['Unity']; grid = 'arb2_d02'
-#   explist = ['CRU','PRISM','NARR','CFSR']; period = H10; case = 'obs'
-
-#   ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'; domain = (2,); WRFfiletypes=['srfc']
-#   explist = ['max','ctrl','new','milb','wdm6','tom']; period = H05; case = 'mp'
-
-#   ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'
-#   explist = ['max','max-nmp','new','new-grell']; period = H01; case = 'mpg'
-
-#   exptitles = [None,None,None,'GPCC (no data)']
-#   explist = ['max','ctrl','noah','CRU']; period = H10; case = 'val'
-#   explist = ['max','ctrl','cfsr','noah']; period = H10; case = 'hydro'
-#   explist = ['max','ctrl','new','CRU']; period = H10; case = 'val'
-#   explist = ['max','CRU','cfsr','ctrl']; period = H10; case = 'val'
-#   explist = ['max','ctrl','new','milb','wdm6','tom']; period = H05; case = 'mp'
-#   explist = ['max','Unity','max-A','max-B','NARR','max-C']; period = H10; case = 'ens'
-#   explist = ['max','max-A','max-B','max-C']; period = H10; case = 'ens'
-#   explist = ['max','cfsr','new','ctrl']; period = H10; case = 'hydro'
-#   explist = ['max','max-2050','gulf','seaice-2050']; period = [H10, A10, H10, A10]; case = 'mix'
-#   explist = ['seaice-2050','max-A-2050','max-B-2050','max-C-2050']; period = A10; case = 'ens-2050'
-#   ldiff = True; reflist = ['max','max-A','max-B','max-C']; refprd = H10
-#   explist = ['max-A','max-B','max-C','max-A-2050','max-B-2050','max-C-2050']
-#   period = ['1979-1987']*3+['2045-2053']*3; case = 'maxens'
-#   period = [A05,H05]+[A05]*4
-#   explist = ['PRISM','CRU','GPCC','NARR']
-#   grid = 'ARB_small_05'
-#   period = [None,H30,H30,H30]; case = 'obs'
-#   explist = ['max']; period = H10; case = 'test'
-#   explist = ['max','ctrl','new','noah']; reflist = ['Unity']; period = H10; case = 'val'; ldiff=True
-
-#   explist = ['GPCC','PRISM','CRU','GPCC']; period = [None,None,H30,H30]; case = 'obs05'
-#   maptype = 'lcc-new'; lstations = False; lbasins = False
-#   grid = [None, 'ARB_small_05', None,None]; res = '05'
-
-#   maptype = 'lcc-new'; lstations = True; lbasins = True
-#   explist = ['Ctrl']; period = H10; case = 'cesm' 
-#   grid = None
-
-#   lfrac = True; reflist = ['GPCC']; grid = 'ARB_large_025'
-#   maptype = 'lcc-large'; lstations = False; lbasins = False
-#   explist = ['CRU']; period = H10; case = 'cru'   
-#   lfrac = True; reflist = ['Unity']; grid = 'NARR'
-#   maptype = 'lcc-large'; lstations = False; lbasins = False
-#   explist = ['NARR']; period = H10; case = 'narr'   
+#   explist = ['Ctrl-2050','max-2050']; exptitles = ['CESM-1 (2050)', 'WRF-1 (2050)']
+#   case = 'prj-1'; lbasins = True; lsamesize = False; period = A10
+#   ldiff = True; reflist = ['Ctrl','max']; refprd = H10; grid = ['arb2_d02']*2 # 'cesm1x1', 
 
 #   maptype = 'ortho-NA'; lstations = False; lbasins = False; lframe = True; loutline = False
 #   explist = ['max-ens']; domain= (0,1); period = H10; case = 'ortho'
@@ -209,7 +160,7 @@ if __name__ == '__main__':
 #   varlist += ['Tmin', 'Tmax']
   varlist += ['precip']
 #   varlist += ['waterflx']
-  varlist += ['p-et']
+#   varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
 #   varlist += ['evap']
@@ -235,8 +186,8 @@ if __name__ == '__main__':
   seasons += ['annual']
   seasons += ['summer']
   seasons += ['winter']
-#   seasons += ['spring']    
-#   seasons += ['fall']
+  seasons += ['spring']    
+  seasons += ['fall']
   # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height
@@ -281,7 +232,8 @@ if __name__ == '__main__':
   
   
   # get figure settings
-  sf, figformat, margins, caxpos, subplot, figsize, cbo = getFigureSettings(nlen, cbar=True, cbo=cbo, figuretype=figuretype)
+  sf, figformat, margins, caxpos, subplot, figsize, cbo = getFigureSettings(nlen, cbar=True, cbo=cbo, 
+                                                             figuretype=figuretype, sameSize=lsamesize)
   
   # get projections settings
   projection, grid, res = mapSetup.getProjectionSettings()
