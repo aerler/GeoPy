@@ -34,8 +34,8 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-#   WRFfiletypes=['srfc']
-  WRFfiletypes = ['srfc','lsm','hydro','xtrm'] # WRF data source
+  WRFfiletypes=['srfc']
+#   WRFfiletypes = ['srfc','lsm','hydro','xtrm'] # WRF data source
   # figure directory
   folder = arb_figure_folder
   lpickle = True
@@ -71,6 +71,10 @@ if __name__ == '__main__':
   lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = False; lbasins = False
 
+  case = 'fdda'; lbasins = True
+  explist = ['max-fdda']; domain = (1,); period = H10
+  lfrac = True; reflist = ['max-nofdda']; grid = ['arb2_d01']
+  
 #   case = 'valobs'; lbasins = True
 #   explist = ['CESM', 'Unity', 'max-ens', 'max-ens']; domain = [None, None, 1, 2]; period = H10
 #   exptitles = ['CESM (80 km)', 'Merged Observations (10 km)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
@@ -86,8 +90,8 @@ if __name__ == '__main__':
 #   explist = ['max','max-A','max-B','max-C','max-ens','Unity']
 #   case = 'val-ens'; lbasins = True; period = H10 #; grid = ['arb2_d02']*2
 
-  explist = ['Ctrl','Ens-A','Ens-B','Ens-C','CESM','Unity']
-  case = 'val-cesm'; lbasins = True; period = H10 #; grid = ['arb2_d02']*2
+#   explist = ['Ctrl','Ens-A','Ens-B','Ens-C','CESM','Unity']
+#   case = 'val-cesm'; lbasins = True; period = H10 #; grid = ['arb2_d02']*2
 
 #   explist = ['CESM-2050','max-ens-2050']; exptitles = ['CESM Ensemble Mean (2050)', 'WRF Ensemble Mean (2050)']
 #   case = 'prj'; lbasins = True; lsamesize = False; period = A10

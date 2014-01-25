@@ -237,12 +237,12 @@ if __name__ == '__main__':
     # grid to project onto
     lpickle = True
 #     grids = dict(col1=['d03']) # dict with list of resolutions
-#     grids = dict(arb2=['d02']) # dict with list of resolutions
+    grids = dict(arb2=['d02']) # dict with list of resolutions
 #     grids = dict(grb1=['d01','d02']) # dict with list of resolutions
 #     grids = dict(ARB_small=['025']) # dict with list of resolutions    
 #     grids = dict(ARB_large=['025']) # dict with list of resolutions
 #     grids = dict(arb2=['d02'], ARB_small=['025','05']) # dict with list of resolutions
-    grids = dict(cesm1x1=[None]) # CESM grid
+#     grids = dict(cesm1x1=[None]) # CESM grid
 #     grids = dict(NARR=[None]) # CESM grid
   else:
     NP = NP or 4
