@@ -142,9 +142,9 @@ if __name__ == '__main__':
   ## settings
   # settings
   lprint = True 
-  expset = 'max-ens'
-  plottypes = ['temp','runoff','sfroff']
-#   plottypes = ['temp','precip','flux','sfflx','snwmlt']
+  expset = 'mean-diff'
+#   plottypes = ['temp','runoff','sfroff']
+  plottypes = ['temp','precip','flux','sfflx','snwmlt']
 #   plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
 #   plottypes = ['precip_alt']
@@ -154,7 +154,7 @@ if __name__ == '__main__':
   basin = 'athabasca'
   basin = 'fraser'
   domain = 2
-  period = 10
+  period = 15
   
   # some more settings
   tag = 'prism' if lPRISM else ''

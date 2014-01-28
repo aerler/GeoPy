@@ -206,29 +206,32 @@ if __name__ == '__main__':
   if ldebug:
     ldebug = False
     NP = NP or 4
-    loverwrite = True
+    loverwrite = False
     varlist = None
 #     varlist = ['precip',]
-#     periods = [5,10]
-#     periods = [10]
-#     periods = [(1997,1998)]
-    periods = [5,10,15]
+    periods = []
+    periods += [5]
+    periods += [10]
+    periods += [15]
 #     periods = [5,10,30]
+#     periods = [(1997,1998)]
     # Observations/Reanalysis
     datasets = []
-#     datasets = ['PRISM','GPCC']; periods = None
-#     datasets = ['CFSR', 'NARR']
-#     datasets = ['GPCC','CRU']; resolutions = {'GPCC':['05']}
+#     datasets += ['PRISM','GPCC']; periods = None
+    datasets += ['CFSR', 'NARR']
+#     datasets += ['GPCC','CRU']; resolutions = {'GPCC':['05']}
     resolutions = None
     # CESM
-    CESM_experiments = [] #None #['Ctrl']
+    CESM_experiments = []
+#     CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
+#     CESM_experiments += ['Ctrl-2050', 'Ens-A-2050', 'Ens-B-2050', 'Ens-C-2050']
     CESM_filetypes = ['atm','lnd']
     # WRF
     WRF_experiments = []
 #     WRF_experiments = ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments = ['max-ens-2050']
-    WRF_experiments = ['new','grell','gulf','cfsr-new']
+#     WRF_experiments = ['new','grell','gulf','cfsr-new']
 #     WRF_experiments = ['ctrl'] # WRF experiment names (passed through WRFname)
     domains = [1,2] # domains to be processed
 #     WRF_filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
@@ -236,13 +239,13 @@ if __name__ == '__main__':
 #     WRF_filetypes = ['srfc']
     # grid to project onto
     lpickle = True
-#     grids = dict(col1=['d03']) # dict with list of resolutions
-    grids = dict(arb2=['d02']) # dict with list of resolutions
-#     grids = dict(grb1=['d01','d02']) # dict with list of resolutions
-#     grids = dict(ARB_small=['025']) # dict with list of resolutions    
-#     grids = dict(ARB_large=['025']) # dict with list of resolutions
-#     grids = dict(arb2=['d02'], ARB_small=['025','05']) # dict with list of resolutions
-#     grids = dict(cesm1x1=[None]) # CESM grid
+    grids = dict()
+#     grids['col1'] = ['d03'] # innermost WRF Columbia domain
+#     grids['grb2'] = ['d02'] # Marc's standard GRB inner domain
+    grids['arb2'] = ['d02'] # WRF standard ARB inner domain
+    grids['ARB_small'] = ['025','05'] # small custom geographic grids
+#     grids['ARB_large'] = ['025','05'] # large custom geographic grids
+    grids['cesm1x1'] = [None] # CESM grid
 #     grids = dict(NARR=[None]) # CESM grid
   else:
     NP = NP or 4
@@ -356,4 +359,4 @@ if __name__ == '__main__':
   kwargs = dict(loverwrite=loverwrite, varlist=varlist)
           
   ## call parallel execution function
-  asyncPoolEC(performRegridding, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=False)
+  asyncPoolEC(performRegridding, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)

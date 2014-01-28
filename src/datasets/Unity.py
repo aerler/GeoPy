@@ -94,17 +94,18 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
   
   # settings to generate dataset
-  grid = 'arb2_d01'
+#   grid = 'arb2_d01'
 #   grid = 'arb2_d02'
 #   grid = 'grb1_d01'
 #   grid = 'grb1_d02'
 #   grid = 'ARB_small_025'
 #   grid = 'ARB_large_025'
-#   grid = 'cesm1x1'
+  grid = 'cesm1x1'
 #   grid = 'NARR'
 #   period = (1979,1982)
 #   period = (1979,1984)
-  period = (1979,1989)
+#   period = (1979,1989)
+  period = (1979,1994)
 #   period = (1997,1998)
 #   period = (1979,1980)
 #   period = (1979,2009)

@@ -45,7 +45,7 @@ annotation_dict['lcc-col'] = dict(scale=(-116.75, 48.25, -120, 55, 400), lat_ful
 annotation_dict['lcc-arb'] = dict(scale=(-111, 52, -120, 55, 400), lat_full=[50,60], lat_half=[45,55,65], 
                              lon_full=[-120,-110], lon_half=[-125,-115,-105])
 ## Lambert Conic Conformal - New Fine Domain
-annotation_dict['lcc-new'] = dict(scale=(-128, 48, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
+annotation_dict['lcc-new'] = dict(scale=(-128.5, 48, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
                              lon_full=[-180,-160,-140,-120,-100], lon_half=[-170,-150,-130,-110])
 ## Lambert Conic Conformal - Fine Domain
 annotation_dict['lcc-fine'] = dict(scale=(-136, 49, -137, 57, 800), lat_full=[45,65], lat_half=[55,75], 

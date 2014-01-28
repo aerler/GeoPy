@@ -71,31 +71,39 @@ if __name__ == '__main__':
   lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = False; lbasins = False
 
-  case = 'fdda'; lbasins = True
-  explist = ['max-fdda']; domain = (1,); period = H10
-  lfrac = True; reflist = ['max-nofdda']; grid = ['arb2_d01']
+#   case = 'cu'; lbasins = True
+#   explist = ['max', 'max-nosub','max-kf','max-nmp']; domain = (2,); period = H05
+#   ldiff = True; reflist = ['Unity']; grid = ['arb2_d02']
   
 #   case = 'valobs'; lbasins = True
-#   explist = ['CESM', 'Unity', 'max-ens', 'max-ens']; domain = [None, None, 1, 2]; period = H10
+#   explist = ['CESM', 'Unity', 'max-ens', 'max-ens']; domain = [None, None, 1, 2]; period = H15
 #   exptitles = ['CESM (80 km)', 'Merged Observations (10 km)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
 
 #   explist = ['CESM','max-ens']; exptitles = ['CESM Ensemble Mean', 'WRF Ensemble Mean (10 km)']
-#   case = 'val_hires'; lbasins = True; lsamesize = False; period = H10; grid = ['arb2_d02']*2
-#   lfrac = True; reflist = ['Unity']; grid = ['cesm1x1','arb2_d02']
+#   case = 'val'; lbasins = True; lsamesize = False; period = H15
+#   ldiff = True; reflist = ['Unity']; grid = ['cesm1x1','arb2_d02']
 
 #   explist = ['Ctrl','max']; exptitles = ['CESM-1', 'WRF-1 (10 km)']
-#   case = 'val'; lbasins = True; lsamesize = False; period = H10 #; grid = ['arb2_d02']*2
+#   case = 'val'; lbasins = True; lsamesize = False; period = H15 #; grid = ['arb2_d02']*2
 #   lfrac = True; reflist = ['Unity']; grid = ['cesm1x1','arb2_d02']
 
-#   explist = ['max','max-A','max-B','max-C','max-ens','Unity']
-#   case = 'val-ens'; lbasins = True; period = H10 #; grid = ['arb2_d02']*2
+  explist = ['max','max-A','NARR','max-B','max-C','Unity']
+  case = 'val-ens'; lbasins = True; period = H15 #; grid = ['arb2_d02']*2
 
 #   explist = ['Ctrl','Ens-A','Ens-B','Ens-C','CESM','Unity']
-#   case = 'val-cesm'; lbasins = True; period = H10 #; grid = ['arb2_d02']*2
+#   case = 'val-cesm'; lbasins = True; period = H15 #; grid = ['arb2_d02']*2
 
 #   explist = ['CESM-2050','max-ens-2050']; exptitles = ['CESM Ensemble Mean (2050)', 'WRF Ensemble Mean (2050)']
-#   case = 'prj'; lbasins = True; lsamesize = False; period = A10
-#   ldiff = True; reflist = ['CESM','max-ens']; refprd = H10; grid = ['arb2_d02']*2 # 'cesm1x1', 
+#   case = 'prj'; lbasins = True; lsamesize = False; period = A15
+#   ldiff = True; reflist = ['CESM','max-ens']; refprd = H15; grid = ['cesm1x1','arb2_d02'] 
+
+#   explist = ['max-ens-2050']*2; exptitles = ['Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
+#   case = 'prj_d01'; lbasins = True; lsamesize = False; period = A15
+#   ldiff = True; reflist = ['max-ens']*2; refprd = H15; grid = ['arb2_d01','arb2_d02']; domain = [1,2]
+
+#   case = 'hydro'; lbasins = True; lsamesize = True; exptitles = [' ']
+# #   explist = ['max-ens']; period = H15
+#   explist = ['max-ens-2050']; period = A15; ldiff = True; reflist = ['max-ens']; refprd = H15
 
 #   explist = ['Ctrl-2050','max-2050']; exptitles = ['CESM-1 (2050)', 'WRF-1 (2050)']
 #   case = 'prj-1'; lbasins = True; lsamesize = False; period = A10
@@ -160,7 +168,7 @@ if __name__ == '__main__':
   varlist = []; seasons = []
   # variables
 #   varlist += ['Ts']
-#   varlist += ['T2']
+  varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
   varlist += ['precip']
 #   varlist += ['waterflx']
@@ -190,8 +198,8 @@ if __name__ == '__main__':
   seasons += ['annual']
   seasons += ['summer']
   seasons += ['winter']
-  seasons += ['spring']    
-  seasons += ['fall']
+#   seasons += ['spring']    
+#   seasons += ['fall']
   # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height

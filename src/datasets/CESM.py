@@ -112,7 +112,8 @@ class ATM(FileType):
                      PS       = dict(name='ps', units='Pa'), # surface pressure
                      PSL      = dict(name='pmsl', units='Pa'), # mean sea level pressure
                      PHIS     = dict(name='zs', units='m', scalefactor=1./9.81), # surface elevation
-                     LANDFRAC = dict(name='landfrac', units='')) # land fraction
+                     #LANDFRAC = dict(name='landfrac', units=''), # land fraction
+                     )
     self.vars = self.atts.keys()    
     self.climfile = 'cesmatm{0:s}_clim{1:s}.nc' # the filename needs to be extended by ('_'+grid,'_'+period)
     self.tsfile = NotImplemented # native CESM output
@@ -122,7 +123,8 @@ class LND(FileType):
   def __init__(self):
     self.atts = dict(#topo     = dict(name='zs', units='m', scalefactor=0.1), # surface elevation
                      landmask = dict(name='landmask', units=''), # land mask
-                     landfrac = dict(name='landfrac', units='')) # land fraction
+                     landfrac = dict(name='landfrac', units=''),
+                     ) # land fraction
 #                      ALBEDO = dict(name='A', units=''), # Albedo
 #                      SNOWC  = dict(name='snwcvr', units=''), # snow cover (binary)
 #                      ACSNOM = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
@@ -252,7 +254,7 @@ if __name__ == '__main__':
   mode = 'shift_lon'
   experiment = 'Ctrl'  
   filetypes = ['atm','lnd',]
-  grids = ['cesm1x1']; experiments = ['Ctrl']
+  grids = ['cesm1x1']; experiments = ['CESM']
 
   # pickle grid definition
   if mode == 'pickle_grid':
@@ -305,7 +307,7 @@ if __name__ == '__main__':
   # shift dataset from 0-360 to -180-180
   elif mode == 'shift_lon':
 
-    prdlen = 10
+    prdlen = 15    
 #     experiments = ['Ctrl']
     experiments = CESM_experiments.keys()
     

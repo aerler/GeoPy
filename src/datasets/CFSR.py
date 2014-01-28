@@ -105,7 +105,7 @@ def loadCFSR_TS(name=dataset_name, varlist=None, varatts=varatts, resolution='hi
         var.squeeze() # remove time dimension
         dataset.addVariable(var, copy=False) # no need to copy... but we can't write to the netcdf file!
   # add projection  
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, folder=grid_folder)
+  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
   # N.B.: projection should be auto-detected as geographic
   # return formatted dataset
   return dataset
@@ -156,15 +156,16 @@ loadClimatology = loadCFSR # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-  mode = 'test_climatology'
-#   mode = 'average_timeseries'
+#   mode = 'test_climatology'
+  mode = 'average_timeseries'
 #   reses = ('05',) # for testing
   reses = ( '031','05',)
-  period = (1979,1984)
-  period = (1979,1989)
+#   period = (1979,1984)
+#   period = (1979,1989)
+  period = (1979,1994)
 #   period = (1997,1998)
-  period = (1979,2009) 
-  grid = 'arb1_d01'
+#   period = (1979,2009) 
+#   grid = 'arb1_d01'
   
   # generate averaged climatology
   for res in reses:    
@@ -216,8 +217,8 @@ if __name__ == '__main__':
       sink.axisAnnotation('name_of_month', name_of_month, 'time', 
                           atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
       #print '   ===   month   ===   '
-      sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
-                    atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
+#       sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
+#                     atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
       
       # close...
       sink.sync()

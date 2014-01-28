@@ -109,7 +109,7 @@ def loadNARR_TS(name=dataset_name, varlist=tsvarlist, varatts=varatts, filelist=
                           atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
   # add projection
   projection = getProjFromDict(projdict, name='{0:s} Coordinate System'.format(name))
-  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None, folder=grid_folder)
+  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None, gridfolder=grid_folder)
   # return formatted dataset
   return dataset
 
@@ -147,13 +147,14 @@ loadClimatology = loadNARR # pre-processed, standardized climatology
 if __name__ == '__main__':
     
   
-  mode = 'test_climatology'
-#   mode = 'average_timeseries'
+#   mode = 'test_climatology'
+  mode = 'average_timeseries'
 #   mode = 'convert_climatology'
   grid = 'NARR'
-  period = (1979,1984)
-  period = (1979,1989)
-  period = (1979,2009)
+#   period = (1979,1984)
+#   period = (1979,1989)
+  period = (1979,1994)
+#   period = (1979,2009)
   
   if mode == 'test_climatology':
     
@@ -240,8 +241,8 @@ if __name__ == '__main__':
     sink.axisAnnotation('name_of_month', name_of_month, 'time', 
                         atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
     #print '   ===   month   ===   '
-    sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
-                  atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
+#     sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
+#                   atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
     
     # close...
     sink.sync()
