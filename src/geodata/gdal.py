@@ -692,7 +692,7 @@ def rasterizeShape(name=None, griddef=None, folder=None, filename=None, invert=F
   else: inside, outside = 0,1
   # resolve file name and open file
   if ldebug: print(' - loading shapefile')
-  if filename is None: filename = name
+  if filename is None: filename = name + '.shp'
   if name is None: name = filename
   if folder is not None: filename = folder + '/' + filename
   if not os.path.exists(filename): raise IOError, 'File \'{}\' not found!'.format(filename)

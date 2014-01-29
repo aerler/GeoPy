@@ -1,7 +1,7 @@
 '''
 Created on 2013-11-14
 
-A simple script to plot basin-averaged monthly climatologies. 
+A simple script to plot area-averaged monthly climatologies. 
 
 @author: Andre R. Erler, GPL v3
 '''
@@ -23,10 +23,13 @@ from plotting.settings import getFigureSettings
 # ARB project related stuff
 from plotting.ARB_settings import arb_figure_folder
 
-def getVarSettings(plottype, basin, lPRISM=False, mode='all'):
+def getVarSettings(plottype, area, lPRISM=False, mode='all'):
   flxlabel = r'Water Flux [$10^6$ kg/s]' 
-  if basin == 'athabasca': flxlim = (-2,4) if lPRISM else (-2,6)
-  elif basin == 'fraser': flxlim = (-4,16)
+  if area == 'athabasca': flxlim = (-2,4) if lPRISM else (-3,7)
+  elif area == 'fraser': flxlim = (-5,20)
+  elif area == 'northcoast': flxlim = (0,35)
+  elif area == 'southcoast': flxlim = (-5,25)
+  else: flxlim = (-5,20)
   if plottype == 'heat':
     varlist = ['lhfx','hfx']; filetypes = ['hydro','srfc']; 
     lsum = False; leg = (2,3); ylabel = r'Heat Flux [W m$^{-2}$]'; ylim = (-50,150)  
@@ -144,15 +147,17 @@ if __name__ == '__main__':
   lprint = True 
   expset = 'mean-diff'
 #   plottypes = ['temp','runoff','sfroff']
-  plottypes = ['temp','precip','flux','sfflx','snwmlt']
+  plottypes = ['temp','precip'] # ,'flux','sfflx','snwmlt']
 #   plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
 #   plottypes = ['precip_alt']
   lPRISM = False
   lUnity = True
   titles = None
-  basin = 'athabasca'
-  basin = 'fraser'
+  area = 'athabasca'
+#   area = 'fraser'
+#   area = 'northcoast'
+#   area = 'southcoast'
   domain = 2
   period = 15
   
@@ -170,7 +175,7 @@ if __name__ == '__main__':
   loadlist = set(['datamask']); allfiletypes = set()
   lCFSR = False; lNARR = False
   for plottype in plottypes:
-    varlist, filetypes, lcfsr, lnarr = getVarSettings(plottype, basin, lPRISM=lPRISM, mode='load')
+    varlist, filetypes, lcfsr, lnarr = getVarSettings(plottype, area, lPRISM=lPRISM, mode='load')
     loadlist = loadlist.union(varlist)
     allfiletypes = allfiletypes.union(filetypes)
     lCFSR = lCFSR or lcfsr; lNARR = lNARR or lnarr
@@ -193,15 +198,23 @@ if __name__ == '__main__':
   print ref.name
   
   ## create averaging mask
-  if basin == 'athabasca': basinname='Athabasca_River_Basin'
-  elif basin == 'fraser': basinname = 'Fraser_River_Basin'
-  else: raise ValueError, 'Have to specify a river basin or other shapefile to use as mask!'
-  shp_mask = rasterizeShape(name=basinname, griddef=ref.griddef, folder=ref.gridfolder)
+  gridfolder = ref.gridfolder + 'WSC/' 
+  if area == 'athabasca': 
+    areaname= 'WholeARB'; gridfolder += 'Athabasca River Basin/'
+  elif area == 'fraser': 
+    areaname = 'WholeFRB'; gridfolder += 'Fraser River Basin/'
+  elif area == 'northcoast': 
+    areaname = 'NorthernPSB'; gridfolder += 'Pacific Seaboard/'
+  elif area == 'southcoast': 
+    areaname = 'SouthernPSB'; gridfolder += 'Pacific Seaboard/'
+  else: 
+    raise ValueError, 'Have to specify a river area or other shapefile to use as mask!'
+  shp_mask = rasterizeShape(name=areaname, griddef=ref.griddef, folder=gridfolder)
   if lPRISM: shp_mask = (shp_mask + prism.datamask.getArray(unmask=True,fillValue=1)).astype(np.bool)
   # display
 #   pyl.imshow(np.flipud(shp_mask[:,:])); pyl.colorbar(); pyl.show(block=True)
  
-  ## apply basin mask
+  ## apply area mask
   for exptpl in exps:
     for exp in exptpl:
       exp.load()
@@ -231,7 +244,7 @@ if __name__ == '__main__':
 
   ## loop over plottypes
   for plottype in plottypes:
-    varlist, lsum, leg, ylabel, ylim, lCFSR, lNARR = getVarSettings(plottype, basin, lPRISM=lPRISM, mode='plot')
+    varlist, lsum, leg, ylabel, ylim, lCFSR, lNARR = getVarSettings(plottype, area, lPRISM=lPRISM, mode='plot')
     #lCFSR = False; lNARR = False
 #     lCFSR = lCFSR and lcfsr; lNARR = lNARR and lnarr
     S = asf if lsum else 1. # apply scale factor, depending on plot type  
@@ -387,12 +400,16 @@ if __name__ == '__main__':
       
     # save figure to disk
     if lprint:        
-      if basin == 'athabasca': 
-        basintag='ARB'; folder = arb_figure_folder + '/Athabasca River Basin/' 
-      elif basin == 'fraser': 
-        basintag = 'FRB'; folder = arb_figure_folder + '/Fraser River Basin/'
+      if area == 'athabasca': 
+        areatag='ARB'; folder = arb_figure_folder + '/Athabasca River Basin/' 
+      elif area == 'fraser': 
+        areatag = 'FRB'; folder = arb_figure_folder + '/Fraser River Basin/'
+      elif area == 'northcoast': 
+        areatag = 'NPSB'; folder = arb_figure_folder + '/Northern Pacific Seaboard/'    
+      elif area == 'southcoast': 
+        areatag = 'SPSB'; folder = arb_figure_folder + '/Southern Pacific Seaboard/'    
       tag = '_'+tag if tag else '' 
-      filename = '{0:s}_{1:s}_{2:s}{3:s}.png'.format(basintag,plottype,expset,tag)
+      filename = '{0:s}_{1:s}_{2:s}{3:s}.png'.format(areatag,plottype,expset,tag)
       print('\nSaving figure in '+filename)
       fig.savefig(folder+filename, **sf) # save figure to pdf
       print(folder)
