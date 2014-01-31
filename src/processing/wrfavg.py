@@ -177,18 +177,20 @@ if __name__ == '__main__':
     NP = NP or 4
     loverwrite = False
     varlist = None # ['precip', ]
+    experiments = []
     #experiments = ['new','noah','max','max-2050']
-#     experiments = ['new-grell','new','max-nmp','max']
+#     experiments = ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
 #     experiments = ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     experiments = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
     experiments = ['max-nofdda','max-fdda']
-    periods = [5,10]
-#     periods = [15]
+    periods = []
+#     periods += [3]
+    periods += [5,10]
     domains = [1,] # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
-    filetypes = ['srfc','xtrm','lsm','hydro']
-#     filetypes = ['plev3d'] # filetypes to be processed
+#     filetypes = ['srfc','xtrm','lsm','hydro']
+    filetypes = ['hydro'] # filetypes to be processed
     grid = 'WRF' 
   else:
     NP = NP or 4

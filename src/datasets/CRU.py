@@ -11,7 +11,7 @@ import os
 import types # to add precip conversion fct. to datasets
 # internal imports
 from geodata.base import Variable
-from geodata.netcdf import DatasetNetCDF, VarNC
+from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition
 from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim, grid_folder
 from processing.process import CentralProcessingUnit
@@ -122,10 +122,11 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
   mode = 'average_timeseries'
 #   period = (1979,2009)
+  period = (1949,2009)
 #   period = (1979,1982)
 #   period = (1979,1984)
 #   period = (1979,1989)
-  period = (1979,1994)
+#   period = (1979,1994)
 #   period = (1979,1980)
 #   period = (1997,1998)
 

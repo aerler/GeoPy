@@ -41,7 +41,7 @@ if __name__ == '__main__':
   lpickle = True
   # period shortcuts
   H01 = '1979-1980'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
-  H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994' # historical validation periods
+  H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994'; H60 = '1949-2009' # historical validation periods
   G10 = '1969-1979'; I10 = '1989-1999'; J10 = '1999-2009' # additional historical periods
   A03 = '2045-2048'; A05 = '2045-2050'; A09 = '2045-2054'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
   B03 = '2085-2088'; B05 = '2085-2900'; B10 = '2085-2095'; B15 = '2085-2100' # late 21st century  
@@ -79,16 +79,16 @@ if __name__ == '__main__':
 #   explist = ['CESM', 'Unity', 'max-ens', 'max-ens']; domain = [None, None, 1, 2]; period = H15
 #   exptitles = ['CESM (80 km)', 'Merged Observations (10 km)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
 
-#   explist = ['CESM','max-ens']; exptitles = ['CESM Ensemble Mean', 'WRF Ensemble Mean (10 km)']
-#   case = 'val'; lbasins = True; lsamesize = False; period = H15
-#   ldiff = True; reflist = ['Unity']; grid = ['cesm1x1','arb2_d02']
+  explist = ['CESM','max-ens']; exptitles = ['CESM Ensemble Mean', 'WRF Ensemble Mean (10 km)']
+  case = 'val'; lbasins = True; lsamesize = False; period = H15
+  ldiff = True; reflist = ['Unity']; refprd = H30; grid = ['cesm1x1','arb2_d02'] # grid = ['arb2_d02']*2
 
 #   explist = ['Ctrl','max']; exptitles = ['CESM-1', 'WRF-1 (10 km)']
 #   case = 'val'; lbasins = True; lsamesize = False; period = H15 #; grid = ['arb2_d02']*2
 #   lfrac = True; reflist = ['Unity']; grid = ['cesm1x1','arb2_d02']
 
-  explist = ['max','max-A','NARR','max-B','max-C','Unity']
-  case = 'val-ens'; lbasins = True; period = H15 #; grid = ['arb2_d02']*2
+#   explist = ['max-A','max','Unity','max-B','max-C','NARR']
+#   case = 'val-ens'; lbasins = True; period = H15; #grid = ['arb2_d02']
 
 #   explist = ['Ctrl','Ens-A','Ens-B','Ens-C','CESM','Unity']
 #   case = 'val-cesm'; lbasins = True; period = H15 #; grid = ['arb2_d02']*2
@@ -97,13 +97,21 @@ if __name__ == '__main__':
 #   case = 'prj'; lbasins = True; lsamesize = False; period = A15
 #   ldiff = True; reflist = ['CESM','max-ens']; refprd = H15; grid = ['cesm1x1','arb2_d02'] 
 
-#   explist = ['max-ens-2050']*2; exptitles = ['Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
-#   case = 'prj_d01'; lbasins = True; lsamesize = False; period = A15
-#   ldiff = True; reflist = ['max-ens']*2; refprd = H15; grid = ['arb2_d01','arb2_d02']; domain = [1,2]
+#   explist = ['cfsr','CESM','max-ens','max-ens']; exptitles = [None, None, 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
+#   case = 'res'; lbasins = True; lsamesize = False; period = H15
+#   ldiff = True; reflist = ['Unity']; refprd = H15; grid = ['arb2_d02']*4; domain = [2,None,1,2]
 
 #   case = 'hydro'; lbasins = True; lsamesize = True; exptitles = [' ']
 # #   explist = ['max-ens']; period = H15
 #   explist = ['max-ens-2050']; period = A15; ldiff = True; reflist = ['max-ens']; refprd = H15
+
+#   explist = ['max','new-grell-old','max-clm','max-nmp-old'] 
+#   case = 'nmp'; lbasins = True; lsamesize = False; period = H03
+#   ldiff = True; reflist = ['Unity']; grid = ['arb2_d02','arb3_d02']+['arb2_d02']*2
+
+#   explist = ['max-kf','max','new','ctrl','wdm6','tom'] 
+#   case = 'mpcu'; lbasins = True; lsamesize = False; period = H05
+#   ldiff = True; reflist = ['Unity']; grid = ['arb2_d02','arb2_d02','arb3_d02']+['arb2_d02']*3
 
 #   explist = ['Ctrl-2050','max-2050']; exptitles = ['CESM-1 (2050)', 'WRF-1 (2050)']
 #   case = 'prj-1'; lbasins = True; lsamesize = False; period = A10
@@ -168,7 +176,7 @@ if __name__ == '__main__':
   varlist = []; seasons = []
   # variables
 #   varlist += ['Ts']
-  varlist += ['T2']
+#   varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
   varlist += ['precip']
 #   varlist += ['waterflx']
@@ -198,8 +206,8 @@ if __name__ == '__main__':
   seasons += ['annual']
   seasons += ['summer']
   seasons += ['winter']
-#   seasons += ['spring']    
-#   seasons += ['fall']
+  seasons += ['spring']    
+  seasons += ['fall']
   # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height
@@ -398,12 +406,12 @@ if __name__ == '__main__':
               # N.B.: for some reason, using np.ones_like() causes a masked data array to fill with zeros  
               #print bdy.mean(), data[n][m].__class__.__name__, data[n][m].fill_value 
               bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
-              maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', linewidths=framewidths, fill=False) # draw boundary of domain domain
+              maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', linewidths=framewidths, fill=False) # draw boundary of data
             if lframe:
               if isinstance(domain,(tuple,list)) and not ( domain[0] == 0 and m == 0):
                 bdy = ma.ones(x[n][m].shape)   
                 bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
-                maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', linewidths=framewidths, fill=False) # draw boundary of data
+                maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', linewidths=framewidths, fill=False) # draw boundary of domain
       # draw data
       norm = mpl.colors.Normalize(vmin=min(clevs),vmax=max(clevs),clip=True) # for colormap
       cd = []
