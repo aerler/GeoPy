@@ -81,7 +81,8 @@ experiments['max-nmp'] = Exp(shortname='max-nmp', name='max-nmp', title='Max-1 (
 experiments['max-nofdda'] = Exp(shortname='max-nofdda', name='max-nofdda', title='Max-1 (No Nudging)', begindate='1979-01-01', grid='arb2')
 experiments['max-fdda'] = Exp(shortname='max-fdda', name='max-fdda', title='Max-1 (Nudging++)', begindate='1979-01-01', grid='arb2')
 experiments['max-hilev'] = Exp(shortname='hilev', name='max-hilev', title='Max-1 (hilev)', begindate='1979-01-01', grid='arb2')
-experiments['max-lowres'] = Exp(shortname='lowres', name='max-lowres', title='Max-1 (lowres)', begindate='1979-01-01', grid='arb2')
+experiments['max-1deg'] = Exp(shortname='1deg', name='max-1deg', title='Max-1 (1 deg.)', begindate='1979-01-01', grid='arb2')
+experiments['max-cg'] = Exp(shortname='cg', name='max-cg', title='Max-1 (CG)', begindate='1979-01-01', grid='arb2')
 experiments['max-gulf'] = Exp(shortname='gulf', name='max-gulf', title='Max-1 (Gulf)', begindate='1979-01-01', grid='arb3') # ARB3 domain
 experiments['max-ensemble'] = Exp(shortname='max-ens', name='max-ensemble', title='Max Ensemble Mean', begindate='1979-01-01', grid='arb2', parent='CESM')
 experiments['max-ctrl'] = Exp(shortname='max', name='max-ctrl', title='Max-1', begindate='1979-01-01', grid='arb2')

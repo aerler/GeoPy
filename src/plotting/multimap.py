@@ -79,9 +79,9 @@ if __name__ == '__main__':
 #   explist = ['CESM', 'Unity', 'max-ens', 'max-ens']; domain = [None, None, 1, 2]; period = H15
 #   exptitles = ['CESM (80 km)', 'Merged Observations (10 km)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
 
-  explist = ['CESM','max-ens']; exptitles = ['CESM Ensemble Mean', 'WRF Ensemble Mean (10 km)']
-  case = 'val'; lbasins = True; lsamesize = False; period = H15
-  ldiff = True; reflist = ['Unity']; refprd = H30; grid = ['cesm1x1','arb2_d02'] # grid = ['arb2_d02']*2
+#   explist = ['CESM','max-ens']; exptitles = ['CESM Ensemble Mean', 'WRF Ensemble Mean (10 km)']
+#   case = 'val'; lbasins = True; lsamesize = False; period = H15
+#   ldiff = True; reflist = ['Unity']; refprd = H30; grid = ['cesm1x1','arb2_d02'] # grid = ['arb2_d02']*2
 
 #   explist = ['Ctrl','max']; exptitles = ['CESM-1', 'WRF-1 (10 km)']
 #   case = 'val'; lbasins = True; lsamesize = False; period = H15 #; grid = ['arb2_d02']*2
@@ -104,6 +104,10 @@ if __name__ == '__main__':
 #   case = 'hydro'; lbasins = True; lsamesize = True; exptitles = [' ']
 # #   explist = ['max-ens']; period = H15
 #   explist = ['max-ens-2050']; period = A15; ldiff = True; reflist = ['max-ens']; refprd = H15
+
+  case = 'lowres-max'; lbasins = True
+  explist = ['Ctrl', 'max', 'max-1deg', 'Unity']; domain = [None, 1, 2, None]; period = [H10, H01, H01, H01]
+  ldiff = True; reflist = ['max']; refdom = 2; grid = ['cesm1x1','arb2_d01','arb2_d02','arb2_d02'];
 
 #   explist = ['max','new-grell-old','max-clm','max-nmp-old'] 
 #   case = 'nmp'; lbasins = True; lsamesize = False; period = H03

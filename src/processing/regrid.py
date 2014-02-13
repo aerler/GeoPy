@@ -206,14 +206,15 @@ if __name__ == '__main__':
   if ldebug:
     ldebug = False
     NP = NP or 4
-    loverwrite = True
+    loverwrite = False
     varlist = None
 #     varlist = ['precip',]
     periods = []
+    periods += [1]
 #     periods += [3]
-    periods += [5]
-    periods += [10]
-    periods += [15]
+#     periods += [5]
+#     periods += [10]
+#     periods += [15]
 #     periods += [30]
 #     periods += [(1949,2009)]
 #     periods += [(1997,1998)]
@@ -231,13 +232,15 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm','lnd']
     # WRF
     WRF_experiments = []
-    WRF_experiments += ['max','max-A','max-nofdda','max-fdda']
+    WRF_experiments += ['max']
+#     WRF_experiments += ['max','max-lowres','max-nmp','max-nosub']
+#     WRF_experiments += ['max','max-A','max-nofdda','max-fdda']
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ens','max-ens-2050']
 #     WRF_experiments += ['new','grell','gulf','cfsr-new']
 #     WRF_experiments = ['new-grell-old'] # WRF experiment names (passed through WRFname)
-    domains = [1] # domains to be processed
+    domains = [1,2] # domains to be processed
     WRF_filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
 #     WRF_filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
 #     WRF_filetypes = ['srfc']
@@ -246,7 +249,7 @@ if __name__ == '__main__':
     grids = dict()
 #     grids['col1'] = ['d03'] # innermost WRF Columbia domain
 #     grids['grb2'] = ['d02'] # Marc's standard GRB inner domain
-    grids['arb2'] = ['d02'] # WRF standard ARB inner domain
+    grids['arb2'] = ['d02','d01'] # WRF standard ARB inner domain
 #     grids['arb3'] = ['d02'] # WRF new ARB inner domain
 #     grids['ARB_small'] = ['025','05'] # small custom geographic grids
 #     grids['ARB_large'] = ['025','05'] # large custom geographic grids

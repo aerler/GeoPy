@@ -20,6 +20,7 @@ from processing.process import CentralProcessingUnit
 ## CRU Meta-data
 
 dataset_name = 'CRU'
+root_folder = data_root + dataset_name + '/'
 
 # CRU grid definition           
 geotransform = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)
@@ -50,10 +51,7 @@ varlist = varatts.keys() # also includes coordinate fields
 
 # variable and file lists settings
 nofile = ('lat','lon','time') # variables that don't have their own files
-filename = 'cru_ts3.20.1901.2011.%s.dat.nc' # file names, need to extend with %varname (original)
-
-# variable and file lists settings
-root_folder = data_root + dataset_name + '/' # long-term mean folder
+filename = 'cru_ts3.20.1901.2011.{0:s}.dat.nc' # file names, need to extend with %varname (original)
 
 
 ## Functions to load different types of GPCC datasets 
@@ -73,7 +71,7 @@ def loadCRU_TS(name=dataset_name, varlist=varlist, varatts=varatts, filelist=Non
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   # assemble filelist
   if filelist is None: # generate default filelist
-    filelist = [filename%var for var in varlist if var not in nofile]
+    filelist = [filename.format(var) for var in varlist if var not in nofile]
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           multifile=False, ncformat='NETCDF4_CLASSIC')

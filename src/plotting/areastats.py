@@ -45,6 +45,9 @@ def getVarSettings(plottype, area, lPRISM=False, mode='all'):
   elif plottype == 'precip':
       varlist = ['precip','liqprec','solprec']; filetypes = ['hydro'] # 
       lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim  
+  elif plottype == 'precip_types':
+      varlist = ['precip','preccu','precnc']; filetypes = ['srfc'] # 
+      lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim        
   elif plottype == 'p-et':
     varlist = ['p-et','precip']; filetypes = ['hydro'] # 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
@@ -83,15 +86,24 @@ def getDatasets(expset, titles=None):
   elif expset == 'noahmp+': 
     explist = [('new','noah','max')]
     titles = 'Noah-MP vs. Noah'
-    linestyles = ('-','--','-.')
+#     linestyles = ('-','--','-.')
   elif expset == 'noahmp': 
     explist = [('new','noah')]
     titles = 'Noah-MP vs. Noah'
-    linestyles = ('-','--')
+#     linestyles = ('-','--')
+  elif expset == 'newmax': 
+    explist = ['gulf','new','max','noah']
+    explist = [(exp,'max-ens') for exp in explist]
+  elif expset == 'micro': 
+    explist = ['max-kf','wdm6','ctrl','tom']
+    explist = [(exp,'max-ens') for exp in explist]  
   elif expset == 'mpg': 
     explist = ['max','new','max-nmp','max-nmp-old']  
   elif expset == 'clm': 
-    explist = ['max','new-grell-old','max-clm','max-nmp-old']    
+    explist = ['max','new-grell-old','max-clm','max-nmp-old']
+  elif expset == 'newnmp': 
+    explist = ['max','noah','max-nmp-old','new']
+    explist = [(exp,'max-ens') for exp in explist]    
   elif expset == 'dom': 
     explist = ['max','gulf','new','nogulf']  
   elif expset == 'wrf-proj': 
@@ -143,6 +155,8 @@ def getDatasets(expset, titles=None):
     elif expset == 'max-ens': titles = 'WRF Ensemble Mean (Historical Period)'
   # expand linestyles
   linestyles = [linestyles,]*len(explist)
+  # titles
+  if isinstance(explist[0],(list,tuple)): titles = [exp[0] for exp in explist] 
   # return dataset names
   return explist, titles, linestyles
 
@@ -153,12 +167,12 @@ if __name__ == '__main__':
   ## settings
   # settings
   lprint = True 
-  expset = 'max-all-diff'
+  expset = 'noahmp+'
 #   plottypes = ['temp','runoff','sfroff']
 #   plottypes = ['temp','flux'] # ,'flux','sfflx','snwmlt']
 #   plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
-  plottypes = ['flux']
+  plottypes = ['precip_types']
   lPRISM = False
   lUnity = True
   titles = None
@@ -169,6 +183,7 @@ if __name__ == '__main__':
   areas += ['southcoast']
   domain = 2
   periods = []
+#   periods += [5]
 #   periods += [10]
   periods += [15]
   
@@ -304,6 +319,8 @@ if __name__ == '__main__':
               elif var == 'precip': color = 'green'
               elif var == 'liqprec': color = 'blue'
               elif var == 'solprec': color = 'cyan'
+              elif var == 'preccu': color = 'blue'
+              elif var == 'precnc': color = 'cyan'
               elif var == 'p-et': color = 'red'
               elif var == 'waterflx': color = 'blue'
               elif var == 'snwmlt': color = 'coral'

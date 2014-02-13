@@ -70,7 +70,7 @@ else:
   data_root = '/home/me/DATA/PRISM/'
 # standard folder for grids and shapefiles  
 grid_folder = data_root + '/grids/' # folder for pickled grids
-
+shape_folder = data_root + '/shapes/' # folder for pickled grids
  
 
 # convenience function to extract landmask variable from another masked variable

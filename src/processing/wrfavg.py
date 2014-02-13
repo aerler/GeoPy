@@ -182,15 +182,18 @@ if __name__ == '__main__':
 #     experiments = ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
 #     experiments = ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     experiments = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-    experiments = ['max-nofdda','max-fdda']
+#     experiments = ['max-nofdda','max-fdda']
+    experiments = ['max-1deg', 'max']
     periods = []
+    periods += [1]
 #     periods += [3]
-    periods += [5,10]
-    domains = [1,] # domains to be processed
+#     periods += [5]
+#     periods += [10]
+    domains = [1,2] # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
-#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','lsm','hydro']
-    filetypes = ['hydro'] # filetypes to be processed
+#     filetypes = ['hydro'] # filetypes to be processed
     grid = 'WRF' 
   else:
     NP = NP or 4
