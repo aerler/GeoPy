@@ -1,7 +1,7 @@
 '''
 Created on 2014-02-12
 
-A module to load hydrographs and climatologies of river discharge from the Water Survey if Canada;
+A module to load station data from the Water Survey if Canada and associate the data with river basins;
 the data is stored in human-readable text files and tables. 
 
 @author: Andre R. Erler, GPL v3
@@ -12,18 +12,26 @@ import numpy as np
 import numpy.ma as ma
 # internal imports
 from datasets.common import days_per_month, name_of_month, data_root
+from geodata.gdal import Shape
 # from geodata.misc import DatasetError
 from warnings import warn
 
 ## WSC Meta-data
 
-dataset_name = 'WSC_rivers'
+dataset_name = 'WSC'
 root_folder = data_root + 'shapes' + '/'
 
 # variable attributes and name
-varatts = dict(disc = dict(name='discharge', units='kg/s', scalefactor=1./1000.)) # total river discharge
+varatts = dict(discharge = dict(name='discharge', long_name='Stream Flow Rate', units='kg/s', scalefactor=1./1000.), # total flow rate
+               level = dict(name='level', long_name='Water Level', units='m')) # water level
 # list of variables to load
 varlist = varatts.keys() # also includes coordinate fields    
+
+# container class for stations and shape files
+class Basin(Shape):
+  ''' Just a container for basin information and associated station data '''
+  def __init__(self, name=None, folder=None, shapefile=None, rivers=None, stations=None):
+    ''' save meta information '''
 
 # basin abbreviations and full names
 basins = dict()
@@ -31,14 +39,19 @@ basins['ARB'] = 'Athabasca River Basin'
 basins['FRB'] = 'Fraser River Basin'
 # inverse dictionary, i.e. sorted by full name
 fullbasin = {value:key for key,value in basins.iteritems()}
+# river basin look-up
+rivers = dict() # the basin a river belongs to
+rivers['Athabasca'] = 'ARB'
+rivers['Fraser'] = 'FRB'
  
 # variable and file lists settings
 foldername = root_folder + '{0:s}' + '/'
 filename = '{0:s}_{1:s}{2:s}.dat' # basin abbreviation, variable name (full), tag (optional, prepend '_')
 
-## Functions that handle access to PRISM ASCII files
 
-def loadWSC_rivers(basin=None, stations=None, varlist=None, varatts=None, 
+## Functions that handle access to ASCII files
+
+def loadWSCstation(basin=None, river=None, stations=None, varlist=None, varatts=None, 
                    filetype='monthly_station', folder=foldername, filename=filename):
   ''' Function to load hydrograph climatologies for a given basin '''
   # resolve input

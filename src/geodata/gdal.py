@@ -666,7 +666,8 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       if filename is not None and not isinstance(filename,basestring): raise TypeError
       # get mask from shapefile
       shpfolder = self.gridfolder if filename is None else None
-      mask = rasterizeShape(name=name, griddef=self.griddef, folder=shpfolder, filename=filename, invert=invert, asVar=True)
+      shape = Shape(name=name, folder=shpfolder, hsapefile=filename) # load shape file
+      mask = shape.rasterize(griddef=self.griddef, invert=invert, asVar=True) # extract mask
       # apply mask to dataset 
       self.mask(mask=mask, invert=False) # kwargs: merge=True, varlist=None, skiplist=None
       # return mask variable
@@ -677,71 +678,79 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
   # # the return value is actually not necessary, since the object is modified immediately
   return dataset
   
+
+## shapefile contianer class
+class Shape(object):
+  ''' A wrapper class for shapefiles, with some added functionality and raster itnerface '''
   
-## read shapefiles
-def rasterizeShape(name=None, griddef=None, folder=None, filename=None, invert=False, asVar=False, ldebug=False):
-  ''' a method to load a shapefile and burn it on a 2D raster; returns a 2D boolean array '''
-  if name is not None and not isinstance(name,basestring): raise TypeError
-  if griddef.__class__.__name__ != GridDefinition.__name__: raise TypeError 
-  #if not isinstance(griddef,GridDefinition): raise TypeError # this is always False. probably due to pickling
-  if folder is not None and not isinstance(folder,basestring): raise TypeError
-  if filename is not None and not isinstance(filename,basestring): raise TypeError
-  if not isinstance(invert,(bool,np.bool)): raise TypeError
-  # fill values
-  if invert: inside, outside = 1,0
-  else: inside, outside = 0,1
-  # resolve file name and open file
-  if ldebug: print(' - loading shapefile')
-  if filename is None: filename = name + '.shp'
-  if name is None: name = filename
-  if folder is not None: filename = folder + '/' + filename
-  if not os.path.exists(filename): raise IOError, 'File \'{}\' not found!'.format(filename)
-  if ldebug: print(' - using shapefile \'{}\''.format(filename))
-  shp_ds = ogr.Open(filename)
-  shp_lyr = shp_ds.GetLayer(0) # get shape layer
-  # create raster to burn shape onto
-  if ldebug: print(' - creating raster')
-  msk_ds = ramdrv.Create(name, griddef.size[0], griddef.size[1], 1, gdal.GDT_Byte)
-  # N.B.: this is a special case: only one band (1) and always boolean (gdal.GDT_Byte)
-  # set projection parameters
-  msk_ds.SetGeoTransform(griddef.geotransform)  # does the order matter?
-  msk_ds.SetProjection(griddef.projection.ExportToWkt())  # is .ExportToWkt() necessary?
-  # initialize raster band        
-  msk_rst = msk_ds.GetRasterBand(1) # only one anyway...
-  msk_rst.Fill(outside); msk_rst.SetNoDataValue(outside) # fill with zeros
-  # burn shape layer onto raster band
-  if ldebug: print(' - burning layer to raster')
-  err = gdal.RasterizeLayer(msk_ds, [1], shp_lyr, burn_values = [inside]) # None, None, [1] # burn_value = 1
-  # use argument ['ALL_TOUCHED=TRUE'] like so: None, None, [1], ['ALL_TOUCHED=TRUE']
-  if err != 0: raise GDALError, 'ERROR CODE %i'%err
-  #msk_ds.FlushCash()  
-  # retrieve mask array from raster band
-  if ldebug: print(' - retrieving mask')
-  mask = msk_ds.GetRasterBand(1).ReadAsArray()
-  # convert to Variable object, is desired
-  if asVar: 
-    mask = Variable(name=name, units='mask', axes=(griddef.ylat,griddef.xlon), data=mask, 
-                    dtype=np.bool, mask=None, fillValue=outside, atts=None, plot=None) 
-  # return mask array
-  return mask
-  
+  def __init__(self, name=None, shapefile=None, folder=None, ldebug=False):
+    ''' load shapefile '''
+    if name is not None and not isinstance(name,basestring): raise TypeError
+    if folder is not None and not isinstance(folder,basestring): raise TypeError
+    if shapefile is not None and not isinstance(shapefile,basestring): raise TypeError
+    # resolve file name and open file
+    if ldebug: print(' - loading shapefile')
+    if shapefile is None: shapefile = name + '.shp'
+    if name is None: name = os.path.basename(shapefile)
+    if folder is not None: shapefile = folder + '/' + shapefile
+    else: folder = os.path.dirname(shapefile)
+    if not os.path.exists(shapefile): raise IOError, 'File \'{}\' not found!'.format(shapefile)
+    if ldebug: print(' - using shapefile \'{}\''.format(shapefile))
+    # instance attributes
+    self.name = name
+    self.folder = folder
+    self.shapefile = shapefile
+    # load shapefiles
+    self.ogr = ogr.Open(shapefile)
+    
+  # rasterize shapefiles
+  def rasterize(self, griddef=None, layer=0, invert=False, asVar=False, ldebug=False):
+    ''' "burn" shapefile on a 2D raster; returns a 2D boolean array '''
+    if griddef.__class__.__name__ != GridDefinition.__name__: raise TypeError 
+    #if not isinstance(griddef,GridDefinition): raise TypeError # this is always False. probably due to pickling
+    if not isinstance(invert,(bool,np.bool)): raise TypeError
+    # fill values
+    if invert: inside, outside = 1,0
+    else: inside, outside = 0,1
+    shp_lyr = self.ogr.GetLayer(layer) # get shape layer
+    # create raster to burn shape onto
+    if ldebug: print(' - creating raster')
+    msk_ds = ramdrv.Create(self.name, griddef.size[0], griddef.size[1], 1, gdal.GDT_Byte)
+    # N.B.: this is a special case: only one band (1) and always boolean (gdal.GDT_Byte)
+    # set projection parameters
+    msk_ds.SetGeoTransform(griddef.geotransform)  # does the order matter?
+    msk_ds.SetProjection(griddef.projection.ExportToWkt())  # is .ExportToWkt() necessary?
+    # initialize raster band        
+    msk_rst = msk_ds.GetRasterBand(1) # only one anyway...
+    msk_rst.Fill(outside); msk_rst.SetNoDataValue(outside) # fill with zeros
+    # burn shape layer onto raster band
+    if ldebug: print(' - burning layer to raster')
+    err = gdal.RasterizeLayer(msk_ds, [1], shp_lyr, burn_values = [inside]) # None, None, [1] # burn_value = 1
+    # use argument ['ALL_TOUCHED=TRUE'] like so: None, None, [1], ['ALL_TOUCHED=TRUE']
+    if err != 0: raise GDALError, 'ERROR CODE %i'%err
+    #msk_ds.FlushCash()  
+    # retrieve mask array from raster band
+    if ldebug: print(' - retrieving mask')
+    mask = msk_ds.GetRasterBand(1).ReadAsArray()
+    # convert to Variable object, is desired
+    if asVar: 
+      mask = Variable(name=self.name, units='mask', axes=(griddef.ylat,griddef.xlon), data=mask, 
+                      dtype=np.bool, mask=None, fillValue=outside, atts=None, plot=None) 
+    # return mask array
+    return mask  
    
 
 # # run a test    
 if __name__ == '__main__':
 
   ## test reading shapefile
-  from datasets.common import grid_folder
-  # settings  
-#   name = 'prv_ca' # canadian provinces
-#   name = 'Mackenzie_basins'
-#   name = 'b_nwrfc'
-#   name = 'ARB_Aquanty'
-  name = 'Athabasca_River_Basin'
-  name = 'Fraser_River_Basin'
-  griddef = loadPickledGridDef('arb2', res='d02', folder=grid_folder)  
+  from datasets.common import grid_folder, shape_folder
+  # load shapefile
+  folder = shape_folder+'ARB_Aquanty'; shapefile='ARB_Basins_Outline_WGS84.shp' 
+  shape = Shape(folder=folder, shapefile=shapefile)  
   # get mask from shape file
-  shp_mask = rasterizeShape(name=name, griddef=griddef, folder=grid_folder, invert=False, ldebug=True)
+  griddef = loadPickledGridDef('arb2', res='d02', folder=grid_folder)
+  shp_mask = shape.rasterize(griddef=griddef, invert=False, ldebug=True)
   # display
   import pylab as pyl
   pyl.imshow(np.flipud(shp_mask[:,:])); pyl.colorbar(); pyl.show(block=True)
