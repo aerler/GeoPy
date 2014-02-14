@@ -245,7 +245,7 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
                 lWRFnative=True):
   ''' A function that loads a dataset, based on specified parameters '''
   from datasets.WRF import loadWRF
-  from datasets.WRF_experiments import WRF_exps, Exp
+  from projects.WRF_experiments import WRF_exps, Exp
   from datasets.CESM import CESM_exps, loadCESM 
   from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadNARR, loadUnity
   if not isinstance(exp,(basestring,Exp)): raise TypeError
@@ -313,7 +313,7 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
                  resolutions='025', filetypes=None, lbackground=True, lWRFnative=True, ltuple=True):
   ''' function to load a list of datasets/experiments based on names and other common parameters '''
   # for load function (below)
-  from datasets.WRF_experiments import Exp
+  from projects.WRF_experiments import Exp
   if lbackground and not ltuple: raise ValueError
   # check and expand lists
   if n is None: n = len(explist)

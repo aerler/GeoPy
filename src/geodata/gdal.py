@@ -706,7 +706,7 @@ class Shape(object):
   @property
   def OGR(self):
     ''' access to OGR dataset '''
-    if self._ogr is None: self._ogr = ogr.Open(shapefile) # load data, if not already done 
+    if self._ogr is None: self._ogr = ogr.Open(self.shapefile) # load data, if not already done 
     return self._ogr
   
   def getLayer(self, layer):

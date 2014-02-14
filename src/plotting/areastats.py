@@ -17,11 +17,11 @@ else: mpl.rc('font', size=10)
 # internal imports
 # PyGeoDat stuff
 from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadNARR, loadUnity
-from geodata.gdal import rasterizeShape
+from datasets.WSC import Basin
 from datasets.common import loadDatasets # for annotation
 from plotting.settings import getFigureSettings
 # ARB project related stuff
-from plotting.ARB_settings import arb_figure_folder
+from projects.ARB_settings import arb_figure_folder
 
 def getVarSettings(plottype, area, lPRISM=False, mode='all'):
   flxlabel = r'Water Flux [$10^6$ kg/s]' 
@@ -167,20 +167,21 @@ if __name__ == '__main__':
   ## settings
   # settings
   lprint = True 
-  expset = 'noahmp+'
+  expset = 'max-ens-diff'
 #   plottypes = ['temp','runoff','sfroff']
 #   plottypes = ['temp','flux'] # ,'flux','sfflx','snwmlt']
 #   plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
-  plottypes = ['precip_types']
+  plottypes = ['sfflx']
   lPRISM = False
   lUnity = True
+  lgage = True
   titles = None
   areas = []
   areas += ['athabasca']
   areas += ['fraser']
-  areas += ['northcoast']
-  areas += ['southcoast']
+#   areas += ['northcoast']
+#   areas += ['southcoast']
   domain = 2
   periods = []
 #   periods += [5]
@@ -232,18 +233,19 @@ if __name__ == '__main__':
       print ref.name
       
       ## create averaging mask
-      gridfolder = ref.gridfolder + 'WSC/' 
       if area == 'athabasca': 
-        areaname= 'WholeARB'; gridfolder += 'Athabasca River Basin/'
+        areaname = 'ARB'; subarea = 'WholeARB'
       elif area == 'fraser': 
-        areaname = 'WholeFRB'; gridfolder += 'Fraser River Basin/'
+        areaname = 'FRB'; subarea = 'WholeFRB'
       elif area == 'northcoast': 
-        areaname = 'NorthernPSB'; gridfolder += 'Pacific Seaboard/'
+        areaname = 'PSB'; subarea = 'NorthernPSB'
       elif area == 'southcoast': 
-        areaname = 'SouthernPSB'; gridfolder += 'Pacific Seaboard/'
+        areaname = 'PSB'; subarea = 'SouthernPSB'
       else: 
         raise ValueError, 'Have to specify a river area or other shapefile to use as mask!'
-      shp_mask = rasterizeShape(name=areaname, griddef=ref.griddef, folder=gridfolder)
+      basin = Basin(basin=areaname)
+      if lgage: maingage = basin.getMainGage()
+      shp_mask = basin.rasterize(griddef=ref.griddef)
       if lPRISM: shp_mask = (shp_mask + prism.datamask.getArray(unmask=True,fillValue=1)).astype(np.bool)
       # display
     #   pyl.imshow(np.flipud(shp_mask[:,:])); pyl.colorbar(); pyl.show(block=True)
@@ -346,15 +348,23 @@ if __name__ == '__main__':
                       ax.plot(time, S*vardata.getArray(), linestyle=ln, color=color, label=var)
                     print
                     print exp.name, vardata.name, S*vardata.getArray().mean()
+              # river gage
+              if lgage and var in ('sfroff',): 
+                vardata = maingage.variables['discharge']
+                label = '%s (%s)'%('Discharge','WSC')
+                obsplt.append(ax.plot(time, vardata.getArray()/1e6, 'o', markersize=5*linewidth, color=color, label=label)[0]) # , linewidth=1.5
+                obsleg.append(label)
+                print
+                print maingage.name, vardata.name, vardata.getArray().mean()/1e6
               # either PRISM ...
-              if lPRISM and prism.hasVariable(var, strict=False):
+              elif lPRISM and prism.hasVariable(var, strict=False):
                 # compute spatial average for CRU
                 vardata = prism.variables[var].mean(x=None,y=None)
                 label = '%s (%s)'%(var,prism.name)
                 obsplt.append(ax.plot(time, S*vardata.getArray(), 'o', markersize=4*linewidth, color=color, label=label)[0]) # , linewidth=1.5
                 obsleg.append(label)
                 print
-                print cru.name, vardata.name, S*vardata.getArray().mean()
+                print prism.name, vardata.name, S*vardata.getArray().mean()
               # .. or Unity        
               elif lUnity and unity.hasVariable(var, strict=False):
                 # compute spatial average for CRU

@@ -121,7 +121,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
 def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
   ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
-  from datasets.WRF_experiments import exps, Exp # need to leave this here, to avoid circular reference...   
+  from projects.WRF_experiments import exps, Exp # need to leave this here, to avoid circular reference...   
   # check domains
   if isinstance(domains,col.Iterable):
     if not all(isInt(domains)): raise TypeError
@@ -382,7 +382,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   # N.B.: 'experiment' can be a string name or an Exp instance
   folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
   # period  
-  from WRF_experiments import Exp
+  from projects.WRF_experiments import Exp
   if isinstance(period,(tuple,list)): pass
   elif isinstance(period,basestring): pass
   elif period is None: pass

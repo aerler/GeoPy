@@ -10,6 +10,7 @@ the data is stored in human-readable text files and tables.
 # external imports
 import numpy as np
 import numpy.ma as ma
+from copy import deepcopy
 import fileinput
 # internal imports
 from datasets.common import days_per_month, name_of_month, data_root
@@ -35,20 +36,41 @@ variable_list = variable_attributes.keys() # also includes coordinate fields
 # container class for stations and shape files
 class Basin(Shape):
   ''' Just a container for basin information and associated station data '''
-  def __init__(self, name=None, folder=None, shapefile=None, rivers=None, stations=None, load=False, ldebug=False):
+  def __init__(self, basin=None, subbasin=None, folder=None, shapefile=None, rivers=None, stations=None, load=False, ldebug=False):
     ''' save meta information '''
-    if folder is None: folder = root_folder
+      # resolve input
+    if isinstance(basin,(basestring,BasinInfo)):
+      if isinstance(basin,basestring):
+        if basin in basins: basin = basins[basin]
+        else: raise ValueError, 'Unknown basin: {}'.format(basin)
+      folder = basin.folder
+      if subbasin is None: subbasin = basin.outline      
+      elif not isinstance(subbasin,basestring): raise TypeError
+      shapefile = subbasin if subbasin[-4:] == '.shp' else subbasin + '.shp'
+      if shapefile not in basin.shapefiles: raise ValueError, 'Unknown subbasin: {}'.format(subbasin)
+    elif isinstance(folder,basestring) and isinstance(shapefile,basestring): pass
+    else: raise TypeError, 'Specify either basin & station or folder & shapefile.'
     # call Shape constructor
-    super(Basin,self).__init__(name=name, shapefile=shapefile, folder=folder, load=load, ldebug=ldebug)
+    super(Basin,self).__init__(name=basin.name, shapefile=shapefile, folder=folder, load=load, ldebug=ldebug)
+    # add info
+    self.info = basin
+    self.maingage = basin.maingage if basin is not None else None 
+    
+  def getMainGage(self, varlist=None, varatts=None, mode='climatology', filetype='monthly'):
+    ''' return a dataset with data from the main gaging station '''
+    if self.maingage is not None:
+      station = loadGageStation(basin=self.info, varlist=varlist, varatts=varatts, mode=mode, filetype=filetype)
+    else: station = None 
+    return station
 
 # a container class for basin meta data
 class BasinInfo(object): 
   ''' basin meta data '''
   def __init__(self):
     ''' some common operations and inferences '''
-    self.outline = self.shapefiles[0]; self.maingage = self.stations[self.rivers[0]][0] 
     self.folder = root_folder+self.long_name+'/'; self.__doc__ = self.long_name
     self.shapefiles = [shp if shp[-4:] == '.shp' else shp+'.shp' for shp in self.shapefiles]
+    self.outline = self.shapefiles[0]; self.maingage = self.stations[self.rivers[0]][0] 
     self.stationfiles = dict()
     for river,stations in self.stations.items():
       for station in stations: 
@@ -81,11 +103,13 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
                     filetype='monthly', folder=None, filename=None):
   ''' Function to load hydrograph climatologies for a given basin '''
   # resolve input
-  if isinstance(basin,(basestring,BasinInfo)) and isinstance(station,basestring):
+  if isinstance(basin,(basestring,BasinInfo)):
     if isinstance(basin,basestring):
       if basin in basins: basin = basins[basin]
       else: raise ValueError, 'Unknown basin: {}'.format(basin)
     folder = basin.folder
+    if station is None: station = basin.maingage      
+    elif not isinstance(station,basestring): raise TypeError
     if station in basin.stationfiles: filename = basin.stationfiles[station]
     else: raise ValueError, 'Unknown station: {}'.format(station)
     river = filename.split('_')[0].lower()
@@ -95,8 +119,8 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   else: raise TypeError, 'Specify either basin & station or folder & filename.'
   # variable attributes
   if varlist is None: varlist = variable_list
-  elif not isinstance(varlist,(list,tuple)): raise TypeError
-  if varatts is None: varatts = variable_attributes
+  elif not isinstance(varlist,(list,tuple)): raise TypeError  
+  if varatts is None: varatts = deepcopy(variable_attributes.copy()) # because of nested dicts
   elif not isinstance(varatts,dict): raise TypeError
   # create dataset for station
   dataset = StationDataset(name=station, title=filename.split('.')[0], ID=None, varlist=[], atts=atts) 
@@ -194,7 +218,8 @@ if __name__ == '__main__':
   print FRB.stationfiles
   
   # load station data
-  station = loadGageStation(basin='FRB', station='PortMann')
+  station = loadGageStation(basin='ARB') # , station='Mission'
+  station = loadGageStation(basin='FRB') # , station='Mission'
   print
   print station
   print

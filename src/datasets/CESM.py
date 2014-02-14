@@ -16,7 +16,7 @@ from geodata.gdal import addGDALtoDataset
 from geodata.misc import DatasetError, AxisError, DateError
 from datasets.common import translateVarNames, data_root, grid_folder, default_varatts, addLengthAndNamesOfMonth 
 from geodata.gdal import loadPickledGridDef, griddef_pickle
-from WRF_experiments import Exp
+from projects.WRF_experiments import Exp
 from processing.process import CentralProcessingUnit
 
 # some meta data (needed for defaults)
