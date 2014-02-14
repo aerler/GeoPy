@@ -259,6 +259,10 @@ class FileError(VariableError):
   ''' Exceptions indicating a file access problem (usually a missing file). '''
   pass
 
+class ParseError(FileError):
+  ''' Errors that occur while parsing a file. '''
+  pass
+
 class NetCDFError(FileError):
   ''' Exceptions related to NetCDF file access. '''
   pass

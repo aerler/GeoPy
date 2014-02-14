@@ -6,7 +6,7 @@ A module that introduces a special class intended for station datasets (i.e. tim
 @author: Andre R. Erler, GPL v3
 '''
 
-from geodata.base import Dataset
+from geodata.base import Dataset, Variable, Axis
 from geodata.netcdf import DatasetNetCDF
 
 ## the basic station class, without any geographic information  
@@ -30,7 +30,7 @@ class StationDataset(Dataset):
         atts = AttrDict() # dictionary containing global attributes / meta data   
     '''
     # initialize Dataset using parent constructor (kwargs are necessary, in order to support multiple inheritance)
-    super(StationDataset,self).__init__(name=name, title=title, varlist=varlist, atts=varlist, **kwargs)
+    super(StationDataset,self).__init__(name=name, title=title, varlist=varlist, atts=atts, **kwargs)
     # set remaining attibutes
     self.atts['ID'] = ID
     
@@ -39,7 +39,7 @@ class StationDataset(Dataset):
       ''' The station ID, usually an alphanumerical code. '''
       return self.atts['ID']
     @ID.setter
-    def name(self, ID):
+    def ID(self, ID):
       self.atts['ID'] = ID
 
       
@@ -50,7 +50,7 @@ class StationNetCDF(StationDataset,DatasetNetCDF):
     WARNING: this class has not been tested!  
   '''
   
-  def __init__(self,self, name=None, title=None, ID=None, dataset=None, filelist=None, varlist=None, varatts=None, 
+  def __init__(self, name=None, title=None, ID=None, dataset=None, filelist=None, varlist=None, varatts=None, 
                atts=None, axes=None, multifile=False, check_override=None, folder='', mode='r', ncformat='NETCDF4', 
                squeeze=True):
     ''' 

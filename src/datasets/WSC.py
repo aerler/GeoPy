@@ -10,108 +10,193 @@ the data is stored in human-readable text files and tables.
 # external imports
 import numpy as np
 import numpy.ma as ma
+import fileinput
 # internal imports
 from datasets.common import days_per_month, name_of_month, data_root
+from geodata.misc import ParseError
 from geodata.gdal import Shape
+from geodata.station import StationDataset, Variable, Axis
 # from geodata.misc import DatasetError
 from warnings import warn
 
 ## WSC Meta-data
 
 dataset_name = 'WSC'
-root_folder = data_root + 'shapes' + '/'
+root_folder = data_root + dataset_name + '/'
 
 # variable attributes and name
-varatts = dict(discharge = dict(name='discharge', long_name='Stream Flow Rate', units='kg/s', scalefactor=1./1000.), # total flow rate
-               level = dict(name='level', long_name='Water Level', units='m')) # water level
+variable_attributes = dict(discharge = dict(name='discharge', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Average Flow Rate')), # average flow rate
+                           discmax = dict(name='discmax', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Maximum Flow Rate')), # maximum flow rate
+                           discmin = dict(name='discmin', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Minimum Flow Rate')), # minimum flow rate
+                           level = dict(name='level', units='m', atts=dict(long_name='Water Level'))) # water level
 # list of variables to load
-varlist = varatts.keys() # also includes coordinate fields    
+variable_list = variable_attributes.keys() # also includes coordinate fields    
 
 # container class for stations and shape files
 class Basin(Shape):
   ''' Just a container for basin information and associated station data '''
-  def __init__(self, name=None, folder=None, shapefile=None, rivers=None, stations=None):
+  def __init__(self, name=None, folder=None, shapefile=None, rivers=None, stations=None, load=False, ldebug=False):
     ''' save meta information '''
+    if folder is None: folder = root_folder
+    # call Shape constructor
+    super(Basin,self).__init__(name=name, shapefile=shapefile, folder=folder, load=load, ldebug=ldebug)
 
-# basin abbreviations and full names
-basins = dict()
-basins['ARB'] = 'Athabasca River Basin'
-basins['FRB'] = 'Fraser River Basin'
-# inverse dictionary, i.e. sorted by full name
-fullbasin = {value:key for key,value in basins.iteritems()}
-# river basin look-up
-rivers = dict() # the basin a river belongs to
-rivers['Athabasca'] = 'ARB'
-rivers['Fraser'] = 'FRB'
- 
-# variable and file lists settings
-foldername = root_folder + '{0:s}' + '/'
-filename = '{0:s}_{1:s}{2:s}.dat' # basin abbreviation, variable name (full), tag (optional, prepend '_')
-
+# a container class for basin meta data
+class BasinInfo(object): 
+  ''' basin meta data '''
+  def __init__(self):
+    ''' some common operations and inferences '''
+    self.outline = self.shapefiles[0]; self.maingage = self.stations[self.rivers[0]][0] 
+    self.folder = root_folder+self.long_name+'/'; self.__doc__ = self.long_name
+    self.shapefiles = [shp if shp[-4:] == '.shp' else shp+'.shp' for shp in self.shapefiles]
+    self.stationfiles = dict()
+    for river,stations in self.stations.items():
+      for station in stations: 
+        filename = '{0:s}_{1:}.dat'.format(river,station)
+        if station in self.stationfiles: 
+          warn('Duplicate station name: {}\n  {}\n  {}'.format(station,self.stationfiles[station],filename))
+        else: self.stationfiles[station] = filename 
+      
+# meta data for specific basins
+class ARB(BasinInfo):
+  def __init__(self):
+    self.name = 'ARB'; self.long_name = 'Athabasca River Basin'; self.rivers = ['Athabasca']
+    self.stations = dict(Athabasca=['Embarras','McMurray'])
+    self.shapefiles = ['WholeARB','LowerARB','LowerCentralARB','UpperCentralARB','UpperARB']        
+    BasinInfo.__init__(self)
+class FRB(BasinInfo):
+  def __init__(self):
+    self.name = 'FRB'; self.long_name = 'Fraser River Basin'; self.rivers = ['Fraser']
+    self.stations = dict(Fraser=['PortMann','Mission'])
+    self.shapefiles = ['WholeFRB','LowerFRB','UpperFRB']
+    self.outline = self.shapefiles[0]; self.maingage = self.stations[self.rivers[0]][0]
+    self.folder = root_folder+self.long_name+'/'; self.__doc__ = self.long_name
+    BasinInfo.__init__(self)
+# dictionary with basin meta data
+basins = dict(ARB=ARB(), FRB=FRB())
 
 ## Functions that handle access to ASCII files
 
-def loadWSCstation(basin=None, river=None, stations=None, varlist=None, varatts=None, 
-                   filetype='monthly_station', folder=foldername, filename=filename):
+def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='climatology', 
+                    filetype='monthly', folder=None, filename=None):
   ''' Function to load hydrograph climatologies for a given basin '''
   # resolve input
-  
-  # create dataset for all stations
-  # make common time axis for climatology
-  
-  # loop over stations (one file per station, containing all variables)  
-  # parse files and load variables 
-  # extract variables (min/max/mean are separate variables)
-  # this will work with case distinctions for variables (elif)
-  
-  ## example
-  # open namelist file for reading 
-  file = fileinput.FileInput([nmlstwps], mode='r')
-  # loop over entries/lines
-  for line in file: 
-    # search for relevant entries
-    if imd==0 and 'max_dom' in line:
-      imd = file.filelineno()
-      maxdom = int(line.split()[2].strip(','))
-    elif isd==0 and 'start_date' in line:
-      isd = file.filelineno()
-      # extract start time of main and sub-domains
-      dates = extractValueList(line)
-      startdates = [date[1:14] for date in dates] # strip quotes and cut off after hours 
-    elif ied==0 and 'end_date' in line:
-      ied = file.filelineno()
-      # extract end time of main domain (sub-domains irrelevant)
-      dates = extractValueList(line)
-      enddates = [date[1:14] for date in dates] # strip quotes and cut off after hours
-    if imd>0 and isd>0 and ied>0:
-      break # exit as soon as all are found
-  
-  # cast data into Geodat variables and add to dataset
-  # return dataset
-  return   
+  if isinstance(basin,(basestring,BasinInfo)) and isinstance(station,basestring):
+    if isinstance(basin,basestring):
+      if basin in basins: basin = basins[basin]
+      else: raise ValueError, 'Unknown basin: {}'.format(basin)
+    folder = basin.folder
+    if station in basin.stationfiles: filename = basin.stationfiles[station]
+    else: raise ValueError, 'Unknown station: {}'.format(station)
+    river = filename.split('_')[0].lower()
+    atts = dict(basin=basin.name, river=river) # first component of file name       
+  elif isinstance(folder,basestring) and isinstance(filename,basestring):
+    atts = None; river = None
+  else: raise TypeError, 'Specify either basin & station or folder & filename.'
+  # variable attributes
+  if varlist is None: varlist = variable_list
+  elif not isinstance(varlist,(list,tuple)): raise TypeError
+  if varatts is None: varatts = variable_attributes
+  elif not isinstance(varatts,dict): raise TypeError
+  # create dataset for station
+  dataset = StationDataset(name=station, title=filename.split('.')[0], ID=None, varlist=[], atts=atts) 
+  if mode == 'climatology': 
+    # make common time axis for climatology
+    te = 12 # length of time axis: 12 month
+    climAxis = Axis(name='time', units='month', length=12, data=np.arange(1,te+1,1)) # monthly climatology
+  else: raise NotImplementedError, 'Currently only climatologies are supported.'
+  dataset.addAxis(climAxis, copy=False)
+  # a little helper function
+  def makeVariable(varname):  
+    atts = varatts[varname] # these are more specific than below (mean/min/max)
+    data = np.asarray(linesplit[1:te+1], dtype='float')
+    if 'scalefactor' in atts: data = data * atts.pop('scalefactor')
+    if 'fileunits' in atts: atts.pop('fileunits') 
+    #print varname, data.shape, len(climAxis)
+    return Variable(axes=[climAxis], data=data, **atts)      
+  # open namelist file for reading   
+  filehandle = fileinput.FileInput(['{}/{}'.format(folder,filename)], mode='r')  
+  # parse file and load variables
+  l = 0; filevar = None; lmean = False; lreadVar = False; offset = 0
+  for line in filehandle:
+    l += 1 # count lines...
+    linesplit = line.split()
+    # blank line
+    if len(linesplit) == 0:
+      if filevar is None: 
+        if offset == 0: l -= 1 # empty header lines
+        else: offset += 1 # empty lines after header
+      else:
+        if not lreadVar or lmean: offset = l # go to next record
+        else: raise ParseError, 'Data not found at line {}.'.format(l)    
+    # first line of file
+    elif l == 1:
+      if basin is not None: # check
+        fileriver = linesplit[0].lower()
+        if fileriver != river: raise ParseError, 'Inconsistent river names: {} != {}'.format(fileriver,river)
+      tmp = linesplit[-1]
+      if tmp[0] == '(' and tmp[-1] == ')': 
+        ID = tmp[1:-1]; print('Station ID: {}'.format(ID))
+      else: 
+        ID = None; warn('No station ID available.')
+      dataset.ID = ID # set station ID
+      offset = 1
+    # first line of record
+    elif l == 1 + offset:
+      if filetype == 'monthly':
+        if not linesplit[0].lower() == 'monthly': raise ParseError, 'Unknown filetype; not monthly.'
+      filevar = linesplit[2].lower() # third field       
+      if filevar in varatts and filevar in varlist: 
+        lreadVar = True # read this variable
+        tmpatts = varatts[filevar]
+        units = tmpatts.pop('fileunits',tmpatts['units'])        
+        fileunits = linesplit[-1].lower()
+        if units == fileunits[1:-1]: pass
+        elif fileunits[0] == '(' and fileunits[-1] == ')' and units == fileunits[1:-1]: pass         
+        else: raise ParseError,'No compatible units found; expected {}, found {}.'.format(units,fileunits)
+      else:
+        lreadVar = False # skip this variables
+        if filevar in varatts: print('Skipping variable: {}.'.format(filevar))  
+        else: print('Unknown variable: {}.'.format(filevar))
+    # third line
+    elif l == 2 + offset:      
+      if filetype == 'monthly':
+        if not ( linesplit[0].lower() == 'year' and len(linesplit) == 14 ): 
+          raise ParseError, 'Unknown file format; expected yearly rows.'
+    # skip the entire time-series section
+    # extract variables (min/max/mean are separate variables)
+    # load mean
+    elif l > 2 + offset and linesplit[0].lower() == 'mean' and lreadVar:
+      if filevar == 'discharge': varname = filevar
+      dataset.addVariable(makeVariable(varname), copy=False)
+      lmean = True 
+    # load maximum
+    elif l > 2 + offset and linesplit[0].lower() == 'max' and lreadVar:
+      if filevar == 'discharge': varname = 'discmax'
+      dataset.addVariable(makeVariable(varname), copy=False) 
+    # load minimum
+    elif l > 2 + offset and linesplit[0].lower() == 'min' and lreadVar:
+      if filevar == 'discharge': varname = 'discmin'
+      dataset.addVariable(makeVariable(varname), copy=False)
+  # return station dataset
+  return dataset   
 
-# load data from ASCII files and return numpy arrays
-# data is assumed to be stored in monthly intervals
-def loadWSC_hydrographs(var, fileformat=filename, arrayshape=(601,697)):
-  # local imports
-  from numpy.ma import zeros
-  from numpy import genfromtxt, flipud
-  # definitions
-  datadir = root_folder + 'Climatology/ASCII/' # data folder   
-  ntime = len(days_per_month) # number of month
-  # allocate space
-  data = zeros((ntime,)+arrayshape) # time = ntime, (x, y) = arrayshape  
-  # loop over month
-  print('  Loading variable %s from file.'%(var))
-  for m in xrange(ntime):
-    # read data into array
-    filename = fileformat%(var,m+1)
-    tmp = genfromtxt(datadir+filename, dtype=float, skip_header=5, 
-                     missing_values=-9999, filling_values=-9999, usemask=True)
-    data[m,:] = flipud(tmp)  
-    # N.B.: the data is loaded in a masked array (where missing values are omitted)   
-  # return array
-  return data
 
+## abuse main block for testing
 if __name__ == '__main__':
-    pass
+    
+  # verify basin info
+  ARB = basins['ARB']
+  print ARB.long_name
+  print ARB.stationfiles
+  FRB = basins['FRB']
+  print FRB.long_name
+  print FRB.stationfiles
+  
+  # load station data
+  station = loadGageStation(basin='FRB', station='PortMann')
+  print
+  print station
+  print
+  print station.discharge.getArray()
+    

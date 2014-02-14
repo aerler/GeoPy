@@ -683,7 +683,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
 class Shape(object):
   ''' A wrapper class for shapefiles, with some added functionality and raster itnerface '''
   
-  def __init__(self, name=None, shapefile=None, folder=None, ldebug=False):
+  def __init__(self, name=None, shapefile=None, folder=None, load=False, ldebug=False):
     ''' load shapefile '''
     if name is not None and not isinstance(name,basestring): raise TypeError
     if folder is not None and not isinstance(folder,basestring): raise TypeError
@@ -700,8 +700,18 @@ class Shape(object):
     self.name = name
     self.folder = folder
     self.shapefile = shapefile
-    # load shapefiles
-    self.ogr = ogr.Open(shapefile)
+    # load shapefile (or not)
+    self._ogr = ogr.Open(shapefile) if load else None
+  
+  @property
+  def OGR(self):
+    ''' access to OGR dataset '''
+    if self._ogr is None: self._ogr = ogr.Open(shapefile) # load data, if not already done 
+    return self._ogr
+  
+  def getLayer(self, layer):
+    ''' return a layer from the shapefile '''
+    return self.OGR.GetLayer(layer) # get shape layer
     
   # rasterize shapefiles
   def rasterize(self, griddef=None, layer=0, invert=False, asVar=False, ldebug=False):
@@ -712,7 +722,7 @@ class Shape(object):
     # fill values
     if invert: inside, outside = 1,0
     else: inside, outside = 0,1
-    shp_lyr = self.ogr.GetLayer(layer) # get shape layer
+    shp_lyr = self.getLayer(layer) # get shape layer
     # create raster to burn shape onto
     if ldebug: print(' - creating raster')
     msk_ds = ramdrv.Create(self.name, griddef.size[0], griddef.size[1], 1, gdal.GDT_Byte)
