@@ -21,7 +21,7 @@ from datasets.WSC import Basin
 from datasets.common import loadDatasets # for annotation
 from plotting.settings import getFigureSettings
 # ARB project related stuff
-from projects.ARB_settings import arb_figure_folder
+from projects.ARB_settings import figure_folder
 
 def getVarSettings(plottype, area, lPRISM=False, mode='all'):
   flxlabel = r'Water Flux [$10^6$ kg/s]' 
@@ -447,13 +447,13 @@ if __name__ == '__main__':
         # save figure to disk
         if lprint:        
           if area == 'athabasca': 
-            areatag='ARB'; folder = arb_figure_folder + '/Athabasca River Basin/' 
+            areatag='ARB'; folder = figure_folder + '/Athabasca River Basin/' 
           elif area == 'fraser': 
-            areatag = 'FRB'; folder = arb_figure_folder + '/Fraser River Basin/'
+            areatag = 'FRB'; folder = figure_folder + '/Fraser River Basin/'
           elif area == 'northcoast': 
-            areatag = 'NPSB'; folder = arb_figure_folder + '/Northern Pacific Seaboard/'    
+            areatag = 'NPSB'; folder = figure_folder + '/Northern Pacific Seaboard/'    
           elif area == 'southcoast': 
-            areatag = 'SPSB'; folder = arb_figure_folder + '/Southern Pacific Seaboard/'    
+            areatag = 'SPSB'; folder = figure_folder + '/Southern Pacific Seaboard/'    
           tag = '_'+tag if tag else ''
           domtag = '_d{0:02d}'.format(domain) if domain != 2 else '' 
           filename = '{0:s}_{1:s}_{2:s}{3:s}{4:s}.png'.format(areatag,plottype,expset,domtag,tag)

@@ -9,8 +9,8 @@ Meta data related to the Athabasca River Basin downscaling project; primarily ma
 from datasets.common import grid_folder, shape_folder
 from plotting.mapsetup import getMapSetup
 
-arb_figure_folder = '/home/me/Research/Dynamical Downscaling/Figures/'
-arb_map_folder = arb_figure_folder + '.mapsetup/'
+figure_folder = '/home/me/Research/Dynamical Downscaling/Figures/'
+map_folder = figure_folder + '.mapsetup/'
 # actual Athabasca River Basin (shape file from Aquanty)
 #ARB_shapefolder = grid_folder+'/ARB_Aquanty/' 
 #ARB_shapefile = ARB_shapefolder+'ARB_Basins_Outline_WGS84'
@@ -138,7 +138,7 @@ if __name__ == '__main__':
     proj = projection_dict[name]
     
     # test retrieval function
-    test = getARBsetup(name, lpickle=True, stations=None, folder=arb_map_folder, lrm=True)
+    test = getARBsetup(name, lpickle=True, stations=None, folder=map_folder, lrm=True)
     print test.name
     print test
     print test.point_markers
