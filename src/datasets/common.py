@@ -66,8 +66,10 @@ if hostname=='komputer':
 #  root = '/media/tmp/' # RAM disk for development
 elif hostname=='cryo':
   data_root = '/scratch/marcdo/Data/'
+elif hostname=='erlkoenig':
+  data_root = '/media/PortableHD/DATA/'
 else:
-  data_root = '/home/me/DATA/PRISM/'
+  raise NotImplementedError, "No 'data_root' folder set!"
 # standard folder for grids and shapefiles  
 grid_folder = data_root + '/grids/' # folder for pickled grids
 shape_folder = data_root + '/shapes/' # folder for pickled grids

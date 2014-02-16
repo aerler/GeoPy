@@ -556,7 +556,27 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
       ''' A specialized version of the getMask method that gets a 2D map mask. '''
       return self.getMask(nomask=nomask, axes=(self.xlon, self.ylat), strict=True)      
     # add new method to object
-    var.getMapMask = types.MethodType(getMapMask, var)    
+    var.getMapMask = types.MethodType(getMapMask, var)   
+    
+    # extension to mean
+    def mapMean(self, mask=None, **kwargs):
+      ''' Compute mean over the horizontal axes, optionally applying a 2D shape or mask. '''
+      if not self.data: raise DataError
+      # determine relevant axes
+      axes = {self.xlon.name:None, self.xlon.name:None} # the relevant map axes; entire coordinate
+      # temporarily mask 
+      if self.masked: oldmask = self.getMask() # save old mask
+      else: oldmask = None
+      self.mask(mask=mask, merge=True) # new mask on top of old mask
+      # compute average
+      kwargs.update(axes)# update dictionary
+      newvar = self.mean(**kwargs)
+      # lift mask
+      if oldmask is not None: self.mask(mask=oldmask, merge=False)
+      # return new variable
+      return newvar
+    # add new method to object
+    var.mapMean = types.MethodType(mapMean, var)       
   
   # # the return value is actually not necessary, since the object is modified immediately
   return var

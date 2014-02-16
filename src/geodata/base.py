@@ -11,7 +11,7 @@ import numpy as np
 import numpy.ma as ma # masked arrays
 # my own imports
 from plotting.properties import variablePlotatts # import plot properties from different file
-from misc import checkIndex, isEqual, isFloat, AttrDict, joinDicts
+from misc import checkIndex, isEqual, isInt, isFloat, AttrDict, joinDicts
 from misc import VariableError, AxisError, DataError, DatasetError
 
 import numbers
@@ -317,7 +317,7 @@ class Variable(object):
       # if nothing applies, raise index error
       raise IndexError, 'Invalid index/key type for class \'%s\'!'%(self.__class__.__name__)
   
-  def __call__(self, **kwargs):
+  def __call__(self, lgetIndex=True, lcoordList=False, **kwargs):
     ''' This method implements access to slices via coordinate values (as opposed to indices). '''
     # loop over arguments and find indices of coordinate values
     slices = dict()
@@ -325,18 +325,38 @@ class Variable(object):
       if self.hasAxis(axname):
         ax = self.getAxis(axname)
         if ax.data:
-          if isinstance(coord,(list,tuple)):
-            if len(coord) == 2:
-              #l = max(ax.data_array.searchsorted(coord[0],side='right')-1,0) # choose such as to bracket coords
-              #r = ax.data_array.searchsorted(coord[1],side='left') # same value or higher index
-              slices[axname] = slice(ax.getIndex(coord[0]),ax.getIndex(coord[1])+1)
-            elif len(coord) == 1: slices[axname] = ax.getIndex(coord[0])
-            else: raise IndexError
-          elif isinstance(coord,np.number):
-            slices[axname] = ax.getIndex(coord)
-          elif coord is None:
-            slices[axname] = slice(None)
-          else: raise TypeError
+          if lgetIndex:
+            if isinstance(coord,(list,tuple)):
+              if lcoordList:
+                # N.B.: this feature is poorly tested...
+                slices[axname] = [ax.getIndex(cv) for cv in coord] # just look up the indices for the coordinate values
+              else:
+                if len(coord) == 1: slices[axname] = ax.getIndex(coord[0])
+                elif len(coord) == 2:
+                  #l = max(ax.data_array.searchsorted(coord[0],side='right')-1,0) # choose such as to bracket coords
+                  #r = ax.data_array.searchsorted(coord[1],side='left') # same value or higher index
+                  slices[axname] = slice(ax.getIndex(coord[0]),ax.getIndex(coord[1])+1)
+                elif len(coord) == 3:  
+                  coord = np.linspace(*coord) # expand into linearly spaced list
+                  slices[axname] = [ax.getIndex(cv) for cv in coord] # and look up the indices
+                else: raise IndexError
+            elif isinstance(coord,np.number):
+              slices[axname] = ax.getIndex(coord)
+            elif coord is None:
+              slices[axname] = slice(None)
+            else: raise TypeError
+          else: # means index has to be passed directly (no coordinate look-up
+            # N.B.: this feature was not tested...
+            if isinstance(coord,(list,tuple)):
+              if not all(isInt(coord)): raise IndexError, 'Only integers can be used as indices.'
+              slices[axname] = coord
+            elif isinstance(coord,slice):
+              slices[axname] = coord
+            elif coord is None:
+              slices[axname] = slice(None)
+            else: raise TypeError
+        else: 
+          raise AxisError, 'Axis {} has no coordinate vector!'.format(ax.name)
     # assemble index tuple for axes
     idx = tuple([slices.get(ax.name,slice(None)) for ax in self.axes])
     return self.__getitem__(idx=idx) # pass on to getitem
@@ -465,7 +485,7 @@ class Variable(object):
         self.__dict__['fillValue'] = self.data_array.get_fill_value() # probably just the default
     
   def unmask(self, fillValue=None):
-    ''' A method to remove and existing mask and fill the gaps with fillValue. '''
+    ''' A method to remove an existing mask and fill the gaps with fillValue. '''
     if self.masked:
       if fillValue is None: fillValue = self.fillValue # default
       self.__dict__['data_array'] = self.data_array.filled(fill_value=fillValue)
@@ -488,26 +508,17 @@ class Variable(object):
     # return mask
     return mask
   
-  def mean(self, squeeze=True, ignore=False, asVar=True, **axes):
+  def mean(self, squeeze=True, checkAxis=True, coordIndex=True, asVar=True, **axes):
     ''' Compute the mean value of the data array over the given axes and return the result in a 
         Variable instance; axes are specified as keyword arguments with corresponding slices. '''
     for ax,slc in axes.iteritems():
-      if not ignore and not self.hasAxis(ax): raise AxisError
+      if checkAxis and not self.hasAxis(ax): raise AxisError
       if slc is not None and not isinstance(slc,(slice,list,tuple,int,np.integer)): raise TypeError
     # order axes and get indices
     axlist = [ax.name for ax in self.axes if ax.name in axes]
-    # get data
-#     slices = []
-#     for ax in self.axes:
-#       if ax.name in axes:
-#         slc = axes[ax.name]
-#         if isinstance(slc,(tuple,list)): slc = slice(*slc)
-#         elif isinstance(slc,(int,np.integer)): slc = slice(slc)
-#       else:
-#         slc = slice(None)
-#       slices.append(slc)
-#     data = self.getArray(idx=slices)
-    data = self.__call__(**axes)
+    # get data  
+    if coordIndex: data = self.__call__(**axes)
+    else: raise NotImplementedError
     # compute mean
     axlist.reverse() # start from the back      
     for axis in axlist:
@@ -525,7 +536,33 @@ class Variable(object):
     # return
     return var
     
-       
+  def seasonalMean(self, season=None, **kwargs):
+    ''' Compute mean over seasons, using special keywords. (This is a convenience function for monthly means...) '''
+    if not isinstance(season,basestring): raise TypeError
+    if not self.data: raise DataError
+    if not self.hasAxis('time'): raise AxisError, 'Seasonal means require a time axis!'
+    if not self.axes['time'].units == 'month': raise AxisError, 'Seasonal means require monthly data!'
+    if len(self.axes['time']) > 12: raise NotImplementedError, 'Currently seasonal means only work for monthly climatologies.'
+    # determine season
+    ssn = season.lower() # ignore case
+    year = 'jfmamjjasond' # all month
+    # N.B.: indexing by month, assuming the coordinate values are the number of the month (i.e. 1-12)
+    if ssn == 'jja' or ssn == 'summer': coord = [6,7,8] 
+    elif ssn == 'djf' or ssn == 'winter': coord = [12,1,2]
+    elif ssn == 'mam' or ssn == 'spring': coord = [3,4,5]
+    elif ssn == 'son' or ssn == 'fall'  or ssn == 'autumn': coord = [9,10,11]
+    elif ssn == 'mamjja' or ssn == 'warm': coord = [3,4,5,6,7,8]
+    elif ssn == 'sondjf' or ssn == 'cold': coord = [9,10,11,12,1,2]
+    elif ssn == 'amj' or ssn == 'melt': coord = [4,5,6]
+    elif ssn in year: 
+      s = year.find(ssn)+1 # find first occurrence of sequence
+      coord = range(s,s+len(ssn)) # and use range of months
+    else: raise ValueError, 'Unknown keyword/season: \'{}\''.format(season)
+    # compute average
+    newvar = self.mean(lindexList=True, time=coord,**kwargs) # go by index, not coordinate value
+    # return new variable
+    return newvar
+   
 
   @UnaryCheck    
   def __iadd__(self, a):
