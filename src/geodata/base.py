@@ -11,7 +11,7 @@ import numpy as np
 import numpy.ma as ma # masked arrays
 # my own imports
 from plotting.properties import variablePlotatts # import plot properties from different file
-from misc import checkIndex, isEqual, isInt, isFloat, AttrDict, joinDicts
+from misc import checkIndex, isEqual, isInt, isFloat, AttrDict, joinDicts, printList
 from misc import VariableError, AxisError, DataError, DatasetError
 
 import numbers
@@ -107,7 +107,7 @@ class Variable(object):
     if data is None:
       ldata = False; shape = None
     else:
-      assert isinstance(data,np.ndarray), 'The data argument must be a numpy array!'
+      if not isinstance(data,np.ndarray): data = np.asarray(data) # 'The data argument must be a numpy array!'
       ldata = True; shape = data.shape; 
       if dtype:
         dtype = np.dtype(dtype) # make sure it is properly formatted.. 
@@ -512,6 +512,7 @@ class Variable(object):
     ''' Compute the mean value of the data array over the given axes and return the result in a 
         Variable instance; axes are specified as keyword arguments with corresponding slices. '''
     for ax,slc in axes.iteritems():
+      #print ax,slc
       if checkAxis and not self.hasAxis(ax): raise AxisError
       if slc is not None and not isinstance(slc,(slice,list,tuple,int,np.integer)): raise TypeError
     # order axes and get indices
@@ -529,9 +530,10 @@ class Variable(object):
       newaxes = [ax for ax in self.axes if ax.name not in axes]
     else: newaxes = self.axes
     # cast into Variable
-    if asVar:
+    if asVar: 
+      #print self.name, data.__class__.__name__
       var = Variable(name=self.name, units=self.units, axes=newaxes, data=data, 
-                     fillValue=self.fillValue, atts=self.atts, plot=self.plot)
+                     fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
     else: var = data
     # return
     return var
@@ -1096,6 +1098,26 @@ class Dataset(object):
     ''' Unmask all Variables in the Dataset. '''
     for var in self.variables.itervalues():
       var.load(fillValue=fillValue, **kwargs)
+      
+  def mean(self, squeeze=True, checkAxis=True, coordIndex=True, **axes):
+    ''' Average entire dataset, and return a new (reduced) one. '''
+    newset = Dataset(name=self.name, title=self.title, varlist=[], atts=self.attscopy())    
+    # loop over variables
+    for var in self.variable:
+      # figure out, which axes apply
+      tmpax = {key:value for key,value in axes.iteritems() if var.hasAxis(key)}
+      # get averaged variable
+      if len(tmpax) > 0:
+        self.addVariable(var.mean(**tmpax), copy=False) # new variable/values anyway
+      else: 
+        self.addVariable(var, copy=True, deepcopy=True) # copy values
+    # add some record
+    for key,value in axes.iteritem():
+      if isinstance(value,(list,tuple)): newset.atts[key] = printList(value)
+      elif isinstance(value,np.number): newset.atts[key] = str(value)      
+      else: newset.atts[key] = 'n/a'
+    # return new dataset
+    return newset
       
 
 ## run a test    

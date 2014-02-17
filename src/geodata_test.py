@@ -16,6 +16,7 @@ import os
 from geodata.nctools import writeNetCDF
 from geodata.misc import isZero, isOne, isEqual
 from geodata.base import Variable, Axis, Dataset
+from datasets.common import data_root
 
 class BaseVarTest(unittest.TestCase):  
   
@@ -227,7 +228,7 @@ class BaseDatasetTest(unittest.TestCase):
   def setUp(self):
     ''' create Dataset with Axes and a Variables for testing '''
     if RAM: self.folder = ramdisk
-    else: self.folder = '/data/' # folder for write tests
+    else: self.folder = os.path.expanduser('~') # just use home directory (will be removed)
     # some setting that will be saved for comparison
     self.size = (3,3,3) # size of the data array and axes
     te, ye, xe = self.size
@@ -338,7 +339,7 @@ class BaseDatasetTest(unittest.TestCase):
     
   def testWrite(self):
     ''' write test dataset to a netcdf file '''    
-    filename = self.folder + 'test.nc'
+    filename = self.folder + '/test.nc'
     if os.path.exists(filename): os.remove(filename)
     # test object
     dataset = self.dataset
@@ -363,13 +364,13 @@ from geodata.netcdf import VarNC, AxisNC, DatasetNetCDF
 class NetCDFVarTest(BaseVarTest):  
   
   # some test parameters (TestCase does not take any arguments)
-  dataset = 'NARR' # dataset to use (also the folder name)
+  dataset = 'GPCC' # dataset to use (also the folder name)
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
   
   def setUp(self):
     if RAM: folder = ramdisk
-    else: folder = '/data/%s/'%self.dataset # dataset name is also in folder name
+    else: folder = '/{}/{}/'.format(data_root,self.dataset) # dataset name is also in folder name
     # select dataset
     if self.dataset == 'GPCC': # single file
       filelist = ['gpcc_test/full_data_v6_precip_25.nc'] # variable to test
@@ -379,8 +380,9 @@ class NetCDFVarTest(BaseVarTest):
       filelist = ['narr_test/air.2m.mon.ltm.nc', 'narr_test/prate.mon.ltm.nc', 'narr_test/prmsl.mon.ltm.nc'] # variable to test
       varlist = ['air','prate','prmsl','lon','lat']
       ncfile = filelist[0]; ncvar = varlist[0]
-    # load a netcdf dataset, so that we have something to play with      
-    self.ncdata = nc.Dataset(folder+ncfile,mode='r')
+    # load a netcdf dataset, so that we have something to play with     
+    if os.path.exists(folder+ncfile): self.ncdata = nc.Dataset(folder+ncfile,mode='r')
+    else: raise IOError, folder+ncfile
     # load variable
     ncvar = self.ncdata.variables[ncvar]      
     # get dimensions and coordinate variables
@@ -649,12 +651,12 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
 #     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-    tests += ['GDALVar']
+    tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)
     RAM = False # whether or not to use a RAM disk

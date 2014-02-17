@@ -559,18 +559,26 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     var.getMapMask = types.MethodType(getMapMask, var)   
     
     # extension to mean
-    def mapMean(self, mask=None, **kwargs):
+    def mapMean(self, mask=None, integral=False, invert=False, **kwargs):
       ''' Compute mean over the horizontal axes, optionally applying a 2D shape or mask. '''
       if not self.data: raise DataError
       # determine relevant axes
-      axes = {self.xlon.name:None, self.xlon.name:None} # the relevant map axes; entire coordinate
+      axes = {self.xlon.name:None, self.ylat.name:None} # the relevant map axes; entire coordinate
       # temporarily mask 
       if self.masked: oldmask = self.getMask() # save old mask
       else: oldmask = None
-      self.mask(mask=mask, merge=True) # new mask on top of old mask
+      self.mask(mask=mask, invert=invert, merge=True) # new mask on top of old mask
       # compute average
       kwargs.update(axes)# update dictionary
       newvar = self.mean(**kwargs)
+      # if integrating
+      if integral:
+        if not self.isProjected: raise NotImplementedError
+        dx = self.geotransform[1]; dy = self.geotransform[5] 
+        area = (1-mask).sum()*dx*dy
+        newvar *= area # in-place scaling
+        if self.xlon.units == self.ylat.units: newvar.units = '{} {}^2'.format(newvar.units,self.ylat.units) 
+        else: newvar.units ='{} {} {}'.format(newvar.units,self.xlon.units,self.ylat.units)
       # lift mask
       if oldmask is not None: self.mask(mask=oldmask, merge=False)
       # return new variable
@@ -694,6 +702,47 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       return mask
     # add new method to object
     dataset.maskShape = types.MethodType(maskShape, dataset)
+    
+    def mapMean(self, mask=None, integral=False, invert=False, squeeze=True, checkAxis=True, coordIndex=True):
+      ''' Average entire dataset over horizontal map coordinates; optionally apply 2D mask. '''
+      newset = Dataset(name=self.name, varlist=[], atts=self.atts.copy()) 
+      # N.B.: the returned dataset will not be GDAL enabled, because the map dimensions will be gone! 
+      # if mask is a shape object, create the mask
+      if isinstance(mask,Shape):
+        shape = mask 
+        mask = shape.rasterize(griddef=self.griddef, invert=invert, asVar=False)
+      else: shape = None
+      # relevant axes
+      axes = {self.xlon.name:None, self.ylat.name:None} # the relevant map axes; entire coordinate
+      # loop over variables
+      for var in self.variables.values():
+        # figure out, which axes apply
+        tmpax = {key:value for key,value in axes.iteritems() if var.hasAxis(key)}
+        # get averaged variable
+        if len(tmpax) == 2:
+          newset.addVariable(var.mapMean(mask=mask, integral=integral, invert=invert, coordIndex=coordIndex, 
+                                       squeeze=True, checkAxis=True), copy=False) # new variable/values anyway
+        elif len(tmpax) == 1:
+          newset.addVariable(var.mean(coordIndex=coordIndex, squeeze=True, checkAxis=True, asVar=True, **tmpax), copy=False) # new variable/values anyway        
+        elif len(tmpax) == 0: 
+          newset.addVariable(var, copy=True, deepcopy=True) # copy values
+#         else: raise GDALError
+      # add some record
+      for key,value in axes.iteritems():
+        if isinstance(value,(list,tuple)): newset.atts[key] = printList(value)
+        elif isinstance(value,np.number): newset.atts[key] = str(value)      
+        else: newset.atts[key] = 'n/a' 
+      # add reference to shape object
+      if shape is not None:
+        newset.area = shape         
+        if invert: newset.atts['integral'] = 'area outside of {}'.format(shape.name)
+      else: 
+        if invert: newset.atts['integral'] = 'area outside of mask'
+      # return new dataset
+      return newset
+    # add new method to object
+    dataset.mapMean = types.MethodType(mapMean, dataset)
+    
             
   # # the return value is actually not necessary, since the object is modified immediately
   return dataset
