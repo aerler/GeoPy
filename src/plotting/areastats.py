@@ -14,6 +14,8 @@ linewidth = 1.
 mpl.rc('lines', linewidth=linewidth)
 if linewidth == 1.5: mpl.rc('font', size=12)
 else: mpl.rc('font', size=10)
+# prevent figures from closing: don't run in interactive mode, or plt.show() will not block
+pyl.ioff()
 # internal imports
 # PyGeoDat stuff
 from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadNARR, loadUnity
@@ -167,7 +169,7 @@ if __name__ == '__main__':
   ## settings
   # settings
   lprint = True 
-  expset = 'max-ens-diff'
+  expset = 'max-ens'
 #   plottypes = ['temp','runoff','sfroff']
 #   plottypes = ['temp','flux'] # ,'flux','sfflx','snwmlt']
 #   plottypes = ['temp','precip','flux','runoff']
@@ -179,7 +181,7 @@ if __name__ == '__main__':
   titles = None
   areas = []
   areas += ['athabasca']
-  areas += ['fraser']
+#   areas += ['fraser']
 #   areas += ['northcoast']
 #   areas += ['southcoast']
   domain = 2

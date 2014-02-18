@@ -16,6 +16,8 @@ import matplotlib.pylab as pyl
 import matplotlib as mpl
 mpl.rc('lines', linewidth=1.)
 mpl.rc('font', size=10)
+# prevent figures from closing: don't run in interactive mode, or plt.show() will not block
+pyl.ioff()
 from mpl_toolkits.basemap import maskoceans # used for masking data
 # PyGeoDat stuff
 from geodata.base import DatasetError

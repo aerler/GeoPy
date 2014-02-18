@@ -279,6 +279,9 @@ class DateError(VariableError):
   ''' Exception indicating invalid dates passed to processor. '''
   pass
 
+class ListError(TypeError):
+  ''' Error class for failed list expansion. '''
+  pass
 
 ## simple application code
 if __name__ == '__main__':

@@ -8,6 +8,7 @@ Script to generate plots for my first downscaling paper!
 
 
 # external imports
+from types import NoneType
 import numpy as np
 import matplotlib.pylab as pyl
 import matplotlib as mpl
@@ -15,14 +16,68 @@ linewidth = 1.
 mpl.rc('lines', linewidth=linewidth)
 if linewidth == 1.5: mpl.rc('font', size=12)
 else: mpl.rc('font', size=10)
+# prevent figures from closing: don't run in interactive mode, or plt.show() will not block
+pyl.ioff()
 # internal imports
 # PyGeoDat stuff
+from geodata.base import Variable
+from geodata.misc import AxisError, ListError
 from datasets.WRF import loadWRF
 from datasets.Unity import loadUnity
 from datasets.WSC import Basin
 from plotting.settings import getFigureSettings
 # ARB project related stuff
 from projects.ARB_settings import figure_folder
+
+
+def linePlot(ax, varlist, linestyles=None, varatts=None, xline=None, yline=None, **kwargs):
+  ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on variable properties. '''
+  # varlist is the list of variable objects that are to be plotted
+  if isinstance(varlist,Variable): varlist = [varlist]
+  elif not isinstance(varlist,(tuple,list)) or not all([isinstance(var,Variable) for var in varlist]): raise TypeError
+  for var in varlist: var.squeeze() # remove singleton dimensions
+  # linestyles is just a list of line styles for each plot
+  if isinstance(linestyles,(basestring,NoneType)): linestyles = [linestyles]*len(varlist)
+  elif not isinstance(linestyles,(tuple,list)): 
+    if not all([isinstance(linestyles,basestring) for var in varlist]): raise TypeError
+    if len(varlist) != len(linestyles): raise ListError, "Failed to match linestyles to varlist!"
+  # varatts are variable-specific attributes that are parsed for special keywords and then passed on to the  
+  if isinstance(varatts,dict):
+    tmp = [varatts[var.name] if var.name in varatts else None for var in varlist]
+    if any(tmp): varatts = tmp # if any variable names were found
+    else: varatts = [varatts]*len(varlist) # assume it is one varatts dict, which will be used for all variables
+  elif not isinstance(varatts,(tuple,list)): raise TypeError
+  if not all([isinstance(atts,(dict,NoneType)) for atts in varatts]): raise TypeError
+  # check axis: they need to have only one axes, which has to be the same for all!
+  if len(varatts) != len(varlist): raise ListError, "Failed to match varatts to varlist!"  
+  axname, axunits = var.axes[0].name,var.axes[0].units # determine axes from first variable
+  for var in varlist:
+    if not var.ndim: raise AxisError, "Variable '{}' has more than one dimension.".format(var.name)
+    if not var.hasAxis(axname): raise AxisError, "Variable {} does not have a '{}' axis.".format(var.name,axname)
+    if not axunits == var.axes[0].units: raise AxisError, "Axis '{}' in Variable {} does not have a '{}' units.".format(axname,var.name,axunits)    
+  # loop over variables
+  plts = [] # list of plot handles
+  for var,linestyle,varatt in zip(varlist,linestyles,varatts):
+    axe = var.axes[0].getArray(unmask=True) # should only have one axis by now
+    val = var.getArray(unmask=True) # the data to plot
+    # figure out keyword options
+    kwatts = kwargs.copy(); kwatts.update(varatt) # join individual and common attributes
+    if 'label' not in kwatts: kwatts['label'] = var.name # default label: variable name
+    if 'scalefactor' in kwatts: val *= kwatts.pop('scalefactor')
+    # N.B.: other scaling behavior could be added here
+    print var.name, var.units, axe.mean(), val.mean()
+    # figure out orientation
+    if kwatts.pop('flipxy',False): xx,yy = val, axe 
+    else: xx,yy = axe, val
+    # call plot function
+    if linestyle is None: plts.append(ax.plot(xx, yy, **kwatts)[0])
+    else: plts.append(ax.plot(xx, yy, linestyle, **kwatts)[0])
+  # set axes labels
+  if isinstance(xline,(int,np.integer,float,np.inexact)): ax.axhline(y=xline, color='black')
+  if isinstance(yline,(int,np.integer,float,np.inexact)): ax.axvline(x=yline, color='black')
+  # return handle
+  return plts      
+
 
 if __name__ == '__main__':
     
@@ -35,6 +90,7 @@ if __name__ == '__main__':
   period = 15
   grid = 'arb2_d02'
   # figure
+  lprint = False
   # figure parameters for saving
   sf, figformat, margins, subplot, figsize = getFigureSettings(2, cbar=False, sameSize=False)
   # make figure and axes
@@ -63,38 +119,28 @@ if __name__ == '__main__':
     # compute misfit
     runoff = wrf.runoff; runoff.units = 'kg/s'
     sfroff = wrf.sfroff; sfroff.units = 'kg/s'
-    gagero = gage.discharge
+    discharge = gage.discharge
+    difference = sfroff - discharge
+    difference.name = 'difference'    
 #     print sfroff.name, sfroff.units
-#     print gagero.name, gagero.units
-    rodiff = sfroff - gagero    
     
-    def linePlot(ax, var, scalefactor=1, linestyle=None, **kwargs):
-      ''' simple function to draw a line plot based on a variable '''
-      print var.name, var.units
-      xx = var.axes[0].getArray(unmask=True) # should only have one axis by now
-      yy = var.getArray(unmask=True)*scalefactor # the data to plot
-      print xx.mean(), yy.mean()
-      if linestyle is None: plt = ax.plot(xx, yy, **kwargs)[0]
-      else: plt = ax.plot(xx, yy, linestyle, **kwargs)[0]
-      # return handle
-      return plt      
-    
+    # plot properties    
+    varatts = dict()
+    varatts['runoff'] = dict(color='purple')
+    varatts['sfroff'] = dict(color='green')
+    varatts['discharge'] = dict(color='green', linestyle='', marker='o')
+    varatts['difference'] = dict(color='red')    
     # plot runoff
-    plt = []; leg = []
-    # WRF runoff    
-    plt.append(linePlot(ax, runoff, scalefactor=1e-6, color='purple'))
-    plt.append(linePlot(ax, sfroff, scalefactor=1e-6, color='green'))
-    plt.append(linePlot(ax, gagero, scalefactor=1e-6, linestyle='o', color='green'))
-    plt.append(linePlot(ax, rodiff, scalefactor=1e-6, color='red'))
-#     leg.append(label)
+    varlist = [discharge]
+    varlist += [runoff, sfroff, difference]
+    plts = linePlot(ax, varlist, varatts=varatts, xline=0, scalefactor=1e-6)
                 
-    
-  filename = 'runoff_test.png'
-  print('\nSaving figure in '+filename)
-  fig.savefig(figure_folder+filename, **sf) # save figure to pdf
-  print(figure_folder)
+  if lprint:
+    filename = 'runoff_test.png'
+    print('\nSaving figure in '+filename)
+    fig.savefig(figure_folder+filename, **sf) # save figure to pdf
+    print(figure_folder)
       
-  ## show plots after all iterations
+  ## show plots after all iterations  
   pyl.show()
-
     
