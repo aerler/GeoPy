@@ -30,7 +30,8 @@ from plotting.settings import getFigureSettings
 from projects.ARB_settings import figure_folder
 
 
-def linePlot(ax, varlist, linestyles=None, varatts=None, xline=None, yline=None, **kwargs):
+def linePlot(ax, varlist, linestyles=None, varatts=None, legend=None, xline=None, yline=None, 
+             xlabel=None, ylabel=None, xlim=None, ylim=None, **kwargs):
   ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on variable properties. '''
   # varlist is the list of variable objects that are to be plotted
   if isinstance(varlist,Variable): varlist = [varlist]
@@ -50,12 +51,14 @@ def linePlot(ax, varlist, linestyles=None, varatts=None, xline=None, yline=None,
   if not all([isinstance(atts,(dict,NoneType)) for atts in varatts]): raise TypeError
   # check axis: they need to have only one axes, which has to be the same for all!
   if len(varatts) != len(varlist): raise ListError, "Failed to match varatts to varlist!"  
+  varname, varunits = var.name,var.units # determine variable properties from first variable
   axname, axunits = var.axes[0].name,var.axes[0].units # determine axes from first variable
   for var in varlist:
     if not var.ndim: raise AxisError, "Variable '{}' has more than one dimension.".format(var.name)
     if not var.hasAxis(axname): raise AxisError, "Variable {} does not have a '{}' axis.".format(var.name,axname)
     if not axunits == var.axes[0].units: raise AxisError, "Axis '{}' in Variable {} does not have a '{}' units.".format(axname,var.name,axunits)    
   # loop over variables
+  flipxy = kwargs.pop('flipxy',False)
   plts = [] # list of plot handles
   for var,linestyle,varatt in zip(varlist,linestyles,varatts):
     axe = var.axes[0].getArray(unmask=True) # should only have one axis by now
@@ -67,14 +70,28 @@ def linePlot(ax, varlist, linestyles=None, varatts=None, xline=None, yline=None,
     # N.B.: other scaling behavior could be added here
     print var.name, var.units, axe.mean(), val.mean()
     # figure out orientation
-    if kwatts.pop('flipxy',False): xx,yy = val, axe 
+    if flipxy: xx,yy = val, axe 
     else: xx,yy = axe, val
     # call plot function
     if linestyle is None: plts.append(ax.plot(xx, yy, **kwatts)[0])
     else: plts.append(ax.plot(xx, yy, linestyle, **kwatts)[0])
   # set axes labels
+  labelpad = 3
+  if flipxy:
+    ax.set_xlabel('{} [{}]'.format(varname,varunits), labelpad=labelpad)
+    ax.set_ylabel('{} [{}]'.format(axname,axunits), labelpad=labelpad)
+  else: 
+    ax.set_xlabel('{} [{}]'.format(axname,axunits), labelpad=labelpad)
+    ax.set_ylabel('{} [{}]'.format(varname,varunits), labelpad=labelpad)
+  # else: ax.set_xticklabels([])
+  #ax.minorticks_on()
+  ax.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator(2))
+    
+  # add orientation lines
   if isinstance(xline,(int,np.integer,float,np.inexact)): ax.axhline(y=xline, color='black')
+  elif isinstance(xline,dict): ax.axhline(**xline)
   if isinstance(yline,(int,np.integer,float,np.inexact)): ax.axvline(x=yline, color='black')
+  elif isinstance(xline,dict): ax.axvline(**yline)
   # return handle
   return plts      
 
@@ -95,6 +112,7 @@ if __name__ == '__main__':
   sf, figformat, margins, subplot, figsize = getFigureSettings(2, cbar=False, sameSize=False)
   # make figure and axes
   fig, axes = pyl.subplots(*subplot, sharex=True, sharey=False, facecolor='white', figsize=figsize)
+  margins = dict(bottom=0.11, left=0.11, right=.975, top=.95, hspace=0.05, wspace=0.05)
   fig.subplots_adjust(**margins) # hspace, wspace
               
   # loop over panels/basins
