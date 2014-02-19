@@ -462,6 +462,16 @@ tmp['scalefactor'] = 86400
 # add to collection
 variablePlotatts['ugroff'] = tmp
 
+## Discharge (river flow)
+tmp = defaultPlotatts.copy() 
+# specific properties
+tmp['plotname'] = 'Discharge'
+tmp['plottitle'] = 'Discharge'
+tmp['plotunits'] = r'$10^6 kg s^{-1}$'
+tmp['scalefactor'] = 1e-6
+# add to collection
+variablePlotatts['discharge'] = tmp
+
 ## *** Standard Vars (3D) ***
 
 ## Geopotential Height
