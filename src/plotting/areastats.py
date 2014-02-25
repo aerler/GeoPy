@@ -27,7 +27,7 @@ from projects.ARB_settings import figure_folder
 
 def getVarSettings(plottype, area, lPRISM=False, mode='all'):
   flxlabel = r'Water Flux [$10^6$ kg/s]' 
-  if area == 'athabasca': flxlim = (-2,4) if lPRISM else (-3,7)
+  if area == 'athabasca': flxlim = (-2,4) if lPRISM else (-2,13)
   elif area == 'fraser': flxlim = (-5,20)
   elif area == 'northcoast': flxlim = (0,35)
   elif area == 'southcoast': flxlim = (-5,25)
@@ -36,7 +36,7 @@ def getVarSettings(plottype, area, lPRISM=False, mode='all'):
     varlist = ['lhfx','hfx']; filetypes = ['hydro','srfc']; 
     lsum = False; leg = (2,3); ylabel = r'Heat Flux [W m$^{-2}$]'; ylim = (-50,150)  
   elif plottype == 'flux':
-    varlist = ['snwmlt','p-et','precip']; filetypes = ['srfc','hydro']; # 'waterflx' 
+    varlist = ['snwmlt','p-et','precip','pet']; filetypes = ['srfc','hydro']; # 'waterflx' 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
   elif plottype == 'snwmlt':
     varlist = ['snwmlt','precip','solprec']; filetypes = ['srfc','hydro']; # 'waterflx' 
@@ -169,19 +169,19 @@ if __name__ == '__main__':
   ## settings
   # settings
   lprint = True 
-  expset = 'max-ens'
+  expset = 'max-ens-diff'
 #   plottypes = ['temp','runoff','sfroff']
 #   plottypes = ['temp','flux'] # ,'flux','sfflx','snwmlt']
-#   plottypes = ['temp','precip','flux','runoff']
+  plottypes = ['temp','precip','flux','runoff']
 #   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
-  plottypes = ['sfflx']
+#   plottypes = ['flux']
   lPRISM = False
   lUnity = True
   lgage = True
   titles = None
   areas = []
-  areas += ['athabasca']
-#   areas += ['fraser']
+#   areas += ['athabasca']
+  areas += ['fraser']
 #   areas += ['northcoast']
 #   areas += ['southcoast']
   domain = 2
@@ -326,6 +326,7 @@ if __name__ == '__main__':
               elif var == 'preccu': color = 'blue'
               elif var == 'precnc': color = 'cyan'
               elif var == 'p-et': color = 'red'
+              elif var == 'pet': color = 'purple'
               elif var == 'waterflx': color = 'blue'
               elif var == 'snwmlt': color = 'coral'
               elif var == 'runoff': color = 'purple'

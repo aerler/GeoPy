@@ -217,7 +217,7 @@ if __name__ == '__main__':
     plts = linePlot(ax, varlist, varatts=varatts, xline=0, ylim=(-6,16), legend=legend) # , scalefactor=1e-6
                 
   if lprint:
-    if ldisc: filename = 'runoff_dicharge.png'
+    if ldisc: filename = 'runoff_discharge.png'
     elif lprecip: filename = 'runoff_precip.png'
     else: filename = 'runoff_test.png'
     print('\nSaving figure in '+filename)
