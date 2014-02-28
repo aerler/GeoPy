@@ -45,7 +45,7 @@ def getWRFproj(dataset, name=''):
 # infer grid (projection and axes) from constants file
 def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='wrfconst_d{0:0=2d}.nc', ncformat='NETCDF4'):
   ''' Infer the WRF grid configuration from an output file and return a GridDefinition object. '''
-  from datasets.WRF_experiments import Exp, exps 
+  from projects.WRF_experiments import Exp, exps 
   # check input
   folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder)
   if isinstance(filename,basestring): filepath = '{}/{}'.format(folder,filename) # still contains formaters

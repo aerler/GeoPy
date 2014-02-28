@@ -25,7 +25,7 @@ from datasets.common import days_per_month, days_per_month_365 # for annotation
 from datasets.common import loadDatasets
 from plotting.settings import getFigureSettings, getVariableSettings
 # ARB project related stuff
-from plotting.ARB_settings import getARBsetup, arb_figure_folder, arb_map_folder, ARB_shapefile, FRB_shapefile
+from projects.ARB_settings import getARBsetup, figure_folder, map_folder, ARB_shapefile, FRB_shapefile
 
 if __name__ == '__main__':
   
@@ -39,7 +39,7 @@ if __name__ == '__main__':
   WRFfiletypes=['srfc']
 #   WRFfiletypes = ['srfc','lsm','hydro','xtrm'] # WRF data source
   # figure directory
-  folder = arb_figure_folder
+  folder = figure_folder
   lpickle = True
   # period shortcuts
   H01 = '1979-1980'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
@@ -107,9 +107,13 @@ if __name__ == '__main__':
 # #   explist = ['max-ens']; period = H15
 #   explist = ['max-ens-2050']; period = A15; ldiff = True; reflist = ['max-ens']; refprd = H15
 
-  case = 'lowres-max'; lbasins = True
-  explist = ['Ctrl', 'max', 'max-1deg', 'Unity']; domain = [None, 1, 2, None]; period = [H10, H01, H01, H01]
-  ldiff = True; reflist = ['max']; refdom = 2; grid = ['cesm1x1','arb2_d01','arb2_d02','arb2_d02'];
+#   case = 'lsm'; lbasins = True
+#   explist = ['max', 'max-diff', 'max-nmp', 'max-nmp-old']; period = H05
+#   ldiff = True; reflist = ['Unity']
+
+  case = 'cu'; lbasins = True
+  explist = ['max', 'max-nosub', 'max-hilev', 'max-kf']; period = H05
+  ldiff = True; reflist = ['Unity']
 
 #   explist = ['max','new-grell-old','max-clm','max-nmp-old'] 
 #   case = 'nmp'; lbasins = True; lsamesize = False; period = H03
@@ -223,7 +227,7 @@ if __name__ == '__main__':
 #   varlist = ['zs']; seasons = ['hidef']; WRFfiletypes=['const']; lcontour = True # static
 
   # setup projection and map
-  mapSetup = getARBsetup(maptype, lpickle=lpickle, folder=arb_map_folder)
+  mapSetup = getARBsetup(maptype, lpickle=lpickle, folder=map_folder)
   
   ## load data
   if reflist is not None:

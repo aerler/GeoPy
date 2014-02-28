@@ -70,7 +70,7 @@ class BasinInfo(object):
     ''' some common operations and inferences '''
     self.folder = root_folder+self.long_name+'/'; self.__doc__ = self.long_name
     self.shapefiles = [shp if shp[-4:] == '.shp' else shp+'.shp' for shp in self.shapefiles]
-    self.outline = self.shapefiles[0]; self.maingage = self.stations[self.rivers[0]][0] 
+    self.outline = self.shapefiles[0]; self.maingage = self.stations[self.rivers[0]][0] if self.stations else None 
     self.stationfiles = dict()
     for river,stations in self.stations.items():
       for station in stations: 
@@ -91,11 +91,15 @@ class FRB(BasinInfo):
     self.name = 'FRB'; self.long_name = 'Fraser River Basin'; self.rivers = ['Fraser']
     self.stations = dict(Fraser=['PortMann','Mission'])
     self.shapefiles = ['WholeFRB','LowerFRB','UpperFRB']
-    self.outline = self.shapefiles[0]; self.maingage = self.stations[self.rivers[0]][0]
-    self.folder = root_folder+self.long_name+'/'; self.__doc__ = self.long_name
+    BasinInfo.__init__(self)
+class PSB(BasinInfo):
+  def __init__(self):
+    self.name = 'PSB'; self.long_name = 'Pacific Seaboard'; self.rivers = []
+    self.stations = dict()
+    self.shapefiles = ['WholePSB','NorthernPSB','SouthernPSB']
     BasinInfo.__init__(self)
 # dictionary with basin meta data
-basins = dict(ARB=ARB(), FRB=FRB())
+basins = dict(ARB=ARB(), FRB=FRB(), PSB=PSB())
 
 ## Functions that handle access to ASCII files
 

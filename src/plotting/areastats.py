@@ -10,7 +10,7 @@ A simple script to plot area-averaged monthly climatologies.
 import numpy as np
 import matplotlib.pylab as pyl
 import matplotlib as mpl
-linewidth = 1.
+linewidth = 1.5
 mpl.rc('lines', linewidth=linewidth)
 if linewidth == 1.5: mpl.rc('font', size=12)
 else: mpl.rc('font', size=10)
@@ -27,7 +27,7 @@ from projects.ARB_settings import figure_folder
 
 def getVarSettings(plottype, area, lPRISM=False, mode='all'):
   flxlabel = r'Water Flux [$10^6$ kg/s]' 
-  if area == 'athabasca': flxlim = (-2,4) if lPRISM else (-2,13)
+  if area == 'athabasca': flxlim = (-2,4) if lPRISM else (-3,7)
   elif area == 'fraser': flxlim = (-5,20)
   elif area == 'northcoast': flxlim = (0,35)
   elif area == 'southcoast': flxlim = (-5,25)
@@ -98,9 +98,11 @@ def getDatasets(expset, titles=None):
     explist = [(exp,'max-ens') for exp in explist]
   elif expset == 'micro': 
     explist = ['max-kf','wdm6','ctrl','tom']
-    explist = [(exp,'max-ens') for exp in explist]  
-  elif expset == 'mpg': 
-    explist = ['max','new','max-nmp','max-nmp-old']  
+    explist = [(exp,'max-ens') for exp in explist]
+  elif expset == 'cu':  
+    explist = ['max', 'max-nosub', 'max-hilev', 'max-kf']
+  elif expset == 'lsm': 
+    explist = ['max','max-diff','max-nmp','max-nmp-old']  
   elif expset == 'clm': 
     explist = ['max','new-grell-old','max-clm','max-nmp-old']
   elif expset == 'newnmp': 
@@ -158,7 +160,7 @@ def getDatasets(expset, titles=None):
   # expand linestyles
   linestyles = [linestyles,]*len(explist)
   # titles
-  if isinstance(explist[0],(list,tuple)): titles = [exp[0] for exp in explist] 
+  if isinstance(explist[0],(list,tuple)) and not titles: titles = [exp[0] for exp in explist] 
   # return dataset names
   return explist, titles, linestyles
 
@@ -172,15 +174,15 @@ if __name__ == '__main__':
   expset = 'max-ens-diff'
 #   plottypes = ['temp','runoff','sfroff']
 #   plottypes = ['temp','flux'] # ,'flux','sfflx','snwmlt']
-  plottypes = ['temp','precip','flux','runoff']
+#   plottypes = ['temp','precip','flux','sfflx']
 #   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
-#   plottypes = ['flux']
+  plottypes = ['sfroff']
   lPRISM = False
   lUnity = True
   lgage = True
   titles = None
   areas = []
-#   areas += ['athabasca']
+  areas += ['athabasca']
   areas += ['fraser']
 #   areas += ['northcoast']
 #   areas += ['southcoast']
@@ -245,7 +247,7 @@ if __name__ == '__main__':
         areaname = 'PSB'; subarea = 'SouthernPSB'
       else: 
         raise ValueError, 'Have to specify a river area or other shapefile to use as mask!'
-      basin = Basin(basin=areaname)
+      basin = Basin(basin=areaname, subbasin=subarea)
       if lgage: maingage = basin.getMainGage()
       shp_mask = basin.rasterize(griddef=ref.griddef)
       if lPRISM: shp_mask = (shp_mask + prism.datamask.getArray(unmask=True,fillValue=1)).astype(np.bool)
@@ -354,7 +356,7 @@ if __name__ == '__main__':
               # river gage
               if lgage and var in ('sfroff',): 
                 vardata = maingage.variables['discharge']
-                label = '%s (%s)'%('Discharge','WSC')
+                label = '%s (%s)'%('discharge','obs')
                 obsplt.append(ax.plot(time, vardata.getArray()/1e6, 'o', markersize=5*linewidth, color=color, label=label)[0]) # , linewidth=1.5
                 obsleg.append(label)
                 print

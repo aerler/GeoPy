@@ -6,7 +6,6 @@ Meta data related to the Athabasca River Basin downscaling project; primarily ma
 @author: Andre R. Erler, GPL v3
 '''
 
-from datasets.common import grid_folder, shape_folder
 from plotting.mapsetup import getMapSetup
 
 figure_folder = '/home/me/Research/Dynamical Downscaling/Figures/'
@@ -14,6 +13,7 @@ map_folder = figure_folder + '.mapsetup/'
 # actual Athabasca River Basin (shape file from Aquanty)
 #ARB_shapefolder = grid_folder+'/ARB_Aquanty/' 
 #ARB_shapefile = ARB_shapefolder+'ARB_Basins_Outline_WGS84'
+shape_folder = '/data/WSC/'
 # Athabasca River Basin (shape file from Atlas of Canada) 
 ARB_shapefolder = shape_folder + '/Athabasca River Basin/'
 ARB_shapefile = ARB_shapefolder + 'WholeARB'
