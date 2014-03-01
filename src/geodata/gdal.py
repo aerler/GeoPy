@@ -752,7 +752,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
 class Shape(object):
   ''' A wrapper class for shapefiles, with some added functionality and raster itnerface '''
   
-  def __init__(self, name=None, shapefile=None, folder=None, load=False, ldebug=False):
+  def __init__(self, name=None, long_name=None, shapefile=None, folder=None, load=False, ldebug=False):
     ''' load shapefile '''
     if name is not None and not isinstance(name,basestring): raise TypeError
     if folder is not None and not isinstance(folder,basestring): raise TypeError
@@ -761,12 +761,14 @@ class Shape(object):
     if ldebug: print(' - loading shapefile')
     if shapefile is None: shapefile = name + '.shp'
     if name is None: name = os.path.basename(shapefile)
+    if long_name is None: long_name = name
     if folder is not None: shapefile = folder + '/' + shapefile
     else: folder = os.path.dirname(shapefile)
     if not os.path.exists(shapefile): raise IOError, 'File \'{}\' not found!'.format(shapefile)
     if ldebug: print(' - using shapefile \'{}\''.format(shapefile))
     # instance attributes
     self.name = name
+    self.long_name = long_name
     self.folder = folder
     self.shapefile = shapefile
     # load shapefile (or not)

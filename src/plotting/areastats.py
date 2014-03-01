@@ -10,9 +10,10 @@ A simple script to plot area-averaged monthly climatologies.
 import numpy as np
 import matplotlib.pylab as pyl
 import matplotlib as mpl
-linewidth = 1.5
+linewidth = .75
 mpl.rc('lines', linewidth=linewidth)
 if linewidth == 1.5: mpl.rc('font', size=12)
+elif linewidth == .75: mpl.rc('font', size=8)
 else: mpl.rc('font', size=10)
 # prevent figures from closing: don't run in interactive mode, or plt.show() will not block
 pyl.ioff()
@@ -36,7 +37,7 @@ def getVarSettings(plottype, area, lPRISM=False, mode='all'):
     varlist = ['lhfx','hfx']; filetypes = ['hydro','srfc']; 
     lsum = False; leg = (2,3); ylabel = r'Heat Flux [W m$^{-2}$]'; ylim = (-50,150)  
   elif plottype == 'flux':
-    varlist = ['snwmlt','p-et','precip','pet']; filetypes = ['srfc','hydro']; # 'waterflx' 
+    varlist = ['snwmlt','p-et','precip']; filetypes = ['srfc','hydro']; # 'waterflx' 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
   elif plottype == 'snwmlt':
     varlist = ['snwmlt','precip','solprec']; filetypes = ['srfc','hydro']; # 'waterflx' 
@@ -51,7 +52,7 @@ def getVarSettings(plottype, area, lPRISM=False, mode='all'):
       varlist = ['precip','preccu','precnc']; filetypes = ['srfc'] # 
       lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim        
   elif plottype == 'p-et':
-    varlist = ['p-et','precip']; filetypes = ['hydro'] # 
+    varlist = ['p-et','precip','pet']; filetypes = ['hydro'] # 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
   elif plottype == 'p-et_all':
     varlist = ['p-et','precip','liqprec','solprec']; filetypes = ['hydro'] # 
@@ -170,13 +171,14 @@ if __name__ == '__main__':
   
   ## settings
   # settings
-  lprint = True 
-  expset = 'max-ens-diff'
+  lprint = True; lpub = True
+  paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
+  expset = 'max-all-diff'
 #   plottypes = ['temp','runoff','sfroff']
 #   plottypes = ['temp','flux'] # ,'flux','sfflx','snwmlt']
 #   plottypes = ['temp','precip','flux','sfflx']
 #   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
-  plottypes = ['sfroff']
+  plottypes = ['flux']
   lPRISM = False
   lUnity = True
   lgage = True
@@ -450,7 +452,7 @@ if __name__ == '__main__':
         # average discharge below Fort McMurray: 620 m^3/s
           
         # save figure to disk
-        if lprint:        
+        if lprint:
           if area == 'athabasca': 
             areatag='ARB'; folder = figure_folder + '/Athabasca River Basin/' 
           elif area == 'fraser': 
@@ -459,6 +461,7 @@ if __name__ == '__main__':
             areatag = 'NPSB'; folder = figure_folder + '/Northern Pacific Seaboard/'    
           elif area == 'southcoast': 
             areatag = 'SPSB'; folder = figure_folder + '/Southern Pacific Seaboard/'    
+          if lpub: folder = paper_folder        
           tag = '_'+tag if tag else ''
           domtag = '_d{0:02d}'.format(domain) if domain != 2 else '' 
           filename = '{0:s}_{1:s}_{2:s}{3:s}{4:s}.png'.format(areatag,plottype,expset,domtag,tag)

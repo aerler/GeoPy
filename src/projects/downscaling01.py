@@ -13,9 +13,10 @@ import numpy as np
 import matplotlib.pylab as pyl
 import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import ImageGrid
-linewidth = 1.
+linewidth = .75
 mpl.rc('lines', linewidth=linewidth)
 if linewidth == 1.5: mpl.rc('font', size=12)
+elif linewidth == .75: mpl.rc('font', size=8)
 else: mpl.rc('font', size=10)
 # prevent figures from closing: don't run in interactive mode, or plt.show() will not block
 pyl.ioff()
@@ -50,7 +51,7 @@ def getPlotValues(var, checkunits=None, checkname=None):
   return val, varunits, varname     
 
 def linePlot(ax, varlist, linestyles=None, varatts=None, legend=None, xline=None, yline=None, 
-             xlabel=None, ylabel=None, xlim=None, ylim=None, **kwargs):
+             title=None, xlabel=None, ylabel=None, xlim=None, ylim=None, **kwargs):
   ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on variable properties. '''
   # varlist is the list of variable objects that are to be plotted
   if isinstance(varlist,Variable): varlist = [varlist]
@@ -95,7 +96,9 @@ def linePlot(ax, varlist, linestyles=None, varatts=None, legend=None, xline=None
   if isinstance(xlim,(list,tuple)) and len(xlim)==2: ax.set_xlim(*xlim)
   elif xlim is not None: raise TypeError
   if isinstance(ylim,(list,tuple)) and len(ylim)==2: ax.set_ylim(*ylim)
-  elif ylim is not None: raise TypeError  
+  elif ylim is not None: raise TypeError 
+  # set title
+  if title is not None: ax.set_title(title)
   # set axes labels
   xpad = 2; ypad = -2
   if flipxy:
@@ -134,7 +137,7 @@ if __name__ == '__main__':
   lprint = True
   lfield = True
   lgage = True 
-  ldisc = True # scale sfroff to discharge
+  ldisc = False # scale sfroff to discharge
   lprecip = True # scale sfroff by precip bias
   # figure parameters for saving
 #   sf, figformat, margins, subplot, figsize = getFigureSettings(2, cbar=False, sameSize=False)
@@ -143,8 +146,9 @@ if __name__ == '__main__':
 #   margins = dict(bottom=0.11, left=0.11, right=.975, top=.95, hspace=0.05, wspace=0.05)
 #   fig.subplots_adjust(**margins) # hspace, wspace
   nax = len(basins)
-  fig = pyl.figure(1, (5.5, 3.5))
-  axes = ImageGrid(fig, (0.09,0.11,0.88,0.85), nrows_ncols = (1, nax), axes_pad = 0.2, aspect=False, label_mode = "L")
+  paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
+  fig = pyl.figure(1, facecolor='white', figsize=(6.25,3.75))
+  axes = ImageGrid(fig, (0.09,0.11,0.88,0.82), nrows_ncols = (1, nax), axes_pad = 0.2, aspect=False, label_mode = "L")
               
   # loop over panels/basins
   for n,ax,basin in zip(xrange(nax),axes,basins):
@@ -212,16 +216,16 @@ if __name__ == '__main__':
     varatts.update(satts)
     # determine legend
     if n == 0: legend = None
-    else: legend = dict(loc=1, labelspacing=0.125, handlelength=2, handletextpad=0.5, fancybox=True)
+    else: legend = dict(loc=1, labelspacing=0.125, handlelength=2.5, handletextpad=0.5, fancybox=True)
     # plot runoff
-    plts = linePlot(ax, varlist, varatts=varatts, xline=0, ylim=(-6,16), legend=legend) # , scalefactor=1e-6
+    plts = linePlot(ax, varlist, varatts=varatts, title=basin.long_name, xline=0, ylim=(-6,16), legend=legend) # , scalefactor=1e-6
                 
   if lprint:
     if ldisc: filename = 'runoff_discharge.png'
     elif lprecip: filename = 'runoff_precip.png'
     else: filename = 'runoff_test.png'
     print('\nSaving figure in '+filename)
-    fig.savefig(figure_folder+filename, dpi=150) # save figure to pdf
+    fig.savefig(paper_folder+filename, dpi=150) # save figure to pdf
     print(figure_folder)
       
   ## show plots after all iterations  

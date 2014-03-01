@@ -37,8 +37,8 @@ variable_list = variable_attributes.keys() # also includes coordinate fields
 class Basin(Shape):
   ''' Just a container for basin information and associated station data '''
   def __init__(self, basin=None, subbasin=None, folder=None, shapefile=None, rivers=None, stations=None, load=False, ldebug=False):
-    ''' save meta information '''
-      # resolve input
+    ''' save meta information; should be initialized from a BasinInfo instance '''
+    # resolve input
     if isinstance(basin,(basestring,BasinInfo)):
       if isinstance(basin,basestring):
         if basin in basins: basin = basins[basin]
@@ -51,7 +51,7 @@ class Basin(Shape):
     elif isinstance(folder,basestring) and isinstance(shapefile,basestring): pass
     else: raise TypeError, 'Specify either basin & station or folder & shapefile.'
     # call Shape constructor
-    super(Basin,self).__init__(name=basin.name, shapefile=shapefile, folder=folder, load=load, ldebug=ldebug)
+    super(Basin,self).__init__(name=basin.name, long_name=basin.long_name, shapefile=shapefile, folder=folder, load=load, ldebug=ldebug)
     # add info
     self.info = basin
     self.maingage = basin.maingage if basin is not None else None 
