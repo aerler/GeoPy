@@ -218,7 +218,7 @@ if __name__ == '__main__':
     if n == 0: legend = None
     else: legend = dict(loc=1, labelspacing=0.125, handlelength=2.5, handletextpad=0.5, fancybox=True)
     # plot runoff
-    plts = linePlot(ax, varlist, varatts=varatts, title=basin.long_name, xline=0, ylim=(-6,16), legend=legend) # , scalefactor=1e-6
+    plts = linePlot(ax, varlist, varatts=varatts, title=basin.long_name, xline=0, xlim=(1,12), ylim=(-6,16), legend=legend) # , scalefactor=1e-6
                 
   if lprint:
     if ldisc: filename = 'runoff_discharge.png'

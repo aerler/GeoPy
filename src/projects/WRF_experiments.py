@@ -108,6 +108,8 @@ experiments['nmpnew-ctrl'] = Exp(shortname='nmpnew', name='nmpnew-ctrl', title='
 experiments['nmpbar-ctrl'] = Exp(shortname='nmpbar', name='nmpbar-ctrl', title='Barlage (Noah-MP, Ctrl)', begindate='1979-01-01', grid='arb2')
 experiments['nmpsnw-ctrl'] = Exp(shortname='nmpsnw', name='nmpsnw-ctrl', title='Snow (Noah-MP, Ctrl)', begindate='1979-01-01', grid='arb2')
 # these are all based on the original configuration (mostly ARB1 domain)
+experiments['ctrl-1-arb1'] = Exp(shortname='cam-1', name='ctrl-1-arb1', title='Ctrl-1 (CAM)', begindate='1979-01-01', grid='arb1')
+experiments['ctrl-2-arb1'] = Exp(shortname='cam-2', name='ctrl-2-arb1', title='Ctrl-2 (CAM)', begindate='1979-01-01', grid='arb1')
 experiments['2way-arb1'] = Exp(shortname='2way', name='2way-arb1', title='2-way Nest (CAM)', begindate='1979-01-01', grid='arb1')
 experiments['pbl1-arb1'] = Exp(shortname='pbl4', name='pbl1-arb1', title='PBL-1 (CAM)', begindate='1979-01-01', grid='arb1')
 experiments['grell3-arb1'] = Exp(shortname='grell', name='grell3-arb1', title='Grell-3 (CAM)', begindate='1979-01-01', grid='arb1')

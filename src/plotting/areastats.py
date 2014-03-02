@@ -10,11 +10,6 @@ A simple script to plot area-averaged monthly climatologies.
 import numpy as np
 import matplotlib.pylab as pyl
 import matplotlib as mpl
-linewidth = .75
-mpl.rc('lines', linewidth=linewidth)
-if linewidth == 1.5: mpl.rc('font', size=12)
-elif linewidth == .75: mpl.rc('font', size=8)
-else: mpl.rc('font', size=10)
 # prevent figures from closing: don't run in interactive mode, or plt.show() will not block
 pyl.ioff()
 # internal imports
@@ -94,6 +89,8 @@ def getDatasets(expset, titles=None):
     explist = [('new','noah')]
     titles = 'Noah-MP vs. Noah'
 #     linestyles = ('-','--')
+  elif expset == 'ctrl-12':
+    explist = [('ctrl-1', 'ctrl-2')]
   elif expset == 'newmax': 
     explist = ['gulf','new','max','noah']
     explist = [(exp,'max-ens') for exp in explist]
@@ -132,6 +129,9 @@ def getDatasets(expset, titles=None):
   elif expset == 'max-all-diff':
     explist = [('max-2050','max'),('max-A-2050','max-A'),('max-B-2050','max-B'),('max-C-2050','max-C')]
     titles = ['Max-1 (2050)','Max-A (2050)','Max-B (2050)','Max-C (2050)']
+  elif expset == 'max-all-var':
+    explist = [('max-ens','max-ens')]
+    linestyles = ('-','--')  
   elif expset == 'cesm-all': 
     explist = ['Ctrl','Ens-A','Ens-B','Ens-C']
   elif expset == 'cesm-all-2050': 
@@ -173,12 +173,14 @@ if __name__ == '__main__':
   # settings
   lprint = True; lpub = True
   paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
-  expset = 'max-all-diff'
+  expset = 'ctrl-12'
+#   expset = 'max-ens'
 #   plottypes = ['temp','runoff','sfroff']
 #   plottypes = ['temp','flux'] # ,'flux','sfflx','snwmlt']
 #   plottypes = ['temp','precip','flux','sfflx']
 #   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
-  plottypes = ['flux']
+  plottypes = ['flux'] 
+#   plottypes = ['flxrof']
   lPRISM = False
   lUnity = True
   lgage = True
@@ -191,8 +193,10 @@ if __name__ == '__main__':
   domain = 2
   periods = []
 #   periods += [5]
-#   periods += [10]
-  periods += [15]
+  periods += [10]
+#   periods += [15]
+#   periods += [(1979,1984)]
+#   periods += [(1989,1994)]
   
   # some more settings
   tag = 'prism' if lPRISM else ''
@@ -292,6 +296,15 @@ if __name__ == '__main__':
         S = asf if lsum else 1. # apply scale factor, depending on plot type  
        
         ## setting up figure
+        if nlen == 1: linewidth = 1.5
+        elif nlen == 2: linewidth = 1.
+        elif nlen == 4: linewidth = 0.75 
+        else: linewidth = 1.
+        mpl.rc('lines', linewidth=linewidth)
+        if linewidth == .75: mpl.rc('font', size=8)
+        elif linewidth == 1.: mpl.rc('font', size=10)
+        elif linewidth == 1.5: mpl.rc('font', size=12)
+        else: mpl.rc('font', size=10)
         # figure parameters for saving
         sf, figformat, margins, subplot, figsize = getFigureSettings(nlen, cbar=False)
         # make figure and axes
@@ -444,7 +457,8 @@ if __name__ == '__main__':
           ax = fig.add_axes([0, 0, 1,0.1])
           ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
           margins['bottom'] = margins['bottom'] + 0.1; fig.subplots_adjust(**margins)
-          legargs = dict(frameon=True, labelspacing=0.15, handlelength=1.5, handletextpad=0.5, fancybox=True)
+          if nlen == 1: legargs = dict(frameon=True, labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
+          else: legargs = dict(frameon=True, labelspacing=0.15, handlelength=2, handletextpad=0.5, fancybox=True)
           plt = wrfplt + obsplt; leg = wrfleg + obsleg
           ncols = 4 if len(plt) == 4 or len(plt) > 6 else 3
           legend = ax.legend(plt, leg, loc=10, ncol=ncols, borderaxespad=0., **legargs)  

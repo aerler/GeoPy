@@ -20,7 +20,7 @@ from processing.process import CentralProcessingUnit
 from processing.multiprocess import asyncPoolEC
 # WRF specific
 from datasets.WRF import loadWRF_TS, fileclasses
-from datasets.WRF_experiments import WRF_exps, Exp, WRF_experiments
+from projects.WRF_experiments import WRF_exps, Exp, WRF_experiments
 
 
 def computeClimatology(experiment, filetype, domain, periods=None, offset=0, griddef=None, varlist=None, 
@@ -181,18 +181,19 @@ if __name__ == '__main__':
     #experiments = ['new','noah','max','max-2050']
 #     experiments = ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
 #     experiments = ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
-#     experiments = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+    experiments = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     experiments = ['max-nofdda','max-fdda']
-    experiments = ['max-1deg', 'max']
-    periods = []
-    periods += [1]
+#     experiments = ['max-1deg', 'max']
+    periods = []; offset = 10
+#     periods += [1]
 #     periods += [3]
-#     periods += [5]
+    periods += [5]
 #     periods += [10]
-    domains = [1,2] # domains to be processed
+#     periods += [15]
+    domains = [2] # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
-    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
-#     filetypes = ['srfc','xtrm','lsm','hydro']
+#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+    filetypes = ['srfc','xtrm','lsm','hydro']
 #     filetypes = ['hydro'] # filetypes to be processed
     grid = 'WRF' 
   else:
@@ -233,6 +234,6 @@ if __name__ == '__main__':
         # arguments for worker function
         args.append( (experiment, filetype, domain) )        
   # static keyword arguments
-  kwargs = dict(periods=periods, offset=0, griddef=None, loverwrite=loverwrite, varlist=varlist)        
+  kwargs = dict(periods=periods, offset=offset, griddef=None, loverwrite=loverwrite, varlist=varlist)        
   # call parallel execution function
   asyncPoolEC(computeClimatology, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)

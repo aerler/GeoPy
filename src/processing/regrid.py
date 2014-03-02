@@ -22,9 +22,8 @@ from processing.process import CentralProcessingUnit
 # WRF specific
 from datasets.WRF import getWRFgrid, loadWRF
 from datasets.WRF import fileclasses as WRF_fileclasses
-from datasets.WRF_experiments import WRF_exps
+from projects.WRF_experiments import WRF_exps
 # CESM specific
-from datasets.CESM import fileclasses as CESM_fileclasses  
 from datasets.CESM import loadCESM, CESM_exps
 
 
@@ -210,19 +209,21 @@ if __name__ == '__main__':
     varlist = None
 #     varlist = ['precip',]
     periods = []
-    periods += [1]
+#     periods += [1]
 #     periods += [3]
 #     periods += [5]
 #     periods += [10]
 #     periods += [15]
 #     periods += [30]
+#     periods += [(1984,1994)]
+    periods += [(1989,1994)]
 #     periods += [(1949,2009)]
 #     periods += [(1997,1998)]
     # Observations/Reanalysis
     datasets = []
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['CFSR', 'NARR']
-#     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
+    datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     resolutions = None
     # CESM
     CESM_experiments = []
@@ -232,7 +233,7 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm','lnd']
     # WRF
     WRF_experiments = []
-    WRF_experiments += ['max']
+#     WRF_experiments += ['max']
 #     WRF_experiments += ['max','max-lowres','max-nmp','max-nosub']
 #     WRF_experiments += ['max','max-A','max-nofdda','max-fdda']
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
