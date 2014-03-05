@@ -111,9 +111,9 @@ if __name__ == '__main__':
 #   explist = ['max', 'max-diff', 'max-nmp', 'max-nmp-old']; period = H05
 #   ldiff = True; reflist = ['Unity']
 
-  case = 'cu'; lbasins = True
-  explist = ['max', 'max-nosub', 'max-hilev', 'max-kf']; period = H05
-  ldiff = True; reflist = ['Unity']
+#   case = 'cu'; lbasins = True
+#   explist = ['max', 'max-nosub', 'max-hilev', 'max-kf']; period = H05
+#   ldiff = True; reflist = ['Unity']
 
 #   explist = ['max','new-grell-old','max-clm','max-nmp-old'] 
 #   case = 'nmp'; lbasins = True; lsamesize = False; period = H03
@@ -159,16 +159,14 @@ if __name__ == '__main__':
 #   explist = ['max','max']; period = H10; domain = [1,2]
 #   ldiff = True; reflist = ['columbia']; refprd = H01; refdom = 3
 
-#   case = 'columbia'; stations = 'cities'
-#   maptype = 'lcc-col'; lstations = True; lbasins = True # 'lcc-new'  
-#   period = [H01]*4 #; period[1] = None 
-#   domain = [3,None,1,2]; lbackground = False
-#   lfrac = True; reflist = ['columbia']; refdom = 3
-#   grid = ['col1_d03']*4 # grid[0] = None #   grid = 'arb2_d02'; 
-# #   explist = ['columbia','GPCC','columbia','columbia'] 
-# #   exptitles = ['WRF 3km (CFSR)', 'GPCC (Climatology)', 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
-#   explist = ['columbia','PRISM','columbia','columbia'] 
-#   exptitles = ['WRF 3km (CFSR)', 'PRISM', 'WRF 27km (CFSR)', 'WRF 9km (CFSR)']
+  case = '3km'; stations = 'cities'
+  maptype = 'lcc-col'; lstations = True; lbasins = True # 'lcc-new'  
+  period = [H01]*4; period[1] = H15 
+  domain = [3,2,1,2]; lbackground = False
+  ldiff = True; reflist = ['Unity']; refprd = H30
+  grid = ['col2_d03','arb2_d02','col2_d01','col2_d02'] 
+  explist = ['max-3km','max-ctrl','max-3km','max-3km'] 
+  exptitles = ['WRF 3km','WRF 10km (15 yrs)','WRF 30km','WRF 10km']
 
 #   maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasins = True
 #   period = None; lWRFnative = True; loutline = False; period = H10
@@ -213,11 +211,11 @@ if __name__ == '__main__':
 #   seasons += ['warm']
 #   seasons += ['melt']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-  seasons += ['annual']
-  seasons += ['summer']
+#   seasons += ['annual']
+#   seasons += ['summer']
   seasons += ['winter']
-  seasons += ['spring']    
-  seasons += ['fall']
+#   seasons += ['spring']    
+#   seasons += ['fall']
   # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height

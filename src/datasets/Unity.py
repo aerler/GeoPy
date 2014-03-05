@@ -96,25 +96,33 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
   
   # settings to generate dataset
-#   grid = 'arb2_d01'
-  grid = 'arb2_d02'
-#   grid = 'arb3_d02'
-#   grid = 'grb1_d01'
-#   grid = 'grb1_d02'
-#   grid = 'ARB_small_025'
-#   grid = 'ARB_large_025'
-#   grid = 'cesm1x1'
-#   grid = 'NARR'
-#   period = (1979,1982)
-#   period = (1979,1984)
-#   period = (1979,1989)
-#   period = (1979,1994)
-#   period = (1984,1994)
-  period = (1989,1994)
-#   period = (1997,1998)
-#   period = (1979,1980)
-#   period = (1979,2009)
-#   period = (1949,2009)
+  grids = []
+#   grids += ['arb2_d01']
+#   grids += ['arb2_d02']
+#   grids += ['arb3_d02']
+#   grids += ['grb1_d01']
+#   grids += ['grb1_d02']
+  grids += ['col1_d01']
+  grids += ['col1_d02'] 
+  grids += ['col1_d03']
+  grids += ['col2_d01']
+  grids += ['col2_d02'] 
+  grids += ['col2_d03'] 
+#   grids += ['ARB_small_025']
+#   grids += ['ARB_large_025']
+#   grids += ['cesm1x1']
+#   grids += ['NARR']
+  periods = []
+#   periods += [(1979,1980)]
+#   periods += [(1979,1982)]
+#   periods += [(1979,1984)]
+#   periods += [(1979,1989)]
+#   periods += [(1979,1994)]
+#   periods += [(1984,1994)]
+#   periods += [(1989,1994)]
+#   periods += [(1997,1998)]
+#   periods += [(1979,2009)]
+  periods += [(1949,2009)]
 
   
   ## do some tests
@@ -139,94 +147,97 @@ if __name__ == '__main__':
   if mode == 'merge_datasets':
     # produce a merged dataset for a given time period and grid    
     
-    ## load source datasets
-    prism = loadPRISM(period=None, grid=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'])
-    gpccprd = loadGPCC(period=period, resolution='05', grid=grid, varlist=['precip'])
-    gpccclim = loadGPCC(period=None, resolution='05', grid=grid, varlist=['precip'])
-    gpcc025 = loadGPCC(period=None, resolution='025', grid=grid, varlist=['precip','landmask'])
-    cruprd = loadCRU(period=period, grid=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'])
-    cruclim = loadCRU(period=(1979,2009), grid=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'])
-    
-    # grid definition
-    griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder)
-    periodstr = '{0:4d}-{1:4d}'.format(*period)
-    
-    print('\n   <<<   Merging Climatology from {0:s} on {1:s} Grid  >>>   \n'.format(periodstr,grid,))
-    ## prepare target dataset 
-    filename = getFileName(grid=griddef.name, period=period, name=None, filepattern=avgfile)
-    filepath = avgfolder + filename
-    print('\n Saving data to: \'{0:s}\'\n'.format(filepath))
-    assert os.path.exists(avgfolder)
-    if os.path.exists(filepath): os.remove(filepath) # remove old file
-    # set attributes   
-    atts=dict() # collect attributes, but add prefixes
-    for key,item in prism.atts.iteritems(): atts['PRISM_'+key] = item
-    #for key,item in gpcc025.atts.iteritems(): atts['GPCC_'+key] = item # GPCC atts cause problems... 
-    for key,item in cruprd.atts.iteritems(): atts['CRU_'+key] = item
-    atts['period'] = periodstr; atts['name'] = dataset_name; atts['grid'] = griddef.name
-    atts['title'] = 'Unified Climatology from {0:s} on {1:s} Grid'.format(periodstr,griddef.name)
-    # make new dataset
-    sink = DatasetNetCDF(folder=avgfolder, filelist=[filename], atts=atts, mode='w')
-    # add a few variables that will remain unchanged
-    for var in [gpcc025.landmask, prism.lon2D, prism.lat2D]:
-      var.load(); sink.addVariable(var, asNC=True, copy=True, deepcopy=True); var.unload()
-    # PRISM datamask
-    prismmask = prism.datamask.copy(); prismmask.name = 'prismmask' 
-    prismmask.load(data=prism.datamask.getArray(unmask=True, fillValue=1)) 
-    sink.addVariable(prismmask, asNC=True, copy=True, deepcopy=True)
-    prism.datamask.unload()
-    # sync and write data so far 
-    sink.sync()       
-            
-    ## merge data (create variables)
-    
-    # precip
-    var = prism.precip.copy() # generate variable copy
-    # load data
-    prism.precip.load(); gpccprd.precip.load(); gpccclim.precip.load(); gpcc025.precip.load() 
-    prismarray = prism.precip.getArray(); gpccclimarray = gpccclim.precip.getArray()
-    gpccprdarray = gpccprd.precip.getArray(); gpcc025array = gpcc025.precip.getArray()
-    # generate climatology
-    array = ma.where(prismarray.filled(-999) == -999, gpcc025array, prismarray)        
-    array = array - gpccclimarray + gpccprdarray # add temporal variation
-    # save variable 
-    var.load(data=array)
-    sink.addVariable(var, asNC=True, copy=True, deepcopy=True)
-    
-    # Temperature
-    for varname in ['T2', 'Tmin', 'Tmax']:
-      var = prism.variables[varname].copy() # generate variable copy
-      # load data
-      prism.variables[varname].load(); cruprd.variables[varname].load(); cruclim.variables[varname].load() 
-      prismarray = prism.variables[varname].getArray(); cruclimarray = cruclim.variables[varname].getArray()
-      cruprdarray = cruprd.variables[varname].getArray()
-      # generate climatology
-      array = ma.where(prismarray.filled(-999) == -999, cruclimarray, prismarray)        
-      array = array - cruclimarray + cruprdarray # add temporal variation
-      # save variable 
-      var.load(data=array)
-      sink.addVariable(var, asNC=True, copy=True, deepcopy=True)
-
-    
-    ## add remaining CRU data
-    for varname in ['Q2','pet','cldfrc','wetfrq','frzfrq']:
-      cruprd.variables[varname].load()
-      sink.addVariable(cruprd.variables[varname], asNC=True, copy=True, deepcopy=True)
-      cruprd.variables[varname].unload()
-      sink.variables[varname].atts['source'] = 'CRU'
-    
-    # add names and length of months
-    sink.axisAnnotation('name_of_month', name_of_month, 'time', 
-                        atts=dict(name='name_of_month', units='', long_name='Name of the Month'))        
-    if not sink.hasVariable('length_of_month'):
-      sink += Variable(name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
-                    atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
-    
-    # apply higher resolution mask
-    sink.mask(sink.landmask, maskSelf=False, varlist=None, skiplist=['prismmask','lon2d','lat2d'], invert=False, merge=True)
+    for grid in grids:
+      for period in periods: 
         
-    # finalize changes
-    sink.sync()     
-    sink.close()
-    print(sink)
-    print('\n Writing to: \'{0:s}\'\n'.format(filename))
+        ## load source datasets
+        prism = loadPRISM(period=None, grid=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'])
+        gpccprd = loadGPCC(period=period, resolution='05', grid=grid, varlist=['precip'])
+        gpccclim = loadGPCC(period=None, resolution='05', grid=grid, varlist=['precip'])
+        gpcc025 = loadGPCC(period=None, resolution='025', grid=grid, varlist=['precip','landmask'])
+        cruprd = loadCRU(period=period, grid=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'])
+        cruclim = loadCRU(period=(1979,2009), grid=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'])
+        
+        # grid definition
+        griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder)
+        periodstr = '{0:4d}-{1:4d}'.format(*period)
+        
+        print('\n   ***   Merging Climatology from {0:s} on {1:s} Grid  ***   \n'.format(periodstr,grid,))
+        ## prepare target dataset 
+        filename = getFileName(grid=griddef.name, period=period, name=None, filepattern=avgfile)
+        filepath = avgfolder + filename
+        print(' Saving data to: \'{0:s}\'\n'.format(filepath))
+        assert os.path.exists(avgfolder)
+        if os.path.exists(filepath): os.remove(filepath) # remove old file
+        # set attributes   
+        atts=dict() # collect attributes, but add prefixes
+        for key,item in prism.atts.iteritems(): atts['PRISM_'+key] = item
+        #for key,item in gpcc025.atts.iteritems(): atts['GPCC_'+key] = item # GPCC atts cause problems... 
+        for key,item in cruprd.atts.iteritems(): atts['CRU_'+key] = item
+        atts['period'] = periodstr; atts['name'] = dataset_name; atts['grid'] = griddef.name
+        atts['title'] = 'Unified Climatology from {0:s} on {1:s} Grid'.format(periodstr,griddef.name)
+        # make new dataset
+        sink = DatasetNetCDF(folder=avgfolder, filelist=[filename], atts=atts, mode='w')
+        # add a few variables that will remain unchanged
+        for var in [gpcc025.landmask, prism.lon2D, prism.lat2D]:
+          var.load(); sink.addVariable(var, asNC=True, copy=True, deepcopy=True); var.unload()
+        # PRISM datamask
+        prismmask = prism.datamask.copy(); prismmask.name = 'prismmask' 
+        prismmask.load(data=prism.datamask.getArray(unmask=True, fillValue=1)) 
+        sink.addVariable(prismmask, asNC=True, copy=True, deepcopy=True)
+        prism.datamask.unload()
+        # sync and write data so far 
+        sink.sync()       
+                
+        ## merge data (create variables)
+        
+        # precip
+        var = prism.precip.copy() # generate variable copy
+        # load data
+        prism.precip.load(); gpccprd.precip.load(); gpccclim.precip.load(); gpcc025.precip.load() 
+        prismarray = prism.precip.getArray(); gpccclimarray = gpccclim.precip.getArray()
+        gpccprdarray = gpccprd.precip.getArray(); gpcc025array = gpcc025.precip.getArray()
+        # generate climatology
+        array = ma.where(prismarray.filled(-999) == -999, gpcc025array, prismarray)        
+        array = array - gpccclimarray + gpccprdarray # add temporal variation
+        # save variable 
+        var.load(data=array)
+        sink.addVariable(var, asNC=True, copy=True, deepcopy=True)
+        
+        # Temperature
+        for varname in ['T2', 'Tmin', 'Tmax']:
+          var = prism.variables[varname].copy() # generate variable copy
+          # load data
+          prism.variables[varname].load(); cruprd.variables[varname].load(); cruclim.variables[varname].load() 
+          prismarray = prism.variables[varname].getArray(); cruclimarray = cruclim.variables[varname].getArray()
+          cruprdarray = cruprd.variables[varname].getArray()
+          # generate climatology
+          array = ma.where(prismarray.filled(-999) == -999, cruclimarray, prismarray)        
+          array = array - cruclimarray + cruprdarray # add temporal variation
+          # save variable 
+          var.load(data=array)
+          sink.addVariable(var, asNC=True, copy=True, deepcopy=True)
+    
+        
+        ## add remaining CRU data
+        for varname in ['Q2','pet','cldfrc','wetfrq','frzfrq']:
+          cruprd.variables[varname].load()
+          sink.addVariable(cruprd.variables[varname], asNC=True, copy=True, deepcopy=True)
+          cruprd.variables[varname].unload()
+          sink.variables[varname].atts['source'] = 'CRU'
+        
+        # add names and length of months
+        sink.axisAnnotation('name_of_month', name_of_month, 'time', 
+                            atts=dict(name='name_of_month', units='', long_name='Name of the Month'))        
+        if not sink.hasVariable('length_of_month'):
+          sink += Variable(name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
+                        atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
+        
+        # apply higher resolution mask
+        sink.mask(sink.landmask, maskSelf=False, varlist=None, skiplist=['prismmask','lon2d','lat2d'], invert=False, merge=True)
+            
+        # finalize changes
+        sink.sync()     
+        sink.close()
+        print(sink)
+        print('\n Writing to: \'{0:s}\'\n'.format(filename))

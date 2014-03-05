@@ -108,6 +108,8 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
         CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=True) # no need for lat/lon
         
         # start processing climatology
+        if shift != 0: 
+          logger.info('{0:s}   (shifting climatology by {1:d} month, to start with January)   \n'.format(pidstr,shift))
         CPU.Climatology(period=period, offset=offset, shift=shift, flush=False)
         
         # reproject and resample (regrid) dataset
@@ -181,19 +183,22 @@ if __name__ == '__main__':
     #experiments = ['new','noah','max','max-2050']
 #     experiments = ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
 #     experiments = ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
-    experiments = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+#     experiments = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     experiments = ['max-nofdda','max-fdda']
 #     experiments = ['max-1deg', 'max']
-    periods = []; offset = 10
-#     periods += [1]
+#     experiments = ['ctrl-1-arb1', 'ctrl-2-arb1']
+    experiments = ['max-3km']
+    offset = 0 # number of years from simulation start
+    periods = [] 
+    periods += [1]
 #     periods += [3]
-    periods += [5]
+#     periods += [5]
 #     periods += [10]
 #     periods += [15]
-    domains = [2] # domains to be processed
+    domains = [1,2,3] # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
-#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
-    filetypes = ['srfc','xtrm','lsm','hydro']
+    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+#     filetypes = ['srfc','xtrm','lsm','hydro']
 #     filetypes = ['hydro'] # filetypes to be processed
     grid = 'WRF' 
   else:

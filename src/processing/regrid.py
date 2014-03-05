@@ -209,21 +209,21 @@ if __name__ == '__main__':
     varlist = None
 #     varlist = ['precip',]
     periods = []
-#     periods += [1]
+    periods += [1]
 #     periods += [3]
 #     periods += [5]
 #     periods += [10]
 #     periods += [15]
-#     periods += [30]
+    periods += [30]
 #     periods += [(1984,1994)]
-    periods += [(1989,1994)]
+#     periods += [(1989,1994)]
 #     periods += [(1949,2009)]
 #     periods += [(1997,1998)]
     # Observations/Reanalysis
     datasets = []
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['CFSR', 'NARR']
-    datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
+#     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     resolutions = None
     # CESM
     CESM_experiments = []
@@ -234,6 +234,7 @@ if __name__ == '__main__':
     # WRF
     WRF_experiments = []
 #     WRF_experiments += ['max']
+#     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1']
 #     WRF_experiments += ['max','max-lowres','max-nmp','max-nosub']
 #     WRF_experiments += ['max','max-A','max-nofdda','max-fdda']
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
@@ -248,9 +249,10 @@ if __name__ == '__main__':
     # grid to project onto
     lpickle = True
     grids = dict()
-#     grids['col1'] = ['d03'] # innermost WRF Columbia domain
+    grids['col1'] = ['d03','d02','d01'] # innermost WRF Columbia domain
+    grids['col2'] = ['d03','d02','d01'] # innermost WRF Columbia domain
 #     grids['grb2'] = ['d02'] # Marc's standard GRB inner domain
-    grids['arb2'] = ['d02','d01'] # WRF standard ARB inner domain
+#     grids['arb2'] = ['d02','d01'] # WRF standard ARB inner domain
 #     grids['arb3'] = ['d02'] # WRF new ARB inner domain
 #     grids['ARB_small'] = ['025','05'] # small custom geographic grids
 #     grids['ARB_large'] = ['025','05'] # large custom geographic grids

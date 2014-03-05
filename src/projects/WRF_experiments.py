@@ -61,7 +61,8 @@ class Exp(object):
 experiments = dict() # dictionary of experiments
 # list of experiments
 experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindate='1979-09-01', enddate='1979-09-01', grid='coast1', parent='CFSR')
-experiments['columbia'] = Exp(shortname='columbia', name='columbia', title='Max 3km (CFSR)', begindate='1979-09-01', grid='col1', parent='CFSR')
+experiments['col1-ctrl'] = Exp(shortname='col1', name='col1-ctrl', title='Max 3km (CFSR)', begindate='1979-09-01', grid='col1', parent='CFSR')
+experiments['max-3km'] = Exp(shortname='max-3km', name='max-3km', title='Max 3km (Ctrl)', begindate='1979-09-01', grid='col2', parent='Ctrl')
 # these are all based on the "new" configuration (ARB3 domain)
 experiments['new-ctrl'] = Exp(shortname='new', name='new-ctrl', title='New-1 (Noah-MP)', begindate='1979-01-01', grid='arb3')
 experiments['new-grell'] = Exp(shortname='grell', name='new-grell', title='New-1 (Grell)', begindate='1979-01-01', grid='arb3')

@@ -492,14 +492,12 @@ if __name__ == '__main__':
   
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
-  mode = 'pickle_grid'
-  experiment = 'max-ctrl'  
+  mode = 'pickle_grid'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
-  grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
-  experiments = ['rrtmg', 'ctrl', 'new']
-#   grids = ['coast1']; experiments = ['coast']; domains = [1,2,3]
-#   grids = ['col1']; experiments = ['columbia']; domains = [1,2,3]   
-  grids = ['grb1']; experiments = ['']; domains = [1,2]
+#   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
+#   experiments = ['rrtmg', 'ctrl', 'new']
+  grids = ['col1','col2','coast1']; experiments = ['columbia','max-3km','coast']; domains = [1,2,3]   
+#   grids = ['grb1']; experiments = ['']; domains = [1,2]
     
   # pickle grid definition
   if mode == 'pickle_grid':
@@ -541,7 +539,7 @@ if __name__ == '__main__':
   elif mode == 'test_climatology':
     
     print('')
-    dataset = loadWRF(experiment=experiment, domains=2, grid=None, filetypes=['hydro'], period=(1979,1989))
+    dataset = loadWRF(experiment='max-ctrl', domains=2, grid=None, filetypes=['hydro'], period=(1979,1989))
     print(dataset)
     dataset.lon2D.load()
     print('')

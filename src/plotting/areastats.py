@@ -31,6 +31,9 @@ def getVarSettings(plottype, area, lPRISM=False, mode='all'):
   if plottype == 'heat':
     varlist = ['lhfx','hfx']; filetypes = ['hydro','srfc']; 
     lsum = False; leg = (2,3); ylabel = r'Heat Flux [W m$^{-2}$]'; ylim = (-50,150)  
+  elif plottype == 'evap':
+    varlist = ['precip','evap','p-et','pet','waterflx']; filetypes = ['srfc','hydro']; # 'waterflx' 
+    lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
   elif plottype == 'flux':
     varlist = ['snwmlt','p-et','precip']; filetypes = ['srfc','hydro']; # 'waterflx' 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
@@ -90,7 +93,7 @@ def getDatasets(expset, titles=None):
     titles = 'Noah-MP vs. Noah'
 #     linestyles = ('-','--')
   elif expset == 'ctrl-12':
-    explist = [('ctrl-1', 'ctrl-2')]
+    explist = [('ctrl-1-arb1', 'ctrl-2-arb1')]
   elif expset == 'newmax': 
     explist = ['gulf','new','max','noah']
     explist = [(exp,'max-ens') for exp in explist]
@@ -171,16 +174,19 @@ if __name__ == '__main__':
   
   ## settings
   # settings
-  lprint = True; lpub = True
+  lprint = True; lpub = False
   paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
-  expset = 'ctrl-12'
-#   expset = 'max-ens'
-#   plottypes = ['temp','runoff','sfroff']
-#   plottypes = ['temp','flux'] # ,'flux','sfflx','snwmlt']
-#   plottypes = ['temp','precip','flux','sfflx']
-#   plottypes = ['precip','precip_alt','flux','runoff','sfroff']
-  plottypes = ['flux'] 
-#   plottypes = ['flxrof']
+  expset = 'max-ens-diff'
+  plottypes = []
+#   plottypes += ['temp']
+#   plottypes += ['precip']
+#   plottypes += ['precip_types']
+  plottypes += ['evap']
+#   plottypes += ['flux'] 
+#   plottypes += ['sfflx']
+#   plottypes += ['flxrof']
+#   plottypes += ['runoff']
+#   plottypes += ['sfroff']
   lPRISM = False
   lUnity = True
   lgage = True
@@ -193,8 +199,8 @@ if __name__ == '__main__':
   domain = 2
   periods = []
 #   periods += [5]
-  periods += [10]
-#   periods += [15]
+#   periods += [10]
+  periods += [15]
 #   periods += [(1979,1984)]
 #   periods += [(1989,1994)]
   
@@ -342,6 +348,7 @@ if __name__ == '__main__':
               elif var == 'solprec': color = 'cyan'
               elif var == 'preccu': color = 'blue'
               elif var == 'precnc': color = 'cyan'
+              elif var == 'evap': color = 'coral'
               elif var == 'p-et': color = 'red'
               elif var == 'pet': color = 'purple'
               elif var == 'waterflx': color = 'blue'
