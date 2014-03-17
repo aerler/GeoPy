@@ -307,9 +307,9 @@ if __name__ == '__main__':
   # shift dataset from 0-360 to -180-180
   elif mode == 'shift_lon':
 
-    prdlen = 15    
-#     experiments = ['Ctrl']
-    experiments = CESM_experiments.keys()
+    prdlen = 5    
+    experiments = ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
+#     experiments = CESM_experiments.keys()
     
     # loop over experiments
     for experiment in experiments:

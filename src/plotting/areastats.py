@@ -82,7 +82,13 @@ def getDatasets(expset, titles=None):
   # linestyles
   linestyles = ('-','--','-.')
   # datasets
-  if expset == 'mix': 
+  if expset == '1deg':
+    explist = ['Ctrl','max','max-1deg','max-ens']
+    explist = [(exp,'max') for exp in explist]
+    titles = ['CESM-1', 'WRF-1 (10 km)', 'WRF-1 (1 deg.)', 'WRF Ensemble']  
+  elif expset == 'deltas':
+    explist = [('ctrl-2050','ctrl-1'),('max-2050','max'),('cam-2050','cam'),('max-ens-2050','max-ens')]
+  elif expset == 'mix': 
     explist = ['max','max-2050','gulf','seaice-2050']
   elif expset == 'noahmp+': 
     explist = [('new','noah','max')]
@@ -176,13 +182,13 @@ if __name__ == '__main__':
   # settings
   lprint = True; lpub = False
   paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
-  expset = 'max-ens-diff'
+  expset = '1deg'
   plottypes = []
-#   plottypes += ['temp']
-#   plottypes += ['precip']
+  plottypes += ['temp']
+  plottypes += ['precip']
 #   plottypes += ['precip_types']
-  plottypes += ['evap']
-#   plottypes += ['flux'] 
+#   plottypes += ['evap']
+  plottypes += ['flux'] 
 #   plottypes += ['sfflx']
 #   plottypes += ['flxrof']
 #   plottypes += ['runoff']
@@ -192,15 +198,15 @@ if __name__ == '__main__':
   lgage = True
   titles = None
   areas = []
-  areas += ['athabasca']
+#   areas += ['athabasca']
   areas += ['fraser']
 #   areas += ['northcoast']
-#   areas += ['southcoast']
-  domain = 2
+  areas += ['southcoast']
+  domains = 2 # [0, 2, 1, 1]
   periods = []
-#   periods += [5]
+  periods += [5]
 #   periods += [10]
-  periods += [15]
+#   periods += [15]
 #   periods += [(1979,1984)]
 #   periods += [(1989,1994)]
   
@@ -234,7 +240,7 @@ if __name__ == '__main__':
       ## load data  
       explist, titles, linestyles = getDatasets(expset, titles=titles)
       exps, titles, nlist = loadDatasets(explist, n=None, varlist=loadlist, titles=titles, periods=period, 
-                                         domains=domain, grids=grid, resolutions='025', filetypes=allfiletypes, 
+                                         domains=domains, grids=grid, resolutions='025', filetypes=allfiletypes, 
                                          lWRFnative=False, ltuple=True, lbackground=False)
       ref = exps[0][0]; nlen = len(exps)
       # observations  
@@ -484,7 +490,7 @@ if __name__ == '__main__':
             areatag = 'SPSB'; folder = figure_folder + '/Southern Pacific Seaboard/'    
           if lpub: folder = paper_folder        
           tag = '_'+tag if tag else ''
-          domtag = '_d{0:02d}'.format(domain) if domain != 2 else '' 
+          domtag = '_d{0:02d}'.format(domains) if isinstance(domains,int) and domains != 2 else '' 
           filename = '{0:s}_{1:s}_{2:s}{3:s}{4:s}.png'.format(areatag,plottype,expset,domtag,tag)
           print('\nSaving figure in '+filename)
           fig.savefig(folder+filename, **sf) # save figure to pdf

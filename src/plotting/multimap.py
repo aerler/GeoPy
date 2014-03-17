@@ -89,6 +89,16 @@ if __name__ == '__main__':
 #   case = 'val'; lbasins = True; lsamesize = False; period = H15 #; grid = ['arb2_d02']*2
 #   lfrac = True; reflist = ['Unity']; grid = ['cesm1x1','arb2_d02']
 
+#   explist = ['Ctrl','max','max-1deg','max-1deg']
+#   exptitles = ['CESM-1', 'WRF-1 (10 km)', 'WRF-1 (1 deg.)', 'WRF-1 (1 deg.)']
+#   case = '1deg'; lbasins = True; lsamesize = False; period = H05 #; grid = ['arb2_d02']*2
+#   lfrac = True; reflist = ['Unity']; grid = ['cesm1x1','arb2_d02']*2
+  
+  explist = ['Ctrl','max','max-1deg','Unity']
+  exptitles = ['CESM-1', 'WRF-1 (30 km)', 'WRF-1 (1 deg.)', 'Observations']
+  case = '1deg'; lbasins = True; lsamesize = False; period = H05; domain = [None, 1, 2, None]
+  ldiff = True; reflist = ['max']; refdom = 2; grid = ['arb2_d02']*4 # ['cesm1x1','arb2_d02']*2
+
 #   explist = ['max-A','max','Unity','max-B','max-C','NARR']
 #   case = 'val-ens'; lbasins = True; period = H15; #grid = ['arb2_d02']
 
@@ -115,17 +125,9 @@ if __name__ == '__main__':
 #   explist = ['max', 'max-nosub', 'max-hilev', 'max-kf']; period = H05
 #   ldiff = True; reflist = ['Unity']
 
-#   explist = ['max','new-grell-old','max-clm','max-nmp-old'] 
-#   case = 'nmp'; lbasins = True; lsamesize = False; period = H03
-#   ldiff = True; reflist = ['Unity']; grid = ['arb2_d02','arb3_d02']+['arb2_d02']*2
-
-#   explist = ['max-kf','max','new','ctrl','wdm6','tom'] 
-#   case = 'mpcu'; lbasins = True; lsamesize = False; period = H05
-#   ldiff = True; reflist = ['Unity']; grid = ['arb2_d02','arb2_d02','arb3_d02']+['arb2_d02']*3
-
-#   explist = ['Ctrl-2050','max-2050']; exptitles = ['CESM-1 (2050)', 'WRF-1 (2050)']
-#   case = 'prj-1'; lbasins = True; lsamesize = False; period = A10
-#   ldiff = True; reflist = ['Ctrl','max']; refprd = H10; grid = ['arb2_d02']*2 # 'cesm1x1', 
+#   explist = ['ctrl-2050','max-2050','cam-2050','max-ens-2050'] # exptitles = ['CESM-1 (2050)', 'WRF-1 (2050)']
+#   case = 'deltas'; lbasins = True; lsamesize = False; period = A10
+#   lfrac = True; reflist = ['ctrl','max','cam','max-ens']; refprd = H10; # grid = ['arb2_d02']*3+['arb1_d02'] # 'cesm1x1', 
 
 #   maptype = 'ortho-NA'; lstations = False; lbasins = False; lframe = True; loutline = False
 #   explist = ['max-ens']; domain= (0,1); period = H10; case = 'ortho'
@@ -159,14 +161,14 @@ if __name__ == '__main__':
 #   explist = ['max','max']; period = H10; domain = [1,2]
 #   ldiff = True; reflist = ['columbia']; refprd = H01; refdom = 3
 
-  case = '3km'; stations = 'cities'
-  maptype = 'lcc-col'; lstations = True; lbasins = True # 'lcc-new'  
-  period = [H01]*4; period[1] = H15 
-  domain = [3,2,1,2]; lbackground = False
-  ldiff = True; reflist = ['Unity']; refprd = H30
-  grid = ['col2_d03','arb2_d02','col2_d01','col2_d02'] 
-  explist = ['max-3km','max-ctrl','max-3km','max-3km'] 
-  exptitles = ['WRF 3km','WRF 10km (15 yrs)','WRF 30km','WRF 10km']
+#   case = '3km'; stations = 'cities'
+#   maptype = 'lcc-col'; lstations = True; lbasins = True # 'lcc-new'  
+#   period = [H01]*4; period[1] = H15 
+#   domain = [3,2,1,2]; lbackground = False
+#   ldiff = True; reflist = ['Unity']; refprd = H30
+#   grid = ['col2_d03','arb2_d02','col2_d01','col2_d02'] 
+#   explist = ['max-3km','max-ctrl','max-3km','max-3km'] 
+#   exptitles = ['WRF 3km','WRF 10km (15 yrs)','WRF 30km','WRF 10km']
 
 #   maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasins = True
 #   period = None; lWRFnative = True; loutline = False; period = H10
@@ -211,8 +213,8 @@ if __name__ == '__main__':
 #   seasons += ['warm']
 #   seasons += ['melt']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-#   seasons += ['annual']
-#   seasons += ['summer']
+  seasons += ['annual']
+  seasons += ['summer']
   seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']

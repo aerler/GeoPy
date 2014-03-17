@@ -6,19 +6,14 @@ utility functions, mostly for plotting, that are not called directly
 @author: Andre R. Erler
 '''
 
-## Log-axis ticks
-# N
-nTicks1st = ['2','','4','','6','','','']
-nTicks2nd = ['20','','40','','60','','','']
-nTicks3rd = ['200','','400','','600','','','']
-# p
-pTicks1st = ['2','3','','5','','7','','']
-pTicks2nd = ['20','30','','50','','70','','']
-pTicks3rd = ['200','300','','500','','700','','']
+# external imports
+import numpy as np
+# internal imports
+from geodata.base import Variable
+from geodata.misc import AxisError
 
-
+# load matplotlib (default)
 def loadMPL(mplrc=None):
-  # load matplotlib (default)
   import matplotlib as mpl
   # apply rc-parameters from dictionary
   if (mplrc is not None) and isinstance(mplrc,dict):
@@ -27,7 +22,36 @@ def loadMPL(mplrc=None):
       mpl.rc(key,**value)  # apply parameters
   # return matplotlib instance with new parameters
   return mpl
+
   
+# Log-axis ticks
+def logTicks(ticks, base=None, power=0):
+  ''' function to generate ticks for a given power of 10 based on a template '''
+  if not isinstance(ticks, (list,tuple)): raise TypeError
+  # translate base into power
+  if base is not None: 
+    if not isinstance(base,(int,np.number,float,np.inexact)): raise TypeError
+    power = int(np.round(np.log(base)/np.log(10)))
+  if not isinstance(power,(int,np.integer)): raise TypeError
+  print power
+  # generate ticks and apply template
+  strtck = ['']*8
+  for i in ticks:
+    if not isinstance(i,(int,np.integer)) or i >= 8: raise ValueError
+    idx = i-2
+    if i in ticks: strtck[idx] = str(i)
+    # adjust order of magnitude
+    if power > 0: strtck[idx] += '0'*power
+    elif power < 0: strtck[idx] = '0.' + '0'*(-1-power) + strtck[idx]
+  # return ticks
+  return strtck
+# special versions
+# N, returns ['2','','4','','6','','','']
+def nTicks(**kwargs): return logTicks([2,4,6],**kwargs) 
+# p, returns ['2','3','','5','','7','','']
+def pTicks(**kwargs): return logTicks([2,3,5,7],**kwargs)
+
+
 # function to smooth a vector (numpy array): moving mean, nothing fancy
 def smoothVector(x,i):
   xs = x.copy() # smoothed output vector
@@ -39,6 +63,7 @@ def smoothVector(x,i):
     i-=2
   return xs/d
 
+
 # function to traverse nested lists recursively and perform the operation fct on the end members
 def traverseList(lsl, fct):
   # traverse nested lists recursively
@@ -46,6 +71,7 @@ def traverseList(lsl, fct):
     return [traverseList(lsl[i], fct) for i in range(len(lsl))]
   # break recursion and apply function using the list element as argument 
   else: return fct(lsl)
+
   
 # function to expand level lists and colorbar ticks
 def expandLevelList(arg, vec=None):
@@ -76,20 +102,80 @@ def expandLevelList(arg, vec=None):
     # numerical value: use as number of levels
     elif isinstance(arg,(int,float)):
       return linspace(minVec,maxVec,arg)        
+
+
+## add subplot/axes label
+def addLabel(ax, label=None, loc=1, stroke=False, size=None, prop=None, **kwargs):
+  from matplotlib.offsetbox import AnchoredText 
+  from matplotlib.patheffects import withStroke
+  from string import lowercase    
+  # expand list
+  if not isinstance(ax,(list,tuple)): ax = [ax] 
+  l = len(ax)
+  if not isinstance(label,(list,tuple)): label = [label]*l
+  if not isinstance(loc,(list,tuple)): loc = [loc]*l
+  if not isinstance(stroke,(list,tuple)): stroke = [stroke]*l
+  # settings
+  if prop is None:
+    prop = dict()
+  if not size: prop['size'] = 18
+  args = dict(pad=0., borderpad=1.5, frameon=False)
+  args.update(kwargs)
+  # cycle over axes
+  at = [] # list of texts
+  for i in xrange(l):
+    if label[i] is None:
+      label[i] = '('+lowercase[i]+')'
+    elif isinstance(label[i],int):
+      label[i] = '('+lowercase[label[i]]+')'
+    # create label    
+    at.append(AnchoredText(label[i], loc=loc[i], prop=prop, **args))
+    ax[i].add_artist(at[i]) # add to axes
+    if stroke[i]: 
+      at[i].txt._text.set_path_effects([withStroke(foreground="w", linewidth=3)])
+  return at
+
+  
+# plots with error shading 
+def addErrorPatch(ax, var, err, color, axis=None, xerr=True, alpha=0.25, check=False, cap=-1):
+  from numpy import append, where, isnan
+  from matplotlib.patches import Polygon 
+  if isinstance(var,Variable):    
+    if axis is None and var.ndim > 1: raise AxisError
+    y = var.getAxis(axis).getArray()
+    x = var.getArray(); 
+    if isinstance(err,Variable): e = err.getArray()
+    else: e = err
+  else:
+    if axis is None: raise ValueError
+    y = axis; x = var; e = err
+  if check:
+    e = where(isnan(e),0,e)
+    if cap > 0: e = where(e>cap,0,e)
+  if xerr: 
+    ix = append(x-e,(x+e)[::-1])
+    iy = append(y,y[::-1])
+  else:
+    ix = append(y,y[::-1])
+    iy = append(x-e,(x+e)[::-1])
+  patch = Polygon(zip(ix,iy), alpha=alpha, facecolor=color, edgecolor=color)
+  ax.add_patch(patch)
+  return patch 
+
   
 # function to place (shared) colorbars at a specified figure margins
-def sharedColorbar(f, cf, clevs, colorbar, cbls, subplot, margins):
+def sharedColorbar(fig, cf, clevs, colorbar, cbls, subplot, margins):
   loc = colorbar.pop('location','bottom')      
   # determine size and spacing
   if loc=='top' or loc=='bottom':
-    dir = colorbar.pop('orientation','horizontal') # colorbar orientation
+    orient = colorbar.pop('orientation','horizontal') # colorbar orientation
     je = subplot[1] # number of colorbars: number of rows
     ie = subplot[0] # number of plots per colorbar: number of columns
     cbwd = colorbar.pop('cbwd',0.025) # colorbar height
     sp = margins['wspace']
     wd = (margins['right']-margins['left'] - sp*(je-1))/je # width of each colorbar axis 
   else:
-    dir = colorbar.pop('orientation','vertical') # colorbar orientation
+    orient = colorbar.pop('orientation','vertical') # colorbar orientation
     je = subplot[0] # number of colorbars: number of columns
     ie = subplot[1] # number of plots per colorbar: number of rows
     cbwd = colorbar.pop('cbwd',0.025) # colorbar width
@@ -100,7 +186,7 @@ def sharedColorbar(f, cf, clevs, colorbar, cbls, subplot, margins):
   if loc=='top': newMargin = margins['top']-margins['hspace'] -cbwd
   elif loc=='right': newMargin = margins['right']-margins['left']/2 -cbwd
   else: newMargin = 2*margins[loc] + cbwd    
-  f.subplots_adjust(**{loc:newMargin})
+  fig.subplots_adjust(**{loc:newMargin})
   # loop over variables (one colorbar for each)
   for i in range(je):
     if dir=='vertical': ii = je-i-1
@@ -115,139 +201,7 @@ def sharedColorbar(f, cf, clevs, colorbar, cbls, subplot, margins):
     # vertical colorbar(s) to the right (get axes reference right!)
     elif loc == 'right': ci = i*ie; cax = [newMargin+margins['wspace'], margins['bottom']+offset, cbwd, shrink*wd]
     # make colorbar 
-    f.colorbar(mappable=cf[ci],cax=f.add_axes(cax),ticks=expandLevelList(cbls[i],clevs[i]),orientation=dir,**colorbar)
+    fig.colorbar(mappable=cf[ci],cax=fig.add_axes(cax),ticks=expandLevelList(cbls[i],clevs[i]),
+                 orientation=orient,**colorbar)
   # return figure with colorbar (just for the sake of returning something) 
-  return f
-
-# function that creates the most "square" arrangement of subplots for a given number of plots
-def multiPlot(f,varlist,titles='',clevs=None,labels=None,legends=None,cbls=None,geos={},sharex=True,sharey=True,margins={},subplot=(),transpose=False,axargs=None,**kwargs):
-  from matplotlib.pylab import setp
-  
-  le = len(varlist)      
-  # expand some list, if necessary (one element per plot) 
-  if not isinstance(titles,list): titles = [titles]*le
-  else: assert len(titles)==le, 'number of titles not the same as number of plots'
-  if not isinstance(labels,list): labels = [labels]*le
-  else: assert len(labels)==le, 'number of labels not the same as number of plots'
-  if not isinstance(legends,list): legends = [legends]*le
-  else: assert len(legends)==le, 'number of legend dictionaries not the same as number of plots'
-  if not isinstance(clevs,list): clevs = [clevs]*le # contour list; numpy array or tuple (3 elements)
-  else: assert len(clevs)==le, 'number of contour lists not the same as number of plots'
-  if not isinstance(cbls,list): cbls = [cbls]*le # tick list; numpy array, number, or tuple (3 elements)
-  else: assert len(cbls)==le, 'number of colorbar tick lists not the same as number of plots'
-  if not isinstance(geos,list): geos = [geos]*le # geographic projection parameters (False=no projection)
-  else: assert len(geos)==le, 'number of geographic projections not the same as number of plots'
-  ## determine subplot division
-  if subplot: 
-    if transpose:
-      (je,ie) = subplot
-      subplot = (ie,je) # save (return to caller)
-    else: 
-      (ie,je) = subplot 
-  else: # assume scalar    
-    # all possible subdivisions 
-    s = [(i,le/i) for i in xrange(1,le+1) if le%i==0]
-    # select "most square" 
-    ss = [t[0]+t[1] for t in s]
-    (ie,je) = s[ss.index(min(ss))]
-    if transpose: (je,ie) = (ie,je) # swap vertical and horizontal dimension length 
-    subplot = (ie,je) # save (return to caller)  
-    
-  # colorbar default as in plotvar
-  colorbar = kwargs.pop('colorbar',{'orientation':'vertical'})      
-  ## create axes and draw plots
-  axs = []; cf = []; n=0 # reset counter
-  for i in xrange(ie):
-    for j in xrange(je):          
-      
-      var = varlist[n]
-      # if var is None, leave and empty space
-      if var is not None: 
-        # plot shorthands
-        geo = geos[n].copy() 
-        # expand clevs tuple (or whatever) into nparray
-        clev = expandLevelList(clevs[n])       
-        ## handle annotation and shared axes pre-processing
-        plotargs = {'lblx':kwargs.get('lblx',True), 'lbly':kwargs.get('lbly',True)} 
-        if titles: plotargs['title'] = titles[n] # plot titles
-        share={'sharex':None, 'sharey':None}
-        if geo: labels=geo.get('labels',[1,0,0,1]) # labels at left and bottom side
-        # x-axis annotation
-        if i<(ie-1): # no bottom labels
-          plotargs['lblx'] = False # ... and bottom border
-          if geo and sharex: labels[3] = 0 
-        if sharex and not geo and i>0: share['sharex'] = axs[j] # same column, first row
-        # y-axis annotation     
-        if j>0: 
-          plotargs['lbly'] = False # only annotation on left border...
-          if sharey: # no left labels
-            if geo: labels[0] = 0  
-            else: share['sharey'] = axs[i*je] # same row, first column  
-#        else:
-#          if ie==1: # use title instead of name if space is available
-#            if isinstance(var,list):
-#              for m in xrange(len(var)): 
-#                var[m].plotatts['plotname'] = var[m].plotatts['plottitle']
-#            else:
-#              var.plotatts['plotname'] = var.plotatts['plottitle']      
-        if geo:
-          geo.update({'labels':labels}) 
-          plotargs['projection'] = geo # save projection parameters
-        # create axis with appropriate axes share references and label visibility
-        axs.append(f.add_subplot(ie,je,n+1,**share)); ax = axs[n]       
-        plotargs.update(kwargs) # update plot args and overwrite defaults      
-                
-        ## either line plot (line plots have only one dimensions)
-        if isinstance(var,list) or len(var.squeeze().axes)==1:
-          label = labels[n]; legend = legends[n]         
-          # either multiple line plots in one axis              
-          if isinstance(var,list):
-            ll = len(var)          
-            if isinstance(label,list): 
-              assert len(label)==ll, 'number of labels in axis %g not the same as number of plots'%n
-              for lbl in label: assert isinstance(lbl,str), 'labels have to be strings' 
-            elif label is None: label = [v.name for v in var] # default labels: name of variable
-            else:
-              assert isinstance(label,str), 'labels have to be strings'
-              label = [label]*ll
-            # Note: here var is a *list* of all line plots that go into this axis!
-            cf.append([plotvar(var[m],ax=ax,label=label[m],**plotargs) for m in xrange(ll)])
-            zz = isinstance(var[m].squeeze().axes[0],ZAxis)
-          # or a single line plot per axis
-          else: # len(var.squeeze().axes)==1:  
-            cf.append(plotvar(var,ax=ax,label=label,**plotargs))
-            zz = isinstance(var.squeeze().axes[0],ZAxis)
-          # use clevs to adjust value axis scaling 
-          if (clev is not None) and len(clev)>1:         
-            if zz: ax.set_xlim([clev[0],clev[-1]])
-            else: ax.set_ylim([clev[0],clev[-1]])
-          # add legend
-          if legend:    
-            if isinstance(legend,dict): lp = legend
-            elif isinstance(legend,int): lp = {'loc':legend}
-            else: lp
-            ax.legend(**lp)
-        
-        ## or surface/contour plot
-        else: # surface plots have two dimensions
-          assert len(var.squeeze().axes)==2, 'surface plots can only have two dimensions'
-          cbl = cbls[n];
-          # figure out colorbar ticks/levels
-          if colorbar: colorbar['ticks'] = expandLevelList(cbl,clev)
-          # draw surface or contour plot with colorbar
-          cf.append(plotvar(var,ax=ax,clevs=clev,colorbar=colorbar,**plotargs)) 
-        
-        ## apply axes properties and shared axes post-processing
-#        if axArgs: pset  
-        if sharex and plotargs['lblx']==False: 
-          setp(ax.get_xticklabels(minor=False),visible=False)
-          setp(ax.get_xticklabels(minor=True),visible=False) # also apply to minor ticks
-        if sharey and plotargs['lbly']==False:
-          setp(ax.get_yticklabels(minor=False),visible=False) 
-          setp(ax.get_yticklabels(minor=True),visible=False)
-        n+=1 # counter
-          
-  # set margins
-  if margins: f.subplots_adjust(**margins)
-  # return axes
-  return (f,cf,subplot) 
+  return fig
