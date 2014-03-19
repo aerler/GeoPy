@@ -20,29 +20,10 @@ else: mpl.rc('font', size=10)
 # prevent figures from closing: don't run in interactive mode, or plt.show() will not block
 pyl.ioff()
 # internal imports
-# PyGeoDat stuff
+from utils import getPlotValues
 from geodata.base import Variable
 from geodata.misc import AxisError, ListError, VariableError
 
-
-# method to check units and name, and return scaled plot value (primarily and internal helper function)
-def getPlotValues(var, checkunits=None, checkname=None):
-  ''' Helper function to check variable/axis, get (scaled) values for plot, and return appropriate units. '''
-  if var.plot is not None and 'plotname' in var.plot: 
-    varname = var.plot['plotname'] 
-    if checkname is not None and varname != checkname: # only check plotname! 
-      raise VariableError, "Expected variable name '{}', found '{}'.".format(checkname,varname)
-  else: varname = var.atts['name']
-  val = var.getArray(unmask=True) # the data to plot
-  if var.plot is not None and 'scalefactor' in var.plot: 
-    val *= var.plot['scalefactor']
-    varunits = var.plot.plotunits
-  else: varunits = var.atts.units
-  if checkunits is not None and  varunits != checkunits: 
-    raise VariableError, "Units for variable '{}': expected {}, found {}.".format(var.name,checkunits,varunits) 
-  if var.plot is not None and 'offset' in var.plot: val += var.plot['offset']    
-  # return values, units, name
-  return val, varunits, varname     
 
 def linePlot(ax, varlist, linestyles=None, varatts=None, legend=None, xline=None, yline=None, 
              title=None, xlabel=None, ylabel=None, xlim=None, ylim=None, **kwargs):
@@ -115,6 +96,33 @@ def linePlot(ax, varlist, linestyles=None, varatts=None, legend=None, xline=None
   elif isinstance(xline,dict): ax.axvline(**yline)
   # return handle
   return plts      
+
+
+# plots with error shading 
+def addErrorPatch(ax, var, err, color, axis=None, xerr=True, alpha=0.25, check=False, cap=-1):
+  from numpy import append, where, isnan
+  from matplotlib.patches import Polygon 
+  if isinstance(var,Variable):    
+    if axis is None and var.ndim > 1: raise AxisError
+    y = var.getAxis(axis).getArray()
+    x = var.getArray(); 
+    if isinstance(err,Variable): e = err.getArray()
+    else: e = err
+  else:
+    if axis is None: raise ValueError
+    y = axis; x = var; e = err
+  if check:
+    e = where(isnan(e),0,e)
+    if cap > 0: e = where(e>cap,0,e)
+  if xerr: 
+    ix = append(x-e,(x+e)[::-1])
+    iy = append(y,y[::-1])
+  else:
+    ix = append(y,y[::-1])
+    iy = append(x-e,(x+e)[::-1])
+  patch = Polygon(zip(ix,iy), alpha=alpha, facecolor=color, edgecolor=color)
+  ax.add_patch(patch)
+  return patch 
 
 
 if __name__ == '__main__':

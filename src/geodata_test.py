@@ -651,7 +651,7 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
 #     tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
+#     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']

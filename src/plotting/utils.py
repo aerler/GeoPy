@@ -10,7 +10,8 @@ utility functions, mostly for plotting, that are not called directly
 import numpy as np
 # internal imports
 from geodata.base import Variable
-from geodata.misc import AxisError
+from geodata.misc import VariableError, AxisError
+
 
 # load matplotlib (default)
 def loadMPL(mplrc=None):
@@ -22,6 +23,26 @@ def loadMPL(mplrc=None):
       mpl.rc(key,**value)  # apply parameters
   # return matplotlib instance with new parameters
   return mpl
+
+
+# method to check units and name, and return scaled plot value (primarily and internal helper function)
+def getPlotValues(var, checkunits=None, checkname=None):
+  ''' Helper function to check variable/axis, get (scaled) values for plot, and return appropriate units. '''
+  if var.plot is not None and 'plotname' in var.plot: 
+    varname = var.plot['plotname'] 
+    if checkname is not None and varname != checkname: # only check plotname! 
+      raise VariableError, "Expected variable name '{}', found '{}'.".format(checkname,varname)
+  else: varname = var.atts['name']
+  val = var.getArray(unmask=True) # the data to plot
+  if var.plot is not None and 'scalefactor' in var.plot: 
+    val *= var.plot['scalefactor']
+    varunits = var.plot.plotunits
+  else: varunits = var.atts.units
+  if var.plot is not None and 'offset' in var.plot: val += var.plot['offset']    
+  if checkunits is not None and  varunits != checkunits: 
+    raise VariableError, "Units for variable '{}': expected {}, found {}.".format(var.name,checkunits,varunits) 
+  # return values, units, name
+  return val, varunits, varname     
 
   
 # Log-axis ticks
@@ -134,74 +155,3 @@ def addLabel(ax, label=None, loc=1, stroke=False, size=None, prop=None, **kwargs
     if stroke[i]: 
       at[i].txt._text.set_path_effects([withStroke(foreground="w", linewidth=3)])
   return at
-
-  
-# plots with error shading 
-def addErrorPatch(ax, var, err, color, axis=None, xerr=True, alpha=0.25, check=False, cap=-1):
-  from numpy import append, where, isnan
-  from matplotlib.patches import Polygon 
-  if isinstance(var,Variable):    
-    if axis is None and var.ndim > 1: raise AxisError
-    y = var.getAxis(axis).getArray()
-    x = var.getArray(); 
-    if isinstance(err,Variable): e = err.getArray()
-    else: e = err
-  else:
-    if axis is None: raise ValueError
-    y = axis; x = var; e = err
-  if check:
-    e = where(isnan(e),0,e)
-    if cap > 0: e = where(e>cap,0,e)
-  if xerr: 
-    ix = append(x-e,(x+e)[::-1])
-    iy = append(y,y[::-1])
-  else:
-    ix = append(y,y[::-1])
-    iy = append(x-e,(x+e)[::-1])
-  patch = Polygon(zip(ix,iy), alpha=alpha, facecolor=color, edgecolor=color)
-  ax.add_patch(patch)
-  return patch 
-
-  
-# function to place (shared) colorbars at a specified figure margins
-def sharedColorbar(fig, cf, clevs, colorbar, cbls, subplot, margins):
-  loc = colorbar.pop('location','bottom')      
-  # determine size and spacing
-  if loc=='top' or loc=='bottom':
-    orient = colorbar.pop('orientation','horizontal') # colorbar orientation
-    je = subplot[1] # number of colorbars: number of rows
-    ie = subplot[0] # number of plots per colorbar: number of columns
-    cbwd = colorbar.pop('cbwd',0.025) # colorbar height
-    sp = margins['wspace']
-    wd = (margins['right']-margins['left'] - sp*(je-1))/je # width of each colorbar axis 
-  else:
-    orient = colorbar.pop('orientation','vertical') # colorbar orientation
-    je = subplot[0] # number of colorbars: number of columns
-    ie = subplot[1] # number of plots per colorbar: number of rows
-    cbwd = colorbar.pop('cbwd',0.025) # colorbar width
-    sp = margins['hspace']
-    wd = (margins['top']-margins['bottom'] - sp*(je-1))/je # width of each colorbar axis
-  shrink = colorbar.pop('shrinkFactor',1)
-  # shift existing subplots
-  if loc=='top': newMargin = margins['top']-margins['hspace'] -cbwd
-  elif loc=='right': newMargin = margins['right']-margins['left']/2 -cbwd
-  else: newMargin = 2*margins[loc] + cbwd    
-  fig.subplots_adjust(**{loc:newMargin})
-  # loop over variables (one colorbar for each)
-  for i in range(je):
-    if dir=='vertical': ii = je-i-1
-    else: ii = i
-    offset = (wd+sp)*float(ii) + wd*(1-shrink)/2 # offset due to previous colorbars
-    # horizontal colorbar(s) at the top
-    if loc == 'top': ci = i; cax = [margins['left']+offset, newMargin+margins['hspace'], shrink*wd, cbwd]             
-    # horizontal colorbar(s) at the bottom
-    elif loc == 'bottom': ci = i; cax = [margins['left']+offset, margins[loc], shrink*wd, cbwd]        
-    # vertical colorbar(s) to the left (get axes reference right!)
-    elif loc == 'left': ci = i*ie; cax = [margins[loc], margins['bottom']+offset, cbwd, shrink*wd]        
-    # vertical colorbar(s) to the right (get axes reference right!)
-    elif loc == 'right': ci = i*ie; cax = [newMargin+margins['wspace'], margins['bottom']+offset, cbwd, shrink*wd]
-    # make colorbar 
-    fig.colorbar(mappable=cf[ci],cax=fig.add_axes(cax),ticks=expandLevelList(cbls[i],clevs[i]),
-                 orientation=orient,**colorbar)
-  # return figure with colorbar (just for the sake of returning something) 
-  return fig
