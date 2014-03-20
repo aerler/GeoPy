@@ -7,23 +7,61 @@ utility functions, mostly for plotting, that are not called directly
 '''
 
 # external imports
+from types import ModuleType
 import numpy as np
 # internal imports
 from geodata.base import Variable
-from geodata.misc import VariableError, AxisError
+from geodata.misc import VariableError, AxisError, isInt
 
 
-# load matplotlib (default)
-def loadMPL(mplrc=None):
+# load matplotlib with some custom defaults
+def loadMPL(linewidth=None, mplrc=None):
   import matplotlib as mpl
-  # apply rc-parameters from dictionary
+  # some custom defaults  
+  if linewidth is not None:
+    mpl.rc('lines', linewidth=linewidth)
+    if linewidth == 1.5: mpl.rc('font', size=12)
+    elif linewidth == .75: mpl.rc('font', size=8)
+    else: mpl.rc('font', size=10)
+  # apply rc-parameters from dictionary (override custom defaults)
   if (mplrc is not None) and isinstance(mplrc,dict):
     # loop over parameter groups
     for (key,value) in mplrc.iteritems():
       mpl.rc(key,**value)  # apply parameters
+  # prevent figures from closing: don't run in interactive mode, or pyl.show() will not block
+  mpl.pylab.ioff()
   # return matplotlib instance with new parameters
   return mpl
 
+
+# method to return a figure and an array of ImageGrid axes
+def getFigAx(fig=1, figsize=None, subplot=None, mpl=None):
+  from mpl_toolkits.axes_grid1 import ImageGrid
+  # configure matplotlib
+  if mpl is None: import matplotlib as mpl
+  elif isinstance(mpl,dict): mpl = loadMPL(**mpl) # there can be a mplrc, but also others
+  elif not isinstance(mpl,ModuleType): raise TypeError
+  # figure out subplots
+  if isinstance(subplot,(np.integer,int)):
+    if subplot == 1: subplot = (1,1)
+    elif subplot == 2: subplot = (1,2)
+    elif subplot == 3: subplot = (1,3)
+    elif subplot == 4: subplot = (2,2)
+    elif subplot == 6: subplot = (2,3)
+    else: raise NotImplementedError
+  elif not (isinstance(subplot,(tuple,list)) and len(subplot) == 2) and all(isInt(subplot)): raise TypeError    
+  # create figure
+  if figsize is None:
+    if subplot == (1,1): figsize = (3.75,3.75)
+    elif subplot == (1,2) or subplot == (2,3): figsize = (6.25,3.75)
+    elif subplot == (2,1): figsize = (3.75,6.25)
+    elif subplot == (2,2) or subplot == (3,3): figsize = (6.25,6.25)
+    else: raise NotImplementedError
+  fig = mpl.pylab.figure(fig, facecolor='white', figsize=figsize)
+  # create axes
+  axes = ImageGrid(fig, (0.09,0.11,0.88,0.82), nrows_ncols = subplot, axes_pad = 0.2, aspect=False, label_mode = "L")
+  # return figure and axes
+  return fig, axes
 
 # method to check units and name, and return scaled plot value (primarily and internal helper function)
 def getPlotValues(var, checkunits=None, checkname=None):

@@ -27,7 +27,9 @@ from geodata.misc import AxisError, ListError, VariableError
 
 
 # function to plot 
-
+def srfcPlot():
+  raise NotImplementedError
+  return
 
 # function to place (shared) colorbars at a specified figure margins
 def sharedColorbar(fig, cf, clevs, colorbar, cbls, subplot, margins):

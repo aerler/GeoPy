@@ -20,7 +20,7 @@ else: mpl.rc('font', size=10)
 pyl.ioff()
 # internal imports
 # PyGeoDat stuff
-from plotting.plots import linePlot
+from plotting.lineplots import linePlot
 from datasets.WRF import loadWRF
 from datasets.Unity import loadUnity
 from datasets.WSC import Basin
