@@ -104,18 +104,22 @@ def isOne(data, eps=None, masked_equal=True):
 def isEqual(left, right, eps=None, masked_equal=True):
   ''' This function checks if two numpy arrays or scalars are equal within machine precision, and returns a scalar logical. '''
   if isinstance(left,np.ndarray):
-    assert isinstance(right,np.ndarray), "Both arguments to function 'isEqual' must be of the same class!"
-    assert left.dtype==right.dtype, 'Both arguments to function \'isEqual\' must be of the same type!'
+    if not isinstance(right,np.ndarray): 
+      raise TypeError, "Both arguments to function 'isEqual' must be of the same class!"
+    if not left.dtype==right.dtype:
+      raise TypeError, 'Both arguments to function \'isEqual\' must be of the same type!'
     if np.issubdtype(left.dtype, np.inexact): # also catch float32 etc
       return ma.allclose(left, right, masked_equal=True)
     elif np.issubdtype(left.dtype, np.integer) or np.issubdtype(left.dtype, np.bool):
       return all( left == right )
   elif isinstance(left,float) or isinstance(left, np.inexact):
-    assert isinstance(right,(float,np.inexact)), "Both arguments to function 'isEqual' must be of the same class!"
+    if not isinstance(right,(float,np.inexact)):
+      raise TypeError, "Both arguments to function 'isEqual' must be of the same class!"
     if eps is None: eps = 100.*floateps # default
     return np.absolute(left-right) <= eps
-  elif isinstance(left,(int,bool)) or isinstance(left, (np.integer,np.bool)):
-    assert isinstance(right,(int,bool,np.integer,np.bool)), "Both arguments to function 'isEqual' must be of the same class!"
+  elif isinstance(left,(int,bool,np.integer,np.bool)):
+    if not isinstance(right,(int,bool,np.integer,np.bool)):
+      raise TypeError, "Both arguments to function 'isEqual' must be of the same class!"
     return left == right
   else: raise TypeError
 

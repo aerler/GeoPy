@@ -29,13 +29,16 @@ def loadMPL(linewidth=None, mplrc=None):
     for (key,value) in mplrc.iteritems():
       mpl.rc(key,**value)  # apply parameters
   # prevent figures from closing: don't run in interactive mode, or pyl.show() will not block
-  mpl.pylab.ioff()
+  pyl = mpl.pylab
+  pyl.ioff()
   # return matplotlib instance with new parameters
-  return mpl
+  return mpl, pyl
 
 
 # method to return a figure and an array of ImageGrid axes
-def getFigAx(fig=1, figsize=None, subplot=None, mpl=None):
+def getFigAx(subplot, fig=None, title=None, figsize=None,  mpl=None, margins=None, ngrids=None, direction='row', axes_pad = 0.2,
+             add_all=True, share_all=False, aspect=True, label_mode='L', cbar_mode=None, cbar_location='right',
+             cbar_pad=None, cbar_size='5%', axes_class=None, lreduce=True):
   from mpl_toolkits.axes_grid1 import ImageGrid
   # configure matplotlib
   if mpl is None: import matplotlib as mpl
@@ -48,19 +51,35 @@ def getFigAx(fig=1, figsize=None, subplot=None, mpl=None):
     elif subplot == 3: subplot = (1,3)
     elif subplot == 4: subplot = (2,2)
     elif subplot == 6: subplot = (2,3)
+    elif subplot == 6: subplot = (3,3)
     else: raise NotImplementedError
   elif not (isinstance(subplot,(tuple,list)) and len(subplot) == 2) and all(isInt(subplot)): raise TypeError    
   # create figure
   if figsize is None:
     if subplot == (1,1): figsize = (3.75,3.75)
-    elif subplot == (1,2) or subplot == (2,3): figsize = (6.25,3.75)
+    elif subplot == (1,2) or subplot == (1,3): figsize = (6.25,3.75)
     elif subplot == (2,1): figsize = (3.75,6.25)
     elif subplot == (2,2) or subplot == (3,3): figsize = (6.25,6.25)
     else: raise NotImplementedError
-  fig = mpl.pylab.figure(fig, facecolor='white', figsize=figsize)
-  # create axes
-  axes = ImageGrid(fig, (0.09,0.11,0.88,0.82), nrows_ncols = subplot, axes_pad = 0.2, aspect=False, label_mode = "L")
+  if fig is None: fig = mpl.pylab.figure(facecolor='white', figsize=figsize)
+  else: fig = mpl.pylab.figure(fig, facecolor='white', figsize=figsize)
+  fig.suptitle(title)
+  # figure out margins
+  if margins is None:
+    if subplot == (1,1): margins = (0.09,0.11,0.88,0.82)
+    elif subplot == (1,2) or subplot == (1,3): margins = (0.09,0.11,0.88,0.82)
+    elif subplot == (2,1): margins = (0.09,0.11,0.88,0.82)
+    elif subplot == (2,2) or subplot == (3,3): margins = (0.09,0.11,0.88,0.82)
+    else: raise NotImplementedError    
+  # create axes using the Axes Grid package
+  # reference: http://matplotlib.org/mpl_toolkits/axes_grid/users/overview.html
+  grid = ImageGrid(fig, margins, nrows_ncols = subplot, ngrids=ngrids, direction=direction, 
+                   axes_pad=axes_pad, add_all=add_all, share_all=share_all, aspect=aspect, label_mode=label_mode,
+                   cbar_mode=cbar_mode, cbar_location=cbar_location, cbar_pad=cbar_pad, cbar_size=cbar_size,
+                   axes_class=axes_class)
   # return figure and axes
+  axes = [ax for ax in grid]
+  if lreduce and len(axes) == 1: axes = axes[0] # return a bare axes instance, if there is only one axes
   return fig, axes
 
 # method to check units and name, and return scaled plot value (primarily and internal helper function)

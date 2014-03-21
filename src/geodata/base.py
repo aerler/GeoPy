@@ -28,10 +28,10 @@ class UnaryCheck(object):
       pass # allow broadcasting and type-casting
 #       assert orig.shape == arg.shape, 'Arrays need to have the same shape!' 
 #       assert orig.dtype == arg.dtype, 'Arrays need to have the same type!'
-    else: assert isinstance(arg, numbers.Number), 'Can only operate with numerical types!'
+    elif not isinstance(arg, numbers.Number): raise TypeError, 'Can only operate with numerical types!'
     if not orig.data: orig.load()
     var = self.op(orig,arg)
-    assert isinstance(var,Variable)
+    if not isinstance(var,Variable): raise TypeError
     return var # return function result
   def __get__(self, instance, klass):
     ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
@@ -53,13 +53,13 @@ def BinaryCheckAndCreateVar(sameUnits=True):
     # define method wrapper (this is now the actual decorator)
     def __call__(self, orig, other):
       ''' Perform sanity checks, then execute operation, and return result. '''
-      assert isinstance(other,Variable), 'Can only add two \'Variable\' instances!' 
+      if not isinstance(other,Variable): raise TypeError, 'Can only add two \'Variable\' instances!' 
       if self.sameUnits: assert orig.units == other.units, 'Variable units have to be identical for addition!'
-      assert orig.shape == other.shape, 'Variables need to have the same shape and compatible axes!'
+      if orig.shape != other.shape: raise AxisError, 'Variables need to have the same shape and compatible axes!'
       if not orig.data: orig.load()
       if not other.data: other.load()
       for lax,rax in zip(orig.axes,other.axes):
-        assert (lax.coord == rax.coord).all(), 'Variables need to have identical coordinate arrays!'
+        if (lax.coord != rax.coord).any(): raise AxisError,  'Variables need to have identical coordinate arrays!'
       # call original method
       data, name, units = self.binOp(orig, other)
       # construct common dict of attributes
@@ -74,6 +74,68 @@ def BinaryCheckAndCreateVar(sameUnits=True):
       return functools.partial(self.__call__, instance)
   # return decorator class  
   return BinaryCheckAndCreateVar_Class
+
+class ReduceVar(object):
+  ''' Decorator class that implements some sanity checks for reduction operations. '''
+  def __init__(self, redop):
+    ''' Save original operation. '''
+    self.redop = redop
+  def __call__(self, orig, asVar=None, checkAxis=True, coordIndex=True, axes=None, **kwaxes):
+    ''' Figure out axes, perform sanity checks, then execute operation, and return result as a Variable 
+        instance. Axes are specified either in a list ('axes') or as keyword arguments with corresponding
+        slices. '''
+    if axes is None and len(kwaxes) == 0:
+      if not orig.data: orig.load()
+      # apply operation without arguments, i.e. over all axes
+      data = self.redop(orig, orig.data_array)
+      # whether or not to cast as Variable (default: No)
+      if asVar is None: asVar = False # default for total reduction
+      if asVar: newaxes = tuple()
+    else:
+      # add axes list to dictionary 
+      if axes is not None: 
+        for ax in axes: kwaxes[ax] = None
+      # check for axes in keyword arguments       
+      for ax,slc in kwaxes.iteritems():
+        #print ax,slc
+        if checkAxis and not orig.hasAxis(ax): raise AxisError
+        if slc is not None and not isinstance(slc,(slice,list,tuple,int,np.integer)): raise TypeError
+      # order axes and get indices
+      axlist = [ax.name for ax in orig.axes if ax.name in kwaxes]
+      # get data  
+      if coordIndex:
+        # use overloaded call method to index with coordinate values directly 
+        data = orig.__call__(**kwaxes)
+      else: 
+        # sort slices accordign to axes
+        idx = [None]*orig.ndim
+        for ax,slc in kwaxes.iteritems():
+          idx[orig.axisIndex(ax)] = slc
+        # get slices the usual way
+        orig.__getitem__(idx=idx)
+      # compute mean
+      axlist.reverse() # start from the back      
+      for axis in axlist:
+        # apply reduction operation with axis argument, looping over axes
+        data = self.redop(orig, data, axidx=orig.axisIndex(axis))
+      # squeeze removed dimension (but no other!)
+      newshape = [len(ax) for ax in orig.axes if not ax.name in axlist]
+      data = data.reshape(newshape)
+      # whether or not to cast as Variable (default: Yes)
+      if asVar is None: asVar = True # default for iterative reduction
+      if asVar: newaxes = [ax for ax in orig.axes if not ax.name in axlist] 
+    # N.B.: other singleton dimensions will have been removed, too
+    # cast into Variable
+    if asVar: 
+      #print self.name, data.__class__.__name__
+      #print data, newaxes
+      var = Variable(name=orig.name, units=orig.units, axes=newaxes, data=data, 
+                     fillValue=orig.fillValue, atts=orig.atts.copy(), plot=orig.plot.copy())
+    else: var = data
+    return var # return function result
+  def __get__(self, instance, klass):
+    ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
+    return functools.partial(self.__call__, instance) # but using 'partial' is simpler
 
 
 ## Variable class and derivatives 
@@ -113,8 +175,8 @@ class Variable(object):
         dtype = np.dtype(dtype) # make sure it is properly formatted.. 
         if dtype is not data.dtype: data = data.astype(dtype) # recast as new type        
 #         raise TypeError, "Declared data type '%s' does not match the data type of the array (%s)."%(str(dtype),str(data.dtype))
-      if axes is not None:
-        assert len(axes) == data.ndim, 'Dimensions of data array and axes are note compatible!'
+      if axes is not None and len(axes) != data.ndim: 
+        raise AxisError, 'Dimensions of data array and axes are note compatible!'
     # for completeness of MRO...
     super(Variable,self).__init__()
     ## set basic variable 
@@ -303,7 +365,10 @@ class Variable(object):
   def __getitem__(self, idx=None):
     ''' Method implementing access to the actual data. '''
     # default
-    if idx is None: idx = slice(None,None,None) # first, last, step     
+    if idx is None: 
+      if self.data_array.ndim > 0: idx = slice(None,None,None) # first, last, step
+      elif isinstance(self.data_array,(np.ndarray,numbers.Number)): 
+        return self.data_array # if the data is scalar, just return it
     # determine what to do
     if all(checkIndex(idx, floatOK=True)):
       # check if data is loaded      
@@ -311,7 +376,7 @@ class Variable(object):
         raise DataError, 'Variable instance \'%s\' has no associated data array or it is not loaded!'%(self.name) 
       # array indexing: return array slice
       if any(isFloat(idx)): raise NotImplementedError, \
-        'Floating-point indexing is not implemented yet for \'%s\' class.'%(self.__class__.__name__)
+        'Floating-point indexing is not implemented yet for \'%s\' class.'%(self.__class__.__name__)      
       return self.data_array.__getitem__(idx) # valid array slicing
     else:    
       # if nothing applies, raise index error
@@ -508,35 +573,17 @@ class Variable(object):
     # return mask
     return mask
   
-  def mean(self, squeeze=True, checkAxis=True, coordIndex=True, asVar=True, **axes):
-    ''' Compute the mean value of the data array over the given axes and return the result in a 
-        Variable instance; axes are specified as keyword arguments with corresponding slices. '''
-    for ax,slc in axes.iteritems():
-      #print ax,slc
-      if checkAxis and not self.hasAxis(ax): raise AxisError
-      if slc is not None and not isinstance(slc,(slice,list,tuple,int,np.integer)): raise TypeError
-    # order axes and get indices
-    axlist = [ax.name for ax in self.axes if ax.name in axes]
-    # get data  
-    if coordIndex: data = self.__call__(**axes)
-    else: raise NotImplementedError
-    # compute mean
-    axlist.reverse() # start from the back      
-    for axis in axlist:
-      data = data.mean(axis=self.axisIndex(axis))
-    # squeeze, if desired
-    if squeeze:
-      data = np.squeeze(data)
-      newaxes = [ax for ax in self.axes if ax.name not in axes]
-    else: newaxes = self.axes
-    # cast into Variable
-    if asVar: 
-      #print self.name, data.__class__.__name__
-      var = Variable(name=self.name, units=self.units, axes=newaxes, data=data, 
-                     fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
-    else: var = data
-    # return
-    return var
+  @ReduceVar
+  def mean(self, data, axidx=None):
+    return data.mean(axis=axidx)
+  
+  @ReduceVar
+  def max(self, data, axidx=None):
+    return data.max(axis=axidx)
+  
+  @ReduceVar
+  def min(self, data, axidx=None):
+    return data.min(axis=axidx)
     
   def seasonalMean(self, season=None, **kwargs):
     ''' Compute mean over seasons, using special keywords. (This is a convenience function for monthly means...) '''
@@ -565,7 +612,6 @@ class Variable(object):
     # return new variable
     return newvar
    
-
   @UnaryCheck    
   def __iadd__(self, a):
     ''' Add a number or an array to the existing data. '''      

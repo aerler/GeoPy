@@ -9,25 +9,29 @@ some useful plotting functions that take advantage of variable meta data
 # external imports
 from types import NoneType
 import numpy as np
-import matplotlib.pylab as pyl
-import matplotlib as mpl
-#from mpl_toolkits.axes_grid1 import ImageGrid
-linewidth = .75
-mpl.rc('lines', linewidth=linewidth)
-if linewidth == 1.5: mpl.rc('font', size=12)
-elif linewidth == .75: mpl.rc('font', size=8)
-else: mpl.rc('font', size=10)
-# prevent figures from closing: don't run in interactive mode, or plt.show() will not block
-pyl.ioff()
+# import matplotlib.pylab as pyl
+# import matplotlib as mpl
+# #from mpl_toolkits.axes_grid1 import ImageGrid
+# linewidth = .75
+# mpl.rc('lines', linewidth=linewidth)
+# if linewidth == 1.5: mpl.rc('font', size=12)
+# elif linewidth == .75: mpl.rc('font', size=8)
+# else: mpl.rc('font', size=10)
+# # prevent figures from closing: don't run in interactive mode, or plt.show() will not block
+# pyl.ioff()
 # internal imports
-from utils import getPlotValues
+from utils import getPlotValues, getFigAx
 from geodata.base import Variable
 from geodata.misc import AxisError, ListError, VariableError
 
 
-def linePlot(ax, varlist, linestyles=None, varatts=None, legend=None, xline=None, yline=None, 
+def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=None, xline=None, yline=None, 
              title=None, xlabel=None, ylabel=None, xlim=None, ylim=None, **kwargs):
   ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on variable properties. '''
+  # create axes, if necessary
+  if ax is None: 
+    if fig is None: fig,ax = getFigAx(1) # single panel
+    else: ax = fig.axes[0]
   # varlist is the list of variable objects that are to be plotted
   if isinstance(varlist,Variable): varlist = [varlist]
   elif not isinstance(varlist,(tuple,list)) or not all([isinstance(var,Variable) for var in varlist]): raise TypeError
@@ -37,13 +41,14 @@ def linePlot(ax, varlist, linestyles=None, varatts=None, legend=None, xline=None
   elif not isinstance(linestyles,(tuple,list)): 
     if not all([isinstance(linestyles,basestring) for var in varlist]): raise TypeError
     if len(varlist) != len(linestyles): raise ListError, "Failed to match linestyles to varlist!"
-  # varatts are variable-specific attributes that are parsed for special keywords and then passed on to the  
-  if isinstance(varatts,dict):
-    tmp = [varatts[var.name] if var.name in varatts else None for var in varlist]
+  # varatts are variable-specific attributes that are parsed for special keywords and then passed on to the
+  if varatts is None: varatts = [dict()]*len(varlist)  
+  elif isinstance(varatts,dict):
+    tmp = [varatts[var.name] if var.name in varatts else dict() for var in varlist]
     if any(tmp): varatts = tmp # if any variable names were found
     else: varatts = [varatts]*len(varlist) # assume it is one varatts dict, which will be used for all variables
   elif not isinstance(varatts,(tuple,list)): raise TypeError
-  if not all([isinstance(atts,(dict,NoneType)) for atts in varatts]): raise TypeError
+  if not all([isinstance(atts,dict) for atts in varatts]): raise TypeError
   # check axis: they need to have only one axes, which has to be the same for all!
   if len(varatts) != len(varlist): raise ListError, "Failed to match varatts to varlist!"  
   axname = varlist[0].axes[0].name
@@ -55,7 +60,7 @@ def linePlot(ax, varlist, linestyles=None, varatts=None, legend=None, xline=None
   plts = []; varname = None; varunits = None; axname = None; axunits = None # list of plot handles
   for var,linestyle,varatt in zip(varlist,linestyles,varatts):
     axe, axunits, axname = getPlotValues(var.axes[0], checkunits=axunits, checkname=axname)
-    val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=varname)
+    val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None)
     # figure out keyword options
     kwatts = kwargs.copy(); kwatts.update(varatt) # join individual and common attributes     
     if 'label' not in kwatts: kwatts['label'] = var.name # default label: variable name
@@ -76,12 +81,10 @@ def linePlot(ax, varlist, linestyles=None, varatts=None, legend=None, xline=None
   if title is not None: ax.set_title(title)
   # set axes labels
   xpad = 2; ypad = -2
-  if flipxy:
-    ax.set_xlabel('{} [{}]'.format(varname,varunits), labelpad=xpad)
-    ax.set_ylabel('{} [{}]'.format(axname,axunits), labelpad=ypad)
-  else: 
-    ax.set_xlabel('{} [{}]'.format(axname,axunits), labelpad=xpad)
-    ax.set_ylabel('{} [{}]'.format(varname,varunits), labelpad=ypad)
+  xlabel = xlabel or ('{} [{}]'.format(varname,varunits) if flipxy else '{} [{}]'.format(axname,axunits)) 
+  ylabel = ylabel or ('{} [{}]'.format(axname,axunits) if flipxy else '{} [{}]'.format(varname,varunits)) 
+  ax.set_xlabel(xlabel, labelpad=xpad)
+  ax.set_ylabel(ylabel, labelpad=ypad)
   # make monthly ticks
   if axname == 'time' and axunits == 'month':
     #ax.minorticks_on()

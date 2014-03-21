@@ -191,6 +191,18 @@ class BaseVarTest(unittest.TestCase):
     s = str(self.var)
     print s
     print('')
+    
+  def testReductionArithmetic(self):
+    ''' test reducing arithmetic functions '''
+    # get test objects
+    var = self.var
+    #print self.data.mean(), var.mean().getArray()
+    assert isEqual(self.data.max(), var.max())
+    assert isEqual(self.data.mean(), var.mean())
+    assert isEqual(self.data.min(), var.min())
+    assert isEqual(self.data.mean(axis=var.axisIndex('t')), var.mean(t=None).getArray())
+    assert isEqual(self.data.max(axis=var.axisIndex('x')), var.max(x=None).getArray())
+    assert isEqual(self.data.min(axis=var.axisIndex('y')), var.min(y=None).getArray())
 
   def testSqueeze(self):
     ''' test removal of singleton dimensions '''
@@ -216,7 +228,7 @@ class BaseVarTest(unittest.TestCase):
     var /= 2.
     # test results
     #     print (self.data.filled() - var.data_array.filled()).max()
-    assert isEqual(self.data, var.data_array)
+    assert isEqual(self.data, var.data_array)  
     
 
 class BaseDatasetTest(unittest.TestCase):  
@@ -650,7 +662,7 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
+    tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
