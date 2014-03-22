@@ -9,8 +9,8 @@ some useful plotting functions that take advantage of variable meta data
 # external imports
 from types import NoneType
 import numpy as np
+import matplotlib as mpl
 # import matplotlib.pylab as pyl
-# import matplotlib as mpl
 # #from mpl_toolkits.axes_grid1 import ImageGrid
 # linewidth = .75
 # mpl.rc('lines', linewidth=linewidth)
@@ -51,15 +51,14 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
   if not all([isinstance(atts,dict) for atts in varatts]): raise TypeError
   # check axis: they need to have only one axes, which has to be the same for all!
   if len(varatts) != len(varlist): raise ListError, "Failed to match varatts to varlist!"  
-  axname = varlist[0].axes[0].name
-  for var in varlist:
-    if not var.ndim: raise AxisError, "Variable '{}' has more than one dimension.".format(var.name)
-    if not var.hasAxis(axname): raise AxisError, "Variable {} does not have a '{}' axis.".format(var.name,axname)
+  for var in varlist: 
+    if var.ndim > 1: raise AxisError, "Variable '{}' has more than one dimension; consider squeezing.".format(var.name)
+    elif var.ndim == 0: raise AxisError, "Variable '{}' is a scalar; consider display as a line.".format(var.name)
   # loop over variables
   flipxy = kwargs.pop('flipxy',False)
   plts = []; varname = None; varunits = None; axname = None; axunits = None # list of plot handles
   for var,linestyle,varatt in zip(varlist,linestyles,varatts):
-    axe, axunits, axname = getPlotValues(var.axes[0], checkunits=axunits, checkname=axname)
+    axe, axunits, axname = getPlotValues(var.axes[0], checkunits=axunits, checkname=None)
     val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None)
     # figure out keyword options
     kwatts = kwargs.copy(); kwatts.update(varatt) # join individual and common attributes     
@@ -79,12 +78,14 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
   elif ylim is not None: raise TypeError 
   # set title
   if title is not None: ax.set_title(title)
-  # set axes labels
-  xpad = 2; ypad = -2
-  xlabel = xlabel or ('{} [{}]'.format(varname,varunits) if flipxy else '{} [{}]'.format(axname,axunits)) 
-  ylabel = ylabel or ('{} [{}]'.format(axname,axunits) if flipxy else '{} [{}]'.format(varname,varunits)) 
-  ax.set_xlabel(xlabel, labelpad=xpad)
-  ax.set_ylabel(ylabel, labelpad=ypad)
+  # set axes labels  
+  xlabel = xlabel or '{1:s} [{0:s}]'; xpad =  2  
+  ylabel = ylabel or '{1:s} [{0:s}]'; ypad = -2  
+  # N.B.: units are listed first, because they are used more commonly; variable names usually only in defaults
+  # a typical custom label that makes use of the units would look like this: 'custom label [{}]', 
+  # where {} will be replaced by the appropriate default units (which have to be the same anyway) 
+  ax.set_xlabel(xlabel.format(varunits,varname) if flipxy else xlabel.format(axunits,axname), labelpad=xpad)
+  ax.set_ylabel(ylabel.format(axunits,axname) if flipxy else ylabel.format(varunits,varname), labelpad=ypad)
   # make monthly ticks
   if axname == 'time' and axunits == 'month':
     #ax.minorticks_on()

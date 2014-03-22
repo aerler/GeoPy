@@ -201,7 +201,7 @@ class Variable(object):
     self.__dict__['plot'] = AttrDict(**plot)
     # set defaults - make all of them instance variables! (atts and plot are set below)
     self.__dict__['data_array'] = None
-    self.__dict__['data'] = ldata
+    self.__dict__['data'] = False # data has not been loaded yet
     self.__dict__['shape'] = shape
     self.__dict__['dtype'] = dtype
     self.__dict__['masked'] = False # handled in self.load() method    
@@ -210,7 +210,7 @@ class Variable(object):
       assert isinstance(axes, (list, tuple))
       if all([isinstance(ax,Axis) for ax in axes]):
         if ldata: 
-          for ax,n in zip(axes,shape): ax.updateLength(n)
+          for ax,n in zip(axes,shape): ax.len = n
         if not ldata and all([len(ax) for ax in axes]): # length not zero
           self.__dict__['shape'] = tuple([len(ax) for ax in axes]) # get shape from axes
       elif all([isinstance(ax,basestring) for ax in axes]):
@@ -225,6 +225,7 @@ class Variable(object):
     # assign data, if present (can initialize without data)
     if data is not None: 
       self.load(data, mask=mask, fillValue=fillValue) # member method defined below
+      assert self.data == ldata # should be loaded now
       
   @property
   def name(self):
@@ -366,7 +367,7 @@ class Variable(object):
     ''' Method implementing access to the actual data. '''
     # default
     if idx is None: 
-      if self.data_array.ndim > 0: idx = slice(None,None,None) # first, last, step
+      if len(self.shape) > 0: idx = slice(None,None,None) # first, last, step
       elif isinstance(self.data_array,(np.ndarray,numbers.Number)): 
         return self.data_array # if the data is scalar, just return it
     # determine what to do
@@ -459,7 +460,7 @@ class Variable(object):
       # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple; hence
       #       the coordinate vector has to be assigned before the dimensions size can be checked 
       if len(self.axes) == len(self.shape): # update length is all we can do without a coordinate vector
-        for ax,n in zip(self.axes,self.shape): ax.updateLength(n) 
+        for ax,n in zip(self.axes,self.shape): ax.len = n 
       else: # this should only happen with scalar variables!
         assert self.ndim == 0 and data.size == 1, 'Dimensions of data array and variable must be identical, except for scalars!'       
      
@@ -572,6 +573,13 @@ class Variable(object):
       mask = mask.__getitem__(slices)
     # return mask
     return mask
+  
+  def limits(self):
+    ''' A convenience function to return a min,max tuple to indicate the data range. '''
+    if self.data:
+      return self.data_array.min(), self.data_array.max()
+    else: 
+      return None
   
   @ReduceVar
   def mean(self, data, axidx=None):
@@ -709,20 +717,62 @@ class Axis(Variable):
     ''' Initialize a coordinate axis with appropriate values.
         
         Attributes: 
-          coord = None # the coordinate vector (also accessible as data_array)
-          len = 0 # the length of the dimension (integer value)
+          coord = @property # managed access to the coordinate vector
+          len = @property # the current length of the dimension (integer value)
     '''
     # initialize dimensions
     axes = (self,)
     # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple
-    self.__dict__['coord'] = None
-    self.__dict__['len'] = length
+    self.__dict__['_len'] = length
     # initialize as a subclass of Variable, depending on the multiple inheritance chain    
     super(Axis, self).__init__(axes=axes, **varargs)
     # add coordinate vector
-    if coord is not None: self.updateCoord(coord)
-    elif length > 0: self.updateLength(length)
+    if coord is not None: self.coord = coord
+    elif length > 0: self.len = length
+
+  @property
+  def coord(self):
+    ''' An alias for the data_array variable that is specific to coordiante vectors. '''
+    return self.getArray() # unmask=True ?
+  @coord.setter
+  def coord(self, data):
+    ''' Update the coordinate vector of an axis based on certain conventions. '''
+    # resolve coordinates
+    if data is None:
+      # this means the coordinate vector/data is going to be deleted 
+      self.unload()
+    else:
+      # a coordinate vector will be created and loaded, based on input conventions
+      if isinstance(data,tuple) and ( 0 < len(data) < 4):
+        data = np.linspace(*data)
+      elif isinstance(data,np.ndarray) and data.ndim == 1:
+        data = data
+      elif isinstance(data,(list,tuple)):
+        data = np.asarray(data)
+      elif isinstance(data,slice):
+        if not self.data: raise DataError, 'Cannot slice coordinate when coordinate vector is empty!'
+        data=self.data_array.__getitem__(data)
+      else: #data = data
+        raise TypeError, 'Data type not supported for coordinate values.'
+      # load data
+      self.load(data=data, mask=None)
+
+  @property
+  def len(self):
+    ''' The length of the axis; if a coordinate vector is present, it is the length of that vector. '''
+    if self.data: return self.coord.size
+    else: return self._len    
+  @len.setter
+  def len(self, length):
+    ''' Update the length, or check for conflict if a coordinate vector is present. (Default length is 0)'''
+    if self.data and length != self.coord.size:
+      raise AxisError, 'Axis instance \'{:s}\' already has a coordinate vector of length {:d} ({:d} given)'.format(self.name,len(self),length)        
+    else: self.__dict__['_len'] = length
   
+  def __len__(self):
+    ''' Return length of dimension. '''
+    return self.len 
+    
   def copy(self, deepcopy=False, **newargs): # with multiple inheritance, this method will override all others
     ''' A method to copy the Axis with just a link to the data. '''
     if deepcopy: 
@@ -744,22 +794,6 @@ class Axis(Variable):
     if self.data: ax.load(data=self.getArray(unmask=False,copy=True))
     # N.B.: using load() and getArray() should automatically take care of any special needs 
     return ax
-    
-  def load(self, *args, **kwargs):
-    ''' Load a coordinate vector into an axis and update related attributes. '''
-    # load data
-    super(Axis,self).load(*args, **kwargs) # call load of base variable (Variable subclass)
-    # update attributes
-    self.__dict__['coord'] = self.data_array
-    self.__dict__['len'] = self.data_array.shape[0]
-    
-  def unload(self):
-    ''' Remove the coordinate vector of an axis but keep length attribute. '''
-    # load data
-    super(Axis,self).unload() # call unload of base variable (Variable subclass)
-    # update attributes
-    self.__dict__['coord'] = None
-#     self.__dict__['len'] = 0
 
   def getIndex(self, value):
     ''' Return the coordinate index that is closest to the value. '''
@@ -774,43 +808,7 @@ class Axis(Variable):
       dr = self.coord[idx] - value
       if dr < dl: return idx
       else: return idx-1 # can't be 0 at this point 
-      
-    
-  def updateCoord(self, coord=None, **varargs):
-    ''' Update the coordinate vector of an axis based on certain conventions. '''
-    # resolve coordinates
-    if coord is None:
-      # this means the coordinate vector/data is going to be deleted 
-      self.unload()
-    else:
-      # a coordinate vector will be created and loaded, based on input conventions
-      if isinstance(coord,tuple) and ( 0 < len(coord) < 4):
-        data = np.linspace(*coord)
-      elif isinstance(coord,np.ndarray) and coord.ndim == 1:
-        data = coord
-      elif isinstance(coord,(list,tuple)):
-        data = np.asarray(coord)
-      elif isinstance(coord,slice):
-        if not self.data: raise DataError, 'Cannot slice coordinate when coordinate vector is empty!'
-        data=self.coord.__getitem__(coord)
-      else: #data = coord
-        raise TypeError, 'Data type not supported for coordinate values.'
-      # load data
-      self.load(data=data, mask=None, **varargs)
-      
-
-  def __len__(self):
-    ''' Return length of dimension. '''
-    return self.__dict__['len'] 
-    
-  def updateLength(self, length=0):
-    ''' Update the length, or check for conflict if a coordinate vector is present. (Default is length=0)'''
-    if self.data:
-      assert length == self.shape[0], \
-        'Coordinate vector of Axis instance \'%s\' is incompatible with given length: %i != %i'%(self.name,len(self),length)
-    else:
-      self.__dict__['len'] = length
-      
+                  
 
 class Dataset(object):
   '''

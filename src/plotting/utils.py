@@ -36,7 +36,7 @@ def loadMPL(linewidth=None, mplrc=None):
 
 
 # method to return a figure and an array of ImageGrid axes
-def getFigAx(subplot, fig=None, title=None, figsize=None,  mpl=None, margins=None, ngrids=None, direction='row', axes_pad = 0.2,
+def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=None, ngrids=None, direction='row', axes_pad = 0.2,
              add_all=True, share_all=False, aspect=True, label_mode='L', cbar_mode=None, cbar_location='right',
              cbar_pad=None, cbar_size='5%', axes_class=None, lreduce=True):
   from mpl_toolkits.axes_grid1 import ImageGrid
@@ -61,16 +61,18 @@ def getFigAx(subplot, fig=None, title=None, figsize=None,  mpl=None, margins=Non
     elif subplot == (2,1): figsize = (3.75,6.25)
     elif subplot == (2,2) or subplot == (3,3): figsize = (6.25,6.25)
     else: raise NotImplementedError
-  if fig is None: fig = mpl.pylab.figure(facecolor='white', figsize=figsize)
-  else: fig = mpl.pylab.figure(fig, facecolor='white', figsize=figsize)
-  fig.suptitle(title)
+  if name is None: fig = mpl.pylab.figure(facecolor='white', figsize=figsize)
+  else: fig = mpl.pylab.figure(name, facecolor='white', figsize=figsize)
   # figure out margins
   if margins is None:
-    if subplot == (1,1): margins = (0.09,0.11,0.88,0.82)
-    elif subplot == (1,2) or subplot == (1,3): margins = (0.09,0.11,0.88,0.82)
+    if subplot == (1,1): margins = (0.08,0.1,0.9,0.87)
+    elif subplot == (1,2) or subplot == (1,3): margins = (0.06,0.1,0.92,0.87)
     elif subplot == (2,1): margins = (0.09,0.11,0.88,0.82)
     elif subplot == (2,2) or subplot == (3,3): margins = (0.09,0.11,0.88,0.82)
     else: raise NotImplementedError    
+  if title is not None: 
+    fig.suptitle(title)
+    margins = margins[:3]+(margins[3]-0.05,) # make room for title
   # create axes using the Axes Grid package
   # reference: http://matplotlib.org/mpl_toolkits/axes_grid/users/overview.html
   grid = ImageGrid(fig, margins, nrows_ncols = subplot, ngrids=ngrids, direction=direction, 

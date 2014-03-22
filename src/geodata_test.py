@@ -195,14 +195,14 @@ class BaseVarTest(unittest.TestCase):
   def testReductionArithmetic(self):
     ''' test reducing arithmetic functions '''
     # get test objects
-    var = self.var
+    var = self.var; t,x,y = self.axes # for upwards compatibility!
     #print self.data.mean(), var.mean().getArray()
     assert isEqual(self.data.max(), var.max())
     assert isEqual(self.data.mean(), var.mean())
     assert isEqual(self.data.min(), var.min())
-    assert isEqual(self.data.mean(axis=var.axisIndex('t')), var.mean(t=None).getArray())
-    assert isEqual(self.data.max(axis=var.axisIndex('x')), var.max(x=None).getArray())
-    assert isEqual(self.data.min(axis=var.axisIndex('y')), var.min(y=None).getArray())
+    assert isEqual(self.data.mean(axis=var.axisIndex(t.name)), var.mean(**{t.name:None}).getArray())
+    assert isEqual(self.data.max(axis=var.axisIndex(x.name)), var.max(**{x.name:None}).getArray())
+    assert isEqual(self.data.min(axis=var.axisIndex(y.name)), var.min(**{y.name:None}).getArray())
 
   def testSqueeze(self):
     ''' test removal of singleton dimensions '''
@@ -376,7 +376,7 @@ from geodata.netcdf import VarNC, AxisNC, DatasetNetCDF
 class NetCDFVarTest(BaseVarTest):  
   
   # some test parameters (TestCase does not take any arguments)
-  dataset = 'GPCC' # dataset to use (also the folder name)
+  dataset = 'NARR' # dataset to use (also the folder name)
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
   
@@ -485,7 +485,7 @@ class DatasetNetCDFTest(BaseDatasetTest):
     name = self.dataset
     if self.dataset == 'GPCC': # single file      
       filelist = ['gpcc_test/full_data_v6_precip_25.nc'] # variable to test
-      varlist = ['p']; varatts = None
+      varlist = ['p']; varatts = dict(p=dict(name='precip'))
       ncfile = filelist[0]; ncvar = varlist[0]      
     elif self.dataset == 'NARR': # multiple files
       filelist = ['narr_test/air.2m.mon.ltm.nc', 'narr_test/prate.mon.ltm.nc', 'narr_test/prmsl.mon.ltm.nc'] # variable to test
@@ -572,7 +572,7 @@ from datasets.NARR import projdict
 class GDALVarTest(NetCDFVarTest):  
   
   # some test parameters (TestCase does not take any arguments)
-  dataset = 'NARR' # dataset to use (also the folder name)
+  dataset = 'GPCC' # dataset to use (also the folder name)
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
   # some projection settings for tests
@@ -662,9 +662,9 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
+#     tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']

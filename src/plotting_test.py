@@ -31,33 +31,60 @@ class LinePlotTest(unittest.TestCase):
   def setUp(self):
     ''' create two test variables '''
     # create axis and variable instances (make *copies* of data and attributes!)
-    x = np.linspace(0,10,11)
-    xaxis = Axis(name='X-Axis', units='X Units', coord=x)
-    atts = dict(name='red', units='units') 
-    self.var = Variable(axes=(xaxis,), data=x.copy(), atts=atts)
-    self.rav = Variable(name='green',units='units',axes=(xaxis,), data=(x**2)/5.)
+    x1 = np.linspace(0,10,11); xax1 = Axis(name='X1-Axis', units='X Units', coord=x1) 
+    var1 = Variable(axes=(xax1,), data=x1.copy(), atts=dict(name='red', units='units'))
+    self.var1 = var1; self.xax1 = xax1
+    x2 = np.linspace(2,8,13); xax2 = Axis(name='X2-Axis', units='X Units', coord=x2)
+    var2 = Variable(name='green',units='units',axes=(xax2,), data=(x2**2)/5.)
+    self.var2 = var2; self.xax2 = xax2
+    # add to list
+    self.vars = [var1, var2]
+    self.axes = [xax1, xax2]
         
   def tearDown(self):
-    ''' clean up '''     
-    self.var.unload() # just to do something... free memory
-    self.rav.unload()
+    ''' clean up '''
+    for var in self.vars:     
+      var.unload() # just to do something... free memory
+    for ax in self.axes:
+      ax.unload()
     
   ## basic tests every variable class should pass
 
-  def testSimpleLinePlot(self):
+  def testBasicLinePlot(self):
     ''' test a simple line plot with two lines '''    
-    fig,ax = getFigAx(1, fig=1, title=sys._getframe().f_code.co_name, mpl=mpl) # use test method name as title
-    print fig.axes
-    assert not isinstance(ax,(list,tuple))
-    var = self.var; rav = self.rav
+    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], mpl=mpl) # use test method name as title
+    assert fig.__class__.__name__ == 'Figure'
+    assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
+    var1 = self.var1; var2 = self.var2
     # create plot
-#     print var
-#     print min(var),max(var)
-#     for x in rav: print x
-    plts = linePlot([var, rav], ax=ax, ylabel='test', ylim=(var.min(),var.max())) 
-                    #linestyles, varatts, legend, xline, yline, title, xlabel, ylabel, xlim, ylim)
+    plts = linePlot([var1, var2], ax=ax, ylabel='custom label [{}]', ylim=var1.limits(), legend=2)
+    assert len(plts) == 2
+  
+  def testAdvancedLinePlot(self):
+    ''' test more advanced options of the line plot function '''    
+    fig,ax = getFigAx(1, title='Fancy Plot Styles', name=sys._getframe().f_code.co_name[4:], mpl=mpl) # use test method name as title
+    assert fig.__class__.__name__ == 'Figure'
+    assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
+    var1 = self.var1; var2 = self.var2
+    # define fancy attributes
+    varatts = dict()
+    for var in var1,var2: varatts[var.name] = dict(color=var.name, marker='*')       
+    # define fancy legend
+    legend = dict(loc=2, labelspacing=0.125, handlelength=2.5, handletextpad=0.5, fancybox=True)
+    # create plot
+    plts = linePlot([var1, var2], ax=ax, linestyles=('--','-.'), varatts=varatts, legend=legend)
     assert len(plts) == 2
         
+  def testCombinedLinePlot(self):
+    ''' test a two panel line plot with combined legend '''    
+    fig,axes = getFigAx(2, name=sys._getframe().f_code.co_name[4:], mpl=mpl) # use test method name as title
+    assert fig.__class__.__name__ == 'Figure'
+    assert isinstance(axes,(list,tuple)) # should return a list of axes
+    var1 = self.var1; var2 = self.var2
+    # create plot
+    for i,ax in enumerate(axes):
+      plts = linePlot([var1, var2], ax=ax, ylim=var1.limits(), legend=0, title='Panel {:d}'.format(i+1))
+      assert len(plts) == 2
     
 if __name__ == "__main__":
 

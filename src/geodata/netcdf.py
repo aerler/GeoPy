@@ -71,7 +71,7 @@ def asDatasetNC(dataset=None, ncfile=None, mode='rw', deepcopy=False, writeData=
   newset = DatasetNetCDF(dataset=ncfile, atts=atts, mode=mode, ncformat=ncformat, **kwargs)
   # copy axes data/coordinates
   for axname,ax in dataset.axes.iteritems():
-    if ax.data: newset.axes[axname].updateCoord(coord=ax.getArray(unmask=False, copy=True))
+    if ax.data: newset.axes[axname].coord = ax.getArray(unmask=False, copy=True)
   # copy variable data
   for varname,var in dataset.variables.iteritems():
     if var.data: newset.variables[varname].load(data=var.getArray(unmask=False, copy=deepcopy))
@@ -193,12 +193,13 @@ class VarNC(Variable):
       data = data
     elif all(checkIndex(data)):
       if isinstance(data,(list,tuple)):
-        assert len(data)==len(self.shape), 'Length of index tuple has to equal to the number of dimensions!'       
-        for ax,idx in zip(self.axes,data): ax.updateCoord(idx)
+        if len(data) != len(self.shape): 
+          raise IndexError, 'Length of index tuple has to equal to the number of dimensions!'       
+        for ax,idx in zip(self.axes,data): ax.coord = idx
         data = self.__getitem__(data) # load slice
       else: 
         if self.ndim != 1: raise IndexError, 'Multi-dimensional variable have to be indexed using tuples!'
-        if self != self.axes[0]: ax.updateCoord(coord=data) # prevent infinite loop due to self-reference
+        if self != self.axes[0]: ax.coord = data # prevent infinite loop due to self-reference
         data = self.__getitem__(idx=data) # load slice
     else: 
       raise TypeError
@@ -254,19 +255,6 @@ class AxisNC(Axis,VarNC):
                                 fillValue=fillValue, mode=mode, load=load, **axargs)
     # synchronize coordinate array with netcdf variable
     if 'w' in mode: self.sync()    
-    
-  def updateCoord(self, coord=None):
-    ''' Update the coordinate vector from NetCDF file. '''    
-    # resolve coordinates
-    if isinstance(coord,slice):      
-      # load data using VarNC load function and coord slice
-      super(AxisNC,self).load(data=coord)
-      # update attributes
-      self.__dict__['coord'] = self.data_array
-      self.__dict__['len'] = self.shape[0]    
-    else:
-      # use parent constructor
-      super(AxisNC,self).updateCoord(coord=coord)
       
 
 class DatasetNetCDF(Dataset):
