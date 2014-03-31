@@ -151,6 +151,10 @@ def getDatasets(expset, titles=None):
     explist = [('max-ens-2050','max-ens')]
     titles = 'WRF Ensemble Mean (Mid-21st-Century)'
     linestyles = ('-','--')
+  elif expset == 'max-end-diff':
+    explist = [('max-ens-2100','max-ens')]
+    titles = 'WRF Ensemble Mean (End-21st-Century)'
+    linestyles = ('-','--')
   elif expset == 'max-2100-diff':
     explist = [('max-ctrl-2100','max-ctrl')]
     titles = 'WRF Max (End-21st-Century)'
@@ -182,13 +186,13 @@ if __name__ == '__main__':
   # settings
   lprint = True; lpub = False
   paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
-  expset = '1deg'
+  expset = 'max-2100-diff'
   plottypes = []
-  plottypes += ['temp']
-  plottypes += ['precip']
-#   plottypes += ['precip_types']
+#   plottypes += ['temp']
+#   plottypes += ['precip']
+  plottypes += ['precip_types']
 #   plottypes += ['evap']
-  plottypes += ['flux'] 
+#   plottypes += ['flux'] 
 #   plottypes += ['sfflx']
 #   plottypes += ['flxrof']
 #   plottypes += ['runoff']
@@ -198,15 +202,15 @@ if __name__ == '__main__':
   lgage = True
   titles = None
   areas = []
-#   areas += ['athabasca']
+  areas += ['athabasca']
   areas += ['fraser']
 #   areas += ['northcoast']
-  areas += ['southcoast']
+#   areas += ['southcoast']
   domains = 2 # [0, 2, 1, 1]
   periods = []
-  periods += [5]
+#   periods += [5]
 #   periods += [10]
-#   periods += [15]
+  periods += [15]
 #   periods += [(1979,1984)]
 #   periods += [(1989,1994)]
   

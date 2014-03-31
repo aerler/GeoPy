@@ -183,10 +183,11 @@ if __name__ == '__main__':
     #experiments += ['new','noah','max','max-2050']
 #     experiments += ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
 #     experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
+    experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
 #     experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     experiments += ['max-nofdda','max-fdda']
 #     experiments += ['max-1deg', 'max-diff','max-hilev']
-    experiments += ['ctrl-2050']
+#     experiments += ['max-ctrl-2100']
 #     experiments += ['ctrl-arb1', 'ctrl-arb1-2050', 'ctrl-2-arb1',]
 #     experiments += ['max-3km']
     offset = 0 # number of years from simulation start
@@ -194,7 +195,7 @@ if __name__ == '__main__':
 #     periods += [1]
 #     periods += [3]
     periods += [5]
-    periods += [10]
+#     periods += [10]
 #     periods += [15]
     domains = [1,2] # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
@@ -207,6 +208,7 @@ if __name__ == '__main__':
     #loverwrite = True
     varlist = None
     experiments = None # WRF experiment names (passed through WRFname)
+    offset = 0 # number of years from simulation start
     periods = [5,10,15] # averaging period
     domains = [1,2] # domains to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed

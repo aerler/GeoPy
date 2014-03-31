@@ -82,8 +82,9 @@ if __name__ == '__main__':
 #   exptitles = ['CESM (80 km)', 'Merged Observations (10 km)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
 
 #   explist = ['CESM','max-ens']; exptitles = ['CESM Ensemble Mean', 'WRF Ensemble Mean (10 km)']
-#   case = 'val'; lbasins = True; lsamesize = False; period = H15
-#   ldiff = True; reflist = ['Unity']; refprd = H30; grid = ['cesm1x1','arb2_d02'] # grid = ['arb2_d02']*2
+#   case = 'val_arb2'; lbasins = True; lsamesize = False; period = H15; grid = ['arb2_d02']*2
+#   lfrac = True; reflist = ['Unity']; refprd = H30; #grid = ['cesm1x1','arb2_d02'] 
+  
 
 #   explist = ['Ctrl','max']; exptitles = ['CESM-1', 'WRF-1 (10 km)']
 #   case = 'val'; lbasins = True; lsamesize = False; period = H15 #; grid = ['arb2_d02']*2
@@ -94,10 +95,10 @@ if __name__ == '__main__':
 #   case = '1deg'; lbasins = True; lsamesize = False; period = H05 #; grid = ['arb2_d02']*2
 #   lfrac = True; reflist = ['Unity']; grid = ['cesm1x1','arb2_d02']*2
   
-  explist = ['Ctrl','max','max-1deg','Unity']
-  exptitles = ['CESM-1', 'WRF-1 (30 km)', 'WRF-1 (1 deg.)', 'Observations']
-  case = '1deg'; lbasins = True; lsamesize = False; period = H05; domain = [None, 1, 2, None]
-  ldiff = True; reflist = ['max']; refdom = 2; grid = ['arb2_d02']*4 # ['cesm1x1','arb2_d02']*2
+#   explist = ['Ctrl','max','max-1deg','Unity']
+#   exptitles = ['CESM-1', 'WRF-1 (30 km)', 'WRF-1 (1 deg.)', 'Observations']
+#   case = '1deg'; lbasins = True; lsamesize = False; period = H05; domain = [None, 1, 2, None]
+#   ldiff = True; reflist = ['max']; refdom = 2; grid = ['arb2_d02']*4 # ['cesm1x1','arb2_d02']*2
 
 #   explist = ['max-A','max','Unity','max-B','max-C','NARR']
 #   case = 'val-ens'; lbasins = True; period = H15; #grid = ['arb2_d02']
@@ -105,9 +106,9 @@ if __name__ == '__main__':
 #   explist = ['Ctrl','Ens-A','Ens-B','Ens-C','CESM','Unity']
 #   case = 'val-cesm'; lbasins = True; period = H15 #; grid = ['arb2_d02']*2
 
-#   explist = ['CESM-2050','max-ens-2050']; exptitles = ['CESM Ensemble Mean (2050)', 'WRF Ensemble Mean (2050)']
-#   case = 'prj'; lbasins = True; lsamesize = False; period = A15
-#   ldiff = True; reflist = ['CESM','max-ens']; refprd = H15; grid = ['cesm1x1','arb2_d02'] 
+  explist = ['CESM-2050','max-ens-2050']; exptitles = ['CESM Ensemble Mean (2050)', 'WRF Ensemble Mean (2050)']
+  case = 'prj_arb2'; lbasins = True; lsamesize = False; period = A15; #grid = ['arb2_d02']*2
+  ldiff = True; reflist = ['CESM','max-ens']; refprd = H15; grid = ['cesm1x1','arb2_d02'] 
 
 #   explist = ['cfsr','CESM','max-ens','max-ens']; exptitles = [None, None, 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
 #   case = 'res'; lbasins = True; lsamesize = False; period = H15

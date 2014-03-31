@@ -31,7 +31,7 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     if var in ('T2','Ts','Tmin','Tmax','Tmean'):
       clevs = np.linspace(-5,5,21); clbl = '%3.1f' # K
     elif var in ('evap','pet','precip','precipc','precipnc'):
-      clevs = np.linspace(-5,5,21); clbl = '%3.1f' # mm/day
+      clevs = np.linspace(-2,2,21); clbl = '%3.1f' # mm/day
     elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff','p-et','waterflx'): # moisture fluxes (kg /(m^2 s))
       clevs = np.linspace(-2,2,21); clbl = '%3.1f' # mm/day  
     elif var == 'zs':
