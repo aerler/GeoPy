@@ -184,15 +184,17 @@ if __name__ == '__main__':
   
   ## settings
   # settings
-  lprint = True; lpub = False
-  paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
+  lprint = True; lpub = True
+#   paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
+  paper_folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
   expset = 'max-2100-diff'
   plottypes = []
 #   plottypes += ['temp']
 #   plottypes += ['precip']
   plottypes += ['precip_types']
 #   plottypes += ['evap']
-#   plottypes += ['flux'] 
+#   plottypes += ['flux']
+#   plottypes += ['snwmlt']  
 #   plottypes += ['sfflx']
 #   plottypes += ['flxrof']
 #   plottypes += ['runoff']
@@ -209,8 +211,8 @@ if __name__ == '__main__':
   domains = 2 # [0, 2, 1, 1]
   periods = []
 #   periods += [5]
-#   periods += [10]
-  periods += [15]
+  periods += [10]
+#   periods += [15]
 #   periods += [(1979,1984)]
 #   periods += [(1989,1994)]
   
@@ -312,7 +314,8 @@ if __name__ == '__main__':
         S = asf if lsum else 1. # apply scale factor, depending on plot type  
        
         ## setting up figure
-        if nlen == 1: linewidth = 1.5
+        if lpub: linewidth = 1.5
+        elif nlen == 1: linewidth = 1.5
         elif nlen == 2: linewidth = 1.
         elif nlen == 4: linewidth = 0.75 
         else: linewidth = 1.
@@ -329,7 +332,7 @@ if __name__ == '__main__':
         if axes.ndim == 0: axes = axes.reshape((1,1))
         if axes.ndim == 1: axes = axes.reshape((1,len(axes)))
     #     if not isinstance(axes,(list,tuple)): axes = (axes,)
-    #     if not isinstance(axes[0],(list,tuple)): axes = tuple([(ax,) for ax in axes])
+    #     if not isinstance(axes[0],(list,tuple)): axes = tuple([(ax,) for ax in axes])    
         fig.subplots_adjust(**margins) # hspace, wspace
         
         # loop over axes
@@ -474,8 +477,9 @@ if __name__ == '__main__':
           ax = fig.add_axes([0, 0, 1,0.1])
           ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
           margins['bottom'] = margins['bottom'] + 0.1; fig.subplots_adjust(**margins)
-          if nlen == 1: legargs = dict(frameon=True, labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
-          else: legargs = dict(frameon=True, labelspacing=0.15, handlelength=2, handletextpad=0.5, fancybox=True)
+          legargs = dict(frameon=True, labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
+#           if nlen == 1: legargs = dict(frameon=True, labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
+#           else: legargs = dict(frameon=True, labelspacing=0.15, handlelength=2, handletextpad=0.5, fancybox=True)
           plt = wrfplt + obsplt; leg = wrfleg + obsleg
           ncols = 4 if len(plt) == 4 or len(plt) > 6 else 3
           legend = ax.legend(plt, leg, loc=10, ncol=ncols, borderaxespad=0., **legargs)  

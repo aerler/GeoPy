@@ -31,7 +31,7 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     if var in ('T2','Ts','Tmin','Tmax','Tmean'):
       clevs = np.linspace(-5,5,21); clbl = '%3.1f' # K
     elif var in ('evap','pet','precip','precipc','precipnc'):
-      clevs = np.linspace(-2,2,21); clbl = '%3.1f' # mm/day
+      clevs = np.linspace(-3,3,21); clbl = '%3.1f' # mm/day
     elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff','p-et','waterflx'): # moisture fluxes (kg /(m^2 s))
       clevs = np.linspace(-2,2,21); clbl = '%3.1f' # mm/day  
     elif var == 'zs':
@@ -43,7 +43,7 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     if var in ('T2','Ts','Tmin','Tmax','Tmean'):
       clevs = np.linspace(-3,3,21); clbl = '%3.0f' 
     elif var in ('evap','pet','p-et','precip','precipc','precipnc','waterflx'):
-      clevs = np.linspace(-100,100,21); clbl = '%3.0f'  
+      clevs = np.linspace(-50,50,21); clbl = '%3.0f'  
     else: 
       clevs = np.linspace(-50,50,21); clbl = '%3.0f'  
   else:
@@ -89,7 +89,7 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
       clevs = np.linspace(-2,2,25); cmap = mpl.cm.PuOr; clbl = '%02.1f'
     elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff'): # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
-      clevs = np.linspace(0,8,25); clbl = '%02.1f'; cmap = mpl.cm.YlGnBu
+      clevs = np.linspace(0,5,25); clbl = '%02.1f'; cmap = mpl.cm.YlGnBu
     elif var == 'precip' or var == 'precipnc': # total precipitation 
       clevs = np.linspace(0,20,41); clbl = '%02.1f' # mm/day
     elif var == 'precipc': # convective precipitation 
@@ -194,7 +194,7 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
     if sameSize: figsize = (6.25,6.25)
     else: figsize = (3.75,3.75) # figsize = (7,5.5)
     if cbar:
-      margins = dict(bottom=0.125, left=0.1, right=0.95, top=0.925, hspace=0.0, wspace=0.0)
+      margins = dict(bottom=0.125, left=0.1, right=0.95, top=0.91, hspace=0.0, wspace=0.0)
       caxpos = [0.05, 0.05, 0.9, 0.03]
 #       caxpos = [0.91, 0.05, 0.03, 0.9]
       cbo = cbo or 'horizontal'
@@ -222,7 +222,7 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
       caxpos = [0.91, 0.05, 0.03, 0.9]
       cbo = cbo or 'vertical'
     else:
-      margins = dict(bottom=0.05, left=0.08, right=.985, top=.96, hspace=0.10, wspace=0.02)
+      margins = dict(bottom=0.06, left=0.09, right=.985, top=.95, hspace=0.13, wspace=0.02)
   elif nexp == 6:
     # 6 panel
     subplot = (2,3) # rows, columns

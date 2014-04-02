@@ -177,7 +177,7 @@ if __name__ == '__main__':
   if ldebug:
     ldebug = False
     NP = NP or 4
-    loverwrite = False
+    loverwrite = True
     varlist = None # ['precip', ]
     experiments = []
     #experiments += ['new','noah','max','max-2050']
@@ -186,8 +186,8 @@ if __name__ == '__main__':
     experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
 #     experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     experiments += ['max-nofdda','max-fdda']
-#     experiments += ['max-1deg', 'max-diff','max-hilev']
-#     experiments += ['max-ctrl-2100']
+#     experiments += ['max-1deg'] #, 'max-diff','max-hilev']
+    experiments += ['max-ctrl-2100']
 #     experiments += ['ctrl-arb1', 'ctrl-arb1-2050', 'ctrl-2-arb1',]
 #     experiments += ['max-3km']
     offset = 0 # number of years from simulation start

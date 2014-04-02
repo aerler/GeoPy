@@ -56,7 +56,7 @@ def asAxisNC(ax=None, ncvar=None, mode='rw', deepcopy=True, **kwargs):
                   mode=mode, **kwargs)
   # copy data  
   if ax.data:    
-    axisnc.updateCoord(coord=ax.getArray(copy=deepcopy))
+    axisnc.coord = ax.getArray(copy=deepcopy)
   # return AxisNC
   return axisnc
 

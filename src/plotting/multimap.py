@@ -36,10 +36,11 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-  WRFfiletypes=['srfc']
+  WRFfiletypes=['srfc','lsm']
 #   WRFfiletypes = ['srfc','lsm','hydro','xtrm'] # WRF data source
   # figure directory
-  folder = figure_folder
+  folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
+#   folder = figure_folder
   lpickle = True
   # period shortcuts
   H01 = '1979-1980'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
@@ -73,27 +74,53 @@ if __name__ == '__main__':
   lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = False; lbasins = False
 
-#   case = 'cu'; lbasins = True
-#   explist = ['max', 'max-nosub','max-kf','max-nmp']; domain = (2,); period = H05
-#   ldiff = True; reflist = ['Unity']; grid = ['arb2_d02']
+  explist = ['max-ens-2050']; exptitles = ['WRF Ensemble Mean (2050)']
+  case = 'prj'; lbasins = True; lsamesize = True; period = A15; grid = ['arb2_d02']
+#   lfrac = True; reflist = ['Unity']; refprd = H30
   
-#   case = 'valobs'; lbasins = True
-#   explist = ['CESM', 'Unity', 'max-ens', 'max-ens']; domain = [None, None, 1, 2]; period = H15
-#   exptitles = ['CESM (80 km)', 'Merged Observations (10 km)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
+#   explist = ['CESM', 'NARR', 'max-ens', 'max-ens']; domain = [None, None, 1, 2]; period = H15
+#   exptitles = ['CESM (80 km)', 'NARR (reanalysis)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
+#   case = 'val'; lbasins = True; lsamesize = True
+#   ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'
 
 #   explist = ['CESM','max-ens']; exptitles = ['CESM Ensemble Mean', 'WRF Ensemble Mean (10 km)']
 #   case = 'val_arb2'; lbasins = True; lsamesize = False; period = H15; grid = ['arb2_d02']*2
 #   lfrac = True; reflist = ['Unity']; refprd = H30; #grid = ['cesm1x1','arb2_d02'] 
   
+#   explist = ['CESM','max-ens','Ctrl','max']; 
+#   exptitles = ['CESM Ensemble Mean', 'WRF Ensemble Mean (10 km)','CESM-1', 'WRF-1 (10 km)']
+#   case = 'val'; lbasins = True; lsamesize = False; period = H15; grid = 'arb2_d02'
+#   ldiff = True; reflist = ['Unity']; #grid = ['cesm1x1','arb2_d02']
 
-#   explist = ['Ctrl','max']; exptitles = ['CESM-1', 'WRF-1 (10 km)']
-#   case = 'val'; lbasins = True; lsamesize = False; period = H15 #; grid = ['arb2_d02']*2
-#   lfrac = True; reflist = ['Unity']; grid = ['cesm1x1','arb2_d02']
+#   explist = ['CESM-2050','max-ens-2050','Ctrl-2050','max-2050']; 
+#   exptitles = ['CESM Ensemble Mean (2050)', 'WRF Ensemble Mean (2050)','CESM-1 (2050)', 'WRF-1 (2050)']
+#   case = 'prj'; lbasins = True; lsamesize = True; period = A15; #grid = 'arb2_d02'
+#   lfrac = True; reflist = ['CESM','max-ens','Ctrl','max']; refprd = H15; grid = ['cesm1x1','arb2_d02']*2 
+
+#   case = 'ensdiff'; explist = ['max', 'max-A', 'max-B', 'max-C'] 
+#   exptitles = ['WRF-1', 'WRF-A', 'WRF-B', 'WRF-C']
+#   lbasins = True; lsamesize = True; period = H15; grid = 'arb2_d02'
+#   ldiff = True; reflist = ['max-ens']; refprd = H15 
+
+#   case = 'ensdiffprj'; explist = ['max-2050', 'max-A-2050', 'max-B-2050', 'max-C-2050'] 
+#   exptitles = ['WRF-1 (2050)', 'WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)']
+#   lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
+#   ldiff = True; reflist = ['max-ens-2050']; refprd = A15 
+
+#   case = 'ensprj'; explist = ['max-2050', 'max-A-2050', 'max-B-2050', 'max-C-2050'] 
+#   exptitles = ['WRF-1 (2050)', 'WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)']
+#   lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
+#   lfrac = True; reflist = ['max', 'max-A', 'max-B', 'max-C']; refprd = H15 
+
+#   case = 'Ensprj'; explist = ['Ctrl-2050', 'Ens-A-2050', 'Ens-B-2050', 'Ens-C-2050']; 
+#   exptitles = ['Ctrl-1 (2050)', 'Ens-A (2050)', 'Ens-B (2050)', 'Ens-C (2050)']
+#   lbasins = True; lsamesize = True; period = A15; grid = 'cesm1x1'
+#   lfrac = True; reflist = ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']; refprd = H15 
 
 #   explist = ['Ctrl','max','max-1deg','max-1deg']
-#   exptitles = ['CESM-1', 'WRF-1 (10 km)', 'WRF-1 (1 deg.)', 'WRF-1 (1 deg.)']
-#   case = '1deg'; lbasins = True; lsamesize = False; period = H05 #; grid = ['arb2_d02']*2
-#   lfrac = True; reflist = ['Unity']; grid = ['cesm1x1','arb2_d02']*2
+#   exptitles = ['CESM-1', 'WRF-1 (30 km)', 'WRF-1 (1 deg.)', 'WRF-1 (1 deg.)']
+#   case = '1deg'; lbasins = True; lsamesize = False; period = H10; domain = [None, 1, 2, 2]
+#   lfrac = True; reflist = ['max']; refdom = 2; grid = ['cesm1x1','arb2_d02']*2
   
 #   explist = ['Ctrl','max','max-1deg','Unity']
 #   exptitles = ['CESM-1', 'WRF-1 (30 km)', 'WRF-1 (1 deg.)', 'Observations']
@@ -105,10 +132,6 @@ if __name__ == '__main__':
 
 #   explist = ['Ctrl','Ens-A','Ens-B','Ens-C','CESM','Unity']
 #   case = 'val-cesm'; lbasins = True; period = H15 #; grid = ['arb2_d02']*2
-
-  explist = ['CESM-2050','max-ens-2050']; exptitles = ['CESM Ensemble Mean (2050)', 'WRF Ensemble Mean (2050)']
-  case = 'prj_arb2'; lbasins = True; lsamesize = False; period = A15; #grid = ['arb2_d02']*2
-  ldiff = True; reflist = ['CESM','max-ens']; refprd = H15; grid = ['cesm1x1','arb2_d02'] 
 
 #   explist = ['cfsr','CESM','max-ens','max-ens']; exptitles = [None, None, 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
 #   case = 'res'; lbasins = True; lsamesize = False; period = H15
@@ -189,16 +212,16 @@ if __name__ == '__main__':
 #   varlist += ['Ts']
 #   varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
-  varlist += ['precip']
+#   varlist += ['precip']
 #   varlist += ['waterflx']
 #   varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
 #   varlist += ['evap']
 #   varlist += ['pet']
-#   varlist += ['runoff']
-#   varlist += ['sfroff']
-#   varlist += ['ugroff']
+  varlist += ['runoff']
+  varlist += ['sfroff']
+  varlist += ['ugroff']
 #   varlist += ['snwmlt']
 #   varlist += ['snow']
 #   varlist += ['snowh']
@@ -215,8 +238,8 @@ if __name__ == '__main__':
 #   seasons += ['melt']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
   seasons += ['annual']
-  seasons += ['summer']
-  seasons += ['winter']
+#   seasons += ['summer']
+#   seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations

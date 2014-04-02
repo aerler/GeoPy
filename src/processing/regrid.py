@@ -205,14 +205,14 @@ if __name__ == '__main__':
   if ldebug:
     ldebug = False
     NP = NP or 4
-    loverwrite = False
+    loverwrite = True
     varlist = None
 #     varlist = ['precip',]
     periods = []
 #     periods += [1]
 #     periods += [3]
-    periods += [5]
-#     periods += [10]
+#     periods += [5]
+    periods += [10]
 #     periods += [15]
 #     periods += [30]
 #     periods += [(1984,1994)]
@@ -228,13 +228,13 @@ if __name__ == '__main__':
     # CESM
     CESM_experiments = []
 #     CESM_experiments += ['CESM','CESM-2050']
-    CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
+#     CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
 #     CESM_experiments += ['Ctrl-2050', 'Ens-A-2050', 'Ens-B-2050', 'Ens-C-2050']
     CESM_filetypes = ['atm','lnd']
     # WRF
     WRF_experiments = []
 #     WRF_experiments += ['max']
-#     WRF_experiments += ['max-1deg', 'max']
+    WRF_experiments += ['max-1deg']
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1']
 #     WRF_experiments += ['max','max-lowres','max-nmp','max-nosub']
 #     WRF_experiments += ['max','max-A','max-nofdda','max-fdda']
@@ -253,11 +253,11 @@ if __name__ == '__main__':
 #     grids['col1'] = ['d03','d02','d01'] # innermost WRF Columbia domain
 #     grids['col2'] = ['d03','d02','d01'] # innermost WRF Columbia domain
 #     grids['grb2'] = ['d02'] # Marc's standard GRB inner domain
-    grids['arb2'] = ['d02'] # WRF standard ARB inner domain
+#     grids['arb2'] = ['d02'] # WRF standard ARB inner domain
 #     grids['arb3'] = ['d02'] # WRF new ARB inner domain
 #     grids['ARB_small'] = ['025','05'] # small custom geographic grids
 #     grids['ARB_large'] = ['025','05'] # large custom geographic grids
-#     grids['cesm1x1'] = [None] # CESM grid
+    grids['cesm1x1'] = [None] # CESM grid
 #     grids = dict(NARR=[None]) # CESM grid
   else:
     NP = NP or 4
