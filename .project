@@ -3,6 +3,8 @@
 	<name>PyGeoDat</name>
 	<comment></comment>
 	<projects>
+		<project>LazyArray</project>
+		<project>WAFO</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
