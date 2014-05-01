@@ -358,7 +358,7 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=No
                             axes=axes, multifile=False, ncformat='NETCDF4', squeeze=True)
     # load pressure levels (doesn't work automatically, because variable and dimension have different names and dimensions)
     if dataset.hasAxis('p'): 
-      dataset.axes['p'].updateCoord(dataset.dataset.variables['P_PL'][0,:])
+      dataset.axes['p'].coord = dataset.dataset.variables['P_PL'][0,:]
     # add projection
     dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder)
     # safety checks
