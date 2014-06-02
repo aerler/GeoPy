@@ -8,7 +8,7 @@ Meta data related to the Athabasca River Basin downscaling project; primarily ma
 
 from plotting.mapsetup import getMapSetup
 
-figure_folder = '/home/me/Research/Dynamical Downscaling/Figures/'
+figure_folder = '/home/data/Figures/'
 map_folder = figure_folder + '.mapsetup/'
 # actual Athabasca River Basin (shape file from Aquanty)
 #ARB_shapefolder = grid_folder+'/ARB_Aquanty/' 

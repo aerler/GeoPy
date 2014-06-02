@@ -39,8 +39,8 @@ if __name__ == '__main__':
   WRFfiletypes=['srfc','lsm']
 #   WRFfiletypes = ['srfc','lsm','hydro','xtrm'] # WRF data source
   # figure directory
-  folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
-#   folder = figure_folder
+  #folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
+  folder = figure_folder
   lpickle = True
   # period shortcuts
   H01 = '1979-1980'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
@@ -74,8 +74,8 @@ if __name__ == '__main__':
   lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = False; lbasins = False
 
-  explist = ['max-ens-2050']; exptitles = ['WRF Ensemble Mean (2050)']
-  case = 'prj'; lbasins = True; lsamesize = True; period = A15; grid = ['arb2_d02']
+#  explist = ['max-ens-2100']; exptitles = ['WRF Ensemble Mean (2050)']
+#  case = 'prj'; lbasins = True; lsamesize = True; period = B10; grid = ['arb2_d02']
 #   lfrac = True; reflist = ['Unity']; refprd = H30
   
 #   explist = ['CESM', 'NARR', 'max-ens', 'max-ens']; domain = [None, None, 1, 2]; period = H15
@@ -107,10 +107,15 @@ if __name__ == '__main__':
 #   lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
 #   ldiff = True; reflist = ['max-ens-2050']; refprd = A15 
 
-#   case = 'ensprj'; explist = ['max-2050', 'max-A-2050', 'max-B-2050', 'max-C-2050'] 
-#   exptitles = ['WRF-1 (2050)', 'WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)']
-#   lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
-#   lfrac = True; reflist = ['max', 'max-A', 'max-B', 'max-C']; refprd = H15 
+  case = 'ensprj'; explist = ['max-2050', 'max-A-2050', 'max-B-2050', 'max-C-2050'] 
+  exptitles = ['WRF-1 (2050)', 'WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)']
+  lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
+  lfrac = True; reflist = ['max', 'max-A', 'max-B', 'max-C']; refprd = H15 
+
+#  case = 'ensprj'; explist = ['max-2050', 'max-A-2050', 'max-B-2050', 'max-C-2050'] 
+#  exptitles = ['WRF-1 (2050)', 'WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)']
+#  lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
+#  lfrac = True; reflist = ['max', 'max-A', 'max-B', 'max-C']; refprd = H15 
 
 #   case = 'Ensprj'; explist = ['Ctrl-2050', 'Ens-A-2050', 'Ens-B-2050', 'Ens-C-2050']; 
 #   exptitles = ['Ctrl-1 (2050)', 'Ens-A (2050)', 'Ens-B (2050)', 'Ens-C (2050)']
@@ -210,18 +215,18 @@ if __name__ == '__main__':
   varlist = []; seasons = []
   # variables
 #   varlist += ['Ts']
-#   varlist += ['T2']
+  varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
-#   varlist += ['precip']
-#   varlist += ['waterflx']
+  varlist += ['precip']
+  varlist += ['waterflx']
 #   varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
 #   varlist += ['evap']
 #   varlist += ['pet']
-  varlist += ['runoff']
-  varlist += ['sfroff']
-  varlist += ['ugroff']
+#  varlist += ['runoff']
+#  varlist += ['sfroff']
+#  varlist += ['ugroff']
 #   varlist += ['snwmlt']
 #   varlist += ['snow']
 #   varlist += ['snowh']
@@ -238,8 +243,8 @@ if __name__ == '__main__':
 #   seasons += ['melt']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
   seasons += ['annual']
-#   seasons += ['summer']
-#   seasons += ['winter']
+  seasons += ['summer']
+  seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
