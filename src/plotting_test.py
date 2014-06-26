@@ -12,6 +12,7 @@ import numpy as np
 import numpy.ma as ma
 import os, sys
 
+
 # import geodata modules
 from geodata.nctools import writeNetCDF
 from geodata.misc import isZero, isOne, isEqual
@@ -20,11 +21,11 @@ from datasets.common import data_root
 # import modules to be tested
 from plotting.lineplots import linePlot 
 from plotting.mapplots import srfcPlot
-from plotting.utils import getFigAx, loadMPL
-
-
+from plotting.utils import getFigAx
 # use common MPL instance
+from plotting.utils import loadMPL
 mpl,pyl = loadMPL(linewidth=1.)
+
 
 class LinePlotTest(unittest.TestCase):  
    
@@ -32,7 +33,7 @@ class LinePlotTest(unittest.TestCase):
     ''' create two test variables '''
     # create axis and variable instances (make *copies* of data and attributes!)
     x1 = np.linspace(0,10,11); xax1 = Axis(name='X1-Axis', units='X Units', coord=x1) 
-    var1 = Variable(axes=(xax1,), data=x1.copy(), atts=dict(name='red', units='units'))
+    var1 = Variable(axes=(xax1,), data=x1.copy(), atts=dict(name='blue', units='units'))
     self.var1 = var1; self.xax1 = xax1
     x2 = np.linspace(2,8,13); xax2 = Axis(name='X2-Axis', units='X Units', coord=x2)
     var2 = Variable(name='green',units='units',axes=(xax2,), data=(x2**2)/5.)
@@ -62,13 +63,14 @@ class LinePlotTest(unittest.TestCase):
   
   def testAdvancedLinePlot(self):
     ''' test more advanced options of the line plot function '''    
-    fig,ax = getFigAx(1, title='Fancy Plot Styles', name=sys._getframe().f_code.co_name[4:], mpl=mpl) # use test method name as title
+    fig,ax = getFigAx(1, title='Fancy Plot Styles', name=sys._getframe().f_code.co_name[4:]) # use test method name as title
     assert fig.__class__.__name__ == 'Figure'
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var1 = self.var1; var2 = self.var2
     # define fancy attributes
     varatts = dict()
-    for var in var1,var2: varatts[var.name] = dict(color=var.name, marker='*')       
+    #for var in var1,var2: varatts[var.name] = dict(color=var.name, marker='*')
+    varatts[var1.name] = dict(color='red', marker='*')       
     # define fancy legend
     legend = dict(loc=2, labelspacing=0.125, handlelength=2.5, handletextpad=0.5, fancybox=True)
     # create plot
@@ -77,7 +79,7 @@ class LinePlotTest(unittest.TestCase):
         
   def testCombinedLinePlot(self):
     ''' test a two panel line plot with combined legend '''    
-    fig,axes = getFigAx(2, name=sys._getframe().f_code.co_name[4:], mpl=mpl) # use test method name as title
+    fig,axes = getFigAx(2, name=sys._getframe().f_code.co_name[4:]) # use test method name as title
     assert fig.__class__.__name__ == 'Figure'
     assert isinstance(axes,(list,tuple)) # should return a list of axes
     var1 = self.var1; var2 = self.var2

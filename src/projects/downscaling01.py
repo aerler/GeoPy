@@ -6,25 +6,15 @@ Script to generate plots for my first downscaling paper!
 @author: Andre R. Erler, GPL v3
 '''
 
-# external imports
-#import numpy as np
-import matplotlib.pylab as pyl
-import matplotlib as mpl
+# use common MPL instance
+from plotting.utils import loadMPL
+mpl,pyl = loadMPL(linewidth=.75)
 from mpl_toolkits.axes_grid1 import ImageGrid
-linewidth = .75
-mpl.rc('lines', linewidth=linewidth)
-if linewidth == 1.5: mpl.rc('font', size=12)
-elif linewidth == .75: mpl.rc('font', size=8)
-else: mpl.rc('font', size=10)
-# prevent figures from closing: don't run in interactive mode, or plt.show() will not block
-pyl.ioff()
-# internal imports
 # PyGeoDat stuff
 from plotting.lineplots import linePlot
 from datasets.WRF import loadWRF
 from datasets.Unity import loadUnity
 from datasets.WSC import Basin
-# from plotting.settings import getFigureSettings
 # ARB project related stuff
 from projects.ARB_settings import figure_folder
 

@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-  WRFfiletypes=['srfc','lsm']
+  WRFfiletypes=['hydro','lsm']
 #   WRFfiletypes = ['srfc','lsm','hydro','xtrm'] # WRF data source
   # figure directory
   #folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
@@ -107,10 +107,15 @@ if __name__ == '__main__':
 #   lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
 #   ldiff = True; reflist = ['max-ens-2050']; refprd = A15 
 
-  case = 'ensprj'; explist = ['max-2050', 'max-A-2050', 'max-B-2050', 'max-C-2050'] 
-  exptitles = ['WRF-1 (2050)', 'WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)']
-  lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
-  lfrac = True; reflist = ['max', 'max-A', 'max-B', 'max-C']; refprd = H15 
+  case = 'ensprj'; explist = ['max-2100', 'max-A-2100', 'max-B-2100', 'max-C-2100'] 
+  exptitles = ['WRF-1 (2100)', 'WRF-A (2100)', 'WRF-B (2100)', 'WRF-C (2100)']
+  lbasins = True; lsamesize = True; period = B10; grid = 'arb2_d02'
+  lfrac = True; reflist = ['max', 'max-A', 'max-B', 'max-C']; refprd = H10 
+
+#  case = 'ensprj'; explist = ['max-2050', 'max-A-2050', 'max-B-2050', 'max-C-2050'] 
+#  exptitles = ['WRF-1 (2050)', 'WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)']
+#  lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
+#  lfrac = True; reflist = ['max', 'max-A', 'max-B', 'max-C']; refprd = H15 
 
 #  case = 'ensprj'; explist = ['max-2050', 'max-A-2050', 'max-B-2050', 'max-C-2050'] 
 #  exptitles = ['WRF-1 (2050)', 'WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)']
@@ -215,10 +220,10 @@ if __name__ == '__main__':
   varlist = []; seasons = []
   # variables
 #   varlist += ['Ts']
-  varlist += ['T2']
+#  varlist += ['T2']
 #   varlist += ['Tmin', 'Tmax']
   varlist += ['precip']
-  varlist += ['waterflx']
+#  varlist += ['waterflx']
 #   varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']

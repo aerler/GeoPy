@@ -17,6 +17,8 @@ from geodata.misc import VariableError, AxisError, isInt
 # load matplotlib with some custom defaults
 def loadMPL(linewidth=None, mplrc=None):
   import matplotlib as mpl
+  import matplotlib.pylab as pyl
+  mpl.use('QT4Agg') # enforce QT4
   # some custom defaults  
   if linewidth is not None:
     mpl.rc('lines', linewidth=linewidth)
@@ -29,7 +31,6 @@ def loadMPL(linewidth=None, mplrc=None):
     for (key,value) in mplrc.iteritems():
       mpl.rc(key,**value)  # apply parameters
   # prevent figures from closing: don't run in interactive mode, or pyl.show() will not block
-  pyl = mpl.pylab
   pyl.ioff()
   # return matplotlib instance with new parameters
   return mpl, pyl
