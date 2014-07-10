@@ -84,7 +84,7 @@ class VarNC(Variable):
   '''
   
   def __init__(self, ncvar, name=None, units=None, axes=None, data=None, dtype=None, scalefactor=1, offset=0, 
-               atts=None, plot=None, fillValue=None, mode='r', load=False, squeeze=False):
+               transform=None, atts=None, plot=None, fillValue=None, mode='r', load=False, squeeze=False):
     ''' 
       Initialize Variable instance based on NetCDF variable.
       
@@ -92,7 +92,8 @@ class VarNC(Variable):
         mode = 'r' # a string indicating whether read ('r') or write ('w') actions are intended/permitted
         ncvar = None # the associated netcdf variable
         scalefactor = 1 # linear scale factor w.r.t. values in netcdf file
-        offset = 0 # constant offset w.r.t. values in netcdf file 
+        offset = 0 # constant offset w.r.t. values in netcdf file
+        transform = None # function that can perform non-trivial transforms upon load
         squeezed = False # if True, all singleton dimensions in NetCDF Variable are silently ignored
     '''
     # check mode
@@ -139,6 +140,7 @@ class VarNC(Variable):
     self.__dict__['mode'] = mode
     self.__dict__['offset'] = offset
     self.__dict__['scalefactor'] = scalefactor
+    self.__dict__['transform'] = transform
     self.__dict__['squeezed'] = False
     if squeeze: self.squeeze() # may set 'squeezed' to True
     # handle data
@@ -172,6 +174,7 @@ class VarNC(Variable):
       # apply scalefactor and offset
       if self.offset != 0: data += self.offset
       if self.scalefactor != 1: data *= self.scalefactor        
+      if self.transform is not None: data = self.transform(data)
     # return data
     return data  
   
@@ -476,11 +479,11 @@ class DatasetNetCDF(Dataset):
   def load(self, **slices):
     ''' Load all VarNC's and AxisNC's using the slices specified as keyword arguments. '''
     # make slices
-    for key,value in slices.itervalues():
+    for key,value in slices.iteritems():
       if isinstance(value,col.Iterable): 
         slices[key] = slice(*value)
       else: 
-        if not isinstance(value,np.integer): raise TypeError
+        if not isinstance(value,(int,np.integer)): raise TypeError
     # load variables
     for var in self.variables.values():
       if isinstance(var,VarNC):

@@ -96,14 +96,13 @@ def loadNARR_LTM(name=dataset_name, varlist=ltmvarlist, interval='monthly', vara
 
 # Time-series (monthly)
 tsfolder = root_folder + 'Monthly/' # monthly subfolder
+tsfile = '{0:s}.mon.mean.nc' # monthly time-series for each variables
 def loadNARR_TS(name=dataset_name, varlist=tsvarlist, varatts=varatts, filelist=None, folder=tsfolder):
   ''' Get a properly formatted NARR dataset with monthly mean time-series. '''
-  # prepare input  
-  pfx = '.mon.mean.nc'
   # translate varlist
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   if filelist is None: # generate default filelist
-    filelist = [special[var]+pfx if var in special else var+pfx for var in varlist if var not in nofile]
+    filelist = [tsfile.format(special[var]) if var in special else tsfile.format(var) for var in varlist if var not in nofile]
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
@@ -115,7 +114,7 @@ def loadNARR_TS(name=dataset_name, varlist=tsvarlist, varatts=varatts, filelist=
 
 # pre-processed climatology files (varatts etc. should not be necessary)
 avgfolder = root_folder + 'narravg/' 
-avgfile = 'narr{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
+avgfile = 'narr{0:s}_clim{1:s}.nc' # the filename needs to be extended grid and period
 # function to load these files...
 def loadNARR(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
   ''' Get the pre-processed monthly NARR climatology as a DatasetNetCDF. '''
@@ -129,7 +128,8 @@ def loadNARR(name=dataset_name, period=None, grid=None, resolution=None, varlist
 
 dataset_name # dataset name
 root_folder # root folder of the dataset
-file_pattern = avgfile # filename pattern
+ts_file_pattern = tsfile # filename pattern: variables name
+clim_file_pattern = avgfile # filename pattern: grid, and period
 data_folder = avgfolder # folder for user data
 grid_def = {'':NARR_grid} # no special name since there is only one grid 
 LTM_grids = [''] # grids that have long-term mean data 
@@ -153,8 +153,9 @@ if __name__ == '__main__':
   grid = 'NARR'
 #   period = (1979,1984)
 #   period = (1979,1989)
-  period = (1979,1994)
+#   period = (1979,1994)
 #   period = (1979,2009)
+  period = (2010,2011)
   
   if mode == 'test_climatology':
     

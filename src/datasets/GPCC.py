@@ -17,7 +17,7 @@ from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, addGeoLocator
 from geodata.misc import DatasetError
 from geodata.nctools import writeNetCDF, add_strvar
-from datasets.common import days_per_month, name_of_month, data_root, grid_folder 
+from datasets.common import days_per_month, name_of_month, data_root, grid_folder, convertPrecip
 from datasets.common import translateVarNames, loadClim, addLandMask, addLengthAndNamesOfMonth, getFileName
 from processing.process import CentralProcessingUnit
 
@@ -59,15 +59,6 @@ varlist = varatts.keys() # also includes coordinate fields
 # variable and file lists settings
 root_folder = data_root + dataset_name + '/' # long-term mean folder
 
-
-def convertPrecip(precip):
-  ''' convert GPCC precip data to SI units (mm/s) '''
-  if precip.units == 'kg/m^2/month' or precip.units == 'mm/month':
-    precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
-    precip.units = 'kg/m^2/s'
-  return precip      
-
-
 ## Functions to load different types of GPCC datasets 
 
 # climatology
@@ -88,7 +79,7 @@ def loadGPCC_LTM(name=dataset_name, varlist=None, resolution='025', varatts=ltmv
     stations = Variable(data=gauges.variables['p'][0,:,:], axes=(dataset.lat,dataset.lon), **varatts['s'])
     # consolidate dataset
     dataset.addVariable(stations, asNC=False, copy=True)  
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, folder=grid_folder)
+  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
   # N.B.: projection should be auto-detected as geographic
   # add method to convert precip from per month to per second
   dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    
@@ -97,6 +88,7 @@ def loadGPCC_LTM(name=dataset_name, varlist=None, resolution='025', varatts=ltmv
 
 # time-series
 tsfolder = root_folder + 'full_data_1900-2010/' # climatology subfolder
+tsfile = 'full_data_v6_{0:s}_{1:s}.nc' # extend by variable name and resolution
 def loadGPCC_TS(name=dataset_name, varlist=None, resolution='25', varatts=tsvaratts, filelist=None, folder=tsfolder):
   ''' Get a properly formatted dataset with the monthly GPCC time-series. '''
   # prepare input  
@@ -106,8 +98,8 @@ def loadGPCC_TS(name=dataset_name, varlist=None, resolution='25', varatts=tsvara
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   if filelist is None: # generate default filelist
     filelist = []
-    if 'p' in varlist: filelist.append('full_data_v6_precip_%s.nc'%resolution)
-    if 's' in varlist: filelist.append('full_data_v6_statio_%s.nc'%resolution)
+    if 'p' in varlist: filelist.append(tsfile.format('precip',resolution))
+    if 's' in varlist: filelist.append(tsfile.format('statio',resolution))
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
@@ -146,7 +138,8 @@ def loadGPCC(name=dataset_name, resolution=None, period=None, grid=None, varlist
 
 dataset_name # dataset name
 root_folder # root folder of the dataset
-file_pattern = avgfile # filename pattern
+ts_file_pattern = tsfile # filename pattern: variable name and resolution
+clim_file_pattern = avgfile # filename pattern: grid, and period
 data_folder = avgfolder # folder for user data
 grid_def = {'025':GPCC_025_grid, '05':GPCC_05_grid, '10':GPCC_10_grid, '25':GPCC_25_grid}
 LTM_grids = ['025','05','10','25'] # grids that have long-term mean data 
@@ -166,7 +159,6 @@ if __name__ == '__main__':
   
 #   mode = 'test_climatology'; reses = ('025',); period = None
   mode = 'average_timeseries'; reses = ('05',) # for testing
-#   mode = 'convert_climatology'; reses = ('025',); period = None
 #   reses = ('025','05', '10', '25')  
   reses = ('05', '10', '25')
 #   reses = ('25',)
@@ -175,12 +167,13 @@ if __name__ == '__main__':
 #   period = (1979,1989)
 #   period = (1979,1994)
 #   period = (1984,1994)
-  period = (1989,1994)
+#   period = (1989,1994)
 #   period = (1979,2009)
 #   period = (1949,2009)
 #   period = (1997,1998)
 #   period = (1979,1980)
-  
+  period = (2010,2011)
+#   mode = 'convert_climatology'; reses = ('025',); period = None
   grid = 'GPCC' # 'arb2_d02'
   
   # generate averaged climatology

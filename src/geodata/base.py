@@ -751,7 +751,10 @@ class Axis(Variable):
         data = np.asarray(data)
       elif isinstance(data,slice):
         if not self.data: raise DataError, 'Cannot slice coordinate when coordinate vector is empty!'
-        data=self.data_array.__getitem__(data)
+        if ( data.stop is None and data.start is None) or len(self.data_array) > data.stop-data.start: 
+          data = self.data_array.__getitem__(data)
+        else: data = self.data_array
+        # N.B.: this is necessary to prevent shrinking of the coordinate vector after successive slicing
       else: #data = data
         raise TypeError, 'Data type not supported for coordinate values.'
       # load data

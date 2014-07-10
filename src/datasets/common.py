@@ -125,6 +125,13 @@ def addLengthAndNamesOfMonth(dataset, noleap=False, length=None, names=None):
   # return length variable
   return dataset.variables[lenatts['name']]
 
+# helper function to convert monthly precip amount into precip rate
+def convertPrecip(precip):
+  ''' convert monthly precip amount to SI units (mm/s) '''
+  if precip.units == 'kg/m^2/month' or precip.units == 'mm/month':
+    precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
+    precip.units = 'kg/m^2/s'
+  return precip      
 
 # convenience function to invert variable name mappings
 def translateVarNames(varlist, varatts):

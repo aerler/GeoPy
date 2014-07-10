@@ -359,6 +359,7 @@ def getGeotransform(xlon=None, ylat=None, geotransform=None):
       assert len(geotransform) == 6, '\'geotransform\' has to be a vector or list with 6 elements.'
       dx = geotransform[1]; dy = geotransform[5]; ulx = geotransform[0]; uly = geotransform[3] 
       # assert isZero(np.diff(xlon)-dx) and isZero(np.diff(ylat)-dy), 'Coordinate vectors have to be compatible with geotransform!'
+      #print ulx + dx / 2, xlon[0], uly + dy / 2, ylat[0]
       assert isEqual(ulx + dx / 2, xlon[0]) and isEqual(uly + dy / 2, ylat[0])  # coordinates of upper left corner (same for source and sink)       
     else: 
       assert len(geotransform) == 6 and all(isFloat(geotransform)), '\'geotransform\' has to be a vector or list of 6 floating-point numbers.'
@@ -677,13 +678,14 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       # invoke class copy() function to copy dataset
       dataset = self.__class__.copy(self, **newargs)
       # handle geotransform
-      if geotransform is None:
-        if 'axes' in newargs:  # if axes were changed, geotransform can change!
-          geotransform = None  # infer from new axes
-        else: geotransform = self.geotransform
+      #if geotransform is None:
+      #  if 'axes' in newargs:  # if axes were changed, geotransform can change!
+      #    geotransform = None  # infer from new axes
+      #  else: geotransform = self.geotransform
+      ## N.B.: geotransform should be inferred from axes - more robust when slicing!
       # handle projection
       if projection is None: projection = self.projection
-      dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform)  # add GDAL functionality      
+      dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None)  # add GDAL functionality      
       return dataset
     # add new method to object
     dataset.copy = types.MethodType(copy, dataset)

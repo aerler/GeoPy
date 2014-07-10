@@ -76,7 +76,8 @@ def loadUnity(name=dataset_name, period=None, grid=None, resolution=None, varlis
 
 dataset_name # dataset name
 root_folder # root folder of the dataset
-file_pattern = avgfile # filename pattern
+ts_file_pattern = None
+clim_file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
 LTM_grids = None # grids that have long-term mean data 
 TS_grids = None # grids that have time-series data

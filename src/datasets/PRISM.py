@@ -79,7 +79,8 @@ def loadPRISM(name=dataset_name, period=None, grid=None, resolution=None, varlis
 
 dataset_name # dataset name
 root_folder # root folder of the dataset
-file_pattern = avgfile # filename pattern
+ts_file_pattern = None
+clim_file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
 grid_def = {'':PRISM_grid} # no special name, since there is only one...
 LTM_grids = [''] # grids that have long-term mean data 

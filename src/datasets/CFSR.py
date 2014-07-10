@@ -138,7 +138,8 @@ def loadCFSR(name=dataset_name, period=None, grid=None, resolution=None, varlist
 
 dataset_name # dataset name
 root_folder # root folder of the dataset
-file_pattern = avgfile # filename pattern
+ts_file_pattern = '{0:s}{1:s}06.gdas.{2:s}.{3:s}.grb2.nc' # filename pattern: type, resolution, variable name, and level 
+clim_file_pattern = avgfile # filename pattern: grid, and period
 data_folder = avgfolder # folder for user data
 grid_def = {'031':CFSR_031_grid, '05':CFSR_05_grid}
 LTM_grids = [] # grids that have long-term mean data
@@ -162,9 +163,10 @@ if __name__ == '__main__':
   reses = ( '031','05',)
 #   period = (1979,1984)
 #   period = (1979,1989)
-  period = (1979,1994)
+#   period = (1979,1994)
 #   period = (1997,1998)
-#   period = (1979,2009) 
+#   period = (1979,2009)
+  period = (2010,2011) 
 #   grid = 'arb1_d01'
   
   # generate averaged climatology

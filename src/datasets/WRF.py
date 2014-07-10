@@ -475,7 +475,8 @@ dataset_name = 'WRF' # dataset name
 root_folder # root folder of the dataset
 avgfolder # root folder for monthly averages
 outfolder # root folder for direct WRF output
-file_pattern = 'wrf{0:s}_d{1:02d}{2:s}_clim{3:s}.nc' # filename pattern: filetype, domain, grid, period
+ts_file_pattern = 'wrf{0:s}_d{1:02d}{2:s}_monthly.nc' # filename pattern: filetype, domain, grid
+clim_file_pattern = 'wrf{0:s}_d{1:02d}{2:s}_clim{3:s}.nc' # filename pattern: filetype, domain, grid, period
 data_folder = root_folder # folder for user data
 grid_def = {'d02':None,'d01':None} # there are too many... 
 grid_res = {'d02':0.13,'d01':3.82} # approximate grid resolution at 45 degrees latitude

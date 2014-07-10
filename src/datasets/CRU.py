@@ -13,7 +13,8 @@ import types # to add precip conversion fct. to datasets
 from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition
-from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim, grid_folder
+from datasets.common import translateVarNames, days_per_month, name_of_month, data_root 
+from datasets.common import loadClim, grid_folder, convertPrecip
 from processing.process import CentralProcessingUnit
 
  
@@ -48,30 +49,22 @@ varatts = dict(tmp = dict(name='T2', units='K', offset=273.15), # 2m average tem
 # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
 # list of variables to load
 varlist = varatts.keys() # also includes coordinate fields    
-
 # variable and file lists settings
 nofile = ('lat','lon','time') # variables that don't have their own files
-filename = 'cru_ts3.20.1901.2011.{0:s}.dat.nc' # file names, need to extend with %varname (original)
 
 
 ## Functions to load different types of GPCC datasets 
 
-def convertPrecip(precip):
-  ''' convert CRU precip data to SI units (mm/s) '''
-  if precip.units == 'kg/m^2/month' or precip.units == 'mm/month':
-    precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
-    precip.units = 'kg/m^2/s'
-  return precip      
-
 # Time-series (monthly)
 tsfolder = root_folder + 'Time-series 3.2/data/' # monthly subfolder
+tsfile = 'cru_ts3.20.1901.2011.{0:s}.dat.nc' # file names, need to extend with variable name (original)
 def loadCRU_TS(name=dataset_name, varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
   ''' Get a properly formatted  CRU dataset with monthly mean time-series. '''
   # translate varlist
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   # assemble filelist
   if filelist is None: # generate default filelist
-    filelist = [filename.format(var) for var in varlist if var not in nofile]
+    filelist = [tsfile.format(var) for var in varlist if var not in nofile]
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           multifile=False, ncformat='NETCDF4_CLASSIC')
@@ -100,7 +93,8 @@ def loadCRU(name=dataset_name, period=None, grid=None, resolution=None, varlist=
 
 dataset_name # dataset name
 root_folder # root folder of the dataset
-file_pattern = avgfile # filename pattern
+ts_file_pattern = tsfile # filename pattern: variable name and resolution
+clim_file_pattern = avgfile # filename pattern: variable name and resolution
 data_folder = avgfolder # folder for user data
 grid_def = {'':CRU_grid} # standardized grid dictionary
 LTM_grids = [] # grids that have long-term mean data 
@@ -126,9 +120,10 @@ if __name__ == '__main__':
 #   period = (1979,1989)
 #   period = (1979,1994)
 #   period = (1984,1994)
-  period = (1989,1994)
+#   period = (1989,1994)
 #   period = (1979,1980)
 #   period = (1997,1998)
+  period = (2010,2011)
 
   if mode == 'test_climatology':
     

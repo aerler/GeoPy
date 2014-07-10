@@ -38,11 +38,19 @@ experiments['hbb20trcn1x1'] = Exp(shortname='Ens-B', name='hbb20trcn1x1', title=
 experiments['hcb20trcn1x1'] = Exp(shortname='Ens-C', name='hcb20trcn1x1', title='Ens-C (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
 # mid-21st century
 experiments['ensrcp85cn1x1'] = Exp(shortname='CESM-2050', name='ensrcp85cn1x1', title='CESM Ensemble Mean (2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
-experiments['seaice-5r-hf'] = Exp(shortname='Seaice-2050', name='seaice-5r-hf', title='Seaice (CESM, 2050)', begindate='2045-01-01', enddate='2055-01-01', grid='cesm1x1')
+experiments['seaice-5r-hf'] = Exp(shortname='Seaice-2050', name='seaice-5r-hf', title='Seaice (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
 experiments['htbrcp85cn1x1'] = Exp(shortname='Ctrl-2050', name='htbrcp85cn1x1', title='Ctrl (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
 experiments['habrcp85cn1x1'] = Exp(shortname='Ens-A-2050', name='habrcp85cn1x1', title='Ens-A (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
 experiments['hbbrcp85cn1x1'] = Exp(shortname='Ens-B-2050', name='hbbrcp85cn1x1', title='Ens-B (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
 experiments['hcbrcp85cn1x1'] = Exp(shortname='Ens-C-2050', name='hcbrcp85cn1x1', title='Ens-C (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
+# mid-21st century
+experiments['ensrcp85cn1x1d'] = Exp(shortname='CESM-2100', name='ensrcp85cn1x1d', title='CESM Ensemble Mean (2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
+experiments['seaice-5r-hfd'] = Exp(shortname='Seaice-2100', name='seaice-5r-hf', title='Seaice (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
+experiments['htbrcp85cn1x1d'] = Exp(shortname='Ctrl-2100', name='htbrcp85cn1x1d', title='Ctrl (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
+experiments['habrcp85cn1x1d'] = Exp(shortname='Ens-A-2100', name='habrcp85cn1x1d', title='Ens-A (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
+experiments['hbbrcp85cn1x1d'] = Exp(shortname='Ens-B-2100', name='hbbrcp85cn1x1d', title='Ens-B (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
+experiments['hcbrcp85cn1x1d'] = Exp(shortname='Ens-C-2100', name='hcbrcp85cn1x1d', title='Ens-C (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
+
 ## an alternate dictionary using short names and aliases for referencing
 exps = dict()
 # use short names where availalbe, normal names otherwise
@@ -123,8 +131,13 @@ class LND(FileType):
   def __init__(self):
     self.atts = dict(#topo     = dict(name='zs', units='m', scalefactor=0.1), # surface elevation
                      landmask = dict(name='landmask', units=''), # land mask
-                     landfrac = dict(name='landfrac', units=''),
-                     ) # land fraction
+                     landfrac = dict(name='landfrac', units=''), # land fraction
+                     FSNO     = dict(name='snwcvr', units=''), # snow cover (fractional)
+                     QMELT    = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate
+                     QOVER    = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
+                     QRUNOFF  = dict(name='runoff', units='kg/m^2/s'), # total surface and sub-surface run-off
+                     QIRRIG   = dict(name='irrigation', units='kg/m^2/s'), # water flux through irrigation
+                     )
 #                      ALBEDO = dict(name='A', units=''), # Albedo
 #                      SNOWC  = dict(name='snwcvr', units=''), # snow cover (binary)
 #                      ACSNOM = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
@@ -235,7 +248,8 @@ dataset_name = 'CESM' # dataset name
 root_folder # root folder of the dataset
 avgfolder # root folder for monthly averages
 outfolder # root folder for direct WRF output
-file_pattern = 'cesm{0:s}{1:s}_clim{2:s}.nc' # filename pattern: filetype, grid, period
+ts_file_pattern = 'cesm{0:s}{1:s}_monthly.nc' # filename pattern: filetype, grid, period
+clim_file_pattern = 'cesm{0:s}{1:s}_clim{2:s}.nc' # filename pattern: filetype, grid, period
 data_folder = root_folder # folder for user data
 grid_def = {'':None} # there are too many... 
 grid_res = {'':1.} # approximate grid resolution at 45 degrees latitude

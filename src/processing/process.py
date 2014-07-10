@@ -373,7 +373,7 @@ class CentralProcessingUnit(object):
       coord = axis.getArray(unmask=False) + shift # shift coordinates
       # transform coordinate shifts into index shifts (linear scaling)
       shift = int( shift / (axis[1] - axis[0]) )    
-    axis.updateCoord(coord=coord)
+    axis.coord = coord
     # add axis to output dataset      
     if self.target.hasAxis(axis, strict=True): pass
     elif self.target.hasAxis(axis.name): self.target.repalceAxis(axis)
