@@ -238,8 +238,8 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
           dataargs = dict(experiment=experiment, filetypes=[filetype], period=period)
           if performRegridding('CESM', griddef, dataargs): # default kwargs
             raise IOError, "Automatic regridding failed!"
-        else: raise IOError, "The CESM dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.".format(filename,grid) 
-      else: raise IOError, "The CESM dataset file '{:s}' does not exits!".format(filename)
+        else: raise IOError, "The '{:s}' (CESM) dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.".format(name,filename,grid) 
+      else: raise IOError, "The '{:s}' (CESM) dataset file '{:s}' does not exits!\n({:s})".format(name,filename,folder)
    
   # load dataset
   #print varlist, filenames
