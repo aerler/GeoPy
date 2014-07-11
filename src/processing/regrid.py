@@ -245,9 +245,9 @@ if __name__ == '__main__':
     periods = []
 #     periods += [1]
 #     periods += [3]
-#     periods += [5]
+    periods += [5]
     periods += [10]
-#     periods += [15]
+    periods += [15]
 #     periods += [30]
 #     periods += [(1984,1994)]
 #     periods += [(1989,1994)]
@@ -256,7 +256,7 @@ if __name__ == '__main__':
     # Observations/Reanalysis
     datasets = []
 #     datasets += ['PRISM','GPCC']; periods = None
-    datasets += ['PCIC']; periods = None
+#     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR', 'NARR']
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     resolutions = None
@@ -269,26 +269,27 @@ if __name__ == '__main__':
     # WRF
     WRF_experiments = []
 #     WRF_experiments += ['max']
-#     WRF_experiments += ['max-1deg']
+    WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1']
 #     WRF_experiments += ['max','max-lowres','max-nmp','max-nosub']
 #     WRF_experiments += ['max','max-A','max-nofdda','max-fdda']
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ens','max-ens-2050']
-#     WRF_experiments += ['new','grell','gulf','cfsr-new']
-#     WRF_experiments = ['new-grell-old'] # WRF experiment names (passed through WRFname)
+    WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'cfsr-new', 'new-grell',] # new standard runs 
+    WRF_experiments += ['new-grell-old', 'new-nogulf', 'new-noah', 'v35-noah'] # new sensitivity tests
+    #     WRF_experiments = ['new-grell-old'] # WRF experiment names (passed through WRFname)
     domains = [1,2] # domains to be processed
 #     WRF_filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
-    WRF_filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+    WRF_filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ['srfc']
     # grid to project onto
     lpickle = True
     grids = dict()
-    grids['col1'] = ['d03','d02','d01'] # innermost WRF Columbia domain
+#     grids['col1'] = ['d03','d02','d01'] # innermost WRF Columbia domain
 #     grids['col2'] = ['d03','d02','d01'] # innermost WRF Columbia domain
 #     grids['grb2'] = ['d02'] # Marc's standard GRB inner domain
-#     grids['arb2'] = ['d01','d02'] # WRF standard ARB inner domain
+    grids['arb2'] = ['d01','d02'] # WRF standard ARB inner domain
 #     grids['arb3'] = ['d02'] # WRF new ARB inner domain
 #     grids['ARB_small'] = ['025','05'] # small custom geographic grids
 #     grids['ARB_large'] = ['025','05'] # large custom geographic grids
@@ -307,8 +308,9 @@ if __name__ == '__main__':
     CESM_experiments = None
     CESM_filetypes = ['atm','lnd']    
     # WRF
-    WRF_experiments = [] # process all WRF experiments
-    WRF_experiments += ['max','gulf','new','noah'] # WRF experiment names (passed through WRFname) 
+    WRF_experiments = [] # process WRF experiments on different grids
+    WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'cfsr-new', 'new-grell',] # standard runs 
+    WRF_experiments += ['new-grell-old', 'new-nogulf', 'new-noah', 'v35-noah'] # sensitivity tests
     domains = [1,2] # domains to be processed
     WRF_filetypes = WRF_fileclasses.keys() # process all filetypes 
     # grid to project onto
