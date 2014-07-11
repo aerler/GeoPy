@@ -145,7 +145,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
   del source
   
   # return
-  return 0 # so far, there is no measure of success, hence, no non-zero exit code...
+  return 0 # so far, there is no measure of success, hence, if there is no crash...
 
 
 if __name__ == '__main__':

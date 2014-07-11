@@ -236,7 +236,8 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
           from processing.regrid import performRegridding # causes circular reference if imported earlier
           griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder)
           dataargs = dict(experiment=experiment, filetypes=[filetype], period=period)
-          performRegridding('CESM', griddef, dataargs) # default kwargs
+          if performRegridding('CESM', griddef, dataargs): # default kwargs
+            raise IOError, "Automatic regridding failed!"
         else: raise IOError, "The CESM dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.".format(filename,grid) 
       else: raise IOError, "The CESM dataset file '{:s}' does not exits!".format(filename)
    

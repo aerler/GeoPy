@@ -375,7 +375,7 @@ def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=No
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
 def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filetypes=None, varlist=None, 
-            varatts=None, lconst=True):
+            varatts=None, lconst=True, lautoregrid=True):
   ''' Get a properly formatted monthly WRF climatology as NetCDFDataset. '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)
@@ -399,11 +399,12 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
     if 'axes' not in filetypes: filetypes.append('axes')
     #if 'const' not in filetypes and grid is None: filetypes.append('const')
   else: raise TypeError  
-  atts = dict(); filelist = []; constfile = None
+  atts = dict(); filelist = []; typelist = []; constfile = None
   for filetype in filetypes:
     fileclass = fileclasses[filetype]
     if fileclass.climfile is not None: # this eliminates const files
-      filelist.append(fileclass.climfile) 
+      filelist.append(fileclass.climfile)
+      typelist.append(filetype) 
   if varatts is not None: atts.update(varatts)
   # translate varlist
   #if varlist is None: varlist = default_varatts.keys() + atts.keys()
@@ -430,7 +431,8 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
     if grid is None or grid == '{0:s}_d{1:02d}'.format(experiment.grid,domain): 
       gridstr = ''; llconst = lconst
     else: 
-      gridstr = '_%s'%grid.lower(); llconst = False # only use lower case for filenames     
+      gridstr = '_%s'%grid.lower(); # only use lower case for filenames
+      llconst = False # don't load constants     
     # domain-sensitive parameters
     axes = dict(west_east=griddef.xlon, south_north=griddef.ylat, x=griddef.xlon, y=griddef.ylat) # map axes
     # load constants
@@ -440,8 +442,26 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
       # load dataset
       const = DatasetNetCDF(name=name, folder=folder, filelist=[filename], varatts=constfile.atts, axes=axes,  
                             varlist=constfile.vars, multifile=False, ncformat='NETCDF4', squeeze=True)      
-    # load regular variables
-    filenames = [filename.format(domain,gridstr,periodstr) for filename in filelist] # insert domain number
+    ## load regular variables
+    filenames = []
+    for filetype,fileformat in zip(typelist,filelist):
+      filename = fileformat.format(domain,gridstr,periodstr) # insert domain number, grid, and period
+      filenames.append(filename) # file list to be passed on to DatasetNetCDF
+      # check existance
+      filepath = '{:s}/{:s}'.format(folder,filename)
+      if not os.path.exists(filepath):
+        nativename = fileformat.format(domain,'',periodstr) # original filename (before regridding)
+        nativepath = '{:s}/{:s}'.format(folder,nativename)
+        if os.path.exists(nativepath):
+          if lautoregrid: 
+            from processing.regrid import performRegridding # causes circular reference if imported earlier
+            #griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder) # already done above
+            dataargs = dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)
+            if performRegridding('WRF', griddef, dataargs): # default kwargs
+              raise IOError, "Automatic regridding failed!"
+          else: raise IOError, "The WRF dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.".format(filename,grid) 
+        else: raise IOError, "The WRF dataset file '{:s}' does not exits!".format(filename)   
+       
     # load dataset
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 
                             varatts=atts, multifile=False, ncformat='NETCDF4', squeeze=True)
@@ -456,7 +476,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
           dataset.addVariable(var, asNC=False, copy=False, overwrite=False, deepcopy=False)
     # add projection
     dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, geolocator=True)
-    print dataset
+    #print dataset
     # safety checks
     if dataset.isProjected:
       assert dataset.axes['x'] == griddef.xlon
@@ -491,9 +511,9 @@ loadClimatology = loadWRF # pre-processed, standardized climatology
 if __name__ == '__main__':
     
   
-#   mode = 'test_climatology'
+  mode = 'test_climatology'
 #   mode = 'test_timeseries'
-  mode = 'pickle_grid'  
+#   mode = 'pickle_grid'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
 #   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
 #   experiments = ['rrtmg', 'ctrl', 'new']
@@ -540,7 +560,7 @@ if __name__ == '__main__':
   elif mode == 'test_climatology':
     
     print('')
-    dataset = loadWRF(experiment='max-ctrl', domains=2, grid=None, filetypes=['hydro'], period=(1979,1989))
+    dataset = loadWRF(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['lsm'], period=(1979,1984))
     print(dataset)
     dataset.lon2D.load()
     print('')

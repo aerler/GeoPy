@@ -73,7 +73,9 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     source = loadWRF(experiment=dataset_name, name=None, domains=domain, grid=None, period=period, 
                      filetypes=[filetype], varlist=None, varatts=None, lconst=True) # still want topography...
     # source = loadWRF(experiment, name, domains, grid, period, filetypes, varlist, varatts)
-    periodstr = source.atts.period # a NetCDF attribute    
+    periodstr = '{0:4d}-{1:4d}'.format(*period)
+    if 'period' in source.atts and periodstr != source.atts.period: # a NetCDF attribute
+      raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
     datamsgstr = 'Processing WRF Experiment \'{0:s}\' from {1:s}'.format(dataset_name, periodstr)
   elif dataset == 'CESM': 
     # WRF datasets
@@ -157,11 +159,10 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     if os.path.exists(filepath): 
       if not loverwrite: 
         age = datetime.fromtimestamp(os.path.getmtime(filepath))
-        # if sink file is newer than source file, skip (do not recompute)
+        # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
         if age > sourceage and os.path.getsize(filepath) > 1e6: lskip = True
         # N.B.: NetCDF files smaller than 1MB are usually incomplete header fragments from a previous crashed
-        #print sourceage, age
-      if not lskip: os.remove(filepath) 
+      if not lskip: os.remove(filepath) # recompute
   
   # depending on last modification time of file or overwrite setting, start computation, or skip
   if lskip:        
@@ -210,6 +211,8 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     if lreturn:
       # return dataset for further use
       return sink
+    else:
+      return 0 # "exit code"
 
 
 if __name__ == '__main__':
