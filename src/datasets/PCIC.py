@@ -88,7 +88,8 @@ def loadPCIC_LTM(name=dataset_name, varlist=None, varatts=ltmvaratts, filelist=N
 avgfile = 'pcic{0:s}_clim{1:s}.nc' # formatted NetCDF file
 avgfolder = root_folder + 'pcicavg/' # prefix
 # function to load these files...
-def loadPCIC(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
+def loadPCIC(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, 
+             folder=avgfolder, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly PCIC PRISM climatology as a DatasetNetCDF. '''
   # only the climatology is available
   if period is not None: 
@@ -96,7 +97,7 @@ def loadPCIC(name=dataset_name, period=None, grid=None, resolution=None, varlist
     period = None
   # load standardized climatology dataset with PRISM-specific parameters  
   dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
-                     varatts=varatts, filepattern=avgfile, filelist=filelist)
+                     varatts=varatts, filepattern=avgfile, filelist=filelist, lautoregrid=lautoregrid)
 #   # make sure all fields are masked
 #   dataset.load()
 #   dataset.mask(dataset.datamask, maskSelf=False)

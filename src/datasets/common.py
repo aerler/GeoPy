@@ -10,10 +10,11 @@ Some tools and data that are used by many datasets, but not much beyond that.
 from importlib import import_module
 import numpy as np
 import pickle
+import os
 # internal imports
-from geodata.misc import AxisError, DatasetError, DateError, isNumber
+from geodata.misc import AxisError, DatasetError, DateError
 from geodata.base import Dataset, Variable, Axis
-from geodata.netcdf import DatasetNetCDF, VarNC
+from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
 
 
@@ -182,7 +183,7 @@ def getFileName(name=None, resolution=None, period=None, grid=None, filepattern=
   
 # universal load function that will be imported by datasets
 def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None, varatts=None, filepattern=None, 
-             filelist=None, projection=None, geotransform=None, axes=None):
+             filelist=None, projection=None, geotransform=None, axes=None, lautoregrid=False):
   ''' A function to load standardized climatology datasets. '''
   # prepare input
   # varlist (varlist = None means all variables)
@@ -190,9 +191,22 @@ def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None
   if varlist is not None: varlist = translateVarNames(varlist, varatts)
   # filelist
   if filelist is None: 
-    filelist = [getFileName(name=name, resolution=resolution, period=period, grid=grid, filepattern=filepattern)]   
+    filename = getFileName(name=name, resolution=resolution, period=period, grid=grid, filepattern=filepattern)
+    # check existance
+    filepath = '{:s}/{:s}'.format(folder,filename)
+    if not os.path.exists(filepath):
+      nativename = getFileName(name=name, resolution=resolution, period=period, grid=None, filepattern=filepattern)
+      nativepath = '{:s}/{:s}'.format(folder,nativename)
+      if os.path.exists(nativepath):
+        if lautoregrid: 
+          from processing.regrid import performRegridding # causes circular reference if imported earlier
+          griddef = loadPickledGridDef(grid=grid, res=resolution, folder=grid_folder)
+          dataargs = dict(period=period, resolution=resolution)
+          performRegridding(name, griddef, dataargs) # default kwargs
+        else: raise IOError, "The dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.".format(filename,grid) 
+      else: raise IOError, "The dataset file '{:s}' does not exits!".format(filename)
   # load dataset
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=[filename], varlist=varlist, varatts=varatts, 
                           axes=axes, multifile=False, ncformat='NETCDF4')
   # figure out grid
   if grid is None or grid == name:
@@ -249,54 +263,67 @@ def checkItemList(itemlist, length, dtype, default=NotImplemented, iterable=Fals
       itemlist = [itemlist]*length
   return itemlist
 
-# helper function for loadDatasets
+# helper function for loadDatasets (see below)
 def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackground=True, 
-                lWRFnative=True):
+                lWRFnative=True, lautoregrid=False):
   ''' A function that loads a dataset, based on specified parameters '''
   from datasets.WRF import loadWRF
   from projects.WRF_experiments import WRF_exps, Exp
   from datasets.CESM import CESM_exps, loadCESM 
-  from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadNARR, loadUnity
+  from datasets.GPCC import loadGPCC
+  from datasets.CRU import loadCRU
+  from datasets.PCIC import loadPCIC
+  from datasets.PRISM import loadPRISM
+  from datasets.CFSR import loadCFSR
+  from datasets.NARR import loadNARR
+  from datasets.Unity import loadUnity
   if not isinstance(exp,(basestring,Exp)): raise TypeError
   if exp[0].isupper():
     if exp == 'Unity': 
-      ext = loadUnity(resolution=res, period=prd, grid=grd, varlist=varlist)
-#       if lbackground: ext = (ext,) # loadPRISM(grid=grd, varlist=varlist)
+      ext = loadUnity(resolution=res, period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
       axt = 'Merged Observations'        
     elif exp == 'GPCC': 
-      ext = loadGPCC(resolution=res, period=prd, grid=grd, varlist=varlist)
-#       if lbackground: ext = (ext,)
+      ext = loadGPCC(resolution=res, period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
       axt = 'GPCC Observations'
     elif exp == 'CRU': 
-      ext = loadCRU(period=prd, grid=grd, varlist=varlist)
-#       if lbackground: ext = (ext,) 
+      ext = loadCRU(period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
       axt = 'CRU Observations' 
-    elif exp == 'PRISM': # all PRISM derivatives
+    elif exp == 'PCIC': # PCIC with some background field
       if lbackground:
         if (len(varlist) == 1 and 'precip' in varlist) or (len(varlist) == 3 and 
             'precip' in varlist and 'lon2D' in varlist and 'lat2D' in varlist): 
-          ext = (loadGPCC(grid=grd, varlist=varlist), loadPRISM(grid=grd, varlist=varlist),)
-          axt = 'PRISM (and GPCC)'
-          #  ext = (loadPRISM(),); axt = 'PRISM'
+          ext = (loadGPCC(grid=grd, varlist=varlist, lautoregrid=lautoregrid), 
+                 loadPCIC(grid=grd, varlist=varlist, lautoregrid=lautoregrid),)
+          axt = 'PCIC PRISM (and GPCC)'
         else: 
-          ext = (loadCRU(period='1979-2009', grid=grd, varlist=varlist), loadPRISM(grid=grd, varlist=varlist)) 
+          ext = (loadCRU(period='1971-2001', grid=grd, varlist=varlist, lautoregrid=lautoregrid), 
+                 loadPCIC(grid=grd, varlist=varlist, lautoregrid=lautoregrid)) 
+          axt = 'PCIC PRISM (and CRU)'
+      else:
+        ext = loadPCIC(grid=grd, varlist=varlist, lautoregrid=lautoregrid); axt = 'PCIC PRISM'
+    elif exp == 'PRISM': # PRISM with some background field
+      if lbackground:
+        if (len(varlist) == 1 and 'precip' in varlist) or (len(varlist) == 3 and 
+            'precip' in varlist and 'lon2D' in varlist and 'lat2D' in varlist): 
+          ext = (loadGPCC(grid=grd, varlist=varlist, lautoregrid=lautoregrid), 
+                 loadPRISM(grid=grd, varlist=varlist, lautoregrid=lautoregrid),)
+          axt = 'PRISM (and GPCC)'
+        else: 
+          ext = (loadCRU(period='1979-2009', grid=grd, varlist=varlist, lautoregrid=lautoregrid), 
+                 loadPRISM(grid=grd, varlist=varlist, lautoregrid=lautoregrid)) 
           axt = 'PRISM (and CRU)'
       else:
-        ext = loadPRISM(grid=grd, varlist=varlist); axt = 'PRISM'
+        ext = loadPRISM(grid=grd, varlist=varlist, lautoregrid=lautoregrid); axt = 'PRISM'
     elif exp == 'CFSR': 
-      ext = loadCFSR(period=prd, grid=grd, varlist=varlist)
-#       ext = loadCFSR_TS(varlist=varlist)
-#       if lbackground: ext = (ext,)
+      ext = loadCFSR(period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
       axt = 'CFSR Reanalysis' 
     elif exp == 'NARR': 
-      ext = loadNARR(period=prd, grid=grd, varlist=varlist)
-#       if lbackground: ext = (ext,)
+      ext = loadNARR(period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
       axt = 'NARR Reanalysis'
     else: # all other uppercase names are CESM runs
-      #raise NotImplementedError, "CESM datasets are currently not supported."
       exp = CESM_exps[exp]
       #print exp.name, exp.title
-      ext = loadCESM(experiment=exp, period=prd, grid=grd, varlist=varlist)
+      ext = loadCESM(experiment=exp, period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
       axt = exp.title
   else: 
     # WRF runs are all in lower case
@@ -306,12 +333,12 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
       #if not lbackground: raise ValueError, 'Can only plot one domain, if lbackground=False'
       if 0 == dom[0]:
         dom = dom[1:]
-        parent, tmp = loadDataset(exp.parent, prd, dom, grd, res, varlist=varlist, lbackground=False); del tmp    
+        parent, tmp = loadDataset(exp.parent, prd, dom, grd, res, varlist=varlist, lbackground=False, lautoregrid=lautoregrid); del tmp    
     #if 'xtrm' in WRFfiletypes: 
     varatts = None #dict(T2=dict(name='Ts')) 
     if lWRFnative: grd = None
     ext = loadWRF(experiment=exp, period=prd, grid=grd, domains=dom, filetypes=filetypes, 
-                  varlist=varlist, varatts=varatts)
+                  varlist=varlist, varatts=varatts, lautoregrid=lautoregrid)
     if parent is not None: ext = (parent,) + tuple(ext)
     axt = exp.title # defaults to name...
   # return values
@@ -319,7 +346,8 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
     
 # function to load a list of datasets/experiments based on names and other common parameters
 def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domains=None, grids=None,
-                 resolutions='025', filetypes=None, lbackground=True, lWRFnative=True, ltuple=True):
+                 resolutions='025', filetypes=None, lbackground=True, lWRFnative=True, ltuple=True, 
+                 lautoregrid=False):
   ''' function to load a list of datasets/experiments based on names and other common parameters '''
   # for load function (below)
   from projects.WRF_experiments import Exp
@@ -345,7 +373,7 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
       ext = []; axt = []        
       for ex,dm in zip(exp,dom):
         et, at = loadDataset(ex, prd, dm, grd, res, filetypes=filetypes, varlist=varlist, 
-                           lbackground=False, lWRFnative=lWRFnative)
+                           lbackground=False, lWRFnative=lWRFnative, lautoregrid=lautoregrid)
         #if isinstance(et,(list,tuple)): ext += list(et); else: 
         ext.append(et)
         #if isinstance(at,(list,tuple)): axt += list(at); else: 
@@ -353,7 +381,7 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
       ext = tuple(ext); axt = tuple(axt)
     else:
       ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=varlist, 
-                           lbackground=lbackground, lWRFnative=lWRFnative)
+                           lbackground=lbackground, lWRFnative=lWRFnative, lautoregrid=lautoregrid)
     dslist.append(ext) 
     if tit is not None: axtitles.append(tit)
     else: axtitles.append(axt)  

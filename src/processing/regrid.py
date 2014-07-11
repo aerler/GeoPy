@@ -11,9 +11,11 @@ import os # check if files are present
 import numpy as np
 from importlib import import_module
 from datetime import datetime
+import logging     
 # internal imports
 from geodata.misc import DatasetError, DateError, isInt, printList
 from geodata.netcdf import DatasetNetCDF
+from geodata.base import Dataset
 from geodata.gdal import GDALError, GridDefinition, addGeoLocator, loadPickledGridDef
 from datasets import dataset_list
 from datasets.common import addLengthAndNamesOfMonth, getFileName, getCommonGrid, grid_folder
@@ -28,14 +30,27 @@ from datasets.CESM import loadCESM, CESM_exps
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
-def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None, 
-                      lparallel=False, pidstr='', logger=None):
+def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None, lwrite=True, lreturn=False,
+                      ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to perform regridding for a given dataset and target grid '''
   # input checking
   if not isinstance(dataset,basestring): raise TypeError
-  if not isinstance(kwargs,dict): raise TypeError # all dataset arguments are kwargs 
+  if not isinstance(dataargs,dict): raise TypeError # all dataset arguments are kwargs 
   if not isinstance(griddef,GridDefinition): raise TypeError
+  if lparallel: 
+    if not lwrite: raise IOError, 'Can only write to disk in parallel mode (i.e. lwrite = True).'
+    if lreturn: raise IOError, 'Can not return datasets in parallel mode (i.e. lreturn = False).'
   
+  # logging
+  if logger is None: # make new logger     
+    logger = logging.getLogger() # new logger
+    logger.addHandler(logging.StreamHandler())
+  else:
+    if isinstance(logger,basestring): 
+      logger = logging.getLogger(name=logger) # connect to existing one
+    elif not isinstance(logger,logging.Logger): 
+      raise TypeError, 'Expected logger ID/handle in logger KW; got {}'.format(str(logger))
+
   # load source
   if dataset == 'WRF': 
     # WRF datasets
@@ -77,7 +92,9 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     # load source data 
     source = loadCESM(experiment=dataset_name, name=None, grid=None, period=period, filetypes=[filetype],  
                       varlist=None, varatts=None, loadAll=True, translateVars=None)
-    periodstr = source.atts.period # a NetCDF attribute    
+    periodstr = '{0:4d}-{1:4d}'.format(*period)
+    if 'period' in source.atts and periodstr != source.atts.period: # a NetCDF attribute
+      raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
     datamsgstr = 'Processing CESM Experiment \'{0:s}\' from {1:s}'.format(dataset_name, periodstr)  
   elif dataset == dataset.upper():
     # observational datasets
@@ -118,30 +135,33 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
   if dataset == 'WRF':
     gridstr = '_{}'.format(griddef.name.lower()) if griddef.name.lower() else ''
     periodstr = '_{}'.format(periodstr) if periodstr else ''# I know, this is pointless at the moment...
-    filename = module.file_pattern.format(filetype,domain,gridstr,periodstr)
-    avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
+    if lwrite:
+      filename = module.clim_file_pattern.format(filetype,domain,gridstr,periodstr)
+      avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
   elif dataset == 'CESM':
     gridstr = '_{}'.format(griddef.name.lower()) if griddef.name.lower() else ''
     periodstr = '_{}'.format(periodstr) if periodstr else ''# I know, this is pointless at the moment...
-    filename = module.file_pattern.format(filetype,gridstr,periodstr)
-    avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
+    if lwrite:
+      filename = module.clim_file_pattern.format(filetype,gridstr,periodstr)
+      avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
   elif dataset == dataset.upper(): # observational datasets
-    filename = getFileName(grid=griddef.name, period=period, name=grid_name, filepattern=None)
-    avgfolder = module.avgfolder
+    if lwrite:
+      filename = getFileName(grid=griddef.name, period=period, name=grid_name, filepattern=None)
+      avgfolder = module.avgfolder
   else: raise DatasetError
   if ldebug: filename = 'test_' + filename
   if not os.path.exists(avgfolder): raise IOError, 'Dataset folder \'{0:s}\' does not exist!'.format(avgfolder)
   lskip = False # else just go ahead
-  filepath = avgfolder+filename
-  if os.path.exists(filepath): 
-    if not loverwrite: 
-      age = datetime.fromtimestamp(os.path.getmtime(filepath))
-      # if sink file is newer than source file, skip (do not recompute)
-      if age > sourceage and os.path.getsize(filepath) > 1e6: lskip = True
-      # N.B.: NetCDF files smaller than 1MB are usually incomplete header fragments from a previous crashed
-      #print sourceage, age
-    if not lskip: os.remove(filepath) 
-  # else: lskip = False (see above)
+  if lwrite:
+    filepath = avgfolder+filename
+    if os.path.exists(filepath): 
+      if not loverwrite: 
+        age = datetime.fromtimestamp(os.path.getmtime(filepath))
+        # if sink file is newer than source file, skip (do not recompute)
+        if age > sourceage and os.path.getsize(filepath) > 1e6: lskip = True
+        # N.B.: NetCDF files smaller than 1MB are usually incomplete header fragments from a previous crashed
+        #print sourceage, age
+      if not lskip: os.remove(filepath) 
   
   # depending on last modification time of file or overwrite setting, start computation, or skip
   if lskip:        
@@ -155,7 +175,9 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     atts['period'] = periodstr; atts['name'] = dataset_name; atts['grid'] = griddef.name
     atts['title'] = '{0:s} Climatology on {1:s} Grid'.format(dataset_name, griddef.name)
     # make new dataset
-    sink = DatasetNetCDF(folder=avgfolder, filelist=[filename], atts=atts, mode='w')
+    if lwrite: # write to NetCDF file 
+      sink = DatasetNetCDF(folder=avgfolder, filelist=[filename], atts=atts, mode='w')
+    else: sink = Dataset(atts=atts) # ony create dataset in memory
     
     # initialize processing
     CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=True)
@@ -176,13 +198,18 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     if not sink.hasVariable('length_of_month') and sink.hasVariable('time'): 
       addLengthAndNamesOfMonth(sink, noleap=False) 
     
-    # close... and write results to file
-    logger.info('\n{0:s} Writing to: \'{1:s}\'\n'.format(pidstr,filename))
-    sink.sync()
-    sink.close()
     # print dataset
     if not lparallel:
       logger.info('\n'+str(sink)+'\n')   
+    # write results to file
+    if lwrite:
+      sink.sync()
+      logger.info('\n{0:s} Writing to: \'{1:s}\'\n'.format(pidstr,filename))
+      if not lreturn: sink.close()
+    # return dataset
+    if lreturn:
+      # return dataset for further use
+      return sink
 
 
 if __name__ == '__main__':
@@ -196,13 +223,17 @@ if __name__ == '__main__':
   if os.environ.has_key('PYAVG_DEBUG'): 
     ldebug =  os.environ['PYAVG_DEBUG'] == 'DEBUG' 
   else: ldebug = False # i.e. append
+  # run script in interactive mode
+  if os.environ.has_key('PYAVG_INTERACT'): 
+    linteract =  os.environ['PYAVG_INTERACT'] == 'INTERACT' 
+  else: linteract = False # i.e. append  
   # re-compute everything or just update 
   if os.environ.has_key('PYAVG_OVERWRITE'): 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
   
   # default settings
-  if ldebug:
+  if linteract:
     ldebug = False
     NP = NP or 4
     loverwrite = True
@@ -222,6 +253,7 @@ if __name__ == '__main__':
     # Observations/Reanalysis
     datasets = []
 #     datasets += ['PRISM','GPCC']; periods = None
+    datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR', 'NARR']
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     resolutions = None
@@ -234,7 +266,7 @@ if __name__ == '__main__':
     # WRF
     WRF_experiments = []
 #     WRF_experiments += ['max']
-    WRF_experiments += ['max-1deg']
+#     WRF_experiments += ['max-1deg']
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1']
 #     WRF_experiments += ['max','max-lowres','max-nmp','max-nosub']
 #     WRF_experiments += ['max','max-A','max-nofdda','max-fdda']
@@ -250,21 +282,21 @@ if __name__ == '__main__':
     # grid to project onto
     lpickle = True
     grids = dict()
-#     grids['col1'] = ['d03','d02','d01'] # innermost WRF Columbia domain
+    grids['col1'] = ['d03','d02','d01'] # innermost WRF Columbia domain
 #     grids['col2'] = ['d03','d02','d01'] # innermost WRF Columbia domain
 #     grids['grb2'] = ['d02'] # Marc's standard GRB inner domain
-#     grids['arb2'] = ['d02'] # WRF standard ARB inner domain
+#     grids['arb2'] = ['d01','d02'] # WRF standard ARB inner domain
 #     grids['arb3'] = ['d02'] # WRF new ARB inner domain
 #     grids['ARB_small'] = ['025','05'] # small custom geographic grids
 #     grids['ARB_large'] = ['025','05'] # large custom geographic grids
-    grids['cesm1x1'] = [None] # CESM grid
+#     grids['cesm1x1'] = [None] # CESM grid
 #     grids = dict(NARR=[None]) # CESM grid
   else:
     NP = NP or 4
     #loverwrite = False
     varlist = None # process all variables
     datasets = None # process all applicable
-    periods = [5,10,30] # climatology periods to process
+    periods = [5,10,15] # climatology periods to process
 #     periods = [(1979,1984),(1979,1989)] # climatology periods to process 
 #     periods = None # process only overall climatologies 
     resolutions = None
@@ -273,14 +305,14 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm','lnd']    
     # WRF
     WRF_experiments = [] # process all WRF experiments
-    #experiments = ['max','gulf','new','noah'] # WRF experiment names (passed through WRFname) 
+    WRF_experiments += ['max','gulf','new','noah'] # WRF experiment names (passed through WRFname) 
     domains = [1,2] # domains to be processed
     WRF_filetypes = WRF_fileclasses.keys() # process all filetypes 
     # grid to project onto
     lpickle = True
-    d12 = ['d01','d02']
-    grids = dict(arb1=d12, arb2=d12, arb3=d12) # dict with list of resolutions
-#     grids = dict(arb2=['d02']) # dict with list of resolutions  
+    #d12 = ['d01','d02']
+    #grids = dict(arb1=d12, arb2=d12, arb3=d12) # dict with list of resolutions
+    grids = dict(arb2=['d02']) # dict with list of resolutions  
     
   
   ## process arguments    

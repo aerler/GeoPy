@@ -63,7 +63,8 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 # climatology
 ltmfolder = root_folder + 'climatology/' # climatology subfolder
-def loadGPCC_LTM(name=dataset_name, varlist=None, resolution='025', varatts=ltmvaratts, filelist=None, folder=ltmfolder):
+def loadGPCC_LTM(name=dataset_name, varlist=None, resolution='025', varatts=ltmvaratts, filelist=None, 
+                 folder=ltmfolder):
   ''' Get a properly formatted dataset the monthly accumulated GPCC precipitation climatology. '''
   # prepare input
   if resolution not in ('025','05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
@@ -114,7 +115,7 @@ avgfolder = root_folder + 'gpccavg/'
 avgfile = 'gpcc{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
 def loadGPCC(name=dataset_name, resolution=None, period=None, grid=None, varlist=None, varatts=None, 
-             folder=avgfolder, filelist=None):
+             folder=avgfolder, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly GPCC climatology as a DatasetNetCDF. '''
   # prepare input
   if grid is not None and grid[0:5].lower() == 'gpcc_': 
@@ -129,7 +130,7 @@ def loadGPCC(name=dataset_name, resolution=None, period=None, grid=None, varlist
     raise DatasetError, "The highest resolution is only available for the long-term mean!"
   # load standardized climatology dataset with GPCC-specific parameters
   dataset = loadClim(name=name, folder=folder, projection=None, resolution=resolution, period=period, grid=grid, 
-                     varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist)
+                     varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, lautoregrid=lautoregrid)
   # return formatted dataset
   return dataset
 

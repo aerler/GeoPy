@@ -80,11 +80,12 @@ def loadCRU_TS(name=dataset_name, varlist=varlist, varatts=varatts, filelist=Non
 avgfolder = root_folder + 'cruavg/' 
 avgfile = 'cru{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
-def loadCRU(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
+def loadCRU(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, 
+            folder=avgfolder, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly CRU climatology as a DatasetNetCDF. '''
   # load standardized climatology dataset with CRU-specific parameters
   dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
-                     varatts=varatts, filepattern=avgfile, filelist=filelist)
+                     varatts=varatts, filepattern=avgfile, filelist=filelist, lautoregrid=lautoregrid)
   # return formatted dataset
   return dataset
 
@@ -113,6 +114,7 @@ if __name__ == '__main__':
     
 #   mode = 'test_climatology'
   mode = 'average_timeseries'
+  period = (1971,2001)
 #   period = (1979,2009)
 #   period = (1949,2009)
 #   period = (1979,1982)
@@ -123,7 +125,7 @@ if __name__ == '__main__':
 #   period = (1989,1994)
 #   period = (1979,1980)
 #   period = (1997,1998)
-  period = (2010,2011)
+#   period = (2010,2011)
 
   if mode == 'test_climatology':
     

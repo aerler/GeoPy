@@ -297,17 +297,21 @@ def getProjection(var, projection=None):
       raise TypeError, '\'projection\' has to be a GDAL SpatialReference object.'              
     isProjected = projection.IsProjected()
     if isProjected: 
-      if not var.hasAxis('x') and var.hasAxis('y'): 
-        raise AxisError, 'Horizontal axes for projected GDAL variables have to \'x\' and \'y\'.'
+#       if not var.hasAxis('x') and var.hasAxis('y'): 
+#         raise AxisError, 'Horizontal axes for projected GDAL variables have to \'x\' and \'y\'.'
       if var.hasAxis('x') and var.hasAxis('y'):
         xlon = var.x; ylat = var.y
       else: xlon = None; ylat = None
+      # N.B.: staggered variables are usually only staggered in one dimension, but these variables can not
+      #       be treated as a GDAL variable, because their geotransform would be different
     else: 
-      if not var.hasAxis('lon') and var.hasAxis('lat'):
-        raise AxisError, 'Horizontal axes for non-projected GDAL variables have to be \'lon\' and \'lat\''
+#       if not var.hasAxis('lon') and var.hasAxis('lat'):
+#         raise AxisError, 'Horizontal axes for non-projected GDAL variables have to be \'lon\' and \'lat\''
       if var.hasAxis('lon') and var.hasAxis('lat'):
         xlon = var.lon; ylat = var.lat
       else: xlon = None; ylat = None    
+      # N.B.: staggered variables are usually only staggered in one dimension, but these variables can not
+      #       be treated as a GDAL variable, because their geotransform would be different
   # if the variable is map-like, add GDAL properties
   if xlon is not None and ylat is not None:
     lgdal = True

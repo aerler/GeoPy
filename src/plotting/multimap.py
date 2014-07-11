@@ -36,7 +36,8 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-  WRFfiletypes=['hydro','lsm']
+#   WRFfiletypes=['hydro','lsm']
+  WRFfiletypes=['srfc','xtrm']
 #   WRFfiletypes = ['srfc','lsm','hydro','xtrm'] # WRF data source
   # figure directory
   #folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
@@ -74,6 +75,10 @@ if __name__ == '__main__':
   lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = False; lbasins = False
 
+  explist = ['max-ens', 'max-ens']; exptitles = ['WRF vs. PCIC','WRF vs. PRISM']; period = H15
+  case = 'prism'; lbasins = True; lsamesize = True; grid = 'arb2_d02'
+  ldiff = True; reflist = ['PCIC','PRISM']; refprd = H15
+
 #  explist = ['max-ens-2100']; exptitles = ['WRF Ensemble Mean (2050)']
 #  case = 'prj'; lbasins = True; lsamesize = True; period = B10; grid = ['arb2_d02']
 #   lfrac = True; reflist = ['Unity']; refprd = H30
@@ -107,10 +112,10 @@ if __name__ == '__main__':
 #   lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
 #   ldiff = True; reflist = ['max-ens-2050']; refprd = A15 
 
-  case = 'ensprj'; explist = ['max-2100', 'max-A-2100', 'max-B-2100', 'max-C-2100'] 
-  exptitles = ['WRF-1 (2100)', 'WRF-A (2100)', 'WRF-B (2100)', 'WRF-C (2100)']
-  lbasins = True; lsamesize = True; period = B10; grid = 'arb2_d02'
-  lfrac = True; reflist = ['max', 'max-A', 'max-B', 'max-C']; refprd = H10 
+#   case = 'ensprj'; explist = ['max-2100', 'max-A-2100', 'max-B-2100', 'max-C-2100'] 
+#   exptitles = ['WRF-1 (2100)', 'WRF-A (2100)', 'WRF-B (2100)', 'WRF-C (2100)']
+#   lbasins = True; lsamesize = True; period = B10; grid = 'arb2_d02'
+#   lfrac = True; reflist = ['max', 'max-A', 'max-B', 'max-C']; refprd = H10 
 
 #  case = 'ensprj'; explist = ['max-2050', 'max-A-2050', 'max-B-2050', 'max-C-2050'] 
 #  exptitles = ['WRF-1 (2050)', 'WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)']
@@ -220,8 +225,8 @@ if __name__ == '__main__':
   varlist = []; seasons = []
   # variables
 #   varlist += ['Ts']
-#  varlist += ['T2']
-#   varlist += ['Tmin', 'Tmax']
+  varlist += ['T2']
+  varlist += ['Tmin', 'Tmax']
   varlist += ['precip']
 #  varlist += ['waterflx']
 #   varlist += ['p-et']
@@ -250,8 +255,8 @@ if __name__ == '__main__':
   seasons += ['annual']
   seasons += ['summer']
   seasons += ['winter']
-#   seasons += ['spring']    
-#   seasons += ['fall']
+  seasons += ['spring']    
+  seasons += ['fall']
   # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height

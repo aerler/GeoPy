@@ -123,7 +123,7 @@ class TrialNError():
       return 1 # indicate failure
 
 
-def asyncPoolEC(func, args, kwargs, NP=1, ldebug=True, ltrialnerror=True):
+def asyncPoolEC(func, args, kwargs, NP=1, ldebug=False, ltrialnerror=True):
   ''' 
     A function that executes func with arguments args (len(args) times) on NP number of processors;
     args must be a list of argument tuples; kwargs are keyword arguments to func, which do not change
@@ -143,7 +143,7 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=True, ltrialnerror=True):
   # figure out if running parallel
   if NP is not None and NP == 1: lparallel = False
   else: lparallel = True
-  #lparallel = True
+  kwargs['ldebug'] = ldebug
   kwargs['lparallel'] = lparallel  
 
   # logging level

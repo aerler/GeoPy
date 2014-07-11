@@ -24,7 +24,7 @@ from projects.WRF_experiments import WRF_exps, Exp, WRF_experiments
 
 
 def computeClimatology(experiment, filetype, domain, periods=None, offset=0, griddef=None, varlist=None, 
-                       loverwrite=False, lparallel=False, pidstr='', logger=None):
+                       ldebug=False, loverwrite=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to compute climatologies for given file parameters. '''
   # input type checks
   if not isinstance(experiment,Exp): raise TypeError
@@ -159,6 +159,10 @@ if __name__ == '__main__':
   if os.environ.has_key('PYAVG_DEBUG'): 
     ldebug =  os.environ['PYAVG_DEBUG'] == 'DEBUG' 
   else: ldebug = False # i.e. append
+  # run script in interactive mode
+  if os.environ.has_key('PYAVG_INTERACT'): 
+    linteract =  os.environ['PYAVG_INTERACT'] == 'INTERACT' 
+  else: linteract = False # i.e. append  
   # re-compute everything or just update 
   if os.environ.has_key('PYAVG_OVERWRITE'): 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
@@ -174,7 +178,7 @@ if __name__ == '__main__':
 
   
   # default settings
-  if ldebug:
+  if linteract:
     ldebug = False
     NP = NP or 4
     loverwrite = True
@@ -201,7 +205,7 @@ if __name__ == '__main__':
 #     periods += [15]
     domains = [1,2] # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
-    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+    filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']
 #     filetypes = ['hydro'] # filetypes to be processed
     grid = 'WRF'
@@ -213,7 +217,7 @@ if __name__ == '__main__':
     offset = 0 # number of years from simulation start
     periods = [5,10,15] # averaging period
     domains = [1,2] # domains to be processed
-    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed
+    filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # , rad
     grid = 'WRF' 
 
   # expand experiments

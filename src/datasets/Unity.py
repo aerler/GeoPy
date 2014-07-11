@@ -16,7 +16,10 @@ from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
 from datasets.common import days_per_month, name_of_month, getFileName, data_root, loadClim, grid_folder
 from geodata.gdal import loadPickledGridDef
-from datasets import loadGPCC, loadCRU, loadPRISM
+from datasets.GPCC import loadGPCC
+from datasets.CRU import loadCRU
+from datasets.PRISM import loadPRISM
+from datasets.PCIC import loadPCIC
 # from geodata.misc import DatasetError
 from warnings import warn
 
@@ -55,8 +58,10 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 avgfile = 'unity{0:s}_clim{1:s}.nc' # formatted NetCDF file
 avgfolder = root_folder + 'unityavg/' # prefix
 # function to load these files...
-def loadUnity(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
-  ''' Get the pre-processed monthly PRISM climatology as a DatasetNetCDF. '''
+def loadUnity(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, 
+              folder=avgfolder, filelist=None, lautoregrid=False):
+  ''' Get the pre-processed, unified monthly climatology as a DatasetNetCDF. '''
+  #if lautoregrid: warn("Auto-regridding is currently not available for the unified dataset - use the generator routine instead.")
   # a climatology is not available
   if period is None: 
     period = (1979,2009)
@@ -100,15 +105,16 @@ if __name__ == '__main__':
   grids = []
 #   grids += ['arb2_d01']
 #   grids += ['arb2_d02']
+#   grids += ['arb3_d01']
 #   grids += ['arb3_d02']
-#   grids += ['grb1_d01']
+  grids += ['grb1_d01']
 #   grids += ['grb1_d02']
-  grids += ['col1_d01']
-  grids += ['col1_d02'] 
-  grids += ['col1_d03']
-  grids += ['col2_d01']
-  grids += ['col2_d02'] 
-  grids += ['col2_d03'] 
+#   grids += ['col1_d01']
+#   grids += ['col1_d02'] 
+#   grids += ['col1_d03']
+#   grids += ['col2_d01']
+#   grids += ['col2_d02'] 
+#   grids += ['col2_d03'] 
 #   grids += ['ARB_small_025']
 #   grids += ['ARB_large_025']
 #   grids += ['cesm1x1']
@@ -117,31 +123,33 @@ if __name__ == '__main__':
 #   periods += [(1979,1980)]
 #   periods += [(1979,1982)]
 #   periods += [(1979,1984)]
-#   periods += [(1979,1989)]
+  periods += [(1979,1989)]
 #   periods += [(1979,1994)]
 #   periods += [(1984,1994)]
 #   periods += [(1989,1994)]
 #   periods += [(1997,1998)]
 #   periods += [(1979,2009)]
-  periods += [(1949,2009)]
+#   periods += [(1949,2009)]
 
   
   ## do some tests
   if mode == 'test_climatology':  
     
-    # load NetCDF dataset
-#     dataset = loadUnity(grid='arb2_d02', period=period)
-    dataset = loadUnity()
-    print(dataset)
-    print('')
-    print(dataset.geotransform)
-    print(dataset.precip.getArray().mean())
-    print(dataset.precip.masked)
-    print('')
-    # display
-    import pylab as pyl
-    pyl.imshow(np.flipud(dataset.prismmask.getArray()[:,:])) 
-    pyl.colorbar(); pyl.show(block=True)
+    for grid in grids:
+      for period in periods: 
+        # load NetCDF dataset
+        dataset = loadUnity(grid=grid, period=period)
+        #dataset = loadUnity()
+        print(dataset)
+        print('')
+        print(dataset.geotransform)
+        print(dataset.precip.getArray().mean())
+        print(dataset.precip.masked)
+        print('')
+        # display
+        import pylab as pyl
+        pyl.imshow(np.flipud(dataset.prismmask.getArray()[:,:])) 
+        pyl.colorbar(); pyl.show(block=True)
 
   
   ## begin processing
@@ -152,12 +160,13 @@ if __name__ == '__main__':
       for period in periods: 
         
         ## load source datasets
-        prism = loadPRISM(period=None, grid=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'])
-        gpccprd = loadGPCC(period=period, resolution='05', grid=grid, varlist=['precip'])
-        gpccclim = loadGPCC(period=None, resolution='05', grid=grid, varlist=['precip'])
-        gpcc025 = loadGPCC(period=None, resolution='025', grid=grid, varlist=['precip','landmask'])
-        cruprd = loadCRU(period=period, grid=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'])
-        cruclim = loadCRU(period=(1979,2009), grid=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'])
+        pcic  = loadPCIC(period=None, grid=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'], lautoregrid=True)
+        prism = loadPRISM(period=None, grid=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'], lautoregrid=True)
+        gpccprd = loadGPCC(period=period, resolution='05', grid=grid, varlist=['precip'], lautoregrid=True)
+        gpccclim = loadGPCC(period=None, resolution='05', grid=grid, varlist=['precip'], lautoregrid=True)
+        gpcc025 = loadGPCC(period=None, resolution='025', grid=grid, varlist=['precip','landmask'], lautoregrid=True)
+        cruprd = loadCRU(period=period, grid=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'], lautoregrid=True)
+        cruclim = loadCRU(period=(1979,2009), grid=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'], lautoregrid=True)
         
         # grid definition
         griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder)
@@ -182,24 +191,29 @@ if __name__ == '__main__':
         # add a few variables that will remain unchanged
         for var in [gpcc025.landmask, prism.lon2D, prism.lat2D]:
           var.load(); sink.addVariable(var, asNC=True, copy=True, deepcopy=True); var.unload()
-        # PRISM datamask
-        prismmask = prism.datamask.copy(); prismmask.name = 'prismmask' 
-        prismmask.load(data=prism.datamask.getArray(unmask=True, fillValue=1)) 
-        sink.addVariable(prismmask, asNC=True, copy=True, deepcopy=True)
-        prism.datamask.unload()
+        # add datamasks
+        for ds in (prism, pcic):
+          datamask = ds.datamask.copy(); datamask.name = ds.name.lower()+'mask' 
+          datamask.load(data=ds.datamask.getArray(unmask=True, fillValue=1)) 
+          sink.addVariable(datamask, asNC=True, copy=True, deepcopy=True)
+          ds.datamask.unload()
         # sync and write data so far 
         sink.sync()       
                 
         ## merge data (create variables)
         
         # precip
-        var = prism.precip.copy() # generate variable copy
-        # load data
-        prism.precip.load(); gpccprd.precip.load(); gpccclim.precip.load(); gpcc025.precip.load() 
-        prismarray = prism.precip.getArray(); gpccclimarray = gpccclim.precip.getArray()
-        gpccprdarray = gpccprd.precip.getArray(); gpcc025array = gpcc025.precip.getArray()
-        # generate climatology
-        array = ma.where(prismarray.filled(-999) == -999, gpcc025array, prismarray)        
+        var = pcic.precip.copy() # generate variable copy
+        array = pcic.precip.getArray() # start with hi-res PRISM from PCIC  
+        # add low-res PRISM backround
+        prismarray = prism.precip.getArray() # start with
+        array = ma.where(array.mask, prismarray, array) # add background climatology  
+        # add GPCC background 
+        gpccclimarray = gpccclim.precip.getArray()
+        gpccprdarray = gpccprd.precip.getArray() 
+        gpcc025array = gpcc025.precip.getArray()        
+        array = ma.where(array.mask, gpcc025array, array) # add background climatology
+#         array = ma.where(array.filled(-999) == -999, gpcc025array, array) # add background climatology        
         array = array - gpccclimarray + gpccprdarray # add temporal variation
         # save variable 
         var.load(data=array)
@@ -207,13 +221,16 @@ if __name__ == '__main__':
         
         # Temperature
         for varname in ['T2', 'Tmin', 'Tmax']:
-          var = prism.variables[varname].copy() # generate variable copy
           # load data
-          prism.variables[varname].load(); cruprd.variables[varname].load(); cruclim.variables[varname].load() 
-          prismarray = prism.variables[varname].getArray(); cruclimarray = cruclim.variables[varname].getArray()
-          cruprdarray = cruprd.variables[varname].getArray()
-          # generate climatology
-          array = ma.where(prismarray.filled(-999) == -999, cruclimarray, prismarray)        
+          var = pcic.variables[varname].copy() # generate variable copy
+          array = pcic.variables[varname].getArray() # start with hi-res PRISM from PCIC
+          # add low-res PRISM backround
+          prismarray = prism.variables[varname].getArray()
+          array = ma.where(array.mask, prismarray, array) # add background climatology  
+          # add CRU background 
+          cruclimarray = cruclim.variables[varname].getArray()
+          cruprdarray = cruprd.variables[varname].getArray()          
+          array = ma.where(array.mask, cruclimarray, array) # generate climatology        
           array = array - cruclimarray + cruprdarray # add temporal variation
           # save variable 
           var.load(data=array)

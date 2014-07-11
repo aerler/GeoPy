@@ -73,7 +73,8 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 ## Functions to load different types of CFSR datasets 
 
 tsfolder = root_folder + 'Monthly/'
-def loadCFSR_TS(name=dataset_name, varlist=None, varatts=varatts, resolution='hires', filelist=None, folder=tsfolder):
+def loadCFSR_TS(name=dataset_name, varlist=None, varatts=varatts, resolution='hires', filelist=None, 
+                folder=tsfolder):
   ''' Get a properly formatted CFSR dataset with monthly mean time-series. '''
   # translate varlist
   if varlist is None:
@@ -115,7 +116,8 @@ def loadCFSR_TS(name=dataset_name, varlist=None, varatts=varatts, resolution='hi
 avgfolder = root_folder + 'cfsravg/' 
 avgfile = 'cfsr{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
-def loadCFSR(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
+def loadCFSR(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, 
+             folder=avgfolder, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly CFSR climatology as a DatasetNetCDF. '''
   # prepare input
   if grid is not None and grid[0:5].lower() == 'cfsr_': 
@@ -129,7 +131,7 @@ def loadCFSR(name=dataset_name, period=None, grid=None, resolution=None, varlist
     raise DatasetError, "Selected resolution '{0:s}' is not available!".format(resolution)  
   # load standardized climatology dataset with GPCC-specific parameters
   dataset = loadClim(name=name, folder=folder, projection=None, resolution=resolution, period=period, grid=grid, 
-                     varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist)
+                     varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, lautoregrid=lautoregrid)
   # return formatted dataset
   return dataset
 

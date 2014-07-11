@@ -129,7 +129,7 @@ class ATM(FileType):
 class LND(FileType):
   ''' Variables and attributes of the land surface files. '''
   def __init__(self):
-    self.atts = dict(#topo     = dict(name='zs', units='m', scalefactor=0.1), # surface elevation
+    self.atts = dict(topo     = dict(name='hgt', units='m'), # surface elevation
                      landmask = dict(name='landmask', units=''), # land mask
                      landfrac = dict(name='landfrac', units=''), # land fraction
                      FSNO     = dict(name='snwcvr', units=''), # snow cover (fractional)
@@ -138,15 +138,6 @@ class LND(FileType):
                      QRUNOFF  = dict(name='runoff', units='kg/m^2/s'), # total surface and sub-surface run-off
                      QIRRIG   = dict(name='irrigation', units='kg/m^2/s'), # water flux through irrigation
                      )
-#                      ALBEDO = dict(name='A', units=''), # Albedo
-#                      SNOWC  = dict(name='snwcvr', units=''), # snow cover (binary)
-#                      ACSNOM = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
-#                      ACSNOW = dict(name='snwacc', units='kg/m^2/s'), # snow accumulation rate
-#                      SFCEVP = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
-#                      POTEVP = dict(name='pet', units='kg/m^2/s'), # potential evapo-transpiration rate
-#                      SFROFF = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
-#                      UDROFF = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off
-#                      Runoff = dict(name='runoff', units='kg/m^2/s')) # total surface and sub-surface run-off
     self.vars = self.atts.keys()    
     self.climfile = 'cesmlnd{0:s}_clim{1:s}.nc' # the filename needs to be extended by ('_'+grid,'_'+period)
     self.tsfile = NotImplemented # native CESM output
@@ -188,7 +179,7 @@ def loadCESM_TS(experiment=None, name=None, filetypes=None, varlist=None, varatt
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
 def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, 
-            varatts=None, loadAll=False, translateVars=None):
+            varatts=None, loadAll=False, translateVars=None, lautoregrid=False):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
   # prepare input  
   folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None)
@@ -210,11 +201,12 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
     filetypes = list(filetypes)  
     if 'axes' not in filetypes: filetypes.append('axes')    
   else: raise TypeError  
-  atts = dict(); filelist = []
+  atts = dict(); filelist = []; typelist = []
   for filetype in filetypes:
     fileclass = fileclasses[filetype]
     if fileclass.climfile is not None: # this eliminates const files
       filelist.append(fileclass.climfile)
+      typelist.append(filetype)
     atts.update(fileclass.atts) 
   if varatts is not None: atts.update(varatts)  
   # translate varlist
@@ -228,9 +220,26 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
     gridstr = ''; griddef = None
   else: 
     gridstr = '_%s'%grid.lower() # only use lower case for filenames
-    griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder, check=True)   
+    griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder, check=True)
   # insert grid name and period
-  filenames = [filename.format(gridstr,periodstr) for filename in filelist]
+  filenames = []
+  for filetype,fileformat in zip(typelist,filelist):
+    filename = fileformat.format(gridstr,periodstr) # put together specfic filename
+    filenames.append(filename) # append to list (passed to DatasetNetCDF later)
+    # check existance
+    filepath = '{:s}/{:s}'.format(folder,filename)
+    if not os.path.exists(filepath):
+      nativename = fileformat.format('',periodstr) # original filename (before regridding)
+      nativepath = '{:s}/{:s}'.format(folder,nativename)
+      if os.path.exists(nativepath):
+        if lautoregrid: 
+          from processing.regrid import performRegridding # causes circular reference if imported earlier
+          griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder)
+          dataargs = dict(experiment=experiment, filetypes=[filetype], period=period)
+          performRegridding('CESM', griddef, dataargs) # default kwargs
+        else: raise IOError, "The CESM dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.".format(filename,grid) 
+      else: raise IOError, "The CESM dataset file '{:s}' does not exits!".format(filename)
+   
   # load dataset
   #print varlist, filenames
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=None, 
@@ -263,12 +272,11 @@ loadClimatology = loadCESM # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
 
-#   mode = 'test_climatology'
+  mode = 'test_climatology'
 #   mode = 'pickle_grid'
-  mode = 'shift_lon'
-  experiment = 'Ctrl'  
+#   mode = 'shift_lon'
   filetypes = ['atm','lnd',]
-  grids = ['cesm1x1']; experiments = ['CESM']
+  grids = ['arb2_d02']; experiments = ['CESM'] # grb1_d01
 
   # pickle grid definition
   if mode == 'pickle_grid':
@@ -305,18 +313,21 @@ if __name__ == '__main__':
   # load averaged climatology file
   elif mode == 'test_climatology':
     
-    print('')
-    dataset = loadCESM(experiment=experiment, varlist=['precip','zs'], grid=None, filetypes=None, period=(1979,1989)) # ['atm','lnd','ice']
-    print(dataset)
-    dataset.lon2D.load()
-    #     # display
-    import pylab as pyl
-#     pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.precip.getArray().mean(axis=0))
-    pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.zs.getArray())
-    pyl.colorbar()
-    pyl.show(block=True)
-    print('')
-    print(dataset.geotransform)
+    for grid,experiment in zip(grids,experiments):
+      
+      print('')
+      dataset = loadCESM(experiment=experiment, varlist=['zs'], grid=grid, filetypes=['atm',], 
+                         period=(1979,1984),lautoregrid=True) # ['atm','lnd','ice']
+      print(dataset)
+      dataset.lon2D.load()
+      #     # display
+      import pylab as pyl
+  #     pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.precip.getArray().mean(axis=0))
+      pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.zs.getArray())
+      pyl.colorbar()
+      pyl.show(block=True)
+      print('')
+      print(dataset.geotransform)
   
   # shift dataset from 0-360 to -180-180
   elif mode == 'shift_lon':

@@ -59,7 +59,8 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 avgfile = 'prism{0:s}_clim{1:s}.nc' # formatted NetCDF file
 avgfolder = root_folder + 'prismavg/' # prefix
 # function to load these files...
-def loadPRISM(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, folder=avgfolder, filelist=None):
+def loadPRISM(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, 
+              folder=avgfolder, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly PRISM climatology as a DatasetNetCDF. '''
   # only the climatology is available
   if period is not None: 
@@ -67,7 +68,7 @@ def loadPRISM(name=dataset_name, period=None, grid=None, resolution=None, varlis
     period = None
   # load standardized climatology dataset with PRISM-specific parameters  
   dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
-                     varatts=varatts, filepattern=avgfile, filelist=filelist)
+                     varatts=varatts, filepattern=avgfile, filelist=filelist, lautoregrid=lautoregrid)
 #   # make sure all fields are masked
 #   dataset.load()
 #   dataset.mask(dataset.datamask, maskSelf=False)
