@@ -238,7 +238,7 @@ if __name__ == '__main__':
   # default settings
   if linteract:
     ldebug = False
-    NP = NP or 4
+    NP = 2 or NP # to avoid memory issues...
     loverwrite = True
     varlist = None
 #     varlist = ['precip',]
@@ -261,24 +261,28 @@ if __name__ == '__main__':
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     resolutions = None
     # CESM
-    CESM_experiments = []
+    CESM_experiments = None # all experiments
+#     CESM_experiments = []
 #     CESM_experiments += ['CESM','CESM-2050']
 #     CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
 #     CESM_experiments += ['Ctrl-2050', 'Ens-A-2050', 'Ens-B-2050', 'Ens-C-2050']
     CESM_filetypes = ['atm','lnd']
     # WRF
-    WRF_experiments = []
+#     WRF_experiments = None # all experiments
+    WRF_experiments = [] # WRF experiment names (passed through WRFname)
 #     WRF_experiments += ['max']
-    WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
-#     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1']
+#     WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
 #     WRF_experiments += ['max','max-lowres','max-nmp','max-nosub']
 #     WRF_experiments += ['max','max-A','max-nofdda','max-fdda']
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ens','max-ens-2050']
-    WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'cfsr-new', 'new-grell',] # new standard runs 
-    WRF_experiments += ['new-grell-old', 'new-nogulf', 'new-noah', 'v35-noah'] # new sensitivity tests
-    #     WRF_experiments = ['new-grell-old'] # WRF experiment names (passed through WRFname)
+#     WRF_experiments += ['new-ctrl', 'cfsr-new', 'new-grell','new-grell-old', ] # new standard runs (arb3)
+    WRF_experiments += ['new-ctrl-2050', 'new-noah', 'v35-noah'] # new sensitivity tests (arb3)
+    WRF_experiments += ['cam-ctrl', 'cam-ctrl-1-2050', 'cam-ctrl-2-2050', 'cam-ctrl-2-2100'] # new sensitivity tests 
+    WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
+    WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old simulations (arb1)
+    # other WRF parameters 
     domains = [1,2] # domains to be processed
 #     WRF_filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
     WRF_filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
@@ -289,8 +293,9 @@ if __name__ == '__main__':
 #     grids['col1'] = ['d03','d02','d01'] # innermost WRF Columbia domain
 #     grids['col2'] = ['d03','d02','d01'] # innermost WRF Columbia domain
 #     grids['grb2'] = ['d02'] # Marc's standard GRB inner domain
-    grids['arb2'] = ['d01','d02'] # WRF standard ARB inner domain
+#     grids['arb2'] = ['d02'] # WRF standard ARB inner domain
 #     grids['arb3'] = ['d02'] # WRF new ARB inner domain
+    grids['arb2'] = ['d01','d02'] # WRF standard ARB both domains
 #     grids['ARB_small'] = ['025','05'] # small custom geographic grids
 #     grids['ARB_large'] = ['025','05'] # large custom geographic grids
 #     grids['cesm1x1'] = [None] # CESM grid
@@ -310,7 +315,7 @@ if __name__ == '__main__':
     # WRF
     WRF_experiments = [] # process WRF experiments on different grids
     WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'cfsr-new', 'new-grell',] # standard runs 
-    WRF_experiments += ['new-grell-old', 'new-nogulf', 'new-noah', 'v35-noah'] # sensitivity tests
+    WRF_experiments += ['new-grell-old', 'new-noah', 'v35-noah'] # sensitivity tests
     domains = [1,2] # domains to be processed
     WRF_filetypes = WRF_fileclasses.keys() # process all filetypes 
     # grid to project onto
