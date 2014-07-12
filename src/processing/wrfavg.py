@@ -159,10 +159,10 @@ if __name__ == '__main__':
   if os.environ.has_key('PYAVG_DEBUG'): 
     ldebug =  os.environ['PYAVG_DEBUG'] == 'DEBUG' 
   else: ldebug = False # i.e. append
-  # run script in interactive mode
-  if os.environ.has_key('PYAVG_INTERACT'): 
-    linteract =  os.environ['PYAVG_INTERACT'] == 'INTERACT' 
-  else: linteract = False # i.e. append  
+  # run script in batch or interactive mode
+  if os.environ.has_key('PYAVG_BATCH'): 
+    lbatch =  os.environ['PYAVG_BATCH'] == 'BATCH' 
+  else: lbatch = False # i.e. append  
   # re-compute everything or just update 
   if os.environ.has_key('PYAVG_OVERWRITE'): 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
@@ -178,7 +178,7 @@ if __name__ == '__main__':
 
   
   # default settings
-  if linteract:
+  if not lbatch:
     ldebug = False
     NP = NP or 4
     loverwrite = True

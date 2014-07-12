@@ -487,14 +487,15 @@ class DatasetNetCDFTest(BaseDatasetTest):
       filelist = ['gpcc_test/full_data_v6_precip_25.nc'] # variable to test
       varlist = ['p']; varatts = dict(p=dict(name='precip'))
       ncfile = filelist[0]; ncvar = varlist[0]      
+      self.dataset = DatasetNetCDF(name=name,folder=folder,filelist=filelist,varlist=varlist,varatts=varatts)
     elif self.dataset == 'NARR': # multiple files
       filelist = ['narr_test/air.2m.mon.ltm.nc', 'narr_test/prate.mon.ltm.nc', 'narr_test/prmsl.mon.ltm.nc'] # variable to test
-      varlist = ['air','prate','prmsl','lon','lat']
+      varlist = ['air','prate','prmsl','lon','lat'] # not necessary with ignore_list = ('nbnds',)
       varatts = dict(air=dict(name='T2'),prmsl=dict(name='pmsl'))
       ncfile = filelist[0]; ncvar = varlist[0]
+      self.dataset = DatasetNetCDF(name=name,folder=folder,filelist=filelist,varlist=None,varatts=varatts, ignore_list=('nbnds',))
     # load a netcdf dataset, so that we have something to play with      
     self.ncdata = nc.Dataset(folder+ncfile,mode='r')
-    self.dataset = DatasetNetCDF(name=name,folder=folder,filelist=filelist,varlist=varlist,varatts=varatts)
     # load a sample variable directly
     ncvar = self.ncdata.variables[ncvar]
     # get dimensions and coordinate variables
@@ -662,13 +663,13 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
+#     tests += ['BaseDataset']
     tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)
     RAM = False # whether or not to use a RAM disk

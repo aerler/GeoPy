@@ -167,7 +167,10 @@ class Axes(FileType):
 
 # data source/location
 fileclasses = dict(atm=ATM(), lnd=LND(), axes=Axes()) # ice=ICE() is currently not supported because of the grid
-
+# list of variables and dimensions that should be ignored
+ignore_list_2D = ('nbnd', 'slat', 'slon', 'ilev', # atmosphere file
+                  'levlak', 'latatm', 'hist_interval', 'latrof', 'lonrof', 'lonatm') # land file
+ignore_list_3D = ('lev', 'levgrnd',) # ignore all 3D variables (and vertical axes)
 
 ## Functions to load different types of WRF datasets
 
@@ -179,7 +182,7 @@ def loadCESM_TS(experiment=None, name=None, filetypes=None, varlist=None, varatt
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
 def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, 
-            varatts=None, loadAll=False, translateVars=None, lautoregrid=False):
+            varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
   # prepare input  
   folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None)
@@ -208,10 +211,15 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
       filelist.append(fileclass.climfile)
       typelist.append(filetype)
     atts.update(fileclass.atts) 
-  if varatts is not None: atts.update(varatts)  
+  # figure out ignore list  
+  if ignore_list is None: ignore_list = set(ignore_list_2D)
+  elif isinstance(ignore_list,(list,tuple)): ignore_list = set(ignore_list)
+  elif not isinstance(ignore_list,set): raise TypeError
+  if not load3D: ignore_list.update(ignore_list_3D)
+  if lautoregrid is None: lautoregrid = not load3D # don't auto-regrid 3D variables - takes too long! 
   # translate varlist
-  if varlist is None and not loadAll: varlist = atts.keys() # default varlist
-  elif varlist is not None:
+  if varatts is not None: atts.update(varatts)
+  if varlist is not None:
     if translateVars is None: varlist = list(varlist) + translateVarNames(varlist, atts) # also aff translations, just in case
     elif translateVars is True: varlist = translateVarNames(varlist, atts) 
     # N.B.: DatasetNetCDF does never apply translation!
@@ -243,8 +251,8 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
    
   # load dataset
   #print varlist, filenames
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=None, 
-                          varatts=atts, multifile=False, ncformat='NETCDF4', squeeze=True)
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=None, varatts=atts, 
+                          multifile=False, ignore_list=ignore_list, ncformat='NETCDF4', squeeze=True)
   # check
   if len(dataset) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
   # add projection
@@ -273,11 +281,30 @@ loadClimatology = loadCESM # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
 
-  mode = 'test_climatology'
-#   mode = 'pickle_grid'
-#   mode = 'shift_lon'
-  filetypes = ['atm','lnd',]
-  grids = ['arb2_d02']; experiments = ['CESM'] # grb1_d01
+  # read environment variable 
+  if os.environ.has_key('PYCESM_BATCH'): 
+    lbatch = os.environ['PYCESM_BATCH'] == 'BATCH'
+  else: lbatch = False
+  
+  # N.B.: this script can be run as a post-processing step to sync'ing CESM data in a batch script
+  
+  # set mode/parameters
+  if lbatch:
+    # this section should only be modified with caution!
+    mode = 'shift_lon'
+    periods = (5, 10, 15,)    
+    experiments = CESM_experiments.keys() # all experiments in the list!
+    filetypes = ('atm','lnd',)
+  else:
+    mode = 'test_climatology'
+  #   mode = 'pickle_grid'
+    mode = 'shift_lon'
+    #experiments = ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
+    experiments = ('CESM',)
+    periods = (15,)    
+    #filetypes = ('atm',)
+    filetypes = ('lnd',)
+    grids = ('arb2_d02',) # grb1_d01
 
   # pickle grid definition
   if mode == 'pickle_grid':
@@ -317,14 +344,20 @@ if __name__ == '__main__':
     for grid,experiment in zip(grids,experiments):
       
       print('')
-      dataset = loadCESM(experiment=experiment, varlist=['zs'], grid=grid, filetypes=['atm',], 
-                         period=(1979,1984),lautoregrid=True) # ['atm','lnd','ice']
+#       dataset = loadCESM(experiment=experiment, varlist=['zs'], grid=grid, filetypes=['atm',], 
+#                          period=(1979,1984),lautoregrid=True) # ['atm','lnd','ice']
+      dataset = loadCESM(experiment=experiment, varlist=None, grid=None, filetypes=['lnd',], 
+                         period=(1979,1984)) # ['atm','lnd','ice']
       print(dataset)
-      dataset.lon2D.load()
-      #     # display
+      if 'zs' in dataset: var = dataset.zs
+      elif 'hgt' in dataset: var = dataset.hgt
+      else: var = dataset.lon2D
+      var.load()
+      # display
       import pylab as pyl
-  #     pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.precip.getArray().mean(axis=0))
-      pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.zs.getArray())
+#       pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.precip.getArray().mean(axis=0))
+#       pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.runoff.getArray().mean(axis=0))
+      pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), var.getArray())
       pyl.colorbar()
       pyl.show(block=True)
       print('')
@@ -332,94 +365,80 @@ if __name__ == '__main__':
   
   # shift dataset from 0-360 to -180-180
   elif mode == 'shift_lon':
-
-    prdlen = 5    
-    experiments = ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
-#     experiments = CESM_experiments.keys()
-    
-    # loop over experiments
-    for experiment in experiments:
-      # loop over filetypes
-      for filetype in filetypes: # ['lnd'] 
-        fileclass = fileclasses[filetype]
-        
-        # load source
-        exp = CESM_exps[experiment]
-        period = (exp.beginyear, exp.beginyear+prdlen)
-        periodstr = '{0:4d}-{1:4d}'.format(*period)
-        print('\n')
-        print('   ***   Processing Experiment {0:s} for Period {1:s}   ***   '.format(exp.title,periodstr))
-        print('\n')
-        # prepare file names
-        filename = fileclass.climfile.format('','_'+periodstr)
-        origname = 'orig'+filename[4:]; tmpname = 'tmp.nc'
-        filepath = exp.avgfolder+filename; origpath = exp.avgfolder+origname; tmppath = exp.avgfolder+tmpname
-        # load source
-        if os.path.exists(origpath) and os.path.exists(filepath): 
-          os.remove(filepath) # overwrite old file
-          os.rename(origpath,filepath) # get original source
-        source = loadCESM(experiment=exp, period=period, filetypes=[filetype], loadAll=False)
-        print(source)
-        print('\n')
-        # savety checks
-        if os.path.exists(origpath): raise IOError
-        if np.max(source.lon.getArray()) < 180.: raise AxisError
-        if not os.path.exists(filepath): raise IOError
-        # prepare sink
-        if os.path.exists(tmppath): os.remove(tmppath)
-        sink = DatasetNetCDF(name=None, folder=exp.avgfolder, filelist=[tmpname], atts=source.atts, mode='w')
-        sink.atts.period = periodstr 
-        sink.atts.name = exp.name
-        
-        # initialize processing
-        CPU = CentralProcessingUnit(source, sink, tmp=False)
-        
-        # shift longitude axis by 180 degrees left (i.e. 0 - 360 -> -180 - 180)
-        CPU.Shift(lon=-180, flush=True)
-        
-        # sync temporary storage with output
-        CPU.sync(flush=True)
-  
-        # make new masks
-  #       if sink.hasVariable('landfrac'):
-  #         # create variable and add to dataset
-  #         dataset.addVariable(Variable(axes=axes, name=maskname, data=mask, atts=atts), asNC=True)
+   
+    # loop over periods
+    for prdlen in periods: # (15,): # 
+      # loop over experiments
+      for experiment in experiments: # ('CESM',): #  
+        # loop over filetypes
+        for filetype in filetypes: # ('lnd',): #  
+          fileclass = fileclasses[filetype]
           
-        # add new variables
-        # liquid precip
-        if sink.hasVariable('precip') and sink.hasVariable('solprec'):
-          data = sink.precip.getArray() - sink.solprec.getArray()
-          Var = Variable(axes=sink.precip.axes, name='liqprec', data=data, atts=default_varatts['liqprec'])
-          # create variable and add to dataset          
-          sink.addVariable(Var, asNC=True)
-        # net precip
-        if sink.hasVariable('precip') and sink.hasVariable('evap'):
-          data = sink.precip.getArray() - sink.evap.getArray()
-          Var = Variable(axes=sink.precip.axes, name='p-et', data=data, atts=default_varatts['p-et'])
-          # create variable and add to dataset          
-          sink.addVariable(Var, asNC=True)
-  
-  #       # add names and length of months
-  #       sink.axisAnnotation('name_of_month', name_of_month, 'time', 
-  #                           atts=dict(name='name_of_month', units='', long_name='Name of the Month'))
-  #       #print '   ===   month   ===   '
-  #       sink += VarNC(sink.dataset, name='length_of_month', units='days', axes=(sink.time,), data=days_per_month,
-  #                     atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
-        
-        # add length and names of month
-        if sink.hasAxis('time', strict=False):
-          addLengthAndNamesOfMonth(sink, noleap=True)     
-  #       # add geolocators
-  #       sink = addGeoLocator(sink)  
-        # close...
-        sink.sync()
-        sink.close()
-        
-        # move files
-        os.rename(filepath, origpath)
-        os.rename(tmppath,filepath)
-        
-        # print dataset
-        print('')
-        print(sink)     
-        
+          # load source
+          exp = CESM_exps[experiment]
+          period = (exp.beginyear, exp.beginyear+prdlen)
+          periodstr = '{0:4d}-{1:4d}'.format(*period)
+          print('\n')
+          print('   ***   Processing Experiment {0:s} for Period {1:s}   ***   '.format(exp.title,periodstr))
+          print('\n')
+          # prepare file names
+          filename = fileclass.climfile.format('','_'+periodstr)
+          origname = 'orig'+filename[4:]; tmpname = 'tmp.nc'
+          filepath = exp.avgfolder+filename; origpath = exp.avgfolder+origname; tmppath = exp.avgfolder+tmpname
+          # load source
+          if os.path.exists(origpath) and os.path.exists(filepath): 
+            os.remove(filepath) # overwrite old file
+            os.rename(origpath,filepath) # get original source
+          source = loadCESM(experiment=exp, period=period, filetypes=[filetype])
+          print(source)
+          print('\n')
+          # savety checks
+          if os.path.exists(origpath): raise IOError
+          if np.max(source.lon.getArray()) < 180.: raise AxisError
+          if not os.path.exists(filepath): raise IOError
+          # prepare sink
+          if os.path.exists(tmppath): os.remove(tmppath)
+          sink = DatasetNetCDF(name=None, folder=exp.avgfolder, filelist=[tmpname], atts=source.atts, mode='w')
+          sink.atts.period = periodstr 
+          sink.atts.name = exp.name
+          
+          # initialize processing
+          CPU = CentralProcessingUnit(source, sink, tmp=False)
+          
+          # shift longitude axis by 180 degrees left (i.e. 0 - 360 -> -180 - 180)
+          CPU.Shift(lon=-180, flush=True)
+          
+          # sync temporary storage with output
+          CPU.sync(flush=True)
+              
+          # add new variables
+          # liquid precip (atmosphere file)
+          if sink.hasVariable('precip') and sink.hasVariable('solprec'):
+            data = sink.precip.getArray() - sink.solprec.getArray()
+            Var = Variable(axes=sink.precip.axes, name='liqprec', data=data, atts=default_varatts['liqprec'])            
+            sink.addVariable(Var, asNC=True) # create variable and add to dataset
+          # net precip (atmosphere file)
+          if sink.hasVariable('precip') and sink.hasVariable('evap'):
+            data = sink.precip.getArray() - sink.evap.getArray()
+            Var = Variable(axes=sink.precip.axes, name='p-et', data=data, atts=default_varatts['p-et'])
+            sink.addVariable(Var, asNC=True) # create variable and add to dataset      
+          # underground runoff (land file)
+          if sink.hasVariable('runoff') and sink.hasVariable('sfroff'):
+            data = sink.runoff.getArray() - sink.sfroff.getArray()
+            Var = Variable(axes=sink.runoff.axes, name='ugroff', data=data, atts=default_varatts['ugroff'])
+            sink.addVariable(Var, asNC=True) # create variable and add to dataset    
+    
+          # add length and names of month
+          if sink.hasAxis('time', strict=False):
+            addLengthAndNamesOfMonth(sink, noleap=True)     
+          # close...
+          sink.sync()
+          sink.close()
+          
+          # move files
+          os.rename(filepath, origpath)
+          os.rename(tmppath,filepath)
+          
+          # print dataset
+          print('')
+          print(sink)               

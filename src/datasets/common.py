@@ -45,6 +45,9 @@ default_varatts = dict(pmsl     = dict(name='pmsl', units='Pa'), # sea-level pre
                        pwtr     = dict(name='pwtr', units='kg/m^2'), # total precipitable water (kg/m^2)
                        snow     = dict(name='snow', units='kg/m^2'), # snow water equivalent
                        snowh    = dict(name='snowh', units='m'), # snow depth
+                       sfroff   = dict(name='sfroff', units='kg/m^2/s'), # surface run-off                      
+                       ugroff   = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off      
+                       runoff   = dict(name='runoff', units='kg/m^2/s'), # total surface and sub-surface run-off
                        stations = dict(name='stations', units='#'), # number of gauges for observation
                        zs       = dict(name='zs', units='m'), # surface elevation
                        landmask = dict(name='landmask', units=''), # land mask

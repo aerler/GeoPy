@@ -267,19 +267,36 @@ class DatasetNetCDF(Dataset):
   '''
   
   def __init__(self, name=None, title=None, dataset=None, filelist=None, varlist=None, varatts=None, atts=None, axes=None, 
-               multifile=False, check_override=None, folder='', mode='r', ncformat='NETCDF4', squeeze=True):
+               multifile=False, check_override=None, ignore_list=None, folder='', mode='r', ncformat='NETCDF4', squeeze=True):
     ''' 
       Create a Dataset from one or more NetCDF files; Variables are created from NetCDF variables. 
-      
+      Alternatively, create a netcdf file from an existing Dataset (Variables can be added as well).  
+      Arguments:
+        name           : a simple name for the dateset (string)
+        title          : name, formatted for printing (string
+        dataset        : an existing NetCDF dataset (instead of file list) or an existing PyGeoDat Dataset, if mode = 'w'
+        filelist       : a list/tuple of NetCDF files (relative for folder, see below); may be created, if mode = 'w'
+        varlist        : if mode = 'r', a list of variables to be loaded, if mode = 'w', a list/tuple of existing PyGeoDat Variables  
+        varatts        : dict of dicts with arguments for the Variable/Axis constructor (for each variable/axis) 
+        atts           : dict with attributes for the new dataset
+        axes           : list/tuple of axes to use (Axis or AxisNC); overrides axes of same name in NetCDF file 
+        multifile      : open file list using the netCDF4 MFDataset multi-file option (logical)
+        check_override : overrides consistency check for axes of same name for listed names (list/tuple of strings) 
+        ignore_list    : ignore listed variables and dimensions and any variables that depend on listed dimensions (list/tuple/set of strings; original names)
+        folder         : root folder for file list (string); this path is prepended to all filenames
+        mode           : file mode: whether read ('r') or write ('w') actions are intended/permitted (string; passed to netCDF4.Dataset)
+        ncformat       : format of NetCDF file, i.e. NETCDF3 NETCDF4 or NETCDF_CLASSIC (string; passed to netCDF4.Dataset)
+        squeeze        : squeeze singleton dimensions from all variables
+                       
       NetCDF Attributes:
-        mode = 'r' # a string indicating whether read ('r') or write ('w') actions are intended/permitted
-        datasets = [] # list of NetCDF datasets
-        dataset = @property # shortcut to first element of self.datasets
-        filelist = [] # files used to create datasets 
+        mode           = 'r' # a string indicating whether read ('r') or write ('w') actions are intended/permitted
+        datasets       = [] # list of NetCDF datasets
+        dataset        = @property # shortcut to first element of self.datasets
+        filelist       = [] # files used to create datasets 
       Basic Attributes:        
-        variables = dict() # dictionary holding Variable instances
-        axes = dict() # dictionary holding Axis instances (inferred from Variables)
-        atts = AttrDict() # dictionary containing global attributes / meta data
+        variables      = dict() # dictionary holding Variable instances
+        axes           = dict() # dictionary holding Axis instances (inferred from Variables)
+        atts           = AttrDict() # dictionary containing global attributes / meta data
     '''
     # create a new NetCDF file
     if 'w' == mode and filelist:    
@@ -287,16 +304,20 @@ class DatasetNetCDF(Dataset):
       filename = folder + filelist; filelist = [filename] # filelist is used later
       if os.path.exists(filename): raise NetCDFError, "File '%s' already exits - aborting!"%filename
       if dataset: # add variables in dataset
-        assert isinstance(dataset,Dataset)        
+        if not isinstance(dataset,Dataset): raise TypeError        
         dataset.atts.update(coerceAtts(atts))
       else: # if no dataset is provided, make one
         dataset = Dataset(varlist=[], atts=atts)
       if axes: # add remaining axes
-        assert isinstance(axes,col.Iterable)
-        for ax in axes: dataset.addAxis(ax)
+        if not isinstance(axes,(list,tuple)): raise TypeError
+        for ax in axes:
+          if not isinstance(ax,Axis): raise TypeError 
+          dataset.addAxis(ax)
       if varlist: # add remaining variables  
-        assert isinstance(varlist,col.Iterable)
-        for var in varlist: dataset.addVariable(var)      
+        if not isinstance(varlist,(list,tuple)): raise TypeError
+        for var in varlist: 
+          if not isinstance(var,Variable): raise TypeError
+          dataset.addVariable(var)      
       # create netcdf dataset/file
       dataset = writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True, writeData=False, close=False)
     # either use available NetCDF datasets directly, or open datasets from filelist  
@@ -304,7 +325,7 @@ class DatasetNetCDF(Dataset):
       datasets = [dataset]  # datasets is used later
       if 'filepath' in dir(dataset): filelist = [dataset.filepath] # only available in newer versions
     elif isinstance(dataset,(list,tuple)): 
-      assert all([isinstance(ds,nc.Dataset) for ds in dataset])
+      if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
       datasets = dataset
       filelist = [dataset.filepath for dataset in datasets if 'filepath' in dir(dataset)]
     else:
@@ -317,7 +338,7 @@ class DatasetNetCDF(Dataset):
       datasets = []; filenames = []
       for ncfile in filelist:
         try: # NetCDF4 error messages are not very helpful...
-          if multifile: # open a NetCDF-4 multi-file dataset 
+          if multifile: # open a netCDF4 multi-file dataset 
             if isinstance(ncfile,(list,tuple)): tmpfile = [folder+ncf for ncf in ncfile]
             else: tmpfile = folder+ncfile # multifile via regular expressions
             datasets.append(nc.MFDataset(tmpfile), mode='r', format=ncformat)
@@ -329,35 +350,41 @@ class DatasetNetCDF(Dataset):
         filenames.append(tmpfile)
       filelist = filenames # original file list, including folders        
     # from here on, dataset creation is based on the netcdf-Dataset(s) in 'datasets'
+    if ignore_list is not None:
+      if isinstance(ignore_list,(list,tuple,set)): ignore_list = set(ignore_list) # order doesn't matter
+      elif not isinstance(ignore_list,set): raise TypeError         
+    else: ignore_list = set()
     # create axes from netcdf dimensions and coordinate variables
     if varatts is None: varatts = dict() # empty dictionary means no parameters...
-    if check_override is None: check_override = [] # list of variables (and axes) that is not checked for consistency 
+    if check_override is None: check_override = [] # list of variables (and axes) that is not checked for consistency
+    # N.B.: check_override may be necessary to combine datasets from different files with inconsistent axis instances 
     if axes is None: axes = dict()
-    else: check_override += axes.keys()   
+    else: check_override += axes.keys() # don't check externally provided axes   
     if not isinstance(axes,dict): raise TypeError
     for ds in datasets:
       for dim in ds.dimensions.keys():
-        if dim in ds.variables: # dimensions with an associated coordinate variable           
-          if dim in axes: # if already present, make sure axes are essentially the same
-            tmpax = AxisNC(ncvar=ds.variables[dim], mode='r', **varatts.get(dim,{})) # apply all correction factors...
-            if dim not in check_override and not isEqual(axes[dim][:],tmpax[:]): 
-              raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
-          else: # if this is a new axis, add it to the list
-            if ds.variables[dim].dtype == '|S1': pass # Variables of type char are currently not implemented
-            else:      
-              axes[dim] = AxisNC(ncvar=ds.variables[dim], mode=mode, **varatts.get(dim,{})) # also use overrride parameters
-        else: # initialize dimensions without associated variable as regular Axis (not AxisNC)
-          if dim in axes: # if already present, make sure axes are essentially the same
-            if len(axes[dim]) != len(ds.dimensions[dim]): 
-              raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
-          else: # if this is a new axis, add it to the list
-            params = dict(name=dim,coord=np.arange(len(ds.dimensions[dim]))); params.update(varatts.get(dim,{}))
-            axes[dim] = Axis(**params) # also use overrride parameters          
+        if dim not in ignore_list:        
+          if dim in ds.variables: # dimensions with an associated coordinate variable           
+            if dim in axes: # if already present, make sure axes are essentially the same
+              tmpax = AxisNC(ncvar=ds.variables[dim], mode='r', **varatts.get(dim,{})) # apply all correction factors...
+              if dim not in check_override and not isEqual(axes[dim][:],tmpax[:]): 
+                raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
+            else: # if this is a new axis, add it to the list
+              if ds.variables[dim].dtype == '|S1': pass # Variables of type char are currently not implemented
+              else:      
+                axes[dim] = AxisNC(ncvar=ds.variables[dim], mode=mode, **varatts.get(dim,{})) # also use overrride parameters
+          else: # initialize dimensions without associated variable as regular Axis (not AxisNC)
+            if dim in axes: # if already present, make sure axes are essentially the same
+              if len(axes[dim]) != len(ds.dimensions[dim]): 
+                raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
+            else: # if this is a new axis, add it to the list
+              params = dict(name=dim,coord=np.arange(len(ds.dimensions[dim]))); params.update(varatts.get(dim,{}))
+              axes[dim] = Axis(**params) # also use overrride parameters          
     # create variables from netcdf variables    
     variables = dict()
     for ds in datasets:
-      if varlist is None: dsvars = ds.variables.keys()
-      else: dsvars = [var for var in varlist if ds.variables.has_key(var)]
+      if varlist is None: dsvars = [var for var in ds.variables.keys() if not var in ignore_list] 
+      else: dsvars = [var for var in varlist if ds.variables.has_key(var)] # varlist overrides ignore_list 
       # loop over variables in dataset
       for var in dsvars:
         if var in axes: pass # do not treat coordinate variables as real variables 
@@ -365,15 +392,16 @@ class DatasetNetCDF(Dataset):
         elif ds.variables[var].ndim == 0: pass # also ignore scalars for now...
           #raise NotImplementedError # Variables of type char are currently not implemented
         elif var in variables: # if already present, make sure variables are essentially the same
-          if dim not in check_override and ( (variables[var].shape != ds.variables[var].shape) or
-                                             (variables[var].ncvar.dimensions != ds.variables[var].dimensions) ): 
-            raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible variables.' 
+          if var not in check_override: 
+            if ( (variables[var].shape != ds.variables[var].shape) or
+                 (variables[var].ncvar.dimensions != ds.variables[var].dimensions) ): 
+              raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible variables.' 
         else: # if this is a new variable, add it to the list
           if all([axes.has_key(dim) for dim in ds.variables[var].dimensions]):
             varaxes = [axes[dim] for dim in ds.variables[var].dimensions] # collect axes
             # create new variable using the override parameters in varatts
             variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, mode=mode, squeeze=squeeze, **varatts.get(var,{}))
-          else: 
+          elif not any([dim in ignore_list for dim in ds.variables[var].dimensions]): # legitimate omission
             print var, ds.variables[var].dimensions
             raise DatasetError, 'Error constructing Variable: Axes/coordinates not found.'
     # get attributes from NetCDF dataset
