@@ -93,7 +93,7 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     filetype = dataargs['filetypes'][0]    
     # load source data 
     source = loadCESM(experiment=dataset_name, name=None, grid=None, period=period, filetypes=[filetype],  
-                      varlist=None, varatts=None, loadAll=True, translateVars=None)
+                      varlist=None, varatts=None, translateVars=None) # load3D=False should be default
     periodstr = '{0:4d}-{1:4d}'.format(*period)
     if 'period' in source.atts and periodstr != source.atts.period: # a NetCDF attribute
       raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
