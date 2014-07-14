@@ -82,7 +82,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     else: periodstr = '{0:4d}-{1:4d}'.format(*period)
     if 'period' in source.atts and periodstr != source.atts.period: # a NetCDF attribute
       raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
-    datamsgstr = 'Processing WRF Experiment \'{0:s}\' from {1:s}'.format(dataset_name, periodstr)
+    datamsgstr = "Processing WRF '{:s}'-file from Experiment '{:s}'".format(filetype, dataset_name)
   elif dataset == 'CESM': 
     # WRF datasets
     module = import_module('datasets.CESM')
@@ -112,7 +112,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     else: periodstr = '{0:4d}-{1:4d}'.format(*period)
     if 'period' in source.atts and periodstr != source.atts.period: # a NetCDF attribute
       raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
-    datamsgstr = 'Processing CESM Experiment \'{0:s}\' from {1:s}'.format(dataset_name, periodstr)  
+    datamsgstr = "Processing CESM '{:s}'-file from Experiment '{:s}'".format(filetype, dataset_name)  
   elif dataset == dataset.upper():
     # observational datasets
     module = import_module('datasets.{0:s}'.format(dataset))      
@@ -132,16 +132,20 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
                                       varlist=None, varatts=None, folder=module.avgfolder, filelist=None)
     elif mode == 'time-series': raise NotImplementedError, "Need to implement time-series regridding for datasets!"
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
-    # loadClimatology(name, period, grid, varlist, varatts, folder, filelist)
-    if period is None: periodstr = 'Climatology'
+    datamsgstr = "Processing Dataset '{:s}'".format(dataset_name)
+    # check period
+    if period is None: 
+      if mode == 'climatology': periodstr = 'Long-Term Mean'
+      else: periodstr = ''
     else: periodstr = '{0:4d}-{1:4d}'.format(*period)
-    datamsgstr = 'Processing Dataset {0:s} from {1:s}'.format(dataset_name, periodstr)
   else:
-    raise DatasetError, 'Dataset \'{0:s}\' not found!'.format(dataset)
-  opmsgstr = 'Reprojecting and Resampling to {0:s} Grid'.format(griddef.name)      
+    raise DatasetError, "Dataset '{:s}' not found!".format(dataset)
+  # common message
+  if mode == 'climatology': opmsgstr = 'Regridding Climatology ({:s}) to {:s} Grid'.format(periodstr, griddef.name)
+  elif mode == 'time-series': opmsgstr = 'Regridding Time-series to {:s} Grid'.format(griddef.name)
+  else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
   # print feedback to logger
-  # source.load() # not really necessary
-  logger.info('\n{0:s}   ***   {1:^50s}   ***   \n{0:s}   ***   {2:^50s}    ***   \n'.format(pidstr,datamsgstr,opmsgstr))
+  logger.info('\n{0:s}   ***   {1:^60s}   ***   \n{0:s}   ***   {2:^60s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
   if not lparallel:
     logger.info('\n'+str(source)+'\n')
   # determine age of oldest source file
@@ -177,7 +181,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       else: raise NotImplementedError
   else: raise DatasetError
   if ldebug: filename = 'test_' + filename
-  if not os.path.exists(avgfolder): raise IOError, 'Dataset folder \'{0:s}\' does not exist!'.format(avgfolder)
+  if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
   lskip = False # else just go ahead
   if lwrite:
     filepath = avgfolder+filename
@@ -192,14 +196,16 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
   # depending on last modification time of file or overwrite setting, start computation, or skip
   if lskip:        
     # print message
-    logger.info('{0:s}   >>>   Skipping: File \'{1:s}\' already exists and is newer than source file.   <<<   \n'.format(pidstr,filename))              
+    skipmsg =  "\n{:s}   >>>   Skipping: file '{:s}' in dataset '{:s}' already exists and is newer than source file.".format(pidstr,filename,dataset_name)
+    skipmsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,filepath)
+    logger.info(skipmsg)              
   else:
           
     ## create new sink/target file
     # set attributes   
     atts=source.atts
     atts['period'] = periodstr; atts['name'] = dataset_name; atts['grid'] = griddef.name
-    atts['title'] = '{0:s} Climatology on {1:s} Grid'.format(dataset_name, griddef.name)
+    atts['title'] = '{:s} Climatology on {:s} Grid'.format(dataset_name, griddef.name)
     # make new dataset
     if lwrite: # write to NetCDF file 
       sink = DatasetNetCDF(folder=avgfolder, filelist=[filename], atts=atts, mode='w')
@@ -230,7 +236,9 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     # write results to file
     if lwrite:
       sink.sync()
-      logger.info('\n{0:s} Writing to: \'{1:s}\'\n'.format(pidstr,filename))
+      writemsg =  "\n{:s}   >>>   Writing to file '{:s}' in dataset {:s}".format(pidstr,filename,dataset_name)
+      writemsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,filepath)
+      logger.info(writemsg)
       if not lreturn: sink.close()
     # return dataset
     if lreturn:
@@ -254,7 +262,7 @@ if __name__ == '__main__':
   # run script in batch or interactive mode
   if os.environ.has_key('PYAVG_BATCH'): 
     lbatch =  os.environ['PYAVG_BATCH'] == 'BATCH' 
-  else: lbatch = False # i.e. append  
+  else: lbatch = True # i.e. append  
   # re-compute everything or just update 
   if os.environ.has_key('PYAVG_OVERWRITE'): 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
@@ -329,8 +337,9 @@ if __name__ == '__main__':
     grids['cesm1x1'] = (None,) # CESM grid
 #     grids['NARR'] = (None,) # CESM grid
   else:
-    NP = NP or 2 # time-series might take more memory!
+    NP = NP or 1 # time-series might take more memory!
     modes = ('climatology','time-series')
+    modes = ('climatology',)
     #loverwrite = False
     varlist = None # process all variables
     datasets = [] # None # process all applicable
