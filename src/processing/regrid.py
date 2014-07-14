@@ -288,6 +288,7 @@ if __name__ == '__main__':
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     resolutions = None
     # CESM experiments (short or long name) 
+    load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
 #     CESM_experiments += ['CESM','CESM-2050']
 #     CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
@@ -328,8 +329,7 @@ if __name__ == '__main__':
     grids['cesm1x1'] = (None,) # CESM grid
 #     grids['NARR'] = (None,) # CESM grid
   else:
-    NP = 2 # NP or 2
-    # ignore setting for now and run with 2 cores - time-series might take more memory!
+    NP = NP or 2 # time-series might take more memory!
     modes = ('climatology','time-series')
     #loverwrite = False
     varlist = None # process all variables
@@ -439,7 +439,7 @@ if __name__ == '__main__':
           for filetype in CESM_filetypes:
             for period in periodlist:
               # arguments for worker function: dataset and dataargs       
-              args.append( ('CESM', mode, griddef, dict(experiment=experiment, filetypes=[filetype], period=period)) )
+              args.append( ('CESM', mode, griddef, dict(experiment=experiment, filetypes=[filetype], period=period, load3D=load3D)) )
         # WRF datasets
         for experiment in WRF_experiments:
           for filetype in WRF_filetypes:
