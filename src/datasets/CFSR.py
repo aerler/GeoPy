@@ -72,9 +72,11 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 ## Functions to load different types of CFSR datasets 
 
-tsfolder = root_folder + 'Monthly/'
+# time-series
+orig_ts_folder = root_folder + 'Monthly/'
+tsfile = 'cfsr{0:s}_monthly.nc' # extend with grid type only
 def loadCFSR_TS(name=dataset_name, varlist=None, varatts=varatts, resolution='hires', filelist=None, 
-                folder=tsfolder):
+                folder=orig_ts_folder):
   ''' Get a properly formatted CFSR dataset with monthly mean time-series. '''
   # translate varlist
   if varlist is None:
@@ -140,7 +142,8 @@ def loadCFSR(name=dataset_name, period=None, grid=None, resolution=None, varlist
 
 dataset_name # dataset name
 root_folder # root folder of the dataset
-ts_file_pattern = '{0:s}{1:s}06.gdas.{2:s}.{3:s}.grb2.nc' # filename pattern: type, resolution, variable name, and level 
+orig_file_pattern = '{0:s}{1:s}06.gdas.{2:s}.{3:s}.grb2.nc' # filename pattern: type, resolution, variable name, and level 
+ts_file_pattern = tsfile # filename pattern: grid
 clim_file_pattern = avgfile # filename pattern: grid, and period
 data_folder = avgfolder # folder for user data
 grid_def = {'031':CFSR_031_grid, '05':CFSR_05_grid}

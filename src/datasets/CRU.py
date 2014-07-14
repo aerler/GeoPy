@@ -56,15 +56,16 @@ nofile = ('lat','lon','time') # variables that don't have their own files
 ## Functions to load different types of GPCC datasets 
 
 # Time-series (monthly)
-tsfolder = root_folder + 'Time-series 3.2/data/' # monthly subfolder
-tsfile = 'cru_ts3.20.1901.2011.{0:s}.dat.nc' # file names, need to extend with variable name (original)
-def loadCRU_TS(name=dataset_name, varlist=varlist, varatts=varatts, filelist=None, folder=tsfolder):
+orig_ts_folder = root_folder + 'Time-series 3.2/data/' # monthly subfolder
+orig_ts_file = 'cru_ts3.20.1901.2011.{0:s}.dat.nc' # file names, need to extend with variable name (original)
+tsfile = 'cru{0:s}_monthly.nc' # extend with grid type only
+def loadCRU_TS(name=dataset_name, varlist=varlist, varatts=varatts, filelist=None, folder=orig_ts_folder):
   ''' Get a properly formatted  CRU dataset with monthly mean time-series. '''
   # translate varlist
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   # assemble filelist
   if filelist is None: # generate default filelist
-    filelist = [tsfile.format(var) for var in varlist if var not in nofile]
+    filelist = [orig_ts_file.format(var) for var in varlist if var not in nofile]
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           multifile=False, ncformat='NETCDF4_CLASSIC')
@@ -94,7 +95,8 @@ def loadCRU(name=dataset_name, period=None, grid=None, resolution=None, varlist=
 
 dataset_name # dataset name
 root_folder # root folder of the dataset
-ts_file_pattern = tsfile # filename pattern: variable name and resolution
+orig_file_pattern = orig_ts_file # filename pattern: variable name and resolution
+ts_file_pattern = tsfile # filename pattern: grid
 clim_file_pattern = avgfile # filename pattern: variable name and resolution
 data_folder = avgfolder # folder for user data
 grid_def = {'':CRU_grid} # standardized grid dictionary

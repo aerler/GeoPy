@@ -96,14 +96,15 @@ def loadNARR_LTM(name=dataset_name, varlist=ltmvarlist, interval='monthly', vara
   return dataset
 
 # Time-series (monthly)
-tsfolder = root_folder + 'Monthly/' # monthly subfolder
-tsfile = '{0:s}.mon.mean.nc' # monthly time-series for each variables
-def loadNARR_TS(name=dataset_name, varlist=tsvarlist, varatts=varatts, filelist=None, folder=tsfolder):
+orig_ts_folder = root_folder + 'Monthly/' # monthly subfolder
+orig_ts_file = '{0:s}.mon.mean.nc' # monthly time-series for each variables
+tsfile = 'narr{0:s}_monthly.nc' # extend with grid type only
+def loadNARR_TS(name=dataset_name, varlist=tsvarlist, varatts=varatts, filelist=None, folder=orig_ts_folder):
   ''' Get a properly formatted NARR dataset with monthly mean time-series. '''
   # translate varlist
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   if filelist is None: # generate default filelist
-    filelist = [tsfile.format(special[var]) if var in special else tsfile.format(var) for var in varlist if var not in nofile]
+    filelist = [orig_ts_file.format(special[var]) if var in special else orig_ts_file.format(var) for var in varlist if var not in nofile]
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                           atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
@@ -130,7 +131,8 @@ def loadNARR(name=dataset_name, period=None, grid=None, resolution=None, varlist
 
 dataset_name # dataset name
 root_folder # root folder of the dataset
-ts_file_pattern = tsfile # filename pattern: variables name
+orig_file_pattern = orig_ts_file # filename pattern: variables name
+ts_file_pattern = tsfile  # filename pattern: grid
 clim_file_pattern = avgfile # filename pattern: grid, and period
 data_folder = avgfolder # folder for user data
 grid_def = {'':NARR_grid} # no special name since there is only one grid 

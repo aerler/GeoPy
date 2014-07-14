@@ -87,10 +87,11 @@ def loadGPCC_LTM(name=dataset_name, varlist=None, resolution='025', varatts=ltmv
   # return formatted dataset
   return dataset
 
-# time-series
-tsfolder = root_folder + 'full_data_1900-2010/' # climatology subfolder
-tsfile = 'full_data_v6_{0:s}_{1:s}.nc' # extend by variable name and resolution
-def loadGPCC_TS(name=dataset_name, varlist=None, resolution='25', varatts=tsvaratts, filelist=None, folder=tsfolder):
+# Time-series (monthly)
+orig_ts_folder = root_folder + 'full_data_1900-2010/' # climatology subfolder
+orig_ts_file = 'full_data_v6_{0:s}_{1:s}.nc' # extend by variable name and resolution
+tsfile = 'gpcc{0:s}_monthly.nc' # extend with grid type only
+def loadGPCC_TS(name=dataset_name, varlist=None, resolution='25', varatts=tsvaratts, filelist=None, folder=orig_ts_folder):
   ''' Get a properly formatted dataset with the monthly GPCC time-series. '''
   # prepare input  
   if resolution not in ('05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
@@ -99,8 +100,8 @@ def loadGPCC_TS(name=dataset_name, varlist=None, resolution='25', varatts=tsvara
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   if filelist is None: # generate default filelist
     filelist = []
-    if 'p' in varlist: filelist.append(tsfile.format('precip',resolution))
-    if 's' in varlist: filelist.append(tsfile.format('statio',resolution))
+    if 'p' in varlist: filelist.append(orig_ts_file.format('precip',resolution))
+    if 's' in varlist: filelist.append(orig_ts_file.format('statio',resolution))
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
@@ -139,7 +140,8 @@ def loadGPCC(name=dataset_name, resolution=None, period=None, grid=None, varlist
 
 dataset_name # dataset name
 root_folder # root folder of the dataset
-ts_file_pattern = tsfile # filename pattern: variable name and resolution
+orig_file_pattern = orig_ts_file # filename pattern: variable name and resolution
+ts_file_pattern = tsfile # filename pattern: grid
 clim_file_pattern = avgfile # filename pattern: grid, and period
 data_folder = avgfolder # folder for user data
 grid_def = {'025':GPCC_025_grid, '05':GPCC_05_grid, '10':GPCC_10_grid, '25':GPCC_25_grid}

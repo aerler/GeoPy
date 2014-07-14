@@ -320,7 +320,8 @@ avgfolder = root_folder + 'wrfavg/' # long-term mean folder
 ## Functions to load different types of WRF datasets
 
 # Time-Series (monthly)
-def loadWRF_TS(experiment=None, name=None, domains=2, filetypes=None, varlist=None, varatts=None):
+def loadWRF_TS(experiment=None, name=None, domains=2, grid=None, filetypes=None, varlist=None, varatts=None, 
+               lconst=True, lautoregrid=True):
   ''' Get a properly formatted WRF dataset with monthly time-series. '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)

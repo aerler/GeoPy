@@ -22,15 +22,14 @@ from datasets.common import addLengthAndNamesOfMonth, getFileName, getCommonGrid
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
 # WRF specific
-from datasets.WRF import getWRFgrid, loadWRF
-from datasets.WRF import fileclasses as WRF_fileclasses
+from datasets.WRF import getWRFgrid, loadWRF, loadWRF_TS
 from projects.WRF_experiments import WRF_exps
 # CESM specific
-from datasets.CESM import loadCESM, CESM_exps
+from datasets.CESM import loadCESM, loadCESM_TS, CESM_exps
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
-def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None, lwrite=True, lreturn=False,
+def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlist=None, lwrite=True, lreturn=False,
                       ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to perform regridding for a given dataset and target grid '''
   # input checking
@@ -60,7 +59,8 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     domain = dataargs['domain']
     # figure out period
     period = dataargs['period']
-    if isinstance(period,(int,np.integer)):
+    if period is None: pass
+    elif isinstance(period,(int,np.integer)):
       beginyear = int(exp.begindate[0:4])
       period = (beginyear, beginyear+period)
     elif len(period) != 2 and all(isInt(period)): raise DateError
@@ -69,11 +69,17 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     filetype = dataargs['filetypes'][0]
     if isinstance(domain,(list,tuple)): domain = domain[0]
     if not isinstance(domain, (np.integer,int)): raise DatasetError
-    # load source data 
-    source = loadWRF(experiment=dataset_name, name=None, domains=domain, grid=None, period=period, 
-                     filetypes=[filetype], varlist=None, varatts=None, lconst=True) # still want topography...
-    # source = loadWRF(experiment, name, domains, grid, period, filetypes, varlist, varatts)
-    periodstr = '{0:4d}-{1:4d}'.format(*period)
+    # load source data
+    if mode == 'climatology':
+      source = loadWRF(experiment=dataset_name, name=None, domains=domain, grid=None, period=period, 
+                       filetypes=[filetype], varlist=None, varatts=None, lconst=True) # still want topography...
+    elif mode == 'time-series':
+      source = loadWRF_TS(experiment=dataset_name, name=None, domains=domain, grid=None, 
+                       filetypes=[filetype], varlist=None, varatts=None, lconst=True) # still want topography...
+    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
+    # check period
+    if period is None: periodstr = '' 
+    else: periodstr = '{0:4d}-{1:4d}'.format(*period)
     if 'period' in source.atts and periodstr != source.atts.period: # a NetCDF attribute
       raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
     datamsgstr = 'Processing WRF Experiment \'{0:s}\' from {1:s}'.format(dataset_name, periodstr)
@@ -84,17 +90,26 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     dataset_name = exp.name
     # figure out period
     period = dataargs['period']
-    if isinstance(period,(int,np.integer)):
+    if period is None: pass
+    elif isinstance(period,(int,np.integer)):
       beginyear = int(exp.begindate[0:4])
       period = (beginyear, beginyear+period)
     elif len(period) != 2 and all(isInt(period)): raise DateError
     # identify file
     if len(dataargs['filetypes']) > 1: raise DatasetError # process only one file at a time
-    filetype = dataargs['filetypes'][0]    
+    filetype = dataargs['filetypes'][0]        
     # load source data 
-    source = loadCESM(experiment=dataset_name, name=None, grid=None, period=period, filetypes=[filetype],  
-                      varlist=None, varatts=None, translateVars=None) # load3D=False should be default
-    periodstr = '{0:4d}-{1:4d}'.format(*period)
+    load3D = dataargs.pop('load3D',None) # if 3D fields should be loaded (default: False)
+    if mode == 'climatology':
+      source = loadCESM(experiment=dataset_name, name=None, grid=None, period=period, filetypes=[filetype],  
+                        varlist=None, varatts=None, load3D=load3D, translateVars=None)
+    elif mode == 'time-series':
+      source = loadCESM_TS(experiment=dataset_name, name=None, grid=None, filetypes=[filetype],  
+                        varlist=None, varatts=None, load3D=load3D, translateVars=None)
+    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
+    # check period
+    if period is None: periodstr = ''
+    else: periodstr = '{0:4d}-{1:4d}'.format(*period)
     if 'period' in source.atts and periodstr != source.atts.period: # a NetCDF attribute
       raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
     datamsgstr = 'Processing CESM Experiment \'{0:s}\' from {1:s}'.format(dataset_name, periodstr)  
@@ -106,16 +121,19 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
     if resolution: grid_name = '{0:s}_{1:s}'.format(dataset_name,resolution)
     else: grid_name = dataset_name   
     # figure out period
-    period = dataargs['period']
-    if isinstance(period,(int,np.integer)):
+    period = dataargs['period']    
+    if period is None: pass
+    elif isinstance(period,(int,np.integer)):
       period = (1979, 1979+period) # they all begin in 1979
-    elif period is None: pass
     elif len(period) != 2 and not all(isInt(period)): raise DateError
     # load pre-processed climatology
-    source = module.loadClimatology(name=dataset_name, period=period, grid=None, resolution=resolution,  
-                                    varlist=None, varatts=None, folder=module.avgfolder, filelist=None)
+    if mode == 'climatology':
+      source = module.loadClimatology(name=dataset_name, period=period, grid=None, resolution=resolution,  
+                                      varlist=None, varatts=None, folder=module.avgfolder, filelist=None)
+    elif mode == 'time-series': raise NotImplementedError, "Need to implement time-series regridding for datasets!"
+    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
     # loadClimatology(name, period, grid, varlist, varatts, folder, filelist)
-    if period is None: periodstr = 'Climatology' 
+    if period is None: periodstr = 'Climatology'
     else: periodstr = '{0:4d}-{1:4d}'.format(*period)
     datamsgstr = 'Processing Dataset {0:s} from {1:s}'.format(dataset_name, periodstr)
   else:
@@ -136,20 +154,27 @@ def performRegridding(dataset, griddef, dataargs, loverwrite=False, varlist=None
   # prepare target dataset
   if dataset == 'WRF':
     gridstr = '_{}'.format(griddef.name.lower()) if griddef.name.lower() else ''
-    periodstr = '_{}'.format(periodstr) if periodstr else ''# I know, this is pointless at the moment...
+    periodstr = '_{}'.format(periodstr) if periodstr else ''
     if lwrite:
-      filename = module.clim_file_pattern.format(filetype,domain,gridstr,periodstr)
+      if mode == 'climatology': filename = module.ts_file_pattern.format(filetype,domain,gridstr)
+      elif mode == 'time-series': filename = module.clim_file_pattern.format(filetype,domain,gridstr,periodstr)
+      else: raise NotImplementedError
       avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
   elif dataset == 'CESM':
     gridstr = '_{}'.format(griddef.name.lower()) if griddef.name.lower() else ''
-    periodstr = '_{}'.format(periodstr) if periodstr else ''# I know, this is pointless at the moment...
+    periodstr = '_{}'.format(periodstr) if periodstr else ''
     if lwrite:
-      filename = module.clim_file_pattern.format(filetype,gridstr,periodstr)
+      if mode == 'climatology': filename = module.ts_file_pattern.format(filetype,gridstr)
+      elif mode == 'time-series': filename = module.clim_file_pattern.format(filetype,gridstr,periodstr)
+      else: raise NotImplementedError
       avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
   elif dataset == dataset.upper(): # observational datasets
     if lwrite:
-      filename = getFileName(grid=griddef.name, period=period, name=grid_name, filepattern=None)
-      avgfolder = module.avgfolder
+      if mode == 'climatology':
+        filename = getFileName(grid=griddef.name, period=period, name=grid_name, filepattern=None)
+        avgfolder = module.avgfolder
+      elif mode == 'time-series': raise NotImplementedError
+      else: raise NotImplementedError
   else: raise DatasetError
   if ldebug: filename = 'test_' + filename
   if not os.path.exists(avgfolder): raise IOError, 'Dataset folder \'{0:s}\' does not exist!'.format(avgfolder)
@@ -239,7 +264,9 @@ if __name__ == '__main__':
   if not lbatch:
     ldebug = False
     NP = 2 or NP # to avoid memory issues...
-    loverwrite = True
+#     modes = ('climatology',) # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology','time-series'
+    loverwrite = False
     varlist = None
 #     varlist = ['precip',]
     periods = []
@@ -260,69 +287,74 @@ if __name__ == '__main__':
 #     datasets += ['CFSR', 'NARR']
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     resolutions = None
-    # CESM
-    CESM_experiments = None # all experiments
-#     CESM_experiments = []
+    # CESM experiments (short or long name) 
+    CESM_experiments = [] # use None to process all CESM experiments
 #     CESM_experiments += ['CESM','CESM-2050']
 #     CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
 #     CESM_experiments += ['Ctrl-2050', 'Ens-A-2050', 'Ens-B-2050', 'Ens-C-2050']
     CESM_filetypes = ['atm','lnd']
-    # WRF
-#     WRF_experiments = None # all experiments
-    WRF_experiments = [] # WRF experiment names (passed through WRFname)
-#     WRF_experiments += ['max']
+    # WRF experiments (short or long name)
+    WRF_experiments = [] # use None to process all CESM experiments
+    WRF_experiments += ['max']
 #     WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
 #     WRF_experiments += ['max','max-lowres','max-nmp','max-nosub']
 #     WRF_experiments += ['max','max-A','max-nofdda','max-fdda']
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ens','max-ens-2050']
-#     WRF_experiments += ['new-ctrl', 'cfsr-new', 'new-grell','new-grell-old', ] # new standard runs (arb3)
-    WRF_experiments += ['new-ctrl-2050', 'new-noah', 'v35-noah'] # new sensitivity tests (arb3)
-    WRF_experiments += ['cam-ctrl', 'cam-ctrl-1-2050', 'cam-ctrl-2-2050', 'cam-ctrl-2-2100'] # new sensitivity tests 
-    WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
-    WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old simulations (arb1)
+#     WRF_experiments += ['ctrl-1-arb1', 'new-ctrl', 'max-ctrl'] #  old ctrl simulations (arb1)
+#     WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'cfsr-new', 'new-grell',] # new standard runs (arb3) 
+#     WRF_experiments += ['new-grell-old', 'new-noah', 'v35-noah'] # new sensitivity tests (arb3)
+#     WRF_experiments += ['cam-ctrl', 'cam-ctrl-1-2050', 'cam-ctrl-2-2050', 'cam-ctrl-2-2100'] # old cam simulations (arb1) 
+#     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
+#     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-    domains = [1,2] # domains to be processed
-#     WRF_filetypes = ['hydro','xtrm','srfc','lsm'] # filetypes to be processed
-    WRF_filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
-#     WRF_filetypes = ['srfc']
+    domains = (1,2) # domains to be processed
+#     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
+    WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
+    WRF_filetypes = ('srfc',)
+#     WRF_filetypes = ('const',); periods = None
     # grid to project onto
     lpickle = True
     grids = dict()
-#     grids['col1'] = ['d03','d02','d01'] # innermost WRF Columbia domain
-#     grids['col2'] = ['d03','d02','d01'] # innermost WRF Columbia domain
-#     grids['grb2'] = ['d02'] # Marc's standard GRB inner domain
-#     grids['arb2'] = ['d02'] # WRF standard ARB inner domain
-#     grids['arb3'] = ['d02'] # WRF new ARB inner domain
-    grids['arb2'] = ['d01','d02'] # WRF standard ARB both domains
-#     grids['ARB_small'] = ['025','05'] # small custom geographic grids
-#     grids['ARB_large'] = ['025','05'] # large custom geographic grids
-#     grids['cesm1x1'] = [None] # CESM grid
-#     grids = dict(NARR=[None]) # CESM grid
+#     grids['col1'] = ('d03','d02','d01') # innermost WRF Columbia domain
+#     grids['col2'] = ('d03','d02','d01') # innermost WRF Columbia domain
+#     grids['grb2'] = ('d02',) # Marc's standard GRB inner domain
+#     grids['arb2'] = ('d02',) # WRF standard ARB inner domain
+#     grids['arb3'] = ('d02',) # WRF new ARB inner domain
+#     grids['arb2'] = ('d01','d02') # WRF standard ARB both domains
+#     grids['ARB_small'] = ('025','05') # small custom geographic grids
+#     grids['ARB_large'] = ('025','05') # large custom geographic grids
+    grids['cesm1x1'] = (None,) # CESM grid
+#     grids['NARR'] = (None,) # CESM grid
   else:
-    NP = NP or 4
+    NP = 2 # NP or 2
+    # ignore setting for now and run with 2 cores - time-series might take more memory!
+    modes = ('climatology','time-series')
     #loverwrite = False
     varlist = None # process all variables
-    datasets = None # process all applicable
-    periods = [5,10,15] # climatology periods to process
+    datasets = [] # None # process all applicable
+    periods = (5,10,15) # climatology periods to process
 #     periods = [(1979,1984),(1979,1989)] # climatology periods to process 
 #     periods = None # process only overall climatologies 
     resolutions = None
     # CESM
-    CESM_experiments = None
-    CESM_filetypes = ['atm','lnd']    
+    CESM_experiments = [] # None
+    CESM_filetypes = ('atm','lnd')    
     # WRF
     WRF_experiments = [] # process WRF experiments on different grids
-    WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'cfsr-new', 'new-grell',] # standard runs 
-    WRF_experiments += ['new-grell-old', 'new-noah', 'v35-noah'] # sensitivity tests
-    domains = [1,2] # domains to be processed
-    WRF_filetypes = WRF_fileclasses.keys() # process all filetypes 
+    WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'cfsr-new', 'new-grell',] # new standard runs (arb3) 
+    WRF_experiments += ['new-grell-old', 'new-noah', 'v35-noah'] # new sensitivity tests (arb3)
+    WRF_experiments += ['cam-ctrl', 'cam-ctrl-1-2050', 'cam-ctrl-2-2050', 'cam-ctrl-2-2100'] # old cam simulations (arb1) 
+    WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
+    WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
+    domains = (1,2) # domains to be processed
+    WRF_filetypes = WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad' 
     # grid to project onto
     lpickle = True
-    #d12 = ['d01','d02']
+    #d12 = ('d01','d02')
     #grids = dict(arb1=d12, arb2=d12, arb3=d12) # dict with list of resolutions
-    grids = dict(arb2=['d02']) # dict with list of resolutions  
+    grids = dict(arb2=('d02',),cesm1x1=(None,)) # dict with list of resolutions  
     
   
   ## process arguments    
@@ -368,46 +400,53 @@ if __name__ == '__main__':
     
   ## construct argument list
   args = []  # list of job packages
-  # loop over target grids ...
-  for grid,reses in grids.iteritems():
-    # ... and resolutions
-    for res in reses:
-      
-      # load target grid definition
-      if lpickle:
-        griddef = loadPickledGridDef(grid=grid, res=res, folder=grid_folder)
-      else:
-        griddef = getCommonGrid(grid) # try this first (common grids)
-        # else, determine new grid from existing dataset
-        if griddef is None:
-          if grid == grid.lower(): # WRF grid      
-            griddef = getWRFgrid(experiment=grid, domains=[1])
-          elif grid == grid.upper(): # observations
-            griddef = import_module(grid[0:4]).__dict__[grid+'_grid']
-          else: pass # we could try CESM grids here, at a later stage
-      # check if grid was defined properly
-      if not isinstance(griddef,GridDefinition): 
-        raise GDALError, 'No valid grid defined! (grid={0:s})'.format(grid)        
-      
-      # observational datasets
-      for dataset in datasets:
-        for period in periods:
-          for resolution in resolutions[dataset]:
-            # arguments for worker function: dataset and dataargs       
-            args.append( (dataset, griddef, dict(period=period, resolution=resolution)) ) # append to list               
-      # CESM datasets
-      for experiment in CESM_experiments:
-        for filetype in CESM_filetypes:
-          for period in periods:
-            # arguments for worker function: dataset and dataargs       
-            args.append( ('CESM', griddef, dict(experiment=experiment, filetypes=[filetype], period=period)) )
-      # WRF datasets
-      for experiment in WRF_experiments:
-        for filetype in WRF_filetypes:
-          for domain in domains:
-            for period in periods:
+  # loop over modes
+  for mode in modes:
+    # only climatology mode has periods    
+    if mode == 'climatology': periodlist = periods
+    elif mode == 'time-series': periodlist = (None,)
+    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
+
+    # loop over target grids ...
+    for grid,reses in grids.iteritems():
+      # ... and resolutions
+      for res in reses:
+        
+        # load target grid definition
+        if lpickle:
+          griddef = loadPickledGridDef(grid=grid, res=res, folder=grid_folder)
+        else:
+          griddef = getCommonGrid(grid) # try this first (common grids)
+          # else, determine new grid from existing dataset
+          if griddef is None:
+            if grid == grid.lower(): # WRF grid      
+              griddef = getWRFgrid(experiment=grid, domains=[1])
+            elif grid == grid.upper(): # observations
+              griddef = import_module(grid[0:4]).__dict__[grid+'_grid']
+            else: pass # we could try CESM grids here, at a later stage
+        # check if grid was defined properly
+        if not isinstance(griddef,GridDefinition): 
+          raise GDALError, 'No valid grid defined! (grid={0:s})'.format(grid)        
+        
+        # observational datasets
+        for dataset in datasets:
+          for period in periodlist:
+            for resolution in resolutions[dataset]:
               # arguments for worker function: dataset and dataargs       
-              args.append( ('WRF', griddef, dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)) )
+              args.append( (dataset, mode, griddef, dict(period=period, resolution=resolution)) ) # append to list               
+        # CESM datasets
+        for experiment in CESM_experiments:
+          for filetype in CESM_filetypes:
+            for period in periodlist:
+              # arguments for worker function: dataset and dataargs       
+              args.append( ('CESM', mode, griddef, dict(experiment=experiment, filetypes=[filetype], period=period)) )
+        # WRF datasets
+        for experiment in WRF_experiments:
+          for filetype in WRF_filetypes:
+            for domain in domains:
+              for period in periodlist:
+                # arguments for worker function: dataset and dataargs       
+                args.append( ('WRF', mode, griddef, dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)) )
       
   # static keyword arguments
   kwargs = dict(loverwrite=loverwrite, varlist=varlist)

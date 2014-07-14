@@ -53,7 +53,7 @@ experiments['hcbrcp85cn1x1d'] = Exp(shortname='Ens-C-2100', name='hcbrcp85cn1x1d
 
 ## an alternate dictionary using short names and aliases for referencing
 exps = dict()
-# use short names where availalbe, normal names otherwise
+# use short names where available, normal names otherwise
 for key,item in experiments.iteritems():
   exps[item.name] = item
   if item.shortname is not None: 
@@ -175,7 +175,7 @@ ignore_list_3D = ('lev', 'levgrnd',) # ignore all 3D variables (and vertical axe
 ## Functions to load different types of WRF datasets
 
 # Time-Series (monthly)
-def loadCESM_TS(experiment=None, name=None, filetypes=None, varlist=None, varatts=None):
+def loadCESM_TS(experiment=None, name=None, grid=None, filetypes=None, varlist=None, varatts=None):
   ''' Get a properly formatted CESM dataset with monthly time-series. '''
   raise NotImplementedError
 
@@ -266,7 +266,7 @@ dataset_name = 'CESM' # dataset name
 root_folder # root folder of the dataset
 avgfolder # root folder for monthly averages
 outfolder # root folder for direct WRF output
-ts_file_pattern = 'cesm{0:s}{1:s}_monthly.nc' # filename pattern: filetype, grid, period
+ts_file_pattern = 'cesm{0:s}{1:s}_monthly.nc' # filename pattern: filetype, grid
 clim_file_pattern = 'cesm{0:s}{1:s}_clim{2:s}.nc' # filename pattern: filetype, grid, period
 data_folder = root_folder # folder for user data
 grid_def = {'':None} # there are too many... 
