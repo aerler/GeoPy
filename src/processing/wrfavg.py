@@ -8,7 +8,7 @@ Script to produce climatology files from monthly mean time-series' for all or a 
 
 # external
 import numpy as np
-import os
+import os, gc
 from datetime import datetime
 # internal
 from geodata.base import Variable
@@ -105,23 +105,22 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
         sink.atts.period = periodstr 
         
         # initialize processing
-        CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=True) # no need for lat/lon
+        if griddef is None: lregrid = False
+        else: lregrid = True
+        CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=lregrid) # no need for lat/lon
         
         # start processing climatology
         if shift != 0: 
           logger.info('{0:s}   (shifting climatology by {1:d} month, to start with January)   \n'.format(pidstr,shift))
-        CPU.Climatology(period=period, offset=offset, shift=shift, flush=False)
+        CPU.Climatology(period=period, offset=offset, shift=shift, flush= not lregrid)
         
         # reproject and resample (regrid) dataset
-        if griddef is not None:
-          CPU.Regrid(griddef=griddef, flush=False)
-          logger.info('%s    ---   '+str(griddef.geotansform)+'   ---   \n'%(pidstr))      
+        if lregrid:
+          CPU.Regrid(griddef=griddef, flush=True)
+          logger.info('%s    ---   '+str(griddef.geotansform)+'   ---   \n'%(pidstr))              
         
         # sync temporary storage with output dataset (sink)
         CPU.sync(flush=True)
-        
-        # make new masks
-        #sink.mask(sink.landmask, maskSelf=False, varlist=['snow','snowh','zs'], invert=True, merge=False)
         
         # add names and length of months
         sink.axisAnnotation('name_of_month', name_of_month, 'time', 
@@ -139,11 +138,12 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
           logger.info('\n'+str(sink)+'\n')
         
         # clean up (not sure if this is necessary, but there seems to be a memory leak...   
-        del sink, CPU  
+        del sink, CPU; gc.collect() # get rid of these guys immediately
           
   # this one is only loaded once for all periods    
   del source
-  
+  # N.B.: garbage is collected in multi-processing wrapper as well
+
   # return
   return 0 # so far, there is no measure of success, hence, if there is no crash...
 
@@ -178,14 +178,14 @@ if __name__ == '__main__':
 
   
   # default settings
-  if not lbatch:
+  if lbatch:
     ldebug = False
-    NP = NP or 4
+    NP = 1 #NP or 4
     loverwrite = True
     varlist = None # ['precip', ]
     experiments = []
-    #experiments += ['new','noah','max','max-2050']
-#     experiments += ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
+    experiments += ['new','noah','max','max-2050']
+    experiments += ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
 #     experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
 #     experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
@@ -200,23 +200,24 @@ if __name__ == '__main__':
 #     periods += [1]
 #     periods += [3]
     periods += [5]
-    periods += [9]
+#     periods += [9]
 #     periods += [10]
 #     periods += [15]
-    domains = [1,2] # domains to be processed
+    domains = (2,) # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
-    filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
+#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']
-#     filetypes = ['hydro'] # filetypes to be processed
+    filetypes = ['lsm'] # filetypes to be processed
     grid = 'WRF'
   else:
     NP = NP or 4
+    ldebug=True
     #loverwrite = True
     varlist = None
     experiments = None # WRF experiment names (passed through WRFname)
     offset = 0 # number of years from simulation start
-    periods = [5,10,15] # averaging period
-    domains = [1,2] # domains to be processed
+    periods = (5,10,15,) # averaging period
+    domains = (1,2,) # domains to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # , rad
     grid = 'WRF' 
 
@@ -224,12 +225,11 @@ if __name__ == '__main__':
   if experiments is None: experiments = WRF_experiments.values() # do all 
   else: experiments = [WRF_exps[exp] for exp in experiments] 
 
-  ## do some fancy regridding
-  # determine coordinate arrays
-  if grid != 'WRF':
-    griddef = getCommonGrid(grid)
-  else:
+  # shall we do some fancy regridding?
+  if grid == 'WRF':
     griddef = None
+  else:
+    griddef = getCommonGrid(grid)
   
   # print an announcement
   print('\n Computing Climatologies for WRF experiments:\n')
@@ -248,6 +248,6 @@ if __name__ == '__main__':
         # arguments for worker function
         args.append( (experiment, filetype, domain) )        
   # static keyword arguments
-  kwargs = dict(periods=periods, offset=offset, griddef=None, loverwrite=loverwrite, varlist=varlist)        
+  kwargs = dict(periods=periods, offset=offset, griddef=griddef, loverwrite=loverwrite, varlist=varlist)        
   # call parallel execution function
   asyncPoolEC(computeClimatology, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)

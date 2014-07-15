@@ -126,27 +126,24 @@ class CentralProcessingUnit(object):
       # check if variable already exists
       if self.target.hasVariable(varname):
         # "in-place" operations
-        var = self.target.variables[varname] 
-        newvar = function(var)
+        var = self.target.variables[varname]         
+        newvar = function(var) # perform actual processing
         if newvar.ndim != var.ndim or newvar.shape != var.shape: raise VariableError
         if newvar is not var: self.target.replaceVariable(var,newvar)
       elif self.source.hasVariable(varname):        
-        var = self.source.variables[varname] 
+        var = self.source.variables[varname]
+        ldata = var.data # whether data was pre-loaded 
         # perform operation from source and copy results to target
-        newvar = function(var)
+        newvar = function(var) # perform actual processing
+        if not ldata: var.unload() # if it was already loaded, don't unload        
         self.target.addVariable(newvar, copy=True) # copy=True allows recasting as, e.g., a NC variable
-        newvar.unload() # free space; already added to new dataset
       else:
         raise DatasetError, "Variable '%s' not found in input dataset."%varname
-      # free space (in case garbage collection fails...) 
-      var.unload() # not needed anymore
-      #print self.target.pmsl.data_array.mean()
-      # flush data to disk immediately
-      if flush:
-        outvar = self.output.variables[newvar.name]
-        outvar.sync() # sync this variable
-        self.output.dataset.sync() # sync NetCDF dataset, but don't call sync on all the other variables...
-        outvar.unload() # again, free memory
+      assert varname == newvar.name
+      newvar.unload(); del var, newvar # free space; already added to new dataset
+      # flush data to disk immediately      
+      if flush: 
+        self.output.variables[varname].unload() # again, free memory
     # after everything is said and done:
     self.source = self.target # set target to source for next time
     
@@ -241,15 +238,17 @@ class CentralProcessingUnit(object):
       #print srcdata.ReadAsArray().std(), tgtdata.ReadAsArray().std()
       #print var.projection.ExportToWkt()
       #print newvar.projection.ExportToWkt()
+      del srcdata # clean up (just to make sure)
       # N.B.: the target array should be allocated and prefilled with missing values, otherwise ReprojectImage
       #       will just fill missing values with zeros!  
       if err != 0: raise GDALError, 'ERROR CODE %i'%err
       #tgtdata.FlushCash()  
       # load data into new variable
-      newvar.loadGDAL(tgtdata, mask=mask, fillValue=var.fillValue)
+      newvar.loadGDAL(tgtdata, mask=mask, fillValue=var.fillValue)      
+      del tgtdata # clean up (just to make sure)
     else:
-      if not var.data: var.load() # need to load variables into memory, because we are not doing anything else...
-      newvar = var  
+      var.load() # need to load variables into memory, because we are not doing anything else...
+      newvar = var # just pass over the variable to the new dataset
     # return variable
     return newvar
   
@@ -313,6 +312,7 @@ class CentralProcessingUnit(object):
         for t in xrange(0,timelength,interval):
           if self.feedback: print('.'), # t/interval+1
           avgdata += dataarray.take(t+climelts, axis=tidx)
+        del dataarray # clean up
         # normalize
         avgdata /= (timelength/interval) 
       else: 
@@ -326,6 +326,7 @@ class CentralProcessingUnit(object):
             avgdata[idx] = avgdata[idx] + dataarray[t]
           else: 
             avgdata[idx,:] = avgdata[idx,:] + dataarray[t,:]
+        del dataarray # clean up
         # normalize
         for i in xrange(interval):
           if avgdata.ndim == 1:
@@ -334,17 +335,17 @@ class CentralProcessingUnit(object):
           else:
             if climcnt[i] > 0: avgdata[i,:] /= climcnt[i]
             else: avgdata[i,:] = np.NaN
-        #raise NotImplementedError, "The length of the time series has to be divisible by {0:d}.".format(interval)
       # shift data (if first month was not January)
       if shift != 0: avgdata = np.roll(avgdata, shift, axis=tidx)
       # create new Variable
       axes = tuple([climAxis if ax.name == timeAxis else ax for ax in var.axes]) # exchange time axis
       newvar = var.copy(axes=axes, data=avgdata) # and, of course, load new data
+      del avgdata # clean up - just to make sure
       #     print newvar.name, newvar.masked
       #     print newvar.fillValue
       #     print newvar.data_array.__class__
     else:
-      if not var.data: var.load() # need to load variables into memory, because we are not doing anything else...
+      var.load() # need to load variables into memory, because we are not doing anything else...
       newvar = var  
     # return variable
     return newvar
@@ -397,9 +398,11 @@ class CentralProcessingUnit(object):
       # create new Variable
       axes = tuple([axis if ax.name == axis.name else ax for ax in var.axes]) # replace axis with shifted version
       newvar = var.copy(axes=axes, data=newdata) # and, of course, load new data
+      var.unload(); del var, newdata
     else:
       var.load() # need to load variables into memory, because we are not doing anything else...
       newvar = var  
+      var.unload(); del var
     # return variable
     return newvar
 

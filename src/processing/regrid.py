@@ -64,6 +64,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       beginyear = int(exp.begindate[0:4])
       period = (beginyear, beginyear+period)
     elif len(period) != 2 and all(isInt(period)): raise DateError
+    del exp
     # identify file and domain
     if len(dataargs['filetypes']) > 1: raise DatasetError # process only one file at a time
     filetype = dataargs['filetypes'][0]
@@ -82,7 +83,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     else: periodstr = '{0:4d}-{1:4d}'.format(*period)
     if 'period' in source.atts and periodstr != source.atts.period: # a NetCDF attribute
       raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
-    datamsgstr = "Processing WRF '{:s}'-file from Experiment '{:s}'".format(filetype, dataset_name)
+    datamsgstr = "Processing WRF '{:s}'-file from Experiment '{:s}' (d{:02d})".format(filetype, dataset_name, domain)
   elif dataset == 'CESM': 
     # WRF datasets
     module = import_module('datasets.CESM')
@@ -95,6 +96,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       beginyear = int(exp.begindate[0:4])
       period = (beginyear, beginyear+period)
     elif len(period) != 2 and all(isInt(period)): raise DateError
+    del exp
     # identify file
     if len(dataargs['filetypes']) > 1: raise DatasetError # process only one file at a time
     filetype = dataargs['filetypes'][0]        
@@ -104,8 +106,9 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       source = loadCESM(experiment=dataset_name, name=None, grid=None, period=period, filetypes=[filetype],  
                         varlist=None, varatts=None, load3D=load3D, translateVars=None)
     elif mode == 'time-series':
-      source = loadCESM_TS(experiment=dataset_name, name=None, grid=None, filetypes=[filetype],  
-                        varlist=None, varatts=None, load3D=load3D, translateVars=None)
+      return 0 # just exit for now
+#       source = loadCESM_TS(experiment=dataset_name, name=None, grid=None, filetypes=[filetype],  
+#                         varlist=None, varatts=None, load3D=load3D, translateVars=None)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
     # check period
     if period is None: periodstr = ''
@@ -130,7 +133,9 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     if mode == 'climatology':
       source = module.loadClimatology(name=dataset_name, period=period, grid=None, resolution=resolution,  
                                       varlist=None, varatts=None, folder=module.avgfolder, filelist=None)
-    elif mode == 'time-series': raise NotImplementedError, "Need to implement time-series regridding for datasets!"
+    elif mode == 'time-series':
+      return 0 # just exit for now 
+#       raise NotImplementedError, "Need to implement time-series regridding for datasets!"
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
     datamsgstr = "Processing Dataset '{:s}'".format(dataset_name)
     # check period
@@ -140,12 +145,13 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     else: periodstr = '{0:4d}-{1:4d}'.format(*period)
   else:
     raise DatasetError, "Dataset '{:s}' not found!".format(dataset)
+  del dataargs
   # common message
   if mode == 'climatology': opmsgstr = 'Regridding Climatology ({:s}) to {:s} Grid'.format(periodstr, griddef.name)
   elif mode == 'time-series': opmsgstr = 'Regridding Time-series to {:s} Grid'.format(griddef.name)
   else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
   # print feedback to logger
-  logger.info('\n{0:s}   ***   {1:^60s}   ***   \n{0:s}   ***   {2:^60s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
+  logger.info('\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
   if not lparallel:
     logger.info('\n'+str(source)+'\n')
   # determine age of oldest source file
@@ -160,16 +166,16 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     gridstr = '_{}'.format(griddef.name.lower()) if griddef.name.lower() else ''
     periodstr = '_{}'.format(periodstr) if periodstr else ''
     if lwrite:
-      if mode == 'climatology': filename = module.ts_file_pattern.format(filetype,domain,gridstr)
-      elif mode == 'time-series': filename = module.clim_file_pattern.format(filetype,domain,gridstr,periodstr)
+      if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,domain,gridstr,periodstr)
+      elif mode == 'time-series': filename = module.ts_file_pattern.format(filetype,domain,gridstr)
       else: raise NotImplementedError
       avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
   elif dataset == 'CESM':
     gridstr = '_{}'.format(griddef.name.lower()) if griddef.name.lower() else ''
     periodstr = '_{}'.format(periodstr) if periodstr else ''
     if lwrite:
-      if mode == 'climatology': filename = module.ts_file_pattern.format(filetype,gridstr)
-      elif mode == 'time-series': filename = module.clim_file_pattern.format(filetype,gridstr,periodstr)
+      if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,gridstr,periodstr)
+      elif mode == 'time-series': filename = module.ts_file_pattern.format(filetype,gridstr)
       else: raise NotImplementedError
       avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
   elif dataset == dataset.upper(): # observational datasets
@@ -212,12 +218,12 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     else: sink = Dataset(atts=atts) # ony create dataset in memory
     
     # initialize processing
-    CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=True)
+    CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=False)
   
     # perform regridding (if target grid is different from native grid!)
     if griddef.name != dataset:
       # reproject and resample (regrid) dataset
-      CPU.Regrid(griddef=griddef, flush=False)
+      CPU.Regrid(griddef=griddef, flush=True)
 
     # get results
     CPU.sync(flush=True)
@@ -239,13 +245,15 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       writemsg =  "\n{:s}   >>>   Writing to file '{:s}' in dataset {:s}".format(pidstr,filename,dataset_name)
       writemsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,filepath)
       logger.info(writemsg)
-      if not lreturn: sink.close()
-    # return dataset
+    # clean up and return
+    source.unload(); del source, CPU
     if lreturn:
       # return dataset for further use
       return sink
     else:
+      sink.unload(); sink.close(); del sink
       return 0 # "exit code"
+    # N.B.: garbage is collected in multi-processing wrapper
 
 
 if __name__ == '__main__':
@@ -262,7 +270,7 @@ if __name__ == '__main__':
   # run script in batch or interactive mode
   if os.environ.has_key('PYAVG_BATCH'): 
     lbatch =  os.environ['PYAVG_BATCH'] == 'BATCH' 
-  else: lbatch = True # i.e. append  
+  else: lbatch = False # i.e. append  
   # re-compute everything or just update 
   if os.environ.has_key('PYAVG_OVERWRITE'): 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
@@ -271,9 +279,9 @@ if __name__ == '__main__':
   # default settings
   if not lbatch:
     ldebug = False
-    NP = 2 or NP # to avoid memory issues...
-#     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology','time-series'
+    NP = 1 or NP # to avoid memory issues...
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = False
     varlist = None
 #     varlist = ['precip',]
@@ -281,8 +289,8 @@ if __name__ == '__main__':
 #     periods += [1]
 #     periods += [3]
     periods += [5]
-    periods += [10]
-    periods += [15]
+#     periods += [10]
+#     periods += [15]
 #     periods += [30]
 #     periods += [(1984,1994)]
 #     periods += [(1989,1994)]
@@ -337,18 +345,18 @@ if __name__ == '__main__':
     grids['cesm1x1'] = (None,) # CESM grid
 #     grids['NARR'] = (None,) # CESM grid
   else:
-    NP = NP or 1 # time-series might take more memory!
+    NP = NP or 4 # time-series might take more memory!
     modes = ('climatology','time-series')
-    modes = ('climatology',)
-    #loverwrite = False
+    #modes = ('time-series',)
+    #modes = ('climatology',)
+    loverwrite = True
     varlist = None # process all variables
-    datasets = [] # None # process all applicable
-    periods = (5,10,15) # climatology periods to process
-#     periods = [(1979,1984),(1979,1989)] # climatology periods to process 
-#     periods = None # process only overall climatologies 
+    datasets = None # process all applicable
+    periods = (5,10,15,) # climatology periods to process
+    #periods = (15,) # for tests
     resolutions = None
     # CESM
-    CESM_experiments = [] # None
+    CESM_experiments = None
     CESM_filetypes = ('atm','lnd')    
     # WRF
     WRF_experiments = [] # process WRF experiments on different grids
@@ -357,8 +365,10 @@ if __name__ == '__main__':
     WRF_experiments += ['cam-ctrl', 'cam-ctrl-1-2050', 'cam-ctrl-2-2050', 'cam-ctrl-2-2100'] # old cam simulations (arb1) 
     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
-    domains = (1,2) # domains to be processed
-    WRF_filetypes = WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad' 
+    domains = (1,2,) # domains to be processed
+    #domains = (2,) # for tests
+    WRF_filetypes = WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
+    #WRF_filetypes = WRF_filetypes = ('hydro',) # for tests
     # grid to project onto
     lpickle = True
     #d12 = ('d01','d02')

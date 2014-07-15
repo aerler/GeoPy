@@ -460,8 +460,8 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
             dataargs = dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)
             if performRegridding('WRF', griddef, dataargs): # default kwargs
               raise IOError, "Automatic regridding failed!"
-          else: raise IOError, "The  '{:s}' (WRF) dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.\n({:s})".format(name,filename,grid,folder) 
-        else: raise IOError, "The  '{:s}' (WRF) dataset file '{:s}' does not exits!\n({:s})".format(name,filename,folder)   
+          else: raise IOError, "The  '{:s}' (WRF) dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.\n('{:s}')".format(name,filename,grid,filepath) 
+        else: raise IOError, "The file '{:s}' in WRF dataset '{:s}' does not exits!\n('{:s}')".format(filename,name,filepath)   
        
     # load dataset
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 

@@ -466,6 +466,7 @@ class Variable(object):
      
   def unload(self):
     ''' Method to unlink data array. '''
+    del self.__dict__['data_array'] # delete array
     self.__dict__['data_array'] = None # unlink data array
     self.__dict__['data'] = False # set data flag
     self.__dict__['fillValue'] = None

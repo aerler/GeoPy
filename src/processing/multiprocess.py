@@ -10,6 +10,7 @@ A simple script to test the usage of pool and how to return values...
 import multiprocessing
 import logging
 import sys
+import gc # garbage collection
 import types
 import numpy as np
 from datetime import datetime
@@ -115,6 +116,7 @@ class TrialNError():
     try:
       # decorated function
       ec = self.func(*args, pidstr=pidstr, **kwargs)
+      gc.collect() # enforce garbage collection
       # return exit code
       return ec or 0 # everything OK (and ec = None is OK, too)    
     except Exception: # , err

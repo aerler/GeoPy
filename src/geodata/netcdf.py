@@ -235,11 +235,21 @@ class VarNC(Variable):
       if 'add_offset' in ncattrs: ncvar.delncattr('add_offset',ncvar.getncattr('add_offset'))
       # set other attributes like in variable
       ncvar.setncattr('name',self.name)
-      ncvar.setncattr('units',self.units)      
+      ncvar.setncattr('units',self.units)
+      # now sync dataset
+      ncvar.group().sync()     
     else: 
       raise PermissionError, "Cannot write to NetCDF variable: writing (mode = 'w') not enabled!"
      
-
+  def unload(self):
+    ''' Method to sync the currently loaded data to file and free up memory (discard data in memory) '''
+    # synchronize data with NetCDF file
+    if 'w' in self.mode: self.sync() # only if we have write permission, of course
+    # discard NetCDF Variable object (contains a reference to the data)
+    ncds = self.ncvar.group(); ncname = self.ncvar._name # this is the actual netcdf name
+    del self.ncvar; self.ncvar = ncds.variables[ncname] # reattach (hopefully without the data array)
+    # discard data array the usual way
+    super(VarNC,self).unload()
 
 class AxisNC(Axis,VarNC):
   '''
@@ -419,14 +429,14 @@ class DatasetNetCDF(Dataset):
     ''' The first element of the datasets list. '''
     return self.datasets[0] 
   
-  def addAxis(self, ax, asNC=True, copy=False):
+  def addAxis(self, ax, asNC=True, copy=False, overwrite=False):
     ''' Method to add an Axis to the Dataset. (If the Axis is already present, check that it is the same.) '''   
     # cast Axis instance as AxisNC
     if copy: # make a new instance or add it as is
       if asNC and 'w' in self.mode: ax = asAxisNC(ax=ax, ncvar=self.datasets[0], mode=self.mode, deepcopy=True)
       else: ax = ax.copy(deepcopy=True)
     # hand-off to parent method and return status
-    return super(DatasetNetCDF,self).addAxis(ax=ax)
+    return super(DatasetNetCDF,self).addAxis(ax=ax, copy=copy, overwrite=overwrite)
   
   def addVariable(self, var, asNC=True, copy=True, overwrite=False, deepcopy=False):
     ''' Method to add a new Variable to the Dataset. '''
@@ -531,9 +541,17 @@ class DatasetNetCDF(Dataset):
         if isinstance(var,VarNC): var.sync()
       # synchronize NetCDF datasets with file system
       for dataset in self.datasets: 
-        dataset.setncatts(coerceAtts(self.atts)) # synchronize attributes with       
-        dataset.sync() #
-    else: raise PermissionError
+        dataset.setncatts(coerceAtts(self.atts)) # synchronize attributes with NetCDF dataset
+        dataset.sync() # synchronize data
+    else: 
+      raise PermissionError, "Cannot write to NetCDF Dataset: writing (mode = 'w') not enabled!"
+    
+  def unload(self):
+    ''' Method to sync the currently loaded dataset to file and free up memory (discard data in memory) '''
+    # synchronize data with NetCDF file
+    if 'w' in self.mode: self.sync() # only if we have write permission, of course
+    # unload all variables
+    super(DatasetNetCDF,self).unload()  
     
   def copy (self, asNC=False, filename=None, varsdeep=False, **newargs):
     ''' Copy a DatasetNetCDF, either into a normal Dataset or into a DatasetNetCDF (requires a filename). '''
