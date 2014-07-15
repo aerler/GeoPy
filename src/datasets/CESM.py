@@ -45,7 +45,7 @@ experiments['hbbrcp85cn1x1'] = Exp(shortname='Ens-B-2050', name='hbbrcp85cn1x1',
 experiments['hcbrcp85cn1x1'] = Exp(shortname='Ens-C-2050', name='hcbrcp85cn1x1', title='Ens-C (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
 # mid-21st century
 experiments['ensrcp85cn1x1d'] = Exp(shortname='CESM-2100', name='ensrcp85cn1x1d', title='CESM Ensemble Mean (2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
-experiments['seaice-5r-hfd'] = Exp(shortname='Seaice-2100', name='seaice-5r-hf', title='Seaice (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
+experiments['seaice-5r-hfd'] = Exp(shortname='Seaice-2100', name='seaice-5r-hfd', title='Seaice (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
 experiments['htbrcp85cn1x1d'] = Exp(shortname='Ctrl-2100', name='htbrcp85cn1x1d', title='Ctrl (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
 experiments['habrcp85cn1x1d'] = Exp(shortname='Ens-A-2100', name='habrcp85cn1x1d', title='Ens-A (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
 experiments['hbbrcp85cn1x1d'] = Exp(shortname='Ens-B-2100', name='hbbrcp85cn1x1d', title='Ens-B (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')

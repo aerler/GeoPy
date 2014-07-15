@@ -178,7 +178,7 @@ if __name__ == '__main__':
 
   
   # default settings
-  if lbatch:
+  if not lbatch:
     ldebug = False
     NP = 1 #NP or 4
     loverwrite = True

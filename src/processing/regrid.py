@@ -356,6 +356,7 @@ if __name__ == '__main__':
     #periods = (15,) # for tests
     resolutions = None
     # CESM
+    load3D = False
     CESM_experiments = None
     CESM_filetypes = ('atm','lnd')    
     # WRF
@@ -409,7 +410,7 @@ if __name__ == '__main__':
     print('\n Regridding CESM Datasets:')
     print([exp.name for exp in CESM_experiments])
   if len(datasets) > 0:
-    print(' And Observational Datasets:')
+    print('\n And Observational Datasets:')
     print(datasets)
   print('\n To Grid and Resolution:')
   for grid,reses in grids.iteritems():
