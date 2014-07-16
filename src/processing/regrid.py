@@ -304,8 +304,8 @@ if __name__ == '__main__':
 #     periods += [(1949,2009)]
 #     periods += [(1997,1998)]
     # Observations/Reanalysis
-    datasets = ['CRU']
-    resolutions = {'CRU':'','GPCC':'25'}
+    datasets = ['CFSR']
+    resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
     lLTM = True # also regrid the long-term mean climatologies 
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None

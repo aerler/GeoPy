@@ -109,7 +109,7 @@ def loadNARR_LTM(name=dataset_name, varlist=None, grid=None, interval='monthly',
 orig_ts_folder = root_folder + 'Monthly/' # monthly subfolder
 orig_ts_file = '{0:s}.mon.mean.nc' # monthly time-series for each variables
 tsfile = 'narr{0:s}_monthly.nc' # extend with grid type only
-def loadNARR_TS(name=dataset_name, varlist=None, varatts=varatts, filelist=None, folder=orig_ts_folder):
+def loadNARR_TS(name=dataset_name, grid=None, varlist=None, resolution=None, varatts=varatts, filelist=None, folder=orig_ts_folder):
   ''' Get a properly formatted NARR dataset with monthly mean time-series. '''
   if grid is None:
     # load from original time-series files 
