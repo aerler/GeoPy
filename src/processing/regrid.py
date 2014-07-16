@@ -228,13 +228,13 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       # reproject and resample (regrid) dataset
       CPU.Regrid(griddef=griddef, flush=True)
 
-    # get results
+    # get results    
     CPU.sync(flush=True)
     
     # add geolocators
     sink = addGeoLocator(sink, griddef=griddef, lgdal=True, lreplace=True, lcheck=True)
     # N.B.: WRF datasets come with their own geolocator arrays - we need to replace those!
-
+    
     # add length and names of month
     if not sink.hasVariable('length_of_month') and sink.hasVariable('time'): 
       addLengthAndNamesOfMonth(sink, noleap=False) 
@@ -248,6 +248,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       writemsg =  "\n{:s}   >>>   Writing to file '{:s}' in dataset {:s}".format(pidstr,filename,dataset_name)
       writemsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,filepath)
       logger.info(writemsg)      
+      
       # rename file to proper name
       if not lreturn:
         sink.unload(); sink.close(); del sink # destroy all references 
@@ -450,7 +451,7 @@ if __name__ == '__main__':
           mod = import_module('datasets.{0:s}'.format(dataset))
           if isinstance(resolutions,dict): 
             if not isinstance(resolutions[dataset],(list,tuple)): resolutions[dataset] = (resolutions[dataset],)                
-          else: raise TypeError                                
+          elif resolutions is not None: raise TypeError                                
           if mode == 'climatology':
             # some datasets come with a climatology 
             if lLTM:

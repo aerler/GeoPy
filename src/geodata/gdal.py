@@ -38,7 +38,8 @@ class GridDefinition(object):
   name = '' # a name for the grid...
   scale = None # approximate resolution of the grid in degrees at the domain center
   projection = None  # GDAL SpatialReference instance
-  isProjected = None  # logical; indicates whether the coordiante system is projected or geographic 
+  isProjected = None  # logical; indicates whether the coordiante system is projected or geographic
+  wrap360 = False # logical; whether longitude runs from 0 to 360 (True) or -180 to 180 (False)  
   xlon = None  # Axis instance; the west-east axis
   ylat = None  # Axis instance; the south-north axis
   geotransform = None  # 6-element vector defining a GDAL GeoTransform
@@ -47,7 +48,7 @@ class GridDefinition(object):
   lon2D = None # 2D field of longitude at each grid point
   lat2D = None # 2D field of latitude at each grid point
       
-  def __init__(self, name='', projection=None, geotransform=None, size=None, xlon=None, ylat=None, geolocator=True):
+  def __init__(self, name='', projection=None, geotransform=None, size=None, xlon=None, ylat=None, lwrap360=True, geolocator=True):
     ''' This class can be initialized in several ways. Some form of projections has to be defined (using a 
         GDAL SpatialReference, WKT, EPSG code, or Proj4 conventions), or a simple geographic (lat/lon) 
         coordinate system will be assumed. 
@@ -62,9 +63,11 @@ class GridDefinition(object):
     else:
       gdalsr = osr.SpatialReference() 
       gdalsr.SetWellKnownGeogCS('WGS84')           
-      if projection is None: 
-        pass  # normal lat/lon projection
-      elif isinstance(projection, dict): 
+      if projection is None: # default: normal lat/lon projection
+        if lwrap360: # longitude runs from 0 to 360 degrees, i.e. wraps at 360/0
+          projection = dict(proj='longlat',lon_0=180,lat_0=0,x_0=0,y_0=0,lon_wrap=0) # lon = [0,360]
+        else: projection = dict(proj='longlat',lon_0=0,lat_0=0,x_0=0,y_0=0) # wraps at dateline          
+      if isinstance(projection, dict): 
         gdalsr = getProjFromDict(projdict=projection, name='', GeoCS='WGS84')  # get projection from dictionary
       elif isinstance(projection, basestring):
         gdalsr.ImportFromWkt(projection)  # from Well-Known-Text
@@ -75,6 +78,7 @@ class GridDefinition(object):
     # set projection attributes
     self.projection = gdalsr
     self.isProjected = gdalsr.IsProjected()
+    self.wrap360 = lwrap360
     # figure out geotransform and axes (axes have precedence)
     if xlon is not None or ylat is not None:
       # use axes and check consistency with geotransform and size, if applicable
@@ -102,8 +106,8 @@ class GridDefinition(object):
       frac = 1./5. # the fraction that is used to calculate the effective resolution (at the domain center)
       xs = int(size[0]*(0.5-frac/2.)); ys = int(size[1]*(0.5-frac/2.))
       xe = int(size[0]*(0.5+frac/2.)); ye = int(size[1]*((0.5+frac/2.)))
-      (llx,lly,llz) = tx.TransformPoint(xlon.coord[xs].astype(np.float64),ylat.coord[ys].astype(np.float64))
-      (urx,ury,urz) = tx.TransformPoint(xlon.coord[xe].astype(np.float64),ylat.coord[ye].astype(np.float64))
+      (llx,lly,llz) = tx.TransformPoint(xlon.coord[xs].astype(np.float64),ylat.coord[ys].astype(np.float64)); del llz
+      (urx,ury,urz) = tx.TransformPoint(xlon.coord[xe].astype(np.float64),ylat.coord[ye].astype(np.float64)); del urz
       # N.B.: for some reason GDAL is very sensitive to type and does not understand numpy types
       dlon = ( urx - llx ) / ( xe - xs ); dlat = ( ury - lly ) / ( ye - ys )       
       self.scale = ( dlon + dlat ) / 2
@@ -258,20 +262,26 @@ def getProjFromDict(projdict, name='', GeoCS='WGS84', convention='Proj4'):
   # interpret dictionary according to convention
   if convention == 'Proj4':
     # start with projection, which is usually a string
-    projstr = '+proj={0:s}'.format(projdict['proj']) 
+    proj = projdict['proj']
+    if proj == 'longlat' or proj == 'latlong':
+      projstr = '+proj=latlong'; lproj = False
+    else: 
+      projstr = '+proj={0:s}'.format(proj); lproj = True 
     # loop over entries
     for key, value in projdict.iteritems():
       if key is not 'proj':
         if not isinstance(key, str): raise TypeError
-        if not isinstance(value, (float,np.inexact)): raise TypeError
+        if not isinstance(value, (float,np.inexact,int,np.integer)): raise TypeError
         # translate dict entries to string
-        projstr = '{0:s} +{1:s}={2:f}'.format(projstr, key, float(value))
+        projstr = '{0:s} +{1:s}={2:f}'.format(projstr, key, value)
     # load projection from proj4 string
+    print projstr
     projection.ImportFromProj4(projstr)
   else:
     raise NotImplementedError
   # more meta data
-  projection.SetProjCS(name)  # establish that this is a projected system
+  if lproj: projection.SetProjCS(name)  # establish that this is a projected system
+  # N.B.: note that the seemingly analogous method SetGeogCS() has a different function (and is not necessary)
   projection.SetWellKnownGeogCS(GeoCS)  # default reference datum/geoid
   # return finished projection object (geotransform can be inferred from coordinate vectors)
   return projection

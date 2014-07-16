@@ -201,7 +201,7 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    ldebug = False
+    ldebug = True
     NP = 4 #NP or 4
     loverwrite = True
     varlist = None # ['precip', ]
@@ -235,10 +235,10 @@ if __name__ == '__main__':
     grid = 'native'
   else:
     NP = NP or 4
-    ldebug=True
+    ldebug=False
     #loverwrite = True
-    varlist = None
-    experiments = None # WRF experiment names (passed through WRFname)
+    varlist = None # all variables
+    experiments = None # WRF experiment names (passed through WRF_exps)
     offset = 0 # number of years from simulation start
     periods = (5,10,15,) # averaging period
     domains = (1,2,) # domains to be processed

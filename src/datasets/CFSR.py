@@ -21,14 +21,16 @@ from processing.process import CentralProcessingUnit
 dataset_name = 'CFSR'
 
 # CFSR grid definition           
-geotransform_031 = (-180.15625, 0.3125, 0.0, 89.915802001953125, 0.0, -0.30960083)
+# geotransform_031 = (-180.15625, 0.3125, 0.0, 89.915802001953125, 0.0, -0.30960083)
+geotransform_031 = (-0.15625, 0.3125, 0.0, 89.915802001953125, 0.0, -0.30960083)
 size_031 = (1152,576) # (x,y) map size
-geotransform_05 = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)
-size_05 = (720,360) # (x,y) map size
+# geotransform_05 = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)
+geotransform_05 = (-0.25, 0.5, 0.0, 90.25, 0.0, -0.5) # this grid actually has a grid point at the poles!
+size_05 = (720,361) # (x,y) map size
 
 # make GridDefinition instance
-CFSR_031_grid = GridDefinition(name='CFSR_031', projection=None, geotransform=geotransform_031, size=size_031)
-CFSR_05_grid = GridDefinition(name='CFSR_05', projection=None, geotransform=geotransform_05, size=size_05)
+CFSR_031_grid = GridDefinition(name='CFSR_031', projection=None, geotransform=geotransform_031, size=size_031, lwrap360=True)
+CFSR_05_grid = GridDefinition(name='CFSR_05', projection=None, geotransform=geotransform_05, size=size_05, lwrap360=True)
 CFSR_grid = CFSR_031_grid # default
 
 # variable attributes and name
