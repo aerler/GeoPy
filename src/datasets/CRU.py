@@ -47,6 +47,7 @@ varatts = dict(tmp = dict(name='T2', units='K', offset=273.15), # 2m average tem
                lat  = dict(name='lat', units='deg N')) # geographic latitude field
 
 # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
+tsvaratts = varatts
 # list of variables to load
 varlist = varatts.keys() # also includes coordinate fields    
 # variable and file lists settings
@@ -59,21 +60,30 @@ nofile = ('lat','lon','time') # variables that don't have their own files
 orig_ts_folder = root_folder + 'Time-series 3.2/data/' # monthly subfolder
 orig_ts_file = 'cru_ts3.20.1901.2011.{0:s}.dat.nc' # file names, need to extend with variable name (original)
 tsfile = 'cru{0:s}_monthly.nc' # extend with grid type only
-def loadCRU_TS(name=dataset_name, varlist=varlist, varatts=varatts, filelist=None, folder=orig_ts_folder):
+def loadCRU_TS(name=dataset_name, grid=None, varlist=None, resolution=None, varatts=None, filelist=None, folder=None):
   ''' Get a properly formatted  CRU dataset with monthly mean time-series. '''
-  # translate varlist
-  if varlist and varatts: varlist = translateVarNames(varlist, varatts)
-  # assemble filelist
-  if filelist is None: # generate default filelist
-    filelist = [orig_ts_file.format(var) for var in varlist if var not in nofile]
-  # load dataset
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
-                          multifile=False, ncformat='NETCDF4_CLASSIC')
-  # add projection  
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
-  # N.B.: projection should be auto-detected as geographic
-  # add method to convert precip from per month to per second
-  dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    
+  if grid is None:
+    # load from original time-series files 
+    if folder is None: folder = orig_ts_folder
+    # translate varlist
+    if varatts is None: varatts = tsvaratts.copy()
+    if varlist is None: varlist = varatts.keys()
+    if varlist and varatts: varlist = translateVarNames(varlist, varatts)
+    # assemble filelist
+    if filelist is None: # generate default filelist
+      filelist = [orig_ts_file.format(var) for var in varlist if var not in nofile]
+    # load dataset
+    dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
+                            multifile=False, ncformat='NETCDF4_CLASSIC')
+    # add projection  
+    dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
+    # N.B.: projection should be auto-detected as geographic
+    # add method to convert precip from per month to per second
+    dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    
+  else:
+    # load from neatly formatted and regridded time-series files
+    if folder is None: folder = avgfolder
+    raise NotImplementedError, "Need to implement loading neatly formatted and regridded time-series!"
   # return formatted dataset
   return dataset
 

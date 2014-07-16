@@ -42,7 +42,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
   logger.info('\n\n{0:s}   ***   Processing Experiment {1:<15s}   ***   '.format(pidstr,"'%s'"%experiment.name) +
         '\n{0:s}   ***   {1:^37s}   ***   \n'.format(pidstr,"'%s'"%fileclass.tsfile.format(domain)))
   source = loadWRF_TS(experiment=experiment, filetypes=[filetype], domains=domain) # comes out as a tuple...
-  if not lparallel: 
+  if not lparallel and ldebug: 
     logger.info('\n'+str(source)+'\n')
   # determine age of oldest source file
   if not loverwrite:
@@ -59,6 +59,11 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
   # handle cases where the first month in the record is not January
   firstmonth = int(source.atts.begin_date.split('-')[1]) # second element is the month
   shift = firstmonth-1 # will be zero for January (01)
+  # other settings
+  expfolder = experiment.avgfolder
+  dataset_name = experiment.name
+  del experiment # not needed anymore 
+
   
   ## loop over periods
   if periods is None: periods = [begindate-fileend]
@@ -68,22 +73,31 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
     # figure out period
     enddate = begindate + period     
     if filebegin > enddate: raise DateError    
-    if enddate-1 > fileend: # if filebegin is 1979 and the simulation is 10 years, fileend will be 1988, not 1989! 
-      logger.info('\n{0:s}   ---   Invalid Period: End Date {1:4d} not in File!   ---   \n'.format(pidstr,enddate))
+    if enddate-1 > fileend: # if filebegin is 1979 and the simulation is 10 years, fileend will be 1988, not 1989!
+      endmsg = "\n{:s}   ---   Invalid Period for '{:s}': End Date {:4d} not in File!   ---   \n".format(pidstr,dataset_name,enddate)
+      for filepath in source.filelist:
+        endmsg += "{:s}   ---   ('{:s}')\n".format(pidstr,filepath)
+      logger.info(endmsg)
       
     else:  
       ## begin actual computation
       periodstr = '{0:4d}-{1:4d}'.format(begindate,enddate)
-      expfolder = experiment.avgfolder
-      logger.info('\n{0:s}   <<<   Computing Climatology from {1:s} on {2:s} grid (\'{3:s}\')  >>>   \n'.format(
-                  pidstr,periodstr,grid,experiment.name))              
+      beginmsg = "\n{:s}   <<<   Computing '{:s}' (d{:02d}) Climatology from {:s}".format(
+                  pidstr,dataset_name,domain,periodstr)
+      if griddef is None: beginmsg += "  >>>   \n" 
+      else: beginmsg += " ('{:s}' grid)  >>>   \n".format(griddef.name)
+      logger.info(beginmsg)
 
       # determine if sink file already exists, and what to do about it      
       gridstr = '' if griddef is None or griddef.name is 'WRF' else '_'+griddef.name
       filename = fileclass.climfile.format(domain,gridstr,'_'+periodstr)
       if ldebug: filename = 'test_' + filename
+      if lparallel: tmppfx = 'tmp_wrfavg_{:s}_'.format(pidstr[1:-1])
+      else: tmppfx = 'tmp_wrfavg_'.format(pidstr[1:-1])
+      tmpfilename = tmppfx + filename
       assert os.path.exists(expfolder)
       filepath = expfolder+filename
+      tmpfilepath = expfolder+tmpfilename
       lskip = False # else just go ahead
       if os.path.exists(filepath): 
         if not loverwrite: 
@@ -97,11 +111,13 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
       # depending on last modification time of file or overwrite setting, start computation, or skip
       if lskip:        
         # print message
-        logger.info('{0:s}   >>>   Skipping: File \'{1:s}\' already exists and is newer than source file.   <<<   \n'.format(pidstr,filename))              
+        skipmsg =  "\n{:s}   >>>   Skipping: file '{:s}' in dataset '{:s}' already exists and is newer than source file.".format(pidstr,filename,dataset_name)
+        skipmsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,filepath)
+        logger.info(skipmsg)              
       else:
          
         # prepare sink
-        sink = DatasetNetCDF(name='WRF Climatology', folder=expfolder, filelist=[filename], atts=source.atts, mode='w')
+        sink = DatasetNetCDF(name='WRF Climatology', folder=expfolder, filelist=[tmpfilename], atts=source.atts, mode='w')
         sink.atts.period = periodstr 
         
         # initialize processing
@@ -130,18 +146,24 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
                         atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
         
         # close... and write results to file
-        logger.info('\n{0:s} Writing to: \'{1:s}\'\n'.format(pidstr,filename))
         sink.sync()
         sink.close()
+        writemsg =  "\n{:s}   >>>   Writing to file '{:s}' in dataset {:s}".format(pidstr,filename,dataset_name)
+        writemsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,filepath)
+        logger.info(writemsg)      
+        # rename file to proper name
+        os.rename(tmpfilepath,filepath)
+        
         # print dataset
-        if not lparallel:
+        if not lparallel and ldebug:
           logger.info('\n'+str(sink)+'\n')
         
         # clean up (not sure if this is necessary, but there seems to be a memory leak...   
         del sink, CPU; gc.collect() # get rid of these guys immediately
           
   # this one is only loaded once for all periods    
-  del source
+  # clean up and return
+  source.unload(); del source
   # N.B.: garbage is collected in multi-processing wrapper as well
 
   # return
@@ -180,12 +202,13 @@ if __name__ == '__main__':
   # default settings
   if not lbatch:
     ldebug = False
-    NP = 1 #NP or 4
+    NP = 4 #NP or 4
     loverwrite = True
     varlist = None # ['precip', ]
     experiments = []
+    experiments += ['max-ctrl']
     experiments += ['new','noah','max','max-2050']
-    experiments += ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
+#     experiments += ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
 #     experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
 #     experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
@@ -194,21 +217,22 @@ if __name__ == '__main__':
 #     experiments += ['max-ctrl-2100']
 #     experiments += ['ctrl-arb1', 'ctrl-arb1-2050', 'ctrl-2-arb1',]
 #     experiments += ['max-3km']
-    experiments += ['erai-max']
+#     experiments += ['erai-max']
     offset = 0 # number of years from simulation start
     periods = [] 
 #     periods += [1]
 #     periods += [3]
     periods += [5]
 #     periods += [9]
-#     periods += [10]
-#     periods += [15]
-    domains = (2,) # domains to be processed
+    periods += [10]
+    periods += [15]
+    domains = (1,2,) # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']
-    filetypes = ['lsm'] # filetypes to be processed
-    grid = 'WRF'
+#     filetypes = ['lsm'] # filetypes to be processed
+    filetypes = ['srfc','xtrm','plev3d','hydro']
+    grid = 'native'
   else:
     NP = NP or 4
     ldebug=True
@@ -219,14 +243,14 @@ if __name__ == '__main__':
     periods = (5,10,15,) # averaging period
     domains = (1,2,) # domains to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # , rad
-    grid = 'WRF' 
+    grid = 'native' 
 
   # expand experiments
   if experiments is None: experiments = WRF_experiments.values() # do all 
   else: experiments = [WRF_exps[exp] for exp in experiments] 
 
   # shall we do some fancy regridding?
-  if grid == 'WRF':
+  if grid == 'native':
     griddef = None
   else:
     griddef = getCommonGrid(grid)
@@ -234,7 +258,7 @@ if __name__ == '__main__':
   # print an announcement
   print('\n Computing Climatologies for WRF experiments:\n')
   print([exp.name for exp in experiments])
-  if grid != 'WRF': print('\nRegridding to \'{0:s}\' grid.\n'.format(grid))
+  if grid != 'native': print('\nRegridding to \'{0:s}\' grid.\n'.format(grid))
   print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
       
   # assemble argument list and do regridding

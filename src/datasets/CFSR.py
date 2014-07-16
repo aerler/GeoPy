@@ -49,6 +49,7 @@ varatts = dict(TMP_L103_Avg = dict(name='T2', units='K'), # 2m average temperatu
                lon  = dict(name='lon', units='deg E'), # geographic longitude field
                lat  = dict(name='lat', units='deg N')) # geographic latitude field
 # N.B.: the time-series begins in 1979 (time=0), so no offset is necessary
+tsvaratts = varatts
 
 nofile = ('lat','lon','time') # variables that don't have their own files
 # file names by variable
@@ -75,41 +76,48 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 # time-series
 orig_ts_folder = root_folder + 'Monthly/'
 tsfile = 'cfsr{0:s}_monthly.nc' # extend with grid type only
-def loadCFSR_TS(name=dataset_name, varlist=None, varatts=varatts, resolution='hires', filelist=None, 
-                folder=orig_ts_folder):
+def loadCFSR_TS(name=dataset_name, grid=None, varlist=None, varatts=None, resolution='hires', filelist=None, folder=None):
   ''' Get a properly formatted CFSR dataset with monthly mean time-series. '''
-  # translate varlist
-  if varlist is None:
-    if resolution == 'hires' or resolution == '03' or resolution == '031': varlist = varlist_hires
-    elif resolution == 'lowres' or resolution == '05': varlist = varlist_lowres     
-  if varlist and varatts: varlist = translateVarNames(varlist, varatts)
-  if filelist is None: # generate default filelist
-    if resolution == 'hires' or resolution == '03' or resolution == '031': 
-      files = [hiresfiles[var] for var in varlist if var in hiresfiles]
-    elif resolution == 'lowres' or resolution == '05': 
-      files = [lowresfiles[var] for var in varlist if var in lowresfiles]
-  # load dataset
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=files, varlist=varlist, varatts=varatts, 
-                          check_override=['time'], multifile=False, ncformat='NETCDF4_CLASSIC')
-  # load static data
-  if filelist is None: # generate default filelist
-    if resolution == 'hires' or resolution == '03' or resolution == '031': 
-      files = [hiresstatic[var] for var in varlist if var in hiresstatic]
-    elif resolution == 'lowres' or resolution == '05': 
-      files = [lowresstatic[var] for var in varlist if var in lowresstatic]
-    # create singleton time axis
-    staticdata = DatasetNetCDF(name=name, folder=folder, filelist=files, varlist=varlist, varatts=varatts, 
-                               axes=dict(lon=dataset.lon, lat=dataset.lat), multifile=False, 
-                               check_override=['time'], ncformat='NETCDF4_CLASSIC')
-    # N.B.: need to override the axes, so that the datasets are consistent
-  if len(staticdata.variables) > 0:
-    for var in staticdata.variables.values(): 
-      if not dataset.hasVariable(var.name):
-        var.squeeze() # remove time dimension
-        dataset.addVariable(var, copy=False) # no need to copy... but we can't write to the netcdf file!
-  # add projection  
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
-  # N.B.: projection should be auto-detected as geographic
+  if grid is None:
+    # load from original time-series files 
+    if folder is None: folder = orig_ts_folder
+    # translate varlist
+    if varatts is None: varatts = tsvaratts.copy()
+    if varlist is None:
+      if resolution == 'hires' or resolution == '03' or resolution == '031': varlist = varlist_hires
+      elif resolution == 'lowres' or resolution == '05': varlist = varlist_lowres     
+    if varlist and varatts: varlist = translateVarNames(varlist, varatts)
+    if filelist is None: # generate default filelist
+      if resolution == 'hires' or resolution == '03' or resolution == '031': 
+        files = [hiresfiles[var] for var in varlist if var in hiresfiles]
+      elif resolution == 'lowres' or resolution == '05': 
+        files = [lowresfiles[var] for var in varlist if var in lowresfiles]
+    # load dataset
+    dataset = DatasetNetCDF(name=name, folder=folder, filelist=files, varlist=varlist, varatts=varatts, 
+                            check_override=['time'], multifile=False, ncformat='NETCDF4_CLASSIC')
+    # load static data
+    if filelist is None: # generate default filelist
+      if resolution == 'hires' or resolution == '03' or resolution == '031': 
+        files = [hiresstatic[var] for var in varlist if var in hiresstatic]
+      elif resolution == 'lowres' or resolution == '05': 
+        files = [lowresstatic[var] for var in varlist if var in lowresstatic]
+      # create singleton time axis
+      staticdata = DatasetNetCDF(name=name, folder=folder, filelist=files, varlist=varlist, varatts=varatts, 
+                                 axes=dict(lon=dataset.lon, lat=dataset.lat), multifile=False, 
+                                 check_override=['time'], ncformat='NETCDF4_CLASSIC')
+      # N.B.: need to override the axes, so that the datasets are consistent
+    if len(staticdata.variables) > 0:
+      for var in staticdata.variables.values(): 
+        if not dataset.hasVariable(var.name):
+          var.squeeze() # remove time dimension
+          dataset.addVariable(var, copy=False) # no need to copy... but we can't write to the netcdf file!
+    # add projection  
+    dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
+    # N.B.: projection should be auto-detected as geographic
+  else:
+    # load from neatly formatted and regridded time-series files
+    if folder is None: folder = avgfolder
+    raise NotImplementedError, "Need to implement loading neatly formatted and regridded time-series!"    
   # return formatted dataset
   return dataset
 

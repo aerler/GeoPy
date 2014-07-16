@@ -19,9 +19,9 @@ from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, g
 
 
 # days per month
-days_per_month = np.array([31,28.2425,31,30,31,30,31,31,30,31,30,31]) # 97 leap days every 400 years
+days_per_month = np.array([31,28.2425,31,30,31,30,31,31,30,31,30,31], dtype='float32') # 97 leap days every 400 years
 # N.B.: the Gregorian calendar repeats every 400 years
-days_per_month_365 = np.array([31,28,31,30,31,30,31,31,30,31,30,31]) # no leap day
+days_per_month_365 = np.array([31,28,31,30,31,30,31,31,30,31,30,31], dtype='int16') # no leap day
 # human-readable names
 name_of_month = ['January  ', 'February ', 'March    ', 'April    ', 'May      ', 'June     ', #
                  'July     ', 'August   ', 'September', 'October  ', 'November ', 'December ']
@@ -152,8 +152,8 @@ def translateVarNames(varlist, varatts):
 
 
 # universal function to generate file names for climatologies
-def getFileName(name=None, resolution=None, period=None, grid=None, filepattern=None):
-  ''' A function to generate a standardized filename for climatology files, based on grid type and period.  '''
+def getFileName(name=None, resolution=None, period=None, filetype='climatology', grid=None, filepattern=None):
+  ''' A function to generate a standardized filename for climatology and time-series files, based on grid type and period.  '''
   if name is None: name = ''
   # grid (this is a *non-native grid*)
   if grid is None or grid == name: gridstr = ''
@@ -161,24 +161,24 @@ def getFileName(name=None, resolution=None, period=None, grid=None, filepattern=
   # resolution is the native resolution (behind dataset name, prepended to the grid 
   if resolution: gridstr = '_{0:s}{1:s}'.format(resolution,gridstr)
   # period
-#   if isinstance(period,(tuple,list)): period = '{0:4d}-{1:4d}'.format(*period)
-#   elif isinstance(period,np.number):
-#     period = (1979, 1979+period) # they all have the time origin shifted to 1979, hence this makes sense 
-#   else: raise DateError     
-#   if period is None or period == '': periodstr = ''
-#   else: periodstr = '_{0:s}'.format(period)
-  if isinstance(period,(tuple,list)): pass
-  elif isinstance(period,basestring): pass
-  elif period is None: pass
-  elif isinstance(period,(int,np.integer)):
-    period = (1979, 1979+period)
-  else: raise DateError   
-  if period is None or period == '': periodstr = ''
-  elif isinstance(period,basestring): periodstr = '_{0:s}'.format(period)
-  else: periodstr = '_{0:4d}-{1:4d}'.format(*period)  
-  # assemble filename/list
-  if filepattern is None: filepattern = name.lower() + '{0:s}_clim{1:s}.nc' 
-  filename = filepattern.format(gridstr,periodstr)
+  if filetype == 'time-series':
+    # assemble filename
+    if filepattern is None: filepattern = name.lower() + '{0:s}_monthly.nc' 
+    filename = filepattern.format(gridstr)
+  elif filetype == 'climatology':
+    if isinstance(period,(tuple,list)): pass
+    elif isinstance(period,basestring): pass
+    elif period is None: pass
+    elif isinstance(period,(int,np.integer)):
+      period = (1979, 1979+period)
+    else: raise DateError   
+    if period is None or period == '': periodstr = ''
+    elif isinstance(period,basestring): periodstr = '_{0:s}'.format(period)
+    else: periodstr = '_{0:4d}-{1:4d}'.format(*period)  
+    # assemble filename
+    if filepattern is None: filepattern = name.lower() + '{0:s}_clim{1:s}.nc' 
+    filename = filepattern.format(gridstr,periodstr)
+  else: raise NotImplementedError, "Unrecognized filetype: '{:s}'".format(filetype)
   # return final name
   assert filename == filename.lower(), "By convention, climatology files only have lower-case names!"
   return filename

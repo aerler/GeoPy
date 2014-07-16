@@ -56,6 +56,8 @@ varatts = dict(air   = dict(name='T2', units='K'), # 2m Temperature
 #                x     = dict(name='x', units='m', offset=-1*projdict['x_0']), # projected west-east coordinate
 #                y     = dict(name='y', units='m', offset=-1*projdict['y_0'])) # projected south-north coordinate
 # N.B.: At the moment Skin Temperature can not be handled this way due to a name conflict with Air Temperature
+ltmvaratts = varatts.copy()
+tsvaratts = varatts.copy()
 # list of variables to load
 ltmvarlist = varatts.keys() # also includes coordinate fields    
 tsvarlist = ['air', 'prate', 'lon', 'lat'] # 'air' is actually 2m temperature...
@@ -71,27 +73,35 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 # Climatology (LTM - Long Term Mean)
 ltmfolder = root_folder + 'LTM/' # LTM subfolder
-def loadNARR_LTM(name=dataset_name, varlist=ltmvarlist, interval='monthly', varatts=varatts, filelist=None, 
-                 folder=ltmfolder):
+def loadNARR_LTM(name=dataset_name, varlist=None, grid=None, interval='monthly', varatts=None, filelist=None, folder=ltmfolder):
   ''' Get a properly formatted dataset of daily or monthly NARR climatologies (LTM). '''
-  # prepare input
-  if interval == 'monthly': 
-    pfx = '.mon.ltm.nc'; tlen = 12
-  elif interval == 'daily': 
-    pfx = '.day.ltm.nc'; tlen = 365
-  else: raise DatasetError, "Selected interval '%s' is not supported!"%interval
-  # translate varlist
-  if varlist and varatts: varlist = translateVarNames(varlist, varatts)  
-  # axes dictionary, primarily to override time axis 
-  axes = dict(time=Axis(name='time',units='day',coord=(1,tlen,tlen)),load=True)
-  if filelist is None: # generate default filelist
-    filelist = [special[var]+pfx if var in special else var+pfx for var in varlist if var not in nofile]
-  # load dataset
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
-                          axes=axes, atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
-  # add projection
-  projection = getProjFromDict(projdict, name='{0:s} Coordinate System'.format(name))
-  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None, folder=grid_folder)
+  if grid is None:
+    # load from original time-series files 
+    if folder is None: folder = orig_ts_folder
+    # prepare input
+    if varatts is None: varatts = ltmvaratts.copy()
+    if varlist is None: varlist = ltmvarlist
+    if interval == 'monthly': 
+      pfx = '.mon.ltm.nc'; tlen = 12
+    elif interval == 'daily': 
+      pfx = '.day.ltm.nc'; tlen = 365
+    else: raise DatasetError, "Selected interval '%s' is not supported!"%interval
+    # translate varlist
+    if varlist and varatts: varlist = translateVarNames(varlist, varatts)  
+    # axes dictionary, primarily to override time axis 
+    axes = dict(time=Axis(name='time',units='day',coord=(1,tlen,tlen)),load=True)
+    if filelist is None: # generate default filelist
+      filelist = [special[var]+pfx if var in special else var+pfx for var in varlist if var not in nofile]
+    # load dataset
+    dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
+                            axes=axes, atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
+    # add projection
+    projection = getProjFromDict(projdict, name='{0:s} Coordinate System'.format(name))
+    dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None, folder=grid_folder)
+  else:
+    # load from neatly formatted and regridded time-series files
+    if folder is None: folder = avgfolder
+    raise NotImplementedError, "Need to implement loading neatly formatted and regridded time-series!"
   # return formatted dataset
   return dataset
 
@@ -99,18 +109,27 @@ def loadNARR_LTM(name=dataset_name, varlist=ltmvarlist, interval='monthly', vara
 orig_ts_folder = root_folder + 'Monthly/' # monthly subfolder
 orig_ts_file = '{0:s}.mon.mean.nc' # monthly time-series for each variables
 tsfile = 'narr{0:s}_monthly.nc' # extend with grid type only
-def loadNARR_TS(name=dataset_name, varlist=tsvarlist, varatts=varatts, filelist=None, folder=orig_ts_folder):
+def loadNARR_TS(name=dataset_name, varlist=None, varatts=varatts, filelist=None, folder=orig_ts_folder):
   ''' Get a properly formatted NARR dataset with monthly mean time-series. '''
-  # translate varlist
-  if varlist and varatts: varlist = translateVarNames(varlist, varatts)
-  if filelist is None: # generate default filelist
-    filelist = [orig_ts_file.format(special[var]) if var in special else orig_ts_file.format(var) for var in varlist if var not in nofile]
-  # load dataset
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
-                          atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
-  # add projection
-  projection = getProjFromDict(projdict, name='{0:s} Coordinate System'.format(name))
-  dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None, gridfolder=grid_folder)
+  if grid is None:
+    # load from original time-series files 
+    if folder is None: folder = orig_ts_folder
+    # translate varlist
+    if varatts is None: varatts = tsvaratts.copy()
+    if varlist is None: varlist = tsvarlist
+    if varlist and varatts: varlist = translateVarNames(varlist, varatts)
+    if filelist is None: # generate default filelist
+      filelist = [orig_ts_file.format(special[var]) if var in special else orig_ts_file.format(var) for var in varlist if var not in nofile]
+    # load dataset
+    dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
+                            atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
+    # add projection
+    projection = getProjFromDict(projdict, name='{0:s} Coordinate System'.format(name))
+    dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None, gridfolder=grid_folder)
+  else:
+    # load from neatly formatted and regridded time-series files
+    if folder is None: folder = avgfolder
+    raise NotImplementedError, "Need to implement loading neatly formatted and regridded time-series!"
   # return formatted dataset
   return dataset
 

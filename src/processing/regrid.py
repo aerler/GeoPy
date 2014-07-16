@@ -134,8 +134,8 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       source = module.loadClimatology(name=dataset_name, period=period, grid=None, resolution=resolution,  
                                       varlist=None, varatts=None, folder=module.avgfolder, filelist=None)
     elif mode == 'time-series':
-      return 0 # just exit for now 
-#       raise NotImplementedError, "Need to implement time-series regridding for datasets!"
+      source = module.loadTimeSeries(name=dataset_name, grid=None, resolution=resolution,  
+                                      varlist=None, varatts=None, folder=None, filelist=None)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
     datamsgstr = "Processing Dataset '{:s}'".format(dataset_name)
     # check period
@@ -152,7 +152,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
   else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
   # print feedback to logger
   logger.info('\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
-  if not lparallel:
+  if not lparallel and ldebug:
     logger.info('\n'+str(source)+'\n')
   # determine age of oldest source file
   if not loverwrite:
@@ -180,17 +180,20 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
   elif dataset == dataset.upper(): # observational datasets
     if lwrite:
-      if mode == 'climatology':
-        filename = getFileName(grid=griddef.name, period=period, name=grid_name, filepattern=None)
-        avgfolder = module.avgfolder
-      elif mode == 'time-series': raise NotImplementedError
-      else: raise NotImplementedError
+      avgfolder = module.avgfolder
+      filename = getFileName(grid=griddef.name, period=period, name=grid_name, filetype=mode)      
   else: raise DatasetError
   if ldebug: filename = 'test_' + filename
   if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
   lskip = False # else just go ahead
   if lwrite:
-    filepath = avgfolder+filename
+    if lreturn: tmpfilename = filename # no temporary file if dataset is passed on (can't rename the file while it is open!)
+    else: 
+      if lparallel: tmppfx = 'tmp_wrfavg_{:s}_'.format(pidstr[1:-1])
+      else: tmppfx = 'tmp_wrfavg_'.format(pidstr[1:-1])
+      tmpfilename = tmppfx + filename      
+    filepath = avgfolder + filename
+    tmpfilepath = avgfolder + tmpfilename
     if os.path.exists(filepath): 
       if not loverwrite: 
         age = datetime.fromtimestamp(os.path.getmtime(filepath))
@@ -214,7 +217,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     atts['title'] = '{:s} Climatology on {:s} Grid'.format(dataset_name, griddef.name)
     # make new dataset
     if lwrite: # write to NetCDF file 
-      sink = DatasetNetCDF(folder=avgfolder, filelist=[filename], atts=atts, mode='w')
+      sink = DatasetNetCDF(folder=avgfolder, filelist=[tmpfilename], atts=atts, mode='w')
     else: sink = Dataset(atts=atts) # ony create dataset in memory
     
     # initialize processing
@@ -237,21 +240,25 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       addLengthAndNamesOfMonth(sink, noleap=False) 
     
     # print dataset
-    if not lparallel:
+    if not lparallel and ldebug:
       logger.info('\n'+str(sink)+'\n')   
     # write results to file
     if lwrite:
       sink.sync()
       writemsg =  "\n{:s}   >>>   Writing to file '{:s}' in dataset {:s}".format(pidstr,filename,dataset_name)
       writemsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,filepath)
-      logger.info(writemsg)
+      logger.info(writemsg)      
+      # rename file to proper name
+      if not lreturn:
+        sink.unload(); sink.close(); del sink # destroy all references 
+        os.rename(tmpfilepath,filepath)
+      # N.B.: there is no temporary file if the dataset is returned, because an open file can't be renamed
+        
     # clean up and return
     source.unload(); del source, CPU
-    if lreturn:
-      # return dataset for further use
-      return sink
-    else:
-      sink.unload(); sink.close(); del sink
+    if lreturn:      
+      return sink # return dataset for further use (netcdf file still open!)
+    else:            
       return 0 # "exit code"
     # N.B.: garbage is collected in multi-processing wrapper
 
@@ -280,9 +287,9 @@ if __name__ == '__main__':
   if not lbatch:
     ldebug = False
     NP = 1 or NP # to avoid memory issues...
-    modes = ('climatology',) # 'climatology','time-series'
-#     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = False
+#     modes = ('climatology',) # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology','time-series'
+    loverwrite = True
     varlist = None
 #     varlist = ['precip',]
     periods = []
@@ -297,12 +304,13 @@ if __name__ == '__main__':
 #     periods += [(1949,2009)]
 #     periods += [(1997,1998)]
     # Observations/Reanalysis
-    datasets = []
+    datasets = ['CRU']
+    resolutions = {'CRU':'','GPCC':'25'}
+    lLTM = True # also regrid the long-term mean climatologies 
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR', 'NARR']
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
-    resolutions = None
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
@@ -312,7 +320,7 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm','lnd']
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-    WRF_experiments += ['max']
+#     WRF_experiments += ['max']
 #     WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
 #     WRF_experiments += ['max','max-lowres','max-nmp','max-nosub']
 #     WRF_experiments += ['max','max-A','max-nofdda','max-fdda']
@@ -349,12 +357,14 @@ if __name__ == '__main__':
     modes = ('climatology','time-series')
     #modes = ('time-series',)
     #modes = ('climatology',)
-    loverwrite = True
+    loverwrite = False
     varlist = None # process all variables
-    datasets = None # process all applicable
     periods = (5,10,15,) # climatology periods to process
     #periods = (15,) # for tests
-    resolutions = None
+    # Datasets
+    datasets = None # process all applicable
+    resolutions = None # process all applicable
+    lLTM = True 
     # CESM
     load3D = False
     CESM_experiments = None
@@ -378,29 +388,16 @@ if __name__ == '__main__':
     
   
   ## process arguments    
+  if periods is None: periods = [None]
   # expand experiments
   if WRF_experiments is None: WRF_experiments = WRF_exps.values() # do all 
   else: WRF_experiments = [WRF_exps[exp] for exp in WRF_experiments]
   if CESM_experiments is None: CESM_experiments = CESM_exps.values() # do all 
-  else: CESM_experiments = [CESM_exps[exp] for exp in CESM_experiments]
-  
+  else: CESM_experiments = [CESM_exps[exp] for exp in CESM_experiments]  
   # expand datasets and resolutions
   if datasets is None: datasets = dataset_list  
-  if resolutions is None: resolutions = dict()
-  elif not isinstance(resolutions,dict): raise TypeError 
-  new_ds = []
-  for dataset in datasets:
-    mod = import_module('datasets.{0:s}'.format(dataset))    
-    if periods is None:
-      if len(mod.LTM_grids) > 0: 
-        new_ds.append(dataset)
-        if dataset not in resolutions or resolutions[dataset] is None: resolutions[dataset] = mod.LTM_grids
-    else:
-      if len(mod.TS_grids) > 0: 
-        new_ds.append(dataset)
-        if dataset not in resolutions or resolutions[dataset] is None: resolutions[dataset] = mod.TS_grids
-  if periods is None: periods = [None]
-  datasets = new_ds      
+#   if resolutions is None: resolutions = dict()
+#   elif not isinstance(resolutions,dict): raise TypeError 
   
   # print an announcement
   if len(WRF_experiments) > 0:
@@ -448,12 +445,32 @@ if __name__ == '__main__':
         if not isinstance(griddef,GridDefinition): 
           raise GDALError, 'No valid grid defined! (grid={0:s})'.format(grid)        
         
-        # observational datasets
+        # observational datasets (grid depends on dataset!)
         for dataset in datasets:
-          for period in periodlist:
-            for resolution in resolutions[dataset]:
-              # arguments for worker function: dataset and dataargs       
-              args.append( (dataset, mode, griddef, dict(period=period, resolution=resolution)) ) # append to list               
+          mod = import_module('datasets.{0:s}'.format(dataset))
+          if isinstance(resolutions,dict): 
+            if not isinstance(resolutions[dataset],(list,tuple)): resolutions[dataset] = (resolutions[dataset],)                
+          else: raise TypeError                                
+          if mode == 'climatology':
+            # some datasets come with a climatology 
+            if lLTM:
+              if resolutions is None: dsreses = mod.LTM_grids
+              elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.LTM_grids]  
+              for dsres in dsreses: 
+                args.append( (dataset, mode, griddef, dict(period=None, resolution=dsres)) ) # append to list
+            # climatologies derived from time-series
+            if resolutions is None: dsreses = mod.TS_grids
+            elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
+            for dsres in dsreses:
+              for period in periodlist:
+                args.append( (dataset, mode, griddef, dict(period=period, resolution=dsres)) ) # append to list            
+          elif mode == 'time-series': 
+            # regrid the entire time-series
+            if resolutions is None: dsreses = mod.TS_grids
+            elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
+            for dsres in dsreses:
+              args.append( (dataset, mode, griddef, dict(period=None, resolution=dsres)) ) # append to list            
+        
         # CESM datasets
         for experiment in CESM_experiments:
           for filetype in CESM_filetypes:

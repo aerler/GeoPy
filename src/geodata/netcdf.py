@@ -302,7 +302,7 @@ class DatasetNetCDF(Dataset):
         mode           = 'r' # a string indicating whether read ('r') or write ('w') actions are intended/permitted
         datasets       = [] # list of NetCDF datasets
         dataset        = @property # shortcut to first element of self.datasets
-        filelist       = [] # files used to create datasets 
+        filelist       = [] # files used to create datasets (absolute path)
       Basic Attributes:        
         variables      = dict() # dictionary holding Variable instances
         axes           = dict() # dictionary holding Axis instances (inferred from Variables)
@@ -358,7 +358,7 @@ class DatasetNetCDF(Dataset):
         except RuntimeError:
           raise NetCDFError, "Error reading file '{0:s}' in folder {1:s}".format(ncfile,folder)
         filenames.append(tmpfile)
-      filelist = filenames # original file list, including folders        
+      filelist = filenames # original file list, absolute path        
     # from here on, dataset creation is based on the netcdf-Dataset(s) in 'datasets'
     if ignore_list is not None:
       if isinstance(ignore_list,(list,tuple,set)): ignore_list = set(ignore_list) # order doesn't matter

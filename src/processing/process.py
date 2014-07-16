@@ -20,6 +20,9 @@ from geodata.base import Axis, Dataset
 from geodata.netcdf import DatasetNetCDF, asDatasetNC
 from geodata.nctools import writeNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition, gdalInterp
+# default data types
+dtype_int = np.dtype('int16')
+dtype_float = np.dtype('float32')
 
 class ProcessError(Exception):
   ''' Error class for exceptions occurring in methods of the CPU (CentralProcessingUnit). '''
@@ -260,7 +263,7 @@ class CentralProcessingUnit(object):
     if not isinstance(shift,(np.integer,int)): raise TypeError # shift in month (if first month is not January)
     # construct new time axis for climatology
     if climAxis is None:        
-      climAxis = Axis(name=timeAxis, units='month', length=12, data=np.arange(1,13,1)) # monthly climatology
+      climAxis = Axis(name=timeAxis, units='month', length=12, data=np.arange(1,13,1), dtype=dtype_int) # monthly climatology
     else: 
       if not isinstance(climAxis,Axis): raise TypeError
     # add axis to output dataset    
@@ -302,13 +305,13 @@ class CentralProcessingUnit(object):
         idx = tuple([timeSlice if ax.name == timeAxis else slice(None) for ax in var.axes])
       else: idx = None
       dataarray = var.getArray(idx=idx, unmask=False, copy=False)    
-      if var.masked: avgdata = ma.zeros(newshape) # allocate array
-      else: avgdata = np.zeros(newshape) # allocate array    
+      if var.masked: avgdata = ma.zeros(newshape, dtype=var.dtype) # allocate array
+      else: avgdata = np.zeros(newshape, dtype=var.dtype) # allocate array    
       # average data
       timelength = dataarray.shape[tidx]
       if timelength % interval == 0:
         # use array indexing
-        climelts = np.arange(interval)
+        climelts = np.arange(interval, dtype=dtype_int)
         for t in xrange(0,timelength,interval):
           if self.feedback: print('.'), # t/interval+1
           avgdata += dataarray.take(t+climelts, axis=tidx)
@@ -317,7 +320,7 @@ class CentralProcessingUnit(object):
         avgdata /= (timelength/interval) 
       else: 
         # simple indexing
-        climcnt = np.zeros(interval)
+        climcnt = np.zeros(interval, dtype=dtype_int)
         for t in xrange(timelength):
           if self.feedback and t%interval == 0: print('.'), # t/interval+1
           idx = int(t%interval)
@@ -339,7 +342,7 @@ class CentralProcessingUnit(object):
       if shift != 0: avgdata = np.roll(avgdata, shift, axis=tidx)
       # create new Variable
       axes = tuple([climAxis if ax.name == timeAxis else ax for ax in var.axes]) # exchange time axis
-      newvar = var.copy(axes=axes, data=avgdata) # and, of course, load new data
+      newvar = var.copy(axes=axes, data=avgdata, dtype=var.dtype) # and, of course, load new data
       del avgdata # clean up - just to make sure
       #     print newvar.name, newvar.masked
       #     print newvar.fillValue

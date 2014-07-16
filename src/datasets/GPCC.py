@@ -91,23 +91,31 @@ def loadGPCC_LTM(name=dataset_name, varlist=None, resolution='025', varatts=ltmv
 orig_ts_folder = root_folder + 'full_data_1900-2010/' # climatology subfolder
 orig_ts_file = 'full_data_v6_{0:s}_{1:s}.nc' # extend by variable name and resolution
 tsfile = 'gpcc{0:s}_monthly.nc' # extend with grid type only
-def loadGPCC_TS(name=dataset_name, varlist=None, resolution='25', varatts=tsvaratts, filelist=None, folder=orig_ts_folder):
+def loadGPCC_TS(name=dataset_name, grid=None, varlist=None, resolution='25', varatts=None, filelist=None, folder=None):
   ''' Get a properly formatted dataset with the monthly GPCC time-series. '''
-  # prepare input  
-  if resolution not in ('05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
-  # translate varlist
-  if varlist is None: varlist = varatts.keys()
-  if varlist and varatts: varlist = translateVarNames(varlist, varatts)
-  if filelist is None: # generate default filelist
-    filelist = []
-    if 'p' in varlist: filelist.append(orig_ts_file.format('precip',resolution))
-    if 's' in varlist: filelist.append(orig_ts_file.format('statio',resolution))
-  # load dataset
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
-  # N.B.: projection should be auto-detected as geographic
-  # add method to convert precip from per month to per second
-  dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    
+  if grid is None:
+    # load from original time-series files 
+    if folder is None: folder = orig_ts_folder
+    # prepare input  
+    if resolution not in ('05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
+    # translate varlist
+    if varatts is None: varatts = tsvaratts.copy()
+    if varlist is None: varlist = varatts.keys()
+    if varlist and varatts: varlist = translateVarNames(varlist, varatts)
+    if filelist is None: # generate default filelist
+      filelist = []
+      if 'p' in varlist: filelist.append(orig_ts_file.format('precip',resolution))
+      if 's' in varlist: filelist.append(orig_ts_file.format('statio',resolution))
+    # load dataset
+    dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')
+    dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
+    # N.B.: projection should be auto-detected as geographic
+    # add method to convert precip from per month to per second
+    dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)
+  else:
+    # load from neatly formatted and regridded time-series files
+    if folder is None: folder = avgfolder
+    raise NotImplementedError, "Need to implement loading neatly formatted and regridded time-series!"
   # return formatted dataset
   return dataset
 
@@ -161,9 +169,10 @@ loadClimatology = loadGPCC # pre-processed, standardized climatology
 if __name__ == '__main__':
   
 #   mode = 'test_climatology'; reses = ('025',); period = None
-  mode = 'average_timeseries'; reses = ('05',) # for testing
+  mode = 'test_timeseries'; reses = ('25',); period = None
+#   mode = 'average_timeseries'; reses = ('05',) # for testing
 #   reses = ('025','05', '10', '25')  
-  reses = ('05', '10', '25')
+#   reses = ('05', '10', '25')
 #   reses = ('25',)
 #   period = (1979,1982)
 #   period = (1979,1984)
@@ -189,6 +198,23 @@ if __name__ == '__main__':
       print('')
       dataset = loadGPCC(grid=grid,resolution=res,period=period)
       print(dataset)
+      print('')
+      print(dataset.geotransform)
+      print(dataset.precip.getArray().mean())
+      print(dataset.precip.masked)
+      
+          
+    elif mode == 'test_timeseries':
+      
+      
+      # load time-series file
+      print('')
+      dataset = loadGPCC_TS(grid=None,resolution=res)
+      print(dataset)
+      print('')
+      print(dataset.time)
+      print(dataset.time.data_array)
+      print(dataset.time.masked)
       print('')
       print(dataset.geotransform)
       print(dataset.precip.getArray().mean())
