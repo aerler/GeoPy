@@ -30,6 +30,23 @@ from geodata.misc import printList, isEqual, isInt, isFloat, isNumber, DataError
 
 # # utility functions and classes to handle projection information and related meta data
 
+# utility function to check if longitude runs from 0 to 360, instead of -180 - 180
+def checkWrap360(lwrap360, xlon):
+  if lwrap360 is None:
+    lwrap360 = False # until proven otherwise
+    if xlon is not None:
+      if any( xlon.getArray() > 180 ):
+        lwrap360 = True # need to wrap around
+        assert all( xlon.getArray() >= 0 )
+        assert all( xlon.getArray() <= 360 ) 
+      else:
+        assert all( xlon.getArray() >= -180 )
+        assert all( xlon.getArray() <= 180 )
+  elif not isinstance(lwrap360,bool): raise TypeError
+  # return boolean
+  return lwrap360
+
+
 class GridDefinition(object):
   ''' 
     A class that encapsulates all necessary information to fully define a grid.
@@ -48,7 +65,7 @@ class GridDefinition(object):
   lon2D = None # 2D field of longitude at each grid point
   lat2D = None # 2D field of latitude at each grid point
       
-  def __init__(self, name='', projection=None, geotransform=None, size=None, xlon=None, ylat=None, lwrap360=True, geolocator=True):
+  def __init__(self, name='', projection=None, geotransform=None, size=None, xlon=None, ylat=None, lwrap360=None, geolocator=True):
     ''' This class can be initialized in several ways. Some form of projections has to be defined (using a 
         GDAL SpatialReference, WKT, EPSG code, or Proj4 conventions), or a simple geographic (lat/lon) 
         coordinate system will be assumed. 
@@ -60,12 +77,15 @@ class GridDefinition(object):
     # check projection (default is WSG84)
     if isinstance(projection, osr.SpatialReference):
       gdalsr = projection # use as is
+      if not gdalsr.IsProjected(): lwrap360 = checkWrap360(lwrap360, xlon) 
     else:
       gdalsr = osr.SpatialReference() 
-      gdalsr.SetWellKnownGeogCS('WGS84')           
+      gdalsr.SetWellKnownGeogCS('WGS84')                 
       if projection is None: # default: normal lat/lon projection
+        lwrap360 = checkWrap360(lwrap360, xlon)
         if lwrap360: # longitude runs from 0 to 360 degrees, i.e. wraps at 360/0
           projection = dict(proj='longlat',lon_0=180,lat_0=0,x_0=0,y_0=0,lon_wrap=0) # lon = [0,360]
+          #projection = dict(proj='longlat',lon_0=0,lat_0=0,x_0=0,y_0=0) # lon = [0,360]
         else: projection = dict(proj='longlat',lon_0=0,lat_0=0,x_0=0,y_0=0) # wraps at dateline          
       if isinstance(projection, dict): 
         gdalsr = getProjFromDict(projdict=projection, name='', GeoCS='WGS84')  # get projection from dictionary
@@ -275,7 +295,6 @@ def getProjFromDict(projdict, name='', GeoCS='WGS84', convention='Proj4'):
         # translate dict entries to string
         projstr = '{0:s} +{1:s}={2:f}'.format(projstr, key, value)
     # load projection from proj4 string
-    print projstr
     projection.ImportFromProj4(projstr)
   else:
     raise NotImplementedError
@@ -407,12 +426,12 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     # infer or check projection and related parameters       
     if griddef is None:
       lgdal, projection, isProjected, xlon, ylat = getProjection(var, projection=projection)
+      griddef = GridDefinition(projection=projection, xlon=xlon, ylat=ylat)
     else:
       # use GridDefinition object 
       if isinstance(griddef,basestring): # load from pickle file
         griddef = loadPickledGridDef(grid=griddef, res=None, filename=None, folder=gridfolder)
-      elif not isinstance(griddef,GridDefinition): pass 
-      else: raise TypeError
+      elif not isinstance(griddef,GridDefinition): raise TypeError
       projection, isProjected, xlon, ylat = griddef.getProjection
       lgdal = xlon is not None and ylat is not None # need non-None xlon & ylat
   else: lgdal = False
@@ -469,7 +488,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     var.copy = types.MethodType(copy, var)
         
     # define GDAL-related 'class methods'  
-    def getGDAL(self, load=True, allocate=True, fillValue=None):
+    def getGDAL(self, load=True, allocate=True, wrap360=False, fillValue=None):
       ''' Method that returns a gdal dataset, ready for use with GDAL routines. '''
       lperi = False
       if self.gdal and self.projection is not None:
@@ -479,6 +498,16 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           if not self.data: raise DataError, 'Need data in Variable instance in order to load data into GDAL dataset!'
           data = self.getArray(unmask=True)  # get unmasked data
           data = data.reshape(self.bands, self.mapSize[0], self.mapSize[1])  # reshape to fit bands
+          # to insure correct wrapping, geographic coordinate systems with longitudes reanging 
+          # from 0 to 360 can optionally be shifted back by 180, to conform to GDAL conventions 
+          # (the shift will only affect the GDAL Dataset, not the actual Variable) 
+          if wrap360:
+            geotransform = list(self.geotransform)
+            shift = int( 180. / geotransform[1] )
+            assert len(self.xlon) == data.shape[2], "Make sure the X-Axis is the last one!"
+            data = np.roll(data, shift, axis=2) # shift data along the x-axis
+            geotransform[0] = geotransform[0] - shift*geotransform[1] # record shift in geotransform 
+          else: geotransform = self.geotransform
           if lperi: 
             tmp = np.zeros((self.bands, self.mapSize[0], self.mapSize[1]+1))
             tmp[:,:,0:-1] = data; tmp[:,:,-1] = data[:,:,0]
@@ -487,6 +516,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           if fillValue is None and self.fillValue is not None: fillValue = self.fillValue  # use default 
           if self.fillValue is None: fillValue = ma.default_fill_value(self.dtype)
           data = np.zeros((self.bands,) + self.mapSize, dtype=self.dtype) + fillValue
+          geotransform = self.geotransform
         # determine GDAL data type        
         if self.dtype == 'float32': gdt = gdal.GDT_Float32
         elif self.dtype == 'float64': gdt = gdal.GDT_Float64
@@ -506,7 +536,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         else: dataset = ramdrv.Create(self.name, int(xe), int(ye), int(self.bands), int(gdt)) 
         # N.B.: for some reason a dataset is always initialized with 6 bands
         # set projection parameters
-        dataset.SetGeoTransform(self.geotransform)  # does the order matter?
+        dataset.SetGeoTransform(geotransform)  # does the order matter?
         dataset.SetProjection(self.projection.ExportToWkt())  # is .ExportToWkt() necessary?        
         if load or allocate: 
           # assign data
@@ -604,18 +634,20 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
   # # the return value is actually not necessary, since the object is modified immediately
   return var
 
-def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, gridfolder=None, geolocator=False):
+def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, gridfolder=None, lwrap360=None, geolocator=False):
   ''' 
     A function that adds GDAL-based geographic projection features to an existing Dataset instance
     and all its Variables.
     
     New Instance Attributes: 
       gdal = False # whether or not this instance possesses any GDAL functionality and is map-like
-      isProjected = False # whether lat/lon spherical (False) or a geographic projection (True)
       projection = None # a GDAL spatial reference object
-      geotransform = None # a GDAL geotransform vector (can e inferred from coordinate vectors)
+      isProjected = False # whether lat/lon spherical (False) or a geographic projection (True)
+      wrap360 = None # whether or not longitudes run from 0 to 360, instead of -180 to 180
       xlon = None # West-East axis
       ylat = None # South-North axis
+      geotransform = None # a GDAL geotransform vector (can e inferred from coordinate vectors)
+      mapSize = None # length of the lon/x and lat/y axes
       griddef = None # grid definition object  
       gridfolder = None # default search folder for shapefiles/masks and for GridDef, if passed by name
   '''
@@ -644,16 +676,18 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
     geotransform = getGeotransform(xlon, ylat, geotransform=geotransform)
     # decide if addign a geolocator
     # add grid definition object (for convenience; recreate to match axes)
-    griddef = GridDefinition(dataset.name, projection=projection, geotransform=geotransform, 
+    griddef = GridDefinition(dataset.name, projection=projection, geotransform=geotransform, lwrap360=lwrap360, 
                              size=(len(xlon),len(ylat)), xlon=xlon, ylat=ylat, geolocator=geolocator)
+    lwrap360 = griddef.wrap360 # whether or not longitudes run from 0 to 360, instead of -180 to 180
     if geolocator:
       addGeoLocator(dataset, griddef=griddef, lgdal=False, lreplace=True, lcheck=True, asNC=False)
     # add new instance attributes (projection parameters)
-    dataset.__dict__['isProjected'] = isProjected    
     dataset.__dict__['projection'] = projection
-    dataset.__dict__['geotransform'] = geotransform
+    dataset.__dict__['isProjected'] = isProjected
+    dataset.__dict__['wrap360'] = lwrap360    
     dataset.__dict__['xlon'] = xlon
     dataset.__dict__['ylat'] = ylat
+    dataset.__dict__['geotransform'] = geotransform
     dataset.__dict__['mapSize'] = (len(xlon),len(ylat))
     dataset.__dict__['griddef'] = griddef
     dataset.__dict__['gridfolder'] = gridfolder

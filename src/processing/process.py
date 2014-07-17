@@ -155,7 +155,7 @@ class CentralProcessingUnit(object):
   
   # function pair to compute a climatology from a time-series      
   def Regrid(self, griddef=None, projection=None, geotransform=None, size=None, xlon=None, ylat=None, 
-             mask=True, int_interp=None, float_interp=None, **kwargs):
+             lmask=True, int_interp=None, float_interp=None, **kwargs):
     ''' Setup climatology and start computation; calls processClimatology. '''
     # make temporary gdal dataset
     if self.source is self.target:
@@ -181,8 +181,8 @@ class CentralProcessingUnit(object):
         xlon = self.output.xlon; ylat = self.output.ylat
       else:
         # figure out grid definition from input 
-        if griddef is None: griddef = GridDefinition(projection=projection, geotransform=geotransform, 
-                                                     size=size, xlon=xlon, ylat=ylat)
+        if griddef is None: 
+          griddef = GridDefinition(projection=projection, geotransform=geotransform, size=size, xlon=xlon, ylat=ylat)
         # pass arguments through GridDefinition, if not provided
         projection=griddef.projection; geotransform=griddef.geotransform
         xlon=griddef.xlon; ylat=griddef.ylat                     
@@ -194,10 +194,27 @@ class CentralProcessingUnit(object):
     # use these map axes
     xlon = self.target.xlon; ylat = self.target.ylat
     assert isinstance(xlon,Axis) and isinstance(ylat,Axis)
-    # determine source dataset grid definition 
-    srcgrd = GridDefinition(projection=self.source.projection, geotransform=self.source.geotransform, 
-                            size=self.source.mapSize, xlon=self.source.xlon, ylat=self.source.ylat)
+    # determine source dataset grid definition
+    if self.source.griddef is None:  
+      srcgrd = GridDefinition(projection=self.source.projection, geotransform=self.source.geotransform, 
+                              size=self.source.mapSize, xlon=self.source.xlon, ylat=self.source.ylat)
+    else: srcgrd = self.source.griddef
     srcres = srcgrd.scale; tgtres = griddef.scale
+    # determine if shift is necessary to insure correct wrapping
+    if not srcgrd.isProjected and not griddef.isProjected:
+      if srcgrd.wrap360:    
+        lwrap360 = True
+        assert srcgrd.geotransform[0] + srcgrd.geotransform[1]*(len(srcgrd.xlon)-1) > 180        
+        assert np.round(srcgrd.geotransform[1]*len(srcgrd.xlon), decimals=2) == 360 # require 360 deg. to some accuracy... 
+        assert any( srcgrd.xlon.getArray() > 180 ) # need to wrap around
+        assert all( srcgrd.xlon.getArray() >= 0 )
+        assert all( srcgrd.xlon.getArray() <= 360 )
+      else:
+        lwrap360 = False
+        assert srcgrd.geotransform[0] + srcgrd.geotransform[1]*(len(srcgrd.xlon)-1) < 180
+        assert all( srcgrd.xlon.getArray() >= -180 )
+        assert all( srcgrd.xlon.getArray() <= 180 )  
+    else: lwrap360 = False # no need to shift, if a projected grid is involved!
     # determine GDAL interpolation
     if int_interp is None: int_interp = gdalInterp('nearest')
     else: int_interp = gdalInterp(int_interp)
@@ -206,8 +223,8 @@ class CentralProcessingUnit(object):
       else: float_interp = gdalInterp('cubicspline') # up-sampling
     else: float_interp = gdalInterp(float_interp)      
     # prepare function call    
-    function = functools.partial(self.processRegrid, ylat=ylat, xlon=xlon, # already set parameters
-                                 mask=mask, int_interp=int_interp, float_interp=float_interp)
+    function = functools.partial(self.processRegrid, ylat=ylat, xlon=xlon, lwrap360=lwrap360, # already set parameters
+                                 lmask=lmask, int_interp=int_interp, float_interp=float_interp)
     # start process
     if self.feedback: print('\n   +++   processing regridding   +++   ') 
     self.process(function, **kwargs) # currently 'flush' is the only kwarg
@@ -215,7 +232,7 @@ class CentralProcessingUnit(object):
     if self.tmp: self.tmpput = self.target
     if ltmptoo: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
   # the previous method sets up the process, the next method performs the computation
-  def processRegrid(self, var, ylat=None, xlon=None, mask=True, int_interp=None, float_interp=None):
+  def processRegrid(self, var, ylat=None, xlon=None, lwrap360=False, lmask=True, int_interp=None, float_interp=None):
     ''' Compute a climatology from a variable time-series. '''
     # process gdal variables
     if var.gdal:
@@ -226,9 +243,10 @@ class CentralProcessingUnit(object):
       axes[var.axisIndex(var.xlon)] = xlon
       # create new Variable
       newvar = var.copy(axes=axes, data=None, dtype=var.dtype, projection=self.target.projection) # and, of course, load new data
+      # if necessary, shift array back, to ensure proper wrapping of coordinates
       # prepare regridding
       # get GDAL dataset instances
-      srcdata = var.getGDAL(load=True)
+      srcdata = var.getGDAL(load=True, wrap360=lwrap360)
       tgtdata = newvar.getGDAL(load=False, allocate=True, fillValue=var.fillValue)
       # determine GDAL interpolation
       if 'gdal_interp' in var.__dict__: gdal_interp = var.gdal_interp
@@ -247,7 +265,7 @@ class CentralProcessingUnit(object):
       if err != 0: raise GDALError, 'ERROR CODE %i'%err
       #tgtdata.FlushCash()  
       # load data into new variable
-      newvar.loadGDAL(tgtdata, mask=mask, fillValue=var.fillValue)      
+      newvar.loadGDAL(tgtdata, mask=lmask, fillValue=var.fillValue)      
       del tgtdata # clean up (just to make sure)
     else:
       var.load() # need to load variables into memory, because we are not doing anything else...
@@ -372,7 +390,7 @@ class CentralProcessingUnit(object):
     # apply shift to new axis
     if byteShift:
       # shift coordinate vector like data
-      coord = np.roll(axis.getArray(unmask=False), shift=shift)      
+      coord = np.roll(axis.getArray(unmask=False), shift) # 1-D      
     else:              
       coord = axis.getArray(unmask=False) + shift # shift coordinates
       # transform coordinate shifts into index shifts (linear scaling)

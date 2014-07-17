@@ -256,7 +256,7 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
   # check
   if len(dataset) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
   # add projection
-  dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, geolocator=True)
+  dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, lwrap360=True, geolocator=True)
   # return formatted dataset
   return dataset
 

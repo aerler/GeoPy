@@ -88,9 +88,9 @@ def addLandMask(dataset, varname='precip', maskname='landmask', atts=None):
     raise DatasetError, "The Dataset '%s' already has a field called '%s'."%(dataset.name,maskname)
   # attributes and meta data
   if atts is None:
-    atts = default_varatts[maskname] 
+    atts = default_varatts[maskname].copy()
     atts['long_name'] = 'Geographic Mask for Climatology Fields' 
-    atts['description'] = 'data are valid where this mask is zero'
+    atts['description'] = 'data are valid where this mask is zero'  
   # axes and data
   var = dataset.variables[varname]
   axes = var.axes[-2:] # last two axes (i.e. map axes)
@@ -190,7 +190,7 @@ def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None
   ''' A function to load standardized climatology datasets. '''
   # prepare input
   # varlist (varlist = None means all variables)
-  if varatts is None: varatts = default_varatts
+  if varatts is None: varatts = default_varatts.copy()
   if varlist is not None: varlist = translateVarNames(varlist, varatts)
   # filelist
   if filelist is None: 
@@ -454,7 +454,8 @@ if __name__ == '__main__':
                 ARB_large=['025','05','10','25'],
                 CFSR=['031','05'],
                 GPCC=['025','05','10','25'],
-                CRU=[None],NARR=[None],PRISM=[None])
+                CRU=[None],NARR=[None],PRISM=[None],PCIC=[None])
+  #grids = dict( CFSR=['031','05'],)
     
   # pickle grid definition
   if mode == 'pickle_grid':

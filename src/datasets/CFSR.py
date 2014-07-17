@@ -24,7 +24,7 @@ dataset_name = 'CFSR'
 # geotransform_031 = (-180.15625, 0.3125, 0.0, 89.915802001953125, 0.0, -0.30960083)
 geotransform_031 = (-0.15625, 0.3125, 0.0, 89.915802001953125, 0.0, -0.30960083)
 size_031 = (1152,576) # (x,y) map size
-# geotransform_05 = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)
+geotransform_05 = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)
 geotransform_05 = (-0.25, 0.5, 0.0, 90.25, 0.0, -0.5) # this grid actually has a grid point at the poles!
 size_05 = (720,361) # (x,y) map size
 
@@ -64,6 +64,8 @@ hiresfiles = {key:'flxf06.gdas.{0:s}.grb2.nc'.format(value) for key,value in hir
 hiresstatic = {key:'flxf06.gdas.{0:s}.grb2.nc'.format(value) for key,value in hiresstatic.iteritems()}
 lowresfiles = {key:'pgbh06.gdas.{0:s}.grb2.nc'.format(value) for key,value in lowresfiles.iteritems()}
 lowresstatic = {key:'pgbh06.gdas.{0:s}.grb2.nc'.format(value) for key,value in lowresstatic.iteritems()}
+# N.B.: to trim time dimension to the common length, use: 
+#       ncks -a -O -d time,0,371 orig_flxf06.gdas.TMP.2m.grb2.nc flxf06.gdas.TMP.2m.grb2.nc
 # list of variables to load
 # varlist = ['precip','snowh'] + hiresstatic.keys() + list(nofile) # hires + coordinates
 varlist_hires = hiresfiles.keys() + hiresstatic.keys() + list(nofile) # hires + coordinates    

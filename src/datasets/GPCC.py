@@ -168,12 +168,13 @@ loadClimatology = loadGPCC # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-#   mode = 'test_climatology'; reses = ('025',); period = None
-  mode = 'test_timeseries'; reses = ('25',); period = None
+  mode = 'test_climatology'; reses = ('025',); period = None
+#   mode = 'test_timeseries'; reses = ('25',); period = None
 #   mode = 'average_timeseries'; reses = ('05',) # for testing
+#   mode = 'convert_climatology'; reses = ('025',); period = None
 #   reses = ('025','05', '10', '25')  
 #   reses = ('05', '10', '25')
-#   reses = ('25',)
+  reses = ('25',)
 #   period = (1979,1982)
 #   period = (1979,1984)
 #   period = (1979,1989)
@@ -185,7 +186,6 @@ if __name__ == '__main__':
 #   period = (1997,1998)
 #   period = (1979,1980)
   period = (2010,2011)
-#   mode = 'convert_climatology'; reses = ('025',); period = None
   grid = 'GPCC' # 'arb2_d02'
   
   # generate averaged climatology
@@ -203,6 +203,12 @@ if __name__ == '__main__':
       print(dataset.precip.getArray().mean())
       print(dataset.precip.masked)
       
+      # print time coordinate
+      print
+      print dataset.time.atts
+      print
+      print dataset.time.data_array
+
           
     elif mode == 'test_timeseries':
       
@@ -242,7 +248,7 @@ if __name__ == '__main__':
       addLengthAndNamesOfMonth(dataset, noleap=False) 
       
       # figure out a different filename
-      filename = getFileName(grid=res, period=period, name='GPCC', filepattern=avgfile)
+      filename = getFileName(grid=res, period=None, name='GPCC', filepattern=avgfile)
       print('\n'+filename+'\n')      
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)      
       # write data and some annotation
@@ -287,7 +293,7 @@ if __name__ == '__main__':
         # start processing climatology
         CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
 #         CPU.sync(flush=True)
-      
+
       # get NARR coordinates
       if grid is not 'GPCC':
         griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder)
@@ -315,16 +321,21 @@ if __name__ == '__main__':
       # get results
       CPU.sync(flush=True)
       
+      
+#       print('')
+#       print(sink)
+#       print('')
+
       # convert precip data to SI units (mm/s) 
       convertPrecip(sink.precip) # convert in-place
       # add landmask
       #sink.mask(sink.landmask)
-      print sink.dataset
+      #print sink.dataset
       addLandMask(sink) # create landmask from precip mask
       #sink.stations.mask(sink.landmask) # mask all fields using the new landmask
       # add length and names of month
       addLengthAndNamesOfMonth(sink, noleap=False) 
-              
+                    
 #       newvar = sink.precip
 #       print
 #       print newvar.name, newvar.masked
@@ -337,6 +348,15 @@ if __name__ == '__main__':
       sink.close()
       # print dataset
       print('')
-      print(sink)     
-      
+      print(sink)
+      del sink     
+      print
+
+#       # print time coordinate
+#       dataset = loadGPCC(grid=grid,resolution=res,period=period)      
+#       print dataset
+#       print
+#       print dataset.time
+#       print
+#       print dataset.time.data_array
     

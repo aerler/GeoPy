@@ -217,6 +217,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     atts['title'] = '{:s} Climatology on {:s} Grid'.format(dataset_name, griddef.name)
     # make new dataset
     if lwrite: # write to NetCDF file 
+      if os.path.exists(tmpfilepath): os.remove(tmpfilepath) # remove old temp files 
       sink = DatasetNetCDF(folder=avgfolder, filelist=[tmpfilename], atts=atts, mode='w')
     else: sink = Dataset(atts=atts) # ony create dataset in memory
     
@@ -287,9 +288,9 @@ if __name__ == '__main__':
   # default settings
   if not lbatch:
     ldebug = False
-    NP = 1 or NP # to avoid memory issues...
-#     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology','time-series'
+    NP = 4 or NP # to avoid memory issues...
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
 #     varlist = ['precip',]
@@ -305,7 +306,7 @@ if __name__ == '__main__':
 #     periods += [(1949,2009)]
 #     periods += [(1997,1998)]
     # Observations/Reanalysis
-    datasets = ['CFSR']
+    datasets = ['GPCC','NARR']
     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
     lLTM = True # also regrid the long-term mean climatologies 
 #     datasets += ['PRISM','GPCC']; periods = None
@@ -314,11 +315,12 @@ if __name__ == '__main__':
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     load3D = False
-    CESM_experiments = [] # use None to process all CESM experiments
+    CESM_experiments = ['CESM'] # use None to process all CESM experiments
 #     CESM_experiments += ['CESM','CESM-2050']
 #     CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
 #     CESM_experiments += ['Ctrl-2050', 'Ens-A-2050', 'Ens-B-2050', 'Ens-C-2050']
     CESM_filetypes = ['atm','lnd']
+    CESM_filetypes = ['atm']
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['max']
@@ -351,8 +353,9 @@ if __name__ == '__main__':
 #     grids['arb2'] = ('d01','d02') # WRF standard ARB both domains
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids
-    grids['cesm1x1'] = (None,) # CESM grid
-#     grids['NARR'] = (None,) # CESM grid
+#     grids['cesm1x1'] = (None,) # CESM grid
+#     grids['NARR'] = (None,) # NARR grid
+    grids['CRU'] = (None,) # CRU grid
   else:
     NP = NP or 4 # time-series might take more memory!
     modes = ('climatology','time-series')
@@ -385,7 +388,8 @@ if __name__ == '__main__':
     lpickle = True
     #d12 = ('d01','d02')
     #grids = dict(arb1=d12, arb2=d12, arb3=d12) # dict with list of resolutions
-    grids = dict(arb2=('d02',),cesm1x1=(None,)) # dict with list of resolutions  
+    #grids = dict(arb2=('d02',),cesm1x1=(None,)) # dict with list of resolutions
+    grids = dict(arb2=('d02',)) # dict with list of resolutions  
     
   
   ## process arguments    

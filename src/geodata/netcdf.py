@@ -186,7 +186,10 @@ class VarNC(Variable):
   
   def copy(self, **newargs):
     ''' A method to copy the Variable with just a link to the data. '''
-    return super(VarNC,self).copy(**newargs) # just call superior - returns a regular Variable instance, no VarNC
+    # N.B.: we can't really return a VarNC object, since it would have to be attached to a new NetCDF file;
+    #       instead, create a DatasetNetCDF instance with a new NetCDF file, and add the variable to the
+    #       new dataset, using addVariable with the asNC=True and the copy=True / deepcopy=True option
+    return super(VarNC,self).copy(**newargs) # just call superior - returns a regular Variable instance
     
   def load(self, data=None, **kwargs):
     ''' Method to load data from NetCDF file into RAM. '''
@@ -436,7 +439,7 @@ class DatasetNetCDF(Dataset):
       if asNC and 'w' in self.mode: ax = asAxisNC(ax=ax, ncvar=self.datasets[0], mode=self.mode, deepcopy=True)
       else: ax = ax.copy(deepcopy=True)
     # hand-off to parent method and return status
-    return super(DatasetNetCDF,self).addAxis(ax=ax, copy=copy, overwrite=overwrite)
+    return super(DatasetNetCDF,self).addAxis(ax=ax, copy=False, overwrite=overwrite) # already copied above
   
   def addVariable(self, var, asNC=True, copy=True, overwrite=False, deepcopy=False):
     ''' Method to add a new Variable to the Dataset. '''
