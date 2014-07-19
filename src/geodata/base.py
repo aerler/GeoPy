@@ -80,11 +80,11 @@ class ReduceVar(object):
   def __init__(self, redop):
     ''' Save original operation. '''
     self.redop = redop
-  def __call__(self, orig, asVar=None, checkAxis=True, coordIndex=True, axes=None, **kwaxes):
+  def __call__(self, orig, asVar=None, checkAxis=True, coordIndex=True, axis=None, axes=None, **kwaxes):
     ''' Figure out axes, perform sanity checks, then execute operation, and return result as a Variable 
         instance. Axes are specified either in a list ('axes') or as keyword arguments with corresponding
         slices. '''
-    if axes is None and len(kwaxes) == 0:
+    if axis is None and axes is None and len(kwaxes) == 0:
       if not orig.data: orig.load()
       # apply operation without arguments, i.e. over all axes
       data = self.redop(orig, orig.data_array)
@@ -92,8 +92,11 @@ class ReduceVar(object):
       if asVar is None: asVar = False # default for total reduction
       if asVar: newaxes = tuple()
     else:
-      # add axes list to dictionary 
-      if axes is not None: 
+      # add axes list to dictionary
+      if axis is not None: 
+        kwaxes[axis] = None
+        assert axes is None 
+      elif axes is not None: 
         for ax in axes: kwaxes[ax] = None
       # check for axes in keyword arguments       
       for ax,slc in kwaxes.iteritems():

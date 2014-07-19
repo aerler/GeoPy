@@ -124,7 +124,7 @@ class ATM(FileType):
                      )
     self.vars = self.atts.keys()    
     self.climfile = 'cesmatm{0:s}_clim{1:s}.nc' # the filename needs to be extended by ('_'+grid,'_'+period)
-    self.tsfile = NotImplemented # native CESM output
+    self.tsfile = 'cesmatm{0:s}_monthly.nc' # the filename needs to be extended by ('_'+grid)
 # CLM variables
 class LND(FileType):
   ''' Variables and attributes of the land surface files. '''
@@ -140,7 +140,7 @@ class LND(FileType):
                      )
     self.vars = self.atts.keys()    
     self.climfile = 'cesmlnd{0:s}_clim{1:s}.nc' # the filename needs to be extended by ('_'+grid,'_'+period)
-    self.tsfile = NotImplemented # native CESM output
+    self.tsfile = 'cesmlnd{0:s}_monthly.nc' # the filename needs to be extended by ('_'+grid)
 # CICE variables
 class ICE(FileType):
   ''' Variables and attributes of the seaice files. '''
@@ -148,7 +148,7 @@ class ICE(FileType):
     self.atts = dict() # currently not implemented...                     
     self.vars = self.atts.keys()
     self.climfile = 'cesmice{0:s}_clim{1:s}.nc' # the filename needs to be extended by ('_'+grid,'_'+period)
-    self.tsfile = NotImplemented # native CESM output
+    self.tsfile = 'cesmice{0:s}_monthly.nc' # the filename needs to be extended by ('_'+grid)
 
 # axes (don't have their own file)
 class Axes(FileType):
@@ -175,18 +175,22 @@ ignore_list_3D = ('lev', 'levgrnd',) # ignore all 3D variables (and vertical axe
 ## Functions to load different types of WRF datasets
 
 # Time-Series (monthly)
-def loadCESM_TS(experiment=None, name=None, grid=None, filetypes=None, varlist=None, varatts=None):
-  ''' Get a properly formatted CESM dataset with monthly time-series. '''
-  raise NotImplementedError
+def loadCESM_TS(experiment=None, name=None, grid=None, filetypes=None, varlist=None, 
+                varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None):
+  ''' Get a properly formatted CESM dataset with monthly time-series. (wrapper for loadCESM)'''
+  return loadCESM(experiment=experiment, name=name, grid=grid, period='time-series', filetypes=filetypes, 
+                  varlist=varlist, varatts=varatts, translateVars=translateVars, lautoregrid=lautoregrid, 
+                  load3D=load3D, ignore_list=ignore_list)
 
 
-# pre-processed climatology files (varatts etc. should not be necessary) 
+# load minimally pre-processed CESM climatology (and time-series) files 
 def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, 
-            varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None):
+             varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
   # prepare input  
   folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None)
   # N.B.: 'experiment' can be a string name or an Exp instance
+  lclim = True # loading climatology or time-series
   # period  
   if isinstance(period,(tuple,list)): pass
   elif isinstance(period,basestring): pass
@@ -196,6 +200,9 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
   else: raise DateError   
   if period is None or period == '': 
     raise DateError, 'Currently CESM Climatologies have to be loaded with the period explicitly specified.'
+  elif period == 'time-series' or period == 'monthly':
+    lclim = False; period = None; periodstr = None # to indicate time-series (but for safety, the input must be more explicit)
+    if lautoregrid is None: lautoregrid = False # this can take very long!
   elif isinstance(period,basestring): periodstr = '_{0:s}'.format(period)
   else: periodstr = '_{0:4d}-{1:4d}'.format(*period)  
   # generate filelist and attributes based on filetypes and domain
@@ -208,7 +215,7 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
   for filetype in filetypes:
     fileclass = fileclasses[filetype]
     if fileclass.climfile is not None: # this eliminates const files
-      filelist.append(fileclass.climfile)
+      filelist.append(fileclass.climfile if lclim else fileclass.tsfile)
       typelist.append(filetype)
     atts.update(fileclass.atts) 
   # figure out ignore list  
@@ -232,7 +239,8 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
   # insert grid name and period
   filenames = []
   for filetype,fileformat in zip(typelist,filelist):
-    filename = fileformat.format(gridstr,periodstr) # put together specfic filename
+    if lclim: filename = fileformat.format(gridstr,periodstr) # put together specfic filename for climatology
+    else: filename = fileformat.format(gridstr) # or for time-series
     filenames.append(filename) # append to list (passed to DatasetNetCDF later)
     # check existance
     filepath = '{:s}/{:s}'.format(folder,filename)
@@ -244,7 +252,7 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
           from processing.regrid import performRegridding # causes circular reference if imported earlier
           griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder)
           dataargs = dict(experiment=experiment, filetypes=[filetype], period=period)
-          if performRegridding('CESM', griddef, dataargs): # default kwargs
+          if performRegridding('CESM','climatology' if lclim else 'time-series', griddef, dataargs): # default kwargs
             raise IOError, "Automatic regridding failed!"
         else: raise IOError, "The '{:s}' (CESM) dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.".format(name,filename,grid) 
       else: raise IOError, "The '{:s}' (CESM) dataset file '{:s}' does not exits!\n({:s})".format(name,filename,folder)
@@ -296,14 +304,14 @@ if __name__ == '__main__':
     experiments = CESM_experiments.keys() # all experiments in the list!
     filetypes = ('atm','lnd',)
   else:
-    mode = 'test_climatology'
-  #   mode = 'pickle_grid'
-    mode = 'shift_lon'
+#     mode = 'test_climatology'
+    mode = 'test_timeseries'
+#     mode = 'pickle_grid'
+#     mode = 'shift_lon'
     #experiments = ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
-    experiments = ('CESM',)
+    experiments = ('Ctrl',)
     periods = (15,)    
-    #filetypes = ('atm',)
-    filetypes = ('lnd',)
+    filetypes = ('atm',) # ['atm','lnd','ice']
     grids = ('arb2_d02',) # grb1_d01
 
   # pickle grid definition
@@ -339,20 +347,23 @@ if __name__ == '__main__':
       print('')
     
   # load averaged climatology file
-  elif mode == 'test_climatology':
+  elif mode == 'test_climatology' or mode == 'test_timeseries':
     
     for grid,experiment in zip(grids,experiments):
       
       print('')
-#       dataset = loadCESM(experiment=experiment, varlist=['zs'], grid=grid, filetypes=['atm',], 
-#                          period=(1979,1984),lautoregrid=True) # ['atm','lnd','ice']
-      dataset = loadCESM(experiment=experiment, varlist=None, grid=None, filetypes=['lnd',], 
-                         period=(1979,1984)) # ['atm','lnd','ice']
+      if mode == 'test_timeseries':
+        dataset = loadCESM_TS(experiment=experiment, varlist=None, grid=None, filetypes=filetypes)
+      else:
+        period = periods[0] # just use first element, no need to loop
+        dataset = loadCESM(experiment=experiment, varlist=None, grid=None, filetypes=filetypes, period=period)
       print(dataset)
       if 'zs' in dataset: var = dataset.zs
       elif 'hgt' in dataset: var = dataset.hgt
       else: var = dataset.lon2D
       var.load()
+      print var
+      var = var.mean(axis='time')
       # display
       import pylab as pyl
 #       pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.precip.getArray().mean(axis=0))

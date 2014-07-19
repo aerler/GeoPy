@@ -106,9 +106,8 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       source = loadCESM(experiment=dataset_name, name=None, grid=None, period=period, filetypes=[filetype],  
                         varlist=None, varatts=None, load3D=load3D, translateVars=None)
     elif mode == 'time-series':
-      return 0 # just exit for now
-#       source = loadCESM_TS(experiment=dataset_name, name=None, grid=None, filetypes=[filetype],  
-#                         varlist=None, varatts=None, load3D=load3D, translateVars=None)
+      source = loadCESM_TS(experiment=dataset_name, name=None, grid=None, filetypes=[filetype],  
+                           varlist=None, varatts=None, load3D=load3D, translateVars=None)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
     # check period
     if period is None: periodstr = ''
