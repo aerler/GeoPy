@@ -143,7 +143,7 @@ def convertPrecip(precip):
   return precip
 
 # transform function to convert monthly precip amount into precip rate on-the-fly
-def transformPrecip(data, var=None, slc=None):
+def transformPrecip(data, l365=False, var=None, slc=None):
   ''' convert monthly precip amount to SI units (mm/s) '''
   if not isinstance(var,VarNC): raise TypeError
   if var.units == 'kg/m^2/month' or var.units == 'mm/month':
@@ -151,7 +151,8 @@ def transformPrecip(data, var=None, slc=None):
     tax = var.axisIndex('time'); te = len(var.time)
     if not ( data.shape[tax] == te and te%12 == 0 ): raise NotImplementedError
     shape = [1,]*data.ndim; shape[tax] = 12 # dimensions of length 1 will be expanded as needed
-    data /= np.repeat(seconds_per_month.reshape(shape), te/12, axis=tax) # convert in-place
+    spm = seconds_per_month_365 if l365 else seconds_per_month
+    data /= np.repeat(spm.reshape(shape), te/12, axis=tax) # convert in-place
     var.units = 'kg/m^2/s'
   return data      
       
