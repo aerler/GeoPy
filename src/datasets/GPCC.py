@@ -9,7 +9,7 @@ This module contains meta data and access functions for the GPCC climatology and
 # external imports
 import netCDF4 as nc # netcdf python module
 import os # check if files are present
-import types # to add precip conversion fct. to datasets
+#import types # to add precip conversion fct. to datasets
 #from importlib import import_module
 # internal imports
 from geodata.base import Variable
@@ -17,7 +17,7 @@ from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, addGeoLocator
 from geodata.misc import DatasetError
 from geodata.nctools import writeNetCDF, add_strvar
-from datasets.common import days_per_month, name_of_month, data_root, grid_folder, convertPrecip
+from datasets.common import name_of_month, data_root, grid_folder, transformPrecip
 from datasets.common import translateVarNames, loadClim, addLandMask, addLengthAndNamesOfMonth, getFileName
 from processing.process import CentralProcessingUnit
 
@@ -43,7 +43,7 @@ GPCC_25_grid = GridDefinition(name='GPCC_25',projection=None, geotransform=geotr
 
 
 # variable attributes and name
-varatts = dict(p    = dict(name='precip', units='mm/month'), # total precipitation rate
+varatts = dict(p    = dict(name='precip', units='mm/month', transform=transformPrecip), # total precipitation rate
                s    = dict(name='stations', units='#'), # number of gauges for observation
                # axes (don't have their own file; listed in axes)
                lon  = dict(name='lon', units='deg E'), # geographic longitude field
@@ -83,7 +83,7 @@ def loadGPCC_LTM(name=dataset_name, varlist=None, resolution='025', varatts=ltmv
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
   # N.B.: projection should be auto-detected as geographic
   # add method to convert precip from per month to per second
-  dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    
+  #dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    
   # return formatted dataset
   return dataset
 
@@ -111,7 +111,7 @@ def loadGPCC_TS(name=dataset_name, grid=None, varlist=None, resolution='25', var
     dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
     # N.B.: projection should be auto-detected as geographic
     # add method to convert precip from per month to per second
-    dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)
+    #dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)
   else:
     # load from neatly formatted and regridded time-series files
     if folder is None: folder = avgfolder
@@ -168,10 +168,10 @@ loadClimatology = loadGPCC # pre-processed, standardized climatology
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-  mode = 'test_climatology'; reses = ('025',); period = None
+#   mode = 'test_climatology'; reses = ('025',); period = None
 #   mode = 'test_timeseries'; reses = ('25',); period = None
 #   mode = 'average_timeseries'; reses = ('05',) # for testing
-#   mode = 'convert_climatology'; reses = ('025',); period = None
+  mode = 'convert_climatology'; reses = ('25',); period = None
 #   reses = ('025','05', '10', '25')  
 #   reses = ('05', '10', '25')
   reses = ('25',)
@@ -185,7 +185,7 @@ if __name__ == '__main__':
 #   period = (1949,2009)
 #   period = (1997,1998)
 #   period = (1979,1980)
-  period = (2010,2011)
+#   period = (2010,2011)
   grid = 'GPCC' # 'arb2_d02'
   
   # generate averaged climatology
@@ -240,7 +240,7 @@ if __name__ == '__main__':
       dataset.load()
 
       # convert precip data to SI units (mm/s)
-      dataset.convertPrecip() # convert in-place
+      #dataset.convertPrecip() # convert in-place
       # add landmask
       addLandMask(dataset) # create landmask from precip mask
       dataset.mask(dataset.landmask) # mask all fields using the new landmask      
@@ -327,7 +327,7 @@ if __name__ == '__main__':
 #       print('')
 
       # convert precip data to SI units (mm/s) 
-      convertPrecip(sink.precip) # convert in-place
+      #convertPrecip(sink.precip) # convert in-place
       # add landmask
       #sink.mask(sink.landmask)
       #print sink.dataset

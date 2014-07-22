@@ -8,13 +8,14 @@ Some tools and data that are used by many datasets, but not much beyond that.
 
 # external imports
 from importlib import import_module
+from warnings import warn
 import numpy as np
 import pickle
 import os
 # internal imports
 from geodata.misc import AxisError, DatasetError, DateError
 from geodata.base import Dataset, Variable, Axis
-from geodata.netcdf import DatasetNetCDF
+from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
 
 
@@ -129,13 +130,28 @@ def addLengthAndNamesOfMonth(dataset, noleap=False, length=None, names=None):
   # return length variable
   return dataset.variables[lenatts['name']]
 
+
 # helper function to convert monthly precip amount into precip rate
 def convertPrecip(precip):
   ''' convert monthly precip amount to SI units (mm/s) '''
+  warn("Use of method 'convertPrecip' is depricated; use the on-the-fly transformPrecip function instead")
   if precip.units == 'kg/m^2/month' or precip.units == 'mm/month':
     precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
     precip.units = 'kg/m^2/s'
-  return precip      
+  return precip
+
+# transform function to convert monthly precip amount into precip rate on-the-fly
+def transformPrecip(data, var=None, slc=None):
+  ''' convert monthly precip amount to SI units (mm/s) '''
+  if not isinstance(var,VarNC): raise TypeError
+  if var.units == 'kg/m^2/month' or var.units == 'mm/month':
+    if not ( data.ndim == 3 and data.shape[0]%12 == 0 ): raise NotImplementedError
+    tax = var.axisIndex('time'); te = len(var.time)
+    if not ( tax == 0 and te%12 == 0 ): raise NotImplementedError  
+    data /= np.repeat(days_per_month.reshape((12,1,1)) * 86400., te/12, axis=tax) # convert in-place
+    var.units = 'kg/m^2/s'
+  return data      
+      
 
 # convenience function to invert variable name mappings
 def translateVarNames(varlist, varatts):

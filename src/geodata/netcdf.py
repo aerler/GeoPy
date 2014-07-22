@@ -132,6 +132,8 @@ class VarNC(Variable):
         axes = tuple([str(dim) for dim in ncvar.dimensions]) # have to get rid of unicode
       elif len(ncvar.dimensions) != len(axes): raise AxisError
     else: ncatts = atts
+    # check transform
+    if transform is not None and not callable(transform): raise TypeError
     # call parent constructor
     super(VarNC,self).__init__(name=name, units=units, axes=axes, data=None, dtype=ncvar.dtype, 
                                mask=None, fillValue=fillValue, atts=ncatts, plot=plot)
@@ -173,8 +175,8 @@ class VarNC(Variable):
       # N.B.: the shape can change dynamically when a slice is loaded, so don't check for that, or it will fail!
       # apply scalefactor and offset
       if self.offset != 0: data += self.offset
-      if self.scalefactor != 1: data *= self.scalefactor        
-      if self.transform is not None: data = self.transform(data)
+      if self.scalefactor != 1: data *= self.scalefactor
+      if self.transform is not None: data = self.transform(data, var=self, slc=idx)
     # return data
     return data  
   

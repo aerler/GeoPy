@@ -426,7 +426,8 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     # infer or check projection and related parameters       
     if griddef is None:
       lgdal, projection, isProjected, xlon, ylat = getProjection(var, projection=projection)
-      griddef = GridDefinition(projection=projection, xlon=xlon, ylat=ylat)
+      if lgdal and xlon is not None and ylat is not None:
+        griddef = GridDefinition(projection=projection, xlon=xlon, ylat=ylat)
     else:
       # use GridDefinition object 
       if isinstance(griddef,basestring): # load from pickle file

@@ -10,26 +10,36 @@ This module contains common meta data and access functions for CESM model output
 import numpy as np
 import os, pickle
 # from atmdyn.properties import variablePlotatts
-from geodata.base import Variable
-from geodata.netcdf import DatasetNetCDF
+from geodata.base import Variable, Axis
+from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset
-from geodata.misc import DatasetError, AxisError, DateError
+from geodata.misc import DatasetError, AxisError, DateError, isNumber
 from datasets.common import translateVarNames, data_root, grid_folder, default_varatts, addLengthAndNamesOfMonth 
 from geodata.gdal import loadPickledGridDef, griddef_pickle
-from projects.WRF_experiments import Exp
+from projects.WRF_experiments import Exp as WRF_Exp
 from processing.process import CentralProcessingUnit
 
 # some meta data (needed for defaults)
 root_folder = data_root + 'CESM/' # long-term mean folder
 outfolder = root_folder + 'cesmout/' # WRF output folder
-avgfolder = root_folder + 'cesmavg/' # long-term mean folder
+avgfolder = root_folder + 'cesmavg/' # monthly averages and climatologies
+cvdpfolder = root_folder + 'cvdp/' # CVDP output (netcdf files and HTML tree)
+diagfolder = root_folder + 'diag/' # output from AMWG diagnostic package (climatologies and HTML tree) 
 
 ## list of experiments
+class Exp(WRF_Exp): 
+  parameters = WRF_Exp.parameters.copy()
+  defaults = WRF_Exp.defaults.copy()
+  defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/'.format(avgfolder,atts['name'])
+  parameters['cvdpfolder'] = dict(type=basestring,req=True) # new parameters need to be registered
+  defaults['cvdpfolder'] = lambda atts: '{0:s}/{1:s}/'.format(cvdpfolder,atts['name'])
+  parameters['diagfolder'] = dict(type=basestring,req=True) # new parameters need to be registered
+  defaults['diagfolder'] = lambda atts: '{0:s}/{1:s}/'.format(diagfolder,atts['name'])
+  defaults['parents'] = None # not applicable here
+  
+# list of experiments
 # N.B.: This is the reference list, with unambiguous, unique keys and no aliases/duplicate entries  
 experiments = dict() # dictionary of experiments
-Exp.defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/'.format(avgfolder,atts['name'])
-Exp.defaults['parents'] = None # not applicable here
-# list of experiments
 # historical
 experiments['ens20trcn1x1'] = Exp(shortname='CESM', name='ens20trcn1x1', title='CESM Ensemble Mean', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
 experiments['tb20trcn1x1'] = Exp(shortname='Ctrl', name='tb20trcn1x1', title='Ctrl (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
@@ -65,7 +75,7 @@ CESM_experiments = experiments # alias for whole dict
 
 
 # return name and folder
-def getFolderName(name=None, experiment=None, folder=None):
+def getFolderName(name=None, experiment=None, folder=None, mode='avg'):
   ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
   # figure out experiment name
@@ -79,7 +89,11 @@ def getFolderName(name=None, experiment=None, folder=None):
     if isinstance(experiment,(Exp,basestring)):
       if isinstance(experiment,basestring): experiment = exps[experiment] 
       # root folder
-      if folder is None: folder = experiment.avgfolder
+      if folder is None: 
+        if mode == 'avg': folder = experiment.avgfolder
+        elif mode == 'cvdp': folder = experiment.cvdpfolder
+        elif mode == 'diag': folder = experiment.diagfolder
+        else: raise NotImplementedError,"Unsupported mode: '{:s}'".format(mode)
       elif not isinstance(folder,basestring): raise TypeError
       # name
       if name is None: name = experiment.name
@@ -90,8 +104,31 @@ def getFolderName(name=None, experiment=None, folder=None):
   return folder, experiment, name
 
 
+# function to undo NCL's lonFlip
+def flipLon(data, flip=144, ax=1, lrev=False, var=None, slc=None):
+  ''' shift longitude on the fly, so as to undo NCL's lonFlip; only works on entire array '''
+  if var is not None: # ignore parameters
+    if not isinstance(var,VarNC): raise TypeError
+    ax = var.axisIndex('lon')
+    flip = len(var.lon)/2
+  if not ( data.ndim > ax and data.shape[ax] == flip*2 ): 
+    raise NotImplementedError, "Can only shift longitudes of the entire array!"
+  # N.B.: this operation only makes sense with a full array!
+  if lrev: flip *= -1 # reverse flip  
+  data = np.roll(data, shift=flip, axis=1) # shift values half way along longitude
+  return data
+
+
 ## variable attributes and name
-class FileType(object): pass # ''' Container class for all attributes of of the constants files. '''
+class FileType(object): 
+  ''' Container class for all attributes of of the constants files. '''
+  atts = NotImplemented
+  vars = NotImplemented
+  climfile = None
+  tsfile = None
+  cvdpfile = None
+  diagfile = None
+  
 # surface variables
 class ATM(FileType):
   ''' Variables and attributes of the surface files. '''
@@ -150,61 +187,115 @@ class ICE(FileType):
     self.climfile = 'cesmice{0:s}_clim{1:s}.nc' # the filename needs to be extended by ('_'+grid,'_'+period)
     self.tsfile = 'cesmice{0:s}_monthly.nc' # the filename needs to be extended by ('_'+grid)
 
+# CVDP variables
+class CVDP(FileType):
+  ''' Variables and attributes of the CVDP netcdf files. '''
+  def __init__(self):
+    self.atts = dict(pdo_pattern_mon = dict(name='pdo_pattern', units=''), # PDO EOF
+                     pdo_timeseries_mon = dict(name='pdo_timeseries', units=''), # PDO time-series
+                     amo_pattern_mon = dict(name='amo_pattern', units='', # AMO EOF
+                                            transform=flipLon), # undo shifted longitude (done by NCL)
+                     amo_timeseries_mon = dict(name='amo_timeseries', units=''), # AMO time-series 
+                     )                    
+    self.vars = self.atts.keys()
+    self.cvdpfile = '{:s}.cvdp_data.{:s}.nc' # filename needs to be extended with experiment name and period
+
+# AMWG diagnostic variables
+class Diag(FileType):
+  ''' Variables and attributes of the AMWG diagnostic netcdf files. '''
+  def __init__(self):
+    self.atts = dict() # currently not implemented...                     
+    self.vars = self.atts.keys()
+    self.diagfile = NotImplemented # filename needs to be extended with experiment name and period
+
 # axes (don't have their own file)
 class Axes(FileType):
   ''' A mock-filetype for axes. '''
   def __init__(self):
     self.atts = dict(time        = dict(name='time', units='month'), # time coordinate
+                     TIME        = dict(name='year', units='year'), # yearly time coordinate in CVDP files
                      # N.B.: the time coordinate is only used for the monthly time-series data, not the LTM
                      #       the time offset is chose such that 1979 begins with the origin (time=0)
                      lon           = dict(name='lon', units='deg E'), # west-east coordinate
                      lat           = dict(name='lat', units='deg N'), # south-north coordinate
+                     LON           = dict(name='lon', units='deg E'), # west-east coordinate (actually identical to lon!)
+                     LAT           = dict(name='lat', units='deg N'), # south-north coordinate (actually identical to lat!)                     
                      levgrnd = dict(name='s', units=''), # soil layers
                      lev = dict(name='lev', units='')) # hybrid pressure coordinate
     self.vars = self.atts.keys()
-    self.climfile = None
-    self.tsfile = None
 
 # data source/location
-fileclasses = dict(atm=ATM(), lnd=LND(), axes=Axes()) # ice=ICE() is currently not supported because of the grid
+fileclasses = dict(atm=ATM(), lnd=LND(), axes=Axes(), cvdp=CVDP()) # ice=ICE() is currently not supported because of the grid
 # list of variables and dimensions that should be ignored
 ignore_list_2D = ('nbnd', 'slat', 'slon', 'ilev', # atmosphere file
-                  'levlak', 'latatm', 'hist_interval', 'latrof', 'lonrof', 'lonatm') # land file
+                  'levlak', 'latatm', 'hist_interval', 'latrof', 'lonrof', 'lonatm', # land file
+                  ) # CVDP file (omit shifted longitude)
 ignore_list_3D = ('lev', 'levgrnd',) # ignore all 3D variables (and vertical axes)
 
 ## Functions to load different types of WRF datasets
+
+# CVDP diagnostics (monthly time-series, EOF pattern and correlations) 
+def loadCVDP(experiment=None, name=None, grid=None, period=None, varlist=None, varatts=None, 
+             translateVars=None, lautoregrid=None, ignore_list=None):
+  ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
+  if grid is not None: raise NotImplementedError
+  return loadCESM_All(experiment=experiment, name=name, grid=grid, period=period, filetypes=('cvdp',), 
+                  varlist=varlist, varatts=varatts, translateVars=translateVars, lautoregrid=lautoregrid, 
+                  load3D=True, ignore_list=ignore_list, mode='CVDP')
 
 # Time-Series (monthly)
 def loadCESM_TS(experiment=None, name=None, grid=None, filetypes=None, varlist=None, 
                 varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None):
   ''' Get a properly formatted CESM dataset with monthly time-series. (wrapper for loadCESM)'''
-  return loadCESM(experiment=experiment, name=name, grid=grid, period='time-series', filetypes=filetypes, 
+  return loadCESM_All(experiment=experiment, name=name, grid=grid, period=None, filetypes=filetypes, 
                   varlist=varlist, varatts=varatts, translateVars=translateVars, lautoregrid=lautoregrid, 
-                  load3D=load3D, ignore_list=ignore_list)
+                  load3D=load3D, ignore_list=ignore_list, mode='time-series')
+
+# load minimally pre-processed CESM climatology files 
+def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, varatts=None, 
+             translateVars=None, lautoregrid=None, load3D=False, ignore_list=None):
+  ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
+  return loadCESM_All(experiment=experiment, name=name, grid=grid, period=period, filetypes=filetypes, 
+                  varlist=varlist, varatts=varatts, translateVars=translateVars, lautoregrid=lautoregrid, 
+                  load3D=load3D, ignore_list=ignore_list, mode='climatology')
 
 
 # load minimally pre-processed CESM climatology (and time-series) files 
-def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, 
-             varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None):
-  ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
+def loadCESM_All(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, varatts=None, 
+                 translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, mode='climatology'):
+  ''' Get any of the monthly CESM files as a properly formatted NetCDFDataset. '''
+  # period
+  if isinstance(period,(tuple,list)) and not all(isNumber(period)): raise ValueError
+  elif isinstance(period,basestring): period = [int(prd) for prd in period.split('-')]
+  elif isinstance(period,(int,np.integer)) or period is None : pass # handled later
+  else: raise DateError, "Illegal period definition: {:s}".format(str(period))
   # prepare input  
-  folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None)
-  # N.B.: 'experiment' can be a string name or an Exp instance
-  lclim = True # loading climatology or time-series
-  # period  
-  if isinstance(period,(tuple,list)): pass
-  elif isinstance(period,basestring): pass
-  elif period is None: pass
-  elif isinstance(period,(int,np.integer)) and isinstance(experiment,Exp):
-    period = (experiment.beginyear, experiment.beginyear+period)
-  else: raise DateError   
-  if period is None or period == '': 
-    raise DateError, 'Currently CESM Climatologies have to be loaded with the period explicitly specified.'
-  elif period == 'time-series' or period == 'monthly':
+  lclim = False; lts = False; lcvdp = False; ldiag = False # mode switches
+  if mode.lower() == 'climatology': # post-processed climatology files
+    lclim = True
+    folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='avg')    
+    if period is None: raise DateError, 'Currently CESM Climatologies have to be loaded with the period explicitly specified.'
+  elif mode.lower() == 'time-series': # concatenated time-series files
+    lts = True
+    folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='avg')
     lclim = False; period = None; periodstr = None # to indicate time-series (but for safety, the input must be more explicit)
     if lautoregrid is None: lautoregrid = False # this can take very long!
-  elif isinstance(period,basestring): periodstr = '_{0:s}'.format(period)
-  else: periodstr = '_{0:4d}-{1:4d}'.format(*period)  
+  elif mode.lower() == 'cvdp': # concatenated time-series files
+    lcvdp = True
+    folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='cvdp')
+  elif mode.lower() == 'diag': # concatenated time-series files
+    ldiag = True
+    folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='diag')
+    raise NotImplementedError, "Loading AMWG diagnostic files is not supported yet."
+  else: raise NotImplementedError,"Unsupported mode: '{:s}'".format(mode)  
+  # period  
+  if isinstance(period,(int,np.integer)):
+    if not isinstance(experiment,Exp): raise DatasetError, 'Integer periods are only supported for registered datasets.'
+    period = (experiment.beginyear, experiment.beginyear+period)
+  if lclim: periodstr = '_{0:4d}-{1:4d}'.format(*period)
+  elif lcvdp: periodstr = '{0:4d}-{1:4d}'.format(period[0],period[1]-1)
+  else: periodstr = ''
+  # N.B.: the period convention in CVDP is that the end year is included
   # generate filelist and attributes based on filetypes and domain
   if filetypes is None: filetypes = fileclasses.keys()
   elif isinstance(filetypes,(list,tuple,set)):
@@ -214,9 +305,11 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
   atts = dict(); filelist = []; typelist = []
   for filetype in filetypes:
     fileclass = fileclasses[filetype]
-    if fileclass.climfile is not None: # this eliminates const files
-      filelist.append(fileclass.climfile if lclim else fileclass.tsfile)
-      typelist.append(filetype)
+    if lclim and fileclass.climfile is not None: filelist.append(fileclass.climfile)
+    elif lts and fileclass.tsfile is not None: filelist.append(fileclass.tsfile)
+    elif lcvdp and fileclass.cvdpfile is not None: filelist.append(fileclass.cvdpfile)
+    elif ldiag and fileclass.diagfile is not None: filelist.append(fileclass.diagfile)
+    typelist.append(filetype)
     atts.update(fileclass.atts) 
   # figure out ignore list  
   if ignore_list is None: ignore_list = set(ignore_list_2D)
@@ -240,7 +333,10 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
   filenames = []
   for filetype,fileformat in zip(typelist,filelist):
     if lclim: filename = fileformat.format(gridstr,periodstr) # put together specfic filename for climatology
-    else: filename = fileformat.format(gridstr) # or for time-series
+    elif lts: filename = fileformat.format(gridstr) # or for time-series
+    elif lcvdp: filename = fileformat.format(name,periodstr) # not implemented: gridstr
+    elif ldiag: raise NotImplementedError
+    else: raise DatasetError
     filenames.append(filename) # append to list (passed to DatasetNetCDF later)
     # check existance
     filepath = '{:s}/{:s}'.format(folder,filename)
@@ -261,6 +357,11 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
   #print varlist, filenames
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=None, varatts=atts, 
                           multifile=False, ignore_list=ignore_list, ncformat='NETCDF4', squeeze=True)
+  # replace time axis
+  if lts or lcvdp:
+    te = len(dataset.time)
+    timeAxis = Axis(name='time', units='month', length=te, data=np.arange(1,te+1,1, dtype='int16'))
+    dataset.repalceAxis(dataset.time, timeAxis, asNC=True, deepcopy=False)
   # check
   if len(dataset) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
   # add projection
@@ -305,14 +406,15 @@ if __name__ == '__main__':
     filetypes = ('atm','lnd',)
   else:
 #     mode = 'test_climatology'
-    mode = 'test_timeseries'
+#     mode = 'test_timeseries'
+    mode = 'test_cvdp'
 #     mode = 'pickle_grid'
 #     mode = 'shift_lon'
-    #experiments = ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
-    experiments = ('Ctrl',)
+#     experiments = ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
+    experiments = ('Ens-C',)
     periods = (15,)    
     filetypes = ('atm',) # ['atm','lnd','ice']
-    grids = ('arb2_d02',) # grb1_d01
+    grids = ('arb2_d02',)*len(experiments) # grb1_d01
 
   # pickle grid definition
   if mode == 'pickle_grid':
@@ -358,12 +460,15 @@ if __name__ == '__main__':
         period = periods[0] # just use first element, no need to loop
         dataset = loadCESM(experiment=experiment, varlist=None, grid=None, filetypes=filetypes, period=period)
       print(dataset)
+      print('')
+      print(dataset.geotransform)
+      # show some variables
       if 'zs' in dataset: var = dataset.zs
       elif 'hgt' in dataset: var = dataset.hgt
       else: var = dataset.lon2D
       var.load()
       print var
-      var = var.mean(axis='time')
+      var = var.mean(axis='time',checkAxis=False)
       # display
       import pylab as pyl
 #       pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.precip.getArray().mean(axis=0))
@@ -371,8 +476,35 @@ if __name__ == '__main__':
       pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), var.getArray())
       pyl.colorbar()
       pyl.show(block=True)
+  
+  # load CVDP file
+  elif mode == 'test_cvdp':
+    
+    for grid,experiment in zip(grids,experiments):
+      
       print('')
-      print(dataset.geotransform)
+      period = periods[0] # just use first element, no need to loop
+      dataset = loadCVDP(experiment=experiment, period=period)
+      print(dataset)
+#       print(dataset.geotransform)
+      print(dataset.lon)
+      print(dataset.lon.coord)
+      # print some variables
+      print('')
+      eof = dataset.amo_pattern; eof.load()
+      print eof
+      print('')
+      ts = dataset.amo_timeseries; ts.load()
+      print ts
+      print ts.mean()
+      # display
+      import pylab as pyl
+#       pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.precip.getArray().mean(axis=0))
+#       pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.runoff.getArray().mean(axis=0))
+      pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), eof.getArray())
+      pyl.colorbar()
+      pyl.show(block=True)
+      print('')
   
   # shift dataset from 0-360 to -180-180
   elif mode == 'shift_lon':

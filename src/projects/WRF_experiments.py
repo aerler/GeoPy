@@ -6,13 +6,14 @@ This module contains meta data for all available WRF experiments.
 @author: Andre R. Erler, GPL v3
 '''
 
+from collections import OrderedDict
 # data root folder
 from datasets.WRF import avgfolder #, root_folder, outfolder
 
 class Exp(object):
   ''' class of objects that contain meta data for WRF experiments '''
   # experiment parameter definition (class property)
-  parameters = dict()
+  parameters = OrderedDict() # order matters, because parameters can depend on one another for defaults
   parameters['name'] = dict(type=basestring,req=True) # name
   parameters['shortname'] = dict(type=basestring,req=False) # short name
   parameters['title'] = dict(type=basestring,req=False) # title used in plots
