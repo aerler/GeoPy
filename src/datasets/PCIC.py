@@ -9,19 +9,13 @@ PCIC (Pacific Climate Impact Consortium).
 
 # external imports
 import numpy as np
-import numpy.ma as ma
 import os
-import netCDF4 as nc # netcdf python module
-import types # to add precip conversion fct. to datasets
 # internal imports
-from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, addGeoLocator
-from geodata.misc import DatasetError
+from geodata.gdal import addGDALtoDataset
 from geodata.nctools import writeNetCDF, add_strvar
-from datasets.common import days_per_month, name_of_month, data_root, grid_folder, convertPrecip
+from datasets.common import name_of_month, data_root, grid_folder, transformPrecip
 from datasets.common import translateVarNames, loadClim, addLandMask, addLengthAndNamesOfMonth, getFileName
-from processing.process import CentralProcessingUnit
 # from geodata.misc import DatasetError
 from warnings import warn
 from geodata.gdal import GridDefinition
@@ -52,7 +46,8 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 # variable attributes and names in original PCIC files
 ltmvaratts = dict(tmin = dict(name='Tmin', units='K', atts=dict(long_name='Minimum 2m Temperature'), offset=273.15), # 2m minimum temperature
                tmax = dict(name='Tmax', units='K', atts=dict(long_name='Maximum 2m Temperature'), offset=273.15), # 2m maximum temperature
-               pr   = dict(name='precip', units='mm/month', atts=dict(long_name='Total Precipitation'), scalefactor=1.), # total precipitation
+               pr   = dict(name='precip', units='mm/month', atts=dict(long_name='Total Precipitation'), 
+                           scalefactor=1., transform=transformPrecip), # total precipitation
                # axes (don't have their own file; listed in axes)
                time = dict(name='time', units='days', atts=dict(long_name='days since beginning of year'), offset=-5493), # time coordinate
                lon  = dict(name='lon', units='deg E', atts=dict(long_name='Longitude')), # geographic longitude field
@@ -75,9 +70,7 @@ def loadPCIC_LTM(name=dataset_name, varlist=None, varatts=ltmvaratts, filelist=N
   # load variables separately
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, ncformat='NETCDF4')
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
-  # N.B.: projection should be auto-detected as geographic
-  # add method to convert precip from per month to per second
-  dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    
+  # N.B.: projection should be auto-detected as geographic    
   # return formatted dataset
   return dataset
 
@@ -125,8 +118,8 @@ loadClimatology = loadPCIC # pre-processed, standardized climatology
 
 if __name__ == '__main__':
     
-  mode = 'test_climatology'
-#   mode = 'convert_climatology'
+#   mode = 'test_climatology'
+  mode = 'convert_climatology'
   
   # do some tests
   if mode == 'test_climatology':  
@@ -157,8 +150,6 @@ if __name__ == '__main__':
     # load data into memory (and ignore last time step, which is just the annual average)
 #     source.load(time=(0,12)) # exclusive the last index
     source.load(time=(0,12)) # for testing
-    # convert precip data to SI units (mm/s)
-    source.convertPrecip() # convert in-place
     # make normal dataset
     dataset = source.copy()
     source.close()

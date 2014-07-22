@@ -14,7 +14,7 @@ from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition
 from datasets.common import translateVarNames, days_per_month, name_of_month, data_root 
-from datasets.common import loadClim, grid_folder, convertPrecip
+from datasets.common import loadClim, grid_folder, transformPrecip
 from processing.process import CentralProcessingUnit
 
  
@@ -36,7 +36,7 @@ varatts = dict(tmp = dict(name='T2', units='K', offset=273.15), # 2m average tem
                dtr = dict(name='dTd', units='K', offset=0.), # diurnal 2m temperature range
                vap = dict(name='Q2', units='Pa', scalefactor=100.), # 2m water vapor pressure
                pet = dict(name='pet', units='kg/m^2/s', scalefactor=1./86400.), # potential evapo-transpiration
-               pre = dict(name='precip', units='mm/month', scalefactor=1.), # total precipitation
+               pre = dict(name='precip', units='mm/month', transform=transformPrecip), # total precipitation
                cld = dict(name='cldfrc', units='', offset=0.), # cloud cover/fraction
                wet = dict(name='wetfrq', units='', offset=0), # number of wet days
                frs = dict(name='frzfrq', units='', offset=0), # number of frost days 
@@ -77,9 +77,7 @@ def loadCRU_TS(name=dataset_name, grid=None, varlist=None, resolution=None, vara
                             multifile=False, ncformat='NETCDF4_CLASSIC')
     # add projection  
     dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
-    # N.B.: projection should be auto-detected as geographic
-    # add method to convert precip from per month to per second
-    dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    
+    # N.B.: projection should be auto-detected as geographic    
   else:
     # load from neatly formatted and regridded time-series files
     if folder is None: folder = avgfolder
@@ -176,9 +174,7 @@ if __name__ == '__main__':
     print('   +++   processing   +++   ') 
     CPU.Climatology(period=period[1]-period[0], offset=offset, flush=False)
     # sync temporary storage with output
-    CPU.sync(flush=False)
-    # convert precip data to SI units (mm/s)
-    convertPrecip(sink.precip) # convert in-place    
+    CPU.sync(flush=False)   
     print('\n')
 
     # add landmask

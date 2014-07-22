@@ -16,7 +16,7 @@ from geodata.gdal import addGDALtoDataset
 from geodata.misc import DatasetError, AxisError, DateError, isNumber
 from datasets.common import translateVarNames, data_root, grid_folder, default_varatts, addLengthAndNamesOfMonth 
 from geodata.gdal import loadPickledGridDef, griddef_pickle
-from projects.WRF_experiments import Exp as WRF_Exp
+from datasets.WRF import Exp as WRF_Exp
 from processing.process import CentralProcessingUnit
 
 # some meta data (needed for defaults)
@@ -491,10 +491,10 @@ if __name__ == '__main__':
       print(dataset.lon.coord)
       # print some variables
       print('')
-      eof = dataset.amo_pattern; eof.load()
+      eof = dataset.pdo_pattern; eof.load()
       print eof
       print('')
-      ts = dataset.amo_timeseries; ts.load()
+      ts = dataset.pdo_timeseries; ts.load()
       print ts
       print ts.mean()
       # display

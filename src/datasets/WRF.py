@@ -163,6 +163,54 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
   return folder, experiment, tuple(names), tuple(domains)
   
 
+## class that defines experiments
+class Exp(object):
+  ''' class of objects that contain meta data for WRF experiments '''
+  # experiment parameter definition (class property)
+  parameters = col.OrderedDict() # order matters, because parameters can depend on one another for defaults
+  parameters['name'] = dict(type=basestring,req=True) # name
+  parameters['shortname'] = dict(type=basestring,req=False) # short name
+  parameters['title'] = dict(type=basestring,req=False) # title used in plots
+  parameters['grid'] = dict(type=basestring,req=True) # name
+  parameters['parent'] = dict(type=basestring,req=True) # driving dataset
+  parameters['begindate'] = dict(type=basestring,req=True) # simulation start date
+  parameters['beginyear'] = dict(type=int,req=True) # simulation start year
+  parameters['enddate'] = dict(type=basestring,req=False) # simulation end date (if it already finished)
+  parameters['endyear'] = dict(type=int,req=False) # simulation end year
+  parameters['avgfolder'] = dict(type=basestring,req=True) # folder for monthly averages
+  parameters['outfolder'] = dict(type=basestring,req=False) # folder for direct WRF averages
+  # default values (functions)
+  defaults = dict()
+  defaults['shortname'] = lambda atts: atts['name']
+  defaults['title'] = lambda atts: atts['name'] # need lambda, because parameters are not set yet
+  defaults['parent'] = 'Ctrl' # CESM simulations that is driving most of the WRF runs   
+  defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/'.format(avgfolder,atts['name'])
+  defaults['begindate'] = '1979-01-01'
+  defaults['beginyear'] = lambda atts: int(atts['begindate'].split('-')[0]) # first field
+  
+  def __init__(self, **kwargs):
+    ''' initialize values from arguments '''
+    # loop over simulation parameters
+    for argname,argatt in self.parameters.items():
+      if argname in kwargs:
+        # assign argument based on keyword
+        arg = kwargs[argname]
+        if not isinstance(arg,argatt['type']): 
+          raise TypeError, "Argument '{0:s}' must be of type '{1:s}'.".format(argname,argatt['type'].__name__)
+        self.__dict__[argname] = arg
+      elif argname in self.defaults:
+        # assign some default values, if necessary
+        if callable(self.defaults[argname]): 
+          self.__dict__[argname] = self.defaults[argname](self.__dict__)
+        else: self.__dict__[argname] = self.defaults[argname]
+      elif argatt['req']:
+        # if the argument is required and there is no default, raise error
+        raise ValueError, "Argument '{0:s}' for experiment '{1:s}' required.".format(argname,self.name)
+      else:
+        # if the argument is not required, just assign None 
+        self.__dict__[argname] = None    
+
+
 ## variable attributes and name
 # convert water mass mixing ratio to water vapor partial pressure ( kg/kg -> Pa ) 
 Q = 96000.*28./18. # surface pressure * molecular weight ratio ( air / water )
@@ -383,7 +431,6 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   # N.B.: 'experiment' can be a string name or an Exp instance
   folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
   # period  
-  from projects.WRF_experiments import Exp
   if isinstance(period,(tuple,list)): pass
   elif isinstance(period,basestring): pass
   elif period is None: pass
@@ -512,8 +559,8 @@ loadClimatology = loadWRF # pre-processed, standardized climatology
 if __name__ == '__main__':
     
   
-  mode = 'test_climatology'
-#   mode = 'test_timeseries'
+#   mode = 'test_climatology'
+  mode = 'test_timeseries'
 #   mode = 'pickle_grid'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
 #   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]

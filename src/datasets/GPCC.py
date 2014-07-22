@@ -82,8 +82,6 @@ def loadGPCC_LTM(name=dataset_name, varlist=None, resolution='025', varatts=ltmv
     dataset.addVariable(stations, asNC=False, copy=True)  
   dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
   # N.B.: projection should be auto-detected as geographic
-  # add method to convert precip from per month to per second
-  #dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)    
   # return formatted dataset
   return dataset
 
@@ -110,8 +108,6 @@ def loadGPCC_TS(name=dataset_name, grid=None, varlist=None, resolution='25', var
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')
     dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
     # N.B.: projection should be auto-detected as geographic
-    # add method to convert precip from per month to per second
-    #dataset.convertPrecip = types.MethodType(convertPrecip, dataset.precip)
   else:
     # load from neatly formatted and regridded time-series files
     if folder is None: folder = avgfolder
@@ -239,8 +235,6 @@ if __name__ == '__main__':
       # load data into memory
       dataset.load()
 
-      # convert precip data to SI units (mm/s)
-      #dataset.convertPrecip() # convert in-place
       # add landmask
       addLandMask(dataset) # create landmask from precip mask
       dataset.mask(dataset.landmask) # mask all fields using the new landmask      
@@ -326,8 +320,6 @@ if __name__ == '__main__':
 #       print(sink)
 #       print('')
 
-      # convert precip data to SI units (mm/s) 
-      #convertPrecip(sink.precip) # convert in-place
       # add landmask
       #sink.mask(sink.landmask)
       #print sink.dataset

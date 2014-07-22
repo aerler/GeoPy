@@ -21,8 +21,10 @@ from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, g
 
 # days per month
 days_per_month = np.array([31,28.2425,31,30,31,30,31,31,30,31,30,31], dtype='float32') # 97 leap days every 400 years
+seconds_per_month = days_per_month * 86400.
 # N.B.: the Gregorian calendar repeats every 400 years
 days_per_month_365 = np.array([31,28,31,30,31,30,31,31,30,31,30,31], dtype='int16') # no leap day
+seconds_per_month_365 = days_per_month_365 * 86400.
 # human-readable names
 name_of_month = ['January  ', 'February ', 'March    ', 'April    ', 'May      ', 'June     ', #
                  'July     ', 'August   ', 'September', 'October  ', 'November ', 'December ']
@@ -145,10 +147,11 @@ def transformPrecip(data, var=None, slc=None):
   ''' convert monthly precip amount to SI units (mm/s) '''
   if not isinstance(var,VarNC): raise TypeError
   if var.units == 'kg/m^2/month' or var.units == 'mm/month':
-    if not ( data.ndim == 3 and data.shape[0]%12 == 0 ): raise NotImplementedError
+    assert data.ndim == var.ndim
     tax = var.axisIndex('time'); te = len(var.time)
-    if not ( tax == 0 and te%12 == 0 ): raise NotImplementedError  
-    data /= np.repeat(days_per_month.reshape((12,1,1)) * 86400., te/12, axis=tax) # convert in-place
+    if not ( data.shape[tax] == te and te%12 == 0 ): raise NotImplementedError
+    shape = [1,]*data.ndim; shape[tax] = 12 # dimensions of length 1 will be expanded as needed
+    data /= np.repeat(seconds_per_month.reshape(shape), te/12, axis=tax) # convert in-place
     var.units = 'kg/m^2/s'
   return data      
       
