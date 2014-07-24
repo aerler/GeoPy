@@ -42,24 +42,24 @@ class Exp(WRF_Exp):
 experiments = dict() # dictionary of experiments
 # historical
 experiments['ens20trcn1x1'] = Exp(shortname='CESM', name='ens20trcn1x1', title='CESM Ensemble Mean', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
-experiments['tb20trcn1x1'] = Exp(shortname='Ctrl', name='tb20trcn1x1', title='Ctrl (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
-experiments['hab20trcn1x1'] = Exp(shortname='Ens-A', name='hab20trcn1x1', title='Ens-A (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
-experiments['hbb20trcn1x1'] = Exp(shortname='Ens-B', name='hbb20trcn1x1', title='Ens-B (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
-experiments['hcb20trcn1x1'] = Exp(shortname='Ens-C', name='hcb20trcn1x1', title='Ens-C (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
+experiments['tb20trcn1x1'] = Exp(shortname='Ctrl', name='tb20trcn1x1', title='Ctrl (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
+experiments['hab20trcn1x1'] = Exp(shortname='Ens-A', name='hab20trcn1x1', title='Ens-A (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
+experiments['hbb20trcn1x1'] = Exp(shortname='Ens-B', name='hbb20trcn1x1', title='Ens-B (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
+experiments['hcb20trcn1x1'] = Exp(shortname='Ens-C', name='hcb20trcn1x1', title='Ens-C (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
 # mid-21st century
 experiments['ensrcp85cn1x1'] = Exp(shortname='CESM-2050', name='ensrcp85cn1x1', title='CESM Ensemble Mean (2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
 experiments['seaice-5r-hf'] = Exp(shortname='Seaice-2050', name='seaice-5r-hf', title='Seaice (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
-experiments['htbrcp85cn1x1'] = Exp(shortname='Ctrl-2050', name='htbrcp85cn1x1', title='Ctrl (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
-experiments['habrcp85cn1x1'] = Exp(shortname='Ens-A-2050', name='habrcp85cn1x1', title='Ens-A (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
-experiments['hbbrcp85cn1x1'] = Exp(shortname='Ens-B-2050', name='hbbrcp85cn1x1', title='Ens-B (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
-experiments['hcbrcp85cn1x1'] = Exp(shortname='Ens-C-2050', name='hcbrcp85cn1x1', title='Ens-C (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
+experiments['htbrcp85cn1x1'] = Exp(shortname='Ctrl-2050', name='htbrcp85cn1x1', title='Ctrl (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
+experiments['habrcp85cn1x1'] = Exp(shortname='Ens-A-2050', name='habrcp85cn1x1', title='Ens-A (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
+experiments['hbbrcp85cn1x1'] = Exp(shortname='Ens-B-2050', name='hbbrcp85cn1x1', title='Ens-B (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
+experiments['hcbrcp85cn1x1'] = Exp(shortname='Ens-C-2050', name='hcbrcp85cn1x1', title='Ens-C (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
 # mid-21st century
 experiments['ensrcp85cn1x1d'] = Exp(shortname='CESM-2100', name='ensrcp85cn1x1d', title='CESM Ensemble Mean (2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
 experiments['seaice-5r-hfd'] = Exp(shortname='Seaice-2100', name='seaice-5r-hfd', title='Seaice (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
-experiments['htbrcp85cn1x1d'] = Exp(shortname='Ctrl-2100', name='htbrcp85cn1x1d', title='Ctrl (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
-experiments['habrcp85cn1x1d'] = Exp(shortname='Ens-A-2100', name='habrcp85cn1x1d', title='Ens-A (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
-experiments['hbbrcp85cn1x1d'] = Exp(shortname='Ens-B-2100', name='hbbrcp85cn1x1d', title='Ens-B (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
-experiments['hcbrcp85cn1x1d'] = Exp(shortname='Ens-C-2100', name='hcbrcp85cn1x1d', title='Ens-C (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
+experiments['htbrcp85cn1x1d'] = Exp(shortname='Ctrl-2100', name='htbrcp85cn1x1d', title='Ctrl (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
+experiments['habrcp85cn1x1d'] = Exp(shortname='Ens-A-2100', name='habrcp85cn1x1d', title='Ens-A (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
+experiments['hbbrcp85cn1x1d'] = Exp(shortname='Ens-B-2100', name='hbbrcp85cn1x1d', title='Ens-B (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
+experiments['hcbrcp85cn1x1d'] = Exp(shortname='Ens-C-2100', name='hcbrcp85cn1x1d', title='Ens-C (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
 
 ## an alternate dictionary using short names and aliases for referencing
 exps = dict()
@@ -75,7 +75,7 @@ CESM_experiments = experiments # alias for whole dict
 
 
 # return name and folder
-def getFolderName(name=None, experiment=None, folder=None, mode='avg'):
+def getFolderName(name=None, experiment=None, folder=None, mode='avg', cvdp_mode='ensemble'):
   ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
   # figure out experiment name
@@ -91,7 +91,10 @@ def getFolderName(name=None, experiment=None, folder=None, mode='avg'):
       # root folder
       if folder is None: 
         if mode == 'avg': folder = experiment.avgfolder
-        elif mode == 'cvdp': folder = experiment.cvdpfolder
+        elif mode == 'cvdp': 
+          if cvdp_mode == 'ensemble': folder = "{:s}/{:s}/".format(cvdpfolder,experiment.ensemble)
+          elif cvdp_mode == 'grand-ensemble': folder = "{:s}/grand-ensemble/".format(cvdpfolder)
+          else: folder = experiment.cvdpfolder
         elif mode == 'diag': folder = experiment.diagfolder
         else: raise NotImplementedError,"Unsupported mode: '{:s}'".format(mode)
       elif not isinstance(folder,basestring): raise TypeError
@@ -236,12 +239,12 @@ ignore_list_3D = ('lev', 'levgrnd',) # ignore all 3D variables (and vertical axe
 
 # CVDP diagnostics (monthly time-series, EOF pattern and correlations) 
 def loadCVDP(experiment=None, name=None, grid=None, period=None, varlist=None, varatts=None, 
-             translateVars=None, lautoregrid=None, ignore_list=None):
+             cvdp_mode='ensemble', translateVars=None, lautoregrid=None, ignore_list=None):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
   if grid is not None: raise NotImplementedError
   return loadCESM_All(experiment=experiment, name=name, grid=grid, period=period, filetypes=('cvdp',), 
                   varlist=varlist, varatts=varatts, translateVars=translateVars, lautoregrid=lautoregrid, 
-                  load3D=True, ignore_list=ignore_list, mode='CVDP')
+                  load3D=True, ignore_list=ignore_list, mode='CVDP', cvdp_mode=cvdp_mode)
 
 # Time-Series (monthly)
 def loadCESM_TS(experiment=None, name=None, grid=None, filetypes=None, varlist=None, 
@@ -262,7 +265,8 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
 
 # load minimally pre-processed CESM climatology (and time-series) files 
 def loadCESM_All(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, varatts=None, 
-                 translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, mode='climatology'):
+                 translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, mode='climatology', 
+                 cvdp_mode='ensemble'):
   ''' Get any of the monthly CESM files as a properly formatted NetCDFDataset. '''
   # period
   if isinstance(period,(tuple,list)) and not all(isNumber(period)): raise ValueError
@@ -282,7 +286,7 @@ def loadCESM_All(experiment=None, name=None, grid=None, period=None, filetypes=N
     if lautoregrid is None: lautoregrid = False # this can take very long!
   elif mode.lower() == 'cvdp': # concatenated time-series files
     lcvdp = True
-    folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='cvdp')
+    folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='cvdp', cvdp_mode=cvdp_mode)
   elif mode.lower() == 'diag': # concatenated time-series files
     ldiag = True
     folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='diag')
@@ -484,7 +488,7 @@ if __name__ == '__main__':
       
       print('')
       period = periods[0] # just use first element, no need to loop
-      dataset = loadCVDP(experiment=experiment, period=period)
+      dataset = loadCVDP(experiment=experiment, period=period, cvdp_mode='ensemble')
       print(dataset)
 #       print(dataset.geotransform)
       print(dataset.lon)

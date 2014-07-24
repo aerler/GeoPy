@@ -173,6 +173,7 @@ class Exp(object):
   parameters['title'] = dict(type=basestring,req=False) # title used in plots
   parameters['grid'] = dict(type=basestring,req=True) # name
   parameters['parent'] = dict(type=basestring,req=True) # driving dataset
+  parameters['ensemble'] = dict(type=basestring,req=False) # ensemble this run is a member of
   parameters['begindate'] = dict(type=basestring,req=True) # simulation start date
   parameters['beginyear'] = dict(type=int,req=True) # simulation start year
   parameters['enddate'] = dict(type=basestring,req=False) # simulation end date (if it already finished)
