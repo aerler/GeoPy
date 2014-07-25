@@ -7,7 +7,7 @@ This module contains meta data and access functions for NARR datasets.
 '''
 
 #external imports
-#import numpy as np
+import numpy as np
 import os
 # from atmdyn.properties import variablePlotatts
 from geodata.base import Axis
@@ -123,6 +123,10 @@ def loadNARR_TS(name=dataset_name, grid=None, varlist=None, resolution=None, var
     # load dataset
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                             atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
+    # replace time axis with number of month since Jan 1979 
+    data = np.arange(0,len(dataset.time),1, dtype='int16') # month since 1979 (Jan 1979 = 0)
+    timeAxis = Axis(name='time', units='month', data=data, atts=dict(long_name='Month since 1979-01'))
+    dataset.repalceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
     # add projection
     projection = getProjFromDict(projdict, name='{0:s} Coordinate System'.format(name))
     dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None, gridfolder=grid_folder)
@@ -171,7 +175,8 @@ if __name__ == '__main__':
     
   
 #   mode = 'test_climatology'
-  mode = 'average_timeseries'
+#   mode = 'average_timeseries'
+  mode = 'test_timeseries'
 #   mode = 'convert_climatology'
   grid = 'NARR'
 #   period = (1979,1984)
@@ -181,6 +186,7 @@ if __name__ == '__main__':
   period = (2010,2011)
   
   if mode == 'test_climatology':
+    
     
     # load averaged climatology file
     print('')
@@ -192,7 +198,20 @@ if __name__ == '__main__':
     print(grid_def[''].scale)
               
 
+  elif mode == 'test_timeseries':
+    
+    
+    # load timeseries files
+    print('')
+    dataset = loadNARR_TS()
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
+              
+
   elif mode == 'convert_climatology':      
+    
       
       from datasets.common import addLengthAndNamesOfMonth, getFileName
       from geodata.nctools import writeNetCDF, add_strvar

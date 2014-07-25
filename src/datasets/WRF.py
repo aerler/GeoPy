@@ -389,6 +389,13 @@ def loadWRF_TS(experiment=None, name=None, domains=2, grid=None, filetypes=None,
     if fileclass.tsfile is not None: filelist.append(fileclass.tsfile) 
     atts.update(fileclass.atts)  
   if varatts is not None: atts.update(varatts)
+  # center time axis to 1979
+  if 'time' in atts: tatts = atts['time']
+  else: tatts = dict()
+  ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1   
+  tatts['offset'] = (ys-1979)*12 + (ms-1) -1
+  tatts['atts'] = dict(long_name='Month since 1979-01')
+  atts['time'] = tatts 
   # translate varlist
   #if varlist is None: varlist = atts.keys()
   if varatts: varlist = translateVarNames(varlist, varatts)
@@ -619,9 +626,10 @@ if __name__ == '__main__':
   # load monthly time-series file
   elif mode == 'test_timeseries':
     
-    dataset = loadWRF_TS(experiment='max-ctrl', domains=1, filetypes=['srfc'])
+    dataset = loadWRF_TS(experiment='max-2050', domains=1, filetypes=['srfc'])
 #     for dataset in datasets:
     print('')
     print(dataset)
     print('')
-    print(dataset.geotransform)
+    print(dataset.time)
+    print(dataset.time.coord)

@@ -7,12 +7,13 @@ This module contains meta data and access functions for the GPCC climatology and
 '''
 
 # external imports
+import numpy as np
 import netCDF4 as nc # netcdf python module
 import os # check if files are present
 #import types # to add precip conversion fct. to datasets
 #from importlib import import_module
 # internal imports
-from geodata.base import Variable
+from geodata.base import Variable, Axis
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, addGeoLocator
 from geodata.misc import DatasetError
@@ -50,8 +51,8 @@ varatts = dict(p    = dict(name='precip', units='mm/month', transform=transformP
                lat  = dict(name='lat', units='deg N')) # geographic latitude field
 #                time = dict(name='time', units='days', offset=1)) # time coordinate
 # attributes of the time axis depend on type of dataset 
-ltmvaratts = dict(time=dict(name='time', units='months', offset=1), **varatts) 
-tsvaratts = dict(time=dict(name='time', units='days', offset=-28854), **varatts)
+ltmvaratts = dict(time=dict(name='time', units='month', offset=1), **varatts) 
+tsvaratts = dict(time=dict(name='time', units='day', offset=-28854), **varatts)
 # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
 # list of variables to load
 varlist = varatts.keys() # also includes coordinate fields    
@@ -106,6 +107,11 @@ def loadGPCC_TS(name=dataset_name, grid=None, varlist=None, resolution='25', var
       if 's' in varlist: filelist.append(orig_ts_file.format('statio',resolution))
     # load dataset
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')
+    # replace time axis with number of month since Jan 1979 
+    data = np.arange(0,len(dataset.time),1, dtype='int16') + (1901-1979)*12 # month since 1979 (Jan 1979 = 0)
+    timeAxis = Axis(name='time', units='month', data=data, atts=dict(long_name='Month since 1979-01'))
+    dataset.repalceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
+    # add GDAL info
     dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
     # N.B.: projection should be auto-detected as geographic
   else:
@@ -165,9 +171,9 @@ loadClimatology = loadGPCC # pre-processed, standardized climatology
 if __name__ == '__main__':
   
 #   mode = 'test_climatology'; reses = ('025',); period = None
-#   mode = 'test_timeseries'; reses = ('25',); period = None
+  mode = 'test_timeseries'; reses = ('25',); period = None
 #   mode = 'average_timeseries'; reses = ('05',) # for testing
-  mode = 'convert_climatology'; reses = ('25',); period = None
+#   mode = 'convert_climatology'; reses = ('25',); period = None
 #   reses = ('025','05', '10', '25')  
 #   reses = ('05', '10', '25')
   reses = ('25',)
@@ -215,12 +221,13 @@ if __name__ == '__main__':
       print(dataset)
       print('')
       print(dataset.time)
-      print(dataset.time.data_array)
-      print(dataset.time.masked)
-      print('')
-      print(dataset.geotransform)
-      print(dataset.precip.getArray().mean())
-      print(dataset.precip.masked)
+      print(dataset.time.coord)
+      print(dataset.time.coord[78*12]) # Jan 1979
+#       print(dataset.time.masked)
+#       print('')
+#       print(dataset.geotransform)
+#       print(dataset.precip.getArray().mean())
+#       print(dataset.precip.masked)
       
           
     elif mode == 'convert_climatology':      

@@ -148,8 +148,14 @@ def transformPrecip(data, l365=False, var=None, slc=None):
   if not isinstance(var,VarNC): raise TypeError
   if var.units == 'kg/m^2/month' or var.units == 'mm/month':
     assert data.ndim == var.ndim
-    tax = var.axisIndex('time'); te = len(var.time)
-    if not ( data.shape[tax] == te and te%12 == 0 ): raise NotImplementedError
+    tax = var.axisIndex('time')
+    if ( slc is not None and  slc[tax] is not None ):
+      tlc = slc[tax]; te = tlc.stop - tlc.start
+      if not ( tlc.start%12 == 0 and te%12 == 0 ): raise NotImplementedError
+      # assuming the record starts some year in January, and we always need to load full years
+    else:  
+      te = len(var.time)
+      if not ( data.shape[tax] == te and te%12 == 0 ): raise NotImplementedError
     shape = [1,]*data.ndim; shape[tax] = 12 # dimensions of length 1 will be expanded as needed
     spm = seconds_per_month_365 if l365 else seconds_per_month
     data /= np.repeat(spm.reshape(shape), te/12, axis=tax) # convert in-place

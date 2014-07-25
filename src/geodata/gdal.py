@@ -605,7 +605,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     var.getMapMask = types.MethodType(getMapMask, var)   
     
     # extension to mean
-    def mapMean(self, mask=None, integral=False, invert=False, **kwargs):
+    def mapMean(self, mask=None, integral=False, invert=False, squeeze=True, **kwargs):
       ''' Compute mean over the horizontal axes, optionally applying a 2D shape or mask. '''
       if not self.data: raise DataError
       # determine relevant axes
@@ -617,6 +617,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
       # compute average
       kwargs.update(axes)# update dictionary
       newvar = self.mean(**kwargs)
+      if squeeze: newvar.squeeze()
       # if integrating
       if integral:
         if not self.isProjected: raise NotImplementedError
@@ -774,7 +775,8 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
           newset.addVariable(var.mapMean(mask=mask, integral=integral, invert=invert, coordIndex=coordIndex, 
                                        squeeze=True, checkAxis=True), copy=False) # new variable/values anyway
         elif len(tmpax) == 1:
-          newset.addVariable(var.mean(coordIndex=coordIndex, squeeze=True, checkAxis=True, asVar=True, **tmpax), copy=False) # new variable/values anyway        
+          newset.addVariable(var.mean(coordIndex=coordIndex, squeeze=True, checkAxis=True, asVar=True, 
+                                      **tmpax), copy=False) # new variable/values anyway        
         elif len(tmpax) == 0: 
           newset.addVariable(var, copy=True, deepcopy=True) # copy values
 #         else: raise GDALError

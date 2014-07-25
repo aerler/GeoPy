@@ -393,9 +393,12 @@ def loadCESM_All(experiment=None, name=None, grid=None, period=None, filetypes=N
                           multifile=False, ignore_list=ignore_list, ncformat='NETCDF4', squeeze=True)
   # replace time axis
   if lts or lcvdp:
-    te = len(dataset.time)
-    timeAxis = Axis(name='time', units='month', length=te, data=np.arange(1,te+1,1, dtype='int16'))
-    dataset.repalceAxis(dataset.time, timeAxis, asNC=True, deepcopy=False)
+    if experiment is None: ys = period[0]; ms = 1
+    else: ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1
+    ts = (ys-1979)*12 + (ms-1); te = ts+len(dataset.time) # month since 1979 (Jan 1979 = 0)
+    atts = dict(long_name='Month since 1979-01')
+    timeAxis = Axis(name='time', units='month', data=np.arange(ts,te,1, dtype='int16'), atts=atts)
+    dataset.repalceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
   # check
   if len(dataset) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
   # add projection
@@ -446,7 +449,7 @@ if __name__ == '__main__':
 #     mode = 'shift_lon'
 #     experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     experiments += ['Ctrl-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
-    experiments = ('Ctrl-C',)
+    experiments = ('Ctrl-C-2050',)
     periods = (15,)    
     filetypes = ('atm',) # ['atm','lnd','ice']
     grids = ('arb2_d02',)*len(experiments) # grb1_d01
@@ -496,21 +499,23 @@ if __name__ == '__main__':
         dataset = loadCESM(experiment=experiment, varlist=None, grid=None, filetypes=filetypes, period=period)
       print(dataset)
       print('')
-      print(dataset.geotransform)
+#       print(dataset.geotransform)
+      print dataset.time
+      print dataset.time.coord
       # show some variables
-      if 'zs' in dataset: var = dataset.zs
-      elif 'hgt' in dataset: var = dataset.hgt
-      else: var = dataset.lon2D
-      var.load()
-      print var
-      var = var.mean(axis='time',checkAxis=False)
+#       if 'zs' in dataset: var = dataset.zs
+#       elif 'hgt' in dataset: var = dataset.hgt
+#       else: var = dataset.lon2D
+#       var.load()
+#       print var
+#       var = var.mean(axis='time',checkAxis=False)
       # display
-      import pylab as pyl
+#       import pylab as pyl
 #       pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.precip.getArray().mean(axis=0))
 #       pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.runoff.getArray().mean(axis=0))
-      pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), var.getArray())
-      pyl.colorbar()
-      pyl.show(block=True)
+#       pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), var.getArray())
+#       pyl.colorbar()
+#       pyl.show(block=True)
   
   # load CVDP file
   elif mode == 'test_cvdp':
@@ -522,24 +527,24 @@ if __name__ == '__main__':
 #       dataset = loadCVDP(experiment=experiment, period=period, cvdp_mode='ensemble')
       dataset = loadCVDP_Obs(name='GPCP')
       print(dataset)
-      print(dataset.geotransform)
-      print(dataset.lon)
-      print(dataset.lon.coord)
+#       print(dataset.geotransform)
+      print(dataset.time)
+      print(dataset.time.coord)
       # print some variables
-      print('')
-      eof = dataset.pdo_pattern; eof.load()
-#       print eof
-      print('')
-      ts = dataset.pdo_timeseries; ts.load()
-#       print ts
-      print ts.mean()
+#       print('')
+#       eof = dataset.pdo_pattern; eof.load()
+# #       print eof
+#       print('')
+#       ts = dataset.pdo_timeseries; ts.load()
+# #       print ts
+#       print ts.mean()
       # display
-      import pylab as pyl
+#       import pylab as pyl
 #       pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.precip.getArray().mean(axis=0))
 #       pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), dataset.runoff.getArray().mean(axis=0))
-      pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), eof.getArray())
-      pyl.colorbar()
-      pyl.show(block=True)
+#       pyl.pcolormesh(dataset.lon2D.getArray(), dataset.lat2D.getArray(), eof.getArray())
+#       pyl.colorbar()
+#       pyl.show(block=True)
       print('')
   
   # shift dataset from 0-360 to -180-180
