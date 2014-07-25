@@ -38,7 +38,7 @@ def loadMPL(linewidth=None, mplrc=None):
 
 # method to return a figure and an array of ImageGrid axes
 def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=None, ngrids=None, direction='row', axes_pad = 0.2,
-             add_all=True, share_all=False, aspect=True, label_mode='L', cbar_mode=None, cbar_location='right',
+             add_all=True, share_all=False, aspect=False, label_mode='L', cbar_mode=None, cbar_location='right',
              cbar_pad=None, cbar_size='5%', axes_class=None, lreduce=True):
   from mpl_toolkits.axes_grid1 import ImageGrid
   # configure matplotlib
