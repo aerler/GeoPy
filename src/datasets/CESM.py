@@ -528,8 +528,10 @@ if __name__ == '__main__':
       dataset = loadCVDP_Obs(name='GPCP')
       print(dataset)
 #       print(dataset.geotransform)
+      time = dataset.time(time=(12,24))
       print(dataset.time)
-      print(dataset.time.coord)
+      print(time)
+      print(len(time))
       # print some variables
 #       print('')
 #       eof = dataset.pdo_pattern; eof.load()

@@ -165,6 +165,7 @@ class Variable(object):
       Optional/Advanced Attributes:
         masked = False # whether or not the array in self.data is a masked array
         fillValue = None # value to fill in for masked values
+        dataset = None # parent dataset the variable belongs to
         atts = None # dictionary with additional attributes
         plot = None # attributed used for displaying the data       
     '''
@@ -208,6 +209,7 @@ class Variable(object):
     self.__dict__['shape'] = shape
     self.__dict__['dtype'] = dtype
     self.__dict__['masked'] = False # handled in self.load() method    
+    self.__dict__['dataset'] = None # set by addVariable() method of Dataset  
     ## figure out axes
     if axes is not None:
       assert isinstance(axes, (list, tuple))
@@ -386,11 +388,23 @@ class Variable(object):
       # if nothing applies, raise index error
       raise IndexError, 'Invalid index/key type for class \'%s\'!'%(self.__class__.__name__)
   
-  def __call__(self, lgetIndex=True, lcoordList=False, **kwargs):
+  def __call__(self, years=None, lgetIndex=True, lcoordList=False, lcheckaxis=True, **kwargs):
     ''' This method implements access to slices via coordinate values (as opposed to indices). '''
     # loop over arguments and find indices of coordinate values
     slices = dict()
-    for axname,coord in kwargs.iteritems():
+    # resolve special key words
+    if years is not None:
+      if self.hasAxis('time'):
+        time = self.getAxis('time')
+        if not time.units.lower() in ('month','months'): raise NotImplementedError, 'Can only convert years to month!'
+        if '1979' in time.atts.long_name: offset = 1979
+        else: offset = 0
+        if isinstance(years,np.number): months = (years - offset)*12
+        elif isinstance(years,(list,tuple)): months = [ (yr - offset)*12 for yr in years]
+        kwargs['time'] = months
+      elif lcheckaxis: raise AxisError, "Axis '{}' not found!".format('time')
+    # search for regular dimensions 
+    for axname,coord in kwargs.iteritems():      
       if self.hasAxis(axname):
         ax = self.getAxis(axname)
         if ax.data:
@@ -404,7 +418,7 @@ class Variable(object):
                 elif len(coord) == 2:
                   #l = max(ax.data_array.searchsorted(coord[0],side='right')-1,0) # choose such as to bracket coords
                   #r = ax.data_array.searchsorted(coord[1],side='left') # same value or higher index
-                  slices[axname] = slice(ax.getIndex(coord[0]),ax.getIndex(coord[1])+1)
+                  slices[axname] = slice(ax.getIndex(coord[0]),ax.getIndex(coord[1]))
                 elif len(coord) == 3:  
                   coord = np.linspace(*coord) # expand into linearly spaced list
                   slices[axname] = [ax.getIndex(cv) for cv in coord] # and look up the indices
@@ -425,7 +439,9 @@ class Variable(object):
               slices[axname] = slice(None)
             else: raise TypeError
         else: 
-          raise AxisError, 'Axis {} has no coordinate vector!'.format(ax.name)
+          raise AxisError, "Axis '{}' has no coordinate vector!".format(ax.name)
+      else:
+        if lcheckaxis: raise AxisError, "Axis '{}' not found!".format(axname)
     # assemble index tuple for axes
     idx = tuple([slices.get(ax.name,slice(None)) for ax in self.axes])
     return self.__getitem__(idx=idx) # pass on to getitem
@@ -882,6 +898,8 @@ class Dataset(object):
           raise AxisError, "Error: Axis '%s' from Variable and Dataset are different!"%ax.name
         if ax.data and self.axes[ax.name].data:
           if not isEqual(ax.coord,self.axes[ax.name].coord): raise DataError
+    # set dataset attribute
+    self.axes[ax.name].dataset = self
     # double-check
     return self.axes.has_key(ax.name)       
     
@@ -904,6 +922,8 @@ class Dataset(object):
       if copy: self.variables[var.name] = var.copy(deepcopy=deepcopy)
       else: self.variables[var.name] = var
       self.__dict__[var.name] = self.variables[var.name] # create shortcut
+    # set dataset attribute
+    self.variables[var.name].dataset = self
     # double-check
     return self.variables.has_key(var.name) 
     

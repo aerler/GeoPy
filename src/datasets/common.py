@@ -150,8 +150,11 @@ def transformPrecip(data, l365=False, var=None, slc=None):
     assert data.ndim == var.ndim
     tax = var.axisIndex('time')
     if ( slc is not None and  slc[tax] is not None ):
-      tlc = slc[tax]; te = tlc.stop - tlc.start
-      if not ( tlc.start%12 == 0 and te%12 == 0 ): raise NotImplementedError
+      tlc = slc[tax]
+      ts = tlc.start or 0 
+      te = ( tlc.stop or len(var.time) ) - ts
+      if not ( ts%12 == 0 and te%12 == 0 ): raise NotImplementedError
+      assert data.shape[tax] == te-ts
       # assuming the record starts some year in January, and we always need to load full years
     else:  
       te = len(var.time)
