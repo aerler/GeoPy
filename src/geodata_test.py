@@ -388,14 +388,14 @@ class BaseDatasetTest(unittest.TestCase):
     # collective add/remove
     ax = Axis(name='ax', units='none')
     var = Variable(name='new',units='none',axes=(ax,))
-    ens.addVariable(var) # this is a dataset operation
+    ens += var # this is a dataset operation
     assert all(ens.hasVariable('new'))
     # test adding a new member
     ens += yacod # this is an ensemble operation
     print('')
     print(ens)
     print('')    
-    ens.removeVariable(var) # this is a dataset operation
+    ens -= var # this is a dataset operation
     assert not any(ens.hasVariable('new'))
     ens -= 'test'
     print(ens.prettyPrint(short=True))

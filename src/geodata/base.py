@@ -1431,13 +1431,19 @@ class Ensemble(object):
     return len(self.members)
   
   def __iadd__(self, member):
-    ''' Add a Dataset to an existing Ensemble. '''      
-    assert self.addMember(member), "A problem occurred adding Dataset '{:s}' to Ensemble.".format(member.name)    
+    ''' Add a Dataset to an existing Ensemble. '''
+    if isinstance(member, self.basetype):
+      assert self.addMember(member), "A problem occurred adding Dataset '{:s}' to Ensemble.".format(member.name)    
+    elif isinstance(member, Variable):
+      assert all(self.addVariable(member)), "A problem occurred adding Variable '{:s}' to Ensemble Members.".format(member.name)    
     return self # return self as result
 
   def __isub__(self, member):
     ''' Remove a Dataset to an existing Ensemble. '''      
-    assert self.removeMember(member), "A proble occurred removing Dataset '{:s}' from Ensemble.".format(member.name)
+    if isinstance(member, self.basetype):
+      assert self.removeMember(member), "A proble occurred removing Dataset '{:s}' from Ensemble.".format(member.name)
+    elif isinstance(member, Variable):
+      assert all(self.removeVariable(member)), "A problem occurred removing Variable '{:s}' from Ensemble Members.".format(member.name)    
     return self # return self as result
 
   
