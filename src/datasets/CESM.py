@@ -9,6 +9,7 @@ This module contains common meta data and access functions for CESM model output
 # external imports
 import numpy as np
 import os, pickle
+from collections import OrderedDict
 # from atmdyn.properties import variablePlotatts
 from geodata.base import Variable, Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
@@ -39,7 +40,7 @@ class Exp(WRF_Exp):
   
 # list of experiments
 # N.B.: This is the reference list, with unambiguous, unique keys and no aliases/duplicate entries  
-experiments = dict() # dictionary of experiments
+experiments = OrderedDict() # dictionary of experiments
 # historical
 experiments['ens20trcn1x1'] = Exp(shortname='Ens', name='ens20trcn1x1', title='CESM Ensemble Mean', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
 experiments['tb20trcn1x1'] = Exp(shortname='Ctrl-1', name='tb20trcn1x1', title='Exp D (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
@@ -61,7 +62,7 @@ experiments['habrcp85cn1x1d'] = Exp(shortname='Ctrl-A-2100', name='habrcp85cn1x1
 experiments['hbbrcp85cn1x1d'] = Exp(shortname='Ctrl-B-2100', name='hbbrcp85cn1x1d', title='Exp B (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
 experiments['hcbrcp85cn1x1d'] = Exp(shortname='Ctrl-C-2100', name='hcbrcp85cn1x1d', title='Exp C (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
 ## an alternate dictionary using short names and aliases for referencing
-exps = dict()
+exps = OrderedDict()
 # use short names where available, normal names otherwise
 for key,item in experiments.iteritems():
   exps[item.name] = item
@@ -72,7 +73,7 @@ for key,item in experiments.iteritems():
 CESM_exps = exps # alias for whole dict
 CESM_experiments = experiments # alias for whole dict
 ## dict of ensembles
-ensembles = CESM_ens = dict()
+ensembles = CESM_ens = OrderedDict()
 ensemble_list = set([exp.ensemble for exp in experiments.values() if exp.ensemble])
 for ensemble in ensemble_list:
   #print ensemble, experiments[ensemble].shortname

@@ -77,9 +77,9 @@ def isZero(data, eps=None, masked_equal=True):
     if np.issubdtype(data.dtype, np.inexact): # also catch float32 etc
       return ma.allclose(np.zeros_like(data), data, masked_equal=True)
 #     if eps is None: eps = 100.*floateps # default
-#       return ( np.absolute(array) <= eps ).all()
+#       return np.all( np.absolute(array) <= eps )
     elif np.issubdtype(data.dtype, np.integer) or np.issubdtype(data.dtype, np.bool):
-      return all( data == 0 )
+      return np.all( data == 0 )
   elif isinstance(data,float) or isinstance(data, np.inexact):
       if eps is None: eps = 100.*floateps # default
       return np.absolute(data) <= eps
@@ -93,7 +93,7 @@ def isOne(data, eps=None, masked_equal=True):
     if np.issubdtype(data.dtype, np.inexact): # also catch float32 etc
       return ma.allclose(np.ones_like(data), data, masked_equal=True)
     elif np.issubdtype(data.dtype, np.integer) or np.issubdtype(data.dtype, np.bool):
-      return all( data == 1 )
+      return np.all( data == 1 )
   elif isinstance(data,float) or isinstance(data, np.inexact):
       if eps is None: eps = 100.*floateps # default
       return np.absolute(data-1) <= eps
@@ -111,7 +111,7 @@ def isEqual(left, right, eps=None, masked_equal=True):
     if np.issubdtype(left.dtype, np.inexact): # also catch float32 etc
       return ma.allclose(left, right, masked_equal=True)
     elif np.issubdtype(left.dtype, np.integer) or np.issubdtype(left.dtype, np.bool):
-      return all( left == right )
+      return np.all( left == right ) # need to use numpy's all()
   elif isinstance(left,float) or isinstance(left, np.inexact):
     if not isinstance(right,(float,np.inexact)):
       raise TypeError, "Both arguments to function 'isEqual' must be of the same class!"

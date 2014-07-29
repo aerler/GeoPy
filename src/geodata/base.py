@@ -418,7 +418,10 @@ class Variable(object):
                 elif len(coord) == 2:
                   #l = max(ax.data_array.searchsorted(coord[0],side='right')-1,0) # choose such as to bracket coords
                   #r = ax.data_array.searchsorted(coord[1],side='left') # same value or higher index
-                  slices[axname] = slice(ax.getIndex(coord[0]),ax.getIndex(coord[1]))
+                  # N.B.: I am not sure what the above version was supposed to achieve, but a simple version that works well is below (commented.
+                  # l = ax.data_array.searchsorted(coord[0],side='left')
+                  # r = ax.data_array.searchsorted(coord[1],side='right')                  
+                  slices[axname] = slice(ax.getIndex(coord[0], mode='left'),ax.getIndex(coord[1], mode='right'))
                 elif len(coord) == 3:  
                   coord = np.linspace(*coord) # expand into linearly spaced list
                   slices[axname] = [ax.getIndex(cv) for cv in coord] # and look up the indices
@@ -613,33 +616,77 @@ class Variable(object):
   def min(self, data, axidx=None):
     return data.min(axis=axidx)
     
-  def seasonalMean(self, season=None, **kwargs):
-    ''' Compute mean over seasons, using special keywords. (This is a convenience function for monthly means...) '''
+  def reduceToAnnual(self, season, operation, asVar=False, taxis='time', checkUnits=True, taxatts=None, varatts=None):
+    ''' Reduce a monthly time-series to an annual time-series, using mean/min/max over a subset of month or seasons. '''
     if not isinstance(season,basestring): raise TypeError
     if not self.data: raise DataError
-    if not self.hasAxis('time'): raise AxisError, 'Seasonal means require a time axis!'
-    if not self.axes['time'].units == 'month': raise AxisError, 'Seasonal means require monthly data!'
-    if len(self.axes['time']) > 12: raise NotImplementedError, 'Currently seasonal means only work for monthly climatologies.'
+    if not self.hasAxis(taxis): raise AxisError, 'Seasonal reduction requires a time axis!'
+    taxis = self.getAxis(taxis)
+    if checkUnits and not taxis.units.lower() in ('month','months'): raise AxisError, 'Seasonal reduction requires monthly data!'
+    te = len(taxis); tax = self.axisIndex(taxis)
+    if te%12 != 0: raise NotImplementedError, 'Currently seasonal means only work for full years.'
     # determine season
     ssn = season.lower() # ignore case
-    year = 'jfmamjjasond' # all month
-    # N.B.: indexing by month, assuming the coordinate values are the number of the month (i.e. 1-12)
-    if ssn == 'jja' or ssn == 'summer': coord = [6,7,8] 
-    elif ssn == 'djf' or ssn == 'winter': coord = [12,1,2]
-    elif ssn == 'mam' or ssn == 'spring': coord = [3,4,5]
-    elif ssn == 'son' or ssn == 'fall'  or ssn == 'autumn': coord = [9,10,11]
-    elif ssn == 'mamjja' or ssn == 'warm': coord = [3,4,5,6,7,8]
-    elif ssn == 'sondjf' or ssn == 'cold': coord = [9,10,11,12,1,2]
-    elif ssn == 'amj' or ssn == 'melt': coord = [4,5,6]
+    year = 'jfmamjjasondjfmamjjasond' # all month, twice
+    # N.B.: regular Python indexing, starting at 0 for Jan and going to 11 for Dec
+    if ssn == 'jja' or ssn == 'summer': idx = np.asarray([5,6,7])
+    elif ssn == 'djf' or ssn == 'winter': idx = np.asarray([11,0,1])
+    elif ssn == 'mam' or ssn == 'spring': idx = np.asarray([2,3,4])
+    elif ssn == 'son' or ssn == 'fall'  or ssn == 'autumn': idx = np.asarray([8,9,10])
+    elif ssn == 'mamjja' or ssn == 'warm': idx = np.asarray([2,3,4,5,6,7])
+    elif ssn == 'sondjf' or ssn == 'cold': idx = np.asarray([8,9,10,11,0,1,])
+    elif ssn == 'amj' or ssn == 'melt': idx = np.asarray([3,4,5,])
     elif ssn in year: 
-      s = year.find(ssn)+1 # find first occurrence of sequence
-      coord = range(s,s+len(ssn)) # and use range of months
+      s = year.find(ssn) # find first occurrence of sequence
+      idx = np.arange(s,s+len(ssn))%12 # and use range of months
     else: raise ValueError, 'Unknown keyword/season: \'{}\''.format(season)
-    # compute average
-    newvar = self.mean(lindexList=True, time=coord,**kwargs) # go by index, not coordinate value
+    # get actual data and reshape
+    mdata = self.getArray()
+    if tax > 0: np.rollaxis(mdata, axis=tax, start=0) # move time axis to front
+    # reshape for annual array
+    oldshape = mdata.shape
+    y = te/12 # number of years
+    newshape = (y,)+oldshape[1:]
+    #print oldshape, (y,12)+oldshape[1:]
+    mdata = mdata.reshape((y,12)+oldshape[1:])
+    # compute mean/min/max
+    tmp = mdata[:,idx,:]
+    if operation == 'mean': ydata = tmp.mean(axis=1)
+    elif operation == 'max': ydata = tmp.max(axis=1)
+    elif operation == 'min': ydata = tmp.min(axis=1)
+    else: raise NotImplementedError, "Unknown operation: '{:s}'".format(operation)
+    assert ydata.shape == newshape
     # return new variable
-    return newvar
-   
+    if tax > 0: np.rollaxis(mdata, axis=0, start=tax+1) # move time axis to front
+    # cast as variable
+    if asVar:      
+      # create new time axis (yearly)
+      tatts = self.time.atts.copy()
+      tatts['name'] = 'year'; tatts['units'] = 'year'
+      coord = (int(taxis.coord[11]/12), np.max(taxis.coord[-1]/12), len(taxis)/12)
+      # N.B.: this should preserve 1-ness or 0-ness
+      if taxatts is not None: atts.update(varatts)      
+      axes = list(self.axes); axes[tax] = Axis(coord=coord, **tatts)
+      # create new variable
+      vatts = self.atts.copy()
+      vatts['name'] = self.name; vatts['units'] = self.units
+      if varatts is not None: vatts.update(varatts)
+      return Variable(name=self.name, units=self.units, data=ydata, axes=axes, atts=vatts)
+      # or return data
+    else: return ydata
+  
+  def seasonalMean(self, season, asVar=False, taxis='time', checkUnits=True):
+    ''' Return a time-series of annual averages of the specified season. '''    
+    return self.reduceToAnnual(season=season, operation='mean', asVar=asVar, taxis=taxis, checkUnits=checkUnits)
+  
+  def seasonalMax(self, season, asVar=False, taxis='time', checkUnits=True):
+    ''' Return a time-series of annual averages of the specified season. '''    
+    return self.reduceToAnnual(season=season, operation='max', asVar=asVar, taxis=taxis, checkUnits=checkUnits)
+  
+  def seasonalMin(self, season, asVar=False, taxis='time', checkUnits=True):
+    ''' Return a time-series of annual averages of the specified season. '''    
+    return self.reduceToAnnual(season=season, operation='min', asVar=asVar, taxis=taxis, checkUnits=checkUnits)
+  
   @UnaryCheck    
   def __iadd__(self, a):
     ''' Add a number or an array to the existing data. '''      
@@ -818,19 +865,28 @@ class Axis(Variable):
     # N.B.: using load() and getArray() should automatically take care of any special needs 
     return ax
 
-  def getIndex(self, value):
-    ''' Return the coordinate index that is closest to the value. '''
+  def getIndex(self, value, mode='closest'):
+    ''' Return the coordinate index that is closest to the value or suitable for index ranges (left/right). '''
     if not self.data: raise DataError
-    # search for close index
-    idx = self.coord.searchsorted(value)
-    # refine search
-    if idx <= 0: return 0
-    elif idx >= self.len: return self.len-1
-    else:
-      dl = value - self.coord[idx-1]
-      dr = self.coord[idx] - value
-      if dr < dl: return idx
-      else: return idx-1 # can't be 0 at this point 
+    # behavior depends on mode
+    if mode == 'left':
+      # returns value suitable for beginning of range (inclusive)
+      return self.coord.searchsorted(value, side='left')
+    elif mode == 'right':    
+      # returns value suitable for end of range (inclusive)
+      return self.coord.searchsorted(value, side='right')
+    elif mode == 'closest':      
+      # search for closest index
+      idx = self.coord.searchsorted(value) # returns value 
+      # refine search
+      if idx <= 0: return 0
+      elif idx >= self.len: return self.len-1
+      else:
+	dl = value - self.coord[idx-1]
+	dr = self.coord[idx] - value
+	if dr < dl: return idx
+	else: return idx-1 # can't be 0 at this point 
+    else: raise ValueError, "Mode '{:s}' unknown.".format(mode)
                   
 
 class Dataset(object):
@@ -854,6 +910,7 @@ class Dataset(object):
     self.__dict__['variables'] = dict()
     self.__dict__['axes'] = dict()
     # set properties in atts
+    if atts is None: atts = dict()
     if name is not None: atts['name'] = name
     if title is not None: atts['title'] = title
     # load global attributes, if given
@@ -1191,6 +1248,70 @@ class Dataset(object):
     return newset
       
 
+class Ensemble(object):
+  '''
+    A container class that holds several datasets ("members" of the ensemble),
+    furthermore, the Ensemble class provides functionality to execute Dataset
+    class methods collectively for all members, and return the results in a tuple.
+  '''
+  members = None # list of members of the ensemble
+  name    = None # name of the ensemble
+  title   = None # printable title used for the ensemble
+  
+  def __init__(self, *datasets, **kwargs):
+    ''' Initialize an ensemble from a list of datasets (the list arguments);
+    keyword arguments are added as attributes (key = attribute name, 
+    value = attribute value); e.g. name and title can be passed as keyword arguments.
+    
+	Attributes:
+	  members = list/tuple of members of the ensemble
+	  name    = name of the ensemble (string)
+	  title   = printable title used for the ensemble (string)
+    '''
+    # add members
+    self.members = list(datasets)
+    # add keywords as attributes
+    for key,value in kwargs.iteritems():
+      self.__dict__[key] = value
+    # add short-cuts
+    for member in self.members:
+      self.__dict__[member.name] = member
+      
+  def __getattr__(self, attr):
+    ''' This is where all the magic happens: defer calls to methods etc. to the 
+	ensemble members and return a list of values. '''
+    # intercept some list methods
+    print dir(self.members), attr, attr in dir(self.members)
+    if attr in dir(self.members): 
+      # determine whether we need a wrapper
+      f = getattr(self.members,attr)
+      if not callable(f):
+	# simple values, not callable
+	return f
+      else:
+	# for callable objects, return a wrapper that can read argument lists      
+	def wrapper( *args, **kwargs):
+	  return f(*args, **kwargs)
+	# return function wrapper
+	return wrapper
+    else:
+      # determine whether we need a wrapper
+      fs = [getattr(member,attr) for member in self.members]
+      if all(not callable(f) or isinstance(f, Variable) for f in fs):
+	# simple values, not callable
+	return fs
+	# N.B.: technically, Variable instances are callable, but that's not what we want here...
+      else:
+	# for callable objects, return a wrapper that can read argument lists      
+	def wrapper( *args, **kwargs):
+	  return [f(*args, **kwargs) for f in fs]
+	# return function wrapper
+	return wrapper
+  
+  def __len__(self):
+    ''' return number of ensemble members '''
+    return len(self.members)
+  
 ## run a test    
 if __name__ == '__main__':
 

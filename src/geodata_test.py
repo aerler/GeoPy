@@ -15,7 +15,7 @@ import os
 # import modules to be tested
 from geodata.nctools import writeNetCDF
 from geodata.misc import isZero, isOne, isEqual
-from geodata.base import Variable, Axis, Dataset
+from geodata.base import Variable, Axis, Dataset, Ensemble
 from datasets.common import data_root
 
 class BaseVarTest(unittest.TestCase):  
@@ -27,12 +27,16 @@ class BaseVarTest(unittest.TestCase):
   def setUp(self):
     ''' create Axis and a Variable instance for testing '''
     # some setting that will be saved for comparison
-    self.size = (1,2,3) # size of the data array and axes
+    self.size = (48,2,4) # size of the data array and axes
+    # the 4-year time-axis is for testing some time-series analysis functions
     te, ye, xe = self.size
     self.atts = dict(name = 'test',units = 'n/a',FillValue=-9999)
-    self.data = np.random.random(self.size)   
+    data = np.arange(self.size[0], dtype='int8').reshape(self.size[:1]+(1,))%12 +1
+    data = data.repeat(np.prod(self.size[1:]),axis=1,).reshape(self.size)
+    #print data
+    self.data = data
     # create axis instances
-    t = Axis(name='t', units='none', coord=(1,te,te))
+    t = Axis(name='time', units='month', coord=(1,te,te))
     y = Axis(name='y', units='none', coord=(1,ye,ye))
     x = Axis(name='x', units='none', coord=(1,xe,xe))
     self.axes = (t,y,x)
@@ -152,9 +156,9 @@ class BaseVarTest(unittest.TestCase):
       assert isEqual(self.data[0,1,1], var[0,1,1], masked_equal=True)
       assert isEqual(self.data[0,:,1:-1], var[0,:,1:-1], masked_equal=True)
       # value indexing
-      ax0 = var.axes[0]; ax1 = var.axes[1] 
-      kwargs = {ax0.name:(ax0.coord[0]-1,ax0.coord[-1]+1), ax1.name:ax1.coord[-1]}
-      assert isEqual(var(**kwargs), var[:,-1,:], masked_equal=True)
+      ax0 = var.axes[0]; ax1 = var.axes[1]
+      kwargs = {ax1.name:(ax1.coord[0]-1,ax1.coord[-1]+1), ax0.name:ax0.coord[-1]}
+      assert isEqual(var(**kwargs), var[-1,:,:], masked_equal=True)
   
   def testLoad(self):
     ''' test data loading and unloading '''
@@ -181,8 +185,9 @@ class BaseVarTest(unittest.TestCase):
     # test masking with a variable
     var.unmask(fillValue=-9999)
     assert isEqual(data, var[:]) # trivial
-    var.mask(mask=rav)
-    assert isEqual(ma.array(self.data,mask=(rav.data_array>0)), var.getArray(unmask=False)) 
+    var.mask(mask=rav.data_array> 6)
+    #print ma.array(self.data,mask=(rav.data_array>0)), var.getArray(unmask=False)
+    assert isEqual(ma.array(self.data,mask=(rav.data_array>6)), var.getArray(unmask=False)) 
     
   def testPrint(self):
     ''' just print the string representation '''
@@ -203,6 +208,25 @@ class BaseVarTest(unittest.TestCase):
     assert isEqual(self.data.mean(axis=var.axisIndex(t.name)), var.mean(**{t.name:None}).getArray())
     assert isEqual(self.data.max(axis=var.axisIndex(x.name)), var.max(**{x.name:None}).getArray())
     assert isEqual(self.data.min(axis=var.axisIndex(y.name)), var.min(**{y.name:None}).getArray())
+    
+  def testSeasonalReduction(self):
+    ''' test functions that reduce monthly data to yearly data '''
+    # get test objects
+    var = self.var
+    assert var.axisIndex('time') == 0 and len(var.time) == self.data.shape[0]
+    assert len(var.time)%12 == 0, "Need full years to test seasonal mean/min/max!"
+    #print self.data.mean(), var.mean().getArray()
+    yvar = var.seasonalMean('jj', asVar=True)
+    assert yvar.hasAxis('year')
+    assert yvar.shape == (var.shape[0]/12,)+var.shape[1:]
+    if self.__class__ is BaseVarTest:
+      # this only works with a specially prepared data field
+      yfake = np.ones((var.shape[0]/12,)+var.shape[1:])
+      assert yvar.shape == yfake.shape
+      assert isEqual(yvar.getArray(), yfake*6.5)
+      yfake = np.ones((var.shape[0]/12,)+var.shape[1:], dtype=var.dtype)
+      assert isEqual(var.seasonalMax('mam'), yfake*5)
+      assert isEqual(var.seasonalMin('mam'), yfake*3)
 
   def testSqueeze(self):
     ''' test removal of singleton dimensions '''
@@ -258,7 +282,7 @@ class BaseDatasetTest(unittest.TestCase):
                         data=self.data.copy(),atts=self.atts.copy())
     self.var = var; self.rav = rav 
     # make dataset
-    self.dataset = Dataset(varlist=[var, rav])
+    self.dataset = Dataset(varlist=[var, rav], name='test')
     # check if data is loaded (future subclasses may initialize without loading data by default)
     if not self.var.data: self.var.load(self.data.copy()) # again, use copy!
     if not self.rav.data: self.rav.load(self.data.copy()) # again, use copy!
@@ -336,8 +360,31 @@ class BaseDatasetTest(unittest.TestCase):
     dataset = self.dataset
     # make a copy
     copy = dataset.copy()
+    copy.name = 'copy of {}'.format(dataset.name)
     # test
     assert copy is not dataset # should not be the same
+    assert isinstance(copy,Dataset) and not isinstance(copy,DatasetNetCDF)
+    assert all([copy.hasAxis(ax.name) for ax in dataset.axes.values()])
+    assert all([copy.hasVariable(var.name) for var in dataset.variables.values()])
+
+  def testEnsemble(self):
+    ''' test the Ensemble container class '''
+    # test object
+    dataset = self.dataset
+    # make a copy
+    copy = dataset.copy()
+    copy.name = 'copy of {}'.format(dataset.name)
+    # instantiate ensemble
+    ens = Ensemble(dataset, copy)
+    # basic functionality
+    assert len(ens.members) == len(ens)
+    assert ens.var == [dataset.var, copy.var]
+    assert ens.t == [dataset.t , copy.t]
+    # collective add/remove
+    ax = Axis(name='ax', units='none')
+    var = Variable(name='new',units='none',axes=(ax,))
+    ens.addVariable(var)
+    assert all(ens.hasVariable('new'))
     assert isinstance(copy,Dataset) and not isinstance(copy,DatasetNetCDF)
     assert all([copy.hasAxis(ax.name) for ax in dataset.axes.values()])
     assert all([copy.hasVariable(var.name) for var in dataset.variables.values()])
@@ -663,11 +710,11 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
+    #tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
+    tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
 #     tests += ['DatasetGDAL']
     
