@@ -374,20 +374,31 @@ class BaseDatasetTest(unittest.TestCase):
     # make a copy
     copy = dataset.copy()
     copy.name = 'copy of {}'.format(dataset.name)
+    yacod = dataset.copy()
+    yacod.name = 'yacod' # used later    
     # instantiate ensemble
-    ens = Ensemble(dataset, copy)
+    ens = Ensemble(dataset, copy, name='ensemble', title='Test Ensemble')
     # basic functionality
     assert len(ens.members) == len(ens)
-    assert ens.var == [dataset.var, copy.var]
-    assert ens.t == [dataset.t , copy.t]
+    # these var/ax names are specific to the test dataset...
+    if all(ens.hasVariable('var')):
+      assert ens.var == [dataset.var, copy.var]
+    if all(ens.hasAxis('t')):
+      assert ens.t == [dataset.t , copy.t]
     # collective add/remove
     ax = Axis(name='ax', units='none')
     var = Variable(name='new',units='none',axes=(ax,))
-    ens.addVariable(var)
+    ens.addVariable(var) # this is a dataset operation
     assert all(ens.hasVariable('new'))
-    assert isinstance(copy,Dataset) and not isinstance(copy,DatasetNetCDF)
-    assert all([copy.hasAxis(ax.name) for ax in dataset.axes.values()])
-    assert all([copy.hasVariable(var.name) for var in dataset.variables.values()])
+    # test adding a new member
+    ens += yacod # this is an ensemble operation
+    print('')
+    print(ens)
+    print('')    
+    ens.removeVariable(var) # this is a dataset operation
+    assert not any(ens.hasVariable('new'))
+    ens -= 'test'
+    print(ens.prettyPrint(short=True))
 
   def testPrint(self):
     ''' just print the string representation '''
@@ -714,8 +725,8 @@ if __name__ == "__main__":
 #     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
+    #tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
 #     tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)

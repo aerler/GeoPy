@@ -912,7 +912,9 @@ class Dataset(object):
     # set properties in atts
     if atts is None: atts = dict()
     if name is not None: atts['name'] = name
+    else: atts['name'] = ''
     if title is not None: atts['title'] = title
+    else: atts['title'] = ''
     # load global attributes, if given
     if atts: self.__dict__['atts'] = AttrDict(**atts)
     else: self.__dict__['atts'] = AttrDict()
@@ -1078,6 +1080,15 @@ class Dataset(object):
       else: return False # not found
     else: # invalid input
       raise DatasetError, "Need a Variable instance or name to check for a Variable in the Dataset!"
+    
+  def getVariable(self, varname, check=True):
+    ''' Method to return a Variable by name '''
+    if not isinstance(varname,basestring): raise TypeError
+    if self.hasVariable(varname):
+      return self.variables[varname]
+    else:
+      if check: raise VariableError, "Variable '{:s}' not found!".format(varname)
+      else: return None
   
   def hasAxis(self, ax, strict=True):
     ''' Method to check, if an Axis is present in the Dataset; if strict=False, only names are compared. '''
@@ -1091,6 +1102,15 @@ class Dataset(object):
     else: # invalid input
       raise DatasetError, "Need a Axis instance or name to check for an Axis in the Dataset!"
     
+  def getAxis(self, axname, check=True):
+    ''' Method to return an Axis by name '''
+    if not isinstance(axname,basestring): raise TypeError
+    if self.hasAxis(axname):
+      return self.axes[axname]
+    else:
+      if check: raise AxisError, "Axis '{:s}' not found!".format(axname)
+      else: return None
+
   def copy(self, axes=None, varlist=None, varargs=None, axesdeep=True, varsdeep=False, **kwargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Axes and Variables in a Dataset with just a link to the data arrays. '''
     # copy axes (shallow copy)    
@@ -1135,7 +1155,12 @@ class Dataset(object):
 
   def prettyPrint(self, short=False):
     ''' Print a string representation of the Dataset. '''
-    if short: pass 
+    if short:
+      title = self.title or self.name
+      variables = '{:3d} Vars'.format(len(self.variables)) # number of variables
+      axes = '{:2d} Axes'.format(len(self.axes)) # number of axes
+      klass = self.__class__.__name__ 
+      string = '{:<20s} {:s}, {:s} ({:s})'.format(title,variables,axes,klass)
     else:
       string = '{0:s}   {1:s}\n'.format(self.__class__.__name__,str(self.__class__))
       string += 'Variables:\n'
@@ -1181,12 +1206,12 @@ class Dataset(object):
     
   def __iadd__(self, var):
     ''' Add a Variable to an existing dataset. '''      
-    assert self.addVariable(var), "A problem occurred adding Variable '%s' to Dataset."%(var.name)    
+    assert self.addVariable(var), "A problem occurred adding Variable '{:s}' to Dataset.".format(var.name)    
     return self # return self as result
 
   def __isub__(self, var):
     ''' Remove a Variable to an existing dataset. '''      
-    assert self.removeVariable(var), "A proble occurred removing Variable '%s' from Dataset."%(var.name)
+    assert self.removeVariable(var), "A proble occurred removing Variable '{:s}' from Dataset.".format(var.name)
     return self # return self as result
   
   def load(self, data=None, **kwargs):
@@ -1254,63 +1279,167 @@ class Ensemble(object):
     furthermore, the Ensemble class provides functionality to execute Dataset
     class methods collectively for all members, and return the results in a tuple.
   '''
-  members = None # list of members of the ensemble
-  name    = None # name of the ensemble
-  title   = None # printable title used for the ensemble
+  members  = None    # list of members of the ensemble
+  basetype = Dataset # base class of the ensemble members
+  idkey    = 'name'  # property of members used for unique identification
+  name     = ''      # name of the ensemble
+  title    = ''      # printable title used for the ensemble
   
   def __init__(self, *datasets, **kwargs):
     ''' Initialize an ensemble from a list of datasets (the list arguments);
     keyword arguments are added as attributes (key = attribute name, 
-    value = attribute value); e.g. name and title can be passed as keyword arguments.
+    value = attribute value).
     
 	Attributes:
-	  members = list/tuple of members of the ensemble
-	  name    = name of the ensemble (string)
-	  title   = printable title used for the ensemble (string)
+	  members  = list/tuple of members of the ensemble
+	  basetype = class of the ensemble members
+	  idkey    = property of members used for unique identification
+	  name     = name of the ensemble (string)
+	  title    = printable title used for the ensemble (string)
     '''
     # add members
     self.members = list(datasets)
+    # add certain properties
+    self.name = kwargs.get('name','')
+    self.title = kwargs.get('title','')
+    self.basetype = kwargs.get('basetype',Dataset)
+    self.idkey = kwargs.get('idkey','name')
     # add keywords as attributes
     for key,value in kwargs.iteritems():
       self.__dict__[key] = value
     # add short-cuts
     for member in self.members:
-      self.__dict__[member.name] = member
+      memid = getattr(member, self.idkey)
+      if not isinstance(memid, basestring): raise TypeError, "Member ID key '{:s}' should be a string-type, but received '{:s}'.".format(str(memid),memid.__class__)
+      if memid in self.__dict__:
+	raise AttributeError, "Cannot overwrite existing attribute '{:s}'.".format(memid)
+      self.__dict__[memid] = member
       
   def __getattr__(self, attr):
     ''' This is where all the magic happens: defer calls to methods etc. to the 
 	ensemble members and return a list of values. '''
     # intercept some list methods
-    print dir(self.members), attr, attr in dir(self.members)
-    if attr in dir(self.members): 
-      # determine whether we need a wrapper
-      f = getattr(self.members,attr)
-      if not callable(f):
-	# simple values, not callable
-	return f
-      else:
-	# for callable objects, return a wrapper that can read argument lists      
-	def wrapper( *args, **kwargs):
-	  return f(*args, **kwargs)
-	# return function wrapper
-	return wrapper
+    #print dir(self.members), attr, attr in dir(self.members)
+    # determine whether we need a wrapper
+    fs = [getattr(member,attr) for member in self.members]
+    if all(not callable(f) or isinstance(f, Variable) for f in fs):
+      # simple values, not callable
+      return fs
+      # N.B.: technically, Variable instances are callable, but that's not what we want here...
     else:
-      # determine whether we need a wrapper
-      fs = [getattr(member,attr) for member in self.members]
-      if all(not callable(f) or isinstance(f, Variable) for f in fs):
-	# simple values, not callable
-	return fs
-	# N.B.: technically, Variable instances are callable, but that's not what we want here...
-      else:
-	# for callable objects, return a wrapper that can read argument lists      
-	def wrapper( *args, **kwargs):
-	  return [f(*args, **kwargs) for f in fs]
-	# return function wrapper
-	return wrapper
+      # for callable objects, return a wrapper that can read argument lists      
+      def wrapper( *args, **kwargs):
+	return [f(*args, **kwargs) for f in fs]
+      # return function wrapper
+      return wrapper
+    
+  def __str__(self):
+    ''' Built-in method; we just overwrite to call 'prettyPrint()'. '''
+    return self.prettyPrint(short=False) # print is a reserved word  
+
+  def prettyPrint(self, short=False):
+    ''' Print a string representation of the Dataset. '''
+    if short:      
+      string = '{0:s} {1:s}'.format(self.__class__.__name__,self.name)
+      string += ', {:2d} Members ({:s})'.format(len(self.members),self.basetype.__name__)
+    else:
+      string = '{0:s}   {1:s}\n'.format(self.__class__.__name__,str(self.__class__))
+      string += 'Name: {0:s},  '.format(self.name)
+      string += 'Title: {0:s}\n'.format(self.title)
+      string += 'Members:\n'
+      for member in self.members: string += ' {0:s}\n'.format(member.prettyPrint(short=True))
+      string += 'Basetype: {0:s},  '.format(self.basetype.__name__)
+      string += 'ID Key: {0:s}'.format(self.idkey)
+    return string
+
+  def hasMember(self, member):
+    ''' check if member is part of the ensemble; also perform consistency checks '''
+    if isinstance(member, self.basetype):
+      # basetype instance
+      memid = getattr(member,self.idkey)
+      if member in self.members:
+	assert memid in self.__dict__
+	assert member == self.__dict__[memid]
+	return True
+      else: 
+	assert memid not in self.__dict__
+	return False
+    elif isinstance(member, self.idkey.__class__):
+      # assume it is the idkey
+      if member in self.__dict__:
+	assert self.__dict__[member] in self.members
+	assert getattr(self.__dict__[member],self.idkey) == member
+	return True
+      else: 
+	assert member not in [getattr(m,self.idkey) for m in self.members]
+	return False
+    else: raise TypeError, "Argument has to be of '{:s}' of 'basestring' type; received '{:s}'.".format(self.basetype.__name__,member.__class__.__name__)       
+      
+  def addMember(self, member):
+    ''' add a new member to the ensemble '''
+    if not isinstance(member, self.basetype): 
+      raise TypeError, "Ensemble members have to be of '{:s}' type; received '{:s}'.".format(self.basetype.__name__,member.__class__.__name__)       
+    self.members.append(member)
+    self.__dict__[getattr(member,self.idkey)] = member
+    return self.hasMember(member)
   
+  def removeMember(self, member):
+    ''' remove a member from the ensemble '''
+    if not isinstance(member, (self.basetype,basestring)): 
+      raise TypeError, "Argument has to be of '{:s}' of 'basestring' type; received '{:s}'.".format(self.basetype.__name__,member.__class__.__name__)
+    if self.hasMember(member):
+      if isinstance(member, self.idkey.__class__): 
+	memid = member
+	member = self.__dict__[memid]
+      else: memid = getattr(member,self.idkey)
+      assert isinstance(member,self.basetype)
+      # remove from dict 
+      del self.__dict__[memid]
+      # remove from list
+      del self.members[self.members.index(member)]
+    # return check
+    return not self.hasMember(member)
+  
+  def __getitem__(self, member):
+    ''' Yet another way to access members by name... conforming to the container protocol. '''
+    if not isinstance(member, basestring): raise TypeError
+    if not self.hasVariable(member): raise KeyError
+    return self.__dict__[member]
+  
+  def __setitem__(self, name, member):
+    ''' Yet another way to add a member, this time by name... conforming to the container protocol. '''
+    idkey = getattr(member,self.idkey)
+    if idkey != name: raise KeyError, "The member ID '{:s}' is not consistent with the supplied key '{:s}'".format(idkey,name)
+    return self.addMember(member) # add member
+    
+  def __delitem__(self, member):
+    ''' A way to delete members by name... conforming to the container protocol. '''
+    if not isinstance(varname, basestring): raise TypeError
+    if not self.hasMember(member): raise KeyError
+    return self.removeMember(member)
+  
+  def __iter__(self):
+    ''' Return an iterator over all members... conforming to the container protocol. '''
+    return self.members.iter() # just the iterator from the member list
+    
+  def __contains__(self, member):
+    ''' Check if the Ensemble instance has a particular member Dataset... conforming to the container protocol. '''
+    return self.hasMember(member)
+
   def __len__(self):
     ''' return number of ensemble members '''
     return len(self.members)
+  
+  def __iadd__(self, member):
+    ''' Add a Dataset to an existing Ensemble. '''      
+    assert self.addMember(member), "A problem occurred adding Dataset '{:s}' to Ensemble.".format(member.name)    
+    return self # return self as result
+
+  def __isub__(self, member):
+    ''' Remove a Dataset to an existing Ensemble. '''      
+    assert self.removeMember(member), "A proble occurred removing Dataset '{:s}' from Ensemble.".format(member.name)
+    return self # return self as result
+
   
 ## run a test    
 if __name__ == '__main__':
