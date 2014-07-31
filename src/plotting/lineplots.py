@@ -20,19 +20,22 @@ import matplotlib as mpl
 # # prevent figures from closing: don't run in interactive mode, or plt.show() will not block
 # pyl.ioff()
 # internal imports
+from misc.signalsmooth import smooth
 from utils import getPlotValues, getFigAx
 from geodata.base import Variable
 from geodata.misc import AxisError, ListError, VariableError
 
 
-def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=None, xline=None, yline=None, 
-             title=None, xlabel=None, ylabel=None, xlim=None, ylim=None, **kwargs):
+def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=None,
+	     xline=None, yline=None, title=None, xlabel=None, ylabel=None, xlim=None,
+	     ylim=None, lsmooth=False, lprint=False, **kwargs):
   ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on variable properties. '''
   # create axes, if necessary
   if ax is None: 
     if fig is None: fig,ax = getFigAx(1) # single panel
     else: ax = fig.axes[0]
   # varlist is the list of variable objects that are to be plotted
+  #print varlist
   if isinstance(varlist,Variable): varlist = [varlist]
   elif not isinstance(varlist,(tuple,list)) or not all([isinstance(var,Variable) for var in varlist]): raise TypeError
   for var in varlist: var.squeeze() # remove singleton dimensions
@@ -64,7 +67,8 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
     kwatts = kwargs.copy(); kwatts.update(varatt) # join individual and common attributes     
     if 'label' not in kwatts: kwatts['label'] = var.name # default label: variable name
     # N.B.: other scaling behavior could be added here
-    print varname, varunits, val.mean()
+    if lprint: print varname, varunits, val.mean()    
+    if lsmooth: val = smooth(val)
     # figure out orientation
     if flipxy: xx,yy = val, axe 
     else: xx,yy = axe, val
@@ -83,9 +87,11 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
   ylabel = ylabel or '{1:s} [{0:s}]'; ypad = -2  
   # N.B.: units are listed first, because they are used more commonly; variable names usually only in defaults
   # a typical custom label that makes use of the units would look like this: 'custom label [{}]', 
-  # where {} will be replaced by the appropriate default units (which have to be the same anyway) 
-  ax.set_xlabel(xlabel.format(varunits,varname) if flipxy else xlabel.format(axunits,axname), labelpad=xpad)
-  ax.set_ylabel(ylabel.format(axunits,axname) if flipxy else ylabel.format(varunits,varname), labelpad=ypad)
+  # where {} will be replaced by the appropriate default units (which have to be the same anyway)
+  if ax.get_xaxis().get_ticklabels()[0].get_visible(): 
+    ax.set_xlabel(xlabel.format(varunits,varname) if flipxy else xlabel.format(axunits,axname), labelpad=xpad)
+  if ax.get_yaxis().get_ticklabels()[0].get_visible(): 
+    ax.set_ylabel(ylabel.format(axunits,axname) if flipxy else ylabel.format(varunits,varname), labelpad=ypad)
   # make monthly ticks
   if axname == 'time' and axunits == 'month':
     #ax.minorticks_on()

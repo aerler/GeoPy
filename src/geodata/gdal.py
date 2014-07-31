@@ -22,6 +22,9 @@ ramdrv = gdal.GetDriverByName('MEM')
 gdal.UseExceptions()
 osr.UseExceptions()
 ogr.UseExceptions()
+# set default environment variable to prevent problems in IPython Notebooks
+import os
+os.environ.setdefault('GDAL_DATA','/usr/local/share/gdal')
 
 # import all base functionality from PyGeoDat
 from geodata.base import Variable, Axis, Dataset

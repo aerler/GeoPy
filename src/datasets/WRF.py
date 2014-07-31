@@ -398,7 +398,7 @@ def loadWRF_TS(experiment=None, name=None, domains=2, grid=None, filetypes=None,
   atts['time'] = tatts 
   # translate varlist
   #if varlist is None: varlist = atts.keys()
-  if varatts: varlist = translateVarNames(varlist, varatts)
+  if atts: varlist = translateVarNames(varlist, atts)
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if 'const' in filetypes: filename = fileclasses['const'].tsfile # constants files preferred...
@@ -464,7 +464,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   if varatts is not None: atts.update(varatts)
   # translate varlist
   #if varlist is None: varlist = default_varatts.keys() + atts.keys()
-  if varatts: varlist = translateVarNames(varlist, varatts) # default_varatts
+  if atts: varlist = translateVarNames(varlist, atts) # default_varatts
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if grid is None:

@@ -353,7 +353,7 @@ class Variable(object):
 #     ''' Return number of dimensions. '''
 #     return self.__dict__['ndim']
 
-  def getAxis(self, axis):
+  def getAxis(self, axis, lcheck=True):
     ''' Return a reference to the Axis object or one with the same name. '''
     return self.axes[self.axisIndex(axis)]
   
@@ -362,10 +362,11 @@ class Variable(object):
     if isinstance(axis,basestring): # by name
       for i in xrange(len(self.axes)):
         if self.axes[i].name == axis: return i
-    elif isinstance(axis,Variable): # by object ID
+    elif isinstance(axis,Axis): # by object ID
       for i in xrange(len(self.axes)):
         if self.axes[i] == axis: return i
     # if all fails
+    elif lcheck: raise AxisError, "Axis '{:s}' not found!".format(str(axis))
     return None
         
   def __getitem__(self, idx=None):
@@ -616,30 +617,38 @@ class Variable(object):
   def min(self, data, axidx=None):
     return data.min(axis=axidx)
     
-  def reduceToAnnual(self, season, operation, asVar=False, taxis='time', checkUnits=True, taxatts=None, varatts=None):
+  def reduceToAnnual(self, season, operation, asVar=False, offset=0, taxis='time', checkUnits=True, taxatts=None, varatts=None):
     ''' Reduce a monthly time-series to an annual time-series, using mean/min/max over a subset of month or seasons. '''
-    if not isinstance(season,basestring): raise TypeError
+    #if not isinstance(season,basestring): raise TypeError
     if not self.data: raise DataError
     if not self.hasAxis(taxis): raise AxisError, 'Seasonal reduction requires a time axis!'
     taxis = self.getAxis(taxis)
     if checkUnits and not taxis.units.lower() in ('month','months'): raise AxisError, 'Seasonal reduction requires monthly data!'
-    te = len(taxis); tax = self.axisIndex(taxis)
+    te = len(taxis); tax = self.axisIndex(taxis.name)
     if te%12 != 0: raise NotImplementedError, 'Currently seasonal means only work for full years.'
     # determine season
-    ssn = season.lower() # ignore case
-    year = 'jfmamjjasondjfmamjjasond' # all month, twice
-    # N.B.: regular Python indexing, starting at 0 for Jan and going to 11 for Dec
-    if ssn == 'jja' or ssn == 'summer': idx = np.asarray([5,6,7])
-    elif ssn == 'djf' or ssn == 'winter': idx = np.asarray([11,0,1])
-    elif ssn == 'mam' or ssn == 'spring': idx = np.asarray([2,3,4])
-    elif ssn == 'son' or ssn == 'fall'  or ssn == 'autumn': idx = np.asarray([8,9,10])
-    elif ssn == 'mamjja' or ssn == 'warm': idx = np.asarray([2,3,4,5,6,7])
-    elif ssn == 'sondjf' or ssn == 'cold': idx = np.asarray([8,9,10,11,0,1,])
-    elif ssn == 'amj' or ssn == 'melt': idx = np.asarray([3,4,5,])
-    elif ssn in year: 
-      s = year.find(ssn) # find first occurrence of sequence
-      idx = np.arange(s,s+len(ssn))%12 # and use range of months
-    else: raise ValueError, 'Unknown keyword/season: \'{}\''.format(season)
+    if isinstance(season,(int,np.integer)): idx = np.asarray([season])
+    elif isinstance(season,(list,tuple)):
+      if all([isinstance(s,(int,np.integer)) for s in season]): 
+	idx = np.asarray(season)
+      else: raise TypeError      
+    elif isinstance(season,basestring):
+      ssn = season.lower() # ignore case
+      year = 'jfmamjjasondjfmamjjasond' # all month, twice
+      # N.B.: regular Python indexing, starting at 0 for Jan and going to 11 for Dec
+      if ssn == 'jfmamjjasond' or ssn == 'annual': idx = np.arange(12)
+      elif ssn == 'jja' or ssn == 'summer': idx = np.asarray([5,6,7])
+      elif ssn == 'djf' or ssn == 'winter': idx = np.asarray([11,0,1])
+      elif ssn == 'mam' or ssn == 'spring': idx = np.asarray([2,3,4])
+      elif ssn == 'son' or ssn == 'fall'  or ssn == 'autumn': idx = np.asarray([8,9,10])
+      elif ssn == 'mamjja' or ssn == 'warm': idx = np.asarray([2,3,4,5,6,7])
+      elif ssn == 'sondjf' or ssn == 'cold': idx = np.asarray([8,9,10,11,0,1,])
+      elif ssn == 'amj' or ssn == 'melt': idx = np.asarray([3,4,5,])
+      elif ssn in year: 
+	s = year.find(ssn) # find first occurrence of sequence
+	idx = np.arange(s,s+len(ssn))%12 # and use range of months
+      else: raise ValueError, "Unknown key word/season: '{:s}'".format(str(season))
+    else: raise TypeError, "Unknown identifier for season: '{:s}'".format(str(season))
     # get actual data and reshape
     mdata = self.getArray()
     if tax > 0: np.rollaxis(mdata, axis=tax, start=0) # move time axis to front
@@ -650,7 +659,8 @@ class Variable(object):
     #print oldshape, (y,12)+oldshape[1:]
     mdata = mdata.reshape((y,12)+oldshape[1:])
     # compute mean/min/max
-    tmp = mdata[:,idx,:]
+    if mdata.ndim > 2: tmp = mdata[:,idx,:]
+    else: tmp = mdata[:,idx]
     if operation == 'mean': ydata = tmp.mean(axis=1)
     elif operation == 'max': ydata = tmp.max(axis=1)
     elif operation == 'min': ydata = tmp.min(axis=1)
@@ -663,29 +673,30 @@ class Variable(object):
       # create new time axis (yearly)
       tatts = self.time.atts.copy()
       tatts['name'] = 'year'; tatts['units'] = 'year'
-      coord = (int(taxis.coord[11]/12), np.max(taxis.coord[-1]/12), len(taxis)/12)
+      # N.B.: offset is a parameter to simply shift the time axis origin
+      coord = np.linspace(int(taxis.coord[11]/12), int(taxis.coord[-1]/12), int(len(taxis)/12)) + offset
       # N.B.: this should preserve 1-ness or 0-ness
-      if taxatts is not None: atts.update(varatts)      
-      axes = list(self.axes); axes[tax] = Axis(coord=coord, **tatts)
+      if taxatts is not None: tatts.update(taxatts)      
+      axes = list(self.axes); axes[tax] = Axis(coord=coord, dtype='int', atts=tatts)
       # create new variable
       vatts = self.atts.copy()
       vatts['name'] = self.name; vatts['units'] = self.units
       if varatts is not None: vatts.update(varatts)
-      return Variable(name=self.name, units=self.units, data=ydata, axes=axes, atts=vatts)
+      return Variable(data=ydata, axes=axes, atts=vatts)
       # or return data
     else: return ydata
   
-  def seasonalMean(self, season, asVar=False, taxis='time', checkUnits=True):
+  def seasonalMean(self, season, asVar=False, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation='mean', asVar=asVar, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation='mean', asVar=asVar, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def seasonalMax(self, season, asVar=False, taxis='time', checkUnits=True):
+  def seasonalMax(self, season, asVar=False, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation='max', asVar=asVar, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation='max', asVar=asVar, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def seasonalMin(self, season, asVar=False, taxis='time', checkUnits=True):
+  def seasonalMin(self, season, asVar=False, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation='min', asVar=asVar, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation='min', asVar=asVar, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   @UnaryCheck    
   def __iadd__(self, a):
@@ -1273,6 +1284,63 @@ class Dataset(object):
     return newset
       
 
+def concatVars(variables, axis='time', axlim=None, asVar=True, offset=0, axatts=None, varatts=None):
+  ''' A function to concatenate variables from different sources along a given axis;
+      this is useful to generate a continuous time series from an ensemble. '''
+  if not all([isinstance(var,Variable) for var in variables]): raise TypeError
+  if not all([var.hasAxis(axis) for var in variables]): raise AxisError  
+  var0 = variables[0] # shortcut
+  axt = var0.getAxis(axis)
+  tax = var0.axisIndex(axis)
+  if axlim is not None:
+    laxlim = True
+    axlim = {axis:axlim}
+  # check dimensions
+  shapes = []; tes = []
+  for var in variables:
+    shp = list(var.shape)
+    if laxlim: tes.append(len(axt(**axlim)))
+    else: tes.append(shp[tax])
+    del shp[tax]
+    shapes.append(shp)
+  if not all([s == shp for s in shapes]): raise AxisError
+  tlen = 0
+  for te in tes: tlen += te
+  newshape = list(var0.shape)
+  newshape[tax] = tlen
+  newshape = tuple(newshape)
+  # load data
+  data = []
+  for var in variables:
+    if not var.data: var.load()
+    if laxlim is not None: 
+      array = var(**axlim)      
+    else: 
+      array = var.getArray()
+      assert array.shape == var.shape
+    data.append(array)
+  # concatenate
+  data = np.concatenate(data, axis=tax)
+  assert data.shape[tax] == tlen
+  #print data.shape, newshape
+  assert data.shape == newshape
+  # cast as variable
+  if asVar:      
+    # create new time axis (yearly)    
+    axatts = axt.atts.copy()
+    axatts['name'] = axt.name; axatts['units'] = axt.units
+    # N.B.: offset is a parameter to simply shift the time axis origin
+    coord = np.arange(tlen) + offset
+    if axatts is not None: axatts.update(axatts)      
+    axes = list(var0.axes); axes[tax] = Axis(coord=coord, dtype='int', atts=axatts)
+    # create new variable
+    vatts = var0.atts.copy()
+    vatts['name'] = var0.name; vatts['units'] = var0.units
+    if varatts is not None: vatts.update(varatts)
+    return Variable(data=data, axes=axes, atts=vatts)
+    # or return data
+  else: return data
+
 class Ensemble(object):
   '''
     A container class that holds several datasets ("members" of the ensemble),
@@ -1322,14 +1390,20 @@ class Ensemble(object):
     #print dir(self.members), attr, attr in dir(self.members)
     # determine whether we need a wrapper
     fs = [getattr(member,attr) for member in self.members]
-    if all(not callable(f) or isinstance(f, Variable) for f in fs):
+    if all([not callable(f) or isinstance(f, Variable) for f in fs]):
       # simple values, not callable
       return fs
       # N.B.: technically, Variable instances are callable, but that's not what we want here...
     else:
       # for callable objects, return a wrapper that can read argument lists      
       def wrapper( *args, **kwargs):
-	return [f(*args, **kwargs) for f in fs]
+	lconcatVars = kwargs.pop('lconcatVars',False)
+	varlist = [f(*args, **kwargs) for f in fs]
+	if lconcatVars:
+	  return concatVars(varlist)
+	else: 
+	  return varlist
+      
       # return function wrapper
       return wrapper
     
@@ -1420,7 +1494,7 @@ class Ensemble(object):
   
   def __iter__(self):
     ''' Return an iterator over all members... conforming to the container protocol. '''
-    return self.members.iter() # just the iterator from the member list
+    return self.members.__iter__() # just the iterator from the member list
     
   def __contains__(self, member):
     ''' Check if the Ensemble instance has a particular member Dataset... conforming to the container protocol. '''

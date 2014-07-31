@@ -11,7 +11,7 @@ import numpy as np
 import os, pickle
 from collections import OrderedDict
 # from atmdyn.properties import variablePlotatts
-from geodata.base import Variable, Axis
+from geodata.base import Variable, Axis, Ensemble
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset
 from geodata.misc import DatasetError, AxisError, DateError, isNumber
@@ -74,11 +74,13 @@ CESM_exps = exps # alias for whole dict
 CESM_experiments = experiments # alias for whole dict
 ## dict of ensembles
 ensembles = CESM_ens = OrderedDict()
-ensemble_list = set([exp.ensemble for exp in experiments.values() if exp.ensemble])
+ensemble_list = list(set([exp.ensemble for exp in experiments.values() if exp.ensemble]))
+ensemble_list.sort()
 for ensemble in ensemble_list:
   #print ensemble, experiments[ensemble].shortname
-  tmp = [exp for exp in experiments.values() if exp.ensemble and exp.ensemble == ensemble]
-  ensembles[experiments[ensemble].shortname] = tuple(tmp)
+  members = [exp for exp in experiments.values() if exp.ensemble and exp.ensemble == ensemble]
+  members.sort()
+  ensembles[experiments[ensemble].shortname] = members
 
 # return name and folder
 def getFolderName(name=None, experiment=None, folder=None, mode='avg', cvdp_mode='ensemble', lcheckExp=True):

@@ -6,11 +6,12 @@ This module contains meta data for all available WRF experiments.
 @author: Andre R. Erler, GPL v3
 '''
 
-from datasets.WRF import Exp    
+from datasets.WRF import Exp   
+from collections import OrderedDict
 
 ## list of experiments
 # N.B.: This is the reference list, with unambiguous, unique keys and no aliases/duplicate entries  
-experiments = dict() # dictionary of experiments
+experiments = OrderedDict() # dictionary of experiments
 # list of experiments
 experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindate='1979-09-01', enddate='1979-09-01', grid='coast1', parent='CFSR')
 experiments['col1-ctrl'] = Exp(shortname='col1', name='col1-ctrl', title='Max 3km (CFSR)', begindate='1979-09-01', grid='col1', parent='CFSR')
@@ -43,21 +44,21 @@ experiments['max-1deg-2100'] = Exp(shortname='1deg-2100', name='max-1deg-2100', 
 experiments['max-cg'] = Exp(shortname='cg', name='max-cg', title='Max-1 (CG)', begindate='1979-01-01', grid='arb2')
 experiments['max-gulf'] = Exp(shortname='gulf', name='max-gulf', title='Max-1 (Gulf)', begindate='1979-01-01', grid='arb3') # ARB3 domain
 experiments['max-ensemble'] = Exp(shortname='max-ens', name='max-ensemble', title='Max Ensemble Mean', begindate='1979-01-01', grid='arb2', parent='CESM')
-experiments['max-ctrl'] = Exp(shortname='max', name='max-ctrl', title='Max-1', begindate='1979-01-01', grid='arb2')
-experiments['max-ens-A'] = Exp(shortname='max-A', name='max-ens-A', title='Max-A', begindate='1979-01-01', grid='arb2', parent='Ens-A')
-experiments['max-ens-B'] = Exp(shortname='max-B', name='max-ens-B', title='Max-B', begindate='1979-01-01', grid='arb2', parent='Ens-B')
-experiments['max-ens-C'] = Exp(shortname='max-C', name='max-ens-C', title='Max-C', begindate='1979-01-01', grid='arb2', parent='Ens-C')
+experiments['max-ctrl'] = Exp(shortname='max', name='max-ctrl', title='Max-1', begindate='1979-01-01', grid='arb2', ensemble='max-ensemble')
+experiments['max-ens-A'] = Exp(shortname='max-A', name='max-ens-A', title='Max-A', begindate='1979-01-01', grid='arb2', parent='Ens-A', ensemble='max-ensemble')
+experiments['max-ens-B'] = Exp(shortname='max-B', name='max-ens-B', title='Max-B', begindate='1979-01-01', grid='arb2', parent='Ens-B', ensemble='max-ensemble')
+experiments['max-ens-C'] = Exp(shortname='max-C', name='max-ens-C', title='Max-C', begindate='1979-01-01', grid='arb2', parent='Ens-C', ensemble='max-ensemble')
 experiments['max-ensemble-2050'] = Exp(shortname='max-ens-2050', name='max-ensemble-2050', title='Max Ensemble Mean (2050)', begindate='2045-01-01', grid='arb2')
-experiments['max-ensemble-2100'] = Exp(shortname='max-ens-2100', name='max-ensemble-2100', title='Max Ensemble Mean (2100)', begindate='2085-01-01', grid='arb2')
-experiments['max-ctrl-2050'] = Exp(shortname='max-2050', name='max-ctrl-2050', title='Max-1 (2050)', begindate='2045-01-01', grid='arb2', parent='Ctrl-2050')
-experiments['max-ctrl-2100'] = Exp(shortname='max-2100', name='max-ctrl-2100', title='Max-1 (2100)', begindate='2085-01-01', grid='arb2', parent='Ctrl-2100')
-experiments['max-ens-A-2050'] = Exp(shortname='max-A-2050', name='max-ens-A-2050', title='Max-A (2050)', begindate='2045-01-01', grid='arb2', parent='Ens-A-2050')
-experiments['max-ens-A-2100'] = Exp(shortname='max-A-2100', name='max-ens-A-2100', title='Max-A (2100)', begindate='2085-01-01', grid='arb2', parent='Ens-A-2100')
-experiments['max-ens-B-2050'] = Exp(shortname='max-B-2050', name='max-ens-B-2050', title='Max-B (2050)', begindate='2045-01-01', grid='arb2', parent='Ens-B-2050')
-experiments['max-ens-B-2100'] = Exp(shortname='max-B-2100', name='max-ens-B-2100', title='Max-B (2100)', begindate='2085-01-01', grid='arb2', parent='Ens-B-2100')
-experiments['max-ens-C-2050'] = Exp(shortname='max-C-2050', name='max-ens-C-2050', title='Max-C (2050)', begindate='2045-01-01', grid='arb2', parent='Ens-C-2050')
-experiments['max-ens-C-2100'] = Exp(shortname='max-C-2100', name='max-ens-C-2100', title='Max-C (2100)', begindate='2085-01-01', grid='arb2', parent='Ens-C-2100')
+experiments['max-ctrl-2050'] = Exp(shortname='max-2050', name='max-ctrl-2050', title='Max-1 (2050)', begindate='2045-01-01', grid='arb2', parent='Ctrl-2050', ensemble='max-ensemble-2050')
+experiments['max-ens-A-2050'] = Exp(shortname='max-A-2050', name='max-ens-A-2050', title='Max-A (2050)', begindate='2045-01-01', grid='arb2', parent='Ens-A-2050', ensemble='max-ensemble-2050')
+experiments['max-ens-B-2050'] = Exp(shortname='max-B-2050', name='max-ens-B-2050', title='Max-B (2050)', begindate='2045-01-01', grid='arb2', parent='Ens-B-2050', ensemble='max-ensemble-2050')
+experiments['max-ens-C-2050'] = Exp(shortname='max-C-2050', name='max-ens-C-2050', title='Max-C (2050)', begindate='2045-01-01', grid='arb2', parent='Ens-C-2050', ensemble='max-ensemble-2050')
 experiments['max-seaice-2050'] = Exp(shortname='seaice-2050', name='max-seaice-2050', title='Seaice (2050)', begindate='2045-01-01', grid='arb2', parent='Seaice-2050')
+experiments['max-ensemble-2100'] = Exp(shortname='max-ens-2100', name='max-ensemble-2100', title='Max Ensemble Mean (2100)', begindate='2085-01-01', grid='arb2')
+experiments['max-ctrl-2100'] = Exp(shortname='max-2100', name='max-ctrl-2100', title='Max-1 (2100)', begindate='2085-01-01', grid='arb2', parent='Ctrl-2100', ensemble='max-ensemble-2100')
+experiments['max-ens-A-2100'] = Exp(shortname='max-A-2100', name='max-ens-A-2100', title='Max-A (2100)', begindate='2085-01-01', grid='arb2', parent='Ens-A-2100', ensemble='max-ensemble-2100')
+experiments['max-ens-B-2100'] = Exp(shortname='max-B-2100', name='max-ens-B-2100', title='Max-B (2100)', begindate='2085-01-01', grid='arb2', parent='Ens-B-2100', ensemble='max-ensemble-2100')
+experiments['max-ens-C-2100'] = Exp(shortname='max-C-2100', name='max-ens-C-2100', title='Max-C (2100)', begindate='2085-01-01', grid='arb2', parent='Ens-C-2100', ensemble='max-ensemble-2100')
 experiments['max-seaice-2100'] = Exp(shortname='seaice-2100', name='max-seaice-2100', title='Seaice (2100)', begindate='2085-01-01', grid='arb2', parent='Seaice-2100')
 experiments['cfsr-max'] = Exp(shortname='cfsr', name='cfsr-max', title='Max (CFSR)', begindate='1979-01-01', grid='arb2', parent='CFSR')
 experiments['erai-max'] = Exp(shortname='erai', name='erai-max', title='Max (ERA-I)', begindate='1979-01-01', grid='arb2', parent='ERA-I')
@@ -100,7 +101,7 @@ experiments['cam-ctrl-2-2100'] = Exp(shortname='cam-2100', name='cam-ctrl-2-2100
 # experiments['hitop-old'] = Exp(name='hitop-old', avgfolder=avgfolder+'/hitop-test/hitop-ctrl/', begindate='1979-01-01', grid='arb1')
 
 ## an alternate dictionary using short names and aliases for referencing
-exps = dict()
+exps = OrderedDict()
 # use short names where availalbe, normal names otherwise
 for key,item in experiments.iteritems():
   exps[item.name] = item
@@ -110,6 +111,20 @@ for key,item in experiments.iteritems():
 # add aliases here
 WRF_exps = exps # alias for whole dict
 WRF_experiments = experiments # alias for whole dict
+## dict of ensembles
+ensembles = WRF_ens = OrderedDict()
+ensemble_list = list(set([exp.ensemble for exp in experiments.values() if exp.ensemble]))
+ensemble_list.sort()
+for ensemble in ensemble_list:
+  #print ensemble, experiments[ensemble].shortname
+  members = [exp for exp in experiments.values() if exp.ensemble and exp.ensemble == ensemble]
+  members.sort()
+  ensembles[experiments[ensemble].shortname] = members
 
 if __name__ == '__main__':
-    pass
+    
+  ## view/test ensembles
+  for name,members in WRF_ens.iteritems():
+    s = '  {:s}: '.format(name)
+    for member in members: s += ' {:s},'.format(member.name)
+    print(s)
