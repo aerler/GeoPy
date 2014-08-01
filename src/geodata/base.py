@@ -1400,16 +1400,27 @@ class Ensemble(object):
       elif len(fs) == len(set([f.dataset.name for f in fs if f is not None])): 
 	for f in fs: f.dataset_name = f.dataset.name 
 	return Ensemble(*fs, idkey='dataset_name') #basetype=Variable, 
+      #elif all([isinstance(f, Variable) for f in fs]):
+	#for f,m in zip(fs,self.members): f.dataset_name = getattr(m,self.idkey)
+	#return Ensemble(*fs, idkey='dataset_name') #basetype=Variable, 
       else: return fs
     else:
       # for callable objects, return a wrapper that can read argument lists      
       def wrapper( *args, **kwargs):
 	lensvar = kwargs.pop('lensvar',True)
-	results = [f(*args, **kwargs) for f in fs]
-	if lensvar and all([isinstance(f, Variable) for f in results]):
-	  return Ensemble(*results)
+	res = [f(*args, **kwargs) for f in fs]
+	if lensvar and all([isinstance(f, Variable) for f in res]):
+	  if len(res) == len(set([f.name for f in res])): 
+	    return Ensemble(*res, basetype=Variable, idkey='name')
+	  elif len(res) == len(set([f.dataset.name for f in res if f.dataset is not None])): 
+	    for f in res: f.dataset_name = f.dataset.name 
+	    return Ensemble(*res, idkey='dataset_name') #basetype=Variable, 
+	  elif all([isinstance(f, Variable) for f in res]):
+	    for f,m in zip(res,self.members): f.dataset_name = getattr(m,self.idkey)
+	    return Ensemble(*res, idkey='dataset_name') #basetype=Variable,
+	  else: raise VariableError
 	else: 
-	  return results      
+	  return res      
       # return function wrapper
       return wrapper
     

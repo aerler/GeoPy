@@ -441,6 +441,8 @@ class BaseDatasetTest(unittest.TestCase):
     ens -= var # this is a dataset operation
     assert not any(ens.hasVariable('new'))
     ens -= 'test'
+    # fancy test of Variable and Dataset integration
+    assert not any(ens.var.mean(axis='t').hasAxis('t'))
     print(ens.prettyPrint(short=True))
 
   def testPrint(self):
