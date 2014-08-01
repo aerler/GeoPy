@@ -145,6 +145,36 @@ class BaseVarTest(unittest.TestCase):
     # change array
     var.data_array += 1 # test if we have a true copy and not just a reference 
     assert not isEqual(var.data_array,self.var.data_array)
+
+  def testEnsemble(self):
+    ''' test the Ensemble container class '''
+    # test object
+    var = self.var
+    # make a copy
+    copy = var.copy()
+    copy.name = 'copy of {}'.format(var.name)
+    yacov = var.copy()
+    yacov.name = 'yacod' # used later    
+    # instantiate ensemble
+    ens = Ensemble((var, copy), name='ensemble', title='Test Ensemble')
+    # basic functionality
+    assert len(ens.members) == len(ens)
+    # these var/ax names are specific to the test dataset...
+    if all(ens.hasAxis('t')):
+      assert ens.t == [dataset.t , copy.t]
+    # collective add/remove
+    # test adding a new member
+    ens += yacov # this is an ensemble operation
+    print('')
+    print(ens)
+    print('')    
+    ens -= yacov # this is a dataset operation
+    assert not any(ens.hasVariable(yacov))
+    # perform a variable operation
+    ens.mean(axis='t')
+    print(ens.prettyPrint(short=True))
+    ens -= 'test' # subtract by name
+    assert not any(ens.hasVariable('test'))
       
   def testIndexing(self):
     ''' test indexing and slicing '''
@@ -377,7 +407,7 @@ class BaseDatasetTest(unittest.TestCase):
     yacod = dataset.copy()
     yacod.name = 'yacod' # used later    
     # instantiate ensemble
-    ens = Ensemble(dataset, copy, name='ensemble', title='Test Ensemble')
+    ens = Ensemble((dataset, copy), name='ensemble', title='Test Ensemble')
     # basic functionality
     assert len(ens.members) == len(ens)
     # these var/ax names are specific to the test dataset...
@@ -721,12 +751,12 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    #tests += ['BaseVar'] 
+    tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
     #tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
+    #tests += ['DatasetNetCDF']
 #     tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)

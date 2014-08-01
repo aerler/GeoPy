@@ -1412,7 +1412,7 @@ class Ensemble(object):
     return self.prettyPrint(short=False) # print is a reserved word  
 
   def prettyPrint(self, short=False):
-    ''' Print a string representation of the Dataset. '''
+    ''' Print a string representation of the Ensemble. '''
     if short:      
       string = '{0:s} {1:s}'.format(self.__class__.__name__,self.name)
       string += ', {:2d} Members ({:s})'.format(len(self.members),self.basetype.__name__)
@@ -1462,7 +1462,7 @@ class Ensemble(object):
     if not isinstance(member, (self.basetype,basestring)): 
       raise TypeError, "Argument has to be of '{:s}' of 'basestring' type; received '{:s}'.".format(self.basetype.__name__,member.__class__.__name__)
     if self.hasMember(member):
-      if isinstance(member, self.idkey.__class__): 
+      if isinstance(member, basestring): 
 	memid = member
 	member = self.__dict__[memid]
       else: memid = getattr(member,self.idkey)
