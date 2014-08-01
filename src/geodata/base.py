@@ -1370,7 +1370,7 @@ class Ensemble(object):
     # add certain properties
     self.name = kwargs.get('name','')
     self.title = kwargs.get('title','')
-    self.basetype = kwargs.get('basetype',Dataset)
+    self.basetype = kwargs.get('basetype',datasets[0].__class__)
     self.idkey = kwargs.get('idkey','name')
     # add keywords as attributes
     for key,value in kwargs.iteritems():
@@ -1514,7 +1514,9 @@ class Ensemble(object):
 
   def __isub__(self, member):
     ''' Remove a Dataset to an existing Ensemble. '''      
-    if isinstance(member, self.basetype):
+    if isinstance(member, basestring) and self.hasMember(member):
+      assert self.removeMember(member), "A proble occurred removing Dataset '{:s}' from Ensemble.".format(member)    
+    elif isinstance(member, self.basetype):
       assert self.removeMember(member), "A proble occurred removing Dataset '{:s}' from Ensemble.".format(member.name)
     elif isinstance(member, Variable):
       assert all(self.removeVariable(member)), "A problem occurred removing Variable '{:s}' from Ensemble Members.".format(member.name)    

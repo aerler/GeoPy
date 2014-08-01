@@ -156,12 +156,12 @@ class BaseVarTest(unittest.TestCase):
     yacov = var.copy()
     yacov.name = 'yacod' # used later    
     # instantiate ensemble
-    ens = Ensemble((var, copy), name='ensemble', title='Test Ensemble')
+    ens = Ensemble(var, copy, name='ensemble', title='Test Ensemble')
     # basic functionality
     assert len(ens.members) == len(ens)
     # these var/ax names are specific to the test dataset...
-    if all(ens.hasAxis('t')):
-      assert ens.t == [dataset.t , copy.t]
+    if all(ens.hasAxis('time')):
+      assert ens.time == [var.time , copy.time]
     # collective add/remove
     # test adding a new member
     ens += yacov # this is an ensemble operation
@@ -169,12 +169,15 @@ class BaseVarTest(unittest.TestCase):
     print(ens)
     print('')    
     ens -= yacov # this is a dataset operation
-    assert not any(ens.hasVariable(yacov))
+    assert not ens.hasMember(yacov)
     # perform a variable operation
-    ens.mean(axis='t')
+    ens.mean(axis='time')
     print(ens.prettyPrint(short=True))
     ens -= 'test' # subtract by name
-    assert not any(ens.hasVariable('test'))
+    print('')
+    print(ens)
+    print('')    
+    assert not ens.hasMember('test')
       
   def testIndexing(self):
     ''' test indexing and slicing '''
@@ -407,7 +410,7 @@ class BaseDatasetTest(unittest.TestCase):
     yacod = dataset.copy()
     yacod.name = 'yacod' # used later    
     # instantiate ensemble
-    ens = Ensemble((dataset, copy), name='ensemble', title='Test Ensemble')
+    ens = Ensemble(dataset, copy, name='ensemble', title='Test Ensemble')
     # basic functionality
     assert len(ens.members) == len(ens)
     # these var/ax names are specific to the test dataset...
