@@ -8,6 +8,7 @@ the data is stored in human-readable text files and tables.
 '''
 
 # external imports
+from collections import OrderedDict
 import numpy as np
 import numpy.ma as ma
 from copy import deepcopy
@@ -46,12 +47,12 @@ class Basin(Shape):
       folder = basin.folder
       if subbasin is None: subbasin = basin.outline      
       elif not isinstance(subbasin,basestring): raise TypeError
-      shapefile = subbasin if subbasin[-4:] == '.shp' else subbasin + '.shp'
-      if shapefile not in basin.shapefiles: raise ValueError, 'Unknown subbasin: {}'.format(subbasin)
+      #shapefile = subbasin if subbasin[-4:] == '.shp' else subbasin + '.shp'
+      if subbasin not in basin.shapefiles: raise ValueError, 'Unknown subbasin: {}'.format(subbasin)
     elif isinstance(folder,basestring) and isinstance(shapefile,basestring): pass
     else: raise TypeError, 'Specify either basin & station or folder & shapefile.'
     # call Shape constructor
-    super(Basin,self).__init__(name=basin.name, long_name=basin.long_name, shapefile=shapefile, folder=folder, load=load, ldebug=ldebug)
+    super(Basin,self).__init__(name=basin.name, long_name=basin.long_name, shapefile=basin.shapefiles[subbasin], load=load, ldebug=ldebug)
     # add info
     self.info = basin
     self.maingage = basin.maingage if basin is not None else None 
@@ -69,8 +70,15 @@ class BasinInfo(object):
   def __init__(self):
     ''' some common operations and inferences '''
     self.folder = root_folder+self.long_name+'/'; self.__doc__ = self.long_name
-    self.shapefiles = [shp if shp[-4:] == '.shp' else shp+'.shp' for shp in self.shapefiles]
-    self.outline = self.shapefiles[0]; self.maingage = self.stations[self.rivers[0]][0] if self.stations else None 
+    shapefiles = OrderedDict()
+    for shp in self.shapefiles:
+      if shp[-4:] == '.shp':
+	shapefiles[shp[:-4]] = self.folder + shp
+      else: 
+	shapefiles[shp] = self.folder + shp + '.shp'
+    self.shapefiles = shapefiles 
+    #self.shapefiles = [shp if shp[-4:] == '.shp' else shp+'.shp' for shp in self.shapefiles]
+    self.outline = self.shapefiles.values()[0]; self.maingage = self.stations[self.rivers[0]][0] if self.stations else None 
     self.stationfiles = dict()
     for river,stations in self.stations.items():
       for station in stations: 

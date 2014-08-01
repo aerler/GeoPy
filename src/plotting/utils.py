@@ -17,8 +17,8 @@ from geodata.misc import VariableError, AxisError, isInt
 # load matplotlib with some custom defaults
 def loadMPL(linewidth=None, mplrc=None):
   import matplotlib as mpl
-  import matplotlib.pylab as pyl
   mpl.use('QT4Agg') # enforce QT4
+  import matplotlib.pylab as pyl
   # some custom defaults  
   if linewidth is not None:
     mpl.rc('lines', linewidth=linewidth)

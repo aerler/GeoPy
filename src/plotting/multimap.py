@@ -12,8 +12,9 @@ from copy import copy # to copy map projection objects
 # matplotlib config: size etc.
 import numpy as np
 import numpy.ma as ma
-import matplotlib.pylab as pyl
 import matplotlib as mpl
+mpl.use('Agg') # enforce QT4
+import matplotlib.pylab as pyl
 mpl.rc('lines', linewidth=1.)
 mpl.rc('font', size=10)
 # prevent figures from closing: don't run in interactive mode, or plt.show() will not block
@@ -23,9 +24,10 @@ from mpl_toolkits.basemap import maskoceans # used for masking data
 from geodata.base import DatasetError
 from datasets.common import days_per_month, days_per_month_365 # for annotation
 from datasets.common import loadDatasets
+from datasets.WSC import basins
 from plotting.settings import getFigureSettings, getVariableSettings
 # ARB project related stuff
-from projects.ARB_settings import getARBsetup, figure_folder, map_folder, ARB_shapefile, FRB_shapefile
+from projects.ARB_settings import getARBsetup, figure_folder, map_folder
 
 if __name__ == '__main__':
   
@@ -36,8 +38,8 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-#   WRFfiletypes=['hydro','lsm']
-  WRFfiletypes=['srfc','xtrm']
+  WRFfiletypes=['hydro','lsm']
+  #WRFfiletypes=['srfc','xtrm']
 #   WRFfiletypes = ['srfc','lsm','hydro','xtrm'] # WRF data source
   # figure directory
   #folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
@@ -58,7 +60,7 @@ if __name__ == '__main__':
   figuretype = None
   lsamesize = True
   lstations = True; stations = 'cities'
-  lbasins = True; basins = ('ARB','FRB')
+  lbasins = True; basinlist = ('ARB','FRB'); subbasins = dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
   cbo = None # default based on figure type
   resolution = None # only for GPCC (None = default/highest)
   exptitles = None
@@ -75,9 +77,9 @@ if __name__ == '__main__':
   lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = False; lbasins = False
 
-  explist = ['max-ens', 'max-ens']; exptitles = ['WRF vs. PCIC','WRF vs. PRISM']; period = H15
-  case = 'prism'; lbasins = True; lsamesize = True; grid = 'arb2_d02'
-  ldiff = True; reflist = ['PCIC','PRISM']; refprd = H15
+  #explist = ['max-ens', 'max-ens']; exptitles = ['WRF vs. PCIC','WRF vs. PRISM']; period = H15
+  #case = 'prism'; lbasins = True; lsamesize = True; grid = 'arb2_d02'
+  #ldiff = True; reflist = ['PCIC','PRISM']; refprd = H15
 
 #  explist = ['max-ens-2100']; exptitles = ['WRF Ensemble Mean (2050)']
 #  case = 'prj'; lbasins = True; lsamesize = True; period = B10; grid = ['arb2_d02']
@@ -88,39 +90,10 @@ if __name__ == '__main__':
 #   case = 'val'; lbasins = True; lsamesize = True
 #   ldiff = True; reflist = ['Unity']; grid = 'arb2_d02'
 
-#   explist = ['CESM','max-ens']; exptitles = ['CESM Ensemble Mean', 'WRF Ensemble Mean (10 km)']
-#   case = 'val_arb2'; lbasins = True; lsamesize = False; period = H15; grid = ['arb2_d02']*2
-#   lfrac = True; reflist = ['Unity']; refprd = H30; #grid = ['cesm1x1','arb2_d02'] 
-  
-#   explist = ['CESM','max-ens','Ctrl','max']; 
-#   exptitles = ['CESM Ensemble Mean', 'WRF Ensemble Mean (10 km)','CESM-1', 'WRF-1 (10 km)']
-#   case = 'val'; lbasins = True; lsamesize = False; period = H15; grid = 'arb2_d02'
-#   ldiff = True; reflist = ['Unity']; #grid = ['cesm1x1','arb2_d02']
-
-#   explist = ['CESM-2050','max-ens-2050','Ctrl-2050','max-2050']; 
-#   exptitles = ['CESM Ensemble Mean (2050)', 'WRF Ensemble Mean (2050)','CESM-1 (2050)', 'WRF-1 (2050)']
-#   case = 'prj'; lbasins = True; lsamesize = True; period = A15; #grid = 'arb2_d02'
-#   lfrac = True; reflist = ['CESM','max-ens','Ctrl','max']; refprd = H15; grid = ['cesm1x1','arb2_d02']*2 
-
 #   case = 'ensdiff'; explist = ['max', 'max-A', 'max-B', 'max-C'] 
 #   exptitles = ['WRF-1', 'WRF-A', 'WRF-B', 'WRF-C']
 #   lbasins = True; lsamesize = True; period = H15; grid = 'arb2_d02'
 #   ldiff = True; reflist = ['max-ens']; refprd = H15 
-
-#   case = 'ensdiffprj'; explist = ['max-2050', 'max-A-2050', 'max-B-2050', 'max-C-2050'] 
-#   exptitles = ['WRF-1 (2050)', 'WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)']
-#   lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
-#   ldiff = True; reflist = ['max-ens-2050']; refprd = A15 
-
-#   case = 'ensprj'; explist = ['max-2100', 'max-A-2100', 'max-B-2100', 'max-C-2100'] 
-#   exptitles = ['WRF-1 (2100)', 'WRF-A (2100)', 'WRF-B (2100)', 'WRF-C (2100)']
-#   lbasins = True; lsamesize = True; period = B10; grid = 'arb2_d02'
-#   lfrac = True; reflist = ['max', 'max-A', 'max-B', 'max-C']; refprd = H10 
-
-#  case = 'ensprj'; explist = ['max-2050', 'max-A-2050', 'max-B-2050', 'max-C-2050'] 
-#  exptitles = ['WRF-1 (2050)', 'WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)']
-#  lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
-#  lfrac = True; reflist = ['max', 'max-A', 'max-B', 'max-C']; refprd = H15 
 
 #  case = 'ensprj'; explist = ['max-2050', 'max-A-2050', 'max-B-2050', 'max-C-2050'] 
 #  exptitles = ['WRF-1 (2050)', 'WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)']
@@ -131,53 +104,23 @@ if __name__ == '__main__':
 #   exptitles = ['Ctrl-1 (2050)', 'Ens-A (2050)', 'Ens-B (2050)', 'Ens-C (2050)']
 #   lbasins = True; lsamesize = True; period = A15; grid = 'cesm1x1'
 #   lfrac = True; reflist = ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']; refprd = H15 
-
-#   explist = ['Ctrl','max','max-1deg','max-1deg']
-#   exptitles = ['CESM-1', 'WRF-1 (30 km)', 'WRF-1 (1 deg.)', 'WRF-1 (1 deg.)']
-#   case = '1deg'; lbasins = True; lsamesize = False; period = H10; domain = [None, 1, 2, 2]
-#   lfrac = True; reflist = ['max']; refdom = 2; grid = ['cesm1x1','arb2_d02']*2
   
 #   explist = ['Ctrl','max','max-1deg','Unity']
 #   exptitles = ['CESM-1', 'WRF-1 (30 km)', 'WRF-1 (1 deg.)', 'Observations']
 #   case = '1deg'; lbasins = True; lsamesize = False; period = H05; domain = [None, 1, 2, None]
 #   ldiff = True; reflist = ['max']; refdom = 2; grid = ['arb2_d02']*4 # ['cesm1x1','arb2_d02']*2
 
-#   explist = ['max-A','max','Unity','max-B','max-C','NARR']
-#   case = 'val-ens'; lbasins = True; period = H15; #grid = ['arb2_d02']
-
-#   explist = ['Ctrl','Ens-A','Ens-B','Ens-C','CESM','Unity']
-#   case = 'val-cesm'; lbasins = True; period = H15 #; grid = ['arb2_d02']*2
-
 #   explist = ['cfsr','CESM','max-ens','max-ens']; exptitles = [None, None, 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
 #   case = 'res'; lbasins = True; lsamesize = False; period = H15
 #   ldiff = True; reflist = ['Unity']; refprd = H15; grid = ['arb2_d02']*4; domain = [2,None,1,2]
 
-#   case = 'hydro'; lbasins = True; lsamesize = True; exptitles = [' ']
-# #   explist = ['max-ens']; period = H15
-#   explist = ['max-ens-2050']; period = A15; ldiff = True; reflist = ['max-ens']; refprd = H15
-
-#   case = 'lsm'; lbasins = True
-#   explist = ['max', 'max-diff', 'max-nmp', 'max-nmp-old']; period = H05
-#   ldiff = True; reflist = ['Unity']
-
-#   case = 'cu'; lbasins = True
-#   explist = ['max', 'max-nosub', 'max-hilev', 'max-kf']; period = H05
-#   ldiff = True; reflist = ['Unity']
-
-#   explist = ['ctrl-2050','max-2050','cam-2050','max-ens-2050'] # exptitles = ['CESM-1 (2050)', 'WRF-1 (2050)']
-#   case = 'deltas'; lbasins = True; lsamesize = False; period = A10
-#   lfrac = True; reflist = ['ctrl','max','cam','max-ens']; refprd = H10; # grid = ['arb2_d02']*3+['arb1_d02'] # 'cesm1x1', 
+  case = 'hydro'; lbasins = True; lsamesize = True; exptitles = [' ']
+  explist = ['max-ens']; period = H15
+  #explist = ['max-ens-2050']; period = A15; ldiff = True; reflist = ['max-ens']; refprd = H15
 
 #   maptype = 'ortho-NA'; lstations = False; lbasins = False; lframe = True; loutline = False
 #   explist = ['max-ens']; domain= (0,1); period = H10; case = 'ortho'
 #   exptitles = ['']; title = 'Dynamical Downscaling'  
-
-#   ldiff = True; reflist = ['Unity']; lWRFnative = False
-# #   lfrac = True; reflist = ['Unity']; lWRFnative = False
-#   maptype = 'lcc-new'; lstations = False; lbasins = True
-#   case = 'cesm-ens'; loutline = True; grid = None # 'cesm1x1'
-#   grid = ['arb2_d02','cesm1x1','arb2_d01','arb2_d01']
-#   explist = ['max-ens','CESM','max-ens','NARR']; period = H10; domain = [(2,),None,(1,),None]
 
 #   ldiff = True; reflist = ['Unity']; grid = 'cesm1x1'
 # #   lfrac = True; reflist = ['Unity']; grid = 'cesm1x1'
@@ -193,12 +136,6 @@ if __name__ == '__main__':
 #   exptitles = ['WRF 1km (CFSR)', None, 'WRF 25km (CFSR)', 'WRF 5km (CFSR)']
 #   domain = [(1,2,3,),None,(1,),(1,2,)]
 #   explist = ['coast','PRISM','coast','coast'] #; domain = (3,);
-
-#   explist = ['WRF Domain 1 (30km)','WRF Domain 2 (10km)']
-#   case = 'topocf'; lstations = True; lbasins = True
-#   maptype = 'lcc-col'; grid = 'col1_d03'
-#   explist = ['max','max']; period = H10; domain = [1,2]
-#   ldiff = True; reflist = ['columbia']; refprd = H01; refdom = 3
 
 #   case = '3km'; stations = 'cities'
 #   maptype = 'lcc-col'; lstations = True; lbasins = True # 'lcc-new'  
@@ -225,11 +162,11 @@ if __name__ == '__main__':
   varlist = []; seasons = []
   # variables
 #   varlist += ['Ts']
-  varlist += ['T2']
-  varlist += ['Tmin', 'Tmax']
-  varlist += ['precip']
+  #varlist += ['T2']
+  #varlist += ['Tmin', 'Tmax']
+  #varlist += ['precip']
 #  varlist += ['waterflx']
-#   varlist += ['p-et']
+  varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
 #   varlist += ['evap']
@@ -254,9 +191,9 @@ if __name__ == '__main__':
 #   seasons = [ [i] for i in xrange(12) ] # monthly
   seasons += ['annual']
   seasons += ['summer']
-  seasons += ['winter']
-  seasons += ['spring']    
-  seasons += ['fall']
+  #seasons += ['winter']
+  #seasons += ['spring']    
+  #seasons += ['fall']
   # special variable/season combinations
 #   varlist = ['seaice']; seasons = [8] # September seaice
 #  varlist = ['snowh'];  seasons = [8] # September snow height
@@ -477,7 +414,7 @@ if __name__ == '__main__':
         if clim: cn.set_clim(vmin=clim[0],vmax=clim[1])
         else: cn.set_clim(vmin=min(clevs),vmax=max(clevs))
       cbar = f.colorbar(cax=cax,mappable=cd[0],orientation=cbo,extend='both') # ,size='3%',pad='2%'       
-      if cbl is None: cbl = np.linspace(min(clevs),max(clevs),6)
+      if cbl is None: cbl = np.linspace(min(clevs),max(clevs),9 if lsamesize else 5)
       cbar.set_ticks(cbl); cbar.set_ticklabels([clbl%(lev) for lev in cbl])
     
       ## Annotation
@@ -515,11 +452,13 @@ if __name__ == '__main__':
           if lbasins:
             shpargs = dict(linewidth = 0.75) 
 #             shpargs = dict(linewidth = 1.)
-            for basin in basins:
-              if basin is 'ARB': 
-                bmap.readshapefile(ARB_shapefile, 'ARB', ax=axn, drawbounds=True, color='k', **shpargs)
-              elif basin is 'FRB': 
-                bmap.readshapefile(FRB_shapefile, 'FRB', ax=axn, drawbounds=True, color='k', **shpargs)            
+            for basin in basinlist:      
+              basininfo = basins[basin]
+              if basin in subbasins:
+		for subbasin in subbasins[basin]:		  
+		  bmap.readshapefile(basininfo.shapefiles[subbasin][:-4], subbasin, ax=axn, drawbounds=True, color='k', **shpargs)            
+	      else:
+		bmap.readshapefile(basininfo.shapefiles['Whole'+basin][:-4], basin, ax=axn, drawbounds=True, color='k', **shpargs)            
           #print bmap.ARB_info                   
               
       # save figure to disk

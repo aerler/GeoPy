@@ -8,13 +8,20 @@ A simple script to plot area-averaged monthly climatologies.
 
 # external imports
 import numpy as np
-import matplotlib.pylab as pyl
 import matplotlib as mpl
+mpl.use('Agg') # enforce QT4
+import matplotlib.pylab as pyl
 # prevent figures from closing: don't run in interactive mode, or plt.show() will not block
 pyl.ioff()
 # internal imports
 # PyGeoDat stuff
-from datasets import loadGPCC, loadCRU, loadPRISM, loadCFSR, loadNARR, loadUnity
+from datasets.GPCC import loadGPCC
+from datasets.CRU import loadCRU
+from datasets.PRISM import loadPRISM
+from datasets.PCIC import loadPCIC
+from datasets.CFSR import loadCFSR
+from datasets.NARR import loadNARR
+from datasets.Unity import loadUnity
 from datasets.WSC import Basin
 from datasets.common import loadDatasets # for annotation
 from plotting.settings import getFigureSettings
@@ -32,8 +39,9 @@ def getVarSettings(plottype, area, lPRISM=False, mode='all'):
     varlist = ['lhfx','hfx']; filetypes = ['hydro','srfc']; 
     lsum = False; leg = (2,3); ylabel = r'Heat Flux [W m$^{-2}$]'; ylim = (-50,150)  
   elif plottype == 'evap':
-    varlist = ['precip','evap','p-et','pet','waterflx']; filetypes = ['srfc','hydro']; # 'waterflx' 
-    lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
+    #varlist = ['precip','evap','p-et','pet','waterflx']; filetypes = ['srfc','hydro']; # 'waterflx'
+    varlist = ['precip','evap','pet']; filetypes = ['srfc','hydro']; # 'waterflx' 
+    lsum = True; leg = (2,3); ylabel = flxlabel; ylim = (0,14)
   elif plottype == 'flux':
     varlist = ['snwmlt','p-et','precip']; filetypes = ['srfc','hydro']; # 'waterflx' 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
@@ -184,15 +192,15 @@ if __name__ == '__main__':
   
   ## settings
   # settings
-  lprint = True; lpub = True
-#   paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
-  paper_folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
-  expset = 'max-2100-diff'
+  lprint = True; lpub = False
+  paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
+  #paper_folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
+  expset = 'max-ens'
   plottypes = []
 #   plottypes += ['temp']
-#   plottypes += ['precip']
-  plottypes += ['precip_types']
-#   plottypes += ['evap']
+  #plottypes += ['precip']
+  #plottypes += ['precip_types']
+  plottypes += ['evap']
 #   plottypes += ['flux']
 #   plottypes += ['snwmlt']  
 #   plottypes += ['sfflx']
@@ -204,15 +212,15 @@ if __name__ == '__main__':
   lgage = True
   titles = None
   areas = []
-  areas += ['athabasca']
+  #areas += ['athabasca']
   areas += ['fraser']
 #   areas += ['northcoast']
 #   areas += ['southcoast']
   domains = 2 # [0, 2, 1, 1]
   periods = []
 #   periods += [5]
-  periods += [10]
-#   periods += [15]
+  #periods += [10]
+  periods += [15]
 #   periods += [(1979,1984)]
 #   periods += [(1989,1994)]
   
@@ -262,7 +270,7 @@ if __name__ == '__main__':
       
       ## create averaging mask
       if area == 'athabasca': 
-        areaname = 'ARB'; subarea = 'WholeARB'
+        areaname = 'ARB'; subarea = 'WholeARB'# 'WholeARB'
       elif area == 'fraser': 
         areaname = 'FRB'; subarea = 'WholeFRB'
       elif area == 'northcoast': 

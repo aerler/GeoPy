@@ -10,6 +10,7 @@ import matplotlib as mpl
 import numpy as np
 from geodata.base import VariableError
 from datasets.common import name_of_month # for annotation; days_per_month, days_per_month_365, 
+from plotting.colormaps import cm
 
 # my own colormap
 cdict = dict()
@@ -86,7 +87,7 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
       elif season == 'summer': clevs += 2    
     elif var == 'p-et' or var == 'waterflx': # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
-      clevs = np.linspace(-2,2,25); cmap = mpl.cm.PuOr; clbl = '%02.1f'
+      clevs = np.linspace(-2,2,25); cmap = cm.avhrr_r; clbl = '%02.2f' # mpl.cm.PuOr
     elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff'): # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
       clevs = np.linspace(0,5,25); clbl = '%02.1f'; cmap = mpl.cm.YlGnBu
