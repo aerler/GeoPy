@@ -161,6 +161,7 @@ class BaseVarTest(unittest.TestCase):
     assert len(ens.members) == len(ens)
     # these var/ax names are specific to the test dataset...
     if all(ens.hasAxis('time')):
+      print ens.time 
       assert ens.time == [var.time , copy.time]
     # collective add/remove
     # test adding a new member
@@ -414,10 +415,19 @@ class BaseDatasetTest(unittest.TestCase):
     # basic functionality
     assert len(ens.members) == len(ens)
     # these var/ax names are specific to the test dataset...
-    if all(ens.hasVariable('var')):
-      assert ens.var == [dataset.var, copy.var]
+    if all(ens.hasVariable('var')):      
+      assert isinstance(ens.var,Ensemble) and ens.var.basetype == Variable
+      #assert ens.var == Ensemble(dataset.var, copy.var, basetype=Variable, idkey='dataset_name')
+      assert ens.var.members == [dataset.var, copy.var]
+      #print ens.var
+      #print Ensemble(dataset.var, copy.var, basetype=Variable, idkey='dataset_name')
+    print('')
+    print(ens)
+    print('')        
     if all(ens.hasAxis('t')):
-      assert ens.t == [dataset.t , copy.t]
+      #print ens.t
+      assert ens.t.members == [dataset.t , copy.t]
+      assert isinstance(ens.t,Ensemble) and ens.t.basetype == Axis
     # collective add/remove
     ax = Axis(name='ax', units='none')
     var = Variable(name='new',units='none',axes=(ax,))
@@ -754,11 +764,11 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
+    #tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
-    #tests += ['BaseDataset']
+    tests += ['BaseDataset']
     #tests += ['DatasetNetCDF']
 #     tests += ['DatasetGDAL']
     

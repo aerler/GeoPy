@@ -1391,19 +1391,25 @@ class Ensemble(object):
     # determine whether we need a wrapper
     fs = [getattr(member,attr) for member in self.members]
     if all([not callable(f) or isinstance(f, Variable) for f in fs]):
-      # simple values, not callable
-      return fs
       # N.B.: technically, Variable instances are callable, but that's not what we want here...
+      # simple values, not callable
+      #if all([isinstance(f, Variable) and not isinstance(f, Axis) for f in fs]):
+      # check for unique keys
+      if len(fs) == len(set([f.name for f in fs if f is not None])): 
+	return Ensemble(*fs, basetype=Variable, idkey='name')
+      elif len(fs) == len(set([f.dataset.name for f in fs if f is not None])): 
+	for f in fs: f.dataset_name = f.dataset.name 
+	return Ensemble(*fs, idkey='dataset_name') #basetype=Variable, 
+      else: return fs
     else:
       # for callable objects, return a wrapper that can read argument lists      
       def wrapper( *args, **kwargs):
-	lconcatVars = kwargs.pop('lconcatVars',False)
-	varlist = [f(*args, **kwargs) for f in fs]
-	if lconcatVars:
-	  return concatVars(varlist)
+	lensvar = kwargs.pop('lensvar',True)
+	results = [f(*args, **kwargs) for f in fs]
+	if lensvar and all([isinstance(f, Variable) for f in results]):
+	  return Ensemble(*results)
 	else: 
-	  return varlist
-      
+	  return results      
       # return function wrapper
       return wrapper
     
@@ -1438,7 +1444,7 @@ class Ensemble(object):
       else: 
 	assert memid not in self.__dict__
 	return False
-    elif isinstance(member, self.idkey.__class__):
+    elif isinstance(member, basestring):
       # assume it is the idkey
       if member in self.__dict__:
 	assert self.__dict__[member] in self.members
