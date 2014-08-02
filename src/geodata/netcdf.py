@@ -383,7 +383,7 @@ class DatasetNetCDF(Dataset):
             if dim in axes: # if already present, make sure axes are essentially the same
               tmpax = AxisNC(ncvar=ds.variables[dim], mode='r', **varatts.get(dim,{})) # apply all correction factors...
               if dim not in check_override and not isEqual(axes[dim][:],tmpax[:]): 
-                raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
+                raise DatasetError, "Error constructing Dataset: NetCDF files have incompatible {:s} dimension.".format(dim)
             else: # if this is a new axis, add it to the list
               if ds.variables[dim].dtype == '|S1': pass # Variables of type char are currently not implemented
               else:      

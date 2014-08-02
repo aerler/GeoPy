@@ -150,11 +150,11 @@ def getDatasets(expset, titles=None):
     explist = [('max-ens','max-ens')]
     linestyles = ('-','--')  
   elif expset == 'cesm-all': 
-    explist = ['Ctrl','Ens-A','Ens-B','Ens-C']
+    explist = ['Ctrl-A','Ctrl-B','Ctrl-C','Ctrl-1']
   elif expset == 'cesm-all-2050': 
-    explist = ['Ctrl-2050','Ens-A-2050','Ens-B-2050','Ens-C-2050']
+    explist = ['Ctrl-A-2050','Ctrl-B-2050','Ctrl-C-2050','Ctrl-1-2050']
   elif expset == 'cesm-all-diff': 
-    explist = [('Ctrl-2050','Ctrl'),('Ens-A-2050','Ens-A'),('Ens-B-2050','Ens-B'),('Ens-C-2050','Ens-C')]
+    explist = [('Ctrl-A-2050','Ctrl-A'),('Ctrl-B-2050','Ctrl-B'),('Ctrl-C-2050','Ctrl-C'),('Ctrl-1-2050','Ctrl-1')]
   elif expset == 'max-ens-diff':
     explist = [('max-ens-2050','max-ens')]
     titles = 'WRF Ensemble Mean (Mid-21st-Century)'
@@ -195,13 +195,13 @@ if __name__ == '__main__':
   lprint = True; lpub = False
   paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
   #paper_folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
-  expset = 'max-ens'
+  expset = 'cesm-all'
   plottypes = []
 #   plottypes += ['temp']
   #plottypes += ['precip']
   #plottypes += ['precip_types']
-  plottypes += ['evap']
-#   plottypes += ['flux']
+  #plottypes += ['evap']
+  plottypes += ['flux']
 #   plottypes += ['snwmlt']  
 #   plottypes += ['sfflx']
 #   plottypes += ['flxrof']
@@ -212,7 +212,7 @@ if __name__ == '__main__':
   lgage = True
   titles = None
   areas = []
-  #areas += ['athabasca']
+  areas += ['athabasca']
   areas += ['fraser']
 #   areas += ['northcoast']
 #   areas += ['southcoast']
@@ -253,9 +253,12 @@ if __name__ == '__main__':
       
       ## load data  
       explist, titles, linestyles = getDatasets(expset, titles=titles)
-      exps, titles, nlist = loadDatasets(explist, n=None, varlist=loadlist, titles=titles, periods=period, 
-                                         domains=domains, grids=grid, resolutions='025', filetypes=allfiletypes, 
-                                         lWRFnative=False, ltuple=True, lbackground=False)
+      exps, titles, nlist = loadDatasets(explist, n=None, varlist=loadlist,
+					 titles=titles, periods=period, 
+                                         domains=domains, grids=grid,
+                                         resolutions='025', filetypes=allfiletypes,                                          
+                                         lWRFnative=False, ltuple=True,
+                                         lbackground=False,lautoregrid=True)
       ref = exps[0][0]; nlen = len(exps)
       # observations  
       if period == 9: period = 10 # nine is only because some experiments don't have 10 yet...

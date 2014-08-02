@@ -334,7 +334,7 @@ def loadCESM_All(experiment=None, name=None, grid=None, period=None, filetypes=N
   else: periodstr = ''
   # N.B.: the period convention in CVDP is that the end year is included
   # generate filelist and attributes based on filetypes and domain
-  if filetypes is None: filetypes = fileclasses.keys()
+  if filetypes is None: filetypes = ['atm','lnd']
   elif isinstance(filetypes,(list,tuple,set)):
     filetypes = list(filetypes)  
     if 'axes' not in filetypes: filetypes.append('axes')    
@@ -429,33 +429,19 @@ loadClimatology = loadCESM # pre-processed, standardized climatology
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
-
-  # read environment variable 
-  if os.environ.has_key('PYCESM_BATCH'): 
-    lbatch = os.environ['PYCESM_BATCH'] == 'BATCH'
-  else: lbatch = False
-  
-  # N.B.: this script can be run as a post-processing step to sync'ing CESM data in a batch script
   
   # set mode/parameters
-  if lbatch:
-    # this section should only be modified with caution!
-    mode = 'shift_lon'
-    periods = (5, 10, 15,)    
-    experiments = CESM_experiments.keys() # all experiments in the list!
-    filetypes = ('atm','lnd',)
-  else:
-#     mode = 'test_climatology'
+  mode = 'test_climatology'
 #     mode = 'test_timeseries'
-    mode = 'test_cvdp'
+    #mode = 'test_cvdp'
 #     mode = 'pickle_grid'
 #     mode = 'shift_lon'
 #     experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     experiments += ['Ctrl-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
-    experiments = ('Ctrl-C-2050',)
-    periods = (15,)    
-    filetypes = ('atm',) # ['atm','lnd','ice']
-    grids = ('arb2_d02',)*len(experiments) # grb1_d01
+  experiments = ('Ctrl-C-2050',)
+  periods = (15,)    
+  filetypes = ('atm','lnd') # ['atm','lnd','ice']
+  grids = ('arb2_d02',)*len(experiments) # grb1_d01
 
   # pickle grid definition
   if mode == 'pickle_grid':

@@ -78,7 +78,7 @@ class BasinInfo(object):
 	shapefiles[shp] = self.folder + shp + '.shp'
     self.shapefiles = shapefiles 
     #self.shapefiles = [shp if shp[-4:] == '.shp' else shp+'.shp' for shp in self.shapefiles]
-    self.outline = self.shapefiles.values()[0]; self.maingage = self.stations[self.rivers[0]][0] if self.stations else None 
+    self.outline = self.shapefiles.keys()[0]; self.maingage = self.stations[self.rivers[0]][0] if self.stations else None 
     self.stationfiles = dict()
     for river,stations in self.stations.items():
       for station in stations: 

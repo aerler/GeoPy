@@ -387,16 +387,18 @@ def getGeotransform(xlon=None, ylat=None, geotransform=None):
       # assert (np.diff(xlon).mean() == dx).all() and (np.diff(ylat).mean() == dy).all(), 'Coordinate vectors have to be uniform!'
       ulx = xlon[0] - dx / 2.; uly = ylat[0] - dy / 2.  # coordinates of upper left corner (same for source and sink)
       # GT(2) & GT(4) are zero for North-up; GT(1) & GT(5) are pixel width and height; (GT(0),GT(3)) is the top left corner
-      geotransform = (ulx, dx, 0., uly, 0., dy)
+      geotransform = (float(ulx), float(dx), 0., float(uly), 0., float(dy))
     else: raise DataError, "Coordinate vectors are required to infer GDAL geotransform vector."
   else:  # check given geotransform
+    geotransform = tuple(float(f) for f in geotransform)
     if xlon.data or ylat.data:
       # check if GDAL geotransform vector is consistent with coordinate vectors
       assert len(geotransform) == 6, '\'geotransform\' has to be a vector or list with 6 elements.'
       dx = geotransform[1]; dy = geotransform[5]; ulx = geotransform[0]; uly = geotransform[3] 
       # assert isZero(np.diff(xlon)-dx) and isZero(np.diff(ylat)-dy), 'Coordinate vectors have to be compatible with geotransform!'
-      #print ulx + dx / 2, xlon[0], uly + dy / 2, ylat[0]
-      assert isEqual(ulx + dx / 2, xlon[0]) and isEqual(uly + dy / 2, ylat[0])  # coordinates of upper left corner (same for source and sink)       
+      #print geotransform
+      #print ulx + dx / 2., xlon[0], uly + dy / 2., ylat[0]
+      assert isEqual(ulx + dx / 2., float(xlon[0])) and isEqual(uly + dy / 2., float(ylat[0]))  # coordinates of upper left corner (same for source and sink)       
     else: 
       assert len(geotransform) == 6 and all(isFloat(geotransform)), '\'geotransform\' has to be a vector or list of 6 floating-point numbers.'
   # return results

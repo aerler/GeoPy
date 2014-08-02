@@ -296,8 +296,8 @@ def checkItemList(itemlist, length, dtype, default=NotImplemented, iterable=Fals
   return itemlist
 
 # helper function for loadDatasets (see below)
-def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackground=True, 
-                lWRFnative=True, lautoregrid=False):
+def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None,
+		lbackground=True, lWRFnative=True, lautoregrid=False):
   ''' A function that loads a dataset, based on specified parameters '''
   from datasets.WRF import loadWRF
   from projects.WRF_experiments import WRF_exps, Exp
