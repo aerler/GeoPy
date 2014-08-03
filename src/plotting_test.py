@@ -12,6 +12,8 @@ import numpy as np
 import numpy.ma as ma
 import os, sys
 
+import matplotlib as mpl
+mpl.use('Agg') # enforce QT4
 
 # import geodata modules
 from geodata.nctools import writeNetCDF
@@ -107,8 +109,25 @@ if __name__ == "__main__":
     ramdisk = '/media/tmp/' # folder where RAM disk is mounted
     
     # run tests
+    report = []
     for test in tests:
       s = unittest.TestLoader().loadTestsFromTestCase(test_classes[test])
-      unittest.TextTestRunner(verbosity=2).run(s)
+      report.append(unittest.TextTestRunner(verbosity=2).run(s))
+      
+    # print summary
+    runs = 0; errs = 0; fails = 0
+    for name,test in zip(tests,report):
+      #print test, dir(test)
+      runs += test.testsRun
+      e = len(test.errors)
+      errs += e
+      f = len(test.failures)
+      fails += f
+      if e+ f != 0: print("\nErrors in '{:s}' Tests: {:s}".format(name,str(test)))
+    if errs + fails == 0:
+      print("\n   ***   All {:d} Test(s) successfull!!!   ***   \n".format(runs))
+    else:
+      print("\n   ###   Test Summary:   Ran {:d} Test(s), encountered {:d} Failure(s) and {:d} Error(s)   ###   \n".format(runs,errs,fails))
+    
     # show plots
     pyl.show()

@@ -201,6 +201,8 @@ class Variable(object):
     self.__dict__['atts'] = AttrDict(**atts)
     if plot is None: # try to find sensible default values 
       if variablePlotatts.has_key(self.name): plot = variablePlotatts[self.name]
+      elif variablePlotatts.has_key(self.name.split('_')[0]): 
+	plot = variablePlotatts[self.name.split('_')[0]]
       else: plot = dict(plotname=self.name, plotunits=self.units, plottitle=self.name) 
     self.__dict__['plot'] = AttrDict(**plot)
     # set defaults - make all of them instance variables! (atts and plot are set below)
@@ -617,7 +619,8 @@ class Variable(object):
   def min(self, data, axidx=None):
     return data.min(axis=axidx)
     
-  def reduceToAnnual(self, season, operation, asVar=False, offset=0, taxis='time', checkUnits=True, taxatts=None, varatts=None):
+  def reduceToAnnual(self, season, operation, asVar=False, name=None, offset=0,
+		     taxis='time', checkUnits=True, taxatts=None, varatts=None):
     ''' Reduce a monthly time-series to an annual time-series, using mean/min/max over a subset of month or seasons. '''
     #if not isinstance(season,basestring): raise TypeError
     if not self.data: raise DataError
@@ -680,23 +683,27 @@ class Variable(object):
       axes = list(self.axes); axes[tax] = Axis(coord=coord, dtype='int', atts=tatts)
       # create new variable
       vatts = self.atts.copy()
-      vatts['name'] = self.name; vatts['units'] = self.units
+      if name is not None: vatts['name'] = name
+      elif isinstance(season,basestring): 
+	vatts['name'] = '{:s}_{:s}'.format(self.name,season); 
+      else: vatts['name'] = self.name
+      vatts['units'] = self.units
       if varatts is not None: vatts.update(varatts)
       return Variable(data=ydata, axes=axes, atts=vatts)
       # or return data
     else: return ydata
   
-  def seasonalMean(self, season, asVar=False, offset=0, taxis='time', checkUnits=True):
+  def seasonalMean(self, season, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation='mean', asVar=asVar, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation='mean', asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def seasonalMax(self, season, asVar=False, offset=0, taxis='time', checkUnits=True):
+  def seasonalMax(self, season, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation='max', asVar=asVar, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation='max', asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def seasonalMin(self, season, asVar=False, offset=0, taxis='time', checkUnits=True):
+  def seasonalMin(self, season, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation='min', asVar=asVar, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation='min', asVar=asVar,name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   @UnaryCheck    
   def __iadd__(self, a):
@@ -1353,8 +1360,8 @@ class Ensemble(object):
   name     = ''      # name of the ensemble
   title    = ''      # printable title used for the ensemble
   
-  def __init__(self, *datasets, **kwargs):
-    ''' Initialize an ensemble from a list of datasets (the list arguments);
+  def __init__(self, *members, **kwargs):
+    ''' Initialize an ensemble from a list of members (the list arguments);
     keyword arguments are added as attributes (key = attribute name, 
     value = attribute value).
     
@@ -1366,11 +1373,17 @@ class Ensemble(object):
 	  title    = printable title used for the ensemble (string)
     '''
     # add members
-    self.members = list(datasets)
+    self.members = list(members)
     # add certain properties
     self.name = kwargs.get('name','')
     self.title = kwargs.get('title','')
-    self.basetype = kwargs.get('basetype',datasets[0].__class__)
+    # no need to be too restrictive
+    if isinstance(members[0],Dataset): defaulttype = Dataset
+    elif isinstance(members[0],Variable): defaulttype = Variable
+    else: defaulttype = members[0].__class__
+    self.basetype = kwargs.get('basetype',defaulttype)
+    if not all(isinstance(member,self.basetype) for member in members):
+      raise TypeError, "Not all members conform to selected type '{}'".format(self.basetype.__name__)
     self.idkey = kwargs.get('idkey','name')
     # add keywords as attributes
     for key,value in kwargs.iteritems():
@@ -1390,20 +1403,21 @@ class Ensemble(object):
     #print dir(self.members), attr, attr in dir(self.members)
     # determine whether we need a wrapper
     fs = [getattr(member,attr) for member in self.members]
-    if all([not callable(f) or isinstance(f, Variable) for f in fs]):
+    if all(f is None for f in fs): return # suppress list of None's
+    elif all([not callable(f) for f in fs]): return fs  
+    elif all([isinstance(f, (Variable,Dataset)) for f in fs]):
       # N.B.: technically, Variable instances are callable, but that's not what we want here...
       # simple values, not callable
       #if all([isinstance(f, Variable) and not isinstance(f, Axis) for f in fs]):
       # check for unique keys
-      if len(fs) == len(set([f.name for f in fs if f is not None])): 
-	return Ensemble(*fs, basetype=Variable, idkey='name')
-      elif len(fs) == len(set([f.dataset.name for f in fs if f is not None])): 
+      if len(fs) == len(set([f.name for f in fs if f.name is not None])): 
+	return Ensemble(*fs, idkey='name') # basetype=Variable,
+      elif len(fs) == len(set([f.dataset.name for f in fs if f.dataset is not None])): 
 	for f in fs: f.dataset_name = f.dataset.name 
-	return Ensemble(*fs, idkey='dataset_name') #basetype=Variable, 
-      #elif all([isinstance(f, Variable) for f in fs]):
-	#for f,m in zip(fs,self.members): f.dataset_name = getattr(m,self.idkey)
-	#return Ensemble(*fs, idkey='dataset_name') #basetype=Variable, 
-      else: return fs
+	return Ensemble(*fs, idkey='dataset_name') # basetype=Variable, 
+      else:
+	return fs # axes from several variables can be the same objects
+	#raise ValueError, "Unable to form meaningful ensemble from list of {:s}'s".format(fs[0].__class__.__name__)
     else:
       # for callable objects, return a wrapper that can read argument lists      
       def wrapper( *args, **kwargs):
@@ -1492,10 +1506,15 @@ class Ensemble(object):
     return not self.hasMember(member)
   
   def __getitem__(self, member):
-    ''' Yet another way to access members by name... conforming to the container protocol. '''
+    ''' Yet another way to access members by name... conforming to the container protocol. If argument is not a member, it is called with __getattr__.'''
     if not isinstance(member, basestring): raise TypeError
-    if not self.hasVariable(member): raise KeyError
-    return self.__dict__[member]
+    if self.hasMember(member):
+      # members have precedence
+      return self.__dict__[member]
+    else:
+      # call like an attribute
+      return self.__getattr__(member)
+      #self.hasVariable(member): raise KeyError
   
   def __setitem__(self, name, member):
     ''' Yet another way to add a member, this time by name... conforming to the container protocol. '''

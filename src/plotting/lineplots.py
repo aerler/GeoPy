@@ -88,9 +88,12 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
   # N.B.: units are listed first, because they are used more commonly; variable names usually only in defaults
   # a typical custom label that makes use of the units would look like this: 'custom label [{}]', 
   # where {} will be replaced by the appropriate default units (which have to be the same anyway)
-  if ax.get_xaxis().get_ticklabels()[0].get_visible(): 
+  xticks = ax.get_yaxis().get_ticklabels()
+  if len(xticks) > 0 and xticks[0].get_visible(): 
     ax.set_xlabel(xlabel.format(varunits,varname) if flipxy else xlabel.format(axunits,axname), labelpad=xpad)
-  if ax.get_yaxis().get_ticklabels()[0].get_visible(): 
+  #print ax.get_yaxis().get_ticklabels()
+  yticks = ax.get_yaxis().get_ticklabels()
+  if len(yticks) > 0 and yticks[0].get_visible(): 
     ax.set_ylabel(ylabel.format(axunits,axname) if flipxy else ylabel.format(varunits,varname), labelpad=ypad)
   # make monthly ticks
   if axname == 'time' and axunits == 'month':

@@ -38,9 +38,12 @@ if __name__ == '__main__':
 
 
   ## general settings and shortcuts
-  WRFfiletypes=['hydro','lsm']
-  #WRFfiletypes=['srfc','xtrm']
-#   WRFfiletypes = ['srfc','lsm','hydro','xtrm'] # WRF data source
+  WRFfiletypes = [] # WRF data source
+  #WRFfiletypes += ['hydro']
+  #WRFfiletypes += ['lsm']
+  WRFfiletypes += ['srfc']
+  #WRFfiletypes += ['xtrm']
+  #WRFfiletypes += ['plev3d']
   # figure directory
   #folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
   folder = figure_folder
@@ -77,9 +80,9 @@ if __name__ == '__main__':
   lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = False; lbasins = False
 
-  #explist = ['max-ens', 'max-ens']; exptitles = ['WRF vs. PCIC','WRF vs. PRISM']; period = H15
-  #case = 'prism'; lbasins = True; lsamesize = True; grid = 'arb2_d02'
-  #ldiff = True; reflist = ['PCIC','PRISM']; refprd = H15
+  ##explist = ['max-ens', 'max-ens']; exptitles = ['WRF vs. PCIC','WRF vs. PRISM']; period = H15
+  ##case = 'prism'; lbasins = True; lsamesize = True; grid = 'arb2_d02'
+  ##ldiff = True; reflist = ['PCIC','PRISM']; refprd = H15
 
 #  explist = ['max-ens-2100']; exptitles = ['WRF Ensemble Mean (2050)']
 #  case = 'prj'; lbasins = True; lsamesize = True; period = B10; grid = ['arb2_d02']
@@ -95,15 +98,23 @@ if __name__ == '__main__':
 #   lbasins = True; lsamesize = True; period = H15; grid = 'arb2_d02'
 #   ldiff = True; reflist = ['max-ens']; refprd = H15 
 
-#  case = 'ensprj'; explist = ['max-2050', 'max-A-2050', 'max-B-2050', 'max-C-2050'] 
-#  exptitles = ['WRF-1 (2050)', 'WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)']
-#  lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
-#  lfrac = True; reflist = ['max', 'max-A', 'max-B', 'max-C']; refprd = H15 
+  #case = 'ensprj'; explist = ['max-A-2050', 'max-B-2050', 'max-C-2050', 'max-2050'] 
+  #exptitles = ['WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)', 'WRF-D (2050)']
+  #lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
+  #lfrac = True; reflist = ['max-A', 'max-B', 'max-C', 'max']; refprd = H15 
 
-#   case = 'Ensprj'; explist = ['Ctrl-2050', 'Ens-A-2050', 'Ens-B-2050', 'Ens-C-2050']; 
-#   exptitles = ['Ctrl-1 (2050)', 'Ens-A (2050)', 'Ens-B (2050)', 'Ens-C (2050)']
-#   lbasins = True; lsamesize = True; period = A15; grid = 'cesm1x1'
+  #case = 'ensval'; explist = ['max-A', 'max-B', 'max-C', 'max'] 
+  #exptitles = ['WRF-A', 'WRF-B', 'WRF-C', 'WRF-D']
+  #lbasins = True; lsamesize = True; period = H15; grid = 'arb2_d02'
+
+  #case = 'Ensprj'; explist = ['Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050', 'Ctrl-1-2050']; 
+  #exptitles = ['CESM-A (2050)', 'CESM-B (2050)', 'CESM-C (2050)','CESM-D (2050)']
+  #lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02' #grid = 'cesm1x1'
 #   lfrac = True; reflist = ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']; refprd = H15 
+
+  case = 'Ensprj'; explist = ['Ctrl-A', 'Ctrl-B', 'Ctrl-C', 'Ctrl-1']; 
+  exptitles = ['CESM-A', 'CESM-B', 'CESM-C','CESM-D']
+  lbasins = True; lsamesize = True; period = H15; grid = 'arb2_d02' #grid = 'cesm1x1'
   
 #   explist = ['Ctrl','max','max-1deg','Unity']
 #   exptitles = ['CESM-1', 'WRF-1 (30 km)', 'WRF-1 (1 deg.)', 'Observations']
@@ -114,9 +125,9 @@ if __name__ == '__main__':
 #   case = 'res'; lbasins = True; lsamesize = False; period = H15
 #   ldiff = True; reflist = ['Unity']; refprd = H15; grid = ['arb2_d02']*4; domain = [2,None,1,2]
 
-  case = 'hydro'; lbasins = True; lsamesize = True; exptitles = [' ']
-  explist = ['max-ens']; period = H15
-  #explist = ['max-ens-2050']; period = A15; ldiff = True; reflist = ['max-ens']; refprd = H15
+  #case = 'hydro'; lbasins = True; lsamesize = True; exptitles = [' ']
+  #explist = ['max-ens']; period = H15
+  ##explist = ['max-ens-2050']; period = A15; ldiff = True; reflist = ['max-ens']; refprd = H15
 
 #   maptype = 'ortho-NA'; lstations = False; lbasins = False; lframe = True; loutline = False
 #   explist = ['max-ens']; domain= (0,1); period = H10; case = 'ortho'
@@ -164,9 +175,9 @@ if __name__ == '__main__':
 #   varlist += ['Ts']
   #varlist += ['T2']
   #varlist += ['Tmin', 'Tmax']
-  #varlist += ['precip']
+  varlist += ['precip']
 #  varlist += ['waterflx']
-  varlist += ['p-et']
+  #varlist += ['p-et']
 #   varlist += ['precipnc', 'precipc']
 #   varlist += ['Q2']
 #   varlist += ['evap']
@@ -189,9 +200,9 @@ if __name__ == '__main__':
 #   seasons += ['warm']
 #   seasons += ['melt']
 #   seasons = [ [i] for i in xrange(12) ] # monthly
-  seasons += ['annual']
-  seasons += ['summer']
-  #seasons += ['winter']
+  #seasons += ['annual']
+  #seasons += ['summer']
+  seasons += ['winter']
   #seasons += ['spring']    
   #seasons += ['fall']
   # special variable/season combinations
@@ -216,9 +227,12 @@ if __name__ == '__main__':
   lbackground = not lref and lbackground
     
   loadlist = set(varlist).union(('lon2D','lat2D','landmask','landfrac')) # landfrac is needed for CESM landmask
-  exps, axtitles, nexps = loadDatasets(explist, n=None, varlist=loadlist, titles=exptitles, periods=period, domains=domain, 
-                                       grids=grid, resolutions=resolution, filetypes=WRFfiletypes, lWRFnative=lWRFnative, 
-                                       ltuple=True, lbackground=lbackground)
+  exps, axtitles, nexps = loadDatasets(explist, n=None, varlist=loadlist,
+				       titles=exptitles, periods=period, domains=domain, grids=grid,
+				       resolutions=resolution, filetypes=WRFfiletypes,
+				       lWRFnative=lWRFnative, 
+                                       ltuple=True, lbackground=lbackground,
+                                       lautoregrid=True)
   nlen = len(exps)
   print exps[-1][-1]
   # load reference list

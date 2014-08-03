@@ -250,9 +250,10 @@ class BaseVarTest(unittest.TestCase):
     assert var.axisIndex('time') == 0 and len(var.time) == self.data.shape[0]
     assert len(var.time)%12 == 0, "Need full years to test seasonal mean/min/max!"
     #print self.data.mean(), var.mean().getArray()
-    yvar = var.seasonalMean('jj', asVar=True)
-    assert yvar.hasAxis('year')
-    assert yvar.shape == (var.shape[0]/12,)+var.shape[1:]
+    if var.time.units.lower()[:5] in 'month':
+      yvar = var.seasonalMean('jj', asVar=True)
+      assert yvar.hasAxis('year')
+      assert yvar.shape == (var.shape[0]/12,)+var.shape[1:]
     if self.__class__ is BaseVarTest:
       # this only works with a specially prepared data field
       yfake = np.ones((var.shape[0]/12,)+var.shape[1:])
@@ -305,7 +306,7 @@ class BaseDatasetTest(unittest.TestCase):
     self.atts = dict(name = 'var',units = 'n/a',FillValue=-9999)
     self.data = np.random.random(self.size)   
     # create axis instances
-    t = Axis(name='t', units='none', coord=(1,te,te))
+    t = Axis(name='time', units='none', coord=(1,te,te))
     y = Axis(name='y', units='none', coord=(1,ye,ye))
     x = Axis(name='x', units='none', coord=(1,xe,xe))
     self.axes = (t,y,x)
@@ -405,6 +406,7 @@ class BaseDatasetTest(unittest.TestCase):
     ''' test the Ensemble container class '''
     # test object
     dataset = self.dataset
+    dataset.load()
     # make a copy
     copy = dataset.copy()
     copy.name = 'copy of {}'.format(dataset.name)
@@ -424,10 +426,9 @@ class BaseDatasetTest(unittest.TestCase):
     print('')
     print(ens)
     print('')        
-    if all(ens.hasAxis('t')):
-      #print ens.t
-      assert ens.t.members == [dataset.t , copy.t]
-      assert isinstance(ens.t,Ensemble) and ens.t.basetype == Axis
+    #print ens.time
+    assert ens.time.members == [dataset.time , copy.time]
+    assert isinstance(ens.time,Ensemble) and ens.time.basetype == Variable
     # collective add/remove
     ax = Axis(name='ax', units='none')
     var = Variable(name='new',units='none',axes=(ax,))
@@ -442,7 +443,8 @@ class BaseDatasetTest(unittest.TestCase):
     assert not any(ens.hasVariable('new'))
     ens -= 'test'
     # fancy test of Variable and Dataset integration
-    assert not any(ens.var.mean(axis='t').hasAxis('t'))
+    print ens[self.var.name]
+    assert not any(ens[self.var.name].mean(axis='time').hasAxis('time'))
     print(ens.prettyPrint(short=True))
 
   def testPrint(self):
@@ -600,13 +602,14 @@ class DatasetNetCDFTest(BaseDatasetTest):
     # load a netcdf dataset, so that we have something to play with      
     self.ncdata = nc.Dataset(folder+ncfile,mode='r')
     # load a sample variable directly
+    self.ncvarname = ncvar
     ncvar = self.ncdata.variables[ncvar]
     # get dimensions and coordinate variables
     size = tuple([len(self.ncdata.dimensions[dim]) for dim in ncvar.dimensions])
     axes = tuple([AxisNC(self.ncdata.variables[dim], length=le) for dim,le in zip(ncvar.dimensions,size)]) 
     # initialize netcdf variable 
     self.ncvar = ncvar; self.axes = axes
-    self.var = VarNC(ncvar, axes=axes, load=True)    
+    self.var = VarNC(ncvar, name='T2', axes=axes, load=True)    
     # save the original netcdf data
     self.data = ncvar[:].copy() #.filled(0)
     self.size = tuple([len(ax) for ax in axes])
@@ -766,19 +769,37 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    #tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['BaseVar'] 
+    #tests += ['NetCDFVar']
+    #tests += ['GDALVar']
     # list of dataset tests
     tests += ['BaseDataset']
     #tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    #tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)
     RAM = False # whether or not to use a RAM disk
     ramdisk = '/media/tmp/' # folder where RAM disk is mounted
     
     # run tests
+    report = []
     for test in tests:
       s = unittest.TestLoader().loadTestsFromTestCase(test_classes[test])
-      unittest.TextTestRunner(verbosity=2).run(s)
+      #s = unittest.TestLoader().loadTestsFromName('DatasetGDALTest.testEnsemble')
+      report.append(unittest.TextTestRunner(verbosity=2).run(s))
+      
+    # print summary
+    runs = 0; errs = 0; fails = 0
+    for name,test in zip(tests,report):
+      #print test, dir(test)
+      runs += test.testsRun
+      e = len(test.errors)
+      errs += e
+      f = len(test.failures)
+      fails += f
+      if e+ f != 0: print("\nErrors in '{:s}' Tests: {:s}".format(name,str(test)))
+    if errs + fails == 0:
+      print("\n   ***   All {:d} Test(s) successfull!!!   ***   \n".format(runs))
+    else:
+      print("\n   ###   Test Summary:   Ran {:d} Test(s), encountered {:d} Failure(s) and {:d} Error(s)   ###   \n".format(runs,errs,fails))
+    
