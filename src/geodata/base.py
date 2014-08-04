@@ -1291,7 +1291,7 @@ class Dataset(object):
     return newset
       
 
-def concatVars(variables, axis='time', axlim=None, asVar=True, offset=0, axatts=None, varatts=None):
+def concatVars(variables, axis='time', coordlim=None, idxlim=None, asVar=True, offset=0, name=None, axatts=None, varatts=None):
   ''' A function to concatenate variables from different sources along a given axis;
       this is useful to generate a continuous time series from an ensemble. '''
   if not all([isinstance(var,Variable) for var in variables]): raise TypeError
@@ -1299,14 +1299,25 @@ def concatVars(variables, axis='time', axlim=None, asVar=True, offset=0, axatts=
   var0 = variables[0] # shortcut
   axt = var0.getAxis(axis)
   tax = var0.axisIndex(axis)
-  if axlim is not None:
-    laxlim = True
-    axlim = {axis:axlim}
+  lcoordlim = False; lidxlim = False
+  if coordlim is not None and idxlim is not None: 
+    raise ValueError, "Can only define either'coordlim' or 'idxlim', not both!"
+  elif coordlim is not None:
+    lcoordlim = True
+    coordlim = {axis:coordlim}
+  elif idxlim is not None:
+    lidxlim = True
+    idxslc= slice(*idxlim)
   # check dimensions
   shapes = []; tes = []
   for var in variables:
     shp = list(var.shape)
-    if laxlim: tes.append(len(axt(**axlim)))
+    if lcoordlim: tes.append(len(axt(**coordlim)))
+    elif lidxlim:       
+      tmpidx = idxslc.indices(len(axt))
+      idxlen = 1 + (tmpidx[1] -1 - tmpidx[0]) / tmpidx[2]
+      assert idxlen == len(axt[idxslc])
+      tes.append(idxlen)
     else: tes.append(shp[tax])
     del shp[tax]
     shapes.append(shp)
@@ -1320,11 +1331,12 @@ def concatVars(variables, axis='time', axlim=None, asVar=True, offset=0, axatts=
   data = []
   for var in variables:
     if not var.data: var.load()
-    if laxlim is not None: 
-      array = var(**axlim)      
+    if lcoordlim: 
+      array = var(**coordlim)     
+    elif lidxlim:
+      array = var.getArray().take(xrange(*idxslc.indices(len(axt))), axis=tax)
     else: 
       array = var.getArray()
-      assert array.shape == var.shape
     data.append(array)
   # concatenate
   data = np.concatenate(data, axis=tax)
@@ -1342,7 +1354,7 @@ def concatVars(variables, axis='time', axlim=None, asVar=True, offset=0, axatts=
     axes = list(var0.axes); axes[tax] = Axis(coord=coord, dtype='int', atts=axatts)
     # create new variable
     vatts = var0.atts.copy()
-    vatts['name'] = var0.name; vatts['units'] = var0.units
+    vatts['name'] = name or var0.name; vatts['units'] = var0.units
     if varatts is not None: vatts.update(varatts)
     return Variable(data=data, axes=axes, atts=vatts)
     # or return data
@@ -1388,14 +1400,38 @@ class Ensemble(object):
     # add keywords as attributes
     for key,value in kwargs.iteritems():
       self.__dict__[key] = value
-    # add short-cuts
+    # add short-cuts and keys
+    #print self.__dict__.keys()
+    self.idkeys = []
     for member in self.members:
       memid = getattr(member, self.idkey)
+      self.idkeys.append(memid)
       if not isinstance(memid, basestring): raise TypeError, "Member ID key '{:s}' should be a string-type, but received '{:s}'.".format(str(memid),memid.__class__)
       if memid in self.__dict__:
 	raise AttributeError, "Cannot overwrite existing attribute '{:s}'.".format(memid)
       self.__dict__[memid] = member
       
+  def _recastList(self, fs):
+    ''' internal helper method to decide if a list or Ensemble should be returned '''
+    if all(f is None for f in fs): return # suppress list of None's
+    elif all([not callable(f) and not isinstance(f, (Variable,Dataset)) for f in fs]): return fs  
+    elif all([isinstance(f, (Variable,Dataset)) for f in fs]):
+      # N.B.: technically, Variable instances are callable, but that's not what we want here...
+      if all([isinstance(f, Axis) for f in fs]): 
+	return fs
+      # N.B.: axes are often shared, so we can't have an ensemble
+      # check for unique keys
+      elif len(fs) == len(set([f.name for f in fs if f.name is not None])): 
+	return Ensemble(*fs, idkey='name') # basetype=Variable,
+      elif len(fs) == len(set([f.dataset.name for f in fs if f.dataset is not None])): 
+	for f in fs: f.dataset_name = f.dataset.name 
+	return Ensemble(*fs, idkey='dataset_name') # basetype=Variable, 
+      else:
+	# use current keys
+	for f,member in zip(fs,self.members): 
+	  f.dataset_name = getattr(member,self.idkey)
+	return Ensemble(*fs, idkey='dataset_name') # axes from several variables can be the same objects
+	
   def __getattr__(self, attr):
     ''' This is where all the magic happens: defer calls to methods etc. to the 
 	ensemble members and return a list of values. '''
@@ -1403,40 +1439,17 @@ class Ensemble(object):
     #print dir(self.members), attr, attr in dir(self.members)
     # determine whether we need a wrapper
     fs = [getattr(member,attr) for member in self.members]
-    if all(f is None for f in fs): return # suppress list of None's
-    elif all([not callable(f) for f in fs]): return fs  
-    elif all([isinstance(f, (Variable,Dataset)) for f in fs]):
-      # N.B.: technically, Variable instances are callable, but that's not what we want here...
-      # simple values, not callable
-      #if all([isinstance(f, Variable) and not isinstance(f, Axis) for f in fs]):
-      # check for unique keys
-      if len(fs) == len(set([f.name for f in fs if f.name is not None])): 
-	return Ensemble(*fs, idkey='name') # basetype=Variable,
-      elif len(fs) == len(set([f.dataset.name for f in fs if f.dataset is not None])): 
-	for f in fs: f.dataset_name = f.dataset.name 
-	return Ensemble(*fs, idkey='dataset_name') # basetype=Variable, 
-      else:
-	return fs # axes from several variables can be the same objects
-	#raise ValueError, "Unable to form meaningful ensemble from list of {:s}'s".format(fs[0].__class__.__name__)
-    else:
+    if all([callable(f) and not isinstance(f, (Variable,Dataset)) for f in fs]):
       # for callable objects, return a wrapper that can read argument lists      
       def wrapper( *args, **kwargs):
 	lensvar = kwargs.pop('lensvar',True)
 	res = [f(*args, **kwargs) for f in fs]
-	if lensvar and all([isinstance(f, Variable) for f in res]):
-	  if len(res) == len(set([f.name for f in res])): 
-	    return Ensemble(*res, basetype=Variable, idkey='name')
-	  elif len(res) == len(set([f.dataset.name for f in res if f.dataset is not None])): 
-	    for f in res: f.dataset_name = f.dataset.name 
-	    return Ensemble(*res, idkey='dataset_name') #basetype=Variable, 
-	  elif all([isinstance(f, Variable) for f in res]):
-	    for f,m in zip(res,self.members): f.dataset_name = getattr(m,self.idkey)
-	    return Ensemble(*res, idkey='dataset_name') #basetype=Variable,
-	  else: raise VariableError
-	else: 
-	  return res      
+	return self._recastList(res) # code is reused, hens pulled out
       # return function wrapper
       return wrapper
+    else:
+      # regular object
+      return self._recastList(fs)
     
   def __str__(self):
     ''' Built-in method; we just overwrite to call 'prettyPrint()'. '''
@@ -1507,14 +1520,17 @@ class Ensemble(object):
   
   def __getitem__(self, member):
     ''' Yet another way to access members by name... conforming to the container protocol. If argument is not a member, it is called with __getattr__.'''
-    if not isinstance(member, basestring): raise TypeError
-    if self.hasMember(member):
-      # members have precedence
-      return self.__dict__[member]
-    else:
-      # call like an attribute
-      return self.__getattr__(member)
-      #self.hasVariable(member): raise KeyError
+    if isinstance(member, basestring): 
+      if self.hasMember(member):
+	# members have precedence
+	return self.__dict__[member]
+      else:
+	# call like an attribute
+	return self.__getattr__(member)
+	#self.hasVariable(member): raise KeyError
+    elif isinstance(member, (int,np.integer)): 
+      return self.members[member]
+    else: raise TypeError
   
   def __setitem__(self, name, member):
     ''' Yet another way to add a member, this time by name... conforming to the container protocol. '''

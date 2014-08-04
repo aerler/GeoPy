@@ -15,7 +15,7 @@ import os
 # import modules to be tested
 from geodata.nctools import writeNetCDF
 from geodata.misc import isZero, isOne, isEqual
-from geodata.base import Variable, Axis, Dataset, Ensemble
+from geodata.base import Variable, Axis, Dataset, Ensemble, concatVars
 from datasets.common import data_root
 
 class BaseVarTest(unittest.TestCase):  
@@ -127,6 +127,27 @@ class BaseVarTest(unittest.TestCase):
     #print data.shape # this is what it is
     #print new_shape # this is what it should be
     assert data.shape == new_shape 
+    
+  def testConcatVars(self):
+    ''' test concatenation of variables '''
+    # get copy of variable
+    var = self.var
+    copy = self.var.copy()
+    # simple test
+    concat_data = concatVars([var,copy], axis='time', asVar=False)
+    shape = list(var.shape); 
+    tax = var.axisIndex('time')
+    shape[tax] = var.shape[tax] + copy.shape[tax]
+    assert concat_data.shape == tuple(shape)
+    # advanced test
+    concat_var = concatVars([var,copy], axis='time', asVar=True, idxlim=(0,12), offset=1000, name='concatVar')
+    shape[tax] = 2 * 12
+    assert concat_var.shape == tuple(shape)
+    assert len(concat_var.time) == 24 and max(concat_var.time.coord) > 1000
+    assert concat_var.name == 'concatVar'
+    assert isEqual(concat_var().take(xrange(12)),concat_data.take(xrange(12)))
+    tlen = var.shape[tax]
+    assert isEqual(concat_var().take(xrange(12,24), axis=tax),concat_data.take(xrange(tlen,tlen+12), axis=tax))    
         
   def testCopy(self):
     ''' test copy and deepcopy of variables (and axes) '''
@@ -427,8 +448,9 @@ class BaseDatasetTest(unittest.TestCase):
     print(ens)
     print('')        
     #print ens.time
-    assert ens.time.members == [dataset.time , copy.time]
-    assert isinstance(ens.time,Ensemble) and ens.time.basetype == Variable
+    assert ens.time == [dataset.time , copy.time]
+    # Axis ensembles are not supported anymore, since they are often shared.
+    #assert isinstance(ens.time,Ensemble) and ens.time.basetype == Variable
     # collective add/remove
     ax = Axis(name='ax', units='none')
     var = Variable(name='new',units='none',axes=(ax,))
@@ -770,12 +792,12 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['BaseVar'] 
-    #tests += ['NetCDFVar']
-    #tests += ['GDALVar']
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
     tests += ['BaseDataset']
-    #tests += ['DatasetNetCDF']
-    #tests += ['DatasetGDAL']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)
     RAM = False # whether or not to use a RAM disk
