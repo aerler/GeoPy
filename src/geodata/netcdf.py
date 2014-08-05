@@ -213,7 +213,9 @@ class VarNC(Variable):
       raise TypeError
     # load data    
     super(VarNC,self).load(data=data, **kwargs) # load actual data using parent method
-    # no need to return anything...
+    # return itself- this allows for some convenient syntax
+    return self
+
     
   def sync(self):
     ''' Method to make sure, data in NetCDF variable and Variable instance are consistent. '''
@@ -255,6 +257,8 @@ class VarNC(Variable):
     del self.ncvar; self.ncvar = ncds.variables[ncname] # reattach (hopefully without the data array)
     # discard data array the usual way
     super(VarNC,self).unload()
+    # return itself- this allows for some convenient syntax
+    return self
 
 class AxisNC(Axis,VarNC):
   '''
@@ -281,8 +285,10 @@ class DatasetNetCDF(Dataset):
     and writing, as well as the creation of new NetCDF files.
   '''
   
-  def __init__(self, name=None, title=None, dataset=None, filelist=None, varlist=None, varatts=None, atts=None, axes=None, 
-               multifile=False, check_override=None, ignore_list=None, folder='', mode='r', ncformat='NETCDF4', squeeze=True):
+  def __init__(self, name=None, title=None, dataset=None, filelist=None, varlist=None,
+	       varatts=None, atts=None, axes=None, multifile=False,
+	       check_override=None, ignore_list=None, folder='', mode='r',
+	       ncformat='NETCDF4', squeeze=True, load=False):
     ''' 
       Create a Dataset from one or more NetCDF files; Variables are created from NetCDF variables. 
       Alternatively, create a netcdf file from an existing Dataset (Variables can be added as well).  
@@ -302,6 +308,7 @@ class DatasetNetCDF(Dataset):
         mode           : file mode: whether read ('r') or write ('w') actions are intended/permitted (string; passed to netCDF4.Dataset)
         ncformat       : format of NetCDF file, i.e. NETCDF3 NETCDF4 or NETCDF_CLASSIC (string; passed to netCDF4.Dataset)
         squeeze        : squeeze singleton dimensions from all variables
+        load           : load data from disk immediately (passed on to VarNC)
                        
       NetCDF Attributes:
         mode           = 'r' # a string indicating whether read ('r') or write ('w') actions are intended/permitted
@@ -415,7 +422,7 @@ class DatasetNetCDF(Dataset):
           if all([axes.has_key(dim) for dim in ds.variables[var].dimensions]):
             varaxes = [axes[dim] for dim in ds.variables[var].dimensions] # collect axes
             # create new variable using the override parameters in varatts
-            variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, mode=mode, squeeze=squeeze, **varatts.get(var,{}))
+            variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, mode=mode, squeeze=squeeze, load=load, **varatts.get(var,{}))
           elif not any([dim in ignore_list for dim in ds.variables[var].dimensions]): # legitimate omission
             print var, ds.variables[var].dimensions
             raise DatasetError, 'Error constructing Variable: Axes/coordinates not found.'
@@ -532,7 +539,9 @@ class DatasetNetCDF(Dataset):
       if isinstance(var,VarNC):
         idx = [slices.get(ax.name,slice(None)) for ax in var.axes]
         var.load(data=idx) # load slice, along with relevant dimensions
-    # no return value...        
+    # no return value...     
+    # return itself- this allows for some convenient syntax
+    return self
     
   def sync(self):
     ''' Synchronize variables and axes/coordinates with their associated NetCDF variables. '''
@@ -557,6 +566,8 @@ class DatasetNetCDF(Dataset):
     if 'w' in self.mode: self.sync() # only if we have write permission, of course
     # unload all variables
     super(DatasetNetCDF,self).unload()  
+    # return itself- this allows for some convenient syntax
+    return self
     
   def copy (self, asNC=False, filename=None, varsdeep=False, **newargs):
     ''' Copy a DatasetNetCDF, either into a normal Dataset or into a DatasetNetCDF (requires a filename). '''

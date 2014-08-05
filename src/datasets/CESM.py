@@ -204,13 +204,25 @@ class ICE(FileType):
 class CVDP(FileType):
   ''' Variables and attributes of the CVDP netcdf files. '''
   def __init__(self):
-    self.atts = dict(pdo_pattern_mon = dict(name='pdo_pattern', units=''), # PDO EOF
-                     pdo_timeseries_mon = dict(name='pdo_timeseries', units=''), # PDO time-series
-                     amo_pattern_mon = dict(name='amo_pattern', units='', # AMO EOF
+    self.atts = dict(pdo_pattern_mon = dict(name='PDO_eof', units=''), # PDO EOF
+                     pdo_timeseries_mon = dict(name='PDO', units=''), # PDO time-series
+                     pna_mon = dict(name='PNA_eof', units=''), # PNA EOF
+                     pna_pc_mon = dict(name='PNA', units=''), # PNA time-series
+                     npo_mon = dict(name='NPO_eof', units=''), # PNA EOF
+                     npo_pc_mon = dict(name='NPO', units=''), # PNA time-series
+                     nao_mon = dict(name='NAO_eof', units=''), # PDO EOF
+                     nao_pc_mon = dict(name='NAO', units=''), # PDO time-series
+                     nam_mon = dict(name='NAM_eof', units=''), # NAM EOF
+                     nam_pc_mon = dict(name='NAM', units=''), # NAM time-series
+                     amo_pattern_mon = dict(name='AMO_eof', units='', # AMO EOF
                                             transform=flipLon), # undo shifted longitude (done by NCL)
-                     amo_timeseries_mon = dict(name='amo_timeseries', units=''), # AMO time-series 
+                     amo_timeseries_mon = dict(name='AMO', units=''), # AMO time-series 
+                     nino34 = dict(name='NINO34', units=''), # ENSO Nino34 index
+                     npi = dict(name='NPI', units=''), # some North Pacific Index ???
                      )                    
     self.vars = self.atts.keys()
+    self.indices = [var['name'] for var in self.atts.values() if var['name'].upper() == var['name']]
+    self.eofs = [var['name'] for var in self.atts.values() if var['name'][-4:] == '_eof']
     self.cvdpfile = '{:s}.cvdp_data.{:s}.nc' # filename needs to be extended with experiment name and period
 
 # AMWG diagnostic variables
@@ -249,7 +261,7 @@ ignore_list_3D = ('lev', 'levgrnd',) # ignore all 3D variables (and vertical axe
 
 # CVDP diagnostics (monthly time-series, EOF pattern and correlations) 
 def loadCVDP_Obs(name=None, grid=None, period=None, varlist=None, varatts=None, 
-                 translateVars=None, lautoregrid=None, ignore_list=None):
+                 translateVars=None, lautoregrid=None, ignore_list=None, lindices=False, leofs=False):
   ''' Get a properly formatted monthly observational dataset as NetCDFDataset. '''
   if grid is not None: raise NotImplementedError
   # check datasets
@@ -263,16 +275,26 @@ def loadCVDP_Obs(name=None, grid=None, period=None, varlist=None, varatts=None,
   elif name in ('gpcp','precip','prect','ppt'):
     name = 'GPCP'; period = (1979,2014)
   else: raise NotImplementedError, "The dataset '{:s}' is not available.".format(name)
+  # load smaller selection
+  if varlist is None and ( lindices or leofs ):
+    varlist = []
+    if lindices: varlist += fileclasses['cvdp'].indices
+    if leofs: varlist += fileclasses['cvdp'].eofs
   return loadCESM_All(experiment=None, name=name, grid=grid, period=period, filetypes=('cvdp',), 
                   varlist=varlist, varatts=varatts, translateVars=translateVars, lautoregrid=lautoregrid, 
                   load3D=False, ignore_list=ignore_list, mode='CVDP', cvdp_mode='observations', lcheckExp=False)
 
 # CVDP diagnostics (monthly time-series, EOF pattern and correlations) 
 def loadCVDP(experiment=None, name=None, grid=None, period=None, varlist=None, varatts=None, 
-             cvdp_mode='ensemble', translateVars=None, lautoregrid=None, ignore_list=None, lcheckExp=True):
+             cvdp_mode='ensemble', translateVars=None, lautoregrid=None, ignore_list=None, lcheckExp=True, lindices=False, leofs=False):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
   if grid is not None: raise NotImplementedError
   if period is None: period = 15
+  # load smaller selection
+  if varlist is None and ( lindices or leofs ):
+    varlist = []
+    if lindices: varlist += fileclasses['cvdp'].indices
+    if leofs: varlist += fileclasses['cvdp'].eofs
   return loadCESM_All(experiment=experiment, name=name, grid=grid, period=period, filetypes=('cvdp',), 
                   varlist=varlist, varatts=varatts, translateVars=translateVars, lautoregrid=lautoregrid, 
                   load3D=True, ignore_list=ignore_list, mode='CVDP', cvdp_mode=cvdp_mode, lcheckExp=lcheckExp)
@@ -431,9 +453,9 @@ loadClimatology = loadCESM # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # set mode/parameters
-  mode = 'test_climatology'
+  #mode = 'test_climatology'
 #     mode = 'test_timeseries'
-    #mode = 'test_cvdp'
+  mode = 'test_cvdp'
 #     mode = 'pickle_grid'
 #     mode = 'shift_lon'
 #     experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
@@ -513,8 +535,8 @@ if __name__ == '__main__':
       
       print('')
       period = periods[0] # just use first element, no need to loop
-#       dataset = loadCVDP(experiment=experiment, period=period, cvdp_mode='ensemble')
-      dataset = loadCVDP_Obs(name='GPCP')
+      dataset = loadCVDP(experiment=experiment, period=period, cvdp_mode='ensemble', lindices=True)
+      #dataset = loadCVDP_Obs(name='GPCP')
       print(dataset)
 #       print(dataset.geotransform)
       time = dataset.time(time=(12,24))
