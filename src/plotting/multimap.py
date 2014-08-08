@@ -52,7 +52,7 @@ if __name__ == '__main__':
   ltitle = True # plot/figure title
   figtitles = None
   lbackground = True
-  lcontour = False # contour or pcolor plot
+  lcontour = True # contour or pcolor plot
   lframe = True # draw domain boundary
   loutline = True # draw boundaries around valid (non-masked) data
   framewidths = 1
@@ -140,8 +140,9 @@ if __name__ == '__main__':
 # Fig. 5
   #explist = ['max-ens']; period = H15
 #   explist = ['max', 'max-A', 'Unity', 'max-B', 'max-C', 'NARR']; period = H15
-#   exptitles = ['WRF-0', 'WRF-1','Merged Observations', 'WRF-2', 'WRF-3', 'NARR (Reanalysis)']
-#   case = 'val-ens'; lbasins = True; lsamesize = True; grid = 'arb2_d02'
+#   exptitles = ['WRF-1', 'WRF-2','Merged Observations', 'WRF-3', 'WRF-4', 'NARR (Reanalysis)']
+#   case = 'val-ens'; lsamesize = False; grid = 'arb2_d02'
+#   variables = ['precip']; seasons = ['summer'] 
 
 # Fig. 6/7  
 #   explist = ['Ens']; period = H15; grid = ['cesm1x1']
@@ -159,10 +160,10 @@ if __name__ == '__main__':
 #   explist = ['max-ens']*2; period = H15; seasons = [['annual', 'summer']]
 #   variables = ['p-et']; exptitles = [r'P - ET (Annual)', r'P - ET (Summer)']  
 # Fig. 8  (bottom row)
-  case = 'hydro'; lsamesize = False; cbo = 'horizontal'; ltitle = False
-  explist = ['max-ens-2050']*2; period = A15; seasons = [['annual', 'summer']] 
-  variables = ['p-et']; exptitles = [r'$\Delta$(P - ET) (Annual)', r'$\Delta$(P - ET) (Summer)']
-  ldiff = True; reflist = ['max-ens']; refprd = H15
+#   case = 'hydro'; lsamesize = False; cbo = 'horizontal'; ltitle = False
+#   explist = ['max-ens-2050']*2; period = A15; seasons = [['annual', 'summer']] 
+#   variables = ['p-et']; exptitles = [r'$\Delta$(P - ET) (Annual)', r'$\Delta$(P - ET) (Summer)']
+#   ldiff = True; reflist = ['max-ens']; refprd = H15
   
 
 #   maptype = 'ortho-NA'; lstations = False; lbasins = False; lframe = True; loutline = False
@@ -270,7 +271,7 @@ if __name__ == '__main__':
       
       # get smart defaults for variables and seasons
       varlist_settings = variable_settings[fn] or varlist[0] # default: first variable
-      if season_settings: sealist_settings = season_settings[fn]
+      if season_settings[fn]: sealist_settings = season_settings[fn]
       elif all([sea==sealist[0] for sea in sealist]): sealist_settings = sealist[0]
       else: sealist_settings = ''      
       # get variable properties and additional settings
@@ -424,7 +425,7 @@ if __name__ == '__main__':
         if clim: cn.set_clim(vmin=clim[0],vmax=clim[1])
         else: cn.set_clim(vmin=min(clevs),vmax=max(clevs))
       cbar = f.colorbar(cax=cax,mappable=cd[0],orientation=cbo,extend='both') # ,size='3%',pad='2%'       
-      if cbl is None: cbl = np.linspace(min(clevs),max(clevs),9 if lsamesize else 7)
+      if cbl is None: cbl = np.linspace(min(clevs),max(clevs),9 if lsamesize else 9)
       cbar.set_ticks(cbl); cbar.set_ticklabels([clbl%(lev) for lev in cbl])
     
       ## Annotation

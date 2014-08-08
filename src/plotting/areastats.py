@@ -9,7 +9,7 @@ A simple script to plot area-averaged monthly climatologies.
 # external imports
 import numpy as np
 import matplotlib as mpl
-mpl.use('Agg') # enforce QT4
+# mpl.use('Agg') # enforce QT4
 import matplotlib.pylab as pyl
 # prevent figures from closing: don't run in interactive mode, or plt.show() will not block
 pyl.ioff()
@@ -96,16 +96,10 @@ def getDatasets(expset, titles=None):
     titles = ['CESM-1', 'WRF-1 (10 km)', 'WRF-1 (1 deg.)', 'WRF Ensemble']  
   elif expset == 'deltas':
     explist = [('ctrl-2050','ctrl-1'),('max-2050','max'),('cam-2050','cam'),('max-ens-2050','max-ens')]
-  elif expset == 'mix': 
-    explist = ['max','max-2050','gulf','seaice-2050']
   elif expset == 'noahmp+': 
     explist = [('new','noah','max')]
     titles = 'Noah-MP vs. Noah'
 #     linestyles = ('-','--','-.')
-  elif expset == 'noahmp': 
-    explist = [('new','noah')]
-    titles = 'Noah-MP vs. Noah'
-#     linestyles = ('-','--')
   elif expset == 'ctrl-12':
     explist = [('ctrl-1-arb1', 'ctrl-2-arb1')]
   elif expset == 'newmax': 
@@ -118,25 +112,8 @@ def getDatasets(expset, titles=None):
     explist = ['max', 'max-nosub', 'max-hilev', 'max-kf']
   elif expset == 'lsm': 
     explist = ['max','max-diff','max-nmp','max-nmp-old']  
-  elif expset == 'clm': 
-    explist = ['max','new-grell-old','max-clm','max-nmp-old']
-  elif expset == 'newnmp': 
-    explist = ['max','noah','max-nmp-old','new']
-    explist = [(exp,'max-ens') for exp in explist]    
-  elif expset == 'dom': 
-    explist = ['max','gulf','new','nogulf']  
-  elif expset == 'wrf-proj': 
-    explist = ['max-ens','max-ens-2050','cfsr-max','seaice-2050']  
-  elif expset == 'mean-ens': 
-    explist = ['max-ens','CESM','new','cfsr-max']
   elif expset == 'mean-ens-2050': 
     explist = ['max-ens-2050','CESM-2050','seaice-2050','Seaice-2050']
-  elif expset == 'ens-proj': 
-    explist = ['max-ens','CESM','max-ens-2050','CESM-2050']
-  elif expset == 'hires': 
-    explist = ['columbia','cfsr-max']
-  elif expset == 'obs': 
-    explist = ['max','ctrl','new','new-noah']  
   elif expset == 'max-var':
     explist = ['max','max-A','max-nofdda','max-fdda']
   elif expset == 'max-all':
@@ -145,7 +122,7 @@ def getDatasets(expset, titles=None):
     explist = ['seaice-2050','max-A-2050','max-B-2050','max-C-2050']
   elif expset == 'max-all-diff':
     explist = [('max-2050','max'),('max-A-2050','max-A'),('max-B-2050','max-B'),('max-C-2050','max-C')]
-    titles = ['Max-1 (2050)','Max-A (2050)','Max-B (2050)','Max-C (2050)']
+    titles = ['WRF-1 (Mid-21st-Century)','WRF-2 (Mid-21st-Century)','WRF-3 (Mid-21st-Century)','WRF-4 (Mid-21st-Century)']
   elif expset == 'max-all-var':
     explist = [('max-ens','max-ens')]
     linestyles = ('-','--')  
@@ -192,22 +169,24 @@ if __name__ == '__main__':
   
   ## settings
   # settings
-  lprint = True; lpub = False
+  lprint = True; lpub = True; lsamesize = False
   paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
   #paper_folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
-  expset = 'cesm-all'
+#   expset = 'max-ens-diff'
+  expset = 'max-all-diff'
   plottypes = []
 #   plottypes += ['temp']
-  #plottypes += ['precip']
-  #plottypes += ['precip_types']
-  #plottypes += ['evap']
-  plottypes += ['flux']
-#   plottypes += ['snwmlt']  
+#   plottypes += ['precip']
 #   plottypes += ['sfflx']
+  plottypes += ['flux']
+#   plottypes += ['precip_types']
+  #plottypes += ['evap']
+#   plottypes += ['snwmlt']  
 #   plottypes += ['flxrof']
 #   plottypes += ['runoff']
 #   plottypes += ['sfroff']
   lPRISM = False
+  lPCIC = False
   lUnity = True
   lgage = True
   titles = None
@@ -265,6 +244,7 @@ if __name__ == '__main__':
       if lCRU: cru = loadCRU(period=obsprd, grid=grid, varlist=loadlist, varatts=varatts)
       if lGPCC: gpcc = loadGPCC(period=None, grid=grid, varlist=loadlist, varatts=varatts)
       if lPRISM: prism = loadPRISM(period=None, grid=grid, varlist=loadlist, varatts=varatts)
+      if lPCIC: pcic = loadPCIC(period=None, grid=grid, varlist=loadlist, varatts=varatts)
       if lUnity: unity = loadUnity(period=obsprd, grid=grid, varlist=loadlist, varatts=varatts)
       if lCFSR: cfsr = loadCFSR(period=period, grid=grid, varlist=loadlist, varatts=varatts)
       if lNARR: narr = loadNARR(period=period, grid=grid, varlist=loadlist, varatts=varatts)  
@@ -325,16 +305,19 @@ if __name__ == '__main__':
         S = asf if lsum else 1. # apply scale factor, depending on plot type  
        
         ## setting up figure
-        if lpub: linewidth = 1.5
-        elif nlen == 1: linewidth = 1.5
-        elif nlen == 2: linewidth = 1.
+        if lsamesize: linewidth = 1.5
+        if nlen == 1: linewidth = 1.75
+        elif nlen == 2: linewidth = 1.25
         elif nlen == 4: linewidth = 0.75 
         else: linewidth = 1.
         mpl.rc('lines', linewidth=linewidth)
-        if linewidth == .75: mpl.rc('font', size=8)
-        elif linewidth == 1.: mpl.rc('font', size=10)
-        elif linewidth == 1.5: mpl.rc('font', size=12)
-        else: mpl.rc('font', size=10)
+        if linewidth == .75: fontsize=8
+        elif linewidth == 1.: fontsize=10
+        elif linewidth == 1.25: fontsize=11
+        elif linewidth == 1.5: fontsize=12
+        elif linewidth == 1.75: fontsize=15
+        else: fontsize=10
+        mpl.rc('font', size=fontsize)
         # figure parameters for saving
         sf, figformat, margins, subplot, figsize = getFigureSettings(nlen, cbar=False)
         # make figure and axes
@@ -485,14 +468,15 @@ if __name__ == '__main__':
           
         # add common legend
         if ljoined:
-          ax = fig.add_axes([0, 0, 1,0.1])
+          leghgt = fontsize/200.+0.05
+          ax = fig.add_axes([0, 0, 1,leghgt])
           ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
-          margins['bottom'] = margins['bottom'] + 0.1; fig.subplots_adjust(**margins)
+          margins['bottom'] = margins['bottom'] + leghgt; fig.subplots_adjust(**margins)
           legargs = dict(frameon=True, labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
 #           if nlen == 1: legargs = dict(frameon=True, labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
 #           else: legargs = dict(frameon=True, labelspacing=0.15, handlelength=2, handletextpad=0.5, fancybox=True)
           plt = wrfplt + obsplt; leg = wrfleg + obsleg
-          ncols = 4 if len(plt) == 4 or len(plt) > 6 else 3
+          ncols = 3 if fontsize > 11 else 4
           legend = ax.legend(plt, leg, loc=10, ncol=ncols, borderaxespad=0., **legargs)  
           
         # average discharge below Fort McMurray: 620 m^3/s

@@ -35,13 +35,13 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
     if var in ('T2_prj','Ts_prj','Tmin_prj','Tmax_prj','Tmean_prj'):
       clevs = np.linspace(0,5,41); clbl = '%3.1f'; cmap = mpl.cm.Oranges # K
     elif var in ('evap_prj','pet_prj','precip_prj','precipc_prj','precipnc_prj'):
-      clevs = np.linspace(-1.,1.,41); clbl = '%3.1f'; cmap = mpl.cm.PuOr # mm/day    
+      clevs = np.linspace(-1.,1.,41); clbl = '%3.2f'; cmap = mpl.cm.PuOr # mm/day    
     elif var in ('T2','Ts','Tmin','Tmax','Tmean'):
       clevs = np.linspace(-4,4,41); clbl = '%3.1f' # K
     elif var in ('evap','pet','precip','precipc','precipnc'):
       clevs = np.linspace(-4,4,41); clbl = '%3.1f' # mm/day
     elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff','p-et','waterflx'): # moisture fluxes (kg /(m^2 s))
-      clevs = np.linspace(-1,1,41); clbl = '%2.1f' # mm/day  
+      clevs = np.linspace(-1,1,41); clbl = '%3.2f' # mm/day  
     elif var == 'zs':
       clevs = np.linspace(-0.5,0.5,21); clbl = '%3.1f' # mm/day
     else: 
@@ -201,7 +201,7 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
         margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05) 
         caxpos = [0.91, 0.05, 0.03, 0.9]
       if cbo == 'horizontal': 
-        margins = dict(bottom=0.125, left=0.1, right=0.95, top=0.91, hspace=0.0, wspace=0.0)
+        margins = dict(bottom=0.125, left=0.1, right=0.95, top=0.925, hspace=0.0, wspace=0.0)
         caxpos = [0.05, 0.05, 0.9, 0.03]
     else:
       margins = dict(bottom=0.085, left=0.13, right=0.975, top=0.94, hspace=0.0, wspace=0.0)

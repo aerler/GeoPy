@@ -227,7 +227,8 @@ def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None
       raise ValueError, "A period is required to load observational climatologies."
   elif isinstance(period,basestring):
     period = tuple([int(prd) for prd in period.split('-')]) 
-  elif not isinstance(period,tuple) and len(period) == 2: raise TypeError
+  elif not isinstance(period,(int,np.integer)) and ( not isinstance(period,tuple) and len(period) == 2 ): 
+    raise TypeError
   # filelist
   if filelist is None: 
     filename = getFileName(name=name, resolution=resolution, period=period, grid=grid, filepattern=filepattern)
