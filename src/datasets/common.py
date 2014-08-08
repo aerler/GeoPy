@@ -221,6 +221,13 @@ def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None
   # varlist (varlist = None means all variables)
   if varatts is None: varatts = default_varatts.copy()
   if varlist is not None: varlist = translateVarNames(varlist, varatts)
+  # transform period
+  if period is None or period == '':
+    if name not in ('PCIC','PRISM','GPCC'): 
+      raise ValueError, "A period is required to load observational climatologies."
+  elif isinstance(period,basestring):
+    period = tuple([int(prd) for prd in period.split('-')]) 
+  elif not isinstance(period,tuple) and len(period) == 2: raise TypeError
   # filelist
   if filelist is None: 
     filename = getFileName(name=name, resolution=resolution, period=period, grid=grid, filepattern=filepattern)
@@ -232,9 +239,9 @@ def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None
       if os.path.exists(nativepath):
         if lautoregrid: 
           from processing.regrid import performRegridding # causes circular reference if imported earlier
-          griddef = loadPickledGridDef(grid=grid, res=resolution, folder=grid_folder)
+          griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder)
           dataargs = dict(period=period, resolution=resolution)
-          performRegridding(name, griddef, dataargs) # default kwargs
+          performRegridding(name, 'climatology',griddef, dataargs) # default kwargs
         else: raise IOError, "The dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.".format(filename,grid) 
       else: raise IOError, "The dataset file '{:s}' does not exits!".format(filename)
   # load dataset

@@ -118,17 +118,22 @@ def getFolderName(name=None, experiment=None, folder=None, mode='avg', cvdp_mode
 
 
 # function to undo NCL's lonFlip
-def flipLon(data, flip=144, ax=1, lrev=False, var=None, slc=None):
+def flipLon(data, flip=144, lrev=False, var=None, slc=None):
   ''' shift longitude on the fly, so as to undo NCL's lonFlip; only works on entire array '''
   if var is not None: # ignore parameters
     if not isinstance(var,VarNC): raise TypeError
     ax = var.axisIndex('lon')
     flip = len(var.lon)/2
+  if data.ndim < var.ndim: # some dimensions have been squeezed
+    sd = 0 # squeezed dimensions before ax
+    for sl in slc:
+      if isinstance(sl,(int,np.integer)): sd += 1
+  ax -= sd # remove squeezed dimensions
   if not ( data.ndim > ax and data.shape[ax] == flip*2 ): 
     raise NotImplementedError, "Can only shift longitudes of the entire array!"
   # N.B.: this operation only makes sense with a full array!
   if lrev: flip *= -1 # reverse flip  
-  data = np.roll(data, shift=flip, axis=1) # shift values half way along longitude
+  data = np.roll(data, shift=flip, axis=ax) # shift values half way along longitude
   return data
 
 
@@ -147,11 +152,14 @@ class ATM(FileType):
   ''' Variables and attributes of the surface files. '''
   def __init__(self):
     self.atts = dict(TREFHT   = dict(name='T2', units='K'), # 2m Temperature
+#                                      transform=flipLon), # shift longitude
                      QREFHT   = dict(name='q2', units='kg/kg'), # 2m water vapor mass mixing ratio                     
                      TS       = dict(name='Ts', units='K'), # Skin Temperature (SST)
+#                                      transform=flipLon), # shift longitude                     
                      TSMN     = dict(name='Tmin', units='K'),   # Minimum Temperature (at surface)
                      TSMX     = dict(name='Tmax', units='K'),   # Maximum Temperature (at surface)                     
-                     PRECT    = dict(name='precip', units='kg/m^2/s', scalefactor=1000.), # total precipitation rate (kg/m^2/s)
+                     PRECT    = dict(name='precip', units='kg/m^2/s', scalefactor=1000.), # total precipitation rate (kg/m^2/s) 
+#                                      transform=flipLon), # shift longitude
                      PRECC    = dict(name='preccu', units='kg/m^2/s', scalefactor=1000.), # convective precipitation rate (kg/m^2/s)
                      PRECL    = dict(name='precnc', units='kg/m^2/s', scalefactor=1000.), # grid-scale precipitation rate (kg/m^2/s)
                      #NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
@@ -453,17 +461,17 @@ loadClimatology = loadCESM # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # set mode/parameters
-  #mode = 'test_climatology'
+#   mode = 'test_climatology'
 #     mode = 'test_timeseries'
-  mode = 'test_cvdp'
-#     mode = 'pickle_grid'
+#   mode = 'test_cvdp'
+  mode = 'pickle_grid'
 #     mode = 'shift_lon'
 #     experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     experiments += ['Ctrl-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
-  experiments = ('Ctrl-C-2050',)
+  experiments = ('Ens',)
   periods = (15,)    
-  filetypes = ('atm','lnd') # ['atm','lnd','ice']
-  grids = ('arb2_d02',)*len(experiments) # grb1_d01
+  filetypes = ('atm',) # ['atm','lnd','ice']
+  grids = ('cesm1x1',)*len(experiments) # grb1_d01
 
   # pickle grid definition
   if mode == 'pickle_grid':
@@ -504,15 +512,15 @@ if __name__ == '__main__':
       
       print('')
       if mode == 'test_timeseries':
-        dataset = loadCESM_TS(experiment=experiment, varlist=None, grid=None, filetypes=filetypes)
+        dataset = loadCESM_TS(experiment=experiment, varlist=None, grid=grid, filetypes=filetypes)
       else:
         period = periods[0] # just use first element, no need to loop
-        dataset = loadCESM(experiment=experiment, varlist=None, grid=None, filetypes=filetypes, period=period)
+        dataset = loadCESM(experiment=experiment, varlist=['precip'], grid=grid, filetypes=filetypes, period=period)
       print(dataset)
       print('')
-#       print(dataset.geotransform)
-      print dataset.time
-      print dataset.time.coord
+      print(dataset.geotransform)
+      print dataset.x
+      print dataset.x.coord
       # show some variables
 #       if 'zs' in dataset: var = dataset.zs
 #       elif 'hgt' in dataset: var = dataset.hgt

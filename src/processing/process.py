@@ -187,9 +187,7 @@ class CentralProcessingUnit(object):
         projection=griddef.projection; geotransform=griddef.geotransform
         xlon=griddef.xlon; ylat=griddef.ylat                     
       # apply GDAL settings target dataset 
-      for ax in (xlon,ylat):
-        #if self.target.hasVariable(ax.name): self.target.removeVariable(ax)
-        self.target.addAxis(ax, overwrite=True) # i.e. replace is already present
+      for ax in (xlon,ylat): self.target.addAxis(ax, overwrite=True) # i.e. replace if already present
       self.target = addGDALtoDataset(self.target, projection=projection, geotransform=geotransform)
     # use these map axes
     xlon = self.target.xlon; ylat = self.target.ylat
@@ -202,19 +200,23 @@ class CentralProcessingUnit(object):
     srcres = srcgrd.scale; tgtres = griddef.scale
     # determine if shift is necessary to insure correct wrapping
     if not srcgrd.isProjected and not griddef.isProjected:
-      if srcgrd.wrap360:    
-        lwrap360 = True
-        assert srcgrd.geotransform[0] + srcgrd.geotransform[1]*(len(srcgrd.xlon)-1) > 180        
-        assert np.round(srcgrd.geotransform[1]*len(srcgrd.xlon), decimals=2) == 360 # require 360 deg. to some accuracy... 
-        assert any( srcgrd.xlon.getArray() > 180 ) # need to wrap around
-        assert all( srcgrd.xlon.getArray() >= 0 )
-        assert all( srcgrd.xlon.getArray() <= 360 )
-      else:
-        lwrap360 = False
-        assert srcgrd.geotransform[0] + srcgrd.geotransform[1]*(len(srcgrd.xlon)-1) < 180
-        assert all( srcgrd.xlon.getArray() >= -180 )
-        assert all( srcgrd.xlon.getArray() <= 180 )  
-    else: lwrap360 = False # no need to shift, if a projected grid is involved!
+      lwrapSrc = srcgrd.wrap360
+      lwrapTgt = griddef.wrap360
+      # check grids
+      for grd in (srcgrd,griddef):
+        if grd.wrap360:            
+          assert grd.geotransform[0] + grd.geotransform[1]*(len(grd.xlon)-1) > 180        
+          assert np.round(grd.geotransform[1]*len(grd.xlon), decimals=2) == 360 # require 360 deg. to some accuracy... 
+          assert any( grd.xlon.getArray() > 180 ) # need to wrap around
+          assert all( grd.xlon.getArray() >= 0 )
+          assert all( grd.xlon.getArray() <= 360 )
+        else:
+          assert grd.geotransform[0] + grd.geotransform[1]*(len(grd.xlon)-1) < 180
+          assert all( grd.xlon.getArray() >= -180 )
+          assert all( grd.xlon.getArray() <= 180 )  
+    else: 
+      lwrapSrc = False # no need to shift, if a projected grid is involved!
+      lwrapTgt = False # no need to shift, if a projected grid is involved!
     # determine GDAL interpolation
     if int_interp is None: int_interp = gdalInterp('nearest')
     else: int_interp = gdalInterp(int_interp)
@@ -223,7 +225,7 @@ class CentralProcessingUnit(object):
       else: float_interp = gdalInterp('cubicspline') # up-sampling
     else: float_interp = gdalInterp(float_interp)      
     # prepare function call    
-    function = functools.partial(self.processRegrid, ylat=ylat, xlon=xlon, lwrap360=lwrap360, # already set parameters
+    function = functools.partial(self.processRegrid, ylat=ylat, xlon=xlon, lwrapSrc=lwrapSrc, lwrapTgt=lwrapTgt, # already set parameters
                                  lmask=lmask, int_interp=int_interp, float_interp=float_interp)
     # start process
     if self.feedback: print('\n   +++   processing regridding   +++   ') 
@@ -232,7 +234,7 @@ class CentralProcessingUnit(object):
     if self.tmp: self.tmpput = self.target
     if ltmptoo: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
   # the previous method sets up the process, the next method performs the computation
-  def processRegrid(self, var, ylat=None, xlon=None, lwrap360=False, lmask=True, int_interp=None, float_interp=None):
+  def processRegrid(self, var, ylat=None, xlon=None, lwrapSrc=False, lwrapTgt=False, lmask=True, int_interp=None, float_interp=None):
     ''' Compute a climatology from a variable time-series. '''
     # process gdal variables
     if var.gdal:
@@ -246,8 +248,8 @@ class CentralProcessingUnit(object):
       # if necessary, shift array back, to ensure proper wrapping of coordinates
       # prepare regridding
       # get GDAL dataset instances
-      srcdata = var.getGDAL(load=True, wrap360=lwrap360)
-      tgtdata = newvar.getGDAL(load=False, allocate=True, fillValue=var.fillValue)
+      srcdata = var.getGDAL(load=True, wrap360=lwrapSrc)
+      tgtdata = newvar.getGDAL(load=False, wrap360=lwrapTgt, allocate=True, fillValue=var.fillValue)
       # determine GDAL interpolation
       if 'gdal_interp' in var.__dict__: gdal_interp = var.gdal_interp
       elif 'gdal_interp' in var.atts: gdal_interp = var.atts['gdal_interp'] 
@@ -265,7 +267,7 @@ class CentralProcessingUnit(object):
       if err != 0: raise GDALError, 'ERROR CODE %i'%err
       #tgtdata.FlushCash()  
       # load data into new variable
-      newvar.loadGDAL(tgtdata, mask=lmask, fillValue=var.fillValue)      
+      newvar.loadGDAL(tgtdata, mask=lmask, wrap360=lwrapTgt, fillValue=var.fillValue)      
       del tgtdata # clean up (just to make sure)
     else:
       var.load() # need to load variables into memory, because we are not doing anything else...

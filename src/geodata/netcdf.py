@@ -398,7 +398,7 @@ class DatasetNetCDF(Dataset):
           else: # initialize dimensions without associated variable as regular Axis (not AxisNC)
             if dim in axes: # if already present, make sure axes are essentially the same
               if len(axes[dim]) != len(ds.dimensions[dim]): 
-                raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible dimensions.' 
+                raise DatasetError, "Error constructing Dataset: NetCDF files have incompatible '{:s}' dimensions: {:d} != {:d}".format(dim,len(axes[dim]),len(ds.dimensions[dim])) 
             else: # if this is a new axis, add it to the list
               params = dict(name=dim,coord=np.arange(len(ds.dimensions[dim]))); params.update(varatts.get(dim,{}))
               axes[dim] = Axis(**params) # also use overrride parameters          
@@ -443,10 +443,10 @@ class DatasetNetCDF(Dataset):
   
   def addAxis(self, ax, asNC=True, copy=False, overwrite=False):
     ''' Method to add an Axis to the Dataset. (If the Axis is already present, check that it is the same.) '''   
-    # cast Axis instance as AxisNC
-    if copy: # make a new instance or add it as is
-      if asNC and 'w' in self.mode: ax = asAxisNC(ax=ax, ncvar=self.datasets[0], mode=self.mode, deepcopy=True)
-      else: ax = ax.copy(deepcopy=True)
+    # cast Axis instance as AxisNC (sort of implies copying)    
+    if asNC and 'w' in self.mode: 
+      ax = asAxisNC(ax=ax, ncvar=self.datasets[0], mode=self.mode, deepcopy=True)
+    elif copy: ax = ax.copy(deepcopy=True) # make a new instance or add it as is
     # hand-off to parent method and return status
     return super(DatasetNetCDF,self).addAxis(ax=ax, copy=False, overwrite=overwrite) # already copied above
   

@@ -286,26 +286,26 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    ldebug = False
-    NP = 4 or NP # to avoid memory issues...
+    ldebug = True
+    NP = 1 or NP # to avoid memory issues...
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
-#     varlist = ['precip',]
+    varlist = ['precip',]
     periods = []
 #     periods += [1]
 #     periods += [3]
-    periods += [5]
+#     periods += [5]
 #     periods += [10]
-#     periods += [15]
+    periods += [15]
 #     periods += [30]
 #     periods += [(1984,1994)]
 #     periods += [(1989,1994)]
 #     periods += [(1949,2009)]
 #     periods += [(1997,1998)]
     # Observations/Reanalysis
-    datasets = ['GPCC','NARR']
+    datasets = ['GPCC']
     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
     lLTM = True # also regrid the long-term mean climatologies 
 #     datasets += ['PRISM','GPCC']; periods = None
@@ -314,7 +314,7 @@ if __name__ == '__main__':
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     load3D = False
-    CESM_experiments = ['CESM'] # use None to process all CESM experiments
+    CESM_experiments = [] # use None to process all CESM experiments
 #     CESM_experiments += ['CESM','CESM-2050']
 #     CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
 #     CESM_experiments += ['Ctrl-2050', 'Ens-A-2050', 'Ens-B-2050', 'Ens-C-2050']
@@ -352,9 +352,9 @@ if __name__ == '__main__':
 #     grids['arb2'] = ('d01','d02') # WRF standard ARB both domains
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids
-#     grids['cesm1x1'] = (None,) # CESM grid
+    grids['cesm1x1'] = (None,) # CESM grid
 #     grids['NARR'] = (None,) # NARR grid
-    grids['CRU'] = (None,) # CRU grid
+#     grids['CRU'] = (None,) # CRU grid
   else:
     NP = NP or 4 # time-series might take more memory!
     modes = ('climatology','time-series')

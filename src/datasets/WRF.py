@@ -445,9 +445,12 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   elif isinstance(period,(int,np.integer)) and isinstance(experiment,Exp):
     period = (experiment.beginyear, experiment.beginyear+period)
   else: raise DateError   
-  if period is None or period == '': periodstr = ''
-  elif isinstance(period,basestring): periodstr = '_{0:s}'.format(period)
-  else: periodstr = '_{0:4d}-{1:4d}'.format(*period)  
+  if period is None or period == '': 
+    raise ValueError, "A period is required to load WRF climatologies."
+  elif isinstance(period,basestring):
+    period = tuple([int(prd) for prd in period.split('-')]) 
+  elif not isinstance(period,tuple) and len(period) == 2: raise TypeError
+  periodstr = '_{0:4d}-{1:4d}'.format(*period)  
   # generate filelist and attributes based on filetypes and domain
   if filetypes is None: filetypes = fileclasses.keys()
   elif isinstance(filetypes,(list,tuple,set)):
@@ -513,7 +516,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
             from processing.regrid import performRegridding # causes circular reference if imported earlier
             #griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder) # already done above
             dataargs = dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)
-            if performRegridding('WRF', griddef, dataargs): # default kwargs
+            if performRegridding('WRF', 'climatology', griddef, dataargs): # default kwargs
               raise IOError, "Automatic regridding failed!"
           else: raise IOError, "The  '{:s}' (WRF) dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.\n('{:s}')".format(name,filename,grid,filepath) 
         else: raise IOError, "The file '{:s}' in WRF dataset '{:s}' does not exits!\n('{:s}')".format(filename,name,filepath)   
@@ -568,12 +571,12 @@ if __name__ == '__main__':
     
   
 #   mode = 'test_climatology'
-  mode = 'test_timeseries'
-#   mode = 'pickle_grid'  
+#   mode = 'test_timeseries'
+  mode = 'pickle_grid'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
-#   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
-#   experiments = ['rrtmg', 'ctrl', 'new']
-  grids = ['col1','col2','coast1']; experiments = ['columbia','max-3km','coast']; domains = [1,2,3]   
+  grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
+  experiments = ['rrtmg', 'ctrl', 'new']
+#   grids = ['col1','col2','coast1']; experiments = ['columbia','max-3km','coast']; domains = [1,2,3]   
 #   grids = ['grb1']; experiments = ['']; domains = [1,2]
     
   # pickle grid definition

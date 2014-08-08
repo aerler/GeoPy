@@ -504,16 +504,6 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           if not self.data: raise DataError, 'Need data in Variable instance in order to load data into GDAL dataset!'
           data = self.getArray(unmask=True)  # get unmasked data
           data = data.reshape(self.bands, self.mapSize[0], self.mapSize[1])  # reshape to fit bands
-          # to insure correct wrapping, geographic coordinate systems with longitudes reanging 
-          # from 0 to 360 can optionally be shifted back by 180, to conform to GDAL conventions 
-          # (the shift will only affect the GDAL Dataset, not the actual Variable) 
-          if wrap360:
-            geotransform = list(self.geotransform)
-            shift = int( 180. / geotransform[1] )
-            assert len(self.xlon) == data.shape[2], "Make sure the X-Axis is the last one!"
-            data = np.roll(data, shift, axis=2) # shift data along the x-axis
-            geotransform[0] = geotransform[0] - shift*geotransform[1] # record shift in geotransform 
-          else: geotransform = self.geotransform
           if lperi: 
             tmp = np.zeros((self.bands, self.mapSize[0], self.mapSize[1]+1))
             tmp[:,:,0:-1] = data; tmp[:,:,-1] = data[:,:,0]
@@ -522,7 +512,17 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           if fillValue is None and self.fillValue is not None: fillValue = self.fillValue  # use default 
           if self.fillValue is None: fillValue = ma.default_fill_value(self.dtype)
           data = np.zeros((self.bands,) + self.mapSize, dtype=self.dtype) + fillValue
-          geotransform = self.geotransform
+        # to insure correct wrapping, geographic coordinate systems with longitudes reanging 
+        # from 0 to 360 can optionally be shifted back by 180, to conform to GDAL conventions 
+        # (the shift will only affect the GDAL Dataset, not the actual Variable) 
+        if wrap360:
+          geotransform = list(self.geotransform)
+          shift = int( 180. / geotransform[1] )
+          assert len(self.xlon) == data.shape[2], "Make sure the X-Axis is the last one!"
+          # N.B.: GDAL enforces the following shape: (band, lat, lon)
+          if load: data = np.roll(data, shift, axis=2) # shift data along the x-axis
+          geotransform[0] = geotransform[0] - shift*geotransform[1] # record shift in geotransform 
+        else: geotransform = self.geotransform
         # determine GDAL data type        
         if self.dtype == 'float32': gdt = gdal.GDT_Float32
         elif self.dtype == 'float64': gdt = gdal.GDT_Float64
@@ -555,7 +555,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     # add new method to object
     var.getGDAL = types.MethodType(getGDAL, var)
     
-    def loadGDAL(self, dataset, mask=True, fillValue=None):
+    def loadGDAL(self, dataset, mask=True, wrap360=False, fillValue=None):
       ''' Load data from the bands of a GDAL dataset into the variable. '''
       # check input
       if not isinstance(dataset, gdal.Dataset): raise TypeError
@@ -563,6 +563,15 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         # get data field
         if self.bands == 1: data = dataset.ReadAsArray()[:, :]  # for 2D fields
         else: data = dataset.ReadAsArray()[0:self.bands, :, :]  # ReadAsArray(0,0,xe,ye)
+        # to insure correct wrapping, geographic coordinate systems with longitudes reanging 
+        # from 0 to 360 can optionally be shifted back by 180, to conform to GDAL conventions 
+        # (the shift will only affect the GDAL Dataset, not the actual Variable) 
+        if wrap360:
+          shift = -1 * int( 180. / self.geotransform[1] ) # shift in opposite direction
+          xax = 1 if self.bands == 1 else 2
+          assert len(self.xlon) == data.shape[xax], "Make sure the X-Axis is the last one!"
+          # N.B.: GDAL enforces the following shape: ([band,] lat, lon)
+          data = np.roll(data, shift, axis=xax) # shift data along the x-axis 
         # convert data, if necessary
         if self.dtype is not data.dtype: data = data.astype(self.dtype)          
 #         print data.__class__
@@ -575,8 +584,8 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           # mask array where zero (in accord with ReprojectImage convention)
           if fillValue is None and self.fillValue is not None: fillValue = self.fillValue  # use default 
           if self.fillValue is None: fillValue = ma.default_fill_value(data.dtype)
-          data = ma.masked_values(data, fillValue)
-        # load data)
+          data = ma.masked_values(data, fillValue)              
+        # load data
         self.load(data=data)
       # return verification
       return self.data
@@ -681,7 +690,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
   if lgdal:  
     # infer or check geotransform
     geotransform = getGeotransform(xlon, ylat, geotransform=geotransform)
-    # decide if addign a geolocator
+    # decide if adding a geolocator
     # add grid definition object (for convenience; recreate to match axes)
     griddef = GridDefinition(dataset.name, projection=projection, geotransform=geotransform, lwrap360=lwrap360, 
                              size=(len(xlon),len(ylat)), xlon=xlon, ylat=ylat, geolocator=geolocator)

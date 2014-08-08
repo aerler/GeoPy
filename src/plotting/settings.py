@@ -28,14 +28,17 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
   # color maps and   scale (contour levels)
   if ldiff and lfrac: raise ValueError, "'ldiff' and 'lfrac' can not be set simultaneously!"
   elif ldiff:
-    #cmap = mycmap; cmap.set_over('red'); cmap.set_under('blue')
-    cmap = cm.redblue_light
+#     cmap = mycmap; cmap.set_over('red'); cmap.set_under('blue')
+#     cmap = cm.redblue_light_r
+#     cmap = cm.rscolmap
+#     cmap = mpl.cm.Oranges
+    cmap = mpl.cm.PuOr
     if var in ('T2','Ts','Tmin','Tmax','Tmean'):
-      clevs = np.linspace(-5,5,21); clbl = '%3.1f' # K
+      clevs = np.linspace(0,4,41); clbl = '%3.1f' # K
     elif var in ('evap','pet','precip','precipc','precipnc'):
-      clevs = np.linspace(-3,3,21); clbl = '%3.1f' # mm/day
+      clevs = np.linspace(-1.,1.,41); clbl = '%3.1f' # mm/day
     elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff','p-et','waterflx'): # moisture fluxes (kg /(m^2 s))
-      clevs = np.linspace(-2,2,21); clbl = '%3.1f' # mm/day  
+      clevs = np.linspace(-1,1,41); clbl = '%2.1f' # mm/day  
     elif var == 'zs':
       clevs = np.linspace(-0.5,0.5,21); clbl = '%3.1f' # mm/day
     else: 
@@ -49,7 +52,8 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     else: 
       clevs = np.linspace(-50,50,21); clbl = '%3.0f'  
   else:
-    cmap = mpl.cm.gist_ncar; cmap.set_over('white'); cmap.set_under('black')
+    #cmap = mpl.cm.gist_ncar; cmap.set_over('white'); cmap.set_under('black')
+    cmap = cm.coolavhrrmap # cmap.set_over('white'); cmap.set_under('black')
     if var == 'snow': # snow (liquid water equivalent) 
       lmskocn = True; clbl = '%2.0f' # kg/m^2
       clevs = np.linspace(0,200,41)
@@ -88,12 +92,14 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
       elif season == 'summer': clevs += 2    
     elif var == 'p-et' or var == 'waterflx': # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
-      clevs = np.linspace(-2,2,25); cmap = cm.avhrr_r; clbl = '%02.2f' # mpl.cm.PuOr
+      clevs = np.linspace(-2,2,25); cmap = cm.avhrr_r; clbl = '%02.1f' # mpl.cm.PuOr
     elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff'): # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
       clevs = np.linspace(0,5,25); clbl = '%02.1f'; cmap = mpl.cm.YlGnBu
-    elif var == 'precip' or var == 'precipnc': # total precipitation 
-      clevs = np.linspace(0,20,41); clbl = '%02.1f' # mm/day
+    elif var == 'precip' or var == 'precipnc': # total precipitation
+      if season in ('winter','fall'): clevs = np.linspace(0,20,41); clbl = '%2.1f' # mm/day
+      elif season in ('summer','spring'): clevs = np.linspace(0,8,17); clbl = '%2.0f' # mm/day
+      else: clevs = np.linspace(0,16,33); clbl = '%2.0f' # mm/day
     elif var == 'precipc': # convective precipitation 
       clevs = np.linspace(0,5,26); clbl = '%02.1f' # mm/day
     elif var == 'Q2':
@@ -120,7 +126,8 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
       elif season == 'hidef': 
         lmskocn = True; clim = (-0.5,2.5); # good contrast for high elevation
         clevs = np.hstack((np.array((-.5,)), np.linspace(0,2.5,26))); clbl = '%02.1f' # km
-        cmap = mpl.cm.gist_ncar; cmap.set_over('white'); cmap.set_under('blue')
+        #cmap = mpl.cm.gist_ncar; cmap.set_over('white'); cmap.set_under('blue')
+        cmap = mpl.cm.ctopo; cmap.set_over('white'); cmap.set_under('blue')
       else: 
         raise ValueError, 'No map color scheme defined (use \'season\' to select color scheme).'
       cbl = np.linspace(0,clim[-1],6)
@@ -186,7 +193,7 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
       figsize = (9.25,6.5) # width, height (inches)
       if cbar:
         margins = dict(bottom=0.09, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
-        cbo = cbo or 'horizontal'; caxpos = [0.05, 0.025, 0.9, 0.03]
+        cbo = cbo or 'horizontal'; caxpos = [0.05, 0.0275, 0.9, 0.03]
       else:
         margins = dict(bottom=0.025, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
   # pane settings
@@ -196,23 +203,28 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
     if sameSize: figsize = (6.25,6.25)
     else: figsize = (3.75,3.75) # figsize = (7,5.5)
     if cbar:
-      margins = dict(bottom=0.125, left=0.1, right=0.95, top=0.91, hspace=0.0, wspace=0.0)
-      caxpos = [0.05, 0.05, 0.9, 0.03]
-#       caxpos = [0.91, 0.05, 0.03, 0.9]
       cbo = cbo or 'horizontal'
+      if cbo == 'vertical':
+        margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05) 
+        caxpos = [0.91, 0.05, 0.03, 0.9]
+      if cbo == 'horizontal': 
+        margins = dict(bottom=0.125, left=0.1, right=0.95, top=0.91, hspace=0.0, wspace=0.0)
+        caxpos = [0.05, 0.05, 0.9, 0.03]
     else:
       margins = dict(bottom=0.085, left=0.13, right=0.975, top=0.94, hspace=0.0, wspace=0.0)
-    #     margins = dict(bottom=0.12, left=0.075, right=.9725, top=.95, hspace=0.05, wspace=0.05)
-    #    margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
   elif nexp == 2:
     ## 2 panel
     subplot = (1,2)
     if sameSize: figsize = (6.25,6.25)
     else: figsize = (6.25,3.75)    
     if cbar:
-      margins = dict(bottom=0.075, left=0.075, right=.975, top=.925, hspace=0.05, wspace=0.05)
-      caxpos = [0.05, 0.05, 0.9, 0.03]
       cbo = cbo or 'horizontal'
+      if cbo == 'vertical': 
+        margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+        caxpos = [0.91, 0.05, 0.03, 0.9]
+      if cbo == 'horizontal': 
+        margins = dict(bottom=0.075, left=0.075, right=.975, top=.925, hspace=0.05, wspace=0.05)
+        caxpos = [0.05, 0.05, 0.9, 0.03]
     else:
       margins = dict(bottom=0.055, left=0.085, right=.975, top=.95, hspace=0.05, wspace=0.05)
   elif nexp == 4:
@@ -220,9 +232,13 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
     subplot = (2,2)
     figsize = (6.25,6.25)
     if cbar:
-      margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-      caxpos = [0.91, 0.05, 0.03, 0.9]
       cbo = cbo or 'vertical'
+      if cbo == 'vertical': 
+        margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+        caxpos = [0.91, 0.05, 0.03, 0.9]
+      if cbo == 'horizontal':
+        margins = dict(bottom=0.06, left=0.09, right=.985, top=.95, hspace=0.13, wspace=0.02) 
+        caxpos = [0.05, 0.05, 0.9, 0.03]
     else:
       margins = dict(bottom=0.06, left=0.09, right=.985, top=.95, hspace=0.13, wspace=0.02)
   elif nexp == 6:
@@ -230,10 +246,13 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
     subplot = (2,3) # rows, columns
     figsize = (9.25,6.5) # width, height (inches)
     if cbar:
-      margins = dict(bottom=0.09, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
       cbo = cbo or 'horizontal'
-      #    margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-      caxpos = [0.05, 0.025, 0.9, 0.03]
+      if cbo == 'vertical': 
+        margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+        caxpos = [0.91, 0.05, 0.03, 0.9]
+      if cbo == 'horizontal': 
+        margins = dict(bottom=0.09, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
+        caxpos = [0.05, 0.0275, 0.9, 0.03]
     else:
       margins = dict(bottom=0.025, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
 #   # figure out colorbar placement
