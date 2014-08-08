@@ -265,40 +265,53 @@ def checkItemList(itemlist, length, dtype, default=NotImplemented, iterable=Fals
   if iterable:
     # if elements are lists or tuples etc.
     if not isinstance(itemlist,(list,tuple,set)): raise TypeError, str(itemlist)
+    if not isinstance(default,(list,tuple,set)) and not default is None: # here the default has to be a list of items
+      raise TypeError, "Default for iterable items needs to be iterable." 
     if len(itemlist) == 0: 
-      if isinstance(default,(list,tuple,set)): itemlist = [default]*length
-      else: raise TypeError, str(itemlist) # here the default has tp be a list of items
+      itemlist = [default]*length # make default list
+    elif all([not isinstance(item,(list,tuple,set)) for item in itemlist]):
+      # list which is actually an item and needs to be put into a list of its own
+      itemlist = [itemlist]*length
     else:
-      if isinstance(itemlist[0],(list,tuple,set)):     
-        if trim:
-          if len(itemlist) > length: del itemlist[length:]
-          elif len(itemlist) < length: itemlist += [default]*(length-len(itemlist))
-        else:
-          if len(itemlist) != length: raise TypeError, str(itemlist)    
-        if dtype is not None:
-          if not all([isinstance(item,dtype) for item in itemlist if item != default]):
-            raise TypeError, str(itemlist) # only checks the non-default values
-      else:
-        if not all([isinstance(item,dtype) for item in itemlist if item is not None]): 
-          raise TypeError, str(itemlist)
-        itemlist = [itemlist]*length
-  else:
-    if isinstance(itemlist,(list,tuple,set)):     
-      itemlist = list(itemlist)
-      if default is NotImplemented: 
-        if len(itemlist)>0: default = itemlist[0] # use first item
-        else: default = None   
+      # a list with (eventually) iterable elements     
       if trim:
         if len(itemlist) > length: del itemlist[length:]
-        elif len(itemlist) < length:
-          itemlist += [default]*(length-len(itemlist))
+        elif len(itemlist) < length: itemlist += [default]*(length-len(itemlist))
       else:
-        if len(itemlist) != length: raise TypeError, str(itemlist)    
+        if len(itemlist) == 1: itemlist *= length # extend to desired length
+        elif len(itemlist) != length: 
+          raise TypeError, "Item list {:s} must be of length {:d} or 1.".format(str(itemlist),len(itemlist))
       if dtype is not None:
-        if not all([isinstance(item,dtype) for item in itemlist if item != default]):
-          raise TypeError, str(item) # only checks the non-default values
+        for item in itemlist:
+          if item != default: # only checks the non-default values
+            if not isinstance(itemlist,dtype):
+              raise TypeError, "Item {:s} must be of type {:s}".format(str(item),dtype.__name__)
+            # don't check length of sublists: that would cause problems with some code
+    # type checking, but only the iterables which are items, not their items
+    for item in itemlist: # check types 
+      if item is not None and not isinstance(item,dtype): 
+        raise TypeError, "Item {:s} must be of type {:s}".format(str(item),dtype.__name__)
+  else:
+    if isinstance(itemlist,(list,tuple,set)): # still want to exclude strings
+      itemlist = list(itemlist)
+      if default is NotImplemented: 
+        if len(itemlist) > 0: default = itemlist[-1] # use last item
+        else: default = None   
+      if trim:
+        if len(itemlist) > length: del itemlist[length:] # delete superflous items
+        elif len(itemlist) < length:
+          itemlist += [default]*(length-len(itemlist)) # extend with default or last item
+      else:
+        if len(itemlist) == 1: itemlist *= length # extend to desired length
+        elif len(itemlist) != length: 
+          raise TypeError, "Item list {:s} must be of length {:d} or 1.".format(str(itemlist),len(itemlist))    
+      if dtype is not None:
+        for item in itemlist:
+          if not isinstance(item,dtype) and item != default: # only checks the non-default values
+            raise TypeError, "Item {:s} must be of type {:s}".format(str(item),dtype.__name__)        
     else:
-      if not isinstance(itemlist,dtype): raise TypeError, str(itemlist)
+      if not isinstance(itemlist,dtype): 
+        raise TypeError, "Item {:s} must be of type {:s}".format(str(itemlist),dtype.__name__)
       itemlist = [itemlist]*length
   return itemlist
 

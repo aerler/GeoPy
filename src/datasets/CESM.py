@@ -11,7 +11,7 @@ import numpy as np
 import os, pickle
 from collections import OrderedDict
 # from atmdyn.properties import variablePlotatts
-from geodata.base import Variable, Axis, Ensemble
+from geodata.base import Variable, Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset
 from geodata.misc import DatasetError, AxisError, DateError, isNumber

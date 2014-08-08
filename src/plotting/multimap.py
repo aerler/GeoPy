@@ -23,7 +23,7 @@ from mpl_toolkits.basemap import maskoceans # used for masking data
 # PyGeoDat stuff
 from geodata.base import DatasetError
 from datasets.common import days_per_month, days_per_month_365 # for annotation
-from datasets.common import loadDatasets
+from datasets.common import loadDatasets, checkItemList
 from datasets.WSC import basins
 from plotting.settings import getFigureSettings, getVariableSettings
 # ARB project related stuff
@@ -31,12 +31,6 @@ from projects.ARB_settings import getARBsetup, figure_folder, map_folder
 
 if __name__ == '__main__':
   
-#  filename = 'wrfsrfc_d%02i_clim.nc' # domain substitution
-#  CFSR = loadCFSR(filename='CFSRclimFineRes1979-2009.nc')
-#  RRTMG = loadWRF(exp='rrtmg-arb1', filetypes=['wrfsrfc_d%02i_clim.nc'], domains=dom)
-#  axtitles = ['CRU Climatology', 'WRF Control', 'WRF RRTMG', 'Polar WRF']
-
-
   ## general settings and shortcuts
   WRFfiletypes = [] # WRF data source
   #WRFfiletypes += ['hydro']
@@ -76,28 +70,72 @@ if __name__ == '__main__':
   ldiff = False # compute differences
   lfrac = False # compute fraction
   domain = (2,)
+  variable_settings = None
+  season_settings = None
+  
+  ## select variables and seasons
+  variables = [] # variables
+#   variables += ['Ts']
+  variables += ['T2']
+#   variables += ['Tmin', 'Tmax']
+  variables += ['precip']
+#  variables += ['waterflx']
+#   variables += ['p-et']
+#   variables += ['precipnc', 'precipc']
+#   variables += ['Q2']
+#   variables += ['evap']
+#   variables += ['pet']
+#  variables += ['runoff']
+#  variables += ['sfroff']
+#  variables += ['ugroff']
+#   variables += ['snwmlt']
+#   variables += ['snow']
+#   variables += ['snowh']
+#   variables += ['GLW','OLR','qtfx']
+#   variables += ['SWDOWN','GLW','OLR']
+#   variables += ['hfx','lhfx']
+#   variables += ['qtfx','lhfr']
+#   variables += ['SST']
+#   variables += ['lat2D','lon2D']
+  seasons = [] # seasons
+#   seasons += ['cold']
+#   seasons += ['warm']
+#   seasons += ['melt']
+  seasons += ['annual']
+  seasons += ['summer']
+  seasons += ['winter']
+#   seasons += ['spring']    
+#   seasons += ['fall']
+  # special variable/season combinations
+#   variables = ['seaice']; seasons = [8] # September seaice
+#  variables = ['snowh'];  seasons = [8] # September snow height
+#  variables = ['stns']; seasons = ['annual']
+#   variables = ['lndcls']; seasons = [''] # static
+#   variables = ['zs']; seasons = ['topo']; lcontour = True; WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
+#   variables = ['zs']; seasons = ['hidef']; WRFfiletypes=['const']; lcontour = True # static
+  
   ## case settings
   
   # observations
   lprint = True # write plots to disk using case as a name tag
-  maptype = 'lcc-new'; lstations = False; lbasins = False
-
-  #explist = ['max-ens', 'max-ens']; exptitles = ['WRF vs. PCIC','WRF vs. PRISM']; period = H15
-  #case = 'prism'; lbasins = True; lsamesize = True; grid = 'arb2_d02'
-  #ldiff = True; reflist = ['PCIC','PRISM']; refprd = H15
+  maptype = 'lcc-new'; lstations = False; lbasins = True
 
 # Fig. 2  
 #   explist = ['max-ens']; period = H15
 #   explist = ['Ens', 'Unity', 'max-ens', 'max-ens']; period = H15; domain = [None, None, 1, 2]
 #   exptitles = ['CESM (80 km)','Merged Observations (10 km)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
-#   case = 'valobs'; lbasins = True; lsamesize = True; grid = 'arb2_d02'
+#   case = 'valobs'; lsamesize = True; grid = 'arb2_d02'
 
 # Fig. 3/4  
 #   explist = ['Ens']; period = H15; grid = ['cesm1x1']
-  explist = ['Ens', 'max-ens']; period = H15; grid = ['cesm1x1','arb2_d02']
-  exptitles = ['CESM Ensemble Mean', 'WRF Ensemble Mean (10 km)']
-  case = 'val'; lbasins = True; lsamesize = False; cbo = 'vertical'
-  ldiff = True; reflist = ['Unity']*2; refprd = H15
+#   explist = ['max-ens']*3+['Ens']*3; grid = ['arb2_d02']*3+['cesm1x1']*3
+#   seasons = ['annual', 'summer', 'winter']*2; period = H15
+#   exptitles = ['WRF, 10 km ({:s} Average)']*3+['CESM ({:s} Average)']*3
+#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
+#   case = 'val'; lsamesize = True; cbo = 'horizontal'
+#   ldiff = True; reflist = ['Unity']*6; refprd = H15
+#   variables = ['T2','precip']
+#   seasons = [seasons] # only make one plot with all seasons!
 
 # Fig. 5
   #explist = ['max-ens']; period = H15
@@ -107,71 +145,29 @@ if __name__ == '__main__':
 
 # Fig. 6/7  
 #   explist = ['Ens']; period = H15; grid = ['cesm1x1']
-#   explist = ['Ens-2050', 'max-ens-2050']; period = A15; grid = ['cesm1x1','arb2_d02']
-#   exptitles = ['CESM Ensemble Mean', 'WRF Ensemble Mean (10 km)']
-#   case = 'prj'; lbasins = True; lsamesize = False; cbo = 'vertical'
-#   ldiff = True; reflist = ['Ens', 'max-ens']; refprd = H15
+#   explist = ['max-ens-2050']*3+['Ens-2050']*3; grid = ['arb2_d02']*3+['cesm1x1']*3
+#   seasons = ['annual', 'summer', 'winter']*2; period = A15
+#   exptitles = ['WRF, 10 km ({:s} Average)']*3+['CESM ({:s} Average)']*3
+#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
+#   case = 'prj'; lbasins = True; lsamesize = False; cbo = 'horizontal'
+#   lfrac = True; reflist = ['max-ens']*3+['Ens']*3; refprd = H15  
+#   seasons = [seasons] # only make one plot with all seasons!
+#   variables = ['T2','precip']; variable_settings = ['T2_prj', 'precip_prj'] 
 
-# Fig. 8  
-#   case = 'hydro'; lbasins = True; lsamesize = False; exptitles = [' ']
-#   #explist = ['max-ens']; period = H15; figtitles = ['P - ET (Annual)', 'P - ET (Summer)']
-#   explist = ['max-ens-2050']; period = A15; figtitles = [r'$\Delta$(P - ET) (Annual)', r'$\Delta$(P - ET) (Summer)'] 
-#   ldiff = True; reflist = ['max-ens']; refprd = H15
-
-#  explist = ['max-ens-2100']; exptitles = ['WRF Ensemble Mean (2050)']
-#  case = 'prj'; lbasins = True; lsamesize = True; period = B10; grid = ['arb2_d02']
-#   lfrac = True; reflist = ['Unity']; refprd = H30
+# Fig. 8  (top row)
+#   case = 'hydro'; lsamesize = False; cbo = 'horizontal'; ltitle = False
+#   explist = ['max-ens']*2; period = H15; seasons = [['annual', 'summer']]
+#   variables = ['p-et']; exptitles = [r'P - ET (Annual)', r'P - ET (Summer)']  
+# Fig. 8  (bottom row)
+  case = 'hydro'; lsamesize = False; cbo = 'horizontal'; ltitle = False
+  explist = ['max-ens-2050']*2; period = A15; seasons = [['annual', 'summer']] 
+  variables = ['p-et']; exptitles = [r'$\Delta$(P - ET) (Annual)', r'$\Delta$(P - ET) (Summer)']
+  ldiff = True; reflist = ['max-ens']; refprd = H15
   
-#   case = 'ensdiff'; explist = ['max', 'max-A', 'max-B', 'max-C'] 
-#   exptitles = ['WRF-1', 'WRF-A', 'WRF-B', 'WRF-C']
-#   lbasins = True; lsamesize = True; period = H15; grid = 'arb2_d02'
-#   ldiff = True; reflist = ['max-ens']; refprd = H15 
-
-  #case = 'ensprj'; explist = ['max-A-2050', 'max-B-2050', 'max-C-2050', 'max-2050'] 
-  #exptitles = ['WRF-A (2050)', 'WRF-B (2050)', 'WRF-C (2050)', 'WRF-D (2050)']
-  #lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02'
-  #lfrac = True; reflist = ['max-A', 'max-B', 'max-C', 'max']; refprd = H15 
-
-  #case = 'ensval'; explist = ['max-A', 'max-B', 'max-C', 'max'] 
-  #exptitles = ['WRF-A', 'WRF-B', 'WRF-C', 'WRF-D']
-  #lbasins = True; lsamesize = True; period = H15; grid = 'arb2_d02'
-
-  #case = 'Ensprj'; explist = ['Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050', 'Ctrl-1-2050']; 
-  #exptitles = ['CESM-A (2050)', 'CESM-B (2050)', 'CESM-C (2050)','CESM-D (2050)']
-  #lbasins = True; lsamesize = True; period = A15; grid = 'arb2_d02' #grid = 'cesm1x1'
-#   lfrac = True; reflist = ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']; refprd = H15 
-
-#   case = 'Ensprj'; explist = ['Ctrl-A', 'Ctrl-B', 'Ctrl-C', 'Ctrl-1']; 
-#   exptitles = ['CESM-A', 'CESM-B', 'CESM-C','CESM-D']
-#   lbasins = True; lsamesize = True; period = H15; grid = 'arb2_d02' #grid = 'cesm1x1'
-  
-#   explist = ['Ctrl','max','max-1deg','Unity']
-#   exptitles = ['CESM-1', 'WRF-1 (30 km)', 'WRF-1 (1 deg.)', 'Observations']
-#   case = '1deg'; lbasins = True; lsamesize = False; period = H05; domain = [None, 1, 2, None]
-#   ldiff = True; reflist = ['max']; refdom = 2; grid = ['arb2_d02']*4 # ['cesm1x1','arb2_d02']*2
-
-#   explist = ['cfsr','CESM','max-ens','max-ens']; exptitles = [None, None, 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
-#   case = 'res'; lbasins = True; lsamesize = False; period = H15
-#   ldiff = True; reflist = ['Unity']; refprd = H15; grid = ['arb2_d02']*4; domain = [2,None,1,2]
 
 #   maptype = 'ortho-NA'; lstations = False; lbasins = False; lframe = True; loutline = False
 #   explist = ['max-ens']; domain= (0,1); period = H10; case = 'ortho'
 #   exptitles = ['']; title = 'Dynamical Downscaling'  
-
-#   ldiff = True; reflist = ['Unity']; grid = 'cesm1x1'
-# #   lfrac = True; reflist = ['Unity']; grid = 'cesm1x1'
-#   maptype = 'lcc-new'; lstations = False; lbasins = True
-#   case = 'cesm-ens'; loutline = True; grid = 'cesm1x1'
-#   explist = ['Ctrl','CESM','Ens-A','Ens-B','CFSR','Ens-C',]; period = H10
-  
-#   case = 'bugaboo'; period = '1997-1998'  # name tag
-#   maptype = 'lcc-coast'; lstations = False; 
-#   domain = [(3,),(2,),(1,),(2,)]; ldiff = True; reflist = ['Unity']
-#   grid = 'arb2_d02'; grid = 'ARB_small_025' 
-#   explist = ['coast','GPCC','coast','coast'] #; domain = (3,);
-#   exptitles = ['WRF 1km (CFSR)', None, 'WRF 25km (CFSR)', 'WRF 5km (CFSR)']
-#   domain = [(1,2,3,),None,(1,),(1,2,)]
-#   explist = ['coast','PRISM','coast','coast'] #; domain = (3,);
 
 #   case = '3km'; stations = 'cities'
 #   maptype = 'lcc-col'; lstations = True; lbasins = True # 'lcc-new'  
@@ -194,50 +190,6 @@ if __name__ == '__main__':
     
   if not case: raise ValueError, 'Need to define a \'case\' name!'
   
-  ## select variables and seasons
-  varlist = []; seasons = []
-  # variables
-#   varlist += ['Ts']
-#   varlist += ['T2']
-  #varlist += ['Tmin', 'Tmax']
-  varlist += ['precip']
-#  varlist += ['waterflx']
-#   varlist += ['p-et']
-#   varlist += ['precipnc', 'precipc']
-#   varlist += ['Q2']
-#   varlist += ['evap']
-#   varlist += ['pet']
-#  varlist += ['runoff']
-#  varlist += ['sfroff']
-#  varlist += ['ugroff']
-#   varlist += ['snwmlt']
-#   varlist += ['snow']
-#   varlist += ['snowh']
-#   varlist += ['GLW','OLR','qtfx']
-#   varlist += ['SWDOWN','GLW','OLR']
-#   varlist += ['hfx','lhfx']
-#   varlist += ['qtfx','lhfr']
-#   varlist += ['SST']
-#   varlist += ['lat2D','lon2D']
-  # seasons
-#   seasons += ['OND'] # for high-res columbia domain
-#   seasons += ['cold']
-#   seasons += ['warm']
-#   seasons += ['melt']
-#   seasons = [ [i] for i in xrange(12) ] # monthly
-  seasons += ['annual']
-  seasons += ['summer']
-  seasons += ['winter']
-#   seasons += ['spring']    
-#   seasons += ['fall']
-  # special variable/season combinations
-#   varlist = ['seaice']; seasons = [8] # September seaice
-#  varlist = ['snowh'];  seasons = [8] # September snow height
-#  varlist = ['stns']; seasons = ['annual']
-#   varlist = ['lndcls']; seasons = [''] # static
-#   varlist = ['zs']; seasons = ['topo']; lcontour = True; WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
-#   varlist = ['zs']; seasons = ['hidef']; WRFfiletypes=['const']; lcontour = True # static
-
   # setup projection and map
   mapSetup = getARBsetup(maptype, lpickle=lpickle, folder=map_folder)
   
@@ -251,7 +203,7 @@ if __name__ == '__main__':
   else: lref = False
   lbackground = not lref and lbackground
     
-  loadlist = set(varlist).union(('lon2D','lat2D','landmask','landfrac')) # landfrac is needed for CESM landmask
+  loadlist = set(variables).union(('lon2D','lat2D','landmask','landfrac')) # landfrac is needed for CESM landmask
   exps, axtitles, nexps = loadDatasets(explist, n=None, varlist=loadlist, titles=exptitles, periods=period, 
                                        domains=domain, grids=grid, resolutions=resolution, 
                                        filetypes=WRFfiletypes, lWRFnative=lWRFnative, ltuple=True, 
@@ -277,53 +229,83 @@ if __name__ == '__main__':
   # get figure settings
   sf, figformat, margins, caxpos, subplot, figsize, cbo = getFigureSettings(nlen, cbar=True, cbo=cbo, 
                                                              figuretype=figuretype, sameSize=lsamesize)
+  if not ltitle: margins['top'] += 0.05
   
   # get projections settings
   projection, grid, res = mapSetup.getProjectionSettings()
   
-  ## loop over varlist and seasons
+  ## loop over variables and seasons
   maps = []; x = []; y = [] # projection objects and coordinate fields (only computed once)
-  n = -1 # figure counter
-  N = len(varlist)*len(seasons) # number of figures
-  if figtitles is not None:
-    if not isinstance(figtitles,(tuple,list)): figtitles = (figtitles,)*N
-    elif len(figtitles) != N: raise ValueError 
+  fn = -1 # figure counter
+  N = len(variables)*len(seasons) # number of figures
+  figtitles = checkItemList(figtitles, N, basestring, default=None)
+  variable_settings = checkItemList(variable_settings, N, basestring, default=None)
+  season_settings = checkItemList(season_settings, N, basestring, default=None)
+  
+#   if figtitles is not None:
+#     if not isinstance(figtitles,(tuple,list)): figtitles = (figtitles,)*N
+#     elif len(figtitles) != N: raise ValueError
+     
   # start loop
-  for var in varlist:
-    oldvar = var
-    for season in seasons:
+  for varlist in variables:
+    
+    for sealist in seasons:
       
       # increment counter
-      n += 1
+      fn += 1
+      M = len(exps) # number of panels
       
+      # expand variables
+      if isinstance(varlist,basestring): varstr = varlist
+      elif isinstance(varlist,(list,tuple)):
+        if all([var==varlist[0] for var in varlist]): varstr = varlist[0]
+        else: varstr = ''.join([s[0] for s in varlist])
+      else: varstr = ''
+      varlist = checkItemList(varlist, M, basestring)
+      # expand seasons
+      if isinstance(sealist,basestring): seastr = '_'+sealist
+      elif isinstance(sealist,(list,tuple)): seastr = '_'+''.join([s[0] for s in sealist])
+      else: seastr = ''
+      sealist = checkItemList(sealist, M, basestring)
+      
+      # get smart defaults for variables and seasons
+      varlist_settings = variable_settings[fn] or varlist[0] # default: first variable
+      if season_settings: sealist_settings = season_settings[fn]
+      elif all([sea==sealist[0] for sea in sealist]): sealist_settings = sealist[0]
+      else: sealist_settings = ''      
       # get variable properties and additional settings
-      clevs, clim, cbl, clbl, cmap, lmskocn, lmsklnd, plottype, month = getVariableSettings(
-                                                      var, season, oldvar=var, ldiff=ldiff, lfrac=lfrac)
-      
+      clevs, clim, cbl, clbl, cmap, lmskocn, lmsklnd, plottype = getVariableSettings(
+                                                      varlist_settings, sealist_settings, 
+                                                      ldiff=ldiff, lfrac=lfrac)
+
+      # assemble filename      
+      filename = varstr
+      if ldiff: filename += '_diff'
+      elif lfrac: filename += '_frac'
+      filename += '{:s}_{:s}.{:s}'.format(seastr,case,figformat)
       # assemble plot title
-      if ldiff: filename = '%s_diff_%s_%s.%s'%(var,season,case,figformat)
-      elif lfrac: filename = '%s_frac_%s_%s.%s'%(var,season,case,figformat)
-      else: filename = '%s_%s_%s.%s'%(var,season,case,figformat)
-      #print exps[0][0].name
-      plat = exps[0][0].variables[var].plot
-      if figtitles is None:
-        if lfrac: figtitle = '{0:s} {1:s} [%]'.format(plottype,plat['plottitle'])
-        elif plat['plotunits']: figtitle = '%s %s [%s]'%(plottype,plat['plottitle'],plat['plotunits'])
-        else: figtitle = '%s %s'%(plottype,plat['plottitle'])
-      else: figtitle = figtitles[n]      
+      plat = exps[0][0].variables[varlist[0]].plot
+      figtitle = figtitles[fn]
+      if figtitle is None:
+        figtitle = plottype + ' ' + plat['plottitle']
+        if lfrac: figtitle += ' Fractions'
+        if ldiff: figtitle += ' Differences'
+        if plat['plotunits']: 
+          if lfrac: figtitle += ' [%]'
+          else: figtitle += ' [{:s}]'.format(plat['plotunits']) 
       
       # feedback
-      print('\n\n   ***  %s %s (%s)   ***   \n'%(plottype,plat['plottitle'],var))
+      print('\n\n   ***  %s %s (%s)   ***   \n'%(plottype,plat['plottitle'],varstr))
       
       ## compute data
       data = []; lons = []; lats=[]  # list of data and coordinate fields to be plotted 
       # compute average WRF precip            
-      print(' - loading data ({0:s})'.format(var))
-      for exptpl in exps:
+      print(' - loading data ({0:s})'.format(varstr))
+      for var,season,exptpl in zip(varlist,sealist,exps):
         lontpl = []; lattpl = []; datatpl = []                
         for exp in exptpl:
           expvar = exp.variables[var]
-          if len(seasons) > 1: expvar.load()
+          expvar.load()
           #print expvar.name, exp.name, expvar.masked
           print(exp.name)
           assert expvar.gdal
@@ -337,47 +319,28 @@ if __name__ == '__main__':
             assert expvar.hasAxis('lon') and expvar.hasAxis('lat'), 'No geographic axes found!'
             lon, lat = np.meshgrid(expvar.lon.getArray(),expvar.lat.getArray())
           lontpl.append(lon); lattpl.append(lat) # append to data list
-          # figure out calendar
-          if 'WRF' in exp.atts.get('description',''): mon = days_per_month_365
-          else: mon = days_per_month
           # extract data field
-          # compute average over seasonal range
           if expvar.hasAxis('time'):
-            days = 0
-            vardata = ma.zeros(expvar.mapSize) # allocate masked array
-            #np.zeros(expvar.mapSize) # allocate array
-#             vardata = expvar.mean(time=(min(month),max(month)), asVar=False)
-            vardata.set_fill_value(np.NaN)
-            for m in month:
-              n = m-1 
-              tmp = expvar(time=exp.time[n])
-              vardata += tmp * mon[n]
-              days += mon[n]
-            vardata /=  days # normalize 
+            vardata = expvar.seasonalMean(season, asVar=False)
           else:
-            vardata = ma.zeros(expvar.mapSize) # allocate masked array
-            vardata.set_fill_value(np.NaN)
-            vardata += expvar(lat=(-100,400))              
-#             vardata = expvar[:].squeeze()
-          vardata.set_fill_value(np.NaN)
+            vardata = expvar[:].squeeze()
+          if expvar.masked: vardata.set_fill_value(np.NaN) # fill with NaN
+          vardata = vardata.squeeze() # make sure it is 2D
           if 'scalefactor' in expvar.plot:
-            vardata = vardata * expvar.plot['scalefactor'] # apply plot unit conversion          
+            vardata = vardata * expvar.plot['scalefactor'] # apply plot unit conversion
+          # figure out ocean mask          
           if lmskocn:
             if exp.variables.has_key('landmask') and False:
-#               vardata = ma.masked_where(vardata, exp.landmask.getArray()>0.5)
               vardata[exp.landmask.getArray()] = -2.
             elif exp.variables.has_key('landfrac'): # CESM mostly 
               vardata[exp.landfrac.getArray(unmask=True,fillValue=0)<0.75] = -2. # use land fraction
-#             elif isinstance(vardata,ma.MaskedArray): 
-#               print '********************************'              
-#               vardata = vardata.filled(-2.)
-#               vardata = maskoceans(lon,lat,vardata,resolution=res,grid=grid)
             elif exp.variables.has_key('lndidx'): 
               mask = exp.lndidx.getArray()
               vardata[mask==16] = -2. # use land use index (ocean)  
               vardata[mask==24] = -2. # use land use index (lake)
             else :
               vardata = maskoceans(lon,lat,vardata,resolution=res,grid=grid)
+          # figure out land mask
           if lmsklnd: 
             if exp.variables.has_key('landfrac'): # CESM and CFSR 
               vardata[exp.lnd.getArray(unmask=True,fillValue=0)>0.75] = 0 # use land fraction

@@ -19,9 +19,8 @@ cdict['blue'] = ((0,1,1,),(0.5,1,1),(1,0,0))
 cdict['green'] = ((0,0,0,),(0.5,1,1),(1,0,0))
 mycmap = mpl.colors.LinearSegmentedColormap('my_colormap',cdict,256)
 
-## variable settings and seasons
-def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
-        ## settings
+## variable settings (for colorbar, mostly)
+def getVariableSettings(var, season, ldiff=False, lfrac=False):
   # plot variable and averaging 
   cbl = None; clim = None       
   lmskocn = False; lmsklnd = False # mask ocean or land?
@@ -29,14 +28,18 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
   if ldiff and lfrac: raise ValueError, "'ldiff' and 'lfrac' can not be set simultaneously!"
   elif ldiff:
 #     cmap = mycmap; cmap.set_over('red'); cmap.set_under('blue')
-#     cmap = cm.redblue_light_r
+    cmap = cm.redblue_light_r
 #     cmap = cm.rscolmap
 #     cmap = mpl.cm.Oranges
-    cmap = mpl.cm.PuOr
-    if var in ('T2','Ts','Tmin','Tmax','Tmean'):
-      clevs = np.linspace(0,4,41); clbl = '%3.1f' # K
+#     cmap = mpl.cm.PuOr
+    if var in ('T2_prj','Ts_prj','Tmin_prj','Tmax_prj','Tmean_prj'):
+      clevs = np.linspace(0,5,41); clbl = '%3.1f'; cmap = mpl.cm.Oranges # K
+    elif var in ('evap_prj','pet_prj','precip_prj','precipc_prj','precipnc_prj'):
+      clevs = np.linspace(-1.,1.,41); clbl = '%3.1f'; cmap = mpl.cm.PuOr # mm/day    
+    elif var in ('T2','Ts','Tmin','Tmax','Tmean'):
+      clevs = np.linspace(-4,4,41); clbl = '%3.1f' # K
     elif var in ('evap','pet','precip','precipc','precipnc'):
-      clevs = np.linspace(-1.,1.,41); clbl = '%3.1f' # mm/day
+      clevs = np.linspace(-4,4,41); clbl = '%3.1f' # mm/day
     elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff','p-et','waterflx'): # moisture fluxes (kg /(m^2 s))
       clevs = np.linspace(-1,1,41); clbl = '%2.1f' # mm/day  
     elif var == 'zs':
@@ -45,12 +48,16 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
       raise VariableError, 'No settings found for differencing variable \'{0:s}\' found!'.format(var)
   elif lfrac:
     cmap = mycmap; cmap.set_over('red'); cmap.set_under('blue')
-    if var in ('T2','Ts','Tmin','Tmax','Tmean'):
-      clevs = np.linspace(-3,3,21); clbl = '%3.0f' 
+    if var in ('T2_prj','Ts_prj','Tmin_prj','Tmax_prj','Tmean_prj'):
+      clevs = np.linspace(0,3,41); clbl = '%2.1f'; cmap = mpl.cm.Oranges # K
+    elif var in ('evap_prj','pet_prj','precip_prj','precipc_prj','precipnc_prj'):
+      clevs = np.linspace(-50.,50,41); clbl = '%2.0f'; cmap = mpl.cm.PuOr # mm/day    
+    elif var in ('T2','Ts','Tmin','Tmax','Tmean'):
+      clevs = np.linspace(-3,3,21); clbl = '%2.1f' 
     elif var in ('evap','pet','p-et','precip','precipc','precipnc','waterflx'):
-      clevs = np.linspace(-50,50,21); clbl = '%3.0f'  
+      clevs = np.linspace(-50,50,21); clbl = '%2.0f'  
     else: 
-      clevs = np.linspace(-50,50,21); clbl = '%3.0f'  
+      clevs = np.linspace(-50,50,21); clbl = '%2.0f'  
   else:
     #cmap = mpl.cm.gist_ncar; cmap.set_over('white'); cmap.set_under('black')
     cmap = cm.coolavhrrmap # cmap.set_over('white'); cmap.set_under('black')
@@ -104,10 +111,9 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
       clevs = np.linspace(0,5,26); clbl = '%02.1f' # mm/day
     elif var == 'Q2':
       clevs = np.linspace(0,15,31); clbl = '%02.1f' # mm/day
-    elif oldvar=='SST' or var=='SST' or oldvar=='Ts' or var=='Ts': # skin temperature (SST)
+    elif var=='SST' or var=='Ts': # skin temperature (SST)
       clevs = np.linspace(240,305,66); clbl = '%03.0f' # K
-      if oldvar=='SST' or var=='SST': lmsklnd = True # mask land for SST
-      var = 'Ts'; oldvar = var
+      if var=='SST': lmsklnd = True # mask land for SST      
     elif var=='T2' or var=='Tmin' or var=='Tmax' or var=='Tmean': # 2m or skin temperature (SST)
       clevs = np.linspace(255,290,36); clbl = '%03.0f' # K
       if season == 'winter': clevs -= 10
@@ -144,40 +150,27 @@ def getVariableSettings(var, season, oldvar='', ldiff=False, lfrac=False):
     else: 
       raise VariableError, 'No settings for variable \'{0:s}\' found!'.format(var) 
   # time frame / season
-  if isinstance(season,str):
-    if season == 'annual':  # all month
-      month = range(1,13); plottype = 'Annual'
-    elif season == 'cold': # DJF
-      month = [10, 11, 12, 1, 2, 3]; plottype = 'Cold Season'    
-    elif season == 'warm': # DJF
-      month = [4, 5, 6, 7, 8, 9]; plottype = 'Warm Season'
-    elif season == 'melt': # AMJ
-      month = [4, 5, 6]; plottype = 'Melt Season'          
-    elif season == 'OND': # DJF
-      month = [10, 11, 12]; plottype = 'Oct.-Dec.'    
-    elif season == 'winter': # DJF
-      month = [12, 1, 2]; plottype = 'Winter'
-    elif season == 'spring': # MAM
-      month = [3, 4, 5]; plottype = 'Spring'
-    elif season == 'summer': # JJA
-      month = [6, 7, 8]; plottype = 'Summer'
-    elif season == 'fall': # SON
-      month = [9, 10, 11]; plottype = 'Fall'
-    else:
-      plottype = '' # for static fields
-      month = [1]
-  else:                
-    month = season      
-    if len(season) == 1 and isinstance(season[0],int):
-      plottype =  '%s Average'%name_of_month[season[0]].strip()
-      season = '%02i'%(season[0]+1) # number of month, used for file name
-    else: plottype = 'Average'    
-  if plottype is not '':
-    if ldiff: plottype += ' Difference'
-    elif lfrac: plottype += ' Difference'
-    else: plottype += ' Average'
+  if isinstance(season,basestring):
+    if season == 'annual': plottype = 'Annual'
+    elif season == 'cold': plottype = 'Cold Season' # ONDJFM    
+    elif season == 'warm': plottype = 'Warm Season' # AMJJAS
+    elif season == 'melt': plottype = 'Melt Season' # AMJ          
+    elif season == 'OND': plottype = 'Oct.-Dec.' # OND    
+    elif season == 'winter': plottype = 'Winter' # DJF
+    elif season == 'spring': plottype = 'Spring' # MAM
+    elif season == 'summer': plottype = 'Summer' # JJA
+    elif season == 'fall': plottype = 'Fall' # SON
+    else: plottype = '' # for static fields and custom seasons
+  else: plottype = '' # for static fields and custom seasons
+#   else:                
+#     if season is not None and len(season) == 1 and isinstance(season[0],int):
+#       plottype =  '%s Average'%name_of_month[season[0]].strip()
+#     else: plottype = 'Average'    
+#   if plottype is not '':
+#     if ldiff: plottype += ' Difference'
+#     elif lfrac: plottype += ' Difference'
   # return
-  return clevs, clim, cbl, clbl, cmap, lmskocn, lmsklnd, plottype, month
+  return clevs, clim, cbl, clbl, cmap, lmskocn, lmsklnd, plottype
 
 
 ## figure settings
@@ -251,7 +244,7 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
         margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
         caxpos = [0.91, 0.05, 0.03, 0.9]
       if cbo == 'horizontal': 
-        margins = dict(bottom=0.09, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
+        margins = dict(bottom=0.09, left=0.05, right=.97, top=.925, hspace=0.1, wspace=0.05)
         caxpos = [0.05, 0.0275, 0.9, 0.03]
     else:
       margins = dict(bottom=0.025, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)

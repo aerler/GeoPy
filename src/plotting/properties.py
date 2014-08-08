@@ -136,7 +136,7 @@ variablePlotatts['pmsl'] = tmp
 tmp = defaultPlotatts.copy() 
 # specific properties
 tmp['plotname'] = r'$u_{10m}$'
-tmp['plottitle'] = 'Zonal Wind at 10m'
+tmp['plottitle'] = '10m Zonal Wind'
 tmp['plotunits'] = 'm/s'
 tmp['scalefactor'] = 1
 # add to collection
@@ -146,7 +146,7 @@ variablePlotatts['u10'] = tmp
 tmp = defaultPlotatts.copy() 
 # specific properties
 tmp['plotname'] = r'$v_{10m}$'
-tmp['plottitle'] = 'Meridional Wind at 10m'
+tmp['plottitle'] = '10m Meridional Wind'
 tmp['plotunits'] = 'm/s'
 tmp['scalefactor'] = 1
 # add to collection
@@ -156,7 +156,7 @@ variablePlotatts['v10'] = tmp
 tmp = defaultPlotatts.copy() 
 # specific properties
 tmp['plotname'] = r'$T_{2m}$'
-tmp['plottitle'] = 'Temperature at 2m'
+tmp['plottitle'] = '2m Temperature'
 tmp['plotunits'] = 'K'
 tmp['scalefactor'] = 1
 # add to collection
@@ -226,7 +226,7 @@ variablePlotatts['snowh'] = tmp
 tmp = defaultPlotatts.copy() 
 # specific properties
 tmp['plotname'] = 'Q_2m'
-tmp['plottitle'] = 'Water Vapor at 2m'
+tmp['plottitle'] = '2m Water Vapor'
 tmp['plotunits'] = 'hPa'
 tmp['scalefactor'] = 1.e-2
 # add to collection

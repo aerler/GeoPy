@@ -626,14 +626,15 @@ class Variable(object):
     if not self.data: raise DataError
     if not self.hasAxis(taxis): raise AxisError, 'Seasonal reduction requires a time axis!'
     taxis = self.getAxis(taxis)
-    if checkUnits and not taxis.units.lower() in ('month','months'): raise AxisError, 'Seasonal reduction requires monthly data!'
+    if checkUnits and not taxis.units.lower() in ('month','months','month of the year'): 
+      raise AxisError, "Seasonal reduction requires monthly data! (time units: '{:s}')".format(taxis.units)
     te = len(taxis); tax = self.axisIndex(taxis.name)
     if te%12 != 0: raise NotImplementedError, 'Currently seasonal means only work for full years.'
     # determine season
     if isinstance(season,(int,np.integer)): idx = np.asarray([season])
     elif isinstance(season,(list,tuple)):
       if all([isinstance(s,(int,np.integer)) for s in season]): 
-	idx = np.asarray(season)
+        idx = np.asarray(season)
       else: raise TypeError      
     elif isinstance(season,basestring):
       ssn = season.lower() # ignore case
@@ -648,8 +649,8 @@ class Variable(object):
       elif ssn == 'sondjf' or ssn == 'cold': idx = np.asarray([8,9,10,11,0,1,])
       elif ssn == 'amj' or ssn == 'melt': idx = np.asarray([3,4,5,])
       elif ssn in year: 
-	s = year.find(ssn) # find first occurrence of sequence
-	idx = np.arange(s,s+len(ssn))%12 # and use range of months
+        s = year.find(ssn) # find first occurrence of sequence
+        idx = np.arange(s,s+len(ssn))%12 # and use range of months
       else: raise ValueError, "Unknown key word/season: '{:s}'".format(str(season))
     else: raise TypeError, "Unknown identifier for season: '{:s}'".format(str(season))
     # get actual data and reshape
@@ -685,7 +686,7 @@ class Variable(object):
       vatts = self.atts.copy()
       if name is not None: vatts['name'] = name
       elif isinstance(season,basestring): 
-	vatts['name'] = '{:s}_{:s}'.format(self.name,season); 
+        vatts['name'] = '{:s}_{:s}'.format(self.name,season); 
       else: vatts['name'] = self.name
       vatts['units'] = self.units
       if varatts is not None: vatts.update(varatts)
