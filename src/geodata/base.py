@@ -554,8 +554,9 @@ class Variable(object):
       if merge and self.masked: # the first mask is usually the land-sea mask, which we want to keep
         data = self.getArray(unmask=False) # get data with mask
         mask = ma.mask_or(data.mask, mask, copy=True, shrink=False) # merge masks
-      else: 
-        data = self.getArray(unmask=True) # get data without mask
+      else:         
+        data = self.getArray(unmask=False) # don't fill missing values!
+        if self.masked: data.mask = ma.nomask # unmask, sort of...
       self.__dict__['data_array'] = ma.array(data, mask=mask)
     elif maskedValue is not None:
       if isinstance(self.dtype,(int,bool,np.integer,np.bool)): 

@@ -622,10 +622,15 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     def mapMean(self, mask=None, integral=False, invert=False, squeeze=True, **kwargs):
       ''' Compute mean over the horizontal axes, optionally applying a 2D shape or mask. '''
       if not self.data: raise DataError
+      # if mask is a shape object, create the mask
+      if isinstance(mask,Shape):
+        shape = mask 
+        mask = shape.rasterize(griddef=self.griddef, invert=invert, asVar=False)
+      else: shape = None      
       # determine relevant axes
       axes = {self.xlon.name:None, self.ylat.name:None} # the relevant map axes; entire coordinate
       # temporarily mask 
-      if self.masked: oldmask = self.getMask() # save old mask
+      if self.masked: oldmask = ma.getmask(self.data_array) # save old mask
       else: oldmask = None
       self.mask(mask=mask, invert=invert, merge=True) # new mask on top of old mask
       # compute average
@@ -641,7 +646,11 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         if self.xlon.units == self.ylat.units: newvar.units = '{} {}^2'.format(newvar.units,self.ylat.units) 
         else: newvar.units ='{} {} {}'.format(newvar.units,self.xlon.units,self.ylat.units)
       # lift mask
-      if oldmask is not None: self.mask(mask=oldmask, merge=False)
+      if oldmask is not None: 
+        self.data_array.mask = oldmask # change back to old mask
+      else: 
+        self.data_array.mask = ma.nomask # remove mask
+        self.data_array = np.asarray(self.data_array) # and change class to ndarray
       # return new variable
       return newvar
     # add new method to object

@@ -226,10 +226,10 @@ class CVDP(FileType):
                                             transform=flipLon), # undo shifted longitude (done by NCL)
                      amo_timeseries_mon = dict(name='AMO', units=''), # AMO time-series 
                      nino34 = dict(name='NINO34', units=''), # ENSO Nino34 index
-                     npi = dict(name='NPI', units=''), # some North Pacific Index ???
+                     npi_ndjfm = dict(name='NPI', units=''), # some North Pacific Index ???
                      )                    
     self.vars = self.atts.keys()
-    self.indices = [var['name'] for var in self.atts.values() if var['name'].upper() == var['name']]
+    self.indices = [var['name'] for var in self.atts.values() if var['name'].upper() == var['name'] and var['name'] != 'NPI']
     self.eofs = [var['name'] for var in self.atts.values() if var['name'][-4:] == '_eof']
     self.cvdpfile = '{:s}.cvdp_data.{:s}.nc' # filename needs to be extended with experiment name and period
 
@@ -430,10 +430,16 @@ def loadCESM_All(experiment=None, name=None, grid=None, period=None, filetypes=N
   if lts or lcvdp:
     if experiment is None: ys = period[0]; ms = 1
     else: ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1
-    ts = (ys-1979)*12 + (ms-1); te = ts+len(dataset.time) # month since 1979 (Jan 1979 = 0)
-    atts = dict(long_name='Month since 1979-01')
-    timeAxis = Axis(name='time', units='month', data=np.arange(ts,te,1, dtype='int16'), atts=atts)
-    dataset.repalceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
+    if dataset.hasAxis('time'):
+      ts = (ys-1979)*12 + (ms-1); te = ts+len(dataset.time) # month since 1979 (Jan 1979 = 0)
+      atts = dict(long_name='Month since 1979-01')
+      timeAxis = Axis(name='time', units='month', data=np.arange(ts,te,1, dtype='int16'), atts=atts)
+      dataset.repalceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
+    if dataset.hasAxis('year'):
+      ts = ys-1979; te = ts+len(dataset.year) # month since 1979 (Jan 1979 = 0)
+      atts = dict(long_name='years since 1979-01')
+      yearAxis = Axis(name='year', units='year', data=np.arange(ts,te,1, dtype='int16'), atts=atts)
+      dataset.repalceAxis(dataset.year, yearAxis, asNC=False, deepcopy=False)
   # check
   if len(dataset) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
   # add projection

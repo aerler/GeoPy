@@ -16,6 +16,6 @@ def standardize(var, lsmooth=False, **kwargs):
   var = var.copy() # make copy - not in-place!
   var -= var.mean()
   var /= var.std()
-  if smooth > 0:
+  if lsmooth:
     var = smooth(var, **kwargs)
   return var
