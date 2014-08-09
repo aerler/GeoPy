@@ -114,11 +114,11 @@ WRF_experiments = experiments # alias for whole dict
 ## dict of ensembles
 ensembles = WRF_ens = OrderedDict()
 ensemble_list = list(set([exp.ensemble for exp in experiments.values() if exp.ensemble]))
-ensemble_list.sort()
+# ensemble_list.sort()
 for ensemble in ensemble_list:
   #print ensemble, experiments[ensemble].shortname
   members = [exp for exp in experiments.values() if exp.ensemble and exp.ensemble == ensemble]
-  members.sort()
+#   members.sort()
   ensembles[experiments[ensemble].shortname] = members
 
 if __name__ == '__main__':

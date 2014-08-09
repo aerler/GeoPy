@@ -230,8 +230,8 @@ if __name__ == '__main__':
   print FRB.stationfiles
   
   # load station data
-  station = loadGageStation(basin='ARB') # , station='Mission'
   station = loadGageStation(basin='FRB') # , station='Mission'
+  station = loadGageStation(basin='ARB') # , station='Mission'
   print
   print station
   print

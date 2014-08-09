@@ -43,24 +43,24 @@ class Exp(WRF_Exp):
 experiments = OrderedDict() # dictionary of experiments
 # historical
 experiments['ens20trcn1x1'] = Exp(shortname='Ens', name='ens20trcn1x1', title='CESM Ensemble Mean', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
-experiments['tb20trcn1x1'] = Exp(shortname='Ctrl-1', name='tb20trcn1x1', title='Exp D (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
-experiments['hab20trcn1x1'] = Exp(shortname='Ctrl-A', name='hab20trcn1x1', title='Exp A (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
-experiments['hbb20trcn1x1'] = Exp(shortname='Ctrl-B', name='hbb20trcn1x1', title='Exp B (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
-experiments['hcb20trcn1x1'] = Exp(shortname='Ctrl-C', name='hcb20trcn1x1', title='Exp C (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
+experiments['tb20trcn1x1'] = Exp(shortname='Ctrl-1', name='tb20trcn1x1', title='Exp 1 (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
+experiments['hab20trcn1x1'] = Exp(shortname='Ctrl-A', name='hab20trcn1x1', title='Exp 2 (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
+experiments['hbb20trcn1x1'] = Exp(shortname='Ctrl-B', name='hbb20trcn1x1', title='Exp 3 (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
+experiments['hcb20trcn1x1'] = Exp(shortname='Ctrl-C', name='hcb20trcn1x1', title='Exp 4 (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
 # mid-21st century
 experiments['ensrcp85cn1x1'] = Exp(shortname='Ens-2050', name='ensrcp85cn1x1', title='CESM Ensemble Mean (2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
 experiments['seaice-5r-hf'] = Exp(shortname='Seaice-2050', name='seaice-5r-hf', title='Seaice (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
-experiments['htbrcp85cn1x1'] = Exp(shortname='Ctrl-1-2050', name='htbrcp85cn1x1', title='Exp D (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
-experiments['habrcp85cn1x1'] = Exp(shortname='Ctrl-A-2050', name='habrcp85cn1x1', title='Exp A (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
-experiments['hbbrcp85cn1x1'] = Exp(shortname='Ctrl-B-2050', name='hbbrcp85cn1x1', title='Exp B (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
-experiments['hcbrcp85cn1x1'] = Exp(shortname='Ctrl-C-2050', name='hcbrcp85cn1x1', title='Exp C (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
+experiments['htbrcp85cn1x1'] = Exp(shortname='Ctrl-1-2050', name='htbrcp85cn1x1', title='Exp 1 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
+experiments['habrcp85cn1x1'] = Exp(shortname='Ctrl-A-2050', name='habrcp85cn1x1', title='Exp 2 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
+experiments['hbbrcp85cn1x1'] = Exp(shortname='Ctrl-B-2050', name='hbbrcp85cn1x1', title='Exp 3 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
+experiments['hcbrcp85cn1x1'] = Exp(shortname='Ctrl-C-2050', name='hcbrcp85cn1x1', title='Exp 4 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
 # mid-21st century
 experiments['ensrcp85cn1x1d'] = Exp(shortname='Ens-2100', name='ensrcp85cn1x1d', title='CESM Ensemble Mean (2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
 experiments['seaice-5r-hfd'] = Exp(shortname='Seaice-2100', name='seaice-5r-hfd', title='Seaice (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
-experiments['htbrcp85cn1x1d'] = Exp(shortname='Ctrl-1-2100', name='htbrcp85cn1x1d', title='Exp D (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
-experiments['habrcp85cn1x1d'] = Exp(shortname='Ctrl-A-2100', name='habrcp85cn1x1d', title='Exp A (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
-experiments['hbbrcp85cn1x1d'] = Exp(shortname='Ctrl-B-2100', name='hbbrcp85cn1x1d', title='Exp B (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
-experiments['hcbrcp85cn1x1d'] = Exp(shortname='Ctrl-C-2100', name='hcbrcp85cn1x1d', title='Exp C (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
+experiments['htbrcp85cn1x1d'] = Exp(shortname='Ctrl-1-2100', name='htbrcp85cn1x1d', title='Exp 1 (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
+experiments['habrcp85cn1x1d'] = Exp(shortname='Ctrl-A-2100', name='habrcp85cn1x1d', title='Exp 2 (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
+experiments['hbbrcp85cn1x1d'] = Exp(shortname='Ctrl-B-2100', name='hbbrcp85cn1x1d', title='Exp 3 (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
+experiments['hcbrcp85cn1x1d'] = Exp(shortname='Ctrl-C-2100', name='hcbrcp85cn1x1d', title='Exp 4 (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
 ## an alternate dictionary using short names and aliases for referencing
 exps = OrderedDict()
 # use short names where available, normal names otherwise
@@ -75,11 +75,11 @@ CESM_experiments = experiments # alias for whole dict
 ## dict of ensembles
 ensembles = CESM_ens = OrderedDict()
 ensemble_list = list(set([exp.ensemble for exp in experiments.values() if exp.ensemble]))
-ensemble_list.sort()
+# ensemble_list.sort()
 for ensemble in ensemble_list:
   #print ensemble, experiments[ensemble].shortname
   members = [exp for exp in experiments.values() if exp.ensemble and exp.ensemble == ensemble]
-  members.sort()
+#   members.sort()
   ensembles[experiments[ensemble].shortname] = members
 
 # return name and folder
@@ -216,8 +216,8 @@ class CVDP(FileType):
                      pdo_timeseries_mon = dict(name='PDO', units=''), # PDO time-series
                      pna_mon = dict(name='PNA_eof', units=''), # PNA EOF
                      pna_pc_mon = dict(name='PNA', units=''), # PNA time-series
-                     npo_mon = dict(name='NPO_eof', units=''), # PNA EOF
-                     npo_pc_mon = dict(name='NPO', units=''), # PNA time-series
+                     npo_mon = dict(name='NPO_eof', units=''), # NPO EOF
+                     npo_pc_mon = dict(name='NPO', units=''), # NPO time-series
                      nao_mon = dict(name='NAO_eof', units=''), # PDO EOF
                      nao_pc_mon = dict(name='NAO', units=''), # PDO time-series
                      nam_mon = dict(name='NAM_eof', units=''), # NAM EOF
@@ -422,8 +422,10 @@ def loadCESM_All(experiment=None, name=None, grid=None, period=None, filetypes=N
    
   # load dataset
   #print varlist, filenames
+  if experiment: title = experiment.title
+  else: title = name
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=None, varatts=atts, 
-                          multifile=False, ignore_list=ignore_list, ncformat='NETCDF4', squeeze=True)
+                          title=title, multifile=False, ignore_list=ignore_list, ncformat='NETCDF4', squeeze=True)
   # replace time axis
   if lts or lcvdp:
     if experiment is None: ys = period[0]; ms = 1

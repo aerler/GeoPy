@@ -802,7 +802,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       # add reference to shape object
       if shape is not None:
         newset.area = shape         
-        if invert: newset.atts['integral'] = 'area outside of {}'.format(shape.name)
+        if invert: newset.atts['integral'] = 'area outside of {:s}'.format(shape.name)
       else: 
         if invert: newset.atts['integral'] = 'area outside of mask'
       # return new dataset
@@ -894,10 +894,12 @@ if __name__ == '__main__':
   ## test reading shapefile
   from datasets.common import grid_folder, shape_folder
   # load shapefile
-  folder = shape_folder+'ARB_Aquanty'; shapefile='ARB_Basins_Outline_WGS84.shp' 
+  #folder = shape_folder+'ARB_Aquanty'; shapefile='ARB_Basins_Outline_WGS84.shp'
+#   folder = '/data/WSC/Athabasca River Basin/'; shapefile='WholeARB.shp' 
+  folder = '/data/WSC/Fraser River Basin/'; shapefile='WholeFRB.shp'
   shape = Shape(folder=folder, shapefile=shapefile)  
   # get mask from shape file
-  griddef = loadPickledGridDef('arb2', res='d02', folder=grid_folder)
+  griddef = loadPickledGridDef('arb2_d02', res=None, folder=grid_folder)
   shp_mask = shape.rasterize(griddef=griddef, invert=False, ldebug=True)
   # display
   import pylab as pyl
