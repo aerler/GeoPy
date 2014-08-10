@@ -992,7 +992,7 @@ class Dataset(object):
       # add new axes, or check, if already present; if present, replace, if different
       for ax in var.axes: 
         if not self.hasAxis(ax.name):
-          self.addAxis(ax) # add new axis
+            self.addAxis(ax) # add new axis          
         elif ax is not self.axes[ax.name]: 
           #print '   >>>   replacing a axis',ax.name
           var.replaceAxis(ax, self.axes[ax.name]) # or use old one of the same name

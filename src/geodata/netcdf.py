@@ -109,7 +109,8 @@ class VarNC(Variable):
         else: raise TypeError, "No data (-type) to construct NetCDF variable!"
       else: dtype = np.dtype(dtype)
       # construct a new netcdf variable in the given dataset
-      ncvar = add_var(ncvar, name, dims=dims, shape=dimshape, atts=atts, dtype=dtype, fillValue=fillValue, zlib=True)
+      if name in ncvar.variables: ncvar = ncvar.variable[name] # hope it is the right one...
+      else: ncvar = add_var(ncvar, name, dims=dims, shape=dimshape, atts=atts, dtype=dtype, fillValue=fillValue, zlib=True)
     # some type checking
     if not isinstance(ncvar,nc.Variable): raise TypeError, "Argument 'ncvar' has to be a NetCDF Variable or Dataset."
     if dtype and dtype != ncvar.dtype: raise TypeError    
@@ -271,7 +272,8 @@ class AxisNC(Axis,VarNC):
       if 'w' not in mode: mode += 'w'
       if name is None and isinstance(atts,dict): name = atts.pop('name',None) 
       # construct a new netcdf coordinate variable in the given dataset
-      ncvar = add_coord(ncvar, name, length=length, data=coord, dtype=dtype, fillValue=fillValue, atts=atts, zlib=True)
+      if isinstance(ncvar,nc.Dataset) and name in ncvar.variables: ncvar = ncvar.variables[name] 
+      else: ncvar = add_coord(ncvar, name, length=length, data=coord, dtype=dtype, fillValue=fillValue, atts=atts, zlib=True)
     # initialize as an Axis subclass and pass arguments down the inheritance chain
     super(AxisNC,self).__init__(ncvar=ncvar, name=name, length=length, coord=coord, dtype=dtype, atts=atts, 
                                 fillValue=fillValue, mode=mode, load=load, **axargs)

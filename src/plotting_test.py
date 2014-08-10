@@ -13,7 +13,7 @@ import numpy.ma as ma
 import os, sys
 
 import matplotlib as mpl
-mpl.use('Agg') # enforce QT4
+# mpl.use('Agg') # enforce QT4
 
 # import geodata modules
 from geodata.nctools import writeNetCDF

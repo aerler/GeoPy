@@ -286,8 +286,8 @@ def loadCVDP_Obs(name=None, grid=None, period=None, varlist=None, varatts=None,
   # load smaller selection
   if varlist is None and ( lindices or leofs ):
     varlist = []
-    if lindices: varlist += fileclasses['cvdp'].indices
-    if leofs: varlist += fileclasses['cvdp'].eofs
+  if lindices: varlist += fileclasses['cvdp'].indices
+  if leofs: varlist += fileclasses['cvdp'].eofs
   return loadCESM_All(experiment=None, name=name, grid=grid, period=period, filetypes=('cvdp',), 
                   varlist=varlist, varatts=varatts, translateVars=translateVars, lautoregrid=lautoregrid, 
                   load3D=False, ignore_list=ignore_list, mode='CVDP', cvdp_mode='observations', lcheckExp=False)

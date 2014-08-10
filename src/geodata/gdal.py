@@ -650,7 +650,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         self.data_array.mask = oldmask # change back to old mask
       else: 
         self.data_array.mask = ma.nomask # remove mask
-        self.data_array = np.asarray(self.data_array) # and change class to ndarray
+        if not self.masked: self.data_array = np.asarray(self.data_array) # and change class to ndarray
       # return new variable
       return newvar
     # add new method to object
