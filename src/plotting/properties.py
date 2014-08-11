@@ -132,51 +132,51 @@ tmp['scalefactor'] = 1e-2
 # add to collection
 variablePlotatts['pmsl'] = tmp
 
-## 10m Zonal Wind
+## 10 m Zonal Wind
 tmp = defaultPlotatts.copy() 
 # specific properties
 tmp['plotname'] = r'$u_{10m}$'
-tmp['plottitle'] = '10m Zonal Wind'
+tmp['plottitle'] = '10 m Zonal Wind'
 tmp['plotunits'] = 'm/s'
 tmp['scalefactor'] = 1
 # add to collection
 variablePlotatts['u10'] = tmp
 
-## 10m Meridional Wind
+## 10 m Meridional Wind
 tmp = defaultPlotatts.copy() 
 # specific properties
 tmp['plotname'] = r'$v_{10m}$'
-tmp['plottitle'] = '10m Meridional Wind'
+tmp['plottitle'] = '10 m Meridional Wind'
 tmp['plotunits'] = 'm/s'
 tmp['scalefactor'] = 1
 # add to collection
 variablePlotatts['v10'] = tmp
 
-## 2m Temperature
+## 2 m Temperature
 tmp = defaultPlotatts.copy() 
 # specific properties
 tmp['plotname'] = r'$T_{2m}$'
-tmp['plottitle'] = '2m Temperature'
+tmp['plottitle'] = '2 m Temperature'
 tmp['plotunits'] = 'K'
 tmp['scalefactor'] = 1
 # add to collection
 variablePlotatts['T2'] = tmp
 
-## 2m Maximum Temperature
+## 2 m Maximum Temperature
 tmp = defaultPlotatts.copy() 
 # specific properties
 tmp['plotname'] = r'$T_{max}$'
-tmp['plottitle'] = 'Maximum 2m Temperature'
+tmp['plottitle'] = 'Maximum 2 m Temperature'
 tmp['plotunits'] = 'K'
 tmp['scalefactor'] = 1
 # add to collection
 variablePlotatts['Tmax'] = tmp
 
-## 2m Minimum Temperature
+## 2 m Minimum Temperature
 tmp = defaultPlotatts.copy() 
 # specific properties
 tmp['plotname'] = r'$T_{min}$'
-tmp['plottitle'] = 'Minimum 2m Temperature'
+tmp['plottitle'] = 'Minimum 2 m Temperature'
 tmp['plotunits'] = 'K'
 tmp['scalefactor'] = 1
 # add to collection
@@ -222,11 +222,11 @@ tmp['scalefactor'] = 1
 # add to collection
 variablePlotatts['snowh'] = tmp
 
-## 2m Water Vapor Mixing Ratio
+## 2 m Water Vapor Mixing Ratio
 tmp = defaultPlotatts.copy() 
 # specific properties
-tmp['plotname'] = 'Q_2m'
-tmp['plottitle'] = '2m Water Vapor'
+tmp['plotname'] = '$Q_{2m}$'
+tmp['plottitle'] = '2 m Water Vapor'
 tmp['plotunits'] = 'hPa'
 tmp['scalefactor'] = 1.e-2
 # add to collection

@@ -145,24 +145,25 @@ if __name__ == '__main__':
 #   variables = ['precip']; seasons = ['summer'] 
 
 # Fig. 6/7  
-#   explist = ['Ens']; period = H15; grid = ['cesm1x1']
 #   explist = ['max-ens-2050']*3+['Ens-2050']*3; grid = ['arb2_d02']*3+['cesm1x1']*3
 #   seasons = ['annual', 'summer', 'winter']*2; period = A15
 #   exptitles = ['WRF, 10 km ({:s} Average)']*3+['CESM ({:s} Average)']*3
 #   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
 #   case = 'prj'; lbasins = True; lsamesize = False; cbo = 'horizontal'
-#   lfrac = True; reflist = ['max-ens']*3+['Ens']*3; refprd = H15  
+#   ldiff = True; reflist = ['max-ens']*3+['Ens']*3; refprd = H15  
 #   seasons = [seasons] # only make one plot with all seasons!
 #   variables = ['T2','precip']; variable_settings = ['T2_prj', 'precip_prj'] 
 
-# Fig. 8  (top row)
-#   case = 'hydro'; lsamesize = False; cbo = 'horizontal'; ltitle = False
-#   explist = ['max-ens']*2; period = H15; seasons = [['annual', 'summer']]
-#   variables = ['p-et']; exptitles = [r'P - ET (Annual)', r'P - ET (Summer)']  
+# Fig. 8
+  case = 'hydro'; lsamesize = False; cbo = 'vertical'; ltitle = True
+  variables = ['p-et']; seasons = [['annual', 'summer']]
+  exptitles = [r'Annual Average', r'Summer Average']
+# top row
+  figtitles = r'WRF Ensemble Mean Net Precipitation $(P - ET)$' 
+  explist = ['max-ens']*2; period = H15  
 # Fig. 8  (bottom row)
-#   case = 'hydro'; lsamesize = False; cbo = 'horizontal'; ltitle = False
-#   explist = ['max-ens-2050']*2; period = A15; seasons = [['annual', 'summer']] 
-#   variables = ['p-et']; exptitles = [r'$\Delta$(P - ET) (Annual)', r'$\Delta$(P - ET) (Summer)']
+#   figtitles = r'Change in Net Precipitation $\Delta(P - ET)$' 
+#   explist = ['max-ens-2050']*2; period = A15
 #   ldiff = True; reflist = ['max-ens']; refprd = H15
   
 

@@ -214,7 +214,7 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
       cbo = cbo or 'horizontal'
       if cbo == 'vertical': 
         margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-        caxpos = [0.91, 0.05, 0.03, 0.9]
+        caxpos = [0.91, 0.05, 0.02, 0.9]
       if cbo == 'horizontal': 
         margins = dict(bottom=0.075, left=0.075, right=.975, top=.925, hspace=0.05, wspace=0.05)
         caxpos = [0.05, 0.05, 0.9, 0.03]
