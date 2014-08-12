@@ -57,6 +57,7 @@ if __name__ == '__main__':
   lframe = True # draw domain boundary
   loutline = True # draw boundaries around valid (non-masked) data
   framewidths = 1
+  cbn = None # colorbar levels
   figuretype = None
   lsamesize = True
   lminor = True # draw minor tick mark labels
@@ -172,7 +173,7 @@ if __name__ == '__main__':
   maptype = 'robinson'; lstations = False; lbasins = False; lminor = False; locean = True  
   case = 'cvdp'; lsamesize = False; cbo = 'horizontal'; ltitle = True
   variables = ['PDO_eof']; seasons = [None]; subplot = (2,1)
-  exptitles = [r'HadISST', r'CESM Ensemble']; figtitles = r'PDO SST Pattern' 
+  exptitles = [r'HadISST', r'CESM Ensemble']; figtitles = r'Pacific Decadal Oscillation SST Pattern' 
   explist = ['HadISST_CVDP','Ctrl-1_CVDP']; period = H15
 
 #   case = '3km'; stations = 'cities'
@@ -431,7 +432,14 @@ if __name__ == '__main__':
         if clim: cn.set_clim(vmin=clim[0],vmax=clim[1])
         else: cn.set_clim(vmin=min(clevs),vmax=max(clevs))
       cbar = f.colorbar(cax=cax,mappable=cd[0],orientation=cbo,extend='both') # ,size='3%',pad='2%'       
-      if cbl is None: cbl = np.linspace(min(clevs),max(clevs),9 if lsamesize else 9)
+      if cbl is None:
+        if cbn is None:
+          if ( cbo == 'horizontal' and subplot[1] == 1 ): cbn = 5
+          elif ( cbo == 'vertical' and subplot[0] == 1 ): cbn = 7
+          elif ( cbo == 'horizontal' and subplot[1] == 2 ): cbn = 7
+          elif ( cbo == 'vertical' and subplot[0] == 2 ): cbn = 9
+          else: cbn = 9
+        cbl = np.linspace(min(clevs),max(clevs),cbn)
       cbar.set_ticks(cbl); cbar.set_ticklabels([clbl%(lev) for lev in cbl])
     
       ## Annotation

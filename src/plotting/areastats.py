@@ -122,7 +122,7 @@ def getDatasets(expset, titles=None):
     explist = ['seaice-2050','max-A-2050','max-B-2050','max-C-2050']
   elif expset == 'max-all-diff':
     explist = [('max-2050','max'),('max-A-2050','max-A'),('max-B-2050','max-B'),('max-C-2050','max-C')]
-    titles = ['WRF-1 (Mid-21st-Century)','WRF-2 (Mid-21st-Century)','WRF-3 (Mid-21st-Century)','WRF-4 (Mid-21st-Century)']
+    titles = ['WRF-1 ({0:s})','WRF-2 ({0:s})','WRF-3 ({0:s})','WRF-4 ({0:s})'] # include basin name
   elif expset == 'max-all-var':
     explist = [('max-ens','max-ens')]
     linestyles = ('-','--')  
@@ -134,7 +134,7 @@ def getDatasets(expset, titles=None):
     explist = [('Ctrl-A-2050','Ctrl-A'),('Ctrl-B-2050','Ctrl-B'),('Ctrl-C-2050','Ctrl-C'),('Ctrl-1-2050','Ctrl-1')]
   elif expset == 'max-ens-diff':
     explist = [('max-ens-2050','max-ens')]
-    titles = 'WRF Ensemble Mean (Mid-21st-Century)'
+    titles = '{0:s}, WRF Ensemble Mean' # include basin name
     linestyles = ('-','--')
   elif expset == 'max-end-diff':
     explist = [('max-ens-2100','max-ens')]
@@ -253,13 +253,13 @@ if __name__ == '__main__':
       
       ## create averaging mask
       if area == 'athabasca': 
-        areaname = 'ARB'; subarea = 'WholeARB'# 'WholeARB'
+        areaname = 'ARB'; subarea = 'WholeARB'; areatitle = 'ARB'
       elif area == 'fraser': 
-        areaname = 'FRB'; subarea = 'WholeFRB'
+        areaname = 'FRB'; subarea = 'WholeFRB'; areatitle = 'FRB'
       elif area == 'northcoast': 
-        areaname = 'PSB'; subarea = 'NorthernPSB'
+        areaname = 'PSB'; subarea = 'NorthernPSB'; areatitle = 'Northern PSB'
       elif area == 'southcoast': 
-        areaname = 'PSB'; subarea = 'SouthernPSB'
+        areaname = 'PSB'; subarea = 'SouthernPSB'; areatitle = 'Southern PSB'
       else: 
         raise ValueError, 'Have to specify a river area or other shapefile to use as mask!'
       basin = Basin(basin=areaname, subbasin=subarea)
@@ -461,7 +461,7 @@ if __name__ == '__main__':
                 ax.add_artist(wrflegend); ax.add_artist(obslegend)
               # annotation
               #ax.set_title(title+' ({})'.format(exp.name))
-              ax.set_title(title)
+              ax.set_title(title.format(areatitle)) # could add more stuff here
               if var in ['p-et', 'precip', 'runoff']:
                 ax.axhline(620,linewidth=0.5, color='k')
                 ax.axhline(0,linewidth=0.5, color='0.5')
@@ -476,7 +476,8 @@ if __name__ == '__main__':
 #           if nlen == 1: legargs = dict(frameon=True, labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
 #           else: legargs = dict(frameon=True, labelspacing=0.15, handlelength=2, handletextpad=0.5, fancybox=True)
           plt = wrfplt + obsplt; leg = wrfleg + obsleg
-          ncols = 3 if fontsize > 11 else 4
+          if fontsize > 11: ncols = 2 if len(leg) == 4 else 3
+          else: ncols = 3 if len(leg) == 6 else 4            
           legend = ax.legend(plt, leg, loc=10, ncol=ncols, borderaxespad=0., **legargs)  
           
         # average discharge below Fort McMurray: 620 m^3/s

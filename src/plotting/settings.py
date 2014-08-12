@@ -11,6 +11,7 @@ import numpy as np
 from geodata.base import VariableError
 from datasets.common import name_of_month # for annotation; days_per_month, days_per_month_365, 
 from plotting.colormaps import cm
+import mpl_toolkits.basemap.cm as bmcm
 
 # my own colormap
 cdict = dict()
@@ -148,7 +149,10 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
     elif var=='lat2D': 
       clevs = np.linspace(30,60,30); clbl = '%02.0d'         
     elif var[-4:]=='_eof':
-      clevs = np.linspace(-1,1,41); clbl = '%3.2f'; cmap = cm.redblue_light_r   
+      clevs = np.linspace(-1,1,41); clbl = '%3.1f'; cmap = cm.redblue_light_r #cmap = cm.rscolmap
+#       clevs = np.linspace(-0.7,0.7,41); clbl = '%3.2f'; cmap = mpl.cm.RdYlBu_r
+#       clevs = np.linspace(-0.7,0.7,41); clbl = '%3.2f'; cmap = bmcm.GMT_no_green
+#       clevs = np.linspace(-0.7,0.7,41); clbl = '%3.2f'; cmap = mpl.cm.coolwarm
     else: 
       raise VariableError, 'No settings for variable \'{0:s}\' found!'.format(var) 
   # time frame / season
