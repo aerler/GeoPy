@@ -102,7 +102,9 @@ def getFolderName(name=None, experiment=None, folder=None, mode='avg', cvdp_mode
       if folder is None: 
         if mode == 'avg': folder = experiment.avgfolder
         elif mode == 'cvdp': 
-          if cvdp_mode == 'ensemble': folder = "{:s}/{:s}/".format(cvdpfolder,experiment.ensemble)
+          if cvdp_mode == 'ensemble': 
+            expfolder = experiment.ensemble or experiment.name 
+            folder = "{:s}/{:s}/".format(cvdpfolder,expfolder)
           elif cvdp_mode == 'grand-ensemble': folder = "{:s}/grand-ensemble/".format(cvdpfolder)
           else: folder = experiment.cvdpfolder
         elif mode == 'diag': folder = experiment.diagfolder

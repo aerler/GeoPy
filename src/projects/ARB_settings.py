@@ -64,6 +64,10 @@ annotation_dict['lcc-large'] = dict(scale=(-140, 22, -120, 53, 2000), lat_full=[
 annotation_dict['laea'] = annotation_dict['lcc-large']   
 ## Orthographic Projection
 annotation_dict['ortho-NA'] = dict(scale=None, lat_full=range(-90,90,30), lat_half=None, lon_full=range(-180,180,30), lon_half=None)
+## Global Robinson Projection
+annotation_dict['robinson'] = dict(scale=None, lat_full=range(-60,100,60), lon_full=range(-180,200,120),
+                                               lat_half=range(-90,100,60), lon_half=range(-120,160,120))
+ 
 
 
 ## setup projection: lambert conformal
@@ -106,6 +110,8 @@ projection_dict['laea'] = dict(projection='laea', lat_0=57, lon_0=-137, lat_ts=5
               width=259*30e3, height=179*30e3, rsphere=rsphere, area_thresh = 1000.)  
 ## Orthographic Projection
 projection_dict['ortho-NA'] = dict(projection='ortho', lat_0 = 50, lon_0 = -130, resolution = 'l', area_thresh = 1000.)
+## Global Robinson Projection
+projection_dict['robinson'] = dict(projection='robin', lat_0 = 0, lon_0 = 180, resolution = 'l', area_thresh = 100000.)
 
 
 ## function to actually get a MapSetup object for the ARB region

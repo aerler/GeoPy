@@ -47,17 +47,17 @@ class MapSetup(object):
     return self.projection, self.grid, self.resolution
 
   # draw lat/lon grid
-  def drawGrid(self, basemap, left=True, bottom=True):
+  def drawGrid(self, basemap, left=True, bottom=True, minor=True):
     ''' add meridians and parallels; 'left' and 'bottom' indicate whether parallel and meridians are labeled '''
     # labels = [left,right,top,bottom]
     if self.lat_full is not None:
       basemap.drawparallels(self.lat_full,linewidth=1, labels=[left,False,False,False])
     if self.lat_half is not None:
-      basemap.drawparallels(self.lat_half,linewidth=0.5, labels=[left,False,False,False])
+      basemap.drawparallels(self.lat_half,linewidth=0.5, labels=[left and minor,False,False,False])
     if self.lon_full is not None:
       basemap.drawmeridians(self.lon_full,linewidth=1, labels=[False,False,False,bottom])
     if self.lon_half is not None:
-      basemap.drawmeridians(self.lon_half,linewidth=0.5, labels=[False,False,False,bottom])
+      basemap.drawmeridians(self.lon_half,linewidth=0.5, labels=[False,False,False,bottom and minor])
       
   # draw map scale
   def drawScale(self, basemap):
@@ -70,11 +70,12 @@ class MapSetup(object):
     ''' add coastlines, countries, color ocean and background etc. '''
     # land/sea mask
     basemap.drawlsmask(ocean_color=ocean_color, land_color=land_color,resolution=self.resolution,grid=self.grid)
-    if maskland: basemap.fillcontinents(color='black',lake_color='black') # mask land
-    # add maps stuff
+    if maskland: basemap.fillcontinents(color='white',lake_color='white') # mask land
+    else: basemap.drawcountries(linewidth=0.5)
+    # add general map stuff
     basemap.drawcoastlines(linewidth=0.5)
-    basemap.drawcountries(linewidth=0.5)
-    basemap.drawmapboundary(fill_color='k',linewidth=2)    
+    basemap.drawmapboundary(fill_color='k',linewidth=2)
+        
       
   # mark stations
   def markPoints(self, ax, basemap, pointset='default'):

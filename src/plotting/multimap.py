@@ -51,6 +51,7 @@ if __name__ == '__main__':
   B03 = '2085-2088'; B05 = '2085-2900'; B10 = '2085-2095'; B15 = '2085-2100' # late 21st century  
   ltitle = True # plot/figure title
   figtitles = None
+  subplot = None # subplot layout (or defaults based on number of plots)
   lbackground = True
   lcontour = True # contour or pcolor plot
   lframe = True # draw domain boundary
@@ -58,6 +59,7 @@ if __name__ == '__main__':
   framewidths = 1
   figuretype = None
   lsamesize = True
+  lminor = True # draw minor tick mark labels
   lstations = True; stations = 'cities'
   lbasins = True; basinlist = ('ARB','FRB'); subbasins = {} #dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
   cbo = None # default based on figure type
@@ -155,21 +157,23 @@ if __name__ == '__main__':
 #   variables = ['T2','precip']; variable_settings = ['T2_prj', 'precip_prj'] 
 
 # Fig. 8
-  case = 'hydro'; lsamesize = False; cbo = 'vertical'; ltitle = True
-  variables = ['p-et']; seasons = [['annual', 'summer']]
-  exptitles = [r'Annual Average', r'Summer Average']
+#   case = 'hydro'; lsamesize = False; cbo = 'vertical'; ltitle = True
+#   variables = ['p-et']; seasons = [['annual', 'summer']]
+#   exptitles = [r'Annual Average', r'Summer Average']
 # top row
-  figtitles = r'WRF Ensemble Mean Net Precipitation $(P - ET)$' 
-  explist = ['max-ens']*2; period = H15  
+#   figtitles = r'WRF Ensemble Mean Net Precipitation $(P - ET)$' 
+#   explist = ['max-ens']*2; period = H15  
 # Fig. 8  (bottom row)
 #   figtitles = r'Change in Net Precipitation $\Delta(P - ET)$' 
 #   explist = ['max-ens-2050']*2; period = A15
 #   ldiff = True; reflist = ['max-ens']; refprd = H15
-  
 
-#   maptype = 'ortho-NA'; lstations = False; lbasins = False; lframe = True; loutline = False
-#   explist = ['max-ens']; domain= (0,1); period = H10; case = 'ortho'
-#   exptitles = ['']; title = 'Dynamical Downscaling'  
+# Fig. 13
+  maptype = 'robinson'; lstations = False; lbasins = False; lminor = False; locean = True  
+  case = 'cvdp'; lsamesize = False; cbo = 'horizontal'; ltitle = True
+  variables = ['PDO_eof']; seasons = [None]; subplot = (2,1)
+  exptitles = [r'HadISST', r'CESM Ensemble']; figtitles = r'PDO SST Pattern' 
+  explist = ['HadISST_CVDP','Ctrl-1_CVDP']; period = H15
 
 #   case = '3km'; stations = 'cities'
 #   maptype = 'lcc-col'; lstations = True; lbasins = True # 'lcc-new'  
@@ -229,7 +233,8 @@ if __name__ == '__main__':
   
   
   # get figure settings
-  sf, figformat, margins, caxpos, subplot, figsize, cbo = getFigureSettings(nlen, cbar=True, cbo=cbo, 
+  subplot = subplot or nlen
+  sf, figformat, margins, caxpos, subplot, figsize, cbo = getFigureSettings(subplot, cbar=True, cbo=cbo, 
                                                              figuretype=figuretype, sameSize=lsamesize)
   if not ltitle: margins['top'] += 0.05
   
@@ -449,15 +454,15 @@ if __name__ == '__main__':
           # begin annotation
           bmap = maps[n]
           kwargs = dict()
-          # black-out continents, if we have no proper land mask 
-          if lmsklnd and not (exps[n][0].variables.has_key('lndmsk') or exps[n][0].variables.has_key('lndidx')): 
-            kwargs['maskland'] = True
-          if ldiff or lfrac: 
+          # white-out continents, if we have no proper land mask 
+          if locean or ( lmsklnd and not (exps[n][0].variables.has_key('lndmsk') ) or exps[n][0].variables.has_key('lndidx')): 
+            kwargs['maskland'] = True          
+          if ldiff or lfrac or locean: 
             kwargs['ocean_color'] = 'white' ; kwargs['land_color'] = 'white'
           # misc annotatiosn
           mapSetup.miscAnnotation(bmap, **kwargs)
           # add parallels and meridians
-          mapSetup.drawGrid(bmap, left, bottom)
+          mapSetup.drawGrid(bmap, left=left, bottom=bottom, minor=lminor)
           # mark stations
           if lstations: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
           # add ARB basin outline

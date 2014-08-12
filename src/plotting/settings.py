@@ -146,7 +146,9 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
     elif var=='lon2D': 
       clevs = np.linspace(-130,-100,30); clbl = '%02.0d'
     elif var=='lat2D': 
-      clevs = np.linspace(30,60,30); clbl = '%02.0d'            
+      clevs = np.linspace(30,60,30); clbl = '%02.0d'         
+    elif var[-4:]=='_eof':
+      clevs = np.linspace(-1,1,41); clbl = '%3.2f'; cmap = cm.redblue_light_r   
     else: 
       raise VariableError, 'No settings for variable \'{0:s}\' found!'.format(var) 
   # time frame / season
@@ -189,10 +191,18 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
         cbo = cbo or 'horizontal'; caxpos = [0.05, 0.0275, 0.9, 0.03]
       else:
         margins = dict(bottom=0.025, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
-  # pane settings
-  if nexp == 1:
+  # panel settings
+  if isinstance(nexp,(int,np.integer)):
+    if nexp == 1: subplot = (1,1) # rows, columns
+    elif nexp == 2: subplot = (1,2)
+    elif nexp == 4: subplot = (2,2)
+    elif nexp == 6: subplot = (2,3)
+    else: raise ValueError
+  else:
+    if not ( isinstance(nexp,(tuple,list)) and len(nexp) == 2 ): raise TypeError  
+    subplot = tuple(nexp)
+  if subplot == (1,1):
     ## 1 panel
-    subplot = (1,1)
     if sameSize: figsize = (6.25,6.25)
     else: figsize = (3.75,3.75) # figsize = (7,5.5)
     if cbar:
@@ -205,9 +215,8 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
         caxpos = [0.05, 0.05, 0.9, 0.03]
     else:
       margins = dict(bottom=0.085, left=0.13, right=0.975, top=0.94, hspace=0.0, wspace=0.0)
-  elif nexp == 2:
-    ## 2 panel
-    subplot = (1,2)
+  elif subplot == (1,2):
+    ## 2 panel, horizontal
     if sameSize: figsize = (6.25,6.25)
     else: figsize = (6.25,3.75)    
     if cbar:
@@ -220,9 +229,22 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
         caxpos = [0.05, 0.05, 0.9, 0.03]
     else:
       margins = dict(bottom=0.055, left=0.085, right=.975, top=.95, hspace=0.05, wspace=0.05)
-  elif nexp == 4:
-    # 4 panel
-    subplot = (2,2)
+  elif subplot == (2,1):
+    ## 2 panel, vertical
+    if sameSize: figsize = (6.25,6.25)
+    else: figsize = (3.75,4.8)    
+    if cbar:
+      cbo = cbo or 'horizontal'
+      if cbo == 'vertical': 
+        margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+        caxpos = [0.91, 0.05, 0.02, 0.9]
+      if cbo == 'horizontal': 
+        margins = dict(bottom=0.07, left=0.055, right=.99, top=.925, hspace=0.0, wspace=0.0)
+        caxpos = [0.05, 0.035, 0.9, 0.02]
+    else:
+      margins = dict(bottom=0.055, left=0.085, right=.975, top=.95, hspace=0.05, wspace=0.05)
+  elif subplot == (2,2):
+    # 4 panel    
     figsize = (6.25,6.25)
     if cbar:
       cbo = cbo or 'vertical'
@@ -234,9 +256,8 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
         caxpos = [0.05, 0.05, 0.9, 0.03]
     else:
       margins = dict(bottom=0.06, left=0.09, right=.985, top=.95, hspace=0.13, wspace=0.02)
-  elif nexp == 6:
+  elif subplot == (2,3):
     # 6 panel
-    subplot = (2,3) # rows, columns
     figsize = (9.25,6.5) # width, height (inches)
     if cbar:
       cbo = cbo or 'horizontal'
@@ -247,7 +268,7 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
         margins = dict(bottom=0.09, left=0.05, right=.97, top=.925, hspace=0.1, wspace=0.05)
         caxpos = [0.05, 0.0275, 0.9, 0.03]
     else:
-      margins = dict(bottom=0.025, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
+      margins = dict(bottom=0.025, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)    
 #   # figure out colorbar placement
 #   if cbo == 'vertical':
 #     margins = dict(bottom=0.02, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
