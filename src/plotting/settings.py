@@ -56,7 +56,7 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
     elif var in ('T2','Ts','Tmin','Tmax','Tmean'):
       clevs = np.linspace(-3,3,21); clbl = '%2.1f' 
     elif var in ('evap','pet','p-et','precip','precipc','precipnc','waterflx'):
-      clevs = np.linspace(-50,50,21); clbl = '%2.0f'  
+      clevs = np.linspace(-100,100,21); clbl = '%2.0f'  
     else: 
       clevs = np.linspace(-50,50,21); clbl = '%2.0f'  
   else:

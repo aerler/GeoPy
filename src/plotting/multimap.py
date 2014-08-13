@@ -53,7 +53,7 @@ if __name__ == '__main__':
   figtitles = None
   subplot = None # subplot layout (or defaults based on number of plots)
   lbackground = True
-  lcontour = True # contour or pcolor plot
+  lcontour = False # contour or pcolor plot
   lframe = True # draw domain boundary
   loutline = True # draw boundaries around valid (non-masked) data
   framewidths = 1
@@ -61,6 +61,7 @@ if __name__ == '__main__':
   figuretype = None
   lsamesize = True
   lminor = True # draw minor tick mark labels
+  locean = False # mask continent in white and omit country borders
   lstations = True; stations = 'cities'
   lbasins = True; basinlist = ('ARB','FRB'); subbasins = {} #dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
   cbo = None # default based on figure type
@@ -131,14 +132,15 @@ if __name__ == '__main__':
 
 # Fig. 3/4  
 #   explist = ['Ens']; period = H15; grid = ['cesm1x1']
-#   explist = ['max-ens']*3+['Ens']*3; grid = ['arb2_d02']*3+['cesm1x1']*3
-#   seasons = ['annual', 'summer', 'winter']*2; period = H15
-#   exptitles = ['WRF, 10 km ({:s} Average)']*3+['CESM ({:s} Average)']*3
-#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
-#   case = 'val'; lsamesize = True; cbo = 'horizontal'
-#   ldiff = True; reflist = ['Unity']*6; refprd = H15
-#   variables = ['T2','precip']
-#   seasons = [seasons] # only make one plot with all seasons!
+  explist = ['max-ens']*3+['Ens']*3; grid = ['arb2_d02']*3+['cesm1x1']*3
+  seasons = ['annual', 'summer', 'winter']*2; period = H15
+  exptitles = ['WRF, 10 km ({:s} Average)']*3+['CESM ({:s} Average)']*3
+  exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
+  case = 'val'; lsamesize = True; cbo = 'horizontal'
+  ldiff = True; reflist = ['Unity']*6; refprd = H15
+  variables = ['T2','precip']; seasons = [seasons] # only make one plot with all seasons!
+#   lfrac = True; reflist = ['Unity']*6; refprd = H15
+#   variables = ['precip']; seasons = [seasons] # only make one plot with all seasons!
 
 # Fig. 5
   #explist = ['max-ens']; period = H15
@@ -170,11 +172,11 @@ if __name__ == '__main__':
 #   ldiff = True; reflist = ['max-ens']; refprd = H15
 
 # Fig. 13
-  maptype = 'robinson'; lstations = False; lbasins = False; lminor = False; locean = True  
-  case = 'cvdp'; lsamesize = False; cbo = 'horizontal'; ltitle = True
-  variables = ['PDO_eof']; seasons = [None]; subplot = (2,1)
-  exptitles = [r'HadISST', r'CESM Ensemble']; figtitles = r'Pacific Decadal Oscillation SST Pattern' 
-  explist = ['HadISST_CVDP','Ctrl-1_CVDP']; period = H15
+#   maptype = 'robinson'; lstations = False; lbasins = False; lminor = False; locean = True  
+#   case = 'cvdp'; lsamesize = False; cbo = 'horizontal'; ltitle = True
+#   variables = ['PDO_eof']; seasons = [None]; subplot = (2,1)
+#   exptitles = [r'HadISST', r'CESM Ensemble']; figtitles = r'Pacific Decadal Oscillation SST Pattern' 
+#   explist = ['HadISST_CVDP','Ctrl-1_CVDP']; period = H15
 
 #   case = '3km'; stations = 'cities'
 #   maptype = 'lcc-col'; lstations = True; lbasins = True # 'lcc-new'  
