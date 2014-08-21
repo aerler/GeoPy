@@ -11,7 +11,7 @@ import numpy as np
 import numpy.ma as ma
 import collections as col
 # internal imports
-# N.B.: there shuold be no dependencies on this package, so that it can be imported independently
+# N.B.: there should be no dependencies on this package, so that it can be imported independently
 
 ## definitions
 
@@ -200,7 +200,9 @@ def coerceAtts(atts):
   for key,value in atts.iteritems():
     if isinstance(key,basestring) and key[0] == '_' : pass
     elif not isinstance(value,(basestring,np.ndarray,np.inexact,float,np.integer,int)):
-      if isinstance(value,col.Iterable):
+      if 'name' in dir(value):
+        ncatts[key] = value.name # mostly for datasets and variables
+      elif isinstance(value,col.Iterable):
         if len(value) == 0: ncatts[key] = '' # empty attribute
         elif all([isinstance(val,(int,np.integer,float,np.inexact)) for val in value]):
           # N.B.: int & float are not part of their numpy equivalents
@@ -235,6 +237,7 @@ def writeNetCDF(dataset, ncfile, ncformat='NETCDF4', zlib=True, writeData=True, 
     else: 
       add_var(ncfile, name, dims=dims, data=None, atts=coerceAtts(var.atts), dtype=var.dtype, zlib=zlib, fillValue=var.fillValue)
   # close file or return file handle
+  ncfile.sync()
   if close: ncfile.close()
   else: return ncfile
   

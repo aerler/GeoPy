@@ -132,13 +132,13 @@ if __name__ == '__main__':
 
 # Fig. 3/4  
 #   explist = ['Ens']; period = H15; grid = ['cesm1x1']
-  explist = ['max-ens']*3+['Ens']*3; grid = ['arb2_d02']*3+['cesm1x1']*3
-  seasons = ['annual', 'summer', 'winter']*2; period = H15
-  exptitles = ['WRF, 10 km ({:s} Average)']*3+['CESM ({:s} Average)']*3
-  exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
-  case = 'val'; lsamesize = True; cbo = 'horizontal'
-  ldiff = True; reflist = ['Unity']*6; refprd = H15
-  variables = ['T2','precip']; seasons = [seasons] # only make one plot with all seasons!
+#   explist = ['max-ens']*3+['Ens']*3; grid = ['arb2_d02']*3+['cesm1x1']*3
+#   seasons = ['annual', 'summer', 'winter']*2; period = H15
+#   exptitles = ['WRF, 10 km ({:s} Average)']*3+['CESM ({:s} Average)']*3
+#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
+#   case = 'val'; lsamesize = True; cbo = 'horizontal'
+#   ldiff = True; reflist = ['Unity']*6; refprd = H15
+#   variables = ['T2','precip']; seasons = [seasons] # only make one plot with all seasons!
 #   lfrac = True; reflist = ['Unity']*6; refprd = H15
 #   variables = ['precip']; seasons = [seasons] # only make one plot with all seasons!
 

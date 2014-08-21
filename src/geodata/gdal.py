@@ -80,7 +80,7 @@ class GridDefinition(object):
     # check projection (default is WSG84)
     if isinstance(projection, osr.SpatialReference):
       gdalsr = projection # use as is
-      if not gdalsr.IsProjected(): lwrap360 = checkWrap360(lwrap360, xlon) 
+      if not gdalsr.IsProjected(): lwrap360 = checkWrap360(lwrap360, xlon)
     else:
       gdalsr = osr.SpatialReference() 
       gdalsr.SetWellKnownGeogCS('WGS84')                 
@@ -722,8 +722,8 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       # call variable 'constructor' for all variables
       var = addGDALtoVar(var, projection=dataset.projection, geotransform=dataset.geotransform)
       # check result
-      if not (var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat)) == var.gdal:
-        raise GDALError, 'Variable {0:s} violates GDAL status (gdal={1:s})'.format(var.name, str(var.gdal))    
+      if not (var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat)):
+        raise GDALError, "Variable '{:s}' violates GDAL status (gdal={:s})".format(var.name, str(var.gdal))    
     
     # get grid definition object
     dataset.getGridDef = types.MethodType(getGridDef, dataset)
@@ -758,7 +758,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       ## N.B.: geotransform should be inferred from axes - more robust when slicing!
       # handle projection
       if projection is None: projection = self.projection
-      dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None)  # add GDAL functionality      
+      dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None)  # add GDAL functionality
       return dataset
     # add new method to object
     dataset.copy = types.MethodType(copy, dataset)

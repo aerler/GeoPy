@@ -202,7 +202,7 @@ class Variable(object):
     if plot is None: # try to find sensible default values 
       if variablePlotatts.has_key(self.name): plot = variablePlotatts[self.name]
       elif variablePlotatts.has_key(self.name.split('_')[0]): 
-	plot = variablePlotatts[self.name.split('_')[0]]
+        plot = variablePlotatts[self.name.split('_')[0]]
       else: plot = dict(plotname=self.name, plotunits=self.units, plottitle=self.name) 
     self.__dict__['plot'] = AttrDict(**plot)
     # set defaults - make all of them instance variables! (atts and plot are set below)
@@ -621,7 +621,7 @@ class Variable(object):
     return data.min(axis=axidx)
     
   def reduceToAnnual(self, season, operation, asVar=False, name=None, offset=0,
-		     taxis='time', checkUnits=True, taxatts=None, varatts=None):
+         taxis='time', checkUnits=True, taxatts=None, varatts=None):
     ''' Reduce a monthly time-series to an annual time-series, using mean/min/max over a subset of month or seasons. '''
     #if not isinstance(season,basestring): raise TypeError
     if not self.data: raise DataError
@@ -899,14 +899,19 @@ class Axis(Variable):
       # search for closest index
       idx = self.coord.searchsorted(value) # returns value 
       # refine search
-      if idx <= 0: return 0
-      elif idx >= self.len: return self.len-1
+      if idx <= 0: 
+        return 0
+      elif idx >= self.len: 
+        return self.len-1
       else:
-	dl = value - self.coord[idx-1]
-	dr = self.coord[idx] - value
-	if dr < dl: return idx
-	else: return idx-1 # can't be 0 at this point 
-    else: raise ValueError, "Mode '{:s}' unknown.".format(mode)
+        dl = value - self.coord[idx-1]
+        dr = self.coord[idx] - value
+        if dr < dl: 
+          return idx
+        else: 
+          return idx-1 # can't be 0 at this point 
+    else: 
+      raise ValueError, "Mode '{:s}' unknown.".format(mode)
                   
 
 class Dataset(object):
@@ -1379,12 +1384,12 @@ class Ensemble(object):
     keyword arguments are added as attributes (key = attribute name, 
     value = attribute value).
     
-	Attributes:
-	  members  = list/tuple of members of the ensemble
-	  basetype = class of the ensemble members
-	  idkey    = property of members used for unique identification
-	  name     = name of the ensemble (string)
-	  title    = printable title used for the ensemble (string)
+  Attributes:
+    members  = list/tuple of members of the ensemble
+    basetype = class of the ensemble members
+    idkey    = property of members used for unique identification
+    name     = name of the ensemble (string)
+    title    = printable title used for the ensemble (string)
     '''
     # add members
     self.members = list(members)
@@ -1410,7 +1415,7 @@ class Ensemble(object):
       self.idkeys.append(memid)
       if not isinstance(memid, basestring): raise TypeError, "Member ID key '{:s}' should be a string-type, but received '{:s}'.".format(str(memid),memid.__class__)
       if memid in self.__dict__:
-	raise AttributeError, "Cannot overwrite existing attribute '{:s}'.".format(memid)
+        raise AttributeError, "Cannot overwrite existing attribute '{:s}'.".format(memid)
       self.__dict__[memid] = member
       
   def _recastList(self, fs):
@@ -1420,23 +1425,23 @@ class Ensemble(object):
     elif all([isinstance(f, (Variable,Dataset)) for f in fs]):
       # N.B.: technically, Variable instances are callable, but that's not what we want here...
       if all([isinstance(f, Axis) for f in fs]): 
-	return fs
+        return fs
       # N.B.: axes are often shared, so we can't have an ensemble
       # check for unique keys
       elif len(fs) == len(set([f.name for f in fs if f.name is not None])): 
-	return Ensemble(*fs, idkey='name') # basetype=Variable,
+        return Ensemble(*fs, idkey='name') # basetype=Variable,
       elif len(fs) == len(set([f.dataset.name for f in fs if f.dataset is not None])): 
-	for f in fs: f.dataset_name = f.dataset.name 
-	return Ensemble(*fs, idkey='dataset_name') # basetype=Variable, 
+        for f in fs: f.dataset_name = f.dataset.name 
+        return Ensemble(*fs, idkey='dataset_name') # basetype=Variable, 
       else:
-	# use current keys
-	for f,member in zip(fs,self.members): 
-	  f.dataset_name = getattr(member,self.idkey)
-	return Ensemble(*fs, idkey='dataset_name') # axes from several variables can be the same objects
-	
+        # use current keys
+        for f,member in zip(fs,self.members): 
+          f.dataset_name = getattr(member,self.idkey)
+        return Ensemble(*fs, idkey='dataset_name') # axes from several variables can be the same objects
+  
   def __getattr__(self, attr):
     ''' This is where all the magic happens: defer calls to methods etc. to the 
-	ensemble members and return a list of values. '''
+  ensemble members and return a list of values. '''
     # intercept some list methods
     #print dir(self.members), attr, attr in dir(self.members)
     # determine whether we need a wrapper
@@ -1444,9 +1449,9 @@ class Ensemble(object):
     if all([callable(f) and not isinstance(f, (Variable,Dataset)) for f in fs]):
       # for callable objects, return a wrapper that can read argument lists      
       def wrapper( *args, **kwargs):
-	lensvar = kwargs.pop('lensvar',True)
-	res = [f(*args, **kwargs) for f in fs]
-	return self._recastList(res) # code is reused, hens pulled out
+        lensvar = kwargs.pop('lensvar',True)
+        res = [f(*args, **kwargs) for f in fs]
+        return self._recastList(res) # code is reused, hens pulled out
       # return function wrapper
       return wrapper
     else:
@@ -1478,21 +1483,21 @@ class Ensemble(object):
       # basetype instance
       memid = getattr(member,self.idkey)
       if member in self.members:
-	assert memid in self.__dict__
-	assert member == self.__dict__[memid]
-	return True
+        assert memid in self.__dict__
+        assert member == self.__dict__[memid]
+        return True
       else: 
-	assert memid not in self.__dict__
-	return False
+        assert memid not in self.__dict__
+        return False
     elif isinstance(member, basestring):
       # assume it is the idkey
       if member in self.__dict__:
-	assert self.__dict__[member] in self.members
-	assert getattr(self.__dict__[member],self.idkey) == member
-	return True
+        assert self.__dict__[member] in self.members
+        assert getattr(self.__dict__[member],self.idkey) == member
+        return True
       else: 
-	assert member not in [getattr(m,self.idkey) for m in self.members]
-	return False
+        assert member not in [getattr(m,self.idkey) for m in self.members]
+        return False
     else: raise TypeError, "Argument has to be of '{:s}' of 'basestring' type; received '{:s}'.".format(self.basetype.__name__,member.__class__.__name__)       
       
   def addMember(self, member):
@@ -1509,8 +1514,8 @@ class Ensemble(object):
       raise TypeError, "Argument has to be of '{:s}' of 'basestring' type; received '{:s}'.".format(self.basetype.__name__,member.__class__.__name__)
     if self.hasMember(member):
       if isinstance(member, basestring): 
-	memid = member
-	member = self.__dict__[memid]
+        memid = member
+        member = self.__dict__[memid]
       else: memid = getattr(member,self.idkey)
       assert isinstance(member,self.basetype)
       # remove from dict 
@@ -1524,12 +1529,11 @@ class Ensemble(object):
     ''' Yet another way to access members by name... conforming to the container protocol. If argument is not a member, it is called with __getattr__.'''
     if isinstance(member, basestring): 
       if self.hasMember(member):
-	# members have precedence
-	return self.__dict__[member]
+        # members have precedence
+        return self.__dict__[member]
       else:
-	# call like an attribute
-	return self.__getattr__(member)
-	#self.hasVariable(member): raise KeyError
+        # call like an attribute
+        return self.__getattr__(member)
     elif isinstance(member, (int,np.integer)): 
       return self.members[member]
     else: raise TypeError
@@ -1542,7 +1546,7 @@ class Ensemble(object):
     
   def __delitem__(self, member):
     ''' A way to delete members by name... conforming to the container protocol. '''
-    if not isinstance(varname, basestring): raise TypeError
+    if not isinstance(member, basestring): raise TypeError
     if not self.hasMember(member): raise KeyError
     return self.removeMember(member)
   

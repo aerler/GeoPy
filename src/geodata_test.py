@@ -600,22 +600,22 @@ class NetCDFVarTest(BaseVarTest):
 class DatasetNetCDFTest(BaseDatasetTest):  
   
   # some test parameters (TestCase does not take any arguments)
-  dataset = 'NARR' # dataset to use (also the folder name)
+  dataset_name = 'GPCC' # dataset to use (also the folder name)
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
   
   def setUp(self):
     if RAM: folder = ramdisk
-    else: folder = '/data/%s/'%self.dataset # dataset name is also in folder name
+    else: folder = '/data/{:s}/'.format(self.dataset_name) # dataset name is also in folder name
     self.folder = folder
     # select dataset
-    name = self.dataset
-    if self.dataset == 'GPCC': # single file      
+    name = self.dataset_name
+    if self.dataset_name == 'GPCC': # single file      
       filelist = ['gpcc_test/full_data_v6_precip_25.nc'] # variable to test
       varlist = ['p']; varatts = dict(p=dict(name='precip'))
       ncfile = filelist[0]; ncvar = varlist[0]      
       self.dataset = DatasetNetCDF(name=name,folder=folder,filelist=filelist,varlist=varlist,varatts=varatts)
-    elif self.dataset == 'NARR': # multiple files
+    elif self.dataset_name == 'NARR': # multiple files
       filelist = ['narr_test/air.2m.mon.ltm.nc', 'narr_test/prate.mon.ltm.nc', 'narr_test/prmsl.mon.ltm.nc'] # variable to test
       varlist = ['air','prate','prmsl','lon','lat'] # not necessary with ignore_list = ('nbnds',)
       varatts = dict(air=dict(name='T2'),prmsl=dict(name='pmsl'))
@@ -631,7 +631,7 @@ class DatasetNetCDFTest(BaseDatasetTest):
     axes = tuple([AxisNC(self.ncdata.variables[dim], length=le) for dim,le in zip(ncvar.dimensions,size)]) 
     # initialize netcdf variable 
     self.ncvar = ncvar; self.axes = axes
-    self.var = VarNC(ncvar, name='T2', axes=axes, load=True)    
+    self.var = VarNC(ncvar, name='T2' if name is 'NARR' else 'precip', axes=axes, load=True)    
     # save the original netcdf data
     self.data = ncvar[:].copy() #.filled(0)
     self.size = tuple([len(ax) for ax in axes])
@@ -740,7 +740,7 @@ class GDALVarTest(NetCDFVarTest):
 class DatasetGDALTest(DatasetNetCDFTest):  
   
   # some test parameters (TestCase does not take any arguments)
-  dataset = 'NARR' # dataset to use (also the folder name)
+  dataset_name = 'NARR' # dataset to use (also the folder name)
   plot = False # whether or not to display plots 
   stats = False # whether or not to compute stats on data
   
@@ -750,7 +750,7 @@ class DatasetGDALTest(DatasetNetCDFTest):
     if self.dataset.name == 'NARR':
       self.dataset = addGDALtoDataset(self.dataset, projection=projdict) # projected
     else: 
-      self.dataset.name = addGDALtoDataset(self.dataset) # not projected
+      self.dataset = addGDALtoDataset(self.dataset) # not projected
       
   def tearDown(self):  
     super(DatasetGDALTest,self).tearDown()
@@ -791,12 +791,12 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['BaseVar'] 
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
     tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)

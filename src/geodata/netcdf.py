@@ -60,7 +60,7 @@ def asAxisNC(ax=None, ncvar=None, mode='rw', deepcopy=True, **kwargs):
   # return AxisNC
   return axisnc
 
-def asDatasetNC(dataset=None, ncfile=None, mode='rw', deepcopy=False, writeData=False, ncformat='NETCDF4', zlib=True, **kwargs):
+def asDatasetNC(dataset=None, ncfile=None, mode='rw', deepcopy=False, writeData=True, ncformat='NETCDF4', zlib=True, **kwargs):
   ''' Simple function to copy a dataset and cast it as a DatasetNetCDF (NetCDF-capable Dataset subclass). '''
   if not isinstance(dataset,Dataset): raise TypeError
   if not (mode == 'w' or mode == 'r' or mode == 'rw' or mode == 'wr'):  raise PermissionError
@@ -351,7 +351,7 @@ class DatasetNetCDF(Dataset):
     elif isinstance(dataset,(list,tuple)): 
       if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
       datasets = dataset
-      filelist = [dataset.filepath for dataset in datasets if 'filepath' in dir(dataset)]
+      filelist = [dataset.filepath() for dataset in datasets if 'filepath' in dir(dataset)]
     else:
       # open netcdf datasets from netcdf files
       if not isinstance(filelist,col.Iterable): raise TypeError
@@ -447,7 +447,8 @@ class DatasetNetCDF(Dataset):
     ''' Method to add an Axis to the Dataset. (If the Axis is already present, check that it is the same.) '''   
     # cast Axis instance as AxisNC (sort of implies copying)    
     if asNC and 'w' in self.mode: 
-      ax = asAxisNC(ax=ax, ncvar=self.datasets[0], mode=self.mode, deepcopy=True)
+        if not isinstance(ax,AxisNC) or copy: 
+          ax = asAxisNC(ax=ax, ncvar=self.datasets[0], mode=self.mode, deepcopy=copy)
     elif copy: ax = ax.copy(deepcopy=True) # make a new instance or add it as is
     # hand-off to parent method and return status
     return super(DatasetNetCDF,self).addAxis(ax=ax, copy=False, overwrite=overwrite) # already copied above
@@ -575,7 +576,7 @@ class DatasetNetCDF(Dataset):
     ''' Copy a DatasetNetCDF, either into a normal Dataset or into a DatasetNetCDF (requires a filename). '''
     if asNC:
       #mode = 'wr' if 'r' in self.mode else 'w'      
-      writeData = newargs.pop('writeData',False)
+      writeData = newargs.pop('writeData',True)
       ncformat = newargs.pop('ncformat','NETCDF4')
       zlib = newargs.pop('zlib',True)
       dataset = asDatasetNC(self, ncfile=filename, mode='wr', deepcopy=varsdeep, 
