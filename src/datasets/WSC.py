@@ -1,7 +1,7 @@
 '''
 Created on 2014-02-12
 
-A module to load station data from the Water Survey if Canada and associate the data with river basins;
+A module to load station data from the Water Survey of Canada and associate the data with river basins;
 the data is stored in human-readable text files and tables. 
 
 @author: Andre R. Erler, GPL v3

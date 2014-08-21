@@ -1,8 +1,7 @@
 '''
 Created on 2013-08-23
 
-A module that provides GDAL functionality to GeoData datasets and variables, 
-and exposes some other GDAL functionality, such as regriding.
+A module that provides access to NetCDF datasets for GeoData datasets and variables.
 
 @author: Andre R. Erler, GPL v3
 '''
