@@ -261,7 +261,7 @@ class PermissionError(VariableError):
   ''' Exceptions raised when permissions are missing (such as defined by 'mode'). '''
   pass
 
-class FileError(VariableError):
+class FileError(IOError):
   ''' Exceptions indicating a file access problem (usually a missing file). '''
   pass
 
@@ -271,6 +271,10 @@ class ParseError(FileError):
 
 class NetCDFError(FileError):
   ''' Exceptions related to NetCDF file access. '''
+  pass
+
+class ArgumentError(Exception):
+  ''' Exceptions related to passed arguments. '''
   pass
 
 class GDALError(VariableError):
@@ -288,6 +292,7 @@ class DateError(VariableError):
 class ListError(TypeError):
   ''' Error class for failed list expansion. '''
   pass
+
 
 ## simple application code
 if __name__ == '__main__':

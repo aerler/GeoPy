@@ -6,14 +6,15 @@ A module that introduces a special class intended for station datasets (i.e. tim
 @author: Andre R. Erler, GPL v3
 '''
 
+# internal imports
 from geodata.base import Dataset, Variable, Axis
 from geodata.netcdf import DatasetNetCDF
 
 ## the basic station class, without any geographic information  
 class StationDataset(Dataset):
   '''
-  A Dataset class that is intended for station time-series data (usually one-dimensional), at one 
-  particular location; this class also holds additional meta data.
+    A Dataset class that is intended for station time-series data (usually one-dimensional), at one 
+    particular location; this class also holds additional meta data.
   '''
 
   def __init__(self,  name=None, title=None, ID=None, varlist=None, atts=None, **kwargs):

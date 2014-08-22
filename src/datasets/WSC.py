@@ -21,7 +21,7 @@ from geodata.station import StationDataset, Variable, Axis
 # from geodata.misc import DatasetError
 from warnings import warn
 
-## WSC Meta-data
+## WSC (Water Survey Canada) Meta-data
 
 dataset_name = 'WSC'
 root_folder = data_root + dataset_name + '/'
