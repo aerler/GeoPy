@@ -122,39 +122,44 @@ class DailyStationRecord(object):
     data[:] = np.NaN # use NaN as missing values
     # iterate over line
     oldyear = self.begin_year; oldmon = self.begin_mon -1; z = 0
-    for line in f:
-      ll = line.split()
-      year = int(ll[0]); mon = int(ll[1])
-      # check date bounds
-      if year == self.begin_year and mon < self.begin_mon: raise DateError, line
-      elif year < self.begin_year: raise DateError, line
-      if year == self.end_year and mon > self.end_mon: raise DateError, line
-      elif year > self.end_year: raise DateError, line
-      # check continuity
-      if year == oldyear and mon == oldmon+1: pass
-      elif year == oldyear+1 and oldmon == 12 and mon ==1: pass 
-      else: raise DateError, line
-      oldyear = year; oldmon = mon
-#       # display some values
-#       if year == self.end_year:
-#         print len([m for l in ll[2:] for m in l.split('-9999.99M')])
-      # parse values
-      if len(ll[2:]) > 5: # need more than 5 valid values
-        zz = z 
-        for l in ll[2:]:
-          for num in l.split('-9999.99M'): # remove missing values
-            if 2 < len(num) < 5: # len = 3 or 4, i.e. ignore the flag
-              data[zz] = float(num[:-3])
-              zz += 1
-        # N.B.: all valid values are grouped towards the front, hence dates are slightly messed up
-        if zz > z+31: raise ParseError, 'Line has {:d} values instead of 31: {:s}'.format(zz-z,line)  
-      # increment counter
-      z += 31
+    for line in f:      
+      ll = line.replace('-9999.9', ' -9999.9').split() # without the replace, the split doesn't work
+      if ll[0].isdigit() and ll[1].isdigit():
+        year = int(ll[0]); mon = int(ll[1])
+        # check date bounds
+        if year == self.begin_year and mon < self.begin_mon: raise DateError, line
+        elif year < self.begin_year: raise DateError, line
+        if year == self.end_year and mon > self.end_mon: raise DateError, line
+        elif year > self.end_year: raise DateError, line
+        # check continuity
+        if year == oldyear and mon == oldmon+1: pass
+        elif year == oldyear+1 and oldmon == 12 and mon ==1: pass 
+        else: raise DateError, line
+        oldyear = year; oldmon = mon
+        # parse values
+        if len(ll[2:]) > 5: # need more than 5 valid values
+          zz = z 
+          for num in ll[2:]:
+            if num[:7] == '-9999.9' or num[-1] == 'M': pass # missing value; already pre-filled NaN
+            elif 3 < len(num): # at least 3 digits plus decimal, i.e. ignore the flag
+              if num.isdigit(): n = float(num)
+              elif num[:-1].isdigit: n = float(num[:-1])
+              else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
+              if n < 0: raise ParseError, "Encountered negative value '{:s}' in line:\n {:s}".format(num,line)
+              data[zz] = n
+            else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
+            zz += 1
+          if zz != z+31: raise ParseError, 'Line has {:d} values instead of 31:\n {:s}'.format(zz-z,line)  
+        # increment counter
+        z += 31
+      elif ll[0] != 'Year' or ll[1] != 'Mo':
+        raise ParseError, "No valid title or data found at begining of file:\n {:s}".format(self.filename)
     if z != tlen: raise ParseError, 'Number of lines in file is inconsistent with begin and end date: {:s}'.format(self.filename)
     # close again
     f.close()
     # return array
     return data
+  
     
 ## class to read station records and return a dataset
 class StationRecords(object):
