@@ -1,3 +1,4 @@
+# coding: utf-8
 '''
 Created on 2014-08-20
 
@@ -11,9 +12,8 @@ NetCDF datasets (with extremes); the module also provides a wrapper to load the 
 from collections import OrderedDict
 import numpy as np
 import numpy.ma as ma
-from copy import deepcopy
-import fileinput
 import inspect
+import codecs
 # internal imports
 from datasets.common import days_per_month, name_of_month, data_root
 from geodata.misc import ParseError, ArgumentError, DateError
@@ -54,8 +54,14 @@ class DailyStationRecord(object):
   id         = '' # station ID
   name       = '' # station name
   variable   = '' # variable name (full name used in header)
-  units      = '' # data units used in record 
+  units      = '' # data units used in record
+  dtype      = '' # data type (default: float32)
+  missing    = '' # string indicating missing value
+  flags      = '' # legal data flags (case sensitive)
+  varmin     = 0. # smallest allowed value in data
+  varmax     = 0. # largest allowed value in data
   filename   = '' # absolute path of ASCII file containing data record
+  encoding   = '' # text file encoding
   prov       = '' # province (in Canada)  
   joined     = False # whether station record was merged with another nearby  
   begin_year = 0 # year of first record
@@ -114,47 +120,60 @@ class DailyStationRecord(object):
   def parseRecord(self):
     ''' open the station file and parse records; return a daiy time-series '''
     # open file
-    f = open(self.filename)
+    f = codecs.open(self.filename, 'r', encoding='ISO-8859-15')
     self.validateHeader(f.readline()) # read first line as header
     # allocate daily data array (31 days per month, filled with NaN for missing values)
     tlen = ( (self.end_year - self.begin_year) * 12 + (self.end_mon - self.begin_mon +1) ) * 31
-    data = np.zeros((tlen,), dtype=np.float16) # only three significant digits...
+    data = np.zeros((tlen,), dtype=self.dtype) # only three significant digits...
     data[:] = np.NaN # use NaN as missing values
+    # some stuff to remember
+    lfloat = 'float' in self.dtype; lint = 'int' in self.dtype; lm = len(self.missing)
     # iterate over line
     oldyear = self.begin_year; oldmon = self.begin_mon -1; z = 0
     for line in f:      
       ll = line.replace('-9999.9', ' -9999.9').split() # without the replace, the split doesn't work
       if ll[0].isdigit() and ll[1].isdigit():
         year = int(ll[0]); mon = int(ll[1])
-        # check date bounds
-        if year == self.begin_year and mon < self.begin_mon: raise DateError, line
-        elif year < self.begin_year: raise DateError, line
-        if year == self.end_year and mon > self.end_mon: raise DateError, line
-        elif year > self.end_year: raise DateError, line
         # check continuity
         if year == oldyear and mon == oldmon+1: pass
         elif year == oldyear+1 and oldmon == 12 and mon ==1: pass 
         else: raise DateError, line
         oldyear = year; oldmon = mon
+#         # rigorous check of date bounds
+#         if year == self.begin_year and mon < self.begin_mon: raise DateError, line
+#         elif year < self.begin_year: raise DateError, line
+#         if year == self.end_year and mon > self.end_mon: raise DateError, line
+#         elif year > self.end_year: raise DateError, line
+        # skip dates outside the specified begin/end dates
+        if year < self.begin_year or year > self.end_year: pass # outside range 
+        elif year == self.begin_year and mon < self.begin_mon: pass # start later
+        elif year == self.end_year and mon > self.end_mon: pass # basically done
         # parse values
         if len(ll[2:]) > 5: # need more than 5 valid values
           zz = z 
           for num in ll[2:]:
-            if num[:7] == '-9999.9' or num[-1] == 'M': pass # missing value; already pre-filled NaN
-            elif 3 < len(num): # at least 3 digits plus decimal, i.e. ignore the flag
-              if num.isdigit(): n = float(num)
-              elif num[:-1].isdigit: n = float(num[:-1])
+            if num[:lm] == self.missing: pass # missing value; already pre-filled NaN;  or num[-1] == 'M'
+            else:
+              if lfloat and '.' in num and 1 < len(num): # at least 1 digit plus decimal, i.e. ignore the flag
+                if num[-1].isdigit(): n = float(num)
+                elif num[-2].isdigit() and num[-1] in self.flags: n = float(num[:-1]) # remove data flag
+                else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
+              elif lint and 0 < len(num):# almost the same as for floats
+                if num[-1].isdigit(): n = int(num)
+                elif num[-2].isdigit() and num[-1] in self.flags: n = int(num[:-1]) # remove data flag
+                else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
               else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
-              if n < 0: raise ParseError, "Encountered negative value '{:s}' in line:\n {:s}".format(num,line)
+              if n < self.varmin: raise ParseError, "Encountered value '{:s}' below minimum in line:\n {:s}".format(num,line)
+              if n > self.varmax: raise ParseError, "Encountered value '{:s}' above maximum in line:\n {:s}".format(num,line)
               data[zz] = n
-            else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
             zz += 1
           if zz != z+31: raise ParseError, 'Line has {:d} values instead of 31:\n {:s}'.format(zz-z,line)  
         # increment counter
         z += 31
       elif ll[0] != 'Year' or ll[1] != 'Mo':
         raise ParseError, "No valid title or data found at begining of file:\n {:s}".format(self.filename)
-    if z != tlen: raise ParseError, 'Number of lines in file is inconsistent with begin and end date: {:s}'.format(self.filename)
+    if z < tlen: raise ParseError, 'Reached end of file before specified end date: {:s}'.format(self.filename)
+#     if z != tlen: raise ParseError, 'Number of lines in file is inconsistent with begin and end date: {:s}'.format(self.filename)
     # close again
     f.close()
     # return array
@@ -234,9 +253,15 @@ if __name__ == '__main__':
   if mode == 'test_ASCII_station':  
     
     # initialize station
-    test = DailyStationRecord(id='250M001', name='MOULD BAY', variable='precipitation', units='mm', prov='NT',  
-                              begin_year=1948, begin_mon=1, end_year=2012, end_mon=12, lat=76.2, lon=-119.3,
-                              alt=2, joined=True, filename='/data/EC/daily_precip/dt/dt250M001.txt')
+    test = DailyStationRecord(id='250M001', name='MOULD BAY', variable='precipitation', units=u'mm', 
+                              varmin=0, varmax=1e3, begin_year=1948, begin_mon=1, end_year=2007, end_mon=11, 
+                              lat=76.2, lon=-119.3, alt=2, prov='NT', joined=True, missing='-9999.9', flags='MTEFACLXYZ',
+                              filename='/data/EC/daily_precip/dt/dt250M001.txt', dtype='float32', encoding='ISO-8859-15')
+    
+#     test = DailyStationRecord(id='5010640', name='CYPRESS RIVER', variable='maximum temperature', units=u'°C', 
+#                               varmin=-100, varmax=100, begin_year=1949, begin_mon=1, end_year=2012, end_mon=3, 
+#                               lat=49.55, lon=-99.08, alt=374, prov='MB', joined=False, missing='-9999.9', flags='MEa',
+#                               filename='/data/EC/daily_temp/dx/dx5010640.txt', dtype='float32', encoding='ISO-8859-15')
     data = test.parseRecord()
     print data.shape, data.dtype
     print np.nanmin(data), np.nanmean(data), np.nanmax(data)
