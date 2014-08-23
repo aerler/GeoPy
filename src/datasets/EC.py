@@ -12,11 +12,10 @@ NetCDF datasets (with extremes); the module also provides a wrapper to load the 
 from collections import OrderedDict
 import numpy as np
 import numpy.ma as ma
-import inspect
 import codecs
 # internal imports
 from datasets.common import days_per_month, name_of_month, data_root
-from geodata.misc import ParseError, ArgumentError, DateError
+from geodata.misc import ParseError, DateError, VariableError, RecordClass, StrictRecordClass
 from geodata.gdal import Shape
 from geodata.station import StationDataset, Variable, Axis
 # from geodata.misc import DatasetError
@@ -46,7 +45,7 @@ variable_list = varatts.keys() # also includes coordinate fields
 
 
 ## a class that handles access to station records in ASCII files
-class DailyStationRecord(object):
+class DailyStationRecord(StrictRecordClass):
   '''
     A class that is used by StationRecords to facilitate access to daily station records from ASCII files.  
   '''
@@ -73,33 +72,6 @@ class DailyStationRecord(object):
   alt        = 0. # station elevation (altitude)
   
   # id='', name='', datatype='', filename='', prov='', begin_year=0, begin_mon=0, end_year=0, end_mon=0, lat=0, lon=0
-  def __init__(self, **kwargs):
-    ''' initialize station parameters '''
-    # generate attribute list
-    parameters = inspect.getmembers(self, lambda att: not(inspect.isroutine(att)))
-    parameters = [key for key,val in parameters if key[:2] != '__' and key[-2:] != '__']
-    cls = self.__class__
-    # parse input    
-    for key,value in kwargs.iteritems():
-      if key in parameters:
-        # simple type checking
-        if isinstance(cls.__dict__[key], basestring) and not isinstance(value, basestring):
-          raise TypeError, "Parameter '{:s}' has to be of type 'basestring'.".format(key)  
-        elif ( isinstance(cls.__dict__[key], (float,np.inexact)) and 
-               not isinstance(value, (int,np.integer,float,np.inexact)) ):
-          raise TypeError, "Parameter '{:s}' has to be of a numeric type.".format(key)
-        elif ( isinstance(cls.__dict__[key], (int,np.integer)) and 
-               not isinstance(value, (int,np.integer)) ):
-          raise TypeError, "Parameter '{:s}' has to be of an integer type.".format(key)
-        elif isinstance(cls.__dict__[key], (bool,np.bool)) and not isinstance(value, (bool,np.bool)):
-          raise TypeError, "Parameter '{:s}' has to be of boolean type.".format(key)  
-        # unfortunately this automated approach makes type checking a bit clumsy
-        self.__dict__[key] = value
-      else: raise ArgumentError, "Invalid parameter: '{:s}'".format(key)
-    # check that all parameters are set
-    for param in parameters:
-      if param not in self.__dict__:
-        raise ArgumentError, "Parameter '{:s}' was not set (missing argument).".format(param)
       
   def validateHeader(self, headerline):
     ''' validate header information against stored meta data '''
@@ -117,10 +89,17 @@ class DailyStationRecord(object):
     if self.units.lower() not in header[5]: raise ParseError, headerline # variable units
     # if no error was raised, we are good
     
+  def checkHeader(self):
+    ''' open the station file and validate the header information; then close '''
+    # open file
+    f = codecs.open(self.filename, 'r', encoding=self.encoding)
+    self.validateHeader(f.readline()) # read first line as header
+    f.close()
+  
   def parseRecord(self):
     ''' open the station file and parse records; return a daiy time-series '''
     # open file
-    f = codecs.open(self.filename, 'r', encoding='ISO-8859-15')
+    f = codecs.open(self.filename, 'r', encoding=self.encoding)
     self.validateHeader(f.readline()) # read first line as header
     # allocate daily data array (31 days per month, filled with NaN for missing values)
     tlen = ( (self.end_year - self.begin_year) * 12 + (self.end_mon - self.begin_mon +1) ) * 31
@@ -179,6 +158,77 @@ class DailyStationRecord(object):
     # return array
     return data
   
+
+## class that defines variable properties (specifics are implemented in children)
+class VarDef(RecordClass):
+  # variable specific
+  name     = '' # full variable name
+  atts     = None # dictionary with PyGeoData variable attributes
+  prefix   = '' # file prefix
+  # type specific
+  datatype = '' # defined in child class
+  units    = '' # units used for data  
+  dtype    = 'float32' # data type used for data
+  encoding = 'UTF-8' # file encoding
+  missing  = '' # string indicating missing value
+  flags    = '' # legal data flags (case sensitive)
+  varmin   = 0. # smallest allowed value in data
+  varmax   = 0. # largest allowed value in data
+  # inferred variables
+  variable = '' # alias for name
+  filepath = '' # inferred from prefix
+  
+  def __init__(self, **kwargs):
+    super(VarDef,self).__init__(**kwargs)
+    self.variable = self.name
+    self.filepath = '{0:s}/{0:s}{1:s}.txt'.format(self.prefix,'{:s}')
+    
+  def convert(self, data): return data # needs to be implemented by child
+  
+  def getKWargs(self, *args):
+    ''' Return a dictionary with the specified arguments and their values '''
+    if len(args) == 0: 
+      args = ['variable', 'units', 'varmin', 'varmax', 'missing', 'flags', 'dtype', 'encoding']
+    kwargs = dict()
+    for arg in args:
+      kwargs[arg] = getattr(self,arg)
+    return kwargs
+  
+# definition for precipitation files
+class PrecipDef(VarDef):
+  units    = 'mm'
+  datatype = 'precip'  
+  missing  = '-9999.99' # string indicating missing value (apparently not all have 'M'...)
+  flags    = 'TEFACLXYZ' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
+  varmin   = 0. # smallest allowed value in data
+  varmax   = 1.e3 # largest allowed value in data
+  
+# definition for temperature files
+class TempDef(VarDef):
+  units    = u'°C'
+  datatype = 'temp'
+  encoding = 'ISO-8859-15' # for some reason temperature files have a strange encodign scheme...
+  missing  = '-9999.9' # string indicating missing value
+  flags    = 'Ea' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
+  varmin   = -100. # smallest allowed value in data
+  varmax   = 100. # largest allowed value in data
+  
+  def convert(self, data): return data + 273.15 # convert to Kelvin
+
+# definition of station meta data format 
+EC_header_format = ('No','StnId','Prov','From','To','Lat(deg)','Long(deg)','Elev(m)','Joined','Station','name') 
+EC_station_format = tuple([(None, int), 
+                          ('id', str),                            
+                          ('prov', str),                        
+                          ('begin_year', int),     
+                          ('begin_mon', int),
+                          ('end_year', int),   
+                          ('end_mon', int),
+                          ('lat', float),                     
+                          ('lon', float),                       
+                          ('alt', float),                       
+                          ('joined', lambda l: l.upper() == 'Y'),
+                          ('name', str),])
     
 ## class to read station records and return a dataset
 class StationRecords(object):
@@ -189,29 +239,95 @@ class StationRecords(object):
     to a NetCDF file.
   '''
   # list of format parameters
-  metafile = 'stations.txt' # file that contains station meta data (to load station records)
-  folder   = '{0:s}_{1:s}' # root folder for station data: interval and datatype
-  interval = '' # source data interval (currently only daily)
-  datatype = '' # variable class, e.g. temperature or precipitation tyes
-  vardefs  = None # parameters and definitions associated with variables
+  stationfile = 'stations.txt' # file that contains station meta data (to load station records)
+  folder      = '' # root folder for station data: interval and datatype
+  encoding    = '' # encoding of station file
+  interval    = '' # source data interval (currently only daily)
+  datatype    = '' # variable class, e.g. temperature or precipitation tyes
+  variables   = None # parameters and definitions associated with variables
+  stationlist = None # list of station objects
   
-  def __init__(self):
+  def __init__(self, folder='', stationfile='stations.txt', variables=None, encoding='', interval='daily', 
+               header_format=None, station_format=None, constraints=None):
     ''' Parse station file and initialize station records. '''
+    # some input checks
+    if not isinstance(stationfile,basestring): raise TypeError
+    if interval != 'daily': raise NotImplementedError
+    if header_format is None: header_format = EC_header_format # default
+    elif not isinstance(header_format,(tuple,list)): raise TypeError
+    if station_format is None: station_format = EC_station_format # default    
+    elif not isinstance(station_format,(tuple,list)): raise TypeError
+    if not isinstance(constraints,dict) and constraints is not None: raise TypeError
+    if not isinstance(variables,dict): raise TypeError
+    datatype = variables.values()[0].datatype
+    if not all([var.datatype == datatype for var in variables.values()]): raise VariableError
+    encoding = encoding or variables.values()[0].encoding 
+    if not isinstance(encoding,basestring): raise TypeError
+    folder = folder or '{:s}/{:s}_{:s}/'.format(root_folder,interval,datatype) # default folder scheme 
+    if not isinstance(folder,basestring): raise TypeError
+    # save arguments
+    self.folder = folder
+    self.stationfile = stationfile
+    self.variables = variables
+    self.encoding = encoding
+    self.interval = interval
+    self.header_format = header_format
+    self.station_format = station_format
+    self.constraints = constraints 
     # open and parse station file
-    
+    stationfile = '{:s}/{:s}'.format(folder,stationfile)
+    f = codecs.open(stationfile, 'r', encoding=encoding)
     # initialize station objects and add to list
-    
+    header = f.readline() # read first line of header (title)
+    if not datatype.lower() in header.lower(): raise ParseError
+    f.readline() # discard second line (French)
+    header = f.readline() # read third line (column definitions)
+    for key,col in zip(header_format,header.split()):
+      if key.lower() != col.lower(): 
+        raise ParseError, "Column headers do not match format specification: {:s} != {:s} \n {:s}".format(key,col,header)
+    f.readline() # discard forth line (French)    
     # initialize station dataset
-    pass
-
-## class that implements particularities of EC temperature station records
-class DailyTemp(StationRecords):
-  '''
-    A class to load daily temperature records from EC stations. 
-  '''
-  interval = 'daily' # source data interval (currently only daily)
-  datatype = 'temp' # variable class, e.g. temperature or precipitation tyes
-  vardefs  = None # parameters and definitions associated with variables
+    self.stationlists = {varname:[] for varname in variables.iterkeys()} # a separate list for each variable 
+    z = 0 # row counter 
+    ns = 0 # station counter
+    # loop over lines (each defiens a station)
+    for line in f:
+      z += 1 # increment counter
+      collist = line.split()
+      stdef = dict() # station specific arguments to instantiate station object
+      # loop over column titles
+      zz = 0 # column counter
+      for key,fct in station_format[:-1]: # loop over columns
+        if key is None: # None means skip this column
+          if zz == 0: # first column
+            if z != fct(collist[zz]): raise ParseError, "Station number is not consistent with line count."
+        else:
+          #print key, z, collist[zz]
+          stdef[key] = fct(collist[zz]) # convert value and assign to argument
+        zz += 1 # increment column
+      assert zz <= len(collist) # not done yet
+      # collect all remaining elements
+      key,fct = station_format[-1]
+      stdef[key] = fct(' '.join(collist[zz:]))
+      #print z,stdef[key]
+      # check station constraints
+      if constraints is None: ladd = True
+      else:
+        ladd = True
+        for key,val in constraints.iteritems():
+          if stdef[key] not in val: ladd = False
+      # instantiate station objects for each variable and append to lists
+      if ladd:
+        ns += 1
+        # loop over variable definitions
+        for varname,vardef in variables.iteritems():
+          filename = '{0:s}/{1:s}'.format(folder,vardef.filepath.format(stdef['id']))
+          kwargs = dict() # combine station and variable attributes
+          kwargs.update(stdef); kwargs.update(vardef.getKWargs())
+          station = DailyStationRecord(filename=filename, **kwargs)
+          station.checkHeader() 
+          self.stationlists[varname].append(station)
+    assert len(self.stationlists[varname]) == ns # make sure we got all (lists should have the same length)
     
 
 ## load pre-processed EC station time-series
@@ -246,22 +362,41 @@ loadStationClimatology = loadEC # pre-processed, standardized climatology
 
 if __name__ == '__main__':
 
-  mode = 'test_ASCII_station'
+#   mode = 'test_station_object'
+  mode = 'test_station_reader'
 #   mode = 'convert_ASCII'
   
   # do some tests
-  if mode == 'test_ASCII_station':  
+  if mode == 'test_station_object':  
     
-    # initialize station
-    test = DailyStationRecord(id='250M001', name='MOULD BAY', variable='precipitation', units=u'mm', 
-                              varmin=0, varmax=1e3, begin_year=1948, begin_mon=1, end_year=2007, end_mon=11, 
-                              lat=76.2, lon=-119.3, alt=2, prov='NT', joined=True, missing='-9999.9', flags='MTEFACLXYZ',
-                              filename='/data/EC/daily_precip/dt/dt250M001.txt', dtype='float32', encoding='ISO-8859-15')
-    
+    # initialize station (new way with VarDef)
+#     var = PrecipDef(name='precipitation', prefix='dt', atts=varatts['precip'])
+#     test = DailyStationRecord(id='250M001', name='MOULD BAY', filename='/data/EC/daily_precip/dt/dt250M001.txt',  
+#                               begin_year=1948, begin_mon=1, end_year=2007, end_mon=11, prov='NT', joined=True, 
+#                               lat=76.2, lon=-119.3, alt=2, **var.getKWargs())    
+    var = TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax'])
+    test = DailyStationRecord(id='5010640', name='CYPRESS RIVER', filename='/data/EC/daily_temp/dx/dx5010640.txt',
+                              begin_year=1949, begin_mon=1, end_year=2012, end_mon=3, prov='MB', joined=False, 
+                              lat=49.55, lon=-99.08, alt=374, **var.getKWargs())
+#     # old way without VarDef    
+#     test = DailyStationRecord(id='250M001', name='MOULD BAY', variable='precipitation', units=u'mm', 
+#                               varmin=0, varmax=1e3, begin_year=1948, begin_mon=1, end_year=2007, end_mon=11, 
+#                               lat=76.2, lon=-119.3, alt=2, prov='NT', joined=True, missing='-9999.99', flags='TEFACLXYZ',
+#                               filename='/data/EC/daily_precip/dt/dt250M001.txt', dtype='float32', encoding='UTF-8')
 #     test = DailyStationRecord(id='5010640', name='CYPRESS RIVER', variable='maximum temperature', units=u'°C', 
 #                               varmin=-100, varmax=100, begin_year=1949, begin_mon=1, end_year=2012, end_mon=3, 
-#                               lat=49.55, lon=-99.08, alt=374, prov='MB', joined=False, missing='-9999.9', flags='MEa',
+#                               lat=49.55, lon=-99.08, alt=374, prov='MB', joined=False, missing='-9999.9', flags='Ea',
 #                               filename='/data/EC/daily_temp/dx/dx5010640.txt', dtype='float32', encoding='ISO-8859-15')
-    data = test.parseRecord()
+    test.checkHeader() # fail early...
+    data = var.convert(test.parseRecord())    
     print data.shape, data.dtype
     print np.nanmin(data), np.nanmean(data), np.nanmax(data)
+  
+  
+  # do some tests
+  elif mode == 'test_station_reader':
+    
+    # prepare input
+    variables = dict(Tmax=TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax']))
+    # initialize station record container
+    StationRecords(folder='', variables=variables, constraints=dict(prov=('PE',)))

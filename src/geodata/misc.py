@@ -10,6 +10,7 @@ Miscellaneous decorators, methods. and classes, as well as exception classes.
 import numpy as np
 import numpy.ma as ma
 import collections as col
+import inspect
 # import numbers as num
 
 ## useful decorators
@@ -190,6 +191,54 @@ def joinDicts(*dicts):
           else: joined[key] = value # new entry
       # return joined dictionary
       return joined    
+    
+## another useful container class
+
+class RecordClass(object):
+  '''
+    A class that takes keyword arguments and assigns their value to class attributes; limited type checking
+    is performed. Defaults can be set in the child class definition
+  '''
+  
+  def __init__(self, **kwargs):
+    ''' initialize station parameters '''
+    # generate attribute list
+    parameters = inspect.getmembers(self, lambda att: not(inspect.isroutine(att)))
+    parameters = [key for key,val in parameters if key[:2] != '__' and key[-2:] != '__']; del val
+    self.__params__ = parameters # save parameter list for references
+    cls = self.__class__
+    # parse input    
+    for key,value in kwargs.iteritems():
+      if key in parameters:
+        # simple type checking
+        if getattr(self,key) is None: pass # no type checking...
+        elif isinstance(getattr(self,key), basestring) and not isinstance(value, basestring):
+          raise TypeError, "Parameter '{:s}' has to be of type 'basestring'.".format(key)  
+        elif ( isinstance(getattr(self,key), (float,np.inexact)) and 
+               not isinstance(value, (int,np.integer,float,np.inexact)) ):
+          raise TypeError, "Parameter '{:s}' has to be of a numeric type.".format(key)
+        elif ( isinstance(getattr(self,key), (int,np.integer)) and 
+               not isinstance(value, (int,np.integer)) ):
+          raise TypeError, "Parameter '{:s}' has to be of an integer type.".format(key)
+        elif isinstance(getattr(self,key), (bool,np.bool)) and not isinstance(value, (bool,np.bool)):
+          raise TypeError, "Parameter '{:s}' has to be of boolean type.".format(key)  
+        # unfortunately this automated approach makes type checking a bit clumsy
+        self.__dict__[key] = value
+      else: raise ArgumentError, "Invalid parameter: '{:s}'".format(key)
+      
+class StrictRecordClass(RecordClass):
+  '''
+    A version of RecordClass that enforces that all attributes are set explicitly; defaults are only used
+    for type checking.
+  '''      
+  def __init__(self, **kwargs):
+    # call original constructor
+    super(StrictRecordClass,self).__init__(**kwargs)
+    # check that all parameters are set
+    for param in self.__params__:
+      if param not in self.__dict__:
+        raise ArgumentError, "Parameter '{:s}' was not set (missing argument).".format(param)    
+
 
 ## Error handling classes
 # from base import Variable
