@@ -37,8 +37,18 @@ varatts = dict(T2       = dict(name='T2', units='K', atts=dict(long_name='Averag
                precip   = dict(name='precip', units='kg/m^2/s', atts=dict(long_name='Total Precipitation')), # total precipitation
                solprec  = dict(name='solprec', units='kg/m^2/s', atts=dict(long_name='Solid Precipitation')), # solid precipitation
                liqprec  = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
-               # axes (don't have their own file; listed in axes)
-               time     = dict(name='time', units='month', atts=dict(long_name='Month of the Year')), # time coordinate
+               # meta/constant data variables
+               name  = dict(name='name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
+               prov  = dict(name='prov', units='', atts=dict(long_name='Province')), # in which Canadian Province the station is located
+               lat  = dict(name='lat', units='deg N', atts=dict(long_name='Latitude')), # geographic latitude field
+               lon  = dict(name='lon', units='deg E', atts=dict(long_name='Longitude')), # geographic longitude field
+               alt  = dict(name='zs', units='m', atts=dict(long_name='Station Elevation')), # station elevation
+               begin_date = dict(name='begin_date', units='month', atts=dict(long_name='Month since 1979-01', # begin of station record
+                                                                             description='Begin of Station Record (relative to 1979-01)')), 
+               end_date = dict(name='end_date', units='month', atts=dict(long_name='Month since 1979-01', # begin of station record
+                                                                         description='End of Station Record (relative to 1979-01)')),
+               # axes (also sort of meta data)
+               time     = dict(name='time', units='month', atts=dict(long_name='Month since 1979-01')), # time coordinate
                station  = dict(name='station', units='#', atts=dict(long_name='Station Number'))) # ordinal number of station
 # list of variables to load
 variable_list = varatts.keys() # also includes coordinate fields    
@@ -238,14 +248,19 @@ class StationRecords(object):
     The data will be converted to monthly statistics and accessible as a PyGeoData dataset or can be written 
     to a NetCDF file.
   '''
-  # list of format parameters
-  stationfile = 'stations.txt' # file that contains station meta data (to load station records)
+  # arguments
   folder      = '' # root folder for station data: interval and datatype
+  stationfile = 'stations.txt' # file that contains station meta data (to load station records)
   encoding    = '' # encoding of station file
   interval    = '' # source data interval (currently only daily)
   datatype    = '' # variable class, e.g. temperature or precipitation tyes
   variables   = None # parameters and definitions associated with variables
-  stationlist = None # list of station objects
+  header_format  = '' # station format definition (for validation)
+  station_format = '' # station format definition (for reading)
+  constraints    = None # constraints to limit the number of stations that are loaded
+  # internal variables
+  stationlists   = None # list of station objects
+  dataset        = None # PyGeoData Dataset (will hold results) 
   
   def __init__(self, folder='', stationfile='stations.txt', variables=None, encoding='', interval='daily', 
                header_format=None, station_format=None, constraints=None):
@@ -268,12 +283,14 @@ class StationRecords(object):
     # save arguments
     self.folder = folder
     self.stationfile = stationfile
-    self.variables = variables
     self.encoding = encoding
     self.interval = interval
+    self.datatype = datatype
+    self.variables = variables
     self.header_format = header_format
     self.station_format = station_format
-    self.constraints = constraints 
+    self.constraints = constraints
+    ## initialize station objects from file
     # open and parse station file
     stationfile = '{:s}/{:s}'.format(folder,stationfile)
     f = codecs.open(stationfile, 'r', encoding=encoding)
@@ -286,8 +303,8 @@ class StationRecords(object):
       if key.lower() != col.lower(): 
         raise ParseError, "Column headers do not match format specification: {:s} != {:s} \n {:s}".format(key,col,header)
     f.readline() # discard forth line (French)    
-    # initialize station dataset
-    self.stationlists = {varname:[] for varname in variables.iterkeys()} # a separate list for each variable 
+    # initialize station list
+    self.stationlists = {varname:[] for varname in variables.iterkeys()} # a separate list for each variable
     z = 0 # row counter 
     ns = 0 # station counter
     # loop over lines (each defiens a station)
@@ -328,6 +345,25 @@ class StationRecords(object):
           station.checkHeader() 
           self.stationlists[varname].append(station)
     assert len(self.stationlists[varname]) == ns # make sure we got all (lists should have the same length)
+    
+  def prepareDataset(self):
+    ''' prepare a PyGeoData dataset for the station data (with all the meta data) '''
+    from geodata import Axis, Variable, Dataset
+    # meta data arrays
+    dataset = Dataset(varlist=[])
+    # station axis (by ordinal number)
+    stationlist = self.stationlists.values()[0] # just use first list, since meta data is the same
+    assert all([len(stationlist) == len(stnlst) for stnlst in self.stationlists.values()]) # make sure none is missing
+    station = Axis(coord=np.arange(1,len(stationlist)+1, dtype='int16'), atts=varatts['station']) # start at 1
+    # station name
+    namelen = max([len(stn.name) for stn in stationlist])
+    strarray = np.array([stn.name.ljust(namelen) for stn in stationlist], dtype='|S{:d}'.format(namelen))
+    dataset += Variable(axes=(station,), data=strarray, atts=varatts['name'])
+    # station province
+    # station joined
+    # geo locators (lat/lon/alt)
+    # start/end dates (month relative to 1979-01)
+    self.dataset = dataset
     
 
 ## load pre-processed EC station time-series
@@ -399,4 +435,7 @@ if __name__ == '__main__':
     # prepare input
     variables = dict(Tmax=TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax']))
     # initialize station record container
-    StationRecords(folder='', variables=variables, constraints=dict(prov=('PE',)))
+    test = StationRecords(folder='', variables=variables, constraints=dict(prov=('PE',)))
+    # show dataset
+    test.prepareDataset()
+    print test.dataset
