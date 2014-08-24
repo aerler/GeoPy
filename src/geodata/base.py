@@ -359,7 +359,7 @@ class Variable(object):
     ''' Return a reference to the Axis object or one with the same name. '''
     return self.axes[self.axisIndex(axis)]
   
-  def axisIndex(self, axis):
+  def axisIndex(self, axis, lcheck=True):
     ''' Return the index of a particular axis. (return None if not found) '''
     if isinstance(axis,basestring): # by name
       for i in xrange(len(self.axes)):
@@ -937,13 +937,14 @@ class Dataset(object):
     # set properties in atts
     if atts is None: atts = dict()
     if name is not None: atts['name'] = name
-    else: atts['name'] = ''
+    elif 'name' not in atts: atts['name'] = 'N/A'
     if title is not None: atts['title'] = title
-    else: atts['title'] = ''
+    elif 'title' not in atts: atts['title'] = 'N/A'
     # load global attributes, if given
     if atts: self.__dict__['atts'] = AttrDict(**atts)
     else: self.__dict__['atts'] = AttrDict()
-    # load variables (automatically adds axes linked to varaibles)
+    # load variables (automatically adds axes linked to variables)
+    if varlist is None: varlist = []
     for var in varlist:
       #print var.name
       self.addVariable(var, copy=False) # don't make copies of new variables!

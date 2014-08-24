@@ -38,8 +38,9 @@ varatts = dict(T2       = dict(name='T2', units='K', atts=dict(long_name='Averag
                solprec  = dict(name='solprec', units='kg/m^2/s', atts=dict(long_name='Solid Precipitation')), # solid precipitation
                liqprec  = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
                # meta/constant data variables
-               name  = dict(name='name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
-               prov  = dict(name='prov', units='', atts=dict(long_name='Province')), # in which Canadian Province the station is located
+               name    = dict(name='name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
+               prov    = dict(name='prov', units='', atts=dict(long_name='Province')), # in which Canadian Province the station is located
+               joined  = dict(name='joined', units='', atts=dict(long_name='Joined Record or Single Station')), # whether or not the record contains more than one station 
                lat  = dict(name='lat', units='deg N', atts=dict(long_name='Latitude')), # geographic latitude field
                lon  = dict(name='lon', units='deg E', atts=dict(long_name='Longitude')), # geographic longitude field
                alt  = dict(name='zs', units='m', atts=dict(long_name='Station Elevation')), # station elevation
@@ -172,14 +173,15 @@ class DailyStationRecord(StrictRecordClass):
 ## class that defines variable properties (specifics are implemented in children)
 class VarDef(RecordClass):
   # variable specific
-  name     = '' # full variable name
+  name     = '' # full variable name (used in source files)
   atts     = None # dictionary with PyGeoData variable attributes
-  prefix   = '' # file prefix
+  prefix   = '' # file prefix for source file name (used with station ID)
+  fileext  = '.txt' # file name extension (used for source files)
   # type specific
-  datatype = '' # defined in child class
-  units    = '' # units used for data  
+  datatype = '' # defined in child class; type of source file
+  units    = '' # units used for data  (in source files)  
   dtype    = 'float32' # data type used for data
-  encoding = 'UTF-8' # file encoding
+  encoding = 'UTF-8' # file encoding (used in source files)
   missing  = '' # string indicating missing value
   flags    = '' # legal data flags (case sensitive)
   varmin   = 0. # smallest allowed value in data
@@ -191,7 +193,7 @@ class VarDef(RecordClass):
   def __init__(self, **kwargs):
     super(VarDef,self).__init__(**kwargs)
     self.variable = self.name
-    self.filepath = '{0:s}/{0:s}{1:s}.txt'.format(self.prefix,'{:s}')
+    self.filepath = '{0:s}/{0:s}{1:s}{2:s}'.format(self.prefix,'{:s}',self.fileext)
     
   def convert(self, data): return data # needs to be implemented by child
   
@@ -207,7 +209,8 @@ class VarDef(RecordClass):
 # definition for precipitation files
 class PrecipDef(VarDef):
   units    = 'mm'
-  datatype = 'precip'  
+  datatype = 'precip'
+  title    = 'Precipitation Records'
   missing  = '-9999.99' # string indicating missing value (apparently not all have 'M'...)
   flags    = 'TEFACLXYZ' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
   varmin   = 0. # smallest allowed value in data
@@ -217,6 +220,7 @@ class PrecipDef(VarDef):
 class TempDef(VarDef):
   units    = u'°C'
   datatype = 'temp'
+  title    = 'Temperature Records'
   encoding = 'ISO-8859-15' # for some reason temperature files have a strange encodign scheme...
   missing  = '-9999.9' # string indicating missing value
   flags    = 'Ea' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
@@ -255,6 +259,7 @@ class StationRecords(object):
   interval    = '' # source data interval (currently only daily)
   datatype    = '' # variable class, e.g. temperature or precipitation tyes
   variables   = None # parameters and definitions associated with variables
+  atts        = None # attributes of resulting dataset (including name and title)
   header_format  = '' # station format definition (for validation)
   station_format = '' # station format definition (for reading)
   constraints    = None # constraints to limit the number of stations that are loaded
@@ -263,7 +268,7 @@ class StationRecords(object):
   dataset        = None # PyGeoData Dataset (will hold results) 
   
   def __init__(self, folder='', stationfile='stations.txt', variables=None, encoding='', interval='daily', 
-               header_format=None, station_format=None, constraints=None):
+               header_format=None, station_format=None, constraints=None, atts=None):
     ''' Parse station file and initialize station records. '''
     # some input checks
     if not isinstance(stationfile,basestring): raise TypeError
@@ -274,8 +279,11 @@ class StationRecords(object):
     elif not isinstance(station_format,(tuple,list)): raise TypeError
     if not isinstance(constraints,dict) and constraints is not None: raise TypeError
     if not isinstance(variables,dict): raise TypeError
-    datatype = variables.values()[0].datatype
+    datatype = variables.values()[0].datatype; title = variables.values()[0].title;
     if not all([var.datatype == datatype for var in variables.values()]): raise VariableError
+    if not all([var.title == title for var in variables.values()]): raise VariableError
+    if atts is None: atts = dict(name=datatype, title=title) # default name
+    elif not isinstance(atts,dict): raise TypeError # resulting dataset attributes
     encoding = encoding or variables.values()[0].encoding 
     if not isinstance(encoding,basestring): raise TypeError
     folder = folder or '{:s}/{:s}_{:s}/'.format(root_folder,interval,datatype) # default folder scheme 
@@ -287,6 +295,7 @@ class StationRecords(object):
     self.interval = interval
     self.datatype = datatype
     self.variables = variables
+    self.atts = atts
     self.header_format = header_format
     self.station_format = station_format
     self.constraints = constraints
@@ -311,46 +320,47 @@ class StationRecords(object):
     for line in f:
       z += 1 # increment counter
       collist = line.split()
-      stdef = dict() # station specific arguments to instantiate station object
-      # loop over column titles
-      zz = 0 # column counter
-      for key,fct in station_format[:-1]: # loop over columns
-        if key is None: # None means skip this column
-          if zz == 0: # first column
-            if z != fct(collist[zz]): raise ParseError, "Station number is not consistent with line count."
+      if len(collist) > 0: # skip empty lines
+        stdef = dict() # station specific arguments to instantiate station object
+        # loop over column titles
+        zz = 0 # column counter
+        for key,fct in station_format[:-1]: # loop over columns
+          if key is None: # None means skip this column
+            if zz == 0: # first column
+              if z != fct(collist[zz]): raise ParseError, "Station number is not consistent with line count:\n {:s}".format(line)
+          else:
+            #print key, z, collist[zz]
+            stdef[key] = fct(collist[zz]) # convert value and assign to argument
+          zz += 1 # increment column
+        assert zz <= len(collist) # not done yet
+        # collect all remaining elements
+        key,fct = station_format[-1]
+        stdef[key] = fct(' '.join(collist[zz:]))
+        #print z,stdef[key]
+        # check station constraints
+        if constraints is None: ladd = True
         else:
-          #print key, z, collist[zz]
-          stdef[key] = fct(collist[zz]) # convert value and assign to argument
-        zz += 1 # increment column
-      assert zz <= len(collist) # not done yet
-      # collect all remaining elements
-      key,fct = station_format[-1]
-      stdef[key] = fct(' '.join(collist[zz:]))
-      #print z,stdef[key]
-      # check station constraints
-      if constraints is None: ladd = True
-      else:
-        ladd = True
-        for key,val in constraints.iteritems():
-          if stdef[key] not in val: ladd = False
-      # instantiate station objects for each variable and append to lists
-      if ladd:
-        ns += 1
-        # loop over variable definitions
-        for varname,vardef in variables.iteritems():
-          filename = '{0:s}/{1:s}'.format(folder,vardef.filepath.format(stdef['id']))
-          kwargs = dict() # combine station and variable attributes
-          kwargs.update(stdef); kwargs.update(vardef.getKWargs())
-          station = DailyStationRecord(filename=filename, **kwargs)
-          station.checkHeader() 
-          self.stationlists[varname].append(station)
+          ladd = True
+          for key,val in constraints.iteritems():
+            if stdef[key] not in val: ladd = False
+        # instantiate station objects for each variable and append to lists
+        if ladd:
+          ns += 1
+          # loop over variable definitions
+          for varname,vardef in variables.iteritems():
+            filename = '{0:s}/{1:s}'.format(folder,vardef.filepath.format(stdef['id']))
+            kwargs = dict() # combine station and variable attributes
+            kwargs.update(stdef); kwargs.update(vardef.getKWargs())
+            station = DailyStationRecord(filename=filename, **kwargs)
+            station.checkHeader() 
+            self.stationlists[varname].append(station)
     assert len(self.stationlists[varname]) == ns # make sure we got all (lists should have the same length)
     
   def prepareDataset(self):
     ''' prepare a PyGeoData dataset for the station data (with all the meta data) '''
     from geodata import Axis, Variable, Dataset
     # meta data arrays
-    dataset = Dataset(varlist=[])
+    dataset = Dataset(atts=self.atts)
     # station axis (by ordinal number)
     stationlist = self.stationlists.values()[0] # just use first list, since meta data is the same
     assert all([len(stationlist) == len(stnlst) for stnlst in self.stationlists.values()]) # make sure none is missing
@@ -360,9 +370,30 @@ class StationRecords(object):
     strarray = np.array([stn.name.ljust(namelen) for stn in stationlist], dtype='|S{:d}'.format(namelen))
     dataset += Variable(axes=(station,), data=strarray, atts=varatts['name'])
     # station province
+    strarray = np.array([stn.prov for stn in stationlist], dtype='|S2') # always two letters
+    dataset += Variable(axes=(station,), data=strarray, atts=varatts['prov'])
     # station joined
+    boolarray = np.array([stn.joined for stn in stationlist], dtype='bool') # boolean
+    dataset += Variable(axes=(station,), data=boolarray, atts=varatts['joined'])
     # geo locators (lat/lon/alt)
+    for coord in ('lat','lon','alt'):
+      coordarray = np.array([getattr(stn,coord) for stn in stationlist], dtype='float32') # single precision float
+      dataset += Variable(axes=(station,), data=coordarray, atts=varatts[coord])
     # start/end dates (month relative to 1979-01)
+    for pnt in ('begin','end'):
+      yeararray = np.array([getattr(stn,pnt+'_year') for stn in stationlist], dtype='int16') # single precision integer
+      monarray = np.array([getattr(stn,pnt+'_mon') for stn in stationlist], dtype='int16') # single precision integer
+      datearray = ( yeararray - 1979 )*12 + monarray - 1  # compute month relative to 1979-01
+      dataset += Variable(axes=(station,), data=datearray, atts=varatts[pnt+'_date'])
+      # save bounds to determine size of time dimension
+      if pnt == 'begin': begin_date = np.min(datearray) 
+      elif pnt == 'end': end_date = np.max(datearray) 
+    # add variables for monthly values
+    time = Axis(coord=np.arange(begin_date, end_date+1, dtype='int16'), atts=varatts['time'])
+    # loop over variables
+    for vardef in self.variables.itervalues():
+      dataset += Variable(axes=(station,time), dtype=vardef.dtype, atts=vardef.atts)
+    # save dataset
     self.dataset = dataset
     
 
@@ -433,8 +464,13 @@ if __name__ == '__main__':
   elif mode == 'test_station_reader':
     
     # prepare input
-    variables = dict(Tmax=TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax']))
-    # initialize station record container
+    variables = dict(precip=PrecipDef(name='precipitation', prefix='dt', atts=varatts['precip']),
+                     solprec=PrecipDef(name='snowfall', prefix='ds', atts=varatts['solprec']),
+                     liqprec=PrecipDef(name='rainfall', prefix='dr', atts=varatts['liqprec']))
+#     variables = dict(T2=TempDef(name='mean temperature', prefix='dm', atts=varatts['T2']),
+#                      Tmin=TempDef(name='minimum temperature', prefix='dn', atts=varatts['Tmin']),
+#                      Tmax=TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax']))
+    # initialize station record container (PE only has 3 stations - ideal for testing!)
     test = StationRecords(folder='', variables=variables, constraints=dict(prov=('PE',)))
     # show dataset
     test.prepareDataset()
