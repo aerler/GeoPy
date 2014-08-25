@@ -19,6 +19,7 @@ from geodata.misc import checkIndex, isEqual, joinDicts
 from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError, FileError, VariableError 
 from geodata.nctools import coerceAtts, writeNetCDF, add_var, add_coord, add_strvar
 
+
 def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs):
   ''' Simple function to cast a Variable instance as a VarNC (NetCDF-capable Variable subclass). '''
   # figure out axes
@@ -114,6 +115,7 @@ class VarNC(Variable):
     if not isinstance(ncvar,nc.Variable): raise TypeError, "Argument 'ncvar' has to be a NetCDF Variable or Dataset."
     if dtype and dtype != ncvar.dtype: raise TypeError    
     if data is not None and data.shape != ncvar.shape: raise DataError
+    lstrvar = ncvar.dtype == np.dtype('|S1') and ( dtype.kind == 'S' and dtype.itemsize > 1 )
     # read actions
     if 'r' in mode:
       # construct attribute dictionary from netcdf attributes
@@ -129,7 +131,10 @@ class VarNC(Variable):
       else: ncatts['units'] = units
       # construct axes, based on netcdf dimensions
       if axes is None: 
-        axes = tuple([str(dim) for dim in ncvar.dimensions]) # have to get rid of unicode
+        if lstrvar: axes = tuple([str(dim) for dim in ncvar.dimensions[:-1]]) # omit last dim
+        else: axes = tuple([str(dim) for dim in ncvar.dimensions]) # have to get rid of unicode
+      elif lstrvar:
+        if len(ncvar.dimensions[:-1]) != len(axes) or len(ncvar.dimensions[-1]) != dtype.itemsize: raise AxisError
       elif len(ncvar.dimensions) != len(axes): raise AxisError
     else: ncatts = atts
     # check transform
@@ -144,6 +149,7 @@ class VarNC(Variable):
     self.__dict__['scalefactor'] = scalefactor
     self.__dict__['transform'] = transform
     self.__dict__['squeezed'] = False
+    self.__dict__['strvar'] = lstrvar
     if squeeze: self.squeeze() # may set 'squeezed' to True
     # handle data
     if load and data: raise DataError, "Arguments 'load' and 'data' are mutually exclusive, i.e. only one can be used!"
@@ -171,7 +177,8 @@ class VarNC(Variable):
             if self.ncvar.shape[i] == 1: idx.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
       else: idx = (idx,)
       data = self.ncvar.__getitem__(idx) # exceptions handled by netcdf module
-      #assert self.ndim == data.ndim # make sure that squeezing works!
+      if self.strvar: data = nc.chartostring(data)
+      assert self.ndim == data.ndim # make sure that squeezing works!
       # N.B.: the shape can change dynamically when a slice is loaded, so don't check for that, or it will fail!
       # apply scalefactor and offset
       if self.offset != 0: data += self.offset
@@ -221,14 +228,17 @@ class VarNC(Variable):
     ''' Method to make sure, data in NetCDF variable and Variable instance are consistent. '''
     ncvar = self.ncvar
     # update netcdf variable    
-    if 'w' in self.mode:      
-      if not self.squeezed and ncvar.shape != self.shape: 
-        raise NetCDFError, "Cannot write to NetCDF variable: array shape in memory and on disk are inconsistent!"
-      if self.squeezed and tuple([n for n in ncvar.shape if n > 1]) != self.shape: 
+    if 'w' in self.mode:
+      if self.strvar and ncvar.shape[:-1] == self.shape: pass
+      elif not self.squeezed and ncvar.shape == self.shape: pass
+      elif self.squeezed and tuple([n for n in ncvar.shape if n > 1]) == self.shape: pass
+      else: 
         raise NetCDFError, "Cannot write to NetCDF variable: array shape in memory and on disk are inconsistent!"
       if self.data:
-        # special handling of numpy bools: cast as 8-bit integers
-        if isinstance(self.data_array,np.bool_): ncvar[:] = self.data_array.astype('i1')
+        # special handling of some data types
+        if isinstance(self.data_array,np.bool_): ncvar[:] = self.data_array.astype('i1') # cast boolean as 8-bit integers
+        elif self.strvar:
+          ncvar[:] = nc.stringtochar(self.data_array) # transform string array to char array with one more dimension
         else: ncvar[:] = self.data_array # masking should be handled by the NetCDF module
         # reset scale factors etc.
         self.scalefactor = 1; self.offset = 0
@@ -342,7 +352,7 @@ class DatasetNetCDF(Dataset):
           if not isinstance(var,Variable): raise TypeError
           dataset.addVariable(var)      
       # create netcdf dataset/file
-      dataset = writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True, writeData=False, close=False)
+      dataset = writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True, writeData=False, close=False, feedback=False)
     # either use available NetCDF datasets directly, or open datasets from filelist  
     if isinstance(dataset,nc.Dataset): 
       datasets = [dataset]  # datasets is used later
@@ -386,8 +396,9 @@ class DatasetNetCDF(Dataset):
     if not isinstance(axes,dict): raise TypeError
     for ds in datasets:
       for dim in ds.dimensions.keys():
-        if dim not in ignore_list:        
-          if dim in ds.variables: # dimensions with an associated coordinate variable           
+        if dim not in ignore_list:
+          if dim[:8] == 'str_dim_': pass # dimensions added to store strings as charater arrays        
+          elif dim in ds.variables: # dimensions with an associated coordinate variable           
             if dim in axes: # if already present, make sure axes are essentially the same
               tmpax = AxisNC(ncvar=ds.variables[dim], mode='r', **varatts.get(dim,{})) # apply all correction factors...
               if dim not in check_override and not isEqual(axes[dim][:],tmpax[:]): 
@@ -411,22 +422,33 @@ class DatasetNetCDF(Dataset):
       # loop over variables in dataset
       for var in dsvars:
         if var in axes: pass # do not treat coordinate variables as real variables 
-        elif ds.variables[var].dtype == '|S1': pass # just ignore string variables for now... 
+        #elif ds.variables[var].dtype == '|S1': pass # just ignore string variables for now... 
         elif ds.variables[var].ndim == 0: pass # also ignore scalars for now...
           #raise NotImplementedError # Variables of type char are currently not implemented
         elif var in variables: # if already present, make sure variables are essentially the same
-          if var not in check_override: 
-            if ( (variables[var].shape != ds.variables[var].shape) or
-                 (variables[var].ncvar.dimensions != ds.variables[var].dimensions) ): 
-              raise DatasetError, 'Error constructing Dataset: NetCDF files have incompatible variables.' 
+          varobj = variables[var] 
+          if var in check_override: pass
+          elif varobj.strvar and ((varobj.shape == ds.variables[var].shape[:-1]) and
+               (varobj.ncvar.dimensions == ds.variables[var].dimensions-1)) : pass
+          elif ( (varobj.shape == ds.variables[var].shape) and
+               (varobj.ncvar.dimensions == ds.variables[var].dimensions) ): pass
+          else: 
+            raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files incompatible.".format(var) 
         else: # if this is a new variable, add it to the list
-          if all([axes.has_key(dim) for dim in ds.variables[var].dimensions]):
+          if ds.variables[var].dtype == '|S1' and all([dim in axes for dim in ds.variables[var].dimensions[:-1]]): # string variable
+            varaxes = [axes[dim] for dim in ds.variables[var].dimensions[:-1]] # collect axes (except last)
+            strtype = np.dtype('|S{:d}'.format(len(ds.variables[var].dimensions[-1]))) # string with length of string dimension
+#             vardict = varatts.get(var,{})
+#             trafo = vardict.pop('transform',charToString) # use charToString as a transform function for data (i.e. no need to load and transform now)
+#             if trafo != charToString: raise VariableError, "Need to use 'nc.chartostring' as transform for string variables." 
+            # create new variable using the override parameters in varatts
+            variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, dtype=strtype, mode=mode, squeeze=squeeze, load=load, **varatts.get(var,{}))
+          elif all([dim in axes for dim in ds.variables[var].dimensions]):
             varaxes = [axes[dim] for dim in ds.variables[var].dimensions] # collect axes
             # create new variable using the override parameters in varatts
             variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, mode=mode, squeeze=squeeze, load=load, **varatts.get(var,{}))
           elif not any([dim in ignore_list for dim in ds.variables[var].dimensions]): # legitimate omission
-            print var, ds.variables[var].dimensions
-            raise DatasetError, 'Error constructing Variable: Axes/coordinates not found.'
+            raise DatasetError, 'Error constructing Variable: Axes/coordinates not found:\n {:s}, {:s}'.format(str(var), str(ds.variables[var].dimensions))
     # get attributes from NetCDF dataset
     ncattrs = joinDicts(*[ds.__dict__ for ds in datasets])
     if atts is not None: ncattrs.update(atts) # update with attributes passed to constructor
@@ -436,7 +458,6 @@ class DatasetNetCDF(Dataset):
     self.__dict__['filelist'] = filelist
     # initialize Dataset using parent constructor
     super(DatasetNetCDF,self).__init__(name=name, title=title, varlist=variables.values(), atts=ncattrs)
-    
   @property
   def dataset(self):
     ''' The first element of the datasets list. '''

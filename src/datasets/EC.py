@@ -16,7 +16,8 @@ import codecs
 # internal imports
 from datasets.common import days_per_month, name_of_month, data_root
 from geodata.misc import ParseError, DateError, VariableError, RecordClass, StrictRecordClass
-from geodata.gdal import Shape
+from geodata.nctools import writeNetCDF
+from geodata.netcdf import DatasetNetCDF
 from geodata.station import StationDataset, Variable, Axis
 # from geodata.misc import DatasetError
 from warnings import warn
@@ -38,7 +39,7 @@ varatts = dict(T2       = dict(name='T2', units='K', atts=dict(long_name='Averag
                solprec  = dict(name='solprec', units='kg/m^2/s', atts=dict(long_name='Solid Precipitation')), # solid precipitation
                liqprec  = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
                # meta/constant data variables
-               name    = dict(name='name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
+               name    = dict(name='station_name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
                prov    = dict(name='prov', units='', atts=dict(long_name='Province')), # in which Canadian Province the station is located
                joined  = dict(name='joined', units='', atts=dict(long_name='Joined Record or Single Station')), # whether or not the record contains more than one station 
                lat  = dict(name='lat', units='deg N', atts=dict(long_name='Latitude')), # geographic latitude field
@@ -229,6 +230,14 @@ class TempDef(VarDef):
   
   def convert(self, data): return data + 273.15 # convert to Kelvin
 
+# variable definitions for EC datasets
+precip_vars = dict(precip=PrecipDef(name='precipitation', prefix='dt', atts=varatts['precip']),
+                   solprec=PrecipDef(name='snowfall', prefix='ds', atts=varatts['solprec']),
+                   liqprec=PrecipDef(name='rainfall', prefix='dr', atts=varatts['liqprec']))
+temp_vars   = dict(T2=TempDef(name='mean temperature', prefix='dm', atts=varatts['T2']),
+                   Tmin=TempDef(name='minimum temperature', prefix='dn', atts=varatts['Tmin']),
+                   Tmax=TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax']))
+    
 # definition of station meta data format 
 EC_header_format = ('No','StnId','Prov','From','To','Lat(deg)','Long(deg)','Elev(m)','Joined','Station','name') 
 EC_station_format = tuple([(None, int), 
@@ -364,37 +373,49 @@ class StationRecords(object):
     # station axis (by ordinal number)
     stationlist = self.stationlists.values()[0] # just use first list, since meta data is the same
     assert all([len(stationlist) == len(stnlst) for stnlst in self.stationlists.values()]) # make sure none is missing
-    station = Axis(coord=np.arange(1,len(stationlist)+1, dtype='int16'), atts=varatts['station']) # start at 1
+    station = Axis(coord=np.arange(1,len(stationlist)+1, dtype='int16'), **varatts['station']) # start at 1
     # station name
     namelen = max([len(stn.name) for stn in stationlist])
     strarray = np.array([stn.name.ljust(namelen) for stn in stationlist], dtype='|S{:d}'.format(namelen))
-    dataset += Variable(axes=(station,), data=strarray, atts=varatts['name'])
+    dataset += Variable(axes=(station,), data=strarray, **varatts['name'])
     # station province
     strarray = np.array([stn.prov for stn in stationlist], dtype='|S2') # always two letters
-    dataset += Variable(axes=(station,), data=strarray, atts=varatts['prov'])
+    dataset += Variable(axes=(station,), data=strarray, **varatts['prov'])
     # station joined
     boolarray = np.array([stn.joined for stn in stationlist], dtype='bool') # boolean
-    dataset += Variable(axes=(station,), data=boolarray, atts=varatts['joined'])
+    dataset += Variable(axes=(station,), data=boolarray, **varatts['joined'])
     # geo locators (lat/lon/alt)
     for coord in ('lat','lon','alt'):
       coordarray = np.array([getattr(stn,coord) for stn in stationlist], dtype='float32') # single precision float
-      dataset += Variable(axes=(station,), data=coordarray, atts=varatts[coord])
+      dataset += Variable(axes=(station,), data=coordarray, **varatts[coord])
     # start/end dates (month relative to 1979-01)
     for pnt in ('begin','end'):
       yeararray = np.array([getattr(stn,pnt+'_year') for stn in stationlist], dtype='int16') # single precision integer
       monarray = np.array([getattr(stn,pnt+'_mon') for stn in stationlist], dtype='int16') # single precision integer
       datearray = ( yeararray - 1979 )*12 + monarray - 1  # compute month relative to 1979-01
-      dataset += Variable(axes=(station,), data=datearray, atts=varatts[pnt+'_date'])
+      dataset += Variable(axes=(station,), data=datearray, **varatts[pnt+'_date'])
       # save bounds to determine size of time dimension
       if pnt == 'begin': begin_date = np.min(datearray) 
       elif pnt == 'end': end_date = np.max(datearray) 
     # add variables for monthly values
-    time = Axis(coord=np.arange(begin_date, end_date+1, dtype='int16'), atts=varatts['time'])
+    time = Axis(coord=np.arange(begin_date, end_date+1, dtype='int16'), **varatts['time'])
     # loop over variables
     for vardef in self.variables.itervalues():
-      dataset += Variable(axes=(station,time), dtype=vardef.dtype, atts=vardef.atts)
+      dataset += Variable(axes=(station,time), dtype=vardef.dtype, **vardef.atts)
     # save dataset
     self.dataset = dataset
+    
+  def writeDataset(self, filename=None, folder=None, **kwargs):
+    ''' write the monthly dataset to a NetCDF file '''
+    if folder is None: folder = '{:s}/ecavg/'.format(root_folder) # default folder scheme 
+    elif not isinstance(folder,basestring): raise TypeError
+    if filename is None: filename = 'ec{:s}_monthly.nc'.format(self.datatype) # default folder scheme 
+    elif not isinstance(filename,basestring): raise TypeError
+    # write dataset to file
+    if 'ncfile' in kwargs: ncfile = kwargs.pop('ncfile')
+    else: ncfile = '{:s}/{:s}'.format(folder,filename)      
+    writeNetCDF(self.dataset, ncfile, **kwargs)
+    
     
 
 ## load pre-processed EC station time-series
@@ -464,14 +485,19 @@ if __name__ == '__main__':
   elif mode == 'test_station_reader':
     
     # prepare input
-    variables = dict(precip=PrecipDef(name='precipitation', prefix='dt', atts=varatts['precip']),
-                     solprec=PrecipDef(name='snowfall', prefix='ds', atts=varatts['solprec']),
-                     liqprec=PrecipDef(name='rainfall', prefix='dr', atts=varatts['liqprec']))
-#     variables = dict(T2=TempDef(name='mean temperature', prefix='dm', atts=varatts['T2']),
-#                      Tmin=TempDef(name='minimum temperature', prefix='dn', atts=varatts['Tmin']),
-#                      Tmax=TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax']))
+    variables = temp_vars
     # initialize station record container (PE only has 3 stations - ideal for testing!)
     test = StationRecords(folder='', variables=variables, constraints=dict(prov=('PE',)))
     # show dataset
     test.prepareDataset()
     print test.dataset
+    print
+    # write to netcdf file
+    test.writeDataset(filename='test.nc', folder='/home/data/', feedback=False, 
+                      overwrite=True, writeData=True, skipUnloaded=True)
+    print
+    # test netcdf file
+    dataset = DatasetNetCDF(filelist=['/home/data/test.nc'])
+    print dataset
+    print
+    print dataset.station_name[1:,] # test string variable recall

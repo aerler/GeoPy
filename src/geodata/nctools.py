@@ -10,6 +10,7 @@ import netCDF4 as nc # netCDF4-python module: Dataset is probably all we need
 import numpy as np
 import numpy.ma as ma
 import collections as col
+from warnings import warn
 # internal imports
 # N.B.: there should be no dependencies on this package, so that it can be imported independently
 
@@ -33,6 +34,7 @@ class NCAxisError(Exception):
 
 def add_strvar(dst, name, strlist, dim, atts=None):
   ''' Function that adds a list of string variables as a variable along a specified dimension. '''
+  warn("WARNING: Use of 'add_strvar' is now deprecated - 'add_var' can also handle string variables. ")
   # determine max length of string
   strlen = 0 
   for string in strlist: strlen = max(strlen,len(string))
@@ -90,16 +92,18 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
     if shape: 
       if shape != data.shape: raise NCDataError, "Shape of '%s' does not match data array."%(name,)
     else: shape = data.shape
+    # get dtype 
     if dtype: 
-      if dtype != data.dtype: data.astype(dtype)
+      if dtype != data.dtype: data = data.astype(dtype)
         # raise NCDataError, "Data type in '%s' does not match data array."%(name,) 
     else: dtype = data.dtype
   if dtype is None: raise NCDataError, "Cannot construct a NetCDF Variable without a data array or an abstract data type."
-  if np.dtype(dtype) is np.dtype('bool_'): 
-    dtype = np.dtype('i1') # cast numpy bools as 8-bit integers
+  dtype = np.dtype(dtype) # use numpy types
+  if dtype is np.dtype('bool_'): dtype = np.dtype('i1') # cast numpy bools as 8-bit integers
   # check/create dimensions
-  if shape is None: shape = [None]*len(dims)
-  elif len(shape) != len(dims): raise NCAxisError 
+  if shape is None: shape = [None,]*len(dims)
+  else: shape = list(shape)
+  if len(shape) != len(dims): raise NCAxisError 
   for i,dim in zip(xrange(len(dims)),dims):
     if dim in dst.dimensions:
       if shape[i] is None: 
@@ -110,6 +114,7 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
     else: 
       if shape[i] is not None: dst.createDimension(dim, size=shape[i])
       else: raise NCAxisError, "Cannot construct dimension '%s' without size information."%(dims,)
+  dims = tuple(dims); shape = tuple(shape)
   # figure out parameters for variable
   varargs = dict() # arguments to be passed to createVariable
   if zlib: varargs.update(zlib_default)
@@ -130,6 +135,18 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   else:  
     if data is not None and isinstance(data,ma.MaskedArray): data.set_fill_value(fillValue)    
     atts['missing_value'] = fillValue # I use fillValue and missing_value the same way
+  # add extra dimension for strings
+  if dtype.kind == 'S' and dtype.itemsize > 1:
+    # add extra dimension
+    shape = shape + (dtype.itemsize,)
+    dims = dims + ('str_dim_'+name,) # naming pattern for string dimensions
+    dst.createDimension(dims[-1], size=shape[-1])
+    # change dtype to single char string  
+    dtype = np.dtype('|S1')
+    # convert string arrays to char arrays
+    if data is not None: 
+      data = nc.stringtochar(data)
+      assert data.dtype == dtype, str(data.dtype)+', '+str(dtype)    
   # create netcdf variable  
   var = dst.createVariable(name, dtype, dims, fill_value=fillValue, **varargs)
   # add attributes
@@ -216,26 +233,24 @@ def coerceAtts(atts):
     else: ncatts[key] = value
   return ncatts
 
-def writeNetCDF(dataset, ncfile, ncformat='NETCDF4', zlib=True, writeData=True, close=True):
+def writeNetCDF(dataset, ncfile, ncformat='NETCDF4', zlib=True, writeData=True, overwrite=True, skipUnloaded=False, 
+                feedback=False, close=True):
   ''' A function to write the data in a generic Dataset to a NetCDF file. '''
+  print("Writing to file: '{:s}'".format(ncfile)) # print feedback
   # open file
   if isinstance(ncfile,basestring): ncfile = nc.Dataset(ncfile, mode='w', format=ncformat)
   elif not isinstance(ncfile,nc.Dataset): raise TypeError
   ncfile.setncatts(coerceAtts(dataset.atts))
   # add coordinate variables first
   for name,ax in dataset.axes.iteritems():
-    if ax.data: # only need to add real coordinate axes; simple dimensions are added on-the-fly below
-      if writeData:
-        add_coord(ncfile, name, data=ax.getArray(unmask=True), atts=coerceAtts(ax.atts), dtype=ax.dtype, zlib=zlib, fillValue=ax.fillValue)
-      else:
-        add_coord(ncfile, name, length=len(ax), atts=coerceAtts(ax.atts), dtype=ax.dtype, zlib=zlib, fillValue=ax.fillValue)
+    if ax.data: # only need to add real coordinate axes; simple dimensions are added on-the-fly by ariables
+      data = ax.getArray(unmask=True) if writeData and ( ax.data or not skipUnloaded ) else None
+      add_coord(ncfile, name, length=len(ax), atts=coerceAtts(ax.atts), dtype=ax.dtype, zlib=zlib, fillValue=ax.fillValue)
   # now add variables
   for name,var in dataset.variables.iteritems():
     dims = tuple([ax.name for ax in var.axes])
-    if writeData: 
-      add_var(ncfile, name, dims=dims, data=var.getArray(unmask=True), atts=coerceAtts(var.atts), dtype=var.dtype, zlib=zlib, fillValue=var.fillValue)
-    else: 
-      add_var(ncfile, name, dims=dims, data=None, atts=coerceAtts(var.atts), dtype=var.dtype, zlib=zlib, fillValue=var.fillValue)
+    data = var.getArray(unmask=True) if writeData and ( var.data or not skipUnloaded ) else None  
+    add_var(ncfile, name, dims=dims, data=data, atts=coerceAtts(var.atts), dtype=var.dtype, zlib=zlib, fillValue=var.fillValue)
   # close file or return file handle
   ncfile.sync()
   if close: ncfile.close()

@@ -669,18 +669,57 @@ class DatasetNetCDFTest(BaseDatasetTest):
     # create NetCDF Dataset
     dataset = DatasetNetCDF(filelist=[filename],mode='w')
 #     print(dataset)
-    # add some random variables and attribute
+    # add an axis
+    ax = Axis(name='t', units='', coord=np.arange(10))
+    dataset.addAxis(ax, asNC=True)
+    # add a random variable
+    var = Variable(name='test', units='', axes=(ax,), data=np.zeros((10,)))
+    dataset.addVariable(var, asNC=True)
+    # add some attribute
     dataset.atts.test = 'test'
-    dataset.sync()
+    # synchronize with disk and close
+    dataset.sync()     
 #     print(dataset)
-    # synchronize with disk and close     
     dataset.close()
     # check that it is OK
     assert os.path.exists(filename)
     ncfile = nc.Dataset(filename)
     assert ncfile
-    print(ncfile)
     ncfile.close()
+    dataset = DatasetNetCDF(filelist=[filename],mode='r')
+    print(dataset)
+    dataset.close()
+
+  def testStringVar(self):
+    ''' test behavior of string variables in a netcdf dataset '''
+    filename = self.folder + 'test.nc'
+    if os.path.exists(filename): os.remove(filename)
+    # create NetCDF Dataset
+    dataset = DatasetNetCDF(filelist=[filename],mode='w')
+    # add an axis
+    ax = Axis(name='t', units='', coord=np.arange(3))
+    dataset.addAxis(ax, asNC=True)
+    # add a string variable
+    test_string = ['This','is a','string']
+    strarray = np.array(test_string)
+    strvar = Variable(name='string', units='', axes=(ax,), data=strarray)
+    dataset.addVariable(strvar, asNC=True)
+    # add some attribute
+    dataset.atts.test = 'test'
+    # synchronize with disk and close
+    dataset.sync()     
+#     print(dataset)
+    dataset.close()
+    # check that it is OK
+    assert os.path.exists(filename)
+    ncfile = nc.Dataset(filename)
+#     print(ncfile)
+    assert ncfile
+    ncfile.close()
+    dataset = DatasetNetCDF(filelist=[filename],mode='r',load=True)
+    print(dataset)
+    assert all(dataset.string.data_array == np.array(test_string))
+    dataset.close()
 
   def testLoad(self):
     ''' test loading and unloading of data '''
