@@ -115,14 +115,13 @@ class DailyStationRecord(StrictRecordClass):
     self.validateHeader(f.readline()) # read first line as header
     # allocate daily data array (31 days per month, filled with NaN for missing values)
     tlen = ( (self.end_year - self.begin_year) * 12 + (self.end_mon - self.begin_mon +1) ) * 31
-    data = np.zeros((tlen,), dtype=self.dtype) # only three significant digits...
-    data[:] = np.NaN # use NaN as missing values
+    data = np.empty((tlen,), dtype=self.dtype); data.fill(np.NaN) # use NaN as missing values
     # some stuff to remember
     lfloat = 'float' in self.dtype; lint = 'int' in self.dtype; lm = len(self.missing)
     # iterate over line
     oldyear = self.begin_year; oldmon = self.begin_mon -1; z = 0
     for line in f:      
-      ll = line.replace('-9999.9', ' -9999.9').split() # without the replace, the split doesn't work
+      ll = line.replace('-9999.9', ' -9999.9').split() # without the replace, the split doesn't work      
       if ll[0].isdigit() and ll[1].isdigit():
         year = int(ll[0]); mon = int(ll[1])
         # check continuity
@@ -139,10 +138,12 @@ class DailyStationRecord(StrictRecordClass):
         if year < self.begin_year or year > self.end_year: pass # outside range 
         elif year == self.begin_year and mon < self.begin_mon: pass # start later
         elif year == self.end_year and mon > self.end_mon: pass # basically done
-        # parse values
-        if len(ll[2:]) > 5: # need more than 5 valid values
+        else: # else we can proceed
+          assert len(ll) < 34, line
           zz = z 
+          # loop over daily values
           for num in ll[2:]:
+            # evaluate daily value
             if num[:lm] == self.missing: pass # missing value; already pre-filled NaN;  or num[-1] == 'M'
             else:
               if lfloat and '.' in num and 1 < len(num): # at least 1 digit plus decimal, i.e. ignore the flag
@@ -156,17 +157,18 @@ class DailyStationRecord(StrictRecordClass):
               else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
               if n < self.varmin: raise ParseError, "Encountered value '{:s}' below minimum in line:\n {:s}".format(num,line)
               if n > self.varmax: raise ParseError, "Encountered value '{:s}' above maximum in line:\n {:s}".format(num,line)
+              #print len(ll), ll
+              assert zz < data.size, line              
               data[zz] = n
-            zz += 1
+            # increment daily counter
+            zz += 1 # here each month has 31 days (padded with missing values)
           if zz != z+31: raise ParseError, 'Line has {:d} values instead of 31:\n {:s}'.format(zz-z,line)  
-        # increment counter
-        z += 31
+          # increment counter
+          z += 31
       elif ll[0] != 'Year' or ll[1] != 'Mo':
         raise ParseError, "No valid title or data found at begining of file:\n {:s}".format(self.filename)
-    if z < tlen: raise ParseError, 'Reached end of file before specified end date: {:s}'.format(self.filename)
-#     if z != tlen: raise ParseError, 'Number of lines in file is inconsistent with begin and end date: {:s}'.format(self.filename)
-    # close again
-    f.close()
+    if z < tlen: raise ParseError, 'Reached end of file before specified end date: {:s}'.format(self.filename)    
+    f.close() # close again
     # return array
     return data
   
@@ -266,7 +268,8 @@ class StationRecords(object):
   stationfile = 'stations.txt' # file that contains station meta data (to load station records)
   encoding    = '' # encoding of station file
   interval    = '' # source data interval (currently only daily)
-  datatype    = '' # variable class, e.g. temperature or precipitation tyes
+  datatype    = '' # variable class, e.g. temperature or precipitation types
+  title       = '' # dataset title
   variables   = None # parameters and definitions associated with variables
   atts        = None # attributes of resulting dataset (including name and title)
   header_format  = '' # station format definition (for validation)
@@ -303,6 +306,7 @@ class StationRecords(object):
     self.encoding = encoding
     self.interval = interval
     self.datatype = datatype
+    self.title = title
     self.variables = variables
     self.atts = atts
     self.header_format = header_format
@@ -398,12 +402,48 @@ class StationRecords(object):
       if pnt == 'begin': begin_date = np.min(datearray) 
       elif pnt == 'end': end_date = np.max(datearray) 
     # add variables for monthly values
+    #self.begin_date = begin_date; self.end_date = end_date # save overall begin and end dates
     time = Axis(coord=np.arange(begin_date, end_date+1, dtype='int16'), **varatts['time'])
     # loop over variables
     for vardef in self.variables.itervalues():
       dataset += Variable(axes=(station,time), dtype=vardef.dtype, **vardef.atts)
     # save dataset
     self.dataset = dataset
+    
+  def readStationData(self):
+    ''' read station data from source files and store in dataset '''
+    assert self.dataset
+    # determine record begin and end indices
+    all_begin = self.dataset.time.coord[0] # coordinate value of first time step
+#     print 'time', self.dataset.time.coord[0], self.dataset.time.coord[-1]
+#     print 'begin_date',self.dataset.begin_date.getArray()
+#     print 'end_date',self.dataset.end_date.getArray()
+    begin_idx = ( self.dataset.begin_date.getArray() - all_begin ) * 31.
+    end_idx = ( self.dataset.end_date.getArray() - all_begin + 1 ) * 31.
+#     print 'begin_idx', begin_idx
+#     print 'end_idx', end_idx
+    # loop over variables
+    print("\n   ***   Preparing {:s}   ***\n   Constraints: {:s}\n".format(self.title,str(self.constraints)))
+    for var,vardef in self.variables.iteritems():
+      print("\n {:s} ('{:s}'):\n".format(vardef.name.title(),var))
+      varobj = self.dataset[var] # get variable object
+      # allocate array
+      shape = (varobj.shape[0], varobj.shape[1]*31) # daily data!
+      data = np.empty(shape, dtype=varobj.dtype); data.fill(np.NaN) # initialize all with NaN
+      # loop over stations
+      z = 0 # station counter
+      for station in self.stationlists[var]:
+        print("   {:s}, {:s}".format(station.name,station.filename))
+        # read station file
+        tmp = station.parseRecord()
+        #print tmp.shape, end_idx[z], begin_idx[z]
+        data[z,begin_idx[z]:end_idx[z]] = tmp  
+        z += 1 # next station
+      assert z == varobj.shape[0]
+      # compute monthly average
+      data = np.nanmean(data.reshape(varobj.shape+(31,)),axis=-1) # squeezes automatically
+      # load data
+      varobj.load(data)
     
   def writeDataset(self, filename=None, folder=None, **kwargs):
     ''' write the monthly dataset to a NetCDF file '''
@@ -451,10 +491,11 @@ loadStationClimatology = loadEC # pre-processed, standardized climatology
 if __name__ == '__main__':
 
 #   mode = 'test_station_object'
-  mode = 'test_station_reader'
+#   mode = 'test_station_reader'
+  mode = 'test_conversion'
 #   mode = 'convert_ASCII'
   
-  # do some tests
+  # test station object initialization
   if mode == 'test_station_object':  
     
     # initialize station (new way with VarDef)
@@ -481,7 +522,7 @@ if __name__ == '__main__':
     print np.nanmin(data), np.nanmean(data), np.nanmax(data)
   
   
-  # do some tests
+  # tests station reader initialization
   elif mode == 'test_station_reader':
     
     # prepare input
@@ -501,3 +542,28 @@ if __name__ == '__main__':
     print dataset
     print
     print dataset.station_name[1:,] # test string variable recall
+    
+  
+  # tests entire conversion process
+  elif mode == 'test_conversion':
+    
+    prov = 'ON' 
+    # prepare input
+#     variables = temp_vars #dict(T2=temp_vars['T2'])
+    variables = precip_vars #dict(precip=temp_vars['precip'])
+    # initialize station record container (PE only has 3 stations - ideal for testing!)
+    test = StationRecords(folder='', variables=variables, constraints=dict(prov=(prov,)))
+    test.prepareDataset()
+    # read actual station data
+    test.readStationData()
+    # write to netcdf file
+    filename = 'ec{:s}_{:s}_monthly.nc'.format(variables.values()[0].datatype,prov)
+    test.writeDataset(filename=filename, folder=None, feedback=False, 
+                      overwrite=True, writeData=True, skipUnloaded=False)
+    dataset = test.dataset
+    print
+    print dataset
+    print
+    for var in variables.iterkeys():
+      var = dataset.variables[var]; data = var.getArray()
+      print var.name, np.nanmean(data), np.nanmin(data), np.nanmax(data) 
