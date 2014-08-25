@@ -331,8 +331,26 @@ class DatasetNetCDF(Dataset):
         axes           = dict() # dictionary holding Axis instances (inferred from Variables)
         atts           = AttrDict() # dictionary containing global attributes / meta data
     '''
-    # create a new NetCDF file
-    if 'w' == mode and filelist:    
+    # either use available NetCDF datasets directly, ...  
+    if isinstance(dataset,nc.Dataset):
+#       ncmode = dataset.mode 
+#       mode = mode or ( 'rw' if ncmode in ('a','r+') else ncmode )
+#       if 'w' in mode and ( ncmode not in ('a','r+','w') ): 
+#         raise PermissionError, 'Provided dataset does not support write permission to NetCDF file.'  
+      datasets = [dataset]  # datasets is used later
+      if 'filepath' in dir(dataset): filelist = [dataset.filepath] # only available in newer versions
+    elif isinstance(dataset,(list,tuple)):
+#       ncmode = dataset[0].mode 
+#       if not all([ncmode == ds.mode for ds in dataset]): 
+#         raise PermissionError, 'Permission settings of provided NetCDF dataset list are inconsistent.'
+#       mode = mode or ( 'rw' if ncmode in ('a','r+') else ncmode ) 
+#       if 'w' in mode and ( ncmode not in ('a','r+','w') ): 
+#         raise PermissionError, 'Provided dataset does not support write permission to NetCDF file.'  
+      if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
+      datasets = dataset
+      filelist = [dataset.filepath() for dataset in datasets if 'filepath' in dir(dataset)]
+    # ... create a new NetCDF file, ...
+    elif isinstance(mode,basestring) and 'w' == mode and filelist:    
       if isinstance(filelist,col.Iterable): filelist = filelist[0]
       filename = folder + filelist; filelist = [filename] # filelist is used later
       if os.path.exists(filename): raise NetCDFError, "File '%s' already exits - aborting!"%filename
@@ -353,15 +371,10 @@ class DatasetNetCDF(Dataset):
           dataset.addVariable(var)      
       # create netcdf dataset/file
       dataset = writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True, writeData=False, close=False, feedback=False)
-    # either use available NetCDF datasets directly, or open datasets from filelist  
-    if isinstance(dataset,nc.Dataset): 
-      datasets = [dataset]  # datasets is used later
-      if 'filepath' in dir(dataset): filelist = [dataset.filepath] # only available in newer versions
-    elif isinstance(dataset,(list,tuple)): 
-      if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
-      datasets = dataset
-      filelist = [dataset.filepath() for dataset in datasets if 'filepath' in dir(dataset)]
+    # ... or open datasets from filelist
     else:
+      # translate modes
+      ncmode = 'a' if 'r' in mode and 'w' in mode else mode # 'rw' -> 'a' for "append"     
       # open netcdf datasets from netcdf files
       if not isinstance(filelist,col.Iterable): raise TypeError
       # check if file exists
@@ -369,15 +382,15 @@ class DatasetNetCDF(Dataset):
         if not os.path.exists(folder+filename): 
           raise FileError, "File {0:s} not found in folder {1:s}".format(filename,folder)     
       datasets = []; filenames = []
-      for ncfile in filelist:
+      for ncfile in filelist:        
         try: # NetCDF4 error messages are not very helpful...
           if multifile: # open a netCDF4 multi-file dataset 
             if isinstance(ncfile,(list,tuple)): tmpfile = [folder+ncf for ncf in ncfile]
             else: tmpfile = folder+ncfile # multifile via regular expressions
-            datasets.append(nc.MFDataset(tmpfile), mode='r', format=ncformat)
+            datasets.append(nc.MFDataset(tmpfile), mode=ncmode, format=ncformat, clobber=False)
           else: # open a simple single-file dataset
             tmpfile = folder+ncfile
-            datasets.append(nc.Dataset(tmpfile, mode='r', format=ncformat))
+            datasets.append(nc.Dataset(tmpfile, mode=ncmode, format=ncformat, clobber=False))
         except RuntimeError:
           raise NetCDFError, "Error reading file '{0:s}' in folder {1:s}".format(ncfile,folder)
         filenames.append(tmpfile)
@@ -406,6 +419,7 @@ class DatasetNetCDF(Dataset):
             else: # if this is a new axis, add it to the list
               if ds.variables[dim].dtype == '|S1': pass # Variables of type char are currently not implemented
               else:      
+                print dim, ds.variables[dim]
                 axes[dim] = AxisNC(ncvar=ds.variables[dim], mode=mode, **varatts.get(dim,{})) # also use overrride parameters
           else: # initialize dimensions without associated variable as regular Axis (not AxisNC)
             if dim in axes: # if already present, make sure axes are essentially the same

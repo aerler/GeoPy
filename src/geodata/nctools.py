@@ -11,6 +11,7 @@ import numpy as np
 import numpy.ma as ma
 import collections as col
 from warnings import warn
+import os
 # internal imports
 # N.B.: there should be no dependencies on this package, so that it can be imported independently
 
@@ -117,7 +118,8 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   dims = tuple(dims); shape = tuple(shape)
   # figure out parameters for variable
   varargs = dict() # arguments to be passed to createVariable
-  if zlib: varargs.update(zlib_default)
+  if isinstance(zlib,dict): varargs.update(zlib)
+  elif zlib: varargs.update(zlib_default)
   varargs.update(kwargs)
   if fillValue is None:
     if atts and '_FillValue' in atts: fillValue = atts['_FillValue'] # will be removed later
@@ -238,14 +240,17 @@ def writeNetCDF(dataset, ncfile, ncformat='NETCDF4', zlib=True, writeData=True, 
   ''' A function to write the data in a generic Dataset to a NetCDF file. '''
   print("Writing to file: '{:s}'".format(ncfile)) # print feedback
   # open file
-  if isinstance(ncfile,basestring): ncfile = nc.Dataset(ncfile, mode='w', format=ncformat)
+  if isinstance(ncfile,basestring): 
+    if not overwrite and os.path.exists(ncfile): raise IOError, "File '{:s}' already exists and 'overwrite' set to False.".format(ncfile)
+    ncfile = nc.Dataset(ncfile, mode='w', format=ncformat, clobber=overwrite)
   elif not isinstance(ncfile,nc.Dataset): raise TypeError
+  #if ncfile.mode == 'r': raise NCDataError, "Need write permission on NetCDF dataset."
   ncfile.setncatts(coerceAtts(dataset.atts))
   # add coordinate variables first
   for name,ax in dataset.axes.iteritems():
-    if ax.data: # only need to add real coordinate axes; simple dimensions are added on-the-fly by ariables
-      data = ax.getArray(unmask=True) if writeData and ( ax.data or not skipUnloaded ) else None
-      add_coord(ncfile, name, length=len(ax), atts=coerceAtts(ax.atts), dtype=ax.dtype, zlib=zlib, fillValue=ax.fillValue)
+    # only need to add real coordinate axes; simple dimensions are added on-the-fly by ariables
+    data = ax.getArray(unmask=True) if writeData and ( ax.data or not skipUnloaded ) else None
+    add_coord(ncfile, name, length=len(ax), data=data, atts=coerceAtts(ax.atts), dtype=ax.dtype, zlib=zlib, fillValue=ax.fillValue)
   # now add variables
   for name,var in dataset.variables.iteritems():
     dims = tuple([ax.name for ax in var.axes])

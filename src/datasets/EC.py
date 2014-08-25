@@ -16,9 +16,11 @@ import codecs
 # internal imports
 from datasets.common import days_per_month, name_of_month, data_root
 from geodata.misc import ParseError, DateError, VariableError, RecordClass, StrictRecordClass
+from geodata.base import Axis, Variable, Dataset
 from geodata.nctools import writeNetCDF
 from geodata.netcdf import DatasetNetCDF
 from geodata.station import StationDataset, Variable, Axis
+import average.derived_variables as dv
 # from geodata.misc import DatasetError
 from warnings import warn
 
@@ -233,16 +235,24 @@ class TempDef(VarDef):
   def convert(self, data): return data + 273.15 # convert to Kelvin
 
 # variable definitions for EC datasets
+# daily precipitation variables in data
 precip_vars = dict(precip=PrecipDef(name='precipitation', prefix='dt', atts=varatts['precip']),
                    solprec=PrecipDef(name='snowfall', prefix='ds', atts=varatts['solprec']),
                    liqprec=PrecipDef(name='rainfall', prefix='dr', atts=varatts['liqprec']))
+# daily temperature variables in data
 temp_vars   = dict(T2=TempDef(name='mean temperature', prefix='dm', atts=varatts['T2']),
                    Tmin=TempDef(name='minimum temperature', prefix='dn', atts=varatts['Tmin']),
                    Tmax=TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax']))
-    
+# precipitation extremes (and other derived variables)
+precip_xtrm = (dv.WetDays(),)
+# temperature extremes (and other derived variables)
+temp_xtrm   = (dv.FrostDays(),)
+# varmap used for pre-requisites
+ec_varmap = dict(RAIN='precip')
+
 # definition of station meta data format 
-EC_header_format = ('No','StnId','Prov','From','To','Lat(deg)','Long(deg)','Elev(m)','Joined','Station','name') 
-EC_station_format = tuple([(None, int), 
+ec_header_format = ('No','StnId','Prov','From','To','Lat(deg)','Long(deg)','Elev(m)','Joined','Station','name') 
+ec_station_format = tuple([(None, int), 
                           ('id', str),                            
                           ('prov', str),                        
                           ('begin_year', int),     
@@ -271,6 +281,8 @@ class StationRecords(object):
   datatype    = '' # variable class, e.g. temperature or precipitation types
   title       = '' # dataset title
   variables   = None # parameters and definitions associated with variables
+  extremes    = None # list of derived/extreme variables to be computed as well
+  varmap      = None # map to accomodate variable name conventions used in derived_variables 
   atts        = None # attributes of resulting dataset (including name and title)
   header_format  = '' # station format definition (for validation)
   station_format = '' # station format definition (for reading)
@@ -279,24 +291,31 @@ class StationRecords(object):
   stationlists   = None # list of station objects
   dataset        = None # PyGeoData Dataset (will hold results) 
   
-  def __init__(self, folder='', stationfile='stations.txt', variables=None, encoding='', interval='daily', 
-               header_format=None, station_format=None, constraints=None, atts=None):
+  def __init__(self, folder='', stationfile='stations.txt', variables=None, extremes=None, interval='daily', 
+               encoding='', header_format=None, station_format=None, constraints=None, atts=None, varmap=None):
     ''' Parse station file and initialize station records. '''
     # some input checks
     if not isinstance(stationfile,basestring): raise TypeError
     if interval != 'daily': raise NotImplementedError
-    if header_format is None: header_format = EC_header_format # default
+    if header_format is None: header_format = ec_header_format # default
     elif not isinstance(header_format,(tuple,list)): raise TypeError
-    if station_format is None: station_format = EC_station_format # default    
+    if station_format is None: station_format = ec_station_format # default    
     elif not isinstance(station_format,(tuple,list)): raise TypeError
     if not isinstance(constraints,dict) and constraints is not None: raise TypeError
+    # variables et al.
     if not isinstance(variables,dict): raise TypeError
     datatype = variables.values()[0].datatype; title = variables.values()[0].title;
     if not all([var.datatype == datatype for var in variables.values()]): raise VariableError
     if not all([var.title == title for var in variables.values()]): raise VariableError
+    if extremes is None and datatype == 'precip': extremes = precip_xtrm
+    elif extremes is None and datatype == 'temp': extremes = temp_xtrm      
+    elif not isinstance(extremes,(list,tuple)): raise TypeError
+    if varmap is None: varmap = ec_varmap
+    elif not isinstance(varmap,dict): raise TypeError
+    # misc
+    encoding = encoding or variables.values()[0].encoding 
     if atts is None: atts = dict(name=datatype, title=title) # default name
     elif not isinstance(atts,dict): raise TypeError # resulting dataset attributes
-    encoding = encoding or variables.values()[0].encoding 
     if not isinstance(encoding,basestring): raise TypeError
     folder = folder or '{:s}/{:s}_{:s}/'.format(root_folder,interval,datatype) # default folder scheme 
     if not isinstance(folder,basestring): raise TypeError
@@ -308,6 +327,8 @@ class StationRecords(object):
     self.datatype = datatype
     self.title = title
     self.variables = variables
+    self.extremes = extremes
+    self.varmap = varmap
     self.atts = atts
     self.header_format = header_format
     self.station_format = station_format
@@ -369,9 +390,13 @@ class StationRecords(object):
             self.stationlists[varname].append(station)
     assert len(self.stationlists[varname]) == ns # make sure we got all (lists should have the same length)
     
-  def prepareDataset(self):
-    ''' prepare a PyGeoData dataset for the station data (with all the meta data) '''
-    from geodata import Axis, Variable, Dataset
+  def prepareDataset(self, filename=None, folder=None):
+    ''' prepare a PyGeoData dataset for the station data (with all the meta data); 
+        create a NetCDF file for monthly data; also add derived variables          '''
+    if folder is None: folder = '{:s}/ecavg/'.format(root_folder) # default folder scheme 
+    elif not isinstance(folder,basestring): raise TypeError
+    if filename is None: filename = 'ec{:s}_monthly.nc'.format(self.datatype) # default folder scheme 
+    elif not isinstance(filename,basestring): raise TypeError
     # meta data arrays
     dataset = Dataset(atts=self.atts)
     # station axis (by ordinal number)
@@ -407,8 +432,21 @@ class StationRecords(object):
     # loop over variables
     for vardef in self.variables.itervalues():
       dataset += Variable(axes=(station,time), dtype=vardef.dtype, **vardef.atts)
-    # save dataset
-    self.dataset = dataset
+    # write dataset to file
+    ncfile = '{:s}/{:s}'.format(folder,filename)      
+    #zlib = dict(chunksizes=dict(station=len(station))) # compression settings 
+    ncset = writeNetCDF(dataset, ncfile, feedback=False, overwrite=True, writeData=True, 
+                skipUnloaded=True, close=False, zlib=True)
+    # add derived variables
+    for xvar in self.extremes:
+      if isinstance(xvar,dv.DerivedVariable): 
+        xvar.axes = ('station','time') # change horizontal coordinates (all the same)
+        xvar.prerequisites = [self.varmap.get(var,var) for var in xvar.prerequisites] 
+      xvar.checkPrerequisites(ncset, const=None)
+      xvar.createVariable(ncset)
+    # reopen netcdf file with netcdf dataset
+    #print 'time', self.dataset.time.coord[0], self.dataset.time.coord[-1]
+    self.dataset = DatasetNetCDF(dataset=ncset, mode='rw', load=True) # always need to specify mode manually
     
   def readStationData(self):
     ''' read station data from source files and store in dataset '''
@@ -436,7 +474,7 @@ class StationRecords(object):
         print("   {:s}, {:s}".format(station.name,station.filename))
         # read station file
         tmp = station.parseRecord()
-        #print tmp.shape, end_idx[z], begin_idx[z]
+        print tmp.shape, end_idx[z], begin_idx[z]
         data[z,begin_idx[z]:end_idx[z]] = tmp  
         z += 1 # next station
       assert z == varobj.shape[0]
@@ -444,17 +482,7 @@ class StationRecords(object):
       data = np.nanmean(data.reshape(varobj.shape+(31,)),axis=-1) # squeezes automatically
       # load data
       varobj.load(data)
-    
-  def writeDataset(self, filename=None, folder=None, **kwargs):
-    ''' write the monthly dataset to a NetCDF file '''
-    if folder is None: folder = '{:s}/ecavg/'.format(root_folder) # default folder scheme 
-    elif not isinstance(folder,basestring): raise TypeError
-    if filename is None: filename = 'ec{:s}_monthly.nc'.format(self.datatype) # default folder scheme 
-    elif not isinstance(filename,basestring): raise TypeError
-    # write dataset to file
-    if 'ncfile' in kwargs: ncfile = kwargs.pop('ncfile')
-    else: ncfile = '{:s}/{:s}'.format(folder,filename)      
-    writeNetCDF(self.dataset, ncfile, **kwargs)
+      varobj.sync()
     
     
 
@@ -547,19 +575,17 @@ if __name__ == '__main__':
   # tests entire conversion process
   elif mode == 'test_conversion':
     
-    prov = 'ON' 
+    prov = 'PE' 
     # prepare input
 #     variables = temp_vars #dict(T2=temp_vars['T2'])
     variables = precip_vars #dict(precip=temp_vars['precip'])
     # initialize station record container (PE only has 3 stations - ideal for testing!)
     test = StationRecords(folder='', variables=variables, constraints=dict(prov=(prov,)))
-    test.prepareDataset()
+    # create netcdf file
+    filename = 'ec{:s}_{:s}_monthly.nc'.format(variables.values()[0].datatype,prov)        
+    test.prepareDataset(filename=filename, folder=None)
     # read actual station data
     test.readStationData()
-    # write to netcdf file
-    filename = 'ec{:s}_{:s}_monthly.nc'.format(variables.values()[0].datatype,prov)
-    test.writeDataset(filename=filename, folder=None, feedback=False, 
-                      overwrite=True, writeData=True, skipUnloaded=False)
     dataset = test.dataset
     print
     print dataset
