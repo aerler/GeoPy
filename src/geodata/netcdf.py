@@ -371,6 +371,7 @@ class DatasetNetCDF(Dataset):
           dataset.addVariable(var)      
       # create netcdf dataset/file
       dataset = writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True, writeData=False, close=False, feedback=False)
+      datasets = [dataset]
     # ... or open datasets from filelist
     else:
       # translate modes

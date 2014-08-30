@@ -23,6 +23,7 @@ from geodata.station import StationDataset, Variable, Axis
 import average.derived_variables as dv
 # from geodata.misc import DatasetError
 from warnings import warn
+#from Cython.Utility.MemoryView import tmpdata
 
 ## EC (Environment Canada) Meta-data
 
@@ -244,11 +245,23 @@ temp_vars   = dict(T2=TempDef(name='mean temperature', prefix='dm', atts=varatts
                    Tmin=TempDef(name='minimum temperature', prefix='dn', atts=varatts['Tmin']),
                    Tmax=TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax']))
 # precipitation extremes (and other derived variables)
-precip_xtrm = (dv.WetDays(),)
+precip_xtrm = [dv.WetDays(),]
+for var in precip_vars:
+  for mode in ('min','max'):
+    # ordinary & interval extrema: var, mode, [interval=7,] name=None, dimmap=None
+    precip_xtrm.append(dict(var=var, mode=mode, klass=dv.Extrema))      
+    precip_xtrm.append(dict(var=var, mode=mode, interval=7, klass=dv.MeanExtrema))      
+# consecutive events: var, mode, threshold=0, name=None, longname=None, dimmap=None
+# tmpatts = dict(var='precip', threshold=2.3e-7, klass=dv.ConsecutiveExtrema)
+# precip_xtrm.append(dict(name='CWD', mode='above', longname='Consecutive Wet Days', **tmpatts))
+# precip_xtrm.append(dict(name='CDD', mode='below', longname='Consecutive Dry Days', **tmpatts))
+
+  
 # temperature extremes (and other derived variables)
 temp_xtrm   = (dv.FrostDays(),)
-# varmap used for pre-requisites
-ec_varmap = dict(RAIN='precip')
+# map from common variable names to WRF names (which are used in the derived_variables module)
+ec_varmap = dict(RAIN='precip', south_north='time', time='station', west_east=None, # swap order of axes
+                 T2MIN='Tmin', T2MAX='Tmax', ) 
 
 # definition of station meta data format 
 ec_header_format = ('No','StnId','Prov','From','To','Lat(deg)','Long(deg)','Elev(m)','Joined','Station','name') 
@@ -282,7 +295,6 @@ class StationRecords(object):
   title       = '' # dataset title
   variables   = None # parameters and definitions associated with variables
   extremes    = None # list of derived/extreme variables to be computed as well
-  varmap      = None # map to accomodate variable name conventions used in derived_variables 
   atts        = None # attributes of resulting dataset (including name and title)
   header_format  = '' # station format definition (for validation)
   station_format = '' # station format definition (for reading)
@@ -311,7 +323,7 @@ class StationRecords(object):
     elif extremes is None and datatype == 'temp': extremes = temp_xtrm      
     elif not isinstance(extremes,(list,tuple)): raise TypeError
     if varmap is None: varmap = ec_varmap
-    elif not isinstance(varmap,dict): raise TypeError
+    elif not isinstance(varmap, dict): raise TypeError
     # misc
     encoding = encoding or variables.values()[0].encoding 
     if atts is None: atts = dict(name=datatype, title=title) # default name
@@ -329,6 +341,7 @@ class StationRecords(object):
     self.variables = variables
     self.extremes = extremes
     self.varmap = varmap
+    self.ravmap = dict((value,key) for key,value in varmap.iteritems() if value is not None) # reverse var map
     self.atts = atts
     self.header_format = header_format
     self.station_format = station_format
@@ -436,14 +449,30 @@ class StationRecords(object):
     ncfile = '{:s}/{:s}'.format(folder,filename)      
     #zlib = dict(chunksizes=dict(station=len(station))) # compression settings 
     ncset = writeNetCDF(dataset, ncfile, feedback=False, overwrite=True, writeData=True, 
-                skipUnloaded=True, close=False, zlib=True)
+                        skipUnloaded=True, close=False, zlib=True)
     # add derived variables
+    extremes = []
     for xvar in self.extremes:
-      if isinstance(xvar,dv.DerivedVariable): 
-        xvar.axes = ('station','time') # change horizontal coordinates (all the same)
-        xvar.prerequisites = [self.varmap.get(var,var) for var in xvar.prerequisites] 
-      xvar.checkPrerequisites(ncset, const=None)
+      if isinstance(xvar,dict):
+        var = xvar.pop('var'); mode = xvar.pop('mode'); Klass = xvar.pop('klass')
+        xvar = Klass(ncset.variables[var], mode, **xvar)
+        xvar.prerequisites = [self.ravmap.get(varname,varname) for varname in xvar.prerequisites]
+      elif isinstance(xvar,dv.DerivedVariable):
+        xvar.axes = tuple([self.varmap.get(varname,varname) for varname in xvar.axes if self.varmap.get(varname,varname)])
+      else: raise TypeError
+      # adapt variable instances for this dataset (i.e. axes and dependencies)
+      xvar.normalize = False # different aggregation
+      #xvar.prerequisites = [self.varmap.get(varname,varname) for varname in xvar.prerequisites]
+      # check axes
+      if len(xvar.axes) != 2 or xvar.axes != (varatts['station']['name'], varatts['time']['name']):
+        print xvar.name, len(xvar.axes), xvar.axes, (varatts['station']['name'], varatts['time']['name'])
+        raise dv.DerivedVariableError, "Axes ('station', 'time') are required; adjust varmap as needed."
+      # finalize
+      xvar.checkPrerequisites(ncset, const=None, varmap=self.varmap)
       xvar.createVariable(ncset)
+      extremes.append(xvar)
+    self.extremes = extremes
+
     # reopen netcdf file with netcdf dataset
     #print 'time', self.dataset.time.coord[0], self.dataset.time.coord[-1]
     self.dataset = DatasetNetCDF(dataset=ncset, mode='rw', load=True) # always need to specify mode manually
@@ -461,29 +490,81 @@ class StationRecords(object):
 #     print 'begin_idx', begin_idx
 #     print 'end_idx', end_idx
     # loop over variables
+    dailydata = dict() # to store daily data for derived variables
+    monlydata = dict() # monthly data, but transposed
+    ravmap = self.ravmap # shortcut for convenience  
     print("\n   ***   Preparing {:s}   ***\n   Constraints: {:s}\n".format(self.title,str(self.constraints)))
     for var,vardef in self.variables.iteritems():
       print("\n {:s} ('{:s}'):\n".format(vardef.name.title(),var))
       varobj = self.dataset[var] # get variable object
+      wrfvar = ravmap.get(varobj.name,varobj.name)
       # allocate array
       shape = (varobj.shape[0], varobj.shape[1]*31) # daily data!
-      data = np.empty(shape, dtype=varobj.dtype); data.fill(np.NaN) # initialize all with NaN
+      dailytmp = np.empty(shape, dtype=varobj.dtype); dailytmp.fill(np.NaN) # initialize all with NaN
       # loop over stations
-      z = 0 # station counter
+      s = 0 # station counter
       for station in self.stationlists[var]:
         print("   {:s}, {:s}".format(station.name,station.filename))
         # read station file
         tmp = station.parseRecord()
-        print tmp.shape, end_idx[z], begin_idx[z]
-        data[z,begin_idx[z]:end_idx[z]] = tmp  
-        z += 1 # next station
-      assert z == varobj.shape[0]
+        print tmp.shape, end_idx[s], begin_idx[s]
+        dailytmp[s,begin_idx[s]:end_idx[s]] = tmp  
+        s += 1 # next station
+      assert s == varobj.shape[0]
       # compute monthly average
-      data = np.nanmean(data.reshape(varobj.shape+(31,)),axis=-1) # squeezes automatically
-      # load data
-      varobj.load(data)
-      varobj.sync()
-    
+      dailytmp = dailytmp.reshape(varobj.shape+(31,))
+      monlytmp = np.nanmean(dailytmp,axis=-1) # squeezes automatically
+      # store daily and monthly data for computation of derived variables
+      dailydata[wrfvar] = dailytmp #np.rollaxis(dailytmp, axis=0, start=3) # make station axis the last
+      #print dailytmp.shape, dailydata[wrfvar].shape
+      monlydata[wrfvar] = monlytmp #np.rollaxis(monlytmp, axis=0, start=2) # make station axis the last
+      #print monlytmp.shape, monlydata[wrfvar].shape
+      # load data      
+      varobj.load(monlytmp); varobj.sync()
+      del dailytmp, monlytmp
+    # loop over derived nonlinear variables/extremes
+    print('\n computing (nonlinear) daily variables:')
+    for var in self.extremes:      
+      if not var.linear:
+        print("   {:s} {:s}".format(var.name,str(tuple(var.prerequisites))))
+        varobj = self.dataset[var.name] # get variable object
+        if var.name not in ravmap: ravmap[var.name] = var.name # naming convention for tmp storage 
+        wrfvar = ravmap[var.name] 
+        # allocate memory for monthly values
+        tmp = np.empty(varobj.shape, dtype=varobj.dtype); tmp.fill(np.NaN) 
+        monlydata[wrfvar] = tmp
+    # loop over time steps      
+    tmpvars = dict()
+    for m in xrange(varobj.shape[1]):
+      # construct arrays for this month
+      tmpdata = {varname:data[:,m,:] for varname,data in dailydata.iteritems()}      
+      for var in self.extremes:      
+        if not var.linear:
+          varobj = self.dataset[var.name] # get variable object
+          wrfvar = ravmap[var.name]
+          dailytmp = var.computeValues(tmpdata, aggax=1, delta=86400., tmp=tmpvars, ignoreNaN=True)        
+          tmpdata[wrfvar] = dailytmp
+          monlytmp = var.aggregateValues(dailytmp, aggdata=None, aggax=1, ignoreNaN=True) # last axis
+          #print var.name, self.dataset[var.name].shape, monlytmp.shape
+          assert monlytmp.shape == (s,)
+          monlydata[wrfvar][:,m] = monlytmp  
+          #if var.name == 'WetDays': print monlydata[wrfvar][:,m] 
+    # loop over linear derived variables/extremes
+    print('\n computing (linear) monthly variables:')
+    for var in self.extremes:      
+      varobj = self.dataset[var.name] # get variable object
+      wrfvar = ravmap[var.name]
+      if var.linear:
+        print(" computing {:s} {:s}".format(var.name,str(tuple(var.prerequisites))))
+        # compute from available monthly data
+        raise Exception
+        monlytmp = var.computeValues(monlydata, aggax=1, delta=86400., ignoreNaN=True)
+        monlydata[wrfvar] = monlytmp
+      tmpload = monlydata[wrfvar] #np.rollaxis(monlytmp, axis=0, start=2)
+      assert varobj.shape == tmpload.shape
+      varobj.load(tmpload); varobj.sync()
+      print varobj.name, varobj.shape
+        
     
 
 ## load pre-processed EC station time-series
@@ -587,9 +668,11 @@ if __name__ == '__main__':
     # read actual station data
     test.readStationData()
     dataset = test.dataset
-    print
-    print dataset
-    print
-    for var in variables.iterkeys():
-      var = dataset.variables[var]; data = var.getArray()
-      print var.name, np.nanmean(data), np.nanmin(data), np.nanmax(data) 
+    print()
+    print(dataset)
+    print('\n')
+    for varname,var in dataset.variables.iteritems():
+      if var.hasAxis('time') and var.hasAxis('station'):
+        data = var.getArray()
+        #print var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data)
+        print('{:>14s}: {:5.2f} | {:5.2f} | {:5.2f}'.format(var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data))) 

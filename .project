@@ -5,6 +5,7 @@
 	<projects>
 		<project>LazyArray</project>
 		<project>WAFO</project>
+		<project>WRF Tools</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
