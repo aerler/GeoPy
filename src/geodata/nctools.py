@@ -238,7 +238,7 @@ def coerceAtts(atts):
 def writeNetCDF(dataset, ncfile, ncformat='NETCDF4', zlib=True, writeData=True, overwrite=True, skipUnloaded=False, 
                 feedback=False, close=True):
   ''' A function to write the data in a generic Dataset to a NetCDF file. '''
-  print("Writing to file: '{:s}'".format(ncfile)) # print feedback
+  if feedback: print("Writing to file: '{:s}'".format(ncfile)) # print feedback
   # open file
   if isinstance(ncfile,basestring): 
     if not overwrite and os.path.exists(ncfile): raise IOError, "File '{:s}' already exists and 'overwrite' set to False.".format(ncfile)

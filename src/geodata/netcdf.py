@@ -419,9 +419,7 @@ class DatasetNetCDF(Dataset):
                 raise DatasetError, "Error constructing Dataset: NetCDF files have incompatible {:s} dimension.".format(dim)
             else: # if this is a new axis, add it to the list
               if ds.variables[dim].dtype == '|S1': pass # Variables of type char are currently not implemented
-              else:      
-                print dim, ds.variables[dim]
-                axes[dim] = AxisNC(ncvar=ds.variables[dim], mode=mode, **varatts.get(dim,{})) # also use overrride parameters
+              else: axes[dim] = AxisNC(ncvar=ds.variables[dim], mode=mode, **varatts.get(dim,{})) # also use overrride parameters
           else: # initialize dimensions without associated variable as regular Axis (not AxisNC)
             if dim in axes: # if already present, make sure axes are essentially the same
               if len(axes[dim]) != len(ds.dimensions[dim]): 
@@ -624,10 +622,13 @@ class DatasetNetCDF(Dataset):
   def axisAnnotation(self, name, strlist, dim, atts=None):
     ''' Add a list of string values along the specified axis. '''
     # figure out dimensions
-    dimname = dim if isinstance(dim,basestring) else dim.name
     if len(strlist) != len(self.axes[dim]) if isinstance(dim,basestring) else len(dim): raise AxisError
+    if isinstance(strlist,(list,tuple)): strlist = np.array(strlist)
+    elif not isinstance(strlist,np.ndarray) and strlist.dtype.kind == 'S': raise TypeError
     # create netcdf dimension and variable
-    add_strvar(self.dataset, name, strlist, dimname, atts=atts)    
+    add_var(self.dataset, name, (dim,), data=strlist, atts=atts)
+    #dimname = dim if isinstance(dim,basestring) else dim.name
+    #add_strvar(self.dataset, name, strlist, dimname, atts=atts)    
     
   def close(self):
     ''' Call this method before deleting the Dataset: close netcdf files; if in write mode, also synchronizes with file system before closing. '''

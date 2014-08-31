@@ -9,17 +9,16 @@ NetCDF datasets (with extremes); the module also provides a wrapper to load the 
 '''
 
 # external imports
-from collections import OrderedDict
 import numpy as np
-import numpy.ma as ma
+from copy import deepcopy
 import codecs
+import calendar
 # internal imports
 from datasets.common import days_per_month, name_of_month, data_root
-from geodata.misc import ParseError, DateError, VariableError, RecordClass, StrictRecordClass
+from geodata.misc import ParseError, DateError, VariableError, ArgumentError, RecordClass, StrictRecordClass
 from geodata.base import Axis, Variable, Dataset
 from geodata.nctools import writeNetCDF
 from geodata.netcdf import DatasetNetCDF
-from geodata.station import StationDataset, Variable, Axis
 import average.derived_variables as dv
 # from geodata.misc import DatasetError
 from warnings import warn
@@ -30,7 +29,8 @@ from warnings import warn
 dataset_name = 'EC'
 root_folder = data_root + dataset_name + '/'
 orig_ts_file = '{0:s}{1:s}.txt' # filename pattern: variable name and station ID
-tsfile = 'ec{0:s}_monthly.nc' # filename pattern: station type 
+tsfile = 'ec{0:s}_monthly.nc' # filename pattern: station type
+tsfile_prov = 'ec{0:s}_{1:s}_monthly.nc' # filename pattern with province: station type, province  
 avgfile = 'ec{0:s}_clim{1:s}.nc' # filename pattern: station type and ('_'+period)
 avgfolder = root_folder + 'ecavg/'  # folder for user data
 
@@ -147,6 +147,7 @@ class DailyStationRecord(StrictRecordClass):
           # loop over daily values
           for num in ll[2:]:
             # evaluate daily value
+            assert zz < data.size, line              
             if num[:lm] == self.missing: pass # missing value; already pre-filled NaN;  or num[-1] == 'M'
             else:
               if lfloat and '.' in num and 1 < len(num): # at least 1 digit plus decimal, i.e. ignore the flag
@@ -158,11 +159,9 @@ class DailyStationRecord(StrictRecordClass):
                 elif num[-2].isdigit() and num[-1] in self.flags: n = int(num[:-1]) # remove data flag
                 else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
               else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
-              if n < self.varmin: raise ParseError, "Encountered value '{:s}' below minimum in line:\n {:s}".format(num,line)
-              if n > self.varmax: raise ParseError, "Encountered value '{:s}' above maximum in line:\n {:s}".format(num,line)
-              #print len(ll), ll
-              assert zz < data.size, line              
-              data[zz] = n
+              if n < self.varmin: warn("Encountered value '{:s}' below minimum in line (ignored):\n {:s}".format(num,line))
+              elif n > self.varmax: warn("Encountered value '{:s}' above maximum in line (ignored):\n {:s}".format(num,line))
+              else: data[zz] = n # only now, we can accept the value
             # increment daily counter
             zz += 1 # here each month has 31 days (padded with missing values)
           if zz != z+31: raise ParseError, 'Line has {:d} values instead of 31:\n {:s}'.format(zz-z,line)  
@@ -235,15 +234,12 @@ class TempDef(VarDef):
   
   def convert(self, data): return data + 273.15 # convert to Kelvin
 
-# variable definitions for EC datasets
+## variable definitions for EC datasets
+
 # daily precipitation variables in data
 precip_vars = dict(precip=PrecipDef(name='precipitation', prefix='dt', atts=varatts['precip']),
                    solprec=PrecipDef(name='snowfall', prefix='ds', atts=varatts['solprec']),
                    liqprec=PrecipDef(name='rainfall', prefix='dr', atts=varatts['liqprec']))
-# daily temperature variables in data
-temp_vars   = dict(T2=TempDef(name='mean temperature', prefix='dm', atts=varatts['T2']),
-                   Tmin=TempDef(name='minimum temperature', prefix='dn', atts=varatts['Tmin']),
-                   Tmax=TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax']))
 # precipitation extremes (and other derived variables)
 precip_xtrm = [dv.WetDays(),]
 for var in precip_vars:
@@ -252,13 +248,27 @@ for var in precip_vars:
     precip_xtrm.append(dict(var=var, mode=mode, klass=dv.Extrema))      
     precip_xtrm.append(dict(var=var, mode=mode, interval=7, klass=dv.MeanExtrema))      
 # consecutive events: var, mode, threshold=0, name=None, longname=None, dimmap=None
-# tmpatts = dict(var='precip', threshold=2.3e-7, klass=dv.ConsecutiveExtrema)
-# precip_xtrm.append(dict(name='CWD', mode='above', longname='Consecutive Wet Days', **tmpatts))
-# precip_xtrm.append(dict(name='CDD', mode='below', longname='Consecutive Dry Days', **tmpatts))
+tmpatts = dict(var='precip', threshold=2.3e-7, klass=dv.ConsecutiveExtrema)
+precip_xtrm.append(dict(name='CWD', mode='above', longname='Consecutive Wet Days', **tmpatts))
+precip_xtrm.append(dict(name='CDD', mode='below', longname='Consecutive Dry Days', **tmpatts))
 
-  
+# daily temperature variables in data
+temp_vars   = dict(T2=TempDef(name='mean temperature', prefix='dm', atts=varatts['T2']),
+                   Tmin=TempDef(name='minimum temperature', prefix='dn', atts=varatts['Tmin']),
+                   Tmax=TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax']))  
 # temperature extremes (and other derived variables)
-temp_xtrm   = (dv.FrostDays(),)
+temp_xtrm   = [dv.FrostDays(),]
+for var in temp_vars:
+  for mode in ('min','max'):
+    # ordinary & interval extrema: var, mode, [interval=7,] name=None, dimmap=None
+    temp_xtrm.append(dict(var=var, mode=mode, klass=dv.Extrema))      
+    temp_xtrm.append(dict(var=var, mode=mode, interval=7, klass=dv.MeanExtrema))      
+# consecutive events: var, mode, threshold=0, name=None, longname=None, dimmap=None
+tmpatts = dict(mode='below', threshold=273.15, klass=dv.ConsecutiveExtrema) # threshold after conversion
+temp_xtrm.append(dict(name='CFD', var='T2', longname='Consecutive Frost Days', **tmpatts))
+temp_xtrm.append(dict(name='CDFD', var='Tmax', longname='Consecutive Day Frost Days', **tmpatts))
+temp_xtrm.append(dict(name='CNFD', var='Tmin', longname='Consecutive Night Frost Days', **tmpatts))
+
 # map from common variable names to WRF names (which are used in the derived_variables module)
 ec_varmap = dict(RAIN='precip', south_north='time', time='station', west_east=None, # swap order of axes
                  T2MIN='Tmin', T2MAX='Tmax', ) 
@@ -287,7 +297,7 @@ class StationRecords(object):
     to a NetCDF file.
   '''
   # arguments
-  folder      = '' # root folder for station data: interval and datatype
+  folder      = '' # root folder for station data: interval and datatype (source folder)
   stationfile = 'stations.txt' # file that contains station meta data (to load station records)
   encoding    = '' # encoding of station file
   interval    = '' # source data interval (currently only daily)
@@ -319,8 +329,9 @@ class StationRecords(object):
     datatype = variables.values()[0].datatype; title = variables.values()[0].title;
     if not all([var.datatype == datatype for var in variables.values()]): raise VariableError
     if not all([var.title == title for var in variables.values()]): raise VariableError
-    if extremes is None and datatype == 'precip': extremes = precip_xtrm
-    elif extremes is None and datatype == 'temp': extremes = temp_xtrm      
+    if extremes is None and datatype == 'precip': extremes = deepcopy(precip_xtrm)
+    elif extremes is None and datatype == 'temp': extremes = deepcopy(temp_xtrm)
+    # N.B.: need to use deepcopy, because we are modifying the objects      
     elif not isinstance(extremes,(list,tuple)): raise TypeError
     if varmap is None: varmap = ec_varmap
     elif not isinstance(varmap, dict): raise TypeError
@@ -376,14 +387,12 @@ class StationRecords(object):
             if zz == 0: # first column
               if z != fct(collist[zz]): raise ParseError, "Station number is not consistent with line count:\n {:s}".format(line)
           else:
-            #print key, z, collist[zz]
             stdef[key] = fct(collist[zz]) # convert value and assign to argument
           zz += 1 # increment column
         assert zz <= len(collist) # not done yet
         # collect all remaining elements
         key,fct = station_format[-1]
         stdef[key] = fct(' '.join(collist[zz:]))
-        #print z,stdef[key]
         # check station constraints
         if constraints is None: ladd = True
         else:
@@ -440,14 +449,13 @@ class StationRecords(object):
       if pnt == 'begin': begin_date = np.min(datearray) 
       elif pnt == 'end': end_date = np.max(datearray) 
     # add variables for monthly values
-    #self.begin_date = begin_date; self.end_date = end_date # save overall begin and end dates
     time = Axis(coord=np.arange(begin_date, end_date+1, dtype='int16'), **varatts['time'])
     # loop over variables
     for vardef in self.variables.itervalues():
       dataset += Variable(axes=(station,time), dtype=vardef.dtype, **vardef.atts)
     # write dataset to file
     ncfile = '{:s}/{:s}'.format(folder,filename)      
-    #zlib = dict(chunksizes=dict(station=len(station))) # compression settings 
+    #zlib = dict(chunksizes=dict(station=len(station))) # compression settings; probably OK as is 
     ncset = writeNetCDF(dataset, ncfile, feedback=False, overwrite=True, writeData=True, 
                         skipUnloaded=True, close=False, zlib=True)
     # add derived variables
@@ -462,19 +470,16 @@ class StationRecords(object):
       else: raise TypeError
       # adapt variable instances for this dataset (i.e. axes and dependencies)
       xvar.normalize = False # different aggregation
-      #xvar.prerequisites = [self.varmap.get(varname,varname) for varname in xvar.prerequisites]
       # check axes
       if len(xvar.axes) != 2 or xvar.axes != (varatts['station']['name'], varatts['time']['name']):
-        print xvar.name, len(xvar.axes), xvar.axes, (varatts['station']['name'], varatts['time']['name'])
+        print xvar.axes
         raise dv.DerivedVariableError, "Axes ('station', 'time') are required; adjust varmap as needed."
       # finalize
       xvar.checkPrerequisites(ncset, const=None, varmap=self.varmap)
       xvar.createVariable(ncset)
       extremes.append(xvar)
     self.extremes = extremes
-
     # reopen netcdf file with netcdf dataset
-    #print 'time', self.dataset.time.coord[0], self.dataset.time.coord[-1]
     self.dataset = DatasetNetCDF(dataset=ncset, mode='rw', load=True) # always need to specify mode manually
     
   def readStationData(self):
@@ -482,13 +487,8 @@ class StationRecords(object):
     assert self.dataset
     # determine record begin and end indices
     all_begin = self.dataset.time.coord[0] # coordinate value of first time step
-#     print 'time', self.dataset.time.coord[0], self.dataset.time.coord[-1]
-#     print 'begin_date',self.dataset.begin_date.getArray()
-#     print 'end_date',self.dataset.end_date.getArray()
     begin_idx = ( self.dataset.begin_date.getArray() - all_begin ) * 31.
     end_idx = ( self.dataset.end_date.getArray() - all_begin + 1 ) * 31.
-#     print 'begin_idx', begin_idx
-#     print 'end_idx', end_idx
     # loop over variables
     dailydata = dict() # to store daily data for derived variables
     monlydata = dict() # monthly data, but transposed
@@ -504,40 +504,43 @@ class StationRecords(object):
       # loop over stations
       s = 0 # station counter
       for station in self.stationlists[var]:
-        print("   {:s}, {:s}".format(station.name,station.filename))
+        print("   {:<15s} {:s}".format(station.name,station.filename))
         # read station file
-        tmp = station.parseRecord()
-        print tmp.shape, end_idx[s], begin_idx[s]
-        dailytmp[s,begin_idx[s]:end_idx[s]] = tmp  
+        dailytmp[s,begin_idx[s]:end_idx[s]] = station.parseRecord()  
         s += 1 # next station
       assert s == varobj.shape[0]
+      dailytmp = vardef.convert(dailytmp) # apply conversion function
       # compute monthly average
       dailytmp = dailytmp.reshape(varobj.shape+(31,))
       monlytmp = np.nanmean(dailytmp,axis=-1) # squeezes automatically
       # store daily and monthly data for computation of derived variables
-      dailydata[wrfvar] = dailytmp #np.rollaxis(dailytmp, axis=0, start=3) # make station axis the last
-      #print dailytmp.shape, dailydata[wrfvar].shape
-      monlydata[wrfvar] = monlytmp #np.rollaxis(monlytmp, axis=0, start=2) # make station axis the last
-      #print monlytmp.shape, monlydata[wrfvar].shape
+      dailydata[wrfvar] = dailytmp
+      monlydata[wrfvar] = monlytmp
       # load data      
       varobj.load(monlytmp); varobj.sync()
       del dailytmp, monlytmp
     # loop over derived nonlinear variables/extremes
-    print('\n computing (nonlinear) daily variables:')
+    if any(not var.linear for var in self.extremes): print('\n computing (nonlinear) daily variables:')
     for var in self.extremes:      
       if not var.linear:
-        print("   {:s} {:s}".format(var.name,str(tuple(var.prerequisites))))
+        print("   {:<15s} {:s}".format(var.name,str(tuple(self.varmap.get(varname,varname) for varname in var.prerequisites))))
         varobj = self.dataset[var.name] # get variable object
         if var.name not in ravmap: ravmap[var.name] = var.name # naming convention for tmp storage 
         wrfvar = ravmap[var.name] 
         # allocate memory for monthly values
-        tmp = np.empty(varobj.shape, dtype=varobj.dtype); tmp.fill(np.NaN) 
+        tmp = np.ma.empty(varobj.shape, dtype=varobj.dtype); tmp.fill(np.NaN) 
+        # N.B.: some derived variable types may return masked arrays
         monlydata[wrfvar] = tmp
     # loop over time steps      
     tmpvars = dict()
-    for m in xrange(varobj.shape[1]):
+    for m,mon in enumerate(varobj.axes[1].coord):
+      # figure out length of month
+      if mon%12 == 1: # February
+        if calendar.isleap(1979 + mon/12): lmon = 29
+        else: lmon = 28
+      else: lmon = days_per_month[mon%12]
       # construct arrays for this month
-      tmpdata = {varname:data[:,m,:] for varname,data in dailydata.iteritems()}      
+      tmpdata = {varname:data[:,m,0:lmon] for varname,data in dailydata.iteritems()}      
       for var in self.extremes:      
         if not var.linear:
           varobj = self.dataset[var.name] # get variable object
@@ -545,33 +548,37 @@ class StationRecords(object):
           dailytmp = var.computeValues(tmpdata, aggax=1, delta=86400., tmp=tmpvars, ignoreNaN=True)        
           tmpdata[wrfvar] = dailytmp
           monlytmp = var.aggregateValues(dailytmp, aggdata=None, aggax=1, ignoreNaN=True) # last axis
-          #print var.name, self.dataset[var.name].shape, monlytmp.shape
           assert monlytmp.shape == (s,)
-          monlydata[wrfvar][:,m] = monlytmp  
-          #if var.name == 'WetDays': print monlydata[wrfvar][:,m] 
+          monlydata[wrfvar][:,m] = monlytmp
     # loop over linear derived variables/extremes
-    print('\n computing (linear) monthly variables:')
+    if any(var.linear for var in self.extremes): print('\n computing (linear) monthly variables:')
     for var in self.extremes:      
       varobj = self.dataset[var.name] # get variable object
       wrfvar = ravmap[var.name]
       if var.linear:
-        print(" computing {:s} {:s}".format(var.name,str(tuple(var.prerequisites))))
         # compute from available monthly data
-        raise Exception
+        print("   {:<15s} {:s}".format(var.name,str(tuple(self.varmap.get(varname,varname) for varname in var.prerequisites))))
         monlytmp = var.computeValues(monlydata, aggax=1, delta=86400., ignoreNaN=True)
         monlydata[wrfvar] = monlytmp
-      tmpload = monlydata[wrfvar] #np.rollaxis(monlytmp, axis=0, start=2)
+      tmpload = monlydata[wrfvar]
       assert varobj.shape == tmpload.shape
       varobj.load(tmpload); varobj.sync()
-      print varobj.name, varobj.shape
         
     
 
 ## load pre-processed EC station time-series
-def loadEC_TS(): 
+def loadEC_TS(name=dataset_name, filetype=None, prov=None, varlist=None, varatts=None, filelist=None, folder=None): 
   ''' Load a monthly time-series of pre-processed EC station data. '''
-  return NotImplementedError
-
+  if filetype is None: raise ArgumentError, "A 'filetype' needs to be specified ('temp' or 'precip')."
+  if prov is not None and not isinstance(prov,basestring): raise TypeError
+  if folder is None: folder = avgfolder
+  if filelist is None: 
+    if prov: filelist = [tsfile_prov.format(filetype, prov)]
+    else: filelist = [tsfile.format(filetype)]
+  # open NetCDF file (name, varlist, and varatts are passed on directly)
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
+                            multifile=False, ncformat='NETCDF4')
+  return dataset
 ## load pre-processed EC station climatology
 def loadEC(): 
   ''' Load a pre-processed EC station climatology. '''
@@ -601,11 +608,27 @@ if __name__ == '__main__':
 
 #   mode = 'test_station_object'
 #   mode = 'test_station_reader'
-  mode = 'test_conversion'
-#   mode = 'convert_ASCII'
+#   mode = 'test_conversion'
+#   mode = 'convert_all_stations'
+  mode = 'convert_prov_stations'
+#   mode = 'test_timeseries'
   
+  # test wrapper function to load time series data from EC stations
+  if mode == 'test_timeseries':
+    
+    # load averaged climatology file
+    print('')
+    dataset = loadEC_TS(filetype='precip', prov='NL')
+    print(dataset)
+    print('')
+    print(dataset.station)
+#     print(dataset.time)
+#     print(dataset.time.coord)
+#     print(dataset.time.coord[78*12])
+
+        
   # test station object initialization
-  if mode == 'test_station_object':  
+  elif mode == 'test_station_object':  
     
     # initialize station (new way with VarDef)
 #     var = PrecipDef(name='precipitation', prefix='dt', atts=varatts['precip'])
@@ -616,15 +639,6 @@ if __name__ == '__main__':
     test = DailyStationRecord(id='5010640', name='CYPRESS RIVER', filename='/data/EC/daily_temp/dx/dx5010640.txt',
                               begin_year=1949, begin_mon=1, end_year=2012, end_mon=3, prov='MB', joined=False, 
                               lat=49.55, lon=-99.08, alt=374, **var.getKWargs())
-#     # old way without VarDef    
-#     test = DailyStationRecord(id='250M001', name='MOULD BAY', variable='precipitation', units=u'mm', 
-#                               varmin=0, varmax=1e3, begin_year=1948, begin_mon=1, end_year=2007, end_mon=11, 
-#                               lat=76.2, lon=-119.3, alt=2, prov='NT', joined=True, missing='-9999.99', flags='TEFACLXYZ',
-#                               filename='/data/EC/daily_precip/dt/dt250M001.txt', dtype='float32', encoding='UTF-8')
-#     test = DailyStationRecord(id='5010640', name='CYPRESS RIVER', variable='maximum temperature', units=u'°C', 
-#                               varmin=-100, varmax=100, begin_year=1949, begin_mon=1, end_year=2012, end_mon=3, 
-#                               lat=49.55, lon=-99.08, alt=374, prov='MB', joined=False, missing='-9999.9', flags='Ea',
-#                               filename='/data/EC/daily_temp/dx/dx5010640.txt', dtype='float32', encoding='ISO-8859-15')
     test.checkHeader() # fail early...
     data = var.convert(test.parseRecord())    
     print data.shape, data.dtype
@@ -641,38 +655,76 @@ if __name__ == '__main__':
     # show dataset
     test.prepareDataset()
     print test.dataset
-    print
+    print('')
     # write to netcdf file
     test.writeDataset(filename='test.nc', folder='/home/data/', feedback=False, 
                       overwrite=True, writeData=True, skipUnloaded=True)
-    print
+    print('')
     # test netcdf file
     dataset = DatasetNetCDF(filelist=['/home/data/test.nc'])
     print dataset
-    print
+    print('')
     print dataset.station_name[1:,] # test string variable recall
     
   
   # tests entire conversion process
   elif mode == 'test_conversion':
     
-    prov = 'PE' 
+    prov = 'BC'
     # prepare input
-#     variables = temp_vars #dict(T2=temp_vars['T2'])
-    variables = precip_vars #dict(precip=temp_vars['precip'])
+    variables = temp_vars #dict(T2=temp_vars['T2'])
+#     variables = precip_vars #dict(precip=temp_vars['precip'])
     # initialize station record container (PE only has 3 stations - ideal for testing!)
     test = StationRecords(folder='', variables=variables, constraints=dict(prov=(prov,)))
     # create netcdf file
-    filename = 'ec{:s}_{:s}_monthly.nc'.format(variables.values()[0].datatype,prov)        
+    print('')
+    filename = tsfile_prov.format(variables.values()[0].datatype,prov)        
     test.prepareDataset(filename=filename, folder=None)
     # read actual station data
     test.readStationData()
     dataset = test.dataset
-    print()
+    print('')
     print(dataset)
     print('\n')
     for varname,var in dataset.variables.iteritems():
       if var.hasAxis('time') and var.hasAxis('station'):
         data = var.getArray()
-        #print var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data)
-        print('{:>14s}: {:5.2f} | {:5.2f} | {:5.2f}'.format(var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data))) 
+        if 'precip' in variables:
+          print('{:>14s}: {:5.2f} | {:5.2f} | {:5.2f}'.format(
+                var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data))) 
+        else: 
+          print('{:>10s}: {:5.1f} | {:5.1f} | {:5.1f}'.format(
+                var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data)))
+  
+  
+  # convert provincial station date to NetCDF
+  elif mode == 'convert_prov_stations':
+    
+    # loop over provinces
+    for prov in ('BC', 'YT', 'NT', 'NU', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL'):
+      # loop over variable types
+      for variables in (precip_vars, temp_vars,): # precip_vars, temp_vars,
+        
+        # initialize station record container
+        stations = StationRecords(variables=variables, constraints=dict(prov=(prov,)))
+        # create netcdf file (one per province)
+        filename = tsfile_prov.format(variables.values()[0].datatype,prov)        
+        stations.prepareDataset(filename=filename, folder=None)
+        # read actual station data
+        stations.readStationData()
+
+
+  # convert all station date to NetCDF
+  elif mode == 'convert_all_stations':
+    
+    # loop over variable types
+    for variables in (precip_vars, temp_vars,): # precip_vars, temp_vars,
+      
+      # initialize station record container
+      stations = StationRecords(variables=variables, constraints=None)
+      # create netcdf file
+      stations.prepareDataset(filename=None, folder=None) # default settings
+      # read actual station data
+      stations.readStationData()
+      
+      
