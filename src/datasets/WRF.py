@@ -397,8 +397,8 @@ def loadWRF_TS(experiment=None, name=None, domains=2, grid=None, filetypes=None,
   tatts['atts'] = dict(long_name='Month since 1979-01')
   atts['time'] = tatts 
   # translate varlist
-  #if varlist is None: varlist = atts.keys()
-  if atts: varlist = translateVarNames(varlist, atts)
+  #if varlist is None: varlist = atts.keys() # need to allow None to load all variables
+  if atts and varlist is not None: varlist = translateVarNames(varlist, atts)
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if 'const' in filetypes: filename = fileclasses['const'].tsfile # constants files preferred...
@@ -571,8 +571,8 @@ if __name__ == '__main__':
     
   
 #   mode = 'test_climatology'
-#   mode = 'test_timeseries'
-  mode = 'pickle_grid'  
+  mode = 'test_timeseries'
+#   mode = 'pickle_grid'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
   experiments = ['rrtmg', 'ctrl', 'new']

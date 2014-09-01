@@ -722,8 +722,9 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       # call variable 'constructor' for all variables
       var = addGDALtoVar(var, projection=dataset.projection, geotransform=dataset.geotransform)
       # check result
-      if not (var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat)):
-        raise GDALError, "Variable '{:s}' violates GDAL status (gdal={:s})".format(var.name, str(var.gdal))    
+      if var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat):
+        if not var.gdal:  
+          raise GDALError, "Variable '{:s}' violates GDAL status (gdal={:s})".format(var.name, str(var.gdal))    
     
     # get grid definition object
     dataset.getGridDef = types.MethodType(getGridDef, dataset)

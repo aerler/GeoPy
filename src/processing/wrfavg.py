@@ -208,7 +208,7 @@ if __name__ == '__main__':
     varlist = None # ['precip', ]
     experiments = []
     experiments += ['max-ctrl']
-    experiments += ['new','noah','max','max-2050']
+#     experiments += ['new','noah','max','max-2050']
 #     experiments += ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
 #     experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
@@ -225,9 +225,9 @@ if __name__ == '__main__':
 #     periods += [3]
     periods += [5]
 #     periods += [9]
-    periods += [10]
-    periods += [15]
-    domains = (1,2,) # domains to be processed
+#     periods += [10]
+#     periods += [15]
+    domains = (1,) # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']

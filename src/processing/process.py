@@ -30,33 +30,37 @@ class ProcessError(Exception):
 
 class CentralProcessingUnit(object):
   
-  def __init__(self, source, target=None, varlist=None, tmp=True, feedback=True):
+  def __init__(self, source, target=None, varlist=None, ignorelist=None, tmp=True, feedback=True):
     ''' Initialize processor and pass input and output datasets. '''
     # check varlist
     if varlist is None: varlist = source.variables.keys() # all source variables
-    if not isinstance(varlist,(list,tuple)): raise TypeError
-    self.__dict__['varlist'] = varlist # list of variable to be processed
+    elif not isinstance(varlist,(list,tuple)): raise TypeError
+    self.varlist = varlist # list of variable to be processed
+    # ignore list (e.g. variables that will cause errors)
+    if ignorelist is None: ignorelist = [] # an empty list
+    elif not isinstance(ignorelist,(list,tuple)): raise TypeError
+    self.ignorelist = ignorelist # list of variable *not* to be processed    
     # check input
     if not isinstance(source,Dataset): raise TypeError
     if isinstance(source,DatasetNetCDF) and not 'r' in source.mode: raise PermissionError
-    self.__dict__['input'] = source
-    self.__dict__['source'] = source
+    self.input = source
+    self.source = source
     # check output
     if target is not None:       
       if not isinstance(target,Dataset): raise TypeError
       if isinstance(target,DatasetNetCDF) and not 'w' in target.mode: raise PermissionError
     else:
       if not tmp: raise DatasetError, "Need target location, if temporary storage is disables (tmp=False)." 
-    self.__dict__['output'] = target
+    self.output = target
     # temporary dataset
-    self.__dict__['tmp'] = tmp
-    if tmp: self.__dict__['tmpput'] = Dataset(name='tmp', title='Temporary Dataset', varlist=[], atts={})
-    else: self.__dict__['tmpput'] = None
+    self.tmp = tmp
+    if tmp: self.tmpput = Dataset(name='tmp', title='Temporary Dataset', varlist=[], atts={})
+    else: self.tmpput = None
     # determine if temporary storage is used and assign target dataset
-    if self.tmp: self.__dict__['target'] = self.tmpput
-    else: self.__dict__['target'] = self.output 
+    if self.tmp: self.target = self.tmpput
+    else: self.target = self.output 
     # whether or not to print status output
-    self.__dict__['feedback'] = feedback
+    self.feedback = feedback
         
   def getTmp(self, asNC=False, filename=None, deepcopy=False, **kwargs):
     ''' Get a copy of the temporary data in dataset format. '''
@@ -126,27 +130,29 @@ class CentralProcessingUnit(object):
         self.tmp = False # not using temporary storage anymore
     # loop over input variables
     for varname in self.varlist:
-      # check if variable already exists
-      if self.target.hasVariable(varname):
-        # "in-place" operations
-        var = self.target.variables[varname]         
-        newvar = function(var) # perform actual processing
-        if newvar.ndim != var.ndim or newvar.shape != var.shape: raise VariableError
-        if newvar is not var: self.target.replaceVariable(var,newvar)
-      elif self.source.hasVariable(varname):        
-        var = self.source.variables[varname]
-        ldata = var.data # whether data was pre-loaded 
-        # perform operation from source and copy results to target
-        newvar = function(var) # perform actual processing
-        if not ldata: var.unload() # if it was already loaded, don't unload        
-        self.target.addVariable(newvar, copy=True) # copy=True allows recasting as, e.g., a NC variable
-      else:
-        raise DatasetError, "Variable '%s' not found in input dataset."%varname
-      assert varname == newvar.name
-      newvar.unload(); del var, newvar # free space; already added to new dataset
-      # flush data to disk immediately      
-      if flush: 
-        self.output.variables[varname].unload() # again, free memory
+      # check agaisnt ignore list
+      if varname not in self.ignorelist: 
+        # check if variable already exists
+        if self.target.hasVariable(varname):
+          # "in-place" operations
+          var = self.target.variables[varname]         
+          newvar = function(var) # perform actual processing
+          if newvar.ndim != var.ndim or newvar.shape != var.shape: raise VariableError
+          if newvar is not var: self.target.replaceVariable(var,newvar)
+        elif self.source.hasVariable(varname):        
+          var = self.source.variables[varname]
+          ldata = var.data # whether data was pre-loaded 
+          # perform operation from source and copy results to target
+          newvar = function(var) # perform actual processing
+          if not ldata: var.unload() # if it was already loaded, don't unload        
+          self.target.addVariable(newvar, copy=True) # copy=True allows recasting as, e.g., a NC variable
+        else:
+          raise DatasetError, "Variable '%s' not found in input dataset."%varname
+        assert varname == newvar.name
+        newvar.unload(); del var, newvar # free space; already added to new dataset
+        # flush data to disk immediately      
+        if flush: 
+          self.output.variables[varname].unload() # again, free memory
     # after everything is said and done:
     self.source = self.target # set target to source for next time
     
@@ -301,6 +307,9 @@ class CentralProcessingUnit(object):
     # add GDAL to target
     if self.source.gdal: 
       self.target = addGDALtoDataset(self.target, projection=self.source.projection, geotransform=self.source.geotransform)
+    # add variables that will cause errors to ignorelist (e.g. strings)
+    for varname,var in self.source.variables.iteritems():
+      if var.hasAxis(timeAxis) and var.dtype.kind == 'S': self.ignorelist.append(varname)
     # prepare function call
     function = functools.partial(self.processClimatology, # already set parameters
                                  timeAxis=timeAxis, climAxis=climAxis, timeSlice=timeSlice, shift=shift)
