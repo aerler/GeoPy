@@ -1,8 +1,7 @@
 '''
-Created on 2014-09-03
+Created on 2013-09-23
 
-A script to extract point/station time-series from gridded monthly datasets.
-Adapted from regrid.py.
+A script to reproject and resample datasets in this package onto a given grid.
 
 @author: Andre R. Erler, GPL v3
 '''
@@ -30,9 +29,9 @@ from datasets.CESM import loadCESM, loadCESM_TS, CESM_exps
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
-def performExtraction(dataset, mode, griddef, dataargs, loverwrite=False, varlist=None, lwrite=True, lreturn=False,
+def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlist=None, lwrite=True, lreturn=False,
                       ldebug=False, lparallel=False, pidstr='', logger=None):
-  ''' worker function to extract point data from gridded dataset '''
+  ''' worker function to perform regridding for a given dataset and target grid '''
   # input checking
   if not isinstance(dataset,basestring): raise TypeError
   if not isinstance(dataargs,dict): raise TypeError # all dataset arguments are kwargs 
@@ -494,4 +493,4 @@ if __name__ == '__main__':
   kwargs = dict(loverwrite=loverwrite, varlist=varlist)
           
   ## call parallel execution function
-  asyncPoolEC(performExtraction, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
+  asyncPoolEC(performRegridding, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)

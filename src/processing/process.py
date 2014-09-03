@@ -160,6 +160,67 @@ class CentralProcessingUnit(object):
   ## functions (or function pairs) that perform operations on the data
   
   # function pair to compute a climatology from a time-series      
+  def Extract(self, xlon=None, ylat=None, lmask=True, **kwargs):
+    ''' Set; calls processClimatology. '''
+    # make temporary gdal dataset
+    if self.source is self.target:
+      if self.tmp: assert self.source == self.tmpput and self.target == self.tmpput
+      # the operation can not be performed "in-place"!
+      self.target = Dataset(name='tmptoo', title='Temporary target dataset for non-in-place operations', varlist=[], atts={})
+      ltmptoo = True
+    else: ltmptoo = False 
+    # use these map axes
+    xlon = self.target.xlon; ylat = self.target.ylat
+    assert isinstance(xlon,Axis) and isinstance(ylat,Axis)
+    # determine source dataset grid definition
+    if self.source.griddef is None:  
+      srcgrd = GridDefinition(projection=self.source.projection, geotransform=self.source.geotransform, 
+                              size=self.source.mapSize, xlon=self.source.xlon, ylat=self.source.ylat)
+    else: srcgrd = self.source.griddef
+    srcres = srcgrd.scale; tgtres = griddef.scale
+    # prepare function call    
+    function = functools.partial(self.processRegrid, ylat=ylat, xlon=xlon, lmask=lmask) # already set parameters
+    # start process
+    if self.feedback: print('\n   +++   processing regridding   +++   ') 
+    self.process(function, **kwargs) # currently 'flush' is the only kwarg
+    if self.feedback: print('\n')
+    if self.tmp: self.tmpput = self.target
+    if ltmptoo: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
+  # the previous method sets up the process, the next method performs the computation
+  def processExtract(self, var, ylat=None, xlon=None, lmask=True):
+    ''' Compute a climatology from a variable time-series. '''
+    # process gdal variables
+    if var.gdal:
+      if self.feedback: print('\n'+var.name),
+      # replace axes
+      axes = list(var.axes)
+      axes[var.axisIndex(var.ylat)] = ylat
+      axes[var.axisIndex(var.xlon)] = xlon
+      # create new Variable
+      newvar = var.copy(axes=axes, data=None, dtype=var.dtype, projection=self.target.projection) # and, of course, load new data
+      # if necessary, shift array back, to ensure proper wrapping of coordinates
+      # prepare regridding
+      # get GDAL dataset instances
+      srcdata = var.getGDAL(load=True, wrap360=lwrapSrc)
+      tgtdata = newvar.getGDAL(load=False, wrap360=lwrapTgt, allocate=True, fillValue=var.fillValue)
+      
+      ## here we extract the data!
+      
+      #print srcdata.ReadAsArray().std(), tgtdata.ReadAsArray().std()
+      #print var.projection.ExportToWkt()
+      #print newvar.projection.ExportToWkt()
+      del srcdata # clean up (just to make sure)
+      #tgtdata.FlushCash()  
+      # load data into new variable
+      newvar.loadGDAL(tgtdata, mask=lmask, wrap360=lwrapTgt, fillValue=var.fillValue)      
+      del tgtdata # clean up (just to make sure)
+    else:
+      var.load() # need to load variables into memory, because we are not doing anything else...
+      newvar = var # just pass over the variable to the new dataset
+    # return variable
+    return newvar
+    
+  # function pair to compute a climatology from a time-series      
   def Regrid(self, griddef=None, projection=None, geotransform=None, size=None, xlon=None, ylat=None, 
              lmask=True, int_interp=None, float_interp=None, **kwargs):
     ''' Setup climatology and start computation; calls processClimatology. '''
