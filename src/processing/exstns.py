@@ -147,8 +147,8 @@ def performExtraction(dataset, mode, stndata, dataargs, loverwrite=False, varlis
     raise DatasetError, "Dataset '{:s}' not found!".format(dataset)
   del dataargs
   # common message
-  if mode == 'climatology': opmsgstr = 'Regridding Climatology ({:s}) to {:s} Grid'.format(periodstr, griddef.name)
-  elif mode == 'time-series': opmsgstr = 'Regridding Time-series to {:s} Grid'.format(griddef.name)
+  if mode == 'climatology': opmsgstr = "Extracting '{:s}'-type Point Data from Climatology ({:s})".format(stndata.name, periodstr)
+  elif mode == 'time-series': opmsgstr = "Extracting '{:s}'-type Point Data from Time-series".format(stndata.name)
   else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
   # print feedback to logger
   logger.info('\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
@@ -163,25 +163,25 @@ def performExtraction(dataset, mode, stndata, dataargs, loverwrite=False, varlis
           
   # prepare target dataset
   if dataset == 'WRF':
-    gridstr = '_{}'.format(griddef.name.lower()) if griddef.name.lower() else ''
+    stnstr = stndata.name # use name as "grid" designation for station data
     periodstr = '_{}'.format(periodstr) if periodstr else ''
     if lwrite:
-      if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,domain,gridstr,periodstr)
-      elif mode == 'time-series': filename = module.ts_file_pattern.format(filetype,domain,gridstr)
+      if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,domain,stnstr,periodstr)
+      elif mode == 'time-series': filename = module.ts_file_pattern.format(filetype,domain,stnstr)
       else: raise NotImplementedError
       avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
   elif dataset == 'CESM':
-    gridstr = '_{}'.format(griddef.name.lower()) if griddef.name.lower() else ''
+    stnstr = stndata.name # use name as "grid" designation for station data
     periodstr = '_{}'.format(periodstr) if periodstr else ''
     if lwrite:
-      if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,gridstr,periodstr)
-      elif mode == 'time-series': filename = module.ts_file_pattern.format(filetype,gridstr)
+      if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,stnstr,periodstr)
+      elif mode == 'time-series': filename = module.ts_file_pattern.format(filetype,stnstr)
       else: raise NotImplementedError
       avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
   elif dataset == dataset.upper(): # observational datasets
     if lwrite:
       avgfolder = module.avgfolder
-      filename = getFileName(grid=griddef.name, period=period, name=grid_name, filetype=mode)      
+      filename = getFileName(grid=stndata.name, period=period, name=grid_name, filetype=mode)      
   else: raise DatasetError
   if ldebug: filename = 'test_' + filename
   if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
@@ -213,8 +213,8 @@ def performExtraction(dataset, mode, stndata, dataargs, loverwrite=False, varlis
     ## create new sink/target file
     # set attributes   
     atts=source.atts
-    atts['period'] = periodstr; atts['name'] = dataset_name; atts['grid'] = griddef.name
-    atts['title'] = '{:s} Climatology on {:s} Grid'.format(dataset_name, griddef.name)
+    atts['period'] = periodstr; atts['name'] = dataset_name; atts['station'] = stndata.name
+    atts['title'] = '{:s} (Stations) from {:s} {:s}'.format(stndata.title,dataset_name,mode.title())
     # make new dataset
     if lwrite: # write to NetCDF file 
       if os.path.exists(tmpfilepath): os.remove(tmpfilepath) # remove old temp files 
@@ -224,21 +224,10 @@ def performExtraction(dataset, mode, stndata, dataargs, loverwrite=False, varlis
     # initialize processing
     CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=False)
   
-    # perform regridding (if target grid is different from native grid!)
-    if griddef.name != dataset:
-      # reproject and resample (regrid) dataset
-      CPU.Regrid(griddef=griddef, flush=True)
-
+    # extract data at station locations
+    CPU.Extract(template=stndata, flush=True)
     # get results    
     CPU.sync(flush=True)
-    
-    # add geolocators
-    sink = addGeoLocator(sink, griddef=griddef, lgdal=True, lreplace=True, lcheck=True)
-    # N.B.: WRF datasets come with their own geolocator arrays - we need to replace those!
-    
-    # add length and names of month
-    if not sink.hasVariable('length_of_month') and sink.hasVariable('time'): 
-      addLengthAndNamesOfMonth(sink, noleap=False) 
     
     # print dataset
     if not lparallel and ldebug:
@@ -257,7 +246,7 @@ def performExtraction(dataset, mode, stndata, dataargs, loverwrite=False, varlis
       # N.B.: there is no temporary file if the dataset is returned, because an open file can't be renamed
         
     # clean up and return
-    source.unload(); del source, CPU
+    source.unload(); del source#, CPU
     if lreturn:      
       return sink # return dataset for further use (netcdf file still open!)
     else:            

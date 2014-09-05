@@ -213,7 +213,9 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     # set attributes   
     atts=source.atts
     atts['period'] = periodstr; atts['name'] = dataset_name; atts['grid'] = griddef.name
-    atts['title'] = '{:s} Climatology on {:s} Grid'.format(dataset_name, griddef.name)
+    if mode == 'climatology': atts['title'] = '{:s} Climatology on {:s} Grid'.format(dataset_name, griddef.name)
+    elif mode == 'time-series':  atts['title'] = '{:s} Time-series on {:s} Grid'.format(dataset_name, griddef.name)
+      
     # make new dataset
     if lwrite: # write to NetCDF file 
       if os.path.exists(tmpfilepath): os.remove(tmpfilepath) # remove old temp files 
@@ -236,8 +238,8 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     # N.B.: WRF datasets come with their own geolocator arrays - we need to replace those!
     
     # add length and names of month
-    if not sink.hasVariable('length_of_month') and sink.hasVariable('time'): 
-      addLengthAndNamesOfMonth(sink, noleap=False) 
+    if mode == 'climatology' and not sink.hasVariable('length_of_month') and sink.hasVariable('time'): 
+      addLengthAndNamesOfMonth(sink, noleap=True if dataset.upper() in ('WRF','CESM') else False) 
     
     # print dataset
     if not lparallel and ldebug:
