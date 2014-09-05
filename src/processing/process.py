@@ -15,7 +15,7 @@ import numpy.ma as ma
 import functools
 from osgeo import gdal
 # internal imports
-from geodata.misc import VariableError, AxisError, PermissionError, DatasetError, GDALError #, DateError
+from geodata.misc import VariableError, AxisError, PermissionError, DatasetError, GDALError, ArgumentError #, DateError
 from geodata.base import Axis, Dataset
 from geodata.netcdf import DatasetNetCDF, asDatasetNC
 from geodata.nctools import writeNetCDF
@@ -160,34 +160,72 @@ class CentralProcessingUnit(object):
   ## functions (or function pairs) that perform operations on the data
   
   # function pair to compute a climatology from a time-series      
-  def Extract(self, xlon=None, ylat=None, lmask=True, **kwargs):
-    ''' Set; calls processClimatology. '''
-    # make temporary gdal dataset
+  def Extract(self, template=None, stnax=None, xlon=None, ylat=None, **kwargs):
+    ''' Extract station data points from gridded datasets; calls processExtract. 
+        A station dataset can be passed as template (must have station coordinates. '''
+    if not self.source.gdal: raise DatasetError, "Source dataset must be GDAL enabled! {:s} is not.".format(self.source.name)
+    if template is None: raise NotImplementedError
+    elif isinstance(template):
+      if not template.hasAxis('station'): raise DatasetError, "Template station dataset needs to have a station axis."
+      if not template.hasVariable('lat') or not template.hasVariable('lon'): 
+        raise DatasetError, "Template station dataset needs to have lat/lon arrays for the stations."      
+    else: raise TypeError
+    # make temporary dataset
     if self.source is self.target:
       if self.tmp: assert self.source == self.tmpput and self.target == self.tmpput
       # the operation can not be performed "in-place"!
       self.target = Dataset(name='tmptoo', title='Temporary target dataset for non-in-place operations', varlist=[], atts={})
       ltmptoo = True
-    else: ltmptoo = False 
-    # use these map axes
-    xlon = self.target.xlon; ylat = self.target.ylat
-    assert isinstance(xlon,Axis) and isinstance(ylat,Axis)
+    else: ltmptoo = False
+    src = self.source; tgt = self.target # short-cuts 
     # determine source dataset grid definition
-    if self.source.griddef is None:  
+    if src.griddef is None:  
       srcgrd = GridDefinition(projection=self.source.projection, geotransform=self.source.geotransform, 
                               size=self.source.mapSize, xlon=self.source.xlon, ylat=self.source.ylat)
-    else: srcgrd = self.source.griddef
-    srcres = srcgrd.scale; tgtres = griddef.scale
+    else: srcgrd = src.griddef
+    # figure out horizontal axes (will be replaced with station axis)
+    if xlon: src.getAxis(xlon, check=True)
+    else: xlon = src.x if srcgrd.isProjected else src.lon
+    if ylat: src.getAxis(ylat, check=True)
+    else: ylat = src.y if srcgrd.isProjected else ylat.lat
+    if stnax: src.getAxis(stnax, check=True)
+    elif template: stnax = template.station # station axis
+    else: raise ArgumentError, "A station axis needs to be supplied." 
+    assert isinstance(xlon,Axis) and isinstance(ylat,Axis) and isinstance(stnax,Axis)
+    # prepare target dataset
+    #TODO: transfer attributes and add axes to target dataset
+    # transform to dataset-native coordinate system
+    if template: 
+      lons = template.lon.getArray(); lats = template.lat.getArray()
+    else: raise NotImplementedError
+    # adjust longitudes
+    if srcgrd.isProjected:
+      if lons.max() > 180.: lons = np.where(lons > 180., 360.-lons, lons)
+      # reproject coordinate
+      #TODO: implement reprojection 
+      raise NotImplementedError
+    else:
+      if lons.min() < 0. and src.coord.max() > 180.: lons = np.where(lons < 0., lons + 360., lons)
+      elif lons.max() > 180. and src.coord.min() < 0.: lons = np.where(lons > 180., 360.-lons, lons)
+      else: pass # source and template do not conflict
+      coords = tuple(zip(lons,lats)) # determine station coordinates          
+    # generate index list
+    idxlist = []
+    for lon,lat in coords:
+      ilon,ilat = xlon.getIndex(lon),ylat.getIndex(lat)
+      #TODO: check index finding and out-of-bounds behavior
+      if ilon is not None and ilat is not None: idxlist.append(ilon,ilat)  
+    idxlist = tuple(idxlist) 
     # prepare function call    
-    function = functools.partial(self.processRegrid, ylat=ylat, xlon=xlon, lmask=lmask) # already set parameters
+    function = functools.partial(self.processExtract, idxlist=idxlist, ylat=ylat, xlon=xlon, stnax=stnax) # already set parameters
     # start process
-    if self.feedback: print('\n   +++   processing regridding   +++   ') 
+    if self.feedback: print('\n   +++   processing point-data extraction   +++   ') 
     self.process(function, **kwargs) # currently 'flush' is the only kwarg
     if self.feedback: print('\n')
     if self.tmp: self.tmpput = self.target
     if ltmptoo: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
   # the previous method sets up the process, the next method performs the computation
-  def processExtract(self, var, ylat=None, xlon=None, lmask=True):
+  def processExtract(self, var, idxlist=None, ylat=None, xlon=None, stnax=None):
     ''' Compute a climatology from a variable time-series. '''
     # process gdal variables
     if var.gdal:

@@ -611,9 +611,9 @@ if __name__ == '__main__':
 #   mode = 'test_station_object'
 #   mode = 'test_station_reader'
 #   mode = 'test_conversion'
-  mode = 'convert_all_stations'
+#   mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
-#   mode = 'test_timeseries'
+  mode = 'test_timeseries'
   
   # test wrapper function to load time series data from EC stations
   if mode == 'test_timeseries':
