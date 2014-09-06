@@ -118,7 +118,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
          
         # prepare sink
         if os.path.exists(tmpfilepath): os.remove(tmpfilepath) # remove old temp files
-        sink = DatasetNetCDF(name='WRF Climatology', folder=expfolder, filelist=[tmpfilename], atts=source.atts, mode='w')
+        sink = DatasetNetCDF(name='WRF Climatology', folder=expfolder, filelist=[tmpfilename], atts=source.atts.copy(), mode='w')
         sink.atts.period = periodstr 
         
         # initialize processing

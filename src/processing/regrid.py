@@ -211,7 +211,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
           
     ## create new sink/target file
     # set attributes   
-    atts=source.atts
+    atts=source.atts.copy()
     atts['period'] = periodstr; atts['name'] = dataset_name; atts['grid'] = griddef.name
     if mode == 'climatology': atts['title'] = '{:s} Climatology on {:s} Grid'.format(dataset_name, griddef.name)
     elif mode == 'time-series':  atts['title'] = '{:s} Time-series on {:s} Grid'.format(dataset_name, griddef.name)
@@ -383,7 +383,7 @@ if __name__ == '__main__':
     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     domains = (1,2,) # domains to be processed
     #domains = (2,) # for tests
-    WRF_filetypes = WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
+    WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
     #WRF_filetypes = WRF_filetypes = ('hydro',) # for tests
     # grid to project onto
     lpickle = True
@@ -455,7 +455,8 @@ if __name__ == '__main__':
         for dataset in datasets:
           mod = import_module('datasets.{0:s}'.format(dataset))
           if isinstance(resolutions,dict): 
-            if not isinstance(resolutions[dataset],(list,tuple)): resolutions[dataset] = (resolutions[dataset],)                
+            if dataset not in resolutions: resolutions[dataset] = ('',)
+            elif not isinstance(resolutions[dataset],(list,tuple)): resolutions[dataset] = (resolutions[dataset],)                
           elif resolutions is not None: raise TypeError                                
           if mode == 'climatology':
             # some datasets come with a climatology 

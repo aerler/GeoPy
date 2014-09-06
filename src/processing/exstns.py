@@ -12,14 +12,14 @@ import os # check if files are present
 import numpy as np
 from importlib import import_module
 from datetime import datetime
-import functools
-import logging     
+import logging   
+import functools  
 # internal imports
 from geodata.misc import DatasetError, DateError, isInt, printList
 from geodata.netcdf import DatasetNetCDF
 from geodata.base import Dataset
 from datasets import dataset_list
-from datasets.common import addLengthAndNamesOfMonth, getFileName
+from datasets.common import getFileName
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
 # WRF specific
@@ -30,13 +30,13 @@ from datasets.CESM import loadCESM, loadCESM_TS, CESM_exps
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
-def performExtraction(dataset, mode, stndata, dataargs, loverwrite=False, varlist=None, lwrite=True, lreturn=False,
+def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist=None, lwrite=True, lreturn=False,
                       ldebug=False, lparallel=False, pidstr='', logger=None):
-  ''' worker function to extract point data from gridded dataset '''
+  ''' worker function to extract point data from gridded dataset '''  
   # input checking
   if not isinstance(dataset,basestring): raise TypeError
   if not isinstance(dataargs,dict): raise TypeError # all dataset arguments are kwargs 
-  if not isinstance(stndata, Dataset): raise TypeError
+  if not callable(stnfct): raise TypeError # function to load station dataset
   if lparallel: 
     if not lwrite: raise IOError, 'In parallel mode we can only write to disk (i.e. lwrite = True).'
     if lreturn: raise IOError, 'Can not return datasets in parallel mode (i.e. lreturn = False).'
@@ -50,6 +50,11 @@ def performExtraction(dataset, mode, stndata, dataargs, loverwrite=False, varlis
       logger = logging.getLogger(name=logger) # connect to existing one
     elif not isinstance(logger,logging.Logger): 
       raise TypeError, 'Expected logger ID/handle in logger KW; got {}'.format(str(logger))
+
+  # load template dataset
+  stndata = stnfct() # load station dataset from function
+  if not isinstance(stndata, Dataset): raise TypeError
+  # N.B.: the loading function is necessary, because DataseNetCDF instances do not pickle well 
 
   # load source
   if dataset == 'WRF': 
@@ -212,7 +217,7 @@ def performExtraction(dataset, mode, stndata, dataargs, loverwrite=False, varlis
           
     ## create new sink/target file
     # set attributes   
-    atts=source.atts
+    atts=source.atts.copy()
     atts['period'] = periodstr; atts['name'] = dataset_name; atts['station'] = stndata.name
     atts['title'] = '{:s} (Stations) from {:s} {:s}'.format(stndata.title,dataset_name,mode.title())
     # make new dataset
@@ -277,12 +282,12 @@ if __name__ == '__main__':
   # default settings
   if not lbatch:
     ldebug = True
-    NP = 1 or NP # to avoid memory issues...
-    modes = ('climatology',) # 'climatology','time-series'
-#     modes = ('time-series',) # 'climatology','time-series'
+    NP = 4 #or NP # to avoid memory issues...
+#     modes = ('climatology',) # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
-    varlist = ['precip',]
+#     varlist = ['precip',]
     periods = []
 #     periods += [1]
 #     periods += [3]
@@ -291,13 +296,14 @@ if __name__ == '__main__':
     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
-    datasets = ['GPCC']; resolutions = {'GPCC':['25']}
-    lLTM = True # also regrid the long-term mean climatologies 
+    datasets = []; resolutions = dict()
+    lLTM = False # also regrid the long-term mean climatologies 
 #     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR', 'NARR']
-#     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
+    datasets += ['CRU']
+#     datasets += ['GPCC','CRU']; resolutions = {'GPCC':['025','05','10','25']}
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
@@ -307,7 +313,7 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm'] # ,'lnd'
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-#     WRF_experiments += ['max']
+    WRF_experiments += ['max']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...
@@ -315,10 +321,12 @@ if __name__ == '__main__':
     domains = (1,2) # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-    WRF_filetypes = ('hydro',)
+#     WRF_filetypes = ('hydro',)
+    WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
     #WRF_filetypes = ('const',); periods = None
     # station datasets to match    
-    stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
+#     stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
+    stations = dict(EC=('precip','temp')) # currently there is only one type: the EC weather stations
   else:
     NP = NP or 4 # time-series might take more memory!
     modes = ('climatology','time-series')
@@ -336,8 +344,8 @@ if __name__ == '__main__':
     # WRF
     WRF_experiments = None # process all WRF experiments
     domains = (1,2,) # domains to be processed
-    WRF_filetypes = WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
-    
+    WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
+    stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
   
   ## process arguments    
   if periods is None: periods = [None]
@@ -382,13 +390,15 @@ if __name__ == '__main__':
         # assemble function to load station data (with arguments)
         station_module = import_module('datasets.{0:s}'.format(stntype)) # load station data module
         # load station dataset into memory, so that it can be shared by all workers
-        stndata = station_module.loadStationTimeSeries(filetype=datatype).load()
+        stnfct = functools.partial(station_module.loadStationTimeSeries, filetype=datatype)
+        #stndata = station_module.loadStationTimeSeries(filetype=datatype).load()
                
         # observational datasets (grid depends on dataset!)
         for dataset in datasets:
           mod = import_module('datasets.{0:s}'.format(dataset))
-          if isinstance(resolutions,dict): 
-            if not isinstance(resolutions[dataset],(list,tuple)): resolutions[dataset] = (resolutions[dataset],)                
+          if isinstance(resolutions,dict):
+            if dataset not in resolutions: resolutions[dataset] = ('',)
+            elif not isinstance(resolutions[dataset],(list,tuple)): resolutions[dataset] = (resolutions[dataset],)                
           elif resolutions is not None: raise TypeError                                
           if mode == 'climatology':
             # some datasets come with a climatology 
@@ -396,33 +406,33 @@ if __name__ == '__main__':
               if resolutions is None: dsreses = mod.LTM_grids
               elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.LTM_grids]  
               for dsres in dsreses: 
-                args.append( (dataset, mode, stndata, dict(period=None, resolution=dsres)) ) # append to list
+                args.append( (dataset, mode, stnfct, dict(period=None, resolution=dsres)) ) # append to list
             # climatologies derived from time-series
             if resolutions is None: dsreses = mod.TS_grids
             elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
             for dsres in dsreses:
               for period in periodlist:
-                args.append( (dataset, mode, stndata, dict(period=period, resolution=dsres)) ) # append to list            
+                args.append( (dataset, mode, stnfct, dict(period=period, resolution=dsres)) ) # append to list            
           elif mode == 'time-series': 
             # regrid the entire time-series
             if resolutions is None: dsreses = mod.TS_grids
             elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
             for dsres in dsreses:
-              args.append( (dataset, mode, stndata, dict(period=None, resolution=dsres)) ) # append to list            
+              args.append( (dataset, mode, stnfct, dict(period=None, resolution=dsres)) ) # append to list            
         
         # CESM datasets
         for experiment in CESM_experiments:
           for filetype in CESM_filetypes:
             for period in periodlist:
               # arguments for worker function: dataset and dataargs       
-              args.append( ('CESM', mode, stndata, dict(experiment=experiment, filetypes=[filetype], period=period, load3D=load3D)) )
+              args.append( ('CESM', mode, stnfct, dict(experiment=experiment, filetypes=[filetype], period=period, load3D=load3D)) )
         # WRF datasets
         for experiment in WRF_experiments:
           for filetype in WRF_filetypes:
             for domain in domains:
               for period in periodlist:
                 # arguments for worker function: dataset and dataargs       
-                args.append( ('WRF', mode, stndata, dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)) )
+                args.append( ('WRF', mode, stnfct, dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)) )
       
   # static keyword arguments
   kwargs = dict(loverwrite=loverwrite, varlist=varlist)

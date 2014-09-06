@@ -223,7 +223,7 @@ def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None
   if varlist is not None: varlist = translateVarNames(varlist, varatts)
   # transform period
   if period is None or period == '':
-    if name not in ('PCIC','PRISM','GPCC'): 
+    if name not in ('PCIC','PRISM','GPCC','NARR'): 
       raise ValueError, "A period is required to load observational climatologies."
   elif isinstance(period,basestring):
     period = tuple([int(prd) for prd in period.split('-')]) 

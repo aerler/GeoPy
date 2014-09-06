@@ -885,33 +885,40 @@ class Axis(Variable):
     # N.B.: using load() and getArray() should automatically take care of any special needs 
     return ax
 
-  def getIndex(self, value, mode='closest'):
+  def getIndex(self, value, mode='closest', outOfBounds=None):
     ''' Return the coordinate index that is closest to the value or suitable for index ranges (left/right). '''
     if not self.data: raise DataError
-    # behavior depends on mode
-    if mode == 'left':
-      # returns value suitable for beginning of range (inclusive)
-      return self.coord.searchsorted(value, side='left')
-    elif mode == 'right':    
-      # returns value suitable for end of range (inclusive)
-      return self.coord.searchsorted(value, side='right')
-    elif mode == 'closest':      
-      # search for closest index
-      idx = self.coord.searchsorted(value) # returns value 
-      # refine search
-      if idx <= 0: 
-        return 0
-      elif idx >= self.len: 
-        return self.len-1
-      else:
-        dl = value - self.coord[idx-1]
-        dr = self.coord[idx] - value
-        if dr < dl: 
-          return idx
-        else: 
-          return idx-1 # can't be 0 at this point 
-    else: 
-      raise ValueError, "Mode '{:s}' unknown.".format(mode)
+    if outOfBounds is None:
+      if mode.lower() in ('left','right'): outOfBounds = False # return lowest/highest index if out of bounds
+      else: outOfBounds = True # return None if value out of bounds
+    # check bounds
+    if outOfBounds and ( value < self.coord[0] or value > self.coord[-1] ): 
+      return None
+    else:
+      # behavior depends on mode
+      if mode.lower() == 'left':
+        # returns value suitable for beginning of range (inclusive)
+        return self.coord.searchsorted(value, side='left')
+      elif mode.lower() == 'right':    
+        # returns value suitable for end of range (inclusive)
+        return self.coord.searchsorted(value, side='right')
+      elif mode.lower() == 'closest':      
+        # search for closest index
+        idx = self.coord.searchsorted(value) # returns value 
+        # refine search
+        if idx <= 0: 
+          return 0
+        elif idx >= self.len: 
+          return self.len-1
+        else:
+          dl = value - self.coord[idx-1]
+          dr = self.coord[idx] - value
+          if dr < dl: 
+            return idx
+          else: 
+            return idx-1 # can't be 0 at this point 
+      else: 
+        raise ValueError, "Mode '{:s}' unknown.".format(mode)
                   
 
 class Dataset(object):
