@@ -124,7 +124,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
         # initialize processing
         if griddef is None: lregrid = False
         else: lregrid = True
-        CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=lregrid) # no need for lat/lon
+        CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=lregrid, feedback=ldebug) # no need for lat/lon
         
         # start processing climatology
         if shift != 0: 

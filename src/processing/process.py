@@ -186,11 +186,13 @@ class CentralProcessingUnit(object):
                               size=self.source.mapSize, xlon=self.source.xlon, ylat=self.source.ylat)
     else: srcgrd = src.griddef
     # figure out horizontal axes (will be replaced with station axis)
-    if xlon: 
+    if isinstance(xlon,Axis): 
       if not src.hasAxis(xlon, check=True): raise DatasetError
+    elif isinstance(xlon,basestring): xlon = src.getAxis(xlon)
     else: xlon = src.x if srcgrd.isProjected else src.lon
-    if ylat:
+    if isinstance(ylat,Axis):
       if not src.hasAxis(ylat, check=True): raise DatasetError
+    elif isinstance(ylat,basestring): ylat = src.getAxis(ylat)
     else: ylat = src.y if srcgrd.isProjected else src.lat
     if stnax: # not in source dataset!
       if src.hasAxis(stnax, check=True): raise DatasetError, "Source dataset must not have a 'station' axis!"
@@ -207,7 +209,7 @@ class CentralProcessingUnit(object):
       # reproject coordinate
       latlon = osr.SpatialReference() 
       latlon.SetWellKnownGeogCS('WGS84') # a normal lat/lon coordinate system
-      tx = osr.CoordinateTransformation(srcgrd.projection,latlon)
+      tx = osr.CoordinateTransformation(latlon,srcgrd.projection)
       xs = []; ys = [] 
       for i in xrange(len(lons)):
         x,y,z = tx.TransformPoint(lons[i].astype(np.float64),lats[i].astype(np.float64))
@@ -257,15 +259,15 @@ class CentralProcessingUnit(object):
       # assemble new axes
       lstnadd = False; axes = []; slices = []      
       for ax in var.axes:
-        if tgt.hasAxis(ax.name): # these axes are just transferred 
+        if ax not in (xlon,ylat) and ax.name != stnax.name: # these axes are just transferred 
           axes.append(tgt.getAxis(ax.name))
           slices.append(slice(None)) # entire slice
         else: # handle horizontal coordinate axes 
           if not lstnadd:
             axes.append(tgt.getAxis(stnax.name))
             lstnadd = True # station axis goes into the first place that will be removed
-          if ax.name == xlon.name: slices.append(ixlon)
-          elif ax.name == ylat.name: slices.append(iylat)
+          if ax == xlon: slices.append(ixlon)
+          elif ax == ylat: slices.append(iylat)
           else: raise AxisError
       assert lstnadd        
       axes = tuple(axes); slices = tuple(slices)

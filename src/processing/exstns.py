@@ -168,7 +168,7 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
           
   # prepare target dataset
   if dataset == 'WRF':
-    stnstr = stndata.name # use name as "grid" designation for station data
+    stnstr = '_{}'.format(stndata.name) # use name as "grid" designation for station data
     periodstr = '_{}'.format(periodstr) if periodstr else ''
     if lwrite:
       if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,domain,stnstr,periodstr)
@@ -176,7 +176,7 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
       else: raise NotImplementedError
       avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
   elif dataset == 'CESM':
-    stnstr = stndata.name # use name as "grid" designation for station data
+    stnstr = '_{}'.format(stndata.name) # use name as "grid" designation for station data
     periodstr = '_{}'.format(periodstr) if periodstr else ''
     if lwrite:
       if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,stnstr,periodstr)
@@ -227,7 +227,7 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
     else: sink = Dataset(atts=atts) # ony create dataset in memory
     
     # initialize processing
-    CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=False)
+    CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=False, feedback=ldebug)
   
     # extract data at station locations
     CPU.Extract(template=stndata, flush=True)
@@ -282,9 +282,9 @@ if __name__ == '__main__':
   # default settings
   if not lbatch:
     ldebug = True
-    NP = 4 #or NP # to avoid memory issues...
-#     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology','time-series'
+    NP = 1 #or NP # to avoid memory issues...
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
 #     varlist = ['precip',]
@@ -302,18 +302,19 @@ if __name__ == '__main__':
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR', 'NARR']
-    datasets += ['CRU']
+#     datasets += ['NARR']
 #     datasets += ['GPCC','CRU']; resolutions = {'GPCC':['025','05','10','25']}
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
+    CESM_experiments += ['Ctrl-1']
 #     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     CESM_experiments += ['Ctrl-1-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
 #     CESM_experiments += ['Ens', 'Ens-2050']
     CESM_filetypes = ['atm'] # ,'lnd'
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-    WRF_experiments += ['max']
+#     WRF_experiments += ['max']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...
@@ -326,9 +327,9 @@ if __name__ == '__main__':
     #WRF_filetypes = ('const',); periods = None
     # station datasets to match    
 #     stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
-    stations = dict(EC=('precip','temp')) # currently there is only one type: the EC weather stations
+    stations = dict(EC=('temp',)) # currently there is only one type: the EC weather stations
   else:
-    NP = NP or 4 # time-series might take more memory!
+    NP = NP or 2 # time-series might take more memory!
     modes = ('climatology','time-series')
     loverwrite = False
     varlist = None # process all variables

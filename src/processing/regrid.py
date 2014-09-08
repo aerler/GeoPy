@@ -223,7 +223,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     else: sink = Dataset(atts=atts) # ony create dataset in memory
     
     # initialize processing
-    CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=False)
+    CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=False, feedback=ldebug)
   
     # perform regridding (if target grid is different from native grid!)
     if griddef.name != dataset:
