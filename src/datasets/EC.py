@@ -215,7 +215,7 @@ class VarDef(RecordClass):
 class PrecipDef(VarDef):
   units    = 'mm'
   datatype = 'precip'
-  title    = 'Precipitation Records'
+  title    = 'EC Precipitation Records'
   missing  = '-9999.99' # string indicating missing value (apparently not all have 'M'...)
   flags    = 'TEFACLXYZ' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
   varmin   = 0. # smallest allowed value in data
@@ -225,7 +225,7 @@ class PrecipDef(VarDef):
 class TempDef(VarDef):
   units    = u'°C'
   datatype = 'temp'
-  title    = 'Temperature Records'
+  title    = 'EC Temperature Records'
   encoding = 'ISO-8859-15' # for some reason temperature files have a strange encodign scheme...
   missing  = '-9999.9' # string indicating missing value
   flags    = 'Ea' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
@@ -567,12 +567,14 @@ class StationRecords(object):
     
 
 ## load pre-processed EC station time-series
-def loadEC_TS(name=dataset_name, filetype=None, prov=None, varlist=None, varatts=None, filelist=None, folder=None): 
+def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None, filelist=None, folder=None): 
   ''' Load a monthly time-series of pre-processed EC station data. '''
   if filetype is None: raise ArgumentError, "A 'filetype' needs to be specified ('temp' or 'precip')."
+  elif not filetype in ('temp','precip'): raise ArgumentError
+  if name is None: name = 'ec{:s}'.format(filetype) # prepend ec to the filetype
   if prov is not None and not isinstance(prov,basestring): raise TypeError
   if folder is None: folder = avgfolder
-  if filelist is None: 
+  if filelist is None:
     if prov: filelist = [tsfile_prov.format(filetype, prov)]
     else: filelist = [tsfile.format(filetype)]
   # open NetCDF file (name, varlist, and varatts are passed on directly)
@@ -610,8 +612,8 @@ if __name__ == '__main__':
 #   mode = 'test_station_reader'
 #   mode = 'test_conversion'
 #   mode = 'convert_all_stations'
-  mode = 'convert_prov_stations'
-#   mode = 'test_timeseries'
+#   mode = 'convert_prov_stations'
+  mode = 'test_timeseries'
   
   # test wrapper function to load time series data from EC stations
   if mode == 'test_timeseries':

@@ -193,10 +193,9 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=False, ltrialnerror=True):
     if NP is None: pool = multiprocessing.Pool() 
     else: pool = multiprocessing.Pool(processes=NP)
     # distribute tasks to workers
-    #print kwargs
     for arguments in args:
-      #print arguments 
       #exitcodes.append(pool.apply_async(func, arguments, kwargs))
+      #print arguments      
       pool.apply_async(func, arguments, kwargs, callback=callbackEC) 
       # N.B.: we do not record result objects, since we have callback, which just extracts the exitcodes
     # wait until pool and queue finish

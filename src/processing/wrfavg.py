@@ -118,13 +118,13 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
          
         # prepare sink
         if os.path.exists(tmpfilepath): os.remove(tmpfilepath) # remove old temp files
-        sink = DatasetNetCDF(name='WRF Climatology', folder=expfolder, filelist=[tmpfilename], atts=source.atts, mode='w')
+        sink = DatasetNetCDF(name='WRF Climatology', folder=expfolder, filelist=[tmpfilename], atts=source.atts.copy(), mode='w')
         sink.atts.period = periodstr 
         
         # initialize processing
         if griddef is None: lregrid = False
         else: lregrid = True
-        CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=lregrid) # no need for lat/lon
+        CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=lregrid, feedback=ldebug) # no need for lat/lon
         
         # start processing climatology
         if shift != 0: 

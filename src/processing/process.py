@@ -13,9 +13,9 @@ Simple methods for copying and averaging variables will already be provided in t
 import numpy as np
 import numpy.ma as ma
 import functools
-from osgeo import gdal
+from osgeo import gdal, osr
 # internal imports
-from geodata.misc import VariableError, AxisError, PermissionError, DatasetError, GDALError #, DateError
+from geodata.misc import VariableError, AxisError, PermissionError, DatasetError, GDALError, ArgumentError #, DateError
 from geodata.base import Axis, Dataset
 from geodata.netcdf import DatasetNetCDF, asDatasetNC
 from geodata.nctools import writeNetCDF
@@ -157,8 +157,135 @@ class CentralProcessingUnit(object):
     self.source = self.target # set target to source for next time
     
     
-  ## functions (or function pairs) that perform operations on the data
+  ## functions (or function pairs, rather) that perform operations on the data
+  # every function pair needs to have a setup function and a processing function
+  # the former sets up the target dataset and the latter operates on the variables
   
+  # function pair to compute a climatology from a time-series      
+  def Extract(self, template=None, stnax=None, xlon=None, ylat=None, **kwargs):
+    ''' Extract station data points from gridded datasets; calls processExtract. 
+        A station dataset can be passed as template (must have station coordinates. '''
+    if not self.source.gdal: raise DatasetError, "Source dataset must be GDAL enabled! {:s} is not.".format(self.source.name)
+    if template is None: raise NotImplementedError
+    elif isinstance(template, Dataset):
+      if not template.hasAxis('station'): raise DatasetError, "Template station dataset needs to have a station axis."
+      if not template.hasVariable('lat') or not template.hasVariable('lon'): 
+        raise DatasetError, "Template station dataset needs to have lat/lon arrays for the stations."      
+    else: raise TypeError
+    # make temporary dataset
+    if self.source is self.target:
+      if self.tmp: assert self.source == self.tmpput and self.target == self.tmpput
+      # the operation can not be performed "in-place"!
+      self.target = Dataset(name='tmptoo', title='Temporary target dataset for non-in-place operations', varlist=[], atts={})
+      ltmptoo = True
+    else: ltmptoo = False
+    src = self.source; tgt = self.target # short-cuts 
+    # determine source dataset grid definition
+    if src.griddef is None:  
+      srcgrd = GridDefinition(projection=self.source.projection, geotransform=self.source.geotransform, 
+                              size=self.source.mapSize, xlon=self.source.xlon, ylat=self.source.ylat)
+    else: srcgrd = src.griddef
+    # figure out horizontal axes (will be replaced with station axis)
+    if isinstance(xlon,Axis): 
+      if not src.hasAxis(xlon, check=True): raise DatasetError
+    elif isinstance(xlon,basestring): xlon = src.getAxis(xlon)
+    else: xlon = src.x if srcgrd.isProjected else src.lon
+    if isinstance(ylat,Axis):
+      if not src.hasAxis(ylat, check=True): raise DatasetError
+    elif isinstance(ylat,basestring): ylat = src.getAxis(ylat)
+    else: ylat = src.y if srcgrd.isProjected else src.lat
+    if stnax: # not in source dataset!
+      if src.hasAxis(stnax, check=True): raise DatasetError, "Source dataset must not have a 'station' axis!"
+    elif template: stnax = template.station # station axis
+    else: raise ArgumentError, "A station axis needs to be supplied." 
+    assert isinstance(xlon,Axis) and isinstance(ylat,Axis) and isinstance(stnax,Axis)
+    # transform to dataset-native coordinate system
+    if template: 
+      lons = template.lon.getArray(); lats = template.lat.getArray()
+    else: raise NotImplementedError
+    # adjust longitudes
+    if srcgrd.isProjected:
+      if lons.max() > 180.: lons = np.where(lons > 180., 360.-lons, lons)
+      # reproject coordinate
+      latlon = osr.SpatialReference() 
+      latlon.SetWellKnownGeogCS('WGS84') # a normal lat/lon coordinate system
+      tx = osr.CoordinateTransformation(latlon,srcgrd.projection)
+      xs = []; ys = [] 
+      for i in xrange(len(lons)):
+        x,y,z = tx.TransformPoint(lons[i].astype(np.float64),lats[i].astype(np.float64))
+        xs.append(x); ys.append(y); del z
+      lons = np.array(xs); lats = np.array(ys)
+      #lons,lats = tx.TransformPoints(lons,lats) # doesn't seem to work...
+    else:
+      if lons.min() < 0. and xlon.coord.max() > 180.: lons = np.where(lons < 0., lons + 360., lons)
+      elif lons.max() > 180. and xlon.coord.min() < 0.: lons = np.where(lons > 180., 360.-lons, lons)
+      else: pass # source and template do not conflict
+    # generate index list
+    ixlon = []; iylat = []; istn = []
+    for n,lon,lat in zip(xrange(len(stnax)),lons,lats):
+      i = xlon.getIndex(lon, mode='closest', outOfBounds=True)
+      j = ylat.getIndex(lat, mode='closest', outOfBounds=True)
+      if i is not None and j is not None: 
+        ixlon.append(i); iylat.append(j); istn.append(n)  
+    ixlon = np.array(ixlon); iylat = np.array(iylat); istn = np.array(istn)
+    # prepare target dataset
+    # N.B.: attributes should already be set in target dataset (by caller module)
+    #       we are also assuming the new dataset has no axes yet
+    assert len(tgt.axes) == 0
+    # add axes from source data
+    for axname,ax in src.axes.iteritems():
+      if axname not in (xlon.name,ylat.name):
+        tgt.addAxis(ax, asNC=True, copy=True)
+    # add station axis (trim to valid coordinates)
+    stnax = stnax.copy(coord=stnax.coord[istn]) # same but with trimmed coordinate array
+    tgt.addAxis(stnax, asNC=True, copy=False) # already new copy
+    # prepare function call    
+    function = functools.partial(self.processExtract, ixlon=ixlon, iylat=iylat, ylat=ylat, xlon=xlon, stnax=stnax) # already set parameters
+    # start process
+    if self.feedback: print('\n   +++   processing point-data extraction   +++   ') 
+    self.process(function, **kwargs) # currently 'flush' is the only kwarg
+    if self.feedback: print('\n')
+    if self.tmp: self.tmpput = self.target
+    if ltmptoo: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
+  # the previous method sets up the process, the next method performs the computation
+  def processExtract(self, var, ixlon=None, iylat=None, ylat=None, xlon=None, stnax=None):
+    ''' Compute a climatology from a variable time-series. '''
+    # process gdal variables (if a variable has a horiontal grid, it should be GDAL enabled)
+    if var.gdal:
+      if self.feedback: print('\n'+var.name),
+      tgt = self.target
+      assert xlon in var.axes and ylat in var.axes
+      assert tgt.hasAxis(stnax, strict=False) and stnax not in var.axes 
+      # assemble new axes
+      lstnadd = False; axes = []; slices = []      
+      for ax in var.axes:
+        if ax not in (xlon,ylat) and ax.name != stnax.name: # these axes are just transferred 
+          axes.append(tgt.getAxis(ax.name))
+          slices.append(slice(None)) # entire slice
+        else: # handle horizontal coordinate axes 
+          if not lstnadd:
+            axes.append(tgt.getAxis(stnax.name))
+            lstnadd = True # station axis goes into the first place that will be removed
+          if ax == xlon: slices.append(ixlon)
+          elif ax == ylat: slices.append(iylat)
+          else: raise AxisError
+      assert lstnadd        
+      axes = tuple(axes); slices = tuple(slices)
+      assert len(slices) == len(var.axes)
+      shape = tuple(len(ax) for ax in axes)
+      # here we extract the data points
+      srcdata = var.getArray()
+      tgtdata = srcdata.__getitem__(slices) # constructed above
+      # create new Variable
+      assert shape == tgtdata.shape
+      newvar = var.copy(axes=axes, data=tgtdata) # new axes and data
+      del srcdata, tgtdata # clean up (just to make sure)      
+    else:
+      var.load() # need to load variables into memory, because we are not doing anything else...
+      newvar = var # just pass over the variable to the new dataset
+    # return variable
+    return newvar
+    
   # function pair to compute a climatology from a time-series      
   def Regrid(self, griddef=None, projection=None, geotransform=None, size=None, xlon=None, ylat=None, 
              lmask=True, int_interp=None, float_interp=None, **kwargs):
