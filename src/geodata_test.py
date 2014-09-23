@@ -509,7 +509,7 @@ class NetCDFVarTest(BaseVarTest):
   
   def setUp(self):
     if RAM: folder = ramdisk
-    else: folder = '/{}/{}/'.format(data_root,self.dataset) # dataset name is also in folder name
+    else: folder = '/{:s}/{:s}/'.format(data_root,self.dataset) # dataset name is also in folder name
     # select dataset
     if self.dataset == 'GPCC': # single file
       filelist = ['gpcc_test/full_data_v6_precip_25.nc'] # variable to test
@@ -606,7 +606,7 @@ class DatasetNetCDFTest(BaseDatasetTest):
   
   def setUp(self):
     if RAM: folder = ramdisk
-    else: folder = '/data/{:s}/'.format(self.dataset_name) # dataset name is also in folder name
+    else: folder = '/{:s}/{:s}/'.format(data_root,self.dataset_name) # dataset name is also in folder name
     self.folder = folder
     # select dataset
     name = self.dataset_name
