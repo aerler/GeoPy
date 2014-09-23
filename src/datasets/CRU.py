@@ -128,9 +128,9 @@ loadClimatology = loadCRU # pre-processed, standardized climatology
 if __name__ == '__main__':
     
 #   mode = 'test_climatology'
-  mode = 'test_timeseries'
-#   mode = 'average_timeseries'
-  period = (1971,2001)
+#   mode = 'test_timeseries'
+  mode = 'average_timeseries'
+#   period = (1971,2001)
 #   period = (1979,2009)
 #   period = (1949,2009)
 #   period = (1979,1982)
@@ -141,7 +141,7 @@ if __name__ == '__main__':
 #   period = (1989,1994)
 #   period = (1979,1980)
 #   period = (1997,1998)
-#   period = (2010,2011)
+  period = (2010,2011)
 
   if mode == 'test_climatology':
     

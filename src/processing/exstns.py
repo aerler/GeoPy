@@ -79,10 +79,10 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
     # load source data
     if mode == 'climatology':
       source = loadWRF(experiment=dataset_name, name=None, domains=domain, grid=None, period=period, 
-                       filetypes=[filetype], varlist=None, varatts=None, lconst=True) # still want topography...
+                       filetypes=[filetype], varlist=varlist, varatts=None, lconst=True) # still want topography...
     elif mode == 'time-series':
       source = loadWRF_TS(experiment=dataset_name, name=None, domains=domain, grid=None, 
-                       filetypes=[filetype], varlist=None, varatts=None, lconst=True) # still want topography...
+                       filetypes=[filetype], varlist=varlist, varatts=None, lconst=True) # still want topography...
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
     # check period
     if period is None: periodstr = '' 
@@ -110,10 +110,10 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
     load3D = dataargs.pop('load3D',None) # if 3D fields should be loaded (default: False)
     if mode == 'climatology':
       source = loadCESM(experiment=dataset_name, name=None, grid=None, period=period, filetypes=[filetype],  
-                        varlist=None, varatts=None, load3D=load3D, translateVars=None)
+                        varlist=varlist, varatts=None, load3D=load3D, translateVars=None)
     elif mode == 'time-series':
       source = loadCESM_TS(experiment=dataset_name, name=None, grid=None, filetypes=[filetype],  
-                           varlist=None, varatts=None, load3D=load3D, translateVars=None)
+                           varlist=varlist, varatts=None, load3D=load3D, translateVars=None)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
     # check period
     if period is None: periodstr = ''
@@ -137,10 +137,10 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
     # load pre-processed climatology
     if mode == 'climatology':
       source = module.loadClimatology(name=dataset_name, period=period, grid=None, resolution=resolution,  
-                                      varlist=None, varatts=None, folder=module.avgfolder, filelist=None)
+                                      varlist=varlist, varatts=None, folder=module.avgfolder, filelist=None)
     elif mode == 'time-series':
       source = module.loadTimeSeries(name=dataset_name, grid=None, resolution=resolution,  
-                                      varlist=None, varatts=None, folder=None, filelist=None)
+                                      varlist=varlist, varatts=None, folder=None, filelist=None)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
     datamsgstr = "Processing Dataset '{:s}'".format(dataset_name)
     # check period
@@ -194,8 +194,8 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
   if lwrite:
     if lreturn: tmpfilename = filename # no temporary file if dataset is passed on (can't rename the file while it is open!)
     else: 
-      if lparallel: tmppfx = 'tmp_wrfavg_{:s}_'.format(pidstr[1:-1])
-      else: tmppfx = 'tmp_wrfavg_'.format(pidstr[1:-1])
+      if lparallel: tmppfx = 'tmp_exstns_{:s}_'.format(pidstr[1:-1])
+      else: tmppfx = 'tmp_exstns_'.format(pidstr[1:-1])
       tmpfilename = tmppfx + filename      
     filepath = avgfolder + filename
     tmpfilepath = avgfolder + tmpfilename
@@ -283,11 +283,11 @@ if __name__ == '__main__':
   if not lbatch:
     ldebug = True
     NP = 1 #or NP # to avoid memory issues...
-    modes = ('climatology',) # 'climatology','time-series'
-#     modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('climatology',) # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
-#     varlist = ['precip',]
+    varlist = ['precip',]
     periods = []
 #     periods += [1]
 #     periods += [3]
@@ -303,11 +303,12 @@ if __name__ == '__main__':
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR', 'NARR']
 #     datasets += ['NARR']
-#     datasets += ['GPCC','CRU']; resolutions = {'GPCC':['025','05','10','25']}
+#     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
+    datasets += ['CRU']
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
-    CESM_experiments += ['Ctrl-1']
+#     CESM_experiments += ['Ens']
 #     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     CESM_experiments += ['Ctrl-1-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
 #     CESM_experiments += ['Ens', 'Ens-2050']
@@ -327,7 +328,7 @@ if __name__ == '__main__':
     #WRF_filetypes = ('const',); periods = None
     # station datasets to match    
 #     stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
-    stations = dict(EC=('temp',)) # currently there is only one type: the EC weather stations
+    stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
   else:
     NP = NP or 2 # time-series might take more memory!
     modes = ('climatology','time-series')

@@ -74,7 +74,7 @@ if hostname=='komputer':
 elif hostname=='cryo':
   data_root = '/scratch/marcdo/Data/'
 elif hostname=='erlkoenig':
-  data_root = '/media/PortableHD/DATA/'
+  data_root = '/media/me/data-2/Data/'
 else:
   raise NotImplementedError, "No 'data_root' folder set!"
 # standard folder for grids and shapefiles  
@@ -154,7 +154,7 @@ def transformPrecip(data, l365=False, var=None, slc=None):
       ts = tlc.start or 0 
       te = ( tlc.stop or len(var.time) ) - ts
       if not ( ts%12 == 0 and te%12 == 0 ): raise NotImplementedError
-      assert data.shape[tax] == te-ts
+      assert data.shape[tax] == te
       # assuming the record starts some year in January, and we always need to load full years
     else:  
       te = len(var.time)
