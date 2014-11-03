@@ -17,12 +17,22 @@ experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindat
 experiments['col1-ctrl'] = Exp(shortname='col1', name='col1-ctrl', title='Max 3km (CFSR)', begindate='1979-09-01', grid='col1', parent='CFSR')
 experiments['max-3km'] = Exp(shortname='max-3km', name='max-3km', title='Max 3km (Ctrl)', begindate='1979-09-01', grid='col2', parent='Ctrl')
 experiments['erai-3km'] = Exp(shortname='erai-3km', name='erai-3km', title='Max 3km (ERA-I)', begindate='1979-09-01', grid='col2', parent='ERA-I')
+# some new experiments using WRF V3.6 or V3.6.1 and the new configuration 
+experiments['new-v361-ctrl'] = Exp(shortname='v36', name='new-v361-ctrl', title='New (V3.6.1)', begindate='1979-01-01', grid='arb3')
+experiments['new-v361-ctrl-2050'] = Exp(shortname='v36-2050', name='new-v361-ctrl-2050', title='New (2050, V3.6.1)', begindate='2045-01-01', grid='arb3')
+experiments['new-v361-ctrl-2100'] = Exp(shortname='v36-2100', name='new-v361-ctrl-2100', title='New (2100, V3.6.1)', begindate='2085-01-01', grid='arb3')
+experiments['new-v36-nmp'] = Exp(shortname='new-nmp', name='new-v36-nmp', title='New (N-MP, V3.6)', begindate='1979-01-01', grid='arb3')
+experiments['new-v36-noah'] = Exp(shortname='new-noah', name='new-v36-noah', title='New (Noah, V3.6)', begindate='1979-01-01', grid='arb3')
+experiments['new-v36-clm'] = Exp(shortname='new-clm', name='new-v36-clm', title='New (CLM, V3.6)', begindate='1979-01-01', grid='arb3')
+experiments['erai-v36-nmp'] = Exp(shortname='erai-nmp', name='erai-v36-nmp', title='ERA-I (N-MP, V3.6)', begindate='1979-01-01', grid='arb3')
+experiments['erai-v36-noah'] = Exp(shortname='erai-noah', name='erai-v36-noah', title='ERA-I (Noah, V3.6)', begindate='1979-01-01', grid='arb3')
 # these are all based on the "new" configuration (ARB3 domain)
-experiments['new-ctrl'] = Exp(shortname='new', name='new-ctrl', title='New-1 (Noah-MP)', begindate='1979-01-01', grid='arb3')
-experiments['new-ctrl-2050'] = Exp(shortname='new-2050', name='new-ctrl-2050', title='New-1 (2050)', begindate='2045-01-01', grid='arb3')
-experiments['new-grell'] = Exp(shortname='grell', name='new-grell', title='New-1 (Grell)', begindate='1979-01-01', grid='arb3')
-experiments['new-grell-old'] = Exp(shortname='new-grell-old', name='new-grell-old', title='New-1 (Grell, old NMP)', begindate='1979-01-01', grid='arb3')
-experiments['new-nogulf'] = Exp(shortname='nogulf', name='new-nogulf', title='New-1 (no Gulf)', begindate='1979-01-01', grid='arb2') # ARB2 domain
+experiments['new-ctrl'] = Exp(shortname='new', name='new-ctrl', title='New (V3.4)', begindate='1979-01-01', grid='arb3')
+experiments['new-ctrl-2050'] = Exp(shortname='new-2050', name='new-ctrl-2050', title='New (2050)', begindate='2045-01-01', grid='arb3')
+experiments['new-ctrl-2100'] = Exp(shortname='new-2100', name='new-ctrl-2100', title='New (2100)', begindate='2085-01-01', grid='arb3')
+experiments['new-grell'] = Exp(shortname='grell', name='new-grell', title='New (Grell)', begindate='1979-01-01', grid='arb3')
+experiments['new-grell-old'] = Exp(shortname='new-grell-old', name='new-grell-old', title='New (Grell, old NMP)', begindate='1979-01-01', grid='arb3')
+experiments['new-nogulf'] = Exp(shortname='nogulf', name='new-nogulf', title='New (no Gulf)', begindate='1979-01-01', grid='arb2') # ARB2 domain
 experiments['new-noah'] = Exp(shortname='noah', name='new-noah', title='New (Noah)', begindate='1979-01-01', grid='arb2') # ARB2 domain
 experiments['v35-noah'] = Exp(shortname='noah35', name='v35-noah', title='V35 & Noah (New)', begindate='1979-01-01', grid='arb2') # ARB2 domain
 experiments['cfsr-new'] = Exp(shortname='cfsr-new', name='cfsr-new', title='New (CFSR)', begindate='1979-01-01', grid='arb3', parent='CFSR')
@@ -65,6 +75,7 @@ experiments['erai-max'] = Exp(shortname='erai', name='erai-max', title='Max (ERA
 # these are all based on the old configuration (original + RRTMG, ARB2)
 experiments['ctrl-1'] = Exp(shortname='ctrl', name='ctrl-1', title='Ctrl-1', begindate='1979-01-01', grid='arb2')
 experiments['ctrl-2050'] = Exp(shortname='ctrl-2050', name='ctrl-2050', title='Ctrl-1 (2050)', begindate='2045-01-01', grid='arb2')
+experiments['ctrl-2100'] = Exp(shortname='ctrl-2100', name='ctrl-2100', title='Ctrl-1 (2100)', begindate='2085-01-01', grid='arb2')
 experiments['tiedtke-ctrl'] = Exp(shortname='tiedt', name='tiedtke-ctrl', title='Tiedtke (Ctrl)', begindate='1979-01-01', grid='arb2') 
 experiments['tom-ctrl'] = Exp(shortname='tom', name='tom-ctrl', title='Thompson (Ctrl)', begindate='1979-01-01', grid='arb2')
 experiments['wdm6-ctrl'] = Exp(shortname='wdm6', name='wdm6-ctrl', title='WDM6 (Ctrl)', begindate='1979-01-01', grid='arb2')
@@ -73,7 +84,11 @@ experiments['epssm-ctrl'] = Exp(shortname='epssm', name='epssm-ctrl', title='Wav
 experiments['nmpnew-ctrl'] = Exp(shortname='nmpnew', name='nmpnew-ctrl', title='New (Noah-MP, Ctrl)', begindate='1979-01-01', grid='arb2')
 experiments['nmpbar-ctrl'] = Exp(shortname='nmpbar', name='nmpbar-ctrl', title='Barlage (Noah-MP, Ctrl)', begindate='1979-01-01', grid='arb2')
 experiments['nmpsnw-ctrl'] = Exp(shortname='nmpsnw', name='nmpsnw-ctrl', title='Snow (Noah-MP, Ctrl)', begindate='1979-01-01', grid='arb2')
-# these are all based on the original configuration (mostly ARB1 domain)
+# some new experiments based on the old CAM configuration 
+experiments['old-ctrl'] = Exp(shortname='old', name='old-ctrl', title='Old', begindate='1979-01-01', grid='arb2')
+experiments['old-ctrl-2050'] = Exp(shortname='old-2050', name='old-ctrl-2050', title='Old-2050', begindate='2045-01-01', grid='arb2')
+experiments['old-ctrl-2100'] = Exp(shortname='old-2100', name='old-ctrl-2100', title='Old-2100', begindate='2085-01-01', grid='arb2')
+# these are all based on the original configuration (mostly ARB1 domain and CAM)
 experiments['ctrl-1-arb1'] = Exp(shortname='ctrl-arb1', name='ctrl-1-arb1', title='Ctrl-ARB1', begindate='1979-01-01', grid='arb1')
 experiments['ctrl-arb1-2050'] = Exp(shortname='ctrl-arb1-2050', name='ctrl-arb1-2050', title='Ctrl-ARB1 (2050)', begindate='2045-01-01', grid='arb1')
 experiments['ctrl-2-arb1'] = Exp(shortname='ctrl-2-arb1', name='ctrl-2-arb1', title='Ctrl-2 (CAM)', begindate='1979-01-01', grid='arb1')
