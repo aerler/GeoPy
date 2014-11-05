@@ -497,3 +497,5 @@ if __name__ == '__main__':
           
   ## call parallel execution function
   asyncPoolEC(performRegridding, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
+  # exit with exit code
+  exit(ec)

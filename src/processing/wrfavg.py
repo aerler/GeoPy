@@ -275,4 +275,6 @@ if __name__ == '__main__':
   # static keyword arguments
   kwargs = dict(periods=periods, offset=offset, griddef=griddef, loverwrite=loverwrite, varlist=varlist)        
   # call parallel execution function
-  asyncPoolEC(computeClimatology, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
+  ec = asyncPoolEC(computeClimatology, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
+  # exit with exit code
+  exit(ec)

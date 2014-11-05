@@ -441,3 +441,5 @@ if __name__ == '__main__':
           
   ## call parallel execution function
   asyncPoolEC(performExtraction, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
+  # exit with exit code
+  exit(ec)

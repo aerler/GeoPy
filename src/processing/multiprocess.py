@@ -225,7 +225,7 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=False, ltrialnerror=True):
           '\n   ###   {:2d} operations did not complete/failed!   ###   \n'.format(exitcode))
   logger.info(datetime.today())
   # return with exit code
-  exit(exitcode)
+  return exitcode
 
 
 if __name__ == '__main__':
