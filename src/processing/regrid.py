@@ -496,6 +496,6 @@ if __name__ == '__main__':
   kwargs = dict(loverwrite=loverwrite, varlist=varlist)
           
   ## call parallel execution function
-  asyncPoolEC(performRegridding, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
-  # exit with exit code
-  exit(ec)
+  ec = asyncPoolEC(performRegridding, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
+  # exit with fraction of failures (out of 10) as exit code
+  exit(int(10*ec/len(args)))
