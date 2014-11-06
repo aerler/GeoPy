@@ -354,7 +354,8 @@ class Axes(FileType):
                      x           = dict(name='x', units='m'), # projected west-east coordinate
                      y           = dict(name='y', units='m'), # projected south-north coordinate
                      soil_layers_stag = dict(name='s', units=''), # soil layer coordinate
-                     num_press_levels_stag = dict(name='p', units='Pa')) # pressure coordinate
+                     num_press_levels_stag = dict(name='p', units='Pa'), # pressure coordinate
+                     station     = dict(name='stn', units='') ) # station axis for station data
     self.vars = self.atts.keys()
     self.climfile = None
     self.tsfile = None
@@ -368,10 +369,52 @@ avgfolder = root_folder + 'wrfavg/' # long-term mean folder
 
 ## Functions to load different types of WRF datasets
 
+# Station Time-series (monthly, with extremes)
+def loadWRF_StnTS(station=None, experiment=None, name=None, domains=2, filetypes=None, 
+                  varlist=None, varatts=None):
+  ''' Get a properly formatted WRF dataset with monthly time-series at station locations . '''  
+  # prepare input  
+  # N.B.: 'experiment' can be a string name or an Exp instance
+  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, 
+                                                        folder=None)
+  # generate filelist and attributes based on filetypes and domain
+  if filetypes is None: filetypes = fileclasses.keys()
+  elif isinstance(filetypes,list):
+    if 'axes' not in filetypes: filetypes.append('axes')
+  elif isinstance(filetypes,tuple):
+    if 'axes' not in filetypes: filetypes = filetypes + ('axes',)
+  else: raise TypeError  
+  atts = dict(); filelist = [] 
+  for filetype in filetypes:
+    fileclass = fileclasses[filetype]
+    if fileclass.tsfile is not None: filelist.append(fileclass.tsfile) 
+    atts.update(fileclass.atts)  
+  if varatts is not None: atts.update(varatts)
+  # center time axis to 1979
+  if 'time' in atts: tatts = atts['time']
+  else: tatts = dict()
+  ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1   
+  tatts['offset'] = (ys-1979)*12 + (ms-1) -1
+  tatts['atts'] = dict(long_name='Month since 1979-01')
+  atts['time'] = tatts 
+  # translate varlist
+  #if varlist is None: varlist = atts.keys() # need to allow None to load all variables
+  if atts and varlist is not None: varlist = translateVarNames(varlist, atts)
+  filenames = [filename.format(domain) for filename in filelist] # insert domain number
+  # load dataset
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, varatts=atts,
+                          multifile=False, ncformat='NETCDF4', squeeze=True)
+  # load pressure levels (doesn't work automatically, because variable and dimension have different names and dimensions)
+  if dataset.hasAxis('p'): 
+    dataset.axes['p'].coord = dataset.dataset.variables['P_PL'][0,:]
+  # return formatted dataset
+  return dataset
+  
+
 # Time-Series (monthly)
-def loadWRF_TS(experiment=None, name=None, domains=2, grid=None, filetypes=None, varlist=None, varatts=None, 
+def loadWRF_TS_old(experiment=None, name=None, domains=2, grid=None, filetypes=None, varlist=None, varatts=None, 
                lconst=True, lautoregrid=True):
-  ''' Get a properly formatted WRF dataset with monthly time-series. '''
+  ''' Get a properly formatted WRF dataset with monthly time-series at station locations . '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)
   # N.B.: 'experiment' can be a string name or an Exp instance
@@ -428,29 +471,45 @@ def loadWRF_TS(experiment=None, name=None, domains=2, grid=None, filetypes=None,
   # return formatted dataset
   if not ltuple: datasets = datasets[0]
   return datasets
-  
 
-# pre-processed climatology files (varatts etc. should not be necessary) 
+def loadWRF_TS(experiment=None, name=None, domains=2, grid=None, filetypes=None, varlist=None, varatts=None, 
+               lconst=True, lautoregrid=True):
+  ''' Get a properly formatted WRF dataset with monthly time-series. '''
+  return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, period=None, 
+                     filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
+                     lautoregrid=lautoregrid, mode='time-series')  
+
 def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filetypes=None, varlist=None, 
             varatts=None, lconst=True, lautoregrid=True):
   ''' Get a properly formatted monthly WRF climatology as NetCDFDataset. '''
+  return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, period=period, 
+                     filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
+                     lautoregrid=lautoregrid, mode='climatology')  
+
+# pre-processed climatology files (varatts etc. should not be necessary) 
+def loadWRF_All(experiment=None, name=None, domains=2, grid=None, period=None, filetypes=None, varlist=None, 
+                varatts=None, lconst=True, lautoregrid=True, mode='climatology'):
+  ''' Get any WRF data files as a properly formatted NetCDFDataset. '''
   # prepare input  
-  ltuple = isinstance(domains,col.Iterable)
-  # N.B.: 'experiment' can be a string name or an Exp instance
-  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
-  # period  
-  if isinstance(period,(tuple,list)): pass
-  elif isinstance(period,basestring): pass
-  elif period is None: pass
-  elif isinstance(period,(int,np.integer)) and isinstance(experiment,Exp):
-    period = (experiment.beginyear, experiment.beginyear+period)
-  else: raise DateError   
-  if period is None or period == '': 
-    raise ValueError, "A period is required to load WRF climatologies."
-  elif isinstance(period,basestring):
-    period = tuple([int(prd) for prd in period.split('-')]) 
-  elif not isinstance(period,tuple) and len(period) == 2: raise TypeError
-  periodstr = '_{0:4d}-{1:4d}'.format(*period)  
+  ltuple = isinstance(domains,col.Iterable)  
+  # period
+  if isinstance(period,(tuple,list)):
+    if not all(isNumber(period)): raise ValueError
+  elif isinstance(period,basestring): period = [int(prd) for prd in period.split('-')]
+  elif isinstance(period,(int,np.integer)) or period is None : pass # handled later
+  else: raise DateError, "Illegal period definition: {:s}".format(str(period))
+  # prepare input  
+  lclim = False; lts = False # mode switches
+  if mode.lower() == 'climatology': # post-processed climatology files
+    lclim = True
+    folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)    
+    if period is None: raise DateError, 'Currently WRF Climatologies have to be loaded with the period explicitly specified.'
+  elif mode.lower() == 'time-series': # concatenated time-series files
+    lts = True
+    folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
+    lclim = False; period = None; periodstr = None # to indicate time-series (but for safety, the input must be more explicit)
+    if lautoregrid is None: lautoregrid = False # this can take very long!
+  if lclim: periodstr = '_{0:4d}-{1:4d}'.format(*period)  
   # generate filelist and attributes based on filetypes and domain
   if filetypes is None: filetypes = fileclasses.keys()
   elif isinstance(filetypes,(list,tuple,set)):
@@ -461,9 +520,12 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
   atts = dict(); filelist = []; typelist = []; constfile = None
   for filetype in filetypes:
     fileclass = fileclasses[filetype]
-    if fileclass.climfile is not None: # this eliminates const files
+    if lclim and fileclass.climfile is not None:
       filelist.append(fileclass.climfile)
-      typelist.append(filetype) 
+      typelist.append(filetype) # this eliminates const files
+    elif lts and fileclass.tsfile is not None: 
+      filelist.append(fileclass.climfile)
+      typelist.append(filetype) # this eliminates const files     
   if varatts is not None: atts.update(varatts)
   # translate varlist
   #if varlist is None: varlist = default_varatts.keys() + atts.keys()
@@ -504,12 +566,14 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
     ## load regular variables
     filenames = []
     for filetype,fileformat in zip(typelist,filelist):
-      filename = fileformat.format(domain,gridstr,periodstr) # insert domain number, grid, and period
+      if lclim: filename = fileformat.format(domain,gridstr,periodstr) # insert domain number, grid, and period
+      elif lts: filename = fileformat.format(domain,gridstr) # insert domain number, and grid
       filenames.append(filename) # file list to be passed on to DatasetNetCDF
       # check existance
       filepath = '{:s}/{:s}'.format(folder,filename)
       if not os.path.exists(filepath):
-        nativename = fileformat.format(domain,'',periodstr) # original filename (before regridding)
+        if lclim: nativename = fileformat.format(domain,'',periodstr) # original filename (before regridding)
+        elif lts: nativename = fileformat.format(domain,'') # original filename (before regridding)
         nativepath = '{:s}/{:s}'.format(folder,nativename)
         if os.path.exists(nativepath):
           if lautoregrid: 
@@ -629,7 +693,7 @@ if __name__ == '__main__':
   # load monthly time-series file
   elif mode == 'test_timeseries':
     
-    dataset = loadWRF_TS(experiment='max-2050', domains=1, filetypes=['srfc'])
+    dataset = loadWRF_TS(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['srfc'])
 #     for dataset in datasets:
     print('')
     print(dataset)

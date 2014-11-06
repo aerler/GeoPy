@@ -581,6 +581,8 @@ def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None, f
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                             multifile=False, ncformat='NETCDF4')
   return dataset
+loadEC_StnTS = loadEC_TS # just an alias
+
 ## load pre-processed EC station climatology
 def loadEC(): 
   ''' Load a pre-processed EC station climatology. '''

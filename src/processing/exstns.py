@@ -442,4 +442,4 @@ if __name__ == '__main__':
   ## call parallel execution function
   ec = asyncPoolEC(performExtraction, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
   # exit with fraction of failures (out of 10) as exit code
-  exit(int(10*ec/len(args)))
+  exit(int(np.ceil(10*ec/len(args))))
