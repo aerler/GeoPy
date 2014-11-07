@@ -133,7 +133,7 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
   if experiment is None:
     if not isinstance(folder,basestring): 
       raise IOError, "Need to specify an experiment folder in order to load data."
-    if isinstance(name,col.Iterable) and all([isinstance(n,basestring) for n in name]): 
+    if isinstance(name,(list,tuple)) and all([isinstance(n,basestring) for n in name]): 
       names = name
       if names[0] in exps: experiment = exps[names[0]]
       else: name = names[0].split('_')[0]
@@ -399,8 +399,9 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
                      lautoregrid=lautoregrid, lctrT=lctrT, mode='climatology')  
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
-def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, period=None, filetypes=None, 
-                varlist=None, varatts=None, lconst=True, lautoregrid=True, lctrT=False, mode='climatology'):
+def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, period=None, 
+                filetypes=None, varlist=None, varatts=None, lconst=True, lautoregrid=True, 
+                lctrT=False, folder=None, mode='climatology'):
   ''' Get any WRF data files as a properly formatted NetCDFDataset. '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)  
@@ -411,18 +412,19 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
   elif isinstance(period,(int,np.integer)) or period is None : pass # handled later
   else: raise DateError, "Illegal period definition: {:s}".format(str(period))
   # prepare input  
+  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder)
+  if lctrT and experiment is None: 
+    raise DatasetError, "Experiment '{0:s}' not found in database; need time information to center time axis.".format(names[0])    
   lclim = False; lts = False # mode switches
   if mode.lower() == 'climatology': # post-processed climatology files
     lclim = True
-    folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)    
+    periodstr = '_{0:4d}-{1:4d}'.format(*period)
     if period is None: raise DateError, 'Currently WRF Climatologies have to be loaded with the period explicitly specified.'
   elif mode.lower() == 'time-series': # concatenated time-series files
-    lts = True
-    folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
-    lclim = False; period = None; periodstr = None # to indicate time-series (but for safety, the input must be more explicit)
+    lts = True; lclim = False; period = None; periodstr = None # to indicate time-series (but for safety, the input must be more explicit)
     if lautoregrid is None: lautoregrid = False # this can take very long!
-  if lclim: periodstr = '_{0:4d}-{1:4d}'.format(*period)
-  if station is None: lstation = False
+  if station is None: 
+    lstation = False
   else: 
     lstation = True
     if grid is not None: raise NotImplementedError, 'Currently WRF station data can only be loaded from the native grid.'
@@ -658,7 +660,9 @@ if __name__ == '__main__':
   elif mode == 'test_timeseries':
     
 #     dataset = loadWRF_TS(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['srfc'])
-    dataset = loadWRF_TS(experiment='new-ctrl-2050', domains=2, filetypes=['hydro'], lctrT=True)
+    dataset = loadWRF_TS(experiment='new-ctrl-2050', domains=2, filetypes=['hydro'])
+#     dataset = loadWRF_All(name='new-ctrl-2050', folder='/data/WRF/wrfavg/', domains=2, filetypes=['hydro'], 
+#                           lctrT=True, mode='time-series')
 #     for dataset in datasets:
     print('')
     print(dataset)
