@@ -60,12 +60,12 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   maxdom = max(domains) # max domain
   # files to work with
   for n in xrange(1,maxdom+1):
-    dnfile = filepath.format(n)
+    dnfile = filepath.format(n,'') # expects grid name as well, but we are only looking for the native grid
     if not os.path.exists(dnfile):
       if n in domains: raise IOError, 'File {} for domain {:d} not found!'.format(dnfile,n)
       else: raise IOError, 'File {} for domain {:d} not found; this file is necessary to infer the geotransform for other domains.'.format(dnfile,n)
   # open first domain file (special treatment)
-  dn = nc.Dataset(filepath.format(1), mode='r', format=ncformat)
+  dn = nc.Dataset(filepath.format(1,''), mode='r', format=ncformat)
   gridname = experiment.grid if isinstance(experiment,Exp) else name # use experiment name as default
   projection = getWRFproj(dn, name=gridname) # same for all
   # get coordinates of center point  
@@ -99,7 +99,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
     # loop over grids
     for n in xrange(2,maxdom+1):
       # open file
-      dn = nc.Dataset(filepath.format(n), mode='r', format=ncformat)
+      dn = nc.Dataset(filepath.format(n,''), mode='r', format=ncformat)
       if not n == dn.GRID_ID: raise DatasetError # just a check
       pid = dn.PARENT_ID-1 # parent grid ID
       # infer size and geotransform      
@@ -252,7 +252,7 @@ class Srfc(FileType):
                      WaterVapor  = dict(name='Q2', units='Pa')) # water vapor partial pressure                     
     self.vars = self.atts.keys()    
     self.climfile = 'wrfsrfc_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
-    self.tsfile = 'wrfsrfc_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
+    self.tsfile = 'wrfsrfc_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
 # hydro variables
 class Hydro(FileType):
   ''' Variables and attributes of the hydrological files. '''
@@ -270,7 +270,7 @@ class Hydro(FileType):
                      NetWaterFlux = dict(name='waterflx', units='kg/m^2/s')) # total water downward flux                     
     self.vars = self.atts.keys()
     self.climfile = 'wrfhydro_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
-    self.tsfile = 'wrfhydro_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
+    self.tsfile = 'wrfhydro_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
 # lsm variables
 class LSM(FileType):
   ''' Variables and attributes of the land surface files. '''
@@ -286,7 +286,7 @@ class LSM(FileType):
                      Runoff = dict(name='runoff', units='kg/m^2/s')) # total surface and sub-surface run-off
     self.vars = self.atts.keys()    
     self.climfile = 'wrflsm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
-    self.tsfile = 'wrflsm_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
+    self.tsfile = 'wrflsm_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
 # lsm variables
 class Rad(FileType):
   ''' Variables and attributes of the radiation files. '''
@@ -294,7 +294,7 @@ class Rad(FileType):
     self.atts = dict() # currently empty
     self.vars = self.atts.keys()    
     self.climfile = 'wrfrad_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
-    self.tsfile = 'wrfrad_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
+    self.tsfile = 'wrfrad_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
 # extreme value variables
 class Xtrm(FileType):
   ''' Variables and attributes of the extreme value files. '''
@@ -324,7 +324,7 @@ class Xtrm(FileType):
                      RAINNCVSTD  = dict(name='precncstd', units='kg/m^2/s')) # daily grid-scale precip standard deviation                     
     self.vars = self.atts.keys()    
     self.climfile = 'wrfxtrm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
-    self.tsfile = 'wrfxtrm_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
+    self.tsfile = 'wrfxtrm_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
 # variables on selected pressure levels: 850 hPa, 700 hPa, 500 hPa, 250 hPa, 100 hPa
 class Plev3D(FileType):
   ''' Variables and attributes of the pressure level files. '''
@@ -339,7 +339,7 @@ class Plev3D(FileType):
 #                      P_PL     = dict(name='p', units='Pa'))  # Pressure
     self.vars = self.atts.keys()    
     self.climfile = 'wrfplev3d_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
-    self.tsfile = 'wrfplev3d_d{0:0=2d}_monthly.nc' # the filename needs to be extended by (domain,)
+    self.tsfile = 'wrfplev3d_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
 
 # axes (don't have their own file)
 class Axes(FileType):
@@ -524,17 +524,26 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, period=None, f
       filelist.append(fileclass.climfile)
       typelist.append(filetype) # this eliminates const files
     elif lts and fileclass.tsfile is not None: 
-      filelist.append(fileclass.climfile)
+      filelist.append(fileclass.tsfile)
       typelist.append(filetype) # this eliminates const files     
   if varatts is not None: atts.update(varatts)
+  # center time axis to 1979
+  if 'time' in atts: tatts = atts['time']
+  else: tatts = dict()
+  ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1   
+  tatts['offset'] = (ys-1979)*12 + (ms-1) -1
+  tatts['atts'] = dict(long_name='Month since 1979-01')
+  atts['time'] = tatts   
   # translate varlist
   #if varlist is None: varlist = default_varatts.keys() + atts.keys()
-  if atts: varlist = translateVarNames(varlist, atts) # default_varatts
+  if atts and varlist is not None: varlist = translateVarNames(varlist, atts) # default_varatts
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if grid is None:
-    griddefs = None; c = 0
-    filename = fileclasses.values()[c].tsfile # just use the first filetype
+    griddefs = None; c = -1; filename = None
+    while filename is None:
+      c += 1 # this is necessary, because not all filetypes have time-series files
+      filename = fileclasses.values()[c].tsfile # just use the first filetype
     while griddefs is None:
       # some experiments do not have all files... try, until one works...
       try:
@@ -684,6 +693,7 @@ if __name__ == '__main__':
     
     print('')
     dataset = loadWRF(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['lsm'], period=(1979,1984))
+#     dataset = loadWRF(experiment='max-ctrl', domains=2, filetypes=['hydro'], period=(1979,1984))
     print(dataset)
     dataset.lon2D.load()
     print('')
@@ -693,7 +703,8 @@ if __name__ == '__main__':
   # load monthly time-series file
   elif mode == 'test_timeseries':
     
-    dataset = loadWRF_TS(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['srfc'])
+#     dataset = loadWRF_TS(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['srfc'])
+    dataset = loadWRF_TS(experiment='new-ctrl-2050', domains=2, filetypes=['hydro'])
 #     for dataset in datasets:
     print('')
     print(dataset)
