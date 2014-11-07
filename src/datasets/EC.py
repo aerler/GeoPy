@@ -626,9 +626,9 @@ if __name__ == '__main__':
     print(dataset)
     print('')
     print(dataset.station)
-#     print(dataset.time)
-#     print(dataset.time.coord)
-#     print(dataset.time.coord[78*12])
+    print(dataset.time)
+    print(dataset.time.coord)
+    print(dataset.time.coord[105*12]) # Jan 1979, the origin of time...
 
         
   # test station object initialization

@@ -370,125 +370,37 @@ avgfolder = root_folder + 'wrfavg/' # long-term mean folder
 ## Functions to load different types of WRF datasets
 
 # Station Time-series (monthly, with extremes)
-def loadWRF_StnTS(station=None, experiment=None, name=None, domains=2, filetypes=None, 
-                  varlist=None, varatts=None):
+def loadWRF_StnTS(experiment=None, name=None, domains=2, station=None, period=None, filetypes=None, 
+                varlist=None, varatts=None, lctrT=True):
   ''' Get a properly formatted WRF dataset with monthly time-series at station locations . '''  
-  # prepare input  
-  # N.B.: 'experiment' can be a string name or an Exp instance
-  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, 
-                                                        folder=None)
-  # generate filelist and attributes based on filetypes and domain
-  if filetypes is None: filetypes = fileclasses.keys()
-  elif isinstance(filetypes,list):
-    if 'axes' not in filetypes: filetypes.append('axes')
-  elif isinstance(filetypes,tuple):
-    if 'axes' not in filetypes: filetypes = filetypes + ('axes',)
-  else: raise TypeError  
-  atts = dict(); filelist = [] 
-  for filetype in filetypes:
-    fileclass = fileclasses[filetype]
-    if fileclass.tsfile is not None: filelist.append(fileclass.tsfile) 
-    atts.update(fileclass.atts)  
-  if varatts is not None: atts.update(varatts)
-  # center time axis to 1979
-  if 'time' in atts: tatts = atts['time']
-  else: tatts = dict()
-  ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1   
-  tatts['offset'] = (ys-1979)*12 + (ms-1) -1
-  tatts['atts'] = dict(long_name='Month since 1979-01')
-  atts['time'] = tatts 
-  # translate varlist
-  #if varlist is None: varlist = atts.keys() # need to allow None to load all variables
-  if atts and varlist is not None: varlist = translateVarNames(varlist, atts)
-  filenames = [filename.format(domain) for filename in filelist] # insert domain number
-  # load dataset
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, varatts=atts,
-                          multifile=False, ncformat='NETCDF4', squeeze=True)
-  # load pressure levels (doesn't work automatically, because variable and dimension have different names and dimensions)
-  if dataset.hasAxis('p'): 
-    dataset.axes['p'].coord = dataset.dataset.variables['P_PL'][0,:]
-  # return formatted dataset
-  return dataset
-  
+  return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, station=station, 
+                     period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
+                     lautoregrid=False, lctrT=lctrT, mode='time-series')  
 
-# Time-Series (monthly)
-def loadWRF_TS_old(experiment=None, name=None, domains=2, grid=None, filetypes=None, varlist=None, varatts=None, 
-               lconst=True, lautoregrid=True):
-  ''' Get a properly formatted WRF dataset with monthly time-series at station locations . '''
-  # prepare input  
-  ltuple = isinstance(domains,col.Iterable)
-  # N.B.: 'experiment' can be a string name or an Exp instance
-  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
-  # generate filelist and attributes based on filetypes and domain
-  if filetypes is None: filetypes = fileclasses.keys()
-  elif isinstance(filetypes,list):
-    if 'axes' not in filetypes: filetypes.append('axes')
-  elif isinstance(filetypes,tuple):
-    if 'axes' not in filetypes: filetypes = filetypes + ('axes',)
-  else: raise TypeError  
-  atts = dict(); filelist = [] 
-  for filetype in filetypes:
-    fileclass = fileclasses[filetype]
-    if fileclass.tsfile is not None: filelist.append(fileclass.tsfile) 
-    atts.update(fileclass.atts)  
-  if varatts is not None: atts.update(varatts)
-  # center time axis to 1979
-  if 'time' in atts: tatts = atts['time']
-  else: tatts = dict()
-  ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1   
-  tatts['offset'] = (ys-1979)*12 + (ms-1) -1
-  tatts['atts'] = dict(long_name='Month since 1979-01')
-  atts['time'] = tatts 
-  # translate varlist
-  #if varlist is None: varlist = atts.keys() # need to allow None to load all variables
-  if atts and varlist is not None: varlist = translateVarNames(varlist, atts)
-  # infer projection and grid and generate horizontal map axes
-  # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
-  if 'const' in filetypes: filename = fileclasses['const'].tsfile # constants files preferred...
-  else: filename = fileclasses[filetypes[0]].tsfile # just use the first filetype
-  griddefs = getWRFgrid(name=names, experiment=None, domains=domains, folder=folder, filename=filename)
-  assert len(griddefs) == len(domains)
-  datasets = []
-  for name,domain,griddef in zip(names,domains,griddefs):
-    # domain-sensitive parameters
-    axes = dict(west_east=griddef.xlon, south_north=griddef.ylat, x=griddef.xlon, y=griddef.ylat) # map axes
-    filenames = [filename.format(domain) for filename in filelist] # insert domain number
-    # load dataset
-    dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, varatts=atts, 
-                            axes=axes, multifile=False, ncformat='NETCDF4', squeeze=True)
-    # load pressure levels (doesn't work automatically, because variable and dimension have different names and dimensions)
-    if dataset.hasAxis('p'): 
-      dataset.axes['p'].coord = dataset.dataset.variables['P_PL'][0,:]
-    # add projection
-    dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder)
-    # safety checks
-    assert dataset.axes['x'] == griddef.xlon
-    assert dataset.axes['y'] == griddef.ylat   
-    assert all([dataset.axes['x'] == var.getAxis('x') for var in dataset.variables.values() if var.hasAxis('x')])
-    assert all([dataset.axes['y'] == var.getAxis('y') for var in dataset.variables.values() if var.hasAxis('y')])
-    # append to list
-    datasets.append(dataset) 
-  # return formatted dataset
-  if not ltuple: datasets = datasets[0]
-  return datasets
-
-def loadWRF_TS(experiment=None, name=None, domains=2, grid=None, filetypes=None, varlist=None, varatts=None, 
-               lconst=True, lautoregrid=True):
+def loadWRF_TS(experiment=None, name=None, domains=2, grid=None, filetypes=None, varlist=None, 
+               varatts=None, lconst=True, lautoregrid=True, lctrT=True):
   ''' Get a properly formatted WRF dataset with monthly time-series. '''
-  return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, period=None, 
-                     filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
-                     lautoregrid=lautoregrid, mode='time-series')  
+  return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, 
+                     period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
+                     lautoregrid=lautoregrid, lctrT=lctrT, mode='time-series')  
+
+def loadWRF_Stn(experiment=None, name=None, domains=2, station=None, period=None, filetypes=None, 
+                varlist=None, varatts=None, lctrT=True):
+  ''' Get a properly formatted station dataset from a monthly WRF climatology. '''
+  return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, station=station, 
+                     period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
+                     lautoregrid=False, lctrT=lctrT, mode='climatology')  
 
 def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filetypes=None, varlist=None, 
-            varatts=None, lconst=True, lautoregrid=True):
+            varatts=None, lconst=True, lautoregrid=True, lctrT=True):
   ''' Get a properly formatted monthly WRF climatology as NetCDFDataset. '''
-  return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, period=period, 
-                     filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
-                     lautoregrid=lautoregrid, mode='climatology')  
+  return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, 
+                     period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
+                     lautoregrid=lautoregrid, lctrT=lctrT, mode='climatology')  
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
-def loadWRF_All(experiment=None, name=None, domains=2, grid=None, period=None, filetypes=None, varlist=None, 
-                varatts=None, lconst=True, lautoregrid=True, mode='climatology'):
+def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, period=None, filetypes=None, 
+                varlist=None, varatts=None, lconst=True, lautoregrid=True, lctrT=False, mode='climatology'):
   ''' Get any WRF data files as a properly formatted NetCDFDataset. '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)  
@@ -509,7 +421,13 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, period=None, f
     folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=None)
     lclim = False; period = None; periodstr = None # to indicate time-series (but for safety, the input must be more explicit)
     if lautoregrid is None: lautoregrid = False # this can take very long!
-  if lclim: periodstr = '_{0:4d}-{1:4d}'.format(*period)  
+  if lclim: periodstr = '_{0:4d}-{1:4d}'.format(*period)
+  if station is None: lstation = False
+  else: 
+    lstation = True
+    if grid is not None: raise NotImplementedError, 'Currently WRF station data can only be loaded from the native grid.'
+    if lconst: raise NotImplementedError, 'Currently WRF constants are not available as station data.'
+    if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.' 
   # generate filelist and attributes based on filetypes and domain
   if filetypes is None: filetypes = fileclasses.keys()
   elif isinstance(filetypes,(list,tuple,set)):
@@ -528,43 +446,53 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, period=None, f
       typelist.append(filetype) # this eliminates const files     
   if varatts is not None: atts.update(varatts)
   # center time axis to 1979
-  if 'time' in atts: tatts = atts['time']
-  else: tatts = dict()
-  ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1   
-  tatts['offset'] = (ys-1979)*12 + (ms-1) -1
-  tatts['atts'] = dict(long_name='Month since 1979-01')
-  atts['time'] = tatts   
+  if lctrT:
+    if 'time' in atts: tatts = atts['time']
+    else: tatts = dict()
+    ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1   
+    tatts['offset'] = (ys-1979)*12 + (ms-1)
+    tatts['atts'] = dict(long_name='Month since 1979-01')
+    atts['time'] = tatts   
   # translate varlist
   #if varlist is None: varlist = default_varatts.keys() + atts.keys()
   if atts and varlist is not None: varlist = translateVarNames(varlist, atts) # default_varatts
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
-  if grid is None:
-    griddefs = None; c = -1; filename = None
-    while filename is None:
-      c += 1 # this is necessary, because not all filetypes have time-series files
-      filename = fileclasses.values()[c].tsfile # just use the first filetype
-    while griddefs is None:
-      # some experiments do not have all files... try, until one works...
-      try:
-        griddefs = getWRFgrid(name=names, experiment=experiment, domains=domains, folder=folder, filename=filename)
-      except IOError:
-        c += 1
-        filename = fileclasses.values()[c].tsfile
+  if station is None:
+    if grid is None:
+      griddefs = None; c = -1; filename = None
+      while filename is None:
+        c += 1 # this is necessary, because not all filetypes have time-series files
+        filename = fileclasses.values()[c].tsfile # just use the first filetype
+      while griddefs is None:
+        # some experiments do not have all files... try, until one works...
+        try:
+          griddefs = getWRFgrid(name=names, experiment=experiment, domains=domains, folder=folder, filename=filename)
+        except IOError:
+          c += 1
+          filename = fileclasses.values()[c].tsfile
+    else:
+      griddefs = [loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder, check=True)]*len(domains)
+    assert len(griddefs) == len(domains)
   else:
-    griddefs = [loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder, check=True)]*len(domains)
-  assert len(griddefs) == len(domains)
+    griddefs = [None]*len(domains) # not actually needed
   # grid
   datasets = []
   for name,domain,griddef in zip(names,domains,griddefs):
 #     if grid is None or grid.split('_')[0] == experiment.grid: gridstr = ''
-    if grid is None or grid == '{0:s}_d{1:02d}'.format(experiment.grid,domain): 
-      gridstr = ''; llconst = lconst
-    else: 
-      gridstr = '_%s'%grid.lower(); # only use lower case for filenames
-      llconst = False # don't load constants     
-    # domain-sensitive parameters
-    axes = dict(west_east=griddef.xlon, south_north=griddef.ylat, x=griddef.xlon, y=griddef.ylat) # map axes
+    if lstation:
+      # the station name can be inserted as the grid name
+      gridstr = '_'+station.lower(); # only use lower case for filenames
+      llconst = False # don't load constants
+      axes = None
+    else:
+      if grid is None or grid == '{0:s}_d{1:02d}'.format(experiment.grid,domain): 
+          gridstr = ''; llconst = lconst
+      else: 
+        gridstr = '_'+grid.lower(); # only use lower case for filenames
+        llconst = False # don't load constants     
+      # domain-sensitive parameters
+      axes = dict(west_east=griddef.xlon, south_north=griddef.ylat, x=griddef.xlon, y=griddef.ylat) # map axes
     # load constants
     if llconst:
       constfile = fileclasses['const']    
@@ -585,7 +513,7 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, period=None, f
         elif lts: nativename = fileformat.format(domain,'') # original filename (before regridding)
         nativepath = '{:s}/{:s}'.format(folder,nativename)
         if os.path.exists(nativepath):
-          if lautoregrid: 
+          if lautoregrid: # already set to False for stations
             from processing.regrid import performRegridding # causes circular reference if imported earlier
             #griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder) # already done above
             dataargs = dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)
@@ -601,20 +529,33 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, period=None, f
     if llconst: lenc = len(const)
     else: lenc = 0 
     if (len(dataset)+lenc) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
+    # check time axis and center at 1979-01 (zero-based)
+    if lctrT and dataset.hasAxis('time'):
+      t0 = dataset.time.coord[0]
+      tm = t0%12; ty = int(np.floor(t0/12))  
+      # we can directly change axis vectors, since they reside in memory 
+      if tm != ms - 1: 
+        dataset.time.coord -= ( tm+1 - ms )
+        dataset.time.offset -= ( tm+1 - ms )
+      if ty != ys - 1979: 
+        dataset.time.coord -= ( ty+1979 - ys )*12
+        dataset.time.offset -= ( ty+1979 - ys )*12 
+      # N.B.: the source file is not changed, unless sync() is called
     # add constants to dataset
     if llconst:
       for var in const: 
         if not dataset.hasVariable(var): # 
           dataset.addVariable(var, asNC=False, copy=False, overwrite=False, deepcopy=False)
-    # add projection
-    dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, geolocator=True)
-    #print dataset
-    # safety checks
-    if dataset.isProjected:
-      assert dataset.axes['x'] == griddef.xlon
-      assert dataset.axes['y'] == griddef.ylat   
-      assert all([dataset.axes['x'] == var.getAxis('x') for var in dataset.variables.values() if var.hasAxis('x')])
-      assert all([dataset.axes['y'] == var.getAxis('y') for var in dataset.variables.values() if var.hasAxis('y')])
+    if not lstation:
+      # add projection
+      dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, geolocator=True)
+      #print dataset
+      # safety checks
+      if dataset.isProjected:
+        assert dataset.axes['x'] == griddef.xlon
+        assert dataset.axes['y'] == griddef.ylat   
+        assert all([dataset.axes['x'] == var.getAxis('x') for var in dataset.variables.values() if var.hasAxis('x')])
+        assert all([dataset.axes['y'] == var.getAxis('y') for var in dataset.variables.values() if var.hasAxis('y')])
     # append to list
     datasets.append(dataset) 
   # return formatted dataset
@@ -644,7 +585,9 @@ if __name__ == '__main__':
     
   
 #   mode = 'test_climatology'
+#   mode = 'test_station_climatology'
   mode = 'test_timeseries'
+#   mode = 'test_station_timeseries'
 #   mode = 'pickle_grid'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
@@ -699,15 +642,39 @@ if __name__ == '__main__':
     print('')
     print(dataset.geotransform)
   
+  # load station climatology file
+  elif mode == 'test_station_climatology':
+    
+    print('')
+    dataset = loadWRF_Stn(experiment='max-ctrl', domains=1, station='ecprecip', filetypes=['xtrm'], period=(1979,1984))
+    print('')
+    print(dataset)
+    print('')
+    print(dataset.station)
+    print(dataset.station.coord)
+
   
   # load monthly time-series file
   elif mode == 'test_timeseries':
     
 #     dataset = loadWRF_TS(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['srfc'])
-    dataset = loadWRF_TS(experiment='new-ctrl-2050', domains=2, filetypes=['hydro'])
+    dataset = loadWRF_TS(experiment='new-ctrl-2050', domains=2, filetypes=['hydro'], lctrT=True)
 #     for dataset in datasets:
     print('')
     print(dataset)
     print('')
     print(dataset.time)
+    print(dataset.time.offset)
+    print(dataset.time.coord)
+
+  # load station time-series file
+  elif mode == 'test_station_timeseries':
+    
+    print('')
+    dataset = loadWRF_StnTS(experiment='max-ctrl', domains=2, station='ecprecip', filetypes=['xtrm'])
+    print('')
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.offset)
     print(dataset.time.coord)
