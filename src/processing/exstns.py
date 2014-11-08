@@ -331,14 +331,15 @@ if __name__ == '__main__':
     stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
   else:
     NP = NP or 2 # time-series might take more memory!
-    modes = ('climatology','time-series')
+    #modes = ('climatology','time-series')
+    modes = ('time-series',) # too many small files...
     loverwrite = False
     varlist = None # process all variables
     periods = (5,10,15,) # climatology periods to process
     # Datasets
     datasets = None # process all applicable
     resolutions = None # process all applicable
-    lLTM = True 
+    lLTM = False # again, not necessary
     # CESM
     load3D = False
     CESM_experiments = None

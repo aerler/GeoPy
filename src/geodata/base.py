@@ -12,7 +12,7 @@ import numpy.ma as ma # masked arrays
 # my own imports
 from plotting.properties import variablePlotatts # import plot properties from different file
 from misc import checkIndex, isEqual, isInt, isFloat, AttrDict, joinDicts, printList
-from misc import VariableError, AxisError, DataError, DatasetError
+from misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 
 import numbers
 import functools
@@ -108,7 +108,7 @@ class ReduceVar(object):
       # get data  
       if coordIndex:
         # use overloaded call method to index with coordinate values directly 
-        data = orig.__call__(**kwaxes)
+        data = orig.__call__(asVar=False, lidx=False, **kwaxes)
       else: 
         # sort slices accordign to axes
         idx = [None]*orig.ndim
@@ -148,7 +148,8 @@ class Variable(object):
     The basic variable class; it mainly implements arithmetic operations and indexing/slicing.
   '''
   
-  def __init__(self, name=None, units=None, axes=None, data=None, dtype=None, mask=None, fillValue=None, atts=None, plot=None):
+  def __init__(self, name=None, units=None, axes=None, data=None, dtype=None, mask=None, fillValue=None, 
+               atts=None, plot=None):
     ''' 
       Initialize variable and attributes.
       
@@ -387,49 +388,92 @@ class Variable(object):
       # if nothing applies, raise index error
       raise IndexError, "Invalid index type for class '{:s}'!".format(self.__class__.__name__)
     
-  def _call_(self, asVar=True, lcheck=False, lsqueeze=True, years=None, **axes):
-    ''' This method implements access to slices via coordinate values and returns Variable objects. '''
-    # interprete modes
-    rngs = dict(); modes = dict()
+  def __call__(self, lidx=None, lrng=None, asVar=None, lcheck=False, lsqueeze=True, years=None, 
+             coordAxis=None, **axes):
+    ''' This method implements access to slices via coordinate values and returns Variable objects. 
+        Default behavior for different argument types: 
+          - index by coordinate value, not array index, except if argument is a Slice object
+          - interprete tuples of length 2 or 3 as ranges
+          - treat lists and arrays as coordinate lists (can specify new list axis)
+          - for backwards compatibility, None values are accepted and indicate the entire range 
+        Type-based defaults are ignored if appropriate keyword arguments are specified. '''
+    ## check axes and input and determine modes
+    varaxes = dict(); idxmodes = dict() ; rngmodes = dict() 
     for key,val in axes.iteritems():
-      if self.hasAxis(key): # actual names always have precedence
-        modes[key] = None; rngs[key] = val
-      elif key[:2] == 'v_' and self.hasAxis(key[2:]):
-        modes[key] = 'val'; rngs[key] = val
-      elif key[:2] == 'r_' and self.hasAxis(key[2:]):
-        modes[key] = 'rng'; rngs[key] = val
-      elif key[:2] == 'l_' and self.hasAxis(key[2:]):
-        modes[key] = 'lst'; rngs[key] = val
-      elif lcheck:
+      if self.hasAxis(key) and val is not None: # extract axes that are relevant        
+        if isinstance(val,np.ndarray) and val.ndim > 1: raise TypeError, "Can only use 1-D arrays for indexing!"
+        if not isinstance(val,(tuple,list,slice,int,float,np.integer,np.inexact)): 
+          raise TypeError, "Can only use numbers, tuples, lists, arrays, and slice objects for indexing!"        
+        varaxes[key] = val
+        idxmodes[key] = isinstance(val,slice) if lidx is None else lidx  # only slices, except if set manually
+        if isinstance(val,slice) and idxmodes[key]: raise TypeError, "Slice can not be used for indexing by coordinate value."
+        if lrng is None:
+          rngmodes[key] = isinstance(val,tuple) and 2<=len(val)<=3 # all others are not ranges  
+        else:
+          if isinstance(val,slice) and lrng: raise ArgumentError, "A Slice ibject does not require range expansion."
+          if len(val) < 2: raise ArgumentError, "Need at least two values to define a range." 
+          if len(val) > 3: raise ArgumentError, "Can not expand more than three values to range."
+          if len(val) == 3 and lrng and not idxmodes[key]: 
+            raise NotImplementedError, "Coordinate ranges with custom spacing are not implemented yet."  
+          rngmodes[key] = lrng
+      elif lcheck: # default is to ignore axes that the variable doesn't have
         raise AxisError, "Variable '{:s}' has no Axis '{:s}'.".format(self.name,key)
     ## create Slice tuple to slice data array and axes
     slcs = []
     # loop over axes of variable
     for ax in self.axes:
-      if ax.name in modes:
-        rng = rngs[ax.name]
-        mode = modes[ax.name]
-        # figure out slicing method
-        if mode is None:
-          # figure out default mode based on input type
-          
-        # slice according to mode
-        if mode == 'val':
-          # extract a single index
-        elif mode == 'rng':
-          # extract a range of values
-          
-        if modes == 'lst':
-          
+      if ax.name in varaxes:
+        axval = varaxes[ax.name]; idxmod = idxmodes[ax.name]; rngmod = rngmodes[ax.name]
+        # figure out indexing method
+        if not idxmod:
+          # values and ranges are in coordinate values
+          # translate coordinate values into indices
+          if isinstance(axval,(tuple,list,np.ndarray)): 
+            idxslc = [ax.getIndex(idx, outOfBounds=True) for idx in axval]
+            # expand ranges
+            if rngmod:
+              # out-of-bounds values (None) should be handled correctly by slice
+              slcs.append(slice(*idxslc)) # use slice with index bounds 
+            else:
+              idxslc = [idx for idx in idxslc if idx is not None] # remove out-of-bounds values
+              slcs.append(idxslc) # use list of converted indices
+          else: 
+            idxslc = ax.getIndex(axval, outOfBounds=True)
+            if idxslc is None: raise AxisError, "Coordinate value {:s} out of bounds for axis '{:s}'.".format(str(axval),ax.name)  
+            slcs.append(idxslc)
+        else:
+          # values and ranges are indices
+          if rngmod: # need to expand ranges
+            slcs.append(slice(*axval)) # this also works with arrays!
+          else: # use as is
+            slcs.append(axval)          
       else:
         # if not present, no slicing...
-        slcs.append(slice(None))
-    # slice data
-    
-    # create new Variable object
-    
+        slcs.append(slice(None))   
+    assert len(slcs) == len(self.axes) 
+    ## create new Variable object
+    # slice data using the variables __getitem__ method (which can also be overloaded)
+    data = self.__getitem__(slcs) # just pass list of slices
+    if lsqueeze: data = np.squeeze(data) 
+    # create a Variable object by defaul, unless data is scalar
+    if asVar or ( asVar is None and isinstance(data,np.ndarray) ):
+      # create axes for new variable
+      newaxes = []
+      for ax,idxslc in zip(self.axes,slcs):
+        # use slice object from before to get coordinate data
+        coord = ax.coord.__getitem__(idxslc)
+        if not ( lsqueeze and ( not isinstance(coord,np.ndarray) or len(coord) < 2) ):
+          if not isinstance(coord,np.ndarray): coord = np.asarray([coord]) # convert scalar results...          
+          # make new axis object from old, using axis' copy method
+          newaxes.append(ax.copy(coord=coord))
+        # if this axis will be squeezed, we can just omit it
+      # create new variable object from old, using variables copy method
+      return self.copy(data=data, axes=newaxes)
+    else:
+      # N.B.: this is the default for scalar results  
+      return data # just return data, like __getitem__
   
-  def __call__(self, years=None, lgetIndex=True, lcoordList=False, lcheckaxis=True, **kwargs):
+  def _call_(self, years=None, lgetIndex=True, lcoordList=False, lcheckaxis=True, **kwargs):
     ''' This method implements access to slices via coordinate values (as opposed to indices). '''
     # loop over arguments and find indices of coordinate values
     slices = dict()
@@ -538,8 +582,9 @@ class Variable(object):
   def getArray(self, idx=None, axes=None, broadcast=False, unmask=False, fillValue=None, copy=True):
     ''' Copy the entire data array or a slice; option to unmask and to reorder/reshape to specified axes. '''
     # get data (idx=None will return the entire data array)
-    if copy: datacopy = self.__getitem__(idx).copy() # use __getitem__ to get slice
-    else: datacopy = self.__getitem__(idx) # just get a view
+     # use __getitem__ to get slice
+    datacopy = self.__getitem__(slice(None)) if idx is None else self.__getitem__(idx) # just get a view
+    if copy: datacopy = datacopy.copy() # or copy, if desired 
     # unmask    
     if unmask and isinstance(datacopy, ma.MaskedArray): 
       # N.B.: if no data is loaded, self.mask is usually false...
@@ -906,8 +951,8 @@ class Axis(Variable):
     if deepcopy: 
       ax = self.deepcopy(**newargs)
     else:
-      args = dict(name=self.name, units=self.units, length=self.len, data=None, coord=None, 
-                  dtype=self.dtype, mask=None, fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
+      args = dict(name=self.name, units=self.units, length=self.len, data=None, coord=None, mask=None,  
+                  dtype=self.dtype, fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
       if self.data: args['data'] = self.data_array
       if self.data: args['coord'] = self.coord # btw. don't pass axes to and Axis constructor!
       args.update(newargs) # apply custom arguments (also arguments related to subclasses)

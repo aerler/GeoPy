@@ -145,9 +145,9 @@ class BaseVarTest(unittest.TestCase):
     assert concat_var.shape == tuple(shape)
     assert len(concat_var.time) == 24 and max(concat_var.time.coord) > 1000
     assert concat_var.name == 'concatVar'
-    assert isEqual(concat_var().take(xrange(12)),concat_data.take(xrange(12)))
+    assert isEqual(concat_var[:].take(xrange(12)),concat_data.take(xrange(12)))
     tlen = var.shape[tax]
-    assert isEqual(concat_var().take(xrange(12,24), axis=tax),concat_data.take(xrange(tlen,tlen+12), axis=tax))    
+    assert isEqual(concat_var[:].take(xrange(12,24), axis=tax),concat_data.take(xrange(tlen,tlen+12), axis=tax))    
         
   def testCopy(self):
     ''' test copy and deepcopy of variables (and axes) '''
@@ -212,8 +212,10 @@ class BaseVarTest(unittest.TestCase):
       assert isEqual(self.data[0,:,1:-1], var[0,:,1:-1], masked_equal=True)
       # value indexing
       ax0 = var.axes[0]; ax1 = var.axes[1]
-      kwargs = {ax1.name:(ax1.coord[0]-1,ax1.coord[-1]+1), ax0.name:ax0.coord[-1]}
-      assert isEqual(var(**kwargs), var[-1,:,:], masked_equal=True)
+      axes = {ax1.name:(ax1.coord[1],ax1.coord[-1]+1), ax0.name:ax0.coord[-1]}
+      print var
+      print var(**axes)
+      assert isEqual(var(asVar=False, **axes), var[-1,1:,:], masked_equal=True)
   
   def testLoad(self):
     ''' test data loading and unloading '''
@@ -831,12 +833,12 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
-    # list of dataset tests
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
+#     # list of dataset tests
     tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)
     RAM = False # whether or not to use a RAM disk
