@@ -331,7 +331,7 @@ class DatasetNetCDF(Dataset):
         axes           = dict() # dictionary holding Axis instances (inferred from Variables)
         atts           = AttrDict() # dictionary containing global attributes / meta data
     '''
-    if folder[-1] != '/': folder += '/'
+    if len(folder) > 0 and folder[-1] != '/': folder += '/'
     # either use available NetCDF datasets directly, ...  
     if isinstance(dataset,nc.Dataset):
 #       ncmode = dataset.mode 

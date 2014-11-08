@@ -210,12 +210,33 @@ class BaseVarTest(unittest.TestCase):
       # standard indexing
       assert isEqual(self.data[0,1,1], var[0,1,1], masked_equal=True)
       assert isEqual(self.data[0,:,1:-1], var[0,:,1:-1], masked_equal=True)
-      # value indexing
-      ax0 = var.axes[0]; ax1 = var.axes[1]
-      axes = {ax1.name:(ax1.coord[1],ax1.coord[-1]+1), ax0.name:ax0.coord[-1]}
-      print var
-      print var(**axes)
-      assert isEqual(var(asVar=False, **axes), var[-1,1:,:], masked_equal=True)
+      # range and value indexing
+      ax0 = var.axes[0]; ax1 = var.axes[1]; ax2 = var.axes[2]
+      co0 = ax0.coord; co1 = ax1.coord; co2 = ax2.coord
+      axes = {ax2.name:(co2[1],co2[-1]), ax0.name:co0[-1]}
+      slcvar = var(**axes)
+      assert slcvar.ndim == var.ndim-1
+      assert slcvar.shape == (var.shape[1],var.shape[2]-1)
+      for slcax,ax in zip(slcvar.axes,var.axes[1:]):
+        assert slcax.name == ax.name
+        assert slcax.units == ax.units
+      assert isEqual(slcvar[:], var[-1,:,1:], masked_equal=True)
+      # list indexing
+      l0 = [0,-1]*3; l1 = [-1,0]*3; l2 = [-1,0]*3 
+      axes = {ax0.name:(co0[1],co0[-1]), ax1.name:co1[l1], ax2.name:co2[l2], }
+      slcvar = var(**axes)
+      assert slcvar.ndim == 2
+      assert len(slcvar.axes[0]) == var.shape[0]-1
+      assert len(slcvar.axes[1]) == len(l0) 
+      assert isEqual(slcvar[:], var[1:,l1,l2], masked_equal=True)
+      # integer index indexing
+      axes = {ax0.name:(1,-1), ax1.name:l1, ax2.name:l2}
+      slcvar = var(lidx=True, **axes)
+      assert slcvar.ndim == 2
+      assert len(slcvar.axes[0]) == var.shape[0]-1
+      assert len(slcvar.axes[1]) == len(l0) 
+      assert isEqual(slcvar[:], var[1:,l1,l2], masked_equal=True)
+      
   
   def testLoad(self):
     ''' test data loading and unloading '''
@@ -836,7 +857,7 @@ if __name__ == "__main__":
 #     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
 #     # list of dataset tests
-    tests += ['BaseDataset']
+#     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
 #     tests += ['DatasetGDAL']
     

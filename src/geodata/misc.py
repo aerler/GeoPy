@@ -50,10 +50,11 @@ class ElementWise():
 def checkIndex(idx, floatOK=False):
   ''' Check if idx is a valid index or slice; if floatOK=True, floats can also be indices. '''
   # check if integer or slice object
-  if isinstance(idx,(int,np.integer)) or isinstance(idx,slice): isIdx = True
-  else: isIdx = False       
-  # if a float is also allowed, check that
-  if floatOK and isinstance(idx,(float,np.inexact)): isIdx = True 
+  if isinstance(idx,(list,tuple,np.ndarray)): 
+    isIdx = isNumber(idx) if floatOK else isInt(idx)
+  elif isinstance(idx,(int,np.integer)) or isinstance(idx,slice): isIdx = True
+  elif floatOK and isinstance(idx,(float,np.inexact)): isIdx = True 
+  else: isIdx = False         
   # return logical 
   return isIdx
 
