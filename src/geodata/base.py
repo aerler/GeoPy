@@ -371,25 +371,63 @@ class Variable(object):
     elif lcheck: raise AxisError, "Axis '{:s}' not found!".format(str(axis))
     return None
         
-  def __getitem__(self, idx=None):
-    ''' Method implementing access to the actual data. '''
-    # default
-    if idx is None: 
-      if len(self.shape) > 0: idx = slice(None,None,None) # first, last, step
-      elif isinstance(self.data_array,(np.ndarray,numbers.Number)): 
-        return self.data_array # if the data is scalar, just return it
-    # determine what to do
-    if all(checkIndex(idx, floatOK=True)):
-      # check if data is loaded      
-      if not self.data:
-        raise DataError, 'Variable instance \'%s\' has no associated data array or it is not loaded!'%(self.name) 
+  def __getitem__(self, slc):
+    ''' Method implementing direct access to the data (returns array, not Variable). '''
+    # check if data is loaded      
+    if not self.data:
+      raise DataError, "Variable instance '{:s}' has no associated data array or it is not loaded!".format(self.name)
+    # if the data is scalar, just return it
+    if len(self.shape) == 0 and slc == slice(None): 
+      return self.data_array 
+    # determine what to do with numpy arrays
+    elif all(checkIndex(slc, floatOK=False)):       
       # array indexing: return array slice
-      if any(isFloat(idx)): raise NotImplementedError, \
-        'Floating-point indexing is not implemented yet for \'%s\' class.'%(self.__class__.__name__)      
-      return self.data_array.__getitem__(idx) # valid array slicing
+      return self.data_array.__getitem__(slc) # valid array slicing
     else:    
       # if nothing applies, raise index error
-      raise IndexError, 'Invalid index/key type for class \'%s\'!'%(self.__class__.__name__)
+      raise IndexError, "Invalid index type for class '{:s}'!".format(self.__class__.__name__)
+    
+  def _call_(self, asVar=True, lcheck=False, lsqueeze=True, years=None, **axes):
+    ''' This method implements access to slices via coordinate values and returns Variable objects. '''
+    # interprete modes
+    rngs = dict(); modes = dict()
+    for key,val in axes.iteritems():
+      if self.hasAxis(key): # actual names always have precedence
+        modes[key] = None; rngs[key] = val
+      elif key[:2] == 'v_' and self.hasAxis(key[2:]):
+        modes[key] = 'val'; rngs[key] = val
+      elif key[:2] == 'r_' and self.hasAxis(key[2:]):
+        modes[key] = 'rng'; rngs[key] = val
+      elif key[:2] == 'l_' and self.hasAxis(key[2:]):
+        modes[key] = 'lst'; rngs[key] = val
+      elif lcheck:
+        raise AxisError, "Variable '{:s}' has no Axis '{:s}'.".format(self.name,key)
+    ## create Slice tuple to slice data array and axes
+    slcs = []
+    # loop over axes of variable
+    for ax in self.axes:
+      if ax.name in modes:
+        rng = rngs[ax.name]
+        mode = modes[ax.name]
+        # figure out slicing method
+        if mode is None:
+          # figure out default mode based on input type
+          
+        # slice according to mode
+        if mode == 'val':
+          # extract a single index
+        elif mode == 'rng':
+          # extract a range of values
+          
+        if modes == 'lst':
+          
+      else:
+        # if not present, no slicing...
+        slcs.append(slice(None))
+    # slice data
+    
+    # create new Variable object
+    
   
   def __call__(self, years=None, lgetIndex=True, lcoordList=False, lcheckaxis=True, **kwargs):
     ''' This method implements access to slices via coordinate values (as opposed to indices). '''
@@ -450,7 +488,7 @@ class Variable(object):
         if lcheckaxis: raise AxisError, "Axis '{}' not found!".format(axname)
     # assemble index tuple for axes
     idx = tuple([slices.get(ax.name,slice(None)) for ax in self.axes])
-    return self.__getitem__(idx=idx) # pass on to getitem
+    return self.__getitem__(idx) # pass on to getitem
 
   def load(self, data=None, mask=None, fillValue=None):
     ''' Method to attach numpy data array to variable instance (also used in constructor). '''
