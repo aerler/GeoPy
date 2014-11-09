@@ -17,6 +17,7 @@ from misc import VariableError, AxisError, DataError, DatasetError, ArgumentErro
 import numbers
 import functools
 
+
 class UnaryCheck(object):
   ''' Decorator class that implements some sanity checks for unary arithmetic operations. '''
   def __init__(self, op):
@@ -40,6 +41,7 @@ class UnaryCheck(object):
     #  return self.__call__(instance, arg)
     # return f    
     return functools.partial(self.__call__, instance) # but using 'partial' is simpler
+
 
 def BinaryCheckAndCreateVar(sameUnits=True):
   ''' A decorator function that accepts arguments and returns a decorator class with fixed parameter values. '''
@@ -74,6 +76,7 @@ def BinaryCheckAndCreateVar(sameUnits=True):
       return functools.partial(self.__call__, instance)
   # return decorator class  
   return BinaryCheckAndCreateVar_Class
+
 
 class ReduceVar(object):
   ''' Decorator class that implements some sanity checks for reduction operations. '''
@@ -390,7 +393,7 @@ class Variable(object):
       raise IndexError, "Invalid index type for class '{:s}'!".format(self.__class__.__name__)
     
   def __call__(self, lidx=None, lrng=None, asVar=None, lcheck=False, lsqueeze=True, years=None, 
-             listAxis=None, **axes):
+             listAxis=None, lcopy=False, **axes):
     ''' This method implements access to slices via coordinate values and returns Variable objects. 
         Default behavior for different argument types: 
           - index by coordinate value, not array index, except if argument is a Slice object
@@ -399,6 +402,17 @@ class Variable(object):
           - for backwards compatibility, None values are accepted and indicate the entire range 
         Type-based defaults are ignored if appropriate keyword arguments are specified. '''
     ## check axes and input and determine modes
+    # resolve special key words
+    if years is not None:
+      if self.hasAxis('time'):
+        time = self.getAxis('time')
+        if not time.units.lower() in ('month','months'): raise NotImplementedError, 'Can only convert years to month!'
+        if '1979' in time.atts.long_name: offset = 1979
+        else: offset = 0
+        if isinstance(years,np.number): months = (years - offset)*12
+        elif isinstance(years,(list,tuple)): months = [ (yr - offset)*12 for yr in years]
+        axes['time'] = months
+      elif lcheck: raise AxisError, "Axis 'time' required for keyword 'years'!"
     varaxes = dict(); idxmodes = dict() ; rngmodes = dict(); lstmodes = dict()
     for key,val in axes.iteritems():
       if self.hasAxis(key) and val is not None: # extract axes that are relevant        
@@ -489,6 +503,7 @@ class Variable(object):
     ## create new Variable object
     # slice data using the variables __getitem__ method (which can also be overloaded)
     data = self.__getitem__(slcs) # just pass list of slices
+    if lcopy and isinstance(data,np.ndarray): data = data.copy() # copy array
     if lsqueeze: data = np.squeeze(data) # squeeze
     # create a Variable object by defaul, unless data is scalar
     if asVar or ( asVar is None and isinstance(data,np.ndarray) ):
@@ -501,7 +516,7 @@ class Variable(object):
           # N.B.: when indexing with scalars, it gets squeezed anyway
           if ax.name not in lstmodes or not lstmodes[ax.name]:
             # make new axis object from old, using axis' copy method
-            newaxes.append(ax.copy(coord=coord))
+            newaxes.append(ax.copy(coord=coord.copy()))
           elif i == lstidx:
             # add list axis, but only the first time!
             newaxes.append(listAxis)            
@@ -512,67 +527,6 @@ class Variable(object):
       # N.B.: this is the default for scalar results  
       return data # just return data, like __getitem__
   
-  def _call_(self, years=None, lgetIndex=True, lcoordList=False, lcheckaxis=True, **kwargs):
-    ''' This method implements access to slices via coordinate values (as opposed to indices). '''
-    # loop over arguments and find indices of coordinate values
-    slices = dict()
-    # resolve special key words
-    if years is not None:
-      if self.hasAxis('time'):
-        time = self.getAxis('time')
-        if not time.units.lower() in ('month','months'): raise NotImplementedError, 'Can only convert years to month!'
-        if '1979' in time.atts.long_name: offset = 1979
-        else: offset = 0
-        if isinstance(years,np.number): months = (years - offset)*12
-        elif isinstance(years,(list,tuple)): months = [ (yr - offset)*12 for yr in years]
-        kwargs['time'] = months
-      elif lcheckaxis: raise AxisError, "Axis '{}' not found!".format('time')
-    # search for regular dimensions 
-    for axname,coord in kwargs.iteritems():      
-      if self.hasAxis(axname):
-        ax = self.getAxis(axname)
-        if ax.data:
-          if lgetIndex:
-            if isinstance(coord,(list,tuple)):
-              if lcoordList:
-                # N.B.: this feature is poorly tested...
-                slices[axname] = [ax.getIndex(cv) for cv in coord] # just look up the indices for the coordinate values
-              else:
-                if len(coord) == 1: slices[axname] = ax.getIndex(coord[0])
-                elif len(coord) == 2:
-                  #l = max(ax.data_array.searchsorted(coord[0],side='right')-1,0) # choose such as to bracket coords
-                  #r = ax.data_array.searchsorted(coord[1],side='left') # same value or higher index
-                  # N.B.: I am not sure what the above version was supposed to achieve, but a simple version that works well is below (commented.
-                  # l = ax.data_array.searchsorted(coord[0],side='left')
-                  # r = ax.data_array.searchsorted(coord[1],side='right')                  
-                  slices[axname] = slice(ax.getIndex(coord[0], mode='left'),ax.getIndex(coord[1], mode='right'))
-                elif len(coord) == 3:  
-                  coord = np.linspace(*coord) # expand into linearly spaced list
-                  slices[axname] = [ax.getIndex(cv) for cv in coord] # and look up the indices
-                else: raise IndexError
-            elif isinstance(coord,np.number):
-              slices[axname] = ax.getIndex(coord)
-            elif coord is None:
-              slices[axname] = slice(None)
-            else: raise TypeError
-          else: # means index has to be passed directly (no coordinate look-up
-            # N.B.: this feature was not tested...
-            if isinstance(coord,(list,tuple)):
-              if not all(isInt(coord)): raise IndexError, 'Only integers can be used as indices.'
-              slices[axname] = coord
-            elif isinstance(coord,slice):
-              slices[axname] = coord
-            elif coord is None:
-              slices[axname] = slice(None)
-            else: raise TypeError
-        else: 
-          raise AxisError, "Axis '{}' has no coordinate vector!".format(ax.name)
-      else:
-        if lcheckaxis: raise AxisError, "Axis '{}' not found!".format(axname)
-    # assemble index tuple for axes
-    idx = tuple([slices.get(ax.name,slice(None)) for ax in self.axes])
-    return self.__getitem__(idx) # pass on to getitem
-
   def load(self, data=None, mask=None, fillValue=None):
     ''' Method to attach numpy data array to variable instance (also used in constructor). '''
     if data is None:
@@ -1265,33 +1219,67 @@ class Dataset(object):
     else:
       if check: raise AxisError, "Axis '{:s}' not found!".format(axname)
       else: return None
+      
+  def __call__(self, lidx=None, lrng=None, lsqueeze=True, lcopy=False, years=None, 
+               listAxis=None, lrmOther=False, lcpOther=False, **axes):
+    # process variables
+    slicevars = {}; othervars = {} # variables that will get sliced and others that are unaffected
+    sliceaxes = {}; otheraxes = {}
+    for var in self.variables.itervalues():
+      newvar = var(lidx=lidx, lrng=lrng, asVar=True, lcheck=False, lsqueeze=lsqueeze, 
+                   lcopy=lcopy, years=years, listAxis=listAxis, **axes)
+      # save variable
+      if var.ndim == newvar.ndim and var.shape == newvar.shape: 
+        othervars[newvar.name] = newvar         
+      else: slicevars[newvar] = newvar
+      # save axes
+      for ax in newvar.axes:
+        if ax.name in otheraxes and len(ax) == len(self.axes[ax.name]): otheraxes[ax.name] = ax
+        else: sliceaxes[ax.name] = ax       
+    # figure out what to copy
+    axes = otheraxes.copy(); axes.update(sliceaxes) # sliced axes overwrite old axes
+    variables = slicevars.copy()
+    varlist = variables.keys()
+    if not lrmOther:
+      varlist += othervars.keys()
+      if lcpOther: variables.update(othervars)
+    # copy dataset
+    return self.copy(axes=axes, variables=variables, varlist=varlist, 
+                     varargs=None, axesdeep=True, varsdeep=False)
 
-  def copy(self, axes=None, varlist=None, varargs=None, axesdeep=True, varsdeep=False, **kwargs): # this methods will have to be overloaded, if class-specific behavior is desired
+  def copy(self, axes=None, variables=None, varlist=None, varargs=None, axesdeep=True, varsdeep=False, 
+           **kwargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Axes and Variables in a Dataset with just a link to the data arrays. '''
     # copy axes (shallow copy)    
-    if axes is None: # allow override
-      if axesdeep: newaxes = {name:ax.deepcopy() for name,ax in self.axes.iteritems()}
-      else: newaxes = {name:ax.copy() for name,ax in self.axes.iteritems()}
-    else: 
+    newaxes = {name:ax.copy(deepcopy=axesdeep) for name,ax in self.axes.iteritems()}
+    if axes is not None: # allow override
       if not isinstance(axes,dict): raise TypeError # check input
-      newaxes = {name:ax.copy() for name,ax in axes.iteritems()}
+      for name,ax in axes.iteritems():
+        if not isinstance(ax,Axis): raise TypeError
+      newaxes.update(axes) # axes overwrites the ones copied from old dataset
     # check attributes
     if varargs is None: varargs=dict() 
     if not isinstance(varargs,dict): raise TypeError
     # copy variables
-    if varlist is None: varlist = self.variables.keys() 
-    variables = []
+    if variables is None: variables = dict()
+    if not isinstance(variables,dict): raise TypeError
+    if varlist is None: varlist = self.variables.keys()
+    if not isinstance(varlist,(list,tuple)): raise TypeError
+    newvars = []
     for varname in varlist:
-      var = self.variables[varname]
+      # select variable
+      if varname in variables: var = variables[varname]
+      else: var = self.variables[varname]
+      # change axes and attributes
       axes = tuple([newaxes[ax.name] for ax in var.axes])
       if varname in varargs: # check input again
         if isinstance(varargs[varname],dict): args = varargs[varname]  
         else: raise TypeError
       else: args = dict()
-      newvar = var.deepcopy(axes=axes, deepcopy=varsdeep, **args)
-      variables.append(newvar)
+      # copy variables
+      newvars.append(var.copy(axes=axes, deepcopy=varsdeep, **args))
     # determine attributes
-    kwargs['varlist'] = variables
+    kwargs['varlist'] = newvars
     if 'atts' not in kwargs: kwargs['atts'] = self.atts.copy() 
     # make new dataset
     dataset = Dataset(**kwargs)

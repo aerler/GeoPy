@@ -206,7 +206,7 @@ class BaseVarTest(unittest.TestCase):
     # get test objects
     var = self.var
     # indexing (getitem) test  
-    if var.ndim == 3:  
+    if var.ndim >= 3:  
       # standard indexing
       assert isEqual(self.data[0,1,1], var[0,1,1], masked_equal=True)
       assert isEqual(self.data[0,:,1:-1], var[0,:,1:-1], masked_equal=True)
@@ -357,11 +357,13 @@ class BaseDatasetTest(unittest.TestCase):
     # create axis and variable instances (make *copies* of data and attributes!)
     var = Variable(name='var',units=self.atts['units'],axes=self.axes,
                         data=self.data.copy(),atts=self.atts.copy())
+    lar = Variable(name='lar',units=self.atts['units'],axes=self.axes[1:],
+                        data=self.data[0,:].copy(),atts=self.atts.copy())    
     rav = Variable(name='rav',units=self.atts['units'],axes=self.axes,
                         data=self.data.copy(),atts=self.atts.copy())
-    self.var = var; self.rav = rav 
+    self.var = var; self.lar =lar; self.rav = rav 
     # make dataset
-    self.dataset = Dataset(varlist=[var, rav], name='test')
+    self.dataset = Dataset(varlist=[var, lar, rav], name='test')
     # check if data is loaded (future subclasses may initialize without loading data by default)
     if not self.var.data: self.var.load(self.data.copy()) # again, use copy!
     if not self.rav.data: self.rav.load(self.data.copy()) # again, use copy!
@@ -467,9 +469,7 @@ class BaseDatasetTest(unittest.TestCase):
       assert ens.var.members == [dataset.var, copy.var]
       #print ens.var
       #print Ensemble(dataset.var, copy.var, basetype=Variable, idkey='dataset_name')
-    print('')
-    print(ens)
-    print('')        
+    #print(''); print(ens); print('')        
     #print ens.time
     assert ens.time == [dataset.time , copy.time]
     # Axis ensembles are not supported anymore, since they are often shared.
@@ -481,16 +481,70 @@ class BaseDatasetTest(unittest.TestCase):
     assert all(ens.hasVariable('new'))
     # test adding a new member
     ens += yacod # this is an ensemble operation
-    print('')
-    print(ens)
-    print('')    
+    #print(''); print(ens); print('')    
     ens -= var # this is a dataset operation
     assert not any(ens.hasVariable('new'))
     ens -= 'test'
     # fancy test of Variable and Dataset integration
-    print ens[self.var.name]
+    #print ens[self.var.name]
     assert not any(ens[self.var.name].mean(axis='time').hasAxis('time'))
     print(ens.prettyPrint(short=True))
+
+  def test0Indexing(self):
+    ''' test collective slicing and coordinate/point extraction  '''
+    # get test objects
+    dataset = self.dataset
+    # select variables
+    var2 = self.lar; var3 = self.var
+    if len(dataset.axes) == 3:
+      # get axis that is not in var2 first
+      ax0, ax1, ax2 = var3.axes
+      co0 = ax0.coord; co1 = ax1.coord; co2 = ax2.coord
+      # range and value indexing    
+      axes = {ax0.name:(co0[1],co0[-1])}
+      # apply function under test
+      slcds = dataset(**axes)
+      # verify results
+      print slcds
+      slcvar = slcds[var3.name]
+      assert slcvar.ndim == var3.ndim
+      assert slcvar.shape == (var3.shape[0]-1,)+var3.shape[1:]
+      for slcax,ax in zip(slcvar.axes,var3.axes):
+        assert slcax.name == ax.name
+        assert slcax.units == ax.units
+      assert isEqual(slcvar[:], var3[1:,:,:], masked_equal=True)
+      if var2 is not None:
+        oldvar = slcds[var2.name]
+        assert oldvar.shape == var2.shape
+        for oldax,ax in zip(oldvar.axes,var2.axes):
+          assert oldax.name == ax.name
+          assert oldax.units == ax.units
+        assert isEqual(oldvar[:], var2[:], masked_equal=True)      
+      # list indexing
+      l1 = [-1,0]*3; l2 = [0,-1]*3 
+      axes = {ax1.name:co1[l1], ax2.name:co2[l2], }
+      # apply function under test
+      slcds = dataset(**axes)
+      # verify results
+      tvar =slcds[var3.name]
+      assert tvar.ndim == var3.ndim-1
+      assert tvar.shape == (var3.shape[0],len(l1))
+      assert isEqual(tvar[:], var3[:,l1,l2], masked_equal=True)
+      if var2 is not None:
+        lvar = slcds[var2.name]
+        assert lvar.shape == (len(l1),)
+        assert isEqual(lvar[:], var2[l1,l2], masked_equal=True)      
+      # integer index indexing
+      axes = {ax0.name:(1,-1), ax1.name:l1, ax2.name:l2}
+      # apply function under test
+      slcds = dataset(lidx=True, **axes)
+      print slcds
+      # verify results
+      slcvar =slcds[var3.name]
+      assert slcvar.ndim == var3.ndim-1
+      assert slcvar.shape == (var3.shape[0]-1,len(l1))
+      assert isEqual(slcvar[:], var3[1:,l1,l2], masked_equal=True)
+    else: raise AssertionError
 
   def testPrint(self):
     ''' just print the string representation '''
@@ -605,6 +659,7 @@ class NetCDFVarTest(BaseVarTest):
         assert isEqual(self.data.__getitem__(sl), var.data_array)
       else:
         assert isEqual(self.data.__getitem__(sl).filled(var.fillValue), var.data_array)
+    else: raise AssertionError
 
   def testScaling(self):
     ''' test scale and offset operations '''
@@ -654,7 +709,9 @@ class DatasetNetCDFTest(BaseDatasetTest):
     axes = tuple([AxisNC(self.ncdata.variables[dim], length=le) for dim,le in zip(ncvar.dimensions,size)]) 
     # initialize netcdf variable 
     self.ncvar = ncvar; self.axes = axes
-    self.var = VarNC(ncvar, name='T2' if name is 'NARR' else 'precip', axes=axes, load=True)    
+    self.var = VarNC(ncvar, name='T2' if name is 'NARR' else 'precip', axes=axes, load=True)
+    self.lar = None
+    self.rav = VarNC(ncvar, name='T2' if name is 'NARR' else 'precip', axes=axes, load=True)
     # save the original netcdf data
     self.data = ncvar[:].copy() #.filled(0)
     self.size = tuple([len(ax) for ax in axes])
@@ -854,12 +911,12 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
-#     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
+    # list of dataset tests
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)
     RAM = False # whether or not to use a RAM disk

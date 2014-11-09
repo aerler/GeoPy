@@ -158,32 +158,40 @@ class VarNC(Variable):
     # sync?
     if 'w' in self.mode: self.sync() 
   
-  def __getitem__(self, idx=None):
+  def __getitem__(self, slc):
     ''' Method implementing access to the actual data; if data is not loaded, give direct access to NetCDF file. '''
     # default
-    if idx is None: idx = [slice(None,None,None),]*self.ndim # first, last, step          
+    #if slc is None: slc = [slice(None,None,None),]*self.ndim # first, last, step          
     # determine what to do
     if self.data:
       # call parent method     
-      data = super(VarNC,self).__getitem__(idx) # load actual data using parent method      
+      data = super(VarNC,self).__getitem__(slc) # load actual data using parent method      
     else:
       # provide direct access to netcdf data on file
-      if isinstance(idx,(list,tuple)):
-        if len(idx) != self.ndim: raise AxisError
+      if isinstance(slc,(list,tuple)):
+        if len(slc) != self.ndim: raise AxisError
+        slcs = list(slc) # need to insert items
+        # NetCDF can't deal wit negative list indices
+        for i,slc in enumerate(slcs):
+          lendim = self.shape[i] # add dimension length to negative values
+          if isinstance(slc,(list,tuple)):
+            slcs[i] = [idx+lendim if idx < 0 else idx for idx in slc]
+          elif isinstance(slc,np.ndarray):
+            slcs[i] = np.where(slc<0,slc+lendim,slc) 
         if self.squeezed:
           # figure out slices
-          idx = list(idx) # need to insert items
           for i in xrange(self.ncvar.ndim):
-            if self.ncvar.shape[i] == 1: idx.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
-      else: idx = (idx,)
-      data = self.ncvar.__getitem__(idx) # exceptions handled by netcdf module
+            if self.ncvar.shape[i] == 1: slcs.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
+      else: slcs = (slc,)
+      try: data = self.ncvar.__getitem__(slcs) # exceptions handled by netcdf module
+      except: print slcs
       if self.strvar: data = nc.chartostring(data)
-      assert self.ndim == data.ndim # make sure that squeezing works!
-      # N.B.: the shape can change dynamically when a slice is loaded, so don't check for that, or it will fail!
+      #assert self.ndim == data.ndim # make sure that squeezing works!
+      # N.B.: the shape and even dimension number can change dynamically when a slice is loaded, so don't check for that, or it will fail!
       # apply scalefactor and offset
       if self.offset != 0: data += self.offset
       if self.scalefactor != 1: data *= self.scalefactor
-      if self.transform is not None: data = self.transform(data, var=self, slc=idx)
+      if self.transform is not None: data = self.transform(data, var=self, slc=slc)
     # return data
     return data  
   
@@ -203,7 +211,7 @@ class VarNC(Variable):
   def load(self, data=None, **kwargs):
     ''' Method to load data from NetCDF file into RAM. '''
     if data is None: 
-      data = self.__getitem__() # load everything
+      data = self.__getitem__(slice(None)) # load everything
     elif isinstance(data,np.ndarray):
       data = data
     elif all(checkIndex(data)):
