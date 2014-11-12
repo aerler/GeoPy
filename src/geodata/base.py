@@ -17,6 +17,7 @@ from misc import VariableError, AxisError, DataError, DatasetError, ArgumentErro
 import numbers
 import functools
 from copy import deepcopy
+from types import NoneType
 
 
 class UnaryCheck(object):
@@ -1467,10 +1468,13 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
     raise ValueError, "Can only define either'coordlim' or 'idxlim', not both!"
   elif coordlim is not None:
     lcoordlim = True
-    coordlim = {axis:coordlim}
+    if isinstance(coordlim,(tuple,list)): coordlim = {axis:coordlim}
+    else: raise TypeError    
   elif idxlim is not None:
     lidxlim = True
-    idxslc= slice(*idxlim)
+    if isinstance(idxlim,slice): idxslc = idxlim
+    elif isinstance(idxlim,(tuple,list)): idxslc= slice(*idxlim)
+    else: raise TypeError
   # check dimensions
   shapes = []; tes = []
   for var in variables:
@@ -1531,10 +1535,18 @@ def concatDatasets(datasets, axis=None, coordlim=None, idxlim=None, offset=None,
   if isinstance(axis,(Axis,basestring)): axislist = (axis,)
   else: axislist = axis
   nax = len(axislist)
-  if not isinstance(coordlim,(tuple,list)): climlist = (coordlim,)*nax
-  else: climlist = coordlim
-  if not isinstance(idxlim,(tuple,list)): ilimlist = (idxlim,)*nax
-  else: ilimlist = idxlim
+  if isinstance(coordlim,(tuple,list)):
+    if isinstance(coordlim[0],(tuple,list)): climlist = coordlim
+    elif len(coordlim) == 2: climlist = (coordlim,)*nax
+    else: raise TypeError
+  elif coordlim is None: climlist = (None,)*nax
+  else: raise TypeError
+  if isinstance(idxlim,(tuple,list)):
+    if isinstance(idxlim[0],(tuple,list)) and len(idxlim[0]): ilimlist = idxlim
+    elif isinstance(idxlim[0],slice): ilimlist = idxlim
+    elif len(idxlim) == 2: ilimlist = (idxlim,)*nax
+  elif idxlim is None: ilimlist = (None,)*nax
+  else: raise TypeError
   if not isinstance(offset,(tuple,list)): oslist = (offset,)*nax
   else: oslist = offset
   variables = dict() # variables for new dataset

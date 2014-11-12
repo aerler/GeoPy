@@ -497,9 +497,9 @@ def loadCESM_StnEns(ensemble=None, name=None, station=None, filetypes=None, year
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadCESM_Ensemble(ensemble=ensemble, name=name, grid=None, station=station, 
                            filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
-                           translateVars=translateVars, lautoregrid=False, load3D=translateVars, 
+                           translateVars=translateVars, lautoregrid=False, load3D=load3D, 
                            ignore_list=ignore_list, cvdp_mode='ensemble', lcheckExp=lcheckExp, 
-                           mode='time-series', lreplaceTime=False)
+                           mode='time-series', lreplaceTime=True)
   
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
 def loadCESM_Ensemble(ensemble=None, name=None, grid=None, station=None, filetypes=None, years=None,
@@ -524,25 +524,29 @@ def loadCESM_Ensemble(ensemble=None, name=None, grid=None, station=None, filetyp
   montpl = (0,years*12)
   # load datasets (and load!)
   datasets = []
+  if mode.lower() in ('time-series','timeseries'): lts = True; lcvdp = False
+  elif mode.lower() == 'cvdp': lts = False; lcvdp = True
   for exp in ensemble:
-    if mode.lower() in ('time-series','timeseries'):
+    if lts:
       ds = loadCESM_All(experiment=exp, name=name, grid=grid, station=station, filetypes=filetypes, 
                         varlist=varlist, varatts=varatts, translateVars=translateVars, period=None, 
                         lautoregrid=lautoregrid, load3D=load3D, ignore_list=ignore_list, mode=mode, 
                         cvdp_mode='', lcheckExp=lcheckExp, lreplaceTime=lreplaceTime)
-    elif mode.lower() == 'cvdp':
+    elif lcvdp:
       ds = loadCVDP(experiment=exp, name=name, varlist=varlist, varatts=varatts, period=years, 
                     translateVars=translateVars, lautoregrid=lautoregrid, 
                     ignore_list=ignore_list, cvdp_mode=cvdp_mode, lcheckExp=lcheckExp, 
                     lindices=lindices, leofs=leofs, lreplaceTime=lreplaceTime)
+    else: raise NotImplementedError
     datasets.append(ds)
   # concatenate datasets (along 'time' and 'year' axis!)  
-  if mode.lower() in ('time-series','timeseries'):
+  if lts:
     dataset = concatDatasets(datasets, axis='time', coordlim=None, idxlim=montpl, 
                            offset=None, axatts=None, lcpOther=True, lcpAny=False)
-  elif mode.lower() == 'cvdp':
+  elif lcvdp:
     dataset = concatDatasets(datasets, axis=('time','year'), coordlim=None, idxlim=(montpl,yrtpl), 
                              offset=None, axatts=None, lcpOther=True, lcpAny=False)
+  else: raise NotImplementedError
   # return concatenated dataset
   return dataset
 
@@ -574,8 +578,8 @@ if __name__ == '__main__':
 #   mode = 'test_station_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_station_timeseries'
-  mode = 'test_ensemble'
-#   mode = 'test_station_ensemble'
+#   mode = 'test_ensemble'
+  mode = 'test_station_ensemble'
 #   mode = 'test_cvdp'
 #   mode = 'pickle_grid'
 #     mode = 'shift_lon'
@@ -657,7 +661,7 @@ if __name__ == '__main__':
   elif mode == 'test_station_ensemble':
     
     print('')
-    dataset = loadCESM_Ensemble(ensemble='Ens', station='ecprecip', filetypes=['atm'])
+    dataset = loadCESM_StnEns(ensemble='Ens', station='ecprecip', filetypes=['atm'])
     print('')
     print(dataset)
     print('')

@@ -13,9 +13,10 @@ import collections as col
 import os, pickle
 import osr
 # from atmdyn.properties import variablePlotatts
+from geodata.base import concatDatasets
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, addGeoLocator, GDALError
-from geodata.misc import DatasetError, isInt, AxisError, DateError, isNumber
+from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt
 from datasets.common import translateVarNames, data_root, grid_folder, default_varatts 
 from geodata.gdal import loadPickledGridDef, griddef_pickle
 
@@ -420,7 +421,7 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
     lclim = True
     periodstr = '_{0:4d}-{1:4d}'.format(*period)
     if period is None: raise DateError, 'Currently WRF Climatologies have to be loaded with the period explicitly specified.'
-  elif mode.lower() == 'time-series': # concatenated time-series files
+  elif mode.lower() in ('time-series','timeseries'): # concatenated time-series files
     lts = True; lclim = False; period = None; periodstr = None # to indicate time-series (but for safety, the input must be more explicit)
     if lautoregrid is None: lautoregrid = False # this can take very long!
   if station is None: 
@@ -564,6 +565,48 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
   if not ltuple: datasets = datasets[0]
   return datasets
 
+
+# load a pre-processed WRF ensemble and concatenate time-series 
+def loadWRF_StnEns(ensemble=None, name=None, station=None, filetypes=None, years=None, domains=2,
+                   varlist=None, varatts=None, translateVars=None, lcheckExp=True):
+  ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
+  return loadWRF_Ensemble(ensemble=ensemble, name=name, grid=None, station=station, domains=domains, 
+                           filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
+                           translateVars=translateVars, lautoregrid=False, lctrT=True, lconst=False)
+  
+# load a pre-processed WRF ensemble and concatenate time-series 
+def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, domains=2, filetypes=None, 
+                     years=None, varlist=None, varatts=None, translateVars=None, lautoregrid=None, 
+                     lctrT=True, lconst=True):
+  ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
+  # obviously this only works for modes that produce a time-axis
+  # figure out ensemble
+  from projects.WRF_experiments import ensembles # need to leave this here, to avoid circular reference...
+  if isinstance(ensemble,Exp): ensemble = ensembles[ensemble.shortname]
+  elif isinstance(ensemble,basestring): ensemble = ensembles[ensemble]
+  else: raise TypeError
+  if not isinstance(ensemble,(tuple,list)): raise TypeError
+#   if not ( isinstance(ensemble,(tuple,list)) and
+#            all([isinstance(exp,(basestring,Exp)) for exp in ensemble]) ): raise TypeError
+  # figure out time period
+  if years is None: years =15
+  elif isinstance(years,(list,tuple)) and len(years)==2: raise NotImplementedError 
+  elif not isInt(years): raise TypeError  
+  montpl = (0,years*12)
+  # load datasets (and load!)
+  datasets = []
+  for exp in ensemble:
+    ds = loadWRF_All(experiment=exp, name=name, grid=grid, station=station, filetypes=filetypes, 
+                      varlist=varlist, varatts=varatts, period=None, mode='time-series', 
+                      lautoregrid=lautoregrid, lctrT=lctrT, lconst=lconst, domains=domains)
+    datasets.append(ds)
+  # concatenate datasets (along 'time' axis, WRF doesn't have 'year')  
+  dataset = concatDatasets(datasets, axis='time', coordlim=None, idxlim=montpl, 
+                           offset=None, axatts=None, lcpOther=True, lcpAny=False)
+  # return concatenated dataset
+  return dataset
+
+
 ## Dataset API
 
 dataset_name = 'WRF' # dataset name
@@ -591,7 +634,9 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
 #   mode = 'test_station_climatology'
 #   mode = 'test_timeseries'
-  mode = 'test_station_timeseries'
+#   mode = 'test_station_timeseries'
+  mode = 'test_ensemble'
+#   mode = 'test_station_ensemble'
 #   mode = 'pickle_grid'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
@@ -684,3 +729,26 @@ if __name__ == '__main__':
     print(dataset.time)
     print(dataset.time.offset)
     print(dataset.time.coord)
+  
+  # load ensemble "time-series"
+  elif mode == 'test_ensemble':
+    
+    print('')
+    dataset = loadWRF_Ensemble(ensemble='max-ens-2050', varlist=['precip'], filetypes=['hydro'])
+    print('')
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
+  
+  # load station ensemble "time-series"
+  elif mode == 'test_station_ensemble':
+    
+    print('')
+    dataset = loadWRF_StnEns(ensemble='max-ens', station='ecprecip', filetypes=['xtrm'])
+    print('')
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
+  
