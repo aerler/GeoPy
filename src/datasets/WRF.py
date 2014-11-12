@@ -438,8 +438,9 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
     #if 'const' not in filetypes and grid is None: filetypes.append('const')
   else: raise TypeError  
   atts = dict(); filelist = []; typelist = []; constfile = None
-  for filetype in filetypes:
+  for filetype in filetypes: # last filetype in list has precedence
     fileclass = fileclasses[filetype]
+    atts.update(fileclass.atts)
     if lclim and fileclass.climfile is not None:
       filelist.append(fileclass.climfile)
       typelist.append(filetype) # this eliminates const files
@@ -456,8 +457,7 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
     tatts['atts'] = dict(long_name='Month since 1979-01')
     atts['time'] = tatts   
   # translate varlist
-  #if varlist is None: varlist = default_varatts.keys() + atts.keys()
-  if atts and varlist is not None: varlist = translateVarNames(varlist, atts) # default_varatts
+  if varlist is not None: varlist = translateVarNames(varlist, atts) # default_varatts
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if station is None:
@@ -660,7 +660,7 @@ if __name__ == '__main__':
   elif mode == 'test_timeseries':
     
 #     dataset = loadWRF_TS(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['srfc'])
-    dataset = loadWRF_TS(experiment='new-ctrl-2050', domains=2, filetypes=['hydro'])
+    dataset = loadWRF_TS(experiment='new-ctrl-2050', domains=2, varlist=['precip'], filetypes=['hydro'])
 #     dataset = loadWRF_All(name='new-ctrl-2050', folder='/data/WRF/wrfavg/', domains=2, filetypes=['hydro'], 
 #                           lctrT=True, mode='time-series')
 #     for dataset in datasets:

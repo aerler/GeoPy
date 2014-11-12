@@ -275,7 +275,8 @@ class CentralProcessingUnit(object):
       shape = tuple(len(ax) for ax in axes)
       # here we extract the data points
       srcdata = var.getArray()
-      tgtdata = srcdata.__getitem__(slices) # constructed above
+      try: tgtdata = srcdata.__getitem__(slices) # constructed above
+      except: print slices
       # create new Variable
       assert shape == tgtdata.shape
       newvar = var.copy(axes=axes, data=tgtdata) # new axes and data

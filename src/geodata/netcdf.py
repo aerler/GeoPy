@@ -178,13 +178,15 @@ class VarNC(Variable):
             slcs[i] = [idx+lendim if idx < 0 else idx for idx in slc]
           elif isinstance(slc,np.ndarray):
             slcs[i] = np.where(slc<0,slc+lendim,slc) 
-        if self.squeezed:
-          # figure out slices
-          for i in xrange(self.ncvar.ndim):
-            if self.ncvar.shape[i] == 1: slcs.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
-      else: slcs = (slc,)
-      try: data = self.ncvar.__getitem__(slcs) # exceptions handled by netcdf module
-      except: print slcs
+      else: 
+        slcs = [slc,]*self.ndim # trivial case: expand slices to all axes
+      # handle squeezed vars
+      if self.squeezed:
+        # figure out slices
+        for i in xrange(self.ncvar.ndim):
+          if self.ncvar.shape[i] == 1: slcs.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
+      # finally, get data!
+      data = self.ncvar.__getitem__(slcs) # exceptions handled by netcdf module
       if self.strvar: data = nc.chartostring(data)
       #assert self.ndim == data.ndim # make sure that squeezing works!
       # N.B.: the shape and even dimension number can change dynamically when a slice is loaded, so don't check for that, or it will fail!

@@ -149,16 +149,22 @@ def transformPrecip(data, l365=False, var=None, slc=None):
   if var.units == 'kg/m^2/month' or var.units == 'mm/month':
     assert data.ndim == var.ndim
     tax = var.axisIndex('time')
-    if ( slc is not None and  slc[tax] is not None ):
+    # expand slices
+    if slc is None or isinstance(slc,slice): tslc = slc
+    elif isinstance(slc,(list,tuple)): tslc = slc[tax]
+    # handle sliced or non-sliced axis
+    if tslc is None or tslc == slice(None):
+      # trivial case
+      te = len(var.time)
+      if not ( data.shape[tax] == te and te%12 == 0 ): raise NotImplementedError, "The record has to start and end at a full year!"
+    else:  
+      # special treatment if time axis was sliced
       tlc = slc[tax]
       ts = tlc.start or 0 
       te = ( tlc.stop or len(var.time) ) - ts
-      if not ( ts%12 == 0 and te%12 == 0 ): raise NotImplementedError
+      if not ( ts%12 == 0 and te%12 == 0 ): raise NotImplementedError, "The record has to start and end at a full year!"
       assert data.shape[tax] == te
       # assuming the record starts some year in January, and we always need to load full years
-    else:  
-      te = len(var.time)
-      if not ( data.shape[tax] == te and te%12 == 0 ): raise NotImplementedError
     shape = [1,]*data.ndim; shape[tax] = 12 # dimensions of length 1 will be expanded as needed
     spm = seconds_per_month_365 if l365 else seconds_per_month
     data /= np.repeat(spm.reshape(shape), te/12, axis=tax) # convert in-place

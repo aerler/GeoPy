@@ -389,15 +389,17 @@ class Variable(object):
       raise DataError, "Variable instance '{:s}' has no associated data array or it is not loaded!".format(self.name)
     # if the data is scalar, just return it
     if len(self.shape) == 0 and slc == slice(None): 
-      return self.data_array 
+      data = self.data_array 
     # determine what to do with numpy arrays
     elif all(checkIndex(slc, floatOK=True)):       
       # array indexing: return array slice
-      return self.data_array.__getitem__(slc) # valid array slicing
+      data = self.data_array.__getitem__(slc) # valid array slicing
     else:    
       # if nothing applies, raise index error
       print slc
       raise IndexError, "Invalid index type for class '{:s}'!".format(self.__class__.__name__)
+    # return data, if no error
+    return data
     
   def __call__(self, lidx=None, lrng=None, asVar=None, lcheck=False, lsqueeze=True, years=None, 
              listAxis=None, lcopy=False, **axes):
