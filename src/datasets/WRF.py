@@ -579,7 +579,9 @@ default_grid = None
 # functions to access specific datasets
 loadLongTermMean = None # WRF doesn't have that...
 loadTimeSeries = loadWRF_TS # time-series data
+loadStationTimeSeries = loadWRF_StnTS # time-series data at stations
 loadClimatology = loadWRF # pre-processed, standardized climatology
+loadStationClimatology = loadWRF_Stn # pre-processed, standardized climatology at stations
 
 
 ## (ab)use main execution for quick test

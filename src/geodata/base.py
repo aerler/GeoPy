@@ -11,7 +11,7 @@ import numpy as np
 import numpy.ma as ma # masked arrays
 # my own imports
 from plotting.properties import variablePlotatts # import plot properties from different file
-from misc import checkIndex, isEqual, isInt, isFloat, AttrDict, joinDicts, printList
+from misc import checkIndex, isEqual, isInt, isFloat, isNumber, AttrDict, joinDicts, printList
 from misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 
 import numbers
@@ -890,7 +890,7 @@ class Axis(Variable):
     multiple inheritance from the Variable sub-class and this class. 
   '''
   
-  def __init__(self, length=0, coord=None, **varargs):
+  def __init__(self, length=0, coord=None, axes=None, **varargs):
     ''' Initialize a coordinate axis with appropriate values.
         
         Attributes: 
@@ -898,7 +898,10 @@ class Axis(Variable):
           len = @property # the current length of the dimension (integer value)
     '''
     # initialize dimensions
-    axes = (self,)
+    if axes is None: axes = (self,)
+    elif not isinstance(axes,(list,tuple)) and len(axes) == 1:
+      raise ArgumentError
+#     axes = (self,)
     # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple
     self.__dict__['_len'] = length
     # initialize as a subclass of Variable, depending on the multiple inheritance chain    
@@ -962,6 +965,14 @@ class Axis(Variable):
                   dtype=self.dtype, fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
       if self.data: args['data'] = self.data_array
       if self.data: args['coord'] = self.coord # btw. don't pass axes to and Axis constructor!
+      if 'axes' in newargs:
+        axes = newargs.pop('axes') # this will cause a crash when creating an Axis instance
+        if not ( isinstance(axes, (list,tuple)) and len(axes) == 1 ): raise ArgumentError
+        axis = axes[0] # template axis 
+        if not isinstance(axis, Axis): raise TypeError
+        # take values from passed axis
+        if axis.data: newargs['data'] = axis.data_array
+        if axis.data: newargs['coord'] = axis.coord # btw. don't pass axes to and Axis constructor!       
       args.update(newargs) # apply custom arguments (also arguments related to subclasses)
       ax = Axis(**args) # create a new basic Axis instance
     # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
@@ -1430,7 +1441,7 @@ class Dataset(object):
     return newset
       
 
-def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, offset=0, 
+def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, offset=None, 
                name=None, axatts=None, varatts=None):
   ''' A function to concatenate Variables from different sources along a given axis;
       this is useful to generate a continuous time series from an ensemble. '''
@@ -1439,8 +1450,18 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   if not all([isinstance(var,Variable) for var in variables]): raise TypeError
   if not all([var.hasAxis(axis) for var in variables]): raise AxisError  
   var0 = variables[0] # shortcut
+  # get some axis info
   axt = var0.getAxis(axis)
-  tax = var0.axisIndex(axis)
+  tax = var0.axisIndex(axis)  
+  if offset is None: offset = axt.coord[0] 
+  if not isNumber(offset): raise TypeError
+  delta = axt.coord[1] - axt.coord[0]
+  for var in variables:
+    ax = var.getAxis(axis) 
+    axdiff = np.diff(axt.coord)
+    if not (axdiff.min() == axdiff.max() == delta): 
+      raise AxisError, "Concatenation axis has to be evenly spaced!"
+  # slicing options
   lcoordlim = False; lidxlim = False
   if coordlim is not None and idxlim is not None: 
     raise ValueError, "Can only define either'coordlim' or 'idxlim', not both!"
@@ -1491,7 +1512,7 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
     axatts = axt.atts.copy()
     axatts['name'] = axt.name; axatts['units'] = axt.units
     # N.B.: offset is a parameter to simply shift the time axis origin
-    coord = np.arange(tlen) + offset
+    coord = np.arange(offset,tlen*delta+offset,delta) 
     if axatts is not None: axatts.update(axatts)      
     axes = list(var0.axes); axes[tax] = Axis(coord=coord, atts=axatts)
     # create new variable
@@ -1503,45 +1524,58 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   else: return data
   
   
-def concatDatasets(datasets, axis=None, coordlim=None, idxlim=None, offset=0, 
+def concatDatasets(datasets, axis=None, coordlim=None, idxlim=None, offset=None, 
                    axatts=None, lcpOther=True, lcpAny=False, ldeepcopy=True, lcheck=True):
   ''' A function to concatenate Datasets from different sources along a given axis; this
       function essentially applies concatVars to every Variable and creates a new dataset. '''
-  if isinstance(axis,Axis): axis = axis.name
-  if not isinstance(axis,basestring): raise TypeError
-  # figure out complete set of variables
-  varlist = []
-  for dataset in datasets:
-    varlist += [varname for varname in dataset.variables.iterkeys() if not varname in varlist]
-  # process variables
+  if isinstance(axis,(Axis,basestring)): axislist = (axis,)
+  else: axislist = axis
+  nax = len(axislist)
+  if not isinstance(coordlim,(tuple,list)): climlist = (coordlim,)*nax
+  else: climlist = coordlim
+  if not isinstance(idxlim,(tuple,list)): ilimlist = (idxlim,)*nax
+  else: ilimlist = idxlim
+  if not isinstance(offset,(tuple,list)): oslist = (offset,)*nax
+  else: oslist = offset
   variables = dict() # variables for new dataset
-#   catvars = {}; othervars = {} # variables that will get concatenated and others that are unaffected
-#   cataxis = {}; otheraxes = {} # the axis along which is being concatenated and the others...  
-  for varname in varlist:
-    lall = all([ds.hasVariable(varname) for ds in datasets]) # check if all have this variable
-    # find first occurence
-    c = 0; dataset = datasets[c] # try first    
-    while not dataset.hasVariable(varname):
-      c += 1; dataset = datasets[c] # try next
-    varobj = dataset.variables[varname]
-    # N.B.: one has to have it, otherwise it would not be in the list    
-    # decide what to do
-    if varobj.hasAxis(axis): # concatenate
-      if lall: 
-        variables[varname] = concatVars([ds.variables[varname] for ds in datasets], axis=axis, asVar=True,
-                                        coordlim=coordlim, idxlim=idxlim, offset=offset, axatts=axatts)
-      elif lcheck:       
-        raise DatasetError, "Variable '{:s}' is not present in all Datasets!".format(varname)
-    else: # either add as is, or skip...
-      if lcpOther:
-        if lcpAny or lall: # add if all are present or flag to ignore is set
-          variables[varname] = dataset.variables[varname].copy(deepcopy=ldeepcopy)  
-  # find new concatenated axis
-  c = 0; catax = None
-  while catax is None:
-    catax = variables.values()[c].getAxis(axis, lcheck=False); c += 1 # return None if not present
-  axes = dict(); axes[axis] = catax # add new concatenation axis
-  # copy first dataset and replace concatenation axis and variables
+  axes = dict() # new axes
+  # loop over axes
+  for axis,coordlim,idxlim,offset in zip(axislist,climlist,ilimlist,oslist):
+    if isinstance(axis,Axis): axis = axis.name
+    if not isinstance(axis,basestring): raise TypeError
+    if not any([ds.hasAxis(axis) for ds in datasets]): pass # for convenience
+    elif not all([ds.hasAxis(axis) for ds in datasets]): 
+      raise DatasetError, "Some datasets don't have axis '{:s}' - aborting!".format(axis)
+    else: # go ahead
+      # figure out complete set of variables
+      varlist = []
+      for dataset in datasets:
+        varlist += [varname for varname in dataset.variables.iterkeys() if not varname in varlist]
+      # process variables
+      for varname in varlist:
+        lall = all([ds.hasVariable(varname) for ds in datasets]) # check if all have this variable
+        # find first occurence
+        c = 0; dataset = datasets[c] # try first    
+        while not dataset.hasVariable(varname):
+          c += 1; dataset = datasets[c] # try next
+        varobj = dataset.variables[varname]
+        # N.B.: one has to have it, otherwise it would not be in the list    
+        # decide what to do
+        if varobj.hasAxis(axis): # concatenate
+          if lall: 
+            variables[varname] = concatVars([ds.variables[varname] for ds in datasets], axis=axis, asVar=True,
+                                            coordlim=coordlim, idxlim=idxlim, offset=offset, axatts=axatts)
+          elif lcheck:       
+            raise DatasetError, "Variable '{:s}' is not present in all Datasets!".format(varname)
+        elif lcpOther and varname not in variables: # either add as is, or skip... 
+          if lcpAny or lall: # add if all are present or flag to ignore is set
+            variables[varname] = dataset.variables[varname].copy(deepcopy=ldeepcopy)  
+      # find new concatenated axis
+      c = 0; catax = None
+      while catax is None:
+        catax = variables.values()[c].getAxis(axis, lcheck=False); c += 1 # return None if not present
+      axes[axis] = catax # add new concatenation axis
+    # copy first dataset and replace concatenation axis and variables
   return datasets[0].copy(axes=axes, variables=variables, varlist=None, 
                           varargs=None, axesdeep=True, varsdeep=False)
 

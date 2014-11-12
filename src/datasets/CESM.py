@@ -11,10 +11,10 @@ import numpy as np
 import os, pickle
 from collections import OrderedDict
 # from atmdyn.properties import variablePlotatts
-from geodata.base import Variable, Axis
+from geodata.base import Variable, Axis, concatDatasets
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, GDALError
-from geodata.misc import DatasetError, AxisError, DateError, isNumber
+from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt
 from datasets.common import translateVarNames, data_root, grid_folder, default_varatts, addLengthAndNamesOfMonth 
 from geodata.gdal import loadPickledGridDef, griddef_pickle
 from datasets.WRF import Exp as WRF_Exp
@@ -352,7 +352,7 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
                       lcheckExp=lcheckExp, lreplaceTime=False)
 
 
-# load minimally pre-processed CESM climatology (and time-series) files 
+# load any of the various pre-processed CESM climatology and time-series files 
 def loadCESM_All(experiment=None, name=None, grid=None, station=None, period=None, filetypes=None, 
                  varlist=None, varatts=None, translateVars=None, lautoregrid=None, load3D=False, 
                  ignore_list=None, mode='climatology', cvdp_mode='ensemble', lcheckExp=True, 
@@ -370,7 +370,7 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, period=Non
     lclim = True
     folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='avg', lcheckExp=lcheckExp)    
     if period is None: raise DateError, 'Currently CESM Climatologies have to be loaded with the period explicitly specified.'
-  elif mode.lower() == 'time-series': # concatenated time-series files
+  elif mode.lower() in ('time-series','timeseries'): # concatenated time-series files
     lts = True
     folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='avg', lcheckExp=lcheckExp)
     lclim = False; period = None; periodstr = None # to indicate time-series (but for safety, the input must be more explicit)
@@ -490,6 +490,62 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, period=Non
   # return formatted dataset
   return dataset
 
+# load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
+def loadCESM_StnEns(ensemble=None, name=None, station=None, filetypes=None, years=None,
+                    varlist=None, varatts=None, translateVars=None, load3D=False, 
+                    ignore_list=None, lcheckExp=True):
+  ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
+  return loadCESM_Ensemble(ensemble=ensemble, name=name, grid=None, station=station, 
+                           filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
+                           translateVars=translateVars, lautoregrid=False, load3D=translateVars, 
+                           ignore_list=ignore_list, cvdp_mode='ensemble', lcheckExp=lcheckExp, 
+                           mode='time-series', lreplaceTime=False)
+  
+# load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
+def loadCESM_Ensemble(ensemble=None, name=None, grid=None, station=None, filetypes=None, years=None,
+                      varlist=None, varatts=None, translateVars=None, lautoregrid=None, load3D=False, 
+                      ignore_list=None, cvdp_mode='ensemble', lcheckExp=True, mode='time-series',
+                      lindices=False, leofs=False, lreplaceTime=True):
+  ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
+  # obviously this only works for modes that produce a time-axis
+  if mode.lower() not in ('time-series','timeseries','cvdp'): 
+    raise ArgumentError, "Concatenated ensembles can not be constructed in mode '{:s}'".format(mode) 
+  # figure out ensemble
+  if isinstance(ensemble,Exp): ensemble = ensembles[ensemble.shortname]
+  elif isinstance(ensemble,basestring): ensemble = ensembles[ensemble]
+  else: raise TypeError    
+  if isinstance(ensemble,(tuple,list)):
+    if not all([isinstance(exp,(basestring,Exp)) for exp in ensemble]): raise TypeError
+  # figure out time period
+  if years is None: years =15; yrtpl = (0,15)
+  elif isInt(years): yrtpl = (0,years)
+  elif isinstance(years,(list,tuple)) and len(years)==2: raise NotImplementedError 
+  else: raise TypeError  
+  montpl = (0,years*12)
+  # load datasets (and load!)
+  datasets = []
+  for exp in ensemble:
+    if mode.lower() in ('time-series','timeseries'):
+      ds = loadCESM_All(experiment=exp, name=name, grid=grid, station=station, filetypes=filetypes, 
+                        varlist=varlist, varatts=varatts, translateVars=translateVars, period=None, 
+                        lautoregrid=lautoregrid, load3D=load3D, ignore_list=ignore_list, mode=mode, 
+                        cvdp_mode='', lcheckExp=lcheckExp, lreplaceTime=lreplaceTime)
+    elif mode.lower() == 'cvdp':
+      ds = loadCVDP(experiment=exp, name=name, varlist=varlist, varatts=varatts, period=years, 
+                    translateVars=translateVars, lautoregrid=lautoregrid, 
+                    ignore_list=ignore_list, cvdp_mode=cvdp_mode, lcheckExp=lcheckExp, 
+                    lindices=lindices, leofs=leofs, lreplaceTime=lreplaceTime)
+    datasets.append(ds)
+  # concatenate datasets (along 'time' and 'year' axis!)  
+  if mode.lower() in ('time-series','timeseries'):
+    dataset = concatDatasets(datasets, axis='time', coordlim=None, idxlim=montpl, 
+                           offset=None, axatts=None, lcpOther=True, lcpAny=False)
+  elif mode.lower() == 'cvdp':
+    dataset = concatDatasets(datasets, axis=('time','year'), coordlim=None, idxlim=(montpl,yrtpl), 
+                             offset=None, axatts=None, lcpOther=True, lcpAny=False)
+  # return concatenated dataset
+  return dataset
+
 ## Dataset API
 
 dataset_name = 'CESM' # dataset name
@@ -505,7 +561,9 @@ default_grid = None
 # functions to access specific datasets
 loadLongTermMean = None # WRF doesn't have that...
 loadTimeSeries = loadCESM_TS # time-series data
+loadStationTimeSeries = loadCESM_StnTS # time-series data at stations
 loadClimatology = loadCESM # pre-processed, standardized climatology
+loadStationClimatology = loadCESM_Stn # pre-processed, standardized climatology at stations
 
 
 ## (ab)use main execution for quick test
@@ -515,13 +573,15 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
 #   mode = 'test_station_climatology'
 #   mode = 'test_timeseries'
-  mode = 'test_station_timeseries'
+#   mode = 'test_station_timeseries'
+  mode = 'test_ensemble'
+#   mode = 'test_station_ensemble'
 #   mode = 'test_cvdp'
 #   mode = 'pickle_grid'
 #     mode = 'shift_lon'
 #     experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     experiments += ['Ctrl-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
-  experiments = ('Ctrl-1',)
+  experiments = ('Ctrl-1-2050',)
   periods = (15,)    
   filetypes = ('atm',) # ['atm','lnd','ice']
   grids = ('cesm1x1',)*len(experiments) # grb1_d01
@@ -581,6 +641,29 @@ if __name__ == '__main__':
     print(dataset.time)
     print(dataset.time.coord)
     
+  # load ensemble "time-series"
+  elif mode == 'test_ensemble':
+    
+    print('')
+#     dataset = loadCESM_Ensemble(ensemble='Ens-2050', varlist=['precip'], filetypes=['atm'])
+    dataset = loadCESM_Ensemble(ensemble='Ens-2050', mode='cvdp')
+    print('')
+    print(dataset)
+    print('')
+    print(dataset.year)
+    print(dataset.year.coord)
+  
+  # load station ensemble "time-series"
+  elif mode == 'test_station_ensemble':
+    
+    print('')
+    dataset = loadCESM_Ensemble(ensemble='Ens', station='ecprecip', filetypes=['atm'])
+    print('')
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
+  
   # load averaged climatology file
   elif mode == 'test_climatology' or mode == 'test_timeseries':
     
@@ -627,14 +710,12 @@ if __name__ == '__main__':
       
       print('')
       period = periods[0] # just use first element, no need to loop
-      dataset = loadCVDP(experiment=experiment, period=period, cvdp_mode='ensemble', lindices=True)
+      dataset = loadCVDP(experiment=experiment, period=period, cvdp_mode='ensemble') # lindices=True
       #dataset = loadCVDP_Obs(name='GPCP')
       print(dataset)
 #       print(dataset.geotransform)
-      time = dataset.time(time=(12,24))
-      print(dataset.time)
-      print(time)
-      print(len(time))
+      print(dataset.year)
+      print(dataset.year.coord)
       # print some variables
 #       print('')
 #       eof = dataset.pdo_pattern; eof.load()
