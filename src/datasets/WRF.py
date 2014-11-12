@@ -370,9 +370,9 @@ avgfolder = root_folder + 'wrfavg/' # long-term mean folder
 ## Functions to load different types of WRF datasets
 
 # Station Time-series (monthly, with extremes)
-def loadWRF_StnTS(experiment=None, name=None, domains=2, station=None, period=None, filetypes=None, 
+def loadWRF_StnTS(experiment=None, name=None, domains=2, station=None, filetypes=None, 
                 varlist=None, varatts=None, lctrT=True):
-  ''' Get a properly formatted WRF dataset with monthly time-series at station locations . '''  
+  ''' Get a properly formatted WRF dataset with monthly time-series at station locations. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, station=station, 
                      period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
                      lautoregrid=False, lctrT=lctrT, mode='time-series')  
@@ -449,7 +449,7 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
       typelist.append(filetype) # this eliminates const files     
   if varatts is not None: atts.update(varatts)
   # center time axis to 1979
-  if lctrT:
+  if lctrT and experiment is not None:
     if 'time' in atts: tatts = atts['time']
     else: tatts = dict()
     ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1   
@@ -485,7 +485,7 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
     if lstation:
       # the station name can be inserted as the grid name
       gridstr = '_'+station.lower(); # only use lower case for filenames
-      llconst = False # don't load constants
+      llconst = False # don't load constants (some constants are already in the file anyway)
       axes = None
     else:
       if grid is None or grid == '{0:s}_d{1:02d}'.format(experiment.grid,domain): 
@@ -588,8 +588,8 @@ if __name__ == '__main__':
   
 #   mode = 'test_climatology'
 #   mode = 'test_station_climatology'
-  mode = 'test_timeseries'
-#   mode = 'test_station_timeseries'
+#   mode = 'test_timeseries'
+  mode = 'test_station_timeseries'
 #   mode = 'pickle_grid'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]

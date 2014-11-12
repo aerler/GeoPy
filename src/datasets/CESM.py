@@ -13,7 +13,7 @@ from collections import OrderedDict
 # from atmdyn.properties import variablePlotatts
 from geodata.base import Variable, Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
-from geodata.gdal import addGDALtoDataset
+from geodata.gdal import addGDALtoDataset, GDALError
 from geodata.misc import DatasetError, AxisError, DateError, isNumber
 from datasets.common import translateVarNames, data_root, grid_folder, default_varatts, addLengthAndNamesOfMonth 
 from geodata.gdal import loadPickledGridDef, griddef_pickle
@@ -247,7 +247,7 @@ class Diag(FileType):
 class Axes(FileType):
   ''' A mock-filetype for axes. '''
   def __init__(self):
-    self.atts = dict(time        = dict(name='time', units='month'), # time coordinate
+    self.atts = dict(time        = dict(name='time', units='days', offset=-47116.0), # time coordinate (days since 1979-01-01)
                      TIME        = dict(name='year', units='year'), # yearly time coordinate in CVDP files
                      # N.B.: the time coordinate is only used for the monthly time-series data, not the LTM
                      #       the time offset is chose such that 1979 begins with the origin (time=0)
@@ -291,12 +291,14 @@ def loadCVDP_Obs(name=None, grid=None, period=None, varlist=None, varatts=None,
   if lindices: varlist += fileclasses['cvdp'].indices
   if leofs: varlist += fileclasses['cvdp'].eofs
   return loadCESM_All(experiment=None, name=name, grid=grid, period=period, filetypes=('cvdp',), 
-                  varlist=varlist, varatts=varatts, translateVars=translateVars, lautoregrid=lautoregrid, 
-                  load3D=False, ignore_list=ignore_list, mode='CVDP', cvdp_mode='observations', lcheckExp=False)
+                      varlist=varlist, varatts=varatts, translateVars=translateVars, 
+                      lautoregrid=lautoregrid, load3D=False, ignore_list=ignore_list, mode='CVDP', 
+                      cvdp_mode='observations', lcheckExp=False)
 
 # CVDP diagnostics (monthly time-series, EOF pattern and correlations) 
 def loadCVDP(experiment=None, name=None, grid=None, period=None, varlist=None, varatts=None, 
-             cvdp_mode='ensemble', translateVars=None, lautoregrid=None, ignore_list=None, lcheckExp=True, lindices=False, leofs=False):
+             cvdp_mode='ensemble', translateVars=None, lautoregrid=None, ignore_list=None, 
+             lcheckExp=True, lindices=False, leofs=False, lreplaceTime=True):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
   if grid is not None: raise NotImplementedError
   if period is None: period = 15
@@ -307,29 +309,54 @@ def loadCVDP(experiment=None, name=None, grid=None, period=None, varlist=None, v
     if leofs: varlist += fileclasses['cvdp'].eofs
   return loadCESM_All(experiment=experiment, name=name, grid=grid, period=period, filetypes=('cvdp',), 
                   varlist=varlist, varatts=varatts, translateVars=translateVars, lautoregrid=lautoregrid, 
-                  load3D=True, ignore_list=ignore_list, mode='CVDP', cvdp_mode=cvdp_mode, lcheckExp=lcheckExp)
+                  load3D=True, ignore_list=ignore_list, mode='CVDP', cvdp_mode=cvdp_mode, 
+                  lcheckExp=lcheckExp, lreplaceTime=lreplaceTime)
+
+# Station Time-Series (monthly)
+def loadCESM_StnTS(experiment=None, name=None, station=None, filetypes=None, varlist=None, varatts=None,  
+                   translateVars=None, load3D=False, ignore_list=None, lcheckExp=True, lreplaceTime=True):
+  ''' Get a properly formatted CESM dataset with a monthly time-series at station locations. '''
+  return loadCESM_All(experiment=experiment, name=name, grid=None, period=None, station=station, 
+                      filetypes=filetypes, varlist=varlist, varatts=varatts, lreplaceTime=lreplaceTime, 
+                      translateVars=translateVars, lautoregrid=False, load3D=load3D, 
+                      ignore_list=ignore_list, mode='time-series', lcheckExp=lcheckExp)
 
 # Time-Series (monthly)
-def loadCESM_TS(experiment=None, name=None, grid=None, filetypes=None, varlist=None,varatts=None,  
-                translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, lcheckExp=True):
-  ''' Get a properly formatted CESM dataset with monthly time-series. (wrapper for loadCESM)'''
-  return loadCESM_All(experiment=experiment, name=name, grid=grid, period=None, filetypes=filetypes, 
-                  varlist=varlist, varatts=varatts, translateVars=translateVars, lautoregrid=lautoregrid, 
-                  load3D=load3D, ignore_list=ignore_list, mode='time-series', lcheckExp=lcheckExp)
+def loadCESM_TS(experiment=None, name=None, grid=None, filetypes=None, varlist=None, varatts=None,  
+                translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, lcheckExp=True,
+                lreplaceTime=True):
+  ''' Get a properly formatted CESM dataset with a monthly time-series. (wrapper for loadCESM)'''
+  return loadCESM_All(experiment=experiment, name=name, grid=grid, period=None, station=None, 
+                      filetypes=filetypes, varlist=varlist, varatts=varatts, translateVars=translateVars, 
+                      lautoregrid=lautoregrid, load3D=load3D, ignore_list=ignore_list, mode='time-series', 
+                      lcheckExp=lcheckExp, lreplaceTime=lreplaceTime)
+
+# Station Time-Series (monthly)
+def loadCESM_Stn(experiment=None, name=None, station=None, period=None, filetypes=None, varlist=None, 
+                 varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, 
+                 lcheckExp=True):
+  ''' Get a properly formatted CESM dataset with the monthly climatology at station locations. '''
+  return loadCESM_All(experiment=experiment, name=name, grid=None, period=period, station=station, 
+                      filetypes=filetypes, varlist=varlist, varatts=varatts, lreplaceTime=False, 
+                      translateVars=translateVars, lautoregrid=lautoregrid, load3D=load3D, 
+                      ignore_list=ignore_list, mode='climatology', lcheckExp=lcheckExp)
 
 # load minimally pre-processed CESM climatology files 
-def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, varatts=None, 
-             translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, lcheckExp=True):
+def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, 
+             varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, 
+             lcheckExp=True):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
-  return loadCESM_All(experiment=experiment, name=name, grid=grid, period=period, filetypes=filetypes, 
-                  varlist=varlist, varatts=varatts, translateVars=translateVars, lautoregrid=lautoregrid, 
-                  load3D=load3D, ignore_list=ignore_list, mode='climatology', lcheckExp=lcheckExp)
+  return loadCESM_All(experiment=experiment, name=name, grid=grid, period=period, station=None, 
+                      filetypes=filetypes, varlist=varlist, varatts=varatts, translateVars=translateVars, 
+                      lautoregrid=lautoregrid, load3D=load3D, ignore_list=ignore_list, mode='climatology', 
+                      lcheckExp=lcheckExp, lreplaceTime=False)
 
 
 # load minimally pre-processed CESM climatology (and time-series) files 
-def loadCESM_All(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, varatts=None, 
-                 translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, mode='climatology', 
-                 cvdp_mode='ensemble', lcheckExp=True):
+def loadCESM_All(experiment=None, name=None, grid=None, station=None, period=None, filetypes=None, 
+                 varlist=None, varatts=None, translateVars=None, lautoregrid=None, load3D=False, 
+                 ignore_list=None, mode='climatology', cvdp_mode='ensemble', lcheckExp=True, 
+                 lreplaceTime=True):
   ''' Get any of the monthly CESM files as a properly formatted NetCDFDataset. '''
   # period
   if isinstance(period,(tuple,list)):
@@ -357,6 +384,13 @@ def loadCESM_All(experiment=None, name=None, grid=None, period=None, filetypes=N
     folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='diag', lcheckExp=lcheckExp)
     raise NotImplementedError, "Loading AMWG diagnostic files is not supported yet."
   else: raise NotImplementedError,"Unsupported mode: '{:s}'".format(mode)  
+  if station is None: 
+    lstation = False
+  else: 
+    lstation = True
+    if grid is not None: raise NotImplementedError, 'Currently CESM station data can only be loaded from the native grid.'
+    if lcvdp: raise NotImplementedError, 'CVDP data is not available as station data.'
+    if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.'   
   # period  
   if isinstance(period,(int,np.integer)):
     if not isinstance(experiment,Exp): raise DatasetError, 'Integer periods are only supported for registered datasets.'
@@ -385,19 +419,24 @@ def loadCESM_All(experiment=None, name=None, grid=None, period=None, filetypes=N
   elif isinstance(ignore_list,(list,tuple)): ignore_list = set(ignore_list)
   elif not isinstance(ignore_list,set): raise TypeError
   if not load3D: ignore_list.update(ignore_list_3D)
-  if lautoregrid is None: lautoregrid = not load3D # don't auto-regrid 3D variables - takes too long! 
+  if lautoregrid is None: lautoregrid = not load3D # don't auto-regrid 3D variables - takes too long!
   # translate varlist
   if varatts is not None: atts.update(varatts)
   if varlist is not None:
     if translateVars is None: varlist = list(varlist) + translateVarNames(varlist, atts) # also aff translations, just in case
     elif translateVars is True: varlist = translateVarNames(varlist, atts) 
     # N.B.: DatasetNetCDF does never apply translation!
-  # get grid name
-  if grid is None or grid == experiment.grid: 
-    gridstr = ''; griddef = None
-  else: 
-    gridstr = '_%s'%grid.lower() # only use lower case for filenames
-    griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder, check=True)
+  # get grid or station-set name
+  if lstation:
+      # the station name can be inserted as the grid name
+      gridstr = '_'+station.lower(); # only use lower case for filenames
+      griddef = None
+  else:
+    if grid is None or grid == experiment.grid: 
+      gridstr = ''; griddef = None
+    else: 
+      gridstr = '_'+grid.lower() # only use lower case for filenames
+      griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder, check=True)
   # insert grid name and period
   filenames = []
   for filetype,fileformat in zip(typelist,filelist):
@@ -429,7 +468,8 @@ def loadCESM_All(experiment=None, name=None, grid=None, period=None, filetypes=N
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=None, varatts=atts, 
                           title=title, multifile=False, ignore_list=ignore_list, ncformat='NETCDF4', squeeze=True)
   # replace time axis
-  if lts or lcvdp:
+  if lreplaceTime and (lts or lcvdp):
+    # check time axis and center at 1979-01 (zero-based)
     if experiment is None: ys = period[0]; ms = 1
     else: ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1
     if dataset.hasAxis('time'):
@@ -444,8 +484,9 @@ def loadCESM_All(experiment=None, name=None, grid=None, period=None, filetypes=N
       dataset.repalceAxis(dataset.year, yearAxis, asNC=False, deepcopy=False)
   # check
   if len(dataset) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
-  # add projection
-  dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, lwrap360=True, geolocator=True)
+  # add projection, if applicable
+  if not lstation:
+    dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, lwrap360=True, geolocator=True)
   # return formatted dataset
   return dataset
 
@@ -472,13 +513,15 @@ if __name__ == '__main__':
   
   # set mode/parameters
 #   mode = 'test_climatology'
-#     mode = 'test_timeseries'
+#   mode = 'test_station_climatology'
+#   mode = 'test_timeseries'
+  mode = 'test_station_timeseries'
 #   mode = 'test_cvdp'
-  mode = 'pickle_grid'
+#   mode = 'pickle_grid'
 #     mode = 'shift_lon'
 #     experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     experiments += ['Ctrl-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
-  experiments = ('Ens',)
+  experiments = ('Ctrl-1',)
   periods = (15,)    
   filetypes = ('atm',) # ['atm','lnd','ice']
   grids = ('cesm1x1',)*len(experiments) # grb1_d01
@@ -514,6 +557,29 @@ if __name__ == '__main__':
       griddef = loadPickledGridDef(grid, res=None, folder=grid_folder)
       print(griddef)
       print('')
+      
+  # load station climatology file
+  elif mode == 'test_station_climatology':
+    
+    print('')
+    dataset = loadCESM_Stn(experiment='Ctrl-1', station='ecprecip', filetypes=['atm'], period=(1979,1984))
+    print('')
+    print(dataset)
+    print('')
+    print(dataset.station)
+    print(dataset.station.coord)
+    assert dataset.station.coord[-1] == len(dataset.station)  # this is a global model!
+
+  # load station time-series file
+  elif mode == 'test_station_timeseries':
+    
+    print('')
+    dataset = loadCESM_StnTS(experiment='Ctrl-1-2100', station='ecprecip', filetypes=['atm'])
+    print('')
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
     
   # load averaged climatology file
   elif mode == 'test_climatology' or mode == 'test_timeseries':
@@ -529,8 +595,16 @@ if __name__ == '__main__':
       print(dataset)
       print('')
       print(dataset.geotransform)
-      print dataset.x
-      print dataset.x.coord
+      if dataset.isProjected:
+        print dataset.x
+        print dataset.x.coord
+      else:
+        print dataset.lon
+        print dataset.lon.coord
+      if mode == 'test_timeseries':
+        print('')      
+        print(dataset.time)
+        print(dataset.time.coord)
       # show some variables
 #       if 'zs' in dataset: var = dataset.zs
 #       elif 'hgt' in dataset: var = dataset.hgt

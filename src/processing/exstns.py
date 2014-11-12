@@ -281,17 +281,17 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    ldebug = True
+    ldebug = False
     NP = 1 #or NP # to avoid memory issues...
-#     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology','time-series'
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
-#     varlist = None
-    varlist = ['precip',]
+    varlist = None
+#     varlist = ['precip',]
     periods = []
 #     periods += [1]
 #     periods += [3]
-#     periods += [5]
+    periods += [5]
 #     periods += [10]
 #     periods += [15]
 #     periods += [30]
@@ -308,14 +308,14 @@ if __name__ == '__main__':
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
-#     CESM_experiments += ['Ctrl-1']
+    CESM_experiments += ['Ctrl-1']
 #     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     CESM_experiments += ['Ctrl-1-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
 #     CESM_experiments += ['Ens', 'Ens-2050']
     CESM_filetypes = ['atm'] # ,'lnd'
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-    WRF_experiments += ['max']
+#     WRF_experiments += ['max']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...
@@ -342,7 +342,7 @@ if __name__ == '__main__':
     resolutions = None # process all applicable
     lLTM = False # again, not necessary
     # CESM
-    load3D = False
+    load3D = True # doesn't hurt... data is small
     CESM_experiments = None
     CESM_filetypes = ('atm','lnd')    
     # WRF
