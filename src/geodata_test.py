@@ -15,7 +15,7 @@ import os
 # import modules to be tested
 from geodata.nctools import writeNetCDF
 from geodata.misc import isZero, isOne, isEqual
-from geodata.base import Variable, Axis, Dataset, Ensemble, concatVars
+from geodata.base import Variable, Axis, Dataset, Ensemble, concatVars, concatDatasets
 from datasets.common import data_root
 
 class BaseVarTest(unittest.TestCase):  
@@ -417,6 +417,34 @@ class BaseDatasetTest(unittest.TestCase):
     assert dataset.hasAxis(newax) and not dataset.hasAxis(oldax)  
     assert not any([var.hasAxis(oldax) for var in dataset])
     
+  def testConcatDatasets(self):
+    ''' test concatenation of datasets '''
+    # get copy of dataset
+    self.dataset.load() # need to load first!
+    ds = self.dataset
+    cp = self.dataset.copy()
+    nocat = self.lar
+    if nocat is not None: ncname = nocat.name
+    catvar = self.var
+    varname = catvar.name
+    catax = self.axes[0]
+    axname = catax.name
+    # generate test data
+    concat_data = concatVars([ds[varname],cp[varname]], axis=catax, asVar=False) # should be time
+    shape = list(catvar.shape); 
+    shape[0] = catvar.shape[0]*2
+    shape = tuple(shape)
+    assert concat_data.shape == shape # this just tests concatVars
+    # simple test
+    ccds = concatDatasets([ds, cp], axis=axname, coordlim=None, idxlim=None, offset=0)
+    print ccds
+    ccvar = ccds[varname] # test concatenated variable 
+    assert ccvar.shape == shape
+    assert isEqual(ccvar.data_array, concat_data) # masked_equal = True
+    if nocat is not None: 
+      ccnc = ccds[ncname] # test other variable (should be the same) 
+      assert ccnc.shape == nocat.shape
+    
   def testContainer(self):
     ''' test basic container functionality '''
     # test objects: vars and axes
@@ -490,9 +518,10 @@ class BaseDatasetTest(unittest.TestCase):
     assert not any(ens[self.var.name].mean(axis='time').hasAxis('time'))
     print(ens.prettyPrint(short=True))
 
-  def test0Indexing(self):
+  def testIndexing(self):
     ''' test collective slicing and coordinate/point extraction  '''
     # get test objects
+    self.dataset.load() # sometimes we just need to load
     dataset = self.dataset
     # select variables
     var2 = self.lar; var3 = self.var
@@ -710,7 +739,8 @@ class DatasetNetCDFTest(BaseDatasetTest):
     # initialize netcdf variable 
     self.ncvar = ncvar; self.axes = axes
     self.var = VarNC(ncvar, name='T2' if name is 'NARR' else 'precip', axes=axes, load=True)
-    self.lar = None
+    if name is 'NARR': self.lar = VarNC(self.ncdata.variables['lon'], name='lon', axes=axes[1:], load=True)
+    else: self.lar = None
     self.rav = VarNC(ncvar, name='T2' if name is 'NARR' else 'precip', axes=axes, load=True)
     # save the original netcdf data
     self.data = ncvar[:].copy() #.filled(0)
@@ -910,13 +940,13 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
+#     tests += ['BaseDataset']
     tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)
     RAM = False # whether or not to use a RAM disk

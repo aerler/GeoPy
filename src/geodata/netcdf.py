@@ -226,10 +226,8 @@ class VarNC(Variable):
         data = self.__getitem__(idx=data) # load slice
     else: 
       raise TypeError
-    # load data    
-    super(VarNC,self).load(data=data, **kwargs) # load actual data using parent method
-    # return itself- this allows for some convenient syntax
-    return self
+    # load data and return itself (this allows for some convenient syntax)
+    return super(VarNC,self).load(data=data, **kwargs) # load actual data using parent method    
 
     
   def sync(self):

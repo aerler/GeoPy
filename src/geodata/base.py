@@ -16,6 +16,7 @@ from misc import VariableError, AxisError, DataError, DatasetError, ArgumentErro
 
 import numbers
 import functools
+from copy import deepcopy
 
 
 class UnaryCheck(object):
@@ -361,7 +362,13 @@ class Variable(object):
 
   def getAxis(self, axis, lcheck=True):
     ''' Return a reference to the Axis object or one with the same name. '''
-    return self.axes[self.axisIndex(axis)]
+    lhas = self.hasAxis(axis)        
+    if not lhas and lcheck:
+      if isinstance(axis,Axis): axis = axis.name  
+      raise AxisError, "Variable '{:s}' has no axis named '{:s}'".format(self.name,axis) 
+    if lhas: ax = self.axes[self.axisIndex(axis)]
+    else: ax = None
+    return ax
   
   def axisIndex(self, axis, lcheck=True):
     ''' Return the index of a particular axis. (return None if not found) '''
@@ -527,11 +534,11 @@ class Variable(object):
       # N.B.: this is the default for scalar results  
       return data # just return data, like __getitem__
   
-  def load(self, data=None, mask=None, fillValue=None):
+  def load(self, data=None, mask=None, fillValue=None, **axes):
     ''' Method to attach numpy data array to variable instance (also used in constructor). '''
     if data is None:
       if not self.data:
-        raise DataError, 'No data loaded and no external data supplied!'
+        raise DataError, 'No data loaded and no external data supplied!'        
     else:
       if not isinstance(data,np.ndarray): raise TypeError, 'The data argument must be a numpy array!'
       # apply mask
@@ -562,7 +569,12 @@ class Variable(object):
       if len(self.axes) == len(self.shape): # update length is all we can do without a coordinate vector
         for ax,n in zip(self.axes,self.shape): ax.len = n 
       else: # this should only happen with scalar variables!
-        assert self.ndim == 0 and data.size == 1, 'Dimensions of data array and variable must be identical, except for scalars!'       
+        assert self.ndim == 0 and data.size == 1, 'Dimensions of data array and variable must be identical, except for scalars!'
+    # optional slicing
+    if any([self.hasAxis(ax) for ax in axes.iterkeys()]):
+      return self.__call__(asVar=True, **axes) # this is poorly tested...
+    else:
+      return self # just return variable       
      
   def unload(self):
     ''' Method to unlink data array. '''
@@ -1416,9 +1428,12 @@ class Dataset(object):
     return newset
       
 
-def concatVars(variables, axis='time', coordlim=None, idxlim=None, asVar=True, offset=0, name=None, axatts=None, varatts=None):
-  ''' A function to concatenate variables from different sources along a given axis;
+def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, offset=0, 
+               name=None, axatts=None, varatts=None):
+  ''' A function to concatenate Variables from different sources along a given axis;
       this is useful to generate a continuous time series from an ensemble. '''
+  if isinstance(axis,Axis): axis = axis.name
+  if not isinstance(axis,basestring): raise TypeError
   if not all([isinstance(var,Variable) for var in variables]): raise TypeError
   if not all([var.hasAxis(axis) for var in variables]): raise AxisError  
   var0 = variables[0] # shortcut
@@ -1470,13 +1485,13 @@ def concatVars(variables, axis='time', coordlim=None, idxlim=None, asVar=True, o
   assert data.shape == newshape
   # cast as variable
   if asVar:      
-    # create new time axis (yearly)    
+    # create new concatenation axis    
     axatts = axt.atts.copy()
     axatts['name'] = axt.name; axatts['units'] = axt.units
     # N.B.: offset is a parameter to simply shift the time axis origin
     coord = np.arange(tlen) + offset
     if axatts is not None: axatts.update(axatts)      
-    axes = list(var0.axes); axes[tax] = Axis(coord=coord, dtype='int', atts=axatts)
+    axes = list(var0.axes); axes[tax] = Axis(coord=coord, atts=axatts)
     # create new variable
     vatts = var0.atts.copy()
     vatts['name'] = name or var0.name; vatts['units'] = var0.units
@@ -1484,6 +1499,50 @@ def concatVars(variables, axis='time', coordlim=None, idxlim=None, asVar=True, o
     return Variable(data=data, axes=axes, atts=vatts)
     # or return data
   else: return data
+  
+  
+def concatDatasets(datasets, axis=None, coordlim=None, idxlim=None, offset=0, 
+                   axatts=None, lcpOther=True, lcpAny=False, ldeepcopy=True, lcheck=True):
+  ''' A function to concatenate Datasets from different sources along a given axis; this
+      function essentially applies concatVars to every Variable and creates a new dataset. '''
+  if isinstance(axis,Axis): axis = axis.name
+  if not isinstance(axis,basestring): raise TypeError
+  # figure out complete set of variables
+  varlist = []
+  for dataset in datasets:
+    varlist += [varname for varname in dataset.variables.iterkeys() if not varname in varlist]
+  # process variables
+  variables = dict() # variables for new dataset
+#   catvars = {}; othervars = {} # variables that will get concatenated and others that are unaffected
+#   cataxis = {}; otheraxes = {} # the axis along which is being concatenated and the others...  
+  for varname in varlist:
+    lall = all([ds.hasVariable(varname) for ds in datasets]) # check if all have this variable
+    # find first occurence
+    c = 0; dataset = datasets[c] # try first    
+    while not dataset.hasVariable(varname):
+      c += 1; dataset = datasets[c] # try next
+    varobj = dataset.variables[varname]
+    # N.B.: one has to have it, otherwise it would not be in the list    
+    # decide what to do
+    if varobj.hasAxis(axis): # concatenate
+      if lall: 
+        variables[varname] = concatVars([ds.variables[varname] for ds in datasets], axis=axis, asVar=True,
+                                        coordlim=coordlim, idxlim=idxlim, offset=offset, axatts=axatts)
+      elif lcheck:       
+        raise DatasetError, "Variable '{:s}' is not present in all Datasets!".format(varname)
+    else: # either add as is, or skip...
+      if lcpOther:
+        if lcpAny or lall: # add if all are present or flag to ignore is set
+          variables[varname] = dataset.variables[varname].copy(deepcopy=ldeepcopy)  
+  # find new concatenated axis
+  c = 0; catax = None
+  while catax is None:
+    catax = variables.values()[c].getAxis(axis, lcheck=False); c += 1 # return None if not present
+  axes = dict(); axes[axis] = catax # add new concatenation axis
+  # copy first dataset and replace concatenation axis and variables
+  return datasets[0].copy(axes=axes, variables=variables, varlist=None, 
+                          varargs=None, axesdeep=True, varsdeep=False)
+
 
 class Ensemble(object):
   '''
