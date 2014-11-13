@@ -279,11 +279,14 @@ class BaseVarTest(unittest.TestCase):
     ''' test reducing arithmetic functions '''
     # get test objects
     var = self.var; t,x,y = self.axes # for upwards compatibility!
-    #print self.data.mean(), var.mean().getArray()
-    assert isEqual(self.data.max(), var.max())
+#     print self.data.mean(), var.mean()
+    print self.data.std(ddof=3), var.std(ddof=3)
     assert isEqual(self.data.mean(), var.mean())
+    assert isEqual(self.data.std(ddof=1), var.std(ddof=1))
+    assert isEqual(self.data.max(), var.max())
     assert isEqual(self.data.min(), var.min())
     assert isEqual(self.data.mean(axis=var.axisIndex(t.name)), var.mean(**{t.name:None}).getArray())
+    assert isEqual(self.data.std(axis=var.axisIndex(t.name),ddof=3), var.std(ddof=3, **{t.name:None}).getArray())
     assert isEqual(self.data.max(axis=var.axisIndex(x.name)), var.max(**{x.name:None}).getArray())
     assert isEqual(self.data.min(axis=var.axisIndex(y.name)), var.min(**{y.name:None}).getArray())
     
@@ -514,7 +517,8 @@ class BaseDatasetTest(unittest.TestCase):
     assert not any(ens.hasVariable('new'))
     ens -= 'test'
     # fancy test of Variable and Dataset integration
-    #print ens[self.var.name]
+#     print ens[self.var.name][0]
+#     print ens[self.var.name].mean(axis='time')
     assert not any(ens[self.var.name].mean(axis='time').hasAxis('time'))
     print(ens.prettyPrint(short=True))
 
@@ -940,12 +944,12 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
+    tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
+#     tests += ['DatasetNetCDF']
 #     tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)

@@ -18,6 +18,7 @@ import numbers
 import functools
 from copy import deepcopy
 from types import NoneType
+from IPython.external.jsonschema._jsonschema import iteritems
 
 
 class UnaryCheck(object):
@@ -82,65 +83,65 @@ def BinaryCheckAndCreateVar(sameUnits=True):
 
 class ReduceVar(object):
   ''' Decorator class that implements some sanity checks for reduction operations. '''
-  def __init__(self, redop):
+  def __init__(self, reduceop):
     ''' Save original operation. '''
-    self.redop = redop
-  def __call__(self, orig, asVar=None, checkAxis=True, coordIndex=True, axis=None, axes=None, **kwaxes):
+    self.reduceop = reduceop
+  def __call__(self, var, asVar=None, axis=None, axes=None, lcheckAxis=True, **kwaxes):
     ''' Figure out axes, perform sanity checks, then execute operation, and return result as a Variable 
         instance. Axes are specified either in a list ('axes') or as keyword arguments with corresponding
         slices. '''
-    if axis is None and axes is None and len(kwaxes) == 0:
-      if not orig.data: orig.load()
+    # extract axes and keyword arguments      
+    slcaxes = dict(); kwargs = dict()
+    for key,value in kwaxes.iteritems():
+      if var.hasAxis(key): slcaxes[key] = value # use for slicing axes
+      else: kwargs[key] = value # pass this to reduction operator
+    # take shortcut?
+    if axis is None and axes is None and len(slcaxes) == 0:
+      # simple and quick, less overhead
+      if not var.data: var.load()
       # apply operation without arguments, i.e. over all axes
-      data = self.redop(orig, orig.data_array)
+      data = self.reduceop(var, var.data_array)
       # whether or not to cast as Variable (default: No)
       if asVar is None: asVar = False # default for total reduction
       if asVar: newaxes = tuple()
     else:
+      ## figure out reduction axis/axes and slices
       # add axes list to dictionary
-      if axis is not None: 
-        kwaxes[axis] = None
-        assert axes is None 
+      if axis is not None and axes is not None: 
+        raise ArgumentError
+      elif axis is not None: 
+        if axis not in slcaxes: slcaxes[axis] = None
+        if lcheckAxis and not var.hasAxis(axis): raise AxisError  
       elif axes is not None: 
-        for ax in axes: kwaxes[ax] = None
-      # check for axes in keyword arguments       
-      for ax,slc in kwaxes.iteritems():
-        #print ax,slc
-        if checkAxis and not orig.hasAxis(ax): raise AxisError
-        if slc is not None and not isinstance(slc,(slice,list,tuple,int,np.integer)): raise TypeError
+        for ax in axes: 
+          if ax not in slcaxes: slcaxes[ax] = None
+          if lcheckAxis and not var.hasAxis(ax): raise AxisError
+      # N.B.: leave checking of slices to var.__call__ (below)
       # order axes and get indices
-      axlist = [ax.name for ax in orig.axes if ax.name in kwaxes]
-      # get data  
-      if coordIndex:
-        # use overloaded call method to index with coordinate values directly 
-        data = orig.__call__(asVar=False, lidx=False, **kwaxes)
-      else: 
-        # sort slices accordign to axes
-        idx = [None]*orig.ndim
-        for ax,slc in kwaxes.iteritems():
-          idx[orig.axisIndex(ax)] = slc
-        # get slices the usual way
-        orig.__getitem__(idx=idx)
-      # compute mean
+      axlist = [ax.name for ax in var.axes if ax.name in slcaxes]
+      ## get data from Variable  
+      # use overloaded call method to index with coordinate values directly 
+      data = var.__call__(asVar=False, **slcaxes)
+      # N.B.: call can also accept index values and slices (set options accordingly!)
+      ## compute reduction
       axlist.reverse() # start from the back      
       for axis in axlist:
         # apply reduction operation with axis argument, looping over axes
-        data = self.redop(orig, data, axidx=orig.axisIndex(axis))
+        data = self.reduceop(var, data, axidx=var.axisIndex(axis), **kwargs)
       # squeeze removed dimension (but no other!)
-      newshape = [len(ax) for ax in orig.axes if not ax.name in axlist]
+      newshape = [len(ax) for ax in var.axes if not ax.name in axlist]
       data = data.reshape(newshape)
       # whether or not to cast as Variable (default: Yes)
       if asVar is None: asVar = True # default for iterative reduction
-      if asVar: newaxes = [ax for ax in orig.axes if not ax.name in axlist] 
+      if asVar: newaxes = [ax for ax in var.axes if not ax.name in axlist] 
     # N.B.: other singleton dimensions will have been removed, too
-    # cast into Variable
+    ## cast into Variable
     if asVar: 
-      #print self.name, data.__class__.__name__
-      #print data, newaxes
-      var = Variable(name=orig.name, units=orig.units, axes=newaxes, data=data, 
-                     fillValue=orig.fillValue, atts=orig.atts.copy(), plot=orig.plot.copy())
-    else: var = data
-    return var # return function result
+      redvar = Variable(name=var.name, units=var.units, axes=newaxes, data=data, 
+                     fillValue=var.fillValue, atts=var.atts.copy(), plot=var.plot.copy())
+    else: redvar = data
+    return redvar # return function result
+  
   def __get__(self, instance, klass):
     ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
     return functools.partial(self.__call__, instance) # but using 'partial' is simpler
@@ -403,7 +404,7 @@ class Variable(object):
     return data
     
   def __call__(self, lidx=None, lrng=None, asVar=None, lcheck=False, lsqueeze=True, years=None, 
-             listAxis=None, lcopy=False, **axes):
+               listAxis=None, lcopy=False, **axes):
     ''' This method implements access to slices via coordinate values and returns Variable objects. 
         Default behavior for different argument types: 
           - index by coordinate value, not array index, except if argument is a Slice object
@@ -698,10 +699,18 @@ class Variable(object):
       return self.data_array.min(), self.data_array.max()
     else: 
       return None
+    
+  # decorator arguments: slcaxes are passed on to __call__, axis and axes are converted to axidx
+  #                      (axes is a list of reduction axes that are applied in sequence)
+  # ReduceVar(asVar=None, axis=None, axes=None, lcheckAxis=True, **slcaxes)
   
   @ReduceVar
   def mean(self, data, axidx=None):
     return data.mean(axis=axidx)
+  
+  @ReduceVar
+  def std(self, data, axidx=None, ddof=0):
+    return data.std(axis=axidx, ddof=ddof) # ddof: degrees of freedom
   
   @ReduceVar
   def max(self, data, axidx=None):
@@ -710,18 +719,96 @@ class Variable(object):
   @ReduceVar
   def min(self, data, axidx=None):
     return data.min(axis=axidx)
+  
+  def reduce(self, operation, blklen=None, blkidx=None, axis=None, mode=None, offset=0, 
+                  asVar=None, axatts=None, varatts=None, **kwargs):
+    ''' Reduce a time-series; there are two modes:
+          'block'     reduce to one value representing each block, e.g. from monthly to yearly averages;
+                      specify a subset of elements from each block with blkidx
+          'periodic'  reduce to one values representing each element of a block,
+                      e.g. a monthly seasonal cycle from monthly data ;
+                      specify a subset of block with blkidx, but use all elements in each block
+                      '''
+    ## check input
+    lblk = False; lperi = False
+    if mode == 'block': lblk = True
+    elif mode == 'periodic': lperi = True
+    else: raise ArgumentError 
+    # reduction axis
+    if not self.hasAxis(axis): raise AxisError, 'Reduction operations require a reduction axis!'
+    if isinstance(axis,basestring): axis = self.getAxis(axis)
+    if not isinstance(axis,Axis): raise TypeError
+    axlen = len(axis); iax = self.axisIndex(axis)
+    # offset definition: start blocks at this index
+    if offset != 0: raise NotImplementedError
+    # block definition
+    if blklen is not None and blkidx is not None:
+      if isinstance(blkidx,(list,tuple,np.ndarray)): 
+        blkidx = np.asarray(blkidx, dtype='int')
+      else: raise TypeError
+    else: raise ArgumentError
+    if not isInt(blklen): raise TypeError
+    if blklen < np.max(blkidx) or np.min(blkidx) < 0: ArgumentError 
+    nblks = axlen/blklen # number of blocks
+    # more checks
+    if axlen%blklen != 0: raise NotImplementedError, 'Currently seasonal means only work for full years.'
+    if not self.data: self.load()
+    ## massage data
+    # get actual data and reshape
+    odata = self.getArray()
+    # move reduction axis to the end, so that it is fastes varying
+    if iax < self.ndim-1: odata = np.rollaxis(odata, axis=iax, start=self.ndim)
+    # reshape
+    oshape = odata.shape
+    # make length of blocks the last axis, the number of blocks second to last
+    odata = odata.reshape(oshape[:-1]+(nblks,blklen,))
+    if lblk: # use as is 
+      rshape = oshape[:-1] + (nblks,) # shape of results array
+    elif lperi: # swap last and second to last
+      odata = np.swapaxes(odata, -1, -2)
+      rshape = oshape[:-1] + (blklen,) # shape of results array
+    # extract block slice
+    tdata = odata.take(blkidx, axis=-1)
+    # N.B.: this does different things depending on the mode:
+    #       block: use a subset of elements from each block, but use all blocks
+    #       periodic: use a subset of blocks, but all elements in each block 
+    ## apply operation
+    rdata = operation(tdata, axis=-1, **kwargs)
+    assert rdata.shape == rshape
+    # return new variable
+    if iax < self.ndim-1: rdata = np.rollaxis(rdata, axis=self.ndim-1, start=iax) # move reduction axis back
+    # cast as variable
+    if asVar:      
+      # create new time axis (yearly)
+      oaxis = self.axes[iax]
+      raxatts = oaxis.atts.copy()      
+      if axatts is not None: raxatts.update(axatts)      
+      # define coordinates for new axis
+      if lblk: # use the beginning of each block as new coordinates (not divided by block length!) 
+        coord = oaxis.coord.reshape(nblks,blklen)[:,0]
+      elif lperi: # just enumerate block elements
+        coord = np.arange(blklen) 
+      axes = list(self.axes); axes[iax] = Axis(coord=coord, atts=raxatts)
+      # create new variable
+      vatts = self.atts.copy()
+      if varatts is not None: vatts.update(varatts)
+      rvar = self.copy(data=rdata, axes=axes, atts=vatts)      
+    else: # just return data array 
+      rvar = rdata
+    # return results
+    return rvar
     
-  def reduceToAnnual(self, season, operation, asVar=False, name=None, offset=0,
-         taxis='time', checkUnits=True, taxatts=None, varatts=None):
+  def reduceToAnnual(self, season, operation, asVar=False, name=None, offset=0, taxis='time', 
+                     checkUnits=True, taxatts=None, varatts=None, **kwargs):
     ''' Reduce a monthly time-series to an annual time-series, using mean/min/max over a subset of month or seasons. '''
-    #if not isinstance(season,basestring): raise TypeError
-    if not self.data: raise DataError
     if not self.hasAxis(taxis): raise AxisError, 'Seasonal reduction requires a time axis!'
     taxis = self.getAxis(taxis)
-    if checkUnits and not taxis.units.lower() in ('month','months','month of the year'): 
+    allowedUnitsList = ('month','months','month of the year')
+    if checkUnits and not taxis.units.lower() in allowedUnitsList: 
       raise AxisError, "Seasonal reduction requires monthly data! (time units: '{:s}')".format(taxis.units)
     te = len(taxis); tax = self.axisIndex(taxis.name)
-    if te%12 != 0: raise NotImplementedError, 'Currently seasonal means only work for full years.'
+    if te%12 != 0 or not (taxis.coord[0]%12 == 0 or taxis.coord[0]%12 == 1): 
+      raise NotImplementedError, 'Currently seasonal reduction only works with full years.'
     # determine season
     if isinstance(season,(int,np.integer)): idx = np.asarray([season])
     elif isinstance(season,(list,tuple)):
@@ -745,58 +832,106 @@ class Variable(object):
         idx = np.arange(s,s+len(ssn))%12 # and use range of months
       else: raise ValueError, "Unknown key word/season: '{:s}'".format(str(season))
     else: raise TypeError, "Unknown identifier for season: '{:s}'".format(str(season))
-    # get actual data and reshape
-    mdata = self.getArray()
-    if tax > 0: np.rollaxis(mdata, axis=tax, start=0) # move time axis to front
-    # reshape for annual array
-    oldshape = mdata.shape
-    y = te/12 # number of years
-    newshape = (y,)+oldshape[1:]
-    #print oldshape, (y,12)+oldshape[1:]
-    mdata = mdata.reshape((y,12)+oldshape[1:])
-    # compute mean/min/max
-    if mdata.ndim > 2: tmp = mdata[:,idx,:]
-    else: tmp = mdata[:,idx]
-    if operation == 'mean': ydata = tmp.mean(axis=1)
-    elif operation == 'max': ydata = tmp.max(axis=1)
-    elif operation == 'min': ydata = tmp.min(axis=1)
-    else: raise NotImplementedError, "Unknown operation: '{:s}'".format(operation)
-    assert ydata.shape == newshape
-    # return new variable
-    if tax > 0: np.rollaxis(mdata, axis=0, start=tax+1) # move time axis to front
-    # cast as variable
+    # modify variable
     if asVar:      
       # create new time axis (yearly)
       tatts = self.time.atts.copy()
-      tatts['name'] = 'year'; tatts['units'] = 'year'
-      # N.B.: offset is a parameter to simply shift the time axis origin
-      coord = np.linspace(int(taxis.coord[11]/12), int(taxis.coord[-1]/12), int(len(taxis)/12)) + offset
-      # N.B.: this should preserve 1-ness or 0-ness
+      tatts['name'] = 'year'; tatts['units'] = 'year' # defaults
       if taxatts is not None: tatts.update(taxatts)      
-      axes = list(self.axes); axes[tax] = Axis(coord=coord, dtype='int', atts=tatts)
       # create new variable
       vatts = self.atts.copy()
       if name is not None: vatts['name'] = name
       elif isinstance(season,basestring): 
-        vatts['name'] = '{:s}_{:s}'.format(self.name,season); 
+        vatts['name'] = '{:s}_{:s}'.format(self.name,season); # default 
       else: vatts['name'] = self.name
       vatts['units'] = self.units
       if varatts is not None: vatts.update(varatts)
-      return Variable(data=ydata, axes=axes, atts=vatts)
-      # or return data
-    else: return ydata
+    else: tatts = None; varatts = None # irrelevant
+    # call general reduction function
+    avar =  self.reduce(operation, blklen=12, blkidx=idx, axis=taxis, mode='block', offset=offset, 
+                        asVar=asVar, axatts=tatts, varatts=varatts, **kwargs)
+    # check shape of annual variable
+    assert avar.shape == self.shape[:tax]+(te/12,)+self.shape[tax+1:]
+    # convert time coordinate to years (from month)
+    if asVar:
+      if tatts['units'].lower() == 'year' and taxis.units.lower() in allowedUnitsList:
+        raxis = avar.getAxis(tatts['name'])
+        if taxis.coord[0]%12 == 1: # special treatment, if we start counting at 1(instead of 0)
+          raxis.coord -= 1; raxis.coord /= 12; raxis.coord += 1  
+        else: raxis.coord /= 12 # just divide by 12, assuming we count from 0
+    # return data
+    return avar
   
   def seasonalMean(self, season, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation='mean', asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.mean, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+  
+  def seasonalVar(self, season, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
+    ''' Return a time-series of annual root-mean-variances (of the specified season/months). '''    
+    return self.reduceToAnnual(season=season, operation=np.std, ddof=0, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   def seasonalMax(self, season, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation='max', asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.max, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   def seasonalMin(self, season, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation='min', asVar=asVar,name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.min, asVar=asVar,name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+  
+  def reduceToClimatology(self, operation, yridx=None, asVar=False, name=None, offset=0, taxis='time', 
+                          checkUnits=True, taxatts=None, varatts=None, **kwargs):
+    ''' Reduce a monthly time-series to an annual climatology; use 'yridx' to limit the reduction to 
+        a set of years (identified by index) '''
+    if not self.hasAxis(taxis): raise AxisError, 'Reduction to climatology requires a time axis!'
+    taxis = self.getAxis(taxis)
+    allowedUnitsList = ('month','months','month of the year')
+    if checkUnits and not taxis.units.lower() in allowedUnitsList: 
+      raise AxisError, "Reduction to climatology requires monthly data! (time units: '{:s}')".format(taxis.units)
+    te = len(taxis); tax = self.axisIndex(taxis.name)
+    if te%12 != 0 or not (taxis.coord[0]%12 == 0 or taxis.coord[0]%12 == 1): 
+      raise NotImplementedError, 'Currently reduction to climatology only works with full years.'    
+    # modify variable
+    if asVar:      
+      # create new time axis (still monthly)
+      tatts = self.time.atts.copy()
+      if taxatts is not None: tatts.update(taxatts)      
+      # create new variable
+      vatts = self.atts.copy()
+      if name is not None: vatts['name'] = name
+      else: vatts['name'] = self.name
+      vatts['units'] = self.units
+      if varatts is not None: vatts.update(varatts)
+    else: tatts = None; varatts = None # irrelevant
+    # call general reduction function
+    avar =  self.reduce(operation, blklen=12, blkidx=yridx, axis=taxis, mode='periodic', offset=offset, 
+                        asVar=asVar, axatts=tatts, varatts=varatts, **kwargs)
+    # check shape of annual variable
+    assert avar.shape == self.shape[:tax]+(te/12,)+self.shape[tax+1:]
+    # convert time coordinate to years (from month)
+    if asVar:
+      if tatts['units'].lower() == 'year' and taxis.units.lower() in allowedUnitsList:
+        raxis = avar.getAxis(tatts['name'])
+        if taxis.coord[0]%12 == 1: # special treatment, if we start counting at 1(instead of 0)
+          raxis.coord -= 1; raxis.coord /= 12; raxis.coord += 1  
+        else: raxis.coord /= 12 # just divide by 12, assuming we count from 0
+    # return data
+    return avar
+  
+  def climMean(self, yridx=None, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
+    ''' Return a climatology of averages of monthly data. '''    
+    return self.reduceToClimatology(yridx=yridx, operation=np.mean, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+  
+  def climVar(self, yridx=None, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
+    ''' Return a climatology of root-mean-variances of monthly data. '''    
+    return self.reduceToClimatology(yridx=yridx, operation=np.std, ddof=0, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+  
+  def climMax(self, yridx=None, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
+    ''' Return a climatology of maxima of monthly data. '''    
+    return self.reduceToClimatology(yridx=yridx, operation=np.max, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+  
+  def climMin(self, yridx=None, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
+    ''' Return a climatology of minima of monthly data. '''    
+    return self.reduceToClimatology(yridx=yridx, operation=np.min, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   @UnaryCheck    
   def __iadd__(self, a):
