@@ -11,7 +11,7 @@ import numpy as np
 import numpy.ma as ma # masked arrays
 # my own imports
 from plotting.properties import variablePlotatts # import plot properties from different file
-from misc import checkIndex, isEqual, isInt, isFloat, isNumber, AttrDict, joinDicts, printList
+from misc import checkIndex, isEqual, isInt, isFloat, isNumber, AttrDict, joinDicts, printList, floateps
 from misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 
 import numbers
@@ -100,7 +100,7 @@ class ReduceVar(object):
       # simple and quick, less overhead
       if not var.data: var.load()
       # apply operation without arguments, i.e. over all axes
-      data = self.reduceop(var, var.data_array)
+      data = self.reduceop(var, var.data_array, **kwargs)
       # whether or not to cast as Variable (default: No)
       if asVar is None: asVar = False # default for total reduction
       if asVar: newaxes = tuple()
@@ -742,13 +742,14 @@ class Variable(object):
     # offset definition: start blocks at this index
     if offset != 0: raise NotImplementedError
     # block definition
-    if blklen is not None and blkidx is not None:
+    if blklen is not None:
       if isinstance(blkidx,(list,tuple,np.ndarray)): 
         blkidx = np.asarray(blkidx, dtype='int')
-      else: raise TypeError
+      elif blkidx is not None: raise TypeError
     else: raise ArgumentError
     if not isInt(blklen): raise TypeError
-    if blklen < np.max(blkidx) or np.min(blkidx) < 0: ArgumentError 
+    if blkidx is not None:
+      if blklen < np.max(blkidx) or np.min(blkidx) < 0: ArgumentError 
     nblks = axlen/blklen # number of blocks
     # more checks
     if axlen%blklen != 0: raise NotImplementedError, 'Currently seasonal means only work for full years.'
@@ -768,7 +769,8 @@ class Variable(object):
       odata = np.swapaxes(odata, -1, -2)
       rshape = oshape[:-1] + (blklen,) # shape of results array
     # extract block slice
-    tdata = odata.take(blkidx, axis=-1)
+    if blkidx is not None: tdata = odata.take(blkidx, axis=-1)
+    else: tdata = odata
     # N.B.: this does different things depending on the mode:
     #       block: use a subset of elements from each block, but use all blocks
     #       periodic: use a subset of blocks, but all elements in each block 
@@ -862,23 +864,23 @@ class Variable(object):
     # return data
     return avar
   
-  def seasonalMean(self, season, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalMean(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
     return self.reduceToAnnual(season=season, operation=np.mean, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def seasonalVar(self, season, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalVar(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual root-mean-variances (of the specified season/months). '''    
     return self.reduceToAnnual(season=season, operation=np.std, ddof=0, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def seasonalMax(self, season, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalMax(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
     return self.reduceToAnnual(season=season, operation=np.max, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def seasonalMin(self, season, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalMin(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
     return self.reduceToAnnual(season=season, operation=np.min, asVar=asVar,name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def reduceToClimatology(self, operation, yridx=None, asVar=False, name=None, offset=0, taxis='time', 
+  def reduceToClimatology(self, operation, yridx=None, asVar=True, name=None, offset=0, taxis='time', 
                           checkUnits=True, taxatts=None, varatts=None, **kwargs):
     ''' Reduce a monthly time-series to an annual climatology; use 'yridx' to limit the reduction to 
         a set of years (identified by index) '''
@@ -906,30 +908,28 @@ class Variable(object):
     avar =  self.reduce(operation, blklen=12, blkidx=yridx, axis=taxis, mode='periodic', offset=offset, 
                         asVar=asVar, axatts=tatts, varatts=varatts, **kwargs)
     # check shape of annual variable
-    assert avar.shape == self.shape[:tax]+(te/12,)+self.shape[tax+1:]
+    assert avar.shape == self.shape[:tax]+(12,)+self.shape[tax+1:]
     # convert time coordinate to years (from month)
     if asVar:
-      if tatts['units'].lower() == 'year' and taxis.units.lower() in allowedUnitsList:
+      if tatts['units'].lower() in allowedUnitsList:
         raxis = avar.getAxis(tatts['name'])
-        if taxis.coord[0]%12 == 1: # special treatment, if we start counting at 1(instead of 0)
-          raxis.coord -= 1; raxis.coord /= 12; raxis.coord += 1  
-        else: raxis.coord /= 12 # just divide by 12, assuming we count from 0
+        if taxis.coord[0] == 0: raxis.coord += 1 # customarily, month are counted, starting at 1, not 0 
     # return data
     return avar
   
-  def climMean(self, yridx=None, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
+  def climMean(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of averages of monthly data. '''    
     return self.reduceToClimatology(yridx=yridx, operation=np.mean, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def climVar(self, yridx=None, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
+  def climVar(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of root-mean-variances of monthly data. '''    
     return self.reduceToClimatology(yridx=yridx, operation=np.std, ddof=0, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def climMax(self, yridx=None, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
+  def climMax(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of maxima of monthly data. '''    
     return self.reduceToClimatology(yridx=yridx, operation=np.max, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def climMin(self, yridx=None, asVar=False, name=None, offset=0, taxis='time', checkUnits=True):
+  def climMin(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of minima of monthly data. '''    
     return self.reduceToClimatology(yridx=yridx, operation=np.min, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
@@ -1578,7 +1578,7 @@ class Dataset(object):
       
 
 def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, offset=None, 
-               name=None, axatts=None, varatts=None):
+               name=None, axatts=None, varatts=None, lcheckAxis=True):
   ''' A function to concatenate Variables from different sources along a given axis;
       this is useful to generate a continuous time series from an ensemble. '''
   if isinstance(axis,Axis): axis = axis.name
@@ -1595,7 +1595,7 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   for var in variables:
     ax = var.getAxis(axis) 
     axdiff = np.diff(axt.coord)
-    if not (axdiff.min() == axdiff.max() == delta): 
+    if lcheckAxis and not (axdiff.min()+100*floateps >= delta >=  axdiff.max()-100*floateps): 
       raise AxisError, "Concatenation axis has to be evenly spaced!"
   # slicing options
   lcoordlim = False; lidxlim = False
@@ -1663,8 +1663,8 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   else: return data
   
   
-def concatDatasets(datasets, axis=None, coordlim=None, idxlim=None, offset=None, 
-                   axatts=None, lcpOther=True, lcpAny=False, ldeepcopy=True, lcheck=True):
+def concatDatasets(datasets, axis=None, coordlim=None, idxlim=None, offset=None, axatts=None, 
+                   lcpOther=True, lcpAny=False, ldeepcopy=True, lcheck=True, lcheckAxis=True):
   ''' A function to concatenate Datasets from different sources along a given axis; this
       function essentially applies concatVars to every Variable and creates a new dataset. '''
   if isinstance(axis,(Axis,basestring)): axislist = (axis,)
@@ -1711,7 +1711,8 @@ def concatDatasets(datasets, axis=None, coordlim=None, idxlim=None, offset=None,
         if varobj.hasAxis(axis): # concatenate
           if lall: 
             variables[varname] = concatVars([ds.variables[varname] for ds in datasets], axis=axis, asVar=True,
-                                            coordlim=coordlim, idxlim=idxlim, offset=offset, axatts=axatts)
+                                            coordlim=coordlim, idxlim=idxlim, offset=offset, axatts=axatts,
+                                            lcheckAxis=lcheckAxis)
           elif lcheck:       
             raise DatasetError, "Variable '{:s}' is not present in all Datasets!".format(varname)
         elif lcpOther and varname not in variables: # either add as is, or skip... 

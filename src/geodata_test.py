@@ -26,6 +26,7 @@ class BaseVarTest(unittest.TestCase):
   
   def setUp(self):
     ''' create Axis and a Variable instance for testing '''
+    self.dataset_name = 'TEST'
     # some setting that will be saved for comparison
     self.size = (48,2,4) # size of the data array and axes
     # the 4-year time-axis is for testing some time-series analysis functions
@@ -133,14 +134,17 @@ class BaseVarTest(unittest.TestCase):
     # get copy of variable
     var = self.var
     copy = self.var.copy()
+    lckax = self.dataset_name not in ('GPCC','NARR') # will fail with GPCC and NARR, due to sub-monthly time units
     # simple test
-    concat_data = concatVars([var,copy], axis='time', asVar=False)
+    concat_data = concatVars([var,copy], axis='time', asVar=False, lcheckAxis=lckax)
+    # N.B.: some datasets have tiem units in days or hours, which is not uniform 
     shape = list(var.shape); 
     tax = var.axisIndex('time')
     shape[tax] = var.shape[tax] + copy.shape[tax]
     assert concat_data.shape == tuple(shape)
     # advanced test
-    concat_var = concatVars([var,copy], axis='time', asVar=True, idxlim=(0,12), offset=1000, name='concatVar')
+    concat_var = concatVars([var,copy], axis='time', asVar=True, lcheckAxis=lckax, 
+                            idxlim=(0,12), offset=1000, name='concatVar')
     shape[tax] = 2 * 12
     assert concat_var.shape == tuple(shape)
     assert len(concat_var.time) == 24 and max(concat_var.time.coord) > 1000
@@ -296,19 +300,28 @@ class BaseVarTest(unittest.TestCase):
     var = self.var
     assert var.axisIndex('time') == 0 and len(var.time) == self.data.shape[0]
     assert len(var.time)%12 == 0, "Need full years to test seasonal mean/min/max!"
+    tax = var.axisIndex('time')
     #print self.data.mean(), var.mean().getArray()
     if var.time.units.lower()[:5] in 'month':
       yvar = var.seasonalMean('jj', asVar=True)
       assert yvar.hasAxis('year')
-      assert yvar.shape == (var.shape[0]/12,)+var.shape[1:]
+      assert yvar.shape == var.shape[:tax]+(var.shape[0]/12,)+var.shape[tax+1:]
+      cvar = var.climMean()
+      assert len(cvar.getAxis('time')) == 12
+      assert cvar.shape == var.shape[:tax]+(12,)+var.shape[tax+1:]      
     if self.__class__ is BaseVarTest:
       # this only works with a specially prepared data field
       yfake = np.ones((var.shape[0]/12,)+var.shape[1:])
       assert yvar.shape == yfake.shape
       assert isEqual(yvar.getArray(), yfake*6.5)
       yfake = np.ones((var.shape[0]/12,)+var.shape[1:], dtype=var.dtype)
-      assert isEqual(var.seasonalMax('mam'), yfake*5)
-      assert isEqual(var.seasonalMin('mam'), yfake*3)
+      # N.B.: the data increases linearly in time and is constant in space (see setup fct.)
+      assert isEqual(var.seasonalMax('mam',asVar=False), yfake*5)
+      assert isEqual(var.seasonalMin('mam',asVar=False), yfake*3)
+      # test climatology
+      assert tax == 0      
+      cdata = self.data.reshape((4,12,)+var.shape[1:]).mean(axis=0)
+      assert isEqual(cvar.getArray(), cdata)
 
   def testSqueeze(self):
     ''' test removal of singleton dimensions '''
@@ -347,6 +360,7 @@ class BaseDatasetTest(unittest.TestCase):
     ''' create Dataset with Axes and a Variables for testing '''
     if RAM: self.folder = ramdisk
     else: self.folder = os.path.expanduser('~') # just use home directory (will be removed)
+    self.dataset_name = 'TEST'
     # some setting that will be saved for comparison
     self.size = (3,3,3) # size of the data array and axes
     te, ye, xe = self.size
@@ -432,14 +446,15 @@ class BaseDatasetTest(unittest.TestCase):
     varname = catvar.name
     catax = self.axes[0]
     axname = catax.name
+    lckax = self.dataset_name not in ('GPCC','NARR') # will fail with GPCC and NARR, due to sub-monthly time units
     # generate test data
-    concat_data = concatVars([ds[varname],cp[varname]], axis=catax, asVar=False) # should be time
+    concat_data = concatVars([ds[varname],cp[varname]], axis=catax, asVar=False, lcheckAxis=lckax) # should be time
     shape = list(catvar.shape); 
     shape[0] = catvar.shape[0]*2
     shape = tuple(shape)
     assert concat_data.shape == shape # this just tests concatVars
     # simple test
-    ccds = concatDatasets([ds, cp], axis=axname, coordlim=None, idxlim=None, offset=0)
+    ccds = concatDatasets([ds, cp], axis=axname, coordlim=None, idxlim=None, offset=0, lcheckAxis=lckax)
     print ccds
     ccvar = ccds[varname] # test concatenated variable 
     assert ccvar.shape == shape
@@ -618,6 +633,7 @@ class NetCDFVarTest(BaseVarTest):
   stats = False # whether or not to compute stats on data
   
   def setUp(self):
+    self.dataset_name = self.dataset
     if RAM: folder = ramdisk
     else: folder = '/{:s}/{:s}/'.format(data_root,self.dataset) # dataset name is also in folder name
     # select dataset
@@ -716,6 +732,7 @@ class DatasetNetCDFTest(BaseDatasetTest):
   stats = False # whether or not to compute stats on data
   
   def setUp(self):
+    
     if RAM: folder = ramdisk
     else: folder = '/{:s}/{:s}/'.format(data_root,self.dataset_name) # dataset name is also in folder name
     self.folder = folder
@@ -945,12 +962,12 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)
     RAM = False # whether or not to use a RAM disk
