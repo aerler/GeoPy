@@ -46,9 +46,8 @@ class BaseVarTest(unittest.TestCase):
                         data=self.data.copy(),atts=self.atts.copy())
     self.rav = Variable(name=self.atts['name'],units=self.atts['units'],axes=self.axes,
                         data=self.data.copy(),atts=self.atts.copy())
-    # check if data is loaded (future subclasses may initialize without loading data by default)                  
-    if not self.var.data: self.var.load(self.data.copy()) # again, use copy!
-    if not self.rav.data: self.rav.load(self.data.copy()) # again, use copy!
+    self.pax = Variable(name='pax',units=self.atts['units'],axes=self.axes[0:1],
+                        data=np.arange(len(self.axes[0])),atts=self.atts.copy())
         
   def tearDown(self):
     ''' clean up '''     
@@ -378,8 +377,10 @@ class BaseDatasetTest(unittest.TestCase):
                         data=self.data[0,:].copy(),atts=self.atts.copy())    
     rav = Variable(name='rav',units=self.atts['units'],axes=self.axes,
                         data=self.data.copy(),atts=self.atts.copy())
+    pdata = np.random.random((len(self.axes[0]),)) # test float matching
+    pdata = np.asarray(pdata, dtype='|S32') # test string matching
     pax = Variable(name='pax',units=self.atts['units'],axes=self.axes[0:1],
-                        data=np.arange(len(self.axes[0])),atts=self.atts.copy())
+                        data=pdata,atts=None)
     self.var = var; self.lar =lar; self.rav = rav; self.pax = pax 
     # make dataset
     self.dataset = Dataset(varlist=[var, lar, rav, pax], name='test')
@@ -577,7 +578,6 @@ class BaseDatasetTest(unittest.TestCase):
         # apply function under test
         slcds = dataset(**axes)
         # verify results
-        print slcds
         slcvar = slcds[var3.name]
         assert slcvar.ndim == var3.ndim-1
         assert slcvar.shape == var3.shape[1:]
@@ -585,6 +585,15 @@ class BaseDatasetTest(unittest.TestCase):
           assert slcax.name == ax.name
           assert slcax.units == ax.units
         assert isEqual(slcvar[:], var3[-2,:,:], masked_equal=True)
+        # test pseudo-axis slicing with individual variable (needs dataset link, though)
+        slcvar = var3(**axes)
+        # verify results
+        assert slcvar.ndim == var3.ndim-1
+        assert slcvar.shape == var3.shape[1:]
+        for slcax,ax in zip(slcvar.axes,var3.axes[1:]):
+          assert slcax.name == ax.name
+          assert slcax.units == ax.units
+        assert isEqual(slcvar[:], var3[-2,:,:], masked_equal=True)      
       # list indexing
       l1 = [-1,0]*3; l2 = [0,-1]*3 
       axes = {ax1.name:co1[l1], ax2.name:co2[l2], }
@@ -985,8 +994,8 @@ if __name__ == "__main__":
 #     tests += ['GDALVar']
     # list of dataset tests
     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)
     RAM = True # whether or not to use a RAM disk

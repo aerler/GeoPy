@@ -18,6 +18,7 @@ import numbers
 import functools
 from copy import deepcopy
 from types import NoneType
+from warnings import warn
 from IPython.external.jsonschema._jsonschema import iteritems
 
 
@@ -81,7 +82,7 @@ def BinaryCheckAndCreateVar(sameUnits=True):
   return BinaryCheckAndCreateVar_Class
 
 
-class ReduceVar(object):
+class ReduceVar(object): # not a Variable child!!!
   ''' Decorator class that implements some sanity checks for reduction operations. '''
   def __init__(self, reduceop):
     ''' Save original operation. '''
@@ -413,6 +414,21 @@ class Variable(object):
           - for backwards compatibility, None values are accepted and indicate the entire range 
         Type-based defaults are ignored if appropriate keyword arguments are specified. '''
     ## check axes and input and determine modes
+    # parse axes for pseudo-axes, using info from parent dataset
+    if self.dataset is not None:
+      dataset = self.dataset 
+      axes = axes.copy() # might be changed...
+      for key,val in axes.iteritems():
+        if val is not None and dataset.hasVariable(key):
+          del axes[key] # remove pseudo axis
+          var = dataset.getVariable(key)
+          if isinstance(val,(tuple,list,np.ndarray)): 
+            raise NotImplementedError, "Currently only single coordiante values/indices are supported for pseudo-axes."        
+          if var.ndim == 1: # possibly valid pseudo-axis!
+            coord = var.findValue(val, lidx=lidx, lflatten=False)          
+          else: raise AxisError, "Pseudo-axis can only have one axis!"
+          axes[var.axes[0].name] = coord # create new entry with actual axis
+          # N.B.: not that this automatically squeezes the pseudo-axis, since it is just a values...            
     # resolve special key words
     if years is not None:
       if self.hasAxis('time'):
@@ -693,6 +709,30 @@ class Variable(object):
       mask = mask.__getitem__(slices)
     # return mask
     return mask
+  
+  def findValue(self, value, lidx=False, lflatten=False):
+    ''' Method to find the first occurence of a value and return the coordinate or index value; 
+        this algorithm is actually pretty slow but works for all types of data; the main difference
+        to the Axis method getIndex is that it does not reuire sorted data.
+        Currently this only works with single-axis Variables ('pseudo-axes'), or with flattened arrays,
+        not with multi-dimensional fields.  '''
+    if self.ndim != 1 and not lflatten: 
+      raise NotImplementedError, "findValue() currently only works with single-axis 'pseudo-axes', not with multi-dimensional fields"
+    if lflatten: data = self.data_array.flatten()
+    else: data = self.data_array
+    # N.B.: usually this will be used for categorical data like int or str anyway...
+    # now scan through the values to extract matching index
+    idx = -1
+    for i,vv in enumerate(data):
+      if vv == value: idx = i; break # terminate at first match
+    if idx < 0:
+      # possible problems with floats
+      if np.issubdtype(self.dtype, np.inexact): 
+        warn("The current implementation may fail for floats due to machine precision differences (non-exact match).") 
+      raise AxisError, "Value '{:s}' not found in Variable '{:s}'.".format(str(value),self.name)
+    # return index of coordinate value
+    if not lidx: idx = self.axes[0].coord[idx]
+    return idx
   
   def limits(self):
     ''' A convenience function to return a min,max tuple to indicate the data range. '''
@@ -1388,22 +1428,18 @@ class Dataset(object):
     slicevars = {}; othervars = {} # variables that will get sliced and others that are unaffected
     sliceaxes = {}; otheraxes = {}
     # parse axes for pseudo-axes
+    # N.B.: we do this once for all variables, because this operation can be somewhat slow
     axes = axes.copy() # might be changed...
     for key,val in axes.iteritems():
       if val is not None and self.hasVariable(key):
         del axes[key] # remove pseudo axis
         var = self.getVariable(key)
-        if isinstance(val,(tuple,list,np.ndarray)): raise NotImplementedError        
+        if isinstance(val,(tuple,list,np.ndarray)): 
+          raise NotImplementedError, "Currently only single coordiante values/indices are supported for pseudo-axes."        
         if var.ndim == 1: # possibly valid pseudo-axis!
-          # now scan through the values to extract matchin index
-          idx = -1
-          for i,vv in enumerate(var.data_array):
-            if vv == val: idx = 1; break
-          if idx < 0: raise AxisError, "Value '{:s}' not found in pseudo-axis '{:s}'.".format(str(val),var.name)
-          # create new axis entry
-          if lidx: axes[var.axes[0].name] = idx
-          else: axes[var.axes[0].name] = var.axes[0].coord[idx] # default is by coord
+          coord = var.findValue(val, lidx=lidx, lflatten=False)          
         else: raise AxisError, "Pseudo-axis can only have one axis!"
+        axes[var.axes[0].name] = coord # create new entry with actual axis
         # N.B.: not that this automatically squeezes the pseudo-axis, since it is just a values...        
     # loop over variables
     for var in self.variables.itervalues():
