@@ -994,8 +994,8 @@ if __name__ == "__main__":
 #     tests += ['GDALVar']
     # list of dataset tests
     tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)
     RAM = True # whether or not to use a RAM disk
