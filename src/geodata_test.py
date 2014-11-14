@@ -292,6 +292,25 @@ class BaseVarTest(unittest.TestCase):
     assert isEqual(self.data.std(axis=var.axisIndex(t.name),ddof=3), var.std(ddof=3, **{t.name:None}).getArray())
     assert isEqual(self.data.max(axis=var.axisIndex(x.name)), var.max(**{x.name:None}).getArray())
     assert isEqual(self.data.min(axis=var.axisIndex(y.name)), var.min(**{y.name:None}).getArray())
+    # test histogram
+    lsimple = self.__class__ is BaseVarTest
+    if lsimple:
+      bins = np.arange(1,10) # 9 bins
+      binedgs = np.arange(0.5,10,1) # 10 edges
+    else:
+      vmin, vmax = var.limits()
+      binedgs = np.linspace(vmin,vmax,10)
+      bins = binedgs[1:] - ( np.diff(binedgs) / 2. )
+    hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=False, asVar=True, axis='time')
+    assert hvar.shape == (len(bins),)+var.shape[1:]
+    if lsimple:
+      assert self.data.min() == 1 and self.data.max() == 12 and self.data.shape[0] == 48
+      assert hvar.limits() == (4,4)
+    # test simple version
+    hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=True, asVar=False, lflatten=True)
+    hist,bin_edges  = np.histogram(self.var.getArray(), bins=binedgs, density=True)
+    assert isEqual(binedgs, bin_edges)
+    assert isEqual(hvar, hist, masked_equal=True)
     
   def testSeasonalReduction(self):
     ''' test functions that reduce monthly data to yearly data '''
@@ -989,11 +1008,11 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
+    tests += ['BaseVar'] 
+    tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
+#     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
 #     tests += ['DatasetGDAL']
     

@@ -797,7 +797,8 @@ class Variable(object):
       if blklen < np.max(blkidx) or np.min(blkidx) < 0: ArgumentError 
     nblks = axlen/blklen # number of blocks
     # more checks
-    if axlen%blklen != 0: raise NotImplementedError, 'Currently seasonal means only work for full years.'
+    if ( lblk or lperi ) and axlen%blklen != 0: 
+      raise NotImplementedError, 'Currently seasonal means only work for full years.'
     if not self.data: self.load()
     ## massage data
     # get actual data and reshape
@@ -852,7 +853,8 @@ class Variable(object):
   def histogram(self, bins=None, binedgs=None, ldensity=True, asVar=False, name=None, axis=None, lflatten=False, 
                      haxatts=None, hvaratts=None, **kwargs):
     ''' Generate a histogram of along a given axis and preserve the other axes. '''
-    if axis is not None: raise ArgumentError
+    if lflatten and axis is not None: raise ArgumentError
+    if not lflatten and axis is None: raise ArgumentError
     kwargs['density'] = ldensity # overwrite parameter
     # figure out bins
     if bins is None and binedgs is None: raise ArgumentError
@@ -865,23 +867,23 @@ class Variable(object):
       elif isinstance(bins,(tuple,list)) and  0 < len(bins) < 4: 
         bins = np.linspace(*bins)
       elif not isinstance(bins,(list,np.ndarray)): raise TypeError
-      hbd = np.diff(bins) / 2
-      tmpbinedgs = np.hstack((bin[0]-hbd[0],bin[1:]-hbd,bin[-1]+hbd[-1])) # assuming even spacing
+      hbd = np.diff(bins) / 2. # make sure this is a float!
+      tmpbinedgs = np.hstack((bins[0]-hbd[0],bins[1:]-hbd,bins[-1]+hbd[-1])) # assuming even spacing
       if binedgs is None: binedgs = tmpbinedgs # computed from bins
-      else: assert isEqual(binedgs, tmpbinedgs)
+      else: assert isEqual(binedgs, np.asarray(tmpbinedgs, dtype=binedgs.dtype))
     if binedgs is not None:
       # expand bin edges
       if not isinstance(binedgs,(tuple,list)): binedgs = np.asarray(binedgs)
       elif not isinstance(binedgs,np.ndarray): raise TypeError  
-      tmpbins = binedgs[1:] - np.diff(binedgs) / 2
+      tmpbins = binedgs[1:] - ( np.diff(binedgs) / 2. ) # make sure this is a float!
       if bins is None: bins = tmpbins # compute from binedgs
-      else: assert isEqual(bins, tmpbins)
+      else: assert isEqual(bins, np.asarray(tmpbins, dtype=bins.dtype))
     # setup histogram axis and variable attributes (special case)
-    axatts = self.atts.copy # variable values become axis
+    axatts = self.atts.copy() # variable values become axis
     axatts['name'] = '{:s}_bins'.format(self.name)
     axatts['long_name'] = '{:s} Axis'.format(self.atts.get('long_name',self.name.title()))    
     if haxatts is not None: axatts.update(haxatts)
-    varatts = self.atts.copy # this is either density or frequency
+    varatts = self.atts.copy() # this is either density or frequency
     varatts['name'] = name or '{:s}_hist'.format(self.name)
     varatts['long_name'] = 'Histogram of {:s}'.format(self.atts.get('long_name',self.name.title()))
     varatts['units'] = '1/{:s}'.format(self.units) if ldensity else '#' # count 
@@ -890,24 +892,26 @@ class Variable(object):
     if lflatten: # totally by-pass reduce()...
       # this is actually the default behavior of np.histogram()
       hdata, bin_edges = np.histogram(self.getArray(), bins=binedgs, **kwargs) # will flatten automatically
-      assert isEqual(bin_edges, binedgs) 
-      assert hdata.shape == (len(binedgs)-1)
+      assert isEqual(bin_edges, binedgs)
+      assert hdata.shape == (len(binedgs)-1,)
       # create new Axis and Variable objects (1-D)
       if asVar: hvar = Variable(data=hdata, axes=(Axis(coord=bins, atts=axatts),), atts=varatts)
       else: hvar = hdata
     else: # use reduce to only apply to selected axis      
       # create a helper function that apllies the histogram along the specified axis
       def histfct(data, axis=None):
-        hdata, bin_edges = np.apply_along_axis(lambda x: np.histogram(x, bins=binedgs), axis=axis, data)
-        assert isEqual(bin_edges, binedgs)
-        assert hdata.shape[axis] == len(binedgs)-1 
+        if axis < 0: axis += data.ndim 
+        hdata = np.apply_along_axis(lambda a: np.histogram(a, bins=binedgs, **kwargs)[0], axis, data)
+        # N.B.: the additional output of np.histogram must be suppressed, or np.apply_along_axis will
+        #       expand everything as tuples!
+        assert hdata.shape[axis] == len(binedgs)-1
         assert hdata.shape[:axis] == data.shape[:axis]
         assert hdata.shape[axis+1:] == data.shape[axis+1:]
         return hdata
       # call reduce to perform operation
       axatts['coord'] = bins # reduce() reads this and uses it as new axis coordinates
       hvar = self.reduce(operation=histfct, blklen=len(bins), blkidx=None, axis=axis, mode='all', 
-                         offset=0, asVar=asVar, axatts=axatts, varatts=varatts, **kwargs)
+                         offset=0, asVar=asVar, axatts=axatts, varatts=varatts)
     # return new variable instance (or data)
     return hvar
     
