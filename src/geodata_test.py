@@ -378,9 +378,11 @@ class BaseDatasetTest(unittest.TestCase):
                         data=self.data[0,:].copy(),atts=self.atts.copy())    
     rav = Variable(name='rav',units=self.atts['units'],axes=self.axes,
                         data=self.data.copy(),atts=self.atts.copy())
-    self.var = var; self.lar =lar; self.rav = rav 
+    pax = Variable(name='pax',units=self.atts['units'],axes=self.axes[0:1],
+                        data=np.arange(len(self.axes[0])),atts=self.atts.copy())
+    self.var = var; self.lar =lar; self.rav = rav; self.pax = pax 
     # make dataset
-    self.dataset = Dataset(varlist=[var, lar, rav], name='test')
+    self.dataset = Dataset(varlist=[var, lar, rav, pax], name='test')
     # check if data is loaded (future subclasses may initialize without loading data by default)
     if not self.var.data: self.var.load(self.data.copy()) # again, use copy!
     if not self.rav.data: self.rav.load(self.data.copy()) # again, use copy!
@@ -568,6 +570,21 @@ class BaseDatasetTest(unittest.TestCase):
           assert oldax.name == ax.name
           assert oldax.units == ax.units
         assert isEqual(oldvar[:], var2[:], masked_equal=True)      
+      # pseudo-axis indexing
+      if self.pax is not None:
+        pax = self.pax    
+        axes = {pax.name:pax[-2]}
+        # apply function under test
+        slcds = dataset(**axes)
+        # verify results
+        print slcds
+        slcvar = slcds[var3.name]
+        assert slcvar.ndim == var3.ndim-1
+        assert slcvar.shape == var3.shape[1:]
+        for slcax,ax in zip(slcvar.axes,var3.axes[1:]):
+          assert slcax.name == ax.name
+          assert slcax.units == ax.units
+        assert isEqual(slcvar[:], var3[-2,:,:], masked_equal=True)
       # list indexing
       l1 = [-1,0]*3; l2 = [0,-1]*3 
       axes = {ax1.name:co1[l1], ax2.name:co2[l2], }
@@ -656,7 +673,8 @@ class NetCDFVarTest(BaseVarTest):
     # initialize netcdf variable 
     self.ncvar = ncvar; self.axes = axes
     self.var = VarNC(ncvar, axes=axes, load=True)    
-    self.rav = VarNC(ncvar, axes=axes, load=True) # second variable for binary operations    
+    self.rav = VarNC(ncvar, axes=axes, load=True) # second variable for binary operations
+    self.pax = None # no alternate time-series available    
     # save the original netcdf data
     self.data = ncvar[:].copy() #.filled(0)
     self.size = tuple([len(ax) for ax in axes])
@@ -763,6 +781,7 @@ class DatasetNetCDFTest(BaseDatasetTest):
     if name is 'NARR': self.lar = VarNC(self.ncdata.variables['lon'], name='lon', axes=axes[1:], load=True)
     else: self.lar = None
     self.rav = VarNC(ncvar, name='T2' if name is 'NARR' else 'precip', axes=axes, load=True)
+    self.pax = None
     # save the original netcdf data
     self.data = ncvar[:].copy() #.filled(0)
     self.size = tuple([len(ax) for ax in axes])
@@ -961,16 +980,16 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
     tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)
-    RAM = False # whether or not to use a RAM disk
+    RAM = True # whether or not to use a RAM disk
     ramdisk = '/media/tmp/' # folder where RAM disk is mounted
     
     # run tests

@@ -425,8 +425,9 @@ class Variable(object):
         axes['time'] = months
       elif lcheck: raise AxisError, "Axis 'time' required for keyword 'years'!"
     varaxes = dict(); idxmodes = dict() ; rngmodes = dict(); lstmodes = dict()
+    # parse axes arguments and determine slicing
     for key,val in axes.iteritems():
-      if self.hasAxis(key) and val is not None: # extract axes that are relevant        
+      if val is not None and self.hasAxis(key): # extract axes that are relevant        
         if not isinstance(val,(tuple,list,np.ndarray,slice,int,float,np.integer,np.inexact)): 
           raise TypeError, "Can only use numbers, tuples, lists, arrays, and slice objects for indexing!"        
         if isinstance(val,np.ndarray) and val.ndim > 1: raise TypeError, "Can only use 1-D arrays for indexing!"
@@ -1386,6 +1387,25 @@ class Dataset(object):
     # process variables
     slicevars = {}; othervars = {} # variables that will get sliced and others that are unaffected
     sliceaxes = {}; otheraxes = {}
+    # parse axes for pseudo-axes
+    axes = axes.copy() # might be changed...
+    for key,val in axes.iteritems():
+      if val is not None and self.hasVariable(key):
+        del axes[key] # remove pseudo axis
+        var = self.getVariable(key)
+        if isinstance(val,(tuple,list,np.ndarray)): raise NotImplementedError        
+        if var.ndim == 1: # possibly valid pseudo-axis!
+          # now scan through the values to extract matchin index
+          idx = -1
+          for i,vv in enumerate(var.data_array):
+            if vv == val: idx = 1; break
+          if idx < 0: raise AxisError, "Value '{:s}' not found in pseudo-axis '{:s}'.".format(str(val),var.name)
+          # create new axis entry
+          if lidx: axes[var.axes[0].name] = idx
+          else: axes[var.axes[0].name] = var.axes[0].coord[idx] # default is by coord
+        else: raise AxisError, "Pseudo-axis can only have one axis!"
+        # N.B.: not that this automatically squeezes the pseudo-axis, since it is just a values...        
+    # loop over variables
     for var in self.variables.itervalues():
       newvar = var(lidx=lidx, lrng=lrng, asVar=True, lcheck=False, lsqueeze=lsqueeze, 
                    lcopy=lcopy, years=years, listAxis=listAxis, **axes)
