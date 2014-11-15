@@ -581,7 +581,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, domains=
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   # obviously this only works for modes that produce a time-axis
   # figure out ensemble
-  from projects.WRF_experiments import ensembles # need to leave this here, to avoid circular reference...
+  from projects.WRF_experiments import ensembles, Exp # need to leave this here, to avoid circular reference...
   if isinstance(ensemble,Exp): ensemble = ensembles[ensemble.shortname]
   elif isinstance(ensemble,basestring): ensemble = ensembles[ensemble]
   else: raise TypeError
@@ -635,8 +635,8 @@ if __name__ == '__main__':
 #   mode = 'test_station_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_station_timeseries'
-#   mode = 'test_ensemble'
-  mode = 'test_station_ensemble'
+  mode = 'test_ensemble'
+#   mode = 'test_station_ensemble'
 #   mode = 'pickle_grid'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]

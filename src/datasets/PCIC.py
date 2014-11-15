@@ -118,8 +118,8 @@ loadClimatology = loadPCIC # pre-processed, standardized climatology
 
 if __name__ == '__main__':
     
-#   mode = 'test_climatology'
-  mode = 'convert_climatology'
+  mode = 'test_climatology'
+#   mode = 'convert_climatology'
   
   # do some tests
   if mode == 'test_climatology':  

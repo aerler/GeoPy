@@ -39,8 +39,8 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
 
   # load source
   fileclass = fileclasses[filetype] # used for target file name
-  logger.info('\n\n{0:s}   ***   Processing Experiment {1:<15s}   ***   '.format(pidstr,"'%s'"%experiment.name) +
-        '\n{0:s}   ***   {1:^37s}   ***   \n'.format(pidstr,"'%s'"%fileclass.tsfile.format(domain)))
+  logger.info('\n\n{0:s}   ***   Processing Experiment {1:<15s}   ***   '.format(pidstr,"'{:s}'".format(experiment.name)) +
+        '\n{0:s}   ***   {1:^37s}   ***   \n'.format(pidstr,"'{:s}'".format(fileclass.tsfile.format(domain,''))))
   source = loadWRF_TS(experiment=experiment, filetypes=[filetype], domains=domain) # comes out as a tuple...
   if not lparallel and ldebug: 
     logger.info('\n'+str(source)+'\n')
@@ -129,7 +129,8 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
         # start processing climatology
         if shift != 0: 
           logger.info('{0:s}   (shifting climatology by {1:d} month, to start with January)   \n'.format(pidstr,shift))
-        CPU.Climatology(period=period, offset=offset, shift=shift, flush= not lregrid)
+        CPU.Climatology(period=period, offset=offset, shift=shift, flush=False)
+        # N.B.: immediate flushing should not be necessary for climatologies, since they are much smaller!
         
         # reproject and resample (regrid) dataset
         if lregrid:
@@ -202,44 +203,52 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    ldebug = True
-    NP = 4 #NP or 4
-    loverwrite = True
-    varlist = None # ['precip', ]
+    ldebug = False # print more info
+#     loverwrite = True
+    loverwrite = False
+    NP = NP or 4
+    varlist = None # ['lat2D', ]
     experiments = []
     experiments += ['max-ctrl']
 #     experiments += ['new','noah','max','max-2050']
 #     experiments += ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
+#     experiments += ['max-1deg', 'max-1deg-2050','max-1deg-2100']
+    experiments += ['new-v36-nmp', 'new-v36-noah', 'erai-v36-noah', 'new-v36-clm']
+#     experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
-#     experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     experiments += ['max-nofdda','max-fdda']
-#     experiments += ['max-1deg'] #, 'max-diff','max-hilev']
 #     experiments += ['max-ctrl-2100']
 #     experiments += ['ctrl-arb1', 'ctrl-arb1-2050', 'ctrl-2-arb1',]
 #     experiments += ['max-3km']
 #     experiments += ['erai-max']
     offset = 0 # number of years from simulation start
-    periods = [] 
+    periods = [] # not that all periods are handled within one process! 
 #     periods += [1]
 #     periods += [3]
     periods += [5]
 #     periods += [9]
-#     periods += [10]
+    periods += [10]
 #     periods += [15]
-    domains = (1,) # domains to be processed
+    domains = (2,) # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
-#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
+    filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']
-#     filetypes = ['lsm'] # filetypes to be processed
-    filetypes = ['srfc','xtrm','plev3d','hydro']
+#     filetypes = ['hydro'] # filetypes to be processed
+#     filetypes = ['srfc','xtrm','plev3d','hydro']
     grid = 'native'
   else:
     NP = NP or 4
     ldebug=False
-    #loverwrite = True
+    loverwrite = False
     varlist = None # all variables
-    experiments = None # WRF experiment names (passed through WRF_exps)
+#     experiments = None # WRF experiment names (passed through WRF_exps)
+    experiments = [] # list of most important experiments
+    experiments += ['max-1deg', 'max-1deg-2050','max-1deg-2100',]
+    experiments += ['erai-max', 'max-seaice-2050','max-seaice-2100',]
+    experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+    experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
+    experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
     offset = 0 # number of years from simulation start
     periods = (5,10,15,) # averaging period
     domains = (1,2,) # domains to be processed
@@ -277,4 +286,4 @@ if __name__ == '__main__':
   # call parallel execution function
   ec = asyncPoolEC(computeClimatology, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
   # exit with fraction of failures (out of 10) as exit code
-  exit(int(np.ceil(10*ec/len(args)))
+  exit(int(np.ceil(10*ec/len(args))))

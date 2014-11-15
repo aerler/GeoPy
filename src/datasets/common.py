@@ -16,7 +16,7 @@ import os
 from geodata.misc import AxisError, DatasetError, DateError
 from geodata.base import Dataset, Variable, Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
-from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
+from geodata.gdal import GDALError, addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
 
 
 # days per month
@@ -218,23 +218,51 @@ def getFileName(name=None, resolution=None, period=None, filetype='climatology',
   assert filename == filename.lower(), "By convention, climatology files only have lower-case names!"
   return filename
   
+# common climatology load function that will be imported by datasets (for backwards compatibility)
+def loadClim(name=None, folder=None, resolution=None, period=None, grid=None, varlist=None, 
+             varatts=None, filepattern=None, filelist=None, projection=None, geotransform=None, 
+             axes=None, lautoregrid=None):
+  return loadObservations(name=name, folder=folder, resolution=resolution, period=period, grid=grid, station=None, 
+                          varlist=varlist, varatts=varatts, filepattern=filepattern, filelist=filelist, 
+                          projection=projection, geotransform=geotransform, axes=axes, 
+                          lautoregrid=lautoregrid, mode='climatology')
+
+# common climatology load function that will be imported by datasets (for backwards compatibility)
+def loadObs_StnTS(name=None, folder=None, resolution=None, varlist=None, station=None, 
+                  varatts=None, filepattern=None, filelist=None, axes=None):
+  return loadObservations(name=name, folder=folder, resolution=resolution, station=station, 
+                          varlist=varlist, varatts=varatts, filepattern=filepattern, filelist=filelist, 
+                          projection=None, geotransform=None, axes=axes, period=None, grid=None,
+                          lautoregrid=False, mode='time-series')
   
 # universal load function that will be imported by datasets
-def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None, varatts=None, filepattern=None, 
-             filelist=None, projection=None, geotransform=None, axes=None, lautoregrid=False):
+def loadObservations(name=None, folder=None, resolution=None, period=None, grid=None, station=None, 
+                     varlist=None, varatts=None, filepattern=None, filelist=None, projection=None, 
+                     geotransform=None, axes=None, lautoregrid=None, mode='climatology'):
   ''' A function to load standardized climatology datasets. '''
   # prepare input
+  if mode.lower() == 'climatology': # post-processed climatology files
+    # transform period
+    if period is None or period == '':
+      if name not in ('PCIC','PRISM','GPCC','NARR'): 
+        raise ValueError, "A period is required to load observational climatologies."
+    elif isinstance(period,basestring):
+      period = tuple([int(prd) for prd in period.split('-')]) 
+    elif not isinstance(period,(int,np.integer)) and ( not isinstance(period,tuple) and len(period) == 2 ): 
+      raise TypeError
+  elif mode.lower() in ('time-series','timeseries'): # concatenated time-series files
+    period = None # to indicate time-series (but for safety, the input must be more explicit)
+    if lautoregrid is None: lautoregrid = False # this can take very long!
+  if station is None: 
+    lstation = False
+  else: 
+    lstation = True
+    if grid is not None: raise NotImplementedError, 'Currently WRF station data can only be loaded from the native grid.'
+    grid = station
+    if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.' 
   # varlist (varlist = None means all variables)
   if varatts is None: varatts = default_varatts.copy()
   if varlist is not None: varlist = translateVarNames(varlist, varatts)
-  # transform period
-  if period is None or period == '':
-    if name not in ('PCIC','PRISM','GPCC','NARR'): 
-      raise ValueError, "A period is required to load observational climatologies."
-  elif isinstance(period,basestring):
-    period = tuple([int(prd) for prd in period.split('-')]) 
-  elif not isinstance(period,(int,np.integer)) and ( not isinstance(period,tuple) and len(period) == 2 ): 
-    raise TypeError
   # filelist
   if filelist is None: 
     filename = getFileName(name=name, resolution=resolution, period=period, grid=grid, filepattern=filepattern)
@@ -255,14 +283,15 @@ def loadClim(name, folder, resolution=None, period=None, grid=None, varlist=None
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=[filename], varlist=varlist, varatts=varatts, 
                           axes=axes, multifile=False, ncformat='NETCDF4')
   # figure out grid
-  if grid is None or grid == name:
-    dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform, gridfolder=grid_folder)
-  elif isinstance(grid,basestring): # load from pickle file
-#     griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder)
-    # add GDAL functionality to dataset 
-    dataset = addGDALtoDataset(dataset, griddef=grid, gridfolder=grid_folder)
-  else: raise TypeError
-  # N.B.: projection should be auto-detected, if geographic (lat/lon)
+  if not lstation:
+    if grid is None or grid == name:
+      dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform, gridfolder=grid_folder)
+    elif isinstance(grid,basestring): # load from pickle file
+  #     griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder)
+      # add GDAL functionality to dataset 
+      dataset = addGDALtoDataset(dataset, griddef=grid, gridfolder=grid_folder)
+    else: raise TypeError
+    # N.B.: projection should be auto-detected, if geographic (lat/lon)
   return dataset
 
 def checkItemList(itemlist, length, dtype, default=NotImplemented, iterable=False, trim=True):

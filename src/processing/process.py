@@ -506,7 +506,7 @@ class CentralProcessingUnit(object):
       #     print newvar.data_array.__class__
     else:
       var.load() # need to load variables into memory, because we are not doing anything else...
-      newvar = var  
+      newvar = var.copy()
     # return variable
     return newvar
   
