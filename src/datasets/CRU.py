@@ -15,7 +15,7 @@ from geodata.base import Variable, Axis
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition
 from datasets.common import translateVarNames, days_per_month, name_of_month, data_root 
-from datasets.common import loadClim, grid_folder, transformPrecip
+from datasets.common import loadObservations, grid_folder, transformPrecip
 from processing.process import CentralProcessingUnit
 
  
@@ -98,8 +98,31 @@ def loadCRU(name=dataset_name, period=None, grid=None, resolution=None, varlist=
             folder=avgfolder, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly CRU climatology as a DatasetNetCDF. '''
   # load standardized climatology dataset with CRU-specific parameters
-  dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
-                     varatts=varatts, filepattern=avgfile, filelist=filelist, lautoregrid=lautoregrid)
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, grid=grid, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             lautoregrid=lautoregrid, mode='climatology')
+  # return formatted dataset
+  return dataset
+
+# function to load station climatologies
+def loadCRU_Stn(name=dataset_name, period=None, station=None, resolution=None, varlist=None, varatts=None, 
+                folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly CRU climatology as a DatasetNetCDF. '''
+  # load standardized climatology dataset with CRU-specific parameters
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, station=station, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             lautoregrid=False, mode='climatology')
+  # return formatted dataset
+  return dataset
+
+# function to load station time-series
+def loadCRU_StnTS(name=dataset_name, station=None, resolution=None, varlist=None, varatts=None, 
+                  folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly CRU climatology as a DatasetNetCDF. '''
+  # load standardized time-series dataset with CRU-specific parameters
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=None, station=station, 
+                             varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
+                             lautoregrid=False, mode='time-series')
   # return formatted dataset
   return dataset
 
@@ -123,25 +146,28 @@ default_grid = CRU_grid
 loadLongTermMean = None # climatology provided by publisher
 loadTimeSeries = loadCRU_TS # time-series data
 loadClimatology = loadCRU # pre-processed, standardized climatology
+loadStationClimatology = loadCRU_Stn
+loadStationTimeSeries = loadCRU_StnTS 
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
     
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
-  mode = 'average_timeseries'
+  mode = 'test_station_timeseries'
+#   mode = 'average_timeseries'
 #   period = (1971,2001)
 #   period = (1979,2009)
 #   period = (1949,2009)
 #   period = (1979,1982)
 #   period = (1979,1984)
-#   period = (1979,1989)
+  period = (1979,1989)
 #   period = (1979,1994)
 #   period = (1984,1994)
 #   period = (1989,1994)
 #   period = (1979,1980)
 #   period = (1997,1998)
-  period = (2010,2011)
+#   period = (2010,2011)
 
   if mode == 'test_climatology':
     
@@ -152,11 +178,26 @@ if __name__ == '__main__':
     print('')
     print(dataset.geotransform)
     print(dataset.precip.getArray().mean())
+    stnds = loadCRU_Stn(station='ecprecip', period=period)
+    print(stnds)
+    print('')
+    
+        
+  elif mode == 'test_station_timeseries':
+    
+    # load station time-series file
+    print('')
+    dataset = loadCRU_StnTS(station='ectemp')
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
+    assert dataset.time.coord[78*12] == 0 # Jan 1979
 
         
   elif mode == 'test_timeseries':
     
-    # load averaged climatology file
+    # load original time-series file
     print('')
     dataset = loadCRU_TS()
     print(dataset)

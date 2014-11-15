@@ -12,7 +12,7 @@ import numpy as np
 import numpy.ma as ma
 import netCDF4 as nc # netcdf python module
 # internal imports
-from datasets.common import days_per_month, name_of_month, data_root, loadClim
+from datasets.common import days_per_month, name_of_month, data_root, loadObservations
 # from geodata.misc import DatasetError
 from warnings import warn
 from geodata.gdal import GridDefinition
@@ -59,19 +59,34 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 avgfile = 'prism{0:s}_clim{1:s}.nc' # formatted NetCDF file
 avgfolder = root_folder + 'prismavg/' # prefix
 # function to load these files...
-def loadPRISM(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, 
-              folder=avgfolder, filelist=None, lautoregrid=True):
+def loadPRISM(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, 
+              varatts=None, folder=avgfolder, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly PRISM climatology as a DatasetNetCDF. '''
   # only the climatology is available
   if period is not None: 
     warn('Only the full climatology is currently available: setting \'period\' to None.')
     period = None
   # load standardized climatology dataset with PRISM-specific parameters  
-  dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
-                     varatts=varatts, filepattern=avgfile, filelist=filelist, lautoregrid=lautoregrid)
+  dataset = loadObservations(name=name, folder=folder, period=period, grid=grid, station=None, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             lautoregrid=lautoregrid, mode='climatology')
 #   # make sure all fields are masked
 #   dataset.load()
 #   dataset.mask(dataset.datamask, maskSelf=False)
+  # return formatted dataset
+  return dataset
+
+def loadPRISM_Stn(name=dataset_name, period=None, station=None, resolution=None, varlist=None, 
+              varatts=None, folder=avgfolder, filelist=None):
+  ''' Get the pre-processed monthly PRISM climatology as a DatasetNetCDF. '''
+  # only the climatology is available
+  if period is not None: 
+    warn('Only the full climatology is currently available: setting \'period\' to None.')
+    period = None
+  # load standardized climatology dataset with PRISM-specific parameters  
+  dataset = loadObservations(name=name, folder=folder, period=period, grid=None, station=station, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             lautoregrid=False, mode='climatology')
   # return formatted dataset
   return dataset
 
@@ -94,6 +109,7 @@ default_grid = PRISM_grid
 loadLongTermMean = None # climatology provided by publisher
 loadTimeSeries = None # time-series data
 loadClimatology = loadPRISM # pre-processed, standardized climatology
+loadStationClimatology = loadPRISM_Stn
 
 ## Functions that handle access to PRISM ASCII files
 
@@ -147,6 +163,9 @@ if __name__ == '__main__':
     dataset = loadPRISM(grid='arb2_d02')
 #     dataset = loadPRISM()
     print(dataset)
+    print('')
+    stnds = loadPRISM_Stn(station='ecprecip')
+    print(stnds)
     print('')
     print(dataset.geotransform)
     print(dataset.precip.masked)

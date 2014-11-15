@@ -15,7 +15,7 @@ from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset
 from geodata.nctools import writeNetCDF, add_strvar
 from datasets.common import name_of_month, data_root, grid_folder, transformPrecip
-from datasets.common import translateVarNames, loadClim, addLandMask, addLengthAndNamesOfMonth, getFileName
+from datasets.common import translateVarNames, loadObservations, addLandMask, addLengthAndNamesOfMonth, getFileName
 # from geodata.misc import DatasetError
 from warnings import warn
 from geodata.gdal import GridDefinition
@@ -89,13 +89,30 @@ def loadPCIC(name=dataset_name, period=None, grid=None, resolution=None, varlist
     warn('Only the full climatology is currently available: setting \'period\' to None.')
     period = None
   # load standardized climatology dataset with PRISM-specific parameters  
-  dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
-                     varatts=varatts, filepattern=avgfile, filelist=filelist, lautoregrid=lautoregrid)
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, grid=grid, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             lautoregrid=lautoregrid, mode='climatology')
 #   # make sure all fields are masked
 #   dataset.load()
 #   dataset.mask(dataset.datamask, maskSelf=False)
   # return formatted dataset
   return dataset
+
+# function to load station data
+def loadPCIC_Stn(name=dataset_name, period=None, station=None, resolution=None, varlist=None, 
+                 varatts=None, folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly PCIC PRISM climatology as a DatasetNetCDF. '''
+  # only the climatology is available
+  if period is not None: 
+    warn('Only the full climatology is currently available: setting \'period\' to None.')
+    period = None
+  # load standardized climatology dataset with PRISM-specific parameters  
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, grid=None, 
+                             station=station, varlist=varlist, varatts=varatts, filepattern=avgfile, 
+                             filelist=filelist, lautoregrid=False, mode='climatology')
+  # return formatted dataset
+  return dataset
+
 
 
 ## Dataset API
@@ -114,7 +131,7 @@ default_grid = PCIC_grid
 loadLongTermMean = loadPCIC_LTM # climatology provided by publisher
 loadTimeSeries = None # time-series data
 loadClimatology = loadPCIC # pre-processed, standardized climatology
-
+loadStationClimatology = loadPCIC_Stn
 
 if __name__ == '__main__':
     
@@ -128,6 +145,9 @@ if __name__ == '__main__':
 #     dataset = loadPCIC(grid='arb2_d02')
     dataset = loadPCIC()
     print(dataset)
+    print('')
+    stnds = loadPCIC_Stn(station='ecprecip')
+    print(stnds)
     print('')
     print(dataset.geotransform)
     print(dataset.precip.masked)

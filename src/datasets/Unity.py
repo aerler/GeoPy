@@ -14,7 +14,7 @@ import os
 # internal imports
 from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
-from datasets.common import days_per_month, name_of_month, getFileName, data_root, loadClim, grid_folder
+from datasets.common import days_per_month, name_of_month, getFileName, data_root, loadObservations, grid_folder
 from geodata.gdal import loadPickledGridDef
 from datasets.GPCC import loadGPCC
 from datasets.CRU import loadCRU
@@ -71,8 +71,9 @@ def loadUnity(name=dataset_name, period=None, grid=None, resolution=None, varlis
     grid = 'arb2_d02'
     warn('The Unified Dataset has no native grid; loading {0:s} grid.'.format(grid))
   # load standardized climatology dataset with PRISM-specific parameters  
-  dataset = loadClim(name=name, folder=folder, projection=None, period=period, grid=grid, varlist=varlist, 
-                     varatts=varatts, filepattern=avgfile, filelist=filelist)
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, grid=grid, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             mode='climatology')
   # return formatted dataset
   return dataset
 
@@ -98,8 +99,8 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-  mode = 'merge_datasets'
-#   mode = 'test_climatology'
+#   mode = 'merge_datasets'
+  mode = 'test_climatology'
   
   # settings to generate dataset
   grids = []
