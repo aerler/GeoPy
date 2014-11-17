@@ -73,9 +73,9 @@ class BasinInfo(object):
     shapefiles = OrderedDict()
     for shp in self.shapefiles:
       if shp[-4:] == '.shp':
-	shapefiles[shp[:-4]] = self.folder + shp
+        shapefiles[shp[:-4]] = self.folder + shp
       else: 
-	shapefiles[shp] = self.folder + shp + '.shp'
+        shapefiles[shp] = self.folder + shp + '.shp'
     self.shapefiles = shapefiles 
     #self.shapefiles = [shp if shp[-4:] == '.shp' else shp+'.shp' for shp in self.shapefiles]
     self.outline = self.shapefiles.keys()[0]; self.maingage = self.stations[self.rivers[0]][0] if self.stations else None 
@@ -85,7 +85,9 @@ class BasinInfo(object):
         filename = '{0:s}_{1:}.dat'.format(river,station)
         if station in self.stationfiles: 
           warn('Duplicate station name: {}\n  {}\n  {}'.format(station,self.stationfiles[station],filename))
-        else: self.stationfiles[station] = filename 
+        else: self.stationfiles[station] = filename
+    self.data_source = 'WSC' # all shapefiles here from Water Survey of Canada
+      
       
 # meta data for specific basins
 class ARB(BasinInfo):
@@ -100,14 +102,26 @@ class FRB(BasinInfo):
     self.stations = dict(Fraser=['PortMann','Mission'])
     self.shapefiles = ['WholeFRB','LowerFRB','UpperFRB']
     BasinInfo.__init__(self)
+class NRB(BasinInfo):
+  def __init__(self):
+    self.name = 'NRB'; self.long_name = 'Nelson River Basin'; self.rivers = ['Nelson']
+    self.stations = dict(Nelson=[])
+    self.shapefiles = ['WholeNRB']
+    BasinInfo.__init__(self)
 class PSB(BasinInfo):
   def __init__(self):
     self.name = 'PSB'; self.long_name = 'Pacific Seaboard'; self.rivers = []
     self.stations = dict()
     self.shapefiles = ['WholePSB','NorthernPSB','SouthernPSB']
     BasinInfo.__init__(self)
+class GSL(BasinInfo):
+  def __init__(self):
+    self.name = 'GSL'; self.long_name = 'Great Slave Lake'; self.rivers = []
+    self.stations = dict()
+    self.shapefiles = ['WholeGSL']
+    BasinInfo.__init__(self)
 # dictionary with basin meta data
-basins = dict(ARB=ARB(), FRB=FRB(), PSB=PSB())
+basins = dict(ARB=ARB(), FRB=FRB(), NRB=NRB(), PSB=PSB(), GSL=GSL())
 
 ## Functions that handle access to ASCII files
 

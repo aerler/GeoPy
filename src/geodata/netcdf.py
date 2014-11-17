@@ -52,11 +52,8 @@ def asAxisNC(ax=None, ncvar=None, mode='rw', deepcopy=True, **kwargs):
   if not isinstance(ncvar,(nc.Variable,nc.Dataset)): raise TypeError # this is for the coordinate variable, not the dimension
   # axes are handled automatically (self-reference)  )
   atts = kwargs.pop('atts',ax.atts.copy()) # name and units are also stored in atts!
-  axisnc = AxisNC(ncvar, atts=atts, plot=ax.plot.copy(), length=len(ax), coord=None, dtype=ax.dtype, 
-                  mode=mode, **kwargs)
-  # copy data  
-  if ax.data:    
-    axisnc.coord = ax.getArray(copy=deepcopy)
+  axisnc = AxisNC(ncvar, atts=atts, plot=ax.plot.copy(), length=len(ax), dtype=ax.dtype, 
+                  coord=ax.getArray(unmask=True, copy=deepcopy), mode=mode, **kwargs)
   # return AxisNC
   return axisnc
 
@@ -194,6 +191,8 @@ class VarNC(Variable):
       if self.offset != 0: data += self.offset
       if self.scalefactor != 1: data *= self.scalefactor
       if self.transform is not None: data = self.transform(data, var=self, slc=slc)
+      # load data, so that it is not lost
+      self.load(data=data)
     # return data
     return data  
   

@@ -131,7 +131,7 @@ default_grid = PCIC_grid
 loadLongTermMean = loadPCIC_LTM # climatology provided by publisher
 loadTimeSeries = None # time-series data
 loadClimatology = loadPCIC # pre-processed, standardized climatology
-loadStationClimatology = loadPCIC_Stn
+loadStationClimatology = loadPCIC_Stn # climatologies without associated grid (e.g. stations or basins)
 
 if __name__ == '__main__':
     

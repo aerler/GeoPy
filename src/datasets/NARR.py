@@ -14,7 +14,7 @@ from geodata.base import Axis
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition
 from geodata.misc import DatasetError 
-from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadClim, grid_folder
+from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadObservations, grid_folder
 from processing.process import CentralProcessingUnit
 
 
@@ -109,7 +109,8 @@ def loadNARR_LTM(name=dataset_name, varlist=None, grid=None, interval='monthly',
 orig_ts_folder = root_folder + 'Monthly/' # monthly subfolder
 orig_ts_file = '{0:s}.mon.mean.nc' # monthly time-series for each variables
 tsfile = 'narr{0:s}_monthly.nc' # extend with grid type only
-def loadNARR_TS(name=dataset_name, grid=None, varlist=None, resolution=None, varatts=varatts, filelist=None, folder=orig_ts_folder):
+def loadNARR_TS(name=dataset_name, grid=None, varlist=None, resolution=None, varatts=None, filelist=None, 
+               folder=None, lautoregrid=None):
   ''' Get a properly formatted NARR dataset with monthly mean time-series. '''
   if grid is None:
     # load from original time-series files 
@@ -133,7 +134,9 @@ def loadNARR_TS(name=dataset_name, grid=None, varlist=None, resolution=None, var
   else:
     # load from neatly formatted and regridded time-series files
     if folder is None: folder = avgfolder
-    raise NotImplementedError, "Need to implement loading neatly formatted and regridded time-series!"
+    dataset = loadObservations(name=name, folder=folder, projection=None, resolution=None, grid=grid, 
+                               period=None, varlist=varlist, varatts=varatts, filepattern=tsfile, 
+                               filelist=filelist, lautoregrid=lautoregrid, mode='time-series')
   # return formatted dataset
   return dataset
 
@@ -145,10 +148,34 @@ def loadNARR(name=dataset_name, period=None, grid=None, resolution=None, varlist
              folder=avgfolder, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly NARR climatology as a DatasetNetCDF. '''
   # load standardized climatology dataset with NARR-specific parameters
-  dataset = loadClim(name=name, folder=folder, projection=projection, period=period, grid=grid, varlist=varlist, 
-                     varatts=varatts, filepattern=avgfile, filelist=filelist, lautoregrid=lautoregrid)
+  dataset = loadObservations(name=name, folder=folder, projection=projection, resolution=resolution, 
+                             period=period, grid=grid, varlist=varlist, varatts=varatts, filelist=filelist, 
+                             filepattern=avgfile, lautoregrid=lautoregrid, mode='climatology')
   # return formatted dataset
   return dataset
+
+# function to load station climatologies
+def loadNARR_Stn(name=dataset_name, period=None, station=None, resolution=None, varlist=None, varatts=None, 
+                folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly NARR climatology as a DatasetNetCDF. '''
+  # load standardized climatology dataset with NARR-specific parameters
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, station=station, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             lautoregrid=False, mode='climatology')
+  # return formatted dataset
+  return dataset
+
+# function to load station time-series
+def loadNARR_StnTS(name=dataset_name, station=None, resolution=None, varlist=None, varatts=None, 
+                  folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly NARR climatology as a DatasetNetCDF. '''
+  # load standardized time-series dataset with NARR-specific parameters
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=None, station=station, 
+                             varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
+                             lautoregrid=False, mode='time-series')
+  # return formatted dataset
+  return dataset
+
 
 ## Dataset API
 
@@ -169,28 +196,32 @@ default_grid = NARR_grid
 loadLongTermMean = loadNARR_LTM # climatology provided by publisher
 loadTimeSeries = loadNARR_TS # time-series data
 loadClimatology = loadNARR # pre-processed, standardized climatology
+loadStationClimatology = loadNARR_Stn # climatologies without associated grid (e.g. stations or basins) 
+loadStationTimeSeries = loadNARR_StnTS # time-series without associated grid (e.g. stations or basins)
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
     
   
-#   mode = 'test_climatology'
+  mode = 'test_climatology'
 #   mode = 'average_timeseries'
-  mode = 'test_timeseries'
+#   mode = 'test_timeseries'
+#   mode = 'test_station_timeseries'
 #   mode = 'convert_climatology'
-  grid = 'NARR'
-#   period = (1979,1984)
+  grid = None
+#   grid = 'arb2_d02'
+  period = (1979,1984)
 #   period = (1979,1989)
 #   period = (1979,1994)
 #   period = (1979,2009)
-  period = (2010,2011)
+#   period = (2010,2011)
   
   if mode == 'test_climatology':
     
     
     # load averaged climatology file
     print('')
-    dataset = loadNARR(period=period)
+    dataset = loadNARR(grid=grid, period=period)
     print(dataset)
     print('')
     print(dataset.geotransform)
@@ -198,16 +229,29 @@ if __name__ == '__main__':
     print(grid_def[''].scale)
               
 
+  elif mode == 'test_station_timeseries':
+    
+    # load station time-series file
+    print('')
+    dataset = loadNARR_StnTS(station='ectemp')
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
+    assert dataset.time.coord[0] == 0 # Jan 1979
+
+        
   elif mode == 'test_timeseries':
     
     
     # load timeseries files
     print('')
-    dataset = loadNARR_TS()
+    dataset = loadNARR_TS(grid=grid)
     print(dataset)
     print('')
     print(dataset.time)
     print(dataset.time.coord)
+    assert dataset.time.coord[0] == 0 # Jan 1979
               
 
   elif mode == 'convert_climatology':      

@@ -725,9 +725,9 @@ class NetCDFVarTest(BaseVarTest):
     data = var[:]
     assert data.shape == self.data.shape
     assert isEqual(self.data[:], data)
-    # assert no data
-    assert not var.data
-    assert var.data_array is None
+    # assert data
+    assert var.data
+    assert var.data_array is not None
 
   def testIndexing(self):
     ''' test indexing and slicing '''
@@ -1039,5 +1039,8 @@ if __name__ == "__main__":
     if errs + fails == 0:
       print("\n   ***   All {:d} Test(s) successfull!!!   ***   \n".format(runs))
     else:
-      print("\n   ###   Test Summary:   Ran {:d} Test(s), encountered {:d} Failure(s) and {:d} Error(s)   ###   \n".format(runs,errs,fails))
+      print("\n   ###     Test Summary:      ###   \n" + 
+            "   ###     Ran {:2d} Test(s)     ###   \n".format(runs) + 
+            "   ###      {:2d} Failure(s)     ###   \n".format(errs) + 
+            "   ###      {:2d} Error(s)       ###   \n".format(fails))
     

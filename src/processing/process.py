@@ -227,6 +227,7 @@ class CentralProcessingUnit(object):
       j = ylat.getIndex(lat, mode='closest', outOfBounds=True)
       if i is not None and j is not None: 
         ixlon.append(i); iylat.append(j); istn.append(n)  
+    # N.B.: it is necessary to append, because we don't know the number of valid points
     ixlon = np.array(ixlon); iylat = np.array(iylat); istn = np.array(istn)
     # prepare target dataset
     # N.B.: attributes should already be set in target dataset (by caller module)
@@ -276,7 +277,7 @@ class CentralProcessingUnit(object):
       # here we extract the data points
       srcdata = var.getArray()
       try: tgtdata = srcdata.__getitem__(slices) # constructed above
-      except: print slices
+      except: print srcdata.shape, [slc.max() for slc in slices] 
       # create new Variable
       assert shape == tgtdata.shape
       newvar = var.copy(axes=axes, data=tgtdata) # new axes and data

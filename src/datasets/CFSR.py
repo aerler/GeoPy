@@ -13,7 +13,7 @@ import os
 from geodata.netcdf import DatasetNetCDF, Axis
 from geodata.misc import DatasetError
 from geodata.gdal import addGDALtoDataset, GridDefinition
-from datasets.common import translateVarNames, name_of_month, data_root, loadClim, grid_folder
+from datasets.common import translateVarNames, name_of_month, data_root, loadObservations, grid_folder
 from processing.process import CentralProcessingUnit
 
 
@@ -78,10 +78,26 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 ## Functions to load different types of CFSR datasets 
 
+def checkGridRes(grid, resolution):
+  ''' helper function to verify grid/resoluton selection ''' 
+  # prepare input
+  if grid is not None and grid[0:5].lower() == 'cfsr_': 
+    resolution = grid[5:]
+    grid = None
+  elif resolution is None: resolution = '031'
+  # check for valid resolution
+  if resolution == 'hires' or resolution == '03': resolution = '031' 
+  elif resolution == 'lowres': resolution = '05' 
+  elif resolution not in ('031','05'): 
+    raise DatasetError, "Selected resolution '{0:s}' is not available!".format(resolution)  
+  # return
+  return grid, resolution
+
 # time-series
 orig_ts_folder = root_folder + 'Monthly/'
 tsfile = 'cfsr{0:s}_monthly.nc' # extend with grid type only
-def loadCFSR_TS(name=dataset_name, grid=None, varlist=None, varatts=None, resolution='hires', filelist=None, folder=None):
+def loadCFSR_TS(name=dataset_name, grid=None, varlist=None, varatts=None, resolution='hires', 
+                filelist=None, folder=None, lautoregrid=None):
   ''' Get a properly formatted CFSR dataset with monthly mean time-series. '''
   if grid is None:
     # load from original time-series files 
@@ -126,7 +142,10 @@ def loadCFSR_TS(name=dataset_name, grid=None, varlist=None, varatts=None, resolu
   else:
     # load from neatly formatted and regridded time-series files
     if folder is None: folder = avgfolder
-    raise NotImplementedError, "Need to implement loading neatly formatted and regridded time-series!"    
+    grid, resolution = checkGridRes(grid, resolution)
+    dataset = loadObservations(name=name, folder=folder, projection=None, resolution=resolution, grid=grid, 
+                               period=None, varlist=varlist, varatts=varatts, filepattern=tsfile, 
+                               filelist=filelist, lautoregrid=lautoregrid, mode='time-series')
   # return formatted dataset
   return dataset
 
@@ -138,19 +157,34 @@ avgfile = 'cfsr{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+
 def loadCFSR(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, 
              folder=avgfolder, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly CFSR climatology as a DatasetNetCDF. '''
-  # prepare input
-  if grid is not None and grid[0:5].lower() == 'cfsr_': 
-    resolution = grid[5:]
-    grid = None
-  elif resolution is None: resolution = '031'
-  # check for valid resolution
-  if resolution == 'hires' or resolution == '03': resolution = '031' 
-  elif resolution == 'lowres': resolution = '05' 
-  elif resolution not in ('031','05'): 
-    raise DatasetError, "Selected resolution '{0:s}' is not available!".format(resolution)  
-  # load standardized climatology dataset with GPCC-specific parameters
-  dataset = loadClim(name=name, folder=folder, projection=None, resolution=resolution, period=period, grid=grid, 
-                     varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, lautoregrid=lautoregrid)
+  # load standardized climatology dataset with CFSR-specific parameters
+  dataset = loadObservations(name=name, folder=folder, projection=None, resolution=resolution, 
+                             period=period, grid=grid, varlist=varlist, varatts=varatts, filelist=filelist, 
+                             filepattern=avgfile, lautoregrid=lautoregrid, mode='climatology')
+  # return formatted dataset
+  return dataset
+
+# function to load station climatologies
+def loadCFSR_Stn(name=dataset_name, period=None, station=None, resolution=None, varlist=None, varatts=None, 
+                 folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly CFSR climatology as a DatasetNetCDF. '''
+  grid, resolution = checkGridRes(None, resolution); del grid
+  # load standardized climatology dataset with -specific parameters
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, station=station, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             resolution=resolution, lautoregrid=False, mode='climatology')
+  # return formatted dataset
+  return dataset
+
+# function to load station time-series
+def loadCFSR_StnTS(name=dataset_name, station=None, resolution=None, varlist=None, varatts=None, 
+                   folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly CFSR climatology as a DatasetNetCDF. '''
+  grid, resolution = checkGridRes(None, resolution); del grid
+  # load standardized time-series dataset with -specific parameters
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=None, station=station, 
+                             varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
+                             resolution=resolution, lautoregrid=False, mode='time-series')
   # return formatted dataset
   return dataset
 
@@ -174,6 +208,8 @@ default_grid = CFSR_031_grid
 loadLongTermMean = None # climatology provided by publisher
 loadTimeSeries = loadCFSR_TS # time-series data
 loadClimatology = loadCFSR # pre-processed, standardized climatology
+loadStationClimatology = loadCFSR_Stn # climatologies without associated grid (e.g. stations or basins) 
+loadStationTimeSeries = loadCFSR_StnTS # time-series without associated grid (e.g. stations or basins)
 
 
 ## (ab)use main execution for quick test
@@ -181,9 +217,10 @@ if __name__ == '__main__':
   
 #   mode = 'test_climatology'
 #   mode = 'average_timeseries'
-  mode = 'test_timeseries'
-#   reses = ('05',) # for testing
-  reses = ( '031','05',)
+#   mode = 'test_timeseries'
+  mode = 'test_station_timeseries'
+  reses = ('05',) # for testing
+#   reses = ( '031','05',)
 #   period = (1979,1984)
 #   period = (1979,1989)
 #   period = (1979,1994)
@@ -218,6 +255,18 @@ if __name__ == '__main__':
       print(dataset.time.coord)
     
               
+    elif mode == 'test_station_timeseries':
+    
+      # load station time-series file
+      print('')
+      dataset = loadCFSR_StnTS(station='ectemp')
+      print(dataset)
+      print('')
+      print(dataset.time)
+      print(dataset.time.coord)
+      assert dataset.time.coord[0] == 0 # Jan 1979
+
+        
     elif mode == 'average_timeseries':
     
       

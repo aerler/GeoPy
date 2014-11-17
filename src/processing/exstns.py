@@ -281,10 +281,10 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    ldebug = False
+    ldebug = True
     NP = 1 #or NP # to avoid memory issues...
-    modes = ('climatology',) # 'climatology','time-series'
-#     modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('climatology',) # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
 #     varlist = ['precip',]
@@ -296,19 +296,19 @@ if __name__ == '__main__':
 #     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
-    datasets = []; resolutions = dict()
+    datasets = []; resolutions = None
     lLTM = False # also regrid the long-term mean climatologies 
 #     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
-#     datasets += ['CFSR', 'NARR']
+    datasets += ['CFSR']
 #     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
 #     datasets += ['CRU']
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
-    CESM_experiments += ['Ctrl-1']
+#     CESM_experiments += ['Ctrl-1']
 #     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     CESM_experiments += ['Ctrl-1-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
 #     CESM_experiments += ['Ens', 'Ens-2050']
@@ -328,10 +328,10 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
     #WRF_filetypes = ('const',); periods = None
     # station datasets to match    
-#     stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
-    stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
+    stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
+#     stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
   else:
-    NP = NP or 2 # time-series might take more memory!
+    NP = NP or 4 # time-series might take more memory!
     #modes = ('climatology','time-series')
     modes = ('time-series',) # too many small files...
     loverwrite = False

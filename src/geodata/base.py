@@ -607,40 +607,46 @@ class Variable(object):
     
   def getArray(self, idx=None, axes=None, broadcast=False, unmask=False, fillValue=None, copy=True):
     ''' Copy the entire data array or a slice; option to unmask and to reorder/reshape to specified axes. '''
-    # get data (idx=None will return the entire data array)
-     # use __getitem__ to get slice
-    datacopy = self.__getitem__(slice(None)) if idx is None else self.__getitem__(idx) # just get a view
-    if copy: datacopy = datacopy.copy() # or copy, if desired 
-    # unmask    
-    if unmask and isinstance(datacopy, ma.MaskedArray): 
-      # N.B.: if no data is loaded, self.mask is usually false...
-      if fillValue is None: fillValue=self.fillValue
-      datacopy = datacopy.filled(fill_value=fillValue) # I don't know if this generates a copy or not...
-    elif not self.masked and isinstance(datacopy, ma.MaskedArray): 
-      self.__dict__['masked'] = True # update masked flag
-    # reorder and reshape to match axes (add missing dimensions as singleton dimensions)
-    if axes is not None:
-      if idx is not None: raise NotImplementedError
-      for ax in self.axes:
-        assert (ax in axes) or (ax.name in axes), "Can not broadcast Variable '%s' to dimension '%s' "%(self.name,ax.name)
-      # order dimensions as in broadcast axes list
-      order = [self.axisIndex(ax) for ax in axes if self.hasAxis(ax)] # indices of broadcast list axes in instance axes list (self.axes)
-      datacopy = np.transpose(datacopy,axes=order) # reorder dimensions to match broadcast list
-      # adapt shape for broadcasting (i.e. expand shape with singleton dimensions)
-      shape = [1]*len(axes); z = 0
-      for i in xrange(len(axes)):
-        if self.hasAxis(axes[i]): 
-          shape[i] = datacopy.shape[z] # indices of instance axes in broadcast axes list
-          z += 1
-      assert z == datacopy.ndim 
-      datacopy = datacopy.reshape(shape)
-    # true broadcasting: extend array to match given axes and dimensions
-    if broadcast:
-      assert all([isinstance(ax,Axis) and len(ax)>0 for ax in axes]),\
-         'All axes need to have a defined length in order broadcast the array.'
-      # get tiling list
-      tiling = [len(ax) if l == 1 else 1 for ax,l in zip(axes,datacopy.shape)]
-      datacopy = np.tile(datacopy, reps=tiling)
+    # use __getitem__ to get slice
+    try: 
+      datacopy = self.__getitem__(slice(None)) if idx is None else self.__getitem__(idx) # just get a view
+      assert self.data_array is not None and self.data
+    except DataError: 
+      assert self.data_array is None and not self.data
+      datacopy = None # return None
+    # without data, this will fail
+    if self.data:
+      if copy: datacopy = datacopy.copy() # or copy, if desired 
+      # unmask    
+      if unmask and isinstance(datacopy, ma.MaskedArray): 
+        # N.B.: if no data is loaded, self.mask is usually false...
+        if fillValue is None: fillValue=self.fillValue
+        datacopy = datacopy.filled(fill_value=fillValue) # I don't know if this generates a copy or not...
+      elif not self.masked and isinstance(datacopy, ma.MaskedArray): 
+        self.__dict__['masked'] = True # update masked flag
+      # reorder and reshape to match axes (add missing dimensions as singleton dimensions)
+      if axes is not None:
+        if idx is not None: raise NotImplementedError
+        for ax in self.axes:
+          assert (ax in axes) or (ax.name in axes), "Can not broadcast Variable '%s' to dimension '%s' "%(self.name,ax.name)
+        # order dimensions as in broadcast axes list
+        order = [self.axisIndex(ax) for ax in axes if self.hasAxis(ax)] # indices of broadcast list axes in instance axes list (self.axes)
+        datacopy = np.transpose(datacopy,axes=order) # reorder dimensions to match broadcast list
+        # adapt shape for broadcasting (i.e. expand shape with singleton dimensions)
+        shape = [1]*len(axes); z = 0
+        for i in xrange(len(axes)):
+          if self.hasAxis(axes[i]): 
+            shape[i] = datacopy.shape[z] # indices of instance axes in broadcast axes list
+            z += 1
+        assert z == datacopy.ndim 
+        datacopy = datacopy.reshape(shape)
+      # true broadcasting: extend array to match given axes and dimensions
+      if broadcast:
+        assert all([isinstance(ax,Axis) and len(ax)>0 for ax in axes]),\
+           'All axes need to have a defined length in order broadcast the array.'
+        # get tiling list
+        tiling = [len(ax) if l == 1 else 1 for ax,l in zip(axes,datacopy.shape)]
+        datacopy = np.tile(datacopy, reps=tiling)
     # return array
     return datacopy
     
@@ -1148,6 +1154,7 @@ class Axis(Variable):
         Attributes: 
           coord = @property # managed access to the coordinate vector
           len = @property # the current length of the dimension (integer value)
+          ascending = bool # if coordinates incease or decrease
     '''
     # initialize dimensions
     if axes is None: axes = (self,)
@@ -1159,8 +1166,15 @@ class Axis(Variable):
     # initialize as a subclass of Variable, depending on the multiple inheritance chain    
     super(Axis, self).__init__(axes=axes, **varargs)
     # add coordinate vector
-    if coord is not None: self.coord = coord
+    if coord is not None: 
+      self.coord = coord
+      assert self.data == True
     elif length > 0: self.len = length
+    # determine direction of ascend
+    if self.coord is not None:
+      if all(np.diff(self.coord) > 0): self.ascending = True
+      elif all(np.diff(self.coord) < 0): self.ascending = False
+      else: raise AxisError, "Coordinates must be strictly monotonically increasing or decreasing."
 
   @property
   def coord(self):
@@ -1244,34 +1258,45 @@ class Axis(Variable):
     if outOfBounds is None:
       if mode.lower() in ('left','right'): outOfBounds = False # return lowest/highest index if out of bounds
       else: outOfBounds = True # return None if value out of bounds
+    # check coordinate order
+    if self.ascending: 
+      coord = self.coord
+    else: 
+      coord = self.coord[::-1] # reverse order
+      # also swap left and right
+      if mode.lower() == 'left': mode = 'right'
+      elif mode.lower() == 'right': mode = 'left'
     # check bounds
-    if outOfBounds and ( value < self.coord[0] or value > self.coord[-1] ): 
+    if outOfBounds and ( value < coord[0] or value > coord[-1] ): 
       return None
     else:
       # behavior depends on mode
       if mode.lower() == 'left':
         # returns value suitable for beginning of range (inclusive)
-        return self.coord.searchsorted(value, side='left')
+        return coord.searchsorted(value, side='left')
       elif mode.lower() == 'right':    
         # returns value suitable for end of range (inclusive)
-        return self.coord.searchsorted(value, side='right')
+        return coord.searchsorted(value, side='right')
       elif mode.lower() == 'closest':      
         # search for closest index
-        idx = self.coord.searchsorted(value) # returns value 
+        idx = coord.searchsorted(value) # returns value 
         # refine search
         if idx <= 0: 
-          return 0
+          idx = 0
         elif idx >= self.len: 
-          return self.len-1
+          idx = self.len-1
         else:
-          dl = value - self.coord[idx-1]
-          dr = self.coord[idx] - value
+          dl = value - coord[idx-1]
+          dr = coord[idx] - value
           if dr < dl: 
-            return idx
+            idx = idx
           else: 
-            return idx-1 # can't be 0 at this point 
+            idx = idx-1 # can't be 0 at this point 
       else: 
-        raise ValueError, "Mode '{:s}' unknown.".format(mode)
+        raise ValueError, "Mode '{:s}' unknown.".format(mode)      
+      # return
+      if not self.ascending: idx = self.len - idx -1 # flip again
+      return idx 
                   
 
 class Dataset(object):

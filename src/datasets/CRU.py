@@ -61,7 +61,8 @@ nofile = ('lat','lon','time') # variables that don't have their own files
 orig_ts_folder = root_folder + 'Time-series 3.2/data/' # monthly subfolder
 orig_ts_file = 'cru_ts3.20.1901.2011.{0:s}.dat.nc' # file names, need to extend with variable name (original)
 tsfile = 'cru{0:s}_monthly.nc' # extend with grid type only
-def loadCRU_TS(name=dataset_name, grid=None, varlist=None, resolution=None, varatts=None, filelist=None, folder=None):
+def loadCRU_TS(name=dataset_name, grid=None, varlist=None, resolution=None, varatts=None, filelist=None, 
+               folder=None, lautoregrid=None):
   ''' Get a properly formatted  CRU dataset with monthly mean time-series. '''
   if grid is None:
     # load from original time-series files 
@@ -86,7 +87,9 @@ def loadCRU_TS(name=dataset_name, grid=None, varlist=None, resolution=None, vara
   else:
     # load from neatly formatted and regridded time-series files
     if folder is None: folder = avgfolder
-    raise NotImplementedError, "Need to implement loading neatly formatted and regridded time-series!"
+    dataset = loadObservations(name=name, folder=folder, projection=None, resolution=None, grid=grid, 
+                               period=None, varlist=varlist, varatts=varatts, filepattern=tsfile, 
+                               filelist=filelist, lautoregrid=lautoregrid, mode='time-series')
   # return formatted dataset
   return dataset
 
@@ -146,15 +149,15 @@ default_grid = CRU_grid
 loadLongTermMean = None # climatology provided by publisher
 loadTimeSeries = loadCRU_TS # time-series data
 loadClimatology = loadCRU # pre-processed, standardized climatology
-loadStationClimatology = loadCRU_Stn
-loadStationTimeSeries = loadCRU_StnTS 
+loadStationClimatology = loadCRU_Stn # climatologies without associated grid (e.g. stations or basins) 
+loadStationTimeSeries = loadCRU_StnTS # time-series without associated grid (e.g. stations or basins)
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
     
 #   mode = 'test_climatology'
-#   mode = 'test_timeseries'
-  mode = 'test_station_timeseries'
+  mode = 'test_timeseries'
+#   mode = 'test_station_timeseries'
 #   mode = 'average_timeseries'
 #   period = (1971,2001)
 #   period = (1979,2009)
@@ -199,7 +202,7 @@ if __name__ == '__main__':
     
     # load original time-series file
     print('')
-    dataset = loadCRU_TS()
+    dataset = loadCRU_TS(grid='arb2_d02')
     print(dataset)
     print('')
     print(dataset.time)

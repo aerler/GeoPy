@@ -19,7 +19,7 @@ from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, a
 from geodata.misc import DatasetError
 from geodata.nctools import writeNetCDF, add_strvar
 from datasets.common import name_of_month, data_root, grid_folder, transformPrecip
-from datasets.common import translateVarNames, loadClim, addLandMask, addLengthAndNamesOfMonth, getFileName
+from datasets.common import translateVarNames, loadObservations, addLandMask, addLengthAndNamesOfMonth, getFileName
 from processing.process import CentralProcessingUnit
 
 ## GPCC Meta-data
@@ -86,11 +86,29 @@ def loadGPCC_LTM(name=dataset_name, varlist=None, resolution='025', varatts=ltmv
   # return formatted dataset
   return dataset
 
+
+def checkGridRes(grid, resolution, period=None, lclim=False):
+  ''' helper function to verify grid/resoluton selection ''' 
+  # prepare input
+  if grid is not None and grid[0:5].lower() == 'gpcc_': 
+    resolution = grid[5:]
+    grid = None
+  elif resolution is None: 
+    resolution = '025' if period is None and lclim else '05'
+  # check for valid resolution 
+  if resolution not in ('025','05', '10', '25'): 
+    raise DatasetError, "Selected resolution '%s' is not available!"%resolution  
+  if resolution == '025' and period is not None: 
+    raise DatasetError, "The highest resolution is only available for the long-term mean!"
+  # return
+  return grid, resolution
+
 # Time-series (monthly)
 orig_ts_folder = root_folder + 'full_data_1900-2010/' # climatology subfolder
 orig_ts_file = 'full_data_v6_{0:s}_{1:s}.nc' # extend by variable name and resolution
 tsfile = 'gpcc{0:s}_monthly.nc' # extend with grid type only
-def loadGPCC_TS(name=dataset_name, grid=None, varlist=None, resolution='25', varatts=None, filelist=None, folder=None):
+def loadGPCC_TS(name=dataset_name, grid=None, varlist=None, resolution='25', varatts=None, filelist=None, 
+                folder=None, lautoregrid=None):
   ''' Get a properly formatted dataset with the monthly GPCC time-series. '''
   if grid is None:
     # load from original time-series files 
@@ -117,7 +135,10 @@ def loadGPCC_TS(name=dataset_name, grid=None, varlist=None, resolution='25', var
   else:
     # load from neatly formatted and regridded time-series files
     if folder is None: folder = avgfolder
-    raise NotImplementedError, "Need to implement loading neatly formatted and regridded time-series!"
+    grid, resolution = checkGridRes(grid, resolution, period=None, lclim=False)
+    dataset = loadObservations(name=name, folder=folder, projection=None, resolution=resolution, grid=grid, 
+                               period=None, varlist=varlist, varatts=varatts, filepattern=tsfile, 
+                               filelist=filelist, lautoregrid=lautoregrid, mode='time-series')
   # return formatted dataset
   return dataset
 
@@ -128,20 +149,35 @@ avgfile = 'gpcc{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+
 def loadGPCC(name=dataset_name, resolution=None, period=None, grid=None, varlist=None, varatts=None, 
              folder=avgfolder, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly GPCC climatology as a DatasetNetCDF. '''
-  # prepare input
-  if grid is not None and grid[0:5].lower() == 'gpcc_': 
-    resolution = grid[5:]
-    grid = None
-  elif resolution is None: 
-    resolution = '025' if period is None else '05'
-  # check for valid resolution 
-  if resolution not in ('025','05', '10', '25'): 
-    raise DatasetError, "Selected resolution '%s' is not available!"%resolution  
-  if resolution == '025' and period is not None: 
-    raise DatasetError, "The highest resolution is only available for the long-term mean!"
+  grid, resolution = checkGridRes(grid, resolution, period=period, lclim=True)
   # load standardized climatology dataset with GPCC-specific parameters
-  dataset = loadClim(name=name, folder=folder, projection=None, resolution=resolution, period=period, grid=grid, 
-                     varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, lautoregrid=lautoregrid)
+  dataset = loadObservations(name=name, folder=folder, projection=None, resolution=resolution, period=period, 
+                             grid=grid, varlist=varlist, varatts=varatts, filepattern=avgfile, 
+                             filelist=filelist, lautoregrid=lautoregrid, mode='climatology')
+  # return formatted dataset
+  return dataset
+
+# function to load station climatologies
+def loadGPCC_Stn(name=dataset_name, period=None, station=None, resolution=None, varlist=None, varatts=None, 
+                folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly GPCC climatology as a DatasetNetCDF. '''
+  grid, resolution = checkGridRes(None, resolution, period=period, lclim=True); del grid
+  # load standardized climatology dataset with GPCC-specific parameters
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, station=station, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             resolution=resolution, lautoregrid=False, mode='climatology')
+  # return formatted dataset
+  return dataset
+
+# function to load station time-series
+def loadGPCC_StnTS(name=dataset_name, station=None, resolution=None, varlist=None, varatts=None, 
+                  folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly GPCC climatology as a DatasetNetCDF. '''
+  grid, resolution = checkGridRes(None, resolution, period=None, lclim=False); del grid
+  # load standardized time-series dataset with GPCC-specific parameters
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=None, station=station, 
+                             varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
+                             resolution=resolution, lautoregrid=False, mode='time-series')
   # return formatted dataset
   return dataset
 
@@ -165,18 +201,21 @@ default_grid = GPCC_025_grid
 loadLongTermMean = loadGPCC_LTM # climatology provided by publisher
 loadTimeSeries = loadGPCC_TS # time-series data
 loadClimatology = loadGPCC # pre-processed, standardized climatology
+loadStationClimatology = loadGPCC_Stn # climatologies without associated grid (e.g. stations or basins) 
+loadStationTimeSeries = loadGPCC_StnTS # time-series without associated grid (e.g. stations or basins)
 
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
 #   mode = 'test_climatology'; reses = ('025',); period = None
-  mode = 'test_timeseries'; reses = ('25',); period = None
+#   mode = 'test_timeseries'; reses = ('25',)
+  mode = 'test_station_timeseries'; reses = ('05',)  
 #   mode = 'average_timeseries'; reses = ('05',) # for testing
 #   mode = 'convert_climatology'; reses = ('25',); period = None
 #   reses = ('025','05', '10', '25')  
 #   reses = ('05', '10', '25')
-  reses = ('25',)
+#   reses = ('25',)
 #   period = (1979,1982)
 #   period = (1979,1984)
 #   period = (1979,1989)
@@ -188,7 +227,8 @@ if __name__ == '__main__':
 #   period = (1997,1998)
 #   period = (1979,1980)
 #   period = (2010,2011)
-  grid = 'GPCC' # 'arb2_d02'
+#   grid = 'GPCC' # 'arb2_d02'
+  grid = 'arb2_d02'
   
   # generate averaged climatology
   for res in reses:    
@@ -212,12 +252,24 @@ if __name__ == '__main__':
       print dataset.time.data_array
 
           
+    elif mode == 'test_station_timeseries':
+    
+      # load station time-series file
+      print('')
+      dataset = loadGPCC_StnTS(station='ectemp')
+      print(dataset)
+      print('')
+      print(dataset.time)
+      print(dataset.time.coord)
+      assert dataset.time.coord[78*12] == 0 # Jan 1979
+
+        
     elif mode == 'test_timeseries':
       
       
       # load time-series file
       print('')
-      dataset = loadGPCC_TS(grid=None,resolution=res)
+      dataset = loadGPCC_TS(grid=grid,resolution=res)
       print(dataset)
       print('')
       print(dataset.time)
