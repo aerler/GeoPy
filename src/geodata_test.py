@@ -283,14 +283,15 @@ class BaseVarTest(unittest.TestCase):
     # get test objects
     var = self.var; t,x,y = self.axes # for upwards compatibility!
     #print self.data.std(ddof=3), var.std(ddof=3)
-    assert isEqual(self.data.mean(), var.mean())
-    assert isEqual(self.data.std(ddof=1), var.std(ddof=1))
-    assert isEqual(self.data.max(), var.max())
-    assert isEqual(self.data.min(), var.min())
-    assert isEqual(self.data.mean(axis=var.axisIndex(t.name)), var.mean(**{t.name:None}).getArray())
-    assert isEqual(self.data.std(axis=var.axisIndex(t.name),ddof=3), var.std(ddof=3, **{t.name:None}).getArray())
-    assert isEqual(self.data.max(axis=var.axisIndex(x.name)), var.max(**{x.name:None}).getArray())
-    assert isEqual(self.data.min(axis=var.axisIndex(y.name)), var.min(**{y.name:None}).getArray())
+    assert isEqual(np.nanmean(self.data), var.mean())
+    assert isEqual(np.nanstd(self.data, ddof=1), var.std(ddof=1))
+    assert isEqual(np.nanmax(self.data), var.max())
+    assert isEqual(np.nanmin(self.data), var.min())
+    assert isEqual(np.nanmean(self.data,axis=var.axisIndex(t.name)), var.mean(**{t.name:None}).getArray())
+    assert isEqual(np.nanstd(self.data, axis=var.axisIndex(t.name),ddof=3), var.std(ddof=3, **{t.name:None}).getArray())
+    assert isEqual(np.nanmax(self.data,axis=var.axisIndex(x.name)), var.max(**{x.name:None}).getArray())
+    assert isEqual(np.nanmin(self.data, axis=var.axisIndex(y.name)), var.min(**{y.name:None}).getArray())
+    # reduction fcts. of Variables ignore NaN values
     # test histogram
     lsimple = self.__class__ is BaseVarTest
     if lsimple:

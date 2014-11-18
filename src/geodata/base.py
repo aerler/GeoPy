@@ -11,15 +11,12 @@ import numpy as np
 import numpy.ma as ma # masked arrays
 # my own imports
 from plotting.properties import variablePlotatts # import plot properties from different file
-from misc import checkIndex, isEqual, isInt, isFloat, isNumber, AttrDict, joinDicts, printList, floateps
+from misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, printList, floateps
 from misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 
 import numbers
 import functools
-from copy import deepcopy
-from types import NoneType
 from warnings import warn
-from IPython.external.jsonschema._jsonschema import iteritems
 
 
 class UnaryCheck(object):
@@ -207,11 +204,22 @@ class Variable(object):
     if fillValue is not None: atts['missing_value'] = fillValue # slightly irregular treatment...
     self.__dict__['fillValue'] = fillValue
     self.__dict__['atts'] = AttrDict(**atts)
-    if plot is None: # try to find sensible default values 
-      if variablePlotatts.has_key(self.name): plot = variablePlotatts[self.name]
-      elif variablePlotatts.has_key(self.name.split('_')[0]): 
-        plot = variablePlotatts[self.name.split('_')[0]]
-      else: plot = dict(plotname=self.name, plotunits=self.units, plottitle=self.name) 
+    # try to find sensible default values
+    if plot is None: 
+      name = self.name 
+      if name in variablePlotatts: 
+        plot = variablePlotatts[name]
+      else:
+        if name[:3] in ('Min','Max'): name = name[3:].lower()
+        if name in variablePlotatts:
+          plot = variablePlotatts[name]
+        else:
+          name = name.split('_')[0]
+          if name in variablePlotatts: 
+            plot = variablePlotatts[name]
+          else:
+            # last resort...
+            plot = dict(plotname=self.name, plotunits=self.units, plottitle=self.name) 
     self.__dict__['plot'] = AttrDict(**plot)
     # set defaults - make all of them instance variables! (atts and plot are set below)
     self.__dict__['data_array'] = None
@@ -220,6 +228,8 @@ class Variable(object):
     self.__dict__['dtype'] = dtype
     self.__dict__['masked'] = False # handled in self.load() method    
     self.__dict__['dataset'] = None # set by addVariable() method of Dataset  
+    self.__dict__['strvar'] = False # mainly for netcdf vars
+    self.__dict__['strlen'] = None
     ## figure out axes
     if axes is not None:
       assert isinstance(axes, (list, tuple))
@@ -722,6 +732,7 @@ class Variable(object):
         to the Axis method getIndex is that it does not reuire sorted data.
         Currently this only works with single-axis Variables ('pseudo-axes'), or with flattened arrays,
         not with multi-dimensional fields.  '''
+    if not self.data: self.load()
     if self.ndim != 1 and not lflatten: 
       raise NotImplementedError, "findValue() currently only works with single-axis 'pseudo-axes', not with multi-dimensional fields"
     if isinstance(value,(tuple,list,np.ndarray)): 
@@ -729,23 +740,28 @@ class Variable(object):
     if lflatten: data = self.data_array.flatten() # just a 'view'
     else: data = self.data_array
     # N.B.: usually this will be used for categorical data like int or str anyway...
+    # pad strings with spaces
+    if self.strvar: value = value + ' '*(self.strlen-len(value))
     # now scan through the values to extract matching index
-    idx = -1
+    idx = None
     for i,vv in enumerate(data):
       if vv == value: idx = i; break # terminate at first match
-    if idx < 0:
+    if idx is None:
       # possible problems with floats
       if np.issubdtype(self.dtype, np.inexact): 
         warn("The current implementation may fail for floats due to machine precision differences (non-exact match).") 
-      raise AxisError, "Value '{:s}' not found in Variable '{:s}'.".format(str(value),self.name)
+      #raise AxisError, "Value '{:s}' not found in Variable '{:s}'.".format(str(value),self.name)
+    elif not lidx: idx = self.axes[0].coord[idx]
     # return index of coordinate value
-    if not lidx: idx = self.axes[0].coord[idx]
     return idx
   
   def limits(self):
     ''' A convenience function to return a min,max tuple to indicate the data range. '''
     if self.data:
-      return self.data_array.min(), self.data_array.max()
+      mn,mx = self.data_array.min(), self.data_array.max()
+      if np.isnan(mn): mn = np.nanmin(self.data_array)
+      if np.isnan(mx): mx = np.nanmax(self.data_array)
+      return mn,mx
     else: 
       return None
     
@@ -755,19 +771,19 @@ class Variable(object):
   
   @ReduceVar
   def mean(self, data, axidx=None):
-    return data.mean(axis=axidx)
+    return np.nanmean(data, axis=axidx)
   
   @ReduceVar
   def std(self, data, axidx=None, ddof=0):
-    return data.std(axis=axidx, ddof=ddof) # ddof: degrees of freedom
+    return np.nanstd(data, axis=axidx, ddof=ddof) # ddof: degrees of freedom
   
   @ReduceVar
   def max(self, data, axidx=None):
-    return data.max(axis=axidx)
+    return np.nanmax(data, axis=axidx)
   
   @ReduceVar
   def min(self, data, axidx=None):
-    return data.min(axis=axidx)
+    return np.nanmin(data, axis=axidx)
   
   def reduce(self, operation, blklen=None, blkidx=None, axis=None, mode=None, offset=0, 
                   asVar=None, axatts=None, varatts=None, **kwargs):
@@ -841,7 +857,7 @@ class Variable(object):
       if axatts is not None: raxatts.update(axatts)      
       # define coordinates for new axis
       if 'coord' in raxatts:
-        coord = raxatts['coord'] # use user-defiend coordinates 
+        coord = raxatts.pop('coord') # use user-defiend coordinates 
       elif lblk: # use the beginning of each block as new coordinates (not divided by block length!) 
         coord = oaxis.coord.reshape(nblks,blklen)[:,0]
       elif lperi or lall: # just enumerate block elements
@@ -856,7 +872,7 @@ class Variable(object):
     # return results
     return rvar
   
-  def histogram(self, bins=None, binedgs=None, ldensity=True, asVar=False, name=None, axis=None, lflatten=False, 
+  def histogram(self, bins=None, binedgs=None, ldensity=True, asVar=True, name=None, axis=None, lflatten=False, 
                      haxatts=None, hvaratts=None, **kwargs):
     ''' Generate a histogram of along a given axis and preserve the other axes. '''
     if lflatten and axis is not None: raise ArgumentError
@@ -868,7 +884,7 @@ class Variable(object):
       assert len(bins) +1 == len(binedgs)
     if bins is not None:
       # expand bins (values refer to center of bins)
-      if isinstance(binedgs,(int,np.integer)):
+      if isinstance(bins,(int,np.integer)):
         bins = np.linspace(self.min(),self.max(),bins)  
       elif isinstance(bins,(tuple,list)) and  0 < len(bins) < 4: 
         bins = np.linspace(*bins)
@@ -885,15 +901,18 @@ class Variable(object):
       if bins is None: bins = tmpbins # compute from binedgs
       else: assert isEqual(bins, np.asarray(tmpbins, dtype=bins.dtype))
     # setup histogram axis and variable attributes (special case)
-    axatts = self.atts.copy() # variable values become axis
-    axatts['name'] = '{:s}_bins'.format(self.name)
-    axatts['long_name'] = '{:s} Axis'.format(self.atts.get('long_name',self.name.title()))    
-    if haxatts is not None: axatts.update(haxatts)
-    varatts = self.atts.copy() # this is either density or frequency
-    varatts['name'] = name or '{:s}_hist'.format(self.name)
-    varatts['long_name'] = 'Histogram of {:s}'.format(self.atts.get('long_name',self.name.title()))
-    varatts['units'] = '1/{:s}'.format(self.units) if ldensity else '#' # count 
-    if hvaratts is not None: varatts.update(hvaratts)
+    if asVar:
+      axatts = self.atts.copy() # variable values become axis
+      axatts['name'] = '{:s}_bins'.format(self.name)
+      axatts['long_name'] = '{:s} Axis'.format(self.atts.get('long_name',self.name.title()))    
+      if haxatts is not None: axatts.update(haxatts)
+      varatts = self.atts.copy() # this is either density or frequency
+      varatts['name'] = name or '{:s}_hist'.format(self.name)
+      varatts['long_name'] = 'Histogram of {:s}'.format(self.atts.get('long_name',self.name.title()))
+      varatts['units'] = '1/{:s}'.format(self.units) if ldensity else '#' # count    
+      if hvaratts is not None: varatts.update(hvaratts)
+    else:
+      axatts = None; varatts = None
     # perform computation
     if lflatten: # totally by-pass reduce()...
       # this is actually the default behavior of np.histogram()
@@ -918,6 +937,8 @@ class Variable(object):
       axatts['coord'] = bins # reduce() reads this and uses it as new axis coordinates
       hvar = self.reduce(operation=histfct, blklen=len(bins), blkidx=None, axis=axis, mode='all', 
                          offset=0, asVar=asVar, axatts=axatts, varatts=varatts)
+      if asVar:
+        hvar.plot = variablePlotatts['hist'].copy()
     # return new variable instance (or data)
     return hvar
     
@@ -988,19 +1009,19 @@ class Variable(object):
   
   def seasonalMean(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.mean, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanmean, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   def seasonalVar(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual root-mean-variances (of the specified season/months). '''    
-    return self.reduceToAnnual(season=season, operation=np.std, ddof=0, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanstd, ddof=0, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   def seasonalMax(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.max, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanmax, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   def seasonalMin(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.min, asVar=asVar,name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanmin, asVar=asVar,name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   def reduceToClimatology(self, operation, yridx=None, asVar=True, name=None, offset=0, taxis='time', 
                           checkUnits=True, taxatts=None, varatts=None, **kwargs):
@@ -1041,19 +1062,19 @@ class Variable(object):
   
   def climMean(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of averages of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.mean, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanmean, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   def climVar(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of root-mean-variances of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.std, ddof=0, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanstd, ddof=0, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   def climMax(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of maxima of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.max, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanmax, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   def climMin(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of minima of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.min, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanmin, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   @UnaryCheck    
   def __iadd__(self, a):
@@ -1623,10 +1644,16 @@ class Dataset(object):
       string = '{:<20s} {:s}, {:s} ({:s})'.format(title,variables,axes,klass)
     else:
       string = '{0:s}   {1:s}\n'.format(self.__class__.__name__,str(self.__class__))
+      # print variables (sorted alphabetically)
       string += 'Variables:\n'
-      for var in self.variables.values(): string += '  {0:s}\n'.format(var.prettyPrint(short=True))
+      varlisting = ['  {0:s}\n'.format(var.prettyPrint(short=True)) for var in self.variables.values()]
+      varlisting.sort() # sorting variables strings in-place 
+      for varstr in varlisting: string += varstr 
+      # print axes (sorted alphabetically) 
       string += 'Axes:\n'
-      for ax in self.axes.values(): string += '  {0:s}\n'.format(ax.prettyPrint(short=True))
+      axlisting = ['  {0:s}\n'.format(ax.prettyPrint(short=True)) for ax in self.axes.values()]
+      axlisting.sort()
+      for axstr in axlisting: string += axstr
       string += 'Attributes: {0:s}'.format(str(self.atts))
     return string
     
@@ -1674,10 +1701,11 @@ class Dataset(object):
     assert self.removeVariable(var), "A proble occurred removing Variable '{:s}' from Dataset.".format(var.name)
     return self # return self as result
   
-  def load(self, data=None, **kwargs):
+  def load(self, **kwargs):
     ''' Issue load() command to all variable; pass on any keyword arguments. '''
     for var in self.variables.itervalues():
-      var.load(data=data, **kwargs) # there is only one argument to the base method
+      var.load(**kwargs) # there is only one argument to the base method
+    return self
       
   def unload(self, **kwargs):
     ''' Unload all data arrays currently loaded in memory. '''
@@ -1742,6 +1770,7 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   if not all([isinstance(var,Variable) for var in variables]): raise TypeError
   if not all([var.hasAxis(axis) for var in variables]): raise AxisError  
   var0 = variables[0] # shortcut
+  if not var0.data: var.load()
   # get some axis info
   axt = var0.getAxis(axis)
   tax = var0.axisIndex(axis)  

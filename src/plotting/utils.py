@@ -111,9 +111,10 @@ def getPlotValues(var, checkunits=None, checkname=None):
   else: varname = var.atts['name']
   val = var.getArray(unmask=True) # the data to plot
   if var.plot is not None and 'scalefactor' in var.plot: 
-    val *= var.plot['scalefactor']
-    varunits = var.plot.plotunits
-  else: varunits = var.atts.units
+    if var.atts['units'] != var.plot['plotunits']: 
+      val = val *  var.plot['scalefactor']
+    varunits = var.plot['plotunits']
+  else: varunits = var.atts['units']
   if var.plot is not None and 'offset' in var.plot: val += var.plot['offset']    
   if checkunits is not None and  varunits != checkunits: 
     raise VariableError, "Units for variable '{}': expected {}, found {}.".format(var.name,checkunits,varunits) 

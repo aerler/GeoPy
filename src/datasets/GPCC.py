@@ -218,7 +218,7 @@ if __name__ == '__main__':
 #   reses = ('25',)
 #   period = (1979,1982)
 #   period = (1979,1984)
-#   period = (1979,1989)
+  period = (1979,1989)
 #   period = (1979,1994)
 #   period = (1984,1994)
 #   period = (1989,1994)

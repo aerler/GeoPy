@@ -109,10 +109,13 @@ class VarNC(Variable):
       if name in ncvar.variables: ncvar = ncvar.variable[name] # hope it is the right one...
       else: ncvar = add_var(ncvar, name, dims=dims, shape=dimshape, atts=atts, dtype=dtype, fillValue=fillValue, zlib=True)
     # some type checking
-    if not isinstance(ncvar,nc.Variable): raise TypeError, "Argument 'ncvar' has to be a NetCDF Variable or Dataset."
-    if dtype and dtype != ncvar.dtype: raise TypeError    
+    if not isinstance(ncvar,nc.Variable): raise TypeError, "Argument 'ncvar' has to be a NetCDF Variable or Dataset."        
     if data is not None and data.shape != ncvar.shape: raise DataError
-    lstrvar = ncvar.dtype == np.dtype('|S1') and ( dtype.kind == 'S' and dtype.itemsize > 1 )
+    lstrvar = False; strlen = None 
+    if dtype is not None and dtype.kind == 'S' and dtype.itemsize > 1:
+      lstrvar = ncvar.dtype == np.dtype('|S1')
+      strlen = ncvar.shape[-1] # last dimension
+    elif dtype is not None and dtype != ncvar.dtype: raise TypeError 
     # read actions
     if 'r' in mode:
       # construct attribute dictionary from netcdf attributes
@@ -131,8 +134,9 @@ class VarNC(Variable):
         if lstrvar: axes = tuple([str(dim) for dim in ncvar.dimensions[:-1]]) # omit last dim
         else: axes = tuple([str(dim) for dim in ncvar.dimensions]) # have to get rid of unicode
       elif lstrvar:
-        if len(ncvar.dimensions[:-1]) != len(axes) or len(ncvar.dimensions[-1]) != dtype.itemsize: raise AxisError
-      elif len(ncvar.dimensions) != len(axes): raise AxisError
+        if len(ncvar.shape[:-1]) != len(axes) or ncvar.shape[-1] != dtype.itemsize: raise AxisError
+        assert strlen == dtype.itemsize      
+      elif len(ncvar.shape) != len(axes): raise AxisError
     else: ncatts = atts
     # check transform
     if transform is not None and not callable(transform): raise TypeError
@@ -147,6 +151,7 @@ class VarNC(Variable):
     self.__dict__['transform'] = transform
     self.__dict__['squeezed'] = False
     self.__dict__['strvar'] = lstrvar
+    self.__dict__['strlen'] = strlen
     if squeeze: self.squeeze() # may set 'squeezed' to True
     # handle data
     if load and data: raise DataError, "Arguments 'load' and 'data' are mutually exclusive, i.e. only one can be used!"
@@ -458,7 +463,9 @@ class DatasetNetCDF(Dataset):
         else: # if this is a new variable, add it to the list
           if ds.variables[var].dtype == '|S1' and all([dim in axes for dim in ds.variables[var].dimensions[:-1]]): # string variable
             varaxes = [axes[dim] for dim in ds.variables[var].dimensions[:-1]] # collect axes (except last)
-            strtype = np.dtype('|S{:d}'.format(len(ds.variables[var].dimensions[-1]))) # string with length of string dimension
+            #strtype = np.dtype('|S{:d}'.format(len(ds.variables[var].dimensions[-1]))) # string with length of string dimension
+            strtype = np.dtype('|S{:d}'.format(ds.variables[var].shape[-1])) # string with length of string dimension
+            # N.B.: apparently len(dim) does not work properly - ncvar.shape is more reliable
 #             vardict = varatts.get(var,{})
 #             trafo = vardict.pop('transform',charToString) # use charToString as a transform function for data (i.e. no need to load and transform now)
 #             if trafo != charToString: raise VariableError, "Need to use 'nc.chartostring' as transform for string variables." 

@@ -15,7 +15,7 @@ defaultPlotatts = dict()
 defaultPlotatts['plotname'] = 'unknown'
 defaultPlotatts['plottitle'] = 'unknown variable'
 defaultPlotatts['plotunits'] = 'n/a'
-defaultPlotatts['potscale'] = 'linear'
+defaultPlotatts['plotscale'] = 'linear'
 defaultPlotatts['preserve'] = 'value'
 defaultPlotatts['scalefactor'] = 1
 defaultPlotatts['offset'] = 0  
@@ -31,6 +31,16 @@ tmp['plottitle'] = 'Category'
 tmp['plotunits'] = ''
 # add to collection
 variablePlotatts['cat'] = tmp
+
+## Density
+tmp = defaultPlotatts.copy() 
+# specific properties
+tmp['plotname'] = 'Density'
+tmp['plottitle'] = 'Histogram'
+tmp['plotunits'] = ''
+tmp['preserve'] = 'area'
+# add to collection
+variablePlotatts['hist'] = tmp
 
 ## *** Dimensions/Axes (1D) ***
 

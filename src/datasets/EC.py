@@ -38,9 +38,9 @@ avgfolder = root_folder + 'ecavg/'  # folder for user data
 varatts = dict(T2       = dict(name='T2', units='K', atts=dict(long_name='Average 2m Temperature')), # 2m average temperature
                Tmin     = dict(name='Tmin', units='K', atts=dict(long_name='Minimum 2m Temperature')), # 2m minimum temperature
                Tmax     = dict(name='Tmax', units='K', atts=dict(long_name='Maximum 2m Temperature')), # 2m maximum temperature
-               precip   = dict(name='precip', units='kg/m^2/s', atts=dict(long_name='Total Precipitation')), # total precipitation
-               solprec  = dict(name='solprec', units='kg/m^2/s', atts=dict(long_name='Solid Precipitation')), # solid precipitation
-               liqprec  = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
+               precip   = dict(name='precip', units='mm/day', atts=dict(long_name='Total Precipitation')), # total precipitation
+               solprec  = dict(name='solprec', units='mm/day', atts=dict(long_name='Solid Precipitation')), # solid precipitation
+               liqprec  = dict(name='liqprec', units='mm/day', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
                # meta/constant data variables
                name    = dict(name='station_name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
                prov    = dict(name='prov', units='', atts=dict(long_name='Province')), # in which Canadian Province the station is located
@@ -213,7 +213,7 @@ class VarDef(RecordClass):
   
 # definition for precipitation files
 class PrecipDef(VarDef):
-  units    = 'mm'
+  units    = 'mm' # actually 'mm/day' but reported as 'mm'
   datatype = 'precip'
   title    = 'EC Precipitation Records'
   missing  = '-9999.99' # string indicating missing value (apparently not all have 'M'...)
@@ -571,7 +571,7 @@ def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None, f
   ''' Load a monthly time-series of pre-processed EC station data. '''
   if filetype is None: raise ArgumentError, "A 'filetype' needs to be specified ('temp' or 'precip')."
   elif not filetype in ('temp','precip'): raise ArgumentError
-  if name is None: name = 'ec{:s}'.format(filetype) # prepend ec to the filetype
+  name = name or 'ec{:s}'.format(filetype) # prepend ec to the filetype
   if prov is not None and not isinstance(prov,basestring): raise TypeError
   if folder is None: folder = avgfolder
   if filelist is None:
@@ -581,12 +581,21 @@ def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None, f
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                             multifile=False, ncformat='NETCDF4')
   return dataset
-loadEC_StnTS = loadEC_TS # just an alias
+# wrapper
+def loadEC_StnTS(name=None, station=None, varlist=None, varatts=varatts):
+  ''' Load a monthly time-series of pre-processed EC station data. '''
+  if station is None: raise ArgumentError, "A 'filetype' needs to be specified ('ectemp' or 'ecprecip')."
+  elif station in ('ectemp','ecprecip'):
+    name = name or station  
+    station = station[2:] # internal convention
+  else: raise ArgumentError
+  return loadEC_TS(name=name, filetype=station, prov=None, varlist=varlist, varatts=varatts, filelist=None, folder=None) # just an alias
 
 ## load pre-processed EC station climatology
 def loadEC(): 
   ''' Load a pre-processed EC station climatology. '''
   return NotImplementedError
+loadEC_Stn = loadEC
   
 ## Dataset API
 
@@ -620,16 +629,22 @@ if __name__ == '__main__':
   # test wrapper function to load time series data from EC stations
   if mode == 'test_timeseries':
     
-    # load averaged climatology file
+    # load pre-processed time-series file
     print('')
-    dataset = loadEC_TS(filetype='precip', prov='NL')
+#     dataset = loadEC_TS(filetype='precip', prov='NL')
+    dataset = loadEC_StnTS(station='ecprecip').load()
     print(dataset)
+    print('')
+    print('ATHABASCA', dataset.station_name.findValue('ATHABASCA'))
     print('')
     print(dataset.station)
     print(dataset.time)
     print(dataset.time.coord)
     print(dataset.time.coord[105*12]) # Jan 1979, the origin of time...
-
+    print('')
+    print(dataset.precip)
+    print(dataset.precip.min(),dataset.precip.mean(),dataset.precip.max())
+    
         
   # test station object initialization
   elif mode == 'test_station_object':  

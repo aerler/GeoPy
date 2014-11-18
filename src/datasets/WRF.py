@@ -300,27 +300,39 @@ class Rad(FileType):
 class Xtrm(FileType):
   ''' Variables and attributes of the extreme value files. '''
   def __init__(self):
-    self.atts = dict(T2MEAN = dict(name='Tmean', units='K'),  # daily mean Temperature (at 2m)
+    self.atts = dict(#T2MEAN = dict(name='Tmean', units='K'),  # daily mean Temperature (at 2m)
+                     T2MEAN = dict(name='T2', units='K'),  # daily mean Temperature (at 2m)
                      T2MIN  = dict(name='Tmin', units='K'),   # daily minimum Temperature (at 2m)
                      T2MAX  = dict(name='Tmax', units='K'),   # daily maximum Temperature (at 2m)
                      T2STD  = dict(name='Tstd', units='K'),   # daily Temperature standard deviation (at 2m)
-                     SKINTEMPMEAN = dict(name='TSmean', units='K'),  # daily mean Skin Temperature
+                     #SKINTEMPMEAN = dict(name='TSmean', units='K'),  # daily mean Skin Temperature
+                     SKINTEMPMEAN = dict(name='Ts', units='K'),  # daily mean Skin Temperature
                      SKINTEMPMIN  = dict(name='TSmin', units='K'),   # daily minimum Skin Temperature
                      SKINTEMPMAX  = dict(name='TSmax', units='K'),   # daily maximum Skin Temperature
                      SKINTEMPSTD  = dict(name='TSstd', units='K'),   # daily Skin Temperature standard deviation                     
-                     Q2MEAN = dict(name='Qmean', units='Pa', scalefactor=Q), # daily mean Water Vapor Pressure (at 2m)
+                     #Q2MEAN = dict(name='Qmean', units='Pa', scalefactor=Q), # daily mean Water Vapor Pressure (at 2m)
+                     Q2MEAN = dict(name='Q2', units='Pa', scalefactor=Q), # daily mean Water Vapor Pressure (at 2m)
                      Q2MIN  = dict(name='Qmin', units='Pa', scalefactor=Q),  # daily minimum Water Vapor Pressure (at 2m)
                      Q2MAX  = dict(name='Qmax', units='Pa', scalefactor=Q),  # daily maximum Water Vapor Pressure (at 2m)
                      Q2STD  = dict(name='Qstd', units='Pa', scalefactor=Q),  # daily Water Vapor Pressure standard deviation (at 2m)
-                     SPDUV10MEAN = dict(name='U10mean', units='m/s'), # daily mean Wind Speed (at 10m)
-                     SPDUV10MAX  = dict(name='U10max', units='m/s'),  # daily maximum Wind Speed (at 10m)
-                     SPDUV10STD  = dict(name='U10std', units='m/s'),  # daily Wind Speed standard deviation (at 10m)
-                     U10MEAN = dict(name='u10mean', units='m/s'), # daily mean Westerly Wind (at 10m)
-                     V10MEAN = dict(name='v10mean', units='m/s'), # daily mean Southerly Wind (at 10m)                     
-                     RAINCVMEAN  = dict(name='preccumean', units='kg/m^2/s'), # daily mean convective precipitation rate
+                     #SPDUV10MEAN = dict(name='U10mean', units='m/s'), # daily mean Wind Speed (at 10m)
+                     SPDUV10MEAN = dict(name='U10', units='m/s'), # daily mean Wind Speed (at 10m)
+                     SPDUV10MAX  = dict(name='Umax', units='m/s'),  # daily maximum Wind Speed (at 10m)
+                     SPDUV10STD  = dict(name='Ustd', units='m/s'),  # daily Wind Speed standard deviation (at 10m)
+                     #U10MEAN = dict(name='u10mean', units='m/s'), # daily mean Westerly Wind (at 10m)
+                     #V10MEAN = dict(name='v10mean', units='m/s'), # daily mean Southerly Wind (at 10m)
+                     U10MEAN = dict(name='u10', units='m/s'), # daily mean Westerly Wind (at 10m)
+                     V10MEAN = dict(name='v10', units='m/s'), # daily mean Southerly Wind (at 10m)
+                     #RAINMEAN  = dict(name='precipmean', units='kg/m^2/s'), # daily mean precipitation rate
+                     RAINMEAN  = dict(name='precip', units='kg/m^2/s'), # daily mean precipitation rate
+                     RAINMAX  = dict(name='precipmax', units='kg/m^2/s'), # daily maximum precipitation rate
+                     RAINSTD  = dict(name='precipstd', units='kg/m^2/s'), # daily precip standard deviation                     
+                     #RAINCVMEAN  = dict(name='preccumean', units='kg/m^2/s'), # daily mean convective precipitation rate
+                     RAINCVMEAN  = dict(name='preccu', units='kg/m^2/s'), # daily mean convective precipitation rate
                      RAINCVMAX  = dict(name='preccumax', units='kg/m^2/s'), # daily maximum convective precipitation rate
                      RAINCVSTD  = dict(name='preccustd', units='kg/m^2/s'), # daily convective precip standard deviation
-                     RAINNCVMEAN = dict(name='precncmean', units='kg/m^2/s'), # daily mean grid-scale precipitation rate
+                     #RAINNCVMEAN = dict(name='precncmean', units='kg/m^2/s'), # daily mean grid-scale precipitation rate
+                     RAINNCVMEAN = dict(name='precnc', units='kg/m^2/s'), # daily mean grid-scale precipitation rate
                      RAINNCVMAX  = dict(name='precncmax', units='kg/m^2/s'), # daily maximum grid-scale precipitation rate
                      RAINNCVSTD  = dict(name='precncstd', units='kg/m^2/s')) # daily grid-scale precip standard deviation                     
     self.vars = self.atts.keys()    
@@ -356,7 +368,7 @@ class Axes(FileType):
                      y           = dict(name='y', units='m'), # projected south-north coordinate
                      soil_layers_stag = dict(name='s', units=''), # soil layer coordinate
                      num_press_levels_stag = dict(name='p', units='Pa'), # pressure coordinate
-                     station     = dict(name='stn', units='') ) # station axis for station data
+                     station     = dict(name='station', units='') ) # station axis for station data
     self.vars = self.atts.keys()
     self.climfile = None
     self.tsfile = None
@@ -366,6 +378,18 @@ fileclasses = dict(const=Const(), srfc=Srfc(), hydro=Hydro(), lsm=LSM(), rad=Rad
 root_folder = data_root + 'WRF/' # long-term mean folder
 outfolder = root_folder + 'wrfout/' # WRF output folder
 avgfolder = root_folder + 'wrfavg/' # long-term mean folder
+
+# add generic extremes to varatts dicts
+for fileclass in fileclasses.itervalues():
+  atts = dict()
+  for key,val in fileclass.atts.iteritems():
+    extrema = ['Max']
+    if val['units'].lower() == 'k': extrema += ['Min']
+    for x in extrema:
+      att = val.copy()
+      att['name'] = x+att['name'].title()   
+      atts[x+key] = att
+  fileclass.atts.update(atts)
 
 
 ## Functions to load different types of WRF datasets
@@ -597,9 +621,9 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, domains=
   datasets = []
   for exp in ensemble:
     ds = loadWRF_All(experiment=exp, name=name, grid=grid, station=station, filetypes=filetypes, 
-                      varlist=varlist, varatts=varatts, period=None, mode='time-series', 
-                      lautoregrid=lautoregrid, lctrT=lctrT, lconst=lconst, domains=domains)
-    datasets.append(ds)
+                     varlist=varlist, varatts=varatts, period=None, mode='time-series', 
+                     lautoregrid=lautoregrid, lctrT=lctrT, lconst=lconst, domains=domains)
+    datasets.append(ds.load())
   # concatenate datasets (along 'time' axis, WRF doesn't have 'year')  
   dataset = concatDatasets(datasets, axis='time', coordlim=None, idxlim=montpl, 
                            offset=None, axatts=None, lcpOther=True, lcpAny=False)
@@ -635,8 +659,8 @@ if __name__ == '__main__':
 #   mode = 'test_station_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_station_timeseries'
-  mode = 'test_ensemble'
-#   mode = 'test_station_ensemble'
+#   mode = 'test_ensemble'
+  mode = 'test_station_ensemble'
 #   mode = 'pickle_grid'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
@@ -745,10 +769,19 @@ if __name__ == '__main__':
   elif mode == 'test_station_ensemble':
     
     print('')
-    dataset = loadWRF_StnEns(ensemble='max-ens-2100', station='ecprecip', domains=1, filetypes=['xtrm'])
+    dataset = loadWRF_StnEns(ensemble='max-ens-2100', station='ecprecip', domains=2, filetypes=['xtrm']).load()
     print('')
     print(dataset)
+    print(dataset.precip.atts)
+    print(dataset.precip.plot)
     print('')
-    print(dataset.time)
-    print(dataset.time.coord)
+    hp = dataset.MaxPrecip.histogram(bins=30, axis='time')
+    print(hp.atts)
+    print(hp.plot)
+    print(hp.axes[0].atts)
+    print(hp.axes[0].plot)
+#   
+#     print('')
+#     print(dataset.time)
+#     print(dataset.time.coord)
   

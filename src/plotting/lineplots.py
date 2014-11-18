@@ -27,8 +27,8 @@ from geodata.misc import AxisError, ListError, VariableError
 
 
 def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=None,
-	     xline=None, yline=None, title=None, xlabel=None, ylabel=None, xlim=None,
-	     ylim=None, lsmooth=False, lprint=False, **kwargs):
+	   				 xline=None, yline=None, title=None, xlabel=None, ylabel=None, xlim=None,
+	  	   		 ylim=None, lsmooth=False, lprint=False, **kwargs):
   ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on variable properties. '''
   # create axes, if necessary
   if ax is None: 
@@ -61,8 +61,15 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
   flipxy = kwargs.pop('flipxy',False)
   plts = []; varname = None; varunits = None; axname = None; axunits = None # list of plot handles
   for var,linestyle,varatt in zip(varlist,linestyles,varatts):
-    axe, axunits, axname = getPlotValues(var.axes[0], checkunits=axunits, checkname=None)
+    varax = var.axes[0]
+    # scale axis and variable values 
+    axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None)
     val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None)
+    # variable and axis scaling is not always independent...
+    if var.plot is not None and varax.plot is not None: 
+      if 'preserve' in var.plot and 'scalefactor' in varax.plot:
+        if varax.units != axunits and var.plot['preserve'] == 'area':
+          val /= varax.plot['scalefactor']  
     # figure out keyword options
     kwatts = kwargs.copy(); kwatts.update(varatt) # join individual and common attributes     
     if 'label' not in kwatts: kwatts['label'] = var.name # default label: variable name
