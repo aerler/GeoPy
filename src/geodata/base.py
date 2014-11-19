@@ -316,7 +316,8 @@ class Variable(object):
     if deepcopy:
       var = self.deepcopy( **newargs)
     else:
-      args = dict(name=self.name, units=self.units, axes=self.axes, data=self.data_array, dtype=self.dtype,
+      # N.B.: don't pass name and units as they just link to atts anyway, and if passed directly, they overwrite user atts
+      args = dict(axes=self.axes, data=self.data_array, dtype=self.dtype,
                   mask=None, fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
       args.update(newargs) # apply custom arguments (also arguments related to subclasses)
       var = Variable(**args) # create a new basic Variable instance

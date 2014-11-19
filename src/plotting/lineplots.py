@@ -25,9 +25,12 @@ from utils import getPlotValues, getFigAx
 from geodata.base import Variable
 from geodata.misc import AxisError, ListError, VariableError
 
+#import pdb
+#pdb.set_trace()
+
 
 def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=None,
-	   				 xline=None, yline=None, title=None, xlabel=None, ylabel=None, xlim=None,
+	   				 xline=None, yline=None, title=None, flipxy=None, xlabel=None, ylabel=None, xlim=None,
 	  	   		 ylim=None, lsmooth=False, lprint=False, **kwargs):
   ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on variable properties. '''
   # create axes, if necessary
@@ -58,7 +61,6 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
     if var.ndim > 1: raise AxisError, "Variable '{}' has more than one dimension; consider squeezing.".format(var.name)
     elif var.ndim == 0: raise AxisError, "Variable '{}' is a scalar; consider display as a line.".format(var.name)
   # loop over variables
-  flipxy = kwargs.pop('flipxy',False)
   plts = []; varname = None; varunits = None; axname = None; axunits = None # list of plot handles
   for var,linestyle,varatt in zip(varlist,linestyles,varatts):
     varax = var.axes[0]
@@ -90,18 +92,22 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
   # set title
   if title is not None: ax.set_title(title)
   # set axes labels  
-  xlabel = xlabel or '{1:s} [{0:s}]'; xpad =  2  
-  ylabel = ylabel or '{1:s} [{0:s}]'; ypad = -2  
+  if flipxy: xname,xunits,yname,yunits = varname,varunits,axname,axunits
+  else: xname,xunits,yname,yunits = axname,axunits,varname,varunits
+  if not xlabel: xlabel = '{0:s} [{1:s}]'.format(xname,xunits) if xunits else '{0:s}'.format(xname)
+  if not ylabel: ylabel = '{0:s} [{1:s}]'.format(yname,yunits) if yunits else '{0:s}'.format(yname)
+  xpad =  0; ypad = -0  
+  #xpad =  2; ypad = -2  
   # N.B.: units are listed first, because they are used more commonly; variable names usually only in defaults
   # a typical custom label that makes use of the units would look like this: 'custom label [{}]', 
   # where {} will be replaced by the appropriate default units (which have to be the same anyway)
   xticks = ax.get_yaxis().get_ticklabels()
   if len(xticks) > 0 and xticks[0].get_visible(): 
-    ax.set_xlabel(xlabel.format(varunits,varname) if flipxy else xlabel.format(axunits,axname), labelpad=xpad)
+    ax.set_xlabel(xlabel, labelpad=xpad)
   #print ax.get_yaxis().get_ticklabels()
   yticks = ax.get_yaxis().get_ticklabels()
   if len(yticks) > 0 and yticks[0].get_visible(): 
-    ax.set_ylabel(ylabel.format(axunits,axname) if flipxy else ylabel.format(varunits,varname), labelpad=ypad)
+    ax.set_ylabel(ylabel, labelpad=ypad)
   # make monthly ticks
   if axname == 'time' and axunits == 'month':
     #ax.minorticks_on()

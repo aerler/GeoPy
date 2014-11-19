@@ -336,7 +336,7 @@ if __name__ == '__main__':
     modes = ('time-series',) # too many small files...
     loverwrite = False
     varlist = None # process all variables
-    periods = (5,10,15,) # climatology periods to process
+    periods = None # (5,10,15,) # climatology periods to process
     # Datasets
     datasets = None # process all applicable
     resolutions = None # process all applicable
