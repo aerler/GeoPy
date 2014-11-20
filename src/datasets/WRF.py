@@ -591,15 +591,15 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
 
 
 # load a pre-processed WRF ensemble and concatenate time-series 
-def loadWRF_StnEns(ensemble=None, name=None, station=None, filetypes=None, years=None, domains=2,
+def loadWRF_StnEns(ensemble=None, station=None, filetypes=None, years=None, domains=2,
                    varlist=None, varatts=None, translateVars=None, lcheckExp=True):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
-  return loadWRF_Ensemble(ensemble=ensemble, name=name, grid=None, station=station, domains=domains, 
+  return loadWRF_Ensemble(ensemble=ensemble, grid=None, station=station, domains=domains, 
                            filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
                            translateVars=translateVars, lautoregrid=False, lctrT=True, lconst=False)
   
 # load a pre-processed WRF ensemble and concatenate time-series 
-def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, domains=2, filetypes=None, 
+def loadWRF_Ensemble(ensemble=None, grid=None, station=None, domains=2, filetypes=None, 
                      years=None, varlist=None, varatts=None, translateVars=None, lautoregrid=None, 
                      lctrT=True, lconst=True):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
@@ -620,7 +620,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, domains=
   # load datasets (and load!)
   datasets = []
   for exp in ensemble:
-    ds = loadWRF_All(experiment=exp, name=name, grid=grid, station=station, filetypes=filetypes, 
+    ds = loadWRF_All(experiment=exp, name=None, grid=grid, station=station, filetypes=filetypes, 
                      varlist=varlist, varatts=varatts, period=None, mode='time-series', 
                      lautoregrid=lautoregrid, lctrT=lctrT, lconst=lconst, domains=domains)
     datasets.append(ds.load())
@@ -659,8 +659,8 @@ if __name__ == '__main__':
 #   mode = 'test_station_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_station_timeseries'
-#   mode = 'test_ensemble'
-  mode = 'test_station_ensemble'
+  mode = 'test_ensemble'
+#   mode = 'test_station_ensemble'
 #   mode = 'pickle_grid'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
@@ -758,12 +758,15 @@ if __name__ == '__main__':
   elif mode == 'test_ensemble':
     
     print('')
-    dataset = loadWRF_Ensemble(ensemble='max-ens-2050', varlist=['precip'], filetypes=['hydro'])
+    dataset = loadWRF_Ensemble(ensemble='max-ens-2100', varlist=['precip','MaxPrecip'], filetypes=['xtrm'])
     print('')
     print(dataset)
     print('')
-    print(dataset.time)
-    print(dataset.time.coord)
+    print(dataset.precip.mean())
+    print(dataset.MaxPrecip.mean())
+#   print('')
+#     print(dataset.time)
+#     print(dataset.time.coord)
   
   # load station ensemble "time-series"
   elif mode == 'test_station_ensemble':
@@ -772,14 +775,17 @@ if __name__ == '__main__':
     dataset = loadWRF_StnEns(ensemble='max-ens-2100', station='ecprecip', domains=2, filetypes=['xtrm']).load()
     print('')
     print(dataset)
-    print(dataset.precip.atts)
-    print(dataset.precip.plot)
     print('')
-    hp = dataset.MaxPrecip.histogram(bins=30, axis='time')
-    print(hp.atts)
-    print(hp.plot)
-    print(hp.axes[0].atts)
-    print(hp.axes[0].plot)
+    print(dataset.precip.mean())
+    print(dataset.MaxPrecip.mean())
+#     print(dataset.precip.atts)
+#     print(dataset.precip.plot)
+    print('')
+#     hp = dataset.MaxPrecip.histogram(bins=30, axis='time')
+#     print(hp.atts)
+#     print(hp.plot)
+#     print(hp.axes[0].atts)
+#     print(hp.axes[0].plot)
 #   
 #     print('')
 #     print(dataset.time)

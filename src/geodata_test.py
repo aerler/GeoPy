@@ -193,7 +193,7 @@ class BaseVarTest(unittest.TestCase):
     print('')
     print(ens)
     print('')    
-    ens -= yacov # this is a dataset operation
+    ens -= yacov # this is a ensemble operation
     assert not ens.hasMember(yacov)
     # perform a variable operation
     ens.mean(axis='time')
@@ -527,7 +527,7 @@ class BaseDatasetTest(unittest.TestCase):
     yacod = dataset.copy()
     yacod.name = 'yacod' # used later    
     # instantiate ensemble
-    ens = Ensemble(dataset, copy, name='ensemble', title='Test Ensemble')
+    ens = Ensemble(dataset, copy, name='ensemble', title='Test Ensemble', basetype='Dataset')
     # basic functionality
     assert len(ens.members) == len(ens)
     # these var/ax names are specific to the test dataset...
@@ -543,14 +543,17 @@ class BaseDatasetTest(unittest.TestCase):
     # Axis ensembles are not supported anymore, since they are often shared.
     #assert isinstance(ens.time,Ensemble) and ens.time.basetype == Variable
     # collective add/remove
-    ax = Axis(name='ax', units='none')
-    var = Variable(name='new',units='none',axes=(ax,))
-    ens += var # this is a dataset operation
+    ax = Axis(name='ax', units='none', coord=(1,10))
+    var1 = Variable(name='new',units='none',axes=(ax,))
+    var2 = Variable(name='new',units='none',axes=(ax,))
+    ens += [var1,var2] # this is a dataset operation
+    assert ens[0].hasVariable(var1)
+    assert ens[1].hasVariable(var2)
     assert all(ens.hasVariable('new'))
     # test adding a new member
     ens += yacod # this is an ensemble operation
-    #print(''); print(ens); print('')    
-    ens -= var # this is a dataset operation
+    print(''); print(ens); print('')    
+    ens -= 'new' # this is a dataset operation
     assert not any(ens.hasVariable('new'))
     ens -= 'test'
     # fancy test of Variable and Dataset integration
@@ -1008,13 +1011,13 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
     tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)
     RAM = True # whether or not to use a RAM disk

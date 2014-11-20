@@ -123,6 +123,19 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
   # return handle
   return plts      
 
+# add common/shared legend to a multi-panel plot
+def addSharedLegend():
+	leghgt = fontsize/200.+0.05
+  ax = fig.add_axes([0, 0, 1,leghgt])
+  ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
+  margins['bottom'] = margins['bottom'] + leghgt; fig.subplots_adjust(**margins)
+  legargs = dict(frameon=True, labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
+#           if nlen == 1: legargs = dict(frameon=True, labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
+#           else: legargs = dict(frameon=True, labelspacing=0.15, handlelength=2, handletextpad=0.5, fancybox=True)
+  plt = wrfplt + obsplt; leg = wrfleg + obsleg
+  if fontsize > 11: ncols = 2 if len(leg) == 4 else 3
+  else: ncols = 3 if len(leg) == 6 else 4            
+  legend = ax.legend(plt, leg, loc=10, ncol=ncols, borderaxespad=0., **legargs)
 
 # plots with error shading 
 def addErrorPatch(ax, var, err, color, axis=None, xerr=True, alpha=0.25, check=False, cap=-1):

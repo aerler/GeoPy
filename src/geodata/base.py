@@ -1437,14 +1437,14 @@ class Dataset(object):
     
   def removeVariable(self, var):
     ''' Method to remove a Variable from the Dataset. '''
-    if isinstance(var,basestring): var = self.variables[var] # only work with Variable objects
-    assert isinstance(var,Variable), "Argument 'var' has to be a Variable instance or a string representing the name of a variable."
-    if var.name in self.variables: # add new variable if it does not already exist
+    if isinstance(var,Variable): var = var.name
+    if not isinstance(var,basestring): raise TypeError, "Argument 'var' has to be a Variable instance or a string representing the name of a variable."
+    if var in self.variables: # add new variable if it does not already exist
       # delete variable from dataset   
-      del self.variables[var.name]
-      del self.__dict__[var.name]
+      del self.variables[var]
+      del self.__dict__[var]
     # double-check (return True, if variable is not present, False, if it is)
-    return not self.variables.has_key(var.name)
+    return not self.variables.has_key(var)
   
   def replaceAxis(self, oldaxis, newaxis=None, **kwargs):    
     ''' Replace an existing axis with a different one with similar general properties. '''
@@ -1944,11 +1944,14 @@ class Ensemble(object):
     self.name = kwargs.get('name','')
     self.title = kwargs.get('title','')
     # no need to be too restrictive
-    if isinstance(members[0],Dataset): defaulttype = Dataset
-    elif isinstance(members[0],Variable): defaulttype = Variable
-    else: defaulttype = members[0].__class__
-    self.basetype = kwargs.get('basetype',defaulttype)
-    if not all(isinstance(member,self.basetype) for member in members):
+    if 'basetype' in kwargs:
+      self.basetype = kwargs.pop('basetype') # don't want to add that later! 
+      if isinstance(self.basetype,basestring):
+        self.basetype = globals()[self.basetype]
+    elif isinstance(members[0],Dataset): self.basetype = Dataset
+    elif isinstance(members[0],Variable): self.basetype = Variable
+    else: self.basetype = members[0].__class__
+    if len(members) > 0 and not all(isinstance(member,self.basetype) for member in members):
       raise TypeError, "Not all members conform to selected type '{}'".format(self.basetype.__name__)
     self.idkey = kwargs.get('idkey','name')
     # add keywords as attributes
@@ -1988,7 +1991,7 @@ class Ensemble(object):
   
   def __getattr__(self, attr):
     ''' This is where all the magic happens: defer calls to methods etc. to the 
-  ensemble members and return a list of values. '''
+        ensemble members and return a list of values. '''
     # intercept some list methods
     #print dir(self.members), attr, attr in dir(self.members)
     # determine whether we need a wrapper
@@ -1996,8 +1999,16 @@ class Ensemble(object):
     if all([callable(f) and not isinstance(f, (Variable,Dataset)) for f in fs]):
       # for callable objects, return a wrapper that can read argument lists      
       def wrapper( *args, **kwargs):
-        lensvar = kwargs.pop('lensvar',True)
-        res = [f(*args, **kwargs) for f in fs]
+        # either distribute args or give the same to everyone
+        lens = len(self)
+        if all([len(arg)==lens and isinstance(arg,(tuple,list,Ensemble)) for arg in args]):
+          argslists = [list() for i in xrange(lens)] 
+          for arg in args: # swap nested list order ("transpose") 
+            for i in xrange(len(argslists)): 
+              argslists[i].append(arg[i])
+          res = [f(*args, **kwargs) for args,f in zip(argslists,fs)]
+        else:
+          res = [f(*args, **kwargs) for f in fs]
         return self._recastList(res) # code is reused, hens pulled out
       # return function wrapper
       return wrapper
@@ -2072,6 +2083,37 @@ class Ensemble(object):
     # return check
     return not self.hasMember(member)
   
+  def __mul__(self, n):
+    ''' how to combine with other objects '''
+    if isInt(n):
+      return self.members*n
+    else:
+      raise TypeError
+
+  def __add__(self, other):
+    ''' how to combine with other objects '''
+    if isinstance(other, Ensemble):
+      for member in other: self.addMember(member)
+      return self
+    elif isinstance(other, list):
+      return self.members + other
+    elif isinstance(other, tuple):
+      return tuple(self.members) * other
+    else:
+      raise TypeError
+
+  def __radd__(self, other):
+    ''' how to combine with other objects '''
+    if isinstance(other, Ensemble):
+      for member in other: self.addMember(member)
+      return self
+    elif isinstance(other, list):
+      return other + self.members
+    elif isinstance(other, tuple):
+      return other + tuple(self.members)
+    else:
+      raise TypeError
+
   def __getitem__(self, member):
     ''' Yet another way to access members by name... conforming to the container protocol. If argument is not a member, it is called with __getattr__.'''
     if isinstance(member, basestring): 
@@ -2081,9 +2123,10 @@ class Ensemble(object):
       else:
         # call like an attribute
         return self.__getattr__(member)
-    elif isinstance(member, (int,np.integer)): 
+    else:
       return self.members[member]
-    else: raise TypeError
+#     elif isinstance(member, (int,np.integer,slice)): 
+#     else: raise TypeError
   
   def __setitem__(self, name, member):
     ''' Yet another way to add a member, this time by name... conforming to the container protocol. '''
@@ -2115,6 +2158,8 @@ class Ensemble(object):
       assert self.addMember(member), "A problem occurred adding Dataset '{:s}' to Ensemble.".format(member.name)    
     elif isinstance(member, Variable):
       assert all(self.addVariable(member)), "A problem occurred adding Variable '{:s}' to Ensemble Members.".format(member.name)    
+    elif all([isinstance(m, Variable) for m in member]):
+      assert all(self.addVariable(member)), "A problem occurred adding Variable '{:s}' to Ensemble Members.".format(member.name)    
     return self # return self as result
 
   def __isub__(self, member):
@@ -2123,7 +2168,7 @@ class Ensemble(object):
       assert self.removeMember(member), "A proble occurred removing Dataset '{:s}' from Ensemble.".format(member)    
     elif isinstance(member, self.basetype):
       assert self.removeMember(member), "A proble occurred removing Dataset '{:s}' from Ensemble.".format(member.name)
-    elif isinstance(member, Variable):
+    elif isinstance(member, (basestring,Variable)):
       assert all(self.removeVariable(member)), "A problem occurred removing Variable '{:s}' from Ensemble Members.".format(member.name)    
     return self # return self as result
 
