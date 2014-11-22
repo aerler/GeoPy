@@ -737,8 +737,59 @@ tmp['scalefactor'] = 1e-3
 # add to collection
 variablePlotatts['WMOTP'] = tmp
 
+from geodata.misc import ArgumentError
+
+## function to retrieve plot atts based on a variable name, units, and atts
+def getPlotAtts(name=None, units=None, atts=None, plotatts_dict=None):
+  ''' figure out sensible plot atts based on name, units, and atts '''
+  # check input
+  if name is None and 'name' not in atts: raise ArgumentError
+  if units is None and 'units' not in atts: raise ArgumentError
+  name = name or atts['name']
+  units = units or atts['units']
+  plotatts_dict = plotatts_dict or variablePlotatts
+  # find variable in plotatts_dict (based on name)
+  prefix = postfix = ''  
+  basename = name
+  # get base plot atts  
+  if name in variablePlotatts: 
+    plot = variablePlotatts[name].copy()
+  else:
+    if name[:3].lower() in ('min','max'):
+      prefix = name[:3].lower()
+      basename = name[3:]
+    if basename in variablePlotatts:
+      plot = variablePlotatts[basename]
+    elif basename.lower() in variablePlotatts:
+      plot = variablePlotatts[basename.lower()]
+    else:
+      namelist = basename.split('_')
+      basename = namelist[0]
+      postfix = namelist[1] if len(namelist)>1 else ''
+      if basename in variablePlotatts: 
+        plot = variablePlotatts[basename]
+      else:
+        # last resort...
+        plot = dict(plotname=name, plotunits=units, plottitle=name)  
+  # modify according to variable specifics
+  if prefix == 'max': 
+    plot['plotname'] = 'Max. '+plot['plotname']
+    plot['plottitle'] = 'Maximum '+plot['plottitle'] 
+  elif prefix == 'min': 
+    plot['plotname'] = 'Min. '+plot['plotname']
+    plot['plottitle'] = 'Minimum '+plot['plottitle']
+  if len(postfix)>0: # these are mostly things like, e.g., '7d' for 7d means
+    plot['plotname'] = plot['plotname']+' ({:s})'.format(postfix)
+    plot['plottitle'] = plot['plottitle']+' ({:s})'.format(postfix)
+  # adjust units
+  if units == plot['plotunits']: 
+    plot['scalefactor'] = 1
+    plot['offset'] = 0 # no conversion necessary
+  # return variable with new plot  
+  return plot
+
 ## function to update all variable properties in a dataset
-def updatePlotatts(dataset, mode='update', plotatts=None, default=True):
+def updateAllPlotAtts(dataset, mode='update', plotatts=None, default=True):
   # defaults (see above)
   if not plotatts: plotatts = variablePlotatts
   # loop over variables

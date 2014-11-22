@@ -19,6 +19,8 @@ from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, addG
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt
 from datasets.common import translateVarNames, data_root, grid_folder, default_varatts 
 from geodata.gdal import loadPickledGridDef, griddef_pickle
+from projects.WRF_experiments import Exp, exps 
+
 
 ## get WRF projection and grid definition 
 # N.B.: Unlike with observational datasets, model Meta-data depends on the experiment and has to be 
@@ -46,7 +48,6 @@ def getWRFproj(dataset, name=''):
 # infer grid (projection and axes) from constants file
 def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='wrfconst_d{0:0=2d}.nc', ncformat='NETCDF4'):
   ''' Infer the WRF grid configuration from an output file and return a GridDefinition object. '''
-  from projects.WRF_experiments import Exp, exps 
   # check input
   folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder)
   if isinstance(filename,basestring): filepath = '{}/{}'.format(folder,filename) # still contains formaters
@@ -122,7 +123,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
 def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
   ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
-  from projects.WRF_experiments import exps, Exp # need to leave this here, to avoid circular reference...   
+  #from projects.WRF_experiments import exps, Exp # need to leave this here, to avoid circular reference...   
   # check domains
   if isinstance(domains,col.Iterable):
     if not all(isInt(domains)): raise TypeError
@@ -164,53 +165,6 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
   return folder, experiment, tuple(names), tuple(domains)
   
 
-## class that defines experiments
-class Exp(object):
-  ''' class of objects that contain meta data for WRF experiments '''
-  # experiment parameter definition (class property)
-  parameters = col.OrderedDict() # order matters, because parameters can depend on one another for defaults
-  parameters['name'] = dict(type=basestring,req=True) # name
-  parameters['shortname'] = dict(type=basestring,req=False) # short name
-  parameters['title'] = dict(type=basestring,req=False) # title used in plots
-  parameters['grid'] = dict(type=basestring,req=True) # name
-  parameters['parent'] = dict(type=basestring,req=True) # driving dataset
-  parameters['ensemble'] = dict(type=basestring,req=False) # ensemble this run is a member of
-  parameters['begindate'] = dict(type=basestring,req=True) # simulation start date
-  parameters['beginyear'] = dict(type=int,req=True) # simulation start year
-  parameters['enddate'] = dict(type=basestring,req=False) # simulation end date (if it already finished)
-  parameters['endyear'] = dict(type=int,req=False) # simulation end year
-  parameters['avgfolder'] = dict(type=basestring,req=True) # folder for monthly averages
-  parameters['outfolder'] = dict(type=basestring,req=False) # folder for direct WRF averages
-  # default values (functions)
-  defaults = dict()
-  defaults['shortname'] = lambda atts: atts['name']
-  defaults['title'] = lambda atts: atts['name'] # need lambda, because parameters are not set yet
-  defaults['parent'] = 'Ctrl' # CESM simulations that is driving most of the WRF runs   
-  defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/'.format(avgfolder,atts['name'])
-  defaults['begindate'] = '1979-01-01'
-  defaults['beginyear'] = lambda atts: int(atts['begindate'].split('-')[0]) # first field
-  
-  def __init__(self, **kwargs):
-    ''' initialize values from arguments '''
-    # loop over simulation parameters
-    for argname,argatt in self.parameters.items():
-      if argname in kwargs:
-        # assign argument based on keyword
-        arg = kwargs[argname]
-        if not isinstance(arg,argatt['type']): 
-          raise TypeError, "Argument '{0:s}' must be of type '{1:s}'.".format(argname,argatt['type'].__name__)
-        self.__dict__[argname] = arg
-      elif argname in self.defaults:
-        # assign some default values, if necessary
-        if callable(self.defaults[argname]): 
-          self.__dict__[argname] = self.defaults[argname](self.__dict__)
-        else: self.__dict__[argname] = self.defaults[argname]
-      elif argatt['req']:
-        # if the argument is required and there is no default, raise error
-        raise ValueError, "Argument '{0:s}' for experiment '{1:s}' required.".format(argname,self.name)
-      else:
-        # if the argument is not required, just assign None 
-        self.__dict__[argname] = None    
 
 
 ## variable attributes and name
@@ -221,6 +175,7 @@ class FileType(object): pass # ''' Container class for all attributes of of the 
 class Const(FileType):
   ''' Variables and attributes of the constants files. '''
   def __init__(self):
+    self.name = 'const' 
     self.atts = dict(HGT    = dict(name='zs', units='m'), # surface elevation
                      XLONG  = dict(name='lon2D', units='deg E'), # geographic longitude field
                      XLAT   = dict(name='lat2D', units='deg N')) # geographic latitude field
@@ -231,6 +186,7 @@ class Const(FileType):
 class Srfc(FileType):
   ''' Variables and attributes of the surface files. '''
   def __init__(self):
+    self.name = 'srfc'
     self.atts = dict(T2     = dict(name='T2', units='K'), # 2m Temperature
                      TSK    = dict(name='Ts', units='K'), # Skin Temperature (SST)
                      Q2     = dict(name='q2', units='kg/kg'), # 2m water vapor mass mixing ratio
@@ -258,6 +214,7 @@ class Srfc(FileType):
 class Hydro(FileType):
   ''' Variables and attributes of the hydrological files. '''
   def __init__(self):
+    self.name = 'hydro'
     self.atts = dict(T2MEAN = dict(name='Tmean', units='K'), # daily mean 2m Temperature
                      RAIN   = dict(name='precip', units='kg/m^2/s'), # total precipitation rate
                      RAINC  = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate
@@ -276,6 +233,7 @@ class Hydro(FileType):
 class LSM(FileType):
   ''' Variables and attributes of the land surface files. '''
   def __init__(self):
+    self.name = 'lsm'
     self.atts = dict(ALBEDO = dict(name='A', units=''), # Albedo
                      SNOWC  = dict(name='snwcvr', units=''), # snow cover (binary)
                      ACSNOM = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
@@ -292,6 +250,7 @@ class LSM(FileType):
 class Rad(FileType):
   ''' Variables and attributes of the radiation files. '''
   def __init__(self):
+    self.name = 'rad'
     self.atts = dict() # currently empty
     self.vars = self.atts.keys()    
     self.climfile = 'wrfrad_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
@@ -300,6 +259,7 @@ class Rad(FileType):
 class Xtrm(FileType):
   ''' Variables and attributes of the extreme value files. '''
   def __init__(self):
+    self.name = 'xtrm'
     self.atts = dict(#T2MEAN = dict(name='Tmean', units='K'),  # daily mean Temperature (at 2m)
                      T2MEAN = dict(name='T2', units='K'),  # daily mean Temperature (at 2m)
                      T2MIN  = dict(name='Tmin', units='K'),   # daily minimum Temperature (at 2m)
@@ -342,6 +302,7 @@ class Xtrm(FileType):
 class Plev3D(FileType):
   ''' Variables and attributes of the pressure level files. '''
   def __init__(self):
+    self.name = 'plev3d'
     self.atts = dict(T_PL     = dict(name='T', units='K', fillValue=-999),   # Temperature
                      TD_PL    = dict(name='Td', units='K', fillValue=-999),  # Dew-point Temperature
                      RH_PL    = dict(name='RH', units='', fillValue=-999),   # Relative Humidity
@@ -358,6 +319,7 @@ class Plev3D(FileType):
 class Axes(FileType):
   ''' A mock-filetype for axes. '''
   def __init__(self):
+    self.name = 'axes'
     self.atts = dict(Time        = dict(name='time', units='month'), # time coordinate
                      time        = dict(name='time', units='month'), # time coordinate
                      # N.B.: the time coordinate is only used for the monthly time-series data, not the LTM
@@ -383,12 +345,23 @@ avgfolder = root_folder + 'wrfavg/' # long-term mean folder
 for fileclass in fileclasses.itervalues():
   atts = dict()
   for key,val in fileclass.atts.iteritems():
-    extrema = ['Max']
-    if val['units'].lower() == 'k': extrema += ['Min']
+    if val['units'].lower() == 'k': 
+      extrema = ('Max','Min') # only temperature has extreme minima
+    else: extrema = ('Max',) # precip et al. only has maxima
     for x in extrema:
       att = val.copy()
       att['name'] = x+att['name'].title()   
       atts[x+key] = att
+      if fileclass.name in ('hydro','lsm'):
+        att = att.copy()
+        att['name'] = att['name']+'_7d'
+        atts[x+key+'_7d'] = att
+      if fileclass.name in ('xtrm',):
+        att = att.copy()
+        att['name'] = 'Tof'+att['name'][0].upper()+att['name'][1:]
+        #del att['units'] # just leave units as they are
+        att['units'] = 'min' # minutes since simulation start
+        atts['T'+key] = att
   fileclass.atts.update(atts)
 
 
@@ -659,8 +632,8 @@ if __name__ == '__main__':
 #   mode = 'test_station_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_station_timeseries'
-  mode = 'test_ensemble'
-#   mode = 'test_station_ensemble'
+#   mode = 'test_ensemble'
+  mode = 'test_station_ensemble'
 #   mode = 'pickle_grid'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]

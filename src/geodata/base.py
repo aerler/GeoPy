@@ -10,7 +10,7 @@ Variable and Dataset classes for handling geographical datasets.
 import numpy as np
 import numpy.ma as ma # masked arrays
 # my own imports
-from plotting.properties import variablePlotatts # import plot properties from different file
+from plotting.properties import getPlotAtts, variablePlotatts # import plot properties from different file
 from misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, printList, floateps
 from misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 
@@ -205,21 +205,7 @@ class Variable(object):
     self.__dict__['fillValue'] = fillValue
     self.__dict__['atts'] = AttrDict(**atts)
     # try to find sensible default values
-    if plot is None: 
-      name = self.name 
-      if name in variablePlotatts: 
-        plot = variablePlotatts[name]
-      else:
-        if name[:3] in ('Min','Max'): name = name[3:].lower()
-        if name in variablePlotatts:
-          plot = variablePlotatts[name]
-        else:
-          name = name.split('_')[0]
-          if name in variablePlotatts: 
-            plot = variablePlotatts[name]
-          else:
-            # last resort...
-            plot = dict(plotname=self.name, plotunits=self.units, plottitle=self.name) 
+    plot = plot or getPlotAtts(name=name, units=units, atts=atts)
     self.__dict__['plot'] = AttrDict(**plot)
     # set defaults - make all of them instance variables! (atts and plot are set below)
     self.__dict__['data_array'] = None

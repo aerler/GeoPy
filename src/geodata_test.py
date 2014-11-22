@@ -190,19 +190,15 @@ class BaseVarTest(unittest.TestCase):
     # collective add/remove
     # test adding a new member
     ens += yacov # this is an ensemble operation
-    print('')
-    print(ens)
-    print('')    
+#     print(''); print(ens); print('')
     ens -= yacov # this is a ensemble operation
     assert not ens.hasMember(yacov)
     # perform a variable operation
     ens.mean(axis='time')
     print(ens.prettyPrint(short=True))
-    ens -= 'test' # subtract by name
-    print('')
-    print(ens)
-    print('')    
-    assert not ens.hasMember('test')
+    ens -= var.name # subtract by name
+#     print(''); print(ens); print('')    
+    assert not ens.hasMember(var.name)
       
   def testIndexing(self):
     ''' test indexing and slicing '''
@@ -546,7 +542,7 @@ class BaseDatasetTest(unittest.TestCase):
     ax = Axis(name='ax', units='none', coord=(1,10))
     var1 = Variable(name='new',units='none',axes=(ax,))
     var2 = Variable(name='new',units='none',axes=(ax,))
-    ens += [var1,var2] # this is a dataset operation
+    ens.addVariable([var1,var2], copy=False) # this is a dataset operation
     assert ens[0].hasVariable(var1)
     assert ens[1].hasVariable(var2)
     assert all(ens.hasVariable('new'))
@@ -1011,13 +1007,13 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['BaseVar'] 
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
     
     # RAM disk settings ("global" variable)
     RAM = True # whether or not to use a RAM disk
