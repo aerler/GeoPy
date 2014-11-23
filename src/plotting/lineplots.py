@@ -21,7 +21,7 @@ import matplotlib as mpl
 # pyl.ioff()
 # internal imports
 from misc.signalsmooth import smooth
-from utils import getPlotValues, getFigAx
+from utils import getPlotValues, getFigAx, updateSubplots
 from geodata.base import Variable
 from geodata.misc import AxisError, ListError, VariableError
 
@@ -90,31 +90,38 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
   if isinstance(ylim,(list,tuple)) and len(ylim)==2: ax.set_ylim(*ylim)
   elif ylim is not None: raise TypeError 
   # set title
-  if title is not None: ax.set_title(title)
+  if title is not None:
+    ax.set_title(title, dict(fontsize='medium'))
+    pos = ax.get_position()
+    pos = pos.from_bounds(x0=pos.x0, y0=pos.y0, width=pos.width, height=pos.height-0.03)    
+    ax.set_position(pos)
   # set axes labels  
   if flipxy: xname,xunits,yname,yunits = varname,varunits,axname,axunits
   else: xname,xunits,yname,yunits = axname,axunits,varname,varunits
   if not xlabel: xlabel = '{0:s} [{1:s}]'.format(xname,xunits) if xunits else '{0:s}'.format(xname)
+  else: xlabel = xlabel.format(xname,xunits)
   if not ylabel: ylabel = '{0:s} [{1:s}]'.format(yname,yunits) if yunits else '{0:s}'.format(yname)
-  xpad =  0; ypad = -0  
-  #xpad =  2; ypad = -2  
-  # N.B.: units are listed first, because they are used more commonly; variable names usually only in defaults
-  # a typical custom label that makes use of the units would look like this: 'custom label [{}]', 
+  else: ylabel = ylabel.format(yname,yunits)
+  # a typical custom label that makes use of the units would look like this: 'custom label [{1:s}]', 
   # where {} will be replaced by the appropriate default units (which have to be the same anyway)
-  xticks = ax.get_yaxis().get_ticklabels()
-  if len(xticks) > 0 and xticks[0].get_visible(): 
-    ax.set_xlabel(xlabel, labelpad=xpad)
-  #print ax.get_yaxis().get_ticklabels()
-  yticks = ax.get_yaxis().get_ticklabels()
-  if len(yticks) > 0 and yticks[0].get_visible(): 
-    ax.set_ylabel(ylabel, labelpad=ypad)
+  xpad =  2; xticks = ax.get_xaxis().get_ticklabels()
+  ypad = -2; yticks = ax.get_yaxis().get_ticklabels()
+  # len(xticks) > 0 is necessary to avoid errors with AxesGrid, which removes invisible tick labels 
+  if len(xticks) > 0 and xticks[-1].get_visible(): ax.set_xlabel(xlabel, labelpad=xpad)
+  elif len(yticks) > 0 and not title: yticks[0].set_visible(False) # avoid overlap
+  if len(yticks) > 0 and yticks[-1].get_visible(): ax.set_ylabel(ylabel, labelpad=ypad)
+  elif len(xticks) > 0: xticks[0].set_visible(False) # avoid overlap
   # make monthly ticks
   if axname == 'time' and axunits == 'month':
-    #ax.minorticks_on()
-    ax.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator(2))
+    ax.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator(2)) # ax.minorticks_on()
   # add legend
-  if isinstance(legend,dict): ax.legend(**legend)
-  elif isinstance(legend,(int,np.integer,float,np.inexact)): ax.legend(loc=legend)
+  if legend:
+    legatts = dict()
+    if ax.get_yaxis().get_label():
+      legatts['fontsize'] = ax.get_yaxis().get_label().get_fontsize()
+    if isinstance(legend,dict): legatts.update(legend) 
+    elif isinstance(legend,(int,np.integer,float,np.inexact)): legatts['loc'] = legend
+    ax.legend(**legatts)
   # add orientation lines
   if isinstance(xline,(int,np.integer,float,np.inexact)): ax.axhline(y=xline, color='black')
   elif isinstance(xline,dict): ax.axhline(**xline)
@@ -123,29 +130,43 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
   # return handle
   return plts      
 
+
 # add common/shared legend to a multi-panel plot
-def addSharedLegend():
-	''' add a common/shared legend to a multi-panel plot '''
-	leghgt = fontsize/200.+0.05
-	ax = fig.add_axes([0, 0, 1,leghgt])
-	ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
-	margins['bottom'] = margins['bottom'] + leghgt; fig.subplots_adjust(**margins)
-	legargs = dict(frameon=True, labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
-#           if nlen == 1: legargs = dict(frameon=True, labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
-#           else: legargs = dict(frameon=True, labelspacing=0.15, handlelength=2, handletextpad=0.5, fancybox=True)
-	plt = wrfplt + obsplt; leg = wrfleg + obsleg
-	if fontsize > 11: ncols = 2 if len(leg) == 4 else 3
-	else: ncols = 3 if len(leg) == 6 else 4            
-	legend = ax.legend(plt, leg, loc=10, ncol=ncols, borderaxespad=0., **legargs)
+def addSharedLegend(fig, plts=None, legs=None, fontsize=None, **kwargs):
+  ''' add a common/shared legend to a multi-panel plot '''
+  # complete input
+  if legs is None: legs = [plt.get_label() for plt in plts]
+  elif not isinstance(legs, (list,tuple)): raise TypeError
+  if not isinstance(plts, (list,tuple,NoneType)): raise TypeError
+  # figure out fontsize and row numbers  
+  fontsize = fontsize or fig.axes[0].get_yaxis().get_label().get_fontsize() # or fig._suptitle.get_fontsize()
+  nlen = len(plts) if plts else len(legs)
+  if fontsize > 11: ncols = 2 if nlen == 4 else 3
+  else: ncols = 3 if nlen == 6 else 4              
+  # make room for legend
+  leghgt = np.ceil(nlen/ncols) * fontsize + 0.055
+  ax = fig.add_axes([0, 0, 1,leghgt]) # new axes to hold legend, with some attributes
+  ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
+  fig = updateSubplots(fig, mode='shift', bottom=leghgt) # shift bottom upwards
+  # define legend parameters
+  legargs = dict(loc=10, ncol=ncols, borderaxespad=0., fontsize=fontsize, frameon=True,
+                 labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
+  legargs.update(kwargs)
+  # create legend and return handle
+  if plts: legend = ax.legend(plts, legs, **legargs)
+  else: legend = ax.legend(legs, **legargs)
+  return legend
+  
+  
 
 # plots with error shading 
-def addErrorPatch(ax, var, err, color, axis=None, xerr=True, alpha=0.25, check=False, cap=-1):
+def addErrorPatch(ax, var, err, color=None, axis=None, xerr=True, alpha=0.25, check=False, cap=-1):
   from numpy import append, where, isnan
   from matplotlib.patches import Polygon 
   if isinstance(var,Variable):    
     if axis is None and var.ndim > 1: raise AxisError
-    y = var.getAxis(axis).getArray()
-    x = var.getArray(); 
+    x = var.getAxis(axis).getArray()
+    y = var.getArray(); 
     if isinstance(err,Variable): e = err.getArray()
     else: e = err
   else:
@@ -160,6 +181,7 @@ def addErrorPatch(ax, var, err, color, axis=None, xerr=True, alpha=0.25, check=F
   else:
     ix = append(y,y[::-1])
     iy = append(x-e,(x+e)[::-1])
+  if color is None: raise NotImplementedError # should take color from plot line (variable)
   patch = Polygon(zip(ix,iy), alpha=alpha, facecolor=color, edgecolor=color)
   ax.add_patch(patch)
   return patch 

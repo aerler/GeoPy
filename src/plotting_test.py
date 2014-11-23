@@ -21,7 +21,7 @@ from geodata.misc import isZero, isOne, isEqual
 from geodata.base import Variable, Axis, Dataset
 from datasets.common import data_root
 # import modules to be tested
-from plotting.lineplots import linePlot 
+from plotting.lineplots import linePlot , addSharedLegend
 from plotting.mapplots import srfcPlot
 from plotting.utils import getFigAx
 # use common MPL instance
@@ -60,7 +60,7 @@ class LinePlotTest(unittest.TestCase):
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var1 = self.var1; var2 = self.var2
     # create plot
-    plts = linePlot([var1, var2], ax=ax, ylabel='custom label [{}]', ylim=var1.limits(), legend=2)
+    plts = linePlot([var1, var2], ax=ax, ylabel='custom label [{1:s}]', ylim=var1.limits(), legend=2)
     assert len(plts) == 2
   
   def testAdvancedLinePlot(self):
@@ -78,17 +78,31 @@ class LinePlotTest(unittest.TestCase):
     # create plot
     plts = linePlot([var1, var2], ax=ax, linestyles=('--','-.'), varatts=varatts, legend=legend)
     assert len(plts) == 2
+
+  def testAxesGridLinePlot(self):
+    ''' test a two panel line plot with combined legend '''        
+    fig,axes = getFigAx(4, AxesGrid=True, name=sys._getframe().f_code.co_name[4:]) # use test method name as title
+    #assert grid.__class__.__name__ == 'ImageGrid'
+    assert fig.__class__.__name__ == 'Figure'
+    assert isinstance(axes,tuple) # should return a list of axes
+    var1 = self.var1; var2 = self.var2
+    # create plot
+    for ax in axes:
+        plts = linePlot([var1, var2], ax=ax, ylim=var1.limits(), legend=0)
+        assert len(plts) == 2    
         
   def testCombinedLinePlot(self):
     ''' test a two panel line plot with combined legend '''    
-    fig,axes = getFigAx(2, name=sys._getframe().f_code.co_name[4:]) # use test method name as title
+    fig,axes = getFigAx(4, sharey=True, sharex=True, name=sys._getframe().f_code.co_name[4:]) # use test method name as title
     assert fig.__class__.__name__ == 'Figure'
-    assert isinstance(axes,(list,tuple)) # should return a list of axes
+    assert isinstance(axes,(list,tuple,np.ndarray)) # should return a list of axes
     var1 = self.var1; var2 = self.var2
     # create plot
-    for i,ax in enumerate(axes):
+    for i,ax in enumerate(axes.flatten()):
       plts = linePlot([var1, var2], ax=ax, ylim=var1.limits(), legend=0, title='Panel {:d}'.format(i+1))
       assert len(plts) == 2
+    # add common legend
+    addSharedLegend(fig, plts=plts)
     
 if __name__ == "__main__":
 
