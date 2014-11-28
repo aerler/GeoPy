@@ -145,18 +145,18 @@ def updateSubplots(fig, mode='shift', **kwargs):
 # method to check units and name, and return scaled plot value (primarily and internal helper function)
 def getPlotValues(var, checkunits=None, checkname=None):
   ''' Helper function to check variable/axis, get (scaled) values for plot, and return appropriate units. '''
-  if var.plot is not None and 'plotname' in var.plot: 
-    varname = var.plot['plotname'] 
+  if var.plot is not None and 'name' in var.plot: 
+    varname = var.plot.name 
     if checkname is not None and varname != checkname: # only check plotname! 
       raise VariableError, "Expected variable name '{}', found '{}'.".format(checkname,varname)
   else: varname = var.atts['name']
   val = var.getArray(unmask=True) # the data to plot
   if var.plot is not None and 'scalefactor' in var.plot: 
-    if var.atts['units'] != var.plot['plotunits']: 
-      val = val *  var.plot['scalefactor']
-    varunits = var.plot['plotunits']
+    if var.atts['units'] != var.plot.units: 
+      val = val *  var.plot.scalefactor
+    varunits = var.plot.units
   else: varunits = var.atts['units']
-  if var.plot is not None and 'offset' in var.plot: val += var.plot['offset']    
+  if var.plot is not None and 'offset' in var.plot: val += var.plot.offset    
   if checkunits is not None and  varunits != checkunits: 
     raise VariableError, "Units for variable '{}': expected {}, found {}.".format(var.name,checkunits,varunits) 
   # return values, units, name

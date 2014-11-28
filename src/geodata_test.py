@@ -57,16 +57,21 @@ class BaseVarTest(unittest.TestCase):
   ## basic tests every variable class should pass
 
   def testAttributes(self):
-    ''' test handling of attributes '''
+    ''' test handling of attributes and plot attributes '''
     # get test objects
     var = self.var; atts = self.atts
     # test getattr
     assert (atts['name'],atts['units']) == (var.name,var.units)
     # test setattr
-    var.atts.comments = 'test'; var.plot['comments'] = 'test'
-    assert var.plot.comments == var.atts['comments']      
-    #     print 'Name: %s, Units: %s, Missing Values: %s'%(var.name, var.units, var._FillValue)
-    #     print 'Comments: %s, Plot Comments: %s'%(var.Comments,var.plotatts['plotComments'])
+    var.atts.comments = 'test'
+    assert var.atts.comments == var.atts['comments']   
+    # test PlotAtts
+    plot = var.plot.copy(name='plotname')
+    assert plot is not var.plot    
+    assert plot.name == 'plotname'
+    # more advanced
+    copy = var.copy(plot=dict(name='overrride'))
+    assert copy.plot.name == 'overrride'
     
   def testAxis(self):
     ''' test stuff related to axes '''

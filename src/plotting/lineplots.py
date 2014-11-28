@@ -70,8 +70,8 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
     # variable and axis scaling is not always independent...
     if var.plot is not None and varax.plot is not None: 
       if 'preserve' in var.plot and 'scalefactor' in varax.plot:
-        if varax.units != axunits and var.plot['preserve'] == 'area':
-          val /= varax.plot['scalefactor']  
+        if varax.units != axunits and var.plot.preserve == 'area':
+          val /= varax.plot.scalefactor  
     # figure out keyword options
     kwatts = kwargs.copy(); kwatts.update(varatt) # join individual and common attributes     
     if 'label' not in kwatts: kwatts['label'] = var.name # default label: variable name
