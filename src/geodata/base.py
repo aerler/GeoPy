@@ -10,7 +10,7 @@ Variable and Dataset classes for handling geographical datasets.
 import numpy as np
 import numpy.ma as ma # masked arrays
 # my own imports
-from plotting.properties import PlotAtts, getPlotAtts, variablePlotatts # import plot properties from different file
+from plotting.properties import getPlotAtts, variablePlotatts # import plot properties from different file
 from misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, printList, floateps
 from misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 
@@ -84,10 +84,15 @@ class ReduceVar(object): # not a Variable child!!!
   def __init__(self, reduceop):
     ''' Save original operation. '''
     self.reduceop = reduceop
-  def __call__(self, var, asVar=None, axis=None, axes=None, lcheckAxis=True, **kwaxes):
+  def __call__(self, var, asVar=None, axis=None, axes=None, lcheckVar=True, lcheckAxis=True,
+                          fillValue=None, **kwaxes):
     ''' Figure out axes, perform sanity checks, then execute operation, and return result as a Variable 
         instance. Axes are specified either in a list ('axes') or as keyword arguments with corresponding
         slices. '''
+    # this really only works for numeric types
+    if var.dtype.kind in ('S',): 
+      if lcheckVar: raise VariableError, "Reduction does not work with string Variables!"
+      else: return None
     # extract axes and keyword arguments      
     slcaxes = dict(); kwargs = dict()
     for key,value in kwaxes.iteritems():
@@ -97,8 +102,11 @@ class ReduceVar(object): # not a Variable child!!!
     if axis is None and axes is None and len(slcaxes) == 0:
       # simple and quick, less overhead
       if not var.data: var.load()
+      # remove mask, if fill value is given (some operations don't work with masked arrays)
+      if fillValue is not None and var.masked: data = var.data_array.filled(fillValue)
+      else: data = var.data_array
       # apply operation without arguments, i.e. over all axes
-      data = self.reduceop(var, var.data_array, **kwargs)
+      data = self.reduceop(var, data, **kwargs)
       # whether or not to cast as Variable (default: No)
       if asVar is None: asVar = False # default for total reduction
       if asVar: newaxes = tuple()
@@ -121,6 +129,8 @@ class ReduceVar(object): # not a Variable child!!!
       # use overloaded call method to index with coordinate values directly 
       data = var.__call__(asVar=False, **slcaxes)
       # N.B.: call can also accept index values and slices (set options accordingly!)
+      # remove mask, if fill value is given (some operations don't work with masked arrays)
+      if fillValue is not None and var.masked: data = data.filled(fillValue)
       ## compute reduction
       axlist.reverse() # start from the back      
       for axis in axlist:
@@ -135,8 +145,9 @@ class ReduceVar(object): # not a Variable child!!!
     # N.B.: other singleton dimensions will have been removed, too
     ## cast into Variable
     if asVar: 
-      redvar = Variable(name=var.name, units=var.units, axes=newaxes, data=data, 
-                     fillValue=var.fillValue, atts=var.atts.copy(), plot=var.plot.copy())
+      redvar = var.copy(axes=newaxes, data=data)
+#       redvar = Variable(name=var.name, units=var.units, axes=newaxes, data=data, 
+#                      fillValue=var.fillValue, atts=var.atts.copy(), plot=var.plot.copy())
     else: redvar = data
     return redvar # return function result
   
@@ -772,7 +783,7 @@ class Variable(object):
     return np.nanmin(data, axis=axidx)
   
   def reduce(self, operation, blklen=None, blkidx=None, axis=None, mode=None, offset=0, 
-                  asVar=None, axatts=None, varatts=None, **kwargs):
+                  asVar=None, axatts=None, varatts=None, fillValue=None, **kwargs):
     ''' Reduce a time-series; there are two modes:
           'block'     reduce to one value representing each block, e.g. from monthly to yearly averages;
                       specify a subset of elements from each block with blkidx
@@ -831,6 +842,7 @@ class Variable(object):
     #       block: use a subset of elements from each block, but use all blocks
     #       periodic: use a subset of blocks, but all elements in each block 
     ## apply operation
+    if fillValue is not None and self.masked: tdata = tdata.filled(fillValue)
     rdata = operation(tdata, axis=-1, **kwargs)
     assert rdata.shape == rshape
     # return new variable
@@ -859,10 +871,16 @@ class Variable(object):
     return rvar
   
   def histogram(self, bins=None, binedgs=None, ldensity=True, asVar=True, name=None, axis=None, lflatten=False, 
-                     haxatts=None, hvaratts=None, **kwargs):
+                     lcheckVar=True, lcheckAxis=True, haxatts=None, hvaratts=None, fillValue=None, **kwargs):
     ''' Generate a histogram of along a given axis and preserve the other axes. '''
+    # some input checking
     if lflatten and axis is not None: raise ArgumentError
     if not lflatten and axis is None: raise ArgumentError
+    if self.dtype.kind in ('S',): 
+      if lcheckVar: raise VariableError, "Histogram does not work with string Variables!"
+      else: return None
+    if lcheckAxis and axis is not None:
+      if not self.hasAxis(axis): raise AxisError, "Variable '{:s}' has no axis '{:s}'.".format(self.name, axis)
     kwargs['density'] = ldensity # overwrite parameter
     # figure out bins
     if bins is None and binedgs is None: raise ArgumentError
@@ -871,21 +889,25 @@ class Variable(object):
     if bins is not None:
       # expand bins (values refer to center of bins)
       if isinstance(bins,(int,np.integer)):
-        bins = np.linspace(self.min(),self.max(),bins)  
+        if bins == 1: bins = np.asarray(( (self.min()+self.max())/2. ,)) 
+        else: bins = np.linspace(self.min(),self.max(),bins)  
       elif isinstance(bins,(tuple,list)) and  0 < len(bins) < 4: 
         bins = np.linspace(*bins)
       elif not isinstance(bins,(list,np.ndarray)): raise TypeError
-      hbd = np.diff(bins) / 2. # make sure this is a float!
-      tmpbinedgs = np.hstack((bins[0]-hbd[0],bins[1:]-hbd,bins[-1]+hbd[-1])) # assuming even spacing
+      if len(bins) == 1: 
+        tmpbinedgs = np.asarray((self.min(),self.max()))
+      else:
+        hbd = np.diff(bins) / 2. # make sure this is a float!
+        tmpbinedgs = np.hstack((bins[0]-hbd[0],bins[1:]-hbd,bins[-1]+hbd[-1])) # assuming even spacing
       if binedgs is None: binedgs = tmpbinedgs # computed from bins
-      else: assert isEqual(binedgs, np.asarray(tmpbinedgs, dtype=binedgs.dtype))
+      elif lcheckVar: assert isEqual(binedgs, np.asarray(tmpbinedgs, dtype=binedgs.dtype))
     if binedgs is not None:
       # expand bin edges
       if not isinstance(binedgs,(tuple,list)): binedgs = np.asarray(binedgs)
       elif not isinstance(binedgs,np.ndarray): raise TypeError  
       tmpbins = binedgs[1:] - ( np.diff(binedgs) / 2. ) # make sure this is a float!
       if bins is None: bins = tmpbins # compute from binedgs
-      else: assert isEqual(bins, np.asarray(tmpbins, dtype=bins.dtype))
+      elif lcheckVar: assert isEqual(bins, np.asarray(tmpbins, dtype=bins.dtype))
     # setup histogram axis and variable attributes (special case)
     if asVar:
       axatts = self.atts.copy() # variable values become axis
@@ -899,10 +921,19 @@ class Variable(object):
       if hvaratts is not None: varatts.update(hvaratts)
     else:
       axatts = None; varatts = None
-    # perform computation
+    # choose a fillValue, because np.histogram does not ignore masked values but does ignore NaNs
+    if fillValue is None and self.masked:
+      if np.issubdtype(self.dtype,np.integer): fillValue = binedgs[-1]+1
+      elif np.issubdtype(self.dtype,np.inexact): fillValue = np.NaN
+      else: raise NotImplementedError
+    # define functions that perform actual computation
+    # N.B.: these "operations" will be called through the reduce method (see above for details)
     if lflatten: # totally by-pass reduce()...
       # this is actually the default behavior of np.histogram()
-      hdata, bin_edges = np.histogram(self.getArray(), bins=binedgs, **kwargs) # will flatten automatically
+      if self.masked: data = self.data_array.filled(fillValue)
+      else: data = self.data_array
+      # N.B.: to ignore masked values they have to be replaced by NaNs or out-of-bounds values 
+      hdata, bin_edges = np.histogram(data, bins=binedgs, **kwargs) # will flatten automatically
       assert isEqual(bin_edges, binedgs)
       assert hdata.shape == (len(binedgs)-1,)
       # create new Axis and Variable objects (1-D)
@@ -922,7 +953,7 @@ class Variable(object):
       # call reduce to perform operation
       axatts['coord'] = bins # reduce() reads this and uses it as new axis coordinates
       hvar = self.reduce(operation=histfct, blklen=len(bins), blkidx=None, axis=axis, mode='all', 
-                         offset=0, asVar=asVar, axatts=axatts, varatts=varatts)
+                         offset=0, asVar=asVar, axatts=axatts, varatts=varatts, fillValue=fillValue)
       if asVar:
         hvar.plot = variablePlotatts['hist'].copy()
     # return new variable instance (or data)
@@ -1594,19 +1625,20 @@ class Dataset(object):
       # select variable
       if varname in variables: var = variables[varname]
       else: var = self.variables[varname]
-      # change axes and attributes
-      axes = tuple([newaxes[ax.name] for ax in var.axes])
-      if varname in varargs: # check input again
-        if isinstance(varargs[varname],dict): args = varargs[varname]  
-        else: raise TypeError
-      else: args = dict()
-      # copy variables
-      newvars.append(var.copy(axes=axes, deepcopy=varsdeep, **args))
+      # skip variables that are set to None
+      if var is not None:
+        # change axes and attributes
+        axes = tuple([newaxes[ax.name] for ax in var.axes])
+        if varname in varargs: # check input again
+          if isinstance(varargs[varname],dict): args = varargs[varname]  
+          else: raise TypeError
+        else: args = dict()
+        # copy variables
+        newvars.append(var.copy(axes=axes, deepcopy=varsdeep, **args))
     # determine attributes
-    kwargs['varlist'] = newvars
-    if 'atts' not in kwargs: kwargs['atts'] = self.atts.copy() 
+    atts = kwargs.pop('atts',self.atts.copy()) 
     # make new dataset
-    dataset = Dataset(**kwargs)
+    dataset = Dataset(varlist=newvars, atts=atts, **kwargs)
     # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
     return dataset
   
@@ -1653,7 +1685,7 @@ class Dataset(object):
     ''' Yet another way to add a variable, this time by name... conforming to the container protocol. '''
     if not isinstance(var, Variable) or not isinstance(varname, basestring): raise TypeError
     var.name = varname # change name to varname
-    if 'name' in var.atts: var.atts['name'] = varname
+    #if 'name' in var.atts: var.atts['name'] = varname
     check = self.addVariable(var) # add variable
     if not check: raise KeyError # raise error if variable is not present
     
@@ -1726,25 +1758,46 @@ class Dataset(object):
     for var in self.variables.itervalues():
       var.load(fillValue=fillValue, **kwargs)
       
-  def mean(self, squeeze=True, checkAxis=True, coordIndex=True, **axes):
-    ''' Average entire dataset, and return a new (reduced) one. '''
-    newset = Dataset(name=self.name, title=self.title, varlist=[], atts=self.attscopy())    
+  def _apply_to_all(self, fctsdict, asVar=True, dsatts=None, copyother=True, deepcopy=False, 
+                    lcheckVar=False, lcheckAxis=False, **kwargs):
+    ''' Apply functions from fctsdict to variables in dataset and return a new dataset. '''
+    # separate axes from kwargs
+    axes = {axname:ax for axname,ax in kwargs.iteritems() if self.hasAxis(axname)}
+    for axname in axes.iterkeys(): del kwargs[axname] 
     # loop over variables
-    for var in self.variable:
-      # figure out, which axes apply
-      tmpax = {key:value for key,value in axes.iteritems() if var.hasAxis(key)}
-      # get averaged variable
-      if len(tmpax) > 0:
-        self.addVariable(var.mean(**tmpax), copy=False) # new variable/values anyway
-      else: 
-        self.addVariable(var, copy=True, deepcopy=True) # copy values
-    # add some record
-    for key,value in axes.iteritem():
-      if isinstance(value,(list,tuple)): newset.atts[key] = printList(value)
-      elif isinstance(value,np.number): newset.atts[key] = str(value)      
-      else: newset.atts[key] = 'n/a'
+    newvars = dict() 
+    for varname,var in self.variables.iteritems():
+      if varname in fctsdict and fctsdict[varname] is not None:
+        # figure out, which axes apply
+        tmpargs = kwargs.copy()
+        if axes: tmpargs.update({key:value for key,value in axes.iteritems() if var.hasAxis(key)})
+        newvars[varname] = fctsdict[varname](asVar=asVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **tmpargs)        
+      elif copyother and asVar:
+        newvars[varname] = var.copy(deepcopy=deepcopy)
+    # assemble new dataset
+    if asVar: newset = self.copy(variables=newvars, atts=dsatts) # use copy method of dataset
+    else: newset = newvars # just return resulting dictionary
     # return new dataset
     return newset
+
+  def __getattr__(self, attr):
+    ''' if the call is a Variable method that is not provided by Dataset, call the Variable method
+        on all Variables using _apply_to_all '''
+    # N.B.: this method is only called as a fallback, if not class/instance attribute exists,
+    #       i.e. Dataset methods and attributes will always have precedent 
+    # check if Variables have this attribute
+    if any([hasattr(var,attr) for var in self.variables.itervalues()]):
+      # get all attributes into a dict, using None if not present
+      attrdict = {varname:getattr(var,attr) for varname,var in self.variables.iteritems() 
+                  if hasattr(var, attr)}
+      # determine if this is a Variable method
+      if any([callable(fct) for fct in attrdict.itervalues()]):
+        # call function on all variables, using _apply_to_all
+        return functools.partial(self._apply_to_all, attrdict) 
+      else:
+        # treat as simple attributes and return dict with values
+        return attrdict
+    else: raise AttributeError # raise previous exception
       
 
 def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, offset=None, 

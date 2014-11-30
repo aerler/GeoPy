@@ -13,7 +13,7 @@ and methods to an existing object/class instance.
 import numpy as np
 import numpy.ma as ma
 import types  # needed to bind functions to objects
-import os, pickle
+import pickle
 # gdal imports
 from osgeo import gdal, osr, ogr
 # register RAM driver

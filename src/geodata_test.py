@@ -18,6 +18,10 @@ from geodata.misc import isZero, isOne, isEqual
 from geodata.base import Variable, Axis, Dataset, Ensemble, concatVars, concatDatasets
 from datasets.common import data_root
 
+# RAM disk settings ("global" variable)
+RAM = True # whether or not to use a RAM disk
+ramdisk = '/media/tmp/' # folder where RAM disk is mounted
+
 class BaseVarTest(unittest.TestCase):  
   
   # some test parameters (TestCase does not take any arguments)  
@@ -487,7 +491,7 @@ class BaseDatasetTest(unittest.TestCase):
       assert ccnc.shape == nocat.shape
     
   def testContainer(self):
-    ''' test basic container functionality '''
+    ''' test basic and advanced container functionality '''
     # test objects: vars and axes
     dataset = self.dataset
     # check container properties 
@@ -501,8 +505,34 @@ class BaseDatasetTest(unittest.TestCase):
     assert isinstance(var,Variable) and var.name == varname
     del dataset[varname]
     assert not dataset.hasVariable(varname)
-    dataset[varname] = var
+    dataset[varname] = var # this produces a Variable copy
     assert dataset.hasVariable(varname)
+    assert not isinstance(dataset[varname],VarNC)
+    dataset.removeVariable(var.name); dataset.addVariable(var, copy=False)
+    # test advanced container features (fallback to variable methods using __getattr__)
+    assert 'units' not in dataset.__dict__ # hasattr is redirected to Variable attributes by __getattr__
+    units = dataset.units # units is of course a property of Variables
+    assert len(units) == len(dataset)
+    assert all([var.units == units[varname] for varname,var in dataset.variables.iteritems()])
+    assert 'mean' not in dataset.__dict__ # hasattr is redirected to Variable attributes by __getattr__    
+    dataset.load() # perform some computations with real data
+    assert all(dataset.data.values())
+    mds = dataset.mean(axis='time') # mean() is of course a Variable method
+    assert isinstance(mds,Dataset) and len(mds) <= len(dataset) # number of variables (less, because string vars don't average...)
+    assert all([varname in dataset for varname in mds.variables.iterkeys()])
+    assert not any([var.hasAxis('time') for var in mds.variables.itervalues()])
+    hds = dataset.histogram(bins=3, lflatten=True, asVar=False, ldensity=False)
+    assert isinstance(hds,dict) and len(hds) <= len(dataset) # number of variables (less, because string vars don't average...)
+    assert all([varname in dataset for varname in hds.iterkeys()])    
+#     print [s.sum() for vn,s in hds.iteritems() if s is not None]
+#     print [(1-np.isnan(dataset[vn].data_array)).sum() for vn,s in hds.iteritems() if s is not None]
+    assert all([s.sum()==(1-np.isnan(dataset[vn].data_array)).sum() for vn,s in hds.iteritems() if s is not None])
+#     assert all([s.sum()==dataset[vn].data_array.size for vn,s in hds.iteritems() if s is not None])
+    # make sure __getattr__ is not always called
+    assert isinstance(dataset.title,basestring)
+    try: dataset.test_attr # make sure that non-existant attributes throw exceptions
+    except AttributeError: pass 
+    
     
   def testCopy(self):
     ''' test copying the entire dataset '''
@@ -1002,12 +1032,9 @@ class DatasetGDALTest(DatasetNetCDFTest):
     
 if __name__ == "__main__":
 
-    # construct dictionary of test classes defined above
-    test_classes = dict()
-    local_values = locals().copy()
-    for key,val in local_values.iteritems():
-      if key[-4:] == 'Test':
-        test_classes[key[:-4]] = val
+        
+    specific_tests = None
+#     specific_tests = ['Container']    
 
     # list of tests to be performed
     tests = [] 
@@ -1020,15 +1047,22 @@ if __name__ == "__main__":
     tests += ['DatasetNetCDF']
     tests += ['DatasetGDAL']
     
-    # RAM disk settings ("global" variable)
-    RAM = True # whether or not to use a RAM disk
-    ramdisk = '/media/tmp/' # folder where RAM disk is mounted
+    
+    # construct dictionary of test classes defined above
+    test_classes = dict()
+    local_values = locals().copy()
+    for key,val in local_values.iteritems():
+      if key[-4:] == 'Test':
+        test_classes[key[:-4]] = val
+    
     
     # run tests
     report = []
-    for test in tests:
-      s = unittest.TestLoader().loadTestsFromTestCase(test_classes[test])
-      #s = unittest.TestLoader().loadTestsFromName('DatasetGDALTest.testEnsemble')
+    for test in tests: # test+'.test'+specific_test
+      if specific_tests: 
+        test_names = ['geodata_test.'+test+'Test.test'+s_t for s_t in specific_tests]
+        s = unittest.TestLoader().loadTestsFromNames(test_names)
+      else: s = unittest.TestLoader().loadTestsFromTestCase(test_classes[test])
       report.append(unittest.TextTestRunner(verbosity=2).run(s))
       
     # print summary
