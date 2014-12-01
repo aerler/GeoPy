@@ -9,14 +9,14 @@ Variable and Dataset classes for handling geographical datasets.
 # numpy imports
 import numpy as np
 import numpy.ma as ma # masked arrays
+import numbers
+import functools
+import gc # garbage collection
+from warnings import warn
 # my own imports
 from plotting.properties import getPlotAtts, variablePlotatts # import plot properties from different file
 from misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, printList, floateps
 from misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
-
-import numbers
-import functools
-from warnings import warn
 
 
 class UnaryCheck(object):
@@ -84,7 +84,7 @@ class ReduceVar(object): # not a Variable child!!!
   def __init__(self, reduceop):
     ''' Save original operation. '''
     self.reduceop = reduceop
-  def __call__(self, var, asVar=None, axis=None, axes=None, lcheckVar=True, lcheckAxis=True,
+  def __call__(self, var, lasVar=None, axis=None, axes=None, lcheckVar=True, lcheckAxis=True,
                           fillValue=None, **kwaxes):
     ''' Figure out axes, perform sanity checks, then execute operation, and return result as a Variable 
         instance. Axes are specified either in a list ('axes') or as keyword arguments with corresponding
@@ -108,8 +108,8 @@ class ReduceVar(object): # not a Variable child!!!
       # apply operation without arguments, i.e. over all axes
       data = self.reduceop(var, data, **kwargs)
       # whether or not to cast as Variable (default: No)
-      if asVar is None: asVar = False # default for total reduction
-      if asVar: newaxes = tuple()
+      if lasVar is None: lasVar = False # default for total reduction
+      if lasVar: newaxes = tuple()
     else:
       ## figure out reduction axis/axes and slices
       # add axes list to dictionary
@@ -127,7 +127,7 @@ class ReduceVar(object): # not a Variable child!!!
       axlist = [ax.name for ax in var.axes if ax.name in slcaxes]
       ## get data from Variable  
       # use overloaded call method to index with coordinate values directly 
-      data = var.__call__(asVar=False, **slcaxes)
+      data = var.__call__(lasVar=False, **slcaxes)
       # N.B.: call can also accept index values and slices (set options accordingly!)
       # remove mask, if fill value is given (some operations don't work with masked arrays)
       if fillValue is not None and var.masked: data = data.filled(fillValue)
@@ -140,11 +140,11 @@ class ReduceVar(object): # not a Variable child!!!
       newshape = [len(ax) for ax in var.axes if not ax.name in axlist]
       data = data.reshape(newshape)
       # whether or not to cast as Variable (default: Yes)
-      if asVar is None: asVar = True # default for iterative reduction
-      if asVar: newaxes = [ax for ax in var.axes if not ax.name in axlist] 
+      if lasVar is None: lasVar = True # default for iterative reduction
+      if lasVar: newaxes = [ax for ax in var.axes if not ax.name in axlist] 
     # N.B.: other singleton dimensions will have been removed, too
     ## cast into Variable
-    if asVar: 
+    if lasVar: 
       redvar = var.copy(axes=newaxes, data=data)
 #       redvar = Variable(name=var.name, units=var.units, axes=newaxes, data=data, 
 #                      fillValue=var.fillValue, atts=var.atts.copy(), plot=var.plot.copy())
@@ -171,16 +171,16 @@ class Variable(object):
       Basic Attributes:
         name = @property # short name, e.g. used in datasets (links to atts dictionary)
         units = @property # physical units (links to atts dictionary)
-        data = False # logical indicating whether a data array is present/loaded 
+        data = @property # logical indicating whether a data array is present/loaded 
         axes = None # a tuple of references to coordinate variables (also Variable instances)
         data_array = None # actual data array (None if not loaded)
-        shape = None # length of dimensions, like an array
-        ndim = None # number of dimensions
-        dtype = '' # data type (string)
+        shape = @property # length of dimensions, like an array
+        ndim = @property # number of dimensions
+        dtype = @property # data type (string)
         
       Optional/Advanced Attributes:
-        masked = False # whether or not the array in self.data is a masked array
-        fillValue = None # value to fill in for masked values
+        masked = @property # whether or not the array in self.data is a masked array
+        fillValue = @property # value to fill in for masked values
         dataset = None # parent dataset the variable belongs to
         atts = None # dictionary with additional attributes
         plot = None # attributed used for displaying the data       
@@ -213,16 +213,12 @@ class Variable(object):
       if fillValue is None: fillValue = atts['fillValue']
       else: atts['fillValue'] = fillValue
     if fillValue is not None: atts['missing_value'] = fillValue # slightly irregular treatment...
-    self.__dict__['fillValue'] = fillValue
     self.__dict__['atts'] = AttrDict(**atts)
     # try to find sensible default values
     self.__dict__['plot'] = getPlotAtts(name=name, units=units, atts=atts, plot=plot)
     # set defaults - make all of them instance variables! (atts and plot are set below)
     self.__dict__['data_array'] = None
-    self.__dict__['data'] = False # data has not been loaded yet
-    self.__dict__['shape'] = shape
-    self.__dict__['dtype'] = dtype
-    self.__dict__['masked'] = False # handled in self.load() method    
+    #self.__dict__['_dtype'] = dtype
     self.__dict__['dataset'] = None # set by addVariable() method of Dataset  
     self.__dict__['strvar'] = False # mainly for netcdf vars
     self.__dict__['strlen'] = None
@@ -240,7 +236,6 @@ class Variable(object):
     else: 
       raise VariableError, 'Cannot initialize %s instance \'%s\': no axes declared'%(self.var.__class__.__name__,self.name)
     self.__dict__['axes'] = tuple(axes) 
-    self.__dict__['ndim'] = len(axes)  
     # create shortcuts to axes (using names as member attributes) 
     for ax in axes: self.__dict__[ax.name] = ax
     # assign data, if present (can initialize without data)
@@ -250,7 +245,7 @@ class Variable(object):
       
   @property
   def name(self):
-    ''' The name stored in the atts dictionary. '''
+    ''' The Variable name (stored in the atts dictionary). '''
     return self.atts['name']  
   @name.setter
   def name(self, name):
@@ -258,11 +253,58 @@ class Variable(object):
   
   @property
   def units(self):
-    ''' The units stored in the atts dictionary. '''
+    ''' The Variable units (stored in the atts dictionary). '''
     return self.atts['units']  
   @units.setter
   def units(self, units):
     self.atts['units'] = units
+    
+  @property
+  def data(self):
+    ''' A flag indicating if data is loaded. '''
+    return False if self.data_array is None else True   
+  
+  @property
+  def dtype(self):
+    ''' The data type of the Variable (inferred from data). '''
+    if self.data: dtype = self.data_array.dtype
+    else: dtype = None
+    return dtype   
+  
+  @property
+  def ndim(self):
+    ''' The number of dimensions (inferred from axes). '''
+    ndim = len(self.axes)
+    if self.data and ndim != self.data_array.ndim: raise DataError, 'Dimension mismatch!' 
+    return ndim   
+  
+  @property
+  def shape(self):
+    ''' The length of each dimension (shape of data; inferred from axes). '''
+    shape = tuple([len(ax) for ax in self.axes])
+    if self.data and shape != self.data_array.shape: raise DataError, 'Shape mismatch!'
+    return shape
+  
+  @property
+  def masked(self):
+    ''' A flag indicating if the data is masked. '''
+    if self.data: masked = isinstance(self.data_array,ma.MaskedArray)
+    else: masked = self.atts.get('fillValue',None) is not None
+    return masked
+  
+  @property
+  def fillValue(self):
+    ''' The fillValue for masks (stored in the atts dictionary). '''
+    fillValue = self.atts.get('fillValue',None)
+    if self.data and self.masked and fillValue != self.data_array.fill_value:
+      raise DataError, 'FillValue mismatch!'
+    return fillValue
+  @fillValue.setter
+  def fillValue(self, fillValue):
+    self.atts['fillValue'] = fillValue
+    if self.data and self.masked: self.data_array.set_fill_value = fillValue # atts dict over
+      # N.B.: self.data_array.set_fill_value(fillValue) does not work for some reason... 
+    
   
   def __str__(self):
     ''' Built-in method; we just overwrite to call 'prettyPrint()'. '''
@@ -289,23 +331,22 @@ class Variable(object):
     return string
   
   def squeeze(self):
-    ''' A method to remove singleton dimensions. '''
+    ''' A method to remove singleton dimensions (in-place). '''
     # new axes tuple: only the ones longer than one element
-    axes = []; retour = []
+    axes = []; retour = [] 
     for ax in self.axes:
       if len(ax) > 1: axes.append(ax)
       else: retour.append(ax)
     self.axes = tuple(axes)
-    self.shape = tuple([len(ax) for ax in self.axes])
-    assert self.ndim == len(axes) + len(retour)
-    self.ndim = len(self.axes)    
+    assert self.ndim == len(axes)    
+    assert self.shape == tuple([len(ax) for ax in self.axes])
     # squeeze data array, if necessary
     if self.data:
       self.data_array = self.data_array.squeeze()
       assert self.ndim == self.data_array.ndim
       assert self.shape == self.data_array.shape        
     # return squeezed dimensions
-    return retour
+    return self
   
   def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Variable with just a link to the data. '''
@@ -314,7 +355,7 @@ class Variable(object):
     else:
       # N.B.: don't pass name and units as they just link to atts anyway, and if passed directly, they overwrite user atts
       args = dict(axes=self.axes, data=self.data_array, dtype=self.dtype,
-                  mask=None, fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
+                  mask=None, atts=self.atts.copy(), plot=self.plot.copy())
       args.update(newargs) # apply custom arguments (also arguments related to subclasses)
       var = Variable(**args) # create a new basic Variable instance
     # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
@@ -410,9 +451,14 @@ class Variable(object):
       raise IndexError, "Invalid index type for class '{:s}'!".format(self.__class__.__name__)
     # return data, if no error
     return data
+  
+  def __setitem__(self, slc, data):
+    ''' Method implementing write access to data array'''
+    if self.data: self.data_array.__setitem__(slc, data)
+    else: self.data_array = data       
     
-  def __call__(self, lidx=None, lrng=None, asVar=None, lcheck=False, lsqueeze=True, years=None, 
-               listAxis=None, lcopy=False, **axes):
+  def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, lasVar=None, lsqueeze=True, 
+               lcheck=False, lcopy=False, lslices=False, linplace=False, **axes):
     ''' This method implements access to slices via coordinate values and returns Variable objects. 
         Default behavior for different argument types: 
           - index by coordinate value, not array index, except if argument is a Slice object
@@ -540,8 +586,8 @@ class Variable(object):
     data = self.__getitem__(slcs) # just pass list of slices
     if lcopy and isinstance(data,np.ndarray): data = data.copy() # copy array
     if lsqueeze: data = np.squeeze(data) # squeeze
-    # create a Variable object by defaul, unless data is scalar
-    if asVar or ( asVar is None and isinstance(data,np.ndarray) ):
+    # create a Variable object by default, unless data is scalar
+    if lasVar or linplace or ( lasVar is None and isinstance(data,np.ndarray) ):
       # create axes for new variable
       newaxes = []
       for i,ax,idxslc in zip(xrange(self.ndim),self.axes,slcs):
@@ -551,66 +597,80 @@ class Variable(object):
           # N.B.: when indexing with scalars, it gets squeezed anyway
           if ax.name not in lstmodes or not lstmodes[ax.name]:
             # make new axis object from old, using axis' copy method
-            newaxes.append(ax.copy(coord=coord.copy()))
+            if linplace:
+              ax.coord = coord 
+              newaxes.append(ax) 
+            else: 
+              newaxes.append(ax.copy(coord=coord.copy()))
           elif i == lstidx:
             # add list axis, but only the first time!
-            newaxes.append(listAxis)            
+            newaxes.append(listAxis) # this is always a new axis            
         # if this axis will be squeezed, we can just omit it
       # create new variable object from old, using variables copy method
-      return self.copy(data=data, axes=newaxes)
+      if linplace:
+        self.axes = newaxes # need to sneak in new axes, or shape mismatch will cause Error
+        if data is not None: self.load(data=data)
+        newvar = self
+      else: 
+        newvar = self.copy(data=data, axes=newaxes)
     else:
       # N.B.: this is the default for scalar results  
-      return data # just return data, like __getitem__
+      newvar = data # just return data, like __getitem__
+    # return results and slices, if requested
+    if lslices: return newvar, slcs
+    else: return newvar
   
   def load(self, data=None, mask=None, fillValue=None, **axes):
     ''' Method to attach numpy data array to variable instance (also used in constructor). '''
+    # optional slicing
+    if any([self.hasAxis(ax) for ax in axes.iterkeys()]):
+      self, slcs = self.__call__(lasVar=True, lslices=True, linplace=True, **axes) # this is poorly tested...
+      if data is not None and data.shape != self.shape: 
+        data = data.__getitem__(slcs) # slice input data, if appropriate 
+    # now load data       
     if data is None:
       if not self.data:
         raise DataError, 'No data loaded and no external data supplied!'        
     else:
       if not isinstance(data,np.ndarray): raise TypeError, 'The data argument must be a numpy array!'
-      # apply mask
+      # handle/apply mask
       if mask: data = ma.array(data, mask=mask) 
-      if isinstance(data, ma.MaskedArray): 
-        self.__dict__['masked'] = True # set masked flag
-      else: self.__dict__['masked'] = False
       if self.masked: # figure out fill value for masked array
         if fillValue is not None: # override variable preset 
-          self.__dict__['fillValue'] = fillValue
+          self.fillValue = fillValue
           data.set_fill_value = fillValue
+          # N.B.: self.data_array.set_fill_value(fillValue) does not work for some reason...
         elif self.fillValue is not None: # use variable preset
-          data.set_fill_value = self.fillValue
+          data.set_fill_value = self.fillValue 
+          # N.B.: self.data_array.set_fill_value(fillValue) does not work for some reason...
         else: # use data default
-          self.__dict__['fillValue'] = data.get_fill_value()
-      # more meta data
-      self.__dict__['data'] = True
-      self.__dict__['dtype'] = data.dtype
-      self.__dict__['shape'] = data.shape
+          self.fillValue = data.fill_value
+      # assign data to instance attribute array 
+      self.__dict__['data_array'] = data
+      # check shape consistency
       if len(self.shape) != self.ndim and (self.ndim != 0 or data.size != 1):
         raise DataError, 'Variable dimensions and data dimensions incompatible!'
       # N.B.: the second statement is necessary, so that scalars don't cause a crash
-      # assign data to instance attribute array 
-      self.__dict__['data_array'] = data
       # some more checks
       # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple; hence
       #       the coordinate vector has to be assigned before the dimensions size can be checked 
       if len(self.axes) == len(self.shape): # update length is all we can do without a coordinate vector
-        for ax,n in zip(self.axes,self.shape): ax.len = n 
+        for ax,n in zip(self.axes,self.shape): 
+          if ax.data and ax.len != n: 
+            raise DataError, "Length of axis '{:s} incompatible with data dimensions ({:d} vs. {:d}).".format(ax.name,ax.len,n) 
+          else: ax.len = n 
       else: # this should only happen with scalar variables!
-        assert self.ndim == 0 and data.size == 1, 'Dimensions of data array and variable must be identical, except for scalars!'
-    # optional slicing
-    if any([self.hasAxis(ax) for ax in axes.iterkeys()]):
-      return self.__call__(asVar=True, **axes) # this is poorly tested...
-    else:
-      return self # just return variable       
+        if not ( self.ndim == 0 and data.size == 1 ): 
+          raise DataError, 'Dimensions of data array and variable must be identical, except for scalars!'
+    # just return itself, operations are in-place  
+    return self       
      
   def unload(self):
-    ''' Method to unlink data array. '''
+    ''' Method to unlink data array. (also calls garbage collection)'''
     del self.__dict__['data_array'] # delete array
     self.__dict__['data_array'] = None # unlink data array
-    self.__dict__['data'] = False # set data flag
-    self.__dict__['fillValue'] = None
     # self.__dict__['shape'] = None # retain shape for later use
+    gc.collect() # enforce garbage collection
     
   def getArray(self, idx=None, axes=None, broadcast=False, unmask=False, fillValue=None, copy=True):
     ''' Copy the entire data array or a slice; option to unmask and to reorder/reshape to specified axes. '''
@@ -625,12 +685,10 @@ class Variable(object):
     if self.data:
       if copy: datacopy = datacopy.copy() # or copy, if desired 
       # unmask    
-      if unmask and isinstance(datacopy, ma.MaskedArray): 
+      if unmask and self.masked: 
         # N.B.: if no data is loaded, self.mask is usually false...
-        if fillValue is None: fillValue=self.fillValue
+        if fillValue is None: fillValue = self.fillValue
         datacopy = datacopy.filled(fill_value=fillValue) # I don't know if this generates a copy or not...
-      elif not self.masked and isinstance(datacopy, ma.MaskedArray): 
-        self.__dict__['masked'] = True # update masked flag
       # reorder and reshape to match axes (add missing dimensions as singleton dimensions)
       if axes is not None:
         if idx is not None: raise NotImplementedError
@@ -657,13 +715,13 @@ class Variable(object):
     # return array
     return datacopy
     
-  def mask(self, mask=None, maskedValue=None, fillValue=None, invert=False, merge=True):
+  def mask(self, mask=None, maskValue=None, fillValue=None, invert=False, merge=True):
     ''' A method to add a mask to an unmasked array, or extend or replace an existing mask. '''
     if mask is not None:
       assert isinstance(mask,np.ndarray) or isinstance(mask,Variable), 'Mask has to be a numpy array or a Variable instance!'
       # 'mask' can be a variable
       if isinstance(mask,Variable): mask = mask.getArray(unmask=True,axes=self.axes,broadcast=True)
-      if not isinstance(mask,np.ndarray): raise TypeError, 'Mask has to be convertible to a numpy array!'      
+      assert isinstance(mask,np.ndarray), 'Mask has to be convertible to a numpy array!'      
       # if 'mask' has less dimensions than the variable, it can be extended      
       if len(self.shape) < len(mask.shape): raise AxisError, 'Data array needs to have the same number of dimensions or more than the mask!'
       if self.shape[self.ndim-mask.ndim:] != mask.shape: raise AxisError, 'Data array and mask have to be of the same shape!'
@@ -680,34 +738,24 @@ class Variable(object):
         data = self.getArray(unmask=False) # don't fill missing values!
         if self.masked: data.mask = ma.nomask # unmask, sort of...
       self.__dict__['data_array'] = ma.array(data, mask=mask)
-    elif maskedValue is not None:
+    elif maskValue is not None:
       if isinstance(self.dtype,(int,bool,np.integer,np.bool)): 
-        self.__dict__['data_array'] = ma.masked_equal(self.data_array, maskedValue, copy=False)
+        self.__dict__['data_array'] = ma.masked_equal(self.data_array, maskValue, copy=False)
       elif isinstance(self.dtype,(float,np.inexact)):
-        self.__dict__['data_array'] = ma.masked_values(self.data_array, maskedValue, copy=False)
-      if fillValue is not None: self.data_array.set_fill_value(fillValue)
-    if isinstance(self.data_array,ma.MaskedArray):
-      # change meta data
-      self.__dict__['masked'] = True
-      if fillValue:
-        # external fill value has priority 
-        self.data_array.set_fill_value(fillValue)
-        self.__dict__['fillValue'] = fillValue
-      elif self.fillValue:
-        # use fill value we already have
-        self.data_array.set_fill_value(self.fillValue)
-      else:          
-        self.__dict__['fillValue'] = self.data_array.get_fill_value() # probably just the default
+        self.__dict__['data_array'] = ma.masked_values(self.data_array, maskValue, copy=False)
+    # update fill value (stored in atts dict)
+    self.fillValue = fillValue or self.data_array.fill_value
+    # as usual, return self
+    return self
     
   def unmask(self, fillValue=None):
     ''' A method to remove an existing mask and fill the gaps with fillValue. '''
     if self.masked:
       if fillValue is None: fillValue = self.fillValue # default
       self.__dict__['data_array'] = self.data_array.filled(fill_value=fillValue)
-      # change meta data
-      self.__dict__['masked'] = False
-      self.__dict__['fillValue'] = None  
-    
+    # as usual, return self
+    return self
+      
   def getMask(self, nomask=False, axes=None, strict=False):
     ''' Get the mask of a masked array or return a boolean array of False (no mask); axes has to be a 
         tuple, list or set of Axis instances or names; 'strict' refers to matching of axes. '''
@@ -764,7 +812,7 @@ class Variable(object):
     
   # decorator arguments: slcaxes are passed on to __call__, axis and axes are converted to axidx
   #                      (axes is a list of reduction axes that are applied in sequence)
-  # ReduceVar(asVar=None, axis=None, axes=None, lcheckAxis=True, **slcaxes)
+  # ReduceVar(lasVar=None, axis=None, axes=None, lcheckAxis=True, **slcaxes)
   
   @ReduceVar
   def mean(self, data, axidx=None):
@@ -783,7 +831,7 @@ class Variable(object):
     return np.nanmin(data, axis=axidx)
   
   def reduce(self, operation, blklen=None, blkidx=None, axis=None, mode=None, offset=0, 
-                  asVar=None, axatts=None, varatts=None, fillValue=None, **kwargs):
+                  lasVar=None, axatts=None, varatts=None, fillValue=None, **kwargs):
     ''' Reduce a time-series; there are two modes:
           'block'     reduce to one value representing each block, e.g. from monthly to yearly averages;
                       specify a subset of elements from each block with blkidx
@@ -848,7 +896,7 @@ class Variable(object):
     # return new variable
     if iax < self.ndim-1: rdata = np.rollaxis(rdata, axis=self.ndim-1, start=iax) # move reduction axis back
     # cast as variable
-    if asVar:      
+    if lasVar:      
       # create new time axis (yearly)
       oaxis = self.axes[iax]
       raxatts = oaxis.atts.copy()      
@@ -870,7 +918,7 @@ class Variable(object):
     # return results
     return rvar
   
-  def histogram(self, bins=None, binedgs=None, ldensity=True, asVar=True, name=None, axis=None, lflatten=False, 
+  def histogram(self, bins=None, binedgs=None, ldensity=True, lasVar=True, name=None, axis=None, lflatten=False, 
                      lcheckVar=True, lcheckAxis=True, haxatts=None, hvaratts=None, fillValue=None, **kwargs):
     ''' Generate a histogram of along a given axis and preserve the other axes. '''
     # some input checking
@@ -909,7 +957,7 @@ class Variable(object):
       if bins is None: bins = tmpbins # compute from binedgs
       elif lcheckVar: assert isEqual(bins, np.asarray(tmpbins, dtype=bins.dtype))
     # setup histogram axis and variable attributes (special case)
-    if asVar:
+    if lasVar:
       axatts = self.atts.copy() # variable values become axis
       axatts['name'] = '{:s}_bins'.format(self.name)
       axatts['long_name'] = '{:s} Axis'.format(self.atts.get('long_name',self.name.title()))    
@@ -937,7 +985,7 @@ class Variable(object):
       assert isEqual(bin_edges, binedgs)
       assert hdata.shape == (len(binedgs)-1,)
       # create new Axis and Variable objects (1-D)
-      if asVar: hvar = Variable(data=hdata, axes=(Axis(coord=bins, atts=axatts),), atts=varatts)
+      if lasVar: hvar = Variable(data=hdata, axes=(Axis(coord=bins, atts=axatts),), atts=varatts)
       else: hvar = hdata
     else: # use reduce to only apply to selected axis      
       # create a helper function that apllies the histogram along the specified axis
@@ -953,14 +1001,14 @@ class Variable(object):
       # call reduce to perform operation
       axatts['coord'] = bins # reduce() reads this and uses it as new axis coordinates
       hvar = self.reduce(operation=histfct, blklen=len(bins), blkidx=None, axis=axis, mode='all', 
-                         offset=0, asVar=asVar, axatts=axatts, varatts=varatts, fillValue=fillValue)
-      if asVar:
+                         offset=0, lasVar=lasVar, axatts=axatts, varatts=varatts, fillValue=fillValue)
+      if lasVar:
         hvar.plot = variablePlotatts['hist'].copy()
     # return new variable instance (or data)
     return hvar
     
     
-  def reduceToAnnual(self, season, operation, asVar=False, name=None, offset=0, taxis='time', 
+  def reduceToAnnual(self, season, operation, lasVar=False, name=None, offset=0, taxis='time', 
                      checkUnits=True, taxatts=None, varatts=None, **kwargs):
     ''' Reduce a monthly time-series to an annual time-series, using mean/min/max over a subset of month or seasons. '''
     if not self.hasAxis(taxis): raise AxisError, 'Seasonal reduction requires a time axis!'
@@ -995,7 +1043,7 @@ class Variable(object):
       else: raise ValueError, "Unknown key word/season: '{:s}'".format(str(season))
     else: raise TypeError, "Unknown identifier for season: '{:s}'".format(str(season))
     # modify variable
-    if asVar:      
+    if lasVar:      
       # create new time axis (yearly)
       tatts = self.time.atts.copy()
       tatts['name'] = 'year'; tatts['units'] = 'year' # defaults
@@ -1011,11 +1059,11 @@ class Variable(object):
     else: tatts = None; varatts = None # irrelevant
     # call general reduction function
     avar =  self.reduce(operation, blklen=12, blkidx=idx, axis=taxis, mode='block', offset=offset, 
-                        asVar=asVar, axatts=tatts, varatts=varatts, **kwargs)
+                        lasVar=lasVar, axatts=tatts, varatts=varatts, **kwargs)
     # check shape of annual variable
     assert avar.shape == self.shape[:tax]+(te/12,)+self.shape[tax+1:]
     # convert time coordinate to years (from month)
-    if asVar:
+    if lasVar:
       if tatts['units'].lower() == 'year' and taxis.units.lower() in allowedUnitsList:
         raxis = avar.getAxis(tatts['name'])
         if taxis.coord[0]%12 == 1: # special treatment, if we start counting at 1(instead of 0)
@@ -1024,23 +1072,23 @@ class Variable(object):
     # return data
     return avar
   
-  def seasonalMean(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalMean(self, season, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.nanmean, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanmean, lasVar=lasVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def seasonalVar(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalVar(self, season, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual root-mean-variances (of the specified season/months). '''    
-    return self.reduceToAnnual(season=season, operation=np.nanstd, ddof=0, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanstd, ddof=0, lasVar=lasVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def seasonalMax(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalMax(self, season, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.nanmax, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanmax, lasVar=lasVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def seasonalMin(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalMin(self, season, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.nanmin, asVar=asVar,name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanmin, lasVar=lasVar,name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def reduceToClimatology(self, operation, yridx=None, asVar=True, name=None, offset=0, taxis='time', 
+  def reduceToClimatology(self, operation, yridx=None, lasVar=True, name=None, offset=0, taxis='time', 
                           checkUnits=True, taxatts=None, varatts=None, **kwargs):
     ''' Reduce a monthly time-series to an annual climatology; use 'yridx' to limit the reduction to 
         a set of years (identified by index) '''
@@ -1053,7 +1101,7 @@ class Variable(object):
     if te%12 != 0 or not (taxis.coord[0]%12 == 0 or taxis.coord[0]%12 == 1): 
       raise NotImplementedError, 'Currently reduction to climatology only works with full years.'    
     # modify variable
-    if asVar:      
+    if lasVar:      
       # create new time axis (still monthly)
       tatts = self.time.atts.copy()
       if taxatts is not None: tatts.update(taxatts)      
@@ -1066,32 +1114,32 @@ class Variable(object):
     else: tatts = None; varatts = None # irrelevant
     # call general reduction function
     avar =  self.reduce(operation, blklen=12, blkidx=yridx, axis=taxis, mode='periodic', offset=offset, 
-                        asVar=asVar, axatts=tatts, varatts=varatts, **kwargs)
+                        lasVar=lasVar, axatts=tatts, varatts=varatts, **kwargs)
     # check shape of annual variable
     assert avar.shape == self.shape[:tax]+(12,)+self.shape[tax+1:]
     # convert time coordinate to years (from month)
-    if asVar:
+    if lasVar:
       if tatts['units'].lower() in allowedUnitsList:
         raxis = avar.getAxis(tatts['name'])
         if taxis.coord[0] == 0: raxis.coord += 1 # customarily, month are counted, starting at 1, not 0 
     # return data
     return avar
   
-  def climMean(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def climMean(self, yridx=None, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of averages of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanmean, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanmean, lasVar=lasVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def climVar(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def climVar(self, yridx=None, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of root-mean-variances of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanstd, ddof=0, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanstd, ddof=0, lasVar=lasVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def climMax(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def climMax(self, yridx=None, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of maxima of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanmax, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanmax, lasVar=lasVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def climMin(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def climMin(self, yridx=None, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of minima of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanmin, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanmin, lasVar=lasVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   @UnaryCheck    
   def __iadd__(self, a):
@@ -1149,33 +1197,6 @@ class Variable(object):
     units = '%s / (%s)'%(self.units,other.units)
     return data, name, units
      
-#   def __getattr__(self, name):
-#     ''' Return contents of atts or plot dictionaries as if they were attributes. '''
-#     # N.B.: before this method is called, instance attributes are checked automatically
-#     if self.__dict__.has_key(name): # check instance attributes first
-#       return self.__dict__[name]
-#     elif self.__dict__['atts'].has_key(name): # try atts second
-#       return self.__dict__['atts'][name] 
-#     elif self.__dict__['plot'].has_key(name): # then try plot
-#       return self.__dict__['plot'][name]
-#     else: # or throw attribute error
-#       raise AttributeError, '\'%s\' object has no attribute \'%s\''%(self.__class__.__name__,name)
-    
-#   def __setattr__(self, name, value):
-#     ''' Change the value of class existing class attributes, atts, or plot entries,
-#       or store a new attribute in the 'atts' dictionary. '''
-#     if self.__dict__.has_key(name): # class attributes come first
-#       self.__dict__[name] = value # need to use __dict__ to prevent recursive function call
-#     elif self.__dict__['atts'].has_key(name): # try atts second
-#       self.__dict__['atts'][name] = value    
-#     elif self.__dict__['plot'].has_key(name): # then try plot
-#       self.__dict__['plot'][name] = value
-#     else: # if the attribute does not exist yet, add it to atts or plot
-#       if name[0:4] == 'plot':
-#         self.plot[name] = value
-#       else:
-#         self.atts[name] = value
-
 
 class Axis(Variable):
   '''
@@ -1207,7 +1228,6 @@ class Axis(Variable):
     if coord is not None: 
       self.coord = coord
       assert self.data == True
-    elif length > 0: self.len = length
     # determine direction of ascend
     if self.coord is not None:
       if all(np.diff(self.coord) > 0): self.ascending = True
@@ -1217,7 +1237,7 @@ class Axis(Variable):
   @property
   def coord(self):
     ''' An alias for the data_array variable that is specific to coordiante vectors. '''
-    return self.getArray() # unmask=True ?
+    return self.data_array
   @coord.setter
   def coord(self, data):
     ''' Update the coordinate vector of an axis based on certain conventions. '''
@@ -1242,19 +1262,21 @@ class Axis(Variable):
       else: #data = data
         raise TypeError, 'Data type not supported for coordinate values.'
       # load data
+      self._len = data.size    
       self.load(data=data, mask=None)
 
   @property
   def len(self):
     ''' The length of the axis; if a coordinate vector is present, it is the length of that vector. '''
-    if self.data: return self.coord.size
-    else: return self._len    
+    if self.data and self._len != self.coord.size: 
+      raise AxisError, "Length of axis '{:s}' and coordinate size do not match!".format(self.name)
+    return self._len    
   @len.setter
   def len(self, length):
     ''' Update the length, or check for conflict if a coordinate vector is present. (Default length is 0)'''
     if self.data and length != self.coord.size:
       raise AxisError, 'Axis instance \'{:s}\' already has a coordinate vector of length {:d} ({:d} given)'.format(self.name,len(self),length)        
-    else: self.__dict__['_len'] = length
+    self._len = length
   
   def __len__(self):
     ''' Return length of dimension. '''
@@ -1266,7 +1288,7 @@ class Axis(Variable):
       ax = self.deepcopy(**newargs)
     else:
       args = dict(name=self.name, units=self.units, length=self.len, data=None, coord=None, mask=None,  
-                  dtype=self.dtype, fillValue=self.fillValue, atts=self.atts.copy(), plot=self.plot.copy())
+                  dtype=self.dtype, atts=self.atts.copy(), plot=self.plot.copy())
       if self.data: args['data'] = self.data_array
       if self.data: args['coord'] = self.coord # btw. don't pass axes to and Axis constructor!
       if 'axes' in newargs:
@@ -1581,7 +1603,7 @@ class Dataset(object):
         # N.B.: not that this automatically squeezes the pseudo-axis, since it is just a values...        
     # loop over variables
     for var in self.variables.itervalues():
-      newvar = var(lidx=lidx, lrng=lrng, asVar=True, lcheck=False, lsqueeze=lsqueeze, 
+      newvar = var(lidx=lidx, lrng=lrng, lasVar=True, lcheck=False, lsqueeze=lsqueeze, 
                    lcopy=lcopy, years=years, listAxis=listAxis, **axes)
       # save variable
       if var.ndim == newvar.ndim and var.shape == newvar.shape: 
@@ -1758,7 +1780,7 @@ class Dataset(object):
     for var in self.variables.itervalues():
       var.load(fillValue=fillValue, **kwargs)
       
-  def _apply_to_all(self, fctsdict, asVar=True, dsatts=None, copyother=True, deepcopy=False, 
+  def _apply_to_all(self, fctsdict, lasVar=True, dsatts=None, copyother=True, deepcopy=False, 
                     lcheckVar=False, lcheckAxis=False, **kwargs):
     ''' Apply functions from fctsdict to variables in dataset and return a new dataset. '''
     # separate axes from kwargs
@@ -1771,11 +1793,11 @@ class Dataset(object):
         # figure out, which axes apply
         tmpargs = kwargs.copy()
         if axes: tmpargs.update({key:value for key,value in axes.iteritems() if var.hasAxis(key)})
-        newvars[varname] = fctsdict[varname](asVar=asVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **tmpargs)        
-      elif copyother and asVar:
+        newvars[varname] = fctsdict[varname](lasVar=lasVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **tmpargs)        
+      elif copyother and lasVar:
         newvars[varname] = var.copy(deepcopy=deepcopy)
     # assemble new dataset
-    if asVar: newset = self.copy(variables=newvars, atts=dsatts) # use copy method of dataset
+    if lasVar: newset = self.copy(variables=newvars, atts=dsatts) # use copy method of dataset
     else: newset = newvars # just return resulting dictionary
     # return new dataset
     return newset
@@ -1800,7 +1822,7 @@ class Dataset(object):
     else: raise AttributeError # raise previous exception
       
 
-def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, offset=None, 
+def concatVars(variables, axis=None, coordlim=None, idxlim=None, lasVar=True, offset=None, 
                name=None, axatts=None, varatts=None, lcheckAxis=True):
   ''' A function to concatenate Variables from different sources along a given axis;
       this is useful to generate a continuous time series from an ensemble. '''
@@ -1870,7 +1892,7 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   #print data.shape, newshape
   assert data.shape == newshape
   # cast as variable
-  if asVar:      
+  if lasVar:      
     # create new concatenation axis    
     axatts = axt.atts.copy()
     axatts['name'] = axt.name; axatts['units'] = axt.units
@@ -1934,7 +1956,7 @@ def concatDatasets(datasets, axis=None, coordlim=None, idxlim=None, offset=None,
         # decide what to do
         if varobj.hasAxis(axis): # concatenate
           if lall: 
-            variables[varname] = concatVars([ds.variables[varname] for ds in datasets], axis=axis, asVar=True,
+            variables[varname] = concatVars([ds.variables[varname] for ds in datasets], axis=axis, lasVar=True,
                                             coordlim=coordlim, idxlim=idxlim, offset=offset, axatts=axatts,
                                             lcheckAxis=lcheckAxis)
           elif lcheck:       
