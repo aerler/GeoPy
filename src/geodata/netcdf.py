@@ -38,8 +38,8 @@ def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs
   if not isinstance(var,Variable): raise TypeError
   if not isinstance(ncvar,(nc.Variable,nc.Dataset)): raise TypeError
   atts = kwargs.pop('atts',var.atts.copy()) # name and units are also stored in atts!
-  varnc = VarNC(ncvar, axes=axes, atts=atts, plot=var.plot.copy(), fillValue=var.fillValue, 
-                dtype=var.dtype, mode=mode, **kwargs)
+  plot = kwargs.pop('plot',var.plot.copy())
+  varnc = VarNC(ncvar, axes=axes, atts=atts, plot=plot, dtype=var.dtype, mode=mode, **kwargs)
   # copy data
   if var.data: varnc.load(data=var.getArray(unmask=False,copy=deepcopy))
   # return VarNC
@@ -52,8 +52,9 @@ def asAxisNC(ax=None, ncvar=None, mode='rw', deepcopy=True, **kwargs):
   if not isinstance(ncvar,(nc.Variable,nc.Dataset)): raise TypeError # this is for the coordinate variable, not the dimension
   # axes are handled automatically (self-reference)  )
   atts = kwargs.pop('atts',ax.atts.copy()) # name and units are also stored in atts!
-  axisnc = AxisNC(ncvar, atts=atts, plot=ax.plot.copy(), length=len(ax), dtype=ax.dtype, 
-                  coord=ax.getArray(unmask=True, copy=deepcopy), mode=mode, **kwargs)
+  plot = kwargs.pop('plot',ax.plot.copy())
+  axisnc = AxisNC(ncvar, atts=atts, plot=plot, length=len(ax), coord=ax.coord, dtype=ax.dtype, 
+                  mode=mode, **kwargs)
   # return AxisNC
   return axisnc
 
@@ -80,8 +81,9 @@ class VarNC(Variable):
     A variable class that implements access to data from a NetCDF variable object.
   '''
   
-  def __init__(self, ncvar, name=None, units=None, axes=None, data=None, dtype=None, scalefactor=1, offset=0, 
-               transform=None, atts=None, plot=None, fillValue=None, mode='r', load=False, squeeze=False):
+  def __init__(self, ncvar, name=None, units=None, axes=None, data=None, dtype=None, scalefactor=1, 
+               offset=0, transform=None, atts=None, plot=None, fillValue=None, mode='r', load=False, 
+               squeeze=False, slices=None):
     ''' 
       Initialize Variable instance based on NetCDF variable.
       
@@ -92,6 +94,7 @@ class VarNC(Variable):
         offset = 0 # constant offset w.r.t. values in netcdf file
         transform = None # function that can perform non-trivial transforms upon load
         squeezed = False # if True, all singleton dimensions in NetCDF Variable are silently ignored
+        slices = None # slice with respect to NetCDF Variable
     '''
     # check mode
     if not (mode == 'w' or mode == 'r' or mode == 'rw' or mode == 'wr'):  raise PermissionError  
@@ -101,21 +104,26 @@ class VarNC(Variable):
       if name is None and isinstance(atts,dict): name = atts.get('name',None)      
       dims = [ax if isinstance(ax,basestring) else ax.name for ax in axes] # list axes names
       dimshape = [None if isinstance(ax,basestring) else len(ax) for ax in axes]
-      if dtype is None: 
-        if data is not None: dtype = data.dtype
-        else: raise TypeError, "No data (-type) to construct NetCDF variable!"
-      else: dtype = np.dtype(dtype)
-      # construct a new netcdf variable in the given dataset
-      if name in ncvar.variables: ncvar = ncvar.variable[name] # hope it is the right one...
-      else: ncvar = add_var(ncvar, name, dims=dims, shape=dimshape, atts=atts, dtype=dtype, fillValue=fillValue, zlib=True)
+      # construct a new netcdf variable in the given dataset and determine dtype
+      if dtype is None and data is not None: dtype = data.dtype
+      if name in ncvar.variables: 
+        ncvar = ncvar.variable[name] # hope it is the right one...
+        if dtype is None: dtype = ncvar.dtype
+      else: 
+        if dtype is None: raise TypeError, "No data (-type) to construct NetCDF variable!"
+        ncvar = add_var(ncvar, name, dims=dims, shape=dimshape, atts=atts, dtype=dtype, fillValue=fillValue, zlib=True)
+      dtype = np.dtype(dtype) # proper formatting
     # some type checking
     if not isinstance(ncvar,nc.Variable): raise TypeError, "Argument 'ncvar' has to be a NetCDF Variable or Dataset."        
-    if data is not None and data.shape != ncvar.shape: raise DataError
+    if data is not None and slices is None and data.shape != ncvar.shape: raise DataError
+    if data is not None and slices is not None and len(slices) != data.ndim:
+      raise DataError, "Data and slice have incompatible dimensions!"      
     lstrvar = False; strlen = None 
     if dtype is not None and dtype.kind == 'S' and dtype.itemsize > 1:
       lstrvar = ncvar.dtype == np.dtype('|S1')
       strlen = ncvar.shape[-1] # last dimension
-    elif dtype is not None and dtype != ncvar.dtype: raise TypeError 
+    elif dtype is not None and dtype != ncvar.dtype: #raise TypeError
+      print dtype, ncvar.dtype
     # read actions
     if 'r' in mode:
       # construct attribute dictionary from netcdf attributes
@@ -136,7 +144,8 @@ class VarNC(Variable):
       elif lstrvar:
         if len(ncvar.shape[:-1]) != len(axes) or ncvar.shape[-1] != dtype.itemsize: raise AxisError
         assert strlen == dtype.itemsize      
-      elif len(ncvar.shape) != len(axes): raise AxisError
+      elif len(ncvar.shape) != len(axes) and len(ncvar.shape) != len(slices): raise AxisError
+      # N.B.: slicing with index lists can change the shape
     else: ncatts = atts
     # check transform
     if transform is not None and not callable(transform): raise TypeError
@@ -150,23 +159,26 @@ class VarNC(Variable):
     self.__dict__['scalefactor'] = scalefactor
     self.__dict__['transform'] = transform
     self.__dict__['squeezed'] = False
+    self.__dict__['slices'] = slices # initial default (i.e. everything)
     self.__dict__['strvar'] = lstrvar
     self.__dict__['strlen'] = strlen
     if squeeze: self.squeeze() # may set 'squeezed' to True
     # handle data
-    if load and data: raise DataError, "Arguments 'load' and 'data' are mutually exclusive, i.e. only one can be used!"
+    if load and data is not None: raise DataError, "Arguments 'load' and 'data' are mutually exclusive, i.e. only one can be used!"
     elif load and 'r' in self.mode: self.load(data=None) # load data from file
+    # N.B.: load will automatically load teh specified slice
     elif data is not None and 'w' in self.mode: self.load(data=data) # load data from array
     # sync?
     if 'w' in self.mode: self.sync() 
   
   def __getitem__(self, slc):
     ''' Method implementing access to the actual data; if data is not loaded, give direct access to NetCDF file. '''
-    # default
-    #if slc is None: slc = [slice(None,None,None),]*self.ndim # first, last, step          
     # determine what to do
     if self.data:
-      # call parent method     
+      # default
+      if slc is None:
+        slc = slice(None) if self.slices is None else self.slices          
+      # call parent method
       data = super(VarNC,self).__getitem__(slc) # load actual data using parent method      
     else:
       # provide direct access to netcdf data on file
@@ -196,10 +208,40 @@ class VarNC(Variable):
       if self.offset != 0: data += self.offset
       if self.scalefactor != 1: data *= self.scalefactor
       if self.transform is not None: data = self.transform(data, var=self, slc=slc)
-      # load data, so that it is not lost
-      self.load(data=data)
     # return data
-    return data  
+    return data
+  
+  def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, lasVar=None, lsqueeze=True, 
+               lcheck=False, lcopy=False, lslices=False, linplace=False, **axes):
+    ''' This method implements access to slices via coordinate values and returns Variable objects. 
+    Default behavior for different argument types: 
+      - index by coordinate value, not array index, except if argument is a Slice object
+      - interprete tuples of length 2 or 3 as ranges
+      - treat lists and arrays as coordinate lists (can specify new list axis)
+      - for backwards compatibility, None values are accepted and indicate the entire range 
+    Type-based defaults are ignored if appropriate keyword arguments are specified. '''
+    newvar,slcs = super(VarNC,self).__call__(lidx=lidx, lrng=lrng, years=years, listAxis=listAxis, 
+                                        lasVar=lasVar, lsqueeze=lsqueeze, lcheck=lcheck, 
+                                        lcopy=lcopy, lslices=True, linplace=linplace, **axes)
+    # transform sliced Variable into VarNC
+    if not linplace and isinstance(newvar,Variable):
+      #for ax in newvar.axes: ax.unload() # will retain its slice, just for test
+      axes = []
+      for newax,slc in zip(newvar.axes,slcs):
+        if self.hasAxis(newax.name):
+          ncax = self.getAxis(newax.name) # transform to sliced NetCDF
+          axes.append(asAxisNC(newax, ncvar=ncax.ncvar, mode=ncax.mode, slices=(slc,)))
+        else: axes.append(newax) # keep as is
+      newvar = asVarNC(newvar, self.ncvar, mode=self.mode, axes=axes, slices=slcs)
+    return newvar
+  
+  def getArray(self, idx=None, axes=None, broadcast=False, unmask=False, fillValue=None, copy=True):
+    ''' Copy the entire data array or a slice; option to unmask and to reorder/reshape to specified axes. '''
+    # use __getitem__ to get slice
+    if not self.data: self.load()       
+    return super(VarNC,self).getArray(idx=idx, axes=axes, broadcast=broadcast, unmask=unmask, 
+                                      fillValue=fillValue, copy=copy) # just call superior
+  
   
   def squeeze(self, **kwargs):
     ''' A method to remove singleton dimensions; special handling of __getitem__() is necessary, 
@@ -216,8 +258,19 @@ class VarNC(Variable):
     
   def load(self, data=None, **kwargs):
     ''' Method to load data from NetCDF file into RAM. '''
-    if data is None: 
-      data = self.__getitem__(slice(None)) # load everything
+    slcs = self.slices
+    # optional slicing
+    if any([self.hasAxis(ax) for ax in kwargs.iterkeys()]):
+      if slcs is not None: raise NotImplementedError, "Currently, VarNC instances can only be sliced once."
+      # extract axes; remove axes from kwargs to avoid slicing again in super-call
+      axes = {ax:kwargs.pop(ax) for ax in kwargs.iterkeys() if self.hasAxis(ax)}
+      if len(axes) > 0: 
+        self, slcs = self.__call__(lasVar=True, lslices=True, linplace=True, **axes) # this is poorly tested...
+        if data is not None and data.shape != self.shape: data = data.__getitem__(slcs) # slice input data, if appropriate 
+    if data is None:       
+      # use slices to load data
+      if slcs is None: slcs = slice(None)
+      data = self.__getitem__(slcs) # load everything
     elif isinstance(data,np.ndarray):
       data = data
     elif all(checkIndex(data)):
@@ -287,14 +340,16 @@ class AxisNC(Axis,VarNC):
     A NetCDF Variable representing a coordinate axis.
   '''
   
-  def __init__(self, ncvar, name=None, length=0, coord=None, dtype=None, atts=None, fillValue=None, mode='r', load=True, **axargs):
+  def __init__(self, ncvar, name=None, length=0, coord=None, dtype=None, atts=None, fillValue=None, mode='r', load=None, **axargs):
     ''' Initialize a coordinate axis with appropriate values. '''
     if isinstance(ncvar,nc.Dataset):
       if 'w' not in mode: mode += 'w'
       if name is None and isinstance(atts,dict): name = atts.pop('name',None) 
       # construct a new netcdf coordinate variable in the given dataset
       if isinstance(ncvar,nc.Dataset) and name in ncvar.variables: ncvar = ncvar.variables[name] 
-      else: ncvar = add_coord(ncvar, name, length=length, data=coord, dtype=dtype, fillValue=fillValue, atts=atts, zlib=True)
+      else: ncvar = add_coord(ncvar, name, length=length, data=coord, dtype=dtype, fillValue=fillValue, atts=atts, zlib=True)    
+    if length == 0: length = ncvar.shape[0] # necessary to allow shape checks during creation
+    if load is None: load = True if coord is None else False 
     # initialize as an Axis subclass and pass arguments down the inheritance chain
     super(AxisNC,self).__init__(ncvar=ncvar, name=name, length=length, coord=coord, dtype=dtype, atts=atts, 
                                 fillValue=fillValue, mode=mode, load=load, **axargs)

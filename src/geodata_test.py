@@ -766,8 +766,8 @@ class NetCDFVarTest(BaseVarTest):
     assert data.shape == self.data.shape
     assert isEqual(self.data[:], data)
     # assert data
-    assert var.data
-    assert var.data_array is not None
+    assert var.data == False
+    assert var.data_array is None
 
   def testIndexing(self):
     ''' test indexing and slicing '''
@@ -787,13 +787,20 @@ class NetCDFVarTest(BaseVarTest):
     # load slice
     if var.ndim == 3:
       sl = (slice(0,12,1),slice(20,50,5),slice(70,140,15))
+      axes = {ax.name:slc for ax,slc in zip(var.axes,sl)}
+      slcvar = var(**axes) # should treat slices as ordinal indices automatically (i.e. lidx=True) 
+      assert not slcvar.data 
+      assert (12,6,5) == slcvar.shape
       var.load(sl)
       assert (12,6,5) == var.shape
+      slcvar.load()
+      assert isEqual(var.data_array, slcvar.data_array, masked_equal=True)
       if var.masked:
         assert isEqual(self.data.__getitem__(sl), var.data_array)
       else:
         assert isEqual(self.data.__getitem__(sl).filled(var.fillValue), var.data_array)
-    else: raise AssertionError
+    else: 
+      raise AssertionError, "There should be 3 dimensions!!!"
 
   def testScaling(self):
     ''' test scale and offset operations '''
@@ -1039,18 +1046,18 @@ if __name__ == "__main__":
 
         
     specific_tests = None
-#     specific_tests = ['Mask']    
+#     specific_tests = ['Indexing']    
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
     
     
     # construct dictionary of test classes defined above

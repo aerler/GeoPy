@@ -212,7 +212,7 @@ class Variable(object):
     if 'fillValue' in atts:
       if fillValue is None: fillValue = atts['fillValue']
       else: atts['fillValue'] = fillValue
-    if fillValue is not None: atts['missing_value'] = fillValue # slightly irregular treatment...
+#     if fillValue is not None: atts['missing_value'] = fillValue # slightly irregular treatment...
     self.__dict__['atts'] = AttrDict(**atts)
     # try to find sensible default values
     self.__dict__['plot'] = getPlotAtts(name=name, units=units, atts=atts, plot=plot)
@@ -365,10 +365,11 @@ class Variable(object):
     ''' A method to generate an entirely independent variable instance (copy meta data, data array, and axes). '''
     # copy axes (generating ordinary Axis instances with coordinate arrays)
     if 'axes' not in newargs: newargs['axes'] = tuple([ax.deepcopy() for ax in self.axes]) # allow override though
-    # copy meta data
-    var = self.copy(**newargs) # use instance copy() - this method can be overloaded!   
     # replace link with new copy of data array
-    if self.data: var.load(data=self.getArray(unmask=False,copy=True))
+    if self.data: data = self.data_array.copy()
+    else: data = None
+    # copy meta data
+    var = self.copy(data=data, **newargs) # use instance copy() - this method can be overloaded!   
     # N.B.: using load() and getArray() should automatically take care of any special needs 
     return var
 
@@ -502,7 +503,7 @@ class Variable(object):
         if isinstance(val,np.ndarray) and val.ndim > 1: raise TypeError, "Can only use 1-D arrays for indexing!"
         varaxes[key] = val
         idxmodes[key] = isinstance(val,slice) if lidx is None else lidx  # only slices, except if set manually
-        if isinstance(val,slice) and idxmodes[key]: raise TypeError, "Slice can not be used for indexing by coordinate value."
+        if isinstance(val,slice) and not idxmodes[key]: raise TypeError, "Slice can not be used for indexing by coordinate value."
         if lrng is None:
           rngmodes[key] = isinstance(val,tuple) and 2<=len(val)<=3 # all others are not ranges  
         else:
@@ -583,11 +584,14 @@ class Variable(object):
       assert any(lstmodes.values()) == False   
     ## create new Variable object
     # slice data using the variables __getitem__ method (which can also be overloaded)
-    data = self.__getitem__(slcs) # just pass list of slices
-    if lcopy and isinstance(data,np.ndarray): data = data.copy() # copy array
-    if lsqueeze: data = np.squeeze(data) # squeeze
+    if self.data:
+      data = self.data_array.__getitem__(slcs) # just pass list of slices
+      if lcopy and isinstance(data,np.ndarray): data = data.copy() # copy array
+      if lsqueeze: data = np.squeeze(data) # squeeze
+    else: data = None
     # create a Variable object by default, unless data is scalar
-    if lasVar or linplace or ( lasVar is None and isinstance(data,np.ndarray) ):
+    if lasVar or linplace or ( lasVar is None and 
+                               ( data is None or isinstance(data,np.ndarray) ) ):
       # create axes for new variable
       newaxes = []
       for i,ax,idxslc in zip(xrange(self.ndim),self.axes,slcs):
@@ -635,7 +639,7 @@ class Variable(object):
       if not isinstance(data,np.ndarray): raise TypeError, 'The data argument must be a numpy array!'
       # handle/apply mask
       if mask: data = ma.array(data, mask=mask) 
-      if self.masked: # figure out fill value for masked array
+      if isinstance(data,ma.MaskedArray): # figure out fill value for masked array
         if fillValue is not None: # override variable preset 
           self.fillValue = fillValue
           data.set_fill_value = fillValue
@@ -671,19 +675,13 @@ class Variable(object):
     self.__dict__['data_array'] = None # unlink data array
     # self.__dict__['shape'] = None # retain shape for later use
     gc.collect() # enforce garbage collection
-    
+      
   def getArray(self, idx=None, axes=None, broadcast=False, unmask=False, fillValue=None, copy=True):
     ''' Copy the entire data array or a slice; option to unmask and to reorder/reshape to specified axes. '''
-    # use __getitem__ to get slice
-    try: 
-      datacopy = self.__getitem__(slice(None)) if idx is None else self.__getitem__(idx) # just get a view
-      assert self.data_array is not None and self.data
-    except DataError: 
-      assert self.data_array is None and not self.data
-      datacopy = None # return None
     # without data, this will fail
     if self.data:
-      if copy: datacopy = datacopy.copy() # or copy, if desired 
+      if copy: datacopy = self.data_array.copy() # copy, if desired
+      else: datacopy = self.data_array 
       # unmask    
       if unmask and self.masked: 
         # N.B.: if no data is loaded, self.mask is usually false...
@@ -1223,7 +1221,7 @@ class Axis(Variable):
     # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple
     self.__dict__['_len'] = length
     # initialize as a subclass of Variable, depending on the multiple inheritance chain    
-    super(Axis, self).__init__(axes=axes, **varargs)
+    super(Axis, self).__init__(axes=axes, data=coord, **varargs)
     # add coordinate vector
     if coord is not None: 
       self.coord = coord
@@ -1232,6 +1230,7 @@ class Axis(Variable):
     if self.coord is not None:
       if all(np.diff(self.coord) > 0): self.ascending = True
       elif all(np.diff(self.coord) < 0): self.ascending = False
+#       else: self.ascending = None
       else: raise AxisError, "Coordinates must be strictly monotonically increasing or decreasing."
 
   @property
@@ -1287,9 +1286,9 @@ class Axis(Variable):
     if deepcopy: 
       ax = self.deepcopy(**newargs)
     else:
-      args = dict(name=self.name, units=self.units, length=self.len, data=None, coord=None, mask=None,  
+      args = dict(name=self.name, units=self.units, length=self.len, coord=None, mask=None,  
                   dtype=self.dtype, atts=self.atts.copy(), plot=self.plot.copy())
-      if self.data: args['data'] = self.data_array
+      #if self.data: args['data'] = self.data_array
       if self.data: args['coord'] = self.coord # btw. don't pass axes to and Axis constructor!
       if 'axes' in newargs:
         axes = newargs.pop('axes') # this will cause a crash when creating an Axis instance
@@ -1297,7 +1296,7 @@ class Axis(Variable):
         axis = axes[0] # template axis 
         if not isinstance(axis, Axis): raise TypeError
         # take values from passed axis
-        if axis.data: newargs['data'] = axis.data_array
+        #if axis.data: newargs['data'] = axis.data_array
         if axis.data: newargs['coord'] = axis.coord # btw. don't pass axes to and Axis constructor!       
       args.update(newargs) # apply custom arguments (also arguments related to subclasses)
       ax = Axis(**args) # create a new basic Axis instance
@@ -1595,7 +1594,7 @@ class Dataset(object):
         del axes[key] # remove pseudo axis
         var = self.getVariable(key)
         if isinstance(val,(tuple,list,np.ndarray)): 
-          raise NotImplementedError, "Currently only single coordiante values/indices are supported for pseudo-axes."        
+          raise NotImplementedError, "Currently only single coordinate values/indices are supported for pseudo-axes."        
         if var.ndim == 1: # possibly valid pseudo-axis!
           coord = var.findValue(val, lidx=lidx, lflatten=False)          
         else: raise AxisError, "Pseudo-axis can only have one axis!"
