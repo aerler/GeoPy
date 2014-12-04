@@ -211,20 +211,23 @@ class VarNC(Variable):
     # return data
     return data
   
-  def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, lasVar=None, lsqueeze=True, 
-               lcheck=False, lcopy=False, lslices=False, linplace=False, **axes):
+  def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, asVar=None, lsqueeze=True, 
+               lcheck=False, lcopy=False, lslices=False, linplace=False, asNC=None, **axes):
     ''' This method implements access to slices via coordinate values and returns Variable objects. 
-    Default behavior for different argument types: 
-      - index by coordinate value, not array index, except if argument is a Slice object
-      - interprete tuples of length 2 or 3 as ranges
-      - treat lists and arrays as coordinate lists (can specify new list axis)
-      - for backwards compatibility, None values are accepted and indicate the entire range 
-    Type-based defaults are ignored if appropriate keyword arguments are specified. '''
+        Default behavior for different argument types: 
+          - index by coordinate value, not array index, except if argument is a Slice object
+          - interprete tuples of length 2 or 3 as ranges (passes to linspace)
+          - treat lists and arrays as coordinate lists (can specify new list axis)
+          - None values are accepted and indicate the entire range (i.e. no slicing) 
+        Type-based defaults are ignored if appropriate keyword arguments are specified. 
+        N.B.: this VarNC implementation will by default return another VarNC object, 
+              referencing the original NetCDF variable, but with a new slice. '''
     newvar,slcs = super(VarNC,self).__call__(lidx=lidx, lrng=lrng, years=years, listAxis=listAxis, 
-                                        lasVar=lasVar, lsqueeze=lsqueeze, lcheck=lcheck, 
+                                        asVar=asVar, lsqueeze=lsqueeze, lcheck=lcheck, 
                                         lcopy=lcopy, lslices=True, linplace=linplace, **axes)
     # transform sliced Variable into VarNC
-    if not linplace and isinstance(newvar,Variable):
+    asNC = isinstance(newvar,Variable) and not linplace if asNC is None else asNC
+    if asNC:
       #for ax in newvar.axes: ax.unload() # will retain its slice, just for test
       axes = []
       for newax,slc in zip(newvar.axes,slcs):
@@ -241,8 +244,7 @@ class VarNC(Variable):
     if not self.data: self.load()       
     return super(VarNC,self).getArray(idx=idx, axes=axes, broadcast=broadcast, unmask=unmask, 
                                       fillValue=fillValue, copy=copy) # just call superior
-  
-  
+   
   def squeeze(self, **kwargs):
     ''' A method to remove singleton dimensions; special handling of __getitem__() is necessary, 
         because NetCDF Variables cannot be squeezed directly. '''
@@ -265,7 +267,7 @@ class VarNC(Variable):
       # extract axes; remove axes from kwargs to avoid slicing again in super-call
       axes = {ax:kwargs.pop(ax) for ax in kwargs.iterkeys() if self.hasAxis(ax)}
       if len(axes) > 0: 
-        self, slcs = self.__call__(lasVar=True, lslices=True, linplace=True, **axes) # this is poorly tested...
+        self, slcs = self.__call__(asVar=True, lslices=True, linplace=True, **axes) # this is poorly tested...
         if data is not None and data.shape != self.shape: data = data.__getitem__(slcs) # slice input data, if appropriate 
     if data is None:       
       # use slices to load data
@@ -287,7 +289,6 @@ class VarNC(Variable):
       raise TypeError
     # load data and return itself (this allows for some convenient syntax)
     return super(VarNC,self).load(data=data, **kwargs) # load actual data using parent method    
-
     
   def sync(self):
     ''' Method to make sure, data in NetCDF variable and Variable instance are consistent. '''

@@ -84,7 +84,7 @@ class ReduceVar(object): # not a Variable child!!!
   def __init__(self, reduceop):
     ''' Save original operation. '''
     self.reduceop = reduceop
-  def __call__(self, var, lasVar=None, axis=None, axes=None, lcheckVar=True, lcheckAxis=True,
+  def __call__(self, var, asVar=None, axis=None, axes=None, lcheckVar=True, lcheckAxis=True,
                           fillValue=None, **kwaxes):
     ''' Figure out axes, perform sanity checks, then execute operation, and return result as a Variable 
         instance. Axes are specified either in a list ('axes') or as keyword arguments with corresponding
@@ -108,8 +108,8 @@ class ReduceVar(object): # not a Variable child!!!
       # apply operation without arguments, i.e. over all axes
       data = self.reduceop(var, data, **kwargs)
       # whether or not to cast as Variable (default: No)
-      if lasVar is None: lasVar = False # default for total reduction
-      if lasVar: newaxes = tuple()
+      if asVar is None: asVar = False # default for total reduction
+      if asVar: newaxes = tuple()
     else:
       ## figure out reduction axis/axes and slices
       # add axes list to dictionary
@@ -127,7 +127,7 @@ class ReduceVar(object): # not a Variable child!!!
       axlist = [ax.name for ax in var.axes if ax.name in slcaxes]
       ## get data from Variable  
       # use overloaded call method to index with coordinate values directly 
-      data = var.__call__(lasVar=False, **slcaxes)
+      data = var.__call__(asVar=False, **slcaxes)
       # N.B.: call can also accept index values and slices (set options accordingly!)
       # remove mask, if fill value is given (some operations don't work with masked arrays)
       if fillValue is not None and var.masked: data = data.filled(fillValue)
@@ -140,11 +140,11 @@ class ReduceVar(object): # not a Variable child!!!
       newshape = [len(ax) for ax in var.axes if not ax.name in axlist]
       data = data.reshape(newshape)
       # whether or not to cast as Variable (default: Yes)
-      if lasVar is None: lasVar = True # default for iterative reduction
-      if lasVar: newaxes = [ax for ax in var.axes if not ax.name in axlist] 
+      if asVar is None: asVar = True # default for iterative reduction
+      if asVar: newaxes = [ax for ax in var.axes if not ax.name in axlist] 
     # N.B.: other singleton dimensions will have been removed, too
     ## cast into Variable
-    if lasVar: 
+    if asVar: 
       redvar = var.copy(axes=newaxes, data=data)
 #       redvar = Variable(name=var.name, units=var.units, axes=newaxes, data=data, 
 #                      fillValue=var.fillValue, atts=var.atts.copy(), plot=var.plot.copy())
@@ -455,10 +455,24 @@ class Variable(object):
   
   def __setitem__(self, slc, data):
     ''' Method implementing write access to data array'''
-    if self.data: self.data_array.__setitem__(slc, data)
-    else: self.data_array = data       
+    if self.data:
+      # pass on to array 
+      self.data_array.__setitem__(slc, data)
+      # N.B.: slice doesn't have to match data, since we can just assign a subset 
+    else: 
+      # here we are assigning an entire, new array, so do some type and shape checking
+      if self.dtype is not None and np.issubdtype(data.dtype, self.dtype):
+        raise DataError, "Dtypes of Variable and array are inconsistent."
+      if isinstance(slc,slice): slc = (slc,)*self.ndim
+      slen = lambda a,o,e: (o-a)/e
+      shape = tuple([slen(*s.indices(len(ax))) for s,ax in zip(slc,self.axes)])
+      if shape != self.shape: 
+        raise NotImplementedError, "Implicit slicing during date assignment is currently not supported."
+      elif self.shape != data.shape: 
+        raise DataError, "Data array shape does not match variable shape\n(slice was ignored, since no data array was present before)."
+      else: self.data_array = data       
     
-  def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, lasVar=None, lsqueeze=True, 
+  def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, asVar=None, lsqueeze=True, 
                lcheck=False, lcopy=False, lslices=False, linplace=False, **axes):
     ''' This method implements access to slices via coordinate values and returns Variable objects. 
         Default behavior for different argument types: 
@@ -590,7 +604,7 @@ class Variable(object):
       if lsqueeze: data = np.squeeze(data) # squeeze
     else: data = None
     # create a Variable object by default, unless data is scalar
-    if lasVar or linplace or ( lasVar is None and 
+    if asVar or linplace or ( asVar is None and 
                                ( data is None or isinstance(data,np.ndarray) ) ):
       # create axes for new variable
       newaxes = []
@@ -628,7 +642,7 @@ class Variable(object):
     ''' Method to attach numpy data array to variable instance (also used in constructor). '''
     # optional slicing
     if any([self.hasAxis(ax) for ax in axes.iterkeys()]):
-      self, slcs = self.__call__(lasVar=True, lslices=True, linplace=True, **axes) # this is poorly tested...
+      self, slcs = self.__call__(asVar=True, lslices=True, linplace=True, **axes) # this is poorly tested...
       if data is not None and data.shape != self.shape: 
         data = data.__getitem__(slcs) # slice input data, if appropriate 
     # now load data       
@@ -810,7 +824,7 @@ class Variable(object):
     
   # decorator arguments: slcaxes are passed on to __call__, axis and axes are converted to axidx
   #                      (axes is a list of reduction axes that are applied in sequence)
-  # ReduceVar(lasVar=None, axis=None, axes=None, lcheckAxis=True, **slcaxes)
+  # ReduceVar(asVar=None, axis=None, axes=None, lcheckAxis=True, **slcaxes)
   
   @ReduceVar
   def mean(self, data, axidx=None):
@@ -829,7 +843,7 @@ class Variable(object):
     return np.nanmin(data, axis=axidx)
   
   def reduce(self, operation, blklen=None, blkidx=None, axis=None, mode=None, offset=0, 
-                  lasVar=None, axatts=None, varatts=None, fillValue=None, **kwargs):
+                  asVar=None, axatts=None, varatts=None, fillValue=None, **kwargs):
     ''' Reduce a time-series; there are two modes:
           'block'     reduce to one value representing each block, e.g. from monthly to yearly averages;
                       specify a subset of elements from each block with blkidx
@@ -894,7 +908,7 @@ class Variable(object):
     # return new variable
     if iax < self.ndim-1: rdata = np.rollaxis(rdata, axis=self.ndim-1, start=iax) # move reduction axis back
     # cast as variable
-    if lasVar:      
+    if asVar:      
       # create new time axis (yearly)
       oaxis = self.axes[iax]
       raxatts = oaxis.atts.copy()      
@@ -916,7 +930,7 @@ class Variable(object):
     # return results
     return rvar
   
-  def histogram(self, bins=None, binedgs=None, ldensity=True, lasVar=True, name=None, axis=None, lflatten=False, 
+  def histogram(self, bins=None, binedgs=None, ldensity=True, asVar=True, name=None, axis=None, lflatten=False, 
                      lcheckVar=True, lcheckAxis=True, haxatts=None, hvaratts=None, fillValue=None, **kwargs):
     ''' Generate a histogram of along a given axis and preserve the other axes. '''
     # some input checking
@@ -955,7 +969,7 @@ class Variable(object):
       if bins is None: bins = tmpbins # compute from binedgs
       elif lcheckVar: assert isEqual(bins, np.asarray(tmpbins, dtype=bins.dtype))
     # setup histogram axis and variable attributes (special case)
-    if lasVar:
+    if asVar:
       axatts = self.atts.copy() # variable values become axis
       axatts['name'] = '{:s}_bins'.format(self.name)
       axatts['long_name'] = '{:s} Axis'.format(self.atts.get('long_name',self.name.title()))    
@@ -983,7 +997,7 @@ class Variable(object):
       assert isEqual(bin_edges, binedgs)
       assert hdata.shape == (len(binedgs)-1,)
       # create new Axis and Variable objects (1-D)
-      if lasVar: hvar = Variable(data=hdata, axes=(Axis(coord=bins, atts=axatts),), atts=varatts)
+      if asVar: hvar = Variable(data=hdata, axes=(Axis(coord=bins, atts=axatts),), atts=varatts)
       else: hvar = hdata
     else: # use reduce to only apply to selected axis      
       # create a helper function that apllies the histogram along the specified axis
@@ -999,14 +1013,14 @@ class Variable(object):
       # call reduce to perform operation
       axatts['coord'] = bins # reduce() reads this and uses it as new axis coordinates
       hvar = self.reduce(operation=histfct, blklen=len(bins), blkidx=None, axis=axis, mode='all', 
-                         offset=0, lasVar=lasVar, axatts=axatts, varatts=varatts, fillValue=fillValue)
-      if lasVar:
+                         offset=0, asVar=asVar, axatts=axatts, varatts=varatts, fillValue=fillValue)
+      if asVar:
         hvar.plot = variablePlotatts['hist'].copy()
     # return new variable instance (or data)
     return hvar
     
     
-  def reduceToAnnual(self, season, operation, lasVar=False, name=None, offset=0, taxis='time', 
+  def reduceToAnnual(self, season, operation, asVar=False, name=None, offset=0, taxis='time', 
                      checkUnits=True, taxatts=None, varatts=None, **kwargs):
     ''' Reduce a monthly time-series to an annual time-series, using mean/min/max over a subset of month or seasons. '''
     if not self.hasAxis(taxis): raise AxisError, 'Seasonal reduction requires a time axis!'
@@ -1041,7 +1055,7 @@ class Variable(object):
       else: raise ValueError, "Unknown key word/season: '{:s}'".format(str(season))
     else: raise TypeError, "Unknown identifier for season: '{:s}'".format(str(season))
     # modify variable
-    if lasVar:      
+    if asVar:      
       # create new time axis (yearly)
       tatts = self.time.atts.copy()
       tatts['name'] = 'year'; tatts['units'] = 'year' # defaults
@@ -1057,11 +1071,11 @@ class Variable(object):
     else: tatts = None; varatts = None # irrelevant
     # call general reduction function
     avar =  self.reduce(operation, blklen=12, blkidx=idx, axis=taxis, mode='block', offset=offset, 
-                        lasVar=lasVar, axatts=tatts, varatts=varatts, **kwargs)
+                        asVar=asVar, axatts=tatts, varatts=varatts, **kwargs)
     # check shape of annual variable
     assert avar.shape == self.shape[:tax]+(te/12,)+self.shape[tax+1:]
     # convert time coordinate to years (from month)
-    if lasVar:
+    if asVar:
       if tatts['units'].lower() == 'year' and taxis.units.lower() in allowedUnitsList:
         raxis = avar.getAxis(tatts['name'])
         if taxis.coord[0]%12 == 1: # special treatment, if we start counting at 1(instead of 0)
@@ -1070,23 +1084,23 @@ class Variable(object):
     # return data
     return avar
   
-  def seasonalMean(self, season, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalMean(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.nanmean, lasVar=lasVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanmean, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def seasonalVar(self, season, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalVar(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual root-mean-variances (of the specified season/months). '''    
-    return self.reduceToAnnual(season=season, operation=np.nanstd, ddof=0, lasVar=lasVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanstd, ddof=0, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def seasonalMax(self, season, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalMax(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.nanmax, lasVar=lasVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanmax, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def seasonalMin(self, season, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalMin(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.nanmin, lasVar=lasVar,name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanmin, asVar=asVar,name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def reduceToClimatology(self, operation, yridx=None, lasVar=True, name=None, offset=0, taxis='time', 
+  def reduceToClimatology(self, operation, yridx=None, asVar=True, name=None, offset=0, taxis='time', 
                           checkUnits=True, taxatts=None, varatts=None, **kwargs):
     ''' Reduce a monthly time-series to an annual climatology; use 'yridx' to limit the reduction to 
         a set of years (identified by index) '''
@@ -1099,7 +1113,7 @@ class Variable(object):
     if te%12 != 0 or not (taxis.coord[0]%12 == 0 or taxis.coord[0]%12 == 1): 
       raise NotImplementedError, 'Currently reduction to climatology only works with full years.'    
     # modify variable
-    if lasVar:      
+    if asVar:      
       # create new time axis (still monthly)
       tatts = self.time.atts.copy()
       if taxatts is not None: tatts.update(taxatts)      
@@ -1112,32 +1126,32 @@ class Variable(object):
     else: tatts = None; varatts = None # irrelevant
     # call general reduction function
     avar =  self.reduce(operation, blklen=12, blkidx=yridx, axis=taxis, mode='periodic', offset=offset, 
-                        lasVar=lasVar, axatts=tatts, varatts=varatts, **kwargs)
+                        asVar=asVar, axatts=tatts, varatts=varatts, **kwargs)
     # check shape of annual variable
     assert avar.shape == self.shape[:tax]+(12,)+self.shape[tax+1:]
     # convert time coordinate to years (from month)
-    if lasVar:
+    if asVar:
       if tatts['units'].lower() in allowedUnitsList:
         raxis = avar.getAxis(tatts['name'])
         if taxis.coord[0] == 0: raxis.coord += 1 # customarily, month are counted, starting at 1, not 0 
     # return data
     return avar
   
-  def climMean(self, yridx=None, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def climMean(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of averages of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanmean, lasVar=lasVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanmean, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def climVar(self, yridx=None, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def climVar(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of root-mean-variances of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanstd, ddof=0, lasVar=lasVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanstd, ddof=0, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def climMax(self, yridx=None, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def climMax(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of maxima of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanmax, lasVar=lasVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanmax, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def climMin(self, yridx=None, lasVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def climMin(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
     ''' Return a climatology of minima of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanmin, lasVar=lasVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanmin, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
   @UnaryCheck    
   def __iadd__(self, a):
@@ -1602,7 +1616,7 @@ class Dataset(object):
         # N.B.: not that this automatically squeezes the pseudo-axis, since it is just a values...        
     # loop over variables
     for var in self.variables.itervalues():
-      newvar = var(lidx=lidx, lrng=lrng, lasVar=True, lcheck=False, lsqueeze=lsqueeze, 
+      newvar = var(lidx=lidx, lrng=lrng, asVar=True, lcheck=False, lsqueeze=lsqueeze, 
                    lcopy=lcopy, years=years, listAxis=listAxis, **axes)
       # save variable
       if var.ndim == newvar.ndim and var.shape == newvar.shape: 
@@ -1779,7 +1793,7 @@ class Dataset(object):
     for var in self.variables.itervalues():
       var.load(fillValue=fillValue, **kwargs)
       
-  def _apply_to_all(self, fctsdict, lasVar=True, dsatts=None, copyother=True, deepcopy=False, 
+  def _apply_to_all(self, fctsdict, asVar=True, dsatts=None, copyother=True, deepcopy=False, 
                     lcheckVar=False, lcheckAxis=False, **kwargs):
     ''' Apply functions from fctsdict to variables in dataset and return a new dataset. '''
     # separate axes from kwargs
@@ -1792,11 +1806,11 @@ class Dataset(object):
         # figure out, which axes apply
         tmpargs = kwargs.copy()
         if axes: tmpargs.update({key:value for key,value in axes.iteritems() if var.hasAxis(key)})
-        newvars[varname] = fctsdict[varname](lasVar=lasVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **tmpargs)        
-      elif copyother and lasVar:
+        newvars[varname] = fctsdict[varname](asVar=asVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **tmpargs)        
+      elif copyother and asVar:
         newvars[varname] = var.copy(deepcopy=deepcopy)
     # assemble new dataset
-    if lasVar: newset = self.copy(variables=newvars, atts=dsatts) # use copy method of dataset
+    if asVar: newset = self.copy(variables=newvars, atts=dsatts) # use copy method of dataset
     else: newset = newvars # just return resulting dictionary
     # return new dataset
     return newset
@@ -1821,7 +1835,7 @@ class Dataset(object):
     else: raise AttributeError # raise previous exception
       
 
-def concatVars(variables, axis=None, coordlim=None, idxlim=None, lasVar=True, offset=None, 
+def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, offset=None, 
                name=None, axatts=None, varatts=None, lcheckAxis=True):
   ''' A function to concatenate Variables from different sources along a given axis;
       this is useful to generate a continuous time series from an ensemble. '''
@@ -1891,7 +1905,7 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, lasVar=True, of
   #print data.shape, newshape
   assert data.shape == newshape
   # cast as variable
-  if lasVar:      
+  if asVar:      
     # create new concatenation axis    
     axatts = axt.atts.copy()
     axatts['name'] = axt.name; axatts['units'] = axt.units
@@ -1955,7 +1969,7 @@ def concatDatasets(datasets, axis=None, coordlim=None, idxlim=None, offset=None,
         # decide what to do
         if varobj.hasAxis(axis): # concatenate
           if lall: 
-            variables[varname] = concatVars([ds.variables[varname] for ds in datasets], axis=axis, lasVar=True,
+            variables[varname] = concatVars([ds.variables[varname] for ds in datasets], axis=axis, asVar=True,
                                             coordlim=coordlim, idxlim=idxlim, offset=offset, axatts=axatts,
                                             lcheckAxis=lcheckAxis)
           elif lcheck:       

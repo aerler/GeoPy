@@ -105,7 +105,7 @@ class FRB(BasinInfo):
 class NRB(BasinInfo):
   def __init__(self):
     self.name = 'NRB'; self.long_name = 'Nelson River Basin'; self.rivers = ['Nelson']
-    self.stations = dict(Nelson=[])
+    self.stations = dict()
     self.shapefiles = ['WholeNRB']
     BasinInfo.__init__(self)
 class PSB(BasinInfo):

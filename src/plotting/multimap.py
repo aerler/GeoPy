@@ -22,7 +22,6 @@ pyl.ioff()
 from mpl_toolkits.basemap import maskoceans # used for masking data
 # PyGeoDat stuff
 from geodata.base import DatasetError
-from datasets.common import days_per_month, days_per_month_365 # for annotation
 from datasets.common import loadDatasets, checkItemList
 from datasets.WSC import basins
 from plotting.settings import getFigureSettings, getVariableSettings
@@ -39,9 +38,9 @@ if __name__ == '__main__':
   #WRFfiletypes += ['xtrm']
   #WRFfiletypes += ['plev3d']
   # figure directory
-  folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
+  #folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
   #folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
-#   folder = figure_folder
+  folder = figure_folder
   lpickle = True
   # period shortcuts
   H01 = '1979-1980'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
@@ -80,9 +79,9 @@ if __name__ == '__main__':
   ## select variables and seasons
   variables = [] # variables
 #   variables += ['Ts']
-  variables += ['T2']
+#   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
-  variables += ['precip']
+#   variables += ['precip']
 #  variables += ['waterflx']
 #   variables += ['p-et']
 #   variables += ['precipnc', 'precipc']
@@ -123,6 +122,13 @@ if __name__ == '__main__':
   # observations
   lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = False; lbasins = True
+
+
+# Fig. 2  
+#   explist = ['max-ens']; period = H15
+  explist = ['Ctrl-1', 'max-1deg', 'max-ctrl', 'max-ctrl']; period = H15; domain = [None, 2, 1, 2]
+  exptitles = ['CESM (80 km)','WRF Max-1deg (10 km)', 'WRF Max-Ctrl (30 km)', 'WRF Max-Ctrl (10 km)']
+  case = 'val1deg'; lsamesize = True; # grid = 'arb2_d02'
 
 # Fig. 2  
 #   explist = ['max-ens']; period = H15
@@ -297,15 +303,15 @@ if __name__ == '__main__':
       plat = exps[0][0].variables[varlist[0]].plot
       figtitle = figtitles[fn]
       if figtitle is None:
-        figtitle = plottype + ' ' + plat['plottitle']
+        figtitle = plottype + ' ' + plat.title
         if lfrac: figtitle += ' Fractions'
         if ldiff: figtitle += ' Differences'
-        if plat['plotunits']: 
+        if plat.units: 
           if lfrac: figtitle += ' [%]'
-          else: figtitle += ' [{:s}]'.format(plat['plotunits']) 
+          else: figtitle += ' [{:s}]'.format(plat.units) 
       
       # feedback
-      print('\n\n   ***  %s %s (%s)   ***   \n'%(plottype,plat['plottitle'],varstr))
+      print('\n\n   ***  %s %s (%s)   ***   \n'%(plottype,plat.title,varstr))
       
       ## compute data
       data = []; lons = []; lats=[]  # list of data and coordinate fields to be plotted 

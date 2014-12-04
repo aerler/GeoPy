@@ -544,7 +544,7 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
     # add constants to dataset
     if llconst:
       for var in const: 
-        if not dataset.hasVariable(var): # 
+        if var.name not in dataset: 
           dataset.addVariable(var, asNC=False, copy=False, overwrite=False, deepcopy=False)
     if not lstation:
       # add projection

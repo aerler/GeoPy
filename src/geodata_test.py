@@ -144,14 +144,14 @@ class BaseVarTest(unittest.TestCase):
     copy = self.var.copy()
     lckax = self.dataset_name not in ('GPCC','NARR') # will fail with GPCC and NARR, due to sub-monthly time units
     # simple test
-    concat_data = concatVars([var,copy], axis='time', lasVar=False, lcheckAxis=lckax)
+    concat_data = concatVars([var,copy], axis='time', asVar=False, lcheckAxis=lckax)
     # N.B.: some datasets have tiem units in days or hours, which is not uniform 
     shape = list(var.shape); 
     tax = var.axisIndex('time')
     shape[tax] = var.shape[tax] + copy.shape[tax]
     assert concat_data.shape == tuple(shape)
     # advanced test
-    concat_var = concatVars([var,copy], axis='time', lasVar=True, lcheckAxis=lckax, 
+    concat_var = concatVars([var,copy], axis='time', asVar=True, lcheckAxis=lckax, 
                             idxlim=(0,12), offset=1000, name='concatVar')
     shape[tax] = 2 * 12
     assert concat_var.shape == tuple(shape)
@@ -214,8 +214,15 @@ class BaseVarTest(unittest.TestCase):
     # get test objects
     var = self.var
     # indexing (getitem) test  
-    if var.ndim >= 3:  
-      # standard indexing
+    if var.ndim >= 3:
+      # __setitem__ & __getitem__
+      tmp = var[:]; var.unload(); var[:] = tmp.copy()
+      assert (var.data_array == tmp).all()
+      var[1,:,0:-1] = 0
+      assert (var[1,:,0:-1]==0).all()
+      var[1,:,0:-1] = tmp[1,:,0:-1]
+      assert isEqual(tmp, var.data_array, masked_equal=True)
+      # __getitem__ standard indexing
       assert isEqual(self.data[0,1,1], var[0,1,1], masked_equal=True)
       assert isEqual(self.data[0,:,1:-1], var[0,:,1:-1], masked_equal=True)
       # range and value indexing
@@ -311,13 +318,13 @@ class BaseVarTest(unittest.TestCase):
       vmin, vmax = var.limits()
       binedgs = np.linspace(vmin,vmax,10)
       bins = binedgs[1:] - ( np.diff(binedgs) / 2. )
-    hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=False, lasVar=True, axis='time')
+    hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=False, asVar=True, axis='time')
     assert hvar.shape == (len(bins),)+var.shape[1:]
     if lsimple:
       assert self.data.min() == 1 and self.data.max() == 12 and self.data.shape[0] == 48
       assert hvar.limits() == (4,4)
     # test simple version
-    hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=True, lasVar=False, lflatten=True)
+    hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=True, asVar=False, lflatten=True)
     hist,bin_edges  = np.histogram(self.var.getArray(), bins=binedgs, density=True)
     assert isEqual(binedgs, bin_edges)
     assert isEqual(hvar, hist, masked_equal=True)
@@ -331,7 +338,7 @@ class BaseVarTest(unittest.TestCase):
     tax = var.axisIndex('time')
     #print self.data.mean(), var.mean().getArray()
     if var.time.units.lower()[:5] in 'month':
-      yvar = var.seasonalMean('jj', lasVar=True)
+      yvar = var.seasonalMean('jj', asVar=True)
       assert yvar.hasAxis('year')
       assert yvar.shape == var.shape[:tax]+(var.shape[0]/12,)+var.shape[tax+1:]
       cvar = var.climMean()
@@ -344,8 +351,8 @@ class BaseVarTest(unittest.TestCase):
       assert isEqual(yvar.getArray(), yfake*6.5)
       yfake = np.ones((var.shape[0]/12,)+var.shape[1:], dtype=var.dtype)
       # N.B.: the data increases linearly in time and is constant in space (see setup fct.)
-      assert isEqual(var.seasonalMax('mam',lasVar=False), yfake*5)
-      assert isEqual(var.seasonalMin('mam',lasVar=False), yfake*3)
+      assert isEqual(var.seasonalMax('mam',asVar=False), yfake*5)
+      assert isEqual(var.seasonalMin('mam',asVar=False), yfake*3)
       # test climatology
       assert tax == 0      
       cdata = self.data.reshape((4,12,)+var.shape[1:]).mean(axis=0)
@@ -480,7 +487,7 @@ class BaseDatasetTest(unittest.TestCase):
     axname = catax.name
     lckax = self.dataset_name not in ('GPCC','NARR') # will fail with GPCC and NARR, due to sub-monthly time units
     # generate test data
-    concat_data = concatVars([ds[varname],cp[varname]], axis=catax, lasVar=False, lcheckAxis=lckax) # should be time
+    concat_data = concatVars([ds[varname],cp[varname]], axis=catax, asVar=False, lcheckAxis=lckax) # should be time
     shape = list(catvar.shape); 
     shape[0] = catvar.shape[0]*2
     shape = tuple(shape)
@@ -526,7 +533,7 @@ class BaseDatasetTest(unittest.TestCase):
     assert isinstance(mds,Dataset) and len(mds) <= len(dataset) # number of variables (less, because string vars don't average...)
     assert all([varname in dataset for varname in mds.variables.iterkeys()])
     assert not any([var.hasAxis('time') for var in mds.variables.itervalues()])
-    hds = dataset.histogram(bins=3, lflatten=True, lasVar=False, ldensity=False)
+    hds = dataset.histogram(bins=3, lflatten=True, asVar=False, ldensity=False)
     assert isinstance(hds,dict) and len(hds) <= len(dataset) # number of variables (less, because string vars don't average...)
     assert all([varname in dataset for varname in hds.iterkeys()])    
 #     print [s.sum() for vn,s in hds.iteritems() if s is not None]
@@ -1051,9 +1058,9 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
     tests += ['BaseDataset']
     tests += ['DatasetNetCDF']
