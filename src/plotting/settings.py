@@ -98,17 +98,17 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(0,6,26); clbl = '%02.1f' # mm/day
       if season == 'winter': clevs -= 2
       elif season == 'summer': clevs += 2    
-    elif var == 'p-et' or var == 'waterflx': # moisture fluxes (kg /(m^2 s))
+    elif var in ('p-et','waterflx','WaterTransport_U','WaterTransport_V'): # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
       clevs = np.linspace(-2,2,25); cmap = cm.avhrr_r; clbl = '%02.1f' # mpl.cm.PuOr
     elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff'): # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
       clevs = np.linspace(0,5,25); clbl = '%02.1f'; cmap = mpl.cm.YlGnBu
-    elif var == 'precip' or var == 'precipnc': # total precipitation
+    elif var in ('precip','precipnc'): # total precipitation
       if season in ('winter','fall'): clevs = np.linspace(0,20,41); clbl = '%2.1f' # mm/day
       elif season in ('summer','spring'): clevs = np.linspace(0,8,17); clbl = '%2.0f' # mm/day
       else: clevs = np.linspace(0,16,33); clbl = '%2.0f' # mm/day
-    elif var == 'precipc': # convective precipitation 
+    elif var in ('precipc',): # convective precipitation 
       clevs = np.linspace(0,5,26); clbl = '%02.1f' # mm/day
     elif var == 'Q2':
       clevs = np.linspace(0,15,31); clbl = '%02.1f' # mm/day
@@ -153,7 +153,7 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
 #       clevs = np.linspace(-0.7,0.7,41); clbl = '%3.2f'; cmap = mpl.cm.RdYlBu_r
 #       clevs = np.linspace(-0.7,0.7,41); clbl = '%3.2f'; cmap = bmcm.GMT_no_green
 #       clevs = np.linspace(-0.7,0.7,41); clbl = '%3.2f'; cmap = mpl.cm.coolwarm
-    else: 
+    else:
       raise VariableError, 'No settings for variable \'{0:s}\' found!'.format(var) 
   # time frame / season
   if isinstance(season,basestring):

@@ -38,9 +38,9 @@ avgfolder = root_folder + 'ecavg/'  # folder for user data
 varatts = dict(T2       = dict(name='T2', units='K', atts=dict(long_name='Average 2m Temperature')), # 2m average temperature
                Tmin     = dict(name='Tmin', units='K', atts=dict(long_name='Minimum 2m Temperature')), # 2m minimum temperature
                Tmax     = dict(name='Tmax', units='K', atts=dict(long_name='Maximum 2m Temperature')), # 2m maximum temperature
-               precip   = dict(name='precip', units='mm/day', atts=dict(long_name='Total Precipitation')), # total precipitation
-               solprec  = dict(name='solprec', units='mm/day', atts=dict(long_name='Solid Precipitation')), # solid precipitation
-               liqprec  = dict(name='liqprec', units='mm/day', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
+               precip   = dict(name='precip', units='kg/m^2/s', atts=dict(long_name='Total Precipitation')), # total precipitation
+               solprec  = dict(name='solprec', units='kg/m^2/s', atts=dict(long_name='Solid Precipitation')), # solid precipitation
+               liqprec  = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
                # meta/constant data variables
                name    = dict(name='station_name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
                prov    = dict(name='prov', units='', atts=dict(long_name='Province')), # in which Canadian Province the station is located
@@ -178,29 +178,35 @@ class DailyStationRecord(StrictRecordClass):
 ## class that defines variable properties (specifics are implemented in children)
 class VarDef(RecordClass):
   # variable specific
-  name     = '' # full variable name (used in source files)
-  atts     = None # dictionary with PyGeoData variable attributes
-  prefix   = '' # file prefix for source file name (used with station ID)
-  fileext  = '.txt' # file name extension (used for source files)
+  name        = '' # full variable name (used in source files)
+  atts        = None # dictionary with PyGeoData variable attributes
+  prefix      = '' # file prefix for source file name (used with station ID)
+  fileext     = '.txt' # file name extension (used for source files)
   # type specific
-  datatype = '' # defined in child class; type of source file
-  units    = '' # units used for data  (in source files)  
-  dtype    = 'float32' # data type used for data
-  encoding = 'UTF-8' # file encoding (used in source files)
-  missing  = '' # string indicating missing value
-  flags    = '' # legal data flags (case sensitive)
-  varmin   = 0. # smallest allowed value in data
-  varmax   = 0. # largest allowed value in data
+  datatype    = '' # defined in child class; type of source file
+  recordunits = '' # units used for data  (in source files)
+  units       = '' # units after conversion
+  scalefactor = 1 # constant scaling factor for conversion 
+  offset      = 0 # constant offset for conversion
+  dtype       = 'float32' # data type used for data
+  encoding    = 'UTF-8' # file encoding (used in source files)
+  missing     = '' # string indicating missing value
+  flags       = '' # legal data flags (case sensitive)
+  varmin      = 0. # smallest allowed value in data
+  varmax      = 0. # largest allowed value in data
   # inferred variables
-  variable = '' # alias for name
-  filepath = '' # inferred from prefix
+  variable    = '' # alias for name
+  filepath    = '' # inferred from prefix
   
   def __init__(self, **kwargs):
     super(VarDef,self).__init__(**kwargs)
     self.variable = self.name
     self.filepath = '{0:s}/{0:s}{1:s}{2:s}'.format(self.prefix,'{:s}',self.fileext)
     
-  def convert(self, data): return data # needs to be implemented by child
+  def convert(self, data): 
+    if self.scalefactor != 1: data *= self.scalefactor
+    if self.offset != 0: data += self.offset
+    return data
   
   def getKWargs(self, *args):
     ''' Return a dictionary with the specified arguments and their values '''
@@ -213,26 +219,30 @@ class VarDef(RecordClass):
   
 # definition for precipitation files
 class PrecipDef(VarDef):
-  units    = 'mm' # actually 'mm/day' but reported as 'mm'
-  datatype = 'precip'
-  title    = 'EC Precipitation Records'
-  missing  = '-9999.99' # string indicating missing value (apparently not all have 'M'...)
-  flags    = 'TEFACLXYZ' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
-  varmin   = 0. # smallest allowed value in data
-  varmax   = 1.e3 # largest allowed value in data
+#   recordunits = 'mm' # actually 'mm/day' but reported as 'mm'
+#   units       = 'kg/m^2/s' # units after scaling (SI)
+  scalefactor = 1./(24.*60.*60.) # convert from mm/day to mm/s 
+  offset      = 0 
+  datatype    = 'precip'
+  title       = 'EC Precipitation Records'
+  missing     = '-9999.99' # string indicating missing value (apparently not all have 'M'...)
+  flags       = 'TEFACLXYZ' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
+  varmin      = 0. # smallest allowed value in data
+  varmax      = 1.e3 # largest allowed value in data
   
 # definition for temperature files
 class TempDef(VarDef):
-  units    = u'°C'
-  datatype = 'temp'
-  title    = 'EC Temperature Records'
-  encoding = 'ISO-8859-15' # for some reason temperature files have a strange encodign scheme...
-  missing  = '-9999.9' # string indicating missing value
-  flags    = 'Ea' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
-  varmin   = -100. # smallest allowed value in data
-  varmax   = 100. # largest allowed value in data
-  
-  def convert(self, data): return data + 273.15 # convert to Kelvin
+#   recordunits = u'°C'
+#   units       = 'K'
+  scalefactor = 1 
+  offset      = 273.15 # convert to Kelvin 
+  datatype    = 'temp'
+  title       = 'EC Temperature Records'
+  encoding    = 'ISO-8859-15' # for some reason temperature files have a strange encodign scheme...
+  missing     = '-9999.9' # string indicating missing value
+  flags       = 'Ea' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
+  varmin      = -100. # smallest allowed value in data
+  varmax      = 100. # largest allowed value in data
 
 ## variable definitions for EC datasets
 
@@ -622,9 +632,9 @@ if __name__ == '__main__':
 #   mode = 'test_station_object'
 #   mode = 'test_station_reader'
 #   mode = 'test_conversion'
-#   mode = 'convert_all_stations'
+  mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
-  mode = 'test_timeseries'
+#   mode = 'test_timeseries'
   
   # test wrapper function to load time series data from EC stations
   if mode == 'test_timeseries':
@@ -675,12 +685,8 @@ if __name__ == '__main__':
     test.prepareDataset()
     print test.dataset
     print('')
-    # write to netcdf file
-    test.writeDataset(filename='test.nc', folder='/home/data/', feedback=False, 
-                      overwrite=True, writeData=True, skipUnloaded=True)
-    print('')
     # test netcdf file
-    dataset = DatasetNetCDF(filelist=['/home/data/test.nc'])
+    dataset = DatasetNetCDF(filelist=['/data/EC/ecavg/ectemp_monthly.nc'])
     print dataset
     print('')
     print dataset.station_name[1:,] # test string variable recall
@@ -689,7 +695,7 @@ if __name__ == '__main__':
   # tests entire conversion process
   elif mode == 'test_conversion':
     
-    prov = 'BC'
+    prov = 'PE'
     # prepare input
     variables = temp_vars #dict(T2=temp_vars['T2'])
 #     variables = precip_vars #dict(precip=temp_vars['precip'])

@@ -379,7 +379,8 @@ class CentralProcessingUnit(object):
       axes[var.axisIndex(var.ylat)] = ylat
       axes[var.axisIndex(var.xlon)] = xlon
       # create new Variable
-      newvar = var.copy(axes=axes, data=None, dtype=var.dtype, projection=self.target.projection) # and, of course, load new data
+      var.load() # most rebust way to determine the dtype! and we need it later anyway
+      newvar = var.copy(axes=axes, data=None, asNC=False, projection=self.target.projection) # and, of course, load new data
       # if necessary, shift array back, to ensure proper wrapping of coordinates
       # prepare regridding
       # get GDAL dataset instances

@@ -218,7 +218,7 @@ class Variable(object):
     self.__dict__['plot'] = getPlotAtts(name=name, units=units, atts=atts, plot=plot)
     # set defaults - make all of them instance variables! (atts and plot are set below)
     self.__dict__['data_array'] = None
-    #self.__dict__['_dtype'] = dtype
+    self.__dict__['_dtype'] = dtype
     self.__dict__['dataset'] = None # set by addVariable() method of Dataset  
     self.__dict__['strvar'] = False # mainly for netcdf vars
     self.__dict__['strlen'] = None
@@ -267,9 +267,15 @@ class Variable(object):
   @property
   def dtype(self):
     ''' The data type of the Variable (inferred from data). '''
-    if self.data: dtype = self.data_array.dtype
-    else: dtype = None
+    dtype = self._dtype
+    if self.data and dtype != self.data_array.dtype:
+      DataError, "Dtype mismatch!"
     return dtype   
+  @dtype.setter
+  def dtype(self, dtype):
+    if self.data:
+      self.data_array = self.data_array.astype(dtype)
+    self._dtype = dtype
   
   @property
   def ndim(self):
@@ -302,7 +308,8 @@ class Variable(object):
   @fillValue.setter
   def fillValue(self, fillValue):
     self.atts['fillValue'] = fillValue
-    if self.data and self.masked: self.data_array.set_fill_value = fillValue # atts dict over
+    if self.data and self.masked: 
+      self.data_array.set_fill_value = fillValue # atts dict over
       # N.B.: self.data_array.set_fill_value(fillValue) does not work for some reason... 
     
   
@@ -356,7 +363,9 @@ class Variable(object):
       # N.B.: don't pass name and units as they just link to atts anyway, and if passed directly, they overwrite user atts
       args = dict(axes=self.axes, data=self.data_array, dtype=self.dtype,
                   mask=None, atts=self.atts.copy(), plot=self.plot.copy())
-      args.update(newargs) # apply custom arguments (also arguments related to subclasses)
+      if 'data' in newargs and newargs['data'] is not None: 
+        newargs['dtype'] = newargs['data'].dtype
+      args.update(newargs) # apply custom arguments (also arguments related to subclasses)      
       var = Variable(**args) # create a new basic Variable instance
     # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
     return var
@@ -461,8 +470,9 @@ class Variable(object):
       # N.B.: slice doesn't have to match data, since we can just assign a subset 
     else: 
       # here we are assigning an entire, new array, so do some type and shape checking
-      if self.dtype is not None and np.issubdtype(data.dtype, self.dtype):
+      if self.dtype is not None and not np.issubdtype(data.dtype, self.dtype):
         raise DataError, "Dtypes of Variable and array are inconsistent."
+      else: self.dtype = data.dtype
       if isinstance(slc,slice): slc = (slc,)*self.ndim
       slen = lambda a,o,e: (o-a)/e
       shape = tuple([slen(*s.indices(len(ax))) for s,ax in zip(slc,self.axes)])
@@ -644,25 +654,30 @@ class Variable(object):
     if any([self.hasAxis(ax) for ax in axes.iterkeys()]):
       self, slcs = self.__call__(asVar=True, lslices=True, linplace=True, **axes) # this is poorly tested...
       if data is not None and data.shape != self.shape: 
-        data = data.__getitem__(slcs) # slice input data, if appropriate 
+        data = data.__getitem__(slcs) # slice input data, if appropriate     
     # now load data       
     if data is None:
       if not self.data:
         raise DataError, 'No data loaded and no external data supplied!'        
-    else:
+    else:   
+      # check types   
       if not isinstance(data,np.ndarray): raise TypeError, 'The data argument must be a numpy array!'
+      if self.dtype is not None and not np.issubdtype(data.dtype, self.dtype):
+        raise DataError, "Dtypes of Variable and array are inconsistent."
+      else: self.dtype = data.dtype
       # handle/apply mask
       if mask: data = ma.array(data, mask=mask) 
       if isinstance(data,ma.MaskedArray): # figure out fill value for masked array
         if fillValue is not None: # override variable preset 
           self.fillValue = fillValue
-          data.set_fill_value = fillValue
-          # N.B.: self.data_array.set_fill_value(fillValue) does not work for some reason...
+          #data.set_fill_value = fillValue # I'm not sure which one does work...
+          ma.set_fill_value(data,fillValue)
         elif self.fillValue is not None: # use variable preset
-          data.set_fill_value = self.fillValue 
-          # N.B.: self.data_array.set_fill_value(fillValue) does not work for some reason...
+          #data.set_fill_value = self.fillValue 
+          ma.set_fill_value(data,self.fillValue) # this seems to work more reliably!
         else: # use data default
           self.fillValue = data.fill_value
+        assert self.fillValue == data.fill_value
       # assign data to instance attribute array 
       self.__dict__['data_array'] = data
       # check shape consistency
@@ -1233,12 +1248,18 @@ class Axis(Variable):
       raise ArgumentError
 #     axes = (self,)
     # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple
+    if coord is not None: 
+      data = self._transformCoord(coord)
+      if length > 0:
+        if data.size != length: raise AxisError, "Specified length and coordinate vector are incompatible!"
+      else: length = data.size
+    else: data = None
     self.__dict__['_len'] = length
     # initialize as a subclass of Variable, depending on the multiple inheritance chain    
-    super(Axis, self).__init__(axes=axes, data=coord, **varargs)
+    super(Axis, self).__init__(axes=axes, data=data, **varargs)
     # add coordinate vector
-    if coord is not None: 
-      self.coord = coord
+    if data is not None: 
+      self.coord = data
       assert self.data == True
     # determine direction of ascend
     if self.coord is not None:
@@ -1246,6 +1267,24 @@ class Axis(Variable):
       elif all(np.diff(self.coord) < 0): self.ascending = False
 #       else: self.ascending = None
       else: raise AxisError, "Coordinates must be strictly monotonically increasing or decreasing."
+
+  def _transformCoord(self, data):
+    ''' a coordinate vector will be converted, based on input conventions '''
+    if isinstance(data,tuple) and ( 0 < len(data) < 4):
+      data = np.linspace(*data)
+    elif isinstance(data,np.ndarray) and data.ndim == 1:
+      data = data
+    elif isinstance(data,(list,tuple)):
+      data = np.asarray(data)
+    elif isinstance(data,slice):
+      if not self.data: raise DataError, 'Cannot slice coordinate when coordinate vector is empty!'
+      if ( data.stop is None and data.start is None) or len(self.data_array) > data.stop-data.start: 
+        data = self.data_array.__getitem__(data)
+      else: data = self.data_array
+      # N.B.: this is necessary to prevent shrinking of the coordinate vector after successive slicing
+    else: #data = data
+      raise TypeError, 'Data type not supported for coordinate values.'
+    return data
 
   @property
   def coord(self):
@@ -1259,21 +1298,8 @@ class Axis(Variable):
       # this means the coordinate vector/data is going to be deleted 
       self.unload()
     else:
-      # a coordinate vector will be created and loaded, based on input conventions
-      if isinstance(data,tuple) and ( 0 < len(data) < 4):
-        data = np.linspace(*data)
-      elif isinstance(data,np.ndarray) and data.ndim == 1:
-        data = data
-      elif isinstance(data,(list,tuple)):
-        data = np.asarray(data)
-      elif isinstance(data,slice):
-        if not self.data: raise DataError, 'Cannot slice coordinate when coordinate vector is empty!'
-        if ( data.stop is None and data.start is None) or len(self.data_array) > data.stop-data.start: 
-          data = self.data_array.__getitem__(data)
-        else: data = self.data_array
-        # N.B.: this is necessary to prevent shrinking of the coordinate vector after successive slicing
-      else: #data = data
-        raise TypeError, 'Data type not supported for coordinate values.'
+      # transform input based on conventions
+      data = self._transformCoord(data)
       # load data
       self._len = data.size    
       self.load(data=data, mask=None)
@@ -1310,8 +1336,9 @@ class Axis(Variable):
         axis = axes[0] # template axis 
         if not isinstance(axis, Axis): raise TypeError
         # take values from passed axis
-        #if axis.data: newargs['data'] = axis.data_array
         if axis.data: newargs['coord'] = axis.coord # btw. don't pass axes to and Axis constructor!       
+      if 'coord' in newargs and newargs['coord'] is not None: 
+        newargs['length'] = 0 # avoid conflict (0 is like None here)
       args.update(newargs) # apply custom arguments (also arguments related to subclasses)
       ax = Axis(**args) # create a new basic Axis instance
     # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
@@ -1403,8 +1430,13 @@ class Dataset(object):
     else: self.__dict__['atts'] = AttrDict()
     # load variables (automatically adds axes linked to variables)
     if varlist is None: varlist = []
+    print '\n'
+#     varnames = [var.name for var in varlist]
+#     varnames.sort()
+#     for var in varnames:
+#       print var
     for var in varlist:
-      #print var.name
+#       print var.name
       self.addVariable(var, copy=False) # don't make copies of new variables!
       
   @property

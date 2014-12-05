@@ -36,7 +36,7 @@ if __name__ == '__main__':
   #WRFfiletypes += ['lsm']
   WRFfiletypes += ['srfc']
   #WRFfiletypes += ['xtrm']
-  #WRFfiletypes += ['plev3d']
+#   WRFfiletypes += ['plev3d']
   # figure directory
   #folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
   #folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
@@ -82,8 +82,10 @@ if __name__ == '__main__':
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
 #   variables += ['precip']
-#  variables += ['waterflx']
-#   variables += ['p-et']
+#   variables += ['WaterTransport_U']
+#   variables += ['WaterTransport_V']
+#   variables += ['waterflx']
+  variables += ['p-et']
 #   variables += ['precipnc', 'precipc']
 #   variables += ['Q2']
 #   variables += ['evap']
@@ -120,14 +122,16 @@ if __name__ == '__main__':
   ## case settings
   
   # observations
-  lprint = True # write plots to disk using case as a name tag
+  lprint = False # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = False; lbasins = True
 
 
-# Fig. 2  
-#   explist = ['max-ens']; period = H15
-  explist = ['Ctrl-1', 'max-1deg', 'max-ctrl', 'max-ctrl']; period = H15; domain = [None, 2, 1, 2]
-  exptitles = ['CESM (80 km)','WRF Max-1deg (10 km)', 'WRF Max-Ctrl (30 km)', 'WRF Max-Ctrl (10 km)']
+# water transport
+#   explist = ['max-1deg']; domain = [1,]; period = H15
+  explist = ['max-1deg', 'max-1deg', 'max-ctrl', 'max-ctrl']; period = H15; domain = [1, 2, 1, 2]
+#   exptitles = ['CESM (80 km)','WRF Max-1deg (10 km)', 'WRF Max-Ctrl (30 km)', 'WRF Max-Ctrl (10 km)']
+#   explist = ['max-1deg', 'max-1deg', 'max-ctrl', 'max-ctrl']; period = H15; domain = [1, 2, 1, 2]
+#   exptitles = ['WRF Max-1deg (30 km)','WRF Max-1deg (10 km)', 'WRF Max-Ctrl (30 km)', 'WRF Max-Ctrl (10 km)']
   case = 'val1deg'; lsamesize = True; # grid = 'arb2_d02'
 
 # Fig. 2  
@@ -342,8 +346,8 @@ if __name__ == '__main__':
             vardata = expvar[:].squeeze()
           if expvar.masked: vardata.set_fill_value(np.NaN) # fill with NaN
           vardata = vardata.squeeze() # make sure it is 2D
-          if 'scalefactor' in expvar.plot:
-            vardata = vardata * expvar.plot['scalefactor'] # apply plot unit conversion
+          if expvar.units != expvar.plot.units:
+            vardata = vardata * expvar.plot.scalefactor # apply plot unit conversion
           # figure out ocean mask          
           if lmskocn:
             if exp.variables.has_key('landmask') and False:

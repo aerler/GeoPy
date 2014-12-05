@@ -294,7 +294,7 @@ if __name__ == '__main__':
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
-    varlist = ['precip',]
+#     varlist = ['lat2D',]
     periods = []
 #     periods += [1]
 #     periods += [3]
@@ -307,8 +307,8 @@ if __name__ == '__main__':
 #     periods += [(1949,2009)]
 #     periods += [(1997,1998)]
     # Observations/Reanalysis
-    datasets = ['GPCC']
     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
+    datasets = []
     lLTM = True # also regrid the long-term mean climatologies 
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
@@ -321,13 +321,12 @@ if __name__ == '__main__':
 #     CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
 #     CESM_experiments += ['Ctrl-2050', 'Ens-A-2050', 'Ens-B-2050', 'Ens-C-2050']
     CESM_filetypes = ['atm','lnd']
-    CESM_filetypes = ['atm']
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['max']
 #     WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
-#     WRF_experiments += ['max','max-lowres','max-nmp','max-nosub']
-#     WRF_experiments += ['max','max-A','max-nofdda','max-fdda']
+#     WRF_experiments += ['max','max-clm','max-nmp','max-nosub']
+    WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ens','max-ens-2050']
@@ -338,20 +337,18 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-    domains = (1,2) # domains to be processed
+    domains = (2,) # domains to be processed
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-    WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
-    WRF_filetypes = ('srfc',)
+    WRF_filetypes = ('plev3d',) # filetypes to be processed # ,'rad'
+#     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); periods = None
     # grid to project onto
     lpickle = True
     grids = dict()
-#     grids['col1'] = ('d03','d02','d01') # innermost WRF Columbia domain
 #     grids['col2'] = ('d03','d02','d01') # innermost WRF Columbia domain
 #     grids['grb2'] = ('d02',) # Marc's standard GRB inner domain
 #     grids['arb2'] = ('d02',) # WRF standard ARB inner domain
 #     grids['arb3'] = ('d02',) # WRF new ARB inner domain
-#     grids['arb2'] = ('d01','d02') # WRF standard ARB both domains
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids
     grids['cesm1x1'] = (None,) # CESM grid

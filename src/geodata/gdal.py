@@ -509,8 +509,10 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
             tmp[:,:,0:-1] = data; tmp[:,:,-1] = data[:,:,0]
             data = tmp
         elif allocate: 
-          if fillValue is None and self.fillValue is not None: fillValue = self.fillValue  # use default 
-          if self.fillValue is None: fillValue = ma.default_fill_value(self.dtype)
+          if fillValue is None:
+            if self.fillValue is not None: fillValue = self.fillValue  # use default 
+            elif self.dtype is not None: fillValue = ma.default_fill_value(self.dtype)
+            else: raise GDALError, "Need Variable with valid dtype to pre-allocate GDAL array!"
           data = np.zeros((self.bands,) + self.mapSize, dtype=self.dtype) + fillValue
         # to insure correct wrapping, geographic coordinate systems with longitudes reanging 
         # from 0 to 360 can optionally be shifted back by 180, to conform to GDAL conventions 
@@ -705,7 +707,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
                              size=(len(xlon),len(ylat)), xlon=xlon, ylat=ylat, geolocator=geolocator)
     lwrap360 = griddef.wrap360 # whether or not longitudes run from 0 to 360, instead of -180 to 180
     if geolocator:
-      addGeoLocator(dataset, griddef=griddef, lgdal=False, lreplace=True, lcheck=True, asNC=False)
+      addGeoLocator(dataset, griddef=griddef, lgdal=False, lreplace=False, lcheck=False, asNC=False)
     # add new instance attributes (projection parameters)
     dataset.__dict__['projection'] = projection
     dataset.__dict__['isProjected'] = isProjected

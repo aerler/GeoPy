@@ -105,7 +105,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
       if not n == dn.GRID_ID: raise DatasetError # just a check
       pid = dn.PARENT_ID-1 # parent grid ID
       # infer size and geotransform      
-      px0,pdx,s,py0,t,pdy = geotransforms[pid]
+      px0,pdx,s,py0,t,pdy = geotransforms[pid]; del s,t
       dx = float(dn.DX); dy = float(dn.DY)
       x0 = px0+float(dn.I_PARENT_START-0.5)*pdx - 0.5*dx  
       y0 = py0+float(dn.J_PARENT_START-0.5)*pdy - 0.5*dy
@@ -383,7 +383,7 @@ def loadWRF_TS(experiment=None, name=None, domains=2, grid=None, filetypes=None,
                      lautoregrid=lautoregrid, lctrT=lctrT, mode='time-series')  
 
 def loadWRF_Stn(experiment=None, name=None, domains=2, station=None, period=None, filetypes=None, 
-                varlist=None, varatts=None, lctrT=True):
+                varlist=None, varatts=False, lctrT=True):
   ''' Get a properly formatted station dataset from a monthly WRF climatology. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, station=station, 
                      period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
@@ -435,16 +435,18 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
     if 'axes' not in filetypes: filetypes.append('axes')
     #if 'const' not in filetypes and grid is None: filetypes.append('const')
   else: raise TypeError  
-  atts = dict(); filelist = []; typelist = []; constfile = None
+  atts = dict(); filelist = []; typelist = []
   for filetype in filetypes: # last filetype in list has precedence
-    fileclass = fileclasses[filetype]
-    atts.update(fileclass.atts)
+    fileclass = fileclasses[filetype]    
     if lclim and fileclass.climfile is not None:
       filelist.append(fileclass.climfile)
       typelist.append(filetype) # this eliminates const files
-    elif lts and fileclass.tsfile is not None: 
-      filelist.append(fileclass.tsfile)
-      typelist.append(filetype) # this eliminates const files     
+    elif lts: 
+      if fileclass.tsfile is not None: 
+        filelist.append(fileclass.tsfile)
+        typelist.append(filetype) # this eliminates const files
+      if not lstation and grid is None: 
+        atts.update(fileclass.atts) # only for original time-series      
   if varatts is not None: atts.update(varatts)
   # center time axis to 1979
   if lctrT and experiment is not None:
@@ -544,7 +546,7 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
     # add constants to dataset
     if llconst:
       for var in const: 
-        if var.name not in dataset: 
+        if var.name not in dataset:
           dataset.addVariable(var, asNC=False, copy=False, overwrite=False, deepcopy=False)
     if not lstation:
       # add projection
@@ -628,12 +630,12 @@ loadStationClimatology = loadWRF_Stn # pre-processed, standardized climatology a
 if __name__ == '__main__':
     
   
-#   mode = 'test_climatology'
+  mode = 'test_climatology'
 #   mode = 'test_station_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_station_timeseries'
 #   mode = 'test_ensemble'
-  mode = 'test_station_ensemble'
+#   mode = 'test_station_ensemble'
 #   mode = 'pickle_grid'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
@@ -681,8 +683,8 @@ if __name__ == '__main__':
   elif mode == 'test_climatology':
     
     print('')
-    dataset = loadWRF(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['lsm'], period=(1979,1984))
-#     dataset = loadWRF(experiment='max-ctrl', domains=2, filetypes=['hydro'], period=(1979,1984))
+#     dataset = loadWRF(experiment='max-1deg', domains=2, grid='arb2_d02', filetypes=['srfc'], period=(1979,1994))
+    dataset = loadWRF(experiment='max-ctrl', domains=2, filetypes=['srfc'], period=(1979,1994))
     print(dataset)
     dataset.lon2D.load()
     print('')

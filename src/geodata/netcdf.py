@@ -118,14 +118,16 @@ class VarNC(Variable):
     if data is not None and slices is None and data.shape != ncvar.shape: raise DataError
     if data is not None and slices is not None and len(slices) != data.ndim:
       raise DataError, "Data and slice have incompatible dimensions!"      
-    lstrvar = False; strlen = None 
-    if dtype is not None and dtype.kind == 'S' and dtype.itemsize > 1:
-      lstrvar = ncvar.dtype == np.dtype('|S1')
-      strlen = ncvar.shape[-1] # last dimension
-    elif dtype is not None and dtype != ncvar.dtype: #raise TypeError
-      print dtype, ncvar.dtype
+    lstrvar = False; strlen = None
+    if dtype is not None: 
+      if dtype.kind == 'S' and dtype.itemsize > 1:
+        lstrvar = ncvar.dtype == np.dtype('|S1')
+        strlen = ncvar.shape[-1] # last dimension
+      elif not np.issubdtype(ncvar.dtype,dtype):
+        if 'scale_factor' not in ncvar.ncattrs(): # data is not being scaled in NetCDF module
+          raise DataError, "NetCDF data dtype does not match Variable dtype (ncvar.dtype={:s})".format(ncvar.dtype)
     # read actions
-    if 'r' in mode:
+    if 'r' in mode: 
       # construct attribute dictionary from netcdf attributes
       ncatts = { key : ncvar.getncattr(key) for key in ncvar.ncattrs() }
       fillValue = ncatts.pop('_FillValue', fillValue) # this value should always be removed
@@ -150,7 +152,7 @@ class VarNC(Variable):
     # check transform
     if transform is not None and not callable(transform): raise TypeError
     # call parent constructor
-    super(VarNC,self).__init__(name=name, units=units, axes=axes, data=None, dtype=ncvar.dtype, 
+    super(VarNC,self).__init__(name=name, units=units, axes=axes, data=None, dtype=dtype, 
                                mask=None, fillValue=fillValue, atts=ncatts, plot=plot)
     # assign special attributes
     self.__dict__['ncvar'] = ncvar
@@ -201,12 +203,18 @@ class VarNC(Variable):
           if self.ncvar.shape[i] == 1: slcs.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
       # finally, get data!
       data = self.ncvar.__getitem__(slcs) # exceptions handled by netcdf module
+      if self.dtype is not None and not np.issubdtype(data.dtype,self.dtype):
+        if 'scale_factor' in self.ncvar.ncattrs():
+          self.dtype = data.dtype # data was scaled automatically in NetCDF module
+          if isinstance(data,np.ma.MaskedArray): self.fillValue = data.fill_value # possibly scaled
+        else: 
+          raise DataError, "NetCDF data dtype does not match Variable dtype (ncvar.dtype={:s})".format(self.ncvar.dtype) 
       if self.strvar: data = nc.chartostring(data)
       #assert self.ndim == data.ndim # make sure that squeezing works!
       # N.B.: the shape and even dimension number can change dynamically when a slice is loaded, so don't check for that, or it will fail!
       # apply scalefactor and offset
-      if self.offset != 0: data += self.offset
       if self.scalefactor != 1: data *= self.scalefactor
+      if self.offset != 0: data += self.offset
       if self.transform is not None: data = self.transform(data, var=self, slc=slc)
     # return data
     return data
@@ -251,8 +259,9 @@ class VarNC(Variable):
     self.squeezed = True
     return super(VarNC,self).squeeze(**kwargs) # just call superior  
   
-  def copy(self, **newargs):
+  def copy(self, asNC=False, **newargs):
     ''' A method to copy the Variable with just a link to the data. '''
+    if asNC: raise NotImplementedError
     # N.B.: we can't really return a VarNC object, since it would have to be attached to a new NetCDF file;
     #       instead, create a DatasetNetCDF instance with a new NetCDF file, and add the variable to the
     #       new dataset, using addVariable with the asNC=True and the copy=True / deepcopy=True option
@@ -542,6 +551,7 @@ class DatasetNetCDF(Dataset):
     self.__dict__['filelist'] = filelist
     # initialize Dataset using parent constructor
     super(DatasetNetCDF,self).__init__(name=name, title=title, varlist=variables.values(), atts=ncattrs)
+    
   @property
   def dataset(self):
     ''' The first element of the datasets list. '''
