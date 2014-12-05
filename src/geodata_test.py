@@ -820,7 +820,7 @@ class NetCDFVarTest(BaseVarTest):
     # load data with new scaling
     var.load()
     assert self.size == var.shape
-    assert isEqual((self.data+100.)*2, var.data_array)
+    assert isEqual(self.data*2+100., var.data_array)
   
 
 class DatasetNetCDFTest(BaseDatasetTest):  
