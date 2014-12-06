@@ -419,7 +419,7 @@ class CentralProcessingUnit(object):
     if not isinstance(shift,(np.integer,int)): raise TypeError # shift in month (if first month is not January)
     # construct new time axis for climatology
     if climAxis is None:        
-      climAxis = Axis(name=timeAxis, units='month', length=12, data=np.arange(1,13,1), dtype=dtype_int) # monthly climatology
+      climAxis = Axis(name=timeAxis, units='month', length=12, coord=np.arange(1,13,1), dtype=dtype_int) # monthly climatology
     else: 
       if not isinstance(climAxis,Axis): raise TypeError
     # add axis to output dataset    

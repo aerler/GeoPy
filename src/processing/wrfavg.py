@@ -209,11 +209,11 @@ if __name__ == '__main__':
     NP = NP or 4
     varlist = None # ['lat2D', ]
     experiments = []
-    experiments += ['max-ctrl']
+    experiments += ['max-1deg-2100']
 #     experiments += ['new','noah','max','max-2050']
 #     experiments += ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
 #     experiments += ['max-1deg', 'max-1deg-2050','max-1deg-2100']
-    experiments += ['new-v36-nmp', 'new-v36-noah', 'erai-v36-noah', 'new-v36-clm']
+#     experiments += ['new-v36-nmp', 'new-v36-noah', 'erai-v36-noah', 'new-v36-clm']
 #     experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
@@ -226,10 +226,10 @@ if __name__ == '__main__':
     periods = [] # not that all periods are handled within one process! 
 #     periods += [1]
 #     periods += [3]
-    periods += [5]
+#     periods += [5]
 #     periods += [9]
-    periods += [10]
-#     periods += [15]
+#     periods += [10]
+    periods += [15]
     domains = (2,) # domains to be processed
 #     filetypes = ['srfc','lsm'] # filetypes to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'

@@ -100,7 +100,7 @@ class VarNC(Variable):
     if not (mode == 'w' or mode == 'r' or mode == 'rw' or mode == 'wr'):  raise PermissionError  
     # write-only actions
     if isinstance(ncvar,nc.Dataset):
-      if 'w' not in mode: mode += 'w'
+      #if 'w' not in mode: mode += 'w'
       if name is None and isinstance(atts,dict): name = atts.get('name',None)      
       dims = [ax if isinstance(ax,basestring) else ax.name for ax in axes] # list axes names
       dimshape = [None if isinstance(ax,basestring) else len(ax) for ax in axes]
@@ -112,7 +112,9 @@ class VarNC(Variable):
       else: 
         if dtype is None: raise TypeError, "No data (-type) to construct NetCDF variable!"
         ncvar = add_var(ncvar, name, dims=dims, shape=dimshape, atts=atts, dtype=dtype, fillValue=fillValue, zlib=True)
-      dtype = np.dtype(dtype) # proper formatting
+    elif isinstance(ncvar,nc.Variable):
+      if dtype is None: dtype = ncvar.dtype
+    if dtype is not None: dtype = np.dtype(dtype) # proper formatting
     # some type checking
     if not isinstance(ncvar,nc.Variable): raise TypeError, "Argument 'ncvar' has to be a NetCDF Variable or Dataset."        
     if data is not None and slices is None and data.shape != ncvar.shape: raise DataError
@@ -411,19 +413,9 @@ class DatasetNetCDF(Dataset):
     if len(folder) > 0 and folder[-1] != '/': folder += '/'
     # either use available NetCDF datasets directly, ...  
     if isinstance(dataset,nc.Dataset):
-#       ncmode = dataset.mode 
-#       mode = mode or ( 'rw' if ncmode in ('a','r+') else ncmode )
-#       if 'w' in mode and ( ncmode not in ('a','r+','w') ): 
-#         raise PermissionError, 'Provided dataset does not support write permission to NetCDF file.'  
       datasets = [dataset]  # datasets is used later
       if 'filepath' in dir(dataset): filelist = [dataset.filepath] # only available in newer versions
     elif isinstance(dataset,(list,tuple)):
-#       ncmode = dataset[0].mode 
-#       if not all([ncmode == ds.mode for ds in dataset]): 
-#         raise PermissionError, 'Permission settings of provided NetCDF dataset list are inconsistent.'
-#       mode = mode or ( 'rw' if ncmode in ('a','r+') else ncmode ) 
-#       if 'w' in mode and ( ncmode not in ('a','r+','w') ): 
-#         raise PermissionError, 'Provided dataset does not support write permission to NetCDF file.'  
       if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
       datasets = dataset
       filelist = [dataset.filepath() for dataset in datasets if 'filepath' in dir(dataset)]
@@ -513,9 +505,7 @@ class DatasetNetCDF(Dataset):
       # loop over variables in dataset
       for var in dsvars:
         if var in axes: pass # do not treat coordinate variables as real variables 
-        #elif ds.variables[var].dtype == '|S1': pass # just ignore string variables for now... 
         elif ds.variables[var].ndim == 0: pass # also ignore scalars for now...
-          #raise NotImplementedError # Variables of type char are currently not implemented
         elif var in variables: # if already present, make sure variables are essentially the same
           varobj = variables[var] 
           if var in check_override: pass
@@ -528,12 +518,8 @@ class DatasetNetCDF(Dataset):
         else: # if this is a new variable, add it to the list
           if ds.variables[var].dtype == '|S1' and all([dim in axes for dim in ds.variables[var].dimensions[:-1]]): # string variable
             varaxes = [axes[dim] for dim in ds.variables[var].dimensions[:-1]] # collect axes (except last)
-            #strtype = np.dtype('|S{:d}'.format(len(ds.variables[var].dimensions[-1]))) # string with length of string dimension
             strtype = np.dtype('|S{:d}'.format(ds.variables[var].shape[-1])) # string with length of string dimension
             # N.B.: apparently len(dim) does not work properly - ncvar.shape is more reliable
-#             vardict = varatts.get(var,{})
-#             trafo = vardict.pop('transform',charToString) # use charToString as a transform function for data (i.e. no need to load and transform now)
-#             if trafo != charToString: raise VariableError, "Need to use 'nc.chartostring' as transform for string variables." 
             # create new variable using the override parameters in varatts
             variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, dtype=strtype, mode=mode, squeeze=squeeze, load=load, **varatts.get(var,{}))
           elif all([dim in axes for dim in ds.variables[var].dimensions]):
