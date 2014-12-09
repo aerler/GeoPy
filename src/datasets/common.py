@@ -84,7 +84,7 @@ shape_folder = data_root + '/shapes/' # folder for pickled grids
  
 
 # function to extract common points that meet a specific criterion from a list of datasets
-def extractCoords(datasets, testFct, axis, linplace=True, lall=False):
+def selectCoords(datasets, testFct, axis, imaster=None, linplace=True, lall=False):
   ''' Extract common points that meet a specific criterion from a list of datasets. 
       The test function has to accept the following input: index, dataset, axis'''
   # check input
@@ -93,6 +93,7 @@ def extractCoords(datasets, testFct, axis, linplace=True, lall=False):
   if not isCallable(testFct): raise TypeError
   if isinstance(axis, Axis): axis = axis.name
   if not isinstance(axis, basestring): raise TypeError
+  if lall: imaster = None
   # save some ensemble parameters for later  
   lens = True if isinstance(datasets,Ensemble) else False
   if lens:
@@ -100,12 +101,14 @@ def extractCoords(datasets, testFct, axis, linplace=True, lall=False):
                      name=datasets.name, title=datasets.title) 
   # use dataset with shortest axis as master sample (more efficient)
   axes = [dataset.getAxis(axis) for dataset in datasets]
-  sai = np.argmin([len(ax) for ax in axes]) # find shortest axis 
-  sax = axes.pop(sai) # extraxt shortest axis for loop
-  test_fct = lambda i: testFct(i, datasets[sai], axis) # prepare test function arguments
+  if imaster is None: imaster = np.argmin([len(ax) for ax in axes]) # find shortest axis
+  elif not isinstance(imaster,(int,np.integer)): raise TypeError
+  elif imaster >= len(datasets) or imaster < 0: raise ValueError 
+  maxis = axes.pop(imaster) # extraxt shortest axis for loop
+  test_fct = lambda i: testFct(i, datasets[imaster], axis) # prepare test function arguments
   # loop over coordinate axis
   itpls = [] # list of valid index tuple
-  for i,x in enumerate(sax.coord):
+  for i,x in enumerate(maxis.coord):
     # check other axes
     if all([x in ax.coord for ax in axes]): # only the other axes 
       # check condition using shortest dataset
@@ -125,7 +128,7 @@ def extractCoords(datasets, testFct, axis, linplace=True, lall=False):
   idxs = ([],)*len(datasets)
   for itpl in itpls:
     for i,idx in enumerate(itpl): idxs[i].append(idx)
-  idxs.insert(sai,idxs.pop(0)) # mode fist element back in line (where shortest axis was)
+  idxs.insert(imaster,idxs.pop(0)) # mode fist element back in line (where shortest axis was)
   idxs = [np.asarray(idxlst, dtype='int') for idxlst in idxs]      
   # slice datasets using only positive results  
   datasets = [dataset(lidx=True, linplace=linplace, **{axis:idxlst}) for idxlst in idxs]

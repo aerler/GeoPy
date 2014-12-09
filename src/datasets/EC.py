@@ -14,8 +14,9 @@ from copy import deepcopy
 import codecs
 import calendar
 # internal imports
-from datasets.common import days_per_month, name_of_month, data_root
-from geodata.misc import ParseError, DateError, VariableError, ArgumentError, RecordClass, StrictRecordClass
+from datasets.common import days_per_month, name_of_month, data_root, selectCoords
+from geodata.misc import ParseError, DateError, VariableError, ArgumentError, RecordClass, StrictRecordClass,\
+  isNumber
 from geodata.base import Axis, Variable, Dataset
 from geodata.nctools import writeNetCDF
 from geodata.netcdf import DatasetNetCDF
@@ -50,8 +51,10 @@ varatts = dict(T2       = dict(name='T2', units='K', atts=dict(long_name='Averag
                alt  = dict(name='zs', units='m', atts=dict(long_name='Station Elevation')), # station elevation
                begin_date = dict(name='begin_date', units='month', atts=dict(long_name='Month since 1979-01', # begin of station record
                                                                              description='Begin of Station Record (relative to 1979-01)')), 
-               end_date = dict(name='end_date', units='month', atts=dict(long_name='Month since 1979-01', # begin of station record
+               end_date   = dict(name='end_date', units='month', atts=dict(long_name='Month since 1979-01', # begin of station record
                                                                          description='End of Station Record (relative to 1979-01)')),
+               rec_len    = dict(name='rec_len', units='month', atts=dict(long_name='Length of Record', # actual length of station record
+                                                                         description='Number of Month with valid Data')),
                # axes (also sort of meta data)
                time     = dict(name='time', units='month', atts=dict(long_name='Month since 1979-01')), # time coordinate
                station  = dict(name='station', units='#', atts=dict(long_name='Station Number'))) # ordinal number of station
@@ -457,12 +460,20 @@ class StationRecords(object):
       dataset += Variable(axes=(station,), data=datearray, **varatts[pnt+'_date'])
       # save bounds to determine size of time dimension
       if pnt == 'begin': begin_date = np.min(datearray) 
-      elif pnt == 'end': end_date = np.max(datearray) 
+      elif pnt == 'end': end_date = np.max(datearray)
+    # actual length of record (number of valid data points per station; filled in later)
+    dataset += Variable(axes=(station,), data=np.zeros(len(station), dtype='int16'),  **varatts['rec_len'])
     # add variables for monthly values
     time = Axis(coord=np.arange(begin_date, end_date+1, dtype='int16'), **varatts['time'])
     # loop over variables
-    for vardef in self.variables.itervalues():
+    for varname,vardef in self.variables.iteritems():
+      # add actual variables
       dataset += Variable(axes=(station,time), dtype=vardef.dtype, **vardef.atts)
+      # add length of record variable
+      tmpatts = varatts['rec_len'].copy(); recatts = tmpatts['atts'].copy()
+      recatts['long_name'] = recatts['long_name']+' for {:s}'.format(varname.title())
+      tmpatts['name'] = varname+'_len'; tmpatts['atts'] = recatts
+      dataset += Variable(axes=(station,), data=np.zeros(len(station), dtype='int16'),  **tmpatts)
     # write dataset to file
     ncfile = '{:s}/{:s}'.format(folder,filename)      
     #zlib = dict(chunksizes=dict(station=len(station))) # compression settings; probably OK as is 
@@ -526,7 +537,7 @@ class StationRecords(object):
       # store daily and monthly data for computation of derived variables
       dailydata[wrfvar] = dailytmp
       monlydata[wrfvar] = monlytmp
-      # load data      
+      # load data
       varobj.load(monlytmp); varobj.sync()
       del dailytmp, monlytmp
     # loop over derived nonlinear variables/extremes
@@ -573,6 +584,23 @@ class StationRecords(object):
       tmpload = monlydata[wrfvar]
       assert varobj.shape == tmpload.shape
       varobj.load(tmpload); varobj.sync()
+    # determine actual length of records (valid data points)
+    minlen = None 
+    for varname in self.variables.iterkeys():
+      rec_len = self.dataset[varname+'_len'] # get variable object
+      varobj = self.dataset[varname]
+      stlen,tlen = varobj.shape
+      assert stlen == rec_len.shape[0]
+      tmp = tlen - np.isnan(varobj.getArray(unmask=True, fillValue=np.NaN)).sum(axis=1)
+      tmp = np.asanyarray(tmp, dtype=rec_len.dtype)
+      assert tmp.shape == rec_len.shape
+      rec_len.load(tmp)
+      if minlen is None: minlen = tmp
+      else: minlen = np.minimum(minlen,tmp)
+    # save minimum as overall record length
+    self.dataset['rec_len'].load(minlen)
+    
+      
         
     
 
@@ -606,6 +634,39 @@ def loadEC():
   ''' Load a pre-processed EC station climatology. '''
   return NotImplementedError
 loadEC_Stn = loadEC
+
+
+## select a set of common stations for an ensemble, based on certain conditions
+def selectStation(datasets, stations=None, axis=None, imaster=None, linplace=True, lall=False):
+  ''' '''
+  # list of possible constraints
+  tests = [] # a list of tests to run on each station
+  # test definition
+  if 'prov' in stations:
+    provs = stations['prov']
+    if not isinstance(provs,list): provs = tuple(provs)
+    if not isinstance(provs,tuple): provs = (provs,)
+    if not all(isinstance(prov,basestring) for prov in provs): raise TypeError 
+    def test(index,dataset,axis):
+      ''' check if station province is in provided list ''' 
+      return dataset.variables['prov'][index] in provs 
+    tests.append(test)
+  if 'minprd' in stations:
+    prd = stations['minprd']
+    if not isNumber(prd): raise TypeError
+    prd = prd*12 # units in dataset are month  
+    def test(index,dataset,axis):
+      ''' check if station record is longer than a minimum period ''' 
+      return dataset.variables['end_date'][index] - dataset.variables['begin_date'][index] >= prd 
+    tests.append(test)    
+  # define test function (all tests must pass)
+  def testFct(index, dataset, axis):
+    # just call all individual tests for given index 
+    return all(test(index,dataset,axis) for test in tests)
+  # pass on call to generic function selectCoords
+  datasets = selectCoords(datasets=datasets, testFct=testFct, axis=axis, imaster=imaster, linplace=linplace, lall=lall)
+  # return sliced datasets
+  return datasets
   
 ## Dataset API
 
@@ -631,8 +692,8 @@ if __name__ == '__main__':
 
 #   mode = 'test_station_object'
 #   mode = 'test_station_reader'
-#   mode = 'test_conversion'
-  mode = 'convert_all_stations'
+  mode = 'test_conversion'
+#   mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
 #   mode = 'test_timeseries'
   
@@ -652,8 +713,9 @@ if __name__ == '__main__':
     print(dataset.time.coord)
     print(dataset.time.coord[105*12]) # Jan 1979, the origin of time...
     print('')
-    print(dataset.precip)
-    print(dataset.precip.min(),dataset.precip.mean(),dataset.precip.max())
+    var = 'begin_date'
+    print(dataset[var])
+    print(dataset[var].min(),dataset[var].mean(),dataset[var].max())
     
         
   # test station object initialization
@@ -697,8 +759,8 @@ if __name__ == '__main__':
     
     prov = 'PE'
     # prepare input
-    variables = temp_vars #dict(T2=temp_vars['T2'])
-#     variables = precip_vars #dict(precip=temp_vars['precip'])
+#     variables = temp_vars #dict(T2=temp_vars['T2'])
+    variables = precip_vars #dict(precip=temp_vars['precip'])
     # initialize station record container (PE only has 3 stations - ideal for testing!)
     test = StationRecords(folder='', variables=variables, constraints=dict(prov=(prov,)))
     # create netcdf file
@@ -720,7 +782,15 @@ if __name__ == '__main__':
         else: 
           print('{:>10s}: {:5.1f} | {:5.1f} | {:5.1f}'.format(
                 var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data)))
-  
+    # record length
+    for pfx in ['rec',]+variables.keys():
+      var = dataset[pfx+'_len']
+      data = var.getArray()
+      if 'precip' in variables:
+        print('{:>14s}: {:5d} | {:5.1f} | {:5d}'.format(var.name,np.min(data), np.mean(data), np.max(data))) 
+      else:
+        print('{:>10s}: {:5d} | {:5.2f} | {:5d}'.format(var.name,np.min(data), np.mean(data), np.max(data)))
+    
   
   # convert provincial station date to NetCDF
   elif mode == 'convert_prov_stations':
