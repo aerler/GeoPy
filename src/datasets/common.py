@@ -14,9 +14,10 @@ import pickle
 import os
 # internal imports
 from geodata.misc import AxisError, DatasetError, DateError
-from geodata.base import Dataset, Variable, Axis
+from geodata.base import Dataset, Variable, Axis, Ensemble
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import GDALError, addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
+from operator import isCallable
 
 
 # days per month
@@ -81,6 +82,56 @@ else:
 grid_folder = data_root + '/grids/' # folder for pickled grids
 shape_folder = data_root + '/shapes/' # folder for pickled grids
  
+
+# function to extract common points that meet a specific criterion from a list of datasets
+def extractCoords(datasets, testFct, axis, linplace=True, lall=False):
+  ''' Extract common points that meet a specific criterion from a list of datasets. 
+      The test function has to accept the following input: index, dataset, axis'''
+  # check input
+  if not isinstance(datasets, (list,tuple,Ensemble)): raise TypeError
+  if not all(isinstance(dataset,Dataset) for dataset in datasets): raise TypeError 
+  if not isCallable(testFct): raise TypeError
+  if isinstance(axis, Axis): axis = axis.name
+  if not isinstance(axis, basestring): raise TypeError
+  # save some ensemble parameters for later  
+  lens = True if isinstance(datasets,Ensemble) else False
+  if lens:
+    enskwargs = dict(basetype=datasets.basetype, idkey=datasets.idkey, 
+                     name=datasets.name, title=datasets.title) 
+  # use dataset with shortest axis as master sample (more efficient)
+  axes = [dataset.getAxis(axis) for dataset in datasets]
+  sai = np.argmin([len(ax) for ax in axes]) # find shortest axis 
+  sax = axes.pop(sai) # extraxt shortest axis for loop
+  test_fct = lambda i: testFct(i, datasets[sai], axis) # prepare test function arguments
+  # loop over coordinate axis
+  itpls = [] # list of valid index tuple
+  for i,x in enumerate(sax.coord):
+    # check other axes
+    if all([x in ax.coord for ax in axes]): # only the other axes 
+      # check condition using shortest dataset
+      if lall: 
+        # check test condition on all datasets (slower)
+        tmpidx = (i,)+tuple(ax.coord.searchsorted(x) for ax in axes)
+        if all(test_fct(ii) for ii in tmpidx):
+          # add corresponding indices in each dataset to list
+          itpls.append((i,)+tuple(tmpidx))
+      else:
+        # check test condition on only one dataset (faster, default)
+        if test_fct(i):
+          # add corresponding indices in each dataset to list
+          itpls.append((i,)+tuple(ax.coord.searchsorted(x) for ax in axes))
+          # N.B.: since we can expect exact matches, plain searchsorted is fastest (side='left') 
+  # construct axis indices for each dataset (need to remember to move shortest axis back in line)
+  idxs = ([],)*len(datasets)
+  for itpl in itpls:
+    for i,idx in enumerate(itpl): idxs[i].append(idx)
+  idxs.insert(sai,idxs.pop(0)) # mode fist element back in line (where shortest axis was)
+  idxs = [np.asarray(idxlst, dtype='int') for idxlst in idxs]      
+  # slice datasets using only positive results  
+  datasets = [dataset(lidx=True, linplace=linplace, **{axis:idxlst}) for idxlst in idxs]
+  if lens: datasets = Ensemble(*datasets, **enskwargs)
+  # return datasets
+  return datasets
 
 # convenience function to extract landmask variable from another masked variable
 def addLandMask(dataset, varname='precip', maskname='landmask', atts=None):
