@@ -13,7 +13,7 @@ import numpy as np
 import pickle
 import os
 # internal imports
-from geodata.misc import AxisError, DatasetError, DateError
+from geodata.misc import AxisError, DatasetError, DateError, ArgumentError
 from geodata.base import Dataset, Variable, Axis, Ensemble
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import GDALError, addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
@@ -93,7 +93,7 @@ def selectCoords(datasets, axis, testFct=None, imaster=None, linplace=True, lall
   if not isCallable(testFct) and testFct is not None: raise TypeError
   if isinstance(axis, Axis): axis = axis.name
   if not isinstance(axis, basestring): raise TypeError
-  if lall: imaster = None
+  if lall and imaster is not None: raise ArgumentError, "The options 'lall' and 'imaster' are mutually exclusive!"
   # save some ensemble parameters for later  
   lnotest = testFct is None
   lens = isinstance(datasets,Ensemble)
@@ -131,7 +131,7 @@ def selectCoords(datasets, axis, testFct=None, imaster=None, linplace=True, lall
           itpls.append((i,)+tuple(ax.coord.searchsorted(x) for ax in axes))
           # N.B.: since we can expect exact matches, plain searchsorted is fastest (side='left') 
   # construct axis indices for each dataset (need to remember to move shortest axis back in line)
-  idxs = [[],]*len(datasets)
+  idxs = [[] for ds in datasets] # create unique empty lists
   for itpl in itpls:
     for i,idx in enumerate(itpl): idxs[i].append(idx)
   idxs.insert(imaster,idxs.pop(0)) # mode fist element back in line (where shortest axis was)

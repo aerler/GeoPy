@@ -643,24 +643,35 @@ def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lal
   ''' '''
   # list of possible constraints
   tests = [] # a list of tests to run on each station
+  loadlist =  (datasets[imaster],) if not lall and imaster is not None else datasets 
   # test definition
   if 'prov' in kwcond:
     provs = kwcond['prov']
     if not isinstance(provs,(tuple,list)): provs = (provs,)
     if not isinstance(provs,tuple): provs = tuple(provs)
-    if not all(isinstance(prov,basestring) for prov in provs): raise TypeError 
+    if not all(isinstance(prov,basestring) for prov in provs): raise TypeError
+    for dataset in loadlist: dataset.prov.load() # preload required data
     def test(index,dataset,axis):
       ''' check if station province is in provided list ''' 
-      return dataset.variables['prov'][index] in provs 
+      return dataset.prov[index] in provs 
     tests.append(test)
   if 'min_len' in kwcond:
     prd = kwcond['min_len']
     if not isNumber(prd): raise TypeError
     prd = prd*12 # units in dataset are month  
+    for dataset in loadlist: dataset.stn_rec_len.load() # preload required data
     def test(index,dataset,axis):
       ''' check if station record is longer than a minimum period ''' 
-      return dataset.variables['stn_rec_len'][index] >= prd 
+      return dataset.stn_rec_len[index] >= prd 
     tests.append(test)    
+  if 'max_zerr' in kwcond:
+    zerr = kwcond['max_zerr']
+    if not isNumber(zerr): raise TypeError  
+    for dataset in loadlist: dataset.zs_err.load() # preload required data
+    def test(index,dataset,axis):
+      ''' check if station record is longer than a minimum period ''' 
+      return np.abs(dataset.zs_err[index]) < zerr 
+    tests.append(test)
   # define test function (all tests must pass)
   if len(tests) > 0:
     def testFct(index, dataset, axis):
@@ -697,12 +708,35 @@ if __name__ == '__main__':
 #   mode = 'test_station_object'
 #   mode = 'test_station_reader'
 #   mode = 'test_conversion'
-  mode = 'convert_all_stations'
+#   mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
 #   mode = 'test_timeseries'
+  mode = 'test_selection'
   
   # test wrapper function to load time series data from EC stations
-  if mode == 'test_timeseries':
+  if mode == 'test_selection':
+    
+    # some foreign imports
+    from geodata.base import Ensemble
+    from datasets.WRF import loadWRF_StnEns
+    # load pre-processed time-series file
+    stn='ecprecip'
+    print('')
+    stnens = Ensemble(loadEC_StnTS(station=stn), loadWRF_StnEns(ensemble='max-ens-2100', station=stn, 
+                      filetypes='hydro', domains=2))
+    print(stnens)    
+    print('')
+    var = stnens[-1].axes['station']; print(''); print(var)
+    for var in stnens.station: print(var.min(),var.mean(),var.max())
+    # test station selector
+    stnens = selectStations(stnens, prov=('AB','BC'), min_len=50,
+                             stnaxis='station', imaster=0, linplace=False, lall=False) 
+    print('')
+    var = stnens[-1].axes['station']; print(''); print(var)
+    for var in stnens.station: print(var.min(),var.mean(),var.max())
+        
+  # test wrapper function to load time series data from EC stations
+  elif mode == 'test_timeseries':
     
     # load pre-processed time-series file
     print('')
@@ -711,16 +745,10 @@ if __name__ == '__main__':
     print(dataset)
     print('')
     print('ATHABASCA', dataset.station_name.findValue('ATHABASCA'))
-#     print('')
-#     print(dataset.time)
-#     print(dataset.time.coord)
-#     print(dataset.time.coord[105*12]) # Jan 1979, the origin of time...
-    var = dataset.axes['station']; print(''); print(var); print(var.min(),var.mean(),var.max())
-    # test station selector
-    dataset = selectStations((dataset,), prov=('AB','BC'), min_len=100,
-                             stnaxis='station', imaster=None, linplace=False, lall=False)[0]    
-    print(dataset)                            
-    var = dataset.axes['station']; print(''); print(var); print(var.min(),var.mean(),var.max())
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
+    print(dataset.time.coord[dataset.begin_date.min()*-1]) # Jan 1979, the origin of time...
         
   # test station object initialization
   elif mode == 'test_station_object':  

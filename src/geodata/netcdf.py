@@ -543,23 +543,36 @@ class DatasetNetCDF(Dataset):
     ''' The first element of the datasets list. '''
     return self.datasets[0] 
   
-  def addAxis(self, ax, asNC=True, copy=False, overwrite=False):
+  def addAxis(self, ax, asNC=None, copy=True, overwrite=False, deepcopy=False):
     ''' Method to add an Axis to the Dataset. (If the Axis is already present, check that it is the same.) '''   
-    # cast Axis instance as AxisNC (sort of implies copying)    
-    if asNC and 'w' in self.mode: 
-        if not isinstance(ax,AxisNC) or copy: 
-          ax = asAxisNC(ax=ax, ncvar=self.datasets[0], mode=self.mode, deepcopy=copy)
-    elif copy: ax = ax.copy(deepcopy=True) # make a new instance or add it as is
+    if asNC is None: asNC = copy
+    if ax.name in self.__dict__: 
+      # replace axes, if permitted; need to use NetCDF method immediately, though
+      if overwrite and self.hasVariable(ax.name): 
+        return self.replaceAxis(ax.name, ax, deepcopy=deepcopy)
+      else: 
+        raise AttributeError, "Cannot add Variable '{:s}' to Dataset, because an attribute of the same name already exits!".format(ax.name)      
+    else:             
+      if copy: # make a new instance or add it as is 
+        # cast Axis instance as AxisNC (sort of implies copying)    
+        if asNC and 'w' in self.mode: 
+          ax = asAxisNC(ax=ax, ncvar=self.datasets[0], mode=self.mode, deepcopy=deepcopy)
+        elif copy: 
+          ax = ax.copy(deepcopy=deepcopy) # make a new instance or add it as is
+      else:
+          if asNC and not isinstance(ax,AxisNC): 
+            raise ArgumentError, "Cannot create NC variable without copying!"
     # hand-off to parent method and return status
     return super(DatasetNetCDF,self).addAxis(ax=ax, copy=False, overwrite=overwrite) # already copied above
   
-  def addVariable(self, var, asNC=True, copy=True, overwrite=False, deepcopy=False):
+  def addVariable(self, var, asNC=None, copy=True, overwrite=False, deepcopy=False):
     ''' Method to add a new Variable to the Dataset. '''
+    if asNC is None: asNC = copy
     if var.name in self.__dict__: 
       # replace axes, if permitted; need to use NetCDF method immediately, though
       if overwrite and self.hasVariable(var.name): 
         return self.replaceVariable(var.name, var, deepcopy=deepcopy)
-      else: raise AttributeError, "Cannot add Variable '%s' to Dataset, because an attribute of the same name already exits!"%(var.name)      
+      else: raise AttributeError, "Cannot add Variable '{:s}' to Dataset, because an attribute of the same name already exits!".format(var.name)      
     else:             
       if deepcopy: copy=True   
       # cast Axis instance as AxisNC
@@ -567,7 +580,7 @@ class DatasetNetCDF(Dataset):
         if asNC and 'w' in self.mode:
           for ax in var.axes:
             if not self.hasAxis(ax.name): 
-              self.addAxis(ax, asNC=True, copy=True)
+              self.addAxis(ax, asNC=asNC, copy=copy, overwrite=overwrite, deepcopy=deepcopy)
           # add variable as a NetCDF variable             
           var = asVarNC(var=var,ncvar=self.datasets[0], axes=self.axes, mode=self.mode, deepcopy=deepcopy)
         else: 
@@ -576,7 +589,7 @@ class DatasetNetCDF(Dataset):
         if asNC and not isinstance(var,VarNC): 
           raise ArgumentError, "Cannot create NC variable without copying!"
       # hand-off to parent method and return status
-      return super(DatasetNetCDF,self).addVariable(var=var)
+      return super(DatasetNetCDF,self).addVariable(var=var, copy=False, overwrite=overwrite)
       
   def repalceAxis(self, oldaxis, newaxis=None, asNC=True, deepcopy=True):    
     ''' Replace an existing axis with a different one and transfer NetCDF reference to new axis. '''

@@ -204,8 +204,8 @@ if __name__ == '__main__':
   # default settings
   if not lbatch:
     ldebug = False # print more info
-#     loverwrite = True
-    loverwrite = False
+    loverwrite = True
+#     loverwrite = False
     NP = NP or 4
     varlist = None # ['lat2D', ]
     experiments = []
@@ -231,7 +231,7 @@ if __name__ == '__main__':
 #     periods += [10]
 #     periods += [15]
     domains = (2,) # domains to be processed
-#     filetypes = ['srfc','lsm'] # filetypes to be processed
+#     filetypes = ['hydro'] # filetypes to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']
 #     filetypes = ['hydro'] # filetypes to be processed

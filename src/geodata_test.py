@@ -440,7 +440,7 @@ class BaseDatasetTest(unittest.TestCase):
     dataset = self.dataset
     le = len(dataset)
     # add/remove axes
-    dataset.addVariable(var, copy=False) # add variables as is
+    dataset.addVariable(var, copy=False, overwrite=True) # add variables as is
     assert dataset.hasVariable(var)
     assert dataset.hasAxis(ax)
     assert len(dataset) == le + 1
@@ -902,10 +902,14 @@ class DatasetNetCDFTest(BaseDatasetTest):
 #     print(dataset)
     # add an axis
     ax = Axis(name='t', units='', coord=np.arange(10))
-    dataset.addAxis(ax, asNC=True)
+    dataset.addAxis(ax) # asNC should be default
+    assert dataset.hasAxis(ax.name)
+    assert isinstance(dataset.t,AxisNC)
     # add a random variable
     var = Variable(name='test', units='', axes=(ax,), data=np.zeros((10,)))
-    dataset.addVariable(var, asNC=True)
+    dataset.addVariable(var) # asNC should be default
+    assert dataset.hasVariable(var.name)
+    assert isinstance(dataset.test,VarNC)
     # add some attribute
     dataset.atts.test = 'test'
     # synchronize with disk and close

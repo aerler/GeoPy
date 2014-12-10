@@ -16,7 +16,7 @@ import functools
 from osgeo import gdal, osr
 # internal imports
 from geodata.misc import VariableError, AxisError, PermissionError, DatasetError, GDALError, ArgumentError #, DateError
-from geodata.base import Axis, Dataset
+from geodata.base import Axis, Dataset, Variable
 from geodata.netcdf import DatasetNetCDF, asDatasetNC
 from geodata.nctools import writeNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition, gdalInterp
@@ -162,7 +162,7 @@ class CentralProcessingUnit(object):
   # the former sets up the target dataset and the latter operates on the variables
   
   # function pair to compute a climatology from a time-series      
-  def Extract(self, template=None, stnax=None, xlon=None, ylat=None, **kwargs):
+  def Extract(self, template=None, stnax=None, xlon=None, ylat=None, laltcorr=True, **kwargs):
     ''' Extract station data points from gridded datasets; calls processExtract. 
         A station dataset can be passed as template (must have station coordinates. '''
     if not self.source.gdal: raise DatasetError, "Source dataset must be GDAL enabled! {:s} is not.".format(self.source.name)
@@ -221,10 +221,11 @@ class CentralProcessingUnit(object):
       elif lons.max() > 180. and xlon.coord.min() < 0.: lons = np.where(lons > 180., 360.-lons, lons)
       else: pass # source and template do not conflict
     # generate index list
-    ixlon = []; iylat = []; istn = []
-    if src.hasVariable('zs'):
+    ixlon = []; iylat = []; istn = []; zs_err = [] # also record elevation error
+    lzs = src.hasVariable('zs')
+    if laltcorr and lzs:
       if src.zs.ndim != 2 or not src.zs.gdal or src.zs.units != 'm': raise VariableError
-      # consider altidue of surrounding points as well
+      # consider altidue of surrounding points as well      
       zs = src.zs.getArray(unmask=True,fillValue=-300); stn_zs = template.zs.getArray(unmask=True,fillValue=-300)
       if src.zs.axisIndex(xlon.name) == 0: zs.transpose() # assuming lat,lon or y,x order is more common
       ye,xe = zs.shape # assuming order lat,lon or y,x
@@ -242,21 +243,21 @@ class CentralProcessingUnit(object):
           # check four closest grid points
           for i in im,ip:
             for j in jm,jp:
-              zd = np.abs(zs[j,i]-stn_zs[n]) # compute elevation error
-              if zd < zdiff: ii,jj,zdiff = i,j,zd # preliminary selection               
-          ixlon.append(ii); iylat.append(jj); istn.append(n) # final selection
+              ze = zs[j,i]-stn_zs[n]
+              zd = np.abs(ze) # compute elevation error
+              if zd < zdiff: ii,jj,zdiff,zerr = i,j,zd,ze # preliminary selection, triggers at least once               
+          ixlon.append(ii); iylat.append(jj); istn.append(n); zs_err.append(zerr) # final selection          
     else: 
       # just choose horizontally closest point 
       for n,lon,lat in zip(xrange(len(stnax)),lons,lats):
         i = xlon.getIndex(lon, mode='closest', outOfBounds=True)
         j = ylat.getIndex(lat, mode='closest', outOfBounds=True)
         if i is not None and j is not None: 
-          ixlon.append(i); iylat.append(j); istn.append(n)  
-#           if i != ii or j != jj:
-#             zd = np.abs(zs[j,i]-stn_zs[n]) # compute elevation error
-#             print zd-zdiff
+          if lzs: # compute elevation error
+            zs_err.append(zs[j,i]-stn_zs[n])          
+          ixlon.append(i); iylat.append(j); istn.append(n)
     # N.B.: it is necessary to append, because we don't know the number of valid points
-    ixlon = np.array(ixlon); iylat = np.array(iylat); istn = np.array(istn)
+    ixlon = np.array(ixlon); iylat = np.array(iylat); istn = np.array(istn); zs_err = np.array(zs_err)
     # prepare target dataset
     # N.B.: attributes should already be set in target dataset (by caller module)
     #       we are also assuming the new dataset has no axes yet
@@ -268,6 +269,12 @@ class CentralProcessingUnit(object):
     # add station axis (trim to valid coordinates)
     newstnax = stnax.copy(coord=stnax.coord[istn]) # same but with trimmed coordinate array
     tgt.addAxis(newstnax, asNC=True, copy=False) # already new copy
+    # create variable for elevation error
+    if lzs:
+      assert len(zs_err) > 0
+      zs_err = Variable(name='zs_err', units='m', data=zs_err, axes=(newstnax,),
+                        atts=dict(long_name='Station Elevation Error'))
+      tgt.addVariable(zs_err, asNC=True, copy=True); del zs_err # need to copy to make NC var
     # add a bunch of other variables with station meta data
     for var in template.variables.itervalues():
       if var.ndim == 1 and var.hasAxis(stnax): # station attributes
@@ -276,7 +283,9 @@ class CentralProcessingUnit(object):
           if newvar.name[:4] != 'stn_' and newvar.name[:8] != 'station_': 
             newvar.name = 'stn_'+newvar.name
           # N.B.: we need to rename, or name collisions will happen! 
-          tgt.addVariable(newvar, asNC=True, copy=True) # need to copy to make NC var
+          tgt.addVariable(newvar, asNC=True, copy=True); del newvar # need to copy to make NC var
+    # save all the meta data
+    tgt.sync()
     # prepare function call    
     function = functools.partial(self.processExtract, ixlon=ixlon, iylat=iylat, ylat=ylat, xlon=xlon, stnax=stnax) # already set parameters
     # start process

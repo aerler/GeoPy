@@ -1390,7 +1390,7 @@ class Axis(Variable):
       else:
         dl = value - coord[idx-1]
         dr = coord[idx] - value
-        assert dl > 0 and dr >= 0
+        assert dl >= 0 and dr >= 0
         if dr < dl: 
           idx = idx
         else: 
@@ -1491,7 +1491,7 @@ class Dataset(object):
       # add new axes, or check, if already present; if present, replace, if different
       for ax in var.axes: 
         if not self.hasAxis(ax.name):
-            self.addAxis(ax) # add new axis          
+            self.addAxis(ax, copy=copy) # add new axis          
         elif ax is not self.axes[ax.name]: 
           #print '   >>>   replacing a axis',ax.name
           var.replaceAxis(ax, self.axes[ax.name]) # or use old one of the same name
@@ -1958,7 +1958,7 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   
   
 def concatDatasets(datasets, axis=None, coordlim=None, idxlim=None, offset=None, axatts=None, 
-                   lcpOther=True, lcpAny=False, ldeepcopy=True, lcheck=True, lcheckAxis=True):
+                   lcpOther=True, lcpAny=False, ldeepcopy=True, lcheckVars=True, lcheckAxis=True):
   ''' A function to concatenate Datasets from different sources along a given axis; this
       function essentially applies concatVars to every Variable and creates a new dataset. '''
   if isinstance(axis,(Axis,basestring)): axislist = (axis,)
@@ -2007,7 +2007,7 @@ def concatDatasets(datasets, axis=None, coordlim=None, idxlim=None, offset=None,
             variables[varname] = concatVars([ds.variables[varname] for ds in datasets], axis=axis, asVar=True,
                                             coordlim=coordlim, idxlim=idxlim, offset=offset, axatts=axatts,
                                             lcheckAxis=lcheckAxis)
-          elif lcheck:       
+          elif lcheckVars:       
             raise DatasetError, "Variable '{:s}' is not present in all Datasets!".format(varname)
         elif lcpOther and varname not in variables: # either add as is, or skip... 
           if lcpAny or lall: # add if all are present or flag to ignore is set
