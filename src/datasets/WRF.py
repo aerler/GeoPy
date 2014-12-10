@@ -383,7 +383,7 @@ def loadWRF_TS(experiment=None, name=None, domains=2, grid=None, filetypes=None,
                      lautoregrid=lautoregrid, lctrT=lctrT, mode='time-series')  
 
 def loadWRF_Stn(experiment=None, name=None, domains=2, station=None, period=None, filetypes=None, 
-                varlist=None, varatts=False, lctrT=True):
+                varlist=None, varatts=None, lctrT=True):
   ''' Get a properly formatted station dataset from a monthly WRF climatology. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, station=station, 
                      period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
@@ -630,8 +630,8 @@ loadStationClimatology = loadWRF_Stn # pre-processed, standardized climatology a
 if __name__ == '__main__':
     
   
-  mode = 'test_climatology'
-#   mode = 'test_station_climatology'
+#   mode = 'test_climatology'
+  mode = 'test_station_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_station_timeseries'
 #   mode = 'test_ensemble'
@@ -694,12 +694,15 @@ if __name__ == '__main__':
   elif mode == 'test_station_climatology':
     
     print('')
-    dataset = loadWRF_Stn(experiment='max-ctrl', domains=1, station='ecprecip', filetypes=['xtrm'], period=(1979,1984))
+    dataset = loadWRF_Stn(experiment='max-1deg', domains=2, station='ecprecip', filetypes=['hydro'], period=(1979,1984))
     print('')
     print(dataset)
     print('')
-    print(dataset.station)
-    print(dataset.station.coord)
+    zs_err = dataset.zs.getArray() - dataset.stn_zs.getArray()
+    print(zs_err.min(),zs_err.mean(),zs_err.std(),zs_err.max())
+#     print('')
+#     print(dataset.station)
+#     print(dataset.station.coord)
 
   
   # load monthly time-series file
@@ -721,13 +724,17 @@ if __name__ == '__main__':
   elif mode == 'test_station_timeseries':
     
     print('')
-    dataset = loadWRF_StnTS(experiment='max-ctrl', domains=2, station='ecprecip', filetypes=['xtrm'])
+    dataset = loadWRF_StnTS(experiment='erai', domains=2, station='ecprecip', filetypes=['hydro'])
     print('')
     print(dataset)
     print('')
-    print(dataset.time)
-    print(dataset.time.offset)
-    print(dataset.time.coord)
+    zs_err = dataset.zs.getArray() - dataset.stn_zs.getArray()
+#     print(zs_err)
+    print(zs_err.min(),zs_err.mean(),zs_err.std(),zs_err.max())
+#     print('')
+#     print(dataset.time)
+#     print(dataset.time.offset)
+#     print(dataset.time.coord)
   
   # load ensemble "time-series"
   elif mode == 'test_ensemble':

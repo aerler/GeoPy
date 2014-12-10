@@ -16,7 +16,7 @@ import os
 # from nctools import * # my own netcdf toolkit
 from geodata.base import Variable, Axis, Dataset
 from geodata.misc import checkIndex, isEqual, joinDicts
-from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError, FileError, VariableError 
+from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError, FileError, VariableError, ArgumentError 
 from geodata.nctools import coerceAtts, writeNetCDF, add_var, add_coord, add_strvar
 
 
@@ -572,6 +572,9 @@ class DatasetNetCDF(Dataset):
           var = asVarNC(var=var,ncvar=self.datasets[0], axes=self.axes, mode=self.mode, deepcopy=deepcopy)
         else: 
           var = var.copy(deepcopy=deepcopy) # or just add as a normal Variable
+      else:
+        if asNC and not isinstance(var,VarNC): 
+          raise ArgumentError, "Cannot create NC variable without copying!"
       # hand-off to parent method and return status
       return super(DatasetNetCDF,self).addVariable(var=var)
       

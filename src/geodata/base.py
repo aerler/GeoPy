@@ -596,14 +596,17 @@ class Variable(object):
       if not all([len(lst)==lstlen for lst in lists]): raise ArgumentError
       # return checked lists to slices
       lstidx = -1 # index of first list (where list axis will be inserted)
+      lstcnt = 0 # count number of lists
       for i in xrange(len(slcs)):
         if isinstance(slcs[i],(tuple,list,np.ndarray)):
           slcs[i] = lists.pop(0) # return checked lists
           if lstidx == -1: lstidx = i 
+          lstcnt += 1
       # create generic list axis or use listAxis
       if listAxis is None:
-        listAxis = Axis(name='list', units='n/a', length=lstlen)
-      if not isinstance(listAxis,Axis): raise TypeError
+        # if only one list, just use old axis and slice (done below) 
+        if lstcnt > 1: listAxis = Axis(name='list', units='n/a', length=lstlen)
+      elif not isinstance(listAxis,Axis): raise TypeError
     else:
       assert any(lstmodes.values()) == False   
     ## create new Variable object
@@ -623,16 +626,17 @@ class Variable(object):
         coord = ax.coord.__getitem__(idxslc)
         if isinstance(coord,np.ndarray) and (len(coord) > 1 or not lsqueeze):
           # N.B.: when indexing with scalars, it gets squeezed anyway
-          if ax.name not in lstmodes or not lstmodes[ax.name]:
+          if listAxis is not None and ax.name in lstmodes and lstmodes[ax.name]:
+            if i == lstidx:
+              # add list axis, but only the first time!
+              newaxes.append(listAxis) # this is always a new axis
+          else:
             # make new axis object from old, using axis' copy method
             if linplace:
               ax.coord = coord 
               newaxes.append(ax) 
             else: 
-              newaxes.append(ax.copy(coord=coord.copy()))
-          elif i == lstidx:
-            # add list axis, but only the first time!
-            newaxes.append(listAxis) # this is always a new axis            
+              newaxes.append(ax.copy(coord=coord.copy()))            
         # if this axis will be squeezed, we can just omit it
       # create new variable object from old, using variables copy method
       if linplace:
@@ -1359,44 +1363,43 @@ class Axis(Variable):
       if mode.lower() in ('left','right'): outOfBounds = False # return lowest/highest index if out of bounds
       else: outOfBounds = True # return None if value out of bounds
     # check coordinate order
+    coord = self.coord
     if self.ascending: 
-      coord = self.coord
+      if outOfBounds and ( value < coord[0] or value > coord[-1] ): return None # check bounds
     else: 
-      coord = self.coord[::-1] # reverse order
+      if outOfBounds and ( value > coord[0] or value < coord[-1] ): return None # check bounds before reversing
+      coord = coord[::-1] # reverse order
       # also swap left and right
       if mode.lower() == 'left': mode = 'right'
-      elif mode.lower() == 'right': mode = 'left'
-    # check bounds
-    if outOfBounds and ( value < coord[0] or value > coord[-1] ): 
-      return None
-    else:
-      # behavior depends on mode
-      if mode.lower() == 'left':
-        # returns value suitable for beginning of range (inclusive)
-        return coord.searchsorted(value, side='left')
-      elif mode.lower() == 'right':    
-        # returns value suitable for end of range (inclusive)
-        return coord.searchsorted(value, side='right')
-      elif mode.lower() == 'closest':      
-        # search for closest index
-        idx = coord.searchsorted(value) # returns value 
-        # refine search
-        if idx <= 0: 
-          idx = 0
-        elif idx >= self.len: 
-          idx = self.len-1
-        else:
-          dl = value - coord[idx-1]
-          dr = coord[idx] - value
-          if dr < dl: 
-            idx = idx
-          else: 
-            idx = idx-1 # can't be 0 at this point 
-      else: 
-        raise ValueError, "Mode '{:s}' unknown.".format(mode)      
-      # return
-      if not self.ascending: idx = self.len - idx -1 # flip again
-      return idx 
+      elif mode.lower() == 'right': mode = 'left'    
+    # behavior depends on mode
+    if mode.lower() == 'left':
+      # returns value suitable for beginning of range (inclusive)
+      return max(coord.searchsorted(value, side='right')-1,0)
+    elif mode.lower() == 'right':    
+      # returns value suitable for end of range (inclusive)
+      return coord.searchsorted(value, side='right')
+    elif mode.lower() == 'closest':      
+      # search for closest index
+      idx = coord.searchsorted(value, side='right') # returns value 
+      # refine search
+      if idx <= 0: 
+        idx = 0
+      elif idx >= self.len: 
+        idx = self.len-1
+      else:
+        dl = value - coord[idx-1]
+        dr = coord[idx] - value
+        assert dl > 0 and dr >= 0
+        if dr < dl: 
+          idx = idx
+        else: 
+          idx = idx-1 # can't be 0 at this point 
+    else: 
+      raise ValueError, "Mode '{:s}' unknown.".format(mode)      
+    # return
+    if not self.ascending: idx = self.len - idx -1 # flip again
+    return idx 
                   
 
 class Dataset(object):

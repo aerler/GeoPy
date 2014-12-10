@@ -134,7 +134,7 @@ def loadCFSR_TS(name=dataset_name, grid=None, varlist=None, varatts=None, resolu
           dataset.addVariable(var, copy=False) # no need to copy... but we can't write to the netcdf file!
     # replace time axis with number of month since Jan 1979 
     data = np.arange(0,len(dataset.time),1, dtype='int16') # month since 1979 (Jan 1979 = 0)
-    timeAxis = Axis(name='time', units='month', data=data, atts=dict(long_name='Month since 1979-01'))
+    timeAxis = Axis(name='time', units='month', coord=data, atts=dict(long_name='Month since 1979-01'))
     dataset.repalceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
     # add projection  
     dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
@@ -217,9 +217,9 @@ if __name__ == '__main__':
   
 #   mode = 'test_climatology'
 #   mode = 'average_timeseries'
-#   mode = 'test_timeseries'
-  mode = 'test_station_timeseries'
-  reses = ('05',) # for testing
+  mode = 'test_timeseries'
+#   mode = 'test_station_timeseries'
+  reses = ('031',) # for testing
 #   reses = ( '031','05',)
 #   period = (1979,1984)
 #   period = (1979,1989)
@@ -250,9 +250,12 @@ if __name__ == '__main__':
       print('')
       dataset = loadCFSR_TS(resolution=res)
       print(dataset)
+#       print('')
+#       print(dataset.time)
+#       print(dataset.time.coord)
       print('')
-      print(dataset.time)
-      print(dataset.time.coord)
+      print(dataset.landmask)
+      assert dataset.landmask.gdal
     
               
     elif mode == 'test_station_timeseries':

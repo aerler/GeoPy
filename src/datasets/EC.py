@@ -53,7 +53,7 @@ varatts = dict(T2       = dict(name='T2', units='K', atts=dict(long_name='Averag
                                                                              description='Begin of Station Record (relative to 1979-01)')), 
                end_date   = dict(name='end_date', units='month', atts=dict(long_name='Month since 1979-01', # begin of station record
                                                                          description='End of Station Record (relative to 1979-01)')),
-               rec_len    = dict(name='rec_len', units='month', atts=dict(long_name='Length of Record', # actual length of station record
+               stn_rec_len    = dict(name='stn_rec_len', units='month', atts=dict(long_name='Length of Record', # actual length of station record
                                                                          description='Number of Month with valid Data')),
                # axes (also sort of meta data)
                time     = dict(name='time', units='month', atts=dict(long_name='Month since 1979-01')), # time coordinate
@@ -462,7 +462,7 @@ class StationRecords(object):
       if pnt == 'begin': begin_date = np.min(datearray) 
       elif pnt == 'end': end_date = np.max(datearray)
     # actual length of record (number of valid data points per station; filled in later)
-    dataset += Variable(axes=(station,), data=np.zeros(len(station), dtype='int16'),  **varatts['rec_len'])
+    dataset += Variable(axes=(station,), data=np.zeros(len(station), dtype='int16'),  **varatts['stn_rec_len'])
     # add variables for monthly values
     time = Axis(coord=np.arange(begin_date, end_date+1, dtype='int16'), **varatts['time'])
     # loop over variables
@@ -470,7 +470,7 @@ class StationRecords(object):
       # add actual variables
       dataset += Variable(axes=(station,time), dtype=vardef.dtype, **vardef.atts)
       # add length of record variable
-      tmpatts = varatts['rec_len'].copy(); recatts = tmpatts['atts'].copy()
+      tmpatts = varatts['stn_rec_len'].copy(); recatts = tmpatts['atts'].copy()
       recatts['long_name'] = recatts['long_name']+' for {:s}'.format(varname.title())
       tmpatts['name'] = varname+'_len'; tmpatts['atts'] = recatts
       dataset += Variable(axes=(station,), data=np.zeros(len(station), dtype='int16'),  **tmpatts)
@@ -538,7 +538,7 @@ class StationRecords(object):
       dailydata[wrfvar] = dailytmp
       monlydata[wrfvar] = monlytmp
       # load data
-      varobj.load(monlytmp); varobj.sync()
+      varobj.load(monlytmp) # varobj.sync()
       del dailytmp, monlytmp
     # loop over derived nonlinear variables/extremes
     if any(not var.linear for var in self.extremes): print('\n computing (nonlinear) daily variables:')
@@ -583,7 +583,7 @@ class StationRecords(object):
         monlydata[wrfvar] = monlytmp
       tmpload = monlydata[wrfvar]
       assert varobj.shape == tmpload.shape
-      varobj.load(tmpload); varobj.sync()
+      varobj.load(tmpload)
     # determine actual length of records (valid data points)
     minlen = None 
     for varname in self.variables.iterkeys():
@@ -594,11 +594,13 @@ class StationRecords(object):
       tmp = tlen - np.isnan(varobj.getArray(unmask=True, fillValue=np.NaN)).sum(axis=1)
       tmp = np.asanyarray(tmp, dtype=rec_len.dtype)
       assert tmp.shape == rec_len.shape
-      rec_len.load(tmp)
+      rec_len.load(tmp) 
       if minlen is None: minlen = tmp
       else: minlen = np.minimum(minlen,tmp)
     # save minimum as overall record length
-    self.dataset['rec_len'].load(minlen)
+    self.dataset['stn_rec_len'].load(minlen)
+    # synchronize data, i.e. write to disk
+    self.dataset.sync()
     
       
         
@@ -637,34 +639,36 @@ loadEC_Stn = loadEC
 
 
 ## select a set of common stations for an ensemble, based on certain conditions
-def selectStation(datasets, stations=None, axis=None, imaster=None, linplace=True, lall=False):
+def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lall=False, **kwcond):
   ''' '''
   # list of possible constraints
   tests = [] # a list of tests to run on each station
   # test definition
-  if 'prov' in stations:
-    provs = stations['prov']
-    if not isinstance(provs,list): provs = tuple(provs)
-    if not isinstance(provs,tuple): provs = (provs,)
+  if 'prov' in kwcond:
+    provs = kwcond['prov']
+    if not isinstance(provs,(tuple,list)): provs = (provs,)
+    if not isinstance(provs,tuple): provs = tuple(provs)
     if not all(isinstance(prov,basestring) for prov in provs): raise TypeError 
     def test(index,dataset,axis):
       ''' check if station province is in provided list ''' 
       return dataset.variables['prov'][index] in provs 
     tests.append(test)
-  if 'minprd' in stations:
-    prd = stations['minprd']
+  if 'min_len' in kwcond:
+    prd = kwcond['min_len']
     if not isNumber(prd): raise TypeError
     prd = prd*12 # units in dataset are month  
     def test(index,dataset,axis):
       ''' check if station record is longer than a minimum period ''' 
-      return dataset.variables['end_date'][index] - dataset.variables['begin_date'][index] >= prd 
+      return dataset.variables['stn_rec_len'][index] >= prd 
     tests.append(test)    
   # define test function (all tests must pass)
-  def testFct(index, dataset, axis):
-    # just call all individual tests for given index 
-    return all(test(index,dataset,axis) for test in tests)
+  if len(tests) > 0:
+    def testFct(index, dataset, axis):
+      # just call all individual tests for given index 
+      return all(test(index,dataset,axis) for test in tests)
+  else: testFct = None
   # pass on call to generic function selectCoords
-  datasets = selectCoords(datasets=datasets, testFct=testFct, axis=axis, imaster=imaster, linplace=linplace, lall=lall)
+  datasets = selectCoords(datasets=datasets, axis=stnaxis, testFct=testFct, imaster=imaster, linplace=linplace, lall=lall)
   # return sliced datasets
   return datasets
   
@@ -692,8 +696,8 @@ if __name__ == '__main__':
 
 #   mode = 'test_station_object'
 #   mode = 'test_station_reader'
-  mode = 'test_conversion'
-#   mode = 'convert_all_stations'
+#   mode = 'test_conversion'
+  mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
 #   mode = 'test_timeseries'
   
@@ -707,16 +711,16 @@ if __name__ == '__main__':
     print(dataset)
     print('')
     print('ATHABASCA', dataset.station_name.findValue('ATHABASCA'))
-    print('')
-    print(dataset.station)
-    print(dataset.time)
-    print(dataset.time.coord)
-    print(dataset.time.coord[105*12]) # Jan 1979, the origin of time...
-    print('')
-    var = 'begin_date'
-    print(dataset[var])
-    print(dataset[var].min(),dataset[var].mean(),dataset[var].max())
-    
+#     print('')
+#     print(dataset.time)
+#     print(dataset.time.coord)
+#     print(dataset.time.coord[105*12]) # Jan 1979, the origin of time...
+    var = dataset.axes['station']; print(''); print(var); print(var.min(),var.mean(),var.max())
+    # test station selector
+    dataset = selectStations((dataset,), prov=('AB','BC'), min_len=100,
+                             stnaxis='station', imaster=None, linplace=False, lall=False)[0]    
+    print(dataset)                            
+    var = dataset.axes['station']; print(''); print(var); print(var.min(),var.mean(),var.max())
         
   # test station object initialization
   elif mode == 'test_station_object':  
@@ -783,7 +787,7 @@ if __name__ == '__main__':
           print('{:>10s}: {:5.1f} | {:5.1f} | {:5.1f}'.format(
                 var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data)))
     # record length
-    for pfx in ['rec',]+variables.keys():
+    for pfx in ['stn_rec',]+variables.keys():
       var = dataset[pfx+'_len']
       data = var.getArray()
       if 'precip' in variables:

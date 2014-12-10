@@ -192,7 +192,8 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
   if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
   lskip = False # else just go ahead
   if lwrite:
-    if lreturn: tmpfilename = filename # no temporary file if dataset is passed on (can't rename the file while it is open!)
+    if lreturn: 
+      tmpfilename = filename # no temporary file if dataset is passed on (can't rename the file while it is open!)
     else: 
       if lparallel: tmppfx = 'tmp_exstns_{:s}_'.format(pidstr[1:-1])
       else: tmppfx = 'tmp_exstns_'.format(pidstr[1:-1])
@@ -281,10 +282,10 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    ldebug = True
-    NP = 1 #or NP # to avoid memory issues...
-#     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology','time-series'
+    ldebug = False
+    NP = 4 #or NP # to avoid memory issues...
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
 #     varlist = ['precip',]
@@ -301,7 +302,7 @@ if __name__ == '__main__':
 #     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
-    datasets += ['CFSR']
+#     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
 #     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
 #     datasets += ['CRU']
@@ -315,21 +316,21 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm'] # ,'lnd'
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-#     WRF_experiments += ['max']
+    WRF_experiments += ['max-1deg']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...
     # other WRF parameters 
 #     domains = (1,2) # domains to be processed
     domains = (2,) # domains to be processed
-#     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
+    WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-    WRF_filetypes = ('hydro',)
+#     WRF_filetypes = ('hydro',)
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
     #WRF_filetypes = ('const',); periods = None
     # station datasets to match    
-    stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
-#     stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
+#     stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
+    stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
   else:
     NP = NP or 4 # time-series might take more memory!
     #modes = ('climatology','time-series')

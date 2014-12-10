@@ -222,11 +222,39 @@ class CentralProcessingUnit(object):
       else: pass # source and template do not conflict
     # generate index list
     ixlon = []; iylat = []; istn = []
-    for n,lon,lat in zip(xrange(len(stnax)),lons,lats):
-      i = xlon.getIndex(lon, mode='closest', outOfBounds=True)
-      j = ylat.getIndex(lat, mode='closest', outOfBounds=True)
-      if i is not None and j is not None: 
-        ixlon.append(i); iylat.append(j); istn.append(n)  
+    if src.hasVariable('zs'):
+      if src.zs.ndim != 2 or not src.zs.gdal or src.zs.units != 'm': raise VariableError
+      # consider altidue of surrounding points as well
+      zs = src.zs.getArray(unmask=True,fillValue=-300); stn_zs = template.zs.getArray(unmask=True,fillValue=-300)
+      if src.zs.axisIndex(xlon.name) == 0: zs.transpose() # assuming lat,lon or y,x order is more common
+      ye,xe = zs.shape # assuming order lat,lon or y,x
+      xe -= 1; ye -= 1 # last valid index, not length
+      for n,lon,lat in zip(xrange(len(stnax)),lons,lats):
+        ip = xlon.getIndex(lon, mode='left', outOfBounds=True)
+        jp = ylat.getIndex(lat, mode='left', outOfBounds=True)
+        if ip is not None and jp is not None:
+          # find neighboring point with smallest altitude error 
+#           ip = im+1 if im < xe else im  
+#           jp = jm+1 if jm < ye else jm
+          im = ip-1 if ip > 0 else ip  
+          jm = jp-1 if jp > 0 else jp
+          zdiff = np.Infinity # initialize, so that it triggers at least once
+          # check four closest grid points
+          for i in im,ip:
+            for j in jm,jp:
+              zd = np.abs(zs[j,i]-stn_zs[n]) # compute elevation error
+              if zd < zdiff: ii,jj,zdiff = i,j,zd # preliminary selection               
+          ixlon.append(ii); iylat.append(jj); istn.append(n) # final selection
+    else: 
+      # just choose horizontally closest point 
+      for n,lon,lat in zip(xrange(len(stnax)),lons,lats):
+        i = xlon.getIndex(lon, mode='closest', outOfBounds=True)
+        j = ylat.getIndex(lat, mode='closest', outOfBounds=True)
+        if i is not None and j is not None: 
+          ixlon.append(i); iylat.append(j); istn.append(n)  
+#           if i != ii or j != jj:
+#             zd = np.abs(zs[j,i]-stn_zs[n]) # compute elevation error
+#             print zd-zdiff
     # N.B.: it is necessary to append, because we don't know the number of valid points
     ixlon = np.array(ixlon); iylat = np.array(iylat); istn = np.array(istn)
     # prepare target dataset
@@ -238,8 +266,17 @@ class CentralProcessingUnit(object):
       if axname not in (xlon.name,ylat.name):
         tgt.addAxis(ax, asNC=True, copy=True)
     # add station axis (trim to valid coordinates)
-    stnax = stnax.copy(coord=stnax.coord[istn]) # same but with trimmed coordinate array
-    tgt.addAxis(stnax, asNC=True, copy=False) # already new copy
+    newstnax = stnax.copy(coord=stnax.coord[istn]) # same but with trimmed coordinate array
+    tgt.addAxis(newstnax, asNC=True, copy=False) # already new copy
+    # add a bunch of other variables with station meta data
+    for var in template.variables.itervalues():
+      if var.ndim == 1 and var.hasAxis(stnax): # station attributes
+        if var.name[-4:] != '_len' or var.name == 'stn_rec_len': # exclude certain attributes
+          newvar = var.copy(data=var.getArray()[istn], axes=(newstnax,))
+          if newvar.name[:4] != 'stn_' and newvar.name[:8] != 'station_': 
+            newvar.name = 'stn_'+newvar.name
+          # N.B.: we need to rename, or name collisions will happen! 
+          tgt.addVariable(newvar, asNC=True, copy=True) # need to copy to make NC var
     # prepare function call    
     function = functools.partial(self.processExtract, ixlon=ixlon, iylat=iylat, ylat=ylat, xlon=xlon, stnax=stnax) # already set parameters
     # start process

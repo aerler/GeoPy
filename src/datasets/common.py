@@ -84,18 +84,19 @@ shape_folder = data_root + '/shapes/' # folder for pickled grids
  
 
 # function to extract common points that meet a specific criterion from a list of datasets
-def selectCoords(datasets, testFct, axis, imaster=None, linplace=True, lall=False):
+def selectCoords(datasets, axis, testFct=None, imaster=None, linplace=True, lall=False):
   ''' Extract common points that meet a specific criterion from a list of datasets. 
       The test function has to accept the following input: index, dataset, axis'''
   # check input
   if not isinstance(datasets, (list,tuple,Ensemble)): raise TypeError
   if not all(isinstance(dataset,Dataset) for dataset in datasets): raise TypeError 
-  if not isCallable(testFct): raise TypeError
+  if not isCallable(testFct) and testFct is not None: raise TypeError
   if isinstance(axis, Axis): axis = axis.name
   if not isinstance(axis, basestring): raise TypeError
   if lall: imaster = None
   # save some ensemble parameters for later  
-  lens = True if isinstance(datasets,Ensemble) else False
+  lnotest = testFct is None
+  lens = isinstance(datasets,Ensemble)
   if lens:
     enskwargs = dict(basetype=datasets.basetype, idkey=datasets.idkey, 
                      name=datasets.name, title=datasets.title) 
@@ -105,17 +106,22 @@ def selectCoords(datasets, testFct, axis, imaster=None, linplace=True, lall=Fals
   elif not isinstance(imaster,(int,np.integer)): raise TypeError
   elif imaster >= len(datasets) or imaster < 0: raise ValueError 
   maxis = axes.pop(imaster) # extraxt shortest axis for loop
-  test_fct = lambda i: testFct(i, datasets[imaster], axis) # prepare test function arguments
+  if lall: test_fct = lambda i,ds: testFct(i, ds, axis) # prepare test function arguments
+  else: test_fct = lambda i: testFct(i, datasets[imaster], axis) 
   # loop over coordinate axis
   itpls = [] # list of valid index tuple
   for i,x in enumerate(maxis.coord):
     # check other axes
-    if all([x in ax.coord for ax in axes]): # only the other axes 
+    if all([x in ax.coord for ax in axes]): # only the other axes
+      # no condition
+      if lnotest:
+        # just find and add indices
+        itpls.append((i,)+tuple(ax.coord.searchsorted(x) for ax in axes))
       # check condition using shortest dataset
-      if lall: 
+      elif lall: 
         # check test condition on all datasets (slower)
         tmpidx = (i,)+tuple(ax.coord.searchsorted(x) for ax in axes)
-        if all(test_fct(ii) for ii in tmpidx):
+        if all(test_fct(ii,ds) for ii,ds in zip(tmpidx,datasets)):
           # add corresponding indices in each dataset to list
           itpls.append((i,)+tuple(tmpidx))
       else:
@@ -125,13 +131,13 @@ def selectCoords(datasets, testFct, axis, imaster=None, linplace=True, lall=Fals
           itpls.append((i,)+tuple(ax.coord.searchsorted(x) for ax in axes))
           # N.B.: since we can expect exact matches, plain searchsorted is fastest (side='left') 
   # construct axis indices for each dataset (need to remember to move shortest axis back in line)
-  idxs = ([],)*len(datasets)
+  idxs = [[],]*len(datasets)
   for itpl in itpls:
     for i,idx in enumerate(itpl): idxs[i].append(idx)
   idxs.insert(imaster,idxs.pop(0)) # mode fist element back in line (where shortest axis was)
   idxs = [np.asarray(idxlst, dtype='int') for idxlst in idxs]      
   # slice datasets using only positive results  
-  datasets = [dataset(lidx=True, linplace=linplace, **{axis:idxlst}) for idxlst in idxs]
+  datasets = [ds(lidx=True, linplace=linplace, **{axis:idx}) for ds,idx in zip(datasets,idxs)]
   if lens: datasets = Ensemble(*datasets, **enskwargs)
   # return datasets
   return datasets
