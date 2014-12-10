@@ -1360,7 +1360,8 @@ class Axis(Variable):
     ''' Return the coordinate index that is closest to the value or suitable for index ranges (left/right). '''
     if not self.data: raise DataError
     if outOfBounds is None:
-      if mode.lower() in ('left','right'): outOfBounds = False # return lowest/highest index if out of bounds
+      if mode.lower() == 'closest': outOfBounds = False
+#       elif mode.lower() in ('left','right'): outOfBounds = False # return lowest/highest index if out of bounds
       else: outOfBounds = True # return None if value out of bounds
     # check coordinate order
     coord = self.coord
@@ -1375,10 +1376,12 @@ class Axis(Variable):
     # behavior depends on mode
     if mode.lower() == 'left':
       # returns value suitable for beginning of range (inclusive)
-      return max(coord.searchsorted(value, side='right')-1,0)
+#       return coord.searchsorted(value, side='left') 
+      idx = max(coord.searchsorted(value, side='right')-1,0)
     elif mode.lower() == 'right':    
       # returns value suitable for end of range (inclusive)
-      return coord.searchsorted(value, side='right')
+      idx = coord.searchsorted(value, side='right')
+      if idx > 0 and coord[idx-1] == value: idx -= 1 # special case...
     elif mode.lower() == 'closest':      
       # search for closest index
       idx = coord.searchsorted(value, side='right') # returns value 

@@ -89,9 +89,30 @@ class BaseVarTest(unittest.TestCase):
     # replace axis
     oldax = var.axes[-1]    
     newax = Axis(name='z', units='none', coord=(1,len(oldax),len(oldax)))
+    revax = Axis(name='zz', units='none', coord=(len(oldax),1,len(oldax)))
     var.replaceAxis(oldax,newax)
     assert var.hasAxis(newax) and not var.hasAxis(oldax)
-  
+    # test getIndex, i.e. index corresponding to a coordinate
+    for ax in newax,revax:
+      assert len(ax) > 3
+      coord = ax.coord
+      val = ( coord[1] + coord[2] + coord[2] ) / 3. # will be closer to second 
+      assert ax.getIndex(val, 'left') == 1
+      assert ax.getIndex(val, 'right') == 2
+      assert ax.getIndex(val, 'closest') == 2
+      val = coord[1] # exactly equal to first
+      assert ax.getIndex(val, 'left') == 1
+      assert ax.getIndex(val, 'right') == 1
+      assert ax.getIndex(val, 'closest') == 1
+      val = coord[0] - ( coord[1] - coord[0] ) # below range 
+      assert ax.getIndex(val, 'left') is None
+      assert ax.getIndex(val, 'right') is None
+      assert ax.getIndex(val, 'closest') == 0
+      val = coord[-1] + ( coord[-1] - coord[-2] )  # above range 
+      assert ax.getIndex(val, 'left') is None
+      assert ax.getIndex(val, 'right') is None
+      assert ax.getIndex(val, 'closest') == len(ax)-1
+    
   def testBinaryArithmetic(self):
     ''' test binary arithmetic functions '''
     # get test objects
