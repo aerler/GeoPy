@@ -56,17 +56,17 @@ class LinePlotTest(unittest.TestCase):
   def testBasicLinePlot(self):
     ''' test a simple line plot with two lines '''    
     fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], mpl=mpl) # use test method name as title
-    assert fig.__class__.__name__ == 'Figure'
+    assert fig.__class__.__name__ == 'MyFigure'
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var1 = self.var1; var2 = self.var2
     # create plot
-    plts = linePlot([var1, var2], ax=ax, ylabel='custom label [{1:s}]', ylim=var1.limits(), legend=2)
+    plts = ax.linePlot([var1, var2], ylabel='custom label [{1:s}]', ylim=var1.limits(), legend=2)
     assert len(plts) == 2
   
   def testAdvancedLinePlot(self):
     ''' test more advanced options of the line plot function '''    
     fig,ax = getFigAx(1, title='Fancy Plot Styles', name=sys._getframe().f_code.co_name[4:]) # use test method name as title
-    assert fig.__class__.__name__ == 'Figure'
+    assert fig.__class__.__name__ == 'MyFigure'
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var1 = self.var1; var2 = self.var2
     # define fancy attributes
@@ -76,33 +76,33 @@ class LinePlotTest(unittest.TestCase):
     # define fancy legend
     legend = dict(loc=2, labelspacing=0.125, handlelength=2.5, handletextpad=0.5, fancybox=True)
     # create plot
-    plts = linePlot([var1, var2], ax=ax, linestyles=('--','-.'), varatts=varatts, legend=legend)
+    plts = ax.linePlot([var1, var2], linestyles=('--','-.'), varatts=varatts, legend=legend)
     assert len(plts) == 2
 
   def testAxesGridLinePlot(self):
     ''' test a two panel line plot with combined legend '''        
     fig,axes = getFigAx(4, AxesGrid=True, name=sys._getframe().f_code.co_name[4:]) # use test method name as title
     #assert grid.__class__.__name__ == 'ImageGrid'
-    assert fig.__class__.__name__ == 'Figure'
+    assert fig.__class__.__name__ == 'MyFigure'
     assert isinstance(axes,tuple) # should return a list of axes
     var1 = self.var1; var2 = self.var2
     # create plot
     for ax in axes:
-        plts = linePlot([var1, var2], ax=ax, ylim=var1.limits(), legend=0)
+        plts = ax.linePlot([var1, var2], ylim=var1.limits(), legend=0)
         assert len(plts) == 2    
         
   def testCombinedLinePlot(self):
     ''' test a two panel line plot with combined legend '''    
     fig,axes = getFigAx(4, sharey=True, sharex=True, name=sys._getframe().f_code.co_name[4:]) # use test method name as title
-    assert fig.__class__.__name__ == 'Figure'
+    assert fig.__class__.__name__ == 'MyFigure'
     assert isinstance(axes,(list,tuple,np.ndarray)) # should return a list of axes
     var1 = self.var1; var2 = self.var2
     # create plot
     for i,ax in enumerate(axes.flatten()):
-      plts = linePlot([var1, var2], ax=ax, ylim=var1.limits(), legend=0, title='Panel {:d}'.format(i+1))
+      plts = ax.linePlot([var1, var2], ylim=var1.limits(), legend=0, title='Panel {:d}'.format(i+1))
       assert len(plts) == 2
     # add common legend
-    addSharedLegend(fig, plts=plts)
+    fig.addSharedLegend(plts=plts)
     
 if __name__ == "__main__":
 

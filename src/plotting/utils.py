@@ -48,6 +48,7 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=No
   if mpl is None: import matplotlib as mpl
   elif isinstance(mpl,dict): mpl = loadMPL(**mpl) # there can be a mplrc, but also others
   elif not isinstance(mpl,ModuleType): raise TypeError
+  from lineplots import MyFigure, MyLocatableAxes # prevent circular reference
   # figure out subplots
   if isinstance(subplot,(np.integer,int)):
     if subplot == 1: subplot = (1,1)
@@ -81,7 +82,8 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=No
     if share_all is None: share_all = True
     if axes_pad is None: axes_pad = 0.05
     # create axes using the Axes Grid package
-    fig = mpl.pylab.figure(facecolor='white', figsize=figsize)
+    fig = mpl.pylab.figure(facecolor='white', figsize=figsize, FigureClass=MyFigure)
+    if axes_class is None: axes_class=(MyLocatableAxes,{})
     from mpl_toolkits.axes_grid1 import ImageGrid
     # AxesGrid: http://matplotlib.org/mpl_toolkits/axes_grid/users/overview.html
     grid = ImageGrid(fig, margins, nrows_ncols = subplot, ngrids=ngrids, direction=direction, 
@@ -102,10 +104,10 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=No
     if sharex: hspace -= 0.015
     if sharey: wspace -= 0.015
     # create figure
-    from matplotlib.pyplot import subplots
+    from matplotlib.pyplot import subplots    
     # GridSpec: http://matplotlib.org/users/gridspec.html 
     fig, axes = subplots(subplot[0], subplot[1], sharex=sharex, sharey=sharey,
-			                   squeeze=lreduce, facecolor='white', figsize=figsize)    
+			                   squeeze=lreduce, facecolor='white', figsize=figsize, FigureClass=MyFigure)    
     # there is also a subplot_kw=dict() and fig_kw=dict()
     # just adjust margins
     margin_dict = dict(left=margins[0], bottom=margins[1], right=margins[0]+margins[2], 
