@@ -95,6 +95,7 @@ class BaseVarTest(unittest.TestCase):
     # test getIndex, i.e. index corresponding to a coordinate
     for ax in newax,revax:
       assert len(ax) > 3
+      # test single value retrieval and approximate match
       coord = ax.coord
       val = ( coord[1] + coord[2] + coord[2] ) / 3. # will be closer to second 
       assert ax.getIndex(val, 'left') == 1
@@ -112,6 +113,9 @@ class BaseVarTest(unittest.TestCase):
       assert ax.getIndex(val, 'left') is None
       assert ax.getIndex(val, 'right') is None
       assert ax.getIndex(val, 'closest') == len(ax)-1
+      # test batch value retrieval (exact match only)
+      vals = coord[[0,1,2]]
+      assert np.all(ax.getIndices(vals) == np.asarray([0,1,2])) 
     
   def testBinaryArithmetic(self):
     ''' test binary arithmetic functions '''
@@ -277,6 +281,13 @@ class BaseVarTest(unittest.TestCase):
       assert len(slcvar.axes[0]) == var.shape[0]-1
       assert len(slcvar.axes[1]) == len(l0) 
       assert isEqual(slcvar[:], var[1:,l1,l2], masked_equal=True)
+      # test findValue(s)
+      val = var.data_array.ravel()[-1]
+      idx = var.findValue(val, lidx=True, lflatten=True)
+      assert val == var.data_array.ravel()[idx]
+      vals = (var[0,0,0],var[-1,0,0],var[0,-1,0],var[0,0,-1],var[-1,-1,0],var[0,-1,-1],var[-1,0,-1],var[-1,-1,-1])
+      idxs = var.findValues(vals, lidx=True, lflatten=False, ltranspose=True)
+      for idx in idxs: assert var[idx] in vals
       
   
   def testLoad(self):
@@ -393,7 +404,7 @@ class BaseVarTest(unittest.TestCase):
     assert all([dim > 1 for dim in var.shape]) 
     
   def testUnaryArithmetic(self):
-    ''' test unary arithmetic functions '''
+    ''' test unary arithmetic functions and ufuncs'''
     # get test objects
     var = self.var
     # arithmetic test
@@ -404,6 +415,13 @@ class BaseVarTest(unittest.TestCase):
     # test results
     #     print (self.data.filled() - var.data_array.filled()).max()
     assert isEqual(self.data, var.data_array)  
+    # test some ufuncs
+    lnvar = var.log(lwarn=False)
+    assert isEqual(np.log(self.data), lnvar.data_array)
+    lnvar.units = ''
+    elvar = lnvar.exp(lwarn=True)
+    assert isEqual(np.exp(np.log(self.data)), elvar.data_array)
+    assert elvar.units == ''   
     
 
 class BaseDatasetTest(unittest.TestCase):  
@@ -1090,7 +1108,7 @@ if __name__ == "__main__":
     tests += ['BaseDataset']
     tests += ['DatasetNetCDF']
     tests += ['DatasetGDAL']
-    
+     
     
     # construct dictionary of test classes defined above
     test_classes = dict()

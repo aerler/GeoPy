@@ -268,7 +268,7 @@ class CentralProcessingUnit(object):
         tgt.addAxis(ax, asNC=True, copy=True)
     # add station axis (trim to valid coordinates)
     newstnax = stnax.copy(coord=stnax.coord[istn]) # same but with trimmed coordinate array
-    tgt.addAxis(newstnax, asNC=True, copy=False) # already new copy
+    tgt.addAxis(newstnax, asNC=True, copy=True) # already new copy
     # create variable for elevation error
     if lzs:
       assert len(zs_err) > 0

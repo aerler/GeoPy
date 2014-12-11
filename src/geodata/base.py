@@ -194,7 +194,7 @@ class Variable(object):
       if dtype:
         dtype = np.dtype(dtype) # make sure it is properly formatted.. 
         if dtype is not data.dtype: data = data.astype(dtype) # recast as new type        
-#         raise TypeError, "Declared data type '%s' does not match the data type of the array (%s)."%(str(dtype),str(data.dtype))
+#         raise TypeError, "Declared data type '{:s}' does not match the data type of the array ({:s}).".format(str(dtype),str(data.dtype))
       if axes is not None and len(axes) != data.ndim: 
         raise AxisError, 'Dimensions of data array and axes are note compatible!'
     # for completeness of MRO...
@@ -234,7 +234,7 @@ class Variable(object):
         if ldata: axes = [Axis(name=ax, length=n) for ax,n in zip(axes,shape)] # use shape from data
         else: axes = [Axis(name=ax) for ax in axes] # initialize without shape
     else: 
-      raise VariableError, 'Cannot initialize %s instance \'%s\': no axes declared'%(self.var.__class__.__name__,self.name)
+      raise VariableError, 'Cannot initialize {:s} instance \'{:s}\': no axes declared'.format(self.var.__class__.__name__,self.name)
     self.__dict__['axes'] = tuple(axes) 
     # create shortcuts to axes (using names as member attributes) 
     for ax in axes: self.__dict__[ax.name] = ax
@@ -724,7 +724,7 @@ class Variable(object):
       if axes is not None:
         if idx is not None: raise NotImplementedError
         for ax in self.axes:
-          assert (ax in axes) or (ax.name in axes), "Can not broadcast Variable '%s' to dimension '%s' "%(self.name,ax.name)
+          assert (ax in axes) or (ax.name in axes), "Can not broadcast Variable '{:s}' to dimension '{:s}' ".format(self.name,ax.name)
         # order dimensions as in broadcast axes list
         order = [self.axisIndex(ax) for ax in axes if self.hasAxis(ax)] # indices of broadcast list axes in instance axes list (self.axes)
         datacopy = np.transpose(datacopy,axes=order) # reorder dimensions to match broadcast list
@@ -812,8 +812,8 @@ class Variable(object):
     if self.ndim != 1 and not lflatten: 
       raise NotImplementedError, "findValue() currently only works with single-axis 'pseudo-axes', not with multi-dimensional fields"
     if isinstance(value,(tuple,list,np.ndarray)): 
-          raise TypeError, "Only single coordiante values/indices are supported."                
-    if lflatten: data = self.data_array.flatten() # just a 'view'
+          raise TypeError, "Only single coordinate values/indices are supported."                
+    if lflatten: data = self.data_array.ravel() # just a 'view', flatten() returns a copy
     else: data = self.data_array
     # N.B.: usually this will be used for categorical data like int or str anyway...
     # pad strings with spaces
@@ -830,6 +830,30 @@ class Variable(object):
     elif not lidx: idx = self.axes[0].coord[idx]
     # return index of coordinate value
     return idx
+  
+  def findValues(self, values, lidx=False, lflatten=False, ltranspose=False):
+    ''' Method to find exact matches of values and return their coordinate or index values. '''
+    if not self.data: self.load()
+    if not isinstance(values,(tuple,list,np.ndarray)): raise TypeError                
+    if lflatten: data = self.data_array.ravel() # just a 'view'
+    else: data = self.data_array
+    # N.B.: this function really only finds exact matches
+    # pad strings with spaces
+    if self.strvar: values = [value+' '*(self.strlen-len(value)) for value in values]
+    # now use numpy to extract matching index
+    idxs = np.in1d(data.ravel(), values).reshape(self.shape) # find exact matches
+    idxs = np.where(idxs) # find indices of matches
+    if len(idxs[0]) == 0:
+      # possible problems with floats
+      if np.issubdtype(self.dtype, np.inexact): 
+        warn("The current implementation may fail for floats due to machine precision differences (non-exact match).") 
+      #raise AxisError, "Value '{:s}' not found in Variable '{:s}'.".format(str(value),self.name)
+    elif not lidx:
+      idxs = tuple(ax.coord[ix] for ix,ax in zip(idxs,self.axes))
+    # transpose results
+    if ltranspose: idxs = [tpl for tpl in zip(*idxs)]        
+    # return index of coordinate value
+    return idxs
   
   def limits(self):
     ''' A convenience function to return a min,max tuple to indicate the data range. '''
@@ -1172,6 +1196,30 @@ class Variable(object):
     ''' Return a climatology of minima of monthly data. '''    
     return self.reduceToClimatology(yridx=yridx, operation=np.nanmin, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
+  def _apply_ufunc(self, ufunc, lwarn=True, **kwargs):
+    ''' apply ufunc to data and return new Variable instance '''
+    uname = ufunc.__name__
+    lunits = len(self.units) > 0
+    if lwarn and lunits: 
+      warn("Applying ufunc '{:s}' to '{:s}' data with units '{:s}' may require normalization.".format(uname,self.name,self.units))
+    data = ufunc(self.getArray(), **kwargs)
+    name = '{:s}({:s})'.format(uname,self.name)
+    units = '{:s}({:s})'.format(uname,self.units) if lunits else ''
+    return self.copy(name=name, units=units, data=data)    
+  
+  def __getattr__(self, attr):
+    ''' if the call is a numpy ufunc method that is not implemented by Variable, call the ufunc method
+        on data using _apply_ufunc '''
+    # N.B.: this method is only called as a fallback, if no class/instance attribute exists,
+    #       i.e. Variable methods and attributes will always have precedent 
+    # check if a ufunc of that name exists
+    if attr in np.__dict__:
+      ufunc = np.__dict__[attr]
+      if isinstance(ufunc,np.ufunc):
+        # call function on data, using _apply_ufunc
+        return functools.partial(self._apply_ufunc, ufunc)
+    else: raise AttributeError # raise previous exception
+  
   @UnaryCheck    
   def __iadd__(self, a):
     ''' Add a number or an array to the existing data. '''      
@@ -1200,7 +1248,7 @@ class Variable(object):
   def __add__(self, other):
     ''' Add two variables and return a new variable. '''
     data = self.data_array + other.data_array
-    name = '%s + %s'%(self.name,other.name)
+    name = '{:s} + {:s}'.format(self.name,other.name)
     units = self.units
     return data, name, units
 
@@ -1208,7 +1256,7 @@ class Variable(object):
   def __sub__(self, other):
     ''' Subtract two variables and return a new variable. '''
     data = self.data_array - other.data_array
-    name = '%s - %s'%(self.name,other.name)
+    name = '{:s} - {:s}'.format(self.name,other.name)
     units = self.units
     return data, name, units
   
@@ -1216,16 +1264,17 @@ class Variable(object):
   def __mul__(self, other):
     ''' Multiply two variables and return a new variable. '''
     data = self.data_array * other.data_array
-    name = '%s x %s'%(self.name,other.name)
-    units = '%s %s'%(self.units,other.units)
+    name = '{:s} x {:s}'.format(self.name,other.name)
+    units = '{:s} {:s}'.format(self.units,other.units)
     return data, name, units
 
   @BinaryCheckAndCreateVar(sameUnits=False)
   def __div__(self, other):
     ''' Divide two variables and return a new variable. '''
     data = self.data_array / other.data_array
-    name = '%s / %s'%(self.name,other.name)
-    units = '%s / (%s)'%(self.units,other.units)
+    name = '{:s} / {:s}'.format(self.name,other.name)
+    if self.units == other.units: units = ''
+    else: units = '{:s} / ({:s})'.format(self.units,other.units)
     return data, name, units
      
 
@@ -1403,6 +1452,20 @@ class Axis(Variable):
     # return
     if not self.ascending: idx = self.len - idx -1 # flip again
     return idx 
+
+  def getIndices(self, coords):
+    ''' Method to find occurences of coords and return their index values. '''
+    if not self.data: self.load()
+    if not isinstance(coords,(tuple,list,np.ndarray)): raise TypeError                
+    # now use numpy to extract matching index
+    idxs = np.where(np.in1d(self.coord, coords)) # find exact matches and indices of matches
+    idxs = idxs[0] # where() always returns a tuple, we just want an array
+    if len(idxs) == 0:
+      # possible problems with floats
+      if np.issubdtype(self.dtype, np.inexact): 
+        warn("The current implementation may fail for floats due to machine precision differences (non-exact match).") 
+    # return index of coordinate value
+    return idxs
                   
 
 class Dataset(object):
@@ -1466,7 +1529,7 @@ class Dataset(object):
     if not isinstance(ax,Axis): raise TypeError
     if not self.hasAxis(ax.name): # add new axis, if it does not already exist        
       if ax.name in self.__dict__: 
-        raise AttributeError, "Cannot add Axis '%s' to Dataset, because an attribute of the same name already exits!"%(ax.name)
+        raise AttributeError, "Cannot add Axis '{:s}' to Dataset, because an attribute of the same name already exits!".format(ax.name)
       # add variable to dictionary
       if copy: self.axes[ax.name] = ax.copy()
       else: self.axes[ax.name] = ax
@@ -1476,7 +1539,7 @@ class Dataset(object):
         self.replaceAxis(ax)
       elif not ax is self.axes[ax.name]:        
         if len(ax) != len(self.axes[ax.name]): 
-          raise AxisError, "Error: Axis '%s' from Variable and Dataset are different!"%ax.name
+          raise AxisError, "Error: Axis '{:s}' from Variable and Dataset are different!".format(ax.name)
         if ax.data and self.axes[ax.name].data:
           if not isEqual(ax.coord,self.axes[ax.name].coord): raise DataError
     # set dataset attribute
@@ -1489,7 +1552,7 @@ class Dataset(object):
     if not isinstance(var,Variable): raise TypeError
     if var.name in self.__dict__: 
       if overwrite and self.hasVariable(var.name): self.replaceVariable(var)
-      else: raise AttributeError, "Cannot add Variable '%s' to Dataset, because an attribute of the same name already exits!"%(var.name)      
+      else: raise AttributeError, "Cannot add Variable '{:s}' to Dataset, because an attribute of the same name already exits!".format(var.name)      
     else:       
       # add new axes, or check, if already present; if present, replace, if different
       for ax in var.axes: 
@@ -1856,7 +1919,7 @@ class Dataset(object):
   def __getattr__(self, attr):
     ''' if the call is a Variable method that is not provided by Dataset, call the Variable method
         on all Variables using _apply_to_all '''
-    # N.B.: this method is only called as a fallback, if not class/instance attribute exists,
+    # N.B.: this method is only called as a fallback, if no class/instance attribute exists,
     #       i.e. Dataset methods and attributes will always have precedent 
     # check if Variables have this attribute
     if any([hasattr(var,attr) for var in self.variables.itervalues()]):
