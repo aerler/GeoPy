@@ -9,9 +9,11 @@ utility functions, mostly for plotting, that are not called directly
 # external imports
 from types import ModuleType
 import numpy as np
+from warnings import warn
 # internal imports
 from geodata.base import Variable
 from geodata.misc import VariableError, AxisError, isInt
+from misc.signalsmooth import smooth # commonly used in conjunction with plotting...
 
 # import matplotlib as mpl
 # import matplotlib.pylab as pyl
@@ -37,112 +39,6 @@ def loadMPL(linewidth=None, mplrc=None):
   # return matplotlib instance with new parameters
   return mpl, pyl
 
-
-# method to return a figure and an array of ImageGrid axes
-def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=None,
-	     sharex=None, sharey=None, AxesGrid=False, ngrids=None, direction='row',
-	     axes_pad = None, add_all=True, share_all=None, aspect=False,
-	     label_mode='L', cbar_mode=None, cbar_location='right',
-	     cbar_pad=None, cbar_size='5%', axes_class=None, lreduce=True): 
-  # configure matplotlib
-  if mpl is None: import matplotlib as mpl
-  elif isinstance(mpl,dict): mpl = loadMPL(**mpl) # there can be a mplrc, but also others
-  elif not isinstance(mpl,ModuleType): raise TypeError
-  from lineplots import MyFigure, MyLocatableAxes # prevent circular reference
-  # figure out subplots
-  if isinstance(subplot,(np.integer,int)):
-    if subplot == 1: subplot = (1,1)
-    elif subplot == 2: subplot = (1,2)
-    elif subplot == 3: subplot = (1,3)
-    elif subplot == 4: subplot = (2,2)
-    elif subplot == 6: subplot = (2,3)
-    elif subplot == 9: subplot = (3,3)
-    else: raise NotImplementedError
-  elif not (isinstance(subplot,(tuple,list)) and len(subplot) == 2) and all(isInt(subplot)): raise TypeError    
-  # create figure
-  if figsize is None: 
-    if subplot == (1,1): figsize = (3.75,3.75)
-    elif subplot == (1,2) or subplot == (1,3): figsize = (6.25,3.75)
-    elif subplot == (2,1) or subplot == (3,1): figsize = (3.75,6.25)
-    else: figsize = (6.25,6.25)
-    #elif subplot == (2,2) or subplot == (3,3): figsize = (6.25,6.25)
-    #else: raise NotImplementedError
-  # figure out margins
-  if margins is None:
-    # N.B.: the rectangle definition is presumably left, bottom, width, height
-    if subplot == (1,1): margins = (0.09,0.09,0.88,0.88)
-    elif subplot == (1,2) or subplot == (1,3): margins = (0.06,0.1,0.92,0.87)
-    elif subplot == (2,1) or subplot == (3,1): margins = (0.09,0.11,0.88,0.82)
-    elif subplot == (2,2) or subplot == (3,3): margins = (0.055,0.055,0.925,0.925)
-    else: margins = (0.09,0.11,0.88,0.82)
-    #elif subplot == (2,2) or subplot == (3,3): margins = (0.09,0.11,0.88,0.82)
-    #else: raise NotImplementedError    
-    if title is not None: margins = margins[:3]+(margins[3]-0.03,) # make room for title
-  if AxesGrid:
-    if share_all is None: share_all = True
-    if axes_pad is None: axes_pad = 0.05
-    # create axes using the Axes Grid package
-    fig = mpl.pylab.figure(facecolor='white', figsize=figsize, FigureClass=MyFigure)
-    if axes_class is None: axes_class=(MyLocatableAxes,{})
-    from mpl_toolkits.axes_grid1 import ImageGrid
-    # AxesGrid: http://matplotlib.org/mpl_toolkits/axes_grid/users/overview.html
-    grid = ImageGrid(fig, margins, nrows_ncols = subplot, ngrids=ngrids, direction=direction, 
-            		     axes_pad=axes_pad, add_all=add_all, share_all=share_all, aspect=aspect, 
-                     label_mode=label_mode, cbar_mode=cbar_mode, cbar_location=cbar_location, 
-                     cbar_pad=cbar_pad, cbar_size=cbar_size, axes_class=axes_class)
-    # return figure and axes
-    axes = tuple([ax for ax in grid]) # this is already flattened
-    if lreduce and len(axes) == 1: axes = axes[0] # return a bare axes instance, if there is only one axes    
-  else:
-    # create axes using normal subplot routine
-    if axes_pad is None: axes_pad = 0.03
-    wspace = hspace = axes_pad
-    if share_all: 
-      sharex='all'; sharey='all'
-    if sharex is True or sharex is None: sharex = 'col' # default
-    if sharey is True or sharey is None: sharey = 'row'
-    if sharex: hspace -= 0.015
-    if sharey: wspace -= 0.015
-    # create figure
-    from matplotlib.pyplot import subplots    
-    # GridSpec: http://matplotlib.org/users/gridspec.html 
-    fig, axes = subplots(subplot[0], subplot[1], sharex=sharex, sharey=sharey,
-			                   squeeze=lreduce, facecolor='white', figsize=figsize, FigureClass=MyFigure)    
-    # there is also a subplot_kw=dict() and fig_kw=dict()
-    # just adjust margins
-    margin_dict = dict(left=margins[0], bottom=margins[1], right=margins[0]+margins[2], 
-                       top=margins[1]+margins[3], wspace=wspace, hspace=hspace)
-    fig.subplots_adjust(**margin_dict)
-  # add figure title
-  if name is not None: fig.canvas.set_window_title(name) # window title
-  if title is not None: fig.suptitle(title) # title on figure (printable)
-  # return Figure/ImageGrid and tuple of axes
-  #if AxesGrid: fig = grid # return ImageGrid instead of figure
-  return fig, axes
-
-# function to adjust subplot parameters
-def updateSubplots(fig, mode='shift', **kwargs):
-  ''' simple helper function to move (relocate), shift, or scale subplot margins '''
-  pos = fig.subplotpars
-  margins = dict() # original plot margins
-  margins['left'] = pos.left; margins['right'] = pos.right 
-  margins['top'] = pos.top; margins['bottom'] = pos.bottom
-  margins['wspace'] = pos.wspace; margins['hspace'] = pos.hspace
-  # update subplot margins
-  if mode == 'move': margins.update(kwargs)
-  else: 
-    for key,val in kwargs.iteritems():
-      if key in margins:
-        if mode == 'shift': margins[key] += val
-        elif mode == 'scale': margins[key] *= val
-  # finally, actually update figure
-  fig.subplots_adjust(**margins)
-  # and now repair damage: restore axes
-  for ax in fig.axes:
-    if ax.get_title():
-      pos = ax.get_position()
-      pos = pos.from_bounds(x0=pos.x0, y0=pos.y0, width=pos.width, height=pos.height-0.03)    
-      ax.set_position(pos)
 
 # method to check units and name, and return scaled plot value (primarily and internal helper function)
 def getPlotValues(var, checkunits=None, checkname=None):
@@ -186,70 +82,166 @@ def logTicks(ticks, base=None, power=0):
     elif power < 0: strtck[idx] = '0.' + '0'*(-1-power) + strtck[idx]
   # return ticks
   return strtck
-# special versions
+
+# special version for wave numbers
 # N, returns ['2','','4','','6','','','']
-def nTicks(**kwargs): return logTicks([2,4,6],**kwargs) 
+def nTicks(**kwargs): return logTicks([2,4,6],**kwargs)
+
+# special version for pressure levelse 
 # p, returns ['2','3','','5','','7','','']
 def pTicks(**kwargs): return logTicks([2,3,5,7],**kwargs)
 
 
-# function to smooth a vector (numpy array): moving mean, nothing fancy
-def smoothVector(x,i):
-  xs = x.copy() # smoothed output vector
-  i = 2*i
-  d = i+1 # denominator  for later
-  while i>0:    
-    t = x.copy(); t[i:] = t[:-i];  xs += t
-    t = x.copy(); t[:-i] = t[i:];  xs += t
-    i-=2
-  return xs/d
-
-
-# function to traverse nested lists recursively and perform the operation fct on the end members
-def traverseList(lsl, fct):
-  # traverse nested lists recursively
-  if isinstance(lsl, list):
-    return [traverseList(lsl[i], fct) for i in range(len(lsl))]
-  # break recursion and apply function using the list element as argument 
-  else: return fct(lsl)
-
-  
 # function to expand level lists and colorbar ticks
-def expandLevelList(arg, vec=None):
-  from numpy import asarray, ndarray, linspace, min, max
-  ## figure out level list and return numpy array of levels
+def expandLevelList(levels, data=None):  
+  ''' figure out level list based on level parameters and actual data '''
   # trivial case: already numpy array
-  if isinstance(arg,ndarray):
-    return arg 
-  # list: recast as array
-  elif isinstance(arg,list):
-    return asarray(arg)
+  if isinstance(levels,np.ndarray):
+    return levels 
   # tuple with three or two elements: use as argument to linspace 
-  elif isinstance(arg,tuple) and (len(arg)==3 or len(arg)==2):
-    return linspace(*arg)
-  # use additional info in vec to determine limits
+  elif isinstance(levels,tuple) and (len(levels)==3 or len(levels)==2):
+    return np.linspace(*levels)
+  # list or long tuple: recast as array
+  elif isinstance(levels,(list,tuple)):
+    return np.asarray(levels)
+  # use additional info in data to determine limits
   else:
-    # figure out vec limits
+    # figure out vector limits
     # use first two elements, third is number of levels
-    if isinstance(vec,(tuple,list)) and len(vec)==3:  
-      minVec = min(vec[:2]); maxVec = max(vec[:2])
+    if isinstance(data,(tuple,list)) and len(data)==3:  
+      minVec = min(data[:2]); maxVec = max(data[:2])
     # just treat as level list
     else: 
-      minVec = min(vec); maxVec = max(vec)
-    # interpret arg as number of levels in given interval
+      minVec = min(data); maxVec = max(data)
+    # interpret levels as number of levels in given interval
     # only one element: just number of levels
-    if isinstance(arg,(tuple,list,ndarray)) and len(arg)==1: 
-      return linspace(minVec,maxVec,arg[0])
+    if isinstance(levels,(tuple,list,np.ndarray)) and len(levels)==1: 
+      return np.linspace(minVec,maxVec,levels[0])
     # numerical value: use as number of levels
-    elif isinstance(arg,(int,float)):
-      return linspace(minVec,maxVec,arg)        
+    elif isinstance(levels,(int,float)):
+      return np.linspace(minVec,maxVec,levels)        
+
+
+## legacy functions
+
+# method to return a figure and an array of ImageGrid axes
+def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=None,
+             sharex=None, sharey=None, AxesGrid=False, ngrids=None, direction='row',
+             axes_pad = None, add_all=True, share_all=None, aspect=False,
+             label_mode='L', cbar_mode=None, cbar_location='right',
+             cbar_pad=None, cbar_size='5%', axes_class=None, lreduce=True): 
+  # configure matplotlib
+  warn('Deprecated function: use Figure or Axes class methods.')
+  if mpl is None: import matplotlib as mpl
+  elif isinstance(mpl,dict): mpl = loadMPL(**mpl) # there can be a mplrc, but also others
+  elif not isinstance(mpl,ModuleType): raise TypeError
+  from plotting.figure import MyFigure # prevent circular reference
+  # figure out subplots
+  if isinstance(subplot,(np.integer,int)):
+    if subplot == 1: subplot = (1,1)
+    elif subplot == 2: subplot = (1,2)
+    elif subplot == 3: subplot = (1,3)
+    elif subplot == 4: subplot = (2,2)
+    elif subplot == 6: subplot = (2,3)
+    elif subplot == 9: subplot = (3,3)
+    else: raise NotImplementedError
+  elif not (isinstance(subplot,(tuple,list)) and len(subplot) == 2) and all(isInt(subplot)): raise TypeError    
+  # create figure
+  if figsize is None: 
+    if subplot == (1,1): figsize = (3.75,3.75)
+    elif subplot == (1,2) or subplot == (1,3): figsize = (6.25,3.75)
+    elif subplot == (2,1) or subplot == (3,1): figsize = (3.75,6.25)
+    else: figsize = (6.25,6.25)
+    #elif subplot == (2,2) or subplot == (3,3): figsize = (6.25,6.25)
+    #else: raise NotImplementedError
+  # figure out margins
+  if margins is None:
+    # N.B.: the rectangle definition is presumably left, bottom, width, height
+    if subplot == (1,1): margins = (0.09,0.09,0.88,0.88)
+    elif subplot == (1,2) or subplot == (1,3): margins = (0.06,0.1,0.92,0.87)
+    elif subplot == (2,1) or subplot == (3,1): margins = (0.09,0.11,0.88,0.82)
+    elif subplot == (2,2) or subplot == (3,3): margins = (0.055,0.055,0.925,0.925)
+    else: margins = (0.09,0.11,0.88,0.82)
+    #elif subplot == (2,2) or subplot == (3,3): margins = (0.09,0.11,0.88,0.82)
+    #else: raise NotImplementedError    
+    if title is not None: margins = margins[:3]+(margins[3]-0.03,) # make room for title
+  if AxesGrid:
+    if share_all is None: share_all = True
+    if axes_pad is None: axes_pad = 0.05
+    # create axes using the Axes Grid package
+    fig = mpl.pylab.figure(facecolor='white', figsize=figsize, FigureClass=MyFigure)
+    if axes_class is None:
+      from plotting.axes import MyLocatableAxes  
+      axes_class=(MyLocatableAxes,{})
+    from mpl_toolkits.axes_grid1 import ImageGrid
+    # AxesGrid: http://matplotlib.org/mpl_toolkits/axes_grid/users/overview.html
+    grid = ImageGrid(fig, margins, nrows_ncols = subplot, ngrids=ngrids, direction=direction, 
+                     axes_pad=axes_pad, add_all=add_all, share_all=share_all, aspect=aspect, 
+                     label_mode=label_mode, cbar_mode=cbar_mode, cbar_location=cbar_location, 
+                     cbar_pad=cbar_pad, cbar_size=cbar_size, axes_class=axes_class)
+    # return figure and axes
+    axes = tuple([ax for ax in grid]) # this is already flattened
+    if lreduce and len(axes) == 1: axes = axes[0] # return a bare axes instance, if there is only one axes    
+  else:
+    # create axes using normal subplot routine
+    if axes_pad is None: axes_pad = 0.03
+    wspace = hspace = axes_pad
+    if share_all: 
+      sharex='all'; sharey='all'
+    if sharex is True or sharex is None: sharex = 'col' # default
+    if sharey is True or sharey is None: sharey = 'row'
+    if sharex: hspace -= 0.015
+    if sharey: wspace -= 0.015
+    # create figure
+    from matplotlib.pyplot import subplots    
+    # GridSpec: http://matplotlib.org/users/gridspec.html 
+    fig, axes = subplots(subplot[0], subplot[1], sharex=sharex, sharey=sharey,
+                         squeeze=lreduce, facecolor='white', figsize=figsize, FigureClass=MyFigure)    
+    # there is also a subplot_kw=dict() and fig_kw=dict()
+    # just adjust margins
+    margin_dict = dict(left=margins[0], bottom=margins[1], right=margins[0]+margins[2], 
+                       top=margins[1]+margins[3], wspace=wspace, hspace=hspace)
+    fig.subplots_adjust(**margin_dict)
+  # add figure title
+  if name is not None: fig.canvas.set_window_title(name) # window title
+  if title is not None: fig.suptitle(title) # title on figure (printable)
+  # return Figure/ImageGrid and tuple of axes
+  #if AxesGrid: fig = grid # return ImageGrid instead of figure
+  return fig, axes
+
+
+# function to adjust subplot parameters
+def updateSubplots(fig, mode='shift', **kwargs):
+  ''' simple helper function to move (relocate), shift, or scale subplot margins '''
+  warn('Deprecated function: use Figure or Axes class methods.')
+  pos = fig.subplotpars
+  margins = dict() # original plot margins
+  margins['left'] = pos.left; margins['right'] = pos.right 
+  margins['top'] = pos.top; margins['bottom'] = pos.bottom
+  margins['wspace'] = pos.wspace; margins['hspace'] = pos.hspace
+  # update subplot margins
+  if mode == 'move': margins.update(kwargs)
+  else: 
+    for key,val in kwargs.iteritems():
+      if key in margins:
+        if mode == 'shift': margins[key] += val
+        elif mode == 'scale': margins[key] *= val
+  # finally, actually update figure
+  fig.subplots_adjust(**margins)
+  # and now repair damage: restore axes
+  for ax in fig.axes:
+    if ax.get_title():
+      pos = ax.get_position()
+      pos = pos.from_bounds(x0=pos.x0, y0=pos.y0, width=pos.width, height=pos.height-0.03)    
+      ax.set_position(pos)
 
 
 ## add subplot/axes label
 def addLabel(ax, label=None, loc=1, stroke=False, size=None, prop=None, **kwargs):
   from matplotlib.offsetbox import AnchoredText 
   from matplotlib.patheffects import withStroke
-  from string import lowercase    
+  from string import lowercase
+  warn('Deprecated function: use Figure or Axes class methods.')    
   # expand list
   if not isinstance(ax,(list,tuple)): ax = [ax] 
   l = len(ax)

@@ -8,3 +8,5 @@ The package is intended for use with climatological datasets in the form of Data
 
 @author: Andre R. Erler, GPL v3
 '''
+
+from plotting.figure import getFigAx

@@ -23,10 +23,15 @@ from datasets.common import data_root
 # import modules to be tested
 from plotting.lineplots import linePlot , addSharedLegend
 from plotting.mapplots import srfcPlot
-from plotting.utils import getFigAx
+from plotting.figure import getFigAx
 # use common MPL instance
 from plotting.utils import loadMPL
 mpl,pyl = loadMPL(linewidth=1.)
+
+
+# RAM disk settings ("global" variable)
+RAM = True # whether or not to use a RAM disk
+ramdisk = '/media/tmp/' # folder where RAM disk is mounted
 
 
 class LinePlotTest(unittest.TestCase):  
@@ -57,16 +62,20 @@ class LinePlotTest(unittest.TestCase):
     ''' test a simple line plot with two lines '''    
     fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], mpl=mpl) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyAxes'
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var1 = self.var1; var2 = self.var2
     # create plot
     plts = ax.linePlot([var1, var2], ylabel='custom label [{1:s}]', ylim=var1.limits(), legend=2)
     assert len(plts) == 2
+    # add label
+    ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
   
   def testAdvancedLinePlot(self):
     ''' test more advanced options of the line plot function '''    
     fig,ax = getFigAx(1, title='Fancy Plot Styles', name=sys._getframe().f_code.co_name[4:]) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyAxes'
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var1 = self.var1; var2 = self.var2
     # define fancy attributes
@@ -84,6 +93,7 @@ class LinePlotTest(unittest.TestCase):
     fig,axes = getFigAx(4, AxesGrid=True, name=sys._getframe().f_code.co_name[4:]) # use test method name as title
     #assert grid.__class__.__name__ == 'ImageGrid'
     assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyLocatableAxes'
     assert isinstance(axes,tuple) # should return a list of axes
     var1 = self.var1; var2 = self.var2
     # create plot
@@ -95,6 +105,7 @@ class LinePlotTest(unittest.TestCase):
     ''' test a two panel line plot with combined legend '''    
     fig,axes = getFigAx(4, sharey=True, sharex=True, name=sys._getframe().f_code.co_name[4:]) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyAxes'
     assert isinstance(axes,(list,tuple,np.ndarray)) # should return a list of axes
     var1 = self.var1; var2 = self.var2
     # create plot
@@ -103,8 +114,21 @@ class LinePlotTest(unittest.TestCase):
       assert len(plts) == 2
     # add common legend
     fig.addSharedLegend(plts=plts)
+    # add labels
+    fig.addLabels(labels=None, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
+    
     
 if __name__ == "__main__":
+
+    
+    specific_tests = None
+#     specific_tests = ['CombinedLinePlot']    
+
+    # list of tests to be performed
+    tests = [] 
+    # list of variable tests
+    tests += ['LinePlot'] 
+    
 
     # construct dictionary of test classes defined above
     test_classes = dict()
@@ -113,19 +137,14 @@ if __name__ == "__main__":
       if key[-4:] == 'Test':
         test_classes[key[:-4]] = val
 
-    # list of tests to be performed
-    tests = [] 
-    # list of variable tests
-    tests += ['LinePlot'] 
-    
-    # RAM disk settings ("global" variable)
-    RAM = False # whether or not to use a RAM disk
-    ramdisk = '/media/tmp/' # folder where RAM disk is mounted
-    
+
     # run tests
     report = []
-    for test in tests:
-      s = unittest.TestLoader().loadTestsFromTestCase(test_classes[test])
+    for test in tests: # test+'.test'+specific_test
+      if specific_tests: 
+        test_names = ['plotting_test.'+test+'Test.test'+s_t for s_t in specific_tests]
+        s = unittest.TestLoader().loadTestsFromNames(test_names)
+      else: s = unittest.TestLoader().loadTestsFromTestCase(test_classes[test])
       report.append(unittest.TextTestRunner(verbosity=2).run(s))
       
     # print summary
@@ -141,7 +160,10 @@ if __name__ == "__main__":
     if errs + fails == 0:
       print("\n   ***   All {:d} Test(s) successfull!!!   ***   \n".format(runs))
     else:
-      print("\n   ###   Test Summary:   Ran {:d} Test(s), encountered {:d} Failure(s) and {:d} Error(s)   ###   \n".format(runs,errs,fails))
+      print("\n   ###     Test Summary:      ###   \n" + 
+            "   ###     Ran {:2d} Test(s)     ###   \n".format(runs) + 
+            "   ###      {:2d} Failure(s)     ###   \n".format(errs) + 
+            "   ###      {:2d} Error(s)       ###   \n".format(fails))
     
     # show plots
     pyl.show()
