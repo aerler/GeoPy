@@ -162,8 +162,8 @@ if __name__ == "__main__":
     else:
       print("\n   ###     Test Summary:      ###   \n" + 
             "   ###     Ran {:2d} Test(s)     ###   \n".format(runs) + 
-            "   ###      {:2d} Failure(s)     ###   \n".format(errs) + 
-            "   ###      {:2d} Error(s)       ###   \n".format(fails))
+            "   ###      {:2d} Failure(s)     ###   \n".format(fails)+ 
+            "   ###      {:2d} Error(s)       ###   \n".format(errs))
     
     # show plots
     pyl.show()

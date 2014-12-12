@@ -331,14 +331,20 @@ class BaseVarTest(unittest.TestCase):
     ''' test reducing arithmetic functions '''
     # get test objects
     var = self.var; t,x,y = self.axes # for upwards compatibility!
+    # not all tests are necessary!
     #print self.data.std(ddof=3), var.std(ddof=3)
-    assert isEqual(np.nanmean(self.data), var.mean())
+    assert isEqual(np.nansum(self.data), var.sum())
+#     assert isEqual(np.nanmean(self.data), var.mean())
     assert isEqual(np.nanstd(self.data, ddof=1), var.std(ddof=1))
+#     assert isEqual(np.nanvar(self.data, ddof=1), var.var(ddof=1))
     assert isEqual(np.nanmax(self.data), var.max())
-    assert isEqual(np.nanmin(self.data), var.min())
+#     assert isEqual(np.nanmin(self.data), var.min())
     assert isEqual(np.nanmean(self.data,axis=var.axisIndex(t.name)), var.mean(**{t.name:None}).getArray())
-    assert isEqual(np.nanstd(self.data, axis=var.axisIndex(t.name),ddof=3), var.std(ddof=3, **{t.name:None}).getArray())
-    assert isEqual(np.nanmax(self.data,axis=var.axisIndex(x.name)), var.max(**{x.name:None}).getArray())
+#     assert isEqual(np.nanstd(self.data, axis=var.axisIndex(t.name),ddof=3), var.std(ddof=3, **{t.name:None}).getArray())
+    varvar = var.var(ddof=3, **{t.name:None})
+    assert varvar.units == '({:s})^2'.format(var.units) # check units!
+    assert isEqual(np.nanvar(self.data, axis=var.axisIndex(t.name),ddof=3), varvar.getArray())
+#     assert isEqual(np.nanmax(self.data,axis=var.axisIndex(x.name)), var.max(**{x.name:None}).getArray())
     assert isEqual(np.nanmin(self.data, axis=var.axisIndex(y.name)), var.min(**{y.name:None}).getArray())
     # reduction fcts. of Variables ignore NaN values
     # test histogram
@@ -360,6 +366,15 @@ class BaseVarTest(unittest.TestCase):
     hist,bin_edges  = np.histogram(self.var.getArray(), bins=binedgs, density=True)
     assert isEqual(binedgs, bin_edges)
     assert isEqual(hvar, hist, masked_equal=True)
+    # test cumulative distribution function
+    hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=False, asVar=False, axis='time')
+    cdf = np.cumsum(hvar, axis=0)
+    cvar = var.CDF(bins=bins, binedgs=binedgs, lnormalize=False, asVar=False, axis='time')
+    assert isEqual(cdf, cvar, masked_equal=True)
+    cdf /= np.sum(hvar,axis=0)
+    cvar = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=True, axis='time')
+    assert isEqual(cdf, cvar.data_array, masked_equal=True)
+    assert cvar.units == ''
     
   def testSeasonalReduction(self):
     ''' test functions that reduce monthly data to yearly data '''
@@ -404,7 +419,7 @@ class BaseVarTest(unittest.TestCase):
     assert all([dim > 1 for dim in var.shape]) 
     
   def testUnaryArithmetic(self):
-    ''' test unary arithmetic functions and ufuncs'''
+    ''' test in-place and unary arithmetic functions and ufuncs'''
     # get test objects
     var = self.var
     # arithmetic test
@@ -415,13 +430,24 @@ class BaseVarTest(unittest.TestCase):
     # test results
     #     print (self.data.filled() - var.data_array.filled()).max()
     assert isEqual(self.data, var.data_array)  
+    # more decorator tests
+    data = self.data.copy()
+    data_std = var.standardize(asVar=False, linplace=False)
+    assert isEqual(data, var.data_array)
+    std_data = data.copy(); std_data -= np.nanmean(std_data); std_data /= np.nanstd(std_data)  
+    assert isEqual(data_std, std_data)
+    # in-place operation
+    rav = var.copy(deepcopy=True)
+    rav.standardize(asVar=False, linplace=True)
+    assert isEqual(data_std, rav.data_array)
+    assert rav.units == ''
     # test some ufuncs
-    lnvar = var.log(lwarn=False)
-    assert isEqual(np.log(self.data), lnvar.data_array)
-    lnvar.units = ''
-    elvar = lnvar.exp(lwarn=True)
-    assert isEqual(np.exp(np.log(self.data)), elvar.data_array)
-    assert elvar.units == ''   
+    expvar = var.exp(lwarn=False)
+    assert isEqual(np.exp(self.data), expvar.data_array)
+    expvar.units = ''
+    levar = expvar.log(lwarn=True)
+    assert isEqual(np.log(np.exp(self.data)), levar.data_array)
+    assert levar.units == ''
     
 
 class BaseDatasetTest(unittest.TestCase):  
@@ -570,7 +596,8 @@ class BaseDatasetTest(unittest.TestCase):
     assert all(dataset.data.values())
     mds = dataset.mean(axis='time') # mean() is of course a Variable method
     assert isinstance(mds,Dataset) and len(mds) <= len(dataset) # number of variables (less, because string vars don't average...)
-    assert all([varname in dataset for varname in mds.variables.iterkeys()])
+    for varname in mds.variables.iterkeys():
+      assert varname in dataset or varname[:-5] in dataset # mean vars have '_mean' appended
     assert not any([var.hasAxis('time') for var in mds.variables.itervalues()])
     hds = dataset.histogram(bins=3, lflatten=True, asVar=False, ldensity=False)
     assert isinstance(hds,dict) and len(hds) <= len(dataset) # number of variables (less, because string vars don't average...)
@@ -1096,7 +1123,7 @@ if __name__ == "__main__":
 
         
     specific_tests = None
-#     specific_tests = ['Create']    
+#     specific_tests = ['ReductionArithmetic']    
 
     # list of tests to be performed
     tests = [] 
@@ -1142,6 +1169,6 @@ if __name__ == "__main__":
     else:
       print("\n   ###     Test Summary:      ###   \n" + 
             "   ###     Ran {:2d} Test(s)     ###   \n".format(runs) + 
-            "   ###      {:2d} Failure(s)     ###   \n".format(errs) + 
-            "   ###      {:2d} Error(s)       ###   \n".format(fails))
+            "   ###      {:2d} Failure(s)     ###   \n".format(fails)+ 
+            "   ###      {:2d} Error(s)       ###   \n".format(errs))
     

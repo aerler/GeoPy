@@ -19,22 +19,26 @@ from misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, prin
 from misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 
 
-class UnaryCheck(object):
-  ''' Decorator class that implements some sanity checks for unary arithmetic operations. '''
+class UnaryCheckAndCreateVar(object):
+  ''' Decorator class for unary arithmetic operations that implements some sanity checks and 
+      handles in-place operation or creation of a new Variable instance. '''
   def __init__(self, op):
     ''' Save original operation. '''
     self.op = op
-  def __call__(self, orig, arg):
+  def __call__(self, orig, asVar=True, linplace=False, **kwargs):
     ''' Perform sanity checks, then execute operation, and return result. '''
-    if isinstance(arg,np.ndarray): 
-      pass # allow broadcasting and type-casting
-#       assert orig.shape == arg.shape, 'Arrays need to have the same shape!' 
-#       assert orig.dtype == arg.dtype, 'Arrays need to have the same type!'
-    elif not isinstance(arg, numbers.Number): raise TypeError, 'Can only operate with numerical types!'
     if not orig.data: orig.load()
-    var = self.op(orig,arg)
-    if not isinstance(var,Variable): raise TypeError
-    return var # return function result
+    # apply operation
+    data, name, units = self.op(orig, linplace=linplace, **kwargs)
+    # create new Variable or assign other return
+    if linplace:
+      var = orig
+      var.units = units # don't change name, though
+    elif asVar: var = orig.copy(name=name, units=units, data=data)
+    else: var = data
+    if asVar and not isinstance(var,Variable): raise TypeError
+    # return function result
+    return var
   def __get__(self, instance, klass):
     ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
     # N.B.: similar implementation to 'partial': need to return a callable that behaves like the instance method
@@ -44,7 +48,7 @@ class UnaryCheck(object):
     return functools.partial(self.__call__, instance) # but using 'partial' is simpler
 
 
-def BinaryCheckAndCreateVar(sameUnits=True):
+def BinaryCheckAndCreateVar(sameUnits=True, linplace=False):
   ''' A decorator function that accepts arguments and returns a decorator class with fixed parameter values. '''
   class BinaryCheckAndCreateVar_Class(object):
     ''' A decorator to perform similarity checks before binary operations and create a new variable instance 
@@ -52,26 +56,36 @@ def BinaryCheckAndCreateVar(sameUnits=True):
     def __init__(self, binOp):
       ''' Save original operation and parameters. '''
       self.binOp = binOp
-      self.sameUnits = sameUnits # passed to constructor function
+#       self.sameUnits = sameUnits # passed to constructor function
     # define method wrapper (this is now the actual decorator)
-    def __call__(self, orig, other):
+    def __call__(self, orig, other, sameUnits=sameUnits, asVar=True, linplace=linplace, **kwargs):
       ''' Perform sanity checks, then execute operation, and return result. '''
-      if not isinstance(other,Variable): raise TypeError, 'Can only add two \'Variable\' instances!' 
-      if self.sameUnits: assert orig.units == other.units, 'Variable units have to be identical for addition!'
-      if orig.shape != other.shape: raise AxisError, 'Variables need to have the same shape and compatible axes!'
-      if not orig.data: orig.load()
-      if not other.data: other.load()
-      for lax,rax in zip(orig.axes,other.axes):
-        if (lax.coord != rax.coord).any(): raise AxisError,  'Variables need to have identical coordinate arrays!'
+      if isinstance(other,Variable): # raise TypeError, 'Can only add two Variable instances!' 
+        if orig.shape != other.shape: 
+          raise AxisError, 'Variables need to have the same shape and compatible axes!'
+        if sameUnits and orig.units != other.units: 
+          raise VariableError, 'Variable units have to be identical for addition!'
+        for lax,rax in zip(orig.axes,other.axes):
+          if (lax.coord != rax.coord).any(): raise AxisError,  'Variables need to have identical coordinate arrays!'
+        if not other.data: other.load()
+      elif not isinstance(other, (np.ndarray,numbers.Number)): 
+        raise TypeError, 'Can only operate with Variables or numerical types!'
+        # N.B.: don't check ndarray shapes, because we want to allow broadcasting        
+      if not orig.data: orig.load()      
       # call original method
-      data, name, units = self.binOp(orig, other)
-      # construct common dict of attributes
-      atts = joinDicts(orig.atts, other.atts)
-      atts['name'] = name; atts['units'] = units
-      # assign axes (copy from orig)
-      axes = [ax for ax in orig.axes]
-      var = Variable(name=name, units=units, axes=axes, data=data, atts=atts)
-      return var # return new variable instance
+      data, name, units = self.binOp(orig, other, linplace=linplace, **kwargs)
+      if linplace:
+        var = orig # in-place operation should already have changed data_array 
+      elif asVar:
+        # construct resulting variable (copy from orig)
+        atts = joinDicts(orig.atts, other.atts)
+        atts['name'] = name; atts['units'] = units
+        var = orig.copy(data=data, atts=atts)
+      else:
+        var = data
+      if asVar and not isinstance(var,Variable): raise TypeError
+      # return new variable instance or data
+      return var
     def __get__(self, instance, klass):
       ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
       return functools.partial(self.__call__, instance)
@@ -106,7 +120,7 @@ class ReduceVar(object): # not a Variable child!!!
       if fillValue is not None and var.masked: data = var.data_array.filled(fillValue)
       else: data = var.data_array
       # apply operation without arguments, i.e. over all axes
-      data = self.reduceop(var, data, **kwargs)
+      data, name, units = self.reduceop(var, data, **kwargs)
       # whether or not to cast as Variable (default: No)
       if asVar is None: asVar = False # default for total reduction
       if asVar: newaxes = tuple()
@@ -132,10 +146,11 @@ class ReduceVar(object): # not a Variable child!!!
       # remove mask, if fill value is given (some operations don't work with masked arrays)
       if fillValue is not None and var.masked: data = data.filled(fillValue)
       ## compute reduction
-      axlist.reverse() # start from the back      
+      axlist.reverse() # start from the back  
+      name = var.name; units = var.units # defaults, in case axlist is empty...    
       for axis in axlist:
         # apply reduction operation with axis argument, looping over axes
-        data = self.reduceop(var, data, axidx=var.axisIndex(axis), **kwargs)
+        data, name, units = self.reduceop(var, data, axidx=var.axisIndex(axis), **kwargs)
       # squeeze removed dimension (but no other!)
       newshape = [len(ax) for ax in var.axes if not ax.name in axlist]
       data = data.reshape(newshape)
@@ -145,7 +160,7 @@ class ReduceVar(object): # not a Variable child!!!
     # N.B.: other singleton dimensions will have been removed, too
     ## cast into Variable
     if asVar: 
-      redvar = var.copy(axes=newaxes, data=data)
+      redvar = var.copy(name=name, units=units, axes=newaxes, data=data)
 #       redvar = Variable(name=var.name, units=var.units, axes=newaxes, data=data, 
 #                      fillValue=var.fillValue, atts=var.atts.copy(), plot=var.plot.copy())
     else: redvar = data
@@ -870,20 +885,46 @@ class Variable(object):
   # ReduceVar(asVar=None, axis=None, axes=None, lcheckAxis=True, **slcaxes)
   
   @ReduceVar
+  def sum(self, data, axidx=None):
+    data = np.nansum(data, axis=axidx)
+    name = '{:s}_sum'.format(self.name)
+    units = self.units
+    return data, name, units
+  
+  @ReduceVar
   def mean(self, data, axidx=None):
-    return np.nanmean(data, axis=axidx)
+    data = np.nanmean(data, axis=axidx)
+    name = '{:s}_mean'.format(self.name)
+    units = self.units
+    return data, name, units
   
   @ReduceVar
   def std(self, data, axidx=None, ddof=0):
-    return np.nanstd(data, axis=axidx, ddof=ddof) # ddof: degrees of freedom
+    data = np.nanstd(data, axis=axidx, ddof=ddof) # ddof: degrees of freedom
+    name = '{:s}_std'.format(self.name)
+    units = self.units # variance has squared units    
+    return data, name, units
+  
+  @ReduceVar
+  def var(self, data, axidx=None, ddof=0):
+    data = np.nanvar(data, axis=axidx, ddof=ddof) # ddof: degrees of freedom
+    name = '{:s}_var'.format(self.name)
+    units = '({:s})^2'.format(self.units) # variance has squared units    
+    return data, name, units
   
   @ReduceVar
   def max(self, data, axidx=None):
-    return np.nanmax(data, axis=axidx)
+    data = np.nanmax(data, axis=axidx)
+    name = '{:s}_max'.format(self.name)
+    units = self.units
+    return data, name, units
   
   @ReduceVar
   def min(self, data, axidx=None):
-    return np.nanmin(data, axis=axidx)
+    data = np.nanmin(data, axis=axidx)
+    name = '{:s}_min'.format(self.name)
+    units = self.units
+    return data, name, units
   
   def reduce(self, operation, blklen=None, blkidx=None, axis=None, mode=None, offset=0, 
                   asVar=None, axatts=None, varatts=None, fillValue=None, **kwargs):
@@ -1023,7 +1064,7 @@ class Variable(object):
       varatts['units'] = '1/{:s}'.format(self.units) if ldensity else '#' # count    
       if hvaratts is not None: varatts.update(hvaratts)
     else:
-      axatts = None; varatts = None
+      varatts = None; axatts = dict() # axatts is used later
     # choose a fillValue, because np.histogram does not ignore masked values but does ignore NaNs
     if fillValue is None and self.masked:
       if np.issubdtype(self.dtype,np.integer): fillValue = binedgs[-1]+1
@@ -1062,6 +1103,47 @@ class Variable(object):
     # return new variable instance (or data)
     return hvar
     
+  def CDF(self, bins=None, binedgs=None, lnormalize=True, asVar=True, name=None, axis=None, lflatten=False, 
+                     lcheckVar=True, lcheckAxis=True, caxatts=None, cvaratts=None, fillValue=None, **kwargs):
+    ''' Generate a histogram of along a given axis and preserve the other axes. '''
+    # some input checking
+    if lflatten and axis is not None: raise ArgumentError
+    if not lflatten and axis is None: raise ArgumentError
+    if self.dtype.kind in ('S',): 
+      if lcheckVar: raise VariableError, "CDF does not work with string Variables!"
+      else: return None
+    if lcheckAxis and axis is not None:
+      if not self.hasAxis(axis): raise AxisError, "Variable '{:s}' has no axis '{:s}'.".format(self.name, axis)
+    # let histogram worry about the bins...
+    # setup CDF variable attributes (special case)
+    if asVar:
+      varatts = self.atts.copy() # this is either density or frequency
+      varatts['name'] = name or '{:s}_cdf'.format(self.name)
+      varatts['long_name'] = 'CDF of {:s}'.format(self.atts.get('long_name',self.name.title()))
+      varatts['units'] = '' if lnormalize else '#' # count    
+      if cvaratts is not None: varatts.update(cvaratts)
+    else: varatts = None
+    axatts = None # axis is the same as histogram
+    # let histogram handle fill values and other stuff
+    iaxis = self.axisIndex(axis) # needed later (the CDF axis)
+    # call histogram to perform the computation
+    cvar = self.histogram(bins=bins, binedgs=binedgs, ldensity=False, asVar=asVar, name=name, 
+                          axis=axis, lflatten=lflatten, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, 
+                          haxatts=axatts, hvaratts=varatts, fillValue=fillValue, **kwargs)
+    # compute actual CDF
+    if asVar: data = cvar.data_array
+    else: data = cvar
+    if lnormalize: normsum = np.sum(data, axis=iaxis) 
+    np.cumsum(data, axis=iaxis, out=data) # do this in-place!
+#     data = np.cumsum(data, axis=iaxis)
+    if lnormalize: data /= normsum 
+    # update and polish variable
+    if asVar:
+      cvar.load(data) # load new CDF data
+      cvar.plot = variablePlotatts['cdf'].copy()
+    else: cvar = data
+    # return new variable instance (or data)
+    return cvar
     
   def reduceToAnnual(self, season, operation, asVar=False, name=None, offset=0, taxis='time', 
                      checkUnits=True, taxatts=None, varatts=None, **kwargs):
@@ -1196,19 +1278,40 @@ class Variable(object):
     ''' Return a climatology of minima of monthly data. '''    
     return self.reduceToClimatology(yridx=yridx, operation=np.nanmin, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
   
-  def _apply_ufunc(self, ufunc, lwarn=True, **kwargs):
-    ''' apply ufunc to data and return new Variable instance '''
+  @UnaryCheckAndCreateVar # kwargs: asVar=True, linplace=False 
+  def standardize(self, linplace=False):
+    ''' Standardize Variable, i.e. subtract mean and divide by standard deviation '''
+    if linplace: data = self.data_array # this is just a link
+    else: data = self.data_array.copy()
+    # standardize
+    data -= np.nanmean(data)
+    data /= np.nanstd(data)
+    # meta data
+    name = self.name+'_std' # only used for new variables
+    units = '' # no units after normalization
+    # return results to decorator/wrapper
+    return data, name, units
+  
+  @UnaryCheckAndCreateVar
+  def _apply_ufunc(self, ufunc=None, linplace=False, lwarn=True, **kwargs):
+    ''' Apply ufunc to data and return new Variable instance '''
     uname = ufunc.__name__
     lunits = len(self.units) > 0
+    # a word of warning...
     if lwarn and lunits: 
       warn("Applying ufunc '{:s}' to '{:s}' data with units '{:s}' may require normalization.".format(uname,self.name,self.units))
-    data = ufunc(self.getArray(), **kwargs)
+    # compute ufunc
+    if linplace: data = self.data_array
+    else: data = self.data_array.copy()
+    data = ufunc(data, **kwargs)
+    # figure out meta data
     name = '{:s}({:s})'.format(uname,self.name)
     units = '{:s}({:s})'.format(uname,self.units) if lunits else ''
-    return self.copy(name=name, units=units, data=data)    
+    # return results to decorator/wrapper
+    return data, name, units    
   
   def __getattr__(self, attr):
-    ''' if the call is a numpy ufunc method that is not implemented by Variable, call the ufunc method
+    ''' If the call is a numpy ufunc method that is not implemented by Variable, call the ufunc method
         on data using _apply_ufunc '''
     # N.B.: this method is only called as a fallback, if no class/instance attribute exists,
     #       i.e. Variable methods and attributes will always have precedent 
@@ -1217,64 +1320,72 @@ class Variable(object):
       ufunc = np.__dict__[attr]
       if isinstance(ufunc,np.ufunc):
         # call function on data, using _apply_ufunc
-        return functools.partial(self._apply_ufunc, ufunc)
+        return functools.partial(self._apply_ufunc, ufunc=ufunc)
     else: raise AttributeError # raise previous exception
-  
-  @UnaryCheck    
-  def __iadd__(self, a):
-    ''' Add a number or an array to the existing data. '''      
+    
+  @BinaryCheckAndCreateVar(sameUnits=True, linplace=True)    
+  def __iadd__(self, a, linplace=True):
+    ''' Add a number or an array to the existing data. '''
     self.data_array += a    
-    return self # return self as result
+    assert linplace, 'This is strictly an in-place operation!'      
+    return self.data_array, self.name, self.units # return array as result
 
-  @UnaryCheck
-  def __isub__(self, a):
+  @BinaryCheckAndCreateVar(sameUnits=True, linplace=True)
+  def __isub__(self, a, linplace=True):
     ''' Subtract a number or an array from the existing data. '''      
     self.data_array -= a
-    return self # return self as result
-  
-  @UnaryCheck
-  def __imul__(self, a):
+    assert linplace, 'This is strictly an in-place operation!'      
+    return self.data_array, self.name, self.units # return array as result
+
+  @BinaryCheckAndCreateVar(sameUnits=False, linplace=True)
+  def __imul__(self, a, linplace=True):
     ''' Multiply the existing data with a number or an array. '''      
     self.data_array *= a
-    return self # return self as result
+    assert linplace, 'This is strictly an in-place operation!'      
+    return self.data_array, self.name, self.units # return array as result
 
-  @UnaryCheck
-  def __idiv__(self, a):
+  @BinaryCheckAndCreateVar(sameUnits=False, linplace=True)
+  def __idiv__(self, a, linplace=True):
     ''' Divide the existing data by a number or an array. '''      
     self.data_array /= a
-    return self # return self as result
-  
-  @BinaryCheckAndCreateVar(sameUnits=True)
-  def __add__(self, other):
+    assert linplace, 'This is strictly an in-place operation!'      
+    return self.data_array, self.name, self.units # return array as result
+
+  @BinaryCheckAndCreateVar(sameUnits=True, linplace=False)
+  def __add__(self, other, linplace=False):
     ''' Add two variables and return a new variable. '''
     data = self.data_array + other.data_array
     name = '{:s} + {:s}'.format(self.name,other.name)
     units = self.units
+    assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
 
-  @BinaryCheckAndCreateVar(sameUnits=True)
-  def __sub__(self, other):
+  @BinaryCheckAndCreateVar(sameUnits=True, linplace=False)
+  def __sub__(self, other, linplace=False):
     ''' Subtract two variables and return a new variable. '''
     data = self.data_array - other.data_array
     name = '{:s} - {:s}'.format(self.name,other.name)
     units = self.units
+    assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
   
-  @BinaryCheckAndCreateVar(sameUnits=False)
-  def __mul__(self, other):
+  @BinaryCheckAndCreateVar(sameUnits=False, linplace=False)
+  def __mul__(self, other, linplace=False):
     ''' Multiply two variables and return a new variable. '''
     data = self.data_array * other.data_array
     name = '{:s} x {:s}'.format(self.name,other.name)
     units = '{:s} {:s}'.format(self.units,other.units)
+    assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
 
-  @BinaryCheckAndCreateVar(sameUnits=False)
-  def __div__(self, other):
+  @BinaryCheckAndCreateVar(sameUnits=False, linplace=False)
+  def __div__(self, other, linplace=False):
     ''' Divide two variables and return a new variable. '''
     data = self.data_array / other.data_array
     name = '{:s} / {:s}'.format(self.name,other.name)
     if self.units == other.units: units = ''
     else: units = '{:s} / ({:s})'.format(self.units,other.units)
+    assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
      
 

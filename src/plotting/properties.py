@@ -40,11 +40,17 @@ tmp = PlotAtts(name = 'Cat.', title = 'Category', units = '')
 # add to collection
 variablePlotatts['cat'] = tmp
 
-## Density
+## Density Distribution
 tmp = PlotAtts(name = 'Density', title = 'Histogram', 
                units = '', preserve = 'area')
 # add to collection
 variablePlotatts['hist'] = tmp
+
+## Cumulative Distribution
+tmp = PlotAtts(name = 'CDF', title = 'CDF', 
+               units = '', preserve = 'area')
+# add to collection
+variablePlotatts['cdf'] = tmp
 
 ## *** Dimensions/Axes (1D) ***
 
