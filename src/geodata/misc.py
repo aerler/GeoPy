@@ -106,24 +106,25 @@ def isOne(data, eps=None, masked_equal=True):
 # check if two arrays are equal within machine precision
 def isEqual(left, right, eps=None, masked_equal=True):
   ''' This function checks if two numpy arrays or scalars are equal within machine precision, and returns a scalar logical. '''
+  diff_type = "Both arguments to function 'isEqual' must be of the same class!"
   if isinstance(left,np.ndarray):
-    if not isinstance(right,np.ndarray): 
-      raise TypeError, "Both arguments to function 'isEqual' must be of the same class!"
+    # ndarray
+    if not isinstance(right,np.ndarray): raise TypeError, diff_type 
     if not left.dtype==right.dtype:
       right = right.astype(left.dtype, casting='same_kind')
-      #raise TypeError, 'Both arguments to function \'isEqual\' must be of the same type!'
     if np.issubdtype(left.dtype, np.inexact): # also catch float32 etc
-      return ma.allclose(left, right, masked_equal=True)
+      if eps is None: return ma.allclose(left, right, masked_equal=masked_equal)
+      else: return ma.allclose(left, right, masked_equal=masked_equal, atol=eps)
     elif np.issubdtype(left.dtype, np.integer) or np.issubdtype(left.dtype, np.bool):
       return np.all( left == right ) # need to use numpy's all()
-  elif isinstance(left,float) or isinstance(left, np.inexact):
-    if not isinstance(right,(float,np.inexact)):
-      raise TypeError, "Both arguments to function 'isEqual' must be of the same class!"
+  elif isinstance(left,(float,np.inexact)):
+    # numbers
+    if not isinstance(right,(float,np.inexact)): raise TypeError, diff_type
     if eps is None: eps = 100.*floateps # default
     return np.absolute(left-right) <= eps
   elif isinstance(left,(int,bool,np.integer,np.bool)):
-    if not isinstance(right,(int,bool,np.integer,np.bool)):
-      raise TypeError, "Both arguments to function 'isEqual' must be of the same class!"
+    # logicals
+    if not isinstance(right,(int,bool,np.integer,np.bool)): raise TypeError, diff_type
     return left == right
   else: raise TypeError
 
@@ -343,6 +344,9 @@ class ListError(TypeError):
   ''' Error class for failed list expansion. '''
   pass
 
+class DistVarError(VariableError):
+  ''' Exception indicating invalid use of overloaded method. '''
+  pass
 
 ## simple application code
 if __name__ == '__main__':

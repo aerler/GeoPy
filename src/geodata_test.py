@@ -16,6 +16,7 @@ import os
 from geodata.nctools import writeNetCDF
 from geodata.misc import isZero, isOne, isEqual
 from geodata.base import Variable, Axis, Dataset, Ensemble, concatVars, concatDatasets
+from geodata.dist import VarKDE, VarRV, asDistVar
 from datasets.common import data_root
 
 # RAM disk settings ("global" variable)
@@ -327,6 +328,50 @@ class BaseVarTest(unittest.TestCase):
     print s
     print('')
     
+  def testDistributionVariables(self):
+    ''' test DistVar instances on different data '''
+    # get test objects
+    var = self.var; t,x,y = self.axes # for upwards compatibility!
+    # create VarKDE
+    kdevar = asDistVar(var, axis=t.name, dist='kde')
+    assert kdevar.units == var.units
+    assert kdevar.dtype == var.dtype
+    # test histogram
+    lsimple = self.__class__ is BaseVarTest
+    if lsimple:
+      bins = np.arange(1,10) # 9 bins
+      binedgs = np.arange(0.5,10,1) # 10 edges
+    else:
+      vmin, vmax = var.limits()
+      binedgs = np.linspace(vmin,vmax,10)
+      bins = binedgs[1:] - ( np.diff(binedgs) / 2. )
+    # test simple version
+    hvar = kdevar.histogram(bins=bins, asVar=False)[0,0,:]
+    hist,bin_edges  = np.histogram(self.var.data_array[:,0,0], bins=binedgs, density=True)
+    assert isEqual(binedgs, bin_edges)
+    assert isEqual(hvar, hist, masked_equal=True, eps=1./len(bin_edges)) # large differences between KDE and histogram
+    # test variable version
+    hvar = kdevar.histogram(bins=bins, asVar=True, axis_idx=0)
+    assert hvar.shape == (len(bins),)+var.shape[1:]
+    assert hvar.units == ''
+    assert hvar.axes[0].units == var.units
+    # test resampling
+    hvar = kdevar.resample(N=len(t), asVar=True, axis_idx=0)
+    assert hvar.shape == var.shape
+    assert hvar.units == var.units
+    assert hvar.axes[0].units == ''    
+    # test cumulative distribution function
+    cvar = kdevar.CDF(bins=bins, asVar=False, axis_idx=0)
+    assert np.all(np.diff(cvar, axis=0) >= 0.)
+    # N.B.: var.CDF gives only integer-typeresults, even if cast as float...
+#     if lsimple: var = var.copy(data=np.asarray(var.data_array, dtype=cvar.dtype))
+#     cdf = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=False, axis=t.name)
+#     assert isEqual(cvar, cdf, masked_equal=True, eps=1./len(bin_edges))
+    cvar = kdevar.CDF(bins=bins, asVar=True, axis_idx=0)
+    cdf = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=True, axis=t.name)
+    assert cvar.shape == cdf.shape 
+    assert cvar.units == ''
+    
   def testReductionArithmetic(self):
     ''' test reducing arithmetic functions '''
     # get test objects
@@ -356,7 +401,7 @@ class BaseVarTest(unittest.TestCase):
       vmin, vmax = var.limits()
       binedgs = np.linspace(vmin,vmax,10)
       bins = binedgs[1:] - ( np.diff(binedgs) / 2. )
-    hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=False, asVar=True, axis='time')
+    hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=False, asVar=True, axis=t.name)
     assert hvar.shape == (len(bins),)+var.shape[1:]
     if lsimple:
       assert self.data.min() == 1 and self.data.max() == 12 and self.data.shape[0] == 48
@@ -367,12 +412,12 @@ class BaseVarTest(unittest.TestCase):
     assert isEqual(binedgs, bin_edges)
     assert isEqual(hvar, hist, masked_equal=True)
     # test cumulative distribution function
-    hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=False, asVar=False, axis='time')
+    hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=False, asVar=False, axis=t.name)
     cdf = np.cumsum(hvar, axis=0)
-    cvar = var.CDF(bins=bins, binedgs=binedgs, lnormalize=False, asVar=False, axis='time')
+    cvar = var.CDF(bins=bins, binedgs=binedgs, lnormalize=False, asVar=False, axis=t.name)
     assert isEqual(cdf, cvar, masked_equal=True)
     cdf /= np.sum(hvar,axis=0)
-    cvar = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=True, axis='time')
+    cvar = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=True, axis=t.name)
     assert isEqual(cdf, cvar.data_array, masked_equal=True)
     assert cvar.units == ''
     
@@ -1123,18 +1168,18 @@ if __name__ == "__main__":
 
         
     specific_tests = None
-#     specific_tests = ['ReductionArithmetic']    
+    specific_tests = ['DistributionVariables']    
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
+#     tests += ['BaseVar'] 
     tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
      
     
     # construct dictionary of test classes defined above

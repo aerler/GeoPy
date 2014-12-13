@@ -1014,8 +1014,8 @@ class Variable(object):
     # return results
     return rvar
   
-  def histogram(self, bins=None, binedgs=None, ldensity=True, asVar=True, name=None, axis=None, lflatten=False, 
-                     lcheckVar=True, lcheckAxis=True, haxatts=None, hvaratts=None, fillValue=None, **kwargs):
+  def histogram(self, bins=None, binedgs=None, ldensity=True, asVar=True, name=None, axis=None, axis_idx=None, 
+                lflatten=False, lcheckVar=True, lcheckAxis=True, haxatts=None, hvaratts=None, fillValue=None, **kwargs):
     ''' Generate a histogram of along a given axis and preserve the other axes. '''
     # some input checking
     if lflatten and axis is not None: raise ArgumentError
@@ -1023,6 +1023,9 @@ class Variable(object):
     if self.dtype.kind in ('S',): 
       if lcheckVar: raise VariableError, "Histogram does not work with string Variables!"
       else: return None
+    if axis_idx is not None and axis is None: axis = self.axes[axis_idx]
+    elif axis_idx is None and axis is not None: axis_idx = self.axisIndex(axis)
+    elif not lflatten: raise ArgumentError    
     if lcheckAxis and axis is not None:
       if not self.hasAxis(axis): raise AxisError, "Variable '{:s}' has no axis '{:s}'.".format(self.name, axis)
     kwargs['density'] = ldensity # overwrite parameter
@@ -1055,13 +1058,19 @@ class Variable(object):
     # setup histogram axis and variable attributes (special case)
     if asVar:
       axatts = self.atts.copy() # variable values become axis
-      axatts['name'] = '{:s}_bins'.format(self.name)
+      axatts['name'] = '{:s}_bins'.format(self.name) # '_bins' suffix to indicate histogram axis
+      axatts['units'] = self.units # the histogram axis has the same units as the variable
       axatts['long_name'] = '{:s} Axis'.format(self.atts.get('long_name',self.name.title()))    
       if haxatts is not None: axatts.update(haxatts)
       varatts = self.atts.copy() # this is either density or frequency
-      varatts['name'] = name or '{:s}_hist'.format(self.name)
-      varatts['long_name'] = 'Histogram of {:s}'.format(self.atts.get('long_name',self.name.title()))
-      varatts['units'] = '1/{:s}'.format(self.units) if ldensity else '#' # count    
+      if ldensity:
+        varatts['name'] = name or '{:s}_pdf'.format(self.name)
+        varatts['long_name'] = 'PDF of {:s}'.format(self.atts.get('long_name',self.name.title()))
+        varatts['units'] = '' # density
+      else:
+        varatts['name'] = name or '{:s}_hist'.format(self.name)
+        varatts['long_name'] = 'Histogram of {:s}'.format(self.atts.get('long_name',self.name.title()))
+        varatts['units'] = '#' # count    
       if hvaratts is not None: varatts.update(hvaratts)
     else:
       varatts = None; axatts = dict() # axatts is used later
@@ -1099,12 +1108,13 @@ class Variable(object):
       hvar = self.reduce(operation=histfct, blklen=len(bins), blkidx=None, axis=axis, mode='all', 
                          offset=0, asVar=asVar, axatts=axatts, varatts=varatts, fillValue=fillValue)
       if asVar:
-        hvar.plot = variablePlotatts['hist'].copy()
+        if ldensity: hvar.plot = variablePlotatts['pdf'].copy()
+        else: hvar.plot = variablePlotatts['hist'].copy()
     # return new variable instance (or data)
     return hvar
     
-  def CDF(self, bins=None, binedgs=None, lnormalize=True, asVar=True, name=None, axis=None, lflatten=False, 
-                     lcheckVar=True, lcheckAxis=True, caxatts=None, cvaratts=None, fillValue=None, **kwargs):
+  def CDF(self, bins=None, binedgs=None, lnormalize=True, asVar=True, name=None, axis=None, axis_idx=None, 
+          lflatten=False, lcheckVar=True, lcheckAxis=True, caxatts=None, cvaratts=None, fillValue=None, **kwargs):
     ''' Generate a histogram of along a given axis and preserve the other axes. '''
     # some input checking
     if lflatten and axis is not None: raise ArgumentError
@@ -1112,6 +1122,9 @@ class Variable(object):
     if self.dtype.kind in ('S',): 
       if lcheckVar: raise VariableError, "CDF does not work with string Variables!"
       else: return None
+    if axis_idx is not None and axis is None: axis = self.axes[axis_idx]
+    elif axis_idx is None and axis is not None: axis_idx = self.axisIndex(axis)
+    elif not lflatten: raise ArgumentError
     if lcheckAxis and axis is not None:
       if not self.hasAxis(axis): raise AxisError, "Variable '{:s}' has no axis '{:s}'.".format(self.name, axis)
     # let histogram worry about the bins...
@@ -1124,8 +1137,7 @@ class Variable(object):
       if cvaratts is not None: varatts.update(cvaratts)
     else: varatts = None
     axatts = None # axis is the same as histogram
-    # let histogram handle fill values and other stuff
-    iaxis = self.axisIndex(axis) # needed later (the CDF axis)
+    # let histogram handle fill values and other stuff    
     # call histogram to perform the computation
     cvar = self.histogram(bins=bins, binedgs=binedgs, ldensity=False, asVar=asVar, name=name, 
                           axis=axis, lflatten=lflatten, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, 
@@ -1133,9 +1145,9 @@ class Variable(object):
     # compute actual CDF
     if asVar: data = cvar.data_array
     else: data = cvar
-    if lnormalize: normsum = np.sum(data, axis=iaxis) 
-    np.cumsum(data, axis=iaxis, out=data) # do this in-place!
-#     data = np.cumsum(data, axis=iaxis)
+    if lnormalize: normsum = np.sum(data, axis=axis_idx) 
+    np.cumsum(data, axis=axis_idx, out=data) # do this in-place!
+#     data = np.cumsum(data, axis=axis_idx)
     if lnormalize: data /= normsum 
     # update and polish variable
     if asVar:
@@ -1321,7 +1333,8 @@ class Variable(object):
       if isinstance(ufunc,np.ufunc):
         # call function on data, using _apply_ufunc
         return functools.partial(self._apply_ufunc, ufunc=ufunc)
-    else: raise AttributeError # raise previous exception
+    else: 
+      raise AttributeError, "No attribute '{:s}' in class '{:s}'!".format(attr,self.__class__.__name__)
     
   @BinaryCheckAndCreateVar(sameUnits=True, linplace=True)    
   def __iadd__(self, a, linplace=True):

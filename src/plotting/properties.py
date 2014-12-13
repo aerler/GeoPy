@@ -40,14 +40,18 @@ tmp = PlotAtts(name = 'Cat.', title = 'Category', units = '')
 # add to collection
 variablePlotatts['cat'] = tmp
 
-## Density Distribution
-tmp = PlotAtts(name = 'Density', title = 'Histogram', 
-               units = '', preserve = 'area')
+##Histogram
+tmp = PlotAtts(name = 'Histogram', title = 'Histogram', 
+               units = '#', preserve = 'area')
 # add to collection
 variablePlotatts['hist'] = tmp
-
+## Density Distribution
+tmp = PlotAtts(name = 'PDF', title = 'Density Distribution', 
+               units = '', preserve = 'area')
+# add to collection
+variablePlotatts['pdf'] = tmp
 ## Cumulative Distribution
-tmp = PlotAtts(name = 'CDF', title = 'CDF', 
+tmp = PlotAtts(name = 'CDF', title = 'Cumulative Distribution', 
                units = '', preserve = 'area')
 # add to collection
 variablePlotatts['cdf'] = tmp
@@ -471,10 +475,12 @@ from geodata.misc import ArgumentError
 def getPlotAtts(name=None, units=None, atts=None, plot=None, plotatts_dict=None):
   ''' figure out sensible plotatts atts based on name, units, and atts '''
   # check input
-  if name is None and 'name' not in atts: raise ArgumentError
-  if units is None and 'units' not in atts: raise ArgumentError
-  name = name or atts['name']
-  units = units or atts['units']
+  if name is not None: pass 
+  elif atts is not None and 'name' in atts: name = atts['name']  
+  else: raise ArgumentError
+  if units is not None: pass 
+  elif atts is not None and 'units' in atts: units = atts['units']  
+  else: raise ArgumentError
   if not isinstance(atts,(dict,NoneType)): raise TypeError
   if not isinstance(plot,(dict,PlotAtts,NoneType)): raise TypeError
   plotatts_dict = plotatts_dict or variablePlotatts
@@ -492,15 +498,15 @@ def getPlotAtts(name=None, units=None, atts=None, plot=None, plotatts_dict=None)
       prefix = name[:3].lower()
       basename = name[3:]
     if basename in variablePlotatts:
-      plotatts = variablePlotatts[basename]
+      plotatts = variablePlotatts[basename].copy()
     elif basename.lower() in variablePlotatts:
-      plotatts = variablePlotatts[basename.lower()]
+      plotatts = variablePlotatts[basename.lower()].copy()
     else:
       namelist = basename.split('_')
       basename = namelist[0]
       postfix = namelist[1] if len(namelist)>1 else ''
       if basename in variablePlotatts: 
-        plotatts = variablePlotatts[basename]
+        plotatts = variablePlotatts[basename].copy()
       else:
         # last resort...
         plotatts = PlotAtts(name=name, units=units, title=name)  
