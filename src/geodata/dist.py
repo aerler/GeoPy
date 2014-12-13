@@ -256,7 +256,11 @@ class VarKDE(DistVar):
   # distribution-specific method; should be overloaded by subclass
   def _compute_distribution(self, support, **kwargs):
     ''' compute PDF at given support points for each grid point and return as ndarray '''
-    kde_eval = lambda kde: kde[0].evaluate(support, **kwargs)
+    n = len(support); fillValue = self.fillValue or 0
+    def kde_eval(kde):
+      if kde[0] is None: res = np.zeros(n)+fillValue 
+      else: res = kde[0].evaluate(support, **kwargs)
+      return res
     data = self.data_array.reshape(self.data_array.shape+(1,))
     pdf = np.apply_along_axis(kde_eval, self.ndim, data)
     assert pdf.shape == self.shape + (len(support),)
@@ -266,7 +270,11 @@ class VarKDE(DistVar):
   def _resample_distribution(self, support, **kwargs):
     ''' draw n samples from the distribution for each grid point and return as ndarray '''
     n = len(support) # in order to use _get_dist(), we have to pass a dummy support
-    kde_resample = lambda kde: np.asarray(kde[0].resample(size=n, **kwargs), dtype=self.dtype).ravel()
+    fillValue = self.fillValue or 0 # for masked values
+    def kde_resample(kde):
+      if kde[0] is None: res = np.zeros(n)+fillValue 
+      else: res = np.asarray(kde[0].resample(size=n, **kwargs), dtype=self.dtype).ravel()
+      return res
     data = self.data_array.reshape(self.data_array.shape+(1,))
     samples = np.apply_along_axis(kde_resample, self.ndim, data)
     assert samples.shape == self.shape + (n,)
@@ -276,9 +284,13 @@ class VarKDE(DistVar):
   # distribution-specific method; should be overloaded by subclass
   def _cumulative_distribution(self, support, **kwargs):
     ''' compute PDF at given support points for each grid point and return as ndarray '''
+    n = len(support); fillValue = self.fillValue or 0
     def kde_cdf(kde):
-      fct = lambda s: kde[0].integrate_box_1d(-1*np.inf,s, **kwargs)
-      return np.asarray([fct(s) for s in support])
+      if kde[0] is None: res = np.zeros(n)+fillValue
+      else: 
+        fct = lambda s: kde[0].integrate_box_1d(-1*np.inf,s, **kwargs)
+        res = np.asarray([fct(s) for s in support])
+      return res
     data = self.data_array.reshape(self.data_array.shape+(1,))
     pdf = np.apply_along_axis(kde_cdf, self.ndim, data)
     assert pdf.shape == self.shape + (len(support),)
