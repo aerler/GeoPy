@@ -21,7 +21,7 @@ import matplotlib as mpl
 # # prevent figures from closing: don't run in interactive mode, or plt.show() will not block
 # pyl.ioff()
 # internal imports
-from misc.signalsmooth import smooth
+from utils.signalsmooth import smooth
 from utils import getPlotValues, getFigAx, updateSubplots
 from geodata.base import Variable
 from geodata.misc import AxisError, ListError

@@ -18,7 +18,7 @@ from datasets.common import days_per_month, name_of_month, data_root
 from geodata.misc import ParseError
 from geodata.gdal import Shape
 from geodata.station import StationDataset, Variable, Axis
-# from geodata.misc import DatasetError
+# from geodata.utils import DatasetError
 from warnings import warn
 
 ## WSC (Water Survey Canada) Meta-data

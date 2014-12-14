@@ -15,9 +15,11 @@ import gc # garbage collection
 from warnings import warn
 # my own imports
 from plotting.properties import getPlotAtts, variablePlotatts # import plot properties from different file
-from misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, printList, floateps
-from misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
-
+from geodata.misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, floateps
+from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
+from processing.multiprocess import apply_along_axis
+from utils.misc import histogram
+     
 
 class UnaryCheckAndCreateVar(object):
   ''' Decorator class for unary arithmetic operations that implements some sanity checks and 
@@ -323,9 +325,11 @@ class Variable(object):
   @fillValue.setter
   def fillValue(self, fillValue):
     self.atts['fillValue'] = fillValue
-    if self.data and self.masked: 
-      self.data_array.set_fill_value = fillValue # atts dict over
-      # N.B.: self.data_array.set_fill_value(fillValue) does not work for some reason... 
+    if self.data and self.masked:
+      self.data_array.set_fill_value = fillValue
+      # N.B.: this is the saves way      
+      #ma.set_fill_value(self.data_array,fillValue)
+      # self.data_array.set_fill_value(fillValue) does not work - probably a property... 
     
   
   def __str__(self):
@@ -489,7 +493,8 @@ class Variable(object):
         raise DataError, "Dtypes of Variable and array are inconsistent."
       else: self.dtype = data.dtype
       if isinstance(slc,slice): slc = (slc,)*self.ndim
-      slen = lambda a,o,e: (o-a)/e
+      def slen(a,o,e): 
+        return (o-a)/e
       shape = tuple([slen(*s.indices(len(ax))) for s,ax in zip(slc,self.axes)])
       if shape != self.shape: 
         raise NotImplementedError, "Implicit slicing during date assignment is currently not supported."
@@ -1095,8 +1100,9 @@ class Variable(object):
     else: # use reduce to only apply to selected axis      
       # create a helper function that apllies the histogram along the specified axis
       def histfct(data, axis=None):
-        if axis < 0: axis += data.ndim 
-        hdata = np.apply_along_axis(lambda a: np.histogram(a, bins=binedgs, **kwargs)[0], axis, data)
+        if axis < 0: axis += data.ndim
+        fct = functools.partial(histogram, bins=binedgs, **kwargs)         
+        hdata = apply_along_axis(fct, axis, data,)
         # N.B.: the additional output of np.histogram must be suppressed, or np.apply_along_axis will
         #       expand everything as tuples!
         assert hdata.shape[axis] == len(binedgs)-1

@@ -13,7 +13,7 @@ from warnings import warn
 # internal imports
 from geodata.base import Variable
 from geodata.misc import VariableError, AxisError, isInt
-from misc.signalsmooth import smooth # commonly used in conjunction with plotting...
+from utils.signalsmooth import smooth # commonly used in conjunction with plotting...
 
 # import matplotlib as mpl
 # import matplotlib.pylab as pyl

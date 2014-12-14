@@ -30,7 +30,7 @@ from datasets.CESM import loadCESM, loadCESM_TS, CESM_exps
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
 def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlist=None, lwrite=True, lreturn=False,
-                      ldebug=False, lparallel=False, pidstr='', logger=None):
+                      ldebug=False, lparallel=False, pidstr='', logger=None, **kwargs):
   ''' worker function to perform regridding for a given dataset and target grid '''
   # input checking
   if not isinstance(dataset,basestring): raise TypeError
@@ -288,13 +288,13 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    ldebug = False
-    NP = 4 or NP # to avoid memory issues...
+    ldebug = True
+    NP = 2 or NP # to avoid memory issues...
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
-#     varlist = ['lat2D',]
+    varlist = ['lat2D',]
     periods = []
 #     periods += [1]
 #     periods += [3]
@@ -492,7 +492,11 @@ if __name__ == '__main__':
       
   # static keyword arguments
   kwargs = dict(loverwrite=loverwrite, varlist=varlist)
-          
+  
+#   def execute_regridding(dataset, mode, griddef, dataargs, **kwargs):
+#     return performRegridding(dataset, mode, griddef, dataargs, loverwrite=loverwrite, varlist=varlist, **kwargs)
+#   ec = asyncPoolEC(execute_regridding, args, {}, NP=NP, ldebug=ldebug, ltrialnerror=True)
+  
   ## call parallel execution function
   ec = asyncPoolEC(performRegridding, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
   # exit with fraction of failures (out of 10) as exit code

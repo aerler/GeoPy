@@ -12,6 +12,7 @@ import logging
 import sys
 import gc # garbage collection
 import types
+import os
 import numpy as np
 from datetime import datetime
 from time import sleep
@@ -227,18 +228,91 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=False, ltrialnerror=True):
   # return with exit code
   return exitcode
 
+def apply_along_axis(fct, axis, data, NP=0, ldebug=False, *args, **kwargs):
+  ''' a parallelized version of numpy's apply_along_axis; the preferred way of passing arguments is,
+      by using functools.partial, but argument can also be passed to this function; the call-signature
+      is the same as for np.apply_along_axis, except for NP=OMP_NUM_THREADS and ldebug=True '''  
+  if NP == 0: NP = int(os.environ['OMP_NUM_THREADS'])
+  # pre-processing: move sampel axis to the back
+  if not axis == data.ndim-1:
+    data = np.rollaxis(data, axis=axis, start=data.ndim) # roll sample axis to last (innermost) position
+  arrayshape,samplesize = data.shape[:-1],data.shape[-1]
+  arraysize = np.prod(arrayshape)
+  # flatten array for redistribution
+  data = np.reshape(data,(arraysize,samplesize))
+  # compute
+  if False and (NP == 1 or arraysize < 100):
+    # just use regular Numpy version... but always apply over last dimension
+    if ldebug: print('\n   ***   Running in Serial Mode   ***')
+    results = np.apply_along_axis(fct, 1, data)
+  else:
+    # split up data
+    cs = arraysize//NP # chunksize; use integer division
+    if arraysize%NP != 0: cs += 1
+    chunks = [data[i*cs:(i+1)*cs,:] for i in xrange(NP)] # views on subsets of the data
+    # initialize worker pool
+    if ldebug: print('\n   ***   firing up pool (using async results)   ***')
+    if ldebug: print('         OMP_NUM_THREADS = {:d}\n'.format(NP))
+    pool = multiprocessing.Pool(processes=NP)
+    results = [] # list of resulting chunks (concatenated later
+    for n in xrange(NP):
+      # run computation on individual subsets/chunks
+      if ldebug: print('   Starting Worker #{:d}'.format(n))
+      result = pool.apply_async(np.apply_along_axis, (fct,1,chunks[n],)+args, kwargs)
+      results.append(result)
+    pool.close()
+    pool.join()
+    if ldebug: print('\n   ***   joined worker pool (getting results)   ***\n')
+    # retrieve and assemble results 
+    results = tuple(result.get() for result in results)
+    results = np.concatenate(results, axis=0) 
+  # check and reshape
+  assert results.ndim == 2 and results.shape[0] == arraysize
+  results = np.reshape(results,arrayshape+(results.shape[1],))
+  assert results.ndim == len(arrayshape)+1 and results.shape[:-1] == arrayshape
+  if not axis == results.ndim-1:
+    results = np.rollaxis(results, axis=results.ndim-1, start=axis) # roll sample axis back to original position
+  # return results
+  return results
 
 if __name__ == '__main__':
 
-  NP = 2
+  NP = 4
+  from geodata.misc import isEqual, isZero
+  from functools import partial
+  # test apply_along_axis
+  axis = 1
+  def func(arr, kw=0): # lambda fct can't be pickled
+    return ( arr - np.mean(arr) ) / arr.std() - kw, kw
+  
+  def func1(arr, kw=0): return func(arr, kw=kw)[0]
+  
+  def run_test(kw):
+    fct = partial(func1, kw=kw)
+    shape = (200,100)
+    data = np.arange(np.prod(shape), dtype='float').reshape(shape)
+    assert data.shape == shape
+    # parallel implementation using my wrapper
+    pres = apply_along_axis(fct, axis, data, NP=0, ldebug=True)
+    print pres.shape
+    assert pres.shape == data.shape
+    assert isZero(pres.mean(axis=axis)+kw) and isZero(pres.std(axis=axis)-1.)
+    # straight-forward numpy version
+    res = np.apply_along_axis(fct, axis, data)
+    assert res.shape == data.shape
+    assert isZero(res.mean(axis=axis)+kw) and isZero(res.std(axis=axis)-1.)
+    # final test
+    assert isEqual(pres, res)  
+  run_test(1)
+  
   #print logging.DEBUG,logging.INFO,logging.WARNING,logging.ERROR,logging.CRITICAL
     
   #test_mq(test_func, NP)
   #test_async(test_func, NP)
   
   # test asyncPool
-  args = [(n,) for n in xrange(5)]
-  kwargs = dict(wait=1)
-  asyncPoolEC(test_func_dec, args, kwargs, NP=NP, ldebug=True, ltrialnerror=True)
+#   args = [(n,) for n in xrange(5)]
+#   kwargs = dict(wait=1)
+#   asyncPoolEC(test_func_dec, args, kwargs, NP=NP, ldebug=True, ltrialnerror=True)
   #asyncPoolEC(test_func_ec, args, kwargs, NP=NP, ldebug=True)
   

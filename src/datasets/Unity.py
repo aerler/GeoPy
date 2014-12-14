@@ -20,7 +20,7 @@ from datasets.GPCC import loadGPCC
 from datasets.CRU import loadCRU
 from datasets.PRISM import loadPRISM
 from datasets.PCIC import loadPCIC
-# from geodata.misc import DatasetError
+# from geodata.utils import DatasetError
 from warnings import warn
 
 ## Unity Meta-data

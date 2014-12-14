@@ -52,7 +52,7 @@ tmp = PlotAtts(name = 'PDF', title = 'Density Distribution',
 variablePlotatts['pdf'] = tmp
 ## Cumulative Distribution
 tmp = PlotAtts(name = 'CDF', title = 'Cumulative Distribution', 
-               units = '', preserve = 'area')
+               units = '', preserve = 'value')
 # add to collection
 variablePlotatts['cdf'] = tmp
 

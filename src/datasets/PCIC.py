@@ -16,7 +16,7 @@ from geodata.gdal import addGDALtoDataset
 from geodata.nctools import writeNetCDF, add_strvar
 from datasets.common import name_of_month, data_root, grid_folder, transformPrecip
 from datasets.common import translateVarNames, loadObservations, addLandMask, addLengthAndNamesOfMonth, getFileName
-# from geodata.misc import DatasetError
+# from geodata.utils import DatasetError
 from warnings import warn
 from geodata.gdal import GridDefinition
 

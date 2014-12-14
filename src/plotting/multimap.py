@@ -479,7 +479,7 @@ if __name__ == '__main__':
             kwargs['maskland'] = True          
           if ldiff or lfrac or locean: 
             kwargs['ocean_color'] = 'white' ; kwargs['land_color'] = 'white'
-          # misc annotatiosn
+          # utils annotatiosn
           mapSetup.miscAnnotation(bmap, **kwargs)
           # add parallels and meridians
           mapSetup.drawGrid(bmap, left=left, bottom=bottom, minor=lminor)

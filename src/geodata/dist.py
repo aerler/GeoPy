@@ -8,12 +8,15 @@ Some Variable subclasses for handling distribution functions over grid points.
 
 # external imports
 import numpy as np
+import numpy.ma as ma
 import scipy.stats as ss
 # internal imports
 from geodata.base import Variable, Axis
 from geodata.misc import DataError, ArgumentError, VariableError, AxisError, DistVarError
 from plotting.properties import getPlotAtts
 from numpy.linalg.linalg import LinAlgError
+from processing.multiprocess import apply_along_axis
+import functools
 
 
 # convenience function to generate a DistVar from another Variable object
@@ -40,7 +43,7 @@ class DistVar(Variable):
   '''
 
   def __init__(self, name=None, units=None, axes=None, samples=None, params=None, axis=None, dtype=None, 
-               mask=None, fillValue=None, atts=None):
+               masked=None, mask=None, fillValue=None, atts=None):
     '''
     This method creates a new DisVar instance from data and parameters. If data is provided, a sample
     axis has to be specified or the last (innermost) axis is assumed to be the sample axis.
@@ -55,22 +58,43 @@ class DistVar(Variable):
       if axis is not None and not axis == params.ndim-1:
         params = np.rollaxis(params, axis=axis, start=params.ndim) # roll sample axis to last (innermost) position
       if dtype is None: dtype = np.dtype('float') # default sample dtype
-      if len(axes) != params.ndim: raise AxisError 
+      if len(axes) != params.ndim: raise AxisError
+      if masked is None:
+        if isinstance(samples, ma.MaskedArray): masked = True
+        else: masked = False  
     # if samples are provided
     if samples is not None:
       if params is not None: raise ArgumentError 
+      # ensure data type
+      if dtype is None: dtype = samples.dtype
+      elif not np.issubdtype(samples.dtype,dtype): raise DataError
+      # handle masks
+      if isinstance(samples, ma.MaskedArray):
+        if masked is None: masked = True
+        if fillValue is None: fillValue = samples.fill_value 
+        if np.issubdtype(samples.dtype,np.integer): # recast as floats, so we can use np.NaN 
+          samples = np.asarray(samples, dtype='float') 
+        samples = samples.filled(np.NaN)
+      else: masked = False
+      # make sure sample axis is last
       if isinstance(samples,np.ndarray): 
         samples = np.asarray(samples, dtype=dtype, order='C')
       if axis is not None and not axis == samples.ndim-1:
         samples = np.rollaxis(samples, axis=axis, start=samples.ndim) # roll sample axis to last (innermost) position
-      if dtype is None: dtype = samples.dtype
-      elif not np.issubdtype(samples.dtype,dtype): raise DataError 
         # N.B.: we may also need some NaN/masked-value handling here...
       # check axes
       if len(axes) != samples.ndim-1: raise AxisError
       # estimate distribution parameters
       # N.B.: the method estimate() should be implemented by specific child classes
       params = self._estimate_distribution(samples) # this is used as "data"
+    # sample fillValue
+    if fillValue is None: fillValue = np.NaN
+    # mask invalid or None parameters
+#     if masked: 
+#       if np.issubdtype(params.dtype,np.inexact): invalid = np.NaN
+#       else: invalid = None # "null object"
+#       params = ma.masked_equal(params, invalid) # mask invalid values 
+#       params.set_fill_value = invalid # fill value to use later       
     # generate new parameter axis
     if params.ndim == len(axes)+1:
       patts = dict(name='params',units='',long_name='Distribution Parameters')
@@ -83,6 +107,9 @@ class DistVar(Variable):
     super(DistVar,self).__init__(name=name, units=units, axes=axes, data=params, dtype=None, mask=mask, 
                                  fillValue=fillValue, atts=atts, plot=None)
     # reset dtype to sample dtype (not parameter dtype!)
+    self.masked = masked
+    self.fillValue = fillValue # was overwritten by parameter array fill_value
+    assert self.masked == masked
     self.dtype = dtype # property is overloaded in DistVar
     # N.B.: in this variable dtype and units refer to the sample data, not the distribution! 
     
@@ -93,7 +120,24 @@ class DistVar(Variable):
   @dtype.setter
   def dtype(self, dtype):
     self._dtype = dtype
-    
+  
+  @property
+  def masked(self):
+    ''' A flag indicating if the data is masked. '''    
+    return self._masked
+  @masked.setter
+  def masked(self, masked):
+    self._masked = masked
+  
+  @property
+  def fillValue(self):
+    ''' The fillValue for masks (stored in the atts dictionary). '''
+    fillValue = self.atts.get('fillValue',None)
+    return fillValue
+  @fillValue.setter
+  def fillValue(self, fillValue):
+    self.atts['fillValue'] = fillValue
+  
   # distribution-specific method; should be overloaded by subclass
   def _estimate_distribution(self, samples):
     ''' esimtate/fit distribution from sample array for each grid point and return parameters as ndarray  '''
@@ -105,6 +149,10 @@ class DistVar(Variable):
   # distribution-specific method; should be overloaded by subclass
   def _compute_distribution(self, support):
     ''' compute PDF at given support points for each grid point and return as ndarray '''
+    raise NotImplementedError
+  # distribution-specific method; should be overloaded by subclass
+  def _cumulative_distribution(self, support):
+    ''' compute CDF at given support points for each grid point and return as ndarray '''
     raise NotImplementedError
 
   # overload histogram and return a PDF (like a histogram)
@@ -127,6 +175,12 @@ class DistVar(Variable):
     if not isinstance(support,np.ndarray): raise TypeError
     # get histogram/PDF values
     dist_data = dist_op(support)
+    if self.masked: 
+      dist_data = ma.masked_invalid(dist_data, copy=False) 
+      # N.B.: comparisons with NaN always evaluate to False!
+      if self.fillValue is not None:
+        dist_data = ma.masked_equal(dist_data, self.fillValue)
+      ma.set_fill_value(dist_data,self.fillValue)      
     # arrange axes
     if axis_idx != self.ndim: 
       dist_data = np.rollaxis(dist_data, axis=dist_data.ndim-1,start=axis_idx)
@@ -234,6 +288,51 @@ class DistVar(Variable):
     # return new variable
     return var
 
+
+## VarKDE subclass and helper functions
+
+# N.B.: need to define helper functions outside of class definition, otherwise pickle / multiprocessing 
+#       will fail... need to fix arguments with functools.partial
+
+# estimate KDE from sample vector
+def kde_estimate(sample, lmask=False, mask=None, ldebug=False, **kwargs): 
+  if lmask and np.all(sample.mask):
+    if ldebug: print('masked') 
+    res = None
+  elif np.all(np.isnan(sample)):
+    if ldebug: print('NaN') 
+    res = None
+  elif np.all(sample == sample[0]):
+    if ldebug: print('equal') 
+    res = None
+  else:
+    try: 
+      res = ss.kde.gaussian_kde(sample, **kwargs)
+    except LinAlgError:
+      if ldebug: print('linalgerr') 
+      res = None
+  return (res,) # need to return an iterable
+
+# evaluate KDE over a given support
+def kde_eval(kde, support=None, n=0, fillValue=np.NaN, **kwargs):
+  if kde[0] is None: res = np.zeros(n)+fillValue 
+  else: res = kde[0].evaluate(support, **kwargs)
+  return res
+
+# resample KDE over a given support
+def kde_resample(kde, support=None, n=0, fillValue=np.NaN, dtype=np.float, **kwargs):
+  if kde[0] is None: res = np.zeros(n)+fillValue 
+  else: res = np.asarray(kde[0].resample(size=n, **kwargs), dtype=dtype).ravel()
+  return res
+
+# integrate KDE over a given support (from -inf)
+def kde_cdf(kde, support=None, n=0, fillValue=np.NaN, **kwargs):
+    if kde[0] is None: res = np.zeros(n)+fillValue
+    else: 
+      fct = lambda s: kde[0].integrate_box_1d(-1*np.inf,s, **kwargs)
+      res = np.asarray([fct(s) for s in support])
+    return res
+  
 # Subclass of DistVar implementing Kernel Density Estimation
 class VarKDE(DistVar):
   ''' A subclass of DistVar implementing Kernel Density Estimation ''' 
@@ -241,14 +340,9 @@ class VarKDE(DistVar):
   # distribution-specific method; should be overloaded by subclass
   def _estimate_distribution(self, samples, **kwargs):
     ''' esimtate/fit distribution from sample array for each grid point and return parameters as ndarray  '''
-    lmask = isinstance(samples,np.ma.MaskedArray)
-    def kde_estimate(sample): 
-      if lmask and np.any(samples.mask): res = None
-      else:
-        try: res = ss.kde.gaussian_kde(sample, **kwargs)
-        except LinAlgError: res = None
-      return (res,)
-    kernels = np.apply_along_axis(kde_estimate, samples.ndim-1, samples).squeeze()
+    lmask = isinstance(samples,ma.MaskedArray) # not yet set in constructor
+    fct = functools.partial(kde_estimate, lmask=lmask, **kwargs)
+    kernels = apply_along_axis(fct, samples.ndim-1, samples).squeeze()
     assert samples.shape[:-1] == kernels.shape
     # return an array of kernels
     return kernels
@@ -256,13 +350,10 @@ class VarKDE(DistVar):
   # distribution-specific method; should be overloaded by subclass
   def _compute_distribution(self, support, **kwargs):
     ''' compute PDF at given support points for each grid point and return as ndarray '''
-    n = len(support); fillValue = self.fillValue or 0
-    def kde_eval(kde):
-      if kde[0] is None: res = np.zeros(n)+fillValue 
-      else: res = kde[0].evaluate(support, **kwargs)
-      return res
-    data = self.data_array.reshape(self.data_array.shape+(1,))
-    pdf = np.apply_along_axis(kde_eval, self.ndim, data)
+    n = len(support); fillValue = self.fillValue or np.NaN
+    data = self.data_array.reshape(self.data_array.shape+(1,)) # expand
+    fct = functools.partial(kde_eval, support=support, n=n, fillValue=fillValue, **kwargs)
+    pdf = apply_along_axis(fct, self.ndim, data)
     assert pdf.shape == self.shape + (len(support),)
     return pdf
   
@@ -270,31 +361,24 @@ class VarKDE(DistVar):
   def _resample_distribution(self, support, **kwargs):
     ''' draw n samples from the distribution for each grid point and return as ndarray '''
     n = len(support) # in order to use _get_dist(), we have to pass a dummy support
-    fillValue = self.fillValue or 0 # for masked values
-    def kde_resample(kde):
-      if kde[0] is None: res = np.zeros(n)+fillValue 
-      else: res = np.asarray(kde[0].resample(size=n, **kwargs), dtype=self.dtype).ravel()
-      return res
-    data = self.data_array.reshape(self.data_array.shape+(1,))
-    samples = np.apply_along_axis(kde_resample, self.ndim, data)
+    fillValue = self.fillValue or np.NaN # for masked values
+    data = self.data_array.reshape(self.data_array.shape+(1,)) # expand
+    fct = functools.partial(kde_resample, support=support, n=n, fillValue=fillValue, 
+                            dtype=self.dtype, **kwargs)
+    samples = apply_along_axis(fct, self.ndim, data)
     assert samples.shape == self.shape + (n,)
     assert np.issubdtype(samples.dtype, self.dtype)
     return samples
   
   # distribution-specific method; should be overloaded by subclass
   def _cumulative_distribution(self, support, **kwargs):
-    ''' compute PDF at given support points for each grid point and return as ndarray '''
-    n = len(support); fillValue = self.fillValue or 0
-    def kde_cdf(kde):
-      if kde[0] is None: res = np.zeros(n)+fillValue
-      else: 
-        fct = lambda s: kde[0].integrate_box_1d(-1*np.inf,s, **kwargs)
-        res = np.asarray([fct(s) for s in support])
-      return res
+    ''' integrate PDF over given support to produce a CDF and return as ndarray '''
+    n = len(support); fillValue = self.fillValue or np.NaN
     data = self.data_array.reshape(self.data_array.shape+(1,))
-    pdf = np.apply_along_axis(kde_cdf, self.ndim, data)
-    assert pdf.shape == self.shape + (len(support),)
-    return pdf
+    fct = functools.partial(kde_cdf, support=support, n=n, fillValue=fillValue, **kwargs)
+    cdf = apply_along_axis(fct, self.ndim, data)
+    assert cdf.shape == self.shape + (len(support),)
+    return cdf
   
 
 # Subclass of DistVar implementing various random variable distributions

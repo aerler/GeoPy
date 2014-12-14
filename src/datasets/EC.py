@@ -21,7 +21,7 @@ from geodata.base import Axis, Variable, Dataset
 from geodata.nctools import writeNetCDF
 from geodata.netcdf import DatasetNetCDF
 import average.derived_variables as dv
-# from geodata.misc import DatasetError
+# from geodata.utils import DatasetError
 from warnings import warn
 #from Cython.Utility.MemoryView import tmpdata
 
@@ -348,7 +348,7 @@ class StationRecords(object):
     elif not isinstance(extremes,(list,tuple)): raise TypeError
     if varmap is None: varmap = ec_varmap
     elif not isinstance(varmap, dict): raise TypeError
-    # misc
+    # utils
     encoding = encoding or variables.values()[0].encoding 
     if atts is None: atts = dict(name=datatype, title=title) # default name
     elif not isinstance(atts,dict): raise TypeError # resulting dataset attributes

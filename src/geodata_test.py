@@ -336,6 +336,7 @@ class BaseVarTest(unittest.TestCase):
     kdevar = asDistVar(var, axis=t.name, dist='kde')
     assert kdevar.units == var.units
     assert kdevar.dtype == var.dtype
+    print '\n   ***   finally computed distribution   ***'
     # test histogram
     lsimple = self.__class__ is BaseVarTest
     if lsimple:
@@ -346,41 +347,53 @@ class BaseVarTest(unittest.TestCase):
       binedgs = np.linspace(vmin,vmax,10)
       bins = binedgs[1:] - ( np.diff(binedgs) / 2. )
     # test simple version
-    hvar = kdevar.histogram(bins=bins, asVar=False)[0,0,:]
-    hist,bin_edges  = np.histogram(self.var.data_array[:,0,0], bins=binedgs, density=True)
-    assert isEqual(binedgs, bin_edges)
-#     assert isEqual(hvar, hist, masked_equal=True, eps=1./len(bin_edges)) # large differences between KDE and histogram
+    if lsimple:
+      hvar = kdevar.histogram(bins=bins, asVar=False)[0,0,:]
+      hist,bin_edges  = np.histogram(self.var.data_array[:,0,0], bins=binedgs, density=True)
+      assert isEqual(binedgs, bin_edges)
+      assert isEqual(hvar, hist, masked_equal=True, eps=1./len(bin_edges)) # large differences between KDE and histogram
     # test variable version
     hvar = kdevar.histogram(bins=bins, asVar=True, axis_idx=0)
     assert hvar.shape == (len(bins),)+var.shape[1:]
     assert hvar.units == ''
     assert hvar.axes[0].units == var.units
+    if var.masked:
+      assert hvar.masked
+      assert np.all(hvar.data_array.mask, axis=0).sum() >= np.all(var.data_array.mask, axis=0).sum()    
     # test resampling
-    hvar = kdevar.resample(N=len(t), asVar=True, axis_idx=0)
-    assert hvar.shape == var.shape
-    assert hvar.units == var.units
-    assert hvar.axes[0].units == ''    
+    rvar = kdevar.resample(N=len(t), asVar=True, axis_idx=0)
+    assert rvar.shape == var.shape
+    assert rvar.units == var.units
+    assert rvar.axes[0].units == ''    
+    if var.masked: # check masks
+      assert rvar.masked
+      assert np.all(rvar.data_array.mask, axis=0).sum() >= np.all(var.data_array.mask, axis=0).sum()    
     # test cumulative distribution function
-    cvar = kdevar.CDF(bins=bins, asVar=False, axis_idx=0)
-    assert np.all(np.diff(cvar, axis=0) >= 0.)
+#     cvar = kdevar.CDF(bins=bins, asVar=False, axis_idx=0)
     # N.B.: var.CDF gives only integer-typeresults, even if cast as float...
 #     if lsimple: var = var.copy(data=np.asarray(var.data_array, dtype=cvar.dtype))
 #     cdf = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=False, axis=t.name)
 #     assert isEqual(cvar, cdf, masked_equal=True, eps=1./len(bin_edges))
-    cvar = kdevar.CDF(bins=bins, asVar=True, axis_idx=0)
-    cdf = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=True, axis=t.name)
-    assert cvar.shape == cdf.shape 
+#     cdf = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=True, axis=t.name)
+    cvar = kdevar.CDF(bins=bins, asVar=True, axis_idx=None)
+    assert cvar.shape == kdevar.shape+(len(bins),)
     assert cvar.units == ''
+    if var.masked:
+      assert cvar.masked
+      # N.B.: the CDF/sample axes here are in different locations!    
+      assert np.all(cvar.data_array.mask, axis=-1).sum() >= np.all(var.data_array.mask, axis=0).sum()
+    assert ma.all(np.diff(cvar.data_array, axis=-1) >= 0.)
     
   def testReductionArithmetic(self):
-    ''' test reducing arithmetic functions '''
+    ''' test reducing arithmetic functions (these tests can take long) '''
+    # N.B.: unneccessary/redundant tests are commented out to speed things up
     # get test objects
     var = self.var; t,x,y = self.axes # for upwards compatibility!
     # not all tests are necessary!
     #print self.data.std(ddof=3), var.std(ddof=3)
-    assert isEqual(np.nansum(self.data), var.sum())
+#     assert isEqual(np.nansum(self.data), var.sum())
 #     assert isEqual(np.nanmean(self.data), var.mean())
-    assert isEqual(np.nanstd(self.data, ddof=1), var.std(ddof=1))
+#     assert isEqual(np.nanstd(self.data, ddof=1), var.std(ddof=1))
 #     assert isEqual(np.nanvar(self.data, ddof=1), var.var(ddof=1))
     assert isEqual(np.nanmax(self.data), var.max())
 #     assert isEqual(np.nanmin(self.data), var.min())
@@ -390,7 +403,7 @@ class BaseVarTest(unittest.TestCase):
     assert varvar.units == '({:s})^2'.format(var.units) # check units!
     assert isEqual(np.nanvar(self.data, axis=var.axisIndex(t.name),ddof=3), varvar.getArray())
 #     assert isEqual(np.nanmax(self.data,axis=var.axisIndex(x.name)), var.max(**{x.name:None}).getArray())
-    assert isEqual(np.nanmin(self.data, axis=var.axisIndex(y.name)), var.min(**{y.name:None}).getArray())
+#     assert isEqual(np.nanmin(self.data, axis=var.axisIndex(y.name)), var.min(**{y.name:None}).getArray())
     # reduction fcts. of Variables ignore NaN values
     # test histogram
     lsimple = self.__class__ is BaseVarTest
@@ -406,17 +419,17 @@ class BaseVarTest(unittest.TestCase):
     if lsimple:
       assert self.data.min() == 1 and self.data.max() == 12 and self.data.shape[0] == 48
       assert hvar.limits() == (4,4)
-    # test simple version
-    hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=True, asVar=False, lflatten=True)
-    hist,bin_edges  = np.histogram(self.var.getArray(), bins=binedgs, density=True)
-    assert isEqual(binedgs, bin_edges)
-    assert isEqual(hvar, hist, masked_equal=True)
+#     # test simple version
+#     hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=True, asVar=False, lflatten=True)
+#     hist,bin_edges  = np.histogram(self.var.getArray(), bins=binedgs, density=True)
+#     assert isEqual(binedgs, bin_edges)
+#     assert isEqual(hvar, hist, masked_equal=True)
     # test cumulative distribution function
-    hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=False, asVar=False, axis=t.name)
-    cdf = np.cumsum(hvar, axis=0)
-    cvar = var.CDF(bins=bins, binedgs=binedgs, lnormalize=False, asVar=False, axis=t.name)
-    assert isEqual(cdf, cvar, masked_equal=True)
-    cdf /= np.sum(hvar,axis=0)
+#     hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=False, asVar=False, axis=t.name)
+#     cvar = var.CDF(bins=bins, binedgs=binedgs, lnormalize=False, asVar=False, axis=t.name)
+#     assert isEqual(cdf, cvar, masked_equal=True)
+    cdf = np.cumsum(hvar.data_array, axis=0)
+    cdf /= np.sum(hvar.data_array,axis=0)
     cvar = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=True, axis=t.name)
     assert isEqual(cdf, cvar.data_array, masked_equal=True)
     assert cvar.units == ''
@@ -1166,20 +1179,25 @@ class DatasetGDALTest(DatasetNetCDFTest):
     
 if __name__ == "__main__":
 
+
+    # use Intel MKL multithreading: OMP_NUM_THREADS=4
+#     import os
+#     print('OMP_NUM_THREADS=',os.environ['OMP_NUM_THREADS'])    
         
     specific_tests = None
-    specific_tests = ['DistributionVariables']    
+#     specific_tests = ['DistributionVariables']
+#     specific_tests = ['Mask']    
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
+    tests += ['BaseVar'] 
     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
      
     
     # construct dictionary of test classes defined above

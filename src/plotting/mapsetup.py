@@ -65,7 +65,7 @@ class MapSetup(object):
     if self.scale is not None:
       basemap.drawmapscale(*self.scale, barstyle='fancy', fontsize=8, yoffset=0.01*(basemap.ymax-basemap.ymin))
       
-  # misc annotations that I usually do
+  # utils annotations that I usually do
   def miscAnnotation(self, basemap, maskland=False, ocean_color='blue', land_color='green'):
     ''' add coastlines, countries, color ocean and background etc. '''
     # land/sea mask

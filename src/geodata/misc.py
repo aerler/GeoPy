@@ -205,7 +205,8 @@ class RecordClass(object):
   def __init__(self, **kwargs):
     ''' initialize station parameters '''
     # generate attribute list
-    parameters = inspect.getmembers(self, lambda att: not(inspect.isroutine(att)))
+    def tmp_fct(att): return not(inspect.isroutine(att)) # lambda's cause problems when pickling
+    parameters = inspect.getmembers(self, tmp_fct)
     parameters = [key for key,val in parameters if key[:2] != '__' and key[-2:] != '__']; del val
     self.__params__ = parameters # save parameter list for references
     cls = self.__class__

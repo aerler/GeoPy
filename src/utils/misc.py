@@ -7,7 +7,14 @@ Random utility functions...
 '''
 
 import numpy as np
-from misc.signalsmooth import smooth
+from utils.signalsmooth import smooth
+
+
+# histogram wrapper that suppresses additional output
+def histogram(a, bins=10, range=None, weights=None, density=None): 
+  ''' histogram wrapper that suppresses bin edge output, but is otherwise the same '''
+  return np.histogram(a, bins=bins, range=range, weights=weights, density=density)[0]
+
 
 # function to subtract the mean and divide by the standard deviation, i.e. standardize
 def standardize(var, lsmooth=False, **kwargs):
