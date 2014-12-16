@@ -213,7 +213,7 @@ class Variable(object):
         if dtype is not data.dtype: data = data.astype(dtype) # recast as new type        
 #         raise TypeError, "Declared data type '{:s}' does not match the data type of the array ({:s}).".format(str(dtype),str(data.dtype))
       if axes is not None and len(axes) != data.ndim: 
-        raise AxisError, 'Dimensions of data array and axes are note compatible!'
+        raise AxisError, 'Dimensions of data array and axes are not compatible!'
     # for completeness of MRO...
     super(Variable,self).__init__()
     ## set basic variable 

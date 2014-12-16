@@ -18,6 +18,7 @@ from geodata.misc import isZero, isOne, isEqual
 from geodata.base import Variable, Axis, Dataset, Ensemble, concatVars, concatDatasets
 from geodata.dist import VarKDE, VarRV, asDistVar
 from datasets.common import data_root
+from average.wrfout_average import ldebug
 
 # RAM disk settings ("global" variable)
 RAM = True # whether or not to use a RAM disk
@@ -332,57 +333,82 @@ class BaseVarTest(unittest.TestCase):
     ''' test DistVar instances on different data '''
     # get test objects
     var = self.var; t,x,y = self.axes # for upwards compatibility!
-    # create VarKDE
-    kdevar = asDistVar(var, axis=t.name, dist='kde')
-    assert kdevar.units == var.units
-    assert kdevar.dtype == var.dtype
-    print '\n   ***   finally computed distribution   ***'
-    # test histogram
-    lsimple = self.__class__ is BaseVarTest
-    if lsimple:
-      bins = np.arange(1,10) # 9 bins
-      binedgs = np.arange(0.5,10,1) # 10 edges
-    else:
-      vmin, vmax = var.limits()
-      binedgs = np.linspace(vmin,vmax,10)
-      bins = binedgs[1:] - ( np.diff(binedgs) / 2. )
-    # test simple version
-    if lsimple:
-      hvar = kdevar.histogram(bins=bins, asVar=False)[0,0,:]
-      hist,bin_edges  = np.histogram(self.var.data_array[:,0,0], bins=binedgs, density=True)
-      assert isEqual(binedgs, bin_edges)
-      assert isEqual(hvar, hist, masked_equal=True, eps=1./len(bin_edges)) # large differences between KDE and histogram
-    # test variable version
-    hvar = kdevar.histogram(bins=bins, asVar=True, axis_idx=0)
-    assert hvar.shape == (len(bins),)+var.shape[1:]
-    assert hvar.units == ''
-    assert hvar.axes[0].units == var.units
-    if var.masked:
-      assert hvar.masked
-      assert np.all(hvar.data_array.mask, axis=0).sum() >= np.all(var.data_array.mask, axis=0).sum()    
-    # test resampling
-    rvar = kdevar.resample(N=len(t), asVar=True, axis_idx=0)
-    assert rvar.shape == var.shape
-    assert rvar.units == var.units
-    assert rvar.axes[0].units == ''    
-    if var.masked: # check masks
-      assert rvar.masked
-      assert np.all(rvar.data_array.mask, axis=0).sum() >= np.all(var.data_array.mask, axis=0).sum()    
-    # test cumulative distribution function
-#     cvar = kdevar.CDF(bins=bins, asVar=False, axis_idx=0)
-    # N.B.: var.CDF gives only integer-typeresults, even if cast as float...
-#     if lsimple: var = var.copy(data=np.asarray(var.data_array, dtype=cvar.dtype))
-#     cdf = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=False, axis=t.name)
-#     assert isEqual(cvar, cdf, masked_equal=True, eps=1./len(bin_edges))
-#     cdf = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=True, axis=t.name)
-    cvar = kdevar.CDF(bins=bins, asVar=True, axis_idx=None)
-    assert cvar.shape == kdevar.shape+(len(bins),)
-    assert cvar.units == ''
-    if var.masked:
-      assert cvar.masked
-      # N.B.: the CDF/sample axes here are in different locations!    
-      assert np.all(cvar.data_array.mask, axis=-1).sum() >= np.all(var.data_array.mask, axis=0).sum()
-    assert ma.all(np.diff(cvar.data_array, axis=-1) >= 0.)
+#     for dist in ('kde',):
+    for dist in ('kde','genextreme',):
+      # create VarKDE
+      distvar = asDistVar(var, axis=t.name, dist=dist, ldebug=False) 
+      assert distvar.units == var.units
+      assert distvar.dtype == var.dtype
+      print "\n   ***   computed {:s} distribution   ***".format(dist.upper())
+      # test some moments
+      if dist != 'kde':
+        mom = 'mvsk'
+        stats = distvar.stats(moments=mom)
+        assert stats.shape == var.shape[1:]+(len(mom),)
+        mom0 = distvar.moment(moments=1)
+        assert mom0.shape == var.shape[1:]
+        assert isEqual(mom0.data_array, var.data_array.mean(axis=0), eps=0.1)
+        assert distvar.entropy().shape == var.shape[1:]
+        #print distvar.entropy().data_array
+      # test histogram
+      lsimple = self.__class__ is BaseVarTest
+      if lsimple:
+        bins = np.arange(1,10) # 9 bins
+        binedgs = np.arange(0.5,10,1) # 10 edges
+      else:
+        vmin, vmax = var.limits()
+        binedgs = np.linspace(vmin,vmax,10)
+        bins = binedgs[1:] - ( np.diff(binedgs) / 2. )
+      # test simple version
+      if lsimple:
+        hvar = distvar.histogram(bins=bins, asVar=False)[0,0,:]
+        hist,bin_edges  = np.histogram(self.var.data_array[:,0,0], bins=binedgs, density=True)
+        assert isEqual(binedgs, bin_edges)
+        assert isEqual(hvar, hist, masked_equal=True, eps=1./len(bin_edges)) # large differences between KDE and histogram
+      # test variable version
+      hvar = distvar.histogram(bins=bins, asVar=True, axis_idx=0)
+      assert hvar.shape == (len(bins),)+var.shape[1:]
+      assert hvar.units == ''
+      assert hvar.axes[0].units == var.units
+      if var.masked:
+        assert hvar.masked
+        assert np.all(hvar.data_array.mask, axis=0).sum() >= np.all(var.data_array.mask, axis=0).sum()    
+      # test resampling
+      rvar = distvar.resample(N=len(t), asVar=True, axis_idx=0)
+      assert rvar.shape == var.shape
+      assert rvar.units == var.units
+      assert rvar.axes[0].units == ''    
+      if var.masked: # check masks
+        assert rvar.masked
+        assert np.all(rvar.data_array.mask, axis=0).sum() >= np.all(var.data_array.mask, axis=0).sum()    
+      # test cumulative distribution function
+  #     cvar = distvar.CDF(bins=bins, asVar=False, axis_idx=0)
+      # N.B.: var.CDF gives only integer-typeresults, even if cast as float...
+  #     if lsimple: var = var.copy(data=np.asarray(var.data_array, dtype=cvar.dtype))
+  #     cdf = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=False, axis=t.name)
+  #     assert isEqual(cvar, cdf, masked_equal=True, eps=1./len(bin_edges))
+  #     cdf = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=True, axis=t.name)
+      cvar = distvar.CDF(bins=bins, asVar=True, axis_idx=None)
+      assert cvar.shape == var.shape[1:]+(len(bins),)
+      assert cvar.units == ''
+      if var.masked:
+        assert cvar.masked
+        # N.B.: the CDF/sample axes here are in different locations!    
+        assert np.all(cvar.data_array.mask, axis=-1).sum() >= np.all(var.data_array.mask, axis=0).sum()
+      assert ma.all(np.diff(cvar.data_array, axis=-1) >= 0.)
+      # test some more distribution functions
+      if dist != 'kde':
+        if lsimple: tests = ('pdf', 'logpdf', 'cdf', 'logcdf', 'sf', 'logsf', 'ppf', 'isf')
+        else: tests = ('ppf',)
+        for dt in tests:
+          dvar = getattr(distvar,dt)(support=bins, asVar=True, axis_idx=None)
+          assert dvar.shape == var.shape[1:]+(len(bins),)
+          assert dvar.units == ''
+          if var.masked:
+            assert dvar.masked
+            # N.B.: the CDF/sample axes here are in different locations!    
+            assert np.all(dvar.data_array.mask, axis=-1).sum() >= np.all(var.data_array.mask, axis=0).sum()
+      
     
   def testReductionArithmetic(self):
     ''' test reducing arithmetic functions (these tests can take long) '''
@@ -1185,19 +1211,19 @@ if __name__ == "__main__":
 #     print('OMP_NUM_THREADS=',os.environ['OMP_NUM_THREADS'])    
         
     specific_tests = None
-#     specific_tests = ['DistributionVariables']
+    specific_tests = ['DistributionVariables']
 #     specific_tests = ['Mask']    
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
     tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
      
     
     # construct dictionary of test classes defined above

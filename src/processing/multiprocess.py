@@ -20,8 +20,15 @@ from time import sleep
 
 ## test functions
 
-def test_func(n, wait=3, queue=None):
-  sleep(wait)
+global_var = 0
+
+def test_func(n, wait=None, queue=None):
+  global global_var
+#   print(n,global_var)
+  global_var = n
+#   print(n,global_var)
+  sleep(wait or n)  
+  print(n,global_var)
   result = [n, 'hello', None]
   if queue is not None:
     queue.put(result)
@@ -228,7 +235,7 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=False, ltrialnerror=True):
   # return with exit code
   return exitcode
 
-def apply_along_axis(fct, axis, data, NP=0, ldebug=False, *args, **kwargs):
+def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, *args, **kwargs):
   ''' a parallelized version of numpy's apply_along_axis; the preferred way of passing arguments is,
       by using functools.partial, but argument can also be passed to this function; the call-signature
       is the same as for np.apply_along_axis, except for NP=OMP_NUM_THREADS and ldebug=True '''  
@@ -241,23 +248,29 @@ def apply_along_axis(fct, axis, data, NP=0, ldebug=False, *args, **kwargs):
   # flatten array for redistribution
   data = np.reshape(data,(arraysize,samplesize))
   # compute
-  if False and (NP == 1 or arraysize < 100):
+  if (NP == 1 or arraysize < 2*chunksize):
     # just use regular Numpy version... but always apply over last dimension
     if ldebug: print('\n   ***   Running in Serial Mode   ***')
     results = np.apply_along_axis(fct, 1, data)
   else:
     # split up data
-    cs = arraysize//NP # chunksize; use integer division
-    if arraysize%NP != 0: cs += 1
-    chunks = [data[i*cs:(i+1)*cs,:] for i in xrange(NP)] # views on subsets of the data
+    if arraysize < (NP+1)*chunksize:
+      cs = arraysize//NP # chunksize; use integer division
+      if arraysize%NP != 0: cs += 1
+      nc = NP
+    else:
+      nc = arraysize//chunksize # number of chunks; use integer division
+      if arraysize%chunksize != 0: nc += 1
+      cs = chunksize
+    chunks = [data[i*cs:(i+1)*cs,:] for i in xrange(nc)] # views on subsets of the data
     # initialize worker pool
     if ldebug: print('\n   ***   firing up pool (using async results)   ***')
     if ldebug: print('         OMP_NUM_THREADS = {:d}\n'.format(NP))
     pool = multiprocessing.Pool(processes=NP)
     results = [] # list of resulting chunks (concatenated later
-    for n in xrange(NP):
+    for n in xrange(nc):
       # run computation on individual subsets/chunks
-      if ldebug: print('   Starting Worker #{:d}'.format(n))
+      if ldebug: print('   Starting Chunk #{:d}'.format(n+1))
       result = pool.apply_async(np.apply_along_axis, (fct,1,chunks[n],)+args, kwargs)
       results.append(result)
     pool.close()
@@ -284,9 +297,9 @@ if __name__ == '__main__':
   axis = 1
   def func(arr, kw=0): # lambda fct can't be pickled
     return ( arr - np.mean(arr) ) / arr.std() - kw, kw
-  
+   
   def func1(arr, kw=0): return func(arr, kw=kw)[0]
-  
+   
   def run_test(kw):
     fct = partial(func1, kw=kw)
     shape = (200,100)
@@ -308,7 +321,9 @@ if __name__ == '__main__':
   #print logging.DEBUG,logging.INFO,logging.WARNING,logging.ERROR,logging.CRITICAL
     
   #test_mq(test_func, NP)
-  #test_async(test_func, NP)
+#   print(global_var)
+#   test_async(test_func, NP)
+#   print(global_var)
   
   # test asyncPool
 #   args = [(n,) for n in xrange(5)]
