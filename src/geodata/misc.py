@@ -111,7 +111,7 @@ def isEqual(left, right, eps=None, masked_equal=True):
     # ndarray
     if not isinstance(right,np.ndarray): raise TypeError, diff_type 
     if not left.dtype==right.dtype:
-      right = right.astype(left.dtype, casting='same_kind')
+      right = right.astype(left.dtype) # casting='same_kind' doesn't work...
     if np.issubdtype(left.dtype, np.inexact): # also catch float32 etc
       if eps is None: return ma.allclose(left, right, masked_equal=masked_equal)
       else: return ma.allclose(left, right, masked_equal=masked_equal, atol=eps)
@@ -127,8 +127,8 @@ def isEqual(left, right, eps=None, masked_equal=True):
     if not isinstance(right,(int,bool,np.integer,np.bool)): raise TypeError, diff_type
     return left == right
   else: raise TypeError
-
-
+ 
+ 
 def printList(iterable):
   ''' Small function to generate a sting representation of a list of numbers. '''
   string = '('

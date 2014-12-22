@@ -332,7 +332,18 @@ class BaseVarTest(unittest.TestCase):
   def testDistributionVariables(self):
     ''' test DistVar instances on different data '''
     # get test objects
-    var = self.var; t,x,y = self.axes # for upwards compatibility!
+    lsimple = self.__class__ is BaseVarTest
+    # load data
+    if not lsimple:
+      # crop data because these tests just take way too long!
+      if self.dataset_name == 'NARR':
+        var = self.var(time=slice(0,10), y=slice(190,195), x=slice(0,100))
+      else:
+        var = self.var(time=slice(0,10), lat=(50,70), lon=(-130,-110))
+      t,x,y = var.axes
+    else:
+      t,x,y = self.axes # for upwards compatibility!
+      var = self.var
 #     for dist in ('kde',):
     for dist in ('kde','genextreme',):
       # create VarKDE
@@ -347,11 +358,10 @@ class BaseVarTest(unittest.TestCase):
         assert stats.shape == var.shape[1:]+(len(mom),)
         mom0 = distvar.moment(moments=1)
         assert mom0.shape == var.shape[1:]
-        assert isEqual(mom0.data_array, var.data_array.mean(axis=0), eps=0.1)
+        assert not lsimple or isEqual(mom0.data_array, var.data_array.mean(axis=0), eps=0.1)
         assert distvar.entropy().shape == var.shape[1:]
         #print distvar.entropy().data_array
       # test histogram
-      lsimple = self.__class__ is BaseVarTest
       if lsimple:
         bins = np.arange(1,10) # 9 bins
         binedgs = np.arange(0.5,10,1) # 10 edges
@@ -414,20 +424,33 @@ class BaseVarTest(unittest.TestCase):
     ''' test reducing arithmetic functions (these tests can take long) '''
     # N.B.: unneccessary/redundant tests are commented out to speed things up
     # get test objects
-    var = self.var; t,x,y = self.axes # for upwards compatibility!
+    lsimple = self.__class__ is BaseVarTest
+    # load data
+    if not lsimple:
+      # crop data because these tests just take way too long!
+      if self.dataset_name == 'NARR':
+        var = self.var(time=slice(0,10), y=slice(190,195), x=slice(0,100))
+      else:
+        var = self.var(time=slice(0,10), lat=(50,70), lon=(-130,-110))
+      t,x,y = var.axes
+      data = var.data_array
+    else:
+      t,x,y = self.axes # for upwards compatibility!
+      var = self.var
+      data = self.data
     # not all tests are necessary!
     #print self.data.std(ddof=3), var.std(ddof=3)
 #     assert isEqual(np.nansum(self.data), var.sum())
 #     assert isEqual(np.nanmean(self.data), var.mean())
 #     assert isEqual(np.nanstd(self.data, ddof=1), var.std(ddof=1))
 #     assert isEqual(np.nanvar(self.data, ddof=1), var.var(ddof=1))
-    assert isEqual(np.nanmax(self.data), var.max())
+    assert isEqual(np.nanmax(data), var.max())
 #     assert isEqual(np.nanmin(self.data), var.min())
-    assert isEqual(np.nanmean(self.data,axis=var.axisIndex(t.name)), var.mean(**{t.name:None}).getArray())
+    assert isEqual(np.nanmean(data,axis=var.axisIndex(t.name)), var.mean(**{t.name:None}).getArray())
 #     assert isEqual(np.nanstd(self.data, axis=var.axisIndex(t.name),ddof=3), var.std(ddof=3, **{t.name:None}).getArray())
     varvar = var.var(ddof=3, **{t.name:None})
     assert varvar.units == '({:s})^2'.format(var.units) # check units!
-    assert isEqual(np.nanvar(self.data, axis=var.axisIndex(t.name),ddof=3), varvar.getArray())
+    assert isEqual(np.nanvar(data, axis=var.axisIndex(t.name),ddof=3), varvar.getArray())
 #     assert isEqual(np.nanmax(self.data,axis=var.axisIndex(x.name)), var.max(**{x.name:None}).getArray())
 #     assert isEqual(np.nanmin(self.data, axis=var.axisIndex(y.name)), var.min(**{y.name:None}).getArray())
     # reduction fcts. of Variables ignore NaN values
@@ -1211,19 +1234,20 @@ if __name__ == "__main__":
 #     print('OMP_NUM_THREADS=',os.environ['OMP_NUM_THREADS'])    
         
     specific_tests = None
-    specific_tests = ['DistributionVariables']
+#     specific_tests = ['ReductionArithmetic']
+#     specific_tests = ['DistributionVariables']
 #     specific_tests = ['Mask']    
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
      
     
     # construct dictionary of test classes defined above
