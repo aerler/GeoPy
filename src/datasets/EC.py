@@ -641,6 +641,7 @@ loadEC_Stn = loadEC
 
 
 ## some helper functions to test conditions
+# defined in module main to facilitate pickling
 def test_prov(val,index,dataset,axis):
   ''' check if station province is in provided list ''' 
   return dataset.stn_prov[index] in val 
@@ -656,10 +657,15 @@ def test_lat(val,index,dataset,axis):
 def test_lon(val,index,dataset,axis):
   ''' check if station is located within selected longitude band ''' 
   return val[0] <= dataset.stn_lon[index] <= val[1] 
+# apply tests to list
+def apply_test_suite(tests, index, dataset, axis):
+  ''' apply an entire test suite to '''
+  # just call all individual tests for given index 
+  return all(test(index,dataset,axis) for test in tests)
 
 ## select a set of common stations for an ensemble, based on certain conditions
 def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lall=False, **kwcond):
-  ''' A wrapper for selectCoords that selects stations based on common criteria (does not pickle!) '''
+  ''' A wrapper for selectCoords that selects stations based on common criteria '''
   # list of possible constraints
   tests = [] # a list of tests to run on each station
   loadlist =  (datasets[imaster],) if not lall and imaster is not None else datasets 
@@ -693,9 +699,7 @@ def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lal
       raise NotImplementedError, "Unknown condition/test: '{:s}'".format(key)
   # define test function (all tests must pass)
   if len(tests) > 0:
-    def testFct(index, dataset, axis):
-      # just call all individual tests for given index 
-      return all(test(index,dataset,axis) for test in tests)
+    testFct = functools.partial(apply_test_suite, tests)
   else: testFct = None
   # pass on call to generic function selectCoords
   datasets = selectCoords(datasets=datasets, axis=stnaxis, testFct=testFct, imaster=imaster, linplace=linplace, lall=lall)
