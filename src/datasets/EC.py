@@ -23,6 +23,7 @@ from geodata.netcdf import DatasetNetCDF
 import average.derived_variables as dv
 # from geodata.utils import DatasetError
 from warnings import warn
+import functools
 #from Cython.Utility.MemoryView import tmpdata
 
 ## EC (Environment Canada) Meta-data
@@ -43,15 +44,16 @@ varatts = dict(T2       = dict(name='T2', units='K', atts=dict(long_name='Averag
                solprec  = dict(name='solprec', units='kg/m^2/s', atts=dict(long_name='Solid Precipitation')), # solid precipitation
                liqprec  = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
                # meta/constant data variables
+               # N.B.: 'stn'/'station' prefix is to allow consistent naming and avoid name collisions with variables in other datasets
                name    = dict(name='station_name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
-               prov    = dict(name='prov', units='', atts=dict(long_name='Province')), # in which Canadian Province the station is located
-               joined  = dict(name='joined', units='', atts=dict(long_name='Joined Record or Single Station')), # whether or not the record contains more than one station 
-               lat  = dict(name='lat', units='deg N', atts=dict(long_name='Latitude')), # geographic latitude field
-               lon  = dict(name='lon', units='deg E', atts=dict(long_name='Longitude')), # geographic longitude field
-               alt  = dict(name='zs', units='m', atts=dict(long_name='Station Elevation')), # station elevation
-               begin_date = dict(name='begin_date', units='month', atts=dict(long_name='Month since 1979-01', # begin of station record
+               prov    = dict(name='stn_prov', units='', atts=dict(long_name='Province')), # in which Canadian Province the station is located
+               joined  = dict(name='stn_joined', units='', atts=dict(long_name='Joined Record or Single Station')), # whether or not the record contains more than one station 
+               lat  = dict(name='stn_lat', units='deg N', atts=dict(long_name='Latitude')), # geographic latitude field
+               lon  = dict(name='stn_lon', units='deg E', atts=dict(long_name='Longitude')), # geographic longitude field
+               alt  = dict(name='stn_zs', units='m', atts=dict(long_name='Station Elevation')), # station elevation
+               begin_date = dict(name='stn_begin_date', units='month', atts=dict(long_name='Month since 1979-01', # begin of station record
                                                                              description='Begin of Station Record (relative to 1979-01)')), 
-               end_date   = dict(name='end_date', units='month', atts=dict(long_name='Month since 1979-01', # begin of station record
+               end_date   = dict(name='stn_end_date', units='month', atts=dict(long_name='Month since 1979-01', # begin of station record
                                                                          description='End of Station Record (relative to 1979-01)')),
                stn_rec_len    = dict(name='stn_rec_len', units='month', atts=dict(long_name='Length of Record', # actual length of station record
                                                                          description='Number of Month with valid Data')),
@@ -508,8 +510,8 @@ class StationRecords(object):
     assert self.dataset
     # determine record begin and end indices
     all_begin = self.dataset.time.coord[0] # coordinate value of first time step
-    begin_idx = ( self.dataset.begin_date.getArray() - all_begin ) * 31.
-    end_idx = ( self.dataset.end_date.getArray() - all_begin + 1 ) * 31.
+    begin_idx = ( self.dataset.stn_begin_date.getArray() - all_begin ) * 31.
+    end_idx = ( self.dataset.stn_end_date.getArray() - all_begin + 1 ) * 31.
     # loop over variables
     dailydata = dict() # to store daily data for derived variables
     monlydata = dict() # monthly data, but transposed
@@ -638,40 +640,57 @@ def loadEC():
 loadEC_Stn = loadEC
 
 
+## some helper functions to test conditions
+def test_prov(val,index,dataset,axis):
+  ''' check if station province is in provided list ''' 
+  return dataset.stn_prov[index] in val 
+def test_minlen(val,index,dataset,axis):
+  ''' check if station record is longer than a minimum period ''' 
+  return dataset.stn_rec_len[index] >= val 
+def test_maxzse(val,index,dataset,axis):
+  ''' check that station elevation error does not exceed a threshold ''' 
+  return np.abs(dataset.zs_err[index]) <= val 
+def test_lat(val,index,dataset,axis):
+  ''' check if station is located within selected latitude band ''' 
+  return val[0] <= dataset.stn_lat[index] <= val[1] 
+def test_lon(val,index,dataset,axis):
+  ''' check if station is located within selected longitude band ''' 
+  return val[0] <= dataset.stn_lon[index] <= val[1] 
+
 ## select a set of common stations for an ensemble, based on certain conditions
 def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lall=False, **kwcond):
-  ''' '''
+  ''' A wrapper for selectCoords that selects stations based on common criteria (does not pickle!) '''
   # list of possible constraints
   tests = [] # a list of tests to run on each station
   loadlist =  (datasets[imaster],) if not lall and imaster is not None else datasets 
   # test definition
-  if 'prov' in kwcond:
-    provs = kwcond['prov']
-    if not isinstance(provs,(tuple,list)): provs = (provs,)
-    if not isinstance(provs,tuple): provs = tuple(provs)
-    if not all(isinstance(prov,basestring) for prov in provs): raise TypeError
-    for dataset in loadlist: dataset.prov.load() # preload required data
-    def test(index,dataset,axis):
-      ''' check if station province is in provided list ''' 
-      return dataset.prov[index] in provs 
-    tests.append(test)
-  if 'min_len' in kwcond:
-    prd = kwcond['min_len']
-    if not isNumber(prd): raise TypeError
-    prd = prd*12 # units in dataset are month  
-    for dataset in loadlist: dataset.stn_rec_len.load() # preload required data
-    def test(index,dataset,axis):
-      ''' check if station record is longer than a minimum period ''' 
-      return dataset.stn_rec_len[index] >= prd 
-    tests.append(test)    
-  if 'max_zerr' in kwcond:
-    zerr = kwcond['max_zerr']
-    if not isNumber(zerr): raise TypeError  
-    for dataset in loadlist: dataset.zs_err.load() # preload required data
-    def test(index,dataset,axis):
-      ''' check if station record is longer than a minimum period ''' 
-      return np.abs(dataset.zs_err[index]) < zerr 
-    tests.append(test)
+  for key,val in kwcond.iteritems():
+    key = key.lower()
+    if key == 'prov':
+      if not isinstance(val,(tuple,list)): val = (val,)
+      if not isinstance(val,tuple): val = tuple(val)
+      if not all(isinstance(prov,basestring) for prov in val): raise TypeError
+      for dataset in loadlist: dataset.stn_prov.load()
+      tests.append(functools.partial(test_prov, val))
+    elif key == 'min_len':
+      if not isNumber(val): raise TypeError
+      val = val*12 # units in dataset are month  
+      for dataset in loadlist: dataset.stn_rec_len.load() # preload required data
+      tests.append(functools.partial(test_minlen, val))    
+    elif key == 'max_zerr':
+      if not isNumber(val): raise TypeError  
+      for dataset in loadlist: dataset.zs_err.load() # preload required data
+      tests.append(functools.partial(test_maxzse, val))
+    elif key == 'lat':
+      if not isinstance(val,(list,tuple)) or len(val) != 2 or not all(isNumber(l) for l in val): raise TypeError  
+      for dataset in loadlist: dataset.stn_lat.load() # preload required data
+      tests.append(functools.partial(test_lat, val))
+    elif key == 'lon':
+      if not isinstance(val,(list,tuple)) or len(val) != 2 or not all(isNumber(l) for l in val): raise TypeError  
+      for dataset in loadlist: dataset.stn_lon.load() # preload required data
+      tests.append(functools.partial(test_lon, val))
+    else:
+      raise NotImplementedError, "Unknown condition/test: '{:s}'".format(key)
   # define test function (all tests must pass)
   if len(tests) > 0:
     def testFct(index, dataset, axis):
@@ -723,17 +742,20 @@ if __name__ == '__main__':
     stn='ecprecip'
     print('')
     stnens = Ensemble(loadEC_StnTS(station=stn), loadWRF_StnEns(ensemble='max-ens-2100', station=stn, 
-                      filetypes='hydro', domains=2))
+                      filetypes='hydro', domains=2)) # including WRF data for test
     print(stnens)    
     print('')
     var = stnens[-1].axes['station']; print(''); print(var)
     for var in stnens.station: print(var.min(),var.mean(),var.max())
     # test station selector
-    stnens = selectStations(stnens, prov=('AB','BC'), min_len=50,
-                             stnaxis='station', imaster=0, linplace=False, lall=False) 
+    stnens = selectStations(stnens, prov=('AB','BC'), min_len=50, lat=(50,55), lon=(-125,-110),
+                            stnaxis='station', imaster=None, linplace=False, lall=False) 
     print('')
     var = stnens[-1].axes['station']; print(''); print(var)
     for var in stnens.station: print(var.min(),var.mean(),var.max())
+    
+    print('')
+    print(stnens[0].stn_prov.data_array)
         
   # test wrapper function to load time series data from EC stations
   elif mode == 'test_timeseries':

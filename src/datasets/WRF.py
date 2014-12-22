@@ -634,9 +634,9 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
 #   mode = 'test_station_climatology'
 #   mode = 'test_timeseries'
-  mode = 'test_station_timeseries'
+#   mode = 'test_station_timeseries'
 #   mode = 'test_ensemble'
-#   mode = 'test_station_ensemble'
+  mode = 'test_station_ensemble'
 #   mode = 'pickle_grid'  
   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
@@ -763,7 +763,7 @@ if __name__ == '__main__':
   elif mode == 'test_station_ensemble':
     
     print('')
-    dataset = loadWRF_StnEns(ensemble='max-ens-2100', station='ecprecip', domains=2, filetypes=['xtrm']).load()
+    dataset = loadWRF_StnEns(ensemble='max-ens', station='ecprecip', domains=2, filetypes=['xtrm']).load()
     print('')
     print(dataset)
     print('')
