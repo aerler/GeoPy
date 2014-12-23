@@ -468,7 +468,7 @@ if __name__ == '__main__':
           
         # add common legend
         if ljoined:
-          leghgt = fontsize/200.+0.05
+          leghgt = fontsize/250.+margins['height']
           ax = fig.add_axes([0, 0, 1,leghgt])
           ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
           margins['bottom'] = margins['bottom'] + leghgt; fig.subplots_adjust(**margins)

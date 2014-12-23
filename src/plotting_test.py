@@ -66,7 +66,8 @@ class LinePlotTest(unittest.TestCase):
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var1 = self.var1; var2 = self.var2
     # create plot
-    plts = ax.linePlot([var1, var2], ylabel='custom label [{1:s}]', ylim=var1.limits(), legend=2)
+    plts = ax.linePlot([var1, var2], ylabel='custom label [{1:s}]', 
+                       ylim=var1.limits(), legend=2, hline=2., vline=(2,3))
     assert len(plts) == 2
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
@@ -116,13 +117,15 @@ class LinePlotTest(unittest.TestCase):
     fig.addSharedLegend(plots=plts)
     # add labels
     fig.addLabels(labels=None, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
-    
+    # add a line
+    ax.addHline(3)
     
 if __name__ == "__main__":
 
     
     specific_tests = None
-#     specific_tests = ['CombinedLinePlot']    
+#     specific_tests = ['CombinedLinePlot']
+#     specific_tests = ['AxesGridLinePlot']    
 
     # list of tests to be performed
     tests = [] 

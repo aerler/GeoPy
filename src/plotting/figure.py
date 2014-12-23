@@ -274,6 +274,10 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=No
   if AxesGrid:
     if share_all is None: share_all = True
     if axes_pad is None: axes_pad = 0.05
+    # adjust margins for ignored label pads
+    margins = list(margins)
+    margins[0] += 0.015; margins[1] += 0.010
+    margins[2] -= 0.010; margins[3] -= 0.010
     # create axes using the Axes Grid package
     if axes_class is None: axes_class=MyLocatableAxes
     fig = mpl.pylab.figure(facecolor='white', figsize=figsize, axes_class=axes_class, 

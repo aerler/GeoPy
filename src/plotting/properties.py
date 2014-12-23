@@ -47,7 +47,7 @@ tmp = PlotAtts(name = 'Histogram', title = 'Histogram',
 variablePlotatts['hist'] = tmp
 ## Density Distribution
 tmp = PlotAtts(name = 'PDF', title = 'Density Distribution', 
-               units = '', preserve = 'area')
+               units = '', preserve = 'value')
 # add to collection
 variablePlotatts['pdf'] = tmp
 ## Cumulative Distribution
