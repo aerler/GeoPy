@@ -2074,7 +2074,7 @@ class Dataset(object):
       else:
         # treat as simple attributes and return dict with values
         return attrdict
-    else: raise AttributeError # raise previous exception
+    else: raise AttributeError, attr # raise previous exception
       
 
 def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, offset=None, 

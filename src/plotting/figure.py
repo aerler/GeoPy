@@ -168,19 +168,19 @@ class MyFigure(Figure):
         ax.set_position(pos)
 
   # add common/shared legend to a multi-panel plot
-  def addSharedLegend(self, plts=None, legs=None, fontsize=None, **kwargs):
+  def addSharedLegend(self, plots=None, labels=None, fontsize=None, **kwargs):
     ''' add a common/shared legend to a multi-panel plot '''
     # complete input
-    if legs is None: legs = [plt.get_label() for plt in plts]
-    elif not isinstance(legs, (list,tuple)): raise TypeError
-    if not isinstance(plts, (list,tuple,NoneType)): raise TypeError
+    if labels is None: labels = [plt.get_label() for plt in plots]
+    elif not isinstance(labels, (list,tuple)): raise TypeError
+    if not isinstance(plots, (list,tuple,NoneType)): raise TypeError
     # selfure out fontsize and row numbers  
     fontsize = fontsize or self.axes[0].get_yaxis().get_label().get_fontsize() # or fig._suptitle.get_fontsize()
-    nlen = len(plts) if plts else len(legs)
+    nlen = len(plots) if plots else len(labels)
     if fontsize > 11: ncols = 2 if nlen == 4 else 3
     else: ncols = 3 if nlen == 6 else 4              
     # make room for legend
-    leghgt = np.ceil(nlen/ncols) * fontsize + 0.055
+    leghgt = np.ceil(float(nlen)/float(ncols)) * fontsize/200. + 0.005
     ax = self.add_axes([0, 0, 1,leghgt]) # new axes to hold legend, with some attributes
     ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
     self.updateSubplots(mode='shift', bottom=leghgt) # shift bottom upwards
@@ -189,8 +189,8 @@ class MyFigure(Figure):
                    labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
     legargs.update(kwargs)
     # create legend and return handle
-    if plts: legend = ax.legend(plts, legs, **legargs)
-    else: legend = ax.legend(legs, **legargs)
+    if plots: legend = ax.legend(plots, labels, **legargs)
+    else: legend = ax.legend(labels, **legargs)
     # store axes handle and legend
     self.legend_axes = ax
     self.shared_legend = legend

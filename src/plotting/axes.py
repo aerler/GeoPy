@@ -13,7 +13,7 @@ import matplotlib as mpl
 from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 # internal imports
-from geodata.base import Variable
+from geodata.base import Variable, Ensemble
 from geodata.misc import ListError, AxisError
 from plotting.misc import smooth, getPlotValues
 
@@ -33,7 +33,7 @@ class MyAxes(Axes):
     # varlist is the list of variable objects that are to be plotted
     #print varlist
     if isinstance(varlist,Variable): varlist = [varlist]
-    elif not isinstance(varlist,(tuple,list)) or not all([isinstance(var,Variable) for var in varlist]): raise TypeError
+    elif not isinstance(varlist,(tuple,list,Ensemble)) or not all([isinstance(var,Variable) for var in varlist]): raise TypeError
     for var in varlist: var.squeeze() # remove singleton dimensions
     self.variables = varlist # save references to variables
     # linestyles is just a list of line styles for each plot

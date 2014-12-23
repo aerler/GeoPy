@@ -113,7 +113,7 @@ class LinePlotTest(unittest.TestCase):
       plts = ax.linePlot([var1, var2], ylim=var1.limits(), legend=0, title='Panel {:d}'.format(i+1))
       assert len(plts) == 2
     # add common legend
-    fig.addSharedLegend(plts=plts)
+    fig.addSharedLegend(plots=plts)
     # add labels
     fig.addLabels(labels=None, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
     
