@@ -476,7 +476,7 @@ class Variable(object):
       data = self.data_array.__getitem__(slc) # valid array slicing
     else:    
       # if nothing applies, raise index error
-      print slc
+      #print slc
       raise IndexError, "Invalid index type for class '{:s}'!".format(self.__class__.__name__)
     # return data, if no error
     return data
@@ -836,8 +836,10 @@ class Variable(object):
     if lflatten: data = self.data_array.ravel() # just a 'view', flatten() returns a copy
     else: data = self.data_array
     # N.B.: usually this will be used for categorical data like int or str anyway...
-    # pad strings with spaces
+    # pad strings with spaces      
     if self.strvar: value = value + ' '*(self.strlen-len(value))
+    elif self.dtype.kind == 'S': 
+      value = value + ' '*(self.dtype.itemsize-len(value))
     # now scan through the values to extract matching index
     idx = None
     for i,vv in enumerate(data):
@@ -1629,7 +1631,7 @@ class Dataset(object):
     else: self.__dict__['atts'] = AttrDict()
     # load variables (automatically adds axes linked to variables)
     if varlist is None: varlist = []
-    print '\n'
+#     print '\n'
 #     varnames = [var.name for var in varlist]
 #     varnames.sort()
 #     for var in varnames:

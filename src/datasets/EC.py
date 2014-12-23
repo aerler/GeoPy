@@ -666,9 +666,12 @@ def apply_test_suite(tests, index, dataset, axis):
 ## select a set of common stations for an ensemble, based on certain conditions
 def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lall=False, **kwcond):
   ''' A wrapper for selectCoords that selects stations based on common criteria '''
+  # pre-load NetCDF datasets
+  for dataset in datasets: 
+    if isinstance(dataset,DatasetNetCDF): dataset.load() 
   # list of possible constraints
   tests = [] # a list of tests to run on each station
-  loadlist =  (datasets[imaster],) if not lall and imaster is not None else datasets 
+  #loadlist =  (datasets[imaster],) if not lall and imaster is not None else datasets 
   # test definition
   for key,val in kwcond.iteritems():
     key = key.lower()
@@ -676,24 +679,24 @@ def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lal
       if not isinstance(val,(tuple,list)): val = (val,)
       if not isinstance(val,tuple): val = tuple(val)
       if not all(isinstance(prov,basestring) for prov in val): raise TypeError
-      for dataset in loadlist: dataset.stn_prov.load()
+      #for dataset in loadlist: dataset.stn_prov.load()
       tests.append(functools.partial(test_prov, val))
     elif key == 'min_len':
       if not isNumber(val): raise TypeError
       val = val*12 # units in dataset are month  
-      for dataset in loadlist: dataset.stn_rec_len.load() # preload required data
+      #for dataset in loadlist: dataset.stn_rec_len.load() # preload required data
       tests.append(functools.partial(test_minlen, val))    
     elif key == 'max_zerr':
       if not isNumber(val): raise TypeError  
-      for dataset in loadlist: dataset.zs_err.load() # preload required data
+      #for dataset in loadlist: dataset.zs_err.load() # preload required data
       tests.append(functools.partial(test_maxzse, val))
     elif key == 'lat':
       if not isinstance(val,(list,tuple)) or len(val) != 2 or not all(isNumber(l) for l in val): raise TypeError  
-      for dataset in loadlist: dataset.stn_lat.load() # preload required data
+      #for dataset in loadlist: dataset.stn_lat.load() # preload required data
       tests.append(functools.partial(test_lat, val))
     elif key == 'lon':
       if not isinstance(val,(list,tuple)) or len(val) != 2 or not all(isNumber(l) for l in val): raise TypeError  
-      for dataset in loadlist: dataset.stn_lon.load() # preload required data
+      #for dataset in loadlist: dataset.stn_lon.load() # preload required data
       tests.append(functools.partial(test_lon, val))
     else:
       raise NotImplementedError, "Unknown condition/test: '{:s}'".format(key)
@@ -754,6 +757,7 @@ if __name__ == '__main__':
     # test station selector
     stnens = selectStations(stnens, prov=('AB','BC'), min_len=50, lat=(50,55), lon=(-125,-110),
                             stnaxis='station', imaster=None, linplace=False, lall=False) 
+    print(stnens)    
     print('')
     var = stnens[-1].axes['station']; print(''); print(var)
     for var in stnens.station: print(var.min(),var.mean(),var.max())

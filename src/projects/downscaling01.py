@@ -7,7 +7,7 @@ Script to generate plots for my first downscaling paper!
 '''
 
 # use common MPL instance
-from plotting.utils import loadMPL
+from plotting.misc import loadMPL
 mpl,pyl = loadMPL(linewidth=.75)
 from mpl_toolkits.axes_grid1 import ImageGrid
 # PyGeoDat stuff

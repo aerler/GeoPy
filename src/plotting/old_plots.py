@@ -141,7 +141,7 @@ def multiPlot(f,varlist,titles='',clevs=None,labels=None,legends=None,cbls=None,
 
 ## plot profile (line or scatter plot) of variable with multiplot support
 def linePlot(varlist, coord, axis=None, clevs=None,title='',subplot=(),expand=True,figargs={'figsize':(10,8)},transpose=False, mplrc=None, **plotargs):
-  from utils import multiPlot, loadMPL
+  from plotting.misc import multiPlot, loadMPL
   # load matplotlib and apply config dictionary
   mpl = loadMPL(mplrc)
   import matplotlib.pyplot as pyl
@@ -260,7 +260,7 @@ def linePlot(varlist, coord, axis=None, clevs=None,title='',subplot=(),expand=Tr
 ## plot 2D map of variable (with multiplot support)
 def surfacePlot(varlist, times=None, clevs=None,cbls=None,title='',axTitles=True,subplot=(),slices={},figargs={'figsize':(10,8)},**plotargs):
   import matplotlib.pylab as pyl
-  from utils import multiPlot, sharedColorbar
+  from plotting.misc import multiPlot, sharedColorbar
   if not isinstance(varlist,list): varlist = [varlist]
   if not isinstance(times,list): times = [times]
   if not isinstance(clevs,list): clevs = [clevs]
@@ -315,7 +315,7 @@ def surfacePlot(varlist, times=None, clevs=None,cbls=None,title='',axTitles=True
 def hovmoellerPlot(varlist, clevs=None,cbls=None,title='',subplot=(),slices={},figargs={'figsize':(8,8)},**plotargs):
   import matplotlib.pylab as pyl    
   from pygeode.axis import XAxis, YAxis, TAxis
-  from utils import multiPlot, sharedColorbar
+  from plotting.misc import multiPlot, sharedColorbar
   if not isinstance(varlist,list): varlist = [varlist]
   if not isinstance(clevs,list): clevs = [clevs]
   if not isinstance(cbls,list): cbls = [cbls]

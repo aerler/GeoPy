@@ -25,7 +25,7 @@ from plotting.lineplots import linePlot , addSharedLegend
 from plotting.mapplots import srfcPlot
 from plotting.figure import getFigAx
 # use common MPL instance
-from plotting.utils import loadMPL
+from plotting.misc import loadMPL
 mpl,pyl = loadMPL(linewidth=1.)
 
 

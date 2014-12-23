@@ -15,7 +15,7 @@ from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 # internal imports
 from geodata.base import Variable
 from geodata.misc import ListError, AxisError
-from plotting.utils import smooth, getPlotValues
+from plotting.misc import smooth, getPlotValues
 
 
 ## new axes class

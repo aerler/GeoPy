@@ -14,7 +14,7 @@ from matplotlib.figure import Figure, SubplotBase, subplot_class_factory
 # internal imports
 from geodata.misc import isInt 
 from plotting.axes import MyAxes, MyLocatableAxes, Axes
-from plotting.utils import loadMPL
+from plotting.misc import loadMPL
 
 
 ## my new figure class

@@ -22,7 +22,7 @@ import matplotlib as mpl
 # pyl.ioff()
 # internal imports
 from utils.signalsmooth import smooth
-from utils import getPlotValues, getFigAx, updateSubplots
+from plotting.misc import getPlotValues, getFigAx, updateSubplots
 from geodata.base import Variable
 from geodata.misc import AxisError, ListError
 
