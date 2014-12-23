@@ -293,6 +293,16 @@ class Variable(object):
     if self.data:
       self.data_array = self.data_array.astype(dtype)
     self._dtype = dtype
+
+  @property
+  def strvar(self):
+    ''' If the data type is a String kind '''
+    return self.dtype.kind == 'S'   
+
+  @property
+  def strlen(self):
+    ''' The length/itemsize of a String variable  '''
+    return self.dtype.itemsize if self.strvar else None
   
   @property
   def ndim(self):
@@ -838,8 +848,7 @@ class Variable(object):
     # N.B.: usually this will be used for categorical data like int or str anyway...
     # pad strings with spaces      
     if self.strvar: value = value + ' '*(self.strlen-len(value))
-    elif self.dtype.kind == 'S': 
-      value = value + ' '*(self.dtype.itemsize-len(value))
+    # N.B.: this way we avoid false positives due to too short strings
     # now scan through the values to extract matching index
     idx = None
     for i,vv in enumerate(data):

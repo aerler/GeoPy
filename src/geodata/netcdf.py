@@ -164,8 +164,10 @@ class VarNC(Variable):
     self.__dict__['transform'] = transform
     self.__dict__['squeezed'] = False
     self.__dict__['slices'] = slices # initial default (i.e. everything)
-    self.__dict__['strvar'] = lstrvar
-    self.__dict__['strlen'] = strlen
+#     self.__dict__['strvar'] = lstrvar
+#     self.__dict__['strlen'] = strlen
+    assert self.strvar == lstrvar
+    assert self.strlen == strlen
     if squeeze: self.squeeze() # may set 'squeezed' to True
     # handle data
     if load and data is not None: raise DataError, "Arguments 'load' and 'data' are mutually exclusive, i.e. only one can be used!"

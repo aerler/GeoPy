@@ -586,7 +586,7 @@ class BaseDatasetTest(unittest.TestCase):
     rav = Variable(name='rav',units=self.atts['units'],axes=self.axes,
                         data=self.data.copy(),atts=self.atts.copy())
     pdata = np.random.random((len(self.axes[0]),)) # test float matching
-    pdata = np.asarray(pdata, dtype='|S32') # test string matching
+    pdata = np.asarray(pdata, dtype='|S14') # test string matching
     pax = Variable(name='pax',units=self.atts['units'],axes=self.axes[0:1],
                         data=pdata,atts=None)
     self.var = var; self.lar =lar; self.rav = rav; self.pax = pax 
@@ -1241,14 +1241,14 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
+    tests += ['BaseVar'] 
     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
-     
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
+      
     
     # construct dictionary of test classes defined above
     test_classes = dict()
