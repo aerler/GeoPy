@@ -474,7 +474,7 @@ class StationRecords(object):
       # add length of record variable
       tmpatts = varatts['stn_rec_len'].copy(); recatts = tmpatts['atts'].copy()
       recatts['long_name'] = recatts['long_name']+' for {:s}'.format(varname.title())
-      tmpatts['name'] = varname+'_len'; tmpatts['atts'] = recatts
+      tmpatts['name'] = 'stn_'+varname+'_len'; tmpatts['atts'] = recatts
       dataset += Variable(axes=(station,), data=np.zeros(len(station), dtype='int16'),  **tmpatts)
     # write dataset to file
     ncfile = '{:s}/{:s}'.format(folder,filename)      
@@ -589,7 +589,7 @@ class StationRecords(object):
     # determine actual length of records (valid data points)
     minlen = None 
     for varname in self.variables.iterkeys():
-      rec_len = self.dataset[varname+'_len'] # get variable object
+      rec_len = self.dataset['stn_'+varname+'_len'] # get variable object
       varobj = self.dataset[varname]
       stlen,tlen = varobj.shape
       assert stlen == rec_len.shape[0]
@@ -604,10 +604,7 @@ class StationRecords(object):
     # synchronize data, i.e. write to disk
     self.dataset.sync()
     
-      
-        
     
-
 ## load pre-processed EC station time-series
 def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None, filelist=None, folder=None): 
   ''' Load a monthly time-series of pre-processed EC station data. '''
@@ -734,10 +731,10 @@ if __name__ == '__main__':
 #   mode = 'test_station_object'
 #   mode = 'test_station_reader'
 #   mode = 'test_conversion'
-#   mode = 'convert_all_stations'
+  mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
 #   mode = 'test_timeseries'
-  mode = 'test_selection'
+#   mode = 'test_selection'
   
   # test wrapper function to load time series data from EC stations
   if mode == 'test_selection':

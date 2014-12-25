@@ -943,7 +943,8 @@ class Variable(object):
     return data, name, units
   
   def reduce(self, operation, blklen=None, blkidx=None, axis=None, mode=None, offset=0, 
-                  asVar=None, axatts=None, varatts=None, fillValue=None, **kwargs):
+                  asVar=None, axatts=None, varatts=None, fillValue=None, 
+                  lcheckVar=True, lcheckAxis=True, **kwargs):
     ''' Reduce a time-series; there are two modes:
           'block'     reduce to one value representing each block, e.g. from monthly to yearly averages;
                       specify a subset of elements from each block with blkidx
@@ -957,8 +958,14 @@ class Variable(object):
     elif mode == 'periodic': lperi = True
     elif mode == 'all': lall = True
     else: raise ArgumentError 
+    # check variables
+    if self.dtype.kind in ('S',): 
+      if lcheckVar: raise VariableError, "Reduction does not work with string Variables!"
+      else: return None
     # reduction axis
-    if not self.hasAxis(axis): raise AxisError, 'Reduction operations require a reduction axis!'
+    if not self.hasAxis(axis): 
+      if lcheckAxis: raise AxisError, 'Reduction operations require a reduction axis!'
+      else: return None # just do nothing and return original Variable
     if isinstance(axis,basestring): axis = self.getAxis(axis)
     if not isinstance(axis,Axis): raise TypeError
     axlen = len(axis); iax = self.axisIndex(axis)
@@ -1017,7 +1024,7 @@ class Variable(object):
       if 'coord' in raxatts:
         coord = raxatts.pop('coord') # use user-defiend coordinates 
       elif lblk: # use the beginning of each block as new coordinates (not divided by block length!) 
-        coord = oaxis.coord.reshape(nblks,blklen)[:,0]
+        coord = oaxis.coord.reshape(nblks,blklen)[:,0].copy()
       elif lperi or lall: # just enumerate block elements
         coord = np.arange(blklen) 
       axes = list(self.axes); axes[iax] = Axis(coord=coord, atts=raxatts)
@@ -1042,8 +1049,9 @@ class Variable(object):
     if axis_idx is not None and axis is None: axis = self.axes[axis_idx]
     elif axis_idx is None and axis is not None: axis_idx = self.axisIndex(axis)
     elif not lflatten: raise ArgumentError    
-    if lcheckAxis and axis is not None:
-      if not self.hasAxis(axis): raise AxisError, "Variable '{:s}' has no axis '{:s}'.".format(self.name, axis)
+    if axis is not None and not self.hasAxis(axis):
+      if lcheckAxis: raise AxisError, "Variable '{:s}' has no axis '{:s}'.".format(self.name, axis)
+      else: return None
     kwargs['density'] = ldensity # overwrite parameter
     # figure out bins
     if bins is None and binedgs is None: raise ArgumentError
@@ -1142,8 +1150,9 @@ class Variable(object):
     if axis_idx is not None and axis is None: axis = self.axes[axis_idx]
     elif axis_idx is None and axis is not None: axis_idx = self.axisIndex(axis)
     elif not lflatten: raise ArgumentError
-    if lcheckAxis and axis is not None:
-      if not self.hasAxis(axis): raise AxisError, "Variable '{:s}' has no axis '{:s}'.".format(self.name, axis)
+    if axis is not None and not self.hasAxis(axis):
+      if lcheckAxis: raise AxisError, "Variable '{:s}' has no axis '{:s}'.".format(self.name, axis)
+      else: return None
     # let histogram worry about the bins...
     # setup CDF variable attributes (special case)
     if asVar:
@@ -1174,10 +1183,15 @@ class Variable(object):
     # return new variable instance (or data)
     return cvar
     
-  def reduceToAnnual(self, season, operation, asVar=False, name=None, offset=0, taxis='time', 
-                     checkUnits=True, taxatts=None, varatts=None, **kwargs):
+  def reduceToAnnual(self, season, operation, asVar=False, name=None, offset=0, taxis='time', checkUnits=True,
+                     lcheckVar=True, lcheckAxis=True, taxatts=None, varatts=None, **kwargs):
     ''' Reduce a monthly time-series to an annual time-series, using mean/min/max over a subset of month or seasons. '''
-    if not self.hasAxis(taxis): raise AxisError, 'Seasonal reduction requires a time axis!'
+    if not self.hasAxis(taxis): 
+      if lcheckAxis: raise AxisError, 'Seasonal reduction requires a time axis!'
+      else: return None # just skip and do nothing
+    if self.dtype.kind in ('S',): 
+      if lcheckVar: raise VariableError, "Seasonal reduction does not work with string Variables!"
+      else: return None
     taxis = self.getAxis(taxis)
     allowedUnitsList = ('month','months','month of the year')
     if checkUnits and not taxis.units.lower() in allowedUnitsList: 
@@ -1224,8 +1238,9 @@ class Variable(object):
       if varatts is not None: vatts.update(varatts)
     else: tatts = None; varatts = None # irrelevant
     # call general reduction function
-    avar =  self.reduce(operation, blklen=12, blkidx=idx, axis=taxis, mode='block', offset=offset, 
-                        asVar=asVar, axatts=tatts, varatts=varatts, **kwargs)
+    avar =  self.reduce(operation, blklen=12, blkidx=idx, axis=taxis, mode='block', 
+                        offset=offset, asVar=asVar, axatts=tatts, varatts=varatts, 
+                        lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **kwargs)
     # check shape of annual variable
     assert avar.shape == self.shape[:tax]+(te/12,)+self.shape[tax+1:]
     # convert time coordinate to years (from month)
@@ -1238,27 +1253,36 @@ class Variable(object):
     # return data
     return avar
   
-  def seasonalMean(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalMean(self, season='annual', **kwargs):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.nanmean, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanmean, **kwargs)
   
-  def seasonalVar(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalSum(self, season='annual', **kwargs):
+    ''' Return a time-series of annual sums of the specified season. '''    
+    return self.reduceToAnnual(season=season, operation=np.nansum, **kwargs)
+  
+  def seasonalVar(self, season='annual', **kwargs):
     ''' Return a time-series of annual root-mean-variances (of the specified season/months). '''    
-    return self.reduceToAnnual(season=season, operation=np.nanstd, ddof=0, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanstd, **kwargs)
   
-  def seasonalMax(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalMax(self, season='annual', **kwargs):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.nanmax, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanmax, **kwargs)
   
-  def seasonalMin(self, season, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def seasonalMin(self, season='annual', **kwargs):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.nanmin, asVar=asVar,name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToAnnual(season=season, operation=np.nanmin, **kwargs)
   
   def reduceToClimatology(self, operation, yridx=None, asVar=True, name=None, offset=0, taxis='time', 
-                          checkUnits=True, taxatts=None, varatts=None, **kwargs):
+                          lcheckVar=True, lcheckAxis=True, checkUnits=True, taxatts=None, varatts=None, **kwargs):
     ''' Reduce a monthly time-series to an annual climatology; use 'yridx' to limit the reduction to 
         a set of years (identified by index) '''
-    if not self.hasAxis(taxis): raise AxisError, 'Reduction to climatology requires a time axis!'
+    if not self.hasAxis(taxis): 
+      if lcheckAxis: raise AxisError, 'Reduction to climatology requires a time axis!'
+      else: return None # just skip and do nothing
+    if self.dtype.kind in ('S',): 
+      if lcheckVar: raise VariableError, "Reduction to climatology does not work with string Variables!"
+      else: return None
     taxis = self.getAxis(taxis)
     allowedUnitsList = ('month','months','month of the year')
     if checkUnits and not taxis.units.lower() in allowedUnitsList: 
@@ -1279,8 +1303,9 @@ class Variable(object):
       if varatts is not None: vatts.update(varatts)
     else: tatts = None; varatts = None # irrelevant
     # call general reduction function
-    avar =  self.reduce(operation, blklen=12, blkidx=yridx, axis=taxis, mode='periodic', offset=offset, 
-                        asVar=asVar, axatts=tatts, varatts=varatts, **kwargs)
+    avar =  self.reduce(operation, blklen=12, blkidx=yridx, axis=taxis, mode='periodic',
+                        offset=offset, asVar=asVar, axatts=tatts, varatts=varatts, 
+                        lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **kwargs)
     # check shape of annual variable
     assert avar.shape == self.shape[:tax]+(12,)+self.shape[tax+1:]
     # convert time coordinate to years (from month)
@@ -1291,25 +1316,36 @@ class Variable(object):
     # return data
     return avar
   
-  def climMean(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def climMean(self, yridx=None, **kwargs):
     ''' Return a climatology of averages of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanmean, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanmean, **kwargs)
   
-  def climVar(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
-    ''' Return a climatology of root-mean-variances of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanstd, ddof=0, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+  def climSum(self, yridx=None, **kwargs):
+    ''' Return a climatology of sums of monthly data. '''    
+    return self.reduceToClimatology(yridx=yridx, operation=np.nansum, **kwargs)
+
+  def climStd(self, yridx=None, **kwargs):
+    ''' Return a climatology of root-mean-variances/standard deviation of monthly data. '''    
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanstd, **kwargs)
   
-  def climMax(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def climVar(self, yridx=None, **kwargs):
+    ''' Return a climatology of (square) variances of monthly data. '''    
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanvar, **kwargs)
+  
+  def climMax(self, yridx=None, **kwargs):
     ''' Return a climatology of maxima of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanmax, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanmax, **kwargs)
   
-  def climMin(self, yridx=None, asVar=True, name=None, offset=0, taxis='time', checkUnits=True):
+  def climMin(self, yridx=None, **kwargs):
     ''' Return a climatology of minima of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanmin, asVar=asVar, name=name, offset=offset, taxis=taxis, checkUnits=checkUnits)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanmin, **kwargs)
   
   @UnaryCheckAndCreateVar # kwargs: asVar=True, linplace=False 
-  def standardize(self, linplace=False):
+  def standardize(self, linplace=False, lcheckVar=True, lcheckAxis=True):
     ''' Standardize Variable, i.e. subtract mean and divide by standard deviation '''
+    if self.dtype.kind in ('S',): 
+      if lcheckVar: raise VariableError, "Standardization does not work with string Variables!"
+      else: return None
     if linplace: data = self.data_array # this is just a link
     else: data = self.data_array.copy()
     # standardize
@@ -1905,7 +1941,7 @@ class Dataset(object):
       # skip variables that are set to None
       if var is not None:
         # change axes and attributes
-        axes = tuple([newaxes[ax.name] for ax in var.axes])
+        axes = tuple([newaxes.get(ax.name,ax) for ax in var.axes])
         if varname in varargs: # check input again
           if isinstance(varargs[varname],dict): args = varargs[varname]  
           else: raise TypeError
@@ -1913,7 +1949,9 @@ class Dataset(object):
         # copy variables
         newvars.append(var.copy(axes=axes, deepcopy=varsdeep, **args))
     # determine attributes
-    atts = kwargs.pop('atts',self.atts.copy()) 
+    tmp = kwargs.pop('atts',None) 
+    if isinstance(tmp,dict): atts = tmp
+    else: atts = self.atts.copy()
     # make new dataset
     dataset = Dataset(varlist=newvars, atts=atts, **kwargs)
     # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
@@ -2052,6 +2090,8 @@ class Dataset(object):
       elif copyother and asVar:
         newvars[varname] = var.copy(deepcopy=deepcopy)
     # assemble new dataset
+    if copyother: # varname:None means the variable is omitted
+      newvars = {varname:var for varname,var in newvars.iteritems() if var is not None}
     if asVar: newset = self.copy(variables=newvars, atts=dsatts) # use copy method of dataset
     else: newset = newvars # just return resulting dictionary
     # return new dataset
@@ -2292,17 +2332,31 @@ class Ensemble(object):
       if all([isinstance(f, Axis) for f in fs]): 
         return fs
       # N.B.: axes are often shared, so we can't have an ensemble
-      # check for unique keys
-      elif len(fs) == len(set([f.name for f in fs if f.name is not None])): 
-        return Ensemble(*fs, idkey='name') # basetype=Variable,
-      elif len(fs) == len(set([f.dataset.name for f in fs if f.dataset is not None])): 
-        for f in fs: f.dataset_name = f.dataset.name 
-        return Ensemble(*fs, idkey='dataset_name') # basetype=Variable, 
+      elif all([isinstance(f, Variable) for f in fs]): 
+        # check for unique keys
+        if len(fs) == len(set([f.name for f in fs if f.name is not None])): 
+          return Ensemble(*fs, idkey='name') # basetype=Variable,
+        elif len(fs) == len(set([f.dataset.name for f in fs if f.dataset is not None])): 
+          for f in fs: f.dataset_name = f.dataset.name 
+          return Ensemble(*fs, idkey='dataset_name') # basetype=Variable, 
+        else:
+          #raise KeyError, "No unique keys found for Ensemble members (Variables)"
+          # just re-use current keys
+          for f,member in zip(fs,self.members): 
+            f.dataset_name = getattr(member,self.idkey)
+          return Ensemble(*fs, idkey=self.idkey) # axes from several variables can be the same objects
+      elif all([isinstance(f, Dataset) for f in fs]): 
+        # check for unique keys
+        if len(fs) == len(set([f.name for f in fs if f.name is not None])): 
+          return Ensemble(*fs, idkey='name') # basetype=Variable,
+        else:
+#           raise KeyError, "No unique keys found for Ensemble members (Datasets)"
+          # just re-use current keys
+          for f,member in zip(fs,self.members): 
+            f.name = getattr(member,self.idkey)
+          return Ensemble(*fs, idkey=self.idkey) # axes from several variables can be the same objects
       else:
-        # use current keys
-        for f,member in zip(fs,self.members): 
-          f.dataset_name = getattr(member,self.idkey)
-        return Ensemble(*fs, idkey='dataset_name') # axes from several variables can be the same objects
+        raise TypeError, "Resulting Ensemble members have inconsisent type."
   
   def __getattr__(self, attr):
     ''' This is where all the magic happens: defer calls to methods etc. to the 

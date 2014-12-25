@@ -569,12 +569,12 @@ class BaseDatasetTest(unittest.TestCase):
     else: self.folder = os.path.expanduser('~') # just use home directory (will be removed)
     self.dataset_name = 'TEST'
     # some setting that will be saved for comparison
-    self.size = (3,3,3) # size of the data array and axes
+    self.size = (12,3,3) # size of the data array and axes
     te, ye, xe = self.size
     self.atts = dict(name = 'var',units = 'n/a',FillValue=-9999)
     self.data = np.random.random(self.size)   
     # create axis instances
-    t = Axis(name='time', units='none', coord=(1,te,te))
+    t = Axis(name='time', units='month', coord=(1,te,te))
     y = Axis(name='y', units='none', coord=(1,ye,ye))
     x = Axis(name='x', units='none', coord=(1,xe,xe))
     self.axes = (t,y,x)
@@ -701,11 +701,12 @@ class BaseDatasetTest(unittest.TestCase):
     assert 'mean' not in dataset.__dict__ # hasattr is redirected to Variable attributes by __getattr__    
     dataset.load() # perform some computations with real data
     assert all(dataset.data.values())
+    # test apply-to-all functions
     mds = dataset.mean(axis='time') # mean() is of course a Variable method
     assert isinstance(mds,Dataset) and len(mds) <= len(dataset) # number of variables (less, because string vars don't average...)
     for varname in mds.variables.iterkeys():
       assert varname in dataset or varname[:-5] in dataset # mean vars have '_mean' appended
-    assert not any([var.hasAxis('time') for var in mds.variables.itervalues()])
+    assert not any([var.hasAxis('time') and not var.strvar for var in mds.variables.itervalues()])
     hds = dataset.histogram(bins=3, lflatten=True, asVar=False, ldensity=False)
     assert isinstance(hds,dict) and len(hds) <= len(dataset) # number of variables (less, because string vars don't average...)
     assert all([varname in dataset for varname in hds.iterkeys()])    
@@ -768,7 +769,7 @@ class BaseDatasetTest(unittest.TestCase):
     assert all(ens.hasVariable('new'))
     # test adding a new member
     ens += yacod # this is an ensemble operation
-    print(''); print(ens); print('')    
+#     print(''); print(ens); print('')    
     ens -= 'new' # this is a dataset operation
     assert not any(ens.hasVariable('new'))
     ens -= 'test'
@@ -777,6 +778,10 @@ class BaseDatasetTest(unittest.TestCase):
 #     print ens[self.var.name].mean(axis='time')
     assert not any(ens[self.var.name].mean(axis='time').hasAxis('time'))
     print(ens.prettyPrint(short=True))
+    # apply function to dataset ensemble
+    if all(ax.units == 'month' for ax in ens.time):
+      maxens = ens.seasonalMax()
+#       print maxens[0]
 
   def testIndexing(self):
     ''' test collective slicing and coordinate/point extraction  '''
@@ -1236,7 +1241,7 @@ if __name__ == "__main__":
     specific_tests = None
 #     specific_tests = ['ReductionArithmetic']
 #     specific_tests = ['DistributionVariables']
-#     specific_tests = ['Mask']    
+#     specific_tests = ['Ensemble']    
 
     # list of tests to be performed
     tests = [] 
