@@ -83,9 +83,8 @@ class MyAxes(Axes):
       val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None)
       # variable and axis scaling is not always independent...
       if var.plot is not None and varax.plot is not None: 
-        if 'preserve' in var.plot and 'scalefactor' in varax.plot:
-          if varax.units != axunits and var.plot.preserve == 'area':
-            val /= varax.plot.scalefactor
+        if varax.units != axunits and var.plot.preserve == 'area':
+          val /= varax.plot.scalefactor
       # save variable  
       if lname: label = var.name # default label: variable name
       elif ldataset: label = var.dataset.name

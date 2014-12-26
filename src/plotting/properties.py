@@ -47,7 +47,7 @@ tmp = PlotAtts(name = 'Histogram', title = 'Histogram',
 variablePlotatts['hist'] = tmp
 ## Density Distribution
 tmp = PlotAtts(name = 'PDF', title = 'Density Distribution', 
-               units = '', preserve = 'value')
+               units = '', preserve = 'area')
 # add to collection
 variablePlotatts['pdf'] = tmp
 ## Cumulative Distribution
@@ -486,8 +486,9 @@ def getPlotAtts(name=None, units=None, atts=None, plot=None, plotatts_dict=None)
   plotatts_dict = plotatts_dict or variablePlotatts
   if not isinstance(plotatts_dict,dict): raise TypeError
   # find variable in plotatts_dict (based on name)
-  prefix = postfix = ''  
+  prefix = postfix = ''
   basename = name
+  ldistvar = False # distribution variables are identified by postfix
   # get base plotatts atts
   if isinstance(plot,PlotAtts):
     plotatts = plot.copy() 
@@ -505,19 +506,34 @@ def getPlotAtts(name=None, units=None, atts=None, plot=None, plotatts_dict=None)
       namelist = basename.split('_')
       basename = namelist[0]
       postfix = namelist[1] if len(namelist)>1 else ''
-      if basename in variablePlotatts: 
+      if postfix in variablePlotatts:
+        ldistvar = True
+        plotatts = variablePlotatts[postfix].copy()
+      elif postfix.lower() in variablePlotatts:
+        ldistvar = True
+        plotatts = variablePlotatts[postfix.lower()].copy()
+      elif basename in variablePlotatts: 
         plotatts = variablePlotatts[basename].copy()
+      elif basename.lower() in variablePlotatts: 
+        plotatts = variablePlotatts[basename.lower()].copy()
       else:
         # last resort...
         plotatts = PlotAtts(name=name, units=units, title=name)  
   # modify according to variable specifics
+  if len(postfix) > 0: # these are mostly things like, e.g., '7d' for 7d means
+    if ldistvar:
+      tmpname = basename if basename == basename.upper() else basename.title() 
+      plotatts = plotatts.copy(name = '{:s} '.format(tmpname)+plotatts.name,
+                               title = '{:s} '.format(tmpname)+plotatts.title)
+    else:
+      plotatts = plotatts.copy(name = plotatts.name+' ({:s})'.format(postfix),
+                               title = plotatts.title+' ({:s})'.format(postfix))
   if prefix == 'max': 
-    plotatts = plotatts.copy(name = 'Max. '+plotatts.name, title = 'Maximum '+plotatts.title) 
+    tmpname = plotatts.name if plotatts.name == plotatts.name.upper() else plotatts.name.title()
+    plotatts = plotatts.copy(name = 'Max. '+tmpname, title = 'Maximum '+plotatts.title) 
   elif prefix == 'min': 
-    plotatts = plotatts.copy(name = 'Min. '+plotatts.name, title = 'Minimum '+plotatts.title)
-  if len(postfix)>0: # these are mostly things like, e.g., '7d' for 7d means
-    plotatts = plotatts.copy(name = plotatts.name+' ({:s})'.format(postfix),
-                     title = plotatts.title+' ({:s})'.format(postfix))
+    tmpname = plotatts.name if plotatts.name == plotatts.name.upper() else plotatts.name.title()
+    plotatts = plotatts.copy(name = 'Min. '+tmpname, title = 'Minimum '+plotatts.title)
   # adjust units
   if units == plotatts.units: 
     plotatts = plotatts.copy(scalefactor = 1, offset = 0) # no conversion necessary

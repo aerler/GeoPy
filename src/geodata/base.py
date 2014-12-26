@@ -1056,7 +1056,7 @@ class Variable(object):
     # figure out bins
     if bins is None and binedgs is None: raise ArgumentError
     elif bins is not None and binedgs is not None:
-      assert len(bins) +1 == len(binedgs)
+      if len(bins)+1 != len(binedgs): raise ArgumentError
     if bins is not None:
       # expand bins (values refer to center of bins)
       if isinstance(bins,(int,np.integer)):
