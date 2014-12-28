@@ -9,6 +9,7 @@ Variable and Dataset classes for handling geographical datasets.
 # numpy imports
 import numpy as np
 import numpy.ma as ma # masked arrays
+import scipy.stats as ss
 import numbers
 import functools
 import gc # garbage collection
@@ -1377,17 +1378,34 @@ class Variable(object):
   
   def __getattr__(self, attr):
     ''' If the call is a numpy ufunc method that is not implemented by Variable, call the ufunc method
-        on data using _apply_ufunc '''
+        on data using _apply_ufunc; if the call is a scipy.stats distribution or test that is supported
+        by the geodata.dist module, generate a DistVar object from the variable or apply the test 
+        selected to the variable. '''
     # N.B.: this method is only called as a fallback, if no class/instance attribute exists,
     #       i.e. Variable methods and attributes will always have precedent 
     # check if a ufunc of that name exists
-    if attr in np.__dict__:
-      ufunc = np.__dict__[attr]
+    if hasattr(np,attr):
+      ufunc = getattr(np,attr)
       if isinstance(ufunc,np.ufunc):
         # call function on data, using _apply_ufunc
         return functools.partial(self._apply_ufunc, ufunc=ufunc)
+      else:
+        raise AttributeError, "The numpy function '{:s}' is not supported by class '{:s}'! (only ufunc's are supported)".format(attr,self.__class__.__name__)
+    elif hasattr(ss,attr): # either a distribution or a statistical test
+      dist = getattr(ss, attr)
+      if isinstance(dist,ss.rv_discrete):
+        raise NotImplementedError, "Discrete distributions are not yet supported."
+        # N.B.: DistVar's have not been tested with descrete distributions, but it might just work
+      elif isinstance(dist,(ss.rv_continuous)) or attr.lower() == 'kde':
+        from geodata.dist import asDistVar
+        # call function on variable (self)
+        return functools.partial(asDistVar, self, dist=attr)
+      elif callable(dist): # a function; assuming a statistical test
+        raise NotImplementedError, dist
+      else:
+        raise AttributeError, "The scipy.stats attribute '{:s}' is not supported by class '{:s}'!".format(attr,self.__class__.__name__)
     else: 
-      raise AttributeError, "No attribute '{:s}' in class '{:s}'!".format(attr,self.__class__.__name__)
+      raise AttributeError, "Attribute/method '{:s}' not found in class '{:s}'!".format(attr,self.__class__.__name__)
     
   @BinaryCheckAndCreateVar(sameUnits=True, linplace=True)    
   def __iadd__(self, a, linplace=True):

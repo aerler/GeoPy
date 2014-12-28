@@ -347,7 +347,7 @@ class BaseVarTest(unittest.TestCase):
 #     for dist in ('kde',):
     for dist in ('kde','genextreme',):
       # create VarKDE
-      distvar = asDistVar(var, axis=t.name, dist=dist, ldebug=False) 
+      distvar = getattr(var,dist)(axis=t.name, ldebug=False) 
       assert distvar.units == var.units
       assert distvar.dtype == var.dtype
       print "\n   ***   computed {:s} distribution   ***".format(dist.upper())
@@ -1250,9 +1250,9 @@ if __name__ == "__main__":
     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
       
     
     # construct dictionary of test classes defined above

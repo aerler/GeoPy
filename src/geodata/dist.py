@@ -10,13 +10,13 @@ Some Variable subclasses for handling distribution functions over grid points.
 import numpy as np
 import numpy.ma as ma
 import scipy.stats as ss
+from numpy.linalg.linalg import LinAlgError
+from processing.multiprocess import apply_along_axis
+import functools
 # internal imports
 from geodata.base import Variable, Axis
 from geodata.misc import DataError, ArgumentError, VariableError, AxisError, DistVarError
 from plotting.properties import getPlotAtts
-from numpy.linalg.linalg import LinAlgError
-from processing.multiprocess import apply_along_axis
-import functools
 
 
 # convenience function to generate a DistVar from another Variable object
@@ -29,8 +29,12 @@ def asDistVar(var, axis='time', dist='KDE', **kwargs):
   axes = var.axes[:iaxis]+var.axes[iaxis+1:] # i.e. without axis/iaxis
   units = var.units # these will be the sample units, not the distribution units 
   # choose distribution
+  dist = dist.lower()
   if dist.lower() == 'kde': dvar = VarKDE(samples=var.data_array, units=units, axis=iaxis, axes=axes, **kwargs)
-  else: dvar = VarRV(dist=dist, samples=var.data_array, units=units, axis=iaxis, axes=axes, **kwargs)
+  elif hasattr(ss,dist):
+    dvar = VarRV(dist=dist, samples=var.data_array, units=units, axis=iaxis, axes=axes, **kwargs)
+  else:
+    raise AttributeError, "Distribution '{:s}' not found in scipy.stats.".format(dist)
   return dvar
 
 # base class for distributions 
