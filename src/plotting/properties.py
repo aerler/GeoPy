@@ -55,6 +55,11 @@ tmp = PlotAtts(name = 'CDF', title = 'Cumulative Distribution',
                units = '', preserve = 'value')
 # add to collection
 variablePlotatts['cdf'] = tmp
+## p-value of statistic
+tmp = PlotAtts(name = 'p-value', title = 'p-Value', 
+               units = '', preserve = 'value')
+# add to collection
+variablePlotatts['pval'] = tmp
 
 ## *** Dimensions/Axes (1D) ***
 

@@ -982,7 +982,7 @@ class Variable(object):
     if not isInt(blklen): raise TypeError
     if blkidx is not None:
       if blklen < np.max(blkidx) or np.min(blkidx) < 0: ArgumentError 
-    nblks = axlen/blklen # number of blocks
+    if lblk or lperi: nblks = axlen/blklen # number of blocks
     # more checks
     if ( lblk or lperi ) and axlen%blklen != 0: 
       raise NotImplementedError, 'Currently seasonal means only work for full years.'
@@ -1002,7 +1002,7 @@ class Variable(object):
     if lblk: # use as is 
       rshape = oshape[:-1] + (nblks,) # shape of results array
     elif lperi or lall: 
-      rshape = oshape[:-1] + (blklen,) # shape of results array
+      rshape = oshape[:-1] + (blklen,) if blklen > 0 else oshape[:-1] # shape of results array
     # extract block slice
     if blkidx is not None: tdata = odata.take(blkidx, axis=-1)
     else: tdata = odata
@@ -1014,7 +1014,8 @@ class Variable(object):
     rdata = operation(tdata, axis=-1, **kwargs)
     assert rdata.shape == rshape
     # return new variable
-    if iax < self.ndim-1: rdata = np.rollaxis(rdata, axis=self.ndim-1, start=iax) # move reduction axis back
+    if iax < self.ndim-1 and blklen > 0: 
+      rdata = np.rollaxis(rdata, axis=self.ndim-1, start=iax) # move reduction axis back
     # cast as variable
     if asVar:      
       # create new time axis (yearly)
@@ -1027,8 +1028,10 @@ class Variable(object):
       elif lblk: # use the beginning of each block as new coordinates (not divided by block length!) 
         coord = oaxis.coord.reshape(nblks,blklen)[:,0].copy()
       elif lperi or lall: # just enumerate block elements
-        coord = np.arange(blklen) 
-      axes = list(self.axes); axes[iax] = Axis(coord=coord, atts=raxatts)
+        coord = np.arange(blklen) if blklen > 0 else None
+      axes = list(self.axes)
+      if blklen > 0: axes[iax] = Axis(coord=coord, atts=raxatts)
+      else: del axes[iax] # just remove this axis, if blklen is zero
       # create new variable
       vatts = self.atts.copy()
       if varatts is not None: vatts.update(varatts)
@@ -1133,9 +1136,9 @@ class Variable(object):
       axatts['coord'] = bins # reduce() reads this and uses it as new axis coordinates
       hvar = self.reduce(operation=histfct, blklen=len(bins), blkidx=None, axis=axis, mode='all', 
                          offset=0, asVar=asVar, axatts=axatts, varatts=varatts, fillValue=fillValue)
-      if asVar:
-        if ldensity: hvar.plot = variablePlotatts['pdf'].copy()
-        else: hvar.plot = variablePlotatts['hist'].copy()
+    if asVar:
+      if ldensity: hvar.plot = variablePlotatts['pdf'].copy()
+      else: hvar.plot = variablePlotatts['hist'].copy()
     # return new variable instance (or data)
     return hvar
     
@@ -1183,6 +1186,93 @@ class Variable(object):
     else: cvar = data
     # return new variable instance (or data)
     return cvar
+
+  def apply_test(self, asVar=True, name=None, axis=None, axis_idx=None, test=None, dist='norm', 
+                 lflatten=False, lstatistic=False, lonesided=False, fillValue=None, ignoreNaN=None,
+                 lcheckVar=True, lcheckAxis=True, paxatts=None, pvaratts=None, **kwargs):
+    ''' Apply a statistical test along a axis and return a variable containing the resulting p-values. '''
+    if ignoreNaN is None:
+      ignoreNaN = test.lower() != 'normaltest' or lflatten
+    # some input checking
+    if lflatten and axis is not None: raise ArgumentError
+    if not lflatten and axis is None: raise ArgumentError
+    if self.dtype.kind in ('S',): 
+      if lcheckVar: raise VariableError, "Statistical tests does not work with string Variables!"
+      else: return None
+    if axis_idx is not None and axis is None: axis = self.axes[axis_idx]
+    elif axis_idx is None and axis is not None: axis_idx = self.axisIndex(axis)
+    elif not lflatten: raise ArgumentError    
+    if axis is not None and not self.hasAxis(axis):
+      if lcheckAxis: raise AxisError, "Variable '{:s}' has no axis '{:s}'.".format(self.name, axis)
+      else: return None
+    if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
+    # setup histogram axis and variable attributes (special case)
+    if asVar:
+      if paxatts is not None: raise NotImplementedError
+      varatts = self.atts.copy()
+      varatts['name'] = name or '{:s}_pdf'.format(self.name)
+      varatts['long_name'] = 'PDF of {:s}'.format(self.atts.get('long_name',self.name.title()))
+      varatts['units'] = '' # density
+      if pvaratts is not None: varatts.update(pvaratts)
+    else:
+      varatts = None; axatts = dict() # axatts is used later
+    # choose a fillValue, because np.histogram does not ignore masked values but does ignore NaNs
+    if fillValue is None and self.masked:
+      if np.issubdtype(self.dtype,np.integer): fillValue = 0
+      elif np.issubdtype(self.dtype,np.inexact): fillValue = np.NaN
+      else: raise NotImplementedError
+    # import test wrappers (need to do here, to prevent circular reference)
+    from geodata.dist import anderson, kstest, normaltest, shapiro
+    if lflatten: # totally by-pass reduce()...
+      # get data
+      if self.masked: data = self.data_array.filled(fillValue).ravel()
+      else: data = self.data_array.ravel()
+      # N.B.: to ignore masked values they have to be replaced by NaNs or out-of-bounds values 
+      # select test function for flat/1D test
+      if test.lower() in ('anderson',): 
+        pval = anderson(data, dist=dist, ignoreNaN=ignoreNaN)
+      elif test.lower() in ('kstest',):
+        pval = kstest(data, dist=dist, ignoreNaN=ignoreNaN, **kwargs)
+      elif test.lower() in ('normaltest',):
+        pval = normaltest(data, axis=None, ignoreNaN=ignoreNaN)
+      elif test.lower() in ('shapiro',):
+        pval = shapiro(data, ignoreNaN=ignoreNaN, **kwargs) # runs only once
+      # create new Axis and Variable objects (1-D)
+      if asVar: pvar = Variable(data=pval, axes=(Axis(coord=0, atts=axatts),), atts=varatts)
+      else: pvar = pval
+      #raise NotImplementedError, "Cannot return a single scalar as a Variable object."
+    else: # use reduce to only apply to selected axis      
+      # select test function for multi-dimensional test
+      # N.B.: these "operations" will be called through the reduce method (see above for details)
+      if test.lower() in ('normaltest',):
+        laax = False # don't need to use Numpy's apply_along_axis
+        if ignoreNaN: 
+          raise NotImplementedError, "NaN-removal does not work with 'normaltest' and multi-dimensional arrays."
+        testfct = normaltest
+        # N.B.: the normaltest just works on multi-dimensional data
+      else:
+        laax = True # have to use Numpy's apply_along_axis
+        if test.lower() in ('anderson',): 
+          testfct = functools.partial(anderson, dist=dist, ignoreNaN=ignoreNaN)
+        elif test.lower() in ('kstest',):
+          testfct = functools.partial(kstest, dist=dist, ignoreNaN=ignoreNaN, **kwargs)
+        elif test.lower() in ('shapiro',):
+          lreta = kwargs.pop('reta',True) # default: True
+          if lreta: 
+            global shapiro_a # global variable to retain parameters
+            shapiro_a = None # reset, just to be safe!
+          testfct = functools.partial(shapiro, reta=lreta, ignoreNaN=ignoreNaN)
+      # create a helper function that apllies the histogram along the specified axis
+      def aaa_testfct(data, axis=None):
+        if axis < 0: axis += data.ndim
+        pval = apply_along_axis(testfct, axis, data, laax=laax)
+        return pval
+      # call reduce to perform operation
+      pvar = self.reduce(operation=aaa_testfct, blklen=0, blkidx=None, axis=axis, mode='all', 
+                         offset=0, asVar=asVar, axatts=None, varatts=varatts, fillValue=fillValue)
+    if asVar: pvar.plot = variablePlotatts['pval'].copy()
+    # return new variable instance (or data)
+    return pvar
     
   def reduceToAnnual(self, season, operation, asVar=False, name=None, offset=0, taxis='time', checkUnits=True,
                      lcheckVar=True, lcheckAxis=True, taxatts=None, varatts=None, **kwargs):

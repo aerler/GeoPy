@@ -19,6 +19,73 @@ from geodata.misc import DataError, ArgumentError, VariableError, AxisError, Dis
 from plotting.properties import getPlotAtts
 
 
+## statistical tests and utility functions
+
+# wrapper for Anderson-Darling Test
+def anderson(data, dist='norm', ignoreNaN=True):
+  ''' Anderson-Darling Test, to test whether or not the data is from a given distribution. The 
+      returned p-value indicates the probability that the data is from the given distribution, 
+      i.e. a low p-value means the data are likely not from the tested distribution. Note that 
+      the maximum returned p-value is 15% for the normal & exponential and 25% for the 
+      logistic & Gumbel distributions. '''
+  if ignoreNaN: 
+    data = data[np.invert(np.isnan(data))] # remove NaN's
+    if len(data) == 0: return np.NaN # in case all are NaN
+  A2, crit, sig = ss.anderson(data, dist=dist)
+  return sig[max(0,np.searchsorted(crit,A2)-1)]/100.
+
+# wrapper for single-sample Kolmogorov-Smirnov Test
+def kstest(data, dist='norm', ignoreNaN=True, args=None, N=20, alternative='two-sided', mode='approx'):
+  ''' Kolmogorov-Smirnov Test, to test whether or not the data is from a given distribution. The 
+      returned p-value indicates the probability that the data is from the given distribution, 
+      i.e. a low p-value means the data are likely not from the tested distribution.
+      Note that, for this test, it is necessary to specify shape, location, and scale parameters,
+      to obtain meaningful results (c,loc,scale). '''
+  if ignoreNaN: 
+    data = data[np.invert(np.isnan(data))] # remove NaN's
+    if len(data) == 0: return np.NaN # in case all are NaN
+  D, pval = ss.kstest(data, dist, args=args, N=N, alternative=alternative, mode=mode)
+  return pval
+
+# wrapper for normaltest, a SciPy function to test normality
+def normaltest(data, axis=None, ignoreNaN=True):
+  ''' SciPy test, to test whether or not the data is from a normal distribution. The 
+      returned p-value indicates the probability that the data is from a normal distribution, 
+      i.e. a low p-value means the data are likely not from a normal distribution.
+      This is a combination of the skewtest and the kurtosistest and can be applied along a 
+      specified axis of a multi-dimensional arrays (using the 'axis' keyword), or over the 
+      flattened array (axis=None). '''
+  if axis is None and ignoreNaN: 
+    data = data[np.invert(np.isnan(data))] # remove NaN's
+    if len(data) == 0: return np.NaN # in case all are NaN
+  k2, pval = ss.normaltest(data, axis=axis)
+  return pval
+
+# global variable that is used to retain parameters for Shapiro-wilk test
+shapiro_a = None
+# wrapper for Shapiro-Wilk test of normality
+def shapiro(data, reta=False, ignoreNaN=True):
+  ''' Shapiro-Wilk Test, to test whether or not the data is from a normal distribution. The 
+      returned p-value indicates the probability that the data is from a normal distribution, 
+      i.e. a low p-value means the data are likely not from a normal distribution. '''
+  if ignoreNaN: 
+    data = data[np.invert(np.isnan(data))] # remove NaN's
+    if len(data) == 0: return np.NaN # in case all are NaN
+  if reta:
+    global shapiro_a
+    if  shapiro_a is None or len(shapiro_a) != len(data)//2:
+      W, pval, a = ss.shapiro(data, a=None, reta=True)
+      shapiro_a = a # save parameters
+    else:
+      W, pval = ss.shapiro(data, a=shapiro_a, reta=False)
+  else:
+    W, pval = ss.shapiro(data, a=None, reta=False)
+  return pval
+  # N.B.: a only depends on the length of data, so it can be easily reused in array operation
+  
+
+## distribution variable classes 
+
 # convenience function to generate a DistVar from another Variable object
 def asDistVar(var, axis='time', dist='KDE', **kwargs):
   ''' generate a DistVar of type 'dist' from a Variable 'var'; use dimension 'axis' as sample axis '''

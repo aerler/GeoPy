@@ -235,7 +235,7 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=False, ltrialnerror=True):
   # return with exit code
   return exitcode
 
-def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, *args, **kwargs):
+def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, laax=True, *args, **kwargs):
   ''' a parallelized version of numpy's apply_along_axis; the preferred way of passing arguments is,
       by using functools.partial, but argument can also be passed to this function; the call-signature
       is the same as for np.apply_along_axis, except for NP=OMP_NUM_THREADS and ldebug=True '''  
@@ -268,10 +268,14 @@ def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, *args, 
     if ldebug: print('         OMP_NUM_THREADS = {:d}\n'.format(NP))
     pool = multiprocessing.Pool(processes=NP)
     results = [] # list of resulting chunks (concatenated later
+    if not laax: kwargs['axis'] = 1 # for ufunc-like functions
     for n in xrange(nc):
       # run computation on individual subsets/chunks
       if ldebug: print('   Starting Chunk #{:d}'.format(n+1))
-      result = pool.apply_async(np.apply_along_axis, (fct,1,chunks[n],)+args, kwargs)
+      if laax: # use Numpy's apply_along_axis
+        result = pool.apply_async(np.apply_along_axis, (fct,1,chunks[n],)+args, kwargs)
+      else: # for ufunc-like functions that can operate on multi-dimensional arrays
+        result = pool.apply_async(fct, (chunks[n],)+args, kwargs)
       results.append(result)
     pool.close()
     pool.join()
@@ -280,11 +284,15 @@ def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, *args, 
     results = tuple(result.get() for result in results)
     results = np.concatenate(results, axis=0) 
   # check and reshape
-  assert results.ndim == 2 and results.shape[0] == arraysize
-  results = np.reshape(results,arrayshape+(results.shape[1],))
-  assert results.ndim == len(arrayshape)+1 and results.shape[:-1] == arrayshape
-  if not axis == results.ndim-1:
-    results = np.rollaxis(results, axis=results.ndim-1, start=axis) # roll sample axis back to original position
+  assert results.shape[0] == arraysize
+  if results.ndim == 1: # if the second dimension was reduced to a scalar
+    results = np.reshape(results,arrayshape)
+    assert results.ndim == len(arrayshape) and results.shape == arrayshape
+  elif results.ndim == 2: # if the second dimansion was replaced
+    results = np.reshape(results,arrayshape+(results.shape[1],))
+    assert results.ndim == len(arrayshape)+1 and results.shape[:-1] == arrayshape
+    if not axis == results.ndim-1:
+      results = np.rollaxis(results, axis=results.ndim-1, start=axis) # roll sample axis back to original position
   # return results
   return results
 
@@ -295,28 +303,37 @@ if __name__ == '__main__':
   from functools import partial
   # test apply_along_axis
   axis = 1
-  def func(arr, kw=0): # lambda fct can't be pickled
+  def func(arr, kw=0, axis=0): # lambda fct can't be pickled
     return ( arr - np.mean(arr) ) / arr.std() - kw, kw
    
-  def func1(arr, kw=0): return func(arr, kw=kw)[0]
+  def func1(arr, kw=0, axis=0): return func(arr, kw=kw)[0]
    
-  def run_test(kw):
-    fct = partial(func1, kw=kw)
-    shape = (200,100)
+  def nolaax(arr, axis=0, kw=0):
+    shape = arr.shape[:-1]+(1,)
+    mean = np.mean(arr,axis=axis).reshape(shape)
+    std = np.std(arr,axis=axis).reshape(shape)
+    return (arr - mean) / std -kw
+  
+  def run_test(fct, kw=0, laax=True):
+    ff = partial(fct, kw=kw)
+    shape = (500,100)
     data = np.arange(np.prod(shape), dtype='float').reshape(shape)
     assert data.shape == shape
     # parallel implementation using my wrapper
-    pres = apply_along_axis(fct, axis, data, NP=0, ldebug=True)
+    pres = apply_along_axis(ff, axis, data, NP=2, ldebug=True, laax=laax)
     print pres.shape
     assert pres.shape == data.shape
     assert isZero(pres.mean(axis=axis)+kw) and isZero(pres.std(axis=axis)-1.)
     # straight-forward numpy version
-    res = np.apply_along_axis(fct, axis, data)
+    res = np.apply_along_axis(ff, axis, data)
     assert res.shape == data.shape
     assert isZero(res.mean(axis=axis)+kw) and isZero(res.std(axis=axis)-1.)
     # final test
-    assert isEqual(pres, res)  
-  run_test(1)
+    assert isEqual(pres, res) 
+    
+  # run tests 
+  run_test(nolaax, kw=1, laax=False) # without Numpy's apply_along_axis
+  run_test(func1, kw=1, laax=True) # Numpy's apply_along_axis
   
   #print logging.DEBUG,logging.INFO,logging.WARNING,logging.ERROR,logging.CRITICAL
     
