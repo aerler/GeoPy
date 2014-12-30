@@ -1187,9 +1187,9 @@ class Variable(object):
     # return new variable instance (or data)
     return cvar
 
-  def apply_test(self, asVar=True, name=None, axis=None, axis_idx=None, test=None, dist='norm', 
-                 lflatten=False, lstatistic=False, lonesided=False, fillValue=None, ignoreNaN=None,
-                 lcheckVar=True, lcheckAxis=True, paxatts=None, pvaratts=None, **kwargs):
+  def apply_stat_test(self, asVar=True, name=None, axis=None, axis_idx=None, test=None, dist='norm', 
+                      lflatten=False, lstatistic=False, lonesided=False, fillValue=None, ignoreNaN=None,
+                      lcheckVar=True, lcheckAxis=True, paxatts=None, pvaratts=None, **kwargs):
     ''' Apply a statistical test along a axis and return a variable containing the resulting p-values. '''
     if ignoreNaN is None:
       ignoreNaN = test.lower() != 'normaltest' or lflatten
@@ -1210,9 +1210,10 @@ class Variable(object):
     if asVar:
       if paxatts is not None: raise NotImplementedError
       varatts = self.atts.copy()
-      varatts['name'] = name or '{:s}_pdf'.format(self.name)
-      varatts['long_name'] = 'PDF of {:s}'.format(self.atts.get('long_name',self.name.title()))
-      varatts['units'] = '' # density
+      varatts['name'] = name or '{:s}_{:s}_pval'.format(self.name,dist)
+      varatts['long_name'] = "p-value of {:s} for '{:s}'-distribution".format(
+                              self.atts.get('long_name',self.name.title()),dist)
+      varatts['units'] = '' # p-value / probability
       if pvaratts is not None: varatts.update(pvaratts)
     else:
       varatts = None; axatts = dict() # axatts is used later
@@ -1490,8 +1491,12 @@ class Variable(object):
         from geodata.dist import asDistVar
         # call function on variable (self)
         return functools.partial(asDistVar, self, dist=attr)
-      elif callable(dist): # a function; assuming a statistical test
-        raise NotImplementedError, dist
+      elif callable(dist):
+        if attr in ('anderson','kstest','normaltest','shapiro'): # a function; assuming a statistical test
+          # one of the implemented statistical tests
+          return functools.partial(self.apply_stat_test, test=attr)
+        else:
+          raise NotImplementedError, "The statistical function '{:s}' is not supported by class '{:s}'!".format(attr,self.__class__.__name__)
       else:
         raise AttributeError, "The scipy.stats attribute '{:s}' is not supported by class '{:s}'!".format(attr,self.__class__.__name__)
     else: 

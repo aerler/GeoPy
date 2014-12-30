@@ -539,21 +539,36 @@ class BaseVarTest(unittest.TestCase):
       else:
         var = self.var(time=slice(0,10), lat=(50,70), lon=(-130,-110))
       t,x,y = var.axes
+    var.standardize(linplace=True) # make variables more likely to test positive
+    ## some simple stats tests
     # run simple kstest test
-    var.standardize(linplace=True)
-    pval = var.apply_test(asVar=False, test='kstest', lflatten=True, dist='norm', args=(0,1))    
+    pval = var.kstest(asVar=False, lflatten=True, dist='norm', args=(0,1))    
     #print pval
     assert pval >= 0 # this will usually be close to zero, since none of these are normally distributed
     # Anderson-Darling test
-    pval = var.apply_test(asVar=False, test='anderson', lflatten=True, dist='extreme1')    
+    pval = var.anderson(asVar=False, lflatten=True, dist='extreme1')    
     #print pval
     assert pval >= 0 # this will usually be close to zero, since none of these are normally distributed  
     # run variable test (normaltest)
-    pvar = var.apply_test(asVar=True, axis='time', test='normaltest', lflatten=False)
+    pvar = var.normaltest(asVar=True, axis='time', lflatten=False)
     assert pvar.shape == var.shape[1:]
     # run variable test (normaltest)
-    pvar = var.apply_test(asVar=True, axis='time', test='shapiro', lflatten=False)
+    pvar = var.shapiro(asVar=True, axis='time', lflatten=False)
     assert pvar.shape == var.shape[1:]
+    ## Kolmogorov-Smirnov Test on fitted distribution
+    # fit normal distribution over entire range 
+    nvar = var.norm(axis=t.name, lflatten=True, ldebug=False)
+    pval = nvar.kstest(var.data_array.ravel(), asVar=False)
+#     print pval
+    assert pval >= 0.
+    assert pval.shape == nvar.shape[:-1]
+    xvar = var.genextreme(axis=t.name, lflatten=False, ldebug=False)
+#     print xvar
+    pvar = xvar.kstest(var)
+    assert pvar.shape == xvar.shape[:-1]
+    assert np.all(pvar.data_array >= 0)
+#     print pvar
+#     print pvar.data_array
     
   def testUnaryArithmetic(self):
     ''' test in-place and unary arithmetic functions and ufuncs'''
@@ -1272,7 +1287,7 @@ if __name__ == "__main__":
 #     specific_tests = ['ReductionArithmetic']
 #     specific_tests = ['DistributionVariables']
 #     specific_tests = ['Ensemble']
-    specific_tests = ['StatsTests']    
+#     specific_tests = ['StatsTests']    
 
     # list of tests to be performed
     tests = [] 
