@@ -16,7 +16,7 @@ import os
 from geodata.nctools import writeNetCDF
 from geodata.misc import isZero, isOne, isEqual
 from geodata.base import Variable, Axis, Dataset, Ensemble, concatVars, concatDatasets
-from geodata.dist import VarKDE, VarRV, asDistVar
+from geodata.stats import VarKDE, VarRV, asDistVar
 from datasets.common import data_root
 from average.wrfout_average import ldebug
 
@@ -1296,9 +1296,9 @@ if __name__ == "__main__":
     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
       
     
     # construct dictionary of test classes defined above

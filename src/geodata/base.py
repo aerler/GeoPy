@@ -1223,7 +1223,7 @@ class Variable(object):
       elif np.issubdtype(self.dtype,np.inexact): fillValue = np.NaN
       else: raise NotImplementedError
     # import test wrappers (need to do here, to prevent circular reference)
-    from geodata.dist import anderson, kstest, normaltest, shapiro
+    from geodata.stats import anderson, kstest, normaltest, shapiro
     if lflatten: # totally by-pass reduce()...
       # get data
       if self.masked: data = self.data_array.filled(fillValue).ravel()
@@ -1470,7 +1470,7 @@ class Variable(object):
   def __getattr__(self, attr):
     ''' If the call is a numpy ufunc method that is not implemented by Variable, call the ufunc method
         on data using _apply_ufunc; if the call is a scipy.stats distribution or test that is supported
-        by the geodata.dist module, generate a DistVar object from the variable or apply the test 
+        by the geodata.stats module, generate a DistVar object from the variable or apply the test 
         selected to the variable. '''
     # N.B.: this method is only called as a fallback, if no class/instance attribute exists,
     #       i.e. Variable methods and attributes will always have precedent 
@@ -1488,7 +1488,7 @@ class Variable(object):
         raise NotImplementedError, "Discrete distributions are not yet supported."
         # N.B.: DistVar's have not been tested with descrete distributions, but it might just work
       elif isinstance(dist,(ss.rv_continuous)) or attr.lower() == 'kde':
-        from geodata.dist import asDistVar
+        from geodata.stats import asDistVar
         # call function on variable (self)
         return functools.partial(asDistVar, self, dist=attr)
       elif callable(dist):
