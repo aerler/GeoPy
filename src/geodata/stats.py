@@ -275,7 +275,7 @@ def spearmanr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, **kwargs
       coefficient. '''
   testfct = functools.partial(spearmanr_wrapper, lpval=lpval, lrho=lrho, ignoreNaN=ignoreNaN)
   rvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, 
-                               lpval=lpval, lrho=lrho, laax=True, **kwargs)
+                               lpval=lpval, lrho=lrho, laax=False, **kwargs)
   return rvar
 spearmancc = spearmanr
 
@@ -283,7 +283,9 @@ spearmancc = spearmanr
 def spearmanr_wrapper(data, size1=None, axis=None, lpval=False, lrho=True, ignoreNaN=True):
   ''' Compute the Spearman's Rank-order Correlation Coefficient of two samples. This is a wrapper 
       for the SciPy function allows application over a field, and returns 
-      the correlation coefficient and/or the p-value. '''
+      the correlation coefficient and/or the p-value. 
+      The SciPy implementation works along multiple axes (using Numpy's
+      apply_along_axis), but it is not truly vectorized. '''
   if axis is None and ignoreNaN:
     data1 = data[:size1]; data2 = data[size1:] # find NaN's
     nans1 = np.isnan(data1); nans2 = np.isnan(data2) # remove in both arrays
