@@ -1435,7 +1435,7 @@ class Variable(object):
     return self.reduceToClimatology(yridx=yridx, operation=np.nanmin, **kwargs)
   
   @UnaryCheckAndCreateVar # kwargs: asVar=True, linplace=False 
-  def standardize(self, linplace=False, lcheckVar=True, lcheckAxis=True):
+  def standardize(self, axis=None, linplace=False, lcheckVar=True, lcheckAxis=True):
     ''' Standardize Variable, i.e. subtract mean and divide by standard deviation '''
     if self.dtype.kind in ('S',): 
       if lcheckVar: raise VariableError, "Standardization does not work with string Variables!"
@@ -1443,8 +1443,8 @@ class Variable(object):
     if linplace: data = self.data_array # this is just a link
     else: data = self.data_array.copy()
     # standardize
-    data -= np.nanmean(data)
-    data /= np.nanstd(data)
+    data -= np.nanmean(data, axis=axis, keepdims=True)
+    data /= np.nanstd(data, axis=axis, keepdims=True)
     # meta data
     name = self.name+'_std' # only used for new variables
     units = '' # no units after normalization

@@ -1,7 +1,9 @@
 '''
 Created on Dec 12, 2014
 
-Some Variable subclasses for handling distribution functions over grid points. 
+A statistics module that makes some of the functionality of the SciPy's scipy.stats module available 
+with Variables. It includes some common statistical functions and tests, as well assome Variable 
+subclasses for handling distribution functions over grid points. 
 
 @author: Andre R. Erler, GPL v3
 '''
@@ -22,7 +24,8 @@ from plotting.properties import getPlotAtts
 
 ## statistical tests and utility functions
 
-## univariate statistical tests and functions
+## univariate statistical tests 
+# N.B.: application functions are implemented as Variable class methods (see geodata.base module)
 
 # wrapper for Anderson-Darling Test
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.anderson.html
@@ -95,7 +98,7 @@ def shapiro_wrapper(data, reta=False, ignoreNaN=True):
   # N.B.: a only depends on the length of data, so it can be easily reused in array operation
 
 
-## bivariate statistical tests and functions
+## bivariate statistical tests
     
 # Kolmogorov-Smirnov Test on 2 samples
 def ks_2samp(sample1, sample2, lstatistic=False, ignoreNaN=True, **kwargs):
@@ -229,7 +232,7 @@ def ranksums_wrapper(data, size1=None, ignoreNaN=True):
   return pval  
 
 
-## Correlation functions
+## bivariate statistical functions
 
 # Pearson's Correlation Coefficient between two samples
 def pearsonr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, lstandardize=False, 
@@ -345,8 +348,9 @@ def spearmanr_wrapper(data, size1=None, axis=None, lpval=False, lrho=True, ignor
 def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, name=None, 
                           lflatten=False, fillValue=None, lpval=True, lrho=False, asVar=None,
                           lcheckVar=True, lcheckAxis=True, pvaratts=None, rvaratts=None, **kwargs):
-  ''' Apply a bivariate statistical test to two sample Variables and return the result as a Variable object;
-      the function will be applied along the specified axis or over flattened arrays. '''
+  ''' Apply a bivariate statistical test or function to two sample Variables and return the result 
+      as a Variable object; the function will be applied along the specified axis or over flattened arrays. 
+      This function can return both, the p-value and the function result (other than the p-value). '''
   # some input checking
   if lflatten and axis is not None: raise ArgumentError
   if not lflatten and axis is None: raise ArgumentError
