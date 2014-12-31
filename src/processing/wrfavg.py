@@ -154,7 +154,8 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
         writemsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,filepath)
         logger.info(writemsg)      
         # rename file to proper name
-        os.rename(tmpfilepath,filepath)
+        if os.path.exists(filepath): os.remove(filepath) # remove old file
+        os.rename(tmpfilepath,filepath) # this will overwrite the old file
         
         # print dataset
         if not lparallel and ldebug:
@@ -209,7 +210,7 @@ if __name__ == '__main__':
     NP = NP or 4
     varlist = None # ['lat2D', ]
     experiments = []
-    experiments += ['max-1deg']
+    experiments += ['max-ctrl']
 #     experiments += ['new','noah','max','max-2050']
 #     experiments += ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
 #     experiments += ['max-1deg', 'max-1deg-2050','max-1deg-2100']
@@ -228,13 +229,13 @@ if __name__ == '__main__':
 #     periods += [3]
     periods += [5]
 #     periods += [9]
-#     periods += [10]
+    periods += [10]
 #     periods += [15]
     domains = (2,) # domains to be processed
 #     filetypes = ['hydro'] # filetypes to be processed
-    filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
+#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']
-#     filetypes = ['hydro'] # filetypes to be processed
+    filetypes = ['hydro'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','plev3d','hydro']
     grid = 'native'
   else:
@@ -243,7 +244,7 @@ if __name__ == '__main__':
     loverwrite = False
     varlist = None # all variables
     experiments = None # WRF experiment names (passed through WRF_exps)
-    experiments = [] # list of most important experiments
+#     experiments = [] # list of most important experiments
 #     experiments += ['max-1deg', 'max-1deg-2050','max-1deg-2100',]
 #     experiments += ['erai-max', 'max-seaice-2050','max-seaice-2100',]
 #     experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
@@ -286,4 +287,4 @@ if __name__ == '__main__':
   # call parallel execution function
   ec = asyncPoolEC(computeClimatology, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
   # exit with fraction of failures (out of 10) as exit code
-  exit(int(np.ceil(10*ec/len(args))))
+  exit(int(np.ceil(10.*ec/len(args))))

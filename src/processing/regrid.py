@@ -254,7 +254,8 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       # rename file to proper name
       if not lreturn:
         sink.unload(); sink.close(); del sink # destroy all references 
-        os.rename(tmpfilepath,filepath)
+        if os.path.exists(filepath): os.remove(filepath) # remove old file
+        os.rename(tmpfilepath,filepath) # this would also overwrite the old file...
       # N.B.: there is no temporary file if the dataset is returned, because an open file can't be renamed
         
     # clean up and return
@@ -500,4 +501,4 @@ if __name__ == '__main__':
   ## call parallel execution function
   ec = asyncPoolEC(performRegridding, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
   # exit with fraction of failures (out of 10) as exit code
-  exit(int(np.ceil(10*ec/len(args))))
+  exit(int(np.ceil(10.*ec/len(args))))

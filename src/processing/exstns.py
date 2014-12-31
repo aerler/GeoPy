@@ -248,6 +248,7 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
       # rename file to proper name
       if not lreturn:
         sink.unload(); sink.close(); del sink # destroy all references 
+        if os.path.exists(filepath): os.remove(filepath) # remove old file
         os.rename(tmpfilepath,filepath)
       # N.B.: there is no temporary file if the dataset is returned, because an open file can't be renamed
         
@@ -282,7 +283,7 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    ldebug = True
+    ldebug = False
     NP = 4 #or NP # to avoid memory issues...
 #     modes = ('climatology',) # 'climatology','time-series'
     modes = ('time-series',) # 'climatology','time-series'
@@ -293,8 +294,8 @@ if __name__ == '__main__':
 #     periods += [1]
 #     periods += [3]
     periods += [5]
-#     periods += [10]
-#     periods += [15]
+    periods += [10]
+    periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
     datasets = []; resolutions = None
@@ -316,21 +317,21 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm'] # ,'lnd'
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-    WRF_experiments += ['max']
-#     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
+#     WRF_experiments += ['max']
+    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...
     # other WRF parameters 
-#     domains = (1,2) # domains to be processed
-    domains = (2,) # domains to be processed
+    domains = (1,2) # domains to be processed
+#     domains = (2,) # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
-#     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-    WRF_filetypes = ('hydro',)
+    WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
+#     WRF_filetypes = ('hydro',)
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
     #WRF_filetypes = ('const',); periods = None
     # station datasets to match    
-#     stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
-    stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
+    stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
+#     stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
   else:
     NP = NP or 4 # time-series might take more memory!
     #modes = ('climatology','time-series')
@@ -445,4 +446,4 @@ if __name__ == '__main__':
   ## call parallel execution function
   ec = asyncPoolEC(performExtraction, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
   # exit with fraction of failures (out of 10) as exit code
-  exit(int(np.ceil(10*ec/len(args))))
+  exit(int(np.ceil(10.*ec/len(args))))

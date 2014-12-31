@@ -169,7 +169,8 @@ class CentralProcessingUnit(object):
     if template is None: raise NotImplementedError
     elif isinstance(template, Dataset):
       if not template.hasAxis('station'): raise DatasetError, "Template station dataset needs to have a station axis."
-      if not template.hasVariable('lat') or not template.hasVariable('lon'): 
+      if not ( (template.hasVariable('lat') or template.hasVariable('stn_lat')) and 
+               (template.hasVariable('lon') or template.hasVariable('stn_lon')) ): 
         raise DatasetError, "Template station dataset needs to have lat/lon arrays for the stations."      
     else: raise TypeError
     # make temporary dataset
@@ -201,8 +202,11 @@ class CentralProcessingUnit(object):
     assert isinstance(xlon,Axis) and isinstance(ylat,Axis) and isinstance(stnax,Axis)
     # transform to dataset-native coordinate system
     if template: 
-      lons = template.lon.getArray(); lats = template.lat.getArray()
-    else: raise NotImplementedError
+      if template.hasVariable('lat'): lats = template.lat.getArray()
+      else: lats = template.stn_lat.getArray()
+      if template.hasVariable('lon'): lons = template.lon.getArray()
+      else: lons = template.stn_lon.getArray()
+    else: raise NotImplementedError, "Cannot extract station data without a station template Dataset"
     # adjust longitudes
     if srcgrd.isProjected:
       if lons.max() > 180.: lons = np.where(lons > 180., 360.-lons, lons)
@@ -223,10 +227,13 @@ class CentralProcessingUnit(object):
     # generate index list
     ixlon = []; iylat = []; istn = []; zs_err = [] # also record elevation error
     lzs = src.hasVariable('zs')
-    if laltcorr and lzs:
+    lstnzs = template.hasVariable('zs') or  template.hasVariable('stn_zs')
+    if laltcorr and lzs and lstnzs:
       if src.zs.ndim != 2 or not src.zs.gdal or src.zs.units != 'm': raise VariableError
       # consider altidue of surrounding points as well      
-      zs = src.zs.getArray(unmask=True,fillValue=-300); stn_zs = template.zs.getArray(unmask=True,fillValue=-300)
+      zs = src.zs.getArray(unmask=True,fillValue=-300)
+      if template.hasVariable('zs'): stn_zs = template.zs.getArray(unmask=True,fillValue=-300)
+      else: stn_zs = template.stn_zs.getArray(unmask=True,fillValue=-300)
       if src.zs.axisIndex(xlon.name) == 0: zs.transpose() # assuming lat,lon or y,x order is more common
       ye,xe = zs.shape # assuming order lat,lon or y,x
       xe -= 1; ye -= 1 # last valid index, not length
