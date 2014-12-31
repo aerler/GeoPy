@@ -95,21 +95,25 @@ def shapiro_wrapper(data, reta=False, ignoreNaN=True):
 
 
 ## bivariate statistical tests and functions
-
+    
 # Kolmogorov-Smirnov Test on 2 samples
-def ks_2samp(sample1, sample2, **kwargs):
+def ks_2samp(sample1, sample2, lstatistic=False, ignoreNaN=True, **kwargs):
   ''' Apply the Kolmogorov-Smirnov Test, to test whether two samples are drawn from the same
       underlying (continuous) distribution; a high p-value means, the two samples are likely
-      drawn from the same distribution. '''
-  pvar = apply_stat_test_2samp(sample1, sample2, test='ks_2samp', **kwargs)
+      drawn from the same distribution. 
+      The Kolmogorov-Smirnov Test is a non-parametric test that works well for all types of 
+      distributions (normal and non-normal). '''
+  if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
+  testfct = functools.partial(ks_2samp_wrapper, ignoreNaN=ignoreNaN)
+  pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=True, **kwargs)
   return pvar
 kstest = ks_2samp # alias
 
 # apply-along-axis wrapper for the Kolmogorov-Smirnov Test on 2 samples
 def ks_2samp_wrapper(data, size1=None, ignoreNaN=True):
   ''' Apply the Kolmogorov-Smirnov Test, to test whether two samples are drawn from the same
-      underlying (continuous) distribution; a high p-value means, the two samples are likely
-      drawn from the same distribution. '''
+      underlying (continuous) distribution. This is a wrapper for the SciPy function that 
+      removes NaN's, allows application over a field, and only returns the p-value. '''
   if ignoreNaN:
     nonans = np.invert(np.isnan(data)) # test for NaN's
     if np.sum(nonans[:size1]) < 3 or np.sum(nonans[size1:]) < 3: return np.NaN # return, if less than 3 non-NaN's
@@ -122,20 +126,22 @@ def ks_2samp_wrapper(data, size1=None, ignoreNaN=True):
 
 
 # Stundent's T-test for two independent samples
-def ttest_ind(sample1, sample2, axis=None, equal_var=True, **kwargs):
+def ttest_ind(sample1, sample2, equal_var=True, lstatistic=False, ignoreNaN=True, **kwargs):
   ''' Apply the Stundent's T-test for two independent samples, to test whether the samples 
       are drawn from the same underlying (continuous) distribution; a high p-value means, 
-      the two samples are likely drawn from the same distribution. '''
-  pvar = apply_stat_test_2samp(sample1, sample2, test='ttest_ind', axis=axis, 
-                               equal_var=equal_var, **kwargs)
+      the two samples are likely drawn from the same distribution. 
+      The T-test implementation is vectoriezed (unlike all other tests).'''
+  if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
+  testfct = functools.partial(ttest_ind_wrapper, ignoreNaN=ignoreNaN, equal_var=equal_var)
+  pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=False, **kwargs)
   return pvar
 ttest = ttest_ind # alias
 
 # apply-along-axis wrapper for the Kolmogorov-Smirnov Test on 2 samples
 def ttest_ind_wrapper(data, size1=None, axis=None, ignoreNaN=True, equal_var=True):
   ''' Apply the Stundent's T-test for two independent samples, to test whether the samples 
-      are drawn from the same underlying (continuous) distribution; a high p-value means, 
-      the two samples are likely drawn from the same distribution. '''
+      are drawn from the same underlying (continuous) distribution. This is a wrapper for the SciPy function that 
+      removes NaN's and only returns the p-value (t-test is already vectorized). '''
   if axis is None and ignoreNaN:
     nonans = np.invert(np.isnan(data)) # test for NaN's
     if np.sum(nonans[:size1]) < 3 or np.sum(nonans[size1:]) < 3: return np.NaN # return, if less than 3 non-NaN's
@@ -149,25 +155,34 @@ def ttest_ind_wrapper(data, size1=None, axis=None, ignoreNaN=True, equal_var=Tru
   return pval  
 
 # Mann-Whitney Rank Test on 2 samples
-def mannwhitneyu(sample1, sample2, use_continuity=True, lonesided=False, **kwargs):
+def mannwhitneyu(sample1, sample2, ignoreNaN=True, lonesided=False, lstatistic=False, 
+                 use_continuity=True, **kwargs):
   ''' Apply the Mann-Whitney Rank Test, to test whether two samples are drawn from the same
       underlying (continuous) distribution; a high p-value means, the two samples are likely
-      drawn from the same distribution. '''
-  pvar = apply_stat_test_2samp(sample1, sample2, test='mannwhitneyu', 
-                               use_continuity=use_continuity, lonesided=True, **kwargs)
+      drawn from the same distribution.
+      The Mann-Whitney Test has very high efficiency for non-normal distributions and is almost as
+      reliable as the T-test for normal distributions. It is more sophisticated than the 
+      Wilcoxon Ranksum Test and also handles ties between ranks. 
+      One-sided p-values test the hypothesis that one distribution is larger than the other;
+      the two-sided test just tests, if the distributions are different. '''
+  if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
+  testfct = functools.partial(mannwhitneyu_wrapper, ignoreNaN=ignoreNaN, 
+                              use_continuity=use_continuity)
+  pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=True, **kwargs)
   if not lonesided: # transform to twosided (multiply p-value by 2)
     if isinstance(pvar,Variable): pvar.data_array *= 2.
     else : pvar *= 2.
-  # N.B.: for some reason Mann-Whitney returns the one-sided p-value...
-  #       It is better to correct here, so we can use vector multiplication
+  # N.B.: for some reason Mann-Whitney returns the one-sided p-value... The one-sided p-value 
+  #       is for the hypothesis that one sample is larger than the other.
+  #       It is better to correct here, so we can use vector multiplication.
   return pvar
 mwtest = mannwhitneyu # alias
 
 # apply-along-axis wrapper for the Mann-Whitney Rank Test on 2 samples
 def mannwhitneyu_wrapper(data, size1=None, ignoreNaN=True, use_continuity=True, loneside=False):
   ''' Apply the Mann-Whitney Rank Test, to test whether two samples are drawn from the same
-      underlying (continuous) distribution; a high p-value means, the two samples are likely
-      drawn from the same distribution. '''
+      underlying (continuous) distribution. This is a wrapper for the SciPy function that 
+      removes NaN's, allows application over a field, and only returns the p-value. '''
   if ignoreNaN:
     nonans = np.invert(np.isnan(data)) # test for NaN's
     if np.sum(nonans[:size1]) < 3 or np.sum(nonans[size1:]) < 3: return np.NaN # return, if less than 3 non-NaN's
@@ -180,19 +195,24 @@ def mannwhitneyu_wrapper(data, size1=None, ignoreNaN=True, use_continuity=True, 
 
 
 # Wilcoxon Ranksum Test on 2 samples
-def ranksums(sample1, sample2, **kwargs):
+def ranksums(sample1, sample2, lstatistic=False, ignoreNaN=True, **kwargs):
   ''' Apply the Wilcoxon Ranksum Test, to test whether two samples are drawn from the same
       underlying (continuous) distribution; a high p-value means, the two samples are likely
-      drawn from the same distribution. '''
-  pvar = apply_stat_test_2samp(sample1, sample2, test='ranksums', **kwargs)
+      drawn from the same distribution. 
+      The Ranksum Test has higher efficiency for non-normal distributions and is almost as
+      reliable as the T-test for normal distributions. It is less sophisticated than the 
+      Mann-Whitney Test and does not handle ties between ranks. '''
+  if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
+  testfct = functools.partial(ranksums_wrapper, ignoreNaN=ignoreNaN)
+  pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=True, **kwargs)
   return pvar
 wrstest = ranksums # alias
 
 # apply-along-axis wrapper for the Wilcoxon Ranksum Test on 2 samples
-def ranksums_wrapper(data, size1=None, ignoreNaN=True, use_continuity=True, loneside=False):
+def ranksums_wrapper(data, size1=None, ignoreNaN=True):
   ''' Apply the Wilcoxon Ranksum Test, to test whether two samples are drawn from the same
-      underlying (continuous) distribution; a high p-value means, the two samples are likely
-      drawn from the same distribution. '''
+      underlying (continuous) distribution. This is a wrapper for the SciPy function that 
+      removes NaN's, allows application over a field, and only returns the p-value. '''
   if ignoreNaN:
     nonans = np.invert(np.isnan(data)) # test for NaN's
     if np.sum(nonans[:size1]) < 3 or np.sum(nonans[size1:]) < 3: return np.NaN # return, if less than 3 non-NaN's
@@ -205,15 +225,12 @@ def ranksums_wrapper(data, size1=None, ignoreNaN=True, use_continuity=True, lone
 
 
 # generic applicator function for 2 sample statistical tests
-def apply_stat_test_2samp(sample1, sample2, test=None, axis=None, axis_idx=None, name=None, 
-                          lflatten=False, ignoreNaN=True, lonesided=False, lstatistic=False, fillValue=None,
-                          asVar=None, lcheckVar=True, lcheckAxis=True, pvaratts=None, **kwargs):
-  ''' Apply a statistical test, to test whether two samples are drawn from the same
-      undelying (continuous) distribution; a high p-value means, the two samples are likely
-      drawn from the same distribution. '''
+def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, name=None, 
+                          lflatten=False, fillValue=None, lpval=True, lcorr=False, asVar=None,
+                          lcheckVar=True, lcheckAxis=True, pvaratts=None, cvaratts=None, **kwargs):
+  ''' Apply a bivariate statistical test to two sample Variables and return the result as a Variable object;
+      the function will be applied along the specified axis or over flattened arrays. '''
   # some input checking
-  if lonesided and test != 'mannwhitneyu': raise NotImplementedError
-  if not lonesided and test == 'mannwhitneyu': raise NotImplementedError
   if lflatten and axis is not None: raise ArgumentError
   if not lflatten and axis is None: raise ArgumentError
   if asVar is None: asVar = not lflatten
@@ -236,7 +253,6 @@ def apply_stat_test_2samp(sample1, sample2, test=None, axis=None, axis_idx=None,
   elif lflatten: axis_idx1 = axis_idx2 = 0
   else: raise ArgumentError
   del axis_idx # should not be used any longer    
-  if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
   # check sample variables
   for sample in sample1,sample2:
     if sample.dtype.kind in ('S',):
@@ -264,6 +280,20 @@ def apply_stat_test_2samp(sample1, sample2, test=None, axis=None, axis_idx=None,
       axes1 = tuple(ax.name for ax in sample1.axes if ax.name != axis)
       axes2 = tuple(ax.name for ax in sample2.axes if ax.name != axis)
       if axes1 != axes2: raise AxisError, "Axes of samples are inconsistent."
+  # create attributes for new p-values variable object
+  if asVar and lpval:
+    #if not name and not varatts: raise ArgumentError, 'Need a name or variable attributes to create a Variable.'
+    varatts = dict()
+    if lvar1 and lvar2:
+      varatts['name'] = name or '{:s}_{:s}_pval'.format(sample1.name,sample2.name)
+      varatts['long_name'] = 'p-value of {:s} and {:s}'.format(sample1.name.title(),sample1.name.title())
+    else:
+      if not name: varatts['name'] = 'pval'; varatts['long_name'] = 'p-value'
+      else: varatts['name'] = name; varatts['long_name'] = 'p-value ({:s})'.format(name)
+    varatts['units'] = '' # p-value / probability
+    if pvaratts is not None: varatts.update(pvaratts)
+    pvaratts = varatts.copy()
+    pvarplot = getPlotAtts(name=name or pvaratts['name'], units='') # infer meta data from plot attributes
   # prepare data
   def preprocess(sample, axis_idx):
     ''' helper function to pre-process each sample '''
@@ -283,20 +313,10 @@ def apply_stat_test_2samp(sample1, sample2, test=None, axis=None, axis_idx=None,
   # apply test (serial)
   if lflatten:
     axis_idx = data1.ndim-1; size1 = data1.shape[-1]; laax=True # shorcuts
-    # select test and set parameters
-    if test.lower() in ('kstest', 'ks_2samp'):
-      testfct = functools.partial(ks_2samp_wrapper, size1=size1, ignoreNaN=ignoreNaN)
-    elif test.lower() in ('ttest', 'ttest_ind'):
-      testfct = functools.partial(ttest_ind_wrapper, size1=size1, ignoreNaN=ignoreNaN, **kwargs)
-    elif test.lower() in ('mwtest', 'mannwhitneyu'):
-      testfct = functools.partial(mannwhitneyu_wrapper, size1=size1, ignoreNaN=ignoreNaN, **kwargs)
-    elif test.lower() in ('wrstest', 'ranksum', 'ranksums'):
-      testfct = functools.partial(ranksums_wrapper, size1=size1, ignoreNaN=ignoreNaN)
-    else: raise NotImplementedError, "No statistical test '{:s}' available.".format(test)
     # merge sample arrays, save dividing index 'size1' (only one argument array per point along axis)
     data_array = np.concatenate((data1, data2), axis=axis_idx) 
-    pval = testfct(data_array)
-          # create new Axis and Variable objects (1-D)
+    pval = fct(data_array, size1=size1)
+    # create new Axis and Variable objects (1-D)
     if asVar: 
       raise NotImplementedError, "Cannot return a single scalar as a Variable object."
     else: pvar = pval
@@ -306,18 +326,7 @@ def apply_stat_test_2samp(sample1, sample2, test=None, axis=None, axis_idx=None,
     # merge sample arrays, save dividing index 'size1' (only one argument array per point along axis)
     data_array = np.concatenate((data1, data2), axis=axis_idx) 
     # select test and set parameters
-    if test.lower() in ('ttest', 'ttest_ind'):
-      laax = False # can handle multi-dimensional arrays
-      testfct = functools.partial(ttest_ind_wrapper, size1=size1, ignoreNaN=ignoreNaN, **kwargs)
-    else:
-      if test.lower() in ('kstest', 'ks_2samp'):
-        testfct = functools.partial(ks_2samp_wrapper, size1=size1, ignoreNaN=ignoreNaN)
-      elif test.lower() in ('mwtest', 'mannwhitneyu'):
-        testfct = functools.partial(mannwhitneyu_wrapper, size1=size1, ignoreNaN=ignoreNaN, **kwargs)
-      elif test.lower() in ('wrstest', 'ranksum', 'ranksums'):
-        testfct = functools.partial(ranksums_wrapper, size1=size1, ignoreNaN=ignoreNaN)
-      else: raise NotImplementedError, "No statistical test '{:s}' available.".format(test)
-    pval = apply_along_axis(testfct, axis_idx, data_array, laax=laax) # apply test in parallel, distributing the data
+    pval = apply_along_axis(fct, axis_idx, data_array, laax=laax) # apply test in parallel, distributing the data
     assert pval.ndim == sample1.ndim-1
     assert pval.shape == rshape
     # handle masks etc.
@@ -327,16 +336,10 @@ def apply_stat_test_2samp(sample1, sample2, test=None, axis=None, axis_idx=None,
       if fillValue is not None:
         pval = ma.masked_equal(pval, fillValue)
       ma.set_fill_value(pval,fillValue)          
-    # create a new variable object for p-values
     if asVar:
-      plotatts = getPlotAtts(name='pval', units='') # infer meta data from plot attributes
-      varatts = dict()
-      varatts['name'] = name or '{:s}_{:s}_pval'.format(sample1.name,sample2.name)
-      varatts['long_name'] = "p-value of {:s} and {:s} ({:s})".format(sample1.name.title(),sample1.name.title(),test)
-      varatts['units'] = '' # p-value / probability
-      if pvaratts is not None: varatts.update(pvaratts)
-      axes = sample1.axes[:axis_idx1] + sample1.axes[axis_idx1+1:]
-      pvar = Variable(data=pval, axes=axes, atts=varatts, plot=plotatts)
+      if lpval:
+        axes = sample1.axes[:axis_idx1] + sample1.axes[axis_idx1+1:]
+        pvar = Variable(data=pval, axes=axes, atts=pvaratts, plot=pvarplot)
     else: pvar = pval
   # return results
   return pvar

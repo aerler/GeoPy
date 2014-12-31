@@ -1307,7 +1307,7 @@ if __name__ == "__main__":
 #     specific_tests = ['ReductionArithmetic']
 #     specific_tests = ['DistributionVariables']
 #     specific_tests = ['Ensemble']
-#     specific_tests = ['StatsTests']    
+    specific_tests = ['StatsTests']    
 
     # list of tests to be performed
     tests = [] 
@@ -1316,9 +1316,9 @@ if __name__ == "__main__":
     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
       
     
     # construct dictionary of test classes defined above
