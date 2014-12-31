@@ -16,7 +16,8 @@ import os
 from geodata.nctools import writeNetCDF
 from geodata.misc import isZero, isOne, isEqual
 from geodata.base import Variable, Axis, Dataset, Ensemble, concatVars, concatDatasets
-from geodata.stats import VarKDE, VarRV, asDistVar, kstest, ttest, mwtest, wrstest
+from geodata.stats import VarKDE, VarRV, asDistVar
+from geodata.stats import kstest, ttest, mwtest, wrstest, pearsonr, spearmanr
 from datasets.common import data_root
 from average.wrfout_average import ldebug
 
@@ -588,7 +589,18 @@ class BaseVarTest(unittest.TestCase):
     #print pvar.data_array
     assert np.all(pvar.data_array > 0.95) # not all tests are that accurate...
     assert pvar.shape == var.shape[1:] # this will usually be close to zero, since none of these are normally distributed
-    
+    ## correlation coefficients
+    rho,pval = pearsonr(var, rav, lpval=True, lrho=True, lflatten=True)
+    #rho,pval = spearmanr(var, rav, lpval=True, lrho=True, lflatten=True)
+    #print rho, pval
+    assert rho > 0.99
+    assert pval < 0.01 # this will usually be close to zero, since none of these are normally distributed
+    #rvar,pvar = pearsonr(var, rav, lpval=True, lrho=True, axis='time')
+    rvar,pvar = spearmanr(var, rav, lpval=True, lrho=True, axis='time')
+    #print rvar
+    #print rho.data_array
+    assert np.all(rvar.data_array > 0.00) # not all tests are that accurate...
+    assert rvar.shape == var.shape[1:] # this will usually be close to zero, since none of these are normally distributed
     
   def testUnaryArithmetic(self):
     ''' test in-place and unary arithmetic functions and ufuncs'''
@@ -1307,7 +1319,7 @@ if __name__ == "__main__":
 #     specific_tests = ['ReductionArithmetic']
 #     specific_tests = ['DistributionVariables']
 #     specific_tests = ['Ensemble']
-    specific_tests = ['StatsTests']    
+#     specific_tests = ['StatsTests']    
 
     # list of tests to be performed
     tests = [] 
@@ -1316,9 +1328,9 @@ if __name__ == "__main__":
     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
       
     
     # construct dictionary of test classes defined above

@@ -105,7 +105,8 @@ def ks_2samp(sample1, sample2, lstatistic=False, ignoreNaN=True, **kwargs):
       distributions (normal and non-normal). '''
   if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
   testfct = functools.partial(ks_2samp_wrapper, ignoreNaN=ignoreNaN)
-  pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=True, **kwargs)
+  pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=True, 
+                               lpval=True, lrho=False, **kwargs)
   return pvar
 kstest = ks_2samp # alias
 
@@ -133,7 +134,8 @@ def ttest_ind(sample1, sample2, equal_var=True, lstatistic=False, ignoreNaN=True
       The T-test implementation is vectoriezed (unlike all other tests).'''
   if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
   testfct = functools.partial(ttest_ind_wrapper, ignoreNaN=ignoreNaN, equal_var=equal_var)
-  pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=False, **kwargs)
+  pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=False, 
+                               lpval=True, lrho=False, **kwargs)
   return pvar
 ttest = ttest_ind # alias
 
@@ -168,7 +170,8 @@ def mannwhitneyu(sample1, sample2, ignoreNaN=True, lonesided=False, lstatistic=F
   if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
   testfct = functools.partial(mannwhitneyu_wrapper, ignoreNaN=ignoreNaN, 
                               use_continuity=use_continuity)
-  pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=True, **kwargs)
+  pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=True, 
+                               lpval=True, lrho=False, **kwargs)
   if not lonesided: # transform to twosided (multiply p-value by 2)
     if isinstance(pvar,Variable): pvar.data_array *= 2.
     else : pvar *= 2.
@@ -204,7 +207,8 @@ def ranksums(sample1, sample2, lstatistic=False, ignoreNaN=True, **kwargs):
       Mann-Whitney Test and does not handle ties between ranks. '''
   if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
   testfct = functools.partial(ranksums_wrapper, ignoreNaN=ignoreNaN)
-  pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=True, **kwargs)
+  pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=True, 
+                               lpval=True, lrho=False, **kwargs)
   return pvar
 wrstest = ranksums # alias
 
@@ -224,10 +228,88 @@ def ranksums_wrapper(data, size1=None, ignoreNaN=True):
   return pval  
 
 
+# Pearson's Correlation Coefficient between two samples
+def pearsonr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, **kwargs):
+  ''' Compute and return the linear correlation coefficient and/or the p-value
+      of Pearson's correlation. 
+      Pearson's Correlation Coefficient measures the linear relationship between
+      the two sample variables (this is the ordinary correlation coefficient);
+      the p-values assume that the samples are normally distributed. '''
+  testfct = functools.partial(pearsonr_wrapper, lpval=lpval, lrho=lrho, ignoreNaN=ignoreNaN)
+  rvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, 
+                               lpval=lpval, lrho=lrho, laax=True, **kwargs)
+  return rvar
+corrcoef = pearsonr
+
+# apply-along-axis wrapper for the Pearson's Correlation Coefficient on 2 samples
+def pearsonr_wrapper(data, size1=None, lpval=False, lrho=True, ignoreNaN=True):
+  ''' Compute the Pearson's Correlation Coefficient of two samples. This is a wrapper 
+      for the SciPy function allows application over a field, and returns 
+      the correlation coefficient and/or the p-value. '''
+  if ignoreNaN:
+    data1 = data[:size1]; data2 = data[size1:] # find NaN's
+    nans1 = np.isnan(data1); nans2 = np.isnan(data2) # remove in both arrays
+    nonans = np.invert(np.logical_or(nans1,nans2))
+    if np.sum(nonans) < 3: # return, if less than 3 non-NaN's 
+      if lrho and lpval: return np.zeros(2)+np.NaN
+      else: return np.NaN # need to conform to output size
+    data1 = data1[nonans]; data2 = data2[nonans] # remove NaN's
+  else:
+    data1 = data[:size1]; data2 = data[size1:]
+  # apply test
+  rho, pval = ss.pearsonr(data1, data2)
+  # select output
+  if lrho and lpval: return np.asarray((rho,pval))
+  elif lrho: return rho
+  elif lpval: return pval
+  else: raise ArgumentError  
+
+
+# Spearman's Rank-order Correlation Coefficient between two samples
+def spearmanr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, **kwargs):
+  ''' Compute and return the linear correlation coefficient and/or the p-value
+      of Spearman's Rank-order Correlation Coefficient. 
+      Spearman's Rank-order Correlation Coefficient measures the monotonic 
+      relationship between the two samples; it is more robust for non-linear
+      and non-normally distributed samples than the ordinary correlation
+      coefficient. '''
+  testfct = functools.partial(spearmanr_wrapper, lpval=lpval, lrho=lrho, ignoreNaN=ignoreNaN)
+  rvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, 
+                               lpval=lpval, lrho=lrho, laax=True, **kwargs)
+  return rvar
+spearmancc = spearmanr
+
+# apply-along-axis wrapper for the Spearman's Rank-order Correlation Coefficient on 2 samples
+def spearmanr_wrapper(data, size1=None, axis=None, lpval=False, lrho=True, ignoreNaN=True):
+  ''' Compute the Spearman's Rank-order Correlation Coefficient of two samples. This is a wrapper 
+      for the SciPy function allows application over a field, and returns 
+      the correlation coefficient and/or the p-value. '''
+  if axis is None and ignoreNaN:
+    data1 = data[:size1]; data2 = data[size1:] # find NaN's
+    nans1 = np.isnan(data1); nans2 = np.isnan(data2) # remove in both arrays
+    nonans = np.invert(np.logical_or(nans1,nans2))
+    if np.sum(nonans) < 3: # return, if less than 3 non-NaN's 
+      if lrho and lpval: return np.zeros(2)+np.NaN
+      else: return np.NaN # need to conform to output size
+    data1 = data1[nonans]; data2 = data2[nonans] # remove NaN's
+  elif axis is None:
+    data1 = data[:size1]; data2 = data[size1:]
+  else:
+    data1, data2 = np.split(data, [size1], axis=axis)
+  # apply test
+  rho, pval = ss.spearmanr(data1, data2, axis=axis)
+  # select output
+  if lrho and lpval: 
+    return np.concatenate((rho.reshape(rho.shape+(1,)),pval.reshape(pval.shape+(1,))), axis=pval.ndim)
+  elif lrho: return rho
+  elif lpval: return pval
+  else: raise ArgumentError  
+
+
 # generic applicator function for 2 sample statistical tests
 def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, name=None, 
-                          lflatten=False, fillValue=None, lpval=True, lcorr=False, asVar=None,
-                          lcheckVar=True, lcheckAxis=True, pvaratts=None, cvaratts=None, **kwargs):
+                          lflatten=False, fillValue=None, lpval=True, lrho=False, asVar=None,
+                          lcheckVar=True, lcheckAxis=True, pvaratts=None, rvaratts=None, **kwargs):
   ''' Apply a bivariate statistical test to two sample Variables and return the result as a Variable object;
       the function will be applied along the specified axis or over flattened arrays. '''
   # some input checking
@@ -281,19 +363,31 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
       axes2 = tuple(ax.name for ax in sample2.axes if ax.name != axis)
       if axes1 != axes2: raise AxisError, "Axes of samples are inconsistent."
   # create attributes for new p-values variable object
-  if asVar and lpval:
-    #if not name and not varatts: raise ArgumentError, 'Need a name or variable attributes to create a Variable.'
-    varatts = dict()
-    if lvar1 and lvar2:
-      varatts['name'] = name or '{:s}_{:s}_pval'.format(sample1.name,sample2.name)
-      varatts['long_name'] = 'p-value of {:s} and {:s}'.format(sample1.name.title(),sample1.name.title())
-    else:
-      if not name: varatts['name'] = 'pval'; varatts['long_name'] = 'p-value'
-      else: varatts['name'] = name; varatts['long_name'] = 'p-value ({:s})'.format(name)
-    varatts['units'] = '' # p-value / probability
-    if pvaratts is not None: varatts.update(pvaratts)
-    pvaratts = varatts.copy()
-    pvarplot = getPlotAtts(name=name or pvaratts['name'], units='') # infer meta data from plot attributes
+  if asVar:
+    if lpval:
+      varatts = dict()
+      if lvar1 and lvar2:
+        varatts['name'] = name or '{:s}_{:s}_pval'.format(sample1.name,sample2.name)
+        varatts['long_name'] = 'p-value of {:s} and {:s}'.format(sample1.name.title(),sample1.name.title())
+      else:
+        if not name: varatts['name'] = 'pval'; varatts['long_name'] = 'p-value'
+        else: varatts['name'] = name; varatts['long_name'] = 'p-value ({:s})'.format(name)
+      varatts['units'] = '' # p-value / probability
+      if pvaratts is not None: varatts.update(pvaratts)
+      pvaratts = varatts.copy()
+      pvarplot = getPlotAtts(name=name or pvaratts['name'], units='') # infer meta data from plot attributes
+    if lrho:
+      varatts = dict()
+      if lvar1 and lvar2:
+        varatts['name'] = name or '{:s}_{:s}_rho'.format(sample1.name,sample2.name)
+        varatts['long_name'] = 'Correlation Coefficient of {:s} and {:s}'.format(sample1.name.title(),sample1.name.title())
+      else:
+        if not name: varatts['name'] = 'rho'; varatts['long_name'] = 'Correlation Coefficient'
+        else: varatts['name'] = name; varatts['long_name'] = 'Correlation Coefficient ({:s})'.format(name)
+      varatts['units'] = '' # p-value / probability
+      if rvaratts is not None: varatts.update(rvaratts)
+      rvaratts = varatts.copy()
+      rvarplot = getPlotAtts(name=name or rvaratts['name'], units='') # infer meta data from plot attributes
   # prepare data
   def preprocess(sample, axis_idx):
     ''' helper function to pre-process each sample '''
@@ -315,34 +409,47 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
     axis_idx = data1.ndim-1; size1 = data1.shape[-1]; laax=True # shorcuts
     # merge sample arrays, save dividing index 'size1' (only one argument array per point along axis)
     data_array = np.concatenate((data1, data2), axis=axis_idx) 
-    pval = fct(data_array, size1=size1)
-    # create new Axis and Variable objects (1-D)
-    if asVar: 
+    res = fct(data_array, size1=size1)
+    # disentagle results
+    if lrho and lpval:
+      rvar, pvar = res[0],res[1]
+    elif lpval: pvar = res
+    elif lrho: rvar = res
+    if asVar: # doesn't work here
       raise NotImplementedError, "Cannot return a single scalar as a Variable object."
-    else: pvar = pval
   # apply test (parallel)
   else: 
     axis_idx = data1.ndim-1; size1 = data1.shape[-1]; laax=True # shorcuts
     # merge sample arrays, save dividing index 'size1' (only one argument array per point along axis)
     data_array = np.concatenate((data1, data2), axis=axis_idx) 
     # select test and set parameters
-    pval = apply_along_axis(fct, axis_idx, data_array, laax=laax) # apply test in parallel, distributing the data
-    assert pval.ndim == sample1.ndim-1
-    assert pval.shape == rshape
+    res = apply_along_axis(fct, axis_idx, data_array, laax=laax) # apply test in parallel, distributing the data
     # handle masks etc.
     if (lvar1 and sample1.masked) or (lvar2 and sample1.masked): 
-      pval = ma.masked_invalid(pval, copy=False) 
+      res = ma.masked_invalid(res, copy=False) 
       # N.B.: comparisons with NaN always evaluate to False!
       if fillValue is not None:
-        pval = ma.masked_equal(pval, fillValue)
-      ma.set_fill_value(pval,fillValue)          
+        res = ma.masked_equal(res, fillValue)
+      ma.set_fill_value(res,fillValue)
+    if lrho and lpval:
+      assert res.ndim == sample1.ndim
+      assert res.shape == rshape+(2,)
+      res = np.rollaxis(res, axis=res.ndim-1, start=0)
+      rvar = res[0,:]; pvar = res[1,:]
+    else:
+      assert res.ndim == sample1.ndim-1
+      assert res.shape == rshape
+      if lpval: pvar = res
+      elif lrho: rvar = res
     if asVar:
-      if lpval:
-        axes = sample1.axes[:axis_idx1] + sample1.axes[axis_idx1+1:]
-        pvar = Variable(data=pval, axes=axes, atts=pvaratts, plot=pvarplot)
-    else: pvar = pval
+      axes = sample1.axes[:axis_idx1] + sample1.axes[axis_idx1+1:]
+      if lpval: pvar = Variable(data=pvar, axes=axes, atts=pvaratts, plot=pvarplot)
+      if lrho: rvar = Variable(data=rvar, axes=axes, atts=rvaratts, plot=rvarplot)
   # return results
-  return pvar
+  if lrho and lpval: return rvar, pvar
+  elif lpval: return pvar
+  elif lrho: return rvar
+  else: ArgumentError
 
 ## distribution variable classes 
 
