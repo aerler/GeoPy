@@ -16,7 +16,7 @@ import os
 from geodata.nctools import writeNetCDF
 from geodata.misc import isZero, isOne, isEqual
 from geodata.base import Variable, Axis, Dataset, Ensemble, concatVars, concatDatasets
-from geodata.stats import VarKDE, VarRV, asDistVar
+from geodata.stats import VarKDE, VarRV, asDistVar, kstest, ttest, mwtest, wrstest
 from datasets.common import data_root
 from average.wrfout_average import ldebug
 
@@ -540,7 +540,7 @@ class BaseVarTest(unittest.TestCase):
         var = self.var(time=slice(0,10), lat=(50,70), lon=(-130,-110))
       t,x,y = var.axes
     var.standardize(linplace=True) # make variables more likely to test positive
-    ## some simple stats tests
+    ## univariate stats tests
     # run simple kstest test
     pval = var.kstest(asVar=False, lflatten=True, dist='norm', args=(0,1))    
     #print pval
@@ -569,6 +569,26 @@ class BaseVarTest(unittest.TestCase):
     assert np.all(pvar.data_array >= 0)
 #     print pvar
 #     print pvar.data_array
+    ## bivariate stats tests
+    rav = var.copy()
+    pval = kstest(var, rav, lflatten=True)
+    assert pval > 0.99 # this will usually be close to zero, since none of these are normally distributed
+#     pval = ttest(var, rav, lflatten=True)  
+    pval = mwtest(var, rav, lflatten=True)  
+#     pval = wrstest(var, rav, lflatten=True)  
+    #print pval
+    assert pval > 0.99 # this will usually be close to zero, since none of these are normally distributed
+#     pvar = kstest(var, rav, axis='time')    
+    pvar = ttest(var, rav, axis='time')    
+    assert np.all(pvar.data_array > 0.95) # not all tests are that accurate...
+    assert pvar.shape == var.shape[1:] # this will usually be close to zero, since none of these are normally distributed
+#     pvar = mwtest(var, rav, axis='time')
+    pvar = wrstest(var, rav, axis='time')
+    #print pvar
+    #print pvar.data_array
+    assert np.all(pvar.data_array > 0.95) # not all tests are that accurate...
+    assert pvar.shape == var.shape[1:] # this will usually be close to zero, since none of these are normally distributed
+    
     
   def testUnaryArithmetic(self):
     ''' test in-place and unary arithmetic functions and ufuncs'''

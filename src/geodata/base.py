@@ -712,7 +712,7 @@ class Variable(object):
           ma.set_fill_value(data,self.fillValue) # this seems to work more reliably!
         else: # use data default
           self.fillValue = data.fill_value
-        assert self.fillValue == data.fill_value
+        assert self.fillValue == data.fill_value or (np.isnan(self.fillValue) and np.isnan(data.fill_value))
       # assign data to instance attribute array 
       self.__dict__['data_array'] = data
       # check shape consistency
@@ -1223,7 +1223,7 @@ class Variable(object):
       elif np.issubdtype(self.dtype,np.inexact): fillValue = np.NaN
       else: raise NotImplementedError
     # import test wrappers (need to do here, to prevent circular reference)
-    from geodata.stats import anderson, kstest, normaltest, shapiro
+    from geodata.stats import anderson_wrapper, kstest_wrapper, normaltest_wrapper, shapiro_wrapper
     if lflatten: # totally by-pass reduce()...
       # get data
       if self.masked: data = self.data_array.filled(fillValue).ravel()
@@ -1231,17 +1231,18 @@ class Variable(object):
       # N.B.: to ignore masked values they have to be replaced by NaNs or out-of-bounds values 
       # select test function for flat/1D test
       if test.lower() in ('anderson',): 
-        pval = anderson(data, dist=dist, ignoreNaN=ignoreNaN)
+        pval = anderson_wrapper(data, dist=dist, ignoreNaN=ignoreNaN)
       elif test.lower() in ('kstest',):
-        pval = kstest(data, dist=dist, ignoreNaN=ignoreNaN, **kwargs)
+        pval = kstest_wrapper(data, dist=dist, ignoreNaN=ignoreNaN, **kwargs)
       elif test.lower() in ('normaltest',):
-        pval = normaltest(data, axis=None, ignoreNaN=ignoreNaN)
+        pval = normaltest_wrapper(data, axis=None, ignoreNaN=ignoreNaN)
       elif test.lower() in ('shapiro',):
-        pval = shapiro(data, ignoreNaN=ignoreNaN, **kwargs) # runs only once
+        pval = shapiro_wrapper(data, ignoreNaN=ignoreNaN, **kwargs) # runs only once
+      else: raise NotImplementedError, test
       # create new Axis and Variable objects (1-D)
-      if asVar: pvar = Variable(data=pval, axes=(Axis(coord=0, atts=axatts),), atts=varatts)
+      if asVar: 
+        raise NotImplementedError, "Cannot return a single scalar as a Variable object."
       else: pvar = pval
-      #raise NotImplementedError, "Cannot return a single scalar as a Variable object."
     else: # use reduce to only apply to selected axis      
       # select test function for multi-dimensional test
       # N.B.: these "operations" will be called through the reduce method (see above for details)
@@ -1249,20 +1250,21 @@ class Variable(object):
         laax = False # don't need to use Numpy's apply_along_axis
         if ignoreNaN: 
           raise NotImplementedError, "NaN-removal does not work with 'normaltest' and multi-dimensional arrays."
-        testfct = normaltest
+        testfct = normaltest_wrapper
         # N.B.: the normaltest just works on multi-dimensional data
       else:
         laax = True # have to use Numpy's apply_along_axis
         if test.lower() in ('anderson',): 
-          testfct = functools.partial(anderson, dist=dist, ignoreNaN=ignoreNaN)
+          testfct = functools.partial(anderson_wrapper, dist=dist, ignoreNaN=ignoreNaN)
         elif test.lower() in ('kstest',):
-          testfct = functools.partial(kstest, dist=dist, ignoreNaN=ignoreNaN, **kwargs)
+          testfct = functools.partial(kstest_wrapper, dist=dist, ignoreNaN=ignoreNaN, **kwargs)
         elif test.lower() in ('shapiro',):
           lreta = kwargs.pop('reta',True) # default: True
           if lreta: 
             global shapiro_a # global variable to retain parameters
             shapiro_a = None # reset, just to be safe!
-          testfct = functools.partial(shapiro, reta=lreta, ignoreNaN=ignoreNaN)
+          testfct = functools.partial(shapiro_wrapper, reta=lreta, ignoreNaN=ignoreNaN)
+        else: raise NotImplementedError, test
       # create a helper function that apllies the histogram along the specified axis
       def aaa_testfct(data, axis=None):
         if axis < 0: axis += data.ndim

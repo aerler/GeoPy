@@ -21,9 +21,11 @@ from plotting.properties import getPlotAtts
 
 ## statistical tests and utility functions
 
+## univariate statistical tests and functions
+
 # wrapper for Anderson-Darling Test
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.anderson.html
-def anderson(data, dist='norm', ignoreNaN=True):
+def anderson_wrapper(data, dist='norm', ignoreNaN=True):
   ''' Anderson-Darling Test, to test whether or not the data is from a given distribution. The 
       returned p-value indicates the probability that the data is from the given distribution, 
       i.e. a low p-value means the data are likely not from the tested distribution. Note that 
@@ -38,7 +40,7 @@ def anderson(data, dist='norm', ignoreNaN=True):
 
 # wrapper for single-sample Kolmogorov-Smirnov Test
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.kstest.html
-def kstest(data, dist='norm', ignoreNaN=True, args=None, N=20, alternative='two-sided', mode='approx'):
+def kstest_wrapper(data, dist='norm', ignoreNaN=True, args=None, N=20, alternative='two-sided', mode='approx'):
   ''' Kolmogorov-Smirnov Test, to test whether or not the data is from a given distribution. The 
       returned p-value indicates the probability that the data is from the given distribution, 
       i.e. a low p-value means the data are likely not from the tested distribution.
@@ -53,7 +55,7 @@ def kstest(data, dist='norm', ignoreNaN=True, args=None, N=20, alternative='two-
 
 # wrapper for normaltest, a SciPy function to test normality
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.normaltest.html
-def normaltest(data, axis=None, ignoreNaN=True):
+def normaltest_wrapper(data, axis=None, ignoreNaN=True):
   ''' SciPy test, to test whether or not the data is from a normal distribution. The 
       returned p-value indicates the probability that the data is from a normal distribution, 
       i.e. a low p-value means the data are likely not from a normal distribution.
@@ -71,7 +73,7 @@ def normaltest(data, axis=None, ignoreNaN=True):
 shapiro_a = None
 # wrapper for Shapiro-Wilk test of normality
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.shapiro.html
-def shapiro(data, reta=False, ignoreNaN=True):
+def shapiro_wrapper(data, reta=False, ignoreNaN=True):
   ''' Shapiro-Wilk Test, to test whether or not the data is from a normal distribution. The 
       returned p-value indicates the probability that the data is from a normal distribution, 
       i.e. a low p-value means the data are likely not from a normal distribution. '''
@@ -90,7 +92,254 @@ def shapiro(data, reta=False, ignoreNaN=True):
     W, pval = ss.shapiro(data, a=None, reta=False)
   return pval
   # N.B.: a only depends on the length of data, so it can be easily reused in array operation
-  
+
+
+## bivariate statistical tests and functions
+
+# Kolmogorov-Smirnov Test on 2 samples
+def ks_2samp(sample1, sample2, **kwargs):
+  ''' Apply the Kolmogorov-Smirnov Test, to test whether two samples are drawn from the same
+      underlying (continuous) distribution; a high p-value means, the two samples are likely
+      drawn from the same distribution. '''
+  pvar = apply_stat_test_2samp(sample1, sample2, test='ks_2samp', **kwargs)
+  return pvar
+kstest = ks_2samp # alias
+
+# apply-along-axis wrapper for the Kolmogorov-Smirnov Test on 2 samples
+def ks_2samp_wrapper(data, size1=None, ignoreNaN=True):
+  ''' Apply the Kolmogorov-Smirnov Test, to test whether two samples are drawn from the same
+      underlying (continuous) distribution; a high p-value means, the two samples are likely
+      drawn from the same distribution. '''
+  if ignoreNaN:
+    nonans = np.invert(np.isnan(data)) # test for NaN's
+    if np.sum(nonans[:size1]) < 3 or np.sum(nonans[size1:]) < 3: return np.NaN # return, if less than 3 non-NaN's
+    data1 = data[nonans[:size1]]; data2 = data[nonans[size1:]] # remove NaN's
+  else:
+    data1 = data[:size1]; data2 = data[size1:]
+  # apply test
+  D, pval = ss.ks_2samp(data1, data2)
+  return pval  
+
+
+# Stundent's T-test for two independent samples
+def ttest_ind(sample1, sample2, axis=None, equal_var=True, **kwargs):
+  ''' Apply the Stundent's T-test for two independent samples, to test whether the samples 
+      are drawn from the same underlying (continuous) distribution; a high p-value means, 
+      the two samples are likely drawn from the same distribution. '''
+  pvar = apply_stat_test_2samp(sample1, sample2, test='ttest_ind', axis=axis, 
+                               equal_var=equal_var, **kwargs)
+  return pvar
+ttest = ttest_ind # alias
+
+# apply-along-axis wrapper for the Kolmogorov-Smirnov Test on 2 samples
+def ttest_ind_wrapper(data, size1=None, axis=None, ignoreNaN=True, equal_var=True):
+  ''' Apply the Stundent's T-test for two independent samples, to test whether the samples 
+      are drawn from the same underlying (continuous) distribution; a high p-value means, 
+      the two samples are likely drawn from the same distribution. '''
+  if axis is None and ignoreNaN:
+    nonans = np.invert(np.isnan(data)) # test for NaN's
+    if np.sum(nonans[:size1]) < 3 or np.sum(nonans[size1:]) < 3: return np.NaN # return, if less than 3 non-NaN's
+    data1 = data[nonans[:size1]]; data2 = data[nonans[size1:]] # remove NaN's
+  elif axis is None:
+    data1 = data[:size1]; data2 = data[size1:]
+  else:
+    data1, data2 = np.split(data, [size1], axis=axis)
+  # apply test
+  D, pval = ss.ttest_ind(data1, data2, axis=axis, equal_var=equal_var)
+  return pval  
+
+# Mann-Whitney Rank Test on 2 samples
+def mannwhitneyu(sample1, sample2, use_continuity=True, lonesided=False, **kwargs):
+  ''' Apply the Mann-Whitney Rank Test, to test whether two samples are drawn from the same
+      underlying (continuous) distribution; a high p-value means, the two samples are likely
+      drawn from the same distribution. '''
+  pvar = apply_stat_test_2samp(sample1, sample2, test='mannwhitneyu', 
+                               use_continuity=use_continuity, lonesided=True, **kwargs)
+  if not lonesided: # transform to twosided (multiply p-value by 2)
+    if isinstance(pvar,Variable): pvar.data_array *= 2.
+    else : pvar *= 2.
+  # N.B.: for some reason Mann-Whitney returns the one-sided p-value...
+  #       It is better to correct here, so we can use vector multiplication
+  return pvar
+mwtest = mannwhitneyu # alias
+
+# apply-along-axis wrapper for the Mann-Whitney Rank Test on 2 samples
+def mannwhitneyu_wrapper(data, size1=None, ignoreNaN=True, use_continuity=True, loneside=False):
+  ''' Apply the Mann-Whitney Rank Test, to test whether two samples are drawn from the same
+      underlying (continuous) distribution; a high p-value means, the two samples are likely
+      drawn from the same distribution. '''
+  if ignoreNaN:
+    nonans = np.invert(np.isnan(data)) # test for NaN's
+    if np.sum(nonans[:size1]) < 3 or np.sum(nonans[size1:]) < 3: return np.NaN # return, if less than 3 non-NaN's
+    data1 = data[nonans[:size1]]; data2 = data[nonans[size1:]] # remove NaN's
+  else:
+    data1 = data[:size1]; data2 = data[size1:]
+  # apply test
+  D, pval = ss.mannwhitneyu(data1, data2, use_continuity=use_continuity)
+  return pval  
+
+
+# Wilcoxon Ranksum Test on 2 samples
+def ranksums(sample1, sample2, **kwargs):
+  ''' Apply the Wilcoxon Ranksum Test, to test whether two samples are drawn from the same
+      underlying (continuous) distribution; a high p-value means, the two samples are likely
+      drawn from the same distribution. '''
+  pvar = apply_stat_test_2samp(sample1, sample2, test='ranksums', **kwargs)
+  return pvar
+wrstest = ranksums # alias
+
+# apply-along-axis wrapper for the Wilcoxon Ranksum Test on 2 samples
+def ranksums_wrapper(data, size1=None, ignoreNaN=True, use_continuity=True, loneside=False):
+  ''' Apply the Wilcoxon Ranksum Test, to test whether two samples are drawn from the same
+      underlying (continuous) distribution; a high p-value means, the two samples are likely
+      drawn from the same distribution. '''
+  if ignoreNaN:
+    nonans = np.invert(np.isnan(data)) # test for NaN's
+    if np.sum(nonans[:size1]) < 3 or np.sum(nonans[size1:]) < 3: return np.NaN # return, if less than 3 non-NaN's
+    data1 = data[nonans[:size1]]; data2 = data[nonans[size1:]] # remove NaN's
+  else:
+    data1 = data[:size1]; data2 = data[size1:]
+  # apply test
+  D, pval = ss.ranksums(data1, data2)
+  return pval  
+
+
+# generic applicator function for 2 sample statistical tests
+def apply_stat_test_2samp(sample1, sample2, test=None, axis=None, axis_idx=None, name=None, 
+                          lflatten=False, ignoreNaN=True, lonesided=False, lstatistic=False, fillValue=None,
+                          asVar=None, lcheckVar=True, lcheckAxis=True, pvaratts=None, **kwargs):
+  ''' Apply a statistical test, to test whether two samples are drawn from the same
+      undelying (continuous) distribution; a high p-value means, the two samples are likely
+      drawn from the same distribution. '''
+  # some input checking
+  if lonesided and test != 'mannwhitneyu': raise NotImplementedError
+  if not lonesided and test == 'mannwhitneyu': raise NotImplementedError
+  if lflatten and axis is not None: raise ArgumentError
+  if not lflatten and axis is None: raise ArgumentError
+  if asVar is None: asVar = not lflatten
+  # check sample vars
+  lvar1 = isinstance(sample1, Variable)
+  lvar2 = isinstance(sample2, Variable)
+  # figure out axes
+  if axis_idx is not None and axis is None: 
+    if lvar1: axis = sample1.axes[axis_idx].name
+    elif lvar2: axis = sample2.axes[axis_idx].name
+    if lvar1 and lvar2 and not (axis != sample2.axes[axis_idx].name): 
+      raise AxisError, "Axis index '{:d}' does not refer to the same axis in the two samples.".format(axis_idx)
+    axis_idx1 = axis_idx2 = axis_idx
+  elif axis_idx is None and axis is not None: 
+    if not lvar1 and not lvar2: ArgumentError, "Keyword 'axis' requires at least one sample to be a Variable instance."
+    if lvar1: axis_idx1 = sample1.axisIndex(axis)
+    if lvar2: axis_idx2 = sample2.axisIndex(axis)
+    if not lvar1: axis_idx1 = axis_idx2
+    if not lvar2: axis_idx2 = axis_idx1
+  elif lflatten: axis_idx1 = axis_idx2 = 0
+  else: raise ArgumentError
+  del axis_idx # should not be used any longer    
+  if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
+  # check sample variables
+  for sample in sample1,sample2:
+    if sample.dtype.kind in ('S',):
+      if lcheckVar: raise VariableError, "Statistical tests does not work with string Variables!"
+      else: return None
+    if isinstance(sample,Variable):
+      if not lflatten and not sample.hasAxis(axis):
+        if lcheckAxis: raise AxisError, "Variable '{:s}' has no axis '{:s}'.".format(sample.name, axis)
+        else: return None
+    elif not isinstance(sample, np.ndarray):
+      raise TypeError, "Samples have to be Variable instances or Numpy 'ndarray'."
+    # choose a fillValue (triggers only once)
+    if fillValue is None and sample.masked:
+      if np.issubdtype(sample.dtype,np.integer): fillValue = 0
+      elif np.issubdtype(sample.dtype,np.inexact): fillValue = np.NaN
+      else: raise NotImplementedError
+  # check that dtype and dimensions are equal
+  if sample1.dtype != sample2.dtype: raise TypeError, "Samples need to have same dtype."
+  if not lflatten:
+    if sample1.ndim != sample2.ndim: raise AxisError, "Samples need to have same number of dimensions."
+    rshape = sample1.shape[:axis_idx1] + sample1.shape[axis_idx1+1:]
+    if rshape != sample2.shape[:axis_idx2] + sample2.shape[axis_idx2+1:]: 
+      raise AxisError, "Samples need to have same shape (except sample axis)."
+    if lvar1 and lvar2:
+      axes1 = tuple(ax.name for ax in sample1.axes if ax.name != axis)
+      axes2 = tuple(ax.name for ax in sample2.axes if ax.name != axis)
+      if axes1 != axes2: raise AxisError, "Axes of samples are inconsistent."
+  # prepare data
+  def preprocess(sample, axis_idx):
+    ''' helper function to pre-process each sample '''
+    # get data
+    if isinstance(sample,Variable): 
+      data = sample.getArray(unmask=True, fillValue=fillValue, copy=True)
+    elif isinstance(sample,ma.MaskedArray): data = sample.filled(np.NaN)
+    elif isinstance(sample,np.ndarray): data = sample.copy()
+    else: raise TypeError
+    # roll sampel axis to end (or flatten)
+    if lflatten: data = data.ravel()
+    else: data = np.rollaxis(data, axis=axis_idx, start=sample.ndim)
+    return data
+  data1 = preprocess(sample1, axis_idx1)
+  data2 = preprocess(sample2, axis_idx2)
+  assert lflatten or data1.shape[:-1] == data2.shape[:-1]
+  # apply test (serial)
+  if lflatten:
+    axis_idx = data1.ndim-1; size1 = data1.shape[-1]; laax=True # shorcuts
+    # select test and set parameters
+    if test.lower() in ('kstest', 'ks_2samp'):
+      testfct = functools.partial(ks_2samp_wrapper, size1=size1, ignoreNaN=ignoreNaN)
+    elif test.lower() in ('ttest', 'ttest_ind'):
+      testfct = functools.partial(ttest_ind_wrapper, size1=size1, ignoreNaN=ignoreNaN, **kwargs)
+    elif test.lower() in ('mwtest', 'mannwhitneyu'):
+      testfct = functools.partial(mannwhitneyu_wrapper, size1=size1, ignoreNaN=ignoreNaN, **kwargs)
+    elif test.lower() in ('wrstest', 'ranksum', 'ranksums'):
+      testfct = functools.partial(ranksums_wrapper, size1=size1, ignoreNaN=ignoreNaN)
+    else: raise NotImplementedError, "No statistical test '{:s}' available.".format(test)
+    # merge sample arrays, save dividing index 'size1' (only one argument array per point along axis)
+    data_array = np.concatenate((data1, data2), axis=axis_idx) 
+    pval = testfct(data_array)
+          # create new Axis and Variable objects (1-D)
+    if asVar: 
+      raise NotImplementedError, "Cannot return a single scalar as a Variable object."
+    else: pvar = pval
+  # apply test (parallel)
+  else: 
+    axis_idx = data1.ndim-1; size1 = data1.shape[-1]; laax=True # shorcuts
+    # merge sample arrays, save dividing index 'size1' (only one argument array per point along axis)
+    data_array = np.concatenate((data1, data2), axis=axis_idx) 
+    # select test and set parameters
+    if test.lower() in ('ttest', 'ttest_ind'):
+      laax = False # can handle multi-dimensional arrays
+      testfct = functools.partial(ttest_ind_wrapper, size1=size1, ignoreNaN=ignoreNaN, **kwargs)
+    else:
+      if test.lower() in ('kstest', 'ks_2samp'):
+        testfct = functools.partial(ks_2samp_wrapper, size1=size1, ignoreNaN=ignoreNaN)
+      elif test.lower() in ('mwtest', 'mannwhitneyu'):
+        testfct = functools.partial(mannwhitneyu_wrapper, size1=size1, ignoreNaN=ignoreNaN, **kwargs)
+      elif test.lower() in ('wrstest', 'ranksum', 'ranksums'):
+        testfct = functools.partial(ranksums_wrapper, size1=size1, ignoreNaN=ignoreNaN)
+      else: raise NotImplementedError, "No statistical test '{:s}' available.".format(test)
+    pval = apply_along_axis(testfct, axis_idx, data_array, laax=laax) # apply test in parallel, distributing the data
+    assert pval.ndim == sample1.ndim-1
+    assert pval.shape == rshape
+    # handle masks etc.
+    if (lvar1 and sample1.masked) or (lvar2 and sample1.masked): 
+      pval = ma.masked_invalid(pval, copy=False) 
+      # N.B.: comparisons with NaN always evaluate to False!
+      if fillValue is not None:
+        pval = ma.masked_equal(pval, fillValue)
+      ma.set_fill_value(pval,fillValue)          
+    # create a new variable object for p-values
+    if asVar:
+      plotatts = getPlotAtts(name='pval', units='') # infer meta data from plot attributes
+      varatts = dict()
+      varatts['name'] = name or '{:s}_{:s}_pval'.format(sample1.name,sample2.name)
+      varatts['long_name'] = "p-value of {:s} and {:s} ({:s})".format(sample1.name.title(),sample1.name.title(),test)
+      varatts['units'] = '' # p-value / probability
+      if pvaratts is not None: varatts.update(pvaratts)
+      axes = sample1.axes[:axis_idx1] + sample1.axes[axis_idx1+1:]
+      pvar = Variable(data=pval, axes=axes, atts=varatts, plot=plotatts)
+    else: pvar = pval
+  # return results
+  return pvar
 
 ## distribution variable classes 
 
@@ -600,7 +849,7 @@ def rv_resample(params, dist_type=None, n=None, fillValue=np.NaN, dtype=np.float
 # perform a Kolmogorov-Smirnov Test of goodness of fit
 def rv_kstest(data_array, nparams=0, dist_type=None, ignoreNaN=True, N=20, alternative='two-sided', mode='approx'):
   if np.any(np.isnan(data_array[:nparams])): pval = np.NaN 
-  else: pval = kstest(data_array[nparams:], dist=dist_type, args=data_array[:nparams], ignoreNaN=ignoreNaN, N=N, alternative=alternative, mode=mode)
+  else: pval = kstest_wrapper(data_array[nparams:], dist=dist_type, args=data_array[:nparams], ignoreNaN=ignoreNaN, N=N, alternative=alternative, mode=mode)
   return pval
 
 # Subclass of DistVar implementing various random variable distributions
@@ -708,18 +957,13 @@ class VarRV(DistVar):
     return samples
 
   # 
-  def kstest(self, sample, name=None, axis=None, axis_idx=None, lstatistic=False, 
+  def kstest(self, sample, name=None, axis_idx=None, lstatistic=False, 
              fillValue=None, ignoreNaN=True, N=20, alternative='two-sided', mode='approx', 
              asVar=True, lcheckVar=True, lcheckAxis=True, pvaratts=None, **kwargs):
     ''' apply a Kolmogorov-Smirnov Test to the sample data, based on this distribution '''
     # check input
     if self.dtype.kind in ('S',): 
       if lcheckVar: raise VariableError, "Statistical tests does not work with string Variables!"
-      else: return None
-    if axis_idx is not None and axis is None: axis = self.axes[axis_idx]
-    elif axis_idx is None and axis is not None: axis_idx = self.axisIndex(axis)
-    if axis is not None and not self.hasAxis(axis):
-      if lcheckAxis: raise AxisError, "Variable '{:s}' has no axis '{:s}'.".format(self.name, axis)
       else: return None
     if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
     # choose a fillValue, because np.histogram does not ignore masked values but does ignore NaNs
@@ -745,8 +989,12 @@ class VarRV(DistVar):
     else:
       if isinstance(sample,ma.MaskedArray): sample_data = sample.filled(np.NaN)
       else: sample_data = sample.copy()
+      if axis_idx is not None and axis_idx != sax:
+        sample_data = np.rollaxis(sample_data, axis=axis_idx, start=sample.ndim)
     # check dimensions of sample_data and reshape
-    if sample_data.shape[:sax] != self.shape[:-1]: raise VariableError, "Sample has incompatible shape!"
+    if sample_data.shape[:sax] != self.shape[:-1]: 
+      if lcheckAxis: raise AxisError, "Sample has incompatible shape."
+      else: return None
     # collapse all remaining dimensions at the end and use as sample dimension
     sample_data = sample_data.reshape(sample_data.shape[:sax]+(np.prod(sample_data.shape[sax:]),))
     assert sample_data.ndim == self.ndim
