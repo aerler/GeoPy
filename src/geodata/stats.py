@@ -16,6 +16,7 @@ import functools
 # internal imports
 from geodata.base import Variable, Axis
 from geodata.misc import DataError, ArgumentError, VariableError, AxisError, DistVarError
+from utils.misc import standardize, smooth, detrend
 from plotting.properties import getPlotAtts
 
 
@@ -228,24 +229,32 @@ def ranksums_wrapper(data, size1=None, ignoreNaN=True):
   return pval  
 
 
+## Correlation functions
+
 # Pearson's Correlation Coefficient between two samples
-def pearsonr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, **kwargs):
+def pearsonr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, lstandardize=False, 
+             lsmooth=False, window_len=11, window='hanning', ldetrend=False, **kwargs):
   ''' Compute and return the linear correlation coefficient and/or the p-value
       of Pearson's correlation. 
       Pearson's Correlation Coefficient measures the linear relationship between
       the two sample variables (this is the ordinary correlation coefficient);
-      the p-values assume that the samples are normally distributed. '''
-  testfct = functools.partial(pearsonr_wrapper, lpval=lpval, lrho=lrho, ignoreNaN=ignoreNaN)
+      the p-values assume that the samples are normally distributed. 
+      Standardization and smoothing is also supported; detrending is not implemented yet. '''
+  testfct = functools.partial(pearsonr_wrapper, lpval=lpval, lrho=lrho, ignoreNaN=ignoreNaN,
+                              lstandardize=lstandardize, ldetrend=ldetrend,
+                              lsmooth=lsmooth, window_len=window_len, window=window)
   rvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, 
                                lpval=lpval, lrho=lrho, laax=True, **kwargs)
   return rvar
 corrcoef = pearsonr
 
 # apply-along-axis wrapper for the Pearson's Correlation Coefficient on 2 samples
-def pearsonr_wrapper(data, size1=None, lpval=False, lrho=True, ignoreNaN=True):
+def pearsonr_wrapper(data, size1=None, lpval=False, lrho=True, ignoreNaN=True, lstandardize=False, 
+                     lsmooth=False, window_len=11, window='hanning', ldetrend=False):
   ''' Compute the Pearson's Correlation Coefficient of two samples. This is a wrapper 
       for the SciPy function allows application over a field, and returns 
       the correlation coefficient and/or the p-value. '''
+  # N.B.: the Numpy corrcoef function also only operates on flat arrays 
   if ignoreNaN:
     data1 = data[:size1]; data2 = data[size1:] # find NaN's
     nans1 = np.isnan(data1); nans2 = np.isnan(data2) # remove in both arrays
@@ -256,6 +265,15 @@ def pearsonr_wrapper(data, size1=None, lpval=False, lrho=True, ignoreNaN=True):
     data1 = data1[nonans]; data2 = data2[nonans] # remove NaN's
   else:
     data1 = data[:size1]; data2 = data[size1:]
+  # pre-process data
+  if lstandardize: 
+    data1 = standardize(data1, axis=None, lcopy=False) # apply_stat_test_2samp alread 
+    data2 = standardize(data2, axis=None, lcopy=False) #   makes a copy, no need here
+  if lsmooth:
+    data1 = smooth(data1,  window_len=window_len, window=window)
+    data2 = smooth(data2,  window_len=window_len, window=window)
+  if ldetrend:
+    data1 = detrend(data1); data1 = detrend(data1)
   # apply test
   rho, pval = ss.pearsonr(data1, data2)
   # select output
@@ -266,21 +284,27 @@ def pearsonr_wrapper(data, size1=None, lpval=False, lrho=True, ignoreNaN=True):
 
 
 # Spearman's Rank-order Correlation Coefficient between two samples
-def spearmanr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, **kwargs):
+def spearmanr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, lstandardize=False, 
+              lsmooth=False, window_len=11, window='hanning', ldetrend=False, **kwargs):
   ''' Compute and return the linear correlation coefficient and/or the p-value
       of Spearman's Rank-order Correlation Coefficient. 
       Spearman's Rank-order Correlation Coefficient measures the monotonic 
       relationship between the two samples; it is more robust for non-linear
       and non-normally distributed samples than the ordinary correlation
-      coefficient. '''
-  testfct = functools.partial(spearmanr_wrapper, lpval=lpval, lrho=lrho, ignoreNaN=ignoreNaN)
+      coefficient.  
+      Standardization and smoothing is also supported; detrending is not implemented yet. '''
+  testfct = functools.partial(spearmanr_wrapper, lpval=lpval, lrho=lrho, ignoreNaN=ignoreNaN,
+                              lstandardize=lstandardize, ldetrend=ldetrend,
+                              lsmooth=lsmooth, window_len=window_len, window=window)
+  laax = lsmooth or ldetrend # true, if any of these, false otherwise
   rvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, 
-                               lpval=lpval, lrho=lrho, laax=False, **kwargs)
+                               lpval=lpval, lrho=lrho, laax=laax, **kwargs)
   return rvar
 spearmancc = spearmanr
 
 # apply-along-axis wrapper for the Spearman's Rank-order Correlation Coefficient on 2 samples
-def spearmanr_wrapper(data, size1=None, axis=None, lpval=False, lrho=True, ignoreNaN=True):
+def spearmanr_wrapper(data, size1=None, axis=None, lpval=False, lrho=True, ignoreNaN=True, lstandardize=False, 
+                      lsmooth=False, window_len=11, window='hanning', ldetrend=False):
   ''' Compute the Spearman's Rank-order Correlation Coefficient of two samples. This is a wrapper 
       for the SciPy function allows application over a field, and returns 
       the correlation coefficient and/or the p-value. 
@@ -298,6 +322,15 @@ def spearmanr_wrapper(data, size1=None, axis=None, lpval=False, lrho=True, ignor
     data1 = data[:size1]; data2 = data[size1:]
   else:
     data1, data2 = np.split(data, [size1], axis=axis)
+  # pre-process data
+  if lstandardize: 
+    data1 = standardize(data1, axis=axis, lcopy=False) # apply_stat_test_2samp alread
+    data2 = standardize(data2, axis=axis, lcopy=False) #   makes a copy, no need here
+  if lsmooth:
+    data1 = smooth(data1, window_len=window_len, window=window)
+    data2 = smooth(data2, window_len=window_len, window=window)
+  if ldetrend:
+    data1 = detrend(data1); data1 = detrend(data1)
   # apply test
   rho, pval = ss.spearmanr(data1, data2, axis=axis)
   # select output

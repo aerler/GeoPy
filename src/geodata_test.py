@@ -590,13 +590,13 @@ class BaseVarTest(unittest.TestCase):
     assert np.all(pvar.data_array > 0.95) # not all tests are that accurate...
     assert pvar.shape == var.shape[1:] # this will usually be close to zero, since none of these are normally distributed
     ## correlation coefficients
-    rho,pval = pearsonr(var, rav, lpval=True, lrho=True, lflatten=True)
+    rho,pval = pearsonr(var, rav, lpval=True, lrho=True, lflatten=True, lstandardize=True, lsmooth=True, window_len=5)
     #rho,pval = spearmanr(var, rav, lpval=True, lrho=True, lflatten=True)
     #print rho, pval
     assert rho > 0.99
     assert pval < 0.01 # this will usually be close to zero, since none of these are normally distributed
     #rvar,pvar = pearsonr(var, rav, lpval=True, lrho=True, axis='time')
-    rvar,pvar = spearmanr(var, rav, lpval=True, lrho=True, axis='time')
+    rvar,pvar = spearmanr(var, rav, lpval=True, lrho=True, axis='time', lstandardize=True, lsmooth=True)
     #print rvar
     #print rho.data_array
     assert np.all(rvar.data_array > 0.00) # not all tests are that accurate...

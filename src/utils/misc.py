@@ -17,16 +17,19 @@ def histogram(a, bins=10, range=None, weights=None, density=None):
 
 
 # function to subtract the mean and divide by the standard deviation, i.e. standardize
-def standardize(var, lsmooth=False, **kwargs):
+def standardize(var, axis=None, lcopy=True, lsmooth=False, **kwargs):
   ''' subtract mean, divide by standard deviation, and optionally smooth time series; key word arguments are passed on to smoothing function '''
-  if not isinstance(var,np.ndarray): raise NotImplementedError
-  var = var.copy() # make copy - not in-place!
-  var -= var.mean()
-  var /= var.std()
+  if lcopy: 
+    if not isinstance(var,np.ndarray): raise NotImplementedError # too many checks
+    var = var.copy() # make copy - not in-place!
+  var -= var.mean(axis=axis, keepdims=True)
+  var /= var.std(axis=axis, keepdims=True)
   if lsmooth:
     var = smooth(var, **kwargs)
   return var
 
+# function to detrend a time-series
+def detrend(var, **kwargs): raise NotImplementedError, "Detrending is not implemented yet..."
 
 # function to smooth a vector (numpy array): moving mean, nothing fancy
 def movingMean(x,i):
