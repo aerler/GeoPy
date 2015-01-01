@@ -644,6 +644,19 @@ class DistVar(Variable):
   @fillValue.setter
   def fillValue(self, fillValue):
     self.atts['fillValue'] = fillValue
+    
+  def replaceAxis(self, oldaxis, newaxis=None):
+    ''' Replace axis and handle parameter axis as well '''
+    # check if parameter axis is being replaced
+    if isinstance(oldaxis, Axis): 
+      lparamAxis = oldaxis == self.paramAxis
+    else:
+      lparamAxis = oldaxis == self.paramAxis.name
+    # call parent method and replace axis
+    ec = super(DistVar,self).replaceAxis(oldaxis, newaxis=newaxis)
+    # assign new paramter axis
+    if lparamAxis: self.paramAxis = newaxis
+    return ec
   
   def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Variable with just a link to the data. '''

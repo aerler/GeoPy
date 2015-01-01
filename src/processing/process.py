@@ -328,9 +328,9 @@ class CentralProcessingUnit(object):
       assert len(slices) == len(var.axes)
       shape = tuple(len(ax) for ax in axes)
       # here we extract the data points
-      srcdata = var.getArray()
-      try: tgtdata = srcdata.__getitem__(slices) # constructed above
-      except: print srcdata.shape, [slc.max() for slc in slices] 
+      srcdata = var.getArray(copy=False) # don't make extra copy
+      tgtdata = srcdata.__getitem__(slices) # constructed above
+      #try: except: print srcdata.shape, [slc.max() for slc in slices] 
       # create new Variable
       assert shape == tgtdata.shape
       newvar = var.copy(axes=axes, data=tgtdata) # new axes and data

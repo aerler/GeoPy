@@ -298,7 +298,7 @@ if __name__ == '__main__':
     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
-    datasets = None; resolutions = None
+    datasets = []; resolutions = None
     lLTM = False # also regrid the long-term mean climatologies 
 #     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
 #     datasets += ['PRISM','GPCC']; periods = None
@@ -306,7 +306,7 @@ if __name__ == '__main__':
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
 #     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
-#     datasets += ['CRU']
+    datasets += ['CRU']
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
