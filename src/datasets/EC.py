@@ -14,7 +14,7 @@ from copy import deepcopy
 import codecs
 import calendar
 # internal imports
-from datasets.common import days_per_month, name_of_month, data_root, selectCoords
+from datasets.common import days_per_month, name_of_month, data_root, selectCoords, translateVarNames
 from geodata.misc import ParseError, DateError, VariableError, ArgumentError, RecordClass, StrictRecordClass,\
   isNumber
 from geodata.base import Axis, Variable, Dataset
@@ -37,12 +37,18 @@ avgfile = 'ec{0:s}_clim{1:s}.nc' # filename pattern: station type and ('_'+perio
 avgfolder = root_folder + 'ecavg/'  # folder for user data
 
 # variable attributes and name
-varatts = dict(T2       = dict(name='T2', units='K', atts=dict(long_name='Average 2m Temperature')), # 2m average temperature
-               Tmin     = dict(name='Tmin', units='K', atts=dict(long_name='Minimum 2m Temperature')), # 2m minimum temperature
-               Tmax     = dict(name='Tmax', units='K', atts=dict(long_name='Maximum 2m Temperature')), # 2m maximum temperature
-               precip   = dict(name='precip', units='kg/m^2/s', atts=dict(long_name='Total Precipitation')), # total precipitation
-               solprec  = dict(name='solprec', units='kg/m^2/s', atts=dict(long_name='Solid Precipitation')), # solid precipitation
-               liqprec  = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
+varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Average 2m Temperature')), # 2m average temperature
+               Tmin       = dict(name='Tmin', units='K', atts=dict(long_name='Minimum 2m Temperature')), # 2m minimum temperature
+               Tmax       = dict(name='Tmax', units='K', atts=dict(long_name='Maximum 2m Temperature')), # 2m maximum temperature
+               precip     = dict(name='precip', units='kg/m^2/s', atts=dict(long_name='Total Precipitation')), # total precipitation
+               MaxPrecip  = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency 
+               MinPrecip  = dict(name='MinPrecip_1d', units='kg/m^2/s'), # for short-term consistency
+               solprec    = dict(name='solprec', units='kg/m^2/s', atts=dict(long_name='Solid Precipitation')), # solid precipitation
+               MaxSolprec = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # for short-term consistency
+               MinSolprec = dict(name='MinSolprec_1d', units='kg/m^2/s'), # for short-term consistency
+               liqprec    = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
+               MaxLiqprec = dict(name='MaxLiqprec_1d', units='kg/m^2/s'), # for short-term consistency
+               MinLiqprec = dict(name='MinLiqprec_1d', units='kg/m^2/s'), # for short-term consistency
                # meta/constant data variables
                # N.B.: 'stn'/'station' prefix is to allow consistent naming and avoid name collisions with variables in other datasets
                name    = dict(name='station_name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
@@ -616,6 +622,8 @@ def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None, f
   if filelist is None:
     if prov: filelist = [tsfile_prov.format(filetype, prov)]
     else: filelist = [tsfile.format(filetype)]
+  if varlist is not None: # translate varlist
+    varlist = translateVarNames(varlist, varatts)
   # open NetCDF file (name, varlist, and varatts are passed on directly)
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                             multifile=False, ncformat='NETCDF4')
@@ -715,9 +723,9 @@ ts_file_pattern = tsfile # filename pattern: grid
 clim_file_pattern = avgfile # filename pattern: variable name and resolution
 data_folder = avgfolder # folder for user data
 grid_def = None # no grid here...
-LTM_grids = None 
-TS_grids = None
-grid_res = None
+LTM_grids = [] 
+TS_grids = ['']
+grid_res = {}
 default_grid = None
 # functions to access specific datasets
 loadLongTermMean = None # climatology provided by publisher
@@ -731,9 +739,9 @@ if __name__ == '__main__':
 #   mode = 'test_station_object'
 #   mode = 'test_station_reader'
 #   mode = 'test_conversion'
-  mode = 'convert_all_stations'
+#   mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
-#   mode = 'test_timeseries'
+  mode = 'test_timeseries'
 #   mode = 'test_selection'
   
   # test wrapper function to load time series data from EC stations
@@ -775,7 +783,7 @@ if __name__ == '__main__':
     print('')
     print(dataset.time)
     print(dataset.time.coord)
-    print(dataset.time.coord[dataset.begin_date.min()*-1]) # Jan 1979, the origin of time...
+    print(dataset.time.coord[dataset.stn_begin_date.min()*-1]) # Jan 1979, the origin of time...
         
   # test station object initialization
   elif mode == 'test_station_object':  

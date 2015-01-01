@@ -134,11 +134,15 @@ class ReduceVar(object): # not a Variable child!!!
         raise ArgumentError
       elif axis is not None: 
         if axis not in slcaxes: slcaxes[axis] = None
-        if lcheckAxis and not var.hasAxis(axis): raise AxisError  
+        if not var.hasAxis(axis): 
+          if lcheckAxis: raise AxisError
+          else: return None  
       elif axes is not None: 
         for ax in axes: 
           if ax not in slcaxes: slcaxes[ax] = None
-          if lcheckAxis and not var.hasAxis(ax): raise AxisError
+          if not var.hasAxis(ax): 
+            if lcheckAxis: raise AxisError
+            else: return None
       # N.B.: leave checking of slices to var.__call__ (below)
       # order axes and get indices
       axlist = [ax.name for ax in var.axes if ax.name in slcaxes]

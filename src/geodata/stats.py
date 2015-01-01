@@ -493,9 +493,14 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
 ## distribution variable classes 
 
 # convenience function to generate a DistVar from another Variable object
-def asDistVar(var, axis='time', dist='KDE', lflatten=False, name=None, atts=None, **kwargs):
+def asDistVar(var, axis='time', dist='KDE', lflatten=False, name=None, atts=None, 
+              asVar=True, lcheckVar=True, lcheckAxis=True, **kwargs):
   ''' generate a DistVar of type 'dist' from a Variable 'var'; use dimension 'axis' as sample axis '''
   if not isinstance(var,Variable): raise VariableError
+  # this really only works for numeric types
+  if var.dtype.kind in ('S',): 
+    if lcheckVar: raise VariableError, "Distributions don't work with string Variables!"
+    else: return None
   if not var.data: var.load() 
   # create some sensible default attributes
   varatts = dict()
@@ -507,6 +512,9 @@ def asDistVar(var, axis='time', dist='KDE', lflatten=False, name=None, atts=None
   if lflatten:
     iaxis = None; axes = None
   else:
+    if not var.hasAxis(axis):
+      if lcheckAxis: raise AxisError
+      else: return None
     iaxis=var.axisIndex(axis)
     axes = var.axes[:iaxis]+var.axes[iaxis+1:] # i.e. without axis/iaxis 
   # choose distribution
@@ -540,7 +548,7 @@ class DistVar(Variable):
     if params is not None:
       if samples is not None: raise ArgumentError 
       if isinstance(params,np.ndarray):
-        params = np.asarray(params, dtype=dtype, order='C')
+        params = np.asarray(params, order='C')
       if axis is not None and not axis == params.ndim-1:
         params = np.rollaxis(params, axis=axis, start=params.ndim) # roll sample axis to last (innermost) position
       if dtype is None: dtype = np.dtype('float') # default sample dtype
@@ -563,7 +571,7 @@ class DistVar(Variable):
         if masked is None: masked = True
         if fillValue is None: fillValue = samples.fill_value 
         if np.issubdtype(samples.dtype,np.integer): # recast as floats, so we can use np.NaN 
-          samples = np.asarray(samples, dtype='float') 
+          samples = np.asanyarray(samples, dtype='float') 
         samples = samples.filled(np.NaN)
       else: masked = False
       # make sure sample axis is last
@@ -609,7 +617,8 @@ class DistVar(Variable):
     assert self.masked == masked
     self.dtype = dtype # property is overloaded in DistVar
     # N.B.: in this variable dtype and units refer to the sample data, not the distribution!
-    self.paramAxis = paramAxis 
+    if self.hasAxis('params'):
+      self.paramAxis = self.getAxis('params') 
     
   @property
   def dtype(self):
@@ -636,6 +645,19 @@ class DistVar(Variable):
   def fillValue(self, fillValue):
     self.atts['fillValue'] = fillValue
   
+  def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
+    ''' A method to copy the Variable with just a link to the data. '''
+    if deepcopy:
+      var = self.deepcopy( **newargs)
+    else:
+      # N.B.: don't pass name and units as they just link to atts anyway, and if passed directly, they overwrite user atts
+      args = dict(axes=self.axes, params=self.data_array, dtype=self.dtype, fillValue=self.fillValue,
+                  masked=self.masked, atts=self.atts.copy(), plot=self.plot.copy())
+      args.update(newargs) # apply custom arguments (also arguments related to subclasses)      
+      var = self.__class__(**args) # create a new basic Variable instance
+    # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
+    return var
+
   # distribution-specific method; should be overloaded by subclass
   def _estimate_distribution(self, samples, ic=None, ldebug=False, **kwargs):
     ''' esimtate/fit distribution from sample array for each grid point and return parameters as ndarray  '''
@@ -701,7 +723,7 @@ class DistVar(Variable):
       dist_data = np.rollaxis(dist_data, axis=dist_data.ndim-1,start=axis_idx)
     # setup histogram axis and variable attributes (special case)
     if asVar:
-      basename = self.name.split('_')[0]
+      basename = str('_').join(self.name.split('_')[:-1],)
       if not lsqueezed:
         if support_axis is None:
           # generate new histogram axis
@@ -838,20 +860,29 @@ class DistVar(Variable):
 # estimate KDE from sample vector
 def kde_estimate(sample, ldebug=False, **kwargs):
   if ldebug: 
-    if np.all(np.isnan(sample)):
-      print('NaN'); res = None
-    elif np.all(sample == sample[0]):
-      print('equal'); res = None
-    elif isinstance(sample,ma.MaskedArray) and np.all(sample.mask):
-      print('masked'); res = None
+    nonans = np.invert(np.isnan(sample)) # test for NaN's
+    if not np.any(nonans):
+      print('all NaN'); res = None
+    elif np.sum(nonans) < 3: 
+      print('NaN'); res = None # require at least plen non-NaN points 
     else:
-      try: 
-        res = ss.kde.gaussian_kde(sample, **kwargs)
-      except LinAlgError:
-        print('linalgerr'); res = None
+      sample = sample[nonans] # remove NaN's
+      if np.all(sample == sample[0]):
+        print('equal'); res = None
+      elif isinstance(sample,ma.MaskedArray) and np.all(sample.mask):
+        print('masked'); res = None
+      else:
+        try: 
+          res = ss.kde.gaussian_kde(sample, **kwargs)
+        except LinAlgError:
+          print('linalgerr'); res = None
   else:
-    if np.all(np.isnan(sample)): res = None
-    else: res = ss.kde.gaussian_kde(sample, **kwargs)
+    nonans = np.invert(np.isnan(sample)) # test for NaN's
+    if not np.any(nonans): 
+      res = None # require at least plen non-NaN points 
+    else:
+      sample = sample[nonans] # remove NaN's
+      res = ss.kde.gaussian_kde(sample, **kwargs)
   return (res,) # need to return an iterable
 
 # evaluate KDE over a given support
@@ -1013,13 +1044,21 @@ class VarRV(DistVar):
     if dist.lower() in ('genextreme', 'gev'): dist = 'genextreme' 
     elif dist.lower() in ('genpareto', 'gpd'): dist = 'genpareto' # 'pareto' is something else!
     # look up module & set distribution
-    if dist in ss.__dict__: 
+    if dist == '':
+      raise ArgumentError, "No distribution 'dist' specified!"
+    elif dist in ss.__dict__: 
       self.dist_func = ss.__dict__[dist]
       self.dist_type = dist
     else: 
       raise ArgumentError, "No distribution '{:s}' in module scipy.stats!".format(dist)
     # initialize distribution variable
-    super(VarRV,self).__init__(**kwargs) 
+    super(VarRV,self).__init__(**kwargs)
+  
+  def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
+    ''' A method to copy the Variable with just a link to the data. '''
+    if 'dist' in newargs: raise ArgumentError
+    else: newargs['dist'] = self.dist_type
+    return super(VarRV,self).copy(deepcopy=False, **newargs)
     
   def __getattr__(self, attr):
     ''' use methods of from RV distribution through _get_dist wrapper '''

@@ -127,7 +127,7 @@ def loadGPCC_TS(name=dataset_name, grid=None, varlist=None, resolution='25', var
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, multifile=False, ncformat='NETCDF4_CLASSIC')
     # replace time axis with number of month since Jan 1979 
     data = np.arange(0,len(dataset.time),1, dtype='int16') + (1901-1979)*12 # month since 1979 (Jan 1979 = 0)
-    timeAxis = Axis(name='time', units='month', data=data, atts=dict(long_name='Month since 1979-01'))
+    timeAxis = Axis(name='time', units='month', coord=data, atts=dict(long_name='Month since 1979-01'))
     dataset.repalceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
     # add GDAL info
     dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)

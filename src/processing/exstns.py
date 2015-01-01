@@ -18,7 +18,7 @@ import functools
 from geodata.misc import DatasetError, DateError, isInt, printList
 from geodata.netcdf import DatasetNetCDF
 from geodata.base import Dataset
-from datasets import dataset_list
+from datasets import gridded_datasets
 from datasets.common import getFileName
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
@@ -298,7 +298,7 @@ if __name__ == '__main__':
     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
-    datasets = []; resolutions = None
+    datasets = None; resolutions = None
     lLTM = False # also regrid the long-term mean climatologies 
 #     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
 #     datasets += ['PRISM','GPCC']; periods = None
@@ -318,8 +318,8 @@ if __name__ == '__main__':
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['max']
-    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
+#     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...
     # other WRF parameters 
     domains = (1,2) # domains to be processed
@@ -361,7 +361,7 @@ if __name__ == '__main__':
   if CESM_experiments is None: CESM_experiments = CESM_exps.values() # do all 
   else: CESM_experiments = [CESM_exps[exp] for exp in CESM_experiments]  
   # expand datasets and resolutions
-  if datasets is None: datasets = dataset_list  
+  if datasets is None: datasets = gridded_datasets  
   
   # print an announcement
   if len(WRF_experiments) > 0:
@@ -446,4 +446,4 @@ if __name__ == '__main__':
   ## call parallel execution function
   ec = asyncPoolEC(performExtraction, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
   # exit with fraction of failures (out of 10) as exit code
-  exit(int(np.ceil(10.*ec/len(args))))
+  exit(int(10+np.ceil(10.*ec/len(args))))

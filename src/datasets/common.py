@@ -240,8 +240,8 @@ def translateVarNames(varlist, varatts):
   varlist = list(varlist) # make copy, since operation is in-place 
   # cycle over names in variable attributes (i.e. final names, not original names)  
   for key,atts in varatts.iteritems():
-    if 'name' in atts and atts['name'] in varlist: 
-      varlist[varlist.index(atts['name'])] = key # original name is used as key in the attributes dict
+    if 'name' in atts and atts['name'] in varlist: varlist.append(key)
+#       varlist[varlist.index(atts['name'])] = key # original name is used as key in the attributes dict
   # return varlist with final names replaced by original names
   return varlist
 

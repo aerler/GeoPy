@@ -9,7 +9,7 @@ submodules also contain meta data and projection parameters.
 '''
 
 dataset_list = ['NARR','CFSR','GPCC','CRU','PRISM','PCIC','EC','WSC','Unity']
-
+gridded_datasets = ['NARR','CFSR','GPCC','CRU','PRISM','PCIC','Unity']
 from datasets.common import loadDatasets
 
 # from datasets.NARR import loadNARR_LTM, loadNARR_TS, loadNARR

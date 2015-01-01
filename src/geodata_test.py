@@ -20,6 +20,7 @@ from geodata.stats import VarKDE, VarRV, asDistVar
 from geodata.stats import kstest, ttest, mwtest, wrstest, pearsonr, spearmanr
 from datasets.common import data_root
 from average.wrfout_average import ldebug
+from copy import deepcopy
 
 # RAM disk settings ("global" variable)
 RAM = True # whether or not to use a RAM disk
@@ -225,7 +226,10 @@ class BaseVarTest(unittest.TestCase):
 #     for dist in ('kde',):
     for dist in ('kde','genextreme',):
       # create VarKDE
-      distvar = getattr(var,dist)(axis=t.name, ldebug=False) 
+      tmp = getattr(var,dist)(axis=t.name, ldebug=False)
+      distvar = tmp.copy(deepcopy=True)
+      assert distvar.shape == tmp.shape 
+      assert distvar.masked == tmp.masked
       assert distvar.units == var.units
       assert distvar.dtype == var.dtype
       print "\n   ***   computed {:s} distribution   ***".format(dist.upper())
@@ -1319,7 +1323,7 @@ if __name__ == "__main__":
 #     specific_tests = ['ReductionArithmetic']
 #     specific_tests = ['DistributionVariables']
 #     specific_tests = ['Ensemble']
-    specific_tests = ['StatsTests']    
+#     specific_tests = ['StatsTests']    
 
     # list of tests to be performed
     tests = [] 

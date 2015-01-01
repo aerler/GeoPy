@@ -17,7 +17,7 @@ from geodata.misc import DatasetError, DateError, isInt, printList
 from geodata.netcdf import DatasetNetCDF
 from geodata.base import Dataset
 from geodata.gdal import GDALError, GridDefinition, addGeoLocator, loadPickledGridDef
-from datasets import dataset_list
+from datasets import gridded_datasets
 from datasets.common import addLengthAndNamesOfMonth, getFileName, getCommonGrid, grid_folder
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
@@ -400,7 +400,7 @@ if __name__ == '__main__':
   if CESM_experiments is None: CESM_experiments = CESM_exps.values() # do all 
   else: CESM_experiments = [CESM_exps[exp] for exp in CESM_experiments]  
   # expand datasets and resolutions
-  if datasets is None: datasets = dataset_list  
+  if datasets is None: datasets = gridded_datasets  
 #   if resolutions is None: resolutions = dict()
 #   elif not isinstance(resolutions,dict): raise TypeError 
   
@@ -501,4 +501,4 @@ if __name__ == '__main__':
   ## call parallel execution function
   ec = asyncPoolEC(performRegridding, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
   # exit with fraction of failures (out of 10) as exit code
-  exit(int(np.ceil(10.*ec/len(args))))
+  exit(int(10+np.ceil(10.*ec/len(args))))

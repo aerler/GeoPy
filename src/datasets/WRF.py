@@ -459,8 +459,8 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
       if fileclass.tsfile is not None: 
         filelist.append(fileclass.tsfile)
         typelist.append(filetype) # this eliminates const files
-      if not lstation and grid is None: 
-        atts.update(fileclass.atts) # only for original time-series      
+#       if not lstation and grid is None: 
+      atts.update(fileclass.atts) # only for original time-series      
   if varatts is not None: atts.update(varatts)
   # center time axis to 1979
   if lctrT and experiment is not None:
@@ -647,8 +647,8 @@ if __name__ == '__main__':
   
 #   mode = 'test_climatology'
 #   mode = 'test_station_climatology'
-  mode = 'test_timeseries'
-#   mode = 'test_station_timeseries'
+#   mode = 'test_timeseries'
+  mode = 'test_station_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_station_ensemble'
 #   mode = 'pickle_grid'  
@@ -747,7 +747,7 @@ if __name__ == '__main__':
   elif mode == 'test_station_timeseries':
     
     print('')
-    dataset = loadWRF_StnTS(experiment='max', domains=2, station='ecprecip', filetypes=['srfc'])
+    dataset = loadWRF_StnTS(experiment='max-ctrl', domains=2, varlist=['zs','stn_zs','precip','MaxPrecip_1d','MaxPrecip_7d'], station='ecprecip', filetypes=['hydro'])
     print('')
     print(dataset)
     print('')

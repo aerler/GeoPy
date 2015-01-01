@@ -85,8 +85,8 @@ root_folder # root folder of the dataset
 ts_file_pattern = None
 clim_file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
-LTM_grids = None # grids that have long-term mean data 
-TS_grids = None # grids that have time-series data
+LTM_grids = ['d02','d01'] # grids that have long-term mean data 
+TS_grids = ['d02','d01'] # grids that have time-series data
 grid_def = {'d02':None,'d01':None} # there are too many... 
 grid_res = {'d02':0.13,'d01':3.82} # approximate grid resolution at 45 degrees latitude 
 default_grid = None

@@ -37,7 +37,7 @@ class MyAxes(Axes):
   
   def linePlot(self, varlist, linestyles=None, varatts=None, legend=None, xticks=True, yticks=True,
                hline=None, vline=None, title=None, flipxy=None, xlabel=True, ylabel=True, xlim=None,
-               ylim=None, lsmooth=False, lprint=False, **kwargs):
+               xlog=False, ylog=False, ylim=None, lsmooth=False, lprint=False, **kwargs):
     ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on variable properties. '''
     # varlist is the list of variable objects that are to be plotted
     #print varlist
@@ -102,6 +102,11 @@ class MyAxes(Axes):
       # call plot function
       if linestyle is None: plts.append(self.plot(xx, yy, **kwatts)[0])
       else: plts.append(self.plot(xx, yy, linestyle, **kwatts)[0])
+    # set plot scale (log/linear)
+    if xlog: self.set_xscale('log')
+    else: self.set_xscale('linear')
+    if ylog: self.set_yscale('log')
+    else: self.set_yscale('linear')
     # set axes limits
     if isinstance(xlim,(list,tuple)) and len(xlim)==2: self.set_xlim(*xlim)
     elif xlim is not None: raise TypeError
