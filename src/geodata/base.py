@@ -2459,6 +2459,10 @@ class Ensemble(object):
       else:
         raise TypeError, "Resulting Ensemble members have inconsisent type."
   
+  def __call__(self, *args, **kwargs):
+    ''' Overloading the call method allows coordinate slicing on Ensembles. '''
+    return self.__getattr__('__call__')(*args, **kwargs)
+  
   def __getattr__(self, attr):
     ''' This is where all the magic happens: defer calls to methods etc. to the 
         ensemble members and return a list of values. '''

@@ -550,8 +550,9 @@ class DistVar(Variable):
   '''
   paramAxis = None # axis for distribution parameters (None is distribution objects are stored)
 
-  def __init__(self, name=None, units=None, axes=None, samples=None, params=None, axis=None, dtype=None, 
-               lflatten=False, masked=None, mask=None, fillValue=None, atts=None, ic=None, ldebug=False, **kwargs):
+  def __init__(self, name=None, units=None, axes=None, samples=None, params=None, axis=None, dtype=None,
+               ic_shape=0, ic_loc=None, ic_scale=None, # initial guesses for shape parameter (VarRV only)
+               lflatten=False, masked=None, mask=None, fillValue=None, atts=None, ldebug=False, **kwargs):
     '''
     This method creates a new DisVar instance from data and parameters. If data is provided, a sample
     axis has to be specified or the last (innermost) axis is assumed to be the sample axis.
@@ -603,7 +604,7 @@ class DistVar(Variable):
         elif len(axes) != samples.ndim-1: raise AxisError
       # estimate distribution parameters
       # N.B.: the method estimate() should be implemented by specific child classes
-      params = self._estimate_distribution(samples, ic=None, ldebug=ldebug, **kwargs)
+      params = self._estimate_distribution(samples, ic_shape=ic_shape, ic_loc=ic_loc, ic_scale=ic_scale, ldebug=ldebug, **kwargs)
       # N.B.: 'ic' are initial guesses for parameter values; 'kwargs' are for the estimator algorithm 
     # sample fillValue
     if fillValue is None: fillValue = np.NaN
@@ -678,6 +679,7 @@ class DistVar(Variable):
       var = self.deepcopy( **newargs)
     else:
       # N.B.: don't pass name and units as they just link to atts anyway, and if passed directly, they overwrite user atts
+      assert len(self.axes) == self.data_array.ndim
       args = dict(axes=self.axes, params=self.data_array, dtype=self.dtype, fillValue=self.fillValue,
                   masked=self.masked, atts=self.atts.copy(), plot=self.plot.copy())
       args.update(newargs) # apply custom arguments (also arguments related to subclasses)      
@@ -937,7 +939,7 @@ class VarKDE(DistVar):
   ''' A subclass of DistVar implementing Kernel Density Estimation (scipy.stats.kde) ''' 
   
   # distribution-specific method; should be overloaded by subclass
-  def _estimate_distribution(self, samples, ic=None, ldebug=False, **kwargs):
+  def _estimate_distribution(self, samples, ic_shape=0, ic_loc=None, ic_scale=None, ldebug=False, **kwargs):
     ''' esimtate/fit distribution from sample array for each grid point and return parameters as ndarray  '''
     fct = functools.partial(kde_estimate, ldebug=ldebug, **kwargs)
     kernels = apply_along_axis(fct, samples.ndim-1, samples).squeeze()
@@ -986,7 +988,7 @@ class VarKDE(DistVar):
 icres = None # persistent variable with most recent successful fit parameters
 # N.B.: globals are only visible within the process, so this works nicely with multiprocessing
 # estimate RV from sample vector
-def rv_fit(sample, dist_type=None, ic=None, plen=None, lpersist=True, ldebug=False, **kwargs):
+def rv_fit(sample, dist_type=None, ic_shape=0, ic_loc=None, ic_scale=None, plen=None, lpersist=True, ldebug=False, **kwargs):
   global icres
   if ldebug: 
     nonans = np.invert(np.isnan(sample)) # test for NaN's
@@ -1004,12 +1006,19 @@ def rv_fit(sample, dist_type=None, ic=None, plen=None, lpersist=True, ldebug=Fal
         try: 
           if lpersist: 
             if icres is None: 
-              res = getattr(ss,dist_type).fit(sample)
+              if ic_loc is None: ic_loc = sample.mean()
+              if ic_scale is None: ic_scale = sample.std() 
+              res = getattr(ss,dist_type).fit(sample, shape=ic_shape, loc=ic_loc, scale=ic_scale)
               print("Setting first guess: {:s}".format(str(res)))
-            else: res = getattr(ss,dist_type).fit(sample, *icres[:-2], loc=icres[-2], scale=icres[-1], **kwargs)
-            icres = res # update first guess
-          elif ic is None: res = getattr(ss,dist_type).fit(sample)
-          else: res = getattr(ss,dist_type).fit(sample, *ic[:-2], loc=ic[-2], scale=ic[-1], **kwargs)
+            else: 
+              res = getattr(ss,dist_type).fit(sample, shape=icres[0], loc=icres[1], scale=icres[2], **kwargs)
+            if len(res) == 2: icres = (None,)+res
+            elif len(res) == 3: icres = res # update first guess
+            else: raise NotImplementedError
+          else:
+            if ic_loc is None: ic_loc = sample.mean()
+            if ic_scale is None: ic_scale = sample.std() 
+            res = getattr(ss,dist_type).fit(sample, shape=ic_shape, loc=ic_loc, scale=ic_scale, **kwargs)
         except LinAlgError:
           print('linalgerr'); res = (np.NaN,)*plen
   else:
@@ -1019,11 +1028,19 @@ def rv_fit(sample, dist_type=None, ic=None, plen=None, lpersist=True, ldebug=Fal
     else:
       sample = sample[nonans] # remove NaN's
       if lpersist:
-        if icres is None: res = getattr(ss,dist_type).fit(sample)
-        else: res = getattr(ss,dist_type).fit(sample, *icres[:-2], loc=icres[-2], scale=icres[-1], **kwargs)
-        icres = res # update first guess
-      elif ic is None: res = getattr(ss,dist_type).fit(sample)
-      else: res = getattr(ss,dist_type).fit(sample, *ic[:-2], loc=ic[-2], scale=ic[-1], **kwargs)
+        if icres is None: 
+          if ic_loc is None: ic_loc = sample.mean()
+          if ic_scale is None: ic_scale = sample.std() 
+          res = getattr(ss,dist_type).fit(sample, shape=ic_shape, loc=ic_loc, scale=ic_scale, **kwargs)
+        else: 
+          res = getattr(ss,dist_type).fit(sample, shape=icres[0], loc=icres[1], scale=icres[2], **kwargs)
+        if len(res) == 2: icres = (None,)+res
+        elif len(res) == 3: icres = res # update first guess
+        else: raise NotImplementedError
+      else: 
+        if ic_loc is None: ic_loc = sample.mean()
+        if ic_scale is None: ic_scale = sample.std() 
+        res = getattr(ss,dist_type).fit(sample, shape=ic_shape, loc=ic_loc, scale=ic_scale, **kwargs)
   return res # already is a tuple
 
 # evaluate a RV distribution type over a given support with given parameters
@@ -1074,7 +1091,7 @@ class VarRV(DistVar):
     if dist == '':
       raise ArgumentError, "No distribution 'dist' specified!"
     elif dist in ss.__dict__: 
-      self.dist_func = ss.__dict__[dist]
+      self.dist_func = getattr(ss,dist)
       self.dist_type = dist
     else: 
       raise ArgumentError, "No distribution '{:s}' in module scipy.stats!".format(dist)
@@ -1086,7 +1103,7 @@ class VarRV(DistVar):
     if 'dist' in newargs: raise ArgumentError
     else: newargs['dist'] = self.dist_type
     return super(VarRV,self).copy(deepcopy=False, **newargs)
-    
+  
   def __getattr__(self, attr):
     ''' use methods of from RV distribution through _get_dist wrapper '''
     if hasattr(self.dist_func, attr):
@@ -1094,20 +1111,16 @@ class VarRV(DistVar):
     return attr
   
   # distribution-specific method; should be overloaded by subclass
-  def _estimate_distribution(self, samples, ic=None, plen=None, lpersist=True, ldebug=False, **kwargs):
+  def _estimate_distribution(self, samples, ic_shape=0, ic_loc=None, ic_scale=None, plen=None, lpersist=True, ldebug=False, **kwargs):
     ''' esimtate/fit distribution from sample array for each grid point and return parameters as ndarray  '''
-    global icres
-    if ic is None:
-      if plen is None: 
-        if self.dist_type == 'norm': plen = 2 # mean and std. dev.
-        else: plen = 3 # default for most distributions
-      fct = functools.partial(rv_fit, dist_type=self.dist_type, plen=plen, ldebug=ldebug, **kwargs)
-    else:
-      if lpersist: icres = ic # set initial conditions
-      if plen is None: plen = len(ic)
-      elif plen != len(ic): raise ArgumentError
-      fct = functools.partial(rv_fit, *ic[0:-2], loc=ic[-2], scale=ic[-1], plen=plen, 
-                              dist_type=self.dist_type, ldebug=ldebug, **kwargs)
+    if lpersist: 
+      global icres
+      icres = None # reset initial conditions
+    if plen is None: 
+      if self.dist_type == 'norm': plen = 2 # mean and std. dev.
+      else: plen = 3 # default for most distributions
+    fct = functools.partial(rv_fit, ic_shape=ic_shape, ic_loc=ic_loc, ic_scale=ic_scale, plen=plen, 
+                            dist_type=self.dist_type, lpersist=lpersist, ldebug=ldebug, **kwargs)
     params = apply_along_axis(fct, samples.ndim-1, samples)
     if lpersist: icres = None # reset; in parallel mode actually not necessary
     assert samples.shape[:-1]+(plen,) == params.shape
@@ -1171,7 +1184,7 @@ class VarRV(DistVar):
     assert np.issubdtype(samples.dtype, self.dtype)
     return samples
 
-  # 
+  # Kolmogorov-Smirnov Test for goodness-of-fit
   def kstest(self, sample, name=None, axis_idx=None, lstatistic=False, 
              fillValue=None, ignoreNaN=True, N=20, alternative='two-sided', mode='approx', 
              asVar=True, lcheckVar=True, lcheckAxis=True, pvaratts=None, **kwargs):
@@ -1192,15 +1205,22 @@ class VarRV(DistVar):
       assert self.axisIndex('params') == sax
       for ax in self.axes[:-1]:
         if not sample.hasAxis(ax.name): # last is parameter axis
-          raise AxisError, "Sample Variable needs to have a '{:s}' axis.".format(ax.name)
+          if lcheckAxis: raise AxisError, "Sample Variable needs to have a '{:s}' axis.".format(ax.name)
+          else: return None
         if len(sample.getAxis(ax.name)) != len(ax): # last is parameter axis
-          raise AxisError, "Axis '{:s}' in Sample and DistVar have different length!".format(ax.name)
+          if lcheckAxis: raise AxisError, "Axis '{:s}' in Sample and DistVar have different length!".format(ax.name)
+          else: return None
       sample_data = sample.getArray(unmask=True, fillValue=fillValue, copy=True) # actual data (will be reordered)
-      # move extra dimensions to the back
-      exax = [ax for ax in sample.axes if not self.hasAxis(ax)] # extra dimensions
-      for ax in exax[::-1]:
-        sample_data = np.rollaxis(sample_data, axis=sample.axisIndex(ax), start=sample.ndim)
-      # N.B.: the order of these dimensions will be reversed, but order doesn't matter here
+      # reorder axes so that shape is compatible
+      z = self.ndim-1; iaxes = [-1]*self.ndim 
+      for iax,ax in enumerate(sample.axes):
+        if self.hasAxis(ax.name): # adopt order from self
+          iaxes[self.axisIndex(ax.name)] = iax
+        else: # append at the end
+          iaxes[z] = iax; z += 1 # increment
+      assert z == sample.ndim
+      assert all(iax >= 0 for iax in iaxes)
+      sample_data = np.transpose(sample_data, axes=iaxes)
     else:
       if isinstance(sample,ma.MaskedArray): sample_data = sample.filled(np.NaN)
       else: sample_data = sample.copy()

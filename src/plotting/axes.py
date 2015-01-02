@@ -104,7 +104,7 @@ class MyAxes(Axes):
       kwatts = kwargs.copy(); kwatts.update(varatt) # join individual and common attributes     
       if llabel: kwatts['label'] = label
       # N.B.: other scaling behavior could be added here
-      if lprint: print varname, varunits, val.mean()    
+      if lprint: print varname, varunits, val.mean(), val.std()   
       if lsmooth: val = smooth(val)
       # figure out orientation
       if self.flipxy: xx,yy = val, axe 
@@ -209,7 +209,7 @@ class MyAxes(Axes):
       else: label = labels[n]
       # save variable  
       self.variables[label] = var
-      if lprint: print varname, varunits, val.mean()    
+      if lprint: print varname, varunits, val.mean(), val.std()  
       # save values
       values.append(val)
     # figure out orientation

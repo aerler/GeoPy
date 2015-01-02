@@ -223,10 +223,16 @@ class BaseVarTest(unittest.TestCase):
       else:
         var = self.var(time=slice(0,10), lat=(50,70), lon=(-130,-110))
       t,x,y = var.axes
-#     for dist in ('kde',):
+    #     for dist in ('kde',):
     for dist in ('kde','genextreme',):
       # create VarKDE
-      tmp = getattr(var,dist)(axis=t.name, ldebug=False)
+      if dist == 'kde': 
+        tmp = var.kde(axis=t.name, ldebug=False)
+      elif lsimple: 
+        tmp = getattr(var,dist)(axis=t.name, lpersist=False, f0=0)
+        assert isZero(tmp.data_array[:,:,0]) # held fixed
+      else:
+        tmp = getattr(var,dist)(axis=t.name, lpersist=True, ldebug=False)
       distvar = tmp.copy(deepcopy=True)
       assert distvar.shape == tmp.shape 
       assert distvar.masked == tmp.masked
@@ -240,6 +246,7 @@ class BaseVarTest(unittest.TestCase):
         assert stats.shape == var.shape[1:]+(len(mom),)
         mom0 = distvar.moment(moments=1)
         assert mom0.shape == var.shape[1:]
+        #print mom0.data_array
         assert not lsimple or isEqual(mom0.data_array, var.data_array.mean(axis=0), eps=0.1)
         assert distvar.entropy().shape == var.shape[1:]
         #print distvar.entropy().data_array
@@ -274,12 +281,7 @@ class BaseVarTest(unittest.TestCase):
         assert rvar.masked
         assert np.all(rvar.data_array.mask, axis=0).sum() >= np.all(var.data_array.mask, axis=0).sum()    
       # test cumulative distribution function
-  #     cvar = distvar.CDF(bins=bins, asVar=False, axis_idx=0)
       # N.B.: var.CDF gives only integer-typeresults, even if cast as float...
-  #     if lsimple: var = var.copy(data=np.asarray(var.data_array, dtype=cvar.dtype))
-  #     cdf = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=False, axis=t.name)
-  #     assert isEqual(cvar, cdf, masked_equal=True, eps=1./len(bin_edges))
-  #     cdf = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=True, axis=t.name)
       cvar = distvar.CDF(bins=bins, asVar=True, axis_idx=None)
       assert cvar.shape == var.shape[1:]+(len(bins),)
       assert cvar.units == ''
@@ -330,6 +332,9 @@ class BaseVarTest(unittest.TestCase):
     ens -= var.name # subtract by name
 #     print(''); print(ens); print('')    
     assert not ens.hasMember(var.name)
+    # test call
+    tes = ens(time=slice(0,3,2))
+    assert all(len(tax)==2 for tax in tes.time)
       
   def testIndexing(self):
     ''' test indexing and slicing '''
@@ -857,19 +862,19 @@ class BaseDatasetTest(unittest.TestCase):
     assert all(ens.hasVariable('new'))
     # test adding a new member
     ens += yacod # this is an ensemble operation
-#     print(''); print(ens); print('')    
+    #print(''); print(ens); print('')    
     ens -= 'new' # this is a dataset operation
     assert not any(ens.hasVariable('new'))
     ens -= 'test'
     # fancy test of Variable and Dataset integration
-#     print ens[self.var.name][0]
-#     print ens[self.var.name].mean(axis='time')
     assert not any(ens[self.var.name].mean(axis='time').hasAxis('time'))
     print(ens.prettyPrint(short=True))
     # apply function to dataset ensemble
     if all(ax.units == 'month' for ax in ens.time):
       maxens = ens.seasonalMax()
-#       print maxens[0]
+    # test call
+    tes = ens(time=slice(0,3,2))
+    assert all(len(tax)==2 for tax in tes.time)
 
   def testIndexing(self):
     ''' test collective slicing and coordinate/point extraction  '''
