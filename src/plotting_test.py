@@ -26,6 +26,7 @@ from plotting.mapplots import srfcPlot
 from plotting.figure import getFigAx
 # use common MPL instance
 from plotting.misc import loadMPL
+from geodata.stats import mwtest, kstest, wrstest
 mpl,pyl = loadMPL(linewidth=1.)
 
 
@@ -66,7 +67,7 @@ class LinePlotTest(unittest.TestCase):
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var1 = self.var1; var2 = self.var2
     # create plot
-    plts = ax.linePlot([var1, var2], ylabel='custom label [{1:s}]', 
+    plts = ax.linePlot([var1, var2], ylabel='custom label [{1:s}]', llabel=False, 
                        ylim=var1.limits(), legend=2, hline=2., vline=(2,3))
     assert len(plts) == 2
     # add label
@@ -120,6 +121,58 @@ class LinePlotTest(unittest.TestCase):
     # add a line
     ax.addHline(3)
     
+    
+class BarPlotTest(unittest.TestCase):  
+   
+  def setUp(self):
+    ''' create two test variables '''
+    # create axis and variable instances (make *copies* of data and attributes!)
+    x1 = np.random.randn(30); xax1 = Axis(name='X1-Axis', units='X Units', length=len(x1)) 
+    var1 = Variable(axes=(xax1,), data=x1.copy(), atts=dict(name='blue', units='units'))
+    self.var1 = var1; self.xax1 = xax1
+    x2 = np.random.randn(50); xax2 = Axis(name='X2-Axis', units='X Units', length=len(x2))
+    var2 = Variable(name='green',units='units',axes=(xax2,), data=x2)
+    self.var2 = var2; self.xax2 = xax2
+    # add to list
+    self.vars = [var1, var2]
+    self.axes = [xax1, xax2]
+        
+  def tearDown(self):
+    ''' clean up '''
+    for var in self.vars:     
+      var.unload() # just to do something... free memory
+    for ax in self.axes:
+      ax.unload()
+    
+  ## basic tests every variable class should pass
+
+  def testBasicHistogram(self):
+    ''' test a simple line plot with two lines '''    
+    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], mpl=mpl) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyAxes'
+    assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
+    # settings
+    varlist = [self.var1, self.var2]
+    nbins = 10
+    # create regular histogram
+    bins, ptchs = ax.histogram(varlist, bins=nbins, legend=2, alpha=0.5, rwidth=0.8)
+    assert len(ptchs) == 2
+    assert len(bins) == nbins
+    vmin = np.min([var.min() for var in varlist])
+    vmax = np.max([var.max() for var in varlist])
+    #print bins[0], vmin; print bins[-1], vmax
+    assert bins[0] == vmin and bins[-1] == vmax
+    # add a KDE plot
+    support = np.linspace(vmin, vmax, 100)
+    kdevars = [var.kde(lflatten=True).histogram(support=support) for var in varlist]
+    ax.linePlot(kdevars, linewidth=2)
+    # add label
+    pval = kstest(varlist[0], varlist[1], lflatten=True) 
+    pstr = 'p-value = {:3.2f}'.format(pval)
+    ax.addLabel(label=pstr, loc=1, lstroke=False, lalphabet=True, size=None, prop=None)
+
+    
 if __name__ == "__main__":
 
     
@@ -131,6 +184,7 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['LinePlot'] 
+    tests += ['BarPlot']
     
 
     # construct dictionary of test classes defined above

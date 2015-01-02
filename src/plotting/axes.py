@@ -14,10 +14,10 @@ from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 # internal imports
 from geodata.base import Variable, Ensemble
-from geodata.misc import ListError, AxisError
+from geodata.misc import ListError, AxisError, ArgumentError, isEqual
 from plotting.misc import smooth, getPlotValues
 from collections import OrderedDict
-
+from utils.misc import binedges
 
 ## new axes class
 class MyAxes(Axes): 
@@ -30,15 +30,16 @@ class MyAxes(Axes):
   flipxy       = False
   xname        = None
   xunits       = None
-  xpad         =  2 
+  xpad         = 2 
   yname        = None
   yunits       = None
-  ypad         = -2
+  ypad         = 0
   
-  def linePlot(self, varlist, linestyles=None, varatts=None, legend=None, xticks=True, yticks=True,
-               hline=None, vline=None, title=None, flipxy=None, xlabel=True, ylabel=True, xlim=None,
-               xlog=False, ylog=False, ylim=None, lsmooth=False, lprint=False, **kwargs):
-    ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on variable properties. '''
+  def linePlot(self, varlist, linestyles=None, varatts=None, legend=None, llabel=True, labels=None, xticks=True, 
+               yticks=True, hline=None, vline=None, title=None, reset_color=True, flipxy=None, xlabel=True, ylabel=True,
+               xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False, **kwargs):
+    ''' A function to draw a list of 1D variables into an axes, 
+        and annotate the plot based on variable properties. '''
     # varlist is the list of variable objects that are to be plotted
     #print varlist
     if isinstance(varlist,Variable): varlist = [varlist]
@@ -73,6 +74,12 @@ class MyAxes(Axes):
       varname,varunits,axname,axunits = self.xname,self.xunits,self.yname,self.yunits
     else:
       axname,axunits,varname,varunits = self.xname,self.xunits,self.yname,self.yunits
+    # reset color cycle
+    if reset_color: self.set_color_cycle(None)
+    # prepare label list
+    if labels is None: labels = []; lmklblb = True
+    elif len(labels) == len(varlist): lmklblb = False
+    else: raise ArgumentError, "Incompatible length of label list."
     # loop over variables
     plts = [] # list of plot handles
     if self.variables is None: self.variables = OrderedDict()
@@ -85,14 +92,17 @@ class MyAxes(Axes):
       if var.plot is not None and varax.plot is not None: 
         if varax.units != axunits and var.plot.preserve == 'area':
           val /= varax.plot.scalefactor
-      # save variable  
-      if lname: label = var.name # default label: variable name
-      elif ldataset: label = var.dataset.name
-      else: label = n
+      # save variable 
+      if lmklblb: 
+        if lname: label = var.name # default label: variable name
+        elif ldataset: label = var.dataset.name
+        else: label = n
+        labels.append(label)
+      else: label = labels[n]
       self.variables[label] = var
       # figure out keyword options
       kwatts = kwargs.copy(); kwatts.update(varatt) # join individual and common attributes     
-      if 'label' not in kwatts: kwatts['label'] = label
+      if llabel: kwatts['label'] = label
       # N.B.: other scaling behavior could be added here
       if lprint: print varname, varunits, val.mean()    
       if lsmooth: val = smooth(val)
@@ -139,6 +149,111 @@ class MyAxes(Axes):
     if vline is not None: self.addVline(vline)
     # return handle
     return plts
+
+  def histogram(self, varlist, bins=None, binedgs=None, histtype='bar', lstacked=False, lnormalize=True,
+                lcumulative=0, varatts=None, legend=None, colors=None, llabel=True, labels=None, align='mid', rwidth=None, 
+                bottom=None, weights=None, xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=True, 
+                flipxy=None, xlabel=True, ylabel=True, log=False, xlim=None, ylim=None, lprint=False, **kwargs):
+    ''' A function to draw histograms of a list of 1D variables into an axes, 
+        and annotate the plot based on variable properties. '''
+    # varlist is the list of variable objects that are to be plotted
+    #print varlist
+    if isinstance(varlist,Variable): varlist = [varlist]
+    elif not isinstance(varlist,(tuple,list,Ensemble)) or not all([isinstance(var,Variable) for var in varlist]): raise TypeError
+    for var in varlist: var.squeeze() # remove singleton dimensions
+    # varatts are variable-specific attributes that are parsed for special keywords and then passed on to the
+    if varatts is None: varatts = [dict()]*len(varlist)  
+    elif isinstance(varatts,dict):
+      tmp = [varatts[var.name] if var.name in varatts else dict() for var in varlist]
+      if any(tmp): varatts = tmp # if any variable names were found
+      else: varatts = [varatts]*len(varlist) # assume it is one varatts dict, which will be used for all variables
+    elif not isinstance(varatts,(tuple,list)): raise TypeError
+    if not all([isinstance(atts,dict) for atts in varatts]): raise TypeError
+    # check axis: they need to have only one axes, which has to be the same for all!
+    if len(varatts) != len(varlist): raise ListError, "Failed to match varatts to varlist!"  
+    # line/plot label policy
+    lname = not any(var.name == varlist[0].name for var in varlist[1:])
+    if lname or not all(var.dataset is not None for var in varlist): ldataset = False
+    elif not any(var.dataset.name == varlist[0].dataset.name for var in varlist[1:]): ldataset = True
+    else: ldataset = False
+    # initialize axes names and units
+    self.flipxy = flipxy
+    if not self.flipxy: # histogram has opposite convention
+      varname,varunits,axname,axunits = self.xname,self.xunits,self.yname,self.yunits
+    else:
+      axname,axunits,varname,varunits = self.xname,self.xunits,self.yname,self.yunits
+    # reset color cycle
+    if reset_color: self.set_color_cycle(None)
+    # figure out bins
+    vmin = np.min([var.min() for var in varlist])
+    vmax = np.max([var.max() for var in varlist])
+    bins, binedgs = binedges(bins=bins, binedgs=binedgs, limits=(vmin,vmax), lcheckVar=True)
+    # prepare label list
+    if labels is None: labels = []; lmklblb = True
+    elif len(labels) == len(varlist): lmklblb = False
+    else: raise ArgumentError, "Incompatible length of label list."
+    if self.variables is None: self.variables = OrderedDict()
+    # loop over variables
+    values = [] # list of plot handles
+    for n,var in zip(xrange(len(varlist)),varlist):
+      # scale variable values(axes are irrelevant)
+      val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None)
+      val = val.ravel() # flatten array
+      if not varname.endswith('_bins'): varname += '_bins'
+      # figure out label
+      if lmklblb:
+        if lname: label = var.name # default label: variable name
+        elif ldataset: label = var.dataset.name
+        else: label = n
+        labels.append(label)
+      else: label = labels[n]
+      # save variable  
+      self.variables[label] = var
+      if lprint: print varname, varunits, val.mean()    
+      # save values
+      values.append(val)
+    # figure out orientation
+    if self.flipxy: orientation = 'horizontal' 
+    else: orientation = 'vertical'
+    # call histogram method of Axis
+    if not llabel: labels = None 
+    hdata, bin_edges, patches = self.hist(values, bins=binedgs, normed=lnormalize, weights=weights, cumulative=lcumulative, 
+                                          bottom=bottom, histtype=histtype, align=align, orientation=orientation, 
+                                          rwidth=rwidth, log=log, color=colors, label=labels, stacked=lstacked, **kwargs)
+    del hdata; assert isEqual(bin_edges, binedgs)
+    # N.B.: generally we don't need to keep the histogram results - there are other functions for that
+    # set axes limits
+    if isinstance(xlim,(list,tuple)) and len(xlim)==2: self.set_xlim(*xlim)
+    elif xlim is not None: raise TypeError
+    if isinstance(ylim,(list,tuple)) and len(ylim)==2: self.set_ylim(*ylim)
+    elif ylim is not None: raise TypeError 
+    # set title
+    if title is not None: self.addTitle(title)
+    # set axes labels  
+    if not self.flipxy: 
+      self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
+    else: 
+      self.xname,self.xunits,self.yname,self.yunits = axname,axunits,varname,varunits
+    # format axes ticks
+    self.xTickLabels(xticks, loverlap=False)
+    self.yTickLabels(yticks, loverlap=False)
+    # format axes labels
+    self.xLabel(xlabel)
+    self.yLabel(ylabel)    
+    # N.B.: a typical custom label that makes use of the units would look like this: 'custom label [{1:s}]', 
+    # where {} will be replaced by the appropriate default units (which have to be the same anyway)
+    # make monthly ticks
+    if self.xname == 'time' and self.xunits == 'month':
+      if len(xticks) == 12 or len(xticks) == 13:
+        self.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator(2)) # self.minorticks_on()
+    # add legend
+    if isinstance(legend,dict): self.addLegend(**legend) 
+    elif isinstance(legend,(int,np.integer,float,np.inexact)): self.addLegend(loc=legend)
+    # add orientation lines
+    if hline is not None: self.addHline(hline)
+    if vline is not None: self.addVline(vline)
+    # return handle
+    return bins, patches # bins can be used as support for distributions
   
   def addHline(self, hline, **kwargs):
     ''' add one or more horizontal lines to the plot '''

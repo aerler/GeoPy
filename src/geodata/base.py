@@ -19,7 +19,7 @@ from plotting.properties import getPlotAtts, variablePlotatts # import plot prop
 from geodata.misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, floateps
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 from processing.multiprocess import apply_along_axis
-from utils.misc import histogram
+from utils.misc import histogram, binedges
      
 
 class UnaryCheckAndCreateVar(object):
@@ -1050,7 +1050,9 @@ class Variable(object):
     ''' Generate a histogram of along a given axis and preserve the other axes. '''
     # some input checking
     if lflatten and axis is not None: raise ArgumentError
-    if not lflatten and axis is None: raise ArgumentError
+    if not lflatten and axis is None: 
+      if self.ndim > 1: raise ArgumentError
+      else: lflatten = True # treat both as flat arrays...
     if self.dtype.kind in ('S',): 
       if lcheckVar: raise VariableError, "Histogram does not work with string Variables!"
       else: return None
@@ -1062,31 +1064,7 @@ class Variable(object):
       else: return None
     kwargs['density'] = ldensity # overwrite parameter
     # figure out bins
-    if bins is None and binedgs is None: raise ArgumentError
-    elif bins is not None and binedgs is not None:
-      if len(bins)+1 != len(binedgs): raise ArgumentError
-    if bins is not None:
-      # expand bins (values refer to center of bins)
-      if isinstance(bins,(int,np.integer)):
-        if bins == 1: bins = np.asarray(( (self.min()+self.max())/2. ,)) 
-        else: bins = np.linspace(self.min(),self.max(),bins)  
-      elif isinstance(bins,(tuple,list)) and  0 < len(bins) < 4: 
-        bins = np.linspace(*bins)
-      elif not isinstance(bins,(list,np.ndarray)): raise TypeError
-      if len(bins) == 1: 
-        tmpbinedgs = np.asarray((self.min(),self.max()))
-      else:
-        hbd = np.diff(bins) / 2. # make sure this is a float!
-        tmpbinedgs = np.hstack((bins[0]-hbd[0],bins[1:]-hbd,bins[-1]+hbd[-1])) # assuming even spacing
-      if binedgs is None: binedgs = tmpbinedgs # computed from bins
-      elif lcheckVar: assert isEqual(binedgs, np.asarray(tmpbinedgs, dtype=binedgs.dtype))
-    if binedgs is not None:
-      # expand bin edges
-      if not isinstance(binedgs,(tuple,list)): binedgs = np.asarray(binedgs)
-      elif not isinstance(binedgs,np.ndarray): raise TypeError  
-      tmpbins = binedgs[1:] - ( np.diff(binedgs) / 2. ) # make sure this is a float!
-      if bins is None: bins = tmpbins # compute from binedgs
-      elif lcheckVar: assert isEqual(bins, np.asarray(tmpbins, dtype=bins.dtype))
+    bins, binedgs = binedges(bins=bins, binedgs=binedgs, limits=self.limits(), lcheckVar=lcheckVar)
     # setup histogram axis and variable attributes (special case)
     if asVar:
       axatts = self.atts.copy() # variable values become axis
@@ -1151,7 +1129,9 @@ class Variable(object):
     ''' Generate a histogram of along a given axis and preserve the other axes. '''
     # some input checking
     if lflatten and axis is not None: raise ArgumentError
-    if not lflatten and axis is None: raise ArgumentError
+    if not lflatten and axis is None: 
+      if self.ndim > 1: raise ArgumentError
+      else: lflatten = True # treat both as flat arrays...
     if self.dtype.kind in ('S',): 
       if lcheckVar: raise VariableError, "CDF does not work with string Variables!"
       else: return None
@@ -1199,7 +1179,9 @@ class Variable(object):
       ignoreNaN = test.lower() != 'normaltest' or lflatten
     # some input checking
     if lflatten and axis is not None: raise ArgumentError
-    if not lflatten and axis is None: raise ArgumentError
+    if not lflatten and axis is None: 
+      if self.ndim > 1: raise ArgumentError
+      else: lflatten = True # treat both as flat arrays...
     if self.dtype.kind in ('S',): 
       if lcheckVar: raise VariableError, "Statistical tests does not work with string Variables!"
       else: return None

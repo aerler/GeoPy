@@ -545,6 +545,7 @@ class BaseVarTest(unittest.TestCase):
         var = self.var(time=slice(0,10), lat=(50,70), lon=(-130,-110))
       t,x,y = var.axes
     var.standardize(linplace=True) # make variables more likely to test positive
+    
     ## univariate stats tests
     # run simple kstest test
     pval = var.kstest(asVar=False, lflatten=True, dist='norm', args=(0,1))    
@@ -564,46 +565,52 @@ class BaseVarTest(unittest.TestCase):
     # fit normal distribution over entire range 
     nvar = var.norm(axis=t.name, lflatten=True, ldebug=False)
     pval = nvar.kstest(var.data_array.ravel(), asVar=False)
-#     print pval
     assert pval >= 0.
     assert pval.shape == nvar.shape[:-1]
     xvar = var.genextreme(axis=t.name, lflatten=False, ldebug=False)
-#     print xvar
     pvar = xvar.kstest(var)
     assert pvar.shape == xvar.shape[:-1]
     assert np.all(pvar.data_array >= 0)
-#     print pvar
-#     print pvar.data_array
+
+    rav = var.copy(); sin = rav.sin(); cos = var.cos()
+    rnd = var.copy(); rnd.data_array = np.random.randn(var.data_array.size).reshape(var.shape)
     ## bivariate stats tests
-    rav = var.copy()
     pval = kstest(var, rav, lflatten=True)
-    assert pval > 0.99 # this will usually be close to zero, since none of these are normally distributed
-#     pval = ttest(var, rav, lflatten=True)  
-    pval = mwtest(var, rav, lflatten=True)  
-#     pval = wrstest(var, rav, lflatten=True)  
-    #print pval
-    assert pval > 0.99 # this will usually be close to zero, since none of these are normally distributed
-#     pvar = kstest(var, rav, axis='time')    
+    assert pval > 0.95 # this will usually be close to zero, since none of these are normally distributed
     pvar = ttest(var, rav, axis='time')    
-    assert np.all(pvar.data_array > 0.95) # not all tests are that accurate...
-    assert pvar.shape == var.shape[1:] # this will usually be close to zero, since none of these are normally distributed
-#     pvar = mwtest(var, rav, axis='time')
-    pvar = wrstest(var, rav, axis='time')
     #print pvar
     #print pvar.data_array
-    assert np.all(pvar.data_array > 0.95) # not all tests are that accurate...
+    assert pvar.data_array.mean() > 0.95 # not all tests are that accurate...
     assert pvar.shape == var.shape[1:] # this will usually be close to zero, since none of these are normally distributed
+    # reverse tests: now all should be negative
+    assert not isEqual(sin.data_array,cos.data_array)
+    pval = mwtest(sin, cos, lflatten=True)  
+    assert pval < 0.05 # this will usually be close to zero, since none of these are normally distributed
+    pvar = wrstest(sin, cos, axis='time')
+    assert pvar.data_array.mean() < 0.5 # not all tests are that accurate...
+    assert pvar.shape == var.shape[1:] # this will usually be close to zero, since none of these are normally distributed
+    
     ## correlation coefficients
     rho,pval = pearsonr(var, rav, lpval=True, lrho=True, lflatten=True, lstandardize=True, lsmooth=True, window_len=5)
-    #rho,pval = spearmanr(var, rav, lpval=True, lrho=True, lflatten=True)
     #print rho, pval
     assert rho > 0.99
     assert pval < 0.01 # this will usually be close to zero, since none of these are normally distributed
-    #rvar,pvar = pearsonr(var, rav, lpval=True, lrho=True, axis='time')
     rvar,pvar = spearmanr(var, rav, lpval=True, lrho=True, axis='time', lstandardize=True, lsmooth=True)
+    assert rvar.data_array.mean() > 0.95 # not all tests are that accurate...
+    assert pvar.data_array.mean() < 0.05 # not all tests are that accurate...
+    assert rvar.shape == var.shape[1:] # this will usually be close to zero, since none of these are normally distributed
+    # and now reverse
+    rho,pval = spearmanr(var, rnd, lpval=True, lrho=True, lflatten=True)
+    #print rho, pval
+    assert rho < 0.5
+    assert pval > 0.05 # this will usually be close to zero, since none of these are normally distributed
+    rvar,pvar = pearsonr(var, rnd, lpval=True, lrho=True, axis='time')
     #print rvar
-    #print rho.data_array
-    assert np.all(rvar.data_array > 0.00) # not all tests are that accurate...
+    #print rvar.data_array.mean()
+    #print pvar
+    #print pvar.data_array.mean()
+    assert rvar.data_array.mean() < 0.25 # not all tests are that accurate...
+    assert pvar.data_array.mean() > 0.25 # not all tests are that accurate...
     assert rvar.shape == var.shape[1:] # this will usually be close to zero, since none of these are normally distributed
     
   def testUnaryArithmetic(self):
@@ -1321,7 +1328,7 @@ if __name__ == "__main__":
         
     specific_tests = None
 #     specific_tests = ['ReductionArithmetic']
-    specific_tests = ['DistributionVariables']
+#     specific_tests = ['DistributionVariables']
 #     specific_tests = ['Ensemble']
 #     specific_tests = ['StatsTests']    
 
@@ -1332,10 +1339,10 @@ if __name__ == "__main__":
     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
-      
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
+#       
     
     # construct dictionary of test classes defined above
     test_classes = dict()

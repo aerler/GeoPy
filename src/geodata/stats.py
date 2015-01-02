@@ -120,9 +120,11 @@ def ks_2samp_wrapper(data, size1=None, ignoreNaN=True):
       underlying (continuous) distribution. This is a wrapper for the SciPy function that 
       removes NaN's, allows application over a field, and only returns the p-value. '''
   if ignoreNaN:
-    nonans = np.invert(np.isnan(data)) # test for NaN's
-    if np.sum(nonans[:size1]) < 3 or np.sum(nonans[size1:]) < 3: return np.NaN # return, if less than 3 non-NaN's
-    data1 = data[nonans[:size1]]; data2 = data[nonans[size1:]] # remove NaN's
+    data1 = data[:size1]; data2 = data[size1:]
+    nonans1 = np.invert(np.isnan(data1)) # test for NaN's
+    nonans2 = np.invert(np.isnan(data2))
+    if np.sum(nonans1) < 3 or np.sum(nonans2) < 3: return np.NaN # return, if less than 3 non-NaN's
+    data1 = data1[nonans1]; data2 = data2[nonans2] # remove NaN's
   else:
     data1 = data[:size1]; data2 = data[size1:]
   # apply test
@@ -149,9 +151,11 @@ def ttest_ind_wrapper(data, size1=None, axis=None, ignoreNaN=True, equal_var=Tru
       are drawn from the same underlying (continuous) distribution. This is a wrapper for the SciPy function that 
       removes NaN's and only returns the p-value (t-test is already vectorized). '''
   if axis is None and ignoreNaN:
-    nonans = np.invert(np.isnan(data)) # test for NaN's
-    if np.sum(nonans[:size1]) < 3 or np.sum(nonans[size1:]) < 3: return np.NaN # return, if less than 3 non-NaN's
-    data1 = data[nonans[:size1]]; data2 = data[nonans[size1:]] # remove NaN's
+    data1 = data[:size1]; data2 = data[size1:]
+    nonans1 = np.invert(np.isnan(data1)) # test for NaN's
+    nonans2 = np.invert(np.isnan(data2))
+    if np.sum(nonans1) < 3 or np.sum(nonans2) < 3: return np.NaN # return, if less than 3 non-NaN's
+    data1 = data1[nonans1]; data2 = data2[nonans2] # remove NaN's
   elif axis is None:
     data1 = data[:size1]; data2 = data[size1:]
   else:
@@ -191,9 +195,11 @@ def mannwhitneyu_wrapper(data, size1=None, ignoreNaN=True, use_continuity=True, 
       underlying (continuous) distribution. This is a wrapper for the SciPy function that 
       removes NaN's, allows application over a field, and only returns the p-value. '''
   if ignoreNaN:
-    nonans = np.invert(np.isnan(data)) # test for NaN's
-    if np.sum(nonans[:size1]) < 3 or np.sum(nonans[size1:]) < 3: return np.NaN # return, if less than 3 non-NaN's
-    data1 = data[nonans[:size1]]; data2 = data[nonans[size1:]] # remove NaN's
+    data1 = data[:size1]; data2 = data[size1:]
+    nonans1 = np.invert(np.isnan(data1)) # test for NaN's
+    nonans2 = np.invert(np.isnan(data2))
+    if np.sum(nonans1) < 3 or np.sum(nonans2) < 3: return np.NaN # return, if less than 3 non-NaN's
+    data1 = data1[nonans1]; data2 = data2[nonans2] # remove NaN's
   else:
     data1 = data[:size1]; data2 = data[size1:]
   # apply test
@@ -222,9 +228,11 @@ def ranksums_wrapper(data, size1=None, ignoreNaN=True):
       underlying (continuous) distribution. This is a wrapper for the SciPy function that 
       removes NaN's, allows application over a field, and only returns the p-value. '''
   if ignoreNaN:
-    nonans = np.invert(np.isnan(data)) # test for NaN's
-    if np.sum(nonans[:size1]) < 3 or np.sum(nonans[size1:]) < 3: return np.NaN # return, if less than 3 non-NaN's
-    data1 = data[nonans[:size1]]; data2 = data[nonans[size1:]] # remove NaN's
+    data1 = data[:size1]; data2 = data[size1:]
+    nonans1 = np.invert(np.isnan(data1)) # test for NaN's
+    nonans2 = np.invert(np.isnan(data2))
+    if np.sum(nonans1) < 3 or np.sum(nonans2) < 3: return np.NaN # return, if less than 3 non-NaN's
+    data1 = data1[nonans1]; data2 = data2[nonans2] # remove NaN's
   else:
     data1 = data[:size1]; data2 = data[size1:]
   # apply test
@@ -262,7 +270,7 @@ def pearsonr_wrapper(data, size1=None, lpval=False, lrho=True, ignoreNaN=True, l
     data1 = data[:size1]; data2 = data[size1:] # find NaN's
     nans1 = np.isnan(data1); nans2 = np.isnan(data2) # remove in both arrays
     nonans = np.invert(np.logical_or(nans1,nans2))
-    if np.sum(nonans) < 3: # return, if less than 3 non-NaN's 
+    if np.sum(nonans) < 3: # return, if too many NaN's 
       if lrho and lpval: return np.zeros(2)+np.NaN
       else: return np.NaN # need to conform to output size
     data1 = data1[nonans]; data2 = data2[nonans] # remove NaN's
@@ -273,6 +281,7 @@ def pearsonr_wrapper(data, size1=None, lpval=False, lrho=True, ignoreNaN=True, l
     data1 = standardize(data1, axis=None, lcopy=False) # apply_stat_test_2samp alread 
     data2 = standardize(data2, axis=None, lcopy=False) #   makes a copy, no need here
   if lsmooth:
+    window_len = min(data1.size,window_len) # automatically shring window
     data1 = smooth(data1,  window_len=window_len, window=window)
     data2 = smooth(data2,  window_len=window_len, window=window)
   if ldetrend:
@@ -317,7 +326,7 @@ def spearmanr_wrapper(data, size1=None, axis=None, lpval=False, lrho=True, ignor
     data1 = data[:size1]; data2 = data[size1:] # find NaN's
     nans1 = np.isnan(data1); nans2 = np.isnan(data2) # remove in both arrays
     nonans = np.invert(np.logical_or(nans1,nans2))
-    if np.sum(nonans) < 3: # return, if less than 3 non-NaN's 
+    if np.sum(nonans) < 3: # return, if too many NaN's 
       if lrho and lpval: return np.zeros(2)+np.NaN
       else: return np.NaN # need to conform to output size
     data1 = data1[nonans]; data2 = data2[nonans] # remove NaN's
@@ -330,6 +339,7 @@ def spearmanr_wrapper(data, size1=None, axis=None, lpval=False, lrho=True, ignor
     data1 = standardize(data1, axis=axis, lcopy=False) # apply_stat_test_2samp alread
     data2 = standardize(data2, axis=axis, lcopy=False) #   makes a copy, no need here
   if lsmooth:
+    window_len = min(data1.size,window_len) # automatically shring window
     data1 = smooth(data1, window_len=window_len, window=window)
     data2 = smooth(data2, window_len=window_len, window=window)
   if ldetrend:
@@ -345,7 +355,7 @@ def spearmanr_wrapper(data, size1=None, axis=None, lpval=False, lrho=True, ignor
 
 
 # generic applicator function for 2 sample statistical tests
-def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, name=None, 
+def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, name=None, laax=True, 
                           lflatten=False, fillValue=None, lpval=True, lrho=False, asVar=None,
                           lcheckVar=True, lcheckAxis=True, pvaratts=None, rvaratts=None, **kwargs):
   ''' Apply a bivariate statistical test or function to two sample Variables and return the result 
@@ -353,7 +363,9 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
       This function can return both, the p-value and the function result (other than the p-value). '''
   # some input checking
   if lflatten and axis is not None: raise ArgumentError
-  if not lflatten and axis is None: raise ArgumentError
+  if not lflatten and axis is None: 
+    if sample2.ndim > 1 and sample2.ndim > 1: raise ArgumentError
+    else: lflatten = True # treat both as flat arrays...
   if asVar is None: asVar = not lflatten
   # check sample vars
   lvar1 = isinstance(sample1, Variable)
@@ -445,10 +457,10 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
   assert lflatten or data1.shape[:-1] == data2.shape[:-1]
   # apply test (serial)
   if lflatten:
-    axis_idx = data1.ndim-1; size1 = data1.shape[-1]; laax=True # shorcuts
+    assert data1.ndim == 1 and data2.ndim == 1
     # merge sample arrays, save dividing index 'size1' (only one argument array per point along axis)
-    data_array = np.concatenate((data1, data2), axis=axis_idx) 
-    res = fct(data_array, size1=size1)
+    data_array = np.concatenate((data1, data2), axis=0) 
+    res = fct(data_array, size1=data1.size) # evaluate function
     # disentagle results
     if lrho and lpval:
       rvar, pvar = res[0],res[1]
@@ -458,10 +470,11 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
       raise NotImplementedError, "Cannot return a single scalar as a Variable object."
   # apply test (parallel)
   else: 
-    axis_idx = data1.ndim-1; size1 = data1.shape[-1]; laax=True # shorcuts
+    axis_idx = data1.ndim-1; size1 = data1.shape[-1] # shorcuts
     # merge sample arrays, save dividing index 'size1' (only one argument array per point along axis)
     data_array = np.concatenate((data1, data2), axis=axis_idx) 
     # select test and set parameters
+    fct = functools.partial(fct, size1=size1)
     res = apply_along_axis(fct, axis_idx, data_array, laax=laax) # apply test in parallel, distributing the data
     # handle masks etc.
     if (lvar1 and sample1.masked) or (lvar2 and sample1.masked): 
@@ -509,6 +522,7 @@ def asDistVar(var, axis='time', dist='KDE', lflatten=False, name=None, atts=None
   varatts['units'] = var.units # these will be the sample units, not the distribution units
   if atts is not None: varatts.update(atts)
   # figure out axes
+  if var.ndim == 1: lflatten = True
   if lflatten:
     iaxis = None; axes = None
   else:
@@ -1177,9 +1191,9 @@ class VarRV(DistVar):
     if isinstance(sample,Variable):
       assert self.axisIndex('params') == sax
       for ax in self.axes[:-1]:
-        if not sample.hasAxis(ax): # last is parameter axis
+        if not sample.hasAxis(ax.name): # last is parameter axis
           raise AxisError, "Sample Variable needs to have a '{:s}' axis.".format(ax.name)
-        if len(sample.getAxis(ax)) != len(ax): # last is parameter axis
+        if len(sample.getAxis(ax.name)) != len(ax): # last is parameter axis
           raise AxisError, "Axis '{:s}' in Sample and DistVar have different length!".format(ax.name)
       sample_data = sample.getArray(unmask=True, fillValue=fillValue, copy=True) # actual data (will be reordered)
       # move extra dimensions to the back

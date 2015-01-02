@@ -6,8 +6,45 @@ Random utility functions...
 @author: Andre R. Erler, GPL v3
 '''
 
+# external imports
 import numpy as np
 from utils.signalsmooth import smooth
+# internal imports
+from geodata.misc import ArgumentError, isEqual
+
+
+def binedges(bins=None, binedgs=None, limits=None, lcheckVar=True):
+  ''' utility function to generate and validate bins and binegdes from either one '''
+  # check input
+  if bins is None and binedgs is None: raise ArgumentError
+  elif bins is not None and binedgs is not None:
+    if len(bins)+1 != len(binedgs): raise ArgumentError
+  if bins is not None:
+    if limits is not None: vmin, vmax = limits
+    else: raise ArgumentError
+    # expand bins (values refer to center of bins)
+    if isinstance(bins,(int,np.integer)):
+      if bins == 1: bins = np.asarray(( (vmin+vmax)/2. ,)) 
+      else: bins = np.linspace(vmin,vmax,bins)  
+    elif isinstance(bins,(tuple,list)) and  0 < len(bins) < 4: 
+      bins = np.linspace(*bins)
+    elif not isinstance(bins,(list,np.ndarray)): raise TypeError
+    if len(bins) == 1: 
+      tmpbinedgs = np.asarray((vmin,vmax))
+    else:
+      hbd = np.diff(bins) / 2. # make sure this is a float!
+      tmpbinedgs = np.hstack((bins[0]-hbd[0],bins[1:]-hbd,bins[-1]+hbd[-1])) # assuming even spacing
+    if binedgs is None: binedgs = tmpbinedgs # computed from bins
+    elif lcheckVar: assert isEqual(binedgs, np.asarray(tmpbinedgs, dtype=binedgs.dtype))
+  if binedgs is not None:
+    # expand bin edges
+    if not isinstance(binedgs,(tuple,list)): binedgs = np.asarray(binedgs)
+    elif not isinstance(binedgs,np.ndarray): raise TypeError  
+    tmpbins = binedgs[1:] - ( np.diff(binedgs) / 2. ) # make sure this is a float!
+    if bins is None: bins = tmpbins # compute from binedgs
+    elif lcheckVar: assert isEqual(bins, np.asarray(tmpbins, dtype=bins.dtype))
+  # return bins and binegdes
+  return bins, binedgs
 
 
 # histogram wrapper that suppresses additional output

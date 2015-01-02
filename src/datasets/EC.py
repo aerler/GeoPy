@@ -741,8 +741,8 @@ if __name__ == '__main__':
 #   mode = 'test_conversion'
 #   mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
-  mode = 'test_timeseries'
-#   mode = 'test_selection'
+#   mode = 'test_timeseries'
+  mode = 'test_selection'
   
   # test wrapper function to load time series data from EC stations
   if mode == 'test_selection':
@@ -754,13 +754,13 @@ if __name__ == '__main__':
     stn='ecprecip'
     print('')
     stnens = Ensemble(loadEC_StnTS(station=stn), loadWRF_StnEns(ensemble='max-ens-2100', station=stn, 
-                      filetypes='hydro', domains=2)) # including WRF data for test
+                      filetypes='hydro', domains=1)) # including WRF data for test
     print(stnens)    
     print('')
     var = stnens[-1].axes['station']; print(''); print(var)
     for var in stnens.station: print(var.min(),var.mean(),var.max())
     # test station selector
-    stnens = selectStations(stnens, prov=('AB','BC'), min_len=50, lat=(50,55), lon=(-125,-110),
+    stnens = selectStations(stnens, prov=('BC','AB'), min_len=50, lat=(40,55), #lon=(-125,-110),
                             stnaxis='station', imaster=None, linplace=False, lall=False) 
     print(stnens)    
     print('')

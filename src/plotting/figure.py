@@ -9,7 +9,6 @@ A custom Figure class that provides some specialized functions and uses a custom
 # external imports
 from types import NoneType, ModuleType
 import numpy as np
-import matplotlib as mpl
 from matplotlib.figure import Figure, SubplotBase, subplot_class_factory
 # internal imports
 from geodata.misc import isInt 
@@ -231,7 +230,7 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=No
              axes_pad = None, add_all=True, share_all=None, aspect=False,
              label_mode='L', cbar_mode=None, cbar_location='right', lreduce=True,
              cbar_pad=None, cbar_size='5%', axes_class=None, axes_args=None,
-             figure_class=None, figure_args=None): 
+             lsamesize=True, figure_class=None, figure_args=None): 
   # configure matplotlib
   if mpl is None: import matplotlib as mpl
   elif isinstance(mpl,dict): mpl = loadMPL(**mpl) # there can be a mplrc, but also others
@@ -253,16 +252,20 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=No
   elif not (isinstance(subplot,(tuple,list)) and len(subplot) == 2) and all(isInt(subplot)): raise TypeError    
   # create figure
   if figsize is None: 
-    if subplot == (1,1): figsize = (3.75,3.75)
+    if subplot == (1,1): 
+      if lsamesize: figsize = (6.25,6.25)
+      else: figsize = (3.75,3.75)
     elif subplot == (1,2) or subplot == (1,3): figsize = (6.25,3.75)
-    elif subplot == (2,1) or subplot == (3,1): figsize = (3.75,6.25)
+    elif subplot == (2,1) or subplot == (3,1): 
+      if lsamesize: figsize = (3.75,6.25)
+      else: (3.75,7)
     else: figsize = (6.25,6.25)
     #elif subplot == (2,2) or subplot == (3,3): figsize = (6.25,6.25)
     #else: raise NotImplementedError
   # figure out margins
   if margins is None:
     # N.B.: the rectangle definition is presumably left, bottom, width, height
-    if subplot == (1,1): margins = (0.09,0.09,0.88,0.88)
+    if subplot == (1,1): margins = (0.1,0.1,0.85,0.85)
     elif subplot == (1,2) or subplot == (1,3): margins = (0.06,0.1,0.92,0.87)
     elif subplot == (2,1) or subplot == (3,1): margins = (0.09,0.11,0.88,0.82)
     elif subplot == (2,2) or subplot == (3,3): margins = (0.055,0.055,0.925,0.925)
