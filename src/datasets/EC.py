@@ -69,6 +69,23 @@ varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Aver
 # list of variables to load
 variable_list = varatts.keys() # also includes coordinate fields    
 
+# expand province names
+def getProvName(prov):
+  ''' a convenience function to expand Canadian province abbreviations '''
+  if prov == 'BC': name = 'British Columbia'
+  elif prov == 'YT': name = 'Yukon Territory'
+  elif prov == 'NT': name = 'Northwest Territories'
+  elif prov == 'NU': name = 'Nunavut'
+  elif prov == 'AB': name = 'Alberta'
+  elif prov == 'SK': name = 'Saskatchewan'
+  elif prov == 'MB': name = 'Manitoba'
+  elif prov == 'ON': name = 'Ontario'
+  elif prov == 'QC': name = 'Quebec'
+  elif prov == 'NB': name = 'New Brunswick'
+  elif prov == 'NS': name = 'Nova Scotia'
+  elif prov == 'PE': name = 'Prince Edward Island'
+  elif prov == 'NL': name = 'Newfoundland and Labrador'
+  return name
 
 ## a class that handles access to station records in ASCII files
 class DailyStationRecord(StrictRecordClass):

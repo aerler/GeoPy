@@ -224,13 +224,16 @@ class BaseVarTest(unittest.TestCase):
         var = self.var(time=slice(0,10), lat=(50,70), lon=(-130,-110))
       t,x,y = var.axes
     #     for dist in ('kde',):
-    for dist in ('kde','genextreme',):
+    if lsimple: dist_list = ('kde','genextreme','gumbel_r','norm')
+    else: dist_list = ('kde','norm') # others take longer...
+    #dist_list = ('kde','genextreme','gumbel_r','norm')
+    for dist in dist_list:
       # create VarKDE
       if dist == 'kde': 
         tmp = var.kde(axis=t.name, ldebug=False)
       elif lsimple: 
-        tmp = getattr(var,dist)(axis=t.name, lpersist=False, f0=0)
-        assert isZero(tmp.data_array[:,:,0]) # held fixed
+        tmp = getattr(var,dist)(axis=t.name, lpersist=True, f0=0)
+        if tmp.shape[-1] > 2: assert isZero(tmp.data_array[:,:,0]) # held fixed
       else:
         tmp = getattr(var,dist)(axis=t.name, lpersist=True, ldebug=False)
       distvar = tmp.copy(deepcopy=True)

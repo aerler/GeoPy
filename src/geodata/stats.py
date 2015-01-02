@@ -507,7 +507,7 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
 
 # convenience function to generate a DistVar from another Variable object
 def asDistVar(var, axis='time', dist='KDE', lflatten=False, name=None, atts=None, 
-              asVar=True, lcheckVar=True, lcheckAxis=True, **kwargs):
+              lsuffix=False, asVar=True, lcheckVar=True, lcheckAxis=True, **kwargs):
   ''' generate a DistVar of type 'dist' from a Variable 'var'; use dimension 'axis' as sample axis '''
   if not isinstance(var,Variable): raise VariableError
   # this really only works for numeric types
@@ -517,7 +517,7 @@ def asDistVar(var, axis='time', dist='KDE', lflatten=False, name=None, atts=None
   if not var.data: var.load() 
   # create some sensible default attributes
   varatts = dict()
-  varatts['name'] = name or '{:s}_{:s}'.format(var.name,dist)
+  varatts['name'] = name or ( '{:s}_{:s}'.format(var.name,dist) if lsuffix else var.name)
   varatts['long_name'] = "'{:s}'-distribution of {:s}".format(dist,var.atts.get('long_name',var.name.title()))
   varatts['units'] = var.units # these will be the sample units, not the distribution units
   if atts is not None: varatts.update(atts)
@@ -548,10 +548,10 @@ class DistVar(Variable):
   representations of the distributions. All operations add an additional (innermost) dimension;
   representations of the distribution require a support vector, sampling only a sample size.. 
   '''
+  dist_type = '' # name of the distribution type
   paramAxis = None # axis for distribution parameters (None is distribution objects are stored)
 
   def __init__(self, name=None, units=None, axes=None, samples=None, params=None, axis=None, dtype=None,
-               ic_shape=0, ic_loc=None, ic_scale=None, # initial guesses for shape parameter (VarRV only)
                lflatten=False, masked=None, mask=None, fillValue=None, atts=None, ldebug=False, **kwargs):
     '''
     This method creates a new DisVar instance from data and parameters. If data is provided, a sample
@@ -604,7 +604,8 @@ class DistVar(Variable):
         elif len(axes) != samples.ndim-1: raise AxisError
       # estimate distribution parameters
       # N.B.: the method estimate() should be implemented by specific child classes
-      params = self._estimate_distribution(samples, ic_shape=ic_shape, ic_loc=ic_loc, ic_scale=ic_scale, ldebug=ldebug, **kwargs)
+      
+      params = self._estimate_distribution(samples, ldebug=ldebug, **kwargs)
       # N.B.: 'ic' are initial guesses for parameter values; 'kwargs' are for the estimator algorithm 
     # sample fillValue
     if fillValue is None: fillValue = np.NaN
@@ -634,6 +635,9 @@ class DistVar(Variable):
     # N.B.: in this variable dtype and units refer to the sample data, not the distribution!
     if self.hasAxis('params'):
       self.paramAxis = self.getAxis('params') 
+    # aliases
+    self.pdf = self.PDF
+    self.cdf = self.CDF
     
   @property
   def dtype(self):
@@ -688,7 +692,7 @@ class DistVar(Variable):
     return var
 
   # distribution-specific method; should be overloaded by subclass
-  def _estimate_distribution(self, samples, ic=None, ldebug=False, **kwargs):
+  def _estimate_distribution(self, samples, ldebug=False, **kwargs):
     ''' esimtate/fit distribution from sample array for each grid point and return parameters as ndarray  '''
     raise NotImplementedError
   # distribution-specific method; should be overloaded by subclass
@@ -752,7 +756,8 @@ class DistVar(Variable):
       dist_data = np.rollaxis(dist_data, axis=dist_data.ndim-1,start=axis_idx)
     # setup histogram axis and variable attributes (special case)
     if asVar:
-      basename = str('_').join(self.name.split('_')[:-1],)
+      basename = self.name[:self.name.find('_'+self.dist_type)] # remove _dist_name
+      #basename = str('_').join(self.name.split('_')[:-1],)
       if not lsqueezed:
         if support_axis is None:
           # generate new histogram axis
@@ -937,9 +942,10 @@ def kde_cdf(kde, support=None, n=0, fillValue=np.NaN):
 # Subclass of DistVar implementing Kernel Density Estimation
 class VarKDE(DistVar):
   ''' A subclass of DistVar implementing Kernel Density Estimation (scipy.stats.kde) ''' 
+  dist_type = 'kde'
   
   # distribution-specific method; should be overloaded by subclass
-  def _estimate_distribution(self, samples, ic_shape=0, ic_loc=None, ic_scale=None, ldebug=False, **kwargs):
+  def _estimate_distribution(self, samples, ic_shape=None, ic_args=None, ic_loc=None, ic_scale=None, ldebug=False, **kwargs):
     ''' esimtate/fit distribution from sample array for each grid point and return parameters as ndarray  '''
     fct = functools.partial(kde_estimate, ldebug=ldebug, **kwargs)
     kernels = apply_along_axis(fct, samples.ndim-1, samples).squeeze()
@@ -979,68 +985,60 @@ class VarKDE(DistVar):
     assert cdf.shape == self.shape + (len(support),)
     return cdf
   
-
 ## VarRV subclass and helper functions
 
 # N.B.: need to define helper functions outside of class definition, otherwise pickle / multiprocessing 
 #       will fail... need to fix arguments with functools.partial
 
-icres = None # persistent variable with most recent successful fit parameters
+# persistent variables with most recent successful fit parameters
+global_loc   = None # location parameter ("mean")
+global_scale = None # scale parameter ("standard deviation")
+global_shape = None # single shape parameter
+global_args  = None # multiple shape parameters
 # N.B.: globals are only visible within the process, so this works nicely with multiprocessing
 # estimate RV from sample vector
-def rv_fit(sample, dist_type=None, ic_shape=0, ic_loc=None, ic_scale=None, plen=None, lpersist=True, ldebug=False, **kwargs):
-  global icres
-  if ldebug: 
-    nonans = np.invert(np.isnan(sample)) # test for NaN's
-    if not np.any(nonans):
-      print('all NaN'); res = (np.NaN,)*plen
-    elif np.sum(nonans) < plen: 
-      print('NaN'); res = (np.NaN,)*plen # require at least plen non-NaN points 
-    else:
-      sample = sample[nonans] # remove NaN's
+def rv_fit(sample, dist_type=None, ic_shape=None, ic_args=None, ic_loc=None, ic_scale=None, plen=None, lpersist=False, ldebug=False, **kwargs):
+  nonans = np.invert(np.isnan(sample)) # test for NaN's
+  if np.sum(nonans) < plen: 
+    res = (np.NaN,)*plen # require at least plen non-NaN points 
+    if ldebug:
+      if not np.any(nonans):
+        print('all NaN'); res = (np.NaN,)*plen
+      elif np.sum(nonans) < plen: 
+        print('NaN'); res = (np.NaN,)*plen # require at least plen non-NaN points 
+  else:
+    sample = sample[nonans] # remove NaN's
+    if ldebug:
+      # fit will fail under these conditions, but they should not occur at this point
       if np.all(sample == sample[0]):
         print('equal'); res = (np.NaN,)*plen
       elif isinstance(sample,ma.MaskedArray) and np.all(sample.mask):
         print('masked'); res = (np.NaN,)*plen
-      else:
-        try: 
-          if lpersist: 
-            if icres is None: 
-              if ic_loc is None: ic_loc = sample.mean()
-              if ic_scale is None: ic_scale = sample.std() 
-              res = getattr(ss,dist_type).fit(sample, shape=ic_shape, loc=ic_loc, scale=ic_scale)
-              print("Setting first guess: {:s}".format(str(res)))
-            else: 
-              res = getattr(ss,dist_type).fit(sample, shape=icres[0], loc=icres[1], scale=icres[2], **kwargs)
-            if len(res) == 2: icres = (None,)+res
-            elif len(res) == 3: icres = res # update first guess
-            else: raise NotImplementedError
-          else:
-            if ic_loc is None: ic_loc = sample.mean()
-            if ic_scale is None: ic_scale = sample.std() 
-            res = getattr(ss,dist_type).fit(sample, shape=ic_shape, loc=ic_loc, scale=ic_scale, **kwargs)
-        except LinAlgError:
-          print('linalgerr'); res = (np.NaN,)*plen
-  else:
-    nonans = np.invert(np.isnan(sample)) # test for NaN's
-    if np.sum(nonans) < plen: 
-      res = (np.NaN,)*plen # require at least plen non-NaN points 
-    else:
-      sample = sample[nonans] # remove NaN's
+    # begin actual computation
+    try:
       if lpersist:
-        if icres is None: 
-          if ic_loc is None: ic_loc = sample.mean()
-          if ic_scale is None: ic_scale = sample.std() 
-          res = getattr(ss,dist_type).fit(sample, shape=ic_shape, loc=ic_loc, scale=ic_scale, **kwargs)
-        else: 
-          res = getattr(ss,dist_type).fit(sample, shape=icres[0], loc=icres[1], scale=icres[2], **kwargs)
-        if len(res) == 2: icres = (None,)+res
-        elif len(res) == 3: icres = res # update first guess
-        else: raise NotImplementedError
-      else: 
-        if ic_loc is None: ic_loc = sample.mean()
-        if ic_scale is None: ic_scale = sample.std() 
+        global global_loc, global_scale, global_shape, global_args # load globals
+        if global_loc is not None:   ic_loc   = global_loc
+        if global_scale is not None: ic_scale = global_scale
+      # estimate location and scale, if not specified
+      if ic_loc is None: ic_loc = sample.mean()
+      if ic_scale is None: ic_scale = sample.std()
+      # start parameter estimation
+      if plen == 2: # only location and shape (e.g. normal or Gumbel distributions)
+        res = getattr(ss,dist_type).fit(sample, loc=ic_loc, scale=ic_scale, **kwargs)
+        if lpersist: global_loc = res[0]; global_scale = res[1] # update first guess
+      elif plen == 3: # additional shape parameter (e.g. Generalized Extreme Value and Pareto distributions)
+        if lpersist and global_shape is not None: ic_shape = global_shape
         res = getattr(ss,dist_type).fit(sample, shape=ic_shape, loc=ic_loc, scale=ic_scale, **kwargs)
+        if lpersist: global_shape = res[0]; global_loc = res[1]; global_scale = res[2] # update first guess
+      elif plen > 3: # everything with more than one shape parameter...
+        if lpersist and global_args is not None:  ic_args  = global_args
+        res = getattr(ss,dist_type).fit(sample, *ic_args, loc=ic_loc, scale=ic_scale, **kwargs)
+        if lpersist: global_args = res[:-2]; global_loc = res[-2]; global_scale = res[-1] # update first guess
+      else: raise NotImplementedError
+    except LinAlgError:
+      if ldebug: print('linalgerr')
+      res = (np.NaN,)*plen
   return res # already is a tuple
 
 # evaluate a RV distribution type over a given support with given parameters
@@ -1079,10 +1077,11 @@ def rv_kstest(data_array, nparams=0, dist_type=None, ignoreNaN=True, N=20, alter
 # Subclass of DistVar implementing various random variable distributions
 class VarRV(DistVar):
   ''' A subclass of DistVar implementing Random Variable distributions (scipy.stats.rv_continuous) '''
-  dist_func = None # the scipy RV distribution object
+  dist_class = None # the scipy RV distribution object
   dist_type = ''   # name of the distribution
   
-  def __init__(self, dist='', **kwargs):
+  # initial guesses for shape parameter
+  def __init__(self, dist='', ic_shape=None, ic_args=None, ic_loc=None, ic_scale=None, **kwargs):
     ''' initialize a random variable distribution of type 'dist' '''
     # some aliases
     if dist.lower() in ('genextreme', 'gev'): dist = 'genextreme' 
@@ -1091,12 +1090,14 @@ class VarRV(DistVar):
     if dist == '':
       raise ArgumentError, "No distribution 'dist' specified!"
     elif dist in ss.__dict__: 
-      self.dist_func = getattr(ss,dist)
+      self.dist_class = getattr(ss,dist)
       self.dist_type = dist
     else: 
       raise ArgumentError, "No distribution '{:s}' in module scipy.stats!".format(dist)
+    # N.B.: the distribution info will be available to the _estimate_distribution-method
     # initialize distribution variable
-    super(VarRV,self).__init__(**kwargs)
+    super(VarRV,self).__init__(ic_shape=ic_shape, ic_args=ic_args, ic_loc=ic_loc, ic_scale=ic_scale, **kwargs)
+    # N.B.: ic-parameters and kwargs are passed one to _estimate_distribution-method
   
   def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Variable with just a link to the data. '''
@@ -1106,23 +1107,27 @@ class VarRV(DistVar):
   
   def __getattr__(self, attr):
     ''' use methods of from RV distribution through _get_dist wrapper '''
-    if hasattr(self.dist_func, attr):
+    if hasattr(self.dist_class, attr):
       attr = functools.partial(self._get_dist, self._compute_distribution, attr, rv_fct=attr)
     return attr
   
   # distribution-specific method; should be overloaded by subclass
-  def _estimate_distribution(self, samples, ic_shape=0, ic_loc=None, ic_scale=None, plen=None, lpersist=True, ldebug=False, **kwargs):
+  def _estimate_distribution(self, samples, ic_shape=None, ic_args=None, ic_loc=None, ic_scale=None, lpersist=False, ldebug=False, **kwargs):
     ''' esimtate/fit distribution from sample array for each grid point and return parameters as ndarray  '''
-    if lpersist: 
-      global icres
-      icres = None # reset initial conditions
-    if plen is None: 
-      if self.dist_type == 'norm': plen = 2 # mean and std. dev.
-      else: plen = 3 # default for most distributions
-    fct = functools.partial(rv_fit, ic_shape=ic_shape, ic_loc=ic_loc, ic_scale=ic_scale, plen=plen, 
+    if lpersist: # reset global parameters
+      global_loc   = None # location parameter ("mean")
+      global_scale = None # scale parameter ("standard deviation")
+      global_shape = None # single shape parameter
+      global_args  = None # multiple shape parameters
+    plen = self.dist_class.numargs + 2 # infer number of parameters
+    fct = functools.partial(rv_fit, ic_shape=ic_shape, ic_args=ic_args, ic_loc=ic_loc, ic_scale=ic_scale, plen=plen, 
                             dist_type=self.dist_type, lpersist=lpersist, ldebug=ldebug, **kwargs)
     params = apply_along_axis(fct, samples.ndim-1, samples)
-    if lpersist: icres = None # reset; in parallel mode actually not necessary
+    if lpersist: # reset global parameters 
+      global_loc   = None # location parameter ("mean")
+      global_scale = None # scale parameter ("standard deviation")
+      global_shape = None # single shape parameter
+      global_args  = None # multiple shape parameters
     assert samples.shape[:-1]+(plen,) == params.shape
     # return an array of kernels
     return params
@@ -1212,7 +1217,7 @@ class VarRV(DistVar):
           else: return None
       sample_data = sample.getArray(unmask=True, fillValue=fillValue, copy=True) # actual data (will be reordered)
       # reorder axes so that shape is compatible
-      z = self.ndim-1; iaxes = [-1]*self.ndim 
+      z = self.ndim-1; iaxes = [-1]*sample.ndim 
       for iax,ax in enumerate(sample.axes):
         if self.hasAxis(ax.name): # adopt order from self
           iaxes[self.axisIndex(ax.name)] = iax

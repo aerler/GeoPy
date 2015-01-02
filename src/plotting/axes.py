@@ -14,6 +14,7 @@ from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 # internal imports
 from geodata.base import Variable, Ensemble
+from geodata.stats import DistVar
 from geodata.misc import ListError, AxisError, ArgumentError, isEqual
 from plotting.misc import smooth, getPlotValues
 from collections import OrderedDict
@@ -35,8 +36,8 @@ class MyAxes(Axes):
   yunits       = None
   ypad         = 0
   
-  def linePlot(self, varlist, linestyles=None, varatts=None, legend=None, llabel=True, labels=None, xticks=True, 
-               yticks=True, hline=None, vline=None, title=None, reset_color=True, flipxy=None, xlabel=True, ylabel=True,
+  def linePlot(self, varlist, bins=None, support=None, linestyles=None, varatts=None, legend=None, llabel=True, labels=None, 
+               xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=True, flipxy=None, xlabel=True, ylabel=True,
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False, **kwargs):
     ''' A function to draw a list of 1D variables into an axes, 
         and annotate the plot based on variable properties. '''
@@ -45,6 +46,13 @@ class MyAxes(Axes):
     if isinstance(varlist,Variable): varlist = [varlist]
     elif not isinstance(varlist,(tuple,list,Ensemble)) or not all([isinstance(var,Variable) for var in varlist]): raise TypeError
     for var in varlist: var.squeeze() # remove singleton dimensions
+    # evaluate distribution variables on support/bins
+    if support is not None or bins is not None:
+      if support is not None and bins is not None: raise ArgumentError
+      if support is None and bins is not None: support = bins
+      for var in varlist: 
+        if not isinstance(var,DistVar): raise TypeError, "{:s} ({:S})".format(var.name, var.__class__.__name__)
+      varlist = [var.pdf(support=support) for var in varlist]
     # linestyles is just a list of line styles for each plot
     if isinstance(linestyles,(basestring,NoneType)): linestyles = [linestyles]*len(varlist)
     elif not isinstance(linestyles,(tuple,list)): 

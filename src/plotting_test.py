@@ -112,7 +112,8 @@ class LinePlotTest(unittest.TestCase):
     var1 = self.var1; var2 = self.var2
     # create plot
     for i,ax in enumerate(axes.flatten()):
-      plts = ax.linePlot([var1, var2], ylim=var1.limits(), legend=0, title='Panel {:d}'.format(i+1))
+      plts = ax.linePlot([var1, var2], ylim=var1.limits(), legend=0,)
+      ax.addTitle('Panel {:d}'.format(i+1))
       assert len(plts) == 2
     # add common legend
     fig.addSharedLegend(plots=plts)
@@ -156,7 +157,8 @@ class BarPlotTest(unittest.TestCase):
     varlist = [self.var1, self.var2]
     nbins = 10
     # create regular histogram
-    bins, ptchs = ax.histogram(varlist, bins=nbins, legend=2, alpha=0.5, rwidth=0.8)
+    bins, ptchs = ax.histogram(varlist, bins=nbins, legend=2, alpha=0.5, rwidth=0.8, histtype='bar')
+    # histtype = 'bar' | 'barstacked' | 'step' | 'stepfilled'
     assert len(ptchs) == 2
     assert len(bins) == nbins
     vmin = np.min([var.min() for var in varlist])
@@ -165,8 +167,8 @@ class BarPlotTest(unittest.TestCase):
     assert bins[0] == vmin and bins[-1] == vmax
     # add a KDE plot
     support = np.linspace(vmin, vmax, 100)
-    kdevars = [var.kde(lflatten=True).histogram(support=support) for var in varlist]
-    ax.linePlot(kdevars, linewidth=2)
+    kdevars = [var.kde(lflatten=True) for var in varlist]
+    ax.linePlot(kdevars, support=support, linewidth=2)
     # add label
     pval = kstest(varlist[0], varlist[1], lflatten=True) 
     pstr = 'p-value = {:3.2f}'.format(pval)
@@ -177,14 +179,14 @@ if __name__ == "__main__":
 
     
     specific_tests = None
-#     specific_tests = ['CombinedLinePlot']
+    specific_tests = ['CombinedLinePlot']
 #     specific_tests = ['AxesGridLinePlot']    
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
     tests += ['LinePlot'] 
-    tests += ['BarPlot']
+#     tests += ['BarPlot']
     
 
     # construct dictionary of test classes defined above
