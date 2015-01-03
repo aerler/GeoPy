@@ -756,7 +756,9 @@ class DistVar(Variable):
       dist_data = np.rollaxis(dist_data, axis=dist_data.ndim-1,start=axis_idx)
     # setup histogram axis and variable attributes (special case)
     if asVar:
-      basename = self.name[:self.name.find('_'+self.dist_type)] # remove _dist_name
+      if self.name.endswith('_'+self.dist_type):
+        basename = self.name[:self.name.find('_'+self.dist_type)] # remove _dist_name
+      else: basename = self.name 
       #basename = str('_').join(self.name.split('_')[:-1],)
       if not lsqueezed:
         if support_axis is None:

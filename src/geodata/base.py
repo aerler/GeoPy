@@ -2376,11 +2376,11 @@ class Ensemble(object):
     furthermore, the Ensemble class provides functionality to execute Dataset
     class methods collectively for all members, and return the results in a tuple.
   '''
-  members  = None    # list of members of the ensemble
-  basetype = Dataset # base class of the ensemble members
-  idkey    = 'name'  # property of members used for unique identification
-  name     = ''      # name of the ensemble
-  title    = ''      # printable title used for the ensemble
+  members   = None    # list of members of the ensemble
+  basetype  = Dataset # base class of the ensemble members
+  idkey     = 'name'  # property of members used for unique identification
+  ens_name  = ''      # name of the ensemble
+  ens_title = ''      # printable title used for the ensemble
   
   def __init__(self, *members, **kwargs):
     ''' Initialize an ensemble from a list of members (the list arguments);
@@ -2397,8 +2397,8 @@ class Ensemble(object):
     # add members
     self.members = list(members)
     # add certain properties
-    self.name = kwargs.get('name','')
-    self.title = kwargs.get('title','')
+    self.ens_name = kwargs.get('name','')
+    self.ens_title = kwargs.get('title','')
     # no need to be too restrictive
     if 'basetype' in kwargs:
       self.basetype = kwargs.pop('basetype') # don't want to add that later! 
@@ -2497,12 +2497,12 @@ class Ensemble(object):
   def prettyPrint(self, short=False):
     ''' Print a string representation of the Ensemble. '''
     if short:      
-      string = '{0:s} {1:s}'.format(self.__class__.__name__,self.name)
+      string = '{0:s} {1:s}'.format(self.__class__.__name__,self.ens_name)
       string += ', {:2d} Members ({:s})'.format(len(self.members),self.basetype.__name__)
     else:
       string = '{0:s}   {1:s}\n'.format(self.__class__.__name__,str(self.__class__))
-      string += 'Name: {0:s},  '.format(self.name)
-      string += 'Title: {0:s}\n'.format(self.title)
+      string += 'Name: {0:s},  '.format(self.ens_name)
+      string += 'Title: {0:s}\n'.format(self.ens_title)
       string += 'Members:\n'
       for member in self.members: string += ' {0:s}\n'.format(member.prettyPrint(short=True))
       string += 'Basetype: {0:s},  '.format(self.basetype.__name__)

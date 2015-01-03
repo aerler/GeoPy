@@ -233,7 +233,7 @@ if __name__ == '__main__':
       ## load data  
       explist, titles, linestyles = getDatasets(expset, titles=titles)
       exps, titles, nlist = loadDatasets(explist, n=None, varlist=loadlist,
-					 titles=titles, periods=period, 
+					                               titles=titles, periods=period, 
                                          domains=domains, grids=grid,
                                          resolutions='025', filetypes=allfiletypes,                                          
                                          lWRFnative=False, ltuple=True,

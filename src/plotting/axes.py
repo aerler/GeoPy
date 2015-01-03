@@ -13,8 +13,8 @@ import matplotlib as mpl
 from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 # internal imports
-from geodata.base import Variable, Ensemble
-from geodata.stats import DistVar
+from geodata.base import Variable, Dataset, Ensemble
+from geodata.stats import DistVar, VarKDE, VarRV  
 from geodata.misc import ListError, AxisError, ArgumentError, isEqual
 from plotting.misc import smooth, getPlotValues
 from collections import OrderedDict
@@ -27,6 +27,7 @@ class MyAxes(Axes):
     information. The custom Figure uses this Axes class by default.
   '''
   variables    = None
+  plots        = None
   title_height = 2
   flipxy       = False
   xname        = None
@@ -36,7 +37,7 @@ class MyAxes(Axes):
   yunits       = None
   ypad         = 0
   
-  def linePlot(self, varlist, bins=None, support=None, linestyles=None, varatts=None, legend=None, llabel=True, labels=None, 
+  def linePlot(self, varlist, varname=None, bins=None, support=None, linestyles=None, varatts=None, legend=None, llabel=True, labels=None, 
                xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=True, flipxy=None, xlabel=True, ylabel=True,
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False, **kwargs):
     ''' A function to draw a list of 1D variables into an axes, 
@@ -44,15 +45,20 @@ class MyAxes(Axes):
     # varlist is the list of variable objects that are to be plotted
     #print varlist
     if isinstance(varlist,Variable): varlist = [varlist]
-    elif not isinstance(varlist,(tuple,list,Ensemble)) or not all([isinstance(var,Variable) for var in varlist]): raise TypeError
+    elif not isinstance(varlist,(tuple,list,Ensemble)):raise TypeError
+    if varname is not None:
+      varlist = [getattr(var,varname) if isinstance(var,Dataset) else var for var in varlist]
+    if not all([isinstance(var,Variable) for var in varlist]): raise TypeError
     for var in varlist: var.squeeze() # remove singleton dimensions
     # evaluate distribution variables on support/bins
     if support is not None or bins is not None:
       if support is not None and bins is not None: raise ArgumentError
       if support is None and bins is not None: support = bins
       for var in varlist: 
-        if not isinstance(var,DistVar): raise TypeError, "{:s} ({:S})".format(var.name, var.__class__.__name__)
-      varlist = [var.pdf(support=support) for var in varlist]
+        if not isinstance(var,(DistVar,VarKDE,VarRV)): raise TypeError, "{:s} ({:s})".format(var.name, var.__class__.__name__)
+      newlist = [var.pdf(support=support) for var in varlist]
+      for new,var in zip(newlist,varlist): new.dataset= var.dataset # preserve dataset links to construct references
+      varlist = newlist
     # linestyles is just a list of line styles for each plot
     if isinstance(linestyles,(basestring,NoneType)): linestyles = [linestyles]*len(varlist)
     elif not isinstance(linestyles,(tuple,list)): 
@@ -90,6 +96,7 @@ class MyAxes(Axes):
     else: raise ArgumentError, "Incompatible length of label list."
     # loop over variables
     plts = [] # list of plot handles
+    if self.plots is None: self.plots = []
     if self.variables is None: self.variables = OrderedDict()
     for n,var,linestyle,varatt in zip(xrange(len(varlist)),varlist,linestyles,varatts):
       varax = var.axes[0]
@@ -110,16 +117,17 @@ class MyAxes(Axes):
       self.variables[label] = var
       # figure out keyword options
       kwatts = kwargs.copy(); kwatts.update(varatt) # join individual and common attributes     
-      if llabel: kwatts['label'] = label
+      kwatts['label'] = label if llabel else None
       # N.B.: other scaling behavior could be added here
-      if lprint: print varname, varunits, val.mean(), val.std()   
+      if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)   
       if lsmooth: val = smooth(val)
       # figure out orientation
       if self.flipxy: xx,yy = val, axe 
       else: xx,yy = axe, val
       # call plot function
-      if linestyle is None: plts.append(self.plot(xx, yy, **kwatts)[0])
-      else: plts.append(self.plot(xx, yy, linestyle, **kwatts)[0])
+      if linestyle is None: plt = self.plot(xx, yy, **kwatts)[0]
+      else: plt = self.plot(xx, yy, linestyle, **kwatts)[0]
+      plts.append(plt); self.plots.append(plt)
     # set plot scale (log/linear)
     if xlog: self.set_xscale('log')
     else: self.set_xscale('linear')
@@ -158,16 +166,18 @@ class MyAxes(Axes):
     # return handle
     return plts
 
-  def histogram(self, varlist, bins=None, binedgs=None, histtype='bar', lstacked=False, lnormalize=True,
+  def histogram(self, varlist, varname=None, bins=None, binedgs=None, histtype='bar', lstacked=False, lnormalize=True,
                 lcumulative=0, varatts=None, legend=None, colors=None, llabel=True, labels=None, align='mid', rwidth=None, 
                 bottom=None, weights=None, xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=True, 
                 flipxy=None, xlabel=True, ylabel=True, log=False, xlim=None, ylim=None, lprint=False, **kwargs):
     ''' A function to draw histograms of a list of 1D variables into an axes, 
         and annotate the plot based on variable properties. '''
     # varlist is the list of variable objects that are to be plotted
-    #print varlist
     if isinstance(varlist,Variable): varlist = [varlist]
-    elif not isinstance(varlist,(tuple,list,Ensemble)) or not all([isinstance(var,Variable) for var in varlist]): raise TypeError
+    elif not isinstance(varlist,(tuple,list,Ensemble)):raise TypeError
+    if varname is not None:
+      varlist = [getattr(var,varname) if isinstance(var,Dataset) else var for var in varlist]
+    if not all([isinstance(var,Variable) for var in varlist]): raise TypeError
     for var in varlist: var.squeeze() # remove singleton dimensions
     # varatts are variable-specific attributes that are parsed for special keywords and then passed on to the
     if varatts is None: varatts = [dict()]*len(varlist)  
@@ -337,18 +347,18 @@ class MyAxes(Axes):
     ''' format x-tick labels '''
     xticks = self._tickLabels(xticks, self.get_xaxis())
     yticks = self.get_yaxis().get_ticklabels()
-    if len(xticks) > 0 and len(yticks) > 0:
-      if xticks[-1].get_visible() and yticks[-1].get_visible(): pass
-      elif not loverlap: xticks[0].set_visible(False)
+    if not loverlap and len(xticks) > 0 and (
+        len(yticks) == 0 or not yticks[-1].get_visible() ):
+        xticks[0].set_visible(False)
     return xticks
   def yTickLabels(self, yticks, loverlap=False):
     ''' format y-tick labels '''
     xticks = self.get_xaxis().get_ticklabels()
     yticks = self._tickLabels(yticks, self.get_yaxis())
-    if len(xticks) > 0 and len(yticks) > 0:
-      if xticks[-1].get_visible() and yticks[-1].get_visible(): pass
-      elif not loverlap: yticks[0].set_visible(False)
-    return xticks
+    if not loverlap and len(yticks) > 0 and (
+        len(xticks) == 0 or not xticks[-1].get_visible() ):
+        yticks[0].set_visible(False)
+    return yticks
   def _tickLabels(self, ticks, axis):
     ''' helper method to format axes ticks '''
     if ticks is True: 

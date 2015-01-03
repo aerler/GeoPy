@@ -11,9 +11,10 @@ from types import NoneType, ModuleType
 import numpy as np
 from matplotlib.figure import Figure, SubplotBase, subplot_class_factory
 # internal imports
-from geodata.misc import isInt 
+from geodata.misc import isInt , ArgumentError
 from plotting.axes import MyAxes, MyLocatableAxes, Axes
 from plotting.misc import loadMPL
+from sympy.physics.quantum.circuitplot import matplotlib
 
 
 ## my new figure class
@@ -24,11 +25,12 @@ class MyFigure(Figure):
     (This class does not support built-in projections; use the Basemap functionality instead.)  
   '''
   # some default parameters
-  title_height = 0.03
-  shared_legend = None
-  legend_axes = None
+  title_height    = 0.03
+  print_setings  = None
+  shared_legend   = None
+  legend_axes     = None
   shared_colorbar = None
-  colorbar_axes = None
+  colorbar_axes   = None
   
   def __init__(self, *args, **kwargs):
     ''' constructor that accepts custom axes_class as keyword argument '''
@@ -46,6 +48,8 @@ class MyFigure(Figure):
     # save axes class for later
     self.axes_class = axes_class   
     self.axes_args = axes_args 
+    # default print options
+    self.print_setings = dict(dpi=300)
     
 # N.B.: using the built-in mechanism to choose Axes seems to cause more problems
 #     from matplotlib.projections import register_projection
@@ -172,14 +176,15 @@ class MyFigure(Figure):
     # complete input
     if labels is None: labels = [plt.get_label() for plt in plots]
     elif not isinstance(labels, (list,tuple)): raise TypeError
-    if not isinstance(plots, (list,tuple,NoneType)): raise TypeError
-    # selfure out fontsize and row numbers  
+    if plots is None: plots = self.axes[0].plots
+    elif not isinstance(plots, (list,tuple,NoneType)): raise TypeError
+    # figure out fontsize and row numbers  
     fontsize = fontsize or self.axes[0].get_yaxis().get_label().get_fontsize() # or fig._suptitle.get_fontsize()
     nlen = len(plots) if plots else len(labels)
     if fontsize > 11: ncols = 2 if nlen == 4 else 3
     else: ncols = 3 if nlen == 6 else 4              
     # make room for legend
-    leghgt = np.ceil(float(nlen)/float(ncols)) * fontsize/200. + 0.005
+    leghgt = np.ceil(float(nlen)/float(ncols)) * fontsize/300. + 0.003
     ax = self.add_axes([0, 0, 1,leghgt]) # new axes to hold legend, with some attributes
     ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
     self.updateSubplots(mode='shift', bottom=leghgt) # shift bottom upwards
@@ -223,6 +228,34 @@ class MyFigure(Figure):
                                prop=prop, **args))      
     return ats
   
+  # save figure
+  def save(self, *args, **kwargs):
+    ''' save figure with some sensible default settings '''
+    if len(args) == 0: raise ArgumentError
+    # get option
+    folder = kwargs.pop('folder', None)
+    lfeedback = kwargs.pop('lfeedback', False)
+    filetype = kwargs.pop('filetype', 'png')
+    if not filetype.startswith('.'): filetype = '.'+filetype
+    # construct filename
+    filename = ''
+    for arg in args: 
+      if isinstance(arg, (list,tuple)):
+        for a in arg: filename += a
+      else: filename += str(arg)
+      filename += '_'
+    filename = filename[:-1] # remove last underscore
+    if not filename.endswith(filetype): filename += filetype
+    # update print settings
+    sf = self.print_setings.copy() # print properties
+    sf.update(kwargs) # update with kwargs
+    # save file
+    if lfeedback: print('Saving figure in '+filename)
+    if folder is not None:
+      filename = '{:s}/{:s}'.format(folder,filename)
+      if lfeedback: print("('{:s}')".format(folder))
+    self.savefig(filename, **sf) # save figure to pdf
+
 
 ## convenience function to return a figure and an array of ImageGrid axes
 def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=None,
@@ -230,9 +263,14 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=No
              axes_pad = None, add_all=True, share_all=None, aspect=False,
              label_mode='L', cbar_mode=None, cbar_location='right', lreduce=True,
              cbar_pad=None, cbar_size='5%', axes_class=None, axes_args=None,
-             lsamesize=True, figure_class=None, figure_args=None): 
+             lsamesize=True, lpublication=False, figure_class=None, figure_args=None): 
   # configure matplotlib
-  if mpl is None: import matplotlib as mpl
+  if mpl is None: 
+    import matplotlib as mpl
+    if lpublication: 
+      mpl.rc('lines', linewidth=1); mpl.rc('font', size=10)
+    else: 
+      mpl.rc('lines', linewidth=1.5); mpl.rc('font', size=12)
   elif isinstance(mpl,dict): mpl = loadMPL(**mpl) # there can be a mplrc, but also others
   elif not isinstance(mpl,ModuleType): raise TypeError
   # default figure class
@@ -251,15 +289,21 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=No
     else: raise NotImplementedError
   elif not (isinstance(subplot,(tuple,list)) and len(subplot) == 2) and all(isInt(subplot)): raise TypeError    
   # create figure
-  if figsize is None: 
-    if subplot == (1,1): 
-      if lsamesize: figsize = (6.25,6.25)
-      else: figsize = (3.75,3.75)
-    elif subplot == (1,2) or subplot == (1,3): figsize = (6.25,3.75)
-    elif subplot == (2,1) or subplot == (3,1): 
-      if lsamesize: figsize = (3.75,6.25)
-      else: (3.75,7)
-    else: figsize = (6.25,6.25)
+  if figsize is None:
+    if lpublication: 
+      if subplot == (1,1): 
+        if lsamesize: figsize = (6.25,6.25)
+        else: figsize = (3.75,3.75)
+      elif subplot == (1,2) or subplot == (1,3): figsize = (6.25,3.75)
+      elif subplot == (2,1) or subplot == (3,1): 
+        if lsamesize: figsize = (3.75,6.25)
+        else: (3.75,7)
+      else: figsize = (6.25,6.25)
+    else:
+      if subplot == (1,1): figsize = (5,5)
+      elif subplot == (1,2) or subplot == (1,3): figsize = (9,5)
+      elif subplot == (2,1) or subplot == (3,1): figsize = (5,9)
+      else: figsize = (9,9)
     #elif subplot == (2,2) or subplot == (3,3): figsize = (6.25,6.25)
     #else: raise NotImplementedError
   # figure out margins
@@ -268,7 +312,7 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=No
     if subplot == (1,1): margins = (0.1,0.1,0.85,0.85)
     elif subplot == (1,2) or subplot == (1,3): margins = (0.06,0.1,0.92,0.87)
     elif subplot == (2,1) or subplot == (3,1): margins = (0.09,0.11,0.88,0.82)
-    elif subplot == (2,2) or subplot == (3,3): margins = (0.055,0.055,0.925,0.925)
+    elif subplot == (2,2) or subplot == (3,3): margins = (0.075,0.075,0.925,0.925)
     else: margins = (0.09,0.11,0.88,0.82)
     #elif subplot == (2,2) or subplot == (3,3): margins = (0.09,0.11,0.88,0.82)
     #else: raise NotImplementedError    

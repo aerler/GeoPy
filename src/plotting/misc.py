@@ -19,9 +19,9 @@ from utils.signalsmooth import smooth # commonly used in conjunction with plotti
 # import matplotlib.pylab as pyl
 
 # load matplotlib with some custom defaults
-def loadMPL(linewidth=None, mplrc=None):
+def loadMPL(linewidth=None, mplrc=None, backend='QT4Agg', lion=False):
   import matplotlib as mpl
-  mpl.use('QT4Agg') # enforce QT4
+  mpl.use(backend) # enforce QT4
   import matplotlib.pylab as pyl
   # some custom defaults  
   if linewidth is not None:
@@ -35,7 +35,8 @@ def loadMPL(linewidth=None, mplrc=None):
     for (key,value) in mplrc.iteritems():
       mpl.rc(key,**value)  # apply parameters
   # prevent figures from closing: don't run in interactive mode, or pyl.show() will not block
-  pyl.ioff()
+  if lion: pyl.ion()
+  else: pyl.ioff()
   # return matplotlib instance with new parameters
   return mpl, pyl
 
