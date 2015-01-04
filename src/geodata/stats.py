@@ -686,6 +686,8 @@ class DistVar(Variable):
       assert len(self.axes) == self.data_array.ndim
       args = dict(axes=self.axes, params=self.data_array, dtype=self.dtype, fillValue=self.fillValue,
                   masked=self.masked, atts=self.atts.copy(), plot=self.plot.copy())
+      if 'data' in newargs:
+        newargs['params'] = newargs.pop('data') # different name for the "data"
       args.update(newargs) # apply custom arguments (also arguments related to subclasses)      
       var = self.__class__(**args) # create a new basic Variable instance
     # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
@@ -1103,9 +1105,9 @@ class VarRV(DistVar):
   
   def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Variable with just a link to the data. '''
-    if 'dist' in newargs: raise ArgumentError
-    else: newargs['dist'] = self.dist_type
-    return super(VarRV,self).copy(deepcopy=False, **newargs)
+    #if 'dist' in newargs: raise ArgumentError # can happen through deepcopy
+    newargs['dist'] = self.dist_type
+    return super(VarRV,self).copy(deepcopy=deepcopy, **newargs)
   
   def __getattr__(self, attr):
     ''' use methods of from RV distribution through _get_dist wrapper '''
@@ -1190,19 +1192,53 @@ class VarRV(DistVar):
     assert samples.shape == self.shape[:-1] + (n,)
     assert np.issubdtype(samples.dtype, self.dtype)
     return samples
+  
+  # rescale the distribution (change the parameters)
+  def rescale(self, reference=None, lflatten=True, shape=None, loc=None, scale=None, axis_idx=None, fillValue=None):
+    ''' rescale the distribution parameters with given values '''
+    # figure out array order 
+    sax = self.ndim-1
+    if len(self.paramAxis) == 2: iloc=0; iscale=1; ishape=None
+    elif len(self.paramAxis) == 3: ishape=0; iloc=1; iscale=2
+    else: raise NotImplementedError
+    if shape is not None and ishape is None: raise ArgumentError
+    # roll parameter axis to the front
+    data_array = np.rollaxis(self.data_array, axis=sax, start=0)
+    # pre-process input
+    if reference is not None:
+      # get properly formatted sample data
+      sample_data = self._extractSampleData(reference, axis_idx=axis_idx, fillValue=fillValue, lcheckVar=True, lcheckAxis=True)
+      if lflatten: 
+        sample_data = sample_data.ravel() 
+        sax = None # compute moments over flat array, not along the sample axis (would fail anyway)
+      # N.B.: if the DistVar is already "flat", lflatten is unneccessary, since _extractSampleData will flatten the sample
+      # estimate location and scale from a given reference
+      if loc is None: 
+        norm = np.nanmean(data_array[iloc]).ravel() if lflatten else data_array[iloc]
+        loc = np.nanmean(sample_data, axis=sax) / norm
+      if scale is None: 
+        norm = np.nanmean(data_array[iscale]).ravel() if lflatten else data_array[iscale]
+        scale = np.nanstd(sample_data, axis=sax) / norm
+    # apply scaling
+    if loc is not None: data_array[iloc] *= loc
+    if scale is not None: data_array[iscale] *= scale
+    if shape is not None: data_array[ishape] *= shape
+    # N.B.: rolling back axes should not be necessary, since np.rollaxis only returns a view and all operations are in-place
+    # return scale factors for further usage
+    if ishape is None: return loc, scale
+    else: return shape, loc, scale
 
-  # Kolmogorov-Smirnov Test for goodness-of-fit
-  def kstest(self, sample, name=None, axis_idx=None, lstatistic=False, 
-             fillValue=None, ignoreNaN=True, N=20, alternative='two-sided', mode='approx', 
-             asVar=True, lcheckVar=True, lcheckAxis=True, pvaratts=None, **kwargs):
-    ''' apply a Kolmogorov-Smirnov Test to the sample data, based on this distribution '''
+  # convenience function to get properly formatted sample data from a sample argument
+  def _extractSampleData(self, sample, axis_idx=None, fillValue=None, lcheckVar=True, lcheckAxis=True):
+    ''' Check if a sample is consistent with the distribution attributes and return a properly 
+        formatted sample array with the same shape as the distribution variable and the sample 
+        dimension shifted to the back. '''
     # check input
-    if self.dtype.kind in ('S',): 
-      if lcheckVar: raise VariableError, "Statistical tests does not work with string Variables!"
+    if sample.dtype.kind in ('S',): 
+      if lcheckVar: raise VariableError, "Statistical tests do not work with string Variables!"
       else: return None
-    if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
     # choose a fillValue, because np.histogram does not ignore masked values but does ignore NaNs
-    if fillValue is None and self.masked:
+    if fillValue is None:
       if np.issubdtype(self.dtype,np.integer): fillValue = 0
       elif np.issubdtype(self.dtype,np.inexact): fillValue = np.NaN
       else: raise NotImplementedError
@@ -1229,7 +1265,7 @@ class VarRV(DistVar):
       assert all(iax >= 0 for iax in iaxes)
       sample_data = np.transpose(sample_data, axes=iaxes)
     else:
-      if isinstance(sample,ma.MaskedArray): sample_data = sample.filled(np.NaN)
+      if isinstance(sample,ma.MaskedArray): sample_data = sample.filled(fillValue)
       else: sample_data = sample.copy()
       if axis_idx is not None and axis_idx != sax:
         sample_data = np.rollaxis(sample_data, axis=axis_idx, start=sample.ndim)
@@ -1240,6 +1276,22 @@ class VarRV(DistVar):
     # collapse all remaining dimensions at the end and use as sample dimension
     sample_data = sample_data.reshape(sample_data.shape[:sax]+(np.prod(sample_data.shape[sax:]),))
     assert sample_data.ndim == self.ndim
+    # return properly formatted sample data
+    return sample_data
+
+  # Kolmogorov-Smirnov Test for goodness-of-fit
+  def kstest(self, sample, name=None, axis_idx=None, lstatistic=False, 
+             fillValue=None, ignoreNaN=True, N=20, alternative='two-sided', mode='approx', 
+             asVar=True, lcheckVar=True, lcheckAxis=True, pvaratts=None, **kwargs):
+    ''' apply a Kolmogorov-Smirnov Test to the sample data, based on this distribution '''
+    # check input
+    if self.dtype.kind in ('S',): 
+      if lcheckVar: raise VariableError, "Statistical tests does not work with string Variables!"
+      else: return None
+    if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
+    # get properly formatted sample data
+    sax = self.ndim-1
+    sample_data = self._extractSampleData(sample, axis_idx=axis_idx, fillValue=fillValue, lcheckVar=True, lcheckAxis=True)
     # apply test function (parallel)
     fct = functools.partial(rv_kstest, nparams=len(self.paramAxis), dist_type=self.dist_type, ignoreNaN=ignoreNaN, N=N, alternative=alternative, mode=mode)
     data_array = np.concatenate((self.data_array, sample_data), axis=sax) # merge params and sample arrays (only one argument array per point along axis) 

@@ -11,6 +11,7 @@ import netCDF4 as nc
 import numpy as np
 import numpy.ma as ma
 import os
+import gc
 
 # import modules to be tested
 from geodata.nctools import writeNetCDF
@@ -129,16 +130,20 @@ class BaseVarTest(unittest.TestCase):
     # arithmetic test
     a = var + rav
     assert isEqual(self.data*2, a.data_array)
+    del a; gc.collect()
     s = var - rav
     assert isZero(s.data_array)
+    del s; gc.collect()
     m = var * rav
     assert isEqual(self.data**2, m.data_array)
     if (rav.data_array == 0).any(): # can't divide by zero!
       if (rav.data_array != 0).any():  # test masking: mask zeros
         rav.mask(np.logical_not(rav.data_array), fillValue=rav.fillValue, merge=True)
       else: raise TypeError, 'Cannot divide by all-zero field!' 
+    del m; gc.collect()
     d = var / rav
     assert isOne(d.data_array)
+    del d; gc.collect()
     # test results
     #     print (self.data.filled() - var.data_array.filled()).max()
 #     assert isEqual(np.ones_like(self.data), d.data_array)
@@ -236,22 +241,32 @@ class BaseVarTest(unittest.TestCase):
         if tmp.shape[-1] > 2: assert isZero(tmp.data_array[:,:,0]) # held fixed
       else:
         tmp = getattr(var,dist)(axis=t.name, lpersist=True, ldebug=False)
-      distvar = tmp.copy(deepcopy=True)
+      distvar = tmp.copy(deepcopy=True) # everything should work equally well on a copy
       assert distvar.shape == tmp.shape 
       assert distvar.masked == tmp.masked
       assert distvar.units == var.units
       assert distvar.dtype == var.dtype
+      del tmp; gc.collect()
       print "\n   ***   computed {:s} distribution   ***".format(dist.upper())
-      # test some moments
+      # some VarRV-specific stuff
       if dist != 'kde':
+        # test rescaling
+        if lsimple: 
+          scales = distvar.rescale(loc=1., scale=1., lflatten=True)
+          assert scales == (1., 1.) if len(scales) == 2 else scales == (None, 1., 1.)
+        else: scales = distvar.rescale(reference=var, lflatten=True)
+        # N.B.: the standard deviation will change due to flattening (non-linear)
+        # test some moments
         mom = 'mvsk'
         stats = distvar.stats(moments=mom)
         assert stats.shape == var.shape[1:]+(len(mom),)
         mom0 = distvar.moment(moments=1)
         assert mom0.shape == var.shape[1:]
         #print mom0.data_array
+        #print var.data_array.mean(axis=0)
         assert not lsimple or isEqual(mom0.data_array, var.data_array.mean(axis=0), eps=0.1)
         assert distvar.entropy().shape == var.shape[1:]
+        del mom0; gc.collect()
         #print distvar.entropy().data_array
       # test histogram
       if lsimple:
@@ -274,7 +289,8 @@ class BaseVarTest(unittest.TestCase):
       assert hvar.axes[0].units == var.units
       if var.masked:
         assert hvar.masked
-        assert np.all(hvar.data_array.mask, axis=0).sum() >= np.all(var.data_array.mask, axis=0).sum()    
+        assert np.all(hvar.data_array.mask, axis=0).sum() >= np.all(var.data_array.mask, axis=0).sum() 
+      del hvar; gc.collect()
       # test resampling
       rvar = distvar.resample(N=len(t), asVar=True, axis_idx=0)
       assert rvar.shape == var.shape
@@ -283,6 +299,7 @@ class BaseVarTest(unittest.TestCase):
       if var.masked: # check masks
         assert rvar.masked
         assert np.all(rvar.data_array.mask, axis=0).sum() >= np.all(var.data_array.mask, axis=0).sum()    
+      del rvar; gc.collect()
       # test cumulative distribution function
       # N.B.: var.CDF gives only integer-typeresults, even if cast as float...
       cvar = distvar.CDF(bins=bins, asVar=True, axis_idx=None)
@@ -293,8 +310,10 @@ class BaseVarTest(unittest.TestCase):
         # N.B.: the CDF/sample axes here are in different locations!    
         assert np.all(cvar.data_array.mask, axis=-1).sum() >= np.all(var.data_array.mask, axis=0).sum()
       assert ma.all(np.diff(cvar.data_array, axis=-1) >= 0.)
+      del cvar; gc.collect()
       # test some more distribution functions
       if dist != 'kde':
+        # test additional functions
         if lsimple: tests = ('pdf', 'logpdf', 'cdf', 'logcdf', 'sf', 'logsf', 'ppf', 'isf')
         else: tests = ('ppf',)
         for dt in tests:
@@ -465,6 +484,7 @@ class BaseVarTest(unittest.TestCase):
     assert isEqual(np.nanvar(data, axis=var.axisIndex(t.name),ddof=3), varvar.getArray())
 #     assert isEqual(np.nanmax(self.data,axis=var.axisIndex(x.name)), var.max(**{x.name:None}).getArray())
 #     assert isEqual(np.nanmin(self.data, axis=var.axisIndex(y.name)), var.min(**{y.name:None}).getArray())
+    del data; gc.collect()
     # reduction fcts. of Variables ignore NaN values
     # test histogram
     lsimple = self.__class__ is BaseVarTest
@@ -491,6 +511,7 @@ class BaseVarTest(unittest.TestCase):
 #     assert isEqual(cdf, cvar, masked_equal=True)
     cdf = np.cumsum(hvar.data_array, axis=0)
     cdf /= np.sum(hvar.data_array,axis=0)
+    del hvar; gc.collect()
     cvar = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=True, axis=t.name)
     assert isEqual(cdf, cvar.data_array, masked_equal=True)
     assert cvar.units == ''
@@ -579,9 +600,9 @@ class BaseVarTest(unittest.TestCase):
     pvar = xvar.kstest(var)
     assert pvar.shape == xvar.shape[:-1]
     assert np.all(pvar.data_array >= 0)
+    del xvar, pvar, nvar; gc.collect()
 
     rav = var.copy(); sin = rav.sin(); cos = var.cos()
-    rnd = var.copy(); rnd.data_array = np.random.randn(var.data_array.size).reshape(var.shape)
     ## bivariate stats tests
     pval = kstest(var, rav, lflatten=True)
     assert pval > 0.95 # this will usually be close to zero, since none of these are normally distributed
@@ -597,8 +618,10 @@ class BaseVarTest(unittest.TestCase):
     pvar = wrstest(sin, cos, axis='time')
     assert pvar.data_array.mean() < 0.5 # not all tests are that accurate...
     assert pvar.shape == var.shape[1:] # this will usually be close to zero, since none of these are normally distributed
+    del sin, cos, pvar; gc.collect() # free some memory - these can get large
     
     ## correlation coefficients
+    rnd = var.copy(); rnd.data_array = np.random.randn(var.data_array.size).reshape(var.shape)
     rho,pval = pearsonr(var, rav, lpval=True, lrho=True, lflatten=True, lstandardize=True, lsmooth=True, window_len=5)
     #print rho, pval
     assert rho > 0.99
@@ -624,7 +647,17 @@ class BaseVarTest(unittest.TestCase):
   def testUnaryArithmetic(self):
     ''' test in-place and unary arithmetic functions and ufuncs'''
     # get test objects
-    var = self.var
+    lsimple = self.__class__ is BaseVarTest
+    # load data
+    if lsimple:
+      var = self.var
+    else:
+      # crop data because these tests just take way too long!
+      if self.dataset_name == 'NARR':
+        var = self.var(time=slice(0,10), y=slice(190,195), x=slice(0,100))
+      else:
+        var = self.var(time=slice(0,10), lat=(50,70), lon=(-130,-110))
+    refdata = var.data_array
     # arithmetic test
     var += 2.
     var -= 2.
@@ -632,24 +665,25 @@ class BaseVarTest(unittest.TestCase):
     var /= 2.
     # test results
     #     print (self.data.filled() - var.data_array.filled()).max()
-    assert isEqual(self.data, var.data_array)  
+    assert isEqual(refdata, var.data_array)  
     # more decorator tests
-    data = self.data.copy()
     data_std = var.standardize(asVar=False, linplace=False)
-    assert isEqual(data, var.data_array)
-    std_data = data.copy(); std_data -= np.nanmean(std_data); std_data /= np.nanstd(std_data)  
+    assert isEqual(refdata, var.data_array)
+    std_data = refdata.copy(); std_data -= np.nanmean(std_data); std_data /= np.nanstd(std_data)  
     assert isEqual(data_std, std_data)
+    del std_data; gc.collect()
     # in-place operation
     rav = var.copy(deepcopy=True)
     rav.standardize(asVar=False, linplace=True)
     assert isEqual(data_std, rav.data_array)
     assert rav.units == ''
+    del rav, data_std; gc.collect()
     # test some ufuncs
     expvar = var.exp(lwarn=False)
-    assert isEqual(np.exp(self.data), expvar.data_array)
+    assert isEqual(np.exp(refdata), expvar.data_array)
     expvar.units = ''
     levar = expvar.log(lwarn=True)
-    assert isEqual(np.log(np.exp(self.data)), levar.data_array)
+    assert isEqual(np.log(np.exp(refdata)), levar.data_array)
     assert levar.units == ''
     
 
@@ -1034,6 +1068,7 @@ class NetCDFVarTest(BaseVarTest):
   def tearDown(self):  
     self.var.unload()   
     self.ncdata.close()
+    gc.collect()
   
   ## specific NetCDF test cases
 
@@ -1148,6 +1183,7 @@ class DatasetNetCDFTest(BaseDatasetTest):
   def tearDown(self):  
     self.var.unload()   
     self.ncdata.close()
+    gc.collect()
   
   ## specific NetCDF test cases
   
@@ -1338,19 +1374,22 @@ if __name__ == "__main__":
 #     specific_tests = ['ReductionArithmetic']
 #     specific_tests = ['DistributionVariables']
 #     specific_tests = ['Ensemble']
-#     specific_tests = ['StatsTests']    
+#     specific_tests = ['StatsTests']   
+#     specific_tests = ['UnaryArithmetic']
+#     specific_tests = ['Indexing']
+ 
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
+#     tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
-#       
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
+       
     
     # construct dictionary of test classes defined above
     test_classes = dict()
