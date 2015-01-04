@@ -220,6 +220,18 @@ tmp = PlotAtts(name = 'precip', title = 'Total Precipitation Rate',
 # add to collection
 variablePlotatts['precip'] = tmp
 
+## Consecutive Wet Days
+tmp = PlotAtts(name = 'CWD', title = 'Consecutive Wet Days', 
+               units = 'days', scalefactor = 1)
+# add to collection
+variablePlotatts['CWD'] = tmp
+
+## Consecutive Dry Days
+tmp = PlotAtts(name = 'CDD', title = 'Consecutive Dry Days', 
+               units = 'days', scalefactor = 1)
+# add to collection
+variablePlotatts['CCD'] = tmp
+
 ## Surface Sensible Heat Flux
 tmp = PlotAtts(name = r'$Q_s$', title = 'Surface Heat Flux', 
                units = r'$W/m^2$', scalefactor = 1)
