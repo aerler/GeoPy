@@ -153,7 +153,7 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   if mode == 'climatology': 
     # make common time axis for climatology
     te = 12 # length of time axis: 12 month
-    climAxis = Axis(name='time', units='month', length=12, data=np.arange(1,te+1,1)) # monthly climatology
+    climAxis = Axis(name='time', units='month', length=12, coord=np.arange(1,te+1,1)) # monthly climatology
   else: raise NotImplementedError, 'Currently only climatologies are supported.'
   dataset.addAxis(climAxis, copy=False)
   # a little helper function

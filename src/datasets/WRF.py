@@ -417,16 +417,18 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
   ''' Get any WRF data files as a properly formatted NetCDFDataset. '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)  
-  # period
-  if isinstance(period,(tuple,list)):
-    if not all(isNumber(period)): raise ValueError
-  elif isinstance(period,basestring): period = [int(prd) for prd in period.split('-')]
-  elif isinstance(period,(int,np.integer)) or period is None : pass # handled later
-  else: raise DateError, "Illegal period definition: {:s}".format(str(period))
   # prepare input  
   folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder)
   if lctrT and experiment is None: 
     raise DatasetError, "Experiment '{0:s}' not found in database; need time information to center time axis.".format(names[0])    
+  # figure out period
+  if isinstance(period,(tuple,list)):
+    if not all(isNumber(period)): raise ValueError
+  elif isinstance(period,basestring): period = [int(prd) for prd in period.split('-')]
+  elif isinstance(period,(int,np.integer)) or period is None : 
+    beginyear = int(experiment.begindate[0:4])
+    period = (beginyear, beginyear+period)
+  else: raise DateError, "Illegal period definition: {:s}".format(str(period))
   lclim = False; lts = False # mode switches
   if mode.lower() == 'climatology': # post-processed climatology files
     lclim = True
@@ -547,16 +549,23 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
     if (len(dataset)+lenc) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
     # check time axis and center at 1979-01 (zero-based)
     if lctrT and dataset.hasAxis('time'):
-      t0 = dataset.time.coord[0]
-      tm = t0%12; ty = int(np.floor(t0/12))  
-      # we can directly change axis vectors, since they reside in memory 
-      if tm != ms - 1: 
-        dataset.time.coord -= ( tm+1 - ms )
-        dataset.time.offset -= ( tm+1 - ms )
-      if ty != ys - 1979: 
-        dataset.time.coord -= ( ty+1979 - ys )*12
-        dataset.time.offset -= ( ty+1979 - ys )*12 
-      # N.B.: the source file is not changed, unless sync() is called
+      # N.B.: we can directly change axis vectors, since they reside in memory;
+      #       the source file is not changed, unless sync() is called
+      if lts:
+        t0 = dataset.time.coord[0]
+        tm = t0%12; ty = int(np.floor(t0/12))  
+        if tm != ms - 1: 
+          dataset.time.coord -= ( tm+1 - ms )
+          dataset.time.offset -= ( tm+1 - ms )
+        if ty != ys - 1979: 
+          dataset.time.coord -= ( ty+1979 - ys )*12
+          dataset.time.offset -= ( ty+1979 - ys )*12 
+      elif lclim:
+        t0 = dataset.time.coord[0]
+        # there is no "year" - just start with "1" for january 
+        if t0 != 1: 
+          dataset.time.coord -= ( t0 - 1 )
+          dataset.time.offset -= ( t0 - 1 )
     # add constants to dataset
     if llconst:
       for var in const: 

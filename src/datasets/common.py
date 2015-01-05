@@ -530,7 +530,7 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
       ext = []; axt = []        
       for ex,dm in zip(exp,dom):
         et, at = loadDataset(ex, prd, dm, grd, res, filetypes=filetypes, varlist=varlist, 
-                           lbackground=False, lWRFnative=lWRFnative, lautoregrid=lautoregrid)
+                             lbackground=False, lWRFnative=lWRFnative, lautoregrid=lautoregrid)
         #if isinstance(et,(list,tuple)): ext += list(et); else: 
         ext.append(et)
         #if isinstance(at,(list,tuple)): axt += list(at); else: 

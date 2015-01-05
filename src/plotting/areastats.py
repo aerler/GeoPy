@@ -132,13 +132,13 @@ def getDatasets(expset, titles=None):
     explist = ['Ctrl-A-2050','Ctrl-B-2050','Ctrl-C-2050','Ctrl-1-2050']
   elif expset == 'cesm-all-diff': 
     explist = [('Ctrl-A-2050','Ctrl-A'),('Ctrl-B-2050','Ctrl-B'),('Ctrl-C-2050','Ctrl-C'),('Ctrl-1-2050','Ctrl-1')]
-  elif expset == 'max-ens-diff':
+  elif expset == 'max-mid-diff':
     explist = [('max-ens-2050','max-ens')]
-    titles = '{0:s}, WRF Ensemble Mean' # include basin name
+    titles = 'WRF Ensemble Mean (Mid-21st-Century), {0:s}' # include basin name
     linestyles = ('-','--')
   elif expset == 'max-end-diff':
     explist = [('max-ens-2100','max-ens')]
-    titles = 'WRF Ensemble Mean (End-21st-Century)'
+    titles = 'WRF Ensemble Mean (End-21st-Century), {0:s}'
     linestyles = ('-','--')
   elif expset == 'max-2100-diff':
     explist = [('max-ctrl-2100','max-ctrl')]
@@ -154,8 +154,9 @@ def getDatasets(expset, titles=None):
     linestyles = ('-','--')
   else:
     explist = [expset]
-    if expset == 'max-ens-2050': titles = 'WRF Ensemble Mean (Mid-21st-Century)'
-    elif expset == 'max-ens': titles = 'WRF Ensemble Mean (Historical Period)'
+    if expset == 'max-ens-2050': titles = 'WRF Ensemble Mean (Mid-21st-Century), {:s}'
+    elif expset == 'max-ens-2100': titles = 'WRF Ensemble Mean (End-21st-Century), {:s}'
+    elif expset == 'max-ens': titles = 'WRF Ensemble Mean (Historical Period), {:s}'
   # expand linestyles
   linestyles = [linestyles,]*len(explist)
   # titles
@@ -169,22 +170,25 @@ if __name__ == '__main__':
   
   ## settings
   # settings
-  lprint = True; lpub = True; lsamesize = False
-  paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
-  #paper_folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
-#   expset = 'max-ens-diff'
-  expset = 'max-all-diff'
+  lprint = True; lpub = True; lsamesize = True
+#   paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
+  paper_folder = '/home/me/Research/Thesis/Report/Progress Report 2015/figures/'
+#   expset = 'max-ens-2050'
+#   expset = 'max-ens-2100'
+#   expset = 'max-mid-diff'
+#   expset = 'max-end-diff'
+  expset = 'max-ens'
   plottypes = []
-#   plottypes += ['temp']
-#   plottypes += ['precip']
+  plottypes += ['temp'] # 
+  plottypes += ['precip'] #
 #   plottypes += ['sfflx']
-  plottypes += ['flux']
-#   plottypes += ['precip_types']
+  plottypes += ['flux'] #
+  plottypes += ['precip_types'] #
   #plottypes += ['evap']
 #   plottypes += ['snwmlt']  
 #   plottypes += ['flxrof']
-#   plottypes += ['runoff']
-#   plottypes += ['sfroff']
+  plottypes += ['runoff']#
+  plottypes += ['sfroff'] #
   lPRISM = False
   lPCIC = False
   lUnity = True
@@ -206,7 +210,7 @@ if __name__ == '__main__':
   # some more settings
   tag = 'prism' if lPRISM else ''
   ljoined = True # joined legend at bottom of figure
-  grid='arb2_d02'
+  grid = 'arb2_d02' # make sure we are all on the same grid, since the mask is only on that grid
   varatts = None # dict(Runoff=dict(name='runoff'))
   xlabel = r'Seasonal Cycle [Month]'; xlim = (1,12)
 
@@ -306,7 +310,7 @@ if __name__ == '__main__':
        
         ## setting up figure
         if lsamesize: linewidth = 1.5
-        if nlen == 1: linewidth = 1.75
+        elif nlen == 1: linewidth = 1.75
         elif nlen == 2: linewidth = 1.25
         elif nlen == 4: linewidth = 0.75 
         else: linewidth = 1.
@@ -343,7 +347,7 @@ if __name__ == '__main__':
             else: bottom = False           
           
             # make plots
-            time = exptpl[0].time.coord # time axis        
+            time = exptpl[0].time.coord # time axis 
             wrfplt = []; wrfleg = [] 
             obsplt = []; obsleg = []
             # loop over vars    
@@ -468,7 +472,7 @@ if __name__ == '__main__':
           
         # add common legend
         if ljoined:
-          leghgt = fontsize/250.+margins['height']
+          leghgt = fontsize/250. + margins['hspace']
           ax = fig.add_axes([0, 0, 1,leghgt])
           ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
           margins['bottom'] = margins['bottom'] + leghgt; fig.subplots_adjust(**margins)
@@ -476,7 +480,7 @@ if __name__ == '__main__':
 #           if nlen == 1: legargs = dict(frameon=True, labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
 #           else: legargs = dict(frameon=True, labelspacing=0.15, handlelength=2, handletextpad=0.5, fancybox=True)
           plt = wrfplt + obsplt; leg = wrfleg + obsleg
-          if fontsize > 11: ncols = 2 if len(leg) == 4 else 3
+          if fontsize > 11: ncols = 3 # if len(leg) == 4 else 3
           else: ncols = 3 if len(leg) == 6 else 4            
           legend = ax.legend(plt, leg, loc=10, ncol=ncols, borderaxespad=0., **legargs)  
           

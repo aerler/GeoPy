@@ -708,6 +708,7 @@ class Variable(object):
       if mask: data = ma.array(data, mask=mask) 
       if isinstance(data,ma.MaskedArray): # figure out fill value for masked array
         if fillValue is not None: # override variable preset 
+          if isinstance(fillValue,np.generic): fillValue = fillValue.astype(self.dtype)
           self.fillValue = fillValue
           #data.set_fill_value = fillValue # I'm not sure which one does work...
           ma.set_fill_value(data,fillValue)
