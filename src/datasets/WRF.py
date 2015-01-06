@@ -425,9 +425,10 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
   if isinstance(period,(tuple,list)):
     if not all(isNumber(period)): raise ValueError
   elif isinstance(period,basestring): period = [int(prd) for prd in period.split('-')]
-  elif isinstance(period,(int,np.integer)) or period is None : 
+  elif isinstance(period,(int,np.integer)): 
     beginyear = int(experiment.begindate[0:4])
     period = (beginyear, beginyear+period)
+  elif period is None: pass # handled later
   else: raise DateError, "Illegal period definition: {:s}".format(str(period))
   lclim = False; lts = False # mode switches
   if mode.lower() == 'climatology': # post-processed climatology files

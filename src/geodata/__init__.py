@@ -9,4 +9,4 @@ The package is primarily intended for use with climatological datasets.
 @author: Andre R. Erler, GPL v3
 '''
 
-from geodata.base import *
+#from geodata.base import * # can cause import errors with graphics, even if graphics are not needed

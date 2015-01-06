@@ -5,7 +5,6 @@ from: http://scipy.org/Cookbook/SignalSmooth
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 def smooth(x, window_len=11, window='hanning'):
     """smooth the data using a window with requested size.
@@ -88,6 +87,8 @@ def blur_image(im, n, ny=None) :
 
 
 def smooth_demo():
+    import matplotlib.pyplot as plt
+
     t = np.linspace(-4,4,100)
     x = np.sin(t)
     xn = x + np.random.randn(len(t)) * 0.1
@@ -121,6 +122,8 @@ def smooth_demo():
 
 
 if __name__=='__main__':
+    
+    import matplotlib.pyplot as plt
     
     # part 1: 1d
     smooth_demo()
