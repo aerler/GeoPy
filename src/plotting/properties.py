@@ -60,6 +60,11 @@ tmp = PlotAtts(name = 'p-value', title = 'p-Value',
                units = '', preserve = 'value')
 # add to collection
 variablePlotatts['pval'] = tmp
+## quantile of statistic
+tmp = PlotAtts(name = 'quantile', title = 'Quantile', 
+               units = '', preserve = 'value')
+# add to collection
+variablePlotatts['quant'] = tmp
 
 ## *** Dimensions/Axes (1D) ***
 

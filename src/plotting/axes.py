@@ -276,9 +276,9 @@ class MyAxes(Axes):
   def addHline(self, hline, **kwargs):
     ''' add one or more horizontal lines to the plot '''
     if 'color' not in kwargs: kwargs['color'] = 'black'
-    if not isinstance(hline,(list,tuple)): hline = (hline,)
+    if not isinstance(hline,(list,tuple,np.ndarray)): hline = (hline,)
     lines = []
-    for hl in hline:
+    for hl in list(hline):
       if isinstance(hl,(int,np.integer,float,np.inexact)): 
         lines.append(self.axhline(y=hl, **kwargs))
       else: raise TypeError, hl
@@ -287,12 +287,12 @@ class MyAxes(Axes):
   def addVline(self, vline, **kwargs):
     ''' add one or more horizontal lines to the plot '''
     if 'color' not in kwargs: kwargs['color'] = 'black'
-    if not isinstance(vline,(list,tuple)): vline = (vline,)
+    if not isinstance(vline,(list,tuple,np.ndarray)): vline = (vline,)
     lines = []
-    for hl in vline:
+    for hl in list(vline):
       if isinstance(hl,(int,np.integer,float,np.inexact)): 
         lines.append(self.axvline(x=hl, **kwargs))
-      else: raise TypeError, hl
+      else: raise TypeError, hl.__class__
     return lines    
   
   def addTitle(self, title, **kwargs):

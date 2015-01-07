@@ -762,23 +762,44 @@ class DistVar(Variable):
         basename = self.name[:self.name.find('_'+self.dist_type)] # remove _dist_name
       else: basename = self.name 
       #basename = str('_').join(self.name.split('_')[:-1],)
-      if not lsqueezed:
-        if support_axis is None:
-          # generate new histogram axis
-          daxatts = self.atts.copy() # variable values become axis
-          daxatts['name'] = '{:s}_bins'.format(basename) # remove suffixes (like _dist)
-          daxatts['units'] = self.units # the histogram axis has the same units as the variable
-          daxatts['long_name'] = '{:s} Axis'.format(self.atts.get('long_name',self.name.title()))    
-          if axatts is not None: daxatts.update(axatts)
-          support_axis = Axis(coord=support, atts=daxatts)
-        else:
-          if axatts is not None: support_axis.atts.update(axatts) # just update attributes
-      # generate new histogram variable
-      plotatts = getPlotAtts(name=dist_type, units='') # infer meta data from plot attributes
-      dvaratts = self.atts.copy() # this is either density or frequency
-      dvaratts['name'] = name or '{:s}_{:s}'.format(basename,dist_type)
-      dvaratts['long_name'] = '{:s} of {:s}'.format(plotatts.name,self.atts.get('long_name',basename.title()))
-      dvaratts['units'] = plotatts.units
+      if dist_type in ('ppf', 'isf'):
+        if not lsqueezed:
+          if support_axis is None:
+            # generate new histogram axis
+            axplotatts = getPlotAtts(name='quant', units='') # infer meta data from plot attributes
+            daxatts = dict() # variable values become axis
+            daxatts['name'] = '{:s}_quants'.format(basename) # remove suffixes (like _dist)
+            daxatts['units'] = '' # quantiles have no units
+            daxatts['long_name'] = '{:s} Quantile Axis'.format(self.name.title())
+            if axatts is not None: daxatts.update(axatts)
+            support_axis = Axis(coord=support, atts=daxatts, plot=axplotatts)
+          else:
+            if axatts is not None: support_axis.atts.update(axatts) # just update attributes
+        # generate new histogram variable
+        plotatts = getPlotAtts(name=basename, units=self.units) # infer meta data from plot attributes
+        dvaratts = self.atts.copy() # this is either density or frequency
+        dvaratts['name'] = name or '{:s}'.format(basename)
+        dvaratts['long_name'] = '{:s}'.format(plotatts.name)
+        dvaratts['units'] = self.units or plotatts.units
+      else:
+        if not lsqueezed:
+          if support_axis is None:
+            # generate new histogram axis
+            axplotatts = getPlotAtts(name='basename', units='') # infer meta data from plot attributes
+            daxatts = self.atts.copy() # variable values become axis
+            daxatts['name'] = '{:s}_bins'.format(basename) # remove suffixes (like _dist)
+            daxatts['units'] = self.units # the histogram axis has the same units as the variable
+            daxatts['long_name'] = '{:s} Axis'.format(self.name.title())
+            if axatts is not None: daxatts.update(axatts)
+            support_axis = Axis(coord=support, atts=daxatts, plot=axplotatts)
+          else:
+            if axatts is not None: support_axis.atts.update(axatts) # just update attributes
+        # generate new histogram variable
+        plotatts = getPlotAtts(name=dist_type, units='') # infer meta data from plot attributes
+        dvaratts = dict() # this is either density or frequency
+        dvaratts['name'] = name or '{:s}_{:s}'.format(basename,dist_type)
+        dvaratts['long_name'] = '{:s} of {:s}'.format(plotatts.name,self.atts.get('long_name',basename.title()))
+        dvaratts['units'] = plotatts.units
       if varatts is not None: dvaratts.update(varatts)
       # create new variable
       if self.paramAxis is None: axes = self.axes
