@@ -122,6 +122,7 @@ experiments['max-ens-A-2100'] = Exp(shortname='max-A-2100', name='max-ens-A-2100
 experiments['max-ens-B-2100'] = Exp(shortname='max-B-2100', name='max-ens-B-2100', title='Max-B (2100)', begindate='2085-01-01', grid='arb2', parent='Ens-B-2100', ensemble='max-ensemble-2100')
 experiments['max-ens-C-2100'] = Exp(shortname='max-C-2100', name='max-ens-C-2100', title='Max-C (2100)', begindate='2085-01-01', grid='arb2', parent='Ens-C-2100', ensemble='max-ensemble-2100')
 experiments['max-seaice-2100'] = Exp(shortname='seaice-2100', name='max-seaice-2100', title='Seaice (2100)', begindate='2085-01-01', grid='arb2', parent='Seaice-2100')
+experiments['cfsr-lowres'] = Exp(shortname='lowres', name='cfsr-lowres', title='Max (CFSR, low res.)', begindate='1979-01-01', grid='arb2')
 experiments['cfsr-max'] = Exp(shortname='cfsr', name='cfsr-max', title='Max (CFSR)', begindate='1979-01-01', grid='arb2', parent='CFSR')
 experiments['erai-max'] = Exp(shortname='erai', name='erai-max', title='Max (ERA-I)', begindate='1979-01-01', grid='arb2', parent='ERA-I')
 # these are all based on the old configuration (original + RRTMG, ARB2)

@@ -32,16 +32,16 @@ if __name__ == '__main__':
   
   ## general settings and shortcuts
   WRFfiletypes = [] # WRF data source
-  #WRFfiletypes += ['hydro']
+  WRFfiletypes += ['hydro']
   #WRFfiletypes += ['lsm']
-  WRFfiletypes += ['srfc']
+#   WRFfiletypes += ['srfc']
   #WRFfiletypes += ['xtrm']
 #   WRFfiletypes += ['plev3d']
   # figure directory
   #folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
   #folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
   folder = figure_folder
-  lpickle = True
+  lpickle = False
   # period shortcuts
   H01 = '1979-1980'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994'; H60 = '1949-2009' # historical validation periods
@@ -85,7 +85,7 @@ if __name__ == '__main__':
 #   variables += ['WaterTransport_U']
 #   variables += ['WaterTransport_V']
 #   variables += ['waterflx']
-  variables += ['p-et']
+#   variables += ['p-et']
 #   variables += ['precipnc', 'precipc']
 #   variables += ['Q2']
 #   variables += ['evap']
@@ -116,23 +116,28 @@ if __name__ == '__main__':
 #  variables = ['snowh'];  seasons = [8] # September snow height
 #  variables = ['stns']; seasons = ['annual']
 #   variables = ['lndcls']; seasons = [''] # static
-#   variables = ['zs']; seasons = ['topo']; lcontour = True; WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
+  variables = ['zs']; seasons = ['topo']; lcontour = True; lframe = False 
+  WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
 #   variables = ['zs']; seasons = ['hidef']; WRFfiletypes=['const']; lcontour = True # static
   
   ## case settings
   
   # observations
-  lprint = False # write plots to disk using case as a name tag
-  maptype = 'lcc-new'; lstations = False; lbasins = True
-
+  lprint = True # write plots to disk using case as a name tag
+#   maptype = 'lcc-new'; lstations = False; lbasins = True
+  # draw a map
+  maptype = 'lcc-bcab'; lstations = True; stations = 'EC'; lbasins = True
+  period = H01; lWRFnative = True; lframe = False; loutline = False
+  explist = ['col1-ctrl']; exptitles = ' '; domain = (2,3)
+  case = 'BCAB_stns'; figtitles = 'EC Stations (BC & Alberta) and Terrain Height [km]'
 
 # water transport
 #   explist = ['max-1deg']; domain = [1,]; period = H15
-  explist = ['max-1deg', 'max-1deg', 'max-ctrl', 'max-ctrl']; period = H15; domain = [1, 2, 1, 2]
+#   explist = ['max-1deg', 'max-1deg', 'max-ctrl', 'max-ctrl']; period = H15; domain = [1, 2, 1, 2]
 #   exptitles = ['CESM (80 km)','WRF Max-1deg (10 km)', 'WRF Max-Ctrl (30 km)', 'WRF Max-Ctrl (10 km)']
 #   explist = ['max-1deg', 'max-1deg', 'max-ctrl', 'max-ctrl']; period = H15; domain = [1, 2, 1, 2]
 #   exptitles = ['WRF Max-1deg (30 km)','WRF Max-1deg (10 km)', 'WRF Max-Ctrl (30 km)', 'WRF Max-Ctrl (10 km)']
-  case = 'val1deg'; lsamesize = True; # grid = 'arb2_d02'
+#   case = 'val1deg'; lsamesize = True; # grid = 'arb2_d02'
 
 # Fig. 2  
 #   explist = ['max-ens']; period = H15
@@ -197,6 +202,7 @@ if __name__ == '__main__':
 #   explist = ['max-3km','max-ctrl','max-3km','max-3km'] 
 #   exptitles = ['WRF 3km','WRF 10km (15 yrs)','WRF 30km','WRF 10km']
 
+
 #   maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasins = True
 #   period = None; lWRFnative = True; loutline = False; period = H10
 #   explist = ['max']; exptitles = ' '; domain = (0,1,2)
@@ -206,6 +212,7 @@ if __name__ == '__main__':
 #   explist = ['columbia']; exptitles = ' '; domain = (2,3)
 # #   case = 'frb'; basins = ('FRB',)
 #   case = 'arb'; basins = ('ARB',)
+
     
   if not case: raise ValueError, 'Need to define a \'case\' name!'
   
@@ -484,7 +491,25 @@ if __name__ == '__main__':
           # add parallels and meridians
           mapSetup.drawGrid(bmap, left=left, bottom=bottom, minor=lminor)
           # mark stations
-          if lstations: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
+          if lstations: 
+            if stations == 'EC':
+              # import station data
+              from datasets.EC import loadEC_StnTS, selectStations
+              from datasets.WRF import loadWRF_StnTS
+              varlist = ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon', 'precip']
+              station_type = 'ecprecip'
+              ecstns = loadEC_StnTS(station=station_type, varlist=varlist)
+              wrfstns = loadWRF_StnTS(experiment='max-ctrl', varlist=varlist, station=station_type, 
+                                      filetypes='srfc', domains=2)
+              ecstns,wrfstns = selectStations( [ecstns, wrfstns] , prov=('BC','AB'), min_len=50, lat=(40,55), 
+                                              max_zerr=300, #lon=(-130,-110),
+                                              stnaxis='station', imaster=None, linplace=False, lall=False)
+              # loop over points
+              for lon,lat in zip(ecstns.stn_lon, ecstns.stn_lat):
+                xx,yy = bmap(lon, lat)
+                bmap.plot(xx,yy,'wo',markersize=5)
+                #ax.text(xx+1.5e4,yy-1.5e4,name,ha='left',va='top',fontsize=8)
+            else: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
           # add ARB basin outline
           if lbasins:
             shpargs = dict(linewidth = 0.75) 

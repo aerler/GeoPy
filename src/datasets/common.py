@@ -24,7 +24,7 @@ from operator import isCallable
 days_per_month = np.array([31,28.2425,31,30,31,30,31,31,30,31,30,31], dtype='float32') # 97 leap days every 400 years
 seconds_per_month = days_per_month * 86400.
 # N.B.: the Gregorian calendar repeats every 400 years
-days_per_month_365 = np.array([31,28,31,30,31,30,31,31,30,31,30,31], dtype='int16') # no leap day
+days_per_month_365 = np.array([31,28,31,30,31,30,31,31,30,31,30,31], dtype='float32') # no leap day
 seconds_per_month_365 = days_per_month_365 * 86400.
 # human-readable names
 name_of_month = ['January  ', 'February ', 'March    ', 'April    ', 'May      ', 'June     ', #
@@ -225,13 +225,43 @@ def transformPrecip(data, l365=False, var=None, slc=None):
       if not ( ts%12 == 0 and te%12 == 0 ): raise NotImplementedError, "The record has to start and end at a full year!"
       assert data.shape[tax] == te
       # assuming the record starts some year in January, and we always need to load full years
-    shape = [1,]*data.ndim; shape[tax] = 12 # dimensions of length 1 will be expanded as needed
+    shape = [1,]*data.ndim; shape[tax] = te # dimensions of length 1 will be expanded as needed
     spm = seconds_per_month_365 if l365 else seconds_per_month
-    data /= np.repeat(spm.reshape(shape), te/12, axis=tax) # convert in-place
+    data /= np.tile(spm, te/12).reshape(shape) # convert in-place
     var.units = 'kg/m^2/s'
   return data      
       
-
+# transform function to convert days per month into a ratio
+def transformDays(data, l365=False, var=None, slc=None):
+  ''' convert days per month to fraction '''
+  if not isinstance(var,VarNC): raise TypeError
+  if var.units == 'days':
+    assert data.ndim == var.ndim
+    tax = var.axisIndex('time')
+    # expand slices
+    if slc is None or isinstance(slc,slice): tslc = slc
+    elif isinstance(slc,(list,tuple)): tslc = slc[tax]
+    # handle sliced or non-sliced axis
+    if tslc is None or tslc == slice(None):
+      # trivial case
+      te = len(var.time)
+      if not ( data.shape[tax] == te and te%12 == 0 ): 
+        raise NotImplementedError, "The record has to start and end at a full year!"
+    else:  
+      # special treatment if time axis was sliced
+      tlc = slc[tax]
+      ts = tlc.start or 0 
+      te = ( tlc.stop or len(var.time) ) - ts
+      if not ( ts%12 == 0 and te%12 == 0 ): 
+        raise NotImplementedError, "The record has to start and end at a full year!"
+      assert data.shape[tax] == te
+      # assuming the record starts some year in January, and we always need to load full years
+    shape = [1,]*data.ndim; shape[tax] = te # dimensions of length 1 will be expanded as needed
+    spm = days_per_month_365 if l365 else days_per_month
+    data /= np.tile(spm, te/12).reshape(shape) # convert in-place
+    var.units = '' # fraction
+  return data      
+      
 # convenience function to invert variable name mappings
 def translateVarNames(varlist, varatts):
   ''' Simple function to replace names in a variable list with their original names as inferred from the 

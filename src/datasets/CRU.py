@@ -15,7 +15,7 @@ from geodata.base import Variable, Axis
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition
 from datasets.common import translateVarNames, days_per_month, name_of_month, data_root 
-from datasets.common import loadObservations, grid_folder, transformPrecip
+from datasets.common import loadObservations, grid_folder, transformPrecip, transformDays
 from processing.process import CentralProcessingUnit
 
  
@@ -39,8 +39,8 @@ varatts = dict(tmp = dict(name='T2', units='K', offset=273.15), # 2m average tem
                pet = dict(name='pet', units='kg/m^2/s', scalefactor=1./86400.), # potential evapo-transpiration
                pre = dict(name='precip', units='mm/month', transform=transformPrecip), # total precipitation
                cld = dict(name='cldfrc', units='', offset=0.), # cloud cover/fraction
-               wet = dict(name='wetfrq', units='', offset=0), # number of wet days
-               frs = dict(name='frzfrq', units='', offset=0), # number of frost days 
+               wet = dict(name='wetfrq', units='days', transform=transformDays), # number of wet days
+               frs = dict(name='frzfrq', units='days', transform=transformDays), # number of frost days 
                # axes (don't have their own file; listed in axes)
                time = dict(name='time', units='day', offset=-28854), # time coordinate
                # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
@@ -156,21 +156,21 @@ loadStationTimeSeries = loadCRU_StnTS # time-series without associated grid (e.g
 if __name__ == '__main__':
     
 #   mode = 'test_climatology'
-  mode = 'test_timeseries'
+#   mode = 'test_timeseries'
 #   mode = 'test_station_timeseries'
-#   mode = 'average_timeseries'
+  mode = 'average_timeseries'
 #   period = (1971,2001)
 #   period = (1979,2009)
 #   period = (1949,2009)
 #   period = (1979,1982)
 #   period = (1979,1984)
-  period = (1979,1989)
+#   period = (1979,1989)
 #   period = (1979,1994)
 #   period = (1984,1994)
 #   period = (1989,1994)
 #   period = (1979,1980)
 #   period = (1997,1998)
-#   period = (2010,2011)
+  period = (2010,2011)
 
   if mode == 'test_climatology':
     
@@ -229,8 +229,8 @@ if __name__ == '__main__':
     # determine averaging interval
     offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
     # initialize processing
-    #CPU = CentralProcessingUnit(source, sink, varlist=['precip'])
-    CPU = CentralProcessingUnit(source, sink)
+    CPU = CentralProcessingUnit(source, sink, varlist=['wetfrq'])
+#     CPU = CentralProcessingUnit(source, sink)
     # start processing      
     print('')
     print('   +++   processing   +++   ') 
@@ -243,8 +243,13 @@ if __name__ == '__main__':
     print '   ===   landmask   ===   '
     tmpatts = dict(name='landmask', units='', long_name='Landmask for Climatology Fields', 
               description='where this mask is non-zero, no data is available')
+    # find a masked variable
+    for var in sink.variables.itervalues():
+      if var.masked and var.gdal: 
+        mask = var.getMapMask(); break
+    # add variable to dataset
     sink.addVariable(Variable(name='landmask', units='', axes=(sink.lat,sink.lon), 
-                  data=sink.precip.getMask()[0,:,:], atts=tmpatts), asNC=True)
+                  data=mask, atts=tmpatts), asNC=True)
     sink.mask(sink.landmask)            
     # add names and length of months
     sink.axisAnnotation('name_of_month', name_of_month, 'time', 

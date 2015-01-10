@@ -465,7 +465,7 @@ class CentralProcessingUnit(object):
     return newvar
   
   # function pair to compute a climatology from a time-series      
-  def Climatology(self, timeAxis='time', climAxis=None, period=None, offset=0, shift=0, **kwargs):
+  def Climatology(self, timeAxis='time', climAxis=None, period=None, offset=0, shift=0, timeSlice=None, **kwargs):
     ''' Setup climatology and start computation; calls processClimatology. '''
     if period is not None and not isinstance(period,(np.integer,int)): raise TypeError # period in years
     if not isinstance(offset,(np.integer,int)): raise TypeError # offset in years (from start of record)
@@ -486,7 +486,7 @@ class CentralProcessingUnit(object):
       start = offset * len(climAxis); end = start + period * len(climAxis)
       timeSlice = slice(start,end,None)
     else: 
-      if not isinstance(timeSlice,slice): raise TypeError
+      if not isinstance(timeSlice,slice): raise TypeError, timeSlice
     # add GDAL to target
     if self.source.gdal: 
       self.target = addGDALtoDataset(self.target, projection=self.source.projection, geotransform=self.source.geotransform)

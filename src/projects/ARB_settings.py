@@ -46,13 +46,18 @@ annotation_dict['lcc-col'] = dict(scale=(-116.75, 48.25, -120, 55, 400), lat_ful
                              lon_full=[-160,-140,-120,-100], lon_half=[-150,-130,-110])
 ## Lambert Conic Conformal - Athabasca River Basin
 annotation_dict['lcc-arb'] = dict(scale=(-111, 52, -120, 55, 400), lat_full=[50,60], lat_half=[45,55,65], 
-                             lon_full=[-120,-110], lon_half=[-125,-115,-105])
+                             lon_full=[-130,-120,-110], lon_half=[-135,-125,-115,-105])
+## Lambert Conic Conformal - BC & Alberta (below 55N)
+annotation_dict['lcc-bcab'] = dict(scale=(-127, 46.7, -120, 50, 300), lat_full=[50,60], lat_half=[45,55,65], 
+                              lon_full=[-130,-120,-110], lon_half=[-135,-125,-115,-105])
 ## Lambert Conic Conformal - New Fine Domain
 annotation_dict['lcc-new'] = dict(scale=(-128.5, 48, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
                              lon_full=[-180,-160,-140,-120,-100], lon_half=[-170,-150,-130,-110])
 ## Lambert Conic Conformal - Fine Domain
 annotation_dict['lcc-fine'] = dict(scale=(-136, 49, -137, 57, 800), lat_full=[45,65], lat_half=[55,75], 
                               lon_full=[-180,-160,-140,-120,-100], lon_half=[-170,-150,-130,-110])
+## Lambert Conic Conformal - the Paries, focussed on Alberta
+annotation_dict['lcc-praries'] = annotation_dict['lcc-fine']
 ## Lambert Conic Conformal - Small Domain
 annotation_dict['lcc-small'] = annotation_dict['lcc-fine']
 ## Lambert Conic Conformal - Intermed Domain
@@ -90,9 +95,15 @@ projection_dict['lcc-col'] = dict(projection='lcc', lat_0=52., lon_0=-120., lat_
 ## Lambert Conic Conformal - Athabasca River Basin
 projection_dict['lcc-arb'] = dict(projection='lcc', lat_0=55.5, lon_0=-114.5, lat_1=55, rsphere=rsphere,
               width=110*10e3, height=110*10e3, area_thresh = 500., resolution='l')
+## Lambert Conic Conformal - BC & Alberta (below 55N)
+projection_dict['lcc-bcab'] = dict(projection='lcc', lat_0=52, lon_0=-120, lat_1=53, rsphere=rsphere,
+              width=150*10e3, height=140*10e3, area_thresh = 500., resolution='l')
 ## Lambert Conic Conformal - New Fine Domain
 projection_dict['lcc-new'] = dict(projection='lcc', lat_0=55, lon_0=-120, lat_1=52, rsphere=rsphere,
               width=180*10e3, height=180*10e3, area_thresh = 1000., resolution='l')
+## Lambert Conic Conformal - the Paries, focussed on Alberta
+projection_dict['lcc-paries'] = dict(projection='lcc', lat_0=53, lon_0=-115, lat_1=53, rsphere=rsphere,
+              width=220*10e3, height=210*10e3, area_thresh = 1000., resolution='l')
 ## Lambert Conic Conformal - Fine Domain
 projection_dict['lcc-fine'] = dict(projection='lcc', lat_0=58, lon_0=-132, lat_1=53, rsphere=rsphere,
               width=200*10e3, height=300*10e3, area_thresh = 1000., resolution='l')
