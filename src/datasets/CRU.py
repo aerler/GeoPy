@@ -165,12 +165,12 @@ if __name__ == '__main__':
 #   period = (1979,1982)
 #   period = (1979,1984)
 #   period = (1979,1989)
-#   period = (1979,1994)
+  period = (1979,1994)
 #   period = (1984,1994)
 #   period = (1989,1994)
 #   period = (1979,1980)
 #   period = (1997,1998)
-  period = (2010,2011)
+#   period = (2010,2011)
 
   if mode == 'test_climatology':
     
@@ -229,8 +229,8 @@ if __name__ == '__main__':
     # determine averaging interval
     offset = source.time.getIndex(period[0]-1979)/12 # origin of monthly time-series is at January 1979 
     # initialize processing
-    CPU = CentralProcessingUnit(source, sink, varlist=['wetfrq'])
-#     CPU = CentralProcessingUnit(source, sink)
+#     CPU = CentralProcessingUnit(source, sink, varlist=['wetfrq'])
+    CPU = CentralProcessingUnit(source, sink)
     # start processing      
     print('')
     print('   +++   processing   +++   ') 
