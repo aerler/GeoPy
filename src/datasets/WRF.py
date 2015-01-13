@@ -207,6 +207,7 @@ class Srfc(FileType):
                      LiquidPrecip = dict(name='liqprec_sr', units='kg/m^2/s'), # liquid precipitation rate
                      SolidPrecip  = dict(name='solprec_sr', units='kg/m^2/s'), # solid precipitation rate
                      WaterVapor   = dict(name='Q2', units='Pa'), # water vapor partial pressure
+                     WetDays       = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
                      MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
                      MaxRAINC     = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # maximum 6-hourly convective precip
                      MaxPrecip    = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # for short-term consistency                    
