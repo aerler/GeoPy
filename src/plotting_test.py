@@ -101,7 +101,7 @@ class LinePlotTest(unittest.TestCase):
     # create plot
     for ax in axes:
         plts = ax.linePlot([var1, var2], ylim=var1.limits(), legend=0)
-        assert len(plts) == 2    
+        assert len(plts) == 2   
         
   def testCombinedLinePlot(self):
     ''' test a two panel line plot with combined legend '''    
@@ -179,14 +179,14 @@ if __name__ == "__main__":
 
     
     specific_tests = None
-    specific_tests = ['CombinedLinePlot']
+#     specific_tests = ['CombinedLinePlot']
 #     specific_tests = ['AxesGridLinePlot']    
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['LinePlot'] 
-#     tests += ['BarPlot']
+#     tests += ['LinePlot'] 
+    tests += ['BarPlot']
     
 
     # construct dictionary of test classes defined above

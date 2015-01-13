@@ -7,14 +7,15 @@ A custom Figure class that provides some specialized functions and uses a custom
 '''
 
 # external imports
+from warnings import warn
 from types import NoneType, ModuleType
-import numpy as np
 from matplotlib.figure import Figure, SubplotBase, subplot_class_factory
+from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
+import numpy as np
 # internal imports
 from geodata.misc import isInt , ArgumentError
 from plotting.axes import MyAxes, MyLocatableAxes, Axes
 from plotting.misc import loadMPL
-from sympy.physics.quantum.circuitplot import matplotlib
 
 
 ## my new figure class
@@ -165,6 +166,8 @@ class MyFigure(Figure):
     self.subplots_adjust(**margins)
     # and now repair damage: restore axes
     for ax in self.axes:
+      if isinstance(ax,LocatableAxes):
+        warn('Adjusting subplots does not work with LocatableAxes')
       if ax.get_title():
         pos = ax.get_position()
         pos = pos.from_bounds(x0=pos.x0, y0=pos.y0, width=pos.width, height=pos.height-self.title_height)    
@@ -312,7 +315,7 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=No
     if subplot == (1,1): margins = (0.1,0.1,0.85,0.85)
     elif subplot == (1,2) or subplot == (1,3): margins = (0.06,0.1,0.92,0.87)
     elif subplot == (2,1) or subplot == (3,1): margins = (0.09,0.11,0.88,0.82)
-    elif subplot == (2,2) or subplot == (3,3): margins = (0.075,0.075,0.925,0.925)
+    elif subplot == (2,2) or subplot == (3,3): margins = (0.06,0.08,0.92,0.92)
     else: margins = (0.09,0.11,0.88,0.82)
     #elif subplot == (2,2) or subplot == (3,3): margins = (0.09,0.11,0.88,0.82)
     #else: raise NotImplementedError    
@@ -323,8 +326,8 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=No
     if axes_pad is None: axes_pad = 0.05
     # adjust margins for ignored label pads
     margins = list(margins)
-    margins[0] += 0.015; margins[1] += 0.010
-    margins[2] -= 0.010; margins[3] -= 0.010
+    margins[0] += 0.005; margins[1] -= 0.02 # left, bottom
+    margins[2] -= 0.005; margins[3] -= 0.00 # width, height
     # create axes using the Axes Grid package
     if axes_class is None: axes_class=MyLocatableAxes
     fig = mpl.pylab.figure(facecolor='white', figsize=figsize, axes_class=axes_class, 

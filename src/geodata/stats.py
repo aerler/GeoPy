@@ -785,7 +785,7 @@ class DistVar(Variable):
         if not lsqueezed:
           if support_axis is None:
             # generate new histogram axis
-            axplotatts = getPlotAtts(name='basename', units='') # infer meta data from plot attributes
+            axplotatts = getPlotAtts(name=basename, units=self.units) # infer meta data from plot attributes
             daxatts = self.atts.copy() # variable values become axis
             daxatts['name'] = '{:s}_bins'.format(basename) # remove suffixes (like _dist)
             daxatts['units'] = self.units # the histogram axis has the same units as the variable
@@ -1241,7 +1241,8 @@ class VarRV(DistVar):
         norm = np.nanmean(data_array[iscale]).ravel() if lflatten else data_array[iscale]
         scale = np.nanstd(sample_data, axis=sax) / norm
     # apply scaling
-    if loc is not None: data_array[iloc] *= loc
+    if loc is not None: 
+      data_array[iloc] *= loc; data_array[iscale] *= loc # need to scale variance as well!
     if scale is not None: data_array[iscale] *= scale
     if shape is not None: data_array[ishape] *= shape
     # N.B.: rolling back axes should not be necessary, since np.rollaxis only returns a view and all operations are in-place
