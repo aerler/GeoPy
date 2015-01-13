@@ -17,8 +17,8 @@ from geodata.base import Variable, Axis
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, addGeoLocator
 from geodata.misc import DatasetError
-from geodata.nctools import writeNetCDF, add_strvar
-from datasets.common import name_of_month, data_root, grid_folder, transformPrecip
+from geodata.nctools import writeNetCDF, add_var
+from datasets.common import name_of_month, data_root, grid_folder, transformPrecip, timeSlice
 from datasets.common import translateVarNames, loadObservations, addLandMask, addLengthAndNamesOfMonth, getFileName
 from processing.process import CentralProcessingUnit
 
@@ -128,7 +128,7 @@ def loadGPCC_TS(name=dataset_name, grid=None, varlist=None, resolution='25', var
     # replace time axis with number of month since Jan 1979 
     data = np.arange(0,len(dataset.time),1, dtype='int16') + (1901-1979)*12 # month since 1979 (Jan 1979 = 0)
     timeAxis = Axis(name='time', units='month', coord=data, atts=dict(long_name='Month since 1979-01'))
-    dataset.repalceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
+    dataset.replaceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
     # add GDAL info
     dataset = addGDALtoDataset(dataset, projection=None, geotransform=None)
     # N.B.: projection should be auto-detected as geographic
@@ -210,25 +210,24 @@ if __name__ == '__main__':
   
 #   mode = 'test_climatology'; reses = ('025',); period = None
 #   mode = 'test_timeseries'; reses = ('25',)
-  mode = 'test_station_timeseries'; reses = ('05',)  
-#   mode = 'average_timeseries'; reses = ('05',) # for testing
+#   mode = 'test_station_timeseries'; reses = ('05',)  
 #   mode = 'convert_climatology'; reses = ('25',); period = None
-#   reses = ('025','05', '10', '25')  
-#   reses = ('05', '10', '25')
-#   reses = ('25',)
+#   reses = ('025','05', '10', '25'); period = None  
+  mode = 'average_timeseries'; reses = ('25',) # for testing
+  reses = ('05', '10', '25')
 #   period = (1979,1982)
 #   period = (1979,1984)
-  period = (1979,1989)
+#   period = (1979,1989)
 #   period = (1979,1994)
 #   period = (1984,1994)
 #   period = (1989,1994)
-#   period = (1979,2009)
+  period = (1979,2009)
 #   period = (1949,2009)
 #   period = (1997,1998)
 #   period = (1979,1980)
 #   period = (2010,2011)
-#   grid = 'GPCC' # 'arb2_d02'
-  grid = 'arb2_d02'
+  grid = 'GPCC' # 'arb2_d02'
+#   grid = 'arb2_d02'
   
   # generate averaged climatology
   for res in reses:    
@@ -306,8 +305,8 @@ if __name__ == '__main__':
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)      
       # write data and some annotation
       ncset = writeNetCDF(dataset, avgfolder+filename, close=False)
-      add_strvar(ncset,'name_of_month', name_of_month, 'time', # add names of month
-                 atts=dict(name='name_of_month', units='', long_name='Name of the Month')) 
+#       add_var(ncset,'name_of_month', name_of_month, 'time', # add names of month
+#                  atts=dict(name='name_of_month', units='', long_name='Name of the Month')) 
        
       # close...
       ncset.close()
@@ -325,7 +324,8 @@ if __name__ == '__main__':
       print('\n\n   ***   Processing Resolution %s from %s   ***   \n\n'%(res,periodstr))
       if period is None: source = loadGPCC_LTM(varlist=None,resolution=res) # ['stations','precip']
       else: source = loadGPCC_TS(varlist=None,resolution=res)
-      source.load()
+      source = source(time=timeSlice(period))
+      #source.load()
       print(source)
       print('\n')
             
@@ -355,9 +355,6 @@ if __name__ == '__main__':
 #         from datasets.NARR import NARR_grid
         # reproject and resample (regrid) dataset
         CPU.Regrid(griddef=griddef, flush=False)
-        # add geolocators
-        sink = addGeoLocator(sink, griddef=griddef, gdal=True, check=True)
-
             
 #       # shift longitude axis by 180 degrees  left (i.e. -180 - 180 -> 0 - 360)
 #       print('')
@@ -379,6 +376,10 @@ if __name__ == '__main__':
 #       print(sink)
 #       print('')
 
+      # add geolocators
+      if grid is not 'GPCC':
+        sink = addGeoLocator(sink, griddef=griddef, lgdal=True, lcheck=True)
+        
       # add landmask
       #sink.mask(sink.landmask)
       #print sink.dataset

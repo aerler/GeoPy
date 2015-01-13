@@ -245,9 +245,12 @@ class VarNC(Variable):
       for newax,slc in zip(newvar.axes,slcs):
         if self.hasAxis(newax.name):
           ncax = self.getAxis(newax.name) # transform to sliced NetCDF
-          axes.append(asAxisNC(newax, ncvar=ncax.ncvar, mode=ncax.mode, slices=(slc,)))
-        else: axes.append(newax) # keep as is
-      newvar = asVarNC(newvar, self.ncvar, mode=self.mode, axes=axes, slices=slcs)
+          if isinstance(ncax,AxisNC):
+            axes.append(asAxisNC(newax, ncvar=ncax.ncvar, mode=ncax.mode, slices=(slc,)))
+          else: axes.append(newax) # keep as is
+        else: axes.append(newax) # this can be a coordinate list axis
+      newvar = asVarNC(newvar, self.ncvar, mode=self.mode, axes=axes, slices=slcs,
+                       scalefactor=self.scalefactor, offset=self.offset, transform=self.transform)
     return newvar
   
   def getArray(self, idx=None, axes=None, broadcast=False, unmask=False, fillValue=None, copy=True):
@@ -264,12 +267,16 @@ class VarNC(Variable):
     return super(VarNC,self).squeeze(**kwargs) # just call superior  
   
   def copy(self, asNC=False, **newargs):
-    ''' A method to copy the Variable with just a link to the data. '''
-    if asNC: raise NotImplementedError
-    # N.B.: we can't really return a VarNC object, since it would have to be attached to a new NetCDF file;
-    #       instead, create a DatasetNetCDF instance with a new NetCDF file, and add the variable to the
-    #       new dataset, using addVariable with the asNC=True and the copy=True / deepcopy=True option
-    return super(VarNC,self).copy(**newargs) # just call superior - returns a regular Variable instance
+    ''' A method to copy the Variable with just a link to the data.
+        N.B.: if we return a VarNC object, it will be attached to the same NetCDF file/variable;
+              to get a new NetCDF file with new variables, create a DatasetNetCDF instance with a 
+              new NetCDF file (e.g. using writeNetCDF), and add the new variable to the new dataset, 
+              using addVariable with the asNC=True and the copy=True / deepcopy=True option '''
+    copyvar = super(VarNC,self).copy(**newargs) # just call superior - returns a regular Variable instance
+    if asNC: 
+      copyvar = asVarNC(var=copyvar, ncvar=self.ncvar, mode=self.mode, axes=None,
+                        scalefactor=self.scalefactor, offset=self.offset, transform=self.transform) 
+    return copyvar
     
   def load(self, data=None, **kwargs):
     ''' Method to load data from NetCDF file into RAM. '''
@@ -377,10 +384,9 @@ class DatasetNetCDF(Dataset):
     and writing, as well as the creation of new NetCDF files.
   '''
   
-  def __init__(self, name=None, title=None, dataset=None, filelist=None, varlist=None,
-	       varatts=None, atts=None, axes=None, multifile=False,
-	       check_override=None, ignore_list=None, folder='', mode='r',
-	       ncformat='NETCDF4', squeeze=True, load=False):
+  def __init__(self, name=None, title=None, dataset=None, filelist=None, varlist=None, variables=None,
+      	       varatts=None, atts=None, axes=None, multifile=False, check_override=None, ignore_list=None, 
+               folder='', mode='r', ncformat='NETCDF4', squeeze=True, load=False):
     ''' 
       Create a Dataset from one or more NetCDF files; Variables are created from NetCDF variables. 
       Alternatively, create a netcdf file from an existing Dataset (Variables can be added as well).  
@@ -413,123 +419,140 @@ class DatasetNetCDF(Dataset):
         atts           = AttrDict() # dictionary containing global attributes / meta data
     '''
     if len(folder) > 0 and folder[-1] != '/': folder += '/'
-    # either use available NetCDF datasets directly, ...  
-    if isinstance(dataset,nc.Dataset):
-      datasets = [dataset]  # datasets is used later
-      if 'filepath' in dir(dataset): filelist = [dataset.filepath] # only available in newer versions
-    elif isinstance(dataset,(list,tuple)):
-      if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
-      datasets = dataset
-      filelist = [dataset.filepath() for dataset in datasets if 'filepath' in dir(dataset)]
-    # ... create a new NetCDF file, ...
-    elif isinstance(mode,basestring) and 'w' == mode and filelist:    
-      if isinstance(filelist,col.Iterable): filelist = filelist[0]
-      filename = folder + filelist; filelist = [filename] # filelist is used later
-      if os.path.exists(filename): raise NetCDFError, "File '%s' already exits - aborting!"%filename
-      if dataset: # add variables in dataset
-        if not isinstance(dataset,Dataset): raise TypeError        
-        dataset.atts.update(coerceAtts(atts))
-      else: # if no dataset is provided, make one
-        dataset = Dataset(varlist=[], atts=atts)
-      if axes: # add remaining axes
-        if not isinstance(axes,(list,tuple)): raise TypeError
-        for ax in axes:
-          if not isinstance(ax,Axis): raise TypeError 
-          dataset.addAxis(ax)
-      if varlist: # add remaining variables  
-        if not isinstance(varlist,(list,tuple)): raise TypeError
-        for var in varlist: 
-          if not isinstance(var,Variable): raise TypeError
-          dataset.addVariable(var)      
-      # create netcdf dataset/file
-      dataset = writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True, writeData=False, close=False, feedback=False)
-      datasets = [dataset]
-    # ... or open datasets from filelist
+    if variables is None:
+      # either use available NetCDF datasets directly, ...  
+      if isinstance(dataset,nc.Dataset):
+        datasets = [dataset]  # datasets is used later
+        if 'filepath' in dir(dataset): filelist = [dataset.filepath] # only available in newer versions
+      elif isinstance(dataset,(list,tuple)):
+        if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
+        datasets = dataset
+        filelist = [dataset.filepath() for dataset in datasets if 'filepath' in dir(dataset)]
+      # ... create a new NetCDF file, ...
+      elif isinstance(mode,basestring) and 'w' == mode and filelist:    
+        if isinstance(filelist,col.Iterable): filelist = filelist[0]
+        filename = folder + filelist; filelist = [filename] # filelist is used later
+        if os.path.exists(filename): raise NetCDFError, "File '%s' already exits - aborting!"%filename
+        if dataset: # add variables in dataset
+          if not isinstance(dataset,Dataset): raise TypeError        
+          dataset.atts.update(coerceAtts(atts))
+        else: # if no dataset is provided, make one
+          dataset = Dataset(varlist=[], atts=atts)
+        if axes: # add remaining axes
+          if not isinstance(axes,(list,tuple)): raise TypeError
+          for ax in axes:
+            if not isinstance(ax,Axis): raise TypeError 
+            dataset.addAxis(ax)
+        if varlist: # add remaining variables  
+          if not isinstance(varlist,(list,tuple)): raise TypeError
+          for var in varlist: 
+            if not isinstance(var,Variable): raise TypeError
+            dataset.addVariable(var)      
+        # create netcdf dataset/file
+        dataset = writeNetCDF(dataset, filename, ncformat='NETCDF4', zlib=True, writeData=False, close=False, feedback=False)
+        datasets = [dataset]
+      # ... or open datasets from filelist
+      else:
+        # translate modes
+        ncmode = 'a' if 'r' in mode and 'w' in mode else mode # 'rw' -> 'a' for "append"     
+        # open netcdf datasets from netcdf files
+        if not isinstance(filelist,col.Iterable): raise TypeError
+        # check if file exists
+        for filename in filelist:
+          if not os.path.exists(folder+filename): 
+            raise FileError, "File {0:s} not found in folder {1:s}".format(filename,folder)     
+        datasets = []; filenames = []
+        for ncfile in filelist:        
+          try: # NetCDF4 error messages are not very helpful...
+            if multifile: # open a netCDF4 multi-file dataset 
+              if isinstance(ncfile,(list,tuple)): tmpfile = [folder+ncf for ncf in ncfile]
+              else: tmpfile = folder+ncfile # multifile via regular expressions
+              datasets.append(nc.MFDataset(tmpfile), mode=ncmode, format=ncformat, clobber=False)
+            else: # open a simple single-file dataset
+              tmpfile = folder+ncfile
+              datasets.append(nc.Dataset(tmpfile, mode=ncmode, format=ncformat, clobber=False))
+          except RuntimeError:
+            raise NetCDFError, "Error reading file '{0:s}' in folder {1:s}".format(ncfile,folder)
+          filenames.append(tmpfile)
+        filelist = filenames # original file list, absolute path        
+      # from here on, dataset creation is based on the netcdf-Dataset(s) in 'datasets'
+      if ignore_list is not None:
+        if isinstance(ignore_list,(list,tuple,set)): ignore_list = set(ignore_list) # order doesn't matter
+        elif not isinstance(ignore_list,set): raise TypeError         
+      else: ignore_list = set()
+      # create axes from netcdf dimensions and coordinate variables
+      if varatts is None: varatts = dict() # empty dictionary means no parameters...
+      if check_override is None: check_override = [] # list of variables (and axes) that is not checked for consistency
+      # N.B.: check_override may be necessary to combine datasets from different files with inconsistent axis instances 
+      if axes is None: axes = dict()
+      else: check_override += axes.keys() # don't check externally provided axes   
+      if not isinstance(axes,dict): raise TypeError
+      for ds in datasets:
+        for dim in ds.dimensions.keys():
+          if dim not in ignore_list:
+            if dim[:8] == 'str_dim_': pass # dimensions added to store strings as charater arrays        
+            elif dim in ds.variables: # dimensions with an associated coordinate variable           
+              if dim in axes: # if already present, make sure axes are essentially the same
+                tmpax = AxisNC(ncvar=ds.variables[dim], mode='r', **varatts.get(dim,{})) # apply all correction factors...
+                if dim not in check_override and not isEqual(axes[dim][:],tmpax[:]): 
+                  raise DatasetError, "Error constructing Dataset: NetCDF files have incompatible {:s} dimension.".format(dim)
+              else: # if this is a new axis, add it to the list
+                if ds.variables[dim].dtype == '|S1': pass # Variables of type char are currently not implemented
+                else: axes[dim] = AxisNC(ncvar=ds.variables[dim], mode=mode, **varatts.get(dim,{})) # also use overrride parameters
+            else: # initialize dimensions without associated variable as regular Axis (not AxisNC)
+              if dim in axes: # if already present, make sure axes are essentially the same
+                if len(axes[dim]) != len(ds.dimensions[dim]): 
+                  raise DatasetError, "Error constructing Dataset: NetCDF files have incompatible '{:s}' dimensions: {:d} != {:d}".format(dim,len(axes[dim]),len(ds.dimensions[dim])) 
+              else: # if this is a new axis, add it to the list
+                params = dict(name=dim,coord=np.arange(len(ds.dimensions[dim]))); params.update(varatts.get(dim,{}))
+                axes[dim] = Axis(**params) # also use overrride parameters          
+      # create variables from netcdf variables    
+      variables = dict()
+      for ds in datasets:
+        if varlist is None: dsvars = [var for var in ds.variables.keys() if not var in ignore_list] 
+        else: dsvars = [var for var in varlist if ds.variables.has_key(var)] # varlist overrides ignore_list 
+        # loop over variables in dataset
+        for var in dsvars:
+          if var in axes: pass # do not treat coordinate variables as real variables 
+          elif ds.variables[var].ndim == 0: pass # also ignore scalars for now...
+          elif var in variables: # if already present, make sure variables are essentially the same
+            varobj = variables[var] 
+            if var in check_override: pass
+            elif varobj.strvar and ((varobj.shape == ds.variables[var].shape[:-1]) and
+                 (varobj.ncvar.dimensions == ds.variables[var].dimensions-1)) : pass
+            elif ( (varobj.shape == ds.variables[var].shape) and
+                 (varobj.ncvar.dimensions == ds.variables[var].dimensions) ): pass
+            else: 
+              raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files incompatible.".format(var) 
+          else: # if this is a new variable, add it to the list
+            if ds.variables[var].dtype == '|S1' and all([dim in axes for dim in ds.variables[var].dimensions[:-1]]): # string variable
+              varaxes = [axes[dim] for dim in ds.variables[var].dimensions[:-1]] # collect axes (except last)
+              strtype = np.dtype('|S{:d}'.format(ds.variables[var].shape[-1])) # string with length of string dimension
+              # N.B.: apparently len(dim) does not work properly - ncvar.shape is more reliable
+              # create new variable using the override parameters in varatts
+              variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, dtype=strtype, mode=mode, squeeze=squeeze, load=load, **varatts.get(var,{}))
+            elif all([dim in axes for dim in ds.variables[var].dimensions]):
+              varaxes = [axes[dim] for dim in ds.variables[var].dimensions] # collect axes
+              # create new variable using the override parameters in varatts
+              variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, mode=mode, squeeze=squeeze, load=load, **varatts.get(var,{}))
+            elif not any([dim in ignore_list for dim in ds.variables[var].dimensions]): # legitimate omission
+              raise DatasetError, 'Error constructing Variable: Axes/coordinates not found:\n {:s}, {:s}'.format(str(var), str(ds.variables[var].dimensions))
+      variables = variables.values()
     else:
-      # translate modes
-      ncmode = 'a' if 'r' in mode and 'w' in mode else mode # 'rw' -> 'a' for "append"     
-      # open netcdf datasets from netcdf files
-      if not isinstance(filelist,col.Iterable): raise TypeError
-      # check if file exists
-      for filename in filelist:
-        if not os.path.exists(folder+filename): 
-          raise FileError, "File {0:s} not found in folder {1:s}".format(filename,folder)     
-      datasets = []; filenames = []
-      for ncfile in filelist:        
-        try: # NetCDF4 error messages are not very helpful...
-          if multifile: # open a netCDF4 multi-file dataset 
-            if isinstance(ncfile,(list,tuple)): tmpfile = [folder+ncf for ncf in ncfile]
-            else: tmpfile = folder+ncfile # multifile via regular expressions
-            datasets.append(nc.MFDataset(tmpfile), mode=ncmode, format=ncformat, clobber=False)
-          else: # open a simple single-file dataset
-            tmpfile = folder+ncfile
-            datasets.append(nc.Dataset(tmpfile, mode=ncmode, format=ncformat, clobber=False))
-        except RuntimeError:
-          raise NetCDFError, "Error reading file '{0:s}' in folder {1:s}".format(ncfile,folder)
-        filenames.append(tmpfile)
-      filelist = filenames # original file list, absolute path        
-    # from here on, dataset creation is based on the netcdf-Dataset(s) in 'datasets'
-    if ignore_list is not None:
-      if isinstance(ignore_list,(list,tuple,set)): ignore_list = set(ignore_list) # order doesn't matter
-      elif not isinstance(ignore_list,set): raise TypeError         
-    else: ignore_list = set()
-    # create axes from netcdf dimensions and coordinate variables
-    if varatts is None: varatts = dict() # empty dictionary means no parameters...
-    if check_override is None: check_override = [] # list of variables (and axes) that is not checked for consistency
-    # N.B.: check_override may be necessary to combine datasets from different files with inconsistent axis instances 
-    if axes is None: axes = dict()
-    else: check_override += axes.keys() # don't check externally provided axes   
-    if not isinstance(axes,dict): raise TypeError
-    for ds in datasets:
-      for dim in ds.dimensions.keys():
-        if dim not in ignore_list:
-          if dim[:8] == 'str_dim_': pass # dimensions added to store strings as charater arrays        
-          elif dim in ds.variables: # dimensions with an associated coordinate variable           
-            if dim in axes: # if already present, make sure axes are essentially the same
-              tmpax = AxisNC(ncvar=ds.variables[dim], mode='r', **varatts.get(dim,{})) # apply all correction factors...
-              if dim not in check_override and not isEqual(axes[dim][:],tmpax[:]): 
-                raise DatasetError, "Error constructing Dataset: NetCDF files have incompatible {:s} dimension.".format(dim)
-            else: # if this is a new axis, add it to the list
-              if ds.variables[dim].dtype == '|S1': pass # Variables of type char are currently not implemented
-              else: axes[dim] = AxisNC(ncvar=ds.variables[dim], mode=mode, **varatts.get(dim,{})) # also use overrride parameters
-          else: # initialize dimensions without associated variable as regular Axis (not AxisNC)
-            if dim in axes: # if already present, make sure axes are essentially the same
-              if len(axes[dim]) != len(ds.dimensions[dim]): 
-                raise DatasetError, "Error constructing Dataset: NetCDF files have incompatible '{:s}' dimensions: {:d} != {:d}".format(dim,len(axes[dim]),len(ds.dimensions[dim])) 
-            else: # if this is a new axis, add it to the list
-              params = dict(name=dim,coord=np.arange(len(ds.dimensions[dim]))); params.update(varatts.get(dim,{}))
-              axes[dim] = Axis(**params) # also use overrride parameters          
-    # create variables from netcdf variables    
-    variables = dict()
-    for ds in datasets:
-      if varlist is None: dsvars = [var for var in ds.variables.keys() if not var in ignore_list] 
-      else: dsvars = [var for var in varlist if ds.variables.has_key(var)] # varlist overrides ignore_list 
-      # loop over variables in dataset
-      for var in dsvars:
-        if var in axes: pass # do not treat coordinate variables as real variables 
-        elif ds.variables[var].ndim == 0: pass # also ignore scalars for now...
-        elif var in variables: # if already present, make sure variables are essentially the same
-          varobj = variables[var] 
-          if var in check_override: pass
-          elif varobj.strvar and ((varobj.shape == ds.variables[var].shape[:-1]) and
-               (varobj.ncvar.dimensions == ds.variables[var].dimensions-1)) : pass
-          elif ( (varobj.shape == ds.variables[var].shape) and
-               (varobj.ncvar.dimensions == ds.variables[var].dimensions) ): pass
-          else: 
-            raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files incompatible.".format(var) 
-        else: # if this is a new variable, add it to the list
-          if ds.variables[var].dtype == '|S1' and all([dim in axes for dim in ds.variables[var].dimensions[:-1]]): # string variable
-            varaxes = [axes[dim] for dim in ds.variables[var].dimensions[:-1]] # collect axes (except last)
-            strtype = np.dtype('|S{:d}'.format(ds.variables[var].shape[-1])) # string with length of string dimension
-            # N.B.: apparently len(dim) does not work properly - ncvar.shape is more reliable
-            # create new variable using the override parameters in varatts
-            variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, dtype=strtype, mode=mode, squeeze=squeeze, load=load, **varatts.get(var,{}))
-          elif all([dim in axes for dim in ds.variables[var].dimensions]):
-            varaxes = [axes[dim] for dim in ds.variables[var].dimensions] # collect axes
-            # create new variable using the override parameters in varatts
-            variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, mode=mode, squeeze=squeeze, load=load, **varatts.get(var,{}))
-          elif not any([dim in ignore_list for dim in ds.variables[var].dimensions]): # legitimate omission
-            raise DatasetError, 'Error constructing Variable: Axes/coordinates not found:\n {:s}, {:s}'.format(str(var), str(ds.variables[var].dimensions))
+      if isinstance(variables,dict): variables = variables.values()
+      if isinstance(dataset,nc.Dataset):
+        datasets = [dataset]  # datasets is used later
+        try: 
+          if 'filepath' in dir(dataset): filelist = [dataset.filepath] # only available in newer versions
+        except: ValueError
+      elif isinstance(dataset,(list,tuple)):
+        if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
+        datasets = dataset
+        try: filelist = [dataset.filepath() for dataset in datasets if 'filepath' in dir(dataset)]
+        except: ValueError
+      else: raise ArgumentError
+      if filelist is None: raise ArgumentError
+      mode = 'r' # for now, only allow read
     # get attributes from NetCDF dataset
     ncattrs = joinDicts(*[ds.__dict__ for ds in datasets])
     if atts is not None: ncattrs.update(atts) # update with attributes passed to constructor
@@ -538,19 +561,19 @@ class DatasetNetCDF(Dataset):
     self.__dict__['datasets'] = datasets
     self.__dict__['filelist'] = filelist
     # initialize Dataset using parent constructor
-    super(DatasetNetCDF,self).__init__(name=name, title=title, varlist=variables.values(), atts=ncattrs)
+    super(DatasetNetCDF,self).__init__(name=name, title=title, varlist=variables, atts=ncattrs)
     
   @property
   def dataset(self):
     ''' The first element of the datasets list. '''
     return self.datasets[0] 
   
-  def addAxis(self, ax, asNC=None, copy=True, overwrite=False, deepcopy=False):
+  def addAxis(self, ax, asNC=None, copy=True, loverwrite=False, deepcopy=False):
     ''' Method to add an Axis to the Dataset. (If the Axis is already present, check that it is the same.) '''   
     if asNC is None: asNC = copy
     if ax.name in self.__dict__: 
       # replace axes, if permitted; need to use NetCDF method immediately, though
-      if overwrite and self.hasVariable(ax.name): 
+      if loverwrite and self.hasVariable(ax.name): 
         return self.replaceAxis(ax.name, ax, deepcopy=deepcopy)
       else: 
         raise AttributeError, "Cannot add Variable '{:s}' to Dataset, because an attribute of the same name already exits!".format(ax.name)      
@@ -565,38 +588,12 @@ class DatasetNetCDF(Dataset):
           if asNC and not isinstance(ax,AxisNC): 
             raise ArgumentError, "Cannot create NC variable without copying!"
     # hand-off to parent method and return status
-    return super(DatasetNetCDF,self).addAxis(ax=ax, copy=False, overwrite=overwrite) # already copied above
-  
-  def addVariable(self, var, asNC=None, copy=True, overwrite=False, deepcopy=False):
-    ''' Method to add a new Variable to the Dataset. '''
-    if asNC is None: asNC = copy
-    if var.name in self.__dict__: 
-      # replace axes, if permitted; need to use NetCDF method immediately, though
-      if overwrite and self.hasVariable(var.name): 
-        return self.replaceVariable(var.name, var, deepcopy=deepcopy)
-      else: raise AttributeError, "Cannot add Variable '{:s}' to Dataset, because an attribute of the same name already exits!".format(var.name)      
-    else:             
-      if deepcopy: copy=True   
-      # cast Axis instance as AxisNC
-      if copy: # make a new instance or add it as is 
-        if asNC and 'w' in self.mode:
-          for ax in var.axes:
-            if not self.hasAxis(ax.name): 
-              self.addAxis(ax, asNC=asNC, copy=copy, overwrite=overwrite, deepcopy=deepcopy)
-          # add variable as a NetCDF variable             
-          var = asVarNC(var=var,ncvar=self.datasets[0], axes=self.axes, mode=self.mode, deepcopy=deepcopy)
-        else: 
-          var = var.copy(deepcopy=deepcopy) # or just add as a normal Variable
-      else:
-        if asNC and not isinstance(var,VarNC): 
-          raise ArgumentError, "Cannot create NC variable without copying!"
-      # hand-off to parent method and return status
-      return super(DatasetNetCDF,self).addVariable(var=var, copy=False, overwrite=overwrite)
+    return super(DatasetNetCDF,self).addAxis(ax=ax, copy=False, loverwrite=loverwrite) # already copied above
       
-  def repalceAxis(self, oldaxis, newaxis=None, asNC=True, deepcopy=True):    
+  def replaceAxis(self, oldaxis, newaxis=None, asNC=True, deepcopy=True):    
     ''' Replace an existing axis with a different one and transfer NetCDF reference to new axis. '''
     if newaxis is None: 
-      newaxis = oldaxis; oldaxis = newaxis.name # i.e. replace old axis with the same name'
+      newaxis = oldaxis; oldaxis = newaxis.name # i.e. replace old axis with the same name
     # check axis
     if not self.hasAxis(oldaxis): raise AxisError
     # special treatment for VarNC: transfer of ownership of NetCDF variable
@@ -622,6 +619,32 @@ class DatasetNetCDF(Dataset):
     # return verification
     return self.hasAxis(newaxis)        
   
+  def addVariable(self, var, asNC=None, copy=True, loverwrite=False, deepcopy=False):
+    ''' Method to add a new Variable to the Dataset. '''
+    if asNC is None: asNC = copy
+    if var.name in self.__dict__: 
+      # replace axes, if permitted; need to use NetCDF method immediately, though
+      if loverwrite and self.hasVariable(var.name): 
+        return self.replaceVariable(var.name, var, deepcopy=deepcopy)
+      else: raise AttributeError, "Cannot add Variable '{:s}' to Dataset, because an attribute of the same name already exits!".format(var.name)      
+    else:             
+      if deepcopy: copy=True   
+      # cast Axis instance as AxisNC
+      if copy: # make a new instance or add it as is 
+        if asNC and 'w' in self.mode:
+          for ax in var.axes:
+            if not self.hasAxis(ax.name): 
+              self.addAxis(ax, asNC=asNC, copy=copy, loverwrite=loverwrite, deepcopy=deepcopy)
+          # add variable as a NetCDF variable             
+          var = asVarNC(var=var,ncvar=self.datasets[0], axes=self.axes, mode=self.mode, deepcopy=deepcopy)
+        else: 
+          var = var.copy(deepcopy=deepcopy) # or just add as a normal Variable
+      else:
+        if asNC and not isinstance(var,VarNC): 
+          raise ArgumentError, "Cannot create NC variable without copying!"
+      # hand-off to parent method and return status
+      return super(DatasetNetCDF,self).addVariable(var=var, copy=False, loverwrite=loverwrite)
+  
   def replaceVariable(self, oldvar, newvar=None, asNC=True, deepcopy=False):
     ''' Replace an existing Variable with a different one and transfer NetCDF reference and axes. '''
     if newvar is None: 
@@ -641,28 +664,28 @@ class DatasetNetCDF(Dataset):
       # cast new variable as VarNC and transfer old ncvar reference and axes    
       newvar = asVarNC(var=newvar,ncvar=oldvar.ncvar, axes=oldvar.axes, mode=oldvar.mode, deepcopy=deepcopy)
       # ... and add new axis to dataset
-      self.addVariable(newvar, copy=False, overwrite=False)
+      self.addVariable(newvar, copy=False, loverwrite=False)
     else: # no need for special treatment...
       super(DatasetNetCDF,self).replaceVariable(oldvar, newvar)
     # return status of variable
     return self.hasVariable(newvar)  
   
-  def load(self, **slices):
-    ''' Load all VarNC's and AxisNC's using the slices specified as keyword arguments. '''
-    # make slices
-    for key,value in slices.iteritems():
-      if isinstance(value,col.Iterable): 
-        slices[key] = slice(*value)
-      else: 
-        if not isinstance(value,(int,np.integer)): raise TypeError
-    # load variables
-    for var in self.variables.values():
-      if isinstance(var,VarNC):
-        idx = [slices.get(ax.name,slice(None)) for ax in var.axes]
-        var.load(data=idx) # load slice, along with relevant dimensions
-    # no return value...     
-    # return itself- this allows for some convenient syntax
-    return self
+#   def load(self, **slices):
+#     ''' Load all VarNC's and AxisNC's using the slices specified as keyword arguments. '''
+#     # make slices
+#     for key,value in slices.iteritems():
+#       if isinstance(value,col.Iterable): 
+#         slices[key] = slice(*value)
+#       else: 
+#         if not isinstance(value,(int,np.integer)): raise TypeError
+#     # load variables
+#     for var in self.variables.values():
+#       if isinstance(var,VarNC):
+#         idx = [slices.get(ax.name,slice(None)) for ax in var.axes]
+#         var.load(data=idx) # load slice, along with relevant dimensions
+#     # no return value...     
+#     # return itself- this allows for some convenient syntax
+#     return self
     
   def sync(self):
     ''' Synchronize variables and axes/coordinates with their associated NetCDF variables. '''
@@ -690,17 +713,26 @@ class DatasetNetCDF(Dataset):
     # return itself- this allows for some convenient syntax
     return self
     
-  def copy (self, asNC=False, filename=None, varsdeep=False, **newargs):
+  def copy (self, asNC=True, filename=None, varsdeep=False, **newargs):
     ''' Copy a DatasetNetCDF, either into a normal Dataset or into a DatasetNetCDF (requires a filename). '''
+    if asNC and filename is not None:
+      writeData = newargs.pop('lwriteData',True)
+      if writeData or varsdeep: self.load() 
+      # N.B.: we need to pre-load, so the data can be written later   
+    # first invoke parent method, to make regular copy
+    dataset = super(DatasetNetCDF,self).copy(varsdeep=varsdeep, **newargs)
+    # now handle NetCDF stuff
     if asNC:
-      #mode = 'wr' if 'r' in self.mode else 'w'      
-      writeData = newargs.pop('writeData',True)
-      ncformat = newargs.pop('ncformat','NETCDF4')
-      zlib = newargs.pop('zlib',True)
-      dataset = asDatasetNC(self, ncfile=filename, mode='wr', deepcopy=varsdeep, 
-                            writeData=writeData, ncformat=ncformat, zlib=zlib)
-    else: # just invoke parent method
-      dataset = super(DatasetNetCDF,self).copy(varsdeep=varsdeep, **newargs)
+      if filename is None:
+        mode = 'r' if newargs.pop('lwrite',False) else 'r' 
+        dataset = DatasetNetCDF(mode=mode, filelist=self.filelist, dataset=self.datasets, 
+                                atts=dataset.atts, variables=dataset.variables)
+      else:
+        #mode = 'wr' if 'r' in self.mode else 'w'      
+        ncformat = newargs.pop('ncformat','NETCDF4')
+        zlib = newargs.pop('zlib',True)
+        dataset = asDatasetNC(dataset, ncfile=filename, mode='wr', deepcopy=varsdeep, 
+                              writeData=writeData, ncformat=ncformat, zlib=zlib)        
     # return
     return dataset  
     

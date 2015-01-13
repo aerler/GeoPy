@@ -320,7 +320,8 @@ class Variable(object):
   def shape(self):
     ''' The length of each dimension (shape of data; inferred from axes). '''
     shape = tuple([len(ax) for ax in self.axes])
-    if self.data and shape != self.data_array.shape: raise DataError, 'Shape mismatch!'
+    if self.data and shape != self.data_array.shape: 
+      raise DataError, 'Shape mismatch!'
     return shape
   
   @property
@@ -779,6 +780,8 @@ class Variable(object):
         # get tiling list
         tiling = [len(ax) if l == 1 else 1 for ax,l in zip(axes,datacopy.shape)]
         datacopy = np.tile(datacopy, reps=tiling)
+    else:
+      raise DataError, "No data loaded (Variable '{:s}')".format(self.name)
     # return array
     return datacopy
     
@@ -1803,7 +1806,7 @@ class Dataset(object):
   def title(self, title):
     self.atts['title'] = title
     
-  def addAxis(self, ax, copy=False, overwrite=False):
+  def addAxis(self, ax, copy=False, loverwrite=False):
     ''' Method to add an Axis to the Dataset. If the Axis is already present, check that it is the same. '''
     if not isinstance(ax,Axis): raise TypeError
     if not self.hasAxis(ax.name): # add new axis, if it does not already exist        
@@ -1814,7 +1817,7 @@ class Dataset(object):
       else: self.axes[ax.name] = ax
       self.__dict__[ax.name] = self.axes[ax.name] # create shortcut
     else: # make sure the axes are consistent between variable (i.e. same name, same axis)
-      if overwrite:
+      if loverwrite:
         self.replaceAxis(ax)
       elif not ax is self.axes[ax.name]:        
         if len(ax) != len(self.axes[ax.name]): 
@@ -1826,11 +1829,11 @@ class Dataset(object):
     # double-check
     return self.axes.has_key(ax.name)       
     
-  def addVariable(self, var, copy=False, deepcopy=False, overwrite=False):
+  def addVariable(self, var, copy=False, deepcopy=False, loverwrite=False, **kwargs):
     ''' Method to add a Variable to the Dataset. If the variable is already present, abort. '''
     if not isinstance(var,Variable): raise TypeError
     if var.name in self.__dict__: 
-      if overwrite and self.hasVariable(var.name): self.replaceVariable(var)
+      if loverwrite and self.hasVariable(var.name): self.replaceVariable(var)
       else: raise AttributeError, "Cannot add Variable '{:s}' to Dataset, because an attribute of the same name already exits!".format(var.name)      
     else:       
       # add new axes, or check, if already present; if present, replace, if different
@@ -2001,7 +2004,7 @@ class Dataset(object):
       # save variable
       if var.ndim == newvar.ndim and var.shape == newvar.shape: 
         othervars[newvar.name] = newvar         
-      else: slicevars[newvar] = newvar
+      else: slicevars[newvar.name] = newvar
       # save axes
       for ax in newvar.axes:
         if ax.name in otheraxes and len(ax) == len(self.axes[ax.name]): otheraxes[ax.name] = ax
@@ -2038,10 +2041,13 @@ class Dataset(object):
     newvars = []
     for varname in varlist:
       # select variable
-      if varname in variables: var = variables[varname]
-      else: var = self.variables[varname]
-      # skip variables that are set to None
-      if var is not None:
+      if varname in variables: 
+        # skip variables that are set to None
+        var = variables[varname]
+        if var is not None: newvars.append(var)
+        # N.B.: don't make a copy, or we loose any NetCDF reference!
+      else: 
+        var = self.variables[varname]
         # change axes and attributes
         axes = tuple([newaxes.get(ax.name,ax) for ax in var.axes])
         if varname in varargs: # check input again

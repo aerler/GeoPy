@@ -81,7 +81,11 @@ else:
 # standard folder for grids and shapefiles  
 grid_folder = data_root + '/grids/' # folder for pickled grids
 shape_folder = data_root + '/shapes/' # folder for pickled grids
- 
+
+# convenience method to convert a period tuple into a monthly coordinate tuple 
+def timeSlice(period):
+  ''' convenience method to convert a period tuple into a monthly coordinate tuple '''
+  return (period[0]-1979)*12, (period[1]-1979)*12-1 
 
 # function to extract common points that meet a specific criterion from a list of datasets
 def selectCoords(datasets, axis, testFct=None, imaster=None, linplace=True, lall=False):
@@ -183,12 +187,12 @@ def addLengthAndNamesOfMonth(dataset, noleap=False, length=None, names=None):
   if names is None: names = name_of_month
   # create variables
   if isinstance(dataset, DatasetNetCDF) and 'w' in dataset.mode: 
-    #dataset += VarNC(dataset.dataset, axes=(dataset.time,), data=length, atts=lenatts)
     dataset.addVariable(Variable(axes=(dataset.time,), data=length, atts=lenatts), asNC=True)
-    dataset.axisAnnotation(stratts['name'], names, 'time', atts=stratts)
+    dataset.addVariable(Variable(axes=(dataset.time,), data=names, atts=stratts), asNC=True)
   else:
     # N.B.: char/string arrays are currently not supported as Variables
     dataset.addVariable(Variable(axes=(dataset.time,), data=length, atts=lenatts))
+    dataset.addVariable(Variable(axes=(dataset.time,), data=names, atts=stratts))
   # return length variable
   return dataset.variables[lenatts['name']]
 

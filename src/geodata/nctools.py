@@ -228,7 +228,9 @@ def coerceAtts(atts):
           ncatts[key] = np.array(value)         
         else:
           l = '(' # fake list representation
-          for elt in value[0:-1]: l += '{0:s}, '.format(str(elt))
+          try: 
+            for elt in value[0:-1]: l += '{0:s}, '.format(str(elt))
+          except: print elt 
           l += '{0:s})'.format(str(value[-1]))
           ncatts[key] = l          
       else: ncatts[key] = str(value) 

@@ -319,7 +319,7 @@ class BaseVarTest(unittest.TestCase):
         for dt in tests:
           dvar = getattr(distvar,dt)(support=bins, asVar=True, axis_idx=None)
           assert dvar.shape == var.shape[1:]+(len(bins),)
-          assert dvar.units == ''
+          assert dvar.units == '' or dvar.units
           if var.masked:
             assert dvar.masked
             # N.B.: the CDF/sample axes here are in different locations!    
@@ -742,7 +742,7 @@ class BaseDatasetTest(unittest.TestCase):
     dataset = self.dataset
     le = len(dataset)
     # add/remove axes
-    dataset.addVariable(var, copy=False, overwrite=True) # add variables as is
+    dataset.addVariable(var, copy=False, loverwrite=True) # add variables as is
     assert dataset.hasVariable(var)
     assert dataset.hasAxis(ax)
     assert len(dataset) == le + 1
@@ -772,7 +772,7 @@ class BaseDatasetTest(unittest.TestCase):
 #     print newax.name, newax.data
 #     print newax.data_array
     dataset.replaceAxis(oldax,newax)
-    assert dataset.hasAxis(newax) and not dataset.hasAxis(oldax)  
+    assert dataset.hasAxis(newax.name) and not dataset.hasAxis(oldax)  
     assert not any([var.hasAxis(oldax) for var in dataset])
     
   def testConcatDatasets(self):
@@ -1376,19 +1376,19 @@ if __name__ == "__main__":
 #     specific_tests = ['Ensemble']
 #     specific_tests = ['StatsTests']   
 #     specific_tests = ['UnaryArithmetic']
-#     specific_tests = ['Indexing']
+#     specific_tests = ['Copy']
  
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
+    tests += ['BaseVar'] 
+    tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
        
     
     # construct dictionary of test classes defined above

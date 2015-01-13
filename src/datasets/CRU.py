@@ -9,13 +9,12 @@ This module contains meta data and access functions for the monthly CRU time-ser
 # external imports
 import numpy as np
 import os
-import types # to add precip conversion fct. to datasets
 # internal imports
 from geodata.base import Variable, Axis
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition
 from datasets.common import translateVarNames, days_per_month, name_of_month, data_root 
-from datasets.common import loadObservations, grid_folder, transformPrecip, transformDays
+from datasets.common import loadObservations, grid_folder, transformPrecip, transformDays, timeSlice
 from processing.process import CentralProcessingUnit
 
  
@@ -80,7 +79,7 @@ def loadCRU_TS(name=dataset_name, grid=None, varlist=None, resolution=None, vara
     # replace time axis with number of month since Jan 1979 
     data = np.arange(0,len(dataset.time),1, dtype='int16') + (1901-1979)*12 # month since 1979 (Jan 1979 = 0)
     timeAxis = Axis(name='time', units='month', coord=data, atts=dict(long_name='Month since 1979-01'))
-    dataset.repalceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
+    dataset.replaceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
     # add projection  
     dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
     # N.B.: projection should be auto-detected as geographic    
@@ -160,12 +159,12 @@ if __name__ == '__main__':
 #   mode = 'test_station_timeseries'
   mode = 'average_timeseries'
 #   period = (1971,2001)
-#   period = (1979,2009)
+  period = (1979,2009)
 #   period = (1949,2009)
 #   period = (1979,1982)
 #   period = (1979,1984)
 #   period = (1979,1989)
-  period = (1979,1994)
+#   period = (1979,1994)
 #   period = (1984,1994)
 #   period = (1989,1994)
 #   period = (1979,1980)
@@ -218,7 +217,10 @@ if __name__ == '__main__':
     print('   ***   Processing Time-series from %s   ***   '%(periodstr,))
     print('\n')
     source = loadCRU_TS()
+    source = source(time=timeSlice(period)) # only get relevant time-slice    
     print(source)
+    assert period[0] != 1979 or source.time.coord[0] == 0
+    assert len(source.time) == (period[1]-period[0])*12
     print('\n')
     # prepare sink
     filename = avgfile.format('','_'+periodstr,)

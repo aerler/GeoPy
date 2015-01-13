@@ -86,7 +86,7 @@ class CentralProcessingUnit(object):
       for varname in varlist:
         if varname in self.tmpput.variables:
           var = self.tmpput.variables[varname]
-          self.output.addVariable(var, overwrite=True, deepcopy=copydata)
+          self.output.addVariable(var, loverwrite=True, deepcopy=copydata)
           # N.B.: without copydata/deepcopy, only the variable header is created but no data is written
           if flush: var.unload() # remove unnecessary references (unlink data)
       if gdal and 'gdal' in self.tmpput.__dict__: 
@@ -375,7 +375,7 @@ class CentralProcessingUnit(object):
         projection=griddef.projection; geotransform=griddef.geotransform
         xlon=griddef.xlon; ylat=griddef.ylat                     
       # apply GDAL settings target dataset 
-      for ax in (xlon,ylat): self.target.addAxis(ax, overwrite=True) # i.e. replace if already present
+      for ax in (xlon,ylat): self.target.addAxis(ax, loverwrite=True) # i.e. replace if already present
       self.target = addGDALtoDataset(self.target, projection=projection, geotransform=geotransform)
     # use these map axes
     xlon = self.target.xlon; ylat = self.target.ylat
@@ -418,6 +418,8 @@ class CentralProcessingUnit(object):
     # start process
     if self.feedback: print('\n   +++   processing regridding   +++   ') 
     self.process(function, **kwargs) # currently 'flush' is the only kwarg
+    # now make sure we have a GDAL dataset!
+    self.target = addGDALtoDataset(self.target, griddef=griddef)
     if self.feedback: print('\n')
     if self.tmp: self.tmpput = self.target
     if ltmptoo: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
@@ -433,7 +435,7 @@ class CentralProcessingUnit(object):
       axes[var.axisIndex(var.xlon)] = xlon
       # create new Variable
       var.load() # most rebust way to determine the dtype! and we need it later anyway
-      newvar = var.copy(axes=axes, data=None, asNC=False, projection=self.target.projection) # and, of course, load new data
+      newvar = var.copy(axes=axes, data=None, projection=self.target.projection) # and, of course, load new data
       # if necessary, shift array back, to ensure proper wrapping of coordinates
       # prepare regridding
       # get GDAL dataset instances
@@ -487,9 +489,6 @@ class CentralProcessingUnit(object):
       timeSlice = slice(start,end,None)
     else: 
       if not isinstance(timeSlice,slice): raise TypeError, timeSlice
-    # add GDAL to target
-    if self.source.gdal: 
-      self.target = addGDALtoDataset(self.target, projection=self.source.projection, geotransform=self.source.geotransform)
     # add variables that will cause errors to ignorelist (e.g. strings)
     for varname,var in self.source.variables.iteritems():
       if var.hasAxis(timeAxis) and var.dtype.kind == 'S': self.ignorelist.append(varname)
@@ -498,8 +497,14 @@ class CentralProcessingUnit(object):
                                  timeAxis=timeAxis, climAxis=climAxis, timeSlice=timeSlice, shift=shift)
     # start process
     if self.feedback: print('\n   +++   processing climatology   +++   ')     
+    if self.source.gdal: griddef = self.source.griddef
+    else: griddef = None 
     self.process(function, **kwargs) # currently 'flush' is the only kwarg    
-    if self.feedback: print('\n')
+    # add GDAL to target
+    if griddef is not None:
+      self.target = addGDALtoDataset(self.target, griddef=griddef)
+    # N.B.: if the dataset is empty, it wont do anything, hence we do it now    
+    if self.feedback: print('\n')    
   # the previous method sets up the process, the next method performs the computation
   def processClimatology(self, var, timeAxis='time', climAxis=None, timeSlice=None, shift=0):
     ''' Compute a climatology from a variable time-series. '''
