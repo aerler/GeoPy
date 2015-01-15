@@ -31,6 +31,7 @@ nlat = 1680 # slat = 14 deg
 nlon = 3241 # slon = 27 deg
 # N.B.: coordinates refer to grid points (CF convention), commented values refer to box edges (GDAL convention) 
 llclat = 48. # 48.0000000000553
+# llclat = 48.0000000000553 # 48.
 llclon = -140. # -140.0
            
 geotransform = (llclon-dlon2, dlon, 0.0, llclat-dlat2, 0.0, dlat)

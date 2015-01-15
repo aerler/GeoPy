@@ -65,19 +65,23 @@ class Exp(object):
 # N.B.: This is the reference list, with unambiguous, unique keys and no aliases/duplicate entries  
 experiments = OrderedDict() # dictionary of experiments
 # list of experiments
+experiments['erai-wc2-bugaboo'] = Exp(shortname='bugaboo', name='erai-wc2-bugaboo', title='ERA-I 1km (2013)', begindate='2013-08-01', grid='wc2', parent='ERA-I')
+experiments['erai-wc2-rocks'] = Exp(shortname='rocks', name='erai-wc2-rocks', title='ERA-I 1km (2010)', begindate='2010-08-01', grid='wc2', parent='ERA-I')
 experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindate='1979-09-01', enddate='1979-09-01', grid='coast1', parent='CFSR')
 experiments['col1-ctrl'] = Exp(shortname='col1', name='col1-ctrl', title='Max 3km (CFSR)', begindate='1979-09-01', grid='col1', parent='CFSR')
 experiments['max-3km'] = Exp(shortname='max-3km', name='max-3km', title='Max 3km (Ctrl)', begindate='1979-09-01', grid='col2', parent='Ctrl')
 experiments['erai-3km'] = Exp(shortname='erai-3km', name='erai-3km', title='Max 3km (ERA-I)', begindate='1979-09-01', grid='col2', parent='ERA-I')
 # some new experiments using WRF V3.6 or V3.6.1 and the new configuration 
-experiments['new-v361-ctrl'] = Exp(shortname='v36', name='new-v361-ctrl', title='New (V3.6.1)', begindate='1979-01-01', grid='arb3')
-experiments['new-v361-ctrl-2050'] = Exp(shortname='v36-2050', name='new-v361-ctrl-2050', title='New (2050, V3.6.1)', begindate='2045-01-01', grid='arb3')
-experiments['new-v361-ctrl-2100'] = Exp(shortname='v36-2100', name='new-v361-ctrl-2100', title='New (2100, V3.6.1)', begindate='2085-01-01', grid='arb3')
+experiments['erai-v361-ctrl'] = Exp(shortname='erai-v361', name='erai-v361-ctrl', title='ERA-I (New, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
+experiments['erai-v361-noah'] = Exp(shortname='erai-v361-noah', name='erai-v361-noah', title='ERA-I (Noah, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
+experiments['new-v361-ctrl'] = Exp(shortname='new-v361', name='new-v361-ctrl', title='New (V3.6.1)', begindate='1979-01-01', grid='arb3')
+experiments['new-v361-ctrl-2050'] = Exp(shortname='new-v361-2050', name='new-v361-ctrl-2050', title='New (2050, V3.6.1)', begindate='2045-01-01', grid='arb3')
+experiments['new-v361-ctrl-2100'] = Exp(shortname='new-v361-2100', name='new-v361-ctrl-2100', title='New (2100, V3.6.1)', begindate='2085-01-01', grid='arb3')
 experiments['new-v36-nmp'] = Exp(shortname='new-nmp', name='new-v36-nmp', title='New (N-MP, V3.6)', begindate='1979-01-01', grid='arb3')
 experiments['new-v36-noah'] = Exp(shortname='new-noah', name='new-v36-noah', title='New (Noah, V3.6)', begindate='1979-01-01', grid='arb3')
 experiments['new-v36-clm'] = Exp(shortname='new-clm', name='new-v36-clm', title='New (CLM, V3.6)', begindate='1979-01-01', grid='arb3')
-experiments['erai-v36-nmp'] = Exp(shortname='erai-nmp', name='erai-v36-nmp', title='ERA-I (N-MP, V3.6)', begindate='1979-01-01', grid='arb3')
-experiments['erai-v36-noah'] = Exp(shortname='erai-noah', name='erai-v36-noah', title='ERA-I (Noah, V3.6)', begindate='1979-01-01', grid='arb3')
+experiments['erai-v36-nmp'] = Exp(shortname='erai-nmp', name='erai-v36-nmp', title='ERA-I (N-MP, V3.6)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
+experiments['erai-v36-noah'] = Exp(shortname='erai-noah', name='erai-v36-noah', title='ERA-I (Noah, V3.6)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
 # these are all based on the "new" configuration (ARB3 domain)
 experiments['new-ctrl'] = Exp(shortname='new', name='new-ctrl', title='New (V3.4)', begindate='1979-01-01', grid='arb3')
 experiments['new-ctrl-2050'] = Exp(shortname='new-2050', name='new-ctrl-2050', title='New (2050)', begindate='2045-01-01', grid='arb3')

@@ -210,7 +210,8 @@ if __name__ == '__main__':
     NP = NP or 4
     varlist = None # ['lat2D', ]
     experiments = []
-    experiments += ['max-ctrl']
+    experiments += ['erai-3km','max-3km']
+#     experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
 #     experiments += ['new','noah','max','max-2050']
 #     experiments += ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
 #     experiments += ['max-1deg', 'max-1deg-2050','max-1deg-2100']
@@ -226,13 +227,13 @@ if __name__ == '__main__':
     offset = 0 # number of years from simulation start
     periods = [] # not that all periods are handled within one process! 
 #     periods += [1]
-#     periods += [3]
-    periods += [5]
+    periods += [3]
+#     periods += [5]
 #     periods += [9]
-    periods += [10]
+#     periods += [10]
 #     periods += [15]
-    domains = (2,) # domains to be processed
-#     filetypes = ['hydro'] # filetypes to be processed
+    domains = (1,2,3) # domains to be processed
+#     filetypes = ['srfc'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']
     filetypes = ['hydro'] # filetypes to be processed
@@ -287,4 +288,4 @@ if __name__ == '__main__':
   # call parallel execution function
   ec = asyncPoolEC(computeClimatology, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
   # exit with fraction of failures (out of 10) as exit code
-  exit(int(10+np.ceil(10.*ec/len(args))))
+  exit(int(10+np.ceil(10.*ec/len(args))) if ec > 0 else 0)

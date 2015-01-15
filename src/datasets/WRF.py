@@ -207,7 +207,7 @@ class Srfc(FileType):
                      LiquidPrecip = dict(name='liqprec_sr', units='kg/m^2/s'), # liquid precipitation rate
                      SolidPrecip  = dict(name='solprec_sr', units='kg/m^2/s'), # solid precipitation rate
                      WaterVapor   = dict(name='Q2', units='Pa'), # water vapor partial pressure
-                     WetDays       = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
+                     WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
                      MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
                      MaxRAINC     = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # maximum 6-hourly convective precip
                      MaxPrecip    = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # for short-term consistency                    
@@ -231,6 +231,7 @@ class Hydro(FileType):
                      LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
                      SolidPrecip  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
                      NetWaterFlux = dict(name='waterflx', units='kg/m^2/s'), # total water downward flux
+                     WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
                      MaxRAIN      = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
                      MaxRAINC     = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # maximum daily convective precip
                      MaxPrecip    = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
@@ -304,6 +305,7 @@ class Xtrm(FileType):
                      RAINNCVMEAN   = dict(name='precnc', units='kg/m^2/s'), # daily mean grid-scale precipitation rate
                      RAINNCVMAX    = dict(name='precncmax', units='kg/m^2/s'), # daily maximum grid-scale precipitation rate
                      RAINNCVSTD    = dict(name='precncstd', units='kg/m^2/s'), # daily grid-scale precip standard deviation
+                     WetDays       = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
                      MaxRAINMEAN   = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
                      MaxRAINCVMEAN = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # maximum daily convective precip
                      MaxPrecip     = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
@@ -572,7 +574,7 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
     if llconst:
       for var in const: 
         if var.name not in dataset:
-          dataset.addVariable(var, asNC=False, copy=False, overwrite=False, deepcopy=False)
+          dataset.addVariable(var, asNC=False, copy=False, loverwrite=False, deepcopy=False)
     if not lstation:
       # add projection
       dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, geolocator=True)
@@ -591,43 +593,62 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
 
 
 # load a pre-processed WRF ensemble and concatenate time-series 
-def loadWRF_StnEns(ensemble=None, station=None, filetypes=None, years=None, domains=2, varlist=None, 
-                   varatts=None, translateVars=None, lcheckVars=True, lcheckAxis=True):
+def loadWRF_StnEns(ensemble=None, name=None, station=None, filetypes=None, years=None, domains=2, varlist=None, 
+                   title=None, varatts=None, translateVars=None, lcheckVars=True, lcheckAxis=True):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadWRF_Ensemble(ensemble=ensemble, grid=None, station=station, domains=domains, 
                           filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
                           translateVars=translateVars, lautoregrid=False, lctrT=True, lconst=False,
-                          lcheckVars=lcheckVars, lcheckAxis=lcheckAxis)
+                          lcheckVars=lcheckVars, lcheckAxis=lcheckAxis, name=name, title=title)
   
 # load a pre-processed WRF ensemble and concatenate time-series 
-def loadWRF_Ensemble(ensemble=None, grid=None, station=None, domains=2, filetypes=None, 
+def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, domains=2, filetypes=None, 
                      years=None, varlist=None, varatts=None, translateVars=None, lautoregrid=None, 
-                     lctrT=True, lconst=True, lcheckVars=True, lcheckAxis=True):
+                     title=None, lctrT=True, lconst=True, lcheckVars=True, lcheckAxis=True):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
-  # obviously this only works for modes that produce a time-axis
+  # obviously this only works for datasets that have a time-axis
   # figure out ensemble
-  from projects.WRF_experiments import ensembles, Exp # need to leave this here, to avoid circular reference...
-  if isinstance(ensemble,Exp): ensemble = ensembles[ensemble.shortname]
-  elif isinstance(ensemble,basestring): ensemble = ensembles[ensemble]
-  else: raise TypeError
-  if not isinstance(ensemble,(tuple,list)): raise TypeError
-#   if not ( isinstance(ensemble,(tuple,list)) and
-#            all([isinstance(exp,(basestring,Exp)) for exp in ensemble]) ): raise TypeError
+  from projects.WRF_experiments import ensembles, exps, Exp # need to leave this here, to avoid circular reference...
+  if isinstance(ensemble,(list,tuple)):
+    for ens in ensemble:
+      if isinstance(ens,Exp) or ( isinstance(ens,basestring) and ens in exps ) : pass
+      else: raise TypeError
+    ensemble = [ens if isinstance(ens,Exp) else exps[ens] for ens in ensemble] # convert to Exp's    
+    # annotation
+    if name is None: name = ensemble[0].shortname
+    if title is None: title = ensemble[0].title
+  else:
+    if isinstance(ensemble,Exp): ensname = ensemble.shortname
+    elif isinstance(ensemble,basestring): 
+      ensname = ensemble; ensemble = exps[ensname] # treat ensemble like experiment until later
+    else: raise TypeError
+    # annotation (while ensemble is an Exp instance)
+    if name is None: name = ensemble.shortname
+    if title is None: title = ensemble.title
+    # convert actual ensemble to list
+    if ensname in ensembles: ensemble = ensembles[ensname]
   # figure out time period
-  if years is None: years =15
+  if years is None: years = 15
   elif isinstance(years,(list,tuple)) and len(years)==2: raise NotImplementedError 
   elif not isInt(years): raise TypeError  
   montpl = (0,years*12)
-  # load datasets (and load!)
-  datasets = []
-  for exp in ensemble:
-    ds = loadWRF_All(experiment=exp, name=None, grid=grid, station=station, filetypes=filetypes, 
-                     varlist=varlist, varatts=varatts, period=None, mode='time-series', 
-                     lautoregrid=lautoregrid, lctrT=lctrT, lconst=lconst, domains=domains)
-    datasets.append(ds.load())
-  # concatenate datasets (along 'time' axis, WRF doesn't have 'year')  
-  dataset = concatDatasets(datasets, axis='time', coordlim=None, idxlim=montpl, offset=None, axatts=None, 
-                           lcpOther=True, lcpAny=False, lcheckVars=lcheckVars, lcheckAxis=lcheckAxis)
+  # special treatment for single experiments (i.e. not an ensemble...)
+  if not isinstance(ensemble,(tuple,list)):
+    dataset = loadWRF_All(experiment=ensemble, name=None, grid=grid, station=station, filetypes=filetypes, 
+                          varlist=varlist, varatts=varatts, period=None, mode='time-series', 
+                          lautoregrid=lautoregrid, lctrT=lctrT, lconst=lconst, domains=domains)
+  else:
+    # load datasets (and load!)
+    datasets = []
+    for exp in ensemble:
+      ds = loadWRF_All(experiment=exp, name=None, grid=grid, station=station, filetypes=filetypes, 
+                       varlist=varlist, varatts=varatts, period=None, mode='time-series',
+                       lautoregrid=lautoregrid, lctrT=lctrT, lconst=lconst, domains=domains)
+      datasets.append(ds.load())
+    # concatenate datasets (along 'time' axis, WRF doesn't have 'year')  
+    dataset = concatDatasets(datasets, axis='time', coordlim=None, idxlim=montpl, offset=None, axatts=None, 
+                             lcpOther=True, lcpAny=False, lcheckVars=lcheckVars, lcheckAxis=lcheckAxis,
+                             name=name, title=title)
   # return concatenated dataset
   return dataset
 
@@ -659,15 +680,16 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
 #   mode = 'test_station_climatology'
 #   mode = 'test_timeseries'
-  mode = 'test_station_timeseries'
+#   mode = 'test_station_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_station_ensemble'
-#   mode = 'pickle_grid'  
-  filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
-  grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
-  experiments = ['rrtmg', 'ctrl', 'new']
+  mode = 'pickle_grid'  
+#   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
+#   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
+#   experiments = ['rrtmg', 'ctrl', 'new']
 #   grids = ['col1','col2','coast1']; experiments = ['columbia','max-3km','coast']; domains = [1,2,3]   
 #   grids = ['grb1']; experiments = ['']; domains = [1,2]
+  grids = ['wc2']; experiments = ['erai-wc2-rocks']; domains = [1,2]   
     
   # pickle grid definition
   if mode == 'pickle_grid':
@@ -678,7 +700,7 @@ if __name__ == '__main__':
         
         print('')
         res = 'd{0:02d}'.format(domain) # for compatibility with dataset.common
-        folder = '{0:s}/{1:s}/'.format(avgfolder,grid)
+        folder = '{0:s}/'.format(avgfolder)
         gridstr = '{0:s}_{1:s}'.format(grid,res) 
         print('   ***   Pickling Grid Definition for {0:s} Domain {1:d}   ***   '.format(grid,domain))
         print('')
@@ -745,6 +767,8 @@ if __name__ == '__main__':
 #     for dataset in datasets:
     print('')
     print(dataset)
+    print(dataset.name)
+    print(dataset.title)
     print('')
     var = dataset.zs
     print(var)
@@ -774,12 +798,17 @@ if __name__ == '__main__':
   elif mode == 'test_ensemble':
     
     print('')
-    dataset = loadWRF_Ensemble(ensemble='max-ens-2100', varlist=['precip','MaxPrecip'], filetypes=['xtrm'])
+    dataset = loadWRF_Ensemble(ensemble='max-ens-2100', varlist=['precip','MaxPrecip_1d'], filetypes=['xtrm'])
+#     dataset = loadWRF_Ensemble(ensemble=['max-ctrl'], varlist=['precip','MaxPrecip_1d'], filetypes=['xtrm'])
+#     dataset = loadWRF_Ensemble(ensemble=['max-ctrl','max-ctrl'], varlist=['precip','MaxPrecip_1d'], filetypes=['xtrm'])
+    # 2.03178e-05 0.00013171
     print('')
     print(dataset)
+    print(dataset.name)
+    print(dataset.title)
     print('')
     print(dataset.precip.mean())
-    print(dataset.MaxPrecip.mean())
+    print(dataset.MaxPrecip_1d.mean())
 #   print('')
 #     print(dataset.time)
 #     print(dataset.time.coord)

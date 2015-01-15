@@ -289,17 +289,17 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    ldebug = True
-    NP = 2 or NP # to avoid memory issues...
+    ldebug = False
+    NP = 4 or NP # to avoid memory issues...
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
-    varlist = ['lat2D',]
+#     varlist = ['lat2D',]
     periods = []
-#     periods += [1]
+    periods += [1]
 #     periods += [3]
-    periods += [5]
+#     periods += [5]
 #     periods += [10]
 #     periods += [15]
 #     periods += [30]
@@ -324,7 +324,9 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm','lnd']
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-    WRF_experiments += ['max-1deg-2100']
+#     WRF_experiments += ['erai-3km','max-3km']
+    WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
+#     WRF_experiments += ['max-1deg-2100']
 #     WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
 #     WRF_experiments += ['max','max-clm','max-nmp','max-nosub']
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']
@@ -338,21 +340,22 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-    domains = (2,) # domains to be processed
+    domains = (1,2,3) # domains to be processed
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-#     WRF_filetypes = ('plev3d',) # filetypes to be processed # ,'rad'
+#     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); periods = None
     # grid to project onto
     lpickle = True
     grids = dict()
+#     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['col2'] = ('d03','d02','d01') # innermost WRF Columbia domain
 #     grids['grb2'] = ('d02',) # Marc's standard GRB inner domain
-#     grids['arb2'] = ('d02',) # WRF standard ARB inner domain
+    grids['arb2'] = ('d02',) # WRF standard ARB inner domain
 #     grids['arb3'] = ('d02',) # WRF new ARB inner domain
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids
-    grids['cesm1x1'] = (None,) # CESM grid
+#     grids['cesm1x1'] = (None,) # CESM grid
 #     grids['NARR'] = (None,) # NARR grid
 #     grids['CRU'] = (None,) # CRU grid
   else:
@@ -501,4 +504,4 @@ if __name__ == '__main__':
   ## call parallel execution function
   ec = asyncPoolEC(performRegridding, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
   # exit with fraction of failures (out of 10) as exit code
-  exit(int(10+np.ceil(10.*ec/len(args))))
+  exit(int(10+np.ceil(10.*ec/len(args))) if ec > 0 else 0)

@@ -2312,8 +2312,8 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   else: return data
   
   
-def concatDatasets(datasets, axis=None, coordlim=None, idxlim=None, offset=None, axatts=None, 
-                   lcpOther=True, lcpAny=False, ldeepcopy=True, lcheckVars=True, lcheckAxis=True):
+def concatDatasets(datasets, name=None, axis=None, coordlim=None, idxlim=None, offset=None, axatts=None, 
+                   title=None, lcpOther=True, lcpAny=False, ldeepcopy=True, lcheckVars=True, lcheckAxis=True):
   ''' A function to concatenate Datasets from different sources along a given axis; this
       function essentially applies concatVars to every Variable and creates a new dataset. '''
   if isinstance(axis,(Axis,basestring)): axislist = (axis,)
@@ -2373,7 +2373,7 @@ def concatDatasets(datasets, axis=None, coordlim=None, idxlim=None, offset=None,
         catax = variables.values()[c].getAxis(axis, lcheck=False); c += 1 # return None if not present
       axes[axis] = catax # add new concatenation axis
     # copy first dataset and replace concatenation axis and variables
-  return datasets[0].copy(axes=axes, variables=variables, varlist=None, 
+  return datasets[0].copy(axes=axes, name=name, title=title, variables=variables, varlist=None, 
                           varargs=None, axesdeep=True, varsdeep=False)
 
 

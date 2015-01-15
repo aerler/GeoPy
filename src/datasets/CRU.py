@@ -158,8 +158,8 @@ if __name__ == '__main__':
 #   mode = 'test_timeseries'
 #   mode = 'test_station_timeseries'
   mode = 'average_timeseries'
-#   period = (1971,2001)
-  period = (1979,2009)
+  period = (1971,2001)
+#   period = (1979,2009)
 #   period = (1949,2009)
 #   period = (1979,1982)
 #   period = (1979,1984)

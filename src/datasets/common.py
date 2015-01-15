@@ -472,9 +472,9 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None,
       axt = 'CRU Observations' 
     elif exp == 'PCIC': # PCIC with some background field
       if lbackground:
-        if (len(varlist) == 1 and 'precip' in varlist) or (len(varlist) == 3 and 
-            'precip' in varlist and 'lon2D' in varlist and 'lat2D' in varlist): 
+        if all(var in ('precip','stations','lon2D','lat2D','landmask','landfrac') for var in varlist): 
           ext = (loadGPCC(grid=grd, varlist=varlist, lautoregrid=lautoregrid), 
+                 loadPRISM(grid=grd, varlist=varlist, lautoregrid=lautoregrid),
                  loadPCIC(grid=grd, varlist=varlist, lautoregrid=lautoregrid),)
           axt = 'PCIC PRISM (and GPCC)'
         else: 

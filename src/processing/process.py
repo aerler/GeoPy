@@ -551,10 +551,10 @@ class CentralProcessingUnit(object):
         for i in xrange(interval):
           if avgdata.ndim == 1:
             if climcnt[i] > 0: avgdata[i] /= climcnt[i]
-            else: avgdata[i] = np.NaN
+            else: avgdata[i] = 0 if np.issubdtype(var.dtype, np.integer) else np.NaN
           else:
             if climcnt[i] > 0: avgdata[i,:] /= climcnt[i]
-            else: avgdata[i,:] = np.NaN
+            else: avgdata[i,:] = 0 if np.issubdtype(var.dtype, np.integer) else np.NaN
       # shift data (if first month was not January)
       if shift != 0: avgdata = np.roll(avgdata, shift, axis=tidx)
       # create new Variable

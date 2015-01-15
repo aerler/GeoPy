@@ -37,11 +37,6 @@ if __name__ == '__main__':
 #   WRFfiletypes += ['srfc']
   #WRFfiletypes += ['xtrm']
 #   WRFfiletypes += ['plev3d']
-  # figure directory
-  #folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
-  #folder = '/home/me/Research/Thesis/Report/Progress Report 2014/figures/'
-  folder = figure_folder
-  lpickle = False
   # period shortcuts
   H01 = '1979-1980'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994'; H60 = '1949-2009' # historical validation periods
@@ -81,7 +76,7 @@ if __name__ == '__main__':
 #   variables += ['Ts']
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
-#   variables += ['precip']
+  variables += ['precip']
 #   variables += ['WaterTransport_U']
 #   variables += ['WaterTransport_V']
 #   variables += ['waterflx']
@@ -103,12 +98,12 @@ if __name__ == '__main__':
 #   variables += ['SST']
 #   variables += ['lat2D','lon2D']
   seasons = [] # seasons
-#   seasons += ['cold']
+  seasons += ['cold']
 #   seasons += ['warm']
 #   seasons += ['melt']
-  seasons += ['annual']
-  seasons += ['summer']
-  seasons += ['winter']
+#   seasons += ['annual']
+#   seasons += ['summer']
+#   seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
@@ -116,20 +111,32 @@ if __name__ == '__main__':
 #  variables = ['snowh'];  seasons = [8] # September snow height
 #  variables = ['stns']; seasons = ['annual']
 #   variables = ['lndcls']; seasons = [''] # static
-  variables = ['zs']; seasons = ['topo']; lcontour = True; lframe = False 
-  WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
+#   variables = ['zs']; seasons = ['topo']; lcontour = True; lframe = False 
+#   WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
 #   variables = ['zs']; seasons = ['hidef']; WRFfiletypes=['const']; lcontour = True # static
   
   ## case settings
-  
-  # observations
+    
+  folder = figure_folder # figure directory
+  lpickle = True # load projection from file or recompute
   lprint = True # write plots to disk using case as a name tag
-#   maptype = 'lcc-new'; lstations = False; lbasins = True
+  maptype = 'lcc-col'; lstations = False; lbasins = True
   # draw a map
-  maptype = 'lcc-bcab'; lstations = True; stations = 'EC'; lbasins = True
-  period = H01; lWRFnative = True; lframe = False; loutline = False
-  explist = ['col1-ctrl']; exptitles = ' '; domain = (2,3)
-  case = 'BCAB_stns'; figtitles = 'EC Stations (BC & Alberta) and Terrain Height [km]'
+#   maptype = 'lcc-new'; lstations = True; stations = 'EC'; lbasins = True
+#   period = H01; lWRFnative = True; lframe = False; loutline = False
+#   explist = ['col1-ctrl']; exptitles = ' '; domain = (2,3)
+#   case = 'BCAB_stns'; figtitles = 'EC Stations (BC & Alberta) and Terrain Height [km]'
+
+# new validation
+#   explist = ['erai-wc2-rocks',]; period = [1,]; domain = [2,]
+  ldiff = True; reflist = ['PCIC']; refprd = None; grid = 'arb2_d02' 
+  grid = ['wc2_d02','arb2_d02','col2_d02','wc2_d02']
+  explist = ['erai-wc2-bugaboo','erai-max','erai-3km','erai-wc2-rocks']
+  period = [1,15,3,1]; domain = [2, 2, 3, 2]
+#   explist = ['erai-wc2-bugaboo','PCIC','erai-3km','erai-wc2-rocks']
+#   period = [1,None,3,1]; domain = [(1,2), None, (2,3), (1,2)]
+#   exptitles = ['CESM (80 km)','Merged Observations (10 km)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
+  case = 'wc2'; lsamesize = True
 
 # water transport
 #   explist = ['max-1deg']; domain = [1,]; period = H15
@@ -501,7 +508,7 @@ if __name__ == '__main__':
               ecstns = loadEC_StnTS(station=station_type, varlist=varlist)
               wrfstns = loadWRF_StnTS(experiment='max-ctrl', varlist=varlist, station=station_type, 
                                       filetypes='srfc', domains=2)
-              ecstns,wrfstns = selectStations( [ecstns, wrfstns] , prov=('BC','AB'), min_len=50, lat=(40,55), 
+              ecstns,wrfstns = selectStations( [ecstns, wrfstns] , prov=('BC','AB'), min_len=50, lat=(45,60), 
                                               max_zerr=300, #lon=(-130,-110),
                                               stnaxis='station', imaster=None, linplace=False, lall=False)
               # loop over points
