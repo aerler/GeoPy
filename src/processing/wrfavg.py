@@ -204,10 +204,8 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    ldebug = False # print more info
-    loverwrite = True
-#     loverwrite = False
-    NP = NP or 4
+    NP = 4 ; ldebug = False # for quick computations
+#     NP = 2 ; ldebug = True # just for tests
     varlist = None # ['lat2D', ]
     experiments = []
     experiments += ['erai-3km','max-3km']
@@ -227,20 +225,20 @@ if __name__ == '__main__':
     offset = 0 # number of years from simulation start
     periods = [] # not that all periods are handled within one process! 
 #     periods += [1]
-    periods += [3]
-#     periods += [5]
+#     periods += [3]
+    periods += [5]
 #     periods += [9]
 #     periods += [10]
 #     periods += [15]
     domains = (1,2,3) # domains to be processed
 #     filetypes = ['srfc'] # filetypes to be processed
-#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
+    filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']
-    filetypes = ['hydro'] # filetypes to be processed
+#     filetypes = ['hydro'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','plev3d','hydro']
     grid = 'native'
   else:
-    NP = NP or 4
+    NP = NP or 2
     ldebug=False
     loverwrite = False
     varlist = None # all variables

@@ -127,10 +127,10 @@ if __name__ == '__main__':
 #   explist = ['col1-ctrl']; exptitles = ' '; domain = (2,3)
 #   case = 'BCAB_stns'; figtitles = 'EC Stations (BC & Alberta) and Terrain Height [km]'
 
-# new validation
+# hires validation
 #   explist = ['erai-wc2-rocks',]; period = [1,]; domain = [2,]
-  ldiff = True; reflist = ['PCIC']; refprd = None; grid = 'arb2_d02' 
-  grid = ['wc2_d02','arb2_d02','col2_d02','wc2_d02']
+  ldiff = True; reflist = ['PCIC']; refprd = None; grid = 'wc2_d02' 
+#   grid = ['wc2_d02','arb2_d02','col2_d02','wc2_d02']
   explist = ['erai-wc2-bugaboo','erai-max','erai-3km','erai-wc2-rocks']
   period = [1,15,3,1]; domain = [2, 2, 3, 2]
 #   explist = ['erai-wc2-bugaboo','PCIC','erai-3km','erai-wc2-rocks']
@@ -448,7 +448,13 @@ if __name__ == '__main__':
 #       print(' - creating plots\n')  
       for n in xrange(nax): 
         for m in xrange(nexps[n]):
-          print('panel %i: min %f / max %f / mean %f'%(n,data[n][m].min(),data[n][m].max(),data[n][m].mean()))
+          vmean, vmin, vmax = np.nanmean(data[n][m]), np.nanmin(data[n][m]), np.nanmax(data[n][m])
+          if ldiff or lfrac: 
+            vrms = np.sqrt(np.nanmean(data[n][m]**2))
+            print('panel {:d}: bias {:f} / rms {:f} / min {:f} / max {:f}'.format(n, vmean, vrms, vmin, vmax))
+          else: 
+            vstd = np.nanstd(data[n][m])
+            print('panel {:d}: mean {:f} / std {:f} / min {:f} / max {:f}'.format(n, vmean, vstd, vmin, vmax))
           if lcontour: cd.append(maps[n].contourf(x[n][m],y[n][m],data[n][m],clevs,ax=ax[n],cmap=cmap, norm=norm,extend='both'))  
           else: cd.append(maps[n].pcolormesh(x[n][m],y[n][m],data[n][m],cmap=cmap,shading='gouraud'))
       # add colorbar

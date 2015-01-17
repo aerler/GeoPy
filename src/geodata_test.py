@@ -229,13 +229,16 @@ class BaseVarTest(unittest.TestCase):
         var = self.var(time=slice(0,10), lat=(50,70), lon=(-130,-110))
       t,x,y = var.axes
     #     for dist in ('kde',):
-    if lsimple: dist_list = ('kde','genextreme','gumbel_r','norm')
-    else: dist_list = ('kde','norm') # others take longer...
-    #dist_list = ('kde','genextreme','gumbel_r','norm')
+    if lsimple: dist_list = ('kde','DEFAULT','genextreme','gumbel_r','norm')
+    else: dist_list = ('kde','DEFAULT') # others take longer...
+    # also get recommendation
+    # test distributions
     for dist in dist_list:
       # create VarKDE
       if dist == 'kde': 
         tmp = var.kde(axis=t.name, ldebug=False)
+      elif dist == 'DEFAULT': 
+        tmp = var.fitDist(axis=t.name, lpersist=False, ldebug=False)
       elif lsimple: 
         tmp = getattr(var,dist)(axis=t.name, lpersist=True, f0=0)
         if tmp.shape[-1] > 2: assert isZero(tmp.data_array[:,:,0]) # held fixed
@@ -574,7 +577,6 @@ class BaseVarTest(unittest.TestCase):
         var = self.var(time=slice(0,10), lat=(50,70), lon=(-130,-110))
       t,x,y = var.axes
     var.standardize(linplace=True) # make variables more likely to test positive
-    
     ## univariate stats tests
     # run simple kstest test
     pval = var.kstest(asVar=False, lflatten=True, dist='norm', args=(0,1))    
@@ -775,6 +777,57 @@ class BaseDatasetTest(unittest.TestCase):
     assert dataset.hasAxis(newax.name) and not dataset.hasAxis(oldax)  
     assert not any([var.hasAxis(oldax) for var in dataset])
     
+  def testApplyToAll(self):
+    ''' test apply-to-all functionality for Variable methods '''
+    # get some data
+    lsimple = self.__class__ is BaseVarTest
+    if lsimple: dataset = self.dataset
+    else:
+      # crop data because these tests just take way too long!
+      if self.dataset_name == 'NARR':
+        dataset = self.dataset(time=slice(0,10), y=slice(190,195), x=slice(0,100))
+      else:
+        dataset = self.dataset(time=slice(0,10), lat=(50,70), lon=(-130,-110))
+    # check container properties 
+    assert len(dataset.variables) == len(dataset)
+    for varname,varobj in dataset.variables.iteritems():
+      assert varname in dataset
+      assert varobj in dataset
+    dataset.load() # perform some computations with real data
+    assert all(dataset.data.values())
+    # test apply-to-all functions
+    mds = dataset.mean(axis='time') # mean() is of course a Variable method
+    assert isinstance(mds,Dataset) and len(mds) <= len(dataset) # number of variables (less, because string vars don't average...)
+    for varname in mds.variables.iterkeys():
+      assert varname in dataset or varname[:-5] in dataset # mean vars have '_mean' appended
+    assert not any([var.hasAxis('time') and not var.strvar for var in mds.variables.itervalues()])
+    del mds; gc.collect()
+    hds = dataset.histogram(bins=3, lflatten=True, asVar=False, ldensity=False)
+    assert isinstance(hds,dict) and len(hds) <= len(dataset) # number of variables (less, because string vars don't average...)
+    assert all([varname in dataset for varname in hds.iterkeys()])    
+#     print [s.sum() for vn,s in hds.iteritems() if s is not None]
+#     print [(1-np.isnan(dataset[vn].data_array)).sum() for vn,s in hds.iteritems() if s is not None]
+    assert all([s.sum()==(1-np.isnan(dataset[vn].data_array)).sum() for vn,s in hds.iteritems() if s is not None])
+#     assert all([s.sum()==dataset[vn].data_array.size for vn,s in hds.iteritems() if s is not None])
+    del hds; gc.collect()
+    # make sure __getattr__ is not always called
+    assert isinstance(dataset.title,basestring)
+    try: dataset.test_attr # make sure that non-existant attributes throw exceptions
+    except AttributeError: pass 
+    # test fitDist
+    dds = dataset.fitDist(axis='time', lsuffix=True) # mean() is of course a Variable method
+    assert isinstance(dds,Dataset) and len(dds) <= len(dataset) # number of variables (less, because string vars don't average...)
+    for varname,var in dds.variables.iteritems():
+      assert not var.hasAxis('time') or var.strvar
+      if varname in dataset:
+        assert var.shape == dataset.variables[varname].shape
+      else:
+        if varname[-2] == '_': di = varname.rfind('_', 0, -2) # gumbel_r
+        else: di = varname.rfind('_')
+        assert varname[di+1:] in ('norm','gumbel_r','genextreme')
+        assert varname[:di] in dataset      
+    del dds; gc.collect()      
+    
   def testConcatDatasets(self):
     ''' test concatenation of datasets '''
     # get copy of dataset
@@ -831,25 +884,7 @@ class BaseDatasetTest(unittest.TestCase):
     assert 'mean' not in dataset.__dict__ # hasattr is redirected to Variable attributes by __getattr__    
     dataset.load() # perform some computations with real data
     assert all(dataset.data.values())
-    # test apply-to-all functions
-    mds = dataset.mean(axis='time') # mean() is of course a Variable method
-    assert isinstance(mds,Dataset) and len(mds) <= len(dataset) # number of variables (less, because string vars don't average...)
-    for varname in mds.variables.iterkeys():
-      assert varname in dataset or varname[:-5] in dataset # mean vars have '_mean' appended
-    assert not any([var.hasAxis('time') and not var.strvar for var in mds.variables.itervalues()])
-    hds = dataset.histogram(bins=3, lflatten=True, asVar=False, ldensity=False)
-    assert isinstance(hds,dict) and len(hds) <= len(dataset) # number of variables (less, because string vars don't average...)
-    assert all([varname in dataset for varname in hds.iterkeys()])    
-#     print [s.sum() for vn,s in hds.iteritems() if s is not None]
-#     print [(1-np.isnan(dataset[vn].data_array)).sum() for vn,s in hds.iteritems() if s is not None]
-    assert all([s.sum()==(1-np.isnan(dataset[vn].data_array)).sum() for vn,s in hds.iteritems() if s is not None])
-#     assert all([s.sum()==dataset[vn].data_array.size for vn,s in hds.iteritems() if s is not None])
-    # make sure __getattr__ is not always called
-    assert isinstance(dataset.title,basestring)
-    try: dataset.test_attr # make sure that non-existant attributes throw exceptions
-    except AttributeError: pass 
-    
-    
+  
   def testCopy(self):
     ''' test copying the entire dataset '''
     # test object
@@ -1377,6 +1412,7 @@ if __name__ == "__main__":
 #     specific_tests = ['StatsTests']   
 #     specific_tests = ['UnaryArithmetic']
 #     specific_tests = ['Copy']
+#     specific_tests = ['ApplyToAll']
  
 
     # list of tests to be performed

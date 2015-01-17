@@ -283,8 +283,8 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    ldebug = False
-    NP = 4 #or NP # to avoid memory issues...
+    NP = 4 ; ldebug = False # for quick computations
+#     NP = 2 ; ldebug = True # just for tests
 #     modes = ('climatology',) # 'climatology','time-series'
     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
@@ -333,7 +333,7 @@ if __name__ == '__main__':
     stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
 #     stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
   else:
-    NP = NP or 4 # time-series might take more memory!
+    NP = NP or 2 # time-series might take more memory or overheat...
     #modes = ('climatology','time-series')
     modes = ('time-series',) # too many small files...
     loverwrite = False

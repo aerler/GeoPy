@@ -248,7 +248,7 @@ def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, laax=Tr
   # flatten array for redistribution
   data = np.reshape(data,(arraysize,samplesize))
   # compute
-  if (NP == 1 or arraysize < 2*chunksize):
+  if (NP == 1 or arraysize < 1.5*chunksize):
     # just use regular Numpy version... but always apply over last dimension
     if ldebug: print('\n   ***   Running in Serial Mode   ***')
     results = np.apply_along_axis(fct, 1, data)

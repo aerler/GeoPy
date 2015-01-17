@@ -348,14 +348,9 @@ def getProjection(var, projection=None):
   if xlon is not None and ylat is not None:
     lgdal = True
     # check axes
-    if isProjected: axstr = "'x' and 'y'"
-    else: axstr = "'lon' and 'lat'"
-    if isinstance(var.axes, (tuple, list)):  # only check this, if axes are ordered, as in Variables
-      dmtpl = (var.ndim -1, var.ndim -2)
-      if (var.axisIndex(xlon) not in dmtpl) or (var.axisIndex(ylat) not in dmtpl):
-        raise AxisError, "Horizontal axes (%s) have to be the innermost indices."%axstr
+    axstr = "'x' and 'y'" if isProjected else "'lon' and 'lat'"
     if not isinstance(xlon, Axis) and not isinstance(ylat, Axis): 
-      raise AxisError, "Error: attributes %s have to be axes."%axstr
+      raise AxisError, "Error: attributes {:s} have to be axes.".format(axstr)
   else: lgdal = False   
   # return
   return lgdal, projection, isProjected, xlon, ylat
@@ -498,8 +493,10 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
       ''' Method that returns a gdal dataset, ready for use with GDAL routines. '''
       lperi = False
       if self.gdal and self.projection is not None:
+        axstr = "'x' and 'y'" if isProjected else "'lon' and 'lat'"
+        if (var.axisIndex(xlon) != var.ndim-2) or (var.axisIndex(ylat) != var.ndim-1):
+          raise NotImplementedError, "Horizontal axes ({:s}) have to be the last indices.".format(axstr)
         if load:
-          lperi = False
           if not self.data: self.load()
           if not self.data: raise DataError, 'Need data in Variable instance in order to load data into GDAL dataset!'
           data = self.getArray(unmask=True)  # get unmasked data
@@ -562,6 +559,9 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
       # check input
       if not isinstance(dataset, gdal.Dataset): raise TypeError
       if self.gdal:
+        axstr = "'x' and 'y'" if isProjected else "'lon' and 'lat'"
+        if (var.axisIndex(xlon) != var.ndim-2) or (var.axisIndex(ylat) != var.ndim-1):
+          raise NotImplementedError, "Horizontal axes ({:s}) have to be the last indices.".format(axstr)        
         # get data field
         if self.bands == 1: data = dataset.ReadAsArray()[:, :]  # for 2D fields
         else: data = dataset.ReadAsArray()[0:self.bands, :, :]  # ReadAsArray(0,0,xe,ye)

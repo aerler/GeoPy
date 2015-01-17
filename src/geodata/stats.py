@@ -475,7 +475,7 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
     data_array = np.concatenate((data1, data2), axis=axis_idx) 
     # select test and set parameters
     fct = functools.partial(fct, size1=size1)
-    res = apply_along_axis(fct, axis_idx, data_array, laax=laax) # apply test in parallel, distributing the data
+    res = apply_along_axis(fct, axis_idx, data_array, chunksize=500000//len(data_array), laax=laax) # apply test in parallel, distributing the data
     # handle masks etc.
     if (lvar1 and sample1.masked) or (lvar2 and sample1.masked): 
       res = ma.masked_invalid(res, copy=False) 
@@ -505,8 +505,35 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
 
 ## distribution variable classes 
 
+# dictionary with distribution definitions for common variables  
+var_dists = dict() # tuple( dist_name, kwargs)
+var_dists['CDD'] = ('gumbel_r', dict())
+var_dists['CWD'] = ('gumbel_r', dict())
+variable_distributions = var_dists # alias for imports
+
+# function to return an appropriate distribution for a variable
+def defVarDist(var, var_dists=None):
+  ''' return an appropriate distribution for a variable, based on some heuristics '''
+  if not isinstance(var, Variable): raise TypeError
+  elif isinstance(var, DistVar): raise TypeError, "Variable is already a DistVar!"
+  varname, units = var.name, var.units
+  # check explicit definition first
+  if var_dists is not None and var in var_dists: 
+    dist, dist_args = var_dists[varname]
+  # now, apply heuristics
+  elif varname[:3] in ('Min','Max'):
+    dist, dist_args = 'genextreme', dict(ic_shape=0)
+  elif units in ('mm/month','mm/day','mm/s','kg/m^2/s'):
+    dist, dist_args = ('gumbel_r', dict())
+  elif units in ('C','K','Celsius','Kelvin'):
+    dist, dist_args = ('norm', dict())
+  else: # fallback
+    dist, dist_args = ('norm', dict())
+  # return distribution definition
+  return dist, dist_args
+
 # convenience function to generate a DistVar from another Variable object
-def asDistVar(var, axis='time', dist='KDE', lflatten=False, name=None, atts=None, 
+def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None, var_dists=None,
               lsuffix=False, asVar=True, lcheckVar=True, lcheckAxis=True, **kwargs):
   ''' generate a DistVar of type 'dist' from a Variable 'var'; use dimension 'axis' as sample axis '''
   if not isinstance(var,Variable): raise VariableError
@@ -514,7 +541,13 @@ def asDistVar(var, axis='time', dist='KDE', lflatten=False, name=None, atts=None
   if var.dtype.kind in ('S',): 
     if lcheckVar: raise VariableError, "Distributions don't work with string Variables!"
     else: return None
-  if not var.data: var.load() 
+  if not var.data: var.load()
+  # select appropriate distribution, if not specified 
+  if dist is None or dist.lower() == 'default':
+    dist, dist_args = defVarDist(var, var_dists= variable_distributions if var_dists is None else var_dists)
+    dist_args.update(kwargs) # kwargs have precedence
+  else: dist_args = kwargs
+  dist = dist.lower()
   # create some sensible default attributes
   varatts = dict()
   varatts['name'] = name or ( '{:s}_{:s}'.format(var.name,dist) if lsuffix else var.name)
@@ -531,13 +564,15 @@ def asDistVar(var, axis='time', dist='KDE', lflatten=False, name=None, atts=None
       else: return None
     iaxis=var.axisIndex(axis)
     axes = var.axes[:iaxis]+var.axes[iaxis+1:] # i.e. without axis/iaxis 
-  # choose distribution
-  dist = dist.lower()
-  if dist.lower() == 'kde': dvar = VarKDE(samples=var.data_array, axis=iaxis, axes=axes, lflatten=lflatten, atts=varatts, **kwargs)
+  # create DistVar instance
+  if dist.lower() == 'kde': dvar = VarKDE(samples=var.data_array, axis=iaxis, axes=axes, 
+                                          lflatten=lflatten, atts=varatts, **dist_args)
   elif hasattr(ss,dist):
-    dvar = VarRV(dist=dist, samples=var.data_array, axis=iaxis, axes=axes, lflatten=lflatten, atts=varatts, **kwargs)
+    dvar = VarRV(dist=dist, samples=var.data_array, axis=iaxis, axes=axes, 
+                 lflatten=lflatten, atts=varatts, **dist_args)
   else:
     raise AttributeError, "Distribution '{:s}' not found in scipy.stats.".format(dist)
+  # return DistVar instance
   return dvar
 
 # base class for distributions 
@@ -973,7 +1008,7 @@ class VarKDE(DistVar):
   def _estimate_distribution(self, samples, ic_shape=None, ic_args=None, ic_loc=None, ic_scale=None, ldebug=False, **kwargs):
     ''' esimtate/fit distribution from sample array for each grid point and return parameters as ndarray  '''
     fct = functools.partial(kde_estimate, ldebug=ldebug, **kwargs)
-    kernels = apply_along_axis(fct, samples.ndim-1, samples).squeeze()
+    kernels = apply_along_axis(fct, samples.ndim-1, samples, chunksize=500000//len(samples)).squeeze()
     assert samples.shape[:-1] == kernels.shape
     # return an array of kernels
     return kernels
@@ -984,7 +1019,7 @@ class VarKDE(DistVar):
     n = len(support); fillValue = self.fillValue or np.NaN
     data = self.data_array.reshape(self.data_array.shape+(1,)) # expand
     fct = functools.partial(kde_eval, support=support, n=n, fillValue=fillValue)
-    pdf = apply_along_axis(fct, self.ndim, data)
+    pdf = apply_along_axis(fct, self.ndim, data, chunksize=500000//n)
     assert pdf.shape == self.shape + (len(support),)
     return pdf
   
@@ -995,7 +1030,7 @@ class VarKDE(DistVar):
     fillValue = self.fillValue or np.NaN # for masked values
     data = self.data_array.reshape(self.data_array.shape+(1,)) # expand
     fct = functools.partial(kde_resample, support=support, n=n, fillValue=fillValue, dtype=self.dtype)
-    samples = apply_along_axis(fct, self.ndim, data)
+    samples = apply_along_axis(fct, self.ndim, data, chunksize=500000//n)
     assert samples.shape == self.shape + (n,)
     assert np.issubdtype(samples.dtype, self.dtype)
     return samples
@@ -1006,7 +1041,7 @@ class VarKDE(DistVar):
     n = len(support); fillValue = self.fillValue or np.NaN
     data = self.data_array.reshape(self.data_array.shape+(1,))
     fct = functools.partial(kde_cdf, support=support, n=n, fillValue=fillValue)
-    cdf = apply_along_axis(fct, self.ndim, data)
+    cdf = apply_along_axis(fct, self.ndim, data, chunksize=500000//n)
     assert cdf.shape == self.shape + (len(support),)
     return cdf
   
@@ -1149,7 +1184,7 @@ class VarRV(DistVar):
     plen = self.dist_class.numargs + 2 # infer number of parameters
     fct = functools.partial(rv_fit, ic_shape=ic_shape, ic_args=ic_args, ic_loc=ic_loc, ic_scale=ic_scale, plen=plen, 
                             dist_type=self.dist_type, lpersist=lpersist, ldebug=ldebug, **kwargs)
-    params = apply_along_axis(fct, samples.ndim-1, samples)
+    params = apply_along_axis(fct, samples.ndim-1, samples, chunksize=int(10000/plen/len(samples)))
     if lpersist: # reset global parameters 
       global_loc   = None # location parameter ("mean")
       global_scale = None # scale parameter ("standard deviation")
@@ -1167,13 +1202,13 @@ class VarRV(DistVar):
     if  len(args) == 0:
       fillValue = self.fillValue or np.NaN
       fct = functools.partial(rv_stats, dist_type=self.dist_type, fct_type=rv_fct, fillValue=fillValue, **kwargs)
-      dist = apply_along_axis(fct, self.ndim-1, self.data_array)
+      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=1000)
       assert dist.shape[:-1] == self.shape[:-1]
     elif  len(args) == 1 and rv_fct == 'moment':
       raise NotImplementedError
       fillValue = self.fillValue or np.NaN
       fct = functools.partial(rv_stats, dist_type=self.dist_type, fct_type=rv_fct, fillValue=fillValue, **kwargs)
-      dist = apply_along_axis(fct, self.ndim-1, self.data_array)
+      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=1000)
       assert dist.shape[:-1] == self.shape[:-1]
     elif len(args) == 1:
       support = args[0]
@@ -1181,7 +1216,7 @@ class VarRV(DistVar):
       n = len(support); fillValue = self.fillValue or np.NaN
       fct = functools.partial(rv_eval, dist_type=self.dist_type, fct_type=rv_fct, 
                               support=support, n=n, fillValue=fillValue, **kwargs)
-      dist = apply_along_axis(fct, self.ndim-1, self.data_array)
+      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=100000//n)
       assert dist.shape == self.shape[:-1] + (len(support),)
     else: raise ArgumentError
     return dist
@@ -1211,7 +1246,7 @@ class VarRV(DistVar):
     n = len(support) # in order to use _get_dist(), we have to pass a dummy support
     fillValue = self.fillValue or np.NaN # for masked values
     fct = functools.partial(rv_resample, dist_type=self.dist_type, n=n, fillValue=fillValue, dtype=self.dtype)
-    samples = apply_along_axis(fct, self.ndim-1, self.data_array)
+    samples = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=100000//n)
     assert samples.shape == self.shape[:-1] + (n,)
     assert np.issubdtype(samples.dtype, self.dtype)
     return samples
@@ -1319,7 +1354,7 @@ class VarRV(DistVar):
     # apply test function (parallel)
     fct = functools.partial(rv_kstest, nparams=len(self.paramAxis), dist_type=self.dist_type, ignoreNaN=ignoreNaN, N=N, alternative=alternative, mode=mode)
     data_array = np.concatenate((self.data_array, sample_data), axis=sax) # merge params and sample arrays (only one argument array per point along axis) 
-    pval = apply_along_axis(fct, sax, data_array) # apply test in parallel, distributing the data
+    pval = apply_along_axis(fct, sax, data_array, chunksize=100000//len(data_array)) # apply test in parallel, distributing the data
     assert pval.ndim == sax
     assert pval.shape == self.shape[:-1]
     # handle masked values
