@@ -494,7 +494,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
       lperi = False
       if self.gdal and self.projection is not None:
         axstr = "'x' and 'y'" if isProjected else "'lon' and 'lat'"
-        if (var.axisIndex(xlon) != var.ndim-2) or (var.axisIndex(ylat) != var.ndim-1):
+        if (var.axisIndex(xlon) != var.ndim-1) or (var.axisIndex(ylat) != var.ndim-2):
           raise NotImplementedError, "Horizontal axes ({:s}) have to be the last indices.".format(axstr)
         if load:
           if not self.data: self.load()
