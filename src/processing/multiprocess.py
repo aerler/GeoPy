@@ -22,6 +22,19 @@ from time import sleep
 
 global_var = 0
 
+# test apply_along_axis
+def test_aax_helper(arr, kw=0, axis=0): # lambda fct can't be pickled
+  return ( arr - np.mean(arr) ) / arr.std() - kw, kw
+ 
+def test_aax(arr, kw=0, axis=0): return test_aax_helper(arr, kw=kw)[0]
+ 
+def test_noaax(arr, axis=0, kw=0):
+  shape = arr.shape[:-1]+(1,)
+  mean = np.mean(arr,axis=axis).reshape(shape)
+  std = np.std(arr,axis=axis).reshape(shape)
+  return (arr - mean) / std -kw
+
+
 def test_func(n, wait=None, queue=None):
   global global_var
 #   print(n,global_var)
@@ -66,23 +79,22 @@ def test_async(func, NP):
   for result in results:
     print result
 
-def test_func_ec(n, wait=1, lparallel=True, logger=None):
+def test_func_ec(n, wait=1, lparallel=True, pidstr='', logger=None, ldebug=False):
   ''' test function that conforms to asyncPool requirements '''
-  if logger is None: 
-    logger = logging.getLogger() # new logger
-    logger.addHandler(logging.StreamHandler())
-  else: logger = logging.getLogger(name=logger) # connect to existing one
   sleep(wait)  
   pid = int(multiprocessing.current_process().name.split('-')[-1]) # start at 1
-  logger.info('Current Process ID: {0:d}\n'.format(pid))
+  logger.info('{:s} Current Process ID: {:d}'.format(pidstr,pid))
+  assert int(pidstr[-3:-1]) == pid
   # return n as exit code
   return n 
 
-def test_func_dec(n, wait=1, lparallel=False, pidstr='', logger=None):
+def test_func_dec(n, wait=1, lparallel=False, pidstr='', logger=None, ldebug=False):
   ''' test function for decorator '''
   sleep(wait)
-  logger.info('\n{0:s} Current Process ID: {0:s}\n'.format(pidstr))  
-
+  pid = int(multiprocessing.current_process().name.split('-')[-1]) # start at 1
+  logger.info('{:s} Current Process ID: {:d}'.format(pidstr,pid))
+  assert int(pidstr[-3:-1]) == pid
+  
 
 ## production functions
 
@@ -223,6 +235,7 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=False, ltrialnerror=True):
     elif ec > 0: ec = 1
     # else ec = 0, i.e. no errors
     exitcode += ec
+  # N.B.: returnign None is interpreted as  
   nop = len(args) - exitcode
   
   # print summary (to log)

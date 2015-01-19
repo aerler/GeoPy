@@ -69,7 +69,7 @@ experiments['erai-wc2-bugaboo'] = Exp(shortname='bugaboo', name='erai-wc2-bugabo
 experiments['erai-wc2-rocks'] = Exp(shortname='rocks', name='erai-wc2-rocks', title='ERA-I 1km (2010)', begindate='2010-08-01', grid='wc2', parent='ERA-I')
 experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindate='1979-09-01', enddate='1979-09-01', grid='coast1', parent='CFSR')
 experiments['col1-ctrl'] = Exp(shortname='col1', name='col1-ctrl', title='Max 3km (CFSR)', begindate='1979-09-01', grid='col1', parent='CFSR')
-experiments['max-3km'] = Exp(shortname='max-3km', name='max-3km', title='Max 3km (Ctrl)', begindate='1979-09-01', grid='col2', parent='Ctrl')
+experiments['max-3km'] = Exp(shortname='max-3km', name='max-3km', title='Max 3km (CESM)', begindate='1979-09-01', grid='col2', parent='Ctrl')
 experiments['erai-3km'] = Exp(shortname='erai-3km', name='erai-3km', title='Max 3km (ERA-I)', begindate='1979-09-01', grid='col2', parent='ERA-I')
 # some new experiments using WRF V3.6 or V3.6.1 and the new configuration 
 experiments['erai-v361-ctrl'] = Exp(shortname='erai-v361', name='erai-v361-ctrl', title='ERA-I (New, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
