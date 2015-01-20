@@ -517,27 +517,34 @@ def expandArgumentList(expand_list=None, lproduct='outer', **kwargs):
   # return list of arguments
   return arg_dicts
 
+
 # decorator class for batch-loading datasets into an ensemble using a custom load function
-def batchLoad(load_fct=None, load_list=None, lproduct='outer', 
-              lensemble=True, ens_name=None, ens_title=None, **kwargs):
-  ''' A function that loads datasets and places them in a list or Ensemble;
-      keyword arguments are passed on to the dataset load functions; arguments
-      listed in load_list are applied to the datasets element-wise. '''
-  ## load datasets
-  datasets = []
-  for n in xrange(lstlen):    
-    # assemble arguments
-    lstargs = {key:lst[n] for key,lst in load_dict.iteritems()}
-    tmpargs = kwargs.copy(); tmpargs.update(lstargs)
-    # load dataset
+class BatchLoad(object):
+  ''' A decorator class that wraps custom functions to load specific datasets. List arguments can be
+      expanded to load multiple datasets and places them in a list or Ensemble. 
+      Keyword arguments are passed on to the dataset load functions; arguments listed in load_list 
+      are applied to the datasets according to expansion rules, otherwise they are applied to all. '''
+  
+  def __init__(self, load_fct):
+    ''' initialize wrapping of original operation '''
+    self.load_fct = load_fct
     
-  # construct ensemble
-  if lensemble:
-    from geodata.base import Ensemble
-    datasets = Ensemble(members=datasets, name=ens_name, title=ens_title, basetype='Dataset')
-  # return list or ensemble of datasets
-  return datasets
-    
+  def __call__(self, load_list=None, lproduct='outer', lensemble=None, ens_name=None, ens_title=None, **kwargs):
+    ''' wrap original function: expand argument list, execute load_fct over argument list, 
+        and return a list or Ensemble of datasets '''
+    lensemble = ens_name is not None if lensemble is None else lensemble
+    # figure out arguments
+    kwargs_list = expandArgumentList(expand_list=load_list, lproduct=lproduct, **kwargs)
+    # load datasets
+    datasets = []
+    for kwargs in kwargs_list:    
+      # load dataset
+      datasets.append(self.load_fct(**kwargs))    
+    # construct ensemble
+    if lensemble:
+      datasets = Ensemble(members=datasets, name=ens_name, title=ens_title, basetype='Dataset')
+    # return list or ensemble of datasets
+    return datasets
     
 
 # helper function for loadDatasets (see below)
