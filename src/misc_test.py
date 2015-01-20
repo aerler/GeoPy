@@ -92,9 +92,38 @@ class DatasetsTest(unittest.TestCase):
     ''' clean up '''
     gc.collect()
 
-  def testLoadDatasets(self):
-    ''' test function to load datasets '''    
-    pass
+  def testExpArgList(self):
+    ''' test function to expand argument lists '''    
+    from datasets.common import expandArgumentList
+    # test arguments
+    args1 = [0,1,2]; args2 = ['0','1','2']; args3 = ['test']*3; arg4 = 'static1'; arg5 = 'static2' 
+    explist = ['arg1','arg2','arg3']
+    # test inner prodct expansion
+    arg_list = expandArgumentList(arg1=args1, arg2=args2, arg3=args3, arg4=arg4, arg5=arg5,
+                                  expand_list=explist, lproduct='inner')
+    assert len(arg_list) == len(args1) and len(arg_list) == len(args2)
+    for args,arg1,arg2,arg3 in zip(arg_list,args1,args2,args3):
+      assert args['arg1'] == arg1
+      assert args['arg2'] == arg2
+      assert args['arg3'] == arg3
+      assert args['arg4'] == arg4
+      assert args['arg5'] == arg5
+    # test outer prodct expansion
+    arg_list = expandArgumentList(arg1=args1, arg2=args2, arg3=args3, arg4=arg4, arg5=arg5,
+                                  expand_list=explist, lproduct='outer')
+    assert len(arg_list) == len(args1) * len(args2) * len(args3)
+    n = 0
+    for arg1 in args1:
+      for arg2 in args2:
+        for arg3 in args3:
+          args = arg_list[n]
+          assert args['arg1'] == arg1
+          assert args['arg2'] == arg2
+          assert args['arg3'] == arg3
+          assert args['arg4'] == arg4
+          assert args['arg5'] == arg5
+          n += 1
+    assert n == len(arg_list)
     
 
     
@@ -102,15 +131,15 @@ if __name__ == "__main__":
 
     
     specific_tests = None
-    specific_tests = ['LoadDatasets']
 #     specific_tests = ['ApplyAlongAxis']
 #     specific_tests = ['AsyncPool']    
+    specific_tests = ['ExpArgList']
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['Datasets'] 
 #     tests += ['MultiProcess']
+    tests += ['Datasets'] 
     
 
     # construct dictionary of test classes defined above
