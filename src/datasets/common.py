@@ -82,69 +82,14 @@ else:
 grid_folder = data_root + '/grids/' # folder for pickled grids
 shape_folder = data_root + '/shapes/' # folder for pickled grids
 
+
+## utility functions for datasets
+
 # convenience method to convert a period tuple into a monthly coordinate tuple 
 def timeSlice(period):
   ''' convenience method to convert a period tuple into a monthly coordinate tuple '''
   return (period[0]-1979)*12, (period[1]-1979)*12-1 
 
-# function to extract common points that meet a specific criterion from a list of datasets
-def selectCoords(datasets, axis, testFct=None, imaster=None, linplace=True, lall=False):
-  ''' Extract common points that meet a specific criterion from a list of datasets. 
-      The test function has to accept the following input: index, dataset, axis'''
-  # check input
-  if not isinstance(datasets, (list,tuple,Ensemble)): raise TypeError
-  if not all(isinstance(dataset,Dataset) for dataset in datasets): raise TypeError 
-  if not isCallable(testFct) and testFct is not None: raise TypeError
-  if isinstance(axis, Axis): axis = axis.name
-  if not isinstance(axis, basestring): raise TypeError
-  if lall and imaster is not None: raise ArgumentError, "The options 'lall' and 'imaster' are mutually exclusive!"
-  # save some ensemble parameters for later  
-  lnotest = testFct is None
-  lens = isinstance(datasets,Ensemble)
-  if lens:
-    enskwargs = dict(basetype=datasets.basetype, idkey=datasets.idkey, 
-                     name=datasets.name, title=datasets.title) 
-  # use dataset with shortest axis as master sample (more efficient)
-  axes = [dataset.getAxis(axis) for dataset in datasets]
-  if imaster is None: imaster = np.argmin([len(ax) for ax in axes]) # find shortest axis
-  elif not isinstance(imaster,(int,np.integer)): raise TypeError
-  elif imaster >= len(datasets) or imaster < 0: raise ValueError 
-  maxis = axes.pop(imaster) # extraxt shortest axis for loop
-  if lall: test_fct = lambda i,ds: testFct(i, ds, axis) # prepare test function arguments
-  else: test_fct = lambda i: testFct(i, datasets[imaster], axis) 
-  # loop over coordinate axis
-  itpls = [] # list of valid index tuple
-  for i,x in enumerate(maxis.coord):
-    # check other axes
-    if all([x in ax.coord for ax in axes]): # only the other axes
-      # no condition
-      if lnotest:
-        # just find and add indices
-        itpls.append((i,)+tuple(ax.coord.searchsorted(x) for ax in axes))
-      # check condition using shortest dataset
-      elif lall: 
-        # check test condition on all datasets (slower)
-        tmpidx = (i,)+tuple(ax.coord.searchsorted(x) for ax in axes)
-        if all(test_fct(ii,ds) for ii,ds in zip(tmpidx,datasets)):
-          # add corresponding indices in each dataset to list
-          itpls.append((i,)+tuple(tmpidx))
-      else:
-        # check test condition on only one dataset (faster, default)
-        if test_fct(i):
-          # add corresponding indices in each dataset to list
-          itpls.append((i,)+tuple(ax.coord.searchsorted(x) for ax in axes))
-          # N.B.: since we can expect exact matches, plain searchsorted is fastest (side='left') 
-  # construct axis indices for each dataset (need to remember to move shortest axis back in line)
-  idxs = [[] for ds in datasets] # create unique empty lists
-  for itpl in itpls:
-    for i,idx in enumerate(itpl): idxs[i].append(idx)
-  idxs.insert(imaster,idxs.pop(0)) # mode fist element back in line (where shortest axis was)
-  idxs = [np.asarray(idxlst, dtype='int') for idxlst in idxs]      
-  # slice datasets using only positive results  
-  datasets = [ds(lidx=True, linplace=linplace, **{axis:idx}) for ds,idx in zip(datasets,idxs)]
-  if lens: datasets = Ensemble(*datasets, **enskwargs)
-  # return datasets
-  return datasets
 
 # convenience function to extract landmask variable from another masked variable
 def addLandMask(dataset, varname='precip', maskname='landmask', atts=None):
@@ -198,13 +143,14 @@ def addLengthAndNamesOfMonth(dataset, noleap=False, length=None, names=None):
 
 
 # helper function to convert monthly precip amount into precip rate
-def convertPrecip(precip):
-  ''' convert monthly precip amount to SI units (mm/s) '''
-  warn("Use of method 'convertPrecip' is depricated; use the on-the-fly transformPrecip function instead")
-  if precip.units == 'kg/m^2/month' or precip.units == 'mm/month':
-    precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
-    precip.units = 'kg/m^2/s'
-  return precip
+# def convertPrecip(precip):
+#   ''' convert monthly precip amount to SI units (mm/s) '''
+#   warn("Use of method 'convertPrecip' is depricated; use the on-the-fly transformPrecip function instead")
+#   if precip.units == 'kg/m^2/month' or precip.units == 'mm/month':
+#     precip /= (days_per_month.reshape((12,1,1)) * 86400.) # convert in-place
+#     precip.units = 'kg/m^2/s'
+#   return precip
+
 
 # transform function to convert monthly precip amount into precip rate on-the-fly
 def transformPrecip(data, l365=False, var=None, slc=None):
@@ -266,6 +212,9 @@ def transformDays(data, l365=False, var=None, slc=None):
     var.units = '' # fraction
   return data      
       
+      
+## functions to load a dataset
+
 # convenience function to invert variable name mappings
 def translateVarNames(varlist, varatts):
   ''' Simple function to replace names in a variable list with their original names as inferred from the 
@@ -280,7 +229,7 @@ def translateVarNames(varlist, varatts):
   return varlist
 
 
-# universal function to generate file names for climatologies
+# universal function to generate file names for climatologies and time-series
 def getFileName(name=None, resolution=None, period=None, filetype='climatology', grid=None, filepattern=None):
   ''' A function to generate a standardized filename for climatology and time-series files, based on grid type and period.  '''
   if name is None: name = ''
@@ -312,6 +261,7 @@ def getFileName(name=None, resolution=None, period=None, filetype='climatology',
   assert filename == filename.lower(), "By convention, climatology files only have lower-case names!"
   return filename
   
+  
 # common climatology load function that will be imported by datasets (for backwards compatibility)
 def loadClim(name=None, folder=None, resolution=None, period=None, grid=None, varlist=None, 
              varatts=None, filepattern=None, filelist=None, projection=None, geotransform=None, 
@@ -333,7 +283,7 @@ def loadObs_StnTS(name=None, folder=None, resolution=None, varlist=None, station
 def loadObservations(name=None, folder=None, resolution=None, period=None, grid=None, station=None, 
                      varlist=None, varatts=None, filepattern=None, filelist=None, projection=None, 
                      geotransform=None, axes=None, lautoregrid=None, mode='climatology'):
-  ''' A function to load standardized climatology datasets. '''
+  ''' A function to load standardized observational datasets. '''
   # prepare input
   if mode.lower() == 'climatology': # post-processed climatology files
     # transform period
@@ -388,64 +338,71 @@ def loadObservations(name=None, folder=None, resolution=None, period=None, grid=
     # N.B.: projection should be auto-detected, if geographic (lat/lon)
   return dataset
 
-def checkItemList(itemlist, length, dtype, default=NotImplemented, iterable=False, trim=True):
-  ''' return a list based on item and check type '''
-  # N.B.: default=None is not possible, because None may be a valid default...
-  if itemlist is None: itemlist = []
-  if iterable:
-    # if elements are lists or tuples etc.
-    if not isinstance(itemlist,(list,tuple,set)): raise TypeError, str(itemlist)
-    if not isinstance(default,(list,tuple,set)) and not default is None: # here the default has to be a list of items
-      raise TypeError, "Default for iterable items needs to be iterable." 
-    if len(itemlist) == 0: 
-      itemlist = [default]*length # make default list
-    elif all([not isinstance(item,(list,tuple,set)) for item in itemlist]):
-      # list which is actually an item and needs to be put into a list of its own
-      itemlist = [itemlist]*length
-    else:
-      # a list with (eventually) iterable elements     
-      if trim:
-        if len(itemlist) > length: del itemlist[length:]
-        elif len(itemlist) < length: itemlist += [default]*(length-len(itemlist))
-      else:
-        if len(itemlist) == 1: itemlist *= length # extend to desired length
-        elif len(itemlist) != length: 
-          raise TypeError, "Item list {:s} must be of length {:d} or 1.".format(str(itemlist),len(itemlist))
-      if dtype is not None:
-        for item in itemlist:
-          if item != default: # only checks the non-default values
-            if not isinstance(itemlist,dtype):
-              raise TypeError, "Item {:s} must be of type {:s}".format(str(item),dtype.__name__)
-            # don't check length of sublists: that would cause problems with some code
-    # type checking, but only the iterables which are items, not their items
-    for item in itemlist: # check types 
-      if item is not None and not isinstance(item,dtype): 
-        raise TypeError, "Item {:s} must be of type {:s}".format(str(item),dtype.__name__)
-  else:
-    if isinstance(itemlist,(list,tuple,set)): # still want to exclude strings
-      itemlist = list(itemlist)
-      if default is NotImplemented: 
-        if len(itemlist) > 0: default = itemlist[-1] # use last item
-        else: default = None   
-      if trim:
-        if len(itemlist) > length: del itemlist[length:] # delete superflous items
-        elif len(itemlist) < length:
-          itemlist += [default]*(length-len(itemlist)) # extend with default or last item
-      else:
-        if len(itemlist) == 1: itemlist *= length # extend to desired length
-        elif len(itemlist) != length: 
-          raise TypeError, "Item list {:s} must be of length {:d} or 1.".format(str(itemlist),len(itemlist))    
-      if dtype is not None:
-        for item in itemlist:
-          if not isinstance(item,dtype) and item != default: # only checks the non-default values
-            raise TypeError, "Item {:s} must be of type {:s}".format(str(item),dtype.__name__)        
-    else:
-      if not isinstance(itemlist,dtype): 
-        raise TypeError, "Item {:s} must be of type {:s}".format(str(itemlist),dtype.__name__)
-      itemlist = [itemlist]*length
-  return itemlist
+
+## functions to load multiple datasets
 
 
+# function to extract common points that meet a specific criterion from a list of datasets
+def selectCoords(datasets, axis, testFct=None, imaster=None, linplace=True, lall=False):
+  ''' Extract common points that meet a specific criterion from a list of datasets. 
+      The test function has to accept the following input: index, dataset, axis'''
+  # check input
+  if not isinstance(datasets, (list,tuple,Ensemble)): raise TypeError
+  if not all(isinstance(dataset,Dataset) for dataset in datasets): raise TypeError 
+  if not isCallable(testFct) and testFct is not None: raise TypeError
+  if isinstance(axis, Axis): axis = axis.name
+  if not isinstance(axis, basestring): raise TypeError
+  if lall and imaster is not None: raise ArgumentError, "The options 'lall' and 'imaster' are mutually exclusive!"
+  # save some ensemble parameters for later  
+  lnotest = testFct is None
+  lens = isinstance(datasets,Ensemble)
+  if lens:
+    enskwargs = dict(basetype=datasets.basetype, idkey=datasets.idkey, 
+                     name=datasets.name, title=datasets.title) 
+  # use dataset with shortest axis as master sample (more efficient)
+  axes = [dataset.getAxis(axis) for dataset in datasets]
+  if imaster is None: imaster = np.argmin([len(ax) for ax in axes]) # find shortest axis
+  elif not isinstance(imaster,(int,np.integer)): raise TypeError
+  elif imaster >= len(datasets) or imaster < 0: raise ValueError 
+  maxis = axes.pop(imaster) # extraxt shortest axis for loop
+  if lall: test_fct = lambda i,ds: testFct(i, ds, axis) # prepare test function arguments
+  else: test_fct = lambda i: testFct(i, datasets[imaster], axis) 
+  # loop over coordinate axis
+  itpls = [] # list of valid index tuple
+  for i,x in enumerate(maxis.coord):
+    # check other axes
+    if all([x in ax.coord for ax in axes]): # only the other axes
+      # no condition
+      if lnotest:
+        # just find and add indices
+        itpls.append((i,)+tuple(ax.coord.searchsorted(x) for ax in axes))
+      # check condition using shortest dataset
+      elif lall: 
+        # check test condition on all datasets (slower)
+        tmpidx = (i,)+tuple(ax.coord.searchsorted(x) for ax in axes)
+        if all(test_fct(ii,ds) for ii,ds in zip(tmpidx,datasets)):
+          # add corresponding indices in each dataset to list
+          itpls.append((i,)+tuple(tmpidx))
+      else:
+        # check test condition on only one dataset (faster, default)
+        if test_fct(i):
+          # add corresponding indices in each dataset to list
+          itpls.append((i,)+tuple(ax.coord.searchsorted(x) for ax in axes))
+          # N.B.: since we can expect exact matches, plain searchsorted is fastest (side='left') 
+  # construct axis indices for each dataset (need to remember to move shortest axis back in line)
+  idxs = [[] for ds in datasets] # create unique empty lists
+  for itpl in itpls:
+    for i,idx in enumerate(itpl): idxs[i].append(idx)
+  idxs.insert(imaster,idxs.pop(0)) # mode fist element back in line (where shortest axis was)
+  idxs = [np.asarray(idxlst, dtype='int') for idxlst in idxs]      
+  # slice datasets using only positive results  
+  datasets = [ds(lidx=True, linplace=linplace, **{axis:idx}) for ds,idx in zip(datasets,idxs)]
+  if lens: datasets = Ensemble(*datasets, **enskwargs)
+  # return datasets
+  return datasets
+
+
+# helper function to form inner and outer product of multiple lists
 def expandArgumentList(expand_list=None, lproduct='outer', **kwargs):
   ''' A function that generates a list of complete argument dict's, based on given kwargs and certain 
       expansion rules: kwargs listed in expand_list are expanded and distributed element-wise, 
@@ -547,151 +504,7 @@ class BatchLoad(object):
     return datasets
     
 
-# helper function for loadDatasets (see below)
-def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None,
-		            lbackground=True, lWRFnative=True, lautoregrid=False):
-  ''' A function that loads a dataset, based on specified parameters '''
-  from datasets.WRF import loadWRF
-  from projects.WRF_experiments import WRF_exps, Exp
-  from datasets.CESM import CESM_exps, loadCESM, loadCVDP, loadCVDP_Obs
-  from datasets.GPCC import loadGPCC
-  from datasets.CRU import loadCRU
-  from datasets.PCIC import loadPCIC
-  from datasets.PRISM import loadPRISM
-  from datasets.CFSR import loadCFSR
-  from datasets.NARR import loadNARR
-  from datasets.Unity import loadUnity
-  if not isinstance(exp,(basestring,Exp)): raise TypeError
-  if exp[0].isupper():
-    if exp == 'Unity': 
-      ext = loadUnity(resolution=res, period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
-      axt = 'Merged Observations'        
-    elif exp == 'GPCC': 
-      ext = loadGPCC(resolution=res, period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
-      axt = 'GPCC Observations'
-    elif exp == 'CRU': 
-      ext = loadCRU(period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
-      axt = 'CRU Observations' 
-    elif exp == 'PCIC': # PCIC with some background field
-      if lbackground:
-        if all(var in ('precip','stations','lon2D','lat2D','landmask','landfrac') for var in varlist): 
-          ext = (loadGPCC(grid=grd, varlist=varlist, lautoregrid=lautoregrid), 
-                 loadPRISM(grid=grd, varlist=varlist, lautoregrid=lautoregrid),
-                 loadPCIC(grid=grd, varlist=varlist, lautoregrid=lautoregrid),)
-          axt = 'PCIC PRISM (and GPCC)'
-        else: 
-          ext = (loadCRU(period='1971-2001', grid=grd, varlist=varlist, lautoregrid=lautoregrid), 
-                 loadPCIC(grid=grd, varlist=varlist, lautoregrid=lautoregrid)) 
-          axt = 'PCIC PRISM (and CRU)'
-      else:
-        ext = loadPCIC(grid=grd, varlist=varlist, lautoregrid=lautoregrid); axt = 'PCIC PRISM'
-    elif exp == 'PRISM': # PRISM with some background field
-      if lbackground:
-        if all(var in ('precip','stations','lon2D','lat2D','landmask','landfrac') for var in varlist): 
-          ext = (loadGPCC(grid=grd, varlist=varlist, lautoregrid=lautoregrid), 
-                 loadPRISM(grid=grd, varlist=varlist, lautoregrid=lautoregrid),)
-          axt = 'PRISM (and GPCC)'
-        else: 
-          ext = (loadCRU(period='1979-2009', grid=grd, varlist=varlist, lautoregrid=lautoregrid), 
-                 loadPRISM(grid=grd, varlist=varlist, lautoregrid=lautoregrid)) 
-          axt = 'PRISM (and CRU)'
-      else:
-        ext = loadPRISM(grid=grd, varlist=varlist, lautoregrid=lautoregrid); axt = 'PRISM'
-    elif exp == 'CFSR': 
-      ext = loadCFSR(period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
-      axt = 'CFSR Reanalysis' 
-    elif exp == 'NARR': 
-      ext = loadNARR(period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
-      axt = 'NARR Reanalysis'
-    elif exp[-5:] == '_CVDP':
-      # load data generated by CVDP
-      exp = exp[:-5]
-      if exp in CESM_exps: # CESM experiments/ensembles
-        exp = CESM_exps[exp]
-        ext = loadCVDP(experiment=exp, period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)        
-      else: # try observations
-        ext = loadCVDP_Obs(name=exp, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
-      axt = ext.title
-    else: # all other uppercase names are CESM runs
-      exp = CESM_exps[exp]
-      #print exp.name, exp.title
-      ext = loadCESM(experiment=exp, period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
-      axt = exp.title
-  else: 
-    # WRF runs are all in lower case
-    exp = WRF_exps[exp]      
-    parent = None
-    if isinstance(dom,(list,tuple)):
-      #if not lbackground: raise ValueError, 'Can only plot one domain, if lbackground=False'
-      if 0 == dom[0]:
-        dom = dom[1:]
-        parent, tmp = loadDataset(exp.parent, prd, dom, grd, res, varlist=varlist, lbackground=False, lautoregrid=lautoregrid); del tmp    
-    #if 'xtrm' in WRFfiletypes: 
-    varatts = None #dict(T2=dict(name='Ts')) 
-    if lWRFnative: grd = None
-    ext = loadWRF(experiment=exp, period=prd, grid=grd, domains=dom, filetypes=filetypes, 
-                  varlist=varlist, varatts=varatts, lautoregrid=lautoregrid)
-    if parent is not None: ext = (parent,) + tuple(ext)
-    axt = exp.title # defaults to name...
-  # return values
-  return ext, axt    
-    
-# function to load a list of datasets/experiments based on names and other common parameters
-def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domains=None, grids=None,
-                 resolutions='025', filetypes=None, lbackground=True, lWRFnative=True, ltuple=True, 
-                 lautoregrid=False):
-  ''' function to load a list of datasets/experiments based on names and other common parameters '''
-  # for load function (below)
-  from projects.WRF_experiments import Exp
-  if lbackground and not ltuple: raise ValueError
-  # check and expand lists
-  if n is None: n = len(explist)
-  elif not isinstance(n, (int,np.integer)): raise TypeError
-  explist = checkItemList(explist, n, (basestring,Exp,tuple))
-  titles = checkItemList(titles, n, basestring, default=None)
-  periods  = checkItemList(periods, n, (basestring,int,np.integer), default=None, iterable=False)
-  if isinstance(domains,tuple): ltpl = ltuple
-  else: ltpl = False # otherwise this causes problems with expanding this  
-  domains  = checkItemList(domains, n, (int,np.integer,tuple), default=None, iterable=ltpl) # to return a tuple, give a tuple of domains
-  grids  = checkItemList(grids, n, basestring, default=None)
-  resolutions  = checkItemList(resolutions, n, basestring, default=None)  
-  # resolve experiment list
-  dslist = []; axtitles = []
-  for exp,tit,prd,dom,grd,res in zip(explist,titles,periods,domains,grids,resolutions): 
-    if isinstance(exp,tuple):
-      if lbackground: raise ValueError, 'Adding Background is not supported in combination with experiment tuples!'
-      if not isinstance(dom,(list,tuple)): dom =(dom,)*len(exp)
-      if len(dom) != len(exp): raise ValueError, 'Only one domain is is not supported for each experiment!'          
-      ext = []; axt = []        
-      for ex,dm in zip(exp,dom):
-        et, at = loadDataset(ex, prd, dm, grd, res, filetypes=filetypes, varlist=varlist, 
-                             lbackground=False, lWRFnative=lWRFnative, lautoregrid=lautoregrid)
-        #if isinstance(et,(list,tuple)): ext += list(et); else: 
-        ext.append(et)
-        #if isinstance(at,(list,tuple)): axt += list(at); else: 
-        axt.append(at)
-      ext = tuple(ext); axt = tuple(axt)
-    else:
-      ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=varlist, 
-                           lbackground=lbackground, lWRFnative=lWRFnative, lautoregrid=lautoregrid)
-    dslist.append(ext) 
-    if tit is not None: axtitles.append(tit)
-    else: axtitles.append(axt)  
-  # count experiment tuples (layers per panel)
-  if ltuple:
-    nlist = [] # list of length for each element (tuple)
-    for n in xrange(len(dslist)):
-      if not isinstance(dslist[n],(tuple,list)): # should not be necessary
-        dslist[n] = (dslist[n],)
-      elif isinstance(dslist[n],list): # should not be necessary
-        dslist[n] = tuple(dslist[n])
-      nlist.append(len(dslist[n])) # layer counter for each panel  
-  # return list with datasets and plot titles
-  if ltuple:
-    return dslist, axtitles, nlist
-  else:
-    return dslist, axtitles
-  
+## Miscellaneous utility functions
 
 # function to return grid definitions for some common grids
 def getCommonGrid(grid, res=None):
@@ -731,6 +544,7 @@ def getCommonGrid(grid, res=None):
       griddef = None
   # return grid definition object
   return griddef
+
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':

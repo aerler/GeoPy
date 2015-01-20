@@ -7,8 +7,6 @@ some useful functions to make map and surface plots that take advantage of varia
 '''
 
 # external imports
-from types import NoneType
-import numpy as np
 import matplotlib.pylab as pyl
 import matplotlib as mpl
 #from mpl_toolkits.axes_grid1 import ImageGrid
@@ -20,10 +18,7 @@ else: mpl.rc('font', size=10)
 # prevent figures from closing: don't run in interactive mode, or plt.show() will not block
 pyl.ioff()
 # internal imports
-from plotting.misc import getPlotValues, expandLevelList
-from geodata.base import Variable
-from geodata.misc import AxisError, ListError, VariableError
-
+from plotting.misc import expandLevelList
 
 
 # function to plot 

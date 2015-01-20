@@ -13,6 +13,7 @@ import numpy.ma as ma
 import os, sys
 
 import matplotlib as mpl
+import matplotlib.pylab as pyl
 # mpl.use('Agg') # enforce QT4
 
 # import geodata modules
@@ -21,18 +22,18 @@ from geodata.misc import isZero, isOne, isEqual
 from geodata.base import Variable, Axis, Dataset
 from datasets.common import data_root
 # import modules to be tested
-from plotting.lineplots import linePlot , addSharedLegend
-from plotting.mapplots import srfcPlot
 from plotting.figure import getFigAx
 # use common MPL instance
-from plotting.misc import loadMPL
+# from plotting.misc import loadMPL
+# mpl,pyl = loadMPL(linewidth=1.)
 from geodata.stats import mwtest, kstest, wrstest
-mpl,pyl = loadMPL(linewidth=1.)
 
 
 # RAM disk settings ("global" variable)
 RAM = True # whether or not to use a RAM disk
 ramdisk = '/media/tmp/' # folder where RAM disk is mounted
+# stylesheet = None
+figargs = dict(stylesheet='ggplot', lpresentation=True, lpublication=False)
 
 
 class LinePlotTest(unittest.TestCase):  
@@ -61,13 +62,13 @@ class LinePlotTest(unittest.TestCase):
 
   def testBasicLinePlot(self):
     ''' test a simple line plot with two lines '''    
-    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], mpl=mpl) # use test method name as title
+    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyAxes'
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var1 = self.var1; var2 = self.var2
     # create plot
-    plts = ax.linePlot([var1, var2], ylabel='custom label [{1:s}]', llabel=False, 
+    plts = ax.linePlot([var1, var2], ylabel='custom label [{1:s}]', llabel=True, 
                        ylim=var1.limits(), legend=2, hline=2., vline=(2,3))
     assert len(plts) == 2
     # add label
@@ -75,7 +76,7 @@ class LinePlotTest(unittest.TestCase):
   
   def testAdvancedLinePlot(self):
     ''' test more advanced options of the line plot function '''    
-    fig,ax = getFigAx(1, title='Fancy Plot Styles', name=sys._getframe().f_code.co_name[4:]) # use test method name as title
+    fig,ax = getFigAx(1, title='Fancy Plot Styles', name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyAxes'
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
@@ -92,7 +93,7 @@ class LinePlotTest(unittest.TestCase):
 
   def testAxesGridLinePlot(self):
     ''' test a two panel line plot with combined legend '''        
-    fig,axes = getFigAx(4, AxesGrid=True, name=sys._getframe().f_code.co_name[4:]) # use test method name as title
+    fig,axes = getFigAx(4, AxesGrid=True, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     #assert grid.__class__.__name__ == 'ImageGrid'
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyLocatableAxes'
@@ -105,7 +106,7 @@ class LinePlotTest(unittest.TestCase):
         
   def testCombinedLinePlot(self):
     ''' test a two panel line plot with combined legend '''    
-    fig,axes = getFigAx(4, sharey=True, sharex=True, name=sys._getframe().f_code.co_name[4:]) # use test method name as title
+    fig,axes = getFigAx(4, sharey=True, sharex=True, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyAxes'
     assert isinstance(axes,(list,tuple,np.ndarray)) # should return a list of axes
@@ -149,7 +150,7 @@ class BarPlotTest(unittest.TestCase):
 
   def testBasicHistogram(self):
     ''' test a simple line plot with two lines '''    
-    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], mpl=mpl) # use test method name as title
+    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyAxes'
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
@@ -179,14 +180,16 @@ if __name__ == "__main__":
 
     
     specific_tests = None
+    specific_tests = ['BasicLinePlot']
+#     specific_tests = ['AdvancedLinePlot']
 #     specific_tests = ['CombinedLinePlot']
 #     specific_tests = ['AxesGridLinePlot']    
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['LinePlot'] 
-    tests += ['BarPlot']
+    tests += ['LinePlot'] 
+#     tests += ['BarPlot']
     
 
     # construct dictionary of test classes defined above

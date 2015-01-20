@@ -23,7 +23,7 @@ from datasets.CFSR import loadCFSR
 from datasets.NARR import loadNARR
 from datasets.Unity import loadUnity
 from datasets.WSC import Basin
-from datasets.common import loadDatasets # for annotation
+from plotting.legacy import loadDatasets # for annotation
 from plotting.settings import getFigureSettings
 # ARB project related stuff
 from projects.ARB_settings import figure_folder

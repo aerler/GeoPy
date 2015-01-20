@@ -1,0 +1,18 @@
+# Matplotlib Stylesheet for Publication
+# this stylesheet mainly defines item sizes suitable for print publications
+# it is meant to be used in conjunction with other stylesheets 
+# Andre R. Erler, GPL v3, 20/01/2015 
+
+font.size: 10
+
+axes.titlesize : large
+axes.labelsize : medium
+
+lines.linewidth : 1
+lines.markersize : 5
+
+xtick.labelsize : small
+ytick.labelsize : small
+
+legend.shadow: False
+legend.framealpha: 0.7

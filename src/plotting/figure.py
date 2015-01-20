@@ -8,14 +8,14 @@ A custom Figure class that provides some specialized functions and uses a custom
 
 # external imports
 from warnings import warn
-from types import NoneType, ModuleType
+from types import NoneType
 from matplotlib.figure import Figure, SubplotBase, subplot_class_factory
 from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 import numpy as np
 # internal imports
 from geodata.misc import isInt , ArgumentError
 from plotting.axes import MyAxes, MyLocatableAxes, Axes
-from plotting.misc import loadMPL
+import matplotlib as mpl
 
 
 ## my new figure class
@@ -260,22 +260,30 @@ class MyFigure(Figure):
     self.savefig(filename, **sf) # save figure to pdf
 
 
+# convenience function to load a stylesheet according to some rules 
+def loadStyleSheet(stylesheet, lpresentation=False, lpublication=False):
+  ''' convenience function to load a stylesheet according to some rules '''
+  # select stylesheets
+  if stylesheet is None: stylesheet = 'default'
+  if isinstance(stylesheet,basestring):     
+    if lpublication: stylesheet = (stylesheet,'publication')       
+    elif lpresentation: stylesheet = (stylesheet,'presentation')
+  # load stylesheets
+  if isinstance(stylesheet,(list,tuple)): 
+    mpl.pyplot.style.use(stylesheet)
+  else: raise TypeError
+ 
+
 ## convenience function to return a figure and an array of ImageGrid axes
-def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=None,
+def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet='myggplot', margins=None,
              sharex=None, sharey=None, AxesGrid=False, ngrids=None, direction='row',
              axes_pad = None, add_all=True, share_all=None, aspect=False,
              label_mode='L', cbar_mode=None, cbar_location='right', lreduce=True,
              cbar_pad=None, cbar_size='5%', axes_class=None, axes_args=None,
-             lsamesize=True, lpublication=False, figure_class=None, figure_args=None): 
-  # configure matplotlib
-  if mpl is None: 
-    import matplotlib as mpl
-    if lpublication: 
-      mpl.rc('lines', linewidth=1); mpl.rc('font', size=10)
-    else: 
-      mpl.rc('lines', linewidth=1.5); mpl.rc('font', size=12)
-  elif isinstance(mpl,dict): mpl = loadMPL(**mpl) # there can be a mplrc, but also others
-  elif not isinstance(mpl,ModuleType): raise TypeError
+             lpresentation=False, lpublication=False, figure_class=None, figure_args=None):
+  # load stylesheet
+  if stylesheet is not None:
+    loadStyleSheet(stylesheet, lpresentation=lpresentation, lpublication=lpublication) 
   # default figure class
   if figure_class is None: figure_class = MyFigure
   elif not issubclass(figure_class, Figure): raise TypeError 
@@ -295,11 +303,11 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  mpl=None, margins=No
   if figsize is None:
     if lpublication: 
       if subplot == (1,1): 
-        if lsamesize: figsize = (6.25,6.25)
+        if lpresentation: figsize = (6.25,6.25)
         else: figsize = (3.75,3.75)
       elif subplot == (1,2) or subplot == (1,3): figsize = (6.25,3.75)
       elif subplot == (2,1) or subplot == (3,1): 
-        if lsamesize: figsize = (3.75,6.25)
+        if lpresentation: figsize = (3.75,6.25)
         else: (3.75,7)
       else: figsize = (6.25,6.25)
     else:

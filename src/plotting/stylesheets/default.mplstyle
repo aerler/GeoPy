@@ -1,0 +1,26 @@
+# adapted from Matplotlib's ggplot stylesheet
+# Andre R. Erler, GPL v3, 20/01/2015 
+
+font.size: 12
+
+axes.linewidth: 1
+axes.grid: False
+
+figure.facecolor: white
+figure.edgecolor: white
+
+legend.frameon: True
+legend.fancybox: True
+legend.shadow: False
+legend.framealpha: 0.5
+
+
+# 'xx-large': 1.728
+# 'x-large': 1.44
+# 'large': 1.2
+# 'larger': 1.2
+# 'medium': 1.0
+# 'smaller': 0.833
+# 'small': 0.833
+# 'x-small': 0.694
+# 'xx-small': 0.579

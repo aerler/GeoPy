@@ -22,8 +22,8 @@ pyl.ioff()
 from mpl_toolkits.basemap import maskoceans # used for masking data
 # PyGeoDat stuff
 from geodata.base import DatasetError
-from datasets.common import loadDatasets, checkItemList
 from datasets.WSC import basins
+from plotting.legacy import loadDatasets, checkItemList
 from plotting.settings import getFigureSettings, getVariableSettings
 # ARB project related stuff
 from projects.ARB_settings import getARBsetup, figure_folder, map_folder
