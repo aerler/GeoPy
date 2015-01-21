@@ -263,7 +263,7 @@ def getFileName(name=None, resolution=None, period=None, filetype='climatology',
   
   
 # common climatology load function that will be imported by datasets (for backwards compatibility)
-def loadClim(name=None, folder=None, resolution=None, period=None, grid=None, varlist=None, 
+def loadObs(name=None, folder=None, resolution=None, period=None, grid=None, varlist=None, 
              varatts=None, filepattern=None, filelist=None, projection=None, geotransform=None, 
              axes=None, lautoregrid=None):
   ''' A function to load standardized observational climatologies. '''
@@ -448,14 +448,14 @@ class BatchLoad(object):
 
     
 # common climatology load function that will be imported by datasets (for backwards compatibility)
-def loadData_Clim(name=None, folder=None, resolution=None, period=None, grid=None, varlist=None, 
+def loadClim(name=None, folder=None, resolution=None, period=None, grid=None, varlist=None, 
                   varatts=None, lautoregrid=None):
   ''' A function to load any standardized climatologies; identifies source by name heuristics '''
   return loadDataset(name=name, folder=folder, resolution=resolution, period=period, grid=grid, station=None, 
                      varlist=varlist, varatts=varatts, lautoregrid=lautoregrid, mode='climatology')
 
 # common load function that will be imported by datasets (for backwards compatibility)
-def loadData_StnTS(name=None, folder=None, resolution=None, varlist=None, station=None, varatts=None):
+def loadStnTS(name=None, folder=None, resolution=None, varlist=None, station=None, varatts=None):
     ''' A function to load any standardized time-series at station locations. '''
     return loadDataset(name=name, folder=folder, resolution=resolution, station=station, 
                        varlist=varlist, varatts=varatts, period=None, grid=None,
@@ -466,22 +466,28 @@ def loadDataset(name=None, folder=None, resolution=None, period=None, grid=None,
                 varlist=None, varatts=None, lautoregrid=None, mode='climatology'):
   ''' A function to load any datasets; identifies source by name heuristics. '''
   import datasets # search modules from here...
+  import inspect
   from projects.WRF_experiments import WRF_exps, WRF_experiments
   from datasets.CESM import CESM_exps, CESM_experiments
   # identify dataset source
-  if name in datasets.__dict__ and datasets.__dict__[name].dataset_name == name:
-    # this is most likely an observational dataset
-    dataset_name = name 
-  elif name.islower() or ( name in WRF_exps or WRF_experiments):
+  if name in WRF_exps or name in WRF_experiments:
     # this is most likely a WRF experiment or ensemble
+    import datasets.WRF as dataset
     from projects.WRF_experiments import WRF_ens
     dataset_name = 'WRF'    
     lensemble = name in  WRF_ens
-  elif name.istitle() or ( name in CESM_exps or CESM_experiments):
+  elif name in CESM_exps or name in CESM_experiments:
     # this is most likely a CESM experiment or ensemble
+    import datasets.CESM as dataset
     from datasets.CESM import CESM_ens
     dataset_name = 'CESM'
     lensemble = name in  CESM_ens
+  else:
+    # this is most likely an observational dataset
+    try: dataset = import_module('datasets.{0:s}'.format(name))
+    except ImportError: raise ArgumentError, "No dataset found matching '{:s}'".format(name)
+    dataset_name = name 
+    lensemble = False
 #TODO: add handling of CVDP and Obs_CVDP
   # identify load function
   load_fct = 'load{:s}'.format(dataset_name)
@@ -496,25 +502,29 @@ def loadDataset(name=None, folder=None, resolution=None, period=None, grid=None,
       if station: load_fct += '_StnTS'
       else: load_fct += '_TS'      
   # load dataset
-  dataset = datasets.__dict__[dataset_name]
-  if load_fct not in dataset and isCallable(dataset.__dict__[load_fct]): 
-    raise ArgumentError, "Dataset '{:s}' has not method '{:s}'".format(dataset_name,load_fct)
+  if load_fct in dataset.__dict__: 
+    load_fct = dataset.__dict__[load_fct]
+  else: 
+    raise ArgumentError, "Dataset '{:s}' has no method '{:s}'".format(dataset_name,load_fct)
+  if not inspect.isfunction(load_fct): 
+    raise ArgumentError, "Attribute '{:s}' in module '{:s}' is not a function".format(load_fct.__name__,dataset_name)
+  # generate argument list 
+  kwargs = dict(name=name, resolution=resolution, station=station, varlist=varlist, varatts=varatts, 
+                period=period, grid=grid, lautoregrid=lautoregrid, mode=mode)
   if dataset_name == 'WRF':
-#TODO: add handling of domains    
-    ds = dataset.__dict__[load_fct](name=name, folder=folder, resolution=resolution, station=station, 
-                                    varlist=varlist, varatts=varatts, period=period, grid=grid,
-                                    lautoregrid=lautoregrid, mode=mode)
+#TODO: add handling of domains
+    pass    
   elif dataset_name == 'CESM':
-    ds = dataset.__dict__[load_fct](name=name, folder=folder, resolution=resolution, station=station, 
-                                    varlist=varlist, varatts=varatts, period=period, grid=grid,
-                                    lautoregrid=lautoregrid, mode=mode)
+    pass
   else:
-    ds = dataset.__dict__[load_fct](name=name, folder=folder, resolution=resolution, station=station, 
-                                    varlist=varlist, varatts=varatts, period=period, grid=grid,
-                                    lautoregrid=lautoregrid, mode=mode)
+    pass
+  # check arguments
+  argspec, varargs, keywords, defaults = inspect.getargspec(load_fct); del varargs, keywords, defaults
+  kwargs = {key:value for key,value in kwargs.iteritems() if key in argspec}
+  # load dataset 
+  dataset = load_fct(**kwargs)
   # return dataset
-  return ds
-#TODO: add test!!!
+  return dataset
 
 
 # function to extract common points that meet a specific criterion from a list of datasets

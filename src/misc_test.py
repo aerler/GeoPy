@@ -125,7 +125,18 @@ class DatasetsTest(unittest.TestCase):
           n += 1
     assert n == len(arg_list)
     
-
+  def testLoadDataset(self):
+    ''' test universal dataset loading function '''
+    from datasets.common import loadDataset, loadClim, loadStnTS 
+    pcic = loadClim(name='PCIC', folder=None, resolution=None, period=None, grid='arb2_d02', varlist=['precip'], 
+                    varatts=None, lautoregrid=False)
+    assert isinstance(pcic, Dataset)
+    assert 'precip' in pcic
+    assert pcic.name == 'PCIC'
+    assert pcic.gdal and pcic.isProjected
+#     loadStnTS(name=None, folder=None, resolution=None, varlist=None, station=None, varatts=None):
+#     loadDataset(name=None, folder=None, resolution=None, period=None, grid=None, station=None, 
+#                 varlist=None, varatts=None, lautoregrid=None, mode='climatology')
     
 if __name__ == "__main__":
 
@@ -133,7 +144,9 @@ if __name__ == "__main__":
     specific_tests = None
 #     specific_tests = ['ApplyAlongAxis']
 #     specific_tests = ['AsyncPool']    
-    specific_tests = ['ExpArgList']
+#     specific_tests = ['ExpArgList']
+    specific_tests = ['LoadDataset']
+
 
     # list of tests to be performed
     tests = [] 
