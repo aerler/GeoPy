@@ -12,12 +12,12 @@ from warnings import warn
 import numpy as np
 import pickle
 import os
+from operator import isCallable
 # internal imports
 from geodata.misc import AxisError, DatasetError, DateError, ArgumentError
 from geodata.base import Dataset, Variable, Axis, Ensemble
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import GDALError, addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
-from operator import isCallable
 
 
 # days per month
@@ -266,6 +266,7 @@ def getFileName(name=None, resolution=None, period=None, filetype='climatology',
 def loadClim(name=None, folder=None, resolution=None, period=None, grid=None, varlist=None, 
              varatts=None, filepattern=None, filelist=None, projection=None, geotransform=None, 
              axes=None, lautoregrid=None):
+  ''' A function to load standardized observational climatologies. '''
   return loadObservations(name=name, folder=folder, resolution=resolution, period=period, grid=grid, station=None, 
                           varlist=varlist, varatts=varatts, filepattern=filepattern, filelist=filelist, 
                           projection=projection, geotransform=geotransform, axes=axes, 
@@ -274,7 +275,8 @@ def loadClim(name=None, folder=None, resolution=None, period=None, grid=None, va
 # common climatology load function that will be imported by datasets (for backwards compatibility)
 def loadObs_StnTS(name=None, folder=None, resolution=None, varlist=None, station=None, 
                   varatts=None, filepattern=None, filelist=None, axes=None):
-  return loadObservations(name=name, folder=folder, resolution=resolution, station=station, 
+    ''' A function to load standardized observational time-series at station locations. '''
+    return loadObservations(name=name, folder=folder, resolution=resolution, station=station, 
                           varlist=varlist, varatts=varatts, filepattern=filepattern, filelist=filelist, 
                           projection=None, geotransform=None, axes=axes, period=None, grid=None,
                           lautoregrid=False, mode='time-series')
@@ -341,65 +343,6 @@ def loadObservations(name=None, folder=None, resolution=None, period=None, grid=
 
 ## functions to load multiple datasets
 
-
-# function to extract common points that meet a specific criterion from a list of datasets
-def selectCoords(datasets, axis, testFct=None, imaster=None, linplace=True, lall=False):
-  ''' Extract common points that meet a specific criterion from a list of datasets. 
-      The test function has to accept the following input: index, dataset, axis'''
-  # check input
-  if not isinstance(datasets, (list,tuple,Ensemble)): raise TypeError
-  if not all(isinstance(dataset,Dataset) for dataset in datasets): raise TypeError 
-  if not isCallable(testFct) and testFct is not None: raise TypeError
-  if isinstance(axis, Axis): axis = axis.name
-  if not isinstance(axis, basestring): raise TypeError
-  if lall and imaster is not None: raise ArgumentError, "The options 'lall' and 'imaster' are mutually exclusive!"
-  # save some ensemble parameters for later  
-  lnotest = testFct is None
-  lens = isinstance(datasets,Ensemble)
-  if lens:
-    enskwargs = dict(basetype=datasets.basetype, idkey=datasets.idkey, 
-                     name=datasets.name, title=datasets.title) 
-  # use dataset with shortest axis as master sample (more efficient)
-  axes = [dataset.getAxis(axis) for dataset in datasets]
-  if imaster is None: imaster = np.argmin([len(ax) for ax in axes]) # find shortest axis
-  elif not isinstance(imaster,(int,np.integer)): raise TypeError
-  elif imaster >= len(datasets) or imaster < 0: raise ValueError 
-  maxis = axes.pop(imaster) # extraxt shortest axis for loop
-  if lall: test_fct = lambda i,ds: testFct(i, ds, axis) # prepare test function arguments
-  else: test_fct = lambda i: testFct(i, datasets[imaster], axis) 
-  # loop over coordinate axis
-  itpls = [] # list of valid index tuple
-  for i,x in enumerate(maxis.coord):
-    # check other axes
-    if all([x in ax.coord for ax in axes]): # only the other axes
-      # no condition
-      if lnotest:
-        # just find and add indices
-        itpls.append((i,)+tuple(ax.coord.searchsorted(x) for ax in axes))
-      # check condition using shortest dataset
-      elif lall: 
-        # check test condition on all datasets (slower)
-        tmpidx = (i,)+tuple(ax.coord.searchsorted(x) for ax in axes)
-        if all(test_fct(ii,ds) for ii,ds in zip(tmpidx,datasets)):
-          # add corresponding indices in each dataset to list
-          itpls.append((i,)+tuple(tmpidx))
-      else:
-        # check test condition on only one dataset (faster, default)
-        if test_fct(i):
-          # add corresponding indices in each dataset to list
-          itpls.append((i,)+tuple(ax.coord.searchsorted(x) for ax in axes))
-          # N.B.: since we can expect exact matches, plain searchsorted is fastest (side='left') 
-  # construct axis indices for each dataset (need to remember to move shortest axis back in line)
-  idxs = [[] for ds in datasets] # create unique empty lists
-  for itpl in itpls:
-    for i,idx in enumerate(itpl): idxs[i].append(idx)
-  idxs.insert(imaster,idxs.pop(0)) # mode fist element back in line (where shortest axis was)
-  idxs = [np.asarray(idxlst, dtype='int') for idxlst in idxs]      
-  # slice datasets using only positive results  
-  datasets = [ds(lidx=True, linplace=linplace, **{axis:idx}) for ds,idx in zip(datasets,idxs)]
-  if lens: datasets = Ensemble(*datasets, **enskwargs)
-  # return datasets
-  return datasets
 
 
 # helper function to form inner and outer product of multiple lists
@@ -502,7 +445,164 @@ class BatchLoad(object):
       datasets = Ensemble(members=datasets, name=ens_name, title=ens_title, basetype='Dataset')
     # return list or ensemble of datasets
     return datasets
+
     
+# common climatology load function that will be imported by datasets (for backwards compatibility)
+def loadData_Clim(name=None, folder=None, resolution=None, period=None, grid=None, varlist=None, 
+                  varatts=None, lautoregrid=None):
+  ''' A function to load any standardized climatologies; identifies source by name heuristics '''
+  return loadDataset(name=name, folder=folder, resolution=resolution, period=period, grid=grid, station=None, 
+                     varlist=varlist, varatts=varatts, lautoregrid=lautoregrid, mode='climatology')
+
+# common load function that will be imported by datasets (for backwards compatibility)
+def loadData_StnTS(name=None, folder=None, resolution=None, varlist=None, station=None, varatts=None):
+    ''' A function to load any standardized time-series at station locations. '''
+    return loadDataset(name=name, folder=folder, resolution=resolution, station=station, 
+                       varlist=varlist, varatts=varatts, period=None, grid=None,
+                       lautoregrid=False, mode='time-series')
+  
+# universal load function that will be imported by datasets
+def loadDataset(name=None, folder=None, resolution=None, period=None, grid=None, station=None, 
+                varlist=None, varatts=None, lautoregrid=None, mode='climatology'):
+  ''' A function to load any datasets; identifies source by name heuristics. '''
+  import datasets # search modules from here...
+  from projects.WRF_experiments import WRF_exps, WRF_experiments
+  from datasets.CESM import CESM_exps, CESM_experiments
+  # identify dataset source
+  if name in datasets.__dict__ and datasets.__dict__[name].dataset_name == name:
+    # this is most likely an observational dataset
+    dataset_name = name 
+  elif name.islower() or ( name in WRF_exps or WRF_experiments):
+    # this is most likely a WRF experiment or ensemble
+    from projects.WRF_experiments import WRF_ens
+    dataset_name = 'WRF'    
+    lensemble = name in  WRF_ens
+  elif name.istitle() or ( name in CESM_exps or CESM_experiments):
+    # this is most likely a CESM experiment or ensemble
+    from datasets.CESM import CESM_ens
+    dataset_name = 'CESM'
+    lensemble = name in  CESM_ens
+#TODO: add handling of CVDP and Obs_CVDP
+  # identify load function
+  load_fct = 'load{:s}'.format(dataset_name)
+  if mode.lower() in ('climatology',):
+    if lensemble and station: raise ArgumentError
+    if station: load_fct += '_Stn'
+  elif mode.lower() in ('time-series','timeseries',):
+    if lensemble:
+      if station: load_fct += '_StnEns'
+      else: load_fct += '_Ensemble'
+    else:
+      if station: load_fct += '_StnTS'
+      else: load_fct += '_TS'      
+  # load dataset
+  dataset = datasets.__dict__[dataset_name]
+  if load_fct not in dataset and isCallable(dataset.__dict__[load_fct]): 
+    raise ArgumentError, "Dataset '{:s}' has not method '{:s}'".format(dataset_name,load_fct)
+  if dataset_name == 'WRF':
+#TODO: add handling of domains    
+    ds = dataset.__dict__[load_fct](name=name, folder=folder, resolution=resolution, station=station, 
+                                    varlist=varlist, varatts=varatts, period=period, grid=grid,
+                                    lautoregrid=lautoregrid, mode=mode)
+  elif dataset_name == 'CESM':
+    ds = dataset.__dict__[load_fct](name=name, folder=folder, resolution=resolution, station=station, 
+                                    varlist=varlist, varatts=varatts, period=period, grid=grid,
+                                    lautoregrid=lautoregrid, mode=mode)
+  else:
+    ds = dataset.__dict__[load_fct](name=name, folder=folder, resolution=resolution, station=station, 
+                                    varlist=varlist, varatts=varatts, period=period, grid=grid,
+                                    lautoregrid=lautoregrid, mode=mode)
+  # return dataset
+  return ds
+#TODO: add test!!!
+
+
+# function to extract common points that meet a specific criterion from a list of datasets
+def selectCoords(datasets, axis, testFct=None, imaster=None, linplace=True, lall=False):
+  ''' Extract common points that meet a specific criterion from a list of datasets. 
+      The test function has to accept the following input: index, dataset, axis'''
+  # check input
+  if not isinstance(datasets, (list,tuple,Ensemble)): raise TypeError
+  if not all(isinstance(dataset,Dataset) for dataset in datasets): raise TypeError 
+  if not isCallable(testFct) and testFct is not None: raise TypeError
+  if isinstance(axis, Axis): axis = axis.name
+  if not isinstance(axis, basestring): raise TypeError
+  if lall and imaster is not None: raise ArgumentError, "The options 'lall' and 'imaster' are mutually exclusive!"
+  # save some ensemble parameters for later  
+  lnotest = testFct is None
+  lens = isinstance(datasets,Ensemble)
+  if lens:
+    enskwargs = dict(basetype=datasets.basetype, idkey=datasets.idkey, 
+                     name=datasets.name, title=datasets.title) 
+  # use dataset with shortest axis as master sample (more efficient)
+  axes = [dataset.getAxis(axis) for dataset in datasets]
+  if imaster is None: imaster = np.argmin([len(ax) for ax in axes]) # find shortest axis
+  elif not isinstance(imaster,(int,np.integer)): raise TypeError
+  elif imaster >= len(datasets) or imaster < 0: raise ValueError 
+  maxis = axes.pop(imaster) # extraxt shortest axis for loop
+  if lall: test_fct = lambda i,ds: testFct(i, ds, axis) # prepare test function arguments
+  else: test_fct = lambda i: testFct(i, datasets[imaster], axis) 
+  # loop over coordinate axis
+  itpls = [] # list of valid index tuple
+  for i,x in enumerate(maxis.coord):
+    # check other axes
+    if all([x in ax.coord for ax in axes]): # only the other axes
+      # no condition
+      if lnotest:
+        # just find and add indices
+        itpls.append((i,)+tuple(ax.coord.searchsorted(x) for ax in axes))
+      # check condition using shortest dataset
+      elif lall: 
+        # check test condition on all datasets (slower)
+        tmpidx = (i,)+tuple(ax.coord.searchsorted(x) for ax in axes)
+        if all(test_fct(ii,ds) for ii,ds in zip(tmpidx,datasets)):
+          # add corresponding indices in each dataset to list
+          itpls.append((i,)+tuple(tmpidx))
+      else:
+        # check test condition on only one dataset (faster, default)
+        if test_fct(i):
+          # add corresponding indices in each dataset to list
+          itpls.append((i,)+tuple(ax.coord.searchsorted(x) for ax in axes))
+          # N.B.: since we can expect exact matches, plain searchsorted is fastest (side='left') 
+  # construct axis indices for each dataset (need to remember to move shortest axis back in line)
+  idxs = [[] for ds in datasets] # create unique empty lists
+  for itpl in itpls:
+    for i,idx in enumerate(itpl): idxs[i].append(idx)
+  idxs.insert(imaster,idxs.pop(0)) # mode fist element back in line (where shortest axis was)
+  idxs = [np.asarray(idxlst, dtype='int') for idxlst in idxs]      
+  # slice datasets using only positive results  
+  datasets = [ds(lidx=True, linplace=linplace, **{axis:idx}) for ds,idx in zip(datasets,idxs)]
+  if lens: datasets = Ensemble(*datasets, **enskwargs)
+  # return datasets
+  return datasets
+
+
+# a function to load station data
+def loadStationEnsemble(exps=None, prov=None, season=None, station_type=None, variables=None, filetypes=None, domain=2):
+  from datasets.EC import loadEC_StnTS, selectStations
+  from datasets.WRF import loadWRF_StnEns
+  stnmeta = ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon',] # necessary to select stations
+  # prepare ensemble
+  varlist = stnmeta + variables
+  stnens = Ensemble(name='stations', title='EC Stations', basetype='Dataset')
+  # load ensemble WRF data
+  for exp in exps:
+      if exp == station_type: # load Environment Canada station data
+          stnens += loadEC_StnTS(station=station_type, varlist=varlist)
+      else:
+          if exp[-4:-1] == '_d0': # infer domain from suffix
+              dom = int(exp[-1]); exp_dom = exp[:-4]
+          else: dom = domain; exp_dom = exp
+          stnens += loadWRF_StnEns(ensemble=exp_dom, varlist=varlist, station=station_type, 
+                                       filetypes=filetypes, domains=dom, name=exp)            
+  # select and load data
+  stnens = selectStations(stnens, prov=prov, min_len=50, lat=(45,60), max_zerr=1500, #lon=(-130,-110),
+                          stnaxis='station', imaster=None, linplace=False, lall=False)
+  # extract seasonal extrema
+  stnens = stnens.seasonalMax(season=season, taxis='time')
+  # return dataset
+  return stnens
+
 
 ## Miscellaneous utility functions
 
