@@ -476,12 +476,12 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, period=Non
       ts = (ys-1979)*12 + (ms-1); te = ts+len(dataset.time) # month since 1979 (Jan 1979 = 0)
       atts = dict(long_name='Month since 1979-01')
       timeAxis = Axis(name='time', units='month', coord=np.arange(ts,te,1, dtype='int16'), atts=atts)
-      dataset.repalceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
+      dataset.replaceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
     if dataset.hasAxis('year'):
       ts = ys-1979; te = ts+len(dataset.year) # month since 1979 (Jan 1979 = 0)
       atts = dict(long_name='years since 1979-01')
       yearAxis = Axis(name='year', units='year', coord=np.arange(ts,te,1, dtype='int16'), atts=atts)
-      dataset.repalceAxis(dataset.year, yearAxis, asNC=False, deepcopy=False)
+      dataset.replaceAxis(dataset.year, yearAxis, asNC=False, deepcopy=False)
   # check
   if len(dataset) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
   # add projection, if applicable

@@ -19,7 +19,7 @@ from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, addG
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt
 from datasets.common import translateVarNames, data_root, grid_folder, default_varatts 
 from geodata.gdal import loadPickledGridDef, griddef_pickle
-from projects.WRF_experiments import Exp, exps 
+from projects.WRF_experiments import Exp, exps, ensembles 
 
 
 ## get WRF projection and grid definition 
@@ -120,52 +120,65 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   return tuple(griddefs)  
 
 # return name and folder
-def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None):
+def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, lexp=False):
   ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
-  #from projects.WRF_experiments import exps, Exp # need to leave this here, to avoid circular reference...   
-  # check domains
-  if isinstance(domains,col.Iterable):
-    if not all(isInt(domains)): raise TypeError
-    if not isinstance(domains,list): domains = list(domains)
-    if not domains == sorted(domains): raise IndexError, 'Domains have to sorted in ascending order.'
-  elif isInt(domains): domains = [domains]
-  else: raise TypeError  
-  # figure out experiment name
-  if experiment is None:
-    if not isinstance(folder,basestring): 
-      raise IOError, "Need to specify an experiment folder in order to load data."
-    if isinstance(name,(list,tuple)) and all([isinstance(n,basestring) for n in name]): 
-      names = name
-      if names[0] in exps: experiment = exps[names[0]]
-      else: name = names[0].split('_')[0]
-    elif isinstance(name,basestring): 
-      names = [name]
-      folder = folder + '/' + name
-    # load experiment meta data
-    if name in exps: experiment = exps[name]
-#     else: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(names[0])
-  else:
-    if isinstance(experiment,(Exp,basestring)):
-      if isinstance(experiment,basestring): experiment = exps[experiment] 
-      # root folder
-      if folder is None: folder = experiment.avgfolder
-      elif not isinstance(folder,basestring): raise TypeError
-      # name
-      if name is None: name = experiment.name
-    if isinstance(name,basestring): 
-      names = ['{0:s}_d{1:0=2d}'.format(name,domain) for domain in domains]
-    elif isinstance(name,col.Iterable):
-      if len(domains) != len(name): raise DatasetError  
-      names = name 
-    else: raise TypeError      
+  if name is None and experiment is None: raise ArgumentError
+  if folder is None and experiment is None: raise ArgumentError 
+  # handle experiment
+  if experiment is not None and name is None:
+    if isinstance(experiment,Exp):
+      name = experiment.name
+    elif isinstance(experiment,basestring) or isinstance(name,(list,tuple)): 
+      name = experiment # use name-logic to procede
+      experiment = None # eventually reset below
+    else: TypeError
+  ## figure out experiment name(s) and domain(s) (potentially based on name)
+  # name check
+  if isinstance(name,(list,tuple)) and all([isinstance(n,basestring) for n in name]): names = name
+  elif isinstance(name,basestring): names = [name]
+  else: raise TypeError
+  # domain check
+  if not isinstance(domains,(list,tuple)): domains = [domains]*len(names)
+  elif not all(isInt(domains)): raise TypeError
+  if len(domains) == 1: domains = domains*len(names)
+  if len(names) == 1: names = names*len(domains)
+  if len(domains) != len(names): raise ArgumentError
+  # parse for domain string
+  basenames = []
+  for i,name in enumerate(names):
+    # infer domain from suffix...
+    if name[-4:-2] == '_d' and int(name[-2:]) > 0:
+      domains[i] = int(name[-2:]) # overwrite domain list entry
+      basenames.append(name[:-4]) # ... and truncate basename
+    else: basenames.append(name)
+  if len(set(basenames)) != 1: raise DatasetError, "Dataset base names are inconsistent."
+  name = basenames[0]
+  # ensure uniqueness of names
+  if len(set(names)) != len(names):
+    names = ['{0:s}_d{1:0=2d}'.format(name,domain) for name,domain in zip(names,domains)]
+  # evaluate experiment
+  if experiment is None: 
+    if name in exps: experiment = exps[name] # load experiment meta data
+    elif lexp: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(names[0])
+  # patch up folder
+  if folder is None: # should already have checked that either folder or experiment are specified
+    folder = experiment.avgfolder
+  elif isinstance(folder,basestring): 
+    if not folder.endswith((name,name+'/')): folder = '{:s}/{:s}/'.format(folder,name)
+  else: raise TypeError
+  # check types
+  if not isinstance(domains,(tuple,list)): raise TypeError    
+  if not all(isInt(domains)): raise TypeError
+  if not domains == sorted(domains): raise IndexError, 'Domains have to sorted in ascending order.'
+  if not isinstance(names,(tuple,list)): raise TypeError
+  if not all(isinstance(nm,basestring) for nm in names): raise TypeError
+  if len(domains) != len(names): raise ArgumentError  
   # check if folder exists
   if not os.path.exists(folder): raise IOError, folder
   # return name and folder
   return folder, experiment, tuple(names), tuple(domains)
   
-
-
 
 ## variable attributes and name
 # convert water mass mixing ratio to water vapor partial pressure ( kg/kg -> Pa ) 
@@ -449,8 +462,8 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
     if lconst: raise NotImplementedError, 'Currently WRF constants are not available as station data.'
     if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.' 
   # generate filelist and attributes based on filetypes and domain
-  if filetypes is None: filetypes = fileclasses.keys()
-  elif isinstance(filetypes,(tuple,set)): filetypes = list(filetypes)
+  if filetypes is None: filetypes = ('hydro','xtrm','srfc','plev3d','lsm')
+  if isinstance(filetypes,(tuple,set)): filetypes = list(filetypes)
   elif isinstance(filetypes,basestring): filetypes = [filetypes,]
   elif not isinstance(filetypes,list): raise TypeError  
   if 'axes' not in filetypes: filetypes.append('axes')
@@ -602,13 +615,15 @@ def loadWRF_StnEns(ensemble=None, name=None, station=None, filetypes=None, years
                           lcheckVars=lcheckVars, lcheckAxis=lcheckAxis, name=name, title=title)
   
 # load a pre-processed WRF ensemble and concatenate time-series 
-def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, domains=2, filetypes=None, 
+def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, domains=None, filetypes=None, 
                      years=None, varlist=None, varatts=None, translateVars=None, lautoregrid=None, 
                      title=None, lctrT=True, lconst=True, lcheckVars=True, lcheckAxis=True):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   # obviously this only works for datasets that have a time-axis
   # figure out ensemble
-  from projects.WRF_experiments import ensembles, exps, Exp # need to leave this here, to avoid circular reference...
+#   from projects.WRF_experiments import ensembles, exps, Exp # need to leave this here, to avoid circular reference...
+  if ensemble is None and name is not None: 
+    ensemble = name; name = None # just switch
   if isinstance(ensemble,(list,tuple)):
     for ens in ensemble:
       if isinstance(ens,Exp) or ( isinstance(ens,basestring) and ens in exps ) : pass
@@ -620,13 +635,20 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, domains=
   else:
     if isinstance(ensemble,Exp): ensname = ensemble.shortname
     elif isinstance(ensemble,basestring): 
-      ensname = ensemble; ensemble = exps[ensname] # treat ensemble like experiment until later
+      # infer domain from suffix...
+      if ensemble[-4:-2] == '_d' and int(ensemble[-2:]) > 0:
+        domains = int(ensemble[-2:]) # overwrite domains argument
+        ensname = ensemble[:-4] 
+        name = ensemble if name is None else name # save original name
+      else: ensname = ensemble 
+      ensemble = exps[ensname] # treat ensemble like experiment until later
     else: raise TypeError
     # annotation (while ensemble is an Exp instance)
     if name is None: name = ensemble.shortname
     if title is None: title = ensemble.title
     # convert actual ensemble to list
     if ensname in ensembles: ensemble = ensembles[ensname]
+    else: raise TypeError
   # figure out time period
   if years is None: years = 15
   elif isinstance(years,(list,tuple)) and len(years)==2: raise NotImplementedError 

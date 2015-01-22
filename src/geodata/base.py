@@ -366,7 +366,7 @@ class Variable(object):
       substr = name + ' '*(max(1,35-len(name)-len(shape))) + shape # the field is 35 wide, with at least 1 space
       string = '{:<35s}  {:s}'.format(substr,axes)
     else:
-      string = '{0:s} {1:s} [{2:s}]   {3:s}\n'.format(self.__class__.__name__,self.name,self.units,self.__class__)
+      string = '{0:s} \'{1:s}\' [{2:s}]   {3:s}\n'.format(self.__class__.__name__,self.name,self.units,self.__class__)
       for ax in self.axes: string += '  {0:s}\n'.format(ax.prettyPrint(short=True))
       string += 'Attributes: {0:s}\n'.format(str(self.atts))
       string += 'Plot Attributes: {0:s}'.format(str(self.plot))
@@ -2095,7 +2095,7 @@ class Dataset(object):
       klass = self.__class__.__name__ 
       string = '{:<20s} {:s}, {:s} ({:s})'.format(title,variables,axes,klass)
     else:
-      string = '{0:s}   {1:s}\n'.format(self.__class__.__name__,str(self.__class__))
+      string = '{0:s} \'{1:s}\'   {2:s}\n'.format(self.__class__.__name__,self.title or self.name, self.__class__)
       # print variables (sorted alphabetically)
       string += 'Variables:\n'
       varlisting = ['  {0:s}\n'.format(var.prettyPrint(short=True)) for var in self.variables.values()]

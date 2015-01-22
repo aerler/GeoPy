@@ -83,8 +83,9 @@ avgfile = 'pcic{0:s}_clim{1:s}.nc' # formatted NetCDF file
 avgfolder = root_folder + 'pcicavg/' # prefix
 # function to load these files...
 def loadPCIC(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, 
-             folder=avgfolder, filelist=None, lautoregrid=True):
+             folder=None, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly PCIC PRISM climatology as a DatasetNetCDF. '''
+  if folder is None: folder = avgfolder
   # only the climatology is available
   if period is not None: 
     warn('Only the full climatology is currently available: setting \'period\' to None.')

@@ -128,15 +128,24 @@ class DatasetsTest(unittest.TestCase):
   def testLoadDataset(self):
     ''' test universal dataset loading function '''
     from datasets.common import loadDataset, loadClim, loadStnTS 
-    pcic = loadClim(name='PCIC', folder=None, resolution=None, period=None, grid='arb2_d02', varlist=['precip'], 
-                    varatts=None, lautoregrid=False)
-    assert isinstance(pcic, Dataset)
-    assert 'precip' in pcic
-    assert pcic.name == 'PCIC'
-    assert pcic.gdal and pcic.isProjected
-#     loadStnTS(name=None, folder=None, resolution=None, varlist=None, station=None, varatts=None):
-#     loadDataset(name=None, folder=None, resolution=None, period=None, grid=None, station=None, 
-#                 varlist=None, varatts=None, lautoregrid=None, mode='climatology')
+    # test climtology
+    ds = loadClim(name='PCIC', grid='arb2_d02', varlist=['precip'])
+    assert isinstance(ds, Dataset)
+    assert ds.name == 'PCIC'
+    assert 'precip' in ds
+    assert ds.gdal and ds.isProjected
+    # test CVDP
+    ds = loadDataset(name='HadISST', period=None, varlist=None, mode='CVDP')
+    assert isinstance(ds, Dataset)
+    assert ds.name == 'HadISST'
+    assert 'PDO' in ds
+    assert ds.gdal and not ds.isProjected
+    # test station time-series
+    ds = loadStnTS(name='max-ens_d02', varlist=['MaxPrecip_1d'], station='ecprecip', filtypes='hydro')
+    assert isinstance(ds, Dataset)
+    print ds
+    assert ds.name == 'max-ens_d02'
+    assert 'MaxPrecip_1d' in ds
     
 if __name__ == "__main__":
 

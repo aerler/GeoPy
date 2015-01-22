@@ -8,6 +8,7 @@ Some tools and data that are used by many datasets, but not much beyond that.
 
 # external imports
 from importlib import import_module
+import inspect
 from warnings import warn
 import numpy as np
 import pickle
@@ -324,7 +325,7 @@ def loadObservations(name=None, folder=None, resolution=None, period=None, grid=
           dataargs = dict(period=period, resolution=resolution)
           performRegridding(name, 'climatology',griddef, dataargs) # default kwargs
         else: raise IOError, "The dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.".format(filename,grid) 
-      else: raise IOError, "The dataset file '{:s}' does not exits!".format(filename)
+      else: raise IOError, "The dataset file '{:s}' does not exits!\n('{:s}')".format(filename,filepath)
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=[filename], varlist=varlist, varatts=varatts, 
                           axes=axes, multifile=False, ncformat='NETCDF4')
@@ -448,50 +449,53 @@ class BatchLoad(object):
 
     
 # common climatology load function that will be imported by datasets (for backwards compatibility)
-def loadClim(name=None, folder=None, resolution=None, period=None, grid=None, varlist=None, 
-                  varatts=None, lautoregrid=None):
+def loadClim(name=None, **kwargs):
   ''' A function to load any standardized climatologies; identifies source by name heuristics '''
-  return loadDataset(name=name, folder=folder, resolution=resolution, period=period, grid=grid, station=None, 
-                     varlist=varlist, varatts=varatts, lautoregrid=lautoregrid, mode='climatology')
+  return loadDataset(name=name, station=None, mode='climatology', **kwargs)
 
 # common load function that will be imported by datasets (for backwards compatibility)
-def loadStnTS(name=None, folder=None, resolution=None, varlist=None, station=None, varatts=None):
+def loadStnTS(name=None, station=None, **kwargs):
     ''' A function to load any standardized time-series at station locations. '''
-    return loadDataset(name=name, folder=folder, resolution=resolution, station=station, 
-                       varlist=varlist, varatts=varatts, period=None, grid=None,
-                       lautoregrid=False, mode='time-series')
+    return loadDataset(name=name, station=station, mode='time-series', **kwargs)
   
 # universal load function that will be imported by datasets
-def loadDataset(name=None, folder=None, resolution=None, period=None, grid=None, station=None, 
-                varlist=None, varatts=None, lautoregrid=None, mode='climatology'):
+def loadDataset(name=None, station=None, mode='climatology', **kwargs):
   ''' A function to load any datasets; identifies source by name heuristics. '''
-  import datasets # search modules from here...
-  import inspect
+  # some private imports (prevent import errors)  
   from projects.WRF_experiments import WRF_exps, WRF_experiments
   from datasets.CESM import CESM_exps, CESM_experiments
   # identify dataset source
-  if name in WRF_exps or name in WRF_experiments:
+  lensemble = False; lobs = False
+  if ( name in WRF_exps or name in WRF_experiments or 
+       name[:-4] in WRF_exps or name[:-4] in WRF_experiments ):
     # this is most likely a WRF experiment or ensemble
     import datasets.WRF as dataset
     from projects.WRF_experiments import WRF_ens
     dataset_name = 'WRF'    
-    lensemble = name in  WRF_ens
+    lensemble = name in WRF_ens or name[:-4] in WRF_ens
   elif name in CESM_exps or name in CESM_experiments:
     # this is most likely a CESM experiment or ensemble
     import datasets.CESM as dataset
     from datasets.CESM import CESM_ens
     dataset_name = 'CESM'
     lensemble = name in  CESM_ens
+  elif mode.upper() == 'CVDP':
+    # this is a special case for observational data in the CVDP package
+    if name.lower() in ('hadisst','mlost','20thc_reanv2','gpcp'):
+      dataset_name = 'CESM'; lobs = True
+    else: raise ArgumentError, "No CVDP dataset matching '{:s}' found.".format(name)
+    import datasets.CESM as dataset # also in CESM module
   else:
-    # this is most likely an observational dataset
+    # this is most likely an observational dataset    
     try: dataset = import_module('datasets.{0:s}'.format(name))
-    except ImportError: raise ArgumentError, "No dataset found matching '{:s}'".format(name)
-    dataset_name = name 
-    lensemble = False
-#TODO: add handling of CVDP and Obs_CVDP
+    except ImportError: raise ArgumentError, "No dataset matching '{:s}' found.".format(name)
+    dataset_name = name     
   # identify load function
   load_fct = 'load{:s}'.format(dataset_name)
-  if mode.lower() in ('climatology',):
+  if mode.upper() in ('CVDP',):
+    load_fct = 'loadCVDP'
+    if lobs: load_fct += '_Obs' 
+  elif mode.lower() in ('climatology',):
     if lensemble and station: raise ArgumentError
     if station: load_fct += '_Stn'
   elif mode.lower() in ('time-series','timeseries',):
@@ -508,20 +512,11 @@ def loadDataset(name=None, folder=None, resolution=None, period=None, grid=None,
     raise ArgumentError, "Dataset '{:s}' has no method '{:s}'".format(dataset_name,load_fct)
   if not inspect.isfunction(load_fct): 
     raise ArgumentError, "Attribute '{:s}' in module '{:s}' is not a function".format(load_fct.__name__,dataset_name)
-  # generate argument list 
-  kwargs = dict(name=name, resolution=resolution, station=station, varlist=varlist, varatts=varatts, 
-                period=period, grid=grid, lautoregrid=lautoregrid, mode=mode)
-  if dataset_name == 'WRF':
-#TODO: add handling of domains
-    pass    
-  elif dataset_name == 'CESM':
-    pass
-  else:
-    pass
-  # check arguments
+  # generate and check arguments
+  kwargs.update(name=name, station=station, mode=mode)
   argspec, varargs, keywords, defaults = inspect.getargspec(load_fct); del varargs, keywords, defaults
   kwargs = {key:value for key,value in kwargs.iteritems() if key in argspec}
-  # load dataset 
+  # load dataset
   dataset = load_fct(**kwargs)
   # return dataset
   return dataset

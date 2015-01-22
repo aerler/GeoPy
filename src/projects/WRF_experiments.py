@@ -20,7 +20,8 @@ class Exp(object):
   parameters['name'] = dict(type=basestring,req=True) # name
   parameters['shortname'] = dict(type=basestring,req=False) # short name
   parameters['title'] = dict(type=basestring,req=False) # title used in plots
-  parameters['grid'] = dict(type=basestring,req=True) # name
+  parameters['grid'] = dict(type=basestring,req=True) # name of the grid layout
+  parameters['domains'] = dict(type=int,req=True) # number of domains
   parameters['parent'] = dict(type=basestring,req=True) # driving dataset
   parameters['ensemble'] = dict(type=basestring,req=False) # ensemble this run is a member of
   parameters['begindate'] = dict(type=basestring,req=True) # simulation start date
@@ -34,6 +35,7 @@ class Exp(object):
   defaults['shortname'] = lambda atts: atts['name']
   defaults['title'] = lambda atts: atts['name'] # need lambda, because parameters are not set yet
   defaults['parent'] = 'Ctrl' # CESM simulations that is driving most of the WRF runs   
+  defaults['domains'] = 2 # most WRF runs have two domains
   defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/'.format(avgfolder,atts['name'])
   defaults['begindate'] = '1979-01-01'
   defaults['beginyear'] = lambda atts: int(atts['begindate'].split('-')[0]) # first field
@@ -68,9 +70,9 @@ experiments = OrderedDict() # dictionary of experiments
 experiments['erai-wc2-bugaboo'] = Exp(shortname='bugaboo', name='erai-wc2-bugaboo', title='ERA-I 1km (2013)', begindate='2013-08-01', grid='wc2', parent='ERA-I')
 experiments['erai-wc2-rocks'] = Exp(shortname='rocks', name='erai-wc2-rocks', title='ERA-I 1km (2010)', begindate='2010-08-01', grid='wc2', parent='ERA-I')
 experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindate='1979-09-01', enddate='1979-09-01', grid='coast1', parent='CFSR')
-experiments['col1-ctrl'] = Exp(shortname='col1', name='col1-ctrl', title='Max 3km (CFSR)', begindate='1979-09-01', grid='col1', parent='CFSR')
-experiments['max-3km'] = Exp(shortname='max-3km', name='max-3km', title='Max 3km (CESM)', begindate='1979-09-01', grid='col2', parent='Ctrl')
-experiments['erai-3km'] = Exp(shortname='erai-3km', name='erai-3km', title='Max 3km (ERA-I)', begindate='1979-09-01', grid='col2', parent='ERA-I')
+experiments['col1-ctrl'] = Exp(shortname='col1', name='col1-ctrl', title='Max 3km (CFSR)', begindate='1979-09-01', grid='col1', domains=3, parent='CFSR')
+experiments['max-3km'] = Exp(shortname='max-3km', name='max-3km', title='Max 3km (CESM)', begindate='1979-09-01', grid='col2', domains=3, parent='Ctrl')
+experiments['erai-3km'] = Exp(shortname='erai-3km', name='erai-3km', title='Max 3km (ERA-I)', begindate='1979-09-01', grid='col2', domains=3, parent='ERA-I')
 # some new experiments using WRF V3.6 or V3.6.1 and the new configuration 
 experiments['erai-v361-ctrl'] = Exp(shortname='erai-v361', name='erai-v361-ctrl', title='ERA-I (New, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
 experiments['erai-v361-noah'] = Exp(shortname='erai-v361-noah', name='erai-v361-noah', title='ERA-I (Noah, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
