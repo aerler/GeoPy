@@ -206,6 +206,7 @@ if __name__ == '__main__':
   if not lbatch:
     NP = 4 ; ldebug = False # for quick computations
 #     NP = 2 ; ldebug = True # just for tests
+    loverwrite = False
     varlist = None # ['lat2D', ]
     experiments = []
     experiments += ['erai-3km','max-3km']
@@ -230,7 +231,8 @@ if __name__ == '__main__':
 #     periods += [9]
 #     periods += [10]
 #     periods += [15]
-    domains = (1,2,3) # domains to be processed
+    domains = (3,) # domains to be processed
+#     domains = None # process all domains
 #     filetypes = ['srfc'] # filetypes to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']
@@ -251,7 +253,7 @@ if __name__ == '__main__':
 #     experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
     offset = 0 # number of years from simulation start
     periods = (5,10,15,) # averaging period
-    domains = (1,2,) # domains to be processed
+    domains = None # domains to be processed (None means all domains)
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # , rad
     grid = 'native' 
 
@@ -278,6 +280,9 @@ if __name__ == '__main__':
     # loop over file types
     for filetype in filetypes:                
       # effectively, loop over domains
+      if domains is None:
+        domains = range(1,experiment.domains+1)
+      else: tmpdom = domains
       for domain in domains:
         # arguments for worker function
         args.append( (experiment, filetype, domain) )        

@@ -8,6 +8,7 @@ utility functions, mostly for plotting, that are not called directly
 
 # external imports
 import numpy as np
+import matplotlib as mpl
 # internal imports
 from geodata.misc import VariableError
 from utils.signalsmooth import smooth # commonly used in conjunction with plotting...
@@ -15,6 +16,20 @@ from utils.signalsmooth import smooth # commonly used in conjunction with plotti
 # import matplotlib as mpl
 # import matplotlib.pylab as pyl
 
+
+# convenience function to load a stylesheet according to some rules 
+def loadStyleSheet(stylesheet, lpresentation=False, lpublication=False):
+  ''' convenience function to load a stylesheet according to some rules '''
+  # select stylesheets
+  if stylesheet is None: stylesheet = 'default'
+  if isinstance(stylesheet,basestring):     
+    if lpublication: stylesheet = (stylesheet,'publication')       
+    elif lpresentation: stylesheet = (stylesheet,'presentation')
+  # load stylesheets
+  if isinstance(stylesheet,(list,tuple)): 
+    mpl.pyplot.style.use(stylesheet)
+  else: raise TypeError
+ 
 
 # method to check units and name, and return scaled plot value (primarily and internal helper function)
 def getPlotValues(var, checkunits=None, checkname=None):

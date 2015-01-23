@@ -15,6 +15,7 @@ import numpy as np
 # internal imports
 from geodata.misc import isInt , ArgumentError
 from plotting.axes import MyAxes, MyLocatableAxes, Axes
+from plotting.misc import loadStyleSheet
 import matplotlib as mpl
 
 
@@ -259,20 +260,6 @@ class MyFigure(Figure):
       if lfeedback: print("('{:s}')".format(folder))
     self.savefig(filename, **sf) # save figure to pdf
 
-
-# convenience function to load a stylesheet according to some rules 
-def loadStyleSheet(stylesheet, lpresentation=False, lpublication=False):
-  ''' convenience function to load a stylesheet according to some rules '''
-  # select stylesheets
-  if stylesheet is None: stylesheet = 'default'
-  if isinstance(stylesheet,basestring):     
-    if lpublication: stylesheet = (stylesheet,'publication')       
-    elif lpresentation: stylesheet = (stylesheet,'presentation')
-  # load stylesheets
-  if isinstance(stylesheet,(list,tuple)): 
-    mpl.pyplot.style.use(stylesheet)
-  else: raise TypeError
- 
 
 ## convenience function to return a figure and an array of ImageGrid axes
 def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet='myggplot', margins=None,

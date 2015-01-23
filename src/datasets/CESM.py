@@ -456,8 +456,10 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, period=Non
           from processing.regrid import performRegridding # causes circular reference if imported earlier
           griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder)
           dataargs = dict(experiment=experiment, filetypes=[filetype], period=period)
+          print("The '{:s}' (CESM) dataset for the grid ('{:s}') is not available:\n Attempting regridding on-the-fly.".format(name,filename,grid))
           if performRegridding('CESM','climatology' if lclim else 'time-series', griddef, dataargs): # default kwargs
             raise IOError, "Automatic regridding failed!"
+          print("Output: '{:s}')".format(name,filename,grid,filepath))            
         else: raise IOError, "The '{:s}' (CESM) dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.".format(name,filename,grid) 
       else: raise IOError, "The '{:s}' (CESM) dataset file '{:s}' does not exits!\n({:s})".format(name,filename,folder)
    

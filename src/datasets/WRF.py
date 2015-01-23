@@ -140,7 +140,8 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
   else: raise TypeError
   # domain check
   if not isinstance(domains,(list,tuple)): domains = [domains]*len(names)
-  elif not all(isInt(domains)): raise TypeError
+  elif isinstance(domains,tuple): domains = list(domains)
+  if not all(isInt(domains)): raise TypeError
   if len(domains) == 1: domains = domains*len(names)
   if len(names) == 1: names = names*len(domains)
   if len(domains) != len(names): raise ArgumentError
@@ -170,7 +171,7 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
   # check types
   if not isinstance(domains,(tuple,list)): raise TypeError    
   if not all(isInt(domains)): raise TypeError
-  if not domains == sorted(domains): raise IndexError, 'Domains have to sorted in ascending order.'
+  if not domains == sorted(domains): raise IndexError, 'Domains have to be sorted in ascending order.'
   if not isinstance(names,(tuple,list)): raise TypeError
   if not all(isinstance(nm,basestring) for nm in names): raise TypeError
   if len(domains) != len(names): raise ArgumentError  
@@ -552,8 +553,10 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
             from processing.regrid import performRegridding # causes circular reference if imported earlier
             #griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder) # already done above
             dataargs = dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)
-            if performRegridding('WRF', 'climatology', griddef, dataargs): # default kwargs
+            print("The '{:s}' (WRF) dataset for the grid ('{:s}') is not available:\n Attempting regridding on-the-fly.".format(name,filename,grid))
+            if performRegridding('WRF', 'climatology', griddef, dataargs): # True if exitcode 1
               raise IOError, "Automatic regridding failed!"
+            print("Output: '{:s}')".format(name,filename,grid,filepath))            
           else: raise IOError, "The  '{:s}' (WRF) dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.\n('{:s}')".format(name,filename,grid,filepath) 
         else: raise IOError, "The file '{:s}' in WRF dataset '{:s}' does not exits!\n('{:s}')".format(filename,name,filepath)   
        

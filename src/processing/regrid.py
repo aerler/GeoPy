@@ -290,7 +290,7 @@ if __name__ == '__main__':
   # default settings
   if not lbatch:
     NP = 4 ; ldebug = False # for quick computations
-#     NP = 2 ; ldebug = True # just for tests
+#     NP = 1 ; ldebug = True # just for tests
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = False
@@ -340,18 +340,19 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-    domains = (1,2,3) # domains to be processed
-#     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
+    domains = (3,) # domains to be processed
+#     domains = None # process all domains
+    WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
 #     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
-    WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
+#     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); periods = None
     # grid to project onto
     lpickle = True
     grids = dict()
-    grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
+#     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['col2'] = ('d03','d02','d01') # innermost WRF Columbia domain
 #     grids['grb2'] = ('d02',) # Marc's standard GRB inner domain
-#     grids['arb2'] = ('d02',) # WRF standard ARB inner domain
+    grids['arb2'] = ('d02',) # WRF standard ARB inner domain
 #     grids['arb3'] = ('d02',) # WRF new ARB inner domain
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids
@@ -383,7 +384,7 @@ if __name__ == '__main__':
     WRF_experiments += ['cam-ctrl', 'cam-ctrl-1-2050', 'cam-ctrl-2-2050', 'cam-ctrl-2-2100'] # old cam simulations (arb1) 
     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)    
-    domains = (1,2,) # domains to be processed
+    domains = None # domains to be processed
     #domains = (2,) # for tests
     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
     #WRF_filetypes = WRF_filetypes = ('hydro',) # for tests
@@ -489,6 +490,9 @@ if __name__ == '__main__':
         # WRF datasets
         for experiment in WRF_experiments:
           for filetype in WRF_filetypes:
+            if domains is None:
+              domains = range(1,experiment.domains+1)
+            else: tmpdom = domains
             for domain in domains:
               for period in periodlist:
                 # arguments for worker function: dataset and dataargs       

@@ -25,6 +25,7 @@ from datasets.Unity import loadUnity
 from datasets.WSC import Basin
 from plotting.legacy import loadDatasets # for annotation
 from plotting.settings import getFigureSettings
+from plotting.misc import loadStyleSheet
 # ARB project related stuff
 from projects.ARB_settings import figure_folder
 
@@ -38,14 +39,16 @@ def getVarSettings(plottype, area, lPRISM=False, mode='all'):
   if plottype == 'heat':
     varlist = ['lhfx','hfx']; filetypes = ['hydro','srfc']; 
     lsum = False; leg = (2,3); ylabel = r'Heat Flux [W m$^{-2}$]'; ylim = (-50,150)  
-  elif plottype == 'evap':
-    #varlist = ['precip','evap','p-et','pet','waterflx']; filetypes = ['srfc','hydro']; # 'waterflx'
+  elif plottype == 'pet':
     varlist = ['precip','evap','pet']; filetypes = ['srfc','hydro']; # 'waterflx' 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = (0,14)
   elif plottype == 'flux':
+    varlist = ['snwmlt','p-et','precip','solprec']; filetypes = ['srfc','hydro']; # 'waterflx' 
+    lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
+  elif plottype == 'evap': # flux - solprec
     varlist = ['snwmlt','p-et','precip']; filetypes = ['srfc','hydro']; # 'waterflx' 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
-  elif plottype == 'snwmlt':
+  elif plottype == 'snwmlt': # flux - p-et
     varlist = ['snwmlt','precip','solprec']; filetypes = ['srfc','hydro']; # 'waterflx' 
     lsum = True; leg = (2,3); ylabel = flxlabel; ylim = flxlim
   elif plottype == 'temp':
@@ -90,7 +93,9 @@ def getDatasets(expset, titles=None):
   # linestyles
   linestyles = ('-','--','-.')
   # datasets
-  if expset == '1deg':
+  if expset == '3km':
+    explist = [('erai-3km','erai-max','max-3km')]
+  elif expset == '1deg':
     explist = ['Ctrl','max','max-1deg','max-ens']
     explist = [(exp,'max') for exp in explist]
     titles = ['CESM-1', 'WRF-1 (10 km)', 'WRF-1 (1 deg.)', 'WRF Ensemble']  
@@ -99,7 +104,6 @@ def getDatasets(expset, titles=None):
   elif expset == 'noahmp+': 
     explist = [('new','noah','max')]
     titles = 'Noah-MP vs. Noah'
-#     linestyles = ('-','--','-.')
   elif expset == 'ctrl-12':
     explist = [('ctrl-1-arb1', 'ctrl-2-arb1')]
   elif expset == 'newmax': 
@@ -135,23 +139,24 @@ def getDatasets(expset, titles=None):
   elif expset == 'max-mid-diff':
     explist = [('max-ens-2050','max-ens')]
     titles = 'WRF Ensemble Mean (Mid-21st-Century), {0:s}' # include basin name
-    linestyles = ('-','--')
   elif expset == 'max-end-diff':
     explist = [('max-ens-2100','max-ens')]
     titles = 'WRF Ensemble Mean (End-21st-Century), {0:s}'
-    linestyles = ('-','--')
   elif expset == 'max-2100-diff':
     explist = [('max-ctrl-2100','max-ctrl')]
     titles = 'WRF Max (End-21st-Century)'
-    linestyles = ('-','--')
   elif expset == 'max-2050-diff':
     explist = [('max-ctrl-2050','max-ctrl')]
     titles = 'WRF Max (Mid-21st-Century)'
-    linestyles = ('-','--')
   elif expset == 'mean-diff-cesm':
     explist = [('CESM-2050','CESM')]  
     titles = 'CESM Ensemble Mean (Mid-21st-Century)'
-    linestyles = ('-','--')
+  elif expset == 'max-2050-diff':
+    explist = [('max-ctrl-2050','max-ctrl')]
+    titles = 'WRF Max (Mid-21st-Century)'
+  elif expset == 'erai-max-ens':
+    explist = [('erai-max','max-ens')]
+    titles = 'ERA-I & WRF vs. WRF Ensemble Mean, {:s}'
   else:
     explist = [expset]
     if expset == 'max-ens-2050': titles = 'WRF Ensemble Mean (Mid-21st-Century), {:s}'
@@ -159,8 +164,18 @@ def getDatasets(expset, titles=None):
     elif expset == 'max-ens': titles = 'WRF Ensemble Mean (Historical Period), {:s}'
   # expand linestyles
   linestyles = [linestyles,]*len(explist)
-  # titles
-  if isinstance(explist[0],(list,tuple)) and not titles: titles = [exp[0] for exp in explist] 
+  # default titles
+  if titles is None:
+    titles = []
+    for exp in explist:
+      if isinstance(exp,(list,tuple)):
+        assert len(exp) > 1
+        title = '' 
+        for e in exp[:-1]: title += '{:s}, '.format(e)
+        title = '{:s} & {:s}'.format(title[:-2],exp[-1])  
+      else: title = exp
+      title += ' ({:s})' # for basin name
+      titles.append(title)
   # return dataset names
   return explist, titles, linestyles
 
@@ -170,21 +185,24 @@ if __name__ == '__main__':
   
   ## settings
   # settings
-  lprint = True; lpub = True; lsamesize = True
-#   paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
-  paper_folder = '/home/me/Research/Thesis/Report/Progress Report 2015/figures/'
+  lprint = False; lpublication = False; lpresentation = True
+  paper_folder = '/home/me/Research/Extreme Value Analysis/Report/Brewer-Wilson Talk 2015/figures/'
+#   loadStyleSheet('default', lpresentation=lpresentation, lpublication=lpublication)
+  # experiments
 #   expset = 'max-ens-2050'
 #   expset = 'max-ens-2100'
 #   expset = 'max-mid-diff'
-  expset = 'max-end-diff'
-#   expset = 'max-ens'
+#   expset = 'max-end-diff'
+  expset = 'max-ens'
+#   expset = 'erai-max-ens'
+#   expset = '3km'
   plottypes = []
 #   plottypes += ['temp'] # 
 #   plottypes += ['precip'] #
 #   plottypes += ['sfflx']
-#   plottypes += ['flux'] #
-  plottypes += ['precip_types'] #
-  #plottypes += ['evap']
+  plottypes += ['flux'] #
+#   plottypes += ['precip_types'] #
+#   plottypes += ['evap']
 #   plottypes += ['snwmlt']  
 #   plottypes += ['flxrof']
 #   plottypes += ['runoff']#
@@ -199,11 +217,12 @@ if __name__ == '__main__':
 #   areas += ['fraser']
 #   areas += ['northcoast']
 #   areas += ['southcoast']
-  domains = 2 # [0, 2, 1, 1]
+  domains = 2
+#   domains = [(3,2,3)] # [0, 2, 1, 1]
   periods = []
-#   periods += [5]
+  periods += [5]
   #periods += [10]
-  periods += [15]
+#   periods += [15]
 #   periods += [(1979,1984)]
 #   periods += [(1989,1994)]
   
@@ -309,7 +328,7 @@ if __name__ == '__main__':
         S = asf if lsum else 1. # apply scale factor, depending on plot type  
        
         ## setting up figure
-        if lsamesize: linewidth = 1.5
+        if not lpublication: linewidth = 1.5
         elif nlen == 1: linewidth = 1.75
         elif nlen == 2: linewidth = 1.25
         elif nlen == 4: linewidth = 0.75 
@@ -496,7 +515,7 @@ if __name__ == '__main__':
             areatag = 'NPSB'; folder = figure_folder + '/Northern Pacific Seaboard/'    
           elif area == 'southcoast': 
             areatag = 'SPSB'; folder = figure_folder + '/Southern Pacific Seaboard/'    
-          if lpub: folder = paper_folder        
+          if lpublication or lpresentation: folder = paper_folder        
           tag = '_'+tag if tag else ''
           domtag = '_d{0:02d}'.format(domains) if isinstance(domains,int) and domains != 2 else '' 
           filename = '{0:s}_{1:s}_{2:s}{3:s}{4:s}.png'.format(areatag,plottype,expset,domtag,tag)

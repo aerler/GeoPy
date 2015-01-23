@@ -560,7 +560,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
       if not isinstance(dataset, gdal.Dataset): raise TypeError
       if self.gdal:
         axstr = "'x' and 'y'" if isProjected else "'lon' and 'lat'"
-        if (var.axisIndex(xlon) != var.ndim-2) or (var.axisIndex(ylat) != var.ndim-1):
+        if (var.axisIndex(xlon) != var.ndim-1) or (var.axisIndex(ylat) != var.ndim-2):
           raise NotImplementedError, "Horizontal axes ({:s}) have to be the last indices.".format(axstr)        
         # get data field
         if self.bands == 1: data = dataset.ReadAsArray()[:, :]  # for 2D fields

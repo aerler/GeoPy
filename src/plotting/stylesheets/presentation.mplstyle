@@ -5,8 +5,8 @@
 
 font.size: 15
 
-axes.titlesize : medium
-axes.labelsize : small
+axes.titlesize : large
+axes.labelsize : medium
 
 lines.linewidth : 1.5
 lines.markersize : 7
