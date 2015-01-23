@@ -47,7 +47,7 @@ if __name__ == '__main__':
   figtitles = None
   subplot = None # subplot layout (or defaults based on number of plots)
   lbackground = True
-  lcontour = False # contour or pcolor plot
+  lcontour = True # contour or pcolor plot
   lframe = True # draw domain boundary
   loutline = True # draw boundaries around valid (non-masked) data
   framewidths = 1
@@ -98,10 +98,10 @@ if __name__ == '__main__':
 #   variables += ['SST']
 #   variables += ['lat2D','lon2D']
   seasons = [] # seasons
-  seasons += ['cold']
+#   seasons += ['cold']
 #   seasons += ['warm']
 #   seasons += ['melt']
-#   seasons += ['annual']
+  seasons += ['annual']
 #   seasons += ['summer']
 #   seasons += ['winter']
 #   seasons += ['spring']    
@@ -117,26 +117,31 @@ if __name__ == '__main__':
   
   ## case settings
     
-  folder = figure_folder # figure directory
+  folder = '/home/me/Research/Extreme Value Analysis/Report/Brewer-Wilson Talk 2015/figures/' # figure directory
   lpickle = True # load projection from file or recompute
   lprint = True # write plots to disk using case as a name tag
-  maptype = 'lcc-col'; lstations = False; lbasins = True
+#   maptype = 'lcc-col'; lstations = False; lbasins = True
   # draw a map
 #   maptype = 'lcc-new'; lstations = True; stations = 'EC'; lbasins = True
 #   period = H01; lWRFnative = True; lframe = False; loutline = False
 #   explist = ['col1-ctrl']; exptitles = ' '; domain = (2,3)
 #   case = 'BCAB_stns'; figtitles = 'EC Stations (BC & Alberta) and Terrain Height [km]'
 
+
+  explist = ['Unity']; maptype = 'lcc-new'; period = H15
+  exptitles = ['Merged Observations (10 km)']
+  case = 'unity'; lsamesize = True; grid = 'arb2_d02'
+
 # hires validation
-#   explist = ['erai-wc2-rocks',]; period = [1,]; domain = [2,]
-  ldiff = True; reflist = ['PCIC']; refprd = None; grid = 'wc2_d02' 
-#   grid = ['wc2_d02','arb2_d02','col2_d02','wc2_d02']
-  explist = ['erai-wc2-bugaboo','erai-max','erai-3km','erai-wc2-rocks']
-  period = [1,15,3,1]; domain = [2, 2, 3, 2]
-#   explist = ['erai-wc2-bugaboo','PCIC','erai-3km','erai-wc2-rocks']
-#   period = [1,None,3,1]; domain = [(1,2), None, (2,3), (1,2)]
-#   exptitles = ['CESM (80 km)','Merged Observations (10 km)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
-  case = 'wc2'; lsamesize = True
+# #   explist = ['erai-wc2-rocks',]; period = [1,]; domain = [2,]
+#   ldiff = True; reflist = ['PCIC']; refprd = None; grid = 'wc2_d02' 
+# #   grid = ['wc2_d02','arb2_d02','col2_d02','wc2_d02']
+#   explist = ['erai-wc2-bugaboo','erai-max','erai-3km','erai-wc2-rocks']
+#   period = [1,15,3,1]; domain = [2, 2, 3, 2]
+# #   explist = ['erai-wc2-bugaboo','PCIC','erai-3km','erai-wc2-rocks']
+# #   period = [1,None,3,1]; domain = [(1,2), None, (2,3), (1,2)]
+# #   exptitles = ['CESM (80 km)','Merged Observations (10 km)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
+#   case = 'wc2'; lsamesize = True
 
 # water transport
 #   explist = ['max-1deg']; domain = [1,]; period = H15
