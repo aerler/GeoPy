@@ -33,7 +33,7 @@ from geodata.stats import mwtest, kstest, wrstest
 RAM = True # whether or not to use a RAM disk
 ramdisk = '/media/tmp/' # folder where RAM disk is mounted
 # stylesheet = None
-figargs = dict(stylesheet='ggplot', lpresentation=True, lpublication=False)
+figargs = dict(stylesheet='myggplot', lpresentation=True, lpublication=False)
 
 
 class LinePlotTest(unittest.TestCase):  

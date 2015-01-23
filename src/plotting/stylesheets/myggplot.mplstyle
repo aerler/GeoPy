@@ -8,7 +8,7 @@ patch.antialiased: True
 
 font.size: 10.0
 
-axes.facecolor: E5E5E5
+axes.facecolor: E2E2E2 # E5E5E5
 axes.edgecolor: white
 axes.linewidth: 1
 axes.grid: True
@@ -17,7 +17,7 @@ axes.labelsize: large
 axes.labelcolor: 555555
 axes.axisbelow: True       # grid/ticks are below elements (eg lines, text)
 
-axes.color_cycle: E24A33, 348ABD, 988ED5, 777777, FBC15E, 8EBA42, FFB5B8
+axes.color_cycle: 348ABD, 988ED5, E24A33, 777777, FBC15E, 8EBA42, FFB5B8
                    # E24A33 : red
                    # 348ABD : blue
                    # 988ED5 : purple
@@ -40,5 +40,5 @@ figure.edgecolor: 0.50
 
 legend.frameon: True
 legend.fancybox: True
-legend.shadow: True
-legend.framealpha: 0.5
+legend.shadow: False
+legend.framealpha: 0.7

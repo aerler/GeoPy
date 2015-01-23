@@ -17,7 +17,7 @@ from time import sleep
 # import geodata modules
 from geodata.nctools import writeNetCDF
 from geodata.misc import isZero, isOne, isEqual
-from geodata.base import Variable, Axis, Dataset
+from geodata.base import Variable, Axis, Dataset, Ensemble
 from datasets.common import data_root
 # import modules to be tested
 
@@ -140,12 +140,53 @@ class DatasetsTest(unittest.TestCase):
     assert ds.name == 'HadISST'
     assert 'PDO' in ds
     assert ds.gdal and not ds.isProjected
-    # test station time-series
+    # test WRF station time-series
     ds = loadStnTS(name='max-ens_d02', varlist=['MaxPrecip_1d'], station='ecprecip', filtypes='hydro')
     assert isinstance(ds, Dataset)
-    print ds
     assert ds.name == 'max-ens_d02'
     assert 'MaxPrecip_1d' in ds
+    # test example with list expansion
+    # test EC station time-series
+    dss = loadStnTS(name=['EC','max-ens'], varlist=['MaxPrecip_1d','precip'],
+                    station='ecprecip', filtypes='hydro',
+                    load_list=['name','varlist'], lproduct='outer')
+    assert len(dss) == 4
+    assert isinstance(ds, Dataset)
+    assert dss[1].name == 'ecprecip' and dss[2].name == 'max-ens'
+    assert 'MaxPrecip_1d' in dss[0] and 'precip' in dss[1]
+    assert 'MaxPrecip_1d' not in dss[3] and 'precip' not in dss[2]
+    
+  
+  def testLoadStationEnsemble(self):
+    ''' test station data load functions (ensemble and list) '''
+    from datasets.common import loadStationEnsemble    
+#     # test simple ensemble
+#     names = ['EC', 'max-ens_d01','max-ens']; varlist = ['precip'] 
+#     prov = ('BC','AB'); season = 'summer'
+#     constraints = dict(min_len=50, lat=(45,60), max_zerr=300,)
+#     stnens = loadStationEnsemble(names=names, prov=prov, season=season, station='ecprecip', 
+#                                  constraints=constraints, 
+#                                  varlist=varlist, filetypes=['hydro'], domain=None)
+#     assert isinstance(stnens, Ensemble)
+#     assert stnens.basetype.__name__ == 'Dataset'
+#     assert all(stnens.hasVariable(varlist[0]))
+#     assert 'ecprecip' in stnens
+    # test list expansion of ensembles    
+    names = ['EC', 'max-ens']; varlist = ['MaxPrecip_1d'] 
+    prov = ['BC','AB']; season = ['summer','winter']; mode = ['max']
+    constraints = dict(min_len=50, lat=(50,55), max_zerr=300,)
+    enslst = loadStationEnsemble(names=names, prov=prov, season=season, mode=mode, 
+                                 station='ecprecip', constraints=constraints, varlist=varlist, filetypes=['hydro'],
+                                 load_list=['mode','season','prov',], lproduct='outer')
+    assert len(enslst) == 4
+    assert all(isinstance(ens, Ensemble) for ens in enslst)
+    assert all(ens.basetype.__name__ == 'Dataset' for ens in enslst)
+    assert all(ens.hasVariable(varlist[0]) for ens in enslst)
+    assert all('ecprecip' in ens for ens in enslst)
+    ## some debugging test
+#     gevens = [ens.fitDist(lflatten=True, axis=None) for ens in enslst]
+#     print(''); print(gevens[0][0])
+    
     
 if __name__ == "__main__":
 
@@ -154,7 +195,8 @@ if __name__ == "__main__":
 #     specific_tests = ['ApplyAlongAxis']
 #     specific_tests = ['AsyncPool']    
 #     specific_tests = ['ExpArgList']
-    specific_tests = ['LoadDataset']
+#     specific_tests = ['LoadDataset']
+    specific_tests = ['LoadStationEnsemble']
 
 
     # list of tests to be performed

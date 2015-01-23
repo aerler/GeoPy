@@ -261,6 +261,7 @@ def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, laax=Tr
   # flatten array for redistribution
   data = np.reshape(data,(arraysize,samplesize))
   # compute
+  if chunksize == 0: chunksize = 1 
   if (NP == 1 or arraysize < 1.5*chunksize):
     # just use regular Numpy version... but always apply over last dimension
     if ldebug: print('\n   ***   Running in Serial Mode   ***')
@@ -268,11 +269,11 @@ def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, laax=Tr
   else:
     # split up data
     if arraysize < (NP+1)*chunksize:
-      cs = arraysize//NP # chunksize; use integer division
+      cs = int(arraysize//NP) # chunksize; use integer division
       if arraysize%NP != 0: cs += 1
       nc = NP
     else:
-      nc = arraysize//chunksize # number of chunks; use integer division
+      nc = int(arraysize//chunksize) # number of chunks; use integer division
       if arraysize%chunksize != 0: nc += 1
       cs = chunksize
     chunks = [data[i*cs:(i+1)*cs,:] for i in xrange(nc)] # views on subsets of the data

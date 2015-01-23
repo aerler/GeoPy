@@ -40,6 +40,7 @@ avgfolder = root_folder + 'ecavg/'  # folder for user data
 varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Average 2m Temperature')), # 2m average temperature
                Tmin       = dict(name='Tmin', units='K', atts=dict(long_name='Minimum 2m Temperature')), # 2m minimum temperature
                Tmax       = dict(name='Tmax', units='K', atts=dict(long_name='Maximum 2m Temperature')), # 2m maximum temperature
+               FrostDays  = dict(name='frzfrq', units=''), # fraction of frost days
                precip     = dict(name='precip', units='kg/m^2/s', atts=dict(long_name='Total Precipitation')), # total precipitation
                MaxPrecip  = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency 
                MinPrecip  = dict(name='MinPrecip_1d', units='kg/m^2/s'), # for short-term consistency
@@ -49,6 +50,7 @@ varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Aver
                liqprec    = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
                MaxLiqprec = dict(name='MaxLiqprec_1d', units='kg/m^2/s'), # for short-term consistency
                MinLiqprec = dict(name='MinLiqprec_1d', units='kg/m^2/s'), # for short-term consistency
+               WetDays    = dict(name='wetfrq', units=''), # fraction of wet/rainy days
                # meta/constant data variables
                # N.B.: 'stn'/'station' prefix is to allow consistent naming and avoid name collisions with variables in other datasets
                name    = dict(name='station_name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
@@ -650,7 +652,7 @@ def loadEC_StnTS(name=None, station=None, varlist=None, varatts=varatts):
   ''' Load a monthly time-series of pre-processed EC station data. '''
   if station is None: raise ArgumentError, "A 'filetype' needs to be specified ('ectemp' or 'ecprecip')."
   elif station in ('ectemp','ecprecip'):
-    name = name or station  
+    name = station  
     station = station[2:] # internal convention
   else: raise ArgumentError
   return loadEC_TS(name=name, filetype=station, prov=None, varlist=varlist, varatts=varatts, filelist=None, folder=None) # just an alias

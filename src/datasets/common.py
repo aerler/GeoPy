@@ -220,6 +220,7 @@ def transformDays(data, l365=False, var=None, slc=None):
 def translateVarNames(varlist, varatts):
   ''' Simple function to replace names in a variable list with their original names as inferred from the 
       attributes dictionary. Note that this requires the dictionary to have the field 'name'. '''
+  if isinstance(varlist,basestring): varlist = [varlist]
   if not isinstance(varlist,(list,tuple,set)) or not isinstance(varatts,dict): raise TypeError 
   varlist = list(varlist) # make copy, since operation is in-place 
   # cycle over names in variable attributes (i.e. final names, not original names)  
@@ -433,32 +434,41 @@ class BatchLoad(object):
   def __call__(self, load_list=None, lproduct='outer', lensemble=None, ens_name=None, ens_title=None, **kwargs):
     ''' wrap original function: expand argument list, execute load_fct over argument list, 
         and return a list or Ensemble of datasets '''
-    lensemble = ens_name is not None if lensemble is None else lensemble
-    # figure out arguments
-    kwargs_list = expandArgumentList(expand_list=load_list, lproduct=lproduct, **kwargs)
-    # load datasets
-    datasets = []
-    for kwargs in kwargs_list:    
-      # load dataset
-      datasets.append(self.load_fct(**kwargs))    
-    # construct ensemble
-    if lensemble:
-      datasets = Ensemble(members=datasets, name=ens_name, title=ens_title, basetype='Dataset')
+    # decide, what to do
+    if load_list is None:
+      # normal operation: no expansion      
+      datasets =  self.load_fct(**kwargs)
+    else:
+      # expansion required
+      lensemble = ens_name is not None if lensemble is None else lensemble
+      # figure out arguments
+      kwargs_list = expandArgumentList(expand_list=load_list, lproduct=lproduct, **kwargs)
+      # load datasets
+      datasets = []
+      for kwargs in kwargs_list:    
+        # load dataset
+        datasets.append(self.load_fct(**kwargs))    
+      # construct ensemble
+      if lensemble:
+        datasets = Ensemble(members=datasets, name=ens_name, title=ens_title, basetype='Dataset')
     # return list or ensemble of datasets
     return datasets
 
     
 # common climatology load function that will be imported by datasets (for backwards compatibility)
+@BatchLoad
 def loadClim(name=None, **kwargs):
   ''' A function to load any standardized climatologies; identifies source by name heuristics '''
   return loadDataset(name=name, station=None, mode='climatology', **kwargs)
 
 # common load function that will be imported by datasets (for backwards compatibility)
+@BatchLoad
 def loadStnTS(name=None, station=None, **kwargs):
     ''' A function to load any standardized time-series at station locations. '''
     return loadDataset(name=name, station=station, mode='time-series', **kwargs)
   
 # universal load function that will be imported by datasets
+@BatchLoad
 def loadDataset(name=None, station=None, mode='climatology', **kwargs):
   ''' A function to load any datasets; identifies source by name heuristics. '''
   # some private imports (prevent import errors)  
@@ -583,28 +593,29 @@ def selectCoords(datasets, axis, testFct=None, imaster=None, linplace=True, lall
 
 
 # a function to load station data
-def loadStationEnsemble(exps=None, prov=None, season=None, station_type=None, variables=None, filetypes=None, domain=2):
-  from datasets.EC import loadEC_StnTS, selectStations
-  from datasets.WRF import loadWRF_StnEns
+@BatchLoad
+def loadStationEnsemble(names=None, varlist=None, prov=None, season=None, mode='max', 
+                        station=None, constraints=None, filetypes=None, domain=None):
+  from datasets.EC import selectStations
   stnmeta = ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon',] # necessary to select stations
   # prepare ensemble
-  varlist = stnmeta + variables
+  variables = stnmeta + varlist
   stnens = Ensemble(name='stations', title='EC Stations', basetype='Dataset')
   # load ensemble WRF data
-  for exp in exps:
-      if exp == station_type: # load Environment Canada station data
-          stnens += loadEC_StnTS(station=station_type, varlist=varlist)
-      else:
-          if exp[-4:-1] == '_d0': # infer domain from suffix
-              dom = int(exp[-1]); exp_dom = exp[:-4]
-          else: dom = domain; exp_dom = exp
-          stnens += loadWRF_StnEns(ensemble=exp_dom, varlist=varlist, station=station_type, 
-                                       filetypes=filetypes, domains=dom, name=exp)            
+  for name in names:
+    stnens += loadStnTS(name=name, station=station, varlist=variables, filetypes=filetypes, domains=domain)
   # select and load data
-  stnens = selectStations(stnens, prov=prov, min_len=50, lat=(45,60), max_zerr=1500, #lon=(-130,-110),
-                          stnaxis='station', imaster=None, linplace=False, lall=False)
-  # extract seasonal extrema
-  stnens = stnens.seasonalMax(season=season, taxis='time')
+  if constraints is None: 
+    constraints = dict(min_len=50, lat=(45,55), max_zerr=300,) #lon=(-130,-110),
+  stnens = selectStations(stnens, prov=prov, stnaxis='station', imaster=None, linplace=False, lall=False, **constraints)
+  # extract seasonal values/extrema
+  if mode.lower() == 'mean': stnens = stnens.seasonalMean(season=season, taxis='time')
+  elif mode.lower() == 'sum': stnens = stnens.seasonalSum(season=season, taxis='time')
+  elif mode.lower() == 'std': stnens = stnens.seasonalStd(season=season, taxis='time')
+  elif mode.lower() == 'var': stnens = stnens.seasonalVar(season=season, taxis='time')
+  elif mode.lower() == 'max': stnens = stnens.seasonalMax(season=season, taxis='time')
+  elif mode.lower() == 'min': stnens = stnens.seasonalMin(season=season, taxis='time')
+  else: raise NotImplementedError
   # return dataset
   return stnens
 

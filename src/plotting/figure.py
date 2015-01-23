@@ -262,7 +262,7 @@ class MyFigure(Figure):
 
 
 ## convenience function to return a figure and an array of ImageGrid axes
-def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet='myggplot', margins=None,
+def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet=None, margins=None,
              sharex=None, sharey=None, AxesGrid=False, ngrids=None, direction='row',
              axes_pad = None, add_all=True, share_all=None, aspect=False,
              label_mode='L', cbar_mode=None, cbar_location='right', lreduce=True,
@@ -298,10 +298,13 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet='myggplot
         else: (3.75,7)
       else: figsize = (6.25,6.25)
     else:
-      if subplot == (1,1): figsize = (5,5)
+      if subplot == (1,1):
+        if lpresentation: figsize = (9,9) 
+        else: figsize = (5,5)
       elif subplot == (1,2) or subplot == (1,3): figsize = (9,5)
       elif subplot == (2,1) or subplot == (3,1): figsize = (5,9)
       else: figsize = (9,9)
+    print subplot, figsize
     #elif subplot == (2,2) or subplot == (3,3): figsize = (6.25,6.25)
     #else: raise NotImplementedError
   # figure out margins
@@ -313,9 +316,14 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet='myggplot
     elif subplot == (2,2) or subplot == (3,3): margins = (0.06,0.08,0.92,0.92)
     else: margins = (0.09,0.11,0.88,0.82)
     #elif subplot == (2,2) or subplot == (3,3): margins = (0.09,0.11,0.88,0.82)
-    #else: raise NotImplementedError    
+    #else: raise NotImplementedError
     title_height = getattr(figure_class, 'title_height', 0.03) # use default from figure
     if title is not None: margins = margins[:3]+(margins[3]-title_height,) # make room for title
+#   # some style sheets have different label sizes
+#   if stylesheet.lower() in ('myggplot','ggplot'):
+#     margins = list(margins)
+#     margins[0] += 0.015; margins[1] -= 0.01 # left, bottom
+#     margins[2] += 0.02; margins[3] += 0.02 # width, height
   if AxesGrid:
     if share_all is None: share_all = True
     if axes_pad is None: axes_pad = 0.05

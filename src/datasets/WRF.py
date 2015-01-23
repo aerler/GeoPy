@@ -141,7 +141,7 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
   # domain check
   if not isinstance(domains,(list,tuple)): domains = [domains]*len(names)
   elif isinstance(domains,tuple): domains = list(domains)
-  if not all(isInt(domains)): raise TypeError
+  if not all(dom is None or isinstance(dom,(int,np.integer)) for dom in domains): raise TypeError
   if len(domains) == 1: domains = domains*len(names)
   if len(names) == 1: names = names*len(domains)
   if len(domains) != len(names): raise ArgumentError
@@ -162,6 +162,8 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
   if experiment is None: 
     if name in exps: experiment = exps[name] # load experiment meta data
     elif lexp: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(names[0])
+  # assign unassigned domains
+  domains = [experiment.domains if dom is None else dom for dom in domains]
   # patch up folder
   if folder is None: # should already have checked that either folder or experiment are specified
     folder = experiment.avgfolder
@@ -221,7 +223,8 @@ class Srfc(FileType):
                      LiquidPrecip = dict(name='liqprec_sr', units='kg/m^2/s'), # liquid precipitation rate
                      SolidPrecip  = dict(name='solprec_sr', units='kg/m^2/s'), # solid precipitation rate
                      WaterVapor   = dict(name='Q2', units='Pa'), # water vapor partial pressure
-                     WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
+                     WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days
+                     FrostDays    = dict(name='frzfrq', units=''), # fraction of frost days 
                      MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
                      MaxRAINC     = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # maximum 6-hourly convective precip
                      MaxPrecip    = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # for short-term consistency                    
@@ -399,28 +402,28 @@ for fileclass in fileclasses.itervalues():
 ## Functions to load different types of WRF datasets
 
 # Station Time-series (monthly, with extremes)
-def loadWRF_StnTS(experiment=None, name=None, domains=2, station=None, filetypes=None, 
+def loadWRF_StnTS(experiment=None, name=None, domains=None, station=None, filetypes=None, 
                 varlist=None, varatts=None, lctrT=True):
   ''' Get a properly formatted WRF dataset with monthly time-series at station locations. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, station=station, 
                      period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
                      lautoregrid=False, lctrT=lctrT, mode='time-series')  
 
-def loadWRF_TS(experiment=None, name=None, domains=2, grid=None, filetypes=None, varlist=None, 
+def loadWRF_TS(experiment=None, name=None, domains=None, grid=None, filetypes=None, varlist=None, 
                varatts=None, lconst=True, lautoregrid=True, lctrT=True):
   ''' Get a properly formatted WRF dataset with monthly time-series. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, 
                      period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
                      lautoregrid=lautoregrid, lctrT=lctrT, mode='time-series')  
 
-def loadWRF_Stn(experiment=None, name=None, domains=2, station=None, period=None, filetypes=None, 
+def loadWRF_Stn(experiment=None, name=None, domains=None, station=None, period=None, filetypes=None, 
                 varlist=None, varatts=None, lctrT=True):
   ''' Get a properly formatted station dataset from a monthly WRF climatology. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, station=station, 
                      period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
                      lautoregrid=False, lctrT=lctrT, mode='climatology')  
 
-def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filetypes=None, varlist=None, 
+def loadWRF(experiment=None, name=None, domains=None, grid=None, period=None, filetypes=None, varlist=None, 
             varatts=None, lconst=True, lautoregrid=True, lctrT=True):
   ''' Get a properly formatted monthly WRF climatology as NetCDFDataset. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, 
@@ -428,7 +431,7 @@ def loadWRF(experiment=None, name=None, domains=2, grid=None, period=None, filet
                      lautoregrid=lautoregrid, lctrT=lctrT, mode='climatology')  
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
-def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, period=None, 
+def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=None, period=None, 
                 filetypes=None, varlist=None, varatts=None, lconst=True, lautoregrid=True, 
                 lctrT=False, folder=None, mode='climatology'):
   ''' Get any WRF data files as a properly formatted NetCDFDataset. '''
@@ -609,7 +612,7 @@ def loadWRF_All(experiment=None, name=None, domains=2, grid=None, station=None, 
 
 
 # load a pre-processed WRF ensemble and concatenate time-series 
-def loadWRF_StnEns(ensemble=None, name=None, station=None, filetypes=None, years=None, domains=2, varlist=None, 
+def loadWRF_StnEns(ensemble=None, name=None, station=None, filetypes=None, years=None, domains=None, varlist=None, 
                    title=None, varatts=None, translateVars=None, lcheckVars=True, lcheckAxis=True):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadWRF_Ensemble(ensemble=ensemble, grid=None, station=station, domains=domains, 
@@ -757,7 +760,7 @@ if __name__ == '__main__':
     
     print('')
 #     dataset = loadWRF(experiment='max-1deg', domains=2, grid='arb2_d02', filetypes=['srfc'], period=(1979,1994))
-    dataset = loadWRF(experiment='max-1deg', domains=2, filetypes=['srfc'], period=(1979,1984))
+    dataset = loadWRF(experiment='max-1deg', domains=None, filetypes=['srfc'], period=(1979,1984))
     print(dataset)
 #     dataset.lon2D.load()
 #     print('')
@@ -771,7 +774,7 @@ if __name__ == '__main__':
   elif mode == 'test_station_climatology':
     
     print('')
-    dataset = loadWRF_Stn(experiment='erai', domains=2, station='ecprecip', filetypes=['hydro'], period=(1979,1984))
+    dataset = loadWRF_Stn(experiment='erai', domains=None, station='ecprecip', filetypes=['hydro'], period=(1979,1984))
     print('')
     print(dataset)
     print('')
@@ -786,7 +789,7 @@ if __name__ == '__main__':
   elif mode == 'test_timeseries':
     
 #     dataset = loadWRF_TS(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['srfc'])
-    dataset = loadWRF_TS(experiment='max-ctrl', domains=2, varlist=None, filetypes=['srfc'])
+    dataset = loadWRF_TS(experiment='max-ctrl', domains=None, varlist=None, filetypes=['srfc'])
 #     dataset = loadWRF_All(name='new-ctrl-2050', folder='/data/WRF/wrfavg/', domains=2, filetypes=['hydro'], 
 #                           lctrT=True, mode='time-series')
 #     for dataset in datasets:
@@ -807,7 +810,7 @@ if __name__ == '__main__':
   elif mode == 'test_station_timeseries':
     
     print('')
-    dataset = loadWRF_StnTS(experiment='max-ctrl', domains=2, varlist=['zs','stn_zs','precip','MaxPrecip_1d','MaxPrecip_7d'], station='ecprecip', filetypes=['hydro'])
+    dataset = loadWRF_StnTS(experiment='max-ctrl', domains=None, varlist=['zs','stn_zs','precip','MaxPrecip_1d','MaxPrecip_7d'], station='ecprecip', filetypes=['hydro'])
     print('')
     print(dataset)
     print('')
@@ -842,7 +845,7 @@ if __name__ == '__main__':
   elif mode == 'test_station_ensemble':
     
     print('')
-    dataset = loadWRF_StnEns(ensemble='max-ens', station='ecprecip', domains=2, filetypes=['xtrm']).load()
+    dataset = loadWRF_StnEns(ensemble='max-ens', station='ecprecip', domains=None, filetypes=['xtrm']).load()
     print('')
     print(dataset)
     print('')

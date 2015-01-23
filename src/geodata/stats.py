@@ -651,8 +651,9 @@ class DistVar(Variable):
 #       params = ma.masked_equal(params, invalid) # mask invalid values 
 #       params.set_fill_value = invalid # fill value to use later       
     # generate new parameter axis
+    params_name = 'params_#{:d}'.format(params.shape[-1])
     if params.ndim == len(axes)+1:
-      patts = dict(name='params',units='',long_name='Distribution Parameters')
+      patts = dict(name=params_name,units='',long_name='Distribution Parameters')
       paramAxis = Axis(coord=np.arange(params.shape[-1]), atts=patts)
       axes = axes + (paramAxis,)
     else: paramAxis = None
@@ -668,8 +669,8 @@ class DistVar(Variable):
     assert self.masked == masked
     self.dtype = dtype # property is overloaded in DistVar
     # N.B.: in this variable dtype and units refer to the sample data, not the distribution!
-    if self.hasAxis('params'):
-      self.paramAxis = self.getAxis('params') 
+    if self.hasAxis(params_name):
+      self.paramAxis = self.getAxis(params_name) 
     # aliases
     self.pdf = self.PDF
     self.cdf = self.CDF
@@ -1304,7 +1305,7 @@ class VarRV(DistVar):
     # if sample is a variable, check and figure out sample axes   
     sax = self.ndim-1
     if isinstance(sample,Variable):
-      assert self.axisIndex('params') == sax
+      assert self.axisIndex(self.paramAxis) == sax
       for ax in self.axes[:-1]:
         if not sample.hasAxis(ax.name): # last is parameter axis
           if lcheckAxis: raise AxisError, "Sample Variable needs to have a '{:s}' axis.".format(ax.name)
@@ -1372,7 +1373,7 @@ class VarRV(DistVar):
       varatts['long_name'] = "p-value of {:s}".format(self.atts.get('long_name',self.name.title()))
       varatts['units'] = '' # p-value / probability
       if pvaratts is not None: varatts.update(pvaratts)
-      assert self.axisIndex('params') == sax
+      assert self.axisIndex(self.paramAxis) == sax
       pvar = Variable(data=pval, axes=self.axes[:-1], atts=varatts, plot=plotatts)
     else: pvar = pval
     # return results
