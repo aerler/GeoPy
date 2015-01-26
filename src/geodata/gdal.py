@@ -12,6 +12,7 @@ and methods to an existing object/class instance.
 
 import numpy as np
 import numpy.ma as ma
+from collections import OrderedDict
 import types  # needed to bind functions to objects
 import pickle
 # gdal imports
@@ -898,7 +899,46 @@ class Shape(object):
                       dtype=np.bool, mask=None, fillValue=outside, atts=None, plot=None) 
     # return mask array
     return mask  
-   
+
+# a container class for shape meta data
+class ShapeInfo(object): 
+  ''' basin meta data '''
+  def __init__(self, name=None, long_name=None, shapefiles=None, data_source=None, folder=None):
+    ''' some common operations and inferences '''
+    self.name = name
+    self.long_name = long_name
+    self.data_source = data_source # source documentation...
+    self.folder = folder+long_name+'/'
+    self.shapefiles = OrderedDict()
+    for shp in shapefiles:
+      if shp[-4:] == '.shp':
+        self.shapefiles[shp[:-4]] = self.folder + shp
+      else: 
+        self.shapefiles[shp] = self.folder + shp + '.shp'
+    self.outline = self.shapefiles.keys()[0] 
+
+# container class for known shapes with meta data
+class NamedShape(Shape):
+  ''' Just a container for shapes with additional meta information '''
+  def __init__(self, area=None, subarea=None, folder=None, shapefile=None, shapes_dict=None, load=False, ldebug=False):
+    ''' save meta information; should be initialized from a BasinInfo instance '''
+    # resolve input
+    if isinstance(area,(basestring,ShapeInfo)):
+      if isinstance(area,basestring):
+        if area in shapes_dict: area = shapes_dict[area]
+        else: raise ValueError, 'Unknown area: {}'.format(area)
+      folder = area.folder
+      if subarea is None: subarea = area.outline      
+      elif not isinstance(subarea,basestring): raise TypeError
+      if subarea not in area.shapefiles: raise ValueError, 'Unknown subarea: {}'.format(subarea)
+      shapefile = area.shapefiles[subarea]
+    elif isinstance(folder,basestring) and isinstance(shapefile,basestring): pass
+    else: raise TypeError, 'Specify either area & station or folder & shapefile.'
+    # call Shape constructor
+    super(NamedShape,self).__init__(name=area.name, long_name=area.long_name, shapefile=shapefile, load=load, ldebug=ldebug)
+    # add info
+    self.info = area 
+
 
 # # run a test    
 if __name__ == '__main__':
