@@ -20,6 +20,7 @@ from geodata.misc import ParseError, DateError, VariableError, ArgumentError, Re
 from geodata.base import Axis, Variable, Dataset
 from geodata.nctools import writeNetCDF
 from geodata.netcdf import DatasetNetCDF
+from geodata.gdal import NamedShape, ShapeInfo
 import average.derived_variables as dv
 # from geodata.utils import DatasetError
 from warnings import warn
@@ -72,22 +73,32 @@ varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Aver
 variable_list = varatts.keys() # also includes coordinate fields    
 
 # expand province names
-def getProvName(prov):
-  ''' a convenience function to expand Canadian province abbreviations '''
-  if prov == 'BC': name = 'British Columbia'
-  elif prov == 'YT': name = 'Yukon Territory'
-  elif prov == 'NT': name = 'Northwest Territories'
-  elif prov == 'NU': name = 'Nunavut'
-  elif prov == 'AB': name = 'Alberta'
-  elif prov == 'SK': name = 'Saskatchewan'
-  elif prov == 'MB': name = 'Manitoba'
-  elif prov == 'ON': name = 'Ontario'
-  elif prov == 'QC': name = 'Quebec'
-  elif prov == 'NB': name = 'New Brunswick'
-  elif prov == 'NS': name = 'Nova Scotia'
-  elif prov == 'PE': name = 'Prince Edward Island'
-  elif prov == 'NL': name = 'Newfoundland and Labrador'
-  return name
+province_names = dict()
+province_names['BC'] = 'British Columbia'
+province_names['YT'] = 'Yukon Territory'
+province_names['NT'] = 'Northwest Territories'
+province_names['NU'] = 'Nunavut'
+province_names['AB'] = 'Alberta'
+province_names['SK'] = 'Saskatchewan'
+province_names['MB'] = 'Manitoba'
+province_names['ON'] = 'Ontario'
+province_names['QC'] = 'Quebec'
+province_names['NB'] = 'New Brunswick'
+province_names['NS'] = 'Nova Scotia'
+province_names['PE'] = 'Prince Edward Island'
+province_names['NL'] = 'Newfoundland and Labrador'
+
+# generate province info objects
+province_info = dict()
+provinces = dict()
+for key,val in province_names.iteritems():
+  prov = ShapeInfo(name=key, long_name=val, shapefiles=[val], data_source='', folder=root_folder+'/Provinces/')
+  province_info[key] = prov
+  if len(prov.shapefiles) == 1 :
+    provinces[prov.name] = NamedShape(area=prov, subarea=None)
+  else: 
+    for subarea in prov.shapefiles.iterkeys():
+      provinces[prov.name] = NamedShape(area=prov, subarea=subarea)
 
 ## a class that handles access to station records in ASCII files
 class DailyStationRecord(StrictRecordClass):

@@ -908,7 +908,7 @@ class ShapeInfo(object):
     self.name = name
     self.long_name = long_name
     self.data_source = data_source # source documentation...
-    self.folder = folder+long_name+'/'
+    self.folder = folder+long_name+'/' # shapefile always has its own folder
     self.shapefiles = OrderedDict()
     for shp in shapefiles:
       if shp[-4:] == '.shp':
@@ -932,7 +932,8 @@ class NamedShape(Shape):
       elif not isinstance(subarea,basestring): raise TypeError
       if subarea not in area.shapefiles: raise ValueError, 'Unknown subarea: {}'.format(subarea)
       shapefile = area.shapefiles[subarea]
-    elif isinstance(folder,basestring) and isinstance(shapefile,basestring): pass
+    elif isinstance(shapefile,basestring):
+      if folder is not None and isinstance(folder,basestring): shapefile = folder+'/'+shapefile        
     else: raise TypeError, 'Specify either area & station or folder & shapefile.'
     # call Shape constructor
     super(NamedShape,self).__init__(name=area.name, long_name=area.long_name, shapefile=shapefile, load=load, ldebug=ldebug)
@@ -947,8 +948,10 @@ if __name__ == '__main__':
   from datasets.common import grid_folder, shape_folder
   # load shapefile
   #folder = shape_folder+'ARB_Aquanty'; shapefile='ARB_Basins_Outline_WGS84.shp'
-#   folder = '/data/WSC/Athabasca River Basin/'; shapefile='WholeARB.shp' 
-  folder = '/data/WSC/Fraser River Basin/'; shapefile='WholeFRB.shp'
+#   folder = '/data/WSC/Basins/Athabasca River Basin/'; shapefile='WholeARB.shp' 
+#   folder = '/data/WSC/Basins/Fraser River Basin/'; shapefile='WholeFRB.shp'
+#   folder = '/data/EC/Provinces/Alberta/'; shapefile='Alberta.shp'
+  folder = '/data/EC/Provinces/British Columbia/'; shapefile='British Columbia.shp'
   shape = Shape(folder=folder, shapefile=shapefile)  
   # get mask from shape file
   griddef = loadPickledGridDef('arb2_d02', res=None, folder=grid_folder)

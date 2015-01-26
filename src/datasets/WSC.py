@@ -56,7 +56,7 @@ class BasinInfo(ShapeInfo):
   def __init__(self, name=None, long_name=None, rivers=None, stations=None, subbasins=None, data_source=None, folder=None):
     ''' some common operations and inferences '''
     # call parent constructor 
-    if folder is None: folder = root_folder 
+    if folder is None: folder = root_folder + '/Basins/'
     super(BasinInfo,self).__init__(name=name, long_name=long_name, shapefiles=subbasins, data_source=data_source, folder=folder)
     # add basin specific stuff
     self.subbasins = subbasins
@@ -73,17 +73,17 @@ class BasinInfo(ShapeInfo):
 basins_info = dict()
 # meta data for specific basins
 basins_info['ARB'] = BasinInfo(name='ARB', long_name='Athabasca River Basin', rivers=['Athabasca'], data_source='WSC',
-                          stations=dict(Athabasca=['Embarras','McMurray']),
-                          subbasins=['WholeARB','LowerARB','LowerCentralARB','UpperCentralARB','UpperARB'])
+                               stations=dict(Athabasca=['Embarras','McMurray']),
+                               subbasins=['WholeARB','LowerARB','LowerCentralARB','UpperCentralARB','UpperARB'])
 basins_info['FRB'] = BasinInfo(name='FRB', long_name='Fraser River Basin', rivers=['Fraser'], data_source='WSC',
-                          stations=dict(Fraser=['PortMann','Mission']),
-                          subbasins=['WholeFRB','LowerFRB','UpperFRB'])
+                               stations=dict(Fraser=['PortMann','Mission']),
+                               subbasins=['WholeFRB','LowerFRB','UpperFRB'])
 basins_info['NRB'] = BasinInfo(name='NRB', long_name='Nelson River Basin', rivers=['Nelson'], data_source='WSC',
-                          stations=dict(), subbasins=['WholeNRB'])
+                               stations=dict(), subbasins=['WholeNRB'])
 basins_info['PSB'] = BasinInfo(name='PSB', long_name='Pacific Seaboard', rivers=[], data_source='WSC',
-                          stations=dict(), subbasins=['WholePSB','NorthernPSB','SouthernPSB'])
+                               stations=dict(), subbasins=['WholePSB','NorthernPSB','SouthernPSB'])
 basins_info['GSL'] = BasinInfo(name='GSL', long_name='Great Slave Lake', rivers=[], data_source='WSC',
-                          stations=dict(), subbasins=['WholeGSL'])
+                               stations=dict(), subbasins=['WholeGSL'])
 # N.B.: all shapefiles here from Water Survey of Canada
 
 # dictionary of basins
@@ -93,7 +93,7 @@ for name,basin in basins_info.iteritems():
     basins[basin.name] = Basin(basin=basin, subbasin=None)
   else: 
     for subbasin in basin.subbasins:
-      basins[basin.name] = Basin(basin=basin, subbasin=subbasin) 
+      basins[basin.name] = Basin(basin=basin, subbasin=subbasin)
     
 
 ## Functions that handle access to ASCII files
