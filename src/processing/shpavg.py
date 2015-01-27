@@ -13,7 +13,6 @@ import numpy as np
 from importlib import import_module
 from datetime import datetime
 import logging   
-import functools  
 from collections import OrderedDict
 # internal imports
 from geodata.misc import DatasetError, DateError, isInt, printList
@@ -284,12 +283,12 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-#     NP = 4 ; ldebug = False # for quick computations
-    NP = 2 ; ldebug = True # just for tests
+    NP = 4 ; ldebug = True # for quick computations
+#     NP = 1 ; ldebug = True # just for tests
     modes = ('time-series',) # 'climatology','time-series'
 #     modes = ('climatology',) # 'climatology','time-series'
-#     loverwrite = False
-    loverwrite = True
+    loverwrite = False
+#     loverwrite = True
     varlist = None
 #     varlist = ['precip',]
     periods = []
@@ -306,7 +305,7 @@ if __name__ == '__main__':
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
-    datasets += ['NARR']
+#     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
 #     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
     datasets += ['CRU']
