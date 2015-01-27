@@ -903,7 +903,7 @@ class Shape(object):
 # a container class for shape meta data
 class ShapeInfo(object): 
   ''' basin meta data '''
-  def __init__(self, name=None, long_name=None, shapefiles=None, data_source=None, folder=None):
+  def __init__(self, name=None, long_name=None, shapefiles=None, shapetype=None, data_source=None, folder=None):
     ''' some common operations and inferences '''
     self.name = name
     self.long_name = long_name
@@ -915,12 +915,13 @@ class ShapeInfo(object):
         self.shapefiles[shp[:-4]] = self.folder + shp
       else: 
         self.shapefiles[shp] = self.folder + shp + '.shp'
-    self.outline = self.shapefiles.keys()[0] 
+    self.outline = self.shapefiles.keys()[0]    
+    self.shapetype = shapetype 
 
 # container class for known shapes with meta data
 class NamedShape(Shape):
   ''' Just a container for shapes with additional meta information '''
-  def __init__(self, area=None, subarea=None, folder=None, shapefile=None, shapes_dict=None, load=False, ldebug=False):
+  def __init__(self, area=None, subarea=None, folder=None, shapefile=None, shapetype=None, shapes_dict=None, load=False, ldebug=False):
     ''' save meta information; should be initialized from a BasinInfo instance '''
     # resolve input
     if isinstance(area,(basestring,ShapeInfo)):
@@ -932,13 +933,15 @@ class NamedShape(Shape):
       elif not isinstance(subarea,basestring): raise TypeError
       if subarea not in area.shapefiles: raise ValueError, 'Unknown subarea: {}'.format(subarea)
       shapefile = area.shapefiles[subarea]
+      shapetype = area.shapetype
     elif isinstance(shapefile,basestring):
       if folder is not None and isinstance(folder,basestring): shapefile = folder+'/'+shapefile        
     else: raise TypeError, 'Specify either area & station or folder & shapefile.'
     # call Shape constructor
     super(NamedShape,self).__init__(name=area.name, long_name=area.long_name, shapefile=shapefile, load=load, ldebug=ldebug)
     # add info
-    self.info = area 
+    self.info = area
+    self.shapetype = shapetype 
 
 
 # # run a test    

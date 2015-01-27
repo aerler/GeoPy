@@ -92,7 +92,8 @@ province_names['NL'] = 'Newfoundland and Labrador'
 province_info = dict()
 provinces = dict()
 for key,val in province_names.iteritems():
-  prov = ShapeInfo(name=key, long_name=val, shapefiles=[val], data_source='', folder=root_folder+'/Provinces/')
+  prov = ShapeInfo(name=key, long_name=val, shapefiles=[val], shapetype='PRV', 
+                   data_source='', folder=root_folder+'/Provinces/')
   province_info[key] = prov
   if len(prov.shapefiles) == 1 :
     provinces[prov.name] = NamedShape(area=prov, subarea=None)

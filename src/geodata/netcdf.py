@@ -17,7 +17,7 @@ import os
 from geodata.base import Variable, Axis, Dataset
 from geodata.misc import checkIndex, isEqual, joinDicts
 from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError, FileError, VariableError, ArgumentError 
-from geodata.nctools import coerceAtts, writeNetCDF, add_var, add_coord, add_strvar
+from geodata.nctools import coerceAtts, writeNetCDF, add_var, add_coord
 
 
 def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs):
@@ -164,8 +164,6 @@ class VarNC(Variable):
     self.__dict__['transform'] = transform
     self.__dict__['squeezed'] = False
     self.__dict__['slices'] = slices # initial default (i.e. everything)
-#     self.__dict__['strvar'] = lstrvar
-#     self.__dict__['strlen'] = strlen
     assert self.strvar == lstrvar
     assert self.strlen == strlen
     if squeeze: self.squeeze() # may set 'squeezed' to True

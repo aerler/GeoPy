@@ -57,7 +57,8 @@ class BasinInfo(ShapeInfo):
     ''' some common operations and inferences '''
     # call parent constructor 
     if folder is None: folder = root_folder + '/Basins/'
-    super(BasinInfo,self).__init__(name=name, long_name=long_name, shapefiles=subbasins, data_source=data_source, folder=folder)
+    super(BasinInfo,self).__init__(name=name, long_name=long_name, shapefiles=subbasins, shapetype='BSN', 
+                                   data_source=data_source, folder=folder)
     # add basin specific stuff
     self.subbasins = subbasins
     self.maingage = stations[rivers[0]][0] if stations else None 
@@ -220,6 +221,7 @@ if __name__ == '__main__':
   print basin.long_name
   print basin
   assert basin.info == basin_info
+  assert basin.shapetype == 'BSN'
   
   # load station data
   station = basin.getMainGage()

@@ -178,6 +178,20 @@ class ReduceVar(object): # not a Variable child!!!
     return functools.partial(self.__call__, instance) # but using 'partial' is simpler
 
 
+# utility function
+def genStrArray(string_list):
+  ''' utility function to generate a string array from a list of strings '''
+  if not isinstance(string_list,(list,tuple)): raise TypeError
+  strlen = 0; new_list = []
+  for string in string_list:
+    if not isinstance(string,basestring): raise TypeError
+    strlen = max(len(string),strlen)
+    new_list.append(string.ljust(strlen))
+  strarray = np.array(new_list, dtype='|S{:d}'.format(strlen))
+  assert strarray.shape == (len(string_list),strlen)
+  return strarray
+    
+
 ## Variable class and derivatives 
 
 class Variable(object):
@@ -211,6 +225,8 @@ class Variable(object):
     if data is None:
       ldata = False; shape = None
     else:
+      if isinstance(data,(list,tuple)) and isinstance(data[0],basestring):
+        data = genStrArray(data) # more checks inside function
       if not isinstance(data,np.ndarray): data = np.asarray(data) # 'The data argument must be a numpy array!'
       ldata = True; shape = data.shape; 
       if dtype:
@@ -242,8 +258,6 @@ class Variable(object):
     self.__dict__['data_array'] = None
     self.__dict__['_dtype'] = dtype
     self.__dict__['dataset'] = None # set by addVariable() method of Dataset  
-    self.__dict__['strvar'] = False # mainly for netcdf vars
-    self.__dict__['strlen'] = None
     ## figure out axes
     if axes is not None:
       assert isinstance(axes, (list, tuple))

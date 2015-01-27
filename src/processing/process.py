@@ -19,7 +19,9 @@ from geodata.misc import VariableError, AxisError, PermissionError, DatasetError
 from geodata.base import Axis, Dataset, Variable
 from geodata.netcdf import DatasetNetCDF, asDatasetNC
 from geodata.nctools import writeNetCDF
-from geodata.gdal import addGDALtoDataset, GridDefinition, gdalInterp
+from geodata.gdal import addGDALtoDataset, GridDefinition, gdalInterp,\
+  NamedShape
+from collections import OrderedDict
 # default data types
 dtype_int = np.dtype('int16')
 dtype_float = np.dtype('float32')
@@ -161,7 +163,125 @@ class CentralProcessingUnit(object):
   # every function pair needs to have a setup function and a processing function
   # the former sets up the target dataset and the latter operates on the variables
   
-  # function pair to compute a climatology from a time-series      
+  # function pair to average data over a given collection of shapes      
+  def AverageShape(self, shape_dict=None, shape_name=None, shpax=None, xlon=None, ylat=None, **kwargs):
+    ''' Average over a limited area of a gridded datasets; calls processAverageShape. 
+        A dictionary of NamedShape objects is expected to define the averaging areas. '''
+    if not self.source.gdal: raise DatasetError, "Source dataset must be GDAL enabled! {:s} is not.".format(self.source.name)
+    if not isinstance(shape_dict,OrderedDict): raise TypeError
+    if not all(isinstance(shape,NamedShape) for shape in shape_dict.itervalues()): raise TypeError
+    # make temporary dataset
+    if self.source is self.target:
+      if self.tmp: assert self.source == self.tmpput and self.target == self.tmpput
+      # the operation can not be performed "in-place"!
+      self.target = Dataset(name='tmptoo', title='Temporary target dataset for non-in-place operations', varlist=[], atts={})
+      ltmptoo = True
+    else: ltmptoo = False
+    src = self.source; tgt = self.target # short-cuts 
+    # determine source dataset grid definition
+    if src.griddef is None:  
+      srcgrd = GridDefinition(projection=self.source.projection, geotransform=self.source.geotransform, 
+                              size=self.source.mapSize, xlon=self.source.xlon, ylat=self.source.ylat)
+    else: srcgrd = src.griddef
+    # figure out horizontal axes (will be replaced with station axis)
+    if isinstance(xlon,Axis): 
+      if not src.hasAxis(xlon, check=True): raise DatasetError
+    elif isinstance(xlon,basestring): xlon = src.getAxis(xlon)
+    else: xlon = src.x if srcgrd.isProjected else src.lon
+    if isinstance(ylat,Axis):
+      if not src.hasAxis(ylat, check=True): raise DatasetError
+    elif isinstance(ylat,basestring): ylat = src.getAxis(ylat)
+    else: ylat = src.y if srcgrd.isProjected else src.lat
+    # check/create shapes axis
+    if shpax: # not in source dataset!
+      # if shape axis supplied
+      if src.hasAxis(shpax, check=True): raise DatasetError, "Source dataset must not have a 'shape' axis!"
+      if len(shpax) != len(shape_dict): raise AxisError
+    else:
+      # creat shape axis, if not supplied
+      shpatts = dict(name='shapes', long_name='Ordinal Number of Shape', units='#')
+      shpax = Axis(coord=np.arange(len(shape_dict)), atts=shpatts)
+    assert isinstance(xlon,Axis) and isinstance(ylat,Axis) and isinstance(shpax,Axis)
+    # prepare target dataset
+    # N.B.: attributes should already be set in target dataset (by caller module)
+    #       we are also assuming the new dataset has no axes yet
+    assert len(tgt.axes) == 0
+    # add station axis (trim to valid coordinates)
+    tgt.addAxis(shpax, asNC=True, copy=True) # already new copy
+    # add axes from source data
+    for axname,ax in src.axes.iteritems():
+      if axname not in (xlon.name,ylat.name):
+        tgt.addAxis(ax, asNC=True, copy=True)
+    # collect rasterized masks from shape files
+    mask_array = np.zeros((len(shpax),)+srcgrd.mapSize, dtype='bool_') 
+    shape_masks = [shape.rasterize(griddef=srcgrd, asVar=False, ) for shape in shape_dict.itervalues()]
+    for i,mask in enumerate(shape_masks):
+      mask_array[i,:] = mask
+    # add rasterized masks to new dataset
+    atts = dict(name='shp_mask', long_name='Rasterized Shape Mask', units='')
+    tgt.addVariable(Variable(data=mask_array, atts=atts), asNC=True, copy=True)
+    # add area enclosed by shape
+    da = srcgrd.geotransform[1]*srcgrd.geotransform[5]
+    mask_area = mask_array.mean(axis=2).mean(axis=1)*da    
+    atts = dict(name='shp_area', long_name='Area Included in Shape', 
+                units= 'm^2 ' if srcgrd.isProjected else 'deg^2' )
+    tgt.addVariable(Variable(data=mask_area, atts=atts), asNC=True, copy=True)
+    # add shape names
+    shape_names = [shape.name for shape in shape_dict.itervalues()] # can construct Variable from list!
+    atts = dict(name='shp_name', long_name='Name of Shape', units='')
+    tgt.addVariable(Variable(data=shape_names, atts=atts), asNC=True, copy=True)
+    # add proper names
+    shape_long_names = [shape.long_name for shape in shape_dict.itervalues()] # can construct Variable from list!
+    atts = dict(name='shp_long_name', long_name='Proper Name of Shape', units='')
+    tgt.addVariable(Variable(data=shape_long_names, atts=atts), asNC=True, copy=True)    
+    # add shape category
+    shape_type = [shape.shapetype for shape in shape_dict.itervalues()] # can construct Variable from list!
+    atts = dict(name='shp_type', long_name='Type of Shape', units='')
+    tgt.addVariable(Variable(data=shape_type, atts=atts), asNC=True, copy=True)    
+    # save all the meta data
+    tgt.sync()
+    # prepare function call    
+    function = functools.partial(self.processAverageShape, masks=shape_masks, ylat=ylat, xlon=xlon, shpax=shpax) # already set parameters
+    # start process
+    if self.feedback: print('\n   +++   processing point-data extraction   +++   ') 
+    self.process(function, **kwargs) # currently 'flush' is the only kwarg
+    if self.feedback: print('\n')
+    if self.tmp: self.tmpput = self.target
+    if ltmptoo: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
+  # the previous method sets up the process, the next method performs the computation
+  def processAverageShape(self, var, masks=None, ylat=None, xlon=None, shpax=None):
+    ''' Compute masked area averages from variable data. '''
+    # process gdal variables (if a variable has a horiontal grid, it should be GDAL enabled)
+    if var.gdal:
+      if self.feedback: print('\n'+var.name),
+      assert var.hasAxis(xlon) and var.hasAxis(ylat)
+      assert len(masks) == len(shpax)
+      tgt = self.target
+      assert tgt.hasAxis(shpax, strict=False) and shpax not in var.axes 
+      # assemble new axes
+      axes = [tgt.getAxis(shpax.name)]      
+      for ax in var.axes:
+        if ax not in (xlon,ylat) and ax.name != shpax.name: # these axes are just transferred 
+          axes.append(tgt.getAxis(ax.name))
+      # N.B.: shape axis well be outer axis
+      axes = tuple(axes)
+      # pre-allocate
+      shape = tuple(len(ax) for ax in axes)
+      tgtdata = np.zeros(shape, dtype=var.dtype)
+      # now we loop over all shapes/masks
+      for i,mask in enumerate(masks): 
+        tgtdata[i,:] = var.mapMean(mask=mask, asVar=False, squeeze=True) # compute the averages 
+      # create new Variable
+      assert shape == tgtdata.shape
+      newvar = var.copy(axes=axes, data=tgtdata) # new axes and data
+      del tgtdata # clean up (just to make sure)      
+    else:
+      var.load() # need to load variables into memory to copy it (and we are not doing anything else...)
+      newvar = var # just pass over the variable to the new dataset
+    # return variable
+    return newvar
+  
+  # function pair to extract station data from a time-series (or climatology)      
   def Extract(self, template=None, stnax=None, xlon=None, ylat=None, laltcorr=True, **kwargs):
     ''' Extract station data points from gridded datasets; calls processExtract. 
         A station dataset can be passed as template (must have station coordinates. '''
@@ -303,7 +423,7 @@ class CentralProcessingUnit(object):
     if ltmptoo: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
   # the previous method sets up the process, the next method performs the computation
   def processExtract(self, var, ixlon=None, iylat=None, ylat=None, xlon=None, stnax=None):
-    ''' Compute a climatology from a variable time-series. '''
+    ''' Extract grid poitns corresponding to stations. '''
     # process gdal variables (if a variable has a horiontal grid, it should be GDAL enabled)
     if var.gdal:
       if self.feedback: print('\n'+var.name),
@@ -311,19 +431,15 @@ class CentralProcessingUnit(object):
       assert xlon in var.axes and ylat in var.axes
       assert tgt.hasAxis(stnax, strict=False) and stnax not in var.axes 
       # assemble new axes
-      lstnadd = False; axes = []; slices = []      
+      axes = [tgt.getAxis(stnax.name)]; slices = []      
       for ax in var.axes:
         if ax not in (xlon,ylat) and ax.name != stnax.name: # these axes are just transferred 
           axes.append(tgt.getAxis(ax.name))
           slices.append(slice(None)) # entire slice
         else: # handle horizontal coordinate axes 
-          if not lstnadd:
-            axes.append(tgt.getAxis(stnax.name))
-            lstnadd = True # station axis goes into the first place that will be removed
           if ax == xlon: slices.append(ixlon)
           elif ax == ylat: slices.append(iylat)
           else: raise AxisError
-      assert lstnadd        
       axes = tuple(axes); slices = tuple(slices)
       assert len(slices) == len(var.axes)
       shape = tuple(len(ax) for ax in axes)
