@@ -219,8 +219,9 @@ def performExtraction(dataset, mode, shape_name, shape_dict, dataargs, loverwrit
     ## create new sink/target file
     # set attributes   
     atts=source.atts.copy()
-    atts['period'] = periodstr; atts['name'] = dataset_name; atts['shapes'] = shape_name
-    atts['title'] = '{:s} (Stations) from {:s} {:s}'.format(shape_name,dataset_name,mode.title())
+    atts['period'] = periodstr[1:] if periodstr else 'time-series' 
+    atts['name'] = dataset_name; atts['shapes'] = shape_name
+    atts['title'] = 'Area Averages from {:s} {:s}'.format(dataset_name,mode.title())
     # make new dataset
     if lwrite: # write to NetCDF file 
       if os.path.exists(tmpfilepath): os.remove(tmpfilepath) # remove old temp files 
@@ -231,7 +232,7 @@ def performExtraction(dataset, mode, shape_name, shape_dict, dataargs, loverwrit
     CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=False, feedback=ldebug)
   
     # extract data at station locations
-    CPU.AverageShape(shape_dict=shape_dict, shape_name=shape_name, flush=True)
+    CPU.ShapeAverage(shape_dict=shape_dict, shape_name=shape_name, flush=True)
     # get results    
     CPU.sync(flush=True)
     
@@ -283,10 +284,11 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    NP = 4 ; ldebug = False # for quick computations
-#     NP = 2 ; ldebug = True # just for tests
-    modes = ('climatology',) # 'climatology','time-series'
+#     NP = 4 ; ldebug = False # for quick computations
+    NP = 2 ; ldebug = True # just for tests
     modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('climatology',) # 'climatology','time-series'
+#     loverwrite = False
     loverwrite = True
     varlist = None
 #     varlist = ['precip',]
@@ -300,12 +302,13 @@ if __name__ == '__main__':
     # Observations/Reanalysis
     datasets = []; resolutions = None
     lLTM = False # also regrid the long-term mean climatologies 
-#     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
+    resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
-#     datasets += ['NARR']
+    datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
+#     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
     datasets += ['CRU']
     # CESM experiments (short or long name) 
     load3D = False
@@ -325,15 +328,17 @@ if __name__ == '__main__':
     domains = None # domains to be processed
 #     domains = (2,) # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
-    WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-#     WRF_filetypes = ('hydro',)
+#     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
+    WRF_filetypes = ('hydro',)
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
     #WRF_filetypes = ('const',); periods = None
     # define shape data  
-    shape_name = 'avgshp'  
+    shape_name = 'shpavg' # Canadian shapes
     shapes = dict()
-    shapes['basins'] = ['FRB'] # river basins (in Canada) from WSC module
-    shapes['provinces'] = ['BC'] # Canadian provinces from EC module
+    shapes['basins'] = None # river basins (in Canada) from WSC module
+    shapes['provinces'] = None # Canadian provinces from EC module
+#     shapes['basins'] = ['FRB'] # river basins (in Canada) from WSC module
+#     shapes['provinces'] = ['BC'] # Canadian provinces from EC module
   else:
     NP = NP or 2 # time-series might take more memory or overheat...
     #modes = ('climatology','time-series')
@@ -354,11 +359,11 @@ if __name__ == '__main__':
     domains = (1,2,) # domains to be processed
     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
     # define shape data
-    shape_name = 'avgshp'
+    shape_name = 'shpavg'
     shapes = dict()
     shapes['basins'] = None # all river basins (in Canada) from WSC module
     shapes['provinces'] = None # all Canadian provinces from EC module
-  
+    
   ## process arguments    
   if periods is None: periods = [None]
   # expand experiments
@@ -367,8 +372,22 @@ if __name__ == '__main__':
   if CESM_experiments is None: CESM_experiments = CESM_exps.values() # do all 
   else: CESM_experiments = [CESM_exps[exp] for exp in CESM_experiments]  
   # expand datasets and resolutions
-  if datasets is None: datasets = gridded_datasets  
-  
+  if datasets is None: datasets = gridded_datasets
+  # expand shapes (and enforce consistent sorting)
+  if shapes['basins'] is None:
+    items = basins.keys()
+    if not isinstance(basins, OrderedDict): items.sort()
+    shapes['basins'] = items
+  if shapes['provinces'] is None:
+    items = provinces.keys()
+    if not isinstance(provinces, OrderedDict): items.sort()     
+    shapes['provinces'] = items
+      
+  # add shapes of different categories
+  shape_dict = OrderedDict()
+  for shp in shapes['provinces']: shape_dict[shp] = provinces[shp]
+  for shp in shapes['basins']: shape_dict[shp] = basins[shp]
+    
   # print an announcement
   if len(WRF_experiments) > 0:
     print('\n Averaging from WRF Datasets:')
@@ -383,8 +402,8 @@ if __name__ == '__main__':
   for shptype,shplst in shapes.iteritems():
     print('   {0:s} {1:s}'.format(shptype,printList(shplst)))
   print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
+
   
-    
   ## construct argument list
   args = []  # list of job packages (commands)
   # loop over modes
@@ -394,12 +413,6 @@ if __name__ == '__main__':
     elif mode == 'time-series': periodlist = (None,)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
 
-    # add shapes of different categories
-    shape_dict = OrderedDict()
-    for shp in shapes['provinces']: shape_dict[shp] = provinces[shp]
-    for shp in shapes['basins']: shape_dict[shp] = basins[shp]
-    
-           
     # observational datasets (grid depends on dataset!)
     for dataset in datasets:
       mod = import_module('datasets.{0:s}'.format(dataset))
@@ -436,7 +449,11 @@ if __name__ == '__main__':
     # WRF datasets
     for experiment in WRF_experiments:
       for filetype in WRF_filetypes:
-        for domain in domains:
+        # effectively, loop over domains
+        if domains is None:
+          tmpdom = range(1,experiment.domains+1)
+        else: tmpdom = domains
+        for domain in tmpdom:
           for period in periodlist:
             # arguments for worker function: dataset and dataargs       
             args.append( ('WRF', mode, shape_name, shape_dict, dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)) )

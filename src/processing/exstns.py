@@ -219,7 +219,8 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
     ## create new sink/target file
     # set attributes   
     atts=source.atts.copy()
-    atts['period'] = periodstr; atts['name'] = dataset_name; atts['station'] = stndata.name
+    atts['period'] = periodstr[1:] if periodstr else 'time-series' 
+    atts['name'] = dataset_name; atts['station'] = stndata.name
     atts['title'] = '{:s} (Stations) from {:s} {:s}'.format(stndata.title,dataset_name,mode.title())
     # make new dataset
     if lwrite: # write to NetCDF file 
@@ -322,7 +323,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...
     # other WRF parameters 
-    domains = (1,2) # domains to be processed
+    domains = None # domains to be processed
 #     domains = (2,) # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
@@ -435,7 +436,11 @@ if __name__ == '__main__':
         # WRF datasets
         for experiment in WRF_experiments:
           for filetype in WRF_filetypes:
-            for domain in domains:
+            # effectively, loop over domains
+            if domains is None:
+              tmpdom = range(1,experiment.domains+1)
+            else: tmpdom = domains
+            for domain in tmpdom:
               for period in periodlist:
                 # arguments for worker function: dataset and dataargs       
                 args.append( ('WRF', mode, stnfct, dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)) )

@@ -490,10 +490,11 @@ if __name__ == '__main__':
         # WRF datasets
         for experiment in WRF_experiments:
           for filetype in WRF_filetypes:
+            # effectively, loop over domains
             if domains is None:
-              domains = range(1,experiment.domains+1)
+              tmpdom = range(1,experiment.domains+1)
             else: tmpdom = domains
-            for domain in domains:
+            for domain in tmpdom:
               for period in periodlist:
                 # arguments for worker function: dataset and dataargs       
                 args.append( ('WRF', mode, griddef, dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)) )

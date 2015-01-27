@@ -281,9 +281,9 @@ if __name__ == '__main__':
     for filetype in filetypes:                
       # effectively, loop over domains
       if domains is None:
-        domains = range(1,experiment.domains+1)
+        tmpdom = range(1,experiment.domains+1)
       else: tmpdom = domains
-      for domain in domains:
+      for domain in tmpdom:
         # arguments for worker function
         args.append( (experiment, filetype, domain) )        
   # static keyword arguments

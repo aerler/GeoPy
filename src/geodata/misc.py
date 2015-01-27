@@ -128,13 +128,29 @@ def isEqual(left, right, eps=None, masked_equal=True):
     return left == right
   else: raise TypeError
  
- 
+
+# utility function to separate a run-together camel-casestring
+def separateCamelCase(string, **kwargs):
+  ''' Utility function to separate a run-together camel-casestring and replace string sequences. '''
+  # insert white spaces
+  charlist = [string[0]]
+  for i in xrange(1,len(string)):
+    if string[i-1].islower() and string[i].isupper(): charlist.append(' ')
+    charlist.append(string[i])
+  string = str().join(charlist)
+  # replace names
+  for old,new in kwargs.iteritems(): string = string.replace(old,new)
+  # return new string
+  return string 
+
+# function to generate a sting representation of a list of numbers
 def printList(iterable):
   ''' Small function to generate a sting representation of a list of numbers. '''
   string = '('
   for item in iterable: string += '{0:s},'.format(str(item))
   string += ')'
   return string
+
 
 # import definitions from a script into global namespace
 def loadGlobals(filename, warning=True):

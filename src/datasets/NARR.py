@@ -127,7 +127,7 @@ def loadNARR_TS(name=dataset_name, grid=None, varlist=None, resolution=None, var
     # replace time axis with number of month since Jan 1979 
     data = np.arange(0,len(dataset.time),1, dtype='int16') # month since 1979 (Jan 1979 = 0)
     timeAxis = Axis(name='time', units='month', coord=data, atts=dict(long_name='Month since 1979-01'))
-    dataset.repalceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
+    dataset.replaceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
     # add projection
     projection = getProjFromDict(projdict, name='{0:s} Coordinate System'.format(name))
     dataset = addGDALtoDataset(dataset, projection=projection, geotransform=None, gridfolder=grid_folder)

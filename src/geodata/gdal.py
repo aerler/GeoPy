@@ -29,7 +29,8 @@ os.environ.setdefault('GDAL_DATA','/usr/local/share/gdal')
 
 # import all base functionality from PyGeoDat
 from geodata.base import Variable, Axis, Dataset
-from geodata.misc import printList, isEqual, isInt, isFloat, isNumber, DataError, AxisError, GDALError, DatasetError
+from geodata.misc import separateCamelCase, printList, isEqual, isInt, isFloat, isNumber 
+from geodata.misc import DataError, AxisError, GDALError, DatasetError
 
 
 # # utility functions and classes to handle projection information and related meta data
@@ -916,7 +917,8 @@ class ShapeInfo(object):
       else: 
         self.shapefiles[shp] = self.folder + shp + '.shp'
     self.outline = self.shapefiles.keys()[0]    
-    self.shapetype = shapetype 
+    self.shapetype = shapetype          
+      
 
 # container class for known shapes with meta data
 class NamedShape(Shape):
@@ -929,16 +931,24 @@ class NamedShape(Shape):
         if area in shapes_dict: area = shapes_dict[area]
         else: raise ValueError, 'Unknown area: {}'.format(area)
       folder = area.folder
-      if subarea is None: subarea = area.outline      
-      elif not isinstance(subarea,basestring): raise TypeError
+      if subarea is None: 
+        subarea = area.outline
+        name = area.name      
+        long_name = area.long_name
+      elif isinstance(subarea,basestring):
+        name = subarea 
+        long_name = separateCamelCase(subarea, **{area.name:area.long_name})
+      else: raise TypeError
       if subarea not in area.shapefiles: raise ValueError, 'Unknown subarea: {}'.format(subarea)
       shapefile = area.shapefiles[subarea]
-      shapetype = area.shapetype
+      shapetype = area.shapetype            
     elif isinstance(shapefile,basestring):
-      if folder is not None and isinstance(folder,basestring): shapefile = folder+'/'+shapefile        
+      if folder is not None and isinstance(folder,basestring): shapefile = folder+'/'+shapefile
+      name = area 
+      long_name = None       
     else: raise TypeError, 'Specify either area & station or folder & shapefile.'
     # call Shape constructor
-    super(NamedShape,self).__init__(name=area.name, long_name=area.long_name, shapefile=shapefile, load=load, ldebug=ldebug)
+    super(NamedShape,self).__init__(name=name, long_name=long_name, shapefile=shapefile, load=load, ldebug=ldebug)
     # add info
     self.info = area
     self.shapetype = shapetype 

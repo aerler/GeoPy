@@ -188,7 +188,7 @@ def genStrArray(string_list):
     strlen = max(len(string),strlen)
     new_list.append(string.ljust(strlen))
   strarray = np.array(new_list, dtype='|S{:d}'.format(strlen))
-  assert strarray.shape == (len(string_list),strlen)
+  assert strarray.shape == (len(string_list),)
   return strarray
     
 

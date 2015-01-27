@@ -71,30 +71,31 @@ class BasinInfo(ShapeInfo):
         else: self.stationfiles[station] = filename
       
 # dictionary with basin meta data
-basins_info = dict()
+basins_info = OrderedDict() # maintain order
 # meta data for specific basins
 basins_info['ARB'] = BasinInfo(name='ARB', long_name='Athabasca River Basin', rivers=['Athabasca'], data_source='WSC',
                                stations=dict(Athabasca=['Embarras','McMurray']),
-                               subbasins=['WholeARB','LowerARB','LowerCentralARB','UpperCentralARB','UpperARB'])
+                               subbasins=['WholeARB','UpperARB','UpperCentralARB','LowerCentralARB','LowerARB'])
 basins_info['FRB'] = BasinInfo(name='FRB', long_name='Fraser River Basin', rivers=['Fraser'], data_source='WSC',
                                stations=dict(Fraser=['PortMann','Mission']),
-                               subbasins=['WholeFRB','LowerFRB','UpperFRB'])
+                               subbasins=['WholeFRB','UpperFRB','LowerFRB'])
+basins_info['GSL'] = BasinInfo(name='GSL', long_name='Great Slave Lake', rivers=[], data_source='WSC',
+                               stations=dict(), subbasins=['WholeGSL'])
 basins_info['NRB'] = BasinInfo(name='NRB', long_name='Nelson River Basin', rivers=['Nelson'], data_source='WSC',
                                stations=dict(), subbasins=['WholeNRB'])
 basins_info['PSB'] = BasinInfo(name='PSB', long_name='Pacific Seaboard', rivers=[], data_source='WSC',
                                stations=dict(), subbasins=['WholePSB','NorthernPSB','SouthernPSB'])
-basins_info['GSL'] = BasinInfo(name='GSL', long_name='Great Slave Lake', rivers=[], data_source='WSC',
-                               stations=dict(), subbasins=['WholeGSL'])
-# N.B.: all shapefiles here from Water Survey of Canada
+# N.B.: all shapefiles from Water Survey of Canada
 
 # dictionary of basins
-basins = dict()
+basins = OrderedDict() # maintain order
 for name,basin in basins_info.iteritems():
-  if len(basin.shapefiles) == 1 :
-    basins[basin.name] = Basin(basin=basin, subbasin=None)
-  else: 
-    for subbasin in basin.subbasins:
-      basins[basin.name] = Basin(basin=basin, subbasin=subbasin)
+  # add main basin
+  basins[basin.name] = Basin(basin=basin, subbasin=None)
+  if len(basin.subbasins) > 1 :
+    # preserve grouping
+    for subbasin in basin.subbasins[1:]: # skip first
+      basins[subbasin] = Basin(basin=basin, subbasin=subbasin)
     
 
 ## Functions that handle access to ASCII files
@@ -230,4 +231,8 @@ if __name__ == '__main__':
   print station
   print
   print station.discharge.getArray()
-    
+  
+  # print basins
+  print
+  for bsn in basins.iterkeys():
+    print bsn
