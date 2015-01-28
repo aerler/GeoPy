@@ -283,7 +283,7 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    NP = 1 ; ldebug = False # for quick computations
+    NP = 2 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
     modes = ('time-series',) # 'climatology','time-series'
 #     modes = ('climatology',) # 'climatology','time-series'
@@ -305,9 +305,9 @@ if __name__ == '__main__':
 #     datasets += ['PCIC','PRISM','GPCC']; periods = None
     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
     datasets += ['NARR']
-#     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
+    datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
 #     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
-    datasets += ['CRU']
+#     datasets += ['CRU']
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments

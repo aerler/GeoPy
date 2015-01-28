@@ -73,18 +73,42 @@ class BasinInfo(ShapeInfo):
 # dictionary with basin meta data
 basins_info = OrderedDict() # maintain order
 # meta data for specific basins
+
+basins_info['AY'] = BasinInfo(name='AY', long_name='Alaska and Yukon', rivers=[], data_source='WSC',
+                               stations=dict(), subbasins=['WholeAY'])
+basins_info['AO'] = BasinInfo(name='AO', long_name='Arctic Ocean', rivers=[], data_source='WSC',
+                               stations=dict(), subbasins=['WholeAO'])
 basins_info['ARB'] = BasinInfo(name='ARB', long_name='Athabasca River Basin', rivers=['Athabasca'], data_source='WSC',
                                stations=dict(Athabasca=['Embarras','McMurray']),
-                               subbasins=['WholeARB','UpperARB','UpperCentralARB','LowerCentralARB','LowerARB'])
+                               subbasins=['WholeARB','UpperARB','LowerARB'])
+basins_info['CRB'] = BasinInfo(name='CRB', long_name='Columbia River Basin', rivers=['Columbia'], data_source='WSC',
+                               stations=dict(), subbasins=['WholeCRB'])
 basins_info['FRB'] = BasinInfo(name='FRB', long_name='Fraser River Basin', rivers=['Fraser'], data_source='WSC',
                                stations=dict(Fraser=['PortMann','Mission']),
                                subbasins=['WholeFRB','UpperFRB','LowerFRB'])
+basins_info['GLB'] = BasinInfo(name='GLB', long_name='Great Lakes Basin', rivers=['Upper Saint Lawrence'], data_source='WSC',
+                               stations=dict(), subbasins=['WholeGLB'])
 basins_info['GSL'] = BasinInfo(name='GSL', long_name='Great Slave Lake', rivers=[], data_source='WSC',
                                stations=dict(), subbasins=['WholeGSL'])
+basins_info['LS'] = BasinInfo(name='LS', long_name='Labrador Sea', rivers=[], data_source='WSC',
+                               stations=dict(), subbasins=['WholeLS'])
+basins_info['MKB'] = BasinInfo(name='MKB', long_name='MacKenzie Basin', rivers=['MacKenzie'], data_source='',
+                               stations=dict(), subbasins=['WholeMKB'])
+basins_info['MRB'] = BasinInfo(name='MRB', long_name='Missouri River Basin', rivers=['Missouri'], data_source='WSC',
+                               stations=dict(), subbasins=['WholeMRB'])
 basins_info['NRB'] = BasinInfo(name='NRB', long_name='Nelson River Basin', rivers=['Nelson'], data_source='WSC',
                                stations=dict(), subbasins=['WholeNRB'])
+basins_info['NHB'] = BasinInfo(name='NHB', long_name='Northern Hudson Bay', rivers=[], data_source='WSC',
+                               stations=dict(), subbasins=['WholeNHB'])
+basins_info['NO'] = BasinInfo(name='NO', long_name='Northern Ontario', rivers=[], data_source='WSC',
+                               stations=dict(), subbasins=['WholeNO'])
+basins_info['PO'] = BasinInfo(name='PO', long_name='Pacific Ocean', rivers=[], data_source='WSC',
+                               stations=dict(), subbasins=['WholePO'])
 basins_info['PSB'] = BasinInfo(name='PSB', long_name='Pacific Seaboard', rivers=[], data_source='WSC',
                                stations=dict(), subbasins=['WholePSB','NorthernPSB','SouthernPSB'])
+basins_info['SLR'] = BasinInfo(name='SLR', long_name='Saint Lawrence River', rivers=['Saint Lawrence'], data_source='WSC',
+                               stations=dict(), subbasins=['WholeSLR'])
+
 # N.B.: all shapefiles from Water Survey of Canada
 
 # dictionary of basins
