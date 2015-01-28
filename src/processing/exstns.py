@@ -284,18 +284,18 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    NP = 4 ; ldebug = False # for quick computations
+    NP = 1 ; ldebug = False # for quick computations
 #     NP = 2 ; ldebug = True # just for tests
-#     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology','time-series'
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
 #     varlist = ['precip',]
     periods = []
 #     periods += [1]
 #     periods += [3]
-    periods += [5]
-    periods += [10]
+#     periods += [5]
+#     periods += [10]
     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
@@ -307,7 +307,7 @@ if __name__ == '__main__':
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
 #     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
-    datasets += ['CRU']
+#     datasets += ['CRU']
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
@@ -318,7 +318,7 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm'] # ,'lnd'
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-#     WRF_experiments += ['max']
+    WRF_experiments += ['max']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...
@@ -326,13 +326,13 @@ if __name__ == '__main__':
     domains = None # domains to be processed
 #     domains = (2,) # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
-    WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-#     WRF_filetypes = ('hydro',)
+#     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
+    WRF_filetypes = ('hydro',)
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
     #WRF_filetypes = ('const',); periods = None
     # station datasets to match    
-    stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
-#     stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
+#     stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
+    stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
   else:
     NP = NP or 2 # time-series might take more memory or overheat...
     #modes = ('climatology','time-series')

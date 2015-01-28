@@ -151,10 +151,10 @@ class CentralProcessingUnit(object):
         else:
           raise DatasetError, "Variable '%s' not found in input dataset."%varname
         assert varname == newvar.name
-        newvar.unload(); del var, newvar # free space; already added to new dataset
         # flush data to disk immediately      
         if flush: 
           self.output.variables[varname].unload() # again, free memory
+        newvar.unload(); del var, newvar # free space; already added to new dataset
     # after everything is said and done:
     self.source = self.target # set target to source for next time
     
@@ -218,6 +218,8 @@ class CentralProcessingUnit(object):
     for i,shape in enumerate(shape_dict.itervalues()):
       mask_array[i,:] = shape.rasterize(griddef=srcgrd, asVar=False)      
     shape_masks = [mask_array[i,:] for i in xrange(len(shpax))]
+    shape_masks = [mask if mask.sum() < mask.size else None for mask in shape_masks]
+    # N.B.: shapes that have no overlap with grid will be skipped and filled with NaN
     # add rasterized masks to new dataset
     atts = dict(name='shp_mask', long_name='Rasterized Shape Mask', units='')
     tgt.addVariable(Variable(data=mask_array, atts=atts, axes=(shpax,srcgrd.ylat.copy(),srcgrd.xlon.copy())), 
@@ -254,7 +256,7 @@ class CentralProcessingUnit(object):
   def processShapeAverage(self, var, masks=None, ylat=None, xlon=None, shpax=None):
     ''' Compute masked area averages from variable data. '''
     # process gdal variables (if a variable has a horiontal grid, it should be GDAL enabled)
-    if var.gdal and np.issubdtype(var.dtype,(np.integer,np.inexact)):
+    if var.gdal and ( np.issubdtype(var.dtype,np.integer) or np.issubdtype(var.dtype,np.inexact) ):
       if self.feedback: print('\n'+var.name),
       assert var.hasAxis(xlon) and var.hasAxis(ylat)
       assert len(masks) == len(shpax)
@@ -269,19 +271,19 @@ class CentralProcessingUnit(object):
       axes = tuple(axes)
       # pre-allocate
       shape = tuple(len(ax) for ax in axes)
-      tgtdata = np.zeros(shape, dtype=np.float32)
+      tgtdata = np.zeros(shape, dtype=np.float32) 
       # now we loop over all shapes/masks
       var.load()
       if var.ndim == 2:
         for i,mask in enumerate(masks): 
-          try: 
-            tgtdata[i] = var.mapMean(mask=mask, asVar=False, squeeze=True) # compute the averages
-          except:
-            print var
-          print i,tgtdata[i]
+          if mask is None: tgtdata[i] = np.NaN # NaN for missing values (i.e. no overlap)
+          else: tgtdata[i] = var.mapMean(mask=mask, asVar=False, squeeze=True) # compute the averages
+          #print i,tgtdata[i]
       elif var.ndim > 2:
-        for i,mask in enumerate(masks): 
-          tgtdata[i,:] = var.mapMean(mask=mask, asVar=False, squeeze=True) # compute the averages
+        for i,mask in enumerate(masks):
+          if mask is None: tgtdata[i,:] = np.NaN # NaN for missing values (i.e. no overlap) 
+          else: tgtdata[i,:] = var.mapMean(mask=mask, asVar=False, squeeze=True) # compute the averages
+          #print i,tgtdata[i]
       else: raise AxisError 
       # create new Variable
       assert shape == tgtdata.shape
@@ -443,21 +445,23 @@ class CentralProcessingUnit(object):
       assert xlon in var.axes and ylat in var.axes
       assert tgt.hasAxis(stnax, strict=False) and stnax not in var.axes 
       # assemble new axes
-      axes = [tgt.getAxis(stnax.name)]; slices = []      
+      axes = [tgt.getAxis(stnax.name)]      
       for ax in var.axes:
-        if ax not in (xlon,ylat) and ax.name != stnax.name: # these axes are just transferred 
+        if ax.name not in (xlon.name,ylat.name) and ax.name != stnax.name: # these axes are just transferred 
           axes.append(tgt.getAxis(ax.name))
-          slices.append(slice(None)) # entire slice
-        else: # handle horizontal coordinate axes 
-          if ax == xlon: slices.append(ixlon)
-          elif ax == ylat: slices.append(iylat)
-          else: raise AxisError
-      axes = tuple(axes); slices = tuple(slices)
-      assert len(slices) == len(var.axes)
+      axes = tuple(axes)
       shape = tuple(len(ax) for ax in axes)
-      # here we extract the data points
       srcdata = var.getArray(copy=False) # don't make extra copy
-      tgtdata = srcdata.__getitem__(slices) # constructed above
+      # roll x & y axes to the front (xlon first, then ylat, then the rest)
+      srcdata = np.rollaxis(srcdata, axis=var.axisIndex(ylat.name), start=0)
+      srcdata = np.rollaxis(srcdata, axis=var.axisIndex(xlon.name), start=0)
+      assert srcdata.shape == (len(xlon),len(ylat))+shape[1:]
+      # here we extract the data points
+      if srcdata.ndim == 2:
+        tgtdata = srcdata[ixlon,iylat] # constructed above
+      elif srcdata.ndim > 2:
+        tgtdata = srcdata[ixlon,iylat,:] # constructed above
+      else: raise AxisError
       #try: except: print srcdata.shape, [slc.max() for slc in slices] 
       # create new Variable
       assert shape == tgtdata.shape

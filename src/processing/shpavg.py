@@ -283,29 +283,28 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    NP = 4 ; ldebug = True # for quick computations
+    NP = 1 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
     modes = ('time-series',) # 'climatology','time-series'
 #     modes = ('climatology',) # 'climatology','time-series'
-    loverwrite = False
-#     loverwrite = True
+#     loverwrite = False
+    loverwrite = True
     varlist = None
 #     varlist = ['precip',]
     periods = []
 #     periods += [1]
 #     periods += [3]
-    periods += [5]
-#     periods += [10]
-#     periods += [15]
-#     periods += [30]
+#     periods += [5]
+    periods += [10]
+    periods += [15]
+    periods += [30]
     # Observations/Reanalysis
     datasets = []; resolutions = None
-    lLTM = False # also regrid the long-term mean climatologies 
+    lLTM = False # also average the long-term mean climatologies 
     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
-#     datasets += ['PRISM','GPCC']; periods = None
-#     datasets += ['PCIC']; periods = None
-#     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
-#     datasets += ['NARR']
+#     datasets += ['PCIC','PRISM','GPCC']; periods = None
+    datasets += ['CFSR']; resolutions = {'CFSR':'031'}
+    datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
 #     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
     datasets += ['CRU']
@@ -346,16 +345,27 @@ if __name__ == '__main__':
     varlist = None # process all variables
     periods = None # (5,10,15,) # climatology periods to process
     # Datasets
-    datasets = None # process all applicable
+    datasets = [] # process all applicable
+    datasets += ['CFSR']; resolutions = {'CFSR':'031'}
+    datasets += ['NARR']
+    # N.B.: processing 0.5 deg CRU & GPCC time-series at the same time, can crash the system
     resolutions = None # process all applicable
     lLTM = False # again, not necessary
     # CESM
     load3D = True # doesn't hurt... data is small
-    CESM_experiments = None
+    CESM_experiments = []
     CESM_filetypes = ('atm','lnd')    
     # WRF
-    WRF_experiments = None # process all WRF experiments
-    domains = (1,2,) # domains to be processed
+    WRF_experiments = [] # process all WRF experiments
+    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+    WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
+    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+    WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', ] # new standard runs (arb3)     
+    WRF_experiments += ['ctrl-1', 'ctrl-2050', 'ctrl-2100'] # new standard runs (arb3)
+    WRF_experiments += ['old-ctrl', 'old-ctrl-2050', 'old-ctrl-2100'] # new standard runs (arb3)
+    WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
+    domains = None # domains to be processed
     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
     # define shape data
     shape_name = 'shpavg'
