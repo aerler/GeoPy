@@ -102,19 +102,33 @@ def loadPCIC(name=dataset_name, period=None, grid=None, resolution=None, varlist
 
 # function to load station data
 def loadPCIC_Stn(name=dataset_name, period=None, station=None, resolution=None, varlist=None, 
-                 varatts=None, folder=avgfolder, filelist=None, lautoregrid=True):
-  ''' Get the pre-processed monthly PCIC PRISM climatology as a DatasetNetCDF. '''
+                 varatts=None, folder=avgfolder, filelist=None):
+  ''' Get the pre-processed monthly PCIC PRISM climatology at station locations as a DatasetNetCDF. '''
   # only the climatology is available
   if period is not None: 
     warn('Only the full climatology is currently available: setting \'period\' to None.')
     period = None
-  # load standardized climatology dataset with PRISM-specific parameters  
-  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, grid=None, 
-                             station=station, varlist=varlist, varatts=varatts, filepattern=avgfile, 
-                             filelist=filelist, lautoregrid=False, mode='climatology')
+  # load standardized climatology dataset with PCIC-specific parameters  
+  dataset = loadObservations(name=name, folder=folder, grid=None, station=station, shape=None, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, projection=None, 
+                             filelist=filelist, lautoregrid=False, period=period, mode='climatology')
   # return formatted dataset
   return dataset
 
+# function to load averaged data
+def loadPCIC_Shp(name=dataset_name, period=None, shape=None, resolution=None, varlist=None, 
+                 varatts=None, folder=avgfolder, filelist=None):
+  ''' Get the pre-processed monthly PCIC PRISM climatology averaged over regions as a DatasetNetCDF. '''
+  # only the climatology is available
+  if period is not None: 
+    warn('Only the full climatology is currently available: setting \'period\' to None.')
+    period = None
+  # load standardized climatology dataset with PCIC-specific parameters  
+  dataset = loadObservations(name=name, folder=folder, grid=None, station=None, shape=shape, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, projection=None, 
+                             filelist=filelist, lautoregrid=False, period=period, mode='climatology')
+  # return formatted dataset
+  return dataset
 
 
 ## Dataset API
@@ -134,12 +148,16 @@ loadLongTermMean = loadPCIC_LTM # climatology provided by publisher
 loadTimeSeries = None # time-series data
 loadClimatology = loadPCIC # pre-processed, standardized climatology
 loadStationClimatology = loadPCIC_Stn # climatologies without associated grid (e.g. stations or basins)
+loadShapeClimatology = loadPCIC_Shp
+
 
 if __name__ == '__main__':
     
-  mode = 'test_climatology'
+#   mode = 'test_climatology'
+  mode = 'test_point_climatology'
 #   mode = 'convert_climatology'
-  
+  pntset = 'shpavg' # 'ecprecip
+    
   # do some tests
   if mode == 'test_climatology':  
     
@@ -160,6 +178,17 @@ if __name__ == '__main__':
     pyl.imshow(np.flipud(dataset.datamask.getArray()[:,:])) 
     pyl.colorbar(); pyl.show(block=True)
 
+
+  elif mode == 'test_point_climatology':
+    
+    # load point climatology
+    print('')
+    if pntset in ('shpavg',): dataset = loadPCIC_Shp(shape=pntset)
+    else: dataset = loadPCIC_Stn(station=pntset)
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
     
   ## convert PCIC NetCDF files to proper climatology 
   elif mode == 'convert_climatology': 

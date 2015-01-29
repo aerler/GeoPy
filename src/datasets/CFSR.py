@@ -158,8 +158,9 @@ def loadCFSR(name=dataset_name, period=None, grid=None, resolution=None, varlist
              folder=avgfolder, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly CFSR climatology as a DatasetNetCDF. '''
   # load standardized climatology dataset with CFSR-specific parameters
-  dataset = loadObservations(name=name, folder=folder, projection=None, resolution=resolution, 
-                             period=period, grid=grid, varlist=varlist, varatts=varatts, filelist=filelist, 
+  dataset = loadObservations(name=name, folder=folder, projection=None, resolution=resolution,
+                             period=period, grid=grid, shape=None, station=None, 
+                             varlist=varlist, varatts=varatts, filelist=filelist, 
                              filepattern=avgfile, lautoregrid=lautoregrid, mode='climatology')
   # return formatted dataset
   return dataset
@@ -167,24 +168,48 @@ def loadCFSR(name=dataset_name, period=None, grid=None, resolution=None, varlist
 # function to load station climatologies
 def loadCFSR_Stn(name=dataset_name, period=None, station=None, resolution=None, varlist=None, varatts=None, 
                  folder=avgfolder, filelist=None, lautoregrid=True):
-  ''' Get the pre-processed monthly CFSR climatology as a DatasetNetCDF. '''
+  ''' Get the pre-processed monthly CFSR climatology at station locations as a DatasetNetCDF. '''
   grid, resolution = checkGridRes(None, resolution); del grid
   # load standardized climatology dataset with -specific parameters
-  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, station=station, 
+  dataset = loadObservations(name=name, folder=folder, period=period, station=station, shape=None, 
                              varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
-                             resolution=resolution, lautoregrid=False, mode='climatology')
+                             resolution=resolution, lautoregrid=False, projection=None, mode='climatology')
   # return formatted dataset
   return dataset
 
 # function to load station time-series
 def loadCFSR_StnTS(name=dataset_name, station=None, resolution=None, varlist=None, varatts=None, 
                    folder=avgfolder, filelist=None, lautoregrid=True):
-  ''' Get the pre-processed monthly CFSR climatology as a DatasetNetCDF. '''
+  ''' Get the pre-processed monthly CFSR time-series at station locations as a DatasetNetCDF. '''
   grid, resolution = checkGridRes(None, resolution); del grid
   # load standardized time-series dataset with -specific parameters
-  dataset = loadObservations(name=name, folder=folder, projection=None, period=None, station=station, 
+  dataset = loadObservations(name=name, folder=folder, period=None, station=station, shape=None,
                              varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
-                             resolution=resolution, lautoregrid=False, mode='time-series')
+                             resolution=resolution, lautoregrid=False, projection=None, mode='time-series')
+  # return formatted dataset
+  return dataset
+
+# function to load averaged climatologies
+def loadCFSR_Shp(name=dataset_name, period=None, shape=None, resolution=None, varlist=None, varatts=None, 
+                 folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly CFSR climatology averaged over regions as a DatasetNetCDF. '''
+  grid, resolution = checkGridRes(None, resolution); del grid
+  # load standardized climatology dataset with -specific parameters
+  dataset = loadObservations(name=name, folder=folder, period=period, station=None, shape=shape, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             resolution=resolution, lautoregrid=False, projection=None, mode='climatology')
+  # return formatted dataset
+  return dataset
+
+# function to load averaged time-series
+def loadCFSR_ShpTS(name=dataset_name, shape=None, resolution=None, varlist=None, varatts=None, 
+                   folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly CFSR time-series averaged over regions as a DatasetNetCDF. '''
+  grid, resolution = checkGridRes(None, resolution); del grid
+  # load standardized time-series dataset with -specific parameters
+  dataset = loadObservations(name=name, folder=folder, period=None, station=None, shape=shape,
+                             varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
+                             resolution=resolution, lautoregrid=False, projection=None, mode='time-series')
   # return formatted dataset
   return dataset
 
@@ -206,10 +231,12 @@ default_grid = CFSR_031_grid
 # grid_tag = {0.31:'031', 0.5:'05'} # tag used in climatology files
 # functions to access specific datasets
 loadLongTermMean = None # climatology provided by publisher
-loadTimeSeries = loadCFSR_TS # time-series data
 loadClimatology = loadCFSR # pre-processed, standardized climatology
+loadTimeSeries = loadCFSR_TS # time-series data
 loadStationClimatology = loadCFSR_Stn # climatologies without associated grid (e.g. stations or basins) 
 loadStationTimeSeries = loadCFSR_StnTS # time-series without associated grid (e.g. stations or basins)
+loadShapeClimatology = loadCFSR_Shp # climatologies without associated grid (e.g. provinces or basins) 
+loadShapeTimeSeries = loadCFSR_ShpTS # time-series without associated grid (e.g. provinces or basins)
 
 
 ## (ab)use main execution for quick test
@@ -217,17 +244,19 @@ if __name__ == '__main__':
   
 #   mode = 'test_climatology'
 #   mode = 'average_timeseries'
-  mode = 'test_timeseries'
-#   mode = 'test_station_timeseries'
+#   mode = 'test_timeseries'
+#   mode = 'test_point_climatology'
+  mode = 'test_point_timeseries'
   reses = ('031',) # for testing
 #   reses = ( '031','05',)
 #   period = (1979,1984)
 #   period = (1979,1989)
-#   period = (1979,1994)
+  period = (1979,1994)
 #   period = (1997,1998)
 #   period = (1979,2009)
-  period = (2010,2011) 
+#   period = (2010,2011) 
 #   grid = 'arb1_d01'
+  pntset = 'shpavg' # 'ecprecip'
   
   # generate averaged climatology
   for res in reses:    
@@ -257,21 +286,32 @@ if __name__ == '__main__':
       print(dataset.landmask)
       assert dataset.landmask.gdal
     
-              
-    elif mode == 'test_station_timeseries':
-    
+    elif mode == 'test_point_climatology':
+      
       # load station time-series file
       print('')
-      dataset = loadCFSR_StnTS(station='ectemp')
+      if pntset in ('shpavg',): dataset = loadCFSR_Shp(shape=pntset, period=period)
+      else: dataset = loadCFSR_Stn(station=pntset, period=period)
+      print(dataset)
+      print('')
+      print(dataset.time)
+      print(dataset.time.coord)
+  
+    elif mode == 'test_point_timeseries':
+      
+      # load station time-series file
+      print('')
+      if pntset in ('shpavg',): dataset = loadCFSR_ShpTS(shape=pntset)
+      else: dataset = loadCFSR_StnTS(station=pntset)
       print(dataset)
       print('')
       print(dataset.time)
       print(dataset.time.coord)
       assert dataset.time.coord[0] == 0 # Jan 1979
+      assert dataset.shape[0] == 1
 
-        
-    elif mode == 'average_timeseries':
-    
+                  
+    elif mode == 'average_timeseries':   
       
       # load source
       periodstr = '{0:4d}-{1:4d}'.format(*period)

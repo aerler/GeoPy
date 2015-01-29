@@ -78,15 +78,29 @@ def loadPRISM(name=dataset_name, period=None, grid=None, resolution=None, varlis
 
 def loadPRISM_Stn(name=dataset_name, period=None, station=None, resolution=None, varlist=None, 
               varatts=None, folder=avgfolder, filelist=None):
-  ''' Get the pre-processed monthly PRISM climatology as a DatasetNetCDF. '''
+  ''' Get the pre-processed monthly PRISM climatology at station locations as a DatasetNetCDF. '''
   # only the climatology is available
   if period is not None: 
     warn('Only the full climatology is currently available: setting \'period\' to None.')
     period = None
   # load standardized climatology dataset with PRISM-specific parameters  
-  dataset = loadObservations(name=name, folder=folder, period=period, grid=None, station=station, 
+  dataset = loadObservations(name=name, folder=folder, grid=None, station=station, shape=None, 
                              varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
-                             lautoregrid=False, mode='climatology')
+                             lautoregrid=False, period=period, mode='climatology')
+  # return formatted dataset
+  return dataset
+
+def loadPRISM_Shp(name=dataset_name, period=None, shape=None, resolution=None, varlist=None, 
+              varatts=None, folder=avgfolder, filelist=None):
+  ''' Get the pre-processed monthly PRISM climatology averaged over regions as a DatasetNetCDF. '''
+  # only the climatology is available
+  if period is not None: 
+    warn('Only the full climatology is currently available: setting \'period\' to None.')
+    period = None
+  # load standardized climatology dataset with PRISM-specific parameters  
+  dataset = loadObservations(name=name, folder=folder, grid=None, station=None, shape=shape, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             lautoregrid=False, period=period, mode='climatology')
   # return formatted dataset
   return dataset
 
@@ -110,6 +124,7 @@ loadLongTermMean = None # climatology provided by publisher
 loadTimeSeries = None # time-series data
 loadClimatology = loadPRISM # pre-processed, standardized climatology
 loadStationClimatology = loadPRISM_Stn
+loadShapeClimatology = loadPRISM_Shp
 
 ## Functions that handle access to PRISM ASCII files
 
@@ -153,13 +168,15 @@ def genCoord():
 
 if __name__ == '__main__':
     
-  mode = 'test_climatology'
+#   mode = 'test_climatology'
+  mode = 'test_point_climatology'
 #   mode = 'convert_ASCII'
+  pntset = 'shpavg' # 'ecprecip
   
   # do some tests
   if mode == 'test_climatology':  
     
-    # load NetCDF dataset
+    # load NetCDF dataset    
     dataset = loadPRISM(grid='arb2_d02')
 #     dataset = loadPRISM()
     print(dataset)
@@ -176,7 +193,19 @@ if __name__ == '__main__':
     pyl.imshow(np.flipud(dataset.datamask.getArray()[:,:])) 
     pyl.colorbar(); pyl.show(block=True)
 
+  
+  elif mode == 'test_point_climatology':
     
+    # load point climatology
+    print('')
+    if pntset in ('shpavg',): dataset = loadPRISM_Shp(shape=pntset)
+    else: dataset = loadPRISM_Stn(station=pntset)
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
+
+  
   ## convert ASCII files to NetCDF
   elif mode == 'convert_ASCII': 
     

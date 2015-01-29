@@ -149,30 +149,53 @@ def loadNARR(name=dataset_name, period=None, grid=None, resolution=None, varlist
   ''' Get the pre-processed monthly NARR climatology as a DatasetNetCDF. '''
   # load standardized climatology dataset with NARR-specific parameters
   dataset = loadObservations(name=name, folder=folder, projection=projection, resolution=resolution, 
-                             period=period, grid=grid, varlist=varlist, varatts=varatts, filelist=filelist, 
+                             period=period, grid=grid, station=None, shape=None,
+                             varlist=varlist, varatts=varatts, filelist=filelist, 
                              filepattern=avgfile, lautoregrid=lautoregrid, mode='climatology')
   # return formatted dataset
   return dataset
 
 # function to load station climatologies
-def loadNARR_Stn(name=dataset_name, period=None, station=None, resolution=None, varlist=None, varatts=None, 
+def loadNARR_Stn(name=dataset_name, period=None, station=None, varlist=None, varatts=None, 
                 folder=avgfolder, filelist=None, lautoregrid=True):
-  ''' Get the pre-processed monthly NARR climatology as a DatasetNetCDF. '''
+  ''' Get the pre-processed monthly NARR climatology at station locations as a DatasetNetCDF. '''
   # load standardized climatology dataset with NARR-specific parameters
-  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, station=station, 
+  dataset = loadObservations(name=name, folder=folder, period=period, station=station, shape=None, 
                              varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
-                             lautoregrid=False, mode='climatology')
+                             lautoregrid=False, projection=None, mode='climatology')
   # return formatted dataset
   return dataset
 
 # function to load station time-series
-def loadNARR_StnTS(name=dataset_name, station=None, resolution=None, varlist=None, varatts=None, 
+def loadNARR_StnTS(name=dataset_name, station=None, varlist=None, varatts=None, 
                   folder=avgfolder, filelist=None, lautoregrid=True):
-  ''' Get the pre-processed monthly NARR climatology as a DatasetNetCDF. '''
+  ''' Get the pre-processed monthly NARR time-series at station locations as a DatasetNetCDF. '''
   # load standardized time-series dataset with NARR-specific parameters
-  dataset = loadObservations(name=name, folder=folder, projection=None, period=None, station=station, 
+  dataset = loadObservations(name=name, folder=folder, period=None, station=station, shape=None, 
                              varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
-                             lautoregrid=False, mode='time-series')
+                             lautoregrid=False, projection=None, mode='time-series')
+  # return formatted dataset
+  return dataset
+
+# function to load averaged climatologies
+def loadNARR_Shp(name=dataset_name, period=None, shape=None, varlist=None, varatts=None, 
+                folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly NARR climatology averaged over regions as a DatasetNetCDF. '''
+  # load standardized climatology dataset with NARR-specific parameters
+  dataset = loadObservations(name=name, folder=folder, period=period, station=None, shape=shape, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             lautoregrid=False, projection=None, mode='climatology')
+  # return formatted dataset
+  return dataset
+
+# function to load average time-series
+def loadNARR_ShpTS(name=dataset_name, shape=None, varlist=None, varatts=None, 
+                  folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly NARR time-series averaged over regions as a DatasetNetCDF. '''
+  # load standardized time-series dataset with NARR-specific parameters
+  dataset = loadObservations(name=name, folder=folder, period=None, station=None, shape=shape, 
+                             varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
+                             lautoregrid=False, projection=None, mode='time-series')
   # return formatted dataset
   return dataset
 
@@ -194,27 +217,32 @@ default_grid = NARR_grid
 # grid_tag = {0.41:''} # no special name, since there is only one... 
 # functions to access specific datasets
 loadLongTermMean = loadNARR_LTM # climatology provided by publisher
-loadTimeSeries = loadNARR_TS # time-series data
 loadClimatology = loadNARR # pre-processed, standardized climatology
+loadTimeSeries = loadNARR_TS # time-series data
 loadStationClimatology = loadNARR_Stn # climatologies without associated grid (e.g. stations or basins) 
 loadStationTimeSeries = loadNARR_StnTS # time-series without associated grid (e.g. stations or basins)
+loadShapeClimatology = loadNARR_Shp # climatologies without associated grid (e.g. provinces or basins) 
+loadShapeTimeSeries = loadNARR_ShpTS # time-series without associated grid (e.g. provinces or basins)
+
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
     
   
-  mode = 'test_climatology'
-#   mode = 'average_timeseries'
+#   mode = 'test_climatology'
 #   mode = 'test_timeseries'
-#   mode = 'test_station_timeseries'
+#   mode = 'test_point_climatology'
+  mode = 'test_point_timeseries'
+#   mode = 'average_timeseries'
 #   mode = 'convert_climatology'
   grid = None
 #   grid = 'arb2_d02'
-  period = (1979,1984)
+#   period = (1979,1984)
 #   period = (1979,1989)
-#   period = (1979,1994)
+  period = (1979,1994)
 #   period = (1979,2009)
 #   period = (2010,2011)
+  pntset = 'shpavg' # 'ecprecip'
   
   if mode == 'test_climatology':
     
@@ -227,20 +255,7 @@ if __name__ == '__main__':
     print(dataset.geotransform)
     print('')
     print(grid_def[''].scale)
-              
-
-  elif mode == 'test_station_timeseries':
-    
-    # load station time-series file
-    print('')
-    dataset = loadNARR_StnTS(station='ectemp')
-    print(dataset)
-    print('')
-    print(dataset.time)
-    print(dataset.time.coord)
-    assert dataset.time.coord[0] == 0 # Jan 1979
-
-        
+                      
   elif mode == 'test_timeseries':
     
     
@@ -253,6 +268,30 @@ if __name__ == '__main__':
     print(dataset.time.coord)
     assert dataset.time.coord[0] == 0 # Jan 1979
               
+
+  elif mode == 'test_point_climatology':
+    
+    # load station time-series file
+    print('')
+    if pntset in ('shpavg',): dataset = loadNARR_Shp(shape=pntset, period=period)
+    else: dataset = loadNARR_Stn(station=pntset, period=period)
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
+
+  elif mode == 'test_point_timeseries':
+    
+    # load station time-series file
+    print('')
+    if pntset in ('shpavg',): dataset = loadNARR_ShpTS(shape=pntset)
+    else: dataset = loadNARR_StnTS(station=pntset)
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
+    assert dataset.time.coord[0] == 0 # Jan 1979
+
 
   elif mode == 'convert_climatology':      
     
