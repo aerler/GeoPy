@@ -222,7 +222,7 @@ class CentralProcessingUnit(object):
       masksum = mask.sum() 
       lfull = masksum == 0; shp_full.append( lfull )
       lempty = masksum == mask.size; shp_empty.append( lempty )
-      shape_masks.append( mask if lempty else None )
+      shape_masks.append( mask if not lempty else None )
       if lempty: shp_encl.append( False )
       else:
         shp_encl.append( np.all( mask[[0,-1],:] == True ) and np.all( mask[:,[0,-1]] == True ) )
