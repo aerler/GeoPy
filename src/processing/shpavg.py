@@ -283,7 +283,7 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    NP = 2 ; ldebug = False # for quick computations
+    NP = 1 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
     modes = ('time-series',) # 'climatology','time-series'
 #     modes = ('climatology',) # 'climatology','time-series'
@@ -307,7 +307,7 @@ if __name__ == '__main__':
 #     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
 #     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
-#     datasets += ['CRU']
+    datasets += ['CRU']
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
@@ -318,7 +318,7 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm'] # ,'lnd'
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-    WRF_experiments += ['max-ens-A']
+#     WRF_experiments += ['max-ens-A']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...

@@ -702,7 +702,7 @@ class Variable(object):
     if lslices: return newvar, slcs
     else: return newvar
   
-  def load(self, data=None, mask=None, fillValue=None, **axes):
+  def load(self, data=None, mask=None, fillValue=None, ltypecast=False, **axes):
     ''' Method to attach numpy data array to variable instance (also used in constructor). '''
     # optional slicing
     if any([self.hasAxis(ax) for ax in axes.iterkeys()]):
@@ -716,9 +716,12 @@ class Variable(object):
     else:   
       # check types   
       if not isinstance(data,np.ndarray): raise TypeError, 'The data argument must be a numpy array!'
-      if self.dtype is not None and not np.issubdtype(data.dtype, self.dtype):
-        raise DataError, "Dtypes of Variable and array are inconsistent."
-      else: self.dtype = data.dtype
+      if self.dtype is None: self.dtype = data.dtype
+      elif data.dtype == self.dtype: pass
+      elif np.issubdtype(data.dtype, self.dtype): data = data.astype(self.dtype) 
+      else: 
+        if ltypecast: data = data.astype(self.dtype)
+        else: raise DataError, "Dtypes of Variable and array are inconsistent."
       # handle/apply mask
       if mask: data = ma.array(data, mask=mask) 
       if isinstance(data,ma.MaskedArray): # figure out fill value for masked array

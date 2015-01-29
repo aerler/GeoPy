@@ -473,9 +473,10 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   elif mode.lower() in ('time-series','timeseries'): # concatenated time-series files
     lts = True; lclim = False; period = None; periodstr = None # to indicate time-series (but for safety, the input must be more explicit)
     if lautoregrid is None: lautoregrid = False # this can take very long!
+  # figure out station and shape options
   if station and shape: raise ArgumentError
   elif station or shape: 
-    if grid is not None: raise NotImplementedError, 'Currently CESM station data can only be loaded from the native grid.'
+    if grid is not None: raise NotImplementedError, 'Currently WRF station data can only be loaded from the native grid.'
     if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.'   
     lstation = bool(station); lshape = bool(shape)
   else:
@@ -609,6 +610,11 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
         if t0 != 1: 
           dataset.time.coord -= ( t0 - 1 )
           dataset.time.offset -= ( t0 - 1 )
+      # correct ordinal number of shape (should start at 1, not 0)
+    if lshape:
+      if dataset.hasAxis('shapes'): raise AxisError, "Axis 'shapes' should be renamed to 'shape'!"
+      if not dataset.hasAxis('shape'): raise AxisError
+      if dataset.shape.coord[0] == 0: dataset.shape.coord += 1
     # add constants to dataset
     if llconst:
       for var in const: 
@@ -727,10 +733,12 @@ grid_res = {'d02':0.13,'d01':3.82} # approximate grid resolution at 45 degrees l
 default_grid = None 
 # functions to access specific datasets
 loadLongTermMean = None # WRF doesn't have that...
-loadTimeSeries = loadWRF_TS # time-series data
-loadStationTimeSeries = loadWRF_StnTS # time-series data at stations
 loadClimatology = loadWRF # pre-processed, standardized climatology
+loadTimeSeries = loadWRF_TS # time-series data
 loadStationClimatology = loadWRF_Stn # pre-processed, standardized climatology at stations
+loadStationTimeSeries = loadWRF_StnTS # time-series data at stations
+loadShapeClimatology = loadWRF_Shp # climatologies without associated grid (e.g. provinces or basins) 
+loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. provinces or basins)
 
 
 ## (ab)use main execution for quick test

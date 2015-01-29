@@ -169,6 +169,18 @@ def loadGPCC_Stn(name=dataset_name, period=None, station=None, resolution=None, 
   # return formatted dataset
   return dataset
 
+# function to load station time-series
+def loadGPCC_StnTS(name=dataset_name, station=None, resolution=None, varlist=None, varatts=None, 
+                  folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly GPCC time-series as a DatasetNetCDF at station locations. '''
+  grid, resolution = checkGridRes(None, resolution, period=None, lclim=False); del grid
+  # load standardized time-series dataset with GPCC-specific parameters
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=None, station=station, 
+                             varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
+                             resolution=resolution, lautoregrid=False, mode='time-series')
+  # return formatted dataset
+  return dataset
+
 # function to load regionally averaged climatologies
 def loadGPCC_Shp(name=dataset_name, period=None, shape=None, resolution=None, varlist=None, varatts=None, 
                 folder=avgfolder, filelist=None, lautoregrid=True):
@@ -181,15 +193,15 @@ def loadGPCC_Shp(name=dataset_name, period=None, shape=None, resolution=None, va
   # return formatted dataset
   return dataset
 
-# function to load station time-series
-def loadGPCC_StnTS(name=dataset_name, station=None, resolution=None, varlist=None, varatts=None, 
+# function to load regional/shape time-series
+def loadGPCC_ShpTS(name=dataset_name, shape=None, resolution=None, varlist=None, varatts=None, 
                   folder=avgfolder, filelist=None, lautoregrid=True):
-  ''' Get the pre-processed monthly GPCC climatology as a DatasetNetCDF. '''
+  ''' Get the pre-processed monthly GPCC time-series as a DatasetNetCDF averaged over regions. '''
   grid, resolution = checkGridRes(None, resolution, period=None, lclim=False); del grid
   # load standardized time-series dataset with GPCC-specific parameters
-  dataset = loadObservations(name=name, folder=folder, projection=None, period=None, station=station, 
+  dataset = loadObservations(name=name, folder=folder, projection=None, shape=shape, station=None, 
                              varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
-                             resolution=resolution, lautoregrid=False, mode='time-series')
+                             resolution=resolution, lautoregrid=False, mode='time-series', period=None)
   # return formatted dataset
   return dataset
 
@@ -215,6 +227,8 @@ loadTimeSeries = loadGPCC_TS # time-series data
 loadClimatology = loadGPCC # pre-processed, standardized climatology
 loadStationClimatology = loadGPCC_Stn # climatologies without associated grid (e.g. stations or basins) 
 loadStationTimeSeries = loadGPCC_StnTS # time-series without associated grid (e.g. stations or basins)
+loadShapeClimatology = loadGPCC_Shp # climatologies without associated grid (e.g. provinces or basins) 
+loadShapeTimeSeries = loadGPCC_ShpTS # time-series without associated grid (e.g. provinces or basins)
 
 
 ## (ab)use main execution for quick test
@@ -222,31 +236,32 @@ if __name__ == '__main__':
   
 #   mode = 'test_climatology'; reses = ('025',); period = None
 #   mode = 'test_timeseries'; reses = ('25',)
-#   mode = 'test_station_timeseries'; reses = ('05',)  
+#   mode = 'test_point_climatology'; reses = ('025',); period = None
+  mode = 'test_point_timeseries'; reses = ('05',)  
 #   mode = 'convert_climatology'; reses = ('25',); period = None
 #   reses = ('025','05', '10', '25'); period = None  
-  mode = 'average_timeseries'; reses = ('25',) # for testing
+#   mode = 'average_timeseries'; reses = ('25',) # for testing
   reses = ('05', '10', '25')
+#   reses = ('25',)
 #   period = (1979,1982)
 #   period = (1979,1984)
 #   period = (1979,1989)
-#   period = (1979,1994)
+  period = (1979,1994)
 #   period = (1984,1994)
 #   period = (1989,1994)
-  period = (1979,2009)
+#   period = (1979,2009)
 #   period = (1949,2009)
 #   period = (1997,1998)
 #   period = (1979,1980)
 #   period = (2010,2011)
   grid = 'GPCC' # 'arb2_d02'
-#   grid = 'arb2_d02'
+  pntset = 'shpavg' # 'ecprecip'
   
   # generate averaged climatology
   for res in reses:    
     
     if mode == 'test_climatology':
-      
-      
+            
       # load averaged climatology file
       print('')
       dataset = loadGPCC(grid=grid,resolution=res,period=period)
@@ -261,22 +276,8 @@ if __name__ == '__main__':
       print dataset.time.atts
       print
       print dataset.time.data_array
-
           
-    elif mode == 'test_station_timeseries':
-    
-      # load station time-series file
-      print('')
-      dataset = loadGPCC_StnTS(station='ectemp')
-      print(dataset)
-      print('')
-      print(dataset.time)
-      print(dataset.time.coord)
-      assert dataset.time.coord[78*12] == 0 # Jan 1979
-
-        
     elif mode == 'test_timeseries':
-      
       
       # load time-series file
       print('')
@@ -293,6 +294,37 @@ if __name__ == '__main__':
 #       print(dataset.precip.masked)
       
           
+    if mode == 'test_point_climatology':
+            
+      # load averaged climatology file
+      print('')
+      if pntset in ('shpavg',): dataset = loadGPCC_Shp(shape=pntset, resolution=res, period=period)
+      else: dataset = loadGPCC_Stn(station=pntset, resolution=res, period=period)
+      print(dataset)
+      print('')
+      print(dataset.precip.mean())
+      print(dataset.precip.masked)
+      
+      # print time coordinate
+      print
+      print dataset.time.atts
+      print
+      print dataset.time.data_array
+
+    elif mode == 'test_point_timeseries':
+    
+      # load station time-series file
+      print('') 
+      if pntset in ('shpavg',): dataset = loadGPCC_ShpTS(shape=pntset, resolution=res)
+      else: dataset = loadGPCC_StnTS(station=pntset, resolution=res)
+      print(dataset)
+      print('')
+      print(dataset.time)
+      print(dataset.time.coord)
+      assert dataset.time.coord[78*12] == 0 # Jan 1979
+      assert dataset.shape[0] == 1
+
+        
     elif mode == 'convert_climatology':      
       
       

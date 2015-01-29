@@ -284,9 +284,9 @@ def loadObs_StnTS(name=None, folder=None, resolution=None, varlist=None, station
                           lautoregrid=False, mode='time-series')
   
 # universal load function that will be imported by datasets
-def loadObservations(name=None, folder=None, resolution=None, period=None, grid=None, station=None, 
-                     varlist=None, varatts=None, filepattern=None, filelist=None, projection=None, 
-                     geotransform=None, axes=None, lautoregrid=None, mode='climatology'):
+def loadObservations(name=None, folder=None, period=None, grid=None, station=None, shape=None,  
+                     varlist=None, varatts=None, filepattern=None, filelist=None, resolution=None, 
+                     projection=None, geotransform=None, axes=None, lautoregrid=None, mode='climatology'):
   ''' A function to load standardized observational datasets. '''
   # prepare input
   if mode.lower() == 'climatology': # post-processed climatology files
@@ -301,13 +301,15 @@ def loadObservations(name=None, folder=None, resolution=None, period=None, grid=
   elif mode.lower() in ('time-series','timeseries'): # concatenated time-series files
     period = None # to indicate time-series (but for safety, the input must be more explicit)
     if lautoregrid is None: lautoregrid = False # this can take very long!
-  if station is None: 
-    lstation = False
-  else: 
-    lstation = True
-    if grid is not None: raise NotImplementedError, 'Currently WRF station data can only be loaded from the native grid.'
-    grid = station
-    if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.' 
+  # figure out station and shape options
+  if station and shape: raise ArgumentError
+  elif station or shape: 
+    if grid is not None: raise NotImplementedError, 'Currently observational station data can only be loaded from the native grid.'
+    if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.'   
+    lstation = bool(station); lshape = bool(shape)
+    grid = station if lstation else shape
+  else:
+    lstation = False; lshape = False
   # varlist (varlist = None means all variables)
   if varatts is None: varatts = default_varatts.copy()
   if varlist is not None: varlist = translateVarNames(varlist, varatts)
@@ -330,8 +332,13 @@ def loadObservations(name=None, folder=None, resolution=None, period=None, grid=
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=[filename], varlist=varlist, varatts=varatts, 
                           axes=axes, multifile=False, ncformat='NETCDF4')
-  # figure out grid
-  if not lstation:
+  # correct ordinal number of shape (should start at 1, not 0)
+  if lshape:
+    if dataset.hasAxis('shapes'): raise AxisError, "Axis 'shapes' should be renamed to 'shape'!"
+    if not dataset.hasAxis('shape'): raise AxisError
+    if dataset.shape.coord[0] == 0: dataset.shape.coord += 1
+# figure out grid
+  if not lstation and not lshape:
     if grid is None or grid == name:
       dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform, gridfolder=grid_folder)
     elif isinstance(grid,basestring): # load from pickle file

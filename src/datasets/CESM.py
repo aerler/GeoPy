@@ -607,10 +607,12 @@ grid_res = {'':1.} # approximate grid resolution at 45 degrees latitude
 default_grid = None 
 # functions to access specific datasets
 loadLongTermMean = None # WRF doesn't have that...
-loadTimeSeries = loadCESM_TS # time-series data
-loadStationTimeSeries = loadCESM_StnTS # time-series data at stations
 loadClimatology = loadCESM # pre-processed, standardized climatology
+loadTimeSeries = loadCESM_TS # time-series data
 loadStationClimatology = loadCESM_Stn # pre-processed, standardized climatology at stations
+loadStationTimeSeries = loadCESM_StnTS # time-series data at stations
+loadShapeClimatology = loadCESM_Shp # climatologies without associated grid (e.g. provinces or basins) 
+loadShapeTimeSeries = loadCESM_ShpTS # time-series without associated grid (e.g. provinces or basins)
 
 
 ## (ab)use main execution for quick test

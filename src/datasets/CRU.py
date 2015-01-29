@@ -45,6 +45,10 @@ varatts = dict(tmp = dict(name='T2', units='K', offset=273.15), # 2m average tem
                # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
                lon  = dict(name='lon', units='deg E'), # geographic longitude field
                lat  = dict(name='lat', units='deg N')) # geographic latitude field
+# enforce single precision (all double requires too much memory)
+for var,att in varatts.iteritems():
+  if var not in ('time',): att['dtype'] = np.dtype('float32')
+  # N.B.: time is float in the original, but int in the pre-procesed files... just leave it alone
 
 # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
 tsvaratts = varatts
@@ -111,9 +115,9 @@ def loadCRU_Stn(name=dataset_name, period=None, station=None, resolution=None, v
                 folder=avgfolder, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly CRU climatology as a DatasetNetCDF. '''
   # load standardized climatology dataset with CRU-specific parameters
-  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, station=station, 
+  dataset = loadObservations(name=name, folder=folder, period=period, station=station, shape=None, 
                              varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
-                             lautoregrid=False, mode='climatology')
+                             lautoregrid=False, projection=None, mode='climatology')
   # return formatted dataset
   return dataset
 
@@ -122,9 +126,30 @@ def loadCRU_StnTS(name=dataset_name, station=None, resolution=None, varlist=None
                   folder=avgfolder, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly CRU climatology as a DatasetNetCDF. '''
   # load standardized time-series dataset with CRU-specific parameters
-  dataset = loadObservations(name=name, folder=folder, projection=None, period=None, station=station, 
+  dataset = loadObservations(name=name, folder=folder, period=None, station=station, shape=None, 
                              varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
-                             lautoregrid=False, mode='time-series')
+                             lautoregrid=False, projection=None, mode='time-series')
+  # return formatted dataset
+  return dataset
+
+# function to load regionally averaged climatologies
+def loadCRU_Shp(name=dataset_name, period=None, shape=None, varlist=None, varatts=None, 
+                folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly CRU climatology as a DatasetNetCDF averaged over regions. '''
+  # load standardized climatology dataset with CRU-specific parameters
+  dataset = loadObservations(name=name, folder=folder, period=period, station=None, shape=shape,  
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             lautoregrid=False, projection=None, mode='climatology')
+  # return formatted dataset
+  return dataset
+
+# function to load regional/shape time-series
+def loadCRU_ShpTS(name=dataset_name, shape=None, varlist=None, varatts=None, 
+                  folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly CRU time-series as a DatasetNetCDF averaged over regions. '''
+  dataset = loadObservations(name=name, folder=folder, period=None, station=None, shape=shape, 
+                             varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
+                             lautoregrid=False, projection=None, mode='time-series')
   # return formatted dataset
   return dataset
 
@@ -148,28 +173,33 @@ default_grid = CRU_grid
 loadLongTermMean = None # climatology provided by publisher
 loadTimeSeries = loadCRU_TS # time-series data
 loadClimatology = loadCRU # pre-processed, standardized climatology
-loadStationClimatology = loadCRU_Stn # climatologies without associated grid (e.g. stations or basins) 
-loadStationTimeSeries = loadCRU_StnTS # time-series without associated grid (e.g. stations or basins)
+loadStationClimatology = loadCRU_Stn # climatologies without associated grid (e.g. stations) 
+loadStationTimeSeries = loadCRU_StnTS # time-series without associated grid (e.g. stations)
+loadShapeClimatology = loadCRU_Shp # climatologies without associated grid (e.g. provinces or basins) 
+loadShapeTimeSeries = loadCRU_ShpTS # time-series without associated grid (e.g. provinces or basins)
 
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
     
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
-#   mode = 'test_station_timeseries'
-  mode = 'average_timeseries'
-  period = (1971,2001)
+  mode = 'test_point_climatology'
+#   mode = 'test_point_timeseries'
+#   mode = 'average_timeseries'
+#   period = (1971,2001)
 #   period = (1979,2009)
 #   period = (1949,2009)
 #   period = (1979,1982)
 #   period = (1979,1984)
 #   period = (1979,1989)
-#   period = (1979,1994)
+  period = (1979,1994)
 #   period = (1984,1994)
 #   period = (1989,1994)
 #   period = (1979,1980)
 #   period = (1997,1998)
 #   period = (2010,2011)
+  pntset = 'shpavg' # 'ecprecip'
+
 
   if mode == 'test_climatology':
     
@@ -183,20 +213,7 @@ if __name__ == '__main__':
     stnds = loadCRU_Stn(station='ecprecip', period=period)
     print(stnds)
     print('')
-    
-        
-  elif mode == 'test_station_timeseries':
-    
-    # load station time-series file
-    print('')
-    dataset = loadCRU_StnTS(station='ectemp')
-    print(dataset)
-    print('')
-    print(dataset.time)
-    print(dataset.time.coord)
-    assert dataset.time.coord[78*12] == 0 # Jan 1979
-
-        
+            
   elif mode == 'test_timeseries':
     
     # load original time-series file
@@ -207,6 +224,30 @@ if __name__ == '__main__':
     print(dataset.time)
     print(dataset.time.coord)
     print(dataset.time.coord[78*12])
+
+
+  elif mode == 'test_point_climatology':
+    
+    # load station time-series file
+    print('')
+    if pntset in ('shpavg',): dataset = loadCRU_Shp(shape=pntset, period=period) 
+    else: dataset = loadCRU_Stn(station=pntset, period=period)
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
+        
+  elif mode == 'test_point_timeseries':
+    
+    # load station time-series file
+    print('')
+    if pntset in ('shpavg',): dataset = loadCRU_ShpTS(shape=pntset)
+    else: dataset = loadCRU_StnTS(station=pntset)
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
+    assert dataset.time.coord[78*12] == 0 # Jan 1979
 
         
   elif mode == 'average_timeseries':

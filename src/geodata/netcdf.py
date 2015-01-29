@@ -127,6 +127,7 @@ class VarNC(Variable):
         strlen = ncvar.shape[-1] # last dimension
       elif not np.issubdtype(ncvar.dtype,dtype):
         if 'scale_factor' not in ncvar.ncattrs(): # data is not being scaled in NetCDF module
+          print ncvar
           raise DataError, "NetCDF data dtype does not match Variable dtype (ncvar.dtype={:s})".format(ncvar.dtype)
     # read actions
     if 'r' in mode: 
