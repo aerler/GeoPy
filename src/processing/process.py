@@ -200,7 +200,7 @@ class CentralProcessingUnit(object):
     else:
       # creat shape axis, if not supplied
       shpatts = dict(name='shape', long_name='Ordinal Number of Shape', units='#')
-      shpax = Axis(coord=np.arange(len(shape_dict)), atts=shpatts)
+      shpax = Axis(coord=np.arange(1,len(shape_dict)+1), atts=shpatts) # starting at 1
     assert isinstance(xlon,Axis) and isinstance(ylat,Axis) and isinstance(shpax,Axis)
     # prepare target dataset
     # N.B.: attributes should already be set in target dataset (by caller module)

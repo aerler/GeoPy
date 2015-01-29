@@ -160,12 +160,24 @@ def loadGPCC(name=dataset_name, resolution=None, period=None, grid=None, varlist
 # function to load station climatologies
 def loadGPCC_Stn(name=dataset_name, period=None, station=None, resolution=None, varlist=None, varatts=None, 
                 folder=avgfolder, filelist=None, lautoregrid=True):
-  ''' Get the pre-processed monthly GPCC climatology as a DatasetNetCDF. '''
+  ''' Get the pre-processed monthly GPCC climatology as a DatasetNetCDF at station locations. '''
   grid, resolution = checkGridRes(None, resolution, period=period, lclim=True); del grid
   # load standardized climatology dataset with GPCC-specific parameters
   dataset = loadObservations(name=name, folder=folder, projection=None, period=period, station=station, 
                              varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
                              resolution=resolution, lautoregrid=False, mode='climatology')
+  # return formatted dataset
+  return dataset
+
+# function to load regionally averaged climatologies
+def loadGPCC_Shp(name=dataset_name, period=None, shape=None, resolution=None, varlist=None, varatts=None, 
+                folder=avgfolder, filelist=None, lautoregrid=True):
+  ''' Get the pre-processed monthly GPCC climatology as a DatasetNetCDF averaged over regions. '''
+  grid, resolution = checkGridRes(None, resolution, period=period, lclim=True); del grid
+  # load standardized climatology dataset with GPCC-specific parameters
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, shape=shape, 
+                             station=None, varlist=varlist, varatts=varatts, filepattern=avgfile, 
+                             filelist=filelist, resolution=resolution, lautoregrid=False, mode='climatology')
   # return formatted dataset
   return dataset
 

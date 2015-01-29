@@ -321,6 +321,15 @@ def loadCESM_StnTS(experiment=None, name=None, station=None, filetypes=None, var
                       translateVars=translateVars, lautoregrid=False, load3D=load3D, 
                       ignore_list=ignore_list, mode='time-series', lcheckExp=lcheckExp)
 
+# Station Time-Series (monthly)
+def loadCESM_ShpTS(experiment=None, name=None, shape=None, filetypes=None, varlist=None, varatts=None,  
+                   translateVars=None, load3D=False, ignore_list=None, lcheckExp=True, lreplaceTime=True):
+  ''' Get a properly formatted CESM dataset with a monthly time-series averaged over regions. '''
+  return loadCESM_All(experiment=experiment, name=name, grid=None, period=None, shape=shape, 
+                      filetypes=filetypes, varlist=varlist, varatts=varatts, lreplaceTime=lreplaceTime, 
+                      translateVars=translateVars, lautoregrid=False, load3D=load3D, station=None, 
+                      ignore_list=ignore_list, mode='time-series', lcheckExp=lcheckExp)
+
 # Time-Series (monthly)
 def loadCESM_TS(experiment=None, name=None, grid=None, filetypes=None, varlist=None, varatts=None,  
                 translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, lcheckExp=True,
@@ -331,7 +340,7 @@ def loadCESM_TS(experiment=None, name=None, grid=None, filetypes=None, varlist=N
                       lautoregrid=lautoregrid, load3D=load3D, ignore_list=ignore_list, mode='time-series', 
                       lcheckExp=lcheckExp, lreplaceTime=lreplaceTime)
 
-# Station Time-Series (monthly)
+# Station Climatologies (monthly)
 def loadCESM_Stn(experiment=None, name=None, station=None, period=None, filetypes=None, varlist=None, 
                  varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, 
                  lcheckExp=True):
@@ -340,6 +349,16 @@ def loadCESM_Stn(experiment=None, name=None, station=None, period=None, filetype
                       filetypes=filetypes, varlist=varlist, varatts=varatts, lreplaceTime=False, 
                       translateVars=translateVars, lautoregrid=lautoregrid, load3D=load3D, 
                       ignore_list=ignore_list, mode='climatology', lcheckExp=lcheckExp)
+
+# Regional Climatologies (monthly)
+def loadCESM_Shp(experiment=None, name=None, shape=None, period=None, filetypes=None, varlist=None, 
+                 varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, 
+                 lcheckExp=True):
+  ''' Get a properly formatted CESM dataset with the monthly climatology averaged over regions. '''
+  return loadCESM_All(experiment=experiment, name=name, grid=None, period=period, station=None, 
+                      shape=shape, filetypes=filetypes, varlist=varlist, varatts=varatts, 
+                      lreplaceTime=False, translateVars=translateVars, lautoregrid=lautoregrid, 
+                      load3D=load3D, ignore_list=ignore_list, mode='climatology', lcheckExp=lcheckExp)
 
 # load minimally pre-processed CESM climatology files 
 def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, 
@@ -384,14 +403,14 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
     folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='diag', lcheckExp=lcheckExp)
     raise NotImplementedError, "Loading AMWG diagnostic files is not supported yet."
   else: raise NotImplementedError,"Unsupported mode: '{:s}'".format(mode)  
-  if station and shape: 
-    raise ArgumentError
+  if station and shape: raise ArgumentError
   elif station or shape: 
     if grid is not None: raise NotImplementedError, 'Currently CESM station data can only be loaded from the native grid.'
     if lcvdp: raise NotImplementedError, 'CVDP data is not available as station data.'
     if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.'   
-    lstation = bool(station)
-    lshape = bool(shape)
+    lstation = bool(station); lshape = bool(shape)
+  else:
+    lstation = False; lshape = False
   # period  
   if isinstance(period,(int,np.integer)):
     if not isinstance(experiment,Exp): raise DatasetError, 'Integer periods are only supported for registered datasets.'
@@ -489,6 +508,11 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
       atts = dict(long_name='years since 1979-01')
       yearAxis = Axis(name='year', units='year', coord=np.arange(ts,te,1, dtype='int16'), atts=atts)
       dataset.replaceAxis(dataset.year, yearAxis, asNC=False, deepcopy=False)
+  # correct ordinal number of shape (should start at 1, not 0)
+  if lshape:
+    if dataset.hasAxis('shapes'): raise AxisError, "Axis 'shapes' should be renamed to 'shape'!"
+    if not dataset.hasAxis('shape'): raise AxisError
+    if dataset.shape.coord[0] == 0: dataset.shape.coord += 1
   # check
   if len(dataset) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
   # add projection, if applicable
@@ -594,20 +618,21 @@ if __name__ == '__main__':
   
   # set mode/parameters
 #   mode = 'test_climatology'
-#   mode = 'test_station_climatology'
 #   mode = 'test_timeseries'
-#   mode = 'test_station_timeseries'
 #   mode = 'test_ensemble'
-  mode = 'test_station_ensemble'
+#   mode = 'test_point_climatology'
+  mode = 'test_point_timeseries'
+#   mode = 'test_point_ensemble'
 #   mode = 'test_cvdp'
 #   mode = 'pickle_grid'
 #     mode = 'shift_lon'
 #     experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     experiments += ['Ctrl-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
   experiments = ('Ctrl-1-2050',)
-  periods = (15,)    
+  periods = (15,)
   filetypes = ('atm',) # ['atm','lnd','ice']
   grids = ('cesm1x1',)*len(experiments) # grb1_d01
+  pntset = 'shpavg' # 'ecprecip'
 
   # pickle grid definition
   if mode == 'pickle_grid':
@@ -641,29 +666,6 @@ if __name__ == '__main__':
       print(griddef)
       print('')
       
-  # load station climatology file
-  elif mode == 'test_station_climatology':
-    
-    print('')
-    dataset = loadCESM_Stn(experiment='Ctrl-1', station='ecprecip', filetypes=['atm'], period=(1979,1984))
-    print('')
-    print(dataset)
-    print('')
-    print(dataset.station)
-    print(dataset.station.coord)
-    assert dataset.station.coord[-1] == len(dataset.station)  # this is a global model!
-
-  # load station time-series file
-  elif mode == 'test_station_timeseries':
-    
-    print('')
-    dataset = loadCESM_StnTS(experiment='Ctrl-1-2100', station='ecprecip', filetypes=['atm'])
-    print('')
-    print(dataset)
-    print('')
-    print(dataset.time)
-    print(dataset.time.coord)
-    
   # load ensemble "time-series"
   elif mode == 'test_ensemble':
     
@@ -676,11 +678,48 @@ if __name__ == '__main__':
     print(dataset.year)
     print(dataset.year.coord)
   
-  # load station ensemble "time-series"
-  elif mode == 'test_station_ensemble':
+  # load station climatology file
+  elif mode == 'test_point_climatology':
     
     print('')
-    dataset = loadCESM_StnEns(ensemble='Ens', station='ecprecip', filetypes=['atm'])
+    if pntset in ('shpavg',):
+      dataset = loadCESM_Shp(experiment='Ctrl-1', shape=pntset, filetypes=['atm'], period=(1979,1994))
+      print('')
+      print(dataset)
+      print('')
+      print(dataset.shape)
+      print(dataset.shape.coord)
+      assert dataset.shape.coord[-1] == len(dataset.shape)  # this is a global model!    
+    else:
+      dataset = loadCESM_Stn(experiment='Ctrl-1', station=pntset, filetypes=['atm'], period=(1979,1994))
+      print('')
+      print(dataset)
+      print('')
+      print(dataset.station)
+      print(dataset.station.coord)
+      assert dataset.station.coord[-1] == len(dataset.station)  # this is a global model!
+    
+  # load station time-series file
+  elif mode == 'test_point_timeseries':    
+    print('')
+    if pntset in ('shpavg',):
+      dataset = loadCESM_ShpTS(experiment='Ctrl-1', shape=pntset, filetypes=['atm'])
+    else:
+      dataset = loadCESM_StnTS(experiment='Ctrl-1-2100', station=pntset, filetypes=['atm'])
+    print('')
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
+    
+  # load station ensemble "time-series"
+  elif mode == 'test_point_ensemble':
+    
+    print('')
+    if pntset in ('shpavg',):
+      dataset = loadCESM_ShpEns(ensemble='Ens', shape=pntset, filetypes=['atm'])
+    else:
+      dataset = loadCESM_StnEns(ensemble='Ens', station=pntset, filetypes=['atm'])
     print('')
     print(dataset)
     print('')
