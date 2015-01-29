@@ -533,7 +533,7 @@ def loadDataset(name=None, station=None, mode='climatology', **kwargs):
 
 
 # function to extract common points that meet a specific criterion from a list of datasets
-def selectCoords(datasets, axis, testFct=None, imaster=None, linplace=True, lall=False):
+def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, lall=False):
   ''' Extract common points that meet a specific criterion from a list of datasets. 
       The test function has to accept the following input: index, dataset, axis'''
   # check input
@@ -594,28 +594,46 @@ def selectCoords(datasets, axis, testFct=None, imaster=None, linplace=True, lall
 
 # a function to load station data
 @BatchLoad
-def loadStationEnsemble(names=None, varlist=None, prov=None, season=None, mode='max', 
-                        station=None, constraints=None, filetypes=None, domain=None):
-  from datasets.EC import selectStations
-  stnmeta = ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon',] # necessary to select stations
+def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregate=None, season=None, 
+                   region=None, station=None, constraints=None, filetypes=None, domain=None, **kwargs):
+  ''' a convenience function to load an enseble of time-series, based on certain criteria;
+      it works with either stations or regions '''
   # prepare ensemble
-  variables = stnmeta + varlist
-  stnens = Ensemble(name='stations', title='EC Stations', basetype='Dataset')
+  if varlist is not None:
+    varlist = list(varlist)
+    if station:
+      varlist += ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon',] # necessary to select stations
+    if region:
+      varlist += ['shp_name', 'shp_long_name', 'shp_type',] # possible necessary to select other regions    
+  stnens = Ensemble(name=name, title=title, basetype='Dataset')
   # load ensemble WRF data
   for name in names:
-    stnens += loadStnTS(name=name, station=station, varlist=variables, filetypes=filetypes, domains=domain)
+    stnens += loadDataset(name=name, station=station, region=region, varlist=varlist, 
+                          mode='time-series', filetypes=filetypes, domains=domain)
   # select and load data
-  if constraints is None: 
-    constraints = dict(min_len=50, lat=(45,55), max_zerr=300,) #lon=(-130,-110),
-  stnens = selectStations(stnens, prov=prov, stnaxis='station', imaster=None, linplace=False, lall=False, **constraints)
-  # extract seasonal values/extrema
-  if mode.lower() == 'mean': stnens = stnens.seasonalMean(season=season, taxis='time')
-  elif mode.lower() == 'sum': stnens = stnens.seasonalSum(season=season, taxis='time')
-  elif mode.lower() == 'std': stnens = stnens.seasonalStd(season=season, taxis='time')
-  elif mode.lower() == 'var': stnens = stnens.seasonalVar(season=season, taxis='time')
-  elif mode.lower() == 'max': stnens = stnens.seasonalMax(season=season, taxis='time')
-  elif mode.lower() == 'min': stnens = stnens.seasonalMin(season=season, taxis='time')
-  else: raise NotImplementedError
+  if station and constraints:
+    from datasets.EC import selectStations
+#     if constraints is None: 
+#       constraints = dict(min_len=50, lat=(45,55), max_zerr=300,) #lon=(-130,-110),
+    stnens = selectStations(stnens, stnaxis='station', imaster=None, linplace=False, lall=False, **constraints)
+  # extract seasonal/climatological values/extrema
+  if aggregate:
+    if season is not None:
+      if   aggregate.lower() == 'mean': stnens = stnens.seasonalMean(season=season, taxis='time', **kwargs)
+      elif aggregate.lower() == 'sum': stnens = stnens.seasonalSum(season=season, taxis='time', **kwargs)
+      elif aggregate.lower() == 'std': stnens = stnens.seasonalStd(season=season, taxis='time', **kwargs)
+      elif aggregate.lower() == 'var': stnens = stnens.seasonalVar(season=season, taxis='time', **kwargs)
+      elif aggregate.lower() == 'max': stnens = stnens.seasonalMax(season=season, taxis='time', **kwargs)
+      elif aggregate.lower() == 'min': stnens = stnens.seasonalMin(season=season, taxis='time', **kwargs)
+      else: raise NotImplementedError
+    else:
+      if   aggregate.lower() == 'mean': stnens = stnens.climMean(taxis='time', **kwargs)
+      elif aggregate.lower() == 'sum': stnens = stnens.climSum(taxis='time', **kwargs)
+      elif aggregate.lower() == 'std': stnens = stnens.climStd(taxis='time', **kwargs)
+      elif aggregate.lower() == 'var': stnens = stnens.climVar(taxis='time', **kwargs)
+      elif aggregate.lower() == 'max': stnens = stnens.climMax(taxis='time', **kwargs)
+      elif aggregate.lower() == 'min': stnens = stnens.climMin(taxis='time', **kwargs)
+      else: raise NotImplementedError
   # return dataset
   return stnens
 

@@ -14,7 +14,7 @@ from copy import deepcopy
 import codecs
 import calendar
 # internal imports
-from datasets.common import days_per_month, name_of_month, data_root, selectCoords, translateVarNames
+from datasets.common import days_per_month, name_of_month, data_root, selectElements, translateVarNames
 from geodata.misc import ParseError, DateError, VariableError, ArgumentError, RecordClass, StrictRecordClass,\
   isNumber
 from geodata.base import Axis, Variable, Dataset
@@ -88,12 +88,14 @@ province_names['ON'] = 'Ontario'
 province_names['QC'] = 'Quebec'
 province_names['SK'] = 'Saskatchewan'
 province_names['YT'] = 'Yukon Territory'
+province_names['CAN'] = 'Canada'
 
 # generate province info objects
 province_info = OrderedDict()
 provinces = OrderedDict()
 for key,val in province_names.iteritems():
-  prov = ShapeInfo(name=key, long_name=val, shapefiles=[val], shapetype='PRV', 
+  shapetype = 'NAT' if key == 'CAN' else 'PRV'
+  prov = ShapeInfo(name=key, long_name=val, shapefiles=[val], shapetype=shapetype, 
                    data_source='', folder=root_folder+'/Provinces/')
   province_info[key] = prov
   if len(prov.shapefiles) == 1 :
@@ -742,7 +744,7 @@ def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lal
     testFct = functools.partial(apply_test_suite, tests)
   else: testFct = None
   # pass on call to generic function selectCoords
-  datasets = selectCoords(datasets=datasets, axis=stnaxis, testFct=testFct, imaster=imaster, linplace=linplace, lall=lall)
+  datasets = selectElements(datasets=datasets, axis=stnaxis, testFct=testFct, imaster=imaster, linplace=linplace, lall=lall)
   # return sliced datasets
   return datasets
   

@@ -286,7 +286,7 @@ if __name__ == '__main__':
     NP = 2 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
     modes = ('time-series',) # 'climatology','time-series'
-#     modes = ('climatology',) # 'climatology','time-series'
+    modes = ('climatology',) # 'climatology','time-series'
 #     loverwrite = False
     loverwrite = True
     varlist = None
@@ -302,11 +302,11 @@ if __name__ == '__main__':
     datasets = []; resolutions = None
     lLTM = False # also average the long-term mean climatologies 
     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
-#     datasets += ['PCIC','PRISM','GPCC']; periods = None
-    datasets += ['CFSR']; resolutions = {'CFSR':'031'}
-    datasets += ['NARR']
-    datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
-#     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
+#     datasets += ['PCIC','PRISM','GPCC','NARR']; periods = None; lLTM = True
+#     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
+#     datasets += ['NARR']
+#     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
+    datasets += ['GPCC']; resolutions = {'GPCC':['25']}
 #     datasets += ['CRU']
     # CESM experiments (short or long name) 
     load3D = False

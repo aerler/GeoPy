@@ -8,14 +8,15 @@ the data is stored in human-readable text files and tables.
 '''
 
 # external imports
-from collections import OrderedDict
 import numpy as np
-import numpy.ma as ma
-from copy import deepcopy
+import functools
 import fileinput
+from collections import OrderedDict
+from copy import deepcopy
 # internal imports
-from datasets.common import days_per_month, name_of_month, data_root
-from geodata.misc import ParseError
+from datasets.common import selectElements, data_root
+from geodata.netcdf import DatasetNetCDF
+from geodata.misc import ParseError, isNumber
 from geodata.gdal import NamedShape, ShapeInfo
 from geodata.station import StationDataset, Variable, Axis
 # from geodata.utils import DatasetError
@@ -229,6 +230,71 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
       dataset.addVariable(makeVariable(varname, linesplit), copy=False)
   # return station dataset
   return dataset   
+
+
+## some helper functions to test conditions
+# defined in module main to facilitate pickling
+def test_encl(val, index,dataset,axis):
+  ''' check if shape is fully enclosed by grid ''' 
+  return dataset.shp_encl[index] == val  
+def test_full(val, index,dataset,axis):
+  ''' check if shape fully covers the grid ''' 
+  return dataset.shp_full[index] == val
+def test_empty(val, index,dataset,axis):
+  ''' check if shape is outside of grid ''' 
+  return dataset.shp_empty[index] == val 
+def test_mina(val,index,dataset,axis):
+  ''' check minimum area ''' 
+  return dataset.shp_area[index] >= val
+def test_maxa(val,index,dataset,axis):
+  ''' check maximum area ''' 
+  return dataset.shp_area[index] <= val
+ 
+# apply tests to list
+def apply_test_suite(tests, index, dataset, axis):
+  ''' apply an entire test suite to '''
+  # just call all individual tests for given index 
+  return all(test(index,dataset,axis) for test in tests)
+
+## select a set of common stations for an ensemble, based on certain conditions
+def selectStations(datasets, shpaxis='shape', imaster=None, linplace=True, lall=False, **kwcond):
+  ''' A wrapper for selectCoords that selects stations based on common criteria '''
+  # pre-load NetCDF datasets
+  for dataset in datasets: 
+    if isinstance(dataset,DatasetNetCDF): dataset.load() 
+  # list of possible constraints
+  tests = [] # a list of tests to run on each station
+  #loadlist =  (datasets[imaster],) if not lall and imaster is not None else datasets 
+  # test definition
+  for key,val in kwcond.iteritems():
+    key = key.lower()
+    if key[:4] == 'encl' or key[:4] == 'cont':
+      val = bool(val)
+      tests.append(functools.partial(test_encl, val))
+    elif key == 'full':
+      val = bool(val)
+      tests.append(functools.partial(test_full, val))
+    elif key[:4] == 'empt':
+      val = bool(val)
+      tests.append(functools.partial(test_empty, val))
+    elif key == 'min_area':
+      if not isNumber(val): raise TypeError
+      val = val*1e6 # units in km^2  
+      tests.append(functools.partial(test_mina, val))    
+    elif key == 'max_area':
+      if not isNumber(val): raise TypeError
+      val = val*1e6 # units in km^2  
+      tests.append(functools.partial(test_maxa, val))
+    else:
+      raise NotImplementedError, "Unknown condition/test: '{:s}'".format(key)
+  # define test function (all tests must pass)
+  if len(tests) > 0:
+    testFct = functools.partial(apply_test_suite, tests)
+  else: testFct = None
+  # pass on call to generic function selectCoords
+  datasets = selectElements(datasets=datasets, axis=stnaxis, testFct=testFct, imaster=imaster, linplace=linplace, lall=lall)
+  # return sliced datasets
+  return datasets
 
 
 ## abuse main block for testing

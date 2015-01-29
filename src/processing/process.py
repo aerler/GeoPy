@@ -199,7 +199,7 @@ class CentralProcessingUnit(object):
       if len(shpax) != len(shape_dict): raise AxisError
     else:
       # creat shape axis, if not supplied
-      shpatts = dict(name='shapes', long_name='Ordinal Number of Shape', units='#')
+      shpatts = dict(name='shape', long_name='Ordinal Number of Shape', units='#')
       shpax = Axis(coord=np.arange(len(shape_dict)), atts=shpatts)
     assert isinstance(xlon,Axis) and isinstance(ylat,Axis) and isinstance(shpax,Axis)
     # prepare target dataset
@@ -215,10 +215,18 @@ class CentralProcessingUnit(object):
     # collect rasterized masks from shape files 
     mask_array = np.zeros((len(shpax),)+srcgrd.size[::-1], dtype=np.bool) 
     # N.B.: rasterize() returns mask in (y,x) shape, size is ordered as (x,y)
+    shape_masks = []; shp_full = []; shp_empty = []; shp_encl = []
     for i,shape in enumerate(shape_dict.itervalues()):
-      mask_array[i,:] = shape.rasterize(griddef=srcgrd, asVar=False)      
-    shape_masks = [mask_array[i,:] for i in xrange(len(shpax))]
-    shape_masks = [mask if mask.sum() < mask.size else None for mask in shape_masks]
+      mask = shape.rasterize(griddef=srcgrd, asVar=False)
+      mask_array[i,:] = mask
+      masksum = mask.sum() 
+      lfull = masksum == 0; shp_full.append( lfull )
+      lempty = masksum == mask.size; shp_empty.append( lempty )
+      shape_masks.append( mask if lempty else None )
+      if lempty: shp_encl.append( False )
+      else:
+        shp_encl.append( np.all( mask[[0,-1],:] == True ) and np.all( mask[:,[0,-1]] == True ) )
+        # i.e. if boundaries are masked
     # N.B.: shapes that have no overlap with grid will be skipped and filled with NaN
     # add rasterized masks to new dataset
     atts = dict(name='shp_mask', long_name='Rasterized Shape Mask', units='')
@@ -228,11 +236,20 @@ class CentralProcessingUnit(object):
     da = srcgrd.geotransform[1]*srcgrd.geotransform[5]
     mask_area = mask_array.mean(axis=2).mean(axis=1)*da    
     atts = dict(name='shp_area', long_name='Area Included in Shape', 
-                units= 'm^2 ' if srcgrd.isProjected else 'deg^2' )
+                units= 'm^2' if srcgrd.isProjected else 'deg^2' )
     tgt.addVariable(Variable(data=mask_area, axes=(shpax,), atts=atts), asNC=True, copy=True)
+    # add flag to indicate if shape is fully enclosed by domain
+    atts = dict(name='shp_encl', long_name='If Shape is fully included in Domain', units= '')
+    tgt.addVariable(Variable(data=shp_encl, axes=(shpax,), atts=atts), asNC=True, copy=True)
+    # add flag to indicate if shape fully covers domain
+    atts = dict(name='shp_full', long_name='If Shape fully covers Domain', units= '')
+    tgt.addVariable(Variable(data=shp_full, axes=(shpax,), atts=atts), asNC=True, copy=True)
+    # add flag to indicate if shape and domain have no overlap
+    atts = dict(name='shp_empty', long_name='If Shape and Domain have no Overlap', units= '')
+    tgt.addVariable(Variable(data=shp_empty, axes=(shpax,), atts=atts), asNC=True, copy=True)
     # add shape names
     shape_names = [shape.name for shape in shape_dict.itervalues()] # can construct Variable from list!
-    atts = dict(name='shp_name', long_name='Name of Shape', units='')
+    atts = dict(name='shape_name', long_name='Name of Shape', units='')
     tgt.addVariable(Variable(data=shape_names, axes=(shpax,), atts=atts), asNC=True, copy=True)
     # add proper names
     shape_long_names = [shape.long_name for shape in shape_dict.itervalues()] # can construct Variable from list!

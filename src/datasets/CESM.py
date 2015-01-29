@@ -353,10 +353,10 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
 
 
 # load any of the various pre-processed CESM climatology and time-series files 
-def loadCESM_All(experiment=None, name=None, grid=None, station=None, period=None, filetypes=None, 
+def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None, period=None, 
                  varlist=None, varatts=None, translateVars=None, lautoregrid=None, load3D=False, 
                  ignore_list=None, mode='climatology', cvdp_mode='ensemble', lcheckExp=True, 
-                 lreplaceTime=True):
+                 lreplaceTime=True, filetypes=None,):
   ''' Get any of the monthly CESM files as a properly formatted NetCDFDataset. '''
   # period
   if isinstance(period,(tuple,list)):
@@ -384,13 +384,14 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, period=Non
     folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='diag', lcheckExp=lcheckExp)
     raise NotImplementedError, "Loading AMWG diagnostic files is not supported yet."
   else: raise NotImplementedError,"Unsupported mode: '{:s}'".format(mode)  
-  if station is None: 
-    lstation = False
-  else: 
-    lstation = True
+  if station and shape: 
+    raise ArgumentError
+  elif station or shape: 
     if grid is not None: raise NotImplementedError, 'Currently CESM station data can only be loaded from the native grid.'
     if lcvdp: raise NotImplementedError, 'CVDP data is not available as station data.'
     if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.'   
+    lstation = bool(station)
+    lshape = bool(shape)
   # period  
   if isinstance(period,(int,np.integer)):
     if not isinstance(experiment,Exp): raise DatasetError, 'Integer periods are only supported for registered datasets.'
@@ -428,9 +429,13 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, period=Non
     # N.B.: DatasetNetCDF does never apply translation!
   # get grid or station-set name
   if lstation:
-      # the station name can be inserted as the grid name
-      gridstr = '_'+station.lower(); # only use lower case for filenames
-      griddef = None
+    # the station name can be inserted as the grid name
+    gridstr = '_'+station.lower(); # only use lower case for filenames
+    griddef = None
+  elif lshape:
+    # the station name can be inserted as the grid name
+    gridstr = '_'+shape.lower(); # only use lower case for filenames
+    griddef = None
   else:
     if grid is None or grid == experiment.grid: 
       gridstr = ''; griddef = None
@@ -487,27 +492,39 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, period=Non
   # check
   if len(dataset) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
   # add projection, if applicable
-  if not lstation:
+  if not ( lstation or lshape ):
     dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, lwrap360=True, geolocator=True)
   # return formatted dataset
   return dataset
+
+# load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
+def loadCESM_ShpEns(ensemble=None, name=None, shape=None, filetypes=None, years=None,
+                    varlist=None, varatts=None, translateVars=None, load3D=False, 
+                    ignore_list=None, lcheckExp=True):
+  ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
+  return loadCESM_Ensemble(ensemble=ensemble, name=name, grid=None, station=None, shape=shape, 
+                           filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
+                           translateVars=translateVars, lautoregrid=False, load3D=load3D, 
+                           ignore_list=ignore_list, cvdp_mode='ensemble', lcheckExp=lcheckExp, 
+                           mode='time-series', lreplaceTime=True)
 
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
 def loadCESM_StnEns(ensemble=None, name=None, station=None, filetypes=None, years=None,
                     varlist=None, varatts=None, translateVars=None, load3D=False, 
                     ignore_list=None, lcheckExp=True):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
-  return loadCESM_Ensemble(ensemble=ensemble, name=name, grid=None, station=station, 
+  return loadCESM_Ensemble(ensemble=ensemble, name=name, grid=None, station=station, shape=None,
                            filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
                            translateVars=translateVars, lautoregrid=False, load3D=load3D, 
                            ignore_list=ignore_list, cvdp_mode='ensemble', lcheckExp=lcheckExp, 
                            mode='time-series', lreplaceTime=True)
+
   
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
-def loadCESM_Ensemble(ensemble=None, name=None, grid=None, station=None, filetypes=None, years=None,
-                      varlist=None, varatts=None, translateVars=None, lautoregrid=None, load3D=False, 
-                      ignore_list=None, cvdp_mode='ensemble', lcheckExp=True, mode='time-series',
-                      lindices=False, leofs=False, lreplaceTime=True):
+def loadCESM_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=None, filetypes=None, 
+                      years=None, varlist=None, varatts=None, translateVars=None, lautoregrid=None, 
+                      load3D=False, ignore_list=None, cvdp_mode='ensemble', lcheckExp=True, 
+                      mode='time-series', lindices=False, leofs=False, lreplaceTime=True):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   # obviously this only works for modes that produce a time-axis
   if mode.lower() not in ('time-series','timeseries','cvdp'): 
@@ -530,10 +547,10 @@ def loadCESM_Ensemble(ensemble=None, name=None, grid=None, station=None, filetyp
   elif mode.lower() == 'cvdp': lts = False; lcvdp = True
   for exp in ensemble:
     if lts:
-      ds = loadCESM_All(experiment=exp, name=name, grid=grid, station=station, filetypes=filetypes, 
-                        varlist=varlist, varatts=varatts, translateVars=translateVars, period=None, 
-                        lautoregrid=lautoregrid, load3D=load3D, ignore_list=ignore_list, mode=mode, 
-                        cvdp_mode='', lcheckExp=lcheckExp, lreplaceTime=lreplaceTime)
+      ds = loadCESM_All(experiment=exp, name=name, grid=grid, station=station, shape=shape, varlist=varlist, 
+                        varatts=varatts, translateVars=translateVars, period=None, lautoregrid=lautoregrid, 
+                        load3D=load3D, ignore_list=ignore_list, filetypes=filetypes, 
+                        mode=mode, cvdp_mode='', lcheckExp=lcheckExp, lreplaceTime=lreplaceTime)
     elif lcvdp:
       ds = loadCVDP(experiment=exp, name=name, varlist=varlist, varatts=varatts, period=years, 
                     translateVars=translateVars, lautoregrid=lautoregrid, 
