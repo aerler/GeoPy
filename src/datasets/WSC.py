@@ -292,7 +292,7 @@ def selectStations(datasets, shpaxis='shape', imaster=None, linplace=True, lall=
     testFct = functools.partial(apply_test_suite, tests)
   else: testFct = None
   # pass on call to generic function selectCoords
-  datasets = selectElements(datasets=datasets, axis=stnaxis, testFct=testFct, imaster=imaster, linplace=linplace, lall=lall)
+  datasets = selectElements(datasets=datasets, axis=shpaxis, testFct=testFct, imaster=imaster, linplace=linplace, lall=lall)
   # return sliced datasets
   return datasets
 

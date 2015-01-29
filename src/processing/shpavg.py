@@ -296,8 +296,8 @@ if __name__ == '__main__':
 #     periods += [3]
 #     periods += [5]
     periods += [10]
-    periods += [15]
-    periods += [30]
+#     periods += [15]
+#     periods += [30]
     # Observations/Reanalysis
     datasets = []; resolutions = None
     lLTM = False # also average the long-term mean climatologies 
@@ -306,7 +306,7 @@ if __name__ == '__main__':
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
 #     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
-    datasets += ['GPCC']; resolutions = {'GPCC':['25']}
+#     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
 #     datasets += ['CRU']
     # CESM experiments (short or long name) 
     load3D = False
@@ -318,7 +318,7 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm'] # ,'lnd'
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-#     WRF_experiments += ['max']
+    WRF_experiments += ['max']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...

@@ -234,8 +234,8 @@ class CentralProcessingUnit(object):
                     asNC=True, copy=True)
     # add area enclosed by shape
     da = srcgrd.geotransform[1]*srcgrd.geotransform[5]
-    mask_area = mask_array.mean(axis=2).mean(axis=1)*da    
-    atts = dict(name='shp_area', long_name='Area Included in Shape', 
+    mask_area = (1-mask_array).mean(axis=2).mean(axis=1)*da
+    atts = dict(name='shp_area', long_name='Area Contained in the Shape', 
                 units= 'm^2' if srcgrd.isProjected else 'deg^2' )
     tgt.addVariable(Variable(data=mask_area, axes=(shpax,), atts=atts), asNC=True, copy=True)
     # add flag to indicate if shape is fully enclosed by domain
