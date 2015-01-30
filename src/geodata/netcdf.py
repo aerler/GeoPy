@@ -320,19 +320,23 @@ class VarNC(Variable):
       else: 
         raise NetCDFError, "Cannot write to NetCDF variable: array shape in memory and on disk are inconsistent!"
       if self.data:
+        fillValue = self.fillValue
         # special handling of some data types
-        if isinstance(self.data_array,np.bool_): ncvar[:] = self.data_array.astype('i1') # cast boolean as 8-bit integers
+        if isinstance(self.data_array,np.bool_): 
+          ncvar[:] = self.data_array.astype('i1') # cast boolean as 8-bit integers
+          if fillValue is not None: fillValue = 1 if fillValue else 0
         elif self.strvar:
           ncvar[:] = nc.stringtochar(self.data_array) # transform string array to char array with one more dimension
+          if fillValue is not None: raise NotImplementedError
         else: ncvar[:] = self.data_array # masking should be handled by the NetCDF module
         # reset scale factors etc.
         self.scalefactor = 1; self.offset = 0
+        if fillValue is not None:
+          ncvar.setncattr('missing_value',fillValue) 
       # update NetCDF attributes
       ncvar.setncatts(coerceAtts(self.atts))
       ncattrs = ncvar.ncattrs() # list of current NC attributes
       ncvar.set_auto_maskandscale(True) # automatic handling of missing values and scaling and offset
-      if self.fillValue: 
-        ncvar.setncattr('missing_value',self.fillValue)        
       if 'scale_factor' in ncattrs: ncvar.delncattr('scale_factor',ncvar.getncattr('scale_factor'))
       if 'add_offset' in ncattrs: ncvar.delncattr('add_offset',ncvar.getncattr('add_offset'))
       # set other attributes like in variable

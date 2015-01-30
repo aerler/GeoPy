@@ -233,6 +233,9 @@ class Variable(object):
         dtype = np.dtype(dtype) # make sure it is properly formatted.. 
         if dtype is not data.dtype: data = data.astype(dtype) # recast as new type        
 #         raise TypeError, "Declared data type '{:s}' does not match the data type of the array ({:s}).".format(str(dtype),str(data.dtype))
+      else: dtype = data.dtype
+      if np.issubdtype(dtype, np.inexact) and not isinstance(data, ma.masked_array):
+        data = ma.masked_invalid(data, copy=False) 
       if axes is not None and len(axes) != data.ndim: 
         raise AxisError, 'Dimensions of data array and axes are not compatible!'
     # for completeness of MRO...
@@ -349,17 +352,17 @@ class Variable(object):
   def fillValue(self):
     ''' The fillValue for masks (stored in the atts dictionary). '''
     fillValue = self.atts.get('fillValue',None)
-    if self.data and self.masked and fillValue != self.data_array.fill_value:
+    if self.data and self.masked and fillValue != self.data_array._fill_value:
       raise DataError, 'FillValue mismatch!'
     return fillValue
   @fillValue.setter
   def fillValue(self, fillValue):
     self.atts['fillValue'] = fillValue
     if self.data and self.masked:
-      self.data_array.set_fill_value = fillValue
-      # N.B.: this is the saves way      
-      #ma.set_fill_value(self.data_array,fillValue)
-      # self.data_array.set_fill_value(fillValue) does not work - probably a property... 
+      self.data_array._fill_value = fillValue
+      # I'm not sure which one does work, but this seems to work more reliably!
+#       self.data_array.set_fill_value = fillValue
+#       ma.set_fill_value(self.data_array,fillValue)
     
   
   def __str__(self):
@@ -702,7 +705,7 @@ class Variable(object):
     if lslices: return newvar, slcs
     else: return newvar
   
-  def load(self, data=None, mask=None, fillValue=None, ltypecast=False, **axes):
+  def load(self, data=None, mask=None, fillValue=None, lrecast=False, **axes):
     ''' Method to attach numpy data array to variable instance (also used in constructor). '''
     # optional slicing
     if any([self.hasAxis(ax) for ax in axes.iterkeys()]):
@@ -720,22 +723,29 @@ class Variable(object):
       elif data.dtype == self.dtype: pass
       elif np.issubdtype(data.dtype, self.dtype): data = data.astype(self.dtype) 
       else: 
-        if ltypecast: data = data.astype(self.dtype)
+        if lrecast: data = data.astype(self.dtype)
         else: raise DataError, "Dtypes of Variable and array are inconsistent."
+      if np.issubdtype(data.dtype, np.inexact) and not isinstance(data, ma.masked_array):
+        data = ma.masked_invalid(data, copy=False)       
+        ma.set_fill_value(data, fillValue if fillValue is not None else self.fillValue) # this seems to work more reliably!
       # handle/apply mask
       if mask: data = ma.array(data, mask=mask) 
       if isinstance(data,ma.MaskedArray): # figure out fill value for masked array
         if fillValue is not None: # override variable preset 
           if isinstance(fillValue,np.generic): fillValue = fillValue.astype(self.dtype)
-          self.fillValue = fillValue
-          #data.set_fill_value = fillValue # I'm not sure which one does work...
-          ma.set_fill_value(data,fillValue)
-        elif self.fillValue is not None: # use variable preset
-          #data.set_fill_value = self.fillValue 
-          ma.set_fill_value(data,self.fillValue) # this seems to work more reliably!
+          self.atts['fillValue'] = fillValue
+          data._fill_value =  fillValue
+          # I'm not sure which one does work, but this seems to work more reliably!
+        elif 'fillValue' in self.atts and self.atts['fillValue'] is not None: # use variable preset
+          data._fill_value = self.atts['fillValue'] 
+          # I'm not sure which one does work, but this seems to work more reliably!
+#           ma.set_fill_value(data,self.atts['fillValue'])
+#           data.set_fill_value(self.atts['fillValue']) 
         else: # use data default
-          self.fillValue = data.fill_value
-        assert self.fillValue == data.fill_value or (np.isnan(self.fillValue) and np.isnan(data.fill_value))
+          self.atts['fillValue'] = data._fill_value
+        if not ( self.atts['fillValue'] == data._fill_value or (np.isnan(self.fillValue) and np.isnan(data._fill_value)) ):
+          print self.atts['fillValue'], data._fill_value, fillValue
+          raise AssertionError
       # assign data to instance attribute array 
       self.__dict__['data_array'] = data
       # check shape consistency

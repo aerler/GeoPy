@@ -194,8 +194,8 @@ def performExtraction(dataset, mode, shape_name, shape_dict, dataargs, loverwrit
     if lreturn: 
       tmpfilename = filename # no temporary file if dataset is passed on (can't rename the file while it is open!)
     else: 
-      if lparallel: tmppfx = 'tmp_exstns_{:s}_'.format(pidstr[1:-1])
-      else: tmppfx = 'tmp_exstns_'.format(pidstr[1:-1])
+      if lparallel: tmppfx = 'tmp_{:s}_{:s}_'.format(shape_name,pidstr[1:-1])
+      else: tmppfx = 'tmp_{:s}_'.format(shape_name)
       tmpfilename = tmppfx + filename      
     filepath = avgfolder + filename
     tmpfilepath = avgfolder + tmpfilename
@@ -294,19 +294,20 @@ if __name__ == '__main__':
     periods = []
 #     periods += [1]
 #     periods += [3]
-    periods += [5]
-    periods += [10]
-    periods += [15]
+#     periods += [5]
+#     periods += [10]
+#     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
     datasets = []; resolutions = None
-    lLTM = False # also average the long-term mean climatologies 
-    resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
-    datasets += ['PCIC','PRISM','GPCC','NARR']; periods = None; lLTM = True
+#     lLTM = False # also average the long-term mean climatologies
+    lLTM = True 
+    resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':'05'}
+#     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
 #     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
-#     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
+    datasets += ['GPCC']; resolutions = {'GPCC':['025']}
 #     datasets += ['CRU']
     # CESM experiments (short or long name) 
     load3D = False
@@ -314,20 +315,21 @@ if __name__ == '__main__':
 #     CESM_experiments += ['Ctrl-1']
 #     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     CESM_experiments += ['Ctrl-1-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
-#     CESM_experiments += ['Ens', 'Ens-2050']
-    CESM_filetypes = ['atm'] # ,'lnd'
+#     CESM_experiments += ['Ens', 'Ens-2050', 'Ens-2100']
+#     CESM_filetypes = ['atm'] # ,'lnd'
+    CESM_filetypes = ['atm','lnd']
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['max-ens-A']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
-#     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...
+#     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
     # other WRF parameters 
     domains = None # domains to be processed
-    domains = (2,) # domains to be processed
+#     domains = (2,) # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
-#     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-    WRF_filetypes = ('hydro',)
+    WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
+#     WRF_filetypes = ('hydro',)
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
     #WRF_filetypes = ('const',); periods = None
     # define shape data  
@@ -345,9 +347,7 @@ if __name__ == '__main__':
     varlist = None # process all variables
     periods = None # (5,10,15,) # climatology periods to process
     # Datasets
-    datasets = [] # process all applicable
-    datasets += ['CFSR']; resolutions = {'CFSR':'031'}
-    datasets += ['NARR']
+    datasets = None # process all applicable
     # N.B.: processing 0.5 deg CRU & GPCC time-series at the same time, can crash the system
     resolutions = None # process all applicable
     lLTM = False # again, not necessary

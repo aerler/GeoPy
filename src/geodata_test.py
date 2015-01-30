@@ -1408,6 +1408,7 @@ if __name__ == "__main__":
     specific_tests = None
 #     specific_tests = ['ReductionArithmetic']
 #     specific_tests = ['DistributionVariables']
+#     specific_tests = ['Mask']
 #     specific_tests = ['Ensemble']
 #     specific_tests = ['StatsTests']   
 #     specific_tests = ['UnaryArithmetic']

@@ -335,7 +335,8 @@ def loadObservations(name=None, folder=None, period=None, grid=None, station=Non
   # correct ordinal number of shape (should start at 1, not 0)
   if lshape:
     if dataset.hasAxis('shapes'): raise AxisError, "Axis 'shapes' should be renamed to 'shape'!"
-    if not dataset.hasAxis('shape'): raise AxisError
+    if not dataset.hasAxis('shape'): 
+      raise AxisError
     if dataset.shape.coord[0] == 0: dataset.shape.coord += 1
 # figure out grid
   if not lstation and not lshape:

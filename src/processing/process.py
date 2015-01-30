@@ -212,6 +212,18 @@ class CentralProcessingUnit(object):
     for axname,ax in src.axes.iteritems():
       if axname not in (xlon.name,ylat.name):
         tgt.addAxis(ax, asNC=True, copy=True)
+    # add shape names
+    shape_names = [shape.name for shape in shape_dict.itervalues()] # can construct Variable from list!
+    atts = dict(name='shape_name', long_name='Name of Shape', units='')
+    tgt.addVariable(Variable(data=shape_names, axes=(shpax,), atts=atts), asNC=True, copy=True)
+    # add proper names
+    shape_long_names = [shape.long_name for shape in shape_dict.itervalues()] # can construct Variable from list!
+    atts = dict(name='shp_long_name', long_name='Proper Name of Shape', units='')
+    tgt.addVariable(Variable(data=shape_long_names, axes=(shpax,), atts=atts), asNC=True, copy=True)    
+    # add shape category
+    shape_type = [shape.shapetype for shape in shape_dict.itervalues()] # can construct Variable from list!
+    atts = dict(name='shp_type', long_name='Type of Shape', units='')
+    tgt.addVariable(Variable(data=shape_type, axes=(shpax,), atts=atts), asNC=True, copy=True)    
     # collect rasterized masks from shape files 
     mask_array = np.zeros((len(shpax),)+srcgrd.size[::-1], dtype=np.bool) 
     # N.B.: rasterize() returns mask in (y,x) shape, size is ordered as (x,y)
@@ -247,18 +259,6 @@ class CentralProcessingUnit(object):
     # add flag to indicate if shape and domain have no overlap
     atts = dict(name='shp_empty', long_name='If Shape and Domain have no Overlap', units= '')
     tgt.addVariable(Variable(data=shp_empty, axes=(shpax,), atts=atts), asNC=True, copy=True)
-    # add shape names
-    shape_names = [shape.name for shape in shape_dict.itervalues()] # can construct Variable from list!
-    atts = dict(name='shape_name', long_name='Name of Shape', units='')
-    tgt.addVariable(Variable(data=shape_names, axes=(shpax,), atts=atts), asNC=True, copy=True)
-    # add proper names
-    shape_long_names = [shape.long_name for shape in shape_dict.itervalues()] # can construct Variable from list!
-    atts = dict(name='shp_long_name', long_name='Proper Name of Shape', units='')
-    tgt.addVariable(Variable(data=shape_long_names, axes=(shpax,), atts=atts), asNC=True, copy=True)    
-    # add shape category
-    shape_type = [shape.shapetype for shape in shape_dict.itervalues()] # can construct Variable from list!
-    atts = dict(name='shp_type', long_name='Type of Shape', units='')
-    tgt.addVariable(Variable(data=shape_type, axes=(shpax,), atts=atts), asNC=True, copy=True)    
     # save all the meta data
     tgt.sync()
     # prepare function call    

@@ -16,10 +16,10 @@ from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
 from datasets.common import days_per_month, name_of_month, getFileName, data_root, loadObservations, grid_folder
 from geodata.gdal import loadPickledGridDef
-from datasets.GPCC import loadGPCC
-from datasets.CRU import loadCRU
-from datasets.PRISM import loadPRISM
-from datasets.PCIC import loadPCIC
+from datasets.GPCC import loadGPCC, loadGPCC_Shp
+from datasets.CRU import loadCRU, loadCRU_Shp 
+from datasets.PRISM import loadPRISM, loadPRISM_Shp
+from datasets.PCIC import loadPCIC, loadPCIC_Shp
 # from geodata.utils import DatasetError
 from warnings import warn
 
@@ -58,8 +58,8 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 avgfile = 'unity{0:s}_clim{1:s}.nc' # formatted NetCDF file
 avgfolder = root_folder + 'unityavg/' # prefix
 # function to load these files...
-def loadUnity(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, 
-              folder=avgfolder, filelist=None, lautoregrid=False):
+def loadUnity(name=dataset_name, period=None, grid=None, varlist=None, varatts=None, 
+              folder=avgfolder, filelist=None, lautoregrid=False, resolution=None):
   ''' Get the pre-processed, unified monthly climatology as a DatasetNetCDF. '''
   #if lautoregrid: warn("Auto-regridding is currently not available for the unified dataset - use the generator routine instead.")
   # a climatology is not available
@@ -71,9 +71,24 @@ def loadUnity(name=dataset_name, period=None, grid=None, resolution=None, varlis
     grid = 'arb2_d02'
     warn('The Unified Dataset has no native grid; loading {0:s} grid.'.format(grid))
   # load standardized climatology dataset with PRISM-specific parameters  
-  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, grid=grid, 
+  dataset = loadObservations(name=name, folder=folder, period=period, grid=grid, shape=None, station=None, 
                              varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
-                             mode='climatology')
+                             projection=None, mode='climatology', lautoregrid=False)
+  # return formatted dataset
+  return dataset
+
+# function to load these files...
+def loadUnity_Shp(name=dataset_name, period=None, shape=None, varlist=None, varatts=None, 
+                  folder=avgfolder, filelist=None, lautoregrid=False, resolution=None):
+  ''' Get the pre-processed, unified monthly climatology averaged over shapes as a DatasetNetCDF. '''
+  # a climatology is not available
+  if period is None: 
+    period = (1979,2009)
+    warn('A climatology is not available for the Unified Dataset; loading period {0:4d}-{1:4d}.'.format(*period))
+  # load standardized climatology dataset with PRISM-specific parameters  
+  dataset = loadObservations(name=name, folder=folder, period=period, grid=None, shape=shape, station=None, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             projection=None, mode='climatology', lautoregrid=False)
   # return formatted dataset
   return dataset
 
@@ -100,12 +115,14 @@ if __name__ == '__main__':
   
   # select mode
 #   mode = 'merge_datasets'
-  mode = 'test_climatology'
+#   mode = 'test_climatology'
+  mode = 'test_point_climatology'
   
   # settings to generate dataset
   grids = []
 #   grids += ['arb2_d01']
-  grids += ['arb2_d02']
+#   grids += ['arb2_d02']
+  grids += ['shpavg']
 #   grids += ['arb3_d01']
 #   grids += ['arb3_d02']
 #   grids += ['grb1_d01']
@@ -123,15 +140,15 @@ if __name__ == '__main__':
   periods = []
 #   periods += [(1979,1980)]
 #   periods += [(1979,1982)]
-#   periods += [(1979,1984)]
-#   periods += [(1979,1989)]
+  periods += [(1979,1984)]
+  periods += [(1979,1989)]
   periods += [(1979,1994)]
 #   periods += [(1984,1994)]
 #   periods += [(1989,1994)]
 #   periods += [(1997,1998)]
-#   periods += [(1979,2009)]
+  periods += [(1979,2009)]
 #   periods += [(1949,2009)]
-
+  pntset = 'shpavg' # 'ecprecip'
   
   ## do some tests
   if mode == 'test_climatology':  
@@ -152,6 +169,23 @@ if __name__ == '__main__':
         pyl.imshow(np.flipud(dataset.prismmask.getArray()[:,:])) 
         pyl.colorbar(); pyl.show(block=True)
 
+  elif mode == 'test_point_climatology':
+            
+    # load averaged climatology file
+    print('')
+    if pntset in ('shpavg',): dataset = loadUnity_Shp(shape=pntset, period=periods[0])
+    else: raise NotImplementedError
+    print(dataset)
+    print('')
+    print(dataset.precip.mean())
+    print(dataset.precip.masked)
+    
+    # print time coordinate
+    print
+    print dataset.time.atts
+    print
+    print dataset.time.data_array
+
   
   ## begin processing
   if mode == 'merge_datasets':
@@ -161,21 +195,39 @@ if __name__ == '__main__':
       for period in periods: 
         
         ## load source datasets
-        pcic  = loadPCIC(period=None, grid=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'], lautoregrid=True)
-        prism = loadPRISM(period=None, grid=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'], lautoregrid=True)
-        gpccprd = loadGPCC(period=period, resolution='05', grid=grid, varlist=['precip'], lautoregrid=True)
-        gpccclim = loadGPCC(period=None, resolution='05', grid=grid, varlist=['precip'], lautoregrid=True)
-        gpcc025 = loadGPCC(period=None, resolution='025', grid=grid, varlist=['precip','landmask'], lautoregrid=True)
-        cruprd = loadCRU(period=period, grid=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'], lautoregrid=True)
-        cruclim = loadCRU(period=(1979,2009), grid=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'], lautoregrid=True)
-        
+        if grid in ('shpavg',):
+          # regional averages: shape index as grid
+          # N.B.: currently doesn't work with stations, because station indices are not consistent
+          #       for grids of different size (different number of stations included)
+          pcic  = loadPCIC_Shp(period=None, shape=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'])
+          prism = loadPRISM_Shp(period=None, shape=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'])
+          gpccprd = loadGPCC_Shp(period=period, resolution='05', shape=grid, varlist=['precip'])
+          gpccclim = loadGPCC_Shp(period=None, resolution='05', shape=grid, varlist=['precip'])
+          gpcc025 = loadGPCC_Shp(period=None, resolution='025', shape=grid, varlist=['precip','landmask'])
+          cruprd = loadCRU_Shp(period=period, shape=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'])
+          cruclim = loadCRU_Shp(period=(1979,2009), shape=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'])          
+        else:
+          # some regular map-type grid 
+          pcic  = loadPCIC(period=None, grid=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'], lautoregrid=True)
+          prism = loadPRISM(period=None, grid=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'], lautoregrid=True)
+          gpccprd = loadGPCC(period=period, resolution='05', grid=grid, varlist=['precip'], lautoregrid=True)
+          gpccclim = loadGPCC(period=None, resolution='05', grid=grid, varlist=['precip'], lautoregrid=True)
+          gpcc025 = loadGPCC(period=None, resolution='025', grid=grid, varlist=['precip','landmask'], lautoregrid=True)
+          cruprd = loadCRU(period=period, grid=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'], lautoregrid=True)
+          cruclim = loadCRU(period=(1979,2009), grid=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'], lautoregrid=True)
+          
         # grid definition
-        griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder)
+        try:
+          griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder)
+          grid_name = griddef.name
+        except IOError:
+          griddef = None
+          grid_name = grid
         periodstr = '{0:4d}-{1:4d}'.format(*period)
         
         print('\n   ***   Merging Climatology from {0:s} on {1:s} Grid  ***   \n'.format(periodstr,grid,))
         ## prepare target dataset 
-        filename = getFileName(grid=griddef.name, period=period, name=None, filepattern=avgfile)
+        filename = getFileName(grid=grid_name, period=period, name=None, filepattern=avgfile)
         filepath = avgfolder + filename
         print(' Saving data to: \'{0:s}\'\n'.format(filepath))
         assert os.path.exists(avgfolder)
@@ -185,13 +237,14 @@ if __name__ == '__main__':
         for key,item in prism.atts.iteritems(): atts['PRISM_'+key] = item
         #for key,item in gpcc025.atts.iteritems(): atts['GPCC_'+key] = item # GPCC atts cause problems... 
         for key,item in cruprd.atts.iteritems(): atts['CRU_'+key] = item
-        atts['period'] = periodstr; atts['name'] = dataset_name; atts['grid'] = griddef.name
-        atts['title'] = 'Unified Climatology from {0:s} on {1:s} Grid'.format(periodstr,griddef.name)
+        atts['period'] = periodstr; atts['name'] = dataset_name; atts['grid'] = grid_name
+        atts['title'] = 'Unified Climatology from {0:s} on {1:s} Grid'.format(periodstr,grid_name)
         # make new dataset
         sink = DatasetNetCDF(folder=avgfolder, filelist=[filename], atts=atts, mode='w')
         # add a few variables that will remain unchanged
-        for var in [gpcc025.landmask, prism.lon2D, prism.lat2D]:
-          var.load(); sink.addVariable(var, asNC=True, copy=True, deepcopy=True); var.unload()
+        if griddef is not None:
+          for var in [gpcc025.landmask, griddef.lon2D, griddef.lat2D]:
+            var.load(); sink.addVariable(var, asNC=True, copy=True, deepcopy=True); var.unload()
         # add datamasks
         for ds in (prism, pcic):
           datamask = ds.datamask.copy(); datamask.name = ds.name.lower()+'mask' 
@@ -202,7 +255,6 @@ if __name__ == '__main__':
         sink.sync()       
                 
         ## merge data (create variables)
-        
         # precip
         var = pcic.precip.copy() # generate variable copy
         array = pcic.precip.getArray() # start with hi-res PRISM from PCIC  
@@ -253,7 +305,8 @@ if __name__ == '__main__':
                         atts=dict(name='length_of_month',units='days',long_name='Length of Month'))
         
         # apply higher resolution mask
-        sink.mask(sink.landmask, maskSelf=False, varlist=None, skiplist=['prismmask','lon2d','lat2d'], invert=False, merge=True)
+        if griddef is not None:
+          sink.mask(sink.landmask, maskSelf=False, varlist=None, skiplist=['prismmask','lon2d','lat2d'], invert=False, merge=True)
             
         # finalize changes
         sink.sync()     
