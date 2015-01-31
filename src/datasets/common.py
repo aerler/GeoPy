@@ -462,22 +462,28 @@ class BatchLoad(object):
     # return list or ensemble of datasets
     return datasets
 
-    
-# common climatology load function that will be imported by datasets (for backwards compatibility)
+
+# convenience shortcut to load only climatologies 
 @BatchLoad
 def loadClim(name=None, **kwargs):
   ''' A function to load any standardized climatologies; identifies source by name heuristics '''
   return loadDataset(name=name, station=None, mode='climatology', **kwargs)
 
-# common load function that will be imported by datasets (for backwards compatibility)
+# convenience shortcut to load only staton time-series
 @BatchLoad
 def loadStnTS(name=None, station=None, **kwargs):
     ''' A function to load any standardized time-series at station locations. '''
-    return loadDataset(name=name, station=station, mode='time-series', **kwargs)
+    return loadDataset(name=name, station=station, shape=None, mode='time-series', **kwargs)
+
+# convenience shortcut to load only regionally averaged time-series
+@BatchLoad
+def loadShpTS(name=None, shape=None, **kwargs):
+    ''' A function to load any standardized time-series averaged over regions. '''
+    return loadDataset(name=name, station=None, shape=shape, mode='time-series', **kwargs)
   
 # universal load function that will be imported by datasets
 @BatchLoad
-def loadDataset(name=None, station=None, mode='climatology', **kwargs):
+def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwargs):
   ''' A function to load any datasets; identifies source by name heuristics. '''
   # some private imports (prevent import errors)  
   from projects.WRF_experiments import WRF_exps, WRF_experiments
@@ -602,21 +608,21 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
 
 # a function to load station data
 @BatchLoad
-def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregate=None, season=None, 
-                   region=None, station=None, constraints=None, filetypes=None, domain=None, **kwargs):
-  ''' a convenience function to load an enseble of time-series, based on certain criteria;
-      it works with either stations or regions '''
+def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, 
+                   shape=None, station=None, constraints=None, filetypes=None, domain=None, **kwargs):
+  ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
+      with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
   if varlist is not None:
     varlist = list(varlist)
     if station:
       varlist += ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon',] # necessary to select stations
-    if region:
+    if shape:
       varlist += ['shp_name', 'shp_long_name', 'shp_type',] # possible necessary to select other regions    
   stnens = Ensemble(name=name, title=title, basetype='Dataset')
   # load ensemble WRF data
   for name in names:
-    stnens += loadDataset(name=name, station=station, region=region, varlist=varlist, 
+    stnens += loadDataset(name=name, station=station, shape=shape, varlist=varlist, 
                           mode='time-series', filetypes=filetypes, domains=domain)
   # select and load data
   if station and constraints:
@@ -625,22 +631,22 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregate=No
 #       constraints = dict(min_len=50, lat=(45,55), max_zerr=300,) #lon=(-130,-110),
     stnens = selectStations(stnens, stnaxis='station', imaster=None, linplace=False, lall=False, **constraints)
   # extract seasonal/climatological values/extrema
-  if aggregate:
+  if aggregation:
     if season is not None:
-      if   aggregate.lower() == 'mean': stnens = stnens.seasonalMean(season=season, taxis='time', **kwargs)
-      elif aggregate.lower() == 'sum': stnens = stnens.seasonalSum(season=season, taxis='time', **kwargs)
-      elif aggregate.lower() == 'std': stnens = stnens.seasonalStd(season=season, taxis='time', **kwargs)
-      elif aggregate.lower() == 'var': stnens = stnens.seasonalVar(season=season, taxis='time', **kwargs)
-      elif aggregate.lower() == 'max': stnens = stnens.seasonalMax(season=season, taxis='time', **kwargs)
-      elif aggregate.lower() == 'min': stnens = stnens.seasonalMin(season=season, taxis='time', **kwargs)
+      if   aggregation.lower() == 'mean': stnens = stnens.seasonalMean(season=season, taxis='time', **kwargs)
+      elif aggregation.lower() == 'sum': stnens = stnens.seasonalSum(season=season, taxis='time', **kwargs)
+      elif aggregation.lower() == 'std': stnens = stnens.seasonalStd(season=season, taxis='time', **kwargs)
+      elif aggregation.lower() == 'var': stnens = stnens.seasonalVar(season=season, taxis='time', **kwargs)
+      elif aggregation.lower() == 'max': stnens = stnens.seasonalMax(season=season, taxis='time', **kwargs)
+      elif aggregation.lower() == 'min': stnens = stnens.seasonalMin(season=season, taxis='time', **kwargs)
       else: raise NotImplementedError
     else:
-      if   aggregate.lower() == 'mean': stnens = stnens.climMean(taxis='time', **kwargs)
-      elif aggregate.lower() == 'sum': stnens = stnens.climSum(taxis='time', **kwargs)
-      elif aggregate.lower() == 'std': stnens = stnens.climStd(taxis='time', **kwargs)
-      elif aggregate.lower() == 'var': stnens = stnens.climVar(taxis='time', **kwargs)
-      elif aggregate.lower() == 'max': stnens = stnens.climMax(taxis='time', **kwargs)
-      elif aggregate.lower() == 'min': stnens = stnens.climMin(taxis='time', **kwargs)
+      if   aggregation.lower() == 'mean': stnens = stnens.climMean(taxis='time', **kwargs)
+      elif aggregation.lower() == 'sum': stnens = stnens.climSum(taxis='time', **kwargs)
+      elif aggregation.lower() == 'std': stnens = stnens.climStd(taxis='time', **kwargs)
+      elif aggregation.lower() == 'var': stnens = stnens.climVar(taxis='time', **kwargs)
+      elif aggregation.lower() == 'max': stnens = stnens.climMax(taxis='time', **kwargs)
+      elif aggregation.lower() == 'min': stnens = stnens.climMin(taxis='time', **kwargs)
       else: raise NotImplementedError
   # return dataset
   return stnens

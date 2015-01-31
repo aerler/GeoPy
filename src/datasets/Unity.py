@@ -114,15 +114,16 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-#   mode = 'merge_datasets'
+  mode = 'merge_datasets'
 #   mode = 'test_climatology'
-  mode = 'test_point_climatology'
+#   mode = 'test_point_climatology'
   
   # settings to generate dataset
   grids = []
 #   grids += ['arb2_d01']
 #   grids += ['arb2_d02']
-  grids += ['shpavg']
+  grids += ['arb3_d02']
+#   grids += ['shpavg']
 #   grids += ['arb3_d01']
 #   grids += ['arb3_d02']
 #   grids += ['grb1_d01']
@@ -243,7 +244,7 @@ if __name__ == '__main__':
         sink = DatasetNetCDF(folder=avgfolder, filelist=[filename], atts=atts, mode='w')
         # add a few variables that will remain unchanged
         if griddef is not None:
-          for var in [gpcc025.landmask, griddef.lon2D, griddef.lat2D]:
+          for var in [gpcc025.landmask, prism.lon2D, prism.lat2D]:
             var.load(); sink.addVariable(var, asNC=True, copy=True, deepcopy=True); var.unload()
         # add datamasks
         for ds in (prism, pcic):

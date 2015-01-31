@@ -281,6 +281,8 @@ if __name__ == '__main__':
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
   
+  lbatch = True # for now
+  
   # default settings
   if not lbatch:
     NP = 2 ; ldebug = False # for quick computations
@@ -340,7 +342,7 @@ if __name__ == '__main__':
 #     shapes['basins'] = ['FRB'] # river basins (in Canada) from WSC module
 #     shapes['provinces'] = ['BC'] # Canadian provinces from EC module
   else:
-    NP = NP or 2 # time-series might take more memory or overheat...
+    NP = NP or 3 # time-series might take more memory or overheat...
     #modes = ('climatology','time-series')
     modes = ('time-series',) # too many small files...
     loverwrite = False

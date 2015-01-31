@@ -22,7 +22,7 @@ pyl.ioff()
 from mpl_toolkits.basemap import maskoceans # used for masking data
 # PyGeoDat stuff
 from geodata.base import DatasetError
-from datasets.WSC import basins
+from datasets.WSC import basins_info
 from plotting.legacy import loadDatasets, checkItemList
 from plotting.settings import getFigureSettings, getVariableSettings
 # ARB project related stuff
@@ -32,9 +32,9 @@ if __name__ == '__main__':
   
   ## general settings and shortcuts
   WRFfiletypes = [] # WRF data source
-  WRFfiletypes += ['hydro']
+#   WRFfiletypes += ['hydro']
   #WRFfiletypes += ['lsm']
-#   WRFfiletypes += ['srfc']
+  WRFfiletypes += ['srfc']
   #WRFfiletypes += ['xtrm']
 #   WRFfiletypes += ['plev3d']
   # period shortcuts
@@ -74,7 +74,7 @@ if __name__ == '__main__':
   ## select variables and seasons
   variables = [] # variables
 #   variables += ['Ts']
-#   variables += ['T2']
+  variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
   variables += ['precip']
 #   variables += ['WaterTransport_U']
@@ -101,11 +101,11 @@ if __name__ == '__main__':
 #   seasons += ['cold']
 #   seasons += ['warm']
 #   seasons += ['melt']
-  seasons += ['annual']
-#   seasons += ['summer']
-#   seasons += ['winter']
-#   seasons += ['spring']    
-#   seasons += ['fall']
+#   seasons += ['annual']
+  seasons += ['summer']
+  seasons += ['winter']
+  seasons += ['spring']    
+  seasons += ['fall']
   # special variable/season combinations
 #   variables = ['seaice']; seasons = [8] # September seaice
 #  variables = ['snowh'];  seasons = [8] # September snow height
@@ -117,20 +117,38 @@ if __name__ == '__main__':
   
   ## case settings
     
-  folder = '/home/me/Research/Extreme Value Analysis/Report/Brewer-Wilson Talk 2015/figures/' # figure directory
+  folder = figure_folder
   lpickle = True # load projection from file or recompute
   lprint = True # write plots to disk using case as a name tag
+  maptype = 'lcc-new'; lstations = False; lbasins = True
 #   maptype = 'lcc-col'; lstations = False; lbasins = True
-  # draw a map
+
+# draw a map
 #   maptype = 'lcc-new'; lstations = True; stations = 'EC'; lbasins = True
 #   period = H01; lWRFnative = True; lframe = False; loutline = False
 #   explist = ['col1-ctrl']; exptitles = ' '; domain = (2,3)
 #   case = 'BCAB_stns'; figtitles = 'EC Stations (BC & Alberta) and Terrain Height [km]'
 
+# observations
+#   explist = ['Unity']; maptype = 'lcc-new'; period = H15
+#   exptitles = ['Merged Observations (10 km)']
+#   case = 'unity'; lsamesize = True; grid = 'arb2_d02'
 
-  explist = ['Unity']; maptype = 'lcc-new'; period = H15
-  exptitles = ['Merged Observations (10 km)']
-  case = 'unity'; lsamesize = True; grid = 'arb2_d02'
+# new-v361 validation
+#   explist = ['new-v361','new-nmp','new-clm','max-ens']; period = H05; domain = 2
+#   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02']*3 + ['arb2_d02'] 
+#   case = 'new'; lsamesize = True
+#   explist = ['erai-v361','erai-v361-noah','erai-3km','erai-max']; period = H05; domain = [2,2,3,2]
+#   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02']*2 + ['arb2_d02']*2 
+#   case = 'erai'; lsamesize = True
+
+# physics ensemble validation
+  explist = ['new-ctrl','old-ctrl','new-nmp','new-grell','ctrl-1','max-ctrl']; period = H15; domain = 2
+  ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02', 'arb2_d02', 'arb2_d02']*2 
+  case = 'newold'; lsamesize = True
+#   explist = ['erai-v361','erai-v361-noah','erai-3km','erai-max']; period = H05; domain = [2,2,3,2]
+#   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02']*2 + ['arb2_d02']*2 
+#   case = 'erai'; lsamesize = True
 
 # hires validation
 # #   explist = ['erai-wc2-rocks',]; period = [1,]; domain = [2,]
@@ -533,7 +551,7 @@ if __name__ == '__main__':
             shpargs = dict(linewidth = 0.75) 
 #             shpargs = dict(linewidth = 1.)
             for basin in basinlist:      
-              basininfo = basins[basin]
+              basininfo = basins_info[basin]
               if basin in subbasins:
                 for subbasin in subbasins[basin]:		  
                   bmap.readshapefile(basininfo.shapefiles[subbasin][:-4], subbasin, ax=axn, drawbounds=True, color='k', **shpargs)            

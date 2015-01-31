@@ -324,7 +324,9 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm','lnd']
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-    WRF_experiments += ['erai-3km','max-3km']
+    WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
+    WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
+#     WRF_experiments += ['erai-3km','max-3km']
 #     WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
 #     WRF_experiments += ['max-ens-2050','max-ens-2100']
 #     WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
@@ -340,7 +342,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-    domains = (3,) # domains to be processed
+    domains = None # domains to be processed
 #     domains = None # process all domains
     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
 #     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
@@ -378,12 +380,14 @@ if __name__ == '__main__':
     CESM_filetypes = ('atm','lnd')    
     # WRF
     WRF_experiments = [] # process WRF experiments on different grids
-    WRF_experiments += ['new-v36-nmp', 'new-v36-noah', 'erai-v36-noah', 'new-v36-clm',]
+    WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
+    WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
+#     WRF_experiments += ['new-v36-nmp', 'new-v36-noah', 'erai-v36-noah', 'new-v36-clm',]
     WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', ] # new standard runs (arb3) 
     WRF_experiments += ['new-grell', 'new-grell-old', 'new-noah', 'v35-noah'] # new sensitivity tests (arb3)
-    WRF_experiments += ['cam-ctrl', 'cam-ctrl-1-2050', 'cam-ctrl-2-2050', 'cam-ctrl-2-2100'] # old cam simulations (arb1) 
-    WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
-    WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)    
+#     WRF_experiments += ['cam-ctrl', 'cam-ctrl-1-2050', 'cam-ctrl-2-2050', 'cam-ctrl-2-2100'] # old cam simulations (arb1) 
+#     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
+#     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)    
     domains = None # domains to be processed
     #domains = (2,) # for tests
     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
