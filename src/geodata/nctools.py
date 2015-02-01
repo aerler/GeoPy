@@ -217,7 +217,8 @@ def coerceAtts(atts):
   ncatts = dict()
   # loop over items
   for key,value in atts.iteritems():
-    if isinstance(key,basestring) and key[0] == '_' : pass
+    if isinstance(key,basestring) and key[0] == '_' : pass # skip (internal attributes)
+    elif value is None: pass # skip (invalid value / not assigned)
     elif not isinstance(value,(basestring,np.ndarray,np.inexact,float,np.integer,int)):
       if 'name' in dir(value):
         ncatts[key] = value.name # mostly for datasets and variables

@@ -709,8 +709,6 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
                        filetypes=filetypes, varlist=varlist, varatts=varatts, mode='time-series',
                        lautoregrid=lautoregrid, lctrT=lctrT, lconst=lconst, domains=domains)
       datasets.append(ds.load())
-      print ''
-      print ds
     # concatenate datasets (along 'time' axis, WRF doesn't have 'year')  
     dataset = concatDatasets(datasets, axis='time', coordlim=None, idxlim=montpl, offset=None, axatts=None, 
                              lcpOther=True, lcpAny=False, lcheckVars=lcheckVars, lcheckAxis=lcheckAxis,

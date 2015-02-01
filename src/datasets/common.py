@@ -608,7 +608,7 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
 
 # a function to load station data
 @BatchLoad
-def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, 
+def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, prov=None, 
                    shape=None, station=None, constraints=None, filetypes=None, domain=None, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
@@ -622,7 +622,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   stnens = Ensemble(name=name, title=title, basetype='Dataset')
   # load ensemble WRF data
   for name in names:
-    stnens += loadDataset(name=name, station=station, shape=shape, varlist=varlist, 
+    stnens += loadDataset(name=name, station=station, prov=prov, shape=shape, varlist=varlist, 
                           mode='time-series', filetypes=filetypes, domains=domain)
   # select and load data
   if station and constraints:

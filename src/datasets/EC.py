@@ -296,7 +296,7 @@ precip_vars = dict(precip=PrecipDef(name='precipitation', prefix='dt', atts=vara
                    solprec=PrecipDef(name='snowfall', prefix='ds', atts=varatts['solprec']),
                    liqprec=PrecipDef(name='rainfall', prefix='dr', atts=varatts['liqprec']))
 # precipitation extremes (and other derived variables)
-precip_xtrm = [dv.WetDays(),]
+precip_xtrm = [dv.WetDays(ignoreNaN=True),]
 for var in precip_vars:
   for mode in ('min','max'):
     # ordinary & interval extrema: var, mode, [interval=7,] name=None, dimmap=None
@@ -312,7 +312,7 @@ temp_vars   = dict(T2=TempDef(name='mean temperature', prefix='dm', atts=varatts
                    Tmin=TempDef(name='minimum temperature', prefix='dn', atts=varatts['Tmin']),
                    Tmax=TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax']))  
 # temperature extremes (and other derived variables)
-temp_xtrm   = [dv.FrostDays(),]
+temp_xtrm   = [dv.FrostDays(ignoreNaN=True),]
 for var in temp_vars:
   for mode in ('min','max'):
     # ordinary & interval extrema: var, mode, [interval=7,] name=None, dimmap=None
@@ -501,12 +501,17 @@ class StationRecords(object):
       datearray = ( yeararray - 1979 )*12 + monarray - 1  # compute month relative to 1979-01
       dataset += Variable(axes=(station,), data=datearray, **varatts[pnt+'_date'])
       # save bounds to determine size of time dimension
-      if pnt == 'begin': begin_date = np.min(datearray) 
-      elif pnt == 'end': end_date = np.max(datearray)
+      if pnt == 'begin': 
+        begin_date = np.min(datearray)
+        if begin_date%12: begin_date = (begin_date//12)*12 # always rounds down, no correction necessary 
+      elif pnt == 'end': 
+        end_date = np.max(datearray)
+        if end_date%12: end_date = (end_date//12+1)*12 # exclusive, i.e. this value is not included in range
+    assert begin_date%12 == 0 and end_date%12 == 0
     # actual length of record (number of valid data points per station; filled in later)
     dataset += Variable(axes=(station,), data=np.zeros(len(station), dtype='int16'),  **varatts['stn_rec_len'])
     # add variables for monthly values
-    time = Axis(coord=np.arange(begin_date, end_date+1, dtype='int16'), **varatts['time'])
+    time = Axis(coord=np.arange(begin_date, end_date, dtype='int16'), **varatts['time'])
     # loop over variables
     for varname,vardef in self.variables.iteritems():
       # add actual variables
@@ -526,7 +531,7 @@ class StationRecords(object):
     for xvar in self.extremes:
       if isinstance(xvar,dict):
         var = xvar.pop('var'); mode = xvar.pop('mode'); Klass = xvar.pop('klass')
-        xvar = Klass(ncset.variables[var], mode, **xvar)
+        xvar = Klass(ncset.variables[var], mode, ignoreNaN=True, **xvar)
         xvar.prerequisites = [self.ravmap.get(varname,varname) for varname in xvar.prerequisites]
       elif isinstance(xvar,dv.DerivedVariable):
         xvar.axes = tuple([self.varmap.get(varname,varname) for varname in xvar.axes if self.varmap.get(varname,varname)])
@@ -608,9 +613,9 @@ class StationRecords(object):
         if not var.linear:
           varobj = self.dataset[var.name] # get variable object
           wrfvar = ravmap[var.name]
-          dailytmp = var.computeValues(tmpdata, aggax=1, delta=86400., tmp=tmpvars, ignoreNaN=True)        
+          dailytmp = var.computeValues(tmpdata, aggax=1, delta=86400., tmp=tmpvars)        
           tmpdata[wrfvar] = dailytmp
-          monlytmp = var.aggregateValues(dailytmp, aggdata=None, aggax=1, ignoreNaN=True) # last axis
+          monlytmp = var.aggregateValues(dailytmp, aggdata=None, aggax=1) # last axis
           assert monlytmp.shape == (s,)
           monlydata[wrfvar][:,m] = monlytmp
     # loop over linear derived variables/extremes
@@ -621,7 +626,7 @@ class StationRecords(object):
       if var.linear:
         # compute from available monthly data
         print("   {:<15s} {:s}".format(var.name,str(tuple(self.varmap.get(varname,varname) for varname in var.prerequisites))))
-        monlytmp = var.computeValues(monlydata, aggax=1, delta=86400., ignoreNaN=True)
+        monlytmp = var.computeValues(monlydata, aggax=1, delta=86400.)
         monlydata[wrfvar] = monlytmp
       tmpload = monlydata[wrfvar]
       assert varobj.shape == tmpload.shape
@@ -663,14 +668,14 @@ def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None, f
                             multifile=False, ncformat='NETCDF4')
   return dataset
 # wrapper
-def loadEC_StnTS(name=None, station=None, varlist=None, varatts=varatts):
+def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varatts):
   ''' Load a monthly time-series of pre-processed EC station data. '''
   if station is None: raise ArgumentError, "A 'filetype' needs to be specified ('ectemp' or 'ecprecip')."
   elif station in ('ectemp','ecprecip'):
     name = station  
     station = station[2:] # internal convention
   else: raise ArgumentError
-  return loadEC_TS(name=name, filetype=station, prov=None, varlist=varlist, varatts=varatts, filelist=None, folder=None) # just an alias
+  return loadEC_TS(name=name, filetype=station, prov=prov, varlist=varlist, varatts=varatts, filelist=None, folder=None) # just an alias
 
 ## load pre-processed EC station climatology
 def loadEC(): 
@@ -689,7 +694,7 @@ def test_minlen(val,index,dataset,axis):
   return dataset.stn_rec_len[index] >= val 
 def test_maxzse(val,index,dataset,axis):
   ''' check that station elevation error does not exceed a threshold ''' 
-  return np.abs(dataset.zs_err[index]) <= val 
+  return ( np.abs(dataset.zs_err[index]) <= val ) if 'zs_err' in dataset else True
 def test_lat(val,index,dataset,axis):
   ''' check if station is located within selected latitude band ''' 
   return val[0] <= dataset.stn_lat[index] <= val[1] 
@@ -775,8 +780,8 @@ if __name__ == '__main__':
 #   mode = 'test_conversion'
 #   mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
-#   mode = 'test_timeseries'
-  mode = 'test_selection'
+  mode = 'test_timeseries'
+#   mode = 'test_selection'
   
   # test wrapper function to load time series data from EC stations
   if mode == 'test_selection':
@@ -789,12 +794,12 @@ if __name__ == '__main__':
     print('')
     stnens = Ensemble(loadEC_StnTS(station=stn), loadWRF_StnEns(ensemble='max-ens-2100', station=stn, 
                       filetypes='hydro', domains=1)) # including WRF data for test
-    print(stnens)    
+    print(stnens[0])    
     print('')
     var = stnens[-1].axes['station']; print(''); print(var)
     for var in stnens.station: print(var.min(),var.mean(),var.max())
     # test station selector
-    stnens = selectStations(stnens, prov=('BC','AB'), min_len=50, lat=(40,55), #lon=(-125,-110),
+    stnens = selectStations(stnens, prov=('BC','AB'), min_len=50, lat=(40,55), max_zerr=300,
                             stnaxis='station', imaster=None, linplace=False, lall=False) 
     print(stnens)    
     print('')
@@ -809,15 +814,20 @@ if __name__ == '__main__':
     
     # load pre-processed time-series file
     print('')
-#     dataset = loadEC_TS(filetype='precip', prov='NL')
-    dataset = loadEC_StnTS(station='ecprecip').load()
+    dataset = loadEC_TS(filetype='temp', prov='PE').load()
+#     dataset = loadEC_StnTS(station='ecprecip', prov='BC').load()
     print(dataset)
     print('')
     print('ATHABASCA', dataset.station_name.findValue('ATHABASCA'))
     print('')
     print(dataset.time)
     print(dataset.time.coord)
-    print(dataset.time.coord[dataset.stn_begin_date.min()*-1]) # Jan 1979, the origin of time...
+    print(dataset.stn_begin_date.min())
+    origin = np.ceil(dataset.stn_begin_date.min()*(-1./12.))*12
+    print(dataset.time.coord[origin]) # Jan 1979, the origin of time...
+    assert dataset.time.coord[origin] == 0
+    assert dataset.time.coord[0]%12. == 0
+    assert (dataset.time.coord[-1]+1)%12. == 0
         
   # test station object initialization
   elif mode == 'test_station_object':  
@@ -860,8 +870,8 @@ if __name__ == '__main__':
     
     prov = 'PE'
     # prepare input
-#     variables = temp_vars #dict(T2=temp_vars['T2'])
-    variables = precip_vars #dict(precip=temp_vars['precip'])
+    variables = temp_vars #dict(T2=temp_vars['T2'])
+#     variables = precip_vars #dict(precip=temp_vars['precip'])
     # initialize station record container (PE only has 3 stations - ideal for testing!)
     test = StationRecords(folder='', variables=variables, constraints=dict(prov=(prov,)))
     # create netcdf file
@@ -897,8 +907,10 @@ if __name__ == '__main__':
   elif mode == 'convert_prov_stations':
     
     # loop over provinces
+#     for prov in ('BC',):
     for prov in ('BC', 'YT', 'NT', 'NU', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL'):
       # loop over variable types
+#       for variables in (precip_vars,): # precip_vars, temp_vars,
       for variables in (precip_vars, temp_vars,): # precip_vars, temp_vars,
         
         # initialize station record container

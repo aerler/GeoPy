@@ -350,7 +350,7 @@ if __name__ == '__main__':
     CESM_filetypes = ('atm','lnd')    
     # WRF
     WRF_experiments = None # process all WRF experiments
-    domains = (1,2,) # domains to be processed
+    domains = None # domains to be processed
     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
     stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
   
