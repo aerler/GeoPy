@@ -26,7 +26,7 @@ def loadStyleSheet(stylesheet, lpresentation=False, lpublication=False):
     if lpublication: stylesheet = (stylesheet,'publication')       
     elif lpresentation: stylesheet = (stylesheet,'presentation')
   # load stylesheets
-  if isinstance(stylesheet,(list,tuple)): 
+  if isinstance(stylesheet,(list,tuple,basestring)): 
     mpl.pyplot.style.use(stylesheet)
   else: raise TypeError
  

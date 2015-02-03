@@ -362,7 +362,7 @@ class Axes(FileType):
                      y           = dict(name='y', units='m'), # projected south-north coordinate
                      soil_layers_stag = dict(name='s', units=''), # soil layer coordinate
                      num_press_levels_stag = dict(name='p', units='Pa'), # pressure coordinate
-                     station     = dict(name='station', units='') ) # station axis for station data
+                     station     = dict(name='station', units='#') ) # station axis for station data
     self.vars = self.atts.keys()
     self.climfile = None
     self.tsfile = None

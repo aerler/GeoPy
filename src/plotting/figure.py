@@ -17,7 +17,8 @@ from geodata.misc import isInt , ArgumentError
 from plotting.axes import MyAxes, MyLocatableAxes, Axes
 from plotting.misc import loadStyleSheet
 import matplotlib as mpl
-
+# just for convenience
+from matplotlib.pylab import show
 
 ## my new figure class
 class MyFigure(Figure):
@@ -304,7 +305,6 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet=None, mar
       elif subplot == (1,2) or subplot == (1,3): figsize = (9,5)
       elif subplot == (2,1) or subplot == (3,1): figsize = (5,9)
       else: figsize = (9,9)
-    print subplot, figsize
     #elif subplot == (2,2) or subplot == (3,3): figsize = (6.25,6.25)
     #else: raise NotImplementedError
   # figure out margins

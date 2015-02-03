@@ -614,7 +614,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
   if varlist is not None:
-    varlist = list(varlist)
+    varlist = list(varlist)[:] # copy list
     if station:
       varlist += ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon',] # necessary to select stations
     if shape:

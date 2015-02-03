@@ -54,7 +54,7 @@ class MyAxes(Axes):
     if support is not None or bins is not None:
       if support is not None and bins is not None: raise ArgumentError
       if support is None and bins is not None: support = bins
-      for var in varlist: 
+      for var in varlist:
         if not isinstance(var,(DistVar,VarKDE,VarRV)): raise TypeError, "{:s} ({:s})".format(var.name, var.__class__.__name__)
       newlist = [var.pdf(support=support) for var in varlist]
       for new,var in zip(newlist,varlist): new.dataset= var.dataset # preserve dataset links to construct references
@@ -174,7 +174,9 @@ class MyAxes(Axes):
         and annotate the plot based on variable properties. '''
     # varlist is the list of variable objects that are to be plotted
     if isinstance(varlist,Variable): varlist = [varlist]
-    elif not isinstance(varlist,(tuple,list,Ensemble)):raise TypeError
+    elif isinstance(varlist,(tuple,list,Ensemble)): pass
+    elif isinstance(varlist,Dataset): pass
+    else: raise TypeError
     if varname is not None:
       varlist = [getattr(var,varname) if isinstance(var,Dataset) else var for var in varlist]
     if not all([isinstance(var,Variable) for var in varlist]): raise TypeError
@@ -337,7 +339,10 @@ class MyAxes(Axes):
   def _axLabel(self, label, name, units):
     ''' helper method to format axes lables '''
     if label is True: 
-      label = '{0:s} [{1:s}]'.format(name,units) if units else '{0:s}'.format(name)
+      if name is None and units is None: label = ''
+      elif units is None: label = '{0:s}'.format(name)
+      elif name is None: label = '[{:s}]'.format(units)
+      else: label = '{0:s} [{1:s}]'.format(name,units)
     elif label is False or label is None: label = ''
     elif isinstance(label,basestring): label = label.format(name,units)
     else: raise ValueError, label

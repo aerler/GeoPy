@@ -524,7 +524,8 @@ def defVarDist(var, var_dists=None):
   elif varname[:3] in ('Min','Max'):
     dist, dist_args = 'genextreme', dict(ic_shape=0)
   elif units in ('mm/month','mm/day','mm/s','kg/m^2/s'):
-    dist, dist_args = ('gumbel_r', dict())
+    #dist, dist_args = ('gumbel_r', dict())
+    dist, dist_args = 'genextreme', dict(ic_shape=-0.5)
   elif units in ('C','K','Celsius','Kelvin'):
     dist, dist_args = ('norm', dict())
   else: # fallback
@@ -1292,7 +1293,7 @@ class VarRV(DistVar):
   def _extractSampleData(self, sample, axis_idx=None, fillValue=None, lcheckVar=True, lcheckAxis=True):
     ''' Check if a sample is consistent with the distribution attributes and return a properly 
         formatted sample array with the same shape as the distribution variable and the sample 
-        dimension shifted to the back. '''
+        dimension shifted to the back (all remaining sample dimensions are flattened). '''
     # check input
     if sample.dtype.kind in ('S',): 
       if lcheckVar: raise VariableError, "Statistical tests do not work with string Variables!"

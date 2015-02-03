@@ -655,7 +655,7 @@ def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None, f
   ''' Load a monthly time-series of pre-processed EC station data. '''
   if filetype is None: raise ArgumentError, "A 'filetype' needs to be specified ('temp' or 'precip')."
   elif not filetype in ('temp','precip'): raise ArgumentError
-  name = name or 'ec{:s}'.format(filetype) # prepend ec to the filetype
+  name = name or 'EC' # 'ec{:s}'.format(filetype) # prepend ec to the filetype
   if prov is not None and not isinstance(prov,basestring): raise TypeError
   if folder is None: folder = avgfolder
   if filelist is None:

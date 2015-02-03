@@ -521,23 +521,30 @@ class DatasetNetCDF(Dataset):
           elif var in variables: # if already present, make sure variables are essentially the same
             varobj = variables[var] 
             if var in check_override: pass
-            elif varobj.strvar and ((varobj.shape == ds.variables[var].shape[:-1]) and
-                 (varobj.ncvar.dimensions == ds.variables[var].dimensions-1)) : pass
-            elif ( (varobj.shape == ds.variables[var].shape) and
-                 (varobj.ncvar.dimensions == ds.variables[var].dimensions) ): pass
+            elif varobj.strvar and varobj.ndim == ds.variables[var].ndim-1:
+              if not ( varobj.shape == ds.variables[var].shape[:-1] and
+                varobj.ncvar.dimensions == ds.variables[var].dimensions ):
+                raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files incompatible.".format(var)
             else: 
-              raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files incompatible.".format(var) 
+              if not ( varobj.shape == ds.variables[var].shape and
+                 varobj.ncvar.dimensions == ds.variables[var].dimensions ):              
+                raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files incompatible.".format(var) 
           else: # if this is a new variable, add it to the list
+            tmpatts = varatts.get(var,{'name':var})
             if ds.variables[var].dtype == '|S1' and all([dim in axes for dim in ds.variables[var].dimensions[:-1]]): # string variable
               varaxes = [axes[dim] for dim in ds.variables[var].dimensions[:-1]] # collect axes (except last)
               strtype = np.dtype('|S{:d}'.format(ds.variables[var].shape[-1])) # string with length of string dimension
               # N.B.: apparently len(dim) does not work properly - ncvar.shape is more reliable
               # create new variable using the override parameters in varatts
-              variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, dtype=strtype, mode=mode, squeeze=squeeze, load=load, **varatts.get(var,{}))
+              variables[tmpatts['name']] = VarNC(ncvar=ds.variables[var], axes=varaxes, dtype=strtype, 
+                                                 mode=mode, squeeze=squeeze, load=load, **tmpatts)
             elif all([dim in axes for dim in ds.variables[var].dimensions]):
               varaxes = [axes[dim] for dim in ds.variables[var].dimensions] # collect axes
               # create new variable using the override parameters in varatts
-              variables[var] = VarNC(ncvar=ds.variables[var], axes=varaxes, mode=mode, squeeze=squeeze, load=load, **varatts.get(var,{}))
+              variables[tmpatts['name']] = VarNC(ncvar=ds.variables[var], axes=varaxes, 
+                                                 mode=mode, squeeze=squeeze, load=load, **tmpatts)
+              # N.B.: using tmpatts['name'] as key is more reliable in preventing duplicate variables,
+              #       because it also works when NetCDF names are different across files
             elif not any([dim in ignore_list for dim in ds.variables[var].dimensions]): # legitimate omission
               raise DatasetError, 'Error constructing Variable: Axes/coordinates not found:\n {:s}, {:s}'.format(str(var), str(ds.variables[var].dimensions))
       variables = variables.values()
