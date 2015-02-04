@@ -21,11 +21,12 @@ class PlotAtts(namedtuple('PlotAtts', ['name','title','units','scale', 'preserve
                    units       = 'n/a', 
                    scale       = 'linear', 
                    preserve    = 'value', 
-                   scalefactor = 1, 
-                   offset      = 0):
+                   scalefactor = 1., 
+                   offset      = 0.):
     # create new instance with default values
     return super(PlotAtts,cls).__new__(cls,name=name,title=title,units=units,scale=scale,
-                                       preserve=preserve,scalefactor=scalefactor,offset=offset)
+                                       scalefactor=float(scalefactor),offset=float(offset),
+                                       preserve=preserve)
   # also provide wrapper to _replace to present a similar interface as dict and AttrDict
   def copy(self, **kwargs):
     ''' create a copy of the namedtuple (new instance); fields specified as kwargs will be replaced '''

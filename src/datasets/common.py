@@ -513,7 +513,7 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
     # this is most likely an observational dataset    
     try: dataset = import_module('datasets.{0:s}'.format(name))
     except ImportError: raise ArgumentError, "No dataset matching '{:s}' found.".format(name)
-    dataset_name = name     
+    dataset_name = name 
   # identify load function
   load_fct = 'load{:s}'.format(dataset_name)
   if mode.upper() in ('CVDP',):

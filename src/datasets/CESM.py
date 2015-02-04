@@ -155,13 +155,13 @@ class ATM(FileType):
   def __init__(self):
     self.atts = dict(TREFHT   = dict(name='T2', units='K'), # 2m Temperature
 #                                      transform=flipLon), # shift longitude
+                     TREFMXAV = dict(name='Tmax', units='K'),   # Daily Maximum Temperature (at surface)                     
+                     TREFMNAV = dict(name='Tmin', units='K'),   # Daily Minimum Temperature (at surface)
                      QREFHT   = dict(name='q2', units='kg/kg'), # 2m water vapor mass mixing ratio                     
                      TS       = dict(name='Ts', units='K'), # Skin Temperature (SST)
-#                                      transform=flipLon), # shift longitude                     
-                     TSMN     = dict(name='Tmin', units='K'),   # Minimum Temperature (at surface)
-                     TSMX     = dict(name='Tmax', units='K'),   # Maximum Temperature (at surface)                     
+                     TSMX     = dict(name='MaxTs', units='K'),   # Maximum Skin Temperature (SST)
+                     TSMN     = dict(name='MinTs', units='K'),   # Minimum Skin Temperature (SST)                     
                      PRECT    = dict(name='precip', units='kg/m^2/s', scalefactor=1000.), # total precipitation rate (kg/m^2/s) 
-#                                      transform=flipLon), # shift longitude
                      PRECC    = dict(name='preccu', units='kg/m^2/s', scalefactor=1000.), # convective precipitation rate (kg/m^2/s)
                      PRECL    = dict(name='precnc', units='kg/m^2/s', scalefactor=1000.), # grid-scale precipitation rate (kg/m^2/s)
                      #NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate

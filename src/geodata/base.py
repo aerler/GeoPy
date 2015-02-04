@@ -2637,15 +2637,17 @@ class Ensemble(object):
     ''' Yet another way to access members by name... conforming to the container protocol. If argument is not a member, it is called with __getattr__.'''
     if isinstance(member, basestring): 
       if self.hasMember(member):
-        # members have precedence
-        return self.__dict__[member]
+        # access members like dictionary
+        return self.__dict__[member] # members were added as attributes
       else:
-        # call like an attribute
-        return self.__getattr__(member)
-    else:
+        if self.basetype is Dataset: raise DatasetError
+        elif self.basetype is Variable: raise VariableError
+        else: raise AttributeError
+        #return self.__getattr__(member) # call like an attribute
+    elif isinstance(member, (int,np.integer,slice)):
+      # access members like list/tuple 
       return self.members[member]
-#     elif isinstance(member, (int,np.integer,slice)): 
-#     else: raise TypeError
+    else: raise TypeError
   
   def __setitem__(self, name, member):
     ''' Yet another way to add a member, this time by name... conforming to the container protocol. '''

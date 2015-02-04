@@ -672,7 +672,7 @@ def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varat
   ''' Load a monthly time-series of pre-processed EC station data. '''
   if station is None: raise ArgumentError, "A 'filetype' needs to be specified ('ectemp' or 'ecprecip')."
   elif station in ('ectemp','ecprecip'):
-    name = station  
+    name = name or 'EC'  
     station = station[2:] # internal convention
   else: raise ArgumentError
   return loadEC_TS(name=name, filetype=station, prov=prov, varlist=varlist, varatts=varatts, filelist=None, folder=None) # just an alias

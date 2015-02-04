@@ -1254,8 +1254,10 @@ class VarRV(DistVar):
     return samples
   
   # rescale the distribution (change the parameters)
-  def rescale(self, reference=None, lflatten=True, shape=None, loc=None, scale=None, axis_idx=None, fillValue=None):
+  def rescale(self, reference=None, lflatten=True, shape=None, loc=None, scale=None, axis_idx=None, 
+              fillValue=None, linplace=False, asVar=True, lcheckVar=True, lcheckAxis=True):
     ''' rescale the distribution parameters with given values '''
+    if linplace and asVar: raise ArgumentError
     # figure out array order 
     sax = self.ndim-1
     if len(self.paramAxis) == 2: iloc=0; iscale=1; ishape=None
@@ -1263,7 +1265,8 @@ class VarRV(DistVar):
     else: raise NotImplementedError
     if shape is not None and ishape is None: raise ArgumentError
     # roll parameter axis to the front
-    data_array = np.rollaxis(self.data_array, axis=sax, start=0)
+    if linplace: data_array = np.rollaxis(self.data_array, axis=sax, start=0)
+    else: data_array = np.rollaxis(self.data_array.copy(), axis=sax, start=0)
     # pre-process input
     if reference is not None:
       # get properly formatted sample data
@@ -1274,20 +1277,33 @@ class VarRV(DistVar):
       # N.B.: if the DistVar is already "flat", lflatten is unneccessary, since _extractSampleData will flatten the sample
       # estimate location and scale from a given reference
       if loc is None: 
-        norm = np.nanmean(data_array[iloc]).ravel() if lflatten else data_array[iloc]
+        norm = np.nanmean(data_array[iloc,:]).ravel() if lflatten else data_array[iloc]
         loc = np.nanmean(sample_data, axis=sax) / norm
       if scale is None: 
-        norm = np.nanmean(data_array[iscale]).ravel() if lflatten else data_array[iscale]
+        norm = np.nanmean(data_array[iscale,:]).ravel() if lflatten else data_array[iscale]
         scale = np.nanstd(sample_data, axis=sax) / norm
     # apply scaling
+    lone = data_array.ndim == 1 
     if loc is not None: 
-      data_array[iloc] *= loc; data_array[iscale] *= loc # need to scale variance as well!
-    if scale is not None: data_array[iscale] *= scale
-    if shape is not None: data_array[ishape] *= shape
+      if lone: data_array[iloc] *= loc; data_array[iscale] *= loc # need to scale variance as well!
+      else: data_array[iloc,:] *= loc; data_array[iscale,:] *= loc # need to scale variance as well!
+    if scale is not None: 
+      if lone: data_array[iscale] *= scale
+      else: data_array[iscale,:] *= scale
+    if shape is not None: 
+      if lone: data_array[ishape] *= shape 
+      else: data_array[ishape,:] *= shape 
     # N.B.: rolling back axes should not be necessary, since np.rollaxis only returns a view and all operations are in-place
-    # return scale factors for further usage
-    if ishape is None: return loc, scale
-    else: return shape, loc, scale
+    # create variable, if desired
+    if asVar:
+      data_array = np.rollaxis(data_array, axis=0, start=self.ndim) # roll parameter axis to the back
+      rsvar = self.copy(data=data_array)
+    else:
+      # alternatively, return scale factors for further usage
+      if ishape is None: rsvar = loc, scale
+      else: rsvar = shape, loc, scale
+    # return
+    return rsvar
 
   # convenience function to get properly formatted sample data from a sample argument
   def _extractSampleData(self, sample, axis_idx=None, fillValue=None, lcheckVar=True, lcheckAxis=True):

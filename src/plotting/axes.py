@@ -38,7 +38,7 @@ class MyAxes(Axes):
   ypad         = 0
   
   def linePlot(self, varlist, varname=None, bins=None, support=None, linestyles=None, varatts=None, legend=None, llabel=True, labels=None, 
-               xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=True, flipxy=None, xlabel=True, ylabel=True,
+               xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=None, flipxy=None, xlabel=True, ylabel=True,
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False, **kwargs):
     ''' A function to draw a list of 1D variables into an axes, 
         and annotate the plot based on variable properties. '''
@@ -89,7 +89,9 @@ class MyAxes(Axes):
     else:
       axname,axunits,varname,varunits = self.xname,self.xunits,self.yname,self.yunits
     # reset color cycle
-    if reset_color: self.set_color_cycle(None)
+    if reset_color is False: pass
+    elif reset_color is True: self.set_color_cycle(None) # reset
+    else: self.set_color_cycle(reset_color)
     # prepare label list
     if labels is None: labels = []; lmklblb = True
     elif len(labels) == len(varlist): lmklblb = False
@@ -229,7 +231,7 @@ class MyAxes(Axes):
       else: label = labels[n]
       # save variable  
       self.variables[label] = var
-      if lprint: print varname, varunits, val.mean(), val.std()  
+      if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)  
       # save values
       values.append(val)
     # figure out orientation
@@ -339,9 +341,9 @@ class MyAxes(Axes):
   def _axLabel(self, label, name, units):
     ''' helper method to format axes lables '''
     if label is True: 
-      if name is None and units is None: label = ''
-      elif units is None: label = '{0:s}'.format(name)
-      elif name is None: label = '[{:s}]'.format(units)
+      if not name and not units: label = ''
+      elif not units: label = '{0:s}'.format(name)
+      elif not name: label = '[{:s}]'.format(units)
       else: label = '{0:s} [{1:s}]'.format(name,units)
     elif label is False or label is None: label = ''
     elif isinstance(label,basestring): label = label.format(name,units)
