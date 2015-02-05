@@ -2442,8 +2442,8 @@ class Ensemble(object):
     # add members
     self.members = list(members)
     # add certain properties
-    self.ens_name = kwargs.get('name','')
-    self.ens_title = kwargs.get('title','')
+    self.ens_name = kwargs.pop('name','')
+    self.ens_title = kwargs.pop('title','')
     # no need to be too restrictive
     if 'basetype' in kwargs:
       self.basetype = kwargs.pop('basetype') # don't want to add that later! 

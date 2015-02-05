@@ -453,6 +453,8 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)  
   # prepare input  
+  if experiment is None and name is not None: 
+    experiment = name; name=None # allow 'name' to define an experiment  
   folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder)
   if lctrT and experiment is None: 
     raise DatasetError, "Experiment '{0:s}' not found in database; need time information to center time axis.".format(names[0])    
@@ -698,14 +700,14 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
   montpl = (0,years*12)
   # special treatment for single experiments (i.e. not an ensemble...)
   if not isinstance(ensemble,(tuple,list)):
-    dataset = loadWRF_All(experiment=ensemble, name=None, grid=grid, station=station, shape=shape, period=None,  
+    dataset = loadWRF_All(experiment=None, name=ensemble, grid=grid, station=station, shape=shape, period=None,  
                           filetypes=filetypes, varlist=varlist, varatts=varatts, mode='time-series', 
                           lautoregrid=lautoregrid, lctrT=lctrT, lconst=lconst, domains=domains)
   else:
     # load datasets (and load!)
     datasets = []
     for exp in ensemble:
-      ds = loadWRF_All(experiment=exp, name=None, grid=grid, station=station, shape=shape, period=None, 
+      ds = loadWRF_All(experiment=None, name=exp, grid=grid, station=station, shape=shape, period=None, 
                        filetypes=filetypes, varlist=varlist, varatts=varatts, mode='time-series',
                        lautoregrid=lautoregrid, lctrT=lctrT, lconst=lconst, domains=domains)
       datasets.append(ds.load())

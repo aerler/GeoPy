@@ -255,7 +255,7 @@ class BaseVarTest(unittest.TestCase):
       if dist != 'kde':
         # test rescaling
         if lsimple: 
-          scales = distvar.rescale(loc=1., scale=1., lflatten=True)
+          scales = distvar.rescale(loc=1., scale=1., lflatten=True, asVar=False)
           assert scales == (1., 1.) if len(scales) == 2 else scales == (None, 1., 1.)
         else: scales = distvar.rescale(reference=var, lflatten=True)
         # N.B.: the standard deviation will change due to flattening (non-linear)
@@ -1420,12 +1420,12 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
        
     
     # construct dictionary of test classes defined above

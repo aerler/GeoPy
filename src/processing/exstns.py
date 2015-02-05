@@ -284,10 +284,10 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    NP = 1 ; ldebug = False # for quick computations
+    NP = 2 ; ldebug = False # for quick computations
 #     NP = 2 ; ldebug = True # just for tests
-    modes = ('climatology',) # 'climatology','time-series'
-#     modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('climatology',) # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
 #     varlist = ['precip',]
@@ -318,7 +318,7 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm'] # ,'lnd'
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-    WRF_experiments += ['max']
+    WRF_experiments += ['erai']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...
@@ -327,7 +327,7 @@ if __name__ == '__main__':
 #     domains = (2,) # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-    WRF_filetypes = ('hydro',)
+    WRF_filetypes = ('hydro','srfc','xtrm')
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
     #WRF_filetypes = ('const',); periods = None
     # station datasets to match    
