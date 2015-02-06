@@ -156,33 +156,31 @@ class DatasetsTest(unittest.TestCase):
     assert 'MaxPrecip_1d' in dss[0] and 'precip' in dss[1]
     assert 'MaxPrecip_1d' not in dss[3] and 'precip' not in dss[2]
     
-  
-  def testLoadStationEnsemble(self):
+  def testLoadEnsembleTS(self):
     ''' test station data load functions (ensemble and list) '''
-    from datasets.common import loadStationEnsemble    
-#     # test simple ensemble
-#     names = ['EC', 'max-ens_d01','max-ens']; varlist = ['precip'] 
-#     prov = ('BC','AB'); season = 'summer'
-#     constraints = dict(min_len=50, lat=(45,60), max_zerr=300,)
-#     stnens = loadStationEnsemble(names=names, prov=prov, season=season, station='ecprecip', 
-#                                  constraints=constraints, 
-#                                  varlist=varlist, filetypes=['hydro'], domain=None)
-#     assert isinstance(stnens, Ensemble)
-#     assert stnens.basetype.__name__ == 'Dataset'
-#     assert all(stnens.hasVariable(varlist[0]))
-#     assert 'ecprecip' in stnens
+    from datasets.common import loadEnsembleTS    
+    # test simple ensemble with basins
+    names = ['GPCC', 'max-ens_d01','max-ens']; varlist = ['precip'] 
+    season = None; aggregation = 'mean'; slices = dict(shape_name='ARB') 
+    shpens = loadEnsembleTS(names=names, season=season, shape='shpavg', aggregation=aggregation, 
+                            slices=slices, varlist=varlist, filetypes=['hydro'], domain=None)
+    assert isinstance(shpens, Ensemble)
+    assert shpens.basetype.__name__ == 'Dataset'
+    assert all(shpens.hasVariable(varlist[0]))
+    assert 'GPCC' in shpens
+    assert all('ARB' == ds.atts.shape_name for ds in shpens)
     # test list expansion of ensembles    
     names = ['EC', 'max-ens']; varlist = ['MaxPrecip_1d'] 
     prov = ['BC','AB']; season = ['summer','winter']; mode = ['max']
     constraints = dict(min_len=50, lat=(50,55), max_zerr=300,)
-    enslst = loadStationEnsemble(names=names, prov=prov, season=season, mode=mode, 
-                                 station='ecprecip', constraints=constraints, varlist=varlist, filetypes=['hydro'],
-                                 load_list=['mode','season','prov',], lproduct='outer')
+    enslst = loadEnsembleTS(names=names, prov=prov, season=season, mode=mode, station='ecprecip', 
+                            constraints=constraints, varlist=varlist, filetypes=['hydro'],
+                            load_list=['mode','season','prov',], lproduct='outer')
     assert len(enslst) == 4
     assert all(isinstance(ens, Ensemble) for ens in enslst)
     assert all(ens.basetype.__name__ == 'Dataset' for ens in enslst)
     assert all(ens.hasVariable(varlist[0]) for ens in enslst)
-    assert all('ecprecip' in ens for ens in enslst)
+    assert all('EC' in ens for ens in enslst)
     ## some debugging test
 #     gevens = [ens.fitDist(lflatten=True, axis=None) for ens in enslst]
 #     print(''); print(gevens[0][0])
@@ -196,7 +194,7 @@ if __name__ == "__main__":
 #     specific_tests = ['AsyncPool']    
 #     specific_tests = ['ExpArgList']
 #     specific_tests = ['LoadDataset']
-    specific_tests = ['LoadStationEnsemble']
+    specific_tests = ['LoadEnsembleTS']
 
 
     # list of tests to be performed

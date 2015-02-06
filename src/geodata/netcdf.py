@@ -188,11 +188,11 @@ class VarNC(Variable):
     else:
       # provide direct access to netcdf data on file
       if isinstance(slc,(list,tuple)):
-        if len(slc) != self.ndim: raise AxisError
+        if len(slc) != self.ncvar.ndim: raise AxisError
         slcs = list(slc) # need to insert items
         # NetCDF can't deal wit negative list indices
         for i,slc in enumerate(slcs):
-          lendim = self.shape[i] # add dimension length to negative values
+          lendim = self.ncvar.shape[i] # add dimension length to negative values
           if isinstance(slc,(list,tuple)):
             slcs[i] = [idx+lendim if idx < 0 else idx for idx in slc]
           elif isinstance(slc,np.ndarray):

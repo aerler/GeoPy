@@ -522,12 +522,15 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
   elif mode.lower() in ('climatology',):
     if lensemble and station: raise ArgumentError
     if station: load_fct += '_Stn'
+    elif shape: load_fct += '_Shp'
   elif mode.lower() in ('time-series','timeseries',):
     if lensemble:
       if station: load_fct += '_StnEns'
+      elif shape: load_fct += '_ShpEns'
       else: load_fct += '_Ensemble'
     else:
       if station: load_fct += '_StnTS'
+      elif shape: load_fct += '_ShpTS'
       else: load_fct += '_TS'      
   # load dataset
   if load_fct in dataset.__dict__: 
@@ -537,7 +540,7 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
   if not inspect.isfunction(load_fct): 
     raise ArgumentError, "Attribute '{:s}' in module '{:s}' is not a function".format(load_fct.__name__,dataset_name)
   # generate and check arguments
-  kwargs.update(name=name, station=station, mode=mode)
+  kwargs.update(name=name, station=station, shape=shape, mode=mode)
   argspec, varargs, keywords, defaults = inspect.getargspec(load_fct); del varargs, keywords, defaults
   kwargs = {key:value for key,value in kwargs.iteritems() if key in argspec}
   # load dataset
@@ -608,48 +611,49 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
 
 # a function to load station data
 @BatchLoad
-def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, prov=None, 
-                   shape=None, station=None, constraints=None, filetypes=None, domain=None, **kwargs):
+def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, 
+                   slices=None, shape=None, station=None, prov=None, constraints=None, 
+                   filetypes=None, domain=None, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
   if varlist is not None:
     varlist = list(varlist)[:] # copy list
-    if station:
-      varlist += ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon',] # necessary to select stations
-    if shape:
-      varlist += ['shp_name', 'shp_long_name', 'shp_type',] # possible necessary to select other regions    
-  stnens = Ensemble(name=name, title=title, basetype='Dataset')
+    if station: varlist += ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon',] # necessary to select stations
+    if shape: varlist += ['shape_name', 'shp_long_name', 'shp_type',] # possible necessary to select other regions
+  # perpare ensemble    
+  ensemble = Ensemble(name=name, title=title, basetype='Dataset')
   # load ensemble WRF data
   for name in names:
-    stnens += loadDataset(name=name, station=station, prov=prov, shape=shape, varlist=varlist, 
+    # load individual dataset
+    dataset = loadDataset(name=name, station=station, prov=prov, shape=shape, varlist=varlist, 
                           mode='time-series', filetypes=filetypes, domains=domain)
-  # select and load data
+    if slices is not None: dataset = dataset(**slices) # slice immediately 
+    ensemble += dataset.load() # load data and add to ensemble
+  # select specific stations (if applicable)
   if station and constraints:
     from datasets.EC import selectStations
-#     if constraints is None: 
-#       constraints = dict(min_len=50, lat=(45,55), max_zerr=300,) #lon=(-130,-110),
-    stnens = selectStations(stnens, stnaxis='station', imaster=None, linplace=False, lall=False, **constraints)
+    ensemble = selectStations(ensemble, stnaxis='station', imaster=None, linplace=False, lall=False, **constraints)
   # extract seasonal/climatological values/extrema
   if aggregation:
     if season is not None:
-      if   aggregation.lower() == 'mean': stnens = stnens.seasonalMean(season=season, taxis='time', **kwargs)
-      elif aggregation.lower() == 'sum': stnens = stnens.seasonalSum(season=season, taxis='time', **kwargs)
-      elif aggregation.lower() == 'std': stnens = stnens.seasonalStd(season=season, taxis='time', **kwargs)
-      elif aggregation.lower() == 'var': stnens = stnens.seasonalVar(season=season, taxis='time', **kwargs)
-      elif aggregation.lower() == 'max': stnens = stnens.seasonalMax(season=season, taxis='time', **kwargs)
-      elif aggregation.lower() == 'min': stnens = stnens.seasonalMin(season=season, taxis='time', **kwargs)
+      if   aggregation.lower() == 'mean': ensemble = ensemble.seasonalMean(season=season, taxis='time', **kwargs)
+      elif aggregation.lower() == 'sum': ensemble = ensemble.seasonalSum(season=season, taxis='time', **kwargs)
+      elif aggregation.lower() == 'std': ensemble = ensemble.seasonalStd(season=season, taxis='time', **kwargs)
+      elif aggregation.lower() == 'var': ensemble = ensemble.seasonalVar(season=season, taxis='time', **kwargs)
+      elif aggregation.lower() == 'max': ensemble = ensemble.seasonalMax(season=season, taxis='time', **kwargs)
+      elif aggregation.lower() == 'min': ensemble = ensemble.seasonalMin(season=season, taxis='time', **kwargs)
       else: raise NotImplementedError
     else:
-      if   aggregation.lower() == 'mean': stnens = stnens.climMean(taxis='time', **kwargs)
-      elif aggregation.lower() == 'sum': stnens = stnens.climSum(taxis='time', **kwargs)
-      elif aggregation.lower() == 'std': stnens = stnens.climStd(taxis='time', **kwargs)
-      elif aggregation.lower() == 'var': stnens = stnens.climVar(taxis='time', **kwargs)
-      elif aggregation.lower() == 'max': stnens = stnens.climMax(taxis='time', **kwargs)
-      elif aggregation.lower() == 'min': stnens = stnens.climMin(taxis='time', **kwargs)
+      if   aggregation.lower() == 'mean': ensemble = ensemble.climMean(taxis='time', **kwargs)
+      elif aggregation.lower() == 'sum': ensemble = ensemble.climSum(taxis='time', **kwargs)
+      elif aggregation.lower() == 'std': ensemble = ensemble.climStd(taxis='time', **kwargs)
+      elif aggregation.lower() == 'var': ensemble = ensemble.climVar(taxis='time', **kwargs)
+      elif aggregation.lower() == 'max': ensemble = ensemble.climMax(taxis='time', **kwargs)
+      elif aggregation.lower() == 'min': ensemble = ensemble.climMin(taxis='time', **kwargs)
       else: raise NotImplementedError
   # return dataset
-  return stnens
+  return ensemble
 
 
 ## Miscellaneous utility functions

@@ -881,13 +881,12 @@ class Variable(object):
           raise TypeError, "Only single coordinate values/indices are supported."                
     if lflatten: data = self.data_array.ravel() # just a 'view', flatten() returns a copy
     else: data = self.data_array
-    # N.B.: usually this will be used for categorical data like int or str anyway...
-    # pad strings with spaces      
-    if self.strvar: value = value + ' '*(self.strlen-len(value))
+    # N.B.: usually this will be used for categorical data like int or str anyway...    
     # N.B.: this way we avoid false positives due to too short strings
     # now scan through the values to extract matching index
     idx = None
     for i,vv in enumerate(data):
+      if self.strvar and len(vv) > len(value): vv = vv.rstrip() # strip trailing spaces (strvars get padded)
       if vv == value: idx = i; break # terminate at first match
     if idx is None:
       # possible problems with floats
@@ -2018,9 +2017,17 @@ class Dataset(object):
       
   def __call__(self, lidx=None, lrng=None, lsqueeze=True, lcopy=False, years=None, 
                listAxis=None, lrmOther=False, lcpOther=False, **axes):
+    ''' This method implements access to slices via coordinate values and returns Variable objects. 
+        Default behavior for different argument types: 
+          - index by coordinate value, not array index, except if argument is a Slice object
+          - interprete tuples of length 2 or 3 as ranges
+          - treat lists and arrays as coordinate lists (can specify new list axis)
+          - for backwards compatibility, None values are accepted and indicate the entire range 
+        Type-based defaults are ignored if appropriate keyword arguments are specified. '''
     # process variables
     slicevars = {}; othervars = {} # variables that will get sliced and others that are unaffected
     sliceaxes = {}; otheraxes = {}
+    singlevaratts = self.atts.copy() # variables that collapse to scalars are added as attributes (with the value)
     # parse axes for pseudo-axes
     # N.B.: we do this once for all variables, because this operation can be somewhat slow
     axes = axes.copy() # might be changed...
@@ -2037,16 +2044,26 @@ class Dataset(object):
         # N.B.: not that this automatically squeezes the pseudo-axis, since it is just a values...        
     # loop over variables
     for var in self.variables.itervalues():
-      newvar = var(lidx=lidx, lrng=lrng, asVar=True, lcheck=False, lsqueeze=lsqueeze, 
-                   lcopy=lcopy, years=years, listAxis=listAxis, **axes)
-      # save variable
-      if var.ndim == newvar.ndim and var.shape == newvar.shape: 
-        othervars[newvar.name] = newvar         
-      else: slicevars[newvar.name] = newvar
-      # save axes
-      for ax in newvar.axes:
-        if ax.name in otheraxes and len(ax) == len(self.axes[ax.name]): otheraxes[ax.name] = ax
-        else: sliceaxes[ax.name] = ax       
+      if ( all(ax.name in axes for ax in var.axes) and 
+           all(not isinstance(axes[ax.name],(slice,tuple,list,np.ndarray)) for ax in var.axes) ):
+        # just extract value and add as attribute
+        if var.name in singlevaratts: 
+          raise NotImplementedError, "Name collision between attribute and singleton variable '{:s}'".format(var.name)
+        attval = var(lidx=lidx, lrng=lrng, asVar=False, lcheck=False, lsqueeze=True, 
+                     lcopy=False, years=years, listAxis=listAxis, **axes)        
+        singlevaratts[var.name] = attval
+      else:
+        # properly slice variable
+        newvar = var(lidx=lidx, lrng=lrng, asVar=True, lcheck=False, lsqueeze=lsqueeze, 
+                     lcopy=lcopy, years=years, listAxis=listAxis, **axes)
+        # save variable
+        if var.ndim == newvar.ndim and var.shape == newvar.shape: 
+          othervars[newvar.name] = newvar         
+        else: slicevars[newvar.name] = newvar
+        # save axes
+        for ax in newvar.axes:
+          if ax.name in otheraxes and len(ax) == len(self.axes[ax.name]): otheraxes[ax.name] = ax
+          else: sliceaxes[ax.name] = ax       
     # figure out what to copy
     axes = otheraxes.copy(); axes.update(sliceaxes) # sliced axes overwrite old axes
     variables = slicevars.copy()
@@ -2055,7 +2072,7 @@ class Dataset(object):
       varlist += othervars.keys()
       if lcpOther: variables.update(othervars)
     # copy dataset
-    return self.copy(axes=axes, variables=variables, varlist=varlist, 
+    return self.copy(axes=axes, variables=variables, varlist=varlist, atts=singlevaratts,
                      varargs=None, axesdeep=True, varsdeep=False)
 
   def copy(self, axes=None, variables=None, varlist=None, varargs=None, axesdeep=True, varsdeep=False, 
