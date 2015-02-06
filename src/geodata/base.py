@@ -20,6 +20,7 @@ from geodata.misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDic
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 from processing.multiprocess import apply_along_axis
 from utils.misc import histogram, binedges
+from operator import isCallable
      
 
 class UnaryCheckAndCreateVar(object):
@@ -2050,7 +2051,13 @@ class Dataset(object):
         if var.name in singlevaratts: 
           raise NotImplementedError, "Name collision between attribute and singleton variable '{:s}'".format(var.name)
         attval = var(lidx=lidx, lrng=lrng, asVar=False, lcheck=False, lsqueeze=True, 
-                     lcopy=False, years=years, listAxis=listAxis, **axes)        
+                     lcopy=False, years=years, listAxis=listAxis, **axes)    
+        # convert to Python scalar (of sorts)
+        if isinstance(attval,np.ndarray):
+          if np.issubdtype(attval.dtype, np.str): attval = str(attval).rstrip()    
+          elif np.issubdtype(attval.dtype, np.integer): attval = int(attval)
+          elif np.issubdtype(attval.dtype, np.float): attval = float(attval)
+          else: raise TypeError, attval
         singlevaratts[var.name] = attval
       else:
         # properly slice variable
@@ -2650,20 +2657,29 @@ class Ensemble(object):
     else:
       raise TypeError
 
-  def __getitem__(self, member):
-    ''' Yet another way to access members by name... conforming to the container protocol. If argument is not a member, it is called with __getattr__.'''
-    if isinstance(member, basestring): 
-      if self.hasMember(member):
+  def __getitem__(self, item):
+    ''' Yet another way to access members by name... conforming to the container protocol. 
+        If argument is not a member, it is called with __getattr__.'''
+    if isinstance(item, basestring): 
+      if self.hasMember(item):
         # access members like dictionary
-        return self.__dict__[member] # members were added as attributes
+        return self.__dict__[item] # members were added as attributes
       else:
-        if self.basetype is Dataset: raise DatasetError
-        elif self.basetype is Variable: raise VariableError
-        else: raise AttributeError
-        #return self.__getattr__(member) # call like an attribute
-    elif isinstance(member, (int,np.integer,slice)):
+        try:
+          # dispatch to member attributes 
+          atts = [getattr(member,item) for member in self.members]
+          if any(isCallable(att) and not isinstance(att, (Variable,Dataset)) for att in atts): raise AttributeError
+          return self._recastList(atts)
+          # N.B.: this is useful to load different Variables from Datasets by name, 
+          #       without having to use getattr()
+        except AttributeError:
+          if self.basetype is Dataset: raise DatasetError, item
+          elif self.basetype is Variable: raise VariableError, item
+          else: raise AttributeError, item
+        #return self.__getattr__(item) # call like an attribute
+    elif isinstance(item, (int,np.integer,slice)):
       # access members like list/tuple 
-      return self.members[member]
+      return self.members[item]
     else: raise TypeError
   
   def __setitem__(self, name, member):

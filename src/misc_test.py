@@ -152,7 +152,7 @@ class DatasetsTest(unittest.TestCase):
                     load_list=['name','varlist'], lproduct='outer')
     assert len(dss) == 4
     assert isinstance(ds, Dataset)
-    assert dss[1].name == 'ecprecip' and dss[2].name == 'max-ens'
+    assert dss[1].name == 'EC' and dss[2].name == 'max-ens'
     assert 'MaxPrecip_1d' in dss[0] and 'precip' in dss[1]
     assert 'MaxPrecip_1d' not in dss[3] and 'precip' not in dss[2]
     
@@ -194,7 +194,7 @@ if __name__ == "__main__":
 #     specific_tests = ['AsyncPool']    
 #     specific_tests = ['ExpArgList']
 #     specific_tests = ['LoadDataset']
-    specific_tests = ['LoadEnsembleTS']
+#     specific_tests = ['LoadEnsembleTS']
 
 
     # list of tests to be performed
