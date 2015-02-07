@@ -281,14 +281,12 @@ if __name__ == '__main__':
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
   
-  lbatch = True # for now
-  
   # default settings
   if not lbatch:
-    NP = 2 ; ldebug = False # for quick computations
+    NP = 4 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
-#     modes = ('time-series',) # 'climatology','time-series'
-    modes = ('climatology',) # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('climatology',) # 'climatology','time-series'
 #     loverwrite = False
     loverwrite = True
     varlist = None
@@ -309,7 +307,7 @@ if __name__ == '__main__':
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
 #     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
-    datasets += ['GPCC']; resolutions = {'GPCC':['025']}
+#     datasets += ['GPCC']; resolutions = {'GPCC':['025']}
 #     datasets += ['CRU']
     # CESM experiments (short or long name) 
     load3D = False
@@ -323,15 +321,17 @@ if __name__ == '__main__':
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['max-ens-A']
-#     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
+#     WRF_experiments += ['erai-max','max-seaice-2050','max-seaice-2100'] # requires different implementation...    
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
+#     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100'] # requires different implementation...
     # other WRF parameters 
     domains = None # domains to be processed
 #     domains = (2,) # domains to be processed
+    WRF_filetypes = ('srfc',)
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
-    WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-#     WRF_filetypes = ('hydro',)
+#     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
     #WRF_filetypes = ('const',); periods = None
     # define shape data  
@@ -359,14 +359,14 @@ if __name__ == '__main__':
     CESM_filetypes = ('atm','lnd')    
     # WRF
     WRF_experiments = [] # process all WRF experiments
-    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-    WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
-    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
-    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
-    WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', ] # new standard runs (arb3)     
-    WRF_experiments += ['ctrl-1', 'ctrl-2050', 'ctrl-2100'] # new standard runs (arb3)
-    WRF_experiments += ['old-ctrl', 'old-ctrl-2050', 'old-ctrl-2100'] # new standard runs (arb3)
-    WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
+#     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+#     WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
+#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+#     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+#     WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', ] # new standard runs (arb3)     
+#     WRF_experiments += ['ctrl-1', 'ctrl-2050', 'ctrl-2100'] # new standard runs (arb3)
+#     WRF_experiments += ['old-ctrl', 'old-ctrl-2050', 'old-ctrl-2100'] # new standard runs (arb3)
+#     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
     domains = None # domains to be processed
     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
     # define shape data
