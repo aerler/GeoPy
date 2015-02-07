@@ -621,20 +621,25 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
     varlist = list(varlist)[:] # copy list
     if station: varlist += ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon',] # necessary to select stations
     if shape: varlist += ['shape_name', 'shp_long_name', 'shp_type',] # possible necessary to select other regions
-  # perpare ensemble    
-  ensemble = Ensemble(name=name, title=title, basetype='Dataset')
   # load ensemble WRF data
+  if isinstance(names, (list,tuple)): lensemble =True
+  else: names = (name,); lensemble =True
+  # perpare ensemble    
+  if lensemble: ensemble = Ensemble(name=name, title=title, basetype='Dataset')
   for name in names:
     # load individual dataset
     dataset = loadDataset(name=name, station=station, prov=prov, shape=shape, varlist=varlist, 
                           mode='time-series', filetypes=filetypes, domains=domain)
     if slices is not None: dataset = dataset(**slices) # slice immediately 
-    ensemble += dataset.load() # load data and add to ensemble
+    if lensemble: ensemble += dataset.load() # load data and add to ensemble
+  # if input was not a list, just return dataset
+  if not lensemble: ensemble = dataset.load() # load data
   # select specific stations (if applicable)
-  if station and constraints:
+  if lensemble and station and constraints:
     from datasets.EC import selectStations
     ensemble = selectStations(ensemble, stnaxis='station', imaster=None, linplace=False, lall=False, **constraints)
   # extract seasonal/climatological values/extrema
+  # N.B.: the operations below should work with Ensembles as well as Datasets 
   if aggregation:
     if season is not None:
       if   aggregation.lower() == 'mean': ensemble = ensemble.seasonalMean(season=season, taxis='time', **kwargs)
