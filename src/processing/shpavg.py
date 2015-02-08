@@ -283,7 +283,7 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    NP = 4 ; ldebug = False # for quick computations
+    NP = 3 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
     modes = ('time-series',) # 'climatology','time-series'
 #     modes = ('climatology',) # 'climatology','time-series'
@@ -321,9 +321,9 @@ if __name__ == '__main__':
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['max-ens-A']
-    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
-#     WRF_experiments += ['erai-max','max-seaice-2050','max-seaice-2100'] # requires different implementation...    
+#     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
+    WRF_experiments += ['erai-max','max-seaice-2050','max-seaice-2100'] # requires different implementation...    
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100'] # requires different implementation...
     # other WRF parameters 

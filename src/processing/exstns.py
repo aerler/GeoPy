@@ -284,10 +284,10 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    NP = 2 ; ldebug = False # for quick computations
-#     NP = 2 ; ldebug = True # just for tests
-#     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology','time-series'
+#     NP = 2 ; ldebug = False # for quick computations
+    NP = 2 ; ldebug = True # just for tests
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
 #     varlist = ['precip',]
@@ -397,8 +397,8 @@ if __name__ == '__main__':
         # assemble function to load station data (with arguments)
         station_module = import_module('datasets.{0:s}'.format(stntype)) # load station data module
         # load station dataset into memory, so that it can be shared by all workers
-        stnfct = functools.partial(station_module.loadStationTimeSeries, filetype=datatype)
-        #stndata = station_module.loadStationTimeSeries(filetype=datatype).load()
+        stnname = stntype.lower()+datatype.lower() 
+        stnfct = functools.partial(station_module.loadStationTimeSeries, name=stnname, filetype=datatype)
                
         # observational datasets (grid depends on dataset!)
         for dataset in datasets:
