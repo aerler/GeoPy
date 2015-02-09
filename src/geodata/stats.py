@@ -652,7 +652,7 @@ class DistVar(Variable):
 #       params = ma.masked_equal(params, invalid) # mask invalid values 
 #       params.set_fill_value = invalid # fill value to use later       
     # generate new parameter axis
-    params_name = 'params_#{:d}'.format(params.shape[-1])
+    if params.ndim > 0: params_name = 'params_#{:d}'.format(params.shape[-1]) # can happen with single KDE
     if params.ndim == len(axes)+1:
       patts = dict(name=params_name,units='',long_name='Distribution Parameters')
       paramAxis = Axis(coord=np.arange(params.shape[-1]), atts=patts)
@@ -670,7 +670,7 @@ class DistVar(Variable):
     assert self.masked == masked
     self.dtype = dtype # property is overloaded in DistVar
     # N.B.: in this variable dtype and units refer to the sample data, not the distribution!
-    if self.hasAxis(params_name):
+    if params.ndim > 0 and self.hasAxis(params_name):
       self.paramAxis = self.getAxis(params_name) 
     # aliases
     self.pdf = self.PDF

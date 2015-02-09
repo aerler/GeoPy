@@ -82,13 +82,13 @@ class LinePlotTest(unittest.TestCase):
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var1 = self.var1; var2 = self.var2
     # define fancy attributes
-    varatts = dict()
-    #for var in var1,var2: varatts[var.name] = dict(color=var.name, marker='*')
-    varatts[var1.name] = dict(color='red', marker='*')       
+    plotatts = dict()
+    for var in var1,var2: plotatts[var.name] = dict(color=var.name, marker='*')
+#     plotatts[var1.name] = dict(color='red', marker='*')       
     # define fancy legend
     legend = dict(loc=2, labelspacing=0.125, handlelength=2.5, handletextpad=0.5, fancybox=True)
     # create plot
-    plts = ax.linePlot([var1, var2], linestyles=('--','-.'), varatts=varatts, legend=legend)
+    plts = ax.linePlot([var1, var2], linestyles=('--','-.'), plotatts=plotatts, legend=legend)
     assert len(plts) == 2
 
   def testAxesGridLinePlot(self):
@@ -180,7 +180,7 @@ if __name__ == "__main__":
 
     
     specific_tests = None
-    specific_tests = ['BasicLinePlot']
+#     specific_tests = ['BasicLinePlot']
 #     specific_tests = ['AdvancedLinePlot']
 #     specific_tests = ['CombinedLinePlot']
 #     specific_tests = ['AxesGridLinePlot']    
@@ -188,8 +188,8 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['LinePlot'] 
-#     tests += ['BarPlot']
+#     tests += ['LinePlot'] 
+    tests += ['BarPlot']
     
 
     # construct dictionary of test classes defined above

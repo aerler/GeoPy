@@ -29,7 +29,7 @@ def loadStyleSheet(stylesheet, lpresentation=False, lpublication=False):
   if isinstance(stylesheet,(list,tuple,basestring)): 
     mpl.pyplot.style.use(stylesheet)
   else: raise TypeError
- 
+
 
 # method to check units and name, and return scaled plot value (primarily and internal helper function)
 def getPlotValues(var, checkunits=None, checkname=None):

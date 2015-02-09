@@ -7,18 +7,16 @@ A custom Axes class that provides some specialized plotting functions and retain
 '''
 
 # external imports
-from types import NoneType
 import numpy as np
 import matplotlib as mpl
 from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 # internal imports
 from geodata.base import Variable, Dataset, Ensemble
-from geodata.stats import DistVar, VarKDE, VarRV  
 from geodata.misc import ListError, AxisError, ArgumentError, isEqual
 from plotting.misc import smooth, getPlotValues
 from collections import OrderedDict
-from utils.misc import binedges
+from utils.misc import binedges, expandArgumentList, evalDistVars
 
 ## new axes class
 class MyAxes(Axes): 
@@ -26,24 +24,29 @@ class MyAxes(Axes):
     A custom Axes class that provides some specialized plotting functions and retains variable 
     information. The custom Figure uses this Axes class by default.
   '''
-  variables    = None
-  plots        = None
-  title_height = 2
-  flipxy       = False
-  xname        = None
-  xunits       = None
-  xpad         = 2 
-  yname        = None
-  yunits       = None
-  ypad         = 0
+  variables          = None
+  variable_plotargs  = None
+  dataset_plotargs   = None
+  plots              = None
+  title_height       = 2
+  flipxy             = False
+  xname              = None
+  xunits             = None
+  xpad               = 2 
+  yname              = None
+  yunits             = None
+  ypad               = 0
   
-  def linePlot(self, varlist, varname=None, bins=None, support=None, linestyles=None, varatts=None, legend=None, llabel=True, labels=None, 
-               xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=None, flipxy=None, xlabel=True, ylabel=True,
-               xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False, **kwargs):
-    ''' A function to draw a list of 1D variables into an axes, 
-        and annotate the plot based on variable properties. '''
+  def linePlot(self, varlist, varname=None, bins=None, support=None, lineformats=None, plotatts=None,
+               legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,                 
+               flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
+               xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False, 
+               expand_list=None, lproduct='inner', method='pdf', **plotargs):
+    ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on 
+        variable properties; extra keyword arguments (plotargs) are passed through expandArgumentList,
+        before being passed to Axes.plot(). '''
+    ## figure out variables
     # varlist is the list of variable objects that are to be plotted
-    #print varlist
     if isinstance(varlist,Variable): varlist = [varlist]
     elif not isinstance(varlist,(tuple,list,Ensemble)):raise TypeError
     if varname is not None:
@@ -51,56 +54,35 @@ class MyAxes(Axes):
     if not all([isinstance(var,Variable) for var in varlist]): raise TypeError
     for var in varlist: var.squeeze() # remove singleton dimensions
     # evaluate distribution variables on support/bins
-    if support is not None or bins is not None:
-      if support is not None and bins is not None: raise ArgumentError
-      if support is None and bins is not None: support = bins
-      for var in varlist:
-        if not isinstance(var,(DistVar,VarKDE,VarRV)): raise TypeError, "{:s} ({:s})".format(var.name, var.__class__.__name__)
-      newlist = [var.pdf(support=support) for var in varlist]
-      for new,var in zip(newlist,varlist): new.dataset= var.dataset # preserve dataset links to construct references
-      varlist = newlist
-    # linestyles is just a list of line styles for each plot
-    if isinstance(linestyles,(basestring,NoneType)): linestyles = [linestyles]*len(varlist)
-    elif not isinstance(linestyles,(tuple,list)): 
-      if not all([isinstance(linestyles,basestring) for var in varlist]): raise TypeError
-      if len(varlist) != len(linestyles): raise ListError, "Failed to match linestyles to varlist!"
-    # varatts are variable-specific attributes that are parsed for special keywords and then passed on to the
-    if varatts is None: varatts = [dict()]*len(varlist)  
-    elif isinstance(varatts,dict):
-      tmp = [varatts[var.name] if var.name in varatts else dict() for var in varlist]
-      if any(tmp): varatts = tmp # if any variable names were found
-      else: varatts = [varatts]*len(varlist) # assume it is one varatts dict, which will be used for all variables
-    elif not isinstance(varatts,(tuple,list)): raise TypeError
-    if not all([isinstance(atts,dict) for atts in varatts]): raise TypeError
+    varlist = evalDistVars(varlist, bins=bins, support=support, method=method, ldatasetLink=True) 
     # check axis: they need to have only one axes, which has to be the same for all!
-    if len(varatts) != len(varlist): raise ListError, "Failed to match varatts to varlist!"  
     for var in varlist: 
       if var.ndim > 1: raise AxisError, "Variable '{}' has more than one dimension; consider squeezing.".format(var.name)
       elif var.ndim == 0: raise AxisError, "Variable '{}' is a scalar; consider display as a line.".format(var.name)
-    # line/plot label policy
-    lname = not any(var.name == varlist[0].name for var in varlist[1:])
-    if lname or not all(var.dataset is not None for var in varlist): ldataset = False
-    elif not any(var.dataset.name == varlist[0].dataset.name for var in varlist[1:]): ldataset = True
-    else: ldataset = False
     # initialize axes names and units
     self.flipxy = flipxy
-    if self.flipxy:
-      varname,varunits,axname,axunits = self.xname,self.xunits,self.yname,self.yunits
-    else:
-      axname,axunits,varname,varunits = self.xname,self.xunits,self.yname,self.yunits
+    if self.flipxy: varname,varunits,axname,axunits = self.xname,self.xunits,self.yname,self.yunits
+    else: axname,axunits,varname,varunits = self.xname,self.xunits,self.yname,self.yunits
+    ## figure out plot arguments
+    if self.variables is None: self.variables = OrderedDict() # save variables by label
     # reset color cycle
     if reset_color is False: pass
     elif reset_color is True: self.set_color_cycle(None) # reset
     else: self.set_color_cycle(reset_color)
-    # prepare label list
-    if labels is None: labels = []; lmklblb = True
-    elif len(labels) == len(varlist): lmklblb = False
-    else: raise ArgumentError, "Incompatible length of label list."
-    # loop over variables
+    # figure out label list
+    if labels is None: labels = self._getPlotLabels(varlist)           
+    elif len(labels) != len(varlist): raise ArgumentError, "Incompatible length of varlist and labels."
+    for label,var in zip(labels,varlist): self.variables[label] = var
+    label_list = labels if llabel else [None]*len(labels) # used for plot labels later
+    assert len(labels) == len(varlist)
+    # finally, expand keyword arguments
+    plotargs = self._expandArguments(labels=label_list, expand_list=expand_list, lproduct=lproduct, **plotargs)
+    assert len(plotargs) == len(varlist)
+    ## generate individual line plots
     plts = [] # list of plot handles
-    if self.plots is None: self.plots = []
-    if self.variables is None: self.variables = OrderedDict()
-    for n,var,linestyle,varatt in zip(xrange(len(varlist)),varlist,linestyles,varatts):
+    if self.plots is None: self.plots = OrderedDict() # save plot objects by label
+    # loop over variables and plot arguments
+    for var,plotarg,label in zip(varlist,plotargs,labels):
       varax = var.axes[0]
       # scale axis and variable values 
       axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None)
@@ -109,32 +91,23 @@ class MyAxes(Axes):
       if var.plot is not None and varax.plot is not None: 
         if varax.units != axunits and var.plot.preserve == 'area':
           val /= varax.plot.scalefactor
-      # save variable 
-      if lmklblb: 
-        if lname: label = var.name # default label: variable name
-        elif ldataset: label = var.dataset.name
-        else: label = n
-        labels.append(label)
-      else: label = labels[n]
-      self.variables[label] = var
-      # figure out keyword options
-      kwatts = kwargs.copy(); kwatts.update(varatt) # join individual and common attributes     
-      kwatts['label'] = label if llabel else None
       # N.B.: other scaling behavior could be added here
       if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)   
       if lsmooth: val = smooth(val)
       # figure out orientation
       if self.flipxy: xx,yy = val, axe 
       else: xx,yy = axe, val
+      # update plotargs from defaults
+      plotarg = self._getPlotArgs(label, var, plotatts=plotatts, plotarg=plotarg)
+      lineformat = plotarg.pop('lineformat',None)
       # call plot function
-      if linestyle is None: plt = self.plot(xx, yy, **kwatts)[0]
-      else: plt = self.plot(xx, yy, linestyle, **kwatts)[0]
-      plts.append(plt); self.plots.append(plt)
+      if lineformat: plt = self.plot(xx, yy, lineformat, **plotarg)[0]
+      else: plt = self.plot(xx, yy, **plotarg)[0]
+      plts.append(plt); self.plots[label] = plt
+    ## format axes
     # set plot scale (log/linear)
-    if xlog: self.set_xscale('log')
-    else: self.set_xscale('linear')
-    if ylog: self.set_yscale('log')
-    else: self.set_yscale('linear')
+    self.set_xscale('log' if xlog else 'linear')
+    self.set_yscale('log' if ylog else 'linear')
     # set axes limits
     if isinstance(xlim,(list,tuple)) and len(xlim)==2: self.set_xlim(*xlim)
     elif xlim is not None: raise TypeError
@@ -143,22 +116,17 @@ class MyAxes(Axes):
     # set title
     if title is not None: self.addTitle(title)
     # set axes labels  
-    if self.flipxy: 
-      self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
-    else: 
-      self.xname,self.xunits,self.yname,self.yunits = axname,axunits,varname,varunits
+    if self.flipxy: self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
+    else: self.xname,self.xunits,self.yname,self.yunits = axname,axunits,varname,varunits
     # format axes ticks
-    self.xTickLabels(xticks, loverlap=False)
-    self.yTickLabels(yticks, loverlap=False)
+    self.xTickLabels(xticks, n=len(xx), loverlap=False) # False means overlaps will be prevented
+    self.yTickLabels(yticks, n=len(yy), loverlap=False)
+    ## add axes labels and annotation
     # format axes labels
     self.xLabel(xlabel)
     self.yLabel(ylabel)    
     # N.B.: a typical custom label that makes use of the units would look like this: 'custom label [{1:s}]', 
     # where {} will be replaced by the appropriate default units (which have to be the same anyway)
-    # make monthly ticks
-    if self.xname == 'time' and self.xunits == 'month':
-      if len(xticks) == 12 or len(xticks) == 13:
-        self.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator(2)) # self.minorticks_on()
     # add legend
     if isinstance(legend,dict): self.addLegend(**legend) 
     elif isinstance(legend,(int,np.integer,float,np.inexact)): self.addLegend(loc=legend)
@@ -314,7 +282,58 @@ class MyAxes(Axes):
         kwargs['fontsize'] = self.get_yaxis().get_label().get_fontsize()
       kwargs['loc'] = loc
       self.legend(**kwargs)
+  
+  def _expandArguments(self, labels=None, expand_list=None, lproduct='inner', **plotargs):
+    ''' function to expand arguments while applying some default treatments; plural forms of some
+        plot arguments are automatically converted and expanded for all plotargs '''
+    # line style parameters is just a list of line styles for each plot
+    if lproduct == 'inner':
+      if expand_list is None: expand_list = []
+      expand_list.append('label')
+      # loop over special arguments that allow plural form
+      for name in ('lineformats','linestyles','colors','markers'):
+        if name in plotargs:
+          args = plotargs.pop(name)  
+          if not isinstance(args,(tuple,list)): 
+            if not all([isinstance(arg,basestring) for arg in args]): raise TypeError
+            if len(labels) != len(args): raise ListError, "Failed to match linestyles to varlist!"
+            expand_list.append(name[:-1]) # cut off trailing 's' (i.e. proper singular form)
+      # actually expand list 
+      plotargs = expandArgumentList(label=labels, expand_list=expand_list, lproduct=lproduct, **plotargs)
+    else: raise NotImplementedError, lproduct
+    # return cleaned-up and expanded plot arguments
+    return plotargs
     
+  def _getPlotLabels(self, varlist):
+    ''' figure out reasonable plot labels based variable and dataset names '''
+    # figure out line/plot label policy
+    if not any(var.name == varlist[0].name for var in varlist[1:]):
+      labels = [var.name for var in varlist]
+    elif ( all(var.dataset is not None for var in varlist) and
+           not any(var.dataset.name == varlist[0].dataset.name for var in varlist[1:]) ):
+      labels = [var.dataset.name for var in varlist]
+    else: 
+      labels = range(len(varlist))
+    return labels
+  
+  def _getPlotArgs(self, label, var, plotatts=None, plotarg=None):
+    ''' function to return plotting arguments/styles based on defaults and explicit arguments '''
+    args = dict()
+    # apply figure/project defaults
+    if label == var.name: # variable name has precedence
+      if var.dataset is not None and self.dataset_plotargs is not None: 
+        args.update(self.dataset_plotargs.get(var.dataset.name,{}))
+      if self.variable_plotargs is not None: args.update(self.variable_plotargs.get(var.name,{}))
+    else: # dataset name has precedence
+      if self.variable_plotargs is not None: args.update(self.variable_plotargs.get(var.name,{}))
+      if var.dataset is not None and self.dataset_plotargs is not None: 
+        args.update(self.dataset_plotargs.get(var.dataset.name,{}))
+    # apply axes/local defaults
+    if plotatts is not None: args.update(plotatts.get(label,{}))
+    if plotarg is not None: args.update(plotarg)
+    # return dictionary with keyword argument for plotting function
+    return args    
+  
   def xLabel(self, xlabel, name=None, units=None):
     ''' format x-axis label '''
     if xlabel is not None:
@@ -350,22 +369,30 @@ class MyAxes(Axes):
     else: raise ValueError, label
     return label
     
-  def xTickLabels(self, xticks, loverlap=False):
+  def xTickLabels(self, xticks, n=None, loverlap=False):
     ''' format x-tick labels '''
     xticks = self._tickLabels(xticks, self.get_xaxis())
     yticks = self.get_yaxis().get_ticklabels()
     if not loverlap and len(xticks) > 0 and (
         len(yticks) == 0 or not yticks[-1].get_visible() ):
         xticks[0].set_visible(False)
+    if n is not None: self._minorTickLabels(xticks, n, self.xaxis)
     return xticks
-  def yTickLabels(self, yticks, loverlap=False):
+  def yTickLabels(self, yticks, n=None, loverlap=False):
     ''' format y-tick labels '''
     xticks = self.get_xaxis().get_ticklabels()
     yticks = self._tickLabels(yticks, self.get_yaxis())
     if not loverlap and len(yticks) > 0 and (
         len(xticks) == 0 or not xticks[-1].get_visible() ):
         yticks[0].set_visible(False)
+    if n is not None: self._minorTickLabels(yticks, n, self.yaxis)      
     return yticks
+  def _minorTickLabels(self, ticks, n, axis):
+    ''' helper method to format axes ticks '''
+    nmaj = len(ticks)
+    if n%nmaj == 0: 
+      nmin = n//nmaj
+      axis.set_minor_locator(mpl.ticker.AutoMinorLocator(nmin))
   def _tickLabels(self, ticks, axis):
     ''' helper method to format axes ticks '''
     if ticks is True: 

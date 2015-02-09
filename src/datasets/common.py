@@ -15,6 +15,7 @@ import pickle
 import os
 from operator import isCallable
 # internal imports
+from utils.misc import expandArgumentList
 from geodata.misc import AxisError, DatasetError, DateError, ArgumentError
 from geodata.base import Dataset, Variable, Axis, Ensemble
 from geodata.netcdf import DatasetNetCDF, VarNC
@@ -352,81 +353,6 @@ def loadObservations(name=None, folder=None, period=None, grid=None, station=Non
 
 
 ## functions to load multiple datasets
-
-
-
-# helper function to form inner and outer product of multiple lists
-def expandArgumentList(expand_list=None, lproduct='outer', **kwargs):
-  ''' A function that generates a list of complete argument dict's, based on given kwargs and certain 
-      expansion rules: kwargs listed in expand_list are expanded and distributed element-wise, 
-      either as inner or outer product, while other kwargs are repeated in every argument dict. '''
-  # get load_list arguments
-  expand_list = [el for el in expand_list if el in kwargs] # remove missing entries
-  expand_dict = {el:kwargs[el] for el in expand_list}
-  for el in expand_list: del kwargs[el]
-  for el in expand_list: # check types 
-    if not isinstance(expand_dict[el], (list,tuple)): raise TypeError    
-  # identify expansion arguments
-  if lproduct.lower() == 'inner':
-    # inner product: essentially no expansion
-    lst0 = expand_dict[expand_list[0]]; lstlen = len(lst0) 
-    for el in expand_list: # check length
-      if len(expand_dict[el]) == 1: 
-        expand_dict[el] = expand_dict[el]*lstlen # broadcast singleton list
-      elif len(expand_dict[el]) != lstlen: 
-        raise TypeError, 'Lists have to be of same length to form inner product!'
-    list_dict = expand_dict
-  elif lproduct.lower() == 'outer':
-    lstlen = 1
-    for el in expand_list:
-      lstlen *= len(expand_dict[el])
-    
-    # basically, loop over each list independently
-    def loop_recursion(*args, **kwargs):
-      ''' handle any number of loop variables recursively '''
-      # interpete arguments
-      if len(args) == 1:
-        # initialize dictionary of lists (only first recursion level)
-        loop_list = args[0][:] # use copy, since it will be decimated 
-        list_dict = {key:list() for key in kwargs.iterkeys()}
-      elif len(args) == 2:
-        loop_list = args[0][:] # use copy of list, to avoid interference with other branches
-        list_dict = args[1] # this is not a copy: all branches append to the same lists!
-      # handle loops
-      if len(loop_list) > 0:
-        # initiate a new recursion layer and a new loop
-        arg_name = loop_list.pop(0)
-        for arg in kwargs[arg_name]:
-          kwargs[arg_name] = arg # just overwrite
-          # new recursion branch
-          list_dict = loop_recursion(loop_list, list_dict, **kwargs)
-      else:
-        # terminate recursion branch
-        for key,value in kwargs.iteritems():
-          list_dict[key].append(value)
-      # return results 
-      return list_dict
-    # execute recursive function    
-    list_dict = loop_recursion(expand_list, **expand_dict) # use copy of 
-    assert all(key in expand_dict for key in list_dict.iterkeys()) 
-    assert all(len(list_dict[el])==lstlen for el in expand_list) # check length    
-    assert all(len(ld)==lstlen for ld in list_dict.itervalues()) # check length
-     
-  else: raise ArgumentError
-  # generate list of argument dicts
-  arg_dicts = []
-  for n in xrange(lstlen):
-    # assemble arguments
-    lstargs = {key:lst[n] for key,lst in list_dict.iteritems()}
-#     lstargs = dict()
-#     for key,lst in list_dict.iteritems():
-#       lstargs[key] = lst[n]
-    arg_dict = kwargs.copy(); arg_dict.update(lstargs)
-    arg_dicts.append(arg_dict)
-    
-  # return list of arguments
-  return arg_dicts
-
 
 # decorator class for batch-loading datasets into an ensemble using a custom load function
 class BatchLoad(object):
