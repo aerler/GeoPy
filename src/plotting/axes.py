@@ -17,6 +17,7 @@ from geodata.misc import ListError, AxisError, ArgumentError, isEqual
 from plotting.misc import smooth, getPlotValues
 from collections import OrderedDict
 from utils.misc import binedges, expandArgumentList, evalDistVars
+from types import NoneType
 
 ## new axes class
 class MyAxes(Axes): 
@@ -72,15 +73,16 @@ class MyAxes(Axes):
     # figure out label list
     if labels is None: labels = self._getPlotLabels(varlist)           
     elif len(labels) != len(varlist): raise ArgumentError, "Incompatible length of varlist and labels."
-    for label,var in zip(labels,varlist): self.variables[label] = var
     label_list = labels if llabel else [None]*len(labels) # used for plot labels later
     assert len(labels) == len(varlist)
     # finally, expand keyword arguments
-    plotargs = self._expandArguments(labels=label_list, expand_list=expand_list, lproduct=lproduct, **plotargs)
+    plotargs = self._expandArgumentList(labels=label_list, expand_list=expand_list, 
+                                        lproduct=lproduct, plotargs=plotargs)
     assert len(plotargs) == len(varlist)
     ## generate individual line plots
     plts = [] # list of plot handles
     if self.plots is None: self.plots = OrderedDict() # save plot objects by label
+    for label,var in zip(labels,varlist): self.variables[label] = var # save plot variables
     # loop over variables and plot arguments
     for var,plotarg,label in zip(varlist,plotargs,labels):
       varax = var.axes[0]
@@ -98,50 +100,31 @@ class MyAxes(Axes):
       if self.flipxy: xx,yy = val, axe 
       else: xx,yy = axe, val
       # update plotargs from defaults
-      plotarg = self._getPlotArgs(label, var, plotatts=plotatts, plotarg=plotarg)
+      plotarg = self._getPlotArgs(label=label, var=var, plotatts=plotatts, plotarg=plotarg)
       lineformat = plotarg.pop('lineformat',None)
       # call plot function
       if lineformat: plt = self.plot(xx, yy, lineformat, **plotarg)[0]
       else: plt = self.plot(xx, yy, **plotarg)[0]
       plts.append(plt); self.plots[label] = plt
-    ## format axes
-    # set plot scale (log/linear)
-    self.set_xscale('log' if xlog else 'linear')
-    self.set_yscale('log' if ylog else 'linear')
-    # set axes limits
-    if isinstance(xlim,(list,tuple)) and len(xlim)==2: self.set_xlim(*xlim)
-    elif xlim is not None: raise TypeError
-    if isinstance(ylim,(list,tuple)) and len(ylim)==2: self.set_ylim(*ylim)
-    elif ylim is not None: raise TypeError 
-    # set title
-    if title is not None: self.addTitle(title)
+    ## format axes and add annotation
     # set axes labels  
     if self.flipxy: self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
     else: self.xname,self.xunits,self.yname,self.yunits = axname,axunits,varname,varunits
-    # format axes ticks
-    self.xTickLabels(xticks, n=len(xx), loverlap=False) # False means overlaps will be prevented
-    self.yTickLabels(yticks, n=len(yy), loverlap=False)
-    ## add axes labels and annotation
-    # format axes labels
-    self.xLabel(xlabel)
-    self.yLabel(ylabel)    
-    # N.B.: a typical custom label that makes use of the units would look like this: 'custom label [{1:s}]', 
-    # where {} will be replaced by the appropriate default units (which have to be the same anyway)
-    # add legend
-    if isinstance(legend,dict): self.addLegend(**legend) 
-    elif isinstance(legend,(int,np.integer,float,np.inexact)): self.addLegend(loc=legend)
-    # add orientation lines
-    if hline is not None: self.addHline(hline)
-    if vline is not None: self.addVline(vline)
-    # return handle
+    # apply standard formatting and annotation
+    self.formatAxesAndAnnotation(title=title, legend=legend, xlabel=xlabel, ylabel=ylabel, 
+                                 hline=hline, vline=vline, xlim=xlim, xlog=xlog, xticks=xticks, 
+                                 ylim=ylim, ylog=ylog, yticks=yticks, xlen=len(xx), ylen=len(yy))
+    # return handles to line objects
     return plts
 
-  def histogram(self, varlist, varname=None, bins=None, binedgs=None, histtype='bar', lstacked=False, lnormalize=True,
-                lcumulative=0, varatts=None, legend=None, colors=None, llabel=True, labels=None, align='mid', rwidth=None, 
-                bottom=None, weights=None, xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=True, 
-                flipxy=None, xlabel=True, ylabel=True, log=False, xlim=None, ylim=None, lprint=False, **kwargs):
+  def histogram(self, varlist, varname=None, bins=None, binedgs=None, histtype='bar', lstacked=False, 
+                lnormalize=True, lcumulative=0, legend=None, llabel=True, labels=None, colors=None, 
+                align='mid', rwidth=None, bottom=None, weights=None, xlabel=True, ylabel=True,  
+                xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=True, 
+                flipxy=None, log=False, xlim=None, ylim=None, lprint=False, plotatts=None, **histargs):
     ''' A function to draw histograms of a list of 1D variables into an axes, 
         and annotate the plot based on variable properties. '''
+    ## check input
     # varlist is the list of variable objects that are to be plotted
     if isinstance(varlist,Variable): varlist = [varlist]
     elif isinstance(varlist,(tuple,list,Ensemble)): pass
@@ -151,99 +134,81 @@ class MyAxes(Axes):
       varlist = [getattr(var,varname) if isinstance(var,Dataset) else var for var in varlist]
     if not all([isinstance(var,Variable) for var in varlist]): raise TypeError
     for var in varlist: var.squeeze() # remove singleton dimensions
-    # varatts are variable-specific attributes that are parsed for special keywords and then passed on to the
-    if varatts is None: varatts = [dict()]*len(varlist)  
-    elif isinstance(varatts,dict):
-      tmp = [varatts[var.name] if var.name in varatts else dict() for var in varlist]
-      if any(tmp): varatts = tmp # if any variable names were found
-      else: varatts = [varatts]*len(varlist) # assume it is one varatts dict, which will be used for all variables
-    elif not isinstance(varatts,(tuple,list)): raise TypeError
-    if not all([isinstance(atts,dict) for atts in varatts]): raise TypeError
+    # evaluate distribution variables on support/bins
+    varlist = evalDistVars(varlist, bins=bins, support=None, method='sample', ldatasetLink=True)     
     # check axis: they need to have only one axes, which has to be the same for all!
-    if len(varatts) != len(varlist): raise ListError, "Failed to match varatts to varlist!"  
-    # line/plot label policy
-    lname = not any(var.name == varlist[0].name for var in varlist[1:])
-    if lname or not all(var.dataset is not None for var in varlist): ldataset = False
-    elif not any(var.dataset.name == varlist[0].dataset.name for var in varlist[1:]): ldataset = True
-    else: ldataset = False
+    for var in varlist: 
+      if var.ndim > 1: raise AxisError, "Variable '{}' has more than one dimension; consider squeezing.".format(var.name)
+      elif var.ndim == 0: raise AxisError, "Variable '{}' is a scalar; consider display as a line.".format(var.name)    
     # initialize axes names and units
     self.flipxy = flipxy
-    if not self.flipxy: # histogram has opposite convention
-      varname,varunits,axname,axunits = self.xname,self.xunits,self.yname,self.yunits
-    else:
-      axname,axunits,varname,varunits = self.xname,self.xunits,self.yname,self.yunits
-    # reset color cycle
-    if reset_color: self.set_color_cycle(None)
+    # N.B.: histogram has opposite convention for axes
+    if not self.flipxy: varname,varunits,axname,axunits = self.xname,self.xunits,self.yname,self.yunits
+    else: axname,axunits,varname,varunits = self.xname,self.xunits,self.yname,self.yunits
+    ## process arguuments
     # figure out bins
     vmin = np.min([var.min() for var in varlist])
     vmax = np.max([var.max() for var in varlist])
     bins, binedgs = binedges(bins=bins, binedgs=binedgs, limits=(vmin,vmax), lcheckVar=True)
-    # prepare label list
-    if labels is None: labels = []; lmklblb = True
-    elif len(labels) == len(varlist): lmklblb = False
-    else: raise ArgumentError, "Incompatible length of label list."
-    if self.variables is None: self.variables = OrderedDict()
+    # reset color cycle
+    if reset_color is False: pass
+    elif reset_color is True: self.set_color_cycle(None) # reset
+    else: self.set_color_cycle(reset_color)
+    # figure out label list
+    if labels is None: labels = self._getPlotLabels(varlist)           
+    elif len(labels) != len(varlist): raise ArgumentError, "Incompatible length of varlist and labels."
+    label_list = labels if llabel else None
+    assert len(labels) == len(varlist)
     # loop over variables
-    values = [] # list of plot handles
-    for n,var in zip(xrange(len(varlist)),varlist):
+    if self.variables is None: self.variables = OrderedDict() # save variables by label
+    for label,var in zip(labels,varlist): self.variables[label] = var # save plot variables
+    # generate a list from userdefined colors
+    if isinstance(colors,(tuple,list)): 
+      if not all([isinstance(color,(basestring,NoneType)) for color in colors]): raise TypeError
+      if len(varlist) != len(colors): raise ListError, "Failed to match linestyles to varlist!"
+    elif isinstance(colors,(basestring,NoneType)): colors = [colors]*len(varlist)
+    else: raise TypeError    
+    ## generate list of values for histogram
+    values = []; color_list = [] # list of plot handles
+    for label,var,color in zip(labels,varlist, colors):
       # scale variable values(axes are irrelevant)
       val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None)
       val = val.ravel() # flatten array
       if not varname.endswith('_bins'): varname += '_bins'
-      # figure out label
-      if lmklblb:
-        if lname: label = var.name # default label: variable name
-        elif ldataset: label = var.dataset.name
-        else: label = n
-        labels.append(label)
-      else: label = labels[n]
-      # save variable  
-      self.variables[label] = var
-      if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)  
-      # save values
+      if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)
+      # get default plotargs consistent with linePlot      
+      plotarg = self._getPlotArgs(label, var, plotatts=plotatts, plotarg=None)
+      # extract color
+      if color is None and color in plotarg: color = plotarg['color']        
+      if color is not None: color_list.append(color)
+      # save values 
       values.append(val)
+    ## construct histogram
     # figure out orientation
     if self.flipxy: orientation = 'horizontal' 
     else: orientation = 'vertical'
     # call histogram method of Axis
-    if not llabel: labels = None 
-    hdata, bin_edges, patches = self.hist(values, bins=binedgs, normed=lnormalize, weights=weights, cumulative=lcumulative, 
-                                          bottom=bottom, histtype=histtype, align=align, orientation=orientation, 
-                                          rwidth=rwidth, log=log, color=colors, label=labels, stacked=lstacked, **kwargs)
+    colors = color_list or None 
+    hdata, bin_edges, patches = self.hist(values, bins=binedgs, color=colors, label=label_list, 
+                                          normed=lnormalize, weights=weights, cumulative=lcumulative,  
+                                          stacked=lstacked, bottom=bottom, histtype=histtype, log=log,
+                                          align=align, orientation=orientation, rwidth=rwidth, 
+                                          **histargs)
     del hdata; assert isEqual(bin_edges, binedgs)
     # N.B.: generally we don't need to keep the histogram results - there are other functions for that
-    # set axes limits
-    if isinstance(xlim,(list,tuple)) and len(xlim)==2: self.set_xlim(*xlim)
-    elif xlim is not None: raise TypeError
-    if isinstance(ylim,(list,tuple)) and len(ylim)==2: self.set_ylim(*ylim)
-    elif ylim is not None: raise TypeError 
-    # set title
-    if title is not None: self.addTitle(title)
+    ## format axes and add annotation
     # set axes labels  
-    if not self.flipxy: 
-      self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
-    else: 
-      self.xname,self.xunits,self.yname,self.yunits = axname,axunits,varname,varunits
-    # format axes ticks
-    self.xTickLabels(xticks, loverlap=False)
-    self.yTickLabels(yticks, loverlap=False)
-    # format axes labels
-    self.xLabel(xlabel)
-    self.yLabel(ylabel)    
-    # N.B.: a typical custom label that makes use of the units would look like this: 'custom label [{1:s}]', 
-    # where {} will be replaced by the appropriate default units (which have to be the same anyway)
-    # make monthly ticks
-    if self.xname == 'time' and self.xunits == 'month':
-      if len(xticks) == 12 or len(xticks) == 13:
-        self.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator(2)) # self.minorticks_on()
-    # add legend
-    if isinstance(legend,dict): self.addLegend(**legend) 
-    elif isinstance(legend,(int,np.integer,float,np.inexact)): self.addLegend(loc=legend)
-    # add orientation lines
-    if hline is not None: self.addHline(hline)
-    if vline is not None: self.addVline(vline)
+    if not self.flipxy: self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
+    else: self.xname,self.xunits,self.yname,self.yunits = axname,axunits,varname,varunits
+    # apply standard formatting and annotation
+    self.formatAxesAndAnnotation(title=title, legend=legend, xlabel=xlabel, ylabel=ylabel, 
+                                 hline=hline, vline=vline, xlim=xlim, xlog=None, xticks=xticks, 
+                                 ylim=ylim, ylog=None, yticks=yticks, 
+                                 xlen=None if self.flipxy else len(val), 
+                                 ylen=len(val) if self.flipxy else None)
     # return handle
     return bins, patches # bins can be used as support for distributions
+  
   
   def addHline(self, hline, **kwargs):
     ''' add one or more horizontal lines to the plot '''
@@ -283,21 +248,31 @@ class MyAxes(Axes):
       kwargs['loc'] = loc
       self.legend(**kwargs)
   
-  def _expandArguments(self, labels=None, expand_list=None, lproduct='inner', **plotargs):
+  
+  def _translateArguments(self, labels=None, expand_list=None, plotargs=None):
+    # loop over special arguments that allow plural form
+    for name in ('lineformats','linestyles','colors','markers'):
+      if name in plotargs:
+        args = plotargs.pop(name)  
+        if isinstance(args,(tuple,list)): 
+          if not all([isinstance(arg,basestring) for arg in args]): raise TypeError
+          if len(labels) != len(args): raise ListError, "Failed to match linestyles to varlist!"
+        elif isinstance(args,basestring):
+          args = [args]*len(labels)
+        else: raise TypeError
+        plotargs[name[:-1]] = args # save list under singular name
+        expand_list.append(name[:-1]) # cut off trailing 's' (i.e. proper singular form)
+    return expand_list, plotargs
+  
+  def _expandArgumentList(self, labels=None, expand_list=None, lproduct='inner', plotargs=None):
     ''' function to expand arguments while applying some default treatments; plural forms of some
         plot arguments are automatically converted and expanded for all plotargs '''
     # line style parameters is just a list of line styles for each plot
     if lproduct == 'inner':
       if expand_list is None: expand_list = []
       expand_list.append('label')
-      # loop over special arguments that allow plural form
-      for name in ('lineformats','linestyles','colors','markers'):
-        if name in plotargs:
-          args = plotargs.pop(name)  
-          if not isinstance(args,(tuple,list)): 
-            if not all([isinstance(arg,basestring) for arg in args]): raise TypeError
-            if len(labels) != len(args): raise ListError, "Failed to match linestyles to varlist!"
-            expand_list.append(name[:-1]) # cut off trailing 's' (i.e. proper singular form)
+      expand_list, plotargs = self._translateArguments(labels=labels, 
+                                                       expand_list=expand_list, plotargs=plotargs)
       # actually expand list 
       plotargs = expandArgumentList(label=labels, expand_list=expand_list, lproduct=lproduct, **plotargs)
     else: raise NotImplementedError, lproduct
@@ -318,6 +293,10 @@ class MyAxes(Axes):
   
   def _getPlotArgs(self, label, var, plotatts=None, plotarg=None):
     ''' function to return plotting arguments/styles based on defaults and explicit arguments '''
+    if not isinstance(label, basestring): raise TypeError
+    if not isinstance(var, Variable): raise TypeError
+    if plotatts is not None and not isinstance(plotatts, dict): raise TypeError
+    if plotarg is not None and not isinstance(plotarg, dict): raise TypeError
     args = dict()
     # apply figure/project defaults
     if label == var.name: # variable name has precedence
@@ -333,6 +312,37 @@ class MyAxes(Axes):
     if plotarg is not None: args.update(plotarg)
     # return dictionary with keyword argument for plotting function
     return args    
+
+  def formatAxesAndAnnotation(self, title=None, legend=None, xlabel=None, ylabel=None, 
+                              hline=None, vline=None, xlim=None, ylim=None, xlog=None, ylog=None,                                
+                              xticks=None, xlen=None, yticks=None, ylen=None):
+    ''' apply standard formatting and labeling to axes '''
+    ## format axes
+    # set plot scale (log/linear)
+    if xlog is not None: self.set_xscale('log' if xlog else 'linear')
+    if ylog is not None: self.set_yscale('log' if ylog else 'linear')
+    # set axes limits
+    if isinstance(xlim,(list,tuple)) and len(xlim)==2: self.set_xlim(*xlim)
+    elif xlim is not None: raise TypeError
+    if isinstance(ylim,(list,tuple)) and len(ylim)==2: self.set_ylim(*ylim)
+    elif ylim is not None: raise TypeError 
+    # set title
+    if title is not None: self.addTitle(title)
+    # format axes ticks
+    self.xTickLabels(xticks, n=xlen, loverlap=False) # False means overlaps will be prevented
+    self.yTickLabels(yticks, n=ylen, loverlap=False)
+    ## add axes labels and annotation
+    # format axes labels
+    self.xLabel(xlabel)
+    self.yLabel(ylabel)    
+    # N.B.: a typical custom label that makes use of the units would look like this: 'custom label [{1:s}]', 
+    # where {} will be replaced by the appropriate default units (which have to be the same anyway)
+    # add legend
+    if isinstance(legend,dict): self.addLegend(**legend) 
+    elif isinstance(legend,(int,np.integer,float,np.inexact)): self.addLegend(loc=legend)
+    # add orientation lines
+    if hline is not None: self.addHline(hline)
+    if vline is not None: self.addVline(vline)
   
   def xLabel(self, xlabel, name=None, units=None):
     ''' format x-axis label '''

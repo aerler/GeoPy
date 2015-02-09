@@ -264,6 +264,7 @@ class MyFigure(Figure):
 
 ## convenience function to return a figure and an array of ImageGrid axes
 def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet=None, margins=None,
+             variable_plotargs=None, dataset_plotargs=None,
              sharex=None, sharey=None, AxesGrid=False, ngrids=None, direction='row',
              axes_pad = None, add_all=True, share_all=None, aspect=False,
              label_mode='L', cbar_mode=None, cbar_location='right', lreduce=True,
@@ -345,7 +346,8 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet=None, mar
                      label_mode=label_mode, cbar_mode=cbar_mode, cbar_location=cbar_location, 
                      cbar_pad=cbar_pad, cbar_size=cbar_size, axes_class=axes_class)
     # return figure and axes
-    axes = tuple([ax for ax in grid]) # this is already flattened
+    axes = np.asarray(grid).reshape(subplot) # don't want flattened array
+    #axes = tuple([ax for ax in grid]) # this is already flattened
     if lreduce and len(axes) == 1: axes = axes[0] # return a bare axes instance, if there is only one axes    
   else:
     # create axes using normal subplot routine
@@ -374,6 +376,14 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet=None, mar
   # add figure title
   if name is not None: fig.canvas.set_window_title(name) # window title
   if title is not None: fig.suptitle(title) # title on figure (printable)
+  # add default line styles for variables and datasets to axes (figure doesn't need to know)
+  if isinstance(axes, np.ndarray):
+    for ax in axes.ravel(): 
+      ax.variable_plotargs = variable_plotargs
+      ax.dataset_plotargs = dataset_plotargs
+  else:
+    axes.variable_plotargs = variable_plotargs
+    axes.dataset_plotargs = dataset_plotargs
   # return Figure/ImageGrid and tuple of axes
   #if AxesGrid: fig = grid # return ImageGrid instead of figure
   return fig, axes

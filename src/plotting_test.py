@@ -76,15 +76,18 @@ class LinePlotTest(unittest.TestCase):
   
   def testAdvancedLinePlot(self):
     ''' test more advanced options of the line plot function '''    
-    fig,ax = getFigAx(1, title='Fancy Plot Styles', name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    var1 = self.var1; var2 = self.var2
+    varatts = dict() # set some default values
+    for var in var1,var2: varatts[var.name] = dict(color=var.name, marker='1', markersize=15)    
+    fig,ax = getFigAx(1, title='Fancy Plot Styles', name=sys._getframe().f_code.co_name[4:], 
+                      variable_plotargs=varatts, **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyAxes'
-    assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
-    var1 = self.var1; var2 = self.var2
+    assert not isinstance(ax,(list,tuple,np.ndarray)) # should return a "naked" axes
+    assert isinstance(ax.variable_plotargs, dict)
     # define fancy attributes
-    plotatts = dict()
-    for var in var1,var2: plotatts[var.name] = dict(color=var.name, marker='*')
-#     plotatts[var1.name] = dict(color='red', marker='*')       
+    plotatts = dict() # override some defaults
+    plotatts[var1.name] = dict(color='red', marker='*', markersize=5)        
     # define fancy legend
     legend = dict(loc=2, labelspacing=0.125, handlelength=2.5, handletextpad=0.5, fancybox=True)
     # create plot
@@ -97,10 +100,10 @@ class LinePlotTest(unittest.TestCase):
     #assert grid.__class__.__name__ == 'ImageGrid'
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyLocatableAxes'
-    assert isinstance(axes,tuple) # should return a list of axes
+    assert isinstance(axes,np.ndarray) # should return a list of axes
     var1 = self.var1; var2 = self.var2
     # create plot
-    for ax in axes:
+    for ax in axes.ravel():
         plts = ax.linePlot([var1, var2], ylim=var1.limits(), legend=0)
         assert len(plts) == 2   
         
@@ -109,10 +112,10 @@ class LinePlotTest(unittest.TestCase):
     fig,axes = getFigAx(4, sharey=True, sharex=True, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyAxes'
-    assert isinstance(axes,(list,tuple,np.ndarray)) # should return a list of axes
+    assert isinstance(axes,np.ndarray) # should return a list of axes
     var1 = self.var1; var2 = self.var2
     # create plot
-    for i,ax in enumerate(axes.flatten()):
+    for i,ax in enumerate(axes.ravel()):
       plts = ax.linePlot([var1, var2], ylim=var1.limits(), legend=0,)
       ax.addTitle('Panel {:d}'.format(i+1))
       assert len(plts) == 2
@@ -188,7 +191,7 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['LinePlot'] 
+    tests += ['LinePlot'] 
     tests += ['BarPlot']
     
 
