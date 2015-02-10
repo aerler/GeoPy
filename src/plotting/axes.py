@@ -38,8 +38,9 @@ class MyAxes(Axes):
   yunits             = None
   ypad               = 0
   
-  def linePlot(self, varlist, varname=None, bins=None, support=None, lineformats=None, plotatts=None,
-               legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,                 
+  def linePlot(self, varlist, varname=None, errorbar=None, bins=None, support=None, plotatts=None,
+               errorband=None, bandalpha=0.5,  
+               legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False, 
                expand_list=None, lproduct='inner', method='pdf', **plotargs):
@@ -47,19 +48,14 @@ class MyAxes(Axes):
         variable properties; extra keyword arguments (plotargs) are passed through expandArgumentList,
         before being passed to Axes.plot(). '''
     ## figure out variables
-    # varlist is the list of variable objects that are to be plotted
-    if isinstance(varlist,Variable): varlist = [varlist]
-    elif not isinstance(varlist,(tuple,list,Ensemble)):raise TypeError
-    if varname is not None:
-      varlist = [getattr(var,varname) if isinstance(var,Dataset) else var for var in varlist]
-    if not all([isinstance(var,Variable) for var in varlist]): raise TypeError
-    for var in varlist: var.squeeze() # remove singleton dimensions
-    # evaluate distribution variables on support/bins
-    varlist = evalDistVars(varlist, bins=bins, support=support, method=method, ldatasetLink=True) 
-    # check axis: they need to have only one axes, which has to be the same for all!
-    for var in varlist: 
-      if var.ndim > 1: raise AxisError, "Variable '{}' has more than one dimension; consider squeezing.".format(var.name)
-      elif var.ndim == 0: raise AxisError, "Variable '{}' is a scalar; consider display as a line.".format(var.name)
+    varlist = self._checkVarlist(varlist, varname=varname, ndim=1, bins=bins, support=support, method=method)
+    if errorbar:
+      errlist = self._checkVarlist(errorbar, varname=varname, ndim=1, bins=bins, support=support, method=method)
+    else: errlist = [None]*len(varlist) # no error bars
+    if errorband:
+      bndlist = self._checkVarlist(errorband, varname=varname, ndim=1, bins=bins, support=support, method=method)
+    else: bndlist = [None]*len(varlist) # no error bands
+    assert len(varlist) == len(errlist) == len(bndlist)
     # initialize axes names and units
     self.flipxy = flipxy
     if self.flipxy: varname,varunits,axname,axunits = self.xname,self.xunits,self.yname,self.yunits
@@ -84,11 +80,17 @@ class MyAxes(Axes):
     if self.plots is None: self.plots = OrderedDict() # save plot objects by label
     for label,var in zip(labels,varlist): self.variables[label] = var # save plot variables
     # loop over variables and plot arguments
-    for var,plotarg,label in zip(varlist,plotargs,labels):
+    for var,errvar,bndvar,plotarg,label in zip(varlist,errlist,bndlist,plotargs,labels):
       varax = var.axes[0]
       # scale axis and variable values 
       axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None)
       val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None)
+      if errvar is not None: # for error bars
+        err, varunits, errname = getPlotValues(errvar, checkunits=varunits, checkname=None); del errname
+      else: err = None
+      if bndvar is not None: # semi-transparent error bands
+        bnd, varunits, bndname = getPlotValues(bndvar, checkunits=varunits, checkname=None); del bndname
+      else: bnd = None      
       # variable and axis scaling is not always independent...
       if var.plot is not None and varax.plot is not None: 
         if varax.units != axunits and var.plot.preserve == 'area':
@@ -96,15 +98,26 @@ class MyAxes(Axes):
       # N.B.: other scaling behavior could be added here
       if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)   
       if lsmooth: val = smooth(val)
-      # figure out orientation
-      if self.flipxy: xx,yy = val, axe 
-      else: xx,yy = axe, val
       # update plotargs from defaults
       plotarg = self._getPlotArgs(label=label, var=var, plotatts=plotatts, plotarg=plotarg)
-      lineformat = plotarg.pop('lineformat',None)
-      # call plot function
-      if lineformat: plt = self.plot(xx, yy, lineformat, **plotarg)[0]
-      else: plt = self.plot(xx, yy, **plotarg)[0]
+      plotarg['fmt'] = plotarg.pop('lineformat','') # rename (I prefer a different name)
+      # N.B.: '' (empty string) is the default, None means no line is plotted, only errors!
+      # extract arguments for error band
+      bndarg    = plotarg.pop('bandarg',dict())
+      where     = plotarg.pop('where',None)
+      edgecolor = plotarg.pop('edgecolor',0.5)
+      facecolor = plotarg.pop('facecolor',None)
+      # figure out orientation and call plot function
+      if self.flipxy: # flipped axes
+        xlen = len(var); ylen = len(axe) # used later
+        plt = self.errorbar(val, axe, xerr=err, yerr=None, **plotarg)[0]
+      else:# default orientation
+        xlen = len(axe); ylen = len(val) # used later
+        plt = self.errorbar(axe, val, xerr=None, yerr=err, **plotarg)[0]
+      # figure out parameters for error bands
+      if bnd is not None: 
+        self._drawBand(axe, val+bnd, val-bnd, plot=plt, where=where, color=(facecolor or plt.get_color()), 
+                       alpha=bandalpha*plotarg.get('alpha',1.), edgecolor=edgecolor, **bndarg)  
       plts.append(plt); self.plots[label] = plt
     ## format axes and add annotation
     # set axes labels  
@@ -113,10 +126,29 @@ class MyAxes(Axes):
     # apply standard formatting and annotation
     self.formatAxesAndAnnotation(title=title, legend=legend, xlabel=xlabel, ylabel=ylabel, 
                                  hline=hline, vline=vline, xlim=xlim, xlog=xlog, xticks=xticks, 
-                                 ylim=ylim, ylog=ylog, yticks=yticks, xlen=len(xx), ylen=len(yy))
+                                 ylim=ylim, ylog=ylog, yticks=yticks, xlen=xlen, ylen=ylen)
     # return handles to line objects
     return plts
 
+
+  def _drawBand(self, axes, upper, lower, plot=None, where=None, color=None, alpha=None, edgecolor=None, **bndarg):  
+    ''' function to add an error band to a plot '''
+    # get color from line object        
+    CC = mpl.colors.ColorConverter()
+    color = CC.to_rgba(color, alpha=alpha)
+    # make darker edges
+    if edgecolor is None: edgecolor = 0.5
+    elif isinstance(edgecolor,(int,np.int)): edgecolor = float(edgecolor)
+    if isinstance(edgecolor,(float,np.float)): 
+      edgecolor = tuple(c*edgecolor for c in color) # slightly darker edges
+    # construct keyword arguments to fill_between  
+    bndarg['edgecolor'] = edgecolor
+    bndarg['facecolor'] = color
+    bndarg['where'] = where
+    if self.flipxy: self.fill_betweenx(axes, lower, upper, **bndarg)
+    else: self.fill_between(axes, lower, upper, interpolate=True, **bndarg) # interpolate=True
+  
+  
   def histogram(self, varlist, varname=None, bins=None, binedgs=None, histtype='bar', lstacked=False, 
                 lnormalize=True, lcumulative=0, legend=None, llabel=True, labels=None, colors=None, 
                 align='mid', rwidth=None, bottom=None, weights=None, xlabel=True, ylabel=True,  
@@ -125,21 +157,7 @@ class MyAxes(Axes):
     ''' A function to draw histograms of a list of 1D variables into an axes, 
         and annotate the plot based on variable properties. '''
     ## check input
-    # varlist is the list of variable objects that are to be plotted
-    if isinstance(varlist,Variable): varlist = [varlist]
-    elif isinstance(varlist,(tuple,list,Ensemble)): pass
-    elif isinstance(varlist,Dataset): pass
-    else: raise TypeError
-    if varname is not None:
-      varlist = [getattr(var,varname) if isinstance(var,Dataset) else var for var in varlist]
-    if not all([isinstance(var,Variable) for var in varlist]): raise TypeError
-    for var in varlist: var.squeeze() # remove singleton dimensions
-    # evaluate distribution variables on support/bins
-    varlist = evalDistVars(varlist, bins=bins, support=None, method='sample', ldatasetLink=True)     
-    # check axis: they need to have only one axes, which has to be the same for all!
-    for var in varlist: 
-      if var.ndim > 1: raise AxisError, "Variable '{}' has more than one dimension; consider squeezing.".format(var.name)
-      elif var.ndim == 0: raise AxisError, "Variable '{}' is a scalar; consider display as a line.".format(var.name)    
+    varlist = self._checkVarlist(varlist, varname=varname, ndim=1, bins=bins, support=None, method='sample')
     # initialize axes names and units
     self.flipxy = flipxy
     # N.B.: histogram has opposite convention for axes
@@ -248,6 +266,26 @@ class MyAxes(Axes):
       kwargs['loc'] = loc
       self.legend(**kwargs)
   
+  def _checkVarlist(self, varlist, varname=None, ndim=1, bins=None, support=None, method='pdf'):
+    ''' helper function to pre-process the variable list '''
+    # varlist is the list of variable objects that are to be plotted
+    if isinstance(varlist,Variable): varlist = [varlist]
+    elif not isinstance(varlist,(tuple,list,Ensemble)):raise TypeError
+    if varname is not None:
+      varlist = [getattr(var,varname) if isinstance(var,Dataset) else var for var in varlist]
+    if not all([isinstance(var,Variable) for var in varlist]): raise TypeError
+    for var in varlist: var.squeeze() # remove singleton dimensions
+    # evaluate distribution variables on support/bins
+    if bins is not None or support is not None:
+      varlist = evalDistVars(varlist, bins=bins, support=support, method=method, ldatasetLink=True) 
+    # check axis: they need to have only one axes, which has to be the same for all!
+    for var in varlist: 
+      if var.ndim > ndim: 
+        raise AxisError, "Variable '{:s}' has more than {:d} dimension(s); consider squeezing.".format(var.name,ndim)
+      elif var.ndim < ndim: 
+        raise AxisError, "Variable '{:s}' has less than {:d} dimension(s); consider display as a line.".format(var.name,ndim)
+    # return cleaned-up and checkd variable list
+    return varlist    
   
   def _translateArguments(self, labels=None, expand_list=None, plotargs=None):
     # loop over special arguments that allow plural form
@@ -268,6 +306,7 @@ class MyAxes(Axes):
     ''' function to expand arguments while applying some default treatments; plural forms of some
         plot arguments are automatically converted and expanded for all plotargs '''
     # line style parameters is just a list of line styles for each plot
+    expand_list = list(expand_list)
     if lproduct == 'inner':
       if expand_list is None: expand_list = []
       expand_list.append('label')
