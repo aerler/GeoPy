@@ -45,13 +45,13 @@ class LinePlotTest(unittest.TestCase):
     var1 = Variable(axes=(xax1,), data=x1.copy(), atts=dict(name='blue', units='units'))
     self.var1 = var1; self.xax1 = xax1
     x2 = np.linspace(2,8,13); xax2 = Axis(name='X2-Axis', units='X Units', coord=x2)
-    var2 = Variable(name='green',units='units',axes=(xax2,), data=(x2**2)/5.)
+    var2 = Variable(name='purple',units='units',axes=(xax2,), data=(x2**2)/5.)
     self.var2 = var2; self.xax2 = xax2
     # create error variables with random noise
     noise1 = np.random.rand(len(xax1))*var1.data_array.std()/2.
     err1 = Variable(axes=(xax1,), data=noise1, atts=dict(name='blue_std', units='units'))
     noise2 = np.random.rand(len(xax2))*var2.data_array.std()/2.
-    err2 = Variable(name='green',units='units',axes=(xax2,), data=noise2)
+    err2 = Variable(name='purple',units='units',axes=(xax2,), data=noise2)
     self.err1 = err1; self.err2 = err2
     # add to list
     self.vars = [var1, var2]
@@ -122,8 +122,8 @@ class LinePlotTest(unittest.TestCase):
     assert fig.axes_class.__name__ == 'MyAxes'
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var1 = self.var1; var2 = self.var2
-    lowvar1 = self.var1 - 1.; lowvar2 = self.var2 / 2. 
-    upvar1 = self.var1 * 2.; upvar2 = self.var2 + 1.
+    lowvar1 = self.var1 - 1.; lowvar2 = None # self.var2 / 2. 
+    upvar1 = self.var1 * 2.; upvar2 = self.var2  # + 1.
     # create plot
     bnds = ax.bandPlot(upper=[upvar1, upvar2], lower=[lowvar1, lowvar2], edgecolor=0.1)
     assert len(bnds) == 2
@@ -245,7 +245,7 @@ if __name__ == "__main__":
 #     specific_tests = ['BasicLinePlot']
 #     specific_tests = ['BasicErrorPlot']
 #     specific_tests = ['FancyErrorPlot']
-#     specific_tests = ['FancyBandPlot']
+    specific_tests = ['FancyBandPlot']
 #     specific_tests = ['AdvancedLinePlot']
 #     specific_tests = ['CombinedLinePlot']
 #     specific_tests = ['AxesGridLinePlot']    
@@ -254,7 +254,7 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['LinePlot'] 
-    tests += ['BarPlot']
+#     tests += ['BarPlot']
     
 
     # construct dictionary of test classes defined above

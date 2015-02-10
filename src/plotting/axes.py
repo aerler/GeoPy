@@ -48,7 +48,7 @@ class MyAxes(Axes):
     
     
   def linePlot(self, varlist, varname=None, bins=None, support=None, errorbar=None, errorband=None,  
-               legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
+               legend=None, llabel=True, labels=None, hline=None, vline=None, title=None, lignore=False,        
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False, 
                expand_list=None, lproduct='inner', method='pdf', plotatts=None, **plotargs):
@@ -56,12 +56,12 @@ class MyAxes(Axes):
         variable properties; extra keyword arguments (plotargs) are passed through expandArgumentList,
         before being passed to Axes.plot(). '''
     ## figure out variables
-    varlist = self._checkVarlist(varlist, varname=varname, ndim=1, bins=bins, support=support, method=method)
-    if errorbar:
-      errlist = self._checkVarlist(errorbar, varname=varname, ndim=1, bins=bins, support=support, method=method)
+    varlist = self._checkVarlist(varlist, varname=varname, ndim=1, bins=bins, support=support, method=method, lignore=lignore)
+    if errorbar: errlist = self._checkVarlist(errorbar, varname=varname, ndim=1, 
+                                              bins=bins, support=support, method=method, lignore=lignore)
     else: errlist = [None]*len(varlist) # no error bars
-    if errorband:
-      bndlist = self._checkVarlist(errorband, varname=varname, ndim=1, bins=bins, support=support, method=method)
+    if errorband: bndlist = self._checkVarlist(errorband, varname=varname, ndim=1, 
+                                               bins=bins, support=support, method=method, lignore=lignore)
     else: bndlist = [None]*len(varlist) # no error bands
     assert len(varlist) == len(errlist) == len(bndlist)
     # initialize axes names and units
@@ -87,45 +87,46 @@ class MyAxes(Axes):
     for label,var in zip(labels,varlist): self.variables[label] = var # save plot variables
     # loop over variables and plot arguments
     for var,errvar,bndvar,plotarg,label in zip(varlist,errlist,bndlist,plotargs,labels):
-      varax = var.axes[0]
-      # scale axis and variable values 
-      axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None)
-      val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None)
-      if errvar is not None: # for error bars
-        err, varunits, errname = getPlotValues(errvar, checkunits=varunits, checkname=None); del errname
-      else: err = None
-      if bndvar is not None: # semi-transparent error bands
-        bnd, varunits, bndname = getPlotValues(bndvar, checkunits=varunits, checkname=None); del bndname
-      else: bnd = None      
-      # variable and axis scaling is not always independent...
-      if var.plot is not None and varax.plot is not None: 
-        if varax.units != axunits and var.plot.preserve == 'area':
-          val /= varax.plot.scalefactor
-      # N.B.: other scaling behavior could be added here
-      if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)   
-      if lsmooth: val = smooth(val)
-      # update plotargs from defaults
-      plotarg = self._getPlotArgs(label=label, var=var, plotatts=plotatts, plotarg=plotarg)
-      plotarg['fmt'] = plotarg.pop('lineformat','') # rename (I prefer a different name)
-      # N.B.: '' (empty string) is the default, None means no line is plotted, only errors!
-      # extract arguments for error band
-      bndarg    = plotarg.pop('bandarg',dict())
-      where     = plotarg.pop('where',None)
-      bandalpha = plotarg.pop('bandalpha',0.5)
-      edgecolor = plotarg.pop('edgecolor',0.5)
-      facecolor = plotarg.pop('facecolor',None)
-      # figure out orientation and call plot function
-      if self.flipxy: # flipped axes
-        xlen = len(var); ylen = len(axe) # used later
-        plt = self.errorbar(val, axe, xerr=err, yerr=None, **plotarg)[0]
-      else:# default orientation
-        xlen = len(axe); ylen = len(val) # used later
-        plt = self.errorbar(axe, val, xerr=None, yerr=err, **plotarg)[0]
-      # figure out parameters for error bands
-      if bnd is not None: 
-        self._drawBand(axe, val+bnd, val-bnd, where=where, color=(facecolor or plt.get_color()), 
-                       alpha=bandalpha*plotarg.get('alpha',1.), edgecolor=edgecolor, **bndarg)  
-      plts.append(plt); self.plots[label] = plt
+      if var is not None:
+        varax = var.axes[0]
+        # scale axis and variable values 
+        axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None)
+        val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None)
+        if errvar is not None: # for error bars
+          err, varunits, errname = getPlotValues(errvar, checkunits=varunits, checkname=None); del errname
+        else: err = None
+        if bndvar is not None: # semi-transparent error bands
+          bnd, varunits, bndname = getPlotValues(bndvar, checkunits=varunits, checkname=None); del bndname
+        else: bnd = None      
+        # variable and axis scaling is not always independent...
+        if var.plot is not None and varax.plot is not None: 
+          if varax.units != axunits and var.plot.preserve == 'area':
+            val /= varax.plot.scalefactor
+        # N.B.: other scaling behavior could be added here
+        if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)   
+        if lsmooth: val = smooth(val)
+        # update plotargs from defaults
+        plotarg = self._getPlotArgs(label=label, var=var, plotatts=plotatts, plotarg=plotarg)
+        plotarg['fmt'] = plotarg.pop('lineformat','') # rename (I prefer a different name)
+        # N.B.: '' (empty string) is the default, None means no line is plotted, only errors!
+        # extract arguments for error band
+        bndarg    = plotarg.pop('bandarg',dict())
+        where     = plotarg.pop('where',None)
+        bandalpha = plotarg.pop('bandalpha',0.5)
+        edgecolor = plotarg.pop('edgecolor',0.5)
+        facecolor = plotarg.pop('facecolor',None)
+        # figure out orientation and call plot function
+        if self.flipxy: # flipped axes
+          xlen = len(var); ylen = len(axe) # used later
+          plt = self.errorbar(val, axe, xerr=err, yerr=None, **plotarg)[0]
+        else:# default orientation
+          xlen = len(axe); ylen = len(val) # used later
+          plt = self.errorbar(axe, val, xerr=None, yerr=err, **plotarg)[0]
+        # figure out parameters for error bands
+        if bnd is not None: 
+          self._drawBand(axe, val+bnd, val-bnd, where=where, color=(facecolor or plt.get_color()), 
+                         alpha=bandalpha*plotarg.get('alpha',1.), edgecolor=edgecolor, **bndarg)  
+        plts.append(plt); self.plots[label] = plt
     ## format axes and add annotation
     # set axes labels  
     if self.flipxy: self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
@@ -138,7 +139,7 @@ class MyAxes(Axes):
     return plts
 
 
-  def bandPlot(self, upper=None, lower=None, varname=None, bins=None, support=None,   
+  def bandPlot(self, upper=None, lower=None, varname=None, bins=None, support=None, lignore=False,   
                legend=None, llabel=False, labels=None, hline=None, vline=None, title=None,        
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
                xlog=None, ylog=None, xlim=None, ylim=None, lsmooth=False, lprint=False, 
@@ -147,8 +148,10 @@ class MyAxes(Axes):
         and lower limits of the bands; extra keyword arguments (plotargs) are passed through 
         expandArgumentList, before being passed on to Axes.fill_between() (used to draw bands). '''
     ## figure out variables
-    upper = self._checkVarlist(upper, varname=varname, ndim=1, bins=bins, support=support, method=method)
-    lower = self._checkVarlist(lower, varname=varname, ndim=1, bins=bins, support=support, method=method)
+    upper = self._checkVarlist(upper, varname=varname, ndim=1, bins=bins, 
+                               support=support, method=method, lignore=lignore)
+    lower = self._checkVarlist(lower, varname=varname, ndim=1, bins=bins, 
+                               support=support, method=method, lignore=lignore)
     assert len(upper) == len(lower)
     # initialize axes names and units
     self.flipxy = flipxy
@@ -174,27 +177,34 @@ class MyAxes(Axes):
       self.variables[label+'_bnd'] = (upvar,lowvar) # save band variables under special name
     # loop over variables and plot arguments
     for upvar,lowvar,plotarg,label in zip(upper,lower,plotargs,labels):
-      varax = upvar.axes[0]
-      assert lowvar.hasAxis(varax) and lowvar.ndim == 1 
-      # scale axis and variable values 
-      axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None)
-      up, varunits, varname = getPlotValues(upvar, checkunits=varunits, checkname=None)
-      low, varunits, varname = getPlotValues(lowvar, checkunits=varunits, checkname=None)
-      # variable and axis scaling is not always independent...
-      if upvar.plot is not None and varax.plot is not None: 
-        if varax.units != axunits and upvar.plot.preserve == 'area':
-          up /= varax.plot.scalefactor; low /= varax.plot.scalefactor
-      # N.B.: other scaling behavior could be added here
-      if lprint: print varname, varunits, np.nanmean(up), np.nanmean(low)   
-      if lsmooth: up = smooth(up); low = smooth(low)
-      # update plotargs from defaults
-      plotarg = self._getPlotArgs(label=label, var=upvar, plotatts=plotatts, plotarg=plotarg)
-      ## draw actual bands 
-      bnd = self._drawBand(axe, low, up, **plotarg)
-      # book keeping
-      if self.flipxy: xlen, ylen = len(low), len(axe) 
-      else: xlen, ylen = len(axe), len(low)
-      bnds.append(bnd); self.plots[label] = bnd
+      if upvar or lowvar:
+        if upvar:
+          varax = upvar.axes[0]
+          assert lowvar is None or ( lowvar.hasAxis(varax) and lowvar.ndim == 1 )
+        if lowvar:
+          varax = lowvar.axes[0]
+          assert upvar is None or ( upvar.hasAxis(varax) and upvar.ndim == 1 )          
+        # scale axis and variable values 
+        axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None)
+        if upvar: up, varunits, varname = getPlotValues(upvar, checkunits=varunits, checkname=None) 
+        else: up = np.zeros_like(axe)
+        if lowvar: low, varunits, varname = getPlotValues(lowvar, checkunits=varunits, checkname=None)
+        else: low = np.zeros_like(axe)
+        # variable and axis scaling is not always independent...
+        if upvar.plot is not None and varax.plot is not None: 
+          if varax.units != axunits and upvar.plot.preserve == 'area':
+            up /= varax.plot.scalefactor; low /= varax.plot.scalefactor
+        # N.B.: other scaling behavior could be added here
+        if lprint: print varname, varunits, np.nanmean(up), np.nanmean(low)           
+        if lsmooth: up = smooth(up); low = smooth(low)
+        # update plotargs from defaults
+        plotarg = self._getPlotArgs(label=label, var=upvar, plotatts=plotatts, plotarg=plotarg)
+        ## draw actual bands 
+        bnd = self._drawBand(axe, low, up, **plotarg)
+        # book keeping
+        if self.flipxy: xlen, ylen = len(low), len(axe) 
+        else: xlen, ylen = len(axe), len(low)
+        bnds.append(bnd); self.plots[label] = bnd
     ## format axes and add annotation
     # set axes labels  
     if self.flipxy: self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
@@ -222,19 +232,20 @@ class MyAxes(Axes):
     bndarg['facecolor'] = color
     bndarg['where'] = where
     bndarg['alpha'] = alpha
-    if self.flipxy: self.fill_betweenx(axes, lower, upper, **bndarg)
-    else: self.fill_between(axes, lower, upper, interpolate=True, **bndarg) # interpolate=True
+    if self.flipxy: self.fill_betweenx(y=axes, x1=lower, x2=upper, **bndarg)
+    else: self.fill_between(x=axes, y1=lower, y2=upper, interpolate=True, **bndarg) # interpolate=True
   
   
   def histogram(self, varlist, varname=None, bins=None, binedgs=None, histtype='bar', lstacked=False, 
                 lnormalize=True, lcumulative=0, legend=None, llabel=True, labels=None, colors=None, 
-                align='mid', rwidth=None, bottom=None, weights=None, xlabel=True, ylabel=True,  
+                align='mid', rwidth=None, bottom=None, weights=None, xlabel=True, ylabel=True, lignore=False,  
                 xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=True, 
                 flipxy=None, log=False, xlim=None, ylim=None, lprint=False, plotatts=None, **histargs):
     ''' A function to draw histograms of a list of 1D variables into an axes, 
         and annotate the plot based on variable properties. '''
     ## check input
-    varlist = self._checkVarlist(varlist, varname=varname, ndim=1, bins=bins, support=None, method='sample')
+    varlist = self._checkVarlist(varlist, varname=varname, ndim=1, bins=bins, 
+                                 support=None, method='sample', lignore=lignore)
     # initialize axes names and units
     self.flipxy = flipxy
     # N.B.: histogram has opposite convention for axes
@@ -252,7 +263,6 @@ class MyAxes(Axes):
     # figure out label list
     if labels is None: labels = self._getPlotLabels(varlist)           
     elif len(labels) != len(varlist): raise ArgumentError, "Incompatible length of varlist and labels."
-    label_list = labels if llabel else None
     assert len(labels) == len(varlist)
     # loop over variables
     for label,var in zip(labels,varlist): self.variables[label] = var # save plot variables
@@ -263,25 +273,29 @@ class MyAxes(Axes):
     elif isinstance(colors,(basestring,NoneType)): colors = [colors]*len(varlist)
     else: raise TypeError    
     ## generate list of values for histogram
-    values = []; color_list = [] # list of plot handles
+    values = []; color_list = []; label_list = [] # list of plot handles
     for label,var,color in zip(labels,varlist, colors):
-      # scale variable values(axes are irrelevant)
-      val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None)
-      val = val.ravel() # flatten array
-      if not varname.endswith('_bins'): varname += '_bins'
-      if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)
-      # get default plotargs consistent with linePlot      
-      plotarg = self._getPlotArgs(label, var, plotatts=plotatts, plotarg=None)
-      # extract color
-      if color is None and color in plotarg: color = plotarg['color']        
-      if color is not None: color_list.append(color)
-      # save values 
-      values.append(val)
+      if var is not None:
+        # scale variable values(axes are irrelevant)
+        val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None)
+        val = val.ravel() # flatten array
+        if not varname.endswith('_bins'): varname += '_bins'
+        if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)
+        # get default plotargs consistent with linePlot      
+        plotarg = self._getPlotArgs(label, var, plotatts=plotatts, plotarg=None)
+        # extract color
+        if color is None and color in plotarg: color = plotarg['color']        
+        if color is not None: color_list.append(color)
+        # add label
+        label_list.append(label)
+        # save values 
+        values.append(val)
     ## construct histogram
     # figure out orientation
     if self.flipxy: orientation = 'horizontal' 
     else: orientation = 'vertical'
     # call histogram method of Axis
+    label_list = label_list if llabel else None
     colors = color_list or None 
     hdata, bin_edges, patches = self.hist(values, bins=binedgs, color=colors, label=label_list, 
                                           normed=lnormalize, weights=weights, cumulative=lcumulative,  
@@ -342,21 +356,28 @@ class MyAxes(Axes):
       kwargs['loc'] = loc
       self.legend(**kwargs)
   
-  def _checkVarlist(self, varlist, varname=None, ndim=1, bins=None, support=None, method='pdf'):
+  def _checkVarlist(self, varlist, varname=None, ndim=1, bins=None, support=None, method='pdf', lignore=None):
     ''' helper function to pre-process the variable list '''
     # varlist is the list of variable objects that are to be plotted
     if isinstance(varlist,Variable): varlist = [varlist]
     elif not isinstance(varlist,(tuple,list,Ensemble)):raise TypeError
     if varname is not None:
-      varlist = [getattr(var,varname) if isinstance(var,Dataset) else var for var in varlist]
-    if not all([isinstance(var,Variable) for var in varlist]): raise TypeError
-    for var in varlist: var.squeeze() # remove singleton dimensions
+      tmplist = []
+      for var in varlist:
+        if isinstance(var,Dataset): varlist.append(var)
+        elif not hasattr(var, varname): varlist.append(None)
+        else: varlist.append(getattr(var,varname))
+      varlist = tmplist; del tmplist
+    if not all([isinstance(var,(Variable, NoneType)) for var in varlist]): raise TypeError
+    for var in varlist: 
+      if var is not None: var.squeeze() # remove singleton dimensions
     # evaluate distribution variables on support/bins
     if bins is not None or support is not None:
       varlist = evalDistVars(varlist, bins=bins, support=support, method=method, ldatasetLink=True) 
     # check axis: they need to have only one axes, which has to be the same for all!
     for var in varlist: 
-      if var.ndim > ndim: 
+      if var is None: pass
+      elif var.ndim > ndim: 
         raise AxisError, "Variable '{:s}' has more than {:d} dimension(s); consider squeezing.".format(var.name,ndim)
       elif var.ndim < ndim: 
         raise AxisError, "Variable '{:s}' has less than {:d} dimension(s); consider display as a line.".format(var.name,ndim)

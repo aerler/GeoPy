@@ -18,7 +18,7 @@ from plotting.axes import MyAxes, MyLocatableAxes, Axes
 from plotting.misc import loadStyleSheet
 import matplotlib as mpl
 # just for convenience
-from matplotlib.pylab import show
+from matplotlib.pyplot import show
 
 ## my new figure class
 class MyFigure(Figure):

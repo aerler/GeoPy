@@ -539,7 +539,7 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
 @BatchLoad
 def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, 
                    slices=None, shape=None, station=None, prov=None, constraints=None, 
-                   filetypes=None, domain=None, **kwargs):
+                   filetypes=None, domain=None, ldataset=False, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -548,20 +548,20 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
     if station: varlist += ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon',] # necessary to select stations
     if shape: varlist += ['shape_name', 'shp_long_name', 'shp_type',] # possible necessary to select other regions
   # load ensemble WRF data
-  if isinstance(names, (list,tuple)): lensemble =True
-  else: names = (name,); lensemble =True
+  if not isinstance(names, (list,tuple)): names = (names,)
+  if ldataset and len(names) != 1: raise ArgumentError 
   # perpare ensemble    
-  if lensemble: ensemble = Ensemble(name=name, title=title, basetype='Dataset')
-  for name in names:
+  if not ldataset: ensemble = Ensemble(name=name, title=title, basetype='Dataset')
+  for dsname in names:
     # load individual dataset
-    dataset = loadDataset(name=name, station=station, prov=prov, shape=shape, varlist=varlist, 
+    dataset = loadDataset(name=dsname, station=station, prov=prov, shape=shape, varlist=varlist, 
                           mode='time-series', filetypes=filetypes, domains=domain)
     if slices is not None: dataset = dataset(**slices) # slice immediately 
-    if lensemble: ensemble += dataset.load() # load data and add to ensemble
+    if not ldataset: ensemble += dataset.load() # load data and add to ensemble
   # if input was not a list, just return dataset
-  if not lensemble: ensemble = dataset.load() # load data
+  if ldataset: ensemble = dataset.load() # load data
   # select specific stations (if applicable)
-  if lensemble and station and constraints:
+  if not ldataset and station and constraints:
     from datasets.EC import selectStations
     ensemble = selectStations(ensemble, stnaxis='station', imaster=None, linplace=False, lall=False, **constraints)
   # extract seasonal/climatological values/extrema
