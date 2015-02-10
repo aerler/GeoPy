@@ -26,6 +26,7 @@ class MyAxes(Axes):
     information. The custom Figure uses this Axes class by default.
   '''
   variables          = None
+  plots              = None
   variable_plotargs  = None
   dataset_plotargs   = None
   plots              = None
@@ -38,12 +39,19 @@ class MyAxes(Axes):
   yunits             = None
   ypad               = 0
   
-  def linePlot(self, varlist, varname=None, errorbar=None, bins=None, support=None, plotatts=None,
-               errorband=None, bandalpha=0.5,  
+  def __init__(self, *args, **kwargs):
+    ''' constructor to initialize some variables / counters '''  
+    # call parent constructor
+    super(MyAxes,self).__init__(*args, **kwargs)
+    self.variables = OrderedDict() # save variables by label
+    self.plots = OrderedDict() # save plot objects by label
+    
+    
+  def linePlot(self, varlist, varname=None, bins=None, support=None, errorbar=None, errorband=None,  
                legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False, 
-               expand_list=None, lproduct='inner', method='pdf', **plotargs):
+               expand_list=None, lproduct='inner', method='pdf', plotatts=None, **plotargs):
     ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on 
         variable properties; extra keyword arguments (plotargs) are passed through expandArgumentList,
         before being passed to Axes.plot(). '''
@@ -61,7 +69,6 @@ class MyAxes(Axes):
     if self.flipxy: varname,varunits,axname,axunits = self.xname,self.xunits,self.yname,self.yunits
     else: axname,axunits,varname,varunits = self.xname,self.xunits,self.yname,self.yunits
     ## figure out plot arguments
-    if self.variables is None: self.variables = OrderedDict() # save variables by label
     # reset color cycle
     if reset_color is False: pass
     elif reset_color is True: self.set_color_cycle(None) # reset
@@ -77,7 +84,6 @@ class MyAxes(Axes):
     assert len(plotargs) == len(varlist)
     ## generate individual line plots
     plts = [] # list of plot handles
-    if self.plots is None: self.plots = OrderedDict() # save plot objects by label
     for label,var in zip(labels,varlist): self.variables[label] = var # save plot variables
     # loop over variables and plot arguments
     for var,errvar,bndvar,plotarg,label in zip(varlist,errlist,bndlist,plotargs,labels):
@@ -105,6 +111,7 @@ class MyAxes(Axes):
       # extract arguments for error band
       bndarg    = plotarg.pop('bandarg',dict())
       where     = plotarg.pop('where',None)
+      bandalpha = plotarg.pop('bandalpha',0.5)
       edgecolor = plotarg.pop('edgecolor',0.5)
       facecolor = plotarg.pop('facecolor',None)
       # figure out orientation and call plot function
@@ -116,7 +123,7 @@ class MyAxes(Axes):
         plt = self.errorbar(axe, val, xerr=None, yerr=err, **plotarg)[0]
       # figure out parameters for error bands
       if bnd is not None: 
-        self._drawBand(axe, val+bnd, val-bnd, plot=plt, where=where, color=(facecolor or plt.get_color()), 
+        self._drawBand(axe, val+bnd, val-bnd, where=where, color=(facecolor or plt.get_color()), 
                        alpha=bandalpha*plotarg.get('alpha',1.), edgecolor=edgecolor, **bndarg)  
       plts.append(plt); self.plots[label] = plt
     ## format axes and add annotation
@@ -131,11 +138,80 @@ class MyAxes(Axes):
     return plts
 
 
-  def _drawBand(self, axes, upper, lower, plot=None, where=None, color=None, alpha=None, edgecolor=None, **bndarg):  
+  def bandPlot(self, upper=None, lower=None, varname=None, bins=None, support=None,   
+               legend=None, llabel=False, labels=None, hline=None, vline=None, title=None,        
+               flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
+               xlog=None, ylog=None, xlim=None, ylim=None, lsmooth=False, lprint=False, 
+               expand_list=None, lproduct='inner', method='pdf', plotatts=None, **plotargs):
+    ''' A function to draw a colored bands between two lists of 1D variables representing the upper
+        and lower limits of the bands; extra keyword arguments (plotargs) are passed through 
+        expandArgumentList, before being passed on to Axes.fill_between() (used to draw bands). '''
+    ## figure out variables
+    upper = self._checkVarlist(upper, varname=varname, ndim=1, bins=bins, support=support, method=method)
+    lower = self._checkVarlist(lower, varname=varname, ndim=1, bins=bins, support=support, method=method)
+    assert len(upper) == len(lower)
+    # initialize axes names and units
+    self.flipxy = flipxy
+    if self.flipxy: varname,varunits,axname,axunits = self.xname,self.xunits,self.yname,self.yunits
+    else: axname,axunits,varname,varunits = self.xname,self.xunits,self.yname,self.yunits
+    ## figure out plot arguments
+    # reset color cycle
+    if reset_color is False: pass
+    elif reset_color is True: self.set_color_cycle(None) # reset
+    else: self.set_color_cycle(reset_color)
+    # figure out label list
+    if labels is None: labels = self._getPlotLabels(upper)           
+    elif len(labels) != len(upper): raise ArgumentError, "Incompatible length of varlist and labels."
+    label_list = labels if llabel else [None]*len(labels) # used for plot labels later
+    assert len(labels) == len(lower)
+    # finally, expand keyword arguments
+    plotargs = self._expandArgumentList(labels=label_list, expand_list=expand_list, 
+                                        lproduct=lproduct, plotargs=plotargs)
+    assert len(plotargs) == len(lower)
+    ## generate individual line plots
+    bnds = [] # list of plot handles
+    for label,upvar,lowvar in zip(labels,upper,lower): 
+      self.variables[label+'_bnd'] = (upvar,lowvar) # save band variables under special name
+    # loop over variables and plot arguments
+    for upvar,lowvar,plotarg,label in zip(upper,lower,plotargs,labels):
+      varax = upvar.axes[0]
+      assert lowvar.hasAxis(varax) and lowvar.ndim == 1 
+      # scale axis and variable values 
+      axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None)
+      up, varunits, varname = getPlotValues(upvar, checkunits=varunits, checkname=None)
+      low, varunits, varname = getPlotValues(lowvar, checkunits=varunits, checkname=None)
+      # variable and axis scaling is not always independent...
+      if upvar.plot is not None and varax.plot is not None: 
+        if varax.units != axunits and upvar.plot.preserve == 'area':
+          up /= varax.plot.scalefactor; low /= varax.plot.scalefactor
+      # N.B.: other scaling behavior could be added here
+      if lprint: print varname, varunits, np.nanmean(up), np.nanmean(low)   
+      if lsmooth: up = smooth(up); low = smooth(low)
+      # update plotargs from defaults
+      plotarg = self._getPlotArgs(label=label, var=upvar, plotatts=plotatts, plotarg=plotarg)
+      ## draw actual bands 
+      bnd = self._drawBand(axe, low, up, **plotarg)
+      # book keeping
+      if self.flipxy: xlen, ylen = len(low), len(axe) 
+      else: xlen, ylen = len(axe), len(low)
+      bnds.append(bnd); self.plots[label] = bnd
+    ## format axes and add annotation
+    # set axes labels  
+    if self.flipxy: self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
+    else: self.xname,self.xunits,self.yname,self.yunits = axname,axunits,varname,varunits
+    # apply standard formatting and annotation
+    self.formatAxesAndAnnotation(title=title, legend=legend, xlabel=xlabel, ylabel=ylabel, 
+                                 hline=hline, vline=vline, xlim=xlim, xlog=xlog, xticks=xticks, 
+                                 ylim=ylim, ylog=ylog, yticks=yticks, xlen=xlen, ylen=ylen)
+    # return handles to line objects
+    return bnds 
+
+  def _drawBand(self, axes, upper, lower, where=None, color=None, alpha=0.5, edgecolor=None, **bndarg):  
     ''' function to add an error band to a plot '''
     # get color from line object        
     CC = mpl.colors.ColorConverter()
-    color = CC.to_rgba(color, alpha=alpha)
+    if color is None: color = self._get_lines.color_cycle.next()
+    color = CC.to_rgb(color)
     # make darker edges
     if edgecolor is None: edgecolor = 0.5
     elif isinstance(edgecolor,(int,np.int)): edgecolor = float(edgecolor)
@@ -145,6 +221,7 @@ class MyAxes(Axes):
     bndarg['edgecolor'] = edgecolor
     bndarg['facecolor'] = color
     bndarg['where'] = where
+    bndarg['alpha'] = alpha
     if self.flipxy: self.fill_betweenx(axes, lower, upper, **bndarg)
     else: self.fill_between(axes, lower, upper, interpolate=True, **bndarg) # interpolate=True
   
@@ -178,7 +255,6 @@ class MyAxes(Axes):
     label_list = labels if llabel else None
     assert len(labels) == len(varlist)
     # loop over variables
-    if self.variables is None: self.variables = OrderedDict() # save variables by label
     for label,var in zip(labels,varlist): self.variables[label] = var # save plot variables
     # generate a list from userdefined colors
     if isinstance(colors,(tuple,list)): 
@@ -306,9 +382,9 @@ class MyAxes(Axes):
     ''' function to expand arguments while applying some default treatments; plural forms of some
         plot arguments are automatically converted and expanded for all plotargs '''
     # line style parameters is just a list of line styles for each plot
-    expand_list = list(expand_list)
+    if expand_list is None: expand_list = []
+    else: expand_list = list(expand_list)
     if lproduct == 'inner':
-      if expand_list is None: expand_list = []
       expand_list.append('label')
       expand_list, plotargs = self._translateArguments(labels=labels, 
                                                        expand_list=expand_list, plotargs=plotargs)

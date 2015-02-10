@@ -81,7 +81,8 @@ def BinaryCheckAndCreateVar(sameUnits=True, linplace=False):
         var = orig # in-place operation should already have changed data_array 
       elif asVar:
         # construct resulting variable (copy from orig)
-        atts = joinDicts(orig.atts, other.atts)
+        if hasattr(other,'atts'): atts = joinDicts(orig.atts, other.atts)
+        else: atts = orig.atts.copy()
         atts['name'] = name; atts['units'] = units
         var = orig.copy(data=data, atts=atts)
       else:
@@ -1562,8 +1563,12 @@ class Variable(object):
   @BinaryCheckAndCreateVar(sameUnits=True, linplace=False)
   def __add__(self, other, linplace=False):
     ''' Add two variables and return a new variable. '''
-    data = self.data_array + other.data_array
-    name = '{:s} + {:s}'.format(self.name,other.name)
+    if isinstance(other, Variable):
+      data = self.data_array + other.data_array
+      name = '{:s} + {:s}'.format(self.name,other.name)
+    else:
+      data = self.data_array + other
+      name = '{:s} + {:s}'.format(self.name,str(other))
     units = self.units
     assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
@@ -1571,8 +1576,12 @@ class Variable(object):
   @BinaryCheckAndCreateVar(sameUnits=True, linplace=False)
   def __sub__(self, other, linplace=False):
     ''' Subtract two variables and return a new variable. '''
-    data = self.data_array - other.data_array
-    name = '{:s} - {:s}'.format(self.name,other.name)
+    if isinstance(other, Variable):
+      data = self.data_array - other.data_array
+      name = '{:s} - {:s}'.format(self.name,other.name)
+    else:
+      data = self.data_array - other
+      name = '{:s} - {:s}'.format(self.name,str(other))
     units = self.units
     assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
@@ -1580,19 +1589,29 @@ class Variable(object):
   @BinaryCheckAndCreateVar(sameUnits=False, linplace=False)
   def __mul__(self, other, linplace=False):
     ''' Multiply two variables and return a new variable. '''
-    data = self.data_array * other.data_array
-    name = '{:s} x {:s}'.format(self.name,other.name)
-    units = '{:s} {:s}'.format(self.units,other.units)
+    if isinstance(other, Variable):
+      data = self.data_array * other.data_array
+      name = '{:s} x {:s}'.format(self.name,other.name)
+      units = '{:s} {:s}'.format(self.units,other.units)
+    else:
+      data = self.data_array * other
+      name = '{:s} x {:s}'.format(self.name,str(other))
+      units = self.units
     assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
 
   @BinaryCheckAndCreateVar(sameUnits=False, linplace=False)
   def __div__(self, other, linplace=False):
     ''' Divide two variables and return a new variable. '''
-    data = self.data_array / other.data_array
-    name = '{:s} / {:s}'.format(self.name,other.name)
-    if self.units == other.units: units = ''
-    else: units = '{:s} / ({:s})'.format(self.units,other.units)
+    if isinstance(other, Variable):
+      data = self.data_array / other.data_array
+      name = '{:s} / {:s}'.format(self.name,other.name)
+      if self.units == other.units: units = ''
+      else: units = '{:s} / ({:s})'.format(self.units,other.units)
+    else:
+      data = self.data_array / other
+      name = '{:s} / {:s}'.format(self.name,str(other))
+      units = self.units
     assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
      

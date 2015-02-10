@@ -97,9 +97,9 @@ class LinePlotTest(unittest.TestCase):
     assert len(plts) == 2
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
-  
+    
   def testFancyErrorPlot(self):
-    ''' test a fancy error plot with two lines and their errors in transparent bands '''    
+    ''' test a plot with error bands with separate upper and lower limits '''    
     fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyAxes'
@@ -114,6 +114,24 @@ class LinePlotTest(unittest.TestCase):
     assert len(plts) == 2
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
+  
+  def testFancyBandPlot(self):
+    ''' test a fancy error plot with two lines and their errors in transparent bands '''    
+    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyAxes'
+    assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
+    var1 = self.var1; var2 = self.var2
+    lowvar1 = self.var1 - 1.; lowvar2 = self.var2 / 2. 
+    upvar1 = self.var1 * 2.; upvar2 = self.var2 + 1.
+    # create plot
+    bnds = ax.bandPlot(upper=[upvar1, upvar2], lower=[lowvar1, lowvar2], edgecolor=0.1)
+    assert len(bnds) == 2
+    plts = ax.linePlot([var1, var2], ylabel='Variables with Difference Bands [{1:s}]', 
+                       llabel=True, ylim=var1.limits(), legend=2,)
+    assert len(plts) == 2
+    # add label
+    ax.addLabel(label='Fancy\nError\nBands', loc=4, lstroke=False, size=None, prop=None)
   
   def testAdvancedLinePlot(self):
     ''' test more advanced options of the line plot function '''    
@@ -226,7 +244,8 @@ if __name__ == "__main__":
     specific_tests = None
 #     specific_tests = ['BasicLinePlot']
 #     specific_tests = ['BasicErrorPlot']
-    specific_tests = ['FancyErrorPlot']
+#     specific_tests = ['FancyErrorPlot']
+#     specific_tests = ['FancyBandPlot']
 #     specific_tests = ['AdvancedLinePlot']
 #     specific_tests = ['CombinedLinePlot']
 #     specific_tests = ['AxesGridLinePlot']    
@@ -235,7 +254,7 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['LinePlot'] 
-#     tests += ['BarPlot']
+    tests += ['BarPlot']
     
 
     # construct dictionary of test classes defined above
