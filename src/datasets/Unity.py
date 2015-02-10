@@ -200,11 +200,12 @@ if __name__ == '__main__':
           # regional averages: shape index as grid
           # N.B.: currently doesn't work with stations, because station indices are not consistent
           #       for grids of different size (different number of stations included)
+          shp_params = ['shape_name','shp_long_name','shp_type','shp_mask','shp_area','shp_encl','shp_full','shp_empty']
           pcic  = loadPCIC_Shp(period=None, shape=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'])
           prism = loadPRISM_Shp(period=None, shape=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'])
           gpccprd = loadGPCC_Shp(period=period, resolution='05', shape=grid, varlist=['precip'])
           gpccclim = loadGPCC_Shp(period=None, resolution='05', shape=grid, varlist=['precip'])
-          gpcc025 = loadGPCC_Shp(period=None, resolution='025', shape=grid, varlist=['precip','landmask'])
+          gpcc025 = loadGPCC_Shp(period=None, resolution='025', shape=grid, varlist=['precip','landmask']+shp_params)
           cruprd = loadCRU_Shp(period=period, shape=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'])
           cruclim = loadCRU_Shp(period=(1979,2009), shape=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'])          
         else:
@@ -298,6 +299,11 @@ if __name__ == '__main__':
           cruprd.variables[varname].unload()
           sink.variables[varname].atts['source'] = 'CRU'
         
+        ## add station meta data
+        for varname in shp_params:
+          var = gpcc025.variables[varname].load()
+          sink.addVariable(var, asNC=True, copy=True, deepcopy=True)
+            
         # add names and length of months
         sink.axisAnnotation('name_of_month', name_of_month, 'time', 
                             atts=dict(name='name_of_month', units='', long_name='Name of the Month'))        
