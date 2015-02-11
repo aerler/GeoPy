@@ -15,18 +15,17 @@ from datetime import datetime
 import logging   
 from collections import OrderedDict
 # internal imports
-from geodata.misc import DatasetError, DateError, isInt, printList
+from geodata.misc import DateError, printList
 from geodata.netcdf import DatasetNetCDF
 from geodata.base import Dataset
 from datasets import gridded_datasets
-from datasets.common import getFileName
+from processing.misc import getMetaData, getTargetFile
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
 # WRF specific
-from datasets.WRF import loadWRF, loadWRF_TS
 from projects.WRF_experiments import WRF_exps
 # CESM specific
-from datasets.CESM import loadCESM, loadCESM_TS, CESM_exps
+from datasets.CESM import CESM_exps
 
 # import shape objects
 from datasets.WSC import basins
@@ -34,7 +33,7 @@ from datasets.EC import provinces
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
-def performExtraction(dataset, mode, shape_name, shape_dict, dataargs, loverwrite=False, varlist=None, lwrite=True, lreturn=False,
+def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwrite=False, varlist=None, lwrite=True, lreturn=False,
                       ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to extract point data from gridded dataset '''  
   # input checking
@@ -55,140 +54,19 @@ def performExtraction(dataset, mode, shape_name, shape_dict, dataargs, loverwrit
     elif not isinstance(logger,logging.Logger): 
       raise TypeError, 'Expected logger ID/handle in logger KW; got {}'.format(str(logger))
 
-  # load source
-  if dataset == 'WRF': 
-    # WRF datasets
-    module = import_module('datasets.WRF')
-    exp = dataargs['experiment']    
-    dataset_name = exp.name
-    domain = dataargs['domain']
-    # figure out period
-    period = dataargs['period']
-    if period is None: pass
-    elif isinstance(period,(int,np.integer)):
-      beginyear = int(exp.begindate[0:4])
-      period = (beginyear, beginyear+period)
-    elif len(period) != 2 and all(isInt(period)): raise DateError
-    del exp
-    # identify file and domain
-    if len(dataargs['filetypes']) > 1: raise DatasetError # process only one file at a time
-    filetype = dataargs['filetypes'][0]
-    if isinstance(domain,(list,tuple)): domain = domain[0]
-    if not isinstance(domain, (np.integer,int)): raise DatasetError
-    # load source data
-    if mode == 'climatology':
-      source = loadWRF(experiment=dataset_name, name=None, domains=domain, grid=None, period=period, 
-                       filetypes=[filetype], varlist=varlist, varatts=None, lconst=True) # still want topography...
-    elif mode == 'time-series':
-      source = loadWRF_TS(experiment=dataset_name, name=None, domains=domain, grid=None, 
-                       filetypes=[filetype], varlist=varlist, varatts=None, lconst=True) # still want topography...
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
-    # check period
-    if period is None: periodstr = '' 
-    else: periodstr = '{0:4d}-{1:4d}'.format(*period)
-    if 'period' in source.atts and periodstr != source.atts.period: # a NetCDF attribute
-      raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
-    datamsgstr = "Processing WRF '{:s}'-file from Experiment '{:s}' (d{:02d})".format(filetype, dataset_name, domain)
-  elif dataset == 'CESM': 
-    # CESM datasets
-    module = import_module('datasets.CESM')
-    exp = dataargs['experiment']    
-    dataset_name = exp.name
-    # figure out period
-    period = dataargs['period']
-    if period is None: pass
-    elif isinstance(period,(int,np.integer)):
-      beginyear = int(exp.begindate[0:4])
-      period = (beginyear, beginyear+period)
-    elif len(period) != 2 and all(isInt(period)): raise DateError
-    del exp
-    # identify file
-    if len(dataargs['filetypes']) > 1: raise DatasetError # process only one file at a time
-    filetype = dataargs['filetypes'][0]        
-    # load source data 
-    load3D = dataargs.pop('load3D',None) # if 3D fields should be loaded (default: False)
-    if mode == 'climatology':
-      source = loadCESM(experiment=dataset_name, name=None, grid=None, period=period, filetypes=[filetype],  
-                        varlist=varlist, varatts=None, load3D=load3D, translateVars=None)
-    elif mode == 'time-series':
-      source = loadCESM_TS(experiment=dataset_name, name=None, grid=None, filetypes=[filetype],  
-                           varlist=varlist, varatts=None, load3D=load3D, translateVars=None)
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
-    # check period
-    if period is None: periodstr = ''
-    else: periodstr = '{0:4d}-{1:4d}'.format(*period)
-    if 'period' in source.atts and periodstr != source.atts.period: # a NetCDF attribute
-      raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
-    datamsgstr = "Processing CESM '{:s}'-file from Experiment '{:s}'".format(filetype, dataset_name)  
-  elif dataset == dataset.upper():
-    # observational datasets
-    module = import_module('datasets.{0:s}'.format(dataset))      
-    dataset_name = module.dataset_name
-    resolution = dataargs['resolution']
-    if resolution: grid_name = '{0:s}_{1:s}'.format(dataset_name,resolution)
-    else: grid_name = dataset_name   
-    # figure out period
-    period = dataargs['period']    
-    if period is None: pass
-    elif isinstance(period,(int,np.integer)):
-      period = (1979, 1979+period) # they all begin in 1979
-    elif len(period) != 2 and not all(isInt(period)): raise DateError
-    # load pre-processed climatology
-    if mode == 'climatology':
-      source = module.loadClimatology(name=dataset_name, period=period, grid=None, resolution=resolution,  
-                                      varlist=varlist, varatts=None, folder=module.avgfolder, filelist=None)
-    elif mode == 'time-series':
-      source = module.loadTimeSeries(name=dataset_name, grid=None, resolution=resolution,  
-                                      varlist=varlist, varatts=None, folder=None, filelist=None)
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
-    datamsgstr = "Processing Dataset '{:s}'".format(dataset_name)
-    # check period
-    if period is None: 
-      if mode == 'climatology': periodstr = 'Long-Term Mean'
-      else: periodstr = ''
-    else: periodstr = '{0:4d}-{1:4d}'.format(*period)
-  else:
-    raise DatasetError, "Dataset '{:s}' not found!".format(dataset)
-  del dataargs
-  # common message
-  if mode == 'climatology': opmsgstr = "Averaging Data from Climatology ({:s})".format(periodstr)
-  elif mode == 'time-series': opmsgstr = "Averaging Data from Time-series"
-  else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
-  # print feedback to logger
-  logger.info('\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
-  if not lparallel and ldebug:
-    logger.info('\n'+str(source)+'\n')
+  ## extract meta data from arguments
+  module, dataargs, loadfct, filepath, datamsgstr = getMetaData(dataset, mode, dataargs)  
+  dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr; avgfolder = dataargs.avgfolder
+  
   # determine age of oldest source file
   if not loverwrite:
     sourceage = datetime.today()
-    for filename in source.filelist:
-      age = datetime.fromtimestamp(os.path.getmtime(filename))
-      sourceage = age if age < sourceage else sourceage    
+    age = datetime.fromtimestamp(os.path.getmtime(filepath))
+    sourceage = age if age < sourceage else sourceage    
           
-  # prepare target dataset
-  if dataset == 'WRF':
-    stnstr = '_{}'.format(shape_name) # use name as "grid" designation for station data
-    periodstr = '_{}'.format(periodstr) if periodstr else ''
-    if lwrite:
-      if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,domain,stnstr,periodstr)
-      elif mode == 'time-series': filename = module.ts_file_pattern.format(filetype,domain,stnstr)
-      else: raise NotImplementedError
-      avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
-  elif dataset == 'CESM':
-    stnstr = '_{}'.format(shape_name) # use name as "grid" designation for station data
-    periodstr = '_{}'.format(periodstr) if periodstr else ''
-    if lwrite:
-      if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,stnstr,periodstr)
-      elif mode == 'time-series': filename = module.ts_file_pattern.format(filetype,stnstr)
-      else: raise NotImplementedError
-      avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
-  elif dataset == dataset.upper(): # observational datasets
-    if lwrite:
-      avgfolder = module.avgfolder
-      filename = getFileName(grid=shape_name, period=period, name=grid_name, filetype=mode)      
-  else: raise DatasetError
-  if ldebug: filename = 'test_' + filename
-  if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
+  # get filename for target dataset and do some checks
+  filename = getTargetFile(shape_name, dataset, mode, module, dataargs, lwrite)
+  if ldebug: filename = 'test_' + filename  
   lskip = False # else just go ahead
   if lwrite:
     if lreturn: 
@@ -203,8 +81,8 @@ def performExtraction(dataset, mode, shape_name, shape_dict, dataargs, loverwrit
       if not loverwrite: 
         age = datetime.fromtimestamp(os.path.getmtime(filepath))
         # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
-        if age > sourceage and os.path.getsize(filepath) > 1e6: lskip = True
-        # N.B.: NetCDF files smaller than 1MB are usually incomplete header fragments from a previous crashed
+        if age > sourceage and os.path.getsize(filepath) > 1e4: lskip = True
+        # N.B.: NetCDF files smaller than 10kB are usually incomplete header fragments from a previous crashed
       if not lskip: os.remove(filepath) # recompute
   
   # depending on last modification time of file or overwrite setting, start computation, or skip
@@ -214,6 +92,20 @@ def performExtraction(dataset, mode, shape_name, shape_dict, dataargs, loverwrit
     skipmsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,filepath)
     logger.info(skipmsg)              
   else:
+              
+    ## actually load datasets
+    source = loadfct(varlist=varlist) # load source 
+    # check period
+    if 'period' in source.atts and dataargs.periodstr != source.atts.period: # a NetCDF attribute
+      raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
+
+    # common message
+    if mode == 'climatology': opmsgstr = "Averaging Data from Climatology ({:s})".format(periodstr)
+    elif mode == 'time-series': opmsgstr = "Averaging Data from Time-series"
+    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
+    # print feedback to logger
+    logger.info('\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
+    if not lparallel and ldebug: logger.info('\n'+str(source)+'\n')
           
     ## create new sink/target file
     # set attributes   
@@ -283,12 +175,12 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    NP = 3 ; ldebug = False # for quick computations
-#     NP = 1 ; ldebug = True # just for tests
+#     NP = 3 ; ldebug = False # for quick computations
+    NP = 1 ; ldebug = True # just for tests
 #     modes = ('time-series',) # 'climatology','time-series'
     modes = ('climatology',) # 'climatology','time-series'
-#     loverwrite = False
-    loverwrite = True
+    loverwrite = False
+#     loverwrite = True
     varlist = None
 #     varlist = ['precip',]
     periods = []
@@ -296,7 +188,7 @@ if __name__ == '__main__':
 #     periods += [3]
 #     periods += [5]
 #     periods += [10]
-#     periods += [15]
+    periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
     datasets = []; resolutions = None
@@ -304,33 +196,33 @@ if __name__ == '__main__':
     lLTM = True 
     resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':'05'}
 #     datasets += ['PRISM']; periods = None; lLTM = True
-    datasets += ['PCIC','PRISM']; periods = None; lLTM = True
+#     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
 #     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
-#     datasets += ['GPCC']; resolutions = {'GPCC':['025']}
+    datasets += ['GPCC']; resolutions = {'GPCC':['025']}
 #     datasets += ['CRU']
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
-#     CESM_experiments += ['Ctrl-1']
+    CESM_experiments += ['Ctrl-1']
 #     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     CESM_experiments += ['Ctrl-1-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
 #     CESM_experiments += ['Ens', 'Ens-2050', 'Ens-2100']
 #     CESM_filetypes = ['atm'] # ,'lnd'
-    CESM_filetypes = ['atm','lnd']
+    CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-#     WRF_experiments += ['max-ens-A']
+    WRF_experiments += ['max-ens-A']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['erai-max','max-seaice-2050','max-seaice-2100'] # requires different implementation...    
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100'] # requires different implementation...
     # other WRF parameters 
-    domains = None # domains to be processed
-#     domains = (2,) # domains to be processed
-    WRF_filetypes = ('srfc',)
+#     domains = None # domains to be processed
+    domains = (2,) # domains to be processed
+    WRF_filetypes = ('hydro',)
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
@@ -474,6 +366,6 @@ if __name__ == '__main__':
   kwargs = dict(loverwrite=loverwrite, varlist=varlist)
           
   ## call parallel execution function
-  ec = asyncPoolEC(performExtraction, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
+  ec = asyncPoolEC(performShapeAverage, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
   # exit with fraction of failures (out of 10) as exit code
   exit(int(10+np.ceil(10.*ec/len(args))) if ec > 0 else 0)

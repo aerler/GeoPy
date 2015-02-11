@@ -9,9 +9,22 @@ Random utility functions...
 # external imports
 import numpy as np
 from utils.signalsmooth import smooth
+from collections import namedtuple
 # internal imports
 from geodata.misc import ArgumentError, isEqual
 
+
+# create a named tuple instance on the fly from dictionary
+def namedTuple(typename=None, field_names=None, verbose=False, rename=False, **kwargs):
+  ''' a wrapper for namedtuple that can create the class on the fly from a dict '''
+  if typename is None: typename = 'NamedTuple'
+  if field_names is None: field_names = kwargs.keys()
+  # create namedtuple class
+  NT = namedtuple(typename, field_names, verbose=verbose, rename=rename)
+  # create namedtuple instance and populate with values from kwargs
+  nt = NT(**kwargs) 
+  # return tuple instance 
+  return nt
 
 # helper function to form inner and outer product of multiple lists
 def expandArgumentList(expand_list=None, lproduct='outer', **kwargs):

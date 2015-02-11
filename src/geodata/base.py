@@ -1831,7 +1831,7 @@ class Dataset(object):
     if name is not None: atts['name'] = name
     elif 'name' not in atts: atts['name'] = 'N/A'
     if title is not None: atts['title'] = title
-    elif 'title' not in atts: atts['title'] = 'N/A'
+    elif 'title' not in atts: atts['title'] = atts['name']
     # load global attributes, if given
     if atts: self.__dict__['atts'] = AttrDict(**atts)
     else: self.__dict__['atts'] = AttrDict()

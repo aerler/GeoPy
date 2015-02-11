@@ -568,7 +568,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       if lclim: filename = fileformat.format(domain,gridstr,periodstr) # insert domain number, grid, and period
       elif lts: filename = fileformat.format(domain,gridstr) # insert domain number, and grid
       filenames.append(filename) # file list to be passed on to DatasetNetCDF
-      # check existance
+      # check existence
       filepath = '{:s}/{:s}'.format(folder,filename)
       if not os.path.exists(filepath):
         if lclim: nativename = fileformat.format(domain,'',periodstr) # original filename (before regridding)
