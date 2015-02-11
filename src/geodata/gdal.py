@@ -17,6 +17,7 @@ import types  # needed to bind functions to objects
 import pickle
 # gdal imports
 from osgeo import gdal, osr, ogr
+import warnings
 # register RAM driver
 ramdrv = gdal.GetDriverByName('MEM')
 # use exceptions (off by default)
@@ -141,10 +142,14 @@ class GridDefinition(object):
         x2D, y2D = np.meshgrid(xlon.coord, ylat.coord) # if we have x/y arrays
         xx = x2D.flatten().astype(np.float64); yy = y2D.flatten().astype(np.float64)
         lon2D = np.zeros_like(xx); lat2D = np.zeros_like(yy) 
-        for i in xrange(xx.size):
-          (lon2D[i],lat2D[i],zzz) = tx.TransformPoint(xx[i],yy[i])
-        # N.B.: apparently TransformPoints does not work at the moment... and the loop is not too bad...
-        #(lon2D,lat2D,zzz) = tx.TransformPoints((x2D.flatten().astype(np.float64),y2D.flatten().astype(np.float64))) 
+        #for i in xrange(xx.size):
+        #  (lon2D[i],lat2D[i],tmp) = tx.TransformPoint(xx[i],yy[i])
+        # N.B.: apparently TransformPoints is not much faster than a simple loop... 
+        point_array = np.concatenate((x2D.reshape((x2D.size,1)),y2D.reshape((y2D.size,1))), axis=1)
+        #print point_array.shape; print point_array[:3,:]
+        point_array = np.asarray(tx.TransformPoints(point_array.astype(np.float64)), dtype=np.float32)
+        #print tmp.shape; print tmp[:3,:] # (lon2D,lat2D,zzz)
+        lon2D = point_array[:,0]; lat2D = point_array[:,1] 
         lon2D = lon2D.reshape(x2D.shape); lat2D = lat2D.reshape(y2D.shape)
     else:
       self.scale = ( geotransform[1] + geotransform[5] ) / 2 # pretty straight forward

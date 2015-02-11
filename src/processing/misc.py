@@ -91,6 +91,7 @@ def getMetaData(dataset, mode, dataargs):
     elif lts:
       loadfct = functools.partial(loadWRF_TS, experiment=dataset_name, name=None, domains=domain, grid=None, 
                                   filetypes=[filetype], varatts=None, lconst=True) # still want topography...
+    filepath = '{:s}/{:s}'.format(avgfolder,filename)
   elif dataset == 'CESM': 
     # CESM datasets
     module = import_module('datasets.CESM')
@@ -124,6 +125,7 @@ def getMetaData(dataset, mode, dataargs):
     elif lts:
       loadfct = functools.partial(loadCESM_TS, experiment=dataset_name, name=None, grid=None, 
                                   filetypes=[filetype], varatts=None, load3D=load3D, translateVars=None)     
+    filepath = '{:s}/{:s}'.format(avgfolder,filename)
   elif dataset == dataset.upper():
     # observational datasets
     module = import_module('datasets.{0:s}'.format(dataset))      
@@ -152,11 +154,16 @@ def getMetaData(dataset, mode, dataargs):
                                   resolution=resolution, varatts=None, folder=module.avgfolder, filelist=None)
     elif lts:
       loadfct = functools.partial(module.loadTimeSeries, name=dataset_name, grid=None, 
-                                  resolution=resolution, varatts=None, folder=None, filelist=None)    
+                                  resolution=resolution, varatts=None, folder=None, filelist=None)
+    # check if the source file is actually correct
+    filepath = '{:s}/{:s}'.format(avgfolder,filename)
+    if not os.path.exists(filepath): 
+      source = loadfct() # no varlist - obs don't have many variables anyways
+      filepath = source.filelist[0]
   else:
     raise DatasetError, "Dataset '{:s}' not found!".format(dataset)
   ## assemble and return meta data
-  filepath = '{:s}/{:s}'.format(avgfolder,filename)
+  if not os.path.exists(filepath): raise IOError, "Source file '{:s}' does not exist!".format(filepath)        
   dataargs = namedTuple(dataset_name=dataset_name, period=period, periodstr=periodstr, avgfolder=avgfolder, 
                         filetype=filetype, domain=domain, obs_res=obs_res) 
   # return meta data

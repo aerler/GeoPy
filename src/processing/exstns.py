@@ -183,9 +183,9 @@ if __name__ == '__main__':
   # default settings
   if not lbatch:
     NP = 2 ; ldebug = False # for quick computations
-#     NP = 1 ; ldebug = True # just for tests
-    modes = ('climatology',) # 'climatology','time-series'
-#     modes = ('time-series',) # 'climatology','time-series'
+    NP = 1 ; ldebug = True # just for tests
+#     modes = ('climatology',) # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology','time-series'
     loverwrite = False
     varlist = None
 #     varlist = ['precip',]
@@ -210,15 +210,15 @@ if __name__ == '__main__':
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
-    CESM_experiments += ['Ctrl-1']
+#     CESM_experiments += ['Ctrl-1']
 #     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     CESM_experiments += ['Ctrl-1-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
 #     CESM_experiments += ['Ens', 'Ens-2050']
-#     CESM_filetypes = ['atm'] # ,'lnd'
-    CESM_filetypes = ['lnd']
+    CESM_filetypes = ['atm'] # ,'lnd'
+#     CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-    WRF_experiments += ['erai']
+#     WRF_experiments += ['erai']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...

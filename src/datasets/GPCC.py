@@ -17,8 +17,8 @@ from geodata.base import Variable, Axis
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, addGeoLocator
 from geodata.misc import DatasetError
-from geodata.nctools import writeNetCDF, add_var
-from datasets.common import name_of_month, data_root, grid_folder, transformPrecip, timeSlice
+from geodata.nctools import writeNetCDF
+from datasets.common import data_root, grid_folder, transformPrecip, timeSlice
 from datasets.common import translateVarNames, loadObservations, addLandMask, addLengthAndNamesOfMonth, getFileName
 from processing.process import CentralProcessingUnit
 

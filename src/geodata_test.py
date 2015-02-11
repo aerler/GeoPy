@@ -1414,18 +1414,19 @@ if __name__ == "__main__":
 #     specific_tests = ['UnaryArithmetic']
 #     specific_tests = ['Copy']
 #     specific_tests = ['ApplyToAll']
+#     specific_tests = ['AddProjection']
  
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
     tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
+#     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['DatasetGDAL']
        
     
     # construct dictionary of test classes defined above
