@@ -117,14 +117,14 @@ def loadPCIC_Stn(name=dataset_name, period=None, station=None, resolution=None, 
 
 # function to load averaged data
 def loadPCIC_Shp(name=dataset_name, period=None, shape=None, resolution=None, varlist=None, 
-                 varatts=None, folder=avgfolder, filelist=None):
+                 varatts=None, folder=avgfolder, filelist=None, lencl=True):
   ''' Get the pre-processed monthly PCIC PRISM climatology averaged over regions as a DatasetNetCDF. '''
   # only the climatology is available
   if period is not None: 
     warn('Only the full climatology is currently available: setting \'period\' to None.')
     period = None
   # load standardized climatology dataset with PCIC-specific parameters  
-  dataset = loadObservations(name=name, folder=folder, grid=None, station=None, shape=shape, 
+  dataset = loadObservations(name=name, folder=folder, grid=None, station=None, shape=shape, lencl=lencl, 
                              varlist=varlist, varatts=varatts, filepattern=avgfile, projection=None, 
                              filelist=filelist, lautoregrid=False, period=period, mode='climatology')
   # return formatted dataset

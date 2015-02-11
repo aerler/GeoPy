@@ -2236,6 +2236,7 @@ class Dataset(object):
   def mask(self, mask=None, maskSelf=False, varlist=None, skiplist=None, invert=False, merge=True, **kwargs):
     ''' Apply 'mask' to all variables and add the mask, if it is a variable. '''
     # figure out variable list
+    if isinstance(mask,basestring): mask = self.variables[mask]
     if skiplist is None: skiplist = []
     if not isinstance(skiplist,(list,tuple)): raise TypeError
     if varlist is None: varlist = self.variables.keys()  
@@ -2252,7 +2253,7 @@ class Dataset(object):
         elif isinstance(mask,Variable):
           if mask is var or mask.name == var.name: lOK = maskSelf # default: False
           elif all([var.hasAxis(ax) for ax in mask.axes]): lOK = True
-        if lOK: var.mask(mask=mask,  invert=invert, merge=merge, **kwargs) # if everything is OK, apply mask
+        if lOK: var.mask(mask=mask, invert=invert, merge=merge, **kwargs) # if everything is OK, apply mask
     # add mask do dataset
     if isinstance(mask,Variable) and not self.hasVariable(mask): self.addVariable(mask)
     

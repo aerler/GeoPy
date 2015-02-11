@@ -191,11 +191,11 @@ def loadCFSR_StnTS(name=dataset_name, station=None, resolution=None, varlist=Non
 
 # function to load averaged climatologies
 def loadCFSR_Shp(name=dataset_name, period=None, shape=None, resolution=None, varlist=None, varatts=None, 
-                 folder=avgfolder, filelist=None, lautoregrid=True):
+                 folder=avgfolder, filelist=None, lautoregrid=True, lencl=True):
   ''' Get the pre-processed monthly CFSR climatology averaged over regions as a DatasetNetCDF. '''
   grid, resolution = checkGridRes(None, resolution); del grid
   # load standardized climatology dataset with -specific parameters
-  dataset = loadObservations(name=name, folder=folder, period=period, station=None, shape=shape, 
+  dataset = loadObservations(name=name, folder=folder, period=period, station=None, shape=shape, lencl=lencl, 
                              varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
                              resolution=resolution, lautoregrid=False, projection=None, mode='climatology')
   # return formatted dataset
@@ -203,11 +203,11 @@ def loadCFSR_Shp(name=dataset_name, period=None, shape=None, resolution=None, va
 
 # function to load averaged time-series
 def loadCFSR_ShpTS(name=dataset_name, shape=None, resolution=None, varlist=None, varatts=None, 
-                   folder=avgfolder, filelist=None, lautoregrid=True):
+                   folder=avgfolder, filelist=None, lautoregrid=True, lencl=True):
   ''' Get the pre-processed monthly CFSR time-series averaged over regions as a DatasetNetCDF. '''
   grid, resolution = checkGridRes(None, resolution); del grid
   # load standardized time-series dataset with -specific parameters
-  dataset = loadObservations(name=name, folder=folder, period=None, station=None, shape=shape,
+  dataset = loadObservations(name=name, folder=folder, period=None, station=None, shape=shape, lencl=lencl,
                              varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
                              resolution=resolution, lautoregrid=False, projection=None, mode='time-series')
   # return formatted dataset

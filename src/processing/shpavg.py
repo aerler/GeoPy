@@ -285,8 +285,8 @@ if __name__ == '__main__':
   if not lbatch:
     NP = 3 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
-    modes = ('time-series',) # 'climatology','time-series'
-#     modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
+    modes = ('climatology',) # 'climatology','time-series'
 #     loverwrite = False
     loverwrite = True
     varlist = None
@@ -303,7 +303,8 @@ if __name__ == '__main__':
 #     lLTM = False # also average the long-term mean climatologies
     lLTM = True 
     resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':'05'}
-#     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
+#     datasets += ['PRISM']; periods = None; lLTM = True
+    datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
 #     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
@@ -322,8 +323,8 @@ if __name__ == '__main__':
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['max-ens-A']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
-    WRF_experiments += ['erai-max','max-seaice-2050','max-seaice-2100'] # requires different implementation...    
+#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
+#     WRF_experiments += ['erai-max','max-seaice-2050','max-seaice-2100'] # requires different implementation...    
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100'] # requires different implementation...
     # other WRF parameters 

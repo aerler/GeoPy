@@ -79,7 +79,7 @@ def loadUnity(name=dataset_name, period=None, grid=None, varlist=None, varatts=N
 
 # function to load these files...
 def loadUnity_Shp(name=dataset_name, period=None, shape=None, varlist=None, varatts=None, 
-                  folder=avgfolder, filelist=None, lautoregrid=False, resolution=None):
+                  folder=avgfolder, filelist=None, lautoregrid=False, resolution=None, lencl=True):
   ''' Get the pre-processed, unified monthly climatology averaged over shapes as a DatasetNetCDF. '''
   # a climatology is not available
   if period is None: 
@@ -88,7 +88,7 @@ def loadUnity_Shp(name=dataset_name, period=None, shape=None, varlist=None, vara
   # load standardized climatology dataset with PRISM-specific parameters  
   dataset = loadObservations(name=name, folder=folder, period=period, grid=None, shape=shape, station=None, 
                              varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
-                             projection=None, mode='climatology', lautoregrid=False)
+                             projection=None, mode='climatology', lautoregrid=False, lencl=lencl)
   # return formatted dataset
   return dataset
 
@@ -201,13 +201,20 @@ if __name__ == '__main__':
           # N.B.: currently doesn't work with stations, because station indices are not consistent
           #       for grids of different size (different number of stations included)
           shp_params = ['shape_name','shp_long_name','shp_type','shp_mask','shp_area','shp_encl','shp_full','shp_empty']
-          pcic  = loadPCIC_Shp(period=None, shape=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'])
-          prism = loadPRISM_Shp(period=None, shape=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'])
-          gpccprd = loadGPCC_Shp(period=period, resolution='05', shape=grid, varlist=['precip'])
-          gpccclim = loadGPCC_Shp(period=None, resolution='05', shape=grid, varlist=['precip'])
-          gpcc025 = loadGPCC_Shp(period=None, resolution='025', shape=grid, varlist=['precip','landmask']+shp_params)
-          cruprd = loadCRU_Shp(period=period, shape=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'])
-          cruclim = loadCRU_Shp(period=(1979,2009), shape=grid, varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq'])          
+          pcic  = loadPCIC_Shp(period=None, shape=grid, lencl=True, 
+                               varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D']+shp_params)
+          prism = loadPRISM_Shp(period=None, shape=grid, lencl=True, 
+                                varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D']+shp_params)
+          gpccprd = loadGPCC_Shp(period=period, resolution='05', shape=grid, lencl=True, 
+                                 varlist=['precip']+shp_params)
+          gpccclim = loadGPCC_Shp(period=None, resolution='05', shape=grid, lencl=True, 
+                                  varlist=['precip']+shp_params)
+          gpcc025 = loadGPCC_Shp(period=None, resolution='025', shape=grid, lencl=True, 
+                                 varlist=['precip','landmask']+shp_params)
+          cruprd = loadCRU_Shp(period=period, shape=grid, lencl=True, 
+                                varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq']+shp_params)
+          cruclim = loadCRU_Shp(period=(1979,2009), shape=grid, lencl=True, 
+                                varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq']+shp_params)          
         else:
           # some regular map-type grid 
           pcic  = loadPCIC(period=None, grid=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'], lautoregrid=True)
@@ -260,9 +267,11 @@ if __name__ == '__main__':
         # precip
         var = pcic.precip.copy() # generate variable copy
         array = pcic.precip.getArray() # start with hi-res PRISM from PCIC  
+#         array = ma.masked_where(array == 1., array, copy=False)
         # add low-res PRISM backround
         prismarray = prism.precip.getArray() # start with
-        array = ma.where(array.mask, prismarray, array) # add background climatology  
+#         prismarray = ma.masked_where(prismarray == 1., prismarray, copy=False)
+#         array = ma.where(array.mask, prismarray, array) # add background climatology  
         # add GPCC background 
         gpccclimarray = gpccclim.precip.getArray()
         gpccprdarray = gpccprd.precip.getArray() 

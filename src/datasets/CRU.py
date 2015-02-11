@@ -134,10 +134,10 @@ def loadCRU_StnTS(name=dataset_name, station=None, resolution=None, varlist=None
 
 # function to load regionally averaged climatologies
 def loadCRU_Shp(name=dataset_name, period=None, shape=None, varlist=None, varatts=None, 
-                folder=avgfolder, filelist=None, lautoregrid=True):
+                folder=avgfolder, filelist=None, lautoregrid=True, lencl=True):
   ''' Get the pre-processed monthly CRU climatology as a DatasetNetCDF averaged over regions. '''
   # load standardized climatology dataset with CRU-specific parameters
-  dataset = loadObservations(name=name, folder=folder, period=period, station=None, shape=shape,  
+  dataset = loadObservations(name=name, folder=folder, period=period, station=None, shape=shape, lencl=lencl,
                              varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
                              lautoregrid=False, projection=None, mode='climatology')
   # return formatted dataset
@@ -145,9 +145,9 @@ def loadCRU_Shp(name=dataset_name, period=None, shape=None, varlist=None, varatt
 
 # function to load regional/shape time-series
 def loadCRU_ShpTS(name=dataset_name, shape=None, varlist=None, varatts=None, 
-                  folder=avgfolder, filelist=None, lautoregrid=True):
+                  folder=avgfolder, filelist=None, lautoregrid=True, lencl=True):
   ''' Get the pre-processed monthly CRU time-series as a DatasetNetCDF averaged over regions. '''
-  dataset = loadObservations(name=name, folder=folder, period=None, station=None, shape=shape, 
+  dataset = loadObservations(name=name, folder=folder, period=None, station=None, shape=shape, lencl=lencl, 
                              varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
                              lautoregrid=False, projection=None, mode='time-series')
   # return formatted dataset

@@ -299,8 +299,11 @@ class CentralProcessingUnit(object):
       elif var.ndim > 2:
         for i,mask in enumerate(masks):
           if mask is None: tgtdata[i,:] = np.NaN # NaN for missing values (i.e. no overlap) 
-          else: tgtdata[i,:] = var.mapMean(mask=mask, asVar=False, squeeze=True) # compute the averages
-          #print i,tgtdata[i]
+          else: 
+            tmp = var.mapMean(mask=mask, asVar=False, squeeze=True) # compute the averages
+            tgtdata[i,:] = tmp.filled(np.NaN) # mapMean returns a masked array
+            # N.B.: this is necessary, because sometimes shapes only contain invalid values
+          #print i,tgtdata[i,:]
       else: raise AxisError 
       # create new Variable
       assert shape == tgtdata.shape

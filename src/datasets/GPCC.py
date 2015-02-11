@@ -183,11 +183,11 @@ def loadGPCC_StnTS(name=dataset_name, station=None, resolution=None, varlist=Non
 
 # function to load regionally averaged climatologies
 def loadGPCC_Shp(name=dataset_name, period=None, shape=None, resolution=None, varlist=None, varatts=None, 
-                folder=avgfolder, filelist=None, lautoregrid=True):
+                folder=avgfolder, filelist=None, lautoregrid=True, lencl=True):
   ''' Get the pre-processed monthly GPCC climatology as a DatasetNetCDF averaged over regions. '''
   grid, resolution = checkGridRes(None, resolution, period=period, lclim=True); del grid
   # load standardized climatology dataset with GPCC-specific parameters
-  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, shape=shape, 
+  dataset = loadObservations(name=name, folder=folder, projection=None, period=period, shape=shape, lencl=lencl,
                              station=None, varlist=varlist, varatts=varatts, filepattern=avgfile, 
                              filelist=filelist, resolution=resolution, lautoregrid=False, mode='climatology')
   # return formatted dataset
@@ -195,11 +195,11 @@ def loadGPCC_Shp(name=dataset_name, period=None, shape=None, resolution=None, va
 
 # function to load regional/shape time-series
 def loadGPCC_ShpTS(name=dataset_name, shape=None, resolution=None, varlist=None, varatts=None, 
-                  folder=avgfolder, filelist=None, lautoregrid=True):
+                  folder=avgfolder, filelist=None, lautoregrid=True, lencl=True):
   ''' Get the pre-processed monthly GPCC time-series as a DatasetNetCDF averaged over regions. '''
   grid, resolution = checkGridRes(None, resolution, period=None, lclim=False); del grid
   # load standardized time-series dataset with GPCC-specific parameters
-  dataset = loadObservations(name=name, folder=folder, projection=None, shape=shape, station=None, 
+  dataset = loadObservations(name=name, folder=folder, projection=None, shape=shape, station=None, lencl=lencl, 
                              varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
                              resolution=resolution, lautoregrid=False, mode='time-series', period=None)
   # return formatted dataset
