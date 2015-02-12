@@ -64,11 +64,8 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
   if not isinstance(stndata, Dataset): raise TypeError
   # N.B.: the loading function is necessary, because DataseNetCDF instances do not pickle well 
             
-  # determine age of oldest source file
-  if not loverwrite:
-    sourceage = datetime.today()
-    age = datetime.fromtimestamp(os.path.getmtime(filepath))
-    sourceage = age if age < sourceage else sourceage    
+  # determine age of source file
+  if not loverwrite: sourceage = datetime.fromtimestamp(os.path.getmtime(filepath))    
           
   # get filename for target dataset and do some checks
   filename = getTargetFile(stndata.name, dataset, mode, module, dataargs, lwrite)
@@ -183,7 +180,7 @@ if __name__ == '__main__':
   # default settings
   if not lbatch:
 #     NP = 2 ; ldebug = False # for quick computations
-    NP = 1 ; ldebug = True # just for tests
+    NP = 1 ; ldebug = False # just for tests
 #     modes = ('climatology',) # 'climatology','time-series'
     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = False
@@ -203,9 +200,9 @@ if __name__ == '__main__':
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
-#     datasets += ['NARR']
+    datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
-    datasets += ['GPCC']; resolutions = {'GPCC':['25']}
+#     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
 #     datasets += ['CRU']
     # CESM experiments (short or long name) 
     load3D = False

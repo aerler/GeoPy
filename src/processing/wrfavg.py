@@ -8,7 +8,7 @@ Script to produce climatology files from monthly mean time-series' for all or a 
 
 # external
 import numpy as np
-import os, gc
+import os, gc, functools
 from datetime import datetime
 # internal
 from geodata.base import Variable
@@ -41,31 +41,37 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
   fileclass = fileclasses[filetype] # used for target file name
   logger.info('\n\n{0:s}   ***   Processing Experiment {1:<15s}   ***   '.format(pidstr,"'{:s}'".format(experiment.name)) +
         '\n{0:s}   ***   {1:^37s}   ***   \n'.format(pidstr,"'{:s}'".format(fileclass.tsfile.format(domain,''))))
-  source = loadWRF_TS(experiment=experiment, filetypes=[filetype], domains=domain) # comes out as a tuple...
-  if not lparallel and ldebug: 
-    logger.info('\n'+str(source)+'\n')
-  # determine age of oldest source file
-  if not loverwrite:
-    sourceage = datetime.today()
-    for filename in source.filelist:
-      age = datetime.fromtimestamp(os.path.getmtime(filename))
-      sourceage = age if age < sourceage else sourceage
   
+  # assemble filename to check modification dates (should be only one file)    
+  filepath = '{:s}/{:s}'.format(experiment.avgfolder,fileclass.tsfile.format(domain,''))
+
+  # check file and read begin/enddates
+  if not os.path.exists(filepath): raise IOError, "Source file '{:s}' does not exist!".format(filepath)
+  import netCDF4 as nc
+  ncfile = nc.Dataset(filepath,mode='r')
+  begintuple = ncfile.begin_date.split('-')
+  endtuple = ncfile.end_date.split('-')
+  ncfile.close()
+  # N.B.: at this point we don't want to initialize a full GDAL-enabled dataset, since we don't even
+  #       know if we need it, and it creates a lot of overhead
+  
+  # determine age of oldest source file
+  if not loverwrite: sourceage = datetime.fromtimestamp(os.path.getmtime(filepath))
+
   # figure out start date
-  filebegin = int(source.atts.begin_date.split('-')[0]) # first element is the year
-  fileend = int(source.atts.end_date.split('-')[0]) # first element is the year
+  filebegin = int(begintuple[0]) # first element is the year
+  fileend = int(endtuple[0]) # first element is the year
   begindate = offset + filebegin
   if not ( filebegin <= begindate <= fileend ): raise DateError  
   # handle cases where the first month in the record is not January
-  firstmonth = int(source.atts.begin_date.split('-')[1]) # second element is the month
+  firstmonth = int(begintuple[1]) # second element is the month
   shift = firstmonth-1 # will be zero for January (01)
   # other settings
   expfolder = experiment.avgfolder
   dataset_name = experiment.name
-  del experiment # not needed anymore 
-
   
   ## loop over periods
+  source = None # will later be assigned to the source dataset
   if periods is None: periods = [begindate-fileend]
 #   periods.sort(reverse=True) # reverse, so that largest chunk is done first
   for period in periods:       
@@ -75,20 +81,13 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
     if filebegin > enddate: raise DateError    
     if enddate-1 > fileend: # if filebegin is 1979 and the simulation is 10 years, fileend will be 1988, not 1989!
       endmsg = "\n{:s}   ---   Invalid Period for '{:s}': End Date {:4d} not in File!   ---   \n".format(pidstr,dataset_name,enddate)
-      for filepath in source.filelist:
-        endmsg += "{:s}   ---   ('{:s}')\n".format(pidstr,filepath)
+      endmsg += "{:s}   ---   ('{:s}')\n".format(pidstr,filepath)
       logger.info(endmsg)
       
     else:  
-      ## begin actual computation
-      periodstr = '{0:4d}-{1:4d}'.format(begindate,enddate)
-      beginmsg = "\n{:s}   <<<   Computing '{:s}' (d{:02d}) Climatology from {:s}".format(
-                  pidstr,dataset_name,domain,periodstr)
-      if griddef is None: beginmsg += "  >>>   \n" 
-      else: beginmsg += " ('{:s}' grid)  >>>   \n".format(griddef.name)
-      logger.info(beginmsg)
 
       # determine if sink file already exists, and what to do about it      
+      periodstr = '{0:4d}-{1:4d}'.format(begindate,enddate)
       gridstr = '' if griddef is None or griddef.name is 'WRF' else '_'+griddef.name
       filename = fileclass.climfile.format(domain,gridstr,'_'+periodstr)
       if ldebug: filename = 'test_' + filename
@@ -116,6 +115,18 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
         logger.info(skipmsg)              
       else:
          
+        ## begin actual computation
+        beginmsg = "\n{:s}   <<<   Computing '{:s}' (d{:02d}) Climatology from {:s}".format(
+                    pidstr,dataset_name,domain,periodstr)
+        if griddef is None: beginmsg += "  >>>   \n" 
+        else: beginmsg += " ('{:s}' grid)  >>>   \n".format(griddef.name)
+        logger.info(beginmsg)
+
+        ## actually load datasets
+        if source is None:
+          source = loadWRF_TS(experiment=experiment, filetypes=[filetype], domains=domain) # comes out as a tuple... 
+        if not lparallel and ldebug: logger.info('\n'+str(source)+'\n')
+
         # prepare sink
         if os.path.exists(tmpfilepath): os.remove(tmpfilepath) # remove old temp files
         sink = DatasetNetCDF(name='WRF Climatology', folder=expfolder, filelist=[tmpfilename], atts=source.atts.copy(), mode='w')
@@ -166,7 +177,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
           
   # this one is only loaded once for all periods    
   # clean up and return
-  source.unload(); del source
+  if source is not None: source.unload(); del source
   # N.B.: garbage is collected in multi-processing wrapper as well
 
   # return
@@ -205,10 +216,11 @@ if __name__ == '__main__':
   # default settings
   if not lbatch:
     NP = 4 ; ldebug = False # for quick computations
-#     NP = 2 ; ldebug = True # just for tests
+#     NP = 1 ; ldebug = True # just for tests
     loverwrite = False
     varlist = None # ['lat2D', ]
     experiments = []
+#     experiments += ['max-lowres']
     experiments += ['erai-3km','max-3km']
 #     experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
 #     experiments += ['new','noah','max','max-2050']
@@ -222,7 +234,7 @@ if __name__ == '__main__':
 #     experiments += ['max-ctrl-2100']
 #     experiments += ['ctrl-arb1', 'ctrl-arb1-2050', 'ctrl-2-arb1',]
 #     experiments += ['max-3km']
-#     experiments += ['erai-max']
+    experiments += ['erai-max']
     offset = 0 # number of years from simulation start
     periods = [] # not that all periods are handled within one process! 
 #     periods += [1]
@@ -231,9 +243,9 @@ if __name__ == '__main__':
 #     periods += [9]
 #     periods += [10]
 #     periods += [15]
-    domains = (3,) # domains to be processed
+    domains = (1,) # domains to be processed
 #     domains = None # process all domains
-#     filetypes = ['srfc'] # filetypes to be processed
+#     filetypes = ['hydro'] # filetypes to be processed
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']
 #     filetypes = ['hydro'] # filetypes to be processed

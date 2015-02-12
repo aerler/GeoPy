@@ -58,12 +58,9 @@ def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwr
   module, dataargs, loadfct, filepath, datamsgstr = getMetaData(dataset, mode, dataargs)  
   dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr; avgfolder = dataargs.avgfolder
   
-  # determine age of oldest source file
-  if not loverwrite:
-    sourceage = datetime.today()
-    age = datetime.fromtimestamp(os.path.getmtime(filepath))
-    sourceage = age if age < sourceage else sourceage    
-          
+  # determine age of source file
+  if not loverwrite: sourceage = datetime.fromtimestamp(os.path.getmtime(filepath))
+            
   # get filename for target dataset and do some checks
   filename = getTargetFile(shape_name, dataset, mode, module, dataargs, lwrite)
   if ldebug: filename = 'test_' + filename  

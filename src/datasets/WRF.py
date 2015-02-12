@@ -750,17 +750,18 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
-  mode = 'test_point_climatology'
+#   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
-#   mode = 'pickle_grid'  
+  mode = 'pickle_grid'  
   pntset = 'shpavg' # 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
 #   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
 #   experiments = ['rrtmg', 'ctrl', 'new']
 #   grids = ['col1','col2','coast1']; experiments = ['columbia','max-3km','coast']; domains = [1,2,3]   
 #   grids = ['grb1']; experiments = ['']; domains = [1,2]
-  grids = ['wc2']; experiments = ['erai-wc2-rocks']; domains = [1,2]   
+#   grids = ['wc2']; experiments = ['erai-wc2-rocks']; domains = [1,2]
+  grids = ['arb2-120km']; experiments = ['max-lowres']; domains = [1,]   
     
   # pickle grid definition
   if mode == 'pickle_grid':

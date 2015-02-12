@@ -63,6 +63,7 @@ def getMetaData(dataset, mode, dataargs):
     exp = dataargs['experiment']    
     dataset_name = exp.name
     domain = dataargs['domain']
+    grid = dataargs.get('grid',None)
     # figure out period
     period = dataargs['period']
     if period is None: pass
@@ -71,7 +72,8 @@ def getMetaData(dataset, mode, dataargs):
       period = (beginyear, beginyear+period)
     elif len(period) != 2 and all(isInt(period)): raise DateError
     if period is None: periodstr = '' 
-    else: periodstr = '{0:4d}-{1:4d}'.format(*period)      
+    else: periodstr = '{0:4d}-{1:4d}'.format(*period)
+    gridstr = grid if grid is not None else ''      
     # identify file and domain
     if len(dataargs['filetypes']) > 1: raise DatasetError # process only one file at a time
     filetype = dataargs['filetypes'][0]
@@ -81,8 +83,9 @@ def getMetaData(dataset, mode, dataargs):
     # assemble filename to check modification dates (should be only one file)    
     fileclass = module.fileclasses[filetype] # avoid WRF & CESM name collision
     pstr = '_'+periodstr if periodstr else ''
-    if lclim: filename = fileclass.climfile.format(domain,'',pstr) # insert domain number, grid, and period
-    elif lts: filename = fileclass.tsfile.format(domain,'') # insert domain number, and grid
+    gstr = '_'+gridstr if gridstr else ''
+    if lclim: filename = fileclass.climfile.format(domain,gstr,pstr) # insert domain number, grid, and period
+    elif lts: filename = fileclass.tsfile.format(domain,gstr) # insert domain number, and grid
     avgfolder = exp.avgfolder
     # load source data
     if lclim:
@@ -160,6 +163,8 @@ def getMetaData(dataset, mode, dataargs):
     if not os.path.exists(filepath): 
       source = loadfct() # no varlist - obs don't have many variables anyways
       filepath = source.filelist[0]
+      # N.B.: it would be nice to print a message, but then we would have to make the logger available,
+      #       which would be too much trouble
   else:
     raise DatasetError, "Dataset '{:s}' not found!".format(dataset)
   ## assemble and return meta data

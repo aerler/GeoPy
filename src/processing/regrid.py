@@ -13,20 +13,20 @@ from importlib import import_module
 from datetime import datetime
 import logging     
 # internal imports
-from geodata.misc import DatasetError, DateError, isInt, printList
+from geodata.misc import DateError, printList
 from geodata.netcdf import DatasetNetCDF
 from geodata.base import Dataset
 from geodata.gdal import GDALError, GridDefinition, addGeoLocator, loadPickledGridDef
 from datasets import gridded_datasets
-from datasets.common import addLengthAndNamesOfMonth, getFileName, getCommonGrid, grid_folder
+from datasets.common import addLengthAndNamesOfMonth, getCommonGrid, grid_folder
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
 from processing.misc import getMetaData, getTargetFile
 # WRF specific
-from datasets.WRF import getWRFgrid, loadWRF, loadWRF_TS
+from datasets.WRF import getWRFgrid
 from projects.WRF_experiments import WRF_exps
 # CESM specific
-from datasets.CESM import loadCESM, loadCESM_TS, CESM_exps
+from datasets.CESM import CESM_exps
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
@@ -55,134 +55,13 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
   module, dataargs, loadfct, filepath, datamsgstr = getMetaData(dataset, mode, dataargs)
   dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr; avgfolder = dataargs.avgfolder
 
-#   # load source
-#   if dataset == 'WRF': 
-#     # WRF datasets
-#     module = import_module('datasets.WRF')
-#     exp = dataargs['experiment']    
-#     dataset_name = exp.name
-#     domain = dataargs['domain']
-#     # figure out period
-#     period = dataargs['period']
-#     if period is None: pass
-#     elif isinstance(period,(int,np.integer)):
-#       beginyear = int(exp.begindate[0:4])
-#       period = (beginyear, beginyear+period)
-#     elif len(period) != 2 and all(isInt(period)): raise DateError
-#     del exp
-#     # identify file and domain
-#     if len(dataargs['filetypes']) > 1: raise DatasetError # process only one file at a time
-#     filetype = dataargs['filetypes'][0]
-#     if isinstance(domain,(list,tuple)): domain = domain[0]
-#     if not isinstance(domain, (np.integer,int)): raise DatasetError
-#     # load source data
-#     if mode == 'climatology':
-#       source = loadWRF(experiment=dataset_name, name=None, domains=domain, grid=None, period=period, 
-#                        filetypes=[filetype], varlist=None, varatts=None, lconst=True) # still want topography...
-#     elif mode == 'time-series':
-#       source = loadWRF_TS(experiment=dataset_name, name=None, domains=domain, grid=None, 
-#                           filetypes=[filetype], varlist=None, varatts=None, lconst=True) # still want topography...
-#     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
-#     # check period
-#     if period is None: periodstr = '' 
-#     else: periodstr = '{0:4d}-{1:4d}'.format(*period)
-#     if 'period' in source.atts and periodstr != source.atts.period: # a NetCDF attribute
-#       raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
-#     datamsgstr = "Processing WRF '{:s}'-file from Experiment '{:s}' (d{:02d})".format(filetype, dataset_name, domain)
-#   elif dataset == 'CESM': 
-#     # WRF datasets
-#     module = import_module('datasets.CESM')
-#     exp = dataargs['experiment']    
-#     dataset_name = exp.name
-#     # figure out period
-#     period = dataargs['period']
-#     if period is None: pass
-#     elif isinstance(period,(int,np.integer)):
-#       beginyear = int(exp.begindate[0:4])
-#       period = (beginyear, beginyear+period)
-#     elif len(period) != 2 and all(isInt(period)): raise DateError
-#     del exp
-#     # identify file
-#     if len(dataargs['filetypes']) > 1: raise DatasetError # process only one file at a time
-#     filetype = dataargs['filetypes'][0]        
-#     # load source data 
-#     load3D = dataargs.pop('load3D',None) # if 3D fields should be loaded (default: False)
-#     if mode == 'climatology':
-#       source = loadCESM(experiment=dataset_name, name=None, grid=None, period=period, filetypes=[filetype],  
-#                         varlist=None, varatts=None, load3D=load3D, translateVars=None)
-#     elif mode == 'time-series':
-#       source = loadCESM_TS(experiment=dataset_name, name=None, grid=None, filetypes=[filetype],  
-#                            varlist=None, varatts=None, load3D=load3D, translateVars=None)
-#     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
-#     # check period
-#     if period is None: periodstr = ''
-#     else: periodstr = '{0:4d}-{1:4d}'.format(*period)
-#     if 'period' in source.atts and periodstr != source.atts.period: # a NetCDF attribute
-#       raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
-#     datamsgstr = "Processing CESM '{:s}'-file from Experiment '{:s}'".format(filetype, dataset_name)  
-#   elif dataset == dataset.upper():
-#     # observational datasets
-#     module = import_module('datasets.{0:s}'.format(dataset))      
-#     dataset_name = module.dataset_name
-#     resolution = dataargs['resolution']
-#     if resolution: grid_name = '{0:s}_{1:s}'.format(dataset_name,resolution)
-#     else: grid_name = dataset_name   
-#     # figure out period
-#     period = dataargs['period']    
-#     if period is None: pass
-#     elif isinstance(period,(int,np.integer)):
-#       period = (1979, 1979+period) # they all begin in 1979
-#     elif len(period) != 2 and not all(isInt(period)): raise DateError
-#     # load pre-processed climatology
-#     if mode == 'climatology':
-#       source = module.loadClimatology(name=dataset_name, period=period, grid=None, resolution=resolution,  
-#                                       varlist=None, varatts=None, folder=module.avgfolder, filelist=None)
-#     elif mode == 'time-series':
-#       source = module.loadTimeSeries(name=dataset_name, grid=None, resolution=resolution,  
-#                                      varlist=None, varatts=None, folder=None, filelist=None)
-#     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
-#     datamsgstr = "Processing Dataset '{:s}'".format(dataset_name)
-#     # check period
-#     if period is None: 
-#       if mode == 'climatology': periodstr = 'Long-Term Mean'
-#       else: periodstr = ''
-#     else: periodstr = '{0:4d}-{1:4d}'.format(*period)
-#   else:
-#     raise DatasetError, "Dataset '{:s}' not found!".format(dataset)
-#   del dataargs
-  
-  # determine age of oldest source file
-  if not loverwrite:
-    sourceage = datetime.today()
-    age = datetime.fromtimestamp(os.path.getmtime(filepath))
-    sourceage = age if age < sourceage else sourceage    
-          
+  # determine age of source file
+  if not loverwrite: sourceage = datetime.fromtimestamp(os.path.getmtime(filepath))          
           
   # get filename for target dataset and do some checks
   filename = getTargetFile(griddef.name.lower(), dataset, mode, module, dataargs, lwrite)
     
-#   # prepare target dataset
-#   if dataset == 'WRF':
-#     gridstr = '_{}'.format(griddef.name.lower()) if griddef.name.lower() else ''
-#     periodstr = '_{}'.format(periodstr) if periodstr else ''
-#     if lwrite:
-#       if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,domain,gridstr,periodstr)
-#       elif mode == 'time-series': filename = module.ts_file_pattern.format(filetype,domain,gridstr)
-#       else: raise NotImplementedError
-#       avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
-#   elif dataset == 'CESM':
-#     gridstr = '_{}'.format(griddef.name.lower()) if griddef.name.lower() else ''
-#     periodstr = '_{}'.format(periodstr) if periodstr else ''
-#     if lwrite:
-#       if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,gridstr,periodstr)
-#       elif mode == 'time-series': filename = module.ts_file_pattern.format(filetype,gridstr)
-#       else: raise NotImplementedError
-#       avgfolder = '{0:s}/{1:s}/'.format(module.avgfolder,dataset_name)    
-#   elif dataset == dataset.upper(): # observational datasets
-#     if lwrite:
-#       avgfolder = module.avgfolder
-#       filename = getFileName(grid=griddef.name, period=period, name=grid_name, filetype=mode)      
-#   else: raise DatasetError
+  # prepare target dataset
   if ldebug: filename = 'test_' + filename
   if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
   lskip = False # else just go ahead
