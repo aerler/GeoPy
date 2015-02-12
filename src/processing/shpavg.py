@@ -245,10 +245,10 @@ if __name__ == '__main__':
     lLTM = False # again, not necessary
     # CESM
     load3D = True # doesn't hurt... data is small
-    CESM_experiments = []
+    CESM_experiments = None
     CESM_filetypes = ('atm','lnd')    
     # WRF
-    WRF_experiments = [] # process all WRF experiments
+    WRF_experiments = None # process all WRF experiments
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
