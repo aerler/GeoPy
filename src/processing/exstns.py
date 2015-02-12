@@ -182,7 +182,7 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    NP = 2 ; ldebug = False # for quick computations
+#     NP = 2 ; ldebug = False # for quick computations
     NP = 1 ; ldebug = True # just for tests
 #     modes = ('climatology',) # 'climatology','time-series'
     modes = ('time-series',) # 'climatology','time-series'
