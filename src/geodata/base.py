@@ -566,6 +566,7 @@ class Variable(object):
       if self.hasAxis('time'):
         time = self.getAxis('time')
         if not time.units.lower() in ('month','months'): raise NotImplementedError, 'Can only convert years to month!'
+        if 'long_name' not in time.atts: raise KeyError, self.prettyPrint(short=True)
         if '1979' in time.atts.long_name: offset = 1979
         else: offset = 0
         if isinstance(years,np.number): months = (years - offset)*12

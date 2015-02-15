@@ -69,6 +69,8 @@ default_varatts['p-et'] = dict(name='p-et', units='kg/m^2/s') # net precipitatio
 
 # parameters used in shape files
 shp_params = ['shape_name','shp_long_name','shp_type','shp_mask','shp_area','shp_encl','shp_full','shp_empty']
+# parameters used in station files
+stn_params = ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon',]
 
 # data root folder
 import socket
@@ -551,8 +553,12 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   # prepare ensemble
   if varlist is not None:
     varlist = list(varlist)[:] # copy list
-    if station: varlist += ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon',] # necessary to select stations
-    if shape: varlist += ['shape_name', 'shp_long_name', 'shp_type',] # possible necessary to select other regions
+    if station: 
+      for var in stn_params: # necessary to select stations
+        if var not in varlist: varlist.append(var)
+    if shape: 
+      for var in shp_params: # necessary to select shapes
+        if var not in varlist: varlist.append(var)
   # load ensemble WRF data
   if not isinstance(names, (list,tuple)): names = (names,)
   if ldataset and len(names) != 1: raise ArgumentError 

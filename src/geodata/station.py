@@ -33,15 +33,15 @@ class StationDataset(Dataset):
     # initialize Dataset using parent constructor (kwargs are necessary, in order to support multiple inheritance)
     super(StationDataset,self).__init__(name=name, title=title, varlist=varlist, atts=atts, **kwargs)
     # set remaining attibutes
-    self.atts['ID'] = ID
+    if ID is not None or 'ID' not in self.atts: self.atts['ID'] = ID
     
-    @property
-    def ID(self):
-      ''' The station ID, usually an alphanumerical code. '''
-      return self.atts['ID']
-    @ID.setter
-    def ID(self, ID):
-      self.atts['ID'] = ID
+  @property
+  def ID(self):
+    ''' The station ID, usually an alphanumerical code. '''
+    return self.atts['ID']
+  @ID.setter
+  def ID(self, ID):
+    self.atts['ID'] = ID
 
       
 ## the NetCDF version of the station dataset

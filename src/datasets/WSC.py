@@ -28,13 +28,26 @@ dataset_name = 'WSC'
 root_folder = data_root + dataset_name + '/'
 
 # variable attributes and name
-variable_attributes = dict(discharge = dict(name='discharge', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Average Flow Rate')), # average flow rate
+variable_attributes = dict(runoff = dict(name='runoff', units='kg/m^2/s', atts=dict(long_name='Average Runoff Rate')), # average flow rate
+                           roff_std = dict(name='roff_std', units='kg/m^2/s', atts=dict(long_name='Runoff Rate Variability')), # flow rate variabilit
+                           roff_max = dict(name='roff_max', units='kg/m^2/s', atts=dict(long_name='Maximum Runoff Rate')), # maximum flow rate
+                           roff_min = dict(name='roff_min', units='kg/m^2/s', atts=dict(long_name='Minimum Runoff Rate')), # minimum flow rate
+                           discharge = dict(name='discharge', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Average Flow Rate')), # average flow rate
+                           discstd = dict(name='StdDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Flow Rate Variability')), # flow rate variabilit
                            discmax = dict(name='MaxDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Maximum Flow Rate')), # maximum flow rate
                            discmin = dict(name='MinDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Minimum Flow Rate')), # minimum flow rate
                            level = dict(name='level', units='m', atts=dict(long_name='Water Level'))) # water level
 # list of variables to load
 variable_list = variable_attributes.keys() # also includes coordinate fields    
-          
+# alternate WSC runoff variable names (for use with aggregation mode)
+agg_varatts = dict()
+for varname,varatts in variable_attributes.iteritems():
+  tmpatts = varatts.copy() 
+  if tmpatts['units'] == 'kg/m^2/s': tmpatts['name'] = 'runoff'  # always name 'runoff'
+  elif tmpatts['units'] == 'kg/s': tmpatts['name'] = 'discharge'  # always name 'discharge'
+  agg_varatts[varname] = tmpatts    
+
+
   
 # container class for stations and area files
 class Basin(NamedShape):
@@ -44,10 +57,10 @@ class Basin(NamedShape):
     super(Basin,self).__init__(area=basin,  subarea=subbasin, folder=folder, shapefile=shapefile, shapes_dict=basins_dict, load=load, ldebug=ldebug)
     self.maingage = basin.maingage if basin is not None else None 
     
-  def getMainGage(self, varlist=None, varatts=None, mode='climatology', filetype='monthly'):
+  def getMainGage(self, varlist=None, varatts=None, aggregation=None, mode='climatology', filetype='monthly'):
     ''' return a dataset with data from the main gaging station '''
     if self.maingage is not None:
-      station = loadGageStation(basin=self.info, varlist=varlist, varatts=varatts, mode=mode, filetype=filetype)
+      station = loadGageStation(basin=self.info, varlist=varlist, varatts=varatts, aggregation=aggregation, mode=mode, filetype=filetype)
     else: station = None 
     return station
 
@@ -66,7 +79,8 @@ class BasinInfo(ShapeInfo):
     self.stationfiles = dict()
     for river,station_list in stations.items():
       for station in station_list: 
-        filename = '{0:s}_{1:}.dat'.format(river,station)
+        #filename = '{0:s}_{1:}.dat'.format(river,station)
+        filename = '{0:s}_{1:}_Monthly.csv'.format(river,station)
         if station in self.stationfiles: 
           warn('Duplicate station name: {}\n  {}\n  {}'.format(station,self.stationfiles[station],filename))
         else: self.stationfiles[station] = filename
@@ -122,11 +136,11 @@ for name,basin in basins_info.iteritems():
     for subbasin in basin.subbasins[1:]: # skip first
       basins[subbasin] = Basin(basin=basin, subbasin=subbasin)
     
+# get hydrographs from WSC here: https://wateroffice.ec.gc.ca/search/search_e.html?sType=h2oArc
 
 ## Functions that handle access to ASCII files
-
 def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='climatology', 
-                    filetype='monthly', folder=None, filename=None):
+                    aggregation=None, filetype='monthly', folder=None, filename=None):
   ''' Function to load hydrograph climatologies for a given basin '''
   # resolve input
   if isinstance(basin,(basestring,BasinInfo)):
@@ -146,88 +160,81 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   # variable attributes
   if varlist is None: varlist = variable_list
   elif not isinstance(varlist,(list,tuple)): raise TypeError  
-  if varatts is None: varatts = deepcopy(variable_attributes.copy()) # because of nested dicts
+  if varatts is None: 
+    if aggregation is None: varatts = deepcopy(variable_attributes) # because of nested dicts
+    else: varatts = deepcopy(agg_varatts) # because of nested dicts
   elif not isinstance(varatts,dict): raise TypeError
+  ## read csv data
+  filepath = '{}/{}'.format(folder,filename)
+  data = np.genfromtxt(filepath, dtype=np.float32, delimiter=',', skip_header=1, filling_values=np.nan,  
+                       usecols=np.arange(4,28,2), usemask=True, loose=True, invalid_raise=True)
+  # for some reason every value if followed by an extra comma...
+  data = np.ma.masked_less(data, 10) # remove some invalid values
+  data *= 1000. # m^3 == 1000 kg (water)
+  ## load meta data
+  # open namelist file for reading   
+  filehandle = fileinput.FileInput(['{}/{}'.format(folder,filename.replace('Monthly', 'Metadata'))], mode='r')  
+  # parse file and load data into a dictionary
+  l = 0
+  for line in filehandle:
+    linesplit = line.split(',')
+    if l == 0: keys = linesplit
+    elif l == 1: values = linesplit
+    else: raise IOError, line
+    l += 1 # count lines...
+  assert len(keys) == len(values)
+  metadata = {key:value for key,value in zip(keys,values)}
   # create dataset for station
-  dataset = StationDataset(name=station, title=filename.split('.')[0], ID=None, varlist=[], atts=atts) 
+  atts['long_name'] = metadata['Station Name']
+  atts['ID'] = metadata['Station Number']
+  atts['shape_name'] = basin.name if basin is not None else None
+  atts['shp_area'] = float(metadata['Drainage Area']) * 1e6 # km^2 == 1e6 m^2
+  metadata.update(atts)
+  dataset = StationDataset(name='WSC', title=metadata['Station Name'], varlist=[], atts=metadata,) 
   if mode == 'climatology': 
     # make common time axis for climatology
     te = 12 # length of time axis: 12 month
     climAxis = Axis(name='time', units='month', length=12, coord=np.arange(1,te+1,1)) # monthly climatology
   else: raise NotImplementedError, 'Currently only climatologies are supported.'
   dataset.addAxis(climAxis, copy=False)
-  # a little helper function
-  def makeVariable(varname, linesplit):  
-    atts = varatts[varname] # these are more specific than below (mean/min/max)
-    data = np.asarray(linesplit[1:te+1], dtype='float')
-    if 'scalefactor' in atts: data = data * atts.pop('scalefactor')
-    if 'fileunits' in atts: atts.pop('fileunits') 
-    #print varname, data.shape, len(climAxis)
-    return Variable(axes=[climAxis], data=data, **atts)      
-  # open namelist file for reading   
-  filehandle = fileinput.FileInput(['{}/{}'.format(folder,filename)], mode='r')  
-  # parse file and load variables
-  l = 0; filevar = None; lmean = False; lreadVar = False; offset = 0
-  for line in filehandle:
-    l += 1 # count lines...
-    linesplit = line.split()
-    # blank line
-    if len(linesplit) == 0:
-      if filevar is None: 
-        if offset == 0: l -= 1 # empty header lines
-        else: offset += 1 # empty lines after header
-      else:
-        if not lreadVar or lmean: offset = l # go to next record
-        else: raise ParseError, 'Data not found at line {}.'.format(l)    
-    # first line of file
-    elif l == 1:
-      if basin is not None: # check
-        fileriver = linesplit[0].lower()
-        if fileriver != river: raise ParseError, 'Inconsistent river names: {} != {}'.format(fileriver,river)
-      tmp = linesplit[-1]
-      if tmp[0] == '(' and tmp[-1] == ')': 
-        ID = tmp[1:-1]; print('Station ID: {}'.format(ID))
-      else: 
-        ID = None; warn('No station ID available.')
-      dataset.ID = ID # set station ID
-      offset = 1
-    # first line of record
-    elif l == 1 + offset:
-      if filetype == 'monthly':
-        if not linesplit[0].lower() == 'monthly': raise ParseError, 'Unknown filetype; not monthly.'
-      filevar = linesplit[2].lower() # third field       
-      if filevar in varatts and filevar in varlist: 
-        lreadVar = True # read this variable
-        tmpatts = varatts[filevar]
-        units = tmpatts.pop('fileunits',tmpatts['units'])        
-        fileunits = linesplit[-1].lower()
-        if units == fileunits[1:-1]: pass
-        elif fileunits[0] == '(' and fileunits[-1] == ')' and units == fileunits[1:-1]: pass         
-        else: raise ParseError,'No compatible units found; expected {}, found {}.'.format(units,fileunits)
-      else:
-        lreadVar = False # skip this variables
-        if filevar in varatts: print('Skipping variable: {}.'.format(filevar))  
-        else: print('Unknown variable: {}.'.format(filevar))
-    # third line
-    elif l == 2 + offset:      
-      if filetype == 'monthly':
-        if not ( linesplit[0].lower() == 'year' and len(linesplit) == 14 ): 
-          raise ParseError, 'Unknown file format; expected yearly rows.'
-    # skip the entire time-series section
-    # extract variables (min/max/mean are separate variables)
-    # load mean
-    elif l > 2 + offset and linesplit[0].lower() == 'mean' and lreadVar:
-      if filevar == 'discharge': varname = filevar
-      dataset.addVariable(makeVariable(varname, linesplit), copy=False)
-      lmean = True 
-    # load maximum
-    elif l > 2 + offset and linesplit[0].lower() == 'max' and lreadVar:
-      if filevar == 'discharge': varname = 'discmax' # name is only temporary (see varatts)
-      dataset.addVariable(makeVariable(varname, linesplit), copy=False) 
-    # load minimum
-    elif l > 2 + offset and linesplit[0].lower() == 'min' and lreadVar:
-      if filevar == 'discharge': varname = 'discmin'
-      dataset.addVariable(makeVariable(varname, linesplit), copy=False)
+  # extract variables (min/max/mean are separate variables)
+  area = atts['shp_area']
+  if aggregation is None or aggregation.lower() == 'mean':
+    # load mean discharge
+    tmpdata = data.mean(axis=0)
+    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discharge'])
+    dataset.addVariable(tmpvar, copy=False)
+    # load mean runoff
+    tmpdata = tmpdata / area
+    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['runoff'])
+    dataset.addVariable(tmpvar, copy=False)
+  if aggregation is None or aggregation.lower() == 'std':
+    # load  discharge standard deviation
+    tmpdata = data.std(axis=0, ddof=1) # very few values means large uncertainty!
+    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discstd'])
+    dataset.addVariable(tmpvar, copy=False)
+    # load  runoff standard deviation
+    tmpdata = tmpdata / area
+    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_std'])
+    dataset.addVariable(tmpvar, copy=False)
+  if aggregation is None or aggregation.lower() == 'max':
+    # load maximum discharge
+    tmpdata = data.max(axis=0)
+    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discmax'])
+    dataset.addVariable(tmpvar, copy=False)
+    # load maximum runoff
+    tmpdata = tmpdata / area
+    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_max'])
+    dataset.addVariable(tmpvar, copy=False)
+  if aggregation is None or aggregation.lower() == 'min':
+    # load minimum discharge
+    tmpdata = data.min(axis=0)
+    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discmin'])
+    dataset.addVariable(tmpvar, copy=False)
+    # load minimum runoff
+    tmpdata = tmpdata / area
+    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_min'])
+    dataset.addVariable(tmpvar, copy=False)
   # return station dataset
   return dataset   
 
@@ -315,11 +322,11 @@ if __name__ == '__main__':
   assert basin.shapetype == 'BSN'
   
   # load station data
-  station = basin.getMainGage()
-  assert station.ID == loadGageStation(basin=basin_name).ID
+  station = basin.getMainGage(aggregation='std')
   print
   print station
   print
+  assert station.ID == loadGageStation(basin=basin_name).ID
   print station.discharge.getArray()
   
   # print basins
