@@ -210,19 +210,31 @@ variablePlotatts['acprec'] = tmp
 
 ## Cumulus Precipitation Rate
 tmp = PlotAtts(name = 'precip (cu)', title = 'Cumulus Precipitation Rate', 
-               units = 'mm/day', scalefactor = 86400)
+               units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['preccu'] = tmp
 
 ## Accumulated Grid-scale Precipitation
 tmp = PlotAtts(name = 'precip (grid)', title = 'Grid-scale Precipitation Rate', 
-               units = 'mm/day', scalefactor = 86400)
+               units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['precnc'] = tmp
 
+## Solid Precipitation Rate
+tmp = PlotAtts(name = 'solprec', title = 'Solid Precipitation Rate', 
+               units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+# add to collection
+variablePlotatts['solprec'] = tmp
+
+## Liquid Precipitation Rate
+tmp = PlotAtts(name = 'liqprec', title = 'Liquid Precipitation Rate', 
+               units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+# add to collection
+variablePlotatts['liqprec'] = tmp
+
 ## Total Precipitation Rate
 tmp = PlotAtts(name = 'precip', title = 'Total Precipitation Rate', 
-               units = 'mm/day', scalefactor = 86400)
+               units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['precip'] = tmp
 

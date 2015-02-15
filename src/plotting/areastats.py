@@ -187,7 +187,7 @@ if __name__ == '__main__':
   # settings
   lprint = False; lpublication = False; lpresentation = True
   paper_folder = '/home/me/Research/Extreme Value Analysis/Report/Brewer-Wilson Talk 2015/figures/'
-#   loadStyleSheet('default', lpresentation=lpresentation, lpublication=lpublication)
+  loadStyleSheet('default', lpresentation=lpresentation, lpublication=lpublication)
   # experiments
 #   expset = 'max-ens-2050'
 #   expset = 'max-ens-2100'

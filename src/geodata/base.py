@@ -569,7 +569,11 @@ class Variable(object):
         if '1979' in time.atts.long_name: offset = 1979
         else: offset = 0
         if isinstance(years,np.number): months = (years - offset)*12
-        elif isinstance(years,(list,tuple)): months = [ (yr - offset)*12 for yr in years]
+        elif isinstance(years,(list,tuple)): months = [(yr - offset)*12 for yr in years]
+        if isinstance(years,tuple): 
+          if len(months) == 2: months = (months[0],months[1]-1)
+          elif len(months) == 3: months = (months[0],months[1]-1,months[2]) # passed to np.linspace
+          else: raise NotImplementedError
         axes['time'] = months
       elif lcheck: raise AxisError, "Axis 'time' required for keyword 'years'!"
     varaxes = dict(); idxmodes = dict() ; rngmodes = dict(); lstmodes = dict()
@@ -615,7 +619,7 @@ class Variable(object):
             else:
               #idxslc = [idx for idx in idxslc if idx is not None] # remove out-of-bounds values              
               slcs.append(idxslc) # use list of converted indices
-          else: 
+          else:
             idxslc = ax.getIndex(axval, outOfBounds=True)
             if idxslc is None: raise AxisError, "Coordinate value {:s} out of bounds for axis '{:s}'.".format(str(axval),ax.name)  
             slcs.append(idxslc)
@@ -2245,7 +2249,8 @@ class Dataset(object):
     # iterate over all variables (not axes!) 
     for varname in varlist:
       var = self.variables[varname]
-      if var.data and var.ndim >= mask.ndim:
+      if var.ndim >= mask.ndim:
+        if not var.data: raise DataError, "Need to have data to process mask!"
         # need to have data and also the right number of dimensions 
         lOK = False
         if isinstance(mask,np.ndarray):

@@ -13,8 +13,9 @@ import numpy.ma as ma
 import os
 # internal imports
 from geodata.base import Variable
-from geodata.netcdf import DatasetNetCDF
-from datasets.common import days_per_month, name_of_month, getFileName, data_root, loadObservations, grid_folder
+from geodata.netcdf import DatasetNetCDF 
+from datasets.common import days_per_month, name_of_month,  shp_params
+from datasets.common import getFileName, data_root, loadObservations, grid_folder
 from geodata.gdal import loadPickledGridDef
 from datasets.GPCC import loadGPCC, loadGPCC_Shp
 from datasets.CRU import loadCRU, loadCRU_Shp 
@@ -79,7 +80,7 @@ def loadUnity(name=dataset_name, period=None, grid=None, varlist=None, varatts=N
 
 # function to load these files...
 def loadUnity_Shp(name=dataset_name, period=None, shape=None, varlist=None, varatts=None, 
-                  folder=avgfolder, filelist=None, lautoregrid=False, resolution=None, lencl=True):
+                  folder=avgfolder, filelist=None, lautoregrid=False, resolution=None, lencl=False):
   ''' Get the pre-processed, unified monthly climatology averaged over shapes as a DatasetNetCDF. '''
   # a climatology is not available
   if period is None: 
@@ -141,13 +142,13 @@ if __name__ == '__main__':
   periods = []
 #   periods += [(1979,1980)]
 #   periods += [(1979,1982)]
-  periods += [(1979,1984)]
-  periods += [(1979,1989)]
+#   periods += [(1979,1984)]
+#   periods += [(1979,1989)]
   periods += [(1979,1994)]
 #   periods += [(1984,1994)]
 #   periods += [(1989,1994)]
 #   periods += [(1997,1998)]
-  periods += [(1979,2009)]
+#   periods += [(1979,2009)]
 #   periods += [(1949,2009)]
   pntset = 'shpavg' # 'ecprecip'
   
@@ -200,7 +201,6 @@ if __name__ == '__main__':
           # regional averages: shape index as grid
           # N.B.: currently doesn't work with stations, because station indices are not consistent
           #       for grids of different size (different number of stations included)
-          shp_params = ['shape_name','shp_long_name','shp_type','shp_mask','shp_area','shp_encl','shp_full','shp_empty']
           pcic  = loadPCIC_Shp(period=None, shape=grid, lencl=True, 
                                varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D']+shp_params)
           prism = loadPRISM_Shp(period=None, shape=grid, lencl=True, 

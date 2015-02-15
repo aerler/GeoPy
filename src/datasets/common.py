@@ -67,6 +67,8 @@ default_varatts = dict(pmsl     = dict(name='pmsl', units='Pa'), # sea-level pre
                        y        = dict(name='y', units='m')) # projected south-north coordinate
 default_varatts['p-et'] = dict(name='p-et', units='kg/m^2/s') # net precipitation; only legal as a string                                
 
+# parameters used in shape files
+shp_params = ['shape_name','shp_long_name','shp_type','shp_mask','shp_area','shp_encl','shp_full','shp_empty']
 
 # data root folder
 import socket
@@ -285,7 +287,7 @@ def loadObs_StnTS(name=None, folder=None, resolution=None, varlist=None, station
                           lautoregrid=False, mode='time-series')
   
 # universal load function that will be imported by datasets
-def loadObservations(name=None, folder=None, period=None, grid=None, station=None, shape=None, lencl=True, 
+def loadObservations(name=None, folder=None, period=None, grid=None, station=None, shape=None, lencl=False, 
                      varlist=None, varatts=None, filepattern=None, filelist=None, resolution=None, 
                      projection=None, geotransform=None, axes=None, lautoregrid=None, mode='climatology'):
   ''' A function to load standardized observational datasets. '''
@@ -334,7 +336,9 @@ def loadObservations(name=None, folder=None, period=None, grid=None, station=Non
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=[filename], varlist=varlist, varatts=varatts, 
                           axes=axes, multifile=False, ncformat='NETCDF4')
   # mask all shapes that are incomplete in dataset
-  if shape and lencl and 'shp_encl' in dataset: dataset.mask(mask='shp_encl', invert=True)
+  if shape and lencl and 'shp_encl' in dataset: 
+    dataset.load() # need to load data before masking; is cheap for shape averages, anyway
+    dataset.mask(mask='shp_encl', invert=True, skiplist=shp_params)
   # correct ordinal number of shape (should start at 1, not 0)
   if lshape:
     if dataset.hasAxis('shapes'): raise AxisError, "Axis 'shapes' should be renamed to 'shape'!"

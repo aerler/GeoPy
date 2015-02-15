@@ -14,7 +14,7 @@ from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 # internal imports
 from geodata.base import Variable, Dataset, Ensemble
 from geodata.misc import ListError, AxisError, ArgumentError, isEqual
-from plotting.misc import smooth, getPlotValues
+from plotting.misc import smooth, getPlotValues, errorPercentile
 from collections import OrderedDict
 from utils.misc import binedges, expandArgumentList, evalDistVars
 from types import NoneType
@@ -30,14 +30,16 @@ class MyAxes(Axes):
   variable_plotargs  = None
   dataset_plotargs   = None
   plots              = None
-  title_height       = 2
+  title_height       = 0.0 # fraction of axes height
   flipxy             = False
   xname              = None
   xunits             = None
-  xpad               = 2 
+  xpad               = 2    # pixels
   yname              = None
   yunits             = None
   ypad               = 0
+  figure             = None
+  pax                = None
   
   def __init__(self, *args, **kwargs):
     ''' constructor to initialize some variables / counters '''  
@@ -50,7 +52,8 @@ class MyAxes(Axes):
   def linePlot(self, varlist, varname=None, bins=None, support=None, errorbar=None, errorband=None,  
                legend=None, llabel=True, labels=None, hline=None, vline=None, title=None, lignore=False,        
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
-               xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False, 
+               lparasiteMeans=False, parasite_axes=None, 
+               xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lperi=False, lprint=False,
                expand_list=None, lproduct='inner', method='pdf', plotatts=None, **plotargs):
     ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on 
         variable properties; extra keyword arguments (plotargs) are passed through expandArgumentList,
@@ -82,21 +85,26 @@ class MyAxes(Axes):
     plotargs = self._expandArgumentList(labels=label_list, expand_list=expand_list, 
                                         lproduct=lproduct, plotargs=plotargs)
     assert len(plotargs) == len(varlist)
+    # initialize parasitic axis for means
+    if lparasiteMeans and self.pax is None:
+      if parasite_axes is None: parasite_axes = dict() 
+      self.pax = self.addParasiticAxes(**parasite_axes)  
     ## generate individual line plots
     plts = [] # list of plot handles
     for label,var in zip(labels,varlist): self.variables[label] = var # save plot variables
     # loop over variables and plot arguments
-    for var,errvar,bndvar,plotarg,label in zip(varlist,errlist,bndlist,plotargs,labels):
+    N = len(varlist)
+    for n,var,errvar,bndvar,plotarg,label in zip(xrange(N),varlist,errlist,bndlist,plotargs,labels):
       if var is not None:
         varax = var.axes[0]
         # scale axis and variable values 
-        axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None)
-        val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None)
+        axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None, laxis=True, lperi=lperi)
+        val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None, lsmooth=lsmooth, lperi=lperi)
         if errvar is not None: # for error bars
-          err, varunits, errname = getPlotValues(errvar, checkunits=varunits, checkname=None); del errname
+          err, varunits, errname = getPlotValues(errvar, checkunits=varunits, checkname=None, lsmooth=lsmooth, lperi=lperi); del errname
         else: err = None
         if bndvar is not None: # semi-transparent error bands
-          bnd, varunits, bndname = getPlotValues(bndvar, checkunits=varunits, checkname=None); del bndname
+          bnd, varunits, bndname = getPlotValues(bndvar, checkunits=varunits, checkname=None, lsmooth=lsmooth, lperi=lperi); del bndname
         else: bnd = None      
         # variable and axis scaling is not always independent...
         if var.plot is not None and varax.plot is not None: 
@@ -104,7 +112,6 @@ class MyAxes(Axes):
             val /= varax.plot.scalefactor
         # N.B.: other scaling behavior could be added here
         if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)   
-        if lsmooth: val = smooth(val)
         # update plotargs from defaults
         plotarg = self._getPlotArgs(label=label, var=var, plotatts=plotatts, plotarg=plotarg)
         plotarg['fmt'] = plotarg.pop('lineformat','') # rename (I prefer a different name)
@@ -115,16 +122,20 @@ class MyAxes(Axes):
         bandalpha = plotarg.pop('bandalpha',0.5)
         edgecolor = plotarg.pop('edgecolor',0.5)
         facecolor = plotarg.pop('facecolor',None)
+        errorscale = plotarg.pop('errorscale',None)
+        if errorscale is not None: errorscale = errorPercentile(errorscale)
         # figure out orientation and call plot function
         if self.flipxy: # flipped axes
           xlen = len(var); ylen = len(axe) # used later
           plt = self.errorbar(val, axe, xerr=err, yerr=None, **plotarg)[0]
+          if lparasiteMeans: raise NotImplementedError
         else:# default orientation
           xlen = len(axe); ylen = len(val) # used later
           plt = self.errorbar(axe, val, xerr=None, yerr=err, **plotarg)[0]
+          if lparasiteMeans: self.addParasiteMean(val, errors=err if err is not None else bnd, n=n, N=N, **plotarg)
         # figure out parameters for error bands
         if bnd is not None: 
-          self._drawBand(axe, val+bnd, val-bnd, where=where, color=(facecolor or plt.get_color()), 
+          self._drawBand(axe, val+bnd*errorscale, val-bnd*errorscale, where=where, color=(facecolor or plt.get_color()), 
                          alpha=bandalpha*plotarg.get('alpha',1.), edgecolor=edgecolor, **bndarg)  
         plts.append(plt); self.plots[label] = plt
     ## format axes and add annotation
@@ -142,7 +153,7 @@ class MyAxes(Axes):
   def bandPlot(self, upper=None, lower=None, varname=None, bins=None, support=None, lignore=False,   
                legend=None, llabel=False, labels=None, hline=None, vline=None, title=None,        
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
-               xlog=None, ylog=None, xlim=None, ylim=None, lsmooth=False, lprint=False, 
+               xlog=None, ylog=None, xlim=None, ylim=None, lsmooth=False, lperi=False, lprint=False, 
                expand_list=None, lproduct='inner', method='pdf', plotatts=None, **plotargs):
     ''' A function to draw a colored bands between two lists of 1D variables representing the upper
         and lower limits of the bands; extra keyword arguments (plotargs) are passed through 
@@ -185,10 +196,10 @@ class MyAxes(Axes):
           varax = lowvar.axes[0]
           assert upvar is None or ( upvar.hasAxis(varax) and upvar.ndim == 1 )          
         # scale axis and variable values 
-        axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None)
-        if upvar: up, varunits, varname = getPlotValues(upvar, checkunits=varunits, checkname=None) 
+        axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None, laxis=True, lperi=lperi)
+        if upvar: up, varunits, varname = getPlotValues(upvar, checkunits=varunits, checkname=None, lsmooth=lsmooth, lperi=lperi) 
         else: up = np.zeros_like(axe)
-        if lowvar: low, varunits, varname = getPlotValues(lowvar, checkunits=varunits, checkname=None)
+        if lowvar: low, varunits, varname = getPlotValues(lowvar, checkunits=varunits, checkname=None, lsmooth=lsmooth, lperi=lperi)
         else: low = np.zeros_like(axe)
         # variable and axis scaling is not always independent...
         if upvar.plot is not None and varax.plot is not None: 
@@ -340,10 +351,10 @@ class MyAxes(Axes):
       else: raise TypeError, hl.__class__
     return lines    
   
-  def addTitle(self, title, **kwargs):
+  def addTitle(self, title, title_height=None, **kwargs):
     ''' add title and adjust margins '''
     if 'fontsize' not in kwargs: kwargs['fontsize'] = 'medium'
-    title_height = kwargs.pop('title_height', self.title_height)
+    title_height =  self.title_height if title_height is None else title_height
     pos = self.get_position()
     pos = pos.from_bounds(x0=pos.x0, y0=pos.y0, width=pos.width, height=pos.height-title_height)    
     self.set_position(pos)
@@ -360,14 +371,20 @@ class MyAxes(Axes):
     ''' helper function to pre-process the variable list '''
     # varlist is the list of variable objects that are to be plotted
     if isinstance(varlist,Variable): varlist = [varlist]
-    elif not isinstance(varlist,(tuple,list,Ensemble)):raise TypeError
-    if varname is not None:
-      tmplist = []
-      for var in varlist:
-        if isinstance(var,Dataset): varlist.append(var)
-        elif not hasattr(var, varname): varlist.append(None)
-        else: varlist.append(getattr(var,varname))
-      varlist = tmplist; del tmplist
+    elif isinstance(varlist,Dataset): 
+      if isinstance(varname,basestring): varlist = [varlist[varname]]
+      elif isinstance(varname,(tuple,list)):
+        varlist = [varlist[name] if name in varlist else None for name in varname]
+      else: raise TypeError
+    elif isinstance(varlist,(tuple,list,Ensemble)):
+      if varname is not None:
+        tmplist = []
+        for var in varlist:
+          if isinstance(var,Dataset): varlist.append(var)
+          elif hasattr(var, varname): varlist.append(getattr(var,varname))
+          else: varlist.append(None)
+        varlist = tmplist; del tmplist
+    else: raise TypeError
     if not all([isinstance(var,(Variable, NoneType)) for var in varlist]): raise TypeError
     for var in varlist: 
       if var is not None: var.squeeze() # remove singleton dimensions
@@ -384,6 +401,54 @@ class MyAxes(Axes):
     # return cleaned-up and checkd variable list
     return varlist    
   
+  def addParasiticAxes(self, wd=0.075, pad=0.2, offset=0., **kwargs):
+    ''' add a parasitic axes on the right margin, similar to a colorbar, and hide axes grid etc. '''
+    # position parasite axis
+    pos = self.get_position()
+    owd = pos.width*(1.-wd); bwd = pos.width*wd*pad; nwd = pos.width*wd*(1.-pad)
+    pos = pos.from_bounds(x0=pos.x0, y0=pos.y0, width=owd, height=pos.height)    
+    self.set_position(pos)
+    pax = self.figure.add_axes((pos.x0+owd+bwd, pos.y0, nwd, pos.height), **kwargs)
+    # configure axes
+    pax.grid(b=False, which='both', axis='both')
+    pax.set_xlim((-0.5,0.5)); pax.set_ylim(self.get_ylim())
+    for ax in pax.xaxis,pax.yaxis: 
+      for tick in ax.get_ticklabels(): tick.set_visible(False)
+    pax.set_xticks([])
+    # add positioning parameters
+    pax.n = 0; pax.N = 0; pax.offset = offset
+    # return parasite axes
+    return pax
+    
+  def addParasiteMean(self, values, errors=None, n=0, N=1, style='errorbar', **kwargs):
+    ''' add a maker at the mean of the given values to the parasitic axes '''
+    pax = self.pax
+    # adjust offset (each new batch)
+    if n == 0 or pax.N == 0: # this will work most of the time
+      if pax.n > 0: pax.offset += 0.5/(pax.N+1.)
+      pax.N = N # new N for new batch
+    # generate mock line plot values
+    xax = np.arange(-1,2, dtype=np.float) # x-axis
+    # allow for slight offset, to disentangle
+    if n != 0 or N != 1: 
+      shift = float(n+1.)/float(N+1.) - 0.5
+      xax[1] += pax.offset + shift
+    # average values (three points, to avoid cut-off)
+    val = values.mean().repeat(3)
+    # average variances (not std directly)
+    if errors is not None:
+      err = ((errors**2).mean(keepdims=True)**0.5).repeat(3)
+    else: err = None
+    # remove some style parameters that don't apply
+    kwargs.pop('errorevery', None)
+    # draw mean
+    if style.lower() == 'errorbar':
+      pnt = pax.errorbar(xax,val, xerr=None, yerr=err, **kwargs)
+    else: raise NotImplementedError
+    # increase counter
+    pax.n = n+1
+    return pnt
+    
   def _translateArguments(self, labels=None, expand_list=None, plotargs=None):
     # loop over special arguments that allow plural form
     for name in ('lineformats','linestyles','colors','markers'):
@@ -417,13 +482,18 @@ class MyAxes(Axes):
     
   def _getPlotLabels(self, varlist):
     ''' figure out reasonable plot labels based variable and dataset names '''
+    # make list without None's for checking uniqueness
+    nonone_list = [var for var in varlist if var is not None]
     # figure out line/plot label policy
-    if not any(var.name == varlist[0].name for var in varlist[1:]):
-      labels = [var.name for var in varlist]
-    elif ( all(var.dataset is not None for var in varlist) and
-           not any(var.dataset.name == varlist[0].dataset.name for var in varlist[1:]) ):
-      labels = [var.dataset.name for var in varlist]
+    if not any(var.name == nonone_list[0].name for var in nonone_list[1:]):
+      # if variable names are different
+      labels = [None if var is None else var.name for var in varlist]
+    elif ( all(var.dataset is not None for var in nonone_list) and
+           not any(var.dataset.name == nonone_list[0].dataset.name for var in nonone_list[1:]) ):
+      # if dataset names are different
+      labels = [None if var is None else var.dataset.name for var in nonone_list]
     else: 
+      # if no names are unique, just number
       labels = range(len(varlist))
     return labels
   
@@ -460,7 +530,9 @@ class MyAxes(Axes):
     # set axes limits
     if isinstance(xlim,(list,tuple)) and len(xlim)==2: self.set_xlim(*xlim)
     elif xlim is not None: raise TypeError
-    if isinstance(ylim,(list,tuple)) and len(ylim)==2: self.set_ylim(*ylim)
+    if isinstance(ylim,(list,tuple)) and len(ylim)==2: 
+      self.set_ylim(*ylim)
+      if self.pax is not None: self.pax.set_ylim(*ylim)
     elif ylim is not None: raise TypeError 
     # set title
     if title is not None: self.addTitle(title)

@@ -324,7 +324,7 @@ def loadCESM_StnTS(experiment=None, name=None, station=None, filetypes=None, var
 # Station Time-Series (monthly)
 def loadCESM_ShpTS(experiment=None, name=None, shape=None, filetypes=None, varlist=None, varatts=None,  
                    translateVars=None, load3D=False, ignore_list=None, lcheckExp=True, lreplaceTime=True,
-                   lencl=True):
+                   lencl=False):
   ''' Get a properly formatted CESM dataset with a monthly time-series averaged over regions. '''
   return loadCESM_All(experiment=experiment, name=name, grid=None, period=None, shape=shape, lencl=lencl, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, lreplaceTime=lreplaceTime, 
@@ -354,7 +354,7 @@ def loadCESM_Stn(experiment=None, name=None, station=None, period=None, filetype
 # Regional Climatologies (monthly)
 def loadCESM_Shp(experiment=None, name=None, shape=None, period=None, filetypes=None, varlist=None, 
                  varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, 
-                 lcheckExp=True, lencl=True):
+                 lcheckExp=True, lencl=False):
   ''' Get a properly formatted CESM dataset with the monthly climatology averaged over regions. '''
   return loadCESM_All(experiment=experiment, name=name, grid=None, period=period, station=None, 
                       shape=shape, lencl=lencl, filetypes=filetypes, varlist=varlist, varatts=varatts, 
@@ -364,7 +364,7 @@ def loadCESM_Shp(experiment=None, name=None, shape=None, period=None, filetypes=
 # load minimally pre-processed CESM climatology files 
 def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, 
              varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, 
-             lcheckExp=True, lencl=True):
+             lcheckExp=True, lencl=False):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
   return loadCESM_All(experiment=experiment, name=name, grid=grid, period=period, station=None, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, translateVars=translateVars, 
@@ -376,7 +376,7 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
 def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None, period=None, 
                  varlist=None, varatts=None, translateVars=None, lautoregrid=None, load3D=False, 
                  ignore_list=None, mode='climatology', cvdp_mode='ensemble', lcheckExp=True, 
-                 lreplaceTime=True, filetypes=None, lencl=True):
+                 lreplaceTime=True, filetypes=None, lencl=False):
   ''' Get any of the monthly CESM files as a properly formatted NetCDFDataset. '''
   # period
   if isinstance(period,(tuple,list)):
@@ -527,7 +527,7 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
 def loadCESM_ShpEns(ensemble=None, name=None, shape=None, filetypes=None, years=None,
                     varlist=None, varatts=None, translateVars=None, load3D=False, 
-                    ignore_list=None, lcheckExp=True, lencl=True):
+                    ignore_list=None, lcheckExp=True, lencl=False):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadCESM_Ensemble(ensemble=ensemble, name=name, grid=None, station=None, shape=shape, 
                            filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
@@ -550,7 +550,7 @@ def loadCESM_StnEns(ensemble=None, name=None, station=None, filetypes=None, year
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
 def loadCESM_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=None, filetypes=None, 
                       years=None, varlist=None, varatts=None, translateVars=None, lautoregrid=None, 
-                      load3D=False, ignore_list=None, cvdp_mode='ensemble', lcheckExp=True, lencl=True, 
+                      load3D=False, ignore_list=None, cvdp_mode='ensemble', lcheckExp=True, lencl=False, 
                       mode='time-series', lindices=False, leofs=False, lreplaceTime=True):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   # obviously this only works for modes that produce a time-axis

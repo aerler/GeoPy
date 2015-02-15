@@ -98,6 +98,23 @@ class LinePlotTest(unittest.TestCase):
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
     
+  def testMeanAxisPlot(self):
+    ''' test a simple errorbar plot with a parasitic axes showing the means '''    
+    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyAxes'
+    assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
+    var1 = self.var1; var2 = self.var2
+    err1 = self.err1; err2 = self.err2
+    # create plot
+    plts = ax.linePlot([var1, var2], errorbar=[err1, err2], lparasiteMeans=True,
+                       errorevery=[1, 3,], expand_list=['errorevery'], # expand skip interval
+                       ylabel='Variables with Errors [{1:s}]', llabel=True, 
+                       ylim=var1.limits(), legend=2, hline=2., vline=(2,3))
+    assert len(plts) == 2
+    # add label
+    ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
+    
   def testFancyErrorPlot(self):
     ''' test a plot with error bands with separate upper and lower limits '''    
     fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
@@ -245,11 +262,12 @@ if __name__ == "__main__":
 #     specific_tests = ['BasicLinePlot']
 #     specific_tests = ['BasicErrorPlot']
 #     specific_tests = ['FancyErrorPlot']
-    specific_tests = ['FancyBandPlot']
+#     specific_tests = ['FancyBandPlot']
 #     specific_tests = ['AdvancedLinePlot']
 #     specific_tests = ['CombinedLinePlot']
 #     specific_tests = ['AxesGridLinePlot']    
-
+    specific_tests = ['MeanAxisPlot']
+    
     # list of tests to be performed
     tests = [] 
     # list of variable tests

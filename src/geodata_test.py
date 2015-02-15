@@ -1421,12 +1421,12 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
        
     
     # construct dictionary of test classes defined above

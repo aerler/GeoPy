@@ -7,6 +7,7 @@ utility functions, mostly for plotting, that are not called directly
 '''
 
 # external imports
+import scipy
 import numpy as np
 import matplotlib as mpl
 # internal imports
@@ -31,9 +32,20 @@ def loadStyleSheet(stylesheet, lpresentation=False, lpublication=False):
   else: raise TypeError
 
 
+# caculate error percentiles
+def errorPercentile(percentile):
+  ''' calculate multiple of standard deviations for error percentile (assuming normal distribution) '''
+  return scipy.special.erfinv(percentile)*np.sqrt(2.)
+def percentileError(multiple):
+  ''' calculate the percentile included in multiple of standard deviations (assuming normal distribution) '''
+  return scipy.special.erf(multiple/np.sqrt(2.))
+# Source: https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.erf.html
+  
+
 # method to check units and name, and return scaled plot value (primarily and internal helper function)
-def getPlotValues(var, checkunits=None, checkname=None):
+def getPlotValues(var, checkunits=None, checkname=None, lsmooth=False, lperi=False, laxis=False):
   ''' Helper function to check variable/axis, get (scaled) values for plot, and return appropriate units. '''
+  # figure out units
   if var.plot is not None: 
     varname = var.plot.name 
     if checkname is not None and varname != checkname: # only check plotname! 
@@ -49,6 +61,14 @@ def getPlotValues(var, checkunits=None, checkname=None):
   if var.plot is not None and 'offset' in var.plot: val += var.plot.offset    
   if checkunits is not None and  varunits != checkunits: 
     raise VariableError, "Units for variable '{}': expected {}, found {}.".format(var.name,checkunits,varunits) 
+  # some post-processing
+  val = val.squeeze()
+  if lsmooth: val = smooth(val)
+  if lperi: 
+    if laxis: 
+      delta = np.diff(val)
+      val = np.concatenate((val[:1]-delta[:1],val,val[-1:]+delta[-1:]))
+    else: val = np.concatenate((val[-1:],val,val[:1]))
   # return values, units, name
   return val, varunits, varname     
 

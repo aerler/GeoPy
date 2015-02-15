@@ -179,7 +179,7 @@ def loadNARR_StnTS(name=dataset_name, station=None, varlist=None, varatts=None,
 
 # function to load averaged climatologies
 def loadNARR_Shp(name=dataset_name, period=None, shape=None, varlist=None, varatts=None, 
-                folder=avgfolder, filelist=None, lautoregrid=True, lencl=True):
+                folder=avgfolder, filelist=None, lautoregrid=True, lencl=False):
   ''' Get the pre-processed monthly NARR climatology averaged over regions as a DatasetNetCDF. '''
   # load standardized climatology dataset with NARR-specific parameters
   dataset = loadObservations(name=name, folder=folder, period=period, station=None, shape=shape, lencl=lencl, 
@@ -190,7 +190,7 @@ def loadNARR_Shp(name=dataset_name, period=None, shape=None, varlist=None, varat
 
 # function to load average time-series
 def loadNARR_ShpTS(name=dataset_name, shape=None, varlist=None, varatts=None, 
-                  folder=avgfolder, filelist=None, lautoregrid=True, lencl=True):
+                  folder=avgfolder, filelist=None, lautoregrid=True, lencl=False):
   ''' Get the pre-processed monthly NARR time-series averaged over regions as a DatasetNetCDF. '''
   # load standardized time-series dataset with NARR-specific parameters
   dataset = loadObservations(name=name, folder=folder, period=None, station=None, shape=shape, lencl=lencl,

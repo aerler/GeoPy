@@ -34,7 +34,7 @@ variable_attributes = dict(discharge = dict(name='discharge', units='kg/s', file
                            level = dict(name='level', units='m', atts=dict(long_name='Water Level'))) # water level
 # list of variables to load
 variable_list = variable_attributes.keys() # also includes coordinate fields    
-
+          
   
 # container class for stations and area files
 class Basin(NamedShape):

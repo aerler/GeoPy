@@ -28,7 +28,7 @@ class MyFigure(Figure):
     (This class does not support built-in projections; use the Basemap functionality instead.)  
   '''
   # some default parameters
-  title_height    = 0.03
+  title_height    = 0.05
   print_setings  = None
   shared_legend   = None
   legend_axes     = None
@@ -103,8 +103,9 @@ class MyFigure(Figure):
       a = axes_class(self, rect, **axes_args)
     self._axstack.add(key, a)
     self.sca(a)
+    # attach link to figure (self)
+    a.figure = self
     return a
-  
   def add_subplot(self, *args, **kwargs):
     ''' overloading original add_subplot in order to use custom Axes (adapted from parent) '''
     if not len(args):
