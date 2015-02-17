@@ -36,7 +36,8 @@ def expandArgumentList(expand_list=None, lproduct='outer', **kwargs):
   expand_dict = {el:kwargs[el] for el in expand_list}
   for el in expand_list: del kwargs[el]
   for el in expand_list: # check types 
-    if not isinstance(expand_dict[el], (list,tuple)): raise TypeError    
+    if not isinstance(expand_dict[el], (list,tuple)): 
+      raise TypeError    
   ## identify expansion arguments
   if lproduct.lower() == 'inner':
     # inner product: essentially no expansion

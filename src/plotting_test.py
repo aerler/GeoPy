@@ -266,13 +266,13 @@ if __name__ == "__main__":
 #     specific_tests = ['AdvancedLinePlot']
 #     specific_tests = ['CombinedLinePlot']
 #     specific_tests = ['AxesGridLinePlot']    
-    specific_tests = ['MeanAxisPlot']
+#     specific_tests = ['MeanAxisPlot']
     
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['LinePlot'] 
-#     tests += ['BarPlot']
+#     tests += ['LinePlot'] 
+    tests += ['BarPlot']
     
 
     # construct dictionary of test classes defined above

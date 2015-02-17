@@ -29,8 +29,7 @@ class MyAxes(Axes):
   plots              = None
   variable_plotargs  = None
   dataset_plotargs   = None
-  plots              = None
-  title_height       = 0.0 # fraction of axes height
+  title_height       = 0.025 # fraction of figure height
   flipxy             = False
   xname              = None
   xunits             = None
@@ -39,7 +38,8 @@ class MyAxes(Axes):
   yunits             = None
   ypad               = 0
   figure             = None
-  pax                = None
+  parasite_axes      = None
+  axes_shift         = None
   
   def __init__(self, *args, **kwargs):
     ''' constructor to initialize some variables / counters '''  
@@ -47,6 +47,7 @@ class MyAxes(Axes):
     super(MyAxes,self).__init__(*args, **kwargs)
     self.variables = OrderedDict() # save variables by label
     self.plots = OrderedDict() # save plot objects by label
+    self.axes_shift = np.zeros(4, dtype=np.float32)
     
     
   def linePlot(self, varlist, varname=None, bins=None, support=None, errorbar=None, errorband=None,  
@@ -86,9 +87,9 @@ class MyAxes(Axes):
                                         lproduct=lproduct, plotargs=plotargs)
     assert len(plotargs) == len(varlist)
     # initialize parasitic axis for means
-    if lparasiteMeans and self.pax is None:
-      if parasite_axes is None: parasite_axes = dict() 
-      self.pax = self.addParasiticAxes(**parasite_axes)  
+    if lparasiteMeans and self.parasite_axes is None:
+      if parasite_axes is None: self.addParasiteAxes()
+      else: self.addParasiteAxes(**parasite_axes)
     ## generate individual line plots
     plts = [] # list of plot handles
     for label,var in zip(labels,varlist): self.variables[label] = var # save plot variables
@@ -123,7 +124,9 @@ class MyAxes(Axes):
         edgecolor = plotarg.pop('edgecolor',0.5)
         facecolor = plotarg.pop('facecolor',None)
         errorscale = plotarg.pop('errorscale',None)
-        if errorscale is not None: errorscale = errorPercentile(errorscale)
+        if errorscale is not None: 
+          errorscale = errorPercentile(errorscale)
+          if err is not None: err *= errorscale
         # figure out orientation and call plot function
         if self.flipxy: # flipped axes
           xlen = len(var); ylen = len(axe) # used later
@@ -132,10 +135,13 @@ class MyAxes(Axes):
         else:# default orientation
           xlen = len(axe); ylen = len(val) # used later
           plt = self.errorbar(axe, val, xerr=None, yerr=err, **plotarg)[0]
-          if lparasiteMeans: self.addParasiteMean(val, errors=err if err is not None else bnd, n=n, N=N, **plotarg)
+          if lparasiteMeans:
+            perr = err if err is not None else bnd # wouldn't work with bands, so use normal errorbars
+            self.addParasiteMean(val, errors=perr, n=n, N=N, lperi=lperi, style='myerrorbar', **plotarg)
         # figure out parameters for error bands
         if bnd is not None: 
-          self._drawBand(axe, val+bnd*errorscale, val-bnd*errorscale, where=where, color=(facecolor or plt.get_color()), 
+          if errorscale is not None: bnd *= errorscale
+          self._drawBand(axe, val+bnd, val-bnd, where=where, color=(facecolor or plt.get_color()), 
                          alpha=bandalpha*plotarg.get('alpha',1.), edgecolor=edgecolor, **bndarg)  
         plts.append(plt); self.plots[label] = plt
     ## format axes and add annotation
@@ -355,9 +361,7 @@ class MyAxes(Axes):
     ''' add title and adjust margins '''
     if 'fontsize' not in kwargs: kwargs['fontsize'] = 'medium'
     title_height =  self.title_height if title_height is None else title_height
-    pos = self.get_position()
-    pos = pos.from_bounds(x0=pos.x0, y0=pos.y0, width=pos.width, height=pos.height-title_height)    
-    self.set_position(pos)
+    if not self.get_title(loc='center'): self.updateAxes(height=-1*title_height)
     return self.set_title(title, kwargs)
   
   def addLegend(self, loc=0, **kwargs):
@@ -401,14 +405,27 @@ class MyAxes(Axes):
     # return cleaned-up and checkd variable list
     return varlist    
   
-  def addParasiticAxes(self, wd=0.075, pad=0.2, offset=0., **kwargs):
-    ''' add a parasitic axes on the right margin, similar to a colorbar, and hide axes grid etc. '''
-    # position parasite axis
+  def _positionParasiteAxes(self):
+    ''' helper routine to put parasite axes in place '''
+    pax = self.parasite_axes; wd = pax.wd; pad = pax.pad # saved with parasite axes
     pos = self.get_position()
-    owd = pos.width*(1.-wd); bwd = pos.width*wd*pad; nwd = pos.width*wd*(1.-pad)
+    owd = pos.width*(1.-wd); pwd = pos.width*wd*pad; nwd = pos.width*wd*(1.-pad)
+    # parent axes position
     pos = pos.from_bounds(x0=pos.x0, y0=pos.y0, width=owd, height=pos.height)    
     self.set_position(pos)
-    pax = self.figure.add_axes((pos.x0+owd+bwd, pos.y0, nwd, pos.height), **kwargs)
+    # parasite axes position
+    paxpos = pax.get_position()
+    paxpos = paxpos.from_bounds(x0=pos.x0+owd+pwd, y0=pos.y0, width=nwd, height=pos.height)
+    pax.set_position(paxpos)
+  
+  def addParasiteAxes(self, wd=0.075, pad=0.2, offset=0., **kwargs):
+    ''' add a parasitic axes on the right margin, similar to a colorbar, and hide axes grid etc. '''
+    pos = self.get_position() # position will change later
+    pax = self.figure.add_axes((pos.x0,pos.y0,pos.width,pos.height), label='parasite_axes', **kwargs)
+    pax.wd = wd; pax.pad = pad
+    # position parasite axis
+    self.parasite_axes = pax
+    self._positionParasiteAxes()
     # configure axes
     pax.grid(b=False, which='both', axis='both')
     pax.set_xlim((-0.5,0.5)); pax.set_ylim(self.get_ylim())
@@ -420,9 +437,9 @@ class MyAxes(Axes):
     # return parasite axes
     return pax
     
-  def addParasiteMean(self, values, errors=None, n=0, N=1, style='errorbar', **kwargs):
+  def addParasiteMean(self, values, errors=None, n=0, N=1, lperi=False, style='errorbar', **kwargs):
     ''' add a maker at the mean of the given values to the parasitic axes '''
-    pax = self.pax
+    pax = self.parasite_axes
     # adjust offset (each new batch)
     if n == 0 or pax.N == 0: # this will work most of the time
       if pax.n > 0: pax.offset += 0.5/(pax.N+1.)
@@ -434,15 +451,24 @@ class MyAxes(Axes):
       shift = float(n+1.)/float(N+1.) - 0.5
       xax[1] += pax.offset + shift
     # average values (three points, to avoid cut-off)
+    if lperi: values = values[1:-1] # cut off boundaries
     val = values.mean().repeat(3)
     # average variances (not std directly)
     if errors is not None:
-      err = ((errors**2).mean(keepdims=True)**0.5).repeat(3)
+      if lperi: err = ((errors**2).mean(keepdims=True)**0.5)
+      else: err = (((errors**2).mean(keepdims=True) + values.var(keepdims=True))**0.5)
+      err = err.repeat(3)
+      # N.B.: std = sqrt( mean of variances + variance of means )
     else: err = None
     # remove some style parameters that don't apply
     kwargs.pop('errorevery', None)
     # draw mean
     if style.lower() == 'errorbar':
+      pnt = pax.errorbar(xax,val, xerr=None, yerr=err, **kwargs)
+    elif style.lower() == 'myerrorbar':
+      # increase line thickness if no marker
+      if 'marker' not in kwargs:
+        kwargs['linewidth'] = kwargs.get('linewidth',mpl.rcParams['lines.linewidth']) * 1.5      
       pnt = pax.errorbar(xax,val, xerr=None, yerr=err, **kwargs)
     else: raise NotImplementedError
     # increase counter
@@ -456,7 +482,9 @@ class MyAxes(Axes):
         args = plotargs.pop(name)  
         if isinstance(args,(tuple,list)): 
           if not all([isinstance(arg,basestring) for arg in args]): raise TypeError
-          if len(labels) != len(args): raise ListError, "Failed to match linestyles to varlist!"
+          # adjust length
+          if len(labels) > len(args): args += args[-1]*(len(labels)-len(args)) # extend last item
+          elif len(labels) < len(args): args = args[:len(labels)] # cut off rest
         elif isinstance(args,basestring):
           args = [args]*len(labels)
         else: raise TypeError
@@ -472,8 +500,7 @@ class MyAxes(Axes):
     else: expand_list = list(expand_list)
     if lproduct == 'inner':
       expand_list.append('label')
-      expand_list, plotargs = self._translateArguments(labels=labels, 
-                                                       expand_list=expand_list, plotargs=plotargs)
+      expand_list, plotargs = self._translateArguments(labels=labels, expand_list=expand_list, plotargs=plotargs)
       # actually expand list 
       plotargs = expandArgumentList(label=labels, expand_list=expand_list, lproduct=lproduct, **plotargs)
     else: raise NotImplementedError, lproduct
@@ -531,8 +558,8 @@ class MyAxes(Axes):
     if isinstance(xlim,(list,tuple)) and len(xlim)==2: self.set_xlim(*xlim)
     elif xlim is not None: raise TypeError
     if isinstance(ylim,(list,tuple)) and len(ylim)==2: 
-      self.set_ylim(*ylim)
-      if self.pax is not None: self.pax.set_ylim(*ylim)
+      for axes in self,self.parasite_axes:
+        if axes is not None: axes.set_ylim(*ylim)
     elif ylim is not None: raise TypeError 
     # set title
     if title is not None: self.addTitle(title)
@@ -547,6 +574,7 @@ class MyAxes(Axes):
     # where {} will be replaced by the appropriate default units (which have to be the same anyway)
     # add legend
     if isinstance(legend,dict): self.addLegend(**legend) 
+    elif legend is False: pass
     elif isinstance(legend,(int,np.integer,float,np.inexact)): self.addLegend(loc=legend)
     # add orientation lines
     if hline is not None: self.addHline(hline)
@@ -642,6 +670,30 @@ class MyAxes(Axes):
     self.add_artist(at) # add to axes
     if lstroke: 
       at.txt._text.set_path_effects([withStroke(foreground="w", linewidth=3)])
+      
+  def updateAxes(self, x0=0., y0=0., width=0., height=0., mode='shift'):
+    ''' shift position of axes or reapply shift after subplot adjustment '''
+    # format input
+    if mode == 'shift':
+      shift = np.asarray((x0, y0, width, height), dtype=np.float32)
+      # update axes margins
+      pos = self.get_position()
+      oldpos = np.asarray((pos.x0, pos.y0, pos.width, pos.height), dtype=np.float32)
+      newpos = oldpos + shift # shift the position
+      self.set_position(pos.from_bounds(x0=newpos[0], y0=newpos[1], width=newpos[2], height=newpos[3]))
+      # save shift
+      self.axes_shift += shift
+    elif mode == 'adjust':
+      assert x0 == 0. and y0 == 0. and width == 0. and height == 0.
+      # update axes margins
+      pos = self.get_position()
+      oldpos = np.asarray((pos.x0, pos.y0, pos.width, pos.height), dtype=np.float32)
+      newpos = oldpos + self.axes_shift # apply recorded shift
+      self.set_position(pos.from_bounds(x0=newpos[0], y0=newpos[1], width=newpos[2], height=newpos[3]))
+    else: raise NotImplementedError
+    # readjust parasite axes
+    if self.parasite_axes: self._positionParasiteAxes() 
+
         
 
 

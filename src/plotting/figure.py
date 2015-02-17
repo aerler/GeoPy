@@ -171,11 +171,8 @@ class MyFigure(Figure):
     for ax in self.axes:
       if isinstance(ax,LocatableAxes):
         warn('Adjusting subplots does not work with LocatableAxes')
-      if ax.get_title():
-        pos = ax.get_position()
-        pos = pos.from_bounds(x0=pos.x0, y0=pos.y0, width=pos.width, height=pos.height-self.title_height)    
-        ax.set_position(pos)
-
+      if ax.get_title(): ax.updateAxes(mode='adjust')
+        
   # add common/shared legend to a multi-panel plot
   def addSharedLegend(self, plots=None, labels=None, fontsize=None, **kwargs):
     ''' add a common/shared legend to a multi-panel plot '''
