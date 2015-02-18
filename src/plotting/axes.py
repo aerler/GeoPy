@@ -636,9 +636,9 @@ class MyAxes(Axes):
   def _minorTickLabels(self, ticks, n, axis):
     ''' helper method to format axes ticks '''
     nmaj = len(ticks)
-    if n%nmaj == 0: 
-      nmin = n//nmaj
-      axis.set_minor_locator(mpl.ticker.AutoMinorLocator(nmin))
+    #if n%nmaj == 0:
+    nmin = max(2,n//nmaj) # "1" apparently doesn't work...
+    axis.set_minor_locator(mpl.ticker.AutoMinorLocator(nmin))
   def _tickLabels(self, ticks, axis):
     ''' helper method to format axes ticks '''
     if ticks is True: 
