@@ -285,7 +285,7 @@ def pearsonr_wrapper(data, size1=None, lpval=False, lrho=True, ignoreNaN=True, l
     data1 = smooth(data1,  window_len=window_len, window=window)
     data2 = smooth(data2,  window_len=window_len, window=window)
   if ldetrend:
-    data1 = detrend(data1); data1 = detrend(data1)
+    data1 = detrend(data1); data2 = detrend(data2)
   # apply test
   rho, pval = ss.pearsonr(data1, data2)
   # select output
@@ -343,7 +343,7 @@ def spearmanr_wrapper(data, size1=None, axis=None, lpval=False, lrho=True, ignor
     data1 = smooth(data1, window_len=window_len, window=window)
     data2 = smooth(data2, window_len=window_len, window=window)
   if ldetrend:
-    data1 = detrend(data1); data1 = detrend(data1)
+    data1 = detrend(data1); data2 = detrend(data2)
   # apply test
   rho, pval = ss.spearmanr(data1, data2, axis=axis)
   # select output

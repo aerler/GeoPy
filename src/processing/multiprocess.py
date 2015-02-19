@@ -250,8 +250,11 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=False, ltrialnerror=True):
 
 def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, laax=True, *args, **kwargs):
   ''' a parallelized version of numpy's apply_along_axis; the preferred way of passing arguments is,
-      by using functools.partial, but argument can also be passed to this function; the call-signature
-      is the same as for np.apply_along_axis, except for NP=OMP_NUM_THREADS and ldebug=True '''  
+      by using functools.partial, but arguments can also be passed to this function; the call-signature
+      is the same as for np.apply_along_axis, except for NP=OMP_NUM_THREADS, chunksize=200, 
+      ldebug=False, and laax=True; the latter can be set to False, if fct is fully vectorized and only
+      the parallelization feature is required, otherwise Numpy's apply_along_axis will be called within
+      child processes. '''  
   if NP == 0: NP = int(os.environ['OMP_NUM_THREADS'])
   # pre-processing: move sampel axis to the back
   if not axis == data.ndim-1:

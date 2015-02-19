@@ -19,7 +19,7 @@ from plotting.properties import getPlotAtts, variablePlotatts # import plot prop
 from geodata.misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, floateps
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 from processing.multiprocess import apply_along_axis
-from utils.misc import histogram, binedges
+from utils.misc import histogram, binedges, detrend
      
 
 class UnaryCheckAndCreateVar(object):
@@ -36,6 +36,7 @@ class UnaryCheckAndCreateVar(object):
     # create new Variable or assign other return
     if linplace:
       var = orig
+      var.data_array = data
       var.units = units # don't change name, though
     elif asVar: var = orig.copy(name=name, units=units, data=data)
     else: var = data
@@ -1456,23 +1457,46 @@ class Variable(object):
     ''' Return a climatology of minima of monthly data. '''    
     return self.reduceToClimatology(yridx=yridx, operation=np.nanmin, **kwargs)
   
-  @UnaryCheckAndCreateVar # kwargs: asVar=True, linplace=False 
-  def standardize(self, axis=None, linplace=False, lcheckVar=True, lcheckAxis=True):
+  @UnaryCheckAndCreateVar
+  def standardize(self, axis=None, name=None, lstandardize=True, ldetrend=False, lsmooth=False, linplace=False, lcheckVar=True, lcheckAxis=True,
+                  degree=1, rcond=None, w=None, window_len=11, window='hanning'):
     ''' Standardize Variable, i.e. subtract mean and divide by standard deviation '''
     if self.dtype.kind in ('S',): 
       if lcheckVar: raise VariableError, "Standardization does not work with string Variables!"
       else: return None
     if linplace: data = self.data_array # this is just a link
     else: data = self.data_array.copy()
-    # standardize
-    data -= np.nanmean(data, axis=axis, keepdims=True)
-    data /= np.nanstd(data, axis=axis, keepdims=True)
+    # apply detrending and smoothing
+    if axis is None:
+      iaxis = None
+      if lsmooth and data.size <= window_len: window_len = data.size-1 # shrink window, if data too short
+      # apply over flattened array
+      data = detrend(data, ax=None, lcopy=False, ldetrend=ldetrend, degree=degree, rcond=rcond, w=w, 
+                     lsmooth=lsmooth, window_len=window_len, window=window)
+    else:
+      iaxis = self.axisIndex(axis, lcheck=lcheckAxis)
+      # get axis coordinates
+      ax = self.axes[iaxis].coord if ldetrend else None
+      if ldetrend or lsmooth:
+        if lsmooth and ax.size <= window_len: window_len = ax.size-1 # shrink window, if data too short
+        # prepare parallel function call
+        aaa_fct = functools.partial(detrend, ax=ax, lcopy=False, ldetrend=ldetrend, degree=degree, rcond=rcond, w=w, 
+                                    lsmooth=lsmooth, window_len=window_len, window=window)
+        # apply along selected axis
+        data = apply_along_axis(aaa_fct, iaxis, data, laax=True)
+        # reassing array (apply_along_axis creates a new results array)
+    # standardize (subtract mean and divide by standard deviation)
+    if lstandardize:
+      data -= np.nanmean(data, axis=iaxis, keepdims=True)
+      data /= np.nanstd(data, axis=iaxis, keepdims=True)
+    # N.B.: we standardize last, so as to ensure that the standard deviation is indeed unity
     # meta data
-    name = self.name+'_std' # only used for new variables
-    units = '' # no units after normalization
+    if name is None: name = '{:s}_std' # allow use of original name in function
+    name = name.format(self.name) # only used for new variables
+    units = '' if lstandardize else self.units # no units after normalization
     # return results to decorator/wrapper
     return data, name, units
-  
+    
   def fitDist(self, axis='time', dist=None, lflatten=False, name=None, atts=None, var_dists=None,
               lsuffix=False, asVar=True, lcheckVar=True, lcheckAxis=True, **kwargs):
     ''' Generate a DistVar of type 'dist' from a Variable 'var'; use dimension 'axis' as sample axis; 

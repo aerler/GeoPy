@@ -576,7 +576,22 @@ class BaseVarTest(unittest.TestCase):
       else:
         var = self.var(time=slice(0,10), lat=(50,70), lon=(-130,-110))
       t,x,y = var.axes
-    var.standardize(linplace=True) # make variables more likely to test positive
+    ## test standardization: detrending and smoothing
+    trendvar = var.copy()
+    if lsimple: 
+      te,xe,ye = var.shape
+      trend_data = np.repeat(np.arange(te).reshape(te,1),xe*ye,axis=1).reshape(var.shape) + np.random.randn(te*xe*ye).reshape(var.shape)
+      trendvar.data_array = trend_data
+    stdvar = trendvar.standardize(linplace=False, name='{}_test', axis='time', lstandardize=False, ldetrend=True, lsmooth=True)
+    assert stdvar.shape == var.shape
+    assert stdvar.name == var.name+'_test'
+    assert stdvar.mean() < trendvar.mean()
+    assert stdvar.std() < trendvar.std()
+    # now standardize in-place
+    name = var.name
+    var.standardize(linplace=True, axis=None, lstandardize=True, ldetrend=False, lsmooth=False) # make variables more likely to test positive
+    assert var.name == name 
+    assert var.std() <= 1.001 # tolerance for floatingpoint precision
     ## univariate stats tests
     # run simple kstest test
     pval = var.kstest(asVar=False, lflatten=True, dist='norm', args=(0,1))    

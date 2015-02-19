@@ -12,6 +12,7 @@ from utils.signalsmooth import smooth
 from collections import namedtuple
 # internal imports
 from geodata.misc import ArgumentError, isEqual
+from nltk.ccg.chart import TypeRaiseRuleSet
 
 
 # create a named tuple instance on the fly from dictionary
@@ -160,19 +161,38 @@ def histogram(a, bins=10, range=None, weights=None, density=None):
 
 
 # function to subtract the mean and divide by the standard deviation, i.e. standardize
-def standardize(var, axis=None, lcopy=True, lsmooth=False, **kwargs):
+def standardize(var, axis=None, lcopy=True, **kwargs):
   ''' subtract mean, divide by standard deviation, and optionally smooth time series; key word arguments are passed on to smoothing function '''
-  if lcopy: 
-    if not isinstance(var,np.ndarray): raise NotImplementedError # too many checks
-    var = var.copy() # make copy - not in-place!
+  if not isinstance(var,np.ndarray): raise NotImplementedError # too many checks
+  if lcopy: var = var.copy() # make copy - not in-place!
+  # compute standardized variable
   var -= var.mean(axis=axis, keepdims=True)
   var /= var.std(axis=axis, keepdims=True)
-  if lsmooth:
-    var = smooth(var, **kwargs)
   return var
 
 # function to detrend a time-series
-def detrend(var, **kwargs): raise NotImplementedError, "Detrending is not implemented yet..."
+def detrend(var, ax=None, lcopy=True, ldetrend=True, degree=1, rcond=None, w=None,  lsmooth=False, window_len=11, window='hanning'): 
+  ''' subtract a linear trend from a time-series array '''
+  # check input
+  if not isinstance(var,np.ndarray): raise NotImplementedError # too many checks
+  if lcopy: var = var.copy() # make copy - not in-place!
+  # fit over entire array (usually not what we want...)
+  if ax is None and ldetrend: ax = np.arange(var.size) # make dummy axis, if necessary
+  if var.ndim != 1:
+    shape = var.shape 
+    var = var.ravel() # flatten array, if necessary
+  else: shape = None
+  # apply optional detrending
+  if ldetrend:
+    # fit linear trend
+    trend = np.polyfit(ax, var, deg=degree, rcond=rcond, w=w, full=False, cov=False)
+    # evaluate and subtract linear trend
+    var -= np.polyval(trend, ax) # residuals
+  # apply optional smoothing
+  if lsmooth: var = smooth(var, window_len=window_len, window=window)  
+  # return detrended and/or smoothed time-series
+  if shape is not None: var = var.reshape(shape)
+  return var
 
 # function to smooth a vector (numpy array): moving mean, nothing fancy
 def movingMean(x,i):
