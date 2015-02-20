@@ -34,9 +34,11 @@ class MyAxes(Axes):
   xname              = None
   xunits             = None
   xpad               = 2    # pixels
+  xtop               = False
   yname              = None
   yunits             = None
   ypad               = 0
+  yright             = False
   figure             = None
   parasite_axes      = None
   axes_shift         = None
@@ -433,6 +435,8 @@ class MyAxes(Axes):
     for ax in pax.xaxis,pax.yaxis: 
       for tick in ax.get_ticklabels(): tick.set_visible(False)
     pax.set_xticks([])
+    # copy some settings
+    
     # add positioning parameters
     pax.n = 0; pax.N = 0; pax.offset = offset
     # return parasite axes
@@ -589,25 +593,35 @@ class MyAxes(Axes):
   def xLabel(self, xlabel, name=None, units=None):
     ''' format x-axis label '''
     if xlabel is not None:
-      xticks = self.get_xaxis().get_ticklabels()
+      # only apply label, if ticks are also present
+      xticks = self.xaxis.get_ticklabels()
       # len(xticks) > 0 is necessary to avoid errors with AxesGrid, which removes invisible tick labels      
-      if len(xticks) > 0 and xticks[-1].get_visible(): 
+      if len(xticks) > 0 and xticks[-1].get_visible():
+        # figure out label 
         name = self.xname if name is None else name
         units = self.xunits if units is None else units
         xlabel = self._axLabel(xlabel, name, units)
         # N.B.: labelpad is ignored by AxesGrid
         self.set_xlabel(xlabel, labelpad=self.xpad)
+        # label position
+        self.xaxis.set_label_position('top' if self.xtop else 'bottom')
     return xlabel    
   def yLabel(self, ylabel, name=None, units=None):
     ''' format y-axis label '''
     if ylabel is not None:
-      yticks = self.get_yaxis().get_ticklabels()
-      if len(yticks) > 0 and yticks[-1].get_visible(): 
+      # apply Y-label to appropriate axes
+      ax = self.parasite_axes if self.parasite_axes and self.yright else self
+      # only apply label, if ticks are also present
+      yticks = ax.yaxis.get_ticklabels()
+      if len(yticks) > 0 and yticks[-1].get_visible():
+        # figure out label 
         name = self.yname if name is None else name
         units = self.yunits if units is None else units
         ylabel = self._axLabel(ylabel, name, units)
-        # N.B.: labelpad is ignored by AxesGrid
-        self.set_ylabel(ylabel, labelpad=self.ypad)
+        # set Y-label
+        ax.set_ylabel(ylabel, labelpad=self.ypad) # labelpad is ignored by AxesGrid
+        # label position
+        ax.yaxis.set_label_position('right' if self.yright else 'left')
     return ylabel    
   def _axLabel(self, label, name, units):
     ''' helper method to format axes lables '''
@@ -623,23 +637,37 @@ class MyAxes(Axes):
     
   def xTickLabels(self, xticks, n=None, loverlap=False):
     ''' format x-tick labels '''
-    xticks = self._tickLabels(xticks, self.get_xaxis())
-    yticks = self.get_yaxis().get_ticklabels()
+    xaxis = self.xaxis
+    xticks = self._tickLabels(xticks, xaxis)
+    yticks = self.yaxis.get_ticklabels()
+    # tick label visibility
     if not loverlap and len(xticks) > 0 and (
         len(yticks) == 0 or not yticks[-1].get_visible() ):
         xticks[0].set_visible(False)
-    if n is not None: self._minorTickLabels(xticks, n, self.xaxis)
+    # tick label position
+    if self.xtop: 
+      self.xaxis.set_tick_params(labeltop=True, labelbottom=False)
+    # minor ticks
+    if n is not None: self._minorTicks(xticks, n, xaxis)
     return xticks
   def yTickLabels(self, yticks, n=None, loverlap=False):
     ''' format y-tick labels '''
-    xticks = self.get_xaxis().get_ticklabels()
-    yticks = self._tickLabels(yticks, self.get_yaxis())
+    yaxis = self.parasite_axes.yaxis if self.parasite_axes and self.yright else self.yaxis 
+    xticks = self.xaxis.get_ticklabels()
+    yticks = self._tickLabels(yticks, yaxis)
+    # tick label visibility
     if not loverlap and len(yticks) > 0 and (
         len(xticks) == 0 or not xticks[-1].get_visible() ):
         yticks[0].set_visible(False)
-    if n is not None: self._minorTickLabels(yticks, n, self.yaxis)      
+    # tick label position
+    if self.yright:
+      self.yaxis.set_tick_params(labelleft=False) # always need to switch off on master yaxis
+      yaxis.set_tick_params(labelright=True, labelleft=False) # switch on on active yaxis
+    # minor ticks (apply to major and parasite axes)
+    for ax in self,self.parasite_axes:      
+      if ax and n is not None: self._minorTicks(yticks, n, ax.yaxis)
     return yticks
-  def _minorTickLabels(self, ticks, n, axis):
+  def _minorTicks(self, ticks, n, axis):
     ''' helper method to format axes ticks '''
     nmaj = len(ticks)
     #if n%nmaj == 0:

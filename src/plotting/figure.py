@@ -262,21 +262,19 @@ class MyFigure(Figure):
 
 
 ## convenience function to return a figure and an array of ImageGrid axes
-def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet=None, margins=None,
+def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  stylesheet=None,
              variable_plotargs=None, dataset_plotargs=None, yright=None, xtop=None,
              sharex=None, sharey=None, AxesGrid=False, ngrids=None, direction='row',
-             axes_pad = None, add_all=True, share_all=None, aspect=False,
+             axes_pad = None, add_all=True, share_all=None, aspect=False, margins=None,
              label_mode='L', cbar_mode=None, cbar_location='right', lreduce=True,
              cbar_pad=None, cbar_size='5%', axes_class=None, axes_args=None,
-             lpresentation=False, lpublication=False, figure_class=None, figure_args=None):
+             lpresentation=False, lpublication=False, figure_class=None, **figure_args):
   # load stylesheet
   if stylesheet is not None:
     loadStyleSheet(stylesheet, lpresentation=lpresentation, lpublication=lpublication) 
   # default figure class
   if figure_class is None: figure_class = MyFigure
   elif not issubclass(figure_class, Figure): raise TypeError 
-  if figure_args is None: figure_args = dict() 
-  elif not isinstance(figure_args, dict): raise TypeError
   # figure out subplots
   if isinstance(subplot,(np.integer,int)):
     if subplot == 1: subplot = (1,1)
@@ -373,22 +371,20 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet=None, mar
                        top=margins[1]+margins[3], wspace=wspace, hspace=hspace)
     fig.subplots_adjust(**margin_dict)
   ## set label positions
-  # Y-label/-ticks
+  # X-/Y-labels and -ticks
   yright = not sharey and subplot[0]==2 if yright is None else yright
-  if yright: 
-    for ax in axes:
-      ax[-1].yaxis.tick_right()
-      ax[-1].yaxis.set_label_position('right')
   xtop = not sharex and subplot[1]==2 if xtop is None else xtop
-  # X-label/-ticks
-  if xtop: 
-    for ax in axes[0]:
-      ax.xaxis.tick_top()
-      ax.xaxis.set_label_position('top')
+  if isinstance(axes, Axes): 
+    axes.yright = yright
+    axes.xtop = xtop
+  else:
+    for ax in axes: ax[-1].yright = yright # right column
+    for ax in axes[0]: ax.xtop = xtop # top row
   # add figure title
+  if name is None: name = title
   if name is not None: fig.canvas.set_window_title(name) # window title
-  title_size = getattr(figure_class, 'title_size', 'large') # use default from figure
-  if title is not None: fig.suptitle(title, fontsize=title_size) # title on figure (printable)
+  if isinstance(title_font,basestring): title_font = dict(fontsize=title_font)
+  if title is not None: fig.suptitle(title, **title_font) # title on figure (printable)
   # add default line styles for variables and datasets to axes (figure doesn't need to know)
   if isinstance(axes, np.ndarray):
     for ax in axes.ravel(): 
