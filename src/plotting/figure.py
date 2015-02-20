@@ -28,8 +28,9 @@ class MyFigure(Figure):
     (This class does not support built-in projections; use the Basemap functionality instead.)  
   '''
   # some default parameters
-  title_height    = 0.05
-  print_setings  = None
+  title_height    = 0.06
+  title_size      = 'large'
+  print_setings   = None
   shared_legend   = None
   legend_axes     = None
   shared_colorbar = None
@@ -171,7 +172,7 @@ class MyFigure(Figure):
     for ax in self.axes:
       if isinstance(ax,LocatableAxes):
         warn('Adjusting subplots does not work with LocatableAxes')
-      if ax.get_title(): ax.updateAxes(mode='adjust')
+      ax.updateAxes(mode='adjust')
         
   # add common/shared legend to a multi-panel plot
   def addSharedLegend(self, plots=None, labels=None, fontsize=None, **kwargs):
@@ -262,7 +263,7 @@ class MyFigure(Figure):
 
 ## convenience function to return a figure and an array of ImageGrid axes
 def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet=None, margins=None,
-             variable_plotargs=None, dataset_plotargs=None,
+             variable_plotargs=None, dataset_plotargs=None, yright=None, xtop=None,
              sharex=None, sharey=None, AxesGrid=False, ngrids=None, direction='row',
              axes_pad = None, add_all=True, share_all=None, aspect=False,
              label_mode='L', cbar_mode=None, cbar_location='right', lreduce=True,
@@ -316,7 +317,7 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet=None, mar
     else: margins = (0.09,0.11,0.88,0.82)
     #elif subplot == (2,2) or subplot == (3,3): margins = (0.09,0.11,0.88,0.82)
     #else: raise NotImplementedError
-    title_height = getattr(figure_class, 'title_height', 0.03) # use default from figure
+    title_height = getattr(figure_class, 'title_height', 0.05) # use default from figure
     if title is not None: margins = margins[:3]+(margins[3]-title_height,) # make room for title
 #   # some style sheets have different label sizes
 #   if stylesheet.lower() in ('myggplot','ggplot'):
@@ -371,9 +372,23 @@ def getFigAx(subplot, name=None, title=None, figsize=None,  stylesheet=None, mar
     margin_dict = dict(left=margins[0], bottom=margins[1], right=margins[0]+margins[2], 
                        top=margins[1]+margins[3], wspace=wspace, hspace=hspace)
     fig.subplots_adjust(**margin_dict)
+  ## set label positions
+  # Y-label/-ticks
+  yright = not sharey and subplot[0]==2 if yright is None else yright
+  if yright: 
+    for ax in axes:
+      ax[-1].yaxis.tick_right()
+      ax[-1].yaxis.set_label_position('right')
+  xtop = not sharex and subplot[1]==2 if xtop is None else xtop
+  # X-label/-ticks
+  if xtop: 
+    for ax in axes[0]:
+      ax.xaxis.tick_top()
+      ax.xaxis.set_label_position('top')
   # add figure title
   if name is not None: fig.canvas.set_window_title(name) # window title
-  if title is not None: fig.suptitle(title) # title on figure (printable)
+  title_size = getattr(figure_class, 'title_size', 'large') # use default from figure
+  if title is not None: fig.suptitle(title, fontsize=title_size) # title on figure (printable)
   # add default line styles for variables and datasets to axes (figure doesn't need to know)
   if isinstance(axes, np.ndarray):
     for ax in axes.ravel(): 

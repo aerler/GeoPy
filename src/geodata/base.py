@@ -1425,11 +1425,11 @@ class Variable(object):
                         lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **kwargs)
     # check shape of annual variable
     assert avar.shape == self.shape[:tax]+(12,)+self.shape[tax+1:]
-    # convert time coordinate to years (from month)
+    # construct time coordinate
     if asVar:
       if tatts['units'].lower() in allowedUnitsList:
         raxis = avar.getAxis(tatts['name'])
-        if taxis.coord[0] == 0: raxis.coord += 1 # customarily, month are counted, starting at 1, not 0 
+        if raxis.coord[0] == 0: raxis.coord += 1 # customarily, month are counted, starting at 1, not 0 
     # return data
     return avar
   
@@ -1443,7 +1443,7 @@ class Variable(object):
 
   def climStd(self, yridx=None, **kwargs):
     ''' Return a climatology of root-mean-variances/standard deviation of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanstd, **kwargs)
+    return self.reduceToClimatology(yridx=yridx, operation=np.nanstd, **kwargs)   
   
   def climVar(self, yridx=None, **kwargs):
     ''' Return a climatology of (square) variances of monthly data. '''    

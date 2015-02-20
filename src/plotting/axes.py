@@ -48,6 +48,7 @@ class MyAxes(Axes):
     self.variables = OrderedDict() # save variables by label
     self.plots = OrderedDict() # save plot objects by label
     self.axes_shift = np.zeros(4, dtype=np.float32)
+    self.updateAxes(mode='shift') # initialize
     
     
   def linePlot(self, varlist, varname=None, bins=None, support=None, errorbar=None, errorband=None,  
@@ -451,12 +452,18 @@ class MyAxes(Axes):
       shift = float(n+1.)/float(N+1.) - 0.5
       xax[1] += pax.offset + shift
     # average values (three points, to avoid cut-off)
-    if lperi: values = values[1:-1] # cut off boundaries
-    val = values.mean().repeat(3)
+    if lperi: 
+      vals = values[1:-1].copy() # cut off boundaries
+      if errors is not None: errs = errors[1:-1].copy() # cut off boundaries
+    else:
+      vals = values.copy()
+      if errors is not None: errs = errors.copy()
+    # average means
+    val = vals.mean().repeat(3)
     # average variances (not std directly)
     if errors is not None:
-      if lperi: err = ((errors**2).mean(keepdims=True)**0.5)
-      else: err = (((errors**2).mean(keepdims=True) + values.var(keepdims=True))**0.5)
+      if lperi: err = ((errs**2).mean(keepdims=True)**0.5)
+      else: err = (((errs**2).mean(keepdims=True) + vals.var(keepdims=True))**0.5)
       err = err.repeat(3)
       # N.B.: std = sqrt( mean of variances + variance of means )
     else: err = None
@@ -574,7 +581,6 @@ class MyAxes(Axes):
     # where {} will be replaced by the appropriate default units (which have to be the same anyway)
     # add legend
     if isinstance(legend,dict): self.addLegend(**legend) 
-    elif legend is False: pass
     elif isinstance(legend,(int,np.integer,float,np.inexact)): self.addLegend(loc=legend)
     # add orientation lines
     if hline is not None: self.addHline(hline)
