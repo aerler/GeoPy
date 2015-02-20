@@ -346,6 +346,8 @@ class MyAxes(Axes):
     for hl in list(hline):
       if isinstance(hl,(int,np.integer,float,np.inexact)): 
         lines.append(self.axhline(y=hl, **kwargs))
+        if self.parasite_axes: 
+          self.parasite_axes.axhline(y=hl, **kwargs)
       else: raise TypeError, hl
     return lines
   
@@ -568,10 +570,10 @@ class MyAxes(Axes):
     # set axes limits
     if isinstance(xlim,(list,tuple)) and len(xlim)==2: self.set_xlim(*xlim)
     elif xlim is not None: raise TypeError
-    if isinstance(ylim,(list,tuple)) and len(ylim)==2: 
-      for axes in self,self.parasite_axes:
-        if axes is not None: axes.set_ylim(*ylim)
+    if isinstance(ylim,(list,tuple)) and len(ylim)==2: self.set_ylim(*ylim)
     elif ylim is not None: raise TypeError 
+    if self.parasite_axes: # mirror y-limits on parasite axes
+      self.parasite_axes.set_ylim(self.get_ylim())
     # set title
     if title is not None: self.addTitle(title)
     # format axes ticks

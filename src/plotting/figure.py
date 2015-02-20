@@ -238,7 +238,7 @@ class MyFigure(Figure):
     if len(args) == 0: raise ArgumentError
     # get option
     folder = kwargs.pop('folder', None)
-    lfeedback = kwargs.pop('lfeedback', False)
+    lfeedback = kwargs.pop('lfeedback', None) or kwargs.pop('feedback', None)
     filetype = kwargs.pop('filetype', 'png')
     if not filetype.startswith('.'): filetype = '.'+filetype
     # construct filename

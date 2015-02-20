@@ -16,7 +16,7 @@ from copy import deepcopy
 # internal imports
 from datasets.common import selectElements, data_root
 from geodata.netcdf import DatasetNetCDF
-from geodata.misc import ParseError, isNumber
+from geodata.misc import FileError, isNumber
 from geodata.gdal import NamedShape, ShapeInfo
 from geodata.station import StationDataset, Variable, Axis
 # from geodata.utils import DatasetError
@@ -47,6 +47,10 @@ for varname,varatts in variable_attributes.iteritems():
   elif tmpatts['units'] == 'kg/s': tmpatts['name'] = 'discharge'  # always name 'discharge'
   agg_varatts[varname] = tmpatts    
 
+# custom exception for missing gage station data
+class GageStationError(FileError):
+  ''' Exception indicating that gage station data is missing '''
+  pass
 
   
 # container class for stations and area files
@@ -151,7 +155,7 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
     if station is None: station = basin.maingage      
     elif not isinstance(station,basestring): raise TypeError
     if station in basin.stationfiles: filename = basin.stationfiles[station]
-    else: raise ValueError, 'Unknown station: {}'.format(station)
+    else: raise GageStationError, 'Unknown station: {}'.format(station)
     river = filename.split('_')[0].lower()
     atts = dict(basin=basin.name, river=river) # first component of file name       
   elif isinstance(folder,basestring) and isinstance(filename,basestring):
