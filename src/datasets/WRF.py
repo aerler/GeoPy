@@ -335,13 +335,14 @@ class Plev3D(FileType):
   ''' Variables and attributes of the pressure level files. '''
   def __init__(self):
     self.name = 'plev3d'
-    self.atts = dict(T_PL     = dict(name='T', units='K', fillValue=-999),   # Temperature
-                     TD_PL    = dict(name='Td', units='K', fillValue=-999),  # Dew-point Temperature
-                     RH_PL    = dict(name='RH', units='', fillValue=-999),   # Relative Humidity
-                     GHT_PL   = dict(name='Z', units='m', fillValue=-999),   # Geopotential Height 
-                     S_PL     = dict(name='U', units='m/s', fillValue=-999), # Wind Speed
-                     U_PL     = dict(name='u', units='m/s', fillValue=-999), # Zonal Wind Speed
-                     V_PL     = dict(name='v', units='m/s', fillValue=-999)) # Meridional Wind Speed
+    self.atts = dict(T_PL      = dict(name='T', units='K', fillValue=-999),      # Temperature
+                     TD_PL     = dict(name='Td', units='K', fillValue=-999),     # Dew-point Temperature
+                     RH_PL     = dict(name='RH', units='', fillValue=-999),      # Relative Humidity
+                     GHT_PL    = dict(name='Z', units='m', fillValue=-999),      # Geopotential Height 
+                     Vorticity = dict(name='zeta', units='1/s', fillValue=-999), # (relative) Vorticity
+                     S_PL      = dict(name='U', units='m/s', fillValue=-999),    # Wind Speed
+                     U_PL      = dict(name='u', units='m/s', fillValue=-999),    # Zonal Wind Speed
+                     V_PL      = dict(name='v', units='m/s', fillValue=-999))    # Meridional Wind Speed
 #                      P_PL     = dict(name='p', units='Pa'))  # Pressure
     self.vars = self.atts.keys()    
     self.climfile = 'wrfplev3d_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)

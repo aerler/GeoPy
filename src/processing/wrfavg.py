@@ -8,7 +8,7 @@ Script to produce climatology files from monthly mean time-series' for all or a 
 
 # external
 import numpy as np
-import os, gc, functools
+import os, gc
 from datetime import datetime
 # internal
 from geodata.base import Variable
@@ -151,6 +151,18 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
         # sync temporary storage with output dataset (sink)
         CPU.sync(flush=True)
         
+        # add Geopotential Height Variance
+        if 'GHT_Var' in sink and 'Z_var' not in sink:
+          data_array = ( sink['GHT_Var'].data_array - sink['Z'].data_array**2 )**0.5
+          atts = dict(name='Z_var',units='m',long_name='Square Root of Geopotential Height Variance')
+          sink += Variable(axes=sink['Z'].axes, data=data_array, atts=atts)
+          
+        # add (relative) Vorticity Variance
+        if 'Vorticity_Var' in sink and 'zeta_var' not in sink:
+          data_array = ( sink['Vorticity_Var'].data_array - sink['zeta'].data_array**2 )**0.5
+          atts = dict(name='zeta_var',units='1/s',long_name='Square Root of Relative Vorticity Variance')
+          sink += Variable(axes=sink['zeta'].axes, data=data_array, atts=atts)
+          
         # add names and length of months
         sink.axisAnnotation('name_of_month', name_of_month, 'time', 
                             atts=dict(name='name_of_month', units='', long_name='Name of the Month'))        
@@ -220,8 +232,8 @@ if __name__ == '__main__':
     loverwrite = False
     varlist = None # ['lat2D', ]
     experiments = []
-#     experiments += ['max-lowres']
-    experiments += ['erai-3km','max-3km']
+    experiments += ['max-ctrl']
+#     experiments += ['erai-3km','max-3km']
 #     experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
 #     experiments += ['new','noah','max','max-2050']
 #     experiments += ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
@@ -245,7 +257,7 @@ if __name__ == '__main__':
 #     periods += [15]
     domains = (1,) # domains to be processed
 #     domains = None # process all domains
-    filetypes = ['hydro'] # filetypes to be processed
+    filetypes = ['plev3d'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']
 #     filetypes = ['hydro'] # filetypes to be processed
