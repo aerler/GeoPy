@@ -378,8 +378,13 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
     axes.yright = yright
     axes.xtop = xtop
   else:
-    for ax in axes: ax[-1].yright = yright # right column
-    for ax in axes[0]: ax.xtop = xtop # top row
+    if axes.ndim == 1:
+      if subplot[0] == 2: axes[-1].yright = yright # right panel
+      if subplot[1] == 2: axes[0].xtop = xtop # top panel
+    elif axes.ndim == 2:
+      for ax in axes[:,-1]: ax.yright = yright # right column
+      for ax in axes[0,:]: ax.xtop = xtop # top row
+    else: raise ValueError
   # add figure title
   if name is None: name = title
   if name is not None: fig.canvas.set_window_title(name) # window title

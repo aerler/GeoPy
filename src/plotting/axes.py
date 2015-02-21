@@ -132,7 +132,7 @@ class MyAxes(Axes):
           if err is not None: err *= errorscale
         # figure out orientation and call plot function
         if self.flipxy: # flipped axes
-          xlen = len(var); ylen = len(axe) # used later
+          xlen = len(val); ylen = len(axe) # used later
           plt = self.errorbar(val, axe, xerr=err, yerr=None, **plotarg)[0]
           if lparasiteMeans: raise NotImplementedError
         else:# default orientation
@@ -259,12 +259,12 @@ class MyAxes(Axes):
   def histogram(self, varlist, varname=None, bins=None, binedgs=None, histtype='bar', lstacked=False, 
                 lnormalize=True, lcumulative=0, legend=None, llabel=True, labels=None, colors=None, 
                 align='mid', rwidth=None, bottom=None, weights=None, xlabel=True, ylabel=True, lignore=False,  
-                xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=True, 
+                xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=True, lflatten=True,
                 flipxy=None, log=False, xlim=None, ylim=None, lprint=False, plotatts=None, **histargs):
     ''' A function to draw histograms of a list of 1D variables into an axes, 
         and annotate the plot based on variable properties. '''
     ## check input
-    varlist = self._checkVarlist(varlist, varname=varname, ndim=1, bins=bins, 
+    varlist = self._checkVarlist(varlist, varname=varname, ndim=1, bins=bins, lflatten=lflatten,
                                  support=None, method='sample', lignore=lignore)
     # initialize axes names and units
     self.flipxy = flipxy
@@ -376,7 +376,7 @@ class MyAxes(Axes):
       kwargs['loc'] = loc
       self.legend(**kwargs)
   
-  def _checkVarlist(self, varlist, varname=None, ndim=1, bins=None, support=None, method='pdf', lignore=None):
+  def _checkVarlist(self, varlist, varname=None, ndim=1, bins=None, support=None, method='pdf', lignore=None, lflatten=False):
     ''' helper function to pre-process the variable list '''
     # varlist is the list of variable objects that are to be plotted
     if isinstance(varlist,Variable): varlist = [varlist]
@@ -389,9 +389,11 @@ class MyAxes(Axes):
       if varname is not None:
         tmplist = []
         for var in varlist:
-          if isinstance(var,Dataset): varlist.append(var)
-          elif hasattr(var, varname): varlist.append(getattr(var,varname))
-          else: varlist.append(None)
+          if isinstance(var,Variable): tmplist.append(var)
+          elif isinstance(var,Dataset):
+            if var.hasVariable(varname): tmplist.append(var[varname])
+            else: tmplist.append(None)
+          else: raise TypeError
         varlist = tmplist; del tmplist
     else: raise TypeError
     if not all([isinstance(var,(Variable, NoneType)) for var in varlist]): raise TypeError
@@ -403,7 +405,7 @@ class MyAxes(Axes):
     # check axis: they need to have only one axes, which has to be the same for all!
     for var in varlist: 
       if var is None: pass
-      elif var.ndim > ndim: 
+      elif var.ndim > ndim and not lflatten: 
         raise AxisError, "Variable '{:s}' has more than {:d} dimension(s); consider squeezing.".format(var.name,ndim)
       elif var.ndim < ndim: 
         raise AxisError, "Variable '{:s}' has less than {:d} dimension(s); consider display as a line.".format(var.name,ndim)
@@ -539,7 +541,7 @@ class MyAxes(Axes):
   
   def _getPlotArgs(self, label, var, plotatts=None, plotarg=None):
     ''' function to return plotting arguments/styles based on defaults and explicit arguments '''
-    if not isinstance(label, basestring): raise TypeError
+    if not isinstance(label, (basestring,int,np.integer)): raise TypeError, label
     if not isinstance(var, Variable): raise TypeError
     if plotatts is not None and not isinstance(plotatts, dict): raise TypeError
     if plotarg is not None and not isinstance(plotarg, dict): raise TypeError
@@ -672,9 +674,9 @@ class MyAxes(Axes):
   def _minorTicks(self, ticks, n, axis):
     ''' helper method to format axes ticks '''
     nmaj = len(ticks)
-    #if n%nmaj == 0:
-    nmin = max(2,n//nmaj) # "1" apparently doesn't work...
-    axis.set_minor_locator(mpl.ticker.AutoMinorLocator(nmin))
+    if nmaj > 0:
+      nmin = max(2,n//nmaj) # "1" apparently doesn't work...
+      axis.set_minor_locator(mpl.ticker.AutoMinorLocator(nmin))
   def _tickLabels(self, ticks, axis):
     ''' helper method to format axes ticks '''
     if ticks is True: 
