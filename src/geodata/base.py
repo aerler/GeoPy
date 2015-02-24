@@ -299,6 +299,11 @@ class Variable(object):
   @units.setter
   def units(self, units):
     self.atts['units'] = units
+
+  @property
+  def dataset_name(self):
+    ''' The name of the Dataset the Variable belongs to (or None). '''
+    return self.dataset.name if self.dataset else None
     
   @property
   def data(self):

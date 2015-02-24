@@ -273,8 +273,8 @@ class MyAxes(Axes):
     else: axname,axunits,varname,varunits = self.xname,self.xunits,self.yname,self.yunits
     ## process arguuments
     # figure out bins
-    vmin = np.min([var.min() for var in varlist])
-    vmax = np.max([var.max() for var in varlist])
+    vmin = np.min([var.min() for var in varlist if var is not None])
+    vmax = np.max([var.max() for var in varlist if var is not None])
     bins, binedgs = binedges(bins=bins, binedgs=binedgs, limits=(vmin,vmax), lcheckVar=True)
     # reset color cycle
     if reset_color is False: pass
@@ -533,7 +533,7 @@ class MyAxes(Axes):
     elif ( all(var.dataset is not None for var in nonone_list) and
            not any(var.dataset.name == nonone_list[0].dataset.name for var in nonone_list[1:]) ):
       # if dataset names are different
-      labels = [None if var is None else var.dataset.name for var in nonone_list]
+      labels = [None if var is None else var.dataset.name for var in varlist]
     else: 
       # if no names are unique, just number
       labels = range(len(varlist))
