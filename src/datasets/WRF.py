@@ -24,7 +24,7 @@ from projects.WRF_experiments import Exp, exps, ensembles
 
 ## get WRF projection and grid definition 
 # N.B.: Unlike with observational datasets, model Meta-data depends on the experiment and has to be 
-#       loaded from the NetCFD-file; a few conventions have to be defied, however.
+#       loaded from the NetCFD-file; a few conventions have to be defined, however.
 
 # get projection NetCDF attributes
 def getWRFproj(dataset, name=''):
@@ -51,7 +51,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   # check input
   folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder)
   if isinstance(filename,basestring): filepath = '{}/{}'.format(folder,filename) # still contains formaters
-  else: raise TypeError
+  else: raise TypeError, filename
   # figure out experiment
   if experiment is None:
     if isinstance(name,basestring) and name in exps: experiment = exps[name]
@@ -244,6 +244,7 @@ class Hydro(FileType):
                      SFCEVP       = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
                      ACSNOM       = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
                      POTEVP       = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
+                     pet          = dict(name='pet', units='kg/m^2/s', scalefactor=2./3.), # correction for pre-processed PET
                      NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
                      LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
                      SolidPrecip  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
@@ -267,6 +268,7 @@ class LSM(FileType):
                      ACSNOW = dict(name='snwacc', units='kg/m^2/s'), # snow accumulation rate
                      SFCEVP = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
                      POTEVP = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
+                     pet    = dict(name='pet', units='kg/m^2/s', scalefactor=2./3.), # correction for pre-processed PET
                      SFROFF = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
                      UDROFF = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off
                      Runoff = dict(name='runoff', units='kg/m^2/s')) # total surface and sub-surface run-off
@@ -518,13 +520,12 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if not lstation and not lshape:
     if grid is None:
-      griddefs = None; c = -1; filename = None
-      while filename is None:
-        c += 1 # this is necessary, because not all filetypes have time-series files
-        filename = fileclasses.values()[c].tsfile # just use the first filetype
+      griddefs = None; c = 0
+      filename = fileclasses.values()[c].tsfile # just use the first filetype
       while griddefs is None:
         # some experiments do not have all files... try, until one works...
         try:
+          if filename is None: raise IOError # skip and try next one
           griddefs = getWRFgrid(name=names, experiment=experiment, domains=domains, folder=folder, filename=filename)
         except IOError:
           c += 1

@@ -91,19 +91,19 @@ variablePlotatts['lat'] = tmp
 
 ## Land Mask
 tmp = PlotAtts(name = 'Land', title = 'Land Mask', 
-               units = '', scalefactor = 1)
+               units = '', scalefactor = 1.)
 # add to collection
 variablePlotatts['lnd'] = tmp
 
 ## Land Classes
 tmp = PlotAtts(name = 'Land Cat.', title = 'Land Classes', 
-               units = '', scalefactor = 1)
+               units = '', scalefactor = 1.)
 # add to collection
 variablePlotatts['lndcls'] = tmp
 
 ## Station Distribution
 tmp = PlotAtts(name = 'Stations', title = 'Station Distribution', 
-               units = '#', scalefactor = 1)
+               units = '#', scalefactor = 1.)
 # add to collection
 variablePlotatts['stns'] = tmp
 
@@ -120,7 +120,7 @@ tmp = PlotAtts(name = r'$p_s$', title = 'Surface Pressure',
 variablePlotatts['ps'] = tmp
 ## Logarithm of Surface Pressure
 tmp = PlotAtts(name = r'ln $p_s$', title = 'Logarithmic Surface Pressure', 
-               units = '', scalefactor = 1)
+               units = '', scalefactor = 1.)
 # add to collection
 variablePlotatts['lnps'] = tmp
 
@@ -132,55 +132,55 @@ variablePlotatts['pmsl'] = tmp
 
 ## 10 m Zonal Wind
 tmp = PlotAtts(name = r'$u_{10m}$', title = '10 m Zonal Wind', 
-               units = 'm/s', scalefactor = 1)
+               units = 'm/s', scalefactor = 1.)
 # add to collection
 variablePlotatts['u10'] = tmp
 
 ## 10 m Meridional Wind
 tmp = PlotAtts(name = r'$v_{10m}$', title = '10 m Meridional Wind', 
-               units = 'm/s', scalefactor = 1)
+               units = 'm/s', scalefactor = 1.)
 # add to collection
 variablePlotatts['v10'] = tmp
 
 ## 2 m Temperature
 tmp = PlotAtts(name = r'$T_{2m}$', title = '2 m Temperature', 
-               units = 'K', scalefactor = 1)
+               units = 'K', scalefactor = 1.)
 # add to collection
 variablePlotatts['T2'] = tmp
 
 ## 2 m Maximum Temperature
 tmp = PlotAtts(name = r'$T_{max}$', title = 'Maximum 2 m Temperature', 
-               units = 'K', scalefactor = 1)
+               units = 'K', scalefactor = 1.)
 # add to collection
 variablePlotatts['Tmax'] = tmp
 
 ## 2 m Minimum Temperature
 tmp = PlotAtts(name = r'$T_{min}$', title = 'Minimum 2 m Temperature', 
-               units = 'K', scalefactor = 1)
+               units = 'K', scalefactor = 1.)
 # add to collection
 variablePlotatts['Tmin'] = tmp
 
 ## Skin Temperature
 tmp = PlotAtts(name = r'$T_s$', title = 'Skin Temperature', 
-               units = 'K', scalefactor = 1)
+               units = 'K', scalefactor = 1.)
 # add to collection
 variablePlotatts['Ts'] = tmp
 
 ## Skin Temperature
 tmp = PlotAtts(name = 'sea-ice', title = 'Sea Ice Fraction', 
-               units = '', scalefactor = 1)
+               units = '', scalefactor = 1.)
 # add to collection
 variablePlotatts['seaice'] = tmp
 
 ## Snow (water-equivalent)
 tmp = PlotAtts(name = 'snow', title = 'Snow (water-equivalent)', 
-               units = r'$kg/m^2$', scalefactor = 1)
+               units = r'$kg/m^2$', scalefactor = 1.)
 # add to collection
 variablePlotatts['snow'] = tmp
 
 ## Snow (depth/height)
 tmp = PlotAtts(name = 'snowh', title = 'Snow Depth', 
-               units = 'm', scalefactor = 1)
+               units = 'm', scalefactor = 1.)
 # add to collection
 variablePlotatts['snowh'] = tmp
 
@@ -192,19 +192,19 @@ variablePlotatts['Q2'] = tmp
 
 ## Accumulated Cumulus Precipitation
 tmp = PlotAtts(name = 'acc. precip (cu)', title = 'Accumulated Cumulus Precipitation', 
-               units = 'mm', scalefactor = 1)
+               units = 'mm', scalefactor = 1.)
 # add to collection
 variablePlotatts['acpreccu'] = tmp
 
 ## Accumulated Grid-scale Precipitation
 tmp = PlotAtts(name = 'acc. precip (grid)', title = 'Accumulated Grid-scale Precipitation', 
-               units = 'mm', scalefactor = 1)
+               units = 'mm', scalefactor = 1.)
 # add to collection
 variablePlotatts['acprecnc'] = tmp
 
 ## Accumulated Total Precipitation
 tmp = PlotAtts(name = 'acc. precip', title = 'Accumulated Total Precipitation', 
-               units = 'mm', scalefactor = 1)
+               units = 'mm', scalefactor = 1.)
 # add to collection
 variablePlotatts['acprec'] = tmp
 
@@ -240,115 +240,115 @@ variablePlotatts['precip'] = tmp
 
 ## Consecutive Wet Days
 tmp = PlotAtts(name = 'CWD', title = 'Consecutive Wet Days', 
-               units = 'days', scalefactor = 1)
+               units = 'days', scalefactor = 1.)
 # add to collection
 variablePlotatts['CWD'] = tmp
 
 ## Consecutive Dry Days
 tmp = PlotAtts(name = 'CDD', title = 'Consecutive Dry Days', 
-               units = 'days', scalefactor = 1)
+               units = 'days', scalefactor = 1.)
 # add to collection
 variablePlotatts['CCD'] = tmp
 
 ## Surface Sensible Heat Flux
 tmp = PlotAtts(name = r'$Q_s$', title = 'Surface Heat Flux', 
-               units = r'$W/m^2$', scalefactor = 1)
+               units = r'$W/m^2$', scalefactor = 1.)
 # add to collection
 variablePlotatts['hfx'] = tmp
 
 ## Surface Latent Heat Flux
 tmp = PlotAtts(name = r'$Q_{LH}$', title = 'Surface Latent Heat Flux', 
-               units = r'$W/m^2$', scalefactor = 1)
+               units = r'$W/m^2$', scalefactor = 1.)
 # add to collection
 variablePlotatts['lhfx'] = tmp
 
 ## Total Surface Heat Flux
 tmp = PlotAtts(name = r'$Q_{tot}$', title = 'Total Surface Heat Flux', 
-               units = r'$W/m^2$', scalefactor = 1)
+               units = r'$W/m^2$', scalefactor = 1.)
 # add to collection
 variablePlotatts['qtfx'] = tmp
 
 ## Relative Latent Heat Flux
 tmp = PlotAtts(name = r'$Q_{LH} / Q_{tot}$', title = 'Relative Latent Heat Flux', 
-               units = '', scalefactor = 1)
+               units = '', scalefactor = 1.)
 # add to collection
 variablePlotatts['lhfr'] = tmp
 
 ## Surface Downward LW Radiative Flux
 tmp = PlotAtts(name = r'$LW_{down}$', title = 'Downward LW Radiative Flux', 
-               units = r'$W/m^2$', scalefactor = 1)
+               units = r'$W/m^2$', scalefactor = 1.)
 # add to collection
 variablePlotatts['GLW'] = tmp
 
 ## Surface Downward SW Radiative Flux
 tmp = PlotAtts(name = r'$SW_{down}$', title = 'Downward SW Radiative Flux', 
-               units = r'$W/m^2$', scalefactor = 1)
+               units = r'$W/m^2$', scalefactor = 1.)
 # add to collection
 variablePlotatts['SWDOWN'] = tmp
 
 ## Surface Normal SW Radiative Flux
 tmp = PlotAtts(name = r'$SW_{norm}$', title = 'Surface Normal (SW) Radiative Flux', 
-               units = r'$W/m^2$', scalefactor = 1)
+               units = r'$W/m^2$', scalefactor = 1.)
 # add to collection
 variablePlotatts['SWNORM'] = tmp
 
 ## Residual Upward Energy Flux (basically upward LW)
 tmp = PlotAtts(name = r'$LW_{up}$', title = '(Residual) Upward LW Radiative Flux', 
-               units = r'$W/m^2$', scalefactor = 1)
+               units = r'$W/m^2$', scalefactor = 1.)
 # add to collection
 variablePlotatts['rfx'] = tmp
 
 ## Outgoing Longwave Radiation
 tmp = PlotAtts(name = r'OLR', title = 'Outgoing Longwave Radiation', 
-               units = r'$W/m^2$', scalefactor = 1)
+               units = r'$W/m^2$', scalefactor = 1.)
 # add to collection
 variablePlotatts['OLR'] = tmp
 
 ## Potential Evapo-Transpiration
 tmp = PlotAtts(name = 'PET', title = 'Potential Evapo-Transpiration', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400)
+               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['pet'] = tmp
 
 ## Evapo-Transpiration
 tmp = PlotAtts(name = 'ET', title = 'Evapo-Transpiration', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400)
+               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['evap'] = tmp
 
 ## Net Precipitation
 tmp = PlotAtts(name = 'P - ET', title = 'Precipitation - Evaporation', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400)
+               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['p-et'] = tmp
 
 ## Net Surface Moisture Flux
 tmp = PlotAtts(name = 'WaterFlx', title = 'Net Water Flux', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400)
+               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['waterflx'] = tmp
 
 ## Snowmelt (water equivalent)
 tmp = PlotAtts(name = 'Snowmelt', title = 'Snowmelt', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400)
+               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['snwmlt'] = tmp
 
 ## Total Runoff
 tmp = PlotAtts(name = 'Runoff', title = 'Total Runoff', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400)
+               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['runoff'] = tmp
 
 ## Surface Runoff
 tmp = PlotAtts(name = 'Srfc. RO', title = 'Surface Runoff', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400)
+               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['sfroff'] = tmp
 
 ## Underground Runoff
 tmp = PlotAtts(name = 'Sub-srfc. RO', title = 'Underground Runoff', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400)
+               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['ugroff'] = tmp
 

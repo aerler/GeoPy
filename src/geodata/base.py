@@ -291,7 +291,7 @@ class Variable(object):
   @name.setter
   def name(self, name):
     self.atts['name'] = name
-  
+    
   @property
   def units(self):
     ''' The Variable units (stored in the atts dictionary). '''
@@ -2214,24 +2214,24 @@ class Dataset(object):
     
   def __getitem__(self, varname):
     ''' Yet another way to access variables by name... conforming to the container protocol. '''
-    if not isinstance(varname, basestring): raise TypeError
-    if not self.hasVariable(varname): raise KeyError
+    if not isinstance(varname, basestring): raise TypeError, varname
+    if not self.hasVariable(varname): raise KeyError, varname
     return self.variables[varname]
   
   def __setitem__(self, varname, var):
     ''' Yet another way to add a variable, this time by name... conforming to the container protocol. '''
-    if not isinstance(var, Variable) or not isinstance(varname, basestring): raise TypeError
+    if not isinstance(var, Variable) or not isinstance(varname, basestring): raise TypeError, varname
     var.name = varname # change name to varname
     #if 'name' in var.atts: var.atts['name'] = varname
     check = self.addVariable(var) # add variable
-    if not check: raise KeyError # raise error if variable is not present
+    if not check: raise KeyError, varname # raise error if variable is not present
     
   def __delitem__(self, varname):
     ''' A way to delete variables by name... conforming to the container protocol. '''
-    if not isinstance(varname, basestring): raise TypeError
-    if not self.hasVariable(varname): raise KeyError
+    if not isinstance(varname, basestring): raise TypeError, varname
+    if not self.hasVariable(varname): raise KeyError, varname
     check = self.removeVariable(varname)
-    if not check: raise KeyError # raise error if variable has not disappeared
+    if not check: raise KeyError, varname # raise error if variable has not disappeared
   
   def __iter__(self):
     ''' Return an iterator over all variables... conforming to the container protocol. '''
@@ -2239,7 +2239,7 @@ class Dataset(object):
     
   def __contains__(self, var):
     ''' Check if the Dataset instance has a particular Variable... conforming to the container protocol. '''
-    if not (isinstance(var, Variable) or isinstance(var, basestring)): raise TypeError
+    if not (isinstance(var, Variable) or isinstance(var, basestring)): raise TypeError, var
     return self.hasVariable(var) # variable only
   
   def __len__(self):

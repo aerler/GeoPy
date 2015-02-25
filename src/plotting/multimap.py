@@ -101,11 +101,11 @@ if __name__ == '__main__':
 #   seasons += ['cold']
 #   seasons += ['warm']
 #   seasons += ['melt']
-#   seasons += ['annual']
+  seasons += ['annual']
   seasons += ['summer']
-  seasons += ['winter']
+#   seasons += ['winter']
   seasons += ['spring']    
-  seasons += ['fall']
+#   seasons += ['fall']
   # special variable/season combinations
 #   variables = ['seaice']; seasons = [8] # September seaice
 #  variables = ['snowh'];  seasons = [8] # September snow height
@@ -134,6 +134,15 @@ if __name__ == '__main__':
 #   exptitles = ['Merged Observations (10 km)']
 #   case = 'unity'; lsamesize = True; grid = 'arb2_d02'
 
+# surface sensitivity test
+  maptype = 'lcc-large'; lstations = False; lbasins = True
+  explist = ['max-grass','Unity','max-ctrl','max-1deg']; period = H05; domain = 1
+#   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02', 'arb2_d02', 'arb2_d02', 'arb2_d02'] 
+  case = 'srfc'; lsamesize = True
+#   explist = ['erai-v361','erai-v361-noah','erai-3km','erai-max']; period = H05; domain = [2,2,3,2]
+#   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02']*2 + ['arb2_d02']*2 
+#   case = 'erai'; lsamesize = True
+
 # new-v361 validation
 #   explist = ['new-v361','new-nmp','new-clm','max-ens']; period = H05; domain = 2
 #   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02']*3 + ['arb2_d02'] 
@@ -143,9 +152,9 @@ if __name__ == '__main__':
 #   case = 'erai'; lsamesize = True
 
 # physics ensemble validation
-  explist = ['new-ctrl','old-ctrl','new-nmp','new-grell','ctrl-1','max-ctrl']; period = H15; domain = 2
-  ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02', 'arb2_d02', 'arb2_d02']*2 
-  case = 'newold'; lsamesize = True
+#   explist = ['new-ctrl','old-ctrl','ctrl-1','max-ctrl']; period = H15; domain = 2
+#   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02', 'arb2_d02', 'arb2_d02', 'arb2_d02'] 
+#   case = 'phys'; lsamesize = True
 #   explist = ['erai-v361','erai-v361-noah','erai-3km','erai-max']; period = H05; domain = [2,2,3,2]
 #   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02']*2 + ['arb2_d02']*2 
 #   case = 'erai'; lsamesize = True

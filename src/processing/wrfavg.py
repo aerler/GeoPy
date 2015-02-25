@@ -232,7 +232,7 @@ if __name__ == '__main__':
     loverwrite = False
     varlist = None # ['lat2D', ]
     experiments = []
-    experiments += ['max-ctrl']
+    experiments += ['max-grass']
 #     experiments += ['erai-3km','max-3km']
 #     experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
 #     experiments += ['new','noah','max','max-2050']
@@ -251,14 +251,14 @@ if __name__ == '__main__':
     periods = [] # not that all periods are handled within one process! 
     periods += [1]
     periods += [3]
-#     periods += [5]
+    periods += [5]
 #     periods += [9]
 #     periods += [10]
 #     periods += [15]
     domains = (1,) # domains to be processed
 #     domains = None # process all domains
-    filetypes = ['plev3d'] # filetypes to be processed
-#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
+#     filetypes = ['plev3d'] # filetypes to be processed
+    filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']
 #     filetypes = ['hydro'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','plev3d','hydro']

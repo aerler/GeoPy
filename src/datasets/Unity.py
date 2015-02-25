@@ -10,7 +10,7 @@ A unified/merged dataset, constructed from multiple available sources.
 import numpy as np
 import numpy.ma as ma
 #import netCDF4 as nc # netcdf python module
-import os
+import os, gc
 # internal imports
 from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF 
@@ -18,7 +18,7 @@ from datasets.common import days_per_month, name_of_month,  shp_params
 from datasets.common import getFileName, data_root, loadObservations, grid_folder
 from geodata.gdal import loadPickledGridDef
 from datasets.GPCC import loadGPCC, loadGPCC_Shp
-from datasets.CRU import loadCRU, loadCRU_Shp 
+from datasets.CRU import loadCRU, loadCRU_Shp, loadCRU_ShpTS
 from datasets.PRISM import loadPRISM, loadPRISM_Shp
 from datasets.PCIC import loadPCIC, loadPCIC_Shp
 # from geodata.utils import DatasetError
@@ -56,8 +56,8 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 ## Functions that provide access to well-formatted PRISM NetCDF files
 
 # pre-processed climatology files (varatts etc. should not be necessary)
-avgfile = 'unity{0:s}_clim{1:s}.nc' # formatted NetCDF file
 avgfolder = root_folder + 'unityavg/' # prefix
+avgfile = 'unity{0:s}_clim{1:s}.nc' # formatted NetCDF file
 # function to load these files...
 def loadUnity(name=dataset_name, period=None, grid=None, varlist=None, varatts=None, 
               folder=avgfolder, filelist=None, lautoregrid=False, resolution=None):
@@ -93,12 +93,23 @@ def loadUnity_Shp(name=dataset_name, period=None, shape=None, varlist=None, vara
   # return formatted dataset
   return dataset
 
+# function to load shape-averaged time-series
+tsfile = 'unity{0:s}_monthly.nc' # formatted NetCDF file
+def loadUnity_ShpTS(name=dataset_name, shape=None, varlist=None, varatts=None, 
+                    folder=avgfolder, filelist=None, lautoregrid=False, resolution=None, lencl=False):
+  ''' Get the pre-processed, unified monthly climatology averaged over shapes as a DatasetNetCDF. '''
+  # load standardized climatology dataset with PRISM-specific parameters  
+  dataset = loadObservations(name=name, folder=folder, period=None, grid=None, shape=shape, station=None, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             projection=None, mode='time-series', lautoregrid=False, lencl=lencl)
+  # return formatted dataset
+  return dataset
 
 ## Dataset API
 
 dataset_name # dataset name
 root_folder # root folder of the dataset
-ts_file_pattern = None
+ts_file_pattern = tsfile
 clim_file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
 LTM_grids = ['d02','d01'] # grids that have long-term mean data 
@@ -115,9 +126,11 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-  mode = 'merge_datasets'
+#   mode = 'merge_climatologies'
+  mode = 'merge_timeseries'
 #   mode = 'test_climatology'
 #   mode = 'test_point_climatology'
+  mode = 'test_point_timeseries'
   
   # settings to generate dataset
   grids = []
@@ -142,13 +155,13 @@ if __name__ == '__main__':
   periods = []
 #   periods += [(1979,1980)]
 #   periods += [(1979,1982)]
-#   periods += [(1979,1984)]
-#   periods += [(1979,1989)]
+  periods += [(1979,1984)]
+  periods += [(1979,1989)]
   periods += [(1979,1994)]
 #   periods += [(1984,1994)]
 #   periods += [(1989,1994)]
 #   periods += [(1997,1998)]
-#   periods += [(1979,2009)]
+  periods += [(1979,2009)]
 #   periods += [(1949,2009)]
   pntset = 'shpavg' # 'ecprecip'
   
@@ -188,9 +201,103 @@ if __name__ == '__main__':
     print
     print dataset.time.data_array
 
+  elif mode == 'test_point_timeseries':
+            
+    # load averaged climatology file
+    print('')
+    if pntset in ('shpavg',): dataset = loadUnity_ShpTS(shape=pntset)
+    else: raise NotImplementedError
+    print(dataset)
+    print('')
+    print(dataset.precip.mean())
+    print(dataset.precip.masked)
+    
+    # print time coordinate
+    print
+    print dataset.time.atts
+    print
+    print dataset.time.data_array
+
+
+  ## begin processing
+  if mode == 'merge_timeseries':
+    # produce a merged dataset for a given time period and grid    
+    
+    for grid in grids:
+                
+        ## load source datasets
+        period = (1979,2009)
+        if grid in ('shpavg',):
+          # regional averages: shape index as grid
+          CRU_vars = ['T2','Tmin','Tmax','Q2','pet','precip','cldfrc','wetfrq','frzfrq']
+          uclim = loadUnity_Shp(shape=pntset, period=period)
+          cruclim = loadCRU_Shp(shape=grid, period=period)
+          cruts = loadCRU_ShpTS(shape=grid)           
+        else:
+          raise NotImplementedError
+          
+        grid_name = grid
+        periodstr = '{0:4d}-{1:4d}'.format(*period)        
+        print('\n   ***   Merging Shape-Averaged Time-Series on {:s} Grid  ***   \n'.format(grid,))
+        ## prepare target dataset 
+        filename = getFileName(grid=grid_name, period=None, name=None, filepattern=tsfile)
+        filepath = avgfolder + filename
+        print(' Saving data to: \'{0:s}\'\n'.format(filepath))
+        assert os.path.exists(avgfolder)
+        if os.path.exists(filepath): os.remove(filepath) # remove old file
+        # set attributes   
+        atts=dict() # collect attributes, but add prefixes
+        atts = uclim.atts.copy()
+        atts['title'] = 'Corrected Time-sries on {:s} Grid'.format(grid_name)
+        # make new dataset
+        sink = DatasetNetCDF(folder=avgfolder, filelist=[filename], atts=atts, mode='w')
+        # sync and write data so far 
+        sink.sync()       
+                
+        ## correct data (create variables)
+        for varname,var in uclim.variables.iteritems():
+          print ''
+          print varname
+          # correct time-series variables
+          if var.hasAxis('time'):
+            if varname in CRU_vars:
+              tsvar = cruts[varname]; climvar = cruclim[varname] 
+              assert tsvar.axisIndex('time') == 1, tsvar            
+              assert climvar.axisIndex('time') == 1 and var.axisIndex('time') == 1, climvar
+              assert len(tsvar.axes[1])%12 == 0, len(tsvar.axes[1])
+              assert tsvar.axes[1].coord[0]%12 == 0, tsvar.axes[1].coord[0]
+              reps = len(tsvar.axes[1])/12
+              unityarray = var.load().data_array.repeat(reps, axis=1)
+              climarray = climvar.load().data_array.repeat(reps, axis=1)
+              tsarray = tsvar.load().data_array
+              assert unityarray.shape == climarray.shape == tsarray.shape, climarray.shape
+              array = tsarray - climarray + unityarray
+              newvar = var.copy(data=array, axes=tsvar.axes) # generate variable copy
+              tsvar.unload(); climvar.unload(); var.unload()
+              gc.collect() # not really necessary for shape averages...
+            else:
+              print var
+              newvar = None
+          else:
+            try:
+              var.load()
+              newvar = var.copy()
+            except ValueError:
+              print var
+              newvar = None          
+          # save variable 
+          if newvar is not None: 
+            sink.addVariable(newvar, asNC=True, copy=True, deepcopy=True)
+            
+        # finalize changes
+        sink.sync()     
+        sink.close()
+        print(sink)
+        print('\n Writing to: \'{0:s}\'\n'.format(filename))
+        
   
   ## begin processing
-  if mode == 'merge_datasets':
+  if mode == 'merge_climatologies':
     # produce a merged dataset for a given time period and grid    
     
     for grid in grids:

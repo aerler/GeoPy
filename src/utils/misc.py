@@ -12,7 +12,6 @@ from utils.signalsmooth import smooth
 from collections import namedtuple
 # internal imports
 from geodata.misc import ArgumentError, isEqual
-from nltk.ccg.chart import TypeRaiseRuleSet
 
 
 # create a named tuple instance on the fly from dictionary
