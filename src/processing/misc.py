@@ -37,7 +37,7 @@ def getTargetFile(name, dataset, mode, module, dataargs, lwrite):
     if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,sstr,pstr)
     elif mode == 'time-series': filename = module.ts_file_pattern.format(filetype,sstr)
     else: raise NotImplementedError
-  elif dataset == dataset.upper() and lwrite: # observational datasets
+  elif ( dataset == dataset.upper() or dataset == 'Unity' ) and lwrite: # observational datasets
     filename = getFileName(grid=name, period=dataargs.period, name=dataargs.obs_res, filetype=mode)      
   elif not lwrite: raise DatasetError
   if not os.path.exists(dataargs.avgfolder): 
@@ -129,7 +129,7 @@ def getMetaData(dataset, mode, dataargs):
       loadfct = functools.partial(loadCESM_TS, experiment=dataset_name, name=None, grid=None, 
                                   filetypes=[filetype], varatts=None, load3D=load3D, translateVars=None)     
     filepath = '{:s}/{:s}'.format(avgfolder,filename)
-  elif dataset == dataset.upper():
+  elif dataset == dataset.upper() or dataset == 'Unity':
     # observational datasets
     module = import_module('datasets.{0:s}'.format(dataset))      
     dataset_name = module.dataset_name

@@ -172,37 +172,38 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-#     NP = 3 ; ldebug = False # for quick computations
-    NP = 1 ; ldebug = True # just for tests
+    NP = 4 ; ldebug = False # for quick computations
+#     NP = 1 ; ldebug = True # just for tests
 #     modes = ('time-series',) # 'climatology','time-series'
     modes = ('climatology',) # 'climatology','time-series'
-    loverwrite = False
-#     loverwrite = True
+#     loverwrite = False
+    loverwrite = True
     varlist = None
 #     varlist = ['precip',]
     periods = []
 #     periods += [1]
 #     periods += [3]
-#     periods += [5]
-#     periods += [10]
+    periods += [5]
+    periods += [10]
     periods += [15]
-#     periods += [30]
+    periods += [30]
     # Observations/Reanalysis
     datasets = []; resolutions = None
-#     lLTM = False # also average the long-term mean climatologies
-    lLTM = True 
-    resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':'05'}
+    lLTM = False # also average the long-term mean climatologies
+#     lLTM = True 
+#     resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':'05'}
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
 #     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
-    datasets += ['GPCC']; resolutions = {'GPCC':['025']}
+#     datasets += ['GPCC']; resolutions = {'GPCC':['025']}
 #     datasets += ['CRU']
+    datasets += ['Unity']
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
-    CESM_experiments += ['Ctrl-1']
+#     CESM_experiments += ['Ctrl-1']
 #     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     CESM_experiments += ['Ctrl-1-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
 #     CESM_experiments += ['Ens', 'Ens-2050', 'Ens-2100']
@@ -210,7 +211,7 @@ if __name__ == '__main__':
     CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
-    WRF_experiments += ['max-ens-A']
+#     WRF_experiments += ['max-ens-A']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['erai-max','max-seaice-2050','max-seaice-2100'] # requires different implementation...    

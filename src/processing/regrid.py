@@ -183,17 +183,17 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-#     NP = 4 ; ldebug = False # for quick computations
-    NP = 3 ; ldebug = True # just for tests
-#     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology','time-series'
+    NP = 1 ; ldebug = False # for quick computations
+#     NP = 3 ; ldebug = True # just for tests
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = False
     varlist = None
 #     varlist = ['lat2D',]
     periods = []
 #     periods += [1]
-#     periods += [3]
-    periods += [5]
+    periods += [3]
+#     periods += [5]
 #     periods += [10]
 #     periods += [15]
 #     periods += [30]
@@ -208,8 +208,8 @@ if __name__ == '__main__':
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR', 'NARR']
-    datasets += ['GPCC']; resolutions = {'GPCC':['25']}
-#     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
+#     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
+    datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
@@ -252,7 +252,7 @@ if __name__ == '__main__':
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['col2'] = ('d03','d02','d01') # innermost WRF Columbia domain
 #     grids['grb2'] = ('d02',) # Marc's standard GRB inner domain
-    grids['arb2'] = ('d02',) # WRF standard ARB inner domain
+    grids['arb2'] = ('d01',) # WRF standard ARB inner domain
 #     grids['arb3'] = ('d02',) # WRF new ARB inner domain
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids

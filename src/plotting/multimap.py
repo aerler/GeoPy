@@ -136,7 +136,7 @@ if __name__ == '__main__':
 
 # surface sensitivity test
   maptype = 'lcc-large'; lstations = False; lbasins = True
-  explist = ['max-grass','Unity','max-ctrl','max-1deg']; period = H05; domain = 1
+  explist = ['max-grass','Unity','max-ctrl','max-1deg']; period = H03; domain = 1
 #   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02', 'arb2_d02', 'arb2_d02', 'arb2_d02'] 
   case = 'srfc'; lsamesize = True
 #   explist = ['erai-v361','erai-v361-noah','erai-3km','erai-max']; period = H05; domain = [2,2,3,2]

@@ -116,17 +116,26 @@ experiments['max-1deg-2100'] = Exp(shortname='1deg-2100', name='max-1deg-2100', 
 experiments['max-cg'] = Exp(shortname='cg', name='max-cg', title='Max-1 (CG)', begindate='1979-01-01', grid='arb2')
 experiments['max-gulf'] = Exp(shortname='gulf', name='max-gulf', title='Max-1 (Gulf)', begindate='1979-01-01', grid='arb3') # ARB3 domain
 experiments['max-ensemble'] = Exp(shortname='max-ens', name='max-ensemble', title='Max Ensemble Mean', begindate='1979-01-01', grid='arb2', parent='CESM')
+experiments['mex-ensemble'] = Exp(shortname='mex-ens', name='mex-ensemble', title='Max Ens Mean (ext.)', begindate='1979-01-01', grid='arb2', parent='CESM')
+experiments['phys-ensemble'] = Exp(shortname='phys-ens', name='phys-ensemble', title='Physics Ens Mean', begindate='1979-01-01', grid='arb2', parent='CESM')
+experiments['grand-ensemble'] = Exp(shortname='all-ens', name='grand-ensemble', title='Grand Ensemble Mean', begindate='1979-01-01', grid='arb2', parent='CESM')
 experiments['max-ctrl'] = Exp(shortname='max', name='max-ctrl', title='Max-1', begindate='1979-01-01', grid='arb2', ensemble='max-ensemble')
 experiments['max-ens-A'] = Exp(shortname='max-A', name='max-ens-A', title='Max-A', begindate='1979-01-01', grid='arb2', parent='Ens-A', ensemble='max-ensemble')
 experiments['max-ens-B'] = Exp(shortname='max-B', name='max-ens-B', title='Max-B', begindate='1979-01-01', grid='arb2', parent='Ens-B', ensemble='max-ensemble')
 experiments['max-ens-C'] = Exp(shortname='max-C', name='max-ens-C', title='Max-C', begindate='1979-01-01', grid='arb2', parent='Ens-C', ensemble='max-ensemble')
-experiments['max-ensemble-2050'] = Exp(shortname='max-ens-2050', name='max-ensemble-2050', title='Max Ensemble Mean (2050)', begindate='2045-01-01', grid='arb2')
+experiments['max-ensemble-2050'] = Exp(shortname='max-ens-2050', name='max-ensemble-2050', title='Max Ensemble Mean (2050)', begindate='2045-01-01', grid='arb2', parent='CESM')
+experiments['mex-ensemble-2050'] = Exp(shortname='mex-ens-2050', name='mex-ensemble-2050', title='Max Ens Mean (ext., 2050)', begindate='2045-01-01', grid='arb2', parent='CESM')
+experiments['phys-ensemble-2050'] = Exp(shortname='phys-ens-2050', name='phys-ensemble-2050', title='Physics Ens Mean (2050)', begindate='2045-01-01', grid='arb2', parent='CESM')
+experiments['grand-ensemble-2050'] = Exp(shortname='all-ens-2050', name='grand-ensemble-2050', title='Grand Ensemble Mean (2050)', begindate='2045-01-01', grid='arb2', parent='CESM')
 experiments['max-ctrl-2050'] = Exp(shortname='max-2050', name='max-ctrl-2050', title='Max-1 (2050)', begindate='2045-01-01', grid='arb2', parent='Ctrl-2050', ensemble='max-ensemble-2050')
 experiments['max-ens-A-2050'] = Exp(shortname='max-A-2050', name='max-ens-A-2050', title='Max-A (2050)', begindate='2045-01-01', grid='arb2', parent='Ens-A-2050', ensemble='max-ensemble-2050')
 experiments['max-ens-B-2050'] = Exp(shortname='max-B-2050', name='max-ens-B-2050', title='Max-B (2050)', begindate='2045-01-01', grid='arb2', parent='Ens-B-2050', ensemble='max-ensemble-2050')
 experiments['max-ens-C-2050'] = Exp(shortname='max-C-2050', name='max-ens-C-2050', title='Max-C (2050)', begindate='2045-01-01', grid='arb2', parent='Ens-C-2050', ensemble='max-ensemble-2050')
 experiments['max-seaice-2050'] = Exp(shortname='seaice-2050', name='max-seaice-2050', title='Seaice (2050)', begindate='2045-01-01', grid='arb2', parent='Seaice-2050')
-experiments['max-ensemble-2100'] = Exp(shortname='max-ens-2100', name='max-ensemble-2100', title='Max Ensemble Mean (2100)', begindate='2085-01-01', grid='arb2')
+experiments['max-ensemble-2100'] = Exp(shortname='max-ens-2100', name='max-ensemble-2100', title='Max Ensemble Mean (2100)', begindate='2085-01-01', grid='arb2', parent='CESM')
+experiments['mex-ensemble-2100'] = Exp(shortname='mex-ens-2100', name='mex-ensemble-2100', title='Max Ens Mean (ext., 2100)', begindate='2085-01-01', grid='arb2', parent='CESM')
+experiments['phys-ensemble-2100'] = Exp(shortname='phys-ens-2100', name='phys-ensemble-2100', title='Physics Ens Mean (2100)', begindate='2085-01-01', grid='arb2', parent='CESM')
+experiments['grand-ensemble-2100'] = Exp(shortname='all-ens-2100', name='grand-ensemble-2100', title='Grand Ensemble Mean (2050)', begindate='2085-01-01', grid='arb2', parent='CESM')
 experiments['max-ctrl-2100'] = Exp(shortname='max-2100', name='max-ctrl-2100', title='Max-1 (2100)', begindate='2085-01-01', grid='arb2', parent='Ctrl-2100', ensemble='max-ensemble-2100')
 experiments['max-ens-A-2100'] = Exp(shortname='max-A-2100', name='max-ens-A-2100', title='Max-A (2100)', begindate='2085-01-01', grid='arb2', parent='Ens-A-2100', ensemble='max-ensemble-2100')
 experiments['max-ens-B-2100'] = Exp(shortname='max-B-2100', name='max-ens-B-2100', title='Max-B (2100)', begindate='2085-01-01', grid='arb2', parent='Ens-B-2100', ensemble='max-ensemble-2100')
@@ -189,15 +198,37 @@ for key,item in experiments.iteritems():
 # add aliases here
 WRF_exps = exps # alias for whole dict
 WRF_experiments = experiments # alias for whole dict
+
 ## dict of ensembles
-ensembles = WRF_ens = OrderedDict()
-ensemble_list = list(set([exp.ensemble for exp in experiments.values() if exp.ensemble]))
-# ensemble_list.sort()
-for ensemble in ensemble_list:
-  #print ensemble, experiments[ensemble].shortname
-  members = [exp for exp in experiments.values() if exp.ensemble and exp.ensemble == ensemble]
-#   members.sort()
-  ensembles[experiments[ensemble].shortname] = members
+ensembles = OrderedDict()
+# initial condition ensemble
+ensembles['max-ens'] = ('max-ctrl', 'max-ens-A', 'max-ens-B', 'max-ens-C')
+ensembles['phys-ens'] = ('old-ctrl','ctrl-1','max-ctrl', 'max-nmp')
+# add future versions
+for ensname,enslist in ensembles.items():
+  for suffix in '2050','2100':
+    suffix = '-'+suffix
+    ensembles[ensname+suffix] = tuple(expname[:-2]+suffix if expname[-2:] == '-1' else expname+suffix for expname in enslist)
+# extended ensemble
+ensembles['mex-ens'] = ensembles['max-ens'] + ('erai-max',)
+ensembles['mex-ens-2050'] = ensembles['max-ens-2050'] + ('max-seaice-2050',)
+ensembles['mex-ens-2100'] = ensembles['max-ens-2100'] + ('max-seaice-2100',)
+# construct grand ensemble
+for suffix in '','2050','2100':
+  suffix = '-'+suffix if suffix else ''
+  ensembles['all-ens'+suffix] = ensembles['phys-ens'+suffix] + ensembles['mex-ens'+suffix][1:]
+  # N.B.: omit max-ctrl the second time
+  
+# replace names with experiment instances
+for ensname,enslist in ensembles.iteritems():
+  ensembles[ensname] = tuple(experiments[expname] for expname in enslist)
+# make sorted copy
+WRF_ens = OrderedDict()
+name_list = ensembles.keys(); name_list.sort()
+for key in name_list:
+  WRF_ens[key] = ensembles[key]
+ensembles = WRF_ens
+
 
 if __name__ == '__main__':
     

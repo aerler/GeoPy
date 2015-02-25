@@ -112,10 +112,14 @@ root_folder # root folder of the dataset
 ts_file_pattern = tsfile
 clim_file_pattern = avgfile # filename pattern
 data_folder = avgfolder # folder for user data
-LTM_grids = ['d02','d01'] # grids that have long-term mean data 
-TS_grids = ['d02','d01'] # grids that have time-series data
-grid_def = {'d02':None,'d01':None} # there are too many... 
-grid_res = {'d02':0.13,'d01':3.82} # approximate grid resolution at 45 degrees latitude 
+LTM_grids = [] 
+TS_grids = ['']
+grid_res = {}
+grid_def = None # no grid here...
+# LTM_grids = ['d02','d01'] # grids that have long-term mean data 
+# TS_grids = ['d02','d01'] # grids that have time-series data
+# grid_def = {'d02':None,'d01':None} # there are too many... 
+# grid_res = {'d02':0.13,'d01':3.82} # approximate grid resolution at 45 degrees latitude 
 default_grid = None
 # functions to access specific datasets
 loadLongTermMean = None # climatology provided by publisher
@@ -126,18 +130,18 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-#   mode = 'merge_climatologies'
-  mode = 'merge_timeseries'
+  mode = 'merge_climatologies'
+#   mode = 'merge_timeseries'
 #   mode = 'test_climatology'
 #   mode = 'test_point_climatology'
-  mode = 'test_point_timeseries'
+#   mode = 'test_point_timeseries'
   
   # settings to generate dataset
   grids = []
-#   grids += ['arb2_d01']
+  grids += ['arb2_d01']
 #   grids += ['arb2_d02']
 #   grids += ['arb3_d02']
-  grids += ['shpavg']
+#   grids += ['shpavg']
 #   grids += ['arb3_d01']
 #   grids += ['arb3_d02']
 #   grids += ['grb1_d01']
@@ -154,7 +158,7 @@ if __name__ == '__main__':
 #   grids += ['NARR']
   periods = []
 #   periods += [(1979,1980)]
-#   periods += [(1979,1982)]
+  periods += [(1979,1982)]
   periods += [(1979,1984)]
   periods += [(1979,1989)]
   periods += [(1979,1994)]
