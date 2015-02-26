@@ -13,14 +13,19 @@ from copy import copy # to copy map projection objects
 import numpy as np
 import numpy.ma as ma
 import matplotlib as mpl
+       
+print "Importing 'pyplot' from 'matplotlib'\n"   
+  
+import matplotlib.pyplot as plt
+# N.B.: importing pyplot actually takes quite long! 
+# prevent figures from closing: don't run in interactive mode, or plt.show() will not block
+plt.ioff()
 # mpl.use('Agg') # enforce QT4
-import matplotlib.pylab as pyl
 mpl.rc('lines', linewidth=1.)
 mpl.rc('font', size=10)
-# prevent figures from closing: don't run in interactive mode, or plt.show() will not block
-pyl.ioff()
-from mpl_toolkits.basemap import maskoceans # used for masking data
 # PyGeoDat stuff
+from mpl_toolkits.basemap import maskoceans # used for masking data
+  
 from geodata.base import DatasetError
 from datasets.WSC import basins_info
 from plotting.legacy import loadDatasets, checkItemList
@@ -29,7 +34,7 @@ from plotting.settings import getFigureSettings, getVariableSettings
 from projects.ARB_settings import getARBsetup, figure_folder, map_folder
 
 if __name__ == '__main__':
-  
+
   ## general settings and shortcuts
   WRFfiletypes = [] # WRF data source
 #   WRFfiletypes += ['hydro']
@@ -70,17 +75,17 @@ if __name__ == '__main__':
   domain = (2,)
   variable_settings = None
   season_settings = None
-  
+    
   ## select variables and seasons
   variables = [] # variables
 #   variables += ['Ts']
-  variables += ['T2']
+#   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
-  variables += ['precip']
+#   variables += ['precip']
 #   variables += ['WaterTransport_U']
 #   variables += ['WaterTransport_V']
 #   variables += ['waterflx']
-#   variables += ['p-et']
+  variables += ['p-et']
 #   variables += ['precipnc', 'precipc']
 #   variables += ['Q2']
 #   variables += ['evap']
@@ -101,9 +106,9 @@ if __name__ == '__main__':
 #   seasons += ['cold']
 #   seasons += ['warm']
 #   seasons += ['melt']
-  seasons += ['annual']
-  seasons += ['summer']
-  seasons += ['winter']
+#   seasons += ['annual']
+#   seasons += ['summer']
+#   seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
@@ -134,6 +139,13 @@ if __name__ == '__main__':
 #   exptitles = ['Merged Observations (10 km)']
 #   case = 'unity'; lsamesize = True; grid = 'arb2_d02'
 
+# water vapor transport
+  explist = ['max-ens','max-ens-2050','max-ens-2100']*2
+  seasons = [('summer',)*3+('winter',)*3]
+  period = [H15,A15,B15]*2; domain = [2]
+#   ldiff = True; reflist = ['Unity']; refprd = None;
+  case = 'flx'; lsamesize = True
+
 # surface sensitivity test
 #   maptype = 'lcc-intermed'; lstations = False; lbasins = True
 #   explist = ['max-grass','max-ens','max-ctrl','max-1deg']; period = H05; domain = 1
@@ -141,11 +153,11 @@ if __name__ == '__main__':
 #   grid = ['arb2_d01']*4 
 #   case = 'srfc'; lsamesize = True
 
-# resolution sensitivity test
-  explist = ['max-ctrl','max-ctrl','max-1deg','max-1deg']; period = H15; domain = [1,2]*2
-  ldiff = True; reflist = ['Unity']; refprd = None; 
-  grid = ['arb2_d01','arb2_d02']*2 
-  case = '1deg'; lsamesize = True
+# # resolution sensitivity test
+#   explist = ['max-ctrl','max-ctrl','max-1deg','max-1deg']; period = H15; domain = [1,2]*2
+#   ldiff = True; reflist = ['Unity']; refprd = None; 
+#   grid = ['arb2_d01','arb2_d02']*2 
+#   case = '1deg'; lsamesize = True
 
 # new-v361 validation
 #   explist = ['new-v361','new-nmp','new-clm','max-ens']; period = H05; domain = 2
@@ -258,11 +270,12 @@ if __name__ == '__main__':
 
     
   if not case: raise ValueError, 'Need to define a \'case\' name!'
-  
+
   # setup projection and map
   mapSetup = getARBsetup(maptype, lpickle=lpickle, folder=map_folder)
   
   ## load data
+
   if reflist is not None:
     if not isinstance(reflist,(list,tuple)): raise TypeError
     if len(explist) > len(reflist):
@@ -278,7 +291,7 @@ if __name__ == '__main__':
                                        filetypes=WRFfiletypes, lWRFnative=lWRFnative, ltuple=True, 
                                        lbackground=lbackground, lautoregrid=True)
   nlen = len(exps)
-  print exps[-1][-1]
+#   print exps[-1][-1]
   # load reference list
   if lref:
     if refprd is None: refprd = period    
@@ -297,8 +310,8 @@ if __name__ == '__main__':
   
   # get figure settings
   subplot = subplot or nlen
-  sf, figformat, margins, caxpos, subplot, figsize, cbo = getFigureSettings(subplot, cbar=True, cbo=cbo, 
-                                                             figuretype=figuretype, sameSize=lsamesize)
+  tmp = getFigureSettings(subplot, cbar=True, cbo=cbo, figuretype=figuretype, sameSize=lsamesize)
+  sf, figformat, margins, caxpos, subplot, figsize, cbo = tmp # distribute output to variables  
   if not ltitle: margins['top'] += 0.05
   
   # get projections settings
@@ -315,7 +328,7 @@ if __name__ == '__main__':
 #   if figtitles is not None:
 #     if not isinstance(figtitles,(tuple,list)): figtitles = (figtitles,)*N
 #     elif len(figtitles) != N: raise ValueError
-     
+
   # start loop
   for varlist in variables:
     
@@ -377,7 +390,7 @@ if __name__ == '__main__':
           expvar = exp.variables[var]
           expvar.load()
           #print expvar.name, exp.name, expvar.masked
-          print(exp.name)
+          #print(exp.name)
           assert expvar.gdal
           # handle dimensions
           if expvar.isProjected: 
@@ -428,13 +441,13 @@ if __name__ == '__main__':
           del datatpl[ntpl+1:] # delete the rest 
         # add tuples to master list
         lons.append(lontpl); lats.append(lattpl); data.append(datatpl)
-        print('')
+      print("")
               
       ## setup projection
       #print(' - setting up figure\n') 
       nax = subplot[0]*subplot[1] # number of panels
       # make figure and axes
-      f = pyl.figure(facecolor='white', figsize=figsize)
+      f = plt.figure(facecolor='white', figsize=figsize)
       ax = []
       for n in xrange(nax):
         ax.append(f.add_subplot(subplot[0],subplot[1],n+1, axisbg='blue'))
@@ -579,5 +592,5 @@ if __name__ == '__main__':
         print(folder)
   
   ## show plots after all iterations
-  pyl.show()
+  plt.show()
 

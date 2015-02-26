@@ -20,6 +20,8 @@ from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNu
 from datasets.common import translateVarNames, data_root, grid_folder 
 from geodata.gdal import loadPickledGridDef, griddef_pickle
 from projects.WRF_experiments import Exp, exps, ensembles 
+from warnings import warn
+from blockcanvas.app.experiment import Experiment
 
 
 ## get WRF projection and grid definition 
@@ -453,7 +455,7 @@ def loadWRF(experiment=None, name=None, domains=None, grid=None, period=None, fi
 # pre-processed climatology files (varatts etc. should not be necessary) 
 def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=None, shape=None, period=None, 
                 filetypes=None, varlist=None, varatts=None, lconst=True, lautoregrid=True, lencl=False,
-                lctrT=False, folder=None, mode='climatology'):
+                lctrT=False, folder=None, lpickleGrid=True, mode='climatology'):
   ''' Get any WRF data files as a properly formatted NetCDFDataset. '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)  
@@ -522,16 +524,32 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if not lstation and not lshape:
     if grid is None:
-      griddefs = None; c = 0
-      filename = fileclasses.values()[c].tsfile # just use the first filetype
-      while griddefs is None:
-        # some experiments do not have all files... try, until one works...
-        try:
-          if filename is None: raise IOError # skip and try next one
-          griddefs = getWRFgrid(name=names, experiment=experiment, domains=domains, folder=folder, filename=filename)
-        except IOError:
-          c += 1
-          filename = fileclasses.values()[c].tsfile
+      try:
+        # load pickled griddefs from disk (much faster than recomputing!)
+        if not lpickleGrid or experiment is None: raise IOError # don't load pickle!
+        griddefs = []
+        for domain in domains:
+          # different "native" grid for each domain
+          griddefs.append( loadPickledGridDef(grid=experiment.grid, res='d0{:d}'.format(domain), 
+                                              filename=None, folder=grid_folder, check=True) )
+        # this is mainly to speed up loading datasets
+      except:
+        # print warning to alert user that this takes a bit longer
+        if experiment is not None:
+          name = "'{:s}' ('{:s}')".format(experiment.name,experiment.grid) 
+        else: name = "'{:s}'".format(names[0])        
+        warn("Recomputing Grid Definition for Experiment {:s}".format(name))
+        # compute grid definition from wrfconst files (requires all parent domains) 
+        griddefs = None; c = 0
+        filename = fileclasses.values()[c].tsfile # just use the first filetype
+        while griddefs is None:
+          # some experiments do not have all files... try, until one works...
+          try:
+            if filename is None: raise IOError # skip and try next one
+            griddefs = getWRFgrid(name=names, experiment=experiment, domains=domains, folder=folder, filename=filename)
+          except IOError:
+            c += 1
+            filename = fileclasses.values()[c].tsfile
     else:
       griddefs = [loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder, check=True)]*len(domains)
     assert len(griddefs) == len(domains)
@@ -560,7 +578,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       # domain-sensitive parameters
       axes = dict(west_east=griddef.xlon, south_north=griddef.ylat, x=griddef.xlon, y=griddef.ylat) # map axes
     # load constants
-    if llconst:
+    if llconst:              
       constfile = fileclasses['const']    
       filename = constfile.tsfile.format(domain,gridstr)         
       # load dataset
@@ -625,13 +643,12 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       if dataset.shape.coord[0] == 0: dataset.shape.coord += 1
     # add constants to dataset
     if llconst:
-      for var in const: 
+      for var in const:
         if var.name not in dataset:
           dataset.addVariable(var, asNC=False, copy=False, loverwrite=False, deepcopy=False)
     if not lstation and not lshape:
       # add projection
       dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, geolocator=True)
-      #print dataset
       # safety checks
       if dataset.isProjected:
         assert dataset.axes['x'] == griddef.xlon
@@ -751,13 +768,13 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-#   mode = 'test_climatology'
+  mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
-  mode = 'pickle_grid'  
+#   mode = 'pickle_grid'  
   pntset = 'shpavg' # 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
 #   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]

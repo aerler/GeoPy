@@ -488,7 +488,8 @@ class DatasetNetCDF(Dataset):
       # generate list of variables that have already been converted
       varatts_check = dict()
       for varname,varatt in varatts.iteritems():
-        varatts_check[varatt['name']] = dict(units=varatt.get('units',''), old_name=varname)
+        if 'name' in varatt: # if name is not in varatt, there is no renaming, hence no need to record 
+          varatts_check[varatt['name']] = dict(units=varatt.get('units',''), old_name=varname)
       if check_override is None: check_override = [] # list of variables (and axes) that is not checked for consistency
       # N.B.: check_override may be necessary to combine datasets from different files with inconsistent axis instances 
       if axes is None: axes = dict()

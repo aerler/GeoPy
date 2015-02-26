@@ -440,7 +440,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
       if isinstance(griddef,basestring): # load from pickle file
         griddef = loadPickledGridDef(grid=griddef, res=None, filename=None, folder=gridfolder)
       elif not isinstance(griddef,GridDefinition): raise TypeError
-      projection, isProjected, xlon, ylat = griddef.getProjection
+      projection, isProjected, xlon, ylat = griddef.getProjection()
       lgdal = xlon is not None and ylat is not None # need non-None xlon & ylat
   else: lgdal = False
   # add result to Variable instance
@@ -729,12 +729,11 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
     # add GDAL functionality to all variables!
     for var in dataset.variables.values():
       # call variable 'constructor' for all variables
-      var = addGDALtoVar(var, projection=dataset.projection, geotransform=dataset.geotransform)
+      var = addGDALtoVar(var, griddef=griddef)
       # check result
       if var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat):
         if not var.gdal:  
           raise GDALError, "Variable '{:s}' violates GDAL status (gdal={:s})".format(var.name, str(var.gdal))    
-    
     # get grid definition object
     dataset.getGridDef = types.MethodType(getGridDef, dataset)
         
