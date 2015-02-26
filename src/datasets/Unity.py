@@ -138,10 +138,10 @@ if __name__ == '__main__':
   
   # settings to generate dataset
   grids = []
-  grids += ['arb2_d01']
+  grids += ['shpavg']
+#   grids += ['arb2_d01']
 #   grids += ['arb2_d02']
 #   grids += ['arb3_d02']
-#   grids += ['shpavg']
 #   grids += ['arb3_d01']
 #   grids += ['arb3_d02']
 #   grids += ['grb1_d01']
@@ -158,7 +158,7 @@ if __name__ == '__main__':
 #   grids += ['NARR']
   periods = []
 #   periods += [(1979,1980)]
-  periods += [(1979,1982)]
+#   periods += [(1979,1982)]
   periods += [(1979,1984)]
   periods += [(1979,1989)]
   periods += [(1979,1994)]
@@ -309,6 +309,7 @@ if __name__ == '__main__':
         
         ## load source datasets
         if grid in ('shpavg',):
+          lshp = True
           # regional averages: shape index as grid
           # N.B.: currently doesn't work with stations, because station indices are not consistent
           #       for grids of different size (different number of stations included)
@@ -327,6 +328,7 @@ if __name__ == '__main__':
           cruclim = loadCRU_Shp(period=(1979,2009), shape=grid, lencl=True, 
                                 varlist=['T2','Tmin','Tmax','Q2','pet','cldfrc','wetfrq','frzfrq']+shp_params)          
         else:
+          lshp = False
           # some regular map-type grid 
           pcic  = loadPCIC(period=None, grid=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'], lautoregrid=True)
           prism = loadPRISM(period=None, grid=grid, varlist=['T2','Tmin','Tmax','precip','datamask','lon2D','lat2D'], lautoregrid=True)
@@ -420,9 +422,10 @@ if __name__ == '__main__':
           sink.variables[varname].atts['source'] = 'CRU'
         
         ## add station meta data
-        for varname in shp_params:
-          var = gpcc025.variables[varname].load()
-          sink.addVariable(var, asNC=True, copy=True, deepcopy=True)
+        if lshp:
+          for varname in shp_params:
+            var = gpcc025.variables[varname].load()
+            sink.addVariable(var, asNC=True, copy=True, deepcopy=True)
             
         # add names and length of months
         sink.axisAnnotation('name_of_month', name_of_month, 'time', 

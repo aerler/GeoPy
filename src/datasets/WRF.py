@@ -271,7 +271,9 @@ class LSM(FileType):
                      pet    = dict(name='pet', units='kg/m^2/s', scalefactor=2./3.), # correction for pre-processed PET
                      SFROFF = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
                      UDROFF = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off
-                     Runoff = dict(name='runoff', units='kg/m^2/s')) # total surface and sub-surface run-off
+                     Runoff = dict(name='runoff', units='kg/m^2/s'), # total surface and sub-surface run-off
+                     SMOIS  = dict(name='aSM', units='m^3/m^3'), # absolute soil moisture
+                     SMCREL = dict(name='rSM', units='')) # relative soil moisture
     self.vars = self.atts.keys()    
     self.climfile = 'wrflsm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrflsm_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)

@@ -546,7 +546,7 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
 # a function to load station data
 @BatchLoad
 def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, 
-                   slices=None, shape=None, station=None, prov=None, constraints=None, 
+                   slices=None, reduction=None, shape=None, station=None, prov=None, constraints=None, 
                    filetypes=None, domain=None, ldataset=False, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
@@ -576,25 +576,17 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   if not ldataset and station and constraints:
     from datasets.EC import selectStations
     ensemble = selectStations(ensemble, stnaxis='station', imaster=None, linplace=False, lall=False, **constraints)
+  # apply general reduction operations
+  if reduction is not None:
+    for ax,op in reduction.iteritems():
+      ensemble = getattr(ensemble,op)(axis=ax)
   # extract seasonal/climatological values/extrema
   # N.B.: the operations below should work with Ensembles as well as Datasets 
   if aggregation:
     if season is not None:
-      if   aggregation.lower() == 'mean': ensemble = ensemble.seasonalMean(season=season, taxis='time', **kwargs)
-      elif aggregation.lower() == 'sum': ensemble = ensemble.seasonalSum(season=season, taxis='time', **kwargs)
-      elif aggregation.lower() == 'std': ensemble = ensemble.seasonalStd(season=season, taxis='time', **kwargs)
-      elif aggregation.lower() == 'var': ensemble = ensemble.seasonalVar(season=season, taxis='time', **kwargs)
-      elif aggregation.lower() == 'max': ensemble = ensemble.seasonalMax(season=season, taxis='time', **kwargs)
-      elif aggregation.lower() == 'min': ensemble = ensemble.seasonalMin(season=season, taxis='time', **kwargs)
-      else: raise NotImplementedError
+      ensemble = getattr(ensemble,'seasonal'+aggregation.title())(season=season, taxis='time', **kwargs)
     else:
-      if   aggregation.lower() == 'mean': ensemble = ensemble.climMean(taxis='time', **kwargs)
-      elif aggregation.lower() == 'sum': ensemble = ensemble.climSum(taxis='time', **kwargs)
-      elif aggregation.lower() == 'std': ensemble = ensemble.climStd(taxis='time', **kwargs)
-      elif aggregation.lower() == 'var': ensemble = ensemble.climVar(taxis='time', **kwargs)
-      elif aggregation.lower() == 'max': ensemble = ensemble.climMax(taxis='time', **kwargs)
-      elif aggregation.lower() == 'min': ensemble = ensemble.climMin(taxis='time', **kwargs)
-      else: raise NotImplementedError
+      ensemble = getattr(ensemble,'clim'+aggregation.title())(taxis='time', **kwargs)
   # return dataset
   return ensemble
 

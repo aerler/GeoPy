@@ -929,7 +929,8 @@ class BaseDatasetTest(unittest.TestCase):
     assert len(ens.members) == len(ens)
     # these var/ax names are specific to the test dataset...
     if all(ens.hasVariable('var')):      
-      assert isinstance(ens.var,Ensemble) and ens.var.basetype == Variable
+      assert isinstance(ens.var,Ensemble) 
+      assert ens.var.basetype == Variable
       #assert ens.var == Ensemble(dataset.var, copy.var, basetype=Variable, idkey='dataset_name')
       assert ens.var.members == [dataset.var, copy.var]
       #print ens.var

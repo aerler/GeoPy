@@ -103,8 +103,8 @@ if __name__ == '__main__':
 #   seasons += ['melt']
   seasons += ['annual']
   seasons += ['summer']
-#   seasons += ['winter']
-  seasons += ['spring']    
+  seasons += ['winter']
+#   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
 #   variables = ['seaice']; seasons = [8] # September seaice
@@ -135,13 +135,17 @@ if __name__ == '__main__':
 #   case = 'unity'; lsamesize = True; grid = 'arb2_d02'
 
 # surface sensitivity test
-  maptype = 'lcc-large'; lstations = False; lbasins = True
-  explist = ['max-grass','Unity','max-ctrl','max-1deg']; period = H03; domain = 1
-#   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02', 'arb2_d02', 'arb2_d02', 'arb2_d02'] 
-  case = 'srfc'; lsamesize = True
-#   explist = ['erai-v361','erai-v361-noah','erai-3km','erai-max']; period = H05; domain = [2,2,3,2]
-#   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02']*2 + ['arb2_d02']*2 
-#   case = 'erai'; lsamesize = True
+#   maptype = 'lcc-intermed'; lstations = False; lbasins = True
+#   explist = ['max-grass','max-ens','max-ctrl','max-1deg']; period = H05; domain = 1
+#   ldiff = True; reflist = ['Unity']; refprd = None; 
+#   grid = ['arb2_d01']*4 
+#   case = 'srfc'; lsamesize = True
+
+# resolution sensitivity test
+  explist = ['max-ctrl','max-ctrl','max-1deg','max-1deg']; period = H15; domain = [1,2]*2
+  ldiff = True; reflist = ['Unity']; refprd = None; 
+  grid = ['arb2_d01','arb2_d02']*2 
+  case = '1deg'; lsamesize = True
 
 # new-v361 validation
 #   explist = ['new-v361','new-nmp','new-clm','max-ens']; period = H05; domain = 2

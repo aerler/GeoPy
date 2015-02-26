@@ -485,6 +485,10 @@ class DatasetNetCDF(Dataset):
       else: ignore_list = set()
       # create axes from netcdf dimensions and coordinate variables
       if varatts is None: varatts = dict() # empty dictionary means no parameters...
+      # generate list of variables that have already been converted
+      varatts_check = dict()
+      for varname,varatt in varatts.iteritems():
+        varatts_check[varatt['name']] = dict(units=varatt.get('units',''), old_name=varname)
       if check_override is None: check_override = [] # list of variables (and axes) that is not checked for consistency
       # N.B.: check_override may be necessary to combine datasets from different files with inconsistent axis instances 
       if axes is None: axes = dict()
@@ -516,37 +520,42 @@ class DatasetNetCDF(Dataset):
         else: dsvars = [var for var in varlist if ds.variables.has_key(var)] # varlist overrides ignore_list 
         # loop over variables in dataset
         for var in dsvars:
+          ncvar= ds.variables[var]
           if var in axes: pass # do not treat coordinate variables as real variables 
-          elif ds.variables[var].ndim == 0: pass # also ignore scalars for now...
+          elif ncvar.ndim == 0: pass # also ignore scalars for now...
           elif var in variables: # if already present, make sure variables are essentially the same
             varobj = variables[var] 
             if var in check_override: pass
-            elif varobj.strvar and varobj.ndim == ds.variables[var].ndim-1:
-              if not ( varobj.shape == ds.variables[var].shape[:-1] and
-                varobj.ncvar.dimensions == ds.variables[var].dimensions ):
+            elif varobj.strvar and varobj.ndim == ncvar.ndim-1:
+              if not ( varobj.shape == ncvar.shape[:-1] and
+                varobj.ncvar.dimensions == ncvar.dimensions ):
                 raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files incompatible.".format(var)
             else: 
-              if not ( varobj.shape == ds.variables[var].shape and
-                 varobj.ncvar.dimensions == ds.variables[var].dimensions ):              
+              if not ( varobj.shape == ncvar.shape and
+                 varobj.ncvar.dimensions == ncvar.dimensions ):              
                 raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files incompatible.".format(var) 
           else: # if this is a new variable, add it to the list
-            tmpatts = varatts.get(var,{'name':var})
-            if ds.variables[var].dtype == '|S1' and all([dim in axes for dim in ds.variables[var].dimensions[:-1]]): # string variable
-              varaxes = [axes[dim] for dim in ds.variables[var].dimensions[:-1]] # collect axes (except last)
-              strtype = np.dtype('|S{:d}'.format(ds.variables[var].shape[-1])) # string with length of string dimension
+            ncunits = ncvar.units if hasattr(ncvar,'units') else ''
+            if var in varatts_check and ncunits == varatts_check[var]['units']:
+              tmpatts = varatts[varatts_check[var]['old_name']] # must be in varatts, too
+            elif var in varatts: tmpatts = varatts[var]
+            else: tmpatts = dict(name=var,units=ncunits)
+            if ncvar.dtype == '|S1' and all([dim in axes for dim in ncvar.dimensions[:-1]]): # string variable
+              varaxes = [axes[dim] for dim in ncvar.dimensions[:-1]] # collect axes (except last)
+              strtype = np.dtype('|S{:d}'.format(ncvar.shape[-1])) # string with length of string dimension
               # N.B.: apparently len(dim) does not work properly - ncvar.shape is more reliable
               # create new variable using the override parameters in varatts
-              variables[tmpatts['name']] = VarNC(ncvar=ds.variables[var], axes=varaxes, dtype=strtype, 
+              variables[tmpatts['name']] = VarNC(ncvar=ncvar, axes=varaxes, dtype=strtype, 
                                                  mode=mode, squeeze=squeeze, load=load, **tmpatts)
-            elif all([dim in axes for dim in ds.variables[var].dimensions]):
-              varaxes = [axes[dim] for dim in ds.variables[var].dimensions] # collect axes
+            elif all([dim in axes for dim in ncvar.dimensions]):
+              varaxes = [axes[dim] for dim in ncvar.dimensions] # collect axes
               # create new variable using the override parameters in varatts
-              variables[tmpatts['name']] = VarNC(ncvar=ds.variables[var], axes=varaxes, 
+              variables[tmpatts['name']] = VarNC(ncvar=ncvar, axes=varaxes, 
                                                  mode=mode, squeeze=squeeze, load=load, **tmpatts)
               # N.B.: using tmpatts['name'] as key is more reliable in preventing duplicate variables,
               #       because it also works when NetCDF names are different across files
-            elif not any([dim in ignore_list for dim in ds.variables[var].dimensions]): # legitimate omission
-              raise DatasetError, 'Error constructing Variable: Axes/coordinates not found:\n {:s}, {:s}'.format(str(var), str(ds.variables[var].dimensions))
+            elif not any([dim in ignore_list for dim in ncvar.dimensions]): # legitimate omission
+              raise DatasetError, 'Error constructing Variable: Axes/coordinates not found:\n {:s}, {:s}'.format(str(var), str(ncvar.dimensions))
       variables = variables.values()
     else:
       if isinstance(variables,dict): variables = variables.values()
@@ -655,7 +664,7 @@ class DatasetNetCDF(Dataset):
       # hand-off to parent method and return status
       return super(DatasetNetCDF,self).addVariable(var=var, copy=False, loverwrite=loverwrite)
   
-  def replaceVariable(self, oldvar, newvar=None, asNC=True, deepcopy=False):
+  def replaceVariable(self, oldvar, newvar=None, asNC=False, deepcopy=False):
     ''' Replace an existing Variable with a different one and transfer NetCDF reference and axes. '''
     if newvar is None: 
       newvar = oldvar; oldvar = newvar.name # i.e. replace old var with the same name

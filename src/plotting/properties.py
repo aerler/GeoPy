@@ -184,6 +184,12 @@ tmp = PlotAtts(name = 'snowh', title = 'Snow Depth',
 # add to collection
 variablePlotatts['snowh'] = tmp
 
+## (absolute) Soil Moisture
+tmp = PlotAtts(name = 'aSM', title = '(absolute) Soil Moisture', 
+               units = '$m^3/m^3$', scalefactor = 1.)
+# add to collection
+variablePlotatts['aSM'] = tmp
+
 ## 2 m Water Vapor Mixing Ratio
 tmp = PlotAtts(name = '$Q_{2m}$', title = '2 m Water Vapor', 
                units = 'hPa', scalefactor = 1.e-2)

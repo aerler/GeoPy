@@ -304,6 +304,10 @@ class Variable(object):
   def dataset_name(self):
     ''' The name of the Dataset the Variable belongs to (or None). '''
     return self.dataset.name if self.dataset else None
+#   @dataset_name.setter
+#   def dataset_name(self, dataset_name):
+#     if self.dataset is None: self._dataset_name = dataset_name
+#     else: raise ValueError, self.dataset
     
   @property
   def data(self):
@@ -2001,7 +2005,7 @@ class Dataset(object):
     if isinstance(oldvar,Variable): oldname = oldvar.name # just go by name
     else: oldname = oldvar
     oldvar = self.variables[oldname]
-    if oldvar.shape != newvar.shape: raise AxisError # shape has to be the same!
+    #if oldvar.shape != newvar.shape: raise AxisError # shape has to be the same!
     # N.B.: the shape of a variable in a NetCDF file can't change!
     # remove old variable from dataset...
     self.removeVariable(oldvar)
@@ -2222,8 +2226,10 @@ class Dataset(object):
     ''' Yet another way to add a variable, this time by name... conforming to the container protocol. '''
     if not isinstance(var, Variable) or not isinstance(varname, basestring): raise TypeError, varname
     var.name = varname # change name to varname
-    #if 'name' in var.atts: var.atts['name'] = varname
-    check = self.addVariable(var) # add variable
+    if self.hasVariable(varname, strict=False):
+      check = self.replaceVariable(var)
+    else:
+      check = self.addVariable(var) # add variable
     if not check: raise KeyError, varname # raise error if variable is not present
     
   def __delitem__(self, varname):
@@ -2298,7 +2304,7 @@ class Dataset(object):
       var.load(fillValue=fillValue, **kwargs)
       
   def _apply_to_all(self, fctsdict, asVar=True, dsatts=None, copyother=True, deepcopy=False, 
-                    lcheckVar=False, lcheckAxis=False, **kwargs):
+                    lcheckVar=False, lcheckAxis=False, lkeepName=True, **kwargs):
     ''' Apply functions from fctsdict to variables in dataset and return a new dataset. '''
     # separate axes from kwargs
     axes = {axname:ax for axname,ax in kwargs.iteritems() if self.hasAxis(axname)}
@@ -2310,7 +2316,9 @@ class Dataset(object):
         # figure out, which axes apply
         tmpargs = kwargs.copy()
         if axes: tmpargs.update({key:value for key,value in axes.iteritems() if var.hasAxis(key)})
-        newvars[varname] = fctsdict[varname](asVar=asVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **tmpargs)        
+        newvars[varname] = fctsdict[varname](asVar=asVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **tmpargs)
+        if lkeepName and newvars[varname] is not None: 
+          newvars[varname].name = varname # don't change names         
       elif copyother and asVar:
         newvars[varname] = var.copy(deepcopy=deepcopy)
     # assemble new dataset
@@ -2561,13 +2569,19 @@ class Ensemble(object):
         if len(fs) == len(set([f.name for f in fs if f.name is not None])): 
           return Ensemble(*fs, idkey='name') # basetype=Variable,
         elif len(fs) == len(set([f.dataset.name for f in fs if f.dataset is not None])): 
-          for f in fs: f.dataset_name = f.dataset.name 
+#           for f in fs: f.dataset_name = f.dataset.name 
           return Ensemble(*fs, idkey='dataset_name') # basetype=Variable, 
         else:
           #raise KeyError, "No unique keys found for Ensemble members (Variables)"
           # just re-use current keys
-          for f,member in zip(fs,self.members): 
-            f.dataset_name = getattr(member,self.idkey)
+          for f,member in zip(fs,self.members):
+            if self.idkey == 'dataset_name':
+              if f.dataset is None and f.dataset_name is None: f.dataset = member.dataset
+              else: raise DatasetError, f.dataset 
+            elif not hasattr(f, self.idkey): 
+              setattr(f, self.idkey, getattr(member,self.idkey))
+            else: raise DatasetError, self.idkey
+#             f.__dict__[self.idkey] = getattr(member,self.idkey)
           return Ensemble(*fs, idkey=self.idkey) # axes from several variables can be the same objects
       elif all([isinstance(f, Dataset) for f in fs]): 
         # check for unique keys
