@@ -830,7 +830,8 @@ class BaseDatasetTest(unittest.TestCase):
     try: dataset.test_attr # make sure that non-existant attributes throw exceptions
     except AttributeError: pass 
     # test fitDist
-    dds = dataset.fitDist(axis='time', lsuffix=True) # mean() is of course a Variable method
+#     dds = dataset.fitDist(axis='time', lsuffix=True, lkeepName=False) # this is of course a Variable method
+    dds = dataset.mean(axis='time', lkeepName=False) # this is of course a Variable method
     assert isinstance(dds,Dataset) and len(dds) <= len(dataset) # number of variables (less, because string vars don't average...)
     for varname,var in dds.variables.iteritems():
       assert not var.hasAxis('time') or var.strvar
@@ -839,7 +840,8 @@ class BaseDatasetTest(unittest.TestCase):
       else:
         if varname[-2] == '_': di = varname.rfind('_', 0, -2) # gumbel_r
         else: di = varname.rfind('_')
-        assert varname[di+1:] in ('norm','gumbel_r','genextreme')
+#         assert varname[di+1:] in ('norm','gumbel_r','genextreme')
+        assert varname[di+1:] == 'mean'
         assert varname[:di] in dataset      
     del dds; gc.collect()      
     
@@ -1436,13 +1438,13 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
+#     tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
        
     
     # construct dictionary of test classes defined above

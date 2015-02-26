@@ -2317,8 +2317,8 @@ class Dataset(object):
         tmpargs = kwargs.copy()
         if axes: tmpargs.update({key:value for key,value in axes.iteritems() if var.hasAxis(key)})
         newvars[varname] = fctsdict[varname](asVar=asVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **tmpargs)
-        if lkeepName and newvars[varname] is not None: 
-          newvars[varname].name = varname # don't change names         
+        if lkeepName and asVar and newvars[varname] is not None: # can also be None or np.ndarray
+          newvars[varname].name = varname # don't change names, since we are creating a new dataset         
       elif copyother and asVar:
         newvars[varname] = var.copy(deepcopy=deepcopy)
     # assemble new dataset
