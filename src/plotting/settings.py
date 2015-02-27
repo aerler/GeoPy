@@ -55,8 +55,9 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(-50.,50,41); clbl = '%2.0f'; cmap = mpl.cm.PuOr # mm/day    
     elif var in ('T2','Ts','Tmin','Tmax','Tmean'):
       clevs = np.linspace(-3,3,21); clbl = '%2.1f' 
-    elif var in ('evap','pet','p-et','precip','precipc','precipnc','waterflx'):
-      clevs = np.linspace(-100,100,21); clbl = '%2.0f'  
+    elif var in ('evap','pet','p-et','precip','precipc','precipnc','waterflx',
+                 'WaterTransport_U','WaterTransport_V'):
+      clevs = np.linspace(-100,100,41); clbl = '%2.0f'  
     else: 
       clevs = np.linspace(-50,50,21); clbl = '%2.0f'  
   else:
@@ -98,9 +99,13 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(0,6,26); clbl = '%02.1f' # mm/day
       if season == 'winter': clevs -= 2
       elif season == 'summer': clevs += 2    
-    elif var in ('p-et','waterflx','WaterTransport_U','WaterTransport_V'): # moisture fluxes (kg /(m^2 s))
+    elif var in ('p-et','waterflx'): # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
       clevs = np.linspace(-2,2,25); cmap = cm.avhrr_r; clbl = '%02.1f' # mpl.cm.PuOr
+    elif var == 'WaterTransport_U': # moisture fluxes (kg /(m^2 s))
+      clevs = np.linspace(0,3,31); clbl = '%02.1f' # mpl.cm.PuOr
+    elif var == 'WaterTransport_V': # moisture fluxes (kg /(m^2 s))
+      clevs = np.linspace(-1,2,31); clbl = '%02.1f' # mpl.cm.PuOr
     elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff'): # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
       clevs = np.linspace(0,5,25); clbl = '%02.1f'; cmap = mpl.cm.YlGnBu

@@ -174,12 +174,11 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
                  lautoregrid=False):
   ''' function to load a list of datasets/experiments based on names and other common parameters '''
   # for load function (below)
-  from projects.WRF_experiments import Exp
   if lbackground and not ltuple: raise ValueError
   # check and expand lists
   if n is None: n = len(explist)
   elif not isinstance(n, (int,np.integer)): raise TypeError
-  explist = checkItemList(explist, n, (basestring,Exp,tuple))
+  explist = checkItemList(explist, n, (basestring,tuple))
   titles = checkItemList(titles, n, basestring, default=None)
   periods  = checkItemList(periods, n, (basestring,int,np.integer), default=None, iterable=False)
   if isinstance(domains,tuple): ltpl = ltuple
@@ -211,8 +210,7 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
                            lbackground=lbackground, lWRFnative=lWRFnative, lautoregrid=lautoregrid)
     dslist.append(ext) 
     if tit is not None: axtitles.append(tit)
-    else: axtitles.append(axt)  
-  print("")
+    else: axtitles.append(axt)
   # count experiment tuples (layers per panel)
   if ltuple:
     nlist = [] # list of length for each element (tuple)

@@ -2106,6 +2106,11 @@ class Dataset(object):
         # just extract value and add as attribute
         if var.name in singlevaratts: 
           raise NotImplementedError, "Name collision between attribute and singleton variable '{:s}'".format(var.name)
+        if not var.data: 
+          try:
+            var.load() # necessary to extract value
+          except: 
+            pass
         attval = var(lidx=lidx, lrng=lrng, asVar=False, lcheck=False, lsqueeze=True, 
                      lcopy=False, years=years, listAxis=listAxis, **axes)    
         # convert to Python scalar (of sorts)

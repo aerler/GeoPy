@@ -39,9 +39,9 @@ if __name__ == '__main__':
   WRFfiletypes = [] # WRF data source
 #   WRFfiletypes += ['hydro']
   #WRFfiletypes += ['lsm']
-  WRFfiletypes += ['srfc']
+#   WRFfiletypes += ['srfc']
   #WRFfiletypes += ['xtrm']
-#   WRFfiletypes += ['plev3d']
+  WRFfiletypes += ['plev3d']
   # period shortcuts
   H01 = '1979-1980'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994'; H60 = '1949-2009' # historical validation periods
@@ -82,10 +82,10 @@ if __name__ == '__main__':
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
 #   variables += ['precip']
-#   variables += ['WaterTransport_U']
-#   variables += ['WaterTransport_V']
+  variables += ['WaterTransport_U']
+  variables += ['WaterTransport_V']
 #   variables += ['waterflx']
-  variables += ['p-et']
+#   variables += ['p-et']
 #   variables += ['precipnc', 'precipc']
 #   variables += ['Q2']
 #   variables += ['evap']
@@ -123,16 +123,21 @@ if __name__ == '__main__':
   ## case settings
     
   folder = figure_folder
-  lpickle = True # load projection from file or recompute
+  lpickle = False # load projection from file or recompute
   lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = False; lbasins = True
 #   maptype = 'lcc-col'; lstations = False; lbasins = True
 
-# draw a map
+# high resolution map
 #   maptype = 'lcc-new'; lstations = True; stations = 'EC'; lbasins = True
 #   period = H01; lWRFnative = True; lframe = False; loutline = False
 #   explist = ['col1-ctrl']; exptitles = ' '; domain = (2,3)
 #   case = 'BCAB_stns'; figtitles = 'EC Stations (BC & Alberta) and Terrain Height [km]'
+# map with most of Canada
+#   maptype = 'lcc-can'; lstations = False; lbasins = True
+#   period = H05; lWRFnative = True; lframe = False; loutline = False
+#   explist = ['max-ctrl']; exptitles = ' '; domain = (1,2)
+#   case = 'topo_can'
 
 # observations
 #   explist = ['Unity']; maptype = 'lcc-new'; period = H15
@@ -140,10 +145,12 @@ if __name__ == '__main__':
 #   case = 'unity'; lsamesize = True; grid = 'arb2_d02'
 
 # water vapor transport
+#   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
   explist = ['max-ens','max-ens-2050','max-ens-2100']*2
   seasons = [('summer',)*3+('winter',)*3]
-  period = [H15,A15,B15]*2; domain = [2]
-#   ldiff = True; reflist = ['Unity']; refprd = None;
+  period = [H15,A15,B15]*2; domain = 2
+  maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
+#   lfrac = True; reflist = ['max-ens',]; refprd = H15;
   case = 'flx'; lsamesize = True
 
 # surface sensitivity test
@@ -284,8 +291,11 @@ if __name__ == '__main__':
     lref = True    
   else: lref = False
   lbackground = not lref and lbackground
-    
-  loadlist = set(variables).union(('lon2D','lat2D','landmask','landfrac')) # landfrac is needed for CESM landmask
+  loadlist = set()
+  for var in variables: 
+    if isinstance(var,(tuple,list)): loadlist.update(var)
+    else: loadlist.add(var) 
+  loadlist.update(('lon2D','lat2D','landmask','landfrac')) # landfrac is needed for CESM landmask
   exps, axtitles, nexps = loadDatasets(explist, n=None, varlist=loadlist, titles=exptitles, periods=period, 
                                        domains=domain, grids=grid, resolutions=resolution, 
                                        filetypes=WRFfiletypes, lWRFnative=lWRFnative, ltuple=True, 
@@ -296,15 +306,17 @@ if __name__ == '__main__':
   if lref:
     if refprd is None: refprd = period    
     if refdom is None: refdom = domain
-    refs, a, b = loadDatasets(reflist, n=None, varlist=loadlist, titles=None, periods=refprd, domains=refdom, 
-                              grids=grid, resolutions=resolution, filetypes=WRFfiletypes, lWRFnative=lWRFnative, 
-                              ltuple=True, lbackground=lbackground)
+    refs, a, b = loadDatasets(reflist, n=None, varlist=loadlist, titles=None, periods=refprd, 
+                              domains=refdom, grids=grid, resolutions=resolution, filetypes=WRFfiletypes, 
+                              lWRFnative=lWRFnative, ltuple=True, lbackground=lbackground)
     # merge lists
-    if len(exps) != len(refs): raise DatasetError, 'Experiments and reference list need to have the same length!'
+    if len(exps) != len(refs): 
+      raise DatasetError, 'Experiments and reference list need to have the same length!'
     for i in xrange(len(exps)):
       if not isinstance(exps[i],tuple): raise TypeError 
       if not isinstance(refs[i],tuple): raise TypeError
-      if len(exps[i]) != len(refs[i]): DatasetError, 'Experiments and reference tuples need to have the same length!'
+      if len(exps[i]) != len(refs[i]): 
+        DatasetError, 'Experiments and reference tuples need to have the same length!'
       exps[i] = exps[i] + refs[i] # merge lists/tuples
   
   
@@ -407,7 +419,7 @@ if __name__ == '__main__':
             vardata = expvar.seasonalMean(season, asVar=False)
           else:
             vardata = expvar[:].squeeze()
-          if expvar.masked: vardata.set_fill_value(np.NaN) # fill with NaN
+#           if expvar.masked: vardata.set_fill_value(np.NaN) # fill with NaN
           vardata = vardata.squeeze() # make sure it is 2D
           if expvar.units != expvar.plot.units:
             vardata = vardata * expvar.plot.scalefactor # apply plot unit conversion
@@ -485,12 +497,14 @@ if __name__ == '__main__':
               # N.B.: for some reason, using np.ones_like() causes a masked data array to fill with zeros  
               #print bdy.mean(), data[n][m].__class__.__name__, data[n][m].fill_value 
               bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
-              maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', linewidths=framewidths, fill=False) # draw boundary of data
+              maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', 
+                              linewidths=framewidths, fill=False) # draw boundary of data
             if lframe:
               if isinstance(domain,(tuple,list)) and not ( domain[0] == 0 and m == 0):
                 bdy = ma.ones(x[n][m].shape)   
                 bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
-                maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', linewidths=framewidths, fill=False) # draw boundary of domain
+                maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', 
+                                linewidths=framewidths, fill=False) # draw boundary of domain
       # draw data
       norm = mpl.colors.Normalize(vmin=min(clevs),vmax=max(clevs),clip=True) # for colormap
       cd = []
@@ -500,11 +514,15 @@ if __name__ == '__main__':
           vmean, vmin, vmax = np.nanmean(data[n][m]), np.nanmin(data[n][m]), np.nanmax(data[n][m])
           if ldiff or lfrac: 
             vrms = np.sqrt(np.nanmean(data[n][m]**2))
-            print('panel {:d}: bias {:f} / rms {:f} / min {:f} / max {:f}'.format(n, vmean, vrms, vmin, vmax))
+            print('panel {:d}: bias {:f} / rms {:f} / min {:f} / max {:f}'.format(
+                            n, vmean, vrms, vmin, vmax))
           else: 
             vstd = np.nanstd(data[n][m])
-            print('panel {:d}: mean {:f} / std {:f} / min {:f} / max {:f}'.format(n, vmean, vstd, vmin, vmax))
-          if lcontour: cd.append(maps[n].contourf(x[n][m],y[n][m],data[n][m],clevs,ax=ax[n],cmap=cmap, norm=norm,extend='both'))  
+            print('panel {:d}: mean {:f} / std {:f} / min {:f} / max {:f}'.format(
+                            n, vmean, vstd, vmin, vmax))
+          if lcontour: 
+            cd.append(maps[n].contourf(x[n][m],y[n][m],data[n][m],clevs,ax=ax[n],cmap=cmap, 
+                                       norm=norm,extend='both'))  
           else: cd.append(maps[n].pcolormesh(x[n][m],y[n][m],data[n][m],cmap=cmap,shading='gouraud'))
       # add colorbar
       #TODO: use utils.sharedColorbar
@@ -544,7 +562,8 @@ if __name__ == '__main__':
           bmap = maps[n]
           kwargs = dict()
           # white-out continents, if we have no proper land mask 
-          if locean or ( lmsklnd and not (exps[n][0].variables.has_key('lndmsk') ) or exps[n][0].variables.has_key('lndidx')): 
+          if locean or ( lmsklnd and not (exps[n][0].variables.has_key('lndmsk') ) 
+                         or exps[n][0].variables.has_key('lndidx')): 
             kwargs['maskland'] = True          
           if ldiff or lfrac or locean: 
             kwargs['ocean_color'] = 'white' ; kwargs['land_color'] = 'white'
@@ -563,27 +582,26 @@ if __name__ == '__main__':
               ecstns = loadEC_StnTS(station=station_type, varlist=varlist)
               wrfstns = loadWRF_StnTS(experiment='max-ctrl', varlist=varlist, station=station_type, 
                                       filetypes='srfc', domains=2)
-              ecstns,wrfstns = selectStations( [ecstns, wrfstns] , prov=('BC','AB'), min_len=50, lat=(45,60), 
+              ecstns,wrfstns = selectStations([ecstns, wrfstns] , prov=('BC','AB'), min_len=50, lat=(45,60), 
                                               max_zerr=300, #lon=(-130,-110),
                                               stnaxis='station', imaster=None, linplace=False, lall=False)
               # loop over points
               for lon,lat in zip(ecstns.stn_lon, ecstns.stn_lat):
                 xx,yy = bmap(lon, lat)
                 bmap.plot(xx,yy,'wo',markersize=5)
-                #ax.text(xx+1.5e4,yy-1.5e4,name,ha='left',va='top',fontsize=8)
             else: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
           # add ARB basin outline
           if lbasins:
             shpargs = dict(linewidth = 0.75) 
-#             shpargs = dict(linewidth = 1.)
             for basin in basinlist:      
               basininfo = basins_info[basin]
               if basin in subbasins:
                 for subbasin in subbasins[basin]:		  
-                  bmap.readshapefile(basininfo.shapefiles[subbasin][:-4], subbasin, ax=axn, drawbounds=True, color='k', **shpargs)            
+                  bmap.readshapefile(basininfo.shapefiles[subbasin][:-4], subbasin, ax=axn, 
+                                     drawbounds=True, color='k', **shpargs)            
               else:
-                bmap.readshapefile(basininfo.shapefiles['Whole'+basin][:-4], basin, ax=axn, drawbounds=True, color='k', **shpargs)            
-          #print bmap.ARB_info                   
+                bmap.readshapefile(basininfo.shapefiles['Whole'+basin][:-4], basin, ax=axn, 
+                                   drawbounds=True, color='k', **shpargs)            
               
       # save figure to disk
       if lprint:
