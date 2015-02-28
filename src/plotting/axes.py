@@ -644,15 +644,15 @@ class MyAxes(Axes):
     xaxis = self.xaxis
     xticks = self._tickLabels(xticks, xaxis)
     yticks = self.yaxis.get_ticklabels()
-    # tick label visibility
-    if not loverlap and len(xticks) > 0 and (
-        len(yticks) == 0 or not yticks[-1].get_visible() ):
-        xticks[0].set_visible(False)
     # tick label position
     if self.xtop: 
       self.xaxis.set_tick_params(labeltop=True, labelbottom=False)
     # minor ticks
     if n is not None: self._minorTicks(xticks, n, xaxis)
+    # tick label visibility
+    if not loverlap and len(xticks) > 0 and (
+        len(yticks) == 0 or not yticks[-1].get_visible() ):
+        xticks[0].set_visible(False)
     return xticks
   def yTickLabels(self, yticks, n=None, loverlap=False):
     ''' format y-tick labels '''

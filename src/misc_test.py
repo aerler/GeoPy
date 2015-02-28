@@ -184,6 +184,18 @@ class DatasetsTest(unittest.TestCase):
     ## some debugging test
 #     gevens = [ens.fitDist(lflatten=True, axis=None) for ens in enslst]
 #     print(''); print(gevens[0][0])
+
+  def testLoadStandardDeviation(self):
+    ''' test station data load functions (ensemble and list) '''
+    from datasets.common import loadEnsembleTS
+    # just a random function call that exposes a bug in Numpy's nanfunctions.py    
+    slices = {'shape_name': 'FRB', 'years': (1979, 1994)}
+    loadEnsembleTS(names='CRU', season=None, aggregation='std', slices=slices, 
+                             varlist=['precip'], shape='shpavg', ldataset=True)
+    # N.B.: the following link to a patched file should fix the problem:
+    #  /home/data/Enthought/EPD/lib/python2.7/site-packages/numpy/lib/nanfunctions.py 
+    #  -> /home/data/Code/PyGeoData/src/utils/nanfunctions.py
+    # But diff first, to check for actual updates!
     
     
 if __name__ == "__main__":
@@ -195,6 +207,7 @@ if __name__ == "__main__":
 #     specific_tests = ['ExpArgList']
 #     specific_tests = ['LoadDataset']
 #     specific_tests = ['LoadEnsembleTS']
+    specific_tests = ['LoadStandardDeviation']
 
 
     # list of tests to be performed
