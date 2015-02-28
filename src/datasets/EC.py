@@ -18,7 +18,7 @@ from datasets.common import days_per_month, name_of_month, data_root, selectElem
 from geodata.misc import ParseError, DateError, VariableError, ArgumentError, RecordClass, StrictRecordClass,\
   isNumber
 from geodata.base import Axis, Variable, Dataset
-from geodata.nctools import writeNetCDF
+from utils.nctools import writeNetCDF
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import NamedShape, ShapeInfo
 import average.derived_variables as dv

@@ -13,7 +13,7 @@ import os
 # internal imports
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset
-from geodata.nctools import writeNetCDF, add_strvar
+from utils.nctools import writeNetCDF, add_strvar
 from datasets.common import name_of_month, data_root, grid_folder, transformPrecip
 from datasets.common import translateVarNames, loadObservations, addLandMask, addLengthAndNamesOfMonth, getFileName
 # from geodata.utils import DatasetError

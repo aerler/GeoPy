@@ -26,6 +26,18 @@ def namedTuple(typename=None, field_names=None, verbose=False, rename=False, **k
   # return tuple instance 
   return nt
 
+# convert Python types to Numpy scalar types
+def toNumpyScalar(num, dtype=None):
+  ''' convert a Python number to an equivalent Numpy scalar type '''
+  if isinstance(dtype,np.dtype): 
+    num = dtype.type(num)
+  else:  
+    if isinstance(num, float): num = np.float64(num)
+    elif isinstance(num, int): num = np.int64(num)
+    elif isinstance(num, bool): num = np.bool8(num)
+    else: raise NotImplementedError, num
+  return num
+
 # helper function to form inner and outer product of multiple lists
 def expandArgumentList(expand_list=None, lproduct='outer', **kwargs):
   ''' A function that generates a list of complete argument dict's, based on given kwargs and certain 

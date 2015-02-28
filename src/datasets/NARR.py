@@ -297,7 +297,7 @@ if __name__ == '__main__':
     
       
       from datasets.common import addLengthAndNamesOfMonth, getFileName
-      from geodata.nctools import writeNetCDF, add_strvar
+      from utils.nctools import writeNetCDF, add_strvar
       
       # load dataset
       dataset = loadNARR_LTM()

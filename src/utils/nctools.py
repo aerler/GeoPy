@@ -31,7 +31,49 @@ class NCAxisError(Exception):
   pass
 
 
-## generic functions
+## helper functions
+
+def checkFillValue(fillValue, dtype):
+  ''' check a fill value and return either return a valid value or raise an exception '''
+  lstrvar = dtype.kind == 'S'
+  if not lstrvar and isinstance(fillValue, basestring): 
+    fillValue = None # invalid value
+    warn("Removed malformed fill_value '{:s}'.")
+  if fillValue is not None:
+    if isinstance(fillValue, np.ndarray): fillValue = np.asscalar(fillValue)
+    fillValue = dtype.type(fillValue) # transform into appropriate numpy scalar
+    if not np.issubdtype(fillValue,dtype): raise TypeError, fillValue # convert to Numpy type      
+  return fillValue
+
+def coerceAtts(atts):
+  ''' Convert an attribute dictionary to a NetCDF compatible format. '''
+  if not isinstance(atts,dict): raise TypeError
+  ncatts = dict()
+  # loop over items
+  for key,value in atts.iteritems():
+    if key in ('missing_value','fillValue','_FillValue'): pass
+    # N.B.: these are special attributes that the NetCDF module will try to read
+    elif isinstance(key,basestring) and key[0] == '_' : pass # skip (internal attributes)
+    elif value is None: pass # skip (invalid value / not assigned)
+    elif not isinstance(value,(basestring,np.ndarray,np.inexact,float,np.integer,int)):
+      if 'name' in dir(value):
+        ncatts[key] = value.name # mostly for datasets and variables
+      elif isinstance(value,col.Iterable):
+        if len(value) == 0: ncatts[key] = '' # empty attribute
+        elif all([isinstance(val,(int,np.integer,float,np.inexact)) for val in value]):
+          # N.B.: int & float are not part of their numpy equivalents
+          ncatts[key] = np.array(value)         
+        else:
+          l = '(' # fake list representation
+          for elt in value[0:-1]: l += '{0:s}, '.format(str(elt))
+          l += '{0:s})'.format(str(value[-1]))
+          ncatts[key] = l          
+      else: ncatts[key] = str(value) 
+    else: ncatts[key] = value
+  return ncatts
+
+
+## generic netcdf functions
 
 def add_strvar(dst, name, strlist, dim, atts=None):
   ''' Function that adds a list of string variables as a variable along a specified dimension. '''
@@ -101,6 +143,7 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   if dtype is None: raise NCDataError, "Cannot construct a NetCDF Variable without a data array or an abstract data type."
   dtype = np.dtype(dtype) # use numpy types
   if dtype is np.dtype('bool_'): dtype = np.dtype('i1') # cast numpy bools as 8-bit integers
+  lstrvar = dtype.kind == 'S'
   # check/create dimensions
   if shape is None: shape = [None,]*len(dims)
   else: shape = list(shape)
@@ -126,7 +169,6 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
     elif atts and 'missing_value' in atts: fillValue = atts['missing_value']
     elif data is not None and isinstance(data,ma.MaskedArray): # defaults values for numpy masked arrays
       fillValue = ma.default_fill_value(dtype)
-      atts['missing_value'] = fillValue      
       # if isinstance(dtype,np.bool_): fillValue = True
       # elif isinstance(dtype,np.integer): fillValue = 999999
       # elif isinstance(dtype,np.floating): fillValue = 1.e20
@@ -135,10 +177,13 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
       # else: fillValue = None # for 'object'
     else: pass # if it is not a masked array and no missing value information was passed, don't assign fillValue 
   else:  
-    if data is not None and isinstance(data,ma.MaskedArray): data.set_fill_value(fillValue)    
+    if data is not None and isinstance(data,ma.MaskedArray): data.set_fill_value(fillValue)
+  # make sure fillValue is OK (there have been problems...)    
+  fillValue = checkFillValue(fillValue, dtype)
+  if fillValue is not None:
     atts['missing_value'] = fillValue # I use fillValue and missing_value the same way
   # add extra dimension for strings
-  if dtype.kind == 'S' and dtype.itemsize > 1:
+  if lstrvar and dtype.itemsize > 1:
     # add extra dimension
     shape = shape + (dtype.itemsize,)
     dims = dims + ('str_dim_'+name,) # naming pattern for string dimensions
@@ -158,12 +203,14 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   # return var reference
   return var
 
+
 ## copy functions
 
 # copy attributes from a variable or dataset to another
 def copy_ncatts(dst, src, prefix = '', incl_=True):
   for att in src.ncattrs(): 
-    if att[0] != '_' or incl_: # these seem to cause problems
+    if att in ('missing_value','fillValue','_FillValue'): pass
+    elif att[0] != '_' or incl_: # these seem to cause problems
       dst.setncattr(prefix+att,src.getncattr(att))
       
 # copy variables from one dataset to another
@@ -210,33 +257,6 @@ def copy_dims(dst, src, dimlist=None, namemap=None, copy_coords=True, **kwargs):
     
 
 ## Dataset functions
-
-def coerceAtts(atts):
-  ''' Convert an attribute dictionary to a NetCDF compatible format. '''
-  if not isinstance(atts,dict): raise TypeError
-  ncatts = dict()
-  # loop over items
-  for key,value in atts.iteritems():
-    if isinstance(key,basestring) and key[0] == '_' : pass # skip (internal attributes)
-    elif value is None: pass # skip (invalid value / not assigned)
-    elif not isinstance(value,(basestring,np.ndarray,np.inexact,float,np.integer,int)):
-      if 'name' in dir(value):
-        ncatts[key] = value.name # mostly for datasets and variables
-      elif isinstance(value,col.Iterable):
-        if len(value) == 0: ncatts[key] = '' # empty attribute
-        elif all([isinstance(val,(int,np.integer,float,np.inexact)) for val in value]):
-          # N.B.: int & float are not part of their numpy equivalents
-          ncatts[key] = np.array(value)         
-        else:
-          l = '(' # fake list representation
-          try: 
-            for elt in value[0:-1]: l += '{0:s}, '.format(str(elt))
-          except: print elt 
-          l += '{0:s})'.format(str(value[-1]))
-          ncatts[key] = l          
-      else: ncatts[key] = str(value) 
-    else: ncatts[key] = value
-  return ncatts
 
 def writeNetCDF(dataset, ncfile, ncformat='NETCDF4', zlib=True, writeData=True, overwrite=True, skipUnloaded=False, 
                 feedback=False, close=True):

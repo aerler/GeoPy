@@ -210,7 +210,7 @@ if __name__ == '__main__':
   elif mode == 'convert_ASCII': 
     
     # import netcdf tools
-    from geodata.nctools import add_coord, add_var, add_strvar
+    from utils.nctools import add_coord, add_var, add_strvar
     
     ## load data
     data = dict()

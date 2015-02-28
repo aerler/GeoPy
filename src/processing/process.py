@@ -18,7 +18,7 @@ from osgeo import gdal, osr
 from geodata.misc import VariableError, AxisError, PermissionError, DatasetError, GDALError, ArgumentError #, DateError
 from geodata.base import Axis, Dataset, Variable
 from geodata.netcdf import DatasetNetCDF, asDatasetNC
-from geodata.nctools import writeNetCDF
+from utils.nctools import writeNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition, gdalInterp,\
   NamedShape
 from collections import OrderedDict

@@ -17,7 +17,7 @@ from geodata.base import Variable, Axis
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, addGeoLocator
 from geodata.misc import DatasetError
-from geodata.nctools import writeNetCDF
+from utils.nctools import writeNetCDF
 from datasets.common import data_root, grid_folder, transformPrecip, timeSlice
 from datasets.common import translateVarNames, loadObservations, addLandMask, addLengthAndNamesOfMonth, getFileName
 from processing.process import CentralProcessingUnit
@@ -236,14 +236,14 @@ if __name__ == '__main__':
   
 #   mode = 'test_climatology'; reses = ('025',); period = None
 #   mode = 'test_timeseries'; reses = ('25',)
-#   mode = 'test_point_climatology'; reses = ('025',); period = None
+  mode = 'test_point_climatology'; reses = ('025',); period = None
 #   mode = 'test_point_timeseries'; reses = ('05',)  
 #   mode = 'convert_climatology'; reses = ('25',); period = None
 #   reses = ('025','05', '10', '25'); period = None  
-  mode = 'average_timeseries'; reses = ('25',) # for testing
-  reses = ('05', '10', '25')
+#   mode = 'average_timeseries'; reses = ('25',) # for testing
+#   reses = ('05', '10', '25')
 #   reses = ('25',)
-  period = (1979,1982)
+#   period = (1979,1982)
 #   period = (1979,1984)
 #   period = (1979,1989)
 #   period = (1979,1994)
@@ -298,8 +298,12 @@ if __name__ == '__main__':
             
       # load averaged climatology file
       print('')
-      if pntset in ('shpavg',): dataset = loadGPCC_Shp(shape=pntset, resolution=res, period=period)
+      if pntset in ('shpavg',): 
+        dataset = loadGPCC_Shp(shape=pntset, resolution=res, period=period)
+        print(dataset.shp_area.mean())
+        print('')
       else: dataset = loadGPCC_Stn(station=pntset, resolution=res, period=period)
+      dataset.load()
       print(dataset)
       print('')
       print(dataset.precip.mean())

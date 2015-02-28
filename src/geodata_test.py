@@ -14,7 +14,7 @@ import os
 import gc
 
 # import modules to be tested
-from geodata.nctools import writeNetCDF
+from utils.nctools import writeNetCDF
 from geodata.misc import isZero, isOne, isEqual
 from geodata.base import Variable, Axis, Dataset, Ensemble, concatVars, concatDatasets
 from geodata.stats import VarKDE, VarRV, asDistVar
@@ -1439,11 +1439,11 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
 #     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-    tests += ['GDALVar']
+    tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
+    tests += ['DatasetNetCDF']
 #     tests += ['DatasetGDAL']
        
     

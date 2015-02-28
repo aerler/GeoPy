@@ -21,7 +21,6 @@ from datasets.common import translateVarNames, data_root, grid_folder
 from geodata.gdal import loadPickledGridDef, griddef_pickle
 from projects.WRF_experiments import Exp, exps, ensembles 
 from warnings import warn
-from blockcanvas.app.experiment import Experiment
 
 
 ## get WRF projection and grid definition 
@@ -768,12 +767,12 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-  mode = 'test_climatology'
+#   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-#   mode = 'test_point_ensemble'
+  mode = 'test_point_ensemble'
 #   mode = 'pickle_grid'  
   pntset = 'shpavg' # 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
@@ -892,6 +891,7 @@ if __name__ == '__main__':
 #       print('')
 #       print(dataset.station)
 #       print(dataset.station.coord)
+    dataset.load()
     print('')
     print(dataset)
     print('')
@@ -921,14 +921,15 @@ if __name__ == '__main__':
     print('')
     if pntset in ('shpavg',):
 #       dataset = loadWRF_ShpEns(ensemble=['max-ctrl','max-ens-A'], shape=pntset, domains=None, filetypes=['hydro'])
-      dataset = loadWRF_ShpEns(ensemble='max-ens', shape=pntset, varlist=['precip','MaxPrecip_1d'], domains=None, filetypes=['hydro'])
+      dataset = loadWRF_ShpEns(ensemble='max-ens-2050', shape=pntset, varlist=None, domains=None, filetypes=['srfc'])
     else:
       dataset = loadWRF_StnEns(ensemble='max-ens', station=pntset, domains=None, filetypes=['xtrm'])
+    dataset.load()
     print('')
     print(dataset)
-    print('')
-    print(dataset.precip.mean())
-    print(dataset.MaxPrecip_1d.mean())
+#     print('')
+#     print(dataset.precip.mean())
+#     print(dataset.MaxPrecip_1d.mean())
     print('')
     print('')
     print(dataset.time)

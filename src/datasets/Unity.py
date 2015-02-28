@@ -23,6 +23,7 @@ from datasets.PRISM import loadPRISM, loadPRISM_Shp
 from datasets.PCIC import loadPCIC, loadPCIC_Shp
 # from geodata.utils import DatasetError
 from warnings import warn
+from copy import deepcopy
 
 ## Unity Meta-data
 
@@ -130,8 +131,8 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-#   mode = 'merge_climatologies'
-  mode = 'merge_timeseries'
+  mode = 'merge_climatologies'
+#   mode = 'merge_timeseries'
 #   mode = 'test_climatology'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
@@ -192,9 +193,13 @@ if __name__ == '__main__':
             
     # load averaged climatology file
     print('')
-    if pntset in ('shpavg',): dataset = loadUnity_Shp(shape=pntset, period=periods[0])
+    if pntset in ('shpavg',): 
+      dataset = loadUnity_Shp(shape=pntset, period=periods[0])
+      print(dataset.shp_area.mean())
+      print('')
     else: raise NotImplementedError
     print(dataset)
+    dataset.load()
     print('')
     print(dataset.precip.mean())
     print(dataset.precip.masked)
@@ -212,6 +217,7 @@ if __name__ == '__main__':
     if pntset in ('shpavg',): dataset = loadUnity_ShpTS(shape=pntset)
     else: raise NotImplementedError
     print(dataset)
+    dataset.load()
     print('')
     print(dataset.precip.mean())
     print(dataset.precip.masked)

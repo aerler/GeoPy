@@ -17,7 +17,7 @@ import os
 from geodata.base import Variable, Axis, Dataset
 from geodata.misc import checkIndex, isEqual, joinDicts
 from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError, FileError, VariableError, ArgumentError 
-from geodata.nctools import coerceAtts, writeNetCDF, add_var, add_coord
+from utils.nctools import coerceAtts, writeNetCDF, add_var, add_coord, checkFillValue
 
 
 def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs):
@@ -205,7 +205,10 @@ class VarNC(Variable):
         for i in xrange(self.ncvar.ndim):
           if self.ncvar.shape[i] == 1: slcs.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
       # finally, get data!
-      data = self.ncvar.__getitem__(slcs) # exceptions handled by netcdf module
+      try:
+        data = self.ncvar.__getitem__(slcs) # exceptions handled by netcdf module
+      except: 
+        pass
       if self.dtype is not None and not np.issubdtype(data.dtype,self.dtype):
         if 'scale_factor' in self.ncvar.ncattrs():
           self.dtype = data.dtype # data was scaled automatically in NetCDF module
@@ -331,6 +334,7 @@ class VarNC(Variable):
         else: ncvar[:] = self.data_array # masking should be handled by the NetCDF module
         # reset scale factors etc.
         self.scalefactor = 1; self.offset = 0
+        fillValue = checkFillValue(fillValue, self.dtype)
         if fillValue is not None:
           ncvar.setncattr('missing_value',fillValue) 
       # update NetCDF attributes

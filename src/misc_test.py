@@ -15,7 +15,7 @@ from time import sleep
 
 
 # import geodata modules
-from geodata.nctools import writeNetCDF
+from utils.nctools import writeNetCDF
 from geodata.misc import isZero, isOne, isEqual
 from geodata.base import Variable, Axis, Dataset, Ensemble
 from datasets.common import data_root
