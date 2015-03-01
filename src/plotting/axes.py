@@ -255,6 +255,62 @@ class MyAxes(Axes):
     if self.flipxy: self.fill_betweenx(y=axes, x1=lower, x2=upper, **bndarg)
     else: self.fill_between(x=axes, y1=lower, y2=upper, interpolate=True, **bndarg) # interpolate=True
   
+  def bootPlot(self, varlist, varname=None, bins=None, support=None, method='pdf', percentiles=(0.25,0.75),   
+               bootstrap_axis='bootstrap', lmedian=True, lmean=False, lvar=False,  
+               legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
+               flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
+               xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False,
+               lignore=False, expand_list=None, lproduct='inner', plotatts=None,
+               errorscale=None, errorevery=1,
+               where=None, bandalpha=0.5, edgecolor=0.5, facecolor=None, bandarg=None,  
+               **plotargs):
+    ''' A function to draw the distribution of a random variable on a given support, including confidence 
+        intervals derived from percentiles along a bootstrap axes '''
+    # auto detect bootstrap axis
+    if 'linestyle' in plotargs or 'linestyles' in plotargs:
+      if lmean or lmedian: raise ArgumentError, "Linestyles are used internally to identify means or medians." 
+    if isinstance(varlist,(Variable,Dataset)): lhasBS = varlist.hasAxis(bootstrap_axis)
+    elif isinstance(varlist,(tuple,list,Ensemble)):
+      lhasBS = all(var.hasAxis(bootstrap_axis) for var in varlist)
+    if not lhasBS: raise AxisError, bootstrap_axis
+    # check input and evaluate distribution variables
+    varlist = self._checkVarlist(varlist, varname=varname, ndim=2, bins=bins, support=support, 
+                                 method=method, lignore=lignore)
+    # N.B.: two-dmensional: bootstrap axis and plot axis
+    assert all(var.hasAxis(bootstrap_axis) for var in varlist)
+    # simple error bars using the bootstrap variance
+    if lvar:
+      errorbars = [var.std(axis=bootstrap_axis) for var in varlist]
+    else: errorbars = None
+    # plot the original distribution
+    original = [var(**{bootstrap_axis:0}) for var in varlist]
+    plts = self.linePlot(varlist=original, errorbar=errorbars, errorevery=errorevery, errorscale=errorscale,
+                         legend=legend, llabel=llabel, labels=labels, hline=hline, vline=vline, 
+                         title=title, flipxy=flipxy, xlabel=xlabel, ylabel=ylabel, xticks=xticks, 
+                         yticks=yticks, reset_color=reset_color, xlog=xlog, ylog=ylog, xlim=xlim, 
+                         ylim=ylim, lsmooth=lsmooth, lprint=lprint, plotatts=plotatts,
+                         expand_list=expand_list, lproduct=lproduct, **plotargs)
+    # get line colors to use in all subsequent plots 
+    colors = [plt.get_color() for plt in plts]
+    # plot mean
+    if lmean:
+      means = [var.mean(axis=bootstrap_axis) for var in varlist]
+      self.linePlot(varlist=means, llabel=llabel, labels=labels, linestyles='-.', colors=colors,
+                    flipxy=flipxy, reset_color=False, lsmooth=lsmooth, lprint=False, 
+                    plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)    
+    # determine percentiles along bootstrap axis
+    if percentiles is not None:
+      assert 1 < len(percentiles) < 4
+      uppers = [var.max(axis=bootstrap_axis) for var in varlist]
+      lowers = [var.min(axis=bootstrap_axis) for var in varlist]
+    # plot percentiles as error bands
+    facecolor = facecolor or colors
+    self.bandPlot(upper=uppers, lower=lowers, lignore=lignore, llabel=llabel, labels=labels,         
+                  flipxy=flipxy, reset_color=False, lsmooth=lsmooth, lprint=False, 
+                  where=where, alpha=bandalpha, edgecolor=edgecolor, colors=facecolor,
+                  expand_list=expand_list, lproduct=lproduct, plotatts=plotatts, **plotargs)
+    # done! 
+    return plts
   
   def histogram(self, varlist, varname=None, bins=None, binedgs=None, histtype='bar', lstacked=False, 
                 lnormalize=True, lcumulative=0, legend=None, llabel=True, labels=None, colors=None, 

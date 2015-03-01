@@ -579,21 +579,22 @@ def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None,
 # base class for distributions 
 class DistVar(Variable):
   '''
-  A base class for variables that represent a distribution at each grid point. This class implements
-  access to (re-)samplings of the distribution, as well as histogram- and CDF-type grid-based 
-  representations of the distributions. All operations add an additional (innermost) dimension;
-  representations of the distribution require a support vector, sampling only a sample size.. 
+    A base class for variables that represent a distribution at each grid point. This class implements
+    access to (re-)samplings of the distribution, as well as histogram- and CDF-type grid-based 
+    representations of the distributions. All operations add an additional (innermost) dimension;
+    representations of the distribution require a support vector, sampling only a sample size.. 
   '''
   dist_type = '' # name of the distribution type
   paramAxis = None # axis for distribution parameters (None is distribution objects are stored)
 
   def __init__(self, name=None, units=None, axes=None, samples=None, params=None, axis=None, dtype=None,
-               lflatten=False, masked=None, mask=None, fillValue=None, atts=None, ldebug=False, **kwargs):
+               lflatten=False, masked=None, mask=None, fillValue=None, atts=None, ldebug=False, 
+               lbootstrap=False, nbs=1000, **kwargs):
     '''
-    This method creates a new DisVar instance from data and parameters. If data is provided, a sample
-    axis has to be specified or the last (innermost) axis is assumed to be the sample axis.
-    An estimation/fit will be performed at every grid point and stored in an array.
-    Note that 'dtype' and 'units' refer to the sample data, not the distribution.
+      This method creates a new DisVar instance from data and parameters. If data is provided, a sample
+      axis has to be specified or the last (innermost) axis is assumed to be the sample axis.
+      An estimation/fit will be performed at every grid point and stored in an array.
+      Note that 'dtype' and 'units' refer to the sample data, not the distribution.
     '''
     # if parameters are provided
     if params is not None:
@@ -634,23 +635,34 @@ class DistVar(Variable):
       # check axes
       if lflatten:
         if axes is not None: raise AxisError, "'axes' keyword can not be used with lflatten=True"
+        samples = samples.ravel()
         axes = tuple() # empty tuple
       else:
         if len(axes) == samples.ndim: axes = axes[:axis]+axes[axis+1:]
         elif len(axes) != samples.ndim-1: raise AxisError
+      ## add bootstrap axis and generate bootstrap samples
+      if lbootstrap:
+        # create and add bootstrap axis
+        bsatts = dict(name='bootstrap',units='',long_name='Bootstrap Samples')
+        bsax = Axis(coord=np.arange(nbs), atts=bsatts)
+        axes = (bsax,) + axes # add this axis as outer-most
+        shape = (nbs,) + samples.shape
+        # resample the samples (nbs times)
+        bootstrap = np.zeros(shape, dtype=samples.dtype) # allocate memory
+        bootstrap[0,:] = samples # first element is the real sample data
+        sz = samples.size; sshp = samples.shape  
+        for i in xrange(1,nbs):
+          idx = np.random.randint(sz, size=sshp) # select random indices
+          bootstrap[i,:] = samples[idx] # write random sample into array
+        samples = bootstrap
+        # N.B.: from here one everything should proceed normally, with the extra bootstrap axis in the 
+        #       resulting DistVar object; obtain confidence intervalls as percentiles along this axis
       # estimate distribution parameters
-      # N.B.: the method estimate() should be implemented by specific child classes
-      
       params = self._estimate_distribution(samples, ldebug=ldebug, **kwargs)
+      # N.B.: the method estimate() should be implemented by specific child classes      
       # N.B.: 'ic' are initial guesses for parameter values; 'kwargs' are for the estimator algorithm 
     # sample fillValue
     if fillValue is None: fillValue = np.NaN
-    # mask invalid or None parameters
-#     if masked: 
-#       if np.issubdtype(params.dtype,np.inexact): invalid = np.NaN
-#       else: invalid = None # "null object"
-#       params = ma.masked_equal(params, invalid) # mask invalid values 
-#       params.set_fill_value = invalid # fill value to use later       
     # generate new parameter axis
     if params.ndim > 0: params_name = 'params_#{:d}'.format(params.shape[-1]) # can happen with single KDE
     if params.ndim == len(axes)+1:

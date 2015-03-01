@@ -65,7 +65,7 @@ class LinePlotTest(unittest.TestCase):
     for ax in self.axes:
       ax.unload()
     
-  ## basic tests every variable class should pass
+  ## basic plotting tests
 
   def testBasicLinePlot(self):
     ''' test a simple line plot with two lines '''    
@@ -203,7 +203,7 @@ class LinePlotTest(unittest.TestCase):
     ax.addHline(3)
     
     
-class BarPlotTest(unittest.TestCase):  
+class DistPlotTest(unittest.TestCase):  
    
   def setUp(self):
     ''' create two test variables '''
@@ -225,10 +225,10 @@ class BarPlotTest(unittest.TestCase):
     for ax in self.axes:
       ax.unload()
     
-  ## basic tests every variable class should pass
+  ## plots for random variables and distributions
 
   def testBasicHistogram(self):
-    ''' test a simple line plot with two lines '''    
+    ''' a simple bar plot of two normally distributed samples '''    
     fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyAxes'
@@ -254,6 +254,45 @@ class BarPlotTest(unittest.TestCase):
     pstr = 'p-value = {:3.2f}'.format(pval)
     ax.addLabel(label=pstr, loc=1, lstroke=False, lalphabet=True, size=None, prop=None)
 
+
+  def testBootstrapCI(self):
+    ''' test a simple line plot with two lines '''    
+    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyAxes'
+    assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
+    # settings
+    varlist = [self.var1, self.var2]
+    nbins = 10
+    # add regular histogram for comparison
+    bins, ptchs = ax.histogram(varlist, bins=nbins, legend=2, alpha=0.5, rwidth=0.8, histtype='bar')
+    # histtype = 'bar' | 'barstacked' | 'step' | 'stepfilled'
+    assert len(ptchs) == 2
+    assert len(bins) == nbins
+    vmin = np.min([var.min() for var in varlist])
+    vmax = np.max([var.max() for var in varlist])
+    #print bins[0], vmin; print bins[-1], vmax
+    assert bins[0] == vmin and bins[-1] == vmax
+    # add a KDE plot
+    support = np.linspace(vmin, vmax, 100)
+    kdevars = []; kdeorig = []; kdeerrs = []
+    # generate errorbars based on bootstrap variance
+    for var in varlist:
+      kdevar = var.kde(lflatten=True, lbootstrap=True, nbs=10) # generate KDE with bootstrapping
+      kdevars.append(kdevar) # regular KDE variable (DistVar)
+      kde = kdevar.pdf(support=support) # evaluate KDE and generate distribution      
+      kdeorig.append(kde(bootstrap=0)) # the first element, the actual distribution
+      kdeerrs.append(kde.std(axis='bootstrap')) # the variance of the bootstrapped sample
+    # add line plot with error bands     
+    ax.linePlot(kdeorig, errorband=kdeerrs, errorscale=0.5, linestyle='-', linewidth=2)
+    # add bootstrap plot with errorbars
+    ax.bootPlot(kdevars, support=support, errorscale=0.5, linewidth=2, 
+                errorevery=5, lvar=True, lmean=True)
+    # add label
+    pval = kstest(varlist[0], varlist[1], lflatten=True) 
+    pstr = 'p-value = {:3.2f}'.format(pval)
+    ax.addLabel(label=pstr, loc=1, lstroke=False, lalphabet=True, size=None, prop=None)
+
     
 if __name__ == "__main__":
 
@@ -264,15 +303,16 @@ if __name__ == "__main__":
 #     specific_tests = ['FancyErrorPlot']
 #     specific_tests = ['FancyBandPlot']
 #     specific_tests = ['AdvancedLinePlot']
-    specific_tests = ['CombinedLinePlot']
+#     specific_tests = ['CombinedLinePlot']
 #     specific_tests = ['AxesGridLinePlot']    
 #     specific_tests = ['MeanAxisPlot']
+    specific_tests = ['BootstrapCI']
     
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['LinePlot'] 
-#     tests += ['BarPlot']
+#     tests += ['LinePlot'] 
+    tests += ['DistPlot']
     
 
     # construct dictionary of test classes defined above
