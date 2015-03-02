@@ -133,6 +133,7 @@ class MyAxes(Axes):
           if err is not None: err *= errorscale
         if errorevery is None:
           if len(axe) > 20: errorevery = len(axe)//20 
+          else: errorevery = 1
         # figure out orientation and call plot function
         if self.flipxy: # flipped axes
           xlen = len(val); ylen = len(axe) # used later
@@ -278,7 +279,7 @@ class MyAxes(Axes):
     if not lhasBS: raise AxisError, bootstrap_axis
     # check input and evaluate distribution variables
     varlist = self._checkVarlist(varlist, varname=varname, ndim=2, bins=bins, support=support, 
-                                 method=method, lignore=lignore)
+                                 method=method, lignore=lignore, bootstrap_axis=None) # don't remove bootstrap
     # N.B.: two-dmensional: bootstrap axis and plot axis
     assert all(var.hasAxis(bootstrap_axis) for var in varlist)
     # simple error bars using the bootstrap variance
@@ -454,7 +455,8 @@ class MyAxes(Axes):
       kwargs['loc'] = loc
       self.legend(**kwargs)
   
-  def _checkVarlist(self, varlist, varname=None, ndim=1, bins=None, support=None, method='pdf', lignore=None, lflatten=False):
+  def _checkVarlist(self, varlist, varname=None, ndim=1, bins=None, support=None, method='pdf', 
+                    lignore=None, lflatten=False, bootstrap_axis='bootstrap'):
     ''' helper function to pre-process the variable list '''
     # varlist is the list of variable objects that are to be plotted
     if isinstance(varlist,Variable): varlist = [varlist]
@@ -479,7 +481,8 @@ class MyAxes(Axes):
       if var is not None: var.squeeze() # remove singleton dimensions
     # evaluate distribution variables on support/bins
     if bins is not None or support is not None:
-      varlist = evalDistVars(varlist, bins=bins, support=support, method=method, ldatasetLink=True) 
+      varlist = evalDistVars(varlist, bins=bins, support=support, method=method, 
+                             ldatasetLink=True, bootstrap_axis=bootstrap_axis) 
     # check axis: they need to have only one axes, which has to be the same for all!
     for var in varlist: 
       if var is None: pass
