@@ -291,9 +291,10 @@ class DistPlotTest(unittest.TestCase):
     # add bootstrap plot with errorbars    
     support = np.linspace(vmin, vmax, 100)
     fitvars = [var.fitDist(dist=self.dist,lflatten=True, lbootstrap=True, nbs=100) for var in varlist] 
-    ax.bootPlot(fitvars, support=support, errorscale=0.5, linewidth=2, lsmooth=False,
-                percentiles=(0.25,0.75), lvar=False, lvarBand=False, lmedian=True)  
-#                 percentiles=None, lvar=True, lvarBand=False, lmean=True)
+    ax.bootPlot(fitvars[0], support=support, errorscale=0.5, linewidth=2, lsmooth=False,
+                percentiles=None, lvar=True, lvarBand=False, lmean=True, reset_color=True)
+    ax.bootPlot(fitvars[1], support=support, errorscale=0.5, linewidth=2, lsmooth=False,
+                percentiles=(0.25,0.75), lvar=False, lvarBand=False, lmedian=True, reset_color=False)  
     # add the actual distribution
     ax.linePlot(self.distVar, support=support, linewidth=1, marker='^')
     # add label

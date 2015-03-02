@@ -662,6 +662,13 @@ class DistVar(Variable):
         samples = bootstrap
         # N.B.: from here one everything should proceed normally, with the extra bootstrap axis in the 
         #       resulting DistVar object; obtain confidence intervalls as percentiles along this axis
+        # N.B.: In order to save memory, this could be inplemented more efficiently within the fit-       
+        #       functions, so that the resampling only occurs immediately before fitting.
+        #       Essentially, there would be two separate estimations, one with the original sample 
+        #       vector, and a given number of estimations with prior resampling; these would then be 
+        #       stacked along the bootstrap axis.
+        # N.B.: Performing resampling and estimation iteratively, one by one, would also save memory, 
+        #       but prevent parallelization of the bootstrap process.
       # estimate distribution parameters
       params = self._estimate_distribution(samples, ldebug=ldebug, **kwargs)
       # N.B.: the method estimate() should be implemented by specific child classes      

@@ -132,8 +132,7 @@ class MyAxes(Axes):
           errorscale = errorPercentile(errorscale)
           if err is not None: err *= errorscale
         if errorevery is None:
-          if len(axe) > 20: errorevery = len(axe)//20 
-          else: errorevery = 1
+          errorevery = len(axe)//25 + 1
         # figure out orientation and call plot function
         if self.flipxy: # flipped axes
           xlen = len(val); ylen = len(axe) # used later
