@@ -770,13 +770,12 @@ class MyAxes(Axes):
     return ticklist
       
   # add subplot/axes label (alphabetical indexing, byt default)
-  def addLabel(self, label, loc=1, lstroke=False, lalphabet=True, size=None, prop=None, **kwargs):
+  def addLabel(self, label, loc=1, lstroke=False, lalphabet=True, size='large', font='monospace', prop=None, **kwargs):
     from string import lowercase # lowercase letters
     from matplotlib.offsetbox import AnchoredText 
     from matplotlib.patheffects import withStroke    
     # settings
-    if prop is None: prop = dict()
-    if not size: prop['size'] = 'large'
+    if prop is None: prop = dict(size=size, fontname=font)
     args = dict(pad=0., borderpad=1.5, frameon=False)
     args.update(kwargs)
     # create label    

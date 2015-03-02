@@ -108,7 +108,7 @@ def expandArgumentList(expand_list=None, lproduct='outer', **kwargs):
 
 
 # convenience function to evaluate a list of DistVar's
-def evalDistVars(varlist, bins=None, support=None, method='pdf', ldatasetLink=True):
+def evalDistVars(varlist, bins=None, support=None, method='pdf', ldatasetLink=True, bootstrap_axis='bootstrap'):
   ''' Convenience function to evaluate a list of DistVars on a given support/bins;
       leaves other Variables untouched. '''
   from geodata.stats import DistVar, VarKDE, VarRV # avoid circular import
@@ -118,8 +118,12 @@ def evalDistVars(varlist, bins=None, support=None, method='pdf', ldatasetLink=Tr
     if support is not None and bins is not None: raise ArgumentError
     if support is None and bins is not None: support = bins
     # check variables and evaluate
+    if bootstrap_axis is not None: slc = {bootstrap_axis:0}
     newlist = []
     for var in varlist:
+      # remove bootstrap axis
+      if bootstrap_axis is not None and var.hasAxis(bootstrap_axis): var = var(**slc)
+      # evluate distributions
       if isinstance(var,(DistVar,VarKDE,VarRV)): 
         new = getattr(var,method)(support=support) # evaluate DistVar
         if ldatasetLink: new.dataset= var.dataset # preserve dataset links to construct references

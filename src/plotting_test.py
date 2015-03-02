@@ -26,7 +26,7 @@ from plotting.figure import getFigAx
 # use common MPL instance
 # from plotting.misc import loadMPL
 # mpl,pyl = loadMPL(linewidth=1.)
-from geodata.stats import mwtest, kstest, wrstest
+from geodata.stats import mwtest, kstest, wrstest, VarRV
 
 
 # RAM disk settings ("global" variable)
@@ -214,6 +214,10 @@ class DistPlotTest(unittest.TestCase):
     x2 = np.random.randn(150); xax2 = Axis(name='X2-Axis', units='X Units', length=len(x2))
     var2 = Variable(name='purple',units='units',axes=(xax2,), data=x2)
     self.var2 = var2; self.xax2 = xax2
+    # actual normal distribution
+    self.dist = 'norm'
+    distvar = VarRV(name=self.dist,units='units', dist=self.dist, params=(0,1))
+    self.distVar = distvar
     # add to list
     self.vars = [var1, var2]
     self.axes = [xax1, xax2]
@@ -247,7 +251,8 @@ class DistPlotTest(unittest.TestCase):
     assert bins[0] == vmin and bins[-1] == vmax
     # add a KDE plot
     support = np.linspace(vmin, vmax, 100)
-    kdevars = [var.kde(lflatten=True) for var in varlist]
+    kdevars = [var.kde(lflatten=True, lbootstrap=True, nbs=10) for var in varlist]
+    # N.B.: the bootstrapping is just to test bootstrap tolerance in regular plotting methods
     ax.linePlot(kdevars, support=support, linewidth=2)
     # add label
     pval = kstest(varlist[0], varlist[1], lflatten=True) 
@@ -273,9 +278,6 @@ class DistPlotTest(unittest.TestCase):
     vmax = np.max([var.max() for var in varlist])
     #print bins[0], vmin; print bins[-1], vmax
     assert bins[0] == vmin and bins[-1] == vmax
-    # add a KDE plot
-    support = np.linspace(vmin, vmax, 100)
-    kdevars = [var.kde(lflatten=True, lbootstrap=True, nbs=100) for var in varlist] 
 #     generate errorbars based on bootstrap variance
 #     kdeorig = []; kdeerrs = []
 #     for var in varlist:
@@ -284,15 +286,21 @@ class DistPlotTest(unittest.TestCase):
 #       kde = kdevar.pdf(support=support) # evaluate KDE and generate distribution      
 #       kdeorig.append(kde(bootstrap=0)) # the first element, the actual distribution
 #       kdeerrs.append(kde.std(axis='bootstrap')) # the variance of the bootstrapped sample
-    # add line plot with error bands     
+#     # add line plot with error bands     
 #     ax.linePlot(kdeorig, errorband=kdeerrs, errorscale=0.5, linestyle='-', linewidth=2)
-    # add bootstrap plot with errorbars
-    ax.bootPlot(kdevars, support=support, errorscale=0.5, linewidth=2, lsmooth=False,
+    # add bootstrap plot with errorbars    
+    support = np.linspace(vmin, vmax, 100)
+    fitvars = [var.fitDist(dist=self.dist,lflatten=True, lbootstrap=True, nbs=100) for var in varlist] 
+    ax.bootPlot(fitvars, support=support, errorscale=0.5, linewidth=2, lsmooth=False,
                 percentiles=(0.25,0.75), lvar=False, lvarBand=False, lmedian=True)  
 #                 percentiles=None, lvar=True, lvarBand=False, lmean=True)
+    # add the actual distribution
+    ax.linePlot(self.distVar, support=support, linewidth=1, marker='^')
     # add label
-    pval = kstest(varlist[0], varlist[1], lflatten=True) 
-    pstr = 'p-value = {:3.2f}'.format(pval)
+    pstr = "p-values for '{:s}':\n".format(self.dist)
+    for var in varlist:
+      pstr += '   {:<9s}   {:3.2f}\n'.format(var.name, var.kstest(dist=self.dist, asVar=False))
+    pstr += '   2-samples   {:3.2f}\n'.format(kstest(varlist[0], varlist[1], lflatten=True))
     ax.addLabel(label=pstr, loc=1, lstroke=False, lalphabet=True, size=None, prop=None)
 
     
@@ -308,7 +316,8 @@ if __name__ == "__main__":
 #     specific_tests = ['CombinedLinePlot']
 #     specific_tests = ['AxesGridLinePlot']    
 #     specific_tests = ['MeanAxisPlot']
-    specific_tests = ['BootstrapCI']
+    specific_tests = ['BasicHistogram']
+#     specific_tests = ['BootstrapCI']
     
     # list of tests to be performed
     tests = [] 

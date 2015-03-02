@@ -1432,10 +1432,10 @@ if __name__ == "__main__":
 
     # use Intel MKL multithreading: OMP_NUM_THREADS=4
 #     import os
-#     print('OMP_NUM_THREADS=',os.environ['OMP_NUM_THREADS'])    
+    print('OMP_NUM_THREADS = {:s}\n'.format(os.environ['OMP_NUM_THREADS']))    
         
     specific_tests = None
-    specific_tests = ['ReductionArithmetic']
+#     specific_tests = ['ReductionArithmetic']
 #     specific_tests = ['DistributionVariables']
 #     specific_tests = ['Mask']
 #     specific_tests = ['Ensemble']
@@ -1450,12 +1450,12 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
        
     
     # construct dictionary of test classes defined above

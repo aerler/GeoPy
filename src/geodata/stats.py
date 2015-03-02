@@ -54,7 +54,8 @@ def kstest_wrapper(data, dist='norm', ignoreNaN=True, args=None, N=20, alternati
     nonans = np.invert(np.isnan(data)) # test for NaN's
     if np.sum(nonans) < 3: return np.NaN # return, if less than 3 non-NaN's
     data = data[nonans] # remove NaN's
-  D, pval = ss.kstest(data, dist, args=args, N=N, alternative=alternative, mode=mode)
+  if args is None: args = ()
+  D, pval = ss.kstest(data, dist, args=args, N=N, alternative=alternative, mode=mode); del D
   return pval
 
 # wrapper for normaltest, a SciPy function to test normality
@@ -599,12 +600,16 @@ class DistVar(Variable):
     # if parameters are provided
     if params is not None:
       if samples is not None: raise ArgumentError 
-      if isinstance(params,np.ndarray):
-        params = np.asarray(params, order='C')
+      if isinstance(params,(np.ndarray, list, tuple)):
+        params = np.asanyarray(params, order='C')
+      else: TypeError
       if axis is not None and not axis == params.ndim-1:
         params = np.rollaxis(params, axis=axis, start=params.ndim) # roll sample axis to last (innermost) position
       if dtype is None: dtype = np.dtype('float') # default sample dtype
-      if len(axes) != params.ndim: raise AxisError
+      if axes is None: axes = ()
+      if len(axes) == params.ndim-1:
+        if any(ax.name.startswith('params_') for ax in axes): raise AxisError
+      elif len(axes) != params.ndim: raise AxisError
       if masked is None:
         if isinstance(samples, ma.MaskedArray): masked = True
         else: masked = False  

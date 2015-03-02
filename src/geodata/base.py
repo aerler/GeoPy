@@ -364,7 +364,9 @@ class Variable(object):
     ''' The fillValue for masks (stored in the atts dictionary). '''
     fillValue = self.atts.get('fillValue',None)
     if self.data and self.masked and fillValue != self.data_array._fill_value:
-      raise DataError, 'FillValue mismatch!'
+      if  not np.isnan(fillValue) or not np.isnan(self.data_array._fill_value):
+        # N.B.: NaN's are never equal 
+        raise DataError, 'FillValue mismatch!'
     return fillValue
   @fillValue.setter
   def fillValue(self, fillValue):
@@ -742,8 +744,9 @@ class Variable(object):
         if lrecast: data = data.astype(self.dtype)
         else: raise DataError, "Dtypes of Variable and array are inconsistent."
       if np.issubdtype(data.dtype, np.inexact) and not isinstance(data, ma.masked_array):
-        data = ma.masked_invalid(data, copy=False)       
-        ma.set_fill_value(data, fillValue if fillValue is not None else self.fillValue) # this seems to work more reliably!
+        data = ma.masked_invalid(data, copy=False)     
+        data._fill_value = fillValue if fillValue is not None else self.fillValue
+#         ma.set_fill_value(data, fillValue if fillValue is not None else self.fillValue) # this seems to work more reliably!
       # handle/apply mask
       if mask: data = ma.array(data, mask=mask) 
       if isinstance(data,ma.MaskedArray): # figure out fill value for masked array
@@ -857,7 +860,7 @@ class Variable(object):
       elif isinstance(self.dtype,(float,np.inexact)):
         self.__dict__['data_array'] = ma.masked_values(self.data_array, maskValue, copy=False)
     # update fill value (stored in atts dict)
-    self.fillValue = fillValue or self.data_array.fill_value
+    self.fillValue = fillValue or self.data_array._fill_value # more reliable than fill_value 
     # as usual, return self
     return self
     
