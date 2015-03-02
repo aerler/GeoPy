@@ -170,6 +170,13 @@ def histogram(a, bins=10, range=None, weights=None, density=None):
   ''' histogram wrapper that suppresses bin edge output, but is otherwise the same '''
   return np.histogram(a, bins=bins, range=range, weights=weights, density=density)[0]
 
+# percentile wrapper that casts the output into a single array
+def percentile(a, q, axis=None, interpolation='linear', keepdims=False): 
+  ''' percentile wrapper that casts the output into a single array, but is otherwise the same '''
+  # in this version 'interpolation' and 'keepdims' are not yet supported
+  parr = np.asarray(np.percentile(a, q, axis=axis, out=None, overwrite_input=False))
+  parr = np.rollaxis(parr, axis=0, start=parr.ndim) # move percentile axis to the back
+  return parr
 
 # function to subtract the mean and divide by the standard deviation, i.e. standardize
 def standardize(var, axis=None, lcopy=True, **kwargs):

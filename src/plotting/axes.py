@@ -127,17 +127,20 @@ class MyAxes(Axes):
         edgecolor = plotarg.pop('edgecolor',0.5)
         facecolor = plotarg.pop('facecolor',None)
         errorscale = plotarg.pop('errorscale',None)
+        errorevery = plotarg.pop('errorevery',None)
         if errorscale is not None: 
           errorscale = errorPercentile(errorscale)
           if err is not None: err *= errorscale
+        if errorevery is None:
+          if len(axe) > 20: errorevery = len(axe)//20 
         # figure out orientation and call plot function
         if self.flipxy: # flipped axes
           xlen = len(val); ylen = len(axe) # used later
-          plt = self.errorbar(val, axe, xerr=err, yerr=None, **plotarg)[0]
+          plt = self.errorbar(val, axe, xerr=err, yerr=None, errorevery=errorevery, **plotarg)[0]
           if lparasiteMeans: raise NotImplementedError
         else:# default orientation
           xlen = len(axe); ylen = len(val) # used later
-          plt = self.errorbar(axe, val, xerr=None, yerr=err, **plotarg)[0]
+          plt = self.errorbar(axe, val, xerr=None, yerr=err, errorevery=errorevery, **plotarg)[0]
           if lparasiteMeans:
             perr = err if err is not None else bnd # wouldn't work with bands, so use normal errorbars
             self.addParasiteMean(val, errors=perr, n=n, N=N, lperi=lperi, style='myerrorbar', **plotarg)
@@ -200,10 +203,10 @@ class MyAxes(Axes):
       if upvar or lowvar:
         if upvar:
           varax = upvar.axes[0]
-          assert lowvar is None or ( lowvar.hasAxis(varax) and lowvar.ndim == 1 )
+          assert lowvar is None or ( lowvar.hasAxis(varax.name) and lowvar.ndim == 1 )
         if lowvar:
           varax = lowvar.axes[0]
-          assert upvar is None or ( upvar.hasAxis(varax) and upvar.ndim == 1 )          
+          assert upvar is None or ( upvar.hasAxis(varax.name) and upvar.ndim == 1 )          
         # scale axis and variable values 
         axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None, laxis=True, lperi=lperi)
         if upvar: up, varunits, varname = getPlotValues(upvar, checkunits=varunits, checkname=None, lsmooth=lsmooth, lperi=lperi) 
@@ -244,6 +247,7 @@ class MyAxes(Axes):
     color = CC.to_rgb(color)
     # make darker edges
     if edgecolor is None: edgecolor = 0.5
+    if alpha is None: alpha = 0.5
     elif isinstance(edgecolor,(int,np.int)): edgecolor = float(edgecolor)
     if isinstance(edgecolor,(float,np.float)): 
       edgecolor = tuple(c*edgecolor for c in color) # slightly darker edges
@@ -256,14 +260,13 @@ class MyAxes(Axes):
     else: self.fill_between(x=axes, y1=lower, y2=upper, interpolate=True, **bndarg) # interpolate=True
   
   def bootPlot(self, varlist, varname=None, bins=None, support=None, method='pdf', percentiles=(0.25,0.75),   
-               bootstrap_axis='bootstrap', lmedian=True, lmean=False, lvar=False,  
+               bootstrap_axis='bootstrap', lmedian=None, lmean=False, lvar=False, lvarBand=False,
                legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
-               xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False,
+               xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=None, lprint=False,
                lignore=False, expand_list=None, lproduct='inner', plotatts=None,
-               errorscale=None, errorevery=1,
-               where=None, bandalpha=0.5, edgecolor=0.5, facecolor=None, bandarg=None,  
-               **plotargs):
+               where=None, bandalpha=None, edgecolor=None, facecolor=None, bandarg=None,  
+               errorscale=None, errorevery=None, **plotargs):
     ''' A function to draw the distribution of a random variable on a given support, including confidence 
         intervals derived from percentiles along a bootstrap axes '''
     # auto detect bootstrap axis
@@ -279,12 +282,15 @@ class MyAxes(Axes):
     # N.B.: two-dmensional: bootstrap axis and plot axis
     assert all(var.hasAxis(bootstrap_axis) for var in varlist)
     # simple error bars using the bootstrap variance
+    errorbars = None; errorband = None
     if lvar:
       errorbars = [var.std(axis=bootstrap_axis) for var in varlist]
-    else: errorbars = None
+      if lvarBand: errorband = errorbars; errorbars = None # switch
     # plot the original distribution
-    original = [var(**{bootstrap_axis:0}) for var in varlist]
-    plts = self.linePlot(varlist=original, errorbar=errorbars, errorevery=errorevery, errorscale=errorscale,
+    slc = {bootstrap_axis:0}
+    original = [var(**slc) for var in varlist]
+    plts = self.linePlot(varlist=original, errorbar=errorbars, errorband=errorband, 
+                         errorevery=errorevery, errorscale=errorscale,
                          legend=legend, llabel=llabel, labels=labels, hline=hline, vline=vline, 
                          title=title, flipxy=flipxy, xlabel=xlabel, ylabel=ylabel, xticks=xticks, 
                          yticks=yticks, reset_color=reset_color, xlog=xlog, ylog=ylog, xlim=xlim, 
@@ -299,16 +305,32 @@ class MyAxes(Axes):
                     flipxy=flipxy, reset_color=False, lsmooth=lsmooth, lprint=False, 
                     plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)    
     # determine percentiles along bootstrap axis
+    if lmedian and percentiles is None: raise ArgumentError, "Median only works with percentiles."
     if percentiles is not None:
       assert 1 < len(percentiles) < 4
-      uppers = [var.max(axis=bootstrap_axis) for var in varlist]
-      lowers = [var.min(axis=bootstrap_axis) for var in varlist]
-    # plot percentiles as error bands
-    facecolor = facecolor or colors
-    self.bandPlot(upper=uppers, lower=lowers, lignore=lignore, llabel=llabel, labels=labels,         
-                  flipxy=flipxy, reset_color=False, lsmooth=lsmooth, lprint=False, 
-                  where=where, alpha=bandalpha, edgecolor=edgecolor, colors=facecolor,
-                  expand_list=expand_list, lproduct=lproduct, plotatts=plotatts, **plotargs)
+      lmedian = lmedian is None or lmedian # default is to plot the median if percentiles are calculated
+      if lmedian and len(percentiles) == 2: 
+        percentiles = (percentiles[0],0.5,percentiles[1]) # add median to percentiles
+      # compute percentiles
+      qvars = [var.percentile(q=percentiles, axis=bootstrap_axis) for var in varlist]
+      upslc = dict(percentile=2 if lmedian else 1, lidx=True)
+      uppers = [var(**upslc) for var in qvars]
+      loslc = dict(percentile=0, lidx=True) 
+      lowers = [var(**loslc) for var in qvars]
+      # plot percentiles as error bands
+      facecolor = facecolor or colors
+      lsmoothBand = True if lsmooth or lsmooth is None else False
+      self.bandPlot(upper=uppers, lower=lowers, lignore=lignore, llabel=llabel, labels=labels,         
+                    flipxy=flipxy, reset_color=False, lsmooth=lsmoothBand, lprint=False, 
+                    where=where, alpha=bandalpha, edgecolor=edgecolor, colors=facecolor,
+                    expand_list=expand_list, lproduct=lproduct, plotatts=plotatts, **plotargs)
+      # add median plot
+      if lmedian:
+        mdslc = dict(percentile=1, lidx=True)
+        meadians = [var(**mdslc) for var in qvars]
+        self.linePlot(varlist=meadians, llabel=llabel, labels=labels, linestyles='--', colors=colors,
+                      flipxy=flipxy, reset_color=False, lsmooth=lsmooth, lprint=False, 
+                      plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)
     # done! 
     return plts
   

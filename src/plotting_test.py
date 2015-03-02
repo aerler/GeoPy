@@ -208,11 +208,11 @@ class DistPlotTest(unittest.TestCase):
   def setUp(self):
     ''' create two test variables '''
     # create axis and variable instances (make *copies* of data and attributes!)
-    x1 = np.random.randn(30); xax1 = Axis(name='X1-Axis', units='X Units', length=len(x1)) 
+    x1 = np.random.randn(150); xax1 = Axis(name='X1-Axis', units='X Units', length=len(x1)) 
     var1 = Variable(axes=(xax1,), data=x1.copy(), atts=dict(name='blue', units='units'))
     self.var1 = var1; self.xax1 = xax1
-    x2 = np.random.randn(50); xax2 = Axis(name='X2-Axis', units='X Units', length=len(x2))
-    var2 = Variable(name='green',units='units',axes=(xax2,), data=x2)
+    x2 = np.random.randn(150); xax2 = Axis(name='X2-Axis', units='X Units', length=len(x2))
+    var2 = Variable(name='purple',units='units',axes=(xax2,), data=x2)
     self.var2 = var2; self.xax2 = xax2
     # add to list
     self.vars = [var1, var2]
@@ -275,19 +275,21 @@ class DistPlotTest(unittest.TestCase):
     assert bins[0] == vmin and bins[-1] == vmax
     # add a KDE plot
     support = np.linspace(vmin, vmax, 100)
-    kdevars = []; kdeorig = []; kdeerrs = []
-    # generate errorbars based on bootstrap variance
-    for var in varlist:
-      kdevar = var.kde(lflatten=True, lbootstrap=True, nbs=10) # generate KDE with bootstrapping
-      kdevars.append(kdevar) # regular KDE variable (DistVar)
-      kde = kdevar.pdf(support=support) # evaluate KDE and generate distribution      
-      kdeorig.append(kde(bootstrap=0)) # the first element, the actual distribution
-      kdeerrs.append(kde.std(axis='bootstrap')) # the variance of the bootstrapped sample
+    kdevars = [var.kde(lflatten=True, lbootstrap=True, nbs=100) for var in varlist] 
+#     generate errorbars based on bootstrap variance
+#     kdeorig = []; kdeerrs = []
+#     for var in varlist:
+#       kdevar = var.kde(lflatten=True, lbootstrap=True, nbs=100) # generate KDE with bootstrapping
+#       kdevars.append(kdevar) # regular KDE variable (DistVar)
+#       kde = kdevar.pdf(support=support) # evaluate KDE and generate distribution      
+#       kdeorig.append(kde(bootstrap=0)) # the first element, the actual distribution
+#       kdeerrs.append(kde.std(axis='bootstrap')) # the variance of the bootstrapped sample
     # add line plot with error bands     
-    ax.linePlot(kdeorig, errorband=kdeerrs, errorscale=0.5, linestyle='-', linewidth=2)
+#     ax.linePlot(kdeorig, errorband=kdeerrs, errorscale=0.5, linestyle='-', linewidth=2)
     # add bootstrap plot with errorbars
-    ax.bootPlot(kdevars, support=support, errorscale=0.5, linewidth=2, 
-                errorevery=5, lvar=True, lmean=True)
+    ax.bootPlot(kdevars, support=support, errorscale=0.5, linewidth=2, lsmooth=False,
+                percentiles=(0.25,0.75), lvar=False, lvarBand=False, lmedian=True)  
+#                 percentiles=None, lvar=True, lvarBand=False, lmean=True)
     # add label
     pval = kstest(varlist[0], varlist[1], lflatten=True) 
     pstr = 'p-value = {:3.2f}'.format(pval)

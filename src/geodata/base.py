@@ -19,7 +19,7 @@ from plotting.properties import getPlotAtts, variablePlotatts # import plot prop
 from geodata.misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, floateps
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 from processing.multiprocess import apply_along_axis
-from utils.misc import histogram, binedges, detrend
+from utils.misc import histogram, binedges, detrend, percentile
      
 
 class UnaryCheckAndCreateVar(object):
@@ -1217,6 +1217,75 @@ class Variable(object):
     # return new variable instance (or data)
     return cvar
 
+  def percentile(self, q=None, asVar=True, name=None, axis=None, axis_idx=None, lflatten=False,  
+                 lcheckVar=True, lcheckAxis=True, qaxatts=None, qvaratts=None, fillValue=None, **kwargs):
+    ''' Compute percentiles along a given axis and preserve the other axes. 
+        N.B.: this involves sorting the array and hence makes a full copy of the data '''
+    # some input checking
+    if lflatten and axis is not None: raise ArgumentError
+    if not lflatten and axis is None: 
+      if self.ndim > 1: raise ArgumentError
+      else: lflatten = True # treat both as flat arrays...
+    if self.dtype.kind in ('S',): 
+      if lcheckVar: raise VariableError, "Percentiles do not work with string Variables!"
+      else: return None
+    if axis_idx is not None and axis is None: axis = self.axes[axis_idx]
+    elif axis_idx is None and axis is not None: axis_idx = self.axisIndex(axis)
+    elif not lflatten: raise ArgumentError    
+    if axis is not None and not self.hasAxis(axis):
+      if lcheckAxis: raise AxisError, "Variable '{:s}' has no axis '{:s}'.".format(self.name, axis)
+      else: return None
+    # setup histogram axis and variable attributes (special case)
+    if asVar:
+      axatts = self.atts.copy() # variable values become axis
+      axatts['name'] = 'percentile'.format(self.name) # '_q' suffix to indicate percentiles axis
+      axatts['units'] = '' # the histogram axis has the same units as the variable
+      axatts['long_name'] = 'Percentile Axis'    
+      if qaxatts is not None: axatts.update(qaxatts)
+      varatts = self.atts.copy() # 
+      varatts['name'] = name or '{:s}_q'.format(self.name)
+      varatts['long_name'] = 'Certain Percentiles of {:s}'.format(self.atts.get('long_name',self.name.title()))
+      varatts['units'] = self.units # count    
+      if qvaratts is not None: varatts.update(qvaratts)
+    else:
+      varatts = None; axatts = dict() # axatts is used later
+    # choose a fillValue, because np.histogram does not ignore masked values but does ignore NaNs
+    if fillValue is None and self.masked:
+      if np.issubdtype(self.dtype,np.integer): raise NotImplementedError # convert to float and use NaN?
+      elif np.issubdtype(self.dtype,np.inexact): fillValue = np.NaN
+      else: raise NotImplementedError
+    # check percentiles
+    if isinstance(q, (list,np.ndarray)): q = tuple(q) # scalar values  
+    if not isinstance(q,tuple): raise TypeError, "percentiles have to be a sequence"
+    qcoord = np.asarray(q) # for percentile axis
+    if qcoord.max() > 1 or qcoord.min() < 0: raise ValueError
+    q = tuple(100.*qq for qq in q) # for percentile function
+    # define functions that perform actual computation
+    # N.B.: these "operations" will be called through the reduce method (see above for details)
+    if lflatten: # totally by-pass reduce()...
+      # this is actually the default behavior of np.histogram()
+      if self.masked: data = self.data_array.filled(fillValue)
+      else: data = self.data_array
+      # N.B.: to ignore masked values they have to be replaced by NaNs or out-of-bounds values 
+      qdata = percentile(data.ravel(), q, axis)
+      # create new Axis and Variable objects (1-D)
+      if asVar: qvar = Variable(data=qdata, axes=(Axis(coord=qcoord, atts=axatts),), atts=varatts)
+      else: qvar = qdata
+    else: # use reduce to only apply to selected axis      
+      # create a helper function that apllies the histogram along the specified axis
+      def qfct(data, axis=None):
+        if axis < 0: axis += data.ndim
+        fct = functools.partial(percentile, q=q, axis=axis)         
+        qdata = apply_along_axis(fct, axis, data, laax=False)
+        return qdata
+      # call reduce to perform operation
+      axatts['coord'] = qcoord # reduce() reads this and uses it as new axis coordinates
+      qvar = self.reduce(operation=qfct, blklen=len(q), blkidx=None, axis=axis, mode='all', 
+                         offset=0, asVar=asVar, axatts=axatts, varatts=varatts, fillValue=fillValue)
+#     if asVar: qvar.plot = variablePlotatts[self.name].copy()
+    # return new variable instance (or data)
+    return qvar
+  
   def apply_stat_test(self, asVar=True, name=None, axis=None, axis_idx=None, test=None, dist='norm', 
                       lflatten=False, lstatistic=False, lonesided=False, fillValue=None, ignoreNaN=None,
                       lcheckVar=True, lcheckAxis=True, paxatts=None, pvaratts=None, **kwargs):

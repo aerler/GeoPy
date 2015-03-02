@@ -265,10 +265,13 @@ def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, laax=Tr
   data = np.reshape(data,(arraysize,samplesize))
   # compute
   if chunksize == 0: chunksize = 1 
+  if not laax: kwargs['axis'] = 1 # for ufunc-like functions
+  elif len(kwargs) > 0: raise NotImplementedError, "np.apply_along_axis doesn't take kwargs"
   if (NP == 1 or arraysize < 1.5*chunksize):
     # just use regular Numpy version... but always apply over last dimension
     if ldebug: print('\n   ***   Running in Serial Mode   ***')
-    results = np.apply_along_axis(fct, 1, data)
+    if laax: results = np.apply_along_axis(fct, 1, data, *args, **kwargs)
+    else: results = fct(data, *args, **kwargs)
   else:
     # split up data
     if arraysize < (NP+1)*chunksize:
@@ -284,8 +287,7 @@ def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, laax=Tr
     if ldebug: print('\n   ***   firing up pool (using async results)   ***')
     if ldebug: print('         OMP_NUM_THREADS = {:d}\n'.format(NP))
     pool = multiprocessing.Pool(processes=NP)
-    results = [] # list of resulting chunks (concatenated later
-    if not laax: kwargs['axis'] = 1 # for ufunc-like functions
+    results = [] # list of resulting chunks (concatenated later    
     for n in xrange(nc):
       # run computation on individual subsets/chunks
       if ldebug: print('   Starting Chunk #{:d}'.format(n+1))

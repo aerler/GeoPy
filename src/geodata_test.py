@@ -487,6 +487,17 @@ class BaseVarTest(unittest.TestCase):
     assert isEqual(np.nanvar(data, axis=var.axisIndex(t.name),ddof=3), varvar.getArray())
 #     assert isEqual(np.nanmax(self.data,axis=var.axisIndex(x.name)), var.max(**{x.name:None}).getArray())
 #     assert isEqual(np.nanmin(self.data, axis=var.axisIndex(y.name)), var.min(**{y.name:None}).getArray())
+    # test percentiles
+    qvar = var.percentile((0.,0.50,1.00), asVar=True, lflatten=False, axis=t.name,) 
+    assert qvar.hasAxis('percentile')
+    qvar_min = qvar(percentile=0)
+    qvar_median = qvar(percentile=0.50)
+    qvar_max = qvar(percentile=1.00)
+    print qvar_min.mean(), qvar_median.mean(), qvar_max.mean()
+    assert qvar_min.mean() < qvar_median.mean() < qvar_max.mean()   
+    assert isEqual(qvar_min.data_array, qvar.data_array.min(axis=var.axisIndex(t.name)))
+    assert isEqual(qvar_median.data_array, np.median(qvar.data_array,axis=var.axisIndex(t.name)))
+    assert isEqual(qvar_max.data_array, qvar.data_array.max(axis=var.axisIndex(t.name)))
     del data; gc.collect()
     # reduction fcts. of Variables ignore NaN values
     # test histogram
@@ -1424,7 +1435,7 @@ if __name__ == "__main__":
 #     print('OMP_NUM_THREADS=',os.environ['OMP_NUM_THREADS'])    
         
     specific_tests = None
-#     specific_tests = ['ReductionArithmetic']
+    specific_tests = ['ReductionArithmetic']
 #     specific_tests = ['DistributionVariables']
 #     specific_tests = ['Mask']
 #     specific_tests = ['Ensemble']
@@ -1438,13 +1449,13 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
+    tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['DatasetGDAL']
        
     
     # construct dictionary of test classes defined above
