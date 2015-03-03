@@ -290,7 +290,7 @@ class DistPlotTest(unittest.TestCase):
 #     ax.linePlot(kdeorig, errorband=kdeerrs, errorscale=0.5, linestyle='-', linewidth=2)
     # add bootstrap plot with errorbars    
     support = np.linspace(vmin, vmax, 100)
-    fitvars = [var.fitDist(dist=self.dist,lflatten=True, lbootstrap=True, nbs=100) for var in varlist] 
+    fitvars = [var.fitDist(dist=self.dist,lflatten=True, lbootstrap=True, nbs=1000) for var in varlist] 
     ax.bootPlot(fitvars[0], support=support, errorscale=0.5, linewidth=2, lsmooth=False,
                 percentiles=None, lvar=True, lvarBand=False, lmean=True, reset_color=True)
     ax.bootPlot(fitvars[1], support=support, errorscale=0.5, linewidth=2, lsmooth=False,

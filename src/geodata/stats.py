@@ -1178,8 +1178,8 @@ class VarRV(DistVar):
     if dist == '':
       raise ArgumentError, "No distribution 'dist' specified!"
     elif dist in ss.__dict__: 
-      self.dist_class = getattr(ss,dist)
-      self.dist_type = dist
+      self.dist_class = getattr(ss,dist) # distribution class (from SciPy)
+      self.dist_type = dist # name of distribution (in SciPy)
     else: 
       raise ArgumentError, "No distribution '{:s}' in module scipy.stats!".format(dist)
     # N.B.: the distribution info will be available to the _estimate_distribution-method

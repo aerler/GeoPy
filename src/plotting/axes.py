@@ -11,13 +11,13 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
+from types import NoneType
 # internal imports
 from geodata.base import Variable, Dataset, Ensemble
 from geodata.misc import ListError, AxisError, ArgumentError, isEqual
-from plotting.misc import smooth, getPlotValues, errorPercentile
+from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile
 from collections import OrderedDict
-from utils.misc import binedges, expandArgumentList, evalDistVars
-from types import NoneType
+from utils.misc import binedges, expandArgumentList
 
 ## new axes class
 class MyAxes(Axes): 
@@ -63,11 +63,12 @@ class MyAxes(Axes):
         variable properties; extra keyword arguments (plotargs) are passed through expandArgumentList,
         before being passed to Axes.plot(). '''
     ## figure out variables
-    varlist = self._checkVarlist(varlist, varname=varname, ndim=1, bins=bins, support=support, method=method, lignore=lignore)
-    if errorbar: errlist = self._checkVarlist(errorbar, varname=varname, ndim=1, 
+    varlist = checkVarlist(varlist, varname=varname, ndim=1, bins=bins, support=support, 
+                                 method=method, lignore=lignore)
+    if errorbar: errlist = checkVarlist(errorbar, varname=varname, ndim=1, 
                                               bins=bins, support=support, method=method, lignore=lignore)
     else: errlist = [None]*len(varlist) # no error bars
-    if errorband: bndlist = self._checkVarlist(errorband, varname=varname, ndim=1, 
+    if errorband: bndlist = checkVarlist(errorband, varname=varname, ndim=1, 
                                                bins=bins, support=support, method=method, lignore=lignore)
     else: bndlist = [None]*len(varlist) # no error bands
     assert len(varlist) == len(errlist) == len(bndlist)
@@ -150,6 +151,7 @@ class MyAxes(Axes):
           self._drawBand(axe, val+bnd, val-bnd, where=where, color=(facecolor or plt.get_color()), 
                          alpha=bandalpha*plotarg.get('alpha',1.), edgecolor=edgecolor, **bndarg)  
         plts.append(plt); self.plots[label] = plt
+      else: plts.append(None)
     ## format axes and add annotation
     # set axes labels  
     if self.flipxy: self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
@@ -171,9 +173,9 @@ class MyAxes(Axes):
         and lower limits of the bands; extra keyword arguments (plotargs) are passed through 
         expandArgumentList, before being passed on to Axes.fill_between() (used to draw bands). '''
     ## figure out variables
-    upper = self._checkVarlist(upper, varname=varname, ndim=1, bins=bins, 
+    upper = checkVarlist(upper, varname=varname, ndim=1, bins=bins, 
                                support=support, method=method, lignore=lignore)
-    lower = self._checkVarlist(lower, varname=varname, ndim=1, bins=bins, 
+    lower = checkVarlist(lower, varname=varname, ndim=1, bins=bins, 
                                support=support, method=method, lignore=lignore)
     assert len(upper) == len(lower)
     # initialize axes names and units
@@ -197,7 +199,7 @@ class MyAxes(Axes):
     ## generate individual line plots
     bnds = [] # list of plot handles
     for label,upvar,lowvar in zip(labels,upper,lower): 
-      self.variables[label+'_bnd'] = (upvar,lowvar) # save band variables under special name
+      self.variables[str(label)+'_bnd'] = (upvar,lowvar) # save band variables under special name
     # loop over variables and plot arguments
     for upvar,lowvar,plotarg,label in zip(upper,lower,plotargs,labels):
       if upvar or lowvar:
@@ -228,6 +230,7 @@ class MyAxes(Axes):
         if self.flipxy: xlen, ylen = len(low), len(axe) 
         else: xlen, ylen = len(axe), len(low)
         bnds.append(bnd); self.plots[label] = bnd
+      else: bnds.append(None)
     ## format axes and add annotation
     # set axes labels  
     if self.flipxy: self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
@@ -260,7 +263,8 @@ class MyAxes(Axes):
     else: self.fill_between(x=axes, y1=lower, y2=upper, interpolate=True, **bndarg) # interpolate=True
   
   def bootPlot(self, varlist, varname=None, bins=None, support=None, method='pdf', percentiles=(0.25,0.75),   
-               bootstrap_axis='bootstrap', lmedian=None, lmean=False, lvar=False, lvarBand=False,
+               bootstrap_axis='bootstrap', lmedian=None, median_fmt=None, lmean=False, mean_fmt=None, 
+               lvar=False, lvarBand=False,
                legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=None, lprint=False,
@@ -269,18 +273,18 @@ class MyAxes(Axes):
                errorscale=None, errorevery=None, **plotargs):
     ''' A function to draw the distribution of a random variable on a given support, including confidence 
         intervals derived from percentiles along a bootstrap axes '''
+#     if 'linestyle' in plotargs or 'linestyles' in plotargs:
+#       if lmean or lmedian: raise ArgumentError, "Linestyles are used internally to identify means or medians." 
     # auto detect bootstrap axis
-    if 'linestyle' in plotargs or 'linestyles' in plotargs:
-      if lmean or lmedian: raise ArgumentError, "Linestyles are used internally to identify means or medians." 
     if isinstance(varlist,(Variable,Dataset)): lhasBS = varlist.hasAxis(bootstrap_axis)
     elif isinstance(varlist,(tuple,list,Ensemble)):
       lhasBS = all(var.hasAxis(bootstrap_axis) for var in varlist)
     if not lhasBS: raise AxisError, bootstrap_axis
     # check input and evaluate distribution variables
-    varlist = self._checkVarlist(varlist, varname=varname, ndim=2, bins=bins, support=support, 
+    varlist = checkVarlist(varlist, varname=varname, ndim=2, bins=bins, support=support, 
                                  method=method, lignore=lignore, bootstrap_axis=None) # don't remove bootstrap
     # N.B.: two-dmensional: bootstrap axis and plot axis
-    assert all(var.hasAxis(bootstrap_axis) for var in varlist)
+    assert all(var.hasAxis(bootstrap_axis) for var in varlist if var is not None)
     # simple error bars using the bootstrap variance
     errorbars = None; errorband = None
     if lvar:
@@ -288,7 +292,7 @@ class MyAxes(Axes):
       if lvarBand: errorband = errorbars; errorbars = None # switch
     # plot the original distribution
     slc = {bootstrap_axis:0}
-    original = [var(**slc) for var in varlist]
+    original = [None if var is None else var(**slc) for var in varlist]
     plts = self.linePlot(varlist=original, errorbar=errorbars, errorband=errorband, 
                          errorevery=errorevery, errorscale=errorscale,
                          legend=legend, llabel=llabel, labels=labels, hline=hline, vline=vline, 
@@ -296,12 +300,14 @@ class MyAxes(Axes):
                          yticks=yticks, reset_color=reset_color, xlog=xlog, ylog=ylog, xlim=xlim, 
                          ylim=ylim, lsmooth=lsmooth, lprint=lprint, plotatts=plotatts,
                          expand_list=expand_list, lproduct=lproduct, **plotargs)
+    assert len(plts) == len(varlist)
     # get line colors to use in all subsequent plots 
-    colors = [plt.get_color() for plt in plts]
+    colors = ['' if plt is None else plt.get_color() for plt in plts] # color argument has to be string
     # plot mean
     if lmean:
-      means = [var.mean(axis=bootstrap_axis) for var in varlist]
-      self.linePlot(varlist=means, llabel=llabel, labels=labels, linestyles='-.', colors=colors,
+      if mean_fmt is None: mean_fmt = '-.' 
+      means = [None if var is None else var.mean(axis=bootstrap_axis) for var in varlist]
+      self.linePlot(varlist=means, llabel=False, labels=None, linestyles=mean_fmt, colors=colors,
                     flipxy=flipxy, reset_color=False, lsmooth=lsmooth, lprint=False, 
                     plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)    
     # determine percentiles along bootstrap axis
@@ -312,23 +318,28 @@ class MyAxes(Axes):
       if lmedian and len(percentiles) == 2: 
         percentiles = (percentiles[0],0.5,percentiles[1]) # add median to percentiles
       # compute percentiles
-      qvars = [var.percentile(q=percentiles, axis=bootstrap_axis) for var in varlist]
+      qvars = [None if var is None else var.percentile(q=percentiles, axis=bootstrap_axis) for var in varlist]
       upslc = dict(percentile=2 if lmedian else 1, lidx=True)
-      uppers = [var(**upslc) for var in qvars]
+      uppers = [None if var is None else var(**upslc) for var in qvars]
       loslc = dict(percentile=0, lidx=True) 
-      lowers = [var(**loslc) for var in qvars]
+      lowers = [None if var is None else var(**loslc) for var in qvars]
       # plot percentiles as error bands
       facecolor = facecolor or colors
       lsmoothBand = True if lsmooth or lsmooth is None else False
-      self.bandPlot(upper=uppers, lower=lowers, lignore=lignore, llabel=llabel, labels=labels,         
+      # clean up plot arguments
+      line_args = ('lineformats','linestyles','markers','lineformat','linestyle','marker')
+      band_args = {key:value for key,value in plotargs.iteritems() if key not in line_args}
+      # draw band plot between upper and lower percentile
+      self.bandPlot(upper=uppers, lower=lowers, lignore=lignore, llabel=False, labels=None,         
                     flipxy=flipxy, reset_color=False, lsmooth=lsmoothBand, lprint=False, 
                     where=where, alpha=bandalpha, edgecolor=edgecolor, colors=facecolor,
-                    expand_list=expand_list, lproduct=lproduct, plotatts=plotatts, **plotargs)
+                    expand_list=expand_list, lproduct=lproduct, plotatts=plotatts, **band_args)
       # add median plot
       if lmedian:
+        if median_fmt is None: median_fmt = '--'
         mdslc = dict(percentile=1, lidx=True)
-        meadians = [var(**mdslc) for var in qvars]
-        self.linePlot(varlist=meadians, llabel=llabel, labels=labels, linestyles='--', colors=colors,
+        meadians = [None if var is None else var(**mdslc) for var in qvars]
+        self.linePlot(varlist=meadians, llabel=False, labels=None, linestyles='--', colors=colors,
                       flipxy=flipxy, reset_color=False, lsmooth=lsmooth, lprint=False, 
                       plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)
     # done! 
@@ -342,7 +353,7 @@ class MyAxes(Axes):
     ''' A function to draw histograms of a list of 1D variables into an axes, 
         and annotate the plot based on variable properties. '''
     ## check input
-    varlist = self._checkVarlist(varlist, varname=varname, ndim=1, bins=bins, lflatten=lflatten,
+    varlist = checkVarlist(varlist, varname=varname, ndim=1, bins=bins, lflatten=lflatten,
                                  support=None, method='sample', lignore=lignore)
     # initialize axes names and units
     self.flipxy = flipxy
@@ -453,44 +464,6 @@ class MyAxes(Axes):
         kwargs['fontsize'] = self.get_yaxis().get_label().get_fontsize()
       kwargs['loc'] = loc
       self.legend(**kwargs)
-  
-  def _checkVarlist(self, varlist, varname=None, ndim=1, bins=None, support=None, method='pdf', 
-                    lignore=None, lflatten=False, bootstrap_axis='bootstrap'):
-    ''' helper function to pre-process the variable list '''
-    # varlist is the list of variable objects that are to be plotted
-    if isinstance(varlist,Variable): varlist = [varlist]
-    elif isinstance(varlist,Dataset): 
-      if isinstance(varname,basestring): varlist = [varlist[varname]]
-      elif isinstance(varname,(tuple,list)):
-        varlist = [varlist[name] if name in varlist else None for name in varname]
-      else: raise TypeError
-    elif isinstance(varlist,(tuple,list,Ensemble)):
-      if varname is not None:
-        tmplist = []
-        for var in varlist:
-          if isinstance(var,Variable): tmplist.append(var)
-          elif isinstance(var,Dataset):
-            if var.hasVariable(varname): tmplist.append(var[varname])
-            else: tmplist.append(None)
-          else: raise TypeError
-        varlist = tmplist; del tmplist
-    else: raise TypeError
-    if not all([isinstance(var,(Variable, NoneType)) for var in varlist]): raise TypeError
-    for var in varlist: 
-      if var is not None: var.squeeze() # remove singleton dimensions
-    # evaluate distribution variables on support/bins
-    if bins is not None or support is not None:
-      varlist = evalDistVars(varlist, bins=bins, support=support, method=method, 
-                             ldatasetLink=True, bootstrap_axis=bootstrap_axis) 
-    # check axis: they need to have only one axes, which has to be the same for all!
-    for var in varlist: 
-      if var is None: pass
-      elif var.ndim > ndim and not lflatten: 
-        raise AxisError, "Variable '{:s}' has more than {:d} dimension(s); consider squeezing.".format(var.name,ndim)
-      elif var.ndim < ndim: 
-        raise AxisError, "Variable '{:s}' has less than {:d} dimension(s); consider display as a line.".format(var.name,ndim)
-    # return cleaned-up and checkd variable list
-    return varlist    
   
   def _positionParasiteAxes(self):
     ''' helper routine to put parasite axes in place '''
@@ -610,10 +583,10 @@ class MyAxes(Axes):
     if not any(var.name == nonone_list[0].name for var in nonone_list[1:]):
       # if variable names are different
       labels = [None if var is None else var.name for var in varlist]
-    elif ( all(var.dataset is not None for var in nonone_list) and
-           not any(var.dataset.name == nonone_list[0].dataset.name for var in nonone_list[1:]) ):
+    elif ( all(var.dataset_name is not None for var in nonone_list) and
+           not any(var.dataset_name == nonone_list[0].dataset_name for var in nonone_list[1:]) ):
       # if dataset names are different
-      labels = [None if var is None else var.dataset.name for var in varlist]
+      labels = [None if var is None else var.dataset_name for var in varlist]
     else: 
       # if no names are unique, just number
       labels = range(len(varlist))
@@ -811,9 +784,7 @@ class MyAxes(Axes):
     # readjust parasite axes
     if self.parasite_axes: self._positionParasiteAxes() 
 
-        
-
-
+    
 # a new class that combines the new axes with LocatableAxes for use with AxesGrid 
 class MyLocatableAxes(LocatableAxes,MyAxes):
   ''' A new Axes class that adds functionality from MyAxes to a LocatableAxes for use in AxesGrid '''

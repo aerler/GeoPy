@@ -10,8 +10,11 @@ utility functions, mostly for plotting, that are not called directly
 import scipy
 import numpy as np
 import matplotlib as mpl
+from types import NoneType
 # internal imports
-from geodata.misc import VariableError
+from geodata.base import Variable, Dataset, Ensemble
+from geodata.misc import VariableError, AxisError
+from utils.misc import evalDistVars
 from utils.signalsmooth import smooth # commonly used in conjunction with plotting...
 
 # import matplotlib as mpl
@@ -42,6 +45,47 @@ def percentileError(multiple):
 # Source: https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.erf.html
   
 
+# function to retrieve a valid variable list from input
+def checkVarlist(varlist, varname=None, ndim=1, bins=None, support=None, method='pdf', 
+                 lflatten=False, bootstrap_axis='bootstrap', lignore=False):
+  ''' helper function to pre-process the variable list '''
+  # N.B.: 'lignore' is currently not used
+  # varlist is the list of variable objects that are to be plotted
+  if isinstance(varlist,Variable): varlist = [varlist]
+  elif isinstance(varlist,Dataset): 
+    if isinstance(varname,basestring): varlist = [varlist[varname]]
+    elif isinstance(varname,(tuple,list)):
+      varlist = [varlist[name] if name in varlist else None for name in varname]
+    else: raise TypeError
+  elif isinstance(varlist,(tuple,list,Ensemble)):
+    if varname is not None:
+      tmplist = []
+      for var in varlist:
+        if isinstance(var,Variable): tmplist.append(var)
+        elif isinstance(var,Dataset):
+          if var.hasVariable(varname): tmplist.append(var[varname])
+          else: tmplist.append(None)
+        else: raise TypeError
+      varlist = tmplist; del tmplist
+  else: raise TypeError
+  if not all([isinstance(var,(Variable, NoneType)) for var in varlist]): raise TypeError
+  for var in varlist: 
+    if var is not None: var.squeeze() # remove singleton dimensions
+  # evaluate distribution variables on support/bins
+  if bins is not None or support is not None:
+    varlist = evalDistVars(varlist, bins=bins, support=support, method=method, 
+                           ldatasetLink=True, bootstrap_axis=bootstrap_axis) 
+  # check axis: they need to have only one axes, which has to be the same for all!
+  for var in varlist: 
+    if var is None: pass
+    elif var.ndim > ndim and not lflatten: 
+      raise AxisError, "Variable '{:s}' has more than {:d} dimension(s); consider squeezing.".format(var.name,ndim)
+    elif var.ndim < ndim: 
+      raise AxisError, "Variable '{:s}' has less than {:d} dimension(s); consider display as a line.".format(var.name,ndim)
+  # return cleaned-up and checkd variable list
+  return varlist    
+  
+
 # method to check units and name, and return scaled plot value (primarily and internal helper function)
 def getPlotValues(var, checkunits=None, checkname=None, lsmooth=False, lperi=False, laxis=False):
   ''' Helper function to check variable/axis, get (scaled) values for plot, and return appropriate units. '''
@@ -54,11 +98,11 @@ def getPlotValues(var, checkunits=None, checkname=None, lsmooth=False, lperi=Fal
   val = var.getArray(unmask=True, copy=True) # the data to plot
   if var.plot is not None:
     if var.units != var.plot.units: 
-      val = val *  var.plot.scalefactor
+      val *=  var.plot.scalefactor
+      val += var.plot.offset
     varunits = var.plot.units
   else: 
-    varunits = var.atts['units']
-  if var.plot is not None and 'offset' in var.plot: val += var.plot.offset    
+    varunits = var.atts['units']    
   if checkunits is not None and  varunits != checkunits: 
     raise VariableError, "Units for variable '{}': expected {}, found {}.".format(var.name,checkunits,varunits) 
   # some post-processing

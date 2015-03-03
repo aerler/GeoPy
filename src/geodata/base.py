@@ -262,7 +262,7 @@ class Variable(object):
     # set defaults - make all of them instance variables! (atts and plot are set below)
     self.__dict__['data_array'] = None
     self.__dict__['_dtype'] = dtype
-    self.__dict__['dataset'] = None # set by addVariable() method of Dataset  
+    self.__dict__['_dataset'] = None # set by addVariable() method of Dataset  
     ## figure out axes
     if axes is not None:
       assert isinstance(axes, (list, tuple))
@@ -301,9 +301,27 @@ class Variable(object):
     self.atts['units'] = units
 
   @property
+  def dataset(self):
+    ''' The Dataset the Variable belongs to (or None). '''
+    return self._dataset  
+  @dataset.setter
+  def dataset(self, dataset):
+    self._dataset = dataset
+    self.atts['dataset_name'] = dataset.name
+
+  @property
   def dataset_name(self):
     ''' The name of the Dataset the Variable belongs to (or None). '''
-    return self.dataset.name if self.dataset else None
+    if self.dataset is not None: 
+      dataset_name = self.dataset.name
+      if dataset_name != self.atts['dataset_name']:
+        warn("Detected name change of Dataset from {:s} to {:s} - correcting automatically.".format(self.atts['dataset_name'],dataset_name))
+        self.atts['dataset_name'] = dataset_name
+#         raise DatasetError, "{:s} != {:s}".format(self.dataset.name, self.atts['dataset_name'])
+    elif 'dataset_name' in self.atts: 
+      dataset_name = self.atts['dataset_name']
+    else: dataset_name = None
+    return dataset_name
 #   @dataset_name.setter
 #   def dataset_name(self, dataset_name):
 #     if self.dataset is None: self._dataset_name = dataset_name
@@ -2649,8 +2667,10 @@ class Ensemble(object):
           # just re-use current keys
           for f,member in zip(fs,self.members):
             if self.idkey == 'dataset_name':
-              if f.dataset is None and f.dataset_name is None: f.dataset = member.dataset
-              else: raise DatasetError, f.dataset 
+              if f.dataset_name is None: 
+                f.dataset_name = member.dataset_name
+              elif not f.dataset_name == member.dataset_name: 
+                raise DatasetError, f.dataset_name
             elif not hasattr(f, self.idkey): 
               setattr(f, self.idkey, getattr(member,self.idkey))
             else: raise DatasetError, self.idkey

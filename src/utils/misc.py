@@ -121,13 +121,15 @@ def evalDistVars(varlist, bins=None, support=None, method='pdf', ldatasetLink=Tr
     if bootstrap_axis is not None: slc = {bootstrap_axis:0}
     newlist = []
     for var in varlist:
-      # remove bootstrap axis
-      if bootstrap_axis is not None and var.hasAxis(bootstrap_axis): var = var(**slc)
-      # evluate distributions
-      if isinstance(var,(DistVar,VarKDE,VarRV)): 
-        new = getattr(var,method)(support=support) # evaluate DistVar
-        if ldatasetLink: new.dataset= var.dataset # preserve dataset links to construct references
-      else: new = var
+      if var is None: new = None
+      else: 
+        # remove bootstrap axis
+        if bootstrap_axis is not None and var.hasAxis(bootstrap_axis): var = var(**slc)
+        # evluate distributions
+        if isinstance(var,(DistVar,VarKDE,VarRV)): 
+          new = getattr(var,method)(support=support) # evaluate DistVar
+          #if ldatasetLink: new.dataset= var.dataset # preserve dataset links to construct references
+        else: new = var
       newlist.append(new)
     assert not any(isinstance(var,(DistVar,VarKDE,VarRV)) for var in newlist)
   else: newlist = varlist # do nothing
