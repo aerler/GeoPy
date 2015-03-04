@@ -768,11 +768,11 @@ if __name__ == '__main__':
     
   
 #   mode = 'test_climatology'
-#   mode = 'test_timeseries'
+  mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-  mode = 'test_point_ensemble'
+#   mode = 'test_point_ensemble'
 #   mode = 'pickle_grid'  
   pntset = 'shpavg' # 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
@@ -850,10 +850,10 @@ if __name__ == '__main__':
     var = dataset.zs
     print(var)
     print(var.min(),var.mean(),var.std(),var.max())
-#     print('')
-#     print(dataset.time)
-#     print(dataset.time.offset)
-#     print(dataset.time.coord)
+    print('')
+    print(dataset.time)
+    print(dataset.time.offset)
+    print(dataset.time.coord)
 
   # load ensemble "time-series"
   elif mode == 'test_ensemble':

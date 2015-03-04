@@ -579,6 +579,8 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
       ensemble = getattr(ensemble,'seasonal'+aggregation.title())(season=season, taxis='time', **kwargs)
     else:
       ensemble = getattr(ensemble,'clim'+aggregation.title())(taxis='time', **kwargs)
+  elif season: # but not aggregation
+    ensemble = ensemble.extractSeason(season)
   # return dataset
   return ensemble
 

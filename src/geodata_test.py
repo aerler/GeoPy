@@ -365,6 +365,7 @@ class BaseVarTest(unittest.TestCase):
     ''' test indexing and slicing '''
     # get test objects
     var = self.var
+    lsimple = self.__class__ is BaseVarTest
     # indexing (getitem) test  
     if var.ndim >= 3:
       tmp = var[:]; var.unload(); var[:] = tmp.copy()
@@ -408,15 +409,18 @@ class BaseVarTest(unittest.TestCase):
       assert len(slcvar.axes[0]) == var.shape[0]-1
       assert len(slcvar.axes[1]) == len(l0) 
       assert isEqual(slcvar[:], var[1:,l1,l2], masked_equal=True)
-      # test findValue(s)
-      val = var.data_array.ravel()[-1]
-      idx = var.findValue(val, lidx=True, lflatten=True)
-      assert val == var.data_array.ravel()[idx]
-      vals = (var[0,0,0],var[-1,0,0],var[0,-1,0],var[0,0,-1],var[-1,-1,0],var[0,-1,-1],var[-1,0,-1],var[-1,-1,-1])
-      idxs = var.findValues(vals, lidx=True, lflatten=False, ltranspose=True)
-      for idx in idxs: assert var[idx] in vals
-      # test extraction of seasons
-      svar = var.extractSeason(season='djf', asVar=True, lcheck=True, linplace=False)
+      # test findValue(s) (doesn't work if value is masked...)
+      if not var.masked or not var.data_array.mask.ravel()[-1]:
+        val = var.data_array.ravel()[-1]
+        idx = var.findValue(val, lidx=True, lflatten=True)
+        assert val == var.data_array.ravel()[idx]
+        vals = (var[0,0,0],var[-1,0,0],var[0,-1,0],var[0,0,-1],var[-1,-1,0],var[0,-1,-1],var[-1,0,-1],var[-1,-1,-1])
+        idxs = var.findValues(vals, lidx=True, lflatten=False, ltranspose=True)
+        for idx in idxs: assert var[idx] in vals
+      # test extraction of seasons (need time-axis in month)
+      lstrict = not lsimple and var.getAxis('time').units.lower().startswith('month')
+      # currently all test datasets do not conform to my conventions...
+      svar = var.extractSeason(season='djf', asVar=True, linplace=False, lstrict=lstrict)
       assert svar.shape != var.shape
       tax = var.getAxis('time').coord 
       stax = svar.getAxis('time').coord
@@ -428,7 +432,7 @@ class BaseVarTest(unittest.TestCase):
       # test in-place extraction
       cvar = var.copy(deepcopy=True)
       assert cvar.shape == var.shape
-      cvar.extractSeason(season='djf', asVar=True, lcheck=True, linplace=True)
+      cvar.extractSeason(season='djf', linplace=True, lstrict=lstrict)
       assert cvar.shape != var.shape
       assert isEqual(svar.data_array, cvar.data_array)
       
@@ -1168,11 +1172,13 @@ class NetCDFVarTest(BaseVarTest):
     ''' test indexing and slicing '''
     # get test objects
     var = self.var
-    # indexing (getitem) test    
+    # test data access    
     if var.ndim == 3:
       assert isEqual(self.data[1,1,1], var[1,1,1])
       assert isEqual(self.data[1,:,1:-1], var[1,:,1:-1])
-    # test axes
+    # run tests from parent
+    super(NetCDFVarTest,self).testIndexing()
+    
 
   def testLoadSlice(self):
     ''' test loading of slices '''
@@ -1459,7 +1465,7 @@ if __name__ == "__main__":
 #     specific_tests = ['Copy']
 #     specific_tests = ['ApplyToAll']
 #     specific_tests = ['AddProjection']
-#     specific_tests = ['Indexing']
+    specific_tests = ['Indexing']
  
 
     # list of tests to be performed
@@ -1469,9 +1475,9 @@ if __name__ == "__main__":
     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
        
     
     # construct dictionary of test classes defined above

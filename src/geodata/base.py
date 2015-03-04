@@ -551,57 +551,7 @@ class Variable(object):
         raise NotImplementedError, "Implicit slicing during date assignment is currently not supported."
       elif self.shape != data.shape: 
         raise DataError, "Data array shape does not match variable shape\n(slice was ignored, since no data array was present before)."
-      else: self.data_array = data     
-      
-  def extractSeason(self, season, asVar=None, lcheck=False, linplace=False):
-    ''' A method to extract a subset of month from a monthly timeseries '''
-    # check input
-    if self.hasAxis('time'):
-      time = self.getAxis('time')
-      itime = self.axisIndex('time')
-      tcoord = time.coord
-      # make sure the time axis is well-formatted, because we are making a lot of assumptions!
-      if not time.units.lower() in ('month','months'): 
-        raise NotImplementedError, "Time units='month' required to extract seasons!"
-      #if 'long_name' not in time.atts and lstrictCheck: raise KeyError, time.prettyPrint(short=False)
-      if tcoord[0]%12 != 1: raise AxisError, "Time-axis has to start in January!"
-      if np.any( np.diff(tcoord, axis=0) != 1 ): raise AxisError, "Time-axis cannot have missing coordinates (month)!"
-      # translate season string
-      idx = translateSeasons(season) # does most of the remining input/type checking
-      # extend the list of indices to the length of the time axis
-      idxlen = idx.size; tlen = tcoord.size; yrlen = tlen//12; tover = tlen%12
-      # basically, construct a 2D array of years and month, and flatten afterwards
-      idxarr = np.repeat(np.arange(0,yrlen*12,12, dtype=np.int32).reshape((yrlen,1)), repeats=idxlen, axis=1)
-      idxarr = ( idxarr + idx ).ravel() # addition should broadcast automatically       
-      # add incomplete year at the end (extend array)
-      idxover = np.asarray([yrlen*12+i for i in idx if i < tover], dtype=np.int32)
-      idxarr = np.concatenate((idxarr,idxover), axis=0)
-      assert idxarr.min() >= 0 and idxarr.max() < tlen
-      # slice data and coordinate vector
-      data = self.data_array.take(idxarr, axis=itime)
-      assert data.dtype == self.dtype
-      assert data.shape == self.shape[:itime]+(len(idxarr),)+self.shape[itime+1:]
-      if asVar:
-        # create new axes
-        coord = tcoord.take(idxarr, axis=0)
-        assert len(coord) == len(idxarr)        
-        axes = self.axes[:itime]+(time.copy(coord=coord),)+self.axes[itime+1:]
-        if linplace:
-          # replace axes and data
-          self.axes = axes
-          self.data_array = data
-          svar = self
-        else:
-          # create new variable
-          svar = self.copy(data=data, axes=axes)
-      else:
-        if linplace: raise ArgumentError, linplace
-        svar = data # just return new array      
-    else:
-      if lcheck: raise AxisError, "Axis 'time' required to extract seasons!"
-      else: svar = None # basically just skip and return None
-    # return results
-    return svar
+      else: self.data_array = data         
     
   def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, asVar=None, 
                lsqueeze=True, lcheck=False, lcopy=False, lslices=False, linplace=False, **axes):
@@ -636,7 +586,7 @@ class Variable(object):
         if not time.units.lower() in ('month','months'): 
           raise NotImplementedError, "Time units='month' required for keyword 'years'!"
         if 'long_name' not in time.atts: raise KeyError, self.prettyPrint(short=True)
-        if time.coord[0] != 1: 
+        if time.coord[0]%12 != 0: 
           raise AxisError, "Time-axis has to start at a full year for keyword 'years'!"
         if lidx: raise ArgumentError, "Keyword 'years' only works with coordinate indexing, not direct indexing!"
         # convert years to time-axis coordinates
@@ -1444,6 +1394,57 @@ class Variable(object):
     # return new variable instance (or data)
     return pvar
     
+  def extractSeason(self, season=None, asVar=True, lcheckAxis=False, lcheckVar=True, linplace=False, lstrict=True):
+    ''' A method to extract a subset of month from a monthly timeseries '''
+    # check input
+    if season is not None and self.hasAxis('time'):
+      time = self.getAxis('time')
+      itime = self.axisIndex('time')
+      tcoord = time.coord
+      # make sure the time axis is well-formatted, because we are making a lot of assumptions!
+      if not time.units.lower() in ('month','months') and lstrict: 
+        raise NotImplementedError, "Time units='month' required to extract seasons! (got '{:s}')".format(time.units)
+      #if 'long_name' not in time.atts and lstrictCheck: raise KeyError, time.prettyPrint(short=False)
+      if tcoord[0]%12 != 0 and lstrict: raise AxisError, "Time-axis has to start in January!"
+      if np.any( np.diff(tcoord, axis=0) != 1 )  and lstrict: 
+        raise AxisError, "Time-axis cannot have missing coordinates (month)!"
+      # translate season string
+      idx = translateSeasons(season) # does most of the remining input/type checking
+      # extend the list of indices to the length of the time axis
+      idxlen = idx.size; tlen = tcoord.size; yrlen = tlen//12; tover = tlen%12
+      # basically, construct a 2D array of years and month, and flatten afterwards
+      idxarr = np.repeat(np.arange(0,yrlen*12,12, dtype=np.int32).reshape((yrlen,1)), repeats=idxlen, axis=1)
+      idxarr = ( idxarr + idx ).ravel() # addition should broadcast automatically       
+      # add incomplete year at the end (extend array)
+      idxover = np.asarray([yrlen*12+i for i in idx if i < tover], dtype=np.int32)
+      idxarr = np.concatenate((idxarr,idxover), axis=0)
+      assert idxarr.min() >= 0 and idxarr.max() < tlen
+      # slice data and coordinate vector
+      data = self.data_array.take(idxarr, axis=itime)
+      assert data.dtype == self.dtype
+      assert data.shape == self.shape[:itime]+(len(idxarr),)+self.shape[itime+1:]
+      if asVar:
+        # create new axes
+        coord = tcoord.take(idxarr, axis=0)
+        assert len(coord) == len(idxarr)        
+        axes = self.axes[:itime]+(time.copy(coord=coord),)+self.axes[itime+1:]
+        if linplace:
+          # replace axes and data
+          self.axes = axes
+          self.data_array = data
+          svar = self
+        else:
+          # create new variable
+          svar = self.copy(data=data, axes=axes)
+      else:
+        if linplace: raise ArgumentError, linplace
+        svar = data # just return new array      
+    else:
+      if lcheckAxis: raise AxisError, "Axis 'time' required to extract seasons!"
+      else: svar = None # basically just skip and return None
+    # return results
+    return svar
+  
   def reduceToAnnual(self, season, operation, asVar=False, name=None, offset=0, taxis='time', checkUnits=True,
                      lcheckVar=True, lcheckAxis=True, taxatts=None, varatts=None, **kwargs):
     ''' Reduce a monthly time-series to an annual time-series, using mean/min/max over a subset of month or seasons. '''
