@@ -15,7 +15,7 @@ import numpy as np
 # internal imports
 from geodata.misc import isInt , ArgumentError
 from plotting.axes import MyAxes, MyLocatableAxes, Axes
-from plotting.misc import loadStyleSheet
+from plotting.misc import loadStyleSheet, toGGcolors
 import matplotlib as mpl
 # just for convenience
 from matplotlib.pyplot import show
@@ -272,6 +272,9 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
   # load stylesheet
   if stylesheet is not None:
     loadStyleSheet(stylesheet, lpresentation=lpresentation, lpublication=lpublication) 
+    if stylesheet in ('myggplot','ggplot'):
+      warn("Rewriting built-in color definitions to GG-plot defaults.")
+      dataset_plotargs = toGGcolors(dataset_plotargs) # modifies in-place!      
   # default figure class
   if figure_class is None: figure_class = MyFigure
   elif not issubclass(figure_class, Figure): raise TypeError 

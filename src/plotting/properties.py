@@ -47,12 +47,12 @@ tmp = PlotAtts(name = 'Histogram', title = 'Histogram',
 # add to collection
 variablePlotatts['hist'] = tmp
 ## Density Distribution
-tmp = PlotAtts(name = 'PDF', title = 'Density Distribution', 
+tmp = PlotAtts(name = 'PDF', title = 'Probability Density', 
                units = '', preserve = 'area')
 # add to collection
 variablePlotatts['pdf'] = tmp
 ## Cumulative Distribution
-tmp = PlotAtts(name = 'CDF', title = 'Cumulative Distribution', 
+tmp = PlotAtts(name = 'CDF', title = 'Cumulative Probability', 
                units = '', preserve = 'value')
 # add to collection
 variablePlotatts['cdf'] = tmp
@@ -62,7 +62,7 @@ tmp = PlotAtts(name = 'p-value', title = 'p-Value',
 # add to collection
 variablePlotatts['pval'] = tmp
 ## quantile of statistic
-tmp = PlotAtts(name = 'quantile', title = 'Quantile', 
+tmp = PlotAtts(name = 'Quantile', title = 'Quantile', 
                units = '', preserve = 'value')
 # add to collection
 variablePlotatts['quant'] = tmp
@@ -185,7 +185,7 @@ tmp = PlotAtts(name = 'snowh', title = 'Snow Depth',
 variablePlotatts['snowh'] = tmp
 
 ## (absolute) Soil Moisture
-tmp = PlotAtts(name = 'aSM', title = '(absolute) Soil Moisture', 
+tmp = PlotAtts(name = 'Soil Moisture', title = '(absolute) Soil Moisture', 
                units = '$m^3/m^3$', scalefactor = 1.)
 # add to collection
 variablePlotatts['aSM'] = tmp
@@ -329,7 +329,7 @@ tmp = PlotAtts(name = 'P - ET', title = 'Precipitation - Evaporation',
 variablePlotatts['p-et'] = tmp
 
 ## Net Surface Moisture Flux
-tmp = PlotAtts(name = 'WaterFlx', title = 'Net Water Flux', 
+tmp = PlotAtts(name = 'Water Flux', title = 'Net Water Flux', 
                units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['waterflx'] = tmp

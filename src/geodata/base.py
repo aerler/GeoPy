@@ -2613,8 +2613,8 @@ class Ensemble(object):
     members  = list/tuple of members of the ensemble
     basetype = class of the ensemble members
     idkey    = property of members used for unique identification
-    name     = name of the ensemble (string)
-    title    = printable title used for the ensemble (string)
+    ens_name     = name of the ensemble (string)
+    ens_title    = printable title used for the ensemble (string)
     '''
     # add members
     self.members = list(members)

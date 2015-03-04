@@ -266,7 +266,7 @@ class MyAxes(Axes):
                bootstrap_axis='bootstrap', lmedian=None, median_fmt=None, lmean=False, mean_fmt=None, 
                lvar=False, lvarBand=False,
                legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
-               flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
+               flipxy=None, xlabel=True, ylabel=False, xticks=True, yticks=False, reset_color=None, 
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=None, lprint=False,
                lignore=False, expand_list=None, lproduct='inner', plotatts=None,
                where=None, bandalpha=None, edgecolor=None, facecolor=None, bandarg=None,  
@@ -309,6 +309,7 @@ class MyAxes(Axes):
       means = [None if var is None else var.mean(axis=bootstrap_axis) for var in varlist]
       self.linePlot(varlist=means, llabel=False, labels=None, linestyles=mean_fmt, colors=colors,
                     flipxy=flipxy, reset_color=False, lsmooth=lsmooth, lprint=False, 
+                    xlabel=xlabel, ylabel=ylabel,
                     plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)    
     # determine percentiles along bootstrap axis
     if lmedian and percentiles is None: raise ArgumentError, "Median only works with percentiles."
@@ -330,7 +331,9 @@ class MyAxes(Axes):
       line_args = ('lineformats','linestyles','markers','lineformat','linestyle','marker')
       band_args = {key:value for key,value in plotargs.iteritems() if key not in line_args}
       # draw band plot between upper and lower percentile
-      self.bandPlot(upper=uppers, lower=lowers, lignore=lignore, llabel=False, labels=None,         
+      if bandalpha is None: bandalpha = 0.35 
+      self.bandPlot(upper=uppers, lower=lowers, lignore=lignore, llabel=False, labels=None,
+                    xlabel=xlabel, ylabel=ylabel,         
                     flipxy=flipxy, reset_color=False, lsmooth=lsmoothBand, lprint=False, 
                     where=where, alpha=bandalpha, edgecolor=edgecolor, colors=facecolor,
                     expand_list=expand_list, lproduct=lproduct, plotatts=plotatts, **band_args)
@@ -340,6 +343,7 @@ class MyAxes(Axes):
         mdslc = dict(percentile=1, lidx=True)
         meadians = [None if var is None else var(**mdslc) for var in qvars]
         self.linePlot(varlist=meadians, llabel=False, labels=None, linestyles='--', colors=colors,
+                      xlabel=xlabel, ylabel=ylabel,
                       flipxy=flipxy, reset_color=False, lsmooth=lsmooth, lprint=False, 
                       plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)
     # done! 
@@ -601,13 +605,13 @@ class MyAxes(Axes):
     args = dict()
     # apply figure/project defaults
     if label == var.name: # variable name has precedence
-      if var.dataset is not None and self.dataset_plotargs is not None: 
-        args.update(self.dataset_plotargs.get(var.dataset.name,{}))
+      if var.dataset_name is not None and self.dataset_plotargs is not None: 
+        args.update(self.dataset_plotargs.get(var.dataset_name,{}))
       if self.variable_plotargs is not None: args.update(self.variable_plotargs.get(var.name,{}))
     else: # dataset name has precedence
       if self.variable_plotargs is not None: args.update(self.variable_plotargs.get(var.name,{}))
-      if var.dataset is not None and self.dataset_plotargs is not None: 
-        args.update(self.dataset_plotargs.get(var.dataset.name,{}))
+      if var.dataset_name is not None and self.dataset_plotargs is not None: 
+        args.update(self.dataset_plotargs.get(var.dataset_name,{}))
     # apply axes/local defaults
     if plotatts is not None: args.update(plotatts.get(label,{}))
     if plotarg is not None: args.update(plotarg)

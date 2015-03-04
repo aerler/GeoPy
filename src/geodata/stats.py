@@ -828,7 +828,7 @@ class DistVar(Variable):
           if support_axis is None:
             # generate new histogram axis
             axplotatts = getPlotAtts(name='quant', units='') # infer meta data from plot attributes
-            daxatts = dict() # variable values become axis
+            daxatts = self.paramAxis.atts.copy() # original Axis also has dataset reference/name
             daxatts['name'] = '{:s}_quants'.format(basename) # remove suffixes (like _dist)
             daxatts['units'] = '' # quantiles have no units
             daxatts['long_name'] = '{:s} Quantile Axis'.format(self.name.title())
@@ -857,7 +857,7 @@ class DistVar(Variable):
             if axatts is not None: support_axis.atts.update(axatts) # just update attributes
         # generate new histogram variable
         plotatts = getPlotAtts(name=dist_type, units='') # infer meta data from plot attributes
-        dvaratts = dict() # this is either density or frequency
+        dvaratts = self.paramAxis.atts.copy() # original Axis also has dataset reference/name
         dvaratts['name'] = name or '{:s}_{:s}'.format(basename,dist_type)
         dvaratts['long_name'] = '{:s} of {:s}'.format(plotatts.name,self.atts.get('long_name',basename.title()))
         dvaratts['units'] = plotatts.units

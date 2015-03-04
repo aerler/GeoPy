@@ -34,6 +34,20 @@ def loadStyleSheet(stylesheet, lpresentation=False, lpublication=False):
     mpl.pyplot.style.use(stylesheet)
   else: raise TypeError
 
+# GG-plot colors
+ggcolor = dict()
+ggcolor['blue']   = '#348ABD'
+ggcolor['purple'] = '#988ED5'
+ggcolor['red']    = '#E24A33'
+ggcolor['gray']   = '#777777'
+ggcolor['yellow'] = '#FBC15E'
+ggcolor['green']  = '#8EBA42'
+ggcolor['pink']   = '#FFB5B8'
+def toGGcolors(plotargs):
+  ''' convenience function to replace color words with default hex codes for GG-plot colors '''
+  for val in plotargs.itervalues():
+    if 'color' in val and val['color'] in ggcolor: val['color'] = ggcolor[val['color']]
+  return plotargs
 
 # caculate error percentiles
 def errorPercentile(percentile):
