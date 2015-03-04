@@ -9,7 +9,6 @@ Some tools and data that are used by many datasets, but not much beyond that.
 # external imports
 from importlib import import_module
 import inspect
-from warnings import warn
 import numpy as np
 import pickle
 import os
@@ -20,17 +19,10 @@ from geodata.misc import AxisError, DatasetError, DateError, ArgumentError
 from geodata.base import Dataset, Variable, Axis, Ensemble
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import GDALError, addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
+# import some calendar defintions
+from geodata.misc import name_of_month, days_per_month, days_per_month_365, seconds_per_month, seconds_per_month_365
 
 
-# days per month
-days_per_month = np.array([31,28.2425,31,30,31,30,31,31,30,31,30,31], dtype='float32') # 97 leap days every 400 years
-seconds_per_month = days_per_month * 86400.
-# N.B.: the Gregorian calendar repeats every 400 years
-days_per_month_365 = np.array([31,28,31,30,31,30,31,31,30,31,30,31], dtype='float32') # no leap day
-seconds_per_month_365 = days_per_month_365 * 86400.
-# human-readable names
-name_of_month = ['January  ', 'February ', 'March    ', 'April    ', 'May      ', 'June     ', #
-                 'July     ', 'August   ', 'September', 'October  ', 'November ', 'December ']
 
 
 # attributes for variables in standardized climatologies 

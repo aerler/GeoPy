@@ -17,6 +17,7 @@ from warnings import warn
 # my own imports
 from plotting.properties import getPlotAtts, variablePlotatts # import plot properties from different file
 from geodata.misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, floateps
+from geodata.misc import genStrArray, translateSeasons
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 from processing.multiprocess import apply_along_axis
 from utils.misc import histogram, binedges, detrend, percentile
@@ -179,20 +180,6 @@ class ReduceVar(object): # not a Variable child!!!
     ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
     return functools.partial(self.__call__, instance) # but using 'partial' is simpler
 
-
-# utility function
-def genStrArray(string_list):
-  ''' utility function to generate a string array from a list of strings '''
-  if not isinstance(string_list,(list,tuple)): raise TypeError
-  strlen = 0; new_list = []
-  for string in string_list:
-    if not isinstance(string,basestring): raise TypeError
-    strlen = max(len(string),strlen)
-    new_list.append(string.ljust(strlen))
-  strarray = np.array(new_list, dtype='|S{:d}'.format(strlen))
-  assert strarray.shape == (len(string_list),)
-  return strarray
-    
 
 ## Variable class and derivatives 
 
@@ -564,10 +551,60 @@ class Variable(object):
         raise NotImplementedError, "Implicit slicing during date assignment is currently not supported."
       elif self.shape != data.shape: 
         raise DataError, "Data array shape does not match variable shape\n(slice was ignored, since no data array was present before)."
-      else: self.data_array = data       
+      else: self.data_array = data     
+      
+  def extractSeason(self, season, asVar=None, lcheck=False, linplace=False):
+    ''' A method to extract a subset of month from a monthly timeseries '''
+    # check input
+    if self.hasAxis('time'):
+      time = self.getAxis('time')
+      itime = self.axisIndex('time')
+      tcoord = time.coord
+      # make sure the time axis is well-formatted, because we are making a lot of assumptions!
+      if not time.units.lower() in ('month','months'): 
+        raise NotImplementedError, "Time units='month' required to extract seasons!"
+      #if 'long_name' not in time.atts and lstrictCheck: raise KeyError, time.prettyPrint(short=False)
+      if tcoord[0]%12 != 1: raise AxisError, "Time-axis has to start in January!"
+      if np.any( np.diff(tcoord, axis=0) != 1 ): raise AxisError, "Time-axis cannot have missing coordinates (month)!"
+      # translate season string
+      idx = translateSeasons(season) # does most of the remining input/type checking
+      # extend the list of indices to the length of the time axis
+      idxlen = idx.size; tlen = tcoord.size; yrlen = tlen//12; tover = tlen%12
+      # basically, construct a 2D array of years and month, and flatten afterwards
+      idxarr = np.repeat(np.arange(0,yrlen*12,12, dtype=np.int32).reshape((yrlen,1)), repeats=idxlen, axis=1)
+      idxarr = ( idxarr + idx ).ravel() # addition should broadcast automatically       
+      # add incomplete year at the end (extend array)
+      idxover = np.asarray([yrlen*12+i for i in idx if i < tover], dtype=np.int32)
+      idxarr = np.concatenate((idxarr,idxover), axis=0)
+      assert idxarr.min() >= 0 and idxarr.max() < tlen
+      # slice data and coordinate vector
+      data = self.data_array.take(idxarr, axis=itime)
+      assert data.dtype == self.dtype
+      assert data.shape == self.shape[:itime]+(len(idxarr),)+self.shape[itime+1:]
+      if asVar:
+        # create new axes
+        coord = tcoord.take(idxarr, axis=0)
+        assert len(coord) == len(idxarr)        
+        axes = self.axes[:itime]+(time.copy(coord=coord),)+self.axes[itime+1:]
+        if linplace:
+          # replace axes and data
+          self.axes = axes
+          self.data_array = data
+          svar = self
+        else:
+          # create new variable
+          svar = self.copy(data=data, axes=axes)
+      else:
+        if linplace: raise ArgumentError, linplace
+        svar = data # just return new array      
+    else:
+      if lcheck: raise AxisError, "Axis 'time' required to extract seasons!"
+      else: svar = None # basically just skip and return None
+    # return results
+    return svar
     
-  def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, asVar=None, lsqueeze=True, 
-               lcheck=False, lcopy=False, lslices=False, linplace=False, **axes):
+  def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, asVar=None, 
+               lsqueeze=True, lcheck=False, lcopy=False, lslices=False, linplace=False, **axes):
     ''' This method implements access to slices via coordinate values and returns Variable objects. 
         Default behavior for different argument types: 
           - index by coordinate value, not array index, except if argument is a Slice object
@@ -595,8 +632,14 @@ class Variable(object):
     if years is not None:
       if self.hasAxis('time'):
         time = self.getAxis('time')
-        if not time.units.lower() in ('month','months'): raise NotImplementedError, 'Can only convert years to month!'
+        # make sure the time axis is well-formatted, because we are making a lot of assumptions!
+        if not time.units.lower() in ('month','months'): 
+          raise NotImplementedError, "Time units='month' required for keyword 'years'!"
         if 'long_name' not in time.atts: raise KeyError, self.prettyPrint(short=True)
+        if time.coord[0] != 1: 
+          raise AxisError, "Time-axis has to start at a full year for keyword 'years'!"
+        if lidx: raise ArgumentError, "Keyword 'years' only works with coordinate indexing, not direct indexing!"
+        # convert years to time-axis coordinates
         if '1979' in time.atts.long_name: offset = 1979
         else: offset = 0
         if isinstance(years,np.number): months = (years - offset)*12
@@ -606,7 +649,9 @@ class Variable(object):
           elif len(months) == 3: months = (months[0],months[1]-1,months[2]) # passed to np.linspace
           else: raise NotImplementedError
         axes['time'] = months
-      elif lcheck: raise AxisError, "Axis 'time' required for keyword 'years'!"
+      elif lcheck: 
+        raise AxisError, "Axis 'time' required for keyword 'years'!"
+      # N.B.: if lcheck is False, these keywords will just be ignored without a time-axis
     varaxes = dict(); idxmodes = dict() ; rngmodes = dict(); lstmodes = dict()
     # parse axes arguments and determine slicing
     for key,val in axes.iteritems():
@@ -1415,29 +1460,6 @@ class Variable(object):
     te = len(taxis); tax = self.axisIndex(taxis.name)
     if te%12 != 0 or not (taxis.coord[0]%12 == 0 or taxis.coord[0]%12 == 1): 
       raise NotImplementedError, 'Currently seasonal reduction only works with full years.'
-    # determine season
-    if isinstance(season,(int,np.integer)): idx = np.asarray([season])
-    elif isinstance(season,(list,tuple)):
-      if all([isinstance(s,(int,np.integer)) for s in season]): 
-        idx = np.asarray(season)
-      else: raise TypeError      
-    elif isinstance(season,basestring):
-      ssn = season.lower() # ignore case
-      year = 'jfmamjjasondjfmamjjasond' # all month, twice
-      # N.B.: regular Python indexing, starting at 0 for Jan and going to 11 for Dec
-      if ssn == 'jfmamjjasond' or ssn == 'annual': idx = np.arange(12)
-      elif ssn == 'jja' or ssn == 'summer': idx = np.asarray([5,6,7])
-      elif ssn == 'djf' or ssn == 'winter': idx = np.asarray([11,0,1])
-      elif ssn == 'mam' or ssn == 'spring': idx = np.asarray([2,3,4])
-      elif ssn == 'son' or ssn == 'fall'  or ssn == 'autumn': idx = np.asarray([8,9,10])
-      elif ssn == 'mamjja' or ssn == 'warm': idx = np.asarray([2,3,4,5,6,7])
-      elif ssn == 'sondjf' or ssn == 'cold': idx = np.asarray([8,9,10,11,0,1,])
-      elif ssn == 'amj' or ssn == 'melt': idx = np.asarray([3,4,5,])
-      elif ssn in year: 
-        s = year.find(ssn) # find first occurrence of sequence
-        idx = np.arange(s,s+len(ssn))%12 # and use range of months
-      else: raise ValueError, "Unknown key word/season: '{:s}'".format(str(season))
-    else: raise TypeError, "Unknown identifier for season: '{:s}'".format(str(season))
     # modify variable
     if asVar:      
       # create new time axis (yearly)
@@ -1453,6 +1475,8 @@ class Variable(object):
       vatts['units'] = self.units
       if varatts is not None: vatts.update(varatts)
     else: tatts = None; varatts = None # irrelevant
+    # translate definiton of month or season
+    idx = translateSeasons(season)
     # call general reduction function
     avar =  self.reduce(operation, blklen=12, blkidx=idx, axis=taxis, mode='block', 
                         offset=offset, asVar=asVar, axatts=tatts, varatts=varatts, 

@@ -367,8 +367,8 @@ class BaseVarTest(unittest.TestCase):
     var = self.var
     # indexing (getitem) test  
     if var.ndim >= 3:
-      # __setitem__ & __getitem__
       tmp = var[:]; var.unload(); var[:] = tmp.copy()
+      # __setitem__ & __getitem__
       assert (var.data_array == tmp).all()
       var[1,:,0:-1] = 0
       assert (var[1,:,0:-1]==0).all()
@@ -415,8 +415,23 @@ class BaseVarTest(unittest.TestCase):
       vals = (var[0,0,0],var[-1,0,0],var[0,-1,0],var[0,0,-1],var[-1,-1,0],var[0,-1,-1],var[-1,0,-1],var[-1,-1,-1])
       idxs = var.findValues(vals, lidx=True, lflatten=False, ltranspose=True)
       for idx in idxs: assert var[idx] in vals
+      # test extraction of seasons
+      svar = var.extractSeason(season='djf', asVar=True, lcheck=True, linplace=False)
+      assert svar.shape != var.shape
+      tax = var.getAxis('time').coord 
+      stax = svar.getAxis('time').coord
+      assert stax[0] == tax[0] and stax[1] == tax[1] and stax[2] == tax[11]
+      tover = len(tax)%12       
+      if tover < 3: assert stax[-1] == tax[-1]
+      if tover > 2: assert stax[-1] == tax[-1-(tover-2)] # not sure, if this is right... unlikely anyway
+      assert len(stax) == 3*len(tax)//12 + min(2,tover)
+      # test in-place extraction
+      cvar = var.copy(deepcopy=True)
+      assert cvar.shape == var.shape
+      cvar.extractSeason(season='djf', asVar=True, lcheck=True, linplace=True)
+      assert cvar.shape != var.shape
+      assert isEqual(svar.data_array, cvar.data_array)
       
-  
   def testLoad(self):
     ''' test data loading and unloading '''
     # get test objects
@@ -1444,6 +1459,7 @@ if __name__ == "__main__":
 #     specific_tests = ['Copy']
 #     specific_tests = ['ApplyToAll']
 #     specific_tests = ['AddProjection']
+#     specific_tests = ['Indexing']
  
 
     # list of tests to be performed

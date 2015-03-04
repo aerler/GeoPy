@@ -857,7 +857,9 @@ class DistVar(Variable):
             if axatts is not None: support_axis.atts.update(axatts) # just update attributes
         # generate new histogram variable
         plotatts = getPlotAtts(name=dist_type, units='') # infer meta data from plot attributes
-        dvaratts = self.paramAxis.atts.copy() # original Axis also has dataset reference/name
+        dvaratts = self.paramAxis.atts.copy() if self.paramAxis else self.atts.copy() 
+        # N.B.: we need tp transfer some dataset information; the original Axis instance also has the
+        #       dataset reference/name, but VarKDE has no parameter axis...
         dvaratts['name'] = name or '{:s}_{:s}'.format(basename,dist_type)
         dvaratts['long_name'] = '{:s} of {:s}'.format(plotatts.name,self.atts.get('long_name',basename.title()))
         dvaratts['units'] = plotatts.units
