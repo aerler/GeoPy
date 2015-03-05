@@ -436,10 +436,11 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
     else: raise ArgumentError, "No CVDP dataset matching '{:s}' found.".format(name)
     import datasets.CESM as dataset # also in CESM module
   else:
-    # this is most likely an observational dataset    
-    try: dataset = import_module('datasets.{0:s}'.format(name))
-    except ImportError: raise ArgumentError, "No dataset matching '{:s}' found.".format(name)
-    dataset_name = name 
+    # this is most likely an observational dataset
+    if name[:3].lower() == 'obs': dataset_name = 'Unity' # alias... 
+    else: dataset_name = name 
+    try: dataset = import_module('datasets.{0:s}'.format(dataset_name))
+    except ImportError: raise ArgumentError, "No dataset matching '{:s}' found.".format(dataset_name)
   # identify load function
   load_fct = 'load{:s}'.format(dataset_name)
   if mode.upper() in ('CVDP',):
@@ -471,6 +472,7 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
   kwargs = {key:value for key,value in kwargs.iteritems() if key in argspec}
   # load dataset
   dataset = load_fct(**kwargs)
+  assert dataset.name == name
   # return dataset
   return dataset
 
@@ -580,7 +582,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
     else:
       ensemble = getattr(ensemble,'clim'+aggregation.title())(taxis='time', **kwargs)
   elif season: # but not aggregation
-    ensemble = ensemble.extractSeason(season)
+    ensemble = ensemble.extractSeason(season=season)
   # return dataset
   return ensemble
 

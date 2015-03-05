@@ -19,6 +19,9 @@ from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile
 from collections import OrderedDict
 from utils.misc import binedges, expandArgumentList
 
+# list of plot arguments that apply only to lines
+line_args = ('lineformats','linestyles','markers','lineformat','linestyle','marker')
+
 ## new axes class
 class MyAxes(Axes): 
   ''' 
@@ -259,8 +262,10 @@ class MyAxes(Axes):
     bndarg['facecolor'] = color
     bndarg['where'] = where
     bndarg['alpha'] = alpha
-    if self.flipxy: self.fill_betweenx(y=axes, x1=lower, x2=upper, **bndarg)
-    else: self.fill_between(x=axes, y1=lower, y2=upper, interpolate=True, **bndarg) # interpolate=True
+    # clean up plot arguments
+    band_args = {key:value for key,value in bndarg.iteritems() if key not in line_args}
+    if self.flipxy: self.fill_betweenx(y=axes, x1=lower, x2=upper, **band_args)
+    else: self.fill_between(x=axes, y1=lower, y2=upper, interpolate=True, **band_args) # interpolate=True
   
   def bootPlot(self, varlist, varname=None, bins=None, support=None, method='pdf', percentiles=(0.25,0.75),   
                bootstrap_axis='bootstrap', lmedian=None, median_fmt=None, lmean=False, mean_fmt=None, 
@@ -273,13 +278,6 @@ class MyAxes(Axes):
                errorscale=None, errorevery=None, **plotargs):
     ''' A function to draw the distribution of a random variable on a given support, including confidence 
         intervals derived from percentiles along a bootstrap axes '''
-#     if 'linestyle' in plotargs or 'linestyles' in plotargs:
-#       if lmean or lmedian: raise ArgumentError, "Linestyles are used internally to identify means or medians." 
-    # auto detect bootstrap axis
-    if isinstance(varlist,(Variable,Dataset)): lhasBS = varlist.hasAxis(bootstrap_axis)
-    elif isinstance(varlist,(tuple,list,Ensemble)):
-      lhasBS = all(var.hasAxis(bootstrap_axis) for var in varlist)
-    if not lhasBS: raise AxisError, bootstrap_axis
     # check input and evaluate distribution variables
     varlist = checkVarlist(varlist, varname=varname, ndim=2, bins=bins, support=support, 
                                  method=method, lignore=lignore, bootstrap_axis=None) # don't remove bootstrap
@@ -327,8 +325,7 @@ class MyAxes(Axes):
       # plot percentiles as error bands
       facecolor = facecolor or colors
       lsmoothBand = True if lsmooth or lsmooth is None else False
-      # clean up plot arguments
-      line_args = ('lineformats','linestyles','markers','lineformat','linestyle','marker')
+      # clean up plot arguments (check against a list of "known suspects"
       band_args = {key:value for key,value in plotargs.iteritems() if key not in line_args}
       # draw band plot between upper and lower percentile
       if bandalpha is None: bandalpha = 0.35 
@@ -397,7 +394,7 @@ class MyAxes(Axes):
         # get default plotargs consistent with linePlot      
         plotarg = self._getPlotArgs(label, var, plotatts=plotatts, plotarg=None)
         # extract color
-        if color is None and color in plotarg: color = plotarg['color']        
+        if color is None and 'color' in plotarg: color = plotarg['color']
         if color is not None: color_list.append(color)
         # add label
         label_list.append(label)
