@@ -761,7 +761,7 @@ class Variable(object):
         data._fill_value = fillValue if fillValue is not None else self.fillValue
 #         ma.set_fill_value(data, fillValue if fillValue is not None else self.fillValue) # this seems to work more reliably!
       # handle/apply mask
-      if mask: data = ma.array(data, mask=mask) 
+      if mask is not None: data = ma.array(data, mask=mask) 
       if isinstance(data,ma.MaskedArray): # figure out fill value for masked array
         if fillValue is not None: # override variable preset 
           if isinstance(fillValue,np.generic): fillValue = fillValue.astype(self.dtype)
@@ -2635,9 +2635,9 @@ class Ensemble(object):
     value = attribute value).
     
   Attributes:
-    members  = list/tuple of members of the ensemble
-    basetype = class of the ensemble members
-    idkey    = property of members used for unique identification
+    members      = list/tuple of members of the ensemble
+    basetype     = class of the ensemble members
+    idkey        = property of members used for unique identification
     ens_name     = name of the ensemble (string)
     ens_title    = printable title used for the ensemble (string)
     '''

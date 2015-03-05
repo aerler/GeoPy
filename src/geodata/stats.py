@@ -627,13 +627,14 @@ class DistVar(Variable):
       if isinstance(samples, ma.MaskedArray):
         if masked is None: masked = True
         if fillValue is None: fillValue = samples.fill_value 
-        if np.issubdtype(samples.dtype,np.integer): # recast as floats, so we can use np.NaN 
-          samples = np.asanyarray(samples, dtype='float') 
-        samples = samples.filled(np.NaN)
+        if np.issubdtype(samples.dtype,np.integer): # recast as floats, so we can use np.NaN
+          samples = np.where(samples.mask, np.NaN, np.asarray(samples, dtype=np.float))
+        else: 
+          samples = samples.filled(np.NaN)
       else: masked = False
       # make sure sample axis is last
       if isinstance(samples,np.ndarray): 
-        samples = np.asarray(samples, dtype=dtype, order='C')
+        samples = np.asarray(samples, dtype=np.float, order='C')
       if axis is not None and not axis == samples.ndim-1:
         samples = np.rollaxis(samples, axis=axis, start=samples.ndim) # roll sample axis to last (innermost) position
         # N.B.: we may also need some NaN/masked-value handling here...
