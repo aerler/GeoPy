@@ -267,12 +267,16 @@ def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, laax=Tr
   if chunksize == 0: chunksize = 1 
   if not laax: kwargs['axis'] = 1 # for ufunc-like functions
   elif len(kwargs) > 0: raise NotImplementedError, "np.apply_along_axis doesn't take kwargs"
-  if (NP == 1 or arraysize < 1.5*chunksize):
+  if ldebug: print("Arraysize: {}, Chunksize: {}".format(arraysize,chunksize))
+  if (NP == 1 or arraysize < 1.1*chunksize):
     # just use regular Numpy version... but always apply over last dimension
     if ldebug: print('\n   ***   Running in Serial Mode   ***')
     if laax: results = np.apply_along_axis(fct, 1, data, *args, **kwargs)
     else: results = fct(data, *args, **kwargs)
   else:
+    # adjust number of processors
+    NP = int(min(NP,np.around(arraysize/chunksize)))
+    if ldebug: print('NP: {}'.format(NP))
     # split up data
     if arraysize < (NP+1)*chunksize:
       cs = int(arraysize//NP) # chunksize; use integer division

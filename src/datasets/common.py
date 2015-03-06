@@ -472,7 +472,7 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
   kwargs = {key:value for key,value in kwargs.iteritems() if key in argspec}
   # load dataset
   dataset = load_fct(**kwargs)
-  assert dataset.name == name
+  assert dataset.name == name, load_fct.__name__
   # return dataset
   return dataset
 

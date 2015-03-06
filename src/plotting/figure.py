@@ -274,7 +274,7 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
     loadStyleSheet(stylesheet, lpresentation=lpresentation, lpublication=lpublication) 
     if stylesheet in ('myggplot','ggplot'):
       warn("Rewriting built-in color definitions to GG-plot defaults.")
-      dataset_plotargs = toGGcolors(dataset_plotargs) # modifies in-place!      
+      if dataset_plotargs is not None: dataset_plotargs = toGGcolors(dataset_plotargs) # modifies in-place!      
   # default figure class
   if figure_class is None: figure_class = MyFigure
   elif not issubclass(figure_class, Figure): raise TypeError 

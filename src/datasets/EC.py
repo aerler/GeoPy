@@ -780,7 +780,7 @@ if __name__ == '__main__':
 #   mode = 'test_conversion'
 #   mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
-  mode = 'test_timeseries'
+#   mode = 'test_timeseries'
 #   mode = 'test_selection'
   
   # test wrapper function to load time series data from EC stations

@@ -369,9 +369,8 @@ if __name__ == '__main__':
       elif all([sea==sealist[0] for sea in sealist]): sealist_settings = sealist[0]
       else: sealist_settings = ''      
       # get variable properties and additional settings
-      clevs, clim, cbl, clbl, cmap, lmskocn, lmsklnd, plottype = getVariableSettings(
-                                                      varlist_settings, sealist_settings, 
-                                                      ldiff=ldiff, lfrac=lfrac)
+      tmp = getVariableSettings(varlist_settings, sealist_settings, ldiff=ldiff, lfrac=lfrac)
+      clevs, clim, cbl, clbl, cmap, lmskocn, lmsklnd, plottype = tmp
 
       # assemble filename      
       filename = varstr
@@ -567,7 +566,7 @@ if __name__ == '__main__':
             kwargs['maskland'] = True          
           if ldiff or lfrac or locean: 
             kwargs['ocean_color'] = 'white' ; kwargs['land_color'] = 'white'
-          # utils annotatiosn
+          # misc annotations
           mapSetup.miscAnnotation(bmap, **kwargs)
           # add parallels and meridians
           mapSetup.drawGrid(bmap, left=left, bottom=bottom, minor=lminor)

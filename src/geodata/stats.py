@@ -510,6 +510,9 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
 var_dists = dict() # tuple( dist_name, kwargs)
 var_dists['CDD'] = ('gumbel_r', dict())
 var_dists['CWD'] = ('gumbel_r', dict())
+var_dists['MaxWaterflx_7d'] = ('gumbel_r', dict())
+# var_dists['CDD'] = ('genextreme', dict())
+# var_dists['CWD'] = ('genextreme', dict())
 variable_distributions = var_dists # alias for imports
 
 # function to return an appropriate distribution for a variable
@@ -519,14 +522,15 @@ def defVarDist(var, var_dists=None):
   elif isinstance(var, DistVar): raise TypeError, "Variable is already a DistVar!"
   varname, units = var.name, var.units
   # check explicit definition first
-  if var_dists is not None and var in var_dists: 
+  if var_dists is None: var_dists = variable_distributions
+  if varname in var_dists: 
     dist, dist_args = var_dists[varname]
   # now, apply heuristics
   elif varname[:3] in ('Min','Max'):
     dist, dist_args = 'genextreme', dict(ic_shape=0)
   elif units in ('mm/month','mm/day','mm/s','kg/m^2/s'):
     #dist, dist_args = ('gumbel_r', dict())
-    dist, dist_args = 'genextreme', dict(ic_shape=-0.5)
+    dist, dist_args = 'genextreme', dict(ic_shape=0)
   elif units in ('C','K','Celsius','Kelvin'):
     dist, dist_args = ('norm', dict())
   else: # fallback
@@ -1037,7 +1041,7 @@ class VarKDE(DistVar):
   def _estimate_distribution(self, samples, ic_shape=None, ic_args=None, ic_loc=None, ic_scale=None, ldebug=False, **kwargs):
     ''' esimtate/fit distribution from sample array for each grid point and return parameters as ndarray  '''
     fct = functools.partial(kde_estimate, ldebug=ldebug, **kwargs)
-    kernels = apply_along_axis(fct, samples.ndim-1, samples, chunksize=500000//len(samples)).squeeze()
+    kernels = apply_along_axis(fct, samples.ndim-1, samples, chunksize=100000//len(samples)).squeeze()
     assert samples.shape[:-1] == kernels.shape
     # return an array of kernels
     return kernels
@@ -1048,7 +1052,7 @@ class VarKDE(DistVar):
     n = len(support); fillValue = self.fillValue or np.NaN
     data = self.data_array.reshape(self.data_array.shape+(1,)) # expand
     fct = functools.partial(kde_eval, support=support, n=n, fillValue=fillValue)
-    pdf = apply_along_axis(fct, self.ndim, data, chunksize=500000//n)
+    pdf = apply_along_axis(fct, self.ndim, data, chunksize=100000//n)
     assert pdf.shape == self.shape + (len(support),)
     return pdf
   
@@ -1059,7 +1063,7 @@ class VarKDE(DistVar):
     fillValue = self.fillValue or np.NaN # for masked values
     data = self.data_array.reshape(self.data_array.shape+(1,)) # expand
     fct = functools.partial(kde_resample, support=support, n=n, fillValue=fillValue, dtype=self.dtype)
-    samples = apply_along_axis(fct, self.ndim, data, chunksize=500000//n)
+    samples = apply_along_axis(fct, self.ndim, data, chunksize=100000//n)
     assert samples.shape == self.shape + (n,)
     assert np.issubdtype(samples.dtype, self.dtype)
     return samples
@@ -1213,7 +1217,7 @@ class VarRV(DistVar):
     plen = self.dist_class.numargs + 2 # infer number of parameters
     fct = functools.partial(rv_fit, ic_shape=ic_shape, ic_args=ic_args, ic_loc=ic_loc, ic_scale=ic_scale, plen=plen, 
                             dist_type=self.dist_type, lpersist=lpersist, ldebug=ldebug, **kwargs)
-    params = apply_along_axis(fct, samples.ndim-1, samples, chunksize=int(10000/plen/len(samples)))
+    params = apply_along_axis(fct, samples.ndim-1, samples, chunksize=int(10000//plen//len(samples)))
     if lpersist: # reset global parameters 
       global_loc   = None # location parameter ("mean")
       global_scale = None # scale parameter ("standard deviation")

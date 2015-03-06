@@ -101,7 +101,7 @@ class MyAxes(Axes):
     plts = [] # list of plot handles
     for label,var in zip(labels,varlist): self.variables[label] = var # save plot variables
     # loop over variables and plot arguments
-    N = len(varlist)
+    N = len(varlist); xlen = ylen = None
     for n,var,errvar,bndvar,plotarg,label in zip(xrange(N),varlist,errlist,bndlist,plotargs,labels):
       if var is not None:
         varax = var.axes[0]
@@ -201,6 +201,7 @@ class MyAxes(Axes):
     assert len(plotargs) == len(lower)
     ## generate individual line plots
     bnds = [] # list of plot handles
+    xlen = ylen = None # initialize, incase list is empty
     for label,upvar,lowvar in zip(labels,upper,lower): 
       self.variables[str(label)+'_bnd'] = (upvar,lowvar) # save band variables under special name
     # loop over variables and plot arguments
@@ -383,7 +384,7 @@ class MyAxes(Axes):
     elif isinstance(colors,(basestring,NoneType)): colors = [colors]*len(varlist)
     else: raise TypeError    
     ## generate list of values for histogram
-    values = []; color_list = []; label_list = [] # list of plot handles
+    values = []; color_list = []; label_list = []; vlen = None # list of plot handles
     for label,var,color in zip(labels,varlist, colors):
       if var is not None:
         # scale variable values(axes are irrelevant)
@@ -399,6 +400,7 @@ class MyAxes(Axes):
         # add label
         label_list.append(label)
         # save values 
+        vlen = len(val)
         values.append(val)
     ## construct histogram
     # figure out orientation
@@ -422,8 +424,8 @@ class MyAxes(Axes):
     self.formatAxesAndAnnotation(title=title, legend=legend, xlabel=xlabel, ylabel=ylabel, 
                                  hline=hline, vline=vline, xlim=xlim, xlog=None, xticks=xticks, 
                                  ylim=ylim, ylog=None, yticks=yticks, 
-                                 xlen=None if self.flipxy else len(val), 
-                                 ylen=len(val) if self.flipxy else None)
+                                 xlen=None if self.flipxy else vlen, 
+                                 ylen=vlen if self.flipxy else None)
     # return handle
     return bins, patches # bins can be used as support for distributions
   
