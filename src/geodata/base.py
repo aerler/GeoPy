@@ -33,7 +33,10 @@ class UnaryCheckAndCreateVar(object):
     ''' Perform sanity checks, then execute operation, and return result. '''
     if not orig.data: orig.load()
     # apply operation
-    data, name, units = self.op(orig, linplace=linplace, **kwargs)
+    tmp = self.op(orig, linplace=linplace, **kwargs)
+    # check for invalid returns (e.g. from applying arithmetic to strings)
+    if tmp is None: return None # return immediately (invalid operation)
+    else: data, name, units = tmp # regular processing
     # create new Variable or assign other return
     if linplace:
       var = orig

@@ -874,6 +874,8 @@ class BaseDatasetTest(unittest.TestCase):
         assert varname[di+1:] == 'mean'
         assert varname[:di] in dataset      
     del dds; gc.collect()      
+    # test standardization
+    dsstd = dataset.standardize(axis=None)
     
   def testConcatDatasets(self):
     ''' test concatenation of datasets '''
@@ -1463,19 +1465,19 @@ if __name__ == "__main__":
 #     specific_tests = ['StatsTests']   
 #     specific_tests = ['UnaryArithmetic']
 #     specific_tests = ['Copy']
-#     specific_tests = ['ApplyToAll']
+    specific_tests = ['ApplyToAll']
 #     specific_tests = ['AddProjection']
-    specific_tests = ['Indexing']
+#     specific_tests = ['Indexing']
  
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
+    tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
 #     tests += ['DatasetGDAL']
        
