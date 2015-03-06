@@ -230,6 +230,13 @@ def nanmin(a, axis=None, out=None, keepdims=False):
         if np.any(mask):
             res = _copyto(res, mask, np.nan)
             warnings.warn("All-NaN axis encountered", RuntimeWarning)
+
+    # check if keepdims worked, otherwise reshape manually
+    if keepdims and res.ndim < a.ndim:
+      shape = list(a.shape)
+      shape[axis] = 1
+      res = res.reshape(shape)
+
     return res
 
 
@@ -329,6 +336,13 @@ def nanmax(a, axis=None, out=None, keepdims=False):
         if np.any(mask):
             res = _copyto(res, mask, np.nan)
             warnings.warn("All-NaN axis encountered", RuntimeWarning)
+    
+    # check if keepdims worked, otherwise reshape manually
+    if keepdims and res.ndim < a.ndim:
+      shape = list(a.shape)
+      shape[axis] = 1
+      res = res.reshape(shape)
+
     return res
 
 
@@ -512,6 +526,13 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=0):
         tot = _copyto(tot, np.nan, mask)
         warnings.warn("In Numpy 1.9 the sum along empty slices will be zero.",
                       FutureWarning)
+
+    # check if keepdims worked, otherwise reshape manually
+    if keepdims and tot.ndim < a.ndim:
+      shape = list(a.shape)
+      shape[axis] = 1
+      tot = tot.reshape(shape)
+
     return tot
 
 
@@ -607,6 +628,13 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
         warnings.warn("Mean of empty slice", RuntimeWarning)
         # NaN is the only possible bad value, so no further
         # action is needed to handle bad results.
+    
+    # check if keepdims worked, otherwise reshape manually
+    if keepdims and avg.ndim < arr.ndim:
+      shape = list(arr.shape)
+      shape[axis] = 1
+      avg = avg.reshape(shape)
+
     return avg
 
 
@@ -744,6 +772,13 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
         # NaN, inf, or negative numbers are all possible bad
         # values, so explicitly replace them with NaN.
         var = _copyto(var, np.nan, isbad)
+        
+        # check if keepdims worked, otherwise reshape manually
+    if keepdims and var.ndim < arr.ndim:
+      shape = list(arr.shape)
+      shape[axis] = 1
+      var = var.reshape(shape)
+
     return var
 
 
@@ -841,4 +876,11 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
         std = np.sqrt(var, out=var)
     else:
         std = var.dtype.type(np.sqrt(var))
+    
+    # check if keepdims worked, otherwise reshape manually
+    if keepdims and std.ndim < a.ndim:
+      shape = list(a.shape)
+      shape[axis] = 1
+      std = std.reshape(shape)
+
     return std
