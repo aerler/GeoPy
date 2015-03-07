@@ -412,11 +412,14 @@ class BaseVarTest(unittest.TestCase):
       # test findValue(s) (doesn't work if value is masked...)
       if not var.masked or not var.data_array.mask.ravel()[-1]:
         val = var.data_array.ravel()[-1]
-        idx = var.findValue(val, lidx=True, lflatten=True)
+        idx = var.findValues(val, lidx=True, lfirst=True, lflatten=True)
         assert val == var.data_array.ravel()[idx]
         vals = (var[0,0,0],var[-1,0,0],var[0,-1,0],var[0,0,-1],var[-1,-1,0],var[0,-1,-1],var[-1,0,-1],var[-1,-1,-1])
-        idxs = var.findValues(vals, lidx=True, lflatten=False, ltranspose=True)
+        idxs = var.findValuesND(vals, lidx=True, lflatten=False, ltranspose=True)
         for idx in idxs: assert var[idx] in vals
+        # test multiple value extraction
+        idx = var.findValues(val, lidx=True, lfirst=False, lflatten=True)
+        assert isEqual( np.nonzero(var.data_array.ravel()==val )[0], idx)
       # test extraction of seasons (need time-axis in month)
       lstrict = not lsimple and var.getAxis('time').units.lower().startswith('month')
       # currently all test datasets do not conform to my conventions...
@@ -1465,7 +1468,7 @@ if __name__ == "__main__":
 #     specific_tests = ['StatsTests']   
 #     specific_tests = ['UnaryArithmetic']
 #     specific_tests = ['Copy']
-    specific_tests = ['ApplyToAll']
+#     specific_tests = ['ApplyToAll']
 #     specific_tests = ['AddProjection']
 #     specific_tests = ['Indexing']
  
@@ -1473,13 +1476,13 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['BaseVar'] 
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
        
     
     # construct dictionary of test classes defined above

@@ -556,7 +556,7 @@ class Variable(object):
         raise DataError, "Data array shape does not match variable shape\n(slice was ignored, since no data array was present before)."
       else: self.data_array = data         
     
-  def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, asVar=None, 
+  def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, asVar=None, lfirst=False,
                lsqueeze=True, lcheck=False, lcopy=False, lslices=False, linplace=False, **axes):
     ''' This method implements access to slices via coordinate values and returns Variable objects. 
         Default behavior for different argument types: 
@@ -567,6 +567,7 @@ class Variable(object):
         Type-based defaults are ignored if appropriate keyword arguments are specified. '''
     ## check axes and input and determine modes
     # parse axes for pseudo-axes, using info from parent dataset
+    lpseudo = False; lnonpseudo = False
     if self.dataset is not None:
       dataset = self.dataset 
       axes = axes.copy() # might be changed...
@@ -577,10 +578,18 @@ class Variable(object):
           if isinstance(val,(tuple,list,np.ndarray)): 
             raise NotImplementedError, "Currently only single coordiante values/indices are supported for pseudo-axes."        
           if var.ndim == 1: # possibly valid pseudo-axis!
-            coord = var.findValue(val, lidx=lidx, lflatten=False)          
+            lpseudo = True
+            coord = var.findValues(val, lidx=lidx, lfirst=lfirst, lrng=lrng, lflatten=False)          
           else: raise AxisError, "Pseudo-axis can only have one axis!"
           axes[var.axes[0].name] = coord # create new entry with actual axis
-          # N.B.: not that this automatically squeezes the pseudo-axis, since it is just a values...            
+          # N.B.: not that this automatically squeezes the pseudo-axis, since it is just a values...
+        elif val is not None and dataset.hasAxis(key): lnonpseudo = True
+      # pseudo-axes work with ranges, but return indices, and we can't mix ranges with indices!
+      if lrng and lpseudo: 
+        lrng = False
+        if lnonpseudo: 
+          raise ArgumentError, "'lrng' was reset to False, but other variables are not yet processed."          
+      
     # resolve special key words
     if years is not None:
       if self.hasAxis('time'):
@@ -903,26 +912,53 @@ class Variable(object):
     # return mask
     return mask
   
-  def findValue(self, value, lidx=False, lflatten=False):
-    ''' Method to find the first occurence of a value and return the coordinate or index value; 
-        this algorithm is actually pretty slow but works for all types of data; the main difference
-        to the Axis method getIndex is that it does not reuire sorted data.
-        Currently this only works with single-axis Variables ('pseudo-axes'), or with flattened arrays,
-        not with multi-dimensional fields.  '''
+  def findValues(self, value, lidx=False, lfirst=False, lrng=False, lstrip=None, lflatten=False):
+    ''' Method to find all or only the first occurence of a value or a range of values and return the 
+        coordinate or index values; The single occurence algorithm is actually pretty slow but works 
+        for all types of data; the main difference to the Axis method getIndex is that it does not 
+        require sorted data.
+        Currently this is only tested with single-axis Variables ('pseudo-axes'), or with flattened 
+        arrays, not with multi-dimensional fields.  '''
     if not self.data: self.load()
     if self.ndim != 1 and not lflatten: 
       raise NotImplementedError, "findValue() currently only works with single-axis 'pseudo-axes', not with multi-dimensional fields"
-    if isinstance(value,(tuple,list,np.ndarray)): 
-          raise TypeError, "Only single coordinate values/indices are supported."                
     if lflatten: data = self.data_array.ravel() # just a 'view', flatten() returns a copy
     else: data = self.data_array
-    # N.B.: usually this will be used for categorical data like int or str anyway...    
-    # N.B.: this way we avoid false positives due to too short strings
-    # now scan through the values to extract matching index
-    idx = None
-    for i,vv in enumerate(data):
-      if self.strvar and len(vv) > len(value): vv = vv.rstrip() # strip trailing spaces (strvars get padded)
-      if vv == value: idx = i; break # terminate at first match
+    if lstrip and not self.strvar: raise ArgumentError, self.strvar
+    if lfirst or (self.strvar and lstrip):
+      # generate list of matches by iterating over elements
+      # N.B.: usually this will be used for categorical data like int or str anyway...    
+      idx = None if lfirst else []
+      if isinstance(value,(tuple,list,np.ndarray)):
+        # now scan through the values to extract matching index
+        if lstrip: vlen = min(len(val) for val in value)
+        for i,vv in enumerate(data):
+          if lstrip and len(vv) > vlen: vv = vv.rstrip() # strip trailing spaces (strvars get padded)
+          if vv in value: 
+            if lfirst: idx = i; break # terminate at first match
+            else: idx.append(i) # add to list of hits
+      else:
+        if lstrip: vlen = len(value) 
+        for i,vv in enumerate(data):
+          # N.B.: this way we avoid false positives due to too short strings
+          if lstrip and len(vv) > vlen: vv = vv.rstrip() # strip trailing spaces (strvars get padded)
+          if vv == value: 
+            if lfirst: idx = i; break # terminate at first match
+            else: idx.append(i) # add to list of hits
+    else:
+      # use numpy's nonzero-function
+      if isinstance(value,(tuple,list,np.ndarray)):
+        if lrng:
+          if len(value) != 2: raise ArgumentError, "Lists can only be interpreted as upper and lower bounds."
+          idx = np.nonzero( (value[0] < data) * (data < value[1]) )[0]
+        else:
+          tmp = np.ones(self.shape, dtype=np.bool_)
+          for val in value: tmp *= ( val == data ) # loop over all values and take 'and'
+          idx = np.nonzero(tmp)[0] # tuple with indices for each dimension...
+      else:
+        idx = np.nonzero(data == value)[0]
+    # cast as integer array
+    idx = np.asarray(idx, dtype=np.int_)
     if idx is None:
       # possible problems with floats
       if np.issubdtype(self.dtype, np.inexact): 
@@ -932,10 +968,13 @@ class Variable(object):
     # return index of coordinate value
     return idx
   
-  def findValues(self, values, lidx=False, lflatten=False, ltranspose=False):
-    ''' Method to find exact matches of values and return their coordinate or index values. '''
+
+  def findValuesND(self, values, lidx=False, lflatten=False, ltranspose=False):
+    ''' Method to find exact matches of values and return their coordinate or index values; 
+        unlike findValue, this method works for multiple dimensions, but is less flexible. '''
     if not self.data: self.load()
-    if not isinstance(values,(tuple,list,np.ndarray)): raise TypeError                
+    if not isinstance(values,(tuple,list,np.ndarray)): raise 
+    TypeError                
     if lflatten: data = self.data_array.ravel() # just a 'view'
     else: data = self.data_array
     # N.B.: this function really only finds exact matches
@@ -943,7 +982,7 @@ class Variable(object):
     if self.strvar: values = [value+' '*(self.strlen-len(value)) for value in values]
     # now use numpy to extract matching index
     idxs = np.in1d(data.ravel(), values).reshape(self.shape) # find exact matches
-    idxs = np.where(idxs) # find indices of matches
+    idxs = np.nonzero(idxs) # find indices of matches
     if len(idxs[0]) == 0:
       # possible problems with floats
       if np.issubdtype(self.dtype, np.inexact): 
@@ -2190,7 +2229,7 @@ class Dataset(object):
       if check: raise AxisError, "Axis '{:s}' not found!".format(axname)
       else: return None
       
-  def __call__(self, lidx=None, lrng=None, lsqueeze=True, lcopy=False, years=None, 
+  def __call__(self, lidx=None, lrng=None, lsqueeze=True, lcopy=False, years=None, lfirst=False, 
                listAxis=None, lrmOther=False, lcpOther=False, **axes):
     ''' This method implements access to slices via coordinate values and returns Variable objects. 
         Default behavior for different argument types: 
@@ -2206,6 +2245,7 @@ class Dataset(object):
     # parse axes for pseudo-axes
     # N.B.: we do this once for all variables, because this operation can be somewhat slow
     axes = axes.copy() # might be changed...
+    lpseudo = False; lnonpseudo = False
     for key,val in axes.iteritems():
       if val is not None and self.hasVariable(key):
         del axes[key] # remove pseudo axis
@@ -2213,10 +2253,16 @@ class Dataset(object):
         if isinstance(val,(tuple,list,np.ndarray)): 
           raise NotImplementedError, "Currently only single coordinate values/indices are supported for pseudo-axes."        
         if var.ndim == 1: # possibly valid pseudo-axis!
-          coord = var.findValue(val, lidx=lidx, lflatten=False)          
+          coord = var.findValues(val, lidx=lidx, lflatten=False)          
         else: raise AxisError, "Pseudo-axis can only have one axis!"
         axes[var.axes[0].name] = coord # create new entry with actual axis
-        # N.B.: not that this automatically squeezes the pseudo-axis, since it is just a values...        
+        # N.B.: not that this automatically squeezes the pseudo-axis, since it is just a values...
+    # pseudo-axes work with ranges, but return indices, and we can't mix ranges with indices!
+    if lrng and lpseudo: 
+      lrng = False
+      if lnonpseudo: 
+        raise ArgumentError, "'lrng' was reset to False, but other variables are not yet processed."          
+              
     # loop over variables
     for var in self.variables.itervalues():
       if ( all(ax.name in axes for ax in var.axes) and 
