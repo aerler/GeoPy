@@ -127,7 +127,6 @@ class VarNC(Variable):
         strlen = ncvar.shape[-1] # last dimension
       elif not np.issubdtype(ncvar.dtype,dtype):
         if 'scale_factor' not in ncvar.ncattrs(): # data is not being scaled in NetCDF module
-          print ncvar
           raise DataError, "NetCDF data dtype does not match Variable dtype (ncvar.dtype={:s})".format(ncvar.dtype)
     # read actions
     if 'r' in mode: 
@@ -147,7 +146,8 @@ class VarNC(Variable):
         if lstrvar: axes = tuple([str(dim) for dim in ncvar.dimensions[:-1]]) # omit last dim
         else: axes = tuple([str(dim) for dim in ncvar.dimensions]) # have to get rid of unicode
       elif lstrvar:
-        if len(ncvar.shape[:-1]) != len(axes) or ncvar.shape[-1] != dtype.itemsize: raise AxisError
+        if len(ncvar.shape[:-1]) != len(axes) and len(ncvar.shape[:-1]) != len(slices): raise AxisError
+        if ncvar.shape[-1] != dtype.itemsize: raise AxisError
         assert strlen == dtype.itemsize      
       elif len(ncvar.shape) != len(axes) and len(ncvar.shape) != len(slices): raise AxisError
       # N.B.: slicing with index lists can change the shape

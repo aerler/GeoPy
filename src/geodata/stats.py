@@ -1116,7 +1116,8 @@ def rv_fit(sample, dist_type=None, ic_shape=None, ic_args=None, ic_loc=None, ic_
       # estimate location and scale, if not specified
       if ic_loc is None: ic_loc = sample.mean()
       if ic_scale is None: ic_scale = sample.std()
-      if ic_shape is None: ic_shape = -1 * ic_loc / ic_scale # loc + scale / shape == 0 
+      if ic_shape is None: # loc + scale / shape == 0 for GEV family
+        ic_shape = -1. * ic_loc / ic_scale if ic_scale else 0.  
       # N.B.: for the GEV dist., ( loc + scale / shape ) is the left end (begin) of the support
       # start parameter estimation
       if plen == 2: # only location and shape (e.g. normal or Gumbel distributions)

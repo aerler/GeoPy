@@ -528,6 +528,8 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
           # add corresponding indices in each dataset to list
           itpls.append((i,)+tuple(ax.coord.searchsorted(x) for ax in axes))
           # N.B.: since we can expect exact matches, plain searchsorted is fastest (side='left') 
+  # check if there is anything left...
+  if len(itpls) == 0: raise DatasetError, "Aborting: no data points match all criteria!"
   # construct axis indices for each dataset (need to remember to move shortest axis back in line)
   idxs = [[] for ds in datasets] # create unique empty lists
   for itpl in itpls:

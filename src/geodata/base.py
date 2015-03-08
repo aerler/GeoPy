@@ -788,8 +788,7 @@ class Variable(object):
         else: # use data default
           self.atts['fillValue'] = data._fill_value
         if not ( self.atts['fillValue'] == data._fill_value or (np.isnan(self.fillValue) and np.isnan(data._fill_value)) ):
-          print self.atts['fillValue'], data._fill_value, fillValue
-          raise AssertionError
+          raise AssertionError, "{:s}, {:s}, {:s}".format(self.atts['fillValue'], data._fill_value, fillValue)
       # assign data to instance attribute array 
       self.__dict__['data_array'] = data
       # check shape consistency
@@ -2105,7 +2104,6 @@ class Dataset(object):
         if not self.hasAxis(ax.name):
             self.addAxis(ax, copy=copy) # add new axis          
         elif ax is not self.axes[ax.name]: 
-          #print '   >>>   replacing a axis',ax.name
           var.replaceAxis(ax, self.axes[ax.name]) # or use old one of the same name
         # N.B.: replacing the axes in the variable is to ensure consistent axes within the dataset 
       # finally, if everything is OK, add variable
@@ -2594,7 +2592,6 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   # concatenate
   data = np.concatenate(data, axis=tax)
   assert data.shape[tax] == tlen
-  #print data.shape, newshape
   assert data.shape == newshape
   # cast as variable
   if asVar:      
@@ -2723,7 +2720,6 @@ class Ensemble(object):
     for key,value in kwargs.iteritems():
       self.__dict__[key] = value
     # add short-cuts and keys
-    #print self.__dict__.keys()
     self.idkeys = []
     for member in self.members:
       memid = getattr(member, self.idkey)

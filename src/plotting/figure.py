@@ -263,7 +263,7 @@ class MyFigure(Figure):
 
 ## convenience function to return a figure and an array of ImageGrid axes
 def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  stylesheet=None,
-             variable_plotargs=None, dataset_plotargs=None, yright=None, xtop=None,
+             variable_plotargs=None, dataset_plotargs=None, yright=False, xtop=False,
              sharex=None, sharey=None, AxesGrid=False, ngrids=None, direction='row',
              axes_pad = None, add_all=True, share_all=None, aspect=False, margins=None,
              label_mode='L', cbar_mode=None, cbar_location='right', lreduce=True,

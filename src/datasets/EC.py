@@ -761,7 +761,7 @@ def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lal
       if not isinstance(val,(list,tuple)) or len(val) != 2 or not all(isNumber(l) for l in val): raise TypeError  
       tests.append(functools.partial(test_lon, val))
     elif key == 'cluster':
-      varname = 'stn_lon'
+      varname = 'cluster_id'
       if ( not isinstance(val,(list,tuple,np.ndarray)) or not all(isInt(l) for l in val)) and not isInt(val): raise TypeError  
       tests.append(functools.partial(test_cluster, val, lcheckVar=lcheckVar))
     else:
