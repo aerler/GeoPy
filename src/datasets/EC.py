@@ -695,19 +695,22 @@ def test_prov(val,index,dataset,axis):
 def test_minlen(val,index,dataset,axis):
   ''' check if station record is longer than a minimum period ''' 
   return dataset.stn_rec_len[index] >= val 
-def test_maxzse(val,index,dataset,axis):
+def test_maxzse(val,index,dataset,axis, lcheckVar=True):
   ''' check that station elevation error does not exceed a threshold ''' 
-  return ( np.abs(dataset.zs_err[index]) <= val ) if 'zs_err' in dataset else True
+  if not dataset.hasVariable('zs_err'):
+    if lcheckVar: raise DatasetError
+    else: return True # EC datasets don't have this field...
+  else: return np.abs(dataset.zs_err[index]) <= val
 def test_lat(val,index,dataset,axis):
   ''' check if station is located within selected latitude band ''' 
   return val[0] <= dataset.stn_lat[index] <= val[1] 
 def test_lon(val,index,dataset,axis):
   ''' check if station is located within selected longitude band ''' 
   return val[0] <= dataset.stn_lon[index] <= val[1] 
-def test_cluster(val,index,dataset,axis, lcheckClusterID=True):
+def test_cluster(val,index,dataset,axis, lcheckVar=True):
   ''' check if station is located within selected longitude band '''
   if not dataset.hasVariable('cluster_id'):
-    if lcheckClusterID: raise DatasetError
+    if lcheckVar: raise DatasetError
     else: return True # most datasets don't have this field...
   elif isinstance(val, (int,np.integer)): 
     return dataset.cluster_id[index] == val
@@ -722,7 +725,7 @@ def apply_test_suite(tests, index, dataset, axis):
 
 ## select a set of common stations for an ensemble, based on certain conditions
 def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lall=False, 
-                  lcheckClusterID=True, **kwcond):
+                  lcheckVar=False, **kwcond):
   ''' A wrapper for selectCoords that selects stations based on common criteria '''
   # pre-load NetCDF datasets
   for dataset in datasets: 
@@ -748,7 +751,7 @@ def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lal
     elif key == 'max_zerr':
       varname = 'zs_err'
       if not isNumber(val): raise TypeError  
-      tests.append(functools.partial(test_maxzse, val))
+      tests.append(functools.partial(test_maxzse, val, lcheckVar=lcheckVar))
     elif key == 'lat':
       varname = 'stn_lat'
       if not isinstance(val,(list,tuple)) or len(val) != 2 or not all(isNumber(l) for l in val): raise TypeError  
@@ -760,12 +763,14 @@ def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lal
     elif key == 'cluster':
       varname = 'stn_lon'
       if ( not isinstance(val,(list,tuple,np.ndarray)) or not all(isInt(l) for l in val)) and not isInt(val): raise TypeError  
-      tests.append(functools.partial(test_cluster, val, lcheckClusterID=lcheckClusterID))
+      tests.append(functools.partial(test_cluster, val, lcheckVar=lcheckVar))
     else:
       raise NotImplementedError, "Unknown condition/test: '{:s}'".format(key)
     # record, which datasets have all variables 
     varcheck = [dataset.hasVariable(varname) and vchk for dataset,vchk in zip(datasets,varcheck)]
-#   if lall and not all(varcheck): raise DatasetError, varcheck
+  if not all(varcheck): 
+    if lall and lcheckVar: raise DatasetError, varcheck
+    else: warn("Some Datasets do not have all variables: {:s}".format(varcheck))
   # define test function (all tests must pass)
   if len(tests) > 0:
     testFct = functools.partial(apply_test_suite, tests)
@@ -821,11 +826,10 @@ if __name__ == '__main__':
     var = stnens[-1].axes['station']; print(''); print(var)
     for var in stnens.station: print(var.min(),var.mean(),var.max())
     # test station selector
-#     stnens = selectStations(stnens, prov=('BC','AB'), min_len=50, lat=(40,55), max_zerr=300,
-#                             stnaxis='station', imaster=None, linplace=False, lall=False)
-#     stnens = selectStations(stnens, min_len=50, cluster=(3,5), lat=(40,55), max_zerr=300, lcheckClusterID=True,
-#                             stnaxis='station', imaster=0, linplace=False, lall=False)
-    stnens = selectStations(stnens, min_len=50, cluster=(3,5), lat=(40,55), max_zerr=300, lcheckClusterID=False,
+    cluster = (3,5); prov = ('BC','AB'); max_zserr = 300; min_len = 50; lat = (40,50)
+#     stnens = selectStations(stnens, prov=prov, min_len=min_len, lat=lat, max_zerr=max_zserr, lcheckVar=True,
+#                             stnaxis='station', imaster=1, linplace=False, lall=False); cluster = None
+    stnens = selectStations(stnens, min_len=min_len, cluster=cluster, lat=lat, max_zerr=max_zserr, lcheckVar=False,
                             stnaxis='station', imaster=None, linplace=False, lall=True)
     # N.B.: clusters effectively replace provinces, but currently only the EC datasets have that 
     #       information, hence they have to be master-set (imaster=0)
@@ -837,6 +841,15 @@ if __name__ == '__main__':
     print('')
     print(stnens[0].stn_prov.data_array)
     print(stnens[0].cluster_id.data_array)
+    for stn in stnens:
+      assert all(elt in prov for elt in stn.stn_prov.data_array)
+      assert all(lat[0]<=elt<=lat[1] for elt in stn.stn_lat.data_array)
+      assert all(min_len<=elt for elt in stn.stn_rec_len.data_array)
+      if cluster is not None and 'cluster_id' in stn: # only EC stations
+        assert all(elt in cluster for elt in stn.cluster_id.data_array)
+      if 'zs_err' in stn: # only WRF datasets
+        assert all(elt < max_zserr for elt in stn.zs_err.data_array)
+    
         
   # test wrapper function to load time series data from EC stations
   elif mode == 'test_timeseries':

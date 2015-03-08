@@ -912,7 +912,8 @@ class Variable(object):
     # return mask
     return mask
   
-  def findValues(self, value, lidx=False, lfirst=False, lrng=False, lstrip=None, lflatten=False):
+  def findValues(self, value, lidx=False, lfirst=False, lrng=False, lstrip=True, 
+                 lflatten=False, lsqueeze=True):
     ''' Method to find all or only the first occurence of a value or a range of values and return the 
         coordinate or index values; The single occurence algorithm is actually pretty slow but works 
         for all types of data; the main difference to the Axis method getIndex is that it does not 
@@ -924,21 +925,29 @@ class Variable(object):
       raise NotImplementedError, "findValue() currently only works with single-axis 'pseudo-axes', not with multi-dimensional fields"
     if lflatten: data = self.data_array.ravel() # just a 'view', flatten() returns a copy
     else: data = self.data_array
-    if lstrip and not self.strvar: raise ArgumentError, self.strvar
-    if lfirst or (self.strvar and lstrip):
+    lstrip = lstrip and self.strvar # doesn't apply to non-string variables
+    if lfirst or lstrip:
       # generate list of matches by iterating over elements
       # N.B.: usually this will be used for categorical data like int or str anyway...    
       idx = None if lfirst else []
       if isinstance(value,(tuple,list,np.ndarray)):
         # now scan through the values to extract matching index
-        if lstrip: vlen = min(len(val) for val in value)
+        if lstrip: 
+          vlen = min(len(val) for val in value)
+          lstrip = vlen < self.dtype.itemsize
+          if vlen > self.dtype.itemsize: 
+            raise ValueError, "Value is longer than string length: {:d} > {:d}".format(vlen,self.dtype.itemsize)
         for i,vv in enumerate(data):
           if lstrip and len(vv) > vlen: vv = vv.rstrip() # strip trailing spaces (strvars get padded)
           if vv in value: 
             if lfirst: idx = i; break # terminate at first match
             else: idx.append(i) # add to list of hits
       else:
-        if lstrip: vlen = len(value) 
+        if lstrip: 
+          vlen = len(value)
+          lstrip = vlen < self.dtype.itemsize 
+          if vlen > self.dtype.itemsize: 
+            raise ValueError, "Value is longer than string length: {:d} > {:d}".format(vlen,self.dtype.itemsize)
         for i,vv in enumerate(data):
           # N.B.: this way we avoid false positives due to too short strings
           if lstrip and len(vv) > vlen: vv = vv.rstrip() # strip trailing spaces (strvars get padded)
@@ -964,7 +973,11 @@ class Variable(object):
       if np.issubdtype(self.dtype, np.inexact): 
         warn("The current implementation may fail for floats due to machine precision differences (non-exact match).") 
       #raise AxisError, "Value '{:s}' not found in Variable '{:s}'.".format(str(value),self.name)
-    elif not lidx: idx = self.axes[0].coord[idx]
+    else:
+      if lsqueeze:
+        idx = idx.squeeze()
+        if idx.size == 1: idx = np.asscalar(idx) 
+      if not lidx: idx = self.axes[0].coord[idx] # convert to coordinates
     # return index of coordinate value
     return idx
   

@@ -545,7 +545,7 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
 @BatchLoad
 def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, 
                    slices=None, reduction=None, shape=None, station=None, prov=None, constraints=None, 
-                   filetypes=None, domain=None, ldataset=False, lcheckClusterID=True, **kwargs):
+                   filetypes=None, domain=None, ldataset=False, lcheckVar=False, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -574,7 +574,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   if not ldataset and station and constraints:
     from datasets.EC import selectStations
     ensemble = selectStations(ensemble, stnaxis='station', imaster=None, linplace=False, lall=True,
-                              lcheckClusterID=lcheckClusterID, **constraints)
+                              lcheckVar=lcheckVar, **constraints)
   # apply general reduction operations
   if reduction is not None:
     for ax,op in reduction.iteritems():
