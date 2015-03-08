@@ -14,9 +14,10 @@ from copy import deepcopy
 import codecs
 import calendar
 # internal imports
-from datasets.common import days_per_month, name_of_month, data_root, selectElements, translateVarNames
+from datasets.common import days_per_month, data_root, selectElements, translateVarNames
 from geodata.misc import ParseError, DateError, VariableError, ArgumentError, RecordClass, StrictRecordClass,\
-  isNumber
+  DatasetError
+from geodata.misc import isNumber, isInt
 from geodata.base import Axis, Variable, Dataset
 from utils.nctools import writeNetCDF
 from geodata.netcdf import DatasetNetCDF
@@ -703,6 +704,16 @@ def test_lat(val,index,dataset,axis):
 def test_lon(val,index,dataset,axis):
   ''' check if station is located within selected longitude band ''' 
   return val[0] <= dataset.stn_lon[index] <= val[1] 
+def test_cluster(val,index,dataset,axis, lcheckClusterID=True):
+  ''' check if station is located within selected longitude band '''
+  if not dataset.hasVariable('cluster_id'):
+    if lcheckClusterID: raise DatasetError
+    else: return True # most datasets don't have this field...
+  elif isinstance(val, (int,np.integer)): 
+    return dataset.cluster_id[index] == val
+  elif isinstance(val, (tuple,list,np.ndarray)):
+    return dataset.cluster_id[index] in val
+  else: ValueError, val
 # apply tests to list
 def apply_test_suite(tests, index, dataset, axis):
   ''' apply an entire test suite to '''
@@ -710,7 +721,8 @@ def apply_test_suite(tests, index, dataset, axis):
   return all(test(index,dataset,axis) for test in tests)
 
 ## select a set of common stations for an ensemble, based on certain conditions
-def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lall=False, **kwcond):
+def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lall=False, 
+                  lcheckClusterID=True, **kwcond):
   ''' A wrapper for selectCoords that selects stations based on common criteria '''
   # pre-load NetCDF datasets
   for dataset in datasets: 
@@ -719,33 +731,41 @@ def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lal
   tests = [] # a list of tests to run on each station
   #loadlist =  (datasets[imaster],) if not lall and imaster is not None else datasets 
   # test definition
+  varcheck = [True]*len(datasets)
   for key,val in kwcond.iteritems():
     key = key.lower()
     if key == 'prov':
+      varname = 'stn_prov'
       if not isinstance(val,(tuple,list)): val = (val,)
       if not isinstance(val,tuple): val = tuple(val)
       if not all(isinstance(prov,basestring) for prov in val): raise TypeError
-      #for dataset in loadlist: dataset.stn_prov.load()
       tests.append(functools.partial(test_prov, val))
     elif key == 'min_len':
+      varname = 'stn_rec_len'
       if not isNumber(val): raise TypeError
       val = val*12 # units in dataset are month  
-      #for dataset in loadlist: dataset.stn_rec_len.load() # preload required data
       tests.append(functools.partial(test_minlen, val))    
     elif key == 'max_zerr':
+      varname = 'zs_err'
       if not isNumber(val): raise TypeError  
-      #for dataset in loadlist: dataset.zs_err.load() # preload required data
       tests.append(functools.partial(test_maxzse, val))
     elif key == 'lat':
+      varname = 'stn_lat'
       if not isinstance(val,(list,tuple)) or len(val) != 2 or not all(isNumber(l) for l in val): raise TypeError  
-      #for dataset in loadlist: dataset.stn_lat.load() # preload required data
       tests.append(functools.partial(test_lat, val))
     elif key == 'lon':
+      varname = 'stn_lon'
       if not isinstance(val,(list,tuple)) or len(val) != 2 or not all(isNumber(l) for l in val): raise TypeError  
-      #for dataset in loadlist: dataset.stn_lon.load() # preload required data
       tests.append(functools.partial(test_lon, val))
+    elif key == 'cluster':
+      varname = 'stn_lon'
+      if ( not isinstance(val,(list,tuple,np.ndarray)) or not all(isInt(l) for l in val)) and not isInt(val): raise TypeError  
+      tests.append(functools.partial(test_cluster, val, lcheckClusterID=lcheckClusterID))
     else:
       raise NotImplementedError, "Unknown condition/test: '{:s}'".format(key)
+    # record, which datasets have all variables 
+    varcheck = [dataset.hasVariable(varname) and vchk for dataset,vchk in zip(datasets,varcheck)]
+#   if lall and not all(varcheck): raise DatasetError, varcheck
   # define test function (all tests must pass)
   if len(tests) > 0:
     testFct = functools.partial(apply_test_suite, tests)
@@ -783,7 +803,7 @@ if __name__ == '__main__':
 #   mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
 #   mode = 'test_timeseries'
-#   mode = 'test_selection'
+  mode = 'test_selection'
   
   # test wrapper function to load time series data from EC stations
   if mode == 'test_selection':
@@ -801,8 +821,14 @@ if __name__ == '__main__':
     var = stnens[-1].axes['station']; print(''); print(var)
     for var in stnens.station: print(var.min(),var.mean(),var.max())
     # test station selector
-    stnens = selectStations(stnens, prov=('BC','AB'), min_len=50, lat=(40,55), max_zerr=300,
-                            stnaxis='station', imaster=None, linplace=False, lall=False) 
+#     stnens = selectStations(stnens, prov=('BC','AB'), min_len=50, lat=(40,55), max_zerr=300,
+#                             stnaxis='station', imaster=None, linplace=False, lall=False)
+#     stnens = selectStations(stnens, min_len=50, cluster=(3,5), lat=(40,55), max_zerr=300, lcheckClusterID=True,
+#                             stnaxis='station', imaster=0, linplace=False, lall=False)
+    stnens = selectStations(stnens, min_len=50, cluster=(3,5), lat=(40,55), max_zerr=300, lcheckClusterID=False,
+                            stnaxis='station', imaster=None, linplace=False, lall=True)
+    # N.B.: clusters effectively replace provinces, but currently only the EC datasets have that 
+    #       information, hence they have to be master-set (imaster=0)
     print(stnens)    
     print('')
     var = stnens[-1].axes['station']; print(''); print(var)
@@ -810,6 +836,7 @@ if __name__ == '__main__':
     
     print('')
     print(stnens[0].stn_prov.data_array)
+    print(stnens[0].cluster_id.data_array)
         
   # test wrapper function to load time series data from EC stations
   elif mode == 'test_timeseries':

@@ -62,7 +62,7 @@ default_varatts['p-et'] = dict(name='p-et', units='kg/m^2/s') # net precipitatio
 # parameters used in shape files
 shp_params = ['shape_name','shp_long_name','shp_type','shp_mask','shp_area','shp_encl','shp_full','shp_empty']
 # parameters used in station files
-stn_params = ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon',]
+stn_params = ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon', 'cluster_id']
 
 # data root folder
 import socket
@@ -500,8 +500,12 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
   elif not isinstance(imaster,(int,np.integer)): raise TypeError
   elif imaster >= len(datasets) or imaster < 0: raise ValueError 
   maxis = axes.pop(imaster) # extraxt shortest axis for loop
-  if lall: test_fct = lambda i,ds: testFct(i, ds, axis) # prepare test function arguments
-  else: test_fct = lambda i: testFct(i, datasets[imaster], axis) 
+  if lall: 
+    tmpds = tuple(datasets)
+    if imaster != 0: tmpds = (tmpds[imaster],)+tmpds[:imaster]+tmpds[imaster+1:]
+    test_fct = lambda i,ds: testFct(i, ds, axis) # prepare test function arguments
+  else: 
+    test_fct = lambda i: testFct(i, datasets[imaster], axis) 
   # loop over coordinate axis
   itpls = [] # list of valid index tuple
   for i,x in enumerate(maxis.coord):
@@ -515,9 +519,9 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
       elif lall: 
         # check test condition on all datasets (slower)
         tmpidx = (i,)+tuple(ax.coord.searchsorted(x) for ax in axes)
-        if all(test_fct(ii,ds) for ii,ds in zip(tmpidx,datasets)):
+        if all(test_fct(ii,ds) for ii,ds in zip(tmpidx,tmpds)):
           # add corresponding indices in each dataset to list
-          itpls.append((i,)+tuple(tmpidx))
+          itpls.append(tmpidx)
       else:
         # check test condition on only one dataset (faster, default)
         if test_fct(i):
@@ -528,7 +532,7 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
   idxs = [[] for ds in datasets] # create unique empty lists
   for itpl in itpls:
     for i,idx in enumerate(itpl): idxs[i].append(idx)
-  idxs.insert(imaster,idxs.pop(0)) # mode fist element back in line (where shortest axis was)
+  idxs.insert(imaster,idxs.pop(0)) # move first element back in line (where shortest axis was)
   idxs = [np.asarray(idxlst, dtype='int') for idxlst in idxs]      
   # slice datasets using only positive results  
   datasets = [ds(lidx=True, linplace=linplace, **{axis:idx}) for ds,idx in zip(datasets,idxs)]
@@ -541,7 +545,7 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
 @BatchLoad
 def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, 
                    slices=None, reduction=None, shape=None, station=None, prov=None, constraints=None, 
-                   filetypes=None, domain=None, ldataset=False, **kwargs):
+                   filetypes=None, domain=None, ldataset=False, lcheckClusterID=True, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -569,7 +573,8 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   # select specific stations (if applicable)
   if not ldataset and station and constraints:
     from datasets.EC import selectStations
-    ensemble = selectStations(ensemble, stnaxis='station', imaster=None, linplace=False, lall=False, **constraints)
+    ensemble = selectStations(ensemble, stnaxis='station', imaster=None, linplace=False, lall=True,
+                              lcheckClusterID=lcheckClusterID, **constraints)
   # apply general reduction operations
   if reduction is not None:
     for ax,op in reduction.iteritems():
