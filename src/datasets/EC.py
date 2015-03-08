@@ -651,7 +651,8 @@ class StationRecords(object):
     
     
 ## load pre-processed EC station time-series
-def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None, filelist=None, folder=None): 
+def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None, 
+              filelist=None, folder=None, **kwargs): 
   ''' Load a monthly time-series of pre-processed EC station data. '''
   if filetype is None: raise ArgumentError, "A 'filetype' needs to be specified ('temp' or 'precip')."
   elif not filetype in ('temp','precip'): raise ArgumentError
@@ -665,17 +666,18 @@ def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None, f
     varlist = translateVarNames(varlist, varatts)
   # open NetCDF file (name, varlist, and varatts are passed on directly)
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
-                            multifile=False, ncformat='NETCDF4')
+                            multifile=False, ncformat='NETCDF4', **kwargs)
   return dataset
 # wrapper
-def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varatts):
+def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varatts, **kwargs):
   ''' Load a monthly time-series of pre-processed EC station data. '''
   if station is None: raise ArgumentError, "A 'filetype' needs to be specified ('ectemp' or 'ecprecip')."
   elif station in ('ectemp','ecprecip'):
     name = name or 'EC'  
     station = station[2:] # internal convention
   else: raise ArgumentError
-  return loadEC_TS(name=name, filetype=station, prov=prov, varlist=varlist, varatts=varatts, filelist=None, folder=None) # just an alias
+  return loadEC_TS(name=name, filetype=station, prov=prov, varlist=varlist, varatts=varatts, 
+                   filelist=None, folder=None, **kwargs) # just an alias
 
 ## load pre-processed EC station climatology
 def loadEC(): 

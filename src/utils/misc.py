@@ -8,6 +8,7 @@ Random utility functions...
 
 # external imports
 import numpy as np
+import scipy.linalg as la
 from utils.signalsmooth import smooth
 from collections import namedtuple
 # internal imports
@@ -170,6 +171,40 @@ def binedges(bins=None, binedgs=None, limits=None, lcheckVar=True):
   # return bins and binegdes
   return bins, binedgs
 
+
+# function to perform PCA
+def PCA(data, degree=None, lprewhiten=False, lpostwhiten=False, lEOF=False, lfeedback=False):
+  ''' A function to perform principal component analysis and return the time-series of the leading EOF's. '''
+  data = np.asarray(data)
+  if not data.ndim == 2: raise ArgumentError
+  # pre-whiten features
+  if lprewhiten:
+    data -= data.mean(axis=0, keepdims=True)
+    data /= data.std(axis=0, keepdims=True)
+  # compute PCA
+  R = np.cov(data.transpose()) # covariance matrix
+  eig, eof = la.eigh(R) # eigenvalues, eigenvectors (of symmetric matrix)
+  ieig = np.argsort(eig,)[::-1] # sort in descending order
+  eig = eig[ieig]; eof = eof[:,ieig]
+  eig /= eig.sum() # normalize by total variance
+  # truncate EOF's
+  if degree is not None:
+      eig = eig[:degree]; eof = eof[:,:degree]
+  # generate report/feedback
+  if lfeedback:
+    string = "Variance explained by {:s} PCA's: {:s}; total variance explained: {:2.0f}%"
+    eiglist = ', '.join('{:.0f}%'.format(e*100.) for e in eig)
+    dgrstr = 'all' if degree is None else "{:d} leading".format(degree)
+    print(string.format(dgrstr, eiglist, eig.sum()*100.))
+  # project data onto (leading) EOF's
+  pca = np.dot(data,eof) # inverse order, because the are transposed
+  # post-whiten features
+  if lpostwhiten:
+    pca -= pca.mean(axis=0, keepdims=True)
+    pca /= pca.std(axis=0, keepdims=True)
+  # return results
+  if lEOF: return pca, eig, eof
+  else: return pca, eig  
 
 # histogram wrapper that suppresses additional output
 def histogram(a, bins=10, range=None, weights=None, density=None): 
