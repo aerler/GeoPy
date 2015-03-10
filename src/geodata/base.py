@@ -475,7 +475,8 @@ class Variable(object):
     else: oldname = oldaxis
     oldaxis = self.axes[self.axisIndex(oldname)]
     if not self.hasAxis(oldaxis): raise AxisError
-    if len(oldaxis) != len(newaxis): raise AxisError # length has to be the same!
+    if len(oldaxis) != len(newaxis): 
+      raise AxisError # length has to be the same!
     #if oldaxis.data != newaxis.data: raise DataError # make sure data status is the same
     # replace old axis
     self.axes = tuple([newaxis if ax.name == oldname else ax for ax in self.axes])
@@ -2092,7 +2093,7 @@ class Dataset(object):
     # double-check
     return self.axes.has_key(ax.name)       
     
-  def addVariable(self, var, copy=False, deepcopy=False, loverwrite=False, **kwargs):
+  def addVariable(self, var, copy=False, deepcopy=False, loverwrite=False, lrenameAxis=False, **kwargs):
     ''' Method to add a Variable to the Dataset. If the variable is already present, abort. '''
     if not isinstance(var,Variable): raise TypeError
     if var.name in self.__dict__: 
@@ -2102,8 +2103,8 @@ class Dataset(object):
       # add new axes, or check, if already present; if present, replace, if different
       for ax in var.axes: 
         if not self.hasAxis(ax.name):
-            self.addAxis(ax, copy=copy) # add new axis          
-        elif ax is not self.axes[ax.name]: 
+          self.addAxis(ax, copy=copy) # add new axis          
+        elif ax is not self.axes[ax.name]:
           var.replaceAxis(ax, self.axes[ax.name]) # or use old one of the same name
         # N.B.: replacing the axes in the variable is to ensure consistent axes within the dataset 
       # finally, if everything is OK, add variable
@@ -2151,7 +2152,7 @@ class Dataset(object):
     else: oldname = oldaxis
     oldaxis = self.axes[oldname]
     if not self.hasAxis(oldaxis): raise AxisError
-    if len(oldaxis) != len(newaxis): raise AxisError # length has to be the same!
+    if len(oldaxis) != len(newaxis): raise AxisError # length has to be the same!    
 #     if oldaxis.data != newaxis.data: raise DataError # make sure data status is the same
     # remove old axis and add new to dataset
     self.removeAxis(oldaxis, force=True)
@@ -2332,7 +2333,7 @@ class Dataset(object):
     if not isinstance(variables,dict): raise TypeError
     if varlist is None: varlist = self.variables.keys()
     if not isinstance(varlist,(list,tuple)): raise TypeError
-    newvars = []
+    newvars = []; oldvars = []
     for varname in varlist:
       # select variable
       if varname in variables: 
@@ -2349,13 +2350,16 @@ class Dataset(object):
           else: raise TypeError
         else: args = dict()
         # copy variables
-        newvars.append(var.copy(axes=axes, deepcopy=varsdeep, **args))
+        oldvars.append(var.copy(axes=axes, deepcopy=varsdeep, **args))
     # determine attributes
     tmp = kwargs.pop('atts',None) 
     if isinstance(tmp,dict): atts = tmp
     else: atts = self.atts.copy()
-    # make new dataset
+    # make new dataset with new variables
     dataset = Dataset(varlist=newvars, atts=atts, **kwargs)
+    for var in oldvars: 
+      try: dataset.addVariable(var, copy=False, loverwrite=False, lrename=True)
+      except AxisError: pass # ignore incompatible axes
     # N.B.: this function will be called, in a way, recursively, and collect all necessary arguments along the way
     return dataset
   

@@ -174,14 +174,32 @@ class DatasetsTest(unittest.TestCase):
     prov = ['BC','AB']; season = ['summer','winter']; mode = ['max']
     constraints = dict(min_len=50, lat=(50,55), max_zerr=300,)
     enslst = loadEnsembleTS(names=names, prov=prov, season=season, mode=mode, station='ecprecip', 
-                            constraints=constraints, varlist=varlist, filetypes=['hydro'],
-                            load_list=['mode','season','prov',], lproduct='outer')
+                            constraints=constraints, varlist=varlist, filetypes=['hydro'], domain=2,
+                            load_list=['mode','season','prov',], lproduct='outer', lwrite=True)
     assert len(enslst) == 4
     assert all(isinstance(ens, Ensemble) for ens in enslst)
     assert all(ens.basetype.__name__ == 'Dataset' for ens in enslst)
     assert all(ens.hasVariable(varlist[0]) for ens in enslst)
     assert all('EC' in ens for ens in enslst)
     ## some debugging test
+    # NetCDF datasets to add cluster_id to
+    wrfensnc = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C', # Ensembles don't have unique NetCDF files
+                'max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',
+                'max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+    wrfensnc = loadEnsembleTS(names=wrfensnc, name='WRF_NC', title=None, varlist=None, 
+                              station='ecprecip', filetypes=['hydro'], domain=2, lwrite=True)
+    # climatology
+    constraints = dict()
+    constraints['min_len'] = 10 # for valid climatology
+    constraints['lat'] = (45,60) 
+    #constraints['max_zerr'] = 100 # can't use this, because we are loading EC data separately from WRF
+    constraints['prov'] = ('BC','AB')
+    wrfens = loadEnsembleTS(names=['max-ens','max-ens-2050','max-ens-2100'], name='WRF', title=None, 
+                            varlist=None, 
+                            aggregation='mean', station='ecprecip', constraints=constraints, filetypes=['hydro'], 
+                            domain=2, lwrite=False)
+    wrfens = wrfens.copy(asNC=False) # read-only DatasetNetCDF can't add new variables (not as VarNC, anyway...)
+    
 #     gevens = [ens.fitDist(lflatten=True, axis=None) for ens in enslst]
 #     print(''); print(gevens[0][0])
 
@@ -206,14 +224,14 @@ if __name__ == "__main__":
 #     specific_tests = ['AsyncPool']    
 #     specific_tests = ['ExpArgList']
 #     specific_tests = ['LoadDataset']
-#     specific_tests = ['LoadEnsembleTS']
+    specific_tests = ['LoadEnsembleTS']
 #     specific_tests = ['LoadStandardDeviation']
 
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['MultiProcess']
+#     tests += ['MultiProcess']
     tests += ['Datasets'] 
     
 

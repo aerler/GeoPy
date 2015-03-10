@@ -71,7 +71,7 @@ def normaltest_wrapper(data, axis=None, ignoreNaN=True):
     nonans = np.invert(np.isnan(data)) # test for NaN's
     if np.sum(nonans) < 3: return np.NaN # return, if less than 3 non-NaN's
     data = data[nonans] # remove NaN's
-  k2, pval = ss.normaltest(data, axis=axis)
+  k2, pval = ss.normaltest(data, axis=axis); del k2
   return pval
 
 # global variable that is used to retain parameters for Shapiro-wilk test
@@ -89,12 +89,12 @@ def shapiro_wrapper(data, reta=False, ignoreNaN=True):
   if reta:
     global shapiro_a
     if  shapiro_a is None or len(shapiro_a) != len(data)//2:
-      W, pval, a = ss.shapiro(data, a=None, reta=True)
+      W, pval, a = ss.shapiro(data, a=None, reta=True); del W
       shapiro_a = a # save parameters
     else:
-      W, pval = ss.shapiro(data, a=shapiro_a, reta=False)
+      W, pval = ss.shapiro(data, a=shapiro_a, reta=False); del W
   else:
-    W, pval = ss.shapiro(data, a=None, reta=False)
+    W, pval = ss.shapiro(data, a=None, reta=False); del W
   return pval
   # N.B.: a only depends on the length of data, so it can be easily reused in array operation
 
@@ -129,7 +129,7 @@ def ks_2samp_wrapper(data, size1=None, ignoreNaN=True):
   else:
     data1 = data[:size1]; data2 = data[size1:]
   # apply test
-  D, pval = ss.ks_2samp(data1, data2)
+  D, pval = ss.ks_2samp(data1, data2); del D
   return pval  
 
 
@@ -162,7 +162,7 @@ def ttest_ind_wrapper(data, size1=None, axis=None, ignoreNaN=True, equal_var=Tru
   else:
     data1, data2 = np.split(data, [size1], axis=axis)
   # apply test
-  D, pval = ss.ttest_ind(data1, data2, axis=axis, equal_var=equal_var)
+  D, pval = ss.ttest_ind(data1, data2, axis=axis, equal_var=equal_var); del D
   return pval  
 
 # Mann-Whitney Rank Test on 2 samples
@@ -204,7 +204,7 @@ def mannwhitneyu_wrapper(data, size1=None, ignoreNaN=True, use_continuity=True, 
   else:
     data1 = data[:size1]; data2 = data[size1:]
   # apply test
-  D, pval = ss.mannwhitneyu(data1, data2, use_continuity=use_continuity)
+  D, pval = ss.mannwhitneyu(data1, data2, use_continuity=use_continuity); del D
   return pval  
 
 
@@ -237,7 +237,7 @@ def ranksums_wrapper(data, size1=None, ignoreNaN=True):
   else:
     data1 = data[:size1]; data2 = data[size1:]
   # apply test
-  D, pval = ss.ranksums(data1, data2)
+  D, pval = ss.ranksums(data1, data2); del D
   return pval  
 
 
@@ -388,7 +388,7 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
   else: raise ArgumentError
   del axis_idx # should not be used any longer    
   # check sample variables
-  for sample in sample1,sample2:
+  for sample,lvar in (sample1,lvar1),(sample2,lvar2):
     if sample.dtype.kind in ('S',):
       if lcheckVar: raise VariableError, "Statistical tests does not work with string Variables!"
       else: return None
@@ -399,7 +399,8 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
     elif not isinstance(sample, np.ndarray):
       raise TypeError, "Samples have to be Variable instances or Numpy 'ndarray'."
     # choose a fillValue (triggers only once)
-    if fillValue is None and sample.masked:
+    lmasked = ( lvar and sample.masked ) or ( not lvar and isinstance(sample, np.ma.MaskedArray) )
+    if lmasked and fillValue is None:
       if np.issubdtype(sample.dtype,np.integer): fillValue = 0
       elif np.issubdtype(sample.dtype,np.inexact): fillValue = np.NaN
       else: raise NotImplementedError
@@ -1330,6 +1331,10 @@ class VarRV(DistVar):
     if asVar:
       data_array = np.rollaxis(data_array, axis=0, start=self.ndim) # roll parameter axis to the back
       rsvar = self.copy(data=data_array)
+      # add record of scale factors
+      rsvar.atts['loc_factor'] = loc.ravel()[0] if isinstance(loc,np.ndarray) else loc
+      rsvar.atts['scale_factor'] = scale.ravel()[0] if isinstance(scale,np.ndarray) else scale
+      rsvar.atts['shape_factor'] = shape.ravel()[0] if isinstance(shape,np.ndarray) else shape 
     else:
       # alternatively, return scale factors for further usage
       if ishape is None: rsvar = loc, scale

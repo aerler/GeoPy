@@ -547,7 +547,7 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
 @BatchLoad
 def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, 
                    slices=None, reduction=None, shape=None, station=None, prov=None, constraints=None, 
-                   filetypes=None, domain=None, ldataset=False, lcheckVar=False, **kwargs):
+                   filetypes=None, domain=None, ldataset=False, lcheckVar=False, lwrite=False, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -567,7 +567,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   for dsname in names:
     # load individual dataset
     dataset = loadDataset(name=dsname, station=station, prov=prov, shape=shape, varlist=varlist, 
-                          mode='time-series', filetypes=filetypes, domains=domain)
+                          mode='time-series', filetypes=filetypes, domains=domain, lwrite=lwrite)
     if slices is not None: dataset = dataset(**slices) # slice immediately 
     if not ldataset: ensemble += dataset.load() # load data and add to ensemble
   # if input was not a list, just return dataset
