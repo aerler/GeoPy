@@ -312,10 +312,10 @@ class Variable(object):
       dataset_name = self.atts['dataset_name']
     else: dataset_name = None
     return dataset_name
-#   @dataset_name.setter
-#   def dataset_name(self, dataset_name):
-#     if self.dataset is None: self._dataset_name = dataset_name
-#     else: raise ValueError, self.dataset
+  @dataset_name.setter
+  def dataset_name(self, dataset_name):
+    if self.dataset is None: self.atts['dataset_name'] = dataset_name
+    else: raise ValueError, self.dataset
     
   @property
   def data(self):
