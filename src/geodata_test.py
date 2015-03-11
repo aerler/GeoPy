@@ -924,9 +924,9 @@ class BaseDatasetTest(unittest.TestCase):
     assert isinstance(var,Variable) and var.name == varname
     del dataset[varname]
     assert not dataset.hasVariable(varname)
-    dataset[varname] = var # this produces a Variable copy
+    dataset[varname] = var # this produces a Variable copy    
     assert dataset.hasVariable(varname)
-    assert not isinstance(dataset[varname],VarNC)
+    assert not isinstance(var,VarNC) or isinstance(dataset[varname],VarNC) # same, before and after
     dataset.removeVariable(var.name); dataset.addVariable(var, copy=False)
     # test advanced container features (fallback to variable methods using __getattr__)
     assert 'units' not in dataset.__dict__ # hasattr is redirected to Variable attributes by __getattr__

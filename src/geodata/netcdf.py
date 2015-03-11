@@ -253,6 +253,8 @@ class VarNC(Variable):
         else: axes.append(newax) # this can be a coordinate list axis
       newvar = asVarNC(newvar, self.ncvar, mode=self.mode, axes=axes, slices=slcs,
                        scalefactor=self.scalefactor, offset=self.offset, transform=self.transform)
+    # N.B.: the copy method can also cast as VarNC and it is called in __call__; however, __call__
+    #       can not communicate slices correctly, so that casting as VarNC has to happen here
     return newvar
   
   def getArray(self, idx=None, axes=None, broadcast=False, unmask=False, fillValue=None, copy=True):
@@ -268,16 +270,27 @@ class VarNC(Variable):
     self.squeezed = True
     return super(VarNC,self).squeeze(**kwargs) # just call superior  
   
-  def copy(self, asNC=False, **newargs):
+  def copy(self, asNC=None, deepcopy=False, **newargs):
     ''' A method to copy the Variable with just a link to the data.
         N.B.: if we return a VarNC object, it will be attached to the same NetCDF file/variable;
               to get a new NetCDF file with new variables, create a DatasetNetCDF instance with a 
               new NetCDF file (e.g. using writeNetCDF), and add the new variable to the new dataset, 
               using addVariable with the asNC=True and the copy=True / deepcopy=True option '''
-    copyvar = super(VarNC,self).copy(**newargs) # just call superior - returns a regular Variable instance
+    if deepcopy and not self.data: self.load() # need data for deepcopy 
+    copyvar = super(VarNC,self).copy(deepcopy=deepcopy, **newargs) # just call superior - returns a regular Variable instance
+    if asNC is None: asNC = not deepcopy and not 'data' in newargs 
+    # N.B.: copy as VarNC, if no deepcopy and no data provided, otherwise as regular Variable;
+    #       this method is also called in __call__, but since sliced data is passed without a slice-
+    #       argument, it has to be casted as a regular Variable and converted later
     if asNC: 
-      copyvar = asVarNC(var=copyvar, ncvar=self.ncvar, mode=self.mode, axes=None,
-                        scalefactor=self.scalefactor, offset=self.offset, transform=self.transform) 
+      if 'scalefactor' not in newargs: newargs['scalefactor'] = self.scalefactor
+      if 'transform' not in newargs: newargs['transform'] = self.transform
+      if 'offset' not in newargs: newargs['offset'] = self.offset
+      if 'slices' not in newargs: newargs['slices'] = self.slices
+      copyvar = asVarNC(var=copyvar, ncvar=self.ncvar, mode=self.mode, **newargs)
+    else:
+      if not copyvar.data and not 'data' in newargs: 
+        copyvar.load(self.__getitem__(None)) # don't want to loose data, unless it was explicitly reset 
     return copyvar
     
   def load(self, data=None, **kwargs):

@@ -2445,7 +2445,7 @@ class Dataset(object):
   def load(self, **kwargs):
     ''' Issue load() command to all variable; pass on any keyword arguments. '''
     for var in self.variables.itervalues():
-      var.load(**kwargs) # there is only one argument to the base method
+      if not var.data: var.load(**kwargs) # there is only one argument to the base method
     return self
       
   def unload(self, **kwargs):
