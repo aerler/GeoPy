@@ -42,8 +42,9 @@ class LinePlotTest(unittest.TestCase):
     ''' create two test variables '''
     # create axis and variable instances (make *copies* of data and attributes!)
     x1 = np.linspace(0,10,11); xax1 = Axis(name='X1-Axis', units='X Units', coord=x1) 
+    var0 = Variable(axes=(xax1,), data=np.sin(x1), atts=dict(name='relative', units=''))
     var1 = Variable(axes=(xax1,), data=x1.copy(), atts=dict(name='blue', units='units'))
-    self.var1 = var1; self.xax1 = xax1
+    self.var0 = var0; self.var1 = var1; self.xax1 = xax1
     x2 = np.linspace(2,8,13); xax2 = Axis(name='X2-Axis', units='X Units', coord=x2)
     var2 = Variable(name='purple',units='units',axes=(xax2,), data=(x2**2)/5.)
     self.var2 = var2; self.xax2 = xax2
@@ -73,11 +74,14 @@ class LinePlotTest(unittest.TestCase):
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyAxes'
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
-    var1 = self.var1; var2 = self.var2
+    var0 = self.var0; var1 = self.var1; var2 = self.var2
     # create plot
     plts = ax.linePlot([var1, var2], ylabel='custom label [{1:s}]', llabel=True, 
                        ylim=var1.limits(), legend=2, hline=2., vline=(2,3))
     assert len(plts) == 2
+    # add rescaled plot
+    plts = ax.linePlot(var0, lrescale=True, scalefactor=2, offset=-1, ylabel=None, llabel=True, legend=2)
+    assert len(plts) == 1    
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
     
@@ -309,7 +313,7 @@ if __name__ == "__main__":
 
     
     specific_tests = None
-#     specific_tests = ['BasicLinePlot']
+    specific_tests = ['BasicLinePlot']
 #     specific_tests = ['BasicErrorPlot']
 #     specific_tests = ['FancyErrorPlot']
 #     specific_tests = ['FancyBandPlot']
@@ -324,7 +328,7 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['LinePlot'] 
-    tests += ['DistPlot']
+#     tests += ['DistPlot']
     
 
     # construct dictionary of test classes defined above

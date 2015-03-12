@@ -59,7 +59,7 @@ class MyAxes(Axes):
   def linePlot(self, varlist, varname=None, bins=None, support=None, errorbar=None, errorband=None,  
                legend=None, llabel=True, labels=None, hline=None, vline=None, title=None, lignore=False,        
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
-               lparasiteMeans=False, parasite_axes=None, 
+               lparasiteMeans=False, parasite_axes=None, lrescale=False, scalefactor=1., offset=0.,
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lperi=False, lprint=False,
                expand_list=None, lproduct='inner', method='pdf', plotatts=None, **plotargs):
     ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on 
@@ -106,14 +106,17 @@ class MyAxes(Axes):
       if var is not None:
         varax = var.axes[0]
         # scale axis and variable values 
-        axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None, laxis=True, lperi=lperi)
-        val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None, lsmooth=lsmooth, lperi=lperi)
+        axe, axunits, axname = self._getPlotValues(varax, checkunits=axunits, laxis=True, lperi=lperi)
+        val, varunits, varname = self._getPlotValues(var, lrescale=lrescale, scalefactor=scalefactor, offset=offset,
+                                                     checkunits=varunits, lsmooth=lsmooth, lperi=lperi)
         if errvar is not None: # for error bars
-          err, varunits, errname = getPlotValues(errvar, checkunits=varunits, checkname=None, lsmooth=lsmooth, lperi=lperi); del errname
+          err, varunits, errname = self._getPlotValues(errvar, lrescale=lrescale, scalefactor=scalefactor, offset=offset, 
+                                                       checkunits=varunits, lsmooth=lsmooth, lperi=lperi); del errname
         else: err = None
         if bndvar is not None: # semi-transparent error bands
-          bnd, varunits, bndname = getPlotValues(bndvar, checkunits=varunits, checkname=None, lsmooth=lsmooth, lperi=lperi); del bndname
-        else: bnd = None      
+          bnd, varunits, bndname = self._getPlotValues(bndvar, lrescale=lrescale, scalefactor=scalefactor, offset=offset,
+                                                       checkunits=varunits, lsmooth=lsmooth, lperi=lperi); del bndname
+        else: bnd = None
         # variable and axis scaling is not always independent...
         if var.plot is not None and varax.plot is not None: 
           if varax.units != axunits and var.plot.preserve == 'area':
@@ -168,7 +171,8 @@ class MyAxes(Axes):
 
 
   def bandPlot(self, upper=None, lower=None, varname=None, bins=None, support=None, lignore=False,   
-               legend=None, llabel=False, labels=None, hline=None, vline=None, title=None,        
+               legend=None, llabel=False, labels=None, hline=None, vline=None, title=None,   
+               lrescale=False, scalefactor=1., offset=0.,     
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
                xlog=None, ylog=None, xlim=None, ylim=None, lsmooth=False, lperi=False, lprint=False, 
                expand_list=None, lproduct='inner', method='pdf', plotatts=None, **plotargs):
@@ -214,10 +218,12 @@ class MyAxes(Axes):
           varax = lowvar.axes[0]
           assert upvar is None or ( upvar.hasAxis(varax.name) and upvar.ndim == 1 )          
         # scale axis and variable values 
-        axe, axunits, axname = getPlotValues(varax, checkunits=axunits, checkname=None, laxis=True, lperi=lperi)
-        if upvar: up, varunits, varname = getPlotValues(upvar, checkunits=varunits, checkname=None, lsmooth=lsmooth, lperi=lperi) 
+        axe, axunits, axname = self._getPlotValues(varax, checkunits=axunits, laxis=True, lperi=lperi)
+        if upvar: up, varunits, varname = self._getPlotValues(upvar, lrescale=lrescale, scalefactor=scalefactor, offset=offset, 
+                                                              checkunits=varunits, lsmooth=lsmooth, lperi=lperi) 
         else: up = np.zeros_like(axe)
-        if lowvar: low, varunits, varname = getPlotValues(lowvar, checkunits=varunits, checkname=None, lsmooth=lsmooth, lperi=lperi)
+        if lowvar: low, varunits, varname = self._getPlotValues(lowvar, lrescale=lrescale, scalefactor=scalefactor, offset=offset, 
+                                                                checkunits=varunits, lsmooth=lsmooth, lperi=lperi)
         else: low = np.zeros_like(axe)
         # variable and axis scaling is not always independent...
         if upvar.plot is not None and varax.plot is not None: 
@@ -270,7 +276,7 @@ class MyAxes(Axes):
   
   def bootPlot(self, varlist, varname=None, bins=None, support=None, method='pdf', percentiles=(0.25,0.75),   
                bootstrap_axis='bootstrap', lmedian=None, median_fmt=None, lmean=False, mean_fmt=None, 
-               lvar=False, lvarBand=False,
+               lvar=False, lvarBand=False, lrescale=False, scalefactor=1., offset=0.,
                legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
                flipxy=None, xlabel=True, ylabel=False, xticks=True, yticks=False, reset_color=None, 
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=None, lprint=False,
@@ -294,6 +300,7 @@ class MyAxes(Axes):
     original = [None if var is None else var(**slc) for var in varlist]
     plts = self.linePlot(varlist=original, errorbar=errorbars, errorband=errorband, 
                          errorevery=errorevery, errorscale=errorscale,
+                         lrescale=lrescale, scalefactor=scalefactor, offset=offset, 
                          legend=legend, llabel=llabel, labels=labels, hline=hline, vline=vline, 
                          title=title, flipxy=flipxy, xlabel=xlabel, ylabel=ylabel, xticks=xticks, 
                          yticks=yticks, reset_color=reset_color, xlog=xlog, ylog=ylog, xlim=xlim, 
@@ -309,6 +316,7 @@ class MyAxes(Axes):
       self.linePlot(varlist=means, llabel=False, labels=None, linestyles=mean_fmt, colors=colors,
                     flipxy=flipxy, reset_color=False, lsmooth=lsmooth, lprint=False, 
                     xlabel=xlabel, ylabel=ylabel,
+                    lrescale=lrescale, scalefactor=scalefactor, offset=offset, 
                     plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)    
     # determine percentiles along bootstrap axis
     if lmedian and percentiles is None: raise ArgumentError, "Median only works with percentiles."
@@ -332,6 +340,7 @@ class MyAxes(Axes):
       if bandalpha is None: bandalpha = 0.35 
       self.bandPlot(upper=uppers, lower=lowers, lignore=lignore, llabel=False, labels=None,
                     xlabel=xlabel, ylabel=ylabel,         
+                    lrescale=lrescale, scalefactor=scalefactor, offset=offset,
                     flipxy=flipxy, reset_color=False, lsmooth=lsmoothBand, lprint=False, 
                     where=where, alpha=bandalpha, edgecolor=edgecolor, colors=facecolor,
                     expand_list=expand_list, lproduct=lproduct, plotatts=plotatts, **band_args)
@@ -342,6 +351,7 @@ class MyAxes(Axes):
         meadians = [None if var is None else var(**mdslc) for var in qvars]
         self.linePlot(varlist=meadians, llabel=False, labels=None, linestyles='--', colors=colors,
                       xlabel=xlabel, ylabel=ylabel,
+                      lrescale=lrescale, scalefactor=scalefactor, offset=offset,
                       flipxy=flipxy, reset_color=False, lsmooth=lsmooth, lprint=False, 
                       plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)
     # done! 
@@ -582,6 +592,21 @@ class MyAxes(Axes):
     # return cleaned-up and expanded plot arguments
     return plotargs
     
+  def _getPlotValues(self, var, checkunits=None, lsmooth=False, lperi=False, 
+                     laxis=False, lrescale=False, scalefactor=1., offset=0.):
+    ''' '''
+    if lrescale: checkunits = None
+    val, varunits, varname = getPlotValues(var, checkunits=checkunits, checkname=None, lsmooth=lsmooth, 
+                                           lperi=lperi, laxis=laxis)
+    if lrescale:
+      if self.flipxy: vlim,varunits = self.get_xlim(),self.xunits
+      else: vlim,varunits = self.get_ylim(),self.yunits
+      val -= offset; val /= scalefactor 
+      val *= ( vlim[1] - vlim[0] ); val += vlim[0]  
+    return val, varunits, varname
+    
+  
+  
   def _getPlotLabels(self, varlist):
     ''' figure out reasonable plot labels based variable and dataset names '''
     # make list without None's for checking uniqueness
