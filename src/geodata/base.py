@@ -76,7 +76,7 @@ def BinaryCheckAndCreateVar(sameUnits=True, linplace=False):
         for lax,rax in zip(orig.axes,other.axes):
           if (lax.coord != rax.coord).any(): raise AxisError,  'Variables need to have identical coordinate arrays!'
         if not other.data: other.load()
-      elif not isinstance(other, (np.ndarray,numbers.Number)): 
+      elif not isinstance(other, (np.ndarray,numbers.Number,np.integer,np.inexact)): 
         raise TypeError, 'Can only operate with Variables or numerical types!'
         # N.B.: don't check ndarray shapes, because we want to allow broadcasting        
       if not orig.data: orig.load()      

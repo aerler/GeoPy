@@ -388,7 +388,7 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
   else: raise ArgumentError
   del axis_idx # should not be used any longer    
   # check sample variables
-  for sample,lvar in (sample1,lvar1),(sample2,lvar2):
+  for sample,lvar in ((sample1,lvar1),(sample2,lvar2)):
     if sample.dtype.kind in ('S',):
       if lcheckVar: raise VariableError, "Statistical tests does not work with string Variables!"
       else: return None
