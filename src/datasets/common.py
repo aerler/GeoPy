@@ -21,6 +21,7 @@ from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import GDALError, addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
 # import some calendar defintions
 from geodata.misc import name_of_month, days_per_month, days_per_month_365, seconds_per_month, seconds_per_month_365
+from matplotlib.delaunay.testfuncs import plotallfuncs
 
 
 
@@ -546,8 +547,9 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
 # a function to load station data
 @BatchLoad
 def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, 
-                   slices=None, reduction=None, shape=None, station=None, prov=None, constraints=None, 
-                   filetypes=None, domain=None, ldataset=False, lcheckVar=False, lwrite=False, **kwargs):
+                   slices=None, obsslices=None, reduction=None, shape=None, station=None, prov=None, 
+                   constraints=None, filetypes=None, domain=None, ldataset=False, lcheckVar=False, 
+                   lwrite=False, name_tags=None, ensemble_list=None, ensemble_product='inner', **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -559,16 +561,30 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
     if shape: 
       for var in shp_params: # necessary to select shapes
         if var not in varlist: varlist.append(var)
-  # load ensemble WRF data
-  if not isinstance(names, (list,tuple)): names = (names,)
-  if ldataset and len(names) != 1: raise ArgumentError 
-  # perpare ensemble    
-  if not ldataset: ensemble = Ensemble(name=name, title=title, basetype='Dataset')
-  for dsname in names:
+  # perpare ensemble and arguments
+  if ldataset and ensemble_list: raise ArgumentError 
+  elif not ldataset: ensemble = Ensemble(name=name, title=title, basetype='Dataset')
+  # expand argument list
+  if ensemble_list is None: ensemble_list = ['names'] if not ldataset else None
+  loadargs = expandArgumentList(names=names, station=station, prov=prov, shape=shape, varlist=varlist, 
+                                mode='time-series', filetypes=filetypes, domains=domain, lwrite=lwrite,
+                                slices=slices, obsslices=obsslices, name_tags=name_tags, 
+                                expand_list=ensemble_list, lproduct=ensemble_product)
+  for loadarg in loadargs:
+    # clean up argumetns
+    name = loadarg.pop('names',None); name_tag = loadarg.pop('name_tags',None)
+    slcs = loadarg.pop('slices',None); obsslcs = loadarg.pop('obsslices',None)    
     # load individual dataset
-    dataset = loadDataset(name=dsname, station=station, prov=prov, shape=shape, varlist=varlist, 
-                          mode='time-series', filetypes=filetypes, domains=domain, lwrite=lwrite)
-    if slices is not None: dataset = dataset(**slices) # slice immediately 
+    dataset = loadDataset(name=name, **loadarg)
+    if name_tag is not None: 
+      if name_tag[0] == '_': dataset.name += name_tag
+      else: dataset.name = name_tag
+    # apply slicing
+    if obsslcs and ( dataset.name[:3].lower() == 'obs' or dataset.name.isupper() ):
+      if slcs is None: slcs = obsslcs
+      else: slcs.update(**obsslcs) # add special slices for obs
+      # N.B.: currently VarNC's can only be sliced once, because we can't combine slices yet
+    if slcs: dataset = dataset(**slcs) # slice immediately 
     if not ldataset: ensemble += dataset.load() # load data and add to ensemble
   # if input was not a list, just return dataset
   if ldataset: ensemble = dataset.load() # load data

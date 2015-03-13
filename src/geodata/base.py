@@ -793,8 +793,11 @@ class Variable(object):
       # assign data to instance attribute array 
       self.__dict__['data_array'] = data
       # check shape consistency
-      if len(self.shape) != self.ndim and (self.ndim != 0 or data.size != 1):
-        raise DataError, 'Variable dimensions and data dimensions incompatible!'
+      try:
+        if len(self.shape) != self.ndim and (self.ndim != 0 or data.size != 1):
+          raise DataError, 'Variable dimensions and data dimensions incompatible!'
+      except: 
+        pass
       # N.B.: the second statement is necessary, so that scalars don't cause a crash
       # some more checks
       # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple; hence

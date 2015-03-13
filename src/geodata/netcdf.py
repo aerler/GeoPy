@@ -251,6 +251,9 @@ class VarNC(Variable):
             axes.append(asAxisNC(newax, ncvar=ncax.ncvar, mode=ncax.mode, slices=(slc,)))
           else: axes.append(newax) # keep as is
         else: axes.append(newax) # this can be a coordinate list axis
+      # figure out slices
+      
+      # create new VarNC instance with different slices
       newvar = asVarNC(newvar, self.ncvar, mode=self.mode, axes=axes, slices=slcs,
                        scalefactor=self.scalefactor, offset=self.offset, transform=self.transform)
     # N.B.: the copy method can also cast as VarNC and it is called in __call__; however, __call__

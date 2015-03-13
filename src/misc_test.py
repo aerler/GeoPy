@@ -156,20 +156,22 @@ class DatasetsTest(unittest.TestCase):
     assert 'MaxPrecip_1d' in dss[0] and 'precip' in dss[1]
     assert 'MaxPrecip_1d' not in dss[3] and 'precip' not in dss[2]
     
-  def testLoadEnsembleTS(self):
+  def testBasicLoadEnsembleTS(self):
     ''' test station data load functions (ensemble and list) '''
     from datasets.common import loadEnsembleTS    
     # test simple ensemble with basins
-    names = ['GPCC', 'max-ens_d01','max-ens']; varlist = ['precip'] 
-    season = None; aggregation = 'mean'; slices = dict(shape_name='ARB') 
-    shpens = loadEnsembleTS(names=names, season=season, shape='shpavg', aggregation=aggregation, 
-                            slices=slices, varlist=varlist, filetypes=['hydro'], domain=None)
+    names = ['GPCC', 'max-ens_d01','max-ens-2100']; varlist = ['precip'] 
+    aggregation = None; slices = dict(shape_name='ARB'); obsslices = dict(years=(1939,1945)) 
+    shpens = loadEnsembleTS(names=names, season=None, shape='shpavg', aggregation=aggregation, 
+                            slices=slices, varlist=varlist, filetypes=['hydro'], obsslices=obsslices)
     assert isinstance(shpens, Ensemble)
     assert shpens.basetype.__name__ == 'Dataset'
     assert all(shpens.hasVariable(varlist[0]))
     assert 'GPCC' in shpens
+    assert len(shpens['GPCC'].time) == 72 # time-series
+    assert len(shpens['max-ens-2100'].time) == 720 # ensemble
     assert all('ARB' == ds.atts.shape_name for ds in shpens)
-    # test list expansion of ensembles    
+    # test list expansion of ensembles loading
     names = ['EC', 'max-ens']; varlist = ['MaxPrecip_1d'] 
     prov = ['BC','AB']; season = ['summer','winter']; mode = ['max']
     constraints = dict(min_len=50, lat=(50,55), max_zerr=300,)
@@ -181,13 +183,53 @@ class DatasetsTest(unittest.TestCase):
     assert all(ens.basetype.__name__ == 'Dataset' for ens in enslst)
     assert all(ens.hasVariable(varlist[0]) for ens in enslst)
     assert all('EC' in ens for ens in enslst)
+
+  def testAdvancedLoadEnsembleTS(self):
+    ''' test station data load functions (ensemble and list) '''
+    from datasets.common import loadEnsembleTS 
+    lwrite = False   
+    # test ensemble (inner) list expansion
+    names = 'CRU'; varlist = ['precip']; slices = dict(shape_name='FRB'); 
+    obsslices = [dict(years=(1914,1918)), dict(years=(1939,1945))]
+    name_tags = ['_1914','_1939']
+    shpens = loadEnsembleTS(names=names, shape='shpavg', name_tags=name_tags, obsslices=obsslices,
+                            slices=slices, varlist=varlist, filetypes=['hydro'],
+                            aggregation=None, season=None, 
+                            ensemble_list=['obsslices', 'name_tags'])
+    assert isinstance(shpens, Ensemble)
+    assert shpens.basetype.__name__ == 'Dataset'
+    assert all(shpens.hasVariable(varlist[0]))
+    assert all('CRU' == ds.name[:3] for ds in shpens)
+    assert len(shpens['CRU_1914'].time) == 48 # time-series
+    assert len(shpens['CRU_1939'].time) == 72 # time-series
+    assert all('FRB' == ds.atts.shape_name for ds in shpens)
+    # test ensemble (inner) list expansion with outer list expansion    
+    varlist = ['MaxPrecip_1d']; constraints = dict(min_len=50, lat=(50,55), max_zerr=300,)
+    # inner expansion
+    names = ['EC', 'EC', 'max-ens']; name_tags = ['_1990','_1940','WRF_1990']
+    obsslices = [dict(years=(1929,1945)), dict(years=(1979,1995)), dict()]
+    # outer expansion
+    prov = ['BC','AB']; season = ['summer','winter']; mode = ['max']
+    # load data
+    enslst = loadEnsembleTS(names=names, prov=prov, season=season, mode=mode, station='ecprecip', 
+                            constraints=constraints, name_tags=name_tags, obsslices=obsslices,  
+                            domain=2, filetypes=['hydro'], varlist=varlist, ensemble_product='inner',  
+                            ensemble_list=['names','name_tags','obsslices',], lwrite=lwrite,
+                            load_list=['mode','season','prov',], lproduct='outer',)
+    assert len(enslst) == 4
+    assert all(isinstance(ens, Ensemble) for ens in enslst)
+    assert all(ens.basetype.__name__ == 'Dataset' for ens in enslst)
+    assert all(ens.hasVariable(varlist[0]) for ens in enslst)
+    assert all('EC_1990' in ens for ens in enslst)
+    assert all('EC_1940' in ens for ens in enslst)
+    assert all('WRF_1990' in ens for ens in enslst)
     ## some debugging test
     # NetCDF datasets to add cluster_id to
     wrfensnc = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C', # Ensembles don't have unique NetCDF files
                 'max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',
                 'max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
     wrfensnc = loadEnsembleTS(names=wrfensnc, name='WRF_NC', title=None, varlist=None, 
-                              station='ecprecip', filetypes=['hydro'], domain=2, lwrite=True)
+                              station='ecprecip', filetypes=['hydro'], domain=2, lwrite=lwrite)
     # climatology
     constraints = dict()
     constraints['min_len'] = 10 # for valid climatology
@@ -198,8 +240,7 @@ class DatasetsTest(unittest.TestCase):
                             varlist=None, 
                             aggregation='mean', station='ecprecip', constraints=constraints, filetypes=['hydro'], 
                             domain=2, lwrite=False)
-    wrfens = wrfens.copy(asNC=False) # read-only DatasetNetCDF can't add new variables (not as VarNC, anyway...)
-    
+    wrfens = wrfens.copy(asNC=False) # read-only DatasetNetCDF can't add new variables (not as VarNC, anyway...)    
 #     gevens = [ens.fitDist(lflatten=True, axis=None) for ens in enslst]
 #     print(''); print(gevens[0][0])
 
@@ -209,7 +250,7 @@ class DatasetsTest(unittest.TestCase):
     # just a random function call that exposes a bug in Numpy's nanfunctions.py    
     slices = {'shape_name': 'FRB', 'years': (1979, 1994)}
     loadEnsembleTS(names='CRU', season=None, aggregation='std', slices=slices, 
-                             varlist=['precip'], shape='shpavg', ldataset=True)
+                   varlist=['precip'], shape='shpavg', ldataset=True)
     # N.B.: the following link to a patched file should fix the problem:
     #  /home/data/Enthought/EPD/lib/python2.7/site-packages/numpy/lib/nanfunctions.py 
     #  -> /home/data/Code/PyGeoData/src/utils/nanfunctions.py
@@ -224,14 +265,15 @@ if __name__ == "__main__":
 #     specific_tests = ['AsyncPool']    
 #     specific_tests = ['ExpArgList']
 #     specific_tests = ['LoadDataset']
-#     specific_tests = ['LoadEnsembleTS']
+#     specific_tests = ['BasicLoadEnsembleTS']
+#     specific_tests = ['AdvancedLoadEnsembleTS']
 #     specific_tests = ['LoadStandardDeviation']
 
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['MultiProcess']
+#     tests += ['MultiProcess']
     tests += ['Datasets'] 
     
 
