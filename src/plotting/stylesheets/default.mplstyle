@@ -1,10 +1,32 @@
 # adapted from Matplotlib's ggplot stylesheet
-# Andre R. Erler, GPL v3, 20/01/2015 
+# Andre R. Erler, GPL v3, 12/03/2015 
 
-font.size: 12
+patch.linewidth: 1.0
+patch.facecolor: blue  # blue
+patch.edgecolor: black
+patch.antialiased: True
 
+font.size: 10
+
+axes.facecolor: white
+axes.edgecolor: black
 axes.linewidth: 1
 axes.grid: False
+axes.titlesize: x-large
+axes.labelsize: large
+axes.labelcolor: black
+axes.axisbelow: False
+
+axes.color_cycle: b, g, r, c, m, y, k
+
+xtick.color: black
+xtick.direction: in
+
+ytick.color: black
+ytick.direction: in
+
+grid.color: black
+grid.linestyle: :    # dotted line
 
 figure.facecolor: white
 figure.edgecolor: white

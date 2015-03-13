@@ -80,7 +80,7 @@ class LinePlotTest(unittest.TestCase):
                        ylim=var1.limits(), legend=2, hline=2., vline=(2,3))
     assert len(plts) == 2
     # add rescaled plot
-    plts = ax.linePlot(var0, lrescale=True, scalefactor=2, offset=-1, ylabel=None, llabel=True, legend=2)
+    plts = ax.linePlot(var0, lrescale=True, scalefactor=2, offset=-1, llabel=True, legend=2)
     assert len(plts) == 1    
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)

@@ -750,14 +750,22 @@ class DatasetNetCDF(Dataset):
     # return itself- this allows for some convenient syntax
     return self
     
-  def copy (self, asNC=True, filename=None, varsdeep=False, **newargs):
+  def copy (self, asNC=True, filename=None, varsdeep=False, varargs=None, **newargs):
     ''' Copy a DatasetNetCDF, either into a normal Dataset or into a DatasetNetCDF (requires a filename). '''
     if asNC and filename is not None:
       writeData = newargs.pop('lwriteData',True)
       if writeData or varsdeep: self.load() 
-      # N.B.: we need to pre-load, so the data can be written later   
+      # N.B.: we need to pre-load, so the data can be written later
+    # figure out how variables will be copied (NC, or not NC)   
+    if varargs is None: varargs = dict()
+    for varname,var in self.variables.iteritems():
+      if isinstance(var, VarNC):
+        vararg = varargs.get(varname,dict())
+        if not isinstance(vararg,dict): raise TypeError, vararg
+        if 'asNC' not in vararg: vararg['asNC'] = asNC
+        varargs[varname] = vararg  
     # first invoke parent method, to make regular copy
-    dataset = super(DatasetNetCDF,self).copy(varsdeep=varsdeep, **newargs)
+    dataset = super(DatasetNetCDF,self).copy(varsdeep=varsdeep, varargs=varargs, **newargs)
     # now handle NetCDF stuff
     if asNC:
       if filename is None:

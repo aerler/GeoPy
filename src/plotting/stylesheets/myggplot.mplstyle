@@ -41,4 +41,4 @@ figure.edgecolor: 0.50
 legend.frameon: True
 legend.fancybox: True
 legend.shadow: False
-legend.framealpha: 0.7
+legend.framealpha: 0.7 # to better hide grid lines

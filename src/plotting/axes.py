@@ -68,11 +68,11 @@ class MyAxes(Axes):
     ## figure out variables
     varlist = checkVarlist(varlist, varname=varname, ndim=1, bins=bins, support=support, 
                                  method=method, lignore=lignore)
-    if errorbar: errlist = checkVarlist(errorbar, varname=varname, ndim=1, 
-                                              bins=bins, support=support, method=method, lignore=lignore)
+    if errorbar: errlist = checkVarlist(errorbar, varname=varname, ndim=1, lignore=lignore, 
+                                              bins=bins, support=support, method=method)
     else: errlist = [None]*len(varlist) # no error bars
-    if errorband: bndlist = checkVarlist(errorband, varname=varname, ndim=1, 
-                                               bins=bins, support=support, method=method, lignore=lignore)
+    if errorband: bndlist = checkVarlist(errorband, varname=varname, ndim=1, lignore=lignore, 
+                                               bins=bins, support=support, method=method)
     else: bndlist = [None]*len(varlist) # no error bands
     assert len(varlist) == len(errlist) == len(bndlist)
     # initialize axes names and units
@@ -160,8 +160,9 @@ class MyAxes(Axes):
       else: plts.append(None)
     ## format axes and add annotation
     # set axes labels  
-    if self.flipxy: self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
-    else: self.xname,self.xunits,self.yname,self.yunits = axname,axunits,varname,varunits
+    if not lrescale: # don't reset name/units when variables were rescaled to existing axes
+      if self.flipxy: self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
+      else: self.xname,self.xunits,self.yname,self.yunits = axname,axunits,varname,varunits
     # apply standard formatting and annotation
     self.formatAxesAndAnnotation(title=title, legend=legend, xlabel=xlabel, ylabel=ylabel, 
                                  hline=hline, vline=vline, xlim=xlim, xlog=xlog, xticks=xticks, 
@@ -472,15 +473,15 @@ class MyAxes(Axes):
     return self.set_title(title, kwargs)
   
   def addLegend(self, loc=0, **kwargs):
-      ''' add a legend to the axes '''
+    ''' add a legend to the axes '''
 #       if 'fontsize' not in kwargs and self.get_yaxis().get_label():
 #         kwargs['fontsize'] = self.get_yaxis().get_label().get_fontsize()
-      if 'fontsize' not in kwargs:
-        if min(self.get_position().bounds[2:4]) < 0.3: kwargs['fontsize'] = 'small'
-        elif min(self.get_position().bounds[2:4]) < 0.6: kwargs['fontsize'] = 'medium'
-        else: kwargs['fontsize'] = 'large'      
-      kwargs['loc'] = loc
-      self.legend(**kwargs)
+    if 'fontsize' not in kwargs:
+      if min(self.get_position().bounds[2:4]) < 0.3: kwargs['fontsize'] = 'small'
+      elif min(self.get_position().bounds[2:4]) < 0.6: kwargs['fontsize'] = 'medium'
+      else: kwargs['fontsize'] = 'large'      
+    kwargs['loc'] = loc
+    self.legend(**kwargs)
   
   def _positionParasiteAxes(self):
     ''' helper routine to put parasite axes in place '''
@@ -672,9 +673,12 @@ class MyAxes(Axes):
     self.yLabel(ylabel)    
     # N.B.: a typical custom label that makes use of the units would look like this: 'custom label [{1:s}]', 
     # where {} will be replaced by the appropriate default units (which have to be the same anyway)
-    # add legend
-    if isinstance(legend,dict): self.addLegend(**legend) 
+    # add legend    
+    if legend is False or legend is None: pass # no legend
+    elif legend is True: self.addLegend(loc=0) # legend at default/optimal location
+    # N.B.: apparently True and False test positive as integers...
     elif isinstance(legend,(int,np.integer,float,np.inexact)): self.addLegend(loc=legend)
+    elif isinstance(legend,dict): self.addLegend(**legend) 
     # add orientation lines
     if hline is not None: self.addHline(hline)
     if vline is not None: self.addVline(vline)

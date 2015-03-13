@@ -1219,7 +1219,7 @@ class VarRV(DistVar):
     plen = self.dist_class.numargs + 2 # infer number of parameters
     fct = functools.partial(rv_fit, ic_shape=ic_shape, ic_args=ic_args, ic_loc=ic_loc, ic_scale=ic_scale, plen=plen, 
                             dist_type=self.dist_type, lpersist=lpersist, ldebug=ldebug, **kwargs)
-    params = apply_along_axis(fct, samples.ndim-1, samples, chunksize=int(10000//plen//len(samples)))
+    params = apply_along_axis(fct, samples.ndim-1, samples, chunksize=int(300//plen//len(samples)))
     if lpersist: # reset global parameters 
       global_loc   = None # location parameter ("mean")
       global_scale = None # scale parameter ("standard deviation")
@@ -1237,13 +1237,13 @@ class VarRV(DistVar):
     if  len(args) == 0:
       fillValue = self.fillValue or np.NaN
       fct = functools.partial(rv_stats, dist_type=self.dist_type, fct_type=rv_fct, fillValue=fillValue, **kwargs)
-      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=1000)
+      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=100)
       assert dist.shape[:-1] == self.shape[:-1]
     elif  len(args) == 1 and rv_fct == 'moment':
       raise NotImplementedError
       fillValue = self.fillValue or np.NaN
       fct = functools.partial(rv_stats, dist_type=self.dist_type, fct_type=rv_fct, fillValue=fillValue, **kwargs)
-      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=1000)
+      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=100)
       assert dist.shape[:-1] == self.shape[:-1]
     elif len(args) == 1:
       support = args[0]
@@ -1251,7 +1251,7 @@ class VarRV(DistVar):
       n = len(support); fillValue = self.fillValue or np.NaN
       fct = functools.partial(rv_eval, dist_type=self.dist_type, fct_type=rv_fct, 
                               support=support, n=n, fillValue=fillValue, **kwargs)
-      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=100000//n)
+      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=10000//n)
       assert dist.shape == self.shape[:-1] + (len(support),)
     else: raise ArgumentError
     return dist
