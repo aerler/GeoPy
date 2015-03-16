@@ -180,9 +180,6 @@ class VarNC(Variable):
     ''' Method implementing access to the actual data; if data is not loaded, give direct access to NetCDF file. '''
     # determine what to do
     if self.data:
-      # default
-      if slc is None:
-        slc = slice(None) if self.slices is None else self.slices          
       # call parent method
       data = super(VarNC,self).__getitem__(slc) # load actual data using parent method      
     else:
@@ -307,10 +304,12 @@ class VarNC(Variable):
       if len(axes) > 0: 
         self, slcs = self.__call__(asVar=True, lslices=True, linplace=True, **axes) # this is poorly tested...
         if data is not None and data.shape != self.shape: data = data.__getitem__(slcs) # slice input data, if appropriate 
-    if data is None:       
-      # use slices to load data
-      if slcs is None: slcs = slice(None)
-      data = self.__getitem__(slcs) # load everything
+    if data is None:
+      if self.data: 
+        return True # do nothing         
+      else: # use slices to load data
+        if slcs is None: slcs = slice(None)
+        data = self.__getitem__(slcs) # load everything
     elif isinstance(data,np.ndarray):
       data = data
     elif all(checkIndex(data)):

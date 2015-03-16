@@ -593,6 +593,17 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
     from datasets.EC import selectStations
     ensemble = selectStations(ensemble, stnaxis='station', imaster=None, linplace=False, lall=True,
                               lcheckVar=lcheckVar, **constraints)
+  # make sure all have cluster meta data  
+  for varname in stn_params + shp_params:
+    # find valid instance
+    var = None
+    for ds in ensemble: 
+      if varname in ds: var = ds[varname]; break
+    # give to those who have not
+    if var is not None:
+      var.load() # load data and add as regular variable (not VarNC)
+      for ds in ensemble: 
+        if varname not in ds: ds.addVariable(var.copy()) 
   # apply general reduction operations
   if reduction is not None:
     for ax,op in reduction.iteritems():

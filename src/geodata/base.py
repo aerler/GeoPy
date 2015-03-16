@@ -21,6 +21,7 @@ from geodata.misc import genStrArray, translateSeasons
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 from processing.multiprocess import apply_along_axis
 from utils.misc import histogram, binedges, detrend, percentile
+from blockcanvas.function_tools.function_variables import Variable
      
 
 class UnaryCheckAndCreateVar(object):
@@ -69,8 +70,11 @@ def BinaryCheckAndCreateVar(sameUnits=True, linplace=False):
     def __call__(self, orig, other, sameUnits=sameUnits, asVar=True, linplace=linplace, **kwargs):
       ''' Perform sanity checks, then execute operation, and return result. '''
       if isinstance(other,Variable): # raise TypeError, 'Can only add two Variable instances!' 
-        if orig.shape != other.shape: 
-          raise AxisError, 'Variables need to have the same shape and compatible axes!'
+        if orig.shape != other.shape:
+          mind = min(orig.ndim,other.ndim)
+          if orig.ndim == other.ndim or orig.shape[:mind] != other.shape[:mind]:
+            raise AxisError, 'Variables need to have the same shape and compatible axes!'
+          # else we can broadcast
         if sameUnits and orig.units != other.units: 
           raise VariableError, 'Variable units have to be identical for addition!'
         for lax,rax in zip(orig.axes,other.axes):
@@ -79,9 +83,23 @@ def BinaryCheckAndCreateVar(sameUnits=True, linplace=False):
       elif not isinstance(other, (np.ndarray,numbers.Number,np.integer,np.inexact)): 
         raise TypeError, 'Can only operate with Variables or numerical types!'
         # N.B.: don't check ndarray shapes, because we want to allow broadcasting        
-      if not orig.data: orig.load()      
+      if not orig.data: orig.load()
+      # prepare arguments
+      if isinstance(other, Variable):
+        otherdata = other.data_array
+        othername = other.name      
+        otherunits = other.units
+        if other.ndim < orig.ndim: 
+          otherdata = otherdata.reshape(other.shape+(1,)*(orig.ndim-other.ndim))
+        elif other.ndim < orig.ndim: 
+          raise NotImplementedError, "Can only broadcast second Variable in binary operation. "
+      else:
+        otherdata = other
+        othername = str(other)
+        otherunits = None
       # call original method
-      data, name, units = self.binOp(orig, other, linplace=linplace, **kwargs)
+      data, name, units = self.binOp(orig, otherdata, othername=othername, otherunits=otherunits, 
+                                     linplace=linplace, **kwargs)
       if linplace:
         var = orig # in-place operation should already have changed data_array 
       elif asVar:
@@ -793,11 +811,8 @@ class Variable(object):
       # assign data to instance attribute array 
       self.__dict__['data_array'] = data
       # check shape consistency
-      try:
-        if len(self.shape) != self.ndim and (self.ndim != 0 or data.size != 1):
-          raise DataError, 'Variable dimensions and data dimensions incompatible!'
-      except: 
-        pass
+      if len(self.shape) != self.ndim and (self.ndim != 0 or data.size != 1):
+        raise DataError, 'Variable dimensions and data dimensions incompatible!'
       # N.B.: the second statement is necessary, so that scalars don't cause a crash
       # some more checks
       # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple; hence
@@ -1744,85 +1759,70 @@ class Variable(object):
       raise AttributeError, "Attribute/method '{:s}' not found in class '{:s}'!".format(attr,self.__class__.__name__)
     
   @BinaryCheckAndCreateVar(sameUnits=True, linplace=True)    
-  def __iadd__(self, a, linplace=True):
+  def __iadd__(self, a, othername=None, otherunits=None, linplace=True):
     ''' Add a number or an array to the existing data. '''
     self.data_array += a    
     assert linplace, 'This is strictly an in-place operation!'      
     return self.data_array, self.name, self.units # return array as result
 
   @BinaryCheckAndCreateVar(sameUnits=True, linplace=True)
-  def __isub__(self, a, linplace=True):
+  def __isub__(self, a, othername=None, otherunits=None, linplace=True):
     ''' Subtract a number or an array from the existing data. '''      
     self.data_array -= a
     assert linplace, 'This is strictly an in-place operation!'      
     return self.data_array, self.name, self.units # return array as result
 
   @BinaryCheckAndCreateVar(sameUnits=False, linplace=True)
-  def __imul__(self, a, linplace=True):
+  def __imul__(self, a, othername=None, otherunits=None, linplace=True):
     ''' Multiply the existing data with a number or an array. '''      
     self.data_array *= a
     assert linplace, 'This is strictly an in-place operation!'      
     return self.data_array, self.name, self.units # return array as result
 
   @BinaryCheckAndCreateVar(sameUnits=False, linplace=True)
-  def __idiv__(self, a, linplace=True):
+  def __idiv__(self, a, othername=None, otherunits=None, linplace=True):
     ''' Divide the existing data by a number or an array. '''      
     self.data_array /= a
     assert linplace, 'This is strictly an in-place operation!'      
     return self.data_array, self.name, self.units # return array as result
 
   @BinaryCheckAndCreateVar(sameUnits=True, linplace=False)
-  def __add__(self, other, linplace=False):
+  def __add__(self, a, othername=None, otherunits=None, linplace=False):
     ''' Add two variables and return a new variable. '''
-    if isinstance(other, Variable):
-      data = self.data_array + other.data_array
-      name = '{:s} + {:s}'.format(self.name,other.name)
-    else:
-      data = self.data_array + other
-      name = '{:s} + {:s}'.format(self.name,str(other))
+    data = self.data_array + a
+    name = '{:s} + {:s}'.format(self.name,othername)
     units = self.units
     assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
 
   @BinaryCheckAndCreateVar(sameUnits=True, linplace=False)
-  def __sub__(self, other, linplace=False):
+  def __sub__(self, a, othername=None, otherunits=None, linplace=False):
     ''' Subtract two variables and return a new variable. '''
-    if isinstance(other, Variable):
-      data = self.data_array - other.data_array
-      name = '{:s} - {:s}'.format(self.name,other.name)
-    else:
-      data = self.data_array - other
-      name = '{:s} - {:s}'.format(self.name,str(other))
+    data = self.data_array - a
+    name = '{:s} - {:s}'.format(self.name,othername)
     units = self.units
     assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
   
   @BinaryCheckAndCreateVar(sameUnits=False, linplace=False)
-  def __mul__(self, other, linplace=False):
+  def __mul__(self, a, othername=None, otherunits=None, linplace=False):
     ''' Multiply two variables and return a new variable. '''
-    if isinstance(other, Variable):
-      data = self.data_array * other.data_array
-      name = '{:s} x {:s}'.format(self.name,other.name)
-      units = '{:s} {:s}'.format(self.units,other.units)
-    else:
-      data = self.data_array * other
-      name = '{:s} x {:s}'.format(self.name,str(other))
-      units = self.units
+    data = self.data_array * a
+    name = '{:s} x {:s}'.format(self.name,othername)
+    if otherunits is None: units = self.units 
+    else: units = '{:s} {:s}'.format(self.units,otherunits)
     assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
 
   @BinaryCheckAndCreateVar(sameUnits=False, linplace=False)
-  def __div__(self, other, linplace=False):
+  def __div__(self, a, othername=None, otherunits=None, linplace=False):
     ''' Divide two variables and return a new variable. '''
-    if isinstance(other, Variable):
-      data = self.data_array / other.data_array
-      name = '{:s} / {:s}'.format(self.name,other.name)
-      if self.units == other.units: units = ''
-      else: units = '{:s} / ({:s})'.format(self.units,other.units)
+    data = self.data_array / a
+    name = '{:s} / {:s}'.format(self.name,othername)
+    if otherunits is None: units = self.units
     else:
-      data = self.data_array / other
-      name = '{:s} / {:s}'.format(self.name,str(other))
-      units = self.units
+      if self.units == otherunits: units = ''
+      else: units = '{:s} / ({:s})'.format(self.units,otherunits)
     assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
      
