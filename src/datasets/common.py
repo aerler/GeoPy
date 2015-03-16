@@ -415,9 +415,23 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
   # some private imports (prevent import errors)  
   from projects.WRF_experiments import WRF_exps, WRF_experiments
   from datasets.CESM import CESM_exps, CESM_experiments
+  orig_name = name
   # identify dataset source
   lensemble = False; lobs = False
-  if ( name in WRF_exps or name in WRF_experiments or 
+  if mode.upper() == 'CVDP':
+    # this is a special case for observational data in the CVDP package
+    if name.lower() == 'obs': name = 'HadISST' # default to SST modes
+    # resolve WRF experiments to parent CESM runs for CVDP
+    elif name in WRF_exps: name = WRF_exps[name].parent
+    elif name in WRF_experiments: name = WRF_experiments[name].parent
+    elif name[:-4] in WRF_exps: name = WRF_exps[name[:-4]].parent
+    elif name[:-4] in WRF_experiments: name = WRF_experiments[name[:-4]].parent
+    # nothing to do for CESM runs
+    if name.lower() in ('hadisst','mlost','20thc_reanv2','gpcp'):
+      dataset_name = 'CESM'; lobs = True
+    else: raise ArgumentError, "No CVDP dataset matching '{:s}' found.".format(name)
+    import datasets.CESM as dataset # also in CESM module
+  elif ( name in WRF_exps or name in WRF_experiments or 
        name[:-4] in WRF_exps or name[:-4] in WRF_experiments ):
     # this is most likely a WRF experiment or ensemble
     import datasets.WRF as dataset
@@ -430,36 +444,31 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
     from datasets.CESM import CESM_ens
     dataset_name = 'CESM'
     lensemble = name in  CESM_ens
-  elif mode.upper() == 'CVDP':
-    # this is a special case for observational data in the CVDP package
-    if name.lower() in ('hadisst','mlost','20thc_reanv2','gpcp'):
-      dataset_name = 'CESM'; lobs = True
-    else: raise ArgumentError, "No CVDP dataset matching '{:s}' found.".format(name)
-    import datasets.CESM as dataset # also in CESM module
   else:
     # this is most likely an observational dataset
     if name[:3].lower() == 'obs': dataset_name = 'Unity' # alias... 
     else: dataset_name = name 
     try: dataset = import_module('datasets.{0:s}'.format(dataset_name))
     except ImportError: raise ArgumentError, "No dataset matching '{:s}' found.".format(dataset_name)
-  # identify load function
-  load_fct = 'load{:s}'.format(dataset_name)
+  # identify load function  
   if mode.upper() in ('CVDP',):
     load_fct = 'loadCVDP'
-    if lobs: load_fct += '_Obs' 
-  elif mode.lower() in ('climatology',):
-    if lensemble and station: raise ArgumentError
-    if station: load_fct += '_Stn'
-    elif shape: load_fct += '_Shp'
-  elif mode.lower() in ('time-series','timeseries',):
-    if lensemble:
-      if station: load_fct += '_StnEns'
-      elif shape: load_fct += '_ShpEns'
-      else: load_fct += '_Ensemble'
-    else:
-      if station: load_fct += '_StnTS'
-      elif shape: load_fct += '_ShpTS'
-      else: load_fct += '_TS'      
+    if lobs: load_fct += '_Obs'
+  else:
+    load_fct = 'load{:s}'.format(dataset_name)
+    if mode.lower() in ('climatology',):
+      if lensemble and station: raise ArgumentError
+      if station: load_fct += '_Stn'
+      elif shape: load_fct += '_Shp'
+    elif mode.lower() in ('time-series','timeseries',):
+      if lensemble:
+        if station: load_fct += '_StnEns'
+        elif shape: load_fct += '_ShpEns'
+        else: load_fct += '_Ensemble'
+      else:
+        if station: load_fct += '_StnTS'
+        elif shape: load_fct += '_ShpTS'
+        else: load_fct += '_TS'      
   # load dataset
   if load_fct in dataset.__dict__: 
     load_fct = dataset.__dict__[load_fct]
@@ -473,7 +482,9 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
   kwargs = {key:value for key,value in kwargs.iteritems() if key in argspec}
   # load dataset
   dataset = load_fct(**kwargs)
-  assert dataset.name == name, load_fct.__name__
+  if orig_name == name: 
+    if dataset.name != name: raise DatasetError, load_fct.__name__
+  else: dataset.name = orig_name
   # return dataset
   return dataset
 
