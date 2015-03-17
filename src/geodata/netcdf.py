@@ -146,10 +146,18 @@ class VarNC(Variable):
         if lstrvar: axes = tuple([str(dim) for dim in ncvar.dimensions[:-1]]) # omit last dim
         else: axes = tuple([str(dim) for dim in ncvar.dimensions]) # have to get rid of unicode
       elif lstrvar:
-        if len(ncvar.shape[:-1]) != len(axes) and len(ncvar.shape[:-1]) != len(slices): raise AxisError
-        if ncvar.shape[-1] != dtype.itemsize: raise AxisError
-        assert strlen == dtype.itemsize      
-      elif len(ncvar.shape) != len(axes) and len(ncvar.shape) != len(slices): raise AxisError
+        if len(ncvar.shape[:-1]) != len(axes) and len(ncvar.shape[:-1]) != len(slices): raise AxisError,ncvar
+        if ncvar.shape[-1] != dtype.itemsize: raise AxisError, ncvar
+        assert strlen == dtype.itemsize
+      elif slices is not None: 
+        if ncvar.ndim != len(slices): raise AxisError, ncvar
+      else:
+        axshape = tuple(ax._len for ax in axes)
+        # N.B.: Because this constructor is also used in Axis initialization, and the axis of an Axis 
+        #       is the Axis itself, not all class attributes are initialized yet, but self._len is!
+        if ncvar.ndim != len(axes) or ncvar.shape != axshape:
+          sqshape = tuple(axl for axl in ncvar.shape if axl > 1)
+          if len(sqshape) != len(axshape) or sqshape != axshape: raise AxisError, ncvar          
       # N.B.: slicing with index lists can change the shape
     else: ncatts = atts
     # check transform

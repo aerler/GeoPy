@@ -37,11 +37,11 @@ if __name__ == '__main__':
 
   ## general settings and shortcuts
   WRFfiletypes = [] # WRF data source
-#   WRFfiletypes += ['hydro']
+  WRFfiletypes += ['hydro']
   #WRFfiletypes += ['lsm']
 #   WRFfiletypes += ['srfc']
   #WRFfiletypes += ['xtrm']
-  WRFfiletypes += ['plev3d']
+#   WRFfiletypes += ['plev3d']
   # period shortcuts
   H01 = '1979-1980'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994'; H60 = '1949-2009' # historical validation periods
@@ -82,8 +82,9 @@ if __name__ == '__main__':
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
 #   variables += ['precip']
-  variables += ['WaterTransport_U']
-  variables += ['WaterTransport_V']
+  variables += ['wetfrq']
+#   variables += ['WaterTransport_U']
+#   variables += ['WaterTransport_V']
 #   variables += ['waterflx']
 #   variables += ['p-et']
 #   variables += ['precipnc', 'precipc']
@@ -146,12 +147,21 @@ if __name__ == '__main__':
 
 # water vapor transport
 #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
-  explist = ['max-ens','max-ens-2050','max-ens-2100']*2
+  explist = ['CRU','max-ctrl-dry','max-ctrl']*2
   seasons = [('summer',)*3+('winter',)*3]
-  period = [H15,A15,B15]*2; domain = 2
-  maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
+  period = H15; domain = 2
+#   maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
 #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
-  case = 'flx'; lsamesize = True
+  case = 'wetdays'; lsamesize = True
+
+# # water vapor transport
+# #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
+#   explist = ['max-ens','max-ens-2050','max-ens-2100']*2
+#   seasons = [('summer',)*3+('winter',)*3]
+#   period = [H15,A15,B15]*2; domain = 2
+#   maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
+# #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
+#   case = 'flx'; lsamesize = True
 
 # surface sensitivity test
 #   maptype = 'lcc-intermed'; lstations = False; lbasins = True
