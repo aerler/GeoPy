@@ -421,15 +421,16 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
   if mode.upper() == 'CVDP':
     # this is a special case for observational data in the CVDP package
     if name.lower() == 'obs': name = 'HadISST' # default to SST modes
+    elif name.lower() in ('hadisst','mlost','20thc_reanv2','gpcp'): lobs = True
     # resolve WRF experiments to parent CESM runs for CVDP
     elif name in WRF_exps: name = WRF_exps[name].parent
     elif name in WRF_experiments: name = WRF_experiments[name].parent
     elif name[:-4] in WRF_exps: name = WRF_exps[name[:-4]].parent
     elif name[:-4] in WRF_experiments: name = WRF_experiments[name[:-4]].parent
+    elif not name in CESM_exps or name in CESM_experiments: 
+      raise ArgumentError, "No CVDP dataset matching '{:s}' found.".format(name)
     # nothing to do for CESM runs
-    if name.lower() in ('hadisst','mlost','20thc_reanv2','gpcp'):
-      dataset_name = 'CESM'; lobs = True
-    else: raise ArgumentError, "No CVDP dataset matching '{:s}' found.".format(name)
+    dataset_name = 'CESM'
     import datasets.CESM as dataset # also in CESM module
   elif ( name in WRF_exps or name in WRF_experiments or 
        name[:-4] in WRF_exps or name[:-4] in WRF_experiments ):

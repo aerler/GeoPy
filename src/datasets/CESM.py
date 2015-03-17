@@ -41,21 +41,22 @@ class Exp(WRF_Exp):
 # list of experiments
 # N.B.: This is the reference list, with unambiguous, unique keys and no aliases/duplicate entries  
 experiments = OrderedDict() # dictionary of experiments
-# historical
-experiments['ens20trcn1x1'] = Exp(shortname='Ens', name='ens20trcn1x1', title='CESM Ensemble Mean', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1')
+# historical 
+# N.B.: the extnded ensemble end data is necessary for CVDP
+experiments['ens20trcn1x1'] = Exp(shortname='Ens', name='ens20trcn1x1', title='CESM Ensemble Mean', begindate='1979-01-01', enddate='2039-01-01', grid='cesm1x1')
 experiments['tb20trcn1x1'] = Exp(shortname='Ctrl-1', name='tb20trcn1x1', title='Exp 1 (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
 experiments['hab20trcn1x1'] = Exp(shortname='Ctrl-A', name='hab20trcn1x1', title='Exp 2 (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
 experiments['hbb20trcn1x1'] = Exp(shortname='Ctrl-B', name='hbb20trcn1x1', title='Exp 3 (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
 experiments['hcb20trcn1x1'] = Exp(shortname='Ctrl-C', name='hcb20trcn1x1', title='Exp 4 (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
 # mid-21st century
-experiments['ensrcp85cn1x1'] = Exp(shortname='Ens-2050', name='ensrcp85cn1x1', title='CESM Ensemble Mean (2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
+experiments['ensrcp85cn1x1'] = Exp(shortname='Ens-2050', name='ensrcp85cn1x1', title='CESM Ensemble Mean (2050)', begindate='2045-01-01', enddate='2105-01-01', grid='cesm1x1')
 experiments['seaice-5r-hf'] = Exp(shortname='Seaice-2050', name='seaice-5r-hf', title='Seaice (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
 experiments['htbrcp85cn1x1'] = Exp(shortname='Ctrl-1-2050', name='htbrcp85cn1x1', title='Exp 1 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
 experiments['habrcp85cn1x1'] = Exp(shortname='Ctrl-A-2050', name='habrcp85cn1x1', title='Exp 2 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
 experiments['hbbrcp85cn1x1'] = Exp(shortname='Ctrl-B-2050', name='hbbrcp85cn1x1', title='Exp 3 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
 experiments['hcbrcp85cn1x1'] = Exp(shortname='Ctrl-C-2050', name='hcbrcp85cn1x1', title='Exp 4 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
 # mid-21st century
-experiments['ensrcp85cn1x1d'] = Exp(shortname='Ens-2100', name='ensrcp85cn1x1d', title='CESM Ensemble Mean (2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
+experiments['ensrcp85cn1x1d'] = Exp(shortname='Ens-2100', name='ensrcp85cn1x1d', title='CESM Ensemble Mean (2100)', begindate='2085-01-01', enddate='2145-01-01', grid='cesm1x1')
 experiments['seaice-5r-hfd'] = Exp(shortname='Seaice-2100', name='seaice-5r-hfd', title='Seaice (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
 experiments['htbrcp85cn1x1d'] = Exp(shortname='Ctrl-1-2100', name='htbrcp85cn1x1d', title='Exp 1 (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
 experiments['habrcp85cn1x1d'] = Exp(shortname='Ctrl-A-2100', name='habrcp85cn1x1d', title='Exp 2 (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
@@ -87,31 +88,31 @@ def getFolderName(name=None, experiment=None, folder=None, mode='avg', cvdp_mode
   ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
   # figure out experiment name
-  if experiment is None:
+  if experiment is None and name not in exps:
     if not isinstance(folder,basestring):
       if mode == 'cvdp' and ( cvdp_mode == 'observations' or cvdp_mode == 'grand-ensemble' ): 
         folder = "{:s}/grand-ensemble/".format(cvdpfolder)              
       else: raise IOError, "Need to specify an experiment folder in order to load data."    
-    # load experiment meta data
-    if name in exps: experiment = exps[name]
-    elif lcheckExp: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(name)
   else:
-    if isinstance(experiment,(Exp,basestring)):
-      if isinstance(experiment,basestring): experiment = exps[experiment] 
-      # root folder
-      if folder is None: 
-        if mode == 'avg': folder = experiment.avgfolder
-        elif mode == 'cvdp': 
-          if cvdp_mode == 'ensemble': 
-            expfolder = experiment.ensemble or experiment.name 
-            folder = "{:s}/{:s}/".format(cvdpfolder,expfolder)
-          elif cvdp_mode == 'grand-ensemble': folder = "{:s}/grand-ensemble/".format(cvdpfolder)
-          else: folder = experiment.cvdpfolder
-        elif mode == 'diag': folder = experiment.diagfolder
-        else: raise NotImplementedError,"Unsupported mode: '{:s}'".format(mode)
-      elif not isinstance(folder,basestring): raise TypeError
-      # name
-      if name is None: name = experiment.name
+    # load experiment meta data
+    if isinstance(experiment,Exp): pass # preferred option
+    elif isinstance(experiment,basestring): experiment = exps[experiment] 
+    elif isinstance(name,basestring) and name in exps: experiment = exps[name]
+    else: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(name or experiment)
+    # root folder
+    if folder is None: 
+      if mode == 'avg': folder = experiment.avgfolder
+      elif mode == 'cvdp': 
+        if cvdp_mode == 'ensemble': 
+          expfolder = experiment.ensemble or experiment.name 
+          folder = "{:s}/{:s}/".format(cvdpfolder,expfolder)
+        elif cvdp_mode == 'grand-ensemble': folder = "{:s}/grand-ensemble/".format(cvdpfolder)
+        else: folder = experiment.cvdpfolder
+      elif mode == 'diag': folder = experiment.diagfolder
+      else: raise NotImplementedError,"Unsupported mode: '{:s}'".format(mode)
+    elif not isinstance(folder,basestring): raise TypeError
+    # name
+    if name is None: name = experiment.name
     if not isinstance(name,basestring): raise TypeError      
   # check if folder exists
   if not os.path.exists(folder): raise IOError, 'Dataset folder does not exist: {0:s}'.format(folder)
@@ -301,7 +302,7 @@ def loadCVDP(experiment=None, name=None, grid=None, period=None, varlist=None, v
              lcheckExp=True, lindices=False, leofs=False, lreplaceTime=True):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
   if grid is not None: raise NotImplementedError
-  if period is None: period = 15
+#   if period is None: period = 15
   # load smaller selection
   if varlist is None and ( lindices or leofs ):
     varlist = []
@@ -399,6 +400,9 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
     lcvdp = True
     folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='cvdp', 
                                            cvdp_mode=cvdp_mode, lcheckExp=lcheckExp)
+    if period is None:
+      if not isinstance(experiment,Exp): raise DatasetError, 'Periods can only be inferred for registered datasets.'
+      period = (experiment.beginyear, experiment.endyear)  
   elif mode.lower() == 'diag': # concatenated time-series files
     ldiag = True
     folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='diag', lcheckExp=lcheckExp)
@@ -467,7 +471,7 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
   for filetype,fileformat in zip(typelist,filelist):
     if lclim: filename = fileformat.format(gridstr,periodstr) # put together specfic filename for climatology
     elif lts: filename = fileformat.format(gridstr) # or for time-series
-    elif lcvdp: filename = fileformat.format(name,periodstr) # not implemented: gridstr
+    elif lcvdp: filename = fileformat.format(experiment.name if experiment else name,periodstr) # not implemented: gridstr
     elif ldiag: raise NotImplementedError
     else: raise DatasetError
     filenames.append(filename) # append to list (passed to DatasetNetCDF later)

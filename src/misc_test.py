@@ -140,6 +140,12 @@ class DatasetsTest(unittest.TestCase):
     assert ds.name == 'HadISST'
     assert 'PDO' in ds
     assert ds.gdal and not ds.isProjected
+    # test CVDP with WRF
+    ds = loadDataset(name='max-ens', period=None, varlist=None, mode='CVDP')
+    assert isinstance(ds, Dataset)
+    assert ds.name == 'max-ens'
+    assert 'PDO' in ds
+    assert ds.gdal and not ds.isProjected    
     # test WRF station time-series
     ds = loadStnTS(name='max-ens_d02', varlist=['MaxPrecip_1d'], station='ecprecip', filtypes='hydro')
     assert isinstance(ds, Dataset)
