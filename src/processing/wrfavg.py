@@ -228,8 +228,8 @@ if __name__ == '__main__':
   # default settings
   if not lbatch:
     NP = 4 ; ldebug = False # for quick computations
-    NP = 1 ; ldebug = True # just for tests
-    loverwrite = False
+#     NP = 1 ; ldebug = True # just for tests
+    loverwrite = True
     varlist = None # ['lat2D', ]
     experiments = []
     experiments += ['max-ctrl-dry']
@@ -251,12 +251,12 @@ if __name__ == '__main__':
     periods = [] # not that all periods are handled within one process! 
 #     periods += [1]
 #     periods += [3]
-    periods += [5]
+#     periods += [5]
 #     periods += [9]
-    periods += [10]
+#     periods += [10]
     periods += [15]
-#     domains = (1,) # domains to be processed
-    domains = None # process all domains
+    domains = (2,) # domains to be processed
+#     domains = None # process all domains
 #     filetypes = ['plev3d'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']

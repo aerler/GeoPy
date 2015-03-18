@@ -41,7 +41,7 @@ tmp = PlotAtts(name = 'Cat.', title = 'Category', units = '')
 # add to collection
 variablePlotatts['cat'] = tmp
 
-##Histogram
+## Histogram
 tmp = PlotAtts(name = 'Histogram', title = 'Histogram', 
                units = '#', preserve = 'area')
 # add to collection
@@ -106,6 +106,18 @@ tmp = PlotAtts(name = 'Stations', title = 'Station Distribution',
                units = '#', scalefactor = 1.)
 # add to collection
 variablePlotatts['stns'] = tmp
+
+## Wet-day Frequency
+tmp = PlotAtts(name = 'Wet-days', title = 'Wet-day Frequency', 
+               units = '', scalefactor = 1.)
+# add to collection
+variablePlotatts['wetfrq'] = tmp
+
+## Frost-day Frequency
+tmp = PlotAtts(name = 'Frost-days', title = 'Frost-day Frequency', 
+               units = '', scalefactor = 1.)
+# add to collection
+variablePlotatts['frzfrq'] = tmp
 
 ## Surface Geopotential Height
 tmp = PlotAtts(name = r'$Z_s$', title = 'Terrain Height', 
@@ -243,6 +255,18 @@ tmp = PlotAtts(name = 'precip', title = 'Total Precipitation Rate',
                units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['precip'] = tmp
+
+## Wet-day Precipitation Rate
+tmp = PlotAtts(name = 'Wet-day Precip', title = 'Wet-day Precipitation Rate', 
+               units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+# add to collection
+variablePlotatts['wetprec'] = tmp
+
+## Wet-day Precipitation Rate
+tmp = PlotAtts(name = 'Dry-day Precip', title = 'Precipitation Exceeding Dry-day Threshold', 
+               units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+# add to collection
+variablePlotatts['dryprec'] = tmp
 
 ## Consecutive Wet Days
 tmp = PlotAtts(name = 'CWD', title = 'Consecutive Wet Days', 

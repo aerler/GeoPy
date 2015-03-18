@@ -39,6 +39,8 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(-1.,1.,41); clbl = '%3.2f'; cmap = mpl.cm.PuOr # mm/day    
     elif var in ('T2','Ts','Tmin','Tmax','Tmean'):
       clevs = np.linspace(-4,4,41); clbl = '%3.1f' # K
+    elif var == 'Q2':
+      clevs = np.linspace(-5,5,26); clbl = '%02.1f' # mm/day    
     elif var in ('evap','pet','precip','precipc','precipnc'):
       clevs = np.linspace(-4,4,41); clbl = '%3.1f' # mm/day
     elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff','p-et','waterflx'): # moisture fluxes (kg /(m^2 s))
@@ -63,7 +65,10 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
   else:
     #cmap = mpl.cm.gist_ncar; cmap.set_over('white'); cmap.set_under('black')
     cmap = cm.coolavhrrmap # cmap.set_over('white'); cmap.set_under('black')
-    if var == 'snow': # snow (liquid water equivalent) 
+    if var in ('wetfrq','frzfrq'): # snow (liquid water equivalent) 
+      lmskocn = True; clbl = '%3.2f' # kg/m^2
+      clevs = np.linspace(0,1,26)
+    elif var == 'snow': # snow (liquid water equivalent) 
       lmskocn = True; clbl = '%2.0f' # kg/m^2
       clevs = np.linspace(0,200,41)
     elif var == 'snowh': # snow (depth/height) 

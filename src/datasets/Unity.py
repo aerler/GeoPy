@@ -23,7 +23,6 @@ from datasets.PRISM import loadPRISM, loadPRISM_Shp
 from datasets.PCIC import loadPCIC, loadPCIC_Shp
 # from geodata.utils import DatasetError
 from warnings import warn
-from copy import deepcopy
 
 ## Unity Meta-data
 
@@ -139,10 +138,10 @@ if __name__ == '__main__':
   
   # settings to generate dataset
   grids = []
-  grids += ['shpavg']
+#   grids += ['shpavg']
 #   grids += ['arb2_d01']
 #   grids += ['arb2_d02']
-#   grids += ['arb3_d02']
+  grids += ['arb3_d02']
 #   grids += ['arb3_d01']
 #   grids += ['arb3_d02']
 #   grids += ['grb1_d01']

@@ -666,7 +666,7 @@ class DatasetNetCDF(Dataset):
     # return verification
     return self.hasAxis(newaxis)        
   
-  def addVariable(self, var, asNC=None, copy=True, loverwrite=False, deepcopy=False):
+  def addVariable(self, var, asNC=None, copy=True, loverwrite=False, lautoTrim=False, deepcopy=False):
     ''' Method to add a new Variable to the Dataset. '''
     if asNC is None: asNC = copy
     if var.name in self.__dict__: 
@@ -676,6 +676,17 @@ class DatasetNetCDF(Dataset):
       else: raise AttributeError, "Cannot add Variable '{:s}' to Dataset, because an attribute of the same name already exits!".format(var.name)      
     else:             
       if deepcopy: copy=True   
+      # optionally, slice variable to conform to axes
+      if lautoTrim:
+        trimaxes = dict()
+        for ax in var.axes: 
+          if self.hasAxis(ax.name):
+            dsax = self.axes[ax.name]
+            if len(ax) > len(dsax) : trimaxes[ax.name] = (dsax[0],dsax[-1])
+            elif len(ax) < len(dsax): 
+              raise AxisError, "Can only trim Variable axes, not extend: {:s}".format(ax)
+        # slice variable
+        var = var(linplace=False, lidx=False, lrng=True, **trimaxes)
       # cast Axis instance as AxisNC
       if copy: # make a new instance or add it as is 
         if asNC and 'w' in self.mode:

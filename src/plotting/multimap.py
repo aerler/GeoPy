@@ -40,7 +40,7 @@ if __name__ == '__main__':
   WRFfiletypes += ['hydro']
   #WRFfiletypes += ['lsm']
 #   WRFfiletypes += ['srfc']
-  #WRFfiletypes += ['xtrm']
+#   WRFfiletypes += ['xtrm']
 #   WRFfiletypes += ['plev3d']
   # period shortcuts
   H01 = '1979-1980'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
@@ -81,7 +81,7 @@ if __name__ == '__main__':
 #   variables += ['Ts']
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
-#   variables += ['precip']
+  variables += ['precip']
   variables += ['wetfrq']
 #   variables += ['WaterTransport_U']
 #   variables += ['WaterTransport_V']
@@ -108,8 +108,8 @@ if __name__ == '__main__':
 #   seasons += ['warm']
 #   seasons += ['melt']
 #   seasons += ['annual']
-#   seasons += ['summer']
-#   seasons += ['winter']
+  seasons += ['summer']
+  seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
@@ -145,20 +145,29 @@ if __name__ == '__main__':
 #   exptitles = ['Merged Observations (10 km)']
 #   case = 'unity'; lsamesize = True; grid = 'arb2_d02'
 
-# water vapor transport
+# # ERA-Interim validation
+# #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
+#   explist = ['Unity','erai-max','max-ens']*2
+#   seasons = [('summer',)*3+('winter',)*3]
+#   period = H15; domain = 2
+# #   maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
+# #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
+#   case = 'erai'; lsamesize = True
+
+# wet-day validation
 #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
-  explist = ['CRU','max-ctrl-dry','max-ctrl']*2
-  seasons = [('summer',)*3+('winter',)*3]
-  period = H15; domain = 2
+  explist = ['Unity','max-ctrl-dry','max-ctrl']*2; seasons = [('summer',)*3+('winter',)*3]
+#   variables = [('precip','dryprec','precip')*2]
+#   explist = ['max-ctrl','max-ens']*2; seasons = [('summer',)*2+('winter',)*2]  
+  period = H15; domain = 2; grid = 'arb2_d02'
 #   maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
 #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
   case = 'wetdays'; lsamesize = True
 
 # # water vapor transport
 # #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
-#   explist = ['max-ens','max-ens-2050','max-ens-2100']*2
-#   seasons = [('summer',)*3+('winter',)*3]
-#   period = [H15,A15,B15]*2; domain = 2
+#   explist = ['max-grass','max-ctrl','erai-max']*2
+#   seasons = [('summer',)*3+('winter',)*3]; period = H10
 #   maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
 # #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
 #   case = 'flx'; lsamesize = True
@@ -176,13 +185,15 @@ if __name__ == '__main__':
 #   grid = ['arb2_d01','arb2_d02']*2 
 #   case = '1deg'; lsamesize = True
 
-# new-v361 validation
-#   explist = ['new-v361','new-nmp','new-clm','max-ens']; period = H05; domain = 2
-#   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02']*3 + ['arb2_d02'] 
-#   case = 'new'; lsamesize = True
-#   explist = ['erai-v361','erai-v361-noah','erai-3km','erai-max']; period = H05; domain = [2,2,3,2]
-#   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02']*2 + ['arb2_d02']*2 
-#   case = 'erai'; lsamesize = True
+# # max sensitivity experiments
+#   explist = ['max-nmp','max-ctrl','max-nosub','max-kf','max-hilev','new-ctrl']; period = H15
+#   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb2_d02']*5+['arb3_d02'] 
+#   case = 'max'; lsamesize = True
+
+# # v361 validation
+#   explist = ['new-v361','new-grell','max-ctrl','erai-v361','erai-v361-noah','erai-max']; period = H10
+#   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02','arb3_d02','arb2_d02']*2 
+#   case = 'v361'; lsamesize = True
 
 # physics ensemble validation
 #   explist = ['new-ctrl','old-ctrl','ctrl-1','max-ctrl']; period = H15; domain = 2
@@ -406,7 +417,7 @@ if __name__ == '__main__':
       # compute average WRF precip            
       print(' - loading data ({0:s})'.format(varstr))
       for var,season,exptpl in zip(varlist,sealist,exps):
-        lontpl = []; lattpl = []; datatpl = []                
+        lontpl = []; lattpl = []; datatpl = []
         for exp in exptpl:
           expvar = exp.variables[var]
           expvar.load()

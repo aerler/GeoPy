@@ -1032,6 +1032,11 @@ class BaseDatasetTest(unittest.TestCase):
           assert oldax.name == ax.name
           assert oldax.units == ax.units
         assert isEqual(oldvar[:], var2[:], masked_equal=True)      
+      # test trimming
+      var36 = var3.copy(name='V3.6')
+      slcds.addVariable(var36, copy=False, loverwrite=False, lautoTrim=True)
+      assert 'V3.6' in slcds
+      assert len(slcds['V3.6'].axes[0]) == len(var3.axes[0])-1
       # pseudo-axis indexing
       if self.pax is not None:
         pax = self.pax    

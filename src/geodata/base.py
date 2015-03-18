@@ -2096,13 +2096,24 @@ class Dataset(object):
     # double-check
     return self.axes.has_key(ax.name)       
     
-  def addVariable(self, var, copy=False, deepcopy=False, loverwrite=False, lrenameAxis=False, **kwargs):
+  def addVariable(self, var, copy=False, deepcopy=False, loverwrite=False, lautoTrim=False, **kwargs):
     ''' Method to add a Variable to the Dataset. If the variable is already present, abort. '''
     if not isinstance(var,Variable): raise TypeError
     if var.name in self.__dict__: 
       if loverwrite and self.hasVariable(var.name): self.replaceVariable(var)
       else: raise AttributeError, "Cannot add Variable '{:s}' to Dataset, because an attribute of the same name already exits!".format(var.name)      
     else:       
+      # optionally, slice variable to conform to axes
+      if lautoTrim:
+        trimaxes = dict()
+        for ax in var.axes: 
+          if self.hasAxis(ax.name):
+            dsax = self.axes[ax.name]
+            if len(ax) > len(dsax) : trimaxes[ax.name] = (dsax[0],dsax[-1])
+            elif len(ax) < len(dsax): 
+              raise AxisError, "Can only trim Variable axes, not extend: {:s}".format(ax)
+        # slice variable
+        var = var(linplace=False, lidx=False, lrng=True, **trimaxes)
       # add new axes, or check, if already present; if present, replace, if different
       for ax in var.axes: 
         if not self.hasAxis(ax.name):
