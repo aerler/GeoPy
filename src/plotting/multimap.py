@@ -156,10 +156,14 @@ if __name__ == '__main__':
 
 # wet-day validation
 #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
-  explist = ['Unity','max-ctrl-dry','max-ctrl']*2; seasons = [('summer',)*3+('winter',)*3]
+#   explist = ['Unity','max-ctrl-dry','max-ctrl']*2; seasons = [('summer',)*3+('winter',)*3]
 #   variables = [('precip','dryprec','precip')*2]
+#   explist = ['erai-max','max-ens']*2; seasons = [('summer',)*2+('winter',)*2]
+#   explist = ['old-ctrl','ctrl-1','new-ctrl']*2; seasons = [('summer',)*3+('winter',)*3]
+  explist = ['old-ctrl','ctrl-1','new-ctrl','new-v361-ctrl']; seasons = ['winter','summer']
+  ldiff = True; reflist = ['Unity']; refprd = None;
 #   explist = ['max-ctrl','max-ens']*2; seasons = [('summer',)*2+('winter',)*2]  
-  period = H15; domain = 2; grid = 'arb2_d02'
+  period = H10; domain = 2; grid = 'arb2_d02'
 #   maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
 #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
   case = 'wetdays'; lsamesize = True
@@ -419,6 +423,8 @@ if __name__ == '__main__':
       for var,season,exptpl in zip(varlist,sealist,exps):
         lontpl = []; lattpl = []; datatpl = []
         for exp in exptpl:
+          if var not in exp: 
+            raise DatasetError, "Variable '{:s}' not found in Dataset '{:s}!".format(var,exp.name)
           expvar = exp.variables[var]
           expvar.load()
           #print expvar.name, exp.name, expvar.masked

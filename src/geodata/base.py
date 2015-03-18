@@ -389,10 +389,12 @@ class Variable(object):
   def fillValue(self):
     ''' The fillValue for masks (stored in the atts dictionary). '''
     fillValue = self.atts.get('fillValue',None)
-    if self.data and self.masked and fillValue != self.data_array._fill_value:
-      if  not np.isnan(fillValue) or not np.isnan(self.data_array._fill_value):
-        # N.B.: NaN's are never equal 
-        raise DataError, 'FillValue mismatch!'
+    if self.data and self.masked:
+      if  fillValue is None:
+        raise DataError, 'Invalid FillValue: None!'      
+      elif fillValue != self.data_array._fill_value:
+        if  not np.isnan(fillValue) or not np.isnan(self.data_array._fill_value):
+          raise DataError, 'FillValue mismatch!' # N.B.: NaN's are never equal           
     return fillValue
   @fillValue.setter
   def fillValue(self, fillValue):
@@ -805,8 +807,9 @@ class Variable(object):
 #           ma.set_fill_value(data,self.atts['fillValue'])
 #           data.set_fill_value(self.atts['fillValue']) 
         else: # use data default
-          self.atts['fillValue'] = data._fill_value
-        if not ( self.atts['fillValue'] == data._fill_value or (np.isnan(self.fillValue) and np.isnan(data._fill_value)) ):
+          self.atts['fillValue'] = data._fill_value if data._fill_value is not None else data.fill_value
+        if self.atts['fillValue'] is None or not ( self.atts['fillValue'] == data._fill_value  
+              or (np.isnan(self.fillValue) and np.isnan(data._fill_value)) ):
           raise AssertionError, "{:s}, {:s}, {:s}".format(self.atts['fillValue'], data._fill_value, fillValue)
       # assign data to instance attribute array 
       self.__dict__['data_array'] = data
@@ -903,7 +906,8 @@ class Variable(object):
       elif isinstance(self.dtype,(float,np.inexact)):
         self.__dict__['data_array'] = ma.masked_values(self.data_array, maskValue, copy=False)
     # update fill value (stored in atts dict)
-    self.fillValue = fillValue or self.data_array._fill_value # more reliable than fill_value 
+    self.fillValue = fillValue or ( self.data_array.fill_value if self.data_array._fill_value is None
+                                    else self.data_array._fill_value )
     # as usual, return self
     return self
     
