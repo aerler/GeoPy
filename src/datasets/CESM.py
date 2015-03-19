@@ -44,10 +44,10 @@ experiments = OrderedDict() # dictionary of experiments
 # historical 
 # N.B.: the extnded ensemble end data is necessary for CVDP
 experiments['ens20trcn1x1'] = Exp(shortname='Ens', name='ens20trcn1x1', title='CESM Ensemble Mean', begindate='1979-01-01', enddate='2039-01-01', grid='cesm1x1')
-experiments['tb20trcn1x1'] = Exp(shortname='Ctrl-1', name='tb20trcn1x1', title='Exp 1 (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
-experiments['hab20trcn1x1'] = Exp(shortname='Ctrl-A', name='hab20trcn1x1', title='Exp 2 (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
-experiments['hbb20trcn1x1'] = Exp(shortname='Ctrl-B', name='hbb20trcn1x1', title='Exp 3 (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
-experiments['hcb20trcn1x1'] = Exp(shortname='Ctrl-C', name='hcb20trcn1x1', title='Exp 4 (CESM)', begindate='1979-01-01', enddate='1995-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
+experiments['tb20trcn1x1'] = Exp(shortname='Ctrl-1', name='tb20trcn1x1', title='Exp 1 (CESM)', begindate='1979-01-01', enddate='1994-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
+experiments['hab20trcn1x1'] = Exp(shortname='Ctrl-A', name='hab20trcn1x1', title='Exp 2 (CESM)', begindate='1979-01-01', enddate='1994-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
+experiments['hbb20trcn1x1'] = Exp(shortname='Ctrl-B', name='hbb20trcn1x1', title='Exp 3 (CESM)', begindate='1979-01-01', enddate='1994-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
+experiments['hcb20trcn1x1'] = Exp(shortname='Ctrl-C', name='hcb20trcn1x1', title='Exp 4 (CESM)', begindate='1979-01-01', enddate='1994-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
 # mid-21st century
 experiments['ensrcp85cn1x1'] = Exp(shortname='Ens-2050', name='ensrcp85cn1x1', title='CESM Ensemble Mean (2050)', begindate='2045-01-01', enddate='2105-01-01', grid='cesm1x1')
 experiments['seaice-5r-hf'] = Exp(shortname='Seaice-2050', name='seaice-5r-hf', title='Seaice (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
@@ -84,11 +84,12 @@ for ensemble in ensemble_list:
   ensembles[experiments[ensemble].shortname] = members
 
 # return name and folder
-def getFolderName(name=None, experiment=None, folder=None, mode='avg', cvdp_mode='ensemble', lcheckExp=True):
+def getFolderName(name=None, experiment=None, folder=None, mode='avg', cvdp_mode=None, lcheckExp=True):
   ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
   # figure out experiment name
   if experiment is None and name not in exps:
+    if cvdp_mode is None: cvdp_mode = 'ensemble' # backwards-compatibility
     if not isinstance(folder,basestring):
       if mode == 'cvdp' and ( cvdp_mode == 'observations' or cvdp_mode == 'grand-ensemble' ): 
         folder = "{:s}/grand-ensemble/".format(cvdpfolder)              
@@ -99,6 +100,9 @@ def getFolderName(name=None, experiment=None, folder=None, mode='avg', cvdp_mode
     elif isinstance(experiment,basestring): experiment = exps[experiment] 
     elif isinstance(name,basestring) and name in exps: experiment = exps[name]
     else: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(name or experiment)
+    if cvdp_mode is None:
+      if not experiment.ensemble or experiment.ensemble == experiment.name: cvdp_mode = 'ensemble'
+      else: cvdp_mode = ''  
     # root folder
     if folder is None: 
       if mode == 'avg': folder = experiment.avgfolder
@@ -276,15 +280,22 @@ def loadCVDP_Obs(name=None, grid=None, period=None, varlist=None, varatts=None,
   ''' Get a properly formatted monthly observational dataset as NetCDFDataset. '''
   if grid is not None: raise NotImplementedError
   # check datasets
+  if name is None:
+    if varlist is not None:
+      if any(ocnvar in varlist for ocnvar in ('PDO','NINO34','AMO')): 
+        name = 'HadISST'
+      elif any(ocnvar in varlist for ocnvar in ('NAO','NPI','PNA', 'NPO')): 
+        name = '20thC_ReanV2'
+    else: raise ArgumentError, "Need to provide either 'name' or 'varlist'!"
   name = name.lower() # ignore case
   if name in ('hadisst','sst','ts'):
-    name = 'HadISST'; period = (1920,2012)
+    name = 'HadISST'; period = period or (1920,2012)
   elif name in ('mlost','t2','tas'):
-    name = 'MLOST'; period = (1920,2012)
+    name = 'MLOST'; period = period or (1920,2012)
   elif name in ('20thc_reanv2','ps','psl'):
-    name = '20thC_ReanV2'; period = (1920,2012)
+    name = '20thC_ReanV2'; period = period or (1920,2012)
   elif name in ('gpcp','precip','prect','ppt'):
-    name = 'GPCP'; period = (1979,2014)
+    name = 'GPCP'; period = period or (1979,2014)
   else: raise NotImplementedError, "The dataset '{:s}' is not available.".format(name)
   # load smaller selection
   if varlist is None and ( lindices or leofs ):
@@ -298,7 +309,7 @@ def loadCVDP_Obs(name=None, grid=None, period=None, varlist=None, varatts=None,
 
 # CVDP diagnostics (monthly time-series, EOF pattern and correlations) 
 def loadCVDP(experiment=None, name=None, grid=None, period=None, varlist=None, varatts=None, 
-             cvdp_mode='ensemble', translateVars=None, lautoregrid=None, ignore_list=None, 
+             cvdp_mode=None, translateVars=None, lautoregrid=None, ignore_list=None, 
              lcheckExp=True, lindices=False, leofs=False, lreplaceTime=True):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
   if grid is not None: raise NotImplementedError
@@ -376,7 +387,7 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
 # load any of the various pre-processed CESM climatology and time-series files 
 def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None, period=None, 
                  varlist=None, varatts=None, translateVars=None, lautoregrid=None, load3D=False, 
-                 ignore_list=None, mode='climatology', cvdp_mode='ensemble', lcheckExp=True, 
+                 ignore_list=None, mode='climatology', cvdp_mode=None, lcheckExp=True, 
                  lreplaceTime=True, filetypes=None, lencl=False):
   ''' Get any of the monthly CESM files as a properly formatted NetCDFDataset. '''
   # period

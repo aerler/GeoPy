@@ -413,52 +413,52 @@ for fileclass in fileclasses.itervalues():
 
 # Station Time-series (monthly, with extremes)
 def loadWRF_StnTS(experiment=None, name=None, domains=None, station=None, filetypes=None, 
-                  varlist=None, varatts=None, lctrT=True, lwrite=False):
+                  varlist=None, varatts=None, lctrT=True, lwrite=False, ltrim=True):
   ''' Get a properly formatted WRF dataset with monthly time-series at station locations. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, station=station, 
                      period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
-                     lautoregrid=False, lctrT=lctrT, mode='time-series', lwrite=lwrite)  
+                     lautoregrid=False, lctrT=lctrT, mode='time-series', lwrite=lwrite, ltrim=ltrim)  
 
 # Regiona/Shape Time-series (monthly, with extremes)
 def loadWRF_ShpTS(experiment=None, name=None, domains=None, shape=None, filetypes=None, 
-                  varlist=None, varatts=None, lctrT=True, lencl=False, lwrite=False):
+                  varlist=None, varatts=None, lctrT=True, lencl=False, lwrite=False, ltrim=True):
   ''' Get a properly formatted WRF dataset with monthly time-series averaged over regions. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, shape=shape, lencl=lencl, 
                      station=None, period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
-                     lconst=False, lautoregrid=False, lctrT=lctrT, mode='time-series', lwrite=lwrite)  
+                     lconst=False, lautoregrid=False, lctrT=lctrT, mode='time-series', lwrite=lwrite, ltrim=ltrim)  
 
 def loadWRF_TS(experiment=None, name=None, domains=None, grid=None, filetypes=None, varlist=None, 
-               varatts=None, lconst=True, lautoregrid=True, lctrT=True, lwrite=False):
+               varatts=None, lconst=True, lautoregrid=True, lctrT=True, lwrite=False, ltrim=True):
   ''' Get a properly formatted WRF dataset with monthly time-series. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, 
                      period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
-                     lautoregrid=lautoregrid, lctrT=lctrT, mode='time-series', lwrite=lwrite)  
+                     lautoregrid=lautoregrid, lctrT=lctrT, mode='time-series', lwrite=lwrite, ltrim=ltrim)  
 
 def loadWRF_Stn(experiment=None, name=None, domains=None, station=None, period=None, filetypes=None, 
-                varlist=None, varatts=None, lctrT=True, lwrite=False):
+                varlist=None, varatts=None, lctrT=True, lwrite=False, ltrim=False):
   ''' Get a properly formatted station dataset from a monthly WRF climatology at station locations. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, station=station, 
                      period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
-                     lautoregrid=False, lctrT=lctrT, mode='climatology', lwrite=lwrite)  
+                     lautoregrid=False, lctrT=lctrT, mode='climatology', lwrite=lwrite, ltrim=ltrim)  
 
 def loadWRF_Shp(experiment=None, name=None, domains=None, shape=None, period=None, filetypes=None, 
-                varlist=None, varatts=None, lctrT=True, lencl=False, lwrite=False):
+                varlist=None, varatts=None, lctrT=True, lencl=False, lwrite=False, ltrim=False):
   ''' Get a properly formatted station dataset from a monthly WRF climatology averaged over regions. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, shape=shape, lencl=lencl,
                      station=None, period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, 
-                     lconst=False, lautoregrid=False, lctrT=lctrT, mode='climatology', lwrite=lwrite)  
+                     lconst=False, lautoregrid=False, lctrT=lctrT, mode='climatology', lwrite=lwrite, ltrim=ltrim)  
 
 def loadWRF(experiment=None, name=None, domains=None, grid=None, period=None, filetypes=None, varlist=None, 
-            varatts=None, lconst=True, lautoregrid=True, lctrT=True, lwrite=False):
+            varatts=None, lconst=True, lautoregrid=True, lctrT=True, lwrite=False, ltrim=False):
   ''' Get a properly formatted monthly WRF climatology as NetCDFDataset. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, 
                      period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
-                     lautoregrid=lautoregrid, lctrT=lctrT, mode='climatology', lwrite=lwrite)  
+                     lautoregrid=lautoregrid, lctrT=lctrT, mode='climatology', lwrite=lwrite, ltrim=ltrim)  
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
 def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=None, shape=None, period=None, 
                 filetypes=None, varlist=None, varatts=None, lconst=True, lautoregrid=True, lencl=False,
-                lctrT=False, folder=None, lpickleGrid=True, mode='climatology', lwrite=False):
+                lctrT=False, folder=None, lpickleGrid=True, mode='climatology', lwrite=False, ltrim=False):
   ''' Get any WRF data files as a properly formatted NetCDFDataset. '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)  
@@ -617,6 +617,9 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     # load dataset
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 
                             varatts=atts, multifile=False, ncformat='NETCDF4', mode=ncmode, squeeze=True)
+    if ltrim and dataset.hasAxis('time') and len(dataset.time) > 180:
+      dataset = dataset(time=slice(0,180), lidx=True)
+      assert len(dataset.time) == 180, len(dataset.time) 
     # check
     if llconst: lenc = len(const)
     else: lenc = 0 
@@ -784,10 +787,10 @@ if __name__ == '__main__':
   
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
-#   mode = 'test_ensemble'
+  mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-  mode = 'test_point_ensemble'
+#   mode = 'test_point_ensemble'
 #   mode = 'pickle_grid'  
 #   pntset = 'shpavg'
   pntset = 'ecprecip'

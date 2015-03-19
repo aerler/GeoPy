@@ -1525,8 +1525,9 @@ class Variable(object):
     # return results
     return svar
   
-  def reduceToAnnual(self, season, operation, asVar=False, name=None, offset=0, taxis='time', checkUnits=True,
-                     lcheckVar=True, lcheckAxis=True, taxatts=None, varatts=None, **kwargs):
+  def reduceToAnnual(self, season, operation, asVar=False, name=None, offset=0, taxis='time', 
+                     checkUnits=True, lcheckVar=True, lcheckAxis=True, taxatts=None, varatts=None, 
+                     mean_list=None, **kwargs):
     ''' Reduce a monthly time-series to an annual time-series, using mean/min/max over a subset of month or seasons. '''
     if not self.hasAxis(taxis): 
       if lcheckAxis: raise AxisError, 'Seasonal reduction requires a time axis!'
@@ -1541,6 +1542,8 @@ class Variable(object):
     te = len(taxis); tax = self.axisIndex(taxis.name)
     if te%12 != 0 or not (taxis.coord[0]%12 == 0 or taxis.coord[0]%12 == 1): 
       raise NotImplementedError, 'Currently seasonal reduction only works with full years.'
+    # hadling of exceptions: some variables in Datasets should only be averaged
+    if mean_list is not None and self.name in mean_list: operation = np.nanmean    
     # modify variable
     if asVar:      
       # create new time axis (yearly)
@@ -1595,7 +1598,8 @@ class Variable(object):
     return self.reduceToAnnual(season=season, operation=np.nanmin, **kwargs)
   
   def reduceToClimatology(self, operation, yridx=None, asVar=True, name=None, offset=0, taxis='time', 
-                          lcheckVar=True, lcheckAxis=True, checkUnits=True, taxatts=None, varatts=None, **kwargs):
+                          lcheckVar=True, lcheckAxis=True, checkUnits=True, taxatts=None, varatts=None, 
+                          mean_list=None, **kwargs):
     ''' Reduce a monthly time-series to an annual climatology; use 'yridx' to limit the reduction to 
         a set of years (identified by index) '''
     if not self.hasAxis(taxis): 
@@ -1610,7 +1614,9 @@ class Variable(object):
       raise AxisError, "Reduction to climatology requires monthly data! (time units: '{:s}')".format(taxis.units)
     te = len(taxis); tax = self.axisIndex(taxis.name)
     if te%12 != 0 or not (taxis.coord[0]%12 == 0 or taxis.coord[0]%12 == 1): 
-      raise NotImplementedError, 'Currently reduction to climatology only works with full years.'    
+      raise NotImplementedError, 'Currently reduction to climatology only works with full years.'
+    # hadling of exceptions: some variables in Datasets should only be averaged
+    if mean_list is not None and self.name in mean_list: operation = np.nanmean    
     # modify variable
     if asVar:      
       # create new time axis (still monthly)

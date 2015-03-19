@@ -422,7 +422,8 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
     # this is a special case for observational data in the CVDP package
     if name.lower() == 'obs': name = 'HadISST' # default to SST modes
     elif name.lower() in ('hadisst','mlost','20thc_reanv2','gpcp'): lobs = True
-    elif name.isupper(): lobs = True; name = 'HadISST' # load ocean modes for comparison 
+    elif name.isupper(): 
+      lobs = True; name = None # load ocean modes for comparison 
     # resolve WRF experiments to parent CESM runs for CVDP
     elif name in WRF_exps: name = WRF_exps[name].parent
     elif name in WRF_experiments: name = WRF_experiments[name].parent

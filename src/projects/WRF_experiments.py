@@ -34,7 +34,7 @@ class Exp(object):
   defaults = dict()
   defaults['shortname'] = lambda atts: atts['name']
   defaults['title'] = lambda atts: atts['name'] # need lambda, because parameters are not set yet
-  defaults['parent'] = 'Ctrl' # CESM simulations that is driving most of the WRF runs   
+  defaults['parent'] = 'Ctrl-1' # CESM simulations that is driving most of the WRF runs   
   defaults['domains'] = 2 # most WRF runs have two domains
   defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/'.format(avgfolder,atts['name'])
   defaults['begindate'] = '1979-01-01'
