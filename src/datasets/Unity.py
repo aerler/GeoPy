@@ -66,12 +66,13 @@ def loadObs_Special(varlist=None, **kwargs):
   if varlist is None:
     ldryprec = True; lwetprec = True
   else:
+    varlist = list(varlist)
     ldryprec = False; lwetprec = False
     if 'dryprec' in varlist: # really just an alias for precip 
-      ldryprec = True; varlist.pop('dryprec')
+      ldryprec = True; varlist.remove('dryprec')
       if 'precip' not in varlist: varlist.append('precip')
     if 'wetprec' in varlist: 
-      ldryprec = True; varlist.pop('wetprec') # wet-day precip
+      lwetprec = True; varlist.remove('wetprec') # wet-day precip
       if 'precip' not in varlist: varlist.append('precip')
       if 'wetfrq' not in varlist: varlist.append('wetfrq')    
   # load actual data using standard call to loadObservation
@@ -223,7 +224,7 @@ if __name__ == '__main__':
     # load averaged climatology file
     print('')
     if pntset in ('shpavg',): 
-      dataset = loadUnity_Shp(shape=pntset, period=periods[0])
+      dataset = loadUnity_Shp(varlist=['dryprec','wetprec','shp_area'], shape=pntset, period=periods[0])
       print(dataset.shp_area.mean())
       print('')
     else: raise NotImplementedError

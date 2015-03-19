@@ -10,7 +10,7 @@ These functions are mainly used by the 'areastats' and 'multimap' modules.
 import numpy as np
 from types import ModuleType
 from warnings import warn
-from geodata.misc import isInt
+from geodata.misc import isInt, DatasetError
 
 
 ## functions to load datasets for areastats and multimap
@@ -199,6 +199,9 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
       for ex,dm in zip(exp,dom):
         et, at = loadDataset(ex, prd, dm, grd, res, filetypes=filetypes, varlist=varlist, 
                              lbackground=False, lWRFnative=lWRFnative, lautoregrid=lautoregrid)
+        for var in varlist: 
+          if var not in et and var not in ('lon2D','lat2D','landmask','landfrac'): 
+            raise DatasetError, "Variable '{:s}' not found in Dataset '{:s}!".format(var,et.name) 
         #if isinstance(et,(list,tuple)): ext += list(et); else: 
         ext.append(et)
         #if isinstance(at,(list,tuple)): axt += list(at); else: 
@@ -208,6 +211,9 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
       print("  - " + exp)
       ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=varlist, 
                            lbackground=lbackground, lWRFnative=lWRFnative, lautoregrid=lautoregrid)
+      for var in varlist: 
+          if var not in ext and var not in ('lon2D','lat2D','landmask','landfrac'): 
+            raise DatasetError, "Variable '{:s}' not found in Dataset '{:s}!".format(var,ext.name)         
     dslist.append(ext) 
     if tit is not None: axtitles.append(tit)
     else: axtitles.append(axt)

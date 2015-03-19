@@ -422,6 +422,7 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
     # this is a special case for observational data in the CVDP package
     if name.lower() == 'obs': name = 'HadISST' # default to SST modes
     elif name.lower() in ('hadisst','mlost','20thc_reanv2','gpcp'): lobs = True
+    elif name.isupper(): lobs = True; name = 'HadISST' # load ocean modes for comparison 
     # resolve WRF experiments to parent CESM runs for CVDP
     elif name in WRF_exps: name = WRF_exps[name].parent
     elif name in WRF_experiments: name = WRF_experiments[name].parent
@@ -561,7 +562,8 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
 def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, 
                    slices=None, obsslices=None, reduction=None, shape=None, station=None, prov=None, 
                    constraints=None, filetypes=None, domain=None, ldataset=False, lcheckVar=False, 
-                   lwrite=False, name_tags=None, ensemble_list=None, ensemble_product='inner', **kwargs):
+                   lwrite=False, name_tags=None, dataset_mode='time-series', 
+                   ensemble_list=None, ensemble_product='inner', **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -579,7 +581,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   # expand argument list
   if ensemble_list is None: ensemble_list = ['names'] if not ldataset else None
   loadargs = expandArgumentList(names=names, station=station, prov=prov, shape=shape, varlist=varlist, 
-                                mode='time-series', filetypes=filetypes, domains=domain, lwrite=lwrite,
+                                mode=dataset_mode, filetypes=filetypes, domains=domain, lwrite=lwrite,
                                 slices=slices, obsslices=obsslices, name_tags=name_tags, 
                                 expand_list=ensemble_list, lproduct=ensemble_product)
   for loadarg in loadargs:

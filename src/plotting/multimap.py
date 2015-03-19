@@ -81,8 +81,9 @@ if __name__ == '__main__':
 #   variables += ['Ts']
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
+  variables += ['wetprec']
   variables += ['precip']
-  variables += ['wetfrq']
+#   variables += ['wetfrq']
 #   variables += ['WaterTransport_U']
 #   variables += ['WaterTransport_V']
 #   variables += ['waterflx']
@@ -158,9 +159,9 @@ if __name__ == '__main__':
 #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
 #   explist = ['Unity','max-ctrl-dry','max-ctrl']*2; seasons = [('summer',)*3+('winter',)*3]
 #   variables = [('precip','dryprec','precip')*2]
-#   explist = ['erai-max','max-ens']*2; seasons = [('summer',)*2+('winter',)*2]
+  explist = ['max-ctrl','max-ens']*2; seasons = [('summer',)*2+('winter',)*2]
 #   explist = ['old-ctrl','ctrl-1','new-ctrl']*2; seasons = [('summer',)*3+('winter',)*3]
-  explist = ['old-ctrl','ctrl-1','new-ctrl','new-v361-ctrl']; seasons = ['winter','summer']
+#   explist = ['old-ctrl','ctrl-1','new-ctrl','new-v361-ctrl']; seasons = ['winter','summer']
   ldiff = True; reflist = ['Unity']; refprd = None;
 #   explist = ['max-ctrl','max-ens']*2; seasons = [('summer',)*2+('winter',)*2]  
   period = H10; domain = 2; grid = 'arb2_d02'

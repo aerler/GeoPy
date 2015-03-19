@@ -131,7 +131,7 @@ def flipLon(data, flip=144, lrev=False, var=None, slc=None):
     sd = 0 # squeezed dimensions before ax
     for sl in slc:
       if isinstance(sl,(int,np.integer)): sd += 1
-  ax -= sd # remove squeezed dimensions
+    ax -= sd # remove squeezed dimensions
   if not ( data.ndim > ax and data.shape[ax] == flip*2 ): 
     raise NotImplementedError, "Can only shift longitudes of the entire array!"
   # N.B.: this operation only makes sense with a full array!
@@ -629,10 +629,10 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
-  mode = 'test_point_climatology'
+#   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
-#   mode = 'test_cvdp'
+  mode = 'test_cvdp'
 #   mode = 'pickle_grid'
 #     mode = 'shift_lon'
 #     experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']

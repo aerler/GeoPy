@@ -27,6 +27,7 @@ import average.derived_variables as dv
 from warnings import warn
 import functools
 from collections import OrderedDict
+from average.derived_variables import WetDayPrecip
 #from Cython.Utility.MemoryView import tmpdata
 
 ## EC (Environment Canada) Meta-data
@@ -54,6 +55,8 @@ varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Aver
                MaxLiqprec = dict(name='MaxLiqprec_1d', units='kg/m^2/s'), # for short-term consistency
                MinLiqprec = dict(name='MinLiqprec_1d', units='kg/m^2/s'), # for short-term consistency
                WetDays    = dict(name='wetfrq', units=''), # fraction of wet/rainy days
+               WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
+               WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)
                # meta/constant data variables
                # N.B.: 'stn'/'station' prefix is to allow consistent naming and avoid name collisions with variables in other datasets
                name    = dict(name='station_name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
@@ -297,7 +300,7 @@ precip_vars = dict(precip=PrecipDef(name='precipitation', prefix='dt', atts=vara
                    solprec=PrecipDef(name='snowfall', prefix='ds', atts=varatts['solprec']),
                    liqprec=PrecipDef(name='rainfall', prefix='dr', atts=varatts['liqprec']))
 # precipitation extremes (and other derived variables)
-precip_xtrm = [dv.WetDays(ignoreNaN=True),]
+precip_xtrm = [dv.WetDays(ignoreNaN=True),dv.WetDayRain(ignoreNaN=True),dv.WetDayPrecip(ignoreNaN=True)]
 for var in precip_vars:
   for mode in ('min','max'):
     # ordinary & interval extrema: var, mode, [interval=7,] name=None, dimmap=None
@@ -327,7 +330,8 @@ temp_xtrm.append(dict(name='CNFD', var='Tmin', longname='Consecutive Night Frost
 
 # map from common variable names to WRF names (which are used in the derived_variables module)
 ec_varmap = dict(RAIN='precip', south_north='time', time='station', west_east=None, # swap order of axes
-                 T2MIN='Tmin', T2MAX='Tmax', ) 
+                 WetDays='wetfrq', WetDayRain='dryprec', WetDayPrecip='wetprec',
+                 T2MIN='Tmin', T2MAX='Tmax', FrostDays='frzfrq') 
 
 # definition of station meta data format 
 ec_header_format = ('No','StnId','Prov','From','To','Lat(deg)','Long(deg)','Elev(m)','Joined','Station','name') 
@@ -388,7 +392,7 @@ class StationRecords(object):
     if extremes is None and datatype == 'precip': extremes = deepcopy(precip_xtrm)
     elif extremes is None and datatype == 'temp': extremes = deepcopy(temp_xtrm)
     # N.B.: need to use deepcopy, because we are modifying the objects      
-    elif not isinstance(extremes,(list,tuple)): raise TypeError
+    if not isinstance(extremes,(list,tuple)): raise TypeError
     if varmap is None: varmap = ec_varmap
     elif not isinstance(varmap, dict): raise TypeError
     # utils
@@ -545,6 +549,7 @@ class StationRecords(object):
         raise dv.DerivedVariableError, "Axes ('station', 'time') are required; adjust varmap as needed."
       # finalize
       xvar.checkPrerequisites(ncset, const=None, varmap=self.varmap)
+      if xvar.name in self.varmap: xvar.name = self.varmap[xvar.name] # rename
       xvar.createVariable(ncset)
       extremes.append(xvar)
     self.extremes = extremes
@@ -805,10 +810,10 @@ if __name__ == '__main__':
 #   mode = 'test_station_object'
 #   mode = 'test_station_reader'
 #   mode = 'test_conversion'
-#   mode = 'convert_all_stations'
+  mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
 #   mode = 'test_timeseries'
-  mode = 'test_selection'
+#   mode = 'test_selection'
   
   # test wrapper function to load time series data from EC stations
   if mode == 'test_selection':
@@ -912,11 +917,16 @@ if __name__ == '__main__':
     
     prov = 'PE'
     # prepare input
-    variables = temp_vars #dict(T2=temp_vars['T2'])
-#     variables = precip_vars #dict(precip=temp_vars['precip'])
+#     variables = temp_vars #dict(T2=temp_vars['T2'])
+    variables = precip_vars #dict(precip=temp_vars['precip'])
     # initialize station record container (PE only has 3 stations - ideal for testing!)
     test = StationRecords(folder='', variables=variables, constraints=dict(prov=(prov,)))
     # create netcdf file
+    print('')
+#            CWD:  0.00 |  6.43 | 55.00
+#            CDD:  0.00 |  4.87 | 26.00
+#        WetDays:  0.00 |  0.38 |  0.84
+    print('Dry-day Threshold: {:f}'.format(dv.dryday_threshold))
     print('')
     filename = tsfile_prov.format(variables.values()[0].datatype,prov)        
     test.prepareDataset(filename=filename, folder=None)
@@ -930,19 +940,20 @@ if __name__ == '__main__':
       if var.hasAxis('time') and var.hasAxis('station'):
         data = var.getArray()
         if 'precip' in variables:
+          if var.units == 'kg/m^2/s': data  *= 86400. 
           print('{:>14s}: {:5.2f} | {:5.2f} | {:5.2f}'.format(
                 var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data))) 
         else: 
           print('{:>10s}: {:5.1f} | {:5.1f} | {:5.1f}'.format(
                 var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data)))
     # record length
-    for pfx in ['stn_rec',]+variables.keys():
+    for pfx in ['stn_rec',]: # +variables.keys() # currently the only one (all others are the same!)
       var = dataset[pfx+'_len']
       data = var.getArray()
       if 'precip' in variables:
         print('{:>14s}: {:5d} | {:5.1f} | {:5d}'.format(var.name,np.min(data), np.mean(data), np.max(data))) 
       else:
-        print('{:>10s}: {:5d} | {:5.2f} | {:5d}'.format(var.name,np.min(data), np.mean(data), np.max(data)))
+        print('{:>10s}: {:5d} | {:5.1f} | {:5d}'.format(var.name,np.min(data), np.mean(data), np.max(data)))
     
   
   # convert provincial station date to NetCDF

@@ -229,6 +229,21 @@ class DatasetsTest(unittest.TestCase):
     assert all('EC_1990' in ens for ens in enslst)
     assert all('EC_1940' in ens for ens in enslst)
     assert all('WRF_1990' in ens for ens in enslst)
+    # add CVDP data
+    cvdp = loadEnsembleTS(names=names, prov=prov, season=season, mode=mode, 
+                          name_tags=name_tags, obsslices=obsslices,  
+                          varlist=['PDO'], ensemble_product='inner',  
+                          ensemble_list=['names','name_tags','obsslices',], lwrite=lwrite,
+                          load_list=['mode','season','prov',], lproduct='outer',
+                          dataset_mode='CVDP')
+    assert all(ens.hasVariable('PDO') for ens in enslst)
+    # add PDO time-series to datasets
+    for ts,cv in zip(enslst,cvdp):
+      ts.addVariable(cv.PDO, lautoTrim=True)  
+    all(ens.hasVariable('PDO') for ens in enslst)  
+    # test slicing by PDO
+    ds = enslst[0]['WRF_1990']
+    slcds = ds(PDO=(-1,0.))
     ## some debugging test
     # NetCDF datasets to add cluster_id to
     wrfensnc = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C', # Ensembles don't have unique NetCDF files
@@ -272,7 +287,7 @@ if __name__ == "__main__":
 #     specific_tests = ['ExpArgList']
 #     specific_tests = ['LoadDataset']
 #     specific_tests = ['BasicLoadEnsembleTS']
-#     specific_tests = ['AdvancedLoadEnsembleTS']
+    specific_tests = ['AdvancedLoadEnsembleTS']
 #     specific_tests = ['LoadStandardDeviation']
 
 

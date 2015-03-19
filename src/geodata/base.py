@@ -577,7 +577,7 @@ class Variable(object):
         raise DataError, "Data array shape does not match variable shape\n(slice was ignored, since no data array was present before)."
       else: self.data_array = data         
     
-  def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, asVar=None, lfirst=False,
+  def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, asVar=None, lfirst=False, lminmax=False,
                lsqueeze=True, lcheck=False, lcopy=False, lslices=False, linplace=False, **axes):
     ''' This method implements access to slices via coordinate values and returns Variable objects. 
         Default behavior for different argument types: 
@@ -600,7 +600,7 @@ class Variable(object):
             raise NotImplementedError, "Currently only single coordiante values/indices are supported for pseudo-axes."        
           if var.ndim == 1: # possibly valid pseudo-axis!
             lpseudo = True
-            coord = var.findValues(val, lidx=lidx, lfirst=lfirst, lrng=lrng, lflatten=False)          
+            coord = var.findValues(val, lidx=lidx, lfirst=lfirst, lminmax=lminmax, lflatten=False)          
           else: raise AxisError, "Pseudo-axis can only have one axis!"
           axes[var.axes[0].name] = coord # create new entry with actual axis
           # N.B.: not that this automatically squeezes the pseudo-axis, since it is just a values...
@@ -934,7 +934,7 @@ class Variable(object):
     # return mask
     return mask
   
-  def findValues(self, value, lidx=False, lfirst=False, lrng=False, lstrip=True, 
+  def findValues(self, value, lidx=False, lfirst=False, lminmax=False, lstrip=True, 
                  lflatten=False, lsqueeze=True):
     ''' Method to find all or only the first occurence of a value or a range of values and return the 
         coordinate or index values; The single occurence algorithm is actually pretty slow but works 
@@ -979,9 +979,12 @@ class Variable(object):
     else:
       # use numpy's nonzero-function
       if isinstance(value,(tuple,list,np.ndarray)):
-        if lrng:
+        if lminmax:
           if len(value) != 2: raise ArgumentError, "Lists can only be interpreted as upper and lower bounds."
-          idx = np.nonzero( (value[0] < data) * (data < value[1]) )[0]
+          tmp = np.ones_like(data, dtype=np.bool_)
+          if value[0] is not None: tmp *= (value[0] < data)
+          if value[1] is not None: tmp *= (data < value[1]) 
+          idx = np.nonzero(tmp)[0]
         else:
           tmp = np.ones(self.shape, dtype=np.bool_)
           for val in value: tmp *= ( val == data ) # loop over all values and take 'and'
@@ -2259,7 +2262,7 @@ class Dataset(object):
       if check: raise AxisError, "Axis '{:s}' not found!".format(axname)
       else: return None
       
-  def __call__(self, lidx=None, lrng=None, lsqueeze=True, lcopy=False, years=None, lfirst=False, 
+  def __call__(self, lidx=None, lrng=None, lminmax=False, lsqueeze=True, lcopy=False, years=None, lfirst=False, 
                listAxis=None, lrmOther=False, lcpOther=False, **axes):
     ''' This method implements access to slices via coordinate values and returns Variable objects. 
         Default behavior for different argument types: 
@@ -2280,10 +2283,8 @@ class Dataset(object):
       if val is not None and self.hasVariable(key):
         del axes[key] # remove pseudo axis
         var = self.getVariable(key)
-        if isinstance(val,(tuple,list,np.ndarray)): 
-          raise NotImplementedError, "Currently only single coordinate values/indices are supported for pseudo-axes."        
         if var.ndim == 1: # possibly valid pseudo-axis!
-          coord = var.findValues(val, lidx=lidx, lflatten=False)          
+          coord = var.findValues(val, lidx=lidx, lfirst=lfirst, lminmax=lminmax, lflatten=False)          
         else: raise AxisError, "Pseudo-axis can only have one axis!"
         axes[var.axes[0].name] = coord # create new entry with actual axis
         # N.B.: not that this automatically squeezes the pseudo-axis, since it is just a values...
