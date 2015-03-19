@@ -373,6 +373,8 @@ class VarNC(Variable):
       ncvar.group().sync()     
     else: 
       raise PermissionError, "Cannot write to NetCDF variable: writing (mode = 'w') not enabled!"
+    # for convenience...
+    return self
      
   def unload(self):
     ''' Method to sync the currently loaded data to file and free up memory (discard data in memory) '''

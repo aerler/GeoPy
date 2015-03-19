@@ -241,7 +241,7 @@ class Hydro(FileType):
   def __init__(self):
     self.name = 'hydro'
     self.atts = dict(T2MEAN       = dict(name='Tmean', units='K'), # daily mean 2m Temperature
-                     RAIN         = dict(name='rain', units='kg/m^2/s'), # total precipitation rate
+                     RAIN         = dict(name='precip', units='kg/m^2/s'), # total precipitation rate
                      RAINC        = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate
                      RAINNC       = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate
                      SFCEVP       = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
@@ -253,7 +253,7 @@ class Hydro(FileType):
                      SolidPrecip  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
                      NetWaterFlux = dict(name='waterflx', units='kg/m^2/s'), # total water downward flux
                      WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
-                     WetDayRain   = dict(name='precip', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
+                     WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
                      WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)
                      MaxRAIN      = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
                      MaxRAINC     = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # maximum daily convective precip

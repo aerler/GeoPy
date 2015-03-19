@@ -263,7 +263,7 @@ tmp = PlotAtts(name = 'Wet-day Precip', title = 'Wet-day Precipitation Rate',
 variablePlotatts['wetprec'] = tmp
 
 ## Wet-day Precipitation Rate
-tmp = PlotAtts(name = 'Dry-day Precip', title = 'Precipitation Exceeding Dry-day Threshold', 
+tmp = PlotAtts(name = 'Corrected Precip', title = 'Precipitation Exceeding Dry-day Threshold', 
                units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['dryprec'] = tmp

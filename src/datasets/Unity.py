@@ -23,6 +23,7 @@ from datasets.PRISM import loadPRISM, loadPRISM_Shp
 from datasets.PCIC import loadPCIC, loadPCIC_Shp
 # from geodata.utils import DatasetError
 from warnings import warn
+from plotting.properties import variablePlotatts
 
 ## Unity Meta-data
 
@@ -42,6 +43,9 @@ varatts = dict(# PRISM variables
                cldfrc = dict(name='cldfrc', units='', offset=0.), # cloud cover/fraction
                wetfrq = dict(name='wetfrq', units='', offset=0), # number of wet days
                frsfrq = dict(name='frzfrq', units='', offset=0), # number of frost days 
+               # additional variables
+               dryprec = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
+               wetprec = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)
                # axes (don't have their own file; listed in axes)
                time=dict(name='time', units='month', atts=dict(long_name='Month of the Year')), # time coordinate
                lon  = dict(name='lon', units='deg E', atts=dict(long_name='Longitude')), # geographic longitude field
@@ -54,6 +58,32 @@ root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 
 ## Functions that provide access to well-formatted PRISM NetCDF files
+
+# wraper to add special variables
+def loadObs_Special(varlist=None, **kwargs):
+  ''' wrapper that adds some special/derived variables '''
+  # parse and edit varlist
+  if varlist is None:
+    ldryprec = True; lwetprec = True
+  else:
+    ldryprec = False; lwetprec = False
+    if 'dryprec' in varlist: # really just an alias for precip 
+      ldryprec = True; varlist.pop('dryprec')
+      if 'precip' not in varlist: varlist.append('precip')
+    if 'wetprec' in varlist: 
+      ldryprec = True; varlist.pop('wetprec') # wet-day precip
+      if 'precip' not in varlist: varlist.append('precip')
+      if 'wetfrq' not in varlist: varlist.append('wetfrq')    
+  # load actual data using standard call to loadObservation
+  dataset = loadObservations(varlist=varlist, **kwargs)
+  # add new/special variables
+  if lwetprec: 
+    wetprec = dataset.precip.load() / dataset.wetfrq.load()
+    dataset += wetprec.copy(plot=variablePlotatts['wetprec'], **varatts['wetprec'])
+  if ldryprec: 
+    dataset += dataset.precip.copy(plot=variablePlotatts['dryprec'], **varatts['dryprec'])
+  # return augmented dataset
+  return dataset
 
 # pre-processed climatology files (varatts etc. should not be necessary)
 avgfolder = root_folder + 'unityavg/' # prefix
@@ -72,7 +102,7 @@ def loadUnity(name=dataset_name, period=None, grid=None, varlist=None, varatts=N
     grid = 'arb2_d02'
     warn('The Unified Dataset has no native grid; loading {0:s} grid.'.format(grid))
   # load standardized climatology dataset with PRISM-specific parameters  
-  dataset = loadObservations(name=name, folder=folder, period=period, grid=grid, shape=None, station=None, 
+  dataset = loadObs_Special(name=name, folder=folder, period=period, grid=grid, shape=None, station=None, 
                              varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
                              projection=None, mode='climatology', lautoregrid=False)
   # return formatted dataset
@@ -87,7 +117,7 @@ def loadUnity_Shp(name=dataset_name, period=None, shape=None, varlist=None, vara
     period = (1979,2009)
     warn('A climatology is not available for the Unified Dataset; loading period {0:4d}-{1:4d}.'.format(*period))
   # load standardized climatology dataset with PRISM-specific parameters  
-  dataset = loadObservations(name=name, folder=folder, period=period, grid=None, shape=shape, station=None, 
+  dataset = loadObs_Special(name=name, folder=folder, period=period, grid=None, shape=shape, station=None, 
                              varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
                              projection=None, mode='climatology', lautoregrid=False, lencl=lencl)
   # return formatted dataset
@@ -99,7 +129,7 @@ def loadUnity_ShpTS(name=dataset_name, shape=None, varlist=None, varatts=None,
                     folder=avgfolder, filelist=None, lautoregrid=False, resolution=None, lencl=False):
   ''' Get the pre-processed, unified monthly climatology averaged over shapes as a DatasetNetCDF. '''
   # load standardized climatology dataset with PRISM-specific parameters  
-  dataset = loadObservations(name=name, folder=folder, period=None, grid=None, shape=shape, station=None, 
+  dataset = loadObs_Special(name=name, folder=folder, period=None, grid=None, shape=shape, station=None, 
                              varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
                              projection=None, mode='time-series', lautoregrid=False, lencl=lencl)
   # return formatted dataset
@@ -130,10 +160,10 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-  mode = 'merge_climatologies'
+#   mode = 'merge_climatologies'
 #   mode = 'merge_timeseries'
 #   mode = 'test_climatology'
-#   mode = 'test_point_climatology'
+  mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
   
   # settings to generate dataset
@@ -199,9 +229,12 @@ if __name__ == '__main__':
     else: raise NotImplementedError
     print(dataset)
     dataset.load()
+#     print('')
+#     print(dataset.precip.mean())
+#     print(dataset.precip.masked)
     print('')
-    print(dataset.precip.mean())
-    print(dataset.precip.masked)
+    print(dataset.dryprec)
+    assert dataset.dryprec.mean() == dataset.precip.mean() 
     
     # print time coordinate
     print

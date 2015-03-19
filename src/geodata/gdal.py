@@ -610,6 +610,8 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
       else:  # less than 2D can't be GDAL enabled
         self.__dict__['mapSize'] = None
         self.__dict__['gdal'] = False
+      # for convenience
+      return self
     # add new method to object
     var.load = types.MethodType(load, var)
     
