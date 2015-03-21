@@ -563,7 +563,7 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
 def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, 
                    slices=None, obsslices=None, reduction=None, shape=None, station=None, prov=None, 
                    constraints=None, filetypes=None, domain=None, ldataset=False, lcheckVar=False, 
-                   lwrite=False, name_tags=None, dataset_mode='time-series', 
+                   lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', lminmax=False,
                    ensemble_list=None, ensemble_product='inner', **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
@@ -583,7 +583,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   if ensemble_list is None: ensemble_list = ['names'] if not ldataset else None
   loadargs = expandArgumentList(names=names, station=station, prov=prov, shape=shape, varlist=varlist, 
                                 mode=dataset_mode, filetypes=filetypes, domains=domain, lwrite=lwrite,
-                                slices=slices, obsslices=obsslices, name_tags=name_tags, 
+                                slices=slices, obsslices=obsslices, name_tags=name_tags, ltrimT=ltrimT,
                                 expand_list=ensemble_list, lproduct=ensemble_product)
   for loadarg in loadargs:
     # clean up argumetns
@@ -599,7 +599,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
       if slcs is None: slcs = obsslcs
       else: slcs.update(**obsslcs) # add special slices for obs
       # N.B.: currently VarNC's can only be sliced once, because we can't combine slices yet
-    if slcs: dataset = dataset(**slcs) # slice immediately 
+    if slcs: dataset = dataset(lminmax=lminmax, **slcs) # slice immediately 
     if not ldataset: ensemble += dataset.load() # load data and add to ensemble
   # if input was not a list, just return dataset
   if ldataset: ensemble = dataset.load() # load data
