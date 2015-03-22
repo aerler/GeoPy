@@ -245,7 +245,7 @@ class MyFigure(Figure):
     filename = ''
     for arg in args: 
       if isinstance(arg, (list,tuple)):
-        for a in arg: filename += a
+        for a in arg: filename += str(a)
       else: filename += str(arg)
       filename += '_'
     filename = filename[:-1] # remove last underscore
