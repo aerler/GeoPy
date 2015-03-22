@@ -729,7 +729,9 @@ class Variable(object):
     ## create new Variable object
     # slice data using the variables __getitem__ method (which can also be overloaded)
     if self.data:
-      data = self.data_array.__getitem__(slcs) # just pass list of slices
+      if self.ndim > 0:
+        data = self.data_array.__getitem__(slcs) # just pass list of slices
+      else: data = self.data_array.__getitem__(None)
       if lcopy and isinstance(data,np.ndarray): data = data.copy() # copy array
       if lsqueeze: data = np.squeeze(data) # squeeze
     else: data = None
@@ -1423,7 +1425,8 @@ class Variable(object):
     from geodata.stats import anderson_wrapper, kstest_wrapper, normaltest_wrapper, shapiro_wrapper
     if lflatten: # totally by-pass reduce()...
       # get data
-      if self.masked: data = self.data_array.filled(fillValue).ravel()
+      if isinstance(self.data_array,ma.MaskedArray): # DistVars treat masks slightly differently
+        data = self.data_array.filled(fillValue).ravel()
       else: data = self.data_array.ravel()
       # N.B.: to ignore masked values they have to be replaced by NaNs or out-of-bounds values 
       # select test function for flat/1D test

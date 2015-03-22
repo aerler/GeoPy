@@ -400,10 +400,10 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
       raise TypeError, "Samples have to be Variable instances or Numpy 'ndarray'."
     # choose a fillValue (triggers only once)
     lmasked = ( lvar and sample.masked ) or ( not lvar and isinstance(sample, np.ma.MaskedArray) )
-    if lmasked and fillValue is None:
-      if np.issubdtype(sample.dtype,np.integer): fillValue = 0
-      elif np.issubdtype(sample.dtype,np.inexact): fillValue = np.NaN
-      else: raise NotImplementedError
+    if lmasked and fillValue is None: fillValue = np.NaN
+#       if np.issubdtype(sample.dtype,np.integer): fillValue = 0
+#       elif np.issubdtype(sample.dtype,np.inexact): fillValue = np.NaN
+#       else: raise NotImplementedError
   # check that dtype and dimensions are equal
   if sample1.dtype != sample2.dtype: raise TypeError, "Samples need to have same dtype."
   if not lflatten:
@@ -446,9 +446,12 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
     ''' helper function to pre-process each sample '''
     # get data
     if isinstance(sample,Variable): 
-      data = sample.getArray(unmask=True, fillValue=fillValue, copy=True)
-    elif isinstance(sample,ma.MaskedArray): data = sample.filled(np.NaN)
-    elif isinstance(sample,np.ndarray): data = sample.copy()
+      data = sample.getArray(unmask=False, fillValue=None, copy=True)
+    if isinstance(sample,ma.MaskedArray): 
+      if np.issubdtype(sample.dtype,np.integer): data = sample.astype(np.float_)
+      else: data = sample.copy() 
+      data = data.filled(fillValue)
+    elif isinstance(sample,np.ndarray): data = sample.copy() 
     else: raise TypeError
     # roll sampel axis to end (or flatten)
     if lflatten: data = data.ravel()
@@ -509,8 +512,8 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
 
 # dictionary with distribution definitions for common variables  
 var_dists = dict() # tuple( dist_name, kwargs)
-var_dists['CDD'] = ('gumbel_r', dict())
-var_dists['CWD'] = ('gumbel_r', dict())
+# var_dists['CDD'] = ('gumbel_r', dict())
+# var_dists['CWD'] = ('gumbel_r', dict())
 var_dists['MaxWaterflx_7d'] = ('gumbel_r', dict())
 # var_dists['CDD'] = ('genextreme', dict())
 # var_dists['CWD'] = ('genextreme', dict())
@@ -533,9 +536,11 @@ def defVarDist(var, var_dists=None):
     #dist, dist_args = ('gumbel_r', dict())
     dist, dist_args = 'genextreme', dict(ic_shape=0)
   elif units in ('C','K','Celsius','Kelvin'):
-    dist, dist_args = ('norm', dict())
+    dist, dist_args = 'norm', dict()
+  elif units == 'days': # primarily consecutive dry/wet days
+    dist, dist_args = 'kde', dict()
   else: # fallback
-    dist, dist_args = ('norm', dict())
+    dist, dist_args = 'norm', dict()
   # return distribution definition
   return dist, dist_args
 
@@ -695,7 +700,7 @@ class DistVar(Variable):
     super(DistVar,self).__init__(name=name, units=units, axes=axes, data=params, dtype=None, mask=mask, 
                                  fillValue=fillValue, atts=atts, plot=None)
     # reset dtype to sample dtype (not parameter dtype!)
-    self.masked = masked
+    self._masked = masked
     self.fillValue = fillValue # was overwritten by parameter array fill_value
     assert self.masked == masked
     self.dtype = dtype # property is overloaded in DistVar

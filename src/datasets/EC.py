@@ -11,24 +11,18 @@ NetCDF datasets (with extremes); the module also provides a wrapper to load the 
 # external imports
 import numpy as np
 from copy import deepcopy
-import codecs
-import calendar
+import codecs, calendar, functools
+from warnings import warn
+from collections import OrderedDict
 # internal imports
 from datasets.common import days_per_month, data_root, selectElements, translateVarNames
-from geodata.misc import ParseError, DateError, VariableError, ArgumentError, RecordClass, StrictRecordClass,\
-  DatasetError
-from geodata.misc import isNumber, isInt
+from geodata.misc import ParseError, DateError, VariableError, ArgumentError, DatasetError
+from geodata.misc import RecordClass, StrictRecordClass, isNumber, isInt 
 from geodata.base import Axis, Variable, Dataset
 from utils.nctools import writeNetCDF
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import NamedShape, ShapeInfo
 import average.derived_variables as dv
-# from geodata.utils import DatasetError
-from warnings import warn
-import functools
-from collections import OrderedDict
-from average.derived_variables import WetDayPrecip
-#from Cython.Utility.MemoryView import tmpdata
 
 ## EC (Environment Canada) Meta-data
 
@@ -526,6 +520,8 @@ class StationRecords(object):
       recatts['long_name'] = recatts['long_name']+' for {:s}'.format(varname.title())
       tmpatts['name'] = 'stn_'+varname+'_len'; tmpatts['atts'] = recatts
       dataset += Variable(axes=(station,), data=np.zeros(len(station), dtype='int16'),  **tmpatts)
+    # add some attributes
+    dataset.atts['dryday_threshold'] = dv.dryday_threshold
     # write dataset to file
     ncfile = '{:s}/{:s}'.format(folder,filename)      
     #zlib = dict(chunksizes=dict(station=len(station))) # compression settings; probably OK as is 
@@ -696,7 +692,13 @@ loadEC_Stn = loadEC
 # defined in module main to facilitate pickling
 def test_prov(val,index,dataset,axis):
   ''' check if station province is in provided list ''' 
-  return dataset.stn_prov[index] in val 
+  return dataset.stn_prov[index] in val
+def test_begin(val,index,dataset,axis):
+  ''' check if station record begins before given year ''' 
+  return dataset.stn_begin_date[index] <= val # converted to month beforehand 
+def test_end(val,index,dataset,axis):
+  ''' check if station record ends after given year ''' 
+  return dataset.stn_end_date[index] >= val # converted to month beforehand 
 def test_minlen(val,index,dataset,axis):
   ''' check if station record is longer than a minimum period ''' 
   return dataset.stn_rec_len[index] >= val 
@@ -712,15 +714,15 @@ def test_lat(val,index,dataset,axis):
 def test_lon(val,index,dataset,axis):
   ''' check if station is located within selected longitude band ''' 
   return val[0] <= dataset.stn_lon[index] <= val[1] 
-def test_cluster(val,index,dataset,axis, lcheckVar=True):
+def test_cluster(val,index,dataset,axis, cluster_name='cluster_id', lcheckVar=True):
   ''' check if station is located within selected longitude band '''
-  if not dataset.hasVariable('cluster_id'):
+  if not dataset.hasVariable(cluster_name):
     if lcheckVar: raise DatasetError
     else: return True # most datasets don't have this field...
   elif isinstance(val, (int,np.integer)): 
-    return dataset.cluster_id[index] == val
+    return dataset[cluster_name][index] == val
   elif isinstance(val, (tuple,list,np.ndarray)):
-    return dataset.cluster_id[index] in val
+    return dataset[cluster_name][index] in val
   else: ValueError, val
 # apply tests to list
 def apply_test_suite(tests, index, dataset, axis):
@@ -730,7 +732,7 @@ def apply_test_suite(tests, index, dataset, axis):
 
 ## select a set of common stations for an ensemble, based on certain conditions
 def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lall=False, 
-                  lcheckVar=False, **kwcond):
+                  lcheckVar=False, cluster_name='cluster_id', **kwcond):
   ''' A wrapper for selectCoords that selects stations based on common criteria '''
   # pre-load NetCDF datasets
   for dataset in datasets: 
@@ -753,6 +755,16 @@ def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lal
       if not isNumber(val): raise TypeError
       val = val*12 # units in dataset are month  
       tests.append(functools.partial(test_minlen, val))    
+    elif key == 'begin_before':
+      varname = 'stn_begin_date'
+      if not isNumber(val): raise TypeError
+      val = (val-1979.)*12. # units in dataset are month since Jan 1979  
+      tests.append(functools.partial(test_begin, val))    
+    elif key == 'end_after':
+      varname = 'stn_end_date'
+      if not isNumber(val): raise TypeError
+      val = (val-1979.)*12. # units in dataset are month since Jan 1979  
+      tests.append(functools.partial(test_end, val))    
     elif key == 'max_zerr':
       varname = 'zs_err'
       if not isNumber(val): raise TypeError  
@@ -766,9 +778,9 @@ def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lal
       if not isinstance(val,(list,tuple)) or len(val) != 2 or not all(isNumber(l) for l in val): raise TypeError  
       tests.append(functools.partial(test_lon, val))
     elif key == 'cluster':
-      varname = 'cluster_id'
+      varname = cluster_name
       if ( not isinstance(val,(list,tuple,np.ndarray)) or not all(isInt(l) for l in val)) and not isInt(val): raise TypeError  
-      tests.append(functools.partial(test_cluster, val, lcheckVar=lcheckVar))
+      tests.append(functools.partial(test_cluster, val, cluster_name=cluster_name, lcheckVar=lcheckVar))
     else:
       raise NotImplementedError, "Unknown condition/test: '{:s}'".format(key)
     # record, which datasets have all variables 
@@ -810,10 +822,10 @@ if __name__ == '__main__':
 #   mode = 'test_station_object'
 #   mode = 'test_station_reader'
 #   mode = 'test_conversion'
-  mode = 'convert_all_stations'
+#   mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
 #   mode = 'test_timeseries'
-#   mode = 'test_selection'
+  mode = 'test_selection'
   
   # test wrapper function to load time series data from EC stations
   if mode == 'test_selection':
@@ -825,17 +837,19 @@ if __name__ == '__main__':
     stn='ecprecip'
     print('')
     stnens = Ensemble(loadEC_StnTS(station=stn), loadWRF_StnEns(ensemble='max-ens-2100', station=stn, 
-                      filetypes='hydro', domains=1)) # including WRF data for test
+                      filetypes='hydro', domains=2)) # including WRF data for test
     print(stnens[0])    
     print('')
     var = stnens[-1].axes['station']; print(''); print(var)
     for var in stnens.station: print(var.min(),var.mean(),var.max())
     # test station selector
-    cluster = (3,5); prov = ('BC','AB'); max_zserr = 300; min_len = 50; lat = (40,50)
+    cluster = (4,7,8); cluster_name = 'cluster_historical'; prov = ('BC','AB'); max_zserr = 300; lat = (40,50)
+    min_len = 50; begin_before = 1920; end_after = 2000
 #     stnens = selectStations(stnens, prov=prov, min_len=min_len, lat=lat, max_zerr=max_zserr, lcheckVar=True,
 #                             stnaxis='station', imaster=1, linplace=False, lall=False); cluster = None
-    stnens = selectStations(stnens, min_len=min_len, cluster=cluster, lat=lat, max_zerr=max_zserr, lcheckVar=False,
-                            stnaxis='station', imaster=None, linplace=False, lall=True)
+    stnens = selectStations(stnens, min_len=min_len, cluster=cluster, lat=lat, max_zerr=max_zserr,
+                            begin_before=begin_before, end_after=end_after, cluster_name=cluster_name,
+                            lcheckVar=False, stnaxis='station', imaster=None, linplace=False, lall=True)
     # N.B.: clusters effectively replace provinces, but currently only the EC datasets have that 
     #       information, hence they have to be master-set (imaster=0)
     print(stnens)    
@@ -845,13 +859,13 @@ if __name__ == '__main__':
     
     print('')
     print(stnens[0].stn_prov.data_array)
-    print(stnens[0].cluster_id.data_array)
+    print(stnens[0][cluster_name].data_array)
     for stn in stnens:
       assert all(elt in prov for elt in stn.stn_prov.data_array)
       assert all(lat[0]<=elt<=lat[1] for elt in stn.stn_lat.data_array)
       assert all(min_len<=elt for elt in stn.stn_rec_len.data_array)
-      if cluster is not None and 'cluster_id' in stn: # only EC stations
-        assert all(elt in cluster for elt in stn.cluster_id.data_array)
+      if cluster is not None and cluster_name in stn: # only EC stations
+        assert all(elt in cluster for elt in stn[cluster_name].data_array)
       if 'zs_err' in stn: # only WRF datasets
         assert all(elt < max_zserr for elt in stn.zs_err.data_array)
     

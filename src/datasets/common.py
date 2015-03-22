@@ -21,9 +21,6 @@ from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import GDALError, addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
 # import some calendar defintions
 from geodata.misc import name_of_month, days_per_month, days_per_month_365, seconds_per_month, seconds_per_month_365
-from matplotlib.delaunay.testfuncs import plotallfuncs
-
-
 
 
 # attributes for variables in standardized climatologies 
@@ -63,7 +60,8 @@ default_varatts['p-et'] = dict(name='p-et', units='kg/m^2/s') # net precipitatio
 # parameters used in shape files
 shp_params = ['shape_name','shp_long_name','shp_type','shp_mask','shp_area','shp_encl','shp_full','shp_empty']
 # parameters used in station files
-stn_params = ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon', 'cluster_id']
+stn_params = ['station_name', 'stn_prov', 'zs_err', 'stn_lat', 'stn_lon', 'cluster_id',
+              'stn_rec_len', 'stn_begin_date', 'stn_end_date']
 
 # data root folder
 import socket
