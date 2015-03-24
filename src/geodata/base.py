@@ -1588,9 +1588,13 @@ class Variable(object):
     ''' Return a time-series of annual sums of the specified season. '''    
     return self.reduceToAnnual(season=season, operation=np.nansum, **kwargs)
   
-  def seasonalVar(self, season='annual', **kwargs):
+  def seasonalStd(self, season='annual', **kwargs):
     ''' Return a time-series of annual root-mean-variances (of the specified season/months). '''    
     return self.reduceToAnnual(season=season, operation=np.nanstd, **kwargs)
+  
+  def seasonalVar(self, season='annual', **kwargs):
+    ''' Return a time-series of annual root-mean-variances (of the specified season/months). '''    
+    return self.reduceToAnnual(season=season, operation=np.nanvar, **kwargs)
   
   def seasonalMax(self, season='annual', **kwargs):
     ''' Return a time-series of annual averages of the specified season. '''    
@@ -2459,6 +2463,14 @@ class Dataset(object):
   def __len__(self):
     ''' Get the number of Variables in the Dataset. '''
     return len(self.variables)
+  
+  def __add__(self, other):
+    ''' create new dataset from two existing ones '''
+    name = self.name if self.name == other.name else "{:s} & {:s}".format(self.name,other.name)
+    title = self.title if self.title == other.title else "{:s} & {:s}".format(self.title,other.title)
+    varlist = self.variables.values() + other.variables.values()
+    atts = other.atts.copy(); atts.update(self.atts)
+    return Dataset(name=name,title=title,varlist=varlist,atts=atts)
     
   def __iadd__(self, var):
     ''' Add a Variable to an existing dataset. '''      

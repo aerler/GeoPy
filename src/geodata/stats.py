@@ -446,13 +446,13 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
     ''' helper function to pre-process each sample '''
     # get data
     if isinstance(sample,Variable): 
-      data = sample.getArray(unmask=False, fillValue=None, copy=True)
+      sample = sample.getArray(unmask=False, fillValue=None, copy=True)
     if isinstance(sample,ma.MaskedArray): 
       if np.issubdtype(sample.dtype,np.integer): data = sample.astype(np.float_)
       else: data = sample.copy() 
       data = data.filled(fillValue)
     elif isinstance(sample,np.ndarray): data = sample.copy() 
-    else: raise TypeError
+    else: raise TypeError, sample.__class__
     # roll sampel axis to end (or flatten)
     if lflatten: data = data.ravel()
     else: data = np.rollaxis(data, axis=axis_idx, start=sample.ndim)
