@@ -43,21 +43,21 @@ class Exp(WRF_Exp):
 experiments = OrderedDict() # dictionary of experiments
 # historical 
 # N.B.: the extnded ensemble end data is necessary for CVDP
-experiments['ens20trcn1x1'] = Exp(shortname='Ens', name='ens20trcn1x1', title='CESM Ensemble Mean', begindate='1979-01-01', enddate='2039-01-01', grid='cesm1x1')
-experiments['tb20trcn1x1'] = Exp(shortname='Ctrl-1', name='tb20trcn1x1', title='Exp 1 (CESM)', begindate='1979-01-01', enddate='1994-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
+experiments['ens20trcn1x1'] = Exp(shortname='Ens',    name='ens20trcn1x1', title='CESM Ensemble Mean', begindate='1979-01-01', enddate='2039-01-01', grid='cesm1x1')
+experiments['tb20trcn1x1']  = Exp(shortname='Ctrl-1', name='tb20trcn1x1', title='Exp 1 (CESM)', begindate='1979-01-01', enddate='1994-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
 experiments['hab20trcn1x1'] = Exp(shortname='Ctrl-A', name='hab20trcn1x1', title='Exp 2 (CESM)', begindate='1979-01-01', enddate='1994-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
 experiments['hbb20trcn1x1'] = Exp(shortname='Ctrl-B', name='hbb20trcn1x1', title='Exp 3 (CESM)', begindate='1979-01-01', enddate='1994-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
 experiments['hcb20trcn1x1'] = Exp(shortname='Ctrl-C', name='hcb20trcn1x1', title='Exp 4 (CESM)', begindate='1979-01-01', enddate='1994-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
 # mid-21st century
-experiments['ensrcp85cn1x1'] = Exp(shortname='Ens-2050', name='ensrcp85cn1x1', title='CESM Ensemble Mean (2050)', begindate='2045-01-01', enddate='2105-01-01', grid='cesm1x1')
-experiments['seaice-5r-hf'] = Exp(shortname='Seaice-2050', name='seaice-5r-hf', title='Seaice (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
+experiments['ensrcp85cn1x1'] = Exp(shortname='Ens-2050',    name='ensrcp85cn1x1', title='CESM Ensemble Mean (2050)', begindate='2045-01-01', enddate='2105-01-01', grid='cesm1x1')
+experiments['seaice-5r-hf']  = Exp(shortname='Seaice-2050', name='seaice-5r-hf', title='Seaice (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
 experiments['htbrcp85cn1x1'] = Exp(shortname='Ctrl-1-2050', name='htbrcp85cn1x1', title='Exp 1 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
 experiments['habrcp85cn1x1'] = Exp(shortname='Ctrl-A-2050', name='habrcp85cn1x1', title='Exp 2 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
 experiments['hbbrcp85cn1x1'] = Exp(shortname='Ctrl-B-2050', name='hbbrcp85cn1x1', title='Exp 3 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
 experiments['hcbrcp85cn1x1'] = Exp(shortname='Ctrl-C-2050', name='hcbrcp85cn1x1', title='Exp 4 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
 # mid-21st century
-experiments['ensrcp85cn1x1d'] = Exp(shortname='Ens-2100', name='ensrcp85cn1x1d', title='CESM Ensemble Mean (2100)', begindate='2085-01-01', enddate='2145-01-01', grid='cesm1x1')
-experiments['seaice-5r-hfd'] = Exp(shortname='Seaice-2100', name='seaice-5r-hfd', title='Seaice (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
+experiments['ensrcp85cn1x1d'] = Exp(shortname='Ens-2100',    name='ensrcp85cn1x1d', title='CESM Ensemble Mean (2100)', begindate='2085-01-01', enddate='2145-01-01', grid='cesm1x1')
+experiments['seaice-5r-hfd']  = Exp(shortname='Seaice-2100', name='seaice-5r-hfd', title='Seaice (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
 experiments['htbrcp85cn1x1d'] = Exp(shortname='Ctrl-1-2100', name='htbrcp85cn1x1d', title='Exp 1 (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
 experiments['habrcp85cn1x1d'] = Exp(shortname='Ctrl-A-2100', name='habrcp85cn1x1d', title='Exp 2 (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
 experiments['hbbrcp85cn1x1d'] = Exp(shortname='Ctrl-B-2100', name='hbbrcp85cn1x1d', title='Exp 3 (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
@@ -116,7 +116,7 @@ def getFolderName(name=None, experiment=None, folder=None, mode='avg', cvdp_mode
       else: raise NotImplementedError,"Unsupported mode: '{:s}'".format(mode)
     elif not isinstance(folder,basestring): raise TypeError
     # name
-    if name is None: name = experiment.name
+    if name is None: name = experiment.shortname
     if not isinstance(name,basestring): raise TypeError      
   # check if folder exists
   if not os.path.exists(folder): raise IOError, 'Dataset folder does not exist: {0:s}'.format(folder)
@@ -325,70 +325,72 @@ def loadCVDP(experiment=None, name=None, grid=None, period=None, varlist=None, v
                   lcheckExp=lcheckExp, lreplaceTime=lreplaceTime)
 
 # Station Time-Series (monthly)
-def loadCESM_StnTS(experiment=None, name=None, station=None, filetypes=None, varlist=None, varatts=None,  
-                   translateVars=None, load3D=False, ignore_list=None, lcheckExp=True, lreplaceTime=True):
+def loadCESM_StnTS(experiment=None, name=None, station=None, filetypes=None, varlist=None, 
+                   varatts=None, translateVars=None, load3D=False, ignore_list=None, 
+                   lcheckExp=True, lreplaceTime=True, lwrite=False):
   ''' Get a properly formatted CESM dataset with a monthly time-series at station locations. '''
   return loadCESM_All(experiment=experiment, name=name, grid=None, period=None, station=station, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, lreplaceTime=lreplaceTime, 
-                      translateVars=translateVars, lautoregrid=False, load3D=load3D, 
+                      translateVars=translateVars, lautoregrid=False, load3D=load3D, lwrite=lwrite, 
                       ignore_list=ignore_list, mode='time-series', lcheckExp=lcheckExp)
 
 # Station Time-Series (monthly)
 def loadCESM_ShpTS(experiment=None, name=None, shape=None, filetypes=None, varlist=None, varatts=None,  
                    translateVars=None, load3D=False, ignore_list=None, lcheckExp=True, lreplaceTime=True,
-                   lencl=False):
+                   lencl=False, lwrite=False):
   ''' Get a properly formatted CESM dataset with a monthly time-series averaged over regions. '''
   return loadCESM_All(experiment=experiment, name=name, grid=None, period=None, shape=shape, lencl=lencl, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, lreplaceTime=lreplaceTime, 
                       translateVars=translateVars, lautoregrid=False, load3D=load3D, station=None, 
-                      ignore_list=ignore_list, mode='time-series', lcheckExp=lcheckExp)
+                      ignore_list=ignore_list, mode='time-series', lcheckExp=lcheckExp, lwrite=lwrite)
 
 # Time-Series (monthly)
 def loadCESM_TS(experiment=None, name=None, grid=None, filetypes=None, varlist=None, varatts=None,  
                 translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, lcheckExp=True,
-                lreplaceTime=True):
+                lreplaceTime=True, lwrite=False):
   ''' Get a properly formatted CESM dataset with a monthly time-series. (wrapper for loadCESM)'''
   return loadCESM_All(experiment=experiment, name=name, grid=grid, period=None, station=None, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, translateVars=translateVars, 
                       lautoregrid=lautoregrid, load3D=load3D, ignore_list=ignore_list, mode='time-series', 
-                      lcheckExp=lcheckExp, lreplaceTime=lreplaceTime)
+                      lcheckExp=lcheckExp, lreplaceTime=lreplaceTime, lwrite=lwrite)
 
 # Station Climatologies (monthly)
 def loadCESM_Stn(experiment=None, name=None, station=None, period=None, filetypes=None, varlist=None, 
                  varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, 
-                 lcheckExp=True):
+                 lcheckExp=True, lwrite=False):
   ''' Get a properly formatted CESM dataset with the monthly climatology at station locations. '''
   return loadCESM_All(experiment=experiment, name=name, grid=None, period=period, station=station, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, lreplaceTime=False, 
                       translateVars=translateVars, lautoregrid=lautoregrid, load3D=load3D, 
-                      ignore_list=ignore_list, mode='climatology', lcheckExp=lcheckExp)
+                      ignore_list=ignore_list, mode='climatology', lcheckExp=lcheckExp, lwrite=lwrite)
 
 # Regional Climatologies (monthly)
 def loadCESM_Shp(experiment=None, name=None, shape=None, period=None, filetypes=None, varlist=None, 
                  varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, 
-                 lcheckExp=True, lencl=False):
+                 lcheckExp=True, lencl=False, lwrite=False):
   ''' Get a properly formatted CESM dataset with the monthly climatology averaged over regions. '''
   return loadCESM_All(experiment=experiment, name=name, grid=None, period=period, station=None, 
                       shape=shape, lencl=lencl, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                       lreplaceTime=False, translateVars=translateVars, lautoregrid=lautoregrid, 
-                      load3D=load3D, ignore_list=ignore_list, mode='climatology', lcheckExp=lcheckExp)
+                      load3D=load3D, ignore_list=ignore_list, mode='climatology', 
+                      lcheckExp=lcheckExp, lwrite=lwrite)
 
 # load minimally pre-processed CESM climatology files 
 def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, 
              varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, 
-             lcheckExp=True, lencl=False):
+             lcheckExp=True, lencl=False, lwrite=False):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
   return loadCESM_All(experiment=experiment, name=name, grid=grid, period=period, station=None, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, translateVars=translateVars, 
-                      lautoregrid=lautoregrid, load3D=load3D, ignore_list=ignore_list, mode='climatology', 
-                      lcheckExp=lcheckExp, lreplaceTime=False)
+                      lautoregrid=lautoregrid, load3D=load3D, ignore_list=ignore_list, 
+                      mode='climatology', lcheckExp=lcheckExp, lreplaceTime=False, lwrite=lwrite)
 
 
 # load any of the various pre-processed CESM climatology and time-series files 
 def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None, period=None, 
                  varlist=None, varatts=None, translateVars=None, lautoregrid=None, load3D=False, 
                  ignore_list=None, mode='climatology', cvdp_mode=None, lcheckExp=True, 
-                 lreplaceTime=True, filetypes=None, lencl=False):
+                 lreplaceTime=True, filetypes=None, lencl=False, lwrite=False):
   ''' Get any of the monthly CESM files as a properly formatted NetCDFDataset. '''
   # period
   if isinstance(period,(tuple,list)):
@@ -462,6 +464,8 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
     if translateVars is None: varlist = list(varlist) + translateVarNames(varlist, atts) # also aff translations, just in case
     elif translateVars is True: varlist = translateVarNames(varlist, atts) 
     # N.B.: DatasetNetCDF does never apply translation!
+  # NetCDF file mode
+  ncmode = 'rw' if lwrite else 'r'   
   # get grid or station-set name
   if lstation:
     # the station name can be inserted as the grid name
@@ -507,8 +511,9 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
   #print varlist, filenames
   if experiment: title = experiment.title
   else: title = name
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=None, varatts=atts, 
-                          title=title, multifile=False, ignore_list=ignore_list, ncformat='NETCDF4', squeeze=True)
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=None, 
+                          varatts=atts, title=title, multifile=False, ignore_list=ignore_list, 
+                          ncformat='NETCDF4', squeeze=True, mode=ncmode)
   # replace time axis
   if lreplaceTime and (lts or lcvdp):
     # check time axis and center at 1979-01 (zero-based)
@@ -563,20 +568,30 @@ def loadCESM_StnEns(ensemble=None, name=None, station=None, filetypes=None, year
 
   
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
-def loadCESM_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=None, filetypes=None, 
+def loadCESM_Ensemble(ensemble=None, name=None, title=None, grid=None, station=None, shape=None, 
                       years=None, varlist=None, varatts=None, translateVars=None, lautoregrid=None, 
                       load3D=False, ignore_list=None, cvdp_mode='ensemble', lcheckExp=True, lencl=False, 
-                      mode='time-series', lindices=False, leofs=False, lreplaceTime=True):
+                      mode='time-series', lindices=False, leofs=False, filetypes=None, lreplaceTime=True):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   # obviously this only works for modes that produce a time-axis
   if mode.lower() not in ('time-series','timeseries','cvdp'): 
     raise ArgumentError, "Concatenated ensembles can not be constructed in mode '{:s}'".format(mode) 
   # figure out ensemble
-  if isinstance(ensemble,Exp): ensemble = ensembles[ensemble.shortname]
-  elif isinstance(ensemble,basestring): ensemble = ensembles[ensemble]
-  else: raise TypeError    
+  if ensemble is None and name is not None: 
+    ensemble = name; name = None # just switch
   if isinstance(ensemble,(tuple,list)):
     if not all([isinstance(exp,(basestring,Exp)) for exp in ensemble]): raise TypeError
+  else:
+    if isinstance(ensemble,Exp): 
+      # annotation (while ensemble is an Exp instance)
+      if name is None: name = ensemble.shortname
+      if title is None: title = ensemble.title              
+      ensemble = ensembles[ensemble.shortname]
+    elif isinstance(ensemble,basestring): 
+      if name is None: name = ensemble
+      if title is None: title = ensemble                    
+      ensemble = ensembles[ensemble]
+    else: raise TypeError
   # figure out time period
   if years is None: years =15; yrtpl = (0,15)
   elif isInt(years): yrtpl = (0,years)
@@ -589,12 +604,12 @@ def loadCESM_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=N
   elif mode.lower() == 'cvdp': lts = False; lcvdp = True
   for exp in ensemble:
     if lts:
-      ds = loadCESM_All(experiment=exp, name=name, grid=grid, station=station, shape=shape, varlist=varlist, 
+      ds = loadCESM_All(experiment=exp, name=None, grid=grid, station=station, shape=shape, varlist=varlist, 
                         varatts=varatts, translateVars=translateVars, period=None, lautoregrid=lautoregrid, 
                         load3D=load3D, ignore_list=ignore_list, filetypes=filetypes, lencl=lencl, 
                         mode=mode, cvdp_mode='', lcheckExp=lcheckExp, lreplaceTime=lreplaceTime)
     elif lcvdp:
-      ds = loadCVDP(experiment=exp, name=name, varlist=varlist, varatts=varatts, period=years, 
+      ds = loadCVDP(experiment=exp, name=None, varlist=varlist, varatts=varatts, period=years, 
                     translateVars=translateVars, lautoregrid=lautoregrid, lencl=lencl, 
                     ignore_list=ignore_list, cvdp_mode=cvdp_mode, lcheckExp=lcheckExp, 
                     lindices=lindices, leofs=leofs, lreplaceTime=lreplaceTime)
@@ -602,11 +617,11 @@ def loadCESM_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=N
     datasets.append(ds)
   # concatenate datasets (along 'time' and 'year' axis!)  
   if lts:
-    dataset = concatDatasets(datasets, axis='time', coordlim=None, idxlim=montpl, 
-                           offset=None, axatts=None, lcpOther=True, lcpAny=False)
+    dataset = concatDatasets(datasets, axis='time', coordlim=None, name=name, title=title, 
+                             idxlim=montpl, offset=None, axatts=None, lcpOther=True, lcpAny=False)
   elif lcvdp:
-    dataset = concatDatasets(datasets, axis=('time','year'), coordlim=None, idxlim=(montpl,yrtpl), 
-                             offset=None, axatts=None, lcpOther=True, lcpAny=False)
+    dataset = concatDatasets(datasets, axis=('time','year'), coordlim=None, name=name, title=title, 
+                             idxlim=(montpl,yrtpl), offset=None, axatts=None, lcpOther=True, lcpAny=False)
   else: raise NotImplementedError
   # return concatenated dataset
   return dataset
@@ -641,9 +656,9 @@ if __name__ == '__main__':
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
-#   mode = 'test_point_timeseries'
+  mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
-  mode = 'test_cvdp'
+#   mode = 'test_cvdp'
 #   mode = 'pickle_grid'
 #     mode = 'shift_lon'
 #     experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
@@ -652,7 +667,8 @@ if __name__ == '__main__':
   periods = (15,)
   filetypes = ('atm',) # ['atm','lnd','ice']
   grids = ('cesm1x1',)*len(experiments) # grb1_d01
-  pntset = 'shpavg' # 'ecprecip'
+#   pntset = 'shpavg'
+  pntset = 'ecprecip'
 
   # pickle grid definition
   if mode == 'pickle_grid':
@@ -725,9 +741,11 @@ if __name__ == '__main__':
     if pntset in ('shpavg',):
       dataset = loadCESM_ShpTS(experiment='Ctrl-1', shape=pntset, filetypes=['atm'])
     else:
-      dataset = loadCESM_StnTS(experiment='Ctrl-1-2100', station=pntset, filetypes=['atm'])
+      dataset = loadCESM_StnTS(experiment='Ctrl-1', station=pntset, filetypes=['atm'], lwrite=False)
     print('')
     print(dataset)
+    assert 'w' in dataset.mode
+    dataset.sync()
     print('')
     print(dataset.time)
     print(dataset.time.coord)
@@ -739,9 +757,10 @@ if __name__ == '__main__':
     if pntset in ('shpavg',):
       dataset = loadCESM_ShpEns(ensemble='Ens', shape=pntset, filetypes=['atm'])
     else:
-      dataset = loadCESM_StnEns(ensemble='Ens', station=pntset, filetypes=['atm'])
+      dataset = loadCESM_StnEns(name='Ens', station=pntset, filetypes=['atm'])
     print('')
     print(dataset)
+    assert dataset.name == 'Ens'
     print('')
     print(dataset.time)
     print(dataset.time.coord)

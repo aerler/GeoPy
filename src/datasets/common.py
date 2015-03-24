@@ -417,16 +417,16 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
   # identify dataset source
   lensemble = False; lobs = False
   if mode.upper() == 'CVDP':
-    # this is a special case for observational data in the CVDP package
-    if name.lower() == 'obs': name = 'HadISST' # default to SST modes
-    elif name.lower() in ('hadisst','mlost','20thc_reanv2','gpcp'): lobs = True
-    elif name.isupper(): 
-      lobs = True; name = None # load ocean modes for comparison 
-    # resolve WRF experiments to parent CESM runs for CVDP
-    elif name in WRF_exps: name = WRF_exps[name].parent
+    # resolve WRF experiments to parent CESM runs or Reanalysis for CVDP
+    if name in WRF_exps: name = WRF_exps[name].parent
     elif name in WRF_experiments: name = WRF_experiments[name].parent
     elif name[:-4] in WRF_exps: name = WRF_exps[name[:-4]].parent
     elif name[:-4] in WRF_experiments: name = WRF_experiments[name[:-4]].parent
+    # special case for observational data in the CVDP package (also applies to Reanalysis)
+    if name.lower() == 'obs': name = 'HadISST' # default to SST modes
+    elif name.lower() in ('hadisst','mlost','20thc_reanv2','gpcp'): lobs = True
+    elif name.isupper(): # load observational data for comparison (also includes reanalysis)
+      lobs = True; name = None # select dataset based on variable list (in loadCVDP_Obs)
     elif not name in CESM_exps or name in CESM_experiments: 
       raise ArgumentError, "No CVDP dataset matching '{:s}' found.".format(name)
     # nothing to do for CESM runs

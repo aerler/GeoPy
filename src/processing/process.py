@@ -383,7 +383,8 @@ class CentralProcessingUnit(object):
     lzs = src.hasVariable('zs')
     lstnzs = template.hasVariable('zs') or  template.hasVariable('stn_zs')
     if laltcorr and lzs and lstnzs:
-      if src.zs.ndim != 2 or not src.zs.gdal or src.zs.units != 'm': raise VariableError
+      if src.zs.ndim > 2: src.zs = src.zs(time=0, lidx=True) # first time-slice (for CESM)
+      if src.zs.ndim != 2 or not src.gdal or src.zs.units != 'm': raise VariableError
       # consider altidue of surrounding points as well      
       zs = src.zs.getArray(unmask=True,fillValue=-300)
       if template.hasVariable('zs'): stn_zs = template.zs.getArray(unmask=True,fillValue=-300)

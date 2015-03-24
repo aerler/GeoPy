@@ -179,11 +179,11 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-#     NP = 2 ; ldebug = False # for quick computations
-    NP = 1 ; ldebug = False # just for tests
+    NP = 4 ; ldebug = False # for quick computations
+#     NP = 1 ; ldebug = False # just for tests
 #     modes = ('climatology',) # 'climatology','time-series'
     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = False
+    loverwrite = True
     varlist = None
 #     varlist = ['precip',]
     periods = []
@@ -200,7 +200,7 @@ if __name__ == '__main__':
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
-    datasets += ['NARR']
+#     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
 #     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
 #     datasets += ['CRU']
@@ -208,7 +208,7 @@ if __name__ == '__main__':
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
 #     CESM_experiments += ['Ctrl-1']
-#     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
+    CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #     CESM_experiments += ['Ctrl-1-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
 #     CESM_experiments += ['Ens', 'Ens-2050']
     CESM_filetypes = ['atm'] # ,'lnd'
