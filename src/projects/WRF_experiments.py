@@ -85,6 +85,8 @@ experiments['marc-mm'] = Exp(shortname='marc-mm', name='marc-mm', title='Marc-m 
 experiments['marc-mm-2050'] = Exp(shortname='marc-mm-2050', name='marc-mm-2050', title='Marc-m (2050, N-MP)', begindate='2045-01-01', grid='grb1')
 experiments['marc-t'] = Exp(shortname='marc-t', name='marc-t', title='Marc-T', begindate='1979-01-01', grid='grb1')
 experiments['marc-t-2050'] = Exp(shortname='marc-t-2050', name='marc-t-2050', title='Marc-T (2050)', begindate='2045-01-01', grid='grb1')
+experiments['marc-ensemble'] = Exp(shortname='marc-ens', name='marc-ensemble', title="Marc's Ensemble", begindate='1979-01-01', grid='grb1', parent='Ens')
+experiments['marc-ensemble-2050'] = Exp(shortname='marc-ens-2050', name='marc-ensemble-2050', title="Marc's Ensemble (2050)", begindate='2045-01-01', grid='grb1', parent='Ens-2050')
 # some new experiments using WRF V3.6 or V3.6.1 and the new configuration 
 experiments['erai-v361-ctrl'] = Exp(shortname='erai-v361', name='erai-v361-ctrl', title='ERA-I (New, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
 experiments['erai-v361-noah'] = Exp(shortname='erai-v361-noah', name='erai-v361-noah', title='ERA-I (Noah, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
@@ -217,6 +219,8 @@ ensembles = OrderedDict()
 # initial condition ensemble
 ensembles['max-ens'] = ('max-ctrl', 'max-ens-A', 'max-ens-B', 'max-ens-C')
 ensembles['phys-ens'] = ('old-ctrl','ctrl-1','max-ctrl')
+# Marc's simulations
+ensembles['marc-ens'] = ('marc-g','marc-gg', 'marc-m','marc-mm', 'marc-t')
 # add future versions
 for ensname,enslist in ensembles.items():
   for suffix in '2050','2100':
