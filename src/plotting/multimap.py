@@ -39,7 +39,7 @@ if __name__ == '__main__':
   WRFfiletypes = [] # WRF data source
   WRFfiletypes += ['hydro']
   #WRFfiletypes += ['lsm']
-#   WRFfiletypes += ['srfc']
+  WRFfiletypes += ['srfc']
 #   WRFfiletypes += ['xtrm']
 #   WRFfiletypes += ['plev3d']
   # period shortcuts
@@ -62,14 +62,14 @@ if __name__ == '__main__':
   lminor = True # draw minor tick mark labels
   locean = False # mask continent in white and omit country borders
   lstations = True; stations = 'cities'
-  lbasins = True; basinlist = ('ARB','FRB'); subbasins = {} #dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
+  lbasins = True; basinlist = ('ARB','FRB',); subbasins = {} #dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
   cbo = None # default based on figure type
   resolution = None # only for GPCC (None = default/highest)
   exptitles = None
   grid = None
   lWRFnative = False
   reflist = None # an additional list of experiments, that can be used to compute differences
-  refprd = None; refdom = None
+  refprd = None; refdom = None; refvars = None
   ldiff = False # compute differences
   lfrac = False # compute fraction
   domain = (2,)
@@ -81,9 +81,9 @@ if __name__ == '__main__':
 #   variables += ['Ts']
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
-  variables += ['wetprec']
-  variables += ['precip']
-#   variables += ['wetfrq']
+#   variables += ['wetprec']
+#   variables += ['precip']
+  variables += ['wetfrq']
 #   variables += ['WaterTransport_U']
 #   variables += ['WaterTransport_V']
 #   variables += ['waterflx']
@@ -110,7 +110,7 @@ if __name__ == '__main__':
 #   seasons += ['melt']
 #   seasons += ['annual']
   seasons += ['summer']
-  seasons += ['winter']
+#   seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
@@ -128,7 +128,7 @@ if __name__ == '__main__':
   lpickle = False # load projection from file or recompute
   lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = False; lbasins = True
-#   maptype = 'lcc-col'; lstations = False; lbasins = True
+#   maptype = 'lcc-can'; lstations = False; lbasins = True; basinlist = ('ARB','FRB','GLB')
 
 # high resolution map
 #   maptype = 'lcc-new'; lstations = True; stations = 'EC'; lbasins = True
@@ -158,14 +158,16 @@ if __name__ == '__main__':
 # wet-day validation
 #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
 #   explist = ['Unity','max-ctrl-dry','max-ctrl']*2; seasons = [('summer',)*3+('winter',)*3]
-#   variables = [('precip','dryprec','precip')*2]
-  explist = ['max-ctrl','max-ens']*2; seasons = [('summer',)*2+('winter',)*2]
+#   variables = [('precip','dryprec')*2]; refvars = [('precip',)*4]
+  explist = ['max-ens']*4; seasons = [('summer',)*2+('winter',)*2]; period = H15
 #   explist = ['old-ctrl','ctrl-1','new-ctrl']*2; seasons = [('summer',)*3+('winter',)*3]
 #   explist = ['old-ctrl','ctrl-1','new-ctrl','new-v361-ctrl']; seasons = ['winter','summer']
-  ldiff = True; reflist = ['Unity']; refprd = None;
+  ldiff = True; reflist = ['Unity']; refprd = None
 #   explist = ['max-ctrl','max-ens']*2; seasons = [('summer',)*2+('winter',)*2]  
-  period = H10; domain = 2; grid = 'arb2_d02'
-#   maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
+#   period = H15; domain = 2; grid = 'arb2_d02'; 
+  period = H15; domain = [1,2,]*2; grid = ['arb2_d01','arb2_d02']*2
+#   period = H15; domain = 1; grid = 'arb2_d01'
+#   maptype = 'lcc-can'; lstations = False; lbasins = True; basinlist = ['FRB','ARB','GLB']
 #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
   case = 'wetdays'; lsamesize = True
 
@@ -196,9 +198,19 @@ if __name__ == '__main__':
 #   case = 'max'; lsamesize = True
 
 # # v361 validation
-#   explist = ['new-v361','new-grell','max-ctrl','erai-v361','erai-v361-noah','erai-max']; period = H10
-#   ldiff = True; reflist = ['Unity']; refprd = None; grid = ['arb3_d02','arb3_d02','arb2_d02']*2 
+#   explist = ['new-v361','new-ctrl','max-ctrl','erai-v361','erai-v361-noah','erai-max']; period = H10 
+#   domain = 1; grid = ['arb3_d01','arb3_d01','arb2_d01']*2
+# #   domain = 2; grid = ['arb3_d02','arb3_d02','arb2_d02']*2
+#   ldiff = True; reflist = ['Unity']; refprd = None 
 #   case = 'v361'; lsamesize = True
+
+# # v361 projection
+#   explist = ['new-v361-2050','new-ctrl-2050','max-ctrl-2050','new-v361-2100','new-ctrl-2100','max-ctrl-2100']  
+#   ldiff = True; reflist = ['new-v361','new-ctrl','max-ctrl']*2; refprd = H10 
+#   domain = 1; grid = ['arb3_d01','arb3_d01','arb2_d01']*2; period = [A10]*3+[B10]*3
+# #   domain = 2; grid = ['arb3_d02','arb3_d02','arb2_d02']*2
+# #   ldiff = True; reflist = ['Unity']; refprd = None 
+#   case = 'p361'; lsamesize = True
 
 # physics ensemble validation
 #   explist = ['new-ctrl','old-ctrl','ctrl-1','max-ctrl']; period = H15; domain = 2
@@ -209,11 +221,12 @@ if __name__ == '__main__':
 #   case = 'erai'; lsamesize = True
 
 # hires validation
+#   maptype = 'lcc-col'; lstations = False; lbasins = True
 # #   explist = ['erai-wc2-rocks',]; period = [1,]; domain = [2,]
 #   ldiff = True; reflist = ['PCIC']; refprd = None; grid = 'wc2_d02' 
 # #   grid = ['wc2_d02','arb2_d02','col2_d02','wc2_d02']
-#   explist = ['erai-wc2-bugaboo','erai-max','erai-3km','erai-wc2-rocks']
-#   period = [1,15,3,1]; domain = [2, 2, 3, 2]
+#   explist = ['erai-wc2-2013','erai-max','erai-3km','erai-wc2-2010']
+#   period = [1,15,5,1]; domain = [2, 2, 3, 2]
 # #   explist = ['erai-wc2-bugaboo','PCIC','erai-3km','erai-wc2-rocks']
 # #   period = [1,None,3,1]; domain = [(1,2), None, (2,3), (1,2)]
 # #   exptitles = ['CESM (80 km)','Merged Observations (10 km)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
@@ -317,12 +330,7 @@ if __name__ == '__main__':
     lref = True    
   else: lref = False
   lbackground = not lref and lbackground
-  loadlist = set()
-  for var in variables: 
-    if isinstance(var,(tuple,list)): loadlist.update(var)
-    else: loadlist.add(var) 
-  loadlist.update(('lon2D','lat2D','landmask','landfrac')) # landfrac is needed for CESM landmask
-  exps, axtitles, nexps = loadDatasets(explist, n=None, varlist=loadlist, titles=exptitles, periods=period, 
+  exps, axtitles, nexps = loadDatasets(explist, n=None, varlist=variables, titles=exptitles, periods=period, 
                                        domains=domain, grids=grid, resolutions=resolution, 
                                        filetypes=WRFfiletypes, lWRFnative=lWRFnative, ltuple=True, 
                                        lbackground=lbackground, lautoregrid=True)
@@ -332,7 +340,8 @@ if __name__ == '__main__':
   if lref:
     if refprd is None: refprd = period    
     if refdom is None: refdom = domain
-    refs, a, b = loadDatasets(reflist, n=None, varlist=loadlist, titles=None, periods=refprd, 
+    if refvars is None: refvars = variables
+    refs, a, b = loadDatasets(reflist, n=None, varlist=refvars, titles=None, periods=refprd, 
                               domains=refdom, grids=grid, resolutions=resolution, filetypes=WRFfiletypes, 
                               lWRFnative=lWRFnative, ltuple=True, lbackground=lbackground)
     # merge lists
@@ -368,7 +377,7 @@ if __name__ == '__main__':
 #     elif len(figtitles) != N: raise ValueError
 
   # start loop
-  for varlist in variables:
+  for varlist,ravlist in zip(variables,refvars):
     
     for sealist in seasons:
       
@@ -382,7 +391,10 @@ if __name__ == '__main__':
         if all([var==varlist[0] for var in varlist]): varstr = varlist[0]
         else: varstr = ''.join([s[0] for s in varlist])
       else: varstr = ''
-      varlist = checkItemList(varlist, M, basestring)
+      if ldiff or lfrac:
+        varlist = checkItemList(varlist, M, basestring)
+        ravlist = checkItemList(ravlist, M, basestring)
+      else: varlist = checkItemList(varlist, M, basestring)
       # expand seasons
       if isinstance(sealist,basestring): seastr = '_'+sealist
       elif isinstance(sealist,(list,tuple)): seastr = '_'+''.join([s[0] for s in sealist])
@@ -421,12 +433,13 @@ if __name__ == '__main__':
       data = []; lons = []; lats=[]  # list of data and coordinate fields to be plotted 
       # compute average WRF precip            
       print(' - loading data ({0:s})'.format(varstr))
-      for var,season,exptpl in zip(varlist,sealist,exps):
+      for var,rav,season,exptpl in zip(varlist,ravlist,sealist,exps):
         lontpl = []; lattpl = []; datatpl = []
-        for exp in exptpl:
-          if var not in exp: 
-            raise DatasetError, "Variable '{:s}' not found in Dataset '{:s}!".format(var,exp.name)
-          expvar = exp.variables[var]
+        for i,exp in enumerate(exptpl):
+          varname = rav if ( lfrac or ldiff ) and i >= len(exptpl)//2 else var 
+          if varname not in exp: 
+            raise DatasetError, "Variable '{:s}' not found in Dataset '{:s}!".format(varname,exp.name)
+          expvar = exp.variables[varname]
           expvar.load()
           #print expvar.name, exp.name, expvar.masked
           #print(exp.name)
@@ -536,16 +549,19 @@ if __name__ == '__main__':
       norm = mpl.colors.Normalize(vmin=min(clevs),vmax=max(clevs),clip=True) # for colormap
       cd = []
 #       print(' - creating plots\n')  
+      toString = lambda v: v if isinstance(v,basestring) else clbl%v
       for n in xrange(nax): 
         for m in xrange(nexps[n]):
-          vmean, vmin, vmax = np.nanmean(data[n][m]), np.nanmin(data[n][m]), np.nanmax(data[n][m])
+          vmean = toString(np.nanmean(data[n][m])) 
+          vmin = toString(np.nanmin(data[n][m]))
+          vmax = toString(np.nanmax(data[n][m]))
           if ldiff or lfrac: 
-            vrms = np.sqrt(np.nanmean(data[n][m]**2))
-            print('panel {:d}: bias {:f} / rms {:f} / min {:f} / max {:f}'.format(
+            vrms = toString(np.sqrt(np.nanmean(data[n][m]**2)))
+            print('panel {:d}: bias {:s} / rms {:s} / min {:s} / max {:s}'.format(
                             n, vmean, vrms, vmin, vmax))
           else: 
-            vstd = np.nanstd(data[n][m])
-            print('panel {:d}: mean {:f} / std {:f} / min {:f} / max {:f}'.format(
+            vstd = toString(np.nanstd(data[n][m]))
+            print('panel {:d}: mean {:s} / std {:s} / min {:s} / max {:s}'.format(
                             n, vmean, vstd, vmin, vmax))
           if lcontour: 
             cd.append(maps[n].contourf(x[n][m],y[n][m],data[n][m],clevs,ax=ax[n],cmap=cmap, 
@@ -566,7 +582,7 @@ if __name__ == '__main__':
           elif ( cbo == 'vertical' and subplot[0] == 2 ): cbn = 9
           else: cbn = 9
         cbl = np.linspace(min(clevs),max(clevs),cbn)
-      cbar.set_ticks(cbl); cbar.set_ticklabels([clbl%(lev) for lev in cbl])
+      cbar.set_ticks(cbl); cbar.set_ticklabels([clbl%lev for lev in cbl])
     
       ## Annotation
       #print('\n - annotating plots\n')      

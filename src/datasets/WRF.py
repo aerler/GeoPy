@@ -610,7 +610,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
             print("The '{:s}' (WRF) dataset for the grid ('{:s}') is not available:\n Attempting regridding on-the-fly.".format(name,filename,grid))
             if performRegridding('WRF', 'climatology', griddef, dataargs): # True if exitcode 1
               raise IOError, "Automatic regridding failed!"
-            print("Output: '{:s}')".format(name,filename,grid,filepath))            
+            print("Output: '{:s}'".format(name,filename,grid,filepath))            
           else: raise IOError, "The  '{:s}' (WRF) dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.\n('{:s}')".format(name,filename,grid,filepath) 
         else: raise IOError, "The file '{:s}' in WRF dataset '{:s}' does not exits!\n('{:s}')".format(filename,name,filepath)   
        

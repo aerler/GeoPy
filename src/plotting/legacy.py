@@ -185,11 +185,24 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
   else: ltpl = False # otherwise this causes problems with expanding this  
   domains  = checkItemList(domains, n, (int,np.integer,tuple), default=None, iterable=ltpl) # to return a tuple, give a tuple of domains
   grids  = checkItemList(grids, n, basestring, default=None)
-  resolutions  = checkItemList(resolutions, n, basestring, default=None)  
+  resolutions  = checkItemList(resolutions, n, basestring, default=None)
+  # expand variable list
+  varlists = []
+  for i in xrange(len(explist)):
+    vl = set()
+    for var in varlist: 
+      if isinstance(var,(tuple,list)): 
+        if isinstance(var[i], dict): vl.update(var[i].values())
+        else: vl.add(var[i])
+      elif isinstance(var, dict): vl.update(var.values())
+      else: vl.add(var)
+    vl.update(('lon2D','lat2D','landmask','landfrac')) # landfrac is needed for CESM landmask
+    varlists.append(vl)
+    
   # resolve experiment list
   print("Loading Datasets:")
   dslist = []; axtitles = []
-  for exp,tit,prd,dom,grd,res in zip(explist,titles,periods,domains,grids,resolutions): 
+  for exp,vl,tit,prd,dom,grd,res in zip(explist,varlists,titles,periods,domains,grids,resolutions): 
     if isinstance(exp,tuple):
       print("  - " + ','.join(exp))  
       if lbackground: raise ValueError, 'Adding Background is not supported in combination with experiment tuples!'
@@ -197,9 +210,9 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
       if len(dom) != len(exp): raise ValueError, 'Only one domain is is not supported for each experiment!'          
       ext = []; axt = []        
       for ex,dm in zip(exp,dom):
-        et, at = loadDataset(ex, prd, dm, grd, res, filetypes=filetypes, varlist=varlist, 
+        et, at = loadDataset(ex, prd, dm, grd, res, filetypes=filetypes, varlist=vl, 
                              lbackground=False, lWRFnative=lWRFnative, lautoregrid=lautoregrid)
-        for var in varlist: 
+        for var in vl: 
           if var not in et and var not in ('lon2D','lat2D','landmask','landfrac'): 
             raise DatasetError, "Variable '{:s}' not found in Dataset '{:s}!".format(var,et.name) 
         #if isinstance(et,(list,tuple)): ext += list(et); else: 
@@ -209,11 +222,12 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
       ext = tuple(ext); axt = tuple(axt)
     else:
       print("  - " + exp)
-      ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=varlist, 
-                           lbackground=lbackground, lWRFnative=lWRFnative, lautoregrid=lautoregrid)
-      for var in varlist: 
+      ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=vl, 
+                             lbackground=lbackground, lWRFnative=lWRFnative, lautoregrid=lautoregrid)
+      for var in vl: 
           if var not in ext and var not in ('lon2D','lat2D','landmask','landfrac'): 
-            raise DatasetError, "Variable '{:s}' not found in Dataset '{:s}!".format(var,ext.name)         
+            print var, ext
+            raise DatasetError, "Variable '{:s}' not found in Dataset '{:s}'!".format(var,ext.name)         
     dslist.append(ext) 
     if tit is not None: axtitles.append(tit)
     else: axtitles.append(axt)

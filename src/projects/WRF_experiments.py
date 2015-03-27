@@ -68,8 +68,8 @@ class Exp(object):
 # N.B.: This is the reference list, with unambiguous, unique keys and no aliases/duplicate entries  
 experiments = OrderedDict() # dictionary of experiments
 # very high resolution experiments
-experiments['erai-wc2-bugaboo'] = Exp(shortname='bugaboo', name='erai-wc2-bugaboo', title='ERA-I 1km (2013)', begindate='2013-08-01', grid='wc2', parent='ERA-I')
-experiments['erai-wc2-rocks'] = Exp(shortname='rocks', name='erai-wc2-rocks', title='ERA-I 1km (2010)', begindate='2010-08-01', grid='wc2', parent='ERA-I')
+experiments['erai-wc2-2013'] = Exp(shortname='wc2-2013', name='erai-wc2-2013', title='ERA-I 1km (2013)', begindate='2013-08-01', grid='wc2', parent='ERA-I')
+experiments['erai-wc2-2010'] = Exp(shortname='wc2-2010', name='erai-wc2-2010', title='ERA-I 1km (2010)', begindate='2010-08-01', grid='wc2', parent='ERA-I')
 experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindate='1979-09-01', enddate='1979-09-01', grid='coast1', parent='CFSR')
 experiments['col1-ctrl'] = Exp(shortname='col1', name='col1-ctrl', title='Max 3km (CFSR)', begindate='1979-09-01', grid='col1', domains=3, parent='CFSR')
 experiments['max-3km'] = Exp(shortname='max-3km', name='max-3km', title='Max 3km (CESM)', begindate='1979-09-01', grid='col2', domains=3, parent='Ctrl')
@@ -77,8 +77,14 @@ experiments['erai-3km'] = Exp(shortname='erai-3km', name='erai-3km', title='Max 
 # Marc's experiments
 experiments['marc-g'] = Exp(shortname='marc-g', name='marc-g', title='Marc-G', begindate='1979-01-01', grid='grb1')
 experiments['marc-g-2050'] = Exp(shortname='marc-g-2050', name='marc-g-2050', title='Marc-G (2050)', begindate='2045-01-01', grid='grb1')
-experiments['marc-gnmp'] = Exp(shortname='marc-gnmp', name='marc-gnmp', title='Marc-G (N-MP)', begindate='1979-01-01', grid='grb1')
-experiments['marc-gnmp-2050'] = Exp(shortname='marc-gnmp-2050', name='marc-gimp-2050', title='Marc-G (2050, N-MP)', begindate='2045-01-01', grid='grb1')
+experiments['marc-gg'] = Exp(shortname='marc-gg', name='marc-gg', title='Marc-g (N-MP)', begindate='1979-01-01', grid='grb1')
+experiments['marc-gg-2050'] = Exp(shortname='marc-gg-2050', name='marc-gg-2050', title='Marc-g (2050, N-MP)', begindate='2045-01-01', grid='grb1')
+experiments['marc-m'] = Exp(shortname='marc-m', name='marc-m', title='Marc-M', begindate='1979-01-01', grid='grb1')
+experiments['marc-m-2050'] = Exp(shortname='marc-m-2050', name='marc-m-2050', title='Marc-M (2050)', begindate='2045-01-01', grid='grb1')
+experiments['marc-mm'] = Exp(shortname='marc-mm', name='marc-mm', title='Marc-m (N-MP)', begindate='1979-01-01', grid='grb1')
+experiments['marc-mm-2050'] = Exp(shortname='marc-mm-2050', name='marc-mm-2050', title='Marc-m (2050, N-MP)', begindate='2045-01-01', grid='grb1')
+experiments['marc-t'] = Exp(shortname='marc-t', name='marc-t', title='Marc-T', begindate='1979-01-01', grid='grb1')
+experiments['marc-t-2050'] = Exp(shortname='marc-t-2050', name='marc-t-2050', title='Marc-T (2050)', begindate='2045-01-01', grid='grb1')
 # some new experiments using WRF V3.6 or V3.6.1 and the new configuration 
 experiments['erai-v361-ctrl'] = Exp(shortname='erai-v361', name='erai-v361-ctrl', title='ERA-I (New, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
 experiments['erai-v361-noah'] = Exp(shortname='erai-v361-noah', name='erai-v361-noah', title='ERA-I (Noah, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
