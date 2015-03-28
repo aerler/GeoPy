@@ -87,6 +87,7 @@ experiments['marc-t'] = Exp(shortname='marc-t', name='marc-t', title='Marc-T', b
 experiments['marc-t-2050'] = Exp(shortname='marc-t-2050', name='marc-t-2050', title='Marc-T (2050)', begindate='2045-01-01', grid='grb1')
 experiments['marc-ensemble'] = Exp(shortname='marc-ens', name='marc-ensemble', title="Marc's Ensemble", begindate='1979-01-01', grid='grb1', parent='Ens')
 experiments['marc-ensemble-2050'] = Exp(shortname='marc-ens-2050', name='marc-ensemble-2050', title="Marc's Ensemble (2050)", begindate='2045-01-01', grid='grb1', parent='Ens-2050')
+# experiments['marc-ensemble-2100'] = Exp(shortname='marc-ens-2100', name='marc-ensemble-2100', title="Marc's Ensemble (2100)", begindate='2085-01-01', grid='grb1', parent='Ens-2100')
 # some new experiments using WRF V3.6 or V3.6.1 and the new configuration 
 experiments['erai-v361-ctrl'] = Exp(shortname='erai-v361', name='erai-v361-ctrl', title='ERA-I (New, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
 experiments['erai-v361-noah'] = Exp(shortname='erai-v361-noah', name='erai-v361-noah', title='ERA-I (Noah, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
@@ -219,8 +220,6 @@ ensembles = OrderedDict()
 # initial condition ensemble
 ensembles['max-ens'] = ('max-ctrl', 'max-ens-A', 'max-ens-B', 'max-ens-C')
 ensembles['phys-ens'] = ('old-ctrl','ctrl-1','max-ctrl')
-# Marc's simulations
-ensembles['marc-ens'] = ('marc-g','marc-gg', 'marc-m','marc-mm', 'marc-t')
 # add future versions
 for ensname,enslist in ensembles.items():
   for suffix in '2050','2100':
@@ -235,6 +234,9 @@ for suffix in '','2050','2100':
   suffix = '-'+suffix if suffix else ''
   ensembles['all-ens'+suffix] = ensembles['phys-ens'+suffix] + ensembles['mex-ens'+suffix][1:]
   # N.B.: omit max-ctrl the second time
+# Marc's simulations
+ensembles['marc-ens'] = ('marc-g','marc-gg', 'marc-m','marc-mm', 'marc-t')
+ensembles['marc-ens-2050'] = ('marc-g-2050','marc-gg-2050', 'marc-m-2050','marc-mm-2050', 'marc-t-2050')
   
 # replace names with experiment instances
 for ensname,enslist in ensembles.iteritems():

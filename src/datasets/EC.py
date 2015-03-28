@@ -300,10 +300,10 @@ for var in precip_vars:
     # ordinary & interval extrema: var, mode, [interval=7,] name=None, dimmap=None
     precip_xtrm.append(dict(var=var, mode=mode, klass=dv.Extrema))      
     precip_xtrm.append(dict(var=var, mode=mode, interval=7, klass=dv.MeanExtrema))      
-# consecutive events: var, mode, threshold=0, name=None, longname=None, dimmap=None
+# consecutive events: var, mode, threshold=0, name=None, long_name=None, dimmap=None
 tmpatts = dict(var='precip', threshold=2.3e-7, klass=dv.ConsecutiveExtrema)
-precip_xtrm.append(dict(name='CWD', mode='above', longname='Consecutive Wet Days', **tmpatts))
-precip_xtrm.append(dict(name='CDD', mode='below', longname='Consecutive Dry Days', **tmpatts))
+precip_xtrm.append(dict(name='CWD', mode='above', long_name='Consecutive Wet Days', **tmpatts))
+precip_xtrm.append(dict(name='CDD', mode='below', long_name='Consecutive Dry Days', **tmpatts))
 
 # daily temperature variables in data
 temp_vars   = dict(T2=TempDef(name='mean temperature', prefix='dm', atts=varatts['T2']),
@@ -316,11 +316,11 @@ for var in temp_vars:
     # ordinary & interval extrema: var, mode, [interval=7,] name=None, dimmap=None
     temp_xtrm.append(dict(var=var, mode=mode, klass=dv.Extrema))      
     temp_xtrm.append(dict(var=var, mode=mode, interval=7, klass=dv.MeanExtrema))      
-# consecutive events: var, mode, threshold=0, name=None, longname=None, dimmap=None
+# consecutive events: var, mode, threshold=0, name=None, long_name=None, dimmap=None
 tmpatts = dict(mode='below', threshold=273.15, klass=dv.ConsecutiveExtrema) # threshold after conversion
-temp_xtrm.append(dict(name='CFD', var='T2', longname='Consecutive Frost Days', **tmpatts))
-temp_xtrm.append(dict(name='CDFD', var='Tmax', longname='Consecutive Day Frost Days', **tmpatts))
-temp_xtrm.append(dict(name='CNFD', var='Tmin', longname='Consecutive Night Frost Days', **tmpatts))
+temp_xtrm.append(dict(name='CFD', var='T2', long_name='Consecutive Frost Days', **tmpatts))
+temp_xtrm.append(dict(name='CDFD', var='Tmax', long_name='Consecutive Day Frost Days', **tmpatts))
+temp_xtrm.append(dict(name='CNFD', var='Tmin', long_name='Consecutive Night Frost Days', **tmpatts))
 
 # map from common variable names to WRF names (which are used in the derived_variables module)
 ec_varmap = dict(RAIN='precip', south_north='time', time='station', west_east=None, # swap order of axes

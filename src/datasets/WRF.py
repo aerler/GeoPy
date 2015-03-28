@@ -585,9 +585,16 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     # load constants
     if llconst:              
       constfile = fileclasses['const']    
-      filename = constfile.tsfile.format(domain,gridstr)         
+      filename = constfile.tsfile.format(domain,gridstr)  
+      # check file path
+      constfolder = folder
+      if not os.path.exists('{:s}/{:s}'.format(constfolder,filename)) and experiment and experiment.grid:
+          constfolder = folder[:folder.find(experiment.name)] + '{:s}/'.format(experiment.grid)
+      if not os.path.exists('{:s}/{:s}'.format(constfolder,filename)):
+        raise IOError, "Constant file for experiment '{:s}' not found.\n('{:s}')".format(name,'{:s}/{:s}'.format(constfolder,filename))
+      # i.e. if there is no constant file in the experiment folder, use the one in the grid definition folder (if available)
       # load dataset
-      const = DatasetNetCDF(name=name, folder=folder, filelist=[filename], varatts=constfile.atts, 
+      const = DatasetNetCDF(name=name, folder=constfolder, filelist=[filename], varatts=constfile.atts, 
                             axes=axes, varlist=constfile.vars, multifile=False, ncformat='NETCDF4', 
                             mode=ncmode, squeeze=True)      
     ## load regular variables

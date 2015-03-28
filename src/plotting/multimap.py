@@ -41,7 +41,7 @@ if __name__ == '__main__':
   #WRFfiletypes += ['lsm']
   WRFfiletypes += ['srfc']
 #   WRFfiletypes += ['xtrm']
-#   WRFfiletypes += ['plev3d']
+  WRFfiletypes += ['plev3d']
   # period shortcuts
   H01 = '1979-1980'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994'; H60 = '1949-2009' # historical validation periods
@@ -83,11 +83,11 @@ if __name__ == '__main__':
 #   variables += ['Tmin', 'Tmax']
 #   variables += ['wetprec']
 #   variables += ['precip']
-  variables += ['wetfrq']
+#   variables += ['wetfrq']
 #   variables += ['WaterTransport_U']
 #   variables += ['WaterTransport_V']
 #   variables += ['waterflx']
-#   variables += ['p-et']
+  variables += ['p-et']
 #   variables += ['precipnc', 'precipc']
 #   variables += ['Q2']
 #   variables += ['evap']
@@ -156,28 +156,29 @@ if __name__ == '__main__':
 #   case = 'erai'; lsamesize = True
 
 # wet-day validation
-#   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
-#   explist = ['Unity','max-ctrl-dry','max-ctrl']*2; seasons = [('summer',)*3+('winter',)*3]
-#   variables = [('precip','dryprec')*2]; refvars = [('precip',)*4]
-  explist = ['max-ens']*4; seasons = [('summer',)*2+('winter',)*2]; period = H15
-#   explist = ['old-ctrl','ctrl-1','new-ctrl']*2; seasons = [('summer',)*3+('winter',)*3]
-#   explist = ['old-ctrl','ctrl-1','new-ctrl','new-v361-ctrl']; seasons = ['winter','summer']
-  ldiff = True; reflist = ['Unity']; refprd = None
-#   explist = ['max-ctrl','max-ens']*2; seasons = [('summer',)*2+('winter',)*2]  
-#   period = H15; domain = 2; grid = 'arb2_d02'; 
-  period = H15; domain = [1,2,]*2; grid = ['arb2_d01','arb2_d02']*2
-#   period = H15; domain = 1; grid = 'arb2_d01'
-#   maptype = 'lcc-can'; lstations = False; lbasins = True; basinlist = ['FRB','ARB','GLB']
-#   lfrac = True; reflist = ['max-ens',]; refprd = H15;
-  case = 'wetdays'; lsamesize = True
+# #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
+# #   explist = ['Unity','max-ctrl-dry','max-ctrl']*2; seasons = [('summer',)*3+('winter',)*3]
+# #   variables = [('precip','dryprec')*2]; refvars = [('precip',)*4]
+#   explist = ['max-ens']*4; seasons = [('summer',)*2+('winter',)*2]; period = H15
+# #   explist = ['old-ctrl','ctrl-1','new-ctrl']*2; seasons = [('summer',)*3+('winter',)*3]
+# #   explist = ['old-ctrl','ctrl-1','new-ctrl','new-v361-ctrl']; seasons = ['winter','summer']
+#   ldiff = True; reflist = ['Unity']; refprd = None
+# #   explist = ['max-ctrl','max-ens']*2; seasons = [('summer',)*2+('winter',)*2]  
+# #   period = H15; domain = 2; grid = 'arb2_d02'; 
+#   period = H15; domain = [1,2,]*2; grid = ['arb2_d01','arb2_d02']*2
+# #   period = H15; domain = 1; grid = 'arb2_d01'
+# #   maptype = 'lcc-can'; lstations = False; lbasins = True; basinlist = ['FRB','ARB','GLB']
+# #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
+#   case = 'wetdays'; lsamesize = True
 
 # # water vapor transport
-# #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
+#   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
 #   explist = ['max-grass','max-ctrl','erai-max']*2
-#   seasons = [('summer',)*3+('winter',)*3]; period = H10
-#   maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
-# #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
-#   case = 'flx'; lsamesize = True
+  explist = ['max-ens-2050','max-ens-2100']*2; period = [A15,B15]*2
+  seasons = [('summer',)*2+('winter',)*2]; domain = 1
+  maptype = 'lcc-can'; lstations = False; lbasins = True; basinlist = ['FRB','ARB','GLB']
+  lfrac = True; reflist = ['max-ens']; refprd = H15
+  case = 'flx'; lsamesize = True
 
 # surface sensitivity test
 #   maptype = 'lcc-intermed'; lstations = False; lbasins = True

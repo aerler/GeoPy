@@ -33,6 +33,7 @@ class MyAxes(Axes):
   variable_plotargs  = None
   dataset_plotargs   = None
   title_height       = 0.025 # fraction of figure height
+  title_size         = 'medium'
   flipxy             = False
   xname              = None
   xunits             = None
@@ -467,10 +468,10 @@ class MyAxes(Axes):
   
   def addTitle(self, title, title_height=None, **kwargs):
     ''' add title and adjust margins '''
-    if 'fontsize' not in kwargs: kwargs['fontsize'] = 'medium'
+    if 'fontsize' not in kwargs: kwargs['fontsize'] = self.title_size
     title_height =  self.title_height if title_height is None else title_height
     if not self.get_title(loc='center'): self.updateAxes(height=-1*title_height)
-    return self.set_title(title, kwargs)
+    return self.set_title(title, **kwargs)
   
   def addLegend(self, loc=0, **kwargs):
     ''' add a legend to the axes '''
@@ -685,36 +686,40 @@ class MyAxes(Axes):
   
   def xLabel(self, xlabel, name=None, units=None):
     ''' format x-axis label '''
-    if xlabel is not None:
+    name = self.xname if name is None else name
+    units = self.xunits if units is None else units
+    # figure out label 
+    if isinstance(xlabel,basestring):
+      xlabel = xlabel.format(name,units)
+    elif xlabel is not None and xlabel is not False:
       # only apply label, if ticks are also present
       xticks = self.xaxis.get_ticklabels()
       # len(xticks) > 0 is necessary to avoid errors with AxesGrid, which removes invisible tick labels      
-      if len(xticks) > 0 and xticks[-1].get_visible():
-        # figure out label 
-        name = self.xname if name is None else name
-        units = self.xunits if units is None else units
-        xlabel = self._axLabel(xlabel, name, units)
-        # N.B.: labelpad is ignored by AxesGrid
-        self.set_xlabel(xlabel, labelpad=self.xpad)
-        # label position
-        self.xaxis.set_label_position('top' if self.xtop else 'bottom')
+      if len(xticks) > 0 and xticks[-1].get_visible(): xlabel = self._axLabel(xlabel, name, units)
+    if isinstance(xlabel,basestring):
+      # N.B.: labelpad is ignored by AxesGrid
+      self.set_xlabel(xlabel, labelpad=self.xpad)
+      # label position
+      self.xaxis.set_label_position('top' if self.xtop else 'bottom')
     return xlabel    
   def yLabel(self, ylabel, name=None, units=None):
     ''' format y-axis label '''
-    if ylabel is not None:
-      # apply Y-label to appropriate axes
-      ax = self.parasite_axes if self.parasite_axes and self.yright else self
+    # apply Y-label to appropriate axes
+    ax = self.parasite_axes if self.parasite_axes and self.yright else self
+    name = self.yname if name is None else name
+    units = self.yunits if units is None else units
+    # figure out label 
+    if isinstance(ylabel,basestring):
+      ylabel = ylabel.format(name,units)
+    elif ylabel is not None and ylabel is not False:
       # only apply label, if ticks are also present
       yticks = ax.yaxis.get_ticklabels()
-      if len(yticks) > 0 and yticks[-1].get_visible():
-        # figure out label 
-        name = self.yname if name is None else name
-        units = self.yunits if units is None else units
-        ylabel = self._axLabel(ylabel, name, units)
-        # set Y-label
-        ax.set_ylabel(ylabel, labelpad=self.ypad) # labelpad is ignored by AxesGrid
-        # label position
-        ax.yaxis.set_label_position('right' if self.yright else 'left')
+      if len(yticks) > 0 and yticks[-1].get_visible(): ylabel = self._axLabel(ylabel, name, units)
+    if isinstance(ylabel,basestring):
+      # set Y-label
+      ax.set_ylabel(ylabel, labelpad=self.ypad) # labelpad is ignored by AxesGrid
+      # label position
+      ax.yaxis.set_label_position('right' if self.yright else 'left')
     return ylabel    
   def _axLabel(self, label, name, units):
     ''' helper method to format axes lables '''
