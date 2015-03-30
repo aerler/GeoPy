@@ -82,10 +82,10 @@ if __name__ == '__main__':
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
 #   variables += ['wetprec']
-#   variables += ['precip']
-#   variables += ['wetfrq']
-#   variables += ['WaterTransport_U']
-#   variables += ['WaterTransport_V']
+  variables += ['precip']
+  variables += ['wetfrq']
+  variables += ['WaterTransport_U']
+  variables += ['WaterTransport_V']
 #   variables += ['waterflx']
   variables += ['p-et']
 #   variables += ['precipnc', 'precipc']
@@ -175,8 +175,8 @@ if __name__ == '__main__':
 #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
 #   explist = ['max-grass','max-ctrl','erai-max']*2
   explist = ['max-ens-2050','max-ens-2100']*2; period = [A15,B15]*2
-  seasons = [('summer',)*2+('winter',)*2]; domain = 1
-  maptype = 'lcc-can'; lstations = False; lbasins = True; basinlist = ['FRB','ARB','GLB']
+  seasons = [('summer',)*2+('winter',)*2]; domain = 2
+#   maptype = 'lcc-can'; lstations = False; lbasins = True; basinlist = ['FRB','ARB','GLB']
   lfrac = True; reflist = ['max-ens']; refprd = H15
   case = 'flx'; lsamesize = True
 

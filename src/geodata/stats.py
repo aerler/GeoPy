@@ -19,6 +19,7 @@ import functools
 from geodata.base import Variable, Axis
 from geodata.misc import DataError, ArgumentError, VariableError, AxisError, DistVarError
 from utils.misc import standardize, smooth, detrend
+import utils.stats as myss # modified stats fucntions from scipy 
 from plotting.properties import getPlotAtts
 
 
@@ -245,7 +246,7 @@ def ranksums_wrapper(data, size1=None, ignoreNaN=True):
 
 # Pearson's Correlation Coefficient between two samples
 def pearsonr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, lstandardize=False, 
-             lsmooth=False, window_len=11, window='hanning', ldetrend=False, **kwargs):
+             lsmooth=False, window_len=11, window='hanning', ldetrend=False, dof=None, **kwargs):
   ''' Compute and return the linear correlation coefficient and/or the p-value
       of Pearson's correlation. 
       Pearson's Correlation Coefficient measures the linear relationship between
@@ -253,7 +254,7 @@ def pearsonr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, lstandard
       the p-values assume that the samples are normally distributed. 
       Standardization and smoothing is also supported; detrending is not implemented yet. '''
   testfct = functools.partial(pearsonr_wrapper, lpval=lpval, lrho=lrho, ignoreNaN=ignoreNaN,
-                              lstandardize=lstandardize, ldetrend=ldetrend,
+                              lstandardize=lstandardize, ldetrend=ldetrend, dof=dof,
                               lsmooth=lsmooth, window_len=window_len, window=window)
   rvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, 
                                lpval=lpval, lrho=lrho, laax=True, **kwargs)
@@ -262,7 +263,7 @@ corrcoef = pearsonr
 
 # apply-along-axis wrapper for the Pearson's Correlation Coefficient on 2 samples
 def pearsonr_wrapper(data, size1=None, lpval=False, lrho=True, ignoreNaN=True, lstandardize=False, 
-                     lsmooth=False, window_len=11, window='hanning', ldetrend=False):
+                     lsmooth=False, window_len=11, window='hanning', ldetrend=False, dof=None):
   ''' Compute the Pearson's Correlation Coefficient of two samples. This is a wrapper 
       for the SciPy function allows application over a field, and returns 
       the correlation coefficient and/or the p-value. '''
@@ -288,7 +289,7 @@ def pearsonr_wrapper(data, size1=None, lpval=False, lrho=True, ignoreNaN=True, l
   if ldetrend:
     data1 = detrend(data1); data2 = detrend(data2)
   # apply test
-  rho, pval = ss.pearsonr(data1, data2)
+  rho, pval = myss.pearsonr(data1, data2, dof=dof)
   # select output
   if lrho and lpval: return np.asarray((rho,pval))
   elif lrho: return rho
@@ -298,7 +299,7 @@ def pearsonr_wrapper(data, size1=None, lpval=False, lrho=True, ignoreNaN=True, l
 
 # Spearman's Rank-order Correlation Coefficient between two samples
 def spearmanr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, lstandardize=False, 
-              lsmooth=False, window_len=11, window='hanning', ldetrend=False, **kwargs):
+              lsmooth=False, window_len=11, window='hanning', ldetrend=False, dof=None, **kwargs):
   ''' Compute and return the linear correlation coefficient and/or the p-value
       of Spearman's Rank-order Correlation Coefficient. 
       Spearman's Rank-order Correlation Coefficient measures the monotonic 
@@ -307,7 +308,7 @@ def spearmanr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, lstandar
       coefficient.  
       Standardization and smoothing is also supported; detrending is not implemented yet. '''
   testfct = functools.partial(spearmanr_wrapper, lpval=lpval, lrho=lrho, ignoreNaN=ignoreNaN,
-                              lstandardize=lstandardize, ldetrend=ldetrend,
+                              lstandardize=lstandardize, ldetrend=ldetrend, dof=dof,
                               lsmooth=lsmooth, window_len=window_len, window=window)
   laax = lsmooth or ldetrend # true, if any of these, false otherwise
   rvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, 
@@ -317,7 +318,7 @@ spearmancc = spearmanr
 
 # apply-along-axis wrapper for the Spearman's Rank-order Correlation Coefficient on 2 samples
 def spearmanr_wrapper(data, size1=None, axis=None, lpval=False, lrho=True, ignoreNaN=True, lstandardize=False, 
-                      lsmooth=False, window_len=11, window='hanning', ldetrend=False):
+                      lsmooth=False, window_len=11, window='hanning', ldetrend=False, dof=None):
   ''' Compute the Spearman's Rank-order Correlation Coefficient of two samples. This is a wrapper 
       for the SciPy function allows application over a field, and returns 
       the correlation coefficient and/or the p-value. 
@@ -346,7 +347,7 @@ def spearmanr_wrapper(data, size1=None, axis=None, lpval=False, lrho=True, ignor
   if ldetrend:
     data1 = detrend(data1); data2 = detrend(data2)
   # apply test
-  rho, pval = ss.spearmanr(data1, data2, axis=axis)
+  rho, pval = myss.spearmanr(data1, data2, axis=axis, dof=dof)
   # select output
   if lrho and lpval: 
     return np.concatenate((rho.reshape(rho.shape+(1,)),pval.reshape(pval.shape+(1,))), axis=pval.ndim)

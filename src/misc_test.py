@@ -166,7 +166,7 @@ class DatasetsTest(unittest.TestCase):
     ''' test station data load functions (ensemble and list) '''
     from datasets.common import loadEnsembleTS    
     # test simple ensemble with basins
-    names = ['GPCC', 'max-ens_d01','max-ens-2100']; varlist = ['precip'] 
+    names = ['GPCC', 'max-ens_d02','max-ens-2100']; varlist = ['precip'] 
     aggregation = None; slices = dict(shape_name='ARB'); obsslices = dict(years=(1939,1945)) 
     shpens = loadEnsembleTS(names=names, season=None, shape='shpavg', aggregation=aggregation, 
                             slices=slices, varlist=varlist, filetypes=['hydro'], obsslices=obsslices)
