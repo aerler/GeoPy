@@ -1675,7 +1675,8 @@ class Variable(object):
     return self.reduceToClimatology(yridx=yridx, operation=np.nanmin, **kwargs)
   
   @UnaryCheckAndCreateVar
-  def standardize(self, axis=None, name=None, lstandardize=True, ldetrend=False, lsmooth=False, linplace=False, lcheckVar=True, lcheckAxis=True,
+  def standardize(self, axis=None, name=None, linplace=False, lcheckVar=True, lcheckAxis=True,
+                  lstandardize=True, ldetrend=False, ltrend=False, lsmooth=False, lresidual=False, 
                   degree=1, rcond=None, w=None, window_len=11, window='hanning'):
     ''' Standardize Variable, i.e. subtract mean and divide by standard deviation '''
     if self.dtype.kind in ('S',): 
@@ -1688,8 +1689,9 @@ class Variable(object):
       iaxis = None
       if lsmooth and data.size <= window_len: window_len = data.size-1 # shrink window, if data too short
       # apply over flattened array
-      data = detrend(data, ax=None, lcopy=False, ldetrend=ldetrend, degree=degree, rcond=rcond, w=w, 
-                     lsmooth=lsmooth, window_len=window_len, window=window)
+      data = detrend(data, ax=None, lcopy=False, 
+                     ldetrend=ldetrend, ltrend=ltrend, degree=degree, rcond=rcond, w=w, 
+                     lsmooth=lsmooth, lresidual=lresidual, window_len=window_len, window=window)
     else:
       iaxis = self.axisIndex(axis, lcheck=lcheckAxis)
       # get axis coordinates
@@ -1697,11 +1699,12 @@ class Variable(object):
       if ldetrend or lsmooth:
         if lsmooth and ax.size <= window_len: window_len = ax.size-1 # shrink window, if data too short
         # prepare parallel function call
-        aaa_fct = functools.partial(detrend, ax=ax, lcopy=False, ldetrend=ldetrend, degree=degree, rcond=rcond, w=w, 
-                                    lsmooth=lsmooth, window_len=window_len, window=window)
+        aaa_fct = functools.partial(detrend, ax=ax, lcopy=False, 
+                                    ldetrend=ldetrend, ltrend=ltrend, degree=degree, rcond=rcond, w=w, 
+                                    lsmooth=lsmooth, lresidual=lresidual, window_len=window_len, window=window)
         # apply along selected axis
         data = apply_along_axis(aaa_fct, iaxis, data, laax=True)
-        # reassing array (apply_along_axis creates a new results array)
+        # reassigning array (apply_along_axis creates a new results array)
     # standardize (subtract mean and divide by standard deviation)
     if lstandardize:
       data -= np.nanmean(data, axis=iaxis, keepdims=True)

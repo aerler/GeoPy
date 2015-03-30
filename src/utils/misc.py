@@ -232,7 +232,8 @@ def standardize(var, axis=None, lcopy=True, **kwargs):
   return var
 
 # function to detrend a time-series
-def detrend(var, ax=None, lcopy=True, ldetrend=True, degree=1, rcond=None, w=None,  lsmooth=False, window_len=11, window='hanning'): 
+def detrend(var, ax=None, lcopy=True, ldetrend=True, ltrend=False, degree=1, rcond=None, w=None,  
+            lsmooth=False, lresidual=False, window_len=11, window='hanning'): 
   ''' subtract a linear trend from a time-series array '''
   # check input
   if not isinstance(var,np.ndarray): raise NotImplementedError # too many checks
@@ -244,13 +245,17 @@ def detrend(var, ax=None, lcopy=True, ldetrend=True, degree=1, rcond=None, w=Non
     var = var.ravel() # flatten array, if necessary
   else: shape = None
   # apply optional detrending
-  if ldetrend:
+  if ldetrend or ltrend:
     # fit linear trend
     trend = np.polyfit(ax, var, deg=degree, rcond=rcond, w=w, full=False, cov=False)
     # evaluate and subtract linear trend
-    var -= np.polyval(trend, ax) # residuals
+    if ldetrend and not ltrend: var -= np.polyval(trend, ax) # residuals
+    elif ltrend and not ldetrend: var = np.polyval(trend, ax) # residuals
+    else: raise ArgumentError, "Can either return trend/polyfit or residuals, not both."
   # apply optional smoothing
   if lsmooth: var = smooth(var, window_len=window_len, window=window)  
+  elif lresidual: var -= smooth(var, window_len=window_len, window=window)
+  else: raise ArgumentError, "Can either return smoothed array or residuals, not both."
   # return detrended and/or smoothed time-series
   if shape is not None: var = var.reshape(shape)
   return var
