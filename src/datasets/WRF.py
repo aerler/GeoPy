@@ -669,13 +669,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
           dataset.addVariable(var, asNC=False, copy=False, loverwrite=False, deepcopy=False)
     if not lstation and not lshape:
       # add projection
-      dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, geolocator=True)
-      # safety checks
-      if dataset.isProjected:
-        assert dataset.axes['x'] == griddef.xlon
-        assert dataset.axes['y'] == griddef.ylat   
-        assert all([dataset.axes['x'] == var.getAxis('x') for var in dataset.variables.values() if var.hasAxis('x')])
-        assert all([dataset.axes['y'] == var.getAxis('y') for var in dataset.variables.values() if var.hasAxis('y')])
+      dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, geolocator=True)      
     # append to list
     datasets.append(dataset) 
   # return formatted dataset
@@ -794,11 +788,11 @@ if __name__ == '__main__':
     
   
 #   mode = 'test_climatology'
-#   mode = 'test_timeseries'
+  mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-  mode = 'test_point_ensemble'
+#   mode = 'test_point_ensemble'
 #   mode = 'pickle_grid'  
 #   pntset = 'shpavg'
   pntset = 'ecprecip'

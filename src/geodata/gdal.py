@@ -701,6 +701,12 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       elif isinstance(griddef,GridDefinition): pass 
       else: raise TypeError
       lgdal, projection, isProjected, xlon, ylat = getProjection(dataset, projection=griddef.projection)
+      # safety checks
+      xlon_name,ylat_name = ('x','y') if isProjected else ('lon','lat')
+      assert dataset.axes[xlon_name].units == griddef.xlon.units and np.all(dataset.axes[xlon_name][:] == griddef.xlon[:])
+      assert dataset.axes[ylat_name].units == griddef.ylat.units and np.all(dataset.axes[ylat_name][:] == griddef.ylat[:])
+      assert all([dataset.axes[xlon_name] == var.getAxis(xlon_name) for var in dataset.variables.values() if var.hasAxis(xlon_name)])
+      assert all([dataset.axes[ylat_name] == var.getAxis(ylat_name) for var in dataset.variables.values() if var.hasAxis(ylat_name)])
 #       projection, isProjected, xlon, ylat = griddef.getProjection()
 #       lgdal = xlon is not None and ylat is not None # need non-None xlon & ylat        
   else: lgdal = False

@@ -147,18 +147,18 @@ class DatasetsTest(unittest.TestCase):
     assert 'PDO' in ds
     assert ds.gdal and not ds.isProjected    
     # test WRF station time-series
-    ds = loadStnTS(name='max-ens_d02', varlist=['MaxPrecip_1d'], station='ecprecip', filtypes='hydro')
+    ds = loadStnTS(name='ctrl-1_d02', varlist=['MaxPrecip_1d'], station='ecprecip', filtypes='hydro')
     assert isinstance(ds, Dataset)
-    assert ds.name == 'max-ens_d02'
+    assert ds.name == 'ctrl-1_d02'
     assert 'MaxPrecip_1d' in ds
     # test example with list expansion
     # test EC station time-series
-    dss = loadStnTS(name=['EC','max-ens'], varlist=['MaxPrecip_1d','precip'],
+    dss = loadStnTS(name=['EC','ctrl-1'], varlist=['MaxPrecip_1d','precip'],
                     station='ecprecip', filtypes='hydro',
                     load_list=['name','varlist'], lproduct='outer')
     assert len(dss) == 4
     assert isinstance(ds, Dataset)
-    assert dss[1].name == 'EC' and dss[2].name == 'max-ens'
+    assert dss[1].name == 'EC' and dss[2].name == 'ctrl-1'
     assert 'MaxPrecip_1d' in dss[0] and 'precip' in dss[1]
     assert 'MaxPrecip_1d' not in dss[3] and 'precip' not in dss[2]
     
@@ -166,7 +166,7 @@ class DatasetsTest(unittest.TestCase):
     ''' test station data load functions (ensemble and list) '''
     from datasets.common import loadEnsembleTS    
     # test simple ensemble with basins
-    names = ['GPCC', 'max-ens_d02','max-ens-2100']; varlist = ['precip'] 
+    names = ['GPCC', 'phys-ens_d02','phys-ens-2100']; varlist = ['precip'] 
     aggregation = None; slices = dict(shape_name='ARB'); obsslices = dict(years=(1939,1945)) 
     shpens = loadEnsembleTS(names=names, season=None, shape='shpavg', aggregation=aggregation, 
                             slices=slices, varlist=varlist, filetypes=['hydro'], obsslices=obsslices)
@@ -175,10 +175,10 @@ class DatasetsTest(unittest.TestCase):
     assert all(shpens.hasVariable(varlist[0]))
     assert 'GPCC' in shpens
     assert len(shpens['GPCC'].time) == 72 # time-series
-    assert len(shpens['max-ens-2100'].time) == 720 # ensemble
+    assert len(shpens['new-ctrl-2100'].time) == 720 # ensemble
     assert all('ARB' == ds.atts.shape_name for ds in shpens)
     # test list expansion of ensembles loading
-    names = ['EC', 'max-ens']; varlist = ['MaxPrecip_1d'] 
+    names = ['EC', 'phys-ens']; varlist = ['MaxPrecip_1d'] 
     prov = ['BC','AB']; season = ['summer','winter']; mode = ['max']
     constraints = dict(min_len=50, lat=(50,55), max_zerr=300,)
     enslst = loadEnsembleTS(names=names, prov=prov, season=season, mode=mode, station='ecprecip', 
@@ -212,7 +212,7 @@ class DatasetsTest(unittest.TestCase):
     # test ensemble (inner) list expansion with outer list expansion    
     varlist = ['MaxPrecip_1d']; constraints = dict(min_len=50, lat=(50,55), max_zerr=300,)
     # inner expansion
-    names = ['EC', 'EC', 'max-ctrl']; name_tags = ['_1990','_1940','WRF_1990']
+    names = ['EC', 'EC', 'cfsr-max']; name_tags = ['_1990','_1940','WRF_1990']
     obsslices = [dict(years=(1929,1945)), dict(years=(1979,1995)), dict()]
     # outer expansion
     prov = ['BC','AB']; season = ['summer','winter']; mode = ['max']
@@ -281,14 +281,14 @@ class DatasetsTest(unittest.TestCase):
 if __name__ == "__main__":
 
     
-    specific_tests = None
-#     specific_tests = ['ApplyAlongAxis']
-#     specific_tests = ['AsyncPool']    
-#     specific_tests = ['ExpArgList']
-#     specific_tests = ['LoadDataset']
-#     specific_tests = ['BasicLoadEnsembleTS']
-#     specific_tests = ['AdvancedLoadEnsembleTS']
-#     specific_tests = ['LoadStandardDeviation']
+    specific_tests = []
+#     specific_tests += ['ApplyAlongAxis']
+#     specific_tests += ['AsyncPool']    
+#     specific_tests += ['ExpArgList']
+#     specific_tests += ['LoadDataset']
+#     specific_tests += ['BasicLoadEnsembleTS']
+#     specific_tests += ['AdvancedLoadEnsembleTS']
+#     specific_tests += ['LoadStandardDeviation']
 
 
     # list of tests to be performed
@@ -309,7 +309,7 @@ if __name__ == "__main__":
     # run tests
     report = []
     for test in tests: # test+'.test'+specific_test
-      if specific_tests: 
+      if len(specific_tests) > 0: 
         test_names = ['misc_test.'+test+'Test.test'+s_t for s_t in specific_tests]
         s = unittest.TestLoader().loadTestsFromNames(test_names)
       else: s = unittest.TestLoader().loadTestsFromTestCase(test_classes[test])

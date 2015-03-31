@@ -251,11 +251,11 @@ def detrend(var, ax=None, lcopy=True, ldetrend=True, ltrend=False, degree=1, rco
     # evaluate and subtract linear trend
     if ldetrend and not ltrend: var -= np.polyval(trend, ax) # residuals
     elif ltrend and not ldetrend: var = np.polyval(trend, ax) # residuals
-    else: raise ArgumentError, "Can either return trend/polyfit or residuals, not both."
+    elif ldetrend and ltrend: raise ArgumentError, "Can either return trend/polyfit or residuals, not both."
   # apply optional smoothing
   if lsmooth: var = smooth(var, window_len=window_len, window=window)  
   elif lresidual: var -= smooth(var, window_len=window_len, window=window)
-  else: raise ArgumentError, "Can either return smoothed array or residuals, not both."
+  elif lsmooth and lresidual: raise ArgumentError, "Can either return smoothed array or residuals, not both."
   # return detrended and/or smoothed time-series
   if shape is not None: var = var.reshape(shape)
   return var
