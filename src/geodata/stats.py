@@ -406,7 +406,7 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
 #       elif np.issubdtype(sample.dtype,np.inexact): fillValue = np.NaN
 #       else: raise NotImplementedError
   # check that dtype and dimensions are equal
-  if sample1.dtype != sample2.dtype: raise TypeError, "Samples need to have same dtype."
+  if sample1.dtype.kind != sample2.dtype.kind: raise TypeError, "Samples need to have same dtype."
   if not lflatten:
     if sample1.ndim != sample2.ndim: raise AxisError, "Samples need to have same number of dimensions."
     rshape = sample1.shape[:axis_idx1] + sample1.shape[axis_idx1+1:]
