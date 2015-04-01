@@ -23,9 +23,9 @@ from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
 from processing.misc import getMetaData, getTargetFile
 # WRF specific
-from projects.WRF_experiments import WRF_exps
+from projects.WRF_experiments import WRF_exps, WRF_ens
 # CESM specific
-from datasets.CESM import CESM_exps
+from datasets.CESM import CESM_exps, CESM_ens
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
@@ -257,9 +257,11 @@ if __name__ == '__main__':
   ## process arguments    
   if periods is None: periods = [None]
   # expand experiments
-  if WRF_experiments is None: WRF_experiments = WRF_exps.values() # do all 
+  if WRF_experiments is None: # do all (except ensembles)
+    WRF_experiments = [exp for exp in WRF_exps.itervalues() if exp.shortname not in WRF_ens] 
   else: WRF_experiments = [WRF_exps[exp] for exp in WRF_experiments]
-  if CESM_experiments is None: CESM_experiments = CESM_exps.values() # do all 
+  if CESM_experiments is None: # do all (except ensembles)
+    CESM_experiments = [exp for exp in CESM_exps.itervalues() if exp.shortname not in CESM_ens] 
   else: CESM_experiments = [CESM_exps[exp] for exp in CESM_experiments]  
   # expand datasets and resolutions
   if datasets is None: datasets = gridded_datasets  

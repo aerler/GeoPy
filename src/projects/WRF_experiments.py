@@ -70,8 +70,8 @@ experiments = OrderedDict() # dictionary of experiments
 # very high resolution experiments
 experiments['erai-wc2-2013'] = Exp(shortname='wc2-2013', name='erai-wc2-2013', title='ERA-I 1km (2013)', begindate='2013-08-01', grid='wc2', parent='ERA-I')
 experiments['erai-wc2-2010'] = Exp(shortname='wc2-2010', name='erai-wc2-2010', title='ERA-I 1km (2010)', begindate='2010-08-01', grid='wc2', parent='ERA-I')
-experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', begindate='1979-09-01', enddate='1979-09-01', grid='coast1', parent='CFSR')
-experiments['col1-ctrl'] = Exp(shortname='col1', name='col1-ctrl', title='Max 3km (CFSR)', begindate='1979-09-01', grid='col1', domains=3, parent='CFSR')
+# experiments['coast-brian'] = Exp(shortname='coast', name='coast-brian', title='Coast Mtns. (CFSR)', begindate='1979-09-01', domains=3, grid='coast1', parent='CFSR')
+# experiments['col1-ctrl'] = Exp(shortname='col1', name='col1-ctrl', title='Columbia (CFSR)', begindate='1979-09-01', grid='col1', domains=3, parent='CFSR')
 experiments['max-3km'] = Exp(shortname='max-3km', name='max-3km', title='Max 3km (CESM)', begindate='1979-09-01', grid='col2', domains=3, parent='Ctrl-1')
 experiments['erai-3km'] = Exp(shortname='erai-3km', name='erai-3km', title='Max 3km (ERA-I)', begindate='1979-09-01', grid='col2', domains=3, parent='ERA-I')
 # Marc's experiments
