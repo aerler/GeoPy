@@ -60,8 +60,7 @@ default_varatts['p-et'] = dict(name='p-et', units='kg/m^2/s') # net precipitatio
 # parameters used in shape files
 shp_params = ['shape_name','shp_long_name','shp_type','shp_mask','shp_area','shp_encl','shp_full','shp_empty']
 # parameters used in station files
-stn_params = ['station_name', 'stn_prov', 'zs_err', 'stn_lat', 'stn_lon', 'cluster_id',
-              'stn_rec_len', 'stn_begin_date', 'stn_end_date']
+stn_params = ['station_name', 'stn_prov', 'zs_err', 'stn_lat', 'stn_lon', 'stn_rec_len', 'stn_begin_date', 'stn_end_date']
 
 # data root folder
 import socket

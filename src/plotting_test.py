@@ -318,7 +318,7 @@ if __name__ == "__main__":
 #     specific_tests = ['FancyErrorPlot']
 #     specific_tests = ['FancyBandPlot']
 #     specific_tests = ['AdvancedLinePlot']
-#     specific_tests = ['CombinedLinePlot']
+    specific_tests = ['CombinedLinePlot']
 #     specific_tests = ['AxesGridLinePlot']    
 #     specific_tests = ['MeanAxisPlot']
 #     specific_tests = ['BasicHistogram']
@@ -328,7 +328,7 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['LinePlot'] 
-    tests += ['DistPlot']
+#     tests += ['DistPlot']
     
 
     # construct dictionary of test classes defined above

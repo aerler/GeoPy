@@ -147,14 +147,14 @@ class DatasetsTest(unittest.TestCase):
     assert 'PDO' in ds
     assert ds.gdal and not ds.isProjected    
     # test WRF station time-series
-    ds = loadStnTS(name='ctrl-1_d02', varlist=['MaxPrecip_1d'], station='ecprecip', filtypes='hydro')
+    ds = loadStnTS(name='ctrl-1_d02', varlist=['MaxPrecip_1d'], station='ecprecip', filetypes='hydro')
     assert isinstance(ds, Dataset)
     assert ds.name == 'ctrl-1_d02'
     assert 'MaxPrecip_1d' in ds
     # test example with list expansion
     # test EC station time-series
     dss = loadStnTS(name=['EC','ctrl-1'], varlist=['MaxPrecip_1d','precip'],
-                    station='ecprecip', filtypes='hydro',
+                    station='ecprecip', filetypes='hydro',
                     load_list=['name','varlist'], lproduct='outer')
     assert len(dss) == 4
     assert isinstance(ds, Dataset)
@@ -294,7 +294,7 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['MultiProcess']
+    tests += ['MultiProcess']
     tests += ['Datasets'] 
     
 
