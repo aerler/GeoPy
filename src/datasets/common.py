@@ -58,7 +58,8 @@ default_varatts = dict(pmsl     = dict(name='pmsl', units='Pa'), # sea-level pre
 default_varatts['p-et'] = dict(name='p-et', units='kg/m^2/s') # net precipitation; only legal as a string                                
 
 # parameters used in shape files
-shp_params = ['shape_name','shp_long_name','shp_type','shp_mask','shp_area','shp_encl','shp_full','shp_empty']
+shp_params = ['shape_name','shp_long_name','shp_type','shp_area','shp_encl','shp_full','shp_empty']
+# N.B.: 'shp_mask' should not be loaded by default, because it can not be concatenated, if the grid is different 
 # parameters used in station files
 stn_params = ['station_name', 'stn_prov', 'zs_err', 'stn_lat', 'stn_lon', 'stn_rec_len', 'stn_begin_date', 'stn_end_date']
 
@@ -490,9 +491,10 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
 
 
 # function to extract common points that meet a specific criterion from a list of datasets
-def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, lall=False):
+def selectElements(datasets, axis, testFct=None, imaster=None, linplace=False, lall=False):
   ''' Extract common points that meet a specific criterion from a list of datasets. 
       The test function has to accept the following input: index, dataset, axis'''
+  if linplace: raise NotImplementedError, "Option 'linplace' does not work currently."
   # check input
   if not isinstance(datasets, (list,tuple,Ensemble)): raise TypeError
   if not all(isinstance(dataset,Dataset) for dataset in datasets): raise TypeError 
@@ -509,7 +511,12 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=True, la
   # use dataset with shortest axis as master sample (more efficient)
   axes = [dataset.getAxis(axis) for dataset in datasets]
   if imaster is None: imaster = np.argmin([len(ax) for ax in axes]) # find shortest axis
-  elif not isinstance(imaster,(int,np.integer)): raise TypeError
+  elif isinstance(imaster,basestring): 
+    # translate name of dataset into index
+    for i,dataset in enumerate(datasets): 
+      if dataset.name == imaster: imaster = i
+      if isinstance(imaster,(int,np.integer)): break
+  if not imaster is None and not isinstance(imaster,(int,np.integer)): raise TypeError, imaster
   elif imaster >= len(datasets) or imaster < 0: raise ValueError 
   maxis = axes.pop(imaster) # extraxt shortest axis for loop
   if lall: 
@@ -561,7 +568,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
                    slices=None, obsslices=None, reduction=None, shape=None, station=None, prov=None, 
                    constraints=None, filetypes=None, domain=None, ldataset=False, lcheckVar=False, 
                    lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', lminmax=False,
-                   ensemble_list=None, ensemble_product='inner', **kwargs):
+                   imaster=None, lall=True, ensemble_list=None, ensemble_product='inner', **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -603,7 +610,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   # select specific stations (if applicable)
   if not ldataset and station and constraints:
     from datasets.EC import selectStations
-    ensemble = selectStations(ensemble, stnaxis='station', imaster=None, linplace=False, lall=True,
+    ensemble = selectStations(ensemble, stnaxis='station', imaster=imaster, linplace=False, lall=lall,
                               lcheckVar=lcheckVar, **constraints)
   # make sure all have cluster meta data  
   for varname in stn_params + shp_params:

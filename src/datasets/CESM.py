@@ -15,7 +15,7 @@ from geodata.base import Variable, Axis, concatDatasets
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, GDALError
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt
-from datasets.common import translateVarNames, data_root, grid_folder, default_varatts, addLengthAndNamesOfMonth 
+from datasets.common import translateVarNames, data_root, grid_folder, default_varatts, addLengthAndNamesOfMonth, selectElements
 from geodata.gdal import loadPickledGridDef, griddef_pickle
 from datasets.WRF import Exp as WRF_Exp
 from processing.process import CentralProcessingUnit
@@ -615,6 +615,12 @@ def loadCESM_Ensemble(ensemble=None, name=None, title=None, grid=None, station=N
                     lindices=lindices, leofs=leofs, lreplaceTime=lreplaceTime)
     else: raise NotImplementedError
     datasets.append(ds)
+  # harmonize axes (this will usually not be necessary for CESM, since the grids are all the same)
+  for axname,ax in ds.axes.iteritems():
+    if not all([dataset.hasAxis(axname) for dataset in datasets]): 
+      raise AxisError, "Not all datasets have Axis '{:s}'.".format(axname)
+    if not all([len(dataset.axes[axname]) == len(ax) for dataset in datasets]):
+      datasets = selectElements(datasets, axis=axname, testFct=None, imaster=None, linplace=False, lall=True)
   # concatenate datasets (along 'time' and 'year' axis!)  
   if lts:
     dataset = concatDatasets(datasets, axis='time', coordlim=None, name=name, title=title, 
@@ -656,8 +662,8 @@ if __name__ == '__main__':
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
-  mode = 'test_point_timeseries'
-#   mode = 'test_point_ensemble'
+#   mode = 'test_point_timeseries'
+  mode = 'test_point_ensemble'
 #   mode = 'test_cvdp'
 #   mode = 'pickle_grid'
 #     mode = 'shift_lon'
@@ -667,8 +673,8 @@ if __name__ == '__main__':
   periods = (15,)
   filetypes = ('atm',) # ['atm','lnd','ice']
   grids = ('cesm1x1',)*len(experiments) # grb1_d01
-#   pntset = 'shpavg'
-  pntset = 'ecprecip'
+  pntset = 'shpavg'
+#   pntset = 'ecprecip'
 
   # pickle grid definition
   if mode == 'pickle_grid':

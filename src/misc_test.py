@@ -178,12 +178,12 @@ class DatasetsTest(unittest.TestCase):
     assert len(shpens['phys-ens-2100'].time) == 720 # ensemble
     assert all('ARB' == ds.atts.shape_name for ds in shpens)
     # test list expansion of ensembles loading
-    names = ['EC', 'max-ens']; varlist = ['MaxPrecip_1d'] 
+    names = ['EC', 'phys-ens']; varlist = ['MaxPrecip_1d'] 
     prov = ['BC','AB']; season = ['summer','winter']; mode = ['max']
     constraints = dict(min_len=50, lat=(50,55), max_zerr=300,)
     enslst = loadEnsembleTS(names=names, prov=prov, season=season, mode=mode, station='ecprecip', 
                             constraints=constraints, varlist=varlist, filetypes=['hydro'], domain=2,
-                            load_list=['mode','season','prov',], lproduct='outer', lwrite=True)
+                            load_list=['mode','season','prov',], lproduct='outer', lwrite=False)
     assert len(enslst) == 4
     assert all(isinstance(ens, Ensemble) for ens in enslst)
     assert all(ens.basetype.__name__ == 'Dataset' for ens in enslst)
@@ -294,7 +294,7 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['MultiProcess']
+#     tests += ['MultiProcess']
     tests += ['Datasets'] 
     
 

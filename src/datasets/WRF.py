@@ -17,7 +17,7 @@ from geodata.base import concatDatasets
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt
-from datasets.common import translateVarNames, data_root, grid_folder 
+from datasets.common import translateVarNames, data_root, grid_folder, selectElements
 from geodata.gdal import loadPickledGridDef, griddef_pickle
 from projects.WRF_experiments import Exp, exps, ensembles 
 from warnings import warn
@@ -753,6 +753,12 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
                        mode='time-series', lencl=lencl, lautoregrid=lautoregrid, lctrT=lctrT, 
                        lconst=lconst, domains=domains, lwrite=lwrite)
       datasets.append(ds.load())
+    # harmonize axes
+    for axname,ax in ds.axes.iteritems():
+      if not all([dataset.hasAxis(axname) for dataset in datasets]): 
+        raise AxisError, "Not all datasets have Axis '{:s}'.".format(axname)
+      if not all([len(dataset.axes[axname]) == len(ax) for dataset in datasets]):
+        datasets = selectElements(datasets, axis=axname, testFct=None, imaster=None, linplace=False, lall=True)
     # concatenate datasets (along 'time' axis, WRF doesn't have 'year')  
     dataset = concatDatasets(datasets, axis='time', coordlim=None, idxlim=montpl, offset=None, axatts=None, 
                              lcpOther=True, lcpAny=False, lcheckVars=lcheckVars, lcheckAxis=lcheckAxis,
@@ -792,10 +798,10 @@ if __name__ == '__main__':
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-#   mode = 'test_point_ensemble'
-  mode = 'pickle_grid'  
-#   pntset = 'shpavg'
-  pntset = 'ecprecip'
+  mode = 'test_point_ensemble'
+#   mode = 'pickle_grid'  
+  pntset = 'shpavg'
+#   pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
   experiments = ['rrtmg', 'ctrl', 'new']

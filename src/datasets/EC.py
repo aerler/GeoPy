@@ -731,9 +731,10 @@ def apply_test_suite(tests, index, dataset, axis):
   return all(test(index,dataset,axis) for test in tests)
 
 ## select a set of common stations for an ensemble, based on certain conditions
-def selectStations(datasets, stnaxis='station', imaster=None, linplace=True, lall=False, 
+def selectStations(datasets, stnaxis='station', imaster=None, linplace=False, lall=False, 
                   lcheckVar=False, cluster_name='cluster_id', **kwcond):
   ''' A wrapper for selectCoords that selects stations based on common criteria '''
+  if linplace: raise NotImplementedError, "Option 'linplace' does not work currently."
   # pre-load NetCDF datasets
   for dataset in datasets: 
     if isinstance(dataset,DatasetNetCDF): dataset.load() 

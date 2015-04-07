@@ -2619,7 +2619,8 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
     else: tes.append(shp[tax])
     del shp[tax]
     shapes.append(shp)
-  if not all([s == shp for s in shapes]): raise AxisError
+  if not all([s == shp for s in shapes]): 
+    raise AxisError
   tlen = 0
   for te in tes: tlen += te
   newshape = list(var0.shape)
