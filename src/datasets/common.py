@@ -447,7 +447,7 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
     lensemble = name in  CESM_ens
   else:
     # this is most likely an observational dataset
-    if name[:3].lower() == 'obs': dataset_name = 'Unity' # alias... 
+    if name[:3].lower() == 'obs': dataset_name = 'EC' if station else 'Unity' # alias... 
     else: dataset_name = name 
     try: dataset = import_module('datasets.{0:s}'.format(dataset_name))
     except ImportError: raise ArgumentError, "No dataset matching '{:s}' found.".format(dataset_name)

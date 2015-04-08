@@ -92,7 +92,7 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
   # depending on last modification time of file or overwrite setting, start computation, or skip
   if lskip:        
     # print message
-    skipmsg =  "\n{:s}   >>>   Skipping: file '{:s}' in dataset '{:s}' already exists and is newer than source file.".format(pidstr,filename,module.dataset_name)
+    skipmsg =  "\n{:s}   >>>   Skipping: file '{:s}' in dataset '{:s}' already exists and is newer than source file.".format(pidstr,filename,dataset_name)
     skipmsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,filepath)
     logger.info(skipmsg)              
   else:

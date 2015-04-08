@@ -34,6 +34,7 @@ class MyAxes(Axes):
   dataset_plotargs   = None
   title_height       = 0.025 # fraction of figure height
   title_size         = 'medium'
+  legend_handle      = None
   flipxy             = False
   xname              = None
   xunits             = None
@@ -60,7 +61,7 @@ class MyAxes(Axes):
   def linePlot(self, varlist, varname=None, bins=None, support=None, errorbar=None, errorband=None,  
                legend=None, llabel=True, labels=None, hline=None, vline=None, title=None, lignore=False,        
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
-               lparasiteMeans=False, parasite_axes=None, lrescale=False, scalefactor=1., offset=0.,
+               lparasiteMeans=False, lparasiteErrors=False, parasite_axes=None, lrescale=False, scalefactor=1., offset=0.,
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lperi=False, lprint=False,
                expand_list=None, lproduct='inner', method='pdf', plotatts=None, **plotargs):
     ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on 
@@ -151,7 +152,7 @@ class MyAxes(Axes):
           plt = self.errorbar(axe, val, xerr=None, yerr=err, errorevery=errorevery, **plotarg)[0]
           if lparasiteMeans:
             perr = err if err is not None else bnd # wouldn't work with bands, so use normal errorbars
-            self.addParasiteMean(val, errors=perr, n=n, N=N, lperi=lperi, style='myerrorbar', **plotarg)
+            self.addParasiteMean(val, errors=perr if lparasiteErrors else None, n=n, N=N, lperi=lperi, style='myerrorbar', **plotarg)
         # figure out parameters for error bands
         if bnd is not None: 
           if errorscale is not None: bnd *= errorscale
@@ -482,7 +483,11 @@ class MyAxes(Axes):
       elif min(self.get_position().bounds[2:4]) < 0.6: kwargs['fontsize'] = 'medium'
       else: kwargs['fontsize'] = 'large'      
     kwargs['loc'] = loc
-    self.legend(**kwargs)
+    # convert handles and labels to positional arguments (this is a bug in mpl)
+    args = []
+    if 'handles' in kwargs: args.append(kwargs.pop('handles'))
+    if 'labels' in kwargs: args.append(kwargs.pop('labels'))
+    self.legend_handle = self.legend(*args, **kwargs)
   
   def _positionParasiteAxes(self):
     ''' helper routine to put parasite axes in place '''
