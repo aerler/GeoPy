@@ -39,66 +39,92 @@ def toNumpyScalar(num, dtype=None):
     else: raise NotImplementedError, num
   return num
 
+## define function for recursion 
+# basically, loop over each list independently
+def _loop_recursion(*args, **kwargs):
+  ''' handle any number of loop variables recursively '''
+  # interpete arguments (kw-expansion is necessary)
+  if len(args) == 1:
+    # initialize dictionary of lists (only first recursion level)
+    loop_list = args[0][:] # use copy, since it will be decimated 
+    list_dict = {key:list() for key in kwargs.iterkeys()}
+  elif len(args) == 2:
+    loop_list = args[0][:] # use copy of list, to avoid interference with other branches
+    list_dict = args[1] # this is not a copy: all branches append to the same lists!
+  # handle loops
+  if len(loop_list) > 0:
+    # initiate a new recursion layer and a new loop
+    arg_name = loop_list.pop(0)
+    for arg in kwargs[arg_name]:
+      kwargs[arg_name] = arg # just overwrite
+      # new recursion branch
+      list_dict = _loop_recursion(loop_list, list_dict, **kwargs)
+  else:
+    # terminate recursion branch
+    for key,value in kwargs.iteritems():
+      list_dict[key].append(value)
+  # return results 
+  return list_dict
+
+# helper function to check lists
+def _prepareList(exp_list, kwargs):
+  ''' helper function to clean list elements '''
+  # get exp_list arguments
+  exp_list = [el for el in exp_list if el in kwargs] # remove missing entries
+  exp_dict = {el:kwargs[el] for el in exp_list}
+  for el in exp_list: del kwargs[el]
+  for el in exp_list: # check types 
+    if not isinstance(exp_dict[el], (list,tuple)): raise TypeError, el
+  return exp_list, exp_dict
+
 # helper function to form inner and outer product of multiple lists
-def expandArgumentList(expand_list=None, lproduct='outer', **kwargs):
+def expandArgumentList(inner_list=None, outer_list=None, expand_list=None, lproduct='outer', **kwargs):
   ''' A function that generates a list of complete argument dict's, based on given kwargs and certain 
       expansion rules: kwargs listed in expand_list are expanded and distributed element-wise, 
       either as inner or outer product, while other kwargs are repeated in every argument dict. '''
-  if not expand_list: 
-    arg_dicts = [kwargs] # return immediately
+  if expand_list is None and inner_list is None and outer_list is None: 
+    arg_dicts = [kwargs] # return immediately - nothing to do
   else:
-    # get load_list arguments
-    expand_list = [el for el in expand_list if el in kwargs] # remove missing entries
-    expand_dict = {el:kwargs[el] for el in expand_list}
-    for el in expand_list: del kwargs[el]
-    for el in expand_list: # check types 
-      if not isinstance(expand_dict[el], (list,tuple)): raise TypeError, el
-    ## identify expansion arguments
-    if lproduct.lower() == 'inner':
-      # inner product: essentially no expansion
-      lst0 = expand_dict[expand_list[0]]; lstlen = len(lst0) 
-      for el in expand_list: # check length
-        if len(expand_dict[el]) == 1: 
-          expand_dict[el] = expand_dict[el]*lstlen # broadcast singleton list
-        elif len(expand_dict[el]) != lstlen: 
-          raise TypeError, 'Lists have to be of same length to form inner product!'
-      list_dict = expand_dict
-    elif lproduct.lower() == 'outer':
+      
+    # handle legacy arguments
+    if expand_list is not None:
+      if inner_list is not None or outer_list is not None: raise ArgumentError, "Can not mix input modes!"      
+      if lproduct.lower() == 'inner': inner_list = expand_list
+      elif lproduct.lower() == 'outer': outer_list = expand_list
+    outer_list = outer_list or []
+    inner_list = inner_list or []
+      
+    # handle outer product expansion first
+    if len(outer_list) > 0:
+      kwtmp = {key:value for key,value in kwargs.iteritems() if key not in inner_list}
+      outer_list, outer_dict = _prepareList(outer_list, kwargs)
       lstlen = 1
-      for el in expand_list:
-        lstlen *= len(expand_dict[el])
-      ## define function for recursion 
-      # basically, loop over each list independently
-      def loop_recursion(*args, **kwargs):
-        ''' handle any number of loop variables recursively '''
-        # interpete arguments
-        if len(args) == 1:
-          # initialize dictionary of lists (only first recursion level)
-          loop_list = args[0][:] # use copy, since it will be decimated 
-          list_dict = {key:list() for key in kwargs.iterkeys()}
-        elif len(args) == 2:
-          loop_list = args[0][:] # use copy of list, to avoid interference with other branches
-          list_dict = args[1] # this is not a copy: all branches append to the same lists!
-        # handle loops
-        if len(loop_list) > 0:
-          # initiate a new recursion layer and a new loop
-          arg_name = loop_list.pop(0)
-          for arg in kwargs[arg_name]:
-            kwargs[arg_name] = arg # just overwrite
-            # new recursion branch
-            list_dict = loop_recursion(loop_list, list_dict, **kwargs)
-        else:
-          # terminate recursion branch
-          for key,value in kwargs.iteritems():
-            list_dict[key].append(value)
-        # return results 
-        return list_dict
+      for el in outer_list:
+        lstlen *= len(outer_dict[el])
       # execute recursive function    
-      list_dict = loop_recursion(expand_list, **expand_dict) # use copy of 
-      assert all(key in expand_dict for key in list_dict.iterkeys()) 
-      assert all(len(list_dict[el])==lstlen for el in expand_list) # check length    
-      assert all(len(ld)==lstlen for ld in list_dict.itervalues()) # check length     
-    else: raise ArgumentError
+      list_dict = _loop_recursion(outer_list, **outer_dict) # use copy of 
+      # N.B.: returns a dictionary where all kwargs have been expanded to lists of appropriate length
+      assert all(key in outer_dict for key in list_dict.iterkeys()) 
+      assert all(len(list_dict[el])==lstlen for el in outer_list) # check length    
+      assert all(len(ld)==lstlen for ld in list_dict.itervalues()) # check length  
+         
+    # handle inner product expansion last
+    if len(inner_list) > 0:
+      kwtmp = kwargs.copy()
+      if len(outer_list) > 0: 
+        kwtmp.update(list_dict)
+        inner_list = outer_list + inner_list
+      # N.B.: this replaces all outer expansion arguments with lists of appropriate length for inner expansion
+      inner_list, inner_dict = _prepareList(inner_list, kwtmp)
+      # inner product: essentially no expansion
+      lst0 = inner_dict[inner_list[0]]; lstlen = len(lst0) 
+      for el in inner_list: # check length
+        if len(inner_dict[el]) == 1: 
+          inner_dict[el] = inner_dict[el]*lstlen # broadcast singleton list
+        elif len(inner_dict[el]) != lstlen: 
+          raise TypeError, 'Lists have to be of same length to form inner product!'
+      list_dict = inner_dict
+      
     ## generate list of argument dicts
     arg_dicts = []
     for n in xrange(lstlen):

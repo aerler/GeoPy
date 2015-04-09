@@ -364,7 +364,8 @@ class BatchLoad(object):
     ''' initialize wrapping of original operation '''
     self.load_fct = load_fct
     
-  def __call__(self, load_list=None, lproduct='outer', lensemble=None, ens_name=None, ens_title=None, **kwargs):
+  def __call__(self, load_list=None, lproduct='outer', inner_list=None, outer_list=None, 
+               lensemble=None, ens_name=None, ens_title=None, **kwargs):
     ''' wrap original function: expand argument list, execute load_fct over argument list, 
         and return a list or Ensemble of datasets '''
     # decide, what to do
@@ -375,7 +376,8 @@ class BatchLoad(object):
       # expansion required
       lensemble = ens_name is not None if lensemble is None else lensemble
       # figure out arguments
-      kwargs_list = expandArgumentList(expand_list=load_list, lproduct=lproduct, **kwargs)
+      kwargs_list = expandArgumentList(expand_list=load_list, lproduct=lproduct, 
+                                       inner_list=inner_list, outer_list=outer_list, **kwargs)
       # load datasets
       datasets = []
       for kwargs in kwargs_list:    
