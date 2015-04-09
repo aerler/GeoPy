@@ -406,7 +406,10 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
 #       elif np.issubdtype(sample.dtype,np.inexact): fillValue = np.NaN
 #       else: raise NotImplementedError
   # check that dtype and dimensions are equal
-  if sample1.dtype.kind != sample2.dtype.kind: raise TypeError, "Samples need to have same dtype."
+  if not np.issubdtype(sample1.dtype,np.number): raise TypeError, sample1.dtype
+  if not np.issubdtype(sample2.dtype,np.number): raise TypeError, sample2.dtype
+#   if sample1.dtype.kind != sample2.dtype.kind: 
+#     raise TypeError, "Samples need to have same dtype kind: {:s} != {:s}".kind(sample1.dtype.kind, sample2.dtype.kind)
   if not lflatten:
     if sample1.ndim != sample2.ndim: raise AxisError, "Samples need to have same number of dimensions."
     rshape = sample1.shape[:axis_idx1] + sample1.shape[axis_idx1+1:]
@@ -513,11 +516,12 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
 
 # dictionary with distribution definitions for common variables  
 var_dists = dict() # tuple( dist_name, kwargs)
-# var_dists['CDD'] = ('gumbel_r', dict())
-# var_dists['CWD'] = ('gumbel_r', dict())
-var_dists['MaxWaterflx_7d'] = ('gumbel_r', dict())
+var_dists['CDD'] = ('kde', dict())
+var_dists['CWD'] = ('kde', dict())
+var_dists['MaxWaterflx_7d'] = ('kde', dict())
 # var_dists['CDD'] = ('genextreme', dict())
 # var_dists['CWD'] = ('genextreme', dict())
+# var_dists['MaxWaterflx_7d'] = ('genextreme', dict())
 variable_distributions = var_dists # alias for imports
 
 # function to return an appropriate distribution for a variable
