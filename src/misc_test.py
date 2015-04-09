@@ -98,7 +98,7 @@ class DatasetsTest(unittest.TestCase):
     # test arguments
     args1 = [0,1,2]; args2 = ['0','1','2']; args3 = ['test']*3; arg4 = 'static1'; arg5 = 'static2' 
     explist = ['arg1','arg2','arg3']
-    # test inner prodct expansion
+    # test inner product expansion
     arg_list = expandArgumentList(arg1=args1, arg2=args2, arg3=args3, arg4=arg4, arg5=arg5,
                                   expand_list=explist, lproduct='inner')
     assert len(arg_list) == len(args1) and len(arg_list) == len(args2)
@@ -108,7 +108,7 @@ class DatasetsTest(unittest.TestCase):
       assert args['arg3'] == arg3
       assert args['arg4'] == arg4
       assert args['arg5'] == arg5
-    # test outer prodct expansion
+    # test outer product expansion
     arg_list = expandArgumentList(arg1=args1, arg2=args2, arg3=args3, arg4=arg4, arg5=arg5,
                                   expand_list=explist, lproduct='outer')
     assert len(arg_list) == len(args1) * len(args2) * len(args3)
@@ -124,7 +124,7 @@ class DatasetsTest(unittest.TestCase):
           assert args['arg5'] == arg5
           n += 1
     assert n == len(arg_list)
-    # test outer prodct expansion
+    # test simultaneous inner and outer product expansion
     n1 = len(args2) * len(args3) / len(args1)
     tmp1 = args1*n1
     arg_list = expandArgumentList(arg1=tmp1, arg2=args2, arg3=args3, arg4=arg4, arg5=arg5,
@@ -140,6 +140,22 @@ class DatasetsTest(unittest.TestCase):
           assert args['arg4'] == arg4
           assert args['arg5'] == arg5
           n += 1
+    assert n == len(arg_list)
+    # test parallel outer product expansion
+    assert len(args1) == len(args2) # necessary for test
+    arg_list = expandArgumentList(arg1=args1, arg2=args2, arg3=args3, arg4=arg4, arg5=arg5,
+                                  expand_list=[('arg1','arg2'),'arg3'], lproduct='outer')
+    assert len(arg_list) == len(args1) * len(args3)
+    n = 0
+    for arg1,arg2 in zip(args1,args2):
+      for arg3 in args3:
+        args = arg_list[n]
+        assert args['arg1'] == arg1
+        assert args['arg2'] == arg2
+        assert args['arg3'] == arg3
+        assert args['arg4'] == arg4
+        assert args['arg5'] == arg5
+        n += 1
     assert n == len(arg_list)
     
   def testLoadDataset(self):
@@ -196,11 +212,11 @@ class DatasetsTest(unittest.TestCase):
     assert all('ARB' == ds.atts.shape_name for ds in shpens)
     # test list expansion of ensembles loading
     names = ['EC', 'phys-ens']; varlist = ['MaxPrecip_1d'] 
-    prov = ['BC','AB']; season = ['summer','winter']; mode = ['max']
+    prov = ['BC','AB']; season = ['summer','winter']; mode = ['max','min']
     constraints = dict(min_len=50, lat=(50,55), max_zerr=300,)
     enslst = loadEnsembleTS(names=names, prov=prov, season=season, mode=mode, station='ecprecip', 
                             constraints=constraints, varlist=varlist, filetypes=['hydro'], domain=2,
-                            load_list=['mode','season','prov',], lproduct='outer', lwrite=False)
+                            load_list=[('mode','season'),'prov',], lproduct='outer', lwrite=False)
     assert len(enslst) == 4
     assert all(isinstance(ens, Ensemble) for ens in enslst)
     assert all(ens.basetype.__name__ == 'Dataset' for ens in enslst)
@@ -301,17 +317,17 @@ if __name__ == "__main__":
     specific_tests = []
 #     specific_tests += ['ApplyAlongAxis']
 #     specific_tests += ['AsyncPool']    
-#     specific_tests += ['ExpArgList']
-#     specific_tests += ['LoadDataset']
-#     specific_tests += ['BasicLoadEnsembleTS']
-#     specific_tests += ['AdvancedLoadEnsembleTS']
-#     specific_tests += ['LoadStandardDeviation']
+    specific_tests += ['ExpArgList']
+    specific_tests += ['LoadDataset']
+    specific_tests += ['BasicLoadEnsembleTS']
+    specific_tests += ['AdvancedLoadEnsembleTS']
+    specific_tests += ['LoadStandardDeviation']
 
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['MultiProcess']
+#     tests += ['MultiProcess']
     tests += ['Datasets'] 
     
 

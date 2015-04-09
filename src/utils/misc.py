@@ -81,7 +81,10 @@ def _prepareList(exp_list, kwargs):
 def expandArgumentList(inner_list=None, outer_list=None, expand_list=None, lproduct='outer', **kwargs):
   ''' A function that generates a list of complete argument dict's, based on given kwargs and certain 
       expansion rules: kwargs listed in expand_list are expanded and distributed element-wise, 
-      either as inner or outer product, while other kwargs are repeated in every argument dict. '''
+      either as inner ('inner_list') or outer ('outer_list') product, while other kwargs are repeated 
+      in every argument dict. 
+      Arguments can be expanded simultaneously (in parallel) within an outer product by specifying
+      them as a tuple within the outer product argument list ('outer_list'). '''
   if expand_list is None and inner_list is None and outer_list is None: 
     arg_dicts = [kwargs] # return immediately - nothing to do
   else:
@@ -91,22 +94,54 @@ def expandArgumentList(inner_list=None, outer_list=None, expand_list=None, lprod
       if inner_list is not None or outer_list is not None: raise ArgumentError, "Can not mix input modes!"      
       if lproduct.lower() == 'inner': inner_list = expand_list
       elif lproduct.lower() == 'outer': outer_list = expand_list
-    outer_list = outer_list or []
-    inner_list = inner_list or []
+    outer_list = outer_list or []; inner_list = inner_list or []
       
     # handle outer product expansion first
     if len(outer_list) > 0:
       kwtmp = {key:value for key,value in kwargs.iteritems() if key not in inner_list}
-      outer_list, outer_dict = _prepareList(outer_list, kwargs)
+      
+      # detect variables for parallel expansion
+      # N.B.: parallel outer expansion is handled by replacing the arguments in each parallel expansion group
+      #       with a single (fake) argument that is a tuple of the original argument values; the tuple is then,
+      #       after expansion, disassembled into its former constituent arguments
+      par_dict = dict()
+      for kw in outer_list:
+        if isinstance(kw,(tuple,list)):
+          # retrieve parallel expansion group 
+          par_args = [kwtmp.pop(name) for name in kw]
+          if not all([len(args) == len(par_args[0]) for args in par_args]): 
+            raise ArgumentError, "Lists for parallel expansion arguments have to be of same length!"
+          # introduce fake argument and save record
+          fake = 'TMP_'+'_'.join(kw)+'_{:d}'.format(len(kw)) # long name that is unlikely to interfere...
+          par_dict[fake] = kw # store record of parallel expansion for reassembly later
+          kwtmp[fake] = zip(*par_args) # transpose lists to get a list of tuples                      
+        elif not isinstance(kw,basestring): raise TypeError, kw
+      # replace entries in outer list
+      if len(par_dict)>0:
+        outer_list = outer_list[:] # copy list
+        for fake,names in par_dict.iteritems():
+          if names in outer_list:
+            outer_list[outer_list.index(names)] = fake
+      assert all([ isinstance(arg,basestring) for arg in outer_list])
+      
+      outer_list, outer_dict = _prepareList(outer_list, kwtmp)
       lstlen = 1
       for el in outer_list:
         lstlen *= len(outer_dict[el])
-      # execute recursive function    
-      list_dict = _loop_recursion(outer_list, **outer_dict) # use copy of 
+      # execute recursive function for outer product expansion    
+      list_dict = _loop_recursion(outer_list, **outer_dict) # use copy of
       # N.B.: returns a dictionary where all kwargs have been expanded to lists of appropriate length
       assert all(key in outer_dict for key in list_dict.iterkeys()) 
       assert all(len(list_dict[el])==lstlen for el in outer_list) # check length    
       assert all(len(ld)==lstlen for ld in list_dict.itervalues()) # check length  
+      
+      # disassemble parallel expansion tuple and reassemble as individual arguments
+      if len(par_dict)>0:
+        for fake,names in par_dict.iteritems():
+          assert fake in list_dict
+          par_args = zip(*list_dict.pop(fake)) # transpose, to get an expanded tuple for each argument
+          assert len(par_args) == len(names) 
+          for name,args in zip(names,par_args): list_dict[name] = args
          
     # handle inner product expansion last
     if len(inner_list) > 0:
