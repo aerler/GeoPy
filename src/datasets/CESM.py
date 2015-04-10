@@ -439,8 +439,9 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
   # N.B.: the period convention in CVDP is that the end year is included
   # generate filelist and attributes based on filetypes and domain
   if filetypes is None: filetypes = ['atm','lnd']
-  elif isinstance(filetypes,(list,tuple,set)):
-    filetypes = list(filetypes)  
+  elif isinstance(filetypes,(list,tuple,set,basestring)):
+    if isinstance(filetypes,basestring): filetypes = [filetypes]
+    else: filetypes = list(filetypes)  
     if 'axes' not in filetypes: filetypes.append('axes')    
   else: raise TypeError  
   atts = dict(); filelist = []; typelist = []

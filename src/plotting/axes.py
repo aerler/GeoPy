@@ -419,6 +419,10 @@ class MyAxes(Axes):
     # figure out orientation
     if self.flipxy: orientation = 'horizontal' 
     else: orientation = 'vertical'
+    # clean plot arguments (some of these cause histogram to crash)
+    for arg in ('linestyle','fmt','lineformat'):
+      if arg in histargs: histargs.pop(arg)
+      if arg+'s' in histargs: histargs.pop(arg+'s') # also check plural forms
     # call histogram method of Axis
     label_list = label_list if llabel else None
     colors = color_list or None 

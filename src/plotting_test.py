@@ -80,7 +80,7 @@ class LinePlotTest(unittest.TestCase):
                        ylim=var1.limits(), legend=2, hline=2., vline=(2,3))
     assert len(plts) == 2
     # add rescaled plot
-    plts = ax.linePlot(var0, lrescale=True, scalefactor=2, offset=-1, llabel=True, legend=2)
+    plts = ax.linePlot(var0, lrescale=True, scalefactor=2, offset=-1, llabel=True, legend=2, linestyle=':')
     assert len(plts) == 1    
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
@@ -313,12 +313,12 @@ if __name__ == "__main__":
 
     
     specific_tests = None
-#     specific_tests = ['BasicLinePlot']
+    specific_tests = ['BasicLinePlot']
 #     specific_tests = ['BasicErrorPlot']
 #     specific_tests = ['FancyErrorPlot']
 #     specific_tests = ['FancyBandPlot']
 #     specific_tests = ['AdvancedLinePlot']
-    specific_tests = ['CombinedLinePlot']
+#     specific_tests = ['CombinedLinePlot']
 #     specific_tests = ['AxesGridLinePlot']    
 #     specific_tests = ['MeanAxisPlot']
 #     specific_tests = ['BasicHistogram']

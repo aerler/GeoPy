@@ -369,7 +369,7 @@ class BatchLoad(object):
     ''' wrap original function: expand argument list, execute load_fct over argument list, 
         and return a list or Ensemble of datasets '''
     # decide, what to do
-    if load_list is None:
+    if load_list is None and inner_list is None and outer_list is None:
       # normal operation: no expansion      
       datasets =  self.load_fct(**kwargs)
     else:
