@@ -32,6 +32,7 @@ class MyAxes(Axes):
   plots              = None
   variable_plotargs  = None
   dataset_plotargs   = None
+  plot_labels        = None
   title_height       = 0.025 # fraction of figure height
   title_size         = 'medium'
   legend_handle      = None
@@ -61,7 +62,8 @@ class MyAxes(Axes):
   def linePlot(self, varlist, varname=None, bins=None, support=None, errorbar=None, errorband=None,  
                legend=None, llabel=True, labels=None, hline=None, vline=None, title=None, lignore=False,        
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
-               lparasiteMeans=False, lparasiteErrors=False, parasite_axes=None, lrescale=False, scalefactor=1., offset=0.,
+               lparasiteMeans=False, lparasiteErrors=False, parasite_axes=None, lrescale=False, 
+               scalefactor=1., offset=0.,
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lperi=False, lprint=False,
                expand_list=None, lproduct='inner', method='pdf', plotatts=None, **plotargs):
     ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on 
@@ -147,7 +149,7 @@ class MyAxes(Axes):
           xlen = len(val); ylen = len(axe) # used later
           plt = self.errorbar(val, axe, xerr=err, yerr=None, errorevery=errorevery, **plotarg)[0]
           if lparasiteMeans: raise NotImplementedError
-        else:# default orientation
+        else: # default orientation
           xlen = len(axe); ylen = len(val) # used later
           plt = self.errorbar(axe, val, xerr=None, yerr=err, errorevery=errorevery, **plotarg)[0]
           if lparasiteMeans:
@@ -405,7 +407,7 @@ class MyAxes(Axes):
         val = val.ravel() # flatten array
         if not varname.endswith('_bins'): varname += '_bins'
         if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)
-        # get default plotargs consistent with linePlot      
+        # get default plotargs consistent with linePlot (but only color will be used)  
         plotarg = self._getPlotArgs(label, var, plotatts=plotatts, plotarg=None)
         # extract color
         if color is None and 'color' in plotarg: color = plotarg['color']
@@ -424,7 +426,10 @@ class MyAxes(Axes):
       if arg in histargs: histargs.pop(arg)
       if arg+'s' in histargs: histargs.pop(arg+'s') # also check plural forms
     # call histogram method of Axis
-    label_list = label_list if llabel else None
+    if llabel: 
+      if self.plot_labels is None: label_list = label_list
+      else: label_list = [self.plot_labels.get(label,label) for label in label_list] 
+    else: label_list = None     
     colors = color_list or None 
     hdata, bin_edges, patches = self.hist(values, bins=binedgs, color=colors, label=label_list, 
                                           normed=lnormalize, weights=weights, cumulative=lcumulative,  
@@ -605,7 +610,7 @@ class MyAxes(Axes):
     
   def _getPlotValues(self, var, checkunits=None, lsmooth=False, lperi=False, 
                      laxis=False, lrescale=False, scalefactor=1., offset=0.):
-    ''' '''
+    ''' retrieve plot values and apply optional scaling and offset (user-defined) '''
     if lrescale: checkunits = None
     val, varunits, varname = getPlotValues(var, checkunits=checkunits, checkname=None, lsmooth=lsmooth, 
                                            lperi=lperi, laxis=laxis)
@@ -615,8 +620,6 @@ class MyAxes(Axes):
       val -= offset; val /= scalefactor 
       val *= ( vlim[1] - vlim[0] ); val += vlim[0]  
     return val, varunits, varname
-    
-  
   
   def _getPlotLabels(self, varlist):
     ''' figure out reasonable plot labels based variable and dataset names '''
@@ -635,7 +638,7 @@ class MyAxes(Axes):
       labels = range(len(varlist))
     return labels
   
-  def _getPlotArgs(self, label, var, plotatts=None, plotarg=None):
+  def _getPlotArgs(self, label, var, plotatts=None, plotarg=None, plot_labels=None):
     ''' function to return plotting arguments/styles based on defaults and explicit arguments '''
     if not isinstance(label, (basestring,int,np.integer)): raise TypeError, label
     if not isinstance(var, Variable): raise TypeError
@@ -654,6 +657,9 @@ class MyAxes(Axes):
     # apply axes/local defaults
     if plotatts is not None: args.update(plotatts.get(label,{}))
     if plotarg is not None: args.update(plotarg)
+    # relabel (simple name mapping)
+    if plot_labels is None: plot_labels = self.plot_labels
+    if plot_labels and label in plot_labels: args['label'] = plot_labels[label]
     # return dictionary with keyword argument for plotting function
     return args    
 

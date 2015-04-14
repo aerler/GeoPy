@@ -442,8 +442,8 @@ class CentralProcessingUnit(object):
       if var.ndim == 1 and var.hasAxis(stnax): # station attributes
         if var.name[-4:] != '_len' or var.name == 'stn_rec_len': # exclude certain attributes
           newvar = var.copy(data=var.getArray()[istn], axes=(newstnax,))
-          if newvar.name[:4] != 'stn_' and newvar.name[:8] != 'station_': 
-            newvar.name = 'stn_'+newvar.name
+          if newvar.name[:4] != 'stn_' and newvar.name[:8] != 'station_' and newvar.name[:8] != 'cluster_': 
+            newvar.name = 'stn_'+newvar.name # copy cluster_* as they are!
           # N.B.: we need to rename, or name collisions will happen! 
           tgt.addVariable(newvar, asNC=True, copy=True); del newvar # need to copy to make NC var
     # save all the meta data

@@ -278,7 +278,7 @@ variablePlotatts['CWD'] = tmp
 tmp = PlotAtts(name = 'CDD', title = 'Consecutive Dry Days', 
                units = 'days', scalefactor = 1.)
 # add to collection
-variablePlotatts['CCD'] = tmp
+variablePlotatts['CDD'] = tmp
 
 ## Surface Sensible Heat Flux
 tmp = PlotAtts(name = r'$Q_s$', title = 'Surface Heat Flux', 

@@ -263,7 +263,7 @@ class MyFigure(Figure):
 
 ## convenience function to return a figure and an array of ImageGrid axes
 def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  stylesheet=None,
-             variable_plotargs=None, dataset_plotargs=None, yright=False, xtop=False,
+             variable_plotargs=None, dataset_plotargs=None, plot_labels=None, yright=False, xtop=False,
              sharex=None, sharey=None, AxesGrid=False, ngrids=None, direction='row',
              axes_pad = None, add_all=True, share_all=None, aspect=False, margins=None,
              label_mode='L', cbar_mode=None, cbar_location='right', lreduce=True,
@@ -280,7 +280,7 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
   elif not issubclass(figure_class, Figure): raise TypeError 
   # figure out subplots
   if isinstance(subplot,(np.integer,int)):
-    if subplot == 1: subplot = (1,1)
+    if subplot == 1:   subplot = (1,1)
     elif subplot == 2: subplot = (1,2)
     elif subplot == 3: subplot = (1,3)
     elif subplot == 4: subplot = (2,2)
@@ -398,9 +398,11 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
     for ax in axes.ravel(): 
       ax.variable_plotargs = variable_plotargs
       ax.dataset_plotargs = dataset_plotargs
+      ax.plot_labels = plot_labels
   else:
     axes.variable_plotargs = variable_plotargs
     axes.dataset_plotargs = dataset_plotargs
+    axes.plot_labels = plot_labels
   # return Figure/ImageGrid and tuple of axes
   #if AxesGrid: fig = grid # return ImageGrid instead of figure
   return fig, axes
