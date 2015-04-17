@@ -591,14 +591,12 @@ def getPlotAtts(name=None, units=None, atts=None, plot=None, plotatts_dict=None)
       plotatts = plotatts.copy(name = '{:s} '.format(tmpname)+plotatts.name,
                                title = '{:s} '.format(tmpname)+plotatts.title)
     else:
-      plotatts = plotatts.copy(name = plotatts.name+' ({:s})'.format(postfix),
-                               title = plotatts.title+' ({:s})'.format(postfix))
+      plotatts = plotatts.copy(name = plotatts.name.title()+' ({:s})'.format(postfix),
+                               title = plotatts.title.title()+' ({:s})'.format(postfix))
   if prefix == 'max': 
-    tmpname = plotatts.name if plotatts.name == plotatts.name.upper() else plotatts.name.title()
-    plotatts = plotatts.copy(name = 'Max. '+tmpname, title = 'Maximum '+plotatts.title) 
+    plotatts = plotatts.copy(name = 'Max. '+plotatts.name, title = 'Maximum '+plotatts.title) 
   elif prefix == 'min': 
-    tmpname = plotatts.name if plotatts.name == plotatts.name.upper() else plotatts.name.title()
-    plotatts = plotatts.copy(name = 'Min. '+tmpname, title = 'Minimum '+plotatts.title)
+    plotatts = plotatts.copy(name = 'Min. '+plotatts.name, title = 'Minimum '+plotatts.title)
   # adjust units
   if units == plotatts.units: 
     plotatts = plotatts.copy(scalefactor = 1, offset = 0) # no conversion necessary

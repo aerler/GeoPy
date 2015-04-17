@@ -112,14 +112,14 @@ class MyAxes(Axes):
         # scale axis and variable values 
         axe, axunits, axname = self._getPlotValues(varax, checkunits=axunits, laxis=True, lperi=lperi)
         val, varunits, varname = self._getPlotValues(var, lrescale=lrescale, scalefactor=scalefactor, offset=offset,
-                                                     checkunits=varunits, lsmooth=lsmooth, lperi=lperi)
+                                                     checkunits=varunits, lsmooth=lsmooth, lperi=lperi, lshift=True)
         if errvar is not None: # for error bars
           err, varunits, errname = self._getPlotValues(errvar, lrescale=lrescale, scalefactor=scalefactor, offset=offset, 
-                                                       checkunits=varunits, lsmooth=lsmooth, lperi=lperi); del errname
+                                                       checkunits=varunits, lsmooth=lsmooth, lperi=lperi, lshift=False); del errname
         else: err = None
         if bndvar is not None: # semi-transparent error bands
           bnd, varunits, bndname = self._getPlotValues(bndvar, lrescale=lrescale, scalefactor=scalefactor, offset=offset,
-                                                       checkunits=varunits, lsmooth=lsmooth, lperi=lperi); del bndname
+                                                       checkunits=varunits, lsmooth=lsmooth, lperi=lperi, lshift=False); del bndname
         else: bnd = None
         # variable and axis scaling is not always independent...
         if var.plot is not None and varax.plot is not None: 
@@ -608,7 +608,7 @@ class MyAxes(Axes):
     # return cleaned-up and expanded plot arguments
     return plotargs
     
-  def _getPlotValues(self, var, checkunits=None, lsmooth=False, lperi=False, 
+  def _getPlotValues(self, var, checkunits=None, lsmooth=False, lperi=False, lshift=False, 
                      laxis=False, lrescale=False, scalefactor=1., offset=0.):
     ''' retrieve plot values and apply optional scaling and offset (user-defined) '''
     if lrescale: checkunits = None
@@ -617,8 +617,10 @@ class MyAxes(Axes):
     if lrescale:
       if self.flipxy: vlim,varunits = self.get_xlim(),self.xunits
       else: vlim,varunits = self.get_ylim(),self.yunits
-      val -= offset; val /= scalefactor 
-      val *= ( vlim[1] - vlim[0] ); val += vlim[0]  
+      if offset != 0: val -= offset
+      if scalefactor != 1: val /= scalefactor 
+      val *= ( vlim[1] - vlim[0] )
+      if lshift: val += vlim[0]  
     return val, varunits, varname
   
   def _getPlotLabels(self, varlist):

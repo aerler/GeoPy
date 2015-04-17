@@ -738,10 +738,12 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
     if ensname in ensembles: ensemble = ensembles[ensname]
     else: raise TypeError
   # figure out time period
-  if years is None: years = 15
-  elif isinstance(years,(list,tuple)) and len(years)==2: raise NotImplementedError 
-  elif not isInt(years): raise TypeError  
-  montpl = (0,years*12)
+  if years is None: montpl = (60,180)
+  elif isinstance(years,(list,tuple)) and len(years)==2: 
+    if not all([isInt(yr) for yr in years]): raise TypeError, years
+    montpl = (years[0]*12,years[1]*12)
+  elif isInt(years): montpl = (0,years*12)
+  else: raise TypeError, years
   # special treatment for single experiments (i.e. not an ensemble...)
   if not isinstance(ensemble,(tuple,list)):
     dataset = loadWRF_All(experiment=None, name=ensemble, grid=grid, station=station, shape=shape, 
