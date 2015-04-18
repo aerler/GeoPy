@@ -1052,7 +1052,7 @@ class VarKDE(DistVar):
   def _estimate_distribution(self, samples, ic_shape=None, ic_args=None, ic_loc=None, ic_scale=None, ldebug=False, **kwargs):
     ''' esimtate/fit distribution from sample array for each grid point and return parameters as ndarray  '''
     fct = functools.partial(kde_estimate, ldebug=ldebug, **kwargs)
-    kernels = apply_along_axis(fct, samples.ndim-1, samples, chunksize=100000//len(samples)).squeeze()
+    kernels = apply_along_axis(fct, samples.ndim-1, samples, chunksize=100//len(samples)).squeeze()
     assert samples.shape[:-1] == kernels.shape
     # return an array of kernels
     return kernels
@@ -1063,7 +1063,7 @@ class VarKDE(DistVar):
     n = len(support); fillValue = self.fillValue or np.NaN
     data = self.data_array.reshape(self.data_array.shape+(1,)) # expand
     fct = functools.partial(kde_eval, support=support, n=n, fillValue=fillValue)
-    pdf = apply_along_axis(fct, self.ndim, data, chunksize=100000//n)
+    pdf = apply_along_axis(fct, self.ndim, data, chunksize=100//n)
     assert pdf.shape == self.shape + (len(support),)
     return pdf
   
@@ -1074,7 +1074,7 @@ class VarKDE(DistVar):
     fillValue = self.fillValue or np.NaN # for masked values
     data = self.data_array.reshape(self.data_array.shape+(1,)) # expand
     fct = functools.partial(kde_resample, support=support, n=n, fillValue=fillValue, dtype=self.dtype)
-    samples = apply_along_axis(fct, self.ndim, data, chunksize=100000//n)
+    samples = apply_along_axis(fct, self.ndim, data, chunksize=100//n)
     assert samples.shape == self.shape + (n,)
     assert np.issubdtype(samples.dtype, self.dtype)
     return samples
@@ -1085,7 +1085,7 @@ class VarKDE(DistVar):
     n = len(support); fillValue = self.fillValue or np.NaN
     data = self.data_array.reshape(self.data_array.shape+(1,))
     fct = functools.partial(kde_cdf, support=support, n=n, fillValue=fillValue)
-    cdf = apply_along_axis(fct, self.ndim, data, chunksize=500000//n)
+    cdf = apply_along_axis(fct, self.ndim, data, chunksize=100//n)
     assert cdf.shape == self.shape + (len(support),)
     return cdf
   
@@ -1229,7 +1229,7 @@ class VarRV(DistVar):
     plen = self.dist_class.numargs + 2 # infer number of parameters
     fct = functools.partial(rv_fit, ic_shape=ic_shape, ic_args=ic_args, ic_loc=ic_loc, ic_scale=ic_scale, plen=plen, 
                             dist_type=self.dist_type, lpersist=lpersist, ldebug=ldebug, **kwargs)
-    params = apply_along_axis(fct, samples.ndim-1, samples, chunksize=int(300//plen//len(samples)))
+    params = apply_along_axis(fct, samples.ndim-1, samples, chunksize=100//plen//len(samples))
     if lpersist: # reset global parameters 
       global_loc   = None # location parameter ("mean")
       global_scale = None # scale parameter ("standard deviation")
@@ -1247,13 +1247,13 @@ class VarRV(DistVar):
     if  len(args) == 0:
       fillValue = self.fillValue or np.NaN
       fct = functools.partial(rv_stats, dist_type=self.dist_type, fct_type=rv_fct, fillValue=fillValue, **kwargs)
-      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=100)
+      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=10)
       assert dist.shape[:-1] == self.shape[:-1]
     elif  len(args) == 1 and rv_fct == 'moment':
       raise NotImplementedError
       fillValue = self.fillValue or np.NaN
       fct = functools.partial(rv_stats, dist_type=self.dist_type, fct_type=rv_fct, fillValue=fillValue, **kwargs)
-      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=100)
+      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=10)
       assert dist.shape[:-1] == self.shape[:-1]
     elif len(args) == 1:
       support = args[0]
@@ -1261,7 +1261,7 @@ class VarRV(DistVar):
       n = len(support); fillValue = self.fillValue or np.NaN
       fct = functools.partial(rv_eval, dist_type=self.dist_type, fct_type=rv_fct, 
                               support=support, n=n, fillValue=fillValue, **kwargs)
-      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=10000//n)
+      dist = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=1000//n)
       assert dist.shape == self.shape[:-1] + (len(support),)
     else: raise ArgumentError
     return dist
@@ -1291,7 +1291,7 @@ class VarRV(DistVar):
     n = len(support) # in order to use _get_dist(), we have to pass a dummy support
     fillValue = self.fillValue or np.NaN # for masked values
     fct = functools.partial(rv_resample, dist_type=self.dist_type, n=n, fillValue=fillValue, dtype=self.dtype)
-    samples = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=100000//n)
+    samples = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=10000//n)
     assert samples.shape == self.shape[:-1] + (n,)
     assert np.issubdtype(samples.dtype, self.dtype)
     return samples

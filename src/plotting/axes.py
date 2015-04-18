@@ -13,8 +13,8 @@ from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 from types import NoneType
 # internal imports
-from geodata.base import Variable, Dataset, Ensemble
-from geodata.misc import ListError, AxisError, ArgumentError, isEqual
+from geodata.base import Variable
+from geodata.misc import ListError, ArgumentError, isEqual
 from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile
 from collections import OrderedDict
 from utils.misc import binedges, expandArgumentList

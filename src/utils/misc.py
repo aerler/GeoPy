@@ -85,7 +85,7 @@ def expandArgumentList(inner_list=None, outer_list=None, expand_list=None, lprod
       in every argument dict. 
       Arguments can be expanded simultaneously (in parallel) within an outer product by specifying
       them as a tuple within the outer product argument list ('outer_list'). '''
-  if expand_list is None and inner_list is None and outer_list is None: 
+  if not (expand_list or inner_list or outer_list): 
     arg_dicts = [kwargs] # return immediately - nothing to do
   else:
       
