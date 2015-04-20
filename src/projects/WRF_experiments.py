@@ -219,7 +219,9 @@ WRF_experiments = experiments # alias for whole dict
 ensembles = OrderedDict()
 # initial condition ensemble
 ensembles['max-ens'] = ('max-ctrl', 'max-ens-A', 'max-ens-B', 'max-ens-C')
-ensembles['phys-ens'] = ('old-ctrl','ctrl-1','max-ctrl','new-ctrl')
+ensembles['phys-ens'] = ('max-ctrl', 'old-ctrl', 'ctrl-1', 'new-ctrl')
+# N.B.: static & meta data for the ensemble is copied from the first-listed member;
+#       this includes station attributes, such as the elevation error 
 # add future versions
 for ensname,enslist in ensembles.items():
   for suffix in '2050','2100':
