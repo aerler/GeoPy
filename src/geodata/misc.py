@@ -38,7 +38,7 @@ class ElementWise():
   def __call__(self, *args, **kwargs):
     ''' Call function element-wise, by iterating over the argument list. Multiple arguments are supported using
         multiple list arguments (of the same length); key-word arguments are passed directly to the function. '''
-    if isinstance(args[0], col.Iterable):
+    if isinstance(args[0], col.Iterable) and not isinstance(args[0], basestring):
       l = len(args[0])
       for arg in args: # check consistency
         if not isinstance(arg, col.Iterable) and len(arg)==l: 

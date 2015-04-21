@@ -516,7 +516,7 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
 
 # dictionary with distribution definitions for common variables  
 var_dists = dict() # tuple( dist_name, kwargs)
-var_dists['CDD'] = ('kde', dict())
+var_dists['CDD'] = ('kde', dict()) # gamma distribution doesn't seem to converge very well...
 var_dists['CWD'] = ('kde', dict())
 var_dists['MaxWaterflx_7d'] = ('kde', dict())
 # var_dists['CDD'] = ('genextreme', dict())
