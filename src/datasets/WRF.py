@@ -13,6 +13,7 @@ import collections as col
 import os, pickle
 import osr
 # from atmdyn.properties import variablePlotatts
+from average.derived_variables import precip_thresholds
 from geodata.base import concatDatasets
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError
@@ -206,6 +207,8 @@ class Srfc(FileType):
     self.name = 'srfc'
     self.atts = dict(T2           = dict(name='T2', units='K'), # 2m Temperature
                      TSK          = dict(name='Ts', units='K'), # Skin Temperature (SST)
+                     SummerDays = dict(name='sumfrq', units='', atts=dict(long_name='Fraction of Summer Days (>25C)')),
+                     FrostDays  = dict(name='frzfrq', units='', atts=dict(long_name='Fraction of Frost Days (< 0C)')),
                      Q2           = dict(name='q2', units='kg/kg'), # 2m water vapor mass mixing ratio
                      RAIN         = dict(name='precip', units='kg/m^2/s'), # total precipitation rate (kg/m^2/s)
                      RAINC        = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate (kg/m^2/s)
@@ -224,14 +227,21 @@ class Srfc(FileType):
                      LiquidPrecip = dict(name='liqprec_sr', units='kg/m^2/s'), # liquid precipitation rate
                      SolidPrecip  = dict(name='solprec_sr', units='kg/m^2/s'), # solid precipitation rate
                      WaterVapor   = dict(name='Q2', units='Pa'), # water vapor partial pressure
-                     WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days
-                     WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
-                     WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)
-                     FrostDays    = dict(name='frzfrq', units=''), # fraction of frost days 
-                     MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
+                     #WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
+                     #WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
+                     #WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)                     MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
                      MaxRAINC     = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # maximum 6-hourly convective precip
                      MaxPrecip    = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # for short-term consistency                    
-                     MaxPreccu    = dict(name='MaxPreccu_6h', units='kg/m^2/s')) # for short-term consistency
+                     MaxPreccu    = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # for short-term consistency
+                     MaxRAIN_1d   = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
+                     MaxRAINC_1d  = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # maximum daily convective precip
+                     MaxPrecip_1d = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
+                     MaxPreccu_1d = dict(name='MaxPreccu_1d', units='kg/m^2/s')) # for short-term consistency
+    for threshold in precip_thresholds: # add variables with different wet-day thresholds
+        suffix = '_{:03d}'.format(int(10*threshold))
+        self.atts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    
+        self.atts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day thre
+        self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s') # wet-day precipitation rate (kg/m^2/s)
     self.vars = self.atts.keys()    
     self.climfile = 'wrfsrfc_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfsrfc_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
@@ -252,13 +262,18 @@ class Hydro(FileType):
                      LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
                      SolidPrecip  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
                      NetWaterFlux = dict(name='waterflx', units='kg/m^2/s'), # total water downward flux
-                     WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
-                     WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
-                     WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)
+                     #WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
+                     #WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
+                     #WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)
                      MaxRAIN      = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
                      MaxRAINC     = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # maximum daily convective precip
                      MaxPrecip    = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
                      MaxPreccu    = dict(name='MaxPreccu_1d', units='kg/m^2/s')) # for short-term consistency                     
+    for threshold in precip_thresholds: # add variables with different wet-day thresholds
+        suffix = '_{:03d}'.format(int(10*threshold))
+        self.atts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    
+        self.atts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day thre
+        self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s') # wet-day precipitation rate (kg/m^2/s)
     self.vars = self.atts.keys()
     self.climfile = 'wrfhydro_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfhydro_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
@@ -301,6 +316,8 @@ class Xtrm(FileType):
                      T2MIN         = dict(name='Tmin', units='K'),   # daily minimum Temperature (at 2m)
                      T2MAX         = dict(name='Tmax', units='K'),   # daily maximum Temperature (at 2m)
                      T2STD         = dict(name='Tstd', units='K'),   # daily Temperature standard deviation (at 2m)
+                     SummerDays = dict(name='sumfrq', units='', atts=dict(long_name='Fraction of Summer Days (>25C)')),
+                     FrostDays  = dict(name='frzfrq', units='', atts=dict(long_name='Fraction of Frost Days (< 0C)')),
                      #SKINTEMPMEAN  = dict(name='TSmean', units='K'),  # daily mean Skin Temperature
                      SKINTEMPMEAN  = dict(name='Ts', units='K'),  # daily mean Skin Temperature
                      SKINTEMPMIN   = dict(name='TSmin', units='K'),   # daily minimum Skin Temperature
@@ -401,8 +418,8 @@ for fileclass in fileclasses.itervalues():
         atts[x+key] = att
         if fileclass.name in ('hydro','lsm'):
           att = att.copy()
-          att['name'] = att['name']+'_7d'
-          atts[x+key+'_7d'] = att
+          att['name'] = att['name']+'_5d'
+          atts[x+key+'_5d'] = att
         if fileclass.name in ('xtrm',):
           att = att.copy()
           att['name'] = 'Tof'+att['name'][0].upper()+att['name'][1:]

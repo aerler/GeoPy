@@ -22,6 +22,7 @@ from geodata.base import Axis, Variable, Dataset
 from utils.nctools import writeNetCDF
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import NamedShape, ShapeInfo
+from average.derived_variables import precip_thresholds
 import average.derived_variables as dv
 
 ## EC (Environment Canada) Meta-data
@@ -38,7 +39,8 @@ avgfolder = root_folder + 'ecavg/'  # folder for user data
 varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Average 2m Temperature')), # 2m average temperature
                Tmin       = dict(name='Tmin', units='K', atts=dict(long_name='Minimum 2m Temperature')), # 2m minimum temperature
                Tmax       = dict(name='Tmax', units='K', atts=dict(long_name='Maximum 2m Temperature')), # 2m maximum temperature
-               FrostDays  = dict(name='frzfrq', units=''), # fraction of frost days
+               SummerDays = dict(name='sumfrq', units='', atts=dict(long_name='Fraction of Summer Days (>25C)')),
+               FrostDays  = dict(name='frzfrq', units='', atts=dict(long_name='Fraction of Frost Days (< 0C)')),
                precip     = dict(name='precip', units='kg/m^2/s', atts=dict(long_name='Total Precipitation')), # total precipitation
                MaxPrecip  = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency 
                MinPrecip  = dict(name='MinPrecip_1d', units='kg/m^2/s'), # for short-term consistency
@@ -48,9 +50,9 @@ varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Aver
                liqprec    = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
                MaxLiqprec = dict(name='MaxLiqprec_1d', units='kg/m^2/s'), # for short-term consistency
                MinLiqprec = dict(name='MinLiqprec_1d', units='kg/m^2/s'), # for short-term consistency
-               WetDays    = dict(name='wetfrq', units=''), # fraction of wet/rainy days
-               WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
-               WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)
+               #WetDays    = dict(name='wetfrq', units=''), # fraction of wet/rainy days
+               #WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
+               #WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)
                # meta/constant data variables
                # N.B.: 'stn'/'station' prefix is to allow consistent naming and avoid name collisions with variables in other datasets
                name    = dict(name='station_name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
@@ -67,7 +69,14 @@ varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Aver
                                                                          description='Number of Month with valid Data')),
                # axes (also sort of meta data)
                time     = dict(name='time', units='month', atts=dict(long_name='Month since 1979-01')), # time coordinate
-               station  = dict(name='station', units='#', atts=dict(long_name='Station Number'))) # ordinal number of station
+               station  = dict(name='station', units='#', atts=dict(long_name='Station Number'))) # ordinal number of statio
+# add variables with different wet-day thresholds
+for threshold in precip_thresholds:
+    suffix = '_{:03d}'.format(int(10*threshold))
+    varatts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    
+    varatts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day thre
+    varatts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s') # wet-day precipitation rate (kg/m^2/s)
+
 # list of variables to load
 variable_list = varatts.keys() # also includes coordinate fields    
 
@@ -294,38 +303,50 @@ precip_vars = dict(precip=PrecipDef(name='precipitation', prefix='dt', atts=vara
                    solprec=PrecipDef(name='snowfall', prefix='ds', atts=varatts['solprec']),
                    liqprec=PrecipDef(name='rainfall', prefix='dr', atts=varatts['liqprec']))
 # precipitation extremes (and other derived variables)
-precip_xtrm = [dv.WetDays(ignoreNaN=True),dv.WetDayRain(ignoreNaN=True),dv.WetDayPrecip(ignoreNaN=True)]
+precip_xtrm = []
+for threshold in precip_thresholds:
+  precip_xtrm.append(dv.WetDays(threshold=threshold, ignoreNaN=True))
+  precip_xtrm.append(dv.WetDayRain(threshold=threshold, ignoreNaN=True))
+  precip_xtrm.append(dv.WetDayPrecip(threshold=threshold, ignoreNaN=True))
 for var in precip_vars:
   for mode in ('min','max'):
     # ordinary & interval extrema: var, mode, [interval=7,] name=None, dimmap=None
     precip_xtrm.append(dict(var=var, mode=mode, klass=dv.Extrema))      
-    precip_xtrm.append(dict(var=var, mode=mode, interval=7, klass=dv.MeanExtrema))      
+    precip_xtrm.append(dict(var=var, mode=mode, interval=5, klass=dv.MeanExtrema))      
 # consecutive events: var, mode, threshold=0, name=None, long_name=None, dimmap=None
-tmpatts = dict(var='precip', threshold=2.3e-7, klass=dv.ConsecutiveExtrema)
-precip_xtrm.append(dict(name='CWD', mode='above', long_name='Consecutive Wet Days', **tmpatts))
-precip_xtrm.append(dict(name='CDD', mode='below', long_name='Consecutive Dry Days', **tmpatts))
+for threshold in precip_thresholds:
+  suffix = '_{:03d}'.format(int(10*threshold)); name_suffix = '{:3.1f} mm/day)'.format(threshold)
+  tmpatts = dict(var='precip', threshold=threshold/86400., klass=dv.ConsecutiveExtrema)
+  precip_xtrm.append(dict(name='CWD'+suffix, mode='above', long_name='Consecutive Wet Days (>'+name_suffix, **tmpatts))
+  precip_xtrm.append(dict(name='CDD'+suffix, mode='below', long_name='Consecutive Dry Days (<'+name_suffix, **tmpatts))
 
 # daily temperature variables in data
 temp_vars   = dict(T2=TempDef(name='mean temperature', prefix='dm', atts=varatts['T2']),
                    Tmin=TempDef(name='minimum temperature', prefix='dn', atts=varatts['Tmin']),
                    Tmax=TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax']))  
 # temperature extremes (and other derived variables)
-temp_xtrm   = [dv.FrostDays(ignoreNaN=True),]
+temp_xtrm   = [dv.FrostDays(threshold=0., temp='T2MIN', ignoreNaN=True), dv.SummerDays(threshold=25., temp='T2MAX'),]
 for var in temp_vars:
   for mode in ('min','max'):
     # ordinary & interval extrema: var, mode, [interval=7,] name=None, dimmap=None
     temp_xtrm.append(dict(var=var, mode=mode, klass=dv.Extrema))      
-    temp_xtrm.append(dict(var=var, mode=mode, interval=7, klass=dv.MeanExtrema))      
+    temp_xtrm.append(dict(var=var, mode=mode, interval=5, klass=dv.MeanExtrema))      
 # consecutive events: var, mode, threshold=0, name=None, long_name=None, dimmap=None
-tmpatts = dict(mode='below', threshold=273.15, klass=dv.ConsecutiveExtrema) # threshold after conversion
-temp_xtrm.append(dict(name='CFD', var='T2', long_name='Consecutive Frost Days', **tmpatts))
-temp_xtrm.append(dict(name='CDFD', var='Tmax', long_name='Consecutive Day Frost Days', **tmpatts))
-temp_xtrm.append(dict(name='CNFD', var='Tmin', long_name='Consecutive Night Frost Days', **tmpatts))
+# tmpatts = dict(mode='below', threshold=273.15, klass=dv.ConsecutiveExtrema) # threshold after conversion
+# temp_xtrm.append(dict(name='CFD', var='T2', long_name='Consecutive Frost Days', **tmpatts))
+temp_xtrm.append(dict(name='CSD', var='Tmax', mode='above', threshold=273.15+25., 
+                      long_name='Consecutive Summer Days (>25C)', klass=dv.ConsecutiveExtrema))
+temp_xtrm.append(dict(name='CFD', var='Tmin', mode='below', threshold=273.15, 
+                      long_name='Consecutive Frost Days (< 0C)', klass=dv.ConsecutiveExtrema))
 
 # map from common variable names to WRF names (which are used in the derived_variables module)
-ec_varmap = dict(RAIN='precip', south_north='time', time='station', west_east=None, # swap order of axes
-                 WetDays='wetfrq', WetDayRain='dryprec', WetDayPrecip='wetprec',
-                 T2MIN='Tmin', T2MAX='Tmax', FrostDays='frzfrq') 
+ec_varmap = dict(RAIN='precip', south_north='time', time='station', west_east=None, # swap order of axes                 
+                 T2MIN='Tmin', T2MAX='Tmax', FrostDays='frzfrq', SummerDays='sumfrq') 
+for threshold in precip_thresholds:
+  suffix = '_{:03d}'.format(int(10*threshold))
+  ec_varmap['WetDays'+suffix] = 'wetfrq'+suffix
+  ec_varmap['WetDayRain'+suffix] ='dryprec'+suffix
+  ec_varmap['WetDayPrecip'+suffix] ='wetprec'+suffix
 
 # definition of station meta data format 
 ec_header_format = ('No','StnId','Prov','From','To','Lat(deg)','Long(deg)','Elev(m)','Joined','Station','name') 
@@ -521,7 +542,7 @@ class StationRecords(object):
       tmpatts['name'] = 'stn_'+varname+'_len'; tmpatts['atts'] = recatts
       dataset += Variable(axes=(station,), data=np.zeros(len(station), dtype='int16'),  **tmpatts)
     # add some attributes
-    dataset.atts['dryday_threshold'] = dv.dryday_threshold
+#     dataset.atts['dryday_threshold'] = dv.dryday_threshold
     # write dataset to file
     ncfile = '{:s}/{:s}'.format(folder,filename)      
     #zlib = dict(chunksizes=dict(station=len(station))) # compression settings; probably OK as is 
@@ -546,6 +567,7 @@ class StationRecords(object):
       # finalize
       xvar.checkPrerequisites(ncset, const=None, varmap=self.varmap)
       if xvar.name in self.varmap: xvar.name = self.varmap[xvar.name] # rename
+#       print xvar.name
       xvar.createVariable(ncset)
       extremes.append(xvar)
     self.extremes = extremes
@@ -941,8 +963,8 @@ if __name__ == '__main__':
 #            CWD:  0.00 |  6.43 | 55.00
 #            CDD:  0.00 |  4.87 | 26.00
 #        WetDays:  0.00 |  0.38 |  0.84
-    print('Dry-day Threshold: {:f}'.format(dv.dryday_threshold))
-    print('')
+#     print('Dry-day Threshold: {:f}'.format(dv.dryday_threshold))
+#     print('')
     filename = tsfile_prov.format(variables.values()[0].datatype,prov)        
     test.prepareDataset(filename=filename, folder=None)
     # read actual station data
@@ -994,7 +1016,9 @@ if __name__ == '__main__':
   elif mode == 'convert_all_stations':
     
     # loop over variable types
-    for variables in (precip_vars, temp_vars,): # precip_vars, temp_vars,
+#     for variables in (precip_vars, temp_vars,): # precip_vars, temp_vars,
+#     for variables in (precip_vars,):
+    for variables in (temp_vars,):
       
       # initialize station record container
       stations = StationRecords(variables=variables, constraints=None)

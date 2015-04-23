@@ -239,7 +239,7 @@ class MyFigure(Figure):
     # get option
     folder = kwargs.pop('folder', None)
     lfeedback = kwargs.pop('lfeedback', None) or kwargs.pop('feedback', None)
-    filetype = kwargs.pop('filetype', 'png')
+    filetype = kwargs.pop('filetype', 'pdf')
     if not filetype.startswith('.'): filetype = '.'+filetype
     # construct filename
     filename = ''
