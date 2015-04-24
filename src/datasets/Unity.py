@@ -24,6 +24,7 @@ from datasets.PCIC import loadPCIC, loadPCIC_Shp
 # from geodata.utils import DatasetError
 from warnings import warn
 from plotting.properties import variablePlotatts
+from logging import thread
 
 ## Unity Meta-data
 
@@ -41,7 +42,7 @@ varatts = dict(# PRISM variables
                Q2 = dict(name='Q2', units='Pa', scalefactor=100.), # 2m water vapor pressure
                pet = dict(name='pet', units='kg/m^2/s', scalefactor=1./86400.), # potential evapo-transpiration
                cldfrc = dict(name='cldfrc', units='', offset=0.), # cloud cover/fraction
-               wetfrq = dict(name='wetfrq', units='', offset=0), # number of wet days
+               wetfrq = dict(name='wetfrq_010', units='', offset=0), # number of wet days
                frsfrq = dict(name='frzfrq', units='', offset=0), # number of frost days 
                # additional variables
                dryprec = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
@@ -64,17 +65,19 @@ def loadObs_Special(varlist=None, **kwargs):
   ''' wrapper that adds some special/derived variables '''
   # parse and edit varlist
   if varlist is None:
-    ldryprec = True; lwetprec = True
+    ldryprec = True; lwetprec = True; lwetdays = True
   else:
     varlist = list(varlist)
-    ldryprec = False; lwetprec = False
+    ldryprec = False; lwetprec = False; lwetdays = False
     if 'dryprec' in varlist: # really just an alias for precip 
       ldryprec = True; varlist.remove('dryprec')
       if 'precip' not in varlist: varlist.append('precip')
     if 'wetprec' in varlist: 
       lwetprec = True; varlist.remove('wetprec') # wet-day precip
       if 'precip' not in varlist: varlist.append('precip')
-      if 'wetfrq' not in varlist: varlist.append('wetfrq')    
+      if 'wetfrq' not in varlist: varlist.append('wetfrq')
+    if 'wetfrq' in varlist: 
+      lwetdays = True    
   # load actual data using standard call to loadObservation
   dataset = loadObservations(varlist=varlist, **kwargs)
   # add new/special variables
@@ -83,6 +86,10 @@ def loadObs_Special(varlist=None, **kwargs):
     dataset += wetprec.copy(plot=variablePlotatts['wetprec'], **varatts['wetprec'])
   if ldryprec: 
     dataset += dataset.precip.copy(plot=variablePlotatts['dryprec'], **varatts['dryprec'])
+  if lwetdays:
+    from average.derived_variables import precip_thresholds
+    for threshold in precip_thresholds:
+      dataset += dataset.wetfrq.copy(name='wetfrq_{:03d}'.format(int(threshold*10)))
   # return augmented dataset
   return dataset
 
@@ -161,11 +168,11 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-  mode = 'merge_climatologies'
+#   mode = 'merge_climatologies'
 #   mode = 'merge_timeseries'
 #   mode = 'test_climatology'
 #   mode = 'test_point_climatology'
-#   mode = 'test_point_timeseries'
+  mode = 'test_point_timeseries'
   
   # settings to generate dataset
   grids = []

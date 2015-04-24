@@ -566,8 +566,8 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=False, l
 
 # a function to load station data
 @BatchLoad
-def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, 
-                   slices=None, obsslices=None, reduction=None, shape=None, station=None, prov=None, 
+def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, prov=None, 
+                   slices=None, obsslices=None, years=None, reduction=None, shape=None, station=None, 
                    constraints=None, filetypes=None, domain=None, ldataset=False, lcheckVar=False, 
                    lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', lminmax=False,
                    imaster=None, lall=True, ensemble_list=None, ensemble_product='inner', **kwargs):
@@ -590,7 +590,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   loadargs = expandArgumentList(names=names, station=station, prov=prov, shape=shape, varlist=varlist, 
                                 mode=dataset_mode, filetypes=filetypes, domains=domain, lwrite=lwrite,
                                 slices=slices, obsslices=obsslices, name_tags=name_tags, ltrimT=ltrimT,
-                                expand_list=ensemble_list, lproduct=ensemble_product)
+                                years=years, expand_list=ensemble_list, lproduct=ensemble_product)
   for loadarg in loadargs:
     # clean up argumetns
     name = loadarg.pop('names',None); name_tag = loadarg.pop('name_tags',None)
@@ -632,10 +632,10 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   # extract seasonal/climatological values/extrema
   # N.B.: the operations below should work with Ensembles as well as Datasets 
   if aggregation:
-    if season is not None:
-      ensemble = getattr(ensemble,'seasonal'+aggregation.title())(season=season, taxis='time', **kwargs)
-    else:
+    if season is None:
       ensemble = getattr(ensemble,'clim'+aggregation.title())(taxis='time', **kwargs)
+    else:
+      ensemble = getattr(ensemble,'seasonal'+aggregation.title())(season=season, taxis='time', **kwargs)
   elif season: # but not aggregation
     ensemble = ensemble.extractSeason(season=season)
   # return dataset

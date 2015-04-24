@@ -586,13 +586,20 @@ def getPlotAtts(name=None, units=None, atts=None, plot=None, plotatts_dict=None)
         plotatts = PlotAtts(name=name, units=units, title=name)  
   # modify according to variable specifics
   if len(postfix) > 0: # these are mostly things like, e.g., '7d' for 7d means
-    if ldistvar:
+    if ldistvar: 
+      # N.B.: this is for distribution objects - we usually cast these into a proper variable before plotting 
       tmpname = basename if basename == basename.upper() else basename.title() 
       plotatts = plotatts.copy(name = '{:s} '.format(tmpname)+plotatts.name,
                                title = '{:s} '.format(tmpname)+plotatts.title)
     else:
-      plotatts = plotatts.copy(name = plotatts.name.title()+' ({:s})'.format(postfix),
-                               title = plotatts.title.title()+' ({:s})'.format(postfix))
+      # N.B.: this is the usualy path for variables we are actually plotting
+      tmpname = plotatts.name if plotatts.name == plotatts.name.upper() else plotatts.name.title()
+      if tmpname in ('CWD','CDD'):
+        postfix = '{:2.0f}'.format(int(postfix)/10.) if int(postfix) >= 100 else '{:2.1f}'.format(int(postfix)/10.) 
+        if not atts is None and 'long_name' in atts: title = atts['long_name'] 
+        else: title = plotatts.title+' ({:s})'.format(postfix)
+      else: title = plotatts.title+' ({:s})'.format(postfix)
+      plotatts = plotatts.copy(name = tmpname+' ({:s})'.format(postfix), title = title)
   if prefix == 'max': 
     plotatts = plotatts.copy(name = 'Max. '+plotatts.name, title = 'Maximum '+plotatts.title) 
   elif prefix == 'min': 

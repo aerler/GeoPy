@@ -755,7 +755,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
     if ensname in ensembles: ensemble = ensembles[ensname]
     else: raise TypeError
   # figure out time period
-  if years is None: montpl = (60,180)
+  if years is None: montpl = (0,180)
   elif isinstance(years,(list,tuple)) and len(years)==2: 
     if not all([isInt(yr) for yr in years]): raise TypeError, years
     montpl = (years[0]*12,years[1]*12)
@@ -820,11 +820,11 @@ if __name__ == '__main__':
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
-  mode = 'test_point_timeseries'
-#   mode = 'test_point_ensemble'
+#   mode = 'test_point_timeseries'
+  mode = 'test_point_ensemble'
 #   mode = 'pickle_grid'  
-#   pntset = 'shpavg'
-  pntset = 'ecprecip'
+  pntset = 'shpavg'
+#   pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
   experiments = ['rrtmg', 'ctrl', 'new']
@@ -951,7 +951,7 @@ if __name__ == '__main__':
     
     print('')
     if pntset in ('shpavg',):
-      dataset = loadWRF_ShpTS(experiment='max-ctrl', domains=None, varlist=['zs','stn_zs','precip','MaxPrecip_1d','MaxPrecip_7d'], 
+      dataset = loadWRF_ShpTS(experiment='max-ctrl', domains=None, varlist=['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
                               shape=pntset, filetypes=['hydro'])
     else:
       dataset = loadWRF_StnTS(experiment='max-ens-A', domains=None, varlist=['zs','stn_zs','precip','MaxPrecip_6h','MaxPreccu_1h','MaxPrecip_1d'], 
@@ -971,7 +971,7 @@ if __name__ == '__main__':
     print('')
     if pntset in ('shpavg',):
 #       dataset = loadWRF_ShpEns(ensemble=['max-ctrl','max-ens-A'], shape=pntset, domains=None, filetypes=['hydro','srfc'])
-      dataset = loadWRF_ShpEns(ensemble='max-ens-2050', shape=pntset, varlist=None, domains=None, filetypes=['srfc',])
+      dataset = loadWRF_ShpEns(ensemble='max-ens-2050', shape=pntset, varlist=None, domains=None, filetypes=['hydro',])
     else:
       dataset = loadWRF_StnEns(ensemble=['max-ens-A','max-ens-C',], station=pntset, domains=None, filetypes=['hydro','srfc'])
     dataset.load()
