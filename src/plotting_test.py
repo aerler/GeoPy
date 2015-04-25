@@ -312,23 +312,23 @@ class DistPlotTest(unittest.TestCase):
 if __name__ == "__main__":
 
     
-    specific_tests = None
-    specific_tests = ['BasicLinePlot']
-#     specific_tests = ['BasicErrorPlot']
-#     specific_tests = ['FancyErrorPlot']
-#     specific_tests = ['FancyBandPlot']
-#     specific_tests = ['AdvancedLinePlot']
-#     specific_tests = ['CombinedLinePlot']
-#     specific_tests = ['AxesGridLinePlot']    
-#     specific_tests = ['MeanAxisPlot']
-#     specific_tests = ['BasicHistogram']
-#     specific_tests = ['BootstrapCI']
+    specific_tests = []
+#     specific_tests += ['BasicLinePlot']
+#     specific_tests += ['BasicErrorPlot']
+#     specific_tests += ['FancyErrorPlot']
+#     specific_tests += ['FancyBandPlot']
+#     specific_tests += ['AdvancedLinePlot']
+#     specific_tests += ['CombinedLinePlot']
+#     specific_tests += ['AxesGridLinePlot']    
+#     specific_tests += ['MeanAxisPlot']
+#     specific_tests += ['BasicHistogram']
+#     specific_tests += ['BootstrapCI']
     
     # list of tests to be performed
     tests = [] 
     # list of variable tests
     tests += ['LinePlot'] 
-#     tests += ['DistPlot']
+    tests += ['DistPlot']
     
 
     # construct dictionary of test classes defined above

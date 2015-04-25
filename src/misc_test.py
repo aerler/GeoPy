@@ -199,16 +199,16 @@ class DatasetsTest(unittest.TestCase):
     ''' test station data load functions (ensemble and list) '''
     from datasets.common import loadEnsembleTS    
     # test simple ensemble with basins
-    names = ['GPCC', 'max-ens_d01','phys-ens-2100']; varlist = ['precip'] 
+    names = ['GPCC', 'phys-ens_d01','max-ens-2100']; varlist = ['precip'] 
     aggregation = None; slices = dict(shape_name='ARB'); obsslices = dict(years=(1939,1945)) 
     shpens = loadEnsembleTS(names=names, season=None, shape='shpavg', aggregation=aggregation, 
                             slices=slices, varlist=varlist, filetypes=['hydro'], obsslices=obsslices)
     assert isinstance(shpens, Ensemble)
     assert shpens.basetype.__name__ == 'Dataset'
     assert all(shpens.hasVariable(varlist[0]))
-    assert 'GPCC' in shpens
-    assert len(shpens['GPCC'].time) == 72 # time-series
-    assert len(shpens['phys-ens-2100'].time) == 720 # ensemble
+    assert names[0] in shpens
+    assert len(shpens[names[0]].time) == 72 # time-series
+    assert len(shpens[names[-1]].time) == 720 # ensemble
     assert all('ARB' == ds.atts.shape_name for ds in shpens)
     # test list expansion of ensembles loading
     names = ['EC', 'phys-ens']; varlist = ['MaxPrecip_1d'] 
