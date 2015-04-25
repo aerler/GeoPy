@@ -13,6 +13,7 @@ import collections as col
 import os, pickle
 import osr
 # from atmdyn.properties import variablePlotatts
+from datasets.EC import nullNaN
 from average.derived_variables import precip_thresholds
 from geodata.base import concatDatasets
 from geodata.netcdf import DatasetNetCDF
@@ -184,7 +185,6 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
   # return name and folder
   return folder, experiment, tuple(names), tuple(domains)
   
-
 ## variable attributes and name
 # convert water mass mixing ratio to water vapor partial pressure ( kg/kg -> Pa ) 
 Q = 96000.*28./18. # surface pressure * molecular weight ratio ( air / water )
@@ -241,7 +241,8 @@ class Srfc(FileType):
         suffix = '_{:03d}'.format(int(10*threshold))
         self.atts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    
         self.atts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day thre
-        self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s') # wet-day precipitation rate (kg/m^2/s)
+        self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s', 
+                                                atts=dict(fillValue=0), transform=nullNaN) # wet-day precipitation rate (kg/m^2/s)
     self.vars = self.atts.keys()    
     self.climfile = 'wrfsrfc_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfsrfc_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
@@ -273,7 +274,8 @@ class Hydro(FileType):
         suffix = '_{:03d}'.format(int(10*threshold))
         self.atts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    
         self.atts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day thre
-        self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s') # wet-day precipitation rate (kg/m^2/s)
+        self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s', 
+                                                atts=dict(fillValue=0), transform=nullNaN) # wet-day precipitation rate (kg/m^2/s)
     self.vars = self.atts.keys()
     self.climfile = 'wrfhydro_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfhydro_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)

@@ -35,6 +35,10 @@ tsfile_prov = 'ec{0:s}_{1:s}_monthly.nc' # filename pattern with province: stati
 avgfile = 'ec{0:s}_clim{1:s}.nc' # filename pattern: station type and ('_'+period)
 avgfolder = root_folder + 'ecavg/'  # folder for user data
 
+def nullNaN(data, var=None, slc=None):
+  ''' transform function to remove month with no precip from data (replace by NaN) '''
+  return np.where(data == 0., np.NaN, data)
+
 # variable attributes and name
 varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Average 2m Temperature')), # 2m average temperature
                Tmin       = dict(name='Tmin', units='K', atts=dict(long_name='Minimum 2m Temperature')), # 2m minimum temperature
@@ -75,7 +79,8 @@ for threshold in precip_thresholds:
     suffix = '_{:03d}'.format(int(10*threshold))
     varatts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    
     varatts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day thre
-    varatts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s') # wet-day precipitation rate (kg/m^2/s)
+    varatts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s', 
+                                          atts=dict(fillValue=0), transform=nullNaN) # wet-day precipitation rate (kg/m^2/s)
 
 # list of variables to load
 variable_list = varatts.keys() # also includes coordinate fields    

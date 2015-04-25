@@ -42,7 +42,7 @@ varatts = dict(# PRISM variables
                Q2 = dict(name='Q2', units='Pa', scalefactor=100.), # 2m water vapor pressure
                pet = dict(name='pet', units='kg/m^2/s', scalefactor=1./86400.), # potential evapo-transpiration
                cldfrc = dict(name='cldfrc', units='', offset=0.), # cloud cover/fraction
-               wetfrq = dict(name='wetfrq_010', units='', offset=0), # number of wet days
+               wetfrq = dict(name='wetfrq', units='', offset=0), # number of wet days
                frsfrq = dict(name='frzfrq', units='', offset=0), # number of frost days 
                # additional variables
                dryprec = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
@@ -76,8 +76,9 @@ def loadObs_Special(varlist=None, **kwargs):
       lwetprec = True; varlist.remove('wetprec') # wet-day precip
       if 'precip' not in varlist: varlist.append('precip')
       if 'wetfrq' not in varlist: varlist.append('wetfrq')
-    if 'wetfrq' in varlist: 
-      lwetdays = True    
+    if any([var[:6]=='wetfrq' for var in varlist]): 
+      lwetdays = True 
+      if 'wetfrq' not in varlist: varlist.append('wetfrq')
   # load actual data using standard call to loadObservation
   dataset = loadObservations(varlist=varlist, **kwargs)
   # add new/special variables
@@ -254,7 +255,7 @@ if __name__ == '__main__':
             
     # load averaged climatology file
     print('')
-    if pntset in ('shpavg',): dataset = loadUnity_ShpTS(shape=pntset)
+    if pntset in ('shpavg',): dataset = loadUnity_ShpTS(shape=pntset,varlist=['wetfrq','precip'])
     else: raise NotImplementedError
     print(dataset)
     dataset.load()

@@ -90,7 +90,8 @@ class MyAxes(Axes):
     else: self.set_color_cycle(reset_color)
     # figure out label list
     if labels is None: labels = self._getPlotLabels(varlist)           
-    elif len(labels) != len(varlist): raise ArgumentError, "Incompatible length of varlist and labels."
+    elif len(labels) < len(varlist): raise ArgumentError, "Incompatible length of varlist and labels."
+    elif len(labels) > len(varlist): labels = labels[:len(varlist)] # truncate 
     label_list = labels if llabel else [None]*len(labels) # used for plot labels later
     assert len(labels) == len(varlist)
     # finally, expand keyword arguments
@@ -128,7 +129,7 @@ class MyAxes(Axes):
         # N.B.: other scaling behavior could be added here
         if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)   
         # update plotargs from defaults
-        plotarg = self._getPlotArgs(label=label, var=var, plotatts=plotatts, plotarg=plotarg)
+        plotarg = self._getPlotArgs(label=label, var=var, llabel=llabel, plotatts=plotatts, plotarg=plotarg)
         plotarg['fmt'] = plotarg.pop('lineformat','') # rename (I prefer a different name)
         # N.B.: '' (empty string) is the default, None means no line is plotted, only errors!
         # extract arguments for error band
@@ -238,7 +239,7 @@ class MyAxes(Axes):
         if lprint: print varname, varunits, np.nanmean(up), np.nanmean(low)           
         if lsmooth: up = smooth(up); low = smooth(low)
         # update plotargs from defaults
-        plotarg = self._getPlotArgs(label=label, var=upvar, plotatts=plotatts, plotarg=plotarg)
+        plotarg = self._getPlotArgs(label=label, var=upvar, llabel=llabel, plotatts=plotatts, plotarg=plotarg)
         ## draw actual bands 
         bnd = self._drawBand(axe, low, up, **plotarg)
         # book keeping
@@ -408,7 +409,7 @@ class MyAxes(Axes):
         if not varname.endswith('_bins'): varname += '_bins'
         if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)
         # get default plotargs consistent with linePlot (but only color will be used)  
-        plotarg = self._getPlotArgs(label, var, plotatts=plotatts, plotarg=None)
+        plotarg = self._getPlotArgs(label, var, llabel=llabel, plotatts=plotatts, plotarg=None)
         # extract color
         if color is None and 'color' in plotarg: color = plotarg['color']
         if color is not None: color_list.append(color)
@@ -640,7 +641,7 @@ class MyAxes(Axes):
       labels = range(len(varlist))
     return labels
   
-  def _getPlotArgs(self, label, var, plotatts=None, plotarg=None, plot_labels=None):
+  def _getPlotArgs(self, label, var, llabel=False, plotatts=None, plotarg=None, plot_labels=None):
     ''' function to return plotting arguments/styles based on defaults and explicit arguments '''
     if not isinstance(label, (basestring,int,np.integer)): raise TypeError, label
     if not isinstance(var, Variable): raise TypeError
@@ -661,9 +662,11 @@ class MyAxes(Axes):
     if plotarg is not None: args.update(plotarg)
     # relabel (simple name mapping)
     if plot_labels is None: plot_labels = self.plot_labels
-    if plot_labels and label in plot_labels: args['label'] = plot_labels[label]
+    if plot_labels and label in plot_labels:
+      if llabel: args['label'] = plot_labels[label] # only, if we actually want labels!
+      label = plot_labels[label]
     # return dictionary with keyword argument for plotting function
-    return args    
+    return args
 
   def formatAxesAndAnnotation(self, title=None, legend=None, xlabel=None, ylabel=None, 
                               hline=None, vline=None, xlim=None, ylim=None, xlog=None, ylog=None,                                
