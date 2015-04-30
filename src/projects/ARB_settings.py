@@ -48,7 +48,7 @@ annotation_dict['lcc-col'] = dict(scale=(-114.5, 54.5, -117, 53, 200), lat_full=
 annotation_dict['lcc-arb'] = dict(scale=(-111, 52, -120, 55, 400), lat_full=[50,60], lat_half=[45,55,65], 
                              lon_full=[-130,-120,-110], lon_half=[-135,-125,-115,-105])
 ## Lambert Conic Conformal - BC & Alberta (below 55N)
-annotation_dict['lcc-bcab'] = dict(scale=(-127, 46.7, -120, 50, 300), lat_full=[50,60], lat_half=[45,55,65], 
+annotation_dict['lcc-bcab'] = dict(scale=(-112.5, 47, -120, 50, 300), lat_full=[50,60], lat_half=[45,55,65], 
                               lon_full=[-130,-120,-110], lon_half=[-135,-125,-115,-105])
 ## Lambert Conic Conformal - New Fine Domain
 annotation_dict['lcc-new'] = dict(scale=(-128.5, 48, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
@@ -100,8 +100,8 @@ projection_dict['lcc-col'] = dict(projection='lcc', lat_0=51.5, lon_0=-117.5, la
 projection_dict['lcc-arb'] = dict(projection='lcc', lat_0=55.5, lon_0=-114.5, lat_1=55, rsphere=rsphere,
               width=110*10e3, height=110*10e3, area_thresh = 500., resolution='l')
 ## Lambert Conic Conformal - BC & Alberta (below 55N)
-projection_dict['lcc-bcab'] = dict(projection='lcc', lat_0=52, lon_0=-120, lat_1=53, rsphere=rsphere,
-              width=150*10e3, height=140*10e3, area_thresh = 500., resolution='l')
+projection_dict['lcc-bcab'] = dict(projection='lcc', lat_0=52.5, lon_0=-119, lat_1=52.5, rsphere=rsphere,
+              width=150*10e3, height=150*10e3, area_thresh = 500., resolution='l')
 ## Lambert Conic Conformal - New Fine Domain
 projection_dict['lcc-new'] = dict(projection='lcc', lat_0=55, lon_0=-120, lat_1=52, rsphere=rsphere,
               width=180*10e3, height=180*10e3, area_thresh = 1000., resolution='l')
@@ -157,7 +157,7 @@ def getARBsetup(projection, annotation=None, stations=None, lpickle=False, folde
 if __name__ == '__main__':
 
   proj_list = None
-#   proj_list = ['lcc-coast']
+  proj_list = ['lcc-bcab']
 
   if proj_list is None: proj_list = projection_dict.keys()    
   # loop over projections

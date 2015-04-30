@@ -30,8 +30,16 @@ from geodata.base import DatasetError
 from datasets.WSC import basins_info
 from plotting.legacy import loadDatasets, checkItemList
 from plotting.settings import getFigureSettings, getVariableSettings
+from datasets.common import stn_params
 # ARB project related stuff
 from projects.ARB_settings import getARBsetup, figure_folder, map_folder
+
+station_constraints = dict()
+station_constraints['min_len'] = 15 # for valid climatology
+station_constraints['lat'] = (45,55)
+station_constraints['end_after'] = 1980
+#station_constraints['max_zerr'] = 100 # can't use this, because we are loading EC data separately from WRF
+station_constraints['prov'] = ('BC','AB')
 
 if __name__ == '__main__':
 
@@ -39,9 +47,9 @@ if __name__ == '__main__':
   WRFfiletypes = [] # WRF data source
   WRFfiletypes += ['hydro']
   #WRFfiletypes += ['lsm']
-  WRFfiletypes += ['srfc']
+#   WRFfiletypes += ['srfc']
 #   WRFfiletypes += ['xtrm']
-  WRFfiletypes += ['plev3d']
+#   WRFfiletypes += ['plev3d']
   # period shortcuts
   H01 = '1979-1980'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994'; H60 = '1949-2009' # historical validation periods
@@ -81,13 +89,14 @@ if __name__ == '__main__':
 #   variables += ['Ts']
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
+  variables += ['MaxPrecip_1d']
 #   variables += ['wetprec']
-  variables += ['precip']
-  variables += ['wetfrq']
-  variables += ['WaterTransport_U']
-  variables += ['WaterTransport_V']
+#   variables += ['precip']
+#   variables += ['wetfrq']
+#   variables += ['WaterTransport_U']
+#   variables += ['WaterTransport_V']
 #   variables += ['waterflx']
-  variables += ['p-et']
+#   variables += ['p-et']
 #   variables += ['precipnc', 'precipc']
 #   variables += ['Q2']
 #   variables += ['evap']
@@ -110,7 +119,7 @@ if __name__ == '__main__':
 #   seasons += ['melt']
 #   seasons += ['annual']
   seasons += ['summer']
-#   seasons += ['winter']
+  seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
@@ -125,7 +134,7 @@ if __name__ == '__main__':
   ## case settings
     
   folder = figure_folder
-  lpickle = False # load projection from file or recompute
+  lpickle = True # load projection from file or recompute
   lprint = True # write plots to disk using case as a name tag
   maptype = 'lcc-new'; lstations = False; lbasins = True
 #   maptype = 'lcc-can'; lstations = False; lbasins = True; basinlist = ('ARB','FRB','GLB')
@@ -171,14 +180,16 @@ if __name__ == '__main__':
 # #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
 #   case = 'wetdays'; lsamesize = True
 
-# # water vapor transport
+# # ensemble projection
 #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
 #   explist = ['max-grass','max-ctrl','erai-max']*2
-  explist = ['max-ens-2050','max-ens-2100']*2; period = [A15,B15]*2
-  seasons = [('summer',)*2+('winter',)*2]; domain = 2
-#   maptype = 'lcc-can'; lstations = False; lbasins = True; basinlist = ['FRB','ARB','GLB']
-  lfrac = True; reflist = ['max-ens']; refprd = H15
-  case = 'flx'; lsamesize = True
+  explist = ['max-ens-2050','max-ens-2100']*2; reflist = ['max-ens']; case = 'ens-prj'
+#   explist = ['max-ctrl-2050','max-ctrl-2100']*2; reflist = ['max-ctrl']; case = 'max-prj'
+#   explist = ['max-ens-A-2050','max-ens-A-2100']*2; reflist = ['max-ens-A']; case = 'ens-A-prj';   
+  seasons = [('summer',)*2+('winter',)*2]; domain = 2; period = [A15,B15]*2
+  exptitles = ['{:s}, {:s}'.format(season.title(),prdstr) for season in seasons[0][::2] for prdstr in period[:2]]
+  maptype = 'lcc-bcab'; lstations = True; stations = 'EC'; lbasins = True; lsamesize = False; # basinlist = ['FRB','ARB','GLB']
+  lfrac = True; refprd = H15
 
 # surface sensitivity test
 #   maptype = 'lcc-intermed'; lstations = False; lbasins = True
@@ -621,18 +632,20 @@ if __name__ == '__main__':
               # import station data
               from datasets.EC import loadEC_StnTS, selectStations
               from datasets.WRF import loadWRF_StnTS
-              varlist = ['station_name', 'stn_prov', 'stn_rec_len', 'zs_err', 'stn_lat', 'stn_lon', 'precip']
-              station_type = 'ecprecip'
+              varlist = stn_params + ['cluster_projection']; station_type = 'ecprecip'
               ecstns = loadEC_StnTS(station=station_type, varlist=varlist)
               wrfstns = loadWRF_StnTS(experiment='max-ctrl', varlist=varlist, station=station_type, 
-                                      filetypes='srfc', domains=2)
-              ecstns,wrfstns = selectStations([ecstns, wrfstns] , prov=('BC','AB'), min_len=50, lat=(45,60), 
-                                              max_zerr=300, #lon=(-130,-110),
-                                              stnaxis='station', imaster=None, linplace=False, lall=False)
+                                      filetypes='hydro', domains=2)
+
+              ecstns,wrfstns = selectStations([ecstns, wrfstns] , stnaxis='station', linplace=False, lall=True, 
+                                              **station_constraints)
               # loop over points
-              for lon,lat in zip(ecstns.stn_lon, ecstns.stn_lat):
+              for lon,lat,zerr,cln in zip(ecstns.stn_lon, ecstns.stn_lat, wrfstns.zs_err, ecstns.cluster_projection):
                 xx,yy = bmap(lon, lat)
-                bmap.plot(xx,yy,'wo',markersize=5)
+                if zerr <= 300 and cln==1: bmap.plot(xx,yy,'^', markersize=4, mfc='none', mec='k')
+                elif zerr <= 300 and cln==6: bmap.plot(xx,yy,'d', markersize=4, mfc='none', mec='k')
+                elif zerr <= 300 and cln==8: bmap.plot(xx,yy,'s', markersize=4, mfc='none', mec='k')
+                #else: bmap.plot(xx,yy,'x', markersize=4, mfc='none', mec='k')
             else: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
           # add ARB basin outline
           if lbasins:
