@@ -14,6 +14,7 @@ import os
 import gc
 
 # import modules to be tested
+import utils.nanfunctions as nf
 from utils.nctools import writeNetCDF
 from geodata.misc import isZero, isOne, isEqual
 from geodata.base import Variable, Axis, Dataset, Ensemble, concatVars, concatDatasets
@@ -486,6 +487,8 @@ class BaseVarTest(unittest.TestCase):
       # crop data because these tests just take way too long!
       if self.dataset_name == 'NARR':
         var = self.var(time=slice(0,10), y=slice(190,195), x=slice(0,100))
+        var.data_array=np.float64(var.data_array)
+        # some of the validation operations automatically cast into double  
       else:
         var = self.var(time=slice(0,10), lat=(50,70), lon=(-130,-110))
       t,x,y = var.axes
@@ -500,13 +503,16 @@ class BaseVarTest(unittest.TestCase):
 #     assert isEqual(np.nanmean(self.data), var.mean())
 #     assert isEqual(np.nanstd(self.data, ddof=1), var.std(ddof=1))
 #     assert isEqual(np.nanvar(self.data, ddof=1), var.var(ddof=1))
-    assert isEqual(np.nanmax(data), var.max())
+#     print nf.sem(data), var.sem(), data.std()/np.sqrt(data.size-np.isnan(data).sum())
+    assert ( isEqual(var.sem(), data.std()/np.sqrt(data.size-np.isnan(data).sum())) or
+             data.std() >= var.sem() >= np.sqrt(data.var()/data.size) )
+    assert isEqual(nf.nanmax(data), var.max())
 #     assert isEqual(np.nanmin(self.data), var.min())
-    assert isEqual(np.nanmean(data,axis=var.axisIndex(t.name)), var.mean(**{t.name:None}).getArray())
+    assert isEqual(nf.nanmean(data,axis=var.axisIndex(t.name)), var.mean(**{t.name:None}).getArray())
 #     assert isEqual(np.nanstd(self.data, axis=var.axisIndex(t.name),ddof=3), var.std(ddof=3, **{t.name:None}).getArray())
     varvar = var.var(ddof=3, **{t.name:None})
     assert varvar.units == '({:s})^2'.format(var.units) # check units!
-    assert isEqual(np.nanvar(data, axis=var.axisIndex(t.name),ddof=3), varvar.getArray())
+    assert isEqual(nf.nanvar(data, axis=var.axisIndex(t.name),ddof=3), varvar.getArray())
 #     assert isEqual(np.nanmax(self.data,axis=var.axisIndex(x.name)), var.max(**{x.name:None}).getArray())
 #     assert isEqual(np.nanmin(self.data, axis=var.axisIndex(y.name)), var.min(**{y.name:None}).getArray())
     # test percentiles
@@ -515,7 +521,7 @@ class BaseVarTest(unittest.TestCase):
     qvar_min = qvar(percentile=0)
     qvar_median = qvar(percentile=0.50)
     qvar_max = qvar(percentile=1.00)
-    print qvar_min.mean(), qvar_median.mean(), qvar_max.mean()
+#     print qvar_min.mean(), qvar_median.mean(), qvar_max.mean()
     assert qvar_min.mean() < qvar_median.mean() < qvar_max.mean()   
     assert isEqual(qvar_min.data_array, qvar.data_array.min(axis=var.axisIndex(t.name)))
     assert isEqual(qvar_median.data_array, np.median(qvar.data_array,axis=var.axisIndex(t.name)))
@@ -1466,7 +1472,7 @@ if __name__ == "__main__":
     print('OMP_NUM_THREADS = {:s}\n'.format(os.environ['OMP_NUM_THREADS']))    
         
     specific_tests = None
-#     specific_tests = ['ReductionArithmetic']
+    specific_tests = ['ReductionArithmetic']
 #     specific_tests = ['DistributionVariables']
 #     specific_tests = ['Mask']
 #     specific_tests = ['Ensemble']
@@ -1486,9 +1492,9 @@ if __name__ == "__main__":
     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
        
     
     # construct dictionary of test classes defined above

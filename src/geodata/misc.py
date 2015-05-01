@@ -131,7 +131,12 @@ def isEqual(left, right, eps=None, masked_equal=True):
     # numbers
     if not isinstance(right,(float,np.inexact)): raise TypeError, diff_type
     if eps is None: eps = 100.*floateps # default
-    return np.absolute(left-right) <= eps
+    if ( isinstance(right,float) or isinstance(right,float) ) or left.dtype.itemsize == right.dtype.itemsize: 
+      return np.absolute(left-right) <= eps
+    else:
+      if left.dtype.itemsize < right.dtype.itemsize: right = left.dtype.type(right)
+      else: left = right.dtype.type(left)
+      return np.absolute(left-right) <= eps  
   elif isinstance(left,(int,bool,np.integer,np.bool)):
     # logicals
     if not isinstance(right,(int,bool,np.integer,np.bool)): raise TypeError, diff_type

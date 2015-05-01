@@ -632,10 +632,11 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   # extract seasonal/climatological values/extrema
   # N.B.: the operations below should work with Ensembles as well as Datasets 
   if aggregation:
+    method = aggregation if aggregation.isupper() else aggregation.title() 
     if season is None:
-      ensemble = getattr(ensemble,'clim'+aggregation.title())(taxis='time', **kwargs)
+      ensemble = getattr(ensemble,'clim'+method)(taxis='time', **kwargs)
     else:
-      ensemble = getattr(ensemble,'seasonal'+aggregation.title())(season=season, taxis='time', **kwargs)
+      ensemble = getattr(ensemble,'seasonal'+method)(season=season, taxis='time', **kwargs)
   elif season: # but not aggregation
     ensemble = ensemble.extractSeason(season=season)
   # return dataset

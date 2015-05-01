@@ -15,6 +15,7 @@ import functools
 import gc # garbage collection
 from warnings import warn
 # my own imports
+import utils.nanfunctions as nf
 from plotting.properties import getPlotAtts, variablePlotatts # import plot properties from different file
 from geodata.misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, floateps
 from geodata.misc import genStrArray, translateSeasons
@@ -1051,42 +1052,49 @@ class Variable(object):
   
   @ReduceVar
   def sum(self, data, axidx=None):
-    data = np.nansum(data, axis=axidx)
+    data = nf.nansum(data, axis=axidx)
     name = '{:s}_sum'.format(self.name)
     units = self.units
     return data, name, units
   
   @ReduceVar
   def mean(self, data, axidx=None):
-    data = np.nanmean(data, axis=axidx)
+    data = nf.nanmean(data, axis=axidx)
     name = '{:s}_mean'.format(self.name)
     units = self.units
     return data, name, units
   
   @ReduceVar
   def std(self, data, axidx=None, ddof=0):
-    data = np.nanstd(data, axis=axidx, ddof=ddof) # ddof: degrees of freedom
+    data = nf.nanstd(data, axis=axidx, ddof=ddof) # ddof: degrees of freedom
     name = '{:s}_std'.format(self.name)
+    units = self.units # variance has squared units    
+    return data, name, units
+ 
+  @ReduceVar
+  def sem(self, data, axidx=None, ddof=0):
+    data = nf.nansem(data, axis=axidx, ddof=ddof) # ddof: degrees of freedom
+    name = '{:s}_sem'.format(self.name)
     units = self.units # variance has squared units    
     return data, name, units
   
   @ReduceVar
   def var(self, data, axidx=None, ddof=0):
-    data = np.nanvar(data, axis=axidx, ddof=ddof) # ddof: degrees of freedom
+    data = nf.nanvar(data, axis=axidx, ddof=ddof) # ddof: degrees of freedom
     name = '{:s}_var'.format(self.name)
     units = '({:s})^2'.format(self.units) # variance has squared units    
     return data, name, units
   
   @ReduceVar
   def max(self, data, axidx=None):
-    data = np.nanmax(data, axis=axidx)
+    data = nf.nanmax(data, axis=axidx)
     name = '{:s}_max'.format(self.name)
     units = self.units
     return data, name, units
   
   @ReduceVar
   def min(self, data, axidx=None):
-    data = np.nanmin(data, axis=axidx)
+    data = nf.nanmin(data, axis=axidx)
     name = '{:s}_min'.format(self.name)
     units = self.units
     return data, name, units
@@ -1582,27 +1590,31 @@ class Variable(object):
   
   def seasonalMean(self, season='annual', **kwargs):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.nanmean, **kwargs)
+    return self.reduceToAnnual(season=season, operation=nf.nanmean, **kwargs)
   
   def seasonalSum(self, season='annual', **kwargs):
     ''' Return a time-series of annual sums of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.nansum, **kwargs)
+    return self.reduceToAnnual(season=season, operation=nf.nansum, **kwargs)
   
   def seasonalStd(self, season='annual', **kwargs):
     ''' Return a time-series of annual root-mean-variances (of the specified season/months). '''    
-    return self.reduceToAnnual(season=season, operation=np.nanstd, **kwargs)
+    return self.reduceToAnnual(season=season, operation=nf.nanstd, **kwargs)
+  
+  def seasonalSEM(self, season='annual', **kwargs):
+    ''' Return a time-series of annual standard errros of seasonal/monthly means. '''
+    return self.reduceToAnnual(season=season, operation=nf.nansem, **kwargs)
   
   def seasonalVar(self, season='annual', **kwargs):
     ''' Return a time-series of annual root-mean-variances (of the specified season/months). '''    
-    return self.reduceToAnnual(season=season, operation=np.nanvar, **kwargs)
+    return self.reduceToAnnual(season=season, operation=nf.nanvar, **kwargs)
   
   def seasonalMax(self, season='annual', **kwargs):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.nanmax, **kwargs)
+    return self.reduceToAnnual(season=season, operation=nf.nanmax, **kwargs)
   
   def seasonalMin(self, season='annual', **kwargs):
     ''' Return a time-series of annual averages of the specified season. '''    
-    return self.reduceToAnnual(season=season, operation=np.nanmin, **kwargs)
+    return self.reduceToAnnual(season=season, operation=nf.nanmin, **kwargs)
   
   def reduceToClimatology(self, operation, yridx=None, asVar=True, name=None, offset=0, taxis='time', 
                           lcheckVar=True, lcheckAxis=True, checkUnits=True, taxatts=None, varatts=None, 
@@ -1652,27 +1664,31 @@ class Variable(object):
   
   def climMean(self, yridx=None, **kwargs):
     ''' Return a climatology of averages of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanmean, **kwargs)
+    return self.reduceToClimatology(yridx=yridx, operation=nf.nanmean, **kwargs)
   
   def climSum(self, yridx=None, **kwargs):
     ''' Return a climatology of sums of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nansum, **kwargs)
+    return self.reduceToClimatology(yridx=yridx, operation=nf.nansum, **kwargs)
 
   def climStd(self, yridx=None, **kwargs):
     ''' Return a climatology of root-mean-variances/standard deviation of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanstd, **kwargs)   
+    return self.reduceToClimatology(yridx=yridx, operation=nf.nanstd, **kwargs)   
+  
+  def climSEM(self, yridx=None, **kwargs):
+    ''' Return a climatology of the standard errros of monthly/climatological means. '''    
+    return self.reduceToClimatology(yridx=yridx, operation=nf.nansem, **kwargs)   
   
   def climVar(self, yridx=None, **kwargs):
     ''' Return a climatology of (square) variances of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanvar, **kwargs)
+    return self.reduceToClimatology(yridx=yridx, operation=nf.nanvar, **kwargs)
   
   def climMax(self, yridx=None, **kwargs):
     ''' Return a climatology of maxima of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanmax, **kwargs)
+    return self.reduceToClimatology(yridx=yridx, operation=nf.nanmax, **kwargs)
   
   def climMin(self, yridx=None, **kwargs):
     ''' Return a climatology of minima of monthly data. '''    
-    return self.reduceToClimatology(yridx=yridx, operation=np.nanmin, **kwargs)
+    return self.reduceToClimatology(yridx=yridx, operation=nf.nanmin, **kwargs)
   
   @UnaryCheckAndCreateVar
   def standardize(self, axis=None, name=None, linplace=False, lcheckVar=True, lcheckAxis=True,
@@ -1759,6 +1775,13 @@ class Variable(object):
       if isinstance(ufunc,np.ufunc):
         # call function on data, using _apply_ufunc
         return functools.partial(self._apply_ufunc, ufunc=ufunc)
+      else:
+        raise AttributeError, "The numpy function '{:s}' is not supported by class '{:s}'! (only ufunc's are supported)".format(attr,self.__class__.__name__)
+    elif hasattr(nf,attr):
+      ufunc = getattr(nf,attr)
+      if isinstance(ufunc,np.ufunc):
+      # call function on data, using _apply_ufunc
+        return functools.partial(self._apply_ufunc, ufunc=ufunc)      
       else:
         raise AttributeError, "The numpy function '{:s}' is not supported by class '{:s}'! (only ufunc's are supported)".format(attr,self.__class__.__name__)
     elif hasattr(ss,attr): # either a distribution or a statistical test

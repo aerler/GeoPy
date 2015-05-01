@@ -91,7 +91,7 @@ if __name__ == '__main__':
 #   variables += ['Tmin', 'Tmax']
   variables += ['MaxPrecip_1d']
 #   variables += ['wetprec']
-#   variables += ['precip']
+  variables += ['precip']
 #   variables += ['wetfrq']
 #   variables += ['WaterTransport_U']
 #   variables += ['WaterTransport_V']
@@ -187,7 +187,8 @@ if __name__ == '__main__':
 #   explist = ['max-ctrl-2050','max-ctrl-2100']*2; reflist = ['max-ctrl']; case = 'max-prj'
 #   explist = ['max-ens-A-2050','max-ens-A-2100']*2; reflist = ['max-ens-A']; case = 'ens-A-prj';   
   seasons = [('summer',)*2+('winter',)*2]; domain = 2; period = [A15,B15]*2
-  exptitles = ['{:s}, {:s}'.format(season.title(),prdstr) for season in seasons[0][::2] for prdstr in period[:2]]
+  periodstrs = ('Mid-Century','End-Century')
+  exptitles = ['{:s}, {:s}'.format(season.title(),prdstr) for season in seasons[0][::2] for prdstr in periodstrs]
   maptype = 'lcc-bcab'; lstations = True; stations = 'EC'; lbasins = True; lsamesize = False; # basinlist = ['FRB','ARB','GLB']
   lfrac = True; refprd = H15
 

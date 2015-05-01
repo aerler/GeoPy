@@ -884,3 +884,134 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
       std = std.reshape(shape)
 
     return std
+
+
+def sem(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    """
+    Compute the standard error of the mean along the specified axis.
+    """
+    dof = (a.shape[axis] if axis is not None else a.size) -ddof
+    sse = np.var(a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)        
+    return np.sqrt(sse/dof)
+
+
+def nansem(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    """
+    Compute the standard error of the mean along the specified axis, while
+    ignoring NaNs.
+
+    Returns the standard deviation, a measure of the spread of a
+    distribution, of the non-NaN array elements. The standard deviation is
+    computed for the flattened array by default, otherwise over the
+    specified axis.
+
+    For all-NaN slices or slices with zero degrees of freedom, NaN is
+    returned and a `RuntimeWarning` is raised.
+
+    .. versionadded:: 1.8.0
+
+    Parameters
+    ----------
+    a : array_like
+        Calculate the standard deviation of the non-NaN values.
+    axis : int, optional
+        Axis along which the standard deviation is computed. The default is
+        to compute the standard deviation of the flattened array.
+    dtype : dtype, optional
+        Type to use in computing the standard deviation. For arrays of
+        integer type the default is float64, for arrays of float types it
+        is the same as the array type.
+    out : ndarray, optional
+        Alternative output array in which to place the result. It must have
+        the same shape as the expected output but the type (of the
+        calculated values) will be cast if necessary.
+    ddof : int, optional
+        Means Delta Degrees of Freedom.  The divisor used in calculations
+        is ``N - ddof``, where ``N`` represents the number of non-NaN
+        elements.  By default `ddof` is zero.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the original `arr`.
+
+    Returns
+    -------
+    standard_error_of_mean : ndarray, see dtype parameter above.
+        If `out` is None, return a new array containing the standard
+        deviation, otherwise return a reference to the output array. If
+        ddof is >= the number of non-NaN elements in a slice or the slice
+        contains only NaNs, then the result for that slice is NaN.
+
+    See Also
+    --------
+    var, mean, std
+    nanvar, nanmean, nanstd
+    numpy.doc.ufuncs : Section "Output arguments"
+
+    """
+    arr, mask = _replace_nan(a, 0)
+    if mask is None:
+        dof = (arr.shape[axis] if axis is not None else arr.size) -ddof
+        sse = np.var(arr, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)        
+        return np.sqrt(sse/dof)
+
+    if dtype is not None:
+        dtype = np.dtype(dtype)
+    if dtype is not None and not issubclass(dtype.type, np.inexact):
+        raise TypeError("If a is inexact, then dtype must be inexact")
+    if out is not None and not issubclass(out.dtype.type, np.inexact):
+        raise TypeError("If a is inexact, then out must be inexact")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+
+        # Compute mean
+        if mask is None: # this is for test purpose (usually mask == None is handled above)
+            cnt = arr.shape[axis] if axis is not None else arr.size
+            if not issubclass(arr.dtype.type, np.inexact):
+                arr = np.array(arr, subok=True, dtype=np.float_)
+        else:
+            cnt = np.sum(~mask, axis=axis, dtype=np.intp, keepdims=True)
+        avg = np.sum(arr, axis=axis, dtype=dtype, keepdims=True)
+        avg = _divide_by_count(avg, cnt)
+
+        # check if keepdims worked, otherwise reshape manually
+        if avg.ndim < arr.ndim and axis is not None:
+          shape = list(arr.shape)
+          shape[axis] = 1
+          avg = avg.reshape(shape)
+
+        # compute sum of square errors (SSE)
+        arr -= avg
+        arr = _copyto(arr, 0, mask)
+        if issubclass(arr.dtype.type, np.complexfloating):
+            sqr = np.multiply(arr, arr.conj(), out=arr).real
+        else:
+            sqr = np.multiply(arr, arr, out=arr)
+        sse = np.sum(sqr, axis=axis, dtype=dtype, out=out, keepdims=keepdims)                
+        
+        # compute standard error of mean: sem = std/sqrt(dof) = sqrt(SSE)/dof (using std = sqrt(SSE/dof) )
+        # take square root of variance
+        if isinstance(sse, np.ndarray):
+            sem = np.sqrt(sse, out=sse)
+            # Subclasses of ndarray may ignore keepdims, so check here.
+            if isinstance(cnt, np.ndarray) and sse.ndim < cnt.ndim: cnt = cnt.squeeze(axis)
+        else:
+            sem = sse.dtype.type(np.sqrt(sse))
+        dof = cnt - ddof
+        sem = _divide_by_count(sem, dof)
+
+    isbad = (dof <= 0)
+    if np.any(isbad):
+        warnings.warn("Degrees of freedom <= 0 for slice.", RuntimeWarning)
+        # NaN, inf, or negative numbers are all possible bad
+        # values, so explicitly replace them with NaN.
+        sem = _copyto(sem, np.nan, isbad)
+        
+        # check if keepdims worked, otherwise reshape manually
+    if keepdims and axis is not None and sem.ndim < arr.ndim:
+      shape = list(arr.shape)
+      shape[axis] = 1
+      sem = sem.reshape(shape)
+
+    return sem
