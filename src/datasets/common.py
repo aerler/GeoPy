@@ -493,7 +493,7 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
 
 
 # function to extract common points that meet a specific criterion from a list of datasets
-def selectElements(datasets, axis, testFct=None, imaster=None, linplace=False, lall=False):
+def selectElements(datasets, axis, testFct=None, master=None, linplace=False, lall=False):
   ''' Extract common points that meet a specific criterion from a list of datasets. 
       The test function has to accept the following input: index, dataset, axis'''
   if linplace: raise NotImplementedError, "Option 'linplace' does not work currently."
@@ -503,7 +503,7 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=False, l
   if not isCallable(testFct) and testFct is not None: raise TypeError
   if isinstance(axis, Axis): axis = axis.name
   if not isinstance(axis, basestring): raise TypeError
-  if lall and imaster is not None: raise ArgumentError, "The options 'lall' and 'imaster' are mutually exclusive!"
+  if lall and master is not None: raise ArgumentError, "The options 'lall' and 'imaster' are mutually exclusive!"
   # save some ensemble parameters for later  
   lnotest = testFct is None
   lens = isinstance(datasets,Ensemble)
@@ -512,12 +512,15 @@ def selectElements(datasets, axis, testFct=None, imaster=None, linplace=False, l
                      name=datasets.name, title=datasets.title) 
   # use dataset with shortest axis as master sample (more efficient)
   axes = [dataset.getAxis(axis) for dataset in datasets]
-  if imaster is None: imaster = np.argmin([len(ax) for ax in axes]) # find shortest axis
-  elif isinstance(imaster,basestring): 
+  if master is None: imaster = np.argmin([len(ax) for ax in axes]) # find shortest axis
+  elif isinstance(master,basestring): 
     # translate name of dataset into index
+    imaster = None
     for i,dataset in enumerate(datasets): 
-      if dataset.name == imaster: imaster = i
-      if isinstance(imaster,(int,np.integer)): break
+      if dataset.name == master: 
+        imaster = i; break
+    if imaster is None: raise ArgumentError, "Master '{:s}' not found in datasets".format(master)
+  else: imaster = master
   if not imaster is None and not isinstance(imaster,(int,np.integer)): raise TypeError, imaster
   elif imaster >= len(datasets) or imaster < 0: raise ValueError 
   maxis = axes.pop(imaster) # extraxt shortest axis for loop
@@ -570,7 +573,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
                    slices=None, obsslices=None, years=None, reduction=None, shape=None, station=None, 
                    constraints=None, filetypes=None, domain=None, ldataset=False, lcheckVar=False, 
                    lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', lminmax=False,
-                   imaster=None, lall=True, ensemble_list=None, ensemble_product='inner', **kwargs):
+                   master=None, lall=True, ensemble_list=None, ensemble_product='inner', **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -612,7 +615,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   # select specific stations (if applicable)
   if not ldataset and station and constraints:
     from datasets.EC import selectStations
-    ensemble = selectStations(ensemble, stnaxis='station', imaster=imaster, linplace=False, lall=lall,
+    ensemble = selectStations(ensemble, stnaxis='station', master=master, linplace=False, lall=lall,
                               lcheckVar=lcheckVar, **constraints)
   # make sure all have cluster meta data  
   for varname in stn_params + shp_params:

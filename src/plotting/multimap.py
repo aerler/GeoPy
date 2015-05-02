@@ -83,15 +83,21 @@ if __name__ == '__main__':
   domain = (2,)
   variable_settings = None
   season_settings = None
+  aggregation = 'mean'
     
   ## select variables and seasons
   variables = [] # variables
 #   variables += ['Ts']
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
-  variables += ['MaxPrecip_1d']
+#   variables += ['MaxPrecip_1d']; aggregation = 'mean'
+  variables += ['MaxPrecip_1d']; aggregation = 'max'
+  variables += ['MaxPreccu_1d']; aggregation = 'max'
+#   variables += ['MaxPrecnc_1d']; aggregation = 'max'
 #   variables += ['wetprec']
-  variables += ['precip']
+#   variables += ['precip']
+#   variables += ['preccu']
+#   variables += ['precnc']
 #   variables += ['wetfrq']
 #   variables += ['WaterTransport_U']
 #   variables += ['WaterTransport_V']
@@ -181,12 +187,14 @@ if __name__ == '__main__':
 #   case = 'wetdays'; lsamesize = True
 
 # # ensemble projection
-#   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
-#   explist = ['max-grass','max-ctrl','erai-max']*2
-  explist = ['max-ens-2050','max-ens-2100']*2; reflist = ['max-ens']; case = 'ens-prj'
-#   explist = ['max-ctrl-2050','max-ctrl-2100']*2; reflist = ['max-ctrl']; case = 'max-prj'
-#   explist = ['max-ens-A-2050','max-ens-A-2100']*2; reflist = ['max-ens-A']; case = 'ens-A-prj';   
   seasons = [('summer',)*2+('winter',)*2]; domain = 2; period = [A15,B15]*2
+#   explist = ['phys-ens-2050','phys-ens-2100']*2; reflist = ['phys-ens']; case = 'phys-prj'; period = [A15,B10]*2
+#   explist = ['ctrl-2050','ctrl-2100']*2; reflist = ['ctrl-1']; case = 'ctrl-prj'
+#   explist = ['max-ens-2050','max-ens-2100']*2; reflist = ['max-ens']; case = 'ens-prj'
+  explist = ['max-ctrl-2050','max-ctrl-2100']*2; reflist = ['max-ctrl']; case = 'max-prj'
+#   explist = ['max-ens-A-2050','max-ens-A-2100']*2; reflist = ['max-ens-A']; case = 'ens-A-prj';
+#   explist = ['max-ens-B-2050','max-ens-B-2100']*2; reflist = ['max-ens-B']; case = 'ens-B-prj';
+#   explist = ['max-ens-C-2050','max-ens-C-2100']*2; reflist = ['max-ens-C']; case = 'ens-C-prj';   
   periodstrs = ('Mid-Century','End-Century')
   exptitles = ['{:s}, {:s}'.format(season.title(),prdstr) for season in seasons[0][::2] for prdstr in periodstrs]
   maptype = 'lcc-bcab'; lstations = True; stations = 'EC'; lbasins = True; lsamesize = False; # basinlist = ['FRB','ARB','GLB']
@@ -469,7 +477,8 @@ if __name__ == '__main__':
           lontpl.append(lon); lattpl.append(lat) # append to data list
           # extract data field
           if expvar.hasAxis('time'):
-            vardata = expvar.seasonalMean(season, asVar=False)
+            method = aggregation if aggregation.isupper() else aggregation.title() 
+            vardata = getattr(expvar,'seasonal'+method)(season, asVar=False)
           else:
             vardata = expvar[:].squeeze()
 #           if expvar.masked: vardata.set_fill_value(np.NaN) # fill with NaN
