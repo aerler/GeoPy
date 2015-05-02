@@ -313,6 +313,7 @@ if __name__ == "__main__":
 
     
     specific_tests = []
+    # LinePlot
 #     specific_tests += ['BasicLinePlot']
 #     specific_tests += ['BasicErrorPlot']
 #     specific_tests += ['FancyErrorPlot']
@@ -321,13 +322,14 @@ if __name__ == "__main__":
 #     specific_tests += ['CombinedLinePlot']
 #     specific_tests += ['AxesGridLinePlot']    
 #     specific_tests += ['MeanAxisPlot']
+    # DistPlot
 #     specific_tests += ['BasicHistogram']
-#     specific_tests += ['BootstrapCI']
+    specific_tests += ['BootstrapCI']
     
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['LinePlot'] 
+#     tests += ['LinePlot'] 
     tests += ['DistPlot']
     
 
