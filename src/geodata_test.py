@@ -1471,18 +1471,18 @@ if __name__ == "__main__":
 #     import os
     print('OMP_NUM_THREADS = {:s}\n'.format(os.environ['OMP_NUM_THREADS']))    
         
-    specific_tests = None
-    specific_tests = ['ReductionArithmetic']
-#     specific_tests = ['DistributionVariables']
-#     specific_tests = ['Mask']
-#     specific_tests = ['Ensemble']
-#     specific_tests = ['StatsTests']   
-#     specific_tests = ['UnaryArithmetic']
-#     specific_tests = ['BinaryArithmetic']
-#     specific_tests = ['Copy']
-#     specific_tests = ['ApplyToAll']
-#     specific_tests = ['AddProjection']
-#     specific_tests = ['Indexing']
+    specific_tests = []
+#     specific_tests += ['ReductionArithmetic']
+#     specific_tests += ['DistributionVariables']
+#     specific_tests += ['Mask']
+#     specific_tests += ['Ensemble']
+#     specific_tests += ['StatsTests']   
+#     specific_tests += ['UnaryArithmetic']
+#     specific_tests += ['BinaryArithmetic']
+#     specific_tests += ['Copy']
+#     specific_tests += ['ApplyToAll']
+#     specific_tests += ['AddProjection']
+#     specific_tests += ['Indexing']
  
 
     # list of tests to be performed
@@ -1492,9 +1492,9 @@ if __name__ == "__main__":
     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
        
     
     # construct dictionary of test classes defined above

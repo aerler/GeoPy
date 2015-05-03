@@ -623,9 +623,10 @@ class MyAxes(Axes):
           elif len(labels) < len(args): args = args[:len(labels)] # cut off rest
         elif isinstance(args,basestring):
           args = [args]*len(labels)
-        else: raise TypeError
-        plotargs[name[:-1]] = args # save list under singular name
-        expand_list.append(name[:-1]) # cut off trailing 's' (i.e. proper singular form)
+        elif args is not None: raise TypeError, args
+        if args is not None:
+          plotargs[name[:-1]] = args # save list under singular name
+          expand_list.append(name[:-1]) # cut off trailing 's' (i.e. proper singular form)
     return expand_list, plotargs
   
   def _expandArgumentList(self, labels=None, expand_list=None, lproduct='inner', plotargs=None):

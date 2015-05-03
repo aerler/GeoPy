@@ -1739,7 +1739,7 @@ class Variable(object):
         if no 'dist' is specified, some heuristics are used to determine a suitable distribution; 
         dictionary lookup is also supported through 'var_dists'. '''
     from geodata.stats import asDistVar
-    dvar = asDistVar(self, axis='time', dist=dist, lflatten=lflatten, name=name, atts=atts, var_dists=var_dists,
+    dvar = asDistVar(self, axis=axis, dist=dist, lflatten=lflatten, name=name, atts=atts, var_dists=var_dists,
                      lsuffix=lsuffix, asVar=asVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **kwargs)
     # return new variable
     return dvar
