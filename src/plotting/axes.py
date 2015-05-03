@@ -299,8 +299,9 @@ class MyAxes(Axes):
     if lmean: 
       means = [None if var is None else var.mean(axis=sample_axis) for var in varlist]
       plts = self.linePlot(varlist=means, llabel=llabel, labels=labels, lineformat=mean_fmt, colors=colors,
-                           flipxy=flipxy, reset_color=reset_color, lsmooth=lsmooth, lprint=lprint, xlabel=xlabel, 
-                           ylabel=ylabel, lrescale=lrescale, scalefactor=scalefactor, offset=offset, 
+                           flipxy=flipxy, reset_color=reset_color, lsmooth=lsmooth, lprint=lprint, 
+                           xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks, 
+                           lrescale=lrescale, scalefactor=scalefactor, offset=offset, 
                            plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)    
       # get line colors to use in all subsequent plots 
       colors = ['' if plt is None else plt.get_color() for plt in plts] # color argument has to be string
@@ -323,7 +324,8 @@ class MyAxes(Axes):
         meadians = [None if var is None else var(**mdslc) for var in qvars]
         if median_fmt == '' and lmean: median_fmt = '--'
         tmpplts = self.linePlot(varlist=meadians, lineformat=median_fmt, llabel=False if lmean else llabel, 
-                                labels=None if lmean else labels, xlabel=xlabel, ylabel=ylabel,
+                                labels=None if lmean else labels, 
+                                xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks,
                                 lrescale=lrescale, scalefactor=scalefactor, offset=offset, flipxy=flipxy, 
                                 reset_color=False if lmean else reset_color, lsmooth=lsmooth, 
                                 lprint=False if lmean else lprint, colors=colors, 
@@ -339,7 +341,7 @@ class MyAxes(Axes):
       # draw band plot between upper and lower percentile
       if bandalpha is None: bandalpha = 0.3 
       tmpplts = self.bandPlot(upper=uppers, lower=lowers, lignore=lignore, llabel=False, labels=None,
-                              xlabel=xlabel, ylabel=ylabel,         
+                              xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks,    
                               lrescale=lrescale, scalefactor=scalefactor, offset=offset,
                               flipxy=flipxy, reset_color=False, lsmooth=lsmoothBand, lprint=False, 
                               where=where, alpha=bandalpha, edgecolor=edgecolor, colors=facecolor,
