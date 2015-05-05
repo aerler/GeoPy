@@ -783,7 +783,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
       if not all([dataset.hasAxis(axname) for dataset in datasets]): 
         raise AxisError, "Not all datasets have Axis '{:s}'.".format(axname)
       if not all([len(dataset.axes[axname]) == len(ax) for dataset in datasets]):
-        datasets = selectElements(datasets, axis=axname, testFct=None, imaster=None, linplace=False, lall=True)
+        datasets = selectElements(datasets, axis=axname, testFct=None, master=None, linplace=False, lall=True)
     # concatenate datasets (along 'time' axis, WRF doesn't have 'year')  
     dataset = concatDatasets(datasets, axis='time', coordlim=None, idxlim=montpl, offset=None, axatts=None, 
                              lcpOther=True, lcpAny=False, lcheckVars=lcheckVars, lcheckAxis=lcheckAxis,
