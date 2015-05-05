@@ -1342,9 +1342,9 @@ class VarRV(DistVar):
       data_array = np.rollaxis(data_array, axis=0, start=self.ndim) # roll parameter axis to the back
       rsvar = self.copy(data=data_array)
       # add record of scale factors
-      rsvar.atts['loc_factor'] = loc.ravel()[0] if isinstance(loc,np.ndarray) else loc
-      rsvar.atts['scale_factor'] = scale.ravel()[0] if isinstance(scale,np.ndarray) else scale
-      rsvar.atts['shape_factor'] = shape.ravel()[0] if isinstance(shape,np.ndarray) else shape 
+      rsvar.atts['loc_factor'] = loc.reshape(loc.shape+(1,)) if isinstance(loc,np.ndarray) else loc
+      rsvar.atts['scale_factor'] = scale.reshape(scale.shape+(1,)) if isinstance(scale,np.ndarray) else scale
+      rsvar.atts['shape_factor'] = shape.reshape(shape.shape+(1,)) if isinstance(shape,np.ndarray) else shape 
     else:
       # alternatively, return scale factors for further usage
       if ishape is None: rsvar = loc, scale

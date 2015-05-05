@@ -2983,7 +2983,7 @@ class Ensemble(object):
         try:
           # dispatch to member attributes 
           atts = [getattr(member,item) for member in self.members]
-          if any(callable(att) and not isinstance(att, (Variable,Dataset)) for att in atts): raise AttributeError
+          if any([callable(att) and not isinstance(att, (Variable,Dataset)) for att in atts]): raise AttributeError
           return self._recastList(atts)
           # N.B.: this is useful to load different Variables from Datasets by name, 
           #       without having to use getattr()

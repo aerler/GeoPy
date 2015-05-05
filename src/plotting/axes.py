@@ -281,7 +281,7 @@ class MyAxes(Axes):
     else: self.fill_between(x=axes, y1=lower, y2=upper, interpolate=True, **band_args) # interpolate=True
   
   def samplePlot(self, varlist, varname=None, bins=None, support=None, method='pdf', percentiles=(0.25,0.75),   
-                 sample_axis=None, lmedian=None, median_fmt='', lmean=False, mean_fmt='', 
+                 sample_axis=None, lmedian=None, median_fmt='', lmean=True, mean_fmt='', 
                  lrescale=False, scalefactor=1., offset=0., colors=None,
                  legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
                  flipxy=None, xlabel=True, ylabel=False, xticks=True, yticks=True, reset_color=None, 
