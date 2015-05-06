@@ -365,7 +365,7 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
       This function can return both, the p-value and the function result (other than the p-value). '''
   # some input checking
   if lflatten and axis is not None: raise ArgumentError
-  if not lflatten and axis is None: 
+  if not lflatten and axis is None and axis_idx is None: 
     if sample2.ndim > 1 and sample2.ndim > 1: raise ArgumentError
     else: lflatten = True # treat both as flat arrays...
   if asVar is None: asVar = not lflatten
