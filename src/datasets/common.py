@@ -573,7 +573,8 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
                    slices=None, obsslices=None, years=None, reduction=None, shape=None, station=None, 
                    constraints=None, filetypes=None, domain=None, ldataset=False, lcheckVar=False, 
                    lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', lminmax=False,
-                   master=None, lall=True, ensemble_list=None, ensemble_product='inner', **kwargs):
+                   master=None, lall=True, ensemble_list=None, ensemble_product='inner', 
+                   lensembleAxis=False, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -593,7 +594,8 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   loadargs = expandArgumentList(names=names, station=station, prov=prov, shape=shape, varlist=varlist, 
                                 mode=dataset_mode, filetypes=filetypes, domains=domain, lwrite=lwrite,
                                 slices=slices, obsslices=obsslices, name_tags=name_tags, ltrimT=ltrimT,
-                                years=years, expand_list=ensemble_list, lproduct=ensemble_product)
+                                years=years, expand_list=ensemble_list, lproduct=ensemble_product,
+                                lensembleAxis=lensembleAxis)
   for loadarg in loadargs:
     # clean up argumetns
     name = loadarg.pop('names',None); name_tag = loadarg.pop('name_tags',None)

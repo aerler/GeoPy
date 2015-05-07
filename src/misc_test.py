@@ -198,6 +198,20 @@ class DatasetsTest(unittest.TestCase):
   def testBasicLoadEnsembleTS(self):
     ''' test station data load functions (ensemble and list) '''
     from datasets.common import loadEnsembleTS    
+    # test list expansion of ensembles loading
+    names = ['EC', 'phys-ens']; varlist = ['MaxPrecip_1d'] 
+    prov = ['BC','AB']; season = ['summer','winter']; mode = ['max','min']
+    constraints = dict(min_len=50, lat=(50,55), max_zerr=300, prov=('AB','BC'))
+    enslst = loadEnsembleTS(names=names, prov=prov, season=season, mode=mode, station='ecprecip', 
+                            constraints=constraints, varlist=varlist, filetypes=['hydro'], domain=2,
+                            load_list=[('mode','season'),'prov',], lproduct='outer', lwrite=False,
+                            lensembleAxis=True)
+    assert len(enslst) == 4
+    assert all(isinstance(ens, Ensemble) for ens in enslst)
+    assert all(ens.basetype.__name__ == 'Dataset' for ens in enslst)
+    assert all(ens.hasVariable(varlist[0]) for ens in enslst)
+    assert all(ens.hasAxis('ensemble') for ens in enslst)
+    assert all('EC' in ens for ens in enslst)
     # test simple ensemble with basins
     names = ['GPCC', 'phys-ens_d01','max-ens-2100']; varlist = ['precip'] 
     aggregation = None; slices = dict(shape_name='ARB'); obsslices = dict(years=(1939,1945)) 
@@ -210,18 +224,6 @@ class DatasetsTest(unittest.TestCase):
     assert len(shpens[names[0]].time) == 72 # time-series
     assert len(shpens[names[-1]].time) == 720 # ensemble
     assert all('ARB' == ds.atts.shape_name for ds in shpens)
-    # test list expansion of ensembles loading
-    names = ['EC', 'phys-ens']; varlist = ['MaxPrecip_1d'] 
-    prov = ['BC','AB']; season = ['summer','winter']; mode = ['max','min']
-    constraints = dict(min_len=50, lat=(50,55), max_zerr=300,)
-    enslst = loadEnsembleTS(names=names, prov=prov, season=season, mode=mode, station='ecprecip', 
-                            constraints=constraints, varlist=varlist, filetypes=['hydro'], domain=2,
-                            load_list=[('mode','season'),'prov',], lproduct='outer', lwrite=False)
-    assert len(enslst) == 4
-    assert all(isinstance(ens, Ensemble) for ens in enslst)
-    assert all(ens.basetype.__name__ == 'Dataset' for ens in enslst)
-    assert all(ens.hasVariable(varlist[0]) for ens in enslst)
-    assert all('EC' in ens for ens in enslst)
 
   def testAdvancedLoadEnsembleTS(self):
     ''' test station data load functions (ensemble and list) '''
@@ -322,7 +324,7 @@ if __name__ == "__main__":
 #     specific_tests += ['LoadDataset']
 #     specific_tests += ['BasicLoadEnsembleTS']
 #     specific_tests += ['AdvancedLoadEnsembleTS']
-    specific_tests += ['LoadStandardDeviation']
+#     specific_tests += ['LoadStandardDeviation']
 
 
     # list of tests to be performed

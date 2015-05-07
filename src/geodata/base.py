@@ -2716,11 +2716,12 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   
   
 def concatDatasets(datasets, name=None, axis=None, coordlim=None, idxlim=None, offset=None, axatts=None,
-                   title=None, lensembleAxis=None, 
+                   title=None, lensembleAxis=None, lignoreConst=True, time_axes=None,
                    lcpOther=True, lcpAny=False, ldeepcopy=True, lcheckVars=True, lcheckAxis=True):
   ''' A function to concatenate Datasets from different sources along a given axis; this
       function essentially applies concatVars to every Variable and creates a new dataset. '''
   if lensembleAxis and axis is None: axis = 'ensemble'
+  if lignoreConst and time_axes is None: time_axes = ('time','year')
   elif isinstance(axis,(Axis,basestring)) and not any([ds.hasAxis(axis) for ds in datasets]):
     if lensembleAxis is None: lensembleAxis = True
     elif lensembleAxis is False: raise ArgumentError        
@@ -2764,8 +2765,9 @@ def concatDatasets(datasets, name=None, axis=None, coordlim=None, idxlim=None, o
           c += 1; dataset = datasets[c] # try next
         varobj = dataset.variables[varname]
         # N.B.: one has to have it, otherwise it would not be in the list    
-        # decide what to do
-        if varobj.hasAxis(axis) or lensembleAxis: # concatenate
+        # decide what to do        
+        lconst = lignoreConst and not any([varobj.hasAxis(ax) for ax in time_axes])
+        if varobj.hasAxis(axis) or ( lensembleAxis and not lconst ) : # concatenate
           if lall: 
             variables[varname] = concatVars([ds.variables[varname] for ds in datasets], axis=axis, asVar=True,
                                             coordlim=coordlim, idxlim=idxlim, offset=offset, axatts=axatts,

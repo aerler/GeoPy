@@ -736,7 +736,7 @@ def test_maxzse(val,index,dataset,axis, lcheckVar=True):
     else: return True # EC datasets don't have this field...
   else: return np.abs(dataset.zs_err[index]) <= val
 def test_lat(val,index,dataset,axis):
-  ''' check if station is located within selected latitude band ''' 
+  ''' check if station is located within selected latitude band '''
   return val[0] <= dataset.stn_lat[index] <= val[1] 
 def test_lon(val,index,dataset,axis):
   ''' check if station is located within selected longitude band ''' 
@@ -754,8 +754,10 @@ def test_cluster(val,index,dataset,axis, cluster_name='cluster_id', lcheckVar=Tr
 # apply tests to list
 def apply_test_suite(tests, index, dataset, axis):
   ''' apply an entire test suite to '''
-  # just call all individual tests for given index 
-  return all(test(index,dataset,axis) for test in tests)
+  # just call all individual tests for given index
+  results = [test(index,dataset,axis) for test in tests]
+  results = [np.all(res) if isinstance(res,np.ndarray) else res for res in results]  
+  return all(results)
 
 ## select a set of common stations for an ensemble, based on certain conditions
 def selectStations(datasets, stnaxis='station', master=None, linplace=False, lall=False, 
@@ -764,7 +766,9 @@ def selectStations(datasets, stnaxis='station', master=None, linplace=False, lal
   if linplace: raise NotImplementedError, "Option 'linplace' does not work currently."
   # pre-load NetCDF datasets
   for dataset in datasets: 
-    if isinstance(dataset,DatasetNetCDF): dataset.load() 
+    if isinstance(dataset,DatasetNetCDF): dataset.load()
+    if dataset.station_name.ndim > 1 and not dataset.station_name.hasAxis(stnaxis):
+      raise DatasetError, "Meta-data fields must only have a 'station' axis and no other!" 
   # list of possible constraints
   tests = [] # a list of tests to run on each station
   #loadlist =  (datasets[imaster],) if not lall and imaster is not None else datasets 
@@ -850,10 +854,10 @@ if __name__ == '__main__':
 #   mode = 'test_station_object'
 #   mode = 'test_station_reader'
 #   mode = 'test_conversion'
-  mode = 'convert_all_stations'
+#   mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
 #   mode = 'test_timeseries'
-#   mode = 'test_selection'
+  mode = 'test_selection'
   
   # test wrapper function to load time series data from EC stations
   if mode == 'test_selection':
@@ -871,13 +875,13 @@ if __name__ == '__main__':
     var = stnens[-1].axes['station']; print(''); print(var)
     for var in stnens.station: print(var.min(),var.mean(),var.max())
     # test station selector
-    cluster = (4,7,8); cluster_name = 'cluster_historical'; prov = ('BC','AB'); max_zserr = 300; lat = (40,50)
+    cluster = (4,7,8); cluster_name = 'cluster_projection'; prov = ('BC','AB'); max_zserr = 300; lat = (40,50)
     min_len = 50; begin_before = 1920; end_after = 2000
 #     stnens = selectStations(stnens, prov=prov, min_len=min_len, lat=lat, max_zerr=max_zserr, lcheckVar=True,
 #                             stnaxis='station', imaster=1, linplace=False, lall=False); cluster = None
     stnens = selectStations(stnens, min_len=min_len, cluster=cluster, lat=lat, max_zerr=max_zserr,
                             begin_before=begin_before, end_after=end_after, cluster_name=cluster_name,
-                            lcheckVar=False, stnaxis='station', imaster=None, linplace=False, lall=True)
+                            lcheckVar=False, stnaxis='station', master=None, linplace=False, lall=True)
     # N.B.: clusters effectively replace provinces, but currently only the EC datasets have that 
     #       information, hence they have to be master-set (imaster=0)
     print(stnens)    
