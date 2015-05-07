@@ -44,12 +44,6 @@ station_constraints['prov'] = ('BC','AB')
 if __name__ == '__main__':
 
   ## general settings and shortcuts
-  WRFfiletypes = [] # WRF data source
-  WRFfiletypes += ['hydro']
-  #WRFfiletypes += ['lsm']
-#   WRFfiletypes += ['srfc']
-#   WRFfiletypes += ['xtrm']
-#   WRFfiletypes += ['plev3d']
   # period shortcuts
   H01 = '1979-1980'; H02 = '1979-1981'; H03 = '1979-1982'; H30 = '1979-2009' # for tests 
   H05 = '1979-1984'; H10 = '1979-1989'; H15 = '1979-1994'; H60 = '1949-2009' # historical validation periods
@@ -60,7 +54,7 @@ if __name__ == '__main__':
   figtitles = None
   subplot = None # subplot layout (or defaults based on number of plots)
   lbackground = True
-  lcontour = True # contour or pcolor plot
+  lcontour = False # contour or pcolor plot
   lframe = True # draw domain boundary
   loutline = True # draw boundaries around valid (non-masked) data
   framewidths = 1
@@ -84,15 +78,23 @@ if __name__ == '__main__':
   variable_settings = None
   season_settings = None
   aggregation = 'mean'
+  level_agg = dict(p=1,s='mean')
     
+  # WRF file types
+  WRFfiletypes = [] # WRF data source
+#   WRFfiletypes += ['hydro']
+#   WRFfiletypes += ['lsm']
+#   WRFfiletypes += ['srfc']
+#   WRFfiletypes += ['xtrm']
+  WRFfiletypes += ['plev3d']
   ## select variables and seasons
   variables = [] # variables
 #   variables += ['Ts']
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
 #   variables += ['MaxPrecip_1d']; aggregation = 'mean'
-  variables += ['MaxPrecip_1d']; aggregation = 'max'
-  variables += ['MaxPreccu_1d']; aggregation = 'max'
+#   variables += ['MaxPrecip_1d']; aggregation = 'max'
+#   variables += ['MaxPreccu_1d']; aggregation = 'max'
 #   variables += ['MaxPrecnc_1d']; aggregation = 'max'
 #   variables += ['wetprec']
 #   variables += ['precip']
@@ -103,7 +105,8 @@ if __name__ == '__main__':
 #   variables += ['WaterTransport_V']
 #   variables += ['waterflx']
 #   variables += ['p-et']
-#   variables += ['precipnc', 'precipc']
+#   variables += ['OIPX']
+  variables += ['OrographicIndex']
 #   variables += ['Q2']
 #   variables += ['evap']
 #   variables += ['pet']
@@ -190,15 +193,15 @@ if __name__ == '__main__':
   seasons = [('summer',)*2+('winter',)*2]; domain = 2; period = [A15,B15]*2
 #   explist = ['phys-ens-2050','phys-ens-2100']*2; reflist = ['phys-ens']; case = 'phys-prj'; period = [A15,B10]*2
 #   explist = ['ctrl-2050','ctrl-2100']*2; reflist = ['ctrl-1']; case = 'ctrl-prj'
-#   explist = ['max-ens-2050','max-ens-2100']*2; reflist = ['max-ens']; case = 'ens-prj'
-  explist = ['max-ctrl-2050','max-ctrl-2100']*2; reflist = ['max-ctrl']; case = 'max-prj'
+  explist = ['max-ens-2050','max-ens-2100']*2; reflist = ['max-ens']; case = 'ens-prj'
+#   explist = ['max-ctrl-2050','max-ctrl-2100']*2; reflist = ['max-ctrl']; case = 'max-prj'
 #   explist = ['max-ens-A-2050','max-ens-A-2100']*2; reflist = ['max-ens-A']; case = 'ens-A-prj';
 #   explist = ['max-ens-B-2050','max-ens-B-2100']*2; reflist = ['max-ens-B']; case = 'ens-B-prj';
 #   explist = ['max-ens-C-2050','max-ens-C-2100']*2; reflist = ['max-ens-C']; case = 'ens-C-prj';   
   periodstrs = ('Mid-Century','End-Century')
   exptitles = ['{:s}, {:s}'.format(season.title(),prdstr) for season in seasons[0][::2] for prdstr in periodstrs]
   maptype = 'lcc-bcab'; lstations = True; stations = 'EC'; lbasins = True; lsamesize = False; # basinlist = ['FRB','ARB','GLB']
-  lfrac = True; refprd = H15
+#   lfrac = True; refprd = H15
 
 # surface sensitivity test
 #   maptype = 'lcc-intermed'; lstations = False; lbasins = True
@@ -342,6 +345,7 @@ if __name__ == '__main__':
   mapSetup = getARBsetup(maptype, lpickle=lpickle, folder=map_folder)
   
   ## load data
+  if not lfrac and not ldiff: reflist = None
 
   if reflist is not None:
     if not isinstance(reflist,(list,tuple)): raise TypeError
@@ -358,10 +362,10 @@ if __name__ == '__main__':
   nlen = len(exps)
 #   print exps[-1][-1]
   # load reference list
+  if refvars is None: refvars = variables
   if lref:
     if refprd is None: refprd = period    
     if refdom is None: refdom = domain
-    if refvars is None: refvars = variables
     refs, a, b = loadDatasets(reflist, n=None, varlist=refvars, titles=None, periods=refprd, 
                               domains=refdom, grids=grid, resolutions=resolution, filetypes=WRFfiletypes, 
                               lWRFnative=lWRFnative, ltuple=True, lbackground=lbackground)
@@ -374,7 +378,6 @@ if __name__ == '__main__':
       if len(exps[i]) != len(refs[i]): 
         DatasetError, 'Experiments and reference tuples need to have the same length!'
       exps[i] = exps[i] + refs[i] # merge lists/tuples
-  
   
   # get figure settings
   subplot = subplot or nlen
@@ -475,6 +478,12 @@ if __name__ == '__main__':
             assert expvar.hasAxis('lon') and expvar.hasAxis('lat'), 'No geographic axes found!'
             lon, lat = np.meshgrid(expvar.lon.getArray(),expvar.lat.getArray())
           lontpl.append(lon); lattpl.append(lat) # append to data list
+          # reduce certain dimensions
+          for ax,la in level_agg.iteritems():
+            if expvar.hasAxis(ax):
+              if isinstance(la, basestring): # aggregate over axis 
+                expvar = getattr(expvar,la)(axis=ax, asVar=True)
+              else: expvar = expvar(asVar=True, **{ax:la}) # slice axis (default rules)
           # extract data field
           if expvar.hasAxis('time'):
             method = aggregation if aggregation.isupper() else aggregation.title() 

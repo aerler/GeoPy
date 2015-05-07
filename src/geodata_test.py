@@ -195,6 +195,13 @@ class BaseVarTest(unittest.TestCase):
     assert isEqual(concat_var[:].take(xrange(12)),concat_data.take(xrange(12)))
     tlen = var.shape[tax]
     assert isEqual(concat_var[:].take(xrange(12,24), axis=tax),concat_data.take(xrange(tlen,tlen+12), axis=tax))    
+    # simple test with ensemble
+    concat_var = concatVars([var,copy], axis='ensemble', asVar=True, lcheckAxis=lckax)
+    # N.B.: some datasets have tiem units in days or hours, which is not uniform 
+    shape = list(var.shape); 
+    tax = var.axisIndex('ensemble')
+    shape = (2,)+var.shape
+    assert concat_var.shape == tuple(shape)
         
   def testCopy(self):
     ''' test copy and deepcopy of variables (and axes) '''
@@ -896,16 +903,17 @@ class BaseDatasetTest(unittest.TestCase):
     if nocat is not None: ncname = nocat.name
     catvar = self.var
     varname = catvar.name
+    lckax = self.dataset_name not in ('GPCC','NARR') # will fail with GPCC and NARR, due to sub-monthly time units
+    # simple test
     catax = self.axes[0]
     axname = catax.name
-    lckax = self.dataset_name not in ('GPCC','NARR') # will fail with GPCC and NARR, due to sub-monthly time units
     # generate test data
     concat_data = concatVars([ds[varname],cp[varname]], axis=catax, asVar=False, lcheckAxis=lckax) # should be time
     shape = list(catvar.shape); 
     shape[0] = catvar.shape[0]*2
     shape = tuple(shape)
     assert concat_data.shape == shape # this just tests concatVars
-    # simple test
+    # test dataset concat
     ccds = concatDatasets([ds, cp], axis=axname, coordlim=None, idxlim=None, offset=0, lcheckAxis=lckax)
     print ccds
     ccvar = ccds[varname] # test concatenated variable 
@@ -914,6 +922,18 @@ class BaseDatasetTest(unittest.TestCase):
     if nocat is not None: 
       ccnc = ccds[ncname] # test other variable (should be the same) 
       assert ccnc.shape == nocat.shape
+    # simple test with ensemble
+    # generate test data
+    concat_data = concatVars([ds[varname],cp[varname]], lensembleAxis=True, asVar=False, lcheckAxis=lckax) # should be time
+    shape = list(catvar.shape); 
+    shape = (2,)+catvar.shape
+    assert concat_data.shape == shape # this just tests concatVars
+    # test dataset concat
+    ccds = concatDatasets([ds, cp], lensembleAxis=True, coordlim=None, idxlim=None, offset=0, lcheckAxis=lckax)
+    print ccds
+    ccvar = ccds[varname] # test concatenated variable 
+    assert ccvar.shape == shape
+    assert isEqual(ccvar.data_array, concat_data) # masked_equal = True
     
   def testContainer(self):
     ''' test basic and advanced container functionality '''
@@ -1483,7 +1503,8 @@ if __name__ == "__main__":
 #     specific_tests += ['ApplyToAll']
 #     specific_tests += ['AddProjection']
 #     specific_tests += ['Indexing']
- 
+    specific_tests += ['ConcatVars']
+#     specific_tests += ['ConcatDatasets']
 
     # list of tests to be performed
     tests = [] 
@@ -1492,9 +1513,9 @@ if __name__ == "__main__":
     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
        
     
     # construct dictionary of test classes defined above

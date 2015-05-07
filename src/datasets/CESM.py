@@ -548,31 +548,33 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
 def loadCESM_ShpEns(ensemble=None, name=None, shape=None, filetypes=None, years=None,
                     varlist=None, varatts=None, translateVars=None, load3D=False, 
-                    ignore_list=None, lcheckExp=True, lencl=False):
+                    ignore_list=None, lcheckExp=True, lencl=False, axis=None, lensembleAxis=False):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadCESM_Ensemble(ensemble=ensemble, name=name, grid=None, station=None, shape=shape, 
                            filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
                            translateVars=translateVars, lautoregrid=False, load3D=load3D, 
                            ignore_list=ignore_list, cvdp_mode='ensemble', lcheckExp=lcheckExp, 
-                           mode='time-series', lreplaceTime=True, lencl=lencl)
+                           mode='time-series', lreplaceTime=True, lencl=lencl,
+                           axis=axis, lensembleAxis=lensembleAxis)
 
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
 def loadCESM_StnEns(ensemble=None, name=None, station=None, filetypes=None, years=None,
                     varlist=None, varatts=None, translateVars=None, load3D=False, 
-                    ignore_list=None, lcheckExp=True):
+                    ignore_list=None, lcheckExp=True, axis=None, lensembleAxis=False):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadCESM_Ensemble(ensemble=ensemble, name=name, grid=None, station=station, shape=None,
                            filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
                            translateVars=translateVars, lautoregrid=False, load3D=load3D, 
                            ignore_list=ignore_list, cvdp_mode='ensemble', lcheckExp=lcheckExp, 
-                           mode='time-series', lreplaceTime=True)
+                           mode='time-series', lreplaceTime=True, axis=axis, lensembleAxis=lensembleAxis)
 
   
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
 def loadCESM_Ensemble(ensemble=None, name=None, title=None, grid=None, station=None, shape=None, 
                       years=None, varlist=None, varatts=None, translateVars=None, lautoregrid=None, 
                       load3D=False, ignore_list=None, cvdp_mode='ensemble', lcheckExp=True, lencl=False, 
-                      mode='time-series', lindices=False, leofs=False, filetypes=None, lreplaceTime=True):
+                      mode='time-series', lindices=False, leofs=False, filetypes=None, lreplaceTime=True,
+                      axis=None, lensembleAxis=False):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   # obviously this only works for modes that produce a time-axis
   if mode.lower() not in ('time-series','timeseries','cvdp'): 
@@ -608,13 +610,14 @@ def loadCESM_Ensemble(ensemble=None, name=None, title=None, grid=None, station=N
       ds = loadCESM_All(experiment=exp, name=None, grid=grid, station=station, shape=shape, varlist=varlist, 
                         varatts=varatts, translateVars=translateVars, period=None, lautoregrid=lautoregrid, 
                         load3D=load3D, ignore_list=ignore_list, filetypes=filetypes, lencl=lencl, 
-                        mode=mode, cvdp_mode='', lcheckExp=lcheckExp, lreplaceTime=lreplaceTime)
+                        mode=mode, cvdp_mode='', lcheckExp=lcheckExp, lreplaceTime=lreplaceTime).load()
     elif lcvdp:
       ds = loadCVDP(experiment=exp, name=None, varlist=varlist, varatts=varatts, period=years, 
                     translateVars=translateVars, lautoregrid=lautoregrid, lencl=lencl, 
                     ignore_list=ignore_list, cvdp_mode=cvdp_mode, lcheckExp=lcheckExp, 
-                    lindices=lindices, leofs=leofs, lreplaceTime=lreplaceTime)
+                    lindices=lindices, leofs=leofs, lreplaceTime=lreplaceTime).load()
     else: raise NotImplementedError
+    if montpl or yrtpl: ds = ds(year=yrtpl, time=montpl, lidx=True) # slice the time dimension to make things consistent
     datasets.append(ds)
   # harmonize axes (this will usually not be necessary for CESM, since the grids are all the same)
   for axname,ax in ds.axes.iteritems():
@@ -623,13 +626,14 @@ def loadCESM_Ensemble(ensemble=None, name=None, title=None, grid=None, station=N
     if not all([len(dataset.axes[axname]) == len(ax) for dataset in datasets]):
       datasets = selectElements(datasets, axis=axname, testFct=None, imaster=None, linplace=False, lall=True)
   # concatenate datasets (along 'time' and 'year' axis!)  
-  if lts:
-    dataset = concatDatasets(datasets, axis='time', coordlim=None, name=name, title=title, 
-                             idxlim=montpl, offset=None, axatts=None, lcpOther=True, lcpAny=False)
-  elif lcvdp:
-    dataset = concatDatasets(datasets, axis=('time','year'), coordlim=None, name=name, title=title, 
-                             idxlim=(montpl,yrtpl), offset=None, axatts=None, lcpOther=True, lcpAny=False)
-  else: raise NotImplementedError
+  if axis is None:
+    if lensembleAxis: axis = 'ensemble' 
+    elif lts: axis='time'
+    elif lcvdp: axis=('time','year')
+    else: raise NotImplementedError
+  dataset = concatDatasets(datasets, axis=axis, coordlim=None, name=name, title=title, idxlim=None, 
+                           lensembleAxis=lensembleAxis, offset=None, axatts=None, lcpOther=True, 
+                           lcpAny=False)    
   # return concatenated dataset
   return dataset
 
@@ -674,8 +678,8 @@ if __name__ == '__main__':
   periods = (15,)
   filetypes = ('atm',) # ['atm','lnd','ice']
   grids = ('cesm1x1',)*len(experiments) # grb1_d01
-  pntset = 'shpavg'
-#   pntset = 'ecprecip'
+#   pntset = 'shpavg'
+  pntset = 'ecprecip'
 
   # pickle grid definition
   if mode == 'pickle_grid':
@@ -746,7 +750,7 @@ if __name__ == '__main__':
   elif mode == 'test_point_timeseries':    
     print('')
     if pntset in ('shpavg',):
-      dataset = loadCESM_ShpTS(experiment='Ctrl-1', shape=pntset, filetypes=['atm'])
+      dataset = loadCESM_ShpTS(experiment='Ctrl-1', shape=pntset, filetypes=['atm'], lensembleAxis=True)
     else:
       dataset = loadCESM_StnTS(experiment='Ctrl-1', station=pntset, filetypes=['atm'], lwrite=False)
     print('')
@@ -760,14 +764,16 @@ if __name__ == '__main__':
   # load station ensemble "time-series"
   elif mode == 'test_point_ensemble':
     
+    lensembleAxis = True
     print('')
     if pntset in ('shpavg',):
-      dataset = loadCESM_ShpEns(ensemble='Ens', shape=pntset, filetypes=['atm'])
+      dataset = loadCESM_ShpEns(ensemble='Ens', shape=pntset, filetypes=['atm'], lensembleAxis=lensembleAxis)
     else:
-      dataset = loadCESM_StnEns(name='Ens', station=pntset, filetypes=['atm'])
+      dataset = loadCESM_StnEns(name='Ens', station=pntset, filetypes=['atm'], lensembleAxis=lensembleAxis)
     print('')
     print(dataset)
     assert dataset.name == 'Ens'
+    assert not lensembleAxis or dataset.hasAxis('ensemble') 
     print('')
     print(dataset.time)
     print(dataset.time.coord)

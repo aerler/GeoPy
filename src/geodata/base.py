@@ -476,11 +476,15 @@ class Variable(object):
     # N.B.: using load() and getArray() should automatically take care of any special needs 
     return var
 
-  def hasAxis(self, axis):
+  def hasAxis(self, axis, strict=True):
     ''' Check if the variable instance has a particular axis. '''
+    if not strict and isinstance(axis,Variable): axis = axis.name
     if isinstance(axis,basestring): # by name
       for i in xrange(len(self.axes)):
         if self.axes[i].name == axis: return True
+    elif isinstance(axis,Variable): # by name
+      for i in xrange(len(self.axes)):
+        if self.axes[i] == axis: return True    
     elif isinstance(axis,Variable): # by object ID
       for i in xrange(len(self.axes)):
         if self.axes[i] == axis: return True
@@ -2596,26 +2600,39 @@ class Dataset(object):
       
 
 def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, offset=None, 
-               name=None, axatts=None, varatts=None, lcheckAxis=True):
+               name=None, axatts=None, varatts=None, lcheckAxis=True, lensembleAxis=None):
   ''' A function to concatenate Variables from different sources along a given axis;
       this is useful to generate a continuous time series from an ensemble. '''
-  if isinstance(axis,Axis): axis = axis.name
+  if lensembleAxis and axis is None: axis = 'ensemble'
+  elif isinstance(axis,(Axis,basestring)) and not any([var.hasAxis(axis) for var in variables]):
+    if lensembleAxis is None: lensembleAxis = True
+    elif lensembleAxis is False: raise ArgumentError        
+  if all([not var.hasAxis(axis, strict=False) for var in variables]): lnew = True
+  elif all([var.hasAxis(axis, strict=False) for var in variables]): lnew = False
+  else: raise AxisError, axis 
+  if isinstance(axis,Axis):
+    axis_obj = axis 
+    axis = axis.name
+  else: axis_obj = None
   if not isinstance(axis,basestring): raise TypeError
   if not all([isinstance(var,Variable) for var in variables]): raise TypeError
-  if not all([var.hasAxis(axis) for var in variables]): raise AxisError  
   var0 = variables[0] # shortcut
+  if not all([var.shape == var0.shape  for var in variables]): 
+    raise AxisError, "All Variables need to have the same shape for concatenation!"
   if not var0.data: var.load()
   # get some axis info
-  axt = var0.getAxis(axis)
-  tax = var0.axisIndex(axis)  
-  if offset is None: offset = axt.coord[0] 
-  if not isNumber(offset): raise TypeError
-  delta = axt.coord[1] - axt.coord[0]
-  for var in variables:
-    ax = var.getAxis(axis) 
-    axdiff = np.diff(axt.coord)
-    if lcheckAxis and not (axdiff.min()+100*floateps >= delta >=  axdiff.max()-100*floateps): 
-      raise AxisError, "Concatenation axis has to be evenly spaced!"
+  if lnew:
+    tax = 0 # add ensemble axis as first axis (assuming Fortran order)
+  else:
+    axt = var0.getAxis(axis)
+    tax = var0.axisIndex(axis)  
+    if offset is None: offset = axt.coord[0] 
+    if not isNumber(offset): raise TypeError
+    delta = axt.coord[1] - axt.coord[0]
+    for var in variables:
+      axdiff = np.diff(axt.coord)
+      if lcheckAxis and not (axdiff.min()+100*floateps >= delta >=  axdiff.max()-100*floateps): 
+        raise AxisError, "Concatenation axis has to be evenly spaced!"
   # slicing options
   lcoordlim = False; lidxlim = False
   if coordlim is not None and idxlim is not None: 
@@ -2628,7 +2645,7 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
     lidxlim = True
     if isinstance(idxlim,slice): idxslc = idxlim
     elif isinstance(idxlim,(tuple,list)): idxslc= slice(*idxlim)
-    else: raise TypeError
+    else: raise TypeError, idxlim
   # check dimensions
   shapes = []; tes = []
   for var in variables:
@@ -2643,12 +2660,17 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
     del shp[tax]
     shapes.append(shp)
   if not all([s == shp for s in shapes]): 
-    raise AxisError
-  tlen = 0
-  for te in tes: tlen += te
-  newshape = list(var0.shape)
-  newshape[tax] = tlen
-  newshape = tuple(newshape)
+    raise AxisError, shapes
+  if lnew:
+    tlen = len(tes) # number of ensemble members
+    assert tlen == len(variables)
+    newshape = (tlen,)+var0.shape
+  else:
+    tlen = 0 # length of concatenation axis
+    for te in tes: tlen += te
+    newshape = list(var0.shape)
+    newshape[tax] = tlen
+    newshape = tuple(newshape)
   # load data
   data = []
   for var in variables:
@@ -2659,6 +2681,7 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
       array = var.getArray().take(xrange(*idxslc.indices(len(axt))), axis=tax)
     else: 
       array = var.getArray()
+    if lnew: array = array.reshape((1,)+array.shape) # add singleton dimension to concatenate over
     data.append(array)
   # concatenate
   data = np.concatenate(data, axis=tax)
@@ -2666,13 +2689,23 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   assert data.shape == newshape
   # cast as variable
   if asVar:      
-    # create new concatenation axis    
-    axatts = axt.atts.copy()
-    axatts['name'] = axt.name; axatts['units'] = axt.units
-    # N.B.: offset is a parameter to simply shift the time axis origin
-    coord = np.arange(offset,tlen*delta+offset,delta) 
-    if axatts is not None: axatts.update(axatts)      
-    axes = list(var0.axes); axes[tax] = Axis(coord=coord, atts=axatts)
+    # create new concatenation axis
+    if axis_obj is not None:
+      if not isinstance(axis_obj, Axis): raise TypeError, axis_obj
+      if len(axis_obj) != tlen: raise AxisError, axis_obj   
+    elif lnew: 
+      # new ensemble axis (just enumerate)
+      tmpatts = dict(name=axis, units='#')
+      if axatts is not None: tmpatts.update(axatts)      
+      axes = (Axis(coord=np.arange(tlen), atts=tmpatts),) + var0.axes 
+    else:
+      # extended old axis  
+      tmpatts = axt.atts.copy()
+      tmpatts['name'] = axt.name; tmpatts['units'] = axt.units
+      # N.B.: offset is a parameter to simply shift the time axis origin
+      coord = np.arange(offset,tlen*delta+offset,delta) 
+      if axatts is not None: tmpatts.update(axatts)      
+      axes = list(var0.axes); axes[tax] = Axis(coord=coord, atts=tmpatts)
     # create new variable
     vatts = var0.atts.copy()
     vatts['name'] = name or var0.name; vatts['units'] = var0.units
@@ -2682,10 +2715,15 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   else: return data
   
   
-def concatDatasets(datasets, name=None, axis=None, coordlim=None, idxlim=None, offset=None, axatts=None, 
-                   title=None, lcpOther=True, lcpAny=False, ldeepcopy=True, lcheckVars=True, lcheckAxis=True):
+def concatDatasets(datasets, name=None, axis=None, coordlim=None, idxlim=None, offset=None, axatts=None,
+                   title=None, lensembleAxis=None, 
+                   lcpOther=True, lcpAny=False, ldeepcopy=True, lcheckVars=True, lcheckAxis=True):
   ''' A function to concatenate Datasets from different sources along a given axis; this
       function essentially applies concatVars to every Variable and creates a new dataset. '''
+  if lensembleAxis and axis is None: axis = 'ensemble'
+  elif isinstance(axis,(Axis,basestring)) and not any([ds.hasAxis(axis) for ds in datasets]):
+    if lensembleAxis is None: lensembleAxis = True
+    elif lensembleAxis is False: raise ArgumentError        
   if isinstance(axis,(Axis,basestring)): axislist = (axis,)
   else: axislist = axis
   nax = len(axislist)
@@ -2709,8 +2747,8 @@ def concatDatasets(datasets, name=None, axis=None, coordlim=None, idxlim=None, o
   for axis,coordlim,idxlim,offset in zip(axislist,climlist,ilimlist,oslist):
     if isinstance(axis,Axis): axis = axis.name
     if not isinstance(axis,basestring): raise TypeError
-    if not any([ds.hasAxis(axis) for ds in datasets]): pass # for convenience
-    elif not all([ds.hasAxis(axis) for ds in datasets]): 
+    if not lensembleAxis and not any([ds.hasAxis(axis) for ds in datasets]): pass # for convenience
+    elif not lensembleAxis and not all([ds.hasAxis(axis) for ds in datasets]): 
       raise DatasetError, "Some datasets don't have axis '{:s}' - aborting!".format(axis)
     else: # go ahead
       # figure out complete set of variables
@@ -2727,11 +2765,11 @@ def concatDatasets(datasets, name=None, axis=None, coordlim=None, idxlim=None, o
         varobj = dataset.variables[varname]
         # N.B.: one has to have it, otherwise it would not be in the list    
         # decide what to do
-        if varobj.hasAxis(axis): # concatenate
+        if varobj.hasAxis(axis) or lensembleAxis: # concatenate
           if lall: 
             variables[varname] = concatVars([ds.variables[varname] for ds in datasets], axis=axis, asVar=True,
                                             coordlim=coordlim, idxlim=idxlim, offset=offset, axatts=axatts,
-                                            lcheckAxis=lcheckAxis)
+                                            lcheckAxis=lcheckAxis, lensembleAxis=lensembleAxis)
           elif lcheckVars:       
             raise DatasetError, "Variable '{:s}' is not present in all Datasets!".format(varname)
         elif lcpOther and varname not in variables: # either add as is, or skip... 

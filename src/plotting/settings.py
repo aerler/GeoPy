@@ -158,6 +158,8 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
     elif var=='lndcls': # land use classes (works best with contour plot)
       clevs = np.linspace(0.5,24.5,25); cbl = np.linspace(4,24,6)  
       clbl = '%2i'; cmap.set_over('purple'); cmap.set_under('white')
+    elif var=='OrographicIndex': 
+      clevs = np.linspace(-0.5,0.5,25); clbl = '%3.2f'; lmskocn = True
     elif var=='lon2D': 
       clevs = np.linspace(-130,-100,30); clbl = '%02.0d'
     elif var=='lat2D': 

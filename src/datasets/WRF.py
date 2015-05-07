@@ -703,28 +703,30 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
 # load a pre-processed WRF ensemble and concatenate time-series 
 def loadWRF_StnEns(ensemble=None, name=None, station=None, filetypes=None, years=None, domains=None, 
                    varlist=None, title=None, varatts=None, translateVars=None, lcheckVars=True, 
-                   lcheckAxis=True, lwrite=False):
+                   lcheckAxis=True, lwrite=False, axis=None, lensembleAxis=False):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadWRF_Ensemble(ensemble=ensemble, grid=None, station=station, domains=domains, 
                           filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
                           translateVars=translateVars, lautoregrid=False, lctrT=True, lconst=False,
-                          lcheckVars=lcheckVars, lcheckAxis=lcheckAxis, name=name, title=title, lwrite=lwrite)
+                          lcheckVars=lcheckVars, lcheckAxis=lcheckAxis, name=name, title=title, 
+                          lwrite=lwrite, lensembleAxis=lensembleAxis)
   
 # load a pre-processed WRF ensemble and concatenate time-series 
 def loadWRF_ShpEns(ensemble=None, name=None, shape=None, filetypes=None, years=None, domains=None, 
                    varlist=None, title=None, varatts=None, translateVars=None, lcheckVars=True, 
-                   lcheckAxis=True, lencl=False, lwrite=False):
+                   lcheckAxis=True, lencl=False, lwrite=False, axis=None, lensembleAxis=False):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadWRF_Ensemble(ensemble=ensemble, grid=None, station=None, shape=shape, domains=domains, 
                           filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, lencl=lencl, 
                           translateVars=translateVars, lautoregrid=False, lctrT=True, lconst=False,
-                          lcheckVars=lcheckVars, lcheckAxis=lcheckAxis, name=name, title=title, lwrite=lwrite)
+                          lcheckVars=lcheckVars, lcheckAxis=lcheckAxis, name=name, title=title, 
+                          lwrite=lwrite, axis=axis, lensembleAxis=lensembleAxis)
   
 # load a pre-processed WRF ensemble and concatenate time-series 
 def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=None, domains=None, 
                      filetypes=None, years=None, varlist=None, varatts=None, translateVars=None, 
                      lautoregrid=None, title=None, lctrT=True, lconst=True, lcheckVars=True, 
-                     lcheckAxis=True, lencl=False, lwrite=False):
+                     lcheckAxis=True, lencl=False, lwrite=False, axis=None, lensembleAxis=False):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   # obviously this only works for datasets that have a time-axis
   # figure out ensemble
@@ -765,6 +767,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
   else: raise TypeError, years
   # special treatment for single experiments (i.e. not an ensemble...)
   if not isinstance(ensemble,(tuple,list)):
+    if lensembleAxis: raise DatasetError, "Wont add singleton ensemble axis to single Dataset!"
     dataset = loadWRF_All(experiment=None, name=ensemble, grid=grid, station=station, shape=shape, 
                           period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                           mode='time-series', lencl=lencl, lautoregrid=lautoregrid, lctrT=lctrT, 
@@ -776,8 +779,9 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
       ds = loadWRF_All(experiment=None, name=exp, grid=grid, station=station, shape=shape, 
                        period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                        mode='time-series', lencl=lencl, lautoregrid=lautoregrid, lctrT=lctrT, 
-                       lconst=lconst, domains=domains, lwrite=lwrite)
-      datasets.append(ds.load())
+                       lconst=lconst, domains=domains, lwrite=lwrite).load()
+      if montpl: ds = ds(time=montpl, lidx=True) # slice the time dimension to make things consistent
+      datasets.append(ds)
     # harmonize axes
     for axname,ax in ds.axes.iteritems():
       if not all([dataset.hasAxis(axname) for dataset in datasets]): 
@@ -785,9 +789,10 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
       if not all([len(dataset.axes[axname]) == len(ax) for dataset in datasets]):
         datasets = selectElements(datasets, axis=axname, testFct=None, master=None, linplace=False, lall=True)
     # concatenate datasets (along 'time' axis, WRF doesn't have 'year')  
-    dataset = concatDatasets(datasets, axis='time', coordlim=None, idxlim=montpl, offset=None, axatts=None, 
+    if axis is None: axis = 'ensemble' if lensembleAxis else 'time'
+    dataset = concatDatasets(datasets, axis=axis, coordlim=None, idxlim=None, offset=None, axatts=None, 
                              lcpOther=True, lcpAny=False, lcheckVars=lcheckVars, lcheckAxis=lcheckAxis,
-                             name=name, title=title)
+                             name=name, title=title, lensembleAxis=lensembleAxis)
   # return concatenated dataset
   return dataset
 
@@ -825,8 +830,8 @@ if __name__ == '__main__':
 #   mode = 'test_point_timeseries'
   mode = 'test_point_ensemble'
 #   mode = 'pickle_grid'  
-  pntset = 'shpavg'
-#   pntset = 'ecprecip'
+#   pntset = 'shpavg'
+  pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
   experiments = ['rrtmg', 'ctrl', 'new']
@@ -969,13 +974,16 @@ if __name__ == '__main__':
   
   # load station ensemble "time-series"
   elif mode == 'test_point_ensemble':
-    
+    lensembleAxis = True
     print('')
     if pntset in ('shpavg',):
 #       dataset = loadWRF_ShpEns(ensemble=['max-ctrl','max-ens-A'], shape=pntset, domains=None, filetypes=['hydro','srfc'])
-      dataset = loadWRF_ShpEns(ensemble='max-ens-2050', shape=pntset, varlist=None, domains=None, filetypes=['hydro',])
+      dataset = loadWRF_ShpEns(ensemble='max-ens-2050', shape=pntset, varlist=None, domains=None, 
+                               filetypes=['hydro',], lensembleAxis=lensembleAxis)
     else:
-      dataset = loadWRF_StnEns(ensemble=['max-ens-A','max-ens-C',], station=pntset, domains=None, filetypes=['hydro','srfc'])
+      dataset = loadWRF_StnEns(ensemble=['max-ens-A','max-ens-C',], station=pntset, domains=None, 
+                               filetypes=['hydro','srfc'], lensembleAxis=lensembleAxis)
+    assert not lensembleAxis or dataset.hasAxis('ensemble')
     dataset.load()
     print('')
     print(dataset)

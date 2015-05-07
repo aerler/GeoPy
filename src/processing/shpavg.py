@@ -260,7 +260,8 @@ if __name__ == '__main__':
 #     WRF_experiments += ['old-ctrl', 'old-ctrl-2050', 'old-ctrl-2100'] # new standard runs (arb3)
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
     domains = None # domains to be processed
-    WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
+#     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
+    WRF_filetypes = ('srfc','hydro','lsm') # only some...
     # define shape data
     shape_name = 'shpavg'
     shapes = dict()
