@@ -428,24 +428,6 @@ class BaseVarTest(unittest.TestCase):
         # test multiple value extraction
         idx = var.findValues(val, lidx=True, lfirst=False, lflatten=True)
         assert isEqual( np.nonzero(var.data_array.ravel()==val )[0], idx)
-      # test extraction of seasons (need time-axis in month)
-      lstrict = not lsimple and var.getAxis('time').units.lower().startswith('month')
-      # currently all test datasets do not conform to my conventions...
-      svar = var.extractSeason(season='djf', asVar=True, linplace=False, lstrict=lstrict)
-      assert svar.shape != var.shape
-      tax = var.getAxis('time').coord 
-      stax = svar.getAxis('time').coord
-      assert stax[0] == tax[0] and stax[1] == tax[1] and stax[2] == tax[11]
-      tover = len(tax)%12       
-      if tover < 3: assert stax[-1] == tax[-1]
-      if tover > 2: assert stax[-1] == tax[-1-(tover-2)] # not sure, if this is right... unlikely anyway
-      assert len(stax) == 3*len(tax)//12 + min(2,tover)
-      # test in-place extraction
-      cvar = var.copy(deepcopy=True)
-      assert cvar.shape == var.shape
-      cvar.extractSeason(season='djf', linplace=True, lstrict=lstrict)
-      assert cvar.shape != var.shape
-      assert isEqual(svar.data_array, cvar.data_array)
       
   def testLoad(self):
     ''' test data loading and unloading '''
@@ -569,15 +551,18 @@ class BaseVarTest(unittest.TestCase):
     ''' test functions that reduce monthly data to yearly data '''
     # get test objects
     var = self.var
+    lsimple = self.__class__ is BaseVarTest
+    # currently not all test datasets conform to my conventions...
+    lstrict = not lsimple and var.getAxis('time').units.lower().startswith('month')
     assert var.axisIndex('time') == 0 and len(var.time) == self.data.shape[0]
     assert len(var.time)%12 == 0, "Need full years to test seasonal mean/min/max!"
     tax = var.axisIndex('time')
     #print self.data.mean(), var.mean().getArray()
     if var.time.units.lower()[:5] in 'month':
-      yvar = var.seasonalMean('jj', asVar=True)
+      yvar = var.seasonalMean('jj', asVar=True, lstrict=lstrict)
       assert yvar.hasAxis('year')
       assert yvar.shape == var.shape[:tax]+(var.shape[0]/12,)+var.shape[tax+1:]
-      cvar = var.climMean()
+      cvar = var.climMean(lstrict=lstrict)
       assert len(cvar.getAxis('time')) == 12
       assert cvar.shape == var.shape[:tax]+(12,)+var.shape[tax+1:]      
     if self.__class__ is BaseVarTest:
@@ -587,13 +572,45 @@ class BaseVarTest(unittest.TestCase):
       assert isEqual(yvar.getArray(), yfake*6.5)
       yfake = np.ones((var.shape[0]/12,)+var.shape[1:], dtype=var.dtype)
       # N.B.: the data increases linearly in time and is constant in space (see setup fct.)
-      assert isEqual(var.seasonalMax('mam',asVar=False), yfake*5)
-      assert isEqual(var.seasonalMin('mam',asVar=False), yfake*3)
+      assert isEqual(var.seasonalMax('mam',asVar=False,lstrict=lstrict), yfake*5)
+      assert isEqual(var.seasonalMin('mam',asVar=False,lstrict=lstrict), yfake*3)
       # test climatology
       assert tax == 0      
       cdata = self.data.reshape((4,12,)+var.shape[1:]).mean(axis=0)
       assert isEqual(cvar.getArray(), cdata)
-
+    # indexing (getitem) test  
+    if var.ndim >= 3:
+      # test extraction of seasons (need time-axis in month)
+      svar = var.seasonalSample(season='djf', asVar=True, linplace=False, lstrict=lstrict)
+      assert svar.shape != var.shape
+      tax = var.getAxis('time').coord 
+      stax = svar.getAxis('time').coord
+      assert stax[0] == tax[0] and stax[1] == tax[1] and stax[2] == tax[11]
+      tover = len(tax)%12       
+      if tover < 3: assert stax[-1] == tax[-1]
+      if tover > 2: assert stax[-1] == tax[-1-(tover-2)] # not sure, if this is right... unlikely anyway
+      assert len(stax) == 3*len(tax)//12 + min(2,tover)
+      # test in-place extraction
+      cvar = var.copy(deepcopy=True)
+      assert cvar.shape == var.shape
+      cvar.seasonalSample(season='djf', linplace=True, lstrict=lstrict)
+      assert cvar.shape != var.shape and cvar.shape == svar.shape
+      assert isEqual(svar.data_array, cvar.data_array)
+      # test climatological sample (need time-axis in month)
+      svar = var.climSample(asVar=True, linplace=False, lstrict=lstrict)
+      assert svar.ndim == var.ndim+1
+      assert len(svar.getAxis('time')) == 12 
+      assert len(var.getAxis('time')) == len(svar.getAxis('sample'))*12
+      assert svar.axisIndex('sample') == 0 and svar.axisIndex('time') == 1
+      assert isEqual(svar[:,:,0,0].ravel(),var[:,0,0])
+      assert len(svar.getAxis('sample'))==1 or isEqual(svar[1,0,0,0],var[12,0,0])
+      # test in-place extraction
+      cvar = var.copy(deepcopy=True)
+      assert cvar.shape == var.shape
+      cvar.climSample(asVar=True, linplace=True, lstrict=lstrict)
+      assert cvar.shape != var.shape and cvar.shape == svar.shape
+      assert isEqual(svar.data_array, cvar.data_array)
+      
   def testSqueeze(self):
     ''' test removal of singleton dimensions '''
     var = self.var
@@ -1503,7 +1520,8 @@ if __name__ == "__main__":
 #     specific_tests += ['ApplyToAll']
 #     specific_tests += ['AddProjection']
 #     specific_tests += ['Indexing']
-    specific_tests += ['ConcatVars']
+    specific_tests += ['SeasonalReduction']
+#     specific_tests += ['ConcatVars']
 #     specific_tests += ['ConcatDatasets']
 
     # list of tests to be performed
@@ -1513,9 +1531,9 @@ if __name__ == "__main__":
     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
        
     
     # construct dictionary of test classes defined above
