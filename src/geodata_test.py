@@ -44,6 +44,7 @@ class BaseVarTest(unittest.TestCase):
     self.atts = dict(name = 'test',units = 'n/a',FillValue=-9999)
     data = np.arange(self.size[0], dtype='int8').reshape(self.size[:1]+(1,))%12 +1
     data = data.repeat(np.prod(self.size[1:]),axis=1,).reshape(self.size)
+    # N.B.: the value of the field should be the count of the month (Jan=1,...,Dec=12)
     #print data
     self.data = data
     # create axis instances
@@ -602,6 +603,8 @@ class BaseVarTest(unittest.TestCase):
       assert len(svar.getAxis('time')) == 12 
       assert len(var.getAxis('time')) == len(svar.getAxis('sample'))*12
       assert svar.axisIndex('sample') == 0 and svar.axisIndex('time') == 1
+      # N.B.: in the BaseVar case the value of the field should be the count of the month (Jan=1,...,Dec=12)
+      assert False, 'make sure the values are ordered corectly'
       assert isEqual(svar[:,:,0,0].ravel(),var[:,0,0])
       assert len(svar.getAxis('sample'))==1 or isEqual(svar[1,0,0,0],var[12,0,0])
       # test in-place extraction
@@ -1520,7 +1523,7 @@ if __name__ == "__main__":
 #     specific_tests += ['ApplyToAll']
 #     specific_tests += ['AddProjection']
 #     specific_tests += ['Indexing']
-    specific_tests += ['SeasonalReduction']
+#     specific_tests += ['SeasonalReduction']
 #     specific_tests += ['ConcatVars']
 #     specific_tests += ['ConcatDatasets']
 
