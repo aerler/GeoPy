@@ -375,7 +375,7 @@ class Variable(object):
   @property
   def shape(self):
     ''' The length of each dimension (shape of data; inferred from axes). '''
-    shape = tuple([len(ax) for ax in self.axes])
+    shape = tuple(len(ax) for ax in self.axes)
     if self.data and shape != self.data_array.shape: 
       raise DataError, 'Shape mismatch!'
     return shape
@@ -1781,6 +1781,87 @@ class Variable(object):
   def climMin(self, yridx=None, **kwargs):
     ''' Return a climatology of minima of monthly data. '''    
     return self.reduceToClimatology(yridx=yridx, operation=nf.nanmin, **kwargs)
+  
+  def reorderAxes(self, axes=None, asVar=True, linplace=False, lcheckAxis=False):
+    ''' reorder the axes of a Variable and replace the data array with an array view with 
+        appropriately reordered dimensions '''
+    # check and translate input (axes list)
+    iaxes = [] 
+    for ax in axes:
+      if isinstance(ax,(basestring,Axis)): 
+        if self.hasAxis(ax): iaxes.append(self.axisIndex(ax))
+        elif lcheckAxis: raise AxisError, ax # default is to just skip
+      else: iaxes.append(int(ax))
+    # reorder data (create view)
+    if self.data: data = self.data_array.transpose(iaxes)      
+    # create new axes tuple and new variable
+    if asVar: 
+      axes = [self.axes[i] for i in iaxes] # direct list indexing doesn't seem to work
+      var = self._createVar(axes=axes, data=data, linplace=linplace)
+    else: var = data
+    # return variable
+    return var
+  
+  def _findAxes(self, axes=None, lcheckAxis=False):
+    ''' find indices for given axes; also return indices of remaining axes '''
+    maxes = set() # removes duplicates 
+    for ax in axes:
+      if isinstance(ax,(basestring,Axis)): 
+        if self.hasAxis(ax): maxes.add(self.axisIndex(ax))
+        elif lcheckAxis: raise AxisError, ax # default is to just skip
+      else: maxes.add(int(ax))
+    raxes = set(range(self.ndim)).difference(maxes) # remaining axes that are not merged
+    raxes = list(raxes); raxes.sort()
+    maxes = list(maxes); maxes.sort() # get a sorted list
+    # return indices of requested axes and remaining axes
+    return maxes, raxes 
+    
+  def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, lcheckAxis=False):
+    ''' merge several axes into one new axis; reorder axes to make them contiguous, if necessary '''
+    # check axes determin reordering
+    maxes,raxes = self._findAxes(axes=axes, lcheckAxis=lcheckAxis)
+    # process, if merge axes are present, otherwise skip
+    if len(maxes) > 0:
+      # insert sorted merge axes at their first index
+      imin = maxes[0]; imax = maxes[-1]; mdim = len(maxes)
+      iin = 0 if imin == 0 else raxes.index(imin-1)+1
+      iaxes = raxes[:iin] + maxes + raxes[iin:] # proper axes order
+      assert imin == iaxes[iin] and imax == iaxes[iin+mdim-1], iaxes
+      # reorder and make copy of variable, as necessary
+      if iaxes == range(self.ndim): # no reordering necessary 
+        var = self if linplace else self.copy()
+      else: # call reordering method
+        var = self.reorderAxes(axes=iaxes, asVar=True, linplace=linplace, lcheckAxis=lcheckAxis)
+      # use variable instead of self from now on - more flexibility    
+      # determine merge axes again (after reordering)
+      maxes,raxes = var._findAxes(axes=axes, lcheckAxis=lcheckAxis)
+      # reshape data (create view)
+      nlen = 1 # total length of merged axes
+      for i in maxes: nlen *= var.shape[i]
+      if var.data:
+        rshape = tuple(var.shape[i] for i in raxes)
+        nshape = rshape[:imin]+(nlen,)+rshape[imin:]
+        data = var.data_array.reshape(nshape)
+      # create new axes tuple and new variable
+      if asVar:
+        # create new axis
+        if new_axis is None or isinstance(new_axis,basestring):
+          # create new sample axis (yearly)
+          satts = dict(name='sample' if new_axis is None else new_axis, units='') # defaults
+          if axatts is not None: satts.update(axatts) 
+          new_axis = Axis(coord=np.arange(nlen), atts=satts)
+        else:
+          if not isinstance(new_axis,Axis): raise TypeError, new_axis
+          if not len(new_axis)==nlen: raise AxisError, new_axis 
+        axes = var.axes[:imin]+(new_axis,)+var.axes[imin+mdim:]
+        var = var._createVar(axes=axes, data=data, linplace=True) # already made a copy
+        assert var.shape == nshape, var.shape
+      else: var = data
+    else: 
+      if lcheckAxis: raise AxisError, "No merge axis found in Variable {:s}".format(self.name)
+      else: var = self
+    # return variable
+    return var
   
   @UnaryCheckAndCreateVar
   def standardize(self, axis=None, name=None, linplace=False, lcheckVar=True, lcheckAxis=True,

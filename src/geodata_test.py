@@ -429,6 +429,23 @@ class BaseVarTest(unittest.TestCase):
         # test multiple value extraction
         idx = var.findValues(val, lidx=True, lfirst=False, lflatten=True)
         assert isEqual( np.nonzero(var.data_array.ravel()==val )[0], idx)
+      # test reordering of axes
+      iaxes = range(var.ndim); iaxes.reverse() # reverse order
+      axes = [var.axes[i].name for i in iaxes] # get names
+      rvar = var.reorderAxes(axes=axes, asVar=True, linplace=False, lcheckAxis=True)
+      assert rvar.shape == tuple(var.shape[i] for i in iaxes)
+      assert np.all( rvar[:] == var[:].transpose(iaxes) )
+      # test merging of axes
+      mdata = var.mergeAxes(axes=(var.axes[1],), new_axis=None, axatts=None, asVar=False, linplace=False, lcheckAxis=True)
+      assert isinstance(mdata, np.ndarray) and mdata.shape == var.shape
+      # now a bit more complicated...
+      maxes = [var.axes[i].name for i in (0,-1)] # merge first and last
+      mvar = var.mergeAxes(axes=maxes, new_axis='test_sample', axatts=None, asVar=True, linplace=False, lcheckAxis=True)
+      assert all([not mvar.hasAxis(ax) for ax in maxes])
+      slen = 1
+      for ax in maxes: slen *= len(var.getAxis(ax))
+      assert mvar.hasAxis('test_sample') and len(mvar.getAxis('test_sample')) == slen
+      assert mvar.shape == (slen,)+var.shape[1:-1]
       
   def testLoad(self):
     ''' test data loading and unloading '''
@@ -604,7 +621,9 @@ class BaseVarTest(unittest.TestCase):
       assert len(var.getAxis('time')) == len(svar.getAxis('sample'))*12
       assert svar.axisIndex('sample') == 0 and svar.axisIndex('time') == 1
       # N.B.: in the BaseVar case the value of the field should be the count of the month (Jan=1,...,Dec=12)
-      assert False, 'make sure the values are ordered corectly'
+      if lsimple:
+        for i in xrange(len(svar.getAxis('time'))):
+          assert np.all(svar[:,i,:] == i+1), svar[:,i,:] # make sure the values are ordered corectly
       assert isEqual(svar[:,:,0,0].ravel(),var[:,0,0])
       assert len(svar.getAxis('sample'))==1 or isEqual(svar[1,0,0,0],var[12,0,0])
       # test in-place extraction
@@ -998,6 +1017,7 @@ class BaseDatasetTest(unittest.TestCase):
 
   def testEnsemble(self):
     ''' test the Ensemble container class '''
+    lsimple = self.__class__ is BaseVarTest
     # test object
     dataset = self.dataset
     dataset.load()
@@ -1042,7 +1062,7 @@ class BaseDatasetTest(unittest.TestCase):
     print(ens.prettyPrint(short=True))
     # apply function to dataset ensemble
     if all(ax.units == 'month' for ax in ens.time):
-      maxens = ens.seasonalMax()
+      maxens = ens.seasonalMax(lstrict=lsimple)
     # test call
     tes = ens(time=slice(0,3,2))
     assert all(len(tax)==2 for tax in tes.time)
