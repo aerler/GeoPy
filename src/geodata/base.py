@@ -1412,10 +1412,17 @@ class Variable(object):
     if self.dtype.kind in ('S',): 
       if lcheckVar: raise VariableError, "Statistical tests does not work with string Variables!"
       else: return None
+    var = self # to avoid confusion later
     if axis_idx is not None and axis is None: axis = self.axes[axis_idx]
-    elif axis_idx is None and axis is not None: axis_idx = self.axisIndex(axis)
+    elif axis_idx is None and axis is not None: 
+      if isinstance(axis,(tuple,list)):
+        # if sample includes multiple axes, merge them and introduce new sample axis
+        var = var.mergeAxes(axes=axis, new_axis='sample', asVar=True, linplace=False, lcheckAxis=lcheckAxis)
+        if var is None: return None
+        axis = 'sample' # now operate on the new sample axis, as if it was just one    
+      axis_idx = var.axisIndex(axis)
     elif not lflatten: raise ArgumentError    
-    if axis is not None and not self.hasAxis(axis):
+    if axis is not None and not var.hasAxis(axis):
       if lcheckAxis: raise AxisError, "Variable '{:s}' has no axis '{:s}'.".format(self.name, axis)
       else: return None
     if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
@@ -1431,17 +1438,17 @@ class Variable(object):
     else:
       varatts = None # axatts = dict() # axatts is used later
     # choose a fillValue, because np.histogram does not ignore masked values but does ignore NaNs
-    if fillValue is None and self.masked:
-      if np.issubdtype(self.dtype,np.integer): fillValue = 0
-      elif np.issubdtype(self.dtype,np.inexact): fillValue = np.NaN
+    if fillValue is None and var.masked:
+      if np.issubdtype(var.dtype,np.integer): fillValue = 0
+      elif np.issubdtype(var.dtype,np.inexact): fillValue = np.NaN
       else: raise NotImplementedError
     # import test wrappers (need to do here, to prevent circular reference)
     from geodata.stats import anderson_wrapper, kstest_wrapper, normaltest_wrapper, shapiro_wrapper
     if lflatten: # totally by-pass reduce()...
       # get data
-      if isinstance(self.data_array,ma.MaskedArray): # DistVars treat masks slightly differently
-        data = self.data_array.filled(fillValue).ravel()
-      else: data = self.data_array.ravel()
+      if isinstance(var.data_array,ma.MaskedArray): # DistVars treat masks slightly differently
+        data = var.data_array.filled(fillValue).ravel()
+      else: data = var.data_array.ravel()
       # N.B.: to ignore masked values they have to be replaced by NaNs or out-of-bounds values 
       # select test function for flat/1D test
       if test.lower() in ('anderson',): 
@@ -1485,7 +1492,7 @@ class Variable(object):
         pval = apply_along_axis(testfct, axis, data, laax=laax)
         return pval
       # call reduce to perform operation
-      pvar = self.reduce(operation=aaa_testfct, blklen=0, blkidx=None, axis=axis, mode='all', 
+      pvar = var.reduce(operation=aaa_testfct, blklen=0, blkidx=None, axis=axis, mode='all', 
                          offset=0, asVar=asVar, axatts=None, varatts=varatts, fillValue=fillValue)
     if asVar: pvar.plot = variablePlotatts['pval'].copy()
     # return new variable instance (or data)
@@ -1821,7 +1828,10 @@ class Variable(object):
     # check axes determin reordering
     maxes,raxes = self._findAxes(axes=axes, lcheckAxis=lcheckAxis)
     # process, if merge axes are present, otherwise skip
-    if len(maxes) > 0:
+    if len(maxes) == 0:
+      if lcheckAxis: raise AxisError, "No merge axis found in Variable {:s}".format(self.name)
+      else: return None
+    else:
       # insert sorted merge axes at their first index
       imin = maxes[0]; imax = maxes[-1]; mdim = len(maxes)
       iin = 0 if imin == 0 else raxes.index(imin-1)+1
@@ -1857,9 +1867,6 @@ class Variable(object):
         var = var._createVar(axes=axes, data=data, linplace=True) # already made a copy
         assert var.shape == nshape, var.shape
       else: var = data
-    else: 
-      if lcheckAxis: raise AxisError, "No merge axis found in Variable {:s}".format(self.name)
-      else: var = self
     # return variable
     return var
   

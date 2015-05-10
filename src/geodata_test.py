@@ -245,7 +245,7 @@ class BaseVarTest(unittest.TestCase):
     for dist in dist_list:
       # create VarKDE
       if dist == 'kde': 
-        tmp = var.kde(axis=t.name, ldebug=False)
+        tmp = var.kde(axis=t.name, lflatten=False, ldebug=False)
       elif dist == 'DEFAULT': 
         tmp = var.fitDist(axis=t.name, lpersist=False, ldebug=False)
       elif lsimple: 
@@ -259,6 +259,15 @@ class BaseVarTest(unittest.TestCase):
       assert distvar.units == var.units
       assert distvar.dtype == var.dtype
       del tmp; gc.collect()
+      # merging all axes should work equally well as flattening
+      if dist == 'kde': # jsut do this once...
+        tmp1 = var.kde(axis=None, lflatten=True, ldebug=False) 
+        tmp2 = var.kde(axis=tuple(ax.name for ax in var.axes), lflatten=False, ldebug=False)
+        assert tmp1.shape  == tmp2.shape 
+        assert tmp1.masked == tmp2.masked
+        assert tmp1.units  == tmp2.units
+        assert tmp1.dtype  == tmp2.dtype
+        isEqual(tmp1[:],tmp2[:])
       print "\n   ***   computed {:s} distribution   ***".format(dist.upper())
       # some VarRV-specific stuff
       if dist != 'kde':
@@ -678,10 +687,14 @@ class BaseVarTest(unittest.TestCase):
     assert var.name == name 
     assert var.std() <= 1.001 # tolerance for floatingpoint precision
     ## univariate stats tests
+    all_axis = tuple(ax.name for ax in var.axes)
     # run simple kstest test
-    pval = var.kstest(asVar=False, lflatten=True, dist='norm', args=(0,1))    
+    pval = var.kstest(asVar=False, lflatten=True, axis=None, dist='norm', args=(0,1))    
     #print pval
     assert pval >= 0 # this will usually be close to zero, since none of these are normally distributed
+    # check that merging all axes gives the same result as flattening
+    all_pval = var.kstest(asVar=False, lflatten=False, axis=all_axis, dist='norm', args=(0,1))
+    assert pval == all_pval 
     # Anderson-Darling test
     pval = var.anderson(asVar=False, lflatten=True, dist='extreme1')    
     #print pval
@@ -706,8 +719,10 @@ class BaseVarTest(unittest.TestCase):
 
     rav = var.copy(); sin = rav.sin(); cos = var.cos()
     ## bivariate stats tests
-    pval = kstest(var, rav, lflatten=True)
+    pval = kstest(var, rav, lflatten=True, axis=None, asVar=False)
     assert pval > 0.95 # this will usually be close to zero, since none of these are normally distributed
+    alt_pval = kstest(var, rav, lflatten=False, axis=all_axis, asVar=False)
+    assert pval == alt_pval
     pvar = ttest(var, rav, axis='time')    
     #print pvar
     #print pvar.data_array

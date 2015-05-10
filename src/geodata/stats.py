@@ -381,6 +381,15 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
     axis_idx1 = axis_idx2 = axis_idx
   elif axis_idx is None and axis is not None: 
     if not lvar1 and not lvar2: ArgumentError, "Keyword 'axis' requires at least one sample to be a Variable instance."
+    if isinstance(axis,(tuple,list)):
+      if not lvar1 or not lvar2: ArgumentError, "Merging multiple 'axis' requires both samples to be a Variable instances."
+      # if sample includes multiple axes, merge them and introduce new sample axis
+      sample1 = sample1.mergeAxes(axes=axis, new_axis='sample', asVar=True, linplace=False, lcheckAxis=lcheckAxis)
+      sample2 = sample2.mergeAxes(axes=axis, new_axis='sample', asVar=True, linplace=False, lcheckAxis=lcheckAxis)
+      if sample1 is None or sample2 is None: 
+        if lcheckAxis: raise AxisError, sample1 or sample2
+        else: return None
+      axis = 'sample' # now operate on the new sample axis, as if it was just one    
     if lvar1: axis_idx1 = sample1.axisIndex(axis)
     if lvar2: axis_idx2 = sample2.axisIndex(axis)
     if not lvar1: axis_idx1 = axis_idx2
@@ -576,6 +585,11 @@ def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None,
   if lflatten:
     iaxis = None; axes = None
   else:
+    if isinstance(axis,(tuple,list)):
+      # if sample includes multiple axes, merge them and introduce new sample axis
+      var = var.mergeAxes(axes=axis, new_axis='sample', asVar=True, linplace=False, lcheckAxis=lcheckAxis)
+      if var is None: return None
+      axis = 'sample' # now operate on the new sample axis, as if it was just one
     if not var.hasAxis(axis):
       if lcheckAxis: raise AxisError
       else: return None
