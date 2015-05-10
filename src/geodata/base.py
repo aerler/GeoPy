@@ -1823,15 +1823,18 @@ class Variable(object):
     # return indices of requested axes and remaining axes
     return maxes, raxes 
     
-  def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, lcheckAxis=False):
-    ''' merge several axes into one new axis; reorder axes to make them contiguous, if necessary '''
+  def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, 
+                lcheckAxis=False, lcheckVar=None, lall=True):
+    ''' merge several axes into one new axis; reorder axes to make them contiguous, if necessary '''    
     # check axes determin reordering
-    maxes,raxes = self._findAxes(axes=axes, lcheckAxis=lcheckAxis)
+    if lall: lcheck = all(self.hasAxis(ax) for ax in axes)
+    else: lcheck = any(self.hasAxis(ax) for ax in axes)
     # process, if merge axes are present, otherwise skip
-    if len(maxes) == 0:
+    if not lcheck:
       if lcheckAxis: raise AxisError, "No merge axis found in Variable {:s}".format(self.name)
       else: return None
     else:
+      maxes,raxes = self._findAxes(axes=axes, lcheckAxis=lcheckAxis)
       # insert sorted merge axes at their first index
       imin = maxes[0]; imax = maxes[-1]; mdim = len(maxes)
       iin = 0 if imin == 0 else raxes.index(imin-1)+1

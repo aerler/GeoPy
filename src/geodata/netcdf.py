@@ -301,6 +301,16 @@ class VarNC(Variable):
       if not copyvar.data and not 'data' in newargs: 
         copyvar.load(self.__getitem__(None)) # don't want to loose data, unless it was explicitly reset 
     return copyvar
+  
+  def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, asNC=False, 
+    lcheckAxis=False, lcheckVar=None, lall=True):
+    ''' this doesn't work with NetCDF Variables, so we need to make a regular copy '''
+    if asNC: raise NotImplementedError, "Merging axes doesn't work with NetCDF Variables."
+    if not self.data: self.load()
+    nonc = self.copy(asNC=False, deepcopy=False)
+    nonc = nonc.mergeAxes(axes=axes, new_axis=new_axis, axatts=axatts, asVar=asVar, 
+                          linplace=linplace, lcheckAxis=lcheckAxis, lcheckVar=lcheckVar, lall=lall) 
+    return nonc
     
   def load(self, data=None, **kwargs):
     ''' Method to load data from NetCDF file into RAM. '''
