@@ -336,16 +336,19 @@ class VarNC(Variable):
     return Variable.reorderAxes(self, axes=axes, asVar=asVar, linplace=linplace, lcheckAxis=lcheckAxis)
   @NoNetCDF
   def insertAxis(self, axis=None, iaxis=0, length=None, req_axes=None, asVar=True, 
-    lcheckVar=None, lcheckAxis=True, lstrict=False, linplace=False):
-    return Variable.insertAxis(self, axis=axis, iaxis=iaxis, length=length, req_axes=req_axes, asVar=asVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, lstrict=lstrict, linplace=linplace)
+    lcheckVar=None, lcheckAxis=True, lstrict=False, linplace=False, lcopy=False):
+    return Variable.insertAxis(self, axis=axis, iaxis=iaxis, length=length, req_axes=req_axes, asVar=asVar, 
+                               lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, lstrict=lstrict, linplace=linplace, lcopy=lcopy)
   @NoNetCDF
   def insertAxes(self, new_axes=None, req_axes=None, asVar=True, lcheckVar=None, lcheckAxis=True, 
-    lstrict=False, linplace=False):
-    return Variable.insertAxes(self, new_axes=new_axes, req_axes=req_axes, asVar=asVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, lstrict=lstrict, linplace=linplace)
+    lstrict=False, linplace=False, lcopy=False):
+    return Variable.insertAxes(self, new_axes=new_axes, req_axes=req_axes, asVar=asVar, 
+                               lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, lstrict=lstrict, linplace=linplace, lcopy=lcopy)
   @NoNetCDF
   def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, 
     lcheckAxis=True, lcheckVar=None, lall=True):
-    return Variable.mergeAxes(self, axes=axes, new_axis=new_axis, axatts=axatts, asVar=asVar, linplace=linplace, lcheckAxis=lcheckAxis, lcheckVar=lcheckVar, lall=lall)
+    return Variable.mergeAxes(self, axes=axes, new_axis=new_axis, axatts=axatts, asVar=asVar, 
+                              linplace=linplace, lcheckAxis=lcheckAxis, lcheckVar=lcheckVar, lall=lall)
 #   def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, asNC=False, 
 #     lcheckAxis=False, lcheckVar=None, lall=True):
 #     ''' this doesn't work with NetCDF Variables, so we need to make a regular copy '''

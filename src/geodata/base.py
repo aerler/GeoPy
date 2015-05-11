@@ -1878,8 +1878,8 @@ class Variable(object):
     # return variable
     return var
   
-  def insertAxis(self, axis=None, iaxis=0, length=None, req_axes=None, asVar=True, 
-                 lcheckVar=None, lcheckAxis=True, lstrict=False, linplace=False):
+  def insertAxis(self, axis=None, iaxis=0, length=None, req_axes=None, asVar=True, lcheckVar=None, 
+                 lcheckAxis=True, lstrict=False, linplace=False, lcopy=False):
     ''' Insert a dummy axis (and 'tile' the data) at a given location; to allow meaningful 
         application to datasets, a required axes 'req_axes' set can be specified; an Axis instance
         can be created on-the-fly from a name ('axis') and a length ('length'). '''
@@ -1893,7 +1893,7 @@ class Variable(object):
       new_axes = self.axes[:iaxis] + (axis,) + self.axes[iaxis:]
       # call insertAxes method (some checks have already been performed here)
       var = self.insertAxes(new_axes=new_axes, req_axes=None, asVar=asVar, lcheckVar=lcheckVar, 
-                            lcheckAxis=False, lstrict=lstrict, linplace=linplace)
+                            lcheckAxis=False, lstrict=lstrict, linplace=linplace, lcopy=lcopy)
     else:
       if lcheckAxis: raise AxisError, req_axes 
       else: var = None # don't do anything

@@ -1180,9 +1180,9 @@ class BaseDatasetTest(unittest.TestCase):
       assert isEqual(slcvar[:], var3[1:,l1,l2], masked_equal=True)
       # test inserting a dummy axis
       axes = tuple(ax.name for ax in self.var.axes)
-      n = 10 if lsimple else 1
+      n = 1000 # if lcopy=True, this will flood the memory!
       new_axes = (Axis(name='test1', length=1*n),'time',Axis(name='test2', length=2*n)) + axes[1:]
-      axds = dataset.insertAxes(new_axes=new_axes, req_axes=axes)
+      axds = dataset.insertAxes(new_axes=new_axes, req_axes=axes, lcopy=False)
       assert axds.hasAxis('test1') and axds.hasAxis('test2')
       assert len(axds.axes['test1'])==1*n and len(axds.axes['test2'])==2*n
       # more elaborate test of variables
@@ -1588,7 +1588,7 @@ if __name__ == "__main__":
 #     specific_tests += ['Copy']
 #     specific_tests += ['ApplyToAll']
 #     specific_tests += ['AddProjection']
-#     specific_tests += ['Indexing']
+    specific_tests += ['Indexing']
 #     specific_tests += ['SeasonalReduction']
 #     specific_tests += ['ConcatVars']
 #     specific_tests += ['ConcatDatasets']
