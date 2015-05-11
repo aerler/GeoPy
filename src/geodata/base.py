@@ -9,6 +9,7 @@ Variable and Dataset classes for handling geographical datasets.
 # numpy imports
 import numpy as np
 import numpy.ma as ma # masked arrays
+from numpy.lib.stride_tricks import as_strided
 import scipy.stats as ss
 import numbers
 import functools
@@ -1900,15 +1901,16 @@ class Variable(object):
     return var
 
   def insertAxes(self, new_axes=None, req_axes=None, asVar=True, lcheckVar=None, lcheckAxis=True, 
-                 lstrict=False, linplace=False):
+                 lcopy=False, lstrict=False, linplace=False):
     ''' Insert dummy axes (and 'tile' the data) to match the axes in 'new_axes'; to allow meaningful 
         application to datasets, a required axes 'req_axes' set can be specified '''
     if req_axes is None or all(self.hasAxis(ax, strict=lstrict) for ax in req_axes):
       axes = [] # store new axes
       ldata = self.data
       if ldata:
-        reshape_axes = []
-        tile_axes = [] 
+        reshape_axes = []; new_shape = []
+        if lcopy: tile_axes = []
+        else: axes_strides = [] 
         data = self.data_array # view on data array
       # loop over new axes
       for ax in new_axes:
@@ -1921,25 +1923,31 @@ class Variable(object):
           axes.append(own_axis) # keep old axis
           if ldata: 
             reshape_axes.append(len(own_axis))
-            tile_axes.append(1) # don't tile along existing axes
+            new_shape.append(len(own_axis))
+            if lcopy: tile_axes.append(1) # don't tile along existing axes
+            else: axes_strides.append(len(own_axis))
         else:
           if not isinstance(ax,Axis): raise AxisError, "A new axis has to be an Axis instance."
           axes.append(ax) # add new axis
           if ldata: 
             reshape_axes.append(1) # insert new singleton dimension
-            tile_axes.append(len(ax)) # tile along new axes
-      assert len(axes) == len(new_axes)     
+            new_shape.append(len(ax))
+            if lcopy: tile_axes.append(len(ax)) # tile along new axes
+            else: axes_strides.append(0) 
+            # N.B.: if we set the stride to 0, we always get back to the same section in memory
+      assert len(axes) == len(new_axes)
+      assert not lcopy or new_shape == tuple(tl if rl==1 else rl for rl,tl in zip(reshape_axes,tile_axes))     
       # reshape/tile data
       if ldata:
+        reshape_axes = tuple(reshape_axes); new_shape = tuple(new_shape)
         data = data.reshape(reshape_axes) # insert new dimensions
-        data = np.tile(data, tile_axes) # repeat along new (singleton) dimensions
-        assert data.ndim == len(new_axes)
-        assert data.shape == tuple(tl if rl==1 else rl for rl,tl in zip(reshape_axes,tile_axes)) 
+        if lcopy: data = np.tile(data, tuple(tile_axes)) # repeat along new (singleton) dimensions
+        else: data = as_strided(data, shape=new_shape, strides=tuple(axes_strides)) # special numpy trick...
+        assert data.ndim == len(new_axes) and data.shape == new_shape 
       if asVar:
         # construct new variable with new axes and reshaped/repeated data
         var = self._createVar(axes=axes, data=data, varatts=self.atts, linplace=linplace)
-        assert var.ndim == len(new_axes)
-        assert var.shape == tuple(rl if tl==1 else tl for rl,tl in zip(reshape_axes,tile_axes))
+        assert var.ndim == len(new_axes) and var.shape == new_shape
       else:
         var = data # just return reshaped/repeated data
     else:

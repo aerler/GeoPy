@@ -1082,7 +1082,7 @@ class BaseDatasetTest(unittest.TestCase):
     print(ens.prettyPrint(short=True))
     # apply function to dataset ensemble
     if all(ax.units == 'month' for ax in ens.time):
-      maxens = ens.seasonalMax(lstrict=lsimple)
+      maxens = ens.seasonalMax(lstrict=not lsimple)
     # test call
     tes = ens(time=slice(0,3,2))
     assert all(len(tax)==2 for tax in tes.time)
@@ -1100,7 +1100,8 @@ class BaseDatasetTest(unittest.TestCase):
       else:
         dataset = self.dataset(time=slice(0,10), lat=(50,70), lon=(-130,-110))
     # select variables
-    var2 = dataset[self.lar.name]; var3 = dataset[self.var.name]
+    var2 = dataset[self.lar.name] if self.lar is not None else None; 
+    var3 = dataset[self.var.name]
     if len(dataset.axes) == 3:
       # get axis that is not in var2 first
       ax0, ax1, ax2 = var3.axes
@@ -1602,7 +1603,6 @@ if __name__ == "__main__":
     tests += ['BaseDataset']
     tests += ['DatasetNetCDF']
     tests += ['DatasetGDAL']
-       
     
     # construct dictionary of test classes defined above
     test_classes = dict()
