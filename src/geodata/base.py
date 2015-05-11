@@ -22,6 +22,7 @@ from geodata.misc import genStrArray, translateSeasons
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 from processing.multiprocess import apply_along_axis
 from utils.misc import histogram, binedges, detrend, percentile
+from numpy.f2py.auxfuncs import isinteger
      
 # used for climatology and seasons
 monthlyUnitsList = ('month','months','month of the year')
@@ -1502,8 +1503,8 @@ class Variable(object):
     ''' helper function to create new Variable objects from old ones '''
     if linplace:
       # replace axes and data
-      self.axes = axes
-      self.data_array = data
+      self.axes = tuple(axes)
+      self.data_array = np.asanyarray(data) if data is not None else None
       if varatts is not None: self.atts.update(varatts)
       newvar = self
     else:
@@ -1824,7 +1825,7 @@ class Variable(object):
     return maxes, raxes 
     
   def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, 
-                lcheckAxis=False, lcheckVar=None, lall=True):
+                lcheckAxis=True, lcheckVar=None, lall=True):
     ''' merge several axes into one new axis; reorder axes to make them contiguous, if necessary '''    
     # check axes determin reordering
     if lall: lcheck = all(self.hasAxis(ax) for ax in axes)
@@ -1866,11 +1867,85 @@ class Variable(object):
         else:
           if not isinstance(new_axis,Axis): raise TypeError, new_axis
           if not len(new_axis)==nlen: raise AxisError, new_axis 
-        axes = var.axes[:imin]+(new_axis,)+var.axes[imin+mdim:]
+        try:
+          axes = var.axes[:imin]+(new_axis,)+var.axes[imin+mdim:]
+        except:
+          pass
         var = var._createVar(axes=axes, data=data, linplace=True) # already made a copy
         assert var.shape == nshape, var.shape
       else: var = data
     # return variable
+    return var
+  
+  def insertAxis(self, axis=None, iaxis=0, length=None, req_axes=None, asVar=True, 
+                 lcheckVar=None, lcheckAxis=True, lstrict=False, linplace=False):
+    ''' Insert a dummy axis (and 'tile' the data) at a given location; to allow meaningful 
+        application to datasets, a required axes 'req_axes' set can be specified; an Axis instance
+        can be created on-the-fly from a name ('axis') and a length ('length'). '''
+    if req_axes is None or all(self.hasAxis(ax, strict=lstrict) for ax in req_axes):
+      # generate new Axis instance, if necessary
+      if isinstance(axis,basestring):
+        if not isinstance(length, (np.integer,int)) and length>0: raise AxisError, axis
+        axis = Axis(name=axis, length=length) 
+      if not isinstance(axis,Axis): raise TypeError, axis      
+      # generate new_axes argument (insert new axis into old axes tuple)
+      new_axes = self.axes[:iaxis] + (axis,) + self.axes[iaxis:]
+      # call insertAxes method (some checks have already been performed here)
+      var = self.insertAxes(new_axes=new_axes, req_axes=None, asVar=asVar, lcheckVar=lcheckVar, 
+                            lcheckAxis=False, lstrict=lstrict, linplace=linplace)
+    else:
+      if lcheckAxis: raise AxisError, req_axes 
+      else: var = None # don't do anything
+    # return new variable
+    return var
+
+  def insertAxes(self, new_axes=None, req_axes=None, asVar=True, lcheckVar=None, lcheckAxis=True, 
+                 lstrict=False, linplace=False):
+    ''' Insert dummy axes (and 'tile' the data) to match the axes in 'new_axes'; to allow meaningful 
+        application to datasets, a required axes 'req_axes' set can be specified '''
+    if req_axes is None or all(self.hasAxis(ax, strict=lstrict) for ax in req_axes):
+      axes = [] # store new axes
+      ldata = self.data
+      if ldata:
+        reshape_axes = []
+        tile_axes = [] 
+        data = self.data_array # view on data array
+      # loop over new axes
+      for ax in new_axes:
+        # add new axis or keep existing axis
+        if self.hasAxis(ax, strict=lstrict):
+          if isinstance(ax,Axis):
+            own_axis = self.axes[self.axisIndex(ax.name)]
+            if len(own_axis) != len(ax): raise AxisError, "New and old axes have incompatible length!"
+          else: own_axis = self.axes[self.axisIndex(ax)]
+          axes.append(own_axis) # keep old axis
+          if ldata: 
+            reshape_axes.append(len(own_axis))
+            tile_axes.append(1) # don't tile along existing axes
+        else:
+          if not isinstance(ax,Axis): raise AxisError, "A new axis has to be an Axis instance."
+          axes.append(ax) # add new axis
+          if ldata: 
+            reshape_axes.append(1) # insert new singleton dimension
+            tile_axes.append(len(ax)) # tile along new axes
+      assert len(axes) == len(new_axes)     
+      # reshape/tile data
+      if ldata:
+        data = data.reshape(reshape_axes) # insert new dimensions
+        data = np.tile(data, tile_axes) # repeat along new (singleton) dimensions
+        assert data.ndim == len(new_axes)
+        assert data.shape == tuple(tl if rl==1 else rl for rl,tl in zip(reshape_axes,tile_axes)) 
+      if asVar:
+        # construct new variable with new axes and reshaped/repeated data
+        var = self._createVar(axes=axes, data=data, varatts=self.atts, linplace=linplace)
+        assert var.ndim == len(new_axes)
+        assert var.shape == tuple(rl if tl==1 else tl for rl,tl in zip(reshape_axes,tile_axes))
+      else:
+        var = data # just return reshaped/repeated data
+    else:
+      if lcheckAxis: raise AxisError, req_axes 
+      else: var = None # don't do anything
+    # return new variable
     return var
   
   @UnaryCheckAndCreateVar

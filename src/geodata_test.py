@@ -455,7 +455,12 @@ class BaseVarTest(unittest.TestCase):
       for ax in maxes: slen *= len(var.getAxis(ax))
       assert mvar.hasAxis('test_sample') and len(mvar.getAxis('test_sample')) == slen
       assert mvar.shape == (slen,)+var.shape[1:-1]
-      
+      # test inserting a dummy axis
+      avar = var.insertAxis(axis='test', iaxis=1, length=10, req_axes=None, asVar=True, linplace=False)
+      assert avar.hasAxis('test')
+      assert avar.shape == var.shape[:1]+(10,)+var.shape[1:]
+    else: raise AssertionError
+
   def testLoad(self):
     ''' test data loading and unloading '''
     # get test objects
@@ -1032,7 +1037,7 @@ class BaseDatasetTest(unittest.TestCase):
 
   def testEnsemble(self):
     ''' test the Ensemble container class '''
-    lsimple = self.__class__ is BaseVarTest
+    lsimple = self.__class__ is BaseDatasetTest
     # test object
     dataset = self.dataset
     dataset.load()
@@ -1084,11 +1089,18 @@ class BaseDatasetTest(unittest.TestCase):
 
   def testIndexing(self):
     ''' test collective slicing and coordinate/point extraction  '''
+    lsimple = self.__class__ is BaseDatasetTest
     # get test objects
-    self.dataset.load() # sometimes we just need to load
-    dataset = self.dataset
+    dataset = self.dataset.load()
+    if lsimple: dataset = self.dataset
+    else:
+      # crop data because these tests just take way too long!
+      if self.dataset_name == 'NARR':
+        dataset = self.dataset(time=slice(0,10), y=slice(190,195), x=slice(0,100))
+      else:
+        dataset = self.dataset(time=slice(0,10), lat=(50,70), lon=(-130,-110))
     # select variables
-    var2 = self.lar; var3 = self.var
+    var2 = dataset[self.lar.name]; var3 = dataset[self.var.name]
     if len(dataset.axes) == 3:
       # get axis that is not in var2 first
       ax0, ax1, ax2 = var3.axes
@@ -1165,6 +1177,24 @@ class BaseDatasetTest(unittest.TestCase):
       assert slcvar.ndim == var3.ndim-1
       assert slcvar.shape == (var3.shape[0]-1,len(l1))
       assert isEqual(slcvar[:], var3[1:,l1,l2], masked_equal=True)
+      # test inserting a dummy axis
+      axes = tuple(ax.name for ax in self.var.axes)
+      n = 10 if lsimple else 1
+      new_axes = (Axis(name='test1', length=1*n),'time',Axis(name='test2', length=2*n)) + axes[1:]
+      axds = dataset.insertAxes(new_axes=new_axes, req_axes=axes)
+      assert axds.hasAxis('test1') and axds.hasAxis('test2')
+      assert len(axds.axes['test1'])==1*n and len(axds.axes['test2'])==2*n
+      # more elaborate test of variables
+      for varname,var in dataset.variables.iteritems():
+        avar = axds[varname]
+        if tuple(ax.name for ax in var.axes) == axes:
+          assert avar.hasAxis('test1') and avar.hasAxis('test2')
+          assert avar.shape == (1*n,len(axds.axes['time']),2*n) + var.shape[1:]
+        else:
+          if not avar.hasAxis('test1') and not avar.hasAxis('test2'): pass
+          else: 
+            raise AssertionError
+          assert avar.shape == var.shape
     else: raise AssertionError
 
   def testPrint(self):

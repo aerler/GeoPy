@@ -10,7 +10,7 @@ A module that provides access to NetCDF datasets for GeoData datasets and variab
 import numpy as np
 import collections as col
 import netCDF4 as nc # netcdf python module
-import os
+import os, functools
 
 # import all base functionality from PyGeoDat
 # from nctools import * # my own netcdf toolkit
@@ -75,6 +75,33 @@ def asDatasetNC(dataset=None, ncfile=None, mode='rw', deepcopy=False, writeData=
     if var.data: newset.variables[varname].load(data=var.getArray(unmask=False, copy=deepcopy))
   # return dataset
   return newset
+
+
+class NoNetCDF(object):
+  ''' Decorator class for Variable methods that don't work with VarNC instances, and thus have to return
+      a regular Variable copy. '''
+  def __init__(self, op):
+    ''' Save original methods. '''
+    self.op = op
+  def __call__(self, ncvar, asNC=False, asVar=True, linplace=False, **kwargs):
+    ''' Perform sanity checks, then execute operation, and return result. '''
+    # input checks
+    if linplace or asNC: raise NotImplementedError, "This operation does not work on VarNC instances!"
+    # create regular Variable instance
+    if not ncvar.data: ncvar.load() # load data
+    nonc = ncvar.copy(asNC=False, deepcopy=False)
+    # apply operation (assumed to have linplace keyword option)
+    var = self.op(nonc, linplace=True, asVar=asVar, **kwargs)
+    assert not isinstance(var, VarNC)
+    # check for invalid returns (e.g. from applying arithmetic to strings)
+    if var is None: return None # return immediately (invalid operation)
+    if asVar and not isinstance(var,Variable): raise TypeError
+    # return function result
+    return var
+  def __get__(self, instance, klass):
+    ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
+    # N.B.: similar implementation to 'partial': need to return a callable that behaves like the instance method
+    return functools.partial(self.__call__, instance) # but using 'partial' is simpler
 
 class VarNC(Variable):
   '''
@@ -302,15 +329,32 @@ class VarNC(Variable):
         copyvar.load(self.__getitem__(None)) # don't want to loose data, unless it was explicitly reset 
     return copyvar
   
-  def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, asNC=False, 
-    lcheckAxis=False, lcheckVar=None, lall=True):
-    ''' this doesn't work with NetCDF Variables, so we need to make a regular copy '''
-    if asNC: raise NotImplementedError, "Merging axes doesn't work with NetCDF Variables."
-    if not self.data: self.load()
-    nonc = self.copy(asNC=False, deepcopy=False)
-    nonc = nonc.mergeAxes(axes=axes, new_axis=new_axis, axatts=axatts, asVar=asVar, 
-                          linplace=linplace, lcheckAxis=lcheckAxis, lcheckVar=lcheckVar, lall=lall) 
-    return nonc
+  # some methods that don't work with VarNC's and need to return regular Variables: basically everything
+  # that changes the axes/shape (implemented through NoNetCDF-decorator, above)
+  @NoNetCDF
+  def reorderAxes(self, axes=None, asVar=True, linplace=False, lcheckAxis=False):
+    return Variable.reorderAxes(self, axes=axes, asVar=asVar, linplace=linplace, lcheckAxis=lcheckAxis)
+  @NoNetCDF
+  def insertAxis(self, axis=None, iaxis=0, length=None, req_axes=None, asVar=True, 
+    lcheckVar=None, lcheckAxis=True, lstrict=False, linplace=False):
+    return Variable.insertAxis(self, axis=axis, iaxis=iaxis, length=length, req_axes=req_axes, asVar=asVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, lstrict=lstrict, linplace=linplace)
+  @NoNetCDF
+  def insertAxes(self, new_axes=None, req_axes=None, asVar=True, lcheckVar=None, lcheckAxis=True, 
+    lstrict=False, linplace=False):
+    return Variable.insertAxes(self, new_axes=new_axes, req_axes=req_axes, asVar=asVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, lstrict=lstrict, linplace=linplace)
+  @NoNetCDF
+  def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, 
+    lcheckAxis=True, lcheckVar=None, lall=True):
+    return Variable.mergeAxes(self, axes=axes, new_axis=new_axis, axatts=axatts, asVar=asVar, linplace=linplace, lcheckAxis=lcheckAxis, lcheckVar=lcheckVar, lall=lall)
+#   def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, asNC=False, 
+#     lcheckAxis=False, lcheckVar=None, lall=True):
+#     ''' this doesn't work with NetCDF Variables, so we need to make a regular copy '''
+#     if asNC: raise NotImplementedError, "Merging axes doesn't work with NetCDF Variables."
+#     if not self.data: self.load()
+#     nonc = self.copy(asNC=False, deepcopy=False)
+#     nonc = nonc.mergeAxes(axes=axes, new_axis=new_axis, axatts=axatts, asVar=asVar, 
+#                           linplace=linplace, lcheckAxis=lcheckAxis, lcheckVar=lcheckVar, lall=lall) 
+#     return nonc
     
   def load(self, data=None, **kwargs):
     ''' Method to load data from NetCDF file into RAM. '''
