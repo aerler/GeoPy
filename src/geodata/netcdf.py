@@ -346,9 +346,9 @@ class VarNC(Variable):
                                lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, lstrict=lstrict, linplace=linplace, lcopy=lcopy)
   @NoNetCDF
   def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, 
-    lcheckAxis=True, lcheckVar=None, lall=True):
-    return Variable.mergeAxes(self, axes=axes, new_axis=new_axis, axatts=axatts, asVar=asVar, 
-                              linplace=linplace, lcheckAxis=lcheckAxis, lcheckVar=lcheckVar, lall=lall)
+    lcheckAxis=True, lcheckVar=None, lvarall=True, ldsall=False):
+    return Variable.mergeAxes(self, axes=axes, new_axis=new_axis, axatts=axatts, asVar=asVar, linplace=linplace, 
+                              lcheckAxis=lcheckAxis, lcheckVar=lcheckVar, lvarall=lvarall, ldsall=ldsall)
 #   def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, asNC=False, 
 #     lcheckAxis=False, lcheckVar=None, lall=True):
 #     ''' this doesn't work with NetCDF Variables, so we need to make a regular copy '''
@@ -761,7 +761,9 @@ class DatasetNetCDF(Dataset):
         if asNC and not isinstance(var,VarNC): 
           raise ArgumentError, "Cannot create NC variable without copying!"
       # hand-off to parent method and return status
-      return super(DatasetNetCDF,self).addVariable(var=var, copy=False, loverwrite=loverwrite)
+      check = super(DatasetNetCDF,self).addVariable(var=var, copy=False, loverwrite=loverwrite)
+      assert var.dataset == self
+      return check
   
   def replaceVariable(self, oldvar, newvar=None, asNC=False, deepcopy=False):
     ''' Replace an existing Variable with a different one and transfer NetCDF reference and axes. '''

@@ -685,10 +685,10 @@ class DistVar(Variable):
         # resample the samples (nbs times)
         bootstrap = np.zeros(shape, dtype=samples.dtype) # allocate memory
         bootstrap[0,:] = samples # first element is the real sample data
-        sz = samples.size; sshp = samples.shape  
+        sz = samples.shape[-1] # all sample dimensions should be collapsed by now 
         for i in xrange(1,nbs):
-          idx = np.random.randint(sz, size=sshp) # select random indices
-          bootstrap[i,:] = samples[idx] # write random sample into array
+          idx = np.random.randint(sz, size=sz) # select random indices
+          bootstrap[i,:] = samples.take(idx, axis=-1) # write random sample into array
         samples = bootstrap
         # N.B.: from here one everything should proceed normally, with the extra bootstrap axis in the 
         #       resulting DistVar object; obtain confidence intervalls as percentiles along this axis

@@ -456,9 +456,14 @@ class BaseVarTest(unittest.TestCase):
       assert mvar.hasAxis('test_sample') and len(mvar.getAxis('test_sample')) == slen
       assert mvar.shape == (slen,)+var.shape[1:-1]
       # test inserting a dummy axis
-      avar = var.insertAxis(axis='test', iaxis=1, length=10, req_axes=None, asVar=True, linplace=False)
+      var.load()
+      avar = var.insertAxis(axis='test', iaxis=1, length=10, req_axes=None, asVar=True, 
+                            linplace=False, lcopy=True)
       assert avar.hasAxis('test')
       assert avar.shape == var.shape[:1]+(10,)+var.shape[1:]
+      assert np.all(avar[:,0,:]==avar[:,-1,:])
+      assert np.all(avar[:,0,:]==var[:]) 
+      assert isEqual(avar.mean(),var.mean())
     else: raise AssertionError
 
   def testLoad(self):
@@ -1111,7 +1116,7 @@ class BaseDatasetTest(unittest.TestCase):
       # apply function under test
       slcds = dataset(**axes)
       # verify results
-      print slcds
+      #print slcds
       slcvar = slcds[var3.name]
       assert slcvar.ndim == var3.ndim
       assert slcvar.shape == (var3.shape[0]-1,)+var3.shape[1:]
@@ -1172,17 +1177,25 @@ class BaseDatasetTest(unittest.TestCase):
       axes = {ax0.name:(1,-1), ax1.name:l1, ax2.name:l2}
       # apply function under test
       slcds = dataset(lidx=True, **axes)
-      print slcds
+      #print slcds
       # verify results
       slcvar =slcds[var3.name]
       assert slcvar.ndim == var3.ndim-1
       assert slcvar.shape == (var3.shape[0]-1,len(l1))
       assert isEqual(slcvar[:], var3[1:,l1,l2], masked_equal=True)
+      # test merging axes
+      maxes = [self.var.axes[i].name for i in (0,-1)] # merge first and last
+      mergeds = dataset.mergeAxes(axes=maxes, new_axis='test_sample')
+      slen = 1 # length of merged axis
+      for ax in maxes: slen *= len(dataset.getAxis(ax))
+      assert mergeds.hasAxis('test_sample') and len(mergeds.getAxis('test_sample')) == slen
+      print mergeds
       # test inserting a dummy axis
       axes = tuple(ax.name for ax in self.var.axes)
-      n = 1000 # if lcopy=True, this will flood the memory!
+      lcopy = True
+      n = 2 if lcopy else 1000 # if lcopy=True, this will flood the memory!
       new_axes = (Axis(name='test1', length=1*n),'time',Axis(name='test2', length=2*n)) + axes[1:]
-      axds = dataset.insertAxes(new_axes=new_axes, req_axes=axes, lcopy=False)
+      axds = dataset.insertAxes(new_axes=new_axes, req_axes=axes, lcopy=lcopy)
       assert axds.hasAxis('test1') and axds.hasAxis('test2')
       assert len(axds.axes['test1'])==1*n and len(axds.axes['test2'])==2*n
       # more elaborate test of variables

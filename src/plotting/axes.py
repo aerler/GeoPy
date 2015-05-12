@@ -14,7 +14,8 @@ from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 from types import NoneType
 # internal imports
 from geodata.base import Variable
-from geodata.misc import ListError, ArgumentError, isEqual
+from geodata.misc import ListError, ArgumentError, isEqual, VariableError,\
+  AxisError
 from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile
 from collections import OrderedDict
 from utils.misc import binedges, expandArgumentList
@@ -293,8 +294,14 @@ class MyAxes(Axes):
     # check input and evaluate distribution variables
     varlist = checkVarlist(varlist, varname=varname, ndim=2, bins=bins, support=support, 
                            method=method, lignore=lignore, bootstrap_axis=None) # don't remove bootstrap
-    # N.B.: two-dmensional: bootstrap axis and plot axis
-    assert all(var.hasAxis(sample_axis) for var in varlist if var is not None)
+    # N.B.: two-dmensional: sample axis and plot axis (sample axis is not always required anymore)
+    if not any(var.hasAxis(sample_axis) for var in varlist if var is not None):
+      raise AxisError, "None of the Variables has a '{:s}'-axis!".format(sample_axis) 
+    # if sample_axis is a list of axes, merge them
+    if isinstance(sample_axis,(list,tuple)):
+      varlist = [var.mergeAxes(axes=sample_axis, new_axis='temporary_sample_axis', asVar=True, 
+                               lcheckAxis=True, lvarall=True, ldsall=False) for var in varlist]
+      sample_axis = 'temporary_sample_axis' # avoid name collisions
     # plot mean
     if lmean: 
       means = [None if var is None else var.mean(axis=sample_axis) for var in varlist]
@@ -305,6 +312,8 @@ class MyAxes(Axes):
                            plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)
       # get line colors to use in all subsequent plots 
       colors = ['' if plt is None else plt.get_color() for plt in plts] # color argument has to be string
+    # remove variables that don't have the sample axis (replace with None)
+    varlist = [None if var is None or not var.hasAxis(sample_axis) else var for var in varlist]
     # determine percentiles along bootstrap axis
     if lmedian and percentiles is None: raise ArgumentError, "Median only works with percentiles."
     if percentiles is not None:
@@ -364,12 +373,18 @@ class MyAxes(Axes):
     # check input and evaluate distribution variables
     varlist = checkVarlist(varlist, varname=varname, ndim=2, bins=bins, support=support, 
                                  method=method, lignore=lignore, bootstrap_axis=None) # don't remove bootstrap
-    # N.B.: two-dmensional: bootstrap axis and plot axis
-    assert all(var.hasAxis(bootstrap_axis) for var in varlist if var is not None)
+    # if bootstrap_axis is a list of axes, merge them
+    if isinstance(bootstrap_axis,(list,tuple)):
+      varlist = [var.mergeAxes(axes=bootstrap_axis, new_axis='temporary_bootstrap_axis', asVar=True, 
+                               lcheckAxis=True, lvarall=True, ldsall=False) for var in varlist]
+      bootstrap_axis = 'temporary_bootstrap_axis' # avoid name collisions
+    # N.B.: two-dmensional: bootstrap axis and plot axis (bootstrap axis is not required anymore)
+    if not any(var.hasAxis(bootstrap_axis) for var in varlist if var is not None):
+      raise AxisError, "None of the Variables has a '{:s}'-axis!".format(bootstrap_axis)
     # simple error bars using the bootstrap variance
     errorbars = None; errorband = None
     if lvar:
-      errorbars = [var.std(axis=bootstrap_axis) for var in varlist]
+      errorbars = [var.std(axis=bootstrap_axis) if var.hasAxis(bootstrap_axis) else None for var in varlist]
       if lvarBand: errorband = errorbars; errorbars = None # switch
     # plot the original distribution
     slc = {bootstrap_axis:0}
@@ -382,9 +397,11 @@ class MyAxes(Axes):
                          yticks=yticks, reset_color=reset_color, xlog=xlog, ylog=ylog, xlim=xlim, 
                          ylim=ylim, lsmooth=lsmooth, lprint=lprint, plotatts=plotatts,
                          expand_list=expand_list, lproduct=lproduct, **plotargs)
-    assert len(plts) == len(varlist)
+    assert len(plts) == len(varlist)    
     # get line colors to use in all subsequent plots 
     colors = ['' if plt is None else plt.get_color() for plt in plts] # color argument has to be string
+    # remove variables that don't have the sample axis (replace with None)
+    varlist = [None if var is None or not var.hasAxis(bootstrap_axis) else var for var in varlist]
     if mean_fmt == '': mean_fmt = '--'
     if median_fmt == '': median_fmt = '-.' if lmean else '--' 
     # add sample moments along bootstrap axis

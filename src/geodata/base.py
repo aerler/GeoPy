@@ -1826,11 +1826,23 @@ class Variable(object):
     return maxes, raxes 
     
   def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, 
-                lcheckAxis=True, lcheckVar=None, lall=True):
-    ''' merge several axes into one new axis; reorder axes to make them contiguous, if necessary '''    
+                lcheckAxis=True, lcheckVar=None, lvarall=True, ldsall=False):
+    ''' merge several axes into one new axis; reorder axes to make them contiguous, if necessary '''
+    # check dataset axes or remove missing axes
+    if self.dataset: 
+      tmp_axes = []; ds = self.dataset
+      for ax in axes:
+        if ds.hasAxis(ax): tmp_axes.append(ax)
+        elif ldsall: 
+          raise DatasetError, "Dataset '{:s}' does not have Axis '{:s}'.".format(ds.name,
+                                                      ax.name if isinstance(ax,Axis) else ax)
+      axes = tmp_axes
     # check axes determin reordering
-    if lall: lcheck = all(self.hasAxis(ax) for ax in axes)
+    if len(axes) == 0: lcheck = False
+    elif lvarall: lcheck = all(self.hasAxis(ax) for ax in axes)
     else: lcheck = any(self.hasAxis(ax) for ax in axes)
+    # N.B.: if some variable have all axes and others only a subset, the resulting merged axes will
+    #       have a different shape, so that added all of them to a Dataset will cause an error
     # process, if merge axes are present, otherwise skip
     if not lcheck:
       if lcheckAxis: raise AxisError, "No merge axis found in Variable {:s}".format(self.name)
@@ -1879,7 +1891,7 @@ class Variable(object):
     return var
   
   def insertAxis(self, axis=None, iaxis=0, length=None, req_axes=None, asVar=True, lcheckVar=None, 
-                 lcheckAxis=True, lstrict=False, linplace=False, lcopy=False):
+                 lcheckAxis=True, lstrict=False, linplace=False, lcopy=True):
     ''' Insert a dummy axis (and 'tile' the data) at a given location; to allow meaningful 
         application to datasets, a required axes 'req_axes' set can be specified; an Axis instance
         can be created on-the-fly from a name ('axis') and a length ('length'). '''
@@ -1901,9 +1913,10 @@ class Variable(object):
     return var
 
   def insertAxes(self, new_axes=None, req_axes=None, asVar=True, lcheckVar=None, lcheckAxis=True, 
-                 lcopy=False, lstrict=False, linplace=False):
+                 lcopy=True, lstrict=False, linplace=False):
     ''' Insert dummy axes (and 'tile' the data) to match the axes in 'new_axes'; to allow meaningful 
         application to datasets, a required axes 'req_axes' set can be specified '''
+    if not lcopy: warn("Replicating an array without duplicating memory is not save w.r.t. reshaping and aggregating!")
     if req_axes is None or all(self.hasAxis(ax, strict=lstrict) for ax in req_axes):
       axes = [] # store new axes
       ldata = self.data
@@ -1912,7 +1925,9 @@ class Variable(object):
         if lcopy: tile_axes = []
         else: axes_strides = [] 
         data = self.data_array # view on data array
+      else: data=None
       # loop over new axes
+      if not lcopy and ldata: i = 0
       for ax in new_axes:
         # add new axis or keep existing axis
         if self.hasAxis(ax, strict=lstrict):
@@ -1925,7 +1940,8 @@ class Variable(object):
             reshape_axes.append(len(own_axis))
             new_shape.append(len(own_axis))
             if lcopy: tile_axes.append(1) # don't tile along existing axes
-            else: axes_strides.append(len(own_axis))
+            else: 
+              axes_strides.append(data.strides[i]); i += 1 # copy strides from original array
         else:
           if not isinstance(ax,Axis): raise AxisError, "A new axis has to be an Axis instance."
           axes.append(ax) # add new axis
@@ -1936,7 +1952,8 @@ class Variable(object):
             else: axes_strides.append(0) 
             # N.B.: if we set the stride to 0, we always get back to the same section in memory
       assert len(axes) == len(new_axes)
-      assert not lcopy or new_shape == tuple(tl if rl==1 else rl for rl,tl in zip(reshape_axes,tile_axes))     
+      assert not lcopy or tuple(new_shape) == tuple(tl if rl==1 else rl for rl,tl in zip(reshape_axes,tile_axes))
+      assert lcopy or not ldata or i == data.ndim      
       # reshape/tile data
       if ldata:
         reshape_axes = tuple(reshape_axes); new_shape = tuple(new_shape)
@@ -1944,10 +1961,12 @@ class Variable(object):
         if lcopy: data = np.tile(data, tuple(tile_axes)) # repeat along new (singleton) dimensions
         else: data = as_strided(data, shape=new_shape, strides=tuple(axes_strides)) # special numpy trick...
         assert data.ndim == len(new_axes) and data.shape == new_shape 
+        assert isEqual(np.nanmean(data),self.mean())
       if asVar:
         # construct new variable with new axes and reshaped/repeated data
         var = self._createVar(axes=axes, data=data, varatts=self.atts, linplace=linplace)
         assert var.ndim == len(new_axes) and var.shape == new_shape
+        assert not ldata or var[:].strides == data.strides, data.strides 
       else:
         var = data # just return reshaped/repeated data
     else:
