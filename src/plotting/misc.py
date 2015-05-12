@@ -92,6 +92,9 @@ def checkVarlist(varlist, varname=None, ndim=1, bins=None, support=None, method=
   # check axis: they need to have only one axes, which has to be the same for all!
   for var in varlist: 
     if var is None: pass
+    elif isinstance(ndim,(list,tuple)):
+      if var.ndim not in ndim: 
+        raise AxisError, "Variable '{:s}' does not have compatible dimension(s): {:d}.".format(var.name,var.ndim)
     elif var.ndim > ndim and not lflatten: 
       raise AxisError, "Variable '{:s}' has more than {:d} dimension(s); consider squeezing.".format(var.name,ndim)
     elif var.ndim < ndim: 

@@ -335,20 +335,22 @@ class VarNC(Variable):
   def reorderAxes(self, axes=None, asVar=True, linplace=False, lcheckAxis=False):
     return Variable.reorderAxes(self, axes=axes, asVar=asVar, linplace=linplace, lcheckAxis=lcheckAxis)
   @NoNetCDF
-  def insertAxis(self, axis=None, iaxis=0, length=None, req_axes=None, asVar=True, 
-    lcheckVar=None, lcheckAxis=True, lstrict=False, linplace=False, lcopy=False):
+  def insertAxis(self, axis=None, iaxis=0, length=None, req_axes=None, asVar=True, lcheckVar=None, 
+                 lcheckAxis=True, lstrict=False, linplace=False, lcopy=True, ltile=True):
     return Variable.insertAxis(self, axis=axis, iaxis=iaxis, length=length, req_axes=req_axes, asVar=asVar, 
-                               lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, lstrict=lstrict, linplace=linplace, lcopy=lcopy)
+                               lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, lstrict=lstrict, linplace=linplace, 
+                               lcopy=lcopy, ltile=ltile)
   @NoNetCDF
   def insertAxes(self, new_axes=None, req_axes=None, asVar=True, lcheckVar=None, lcheckAxis=True, 
-    lstrict=False, linplace=False, lcopy=False):
+                 lstrict=False, linplace=False, lcopy=True, ltile=True):
     return Variable.insertAxes(self, new_axes=new_axes, req_axes=req_axes, asVar=asVar, 
-                               lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, lstrict=lstrict, linplace=linplace, lcopy=lcopy)
+                               lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, lstrict=lstrict, linplace=linplace, 
+                               lcopy=lcopy, ltile=ltile)
   @NoNetCDF
   def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, 
-    lcheckAxis=True, lcheckVar=None, lvarall=True, ldsall=False):
+                lcheckAxis=True, lcheckVar=None, lvarall=True, ldsall=False, lstrict=False):
     return Variable.mergeAxes(self, axes=axes, new_axis=new_axis, axatts=axatts, asVar=asVar, linplace=linplace, 
-                              lcheckAxis=lcheckAxis, lcheckVar=lcheckVar, lvarall=lvarall, ldsall=ldsall)
+                              lcheckAxis=lcheckAxis, lcheckVar=lcheckVar, lvarall=lvarall, ldsall=ldsall, lstrict=lstrict)
 #   def mergeAxes(self, axes=None, new_axis=None, axatts=None, asVar=True, linplace=False, asNC=False, 
 #     lcheckAxis=False, lcheckVar=None, lall=True):
 #     ''' this doesn't work with NetCDF Variables, so we need to make a regular copy '''

@@ -292,7 +292,7 @@ class MyAxes(Axes):
                  errorscale=None, errorevery=None, **plotargs):
     ''' A function to draw moments of a distribution/sample using line-styles and bands '''
     # check input and evaluate distribution variables
-    varlist = checkVarlist(varlist, varname=varname, ndim=2, bins=bins, support=support, 
+    varlist = checkVarlist(varlist, varname=varname, ndim=(1,2), bins=bins, support=support, 
                            method=method, lignore=lignore, bootstrap_axis=None) # don't remove bootstrap
     # N.B.: two-dmensional: sample axis and plot axis (sample axis is not always required anymore)
     if not any(var.hasAxis(sample_axis) for var in varlist if var is not None):
@@ -304,7 +304,11 @@ class MyAxes(Axes):
       sample_axis = 'temporary_sample_axis' # avoid name collisions
     # plot mean
     if lmean: 
-      means = [None if var is None else var.mean(axis=sample_axis) for var in varlist]
+      means = [] # compute the means over the sample_axis; variables without sample_axis are used as is (and removed later)
+      for var in varlist:
+        if var is None: means.append(None)
+        elif var.hasAxis(sample_axis): means.append(var.mean(axis=sample_axis)) 
+        else: means.append(var)
       plts = self.linePlot(varlist=means, llabel=llabel, labels=labels, lineformat=mean_fmt, colors=colors,
                            flipxy=flipxy, reset_color=reset_color, lsmooth=lsmooth, lprint=lprint, 
                            xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks, xlim=xlim, ylim=ylim,
