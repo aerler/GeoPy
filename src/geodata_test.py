@@ -1607,7 +1607,7 @@ if __name__ == "__main__":
 #     specific_tests += ['Copy']
 #     specific_tests += ['ApplyToAll']
 #     specific_tests += ['AddProjection']
-    specific_tests += ['Indexing']
+#     specific_tests += ['Indexing']
 #     specific_tests += ['SeasonalReduction']
 #     specific_tests += ['ConcatVars']
 #     specific_tests += ['ConcatDatasets']
