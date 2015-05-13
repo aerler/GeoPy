@@ -212,10 +212,10 @@ class DistPlotTest(unittest.TestCase):
   def setUp(self):
     ''' create two test variables '''
     # create axis and variable instances (make *copies* of data and attributes!)
-    x1 = np.random.randn(150); xax1 = Axis(name='X1-Axis', units='X Units', length=len(x1)) 
+    x1 = np.random.randn(180); xax1 = Axis(name='X1-Axis', units='X Units', length=len(x1)) 
     var1 = Variable(axes=(xax1,), data=x1.copy(), atts=dict(name='blue', units='units'))
     self.var1 = var1; self.xax1 = xax1
-    x2 = np.random.randn(150); xax2 = Axis(name='X2-Axis', units='X Units', length=len(x2))
+    x2 = np.random.randn(180); xax2 = Axis(name='X2-Axis', units='X Units', length=len(x2))
     var2 = Variable(name='purple',units='units',axes=(xax2,), data=x2)
     self.var2 = var2; self.xax2 = xax2
     # actual normal distribution
@@ -243,7 +243,7 @@ class DistPlotTest(unittest.TestCase):
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     # settings
     varlist = [self.var1, self.var2]
-    nbins = 10
+    nbins = 15
     # create regular histogram
     bins, ptchs = ax.histogram(varlist, bins=nbins, legend=2, alpha=0.5, rwidth=0.8, histtype='bar')
     # histtype = 'bar' | 'barstacked' | 'step' | 'stepfilled'
@@ -272,7 +272,7 @@ class DistPlotTest(unittest.TestCase):
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     # settings
     varlist = [self.var1, self.var2]
-    nbins = 10
+    nbins = 15
     # add regular histogram for comparison
     bins, ptchs = ax.histogram(varlist, bins=nbins, legend=2, alpha=0.5, rwidth=0.8, histtype='bar')
     # histtype = 'bar' | 'barstacked' | 'step' | 'stepfilled'
@@ -307,7 +307,7 @@ class DistPlotTest(unittest.TestCase):
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     # settings
     varlist = [self.var1, self.var2]
-    nbins = 10
+    nbins = 15
     # add regular histogram for comparison
     bins, ptchs = ax.histogram(varlist, bins=nbins, legend=2, alpha=0.5, rwidth=0.8, histtype='bar')
     # histtype = 'bar' | 'barstacked' | 'step' | 'stepfilled'
@@ -329,7 +329,7 @@ class DistPlotTest(unittest.TestCase):
     rndfit = fitvars[1].insertAxis(axis='sample',iaxis=0,length=100)
     rndfit.data_array += np.random.randn(*rndfit.shape)/100. 
     ax.samplePlot(rndfit, support=support, errorscale=0.5, linewidth=2, lsmooth=False, 
-                  bootstrap_axis='bootstrap', sample_axis='sample',
+                  bootstrap_axis='bootstrap', sample_axis=('no_axis','sample'),
                   percentiles=(0.25,0.75), lmean=True, reset_color=False)  
     # add statistical info
     pstr = "p-values for '{:s}':\n".format(self.dist)

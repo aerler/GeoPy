@@ -1900,7 +1900,7 @@ class Variable(object):
       # generate new Axis instance, if necessary
       if isinstance(axis,basestring):
         if not isinstance(length, (np.integer,int)) and length>0: raise AxisError, axis
-        axis = Axis(name=axis, length=length) 
+        axis = Axis(name=axis, length=length, coord=np.arange(length)) 
       if not isinstance(axis,Axis): raise TypeError, axis      
       # generate new_axes argument (insert new axis into old axes tuple)
       new_axes = self.axes[:iaxis] + (axis,) + self.axes[iaxis:]

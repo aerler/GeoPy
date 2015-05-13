@@ -301,7 +301,7 @@ class MyAxes(Axes):
       means = [] # compute the means over the sample_axis; variables without sample_axis are used as is (and removed later)
       for var in meanlist:
         if var is None: means.append(None)
-        elif var.hasAxis(sample_axis): means.append(var.mean(axis=mean_axis)) 
+        elif var.hasAxis(mean_axis): means.append(var.mean(axis=mean_axis)) 
         else: means.append(var)
       plts = self.linePlot(varlist=means, llabel=llabel, labels=labels, lineformat=mean_fmt, colors=colors,
                            flipxy=flipxy, reset_color=reset_color, lsmooth=lsmooth, lprint=lprint, 
