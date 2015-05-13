@@ -323,12 +323,12 @@ class DistPlotTest(unittest.TestCase):
     # add the actual distribution
     ax.linePlot(self.distVar, support=support, linewidth=1, marker='^')
     # add simple sample (using bootstrap axis as sample 
-    ax.samplePlot(fitvars[0], support=support, errorscale=0.5, linewidth=2, lsmooth=False, 
+    ax.samplePlot(fitvars[0], support=support, linewidth=2, lsmooth=False, 
                   sample_axis='bootstrap', percentiles=(0.05,0.95), lmedian=True, reset_color=True)
     # replicate axis and add random noise to mean
     rndfit = fitvars[1].insertAxis(axis='sample',iaxis=0,length=100)
     rndfit.data_array += np.random.randn(*rndfit.shape)/100. 
-    ax.samplePlot(rndfit, support=support, errorscale=0.5, linewidth=2, lsmooth=False, 
+    ax.samplePlot(rndfit, support=support, linewidth=2, lsmooth=False, 
                   bootstrap_axis='bootstrap', sample_axis=('no_axis','sample'),
                   percentiles=(0.25,0.75), lmean=True, reset_color=False)  
     # add statistical info

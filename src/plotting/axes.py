@@ -281,15 +281,14 @@ class MyAxes(Axes):
     if self.flipxy: self.fill_betweenx(y=axes, x1=lower, x2=upper, **band_args)
     else: self.fill_between(x=axes, y1=lower, y2=upper, interpolate=True, **band_args) # interpolate=True
   
-  def samplePlot(self, varlist, varname=None, bins=None, support=None, method='pdf', percentiles=(0.25,0.75),   
+  def samplePlot(self, varlist, varname=None, bins=None, support=None, percentiles=(0.25,0.75),   
                  sample_axis=None, lmedian=None, median_fmt='', lmean=True, mean_fmt='', 
                  bootstrap_axis=None, lrescale=False, scalefactor=1., offset=0., colors=None,
                  legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
                  flipxy=None, xlabel=True, ylabel=False, xticks=True, yticks=True, reset_color=None, 
                  xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False,
-                 lignore=False, expand_list=None, lproduct='inner', plotatts=None,
-                 where=None, bandalpha=None, edgecolor=None, facecolor=None, bandarg=None,  
-                 errorscale=None, errorevery=None, **plotargs):
+                 lignore=False, expand_list=None, lproduct='inner', plotatts=None, method='pdf',
+                 where=None, bandalpha=None, edgecolor=None, facecolor=None, bandarg=None, **plotargs):
     ''' A function to draw moments of a distribution/sample using line-styles and bands '''
     # plot mean
     if lmean: 
@@ -304,10 +303,14 @@ class MyAxes(Axes):
         elif var.hasAxis(mean_axis): means.append(var.mean(axis=mean_axis)) 
         else: means.append(var)
       plts = self.linePlot(varlist=means, llabel=llabel, labels=labels, lineformat=mean_fmt, colors=colors,
-                           flipxy=flipxy, reset_color=reset_color, lsmooth=lsmooth, lprint=lprint, 
+                           flipxy=flipxy, reset_color=reset_color, lsmooth=lsmooth, lprint=lprint,
+                           legend=legend, hline=hline, vline=vline, title=title, xlog=xlog, ylog=ylog,
                            xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks, xlim=xlim, ylim=ylim,
-                           lrescale=lrescale, scalefactor=scalefactor, offset=offset, title=title,
+                           lrescale=lrescale, scalefactor=scalefactor, offset=offset,
                            plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)
+      # these switches are not needed anymore (prevent duplication)
+      legend=False; llabel=False; labels=None; hline=None; vline=None 
+      title=None; reset_color=False; lprint=False
       # get line colors to use in all subsequent plots 
       colors = ['' if plt is None else plt.get_color() for plt in plts] # color argument has to be string
     # check and preprocess again, this time merge sample_axis with bootstrap_axis 
@@ -323,7 +326,7 @@ class MyAxes(Axes):
       assert 1 < len(percentiles) < 4
       lmedian = lmedian is None or lmedian # default is to plot the median if percentiles are calculated
       if lmedian and len(percentiles) == 2: 
-        percentiles = (percentiles[0],0.5,percentiles[1]) # add median to percentiles
+        percentiles = (percentiles[0], 0.5, percentiles[1]) # add median to percentiles
       # compute percentiles
       qvars = [None if var is None else var.percentile(q=percentiles, axis=sample_axis) for var in varlist]
       upslc = dict(percentile=2 if lmedian else 1, lidx=True)
@@ -335,12 +338,11 @@ class MyAxes(Axes):
         mdslc = dict(percentile=1, lidx=True)
         meadians = [None if var is None else var(**mdslc) for var in qvars]
         if median_fmt == '' and lmean: median_fmt = '--'
-        tmpplts = self.linePlot(varlist=meadians, lineformat=median_fmt, llabel=False if lmean else llabel, 
-                                labels=None if lmean else labels, xlim=xlim, ylim=ylim,
-                                xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks,
-                                lrescale=lrescale, scalefactor=scalefactor, offset=offset, flipxy=flipxy, 
-                                reset_color=False if lmean else reset_color, lsmooth=lsmooth, 
-                                lprint=False if lmean else lprint, colors=colors, 
+        tmpplts = self.linePlot(varlist=meadians, lineformat=median_fmt, llabel=llabel, labels=labels, 
+                                legend=legend, xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks,
+                                xlim=xlim, ylim=ylim, lrescale=lrescale, scalefactor=scalefactor, 
+                                offset=offset, flipxy=flipxy, reset_color=reset_color, lsmooth=lsmooth, 
+                                lprint=lprint, colors=colors, 
                                 plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)
         if not lmean:
           plts = tmpplts
@@ -353,8 +355,9 @@ class MyAxes(Axes):
       # draw band plot between upper and lower percentile
       if bandalpha is None: bandalpha = 0.3 
       tmpplts = self.bandPlot(upper=uppers, lower=lowers, lignore=lignore, llabel=False, labels=None,
-                              xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks, xlim=xlim, ylim=ylim,   
-                              lrescale=lrescale, scalefactor=scalefactor, offset=offset,
+                              xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks, 
+                              xlim=xlim, ylim=ylim, scalefactor=scalefactor, offset=offset,
+                              lrescale=lrescale, legend=False, 
                               flipxy=flipxy, reset_color=False, lsmooth=lsmoothBand, lprint=False, 
                               where=where, alpha=bandalpha, edgecolor=edgecolor, colors=facecolor,
                               expand_list=expand_list, lproduct=lproduct, plotatts=plotatts, **band_args)
