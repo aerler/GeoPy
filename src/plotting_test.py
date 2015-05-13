@@ -265,7 +265,7 @@ class DistPlotTest(unittest.TestCase):
 
 
   def testBootstrapCI(self):
-    ''' test a simple line plot with two lines '''    
+    ''' test a line plot with confidence intervals from bootstrapping '''    
     fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyAxes'
@@ -282,16 +282,6 @@ class DistPlotTest(unittest.TestCase):
     vmax = np.max([var.max() for var in varlist])
     #print bins[0], vmin; print bins[-1], vmax
     assert bins[0] == vmin and bins[-1] == vmax
-#     generate errorbars based on bootstrap variance
-#     kdeorig = []; kdeerrs = []
-#     for var in varlist:
-#       kdevar = var.kde(lflatten=True, lbootstrap=True, nbs=100) # generate KDE with bootstrapping
-#       kdevars.append(kdevar) # regular KDE variable (DistVar)
-#       kde = kdevar.pdf(support=support) # evaluate KDE and generate distribution      
-#       kdeorig.append(kde(bootstrap=0)) # the first element, the actual distribution
-#       kdeerrs.append(kde.std(axis='bootstrap')) # the variance of the bootstrapped sample
-#     # add line plot with error bands     
-#     ax.linePlot(kdeorig, errorband=kdeerrs, errorscale=0.5, linestyle='-', linewidth=2)
     # add bootstrap plot with errorbars    
     support = np.linspace(vmin, vmax, 100)
     fitvars = [var.fitDist(dist=self.dist,lflatten=True, lbootstrap=True, nbs=1000) for var in varlist] 
@@ -301,14 +291,53 @@ class DistPlotTest(unittest.TestCase):
                 percentiles=(0.25,0.75), lvar=False, lvarBand=False, lmedian=True, reset_color=False)  
     # add the actual distribution
     ax.linePlot(self.distVar, support=support, linewidth=1, marker='^')
-    # add label
+    # add statistical info
     pstr = "p-values for '{:s}':\n".format(self.dist)
     for var in varlist:
       pstr += '   {:<9s}   {:3.2f}\n'.format(var.name, var.kstest(dist=self.dist, asVar=False))
     pstr += '   2-samples   {:3.2f}\n'.format(kstest(varlist[0], varlist[1], lflatten=True))
     ax.addLabel(label=pstr, loc=1, lstroke=False, lalphabet=True, size=None, prop=None)
 
-    
+
+  def testSamplePlot(self):
+    ''' test a line and band plot showing the mean/median and given percentiles '''    
+    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyAxes'
+    assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
+    # settings
+    varlist = [self.var1, self.var2]
+    nbins = 10
+    # add regular histogram for comparison
+    bins, ptchs = ax.histogram(varlist, bins=nbins, legend=2, alpha=0.5, rwidth=0.8, histtype='bar')
+    # histtype = 'bar' | 'barstacked' | 'step' | 'stepfilled'
+    assert len(ptchs) == 2
+    assert len(bins) == nbins
+    vmin = np.min([var.min() for var in varlist])
+    vmax = np.max([var.max() for var in varlist])
+    #print bins[0], vmin; print bins[-1], vmax
+    assert bins[0] == vmin and bins[-1] == vmax
+    # add bootstrap plot with errorbars    
+    support = np.linspace(vmin, vmax, 100)
+    fitvars = [var.fitDist(dist=self.dist,lflatten=True, lbootstrap=True, nbs=1000) for var in varlist]
+    # add the actual distribution
+    ax.linePlot(self.distVar, support=support, linewidth=1, marker='^')
+    # add simple sample (using bootstrap axis as sample 
+    ax.samplePlot(fitvars[0], support=support, errorscale=0.5, linewidth=2, lsmooth=False, 
+                  sample_axis='bootstrap', percentiles=(0.05,0.95), lmedian=True, reset_color=True)
+    # replicate axis and add random noise to mean
+    rndfit = fitvars[1].insertAxis(axis='sample',iaxis=0,length=100)
+    rndfit.data_array += np.random.randn(*rndfit.shape)/100. 
+    ax.samplePlot(rndfit, support=support, errorscale=0.5, linewidth=2, lsmooth=False, 
+                  bootstrap_axis='bootstrap', sample_axis='sample',
+                  percentiles=(0.25,0.75), lmean=True, reset_color=False)  
+    # add statistical info
+    pstr = "p-values for '{:s}':\n".format(self.dist)
+    for var in varlist:
+      pstr += '   {:<9s}   {:3.2f}\n'.format(var.name, var.kstest(dist=self.dist, asVar=False))
+    pstr += '   2-samples   {:3.2f}\n'.format(kstest(varlist[0], varlist[1], lflatten=True))
+    ax.addLabel(label=pstr, loc=1, lstroke=False, lalphabet=True, size=None, prop=None)
+
 if __name__ == "__main__":
 
     
@@ -324,7 +353,8 @@ if __name__ == "__main__":
 #     specific_tests += ['MeanAxisPlot']
     # DistPlot
 #     specific_tests += ['BasicHistogram']
-    specific_tests += ['BootstrapCI']
+#     specific_tests += ['BootstrapCI']
+    specific_tests += ['SamplePlot']
     
     # list of tests to be performed
     tests = [] 

@@ -619,7 +619,7 @@ class DistVar(Variable):
 
   def __init__(self, name=None, units=None, axes=None, samples=None, params=None, axis=None, dtype=None,
                lflatten=False, masked=None, mask=None, fillValue=None, atts=None, ldebug=False, 
-               lbootstrap=False, nbs=1000, **kwargs):
+               lbootstrap=False, nbs=1000, bootstrap_axis='bootstrap', **kwargs):
     '''
       This method creates a new DisVar instance from data and parameters. If data is provided, a sample
       axis has to be specified or the last (innermost) axis is assumed to be the sample axis.
@@ -678,7 +678,7 @@ class DistVar(Variable):
       ## add bootstrap axis and generate bootstrap samples
       if lbootstrap:
         # create and add bootstrap axis
-        bsatts = dict(name='bootstrap',units='',long_name='Bootstrap Samples')
+        bsatts = dict(name=bootstrap_axis,units='',long_name='Bootstrap Samples')
         bsax = Axis(coord=np.arange(nbs), atts=bsatts)
         axes = (bsax,) + axes # add this axis as outer-most
         shape = (nbs,) + samples.shape

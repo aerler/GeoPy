@@ -16,7 +16,7 @@ from types import NoneType
 from geodata.base import Variable
 from geodata.misc import ListError, ArgumentError, isEqual, VariableError,\
   AxisError
-from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile
+from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile, checkSample
 from collections import OrderedDict
 from utils.misc import binedges, expandArgumentList
 
@@ -283,7 +283,7 @@ class MyAxes(Axes):
   
   def samplePlot(self, varlist, varname=None, bins=None, support=None, method='pdf', percentiles=(0.25,0.75),   
                  sample_axis=None, lmedian=None, median_fmt='', lmean=True, mean_fmt='', 
-                 lrescale=False, scalefactor=1., offset=0., colors=None,
+                 bootstrap_axis=None, lrescale=False, scalefactor=1., offset=0., colors=None,
                  legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
                  flipxy=None, xlabel=True, ylabel=False, xticks=True, yticks=True, reset_color=None, 
                  xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False,
@@ -291,31 +291,30 @@ class MyAxes(Axes):
                  where=None, bandalpha=None, edgecolor=None, facecolor=None, bandarg=None,  
                  errorscale=None, errorevery=None, **plotargs):
     ''' A function to draw moments of a distribution/sample using line-styles and bands '''
-    # check input and evaluate distribution variables
-    varlist = checkVarlist(varlist, varname=varname, ndim=(1,2), bins=bins, support=support, 
-                           method=method, lignore=lignore, bootstrap_axis=None) # don't remove bootstrap
-    # N.B.: two-dmensional: sample axis and plot axis (sample axis is not always required anymore)
-    if not any(var.hasAxis(sample_axis) for var in varlist if var is not None):
-      raise AxisError, "None of the Variables has a '{:s}'-axis!".format(sample_axis) 
-    # if sample_axis is a list of axes, merge them
-    if isinstance(sample_axis,(list,tuple)):
-      varlist = [var.mergeAxes(axes=sample_axis, new_axis='temporary_sample_axis', asVar=True, 
-                               lcheckAxis=True, lvarall=True, ldsall=False) for var in varlist]
-      sample_axis = 'temporary_sample_axis' # avoid name collisions
     # plot mean
     if lmean: 
+      # don't overwrite varlist and sample_axis (yet)
+      meanlist, mean_axis = checkSample(varlist, varname=varname, bins=bins, support=support, 
+                                        method=method, lignore=lignore, sample_axis=sample_axis, 
+                                        temporary_sample_axis='temporary_sample_axis',
+                                        bootstrap_axis=bootstrap_axis, lmergeBootstrap=False)
       means = [] # compute the means over the sample_axis; variables without sample_axis are used as is (and removed later)
-      for var in varlist:
+      for var in meanlist:
         if var is None: means.append(None)
-        elif var.hasAxis(sample_axis): means.append(var.mean(axis=sample_axis)) 
+        elif var.hasAxis(sample_axis): means.append(var.mean(axis=mean_axis)) 
         else: means.append(var)
       plts = self.linePlot(varlist=means, llabel=llabel, labels=labels, lineformat=mean_fmt, colors=colors,
                            flipxy=flipxy, reset_color=reset_color, lsmooth=lsmooth, lprint=lprint, 
                            xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks, xlim=xlim, ylim=ylim,
-                           lrescale=lrescale, scalefactor=scalefactor, offset=offset, 
+                           lrescale=lrescale, scalefactor=scalefactor, offset=offset, title=title,
                            plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)
       # get line colors to use in all subsequent plots 
       colors = ['' if plt is None else plt.get_color() for plt in plts] # color argument has to be string
+    # check and preprocess again, this time merge sample_axis with bootstrap_axis 
+    varlist, sample_axis = checkSample(varlist, varname=varname, bins=bins, support=support, 
+                                       method=method, lignore=lignore, sample_axis=sample_axis, 
+                                       temporary_sample_axis='temporary_sample_axis',
+                                       bootstrap_axis=bootstrap_axis, lmergeBootstrap=True)
     # remove variables that don't have the sample axis (replace with None)
     varlist = [None if var is None or not var.hasAxis(sample_axis) else var for var in varlist]
     # determine percentiles along bootstrap axis

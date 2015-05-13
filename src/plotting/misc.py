@@ -101,8 +101,38 @@ def checkVarlist(varlist, varname=None, ndim=1, bins=None, support=None, method=
       raise AxisError, "Variable '{:s}' has less than {:d} dimension(s); consider display as a line.".format(var.name,ndim)
   # return cleaned-up and checkd variable list
   return varlist    
-  
 
+# function to check and prepare sample variables (including handling of bootstrapping)
+def checkSample(varlist, varname=None, bins=None, support=None, method='pdf', lignore=False, 
+                sample_axis='sample', temporary_sample_axis='temporary_sample_axis',
+                bootstrap_axis='bootstrap', lmergeBootstrap=False):
+  ''' Check varlist, handle bootstrapping, check for sample_axis and merge sample axes, if necessary. '''
+  # the bootstrapping axis can either be removed or merged with the sample axis/axes
+  if lmergeBootstrap and bootstrap_axis is not None:
+    if isinstance(sample_axis,(list,tuple)): sample_axis = tuple(sample_axis)+(bootstrap_axis,)
+    else: sample_axis = (sample_axis, bootstrap_axis,)
+    bootstrap_axis = None # i.e. checkVarList wont remove it
+  # determine valid number of dimensions
+  n = 1 if isinstance(sample_axis,basestring) else len(sample_axis)
+  ndim = range(1,n+2)
+  # check input and evaluate distribution variables
+  varlist = checkVarlist(varlist, varname=varname, ndim=ndim, bins=bins, support=support, 
+                         method=method, lignore=lignore, bootstrap_axis=bootstrap_axis)
+  # N.B.: two-dmensional: sample axis and plot axis (but sample axis is not always required anymore)
+  # if sample_axis is a list of axes, merge them
+  if isinstance(sample_axis,(list,tuple)):
+    if not any(var.hasAxis(ax) for ax in sample_axis for var in varlist if var is not None):
+      raise AxisError, "None of the Variables has any sample axes!".format(sample_axis)
+    varlist = [var.mergeAxes(axes=sample_axis, new_axis=temporary_sample_axis, asVar=True, 
+                             lcheckAxis=False, lvarall=False, ldsall=False) for var in varlist]
+    # if lcheckAxis=False, the variable is replaced by None, if it doesn't have any sample axes
+    sample_axis = temporary_sample_axis # avoid name collisions
+  # check that at least some variables hve the (new) sample_axis
+  if sample_axis is not None and not any(var.hasAxis(sample_axis) for var in varlist if var is not None):
+    raise AxisError, "None of the Variables has a '{:s}'-axis!".format(sample_axis)
+  # return preprocessed variables
+  return varlist, sample_axis
+  
 # method to check units and name, and return scaled plot value (primarily and internal helper function)
 def getPlotValues(var, checkunits=None, checkname=None, lsmooth=False, lperi=False, laxis=False):
   ''' Helper function to check variable/axis, get (scaled) values for plot, and return appropriate units. '''
