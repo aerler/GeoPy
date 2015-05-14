@@ -123,8 +123,8 @@ def checkSample(varlist, varname=None, bins=None, support=None, method='pdf', li
   if isinstance(sample_axis,(list,tuple)):
     if not any(var.hasAxis(ax) for ax in sample_axis for var in varlist if var is not None):
       raise AxisError, "None of the Variables has any sample axes!".format(sample_axis)
-    varlist = [var.mergeAxes(axes=sample_axis, new_axis=temporary_sample_axis, asVar=True, 
-                             lcheckAxis=False, lvarall=False, ldsall=False) for var in varlist]
+    varlist = [var.mergeAxes(axes=sample_axis, new_axis=temporary_sample_axis, asVar=True, lcheckAxis=False, 
+                             lvarall=False, ldsall=False) if var is not None else None for var in varlist]
     # if lcheckAxis=False, the variable is replaced by None, if it doesn't have any sample axes
     sample_axis = temporary_sample_axis # avoid name collisions
   # check that at least some variables hve the (new) sample_axis

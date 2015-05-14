@@ -23,7 +23,6 @@ from geodata.misc import genStrArray, translateSeasons
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 from processing.multiprocess import apply_along_axis
 from utils.misc import histogram, binedges, detrend, percentile
-from numpy.f2py.auxfuncs import isinteger
      
 # used for climatology and seasons
 monthlyUnitsList = ('month','months','month of the year')
@@ -203,6 +202,38 @@ class ReduceVar(object): # not a Variable child!!!
   
   def __get__(self, instance, klass):
     ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
+    return functools.partial(self.__call__, instance) # but using 'partial' is simpler
+
+
+class ApplyTestOverList(object):
+  ''' Decorator for class methods that accepts a list as main argument, applys the class method to
+      all elements of the list, and returns an aggregated boolean result; if the first argument is 
+      not (tuple,list,np.ndarray), the method is executed normally.
+      N.B.: this only works with methods that take a single non-keyword argument.'''
+  def __init__(self, op):
+    ''' Save original operation. '''
+    self.op = op
+  def __call__(self, orig, args, lany=None, lall=None, **kwargs):
+    ''' perform test over list and aggregate results. '''
+    if isinstance(args, (tuple,list,np.ndarray)):
+      if lany is None and lall is None: lall,lany = True,False # default
+      # apply operation over list
+      results = [self.op(orig, arg, **kwargs) for arg in args]
+      # aggregate results
+      if lall and not lany: result = np.all(results)
+      elif not lall and lany: result = np.any(results)
+      else: raise ArgumentError
+    else:
+      # just apply method to argument
+      result = self.op(orig, args, **kwargs)
+    # return test result
+    return result
+  def __get__(self, instance, klass):
+    ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
+    # N.B.: similar implementation to 'partial': need to return a callable that behaves like the instance method
+    # def f(arg):
+    #  return self.__call__(instance, arg)
+    # return f    
     return functools.partial(self.__call__, instance) # but using 'partial' is simpler
 
 
@@ -479,6 +510,7 @@ class Variable(object):
     # N.B.: using load() and getArray() should automatically take care of any special needs 
     return var
 
+  @ApplyTestOverList
   def hasAxis(self, axis, strict=True):
     ''' Check if the variable instance has a particular axis. '''
     if not strict and isinstance(axis,Variable): axis = axis.name
@@ -523,6 +555,7 @@ class Variable(object):
 #     ''' Return number of dimensions. '''
 #     return self.__dict__['ndim']
 
+  @ApplyTestOverList
   def getAxis(self, axis, lcheck=True):
     ''' Return a reference to the Axis object or one with the same name. '''
     lhas = self.hasAxis(axis)        
@@ -533,6 +566,7 @@ class Variable(object):
     else: ax = None
     return ax
   
+  @ApplyTestOverList
   def axisIndex(self, axis, strict=True, lcheck=True):
     ''' Return the index of a particular axis. (return None if not found) '''
     if isinstance(axis,basestring): # by name
@@ -1501,17 +1535,17 @@ class Variable(object):
     # return new variable instance (or data)
     return pvar
   
-  def _createVar(self, axes=None, data=None, varatts=None, linplace=False):
+  def _createVar(self, axes=None, data=None, atts=None, linplace=False):
     ''' helper function to create new Variable objects from old ones '''
     if linplace:
       # replace axes and data
       self.axes = tuple(axes)
       self.data_array = np.asanyarray(data) if data is not None else None
-      if varatts is not None: self.atts.update(varatts)
+      if atts is not None: self.atts.update(atts)
       newvar = self
     else:
       # create new variable
-      newvar = self.copy(data=data, axes=axes, atts=self.atts if varatts is None else varatts)
+      newvar = self.copy(data=data, axes=axes, atts=self.atts if atts is None else atts)
     return newvar
     
   def _checkMonthlyAxis(self, taxis='time', lbegin=True):
@@ -1556,7 +1590,7 @@ class Variable(object):
         saxis = time.copy(coord=coord, atts=time.atts if saxatts is None else saxatts)        
         axes = self.axes[:itime]+(saxis,)+self.axes[itime+1:]
         # create new variable or modify old one in-place
-        svar = self._createVar(axes=axes, data=data, varatts=svaratts, linplace=linplace)
+        svar = self._createVar(axes=axes, data=data, atts=svaratts, linplace=linplace)
       else:
         if linplace: raise ArgumentError, linplace
         svar = data # just return new array      
@@ -1625,7 +1659,7 @@ class Variable(object):
         # insert new axes
         axes = self.axes[:itime]+(saxis,caxis)+self.axes[itime+1:]
         # create new variable or modify old one in-place
-        svar = self._createVar(axes=axes, data=data, varatts=svaratts, linplace=linplace)
+        svar = self._createVar(axes=axes, data=data, atts=svaratts, linplace=linplace)
       else:
         if linplace: raise ArgumentError, linplace
         svar = data # just return new array      
@@ -1881,11 +1915,9 @@ class Variable(object):
         else:
           if not isinstance(new_axis,Axis): raise TypeError, new_axis
           if not len(new_axis)==nlen: raise AxisError, new_axis 
-        try:
-          axes = var.axes[:imin]+(new_axis,)+var.axes[imin+mdim:]
-        except:
-          pass
-        var = var._createVar(axes=axes, data=data, linplace=True) # already made a copy
+        varatts = {new_axis.name:tuple(ax.name if isinstance(ax,Axis) else ax for ax in axes)} # save merge history
+        axes = var.axes[:imin]+(new_axis,)+var.axes[imin+mdim:] # finally, assemble new axes
+        var = var._createVar(axes=axes, data=data, linplace=True, atts=varatts) # already made a copy
         assert var.shape == nshape, var.shape
       else: var = data
     # return variable
@@ -1900,7 +1932,7 @@ class Variable(object):
       # generate new Axis instance, if necessary
       if isinstance(axis,basestring):
         if not isinstance(length, (np.integer,int)) and length>0: raise AxisError, axis
-        axis = Axis(name=axis, length=length, coord=np.arange(length)) 
+        axis = Axis(name=axis, length=length, coord=np.arange(length), atts=dict(note='dummy axis')) 
       if not isinstance(axis,Axis): raise TypeError, axis      
       # generate new_axes argument (insert new axis into old axes tuple)
       new_axes = self.axes[:iaxis] + (axis,) + self.axes[iaxis:]
@@ -1935,7 +1967,8 @@ class Variable(object):
         if self.hasAxis(ax, strict=lstrict):
           if isinstance(ax,Axis):
             own_axis = self.axes[self.axisIndex(ax.name)]
-            if len(own_axis) != len(ax): raise AxisError, "New and old axes have incompatible length!"
+            if len(own_axis) != len(ax) and lcheckAxis: 
+              raise AxisError, "New and old axes have incompatible length!"
           else: own_axis = self.axes[self.axisIndex(ax)]
           axes.append(own_axis) # keep old axis
           if ldata: 
@@ -1970,7 +2003,7 @@ class Variable(object):
         #assert isEqual(np.ma.mean(data),np.ma.mean(self.data_array)), '{}, {}'.format(np.ma.mean(data),np.ma.mean(self.data_array))
       if asVar:
         # construct new variable with new axes and reshaped/repeated data
-        var = self._createVar(axes=axes, data=data, varatts=self.atts, linplace=linplace)
+        var = self._createVar(axes=axes, data=data, atts=self.atts, linplace=linplace)
         assert var.ndim == len(new_axes) and var.shape == new_shape
         assert not ldata or var[:].strides == data.strides, data.strides 
       else:
@@ -2390,14 +2423,18 @@ class Dataset(object):
     else: self.__dict__['atts'] = AttrDict()
     # load variables (automatically adds axes linked to variables)
     if varlist is None: varlist = []
+    # add variables (ApplyTestOverList-decorator takes care of iteration)
+    assert self.addVariable(varlist, copy=False, lall=True)
 #     print '\n'
 #     varnames = [var.name for var in varlist]
 #     varnames.sort()
 #     for var in varnames:
 #       print var
-    for var in varlist:
+#     check = True
+#     for var in varlist:
 #       print var.name
-      self.addVariable(var, copy=False) # don't make copies of new variables!
+#       check = check and self.addVariable(var, copy=False) # don't make copies of new variables!
+#     assert check
       
   @property
   def name(self):
@@ -2414,7 +2451,8 @@ class Dataset(object):
   @title.setter
   def title(self, title):
     self.atts['title'] = title
-    
+  
+  @ApplyTestOverList
   def addAxis(self, ax, copy=False, loverwrite=False):
     ''' Method to add an Axis to the Dataset. If the Axis is already present, check that it is the same. '''
     if not isinstance(ax,Axis): raise TypeError
@@ -2438,6 +2476,7 @@ class Dataset(object):
     # double-check
     return self.axes.has_key(ax.name)       
     
+  @ApplyTestOverList
   def addVariable(self, var, copy=False, deepcopy=False, loverwrite=False, lautoTrim=False, **kwargs):
     ''' Method to add a Variable to the Dataset. If the variable is already present, abort. '''
     if not isinstance(var,Variable): raise TypeError
@@ -2472,6 +2511,7 @@ class Dataset(object):
     # double-check
     return self.variables.has_key(var.name) 
     
+  @ApplyTestOverList
   def removeAxis(self, ax, force=False):
       ''' Method to remove an Axis from the Dataset, provided it is no longer needed. '''
       if isinstance(ax,basestring): ax = self.axes[ax] # only work with Axis objects
@@ -2488,6 +2528,7 @@ class Dataset(object):
       # double-check (return True, if axis is not present, False, if it is)
       return not self.axes.has_key(ax.name)
     
+  @ApplyTestOverList
   def removeVariable(self, var):
     ''' Method to remove a Variable from the Dataset. '''
     if isinstance(var,Variable): var = var.name
@@ -2555,6 +2596,7 @@ class Dataset(object):
     # return axes that were removed
     return retour
   
+  @ApplyTestOverList
   def hasVariable(self, var, strict=True):
     ''' Method to check, if a Variable is present in the Dataset. '''
     if isinstance(var,basestring):
@@ -2567,6 +2609,7 @@ class Dataset(object):
     else: # invalid input
       raise DatasetError, "Need a Variable instance or name to check for a Variable in the Dataset!"
     
+  @ApplyTestOverList
   def getVariable(self, varname, check=True):
     ''' Method to return a Variable by name '''
     if not isinstance(varname,basestring): raise TypeError
@@ -2576,6 +2619,7 @@ class Dataset(object):
       if check: raise VariableError, "Variable '{:s}' not found!".format(varname)
       else: return None
   
+  @ApplyTestOverList
   def hasAxis(self, ax, strict=True):
     ''' Method to check, if an Axis is present in the Dataset; if strict=False, only names are compared. '''
     if isinstance(ax,basestring):
@@ -2587,7 +2631,8 @@ class Dataset(object):
       else: return False # not found
     else: # invalid input
       raise DatasetError, "Need a Axis instance or name to check for an Axis in the Dataset!"
-    
+  
+  @ApplyTestOverList
   def getAxis(self, axname, check=True):
     ''' Method to return an Axis by name '''
     if not isinstance(axname,basestring): raise TypeError

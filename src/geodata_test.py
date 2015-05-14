@@ -253,6 +253,7 @@ class BaseVarTest(unittest.TestCase):
         if tmp.shape[-1] > 2: assert isZero(tmp.data_array[:,:,0]) # held fixed
       else:
         tmp = getattr(var,dist)(axis=t.name, lpersist=True, ldebug=False)
+      assert tmp.atts.sample_axis == t.name and tmp.atts.sample_size == len(t) 
       distvar = tmp.copy(deepcopy=True) # everything should work equally well on a copy
       assert distvar.shape == tmp.shape 
       assert distvar.masked == tmp.masked
@@ -450,6 +451,8 @@ class BaseVarTest(unittest.TestCase):
       # now a bit more complicated...
       maxes = [var.axes[i].name for i in (0,-1)] # merge first and last
       mvar = var.mergeAxes(axes=maxes, new_axis='test_sample', axatts=None, asVar=True, linplace=False, lcheckAxis=True)
+      print maxes, mvar.atts.test_sample
+      assert mvar.atts.test_sample == tuple(maxes), mvar.atts.test_sample # check record
       assert all([not mvar.hasAxis(ax) for ax in maxes])
       slen = 1
       for ax in maxes: slen *= len(var.getAxis(ax))
@@ -1607,7 +1610,7 @@ if __name__ == "__main__":
 #     specific_tests += ['Copy']
 #     specific_tests += ['ApplyToAll']
 #     specific_tests += ['AddProjection']
-#     specific_tests += ['Indexing']
+    specific_tests += ['Indexing']
 #     specific_tests += ['SeasonalReduction']
 #     specific_tests += ['ConcatVars']
 #     specific_tests += ['ConcatDatasets']
@@ -1619,9 +1622,9 @@ if __name__ == "__main__":
     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()

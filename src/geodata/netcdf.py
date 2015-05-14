@@ -14,7 +14,7 @@ import os, functools
 
 # import all base functionality from PyGeoDat
 # from nctools import * # my own netcdf toolkit
-from geodata.base import Variable, Axis, Dataset
+from geodata.base import Variable, Axis, Dataset, ApplyTestOverList
 from geodata.misc import checkIndex, isEqual, joinDicts
 from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError, FileError, VariableError, ArgumentError 
 from utils.nctools import coerceAtts, writeNetCDF, add_var, add_coord, checkFillValue
@@ -677,6 +677,7 @@ class DatasetNetCDF(Dataset):
     ''' The first element of the datasets list. '''
     return self.datasets[0] 
   
+  @ApplyTestOverList
   def addAxis(self, ax, asNC=None, copy=True, loverwrite=False, deepcopy=False):
     ''' Method to add an Axis to the Dataset. (If the Axis is already present, check that it is the same.) '''   
     if asNC is None: asNC = copy
@@ -697,7 +698,7 @@ class DatasetNetCDF(Dataset):
           if asNC and not isinstance(ax,AxisNC): 
             raise ArgumentError, "Cannot create NC variable without copying!"
     # hand-off to parent method and return status
-    return super(DatasetNetCDF,self).addAxis(ax=ax, copy=False, loverwrite=loverwrite) # already copied above
+    return super(DatasetNetCDF,self).addAxis(ax, copy=False, loverwrite=loverwrite) # already copied above
       
   def replaceAxis(self, oldaxis, newaxis=None, asNC=True, deepcopy=True):    
     ''' Replace an existing axis with a different one and transfer NetCDF reference to new axis. '''
@@ -728,6 +729,7 @@ class DatasetNetCDF(Dataset):
     # return verification
     return self.hasAxis(newaxis)        
   
+  @ApplyTestOverList
   def addVariable(self, var, asNC=None, copy=True, loverwrite=False, lautoTrim=False, deepcopy=False):
     ''' Method to add a new Variable to the Dataset. '''
     if asNC is None: asNC = copy
@@ -763,7 +765,7 @@ class DatasetNetCDF(Dataset):
         if asNC and not isinstance(var,VarNC): 
           raise ArgumentError, "Cannot create NC variable without copying!"
       # hand-off to parent method and return status
-      check = super(DatasetNetCDF,self).addVariable(var=var, copy=False, loverwrite=loverwrite)
+      check = super(DatasetNetCDF,self).addVariable(var, copy=False, loverwrite=loverwrite)
       assert var.dataset == self
       return check
   

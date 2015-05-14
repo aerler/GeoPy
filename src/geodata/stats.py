@@ -581,9 +581,8 @@ def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None,
   varatts['units'] = var.units # these will be the sample units, not the distribution units
   if atts is not None: varatts.update(atts)
   # figure out axes
-  if var.ndim == 1: lflatten = True
   if lflatten:
-    iaxis = None; axes = None
+    iaxis = None; axes = None; axis = 'flattened'
   else:
     if isinstance(axis,(tuple,list)):
       # if sample includes multiple axes, merge them and introduce new sample axis
@@ -594,7 +593,9 @@ def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None,
       if lcheckAxis: raise AxisError
       else: return None
     iaxis=var.axisIndex(axis)
-    axes = var.axes[:iaxis]+var.axes[iaxis+1:] # i.e. without axis/iaxis 
+    axes = var.axes[:iaxis]+var.axes[iaxis+1:] # i.e. without axis/iaxis
+  varatts['sample_axis'] = axis # preserve record of data
+  varatts['sample_size'] = var.data_array.size if lflatten else len(var.axes[iaxis])
   # create DistVar instance
   if dist.lower() == 'kde': dvar = VarKDE(samples=var.data_array, axis=iaxis, axes=axes, 
                                           lflatten=lflatten, atts=varatts, **dist_args)
