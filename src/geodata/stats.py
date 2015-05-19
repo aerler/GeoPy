@@ -384,12 +384,12 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
     if isinstance(axis,(tuple,list)):
       if not lvar1 or not lvar2: ArgumentError, "Merging multiple 'axis' requires both samples to be a Variable instances."
       # if sample includes multiple axes, merge them and introduce new sample axis
-      sample1 = sample1.mergeAxes(axes=axis, new_axis='sample', asVar=True, linplace=False, lcheckAxis=lcheckAxis)
-      sample2 = sample2.mergeAxes(axes=axis, new_axis='sample', asVar=True, linplace=False, lcheckAxis=lcheckAxis)
+      sample1 = sample1.mergeAxes(axes=axis, new_axis='new_KS_sample_axis', asVar=True, linplace=False, lcheckAxis=lcheckAxis)
+      sample2 = sample2.mergeAxes(axes=axis, new_axis='new_KS_sample_axis', asVar=True, linplace=False, lcheckAxis=lcheckAxis)
       if sample1 is None or sample2 is None: 
         if lcheckAxis: raise AxisError, sample1 or sample2
         else: return None
-      axis = 'sample' # now operate on the new sample axis, as if it was just one    
+      axis = 'new_KS_sample_axis' # now operate on the new sample axis, as if it was just one    
     if lvar1: axis_idx1 = sample1.axisIndex(axis)
     if lvar2: axis_idx2 = sample2.axisIndex(axis)
     if not lvar1: axis_idx1 = axis_idx2
@@ -545,10 +545,11 @@ def defVarDist(var, var_dists=None):
     dist, dist_args = var_dists[varname]
   # now, apply heuristics
   elif varname[:3] in ('Min','Max'):
-    dist, dist_args = 'genextreme', dict(ic_shape=0)
+    dist, dist_args = 'genextreme', dict(ic_shape=0, lnegativeShape=True)
+    # N.B.: apparently the shape we want is shape < 0... 
   elif units in ('mm/month','mm/day','mm/s','kg/m^2/s'):
     #dist, dist_args = ('gumbel_r', dict())
-    dist, dist_args = 'genextreme', dict(ic_shape=0)
+    dist, dist_args = 'genextreme', dict(ic_shape=0, lnegativeShape=True)
   elif units in ('C','K','Celsius','Kelvin'):
     dist, dist_args = 'norm', dict()
   elif units == 'days': # primarily consecutive dry/wet days
@@ -1116,7 +1117,8 @@ global_shape = None # single shape parameter
 global_args  = None # multiple shape parameters
 # N.B.: globals are only visible within the process, so this works nicely with multiprocessing
 # estimate RV from sample vector
-def rv_fit(sample, dist_type=None, ic_shape=None, ic_args=None, ic_loc=None, ic_scale=None, plen=None, lpersist=False, ldebug=False, **kwargs):
+def rv_fit(sample, dist_type=None, ic_shape=None, ic_args=None, ic_loc=None, ic_scale=None, plen=None, 
+           lpersist=False, ldebug=False, lpositiveShape=False, lnegativeShape=False, **kwargs):
   nonans = np.invert(np.isnan(sample)) # test for NaN's
   if np.sum(nonans) < plen: 
     res = (np.NaN,)*plen # require at least plen non-NaN points 
@@ -1151,11 +1153,20 @@ def rv_fit(sample, dist_type=None, ic_shape=None, ic_args=None, ic_loc=None, ic_
         if lpersist: global_loc = res[0]; global_scale = res[1] # update first guess
       elif plen == 3: # additional shape parameter (e.g. Generalized Extreme Value and Pareto distributions)
         if lpersist and global_shape is not None: ic_shape = global_shape
-        res = getattr(ss,dist_type).fit(sample, shape=ic_shape, loc=ic_loc, scale=ic_scale, **kwargs)
+        res = getattr(ss,dist_type).fit(sample, ic_shape, loc=ic_loc, scale=ic_scale, **kwargs)
+        if lpositiveShape and res[0] < 0 and not 'f0' in kwargs:
+          # if fit fails/is unrealistic, fix shape parameter at zero
+          res = getattr(ss,dist_type).fit(sample, 0, loc=ic_loc, scale=ic_scale, f0=0, **kwargs)
+        elif lnegativeShape and res[0] > 0 and not 'f0' in kwargs:
+          # if fit fails/is unrealistic, fix shape parameter at zero
+          res = getattr(ss,dist_type).fit(sample, 0, loc=ic_loc, scale=ic_scale, f0=0, **kwargs)
         if lpersist: global_shape = res[0]; global_loc = res[1]; global_scale = res[2] # update first guess
       elif plen > 3: # everything with more than one shape parameter...
         if lpersist and global_args is not None:  ic_args  = global_args
-        res = getattr(ss,dist_type).fit(sample, *ic_args, loc=ic_loc, scale=ic_scale, **kwargs)
+        if ic_loc is not None or ic_scale is not None:
+          newargs = kwargs.copy(); newargs['ic_loc'] = ic_loc; newargs['ic_scale'] = ic_scale 
+        else: newargs = kwargs   
+        res = getattr(ss,dist_type).fit(sample, *ic_args, **kwargs)
         if lpersist: global_args = res[:-2]; global_loc = res[-2]; global_scale = res[-1] # update first guess
       else: raise NotImplementedError
     except LinAlgError:

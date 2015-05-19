@@ -666,18 +666,18 @@ if __name__ == '__main__':
                 elif zerr <= 300 and cln==8: bmap.plot(xx,yy,'s', markersize=4, mfc='none', mec='k')
                 #else: bmap.plot(xx,yy,'x', markersize=4, mfc='none', mec='k')
             else: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
-          # add ARB basin outline
+          # add basin outlines
           if lbasins:
-            shpargs = dict(linewidth = 0.75) 
+            shpargs = dict(linewidth = 0.75, color='k') 
             for basin in basinlist:      
               basininfo = basins_info[basin]
               if basin in subbasins:
                 for subbasin in subbasins[basin]:		  
                   bmap.readshapefile(basininfo.shapefiles[subbasin][:-4], subbasin, ax=axn, 
-                                     drawbounds=True, color='k', **shpargs)            
+                                     drawbounds=True, **shpargs)            
               else:
                 bmap.readshapefile(basininfo.shapefiles['Whole'+basin][:-4], basin, ax=axn, 
-                                   drawbounds=True, color='k', **shpargs)            
+                                   drawbounds=True, **shpargs)            
               
       # save figure to disk
       if lprint:
