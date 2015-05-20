@@ -322,47 +322,51 @@ class MyAxes(Axes):
     # remove variables that don't have the sample axis (replace with None)
     varlist = [None if var is None or not var.hasAxis(sample_axis) else var for var in varlist]
     # determine percentiles along bootstrap axis
-    if lmedian and percentiles is None: raise ArgumentError, "Median only works with percentiles."
-    if percentiles is not None:
-      assert 1 < len(percentiles) < 4
+    if percentiles is not None or lmedian:
       lmedian = lmedian is None or lmedian # default is to plot the median if percentiles are calculated
-      if lmedian and len(percentiles) == 2: 
-        percentiles = (percentiles[0], 0.5, percentiles[1]) # add median to percentiles
+      if lmedian:
+        if percentiles is None: percentiles = (0.5,)
+#           raise ArgumentError, "Median only works with percentiles."
+        elif len(percentiles) == 2: 
+          percentiles = (percentiles[0], 0.5, percentiles[1]) # add median to percentiles
       # compute percentiles
+      assert 1 <= len(percentiles) <= 3
       qvars = [None if var is None else var.percentile(q=percentiles, axis=sample_axis) for var in varlist]
-      upslc = dict(percentile=2 if lmedian else 1, lidx=True)
-      uppers = [None if var is None else var(**upslc) for var in qvars]
-      loslc = dict(percentile=0, lidx=True) 
-      lowers = [None if var is None else var(**loslc) for var in qvars]
       # add median plot
       if lmedian:
-        mdslc = dict(percentile=1, lidx=True)
+        mdslc = dict(percentile=1 if len(percentiles) == 3 else 0, lidx=True)  
         meadians = [None if var is None else var(**mdslc) for var in qvars]
         if median_fmt == '' and lmean: median_fmt = '--'
         tmpplts = self.linePlot(varlist=meadians, lineformat=median_fmt, llabel=llabel, labels=labels, 
                                 legend=legend, xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks,
                                 xlim=xlim, ylim=ylim, lrescale=lrescale, scalefactor=scalefactor, 
                                 offset=offset, flipxy=flipxy, reset_color=reset_color, lsmooth=lsmooth, 
-                                lprint=lprint, colors=colors, 
+                                lprint=lprint, colors=colors, title=title,
                                 plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)
         if not lmean:
           plts = tmpplts
           colors = ['' if plt is None else plt.get_color() for plt in plts] # color argument has to be string
-      # plot percentiles as error bands
-      facecolor = facecolor or colors
-      lsmoothBand = True if lsmooth or lsmooth is None else False
-      # clean up plot arguments (check against a list of "known suspects"
-      band_args = {key:value for key,value in plotargs.iteritems() if key not in line_args}
-      # draw band plot between upper and lower percentile
-      if bandalpha is None: bandalpha = 0.3 
-      tmpplts = self.bandPlot(upper=uppers, lower=lowers, lignore=lignore, llabel=False, labels=None,
-                              xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks, 
-                              xlim=xlim, ylim=ylim, scalefactor=scalefactor, offset=offset,
-                              lrescale=lrescale, legend=False, 
-                              flipxy=flipxy, reset_color=False, lsmooth=lsmoothBand, lprint=False, 
-                              where=where, alpha=bandalpha, edgecolor=edgecolor, colors=facecolor,
-                              expand_list=expand_list, lproduct=lproduct, plotatts=plotatts, **band_args)
-      if not lmean and not lmedian: plts = tmpplts
+      # percentile band
+      if len(percentiles) == 3:
+        upslc = dict(percentile=2 if lmedian else 1, lidx=True)
+        uppers = [None if var is None else var(**upslc) for var in qvars]
+        loslc = dict(percentile=0, lidx=True) 
+        lowers = [None if var is None else var(**loslc) for var in qvars]
+        # plot percentiles as error bands
+        facecolor = facecolor or colors
+        lsmoothBand = True if lsmooth or lsmooth is None else False
+        # clean up plot arguments (check against a list of "known suspects"
+        band_args = {key:value for key,value in plotargs.iteritems() if key not in line_args}
+        # draw band plot between upper and lower percentile
+        if bandalpha is None: bandalpha = 0.3 
+        tmpplts = self.bandPlot(upper=uppers, lower=lowers, lignore=lignore, llabel=False, labels=None,
+                                xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks, 
+                                xlim=xlim, ylim=ylim, scalefactor=scalefactor, offset=offset,
+                                lrescale=lrescale, legend=False, 
+                                flipxy=flipxy, reset_color=False, lsmooth=lsmoothBand, lprint=False, 
+                                where=where, alpha=bandalpha, edgecolor=edgecolor, colors=facecolor,
+                                expand_list=expand_list, lproduct=lproduct, plotatts=plotatts, **band_args)
+        if not lmean and not lmedian: plts = tmpplts
     # done! 
     return plts
   
