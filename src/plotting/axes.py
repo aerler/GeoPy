@@ -290,6 +290,7 @@ class MyAxes(Axes):
                  lignore=False, expand_list=None, lproduct='inner', plotatts=None, method='pdf',
                  where=None, bandalpha=None, edgecolor=None, facecolor=None, bandarg=None, **plotargs):
     ''' A function to draw moments of a distribution/sample using line-styles and bands '''
+    plts = None # avoid error if no plot
     # plot mean
     if lmean: 
       # don't overwrite varlist and sample_axis (yet)
@@ -347,7 +348,7 @@ class MyAxes(Axes):
           plts = tmpplts
           colors = ['' if plt is None else plt.get_color() for plt in plts] # color argument has to be string
       # percentile band
-      if len(percentiles) == 3:
+      if len(percentiles) > 1:
         upslc = dict(percentile=2 if lmedian else 1, lidx=True)
         uppers = [None if var is None else var(**upslc) for var in qvars]
         loslc = dict(percentile=0, lidx=True) 

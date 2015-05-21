@@ -573,7 +573,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
                    slices=None, obsslices=None, years=None, reduction=None, shape=None, station=None, 
                    constraints=None, filetypes=None, domain=None, ldataset=False, lcheckVar=False, 
                    lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', lminmax=False,
-                   master=None, lall=True, ensemble_list=None, ensemble_product='inner', 
+                   master=None, lall=True, ensemble_list=None, ensemble_product='inner',
                    lensembleAxis=False, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''

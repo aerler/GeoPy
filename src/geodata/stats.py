@@ -561,7 +561,7 @@ def defVarDist(var, var_dists=None):
 
 # convenience function to generate a DistVar from another Variable object
 def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None, var_dists=None,
-              lsuffix=False, asVar=True, lcheckVar=True, lcheckAxis=True, **kwargs):
+              lsuffix=False, asVar=True, lcheckVar=True, lcheckAxis=True, lcrossval=False, **kwargs):
   ''' generate a DistVar of type 'dist' from a Variable 'var'; use dimension 'axis' as sample axis '''
   if not isinstance(var,Variable): raise VariableError
   # this really only works for numeric types
@@ -602,7 +602,7 @@ def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None,
                                           lflatten=lflatten, atts=varatts, **dist_args)
   elif hasattr(ss,dist):
     dvar = VarRV(dist=dist, samples=var.data_array, axis=iaxis, axes=axes, 
-                 lflatten=lflatten, atts=varatts, **dist_args)
+                 lflatten=lflatten, atts=varatts, lcrossval=lcrossval, **dist_args)
   else:
     raise AttributeError, "Distribution '{:s}' not found in scipy.stats.".format(dist)
   # return DistVar instance
@@ -621,7 +621,7 @@ class DistVar(Variable):
 
   def __init__(self, name=None, units=None, axes=None, samples=None, params=None, axis=None, dtype=None,
                lflatten=False, masked=None, mask=None, fillValue=None, atts=None, ldebug=False, 
-               lbootstrap=False, nbs=1000, bootstrap_axis='bootstrap', **kwargs):
+               lbootstrap=False, nbs=1000, bootstrap_axis='bootstrap', lcrossval=False, **kwargs):
     '''
       This method creates a new DisVar instance from data and parameters. If data is provided, a sample
       axis has to be specified or the last (innermost) axis is assumed to be the sample axis.
@@ -701,6 +701,14 @@ class DistVar(Variable):
         #       stacked along the bootstrap axis.
         # N.B.: Performing resampling and estimation iteratively, one by one, would also save memory, 
         #       but prevent parallelization of the bootstrap process.
+      if lcrossval:
+        ncv = 3 if lcrossval is True else int(lcrossval)
+        if ncv <2: raise ValueError, lcrossval
+        idx_rng = []; saxlen = samples.shape[-1]
+        for icv in xrange(0,saxlen,ncv):
+          idx_rng += range(icv,min(icv+ncv-1,samples.shape[-1]))
+        #idx_rng = np.random.randint(saxlen, size=saxlen)[idx_rng] # use a randome sample...
+        samples = samples.take(idx_rng,axis=-1) # use only the first half of the data
       # estimate distribution parameters
       params = self._estimate_distribution(samples, ldebug=ldebug, **kwargs)
       # N.B.: the method estimate() should be implemented by specific child classes      
@@ -725,6 +733,7 @@ class DistVar(Variable):
     self.fillValue = fillValue # was overwritten by parameter array fill_value
     assert self.masked == masked
     self.dtype = dtype # property is overloaded in DistVar
+    self.crossval = ncv if lcrossval and samples is not None else 0
     # N.B.: in this variable dtype and units refer to the sample data, not the distribution!
     if params.ndim > 0 and self.hasAxis(params_name):
       self.paramAxis = self.getAxis(params_name) 
@@ -1214,7 +1223,8 @@ class VarRV(DistVar):
   dist_type = ''   # name of the distribution
   
   # initial guesses for shape parameter
-  def __init__(self, dist='', ic_shape=None, ic_args=None, ic_loc=None, ic_scale=None, **kwargs):
+  def __init__(self, dist='', ic_shape=None, ic_args=None, ic_loc=None, ic_scale=None, 
+               lcrossval=False, samples=None, axis=None, **kwargs):
     ''' initialize a random variable distribution of type 'dist' '''
     # some aliases
     if dist.lower() in ('genextreme', 'gev'): dist = 'genextreme' 
@@ -1229,8 +1239,18 @@ class VarRV(DistVar):
       raise ArgumentError, "No distribution '{:s}' in module scipy.stats!".format(dist)
     # N.B.: the distribution info will be available to the _estimate_distribution-method
     # initialize distribution variable
-    super(VarRV,self).__init__(ic_shape=ic_shape, ic_args=ic_args, ic_loc=ic_loc, ic_scale=ic_scale, **kwargs)
+    super(VarRV,self).__init__(ic_shape=ic_shape, ic_args=ic_args, ic_loc=ic_loc, ic_scale=ic_scale, 
+                               lcrossval=lcrossval, samples=samples, axis=axis, **kwargs)
     # N.B.: ic-parameters and kwargs are passed one to _estimate_distribution-method
+    # print cross-validation
+    if lcrossval: 
+      pval = self.kstest(samples, name=None, axis_idx=axis, lstatistic=False, lcrossval=True, 
+                         fillValue=self.fillValue, ignoreNaN=True, 
+                         #N=2000, alternative='two-sided', mode='approx',
+                         asVar=False, lcheckVar=True, lcheckAxis=True).mean()
+      #pval = pval if isinstance(pval,(str,basestring)) else "{:3.2f}".format(pval)
+      pval = "{:3.2f}".format(float(pval.mean()))
+      print("{:s} Cross-validation (K-S test, 1/{:d}): {:s}".format(self.name, self.crossval,pval)) 
   
   def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Variable with just a link to the data. '''
@@ -1430,8 +1450,8 @@ class VarRV(DistVar):
     return sample_data
 
   # Kolmogorov-Smirnov Test for goodness-of-fit
-  def kstest(self, sample, name=None, axis_idx=None, lstatistic=False, 
-             fillValue=None, ignoreNaN=True, N=20, alternative='two-sided', mode='approx', 
+  def kstest(self, sample, name=None, axis_idx=None, lstatistic=False, lcrossval=False,
+             fillValue=None, ignoreNaN=True, N=1000, alternative='two-sided', mode='approx', 
              asVar=True, lcheckVar=True, lcheckAxis=True, pvaratts=None, **kwargs):
     ''' apply a Kolmogorov-Smirnov Test to the sample data, based on this distribution '''
     # check input
@@ -1442,8 +1462,16 @@ class VarRV(DistVar):
     # get properly formatted sample data
     sax = self.ndim-1
     sample_data = self._extractSampleData(sample, axis_idx=axis_idx, fillValue=fillValue, lcheckVar=True, lcheckAxis=True)
+    if lcrossval: 
+      ncv = self.crossval if lcrossval is True else lcrossval
+      if ncv == 0: raise ValueError, self.crossval
+      saxlen = sample_data.shape[-1]
+      idx_rng = np.arange(ncv-1,saxlen,ncv)  
+      #idx_rng = np.random.randint(saxlen, size=saxlen)[idx_rng] # use a random sample...     
+      sample_data = sample_data.take(idx_rng,axis=-1) # use only the first half of the datasample_data = sample_data[...,1::2] # use only the second half of the data
     # apply test function (parallel)
-    fct = functools.partial(rv_kstest, nparams=len(self.paramAxis), dist_type=self.dist_type, ignoreNaN=ignoreNaN, N=N, alternative=alternative, mode=mode)
+    fct = functools.partial(rv_kstest, nparams=len(self.paramAxis), dist_type=self.dist_type, 
+                            ignoreNaN=ignoreNaN, N=N, alternative=alternative, mode=mode)
     data_array = np.concatenate((self.data_array, sample_data), axis=sax) # merge params and sample arrays (only one argument array per point along axis) 
     pval = apply_along_axis(fct, sax, data_array, chunksize=100000//len(data_array)) # apply test in parallel, distributing the data
     assert pval.ndim == sax
