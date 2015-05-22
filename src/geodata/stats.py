@@ -560,7 +560,7 @@ def defVarDist(var, var_dists=None):
   return dist, dist_args
 
 # convenience function to generate a DistVar from another Variable object
-def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None, var_dists=None,
+def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None, var_dists=None, nsamples=None,
               lsuffix=False, asVar=True, lcheckVar=True, lcheckAxis=True, lcrossval=False, **kwargs):
   ''' generate a DistVar of type 'dist' from a Variable 'var'; use dimension 'axis' as sample axis '''
   if not isinstance(var,Variable): raise VariableError
@@ -598,10 +598,10 @@ def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None,
   varatts['sample_axis'] = axis # preserve record of data
   varatts['sample_size'] = var.data_array.size if lflatten else len(var.axes[iaxis])
   # create DistVar instance
-  if dist.lower() == 'kde': dvar = VarKDE(samples=var.data_array, axis=iaxis, axes=axes, 
+  if dist.lower() == 'kde': dvar = VarKDE(samples=var.data_array, axis=iaxis, axes=axes, nsamples=nsamples, 
                                           lflatten=lflatten, atts=varatts, **dist_args)
   elif hasattr(ss,dist):
-    dvar = VarRV(dist=dist, samples=var.data_array, axis=iaxis, axes=axes, 
+    dvar = VarRV(dist=dist, samples=var.data_array, axis=iaxis, axes=axes, nsamples=nsamples,
                  lflatten=lflatten, atts=varatts, lcrossval=lcrossval, **dist_args)
   else:
     raise AttributeError, "Distribution '{:s}' not found in scipy.stats.".format(dist)
@@ -619,8 +619,8 @@ class DistVar(Variable):
   dist_type = '' # name of the distribution type
   paramAxis = None # axis for distribution parameters (None is distribution objects are stored)
 
-  def __init__(self, name=None, units=None, axes=None, samples=None, params=None, axis=None, dtype=None,
-               lflatten=False, masked=None, mask=None, fillValue=None, atts=None, ldebug=False, 
+  def __init__(self, name=None, units=None, axes=None, samples=None, nsamples=None, params=None, axis=None, 
+               dtype=None, lflatten=False, masked=None, mask=None, fillValue=None, atts=None, ldebug=False, 
                lbootstrap=False, nbs=1000, bootstrap_axis='bootstrap', lcrossval=False, **kwargs):
     '''
       This method creates a new DisVar instance from data and parameters. If data is provided, a sample
@@ -677,6 +677,12 @@ class DistVar(Variable):
       else:
         if len(axes) == samples.ndim: axes = axes[:axis]+axes[axis+1:]
         elif len(axes) != samples.ndim-1: raise AxisError
+      ## handle number of draws
+      sz = samples.shape[-1] # all sample dimensions should be collapsed by now
+      lns = bool(nsamples)
+      if nsamples is None: nsamples = sz
+      if nsamples < 2: raise ValueError, nsamples
+      if nsamples > sz: raise ValueError, sz  
       ## add bootstrap axis and generate bootstrap samples
       if lbootstrap:
         # create and add bootstrap axis
@@ -686,10 +692,12 @@ class DistVar(Variable):
         shape = (nbs,) + samples.shape
         # resample the samples (nbs times)
         bootstrap = np.zeros(shape, dtype=samples.dtype) # allocate memory
-        bootstrap[0,:] = samples # first element is the real sample data
-        sz = samples.shape[-1] # all sample dimensions should be collapsed by now 
-        for i in xrange(1,nbs):
-          idx = np.random.randint(sz, size=sz) # select random indices
+        if lns: # select a random subset (without replacement)
+          bootstrap[0,:] = np.apply_along_axis(np.random.choice, -1, samples, size=nsamples, replace=False)
+        else: bootstrap[0,:] = samples # first element is the real sample data
+        for i in xrange(1,nbs): # take random draws with replacement
+          bootstrap[0,:] = np.apply_along_axis(np.random.choice, -1, samples, size=nsamples, replace=True)
+          idx = np.random.randint(sz, size=nsamples) # select random indices
           bootstrap[i,:] = samples.take(idx, axis=-1) # write random sample into array
         samples = bootstrap
         # N.B.: from here one everything should proceed normally, with the extra bootstrap axis in the 
@@ -701,12 +709,16 @@ class DistVar(Variable):
         #       stacked along the bootstrap axis.
         # N.B.: Performing resampling and estimation iteratively, one by one, would also save memory, 
         #       but prevent parallelization of the bootstrap process.
+      elif lns: 
+        # select a random subset (without replacement)
+        samples = np.apply_along_axis(np.random.choice, -1, samples, size=nsamples, replace=False)
+      ## exclude a regular subset/fraction for cross-validation 
       if lcrossval:
         ncv = 3 if lcrossval is True else int(lcrossval)
         if ncv <2: raise ValueError, lcrossval
-        idx_rng = []; saxlen = samples.shape[-1]
-        for icv in xrange(0,saxlen,ncv):
-          idx_rng += range(icv,min(icv+ncv-1,samples.shape[-1]))
+        idx_rng = []
+        for icv in xrange(0,sz,ncv):
+          idx_rng += range(icv,min(icv+ncv-1,sz))
         #idx_rng = np.random.randint(saxlen, size=saxlen)[idx_rng] # use a randome sample...
         samples = samples.take(idx_rng,axis=-1) # use only the first half of the data
       # estimate distribution parameters
@@ -1450,7 +1462,7 @@ class VarRV(DistVar):
     return sample_data
 
   # Kolmogorov-Smirnov Test for goodness-of-fit
-  def kstest(self, sample, name=None, axis_idx=None, lstatistic=False, lcrossval=False,
+  def kstest(self, samples, nsamples=None, name=None, axis_idx=None, lstatistic=False, lcrossval=False,
              fillValue=None, ignoreNaN=True, N=1000, alternative='two-sided', mode='approx', 
              asVar=True, lcheckVar=True, lcheckAxis=True, pvaratts=None, **kwargs):
     ''' apply a Kolmogorov-Smirnov Test to the sample data, based on this distribution '''
@@ -1461,14 +1473,24 @@ class VarRV(DistVar):
     if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
     # get properly formatted sample data
     sax = self.ndim-1
-    sample_data = self._extractSampleData(sample, axis_idx=axis_idx, fillValue=fillValue, lcheckVar=True, lcheckAxis=True)
+    sample_data = self._extractSampleData(samples, axis_idx=axis_idx, fillValue=fillValue, 
+                                          lcheckVar=True, lcheckAxis=True)
+    ## handle number of draws
+    sz = samples.shape[-1] # all sample dimensions should be collapsed by now
+    lns = bool(nsamples)
+    if nsamples is None: nsamples = sz
+    if nsamples < 2: raise ValueError, nsamples
+    if nsamples > sz: raise ValueError, sz        
+    # select cross-validation subset/fraction
     if lcrossval: 
       ncv = self.crossval if lcrossval is True else lcrossval
       if ncv == 0: raise ValueError, self.crossval
-      saxlen = sample_data.shape[-1]
-      idx_rng = np.arange(ncv-1,saxlen,ncv)  
+      idx_rng = np.arange(ncv-1,sz,ncv)  
       #idx_rng = np.random.randint(saxlen, size=saxlen)[idx_rng] # use a random sample...     
       sample_data = sample_data.take(idx_rng,axis=-1) # use only the first half of the datasample_data = sample_data[...,1::2] # use only the second half of the data
+    # select a random subset
+    if lns:
+      sample_data = np.apply_along_axis(np.random.choice, -1, sample_data, size=nsamples, replace=False)
     # apply test function (parallel)
     fct = functools.partial(rv_kstest, nparams=len(self.paramAxis), dist_type=self.dist_type, 
                             ignoreNaN=ignoreNaN, N=N, alternative=alternative, mode=mode)

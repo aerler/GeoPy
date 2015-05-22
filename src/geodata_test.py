@@ -247,7 +247,7 @@ class BaseVarTest(unittest.TestCase):
       if dist == 'kde': 
         tmp = var.kde(axis=t.name, lflatten=False, ldebug=False)
       elif dist == 'DEFAULT': 
-        tmp = var.fitDist(axis=t.name, lpersist=False, ldebug=False)
+        tmp = var.fitDist(axis=t.name, nsamples=None if lsimple else 5, lpersist=False, ldebug=False)
       elif lsimple: 
         tmp = getattr(var,dist)(axis=t.name, lpersist=True, f0=0)
         if tmp.shape[-1] > 2: assert isZero(tmp.data_array[:,:,0]) # held fixed
@@ -272,6 +272,9 @@ class BaseVarTest(unittest.TestCase):
       print "\n   ***   computed {:s} distribution   ***".format(dist.upper())
       # some VarRV-specific stuff
       if dist != 'kde':
+        # run simple kstest test
+        pval = distvar.kstest(var, asVar=False, lflatten=False, axis=-1, nsamples=None if lsimple else 8)    
+        assert pval.mean() >= 0 # this will usually be close to zero, since none of these are normally distributed
         # test rescaling
         if lsimple: 
           scales = distvar.rescale(loc=1., scale=1., lflatten=True, asVar=False)
@@ -709,7 +712,6 @@ class BaseVarTest(unittest.TestCase):
     all_axis = tuple(ax.name for ax in var.axes)
     # run simple kstest test
     pval = var.kstest(asVar=False, lflatten=True, axis=None, dist='norm', args=(0,1))    
-    #print pval
     assert pval >= 0 # this will usually be close to zero, since none of these are normally distributed
     # check that merging all axes gives the same result as flattening
     all_pval = var.kstest(asVar=False, lflatten=False, axis=all_axis, dist='norm', args=(0,1))
@@ -1610,7 +1612,7 @@ if __name__ == "__main__":
 #     specific_tests += ['Copy']
 #     specific_tests += ['ApplyToAll']
 #     specific_tests += ['AddProjection']
-    specific_tests += ['Indexing']
+#     specific_tests += ['Indexing']
 #     specific_tests += ['SeasonalReduction']
 #     specific_tests += ['ConcatVars']
 #     specific_tests += ['ConcatDatasets']
@@ -1622,9 +1624,9 @@ if __name__ == "__main__":
     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()
