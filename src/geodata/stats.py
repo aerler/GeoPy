@@ -1475,19 +1475,20 @@ class VarRV(DistVar):
     sax = self.ndim-1
     sample_data = self._extractSampleData(samples, axis_idx=axis_idx, fillValue=fillValue, 
                                           lcheckVar=True, lcheckAxis=True)
-    ## handle number of draws
-    sz = samples.shape[-1] # all sample dimensions should be collapsed by now
-    lns = bool(nsamples)
-    if nsamples is None: nsamples = sz
-    if nsamples < 2: raise ValueError, nsamples
-    if nsamples > sz: raise ValueError, sz        
     # select cross-validation subset/fraction
+    sz = sample_data.shape[-1] # all sample dimensions should be collapsed by now
     if lcrossval: 
       ncv = self.crossval if lcrossval is True else lcrossval
       if ncv == 0: raise ValueError, self.crossval
       idx_rng = np.arange(ncv-1,sz,ncv)  
       #idx_rng = np.random.randint(saxlen, size=saxlen)[idx_rng] # use a random sample...     
-      sample_data = sample_data.take(idx_rng,axis=-1) # use only the first half of the datasample_data = sample_data[...,1::2] # use only the second half of the data
+      sample_data = sample_data.take(idx_rng,axis=-1) # use only the second half of the data
+      sz = sample_data.shape[-1] # need to reassign, sicne size changed
+    # handle number of draws
+    lns = bool(nsamples)
+    if nsamples is None: nsamples = sz
+    if nsamples < 2: raise ValueError, nsamples
+    if nsamples > sz: raise ValueError, sz        
     # select a random subset
     if lns:
       sample_data = np.apply_along_axis(np.random.choice, -1, sample_data, size=nsamples, replace=False)
