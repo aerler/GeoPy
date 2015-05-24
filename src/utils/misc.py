@@ -12,7 +12,7 @@ import scipy.linalg as la
 from utils.signalsmooth import smooth
 from collections import namedtuple
 # internal imports
-from geodata.misc import ArgumentError, isEqual
+from geodata.misc import ArgumentError, isEqual, AxisError
 
 
 # create a named tuple instance on the fly from dictionary
@@ -38,6 +38,16 @@ def toNumpyScalar(num, dtype=None):
     elif isinstance(num, bool): num = np.bool8(num)
     else: raise NotImplementedError, num
   return num
+
+# transform an n-dim array to a 2-dim array by collapsing all but the last/innermost dimension
+def collapseOuterDims(ndarray, laddOuter=True):
+  ''' transform an n-dim array to a 2-dim array by collapsing all but the last/innermost dimension '''
+  if not isinstance(ndarray, np.ndarray): raise TypeError, ndarray
+  if ndarray.ndim <2:
+    if laddOuter: ndarray.reshape((1,ndarray.size))
+    else: raise AxisError, ndarray.shape
+  shape = (np.prod(ndarray.shape[:-1]), ndarray.shape[-1])  
+  return np.reshape(ndarray, shape) # just a new view
 
 ## define function for recursion 
 # basically, loop over each list independently

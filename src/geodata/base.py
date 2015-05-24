@@ -2057,15 +2057,20 @@ class Variable(object):
     # return results to decorator/wrapper
     return data, name, units
     
-  def fitDist(self, axis='time', nsamples=None, dist=None, lflatten=False, name=None, atts=None, var_dists=None,
-              lsuffix=False, asVar=True, lcheckVar=True, lcheckAxis=True, lcrossval=False, **kwargs):
+  def fitDist(self, axis='time', nsamples=None, dist=None, lflatten=False, name=None, atts=None, 
+              var_dists=None, lsuffix=False, asVar=True, lcheckVar=True, lcheckAxis=True, 
+              lcrossval=False, ncv=0.2, lignoreParams=False, **kwargs):
     ''' Generate a DistVar of type 'dist' from a Variable 'var'; use dimension 'axis' as sample axis; 
         if no 'dist' is specified, some heuristics are used to determine a suitable distribution; 
         dictionary lookup is also supported through 'var_dists'. '''
     from geodata.stats import asDistVar
-    dvar = asDistVar(self, axis=axis, dist=dist, lflatten=lflatten, name=name, atts=atts, 
-                     var_dists=var_dists, lcrossval=lcrossval, nsamples=nsamples,
-                     lsuffix=lsuffix, asVar=asVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **kwargs)
+    from datasets.common import shp_params, stn_params
+    if self.name in shp_params or self.name in stn_params:
+      dvar = self
+    else:
+      dvar = asDistVar(self, axis=axis, dist=dist, lflatten=lflatten, name=name, atts=atts, 
+                       var_dists=var_dists, lcrossval=lcrossval, ncv=ncv, nsamples=nsamples,
+                       lsuffix=lsuffix, asVar=asVar, lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **kwargs)
     # return new variable
     return dvar
   

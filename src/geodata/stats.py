@@ -18,7 +18,7 @@ import functools
 # internal imports
 from geodata.base import Variable, Axis
 from geodata.misc import DataError, ArgumentError, VariableError, AxisError, DistVarError
-from utils.misc import standardize, smooth, detrend
+from utils.misc import standardize, smooth, detrend, collapseOuterDims
 import utils.stats as myss # modified stats fucntions from scipy 
 from plotting.properties import getPlotAtts
 
@@ -721,22 +721,25 @@ class DistVar(Variable):
         #ncv = 3 if lcrossval is True else int(lcrossval)
         if 1 < ncv < 2: raise ValueError, lcrossval
         if crossval_mode.lower() == 'random': # default: use a random subset
-          if ncv < 1: ncv = int(np.round((1-ncv)*sz)) # convert fraction to number of elements
-          else: ncv = int(sz - np.round(sz/ncv)) # treat as denominator of fraction used for validation
+          if ncv < 1: nncv = int(np.round((1-ncv)*sz)) # convert fraction to number of elements
+          else: nncv = int(sz - np.round(sz/ncv)) # treat as denominator of fraction used for validation
           idx_rng = np.tile(np.arange(sz, dtype=idx_dtype), samples.shape[:-1]+(1,))
-          idx_rng = np.apply_along_axis(np.random.choice, -1, idx_rng, size=ncv, replace=False)
+          idx_rng = np.apply_along_axis(np.random.choice, -1, idx_rng, size=nncv, replace=False)
           # save cross-validation mask
           crossval_mask = np.ones(samples.shape, dtype=np.bool8, order='C')
+          #print idx_rng.shape, crossval_mask.shape
+          tmp_mask = collapseOuterDims(crossval_mask, laddOuter=True) # just a new view
+          tmp_idx = collapseOuterDims(idx_rng, laddOuter=True)
+          assert tmp_mask.shape[0] == tmp_idx.shape[0]
+          for i in xrange(tmp_idx.shape[0]):
+            tmp_mask[i,tmp_idx[i,:]] = 0 # set these indices to zero
 #           print np.asarray(crossval_mask, dtype=np.int).mean()
-          print idx_rng.shape, crossval_mask.shape
-          crossval_mask[idx_rng] = 0 # set mask to Fals for values that have been used in fitting
-#           print np.asarray(crossval_mask, dtype=np.int).mean()
-#           print np.asarray(crossval_mask, dtype=np.int).mean()
+#           crossval_mask[idx_rng] = 0 # set mask to Fals for values that have been used in fitting
           check_mask = crossval_mask.sum(axis=-1)
-          print crossval_mask
-          print check_mask
+#           print check_mask
+          assert crossval_mask.shape == samples.shape
           assert check_mask.min() == check_mask.max(), (check_mask.min(),check_mask.max()) 
-          assert check_mask.mean() == ncv, (check_mask.mean(),ncv) 
+          assert check_mask.mean() == sz-nncv, (check_mask.mean(),nncv) 
         else:
           # a deterministic subset 
           if ncv < 1: raise ValueError, lcrossval # denominator of fraction used for validation
@@ -745,7 +748,14 @@ class DistVar(Variable):
             idx_rng += np.arange(icv,min(icv+ncv-1,sz), order='C', dtype=idx_dtype)
           idx_rng = np.concatenate(idx_rng)
         #idx_rng = np.random.randint(saxlen, size=saxlen)[idx_rng] # use a randome sample...
-        samples = samples.take(idx_rng,axis=-1) # use only the first half of the data
+        tmp_idx = collapseOuterDims(idx_rng, laddOuter=True)
+        tmp_smpl = collapseOuterDims(samples, laddOuter=True)
+        assert tmp_smpl.shape[0] == tmp_idx.shape[0]
+        samples = np.zeros_like(tmp_idx, dtype=samples.dtype, order='C', subok=True)
+        for i in xrange(tmp_idx.shape[0]):
+          samples[i,:] = tmp_smpl[i,tmp_idx[i,:]] # set these indices to zero
+        samples = samples.reshape(idx_rng.shape)
+#         samples = samples.take(idx_rng,axis=-1) # use only the first half of the data
       # estimate distribution parameters
       params = self._estimate_distribution(samples, ldebug=ldebug, **kwargs)
       # N.B.: the method estimate() should be implemented by specific child classes      
@@ -1288,7 +1298,9 @@ class VarRV(DistVar):
                          asVar=False, lcheckVar=True, lcheckAxis=True).mean()
       #pval = pval if isinstance(pval,(str,basestring)) else "{:3.2f}".format(pval)
       pval = "{:3.2f}".format(float(pval.mean()))
-      print("{:s} Cross-validation (K-S test, 1/{:d}): {:s}".format(self.name, self.crossval,pval)) 
+      if self.crossval > 1: crossval = "1/{:d}".format(self.crossval)
+      else: crossval = "{:2.0f}%".format(100*self.crossval)
+      print("{:s} Cross-validation (K-S test, {:s}): {:s}".format(self.name, crossval, pval)) 
   
   def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Variable with just a link to the data. '''
@@ -1507,7 +1519,15 @@ class VarRV(DistVar):
       idx_dtype = np.int16 if sz < 32767 else (np.int32 if sz < 2147483647 else np.int64) # save some memory
       if self.crossval_mask is not None: # created for random subset (default)
         assert self.crossval_mask.shape == sample_data.shape, self.crossval_mask.shape 
-        sample_data = sample_data[self.crossval_mask] # logical indexing (remaining part is True)
+#         sample_data = sample_data[self.crossval_mask] # logical indexing (remaining part is True)
+        tmp_mask = collapseOuterDims(self.crossval_mask, laddOuter=True)
+        tmp_smpl = collapseOuterDims(sample_data, laddOuter=True)
+        check_mask = self.crossval_mask.sum(axis=-1); mask_len = check_mask.mean() 
+        assert check_mask.min() == check_mask.max(), (check_mask.min(),check_mask.max()) 
+        samples = np.zeros((np.prod(check_mask.shape),mask_len,), dtype=sample_data.dtype, order='C')
+        for i in xrange(tmp_mask.shape[0]):
+          samples[i,:] = tmp_smpl[i,tmp_mask[i,:]] # set these indices to zero
+        samples = samples.reshape(check_mask.shape+(mask_len,))
       else:
         ncv = self.crossval if lcrossval is True else lcrossval
         if ncv == 0 or int(ncv) != ncv: raise ValueError, self.crossval

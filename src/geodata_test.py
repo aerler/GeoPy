@@ -249,7 +249,7 @@ class BaseVarTest(unittest.TestCase):
       elif dist == 'DEFAULT': 
         tmp = var.fitDist(axis=t.name, 
 #                           nsamples=None if lsimple else 5,
-                          lcrossval=True, ncv=0.2,
+                          lcrossval=not lsimple, ncv=0.2, # messes up sums in histograms & moments
                           lpersist=False, ldebug=False)
       elif lsimple: 
         tmp = getattr(var,dist)(axis=t.name, lpersist=True, f0=0)
@@ -276,8 +276,8 @@ class BaseVarTest(unittest.TestCase):
       # some VarRV-specific stuff
       if dist != 'kde':
         # run simple kstest test
-        pval = distvar.kstest(var, asVar=False, lflatten=False, axis=-1, nsamples=None if lsimple else 8)    
-        assert pval.mean() >= 0 # this will usually be close to zero, since none of these are normally distributed
+        pval = distvar.kstest(var, asVar=False, lflatten=False, axis=-1, nsamples=None if lsimple else 8)
+        assert np.mean(pval) >= 0, pval # this will usually be close to zero, since none of these are normally distributed
         # test rescaling
         if lsimple: 
           scales = distvar.rescale(loc=1., scale=1., lflatten=True, asVar=False)
@@ -1624,8 +1624,8 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
