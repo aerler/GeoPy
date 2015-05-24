@@ -247,7 +247,10 @@ class BaseVarTest(unittest.TestCase):
       if dist == 'kde': 
         tmp = var.kde(axis=t.name, lflatten=False, ldebug=False)
       elif dist == 'DEFAULT': 
-        tmp = var.fitDist(axis=t.name, nsamples=None if lsimple else 5, lpersist=False, ldebug=False)
+        tmp = var.fitDist(axis=t.name, 
+#                           nsamples=None if lsimple else 5,
+                          lcrossval=True, ncv=0.2,
+                          lpersist=False, ldebug=False)
       elif lsimple: 
         tmp = getattr(var,dist)(axis=t.name, lpersist=True, f0=0)
         if tmp.shape[-1] > 2: assert isZero(tmp.data_array[:,:,0]) # held fixed
@@ -1621,8 +1624,8 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']

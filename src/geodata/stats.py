@@ -560,8 +560,9 @@ def defVarDist(var, var_dists=None):
   return dist, dist_args
 
 # convenience function to generate a DistVar from another Variable object
-def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None, var_dists=None, nsamples=None,
-              lsuffix=False, asVar=True, lcheckVar=True, lcheckAxis=True, lcrossval=False, **kwargs):
+def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None, var_dists=None, 
+              nsamples=None, lsuffix=False, asVar=True, lcheckVar=True, lcheckAxis=True, 
+              lcrossval=False, ncv=0.2, **kwargs):
   ''' generate a DistVar of type 'dist' from a Variable 'var'; use dimension 'axis' as sample axis '''
   if not isinstance(var,Variable): raise VariableError
   # this really only works for numeric types
@@ -602,7 +603,7 @@ def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None,
                                           lflatten=lflatten, atts=varatts, **dist_args)
   elif hasattr(ss,dist):
     dvar = VarRV(dist=dist, samples=var.data_array, axis=iaxis, axes=axes, nsamples=nsamples,
-                 lflatten=lflatten, atts=varatts, lcrossval=lcrossval, **dist_args)
+                 lflatten=lflatten, atts=varatts, lcrossval=lcrossval, ncv=0.2, **dist_args)
   else:
     raise AttributeError, "Distribution '{:s}' not found in scipy.stats.".format(dist)
   # return DistVar instance
@@ -621,7 +622,8 @@ class DistVar(Variable):
 
   def __init__(self, name=None, units=None, axes=None, samples=None, nsamples=None, params=None, axis=None, 
                dtype=None, lflatten=False, masked=None, mask=None, fillValue=None, atts=None, ldebug=False, 
-               lbootstrap=False, nbs=1000, bootstrap_axis='bootstrap', lcrossval=False, **kwargs):
+               lbootstrap=False, nbs=1000, bootstrap_axis='bootstrap', 
+               lcrossval=False, ncv=0.2, crossval_mode='random', **kwargs):
     '''
       This method creates a new DisVar instance from data and parameters. If data is provided, a sample
       axis has to be specified or the last (innermost) axis is assumed to be the sample axis.
@@ -696,9 +698,9 @@ class DistVar(Variable):
           bootstrap[0,:] = np.apply_along_axis(np.random.choice, -1, samples, size=nsamples, replace=False)
         else: bootstrap[0,:] = samples # first element is the real sample data
         for i in xrange(1,nbs): # take random draws with replacement
-          bootstrap[0,:] = np.apply_along_axis(np.random.choice, -1, samples, size=nsamples, replace=True)
-          idx = np.random.randint(sz, size=nsamples) # select random indices
-          bootstrap[i,:] = samples.take(idx, axis=-1) # write random sample into array
+          bootstrap[i,:] = np.apply_along_axis(np.random.choice, -1, samples, size=nsamples, replace=True)
+          #idx = np.random.randint(sz, size=nsamples) # select random indices
+          #bootstrap[i,:] = samples.take(idx, axis=-1) # write random sample into array
         samples = bootstrap
         # N.B.: from here one everything should proceed normally, with the extra bootstrap axis in the 
         #       resulting DistVar object; obtain confidence intervalls as percentiles along this axis
@@ -712,13 +714,36 @@ class DistVar(Variable):
       elif lns: 
         # select a random subset (without replacement)
         samples = np.apply_along_axis(np.random.choice, -1, samples, size=nsamples, replace=False)
+      sz = samples.shape[-1] # update
       ## exclude a regular subset/fraction for cross-validation 
       if lcrossval:
-        ncv = 3 if lcrossval is True else int(lcrossval)
-        if ncv <2: raise ValueError, lcrossval
-        idx_rng = []
-        for icv in xrange(0,sz,ncv):
-          idx_rng += range(icv,min(icv+ncv-1,sz))
+        idx_dtype = np.int16 if sz < 32767 else (np.int32 if sz < 2147483647 else np.int64) # save some memory
+        #ncv = 3 if lcrossval is True else int(lcrossval)
+        if 1 < ncv < 2: raise ValueError, lcrossval
+        if crossval_mode.lower() == 'random': # default: use a random subset
+          if ncv < 1: ncv = int(np.round((1-ncv)*sz)) # convert fraction to number of elements
+          else: ncv = int(sz - np.round(sz/ncv)) # treat as denominator of fraction used for validation
+          idx_rng = np.tile(np.arange(sz, dtype=idx_dtype), samples.shape[:-1]+(1,))
+          idx_rng = np.apply_along_axis(np.random.choice, -1, idx_rng, size=ncv, replace=False)
+          # save cross-validation mask
+          crossval_mask = np.ones(samples.shape, dtype=np.bool8, order='C')
+#           print np.asarray(crossval_mask, dtype=np.int).mean()
+          print idx_rng.shape, crossval_mask.shape
+          crossval_mask[idx_rng] = 0 # set mask to Fals for values that have been used in fitting
+#           print np.asarray(crossval_mask, dtype=np.int).mean()
+#           print np.asarray(crossval_mask, dtype=np.int).mean()
+          check_mask = crossval_mask.sum(axis=-1)
+          print crossval_mask
+          print check_mask
+          assert check_mask.min() == check_mask.max(), (check_mask.min(),check_mask.max()) 
+          assert check_mask.mean() == ncv, (check_mask.mean(),ncv) 
+        else:
+          # a deterministic subset 
+          if ncv < 1: raise ValueError, lcrossval # denominator of fraction used for validation
+          idx_rng = []
+          for icv in xrange(0,sz,ncv):
+            idx_rng += np.arange(icv,min(icv+ncv-1,sz), order='C', dtype=idx_dtype)
+          idx_rng = np.concatenate(idx_rng)
         #idx_rng = np.random.randint(saxlen, size=saxlen)[idx_rng] # use a randome sample...
         samples = samples.take(idx_rng,axis=-1) # use only the first half of the data
       # estimate distribution parameters
@@ -735,7 +760,7 @@ class DistVar(Variable):
       axes = axes + (paramAxis,)
     else: paramAxis = None
     # check diemnsions, but leave dtype open to be inferred from data
-    assert params.ndim == len(axes)
+    assert params.ndim == len(axes), (params.ndim,len(axes)) 
     assert all(ps==len(ax) for ps,ax in zip(params.shape,axes))
     # create variable object using parent constructor
     super(DistVar,self).__init__(name=name, units=units, axes=axes, data=params, dtype=None, mask=mask, 
@@ -746,6 +771,7 @@ class DistVar(Variable):
     assert self.masked == masked
     self.dtype = dtype # property is overloaded in DistVar
     self.crossval = ncv if lcrossval and samples is not None else 0
+    self.crossval_mask = crossval_mask if lcrossval and crossval_mode.lower() == 'random' else None
     # N.B.: in this variable dtype and units refer to the sample data, not the distribution!
     if params.ndim > 0 and self.hasAxis(params_name):
       self.paramAxis = self.getAxis(params_name) 
@@ -1478,12 +1504,17 @@ class VarRV(DistVar):
     # select cross-validation subset/fraction
     sz = sample_data.shape[-1] # all sample dimensions should be collapsed by now
     if lcrossval: 
-      ncv = self.crossval if lcrossval is True else lcrossval
-      if ncv == 0: raise ValueError, self.crossval
-      idx_rng = np.arange(ncv-1,sz,ncv)  
-      #idx_rng = np.random.randint(saxlen, size=saxlen)[idx_rng] # use a random sample...     
-      sample_data = sample_data.take(idx_rng,axis=-1) # use only the second half of the data
-      sz = sample_data.shape[-1] # need to reassign, sicne size changed
+      idx_dtype = np.int16 if sz < 32767 else (np.int32 if sz < 2147483647 else np.int64) # save some memory
+      if self.crossval_mask is not None: # created for random subset (default)
+        assert self.crossval_mask.shape == sample_data.shape, self.crossval_mask.shape 
+        sample_data = sample_data[self.crossval_mask] # logical indexing (remaining part is True)
+      else:
+        ncv = self.crossval if lcrossval is True else lcrossval
+        if ncv == 0 or int(ncv) != ncv: raise ValueError, self.crossval
+        idx_rng = np.arange(ncv-1,sz,ncv, order='C', dtype=idx_dtype)  
+        #idx_rng = np.random.randint(saxlen, size=saxlen)[idx_rng] # use a random sample...     
+        sample_data = sample_data.take(idx_rng,axis=-1) # use only the remaining part of the data
+      sz = sample_data.shape[-1] # need to reassign, since size changed
     # handle number of draws
     lns = bool(nsamples)
     if nsamples is None: nsamples = sz
