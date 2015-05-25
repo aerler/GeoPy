@@ -18,7 +18,7 @@ import functools
 # internal imports
 from geodata.base import Variable, Axis
 from geodata.misc import DataError, ArgumentError, VariableError, AxisError, DistVarError
-from utils.misc import standardize, smooth, detrend, collapseOuterDims
+from utils.misc import standardize, smooth, detrend, collapseOuterDims, apply_over_arrays
 import utils.stats as myss # modified stats fucntions from scipy 
 from plotting.properties import getPlotAtts
 
@@ -603,7 +603,7 @@ def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None,
                                           lflatten=lflatten, atts=varatts, **dist_args)
   elif hasattr(ss,dist):
     dvar = VarRV(dist=dist, samples=var.data_array, axis=iaxis, axes=axes, nsamples=nsamples,
-                 lflatten=lflatten, atts=varatts, lcrossval=lcrossval, ncv=0.2, **dist_args)
+                 lflatten=lflatten, atts=varatts, lcrossval=lcrossval, ncv=ncv, **dist_args)
   else:
     raise AttributeError, "Distribution '{:s}' not found in scipy.stats.".format(dist)
   # return DistVar instance
@@ -727,16 +727,8 @@ class DistVar(Variable):
           idx_rng = np.apply_along_axis(np.random.choice, -1, idx_rng, size=nncv, replace=False)
           # save cross-validation mask
           crossval_mask = np.ones(samples.shape, dtype=np.bool8, order='C')
-          #print idx_rng.shape, crossval_mask.shape
-          tmp_mask = collapseOuterDims(crossval_mask, laddOuter=True) # just a new view
-          tmp_idx = collapseOuterDims(idx_rng, laddOuter=True)
-          assert tmp_mask.shape[0] == tmp_idx.shape[0]
-          for i in xrange(tmp_idx.shape[0]):
-            tmp_mask[i,tmp_idx[i,:]] = 0 # set these indices to zero
-#           print np.asarray(crossval_mask, dtype=np.int).mean()
-#           crossval_mask[idx_rng] = 0 # set mask to Fals for values that have been used in fitting
+          apply_over_arrays(np.put, crossval_mask, idx_rng, v=np.bool(0), mode='raise')
           check_mask = crossval_mask.sum(axis=-1)
-#           print check_mask
           assert crossval_mask.shape == samples.shape
           assert check_mask.min() == check_mask.max(), (check_mask.min(),check_mask.max()) 
           assert check_mask.mean() == sz-nncv, (check_mask.mean(),nncv) 
@@ -748,14 +740,9 @@ class DistVar(Variable):
             idx_rng += np.arange(icv,min(icv+ncv-1,sz), order='C', dtype=idx_dtype)
           idx_rng = np.concatenate(idx_rng)
         #idx_rng = np.random.randint(saxlen, size=saxlen)[idx_rng] # use a randome sample...
-        tmp_idx = collapseOuterDims(idx_rng, laddOuter=True)
-        tmp_smpl = collapseOuterDims(samples, laddOuter=True)
-        assert tmp_smpl.shape[0] == tmp_idx.shape[0]
-        samples = np.zeros_like(tmp_idx, dtype=samples.dtype, order='C', subok=True)
-        for i in xrange(tmp_idx.shape[0]):
-          samples[i,:] = tmp_smpl[i,tmp_idx[i,:]] # set these indices to zero
-        samples = samples.reshape(idx_rng.shape)
-#         samples = samples.take(idx_rng,axis=-1) # use only the first half of the data
+        subsample = np.zeros_like(idx_rng, dtype=samples.dtype, order='C', subok=True) # allocate subsample
+        apply_over_arrays(np.take, samples, idx_rng, axis=-1, out=subsample, mode='raise')
+        samples = subsample # use subsample instead of full sample
       # estimate distribution parameters
       params = self._estimate_distribution(samples, ldebug=ldebug, **kwargs)
       # N.B.: the method estimate() should be implemented by specific child classes      
@@ -1300,7 +1287,7 @@ class VarRV(DistVar):
       pval = "{:3.2f}".format(float(pval.mean()))
       if self.crossval > 1: crossval = "1/{:d}".format(self.crossval)
       else: crossval = "{:2.0f}%".format(100*self.crossval)
-      print("{:s} Cross-validation (K-S test, {:s}): {:s}".format(self.name, crossval, pval)) 
+      print("{:s} Cross-validation: {:s} (K-S test, {:s})".format(self.name, pval, crossval)) 
   
   def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Variable with just a link to the data. '''
@@ -1519,15 +1506,11 @@ class VarRV(DistVar):
       idx_dtype = np.int16 if sz < 32767 else (np.int32 if sz < 2147483647 else np.int64) # save some memory
       if self.crossval_mask is not None: # created for random subset (default)
         assert self.crossval_mask.shape == sample_data.shape, self.crossval_mask.shape 
-#         sample_data = sample_data[self.crossval_mask] # logical indexing (remaining part is True)
-        tmp_mask = collapseOuterDims(self.crossval_mask, laddOuter=True)
-        tmp_smpl = collapseOuterDims(sample_data, laddOuter=True)
         check_mask = self.crossval_mask.sum(axis=-1); mask_len = check_mask.mean() 
-        assert check_mask.min() == check_mask.max(), (check_mask.min(),check_mask.max()) 
-        samples = np.zeros((np.prod(check_mask.shape),mask_len,), dtype=sample_data.dtype, order='C')
-        for i in xrange(tmp_mask.shape[0]):
-          samples[i,:] = tmp_smpl[i,tmp_mask[i,:]] # set these indices to zero
-        samples = samples.reshape(check_mask.shape+(mask_len,))
+        subsample = np.zeros(check_mask.shape+(mask_len,), dtype=sample_data.dtype, order='C')
+        apply_over_arrays(np.compress, self.crossval_mask, sample_data, out=subsample, axis=-1)
+        sample_data = subsample # replace sample with appropriate sub-sample
+        #print sample_data.shape, sample_data.mean()
       else:
         ncv = self.crossval if lcrossval is True else lcrossval
         if ncv == 0 or int(ncv) != ncv: raise ValueError, self.crossval
@@ -1544,12 +1527,14 @@ class VarRV(DistVar):
     if lns:
       sample_data = np.apply_along_axis(np.random.choice, -1, sample_data, size=nsamples, replace=False)
     # apply test function (parallel)
+    #print sample_data.shape, sample_data.mean()
     fct = functools.partial(rv_kstest, nparams=len(self.paramAxis), dist_type=self.dist_type, 
                             ignoreNaN=ignoreNaN, N=N, alternative=alternative, mode=mode)
     data_array = np.concatenate((self.data_array, sample_data), axis=sax) # merge params and sample arrays (only one argument array per point along axis) 
     pval = apply_along_axis(fct, sax, data_array, chunksize=100000//len(data_array)) # apply test in parallel, distributing the data
     assert pval.ndim == sax
     assert pval.shape == self.shape[:-1]
+    #print pval.shape,pval.mean()
     # handle masked values
     if self.masked: 
       pval = ma.masked_invalid(pval, copy=False) 

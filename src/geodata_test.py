@@ -233,9 +233,9 @@ class BaseVarTest(unittest.TestCase):
     else:
       # crop data because these tests just take way too long!
       if self.dataset_name == 'NARR':
-        var = self.var(time=slice(0,10), y=slice(190,195), x=slice(0,100))
+        var = self.var(time=slice(0,25), y=slice(190,195), x=slice(0,100))
       else:
-        var = self.var(time=slice(0,10), lat=(50,70), lon=(-130,-110))
+        var = self.var(time=slice(0,25), lat=(50,70), lon=(-130,-110))
       t,x,y = var.axes
     #     for dist in ('kde',):
     if lsimple: dist_list = ('kde','DEFAULT','genextreme','gumbel_r','norm')
@@ -1606,7 +1606,7 @@ if __name__ == "__main__":
         
     specific_tests = []
 #     specific_tests += ['ReductionArithmetic']
-    specific_tests += ['DistributionVariables']
+#     specific_tests += ['DistributionVariables']
 #     specific_tests += ['Mask']
 #     specific_tests += ['Ensemble']
 #     specific_tests += ['StatsTests']   
@@ -1627,9 +1627,9 @@ if __name__ == "__main__":
     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()

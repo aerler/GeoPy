@@ -40,14 +40,44 @@ def toNumpyScalar(num, dtype=None):
   return num
 
 # transform an n-dim array to a 2-dim array by collapsing all but the last/innermost dimension
-def collapseOuterDims(ndarray, laddOuter=True):
+def collapseOuterDims(ndarray, axis=None, laddOuter=True):
   ''' transform an n-dim array to a 2-dim array by collapsing all but the last/innermost dimension '''
   if not isinstance(ndarray, np.ndarray): raise TypeError, ndarray
   if ndarray.ndim <2:
     if laddOuter: ndarray.reshape((1,ndarray.size))
     else: raise AxisError, ndarray.shape
-  shape = (np.prod(ndarray.shape[:-1]), ndarray.shape[-1])  
-  return np.reshape(ndarray, shape) # just a new view
+  if axis is not None and not (axis == -1 or axis == ndarray.ndim-1):
+    if not isinstance(axis,(int,np.integer)): raise TypeError, axis
+    ndarray = np.rollaxis(ndarray, axis=axis, start=ndarray.ndim) # make desired axis innermost axis
+  shape = (np.prod(ndarray.shape[:-1]), ndarray.shape[-1]) # new 2D shape
+  ndarray = np.reshape(ndarray, shape) # just a new view
+  return ndarray # return reshaped (and reordered) array
+
+# apply an operation on a list of 1D arrays over a selected axis and loop over all others (in all arrays)
+def apply_over_arrays(fct, *arrays, **kwargs):
+  ''' similar to apply_along_axis, but operates on a list of ndarray's and is not parallelized '''
+  axis = kwargs.pop('axis',-1)
+  lexitcode = kwargs.pop('lexitcode',False)
+  lout = 'out' in kwargs # output array (for some numpy functions)
+  # pre-process input (get reshaped views)
+  arrays = [collapseOuterDims(array, axis=axis, laddOuter=True) for array in arrays]
+  ie = arrays[0].shape[0]
+  if not all(array.shape[0]==ie for array in arrays): 
+    raise AxisError, "Cannot coerce input arrays into compatible shapes."
+  # special handling of output arrays
+  if lout: 
+    out = collapseOuterDims(kwargs['out'], axis=axis, laddOuter=True)
+    if out.shape[0] != ie: raise AxisError, "Output array has incompatible shape."  
+  # loop over outer dimension and apply function
+  if lexitcode: ecs = [] # exit code
+  for i in xrange(ie):
+    arrslc = [array[i,:] for array in arrays]
+    if lout: kwargs['out'] = out[i,:]
+    ec = fct(*arrslc, **kwargs)
+    if lexitcode: ecs.append(ec)
+  #if lexitcode and not all(ecs): raise AssertionError, "Some function executions were not successful!"
+  # return output list (or None's if fct has no exit code)
+  return ecs if lexitcode else None
 
 ## define function for recursion 
 # basically, loop over each list independently
