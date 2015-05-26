@@ -269,6 +269,7 @@ class Hydro(FileType):
                      #WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
                      #WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
                      #WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)
+                     MaxNetWaterFlux = dict(name='MaxWaterFlx_1d', units='kg/m^2/s'), # for short-term consistency
                      MaxPrecip    = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
                      MaxPrecnc    = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # for short-term consistency
                      MaxPreccu    = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # for short-term consistency
@@ -654,8 +655,10 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
         else: raise IOError, "The file '{:s}' in WRF dataset '{:s}' does not exits!\n('{:s}')".format(filename,name,filepath)   
        
     # load dataset
+    check_override = ['time'] if lctrT else None
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 
-                            varatts=atts, multifile=False, ncformat='NETCDF4', mode=ncmode, squeeze=True)
+                            varatts=atts, multifile=False, ncformat='NETCDF4', mode=ncmode, 
+                            squeeze=True, check_override=check_override)
     if ltrimT and dataset.hasAxis('time') and len(dataset.time) > 180:
       if lwrite: raise ArgumentError, "Cannot trim time-axis when NetCDF write mode is enabled!"
       dataset = dataset(time=slice(0,180), lidx=True)
@@ -983,14 +986,14 @@ if __name__ == '__main__':
   
   # load station ensemble "time-series"
   elif mode == 'test_point_ensemble':
-    lensembleAxis = True
+    lensembleAxis = False
     print('')
     if pntset in ('shpavg',):
 #       dataset = loadWRF_ShpEns(ensemble=['max-ctrl','max-ens-A'], shape=pntset, domains=None, filetypes=['hydro','srfc'])
       dataset = loadWRF_ShpEns(ensemble='max-ens-2050', shape=pntset, varlist=None, domains=None, 
                                filetypes=['hydro',], lensembleAxis=lensembleAxis)
     else:
-      dataset = loadWRF_StnEns(ensemble=['max-ens-A','max-ens-C',], station=pntset, domains=None, 
+      dataset = loadWRF_StnEns(ensemble='max-ens-2100', station=pntset, domains=None, 
                                filetypes=['hydro','srfc'], lensembleAxis=lensembleAxis)
     assert not lensembleAxis or dataset.hasAxis('ensemble')
     dataset.load()

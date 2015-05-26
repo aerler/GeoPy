@@ -855,8 +855,10 @@ class MyAxes(Axes):
     ''' helper method to format axes ticks '''
     nmaj = len(ticks)
     if nmaj > 0:
-      nmin = min(30//nmaj,n//nmaj+1) # number of sub-divisions == number of ticks +1
-      axis.set_minor_locator(mpl.ticker.AutoMinorLocator(nmin))
+#       nmin = min(50//nmaj,n//nmaj+1) # number of sub-divisions == number of ticks +1
+#       axis.set_minor_locator(mpl.ticker.AutoMinorLocator(nmin))
+      axis.set_minor_locator(mpl.ticker.AutoMinorLocator())
+      #axis.set_minor_locator(mpl.ticker.MaxNLocator(nbins=nmin, integer=True))
   def _tickLabels(self, ticks, axis):
     ''' helper method to format axes ticks '''
     if ticks is True: 

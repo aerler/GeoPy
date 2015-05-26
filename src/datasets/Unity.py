@@ -14,7 +14,7 @@ import os, gc
 # internal imports
 from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF 
-from datasets.common import days_per_month, name_of_month,  shp_params
+from datasets.common import days_per_month, name_of_month,  shp_params, CRU_vars
 from datasets.common import getFileName, data_root, loadObservations, grid_folder
 from geodata.gdal import loadPickledGridDef
 from datasets.GPCC import loadGPCC, loadGPCC_Shp
@@ -24,7 +24,6 @@ from datasets.PCIC import loadPCIC, loadPCIC_Shp
 # from geodata.utils import DatasetError
 from warnings import warn
 from plotting.properties import variablePlotatts
-from logging import thread
 
 ## Unity Meta-data
 
@@ -280,7 +279,6 @@ if __name__ == '__main__':
         period = (1979,2009)
         if grid in ('shpavg',):
           # regional averages: shape index as grid
-          CRU_vars = ['T2','Tmin','Tmax','Q2','pet','precip','cldfrc','wetfrq','frzfrq']
           uclim = loadUnity_Shp(shape=pntset, period=period)
           cruclim = loadCRU_Shp(shape=grid, period=period)
           cruts = loadCRU_ShpTS(shape=grid)           

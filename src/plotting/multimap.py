@@ -28,6 +28,7 @@ from mpl_toolkits.basemap import maskoceans # used for masking data
   
 from geodata.base import DatasetError
 from datasets.WSC import basins_info
+from datasets.EC import province_info
 from plotting.legacy import loadDatasets, checkItemList
 from plotting.settings import getFigureSettings, getVariableSettings
 from datasets.common import stn_params
@@ -64,7 +65,8 @@ if __name__ == '__main__':
   lminor = True # draw minor tick mark labels
   locean = False # mask continent in white and omit country borders
   lstations = True; stations = 'cities'
-  lbasins = True; basinlist = ('ARB','FRB',); subbasins = {} #dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
+  lbasins = True; basinlist = ('ARB','FRB','GLB'); subbasins = {} #dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
+  lprovinces = True; provlist = ('BC','AB','ON')
   cbo = None # default based on figure type
   resolution = None # only for GPCC (None = default/highest)
   exptitles = None
@@ -82,19 +84,19 @@ if __name__ == '__main__':
     
   # WRF file types
   WRFfiletypes = [] # WRF data source
-#   WRFfiletypes += ['hydro']
+  WRFfiletypes += ['hydro']
 #   WRFfiletypes += ['lsm']
 #   WRFfiletypes += ['srfc']
 #   WRFfiletypes += ['xtrm']
-  WRFfiletypes += ['plev3d']
+#   WRFfiletypes += ['plev3d']
   ## select variables and seasons
   variables = [] # variables
 #   variables += ['Ts']
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
 #   variables += ['MaxPrecip_1d']; aggregation = 'mean'
-#   variables += ['MaxPrecip_1d']; aggregation = 'max'
-#   variables += ['MaxPreccu_1d']; aggregation = 'max'
+  variables += ['MaxPrecip_1d']; aggregation = 'max'
+  variables += ['MaxPreccu_1d']; aggregation = 'max'
 #   variables += ['MaxPrecnc_1d']; aggregation = 'max'
 #   variables += ['wetprec']
 #   variables += ['precip']
@@ -106,7 +108,7 @@ if __name__ == '__main__':
 #   variables += ['waterflx']
 #   variables += ['p-et']
 #   variables += ['OIPX']
-  variables += ['OrographicIndex']
+#   variables += ['OrographicIndex']
 #   variables += ['Q2']
 #   variables += ['evap']
 #   variables += ['pet']
@@ -200,8 +202,10 @@ if __name__ == '__main__':
 #   explist = ['max-ens-C-2050','max-ens-C-2100']*2; reflist = ['max-ens-C']; case = 'ens-C-prj';   
   periodstrs = ('Mid-Century','End-Century')
   exptitles = ['{:s}, {:s}'.format(season.title(),prdstr) for season in seasons[0][::2] for prdstr in periodstrs]
-  maptype = 'lcc-bcab'; lstations = True; stations = 'EC'; lbasins = True; lsamesize = False; # basinlist = ['FRB','ARB','GLB']
-#   lfrac = True; refprd = H15
+  maptype = 'lcc-bcab'; lstations = True; stations = 'EC'; 
+  lbasins = True; lsamesize = False; basinlist = ['FRB','ARB']
+  lprovinces = True; provlist = ['BC','AB']
+  lfrac = True; refprd = H15
 
 # surface sensitivity test
 #   maptype = 'lcc-intermed'; lstations = False; lbasins = True
@@ -487,7 +491,7 @@ if __name__ == '__main__':
           # extract data field
           if expvar.hasAxis('time'):
             method = aggregation if aggregation.isupper() else aggregation.title() 
-            vardata = getattr(expvar,'seasonal'+method)(season, asVar=False)
+            vardata = getattr(expvar,'seasonal'+method)(season, asVar=False, lclim=True)
           else:
             vardata = expvar[:].squeeze()
 #           if expvar.masked: vardata.set_fill_value(np.NaN) # fill with NaN
@@ -667,8 +671,8 @@ if __name__ == '__main__':
                 #else: bmap.plot(xx,yy,'x', markersize=4, mfc='none', mec='k')
             else: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
           # add basin outlines
+          shpargs = dict(linewidth = 0.75, color='k') 
           if lbasins:
-            shpargs = dict(linewidth = 0.75, color='k') 
             for basin in basinlist:      
               basininfo = basins_info[basin]
               if basin in subbasins:
@@ -678,7 +682,13 @@ if __name__ == '__main__':
               else:
                 bmap.readshapefile(basininfo.shapefiles['Whole'+basin][:-4], basin, ax=axn, 
                                    drawbounds=True, **shpargs)            
-              
+          # add certain provinces
+          if lprovinces: 
+            for province in provlist:      
+                provinfo = province_info[province]
+                bmap.readshapefile(provinfo.shapefiles[provinfo.long_name][:-4], province, 
+                                   drawbounds=True, **shpargs)            
+
       # save figure to disk
       if lprint:
         print('\nSaving figure in '+filename)

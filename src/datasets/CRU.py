@@ -112,7 +112,7 @@ def loadCRU(name=dataset_name, period=None, grid=None, resolution=None, varlist=
 
 # function to load station climatologies
 def loadCRU_Stn(name=dataset_name, period=None, station=None, resolution=None, varlist=None, varatts=None, 
-                folder=avgfolder, filelist=None, lautoregrid=True):
+                folder=avgfolder, filelist=None, lautoregrid=False):
   ''' Get the pre-processed monthly CRU climatology as a DatasetNetCDF. '''
   # load standardized climatology dataset with CRU-specific parameters
   dataset = loadObservations(name=name, folder=folder, period=period, station=station, shape=None, 
@@ -123,7 +123,7 @@ def loadCRU_Stn(name=dataset_name, period=None, station=None, resolution=None, v
 
 # function to load station time-series
 def loadCRU_StnTS(name=dataset_name, station=None, resolution=None, varlist=None, varatts=None, 
-                  folder=avgfolder, filelist=None, lautoregrid=True):
+                  folder=avgfolder, filelist=None, lautoregrid=False):
   ''' Get the pre-processed monthly CRU climatology as a DatasetNetCDF. '''
   # load standardized time-series dataset with CRU-specific parameters
   dataset = loadObservations(name=name, folder=folder, period=None, station=station, shape=None, 

@@ -15,7 +15,9 @@ import codecs, calendar, functools
 from warnings import warn
 from collections import OrderedDict
 # internal imports
+from datasets.CRU import loadCRU_StnTS
 from datasets.common import days_per_month, data_root, selectElements, translateVarNames
+from datasets.common import CRU_vars, stn_params
 from geodata.misc import ParseError, DateError, VariableError, ArgumentError, DatasetError
 from geodata.misc import RecordClass, StrictRecordClass, isNumber, isInt 
 from geodata.base import Axis, Variable, Dataset
@@ -698,15 +700,29 @@ def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None,
                             multifile=False, ncformat='NETCDF4', **kwargs)
   return dataset
 # wrapper
-def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varatts, **kwargs):
+def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varatts, lloadCRU=True, **kwargs):
   ''' Load a monthly time-series of pre-processed EC station data. '''
   if station is None: raise ArgumentError, "A 'filetype' needs to be specified ('ectemp' or 'ecprecip')."
   elif station in ('ectemp','ecprecip'):
     name = name or 'EC'  
     station = station[2:] # internal convention
   else: raise ArgumentError
-  return loadEC_TS(name=name, filetype=station, prov=prov, varlist=varlist, varatts=varatts, 
-                   filelist=None, folder=None, **kwargs) # just an alias
+  if varlist is not None: 
+    varlist = list(set(varlist).union(stn_params)) 
+  # load station data
+  dataset = loadEC_TS(name=name, filetype=station, prov=prov, varlist=varlist, varatts=varatts, 
+                      filelist=None, folder=None, **kwargs) # just an alias
+  # supplement with CRU gridded data, if necessary
+  if varlist and any(var not in dataset for var in varlist):
+    dataset.load() # not much data anyway..
+    crulist = [var for var in varlist if var not in dataset and var in CRU_vars]
+    if len(crulist) > 0:
+      cru = loadCRU_StnTS(station='ec'+station, varlist=crulist).load() # need to load for slicing
+      cru = cru(time=dataset.time.limits()) # slice to same length
+      dataset = dataset(time=cru.time.limits()) # slice to same length
+      for varname in crulist:
+        dataset += cru[varname] # add auxiliary variables 
+  return dataset
 
 ## load pre-processed EC station climatology
 def loadEC(): 
@@ -856,8 +872,8 @@ if __name__ == '__main__':
 #   mode = 'test_conversion'
 #   mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
-#   mode = 'test_timeseries'
-  mode = 'test_selection'
+  mode = 'test_timeseries'
+#   mode = 'test_selection'
   
   # test wrapper function to load time series data from EC stations
   if mode == 'test_selection':
@@ -907,18 +923,20 @@ if __name__ == '__main__':
     
     # load pre-processed time-series file
     print('')
-    dataset = loadEC_TS(filetype='temp', prov='PE').load()
-#     dataset = loadEC_StnTS(station='ecprecip', prov='BC').load()
+    lloadCRU = True
+#     dataset = loadEC_TS(filetype='temp', prov='PE').load()
+    dataset = loadEC_StnTS(station='ecprecip', varlist=['precip','T2'], lloadCRU=lloadCRU).load()
     print(dataset)
     print('')
-    print('ATHABASCA', dataset.station_name.findValue('ATHABASCA'))
+    print('ATHABASCA', dataset.station_name.findValues('ATHABASCA'))
     print('')
     print(dataset.time)
     print(dataset.time.coord)
     print(dataset.stn_begin_date.min())
-    origin = np.ceil(dataset.stn_begin_date.min()*(-1./12.))*12
-    print(dataset.time.coord[origin]) # Jan 1979, the origin of time...
-    assert dataset.time.coord[origin] == 0
+    if not lloadCRU:
+      origin = np.ceil(dataset.stn_begin_date.min()*(-1./12.))*12
+      print(dataset.time.coord[origin]) # Jan 1979, the origin of time...
+      assert dataset.time.coord[origin] == 0
     assert dataset.time.coord[0]%12. == 0
     assert (dataset.time.coord[-1]+1)%12. == 0
         
