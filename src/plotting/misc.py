@@ -121,11 +121,13 @@ def checkSample(varlist, varname=None, bins=None, support=None, method='pdf', li
   # N.B.: two-dmensional: sample axis and plot axis (but sample axis is not always required anymore)
   # if sample_axis is a list of axes, merge them
   if isinstance(sample_axis,(list,tuple)):
-    if not any(var.hasAxis(ax) for ax in sample_axis for var in varlist if var is not None):
+    if not any(var.hasAxis(sample_axis, lany=True) for var in varlist if var is not None):
       print sample_axis, [var.hasAxis(ax) for ax in sample_axis for var in varlist if var is not None]
       raise AxisError, "None of the Variables has any sample axes!"
-    varlist = [var.mergeAxes(axes=sample_axis, new_axis=temporary_sample_axis, asVar=True, lcheckAxis=False, 
-                             lvarall=False, ldsall=False) if var is not None else None for var in varlist]
+    for i,var in enumerate(varlist): # merge sample axes, so we can compute sample means (and skip/keep others)
+      if not (var is None or var.ndim == 1) and var.hasAxis(sample_axis, lany=True): 
+        varlist[i] = var.mergeAxes(axes=sample_axis, new_axis=temporary_sample_axis, asVar=True, 
+                                   lcheckAxis=False, lvarall=False, ldsall=False)
     # if lcheckAxis=False, the variable is replaced by None, if it doesn't have any sample axes
     sample_axis = temporary_sample_axis # avoid name collisions
   # check that at least some variables hve the (new) sample_axis
