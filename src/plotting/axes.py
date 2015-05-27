@@ -283,7 +283,7 @@ class MyAxes(Axes):
   
   def samplePlot(self, varlist, varname=None, bins=None, support=None, percentiles=(0.25,0.75),   
                  sample_axis=None, lmedian=None, median_fmt='', lmean=True, mean_fmt='', 
-                 bootstrap_axis=None, lrescale=False, scalefactor=1., offset=0., colors=None,
+                 bootstrap_axis=None, lrescale=False, scalefactor=1., offset=0., colors=None, color = None,
                  legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
                  flipxy=None, xlabel=True, ylabel=False, xticks=True, yticks=True, reset_color=None, 
                  xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False,
@@ -291,6 +291,8 @@ class MyAxes(Axes):
                  where=None, bandalpha=None, edgecolor=None, facecolor=None, bandarg=None, **plotargs):
     ''' A function to draw moments of a distribution/sample using line-styles and bands '''
     plts = None # avoid error if no plot
+    if color and not colors: colors = color
+    elif color and colors: raise ArgumentError
     # plot mean
     if lmean: 
       # don't overwrite varlist and sample_axis (yet)
@@ -314,7 +316,8 @@ class MyAxes(Axes):
       legend=False; llabel=False; labels=None; hline=None; vline=None 
       title=None; reset_color=False; lprint=False
       # get line colors to use in all subsequent plots 
-      colors = ['' if plt is None else plt.get_color() for plt in plts] # color argument has to be string
+      if colors is None:
+        colors = ['' if plt is None else plt.get_color() for plt in plts] # color argument has to be string
     # check and preprocess again, this time merge sample_axis with bootstrap_axis 
     varlist, sample_axis = checkSample(varlist, varname=varname, bins=bins, support=support, 
                                        method=method, lignore=lignore, sample_axis=sample_axis, 
@@ -346,7 +349,8 @@ class MyAxes(Axes):
                                 plotatts=plotatts, expand_list=expand_list, lproduct=lproduct, **plotargs)
         if not lmean:
           plts = tmpplts
-          colors = ['' if plt is None else plt.get_color() for plt in plts] # color argument has to be string
+          if colors is None:
+            colors = ['' if plt is None else plt.get_color() for plt in plts] # color argument has to be string
       # percentile band
       if len(percentiles) > 1:
         upslc = dict(percentile=2 if lmedian else 1, lidx=True)
@@ -411,7 +415,9 @@ class MyAxes(Axes):
                          expand_list=expand_list, lproduct=lproduct, **plotargs)
     assert len(plts) == len(varlist)    
     # get line colors to use in all subsequent plots 
-    colors = ['' if plt is None else plt.get_color() for plt in plts] # color argument has to be string
+    if 'color' in plotargs: colors = plotargs.pop('color')
+    if 'colors' in plotargs: colors = plotargs.pop('colors')
+    else: colors = ['' if plt is None else plt.get_color() for plt in plts] # color argument has to be string
     # remove variables that don't have the sample axis (replace with None)
     varlist = [None if var is None or not var.hasAxis(bootstrap_axis) else var for var in varlist]
     if mean_fmt == '': mean_fmt = '--'
@@ -429,9 +435,10 @@ class MyAxes(Axes):
     return plts
   
   def histogram(self, varlist, varname=None, bins=None, binedgs=None, histtype='bar', lstacked=False, 
-                lnormalize=True, lcumulative=0, legend=None, llabel=True, labels=None, colors=None, 
-                align='mid', rwidth=None, bottom=None, weights=None, xlabel=True, ylabel=True, lignore=False,  
-                xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=True, lflatten=True,
+                lnormalize=True, lcumulative=0, legend=None, llabel=True, labels=None, lflatten=True,
+                colors=None, color=None, align='mid', rwidth=None, bottom=None, weights=None, 
+                xlabel=True, ylabel=True, lignore=False,  
+                xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=True, 
                 flipxy=None, log=False, xlim=None, ylim=None, lprint=False, plotatts=None, **histargs):
     ''' A function to draw histograms of a list of 1D variables into an axes, 
         and annotate the plot based on variable properties. '''
@@ -454,11 +461,15 @@ class MyAxes(Axes):
     else: self.set_color_cycle(reset_color)
     # figure out label list
     if labels is None: labels = self._getPlotLabels(varlist)           
-    elif len(labels) != len(varlist): raise ArgumentError, "Incompatible length of varlist and labels."
+    elif len(labels) != len(varlist): 
+      print labels, varlist
+      raise ArgumentError, "Incompatible length of varlist and labels. "
     assert len(labels) == len(varlist)
     # loop over variables
     for label,var in zip(labels,varlist): self.variables[label] = var # save plot variables
     # generate a list from userdefined colors
+    if color and not colors: colors = color
+    elif color and colors: raise ArgumentError
     if isinstance(colors,(tuple,list)): 
       if not all([isinstance(color,(basestring,NoneType)) for color in colors]): raise TypeError
       if len(varlist) != len(colors): raise ListError, "Failed to match linestyles to varlist!"

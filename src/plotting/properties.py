@@ -280,6 +280,18 @@ tmp = PlotAtts(name = 'CDD', title = 'Consecutive Dry Days',
 # add to collection
 variablePlotatts['CDD'] = tmp
 
+## Consecutive Net Wet Days
+tmp = PlotAtts(name = 'CNWD', title = 'Consecutive Net Wet Days', 
+               units = 'days', scalefactor = 1.)
+# add to collection
+variablePlotatts['CNWD'] = tmp
+
+## Consecutive Dry Days
+tmp = PlotAtts(name = 'CNDD', title = 'Consecutive Net Dry Days', 
+               units = 'days', scalefactor = 1.)
+# add to collection
+variablePlotatts['CNDD'] = tmp
+
 ## Surface Sensible Heat Flux
 tmp = PlotAtts(name = r'$Q_s$', title = 'Surface Heat Flux', 
                units = r'$W/m^2$', scalefactor = 1.)
