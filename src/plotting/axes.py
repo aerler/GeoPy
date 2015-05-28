@@ -167,8 +167,10 @@ class MyAxes(Axes):
     ## format axes and add annotation
     # set axes labels  
     if not lrescale: # don't reset name/units when variables were rescaled to existing axes
-      if self.flipxy: self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
-      else: self.xname,self.xunits,self.yname,self.yunits = axname,axunits,varname,varunits
+      if self.flipxy: self.xname,self.xunits = varname,varunits,axname,axunits
+      else: self.yname,self.yunits = varname,varunits
+    if self.flipxy: self.yname,self.yunits = axname,axunits # always set axis units
+    else: self.xname,self.xunits = axname,axunits
     # apply standard formatting and annotation
     self.formatAxesAndAnnotation(title=title, legend=legend, xlabel=xlabel, ylabel=ylabel, 
                                  hline=hline, vline=vline, xlim=xlim, xlog=xlog, xticks=xticks, 
@@ -603,7 +605,7 @@ class MyAxes(Axes):
       for tick in ax.get_ticklabels(): tick.set_visible(False)
     pax.set_xticks([])
     # copy some settings
-    
+    if self.get_yscale() == 'log': pax.set_yscale('log')
     # add positioning parameters
     pax.n = 0; pax.N = 0; pax.offset = offset
     # return parasite axes
@@ -752,7 +754,9 @@ class MyAxes(Axes):
     ## format axes
     # set plot scale (log/linear)
     if xlog is not None: self.set_xscale('log' if xlog else 'linear')
-    if ylog is not None: self.set_yscale('log' if ylog else 'linear')
+    if ylog is not None: 
+      self.set_yscale('log' if ylog else 'linear')
+      if self.parasite_axes is not None: self.parasite_axes.set_yscale('log' if ylog else 'linear')
     # set axes limits
     if isinstance(xlim,(list,tuple)) and len(xlim)==2: self.set_xlim(*xlim)
     elif xlim is not None: raise TypeError
@@ -868,8 +872,10 @@ class MyAxes(Axes):
     if nmaj > 0:
 #       nmin = min(50//nmaj,n//nmaj+1) # number of sub-divisions == number of ticks +1
 #       axis.set_minor_locator(mpl.ticker.AutoMinorLocator(nmin))
-      axis.set_minor_locator(mpl.ticker.AutoMinorLocator())
       #axis.set_minor_locator(mpl.ticker.MaxNLocator(nbins=nmin, integer=True))
+      if axis.get_scale() == 'log':
+        axis.set_minor_locator(mpl.ticker.LogLocator())
+      else: axis.set_minor_locator(mpl.ticker.AutoMinorLocator())
   def _tickLabels(self, ticks, axis):
     ''' helper method to format axes ticks '''
     if ticks is True: 
