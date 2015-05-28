@@ -18,7 +18,8 @@ from collections import OrderedDict
 from datasets.CRU import loadCRU_StnTS
 from datasets.common import days_per_month, data_root, selectElements, translateVarNames
 from datasets.common import CRU_vars, stn_params
-from geodata.misc import ParseError, DateError, VariableError, ArgumentError, DatasetError
+from geodata.misc import ParseError, DateError, VariableError, ArgumentError, DatasetError,\
+  AxisError
 from geodata.misc import RecordClass, StrictRecordClass, isNumber, isInt 
 from geodata.base import Axis, Variable, Dataset
 from utils.nctools import writeNetCDF
@@ -710,18 +711,28 @@ def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varat
   if varlist is not None: 
     varlist = list(set(varlist).union(stn_params)) 
   # load station data
+  #print varlist  
   dataset = loadEC_TS(name=name, filetype=station, prov=prov, varlist=varlist, varatts=varatts, 
                       filelist=None, folder=None, **kwargs) # just an alias
+  # make sure we have a time-dependent variable
+  if not dataset.hasAxis('time'):  
+    #raise DatasetError, "No time-dependent variables in Dataset:\n{:s}".format(str(dataset)) # error, if no time-dependent variable
+    dataset = loadEC_TS(name=name, filetype=station, prov=prov, varlist=stn_params+['precip','T2'], 
+                        varatts=varatts, filelist=None, folder=None, **kwargs) # just an alias
   # supplement with CRU gridded data, if necessary
   if varlist and any(var not in dataset for var in varlist):
     dataset.load() # not much data anyway..
     crulist = [var for var in varlist if var not in dataset and var in CRU_vars]
+    #print crulist
     if len(crulist) > 0:
       cru = loadCRU_StnTS(station='ec'+station, varlist=crulist).load() # need to load for slicing
-      cru = cru(time=dataset.time.limits()) # slice to same length
-      dataset = dataset(time=cru.time.limits()) # slice to same length
-      for varname in crulist:
-        dataset += cru[varname] # add auxiliary variables 
+      if cru.hasAxis('time'): # skip, if no time-dependent variable
+        #print dataset
+        cru = cru(time=dataset.time.limits()) # slice to same length
+        dataset = dataset(time=cru.time.limits()) # slice to same length
+        for varname in crulist:
+          dataset += cru[varname] # add auxiliary variables
+      else: raise AxisError, "Time-dependent variables not found in fall-bak dataset (CRU)."
   return dataset
 
 ## load pre-processed EC station climatology
