@@ -230,7 +230,9 @@ class Srfc(FileType):
                      #WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
                      #WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
                      #WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)                     MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
+                     MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
                      MaxRAINC     = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # maximum 6-hourly convective precip
+                     MaxRAINNC    = dict(name='MaxPrecnc_6h', units='kg/m^2/s'), # maximum 6-hourly non-convective precip
                      MaxPrecip    = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # for short-term consistency                    
                      MaxPreccu    = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # for short-term consistency
                      MaxPrecnc    = dict(name='MaxPrecnc_6h', units='kg/m^2/s'), # for short-term consistency
@@ -839,8 +841,8 @@ if __name__ == '__main__':
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
-#   mode = 'test_point_timeseries'
-  mode = 'test_point_ensemble'
+  mode = 'test_point_timeseries'
+#   mode = 'test_point_ensemble'
 #   mode = 'pickle_grid'  
 #   pntset = 'shpavg'
   pntset = 'ecprecip'
@@ -973,8 +975,9 @@ if __name__ == '__main__':
       dataset = loadWRF_ShpTS(experiment='max-ctrl', domains=None, varlist=['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
                               shape=pntset, filetypes=['hydro'])
     else:
-      dataset = loadWRF_StnTS(experiment='max-ens-A', domains=None, varlist=['zs','stn_zs','precip','MaxPrecip_6h','MaxPreccu_1h','MaxPrecip_1d'], 
-                        station=pntset, filetypes=['srfc','xtrm'])
+      dataset = loadWRF_StnTS(experiment='max-ens-A', domains=None, varlist=['zs','stn_zs','MaxPrecip_6h'],
+#                               varlist=['zs','stn_zs','precip','MaxPrecip_6h','MaxPreccu_1h','MaxPrecip_1d'], 
+                              station=pntset, filetypes=['srfc'])
       zs_err = dataset.zs.getArray() - dataset.stn_zs.getArray()
       print(zs_err.min(),zs_err.mean(),zs_err.std(),zs_err.max())
     print('')
@@ -993,8 +996,8 @@ if __name__ == '__main__':
       dataset = loadWRF_ShpEns(ensemble='max-ens-2050', shape=pntset, varlist=None, domains=None, 
                                filetypes=['hydro',], lensembleAxis=lensembleAxis)
     else:
-      dataset = loadWRF_StnEns(ensemble='max-ens-2100', station=pntset, domains=None, 
-                               filetypes=['hydro','srfc'], lensembleAxis=lensembleAxis)
+      dataset = loadWRF_StnEns(ensemble='max-ens-2100', station=pntset, lensembleAxis=lensembleAxis,  
+                               varlist=['MaxPrecip_6h'], filetypes=['srfc'])
     assert not lensembleAxis or dataset.hasAxis('ensemble')
     dataset.load()
     print('')
@@ -1002,8 +1005,8 @@ if __name__ == '__main__':
 #     print('')
 #     print(dataset.precip.mean())
 #     print(dataset.MaxPrecip_1d.mean())
-    print('')
-    print('')
-    print(dataset.time)
-    print(dataset.time.coord)
+#     print('')
+#     print('')
+#     print(dataset.time)
+#     print(dataset.time.coord)
   

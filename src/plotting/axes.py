@@ -167,7 +167,7 @@ class MyAxes(Axes):
     ## format axes and add annotation
     # set axes labels  
     if not lrescale: # don't reset name/units when variables were rescaled to existing axes
-      if self.flipxy: self.xname,self.xunits = varname,varunits,axname,axunits
+      if self.flipxy: self.xname,self.xunits = varname,varunits
       else: self.yname,self.yunits = varname,varunits
     if self.flipxy: self.yname,self.yunits = axname,axunits # always set axis units
     else: self.xname,self.xunits = axname,axunits
