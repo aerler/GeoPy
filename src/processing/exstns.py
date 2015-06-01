@@ -179,7 +179,7 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    NP = 4 ; ldebug = False # for quick computations
+    NP = 2 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = False # just for tests
 #     modes = ('climatology',) # 'climatology','time-series'
     modes = ('time-series',) # 'climatology','time-series'
@@ -219,16 +219,16 @@ if __name__ == '__main__':
 #     WRF_experiments += ['marc-m','marc-mm', 'marc-t','marc-m-2050','marc-mm-2050', 'marc-t-2050']
     WRF_experiments += ['erai']
 #     WRF_experiments += ['max-kf']
-#     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
-#     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        
+    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        
 #     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...
     # other WRF parameters 
     domains = None # domains to be processed
-#     domains = (2,) # domains to be processed
+    domains = (2,) # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-    WRF_filetypes = ('hydro',)
+    WRF_filetypes = ('lsm',)
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
     #WRF_filetypes = ('const',); periods = None
     # station datasets to match    
