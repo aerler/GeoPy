@@ -558,10 +558,10 @@ def getPlotAtts(name=None, units=None, atts=None, plot=None, plotatts_dict=None)
   if units is not None: pass 
   elif atts is not None and 'units' in atts: units = atts['units']  
   else: raise ArgumentError
-  if not isinstance(atts,(dict,NoneType)): raise TypeError
-  if not isinstance(plot,(dict,PlotAtts,NoneType)): raise TypeError
+  if not isinstance(atts,(dict,NoneType)): raise TypeError, atts
+  if not isinstance(plot,(dict,PlotAtts,NoneType)): raise TypeError, plot
   plotatts_dict = plotatts_dict or variablePlotatts
-  if not isinstance(plotatts_dict,dict): raise TypeError
+  if not isinstance(plotatts_dict,dict): raise TypeError, plotatts_dict
   # find variable in plotatts_dict (based on name)
   prefix = postfix = ''
   basename = name

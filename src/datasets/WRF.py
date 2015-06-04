@@ -230,6 +230,9 @@ class Srfc(FileType):
                      #WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
                      #WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
                      #WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)                     MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
+                     MaxACSNOW    = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # maximum daily precip
+                     MaxACSNOW_1d = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # maximum daily precip                             
+                     MaxACSNOW_5d = dict(name='MaxSolprec_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
                      MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
                      MaxRAINC     = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # maximum 6-hourly convective precip
                      MaxRAINNC    = dict(name='MaxPrecnc_6h', units='kg/m^2/s'), # maximum 6-hourly non-convective precip
@@ -277,10 +280,12 @@ class Hydro(FileType):
                      MaxPreccu    = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # for short-term consistency
                      MaxRAIN      = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
                      MaxRAIN_5d   = dict(name='MaxPrecip_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
+                     MaxACSNOW    = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # maximum daily precip
+                     MaxACSNOW_5d = dict(name='MaxSolprec_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
                      MaxRAINC     = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # maximum daily convective precip
                      MaxRAINNC    = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # maximum daily non-convective precip
-                     MaxACSNOW    = dict(name='MaxSnow_1d', units='kg/m^2/s'), # maximum daily snow fall
-                     MaxACSNOW_5d = dict(name='MaxSnow_5d', units='kg/m^2/s'), # maximum pendat (5 day) snow
+                     #MaxACSNOW    = dict(name='MaxSnow_1d', units='kg/m^2/s'), # maximum daily snow fall
+                     #MaxACSNOW_5d = dict(name='MaxSnow_5d', units='kg/m^2/s'), # maximum pendat (5 day) snow
                      MaxPrecip_1d = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
                      MaxPreccu_1d = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # for short-term consistency
                      MaxPrecnc_1d = dict(name='MaxPrecnc_1d', units='kg/m^2/s'),) # for short-term consistency                     

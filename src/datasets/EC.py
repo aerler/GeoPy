@@ -52,14 +52,13 @@ varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Aver
                MaxPrecip  = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency 
                MinPrecip  = dict(name='MinPrecip_1d', units='kg/m^2/s'), # for short-term consistency
                solprec    = dict(name='solprec', units='kg/m^2/s', atts=dict(long_name='Solid Precipitation')), # solid precipitation
-               MaxSolprec = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # for short-term consistency
+                MaxSolprec = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # for short-term consistency
+#                MaxSolprec = dict(name='MaxSnow_1d', units='kg/m^2/s'), # for short-term consistency
+#                MaxSolprec_5d = dict(name='MaxSnow_5d', units='kg/m^2/s'), # for short-term consistency
                MinSolprec = dict(name='MinSolprec_1d', units='kg/m^2/s'), # for short-term consistency
                liqprec    = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
                MaxLiqprec = dict(name='MaxLiqprec_1d', units='kg/m^2/s'), # for short-term consistency
                MinLiqprec = dict(name='MinLiqprec_1d', units='kg/m^2/s'), # for short-term consistency
-               #WetDays    = dict(name='wetfrq', units=''), # fraction of wet/rainy days
-               #WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
-               #WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)
                # meta/constant data variables
                # N.B.: 'stn'/'station' prefix is to allow consistent naming and avoid name collisions with variables in other datasets
                name    = dict(name='station_name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
@@ -936,7 +935,7 @@ if __name__ == '__main__':
     print('')
     lloadCRU = True
 #     dataset = loadEC_TS(filetype='temp', prov='PE').load()
-    dataset = loadEC_StnTS(station='ecprecip', varlist=['precip','T2'], lloadCRU=lloadCRU).load()
+    dataset = loadEC_StnTS(station='ecprecip', varlist=['MaxSnow_1d','MaxSnow_5d','T2'], lloadCRU=lloadCRU).load()
     print(dataset)
     print('')
     print('ATHABASCA', dataset.station_name.findValues('ATHABASCA'))
