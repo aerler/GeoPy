@@ -129,7 +129,7 @@ class ReduceVar(object): # not a Variable child!!!
     ''' Save original operation. '''
     self.reduceop = reduceop
   def __call__(self, var, asVar=None, axis=None, axes=None, lcheckVar=True, lcheckAxis=True,
-                          fillValue=None, **kwaxes):
+                          fillValue=None, lrecursive=False, lall=True, **kwaxes):
     ''' Figure out axes, perform sanity checks, then execute operation, and return result as a Variable 
         instance. Axes are specified either in a list ('axes') or as keyword arguments with corresponding
         slices. '''
@@ -142,8 +142,15 @@ class ReduceVar(object): # not a Variable child!!!
     for key,value in kwaxes.iteritems():
       if var.hasAxis(key): slcaxes[key] = value # use for slicing axes
       else: kwargs[key] = value # pass this to reduction operator
+    if len(slcaxes) > 0:
+      if axes is None:
+        axes = set()
+        if axis is not None:
+          if axis not in axes: axes.add(axis)
+          axis = None
+      axes =axes.union(slcaxes.keys())
     # take shortcut?
-    if axis is None and axes is None and len(slcaxes) == 0:
+    if axis is None and axes is None:
       # simple and quick, less overhead
       if not var.data: var.load()
       # remove mask, if fill value is given (some operations don't work with masked arrays)
@@ -160,39 +167,61 @@ class ReduceVar(object): # not a Variable child!!!
       if axis is not None and axes is not None: 
         raise ArgumentError
       elif axis is not None: 
-        if axis not in slcaxes: slcaxes[axis] = None
+        axes = [axis]
         if not var.hasAxis(axis): 
-          if lcheckAxis: raise AxisError
-          else: return None  
+          if lcheckAxis: raise AxisError, axis
+          else: return None # nothing to do
       elif axes is not None: 
-        for ax in axes: 
-          if ax not in slcaxes: slcaxes[ax] = None
-          if not var.hasAxis(ax): 
-            if lcheckAxis: raise AxisError
-            else: return None
+        if lcheckAxis:
+          for ax in axes: 
+            if not var.hasAxis(ax): raise AxisError, ax 
+        else:
+          if not var.hasAxis(axes, lany=not lall, lall=lall):
+            return None # nothing to do
+            # if not lrecursive, missing axes will be skipped 
       # N.B.: leave checking of slices to var.__call__ (below)
-      # order axes and get indices
-      axlist = [ax.name for ax in var.axes if ax.name in slcaxes]
       ## get data from Variable  
       # use overloaded call method to index with coordinate values directly 
-      data = var.__call__(asVar=False, **slcaxes)
+      if slcaxes: var = var(asVar=True, **slcaxes)
       # N.B.: call can also accept index values and slices (set options accordingly!)
-      # remove mask, if fill value is given (some operations don't work with masked arrays)
-      if fillValue is not None and var.masked: data = data.filled(fillValue)
-      ## compute reduction
-      axlist.reverse() # start from the back  
-      name = var.name; units = var.units # defaults, in case axlist is empty...    
-      for axis in axlist:
-        # apply reduction operation with axis argument, looping over axes
-        data, name, units = self.reduceop(var, data, axidx=var.axisIndex(axis), **kwargs)
+      # apply reduction operation over axes 
+      if lrecursive: # legacy mode
+        # remove mask, if fill value is given (some operations don't work with masked arrays)
+        #if fillValue is not None and var.masked: data = data.filled(fillValue)
+        data = var.getArray(unmask= not fillValue is None, fillValue=fillValue)
+        ## compute reduction
+        # get proper order of axes
+        axlist = [ax.name for ax in var.axes if ax.name in axes]
+        axlist.reverse() # start from the back  
+        name = var.name; units = var.units # defaults, in case axlist is empty...    
+        for axis in axlist:
+          # apply reduction operation with axis argument, looping over axes
+          data, name, units = self.reduceop(var, data, axidx=var.axisIndex(axis), **kwargs)
+      else:
+        if len(axes) > 1:
+          # merge axes
+          sample_axis = 'internal_reduction_axis'
+          tmp = var.mergeAxes(axes=axes, new_axis=sample_axis, asVar=True, linplace=False, 
+                              lcheckAxis=lcheckAxis, lvarall=lall)
+          axes = [sample_axis] # from now on...
+          if tmp is None: raise AssertionError, var
+          else: var = tmp
+          data = var.getArray(unmask= not fillValue is None, fillValue=fillValue)
+          # apply reduction operation over merged axes
+          data, name, units = self.reduceop(var, data, axidx=var.axisIndex(sample_axis), **kwargs)
+        else:
+          # apply reduction operation over axis
+          data = var.getArray(unmask= not fillValue is None, fillValue=fillValue)
+          data, name, units = self.reduceop(var, data, axidx=var.axisIndex(tuple(axes)[0]), **kwargs)
       # squeeze removed dimension (but no other!)
-      newshape = [len(ax) for ax in var.axes if not ax.name in axlist]
+      newshape = [len(ax) for ax in var.axes if not ax.name in axes]
+      #print data.shape, newshape
       data = data.reshape(newshape)
-      # whether or not to cast as Variable (default: Yes)
-      if asVar is None: asVar = True # default for iterative reduction
-      if asVar: newaxes = [ax for ax in var.axes if not ax.name in axlist] 
-    # N.B.: other singleton dimensions will have been removed, too
+      # N.B.: other singleton dimensions will have been removed, too
     ## cast into Variable
+    # whether or not to cast as Variable (default: Yes)
+    if asVar is None: asVar = True # default for iterative reduction
+    if asVar: newaxes = [ax for ax in var.axes if not ax.name in axes]
     if asVar: 
       redvar = var.copy(name=name, units=units, axes=newaxes, data=data)
 #       redvar = Variable(name=var.name, units=var.units, axes=newaxes, data=data, 
@@ -1653,13 +1682,15 @@ class Variable(object):
         else:
           if not isinstance(caxis, Axis): raise TypeError, caxis 
           if len(caxis) != 12: raise Axis, caxis
-        if not saxis:
+        if saxis is None or isinstance(saxis,basestring):
           # create new sample axis (yearly)
           satts = self.time.atts.copy()
-          satts['name'] = 'sample'; satts['units'] = 'year' # defaults
+          satts['name'] = saxis if isinstance(saxis,basestring) else 'sample'
+          satts['units'] = 'year' # defaults
           if saxatts is not None: satts.update(saxatts) 
           scoord = np.arange(tcoord[0]//12,tcoord[0]//12+slen)
           saxis = time.copy(coord=scoord, atts=satts)
+        elif not isinstance(saxis,Axis): raise TypeError, saxis
         # insert new axes
         axes = self.axes[:itime]+(saxis,caxis)+self.axes[itime+1:]
         # create new variable or modify old one in-place

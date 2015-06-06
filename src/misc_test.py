@@ -321,7 +321,7 @@ if __name__ == "__main__":
 #     specific_tests += ['ApplyAlongAxis']
 #     specific_tests += ['AsyncPool']    
 #     specific_tests += ['ExpArgList']
-#     specific_tests += ['LoadDataset']
+    specific_tests += ['LoadDataset']
 #     specific_tests += ['BasicLoadEnsembleTS']
 #     specific_tests += ['AdvancedLoadEnsembleTS']
 #     specific_tests += ['LoadStandardDeviation']

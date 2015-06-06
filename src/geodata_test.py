@@ -549,7 +549,7 @@ class BaseVarTest(unittest.TestCase):
              data.std() >= var.sem() >= np.sqrt(data.var()/data.size) )
     assert isEqual(nf.nanmax(data), var.max())
 #     assert isEqual(np.nanmin(self.data), var.min())
-    assert isEqual(nf.nanmean(data,axis=var.axisIndex(t.name)), var.mean(**{t.name:None}).getArray())
+    assert isEqual(nf.nanmean(data,axis=var.axisIndex(t.name)), var.mean(lrecursive=False, **{t.name:None}).getArray())
 #     assert isEqual(np.nanstd(self.data, axis=var.axisIndex(t.name),ddof=3), var.std(ddof=3, **{t.name:None}).getArray())
     varvar = var.var(ddof=3, **{t.name:None})
     assert varvar.units == '({:s})^2'.format(var.units) # check units!
@@ -1623,13 +1623,13 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
+#     tests += ['BaseVar'] 
     tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()

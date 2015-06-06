@@ -707,7 +707,9 @@ def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varat
     name = name or 'EC'  
     station = station[2:] # internal convention
   else: raise ArgumentError
+  
   if varlist is not None: 
+    if isinstance(varlist,basestring): varlist = [varlist]
     varlist = list(set(varlist).union(stn_params)) 
   # load station data
   #print varlist  
