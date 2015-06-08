@@ -718,8 +718,9 @@ def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varat
   # make sure we have a time-dependent variable
   if not dataset.hasAxis('time'):  
     #raise DatasetError, "No time-dependent variables in Dataset:\n{:s}".format(str(dataset)) # error, if no time-dependent variable
-    dataset = loadEC_TS(name=name, filetype=station, prov=prov, varlist=stn_params+['precip','T2'], 
+    dataset = loadEC_TS(name=name, filetype=station, prov=prov, varlist=varlist+['precip','T2'], 
                         varatts=varatts, filelist=None, folder=None, **kwargs) # just an alias
+    # N.B.: for some operations we need a time axis...
   # supplement with CRU gridded data, if necessary
   if varlist and any(var not in dataset for var in varlist):
     dataset.load() # not much data anyway..

@@ -96,7 +96,7 @@ if __name__ == '__main__':
 #   variables += ['Tmin', 'Tmax']
 #   variables += ['MaxPrecip_1d']; aggregation = 'mean'
   variables += ['MaxPrecip_1d']; aggregation = 'max'
-  variables += ['MaxPreccu_1d']; aggregation = 'max'
+#   variables += ['MaxPreccu_1d']; aggregation = 'max'
 #   variables += ['MaxPrecnc_1d']; aggregation = 'max'
 #   variables += ['wetprec']
 #   variables += ['precip']
@@ -204,7 +204,7 @@ if __name__ == '__main__':
   exptitles = ['{:s}, {:s}'.format(season.title(),prdstr) for season in seasons[0][::2] for prdstr in periodstrs]
   maptype = 'lcc-bcab'; lstations = True; stations = 'EC'; 
   lbasins = True; lsamesize = False; basinlist = ['FRB','ARB']
-  lprovinces = True; provlist = ['BC','AB']
+  lprovinces = True; provlist = ['BC','AB'][1:]
   lfrac = True; refprd = H15
 
 # surface sensitivity test
@@ -665,13 +665,13 @@ if __name__ == '__main__':
               # loop over points
               for lon,lat,zerr,cln in zip(ecstns.stn_lon, ecstns.stn_lat, wrfstns.zs_err, ecstns.cluster_projection):
                 xx,yy = bmap(lon, lat)
-                if zerr <= 300 and cln==1: bmap.plot(xx,yy,'^', markersize=4, mfc='none', mec='k')
+                if zerr <= 300 and cln==2: bmap.plot(xx,yy,'^', markersize=4, mfc='none', mec='k')
                 elif zerr <= 300 and cln==6: bmap.plot(xx,yy,'d', markersize=4, mfc='none', mec='k')
                 elif zerr <= 300 and cln==8: bmap.plot(xx,yy,'s', markersize=4, mfc='none', mec='k')
                 #else: bmap.plot(xx,yy,'x', markersize=4, mfc='none', mec='k')
             else: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
           # add basin outlines
-          shpargs = dict(linewidth = 0.75, color='k') 
+          shpargs = dict(linewidth = 0.5, color='k') 
           if lbasins:
             for basin in basinlist:      
               basininfo = basins_info[basin]
@@ -684,10 +684,11 @@ if __name__ == '__main__':
                                    drawbounds=True, **shpargs)            
           # add certain provinces
           if lprovinces: 
-            for province in provlist:      
-                provinfo = province_info[province]
-                bmap.readshapefile(provinfo.shapefiles[provinfo.long_name][:-4], province, 
-                                   drawbounds=True, **shpargs)            
+            for province in provlist:  
+              print province    
+              provinfo = province_info[province]
+              bmap.readshapefile(provinfo.shapefiles[provinfo.long_name][:-4], province, 
+                                 drawbounds=True, **shpargs)            
 
       # save figure to disk
       if lprint:
