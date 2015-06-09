@@ -116,6 +116,8 @@ experiments['max-lowres'] = Exp(shortname='lowres', name='max-lowres', title='Ma
 experiments['max-diff'] = Exp(shortname='diff', name='max-diff', title='Max-1 (diff)', begindate='1979-01-01', grid='arb2')
 experiments['max-clm'] = Exp(shortname='max-clm', name='max-clm', title='Max-1 (CLM)', begindate='1979-01-01', grid='arb2')
 experiments['max-kf'] = Exp(shortname='max-kf', name='max-kf', title='Max-1 (KF)', begindate='1979-01-01', grid='arb2')
+experiments['max-kf-2050'] = Exp(shortname='max-kf-2050', name='max-kf-2050', title='Max-1 (KF, 2050)', begindate='2045-01-01', grid='arb2')
+experiments['max-kf-2100'] = Exp(shortname='max-kf-2100', name='max-kf-2100', title='Max-1 (KF, 2100)', begindate='2085-01-01', grid='arb2')
 experiments['max-nosub'] = Exp(shortname='nosub', name='max-nosub', title='Max-1 (nosub)', begindate='1979-01-01', grid='arb2')
 experiments['max-nosc'] = Exp(shortname='nosc', name='max-nosc', title='Max-1 (nosc)', begindate='1979-01-01', grid='arb2')
 experiments['max-noflake'] = Exp(shortname='noflake', name='max-noflake', title='Max-1 (no Flake)', begindate='1979-01-01', grid='arb2')
