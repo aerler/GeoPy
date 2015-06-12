@@ -177,7 +177,8 @@ class VarNC(Variable):
         if ncvar.shape[-1] != dtype.itemsize: raise AxisError, ncvar
         assert strlen == dtype.itemsize
       elif slices is not None: 
-        if ncvar.ndim != len(slices): raise AxisError, ncvar
+        if not squeeze and ncvar.ndim != len(slices): raise AxisError, (slices,ncvar)
+        elif squeeze and len([l for l in ncvar.shape if l > 1]) != len(slices): raise AxisError, (slices,ncvar)
       else:
         axshape = tuple(ax._len for ax in axes)
         # N.B.: Because this constructor is also used in Axis initialization, and the axis of an Axis 
@@ -287,7 +288,7 @@ class VarNC(Variable):
       # figure out slices
       
       # create new VarNC instance with different slices
-      newvar = asVarNC(newvar, self.ncvar, mode=self.mode, axes=axes, slices=slcs,
+      newvar = asVarNC(newvar, self.ncvar, mode=self.mode, axes=axes, slices=slcs, squeeze=lsqueeze,
                        scalefactor=self.scalefactor, offset=self.offset, transform=self.transform)
     # N.B.: the copy method can also cast as VarNC and it is called in __call__; however, __call__
     #       can not communicate slices correctly, so that casting as VarNC has to happen here

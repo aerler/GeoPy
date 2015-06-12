@@ -423,7 +423,8 @@ class MyAxes(Axes):
     # remove variables that don't have the sample axis (replace with None)
     varlist = [None if var is None or not var.hasAxis(bootstrap_axis) else var for var in varlist]
     if mean_fmt == '': mean_fmt = '--'
-    if median_fmt == '': median_fmt = '-.' if lmean else '--' 
+    if median_fmt == '': median_fmt = '-.' if lmean else '--'
+    lmedian = False if lmedian is None else lmedian 
     # add sample moments along bootstrap axis
     self.samplePlot(varlist, percentiles=percentiles, sample_axis=bootstrap_axis, lmedian=lmedian, 
                     median_fmt=median_fmt, lmean=lmean, mean_fmt=mean_fmt, lrescale=lrescale, 
