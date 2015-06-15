@@ -635,7 +635,8 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   # apply general reduction operations
   if reduction is not None:
     for ax,op in reduction.iteritems():
-      ensemble = getattr(ensemble,op)(axis=ax)
+      if isinstance(op, basestring): ensemble = getattr(ensemble,op)(axis=ax)
+      elif isinstance(op, (int,np.integer,float,np.inexact)): ensemble = ensemble(**{ax:op})
   # extract seasonal/climatological values/extrema
   # N.B.: the operations below should work with Ensembles as well as Datasets 
   if aggregation:

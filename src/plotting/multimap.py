@@ -80,12 +80,12 @@ if __name__ == '__main__':
   variable_settings = None
   season_settings = None
   aggregation = 'mean'
-  level_agg = dict(p=1,s='mean')
+  level_agg = dict(p=1,s='mean',soil_layers_stag='mean')
     
   # WRF file types
   WRFfiletypes = [] # WRF data source
-  WRFfiletypes += ['hydro']
-#   WRFfiletypes += ['lsm']
+#   WRFfiletypes += ['hydro']
+  WRFfiletypes += ['lsm']
 #   WRFfiletypes += ['srfc']
 #   WRFfiletypes += ['xtrm']
 #   WRFfiletypes += ['plev3d']
@@ -95,7 +95,7 @@ if __name__ == '__main__':
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
 #   variables += ['MaxPrecip_1d']; aggregation = 'mean'
-  variables += ['MaxPrecip_1d']; aggregation = 'max'
+#   variables += ['MaxPrecip_1d']; aggregation = 'max'
 #   variables += ['MaxPreccu_1d']; aggregation = 'max'
 #   variables += ['MaxPrecnc_1d']; aggregation = 'max'
 #   variables += ['wetprec']
@@ -116,6 +116,7 @@ if __name__ == '__main__':
 #  variables += ['sfroff']
 #  variables += ['ugroff']
 #   variables += ['snwmlt']
+  variables += ['aSM']
 #   variables += ['snow']
 #   variables += ['snowh']
 #   variables += ['GLW','OLR','qtfx']
@@ -130,7 +131,7 @@ if __name__ == '__main__':
 #   seasons += ['melt']
 #   seasons += ['annual']
   seasons += ['summer']
-  seasons += ['winter']
+#   seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
@@ -684,8 +685,7 @@ if __name__ == '__main__':
                                    drawbounds=True, **shpargs)            
           # add certain provinces
           if lprovinces: 
-            for province in provlist:  
-              print province    
+            for province in provlist:    
               provinfo = province_info[province]
               bmap.readshapefile(provinfo.shapefiles[provinfo.long_name][:-4], province, 
                                  drawbounds=True, **shpargs)            
