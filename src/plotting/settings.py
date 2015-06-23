@@ -49,6 +49,8 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(-1,1,41); clbl = '%3.2f' # mm/day  
     elif var == 'zs':
       clevs = np.linspace(-0.5,0.5,21); clbl = '%3.1f' # mm/day
+    elif var in ('RH',):
+      clevs = np.linspace(-15,15,31); clbl = '%2.0f' # percent points
     else: 
       raise VariableError, 'No settings found for differencing variable \'{0:s}\' found!'.format(var)
   elif lfrac:
@@ -62,7 +64,7 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
     elif var in ('evap','pet','p-et','precip','precipc','precipnc','waterflx',):
 #       clevs = np.linspace(-100,100,41); clbl = '%2.0f'  
       clevs = np.linspace(-50,50,41); clbl = '%2.0f'
-    elif var in ('WaterTransport_U','WaterTransport_V'):
+    elif var in ('WaterTransport_U','WaterTransport_V','ColumnWater','cqwu','cqwv','cqw'):
       clevs = np.linspace(-50,50,41); clbl = '%2.0f'
     else: 
       clevs = np.linspace(-50,50,21); clbl = '%2.0f'  
@@ -111,10 +113,14 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
     elif var in ('p-et','waterflx'): # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
       clevs = np.linspace(-2,2,25); cmap = cm.avhrr_r; clbl = '%02.1f' # mpl.cm.PuOr
-    elif var == 'WaterTransport_U': # moisture fluxes (kg /(m^2 s))
+    elif var in ('WaterTransport_U','cqwu'): # moisture fluxes (kg /(m^2 s))
       clevs = np.linspace(0,3,31); clbl = '%02.1f' # mpl.cm.PuOr
-    elif var == 'WaterTransport_V': # moisture fluxes (kg /(m^2 s))
+    elif var in ('WaterTransport_V','cqwv'): # moisture fluxes (kg /(m^2 s))
       clevs = np.linspace(-1,2,31); clbl = '%02.1f' # mpl.cm.PuOr
+    elif var in ('ColumnWater','cqw'): # moisture fluxes (kg /(m^2 s))
+      clevs = np.linspace(0,0.75,26); clbl = '%02.1f' # mpl.cm.PuOr
+    elif var in ('RH',):
+      clevs = np.linspace(0,100,41); clbl = '%2.0f'
     elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff'): # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
       clevs = np.linspace(0,5,25); clbl = '%02.1f'; cmap = mpl.cm.YlGnBu

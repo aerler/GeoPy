@@ -389,12 +389,22 @@ class Plev3D(FileType):
     self.name = 'plev3d'
     self.atts = dict(T_PL      = dict(name='T', units='K', fillValue=-999),      # Temperature
                      TD_PL     = dict(name='Td', units='K', fillValue=-999),     # Dew-point Temperature
-                     RH_PL     = dict(name='RH', units='', fillValue=-999),      # Relative Humidity
+                     RH_PL     = dict(name='RH', units='\%', fillValue=-999),     # Relative Humidity
                      GHT_PL    = dict(name='Z', units='m', fillValue=-999),      # Geopotential Height 
-                     Vorticity = dict(name='zeta', units='1/s', fillValue=-999), # (relative) Vorticity
                      S_PL      = dict(name='U', units='m/s', fillValue=-999),    # Wind Speed
                      U_PL      = dict(name='u', units='m/s', fillValue=-999),    # Zonal Wind Speed
-                     V_PL      = dict(name='v', units='m/s', fillValue=-999))    # Meridional Wind Speed
+                     V_PL      = dict(name='v', units='m/s', fillValue=-999),    # Meridional Wind Speed
+                     WaterFlux_U = dict(name='qwu', units='kg/m^2/s', fillValue=-999), # zonal water (vapor) flux
+                     WaterFlux_V = dict(name='qwv', units='kg/m^2/s', fillValue=-999), # meridional water (vapor) flux
+                     WaterTransport_U = dict(name='cqwu', units='kg/m/s', fillValue=-999), # column-integrated zonal water (vapor) transport
+                     WaterTransport_V = dict(name='cqwv', units='kg/m/s', fillValue=-999), # column-integrated meridional water (vapor) transport
+                     ColumnWater = dict(name='cqw', units='kg/m^2', fillValue=-999), # column-integrated water (vapor) content
+                     HeatFlux_U = dict(name='qhu', units='J/m^2/s', fillValue=-999), # zonal heat flux
+                     HeatFlux_V = dict(name='qhv', units='J/m^2/s', fillValue=-999), # meridional heat flux
+                     Heatransport_U = dict(name='cqhu', units='J/m/s', fillValue=-999), # column-integrated zonal heat transport
+                     Heatransport_V = dict(name='cqhv', units='J/m/s', fillValue=-999), # column-integrated meridional heat transport
+                     ColumnHeat = dict(name='cqh', units='J/m^2', fillValue=-999), # column-integrated heat content
+                     Vorticity = dict(name='zeta', units='1/s', fillValue=-999)) # (relative) Vorticity
 #                      P_PL     = dict(name='p', units='Pa'))  # Pressure
     self.vars = self.atts.keys()    
     self.climfile = 'wrfplev3d_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
@@ -554,7 +564,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
         filelist.append(fileclass.tsfile)
         typelist.append(filetype) # this eliminates const files
 #       if not lstation and grid is None: 
-      atts.update(fileclass.atts) # only for original time-series      
+    atts.update(fileclass.atts) # only for original time-series      
   if varatts is not None: atts.update(varatts)
   # NetCDF file mode
   ncmode = 'rw' if lwrite else 'r' 
@@ -845,11 +855,11 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-#   mode = 'test_climatology'
+  mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
-  mode = 'test_point_timeseries'
+#   mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
 #   mode = 'pickle_grid'  
 #   pntset = 'shpavg'
@@ -903,7 +913,8 @@ if __name__ == '__main__':
     
     print('')
 #     dataset = loadWRF(experiment='max-1deg', domains=2, grid='arb2_d02', filetypes=['srfc'], period=(1979,1994))
-    dataset = loadWRF(experiment='max-1deg', domains=None, filetypes=['srfc'], period=(1979,1984))
+    dataset = loadWRF(experiment='max-ensemble', domains=None, filetypes=['plev3d'], period=(1979,1994),
+                      varlist=['u','qhv','cqwu','cqw','RH'])
     print(dataset)
 #     dataset.lon2D.load()
 #     print('')

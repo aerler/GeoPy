@@ -148,11 +148,41 @@ tmp = PlotAtts(name = r'$u_{10m}$', title = '10 m Zonal Wind',
 # add to collection
 variablePlotatts['u10'] = tmp
 
+## Column-integrated Zonal Water (Vapor) Transport
+tmp = PlotAtts(name = r'\overline{q^w_u}', title = 'Zonal Water Transport', units = 'kg/m/s')
+# add to collection
+variablePlotatts['cqwu'] = tmp
+
+## Column-integrated Zonal Heat Flux
+tmp = PlotAtts(name = r'\overline{q^h_u}', title = 'Zonal Heat Transport', units = 'J/m/s')
+# add to collection
+variablePlotatts['cqhu'] = tmp
+
 ## 10 m Meridional Wind
 tmp = PlotAtts(name = r'$v_{10m}$', title = '10 m Meridional Wind', 
                units = 'm/s', scalefactor = 1.)
 # add to collection
 variablePlotatts['v10'] = tmp
+
+## Column-integrated Meridional Water (Vapor) Transport
+tmp = PlotAtts(name = r'\overline{q^w_v}', title = 'Meridional Water Transport',units = 'kg/m/s')
+# add to collection
+variablePlotatts['cqwv'] = tmp
+
+## Column-integrated Meridional Heat Wind
+tmp = PlotAtts(name = r'\overline{q^h_v}', title = 'Meridional Heat Transport',units = 'J/m/s')
+# add to collection
+variablePlotatts['cqhv'] = tmp
+
+## Column-integrated Water (Vapor) Content
+tmp = PlotAtts(name = r'\overline{q^w}', title = 'Column-integrated Water',units = 'kg/m^2')
+# add to collection
+variablePlotatts['cqw'] = tmp
+
+## Column-integrated Heat Content
+tmp = PlotAtts(name = r'\overline{q^h}', title = 'Column-integrated Heat',units = 'J/m^2')
+# add to collection
+variablePlotatts['cqh'] = tmp
 
 ## 2 m Temperature
 tmp = PlotAtts(name = r'$T_{2m}$', title = '2 m Temperature', 
@@ -412,10 +442,30 @@ tmp = PlotAtts(name = 'u', title = 'Zonal Wind', units = 'm/s')
 # add to collection
 variablePlotatts['u'] = tmp
 
+## Zonal Water (Vapor) Flux
+tmp = PlotAtts(name = r'q^w_u', title = 'Zonal Water Flux', units = 'kg/m^2/s')
+# add to collection
+variablePlotatts['qwu'] = tmp
+
+## Zonal Heat Flux
+tmp = PlotAtts(name = r'q^h_u', title = 'Zonal Heat Flux', units = 'J/m^2/s')
+# add to collection
+variablePlotatts['qhu'] = tmp
+
 ## Meridional Wind
 tmp = PlotAtts(name = 'v', title = 'Meridional Wind',units = 'm/s')
 # add to collection
 variablePlotatts['v'] = tmp
+
+## Meridional Water (Vapor) Wind
+tmp = PlotAtts(name = r'q^w_v', title = 'Meridional Water Flux',units = 'kg/m^2/s')
+# add to collection
+variablePlotatts['qwv'] = tmp
+
+## Meridional Heat Wind
+tmp = PlotAtts(name = r'q^h_v', title = 'Meridional Heat Flux',units = 'J/m^2/s')
+# add to collection
+variablePlotatts['qhv'] = tmp
 
 ## Vertical Velocity
 tmp = PlotAtts(name = 'w', title = 'Vertical Velocity',units = 'm/s')
@@ -436,6 +486,16 @@ variablePlotatts['rho'] = tmp
 tmp = PlotAtts(name = 'T', title = 'Temperature', units = 'K')
 # add to collection
 variablePlotatts['T'] = tmp
+
+## Dew-point Temperature
+tmp = PlotAtts(name = r'T_d', title = 'Dew-point', units = 'K')
+# add to collection
+variablePlotatts['Td'] = tmp
+
+## Temperature
+tmp = PlotAtts(name = 'RH', title = 'Relative Humidity', units = r'%')
+# add to collection
+variablePlotatts['RH'] = tmp
 
 ## Potential Temperature
 tmp = PlotAtts(name = 'theta', title = 'Potential Temperature', units = 'K')

@@ -52,7 +52,7 @@ if __name__ == '__main__':
   A03 = '2045-2048'; A05 = '2045-2050'; A09 = '2045-2054'; A10 = '2045-2055'; A15 = '2045-2060' # mid-21st century
   B03 = '2085-2088'; B05 = '2085-2900'; B10 = '2085-2095'; B15 = '2085-2100' # late 21st century  
   ltitle = True # plot/figure title
-  figtitles = None
+  figtitles = None; comments = None
   subplot = None # subplot layout (or defaults based on number of plots)
   lbackground = True
   lcontour = False # contour or pcolor plot
@@ -80,13 +80,13 @@ if __name__ == '__main__':
   variable_settings = None
   season_settings = None
   aggregation = 'mean'
-  level_agg = dict(p=1,s='mean',soil_layers_stag='mean')
+  level_agg = dict(p=2,s='mean',soil_layers_stag='mean')
     
   # WRF file types
   WRFfiletypes = [] # WRF data source
 #   WRFfiletypes += ['hydro']
-  WRFfiletypes += ['lsm']
-#   WRFfiletypes += ['srfc']
+#   WRFfiletypes += ['lsm']
+  WRFfiletypes += ['srfc']
 #   WRFfiletypes += ['xtrm']
 #   WRFfiletypes += ['plev3d']
   ## select variables and seasons
@@ -99,12 +99,14 @@ if __name__ == '__main__':
 #   variables += ['MaxPreccu_1d']; aggregation = 'max'
 #   variables += ['MaxPrecnc_1d']; aggregation = 'max'
 #   variables += ['wetprec']
-#   variables += ['precip']
+  variables += ['precip']
 #   variables += ['preccu']
 #   variables += ['precnc']
 #   variables += ['wetfrq']
-#   variables += ['WaterTransport_U']
-#   variables += ['WaterTransport_V']
+#   variables += ['cqwu']
+#   variables += ['cqwv']
+#   variables += ['cqw']
+#   variables += ['RH']; level_agg['p'] = 1
 #   variables += ['waterflx']
 #   variables += ['p-et']
 #   variables += ['OIPX']
@@ -116,7 +118,7 @@ if __name__ == '__main__':
 #  variables += ['sfroff']
 #  variables += ['ugroff']
 #   variables += ['snwmlt']
-  variables += ['aSM']
+#   variables += ['aSM']
 #   variables += ['snow']
 #   variables += ['snowh']
 #   variables += ['GLW','OLR','qtfx']
@@ -131,7 +133,7 @@ if __name__ == '__main__':
 #   seasons += ['melt']
 #   seasons += ['annual']
   seasons += ['summer']
-#   seasons += ['winter']
+  seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
@@ -148,8 +150,9 @@ if __name__ == '__main__':
   folder = figure_folder
   lpickle = True # load projection from file or recompute
   lprint = True # write plots to disk using case as a name tag
-  maptype = 'lcc-new'; lstations = False; lbasins = True
-#   maptype = 'lcc-can'; lstations = False; lbasins = True; basinlist = ('ARB','FRB','GLB')
+#   maptype = 'lcc-new'; lstations = False; lbasins = True; domain = 2
+  maptype = 'lcc-can'; lstations = False; domain = 1
+  lbasins = True; basinlist = ('ARB','FRB','GLB'); lprovinces = True; provlist = ['BC','AB','ON']
 
 # high resolution map
 #   maptype = 'lcc-new'; lstations = True; stations = 'EC'; lbasins = True
@@ -176,6 +179,15 @@ if __name__ == '__main__':
 # #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
 #   case = 'erai'; lsamesize = True
 
+# water transport
+#   explist = ['max-ens-2050','max-ens-2100']*2
+#   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
+#   lfrac = True; reflist = ['max-ens',]; refprd = H15
+  explist = ['max-ens','max-ens-2050','max-ens-2100']*2
+  seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
+  maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
+  case = 'water'; lsamesize = True
+
 # wet-day validation
 # #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
 # #   explist = ['Unity','max-ctrl-dry','max-ctrl']*2; seasons = [('summer',)*3+('winter',)*3]
@@ -192,21 +204,21 @@ if __name__ == '__main__':
 # #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
 #   case = 'wetdays'; lsamesize = True
 
-# # ensemble projection
-  seasons = [('summer',)*2+('winter',)*2]; domain = 2; period = [A15,B15]*2
-#   explist = ['phys-ens-2050','phys-ens-2100']*2; reflist = ['phys-ens']; case = 'phys-prj'; period = [A15,B10]*2
-#   explist = ['ctrl-2050','ctrl-2100']*2; reflist = ['ctrl-1']; case = 'ctrl-prj'
-  explist = ['max-ens-2050','max-ens-2100']*2; reflist = ['max-ens']; case = 'ens-prj'
-#   explist = ['max-ctrl-2050','max-ctrl-2100']*2; reflist = ['max-ctrl']; case = 'max-prj'
-#   explist = ['max-ens-A-2050','max-ens-A-2100']*2; reflist = ['max-ens-A']; case = 'ens-A-prj';
-#   explist = ['max-ens-B-2050','max-ens-B-2100']*2; reflist = ['max-ens-B']; case = 'ens-B-prj';
-#   explist = ['max-ens-C-2050','max-ens-C-2100']*2; reflist = ['max-ens-C']; case = 'ens-C-prj';   
-  periodstrs = ('Mid-Century','End-Century')
-  exptitles = ['{:s}, {:s}'.format(season.title(),prdstr) for season in seasons[0][::2] for prdstr in periodstrs]
-  maptype = 'lcc-bcab'; lstations = True; stations = 'EC'; 
-  lbasins = True; lsamesize = False; basinlist = ['FRB','ARB']
-  lprovinces = True; provlist = ['BC','AB'][1:]
-  lfrac = True; refprd = H15
+# # # ensemble projection
+#   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
+# #   explist = ['phys-ens-2050','phys-ens-2100']*2; reflist = ['phys-ens']; case = 'phys-prj'; period = [A15,B10]*2
+# #   explist = ['ctrl-2050','ctrl-2100']*2; reflist = ['ctrl-1']; case = 'ctrl-prj'
+#   explist = ['max-ens-2050','max-ens-2100']*2; reflist = ['max-ens']; case = 'ens-prj'
+# #   explist = ['max-ctrl-2050','max-ctrl-2100']*2; reflist = ['max-ctrl']; case = 'max-prj'
+# #   explist = ['max-ens-A-2050','max-ens-A-2100']*2; reflist = ['max-ens-A']; case = 'ens-A-prj';
+# #   explist = ['max-ens-B-2050','max-ens-B-2100']*2; reflist = ['max-ens-B']; case = 'ens-B-prj';
+# #   explist = ['max-ens-C-2050','max-ens-C-2100']*2; reflist = ['max-ens-C']; case = 'ens-C-prj';   
+#   periodstrs = ('Mid-Century','End-Century')
+#   exptitles = ['{:s}, {:s}'.format(season.title(),prdstr) for season in seasons[0][::2] for prdstr in periodstrs]
+# #   maptype = 'lcc-bcab'; lstations = True; stations = 'EC'; 
+# #   lbasins = True; lsamesize = False; basinlist = ['FRB','ARB']
+# #   lprovinces = True; provlist = ['BC','AB'][1:]
+#   lfrac = True; refprd = H15
 
 # surface sensitivity test
 #   maptype = 'lcc-intermed'; lstations = False; lbasins = True
@@ -397,6 +409,7 @@ if __name__ == '__main__':
   maps = []; x = []; y = [] # projection objects and coordinate fields (only computed once)
   fn = -1 # figure counter
   N = len(variables)*len(seasons) # number of figures
+  comments = checkItemList(comments, N, basestring, default=None)
   figtitles = checkItemList(figtitles, N, basestring, default=None)
   variable_settings = checkItemList(variable_settings, N, basestring, default=None)
   season_settings = checkItemList(season_settings, N, basestring, default=None)
@@ -420,10 +433,11 @@ if __name__ == '__main__':
         if all([var==varlist[0] for var in varlist]): varstr = varlist[0]
         else: varstr = ''.join([s[0] for s in varlist])
       else: varstr = ''
-      if ldiff or lfrac:
-        varlist = checkItemList(varlist, M, basestring)
-        ravlist = checkItemList(ravlist, M, basestring)
-      else: varlist = checkItemList(varlist, M, basestring)
+      varlist = checkItemList(varlist, M, basestring)
+      ravlist = checkItemList(ravlist, M, basestring)
+#       if ldiff or lfrac:
+#       else: 
+#         varlist = checkItemList(varlist, M, basestring)
       # expand seasons
       if isinstance(sealist,basestring): seastr = '_'+sealist
       elif isinstance(sealist,(list,tuple)): seastr = '_'+''.join([s[0] for s in sealist])
@@ -454,6 +468,7 @@ if __name__ == '__main__':
         if plat.units: 
           if lfrac: figtitle += ' [%]'
           else: figtitle += ' [{:s}]'.format(plat.units) 
+      if comments[fn]: figtitle += comments[fn]
       
       # feedback
       print('\n\n   ***  %s %s (%s)   ***   \n'%(plottype,plat.title,varstr))
@@ -487,8 +502,14 @@ if __name__ == '__main__':
           for ax,la in level_agg.iteritems():
             if expvar.hasAxis(ax):
               if isinstance(la, basestring): # aggregate over axis 
+                if ax == 'p' and la[:4] == 'low_':
+                  la = la[4:]
+                  expvar = expvar(asVar=True, p=(0,3), lidx=True) # slice axis (default rules)
                 expvar = getattr(expvar,la)(axis=ax, asVar=True)
-              else: expvar = expvar(asVar=True, **{ax:la}) # slice axis (default rules)
+              else: 
+                expvar = expvar(asVar=True, **{ax:la}) # slice axis (default rules)
+                if ax == 'p' and not figtitle.endswith(' hPa'): figtitle += " at {:3.0f} hPa".format((850,700,500,250,100)[la])
+                if ax == 's' and not figtitle.endswith(' soil layer)'): figtitle += " ({:s} soil layer)".format(('1st','2nd','3rd','4th')[la])
           # extract data field
           if expvar.hasAxis('time'):
             method = aggregation if aggregation.isupper() else aggregation.title() 
