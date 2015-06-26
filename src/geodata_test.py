@@ -276,7 +276,7 @@ class BaseVarTest(unittest.TestCase):
       # some VarRV-specific stuff
       if dist != 'kde':
         # run simple kstest test
-        pval = distvar.kstest(var, asVar=False, lflatten=False, axis=-1, nsamples=None if lsimple else 8)
+        pval = distvar.fittest(var, asVar=False, lflatten=False, axis=-1, nsamples=None if lsimple else 8)
         assert np.mean(pval) >= 0, pval # this will usually be close to zero, since none of these are normally distributed
         # test rescaling
         if lsimple: 
@@ -729,14 +729,14 @@ class BaseVarTest(unittest.TestCase):
     # run variable test (normaltest)
     pvar = var.shapiro(asVar=True, axis='time', lflatten=False)
     assert pvar.shape == var.shape[1:]
-    ## Kolmogorov-Smirnov Test on fitted distribution
+    ## test fitted distributions
     # fit normal distribution over entire range 
     nvar = var.norm(axis=t.name, lflatten=True, ldebug=False)
-    pval = nvar.kstest(var.data_array.ravel(), asVar=False)
+    pval = nvar.fittest(var.data_array.ravel(), asVar=False) # should use normaltest
     assert pval >= 0.
     assert pval.shape == nvar.shape[:-1]
     xvar = var.genextreme(axis=t.name, lflatten=False, ldebug=False)
-    pvar = xvar.kstest(var)
+    pvar = xvar.fittest(var) # should use K-S test
     assert pvar.shape == xvar.shape[:-1]
     assert np.all(pvar.data_array >= 0)
     del xvar, pvar, nvar; gc.collect()
@@ -1606,10 +1606,10 @@ if __name__ == "__main__":
         
     specific_tests = []
 #     specific_tests += ['ReductionArithmetic']
-#     specific_tests += ['DistributionVariables']
 #     specific_tests += ['Mask']
 #     specific_tests += ['Ensemble']
-#     specific_tests += ['StatsTests']   
+#     specific_tests += ['DistributionVariables']
+    specific_tests += ['StatsTests']   
 #     specific_tests += ['UnaryArithmetic']
 #     specific_tests += ['BinaryArithmetic']
 #     specific_tests += ['Copy']
@@ -1623,9 +1623,9 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
+    tests += ['BaseVar'] 
     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']

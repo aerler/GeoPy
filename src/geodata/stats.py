@@ -1245,10 +1245,24 @@ def rv_resample(params, dist_type=None, n=None, fillValue=np.NaN, dtype=np.float
   else: res = np.asarray(getattr(ss,dist_type).rvs(*params[:-2], loc=params[-2], scale=params[-1], size=n), dtype=dtype)
   return res
 
-# perform a Kolmogorov-Smirnov Test of goodness of fit
-def rv_kstest(data_array, nparams=0, dist_type=None, ignoreNaN=True, N=20, alternative='two-sided', mode='approx'):
-  if np.any(np.isnan(data_array[:nparams])): pval = np.NaN 
-  else: pval = kstest_wrapper(data_array[nparams:], dist=dist_type, args=data_array[:nparams], ignoreNaN=ignoreNaN, N=N, alternative=alternative, mode=mode)
+# perform a goodness of fit test
+# N.B.: due to many levels of wrapping and pre-processing, this is not particularly fast...
+def rv_stats_test(data_array, nparams=0, dist_type=None, stats_test=None, ignoreNaN=True, N=20, 
+              alternative='two-sided', mode='approx', reta=False):
+  ''' perform a goodnes of fit test; handles masked/NaN values; defaults to Shapiro-Wilk for Normal 
+      distributions and Kolmogorov-Smirnov test for all others '''
+  if np.any(np.isnan(data_array[:nparams])): pval = np.NaN # sort of as a masked values
+  else:
+    if stats_test is None:
+      stats_test = 'sw' if dist_type == 'norm' else 'ks'
+    else: stats_test = stats_test.lower()
+    if stats_test in ('ks','kstest'): 
+      pval = kstest_wrapper(data_array[nparams:], dist=dist_type, args=data_array[:nparams], ignoreNaN=ignoreNaN, N=N, alternative=alternative, mode=mode)
+    elif stats_test in ('normtest','normaltest'): 
+      pval = normaltest_wrapper(data_array[nparams:], ignoreNaN=ignoreNaN)
+    elif stats_test in ('sw','shapiro','shapirowilk'): 
+      pval = shapiro_wrapper(data_array[nparams:], ignoreNaN=ignoreNaN, reta=reta)    
+    else: raise ArgumentError, stats_test
   return pval
 
 # Subclass of DistVar implementing various random variable distributions
@@ -1486,10 +1500,10 @@ class VarRV(DistVar):
     # return properly formatted sample data
     return sample_data
 
-  # Kolmogorov-Smirnov Test for goodness-of-fit
-  def kstest(self, samples, nsamples=None, name=None, axis_idx=None, lstatistic=False, lcrossval=False,
-             fillValue=None, ignoreNaN=True, N=1000, alternative='two-sided', mode='approx', 
-             asVar=True, lcheckVar=True, lcheckAxis=True, pvaratts=None, **kwargs):
+  # statistical test for goodness-of-fit
+  def fittest(self, samples, nsamples=None, name=None, axis_idx=None, lstatistic=False, lcrossval=False,
+              fillValue=None, ignoreNaN=True, N=1000, alternative='two-sided', mode='approx', reta=False,
+              stats_test=None, asVar=True, lcheckVar=True, lcheckAxis=True, pvaratts=None, **kwargs):
     ''' apply a Kolmogorov-Smirnov Test to the sample data, based on this distribution '''
     # check input
     if self.dtype.kind in ('S',): 
@@ -1528,8 +1542,8 @@ class VarRV(DistVar):
       sample_data = np.apply_along_axis(np.random.choice, -1, sample_data, size=nsamples, replace=False)
     # apply test function (parallel)
     #print sample_data.shape, sample_data.mean()
-    fct = functools.partial(rv_kstest, nparams=len(self.paramAxis), dist_type=self.dist_type, 
-                            ignoreNaN=ignoreNaN, N=N, alternative=alternative, mode=mode)
+    fct = functools.partial(rv_stats_test, nparams=len(self.paramAxis), dist_type=self.dist_type, reta=reta,
+                            stats_test=stats_test, ignoreNaN=ignoreNaN, N=N, alternative=alternative, mode=mode)
     data_array = np.concatenate((self.data_array, sample_data), axis=sax) # merge params and sample arrays (only one argument array per point along axis) 
     pval = apply_along_axis(fct, sax, data_array, chunksize=100000//len(data_array)) # apply test in parallel, distributing the data
     assert pval.ndim == sax
@@ -1555,4 +1569,11 @@ class VarRV(DistVar):
     else: pvar = pval
     # return results
     return pvar
-    
+  
+  # Kolmogorov-Smirnov Test for goodness-of-fit
+  def kstest(self, sample, **kwargs):
+    ''' wrapper for fittest that always chooses the K-S test '''
+    if 'stats_test' in kwargs: raise ArgumentError, kwargs['stats_test']
+    return self.fittest(sample, stats_test='ks', **kwargs)
+  
+  
