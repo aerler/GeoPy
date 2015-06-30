@@ -224,10 +224,11 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
       print("  - " + exp)
       ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=vl, 
                              lbackground=lbackground, lWRFnative=lWRFnative, lautoregrid=lautoregrid)
-      for var in vl: 
-          if var not in ext and var not in ('lon2D','lat2D','landmask','landfrac'): 
-            print var, ext
-            raise DatasetError, "Variable '{:s}' not found in Dataset '{:s}'!".format(var,ext.name)         
+      for exp in ext if isinstance(ext,tuple) else (ext,):
+        for var in vl: 
+          if var not in exp and var not in ('lon2D','lat2D','landmask','landfrac'): 
+            print var, exp
+            raise DatasetError, "Variable '{:s}' not found in Dataset '{:s}'!".format(var,exp.name)         
     dslist.append(ext) 
     if tit is not None: axtitles.append(tit)
     else: axtitles.append(axt)

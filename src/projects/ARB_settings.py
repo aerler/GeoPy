@@ -119,7 +119,7 @@ projection_dict['lcc-intermed'] = dict(projection='lcc', lat_0=57, lon_0=-140, l
               width=4000e3, height=3400e3, area_thresh = 1000., resolution='l')
 ## Lambert Conic Conformal - Canada
 projection_dict['lcc-can'] = dict(projection='lcc', lat_0=52.5, lon_0=-105, lat_1=52.5, rsphere=rsphere,
-              width=5000e3, height=4500e3, area_thresh = 1000., resolution='l')
+              width=5000e3, height=4500e3, area_thresh = 10e3, resolution='l')
 ## Lambert Conic Conformal - Large Domain
 projection_dict['lcc-large'] = dict(projection='lcc', lat_0=50, lon_0=-130, lat_1=50, #rsphere=rsphere,
               width=11000e3, height=7500e3, area_thresh = 10e3, resolution='l')

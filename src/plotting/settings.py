@@ -34,9 +34,9 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
 #     cmap = mpl.cm.Oranges
 #     cmap = mpl.cm.PuOr
     if var in ('T2_prj','Ts_prj','Tmin_prj','Tmax_prj','Tmean_prj'):
-      clevs = np.linspace(0,5,41); clbl = '%3.1f'; cmap = mpl.cm.Oranges # K
+      clevs = np.linspace(0,8,41); clbl = '%3.1f'; cmap = mpl.cm.Oranges # K
     elif var in ('evap_prj','pet_prj','precip_prj','precipc_prj','precipnc_prj'):
-      clevs = np.linspace(-1.,1.,41); clbl = '%3.2f'; cmap = mpl.cm.PuOr # mm/day    
+      clevs = np.linspace(-1.8,1.8,41); clbl = '%3.2f'; cmap = mpl.cm.PuOr # mm/day    
     elif var in ('T2','Ts','Tmin','Tmax','Tmean'):
       clevs = np.linspace(-4,4,41); clbl = '%3.1f' # K
     elif var == 'Q2':
@@ -46,7 +46,7 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
     elif var in ('evap','pet','precip','precipc','precipnc','wetprec','dryprec','MaxPrecip_1d'):
       clevs = np.linspace(-4,4,41); clbl = '%3.1f' # mm/day
     elif var in ('snwmlt', 'runoff', 'ugroff', 'sfroff','p-et','waterflx'): # moisture fluxes (kg /(m^2 s))
-      clevs = np.linspace(-1,1,41); clbl = '%3.2f' # mm/day  
+      clevs = np.linspace(-1.2,1.2,41); clbl = '%3.2f' # mm/day  
     elif var == 'zs':
       clevs = np.linspace(-0.5,0.5,21); clbl = '%3.1f' # mm/day
     elif var in ('RH',):
@@ -206,102 +206,102 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
   sf = dict(dpi=300) # print properties
   figformat = 'png'
   # some special cases 
-  if figuretype is not None:
-    if figuretype == 'largemap':
-      # copied from 6 panel figure
-      nexp = 0 # skip pane settings 
-      subplot = (1,1) # rows, columns
+  if figuretype is None:
+    # panel settings
+    if isinstance(nexp,(int,np.integer)):
+      if nexp == 1: subplot = (1,1) # rows, columns
+      elif nexp == 2: subplot = (1,2)
+      elif nexp == 4: subplot = (2,2)
+      elif nexp == 6: subplot = (2,3)
+      else: raise ValueError
+    else:
+      if not ( isinstance(nexp,(tuple,list)) and len(nexp) == 2 ): raise TypeError  
+      subplot = tuple(nexp)
+    if subplot == (1,1):
+      ## 1 panel
+      if sameSize: figsize = (6.25,6.25)
+      else: figsize = (3.75,3.75) # figsize = (7,5.5)
+      if cbar:
+        cbo = cbo or 'horizontal'
+        if cbo == 'vertical':
+          margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05) 
+          caxpos = [0.91, 0.05, 0.03, 0.9]
+        if cbo == 'horizontal': 
+          margins = dict(bottom=0.125, left=0.1, right=0.95, top=0.925, hspace=0.0, wspace=0.0)
+          caxpos = [0.05, 0.05, 0.9, 0.03]
+      else:
+        margins = dict(bottom=0.085, left=0.1, right=0.975, top=0.94, hspace=0.05, wspace=0.05)
+    elif subplot == (1,2):
+      ## 2 panel, horizontal
+      if sameSize: figsize = (6.25,6.25)
+      else: figsize = (6.25,3.25) # this used to be (*,3.75) but that doesn't work well 
+      if cbar:
+        cbo = cbo or 'horizontal'
+        if cbo == 'vertical': 
+          margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+          caxpos = [0.91, 0.05, 0.02, 0.9]
+        if cbo == 'horizontal': 
+          margins = dict(bottom=0.075, left=0.075, right=.975, top=.925, hspace=0.05, wspace=0.05)
+          caxpos = [0.05, 0.05, 0.9, 0.03]
+      else:
+        margins = dict(bottom=0.055, left=0.085, right=.975, top=.95, hspace=0.05, wspace=0.05)
+    elif subplot == (2,1):
+      ## 2 panel, vertical
+      if sameSize: figsize = (6.25,6.25)
+      else: figsize = (3.75,4.8)    
+      if cbar:
+        cbo = cbo or 'horizontal'
+        if cbo == 'vertical': 
+          margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+          caxpos = [0.91, 0.05, 0.02, 0.9]
+        if cbo == 'horizontal': 
+          margins = dict(bottom=0.07, left=0.055, right=.99, top=.925, hspace=0.0, wspace=0.0)
+          caxpos = [0.05, 0.035, 0.9, 0.02]
+      else:
+        margins = dict(bottom=0.055, left=0.085, right=.975, top=.95, hspace=0.05, wspace=0.05)
+    elif subplot == (2,2):
+      # 4 panel    
+      figsize = (6.25,6.25)
+      if cbar:
+        cbo = cbo or 'vertical'
+        if cbo == 'vertical': 
+          margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+          caxpos = [0.91, 0.05, 0.03, 0.9]
+        if cbo == 'horizontal':
+          margins = dict(bottom=0.06, left=0.09, right=.985, top=.95, hspace=0.13, wspace=0.02) 
+          caxpos = [0.05, 0.05, 0.9, 0.03]
+      else:
+        margins = dict(bottom=0.06, left=0.09, right=.985, top=.95, hspace=0.13, wspace=0.02)
+    elif subplot == (2,3):
+      # 6 panel
       figsize = (9.25,6.5) # width, height (inches)
       if cbar:
-        margins = dict(bottom=0.09, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
-        cbo = cbo or 'horizontal'; caxpos = [0.05, 0.0275, 0.9, 0.03]
+        cbo = cbo or 'horizontal'
+        if cbo == 'vertical': 
+          margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+          caxpos = [0.91, 0.05, 0.03, 0.9]
+        if cbo == 'horizontal': 
+          margins = dict(bottom=0.09, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
+          caxpos = [0.05, 0.0275, 0.9, 0.03]
       else:
-        margins = dict(bottom=0.025, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)
-  # panel settings
-  if isinstance(nexp,(int,np.integer)):
-    if nexp == 1: subplot = (1,1) # rows, columns
-    elif nexp == 2: subplot = (1,2)
-    elif nexp == 4: subplot = (2,2)
-    elif nexp == 6: subplot = (2,3)
-    else: raise ValueError
-  else:
-    if not ( isinstance(nexp,(tuple,list)) and len(nexp) == 2 ): raise TypeError  
-    subplot = tuple(nexp)
-  if subplot == (1,1):
-    ## 1 panel
-    if sameSize: figsize = (6.25,6.25)
-    else: figsize = (3.75,3.75) # figsize = (7,5.5)
-    if cbar:
-      cbo = cbo or 'horizontal'
-      if cbo == 'vertical':
-        margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05) 
-        caxpos = [0.91, 0.05, 0.03, 0.9]
-      if cbo == 'horizontal': 
-        margins = dict(bottom=0.125, left=0.1, right=0.95, top=0.925, hspace=0.0, wspace=0.0)
-        caxpos = [0.05, 0.05, 0.9, 0.03]
-    else:
-      margins = dict(bottom=0.085, left=0.1, right=0.975, top=0.94, hspace=0.05, wspace=0.05)
-  elif subplot == (1,2):
-    ## 2 panel, horizontal
-    if sameSize: figsize = (6.25,6.25)
-    else: figsize = (6.25,3.75)    
-    if cbar:
-      cbo = cbo or 'horizontal'
-      if cbo == 'vertical': 
-        margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-        caxpos = [0.91, 0.05, 0.02, 0.9]
-      if cbo == 'horizontal': 
-        margins = dict(bottom=0.075, left=0.075, right=.975, top=.925, hspace=0.05, wspace=0.05)
-        caxpos = [0.05, 0.05, 0.9, 0.03]
-    else:
-      margins = dict(bottom=0.055, left=0.085, right=.975, top=.95, hspace=0.05, wspace=0.05)
-  elif subplot == (2,1):
-    ## 2 panel, vertical
-    if sameSize: figsize = (6.25,6.25)
-    else: figsize = (3.75,4.8)    
-    if cbar:
-      cbo = cbo or 'horizontal'
-      if cbo == 'vertical': 
-        margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-        caxpos = [0.91, 0.05, 0.02, 0.9]
-      if cbo == 'horizontal': 
-        margins = dict(bottom=0.07, left=0.055, right=.99, top=.925, hspace=0.0, wspace=0.0)
-        caxpos = [0.05, 0.035, 0.9, 0.02]
-    else:
-      margins = dict(bottom=0.055, left=0.085, right=.975, top=.95, hspace=0.05, wspace=0.05)
-  elif subplot == (2,2):
-    # 4 panel    
-    figsize = (6.25,6.25)
-    if cbar:
-      cbo = cbo or 'vertical'
-      if cbo == 'vertical': 
-        margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-        caxpos = [0.91, 0.05, 0.03, 0.9]
-      if cbo == 'horizontal':
-        margins = dict(bottom=0.06, left=0.09, right=.985, top=.95, hspace=0.13, wspace=0.02) 
-        caxpos = [0.05, 0.05, 0.9, 0.03]
-    else:
-      margins = dict(bottom=0.06, left=0.09, right=.985, top=.95, hspace=0.13, wspace=0.02)
-  elif subplot == (2,3):
-    # 6 panel
+        margins = dict(bottom=0.025, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)    
+  #   # figure out colorbar placement
+  #   if cbo == 'vertical':
+  #     margins = dict(bottom=0.02, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
+  #     caxpos = [0.91, 0.05, 0.03, 0.9]
+  #   else: # 'horizontal'
+  #     margins = dict(bottom=0.1, left=0.065, right=.9725, top=.925, hspace=0.05, wspace=0.05)
+  #     caxpos = [0.05, 0.05, 0.9, 0.03]
+  elif figuretype == 'largemap':
+    # copied from 6 panel figure
+    nexp = 0 # skip pane settings 
+    subplot = (1,1) # rows, columns
     figsize = (9.25,6.5) # width, height (inches)
     if cbar:
-      cbo = cbo or 'horizontal'
-      if cbo == 'vertical': 
-        margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-        caxpos = [0.91, 0.05, 0.03, 0.9]
-      if cbo == 'horizontal': 
-        margins = dict(bottom=0.09, left=0.05, right=.97, top=.925, hspace=0.1, wspace=0.05)
-        caxpos = [0.05, 0.0275, 0.9, 0.03]
+      margins = dict(bottom=0.09, left=0.05, right=.97, top=.93, hspace=0.1, wspace=0.05)
+      cbo = cbo or 'horizontal'; caxpos = [0.05, 0.0275, 0.9, 0.03]
     else:
-      margins = dict(bottom=0.025, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)    
-#   # figure out colorbar placement
-#   if cbo == 'vertical':
-#     margins = dict(bottom=0.02, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
-#     caxpos = [0.91, 0.05, 0.03, 0.9]
-#   else: # 'horizontal'
-#     margins = dict(bottom=0.1, left=0.065, right=.9725, top=.925, hspace=0.05, wspace=0.05)
-#     caxpos = [0.05, 0.05, 0.9, 0.03]        
+      margins = dict(bottom=0.025, left=0.05, right=.97, top=.92, hspace=0.1, wspace=0.05)        
   # return values
   if cbar: 
     return sf, figformat, margins, caxpos, subplot, figsize, cbo

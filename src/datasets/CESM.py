@@ -11,7 +11,7 @@ import numpy as np
 import os, pickle
 from collections import OrderedDict
 # from atmdyn.properties import variablePlotatts
-from geodata.base import Variable, Axis, concatDatasets
+from geodata.base import Variable, Axis, concatDatasets, monthlyUnitsList
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, GDALError
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt
@@ -378,12 +378,12 @@ def loadCESM_Shp(experiment=None, name=None, shape=None, period=None, filetypes=
 # load minimally pre-processed CESM climatology files 
 def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, 
              varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, 
-             lcheckExp=True, lencl=False, lwrite=False):
+             lcheckExp=True, lreplaceTime=True, lencl=False, lwrite=False):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
   return loadCESM_All(experiment=experiment, name=name, grid=grid, period=period, station=None, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, translateVars=translateVars, 
                       lautoregrid=lautoregrid, load3D=load3D, ignore_list=ignore_list, 
-                      mode='climatology', lcheckExp=lcheckExp, lreplaceTime=False, lwrite=lwrite)
+                      mode='climatology', lcheckExp=lcheckExp, lreplaceTime=lreplaceTime, lwrite=lwrite)
 
 
 # load any of the various pre-processed CESM climatology and time-series files 
@@ -516,20 +516,28 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
                           varatts=atts, title=title, multifile=False, ignore_list=ignore_list, 
                           ncformat='NETCDF4', squeeze=True, mode=ncmode)
   # replace time axis
-  if lreplaceTime and (lts or lcvdp):
-    # check time axis and center at 1979-01 (zero-based)
-    if experiment is None: ys = period[0]; ms = 1
-    else: ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1
-    if dataset.hasAxis('time'):
-      ts = (ys-1979)*12 + (ms-1); te = ts+len(dataset.time) # month since 1979 (Jan 1979 = 0)
-      atts = dict(long_name='Month since 1979-01')
-      timeAxis = Axis(name='time', units='month', coord=np.arange(ts,te,1, dtype='int16'), atts=atts)
-      dataset.replaceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
-    if dataset.hasAxis('year'):
-      ts = ys-1979; te = ts+len(dataset.year) # month since 1979 (Jan 1979 = 0)
-      atts = dict(long_name='years since 1979-01')
-      yearAxis = Axis(name='year', units='year', coord=np.arange(ts,te,1, dtype='int16'), atts=atts)
-      dataset.replaceAxis(dataset.year, yearAxis, asNC=False, deepcopy=False)
+  if lreplaceTime:
+    if lts or lcvdp:
+      # check time axis and center at 1979-01 (zero-based)
+      if experiment is None: ys = period[0]; ms = 1
+      else: ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1
+      if dataset.hasAxis('time'):
+        ts = (ys-1979)*12 + (ms-1); te = ts+len(dataset.time) # month since 1979 (Jan 1979 = 0)
+        atts = dict(long_name='Month since 1979-01')
+        timeAxis = Axis(name='time', units='month', coord=np.arange(ts,te,1, dtype='int16'), atts=atts)
+        dataset.replaceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
+      if dataset.hasAxis('year'):
+        ts = ys-1979; te = ts+len(dataset.year) # month since 1979 (Jan 1979 = 0)
+        atts = dict(long_name='Years since 1979-01')
+        yearAxis = Axis(name='year', units='year', coord=np.arange(ts,te,1, dtype='int16'), atts=atts)
+        dataset.replaceAxis(dataset.year, yearAxis, asNC=False, deepcopy=False)
+    elif lclim:
+      if dataset.hasAxis('time') and not dataset.time.units.lower() in monthlyUnitsList:
+        atts = dict(long_name='Month of the Year')
+        timeAxis = Axis(name='time', units='month', coord=np.arange(1,13, dtype='int16'), atts=atts)
+        assert len(dataset.time) == len(timeAxis), dataset.time
+        dataset.replaceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
+      elif dataset.hasAxis('year'): raise NotImplementedError, dataset
   # correct ordinal number of shape (should start at 1, not 0)
   if lshape:
     # mask all shapes that are incomplete in dataset
@@ -668,8 +676,8 @@ if __name__ == '__main__':
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-  mode = 'test_point_ensemble'
-#   mode = 'test_cvdp'
+#   mode = 'test_point_ensemble'
+  mode = 'test_cvdp'
 #   mode = 'pickle_grid'
 #     mode = 'shift_lon'
 #     experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
@@ -792,16 +800,19 @@ if __name__ == '__main__':
       print(dataset)
       print('')
       print(dataset.geotransform)
-      if dataset.isProjected:
-        print dataset.x
-        print dataset.x.coord
-      else:
-        print dataset.lon
-        print dataset.lon.coord
-      if mode == 'test_timeseries':
-        print('')      
-        print(dataset.time)
-        print(dataset.time.coord)
+      print('')
+      print dataset.precip
+      print dataset.precip.mean()*86400, dataset.precip.std()*86400
+
+#       if dataset.isProjected:
+#         print dataset.x
+#         print dataset.x.coord
+#       else:
+#         print dataset.lon
+#         print dataset.lon.coord
+#       print('')      
+#       print(dataset.time)
+#       print(dataset.time.coord)
       # show some variables
 #       if 'zs' in dataset: var = dataset.zs
 #       elif 'hgt' in dataset: var = dataset.hgt

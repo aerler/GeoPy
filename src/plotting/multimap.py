@@ -132,7 +132,7 @@ if __name__ == '__main__':
 #   seasons += ['warm']
 #   seasons += ['melt']
 #   seasons += ['annual']
-  seasons += ['summer']
+# #   seasons += ['summer']
   seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
@@ -150,9 +150,9 @@ if __name__ == '__main__':
   folder = figure_folder
   lpickle = True # load projection from file or recompute
   lprint = True # write plots to disk using case as a name tag
-#   maptype = 'lcc-new'; lstations = False; lbasins = True; domain = 2
-  maptype = 'lcc-can'; lstations = False; domain = 1
-  lbasins = True; basinlist = ('ARB','FRB','GLB'); lprovinces = True; provlist = ['BC','AB','ON']
+  maptype = 'lcc-new'; lstations = False; lbasins = True; domain = 2
+#   maptype = 'lcc-can'; lstations = False; domain = 1
+  lbasins = True; basinlist = ('ARB','FRB','GLB'); lprovinces = False; provlist = ['BC','AB','ON']
 
 # high resolution map
 #   maptype = 'lcc-new'; lstations = True; stations = 'EC'; lbasins = True
@@ -183,10 +183,10 @@ if __name__ == '__main__':
 #   explist = ['max-ens-2050','max-ens-2100']*2
 #   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
 #   lfrac = True; reflist = ['max-ens',]; refprd = H15
-  explist = ['max-ens','max-ens-2050','max-ens-2100']*2
-  seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
-  maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
-  case = 'water'; lsamesize = True
+#   explist = ['max-ens','max-ens-2050','max-ens-2100']*2
+#   seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
+#   maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
+#   case = 'water'; lsamesize = True
 
 # wet-day validation
 # #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
@@ -281,13 +281,13 @@ if __name__ == '__main__':
 #   exptitles = ['WRF Max-1deg (30 km)','WRF Max-1deg (10 km)', 'WRF Max-Ctrl (30 km)', 'WRF Max-Ctrl (10 km)']
 #   case = 'val1deg'; lsamesize = True; # grid = 'arb2_d02'
 
-# Fig. 2  
-#   explist = ['max-ens']; period = H15
+# Fig. 2 Annual Precip: as it is
+#   explist = ['Ens']; period = H15
 #   explist = ['Ens', 'Unity', 'max-ens', 'max-ens']; period = H15; domain = [None, None, 1, 2]
 #   exptitles = ['CESM (80 km)','Merged Observations (10 km)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
-#   case = 'valobs'; lsamesize = True; grid = 'arb2_d02'
+#   case = 'valobs'; lsamesize = False # grid = [None,'arb2_d02',None,None]
 
-# Fig. 3/4  
+# Fig. 3/4 Validation: differences to obs (T2, precip, annual, summer, winter)
 #   explist = ['Ens']; period = H15; grid = ['cesm1x1']
 #   explist = ['max-ens']*3+['Ens']*3; grid = ['arb2_d02']*3+['cesm1x1']*3
 #   seasons = ['annual', 'summer', 'winter']*2; period = H15
@@ -299,41 +299,48 @@ if __name__ == '__main__':
 #   lfrac = True; reflist = ['Unity']*6; refprd = H15
 #   variables = ['precip']; seasons = [seasons] # only make one plot with all seasons!
 
-# Fig. 5
-  #explist = ['max-ens']; period = H15
+# Fig. 5 Summer Ensemble
+# #   explist = ['Unity']; period = H15
 #   explist = ['max', 'max-A', 'Unity', 'max-B', 'max-C', 'NARR']; period = H15
 #   exptitles = ['WRF-1', 'WRF-2','Merged Observations', 'WRF-3', 'WRF-4', 'NARR (Reanalysis)']
-#   case = 'val-ens'; lsamesize = False; grid = 'arb2_d02'
-#   variables = ['precip']; seasons = ['summer'] 
+#   case = 'val-ens'; lsamesize = False; #grid = 'arb2_d02'
+#   variables = ['precip']; seasons = ['annual','summer','winter'] 
 
-# Fig. 6/7  
-#   explist = ['max-ens-2050']*3+['Ens-2050']*3; grid = ['arb2_d02']*3+['cesm1x1']*3
-#   seasons = ['annual', 'summer', 'winter']*2; period = A15
+# Fig. 6/7 Climate Change: T2 and pecip diffs
+#   explist = ['max-ens-2100']*3+['Ens-2100']*3; #grid = ['arb2_d02']*3+['cesm1x1']*3
+#   seasons = ['annual', 'summer', 'winter']*2; period = B15
 #   exptitles = ['WRF, 10 km ({:s} Average)']*3+['CESM ({:s} Average)']*3
 #   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
 #   case = 'prj'; lbasins = True; lsamesize = False; cbo = 'horizontal'
 #   ldiff = True; reflist = ['max-ens']*3+['Ens']*3; refprd = H15  
 #   seasons = [seasons] # only make one plot with all seasons!
-#   variables = ['T2','precip']; variable_settings = ['T2_prj', 'precip_prj'] 
+# #   variables = ['T2']; variable_settings = ['T2_prj'] # parallel execution
+#   variables = ['precip']; variable_settings = ['precip_prj']
+#   ldiff = False; lfrac = True 
 
-# Fig. 8
+# Fig. 8 Net Precip: the hydro plot
 #   case = 'hydro'; lsamesize = False; cbo = 'vertical'; ltitle = True
 #   variables = ['p-et']; seasons = [['annual', 'summer']]
 #   exptitles = [r'Annual Average', r'Summer Average']
 # top row
 #   figtitles = r'WRF Ensemble Mean Net Precipitation $(P - ET)$' 
 #   explist = ['max-ens']*2; period = H15  
-# Fig. 8  (bottom row)
+# bottom row
 #   figtitles = r'Change in Net Precipitation $\Delta(P - ET)$' 
-#   explist = ['max-ens-2050']*2; period = A15
+#   explist = ['max-ens-2100']*2; period = B15
 #   ldiff = True; reflist = ['max-ens']; refprd = H15
 
 # Fig. 13
-#   maptype = 'robinson'; lstations = False; lbasins = False; lminor = False; locean = True  
-#   case = 'cvdp'; lsamesize = False; cbo = 'horizontal'; ltitle = True
-#   variables = ['PDO_eof']; seasons = [None]; subplot = (2,1)
-#   exptitles = [r'HadISST', r'CESM Ensemble']; figtitles = r'Pacific Decadal Oscillation SST Pattern' 
-#   explist = ['HadISST_CVDP','Ctrl-1_CVDP']; period = H15
+  maptype = 'robinson'; lstations = False; lbasins = False; lminor = False; locean = True  
+  case = 'cvdp'; lsamesize = False; cbo = 'horizontal'; ltitle = True; seasons = [None]; subplot = (2,1)
+#   exptitles = [r'HadISST', r'CESM Ensemble']
+#   variables = ['PDO_eof','AMO_eof',]; explist = ['SST_CVDP','Ctrl-1_CVDP']; period = H15
+#   figtitles = ['Pacific Decadal Oscillation SST Pattern', 'Atlantic Multi-Decadal Oscillation Pattern']   
+  exptitles = [r'20th Cent. Reanalysis V2', r'CESM Ensemble']
+  explist = ['PSL_CVDP','Ctrl-1_CVDP']; period = H15
+  variables = ['NAM_eof','NAO_eof','NPO_eof','PNA_eof',]
+  figtitles = ['Northern Annular Mode Pattern', 'North Atlantic Oscillation Pattern',
+               'North Pacific Oscillation Pattern', 'Pacific North America Pattern']
 
 #   case = '3km'; stations = 'cities'
 #   maptype = 'lcc-col'; lstations = True; lbasins = True # 'lcc-new'  
@@ -345,14 +352,16 @@ if __name__ == '__main__':
 #   exptitles = ['WRF 3km','WRF 10km (15 yrs)','WRF 30km','WRF 10km']
 
 
-#   maptype = 'lcc-large'; figuretype = 'largemap'; lstations = False; lbasins = True
-#   period = None; lWRFnative = True; loutline = False; period = H10
-#   explist = ['max']; exptitles = ' '; domain = (0,1,2)
-#   case = 'arb2_frb'; basins = ('FRB',)
+#   maptype = 'lcc-large'; figuretype = 'largemap'; loutline = False; lframe = True
+#   lstations = False; lbasins = False; lprovinces = True
+#   explist = ['max']; exptitles = ' '; domain = (0,1,2); lWRFnative = True; period = H15 
+#   case = 'arb2_prov'; basinlist = ('FRB','ARB'); provlist = ('BC','AB') 
+#   variables = ['zs']; seasons = ['topo']; WRFfiletypes += ['const']; lcontour = True
+#   figtitles = ['Topographic Height [km]' + ' and Domain Outlines' if lframe else '']
 #   maptype = 'lcc-new'; lstations = False; lbasins = True
 #   case = 'arb'; period = None; lWRFnative = True; lframe = False; loutline = False
 #   explist = ['columbia']; exptitles = ' '; domain = (2,3)
-# #   case = 'frb'; basins = ('FRB',)
+#   case = 'frb'; basins = ('FRB',)
 #   case = 'arb'; basins = ('ARB',)
 
     
@@ -513,7 +522,7 @@ if __name__ == '__main__':
           # extract data field
           if expvar.hasAxis('time'):
             method = aggregation if aggregation.isupper() else aggregation.title() 
-            vardata = getattr(expvar,'seasonal'+method)(season, asVar=False, lclim=True)
+            vardata = getattr(expvar,'seasonal'+method)(season, asVar=False, lclim=True)            
           else:
             vardata = expvar[:].squeeze()
 #           if expvar.masked: vardata.set_fill_value(np.NaN) # fill with NaN
@@ -586,7 +595,7 @@ if __name__ == '__main__':
       ## Plot data
       # draw boundaries of inner domain
       if loutline or lframe:
-        print(' - drawing data frames\n')
+        print(' - drawing domain outlines\n')
         for n in xrange(nax):
           for m in xrange(nexps[n]):   
             if loutline:
@@ -644,7 +653,7 @@ if __name__ == '__main__':
       ## Annotation
       #print('\n - annotating plots\n')      
       # add labels
-      if ltitle: f.suptitle(figtitle,fontsize=12)
+      if ltitle: f.suptitle(figtitle,fontsize=16 if len(maps) == 1 else 12)
       # add a map scale to lower left axes
       msn = len(maps)/2 # place scale 
       mapSetup.drawScale(maps[msn])
@@ -693,7 +702,7 @@ if __name__ == '__main__':
                 #else: bmap.plot(xx,yy,'x', markersize=4, mfc='none', mec='k')
             else: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
           # add basin outlines
-          shpargs = dict(linewidth = 0.5, color='k') 
+          shpargs = dict(linewidth = 1., color='k') 
           if lbasins:
             for basin in basinlist:      
               basininfo = basins_info[basin]

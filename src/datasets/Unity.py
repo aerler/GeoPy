@@ -168,11 +168,11 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-#   mode = 'merge_climatologies'
+  mode = 'merge_climatologies'
 #   mode = 'merge_timeseries'
 #   mode = 'test_climatology'
 #   mode = 'test_point_climatology'
-  mode = 'test_point_timeseries'
+#   mode = 'test_point_timeseries'
   
   # settings to generate dataset
   grids = []
@@ -180,7 +180,7 @@ if __name__ == '__main__':
   grids += ['arb2_d01']
 #   grids += ['arb2_d02']
 #   grids += ['arb3_d02']
-  grids += ['arb3_d01']
+#   grids += ['arb3_d01']
 #   grids += ['arb3_d02']
 #   grids += ['grb1_d01']
 #   grids += ['grb1_d02']
