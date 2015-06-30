@@ -331,16 +331,16 @@ if __name__ == '__main__':
 #   ldiff = True; reflist = ['max-ens']; refprd = H15
 
 # Fig. 13
-  maptype = 'robinson'; lstations = False; lbasins = False; lminor = False; locean = True  
-  case = 'cvdp'; lsamesize = False; cbo = 'horizontal'; ltitle = True; seasons = [None]; subplot = (2,1)
+#   maptype = 'robinson'; lstations = False; lbasins = False; lminor = False; locean = True  
+#   case = 'cvdp'; lsamesize = False; cbo = 'horizontal'; ltitle = True; seasons = [None]; subplot = (2,1)
 #   exptitles = [r'HadISST', r'CESM Ensemble']
 #   variables = ['PDO_eof','AMO_eof',]; explist = ['SST_CVDP','Ctrl-1_CVDP']; period = H15
 #   figtitles = ['Pacific Decadal Oscillation SST Pattern', 'Atlantic Multi-Decadal Oscillation Pattern']   
-  exptitles = [r'20th Cent. Reanalysis V2', r'CESM Ensemble']
-  explist = ['PSL_CVDP','Ctrl-1_CVDP']; period = H15
-  variables = ['NAM_eof','NAO_eof','NPO_eof','PNA_eof',]
-  figtitles = ['Northern Annular Mode Pattern', 'North Atlantic Oscillation Pattern',
-               'North Pacific Oscillation Pattern', 'Pacific North America Pattern']
+#   exptitles = [r'20th Cent. Reanalysis V2', r'CESM Ensemble']
+#   explist = ['PSL_CVDP','Ctrl-1_CVDP']; period = H15
+#   variables = ['NAM_eof','NAO_eof','NPO_eof','PNA_eof',]
+#   figtitles = ['Northern Annular Mode Pattern', 'North Atlantic Oscillation Pattern',
+#                'North Pacific Oscillation Pattern', 'Pacific North America Pattern']
 
 #   case = '3km'; stations = 'cities'
 #   maptype = 'lcc-col'; lstations = True; lbasins = True # 'lcc-new'  
@@ -351,13 +351,14 @@ if __name__ == '__main__':
 #   explist = ['max-3km','max-ctrl','max-3km','max-3km'] 
 #   exptitles = ['WRF 3km','WRF 10km (15 yrs)','WRF 30km','WRF 10km']
 
-
-#   maptype = 'lcc-large'; figuretype = 'largemap'; loutline = False; lframe = True
-#   lstations = False; lbasins = False; lprovinces = True
-#   explist = ['max']; exptitles = ' '; domain = (0,1,2); lWRFnative = True; period = H15 
-#   case = 'arb2_prov'; basinlist = ('FRB','ARB'); provlist = ('BC','AB') 
-#   variables = ['zs']; seasons = ['topo']; WRFfiletypes += ['const']; lcontour = True
-#   figtitles = ['Topographic Height [km]' + ' and Domain Outlines' if lframe else '']
+## large map for all domains
+  maptype = 'lcc-large'; figuretype = 'largemap'; loutline = False; lframe = True
+  lstations = False; lbasins = True; lprovinces = False
+  explist = ['max']; exptitles = ' '; domain = (0,1,2); lWRFnative = True; period = H15 
+  case = 'arb2_basins'; basinlist = ('FRB','ARB'); provlist = ('BC','AB') 
+  variables = ['zs']; seasons = ['topo']; WRFfiletypes += ['const']; lcontour = True
+  figtitles = ['Topographic Height [km]' + ' and Domain Outlines' if lframe else '']
+## smaller map for western Canada
 #   maptype = 'lcc-new'; lstations = False; lbasins = True
 #   case = 'arb'; period = None; lWRFnative = True; lframe = False; loutline = False
 #   explist = ['columbia']; exptitles = ' '; domain = (2,3)
