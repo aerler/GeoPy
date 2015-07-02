@@ -158,8 +158,8 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       else: 
         raise ValueError, 'No map color scheme defined (use \'season\' to select color scheme).'
       cbl = np.linspace(0,clim[-1],6)
-    elif var=='stns': # station density
-      clevs = np.linspace(0,5,6); clbl = '%2i' # stations per grid points  
+    elif var in ('stns','stations'): # station density
+      clevs = np.linspace(1,7,7); clbl = '%2i' # stations per grid points  
       cmap.set_over('purple'); cmap.set_under('white')      
     elif var=='lndcls': # land use classes (works best with contour plot)
       clevs = np.linspace(0.5,24.5,25); cbl = np.linspace(4,24,6)  

@@ -99,7 +99,7 @@ if __name__ == '__main__':
 #   variables += ['MaxPreccu_1d']; aggregation = 'max'
 #   variables += ['MaxPrecnc_1d']; aggregation = 'max'
 #   variables += ['wetprec']
-  variables += ['precip']
+#   variables += ['precip']
 #   variables += ['preccu']
 #   variables += ['precnc']
 #   variables += ['wetfrq']
@@ -133,13 +133,13 @@ if __name__ == '__main__':
 #   seasons += ['melt']
 #   seasons += ['annual']
 # #   seasons += ['summer']
-  seasons += ['winter']
+#   seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
 #   variables = ['seaice']; seasons = [8] # September seaice
 #  variables = ['snowh'];  seasons = [8] # September snow height
-#  variables = ['stns']; seasons = ['annual']
+#   variables = ['stns']; seasons = ['annual']
 #   variables = ['lndcls']; seasons = [''] # static
 #   variables = ['zs']; seasons = ['topo']; lcontour = True; lframe = False 
 #   WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
@@ -169,6 +169,12 @@ if __name__ == '__main__':
 #   explist = ['Unity']; maptype = 'lcc-new'; period = H15
 #   exptitles = ['Merged Observations (10 km)']
 #   case = 'unity'; lsamesize = True; grid = 'arb2_d02'
+
+# GPCC statiosn
+  variables = ['stations']; seasons = ['annual']
+  explist = ['GPCC']; maptype = 'lcc-new'; period = H30
+  exptitles = ['GPCC Station Density']; figtitles = [''] 
+  case = 'gpcc'; lsamesize = False; #grid = 'arb2_d02'
 
 # # ERA-Interim validation
 # #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
@@ -352,12 +358,12 @@ if __name__ == '__main__':
 #   exptitles = ['WRF 3km','WRF 10km (15 yrs)','WRF 30km','WRF 10km']
 
 ## large map for all domains
-  maptype = 'lcc-large'; figuretype = 'largemap'; loutline = False; lframe = True
-  lstations = False; lbasins = True; lprovinces = False
-  explist = ['max']; exptitles = ' '; domain = (0,1,2); lWRFnative = True; period = H15 
-  case = 'arb2_basins'; basinlist = ('FRB','ARB'); provlist = ('BC','AB') 
-  variables = ['zs']; seasons = ['topo']; WRFfiletypes += ['const']; lcontour = True
-  figtitles = ['Topographic Height [km]' + ' and Domain Outlines' if lframe else '']
+#   maptype = 'lcc-large'; figuretype = 'largemap'; loutline = False; lframe = True
+#   lstations = False; lbasins = True; lprovinces = False
+#   explist = ['max']; exptitles = ' '; domain = (0,1,2); lWRFnative = True; period = H15 
+#   case = 'arb2_basins'; basinlist = ('FRB','ARB'); provlist = ('BC','AB') 
+#   variables = ['zs']; seasons = ['topo']; WRFfiletypes += ['const']; lcontour = True
+#   figtitles = ['Topographic Height [km]' + ' and Domain Outlines' if lframe else '']
 ## smaller map for western Canada
 #   maptype = 'lcc-new'; lstations = False; lbasins = True
 #   case = 'arb'; period = None; lWRFnative = True; lframe = False; loutline = False
