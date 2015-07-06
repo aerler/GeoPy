@@ -14,7 +14,7 @@ import os, pickle
 import osr
 # from atmdyn.properties import variablePlotatts
 from datasets.EC import nullNaN
-from average.derived_variables import precip_thresholds
+from wrfavg.derived_variables import precip_thresholds
 from geodata.base import concatDatasets
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError

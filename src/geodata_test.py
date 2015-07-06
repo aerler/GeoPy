@@ -21,7 +21,7 @@ from geodata.base import Variable, Axis, Dataset, Ensemble, concatVars, concatDa
 from geodata.stats import VarKDE, VarRV, asDistVar
 from geodata.stats import kstest, ttest, mwtest, wrstest, pearsonr, spearmanr
 from datasets.common import data_root
-from average.wrfout_average import ldebug
+from wrfavg.wrfout_average import ldebug
 from copy import deepcopy
 
 # RAM disk settings ("global" variable)

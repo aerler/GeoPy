@@ -25,8 +25,8 @@ from geodata.base import Axis, Variable, Dataset
 from utils.nctools import writeNetCDF
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import NamedShape, ShapeInfo
-from average.derived_variables import precip_thresholds
-import average.derived_variables as dv
+from wrfavg.derived_variables import precip_thresholds
+import wrfavg.derived_variables as dv
 
 ## EC (Environment Canada) Meta-data
 

@@ -87,7 +87,7 @@ def loadObs_Special(varlist=None, **kwargs):
   if ldryprec: 
     dataset += dataset.precip.copy(plot=variablePlotatts['dryprec'], **varatts['dryprec'])
   if lwetdays:
-    from average.derived_variables import precip_thresholds
+    from wrfavg.derived_variables import precip_thresholds
     for threshold in precip_thresholds:
       dataset += dataset.wetfrq.copy(name='wetfrq_{:03d}'.format(int(threshold*10)))
   # return augmented dataset
