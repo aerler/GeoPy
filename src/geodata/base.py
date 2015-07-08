@@ -494,6 +494,89 @@ class Variable(object):
       string += 'Plot Attributes: {0:s}'.format(str(self.plot))
     return string
   
+  def tabulate(self, row=None, column=None, header=None, labels=None, cell_str='{}', cell_axis=None,
+               mode='latex', filename=None, folder=None, **kwargs):
+    ''' Create a nicely formatted table in the selected format ('mylatex' or call tabulate); 
+        cell_str controls formatting of each cell, and also supports multiple arguments along 
+        an axis '''
+    # check input
+    if cell_axis:
+      if not self.ndim == 3: raise AxisError, self.axes
+      else: lcellaxis = True    
+    elif not self.ndim == 2: raise AxisError, self.axes
+    else: lcellaxis = False
+    if not self.hasAxis(row): raise AxisError, row
+    if not self.hasAxis(column): raise AxisError, column
+    if cell_axis and not self.hasAxis(cell_axis): raise AxisError, cell_axis
+    if self.data: data = self.getArray(copy=False)
+    else: raise DataError
+    rowax = self.getAxis(row); colax = self.getAxis(column)
+    irow = self.axisIndex(row); icol = self.axisIndex(column)
+    if irow < icol: icol -= 1
+    llabel = False; lheader = False
+    if labels: 
+      if len(labels) != len(rowax): raise AxisError, rowax
+      llabel = True 
+    if header: 
+      if llabel:
+        if len(header) == len(colax): header = ('',) + tuple(header)
+        elif not len(header) == len(colax)+1: raise AxisError, header
+      elif not len(header) == len(colax): raise AxisError, header
+      lheader = True
+    ## assemble table in nested list
+    table = [] # list of rows
+    if lheader: table.append(header) # first row
+    # loop over rows
+    for i in xrange(len(rowax)):
+      row = [labels[i]] if labels else []
+      rowdata = data.take(i, axis=irow)
+      # loop over columns
+      for j in xrange(len(colax)):
+        celldata = rowdata.take(j, axis=icol)
+        if lcellaxis: cell = cell_str.format(*celldata)
+        else: cell = cell_str.format(celldata)
+        row.append(cell)
+      table.append(row)
+    ## now make table   
+    if mode.lower() == 'mylatex':
+      # extract settings 
+      lhline = kwargs.pop('lhline', True)
+      cell_del = kwargs.pop('cell_del','  &  ') # regular column delimiter      
+      line_brk = kwargs.pop('line_break',' \\\\ \\hline' if lhline else ' \\\\') # escape backslash
+      tab_begin = kwargs.pop('tab_begin','') # by default, no tab environment
+      tab_end = kwargs.pop('tab_end','') # by default, no tab environment
+      # align cells
+      nrow = len(rowax)+1 if lheader else len(rowax)
+      ncol = len(colax)+1 if llabel else len(colax)
+      col_fmts = [] # column width
+      for j in xrange(ncol):
+        wd = 0
+        for i in xrange(nrow): wd = max(wd,len(table[i][j]))
+        col_fmts.append('{{:^{:d}s}}'.format(wd))
+      # assemble table sting
+      string = tab_begin + '\n' if tab_begin else '' # initialize
+      for i,row in enumerate(table):
+        row = [fmt_str.format(cell) for fmt_str,cell in zip(col_fmts,row)]
+        string += (' '+row[0]) # first cell
+        for cell in row[1:]: string += (cell_del+cell)
+        string += line_brk # add latex line break
+        if lheader and i == 0: string += ' \\hline'
+        string += '\n' # add actual line break 
+      if tab_end: string += (tab_end+'\n') 
+    else:
+      # use the tabulate module (it's not standard, so import only when needed)
+      from tabulate import tabulate 
+      string = tabulate(table, tablefmt=mode, **kwargs)
+      # headers, floatfmt, numalign, stralign, missingval
+    ## write to file
+    if filename:
+      if folder: filename = folder+'/'+filename
+      f = open(filename, mode='w')
+      f.write(string) # write entire string and nothing else
+      f.close()
+    # return string for printing
+    return string
+  
   def squeeze(self):
     ''' A method to remove singleton dimensions (in-place). '''
     # new axes tuple: only the ones longer than one element
@@ -2978,7 +3061,7 @@ class Dataset(object):
       
 
 def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, offset=None, 
-               name=None, axatts=None, varatts=None, lcheckAxis=True, lensembleAxis=None):
+               name=None, units=None, axatts=None, varatts=None, lcheckAxis=True, lensembleAxis=None):
   ''' A function to concatenate Variables from different sources along a given axis;
       this is useful to generate a continuous time series from an ensemble. '''
   if lensembleAxis and axis is None: axis = 'ensemble'
@@ -3000,7 +3083,7 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   if not var0.data: var.load()
   # get some axis info
   if lnew:
-    tax = 0 # add ensemble axis as first axis (assuming Fortran order)
+    tax = 0 # add ensemble axis as first axis (assuming C order)
   else:
     axt = var0.getAxis(axis)
     tax = var0.axisIndex(axis)  
@@ -3070,7 +3153,8 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
     # create new concatenation axis
     if axis_obj is not None:
       if not isinstance(axis_obj, Axis): raise TypeError, axis_obj
-      if len(axis_obj) != tlen: raise AxisError, axis_obj   
+      if len(axis_obj) != tlen: raise AxisError, axis_obj
+      axes = (axis_obj,) + var0.axes  
     elif lnew: 
       # new ensemble axis (just enumerate)
       tmpatts = dict(name=axis, units='#')
@@ -3086,7 +3170,7 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
       axes = list(var0.axes); axes[tax] = Axis(coord=coord, atts=tmpatts)
     # create new variable
     vatts = var0.atts.copy()
-    vatts['name'] = name or var0.name; vatts['units'] = var0.units
+    vatts['name'] = name or var0.name; vatts['units'] = units or var0.units
     if varatts is not None: vatts.update(varatts)
     return Variable(data=data, axes=axes, atts=vatts)
     # or return data

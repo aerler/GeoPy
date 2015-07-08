@@ -904,7 +904,8 @@ class DistVar(Variable):
           if support_axis is None:
             # generate new histogram axis
             axplotatts = getPlotAtts(name='quant', units='') # infer meta data from plot attributes
-            daxatts = self.paramAxis.atts.copy() # original Axis also has dataset reference/name
+            if self.paramAxis: daxatts = self.paramAxis.atts.copy() # original Axis also has dataset reference/name
+            else: daxatts = dict() 
             daxatts['name'] = '{:s}_quants'.format(basename) # remove suffixes (like _dist)
             daxatts['units'] = '' # quantiles have no units
             daxatts['long_name'] = '{:s} Quantile Axis'.format(self.name.title())

@@ -36,6 +36,8 @@ class BaseVarTest(unittest.TestCase):
   
   def setUp(self):
     ''' create Axis and a Variable instance for testing '''
+    if RAM: self.folder = ramdisk
+    else: self.folder = os.path.expanduser('~') # just use home directory (will be removed)
     self.dataset_name = 'TEST'
     # some setting that will be saved for comparison
     self.size = (48,2,4) # size of the data array and axes
@@ -512,9 +514,38 @@ class BaseVarTest(unittest.TestCase):
     
   def testPrint(self):
     ''' just print the string representation '''
-    assert self.var.prettyPrint()
+    lsimple = self.__class__ is BaseVarTest
+    var = self.var
+    # print table
+    if lsimple:
+      print('') # complcated LaTeX form
+      filename = self.folder + '/test.txt'
+      if os.path.exists(filename): os.remove(filename)
+      string = var.tabulate(row='y', column='x', labels=['row 1', 'row 2'],
+                            header=['y','x_1','x_2','x_3','x_4'],  
+                            cell_str='{0:d}-{47:d}', cell_axis='time', mode='mylatex', 
+                            filename=filename)
+      print string
+      assert os.path.exists(filename)
+    else:
+      # crop data because these tests just take way too long!
+      if self.dataset_name == 'NARR':
+        var = self.var(time=slice(0,5), y=slice(190,195), x=slice(0,10))
+      else:
+        var = self.var(time=slice(0,5), lat=(50,70), lon=(-120,-110))
+    print('') # generic version with cell dimension
+    t,x,y = var.axes
+    print var.tabulate(row=y.name, column=x.name, header=None, labels=None, 
+                       cell_str='{0:}', cell_axis=t.name, mode='simple', filename=None)
+    print('') # generic version without cell dimension
+    print var(time=0, lidx=True).tabulate(row=y.name, column=x.name, header=None, labels=None, 
+                                          cell_str='{0:}', cell_axis=None, mode='plain', filename=None)
+    
+    # print self-representation string
     print('')
-    s = str(self.var)
+    assert var.prettyPrint()
+    print('')
+    s = str(var)
     print s
     print('')
       
@@ -1609,7 +1640,7 @@ if __name__ == "__main__":
 #     specific_tests += ['Mask']
 #     specific_tests += ['Ensemble']
 #     specific_tests += ['DistributionVariables']
-    specific_tests += ['StatsTests']   
+#     specific_tests += ['StatsTests']   
 #     specific_tests += ['UnaryArithmetic']
 #     specific_tests += ['BinaryArithmetic']
 #     specific_tests += ['Copy']
@@ -1619,6 +1650,7 @@ if __name__ == "__main__":
 #     specific_tests += ['SeasonalReduction']
 #     specific_tests += ['ConcatVars']
 #     specific_tests += ['ConcatDatasets']
+    specific_tests += ['Print']
 
     # list of tests to be performed
     tests = [] 
