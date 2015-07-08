@@ -495,16 +495,21 @@ class Variable(object):
     return string
   
   def tabulate(self, row=None, column=None, header=None, labels=None, cell_str='{}', cell_axis=None,
-               mode='latex', filename=None, folder=None, **kwargs):
+               cell_fct=None, lflatten=False, mode='latex', filename=None, folder=None, **kwargs):
     ''' Create a nicely formatted table in the selected format ('mylatex' or call tabulate); 
         cell_str controls formatting of each cell, and also supports multiple arguments along 
-        an axis '''
+        an axis. lflatten skips cell axis checking and lumps all remaining axes together. '''
     # check input
     if cell_axis:
       if not self.ndim == 3: raise AxisError, self.axes
-      else: lcellaxis = True    
+    elif lflatten:
+      if not self.ndim >= 2: raise AxisError, self.axes
     elif not self.ndim == 2: raise AxisError, self.axes
-    else: lcellaxis = False
+    if not isinstance(cell_str,basestring): raise TypeError, cell_str
+    if cell_fct: 
+      if not callable(cell_fct): raise TypeError, cell_fct
+      lcellfct = True
+    else: lcellfct = False
     if not self.hasAxis(row): raise AxisError, row
     if not self.hasAxis(column): raise AxisError, column
     if cell_axis and not self.hasAxis(cell_axis): raise AxisError, cell_axis
@@ -533,7 +538,13 @@ class Variable(object):
       # loop over columns
       for j in xrange(len(colax)):
         celldata = rowdata.take(j, axis=icol)
-        if lcellaxis: cell = cell_str.format(*celldata)
+        if lcellfct: celldata = cell_fct(celldata)
+        if isinstance(celldata, (tuple,list)): # sort of "isiterable" but no strings
+          cell = cell_str.format(*celldata) # we can get lists or tuples from functions
+        elif isinstance(celldata, np.ndarray):
+          if lflatten: celldata = celldata.ravel() 
+          elif celldata.ndim > 1: raise AxisError, celldata.shape
+          cell = cell_str.format(*celldata) 
         else: cell = cell_str.format(celldata)
         row.append(cell)
       table.append(row)

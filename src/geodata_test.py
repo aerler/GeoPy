@@ -523,8 +523,9 @@ class BaseVarTest(unittest.TestCase):
       if os.path.exists(filename): os.remove(filename)
       string = var.tabulate(row='y', column='x', labels=['row 1', 'row 2'],
                             header=['y','x_1','x_2','x_3','x_4'],  
-                            cell_str='{0:d}-{47:d}', cell_axis='time', mode='mylatex', 
-                            filename=filename)
+#                             cell_str='{0:d}-{47:d}', cell_axis='time',
+                            cell_str='{0:2.1f}', cell_axis='time', cell_fct=np.mean, 
+                            mode='mylatex', filename=filename)
       print string
       assert os.path.exists(filename)
     else:
@@ -539,8 +540,8 @@ class BaseVarTest(unittest.TestCase):
                        cell_str='{0:}', cell_axis=t.name, mode='simple', filename=None)
     print('') # generic version without cell dimension
     print var(time=0, lidx=True).tabulate(row=y.name, column=x.name, header=None, labels=None, 
-                                          cell_str='{0:}', cell_axis=None, mode='plain', filename=None)
-    
+                                          cell_str='{0:}', cell_axis=None, mode='plain', 
+                                          lflatten=True, filename=None)
     # print self-representation string
     print('')
     assert var.prettyPrint()
