@@ -92,7 +92,7 @@ if __name__ == '__main__':
   ## select variables and seasons
   variables = [] # variables
 #   variables += ['Ts']
-#   variables += ['T2']
+  variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
 #   variables += ['MaxPrecip_1d']; aggregation = 'mean'
 #   variables += ['MaxPrecip_1d']; aggregation = 'max'
@@ -131,9 +131,9 @@ if __name__ == '__main__':
 #   seasons += ['cold']
 #   seasons += ['warm']
 #   seasons += ['melt']
-#   seasons += ['annual']
-# #   seasons += ['summer']
-#   seasons += ['winter']
+  seasons += ['annual']
+  seasons += ['summer']
+  seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
@@ -171,10 +171,10 @@ if __name__ == '__main__':
 #   case = 'unity'; lsamesize = True; grid = 'arb2_d02'
 
 # GPCC statiosn
-  variables = ['stations']; seasons = ['annual']
-  explist = ['GPCC']; maptype = 'lcc-new'; period = H30
-  exptitles = ['GPCC Station Density']; figtitles = [''] 
-  case = 'gpcc'; lsamesize = False; #grid = 'arb2_d02'
+#   variables = ['stations']; seasons = ['annual']
+#   explist = ['GPCC']; maptype = 'lcc-new'; period = H30
+#   exptitles = ['GPCC Station Density']; figtitles = [''] 
+#   case = 'gpcc'; lsamesize = False; #grid = 'arb2_d02'
 
 # # ERA-Interim validation
 # #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
@@ -222,9 +222,12 @@ if __name__ == '__main__':
 #   periodstrs = ('Mid-Century','End-Century')
 #   exptitles = ['{:s}, {:s}'.format(season.title(),prdstr) for season in seasons[0][::2] for prdstr in periodstrs]
 # #   maptype = 'lcc-bcab'; lstations = True; stations = 'EC'; 
-# #   lbasins = True; lsamesize = False; basinlist = ['FRB','ARB']
+#   lbasins = True; lsamesize = False; basinlist = ['FRB','ARB']
 # #   lprovinces = True; provlist = ['BC','AB'][1:]
 #   lfrac = True; refprd = H15
+#   variables = ['aSM']
+#   ldiff = True; refprd = H15
+#   variables = ['SST']; variable_settings = ['T2_prj'] # parallel execution
 
 # surface sensitivity test
 #   maptype = 'lcc-intermed'; lstations = False; lbasins = True
@@ -310,16 +313,32 @@ if __name__ == '__main__':
 #   explist = ['max', 'max-A', 'Unity', 'max-B', 'max-C', 'NARR']; period = H15
 #   exptitles = ['WRF-1', 'WRF-2','Merged Observations', 'WRF-3', 'WRF-4', 'NARR (Reanalysis)']
 #   case = 'val-ens'; lsamesize = False; #grid = 'arb2_d02'
-#   variables = ['precip']; seasons = ['annual','summer','winter'] 
+#   variables = ['precip']; seasons = ['annual','summer','winter']
+
+## ensemble differences
+#   explist = ['Unity']; period = H15
+#   explist = ['max-2100', 'max-A-2100', 'max-B-2100', 'max-C-2100']
+#   reflist = ['max', 'max-A', 'max-B', 'max-C']; case = 'val-ens'
+#   exptitles = ['WRF-1', 'WRF-2', 'WRF-3', 'WRF-4']
+#   explist = ['Ctrl-1-2100', 'Ctrl-A-2100', 'Ctrl-B-2100', 'Ctrl-C-2100']
+#   reflist = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']; case = 'val-Ens'
+#   period = B15; refprd = H15; lfrac = True; lsamesize = False; grid = 'arb2_d02'
+#   variables = ['precip']; seasons = ['annual','summer','winter'][:] 
+ 
 
 # Fig. 6/7 Climate Change: T2 and pecip diffs
-#   explist = ['max-ens-2100']*3+['Ens-2100']*3; #grid = ['arb2_d02']*3+['cesm1x1']*3
-#   seasons = ['annual', 'summer', 'winter']*2; period = B15
-#   exptitles = ['WRF, 10 km ({:s} Average)']*3+['CESM ({:s} Average)']*3
-#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
-#   case = 'prj'; lbasins = True; lsamesize = False; cbo = 'horizontal'
-#   ldiff = True; reflist = ['max-ens']*3+['Ens']*3; refprd = H15  
-#   seasons = [seasons] # only make one plot with all seasons!
+#   explist = ['max-ens-2100']*3+['Ens-2100']*3; period = B15
+  explist = ['max-ens-2050']*3+['Ens-2050']*3; period = A15
+  seasons = ['annual', 'summer', 'winter']*2; #grid = ['arb2_d02']*3+['cesm1x1']*3
+# #   seasons = ['annual', 'spring', 'fall']*2; period = B15
+  exptitles = ['WRF, 10 km ({:s} Average)']*3+['CESM ({:s} Average)']*3
+  exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
+  case = 'prj'; lbasins = True; lsamesize = False; cbo = 'horizontal'
+  ldiff = True; reflist = ['max-ens']*3+['Ens']*3; refprd = H15  
+  seasons = [seasons] # only make one plot with all seasons!
+  grid = 'arb2_d02' # necessary for properly area averaged stats
+  variables = ['SST']; variable_settings = ['T2_prj'] # parallel execution
+  locean = True
 # #   variables = ['T2']; variable_settings = ['T2_prj'] # parallel execution
 #   variables = ['precip']; variable_settings = ['precip_prj']
 #   ldiff = False; lfrac = True 

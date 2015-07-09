@@ -164,6 +164,7 @@ class ATM(FileType):
                      TREFMNAV = dict(name='Tmin', units='K'),   # Daily Minimum Temperature (at surface)
                      QREFHT   = dict(name='q2', units='kg/kg'), # 2m water vapor mass mixing ratio                     
                      TS       = dict(name='Ts', units='K'), # Skin Temperature (SST)
+#                      TS       = dict(name='SST', units='K'), # Skin Temperature (SST)
                      TSMX     = dict(name='MaxTs', units='K'),   # Maximum Skin Temperature (SST)
                      TSMN     = dict(name='MinTs', units='K'),   # Minimum Skin Temperature (SST)                     
                      PRECT    = dict(name='precip', units='kg/m^2/s', scalefactor=1000.), # total precipitation rate (kg/m^2/s) 
@@ -461,7 +462,13 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
   if lautoregrid is None: lautoregrid = not load3D # don't auto-regrid 3D variables - takes too long!
   # translate varlist
   if varatts is not None: atts.update(varatts)
+  lSST = False
   if varlist is not None:
+    varlist = list(varlist) 
+    if 'SST' in varlist: # special handling of name SST variable, as it is part of Ts
+      varlist.remove('SST')
+      if not 'Ts' in varlist: varlist.append('Ts')
+      lSST = True # Ts is renamed to SST below
     if translateVars is None: varlist = list(varlist) + translateVarNames(varlist, atts) # also aff translations, just in case
     elif translateVars is True: varlist = translateVarNames(varlist, atts) 
     # N.B.: DatasetNetCDF does never apply translation!
@@ -538,6 +545,8 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
         assert len(dataset.time) == len(timeAxis), dataset.time
         dataset.replaceAxis(dataset.time, timeAxis, asNC=False, deepcopy=False)
       elif dataset.hasAxis('year'): raise NotImplementedError, dataset
+  # rename SST
+  if lSST: dataset['SST'] = dataset.Ts
   # correct ordinal number of shape (should start at 1, not 0)
   if lshape:
     # mask all shapes that are incomplete in dataset
