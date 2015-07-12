@@ -56,6 +56,7 @@ if __name__ == '__main__':
   subplot = None # subplot layout (or defaults based on number of plots)
   lbackground = True
   lcontour = False # contour or pcolor plot
+  laddContour = False # add black contour lines
   lframe = True # draw domain boundary
   loutline = True # draw boundaries around valid (non-masked) data
   framewidths = 1
@@ -84,22 +85,22 @@ if __name__ == '__main__':
     
   # WRF file types
   WRFfiletypes = [] # WRF data source
-#   WRFfiletypes += ['hydro']
+  WRFfiletypes += ['hydro']
 #   WRFfiletypes += ['lsm']
 #   WRFfiletypes += ['srfc']
 #   WRFfiletypes += ['xtrm']
-  WRFfiletypes += ['plev3d']
+#   WRFfiletypes += ['plev3d']
   ## select variables and seasons
   variables = [] # variables
 #   variables += ['Ts']
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
-#   variables += ['MaxPrecip_1d']; aggregation = 'mean'
+  variables += ['MaxPrecip_1d']; aggregation = 'mean'
 #   variables += ['MaxPrecip_1d']; aggregation = 'max'
 #   variables += ['MaxPreccu_1d']; aggregation = 'max'
 #   variables += ['MaxPrecnc_1d']; aggregation = 'max'
 #   variables += ['wetprec']
-#   variables += ['precip']
+#   variables += ['precip'] 
 #   variables += ['preccu']
 #   variables += ['precnc']
 #   variables += ['wetfrq']
@@ -109,7 +110,7 @@ if __name__ == '__main__':
 #   variables += ['RH']; level_agg['p'] = 1
 #   variables += ['T']; level_agg['p'] = 2
 #   variables += ['u']; level_agg['p'] = 1
-  variables += ['Z']; level_agg['p'] = 2; lcontour = True
+#   variables += ['Z']; level_agg['p'] = 2; laddContour = True
 #   variables += ['waterflx']
 #   variables += ['p-et']
 #   variables += ['OIPX']
@@ -188,18 +189,48 @@ if __name__ == '__main__':
 # #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
 #   case = 'erai'; lsamesize = True
 
-# water transport
-  explist = ['max-ens-2050','max-ens-2100']*2
-  seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
-  exptitles = ['Mid-century, {:s}', 'End-century, {:s}']*2
-#   lfrac = True; reflist = ['max-ens',]; refprd = H15
-  ldiff = True; reflist = ['max-ens',]; refprd = H15
-#   explist = ['max-ens','max-ens-2050','max-ens-2100']*2
-#   seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
-#   exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
+# historical state (continental; vertical orientation)
+#   refexp = 'max-ens'; case = refexp; exptitles = ['Historical, {:s}',]*2
+#   explist = [refexp]*2; seasons = [('summer','winter',)]; period = H15
+#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
+#   maptype = 'lcc-can'; lstations = False; lbasins = True 
+#   domain = 1; lsamesize = False; cbo = 'horizontal'; subplot = (2,1) # vertical 
+# #   variables = ['Z']; level_agg['p'] = 2; laddContour = True
+# #   variables = ['RH']; level_agg['p'] = 1
+#   variables = ['precip']; variable_settings = ['precip_hist']
+# #   variables = ['aSM']
+# #   variables = ['p-et']; seasons = [('summer','annual',)]  
+
+# continental transport
+#   refexp = 'max-ens'; case = refexp
+#   explist = [refexp+'-2050',refexp+'-2100']*2; reflist = [refexp,]
+#   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2; refprd = H15
+#   exptitles = ['Mid-century, {:s}', 'End-century, {:s}']*2
+# #   explist = [refexp,refexp+'-2050',refexp+'-2100']*2
+# #   seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
+# #   exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
+#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
+#   maptype = 'lcc-can'; lstations = False; lbasins = True 
+#   domain = 1; lsamesize = True; cbo = 'horizontal' 
+# #   variables = ['Z']; level_agg['p'] = 2; laddContour = True; ldiff = True 
+# #   variables = ['precip']; variable_settings = ['precip_prj']; lfrac = True #ldiff = True 
+# #   variables = ['RH']; level_agg['p'] = 1; ldiff = True 
+#   variables = ['aSM']; lfrac = True
+# #   variables = ['p-et']; variable_settings = ['precip_prj']; seasons = [('summer',)*2+('annual',)*2]; ldiff = True 
+
+# summer and winter progression
+  refexp = 'max-ens'; case = refexp; cbo = 'horizontal'
+  explist = [refexp,refexp+'-2050',refexp+'-2100']*2
+  seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
+  exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
-  maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
-  case = 'water'; lsamesize = True; #cbo = 'horizontal'
+#   maptype = 'lcc-can'; lstations = False; lbasins = True 
+#   domain = 1; lsamesize = True; cbo = 'horizontal' 
+# #   variables = ['Z']; level_agg['p'] = 2; laddContour = True; ldiff = True 
+# #   variables = ['precip']; variable_settings = ['precip_prj']; lfrac = True #ldiff = True 
+# #   variables = ['RH']; level_agg['p'] = 1; ldiff = True 
+#   variables = ['aSM']; lfrac = True
+# #   variables = ['p-et']; variable_settings = ['precip_prj']; seasons = [('summer',)*2+('annual',)*2]; ldiff = True 
 
 # water transport
 #   explist = ['max-ens-2050','max-ens-2100']*2
@@ -676,6 +707,10 @@ if __name__ == '__main__':
             cd.append(maps[n].contourf(x[n][m],y[n][m],data[n][m],clevs,ax=ax[n],cmap=cmap, 
                                        norm=norm,extend='both'))  
           else: cd.append(maps[n].pcolormesh(x[n][m],y[n][m],data[n][m],cmap=cmap,shading='gouraud'))
+          # add black contour lines (outlines) 
+          if laddContour:
+            cd.append(maps[n].contour(x[n][m],y[n][m],data[n][m],clevs,ax=ax[n],
+                                      colors='k', linewidths=0.5))
       # add colorbar
       #TODO: use utils.sharedColorbar
       cax = f.add_axes(caxpos)

@@ -36,7 +36,7 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
     if var in ('T2_prj','Ts_prj','Tmin_prj','Tmax_prj','Tmean_prj'):
       clevs = np.linspace(0,8,41); clbl = '%3.1f'; cmap = mpl.cm.Oranges # K
     elif var in ('evap_prj','pet_prj','precip_prj','precipc_prj','precipnc_prj'):
-      clevs = np.linspace(-1.8,1.8,41); clbl = '%3.2f'; cmap = mpl.cm.PuOr # mm/day    
+      clevs = np.linspace(-1.5,1.5,31); clbl = '%2.1f'; cmap = mpl.cm.PuOr # mm/day    
     elif var in ('T2','Ts','Tmin','Tmax','Tmean'):
       clevs = np.linspace(-4,4,41); clbl = '%3.1f' # K
     elif var == 'Q2':
@@ -51,11 +51,11 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(-0.5,0.5,21); clbl = '%3.1f' # mm/day
     elif var in ('Z',):
       cmap = cm.coolavhrrmap # cmap.set_over('white'); cmap.set_under('black')
-      clevs = np.linspace(-0.0,0.12,41); clbl = '%3.2f'  
+      clevs = np.linspace(-0.0,0.12,21); clbl = '%3.2f'  
     elif var in ('u','U','v'):
       clevs = np.linspace(-5,5,21); clbl = '%2.1f'  
     elif var in ('RH',):
-      clevs = np.linspace(-15,15,31); clbl = '%2.0f' # percent points
+      clevs = np.linspace(-12,12,25); clbl = '%2.0f'; cmap = mpl.cm.PuOr # percent points
     else: 
       raise VariableError, 'No settings found for differencing variable \'{0:s}\' found!'.format(var)
   elif lfrac:
@@ -63,7 +63,7 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
     if var in ('T2_prj','Ts_prj','Tmin_prj','Tmax_prj','Tmean_prj'):
       clevs = np.linspace(0,3,41); clbl = '%2.1f'; cmap = mpl.cm.Oranges # K
     elif var in ('evap_prj','pet_prj','precip_prj','precipc_prj','precipnc_prj'):
-      clevs = np.linspace(-50.,50,41); clbl = '%2.0f'; cmap = mpl.cm.PuOr # mm/day    
+      clevs = np.linspace(-100.,100,41); clbl = '%2.0f'; cmap = mpl.cm.PuOr # mm/day    
     elif var in ('T2','Ts','Tmin','Tmax','Tmean'):
       clevs = np.linspace(-3,3,21); clbl = '%2.1f'
     elif var in ('Z',):
@@ -73,6 +73,8 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(-50,50,41); clbl = '%2.0f'
     elif var in ('WaterTransport_U','WaterTransport_V','ColumnWater','cqwu','cqwv','cqw'):
       clevs = np.linspace(-50,50,41); clbl = '%2.0f'
+    elif var in ('aSM',):
+      clevs = np.linspace(-21,21,43); clbl = '%2.0f'; cmap = mpl.cm.PuOr
     else: 
       clevs = np.linspace(-50,50,21); clbl = '%2.0f'  
   else:
@@ -117,6 +119,9 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(0,6,26); clbl = '%02.1f' # mm/day
       if season == 'winter': clevs -= 2
       elif season == 'summer': clevs += 2    
+    elif var in ('aSM',): # (absolute) soil moisture
+      # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
+      clevs = np.linspace(0.05,0.45,21); cmap = cm.avhrr_r; cmap.set_over('blue'); clbl = '%03.2f' # mpl.cm.PuOr
     elif var in ('p-et','waterflx'): # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
       clevs = np.linspace(-2,2,25); cmap = cm.avhrr_r; clbl = '%02.1f' # mpl.cm.PuOr
@@ -132,9 +137,13 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
       clevs = np.linspace(0,5,25); clbl = '%02.1f'; cmap = mpl.cm.YlGnBu
     elif var in ('precip','precipnc'): # total precipitation
-      if season in ('winter','fall'): clevs = np.linspace(0,20,41); clbl = '%2.1f' # mm/day
-      elif season in ('summer','spring'): clevs = np.linspace(0,8,17); clbl = '%2.0f' # mm/day
-      else: clevs = np.linspace(0,16,33); clbl = '%2.0f' # mm/day
+#       if season in ('winter','fall'): clevs = np.linspace(0,20,41); clbl = '%2.1f' # mm/day
+#       elif season in ('summer','spring'): clevs = np.linspace(0,8,17); clbl = '%2.0f' # mm/day
+      clevs = np.linspace(0,16,33); clbl = '%2.0f' # mm/day
+    elif var in ('precip_hist'): # total precipitation for north america
+      clevs = np.linspace(0,8,25); clbl = '%2.0f' # mm/day
+    elif var in ('MaxPrecip_1d'): # total precipitation for north america
+      clevs = np.linspace(0,80,21); clbl = '%2.0f' # mm/day
     elif var in ('precipc',): # convective precipitation 
       clevs = np.linspace(0,5,26); clbl = '%02.1f' # mm/day
     elif var == 'Q2':
@@ -153,7 +162,7 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(0.04,1,25); clbl = '%2.1f' # fraction
       cmap.set_under('white')
     elif var in ('Z',): # moisture fluxes (kg /(m^2 s))
-      clevs = np.linspace(5,6,26); clbl = '%02.1f' # mpl.cm.PuOr
+      clevs = np.linspace(5,6,21); clbl = '%02.1f' # mpl.cm.PuOr
     elif var in ('u','v'): # moisture fluxes (kg /(m^2 s))
       clevs = np.linspace(-10,20,31); clbl = '%02.1f' # mpl.cm.PuOr
     elif var in ('T',): # moisture fluxes (kg /(m^2 s))
@@ -261,15 +270,15 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
     elif subplot == (2,1):
       ## 2 panel, vertical
       if sameSize: figsize = (6.25,6.25)
-      else: figsize = (3.75,4.8)    
+      else: figsize = (3.5,6.25)    
       if cbar:
         cbo = cbo or 'horizontal'
         if cbo == 'vertical': 
           margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
           caxpos = [0.91, 0.05, 0.02, 0.9]
         if cbo == 'horizontal': 
-          margins = dict(bottom=0.07, left=0.055, right=.99, top=.925, hspace=0.0, wspace=0.0)
-          caxpos = [0.05, 0.035, 0.9, 0.02]
+          margins = dict(bottom=0.09, left=0.05, right=.99, top=.91, hspace=0.1, wspace=0.02)
+          caxpos = [0.05, 0.0275, 0.9, 0.03]
       else:
         margins = dict(bottom=0.055, left=0.085, right=.975, top=.95, hspace=0.05, wspace=0.05)
     elif subplot == (2,2):
@@ -281,8 +290,8 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
           margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
           caxpos = [0.91, 0.05, 0.03, 0.9]
         if cbo == 'horizontal':
-          margins = dict(bottom=0.06, left=0.09, right=.985, top=.95, hspace=0.13, wspace=0.02) 
-          caxpos = [0.05, 0.05, 0.9, 0.03]
+          margins = dict(bottom=0.09, left=0.055, right=.975, top=.91, hspace=0.1, wspace=0.02) 
+          caxpos = [0.05, 0.0275, 0.9, 0.03]
       else:
         margins = dict(bottom=0.06, left=0.09, right=.985, top=.95, hspace=0.13, wspace=0.02)
     elif subplot == (2,3):
