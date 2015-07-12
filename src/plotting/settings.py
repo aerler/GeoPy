@@ -49,6 +49,11 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(-1.2,1.2,41); clbl = '%3.2f' # mm/day  
     elif var == 'zs':
       clevs = np.linspace(-0.5,0.5,21); clbl = '%3.1f' # mm/day
+    elif var in ('Z',):
+      cmap = cm.coolavhrrmap # cmap.set_over('white'); cmap.set_under('black')
+      clevs = np.linspace(-0.0,0.12,41); clbl = '%3.2f'  
+    elif var in ('u','U','v'):
+      clevs = np.linspace(-5,5,21); clbl = '%2.1f'  
     elif var in ('RH',):
       clevs = np.linspace(-15,15,31); clbl = '%2.0f' # percent points
     else: 
@@ -60,7 +65,9 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
     elif var in ('evap_prj','pet_prj','precip_prj','precipc_prj','precipnc_prj'):
       clevs = np.linspace(-50.,50,41); clbl = '%2.0f'; cmap = mpl.cm.PuOr # mm/day    
     elif var in ('T2','Ts','Tmin','Tmax','Tmean'):
-      clevs = np.linspace(-3,3,21); clbl = '%2.1f' 
+      clevs = np.linspace(-3,3,21); clbl = '%2.1f'
+    elif var in ('Z',):
+      clevs = np.linspace(-15,15,31); clbl = '%2.1f'  
     elif var in ('evap','pet','p-et','precip','precipc','precipnc','waterflx',):
 #       clevs = np.linspace(-100,100,41); clbl = '%2.0f'  
       clevs = np.linspace(-50,50,41); clbl = '%2.0f'
@@ -145,6 +152,12 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       lmsklnd = True # mask land        
       clevs = np.linspace(0.04,1,25); clbl = '%2.1f' # fraction
       cmap.set_under('white')
+    elif var in ('Z',): # moisture fluxes (kg /(m^2 s))
+      clevs = np.linspace(5,6,26); clbl = '%02.1f' # mpl.cm.PuOr
+    elif var in ('u','v'): # moisture fluxes (kg /(m^2 s))
+      clevs = np.linspace(-10,20,31); clbl = '%02.1f' # mpl.cm.PuOr
+    elif var in ('T',): # moisture fluxes (kg /(m^2 s))
+      clevs = np.linspace(200,300,26); clbl = '%02.1f' # mpl.cm.PuOr
     elif var == 'zs': # surface elevation / topography
       if season == 'topo':
         lmskocn = True; clim = (-1.,2.5); # nice geographic map feel

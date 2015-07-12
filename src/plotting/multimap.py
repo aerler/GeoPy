@@ -86,13 +86,13 @@ if __name__ == '__main__':
   WRFfiletypes = [] # WRF data source
 #   WRFfiletypes += ['hydro']
 #   WRFfiletypes += ['lsm']
-  WRFfiletypes += ['srfc']
+#   WRFfiletypes += ['srfc']
 #   WRFfiletypes += ['xtrm']
-#   WRFfiletypes += ['plev3d']
+  WRFfiletypes += ['plev3d']
   ## select variables and seasons
   variables = [] # variables
 #   variables += ['Ts']
-  variables += ['T2']
+#   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
 #   variables += ['MaxPrecip_1d']; aggregation = 'mean'
 #   variables += ['MaxPrecip_1d']; aggregation = 'max'
@@ -107,6 +107,9 @@ if __name__ == '__main__':
 #   variables += ['cqwv']
 #   variables += ['cqw']
 #   variables += ['RH']; level_agg['p'] = 1
+#   variables += ['T']; level_agg['p'] = 2
+#   variables += ['u']; level_agg['p'] = 1
+  variables += ['Z']; level_agg['p'] = 2; lcontour = True
 #   variables += ['waterflx']
 #   variables += ['p-et']
 #   variables += ['OIPX']
@@ -184,6 +187,19 @@ if __name__ == '__main__':
 # #   maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
 # #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
 #   case = 'erai'; lsamesize = True
+
+# water transport
+  explist = ['max-ens-2050','max-ens-2100']*2
+  seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
+  exptitles = ['Mid-century, {:s}', 'End-century, {:s}']*2
+#   lfrac = True; reflist = ['max-ens',]; refprd = H15
+  ldiff = True; reflist = ['max-ens',]; refprd = H15
+#   explist = ['max-ens','max-ens-2050','max-ens-2100']*2
+#   seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
+#   exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
+  exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
+  maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
+  case = 'water'; lsamesize = True; #cbo = 'horizontal'
 
 # water transport
 #   explist = ['max-ens-2050','max-ens-2100']*2
@@ -328,18 +344,19 @@ if __name__ == '__main__':
 
 # Fig. 6/7 Climate Change: T2 and pecip diffs
 #   explist = ['max-ens-2100']*3+['Ens-2100']*3; period = B15
-  explist = ['max-ens-2050']*3+['Ens-2050']*3; period = A15
-  seasons = ['annual', 'summer', 'winter']*2; #grid = ['arb2_d02']*3+['cesm1x1']*3
-# #   seasons = ['annual', 'spring', 'fall']*2; period = B15
-  exptitles = ['WRF, 10 km ({:s} Average)']*3+['CESM ({:s} Average)']*3
-  exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
-  case = 'prj'; lbasins = True; lsamesize = False; cbo = 'horizontal'
-  ldiff = True; reflist = ['max-ens']*3+['Ens']*3; refprd = H15  
-  seasons = [seasons] # only make one plot with all seasons!
-  grid = 'arb2_d02' # necessary for properly area averaged stats
-  variables = ['SST']; variable_settings = ['T2_prj'] # parallel execution
-  locean = True
-# #   variables = ['T2']; variable_settings = ['T2_prj'] # parallel execution
+# #   explist = ['max-ens-2050']*3+['Ens-2050']*3; period = A15
+# #   explist = ['max-1deg-2100']*3+['Ens-2100']*3; period = B15
+#   seasons = ['annual', 'summer', 'winter']*2; #grid = ['arb2_d02']*3+['cesm1x1']*3
+# # #   seasons = ['annual', 'spring', 'fall']*2; period = B15
+#   exptitles = ['WRF, 10 km ({:s} Average)']*3+['CESM ({:s} Average)']*3
+#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
+#   case = 'prj'; lbasins = True; lsamesize = False; cbo = 'horizontal'
+#   ldiff = True; reflist = ['max-ens']*3+['Ens']*3; refprd = H15
+# #   ldiff = True; reflist = ['max-1deg']*3+['Ens']*3; refprd = H15  
+#   seasons = [seasons] # only make one plot with all seasons!
+# #   grid = 'arb2_d02' # necessary for properly area averaged stats
+# #   variables = ['SST']; locean = True; variable_settings = ['T2_prj'] # parallel execution
+# # #   variables = ['T2']; variable_settings = ['T2_prj'] # parallel execution
 #   variables = ['precip']; variable_settings = ['precip_prj']
 #   ldiff = False; lfrac = True 
 
