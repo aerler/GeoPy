@@ -122,6 +122,9 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
     elif var in ('aSM',): # (absolute) soil moisture
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
       clevs = np.linspace(0.05,0.45,21); cmap = cm.avhrr_r; cmap.set_over('blue'); clbl = '%03.2f' # mpl.cm.PuOr
+    elif var in ('rSM',): # (absolute) soil moisture
+      # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
+      clevs = np.linspace(0.,1.,26); cmap = cm.avhrr_r; cmap.set_over('blue'); clbl = '%03.2f' # mpl.cm.PuOr
     elif var in ('p-et','waterflx'): # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
       clevs = np.linspace(-2,2,25); cmap = cm.avhrr_r; clbl = '%02.1f' # mpl.cm.PuOr

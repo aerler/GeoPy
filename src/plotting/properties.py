@@ -144,12 +144,13 @@ variablePlotatts['pmsl'] = tmp
 
 ## 10 m Zonal Wind
 tmp = PlotAtts(name = r'$u_{10m}$', title = '10 m Zonal Wind', 
-               units = 'm/s', scalefactor = 1.)
+               units = r'$m s^{-1}$', scalefactor = 1.)
 # add to collection
 variablePlotatts['u10'] = tmp
 
 ## Column-integrated Zonal Water (Vapor) Transport
-tmp = PlotAtts(name = r'\overline{q^w_u}', title = 'Zonal Water Transport', units = 'kg/m/s')
+tmp = PlotAtts(name = r'\overline{q^w_u}', title = 'Zonal Water Transport', 
+               units = r'$kg m^{-1} s^{-1}$', scalefactor = 100.)
 # add to collection
 variablePlotatts['cqwu'] = tmp
 
@@ -160,12 +161,13 @@ variablePlotatts['cqhu'] = tmp
 
 ## 10 m Meridional Wind
 tmp = PlotAtts(name = r'$v_{10m}$', title = '10 m Meridional Wind', 
-               units = 'm/s', scalefactor = 1.)
+               units = r'$m s^{-1}$', scalefactor = 1.)
 # add to collection
 variablePlotatts['v10'] = tmp
 
 ## Column-integrated Meridional Water (Vapor) Transport
-tmp = PlotAtts(name = r'\overline{q^w_v}', title = 'Meridional Water Transport',units = 'kg/m/s')
+tmp = PlotAtts(name = r'\overline{q^w_v}', title = 'Meridional Water Transport',
+               units = r'$kg m^{-1} s^{-1}$', scalefactor = 100.)
 # add to collection
 variablePlotatts['cqwv'] = tmp
 
@@ -443,12 +445,13 @@ tmp = PlotAtts(name = 'u', title = 'Zonal Wind', units = 'm/s')
 variablePlotatts['u'] = tmp
 
 ## Zonal Water (Vapor) Flux
-tmp = PlotAtts(name = r'q^w_u', title = 'Zonal Water Flux', units = 'kg/m^2/s')
+tmp = PlotAtts(name = r'$q^w_u$', title = 'Zonal Water Flux', units = r'$kg m^{-2} s^{-1}$',
+               scalefactor = 1e2)
 # add to collection
 variablePlotatts['qwu'] = tmp
 
 ## Zonal Heat Flux
-tmp = PlotAtts(name = r'q^h_u', title = 'Zonal Heat Flux', units = 'J/m^2/s')
+tmp = PlotAtts(name = r'$q^h_u$', title = 'Zonal Heat Flux', units = r'$J m^{-2} s^{-1}$')
 # add to collection
 variablePlotatts['qhu'] = tmp
 
@@ -458,17 +461,18 @@ tmp = PlotAtts(name = 'v', title = 'Meridional Wind',units = 'm/s')
 variablePlotatts['v'] = tmp
 
 ## Meridional Water (Vapor) Wind
-tmp = PlotAtts(name = r'q^w_v', title = 'Meridional Water Flux',units = 'kg/m^2/s')
+tmp = PlotAtts(name = r'$q^w_v$', title = 'Meridional Water Flux', units = r'$kg m^{-2} s^{-1}$',
+               scalefactor = 1e2)
 # add to collection
 variablePlotatts['qwv'] = tmp
 
 ## Meridional Heat Wind
-tmp = PlotAtts(name = r'q^h_v', title = 'Meridional Heat Flux',units = 'J/m^2/s')
+tmp = PlotAtts(name = r'$q^h_v$', title = 'Meridional Heat Flux',units = r'$J m^{-2} s^{-1}$')
 # add to collection
 variablePlotatts['qhv'] = tmp
 
 ## Vertical Velocity
-tmp = PlotAtts(name = 'w', title = 'Vertical Velocity',units = 'm/s')
+tmp = PlotAtts(name = 'w', title = 'Vertical Velocity',units = r'$m s^{-1}$')
 # add to collection
 variablePlotatts['w'] = tmp
 
@@ -478,7 +482,7 @@ tmp = PlotAtts(name = 'p', title = 'Pressure', units = 'hPa', scalefactor = 1e-2
 variablePlotatts['p'] = tmp
 
 ## Density (of dry air)
-tmp = PlotAtts(name = 'rho', title = 'Density', units = r'$kg/m^3$')
+tmp = PlotAtts(name = 'rho', title = 'Density', units = r'$kg m^{-3}$')
 # add to collection
 variablePlotatts['rho'] = tmp
 
@@ -508,25 +512,25 @@ tmp = PlotAtts(name = 's', title = 'Entropy', units = r'$J kg^{-1} K^{-1}$')
 variablePlotatts['s'] = tmp
 
 ## Lapse-rate (Temperature)
-tmp = PlotAtts(name = 'lr', title = 'Lapse-rate', units = 'K/km', scalefactor = 1e3)
+tmp = PlotAtts(name = 'lr', title = 'Lapse-rate', units = r'$K km^{-1}$', scalefactor = 1e3)
 # add to collection
 variablePlotatts['lr'] = tmp
 
 ## Potential Temperature Lapse-rate
-tmp = PlotAtts(name = 'theta_z', title = 'Theta Lapse-rate', 
-               units = 'K/km', scalefactor = 1e3)
+tmp = PlotAtts(name = r'$\theta_z$', title = 'Theta Lapse-rate', 
+               units = r'$K km^{-1}$', scalefactor = 1e3)
 # add to collection
 variablePlotatts['thlr'] = tmp
 
 ## Brunt-Vaeisaelae Frequency Squared
-tmp = PlotAtts(name = 'N^2', title = r'$N^2$', 
+tmp = PlotAtts(name = r'$N^2$', title = r'$N^2$', 
                units = r'$10^{-4}s^{-2}$', scalefactor = 1e4)
 # add to collection
 variablePlotatts['N2'] = tmp
 
 ## Relative Vorticity (vertical component)
-tmp = PlotAtts(name = 'zeta', title = 'Relative Vorticity', 
-               units = '10^-4 s^-1', scalefactor = 1e4)
+tmp = PlotAtts(name = r'$\zeta$', title = 'Relative Vorticity', 
+               units = r'$10^{-4} s^{-1}$', scalefactor = 1e4)
 # add to collection
 variablePlotatts['ze'] = tmp
 
@@ -537,20 +541,20 @@ tmp = PlotAtts(name = 'PV', title = 'Potential Vorticity',
 variablePlotatts['PV'] = tmp
 
 ## Potential Vorticity
-tmp = PlotAtts(name = 'PV_s', title = 'Entropy Potential Vorticity', 
-               units = 'PVU_s', scalefactor = 1e6)
+tmp = PlotAtts(name = r'$PV_s$', title = 'Entropy Potential Vorticity', 
+               units = r'$PVU_s$', scalefactor = 1e6)
 # add to collection
 variablePlotatts['PVs'] = tmp
 
 ## Vertical Potential Vorticity Gradient
-tmp = PlotAtts(name = 'dPV/dz ', title = 'Vertical Gradient of Potential Vorticity', 
-               units = 'PVU/km', scalefactor = 1e9)
+tmp = PlotAtts(name = r'$dPV/dz$', title = 'Vertical Gradient of Potential Vorticity', 
+               units = r'$PVU km^{-1}$', scalefactor = 1e9)
 # add to collection
 variablePlotatts['dPV'] = tmp
 
 ## Brunt-Vaeisaelae Frequency Squared
-tmp = PlotAtts(name = 'N^2', title = 'Entropy Gradient N^2', 
-               units = '10^-4 s^-2', scalefactor = g0/cp*1e4)
+tmp = PlotAtts(name = r'$N^2$', title = r'Entropy Gradient $N^2$', 
+               units = r'$10^{-4} s^{-2}$', scalefactor = g0/cp*1e4)
 # add to collection
 variablePlotatts['N2s'] = tmp
 
