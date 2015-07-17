@@ -149,13 +149,13 @@ tmp = PlotAtts(name = r'$u_{10m}$', title = '10 m Zonal Wind',
 variablePlotatts['u10'] = tmp
 
 ## Column-integrated Zonal Water (Vapor) Transport
-tmp = PlotAtts(name = r'\overline{q^w_u}', title = 'Zonal Water Transport', 
+tmp = PlotAtts(name = r'$\overline{q^w_u}$', title = 'Zonal Water Transport', 
                units = r'$kg m^{-1} s^{-1}$', scalefactor = 100.)
 # add to collection
 variablePlotatts['cqwu'] = tmp
 
 ## Column-integrated Zonal Heat Flux
-tmp = PlotAtts(name = r'\overline{q^h_u}', title = 'Zonal Heat Transport', units = 'J/m/s')
+tmp = PlotAtts(name = r'$\overline{q^h_u}$', title = 'Zonal Heat Transport', units = 'J/m/s')
 # add to collection
 variablePlotatts['cqhu'] = tmp
 
@@ -166,23 +166,23 @@ tmp = PlotAtts(name = r'$v_{10m}$', title = '10 m Meridional Wind',
 variablePlotatts['v10'] = tmp
 
 ## Column-integrated Meridional Water (Vapor) Transport
-tmp = PlotAtts(name = r'\overline{q^w_v}', title = 'Meridional Water Transport',
+tmp = PlotAtts(name = r'$\overline{q^w_v}$', title = 'Meridional Water Transport',
                units = r'$kg m^{-1} s^{-1}$', scalefactor = 100.)
 # add to collection
 variablePlotatts['cqwv'] = tmp
 
 ## Column-integrated Meridional Heat Wind
-tmp = PlotAtts(name = r'\overline{q^h_v}', title = 'Meridional Heat Transport',units = 'J/m/s')
+tmp = PlotAtts(name = r'$\overline{q^h_v}$', title = 'Meridional Heat Transport',units = 'J/m/s')
 # add to collection
 variablePlotatts['cqhv'] = tmp
 
 ## Column-integrated Water (Vapor) Content
-tmp = PlotAtts(name = r'\overline{q^w}', title = 'Column-integrated Water',units = 'kg/m^2')
+tmp = PlotAtts(name = r'$\overline{q^w}$', title = 'Column-integrated Water',units = 'kg/m^2')
 # add to collection
 variablePlotatts['cqw'] = tmp
 
 ## Column-integrated Heat Content
-tmp = PlotAtts(name = r'\overline{q^h}', title = 'Column-integrated Heat',units = 'J/m^2')
+tmp = PlotAtts(name = r'$\overline{q^h}$', title = 'Column-integrated Heat',units = 'J/m^2')
 # add to collection
 variablePlotatts['cqh'] = tmp
 

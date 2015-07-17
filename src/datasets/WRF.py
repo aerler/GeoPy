@@ -333,7 +333,7 @@ class Xtrm(FileType):
   def __init__(self):
     self.name = 'xtrm'
     self.atts = dict(#T2MEAN        = dict(name='Tmean', units='K'),  # daily mean Temperature (at 2m)
-                     T2MEAN        = dict(name='T2', units='K'),  # daily mean Temperature (at 2m)
+                     T2MEAN        = dict(name='Tmean', units='K'),  # daily mean Temperature (at 2m)
                      T2MIN         = dict(name='Tmin', units='K'),   # daily minimum Temperature (at 2m)
                      T2MAX         = dict(name='Tmax', units='K'),   # daily maximum Temperature (at 2m)
                      T2STD         = dict(name='Tstd', units='K'),   # daily Temperature standard deviation (at 2m)
@@ -860,10 +860,10 @@ if __name__ == '__main__':
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-#   mode = 'test_point_ensemble'
+  mode = 'test_point_ensemble'
 #   mode = 'pickle_grid'  
-#   pntset = 'shpavg'
-  pntset = 'ecprecip'
+  pntset = 'shpavg'
+#   pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
   experiments = ['rrtmg', 'ctrl', 'new']
@@ -991,8 +991,8 @@ if __name__ == '__main__':
     
     print('')
     if pntset in ('shpavg',):
-      dataset = loadWRF_ShpTS(experiment='max-ctrl', domains=None, varlist=['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
-                              shape=pntset, filetypes=['hydro'])
+      dataset = loadWRF_ShpTS(experiment='max-ctrl', domains=None, varlist=None, #['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
+                              shape=pntset, filetypes=['hydro',])
     else:
       dataset = loadWRF_StnTS(experiment='max-ens-A', domains=None, varlist=['zs','stn_zs','MaxPrecip_6h'],
 #                               varlist=['zs','stn_zs','precip','MaxPrecip_6h','MaxPreccu_1h','MaxPrecip_1d'], 
@@ -1012,8 +1012,8 @@ if __name__ == '__main__':
     print('')
     if pntset in ('shpavg',):
 #       dataset = loadWRF_ShpEns(ensemble=['max-ctrl','max-ens-A'], shape=pntset, domains=None, filetypes=['hydro','srfc'])
-      dataset = loadWRF_ShpEns(ensemble='max-ens-2050', shape=pntset, varlist=None, domains=None, 
-                               filetypes=['hydro',], lensembleAxis=lensembleAxis)
+      dataset = loadWRF_ShpEns(ensemble='max-ens', shape=pntset, varlist=None, domains=None, 
+                               filetypes=['xtrm','hydro',], lensembleAxis=lensembleAxis)
     else:
       dataset = loadWRF_StnEns(ensemble='max-ens-2100', station=pntset, lensembleAxis=lensembleAxis,  
                                varlist=['MaxPrecip_6h'], filetypes=['srfc'])
@@ -1026,6 +1026,6 @@ if __name__ == '__main__':
 #     print(dataset.MaxPrecip_1d.mean())
 #     print('')
 #     print('')
-#     print(dataset.time)
-#     print(dataset.time.coord)
+    print(dataset.time)
+    print(dataset.time.coord)
   
