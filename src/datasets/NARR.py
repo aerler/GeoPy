@@ -120,7 +120,8 @@ def loadNARR_TS(name=dataset_name, grid=None, varlist=None, resolution=None, var
     if varlist is None: varlist = tsvarlist
     if varlist and varatts: varlist = translateVarNames(varlist, varatts)
     if filelist is None: # generate default filelist
-      filelist = [orig_ts_file.format(special[var]) if var in special else orig_ts_file.format(var) for var in varlist if var not in nofile]
+      filelist = [orig_ts_file.format(special[var]) if var in special else orig_ts_file.format(var) for var in varlist 
+                  if var not in nofile and var in varatts]
     # load dataset
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                             atts=projdict, multifile=False, ncformat='NETCDF4_CLASSIC')
@@ -230,9 +231,9 @@ if __name__ == '__main__':
     
   
 #   mode = 'test_climatology'
-#   mode = 'test_timeseries'
+  mode = 'test_timeseries'
 #   mode = 'test_point_climatology'
-  mode = 'test_point_timeseries'
+#   mode = 'test_point_timeseries'
 #   mode = 'average_timeseries'
 #   mode = 'convert_climatology'
   grid = None
@@ -261,7 +262,7 @@ if __name__ == '__main__':
     
     # load timeseries files
     print('')
-    dataset = loadNARR_TS(grid=grid)
+    dataset = loadNARR_TS(grid=grid, varlist=['precip'])
     print(dataset)
     print('')
     print(dataset.time)

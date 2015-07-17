@@ -81,15 +81,17 @@ def loadObs_Special(varlist=None, **kwargs):
   # load actual data using standard call to loadObservation
   dataset = loadObservations(varlist=varlist, **kwargs)
   # add new/special variables
-  if lwetprec: 
+  if lwetprec and 'wetprec' not in dataset: 
     wetprec = dataset.precip.load() / dataset.wetfrq.load()
     dataset += wetprec.copy(plot=variablePlotatts['wetprec'], **varatts['wetprec'])
-  if ldryprec: 
+  if ldryprec and 'dryprec' not in dataset: 
     dataset += dataset.precip.copy(plot=variablePlotatts['dryprec'], **varatts['dryprec'])
   if lwetdays:
     from wrfavg.derived_variables import precip_thresholds
     for threshold in precip_thresholds:
-      dataset += dataset.wetfrq.copy(name='wetfrq_{:03d}'.format(int(threshold*10)))
+      varname = 'wetfrq_{:03d}'.format(int(threshold*10))
+      if varname not in dataset:
+        dataset += dataset.wetfrq.copy(name=varname)
   # return augmented dataset
   return dataset
 
@@ -168,17 +170,17 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-  mode = 'merge_climatologies'
-#   mode = 'merge_timeseries'
+#   mode = 'merge_climatologies'
+  mode = 'merge_timeseries'
 #   mode = 'test_climatology'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
   
   # settings to generate dataset
   grids = []
-#   grids += ['shpavg']
+  grids += ['shpavg']
 #   grids += ['arb2_d01']
-  grids += ['arb2_d02']
+#   grids += ['arb2_d02']
 #   grids += ['arb3_d02']
 #   grids += ['arb3_d01']
 #   grids += ['arb3_d02']

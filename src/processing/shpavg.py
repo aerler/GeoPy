@@ -174,10 +174,10 @@ if __name__ == '__main__':
   if not lbatch:
     NP = 3 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
-#     modes = ('time-series',) # 'climatology','time-series'
-    modes = ('climatology',) # 'climatology','time-series'
-#     loverwrite = False
+    modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('climatology',) # 'climatology','time-series'
     loverwrite = False
+#     loverwrite = True
     varlist = None
 #     varlist = ['precip',]
     periods = []
@@ -196,9 +196,9 @@ if __name__ == '__main__':
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
 #     datasets += ['NARR']
-#     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
+    datasets += ['CRU']
+    datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025']}
-#     datasets += ['CRU']
 #     datasets += ['Unity']
     # CESM experiments (short or long name) 
     load3D = False
@@ -212,7 +212,7 @@ if __name__ == '__main__':
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['max-ens-A']
-    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][1:]
+#     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][1:]
 #     WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
 #     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
@@ -247,14 +247,14 @@ if __name__ == '__main__':
     lLTM = False # again, not necessary
     # CESM
     load3D = True # doesn't hurt... data is small
-    CESM_experiments = None
+    CESM_experiments = []
     CESM_filetypes = ('atm','lnd')    
     # WRF
-    WRF_experiments = None # process all WRF experiments
-#     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-#     WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
-#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
-#     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+    WRF_experiments = [] # process all WRF experiments
+    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+    WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
+    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
 #     WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', ] # new standard runs (arb3)     
 #     WRF_experiments += ['ctrl-1', 'ctrl-2050', 'ctrl-2100'] # new standard runs (arb3)
 #     WRF_experiments += ['old-ctrl', 'old-ctrl-2050', 'old-ctrl-2100'] # new standard runs (arb3)

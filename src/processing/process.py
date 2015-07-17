@@ -13,6 +13,7 @@ Simple methods for copying and averaging variables will already be provided in t
 import numpy as np
 import numpy.ma as ma
 import functools
+import gc
 from osgeo import gdal, osr
 # internal imports
 from geodata.misc import VariableError, AxisError, PermissionError, DatasetError, GDALError, ArgumentError #, DateError
@@ -164,9 +165,12 @@ class CentralProcessingUnit(object):
   # the former sets up the target dataset and the latter operates on the variables
   
   # function pair to average data over a given collection of shapes      
-  def ShapeAverage(self, shape_dict=None, shape_name=None, shpax=None, xlon=None, ylat=None, **kwargs):
+  def ShapeAverage(self, shape_dict=None, shape_name=None, shpax=None, xlon=None, ylat=None, 
+                   memory=500, **kwargs):
     ''' Average over a limited area of a gridded datasets; calls processAverageShape. 
-        A dictionary of NamedShape objects is expected to define the averaging areas. '''
+        A dictionary of NamedShape objects is expected to define the averaging areas. 
+        'memory' controls the garbage collection interval and approximately corresponds 
+        to MB in temporary (it does not include loading the variable into RAM, though). '''
     if not self.source.gdal: raise DatasetError, "Source dataset must be GDAL enabled! {:s} is not.".format(self.source.name)
     if not isinstance(shape_dict,OrderedDict): raise TypeError
     if not all(isinstance(shape,NamedShape) for shape in shape_dict.itervalues()): raise TypeError
@@ -262,7 +266,8 @@ class CentralProcessingUnit(object):
     # save all the meta data
     tgt.sync()
     # prepare function call    
-    function = functools.partial(self.processShapeAverage, masks=shape_masks, ylat=ylat, xlon=xlon, shpax=shpax) # already set parameters
+    function = functools.partial(self.processShapeAverage, masks=shape_masks, ylat=ylat, xlon=xlon, 
+                                 shpax=shpax, memory=memory) # already set parameters
     # start process
     if self.feedback: print('\n   +++   processing shape/area averaging   +++   ') 
     self.process(function, **kwargs) # currently 'flush' is the only kwarg
@@ -270,8 +275,9 @@ class CentralProcessingUnit(object):
     if self.tmp: self.tmpput = self.target
     if ltmptoo: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
   # the previous method sets up the process, the next method performs the computation
-  def processShapeAverage(self, var, masks=None, ylat=None, xlon=None, shpax=None):
-    ''' Compute masked area averages from variable data. '''
+  def processShapeAverage(self, var, masks=None, ylat=None, xlon=None, shpax=None, memory=500):
+    ''' Compute masked area averages from variable data. 'memory' controls the garbage collection 
+        interval approximately corresponds to MB in RAM.'''
     # process gdal variables (if a variable has a horiontal grid, it should be GDAL enabled)
     if var.gdal and ( np.issubdtype(var.dtype,np.integer) or np.issubdtype(var.dtype,np.inexact) ):
       if self.feedback: print('\n'+var.name),
@@ -289,32 +295,50 @@ class CentralProcessingUnit(object):
       # pre-allocate
       shape = tuple(len(ax) for ax in axes)
       tgtdata = np.zeros(shape, dtype=np.float32) 
-      # now we loop over all shapes/masks
+      # now we loop over all shapes/masks      
+      if self.feedback: 
+        varname = var.name
+        print '\n ... loading  ',varname 
       var.load()
+      if self.feedback: 
+        varname = var.name
+        print '\n ... averaging ',varname 
+      ## compute shape averages for each time step
+      # Basically, for each shape the entire array is masked, using the shape and the broadcasting 
+      # functionality for horizontal masks of the Variable class (which creates a lot of overhead);
+      # then the masked average is taken and the process is repeated for the next shape/mask.
+      # Using mapMean creates a lot of overhead and there are probably more efficient ways to do it. 
       if var.ndim == 2:
         for i,mask in enumerate(masks): 
           if mask is None: tgtdata[i] = np.NaN # NaN for missing values (i.e. no overlap)
           else: tgtdata[i] = var.mapMean(mask=mask, asVar=False, squeeze=True) # compute the averages
-          #print i,tgtdata[i]
+          if self.feedback: print varname, i
+          # garbage collection is typically not necessary for 2D fields
       elif var.ndim > 2:
+        cnt = float(0.); inc = float(var.data_array.nbytes) / (1024.*1024.) # counter/increment to estimate memory useage (in MB)
         for i,mask in enumerate(masks):
           if mask is None: tgtdata[i,:] = np.NaN # NaN for missing values (i.e. no overlap) 
-          else: 
-            tmp = var.mapMean(mask=mask, asVar=False, squeeze=True) # compute the averages
-            tgtdata[i,:] = tmp.filled(np.NaN) # mapMean returns a masked array
+          else:
+            tgtdata[i,:] = var.mapMean(mask=mask, asVar=False, squeeze=True).filled(np.NaN) # mapMean returns a masked array
             # N.B.: this is necessary, because sometimes shapes only contain invalid values
-          #print i,tgtdata[i,:]
+            cnt += inc # keep track of memory
+            # N.B.: mapMean creates a lot of temporary arrays that don't get garbage-collected
+          if self.feedback: print varname, i, cnt
+          if cnt > memory: 
+            cnt = 0 # reset counter
+            gc.collect() # collect garbage in certain itnervals
+            if self.feedback: print 'garbage collected'  
       else: raise AxisError 
       # create new Variable
       assert shape == tgtdata.shape
       newvar = var.copy(axes=axes, data=tgtdata) # new axes and data
-      del tgtdata # clean up (just to make sure)      
+      del tgtdata, mask # clean up (just to make sure)      
+      gc.collect() # clean
     else:
       var.load() # need to load variables into memory to copy it (and we are not doing anything else...)
       newvar = var # just pass over the variable to the new dataset
     # return variable
     return newvar
-  
   # function pair to extract station data from a time-series (or climatology)      
   def Extract(self, template=None, stnax=None, xlon=None, ylat=None, laltcorr=True, **kwargs):
     ''' Extract station data points from gridded datasets; calls processExtract. 
