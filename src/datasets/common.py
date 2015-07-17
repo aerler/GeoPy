@@ -15,7 +15,7 @@ import os
 from operator import isCallable
 # internal imports
 from utils.misc import expandArgumentList
-from geodata.misc import AxisError, DatasetError, DateError, ArgumentError
+from geodata.misc import AxisError, DatasetError, DateError, ArgumentError, EmptyDatasetError
 from geodata.base import Dataset, Variable, Axis, Ensemble
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import GDALError, addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
@@ -638,6 +638,8 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
       if isinstance(op, basestring): ensemble = getattr(ensemble,op)(axis=ax)
       elif isinstance(op, (int,np.integer,float,np.inexact)): ensemble = ensemble(**{ax:op})
   # extract seasonal/climatological values/extrema
+  if (ldataset and len(ensemble)==0) or any([len(ds)==0 for ds in ensemble]): 
+    raise EmptyDatasetError 
   # N.B.: the operations below should work with Ensembles as well as Datasets 
   if aggregation:
     method = aggregation if aggregation.isupper() else aggregation.title() 
@@ -649,7 +651,6 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
     ensemble = ensemble.seasonalSample(season=season)
   # return dataset
   return ensemble
-
 
 ## Miscellaneous utility functions
 

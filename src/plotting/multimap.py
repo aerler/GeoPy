@@ -100,7 +100,7 @@ if __name__ == '__main__':
 #   variables += ['MaxPreccu_1d']; aggregation = 'max'
 #   variables += ['MaxPrecnc_1d']; aggregation = 'max'
 #   variables += ['wetprec']
-#   variables += ['precip'] 
+  variables += ['precip'] 
 #   variables += ['preccu']
 #   variables += ['precnc']
 #   variables += ['wetfrq']
@@ -139,7 +139,7 @@ if __name__ == '__main__':
 #   seasons += ['summer']
 #   seasons += ['winter']
 #   seasons += ['spring']    
-#   seasons += ['fall']
+  seasons += ['fall']
   # special variable/season combinations
 #   variables = ['seaice']; seasons = [8] # September seaice
 #  variables = ['snowh'];  seasons = [8] # September snow height
@@ -170,9 +170,10 @@ if __name__ == '__main__':
 #   case = 'topo_can'
 
 # observations
-#   explist = ['Unity']; maptype = 'lcc-new'; period = H15
-#   exptitles = ['Merged Observations (10 km)']
-#   case = 'unity'; lsamesize = True; grid = 'arb2_d02'
+  explist = ['PRISM']; maptype = 'lcc-new'; period = H15
+  ldiff = True; reflist = ['Unity']; maptype = 'lcc-small'
+  exptitles = ['Merged Observations (10 km)']
+  case = 'prism'; lsamesize = True; grid = 'arb2_d02'
 
 # GPCC statiosn
 #   variables = ['stations']; seasons = ['annual']
@@ -224,18 +225,18 @@ if __name__ == '__main__':
 # #   variables = ['p-et']; variable_settings = ['precip_prj']; seasons = [('summer',)*2+('annual',)*2]; ldiff = True 
 
 # summer and winter progression (continental)
-  refexp = 'max-ens'; case = refexp; cbo = 'horizontal'
-  explist = [refexp,refexp+'-2050',refexp+'-2100']*2
-  seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
-  exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
-  exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
-  maptype = 'lcc-can'; lstations = False; lbasins = True 
-  domain = 1; lsamesize = True; cbo = 'horizontal' 
-#   variables = ['Z']; level_agg['p'] = 2; laddContour = True 
-#   variables = ['precip']; variable_settings = ['precip_prj'] 
-#   variables = ['RH']; level_agg['p'] = 1 
-  variables = ['cqwu']
-#   variables = ['p-et']; variable_settings = ['precip_prj']; seasons = [('summer',)*2+('annual',)*2]; ldiff = True 
+#   refexp = 'max-ens'; case = refexp; cbo = 'horizontal'
+#   explist = [refexp,refexp+'-2050',refexp+'-2100']*2
+#   seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
+#   exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
+#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
+#   maptype = 'lcc-can'; lstations = False; lbasins = True 
+#   domain = 1; lsamesize = True; cbo = 'horizontal' 
+# #   variables = ['Z']; level_agg['p'] = 2; laddContour = True 
+# #   variables = ['precip']; variable_settings = ['precip_prj'] 
+# #   variables = ['RH']; level_agg['p'] = 1 
+#   variables = ['cqwu']
+# #   variables = ['p-et']; variable_settings = ['precip_prj']; seasons = [('summer',)*2+('annual',)*2]; ldiff = True 
 
 # water transport
 #   explist = ['max-ens-2050','max-ens-2100']*2

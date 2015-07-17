@@ -197,10 +197,10 @@ if __name__ == '__main__':
 #   expset = 'erai-max-ens'
 #   expset = '3km'
   plottypes = []
-#   plottypes += ['temp'] # 
+  plottypes += ['temp'] # 
 #   plottypes += ['precip'] #
 #   plottypes += ['sfflx']
-  plottypes += ['flux'] #
+#   plottypes += ['flux'] #
 #   plottypes += ['precip_types'] #
 #   plottypes += ['evap']
 #   plottypes += ['snwmlt']  
@@ -214,7 +214,7 @@ if __name__ == '__main__':
   titles = None
   areas = []
   areas += ['athabasca']
-#   areas += ['fraser']
+  areas += ['fraser']
 #   areas += ['northcoast']
 #   areas += ['southcoast']
   domains = 2

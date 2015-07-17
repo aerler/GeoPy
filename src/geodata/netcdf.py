@@ -16,7 +16,8 @@ import os, functools
 # from nctools import * # my own netcdf toolkit
 from geodata.base import Variable, Axis, Dataset, ApplyTestOverList
 from geodata.misc import checkIndex, isEqual, joinDicts
-from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError, FileError, VariableError, ArgumentError 
+from geodata.misc import ( DatasetError, DataError, AxisError, NetCDFError, PermissionError, 
+                           FileError, VariableError, ArgumentError, EmptyDatasetError )
 from utils.nctools import coerceAtts, writeNetCDF, add_var, add_coord, checkFillValue
 
 
@@ -375,7 +376,7 @@ class VarNC(Variable):
         if data is not None and data.shape != self.shape: data = data.__getitem__(slcs) # slice input data, if appropriate 
     if data is None:
       if self.data: 
-        return True # do nothing         
+        return self # do nothing         
       else: # use slices to load data
         if slcs is None: slcs = slice(None)
         data = self.__getitem__(slcs) # load everything
@@ -672,6 +673,9 @@ class DatasetNetCDF(Dataset):
     self.__dict__['filelist'] = filelist
     # initialize Dataset using parent constructor
     super(DatasetNetCDF,self).__init__(name=name, title=title, varlist=variables, atts=ncattrs)
+    # check that stuff was loaded
+    if len(self.variables) == 0 and mode != 'w': raise EmptyDatasetError
+    # catch exception if an empty dataset is OK
     
   @property
   def dataset(self):

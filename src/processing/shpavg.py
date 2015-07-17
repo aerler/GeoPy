@@ -172,10 +172,10 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    NP = 2 ; ldebug = False # for quick computations
+    NP = 3 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
-    modes = ('time-series',) # 'climatology','time-series'
-#     modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
+    modes = ('climatology',) # 'climatology','time-series'
 #     loverwrite = False
     loverwrite = False
     varlist = None
@@ -212,16 +212,16 @@ if __name__ == '__main__':
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['max-ens-A']
-    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-    WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
-    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
-    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][1:]
+#     WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
+#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+#     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100'] # requires different implementation...
     # other WRF parameters 
     domains = None # domains to be processed
-#     domains = (2,) # domains to be processed
-    WRF_filetypes = ('hydro',)
+    domains = (2,) # domains to be processed
+    WRF_filetypes = ('xtrm',)
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
@@ -231,15 +231,15 @@ if __name__ == '__main__':
     shapes = dict()
     shapes['basins'] = None # river basins (in Canada) from WSC module
     shapes['provinces'] = None # Canadian provinces from EC module
-#     shapes['basins'] = ['FRB'] # river basins (in Canada) from WSC module
+#     shapes['basins'] = ['FRB','ARB','CRB','NRB','PSB','NorthernPSB','SouthernPSB'] # river basins (in Canada) from WSC module
 #     shapes['provinces'] = ['BC'] # Canadian provinces from EC module
   else:
     NP = NP or 3 # time-series might take more memory or overheat...
-    #modes = ('climatology','time-series')
-    modes = ('time-series',) # too many small files...
+    modes = ('climatology','time-series')
+#     modes = ('time-series',) # too many small files...
     loverwrite = False
     varlist = None # process all variables
-    periods = None # (5,10,15,) # climatology periods to process
+    periods = (5,10,15,30) # climatology periods to process
     # Datasets
     datasets = None # process all applicable
     # N.B.: processing 0.5 deg CRU & GPCC time-series at the same time, can crash the system
@@ -280,19 +280,21 @@ if __name__ == '__main__':
   # expand datasets and resolutions
   if datasets is None: datasets = gridded_datasets
   # expand shapes (and enforce consistent sorting)
-  if shapes['basins'] is None:
+  if 'basins' in shapes and shapes['basins'] is None:
     items = basins.keys()
     if not isinstance(basins, OrderedDict): items.sort()
     shapes['basins'] = items
-  if shapes['provinces'] is None:
+  if 'provinces' in shapes and shapes['provinces'] is None:
     items = provinces.keys()
     if not isinstance(provinces, OrderedDict): items.sort()     
     shapes['provinces'] = items
       
   # add shapes of different categories
   shape_dict = OrderedDict()
-  for shp in shapes['provinces']: shape_dict[shp] = provinces[shp]
-  for shp in shapes['basins']: shape_dict[shp] = basins[shp]
+  if 'basins' in shapes:
+    for shp in shapes['basins']: shape_dict[shp] = basins[shp]
+  if 'provinces' in shapes:
+    for shp in shapes['provinces']: shape_dict[shp] = provinces[shp]
     
   # print an announcement
   if len(WRF_experiments) > 0:

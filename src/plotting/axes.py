@@ -64,8 +64,8 @@ class MyAxes(Axes):
                legend=None, llabel=True, labels=None, hline=None, vline=None, title=None, lignore=False,        
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
                lparasiteMeans=False, lparasiteErrors=False, parasite_axes=None, lrescale=False, 
-               scalefactor=1., offset=0., bootstrap_axis='bootstrap',
-               xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lperi=False, lprint=False,
+               scalefactor=1., offset=0., bootstrap_axis='bootstrap', lprint=False, lfracdiff=False,
+               xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lperi=False,
                expand_list=None, lproduct='inner', method='pdf', plotatts=None, **plotargs):
     ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on 
         variable properties; extra keyword arguments (plotargs) are passed through expandArgumentList,
@@ -107,6 +107,7 @@ class MyAxes(Axes):
     plts = [] # list of plot handles
     for label,var in zip(labels,varlist): self.variables[label] = var # save plot variables
     # loop over variables and plot arguments
+    if lprint and lfracdiff: tmp_frac = None; tmp_diff = None
     N = len(varlist); xlen = ylen = None
     for n,var,errvar,bndvar,plotarg,label in zip(xrange(N),varlist,errlist,bndlist,plotargs,labels):
       if var is not None:
@@ -128,7 +129,15 @@ class MyAxes(Axes):
           if varax.units != axunits and var.plot.preserve == 'area':
             val /= varax.plot.scalefactor
         # N.B.: other scaling behavior could be added here
-        if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)   
+        if lprint:
+          tmp_mean = np.nanmean(val)
+          if not lfracdiff:
+            print varname, varunits, tmp_mean, np.nanstd(val)
+          elif tmp_frac is None and tmp_diff is None: 
+            tmp_frac = tmp_mean; tmp_diff = tmp_mean
+            print varname, varunits, tmp_mean, np.nanstd(val)
+          else:
+            print varname, varunits, tmp_mean, np.nanstd(val), tmp_mean/tmp_frac, tmp_mean-tmp_diff  
         # update plotargs from defaults
         plotarg = self._getPlotArgs(label=label, var=var, llabel=llabel, plotatts=plotatts, plotarg=plotarg)
         plotarg['fmt'] = plotarg.pop('lineformat','') # rename (I prefer a different name)
@@ -607,6 +616,8 @@ class MyAxes(Axes):
     pax.set_xticks([])
     # copy some settings
     if self.get_yscale() == 'log': pax.set_yscale('log')
+    pax.ypad = self.ypad; pax.xpad = self.xpad
+    pax.yright = self.yright; pax.xtop = self.xtop
     # add positioning parameters
     pax.n = 0; pax.N = 0; pax.offset = offset
     # return parasite axes

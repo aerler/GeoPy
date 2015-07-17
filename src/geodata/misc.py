@@ -417,6 +417,10 @@ class DatasetError(VariableError):
   ''' Base class for exceptions occurring in Dataset methods. '''
   pass
 
+class EmptyDatasetError(Exception):
+  ''' Error to indicate that a loaded Dataset is empty. '''
+  pass
+
 class DateError(VariableError):
   ''' Exception indicating invalid dates passed to processor. '''
   pass

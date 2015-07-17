@@ -17,7 +17,6 @@ import types  # needed to bind functions to objects
 import pickle
 # gdal imports
 from osgeo import gdal, osr, ogr
-import warnings
 # register RAM driver
 ramdrv = gdal.GetDriverByName('MEM')
 # use exceptions (off by default)

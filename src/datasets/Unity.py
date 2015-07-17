@@ -177,8 +177,8 @@ if __name__ == '__main__':
   # settings to generate dataset
   grids = []
 #   grids += ['shpavg']
-  grids += ['arb2_d01']
-#   grids += ['arb2_d02']
+#   grids += ['arb2_d01']
+  grids += ['arb2_d02']
 #   grids += ['arb3_d02']
 #   grids += ['arb3_d01']
 #   grids += ['arb3_d02']
@@ -276,7 +276,8 @@ if __name__ == '__main__':
     for grid in grids:
                 
         ## load source datasets
-        period = (1979,2009)
+#         period = (1979,2009)
+        period = (1979,1994)
         if grid in ('shpavg',):
           # regional averages: shape index as grid
           uclim = loadUnity_Shp(shape=pntset, period=period)
@@ -428,8 +429,9 @@ if __name__ == '__main__':
 #         array = ma.masked_where(array == 1., array, copy=False)
         # add low-res PRISM backround
         prismarray = prism.precip.getArray() # start with
-#         prismarray = ma.masked_where(prismarray == 1., prismarray, copy=False)
-#         array = ma.where(array.mask, prismarray, array) # add background climatology  
+        assert isinstance(prismarray,ma.MaskedArray)        
+        array = ma.where(array.mask, prismarray, array) # add background climatology
+        array = ma.masked_where(prismarray.mask, array, copy=False) # use mask from older PRISM
         # add GPCC background 
         gpccclimarray = gpccclim.precip.getArray()
         gpccprdarray = gpccprd.precip.getArray() 
