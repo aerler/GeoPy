@@ -236,8 +236,8 @@ if __name__ == '__main__':
 #     shapes['provinces'] = ['BC'] # Canadian provinces from EC module
   else:
     NP = NP or 3 # time-series might take more memory or overheat...
-    modes = ('climatology','time-series')
-#     modes = ('time-series',) # too many small files...
+    #modes = ('climatology','time-series')
+    modes = ('time-series',) # too many small files...
     loverwrite = False
     varlist = None # process all variables
     periods = (5,10,15,30) # climatology periods to process
@@ -262,7 +262,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
     domains = None # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
-    WRF_filetypes = ('srfc','hydro','lsm','xtrm') # only some...
+    WRF_filetypes = ('xtrm','hydro','srfc','lsm') # only some...
     # define shape data
     shape_name = 'shpavg'
     shapes = dict()
