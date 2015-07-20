@@ -14,8 +14,7 @@ from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 from types import NoneType
 # internal imports
 from geodata.base import Variable
-from geodata.misc import ListError, ArgumentError, isEqual, VariableError,\
-  AxisError
+from geodata.misc import ListError, ArgumentError, isEqual, VariableError, AxisError
 from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile, checkSample
 from collections import OrderedDict
 from utils.misc import binedges, expandArgumentList

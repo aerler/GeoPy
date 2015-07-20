@@ -3189,10 +3189,13 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   
   
 def concatDatasets(datasets, name=None, axis=None, coordlim=None, idxlim=None, offset=None, axatts=None,
-                   title=None, lensembleAxis=None, lignoreConst=True, time_axes=None,
+                   title=None, lensembleAxis=None, lignoreConst=True, time_axes=None, check_vars=None,
                    lcpOther=True, lcpAny=False, ldeepcopy=True, lcheckVars=True, lcheckAxis=True):
   ''' A function to concatenate Datasets from different sources along a given axis; this
-      function essentially applies concatVars to every Variable and creates a new dataset. '''
+      function essentially applies concatVars to every Variable and creates a new dataset. 
+      When concatenating station or shape arrays, use check_vars with an array of unique ID's
+      to make sure they are all in the same order (since only the first axis and ID variable
+      (pseudo-axis) will be retained. '''
   if lensembleAxis and axis is None: axis = 'ensemble'
   if lignoreConst and time_axes is None: time_axes = ('time','year')
   elif isinstance(axis,(Axis,basestring)) and not any([ds.hasAxis(axis) for ds in datasets]):
@@ -3217,6 +3220,24 @@ def concatDatasets(datasets, name=None, axis=None, coordlim=None, idxlim=None, o
   else: oslist = offset
   variables = dict() # variables for new dataset
   axes = dict() # new axes
+  # verify that check_var's are the same
+  if check_vars:
+    if not isinstance(check_vars, (list,tuple)): check_vars = (check_vars,)
+    for check_var  in check_vars:
+      ds = datasets[0] # master dataset
+      if not ds.hasVariable(check_var): 
+        raise VariableError, "Check Var '{:s}' not found in Dataset '{:s}'.".format(check_var, ds.name)      
+      varunits = ds.variables[check_var].units
+      varvalues = ds.variables[check_var][:]
+      for ds in datasets[1:]:
+        # check preliminaries
+        if not ds.hasVariable(check_var):
+          raise VariableError, "Check Var '{:s}' not found in Dataset '{:s}'.".format(check_var, ds.name)
+        if ds.variables[check_var].units != varunits: 
+          raise VariableError, "Check Var '{:s}' units don't match in Dataset '{:s}' ('{:s}' != '{:s}').".format(check_var, ds.name, ds.variables[check_var].units, varunits)
+        # check values
+        if not np.all( ds.variables[check_var][:] == varvalues ): 
+          raise VariableError, "Check Var '{:s}' values don't match in Dataset '{:s}'.".format(check_var, ds.name)
   # loop over axes
   for axis,coordlim,idxlim,offset in zip(axislist,climlist,ilimlist,oslist):
     if isinstance(axis,Axis): axis = axis.name

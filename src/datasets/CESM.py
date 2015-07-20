@@ -333,7 +333,8 @@ def loadCESM_StnTS(experiment=None, name=None, station=None, filetypes=None, var
   return loadCESM_All(experiment=experiment, name=name, grid=None, period=None, station=station, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, lreplaceTime=lreplaceTime, 
                       translateVars=translateVars, lautoregrid=False, load3D=load3D, lwrite=lwrite, 
-                      ignore_list=ignore_list, mode='time-series', lcheckExp=lcheckExp)
+                      ignore_list=ignore_list, mode='time-series', lcheckExp=lcheckExp, 
+                      check_vars='station_name')
 
 # Station Time-Series (monthly)
 def loadCESM_ShpTS(experiment=None, name=None, shape=None, filetypes=None, varlist=None, varatts=None,  
@@ -343,7 +344,8 @@ def loadCESM_ShpTS(experiment=None, name=None, shape=None, filetypes=None, varli
   return loadCESM_All(experiment=experiment, name=name, grid=None, period=None, shape=shape, lencl=lencl, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, lreplaceTime=lreplaceTime, 
                       translateVars=translateVars, lautoregrid=False, load3D=load3D, station=None, 
-                      ignore_list=ignore_list, mode='time-series', lcheckExp=lcheckExp, lwrite=lwrite)
+                      ignore_list=ignore_list, mode='time-series', lcheckExp=lcheckExp, 
+                      lwrite=lwrite, check_vars='shape_name')
 
 # Time-Series (monthly)
 def loadCESM_TS(experiment=None, name=None, grid=None, filetypes=None, varlist=None, varatts=None,  
@@ -363,7 +365,8 @@ def loadCESM_Stn(experiment=None, name=None, station=None, period=None, filetype
   return loadCESM_All(experiment=experiment, name=name, grid=None, period=period, station=station, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, lreplaceTime=False, 
                       translateVars=translateVars, lautoregrid=lautoregrid, load3D=load3D, 
-                      ignore_list=ignore_list, mode='climatology', lcheckExp=lcheckExp, lwrite=lwrite)
+                      ignore_list=ignore_list, mode='climatology', lcheckExp=lcheckExp, 
+                      lwrite=lwrite, check_vars='station_name')
 
 # Regional Climatologies (monthly)
 def loadCESM_Shp(experiment=None, name=None, shape=None, period=None, filetypes=None, varlist=None, 
@@ -374,7 +377,7 @@ def loadCESM_Shp(experiment=None, name=None, shape=None, period=None, filetypes=
                       shape=shape, lencl=lencl, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                       lreplaceTime=False, translateVars=translateVars, lautoregrid=lautoregrid, 
                       load3D=load3D, ignore_list=ignore_list, mode='climatology', 
-                      lcheckExp=lcheckExp, lwrite=lwrite)
+                      lcheckExp=lcheckExp, lwrite=lwrite, check_vars='shape_name')
 
 # load minimally pre-processed CESM climatology files 
 def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, 
@@ -391,7 +394,7 @@ def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None,
 def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None, period=None, 
                  varlist=None, varatts=None, translateVars=None, lautoregrid=None, load3D=False, 
                  ignore_list=None, mode='climatology', cvdp_mode=None, lcheckExp=True, 
-                 lreplaceTime=True, filetypes=None, lencl=False, lwrite=False):
+                 lreplaceTime=True, filetypes=None, lencl=False, lwrite=False, check_vars=None):
   ''' Get any of the monthly CESM files as a properly formatted NetCDFDataset. '''
   # period
   if isinstance(period,(tuple,list)):
@@ -521,7 +524,7 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
   else: title = name
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=None, 
                           varatts=atts, title=title, multifile=False, ignore_list=ignore_list, 
-                          ncformat='NETCDF4', squeeze=True, mode=ncmode)
+                          ncformat='NETCDF4', squeeze=True, mode=ncmode, check_vars=check_vars)
   # replace time axis
   if lreplaceTime:
     if lts or lcvdp:
@@ -572,7 +575,7 @@ def loadCESM_ShpEns(ensemble=None, name=None, shape=None, filetypes=None, years=
                            translateVars=translateVars, lautoregrid=False, load3D=load3D, 
                            ignore_list=ignore_list, cvdp_mode='ensemble', lcheckExp=lcheckExp, 
                            mode='time-series', lreplaceTime=True, lencl=lencl,
-                           axis=axis, lensembleAxis=lensembleAxis)
+                           axis=axis, lensembleAxis=lensembleAxis, check_vars='shape_name')
 
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
 def loadCESM_StnEns(ensemble=None, name=None, station=None, filetypes=None, years=None,
@@ -583,7 +586,8 @@ def loadCESM_StnEns(ensemble=None, name=None, station=None, filetypes=None, year
                            filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
                            translateVars=translateVars, lautoregrid=False, load3D=load3D, 
                            ignore_list=ignore_list, cvdp_mode='ensemble', lcheckExp=lcheckExp, 
-                           mode='time-series', lreplaceTime=True, axis=axis, lensembleAxis=lensembleAxis)
+                           mode='time-series', lreplaceTime=True, axis=axis, 
+                           lensembleAxis=lensembleAxis, check_vars='station_name')
 
   
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
@@ -591,7 +595,7 @@ def loadCESM_Ensemble(ensemble=None, name=None, title=None, grid=None, station=N
                       years=None, varlist=None, varatts=None, translateVars=None, lautoregrid=None, 
                       load3D=False, ignore_list=None, cvdp_mode='ensemble', lcheckExp=True, lencl=False, 
                       mode='time-series', lindices=False, leofs=False, filetypes=None, lreplaceTime=True,
-                      axis=None, lensembleAxis=False):
+                      axis=None, lensembleAxis=False, check_vars=None):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   # obviously this only works for modes that produce a time-axis
   if mode.lower() not in ('time-series','timeseries','cvdp'): 
@@ -624,15 +628,16 @@ def loadCESM_Ensemble(ensemble=None, name=None, title=None, grid=None, station=N
   elif mode.lower() == 'cvdp': lts = False; lcvdp = True
   for exp in ensemble:
     if lts:
-      ds = loadCESM_All(experiment=exp, name=None, grid=grid, station=station, shape=shape, varlist=varlist, 
-                        varatts=varatts, translateVars=translateVars, period=None, lautoregrid=lautoregrid, 
-                        load3D=load3D, ignore_list=ignore_list, filetypes=filetypes, lencl=lencl, 
-                        mode=mode, cvdp_mode='', lcheckExp=lcheckExp, lreplaceTime=lreplaceTime).load()
+      ds = loadCESM_All(experiment=exp, name=None, grid=grid, station=station, shape=shape, 
+                        varlist=varlist, varatts=varatts, translateVars=translateVars, period=None,
+                        lautoregrid=lautoregrid, load3D=load3D, ignore_list=ignore_list, 
+                        filetypes=filetypes, lencl=lencl, mode=mode, cvdp_mode='', 
+                        lcheckExp=lcheckExp, lreplaceTime=lreplaceTime, check_vars=check_vars).load()
     elif lcvdp:
       ds = loadCVDP(experiment=exp, name=None, varlist=varlist, varatts=varatts, period=years, 
                     translateVars=translateVars, lautoregrid=lautoregrid, lencl=lencl, 
-                    ignore_list=ignore_list, cvdp_mode=cvdp_mode, lcheckExp=lcheckExp, 
-                    lindices=lindices, leofs=leofs, lreplaceTime=lreplaceTime).load()
+                    ignore_list=ignore_list, cvdp_mode=cvdp_mode, lcheckExp=lcheckExp, leofs=leofs, 
+                    lindices=lindices, lreplaceTime=lreplaceTime, check_vars=check_vars).load()
     else: raise NotImplementedError
     if montpl or yrtpl: ds = ds(year=yrtpl, time=montpl, lidx=True) # slice the time dimension to make things consistent
     datasets.append(ds)
@@ -650,7 +655,7 @@ def loadCESM_Ensemble(ensemble=None, name=None, title=None, grid=None, station=N
     else: raise NotImplementedError
   dataset = concatDatasets(datasets, axis=axis, coordlim=None, name=name, title=title, idxlim=None, 
                            lensembleAxis=lensembleAxis, offset=None, axatts=None, lcpOther=True, 
-                           lcpAny=False)    
+                           lcpAny=False, check_vars=check_vars)
   # return concatenated dataset
   return dataset
 
@@ -685,8 +690,8 @@ if __name__ == '__main__':
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-#   mode = 'test_point_ensemble'
-  mode = 'test_cvdp'
+  mode = 'test_point_ensemble'
+#   mode = 'test_cvdp'
 #   mode = 'pickle_grid'
 #     mode = 'shift_lon'
 #     experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
@@ -695,8 +700,8 @@ if __name__ == '__main__':
   periods = (15,)
   filetypes = ('atm',) # ['atm','lnd','ice']
   grids = ('cesm1x1',)*len(experiments) # grb1_d01
-#   pntset = 'shpavg'
-  pntset = 'ecprecip'
+  pntset = 'shpavg'
+#   pntset = 'ecprecip'
 
   # pickle grid definition
   if mode == 'pickle_grid':

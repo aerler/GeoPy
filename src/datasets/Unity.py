@@ -140,7 +140,7 @@ def loadUnity_ShpTS(name=dataset_name, shape=None, varlist=None, varatts=None,
   ''' Get the pre-processed, unified monthly climatology averaged over shapes as a DatasetNetCDF. '''
   # load standardized climatology dataset with PRISM-specific parameters  
   dataset = loadObs_Special(name=name, folder=folder, period=None, grid=None, shape=shape, station=None, 
-                             varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                             varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
                              projection=None, mode='time-series', lautoregrid=False, lencl=lencl)
   # return formatted dataset
   return dataset
@@ -178,9 +178,9 @@ if __name__ == '__main__':
   
   # settings to generate dataset
   grids = []
-#   grids += ['shpavg']
+  grids += ['shpavg']
 #   grids += ['arb2_d01']
-  grids += ['arb2_d02']
+#   grids += ['arb2_d02']
 #   grids += ['arb3_d02']
 #   grids += ['arb3_d01']
 #   grids += ['arb3_d02']

@@ -469,8 +469,9 @@ def loadWRF_StnTS(experiment=None, name=None, domains=None, station=None, filety
                   varlist=None, varatts=None, lctrT=True, lwrite=False, ltrimT=True):
   ''' Get a properly formatted WRF dataset with monthly time-series at station locations. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, station=station, 
-                     period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
-                     lautoregrid=False, lctrT=lctrT, mode='time-series', lwrite=lwrite, ltrimT=ltrimT)  
+                     period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
+                     lconst=False, lautoregrid=False, lctrT=lctrT, mode='time-series', 
+                     lwrite=lwrite, ltrimT=ltrimT, check_vars='station_name')  
 
 # Regiona/Shape Time-series (monthly, with extremes)
 def loadWRF_ShpTS(experiment=None, name=None, domains=None, shape=None, filetypes=None, 
@@ -478,7 +479,8 @@ def loadWRF_ShpTS(experiment=None, name=None, domains=None, shape=None, filetype
   ''' Get a properly formatted WRF dataset with monthly time-series averaged over regions. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, shape=shape, lencl=lencl, 
                      station=None, period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
-                     lconst=False, lautoregrid=False, lctrT=lctrT, mode='time-series', lwrite=lwrite, ltrimT=ltrimT)  
+                     lconst=False, lautoregrid=False, lctrT=lctrT, mode='time-series', lwrite=lwrite, 
+                     ltrimT=ltrimT, check_vars='shape_name')  
 
 def loadWRF_TS(experiment=None, name=None, domains=None, grid=None, filetypes=None, varlist=None, 
                varatts=None, lconst=True, lautoregrid=True, lctrT=True, lwrite=False, ltrimT=True):
@@ -492,14 +494,16 @@ def loadWRF_Stn(experiment=None, name=None, domains=None, station=None, period=N
   ''' Get a properly formatted station dataset from a monthly WRF climatology at station locations. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, station=station, 
                      period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
-                     lautoregrid=False, lctrT=lctrT, mode='climatology', lwrite=lwrite, ltrimT=ltrimT)  
+                     lautoregrid=False, lctrT=lctrT, mode='climatology', lwrite=lwrite, ltrimT=ltrimT,
+                     check_vars='station_name')  
 
 def loadWRF_Shp(experiment=None, name=None, domains=None, shape=None, period=None, filetypes=None, 
                 varlist=None, varatts=None, lctrT=True, lencl=False, lwrite=False, ltrimT=False):
   ''' Get a properly formatted station dataset from a monthly WRF climatology averaged over regions. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, shape=shape, lencl=lencl,
                      station=None, period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, 
-                     lconst=False, lautoregrid=False, lctrT=lctrT, mode='climatology', lwrite=lwrite, ltrimT=ltrimT)  
+                     lconst=False, lautoregrid=False, lctrT=lctrT, mode='climatology', lwrite=lwrite, 
+                     ltrimT=ltrimT, check_vars='shape_name')  
 
 def loadWRF(experiment=None, name=None, domains=None, grid=None, period=None, filetypes=None, varlist=None, 
             varatts=None, lconst=True, lautoregrid=True, lctrT=True, lwrite=False, ltrimT=False):
@@ -509,9 +513,10 @@ def loadWRF(experiment=None, name=None, domains=None, grid=None, period=None, fi
                      lautoregrid=lautoregrid, lctrT=lctrT, mode='climatology', lwrite=lwrite, ltrimT=ltrimT)  
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
-def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=None, shape=None, period=None, 
-                filetypes=None, varlist=None, varatts=None, lconst=True, lautoregrid=True, lencl=False,
-                lctrT=False, folder=None, lpickleGrid=True, mode='climatology', lwrite=False, ltrimT=False):
+def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=None, shape=None, 
+                period=None, filetypes=None, varlist=None, varatts=None, lconst=True, lautoregrid=True, 
+                lencl=False, lctrT=False, folder=None, lpickleGrid=True, mode='climatology', 
+                lwrite=False, ltrimT=False, check_vars=None):
   ''' Get any WRF data files as a properly formatted NetCDFDataset. '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)  
@@ -678,7 +683,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     check_override = ['time'] if lctrT else None
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 
                             varatts=atts, multifile=False, ncformat='NETCDF4', mode=ncmode, 
-                            squeeze=True, check_override=check_override)
+                            squeeze=True, check_override=check_override, check_vars=check_vars)
     if ltrimT and dataset.hasAxis('time') and len(dataset.time) > 180:
       if lwrite: raise ArgumentError, "Cannot trim time-axis when NetCDF write mode is enabled!"
       dataset = dataset(time=slice(0,180), lidx=True)
@@ -741,7 +746,7 @@ def loadWRF_StnEns(ensemble=None, name=None, station=None, filetypes=None, years
                           filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
                           translateVars=translateVars, lautoregrid=False, lctrT=True, lconst=False,
                           lcheckVars=lcheckVars, lcheckAxis=lcheckAxis, name=name, title=title, 
-                          lwrite=lwrite, lensembleAxis=lensembleAxis)
+                          lwrite=lwrite, lensembleAxis=lensembleAxis, check_vars='station_name')
   
 # load a pre-processed WRF ensemble and concatenate time-series 
 def loadWRF_ShpEns(ensemble=None, name=None, shape=None, filetypes=None, years=None, domains=None, 
@@ -752,13 +757,14 @@ def loadWRF_ShpEns(ensemble=None, name=None, shape=None, filetypes=None, years=N
                           filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, lencl=lencl, 
                           translateVars=translateVars, lautoregrid=False, lctrT=True, lconst=False,
                           lcheckVars=lcheckVars, lcheckAxis=lcheckAxis, name=name, title=title, 
-                          lwrite=lwrite, axis=axis, lensembleAxis=lensembleAxis)
+                          lwrite=lwrite, axis=axis, lensembleAxis=lensembleAxis, check_vars='shape_name')
   
 # load a pre-processed WRF ensemble and concatenate time-series 
 def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=None, domains=None, 
                      filetypes=None, years=None, varlist=None, varatts=None, translateVars=None, 
                      lautoregrid=None, title=None, lctrT=True, lconst=True, lcheckVars=True, 
-                     lcheckAxis=True, lencl=False, lwrite=False, axis=None, lensembleAxis=False):
+                     lcheckAxis=True, lencl=False, lwrite=False, axis=None, lensembleAxis=False,
+                     check_vars=None):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   # obviously this only works for datasets that have a time-axis
   # figure out ensemble
@@ -803,7 +809,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
     dataset = loadWRF_All(experiment=None, name=ensemble, grid=grid, station=station, shape=shape, 
                           period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                           mode='time-series', lencl=lencl, lautoregrid=lautoregrid, lctrT=lctrT, 
-                          lconst=lconst, domains=domains, lwrite=lwrite)
+                          lconst=lconst, domains=domains, lwrite=lwrite, check_vars=check_vars)
   else:
     # load datasets (and load!)
     datasets = []
@@ -811,7 +817,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
       ds = loadWRF_All(experiment=None, name=exp, grid=grid, station=station, shape=shape, 
                        period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                        mode='time-series', lencl=lencl, lautoregrid=lautoregrid, lctrT=lctrT, 
-                       lconst=lconst, domains=domains, lwrite=lwrite).load()
+                       lconst=lconst, domains=domains, lwrite=lwrite, check_vars=check_vars).load()
       if montpl: ds = ds(time=montpl, lidx=True) # slice the time dimension to make things consistent
       datasets.append(ds)
     # harmonize axes
@@ -824,7 +830,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
     if axis is None: axis = 'ensemble' if lensembleAxis else 'time'
     dataset = concatDatasets(datasets, axis=axis, coordlim=None, idxlim=None, offset=None, axatts=None, 
                              lcpOther=True, lcpAny=False, lcheckVars=lcheckVars, lcheckAxis=lcheckAxis,
-                             name=name, title=title, lensembleAxis=lensembleAxis)
+                             name=name, title=title, lensembleAxis=lensembleAxis, check_vars=check_vars)
   # return concatenated dataset
   return dataset
 
@@ -855,7 +861,7 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-  mode = 'test_climatology'
+#   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'

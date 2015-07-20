@@ -480,7 +480,7 @@ class DatasetNetCDF(Dataset):
   
   def __init__(self, name=None, title=None, dataset=None, filelist=None, varlist=None, variables=None,
       	       varatts=None, atts=None, axes=None, multifile=False, check_override=None, ignore_list=None, 
-               folder='', mode='r', ncformat='NETCDF4', squeeze=True, load=False):
+               folder='', mode='r', ncformat='NETCDF4', squeeze=True, load=False, check_vars=None):
     ''' 
       Create a Dataset from one or more NetCDF files; Variables are created from NetCDF variables. 
       Alternatively, create a netcdf file from an existing Dataset (Variables can be added as well).  
@@ -607,6 +607,7 @@ class DatasetNetCDF(Dataset):
                 axes[dim] = Axis(**params) # also use overrride parameters          
       # create variables from netcdf variables    
       variables = dict()
+      if not isinstance(check_vars, (list,tuple)): check_vars = (check_vars,)
       for ds in datasets:
         if varlist is None: dsvars = [var for var in ds.variables.keys() if not var in ignore_list] 
         else: dsvars = [var for var in varlist if ds.variables.has_key(var)] # varlist overrides ignore_list 
@@ -617,15 +618,20 @@ class DatasetNetCDF(Dataset):
           elif ncvar.ndim == 0: pass # also ignore scalars for now...
           elif var in variables: # if already present, make sure variables are essentially the same
             varobj = variables[var] 
-            if var in check_override: pass
-            elif varobj.strvar and varobj.ndim == ncvar.ndim-1:
-              if not ( varobj.shape == ncvar.shape[:-1] and
-                varobj.ncvar.dimensions == ncvar.dimensions ):
-                raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files incompatible.".format(var)
-            else: 
-              if not ( varobj.shape == ncvar.shape and
-                 varobj.ncvar.dimensions == ncvar.dimensions ):              
-                raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files incompatible.".format(var) 
+            if var not in check_override:
+              # check shape (don't load)
+              if varobj.strvar and varobj.ndim == ncvar.ndim-1:
+                if varobj.shape != ncvar.shape[:-1] or varobj.ncvar.dimensions != ncvar.dimensions:
+                  raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files have incompatible dimensions.".format(var)
+              else: 
+                if varobj.shape != ncvar.shape or varobj.ncvar.dimensions != ncvar.dimensions:              
+                  raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files have incompatible dimensions.".format(var)
+                if varobj.ncvar.units != ncvar.units: # check units as well              
+                  raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files have incompatible units.".format(var)
+              # check values only of requested
+              if var in check_vars:
+                if np.any(varobj.ncvar[:] != ncvar[:]):              
+                  raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files have incompatible values.".format(var)                
           else: # if this is a new variable, add it to the list
             ncunits = ncvar.units if hasattr(ncvar,'units') else ''
             if var in varatts_check and ncunits == varatts_check[var]['units']:

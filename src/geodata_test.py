@@ -1039,7 +1039,9 @@ class BaseDatasetTest(unittest.TestCase):
     shape = (2,)+catvar.shape
     assert concat_data.shape == shape # this just tests concatVars
     # test dataset concat
-    ccds = concatDatasets([ds, cp], lensembleAxis=True, coordlim=None, idxlim=None, offset=0, lcheckAxis=lckax)
+    check_var = 'pax' if ds.hasVariable('pax') else None
+    ccds = concatDatasets([ds, cp], lensembleAxis=True, coordlim=None, idxlim=None, offset=0, 
+                          lcheckAxis=lckax, check_vars=check_var)
     print ccds
     ccvar = ccds[varname] # test concatenated variable 
     assert ccvar.shape == shape
@@ -1650,15 +1652,15 @@ if __name__ == "__main__":
 #     specific_tests += ['Indexing']
 #     specific_tests += ['SeasonalReduction']
 #     specific_tests += ['ConcatVars']
-#     specific_tests += ['ConcatDatasets']
+    specific_tests += ['ConcatDatasets']
 #     specific_tests += ['Print']
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
     tests += ['BaseDataset']
     tests += ['DatasetNetCDF']
