@@ -524,9 +524,15 @@ class BaseVarTest(unittest.TestCase):
       string = var.tabulate(row='y', column='x', labels=['row 1', 'row 2'],
                             header=['y','x_1','x_2','x_3','x_4'],  
 #                             cell_str='{0:d}-{47:d}', cell_axis='time',
-                            cell_str='{0:2.1f}', cell_axis='time', cell_fct=np.mean, 
-                            mode='mylatex', filename=filename)
+                            cell_fct=lambda data: '{0:2.1f}'.format(np.mean(data)), 
+                            cell_axis='time', mode='mylatex', filename=filename)
       print string
+      from utils.misc import tabulate
+      alt_str = tabulate(var[:],row_idx=var.axisIndex('y'), col_idx=var.axisIndex('x'), labels=['row 1', 'row 2'],
+                         header=['y','x_1','x_2','x_3','x_4'],  
+                         cell_fct=lambda data: '{0:2.1f}'.format(np.mean(data)), 
+                         cell_idx=var.axisIndex('time'), mode='mylatex', filename=None)
+      assert alt_str == string 
       assert os.path.exists(filename)
     else:
       # crop data because these tests just take way too long!
@@ -1652,19 +1658,19 @@ if __name__ == "__main__":
 #     specific_tests += ['Indexing']
 #     specific_tests += ['SeasonalReduction']
 #     specific_tests += ['ConcatVars']
-    specific_tests += ['ConcatDatasets']
-#     specific_tests += ['Print']
+#     specific_tests += ['ConcatDatasets']
+    specific_tests += ['Print']
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['BaseVar'] 
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()

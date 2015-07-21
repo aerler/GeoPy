@@ -22,7 +22,7 @@ from geodata.misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDic
 from geodata.misc import genStrArray, translateSeasons
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 from processing.multiprocess import apply_along_axis
-from utils.misc import histogram, binedges, detrend, percentile
+from utils.misc import histogram, binedges, detrend, percentile, tabulate
      
 # used for climatology and seasons
 monthlyUnitsList = ('month','months','month of the year')
@@ -506,85 +506,17 @@ class Variable(object):
       if not self.ndim >= 2: raise AxisError, self.axes
     elif not self.ndim == 2: raise AxisError, self.axes
     if not isinstance(cell_str,basestring): raise TypeError, cell_str
-    if cell_fct: 
-      if not callable(cell_fct): raise TypeError, cell_fct
-      lcellfct = True
-    else: lcellfct = False
     if not self.hasAxis(row): raise AxisError, row
     if not self.hasAxis(column): raise AxisError, column
     if cell_axis and not self.hasAxis(cell_axis): raise AxisError, cell_axis
     if self.data: data = self.getArray(copy=False)
     else: raise DataError
-    rowax = self.getAxis(row); colax = self.getAxis(column)
     irow = self.axisIndex(row); icol = self.axisIndex(column)
-    if irow < icol: icol -= 1
-    llabel = False; lheader = False
-    if labels: 
-      if len(labels) != len(rowax): raise AxisError, rowax
-      llabel = True 
-    if header: 
-      if llabel:
-        if len(header) == len(colax): header = ('',) + tuple(header)
-        elif not len(header) == len(colax)+1: raise AxisError, header
-      elif not len(header) == len(colax): raise AxisError, header
-      lheader = True
-    ## assemble table in nested list
-    table = [] # list of rows
-    if lheader: table.append(header) # first row
-    # loop over rows
-    for i in xrange(len(rowax)):
-      row = [labels[i]] if labels else []
-      rowdata = data.take(i, axis=irow)
-      # loop over columns
-      for j in xrange(len(colax)):
-        celldata = rowdata.take(j, axis=icol)
-        if lcellfct: celldata = cell_fct(celldata)
-        if isinstance(celldata, (tuple,list)): # sort of "isiterable" but no strings
-          cell = cell_str.format(*celldata) # we can get lists or tuples from functions
-        elif isinstance(celldata, np.ndarray):
-          if lflatten: celldata = celldata.ravel() 
-          elif celldata.ndim > 1: raise AxisError, celldata.shape
-          cell = cell_str.format(*celldata) 
-        else: cell = cell_str.format(celldata)
-        row.append(cell)
-      table.append(row)
-    ## now make table   
-    if mode.lower() == 'mylatex':
-      # extract settings 
-      lhline = kwargs.pop('lhline', True)
-      cell_del = kwargs.pop('cell_del','  &  ') # regular column delimiter      
-      line_brk = kwargs.pop('line_break',' \\\\ \\hline' if lhline else ' \\\\') # escape backslash
-      tab_begin = kwargs.pop('tab_begin','') # by default, no tab environment
-      tab_end = kwargs.pop('tab_end','') # by default, no tab environment
-      # align cells
-      nrow = len(rowax)+1 if lheader else len(rowax)
-      ncol = len(colax)+1 if llabel else len(colax)
-      col_fmts = [] # column width
-      for j in xrange(ncol):
-        wd = 0
-        for i in xrange(nrow): wd = max(wd,len(table[i][j]))
-        col_fmts.append('{{:^{:d}s}}'.format(wd))
-      # assemble table sting
-      string = tab_begin + '\n' if tab_begin else '' # initialize
-      for i,row in enumerate(table):
-        row = [fmt_str.format(cell) for fmt_str,cell in zip(col_fmts,row)]
-        string += (' '+row[0]) # first cell
-        for cell in row[1:]: string += (cell_del+cell)
-        string += line_brk # add latex line break
-        if lheader and i == 0: string += ' \\hline'
-        string += '\n' # add actual line break 
-      if tab_end: string += (tab_end+'\n') 
-    else:
-      # use the tabulate module (it's not standard, so import only when needed)
-      from tabulate import tabulate 
-      string = tabulate(table, tablefmt=mode, **kwargs)
-      # headers, floatfmt, numalign, stralign, missingval
-    ## write to file
-    if filename:
-      if folder: filename = folder+'/'+filename
-      f = open(filename, mode='w')
-      f.write(string) # write entire string and nothing else
-      f.close()
+    cell_idx = None if cell_axis is None else self.axisIndex(cell_axis)
+    # call general tabulate method
+    string = tabulate(data=data, col_idx=icol, row_idx=irow, header=header, labels=labels, cell_str=cell_str, 
+                      cell_idx=cell_idx, cell_fct=cell_fct, lflatten=lflatten, mode=mode, 
+                      filename=filename, folder=folder)
     # return string for printing
     return string
   

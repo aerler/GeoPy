@@ -101,8 +101,7 @@ def getFolderName(name=None, experiment=None, folder=None, mode='avg', cvdp_mode
     elif isinstance(name,basestring) and name in exps: experiment = exps[name]
     else: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(name or experiment)
     if cvdp_mode is None:
-      if not experiment.ensemble or experiment.ensemble == experiment.name: cvdp_mode = 'ensemble'
-      else: cvdp_mode = ''  
+      cvdp_mode = 'ensemble' if experiment.ensemble else ''  
     # root folder
     if folder is None: 
       if mode == 'avg': folder = experiment.avgfolder
@@ -220,8 +219,8 @@ class ICE(FileType):
 class CVDP(FileType):
   ''' Variables and attributes of the CVDP netcdf files. '''
   def __init__(self):
-    self.atts = dict(pdo_pattern_mon = dict(name='PDO_eof', units=''), # PDO EOF
-                     pdo_timeseries_mon = dict(name='PDO', units=''), # PDO time-series
+    self.atts = dict(pdo_pattern_mon = dict(name='PDO_eof', units='', scalefactor=-1.), # PDO EOF
+                     pdo_timeseries_mon = dict(name='PDO', units='', scalefactor=-1.), # PDO time-series
                      pna_mon = dict(name='PNA_eof', units=''), # PNA EOF
                      pna_pc_mon = dict(name='PNA', units=''), # PNA time-series
                      npo_mon = dict(name='NPO_eof', units=''), # NPO EOF

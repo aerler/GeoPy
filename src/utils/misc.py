@@ -14,6 +14,102 @@ from collections import namedtuple
 # internal imports
 from geodata.misc import ArgumentError, isEqual, AxisError
 
+## a method to tabulate variables (adapted from Variable) 
+def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}', cell_idx=None, cell_fct=None, 
+             lflatten=False, mode='mylatex', filename=None, folder=None, lfeedback=True, **kwargs):
+  ''' Create a nicely formatted table in the selected format ('mylatex' or call tabulate); 
+      cell_str controls formatting of each cell, and also supports multiple arguments along 
+      an axis. lflatten skips cell axis checking and lumps all remaining axes together. '''
+  # check input
+  if not isinstance(data, np.ndarray): raise TypeError
+  if cell_idx is not None:
+    if not data.ndim == 3: raise AxisError
+  elif lflatten:
+    if not data.ndim >= 2: raise AxisError
+  elif not data.ndim == 2: raise AxisError
+  if not isinstance(cell_str,basestring): raise TypeError, cell_str
+  if cell_fct: 
+    if not callable(cell_fct): raise TypeError, cell_fct
+    lcellfct = True
+  else: lcellfct = False
+  if cell_idx >= data.ndim: raise AxisError, cell_idx
+  collen = data.shape[col_idx]; rowlen = data.shape[row_idx] 
+  if row_idx < col_idx: col_idx -= 1 # this is a shortcut for later (data gets sliced by row)
+  llabel = False; lheader = False
+  if labels: 
+    if len(labels) != rowlen: raise AxisError, data.shape
+    llabel = True 
+  if header: 
+    if llabel:
+      if len(header) == collen: header = ('',) + tuple(header)
+      elif not len(header) == collen+1: raise AxisError, header
+    elif not len(header) == collen: raise AxisError, header
+    lheader = True
+  ## assemble table in nested list
+  table = [] # list of rows
+  if lheader: table.append(header) # first row
+  # loop over rows
+  for i in xrange(rowlen):
+    row = [labels[i]] if labels else []
+    rowdata = data.take(i, axis=row_idx)
+    # loop over columns
+    for j in xrange(collen):
+      celldata = rowdata.take(j, axis=col_idx)
+      # pass data to string of function
+      if isinstance(celldata, np.ndarray):
+        if lflatten: celldata = celldata.ravel() 
+        elif celldata.ndim > 1: raise AxisError, celldata.shape
+        cell = cell_fct(celldata) if lcellfct else cell_str.format(*celldata) 
+      else: 
+        cell = cell_fct(celldata) if lcellfct else cell_str.format(celldata)
+      # N.B.: cell_fct also has to return a string
+      row.append(cell)
+    table.append(row)
+  ## now make table   
+  if mode.lower() == 'mylatex':
+    # extract settings 
+    lhline = kwargs.pop('lhline', True)
+    lheaderhline = kwargs.pop('lheaderhline', True)
+    cell_del = kwargs.pop('cell_del','  &  ') # regular column delimiter      
+    line_brk = kwargs.pop('line_break',' \\\\ \\hline' if lhline else ' \\\\') # escape backslash
+    tab_begin = kwargs.pop('tab_begin','') # by default, no tab environment
+    tab_end = kwargs.pop('tab_end','') # by default, no tab environment
+    extra_hline = kwargs.pop('extra_hline', []) # row_idx or label with extra \hline command
+    # align cells
+    nrow = rowlen+1 if lheader else rowlen
+    ncol = collen+1 if llabel else collen
+    col_fmts = [] # column width
+    for j in xrange(ncol):
+      wd = 0
+      for i in xrange(nrow): wd = max(wd,len(table[i][j]))
+      col_fmts.append('{{:^{:d}s}}'.format(wd))
+    # assemble table string
+    string = tab_begin + '\n' if tab_begin else '' # initialize
+    for i,row in enumerate(table):
+      row = [fmt_str.format(cell) for fmt_str,cell in zip(col_fmts,row)]
+      string += (' '+row[0]) # first cell
+      for cell in row[1:]: string += (cell_del+cell)
+      string += line_brk # add latex line break
+      if i in extra_hline or (llabel and row[0] in extra_hline): string += ' \\hline'
+      if lheaderhline and i == 0: string += ' \\hline' # always put one behind the header
+      string += '\n' # add actual line break 
+    if tab_end: string += (tab_end+'\n') 
+  else:
+    # use the tabulate module (it's not standard, so import only when needed)
+    from tabulate import tabulate 
+    string = tabulate(table, tablefmt=mode, **kwargs)
+    # headers, floatfmt, numalign, stralign, missingval
+  ## write to file
+  if filename:
+    if folder: filename = folder+'/'+filename
+    f = open(filename, mode='w')
+    f.write(string) # write entire string and nothing else
+    f.close()
+    if lfeedback: print(filename)
+  # return string for printing
+  return string
+
+
 
 # create a named tuple instance on the fly from dictionary
 def namedTuple(typename=None, field_names=None, verbose=False, rename=False, **kwargs):
