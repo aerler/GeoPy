@@ -266,8 +266,8 @@ if __name__ == '__main__':
     # define shape data
     shape_name = 'shpavg'
     shapes = dict()
-    shapes['basins'] = None # all river basins (in Canada) from WSC module
     shapes['provinces'] = None # all Canadian provinces from EC module
+    shapes['basins'] = None # all river basins (in Canada) from WSC module
     
   ## process arguments    
   if periods is None: periods = [None]
@@ -281,21 +281,21 @@ if __name__ == '__main__':
   # expand datasets and resolutions
   if datasets is None: datasets = gridded_datasets
   # expand shapes (and enforce consistent sorting)
-  if 'basins' in shapes and shapes['basins'] is None:
-    items = basins.keys()
-    if not isinstance(basins, OrderedDict): items.sort()
-    shapes['basins'] = items
   if 'provinces' in shapes and shapes['provinces'] is None:
     items = provinces.keys()
     if not isinstance(provinces, OrderedDict): items.sort()     
     shapes['provinces'] = items
+  if 'basins' in shapes and shapes['basins'] is None:
+    items = basins.keys()
+    if not isinstance(basins, OrderedDict): items.sort()
+    shapes['basins'] = items
       
   # add shapes of different categories
   shape_dict = OrderedDict()
-  if 'basins' in shapes:
-    for shp in shapes['basins']: shape_dict[shp] = basins[shp]
   if 'provinces' in shapes:
     for shp in shapes['provinces']: shape_dict[shp] = provinces[shp]
+  if 'basins' in shapes:
+    for shp in shapes['basins']: shape_dict[shp] = basins[shp]
     
   # print an announcement
   if len(WRF_experiments) > 0:
