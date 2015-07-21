@@ -730,6 +730,23 @@ class Variable(object):
           elif len(months) == 3: months = (months[0],months[1]-1,months[2]) # passed to np.linspace
           else: raise NotImplementedError
         axes['time'] = months
+      if self.hasAxis('year'):
+        year = self.getAxis('year')
+        # make sure the time axis is well-formatted, because we are making a lot of assumptions!
+        if not year.units.lower() in ('year','years'): 
+          raise NotImplementedError, "Year units='year' required for keyword 'years'!"
+        if 'long_name' not in year.atts: raise KeyError, self.prettyPrint(short=True)
+        if lidx: raise ArgumentError, "Keyword 'years' only works with coordinate indexing, not direct indexing!"
+        # convert years to time-axis coordinates
+        if '1979' in year.atts.long_name: offset = 1979
+        else: offset = 0
+        if isinstance(years,np.number): new_years = years - offset
+        elif isinstance(years,(list,tuple)): new_years = [(yr - offset) for yr in years]
+        if isinstance(years,tuple): 
+          if len(new_years) == 2: new_years = (new_years[0],new_years[1]-1)
+          elif len(new_years) == 3: new_years = (new_years[0],new_years[1]-1,new_years[2]) # passed to np.linspace
+          else: raise NotImplementedError
+        axes['year'] = new_years
       elif lcheck: 
         raise AxisError, "Axis 'time' required for keyword 'years'!"
       # N.B.: if lcheck is False, these keywords will just be ignored without a time-axis
@@ -1668,7 +1685,8 @@ class Variable(object):
     time = self.getAxis(taxis); itime = self.axisIndex(taxis); tcoord = time.coord
     if lcheck: self._checkMonthlyAxis(taxis=taxis, lbegin=not lfront, lclim=lclim)
     # define new shape
-    tlen = tcoord.size; slen = tlen//12; tover = tlen%12 # determine dimension length 
+    tlen = tcoord.size; slen = tlen//12; tover = tlen%12 # determine dimension length
+    if not self.data: raise DataError, 'Need to load data for trimming and padding.'
     data_view = self.data_array
     # handle incomplete years
     if tover > 0:

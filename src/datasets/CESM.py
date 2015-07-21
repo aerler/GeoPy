@@ -252,8 +252,8 @@ class Diag(FileType):
 class Axes(FileType):
   ''' A mock-filetype for axes. '''
   def __init__(self):
-    self.atts = dict(time        = dict(name='time', units='days', offset=-47116.0), # time coordinate (days since 1979-01-01)
-                     TIME        = dict(name='year', units='year'), # yearly time coordinate in CVDP files
+    self.atts = dict(time        = dict(name='time', units='days', offset=-47116.0, atts=dict(long_name='Month since 1979')), # time coordinate (days since 1979-01-01)
+                     TIME        = dict(name='year', units='year', atts=dict(long_name='Years since 1979')), # yearly time coordinate in CVDP files
                      # N.B.: the time coordinate is only used for the monthly time-series data, not the LTM
                      #       the time offset is chose such that 1979 begins with the origin (time=0)
                      lon           = dict(name='lon', units='deg E'), # west-east coordinate
