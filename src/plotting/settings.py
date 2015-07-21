@@ -195,8 +195,12 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(-130,-100,30); clbl = '%02.0d'
     elif var=='lat2D': 
       clevs = np.linspace(30,60,30); clbl = '%02.0d'         
+    elif var=='AMO_eof':
+      clevs = np.linspace(-2.8,2.8,41); clbl = '%3.1f'; cmap = cm.redblue_light_r #cmap = cm.rscolmap
+    elif var=='PDO_eof':
+      clevs = np.linspace(-0.7,0.7,36); clbl = '%3.1f'; cmap = cm.redblue_light_r #cmap = cm.rscolmap
     elif var[-4:]=='_eof':
-      clevs = np.linspace(-1,1,41); clbl = '%3.1f'; cmap = cm.redblue_light_r #cmap = cm.rscolmap
+      clevs = np.linspace(-1.5,1.5,31); clbl = '%3.1f'; cmap = cm.redblue_light_r #cmap = cm.rscolmap
 #       clevs = np.linspace(-0.7,0.7,41); clbl = '%3.2f'; cmap = mpl.cm.RdYlBu_r
 #       clevs = np.linspace(-0.7,0.7,41); clbl = '%3.2f'; cmap = bmcm.GMT_no_green
 #       clevs = np.linspace(-0.7,0.7,41); clbl = '%3.2f'; cmap = mpl.cm.coolwarm
@@ -227,7 +231,7 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
 
 
 ## figure settings
-def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True):
+def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True, l3pan=False):
   sf = dict(dpi=300) # print properties
   figformat = 'png'
   # some special cases 
@@ -273,15 +277,19 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True)
     elif subplot == (2,1):
       ## 2 panel, vertical
       if sameSize: figsize = (6.25,6.25)
-      else: figsize = (3.5,6.25)    
+      else: figsize = (3.5,6.25) if l3pan else (3.75,4.8)    
       if cbar:
         cbo = cbo or 'horizontal'
         if cbo == 'vertical': 
           margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
           caxpos = [0.91, 0.05, 0.02, 0.9]
         if cbo == 'horizontal': 
-          margins = dict(bottom=0.09, left=0.05, right=.99, top=.91, hspace=0.1, wspace=0.02)
-          caxpos = [0.05, 0.0275, 0.9, 0.03]
+          if l3pan:
+            margins = dict(bottom=0.09, left=0.05, right=.99, top=.91, hspace=0.1, wspace=0.02)
+            caxpos = [0.05, 0.0275, 0.9, 0.03]
+          else:
+            margins = dict(bottom=0.07, left=0.055, right=.99, top=.925, hspace=0.0, wspace=0.0)
+            caxpos = [0.05, 0.035, 0.9, 0.02]
       else:
         margins = dict(bottom=0.055, left=0.085, right=.975, top=.95, hspace=0.05, wspace=0.05)
     elif subplot == (2,2):

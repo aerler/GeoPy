@@ -63,6 +63,7 @@ if __name__ == '__main__':
   cbn = None # colorbar levels
   figuretype = None
   lsamesize = True
+  l3pan = False # make a single column of a three-column figure
   lminor = True # draw minor tick mark labels
   locean = False # mask continent in white and omit country borders
   lstations = True; stations = 'cities'
@@ -135,11 +136,11 @@ if __name__ == '__main__':
 #   seasons += ['cold']
 #   seasons += ['warm']
 #   seasons += ['melt']
-#   seasons += ['annual']
+  seasons += ['annual']
 #   seasons += ['summer']
 #   seasons += ['winter']
 #   seasons += ['spring']    
-  seasons += ['fall']
+#   seasons += ['fall']
   # special variable/season combinations
 #   variables = ['seaice']; seasons = [8] # September seaice
 #  variables = ['snowh'];  seasons = [8] # September snow height
@@ -170,10 +171,10 @@ if __name__ == '__main__':
 #   case = 'topo_can'
 
 # observations
-  explist = ['PRISM']; maptype = 'lcc-new'; period = H15
-  ldiff = True; reflist = ['Unity']; maptype = 'lcc-small'
-  exptitles = ['Merged Observations (10 km)']
-  case = 'prism'; lsamesize = True; grid = 'arb2_d02'
+#   explist = ['PRISM']; maptype = 'lcc-new'; period = H15
+#   ldiff = True; reflist = ['Unity']; maptype = 'lcc-small'
+#   exptitles = ['Merged Observations (10 km)']
+#   case = 'prism'; lsamesize = True; grid = 'arb2_d02'
 
 # GPCC statiosn
 #   variables = ['stations']; seasons = ['annual']
@@ -206,7 +207,7 @@ if __name__ == '__main__':
 
 
 # differences to historical (continental; "panam")
-#   refexp = 'max-ens'; case = refexp
+#   refexp = 'max-ens'; case = refexp; l3pan = True (left column of 6-panel figure)
 #   explist = [refexp+'-2050',refexp+'-2100']*2; reflist = [refexp,]
 #   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2; refprd = H15
 #   exptitles = ['Mid-century, {:s}', 'End-century, {:s}']*2
@@ -410,12 +411,12 @@ if __name__ == '__main__':
 #   explist = ['max-ens-2100']*2; period = B15
 #   ldiff = True; reflist = ['max-ens']; refprd = H15
 
-# Fig. 13
-#   maptype = 'robinson'; lstations = False; lbasins = False; lminor = False; locean = True  
-#   case = 'cvdp'; lsamesize = False; cbo = 'horizontal'; ltitle = True; seasons = [None]; subplot = (2,1)
-#   exptitles = [r'HadISST', r'CESM Ensemble']
-#   variables = ['PDO_eof','AMO_eof',]; explist = ['SST_CVDP','Ctrl-1_CVDP']; period = H15
-#   figtitles = ['Pacific Decadal Oscillation SST Pattern', 'Atlantic Multi-Decadal Oscillation Pattern']   
+# Fig. 13 (PDO, and now also AMO, because it is wrong)
+  maptype = 'robinson'; lstations = False; lbasins = False; lprovinces=False; lminor = False; locean = True  
+  case = 'cvdp'; lsamesize = False; cbo = 'horizontal'; ltitle = True; seasons = [None]  
+  exptitles = [r'HadISST', r'CESM Ensemble']; subplot = (2,1)
+  variables = ['PDO_eof','AMO_eof',]; explist = ['SST_CVDP','Ctrl-1_CVDP']; period = H15
+  figtitles = ['Pacific Decadal Oscillation SST Pattern', 'Atlantic Multi-Decadal Oscillation Pattern']   
 #   exptitles = [r'20th Cent. Reanalysis V2', r'CESM Ensemble']
 #   explist = ['PSL_CVDP','Ctrl-1_CVDP']; period = H15
 #   variables = ['NAM_eof','NAO_eof','NPO_eof','PNA_eof',]
@@ -488,7 +489,8 @@ if __name__ == '__main__':
   
   # get figure settings
   subplot = subplot or nlen
-  tmp = getFigureSettings(subplot, cbar=True, cbo=cbo, figuretype=figuretype, sameSize=lsamesize)
+  tmp = getFigureSettings(subplot, cbar=True, cbo=cbo, figuretype=figuretype, 
+                          sameSize=lsamesize, l3pan=l3pan)
   sf, figformat, margins, caxpos, subplot, figsize, cbo = tmp # distribute output to variables  
   if not ltitle: margins['top'] += 0.05
   

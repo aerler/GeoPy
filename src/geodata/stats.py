@@ -18,7 +18,7 @@ import functools
 # internal imports
 from geodata.base import Variable, Axis
 from geodata.misc import DataError, ArgumentError, VariableError, AxisError, DistVarError
-from utils.misc import standardize, smooth, detrend, collapseOuterDims, apply_over_arrays
+from utils.misc import standardize, smooth, detrend, apply_over_arrays
 import utils.stats as myss # modified stats fucntions from scipy 
 from plotting.properties import getPlotAtts
 

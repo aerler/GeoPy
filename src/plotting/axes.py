@@ -131,12 +131,12 @@ class MyAxes(Axes):
         if lprint:
           tmp_mean = np.nanmean(val)
           if not lfracdiff:
-            print varname, varunits, tmp_mean, np.nanstd(val)
+            print var.name, tmp_mean, np.nanstd(val)
           elif tmp_frac is None and tmp_diff is None: 
             tmp_frac = tmp_mean; tmp_diff = tmp_mean
-            print varname, varunits, tmp_mean, np.nanstd(val)
+            print var.name, tmp_mean, np.nanstd(val)
           else:
-            print varname, varunits, tmp_mean, np.nanstd(val), tmp_mean/tmp_frac, tmp_mean-tmp_diff  
+            print var.name, tmp_mean, np.nanstd(val), tmp_mean/tmp_frac, tmp_mean-tmp_diff  
         # update plotargs from defaults
         plotarg = self._getPlotArgs(label=label, var=var, llabel=llabel, plotatts=plotatts, plotarg=plotarg)
         plotarg['fmt'] = plotarg.pop('lineformat','') # rename (I prefer a different name)
