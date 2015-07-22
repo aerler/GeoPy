@@ -306,6 +306,11 @@ def loadObservations(name=None, folder=None, period=None, grid=None, station=Non
     if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.'   
     lstation = bool(station); lshape = bool(shape)
     grid = station if lstation else shape
+    # add station/shape parameters
+    if varlist:
+      params = stn_params if lstation else shp_params
+      for param in params:
+        if param not in varlist: varlist.append(param)    
   else:
     lstation = False; lshape = False
   # varlist (varlist = None means all variables)

@@ -29,11 +29,13 @@ root_folder = data_root + dataset_name + '/'
 
 # variable attributes and name
 variable_attributes = dict(runoff = dict(name='runoff', units='kg/m^2/s', atts=dict(long_name='Average Runoff Rate')), # average flow rate
-                           roff_std = dict(name='roff_std', units='kg/m^2/s', atts=dict(long_name='Runoff Rate Variability')), # flow rate variabilit
+                           roff_std = dict(name='roff_std', units='kg/m^2/s', atts=dict(long_name='Runoff Rate Variability')), # flow rate variability
+                           roff_sem = dict(name='roff_sem', units='kg/m^2/s', atts=dict(long_name='Runoff Rate Error')), # flow rate error
                            roff_max = dict(name='roff_max', units='kg/m^2/s', atts=dict(long_name='Maximum Runoff Rate')), # maximum flow rate
                            roff_min = dict(name='roff_min', units='kg/m^2/s', atts=dict(long_name='Minimum Runoff Rate')), # minimum flow rate
                            discharge = dict(name='discharge', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Average Flow Rate')), # average flow rate
-                           discstd = dict(name='StdDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Flow Rate Variability')), # flow rate variabilit
+                           discstd = dict(name='StdDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Flow Rate Variability')), # flow rate variability
+                           discsem = dict(name='SEMDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Flow Rate Error')), # flow rate error
                            discmax = dict(name='MaxDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Maximum Flow Rate')), # maximum flow rate
                            discmin = dict(name='MinDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Minimum Flow Rate')), # minimum flow rate
                            level = dict(name='level', units='m', atts=dict(long_name='Water Level'))) # water level
@@ -202,41 +204,51 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   else: raise NotImplementedError, 'Currently only climatologies are supported.'
   dataset.addAxis(climAxis, copy=False)
   # extract variables (min/max/mean are separate variables)
-  area = atts['shp_area']
+  doa = data / atts['shp_area']
+  from utils import nanfunctions as nf
   if aggregation is None or aggregation.lower() == 'mean':
     # load mean discharge
-    tmpdata = data.mean(axis=0)
+    tmpdata = nf.nanmean(data, axis=0)
     tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discharge'])
     dataset.addVariable(tmpvar, copy=False)
     # load mean runoff
-    tmpdata = tmpdata / area
+    tmpdata = nf.nanmean(doa, axis=0)
     tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['runoff'])
     dataset.addVariable(tmpvar, copy=False)
   if aggregation is None or aggregation.lower() == 'std':
     # load  discharge standard deviation
-    tmpdata = data.std(axis=0, ddof=1) # very few values means large uncertainty!
+    tmpdata = nf.nanstd(data, axis=0, ddof=1) # very few values means large uncertainty!
     tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discstd'])
     dataset.addVariable(tmpvar, copy=False)
     # load  runoff standard deviation
-    tmpdata = tmpdata / area
+    tmpdata = nf.nanstd(doa, axis=0, ddof=1)
     tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_std'])
+    dataset.addVariable(tmpvar, copy=False)
+  if aggregation is None or aggregation.lower() == 'sem':
+    # load  discharge standard deviation
+    tmpdata = nf.nansem(data, axis=0, ddof=1) # very few values means large uncertainty!
+    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discsem'])
+    dataset.addVariable(tmpvar, copy=False)
+    # load  runoff standard deviation
+    tmpdata = nf.nansem(doa, axis=0, ddof=1)
+    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_sem'])
     dataset.addVariable(tmpvar, copy=False)
   if aggregation is None or aggregation.lower() == 'max':
     # load maximum discharge
-    tmpdata = data.max(axis=0)
+    tmpdata = nf.nanmax(data, axis=0)
     tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discmax'])
     dataset.addVariable(tmpvar, copy=False)
     # load maximum runoff
-    tmpdata = tmpdata / area
+    tmpdata = nf.nanmax(doa, axis=0)
     tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_max'])
     dataset.addVariable(tmpvar, copy=False)
   if aggregation is None or aggregation.lower() == 'min':
     # load minimum discharge
-    tmpdata = data.min(axis=0)
+    tmpdata = nf.nanmin(data, axis=0)
     tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discmin'])
     dataset.addVariable(tmpvar, copy=False)
     # load minimum runoff
-    tmpdata = tmpdata / area
+    tmpdata = nf.nanmin(doa, axis=0)
     tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_min'])
     dataset.addVariable(tmpvar, copy=False)
   # return station dataset

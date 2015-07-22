@@ -19,7 +19,8 @@ from geodata.base import concatDatasets
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt
-from datasets.common import translateVarNames, data_root, grid_folder, selectElements
+from datasets.common import translateVarNames, data_root, grid_folder, selectElements,\
+  stn_params, shp_params
 from geodata.gdal import loadPickledGridDef, griddef_pickle
 from projects.WRF_experiments import Exp, exps, ensembles 
 from warnings import warn
@@ -549,6 +550,11 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     if grid is not None: raise NotImplementedError, 'Currently WRF station data can only be loaded from the native grid.'
     if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.'   
     lstation = bool(station); lshape = bool(shape)
+    # add station/shape parameters
+    if varlist:
+      params = stn_params if lstation else shp_params
+      for param in params:
+        if param not in varlist: varlist.append(param)
   else:
     lstation = False; lshape = False
   # generate filelist and attributes based on filetypes and domain
@@ -998,7 +1004,7 @@ if __name__ == '__main__':
     print('')
     if pntset in ('shpavg',):
       dataset = loadWRF_ShpTS(experiment='max-ctrl', domains=None, varlist=None, #['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
-                              shape=pntset, filetypes=['hydro',])
+                              shape=pntset, filetypes=['srfc','lsm'])
     else:
       dataset = loadWRF_StnTS(experiment='max-ens-A', domains=None, varlist=['zs','stn_zs','MaxPrecip_6h'],
 #                               varlist=['zs','stn_zs','precip','MaxPrecip_6h','MaxPreccu_1h','MaxPrecip_1d'], 
@@ -1018,8 +1024,8 @@ if __name__ == '__main__':
     print('')
     if pntset in ('shpavg',):
 #       dataset = loadWRF_ShpEns(ensemble=['max-ctrl','max-ens-A'], shape=pntset, domains=None, filetypes=['hydro','srfc'])
-      dataset = loadWRF_ShpEns(ensemble='max-ens', shape=pntset, varlist=None, domains=None, 
-                               filetypes=['xtrm','hydro',], lensembleAxis=lensembleAxis)
+      dataset = loadWRF_ShpEns(ensemble='max-ens', shape=pntset, varlist=['precip','runoff'], domains=2, 
+                               filetypes=['srfc','lsm',], lensembleAxis=lensembleAxis)
     else:
       dataset = loadWRF_StnEns(ensemble='max-ens-2100', station=pntset, lensembleAxis=lensembleAxis,  
                                varlist=['MaxPrecip_6h'], filetypes=['srfc'])
@@ -1032,6 +1038,6 @@ if __name__ == '__main__':
 #     print(dataset.MaxPrecip_1d.mean())
 #     print('')
 #     print('')
-    print(dataset.time)
-    print(dataset.time.coord)
+#     print(dataset.time)
+#     print(dataset.time.coord)
   

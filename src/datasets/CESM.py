@@ -15,7 +15,8 @@ from geodata.base import Variable, Axis, concatDatasets, monthlyUnitsList
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, GDALError
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt
-from datasets.common import translateVarNames, data_root, grid_folder, default_varatts, addLengthAndNamesOfMonth, selectElements
+from datasets.common import ( translateVarNames, data_root, grid_folder, default_varatts, 
+                              addLengthAndNamesOfMonth, selectElements, stn_params, shp_params )
 from geodata.gdal import loadPickledGridDef, griddef_pickle
 from datasets.WRF import Exp as WRF_Exp
 from processing.process import CentralProcessingUnit
@@ -430,6 +431,11 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
     if lcvdp: raise NotImplementedError, 'CVDP data is not available as station data.'
     if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.'   
     lstation = bool(station); lshape = bool(shape)
+    # add station/shape parameters
+    if varlist:
+      params = stn_params if lstation else shp_params
+      for param in params:
+        if param not in varlist: varlist.append(param)
   else:
     lstation = False; lshape = False
   # period  
@@ -788,7 +794,8 @@ if __name__ == '__main__':
     lensembleAxis = True
     print('')
     if pntset in ('shpavg',):
-      dataset = loadCESM_ShpEns(ensemble='Ens', shape=pntset, filetypes=['atm'], lensembleAxis=lensembleAxis)
+      dataset = loadCESM_ShpEns(ensemble='Ens', shape=pntset, filetypes=['atm'], 
+                                lensembleAxis=lensembleAxis, varlist=['precip'])
     else:
       dataset = loadCESM_StnEns(name='Ens', station=pntset, filetypes=['atm'], lensembleAxis=lensembleAxis)
     print('')

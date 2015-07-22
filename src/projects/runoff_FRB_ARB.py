@@ -10,18 +10,21 @@ from types import NoneType
 from warnings import warn
 import numpy as np
 # use common MPL instance
-from plotting.misc import loadMPL
+from plotting.legacy import loadMPL
 mpl,pyl = loadMPL(linewidth=.75)
+from plotting.misc import loadStyleSheet
+loadStyleSheet(stylesheet='myggplot', lpresentation=False, lpublication=True)
 from mpl_toolkits.axes_grid1 import ImageGrid
 # internal imports
 # PyGeoDat stuff
 from utils.signalsmooth import smooth
-from plotting.misc import getPlotValues, getFigAx, updateSubplots
+from plotting.legacy import getFigAx
+from plotting.misc import getPlotValues
 from geodata.base import Variable
 from geodata.misc import AxisError, ListError
-from datasets.WRF import loadWRF
-from datasets.Unity import loadUnity
-from datasets.WSC import Basin
+from datasets.WRF import loadWRF_ShpEns
+from datasets.Unity import loadUnity_ShpTS
+from datasets.WSC import basins as basin_dict
 # ARB project related stuff
 from projects.ARB_settings import figure_folder
 
@@ -88,14 +91,14 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
   elif ylim is not None: raise TypeError 
   # set title
   if title is not None:
-    ax.set_title(title, dict(fontsize='medium'))
+    ax.set_title(title, dict(fontsize='x-large'))
     pos = ax.get_position()
     pos = pos.from_bounds(x0=pos.x0, y0=pos.y0, width=pos.width, height=pos.height-0.03)    
     ax.set_position(pos)
   # set axes labels  
   if flipxy: xname,xunits,yname,yunits = varname,varunits,axname,axunits
   else: xname,xunits,yname,yunits = axname,axunits,varname,varunits
-  if not xlabel: xlabel = '{0:s} [{1:s}]'.format(xname,xunits) if xunits else '{0:s}'.format(xname)
+  if not xlabel: xlabel = '{0:s} [{1:s}]'.format('Seasonal Cycle',xunits) if xunits else '{0:s}'.format(xname)
   else: xlabel = xlabel.format(xname,xunits)
   if not ylabel: ylabel = '{0:s} [{1:s}]'.format(yname,yunits) if yunits else '{0:s}'.format(yname)
   else: ylabel = ylabel.format(yname,yunits)
@@ -138,6 +141,7 @@ if __name__ == '__main__':
   exp = 'max-ens'
   period = 15
   grid = 'arb2_d02'
+  variables = ['precip','runoff','sfroff']
   # figure
   lprint = True
   lfield = True
@@ -151,86 +155,95 @@ if __name__ == '__main__':
 #   margins = dict(bottom=0.11, left=0.11, right=.975, top=.95, hspace=0.05, wspace=0.05)
 #   fig.subplots_adjust(**margins) # hspace, wspace
   nax = len(basins)
-  paper_folder = '/home/me/Research/Dynamical Downscaling/Report/JClim Paper 2014/figures/'
-  fig = pyl.figure(1, facecolor='white', figsize=(6.25,3.75))
-  axes = ImageGrid(fig, (0.09,0.11,0.88,0.82), nrows_ncols = (1, nax), axes_pad = 0.2, aspect=False, label_mode = "L")
+  paper_folder = '/home/data/Figures/Basins/'
+  fig = pyl.figure(1, figsize=(6.25,3.75))
+  axes = ImageGrid(fig, (0.07,0.11,0.91,0.82), nrows_ncols = (1, nax), axes_pad = 0.2, aspect=False, label_mode = "L")
+#   fig = None
+#   axes = [None]*nax
               
   # loop over panels/basins
   for n,ax,basin in zip(xrange(nax),axes,basins):
 #   for basin in basins:
-    
+        
     # load meteo data
-    if lfield:
-      fullwrf = loadWRF(experiment=exp, domains=2, period=period, grid=grid, 
-                    varlist=['precip','runoff','sfroff'], filetypes=['srfc','lsm']) # WRF
-      fullunity = loadUnity(period=period, grid=grid, varlist=['precip'])
-      fullwrf.load(); fullunity.load()
-    
-    # load basin data
-    basin = Basin(basin=basin)
-    if lgage: gage = basin.getMainGage()
-    # mask fields and get time series
     if lfield: 
-      mask = basin.rasterize(griddef=fullwrf.griddef)
-      # average over basins
-      wrf = fullwrf.mapMean(basin, integral=True)
-      unity = fullunity.mapMean(basin, integral=True)
+      print ' - loading Data'
+      unity = loadUnity_ShpTS(varlist=['precip'], shape='shpavg')
+      unity = unity(shape_name=basin).load().climMean()
+#       unity['precip'][:] *= 86400. # scale with basin area
+      wrf = loadWRF_ShpEns(name=exp, domains=2, shape='shpavg', filetypes=['srfc','lsm'],
+                           varlist=variables[:]) # WRF
+      wrf = wrf(shape_name=basin).load().climMean()
+#       for varname in variables: wrf[varname][:] *= 86400. # scale with basin area
+    # load basin data
+    basin = basin_dict[basin] # Basin(basin=basin, basins_dict=)
+    if lgage: gage = basin.getMainGage()
     # load/compute variables
     varlist = []
     if lgage: 
-      discharge = gage.discharge      
+#       discharge = gage.discharge
+#       print discharge.mean()      
+#       discharge[:] /= ( unity.atts.shp_area * 86400)
+#       discharge.plot = wrf.runoff.plot
+#       discharge.units = wrf.runoff.units
+#       print discharge.mean()
+      discharge = gage.runoff
+      discharge.name = 'Observed River Runoff'
       varlist += [discharge]
     if lfield:
-      runoff = wrf.runoff; runoff.units = discharge.units
-      sfroff = wrf.sfroff; sfroff.units = discharge.units
+      runoff = wrf.runoff; runoff.name = 'Total Runoff'
+      sfroff = wrf.sfroff; sfroff.name = 'Surface Runoff'
       varlist += [runoff, sfroff]
       if ldisc:
         s_sfroff = sfroff.copy(deepcopy=True)
-        s_sfroff.name = 'scaled sfroff'
+        s_sfroff.name = 'Scaled Sfroff'
         s_sfroff *= discharge.getArray().mean()/sfroff.getArray().mean()
         print s_sfroff 
         varlist += [s_sfroff]
       elif lprecip:
         assert unity.precip.units == wrf.precip.units
         scale = unity.precip.getArray().mean()/wrf.precip.getArray().mean()
-        s_sfroff = sfroff.copy(deepcopy=True); s_sfroff *= scale; s_sfroff.name = 'scaled sfroff'
-        s_runoff = runoff.copy(deepcopy=True); s_runoff *= scale; s_runoff.name = 'scaled runoff'
+        s_sfroff = sfroff.copy(deepcopy=True); s_sfroff *= scale; s_sfroff.name = 'Scaled Surface Runoff'
+        s_runoff = runoff.copy(deepcopy=True); s_runoff *= scale; s_runoff.name = 'Scaled Total Runoff'
         varlist += [s_sfroff, s_runoff]
     if lfield and lgage:
       difference = sfroff - discharge
-      difference.name = 'difference'
+      difference.name = 'Difference'
       varlist += [difference]
       if ldisc or lprecip:
         s_difference = s_sfroff - discharge
-        s_difference.name = 'scaled difference'      
+        s_difference.name = 'Scaled Difference'      
         varlist += [s_difference]    
     for var in varlist: var.plot = discharge.plot # harmonize plotting
     #print sfroff.plot.name, sfroff.plot.units
     
     # plot properties    
     varatts = dict()
-    varatts['runoff'] = dict(color='purple', linestyle='--')
-    varatts['sfroff'] = dict(color='green', linestyle='--')
-    varatts['discharge'] = dict(color='green', linestyle='', marker='o')
-    varatts['difference'] = dict(color='red', linestyle='--')
+    varatts['Total Runoff'] = dict(color='purple', linestyle='--')
+    varatts['Surface Runoff'] = dict(color='green', linestyle='--')
+    varatts['Observed River Runoff'] = dict(color='green', linestyle='', marker='o', markersize=5)
+    varatts['Difference'] = dict(color='red', linestyle='--')
     # add scaled variables
     satts = {}
     for key,val in varatts.iteritems():
       val = val.copy(); val['linestyle'] = '-'
-      satts['scaled '+key] = val
+      satts['Scaled '+key] = val
     varatts.update(satts)
     # determine legend
     if n == 0: legend = None
     else: legend = dict(loc=1, labelspacing=0.125, handlelength=2.5, handletextpad=0.5, fancybox=True)
     # plot runoff
-    plts = linePlot(varlist, ax=ax, varatts=varatts, title=basin.long_name, xline=0, xlim=(1,12), ylim=(-6,16), legend=legend) # , scalefactor=1e-6
+    print ' - creating plot'
+    plts = linePlot(varlist, ax=ax, varatts=varatts, title=basin.long_name, xline=0, xlim=(0.75,12.25), 
+                    ylim=(-2.5,5), legend=legend, lprint=True) # , scalefactor=1e-6
                 
   if lprint:
-    if ldisc: filename = 'runoff_discharge.png'
-    elif lprecip: filename = 'runoff_precip.png'
-    else: filename = 'runoff_test.png'
+    print ' - writing file'
+    if ldisc: filename = 'runoff_discharge.pdf'
+    elif lprecip: filename = 'runoff_precip.pdf'
+    else: filename = 'runoff_test.pdf'
     print('\nSaving figure in '+filename)
-    fig.savefig(paper_folder+filename, dpi=150) # save figure to pdf
+    fig.savefig(paper_folder+filename, dpi=300) # save figure to pdf
     print(figure_folder)
       
   ## show plots after all iterations  
