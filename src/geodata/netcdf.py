@@ -626,7 +626,7 @@ class DatasetNetCDF(Dataset):
               else: 
                 if varobj.shape != ncvar.shape or varobj.ncvar.dimensions != ncvar.dimensions:              
                   raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files have incompatible dimensions.".format(var)
-                if varobj.ncvar.units != ncvar.units: # check units as well              
+                if 'units' in ncvar.ncattrs() and varobj.ncvar.units != ncvar.units: # check units as well              
                   raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files have incompatible units.".format(var)
               # check values only of requested
               if var in check_vars:

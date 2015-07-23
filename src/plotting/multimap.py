@@ -67,7 +67,7 @@ if __name__ == '__main__':
   lminor = True # draw minor tick mark labels
   locean = False # mask continent in white and omit country borders
   lstations = True; stations = 'cities'
-  lbasins = True; basinlist = ('ARB','FRB','GLB'); subbasins = {} #dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
+  lbasins = True; basinlist = ('ARB','FRB','GLB'); primary_basins = []; subbasins = {} #dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
   lprovinces = True; provlist = ('BC','AB','ON')
   cbo = None # default based on figure type
   resolution = None # only for GPCC (None = default/highest)
@@ -146,7 +146,7 @@ if __name__ == '__main__':
 #  variables = ['snowh'];  seasons = [8] # September snow height
 #   variables = ['stns']; seasons = ['annual']
 #   variables = ['lndcls']; seasons = [''] # static
-#   variables = ['zs']; seasons = ['topo']; lcontour = True; lframe = False 
+  variables = ['zs']; seasons = ['topo']; lcontour = True; lframe = False 
 #   WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
 #   variables = ['zs']; seasons = ['hidef']; WRFfiletypes=['const']; lcontour = True # static
   
@@ -155,9 +155,9 @@ if __name__ == '__main__':
   folder = figure_folder
   lpickle = True # load projection from file or recompute
   lprint = True # write plots to disk using case as a name tag
-  maptype = 'lcc-new'; lstations = False; lbasins = True; domain = 2
+#   maptype = 'lcc-new'; lstations = False; lbasins = True; domain = 2
 #   maptype = 'lcc-can'; lstations = False; domain = 1
-#   lbasins = True; basinlist = ('ARB','FRB','GLB'); lprovinces = False; provlist = ['BC','AB','ON']
+#   lbasins = True; basinlist = ('ARB','FRB','CRB','NRB','PSB'); lprovinces = False; provlist = ['BC','AB','ON']
 
 # high resolution map
 #   maptype = 'lcc-new'; lstations = True; stations = 'EC'; lbasins = True
@@ -412,11 +412,11 @@ if __name__ == '__main__':
 #   ldiff = True; reflist = ['max-ens']; refprd = H15
 
 # Fig. 13 (PDO, and now also AMO, because it is wrong)
-  maptype = 'robinson'; lstations = False; lbasins = False; lprovinces=False; lminor = False; locean = True  
-  case = 'cvdp'; lsamesize = False; cbo = 'horizontal'; ltitle = True; seasons = [None]  
-  exptitles = [r'HadISST', r'CESM Ensemble']; subplot = (2,1)
-  variables = ['PDO_eof','AMO_eof',]; explist = ['SST_CVDP','Ctrl-1_CVDP']; period = H15
-  figtitles = ['Pacific Decadal Oscillation SST Pattern', 'Atlantic Multi-Decadal Oscillation Pattern']   
+#   maptype = 'robinson'; lstations = False; lbasins = False; lprovinces=False; lminor = False; locean = True  
+#   case = 'cvdp'; lsamesize = False; cbo = 'horizontal'; ltitle = True; seasons = [None]  
+#   exptitles = [r'HadISST', r'CESM Ensemble']; subplot = (2,1)
+#   variables = ['PDO_eof','AMO_eof',]; explist = ['SST_CVDP','Ctrl-1_CVDP']; period = H15
+#   figtitles = ['Pacific Decadal Oscillation SST Pattern', 'Atlantic Multi-Decadal Oscillation Pattern']   
 #   exptitles = [r'20th Cent. Reanalysis V2', r'CESM Ensemble']
 #   explist = ['PSL_CVDP','Ctrl-1_CVDP']; period = H15
 #   variables = ['NAM_eof','NAO_eof','NPO_eof','PNA_eof',]
@@ -433,12 +433,13 @@ if __name__ == '__main__':
 #   exptitles = ['WRF 3km','WRF 10km (15 yrs)','WRF 30km','WRF 10km']
 
 ## large map for all domains
-#   maptype = 'lcc-large'; figuretype = 'largemap'; loutline = False; lframe = True
-#   lstations = False; lbasins = True; lprovinces = False
-#   explist = ['max']; exptitles = ' '; domain = (0,1,2); lWRFnative = True; period = H15 
-#   case = 'arb2_basins'; basinlist = ('FRB','ARB'); provlist = ('BC','AB') 
-#   variables = ['zs']; seasons = ['topo']; WRFfiletypes += ['const']; lcontour = True
-#   figtitles = ['Topographic Height [km]' + ' and Domain Outlines' if lframe else '']
+  maptype = 'lcc-large'; figuretype = 'largemap'; loutline = False; lframe = True
+  lstations = False; lbasins = True; lprovinces = False
+  explist = ['max']; exptitles = ' '; domain = (0,1,2); lWRFnative = True; period = H15 
+  case = 'arb2_basins'; basinlist = ('FRB','ARB','CRB','NRB'); primary_basins = ('FRB','ARB')
+#   lprovinces = True; provlist = ('BC','AB') 
+  variables = ['zs']; seasons = ['topo']; WRFfiletypes += ['const']; lcontour = True
+  figtitles = ['Topographic Height [km]' + ' and Domain Outlines' if lframe else '']
 ## smaller map for western Canada
 #   maptype = 'lcc-new'; lstations = False; lbasins = True
 #   case = 'arb'; period = None; lWRFnative = True; lframe = False; loutline = False
@@ -788,24 +789,26 @@ if __name__ == '__main__':
                 elif zerr <= 300 and cln==8: bmap.plot(xx,yy,'s', markersize=4, mfc='none', mec='k')
                 #else: bmap.plot(xx,yy,'x', markersize=4, mfc='none', mec='k')
             else: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
-          # add basin outlines
-          shpargs = dict(linewidth = 1., color='k') 
+          # add basin outlines          
           if lbasins:
             for basin in basinlist:      
               basininfo = basins_info[basin]
               if basin in subbasins:
                 for subbasin in subbasins[basin]:		  
                   bmap.readshapefile(basininfo.shapefiles[subbasin][:-4], subbasin, ax=axn, 
-                                     drawbounds=True, **shpargs)            
+                                     drawbounds=True, linewidth = 0.5, color='k')          
+              elif basin in primary_basins:
+                bmap.readshapefile(basininfo.shapefiles['Whole'+basin][:-4], basin, ax=axn, 
+                                   drawbounds=True, linewidth = 1., color='k')            
               else:
                 bmap.readshapefile(basininfo.shapefiles['Whole'+basin][:-4], basin, ax=axn, 
-                                   drawbounds=True, **shpargs)            
+                                   drawbounds=True, linewidth = 0.5, color='k')            
           # add certain provinces
           if lprovinces: 
             for province in provlist:    
               provinfo = province_info[province]
               bmap.readshapefile(provinfo.shapefiles[provinfo.long_name][:-4], province, 
-                                 drawbounds=True, **shpargs)            
+                                 drawbounds=True, linewidth = 0.5, color='k')            
 
       # save figure to disk
       if lprint:
