@@ -56,6 +56,7 @@ if __name__ == '__main__':
   subplot = None # subplot layout (or defaults based on number of plots)
   lbackground = True
   lcontour = False # contour or pcolor plot
+  shading = 'gouraud' # shading for pixel plot
   laddContour = False # add black contour lines
   lframe = True # draw domain boundary
   loutline = True # draw boundaries around valid (non-masked) data
@@ -136,7 +137,7 @@ if __name__ == '__main__':
 #   seasons += ['cold']
 #   seasons += ['warm']
 #   seasons += ['melt']
-  seasons += ['annual']
+#   seasons += ['annual']
 #   seasons += ['summer']
 #   seasons += ['winter']
 #   seasons += ['spring']    
@@ -146,7 +147,7 @@ if __name__ == '__main__':
 #  variables = ['snowh'];  seasons = [8] # September snow height
 #   variables = ['stns']; seasons = ['annual']
 #   variables = ['lndcls']; seasons = [''] # static
-  variables = ['zs']; seasons = ['topo']; lcontour = True; lframe = False 
+#   variables = ['zs']; seasons = ['topo']; lcontour = True; lframe = False 
 #   WRFfiletypes = ['const'] if grid is None else ['const','srfc'] # static
 #   variables = ['zs']; seasons = ['hidef']; WRFfiletypes=['const']; lcontour = True # static
   
@@ -155,7 +156,7 @@ if __name__ == '__main__':
   folder = figure_folder
   lpickle = True # load projection from file or recompute
   lprint = True # write plots to disk using case as a name tag
-#   maptype = 'lcc-new'; lstations = False; lbasins = True; domain = 2
+  maptype = 'lcc-new'; lstations = False; lbasins = True; domain = 2
 #   maptype = 'lcc-can'; lstations = False; domain = 1
 #   lbasins = True; basinlist = ('ARB','FRB','CRB','NRB','PSB'); lprovinces = False; provlist = ['BC','AB','ON']
 
@@ -176,11 +177,12 @@ if __name__ == '__main__':
 #   exptitles = ['Merged Observations (10 km)']
 #   case = 'prism'; lsamesize = True; grid = 'arb2_d02'
 
-# GPCC statiosn
-#   variables = ['stations']; seasons = ['annual']
-#   explist = ['GPCC']; maptype = 'lcc-new'; period = H30
-#   exptitles = ['GPCC Station Density']; figtitles = [''] 
-#   case = 'gpcc'; lsamesize = False; #grid = 'arb2_d02'
+# GPCC stations
+  variables = ['stations']; seasons = ['annual']
+  explist = ['GPCC']; maptype = 'lcc-new'; period = H30
+  exptitles = ['GPCC Station Density']; figtitles = [''] 
+  case = 'gpcc'; lsamesize = False; #grid = 'arb2_d02'
+  variables = ['stations']; seasons = ['annual']; shading = 'flat'
 
 # # ERA-Interim validation
 # #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
@@ -204,6 +206,21 @@ if __name__ == '__main__':
 # #   variables = ['precip']; variable_settings = ['precip_hist']
 # #   variables = ['aSM']
 # #   variables = ['p-et']; seasons = [('summer','annual',)]  
+
+
+# differences to IC ensemble
+#   reflist = ['max-ens-2050','max-ens-2100']*2; case = 'max-seaice'; # l3pan = True (left column of 6-panel figure)
+#   explist = [case+'-2050',case+'-2100']*2
+#   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
+#   exptitles = ['Mid-century, {:s}', 'End-century, {:s}']*2
+# #   explist = [refexp,refexp+'-2050',refexp+'-2100']*2
+# #   seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
+# #   exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
+#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
+#   domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True 
+# #   lsamesize = False; cbo = 'horizontal'  
+#   variables = ['T2']; ldiff = True
+# #   variables = ['MaxPrecip_1d']; domain = 2; cbo = 'vertical'; lfrac = True 
 
 
 # differences to historical (continental; "panam")
@@ -433,13 +450,13 @@ if __name__ == '__main__':
 #   exptitles = ['WRF 3km','WRF 10km (15 yrs)','WRF 30km','WRF 10km']
 
 ## large map for all domains
-  maptype = 'lcc-large'; figuretype = 'largemap'; loutline = False; lframe = True
-  lstations = False; lbasins = True; lprovinces = False
-  explist = ['max']; exptitles = ' '; domain = (0,1,2); lWRFnative = True; period = H15 
-  case = 'arb2_basins'; basinlist = ('FRB','ARB','CRB','NRB'); primary_basins = ('FRB','ARB')
-#   lprovinces = True; provlist = ('BC','AB') 
-  variables = ['zs']; seasons = ['topo']; WRFfiletypes += ['const']; lcontour = True
-  figtitles = ['Topographic Height [km]' + ' and Domain Outlines' if lframe else '']
+#   maptype = 'lcc-large'; figuretype = 'largemap'; loutline = False; lframe = True
+#   lstations = False; lbasins = True; lprovinces = False
+#   explist = ['max']; exptitles = ' '; domain = (0,1,2); lWRFnative = True; period = H15 
+#   case = 'arb2_basins'; basinlist = ('FRB','ARB','CRB','NRB'); primary_basins = ('FRB','ARB')
+# #   lprovinces = True; provlist = ('BC','AB') 
+#   variables = ['zs']; seasons = ['topo']; WRFfiletypes += ['const']; lcontour = True
+#   figtitles = ['Topographic Height [km]' + ' and Domain Outlines' if lframe else '']
 ## smaller map for western Canada
 #   maptype = 'lcc-new'; lstations = False; lbasins = True
 #   case = 'arb'; period = None; lWRFnative = True; lframe = False; loutline = False
@@ -716,7 +733,8 @@ if __name__ == '__main__':
           if lcontour: 
             cd.append(maps[n].contourf(x[n][m],y[n][m],data[n][m],clevs,ax=ax[n],cmap=cmap, 
                                        norm=norm,extend='both'))  
-          else: cd.append(maps[n].pcolormesh(x[n][m],y[n][m],data[n][m],cmap=cmap,shading='gouraud'))
+          else: cd.append(maps[n].pcolormesh(x[n][m],y[n][m],data[n][m], cmap=cmap, 
+                                             shading=shading))
           # add black contour lines (outlines) 
           if laddContour:
             cd.append(maps[n].contour(x[n][m],y[n][m],data[n][m],clevs,ax=ax[n],

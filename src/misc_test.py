@@ -247,7 +247,7 @@ class DatasetsTest(unittest.TestCase):
     # test ensemble (inner) list expansion with outer list expansion    
     varlist = ['MaxPrecip_1d']; constraints = dict(min_len=50, lat=(50,55), max_zerr=300,)
     # inner expansion
-    names = ['EC', 'EC', 'cfsr-max']; name_tags = ['_1990','_1940','WRF_1990']
+    names = ['EC', 'EC', 'erai-max']; name_tags = ['_1990','_1940','WRF_1990']
     obsslices = [dict(years=(1929,1945)), dict(years=(1979,1995)), dict()]
     # outer expansion
     prov = ['BC','AB']; season = ['summer','winter']; mode = ['max']
@@ -278,7 +278,7 @@ class DatasetsTest(unittest.TestCase):
     all(ens.hasVariable('PDO') for ens in enslst)  
     # test slicing by PDO
     ds = enslst[0]['WRF_1990']
-    slcds = ds(PDO=(-1,0.), lminmax=True)
+    assert ds(PDO=(-1,0.), lminmax=True)
     ## some debugging test
     # NetCDF datasets to add cluster_id to
     wrfensnc = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C', # Ensembles don't have unique NetCDF files
@@ -321,7 +321,7 @@ if __name__ == "__main__":
 #     specific_tests += ['ApplyAlongAxis']
 #     specific_tests += ['AsyncPool']    
 #     specific_tests += ['ExpArgList']
-    specific_tests += ['LoadDataset']
+#     specific_tests += ['LoadDataset']
 #     specific_tests += ['BasicLoadEnsembleTS']
 #     specific_tests += ['AdvancedLoadEnsembleTS']
 #     specific_tests += ['LoadStandardDeviation']
@@ -330,7 +330,7 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['MultiProcess']
+    tests += ['MultiProcess']
     tests += ['Datasets'] 
     
 

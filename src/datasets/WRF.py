@@ -544,6 +544,9 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   elif mode.lower() in ('time-series','timeseries'): # concatenated time-series files
     lts = True; lclim = False; period = None; periodstr = None # to indicate time-series (but for safety, the input must be more explicit)
     if lautoregrid is None: lautoregrid = False # this can take very long!
+  # cast/copy varlist
+  if isinstance(varlist,basestring): varlist = [varlist] # cast as list
+  elif varlist is not None: varlist = list(varlist) # make copy to avoid interference
   # figure out station and shape options
   if station and shape: raise ArgumentError
   elif station or shape: 
@@ -745,7 +748,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
 
 # load a pre-processed WRF ensemble and concatenate time-series 
 def loadWRF_StnEns(ensemble=None, name=None, station=None, filetypes=None, years=None, domains=None, 
-                   varlist=None, title=None, varatts=None, translateVars=None, lcheckVars=True, 
+                   varlist=None, title=None, varatts=None, translateVars=None, lcheckVars=None, 
                    lcheckAxis=True, lwrite=False, axis=None, lensembleAxis=False):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadWRF_Ensemble(ensemble=ensemble, grid=None, station=station, domains=domains, 
@@ -756,7 +759,7 @@ def loadWRF_StnEns(ensemble=None, name=None, station=None, filetypes=None, years
   
 # load a pre-processed WRF ensemble and concatenate time-series 
 def loadWRF_ShpEns(ensemble=None, name=None, shape=None, filetypes=None, years=None, domains=None, 
-                   varlist=None, title=None, varatts=None, translateVars=None, lcheckVars=True, 
+                   varlist=None, title=None, varatts=None, translateVars=None, lcheckVars=None, 
                    lcheckAxis=True, lencl=False, lwrite=False, axis=None, lensembleAxis=False):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadWRF_Ensemble(ensemble=ensemble, grid=None, station=None, shape=shape, domains=domains, 
@@ -768,7 +771,7 @@ def loadWRF_ShpEns(ensemble=None, name=None, shape=None, filetypes=None, years=N
 # load a pre-processed WRF ensemble and concatenate time-series 
 def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=None, domains=None, 
                      filetypes=None, years=None, varlist=None, varatts=None, translateVars=None, 
-                     lautoregrid=None, title=None, lctrT=True, lconst=True, lcheckVars=True, 
+                     lautoregrid=None, title=None, lctrT=True, lconst=True, lcheckVars=None, 
                      lcheckAxis=True, lencl=False, lwrite=False, axis=None, lensembleAxis=False,
                      check_vars=None):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
@@ -834,6 +837,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
         datasets = selectElements(datasets, axis=axname, testFct=None, master=None, linplace=False, lall=True)
     # concatenate datasets (along 'time' axis, WRF doesn't have 'year')  
     if axis is None: axis = 'ensemble' if lensembleAxis else 'time'
+    if lcheckVars is None: lcheckVars = bool(varlist)
     dataset = concatDatasets(datasets, axis=axis, coordlim=None, idxlim=None, offset=None, axatts=None, 
                              lcpOther=True, lcpAny=False, lcheckVars=lcheckVars, lcheckAxis=lcheckAxis,
                              name=name, title=title, lensembleAxis=lensembleAxis, check_vars=check_vars)

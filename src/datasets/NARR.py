@@ -11,10 +11,10 @@ import numpy as np
 import os
 # from atmdyn.properties import variablePlotatts
 from geodata.base import Axis
-from geodata.netcdf import DatasetNetCDF, VarNC
+from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition
 from geodata.misc import DatasetError 
-from datasets.common import translateVarNames, days_per_month, name_of_month, data_root, loadObservations, grid_folder
+from datasets.common import translateVarNames, name_of_month, data_root, loadObservations, grid_folder
 from processing.process import CentralProcessingUnit
 
 

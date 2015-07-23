@@ -220,7 +220,7 @@ def translateVarNames(varlist, varatts):
       attributes dictionary. Note that this requires the dictionary to have the field 'name'. '''
   if isinstance(varlist,basestring): varlist = [varlist]
   if not isinstance(varlist,(list,tuple,set)) or not isinstance(varatts,dict): raise TypeError 
-  varlist = list(varlist) # make copy, since operation is in-place 
+  varlist = list(varlist) # make copy, since operation is in-place, and to avoid interference
   # cycle over names in variable attributes (i.e. final names, not original names)  
   for key,atts in varatts.iteritems():
     if 'name' in atts and atts['name'] in varlist: varlist.append(key)
@@ -299,6 +299,9 @@ def loadObservations(name=None, folder=None, period=None, grid=None, station=Non
   elif mode.lower() in ('time-series','timeseries'): # concatenated time-series files
     period = None # to indicate time-series (but for safety, the input must be more explicit)
     if lautoregrid is None: lautoregrid = False # this can take very long!
+  # cast/copy varlist
+  if isinstance(varlist,basestring): varlist = [varlist] # cast as list
+  elif varlist is not None: varlist = list(varlist) # make copy to avoid interference
   # figure out station and shape options
   if station and shape: raise ArgumentError
   elif station or shape: 
@@ -642,8 +645,8 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
       if isinstance(op, basestring): ensemble = getattr(ensemble,op)(axis=ax)
       elif isinstance(op, (int,np.integer,float,np.inexact)): ensemble = ensemble(**{ax:op})
   # extract seasonal/climatological values/extrema
-  if (ldataset and len(ensemble)==0) or any([len(ds)==0 for ds in ensemble]): 
-    raise EmptyDatasetError 
+  if (ldataset and len(ensemble)==0): raise EmptyDatasetError, varlist
+  if not ldataset and any([len(ds)==0 for ds in ensemble]): raise EmptyDatasetError, ensemble
   # N.B.: the operations below should work with Ensembles as well as Datasets 
   if aggregation:
     method = aggregation if aggregation.isupper() else aggregation.title() 

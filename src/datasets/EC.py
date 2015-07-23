@@ -724,7 +724,7 @@ def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varat
   # supplement with CRU gridded data, if necessary
   if varlist and any(var not in dataset for var in varlist):
     dataset.load() # not much data anyway..
-    crulist = [var for var in varlist if var not in dataset and var in CRU_vars]
+    crulist = [var for var in varlist if ( var not in dataset and var in CRU_vars )]
     #print crulist
     if len(crulist) > 0:
       cru = loadCRU_StnTS(station='ec'+station, varlist=crulist).load() # need to load for slicing
@@ -732,7 +732,7 @@ def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varat
         #print dataset
         cru = cru(time=dataset.time.limits()) # slice to same length
         dataset = dataset(time=cru.time.limits()) # slice to same length
-        for varname in crulist:
+        for varname in crulist: 
           dataset += cru[varname] # add auxiliary variables
       else: raise AxisError, "Time-dependent variables not found in fall-bak dataset (CRU)."
   return dataset

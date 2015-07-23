@@ -3216,8 +3216,12 @@ def concatDatasets(datasets, name=None, axis=None, coordlim=None, idxlim=None, o
             variables[varname] = concatVars([ds.variables[varname] for ds in datasets], axis=axis, asVar=True,
                                             coordlim=coordlim, idxlim=idxlim, offset=offset, axatts=axatts,
                                             lcheckAxis=lcheckAxis, lensembleAxis=lensembleAxis)
-          elif lcheckVars:       
-            raise DatasetError, "Variable '{:s}' is not present in all Datasets!".format(varname)
+          else:
+            if lcheckVars:       
+              raise DatasetError, "Variable '{:s}' is not present in all Datasets!".format(varname)
+            else: variables[varname] = None # removes the variable from the target dataset
+            # N.B.: copying variables that have the concat axis but are not being concatenated,
+            #       will lead to axis conflicts
         elif lcpOther and varname not in variables: # either add as is, or skip... 
           if lcpAny or lall: # add if all are present or flag to ignore is set
             variables[varname] = dataset.variables[varname].copy(deepcopy=ldeepcopy)  

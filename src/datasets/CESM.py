@@ -425,6 +425,10 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
     folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='diag', lcheckExp=lcheckExp)
     raise NotImplementedError, "Loading AMWG diagnostic files is not supported yet."
   else: raise NotImplementedError,"Unsupported mode: '{:s}'".format(mode)  
+  # cast/copy varlist
+  if isinstance(varlist,basestring): varlist = [varlist] # cast as list
+  elif varlist is not None: varlist = list(varlist) # make copy to avoid interference
+  # handle stations and shapes
   if station and shape: raise ArgumentError
   elif station or shape: 
     if grid is not None: raise NotImplementedError, 'Currently CESM station data can only be loaded from the native grid.'
@@ -572,26 +576,26 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
 
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
 def loadCESM_ShpEns(ensemble=None, name=None, shape=None, filetypes=None, years=None,
-                    varlist=None, varatts=None, translateVars=None, load3D=False, 
+                    varlist=None, varatts=None, translateVars=None, load3D=False, lcheckVars=None, 
                     ignore_list=None, lcheckExp=True, lencl=False, axis=None, lensembleAxis=False):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadCESM_Ensemble(ensemble=ensemble, name=name, grid=None, station=None, shape=shape, 
                            filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
                            translateVars=translateVars, lautoregrid=False, load3D=load3D, 
                            ignore_list=ignore_list, cvdp_mode='ensemble', lcheckExp=lcheckExp, 
-                           mode='time-series', lreplaceTime=True, lencl=lencl,
+                           mode='time-series', lreplaceTime=True, lencl=lencl, lcheckVars=lcheckVars,
                            axis=axis, lensembleAxis=lensembleAxis, check_vars='shape_name')
 
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
 def loadCESM_StnEns(ensemble=None, name=None, station=None, filetypes=None, years=None,
-                    varlist=None, varatts=None, translateVars=None, load3D=False, 
+                    varlist=None, varatts=None, translateVars=None, load3D=False, lcheckVars=None, 
                     ignore_list=None, lcheckExp=True, axis=None, lensembleAxis=False):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadCESM_Ensemble(ensemble=ensemble, name=name, grid=None, station=station, shape=None,
                            filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
                            translateVars=translateVars, lautoregrid=False, load3D=load3D, 
                            ignore_list=ignore_list, cvdp_mode='ensemble', lcheckExp=lcheckExp, 
-                           mode='time-series', lreplaceTime=True, axis=axis, 
+                           mode='time-series', lreplaceTime=True, lcheckVars=lcheckVars, axis=axis, 
                            lensembleAxis=lensembleAxis, check_vars='station_name')
 
   
@@ -600,7 +604,7 @@ def loadCESM_Ensemble(ensemble=None, name=None, title=None, grid=None, station=N
                       years=None, varlist=None, varatts=None, translateVars=None, lautoregrid=None, 
                       load3D=False, ignore_list=None, cvdp_mode='ensemble', lcheckExp=True, lencl=False, 
                       mode='time-series', lindices=False, leofs=False, filetypes=None, lreplaceTime=True,
-                      axis=None, lensembleAxis=False, check_vars=None):
+                      axis=None, lensembleAxis=False, lcheckVars=None, check_vars=None):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   # obviously this only works for modes that produce a time-axis
   if mode.lower() not in ('time-series','timeseries','cvdp'): 
@@ -658,9 +662,10 @@ def loadCESM_Ensemble(ensemble=None, name=None, title=None, grid=None, station=N
     elif lts: axis='time'
     elif lcvdp: axis=('time','year')
     else: raise NotImplementedError
+  if lcheckVars is None: lcheckVars = bool(varlist)
   dataset = concatDatasets(datasets, axis=axis, coordlim=None, name=name, title=title, idxlim=None, 
                            lensembleAxis=lensembleAxis, offset=None, axatts=None, lcpOther=True, 
-                           lcpAny=False, check_vars=check_vars)
+                           lcpAny=False, check_vars=check_vars, lcheckVars=lcheckVars)
   # return concatenated dataset
   return dataset
 

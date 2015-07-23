@@ -166,6 +166,7 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   # variable attributes
   if varlist is None: varlist = variable_list
   elif not isinstance(varlist,(list,tuple)): raise TypeError  
+  varlist = list(varlist) # make copy of varlist to avoid interference
   if varatts is None: 
     if aggregation is None: varatts = deepcopy(variable_attributes) # because of nested dicts
     else: varatts = deepcopy(agg_varatts) # because of nested dicts
