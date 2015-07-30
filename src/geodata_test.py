@@ -1659,7 +1659,7 @@ if __name__ == "__main__":
 #     specific_tests += ['SeasonalReduction']
 #     specific_tests += ['ConcatVars']
 #     specific_tests += ['ConcatDatasets']
-    specific_tests += ['Print']
+#     specific_tests += ['Print']
 
     # list of tests to be performed
     tests = [] 
@@ -1668,9 +1668,9 @@ if __name__ == "__main__":
     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
+    tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()

@@ -18,7 +18,8 @@ from wrfavg.derived_variables import precip_thresholds
 from geodata.base import concatDatasets
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError
-from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt
+from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt,\
+  EmptyDatasetError
 from datasets.common import translateVarNames, data_root, grid_folder, selectElements,\
   stn_params, shp_params
 from geodata.gdal import loadPickledGridDef, griddef_pickle
@@ -687,19 +688,22 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
             print("Output: '{:s}'".format(name,filename,grid,filepath))            
           else: raise IOError, "The  '{:s}' (WRF) dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.\n('{:s}')".format(name,filename,grid,filepath) 
         else: raise IOError, "The file '{:s}' in WRF dataset '{:s}' does not exits!\n('{:s}')".format(filename,name,filepath)   
+      lenc = len(const) # length of const dataset
+    else: lenc = 0 # empty
        
     # load dataset
     check_override = ['time'] if lctrT else None
-    dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 
-                            varatts=atts, multifile=False, ncformat='NETCDF4', mode=ncmode, 
-                            squeeze=True, check_override=check_override, check_vars=check_vars)
+    try:
+      dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 
+                              varatts=atts, multifile=False, ncformat='NETCDF4', mode=ncmode, 
+                              squeeze=True, check_override=check_override, check_vars=check_vars)
+    except EmptyDatasetError:
+      if lenc == 0: raise # allow loading of cosntants without other variables
     if ltrimT and dataset.hasAxis('time') and len(dataset.time) > 180:
       if lwrite: raise ArgumentError, "Cannot trim time-axis when NetCDF write mode is enabled!"
       dataset = dataset(time=slice(0,180), lidx=True)
       assert len(dataset.time) == 180, len(dataset.time) 
     # check
-    if llconst: lenc = len(const)
-    else: lenc = 0 
     if (len(dataset)+lenc) == 0: raise DatasetError, 'Dataset is empty - check source file or variable list!'
     # check time axis and center at 1979-01 (zero-based)
     if lctrT and dataset.hasAxis('time'):
