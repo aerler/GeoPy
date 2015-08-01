@@ -1141,10 +1141,13 @@ class BaseDatasetTest(unittest.TestCase):
     print(ens.prettyPrint(short=True))
     # apply function to dataset ensemble
     if all(ax.units == 'month' for ax in ens.time):
-      maxens = ens.seasonalMax(lstrict=not lsimple)
+      maxens = ens.seasonalMax(lstrict=not lsimple); del maxens
     # test call
     tes = ens(time=slice(0,3,2))
     assert all(len(tax)==2 for tax in tes.time)
+    # test list indexing
+    sne = ens[range(len(ens)-1,-1,-1)]
+    assert sne[-1] == ens[0] and sne[0] == ens[-1]
 
   def testIndexing(self):
     ''' test collective slicing and coordinate/point extraction  '''
@@ -1647,7 +1650,7 @@ if __name__ == "__main__":
     specific_tests = []
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
-#     specific_tests += ['Ensemble']
+    specific_tests += ['Ensemble']
 #     specific_tests += ['DistributionVariables']
 #     specific_tests += ['StatsTests']   
 #     specific_tests += ['UnaryArithmetic']
@@ -1664,13 +1667,13 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
     tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()

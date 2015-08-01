@@ -28,7 +28,7 @@ def loadStyleSheet(stylesheet, lpresentation=False, lpublication=False):
   if stylesheet is None: stylesheet = 'default'
   if isinstance(stylesheet,basestring):     
     if lpublication: stylesheet = (stylesheet,'publication')       
-    elif lpresentation: stylesheet = (stylesheet,'presentation')
+    elif lpresentation: stylesheet = (stylesheet,'presentation',)
   # load stylesheets
   if isinstance(stylesheet,(list,tuple,basestring)): 
     mpl.pyplot.style.use(stylesheet)

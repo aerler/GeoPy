@@ -9,7 +9,7 @@ axes.titlesize : x-large
 axes.labelsize : large
 
 lines.linewidth : 1
-lines.markersize : 5
+lines.markersize : 3
 
 xtick.labelsize : medium
 ytick.labelsize : medium

@@ -665,6 +665,8 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       const = DatasetNetCDF(name=name, folder=constfolder, filelist=[filename], varatts=constfile.atts, 
                             axes=axes, varlist=constfile.vars, multifile=False, ncformat='NETCDF4', 
                             mode=ncmode, squeeze=True)      
+      lenc = len(const) # length of const dataset
+    else: lenc = 0 # empty
     ## load regular variables
     filenames = []
     for filetype,fileformat in zip(typelist,filelist):
@@ -688,8 +690,6 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
             print("Output: '{:s}'".format(name,filename,grid,filepath))            
           else: raise IOError, "The  '{:s}' (WRF) dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.\n('{:s}')".format(name,filename,grid,filepath) 
         else: raise IOError, "The file '{:s}' in WRF dataset '{:s}' does not exits!\n('{:s}')".format(filename,name,filepath)   
-      lenc = len(const) # length of const dataset
-    else: lenc = 0 # empty
        
     # load dataset
     check_override = ['time'] if lctrT else None

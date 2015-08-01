@@ -3483,6 +3483,11 @@ class Ensemble(object):
     elif isinstance(item, (int,np.integer,slice)):
       # access members like list/tuple 
       return self.members[item]
+    elif isinstance(item, (list,tuple,np.ndarray)):
+      # index/label list like ndarray
+      members = [self[i] for i in item] # select members
+      kwargs = dict(basetype=self.basetype, idkey=self.idkey, name=self.ens_name, title=self.ens_title)
+      return Ensemble(*members,**kwargs) # return new ensemble with selected members
     else: raise TypeError
   
   def __setitem__(self, name, member):

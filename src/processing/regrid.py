@@ -261,15 +261,16 @@ if __name__ == '__main__':
 #     grids['CRU'] = (None,) # CRU grid
   else:
     NP = NP or 2 # time-series might take more memory or overheat
-    modes = ('climatology','time-series')
-    #modes = ('time-series',)
-    #modes = ('climatology',)
+#     modes = ('climatology','time-series')
+#     modes = ('time-series',)
+    modes = ('climatology',)
     loverwrite = False
     varlist = None # process all variables
     periods = (5,10,15,) # climatology periods to process
     #periods = (15,) # for tests
     # Datasets
-    datasets = None # process all applicable
+    #datasets = None # process all applicable
+    datasets = [] # don't process observational datasets
     resolutions = None # process all applicable
     lLTM = True 
     # CESM

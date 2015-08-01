@@ -292,7 +292,7 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
   if figsize is None:
     if lpublication: 
       if subplot == (1,1): 
-        if lpresentation: figsize = (6.25,6.25)
+        if lpresentation: figsize = (5,5)
         else: figsize = (3.75,3.75)
       elif subplot == (1,2) or subplot == (1,3): figsize = (6.25,3.75)
       elif subplot == (2,1) or subplot == (3,1): 

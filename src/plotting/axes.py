@@ -34,7 +34,7 @@ class MyAxes(Axes):
   dataset_plotargs   = None
   plot_labels        = None
   title_height       = 0.025 # fraction of figure height
-  title_size         = 'medium'
+  title_size         = None
   legend_handle      = None
   flipxy             = False
   xname              = None
@@ -566,7 +566,7 @@ class MyAxes(Axes):
   
   def addTitle(self, title, title_height=None, **kwargs):
     ''' add title and adjust margins '''
-    if 'fontsize' not in kwargs: kwargs['fontsize'] = self.title_size
+    if 'fontsize' not in kwargs and self.title_size is not None: kwargs['fontsize'] = self.title_size
     title_height =  self.title_height if title_height is None else title_height
     if not self.get_title(loc='center'): self.updateAxes(height=-1*title_height)
     return self.set_title(title, **kwargs)

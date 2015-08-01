@@ -3,13 +3,13 @@
 # it is meant to be used in conjunction with other stylesheets 
 # Andre R. Erler, GPL v3, 20/01/2015 
 
-font.size: 15
+font.size: 16
 
-axes.titlesize : large
-axes.labelsize : medium
+axes.titlesize : x-large
+axes.labelsize : large
 
 lines.linewidth : 1.5
 lines.markersize : 7
 
-xtick.labelsize : small
-ytick.labelsize : small
+xtick.labelsize : medium
+ytick.labelsize : medium

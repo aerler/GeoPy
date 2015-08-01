@@ -56,7 +56,7 @@ if __name__ == '__main__':
   subplot = None # subplot layout (or defaults based on number of plots)
   lbackground = True
   lcontour = False # contour or pcolor plot
-  shading = 'gouraud' # shading for pixel plot
+  shading = 'gouraud' # shading for pixel plot: 'flat' | 'gouraud'
   laddContour = False # add black contour lines
   lframe = True # draw domain boundary
   loutline = True # draw boundaries around valid (non-masked) data
@@ -137,9 +137,9 @@ if __name__ == '__main__':
 #   seasons += ['cold']
 #   seasons += ['warm']
 #   seasons += ['melt']
-#   seasons += ['annual']
-#   seasons += ['summer']
-#   seasons += ['winter']
+  seasons += ['annual']
+  seasons += ['summer']
+  seasons += ['winter']
 #   seasons += ['spring']    
 #   seasons += ['fall']
   # special variable/season combinations
@@ -178,11 +178,11 @@ if __name__ == '__main__':
 #   case = 'prism'; lsamesize = True; grid = 'arb2_d02'
 
 # GPCC stations
-  variables = ['stations']; seasons = ['annual']
-  explist = ['GPCC']; maptype = 'lcc-new'; period = H30
-  exptitles = ['GPCC Station Density']; figtitles = [''] 
-  case = 'gpcc'; lsamesize = False; #grid = 'arb2_d02'
-  variables = ['stations']; seasons = ['annual']; shading = 'flat'
+#   variables = ['stations']; seasons = ['annual']
+#   explist = ['GPCC']; maptype = 'lcc-new'; period = H30
+#   exptitles = ['GPCC Station Density']; figtitles = [''] 
+#   case = 'gpcc'; lsamesize = False; #grid = 'arb2_d02'
+#   variables = ['stations']; seasons = ['annual']; shading = 'flat'
 
 # # ERA-Interim validation
 # #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2
@@ -194,18 +194,18 @@ if __name__ == '__main__':
 #   case = 'erai'; lsamesize = True
 
 # historical state (continental; vertical orientation)
-#   refexp = 'max-ens'; case = refexp; exptitles = ['Historical, {:s}',]*2
+#   refexp = 'max-ens'; case = refexp; exptitles = ['Historical, {:s}',]*2; l3pan = True
 #   explist = [refexp]*2; seasons = [('summer','winter',)]; period = H15
-#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
-# #   domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True 
+#   domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True 
 #   lsamesize = False; cbo = 'horizontal'; subplot = (2,1) # vertical
 # #   lfrac = True; reflist = ['Unity']*2; grid = 'arb2_d01'
-#   variables = ['MaxPrecip_1d']; domain = 2; cbo = 'vertical'
+# #   variables = ['MaxPrecip_1d']; domain = 2; cbo = 'vertical'
 # #   variables = ['Z']; level_agg['p'] = 2; laddContour = True
 # #   variables = ['RH']; level_agg['p'] = 1
 # #   variables = ['precip']; variable_settings = ['precip_hist']
 # #   variables = ['aSM']
-# #   variables = ['p-et']; seasons = [('summer','annual',)]  
+#   variables = ['p-et']; seasons = [('summer','annual',)]  
+#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
 
 
 # differences to IC ensemble
@@ -224,23 +224,24 @@ if __name__ == '__main__':
 
 
 # differences to historical (continental; "panam")
-#   refexp = 'max-ens'; case = refexp; l3pan = True (left column of 6-panel figure)
+#   domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True 
+#   lsamesize = False; cbo = 'horizontal'  
+#   refexp = 'max-ens'; case = refexp; l3pan = True # (left column of 6-panel figure)
 #   explist = [refexp+'-2050',refexp+'-2100']*2; reflist = [refexp,]
 #   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2; refprd = H15
 #   exptitles = ['Mid-century, {:s}', 'End-century, {:s}']*2
 # #   explist = [refexp,refexp+'-2050',refexp+'-2100']*2
 # #   seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
 # #   exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
-#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
 # #   domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True 
-# #   lsamesize = False; cbo = 'horizontal'  
-#   variables = ['MaxPrecip_1d']; domain = 2; cbo = 'vertical'; lfrac = True 
+# #   variables = ['MaxPrecip_1d']; domain = 2; cbo = 'vertical'; lfrac = True 
 # #   variables = ['Z']; level_agg['p'] = 2; laddContour = True; ldiff = True 
 # #   variables = ['precip']; variable_settings = ['precip_prj']; lfrac = True #ldiff = True 
 # #   variables = ['RH']; level_agg['p'] = 1; ldiff = True
 # #   variables = ['evap']; ldiff = True; variable_settings = ['precip_prj']
 # #   variables = ['aSM']
-# #   variables = ['p-et']; variable_settings = ['precip_prj']; seasons = [('summer',)*2+('annual',)*2]; ldiff = True 
+#   variables = ['p-et']; variable_settings = ['precip_prj']; seasons = [('summer',)*2+('annual',)*2]; ldiff = True 
+#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
 
 # summer and winter progression (continental)
 #   refexp = 'max-ens'; case = refexp; cbo = 'horizontal'
@@ -362,8 +363,29 @@ if __name__ == '__main__':
 #   exptitles = ['WRF Max-1deg (30 km)','WRF Max-1deg (10 km)', 'WRF Max-Ctrl (30 km)', 'WRF Max-Ctrl (10 km)']
 #   case = 'val1deg'; lsamesize = True; # grid = 'arb2_d02'
 
+# Validation: differences to obs (T2, precip, annual, summer, winter)
+  explist = ['max-ens','Ens',]*2; grid = ['arb2_d02','cesm1x1',]*2
+  seasons = ['summer']*2+['winter']*2; period = H15
+  exptitles = ['WRF, 10 km ({:s} Average)','CESM ({:s} Average)']*2
+  exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
+  case = 'val'; reflist = 'Unity'; refprd = H15; lsamesize = True
+  ldiff = True;  variables = ['T2','precip']; seasons = [seasons] # only make one plot with all seasons!
+#   lfrac = True; variables = ['precip']; seasons = [seasons] # only make one plot with all seasons!
+
+# Projection: T2 and pecip diffs
+#   explist = ['max-ens-2100','Ens-2100',]*2; period = B15
+#   seasons = ['summer']*2+['winter']*2
+#   exptitles = ['WRF, 10 km ({:s} Average)','CESM ({:s} Average)']*2
+#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
+#   case = 'prj'; lbasins = True; lsamesize = True
+#   reflist = ['max-ens','Ens',]*2; refprd = H15
+#   seasons = [seasons] # only make one plot with all seasons!
+#   ldiff = True; variables = ['T2']; variable_settings = ['T2_prj'] # parallel execution
+#   lfrac = True; variables = ['precip']; variable_settings = ['precip_prj']
+#   ldiff = True; variables = ['precip']; variable_settings = ['precip_prj']
+
 # Fig. 2 Annual Precip: as it is
-#   explist = ['Ens']; period = H15
+#   explist = ['Ens']; period = H15; lcontour = True
 #   explist = ['Ens', 'Unity', 'max-ens', 'max-ens']; period = H15; domain = [None, None, 1, 2]
 #   exptitles = ['CESM (80 km)','Merged Observations (10 km)', 'Outer WRF Domain (30 km)', 'Inner WRF Domain (10 km)']
 #   case = 'valobs'; lsamesize = False # grid = [None,'arb2_d02',None,None]
@@ -474,7 +496,8 @@ if __name__ == '__main__':
   if not lfrac and not ldiff: reflist = None
 
   if reflist is not None:
-    if not isinstance(reflist,(list,tuple)): raise TypeError
+    if isinstance(reflist,basestring): reflist = [reflist]
+    elif not isinstance(reflist,(list,tuple)): raise TypeError
     if len(explist) > len(reflist):
       if len(reflist) == 1: reflist *= len(explist)  
       else: raise DatasetError 
