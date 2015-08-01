@@ -252,17 +252,18 @@ if __name__ == '__main__':
     CESM_filetypes = ('atm','lnd')    
     # WRF
     WRF_experiments = [] # process all WRF experiments
-    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',] # main "best" IC ensemble
     WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
-#     WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', ] # new standard runs (arb3)     
-#     WRF_experiments += ['ctrl-1', 'ctrl-2050', 'ctrl-2100'] # new standard runs (arb3)
-#     WRF_experiments += ['old-ctrl', 'old-ctrl-2050', 'old-ctrl-2100'] # new standard runs (arb3)
-#     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
+    WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', ] # new config (arb3)     
+    WRF_experiments += ['old-ctrl', 'old-ctrl-2050', 'old-ctrl-2100'] # old/default config
+    WRF_experiments += ['ctrl-1', 'ctrl-ens-A', 'ctrl-ens-B', 'ctrl-ens-C'] # new "standard" IC ensemble
+    WRF_experiments += ['ctrl-2050', 'ctrl-ens-A-2050', 'ctrl-ens-B-2050', 'ctrl-ens-C-2050']
+    WRF_experiments += ['ctrl-2100', 'ctrl-ens-A-2100', 'ctrl-ens-B-2100', 'ctrl-ens-C-2100'][:2] # last two are not finished yet
     domains = None # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
-    WRF_filetypes = ('xtrm','hydro','srfc','lsm') # only some...
+    WRF_filetypes = ('xtrm','hydro','srfc','lsm') # only surface...
     # define shape data
     shape_name = 'shpavg'
     shapes = dict()

@@ -288,7 +288,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)    
     domains = None # domains to be processed
-    #domains = (2,) # for tests
+    domains = (2,) # inner domain onto inner domain 
     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
     #WRF_filetypes = WRF_filetypes = ('hydro',) # for tests
     # grid to project onto
