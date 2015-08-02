@@ -1,15 +1,17 @@
 # Matplotlib Stylesheet for Presentations
 # this stylesheet mainly defines item sizes suitable for presentations
 # it is meant to be used in conjunction with other stylesheets 
-# Andre R. Erler, GPL v3, 20/01/2015 
+# Andre R. Erler, GPL v3, 01/08/2015 
 
-font.size: 16
+font.size: 9
 
-axes.titlesize : x-large
+axes.titlesize : medium
 axes.labelsize : large
 
 lines.linewidth : 1.5
 lines.markersize : 7
 
-xtick.labelsize : medium
-ytick.labelsize : medium
+xtick.labelsize : small
+ytick.labelsize : small
+
+legend.fontsize: medium

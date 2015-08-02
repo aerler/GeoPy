@@ -575,10 +575,10 @@ class MyAxes(Axes):
     ''' add a legend to the axes '''
 #       if 'fontsize' not in kwargs and self.get_yaxis().get_label():
 #         kwargs['fontsize'] = self.get_yaxis().get_label().get_fontsize()
-    if 'fontsize' not in kwargs:
-      if min(self.get_position().bounds[2:4]) < 0.3: kwargs['fontsize'] = 'small'
-      elif min(self.get_position().bounds[2:4]) < 0.6: kwargs['fontsize'] = 'medium'
-      else: kwargs['fontsize'] = 'large'      
+#     if 'fontsize' not in kwargs:
+#       if min(self.get_position().bounds[2:4]) < 0.3: kwargs['fontsize'] = 'small'
+#       elif min(self.get_position().bounds[2:4]) < 0.6: kwargs['fontsize'] = 'medium'
+#       else: kwargs['fontsize'] = 'large'      
     kwargs['loc'] = loc
     # convert handles and labels to positional arguments (this is a bug in mpl)
     args = []

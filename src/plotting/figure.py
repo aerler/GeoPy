@@ -291,23 +291,19 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
   # create figure
   if figsize is None:
     if lpublication: 
-      if subplot == (1,1): 
-        if lpresentation: figsize = (5,5)
-        else: figsize = (3.75,3.75)
+      if subplot == (1,1): figsize = (3.75,3.75)
       elif subplot == (1,2) or subplot == (1,3): figsize = (6.25,3.75)
-      elif subplot == (2,1) or subplot == (3,1): 
-        if lpresentation: figsize = (3.75,6.25)
-        else: (3.75,7)
+      elif subplot == (2,1) or subplot == (3,1): figsize = (3.75,7)
       else: figsize = (6.25,6.25)
+    elif lpresentation: 
+      if subplot == (1,2) or subplot == (1,3): figsize = (5,3)
+      elif subplot == (2,1) or subplot == (3,1): figsize = (3,5)
+      else: figsize = (5,5)
     else:
-      if subplot == (1,1):
-        if lpresentation: figsize = (9,9) 
-        else: figsize = (5,5)
+      if subplot == (1,1): figsize = (5,5)
       elif subplot == (1,2) or subplot == (1,3): figsize = (9,5)
       elif subplot == (2,1) or subplot == (3,1): figsize = (5,9)
       else: figsize = (9,9)
-    #elif subplot == (2,2) or subplot == (3,3): figsize = (6.25,6.25)
-    #else: raise NotImplementedError
   # figure out margins
   if margins is None:
     # N.B.: the rectangle definition is presumably left, bottom, width, height

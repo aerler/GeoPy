@@ -1,7 +1,7 @@
 # Matplotlib Stylesheet for Publication
 # this stylesheet mainly defines item sizes suitable for print publications
 # it is meant to be used in conjunction with other stylesheets 
-# Andre R. Erler, GPL v3, 20/01/2015 
+# Andre R. Erler, GPL v3, 31/07/2015 
 
 font.size: 8
 
