@@ -75,6 +75,9 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(-50,50,41); clbl = '%2.0f'
     elif var in ('aSM',):
       clevs = np.linspace(-21,21,43); clbl = '%2.0f'; cmap = mpl.cm.PuOr
+    elif var in ('asm_red',):
+      clevs = np.linspace(-20,20,41); clbl = '%2.0f';
+      cmap = cm.redblue_light; #cmap.set_over('blue'); cmap.set_under('red')
     else: 
       clevs = np.linspace(-50,50,21); clbl = '%2.0f'  
   else:

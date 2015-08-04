@@ -260,7 +260,7 @@ if __name__ == '__main__':
     WRF_experiments += ['old-ctrl', 'old-ctrl-2050', 'old-ctrl-2100'] # old/default config
     WRF_experiments += ['ctrl-1', 'ctrl-ens-A', 'ctrl-ens-B', 'ctrl-ens-C'] # new "standard" IC ensemble
     WRF_experiments += ['ctrl-2050', 'ctrl-ens-A-2050', 'ctrl-ens-B-2050', 'ctrl-ens-C-2050']
-    WRF_experiments += ['ctrl-2100', 'ctrl-ens-A-2100', 'ctrl-ens-B-2100', 'ctrl-ens-C-2100'][:2] # last two are not finished yet
+    WRF_experiments += ['ctrl-2100', 'ctrl-ens-A-2100', 'ctrl-ens-B-2100', 'ctrl-ens-C-2100'] # last two are not finished yet
     domains = None # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
     WRF_filetypes = ('xtrm','hydro','srfc','lsm') # only surface...

@@ -177,6 +177,13 @@ if __name__ == '__main__':
 #   exptitles = ['Merged Observations (10 km)']
 #   case = 'prism'; lsamesize = True; grid = 'arb2_d02'
 
+# single panel plot
+  explist = ['max-ens-2100']; maptype = 'lcc-new'; period = B15
+  lfrac = True; reflist = ['max-ens']; refprd = H15
+  case = 'sum'; lsamesize = False; figtitles = ''; primary_basins = ['FRB','ARB']
+  variables = ['aSM']; seasons = ['jas']; exptitles = 'Soil Moisture Change [%]'
+  variable_settings = ['asm_red']
+
 # GPCC stations
 #   variables = ['stations']; seasons = ['annual']
 #   explist = ['GPCC']; maptype = 'lcc-new'; period = H30
@@ -364,13 +371,13 @@ if __name__ == '__main__':
 #   case = 'val1deg'; lsamesize = True; # grid = 'arb2_d02'
 
 # Validation: differences to obs (T2, precip, annual, summer, winter)
-  explist = ['max-ens','Ens',]*2; grid = ['arb2_d02','cesm1x1',]*2
-  seasons = ['summer']*2+['winter']*2; period = H15
-  exptitles = ['WRF, 10 km ({:s} Average)','CESM ({:s} Average)']*2
-  exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
-  case = 'val'; reflist = 'Unity'; refprd = H15; lsamesize = True
-  ldiff = True;  variables = ['T2','precip']; seasons = [seasons] # only make one plot with all seasons!
-#   lfrac = True; variables = ['precip']; seasons = [seasons] # only make one plot with all seasons!
+#   explist = ['max-ens','Ens',]*2; grid = ['arb2_d02','cesm1x1',]*2
+#   seasons = ['summer']*2+['winter']*2; period = H15
+#   exptitles = ['WRF, 10 km ({:s} Average)','CESM ({:s} Average)']*2
+#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
+#   case = 'val'; reflist = 'Unity'; refprd = H15; lsamesize = True
+#   ldiff = True;  variables = ['T2','precip']; seasons = [seasons] # only make one plot with all seasons!
+# #   lfrac = True; variables = ['precip']; seasons = [seasons] # only make one plot with all seasons!
 
 # Projection: T2 and pecip diffs
 #   explist = ['max-ens-2100','Ens-2100',]*2; period = B15
