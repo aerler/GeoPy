@@ -5,7 +5,7 @@
 
 font.size: 8
 
-axes.titlesize : x-large
+axes.titlesize : large
 axes.labelsize : large
 
 lines.linewidth : 1
@@ -15,4 +15,5 @@ xtick.labelsize : medium
 ytick.labelsize : medium
 
 legend.shadow: False
+legend.fontsize: medium
 #legend.framealpha: 0.7

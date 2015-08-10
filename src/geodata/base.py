@@ -1696,7 +1696,8 @@ class Variable(object):
         pshape = self.shape[:itime]+(12-tover,)+self.shape[itime+1:] # padding shape  
         padding = np.ones(pshape)*self.fillValue # create padding using fillValue 
         data_view = np.concatenate((data_view,padding), axis=itime) # append paddign array
-        if self.masked: data_view.mask[...,tlen-tover:] = True # also mask pad, if applicable
+        if self.masked and data_view.mask: 
+          data_view.mask[...,tlen-tover:] = True # also mask pad, if applicable
         slen += 1
     assert data_view.shape[itime]%12 == 0, data_view.shape # should be divisible by 12 now
     # return padded/trimmed view

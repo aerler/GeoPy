@@ -183,7 +183,7 @@ if __name__ == '__main__':
   grids = []
   grids += ['shpavg']
 #   grids += ['arb2_d01']
-#   grids += ['arb2_d02']
+  grids += ['arb2_d02']
 #   grids += ['arb3_d02']
 #   grids += ['arb3_d01']
 #   grids += ['arb3_d02']
