@@ -2242,6 +2242,15 @@ class Variable(object):
     assert linplace, 'This is strictly an in-place operation!'      
     return self.data_array, self.name, self.units # return array as result
 
+  @BinaryCheckAndCreateVar(sameUnits=False, linplace=True)
+  def __ipow__(self, a, othername=None, otherunits=None, linplace=True):
+    ''' Take a power of the existing data with a number or an array. '''      
+    self.data_array **= a
+    # generally we don't change the name for in-place operations
+    units = '{:s}^{:s}'.format(self.units,str(a)) # units change
+    assert linplace, 'This is strictly an in-place operation!'      
+    return self.data_array, self.name, units # return array as result
+
   @BinaryCheckAndCreateVar(sameUnits=True, linplace=False)
   def __add__(self, a, othername=None, otherunits=None, linplace=False):
     ''' Add two variables and return a new variable. '''
@@ -2279,6 +2288,16 @@ class Variable(object):
     else:
       if self.units == otherunits: units = ''
       else: units = '{:s} / ({:s})'.format(self.units,otherunits)
+    assert not linplace, 'This operation is strictly not in-place!'
+    return data, name, units
+
+  @BinaryCheckAndCreateVar(sameUnits=False, linplace=False)
+  def __pow__(self, a, othername=None, otherunits=None, linplace=False):
+    ''' Raise a variable to a power and return a new variable. '''
+    data = self.data_array ** a
+    astr = '{}'.format(str(a))
+    name = '{:s}^{:s}'.format(self.name,astr)
+    units = '{:s}^{:s}'.format(self.units,astr)
     assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
      

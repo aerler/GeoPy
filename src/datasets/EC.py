@@ -764,6 +764,12 @@ def test_maxzse(val,index,dataset,axis, lcheckVar=True):
     if lcheckVar: raise DatasetError
     else: return True # EC datasets don't have this field...
   else: return np.abs(dataset.zs_err[index]) <= val
+def test_maxz(val,index,dataset,axis, lcheckVar=True):
+  ''' check that station elevation does not exceed a threshold ''' 
+  if not dataset.hasVariable('stn_zs'):
+    if lcheckVar: raise DatasetError
+    else: return True # EC datasets don't have this field...
+  else: return np.abs(dataset.stn_zs[index]) <= val
 def test_lat(val,index,dataset,axis):
   ''' check if station is located within selected latitude band '''
   return val[0] <= dataset.stn_lat[index] <= val[1] 
@@ -830,6 +836,10 @@ def selectStations(datasets, stnaxis='station', master=None, linplace=False, lal
       varname = 'zs_err'
       if not isNumber(val): raise TypeError  
       tests.append(functools.partial(test_maxzse, val, lcheckVar=lcheckVar))
+    elif key == 'max_z':
+      varname = 'stn_zs'
+      if not isNumber(val): raise TypeError  
+      tests.append(functools.partial(test_maxz, val, lcheckVar=lcheckVar))
     elif key == 'lat':
       varname = 'stn_lat'
       if not isinstance(val,(list,tuple)) or len(val) != 2 or not all(isNumber(l) for l in val): raise TypeError  

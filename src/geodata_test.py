@@ -44,7 +44,7 @@ class BaseVarTest(unittest.TestCase):
     # the 4-year time-axis is for testing some time-series analysis functions
     te, ye, xe = self.size
     self.atts = dict(name = 'test',units = 'n/a',FillValue=-9999)
-    data = np.arange(self.size[0], dtype='int8').reshape(self.size[:1]+(1,))%12 +1
+    data = np.arange(self.size[0], dtype='int16').reshape(self.size[:1]+(1,))%12 +1
     data = data.repeat(np.prod(self.size[1:]),axis=1,).reshape(self.size)
     # N.B.: the value of the field should be the count of the month (Jan=1,...,Dec=12)
     #print data
@@ -148,6 +148,9 @@ class BaseVarTest(unittest.TestCase):
     d = var / rav
     assert isOne(d.data_array)
     del d; gc.collect()
+    a = var**2
+    assert isEqual(self.data**2, a.data_array)
+    del a; gc.collect()
     # test results
     #     print (self.data.filled() - var.data_array.filled()).max()
 #     assert isEqual(np.ones_like(self.data), d.data_array)
@@ -836,15 +839,18 @@ class BaseVarTest(unittest.TestCase):
         var = self.var(time=slice(0,10), y=slice(190,195), x=slice(0,100))
       else:
         var = self.var(time=slice(0,10), lat=(50,70), lon=(-130,-110))
-    refdata = var.data_array
+    refdata = var.data_array.copy()
     # arithmetic test
     var += 2.
     var -= 2.
     var *= 2.
     var /= 2.
+    var **= 2
+    var **= 0.5
     # test results
-    #     print (self.data.filled() - var.data_array.filled()).max()
+#     print (self.data - var.data_array).max()
     assert isEqual(refdata, var.data_array)  
+    refdata = var.data_array.copy() # datatype may change
     # more decorator tests
     data_std = var.standardize(asVar=False, linplace=False)
     assert isEqual(refdata, var.data_array)
@@ -1650,11 +1656,11 @@ if __name__ == "__main__":
     specific_tests = []
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
-    specific_tests += ['Ensemble']
+#     specific_tests += ['Ensemble']
 #     specific_tests += ['DistributionVariables']
 #     specific_tests += ['StatsTests']   
-#     specific_tests += ['UnaryArithmetic']
-#     specific_tests += ['BinaryArithmetic']
+    specific_tests += ['UnaryArithmetic']
+    specific_tests += ['BinaryArithmetic']
 #     specific_tests += ['Copy']
 #     specific_tests += ['ApplyToAll']
 #     specific_tests += ['AddProjection']
@@ -1667,11 +1673,11 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['BaseVar'] 
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
+#     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
 #     tests += ['DatasetGDAL']
     

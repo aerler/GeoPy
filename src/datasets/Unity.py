@@ -121,6 +121,33 @@ def loadUnity(name=dataset_name, period=None, grid=None, varlist=None, varatts=N
   # return formatted dataset
   return dataset
 
+# function to load climatologies at station locations
+def loadUnity_Stn(name=dataset_name, period=None, station=None, varlist=None, varatts=None, 
+                  folder=avgfolder, filelist=None, lautoregrid=False, resolution=None, lencl=False):
+  ''' Get the pre-processed, unified monthly climatology averaged over shapes as a DatasetNetCDF. '''
+  # a climatology is not available
+  if period is None: 
+    period = (1979,2009)
+    warn('A climatology is not available for the Unified Dataset; loading period {0:4d}-{1:4d}.'.format(*period))
+  # load standardized climatology dataset with PRISM-specific parameters  
+  dataset = loadSpecialObs(name=name, folder=folder, period=period, grid=None, station=station, shape=None, 
+                           varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
+                           projection=None, mode='climatology', lautoregrid=False, lencl=lencl)
+  # return formatted dataset
+  return dataset
+
+# function to load time-series at station locations
+tsfile = 'unity{0:s}_monthly.nc' # formatted NetCDF file
+def loadUnity_StnTS(name=dataset_name, station=None, varlist=None, varatts=None, 
+                    folder=avgfolder, filelist=None, lautoregrid=False, resolution=None, lencl=False):
+  ''' Get the pre-processed, unified monthly climatology averaged over shapes as a DatasetNetCDF. '''
+  # load standardized climatology dataset with PRISM-specific parameters  
+  dataset = loadSpecialObs(name=name, folder=folder, period=None, grid=None, shape=None, station=station, 
+                           varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
+                           projection=None, mode='time-series', lautoregrid=False, lencl=lencl)
+  # return formatted dataset
+  return dataset
+
 # function to load these files...
 def loadUnity_Shp(name=dataset_name, period=None, shape=None, varlist=None, varatts=None, 
                   folder=avgfolder, filelist=None, lautoregrid=False, resolution=None, lencl=False):
@@ -173,10 +200,10 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-  mode = 'merge_climatologies'
+#   mode = 'merge_climatologies'
 #   mode = 'merge_timeseries'
 #   mode = 'test_climatology'
-#   mode = 'test_point_climatology'
+  mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
   
   # settings to generate dataset
@@ -202,15 +229,16 @@ if __name__ == '__main__':
   periods = []
 #   periods += [(1979,1980)]
 #   periods += [(1979,1982)]
-  periods += [(1979,1984)]
-  periods += [(1979,1989)]
+#   periods += [(1979,1984)]
+#   periods += [(1979,1989)]
   periods += [(1979,1994)]
 #   periods += [(1984,1994)]
 #   periods += [(1989,1994)]
 #   periods += [(1997,1998)]
-  periods += [(1979,2009)]
+#   periods += [(1979,2009)]
 #   periods += [(1949,2009)]
-  pntset = 'shpavg' # 'ecprecip'
+#   pntset = 'shpavg'
+  pntset = 'ecprecip'
   
   ## do some tests
   if mode == 'test_climatology':  
@@ -239,15 +267,20 @@ if __name__ == '__main__':
       dataset = loadUnity_Shp(varlist=['dryprec','wetprec','shp_area'], shape=pntset, period=periods[0])
       print(dataset.shp_area.mean())
       print('')
-    else: raise NotImplementedError
+    else: 
+      dataset = loadUnity_Stn(varlist=['precip','stn_rec_len'], station=pntset, period=periods[0])
+      print(dataset.stn_rec_len.mean())
+      print('')
     print(dataset)
     dataset.load()
-#     print('')
-#     print(dataset.precip.mean())
-#     print(dataset.precip.masked)
-    print('')
-    print(dataset.dryprec)
-    assert dataset.dryprec.mean() == dataset.precip.mean() 
+    if 'precip' in dataset:
+      print('')
+      print(dataset.precip.mean())
+      print(dataset.precip.masked)
+    if 'dryprec' in dataset:
+      print('')
+      print(dataset.dryprec)
+      assert dataset.dryprec.mean() == dataset.precip.mean() 
     
     # print time coordinate
     print

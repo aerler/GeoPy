@@ -181,9 +181,9 @@ if __name__ == '__main__':
   if not lbatch:
     NP = 2 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = False # just for tests
-#     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = False
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
+    loverwrite = True
     varlist = None
 #     varlist = ['precip',]
     periods = []
@@ -195,15 +195,16 @@ if __name__ == '__main__':
 #     periods += [30]
     # Observations/Reanalysis
     datasets = []; resolutions = None
-    lLTM = False # also regrid the long-term mean climatologies 
+    lLTM = True # also regrid the long-term mean climatologies 
 #     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
-#     datasets += ['PRISM','GPCC']; periods = None
-#     datasets += ['PCIC']; periods = None
+    datasets += ['PRISM','GPCC']; periods = None
+    datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
 #     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
-#     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
+#     datasets += ['GPCC']; resolutions = {'GPCC':['025']}
 #     datasets += ['CRU']
+#     datasets += ['Unity']    
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
@@ -217,11 +218,11 @@ if __name__ == '__main__':
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['marc-g','marc-gg','marc-g-2050','marc-gg-2050']
 #     WRF_experiments += ['marc-m','marc-mm', 'marc-t','marc-m-2050','marc-mm-2050', 'marc-t-2050']
-    WRF_experiments += ['erai']
+#     WRF_experiments += ['erai']
 #     WRF_experiments += ['max-kf']
-    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
-    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        
+#     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+#     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        
 #     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...
     # other WRF parameters 
     domains = None # domains to be processed
@@ -232,8 +233,8 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
     #WRF_filetypes = ('const',); periods = None
     # station datasets to match    
-#     stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
-    stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
+    stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
+#     stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
   else:
     NP = NP or 2 # time-series might take more memory or overheat...
     #modes = ('climatology','time-series')

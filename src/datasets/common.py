@@ -61,7 +61,7 @@ default_varatts['p-et'] = dict(name='p-et', units='kg/m^2/s') # net precipitatio
 shp_params = ['shape_name','shp_long_name','shp_type','shp_area','shp_encl','shp_full','shp_empty']
 # N.B.: 'shp_mask' should not be loaded by default, because it can not be concatenated, if the grid is different 
 # parameters used in station files
-stn_params = ['station_name', 'stn_prov', 'zs_err', 'stn_lat', 'stn_lon', 'stn_rec_len', 'stn_begin_date', 'stn_end_date']
+stn_params = ['station_name', 'stn_prov', 'zs_err', 'stn_zs', 'stn_lat', 'stn_lon', 'stn_rec_len', 'stn_begin_date', 'stn_end_date']
 # variables contained in the CRU dataset
 CRU_vars = ['T2','Tmin','Tmax','Q2','pet','precip','cldfrc','wetfrq','frzfrq']
 
