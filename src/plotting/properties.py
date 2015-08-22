@@ -148,9 +148,11 @@ tmp = PlotAtts(name = r'$u_{10m}$', title = '10 m Zonal Wind',
 # add to collection
 variablePlotatts['u10'] = tmp
 
+waterflux_scale = 1.
+
 ## Column-integrated Zonal Water (Vapor) Transport
 tmp = PlotAtts(name = r'$\overline{q^w_u}$', title = 'Zonal Water Transport', 
-               units = r'$kg m^{-1} s^{-1}$', scalefactor = 100.)
+               units = r'$kg m^{-1} s^{-1}$', scalefactor = waterflux_scale)
 # add to collection
 variablePlotatts['cqwu'] = tmp
 
@@ -167,7 +169,7 @@ variablePlotatts['v10'] = tmp
 
 ## Column-integrated Meridional Water (Vapor) Transport
 tmp = PlotAtts(name = r'$\overline{q^w_v}$', title = 'Meridional Water Transport',
-               units = r'$kg m^{-1} s^{-1}$', scalefactor = 100.)
+               units = r'$kg m^{-1} s^{-1}$', scalefactor = waterflux_scale)
 # add to collection
 variablePlotatts['cqwv'] = tmp
 

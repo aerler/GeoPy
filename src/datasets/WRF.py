@@ -198,7 +198,9 @@ class Const(FileType):
     self.name = 'const' 
     self.atts = dict(HGT    = dict(name='zs', units='m'), # surface elevation
                      XLONG  = dict(name='lon2D', units='deg E'), # geographic longitude field
-                     XLAT   = dict(name='lat2D', units='deg N')) # geographic latitude field
+                     XLAT   = dict(name='lat2D', units='deg N'), # geographic latitude field
+                     SINALPHA = dict(name='sina', units=''), # sine of map rotation
+                     COSALPHA = dict(name='cosa', units='')) # cosine of map rotation                   
     self.vars = self.atts.keys()    
     self.climfile = None #'wrfconst_d{0:0=2d}{1:s}.nc' # the filename needs to be extended by (domain,'_'+grid)
     self.tsfile = 'wrfconst_d{0:0=2d}.nc' # the filename needs to be extended by (domain,)
@@ -875,12 +877,12 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-#   mode = 'test_climatology'
+  mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-  mode = 'test_point_ensemble'
+#   mode = 'test_point_ensemble'
 #   mode = 'pickle_grid'  
   pntset = 'shpavg'
 #   pntset = 'ecprecip'
@@ -934,7 +936,7 @@ if __name__ == '__main__':
     print('')
 #     dataset = loadWRF(experiment='max-1deg', domains=2, grid='arb2_d02', filetypes=['srfc'], period=(1979,1994))
     dataset = loadWRF(experiment='max-ensemble', domains=None, filetypes=['plev3d'], period=(1979,1994),
-                      varlist=['u','qhv','cqwu','cqw','RH'])
+                      varlist=['u','qhv','cqwu','cqw','RH'], lconst=True)
     print(dataset)
 #     dataset.lon2D.load()
 #     print('')

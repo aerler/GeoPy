@@ -528,14 +528,14 @@ class Variable(object):
       if len(ax) > 1: axes.append(ax)
       else: retour.append(ax)
     self.axes = tuple(axes)
-    assert self.ndim == len(axes)    
-    assert self.shape == tuple([len(ax) for ax in self.axes])
     # squeeze data array, if necessary
     if self.data:
       self.data_array = self.data_array.squeeze()
       assert self.ndim == self.data_array.ndim
       assert self.shape == self.data_array.shape        
     # return squeezed dimensions
+    assert self.ndim == len(axes)    
+    assert self.shape == tuple([len(ax) for ax in self.axes])
     return self
   
   def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
