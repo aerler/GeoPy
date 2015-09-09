@@ -230,6 +230,7 @@ def expandArgumentList(inner_list=None, outer_list=None, expand_list=None, lprod
       if inner_list is not None or outer_list is not None: raise ArgumentError, "Can not mix input modes!"      
       if lproduct.lower() == 'inner': inner_list = expand_list
       elif lproduct.lower() == 'outer': outer_list = expand_list
+      else: raise ArgumentError, lproduct
     outer_list = outer_list or []; inner_list = inner_list or []
       
     # handle outer product expansion first

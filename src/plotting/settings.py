@@ -56,6 +56,9 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(-5,5,21); clbl = '%2.1f'  
     elif var in ('RH',):
       clevs = np.linspace(-12,12,25); clbl = '%2.0f'; cmap = mpl.cm.PuOr # percent points
+    elif var in ('WaterTransport_U','WaterTransport_V','cqwu','cqwv'):
+      #cmap = cm.coolavhrrmap # cmap.set_over('white'); cmap.set_under('black')
+      clevs = np.linspace(-120,120,41); clbl = '%3.0f'
     else: 
       raise VariableError, 'No settings found for differencing variable \'{0:s}\' found!'.format(var)
   elif lfrac:
@@ -131,10 +134,14 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
     elif var in ('p-et','waterflx'): # moisture fluxes (kg /(m^2 s))
       # clevs = np.linspace(-3,22,51); clbl = '%02.1f'
       clevs = np.linspace(-2,2,25); cmap = cm.avhrr_r; clbl = '%02.1f' # mpl.cm.PuOr
+#     elif var in ('WaterTransport_U','cqwu'): # moisture fluxes (kg /(m^2 s))
+#       clevs = np.linspace(0,300,31); clbl = '%02.1f' # mpl.cm.PuOr
+#     elif var in ('WaterTransport_V','cqwv'): # moisture fluxes (kg /(m^2 s))
+#       clevs = np.linspace(-100,200,31); clbl = '%02.1f' # mpl.cm.PuOr
     elif var in ('WaterTransport_U','cqwu'): # moisture fluxes (kg /(m^2 s))
-      clevs = np.linspace(0,300,31); clbl = '%02.1f' # mpl.cm.PuOr
+      clevs = np.linspace(-60,240,31); clbl = '%02.1f' # mpl.cm.PuOr
     elif var in ('WaterTransport_V','cqwv'): # moisture fluxes (kg /(m^2 s))
-      clevs = np.linspace(-100,200,31); clbl = '%02.1f' # mpl.cm.PuOr
+      clevs = np.linspace(-60,240,31); clbl = '%02.1f' # mpl.cm.PuOr
     elif var in ('ColumnWater','cqw'): # moisture fluxes (kg /(m^2 s))
       clevs = np.linspace(0,75,26); clbl = '%02.1f' # mpl.cm.PuOr
     elif var in ('RH',):

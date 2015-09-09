@@ -200,38 +200,54 @@ if __name__ == '__main__':
 # #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
 #   case = 'erai'; lsamesize = True
 
-# differences to IC ensemble
-#   reflist = ['max-ens-2050','max-ens-2100']*2; case = 'max-seaice'; # l3pan = True (left column of 6-panel figure)
-#   explist = [case+'-2050',case+'-2100']*2
-#   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
-#   exptitles = ['Mid-century, {:s}', 'End-century, {:s}']*2
-# #   explist = [refexp,refexp+'-2050',refexp+'-2100']*2
-# #   seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
-# #   exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
+# # differences to IC ensemble
+# #   reflist = ['max-ens-2050','max-ens-2100']*2; case = 'max-seaice'; # l3pan = True (left column of 6-panel figure)
+# #   explist = [case+'-2050',case+'-2100']*2
+# #   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
+# #   exptitles = ['Mid-century, {:s}', 'End-century, {:s}']*2  
+#   exp = 'ctrl-ens'; refexp = 'max-ens'; case = 'ctrl-max'
+#   explist = [exp,exp+'-2050',exp+'-2100']*2; reflist = [refexp,refexp+'-2050',refexp+'-2100']*2
+#   seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
+#   exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
 #   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
 #   domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True 
 # #   lsamesize = False; cbo = 'horizontal'  
-#   variables = ['T2']; ldiff = True
+#   variables = ['precip']; ldiff = True
 # #   variables = ['MaxPrecip_1d']; domain = 2; cbo = 'vertical'; lfrac = True 
 
+# # differences to Obs
+# #   reflist = ['max-ens-2050','max-ens-2100']*2; case = 'max-seaice'; # l3pan = True (left column of 6-panel figure)
+# #   explist = [case+'-2050',case+'-2100']*2
+# #   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
+# #   exptitles = ['Mid-century, {:s}', 'End-century, {:s}']*2  
+#   case = 'mc_val'; explist = ['ctrl-ens','max-ens']*2; reflist = 'Unity'
+#   seasons = [('summer',)*2+('winter',)*2]; period = H15
+#   domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True; grid = 'arb2_d01'
+# #   lsamesize = False; cbo = 'horizontal'  
+#   variables = ['precip']; ldiff = True
+# #   variables = ['MaxPrecip_1d']; domain = 2; cbo = 'vertical'; lfrac = True
+
 # historical state (continental; vertical orientation)
-  refexp = 'ctrl-ens'; case = refexp; exptitles = ['Historical, {:s}',]*2; l3pan = True
+  refexp = 'max-ctrl'; case = refexp; exptitles = ['Historical, {:s}',]*2; l3pan = True
   explist = [refexp]*2; seasons = [('summer','winter',)]; period = H15
-  domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True 
+  domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True; primary_basins = ('ARB','FRB','GLB')
   lsamesize = False; cbo = 'horizontal'; subplot = (2,1) # vertical
 #   lfrac = True; reflist = ['Unity']*2; grid = 'arb2_d01'
 #   variables = ['MaxPrecip_1d']; domain = 2; cbo = 'vertical'
 #   variables = ['Z']; level_agg['p'] = 2; laddContour = True
 #   variables = ['RH']; level_agg['p'] = 1
-#   variables = ['precip']; variable_settings = ['precip_hist']
 #   variables = ['aSM']
 #   variables = ['p-et']; seasons = [('summer','annual',)]  
-  exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
+#   variables = ['precip']; variable_settings = ['precip_hist']
+#   exptitles = [exptitle.format(season.title()) for exptitle,season in zip(exptitles,seasons[0])]
+  variables = [('cqwu','cqwv')]; vartitles = ['zonal flux','meridional flux']; seasons = ['summer','winter']  
+  exptitles = [exptitle.format(vartitle.title()) for exptitle,vartitle in zip(exptitles,vartitles)]
+  figtitles = ['Water Flux in {:s} [$kg m^{{-1}} s^{{-1}}$]'.format(season.title()) for season in seasons]
 
-# differences to historical (continental; "panam")
-#   domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True 
+# # differences to historical (continental; "panam")
+#   domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True; primary_basins = ('ARB','FRB','GLB')
 #   lsamesize = False; cbo = 'horizontal'  
-#   refexp = 'ctrl-ens'; case = refexp; l3pan = True # (left column of 6-panel figure)
+#   refexp = 'max-ens'; case = refexp; l3pan = True # (left column of 6-panel figure)
 #   explist = [refexp+'-2050',refexp+'-2100']*2; reflist = [refexp,]
 #   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2; refprd = H15
 #   exptitles = ['Mid-century, {:s}', 'End-century, {:s}']*2
@@ -242,7 +258,12 @@ if __name__ == '__main__':
 # #   variables = ['evap']; ldiff = True; variable_settings = ['precip_prj']
 # #   variables = ['aSM']; lfrac = True
 # #   variables = ['p-et']; variable_settings = ['precip_prj']; seasons = [('summer',)*2+('annual',)*2]; ldiff = True 
-#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
+# #   exptitles = [exptitle.format(season.title()) for exptitle,season in zip(exptitles,seasons[0])]
+#   variables = [('cqwu','cqwu','cqwv','cqwv')]; seasons = ['summer','winter']; ldiff = True
+#   vartitles = ['zonal flux','zonal flux','meridional flux','meridional flux']
+#   exptitles = [exptitle.format(vartitle.title()) for exptitle,vartitle in zip(exptitles,vartitles)]
+#   figtitles = ['Water Flux Differences in {:s} [$kg m^{{-1}} s^{{-1}}$]'.format(season.title()) for season in seasons]
+
 
 # summer and winter progression (continental)
 #   refexp = 'ctrl-ens'; case = refexp; cbo = 'horizontal'

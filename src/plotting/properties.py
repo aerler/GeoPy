@@ -148,7 +148,7 @@ tmp = PlotAtts(name = r'$u_{10m}$', title = '10 m Zonal Wind',
 # add to collection
 variablePlotatts['u10'] = tmp
 
-waterflux_scale = 1.
+waterflux_scale = 100.
 
 ## Column-integrated Zonal Water (Vapor) Transport
 tmp = PlotAtts(name = r'$\overline{q^w_u}$', title = 'Zonal Water Transport', 
