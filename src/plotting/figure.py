@@ -53,7 +53,7 @@ class MyFigure(Figure):
     self.axes_class = axes_class   
     self.axes_args = axes_args 
     # default print options
-    self.print_setings = dict(dpi=300)
+    self.print_setings = dict(dpi=300, transparent=True)
     
 # N.B.: using the built-in mechanism to choose Axes seems to cause more problems
 #     from matplotlib.projections import register_projection
