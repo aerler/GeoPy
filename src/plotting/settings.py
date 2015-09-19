@@ -242,7 +242,7 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
 
 ## figure settings
 def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True, l3pan=False):
-  sf = dict(dpi=300) # print properties
+  sf = dict(dpi=300, transparent=True) # print properties
   figformat = 'png'
   # some special cases 
   if figuretype is None:

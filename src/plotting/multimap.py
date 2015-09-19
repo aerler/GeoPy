@@ -67,8 +67,9 @@ if __name__ == '__main__':
   l3pan = False # make a single column of a three-column figure
   lminor = True # draw minor tick mark labels
   locean = False # mask continent in white and omit country borders
-  lstations = True; stations = 'cities'
-  lbasins = True; basinlist = ('ARB','FRB','GLB'); primary_basins = []; subbasins = {} #dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
+  lstations = False; stations = 'EC'; cluster_symbols = {2:'o',5:'^',8:'s'}; cluster_name = 'cluster_projection'
+  cluster_symbols = {clu:dict(marker=sym, markersize=4, mfc='w', mec='k') for clu,sym in cluster_symbols.iteritems()}
+  lbasins = False; basinlist = ('ARB','FRB','GLB'); primary_basins = []; subbasins = {} #dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
   lprovinces = True; provlist = ('BC','AB','ON')
   cbo = None # default based on figure type
   resolution = None # only for GPCC (None = default/highest)
@@ -177,6 +178,16 @@ if __name__ == '__main__':
 #   exptitles = ['Merged Observations (10 km)']
 #   case = 'prism'; lsamesize = True; grid = 'arb2_d02'
 
+# observations
+  variables = ['precip']; seasons = ['annual']
+  explist = ['Unity']; maptype = 'lcc-bcab'; period = H15
+#   ldiff = True; reflist = ['Unity']; maptype = 'lcc-small'
+  exptitles = 'Annual Total Precipitation [mm/day]'; figtitles = '' # ['Merged Observations (10 km)']
+  case = 'unity'; lsamesize = False; grid = 'arb2_d02'
+#   cluster_name = 'cluster_historical'; cluster_symbols = {2:'o',5:'^',8:'s'}
+#   cluster_symbols = {clu:dict(marker=sym, markersize=4, mfc='w', mec='k') for clu,sym in cluster_symbols.iteritems()}
+#   lbasins = False; lstations = True; stations = 'EC'; case += '_cluster'
+  
 # single panel plot
 #   explist = ['max-ens-2100']; maptype = 'lcc-new'; period = B15
 #   lfrac = True; reflist = ['max-ens']; refprd = H15
@@ -227,22 +238,22 @@ if __name__ == '__main__':
 #   variables = ['precip']; ldiff = True
 # #   variables = ['MaxPrecip_1d']; domain = 2; cbo = 'vertical'; lfrac = True
 
-# historical state (continental; vertical orientation)
-  refexp = 'max-ctrl'; case = refexp; exptitles = ['Historical, {:s}',]*2; l3pan = True
-  explist = [refexp]*2; seasons = [('summer','winter',)]; period = H15
-  domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True; primary_basins = ('ARB','FRB','GLB')
-  lsamesize = False; cbo = 'horizontal'; subplot = (2,1) # vertical
-#   lfrac = True; reflist = ['Unity']*2; grid = 'arb2_d01'
-#   variables = ['MaxPrecip_1d']; domain = 2; cbo = 'vertical'
-#   variables = ['Z']; level_agg['p'] = 2; laddContour = True
-#   variables = ['RH']; level_agg['p'] = 1
-#   variables = ['aSM']
-#   variables = ['p-et']; seasons = [('summer','annual',)]  
-#   variables = ['precip']; variable_settings = ['precip_hist']
-#   exptitles = [exptitle.format(season.title()) for exptitle,season in zip(exptitles,seasons[0])]
-  variables = [('cqwu','cqwv')]; vartitles = ['zonal flux','meridional flux']; seasons = ['summer','winter']  
-  exptitles = [exptitle.format(vartitle.title()) for exptitle,vartitle in zip(exptitles,vartitles)]
-  figtitles = ['Water Flux in {:s} [$kg m^{{-1}} s^{{-1}}$]'.format(season.title()) for season in seasons]
+# # historical state (continental; vertical orientation)
+#   refexp = 'max-ctrl'; case = refexp; exptitles = ['Historical, {:s}',]*2; l3pan = True
+#   explist = [refexp]*2; seasons = [('summer','winter',)]; period = H15
+#   domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True; primary_basins = ('ARB','FRB','GLB')
+#   lsamesize = False; cbo = 'horizontal'; subplot = (2,1) # vertical
+# #   lfrac = True; reflist = ['Unity']*2; grid = 'arb2_d01'
+# #   variables = ['MaxPrecip_1d']; domain = 2; cbo = 'vertical'
+# #   variables = ['Z']; level_agg['p'] = 2; laddContour = True
+# #   variables = ['RH']; level_agg['p'] = 1
+# #   variables = ['aSM']
+# #   variables = ['p-et']; seasons = [('summer','annual',)]  
+# #   variables = ['precip']; variable_settings = ['precip_hist']
+# #   exptitles = [exptitle.format(season.title()) for exptitle,season in zip(exptitles,seasons[0])]
+#   variables = [('cqwu','cqwv')]; vartitles = ['zonal flux','meridional flux']; seasons = ['summer','winter']  
+#   exptitles = [exptitle.format(vartitle.title()) for exptitle,vartitle in zip(exptitles,vartitles)]
+#   figtitles = ['Water Flux in {:s} [$kg m^{{-1}} s^{{-1}}$]'.format(season.title()) for season in seasons]
 
 # # differences to historical (continental; "panam")
 #   domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True; primary_basins = ('ARB','FRB','GLB')
@@ -838,7 +849,7 @@ if __name__ == '__main__':
               # import station data
               from datasets.EC import loadEC_StnTS, selectStations
               from datasets.WRF import loadWRF_StnTS
-              varlist = stn_params + ['cluster_projection']; station_type = 'ecprecip'
+              varlist = stn_params + [cluster_name]; station_type = 'ecprecip'
               ecstns = loadEC_StnTS(station=station_type, varlist=varlist)
               wrfstns = loadWRF_StnTS(experiment='max-ctrl', varlist=varlist, station=station_type, 
                                       filetypes='hydro', domains=2)
@@ -846,12 +857,12 @@ if __name__ == '__main__':
               ecstns,wrfstns = selectStations([ecstns, wrfstns] , stnaxis='station', linplace=False, lall=True, 
                                               **station_constraints)
               # loop over points
-              for lon,lat,zerr,cln in zip(ecstns.stn_lon, ecstns.stn_lat, wrfstns.zs_err, ecstns.cluster_projection):
-                xx,yy = bmap(lon, lat)
-                if zerr <= 300 and cln==2: bmap.plot(xx,yy,'^', markersize=4, mfc='none', mec='k')
-                elif zerr <= 300 and cln==6: bmap.plot(xx,yy,'d', markersize=4, mfc='none', mec='k')
-                elif zerr <= 300 and cln==8: bmap.plot(xx,yy,'s', markersize=4, mfc='none', mec='k')
-                #else: bmap.plot(xx,yy,'x', markersize=4, mfc='none', mec='k')
+              for lon,lat,zerr,cln in zip(ecstns.stn_lon, ecstns.stn_lat, wrfstns.zs_err, ecstns[cluster_name]):
+                if cln in cluster_symbols: # and zerr <= 300
+                  tmp = cluster_symbols[cln].copy()
+                  xx,yy = bmap(lon, lat)
+                  marker = tmp.pop('marker')
+                  bmap.plot(xx,yy,marker,**tmp)
             else: mapSetup.markPoints(ax[n], bmap, pointset=stations)     
           # add basin outlines          
           if lbasins:
