@@ -1,0 +1,207 @@
+\documentclass[letterpaper,12pt,headsepline,final]{scrartcl} %
+% adopted from Bastian
+\usepackage{scrpage2} %,dcolumn
+%\usepackage{ucs}
+%\usepackage[utf8x]{inputenc}
+\usepackage[english]{babel}
+%\usepackage[T1]{fontenc}
+\usepackage{ae}
+\usepackage{verbatim}
+% graphics paths are defined later
+\usepackage{graphicx} %If you want to include postscript graphics
+% \usepackage{graphics}
+\usepackage{color}
+%\usepackage{pdflscape}
+% \usepackage{epsfig}
+% \usepackage{float}
+\usepackage[bf,nooneline,format=plain,indention=.3cm]{caption}
+\usepackage{natbib}
+%\usepackage{subfigure}
+% for diagrams
+\usepackage{tikz}
+\usetikzlibrary{arrows,shapes}
+% Use times font in URLs
+\usepackage{url}
+% Define a light gray color for use in the title page header
+% \usepackage{fancyhdr}
+% Provide the amsmath, fonts, symbol, and boldface math packages for use
+\usepackage{amsmath,amsfonts,amssymb,bm}
+% Line numbers needed
+\usepackage{lineno}
+% hyperlinks
+%\usepackage[raiselinks=true]{hyperref}
+\usepackage{hyperref}
+% for rotated tables
+% \usepackage{longtable}
+% \usepackage{rotating}
+
+%\setlength{\captionmargin}{10pt}
+%\usepackage[letterpaper,hmargin=1in,vmargin=1.25in]{geometry}
+\frenchspacing
+
+\DeclareGraphicsExtensions{.pdf} %.pdf,,.jpg
+\graphicspath{{figures/}}
+
+% \begin{comment}
+  \usepackage{pdfdraftcopy}
+  \draftstring{Draft}
+  \draftfontfamily{ppl}
+  \draftfontsize{10cm}
+  \draftangle{60}
+% \end{comment}
+
+% Directions
+\newcommand{\degN}{\ensuremath{^\circ}\,N}
+\newcommand{\degS}{\ensuremath{^\circ}\,S}
+\newcommand{\degE}{\ensuremath{^\circ}\,E}
+\newcommand{\degW}{\ensuremath{^\circ}\,W}
+\newcommand{\degC}{\ensuremath{^\circ}\,C}
+% other
+\renewcommand{\deg}{\ensuremath{^\circ}} % use for degree in math mode
+\newcommand{\st}{\ensuremath{^{st}}}
+\newcommand{\nd}{\ensuremath{^{nd}}}
+\newcommand{\rd}{\ensuremath{^{rd}}}
+\renewcommand{\th}{\ensuremath{^{th}}}
+\usepackage{verbatim} % the comment environment is in the verbatim package
+% \renewenvironment{comment}{\begin{itemize}}{\end{itemize}}
+\newcommand{\inlinecomment}[1]{{\noindent\sl#1}}
+% \newcommand{\app}[1]{Appendix~\ref{#1}}
+\newcommand{\app}[1]{Appendix~#1}
+% Units (math environment)
+\newcommand{\GB}{\ensuremath{\,\mbox{GB}}}
+\newcommand{\ms}{\ensuremath{\,\mbox{m\;s}^{-1}}}
+\newcommand{\Wmm}{\ensuremath{\,\mbox{W\;m}^{-2}}}
+\newcommand{\mmday}{\ensuremath{\,\mbox{mm\;day}^{-1}}}
+\newcommand{\kgmmday}{\ensuremath{\,\mbox{kg\;m}^{-2}\,\mbox{day}^{-1}}}
+\newcommand{\kgmms}{\ensuremath{\,\mbox{kg\;m}^{-2}\,\mbox{s}^{-1}}}
+\newcommand{\kgmm}{\ensuremath{\,\mbox{kg\;m}^{-2}}}
+\newcommand{\kgms}{\ensuremath{\,\mbox{kg\;m}^{-1}\,\mbox{s}^{-1}}}
+\newcommand{\mss}{\ensuremath{\,\mbox{m\;s}^{-2}}}
+\newcommand{\pvu}{\ensuremath{\,\mbox{PVU}}}
+\newcommand{\kkm}{\ensuremath{\,\mbox{K\;km}^{-1}}}
+\newcommand{\m}{\ensuremath{\,\mbox{m}}}
+\newcommand{\s}{\ensuremath{\,\mbox{s}}}
+\newcommand{\Kkm}{\ensuremath{\,\mbox{K\;km}^{-1}}}
+\newcommand{\km}{\ensuremath{\,\mbox{km}}}
+\newcommand{\K}{\ensuremath{\,\mbox{K}}}
+\newcommand{\hPa}{\ensuremath{\,\mbox{hPa}}}
+\newcommand{\mssq}{\ensuremath{\,\mbox{m\;s}^2}}
+\newcommand{\JKmol}{\ensuremath{\,\mbox{J\;K}^{-1}\,\mbox{mol}^{-1}}}
+\newcommand{\kgmol}{\ensuremath{\,\mbox{kg\;mol}^{-1}}}
+\newcommand{\ssq}{\ensuremath{\times{}10^{-4}\,\mbox{s}^{-2}}}
+% math-environment abbreviations
+\newcommand{\ddz}[1]{\ensuremath{\frac{\partial #1}{\partial z}}}
+\newcommand{\ddp}[1]{\ensuremath{\frac{\partial #1}{\partial p}}}
+% Figures
+\newcommand{\fig}[1]{Fig.~\ref{#1}}
+\newcommand{\Fig}[1]{Figure~\ref{#1}}
+\newcommand{\figs}[1]{Figs.~\ref{#1}}
+\newcommand{\Figs}[1]{Figures~\ref{#1}}
+% Tables
+\newcommand{\tab}[1]{Tab.~\ref{#1}}
+\newcommand{\Tab}[1]{Table~\ref{#1}}
+\newcommand{\tabs}[1]{Tabs.~\ref{#1}}
+\newcommand{\Tabs}[1]{Tables~\ref{#1}}
+% Chapters
+\newcommand{\chap}[1]{Chap.~\ref{#1}}
+\newcommand{\Chap}[1]{Chapter~\ref{#1}}
+\newcommand{\chaps}[1]{Chaps.~\ref{#1}}
+\newcommand{\Chaps}[1]{Chapters~\ref{#1}}
+% Sections
+\newcommand{\sect}[1]{Sect.~\ref{#1}}
+\newcommand{\Sect}[1]{Section~\ref{#1}}
+\newcommand{\sects}[1]{Sects.~\ref{#1}}
+\newcommand{\Sects}[1]{Sections~\ref{#1}}
+% some program names
+\newcommand{\wrftools}{\mbox{\color{violet} \sffamily WRF~Tools}}
+\newcommand{\geopy}{\mbox{\color{teal} \sffamily {GeoPy}}}
+\newcommand{\geogrid}{\mbox{\color{orange} \ttfamilyfamily geogrid.exe}}
+\newcommand{\ungrib}{\mbox{\color{purple} \ttfamilyfamily ungrib.exe}}
+\newcommand{\unccsm}{\mbox{\color{red} \ttfamilyfamily unccsm.exe}}
+\newcommand{\metgrid}{\mbox{\color{cyan} \ttfamilyfamily metgrid.exe}}
+\newcommand{\real}{\mbox{\color{violet} \ttfamilyfamily real.exe}}
+\newcommand{\ideal}{\mbox{\color{magenta} \ttfamilyfamily ideal.exe}}
+\newcommand{\PyWPS}{\mbox{\color{teal} \sffamily PyWPS}}
+\newcommand{\wrfrun}{\mbox{\color{teal} \ttfamilyfamily wrfrun}}
+\newcommand{\pywps}{\mbox{\color{teal} \ttfamilyfamily pywps.py}}
+\newcommand{\WRFavg}{\mbox{\color{blue} \sffamily WRFavg}}
+\newcommand{\wrfavg}{\mbox{\color{blue} \ttfamilyfamily wrfavg}}
+\newcommand{\average}{\mbox{\color{blue} \ttfamilyfamily wrfout\_average.py}}
+\newcommand{\derived}{\mbox{\color{magenta} \ttfamilyfamily derived\_variables.py}}
+\newcommand{\archive}{\mbox{\color{brown} \ttfamilyfamily ar\_wrfout\_fineIO.pbs}}
+%
+% Hyphenation
+\hyphenation{pa-ra-me-ter-i-za-ti-ons}
+\hyphenation{pa-ra-me-ter-i-za-ti-on}
+\hyphenation{a-na-ly-sis}
+\hyphenation{a-na-ly-ses}
+\hyphenation{me-ri-di-o-nal}
+\hyphenation{ba-ro-cli-nic}
+
+% increase line spacing by a factor of 1.5
+\renewcommand{\baselinestretch}{1.5}
+
+% opening
+\title{GeoPy: A Python Package for Geospatial and Statistical Analysis}
+\author{Andre R. Erler}
+\date{\today}
+
+% make headings using koma-script tools
+\pagestyle{scrheadings}
+% avoid 'seems you are using very small headheight'
+\setlength{\headheight}{1.7\baselineskip}
+
+\lohead{Andre R. Erler}
+\cohead{GeoPy}
+\rohead{\today}
+\lofoot{}
+\cofoot{}
+\rofoot{\pagemark}
+\setheadwidth{text}
+
+\begin{document}
+
+\maketitle
+
+\section*{The \geopy{} Analysis Package}
+\label{pipe:geopy}
+The \geopy{} Python package was developed to facilitate data analysis in a workstation environment. It is intended for two major use cases: scripted post-processing of datasets and interactive data analysis.
+The package is comprised of several sub-packages that provide functionality at different stages of the analysis, as outlined below.
+
+The scripted post-processing capability is primarily intended for automatic post-processing of monthly WRF data (output produced by the \WRFavg{} package), but also to pre-process observational and other datasets. It is fully parallelized and provide comprehensive logging and debugging options.
+% The scripted post-processing capability is primarily employed for automatic nightly post-processing of monthly WRF data (output produced by the \WRFavg{} package), but also to pre-process observational and other datasets. Shell scripts for downloading data from SciNet and launching the post-processing processes are provided in the \wrftools{} package. The main driver script for data synchronization and local post-processing, \texttt{knightly.sh}, is designed to run as an independent \textsf{cron} job. However, care has to be taken to set up appropriate SSH keys. It is recommended to use a separate key with limited privileges on the server side for automatic downloads. The post-processing modules are fully parallelized and provide comprehensive logging and debugging options. However, it is not recommended to use the maximum number or processes on multi-core systems, because most post-processing operations quickly become I/O limited (not all, though); furthermore, it is recommended to monitor the system temperature during CPU intensive operations, because a regular workstation without a dedicated cooling system can easily overheat during extended batch processing.
+
+The interactive data analysis functionality is primarily designed to provide a unified abstraction layer for datasets and take advantage of available meta data to facilitate slicing and dicing operations, reprojection/regridding, and statistical and time series operations. The plotting package is also fully aware of these meta data and automatically handles much of the plot annotation and layout. It also provides methods for many common types of plots, but collection is by no means complete.
+The data analysis functionality provided in \geopy{} is meant to be relatively generic and extensible. For specific projects it is recommended to build a specialized package on top of \geopy{}, as has been done for this work with the \textsf{EVA} and \textsf{Hydro} packages.
+The preferred front-end to work with \geopy{} in an exploratory analysis context is the IPython notebook. A set of commented IPython notebooks containing most of the analysis work flow for this dissertation can be found in the code repositories associated with the \textsf{EVA} and \textsf{Hydro} packages.
+
+A short description of the major sub-packages and their primary classes and functions follows; documentation for all modules, classes, methods, and functions is available in the sources code (in doc-strings and comments):
+
+\paragraph{\color{orange} \ttfamily geodata} This sub-package contains the core data structure, as well as statistical functions for time series analysis (based on \textsf{SciPy}) and functionality for geo-spatial analysis, such as regridding (based on \textsf{GDAL}. It implements \textsf{Variable} and \textsf{Dataset} classes for data abstraction and a container class to facilitate batch operations (\texttt{base.py}), as well as child classes that provide access to NetCDF datasets and variables (\texttt{netcdf.py}). The \texttt{gdal.py} module implements a projection class, as well as functions to add geo-spatial functionality to \textsf{Variables} and \textsf{Datasets}. A variety of statistical tests and functions are implemented in the \texttt{stats.py} module, along with a new distribution variable class (\textsf{VarRV}) with integrated support for bootstrapping and cross-validation. The latter is a container class for \textsf{SciPy}'s \texttt{rv\_continuous} class, in the same way as the other \textsf{Variable} classes are containers for \textsf{NumPy} arrays and \textsf{netCDF-4} Variables.
+The statistical operations provided in this package are capable of operating on multi-dimensional arrays and are fully parallelized;\footnote{Unfortunately the vast majority of statistical functions in the \textsf{SciPy} \texttt{stats.py} module are not vectorized, so that a universal wrapper had to be developed, to apply statistical functions to a multi-dimensional array; parallelization of statistical functions is achieved by parallelization within the wrapper.} other operations, such as regridding or basic arithmetics, are fully vectorized but not parallelized.
+
+\paragraph{\color{blue} \ttfamily datasets} A collection of wrapper modules for specific datasets. In order to access a dataset through the unified abstraction layer provided by \geopy{}, a wrapper module has to be added here and imported to access the data. The following datasets are currently supported: CESM (including CVDP data; see \citealp[][\S2.1.5]{erler2015phd}), WRF, CFSR, NARR, CRU, GPCC, PRISM, as well as river gauge station (\texttt{WSC}; see \citealp[][\S2.1.3]{erler2015phd}) and meteorological station observations (\texttt{EC}; see \citealp[][\S2.1.4]{erler2015phd}), and the unified/merged observations (\texttt{Unity}).
+The \texttt{common.py} module also contains helper routines to facilitate loading of multiple datasets and automatic expansion of argument lists.
+
+\paragraph{\color{violet} \ttfamily processing} This sub-package contains a module implementing basic batch processing, including comprehensive logging and parallelization, based on the \textsf{multiprocessing} package. Built on top of these modules are batch processing scripts for the following applications: extraction of station locations from fields (\texttt{exstns.py}), regridding (\texttt{regrid.py}), area averages based on shape files (\texttt{shpavg.py}), and climatological means from monthly WRF output (\texttt{wrfavg.py}). All operations in this module are fully parallelized on a dataset and file type basis.
+
+\paragraph{\color{purple} \ttfamily plotting} The primary functionality of this sub-package is implemented by subclassing the \textsf{Figure} and \textsf{Axes} classes of the 2D plotting library \textsf{matplotlib}; the subclasses \textsf{MyFigure} and \textsf{MyAxes} are drop-in replacements for their parent classes and implement line plot and histogram methods that are fully aware of \geopy{} container classes and their meta data and extended functionality. Various helper methods and functions, e.g. to construct confidence intervals from bootstrapping and add annotation, are also provided.
+The \textsf{Axes} class currently does not support \geopy{}-aware surface or vector plots, but an extension to that effect, based on the \textsf{cartopy}-package is planned. Currently, a capable but convoluted legacy script is used for this purpose (\texttt{multimap.py}), which relies on the older \textsf{basemap}-package.
+Variable properties and default settings are defined in separate modules.
+The package also contains a collection of colormaps and style sheets that were mostly adapted from other packages.
+
+\paragraph{\color{darkgray} \ttfamily projects} This is a container for project specific modules that should probably be moved into a separate repository. Among other scripts, it also contains a registry of all WRF simulations.
+
+\paragraph{\color{cyan} \ttfamily utils} These modules extend existing \textsf{NumPy} and \textsf{SciPy} functions or provide generic utility functions like EOF analysis. They do not reference \geopy{} data structures and can be used independently.
+
+\paragraph{\color{brown} \ttfamily atmdyn} This module was developed for the \textsf{PyGeode} packages.\footnote{\textsf{PyGeode} is a Python package originally co-developed by Dr. P. Hitchcock, M. Neish with contributions from the author; it is available on GitHub: \url{https://github.com/pygeode/pygeode}} Adaptation for \geopy{} is planned, but still outstanding. The core of this package is a library containing functions to compute common meteorological quantities, such as Potential Vorticity (PV) written in Python or Fortran (with OpenMP parallelization). Python wrappers for the Fortran library are available for \textsf{PyGeode}, but have not been adapted for use with \geopy{}.
+
+\paragraph{}
+In addition, unittest modules with over 100 tests are provided that test most of the key functionality.
+
+The package is continuously being developed and improved; a recent version is available on GitHub: \url{https://github.com/aerler/GeoPy}
+
+\bibliography{references}
+\bibliographystyle{agu04}
+
+\end{document}

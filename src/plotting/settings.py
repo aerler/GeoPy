@@ -157,6 +157,7 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(0,8,25); clbl = '%2.0f' # mm/day
     elif var in ('MaxPrecip_1d'): # total precipitation for north america
       clevs = np.linspace(0,80,21); clbl = '%2.0f' # mm/day
+      if season in ('summer','spring'): clevs /= 2.
     elif var in ('precipc',): # convective precipitation 
       clevs = np.linspace(0,5,26); clbl = '%02.1f' # mm/day
     elif var == 'Q2':

@@ -88,11 +88,11 @@ if __name__ == '__main__':
     
   # WRF file types
   WRFfiletypes = [] # WRF data source
-#   WRFfiletypes += ['hydro']
-  WRFfiletypes += ['lsm']
-  WRFfiletypes += ['srfc']
+  WRFfiletypes += ['hydro']
+#   WRFfiletypes += ['lsm']
+#   WRFfiletypes += ['srfc']
 #   WRFfiletypes += ['xtrm']
-  WRFfiletypes += ['plev3d']
+#   WRFfiletypes += ['plev3d']
   ## select variables and seasons
   variables = [] # variables
 #   variables += ['Ts']
@@ -157,9 +157,38 @@ if __name__ == '__main__':
   folder = figure_folder
   lpickle = True # load projection from file or recompute
   lprint = True # write plots to disk using case as a name tag
-  maptype = 'lcc-new'; lstations = False; lbasins = True; domain = 2
+#   maptype = 'lcc-new'; lstations = False; lbasins = True; domain = 2
 #   maptype = 'lcc-can'; lstations = False; domain = 1
 #   lbasins = True; basinlist = ('ARB','FRB','CRB','NRB','PSB'); lprovinces = False; provlist = ['BC','AB','ON']
+#   lbasins = False; basinlist = ('ARB','FRB','GLB'); lprovinces = False; provlist = ['BC','AB','ON']
+
+# Precip Extremes in Ensemble Members (PanAm, progrssion)
+#   seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
+#   period = [H15,A15,B15]*2; domain = 1
+#   explist = ['max-ctrl','max-ctrl-2050','max-ctrl-2100','max-ens','max-ens-2050','max-ens-2100']
+#   expstrs = ('WRF-1','Ensemble Mean'); case = 'panam_ens_10'
+# #   explist = ['max-ctrl','max-ctrl-2050','max-ctrl-2100','max-ens-A','max-ens-A-2050','max-ens-A-2100']
+# #   expstrs = ('WRF-1','WRF-2'); case = 'panam_ens_12'
+# #   explist = ['max-ens-B','max-ens-B-2050','max-ens-B-2100','max-ens-C','max-ens-C-2050','max-ens-C-2100']
+# #   expstrs = ('WRF-3','WRF-4'); case = 'panam_ens_34'
+#   periodstrs = ('Historical','Mid-Century','End-Century'); 
+#   exptitles = ['{:s}, {:s}'.format(expstr,prdstr) for expstr in expstrs for prdstr in periodstrs]
+#   maptype = 'lcc-can'; lstations = False; lsamesize = False
+#   lprovinces = False; provlist = ['BC','AB']
+#   lbasins = False; basinlist = ['FRB','ARB']
+# #   variables = ['precip']
+#   variables = ['MaxPrecip_1d']; aggregation = 'max'; seasons = ['summer']
+#   figtitles = ['Maxima of Daily Precipitation Totals in Summer [mm/day]']
+  
+
+# map with river basins
+  variables = ['zs']; seasons = ['topo']; lcontour = True; lframe = False 
+  maptype = 'lcc-prairies'; lstations = False; stations = 'EC'
+  period = H15; lWRFnative = True; loutline = True
+  explist = ['max-ctrl']; exptitles = ' '; domain = (1,2)
+  case = 'SSR'; figtitles = 'Basin Outlines and Topography [km]'
+  lbasins = True; basinlist = ('ARB','FRB','SSR')[:]; primary_basins = basinlist; subbasins = {} #dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
+  lprovinces = True; provlist = ('BC','AB','SK')
 
 # high resolution map
 #   maptype = 'lcc-new'; lstations = True; stations = 'EC'; lbasins = True
@@ -178,15 +207,15 @@ if __name__ == '__main__':
 #   exptitles = ['Merged Observations (10 km)']
 #   case = 'prism'; lsamesize = True; grid = 'arb2_d02'
 
-# observations
-  variables = ['precip']; seasons = ['annual']
-  explist = ['Unity']; maptype = 'lcc-bcab'; period = H15
-#   ldiff = True; reflist = ['Unity']; maptype = 'lcc-small'
-  exptitles = 'Annual Total Precipitation [mm/day]'; figtitles = '' # ['Merged Observations (10 km)']
-  case = 'unity'; lsamesize = False; grid = 'arb2_d02'
-#   cluster_name = 'cluster_historical'; cluster_symbols = {2:'o',5:'^',8:'s'}
-#   cluster_symbols = {clu:dict(marker=sym, markersize=4, mfc='w', mec='k') for clu,sym in cluster_symbols.iteritems()}
-#   lbasins = False; lstations = True; stations = 'EC'; case += '_cluster'
+# # observations
+#   variables = ['precip']; seasons = ['annual']
+#   explist = ['Unity']; maptype = 'lcc-bcab'; period = H15
+# #   ldiff = True; reflist = ['Unity']; maptype = 'lcc-small'
+#   exptitles = 'Annual Total Precipitation [mm/day]'; figtitles = '' # ['Merged Observations (10 km)']
+#   case = 'unity'; lsamesize = False; grid = 'arb2_d02'
+# #   cluster_name = 'cluster_historical'; cluster_symbols = {2:'o',5:'^',8:'s'}
+# #   cluster_symbols = {clu:dict(marker=sym, markersize=4, mfc='w', mec='k') for clu,sym in cluster_symbols.iteritems()}
+# #   lbasins = False; lstations = True; stations = 'EC'; case += '_cluster'
   
 # single panel plot
 #   explist = ['max-ens-2100']; maptype = 'lcc-new'; period = B15
@@ -868,16 +897,20 @@ if __name__ == '__main__':
           if lbasins:
             for basin in basinlist:      
               basininfo = basins_info[basin]
-              if basin in subbasins:
-                for subbasin in subbasins[basin]:		  
-                  bmap.readshapefile(basininfo.shapefiles[subbasin][:-4], subbasin, ax=axn, 
-                                     drawbounds=True, linewidth = 0.5, color='k')          
-              elif basin in primary_basins:
-                bmap.readshapefile(basininfo.shapefiles['Whole'+basin][:-4], basin, ax=axn, 
-                                   drawbounds=True, linewidth = 1., color='k')            
-              else:
-                bmap.readshapefile(basininfo.shapefiles['Whole'+basin][:-4], basin, ax=axn, 
-                                   drawbounds=True, linewidth = 0.5, color='k')            
+              try:
+                if basin in subbasins:
+                  for subbasin in subbasins[basin]:		  
+                    bmap.readshapefile(basininfo.shapefiles[subbasin][:-4], subbasin, ax=axn, 
+                                       drawbounds=True, linewidth = 0.5, color='k')          
+                elif basin in primary_basins:
+                  bmap.readshapefile(basininfo.shapefiles['Whole'+basin][:-4], basin, ax=axn, 
+                                     drawbounds=True, linewidth = 1., color='k')            
+                else:
+                  bmap.readshapefile(basininfo.shapefiles['Whole'+basin][:-4], basin, ax=axn, 
+                                     drawbounds=True, linewidth = 0.5, color='k')
+              except:
+                print(basin)
+                raise # raise previous exception           
           # add certain provinces
           if lprovinces: 
             for province in provlist:    

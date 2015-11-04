@@ -104,7 +104,7 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None,
     if lWRFnative: grd = None
     ext = loadWRF(experiment=exp, period=prd, grid=grd, domains=dom, filetypes=filetypes, 
                   varlist=varlist, varatts=None, lautoregrid=lautoregrid)
-    if parent is not None: ext = (parent,) + tuple(ext)
+    if parent is not None: ext = (parent,) + ext
     axt = exp.title # defaults to name...
   # return values
   return ext, axt    

@@ -109,6 +109,8 @@ basins_info['FRB'] = BasinInfo(name='FRB', long_name='Fraser River Basin', river
                                subbasins=['WholeFRB','UpperFRB','LowerFRB'])
 basins_info['GLB'] = BasinInfo(name='GLB', long_name='Great Lakes Basin', rivers=['Upper Saint Lawrence'], data_source='WSC',
                                stations=dict(), subbasins=['WholeGLB'])
+basins_info['GRW'] = BasinInfo(name='GRW', long_name='Grand River Watershed', rivers=['Grand River'], data_source='Aquanty',
+                               stations=dict(), subbasins=['WholeGRW'])
 basins_info['GSL'] = BasinInfo(name='GSL', long_name='Great Slave Lake', rivers=[], data_source='WSC',
                                stations=dict(), subbasins=['WholeGSL'])
 basins_info['LS'] = BasinInfo(name='LS', long_name='Labrador Sea', rivers=[], data_source='WSC',
@@ -129,6 +131,8 @@ basins_info['PSB'] = BasinInfo(name='PSB', long_name='Pacific Seaboard', rivers=
                                stations=dict(), subbasins=['WholePSB','NorthernPSB','SouthernPSB'])
 basins_info['SLR'] = BasinInfo(name='SLR', long_name='Saint Lawrence River', rivers=['Saint Lawrence'], data_source='WSC',
                                stations=dict(), subbasins=['WholeSLR'])
+basins_info['SSR'] = BasinInfo(name='SSR', long_name='South Sasketchewan River', rivers=['South Sasketchewan River'], data_source='Aquanty',
+                               stations=dict(), subbasins=['WholeSSR'])
 
 # N.B.: all shapefiles from Water Survey of Canada
 
