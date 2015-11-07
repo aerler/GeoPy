@@ -53,7 +53,7 @@ class MyFigure(Figure):
     self.axes_class = axes_class   
     self.axes_args = axes_args 
     # default print options
-    self.print_setings = dict(dpi=300, transparent=True)
+    self.print_setings = dict(dpi=300, transparent=False)
     
 # N.B.: using the built-in mechanism to choose Axes seems to cause more problems
 #     from matplotlib.projections import register_projection
@@ -244,10 +244,11 @@ class MyFigure(Figure):
     # construct filename
     filename = ''
     for arg in args: 
-      if isinstance(arg, (list,tuple)):
-        for a in arg: filename += str(a)
-      else: filename += str(arg)
-      filename += '_'
+      if arg is not None:
+        if isinstance(arg, (list,tuple)):
+          for a in arg: filename += str(a)
+        else: filename += str(arg)
+        filename += '_'
     filename = filename[:-1] # remove last underscore
     if not filename.endswith(filetype): filename += filetype
     # update print settings

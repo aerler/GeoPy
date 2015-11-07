@@ -182,13 +182,13 @@ if __name__ == '__main__':
   
 
 # map with river basins
-  variables = ['zs']; seasons = ['topo']; lcontour = True; lframe = False 
-  maptype = 'lcc-prairies'; lstations = False; stations = 'EC'
-  period = H15; lWRFnative = True; loutline = True
-  explist = ['max-ctrl']; exptitles = ' '; domain = (1,2)
-  case = 'SSR'; figtitles = 'Basin Outlines and Topography [km]'
-  lbasins = True; basinlist = ('ARB','FRB','SSR')[:]; primary_basins = basinlist; subbasins = {} #dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
-  lprovinces = True; provlist = ('BC','AB','SK')
+#   variables = ['zs']; seasons = ['topo']; lcontour = True; lframe = False 
+#   maptype = 'lcc-prairies'; lstations = False; stations = 'EC'
+#   period = H15; lWRFnative = True; loutline = True
+#   explist = ['max-ctrl']; exptitles = ' '; domain = (1,2)
+#   case = 'SSR'; figtitles = 'Basin Outlines and Topography [km]'
+#   lbasins = True; basinlist = ('ARB','FRB','SSR')[:]; primary_basins = basinlist; subbasins = {} #dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
+#   lprovinces = True; provlist = ('BC','AB','SK')
 
 # high resolution map
 #   maptype = 'lcc-new'; lstations = True; stations = 'EC'; lbasins = True
@@ -207,15 +207,15 @@ if __name__ == '__main__':
 #   exptitles = ['Merged Observations (10 km)']
 #   case = 'prism'; lsamesize = True; grid = 'arb2_d02'
 
-# # observations
-#   variables = ['precip']; seasons = ['annual']
-#   explist = ['Unity']; maptype = 'lcc-bcab'; period = H15
-# #   ldiff = True; reflist = ['Unity']; maptype = 'lcc-small'
-#   exptitles = 'Annual Total Precipitation [mm/day]'; figtitles = '' # ['Merged Observations (10 km)']
-#   case = 'unity'; lsamesize = False; grid = 'arb2_d02'
-# #   cluster_name = 'cluster_historical'; cluster_symbols = {2:'o',5:'^',8:'s'}
-# #   cluster_symbols = {clu:dict(marker=sym, markersize=4, mfc='w', mec='k') for clu,sym in cluster_symbols.iteritems()}
-# #   lbasins = False; lstations = True; stations = 'EC'; case += '_cluster'
+# observations
+  variables = ['precip']; seasons = ['annual']
+  explist = ['Unity']; maptype = 'lcc-bcab'; period = H15
+#   ldiff = True; reflist = ['Unity']; maptype = 'lcc-small'
+  exptitles = 'Annual Total Precipitation [mm/day]'; figtitles = '' # ['Merged Observations (10 km)']
+  case = 'unity'; lsamesize = False; grid = 'arb2_d02'
+  cluster_name = 'cluster_historical'; cluster_symbols = {i:'o' for i in xrange(10)} # '^','s'
+  cluster_symbols = {clu:dict(marker=sym, markersize=4, mfc='w', mec='k') for clu,sym in cluster_symbols.iteritems()}
+  lbasins = False; lstations = True; stations = 'EC'; case += '_stations'
   
 # single panel plot
 #   explist = ['max-ens-2100']; maptype = 'lcc-new'; period = B15

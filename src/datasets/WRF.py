@@ -749,7 +749,8 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     datasets.append(dataset) 
   # return formatted dataset
   if not ltuple: datasets = datasets[0]
-  return tuple(datasets)
+  else: tuple(datasets)
+  return datasets
 
 
 # load a pre-processed WRF ensemble and concatenate time-series 
