@@ -1,4 +1,3 @@
-syntax: glob
 *.orig
 *~
 *.o
@@ -7,7 +6,6 @@ syntax: glob
 *.pyc
 *.kate-swp
 
-syntax: glob
 *.aux
 *.log
 *.out
@@ -21,7 +19,6 @@ syntax: glob
 *.blg
 *.backup
 
-syntax: glob
 *.eps
 *.ps
 *.pdf
@@ -36,15 +33,13 @@ syntax: glob
 *.tgz
 *.tar
 
-syntax: glob
 *.nc
 
-syntax: regexp
-^Articles$
-^archive$
-^data$
-^figures$
-^.settings$
-^bin$
-^test$
-^gmon\.out$
+Articles/
+archive/
+data/
+figures/
+.settings/
+bin/
+test/
+gmon/.out
