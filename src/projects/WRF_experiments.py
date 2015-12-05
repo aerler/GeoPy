@@ -75,19 +75,24 @@ experiments['erai-wc2-2010'] = Exp(shortname='wc2-2010', name='erai-wc2-2010', t
 experiments['max-3km'] = Exp(shortname='max-3km', name='max-3km', title='Max 3km (CESM)', begindate='1979-09-01', grid='col2', domains=3, parent='Ctrl-1')
 experiments['erai-3km'] = Exp(shortname='erai-3km', name='erai-3km', title='Max 3km (ERA-I)', begindate='1979-09-01', grid='col2', domains=3, parent='ERA-I')
 # Marc's experiments
-experiments['marc-g'] = Exp(shortname='marc-g', name='marc-g', title='Marc-G', begindate='1979-01-01', grid='grb1')
-experiments['marc-g-2050'] = Exp(shortname='marc-g-2050', name='marc-g-2050', title='Marc-G (2050)', begindate='2045-01-01', grid='grb1')
-experiments['marc-gg'] = Exp(shortname='marc-gg', name='marc-gg', title='Marc-g (N-MP)', begindate='1979-01-01', grid='grb1')
-experiments['marc-gg-2050'] = Exp(shortname='marc-gg-2050', name='marc-gg-2050', title='Marc-g (2050, N-MP)', begindate='2045-01-01', grid='grb1')
-experiments['marc-m'] = Exp(shortname='marc-m', name='marc-m', title='Marc-M', begindate='1979-01-01', grid='grb1')
-experiments['marc-m-2050'] = Exp(shortname='marc-m-2050', name='marc-m-2050', title='Marc-M (2050)', begindate='2045-01-01', grid='grb1')
-experiments['marc-mm'] = Exp(shortname='marc-mm', name='marc-mm', title='Marc-m (N-MP)', begindate='1979-01-01', grid='grb1')
-experiments['marc-mm-2050'] = Exp(shortname='marc-mm-2050', name='marc-mm-2050', title='Marc-m (2050, N-MP)', begindate='2045-01-01', grid='grb1')
-experiments['marc-t'] = Exp(shortname='marc-t', name='marc-t', title='Marc-T', begindate='1979-01-01', grid='grb1')
-experiments['marc-t-2050'] = Exp(shortname='marc-t-2050', name='marc-t-2050', title='Marc-T (2050)', begindate='2045-01-01', grid='grb1')
+experiments['g-ctrl'] = Exp(shortname='g-ctrl', name='ctrl-g', title='Ctrl-G', begindate='1979-01-01', grid='grb1')
+experiments['g-ctrl-2050'] = Exp(shortname='g-ctrl-2050', name='g-ctrl-2050', title='Ctrl-G (2050)', begindate='2045-01-01', grid='grb1')
+experiments['g-ctrl-2100'] = Exp(shortname='g-ctrl-2100', name='g-ctrl-2100', title='Ctrl-G (2100)', begindate='2085-01-01', grid='grb1')
+experiments['gg-ctrl'] = Exp(shortname='gg-ctrl', name='gg-ctrl', title='Ctrl-g (N-MP)', begindate='1979-01-01', grid='grb1')
+experiments['gg-ctrl-2050'] = Exp(shortname='gg-ctrl-2050', name='gg-ctrl-2050', title='Ctrl-g (2050, N-MP)', begindate='2045-01-01', grid='grb1')
+experiments['gg-ctrl-2100'] = Exp(shortname='gg-ctrl-2100', name='gg-ctrl-2100', title='Ctrl-g (2100, N-MP)', begindate='2085-01-01', grid='grb1')
+experiments['m-ctrl'] = Exp(shortname='m-ctrl', name='m-ctrl', title='Ctrl-M', begindate='1979-01-01', grid='grb1')
+experiments['m-ctrl-2050'] = Exp(shortname='m-ctrl-2050', name='m-ctrl-2050', title='Ctrl-M (2050)', begindate='2045-01-01', grid='grb1')
+experiments['m-ctrl-2100'] = Exp(shortname='m-ctrl-2100', name='m-ctrl-2100', title='Ctrl-M (2100)', begindate='2085-01-01', grid='grb1')
+experiments['mm-ctrl'] = Exp(shortname='mm-ctrl', name='mm-ctrl', title='Ctrl-m (N-MP)', begindate='1979-01-01', grid='grb1')
+experiments['mm-ctrl-2050'] = Exp(shortname='mm-ctrl-2050', name='mm-ctrl-2050', title='Ctrl-m (2050, N-MP)', begindate='2045-01-01', grid='grb1')
+experiments['mm-ctrl-2100'] = Exp(shortname='mm-ctrl-2100', name='mm-ctrl-2100', title='Ctrl-m (2100, N-MP)', begindate='2085-01-01', grid='grb1')
+experiments['t-ctrl'] = Exp(shortname='t-ctrl', name='t-ctrl', title='Ctrl-T', begindate='1979-01-01', grid='grb1')
+experiments['t-ctrl-2050'] = Exp(shortname='t-ctrl-2050', name='t-ctrl-2050', title='Ctrl-T (2050)', begindate='2045-01-01', grid='grb1')
+experiments['t-ctrl-2100'] = Exp(shortname='t-ctrl-2100', name='t-ctrl-2100', title='Ctrl-T (2100)', begindate='2085-01-01', grid='grb1')
 experiments['marc-ensemble'] = Exp(shortname='marc-ens', name='marc-ensemble', title="Marc's Ensemble", begindate='1979-01-01', grid='grb1', parent='Ens')
 experiments['marc-ensemble-2050'] = Exp(shortname='marc-ens-2050', name='marc-ensemble-2050', title="Marc's Ensemble (2050)", begindate='2045-01-01', grid='grb1', parent='Ens-2050')
-# experiments['marc-ensemble-2100'] = Exp(shortname='marc-ens-2100', name='marc-ensemble-2100', title="Marc's Ensemble (2100)", begindate='2085-01-01', grid='grb1', parent='Ens-2100')
+experiments['marc-ensemble-2100'] = Exp(shortname='marc-ens-2100', name='marc-ensemble-2100', title="Marc's Ensemble (2100)", begindate='2085-01-01', grid='grb1', parent='Ens-2050')
 # some new experiments using WRF V3.6 or V3.6.1 and the new configuration 
 experiments['erai-v361-ctrl'] = Exp(shortname='erai-v361', name='erai-v361-ctrl', title='ERA-I (New, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
 experiments['erai-v361-noah'] = Exp(shortname='erai-v361-noah', name='erai-v361-noah', title='ERA-I (Noah, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
@@ -110,7 +115,7 @@ experiments['new-noah'] = Exp(shortname='noah', name='new-noah', title='New (Noa
 experiments['v35-noah'] = Exp(shortname='noah35', name='v35-noah', title='V35 & Noah (New)', begindate='1979-01-01', grid='arb2') # ARB2 domain
 experiments['cfsr-new'] = Exp(shortname='cfsr-new', name='cfsr-new', title='New (CFSR)', begindate='1979-01-01', grid='arb3', parent='CFSR')
 # these are all based on the "max" configuration (ARB2 domain)
-experiments['max-ctrl-dry'] = Exp(shortname='max-dry', name='max-ctrl-dry', title='Max-1 (dry)', begindate='1979-01-01', grid='arb2')
+#experiments['max-ctrl-dry'] = Exp(shortname='max-dry', name='max-ctrl-dry', title='Max-1 (dry)', begindate='1979-01-01', grid='arb2')
 experiments['max-grass'] = Exp(shortname='grass', name='max-grass', title='Deforest (Max)', begindate='1979-01-01', domains=1, grid='arb2')
 experiments['max-lowres'] = Exp(shortname='lowres', name='max-lowres', title='Max (low-res)', begindate='1979-01-01', domains=1, grid='arb2-120km')
 experiments['max-diff'] = Exp(shortname='diff', name='max-diff', title='Max-1 (diff)', begindate='1979-01-01', grid='arb2')
@@ -261,8 +266,10 @@ for suffix in '','2050','2100':
   ensembles['all-ens'+suffix] = ensembles['phys-ens'+suffix] + ensembles['mex-ens'+suffix][1:]
   # N.B.: omit max-ctrl the second time
 # Marc's simulations
-ensembles['marc-ens'] = ('marc-g','marc-gg', 'marc-m','marc-mm', 'marc-t')
-ensembles['marc-ens-2050'] = ('marc-g-2050','marc-gg-2050', 'marc-m-2050','marc-mm-2050', 'marc-t-2050')
+marclist = ('g-ctrl','gg-ctrl', 'm-ctrl','mm-ctrl', 't-ctrl')
+for suffix in '','2050','2100':
+  if suffix: ensembles['marc-ens-'+suffix] = tuple(elt+'-'+suffix for elt in marclist)
+  else: ensembles['marc-ens'+suffix] = tuple(elt+suffix for elt in marclist)
   
 # replace names with experiment instances
 for ensname,enslist in ensembles.iteritems():
