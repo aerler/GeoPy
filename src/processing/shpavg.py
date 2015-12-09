@@ -247,8 +247,8 @@ if __name__ == '__main__':
     resolutions = None # process all applicable
     lLTM = False # again, not necessary
     # CESM
-    load3D = True # doesn't hurt... data is small
-    CESM_experiments = []
+    load3D = False # doesn't hurt... data is small
+    CESM_experiments = None
     CESM_filetypes = ('atm','lnd')    
     # WRF
     WRF_experiments = [] # process all WRF experiments
