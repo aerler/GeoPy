@@ -159,20 +159,22 @@ class ATM(FileType):
   ''' Variables and attributes of the surface files. '''
   def __init__(self):
     self.atts = dict(TREFHT   = dict(name='T2', units='K'), # 2m Temperature
-#                                      transform=flipLon), # shift longitude
                      TREFMXAV = dict(name='Tmax', units='K'),   # Daily Maximum Temperature (at surface)                     
                      TREFMNAV = dict(name='Tmin', units='K'),   # Daily Minimum Temperature (at surface)
+                     TREFMX   = dict(name='MaxTmax', units='K'), # Monthly Maximum Temperature (at surface)                     
+                     TREFMN   = dict(name='MinTmin', units='K'), # Monthly Minimum Temperature (at surface)
                      QREFHT   = dict(name='q2', units='kg/kg'), # 2m water vapor mass mixing ratio                     
                      TS       = dict(name='Ts', units='K'), # Skin Temperature (SST)
-#                      TS       = dict(name='SST', units='K'), # Skin Temperature (SST)
+                     #TS       = dict(name='SST', units='K'), # Skin Temperature (SST)
                      TSMX     = dict(name='MaxTs', units='K'),   # Maximum Skin Temperature (SST)
                      TSMN     = dict(name='MinTs', units='K'),   # Minimum Skin Temperature (SST)                     
                      PRECT    = dict(name='precip', units='kg/m^2/s', scalefactor=1000.), # total precipitation rate (kg/m^2/s) 
                      PRECC    = dict(name='preccu', units='kg/m^2/s', scalefactor=1000.), # convective precipitation rate (kg/m^2/s)
+                     PRECSC   = dict(name='solpreccu', units='kg/m^2/s', scalefactor=1000.), # solid convective precip rate (kg/m^2/s)
                      PRECL    = dict(name='precnc', units='kg/m^2/s', scalefactor=1000.), # grid-scale precipitation rate (kg/m^2/s)
-                     #NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
-                     #LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
                      PRECSL   = dict(name='solprec', units='kg/m^2/s', scalefactor=1000.), # solid precipitation rate
+                     PRECSH   = dict(name='precsh', units='kg/m^2/s', scalefactor=1000.), # shallow convection precip rate (kg/m^2/s)
+                     PRECTMX  = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
                      #SNOWLND   = dict(name='snow', units='kg/m^2'), # snow water equivalent
                      SNOWHLND = dict(name='snowh', units='m'), # snow depth
                      SNOWHICE = dict(name='snowhice', units='m'), # snow depth

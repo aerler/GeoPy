@@ -211,8 +211,8 @@ class Srfc(FileType):
     self.name = 'srfc'
     self.atts = dict(T2           = dict(name='T2', units='K'), # 2m Temperature
                      TSK          = dict(name='Ts', units='K'), # Skin Temperature (SST)
-                     SummerDays = dict(name='sumfrq', units='', atts=dict(long_name='Fraction of Summer Days (>25C)')),
-                     FrostDays  = dict(name='frzfrq', units='', atts=dict(long_name='Fraction of Frost Days (< 0C)')),
+                     SummerDays   = dict(name='sumfrq', units='', atts=dict(long_name='Fraction of Summer Days (>25C)')),
+                     FrostDays    = dict(name='frzfrq', units='', atts=dict(long_name='Fraction of Frost Days (< 0C)')),
                      Q2           = dict(name='q2', units='kg/kg'), # 2m water vapor mass mixing ratio
                      RAIN         = dict(name='precip', units='kg/m^2/s'), # total precipitation rate (kg/m^2/s)
                      RAINC        = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate (kg/m^2/s)
