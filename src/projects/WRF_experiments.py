@@ -75,7 +75,7 @@ experiments['erai-wc2-2010'] = Exp(shortname='wc2-2010', name='erai-wc2-2010', t
 experiments['max-3km'] = Exp(shortname='max-3km', name='max-3km', title='Max 3km (CESM)', begindate='1979-09-01', grid='col2', domains=3, parent='Ctrl-1')
 experiments['erai-3km'] = Exp(shortname='erai-3km', name='erai-3km', title='Max 3km (ERA-I)', begindate='1979-09-01', grid='col2', domains=3, parent='ERA-I')
 # Marc's experiments
-experiments['g-ctrl'] = Exp(shortname='g-ctrl', name='ctrl-g', title='Ctrl-G', begindate='1979-01-01', grid='grb1')
+experiments['g-ctrl'] = Exp(shortname='g-ctrl', name='g-ctrl', title='Ctrl-G', begindate='1979-01-01', grid='grb1')
 experiments['g-ctrl-2050'] = Exp(shortname='g-ctrl-2050', name='g-ctrl-2050', title='Ctrl-G (2050)', begindate='2045-01-01', grid='grb1')
 experiments['g-ctrl-2100'] = Exp(shortname='g-ctrl-2100', name='g-ctrl-2100', title='Ctrl-G (2100)', begindate='2085-01-01', grid='grb1')
 experiments['gg-ctrl'] = Exp(shortname='gg-ctrl', name='gg-ctrl', title='Ctrl-g (N-MP)', begindate='1979-01-01', grid='grb1')
