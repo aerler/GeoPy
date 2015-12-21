@@ -174,7 +174,7 @@ class ATM(FileType):
                      PRECL    = dict(name='precnc', units='kg/m^2/s', scalefactor=1000.), # grid-scale precipitation rate (kg/m^2/s)
                      PRECSL   = dict(name='solprec', units='kg/m^2/s', scalefactor=1000.), # solid precipitation rate
                      PRECSH   = dict(name='precsh', units='kg/m^2/s', scalefactor=1000.), # shallow convection precip rate (kg/m^2/s)
-                     PRECTMX  = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
+                     PRECTMX  = dict(name='MaxPrecip_1d', units='kg/m^2/s', scalefactor=1000.), # maximum daily precip                    
                      #SNOWLND   = dict(name='snow', units='kg/m^2'), # snow water equivalent
                      SNOWHLND = dict(name='snowh', units='m'), # snow depth
                      SNOWHICE = dict(name='snowhice', units='m'), # snow depth
@@ -456,7 +456,19 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
   if filetypes is None: filetypes = ['atm','lnd']
   elif isinstance(filetypes,(list,tuple,set,basestring)):
     if isinstance(filetypes,basestring): filetypes = [filetypes]
-    else: filetypes = list(filetypes)  
+    else: filetypes = list(filetypes)
+    # interprete/replace WRF filetypes (for convenience)
+    tmp = []
+    for ft in filetypes:
+      if ft in ('drydyn3d','moist3d','plev3d','rad','xtrm','hydro'):
+        if 'atm' not in tmp: tmp.append('atm')
+      elif ft in ('lsm',):
+        if 'lnd' not in tmp: tmp.append('lnd')
+      elif ft in ('srfc','const'):
+        if 'atm' not in tmp: tmp.append('atm')
+        if 'lnd' not in tmp: tmp.append('lnd')        
+      else: tmp.append(ft)
+    filetypes = tmp; del tmp
     if 'axes' not in filetypes: filetypes.append('axes')    
   else: raise TypeError  
   atts = dict(); filelist = []; typelist = []
@@ -712,8 +724,8 @@ if __name__ == '__main__':
   periods = (15,)
   filetypes = ('atm',) # ['atm','lnd','ice']
   grids = ('cesm1x1',)*len(experiments) # grb1_d01
-  pntset = 'shpavg'
-#   pntset = 'ecprecip'
+#   pntset = 'shpavg'
+  pntset = 'ecprecip'
 
   # pickle grid definition
   if mode == 'pickle_grid':
@@ -798,13 +810,15 @@ if __name__ == '__main__':
   # load station ensemble "time-series"
   elif mode == 'test_point_ensemble':
     
-    lensembleAxis = True
+    lensembleAxis = False
+    variable = 'MaxPrecip_1d'
     print('')
     if pntset in ('shpavg',):
       dataset = loadCESM_ShpEns(ensemble='Ens', shape=pntset, filetypes=['atm'], 
                                 lensembleAxis=lensembleAxis, varlist=['precip'])
     else:
-      dataset = loadCESM_StnEns(name='Ens', station=pntset, filetypes=['atm'], lensembleAxis=lensembleAxis)
+      dataset = loadCESM_StnEns(name='Ens', station=pntset, filetypes=['hydro'], 
+                                lensembleAxis=lensembleAxis, varlist=[variable])
     print('')
     print(dataset)
     assert dataset.name == 'Ens'
@@ -812,6 +826,9 @@ if __name__ == '__main__':
     print('')
     print(dataset.time)
     print(dataset.time.coord)
+    print('')
+    print(dataset[variable])
+    print(dataset[variable].mean())
   
   # load averaged climatology file
   elif mode == 'test_climatology' or mode == 'test_timeseries':

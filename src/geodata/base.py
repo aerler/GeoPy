@@ -1627,10 +1627,10 @@ class Variable(object):
     if not time.units.lower() in monthlyUnitsList: 
       raise NotImplementedError, "Time units='month' required to extract seasons! (got '{:s}')".format(time.units)
     #if 'long_name' not in time.atts and lstrictCheck: raise KeyError, time.prettyPrint(short=False)
-    if not lclim and tcoord[0]%12 != 0 and lbegin: 
-      raise NotImplementedError, "Time-axis has to start in January!"
-    if lclim and tcoord[0]%12 != 1 and lbegin: 
-      raise NotImplementedError, "Time-axis has to start in January!"
+    if lbegin and ( (not lclim and tcoord[0]%12 != 0) or 
+                    (lclim and tcoord[0]%12 != 1) ): 
+      raise NotImplementedError, "Time-axis has to start in January; front-padding is currently not supported."
+    # TODO: implement front-padding in _getCompleteYears(); maybe return front offset here
     if np.any( np.diff(tcoord, axis=0) != 1 ): 
       raise NotImplementedError, "Time-axis cannot have missing coordinates (month)!"
     # no return value - just throw exceptions
