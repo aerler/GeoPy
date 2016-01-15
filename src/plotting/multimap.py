@@ -476,6 +476,7 @@ if __name__ == '__main__':
 #   variables = ['T2','precip']; seasons = [seasons] # only make one plot with all seasons!
 #   lfrac = True; reflist = ['Unity']*6; refprd = H15
 #   variables = ['precip']; seasons = [seasons] # only make one plot with all seasons!
+  variables = ['MaxPrecip_1d']; seasons = [seasons] # only make one plot with all seasons!
 
 # Fig. 5 Summer Ensemble
 # #   explist = ['Unity']; period = H15
