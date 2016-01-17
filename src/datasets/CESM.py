@@ -174,7 +174,9 @@ class ATM(FileType):
                      PRECL    = dict(name='precnc', units='kg/m^2/s', scalefactor=1000.), # grid-scale precipitation rate (kg/m^2/s)
                      PRECSL   = dict(name='solprec', units='kg/m^2/s', scalefactor=1000.), # solid precipitation rate
                      PRECSH   = dict(name='precsh', units='kg/m^2/s', scalefactor=1000.), # shallow convection precip rate (kg/m^2/s)
-                     PRECTMX  = dict(name='MaxPrecip_1d', units='kg/m^2/s', scalefactor=1000.), # maximum daily precip                    
+                     PRECTMX  = dict(name='MaxPrecip', units='kg/m^2/s', scalefactor=1000.), # maximum daily precip                    
+                     MaxPRECT_1d  = dict(name='MaxPrecip_1d', units='kg/m^2/s', scalefactor=1000.), # maximum daily precip                    
+                     MaxPRECC_1d  = dict(name='MaxPreccu_1d', units='kg/m^2/s', scalefactor=1000.), # maximum daily precip                    
                      #SNOWLND   = dict(name='snow', units='kg/m^2'), # snow water equivalent
                      SNOWHLND = dict(name='snowh', units='m'), # snow depth
                      SNOWHICE = dict(name='snowhice', units='m'), # snow depth
