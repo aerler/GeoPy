@@ -98,12 +98,12 @@ if __name__ == '__main__':
 #   variables += ['Ts']
 #   variables += ['T2']
 #   variables += ['Tmin', 'Tmax']
-  variables += ['MaxPrecip_1d']; aggregation = 'mean'
+#   variables += ['MaxPrecip_1d']; aggregation = 'mean'
 #   variables += ['MaxPrecip_1d']; aggregation = 'max'
 #   variables += ['MaxPreccu_1d']; aggregation = 'max'
 #   variables += ['MaxPrecnc_1d']; aggregation = 'max'
 #   variables += ['wetprec']
-#   variables += ['precip'] 
+  variables += ['precip'] 
 #   variables += ['preccu']
 #   variables += ['precnc']
 #   variables += ['wetfrq']
@@ -161,6 +161,19 @@ if __name__ == '__main__':
 #   maptype = 'lcc-can'; lstations = False; domain = 1
 #   lbasins = True; basinlist = ('ARB','FRB','CRB','NRB','PSB'); lprovinces = False; provlist = ['BC','AB','ON']
 #   lbasins = False; basinlist = ('ARB','FRB','GLB'); lprovinces = False; provlist = ['BC','AB','ON']
+
+# 2-panel map with CESM and Obs: precip and topo
+  lprint = True; lpickle = True; lbackground = True
+#   explist = ['Ens','PRISM']
+#   exptitles = ['CESM ~80 km','Observations']; case = 'resobs'
+#   seasons = ['winter']; variables = ['precip']
+  explist = ['Ens','max-ens']; domain = (1,2); case = 'reswrf'
+  exptitles = ['CESM ~80 km','Topography ~10 km']
+  seasons = ['hidef']; variables = ['zs']; lcontour = True # static
+#   exptitles = ['CESM ~80 km','WRF 10km']
+#   seasons = ['annual']; variables = ['precip']; lcontour = True # static
+  maptype = 'lcc-fine'; period = H15
+  lframe = False; loutline = False; lbasins = False; lprovinces = False
 
 # Precip Extremes in Ensemble Members (PanAm, progrssion)
 #   seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
@@ -465,18 +478,18 @@ if __name__ == '__main__':
 #   lfrac = True; reflist = ['Unity']*6; refprd = H15
 #   variables = ['precip']; seasons = [seasons] # only make one plot with all seasons!
 
-# Fig. 3/4 Validation: differences to obs (T2, precip, annual, summer, winter)
-  explist = ['Ens']; period = H15; grid = ['cesm1x1']
-  explist = ['max-ens']*3+['Ens']*3; grid = ['arb2_d02']*3+['cesm1x1']*3
-  seasons = ['annual', 'summer', 'winter']*2; period = H15
-  exptitles = ['WRF, 10 km ({:s} Average)']*3+['CESM ({:s} Average)']*3
-  exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
-  case = 'val'; lsamesize = True; cbo = 'horizontal'
-#   ldiff = True; reflist = ['Unity']*6; refprd = H15
-#   variables = ['T2','precip']; seasons = [seasons] # only make one plot with all seasons!
-#   lfrac = True; reflist = ['Unity']*6; refprd = H15
-#   variables = ['precip']; seasons = [seasons] # only make one plot with all seasons!
-  variables = ['MaxPrecip_1d']; seasons = [seasons] # only make one plot with all seasons!
+# # Fig. 3/4 Validation: differences to obs (T2, precip, annual, summer, winter)
+#   explist = ['Ens']; period = H15; grid = ['cesm1x1']
+#   explist = ['max-ens-A']*3+['Ens']*3; grid = ['arb2_d02']*3+['cesm1x1']*3
+#   seasons = ['annual', 'summer', 'winter']*2; period = H15
+#   exptitles = ['WRF, 10 km ({:s} Average)']*3+['CESM ({:s} Average)']*3
+#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons)]
+#   case = 'val'; lsamesize = True; cbo = 'horizontal'
+# #   ldiff = True; reflist = ['Unity']*6; refprd = H15
+# #   variables = ['T2','precip']; seasons = [seasons] # only make one plot with all seasons!
+# #   lfrac = True; reflist = ['Unity']*6; refprd = H15
+# #   variables = ['precip']; seasons = [seasons] # only make one plot with all seasons!
+#   variables = ['MaxPrecip_1d']; seasons = [seasons] # only make one plot with all seasons!
 
 # Fig. 5 Summer Ensemble
 # #   explist = ['Unity']; period = H15

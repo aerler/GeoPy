@@ -54,14 +54,15 @@ annotation_dict['lcc-bcab'] = dict(scale=(-112.5, 47, -120, 50, 300), lat_full=[
 annotation_dict['lcc-new'] = dict(scale=(-128.5, 48, -120, 55, 400), lat_full=[40,50,60,70], lat_half=[45,55,65], 
                              lon_full=[-180,-160,-140,-120,-100], lon_half=[-170,-150,-130,-110])
 ## Lambert Conic Conformal - Fine Domain
-annotation_dict['lcc-fine'] = dict(scale=(-136, 49, -137, 57, 800), lat_full=[45,65], lat_half=[55,75], 
+annotation_dict['lcc-fine'] = dict(scale=(-132, 47, -137, 47, 500), lat_full=[45,65], lat_half=[55,75], 
+                                    lon_full=[-180,-160,-140,-120,-100], lon_half=[-170,-150,-130,-110])
+## Lambert Conic Conformal - Small Domain
+annotation_dict['lcc-small'] = dict(scale=(-136, 45, -137, 57, 800), lat_full=[45,65], lat_half=[55,75], 
                               lon_full=[-180,-160,-140,-120,-100], lon_half=[-170,-150,-130,-110])
 ## Lambert Conic Conformal - the Paries, focussed on Alberta
-annotation_dict['lcc-prairies'] = annotation_dict['lcc-fine']
-## Lambert Conic Conformal - Small Domain
-annotation_dict['lcc-small'] = annotation_dict['lcc-fine']
+annotation_dict['lcc-prairies'] = annotation_dict['lcc-small']
 ## Lambert Conic Conformal - Intermed Domain
-annotation_dict['lcc-intermed'] = annotation_dict['lcc-fine']
+annotation_dict['lcc-intermed'] = annotation_dict['lcc-small']
 ## Lambert Conic Conformal - Large Domain
 annotation_dict['lcc-large'] = dict(scale=(-140, 22, -120, 53, 2000), lat_full=[0,30,60,90], lat_half=[15,45,75], 
                                lon_full=[120,150,-180,-150,-120,-90,-60,-30], lon_half=[135,165,-165,-135,-105,-75,-45])
@@ -109,8 +110,8 @@ projection_dict['lcc-new'] = dict(projection='lcc', lat_0=55, lon_0=-120, lat_1=
 projection_dict['lcc-prairies'] = dict(projection='lcc', lat_0=53, lon_0=-115, lat_1=53, rsphere=rsphere,
               width=220*10e3, height=210*10e3, area_thresh = 1000., resolution='l')
 ## Lambert Conic Conformal - Fine Domain
-projection_dict['lcc-fine'] = dict(projection='lcc', lat_0=58, lon_0=-132, lat_1=53, rsphere=rsphere,
-              width=200*10e3, height=300*10e3, area_thresh = 1000., resolution='l')
+projection_dict['lcc-fine'] = dict(projection='lcc', lat_0=56, lon_0=-125, lat_1=53, rsphere=rsphere,
+              width=180*10e3, height=315*10e3, area_thresh = 1000., resolution='l')
 ## Lambert Conic Conformal - Small Domain
 projection_dict['lcc-small'] = dict(projection='lcc', lat_0=56, lon_0=-130, lat_1=53, rsphere=rsphere,
               width=2500e3, height=2650e3, area_thresh = 1000., resolution='l')
@@ -156,8 +157,8 @@ def getARBsetup(projection, annotation=None, stations=None, lpickle=False, folde
 # create pickles
 if __name__ == '__main__':
 
-  proj_list = None
-  proj_list = ['lcc-bcab']
+#   proj_list = None
+  proj_list = ['lcc-fine']
 
   if proj_list is None: proj_list = projection_dict.keys()    
   # loop over projections

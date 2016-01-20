@@ -224,7 +224,7 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
       print("  - " + exp)
       ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=vl, 
                              lbackground=lbackground, lWRFnative=lWRFnative, lautoregrid=lautoregrid)
-      for exp in ext if isinstance(ext,tuple) else (ext,):
+      for exp in ext if isinstance(ext,(tuple,list)) else (ext,):
         for var in vl: 
           if var not in exp and var not in ('lon2D','lat2D','landmask','landfrac'): 
             print var, exp

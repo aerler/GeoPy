@@ -189,8 +189,7 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       elif season == 'hidef': 
         lmskocn = True; clim = (-0.5,2.5); # good contrast for high elevation
         clevs = np.hstack((np.array((-.5,)), np.linspace(0,2.5,26))); clbl = '%02.1f' # km
-        #cmap = mpl.cm.gist_ncar; cmap.set_over('white'); cmap.set_under('blue')
-        cmap = mpl.cm.ctopo; cmap.set_over('white'); cmap.set_under('blue')
+        cmap = mpl.cm.gist_ncar; cmap.set_over('white'); cmap.set_under('blue')
       else: 
         raise ValueError, 'No map color scheme defined (use \'season\' to select color scheme).'
       cbl = np.linspace(0,clim[-1],6)
@@ -281,7 +280,7 @@ def getFigureSettings(nexp, cbar=True, cbo=None, figuretype=None, sameSize=True,
           margins = dict(bottom=0.025, left=0.065, right=.885, top=.925, hspace=0.05, wspace=0.05)
           caxpos = [0.91, 0.05, 0.02, 0.9]
         if cbo == 'horizontal': 
-          margins = dict(bottom=0.075, left=0.075, right=.975, top=.925, hspace=0.05, wspace=0.05)
+          margins = dict(bottom=0.075, left=0.07, right=.97, top=.95, hspace=0.05, wspace=0.05)
           caxpos = [0.05, 0.05, 0.9, 0.03]
       else:
         margins = dict(bottom=0.055, left=0.085, right=.975, top=.95, hspace=0.05, wspace=0.05)
