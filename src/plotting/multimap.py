@@ -60,7 +60,7 @@ if __name__ == '__main__':
   laddContour = False # add black contour lines
   lframe = True # draw domain boundary
   loutline = True # draw boundaries around valid (non-masked) data
-  framewidths = 1
+  framewidths = 2.5
   cbn = None # colorbar levels
   figuretype = None
   lsamesize = True
@@ -162,18 +162,18 @@ if __name__ == '__main__':
 #   lbasins = True; basinlist = ('ARB','FRB','CRB','NRB','PSB'); lprovinces = False; provlist = ['BC','AB','ON']
 #   lbasins = False; basinlist = ('ARB','FRB','GLB'); lprovinces = False; provlist = ['BC','AB','ON']
 
-# 2-panel map with CESM and Obs: precip and topo
-  lprint = True; lpickle = True; lbackground = True
-#   explist = ['Ens','PRISM']
-#   exptitles = ['CESM ~80 km','Observations']; case = 'resobs'
-#   seasons = ['winter']; variables = ['precip']
-  explist = ['Ens','max-ens']; domain = (1,2); case = 'reswrf'
-  exptitles = ['CESM ~80 km','Topography ~10 km']
-  seasons = ['hidef']; variables = ['zs']; lcontour = True # static
-#   exptitles = ['CESM ~80 km','WRF 10km']
-#   seasons = ['annual']; variables = ['precip']; lcontour = True # static
-  maptype = 'lcc-fine'; period = H15
-  lframe = False; loutline = False; lbasins = False; lprovinces = False
+# # 2-panel map with CESM and Obs: precip and topo
+#   lprint = True; lpickle = True; lbackground = True
+# #   explist = ['Ens','PRISM']
+# #   exptitles = ['CESM ~80 km','Observations']; case = 'resobs'
+# #   seasons = ['winter']; variables = ['precip']
+#   explist = ['Ens','max-ens']; domain = (1,2); case = 'reswrf'
+#   exptitles = ['CESM ~80 km','Topography ~10 km']
+#   seasons = ['hidef']; variables = ['zs']; lcontour = True # static
+# #   exptitles = ['CESM ~80 km','WRF 10km']
+# #   seasons = ['annual']; variables = ['precip']; lcontour = True # static
+#   maptype = 'lcc-fine'; period = H15
+#   lframe = False; loutline = False; lbasins = False; lprovinces = False
 
 # Precip Extremes in Ensemble Members (PanAm, progrssion)
 #   seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
@@ -219,6 +219,15 @@ if __name__ == '__main__':
 #   ldiff = True; reflist = ['Unity']; maptype = 'lcc-small'
 #   exptitles = ['Merged Observations (10 km)']
 #   case = 'prism'; lsamesize = True; grid = 'arb2_d02'
+
+# CESM + WRF domain, global
+#   explist = ['Ens']; case = 'cesm'
+#   explist = ['max-ens']; domain = (0,1,); case = 'wrf1'; lbackground = False
+  explist = ['max-ens']; domain = (0,1,2); case = 'wrf2'; lbackground = False
+  exptitles = ''; maptype = 'ortho-NA'; period = H15; lbasins = False; lprovinces = False   
+  lsamesize = True; lcontour = True; lframe = True; loutline = False
+#   exptitles = ['Merged Observations (10 km)']
+  variables = ['Ts']; seasons = ['annual']; WRFfiletypes = ['srfc'] 
 
 # # observations
 #   variables = ['precip']; seasons = ['annual']

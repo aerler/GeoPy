@@ -164,6 +164,7 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
       clevs = np.linspace(0,15,31); clbl = '%02.1f' # mm/day
     elif var=='SST' or var=='Ts': # skin temperature (SST)
       clevs = np.linspace(240,305,66); clbl = '%03.0f' # K
+      cmap = mpl.cm.gist_ncar; cmap.set_over('white'); cmap.set_under('blue') # different from T2
       if var=='SST': lmsklnd = True # mask land for SST      
     elif var=='T2' or var=='Tmin' or var=='Tmax' or var=='Tmean': # 2m or skin temperature (SST)
       clevs = np.linspace(255,290,36); clbl = '%03.0f' # K
