@@ -30,8 +30,8 @@ from datasets.CESM import CESM_exps
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
-def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlist=None, lwrite=True, lreturn=False,
-                      ldebug=False, lparallel=False, pidstr='', logger=None, **kwargs):
+def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlist=None, lwrite=True, 
+                      lreturn=False, ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to perform regridding for a given dataset and target grid '''
   # input checking
   if not isinstance(dataset,basestring): raise TypeError

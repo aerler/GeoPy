@@ -33,13 +33,13 @@ from datasets.EC import provinces
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
-def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwrite=False, varlist=None, lwrite=True, lreturn=False,
-                      ldebug=False, lparallel=False, pidstr='', logger=None):
+def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwrite=False, varlist=None, 
+                        lwrite=True, lreturn=False, ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to extract point data from gridded dataset '''  
   # input checking
   if not isinstance(dataset,basestring): raise TypeError
   if not isinstance(dataargs,dict): raise TypeError # all dataset arguments are kwargs 
-  if not isinstance(shape_dict, OrderedDict): raise TypeError # function to load station dataset
+  if not isinstance(shape_dict, OrderedDict): raise TypeError
   if lparallel: 
     if not lwrite: raise IOError, 'In parallel mode we can only write to disk (i.e. lwrite = True).'
     if lreturn: raise IOError, 'Can not return datasets in parallel mode (i.e. lreturn = False).'
@@ -64,6 +64,7 @@ def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwr
   # get filename for target dataset and do some checks
   filename = getTargetFile(shape_name, dataset, mode, module, dataargs, lwrite)
   if ldebug: filename = 'test_' + filename  
+  if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)  
   lskip = False # else just go ahead
   if lwrite:
     if lreturn: 
@@ -97,8 +98,8 @@ def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwr
       raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
 
     # common message
-    if mode == 'climatology': opmsgstr = "Averaging Data from Climatology ({:s})".format(periodstr)
-    elif mode == 'time-series': opmsgstr = "Averaging Data from Time-series"
+    if mode == 'climatology': opmsgstr = "Computing Area Averages from Climatology ({:s})".format(periodstr)
+    elif mode == 'time-series': opmsgstr = "Computing Area Averages from Time-series"
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
     # print feedback to logger
     logger.info('\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
