@@ -89,7 +89,7 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None,
       from datasets.CESM import CESM_exps, loadCESM
       exp = CESM_exps[exp]
       #print exp.name, exp.title
-      ext = loadCESM(experiment=exp, period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
+      ext = loadCESM(experiment=exp, period=prd, grid=grd, varlist=varlist, filetypes=filetypes, lautoregrid=lautoregrid)
       axt = exp.title
   else: 
     # WRF runs are all in lower case

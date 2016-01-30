@@ -220,14 +220,14 @@ if __name__ == '__main__':
 #   exptitles = ['Merged Observations (10 km)']
 #   case = 'prism'; lsamesize = True; grid = 'arb2_d02'
 
-# CESM + WRF domain, global
-#   explist = ['Ens']; case = 'cesm'
-#   explist = ['max-ens']; domain = (0,1,); case = 'wrf1'; lbackground = False
-  explist = ['max-ens']; domain = (0,1,2); case = 'wrf2'; lbackground = False
-  exptitles = ''; maptype = 'ortho-NA'; period = H15; lbasins = False; lprovinces = False   
-  lsamesize = True; lcontour = True; lframe = True; loutline = False
-#   exptitles = ['Merged Observations (10 km)']
-  variables = ['Ts']; seasons = ['annual']; WRFfiletypes = ['srfc'] 
+# # CESM + WRF domain, global
+# #   explist = ['Ens']; case = 'cesm'
+# #   explist = ['max-ens']; domain = (0,1,); case = 'wrf1'; lbackground = False
+#   explist = ['max-ens']; domain = (0,1,2); case = 'wrf2'; lbackground = False
+#   exptitles = ''; maptype = 'ortho-NA'; period = H15; lbasins = False; lprovinces = False   
+#   lsamesize = True; lcontour = True; lframe = True; loutline = False
+# #   exptitles = ['Merged Observations (10 km)']
+#   variables = ['Ts']; seasons = ['annual']; WRFfiletypes = ['srfc'] 
 
 # # observations
 #   variables = ['precip']; seasons = ['annual']
@@ -262,20 +262,22 @@ if __name__ == '__main__':
 # #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
 #   case = 'erai'; lsamesize = True
 
-# # differences to IC ensemble
-# #   reflist = ['max-ens-2050','max-ens-2100']*2; case = 'max-seaice'; # l3pan = True (left column of 6-panel figure)
-# #   explist = [case+'-2050',case+'-2100']*2
-# #   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
-# #   exptitles = ['Mid-century, {:s}', 'End-century, {:s}']*2  
-#   exp = 'ctrl-ens'; refexp = 'max-ens'; case = 'ctrl-max'
-#   explist = [exp,exp+'-2050',exp+'-2100']*2; reflist = [refexp,refexp+'-2050',refexp+'-2100']*2
-#   seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
-#   exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
-#   exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
-#   domain = 1; maptype = 'lcc-can'; lstations = False; lbasins = True 
-# #   lsamesize = False; cbo = 'horizontal'  
+# differences to historical period
+#   reflist = ['max-ens-2050','max-ens-2100']*2; case = 'max-seaice'; # l3pan = True (left column of 6-panel figure)
+#   explist = [case+'-2050',case+'-2100']*2
+#   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
+  seasons = [('summer',)*3+('winter',)*3]; period = B15; refprd = H15
+  exptitles = ['{:s}, CESM', '{:s}, WRF (IC)', '{:s}, WRF (AE)']*2  
+  exptitles = [title.format(season.title())  for season,title in zip(seasons[0],exptitles)]
+  explist = ['Ens-2100','max-ens-2100','ctrl-ens-2100']*2
+  reflist = ['Ens','max-ens','ctrl-ens']*2; case = 'xtrm'
+#  exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
+#  exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
+  domain = 2; maptype = 'lcc-new'; lstations = True; lbasins = False
+#   lsamesize = False; cbo = 'horizontal'  
 #   variables = ['precip']; ldiff = True
-# #   variables = ['MaxPrecip_1d']; domain = 2; cbo = 'vertical'; lfrac = True 
+  variables = ['MaxPrecip_1d']; lfrac = True 
+#   variables = ['precip']; lfrac = True 
 
 # # differences to Obs
 # #   reflist = ['max-ens-2050','max-ens-2100']*2; case = 'max-seaice'; # l3pan = True (left column of 6-panel figure)
