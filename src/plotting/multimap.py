@@ -270,13 +270,13 @@ if __name__ == '__main__':
   exptitles = ['{:s}, CESM', '{:s}, WRF (IC)', '{:s}, WRF (AE)']*2  
   exptitles = [title.format(season.title())  for season,title in zip(seasons[0],exptitles)]
   explist = ['Ens-2100','max-ens-2100','ctrl-ens-2100']*2; case = 'xtrm'
-  reflist = ['Ens','max-ens','ctrl-ens']*2; grid = 'arb2_d02'
+  reflist = ['Ens','max-ens','ctrl-ens']*2; #grid = 'arb2_d02'
 #  exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
 #  exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
   domain = 2; maptype = 'lcc-new'; lstations = True; lbasins = False
 #   lsamesize = False; cbo = 'horizontal'  
 #   variables = ['precip']; ldiff = True
-  variables = ['MaxPrecip_1d']; lfrac = True 
+  variables = ['MaxPrecip_1d']; aggregation = 'max'; lfrac = True
 #   variables = ['precip']; lfrac = True 
 
 # # differences to Obs
