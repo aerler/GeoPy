@@ -253,6 +253,7 @@ if __name__ == '__main__':
     CESM_filetypes = ('atm','lnd')    
     # WRF
     WRF_experiments = [] # process all WRF experiments
+    # Western Canada
     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',] # main "best" IC ensemble
     WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
@@ -261,7 +262,14 @@ if __name__ == '__main__':
     WRF_experiments += ['old-ctrl', 'old-ctrl-2050', 'old-ctrl-2100'] # old/default config
     WRF_experiments += ['ctrl-1', 'ctrl-ens-A', 'ctrl-ens-B', 'ctrl-ens-C'] # new "standard" IC ensemble
     WRF_experiments += ['ctrl-2050', 'ctrl-ens-A-2050', 'ctrl-ens-B-2050', 'ctrl-ens-C-2050']
-    WRF_experiments += ['ctrl-2100', 'ctrl-ens-A-2100', 'ctrl-ens-B-2100', 'ctrl-ens-C-2100'] # last two are not finished yet
+    WRF_experiments += ['ctrl-2100', 'ctrl-ens-A-2100', 'ctrl-ens-B-2100', 'ctrl-ens-C-2100']
+    # Great Lakes
+    WRF_experiments += ['t-ctrl', 't-ens-A', 't-ens-B', 't-ens-C', 'erai-t'] # Marc's ctrl ensemble
+    WRF_experiments += ['t-2050', 't-ens-A-2050', 't-ens-B-2050', 't-ens-C-2050']
+    WRF_experiments += ['t-2100', 't-ens-A-2100', 't-ens-B-2100', 't-ens-C-2100'] # last three are 
+    WRF_experiments += ['g-ctrl', 'g-ens-A', 'g-ens-B', 'g-ens-C', 'erai-t'] # Marc's max ensemble
+    WRF_experiments += ['g-2050', 'g-ens-A-2050', 'g-ens-B-2050', 'g-ens-C-2050']
+    WRF_experiments += ['g-2100', 'g-ens-A-2100', 'g-ens-B-2100', 'g-ens-C-2100'] # last three are not finished yet
     domains = None # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
     WRF_filetypes = ('xtrm','hydro','srfc','lsm') # only surface...
