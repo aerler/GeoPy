@@ -90,7 +90,7 @@ if __name__ == '__main__':
   WRFfiletypes = [] # WRF data source
   WRFfiletypes += ['hydro']
 #   WRFfiletypes += ['lsm']
-#   WRFfiletypes += ['srfc']
+  WRFfiletypes += ['srfc']
 #   WRFfiletypes += ['xtrm']
 #   WRFfiletypes += ['plev3d']
   ## select variables and seasons
@@ -276,8 +276,9 @@ if __name__ == '__main__':
   domain = 2; maptype = 'lcc-new'; lstations = True; lbasins = False
 #   lsamesize = False; cbo = 'horizontal'  
 #   variables = ['precip']; ldiff = True
-  variables = ['MaxPrecip_1d']; aggregation = 'max'; lfrac = True
+#   variables = ['MaxPrecip_1d']; aggregation = 'max'; lfrac = True
 #   variables = ['precip']; lfrac = True 
+  variables = ['T2']; variable_settings = ['T2_prj']; ldiff = True 
 
 # # differences to Obs
 # #   reflist = ['max-ens-2050','max-ens-2100']*2; case = 'max-seaice'; # l3pan = True (left column of 6-panel figure)

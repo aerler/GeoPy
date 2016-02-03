@@ -493,13 +493,13 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
     # interprete/replace WRF filetypes (for convenience)
     tmp = []
     for ft in filetypes:
-      if ft in ('drydyn3d','moist3d','plev3d','rad','xtrm','hydro'):
+      if ft in ('const','drydyn3d','moist3d','rad','plev3d','srfc','xtrm','hydro'):
         if 'atm' not in tmp: tmp.append('atm')
-      elif ft in ('lsm',):
+      elif ft in ('lsm','snow'):
         if 'lnd' not in tmp: tmp.append('lnd')
-      elif ft in ('srfc','const'):
-        if 'atm' not in tmp: tmp.append('atm')
-        if 'lnd' not in tmp: tmp.append('lnd')        
+#       elif ft in (,):
+#         if 'atm' not in tmp: tmp.append('atm')
+#         if 'lnd' not in tmp: tmp.append('lnd')        
       else: tmp.append(ft)
     filetypes = tmp; del tmp
     if 'axes' not in filetypes: filetypes.append('axes')    
