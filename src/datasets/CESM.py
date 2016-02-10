@@ -191,14 +191,14 @@ class ATM(FileType):
                      TSMX     = dict(name='MaxTs', units='K'),   # Maximum Skin Temperature (SST)
                      TSMN     = dict(name='MinTs', units='K'),   # Minimum Skin Temperature (SST)                     
                      PRECT    = dict(name='precip', units='kg/m^2/s', scalefactor=1000.), # total precipitation rate (kg/m^2/s) 
-                     PRECC    = dict(name='preccu', units='kg/m^2/s', scalefactor=1000.), # convective precipitation rate (kg/m^2/s)
-                     PRECSC   = dict(name='solpreccu', units='kg/m^2/s', scalefactor=1000.), # solid convective precip rate (kg/m^2/s)
-                     PRECL    = dict(name='precnc', units='kg/m^2/s', scalefactor=1000.), # grid-scale precipitation rate (kg/m^2/s)
-                     PRECSL   = dict(name='solprec', units='kg/m^2/s', scalefactor=1000.), # solid precipitation rate
-                     PRECSH   = dict(name='precsh', units='kg/m^2/s', scalefactor=1000.), # shallow convection precip rate (kg/m^2/s)
-                     PRECTMX  = dict(name='MaxPrecip', units='kg/m^2/s', scalefactor=1000.), # maximum daily precip                    
+                     PRECC    = dict(name='preccu', units='kg/m^2/s', scalefactor=1.), # convective precipitation rate (kg/m^2/s)
+                     PRECSC   = dict(name='solpreccu', units='kg/m^2/s', scalefactor=1.), # solid convective precip rate (kg/m^2/s)
+                     PRECL    = dict(name='precnc', units='kg/m^2/s', scalefactor=1.), # grid-scale precipitation rate (kg/m^2/s)
+                     PRECSL   = dict(name='solprec', units='kg/m^2/s', scalefactor=1.), # solid precipitation rate
+                     PRECSH   = dict(name='precsh', units='kg/m^2/s', scalefactor=1.), # shallow convection precip rate (kg/m^2/s)
+                     PRECTMX  = dict(name='MaxPrecip', units='kg/m^2/s', scalefactor=1.), # maximum daily precip                    
                      MaxPRECT_1d  = dict(name='MaxPrecip_1d', units='kg/m^2/s', scalefactor=1000.), # maximum daily precip                    
-                     MaxPRECC_1d  = dict(name='MaxPreccu_1d', units='kg/m^2/s', scalefactor=1000.), # maximum daily precip                    
+                     MaxPRECC_1d  = dict(name='MaxPreccu_1d', units='kg/m^2/s', scalefactor=1.), # maximum daily precip                    
                      precip    = dict(name='precip', units='kg/m^2/s', scalefactor=1.), # total precipitation rate (kg/m^2/s) 
                      preccu    = dict(name='preccu', units='kg/m^2/s', scalefactor=1.), # convective precipitation rate (kg/m^2/s)
                      solpreccu   = dict(name='solpreccu', units='kg/m^2/s', scalefactor=1.), # solid convective precip rate (kg/m^2/s)
