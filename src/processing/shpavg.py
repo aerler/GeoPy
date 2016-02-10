@@ -265,11 +265,11 @@ if __name__ == '__main__':
     WRF_experiments += ['ctrl-2100', 'ctrl-ens-A-2100', 'ctrl-ens-B-2100', 'ctrl-ens-C-2100']
     # Great Lakes
     WRF_experiments += ['t-ctrl', 't-ens-A', 't-ens-B', 't-ens-C', 'erai-t'] # Marc's ctrl ensemble
-    WRF_experiments += ['t-2050', 't-ens-A-2050', 't-ens-B-2050', 't-ens-C-2050']
-    WRF_experiments += ['t-2100', 't-ens-A-2100', 't-ens-B-2100', 't-ens-C-2100'] # last three are 
+    WRF_experiments += ['t-ctrl-2050', 't-ens-A-2050', 't-ens-B-2050', 't-ens-C-2050']
+    WRF_experiments += ['t-ctrl-2100', 't-ens-A-2100', 't-ens-B-2100', 't-ens-C-2100'] # last three are 
     WRF_experiments += ['g-ctrl', 'g-ens-A', 'g-ens-B', 'g-ens-C', 'erai-t'] # Marc's max ensemble
-    WRF_experiments += ['g-2050', 'g-ens-A-2050', 'g-ens-B-2050', 'g-ens-C-2050']
-    WRF_experiments += ['g-2100', 'g-ens-A-2100', 'g-ens-B-2100', 'g-ens-C-2100'] # last three are not finished yet
+    WRF_experiments += ['g-ctrl-2050', 'g-ens-A-2050', 'g-ens-B-2050', 'g-ens-C-2050']
+    WRF_experiments += ['g-ctrl-2100', 'g-ens-A-2100', 'g-ens-B-2100', 'g-ens-C-2100'] # last three are not finished yet
     domains = None # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
     WRF_filetypes = ('xtrm','hydro','srfc','lsm') # only surface...
