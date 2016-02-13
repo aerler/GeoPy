@@ -878,18 +878,18 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-  mode = 'test_climatology'
+#   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
-#   mode = 'pickle_grid'  
+  mode = 'pickle_grid'  
   pntset = 'shpavg'
 #   pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
-  grids = ['arb1', 'arb2', 'arb3']; domains = [1,2]
-  experiments = ['rrtmg', 'ctrl', 'new']
+  grids = ['glb1','arb1', 'arb2', 'arb3']; domains = [1,2]
+  experiments = ['g-ctrl','rrtmg', 'ctrl', 'new']
 #   grids = ['col1','col2','coast1']; experiments = ['columbia','max-3km','coast']; domains = [1,2,3]   
 #   grids = ['grb1']; experiments = ['']; domains = [1,2]
 #   grids = ['wc2']; experiments = ['erai-wc2-2013']; domains = [1,2]
@@ -898,7 +898,7 @@ if __name__ == '__main__':
   # pickle grid definition
   if mode == 'pickle_grid':
     
-    for grid,experiment in zip(grids,experiments):
+    for grid in grids:
       
       for domain in domains:
         
