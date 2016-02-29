@@ -70,6 +70,8 @@ import socket
 hostname = socket.gethostname()
 if hostname=='komputer':
   data_root = '/data/'  
+elif hostname=='DFERRARO-PC':
+  data_root = '\\\\AQFS1\\Data\\temp_data_exchange\\WRF\\'
 #  root = '/media/tmp/' # RAM disk for development
 elif hostname=='cryo':
   data_root = '/scratch/marcdo/Data/'
