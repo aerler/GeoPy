@@ -232,7 +232,7 @@ if __name__ == '__main__':
     loverwrite = True
     varlist = None # ['lat2D', ]
     experiments = []
-    experiments += ['max-ctrl-dry']
+    experiments += ['g-ctrl'+tag for tag in ('-2050','-2100')]
 #     experiments += ['erai-3km','max-3km']
 #     experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
 #     experiments += ['new','noah','max','max-2050']
@@ -247,20 +247,20 @@ if __name__ == '__main__':
 #     experiments += ['ctrl-arb1', 'ctrl-arb1-2050', 'ctrl-2-arb1',]
 #     experiments += ['max-3km']
 #     experiments += ['erai-max']
-    offset = 0 # number of years from simulation start
+    offset = 5 # number of years from simulation start
     periods = [] # not that all periods are handled within one process! 
 #     periods += [1]
 #     periods += [3]
-#     periods += [5]
+    periods += [5]
 #     periods += [9]
-#     periods += [10]
-    periods += [15]
-    domains = (2,) # domains to be processed
-#     domains = None # process all domains
+    periods += [10]
+#     periods += [15]
+#     domains = (2,) # domains to be processed
+    domains = None # process all domains
 #     filetypes = ['plev3d'] # filetypes to be processed
-#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
+    filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
 #     filetypes = ['srfc','xtrm','lsm','hydro']
-    filetypes = ['hydro'] # filetypes to be processed
+#     filetypes = ['hydro'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','plev3d','hydro']
     grid = 'native'
   else:

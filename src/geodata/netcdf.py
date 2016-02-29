@@ -240,10 +240,7 @@ class VarNC(Variable):
         for i in xrange(self.ncvar.ndim):
           if self.ncvar.shape[i] == 1: slcs.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
       # finally, get data!
-      try:
-        data = self.ncvar.__getitem__(slcs) # exceptions handled by netcdf module
-      except: 
-        pass
+      data = self.ncvar.__getitem__(slcs) # exceptions handled by netcdf module
       if self.dtype is not None and not np.issubdtype(data.dtype,self.dtype):
         if 'scale_factor' in self.ncvar.ncattrs():
           self.dtype = data.dtype # data was scaled automatically in NetCDF module
@@ -659,14 +656,13 @@ class DatasetNetCDF(Dataset):
       if isinstance(variables,dict): variables = variables.values()
       if isinstance(dataset,nc.Dataset):
         datasets = [dataset]  # datasets is used later
-        try: 
-          if 'filepath' in dir(dataset): filelist = [dataset.filepath] # only available in newer versions
-        except: ValueError
+        if 'filepath' in dir(dataset): filelist = [dataset.filepath] # only available in newer versions
+        else: raise ValueError
       elif isinstance(dataset,(list,tuple)):
         if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
         datasets = dataset
-        try: filelist = [dataset.filepath() for dataset in datasets if 'filepath' in dir(dataset)]
-        except: ValueError
+        filelist = [dataset.filepath() for dataset in datasets if 'filepath' in dir(dataset)]
+        if len(filelist) == 0: raise ValueError
       else: raise ArgumentError
       if filelist is None: raise ArgumentError
       mode = 'r' # for now, only allow read
