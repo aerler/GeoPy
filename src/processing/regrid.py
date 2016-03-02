@@ -193,9 +193,9 @@ if __name__ == '__main__':
     periods = []
 #     periods += [1]
 #     periods += [3]
-#     periods += [5]
-#     periods += [10]
-#     periods += [15]
+    periods += [5]
+    periods += [10]
+    periods += [15]
 #     periods += [30]
 #     periods += [(1984,1994)]
 #     periods += [(1989,1994)]
@@ -206,10 +206,10 @@ if __name__ == '__main__':
     datasets = []
     lLTM = True # also regrid the long-term mean climatologies 
 #     datasets += ['PRISM','GPCC']; periods = None
-    datasets += ['PCIC']; periods = None
+#     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR', 'NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
-#     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
+    datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
@@ -251,8 +251,8 @@ if __name__ == '__main__':
     grids = dict()
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['col2'] = ('d03','d02','d01') # innermost WRF Columbia domain
-#     grids['grb2'] = ('d02',) # Marc's standard GRB inner domain
-    grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
+    grids['glb1'] = ('d02',) # Marc's standard GRB inner domain
+#     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
 #     grids['arb3'] = ('d02',) # WRF new ARB inner domain
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids
@@ -269,8 +269,8 @@ if __name__ == '__main__':
     periods = (5,10,15,) # climatology periods to process
     #periods = (15,) # for tests
     # Datasets
-    #datasets = None # process all applicable
-    datasets = [] # don't process observational datasets
+    datasets = None # process all applicable
+#     datasets = [] # don't process observational datasets
     resolutions = None # process all applicable
     lLTM = True 
     # CESM
@@ -279,11 +279,11 @@ if __name__ == '__main__':
     CESM_filetypes = ('atm','lnd')    
     # WRF
     WRF_experiments = [] # process WRF experiments on different grids
-    WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
-    WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
+#     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
+#     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
 #     WRF_experiments += ['new-v36-nmp', 'new-v36-noah', 'erai-v36-noah', 'new-v36-clm',]
-    WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', ] # new standard runs (arb3) 
-    WRF_experiments += ['new-grell', 'new-grell-old', 'new-noah', 'v35-noah'] # new sensitivity tests (arb3)
+#     WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', ] # new standard runs (arb3) 
+#     WRF_experiments += ['new-grell', 'new-grell-old', 'new-noah', 'v35-noah'] # new sensitivity tests (arb3)
 #     WRF_experiments += ['cam-ctrl', 'cam-ctrl-1-2050', 'cam-ctrl-2-2050', 'cam-ctrl-2-2100'] # old cam simulations (arb1) 
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)    
@@ -296,7 +296,7 @@ if __name__ == '__main__':
     #d12 = ('d01','d02')
     #grids = dict(arb1=d12, arb2=d12, arb3=d12) # dict with list of resolutions
     #grids = dict(arb2=('d02',),cesm1x1=(None,)) # dict with list of resolutions
-    grids = dict(arb2=('d02',)) # dict with list of resolutions  
+    grids = dict(arb2=('d01','d02'),glb1=('d01','d02')) # dict with list of resolutions  
     
   
   ## process arguments    

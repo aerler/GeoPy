@@ -18,14 +18,12 @@ from collections import OrderedDict
 from datasets.CRU import loadCRU_StnTS
 from datasets.common import days_per_month, data_root, selectElements, translateVarNames
 from datasets.common import CRU_vars, stn_params
-from geodata.misc import ParseError, DateError, VariableError, ArgumentError, DatasetError,\
-  AxisError
+from geodata.misc import ParseError, DateError, VariableError, ArgumentError, DatasetError, AxisError
 from geodata.misc import RecordClass, StrictRecordClass, isNumber, isInt 
 from geodata.base import Axis, Variable, Dataset
 from utils.nctools import writeNetCDF
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import NamedShape, ShapeInfo
-from wrfavg.derived_variables import precip_thresholds
 import wrfavg.derived_variables as dv
 
 ## EC (Environment Canada) Meta-data
@@ -77,7 +75,7 @@ varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Aver
                time     = dict(name='time', units='month', atts=dict(long_name='Month since 1979-01')), # time coordinate
                station  = dict(name='station', units='#', atts=dict(long_name='Station Number'))) # ordinal number of statio
 # add variables with different wet-day thresholds
-for threshold in precip_thresholds:
+for threshold in dv.precip_thresholds:
     suffix = '_{:03d}'.format(int(10*threshold))
     varatts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    
     varatts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day thre
@@ -311,7 +309,7 @@ precip_vars = dict(precip=PrecipDef(name='precipitation', prefix='dt', atts=vara
                    liqprec=PrecipDef(name='rainfall', prefix='dr', atts=varatts['liqprec']))
 # precipitation extremes (and other derived variables)
 precip_xtrm = []
-for threshold in precip_thresholds:
+for threshold in dv.precip_thresholds:
   precip_xtrm.append(dv.WetDays(threshold=threshold, ignoreNaN=True))
   precip_xtrm.append(dv.WetDayRain(threshold=threshold, ignoreNaN=True))
   precip_xtrm.append(dv.WetDayPrecip(threshold=threshold, ignoreNaN=True))
@@ -321,7 +319,7 @@ for var in precip_vars:
     precip_xtrm.append(dict(var=var, mode=mode, klass=dv.Extrema))      
     precip_xtrm.append(dict(var=var, mode=mode, interval=5, klass=dv.MeanExtrema))      
 # consecutive events: var, mode, threshold=0, name=None, long_name=None, dimmap=None
-for threshold in precip_thresholds:
+for threshold in dv.precip_thresholds:
   suffix = '_{:03d}'.format(int(10*threshold)); name_suffix = '{:3.1f} mm/day)'.format(threshold)
   tmpatts = dict(var='precip', threshold=threshold/86400., klass=dv.ConsecutiveExtrema)
   precip_xtrm.append(dict(name='CWD'+suffix, mode='above', long_name='Consecutive Wet Days (>'+name_suffix, **tmpatts))
@@ -349,7 +347,7 @@ temp_xtrm.append(dict(name='CFD', var='Tmin', mode='below', threshold=273.15,
 # map from common variable names to WRF names (which are used in the derived_variables module)
 ec_varmap = dict(RAIN='precip', south_north='time', time='station', west_east=None, # swap order of axes                 
                  T2MIN='Tmin', T2MAX='Tmax', FrostDays='frzfrq', SummerDays='sumfrq') 
-for threshold in precip_thresholds:
+for threshold in dv.precip_thresholds:
   suffix = '_{:03d}'.format(int(10*threshold))
   ec_varmap['WetDays'+suffix] = 'wetfrq'+suffix
   ec_varmap['WetDayRain'+suffix] ='dryprec'+suffix
@@ -892,10 +890,10 @@ if __name__ == '__main__':
 
 #   mode = 'test_station_object'
 #   mode = 'test_station_reader'
-#   mode = 'test_conversion'
+  mode = 'test_conversion'
 #   mode = 'convert_all_stations'
 #   mode = 'convert_prov_stations'
-  mode = 'test_timeseries'
+#   mode = 'test_timeseries'
 #   mode = 'test_selection'
   
   # test wrapper function to load time series data from EC stations
