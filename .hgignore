@@ -48,3 +48,6 @@ syntax: regexp
 ^bin$
 ^test$
 ^gmon\.out$
+
+syntax: glob
+datasets/wrfavg
