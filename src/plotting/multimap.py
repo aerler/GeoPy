@@ -88,11 +88,11 @@ if __name__ == '__main__':
     
   # WRF file types
   WRFfiletypes = [] # WRF data source
-  WRFfiletypes += ['hydro']
+#   WRFfiletypes += ['hydro']
 #   WRFfiletypes += ['lsm']
-  WRFfiletypes += ['srfc']
+#   WRFfiletypes += ['srfc']
 #   WRFfiletypes += ['xtrm']
-#   WRFfiletypes += ['plev3d']
+  WRFfiletypes += ['plev3d']
   ## select variables and seasons
   variables = [] # variables
 #   variables += ['Ts']
@@ -103,14 +103,14 @@ if __name__ == '__main__':
 #   variables += ['MaxPreccu_1d']; aggregation = 'max'
 #   variables += ['MaxPrecnc_1d']; aggregation = 'max'
 #   variables += ['wetprec']
-  variables += ['precip'] 
+#   variables += ['precip'] 
 #   variables += ['preccu']
 #   variables += ['precnc']
 #   variables += ['wetfrq']
 #   variables += ['cqwu']
 #   variables += ['cqwv']
 #   variables += ['cqw']
-#   variables += ['RH']; level_agg['p'] = 1
+  variables += ['RH']; level_agg['p'] = 1
 #   variables += ['T']; level_agg['p'] = 2
 #   variables += ['u']; level_agg['p'] = 1
 #   variables += ['Z']; level_agg['p'] = 2; laddContour = True
@@ -262,23 +262,23 @@ if __name__ == '__main__':
 # #   lfrac = True; reflist = ['max-ens',]; refprd = H15;
 #   case = 'erai'; lsamesize = True
 
-# differences to historical period
-#   reflist = ['max-ens-2050','max-ens-2100']*2; case = 'max-seaice'; # l3pan = True (left column of 6-panel figure)
-#   explist = [case+'-2050',case+'-2100']*2
-#   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
-  seasons = [('summer',)*3+('winter',)*3]; period = B15; refprd = H15
-  exptitles = ['{:s}, CESM', '{:s}, WRF (IC)', '{:s}, WRF (AE)']*2  
-  exptitles = [title.format(season.title())  for season,title in zip(seasons[0],exptitles)]
-  explist = ['Ens-2100','max-ens-2100','ctrl-ens-2100']*2; case = 'xtrm'
-  reflist = ['Ens','max-ens','ctrl-ens']*2; #grid = 'arb2_d02'
-#  exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
-#  exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
-  domain = 2; maptype = 'lcc-new'; lstations = True; lbasins = False
-#   lsamesize = False; cbo = 'horizontal'  
-#   variables = ['precip']; ldiff = True
-#   variables = ['MaxPrecip_1d']; aggregation = 'max'; lfrac = True
-#   variables = ['precip']; lfrac = True 
-  variables = ['T2']; variable_settings = ['T2_prj']; ldiff = True 
+# # differences to historical period
+# #   reflist = ['max-ens-2050','max-ens-2100']*2; case = 'max-seaice'; # l3pan = True (left column of 6-panel figure)
+# #   explist = [case+'-2050',case+'-2100']*2
+# #   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
+#   seasons = [('summer',)*3+('winter',)*3]; period = B15; refprd = H15
+#   exptitles = ['{:s}, CESM', '{:s}, WRF (IC)', '{:s}, WRF (AE)']*2  
+#   exptitles = [title.format(season.title())  for season,title in zip(seasons[0],exptitles)]
+#   explist = ['Ens-2100','max-ens-2100','ctrl-ens-2100']*2; case = 'xtrm'
+#   reflist = ['Ens','max-ens','ctrl-ens']*2; #grid = 'arb2_d02'
+# #  exptitles = ['Historical, {:s}', 'Mid-century, {:s}', 'End-century, {:s}']*2
+# #  exptitles = [model.format(season.title()) for model,season in zip(exptitles,seasons[0])]
+#   domain = 2; maptype = 'lcc-new'; lstations = True; lbasins = False
+# #   lsamesize = False; cbo = 'horizontal'  
+# #   variables = ['precip']; ldiff = True
+# #   variables = ['MaxPrecip_1d']; aggregation = 'max'; lfrac = True
+# #   variables = ['precip']; lfrac = True 
+#   variables = ['T2']; variable_settings = ['T2_prj']; ldiff = True 
 
 # # differences to Obs
 # #   reflist = ['max-ens-2050','max-ens-2100']*2; case = 'max-seaice'; # l3pan = True (left column of 6-panel figure)
@@ -345,14 +345,21 @@ if __name__ == '__main__':
 #   variables = ['p-et']; variable_settings = ['precip_prj']; seasons = [('summer',)*2+('annual',)*2]; ldiff = True 
 
 # water transport
-# #   explist = ['max-ens-2050','max-ens-2100']*2
-# #   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
-# #   lfrac = True; reflist = ['max-ens',]; refprd = H15
+#   explist = ['max-ens-2050','max-ens-2100']*2
+#   seasons = [('summer',)*2+('winter',)*2]; period = [A15,B15]*2
+#   lfrac = True; reflist = ['max-ens',]; refprd = H15
+#   explist = ['max-ens','max-ens-2050','max-ens-2100']*2
 #   explist = ['ctrl-ens','ctrl-ens-2050','ctrl-ens-2100']*2
-# #   explist = ['max-ens','max-ens-2050','max-ens-2100']*2
 #   seasons = [('summer',)*3+('winter',)*3]; period = [H15,A15,B15]*2
-#   maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
-#   case = 'water'; lsamesize = True
+  explist = ['gg-ctrl','gg-ctrl-2050','gg-ctrl-2100',
+             'g-ctrl','g-ctrl-2050','g-ctrl-2100',]
+  seasons = [('summer',)*6]; period = [H15,A15,B15]*2
+#   explist = ['gg-ctrl-2050','gg-ctrl-2100',
+#              'g-ctrl-2050','g-ctrl-2100',]
+#   reflist = ['gg-ctrl','gg-ctrl', 'g-ctrl','g-ctrl',]; ldiff = True
+#   seasons = [('summer',)*4]; period = [A15,B15]*2; refprd = H15
+  maptype = 'lcc-can'; lstations = False; lbasins = True; domain = 1
+  case = 'water'; lsamesize = True
 
 # wet-day validation
 # #   explist = ['max-ens']; seasons = ['annual']; period = H15; domain = 2

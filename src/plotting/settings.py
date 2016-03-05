@@ -139,7 +139,7 @@ def getVariableSettings(var, season, ldiff=False, lfrac=False):
 #     elif var in ('WaterTransport_V','cqwv'): # moisture fluxes (kg /(m^2 s))
 #       clevs = np.linspace(-100,200,31); clbl = '%02.1f' # mpl.cm.PuOr
     elif var in ('WaterTransport_U','cqwu'): # moisture fluxes (kg /(m^2 s))
-      clevs = np.linspace(-60,240,31); clbl = '%02.1f' # mpl.cm.PuOr
+      clevs = np.linspace(-50,300,36); clbl = '%02.1f' # mpl.cm.PuOr
     elif var in ('WaterTransport_V','cqwv'): # moisture fluxes (kg /(m^2 s))
       clevs = np.linspace(-60,240,31); clbl = '%02.1f' # mpl.cm.PuOr
     elif var in ('ColumnWater','cqw'): # moisture fluxes (kg /(m^2 s))

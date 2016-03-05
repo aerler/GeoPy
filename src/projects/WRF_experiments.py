@@ -23,6 +23,7 @@ class Exp(object):
   parameters['grid'] = dict(type=basestring,req=True) # name of the grid layout
   parameters['domains'] = dict(type=int,req=True) # number of domains
   parameters['parent'] = dict(type=basestring,req=True) # driving dataset
+  parameters['project'] = dict(type=basestring,req=True) # project name dataset
   parameters['ensemble'] = dict(type=basestring,req=False) # ensemble this run is a member of
   parameters['begindate'] = dict(type=basestring,req=True) # simulation start date
   parameters['beginyear'] = dict(type=int,req=True) # simulation start year
@@ -35,8 +36,9 @@ class Exp(object):
   defaults['shortname'] = lambda atts: atts['name']
   defaults['title'] = lambda atts: atts['name'] # need lambda, because parameters are not set yet
   defaults['parent'] = 'Ctrl-1' # CESM simulations that is driving most of the WRF runs   
+  defaults['project'] = 'WesternCanada' # most WRF runs so far are from this project
   defaults['domains'] = 2 # most WRF runs have two domains
-  defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/'.format(avgfolder,atts['name'])
+  defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/{2:s}/'.format(avgfolder,atts['project'],atts['name'])
   defaults['begindate'] = '1979-01-01'
   defaults['beginyear'] = lambda atts: int(atts['begindate'].split('-')[0])  if atts['begindate'] else None # first field
   defaults['endyear'] = lambda atts: int(atts['enddate'].split('-')[0]) if atts['enddate'] else None # first field
@@ -76,53 +78,53 @@ experiments['max-3km'] = Exp(shortname='max-3km', name='max-3km', title='Max 3km
 experiments['erai-3km'] = Exp(shortname='erai-3km', name='erai-3km', title='Max 3km (ERA-I)', begindate='1979-09-01', grid='col2', domains=3, parent='ERA-I')
 ## Great Lakes experiments
 # T-Ensemble
-experiments['erai-t'] = Exp(shortname='erai-t', name='erai-t', title='T (ERA-I)', begindate='1979-01-01', grid='glb1')
-experiments['t-ctrl'] = Exp(shortname='t-ctrl', name='t-ctrl', title='T-Ctrl', begindate='1979-01-01', ensemble='t-ensemble-2100', grid='glb1')
-experiments['t-ctrl-2050'] = Exp(shortname='t-ctrl-2050', name='t-ctrl-2050', title='T-Ctrl (2050)', begindate='2045-01-01', ensemble='t-ensemble-2050', grid='glb1')
-experiments['t-ctrl-2100'] = Exp(shortname='t-ctrl-2100', name='t-ctrl-2100', title='T-Ctrl (2100)', begindate='2085-01-01', ensemble='t-ensemble-2100', grid='glb1')
-experiments['t-ens-A'] = Exp(shortname='t-ens-A', name='t-ens-A', title='T-Ens-A', begindate='1979-01-01', parent='Ens-A', ensemble='t-ensemble', grid='glb1')
-experiments['t-ens-A-2050'] = Exp(shortname='t-ens-A-2050', name='t-ens-A-2050', title='T-Ens-A (2050)', parent='Ens-A-2050', ensemble='t-ensemble-2050', begindate='2045-01-01', grid='glb1')
-experiments['t-ens-A-2100'] = Exp(shortname='t-ens-A-2100', name='t-ens-A-2100', title='T-Ens-A (2100)', parent='Ens-A-2100', ensemble='t-ensemble-2100', begindate='2085-01-01', grid='glb1')
-experiments['t-ens-B'] = Exp(shortname='t-ens-B', name='t-ens-B', title='T-Ens-B', begindate='1979-01-01', parent='Ens-B', ensemble='t-ensemble', grid='glb1')
-experiments['t-ens-B-2050'] = Exp(shortname='t-ens-B-2050', name='t-ens-B-2050', title='T-Ens-B (2050)', begindate='2045-01-01', parent='Ens-B-2050', ensemble='t-ensemble-2050', grid='glb1')
-experiments['t-ens-B-2100'] = Exp(shortname='t-ens-B-2100', name='t-ens-B-2100', title='T-Ens-B (2100)', begindate='2085-01-01', parent='Ens-B-2100', ensemble='t-ensemble-2100', grid='glb1')
-experiments['t-ens-C'] = Exp(shortname='t-ens-C', name='t-ens-C', title='T-Ens-C', begindate='1979-01-01', parent='Ens-C', ensemble='t-ensemble', grid='glb1')
-experiments['t-ens-C-2050'] = Exp(shortname='t-ens-C-2050', name='t-ens-C-2050', title='T-Ens-C (2050)', begindate='2045-01-01', parent='Ens-C-2050', ensemble='t-ensemble-2050', grid='glb1')
-experiments['t-ens-C-2100'] = Exp(shortname='t-ens-C-2100', name='t-ens-C-2100', title='T-Ens-C (2100)', begindate='2085-01-01', parent='Ens-C-2100', ensemble='t-ensemble-2100', grid='glb1')
-experiments['t-ensemble'] = Exp(shortname='t-ens', name='t-ensemble', title="T-Ensemble", begindate='1979-01-01', grid='glb1', parent='Ens')
-experiments['t-ensemble-2050'] = Exp(shortname='t-ens-2050', name='t-ensemble-2050', title="T-Ens. (2050)", begindate='2045-01-01', grid='glb1', parent='Ens-2050')
-experiments['t-ensemble-2100'] = Exp(shortname='t-ens-2100', name='t-ensemble-2100', title="T-Ens. (2100)", begindate='2085-01-01', grid='glb1', parent='Ens-2050')
+experiments['erai-t'] = Exp(shortname='erai-t', name='erai-t', title='T (ERA-I)', begindate='1979-01-01', project='GreatLakes', grid='glb1')
+experiments['t-ctrl'] = Exp(shortname='t-ctrl', name='t-ctrl', title='T-Ctrl', begindate='1979-01-01', ensemble='t-ensemble-2100', project='GreatLakes', grid='glb1')
+experiments['t-ctrl-2050'] = Exp(shortname='t-ctrl-2050', name='t-ctrl-2050', title='T-Ctrl (2050)', begindate='2045-01-01', ensemble='t-ensemble-2050', project='GreatLakes', grid='glb1')
+experiments['t-ctrl-2100'] = Exp(shortname='t-ctrl-2100', name='t-ctrl-2100', title='T-Ctrl (2100)', begindate='2085-01-01', ensemble='t-ensemble-2100', project='GreatLakes', grid='glb1')
+experiments['t-ens-A'] = Exp(shortname='t-ens-A', name='t-ens-A', title='T-Ens-A', begindate='1979-01-01', parent='Ens-A', ensemble='t-ensemble', project='GreatLakes', grid='glb1')
+experiments['t-ens-A-2050'] = Exp(shortname='t-ens-A-2050', name='t-ens-A-2050', title='T-Ens-A (2050)', parent='Ens-A-2050', ensemble='t-ensemble-2050', begindate='2045-01-01', project='GreatLakes', grid='glb1')
+experiments['t-ens-A-2100'] = Exp(shortname='t-ens-A-2100', name='t-ens-A-2100', title='T-Ens-A (2100)', parent='Ens-A-2100', ensemble='t-ensemble-2100', begindate='2085-01-01', project='GreatLakes', grid='glb1')
+experiments['t-ens-B'] = Exp(shortname='t-ens-B', name='t-ens-B', title='T-Ens-B', begindate='1979-01-01', parent='Ens-B', ensemble='t-ensemble', project='GreatLakes', grid='glb1')
+experiments['t-ens-B-2050'] = Exp(shortname='t-ens-B-2050', name='t-ens-B-2050', title='T-Ens-B (2050)', begindate='2045-01-01', parent='Ens-B-2050', ensemble='t-ensemble-2050', project='GreatLakes', grid='glb1')
+experiments['t-ens-B-2100'] = Exp(shortname='t-ens-B-2100', name='t-ens-B-2100', title='T-Ens-B (2100)', begindate='2085-01-01', parent='Ens-B-2100', ensemble='t-ensemble-2100', project='GreatLakes', grid='glb1')
+experiments['t-ens-C'] = Exp(shortname='t-ens-C', name='t-ens-C', title='T-Ens-C', begindate='1979-01-01', parent='Ens-C', ensemble='t-ensemble', project='GreatLakes', grid='glb1')
+experiments['t-ens-C-2050'] = Exp(shortname='t-ens-C-2050', name='t-ens-C-2050', title='T-Ens-C (2050)', begindate='2045-01-01', parent='Ens-C-2050', ensemble='t-ensemble-2050', project='GreatLakes', grid='glb1')
+experiments['t-ens-C-2100'] = Exp(shortname='t-ens-C-2100', name='t-ens-C-2100', title='T-Ens-C (2100)', begindate='2085-01-01', parent='Ens-C-2100', ensemble='t-ensemble-2100', project='GreatLakes', grid='glb1')
+experiments['t-ensemble'] = Exp(shortname='t-ens', name='t-ensemble', title="T-Ensemble", begindate='1979-01-01', project='GreatLakes', grid='glb1', parent='Ens')
+experiments['t-ensemble-2050'] = Exp(shortname='t-ens-2050', name='t-ensemble-2050', title="T-Ens. (2050)", begindate='2045-01-01', project='GreatLakes', grid='glb1', parent='Ens-2050')
+experiments['t-ensemble-2100'] = Exp(shortname='t-ens-2100', name='t-ensemble-2100', title="T-Ens. (2100)", begindate='2085-01-01', project='GreatLakes', grid='glb1', parent='Ens-2050')
 # G-Ensemble
-experiments['erai-g'] = Exp(shortname='erai-g', name='erai-g', title='G (ERA-I)', begindate='1979-01-01', grid='glb1')
-experiments['g-ctrl'] = Exp(shortname='g-ctrl', name='g-ctrl', title='G-Ctrl', begindate='1979-01-01', ensemble='g-ensemble', grid='glb1')
-experiments['g-ctrl-2050'] = Exp(shortname='g-ctrl-2050', name='g-ctrl-2050', title='G-Ctrl (2050)', begindate='2045-01-01', ensemble='g-ensemble-2050', grid='glb1')
-experiments['g-ctrl-2100'] = Exp(shortname='g-ctrl-2100', name='g-ctrl-2100', title='G-Ctrl (2100)', begindate='2085-01-01', ensemble='g-ensemble-2050', grid='glb1')
-experiments['g-ens-A'] = Exp(shortname='g-ens-A', name='g-ens-A', title='G-Ens-A', begindate='1979-01-01', parent='Ens-A', ensemble='g-ensemble', grid='glb1')
-experiments['g-ens-A-2050'] = Exp(shortname='g-ens-A-2050', name='g-ens-A-2050', title='G-Ens-A (2050)', parent='Ens-A-2050', ensemble='g-ensemble-2050', begindate='2045-01-01', grid='glb1')
-experiments['g-ens-A-2100'] = Exp(shortname='g-ens-A-2100', name='g-ens-A-2100', title='G-Ens-A (2100)', parent='Ens-A-2100', ensemble='g-ensemble-2100', begindate='2085-01-01', grid='glb1')
-experiments['g-ens-B'] = Exp(shortname='g-ens-B', name='g-ens-B', title='G-Ens-B', begindate='1979-01-01', parent='Ens-B', ensemble='g-ensemble', grid='glb1')
-experiments['g-ens-B-2050'] = Exp(shortname='g-ens-B-2050', name='g-ens-B-2050', title='G-Ens-B (2050)', begindate='2045-01-01', parent='Ens-B-2050', ensemble='g-ensemble-2050', grid='glb1')
-experiments['g-ens-B-2100'] = Exp(shortname='g-ens-B-2100', name='g-ens-B-2100', title='G-Ens-B (2100)', begindate='2085-01-01', parent='Ens-B-2100', ensemble='g-ensemble-2100', grid='glb1')
-experiments['g-ens-C'] = Exp(shortname='g-ens-C', name='g-ens-C', title='G-Ens-C', begindate='1979-01-01', parent='Ens-C', ensemble='g-ensemble', grid='glb1')
-experiments['g-ens-C-2050'] = Exp(shortname='g-ens-C-2050', name='g-ens-C-2050', title='G-Ens-C (2050)', begindate='2045-01-01', parent='Ens-C-2050', ensemble='g-ensemble-2050', grid='glb1')
-experiments['g-ens-C-2100'] = Exp(shortname='g-ens-C-2100', name='g-ens-C-2100', title='G-Ens-C (2100)', begindate='2085-01-01', parent='Ens-C-2100', ensemble='g-ensemble-2100', grid='glb1')
-experiments['g-ensemble'] = Exp(shortname='g-ens', name='g-ensemble', title="G-Ensemble", begindate='1979-01-01', grid='glb1', parent='Ens')
-experiments['g-ensemble-2050'] = Exp(shortname='g-ens-2050', name='g-ensemble-2050', title="G-Ens. (2050)", begindate='2045-01-01', grid='glb1', parent='Ens-2050')
-experiments['g-ensemble-2100'] = Exp(shortname='g-ens-2100', name='g-ensemble-2100', title="G-Ens. (2100)", begindate='2085-01-01', grid='glb1', parent='Ens-2050')
+experiments['erai-g'] = Exp(shortname='erai-g', name='erai-g', title='G (ERA-I)', begindate='1979-01-01', project='GreatLakes', grid='glb1')
+experiments['g-ctrl'] = Exp(shortname='g-ctrl', name='g-ctrl', title='G-Ctrl', begindate='1979-01-01', ensemble='g-ensemble', project='GreatLakes', grid='glb1')
+experiments['g-ctrl-2050'] = Exp(shortname='g-ctrl-2050', name='g-ctrl-2050', title='G-Ctrl (2050)', begindate='2045-01-01', ensemble='g-ensemble-2050', project='GreatLakes', grid='glb1')
+experiments['g-ctrl-2100'] = Exp(shortname='g-ctrl-2100', name='g-ctrl-2100', title='G-Ctrl (2100)', begindate='2085-01-01', ensemble='g-ensemble-2050', project='GreatLakes', grid='glb1')
+experiments['g-ens-A'] = Exp(shortname='g-ens-A', name='g-ens-A', title='G-Ens-A', begindate='1979-01-01', parent='Ens-A', ensemble='g-ensemble', project='GreatLakes', grid='glb1')
+experiments['g-ens-A-2050'] = Exp(shortname='g-ens-A-2050', name='g-ens-A-2050', title='G-Ens-A (2050)', parent='Ens-A-2050', ensemble='g-ensemble-2050', begindate='2045-01-01', project='GreatLakes', grid='glb1')
+experiments['g-ens-A-2100'] = Exp(shortname='g-ens-A-2100', name='g-ens-A-2100', title='G-Ens-A (2100)', parent='Ens-A-2100', ensemble='g-ensemble-2100', begindate='2085-01-01', project='GreatLakes', grid='glb1')
+experiments['g-ens-B'] = Exp(shortname='g-ens-B', name='g-ens-B', title='G-Ens-B', begindate='1979-01-01', parent='Ens-B', ensemble='g-ensemble', project='GreatLakes', grid='glb1')
+experiments['g-ens-B-2050'] = Exp(shortname='g-ens-B-2050', name='g-ens-B-2050', title='G-Ens-B (2050)', begindate='2045-01-01', parent='Ens-B-2050', ensemble='g-ensemble-2050', project='GreatLakes', grid='glb1')
+experiments['g-ens-B-2100'] = Exp(shortname='g-ens-B-2100', name='g-ens-B-2100', title='G-Ens-B (2100)', begindate='2085-01-01', parent='Ens-B-2100', ensemble='g-ensemble-2100', project='GreatLakes', grid='glb1')
+experiments['g-ens-C'] = Exp(shortname='g-ens-C', name='g-ens-C', title='G-Ens-C', begindate='1979-01-01', parent='Ens-C', ensemble='g-ensemble', project='GreatLakes', grid='glb1')
+experiments['g-ens-C-2050'] = Exp(shortname='g-ens-C-2050', name='g-ens-C-2050', title='G-Ens-C (2050)', begindate='2045-01-01', parent='Ens-C-2050', ensemble='g-ensemble-2050', project='GreatLakes', grid='glb1')
+experiments['g-ens-C-2100'] = Exp(shortname='g-ens-C-2100', name='g-ens-C-2100', title='G-Ens-C (2100)', begindate='2085-01-01', parent='Ens-C-2100', ensemble='g-ensemble-2100', project='GreatLakes', grid='glb1')
+experiments['g-ensemble'] = Exp(shortname='g-ens', name='g-ensemble', title="G-Ensemble", begindate='1979-01-01', project='GreatLakes', grid='glb1', parent='Ens')
+experiments['g-ensemble-2050'] = Exp(shortname='g-ens-2050', name='g-ensemble-2050', title="G-Ens. (2050)", begindate='2045-01-01', project='GreatLakes', grid='glb1', parent='Ens-2050')
+experiments['g-ensemble-2100'] = Exp(shortname='g-ens-2100', name='g-ensemble-2100', title="G-Ens. (2100)", begindate='2085-01-01', project='GreatLakes', grid='glb1', parent='Ens-2050')
 # sensitivity experiments
-experiments['gg-ctrl'] = Exp(shortname='gg-ctrl', name='gg-ctrl', title='G-Ctrl (N-MP)', begindate='1979-01-01', grid='glb1')
-experiments['gg-ctrl-2050'] = Exp(shortname='gg-ctrl-2050', name='gg-ctrl-2050', title='G-Ctrl (2050, N-MP)', begindate='2045-01-01', grid='glb1')
-experiments['gg-ctrl-2100'] = Exp(shortname='gg-ctrl-2100', name='gg-ctrl-2100', title='G-Ctrl (2100, N-MP)', begindate='2085-01-01', grid='glb1')
-experiments['m-ctrl'] = Exp(shortname='m-ctrl', name='m-ctrl', title='M-Ctrl', begindate='1979-01-01', grid='glb1')
-experiments['m-ctrl-2050'] = Exp(shortname='m-ctrl-2050', name='m-ctrl-2050', title='M-Ctrl (2050)', begindate='2045-01-01', grid='glb1')
-experiments['m-ctrl-2100'] = Exp(shortname='m-ctrl-2100', name='m-ctrl-2100', title='M-Ctrl (2100)', begindate='2085-01-01', grid='glb1')
-experiments['mm-ctrl'] = Exp(shortname='mm-ctrl', name='mm-ctrl', title='M-Ctrl (N-MP)', begindate='1979-01-01', grid='glb1')
-experiments['mm-ctrl-2050'] = Exp(shortname='mm-ctrl-2050', name='mm-ctrl-2050', title='M-Ctrl (2050, N-MP)', begindate='2045-01-01', grid='glb1')
-experiments['mm-ctrl-2100'] = Exp(shortname='mm-ctrl-2100', name='mm-ctrl-2100', title='M-Ctrl (2100, N-MP)', begindate='2085-01-01', grid='glb1')
+experiments['gg-ctrl'] = Exp(shortname='gg-ctrl', name='gg-ctrl', title='G-Ctrl (N-MP)', begindate='1979-01-01', project='GreatLakes', grid='glb1')
+experiments['gg-ctrl-2050'] = Exp(shortname='gg-ctrl-2050', name='gg-ctrl-2050', title='G-Ctrl (2050, N-MP)', begindate='2045-01-01', project='GreatLakes', grid='glb1')
+experiments['gg-ctrl-2100'] = Exp(shortname='gg-ctrl-2100', name='gg-ctrl-2100', title='G-Ctrl (2100, N-MP)', begindate='2085-01-01', project='GreatLakes', grid='glb1')
+experiments['m-ctrl'] = Exp(shortname='m-ctrl', name='m-ctrl', title='M-Ctrl', begindate='1979-01-01', project='GreatLakes', grid='glb1')
+experiments['m-ctrl-2050'] = Exp(shortname='m-ctrl-2050', name='m-ctrl-2050', title='M-Ctrl (2050)', begindate='2045-01-01', project='GreatLakes', grid='glb1')
+experiments['m-ctrl-2100'] = Exp(shortname='m-ctrl-2100', name='m-ctrl-2100', title='M-Ctrl (2100)', begindate='2085-01-01', project='GreatLakes', grid='glb1')
+experiments['mm-ctrl'] = Exp(shortname='mm-ctrl', name='mm-ctrl', title='M-Ctrl (N-MP)', begindate='1979-01-01', project='GreatLakes', grid='glb1')
+experiments['mm-ctrl-2050'] = Exp(shortname='mm-ctrl-2050', name='mm-ctrl-2050', title='M-Ctrl (2050, N-MP)', begindate='2045-01-01', project='GreatLakes', grid='glb1')
+experiments['mm-ctrl-2100'] = Exp(shortname='mm-ctrl-2100', name='mm-ctrl-2100', title='M-Ctrl (2100, N-MP)', begindate='2085-01-01', project='GreatLakes', grid='glb1')
 # Marc's Physics Ensemble
-experiments['marc-ensemble'] = Exp(shortname='marc-ens', name='marc-ensemble', title="Physics Ensemble", begindate='1979-01-01', grid='glb1', parent='Ens')
-experiments['marc-ensemble-2050'] = Exp(shortname='marc-ens-2050', name='marc-ensemble-2050', title="Phys. Ens. (2050)", begindate='2045-01-01', grid='glb1', parent='Ens-2050')
-experiments['marc-ensemble-2100'] = Exp(shortname='marc-ens-2100', name='marc-ensemble-2100', title="Phys. Ens. (2100)", begindate='2085-01-01', grid='glb1', parent='Ens-2050')
+experiments['physics-ensemble'] = Exp(shortname='marc-ens', name='marc-ensemble', title="Physics Ensemble", begindate='1979-01-01', project='GreatLakes', grid='glb1', parent='Ens')
+experiments['marc-ensemble-2050'] = Exp(shortname='marc-ens-2050', name='marc-ensemble-2050', title="Phys. Ens. (2050)", begindate='2045-01-01', project='GreatLakes', grid='glb1', parent='Ens-2050')
+experiments['marc-ensemble-2100'] = Exp(shortname='marc-ens-2100', name='marc-ensemble-2100', title="Phys. Ens. (2100)", begindate='2085-01-01', project='GreatLakes', grid='glb1', parent='Ens-2050')
 # some new experiments using WRF V3.6 or V3.6.1 and the new configuration 
 experiments['erai-v361-ctrl'] = Exp(shortname='erai-v361', name='erai-v361-ctrl', title='ERA-I (New, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
 experiments['erai-v361-noah'] = Exp(shortname='erai-v361-noah', name='erai-v361-noah', title='ERA-I (Noah, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
