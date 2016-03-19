@@ -134,7 +134,7 @@ projection_dict['robinson'] = dict(projection='robin', lat_0 = 0, lon_0 = 180, r
 
 
 ## function to actually get a MapSetup object for the ARB region
-def getARBsetup(projection, annotation=None, stations=None, lpickle=False, folder=None, lrm=False):
+def getSetup(projection, annotation=None, stations=None, lpickle=False, folder=None, lrm=False):
   ''' return a MapSetup object with data for the chosen ARB setting '''
   # projection
   proj = projection_dict[projection]
@@ -153,6 +153,7 @@ def getARBsetup(projection, annotation=None, stations=None, lpickle=False, folde
   # return object
   return mapSetup
 
+getARBsetup = getSetup # more specific alias (for backwards compatability)
 
 # create pickles
 if __name__ == '__main__':

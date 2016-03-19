@@ -113,6 +113,7 @@ def getSetup(projection, annotation=None, stations=None, lpickle=False, folder=N
   # return object
   return mapSetup
 
+getGLBsetup = getSetup # more specific alias (for backwards compatability)
 
 # create pickles
 if __name__ == '__main__':

@@ -122,9 +122,9 @@ experiments['mm-ctrl'] = Exp(shortname='mm-ctrl', name='mm-ctrl', title='M-Ctrl 
 experiments['mm-ctrl-2050'] = Exp(shortname='mm-ctrl-2050', name='mm-ctrl-2050', title='M-Ctrl (2050, N-MP)', begindate='2045-01-01', project='GreatLakes', grid='glb1')
 experiments['mm-ctrl-2100'] = Exp(shortname='mm-ctrl-2100', name='mm-ctrl-2100', title='M-Ctrl (2100, N-MP)', begindate='2085-01-01', project='GreatLakes', grid='glb1')
 # Marc's Physics Ensemble
-experiments['physics-ensemble'] = Exp(shortname='marc-ens', name='marc-ensemble', title="Physics Ensemble", begindate='1979-01-01', project='GreatLakes', grid='glb1', parent='Ens')
-experiments['marc-ensemble-2050'] = Exp(shortname='marc-ens-2050', name='marc-ensemble-2050', title="Phys. Ens. (2050)", begindate='2045-01-01', project='GreatLakes', grid='glb1', parent='Ens-2050')
-experiments['marc-ensemble-2100'] = Exp(shortname='marc-ens-2100', name='marc-ensemble-2100', title="Phys. Ens. (2100)", begindate='2085-01-01', project='GreatLakes', grid='glb1', parent='Ens-2050')
+experiments['physics-ensemble'] = Exp(shortname='physics-ens', name='physics-ensemble', title="Physics Ensemble", begindate='1979-01-01', project='GreatLakes', grid='glb1', parent='Ens')
+experiments['physics-ensemble-2050'] = Exp(shortname='physics-ens-2050', name='physics-ensemble-2050', title="Phys. Ens. (2050)", begindate='2045-01-01', project='GreatLakes', grid='glb1', parent='Ens-2050')
+experiments['physics-ensemble-2100'] = Exp(shortname='physics-ens-2100', name='physics-ensemble-2100', title="Phys. Ens. (2100)", begindate='2085-01-01', project='GreatLakes', grid='glb1', parent='Ens-2050')
 # some new experiments using WRF V3.6 or V3.6.1 and the new configuration 
 experiments['erai-v361-ctrl'] = Exp(shortname='erai-v361', name='erai-v361-ctrl', title='ERA-I (New, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')
 experiments['erai-v361-noah'] = Exp(shortname='erai-v361-noah', name='erai-v361-noah', title='ERA-I (Noah, V3.6.1)', begindate='1979-01-01', grid='arb3', parent='ERA-I')

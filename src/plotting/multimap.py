@@ -32,8 +32,9 @@ from datasets.EC import province_info
 from plotting.legacy import loadDatasets, checkItemList
 from plotting.settings import getFigureSettings, getVariableSettings
 from datasets.common import stn_params
-# ARB project related stuff
-from projects.ARB_settings import getARBsetup, figure_folder, map_folder
+# project related stuff
+# from projects.ARB_settings import getSetup, figure_folder, map_folder # Western Canada
+from projects.GLB_settings import getSetup, figure_folder, map_folder # Great Lakes
 
 station_constraints = dict()
 station_constraints['min_len'] = 15 # for valid climatology
@@ -598,7 +599,7 @@ if __name__ == '__main__':
   if not case: raise ValueError, 'Need to define a \'case\' name!'
 
   # setup projection and map
-  mapSetup = getARBsetup(maptype, lpickle=lpickle, folder=map_folder)
+  mapSetup = getSetup(maptype, lpickle=lpickle, folder=map_folder)
   
   ## load data
   if not lfrac and not ldiff: reflist = None
