@@ -90,7 +90,7 @@ if __name__ == '__main__':
   WRFfiletypes = [] # WRF data source
 #   WRFfiletypes += ['hydro']
 #   WRFfiletypes += ['lsm']
-#   WRFfiletypes += ['srfc']
+  WRFfiletypes += ['srfc']
 #   WRFfiletypes += ['xtrm']
   WRFfiletypes += ['plev3d']
   ## select variables and seasons
@@ -103,19 +103,19 @@ if __name__ == '__main__':
 #   variables += ['MaxPreccu_1d']; aggregation = 'max'
 #   variables += ['MaxPrecnc_1d']; aggregation = 'max'
 #   variables += ['wetprec']
-#   variables += ['precip'] 
+  variables += ['precip'] 
 #   variables += ['preccu']
 #   variables += ['precnc']
 #   variables += ['wetfrq']
 #   variables += ['cqwu']
 #   variables += ['cqwv']
 #   variables += ['cqw']
-  variables += ['RH']; level_agg['p'] = 1
+#   variables += ['RH']; level_agg['p'] = 1
 #   variables += ['T']; level_agg['p'] = 2
 #   variables += ['u']; level_agg['p'] = 1
 #   variables += ['Z']; level_agg['p'] = 2; laddContour = True
 #   variables += ['waterflx']
-#   variables += ['p-et']
+  variables += ['p-et']
 #   variables += ['OIPX']
 #   variables += ['OrographicIndex']
 #   variables += ['Q2']
