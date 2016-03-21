@@ -110,7 +110,7 @@ basins_info['FRB'] = BasinInfo(name='FRB', long_name='Fraser River Basin', river
 basins_info['GLB'] = BasinInfo(name='GLB', long_name='Great Lakes Basin', rivers=['Upper Saint Lawrence'], data_source='WSC',
                                stations=dict(), subbasins=['WholeGLB'])
 basins_info['GRW'] = BasinInfo(name='GRW', long_name='Grand River Watershed', rivers=['Grand River'], data_source='Aquanty',
-                               stations=dict(), subbasins=['WholeGRW','UpperGRW','WesternGRW','LowerGRW'])
+                               stations=dict(), subbasins=['WholeGRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW'])
 basins_info['GSL'] = BasinInfo(name='GSL', long_name='Great Slave Lake', rivers=[], data_source='WSC',
                                stations=dict(), subbasins=['WholeGSL'])
 basins_info['LS'] = BasinInfo(name='LS', long_name='Labrador Sea', rivers=[], data_source='WSC',
