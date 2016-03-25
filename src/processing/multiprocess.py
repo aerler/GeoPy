@@ -123,7 +123,8 @@ class TrialNError():
     if logger is None: 
       logger = logging.getLogger() # new logger
       logger.addHandler(logging.StreamHandler())
-    else: logger = logging.getLogger(name=logger) # connect to existing one      
+    else: logger = logging.getLogger(name=logger) # connect to existing one    
+    logger.propagate = False # suppress duplicate output
     # parallelism
     if lparallel:
       pid = int(multiprocessing.current_process().name.split('-')[-1]) # start at 1
