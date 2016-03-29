@@ -46,8 +46,6 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
   logger.info('\n\n{0:s}   ***   Processing Experiment {1:<15s}   ***   '.format(pidstr,"'{:s}'".format(dataset_name)) +
         '\n{0:s}   ***   {1:^37s}   ***   \n'.format(pidstr,"'{:s}'".format(tsfile)))
   
-  # assemble filename to check modification dates (should be only one file)    
-
   # check file and read begin/enddates
   if not os.path.exists(filepath): 
     #raise IOError, "Source file '{:s}' does not exist!".format(filepath)
@@ -65,7 +63,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
     # N.B.: at this point we don't want to initialize a full GDAL-enabled dataset, since we don't even
     #       know if we need it, and it creates a lot of overhead
     
-    # determine age of oldest source file
+    # determine age of source file
     if not loverwrite: sourceage = datetime.fromtimestamp(os.path.getmtime(filepath))
   
     # figure out start date
@@ -78,20 +76,21 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
     shift = firstmonth-1 # will be zero for January (01)
     
     ## loop over periods
-    source = None # will later be assigned to the source dataset
     if periods is None: periods = [begindate-fileend]
-  #   periods.sort(reverse=True) # reverse, so that largest chunk is done first
+    #   periods.sort(reverse=True) # reverse, so that largest chunk is done first
+    source = None # will later be assigned to the source dataset
     for period in periods:       
               
       # figure out period
       enddate = begindate + period     
-      if filebegin > enddate: raise DateError    
+      if filebegin > enddate: raise DateError, 'End date earlier than begin date.'
       if enddate-1 > fileend: # if filebegin is 1979 and the simulation is 10 years, fileend will be 1988, not 1989!
+        # if end date is not available, skip period
         endmsg = "\n{:s}   ---   Invalid Period for '{:s}': End Date {:4d} not in File!   ---   \n".format(pidstr,dataset_name,enddate)
         endmsg += "{:s}   ---   ('{:s}')\n".format(pidstr,filepath)
         logger.info(endmsg)
         
-      else:  
+      else: ## perform averaging for selected period
   
         # determine if sink file already exists, and what to do about it      
         periodstr = '{0:4d}-{1:4d}'.format(begindate,enddate)
@@ -194,11 +193,11 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
           # clean up (not sure if this is necessary, but there seems to be a memory leak...   
           del sink, CPU; gc.collect() # get rid of these guys immediately
           
-  # this one is only loaded once for all periods    
-  # clean up and return
-  if source is not None: source.unload(); del source
-  # N.B.: garbage is collected in multi-processing wrapper as well
+    # clean up and return
+    if source is not None: source.unload(); del source
+    # N.B.: source is only loaded once for all periods    
 
+  # N.B.: garbage is collected in multi-processing wrapper as well
   # return
   return 0 # so far, there is no measure of success, hence, if there is no crash...
 
