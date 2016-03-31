@@ -277,13 +277,17 @@ WRF_experiments = experiments # alias for whole dict
 
 ## dict of ensembles
 ensembles = OrderedDict()
-# initial condition ensemble
+# Western Canada ensemble
 ensembles['ctrl-ens'] = ('ctrl-1', 'ctrl-ens-A', 'ctrl-ens-B', 'ctrl-ens-C')
 ensembles['max-ens'] = ('max-ctrl', 'max-ens-A', 'max-ens-B', 'max-ens-C')
 ensembles['phys-ens'] = ('ctrl-1', 'old-ctrl', 'new-ctrl', 'new-v361-ctrl')
 ensembles['kf-ens'] = ('ctrl-1', 'old-ctrl')
 ensembles['grell-ens'] = ('max-ctrl', 'new-v361-ctrl')
 # ensembles['phys-ens'] = ('ctrl-1', 'old-ctrl', 'new-ctrl', 'new-ctrl')
+# Marc's Great Lakes simulations
+ensembles['marc-ens'] = ('g-ctrl','gg-ctrl', 'm-ctrl','mm-ctrl', 't-ctrl')
+ensembles['g-ens'] = ('g-ctrl', 'g-ens-A', 'g-ens-B', 'g-ens-C')
+ensembles['t-ens'] = ('t-ctrl', 't-ens-A', 't-ens-B', 't-ens-C')
 # N.B.: static & meta data for the ensemble is copied from the first-listed member;
 #       this includes station attributes, such as the elevation error 
 # add future versions
@@ -299,13 +303,7 @@ ensembles['mex-ens-2100'] = ensembles['max-ens-2100'] + ('max-seaice-2100',)
 for suffix in '','2050','2100':
   suffix = '-'+suffix if suffix else ''
   ensembles['all-ens'+suffix] = ensembles['phys-ens'+suffix] + ensembles['mex-ens'+suffix][1:]
-  # N.B.: omit max-ctrl the second time
-# Marc's simulations
-marclist = ('g-ctrl','gg-ctrl', 'm-ctrl','mm-ctrl', 't-ctrl')
-for suffix in '','2050','2100':
-  if suffix: ensembles['marc-ens-'+suffix] = tuple(elt+'-'+suffix for elt in marclist)
-  else: ensembles['marc-ens'+suffix] = tuple(elt+suffix for elt in marclist)
-  
+  # N.B.: omit max-ctrl the second time  
 # replace names with experiment instances
 for ensname,enslist in ensembles.iteritems():
   ensembles[ensname] = tuple(experiments[expname] for expname in enslist)

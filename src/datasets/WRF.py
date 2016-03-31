@@ -811,7 +811,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
     if title is None: title = ensemble.title
     # convert actual ensemble to list
     if ensname in ensembles: ensemble = ensembles[ensname]
-    else: raise TypeError
+    else: raise TypeError, ensname
   # figure out time period
   if years is None: montpl = (0,180)
   elif isinstance(years,(list,tuple)) and len(years)==2: 

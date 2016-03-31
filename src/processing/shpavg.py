@@ -175,8 +175,8 @@ if __name__ == '__main__':
   if not lbatch:
     NP = 3 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
-#     modes = ('time-series',) # 'climatology','time-series'
-    modes = ('climatology',) # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('climatology',) # 'climatology','time-series'
     loverwrite = False
 #     loverwrite = True
     varlist = None
@@ -190,9 +190,9 @@ if __name__ == '__main__':
     periods += [30]
     # Observations/Reanalysis
     lLTM = True 
-    datasets = None; resolutions = None
+#     datasets = None; resolutions = None
 #     lLTM = False # also average the long-term mean climatologies
-#     datasets = []; resolutions = None
+    datasets = []; resolutions = None
 #     resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':'05'}
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
@@ -212,7 +212,7 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['atm'] # ,'lnd'
     CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
-    WRF_experiments = [] # use None to process all CESM experiments
+    WRF_experiments = ['g-ens-B', ] # use None to process all WRF experiments
 #     WRF_experiments += ['max-ens-A']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][1:]
 #     WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
@@ -221,9 +221,9 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100'] # requires different implementation...
     # other WRF parameters 
-    domains = None # domains to be processed
+#     domains = None # domains to be processed
     domains = (2,) # domains to be processed
-    WRF_filetypes = ('xtrm',)
+    WRF_filetypes = ('hydro',)
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
@@ -272,7 +272,8 @@ if __name__ == '__main__':
     WRF_experiments += ['g-ctrl-2100', 'g-ens-A-2100', 'g-ens-B-2100', 'g-ens-C-2100'] # last three are not finished yet
     domains = None # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
-    WRF_filetypes = ('xtrm','hydro','srfc','lsm') # only surface...
+#     WRF_filetypes = ('xtrm','hydro','srfc','lsm') # only surface...
+    WRF_filetypes = ('hydro',) # only hydro...
     # define shape data
     shape_name = 'shpavg'
     shapes = dict()
