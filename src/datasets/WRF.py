@@ -391,25 +391,25 @@ class Plev3D(FileType):
   ''' Variables and attributes of the pressure level files. '''
   def __init__(self):
     self.name = 'plev3d'
-    self.atts = dict(T_PL      = dict(name='T', units='K', fillValue=-999),      # Temperature
-                     TD_PL     = dict(name='Td', units='K', fillValue=-999),     # Dew-point Temperature
-                     RH_PL     = dict(name='RH', units='\%', fillValue=-999),     # Relative Humidity
-                     GHT_PL    = dict(name='Z', units='m', fillValue=-999),      # Geopotential Height 
-                     S_PL      = dict(name='U', units='m/s', fillValue=-999),    # Wind Speed
-                     U_PL      = dict(name='u', units='m/s', fillValue=-999),    # Zonal Wind Speed
-                     V_PL      = dict(name='v', units='m/s', fillValue=-999),    # Meridional Wind Speed
-                     WaterFlux_U = dict(name='qwu', units='kg/m^2/s', fillValue=-999), # zonal water (vapor) flux
-                     WaterFlux_V = dict(name='qwv', units='kg/m^2/s', fillValue=-999), # meridional water (vapor) flux
-                     WaterTransport_U = dict(name='cqwu', units='kg/m/s', fillValue=-999), # column-integrated zonal water (vapor) transport
-                     WaterTransport_V = dict(name='cqwv', units='kg/m/s', fillValue=-999), # column-integrated meridional water (vapor) transport
-                     ColumnWater = dict(name='cqw', units='kg/m^2', fillValue=-999), # column-integrated water (vapor) content
-                     HeatFlux_U = dict(name='qhu', units='J/m^2/s', fillValue=-999), # zonal heat flux
-                     HeatFlux_V = dict(name='qhv', units='J/m^2/s', fillValue=-999), # meridional heat flux
-                     Heatransport_U = dict(name='cqhu', units='J/m/s', fillValue=-999), # column-integrated zonal heat transport
-                     Heatransport_V = dict(name='cqhv', units='J/m/s', fillValue=-999), # column-integrated meridional heat transport
-                     ColumnHeat = dict(name='cqh', units='J/m^2', fillValue=-999), # column-integrated heat content
-                     Vorticity = dict(name='zeta', units='1/s', fillValue=-999)) # (relative) Vorticity
-#                      P_PL     = dict(name='p', units='Pa'))  # Pressure
+    self.atts = dict(T_PL      = dict(name='T',  units='K',   fillValue=-999, long_name='Temperature'), # Temperature
+                     TD_PL     = dict(name='Td', units='K',   fillValue=-999, long_name='Dew-point Temperature'), # Dew-point Temperature
+                     RH_PL     = dict(name='RH', units='\%',  fillValue=-999, long_name='Relative Humidity'), # Relative Humidity
+                     GHT_PL    = dict(name='Z',  units='m',   fillValue=-999, long_name='Geopotential Height '), # Geopotential Height 
+                     S_PL      = dict(name='U',  units='m/s', fillValue=-999, long_name='Absolute Wind Speed'), # Wind Speed
+                     U_PL      = dict(name='u',  units='m/s', fillValue=-999, long_name='Zonal Wind Speed'), # Zonal Wind Speed
+                     V_PL      = dict(name='v',  units='m/s', fillValue=-999, long_name='Meridional Wind Speed'), # Meridional Wind Speed
+                     WaterFlux_U      = dict(name='qwu',  units='kg/m^2/s', fillValue=-999, long_name='Zonal Water Vapor Flux'), # zonal water (vapor) flux
+                     WaterFlux_V      = dict(name='qwv',  units='kg/m^2/s', fillValue=-999, long_name='Meridional Water Vapor Flux'), # meridional water (vapor) flux
+                     WaterTransport_U = dict(name='cqwu', units='kg/m/s',   fillValue=-999, long_name='column-integrated Zonal Water Vapor Transport'), # column-integrated zonal water (vapor) transport
+                     WaterTransport_V = dict(name='cqwv', units='kg/m/s',   fillValue=-999, long_name='column-integrated Meridional Water Vapor Transport'), # column-integrated meridional water (vapor) transport
+                     ColumnWater      = dict(name='cqw',  units='kg/m^2',   fillValue=-999, long_name='Column-integrated Water Vapor Content'), # column-integrated water (vapor) content
+                     HeatFlux_U       = dict(name='qhu',  units='J/m^2/s',  fillValue=-999, long_name='Zonal Heat Flux'), # zonal heat flux
+                     HeatFlux_V       = dict(name='qhv',  units='J/m^2/s',  fillValue=-999, long_name='Meridional Heat Flux'), # meridional heat flux
+                     HeatTransport_U  = dict(name='cqhu', units='J/m/s',    fillValue=-999, long_name='Column-integrated Zonal Heat Transport'), # column-integrated zonal heat transport
+                     HeatTransport_V  = dict(name='cqhv', units='J/m/s',    fillValue=-999, long_name='Column-integrated Meridional Heat Transport'), # column-integrated meridional heat transport
+                     ColumnHeat       = dict(name='cqh',  units='J/m^2',    fillValue=-999, long_name='Column-integrated Heat Content'), # column-integrated heat content
+                     Vorticity        = dict(name='zeta', units='1/s',      fillValue=-999, long_name='Relative Vorticity'), # (relative) Vorticity
+                     P_PL      = dict(name='p', units='Pa', long_name='Pressure'))  # Pressure
     self.vars = self.atts.keys()    
     self.climfile = 'wrfplev3d_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfplev3d_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
