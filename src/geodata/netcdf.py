@@ -642,7 +642,7 @@ class DatasetNetCDF(Dataset):
             else: 
               tmpatts = dict(name=var, units=ncunits)
               old_name = '' # no old name
-            if 'atts' in tmpatts: tmpatts['atts']['old_name'] = oldname
+            if 'atts' in tmpatts: tmpatts['atts']['old_name'] = old_name
             else: tmpatts['atts'] = dict(old_name=old_name)
             if ncvar.dtype == '|S1' and all([dim in axes for dim in ncvar.dimensions[:-1]]): # string variable
               varaxes = [axes[dim] for dim in ncvar.dimensions[:-1]] # collect axes (except last)
