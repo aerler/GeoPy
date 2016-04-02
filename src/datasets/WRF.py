@@ -427,8 +427,8 @@ class Axes(FileType):
                      south_north = dict(name='y', units='m'), # projected south-north coordinate
                      x           = dict(name='x', units='m'), # projected west-east coordinate
                      y           = dict(name='y', units='m'), # projected south-north coordinate
-                     soil_layers_stag = dict(name='s', units=''), # soil layer coordinate
-                     num_press_levels_stag = dict(name='p', units='Pa'), # pressure coordinate
+                     soil_layers_stag = dict(name='i_s', units=''), # soil layer coordinate
+                     num_press_levels_stag = dict(name='i_p', units=''), # pressure coordinate
                      station     = dict(name='station', units='#') ) # station axis for station data
     self.vars = self.atts.keys()
     self.climfile = None
