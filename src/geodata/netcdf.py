@@ -634,13 +634,16 @@ class DatasetNetCDF(Dataset):
             if var in check_rename and ncunits == check_rename[var]['units']:
               # check both, name and units, to minimize confusion
               tmpatts = varatts[check_rename[var]['old_name']] # must be in varatts, too
-              tmpatts['old_name'] = check_rename[var]['old_name'] # also store old name
+              old_name = check_rename[var]['old_name'] # also store old name
               # N.B.: if variable has likely already been renamed, apply new attributes anyway
             elif var in varatts: 
               tmpatts = varatts[var] # rename and apply new attributes
-              tmpatts['old_name'] = var # also store old name
+              old_name = var # store old name
             else: 
-              tmpatts = dict(name=var, units=ncunits, old_name='')
+              tmpatts = dict(name=var, units=ncunits)
+              old_name = '' # no old name
+            if 'atts' in tmpatts: tmpatts['atts']['old_name'] = oldname
+            else: tmpatts['atts'] = dict(old_name=old_name)
             if ncvar.dtype == '|S1' and all([dim in axes for dim in ncvar.dimensions[:-1]]): # string variable
               varaxes = [axes[dim] for dim in ncvar.dimensions[:-1]] # collect axes (except last)
               strtype = np.dtype('|S{:d}'.format(ncvar.shape[-1])) # string with length of string dimension
@@ -675,10 +678,7 @@ class DatasetNetCDF(Dataset):
     # get attributes from NetCDF dataset
     ncattrs = joinDicts(*[ds.__dict__ for ds in datasets])
     # update NC atts with attributes passed to constructor
-    if atts is not None: 
-      for varname,attrs in ncattrs.iteritems():
-        if varname in atts: attrs.update(atts[varname])
-        # iterate over variables, so that variable atts are combined and not overwritten
+    if atts is not None: ncattrs.update(atts) # update with attributes passed to constructor
     self.__dict__['mode'] = mode
     # add NetCDF attributes
     self.__dict__['datasets'] = datasets
