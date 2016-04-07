@@ -65,20 +65,10 @@ stn_params = ['station_name', 'stn_prov', 'zs_err', 'stn_zs', 'stn_lat', 'stn_lo
 # variables contained in the CRU dataset
 CRU_vars = ['T2','Tmin','Tmax','Q2','pet','precip','cldfrc','wetfrq','frzfrq']
 
-# data root folder
-import socket
-hostname = socket.gethostname()
-if hostname=='komputer':
-  data_root = '/data/'  
-elif hostname=='DFERRARO-PC':
-  data_root = '\\\\AQFS1\\Data\\temp_data_exchange\\WRF\\'
-#  root = '/media/tmp/' # RAM disk for development
-elif hostname=='cryo':
-  data_root = '/scratch/marcdo/Data/'
-elif hostname=='erlkoenig':
-  data_root = '/media/me/data-2/Data/'
-else:
-  raise NotImplementedError, "No 'data_root' folder set!"
+# read data root folder from environment variable
+data_root = os.getenv('DATA_ROOT')
+if not data_root: raise IOError, 'No DATA_ROOT environment variable set.'
+
 # standard folder for grids and shapefiles  
 grid_folder = data_root + '/grids/' # folder for pickled grids
 shape_folder = data_root + '/shapes/' # folder for pickled grids

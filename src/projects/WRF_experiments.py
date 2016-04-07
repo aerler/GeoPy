@@ -8,63 +8,7 @@ This module contains meta data for all available WRF experiments.
 
 from collections import OrderedDict
 
-# the averaging folder needs to be repeated here, or it causes problems with circular imports
-from datasets.common import data_root
-avgfolder = data_root + 'WRF/' + 'wrfavg/' # long-term mean folder
-
-## class that defines experiments
-class Exp(object):
-  ''' class of objects that contain meta data for WRF experiments '''
-  # experiment parameter definition (class property)
-  parameters = OrderedDict() # order matters, because parameters can depend on one another for defaults
-  parameters['name'] = dict(type=basestring,req=True) # name
-  parameters['shortname'] = dict(type=basestring,req=False) # short name
-  parameters['title'] = dict(type=basestring,req=False) # title used in plots
-  parameters['grid'] = dict(type=basestring,req=True) # name of the grid layout
-  parameters['domains'] = dict(type=int,req=True) # number of domains
-  parameters['parent'] = dict(type=basestring,req=True) # driving dataset
-  parameters['project'] = dict(type=basestring,req=True) # project name dataset
-  parameters['ensemble'] = dict(type=basestring,req=False) # ensemble this run is a member of
-  parameters['begindate'] = dict(type=basestring,req=True) # simulation start date
-  parameters['beginyear'] = dict(type=int,req=True) # simulation start year
-  parameters['enddate'] = dict(type=basestring,req=False) # simulation end date (if it already finished)
-  parameters['endyear'] = dict(type=int,req=False) # simulation end year
-  parameters['avgfolder'] = dict(type=basestring,req=True) # folder for monthly averages
-  parameters['outfolder'] = dict(type=basestring,req=False) # folder for direct WRF averages
-  # default values (functions)
-  defaults = dict()
-  defaults['shortname'] = lambda atts: atts['name']
-  defaults['title'] = lambda atts: atts['name'] # need lambda, because parameters are not set yet
-  defaults['parent'] = 'Ctrl-1' # CESM simulations that is driving most of the WRF runs   
-  defaults['project'] = 'WesternCanada' # most WRF runs so far are from this project
-  defaults['domains'] = 2 # most WRF runs have two domains
-  defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/{2:s}/'.format(avgfolder,atts['project'],atts['name'])
-  defaults['begindate'] = '1979-01-01'
-  defaults['beginyear'] = lambda atts: int(atts['begindate'].split('-')[0])  if atts['begindate'] else None # first field
-  defaults['endyear'] = lambda atts: int(atts['enddate'].split('-')[0]) if atts['enddate'] else None # first field
-  
-  def __init__(self, **kwargs):
-    ''' initialize values from arguments '''
-    # loop over simulation parameters
-    for argname,argatt in self.parameters.items():
-      if argname in kwargs:
-        # assign argument based on keyword
-        arg = kwargs[argname]
-        if not isinstance(arg,argatt['type']): 
-          raise TypeError, "Argument '{0:s}' must be of type '{1:s}'.".format(argname,argatt['type'].__name__)
-        self.__dict__[argname] = arg
-      elif argname in self.defaults:
-        # assign some default values, if necessary
-        if callable(self.defaults[argname]): 
-          self.__dict__[argname] = self.defaults[argname](self.__dict__)
-        else: self.__dict__[argname] = self.defaults[argname]
-      elif argatt['req']:
-        # if the argument is required and there is no default, raise error
-        raise ValueError, "Argument '{0:s}' for experiment '{1:s}' required.".format(argname,self.name)
-      else:
-        # if the argument is not required, just assign None 
-        self.__dict__[argname] = None    
-
+from datasets.WRF import Exp
 
 ## list of experiments
 # N.B.: This is the reference list, with unambiguous, unique keys and no aliases/duplicate entries  

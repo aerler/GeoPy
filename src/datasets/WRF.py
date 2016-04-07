@@ -18,13 +18,67 @@ from wrfavg.derived_variables import precip_thresholds
 from geodata.base import concatDatasets
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError
-from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt,\
-  EmptyDatasetError
-from datasets.common import translateVarNames, data_root, grid_folder, selectElements,\
-  stn_params, shp_params
+from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt, EmptyDatasetError
+from datasets.common import translateVarNames, data_root, grid_folder, selectElements, stn_params, shp_params
 from geodata.gdal import loadPickledGridDef, griddef_pickle
-from projects.WRF_experiments import Exp, exps, ensembles 
+#from projects.WRF_experiments import Exp, exps, ensembles 
 from warnings import warn
+from collections import OrderedDict
+
+
+avgfolder = data_root + 'WRF/' + 'wrfavg/' # long-term mean folder
+## class that defines experiments
+class Exp(object):
+  ''' class of objects that contain meta data for WRF experiments '''
+  # experiment parameter definition (class property)
+  parameters = OrderedDict() # order matters, because parameters can depend on one another for defaults
+  parameters['name'] = dict(type=basestring,req=True) # name
+  parameters['shortname'] = dict(type=basestring,req=False) # short name
+  parameters['title'] = dict(type=basestring,req=False) # title used in plots
+  parameters['grid'] = dict(type=basestring,req=True) # name of the grid layout
+  parameters['domains'] = dict(type=int,req=True) # number of domains
+  parameters['parent'] = dict(type=basestring,req=True) # driving dataset
+  parameters['project'] = dict(type=basestring,req=True) # project name dataset
+  parameters['ensemble'] = dict(type=basestring,req=False) # ensemble this run is a member of
+  parameters['begindate'] = dict(type=basestring,req=True) # simulation start date
+  parameters['beginyear'] = dict(type=int,req=True) # simulation start year
+  parameters['enddate'] = dict(type=basestring,req=False) # simulation end date (if it already finished)
+  parameters['endyear'] = dict(type=int,req=False) # simulation end year
+  parameters['avgfolder'] = dict(type=basestring,req=True) # folder for monthly averages
+  parameters['outfolder'] = dict(type=basestring,req=False) # folder for direct WRF averages
+  # default values (functions)
+  defaults = dict()
+  defaults['shortname'] = lambda atts: atts['name']
+  defaults['title'] = lambda atts: atts['name'] # need lambda, because parameters are not set yet
+  defaults['parent'] = 'Ctrl-1' # CESM simulations that is driving most of the WRF runs   
+  defaults['project'] = 'WesternCanada' # most WRF runs so far are from this project
+  defaults['domains'] = 2 # most WRF runs have two domains
+  defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/{2:s}/'.format(avgfolder,atts['project'],atts['name'])
+  defaults['begindate'] = '1979-01-01'
+  defaults['beginyear'] = lambda atts: int(atts['begindate'].split('-')[0])  if atts['begindate'] else None # first field
+  defaults['endyear'] = lambda atts: int(atts['enddate'].split('-')[0]) if atts['enddate'] else None # first field
+  
+  def __init__(self, **kwargs):
+    ''' initialize values from arguments '''
+    # loop over simulation parameters
+    for argname,argatt in self.parameters.items():
+      if argname in kwargs:
+        # assign argument based on keyword
+        arg = kwargs[argname]
+        if not isinstance(arg,argatt['type']): 
+          raise TypeError, "Argument '{0:s}' must be of type '{1:s}'.".format(argname,argatt['type'].__name__)
+        self.__dict__[argname] = arg
+      elif argname in self.defaults:
+        # assign some default values, if necessary
+        if callable(self.defaults[argname]): 
+          self.__dict__[argname] = self.defaults[argname](self.__dict__)
+        else: self.__dict__[argname] = self.defaults[argname]
+      elif argatt['req']:
+        # if the argument is required and there is no default, raise error
+        raise ValueError, "Argument '{0:s}' for experiment '{1:s}' required.".format(argname,self.name)
+      else:
+        # if the argument is not required, just assign None 
+        self.__dict__[argname] = None    
 
 
 ## get WRF projection and grid definition 
@@ -51,7 +105,7 @@ def getWRFproj(dataset, name=''):
   return getProjFromDict(projdict, name=name, GeoCS='WGS84', convention='Proj4')  
 
 # infer grid (projection and axes) from constants file
-def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='wrfconst_d{0:0=2d}.nc', ncformat='NETCDF4'):
+def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='wrfconst_d{0:0=2d}.nc', ncformat='NETCDF4', exps=None):
   ''' Infer the WRF grid configuration from an output file and return a GridDefinition object. '''
   # check input
   folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder)
@@ -125,7 +179,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   return tuple(griddefs)  
 
 # return name and folder
-def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, lexp=False):
+def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, lexp=False, exps=None):
   ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
   if name is None and experiment is None: raise ArgumentError
@@ -159,10 +213,10 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
       basenames.append(name[:-4]) # ... and truncate basename
     else: basenames.append(name)
   if len(set(basenames)) != 1: raise DatasetError, "Dataset base names are inconsistent."
-  name = basenames[0]
   # ensure uniqueness of names
   if len(set(names)) != len(names):
     names = ['{0:s}_d{1:0=2d}'.format(name,domain) for name,domain in zip(names,domains)]
+  name = basenames[0]
   # evaluate experiment
   if experiment is None: 
     if name in exps: experiment = exps[name] # load experiment meta data
@@ -470,31 +524,31 @@ for fileclass in fileclasses.itervalues():
 
 # Station Time-series (monthly, with extremes)
 def loadWRF_StnTS(experiment=None, name=None, domains=None, station=None, filetypes=None, 
-                  varlist=None, varatts=None, lctrT=True, lwrite=False, ltrimT=True):
+                  varlist=None, varatts=None, lctrT=True, lwrite=False, ltrimT=True, exps=None):
   ''' Get a properly formatted WRF dataset with monthly time-series at station locations. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, station=station, 
                      period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                      lconst=False, lautoregrid=False, lctrT=lctrT, mode='time-series', 
-                     lwrite=lwrite, ltrimT=ltrimT, check_vars='station_name')  
+                     lwrite=lwrite, ltrimT=ltrimT, check_vars='station_name', exps=exps)  
 
 # Regiona/Shape Time-series (monthly, with extremes)
 def loadWRF_ShpTS(experiment=None, name=None, domains=None, shape=None, filetypes=None, 
-                  varlist=None, varatts=None, lctrT=True, lencl=False, lwrite=False, ltrimT=True):
+                  varlist=None, varatts=None, lctrT=True, lencl=False, lwrite=False, ltrimT=True, exps=None):
   ''' Get a properly formatted WRF dataset with monthly time-series averaged over regions. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, shape=shape, lencl=lencl, 
                      station=None, period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                      lconst=False, lautoregrid=False, lctrT=lctrT, mode='time-series', lwrite=lwrite, 
-                     ltrimT=ltrimT, check_vars='shape_name')  
+                     ltrimT=ltrimT, check_vars='shape_name', exps=exps)  
 
 def loadWRF_TS(experiment=None, name=None, domains=None, grid=None, filetypes=None, varlist=None, 
-               varatts=None, lconst=True, lautoregrid=True, lctrT=True, lwrite=False, ltrimT=True):
+               varatts=None, lconst=True, lautoregrid=True, lctrT=True, lwrite=False, ltrimT=True, exps=None):
   ''' Get a properly formatted WRF dataset with monthly time-series. '''
-  return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, 
+  return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, exps=exps, 
                      period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
                      lautoregrid=lautoregrid, lctrT=lctrT, mode='time-series', lwrite=lwrite, ltrimT=ltrimT)  
 
 def loadWRF_Stn(experiment=None, name=None, domains=None, station=None, period=None, filetypes=None, 
-                varlist=None, varatts=None, lctrT=True, lwrite=False, ltrimT=False):
+                varlist=None, varatts=None, lctrT=True, lwrite=False, ltrimT=False, exps=None):
   ''' Get a properly formatted station dataset from a monthly WRF climatology at station locations. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, station=station, 
                      period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
@@ -502,17 +556,17 @@ def loadWRF_Stn(experiment=None, name=None, domains=None, station=None, period=N
                      check_vars='station_name')  
 
 def loadWRF_Shp(experiment=None, name=None, domains=None, shape=None, period=None, filetypes=None, 
-                varlist=None, varatts=None, lctrT=True, lencl=False, lwrite=False, ltrimT=False):
+                varlist=None, varatts=None, lctrT=True, lencl=False, lwrite=False, ltrimT=False, exps=None):
   ''' Get a properly formatted station dataset from a monthly WRF climatology averaged over regions. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, shape=shape, lencl=lencl,
                      station=None, period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                      lconst=False, lautoregrid=False, lctrT=lctrT, mode='climatology', lwrite=lwrite, 
-                     ltrimT=ltrimT, check_vars='shape_name')  
+                     ltrimT=ltrimT, check_vars='shape_name', exps=exps)  
 
 def loadWRF(experiment=None, name=None, domains=None, grid=None, period=None, filetypes=None, varlist=None, 
-            varatts=None, lconst=True, lautoregrid=True, lctrT=True, lwrite=False, ltrimT=False):
+            varatts=None, lconst=True, lautoregrid=True, lctrT=True, lwrite=False, ltrimT=False, exps=None):
   ''' Get a properly formatted monthly WRF climatology as NetCDFDataset. '''
-  return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, 
+  return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, exps=exps, 
                      period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
                      lautoregrid=lautoregrid, lctrT=lctrT, mode='climatology', lwrite=lwrite, ltrimT=ltrimT)  
 
@@ -520,14 +574,14 @@ def loadWRF(experiment=None, name=None, domains=None, grid=None, period=None, fi
 def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=None, shape=None, 
                 period=None, filetypes=None, varlist=None, varatts=None, lconst=True, lautoregrid=True, 
                 lencl=False, lctrT=False, folder=None, lpickleGrid=True, mode='climatology', 
-                lwrite=False, ltrimT=False, check_vars=None):
+                lwrite=False, ltrimT=False, check_vars=None, exps=None):
   ''' Get any WRF data files as a properly formatted NetCDFDataset. '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)  
   # prepare input  
   if experiment is None and name is not None: 
     experiment = name; name=None # allow 'name' to define an experiment  
-  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder)
+  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder, exps=exps)
   if lctrT and experiment is None: 
     raise DatasetError, "Experiment '{0:s}' not found in database; need time information to center time axis.".format(names[0])    
   # figure out period
@@ -621,7 +675,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
           # some experiments do not have all files... try, until one works...
           try:
             if filename is None: raise IOError # skip and try next one
-            griddefs = getWRFgrid(name=names, experiment=experiment, domains=domains, folder=folder, filename=filename)
+            griddefs = getWRFgrid(name=names, experiment=experiment, domains=domains, folder=folder, filename=filename, exps=exps)
           except IOError:
             c += 1
             filename = fileclasses.values()[c].tsfile
@@ -780,7 +834,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
                      filetypes=None, years=None, varlist=None, varatts=None, translateVars=None, 
                      lautoregrid=None, title=None, lctrT=True, lconst=True, lcheckVars=None, 
                      lcheckAxis=True, lencl=False, lwrite=False, axis=None, lensembleAxis=False,
-                     check_vars=None):
+                     check_vars=None, exps=None):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   # obviously this only works for datasets that have a time-axis
   # figure out ensemble
