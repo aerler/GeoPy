@@ -7,7 +7,7 @@ This module contains meta data for all available WRF experiments.
 '''
 
 from collections import OrderedDict
-
+from datasets.common import addLoadFcts
 from datasets.WRF import Exp
 
 ## list of experiments
@@ -209,15 +209,15 @@ experiments['old-ctrl-2100'] = Exp(shortname='old-2100', name='old-ctrl-2100', t
 
 ## an alternate dictionary using short names and aliases for referencing
 exps = OrderedDict()
-# use short names where availalbe, normal names otherwise
+# use short names where available, normal names otherwise
 for key,item in experiments.iteritems():
   exps[item.name] = item
   if item.shortname is not None: 
     exps[item.shortname] = item
   # both, short and long name are added to list
 # add aliases here
-WRF_exps = exps # alias for whole dict
-WRF_experiments = experiments # alias for whole dict
+WRF_exps = exps # alias for whole dict (short and proper names)
+WRF_experiments = experiments # alias for dict with proper names
 
 ## dict of ensembles
 ensembles = OrderedDict()
@@ -257,6 +257,10 @@ name_list = ensembles.keys(); name_list.sort()
 for key in name_list:
   WRF_ens[key] = ensembles[key]
 ensembles = WRF_ens
+
+## generate loadWRF* versions with these experiments
+import datasets.WRF as dataset
+addLoadFcts(locals(), dataset, exps)
 
 
 if __name__ == '__main__':

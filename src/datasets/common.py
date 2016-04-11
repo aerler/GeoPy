@@ -12,6 +12,7 @@ import inspect
 import numpy as np
 import pickle
 import os
+import functools
 from operator import isCallable
 # internal imports
 from utils.misc import expandArgumentList
@@ -19,7 +20,7 @@ from geodata.misc import AxisError, DatasetError, DateError, ArgumentError, Empt
 from geodata.base import Dataset, Variable, Axis, Ensemble
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import GDALError, addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
-# import some calendar defintions
+# import some calendar definitions
 from geodata.misc import name_of_month, days_per_month, days_per_month_365, seconds_per_month, seconds_per_month_365
 
 
@@ -75,6 +76,18 @@ shape_folder = data_root + '/shapes/' # folder for pickled grids
 
 
 ## utility functions for datasets
+
+
+def addLoadFcts(namespace, dataset, exps):
+  ''' function to add dataset load functions to the local namespace, which already have a fixed experiments dictionary '''
+  # search namespace for load functions
+  for name,fct in dataset.__dict__.iteritems():
+    if isCallable(fct) and name[:4] == 'load':
+      #TODO: make better docstring!
+      namespace[name] = functools.partial(fct, exps=exps)
+  # not really necessary, since dicts are passed by reference
+  return namespace
+
 
 # convenience method to convert a period tuple into a monthly coordinate tuple 
 def timeSlice(period):
