@@ -108,15 +108,17 @@ def getWRFproj(dataset, name=''):
 def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='wrfconst_d{0:0=2d}.nc', ncformat='NETCDF4', exps=None):
   ''' Infer the WRF grid configuration from an output file and return a GridDefinition object. '''
   # check input
-  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder)
+  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder, exps=exps)
   if isinstance(filename,basestring): filepath = '{}/{}'.format(folder,filename) # still contains formaters
   else: raise TypeError, filename
   # figure out experiment
   if experiment is None:
-    if isinstance(name,basestring) and name in exps: experiment = exps[name]
-    elif len(names) > 0: 
-      tmp = names[0].split('_')[0]
-      if tmp in exps: experiment = exps[tmp]
+    if not isinstance(name,basestring): raise TypeError
+    if isinstance(exps,dict):
+      if name in exps: experiment = exps[name]
+      elif len(names) > 0: 
+        tmp = names[0].split('_')[0]
+        if tmp in exps: experiment = exps[tmp]
   elif not isinstance(experiment,Exp): raise TypeError  
   maxdom = max(domains) # max domain
   # files to work with
@@ -219,8 +221,11 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
   name = basenames[0]
   # evaluate experiment
   if experiment is None: 
-    if name in exps: experiment = exps[name] # load experiment meta data
-    elif lexp: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(names[0])
+    if exps is None:
+      if lexp: raise DatasetError, 'No dictionary of Exp instances specified.'
+    else:
+      if name in exps: experiment = exps[name] # load experiment meta data
+      elif lexp: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(names[0])
   # assign unassigned domains
   domains = [experiment.domains if dom is None else dom for dom in domains]
   # patch up folder
@@ -553,7 +558,7 @@ def loadWRF_Stn(experiment=None, name=None, domains=None, station=None, period=N
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=None, station=station, 
                      period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
                      lautoregrid=False, lctrT=lctrT, mode='climatology', lwrite=lwrite, ltrimT=ltrimT,
-                     check_vars='station_name')  
+                     check_vars='station_name', exps=exps)  
 
 def loadWRF_Shp(experiment=None, name=None, domains=None, shape=None, period=None, filetypes=None, 
                 varlist=None, varatts=None, lctrT=True, lencl=False, lwrite=False, ltrimT=False, exps=None):
@@ -834,7 +839,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
                      filetypes=None, years=None, varlist=None, varatts=None, translateVars=None, 
                      lautoregrid=None, title=None, lctrT=True, lconst=True, lcheckVars=None, 
                      lcheckAxis=True, lencl=False, lwrite=False, axis=None, lensembleAxis=False,
-                     check_vars=None, exps=None):
+                     check_vars=None, exps=None, enses=None):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   # obviously this only works for datasets that have a time-axis
   # figure out ensemble
@@ -864,7 +869,8 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
     if name is None: name = ensemble.shortname
     if title is None: title = ensemble.title
     # convert actual ensemble to list
-    if ensname in ensembles: ensemble = ensembles[ensname]
+    if not isinstance(enses,dict): raise DatasetError, 'No dictionary of Exp instances specified.'
+    if ensname in enses: ensemble = enses[ensname]
     else: raise TypeError, ensname
   # figure out time period
   if years is None: montpl = (0,180)
@@ -879,7 +885,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
     dataset = loadWRF_All(experiment=None, name=ensemble, grid=grid, station=station, shape=shape, 
                           period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                           mode='time-series', lencl=lencl, lautoregrid=lautoregrid, lctrT=lctrT, 
-                          lconst=lconst, domains=domains, lwrite=lwrite, check_vars=check_vars)
+                          lconst=lconst, domains=domains, lwrite=lwrite, check_vars=check_vars, exps=exps)
   else:
     # load datasets (and load!)
     datasets = []
@@ -887,7 +893,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
       ds = loadWRF_All(experiment=None, name=exp, grid=grid, station=station, shape=shape, 
                        period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                        mode='time-series', lencl=lencl, lautoregrid=lautoregrid, lctrT=lctrT, 
-                       lconst=lconst, domains=domains, lwrite=lwrite, check_vars=check_vars).load()
+                       lconst=lconst, domains=domains, lwrite=lwrite, check_vars=check_vars, exps=exps).load()
       if montpl: ds = ds(time=montpl, lidx=True) # slice the time dimension to make things consistent
       datasets.append(ds)
     # harmonize axes
@@ -932,40 +938,42 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-#   mode = 'test_climatology'
-#   mode = 'test_timeseries'
-#   mode = 'test_ensemble'
-#   mode = 'test_point_climatology'
-#   mode = 'test_point_timeseries'
-#   mode = 'test_point_ensemble'
-  mode = 'pickle_grid'  
+#  mode = 'test_climatology'
+#  mode = 'test_timeseries'
+  mode = 'test_ensemble'
+#  mode = 'test_point_climatology'
+#  mode = 'test_point_timeseries'
+#  mode = 'test_point_ensemble'
+#  mode = 'pickle_grid' 
   pntset = 'shpavg'
 #   pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
-  grids = ['glb1','arb1', 'arb2', 'arb3']; domains = [1,2]
+  grids = ['glb1','arb1', 'arb2', 'arb3']; regions = ['GreatLakes']+['WesternCanada']*3; domains = [1,2]
   experiments = ['g-ctrl','rrtmg', 'ctrl', 'new']
 #   grids = ['col1','col2','coast1']; experiments = ['columbia','max-3km','coast']; domains = [1,2,3]   
 #   grids = ['grb1']; experiments = ['']; domains = [1,2]
 #   grids = ['wc2']; experiments = ['erai-wc2-2013']; domains = [1,2]
 #   grids = ['arb2-120km']; experiments = ['max-lowres']; domains = [1,]   
     
+  from projects.WRF_experiments import WRF_exps, ensembles
+    
   # pickle grid definition
   if mode == 'pickle_grid':
     
-    for grid in grids:
+    for region,grid in zip(regions,grids):
       
       for domain in domains:
         
         print('')
         res = 'd{0:02d}'.format(domain) # for compatibility with dataset.common
-        folder = '{0:s}/'.format(avgfolder)
+        folder = '{0:s}/{1:s}/'.format(avgfolder,region)
         gridstr = '{0:s}_{1:s}'.format(grid,res) 
         print('   ***   Pickling Grid Definition for {0:s} Domain {1:d}   ***   '.format(grid,domain))
         print('')
         
         # load GridDefinition
         
-        griddef, = getWRFgrid(name=grid, folder=folder, domains=domain) # filename='wrfconst_d{0:0=2d}.nc', experiment=experiment
+        griddef, = getWRFgrid(name=grid, folder=folder, domains=domain, exps=None) # filename='wrfconst_d{0:0=2d}.nc', experiment=experiment
         griddef.name = gridstr
         print('   Loading Definition from \'{0:s}\''.format(folder))
 #         print(griddef)
@@ -989,9 +997,9 @@ if __name__ == '__main__':
   elif mode == 'test_climatology':
     
     print('')
-#     dataset = loadWRF(experiment='max-1deg', domains=2, grid='arb2_d02', filetypes=['srfc'], period=(1979,1994))
+#     dataset = loadWRF(experiment='max-1deg', domains=2, grid='arb2_d02', filetypes=['srfc'], period=(1979,1994), exps=WRF_exps)
     dataset = loadWRF(experiment='max-ensemble', domains=None, filetypes=['plev3d'], period=(1979,1994),
-                      varlist=['u','qhv','cqwu','cqw','RH'], lconst=True)
+                      varlist=['u','qhv','cqwu','cqw','RH'], lconst=True, exps=WRF_exps)
     print(dataset)
 #     dataset.lon2D.load()
 #     print('')
@@ -1004,10 +1012,10 @@ if __name__ == '__main__':
   # load monthly time-series file
   elif mode == 'test_timeseries':
     
-#     dataset = loadWRF_TS(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['srfc'])
-    dataset = loadWRF_TS(experiment='max-ctrl', domains=None, varlist=None, filetypes=['srfc'])
+#     dataset = loadWRF_TS(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['srfc'], exps=WRF_exps)
+    dataset = loadWRF_TS(experiment='max-ctrl', domains=None, varlist=None, filetypes=['srfc'], exps=WRF_exps)
 #     dataset = loadWRF_All(name='new-ctrl-2050', folder='/data/WRF/wrfavg/', domains=2, filetypes=['hydro'], 
-#                           lctrT=True, mode='time-series')
+#                           lctrT=True, mode='time-series', exps=WRF_exps)
 #     for dataset in datasets:
     print('')
     print(dataset)
@@ -1026,7 +1034,7 @@ if __name__ == '__main__':
   elif mode == 'test_ensemble':
     
     print('')
-    dataset = loadWRF_Ensemble(ensemble='max-ens', varlist=['precip','MaxPrecip_1d'], filetypes=['hydro'])
+    dataset = loadWRF_Ensemble(ensemble='max-ens', varlist=['precip','MaxPrecip_1d'], filetypes=['hydro'], exps=WRF_exps, enses=ensembles)
 #     dataset = loadWRF_Ensemble(ensemble=['max-ctrl'], varlist=['precip','MaxPrecip_1d'], filetypes=['xtrm'])
 #     dataset = loadWRF_Ensemble(ensemble=['max-ctrl','max-ctrl'], varlist=['precip','MaxPrecip_1d'], filetypes=['xtrm'])
     # 2.03178e-05 0.00013171
@@ -1047,7 +1055,7 @@ if __name__ == '__main__':
     
     print('')
     if pntset in ('shpavg',):
-      dataset = loadWRF_Shp(experiment='max', domains=None, shape=pntset, filetypes=['hydro'], period=(1979,1994))
+      dataset = loadWRF_Shp(experiment='max', domains=None, shape=pntset, filetypes=['hydro'], period=(1979,1994), exps=WRF_exps)
       print('')
       print(dataset.shape)
       print(dataset.shape.coord)
@@ -1069,11 +1077,11 @@ if __name__ == '__main__':
     print('')
     if pntset in ('shpavg',):
       dataset = loadWRF_ShpTS(experiment='max-ctrl', domains=None, varlist=None, #['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
-                              shape=pntset, filetypes=['srfc','lsm'])
+                              shape=pntset, filetypes=['srfc','lsm'], exps=WRF_exps)
     else:
       dataset = loadWRF_StnTS(experiment='max-ens-A', domains=None, varlist=['zs','stn_zs','MaxPrecip_6h'],
 #                               varlist=['zs','stn_zs','precip','MaxPrecip_6h','MaxPreccu_1h','MaxPrecip_1d'], 
-                              station=pntset, filetypes=['srfc'])
+                              station=pntset, filetypes=['srfc'], exps=WRF_exps)
       zs_err = dataset.zs.getArray() - dataset.stn_zs.getArray()
       print(zs_err.min(),zs_err.mean(),zs_err.std(),zs_err.max())
     print('')
@@ -1090,10 +1098,10 @@ if __name__ == '__main__':
     if pntset in ('shpavg',):
 #       dataset = loadWRF_ShpEns(ensemble=['max-ctrl','max-ens-A'], shape=pntset, domains=None, filetypes=['hydro','srfc'])
       dataset = loadWRF_ShpEns(ensemble='max-ens', shape=pntset, varlist=['precip','runoff'], domains=2, 
-                               filetypes=['srfc','lsm',], lensembleAxis=lensembleAxis)
+                               filetypes=['srfc','lsm',], lensembleAxis=lensembleAxis, exps=WRF_exps, enses=ensembles)
     else:
       dataset = loadWRF_StnEns(ensemble='max-ens-2100', station=pntset, lensembleAxis=lensembleAxis,  
-                               varlist=['MaxPrecip_6h'], filetypes=['srfc'])
+                               varlist=['MaxPrecip_6h'], filetypes=['srfc'], exps=WRF_exps, enses=ensembles)
     assert not lensembleAxis or dataset.hasAxis('ensemble')
     dataset.load()
     print('')
