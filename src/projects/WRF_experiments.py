@@ -211,7 +211,7 @@ experiments['old-ctrl-2100'] = Exp(shortname='old-2100', name='old-ctrl-2100', t
 exps = OrderedDict()
 # use short names where available, normal names otherwise
 for key,item in experiments.iteritems():
-  exps[item.name] = item
+  exps[key] = item # this prevents name collisions between regions
   if item.shortname is not None: 
     exps[item.shortname] = item
   # both, short and long name are added to list
@@ -259,9 +259,11 @@ for key in name_list:
 ensembles = WRF_ens
 
 ## generate loadWRF* versions with these experiments
-import datasets.WRF as dataset
-addLoadFcts(locals(), dataset, exps)
-
+# import datasets.WRF as dataset
+import inspect,functools
+from datasets.WRF import loadWRF, loadWRF_Shp, loadWRF_Stn, loadWRF_TS, loadWRF_ShpTS, loadWRF_StnTS, loadWRF_Ensemble, loadWRF_ShpEns, loadWRF_StnEns
+addLoadFcts(locals(), locals(), exps)
+# loadWRF = functools.partial(loadWRF, exps=WRF_exps)
 
 if __name__ == '__main__':
     
@@ -270,3 +272,9 @@ if __name__ == '__main__':
     s = '  {:s}: '.format(name)
     for member in members: s += ' {:s},'.format(member.name)
     print(s)
+    
+  ## print signature of new load fcts.
+  fct = loadWRF
+  print
+  print fct
+  print fct.__doc__

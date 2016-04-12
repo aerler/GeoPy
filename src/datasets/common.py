@@ -78,10 +78,11 @@ shape_folder = data_root + '/shapes/' # folder for pickled grids
 ## utility functions for datasets
 
 
-def addLoadFcts(namespace, dataset, exps, comment="\n(Load function with set 'exps' and 'enses' values.)"):
+def addLoadFcts(namespace, dataset, exps, comment=" (Experiment and Ensemble lists are already set.)"):
   ''' function to add dataset load functions to the local namespace, which already have a fixed experiments dictionary '''
   # search namespace for load functions
-  for name,fct in dataset.__dict__.iteritems():
+  vardict = dataset if isinstance(dataset, dict) else dataset.__dict__
+  for name,fct in vardict.iteritems():
     if isCallable(fct) and name[:4] == 'load':
       newfct = functools.partial(fct, exps=exps)
       newfct.__doc__ = fct.__doc__ + comment # copy doc-string with comment
@@ -408,66 +409,66 @@ class BatchLoad(object):
 
 # convenience shortcut to load only climatologies 
 @BatchLoad
-def loadClim(name=None, **kwargs):
+def loadClim(name=None, WRF_exps=None, CESM_exps=None, **kwargs):
   ''' A function to load any standardized climatologies; identifies source by name heuristics '''
-  return loadDataset(name=name, station=None, mode='climatology', **kwargs)
+  return loadDataset(name=name, station=None, mode='climatology', WRF_exps=WRF_exps, CESM_exps=CESM_exps, **kwargs)
 
 # convenience shortcut to load only staton time-series
 @BatchLoad
-def loadStnTS(name=None, station=None, **kwargs):
+def loadStnTS(name=None, station=None, WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, **kwargs):
     ''' A function to load any standardized time-series at station locations. '''
-    return loadDataset(name=name, station=station, shape=None, mode='time-series', **kwargs)
+    return loadDataset(name=name, station=station, shape=None, mode='time-series', 
+                       WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, CESM_ens=CESM_ens, **kwargs)
 
 # convenience shortcut to load only regionally averaged time-series
 @BatchLoad
-def loadShpTS(name=None, shape=None, **kwargs):
+def loadShpTS(name=None, shape=None, WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, **kwargs):
     ''' A function to load any standardized time-series averaged over regions. '''
-    return loadDataset(name=name, station=None, shape=shape, mode='time-series', **kwargs)
+    return loadDataset(name=name, station=None, shape=shape, mode='time-series', 
+                       WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, CESM_ens=CESM_ens, **kwargs)
   
 # universal load function that will be imported by datasets
 @BatchLoad
-def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwargs):
+def loadDataset(name=None, station=None, shape=None, mode='climatology', 
+                WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, **kwargs):
   ''' A function to load any datasets; identifies source by name heuristics. '''
   # some private imports (prevent import errors)  
-  from projects.WRF_experiments import WRF_exps, WRF_experiments
-  from datasets.CESM import CESM_exps, CESM_experiments
   orig_name = name
   # identify dataset source
   lensemble = False; lobs = False
   if mode.upper() == 'CVDP':
     # resolve WRF experiments to parent CESM runs or Reanalysis for CVDP
-    if name in WRF_exps: name = WRF_exps[name].parent
-    elif name in WRF_experiments: name = WRF_experiments[name].parent
-    elif name[:-4] in WRF_exps: name = WRF_exps[name[:-4]].parent
-    elif name[:-4] in WRF_experiments: name = WRF_experiments[name[:-4]].parent
+    if WRF_exps:
+      if name in WRF_exps: name = WRF_exps[name].parent
+      elif name[:-4] in WRF_exps: name = WRF_exps[name[:-4]].parent
+      # N.B.: a WRF ensemble should directly reference a CESM ensemble
     # special case for observational data in the CVDP package (also applies to Reanalysis)
     if name.lower() in ('hadisst','mlost','20thc_reanv2','gpcp'): lobs = True
-    elif name.lower()[:3] == 'obs' or name.isupper(): # load observational data for comparison (also includes reanalysis)
+    elif name.lower()[:3] == 'obs': # load observational data for comparison (also includes reanalysis)
       lobs = True; name = None # select dataset based on variable list (in loadCVDP_Obs)
-    elif not name in CESM_exps or name in CESM_experiments: 
+    elif not name in CESM_exps: 
       raise ArgumentError, "No CVDP dataset matching '{:s}' found.".format(name)
     # nothing to do for CESM runs
+    dataset_name = 'CESM' # also in CESM module
+  elif WRF_exps and ( name in WRF_exps or name[:-4] in WRF_exps ):
+    # this is most likely a WRF experiment
+    dataset_name = 'WRF'
+  elif WRF_ens and ( name in WRF_ens or name[:-4] in WRF_ens ):
+    # this is most likely a WRF ensemble
+    dataset_name = 'WRF'; lensemble = True
+  elif CESM_exps and name in CESM_exps:
+    # this is most likely a CESM experiment
     dataset_name = 'CESM'
-    import datasets.CESM as dataset # also in CESM module
-  elif ( name in WRF_exps or name in WRF_experiments or 
-       name[:-4] in WRF_exps or name[:-4] in WRF_experiments ):
-    # this is most likely a WRF experiment or ensemble
-    import datasets.WRF as dataset
-    from projects.WRF_experiments import WRF_ens
-    dataset_name = 'WRF'    
-    lensemble = name in WRF_ens or name[:-4] in WRF_ens
-  elif name in CESM_exps or name in CESM_experiments:
-    # this is most likely a CESM experiment or ensemble
-    import datasets.CESM as dataset
-    from datasets.CESM import CESM_ens
-    dataset_name = 'CESM'
-    lensemble = name in  CESM_ens
+  elif CESM_ens and name in CESM_ens:
+    # this is most likely a CESM ensemble
+    dataset_name = 'CESM'; lensemble = True
   else:
     # this is most likely an observational dataset
     if name[:3].lower() == 'obs': dataset_name = 'EC' if station else 'Unity' # alias... 
     else: dataset_name = name 
-    try: dataset = import_module('datasets.{0:s}'.format(dataset_name))
-    except ImportError: raise ArgumentError, "No dataset matching '{:s}' found.".format(dataset_name)
+  # import dataset based on name
+  try: dataset = import_module('datasets.{0:s}'.format(dataset_name))
+  except ImportError: raise ArgumentError, "No dataset matching '{:s}' found.".format(dataset_name)
   # identify load function  
   if mode.upper() in ('CVDP',):
     load_fct = 'loadCVDP'
@@ -494,9 +495,10 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', **kwarg
     raise ArgumentError, "Dataset '{:s}' has no method '{:s}'".format(dataset_name,load_fct)
   if not inspect.isfunction(load_fct): 
     raise ArgumentError, "Attribute '{:s}' in module '{:s}' is not a function".format(load_fct.__name__,dataset_name)
+    # N.B.: for example, inspect does not work properly on functools.partial objects, and functools.partial does not return a function 
   # generate and check arguments
-  kwargs.update(name=name, station=station, shape=shape, mode=mode)
-  argspec, varargs, keywords, defaults = inspect.getargspec(load_fct); del varargs, keywords, defaults
+  kwargs.update(name=name, station=station, shape=shape, mode=mode, WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, CESM_ens=CESM_ens)
+  argspec, varargs, keywords = inspect.getargs(load_fct); del varargs, keywords
   kwargs = {key:value for key,value in kwargs.iteritems() if key in argspec}
   # load dataset
   dataset = load_fct(**kwargs)
