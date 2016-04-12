@@ -1659,8 +1659,8 @@ if __name__ == "__main__":
 #     specific_tests += ['Ensemble']
 #     specific_tests += ['DistributionVariables']
 #     specific_tests += ['StatsTests']   
-    specific_tests += ['UnaryArithmetic']
-    specific_tests += ['BinaryArithmetic']
+#     specific_tests += ['UnaryArithmetic']
+#     specific_tests += ['BinaryArithmetic']
 #     specific_tests += ['Copy']
 #     specific_tests += ['ApplyToAll']
 #     specific_tests += ['AddProjection']
@@ -1673,9 +1673,9 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']

@@ -815,24 +815,27 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
 # load a pre-processed WRF ensemble and concatenate time-series 
 def loadWRF_StnEns(ensemble=None, name=None, station=None, filetypes=None, years=None, domains=None, 
                    varlist=None, title=None, varatts=None, translateVars=None, lcheckVars=None, 
-                   lcheckAxis=True, lwrite=False, axis=None, lensembleAxis=False):
+                   lcheckAxis=True, lwrite=False, axis=None, lensembleAxis=False, exps=None, enses=None):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadWRF_Ensemble(ensemble=ensemble, grid=None, station=station, domains=domains, 
                           filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
                           translateVars=translateVars, lautoregrid=False, lctrT=True, lconst=False,
                           lcheckVars=lcheckVars, lcheckAxis=lcheckAxis, name=name, title=title, 
-                          lwrite=lwrite, lensembleAxis=lensembleAxis, check_vars='station_name')
+                          lwrite=lwrite, lensembleAxis=lensembleAxis, check_vars='station_name', 
+                          exps=exps, enses=enses)
   
 # load a pre-processed WRF ensemble and concatenate time-series 
 def loadWRF_ShpEns(ensemble=None, name=None, shape=None, filetypes=None, years=None, domains=None, 
                    varlist=None, title=None, varatts=None, translateVars=None, lcheckVars=None, 
-                   lcheckAxis=True, lencl=False, lwrite=False, axis=None, lensembleAxis=False):
+                   lcheckAxis=True, lencl=False, lwrite=False, axis=None, lensembleAxis=False, 
+                   exps=None, enses=None):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadWRF_Ensemble(ensemble=ensemble, grid=None, station=None, shape=shape, domains=domains, 
                           filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, lencl=lencl, 
                           translateVars=translateVars, lautoregrid=False, lctrT=True, lconst=False,
                           lcheckVars=lcheckVars, lcheckAxis=lcheckAxis, name=name, title=title, 
-                          lwrite=lwrite, axis=axis, lensembleAxis=lensembleAxis, check_vars='shape_name')
+                          lwrite=lwrite, axis=axis, lensembleAxis=lensembleAxis, check_vars='shape_name', 
+                          exps=exps, enses=enses)
   
 # load a pre-processed WRF ensemble and concatenate time-series 
 def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=None, domains=None, 
@@ -885,7 +888,8 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
     dataset = loadWRF_All(experiment=None, name=ensemble, grid=grid, station=station, shape=shape, 
                           period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                           mode='time-series', lencl=lencl, lautoregrid=lautoregrid, lctrT=lctrT, 
-                          lconst=lconst, domains=domains, lwrite=lwrite, check_vars=check_vars, exps=exps)
+                          lconst=lconst, domains=domains, lwrite=lwrite, check_vars=check_vars)
+    # N.B.: passing exps or enses should not be necessary here
   else:
     # load datasets (and load!)
     datasets = []
@@ -893,7 +897,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
       ds = loadWRF_All(experiment=None, name=exp, grid=grid, station=station, shape=shape, 
                        period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                        mode='time-series', lencl=lencl, lautoregrid=lautoregrid, lctrT=lctrT, 
-                       lconst=lconst, domains=domains, lwrite=lwrite, check_vars=check_vars, exps=exps).load()
+                       lconst=lconst, domains=domains, lwrite=lwrite, check_vars=check_vars).load()
       if montpl: ds = ds(time=montpl, lidx=True) # slice the time dimension to make things consistent
       datasets.append(ds)
     # harmonize axes
@@ -938,15 +942,15 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-#  mode = 'test_climatology'
-#  mode = 'test_timeseries'
+#   mode = 'test_climatology'
+#   mode = 'test_timeseries'
   mode = 'test_ensemble'
-#  mode = 'test_point_climatology'
-#  mode = 'test_point_timeseries'
-#  mode = 'test_point_ensemble'
-#  mode = 'pickle_grid' 
-  pntset = 'shpavg'
-#   pntset = 'ecprecip'
+  mode = 'test_point_climatology'
+#   mode = 'test_point_timeseries'
+#   mode = 'test_point_ensemble'
+#   mode = 'pickle_grid' 
+#   pntset = 'shpavg'
+  pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['glb1','arb1', 'arb2', 'arb3']; regions = ['GreatLakes']+['WesternCanada']*3; domains = [1,2]
   experiments = ['g-ctrl','rrtmg', 'ctrl', 'new']
@@ -955,7 +959,8 @@ if __name__ == '__main__':
 #   grids = ['wc2']; experiments = ['erai-wc2-2013']; domains = [1,2]
 #   grids = ['arb2-120km']; experiments = ['max-lowres']; domains = [1,]   
     
-  from projects.WRF_experiments import WRF_exps, ensembles
+  from projects.WRF_experiments import Exp, WRF_exps, ensembles
+  # N.B.: importing Exp through WRF_experiments is necessary, otherwise some isinstance() calls fail
     
   # pickle grid definition
   if mode == 'pickle_grid':
@@ -1060,7 +1065,7 @@ if __name__ == '__main__':
       print(dataset.shape)
       print(dataset.shape.coord)
     else:
-      dataset = loadWRF_Stn(experiment='erai', domains=None, station=pntset, filetypes=['hydro'], period=(1979,1984))
+      dataset = loadWRF_Stn(experiment='erai', domains=None, station=pntset, filetypes=['hydro'], period=(1979,1984), exps=WRF_exps)
       zs_err = dataset.zs.getArray() - dataset.stn_zs.getArray()
       print(zs_err.min(),zs_err.mean(),zs_err.std(),zs_err.max())
 #       print('')
@@ -1070,7 +1075,8 @@ if __name__ == '__main__':
     print('')
     print(dataset)
     print('')
-  
+    
+    
   # load station time-series file
   elif mode == 'test_point_timeseries':
     
@@ -1090,6 +1096,7 @@ if __name__ == '__main__':
     print(dataset.time)
     print(dataset.time.offset)
     print(dataset.time.coord)
+    
   
   # load station ensemble "time-series"
   elif mode == 'test_point_ensemble':

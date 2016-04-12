@@ -78,13 +78,14 @@ shape_folder = data_root + '/shapes/' # folder for pickled grids
 ## utility functions for datasets
 
 
-def addLoadFcts(namespace, dataset, exps):
+def addLoadFcts(namespace, dataset, exps, comment="\n(Load function with set 'exps' and 'enses' values.)"):
   ''' function to add dataset load functions to the local namespace, which already have a fixed experiments dictionary '''
   # search namespace for load functions
   for name,fct in dataset.__dict__.iteritems():
     if isCallable(fct) and name[:4] == 'load':
-      #TODO: make better docstring!
-      namespace[name] = functools.partial(fct, exps=exps)
+      newfct = functools.partial(fct, exps=exps)
+      newfct.__doc__ = fct.__doc__ + comment # copy doc-string with comment
+      namespace[name] = newfct
   # not really necessary, since dicts are passed by reference
   return namespace
 
