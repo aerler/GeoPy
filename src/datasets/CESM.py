@@ -32,82 +32,19 @@ diagfolder = root_folder + 'diag/' # output from AMWG diagnostic package (climat
 class Exp(WRF_Exp): 
   parameters = WRF_Exp.parameters.copy()
   defaults = WRF_Exp.defaults.copy()
-  defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/'.format(avgfolder,atts['name'])
+  # special CESM parameters
   parameters['cvdpfolder'] = dict(type=basestring,req=True) # new parameters need to be registered
-  defaults['cvdpfolder'] = lambda atts: '{0:s}/{1:s}/'.format(cvdpfolder,atts['name'])
   parameters['diagfolder'] = dict(type=basestring,req=True) # new parameters need to be registered
+  # and defaults
+  defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/'.format(avgfolder,atts['name'])
+  defaults['cvdpfolder'] = lambda atts: '{0:s}/{1:s}/'.format(cvdpfolder,atts['name'])
   defaults['diagfolder'] = lambda atts: '{0:s}/{1:s}/'.format(diagfolder,atts['name'])
-  defaults['parents'] = None # not applicable here
+  defaults['domains'] = None # not applicable here
+  defaults['parent'] = None # not applicable here
   
-# list of experiments
-# N.B.: This is the reference list, with unambiguous, unique keys and no aliases/duplicate entries  
-experiments = OrderedDict() # dictionary of experiments
-# historical 
-# N.B.: the extnded ensemble end data is necessary for CVDP
-experiments['ens20trcn1x1']  = Exp(shortname='Ens',    name='ens20trcn1x1',  title='CESM Ensemble Mean', begindate='1979-01-01', enddate='2039-01-01', grid='cesm1x1')
-experiments['mens20trcn1x1'] = Exp(shortname='MEns',   name='mens20trcn1x1', title='CESM Mini Ensemble', begindate='1979-01-01', enddate='2024-01-01', grid='cesm1x1')
-experiments['tb20trcn1x1']   = Exp(shortname='Ctrl-1', name='tb20trcn1x1',   title='Exp 1 (CESM)', begindate='1979-01-01', enddate='1994-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
-experiments['hab20trcn1x1']  = Exp(shortname='Ctrl-A', name='hab20trcn1x1',  title='Exp 2 (CESM)', begindate='1979-01-01', enddate='1994-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
-experiments['hbb20trcn1x1']  = Exp(shortname='Ctrl-B', name='hbb20trcn1x1',  title='Exp 3 (CESM)', begindate='1979-01-01', enddate='1994-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
-experiments['hcb20trcn1x1']  = Exp(shortname='Ctrl-C', name='hcb20trcn1x1',  title='Exp 4 (CESM)', begindate='1979-01-01', enddate='1994-01-01', grid='cesm1x1', ensemble='ens20trcn1x1')
-# mid-21st century
-experiments['ensrcp85cn1x1']  = Exp(shortname='Ens-2050',    name='ensrcp85cn1x1',  title='CESM Ensemble Mean (2050)', begindate='2045-01-01', enddate='2105-01-01', grid='cesm1x1')
-experiments['mensrcp85cn1x1'] = Exp(shortname='MEns-2050',   name='mensrcp85cn1x1', title='CESM Mini Ensemble (2050)', begindate='2045-01-01', enddate='2090-01-01', grid='cesm1x1')
-experiments['seaice-5r-hf']   = Exp(shortname='Seaice-2050', name='seaice-5r-hf',   title='Seaice (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1')
-experiments['htbrcp85cn1x1']  = Exp(shortname='Ctrl-1-2050', name='htbrcp85cn1x1',  title='Exp 1 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
-experiments['habrcp85cn1x1']  = Exp(shortname='Ctrl-A-2050', name='habrcp85cn1x1',  title='Exp 2 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
-experiments['hbbrcp85cn1x1']  = Exp(shortname='Ctrl-B-2050', name='hbbrcp85cn1x1',  title='Exp 3 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
-experiments['hcbrcp85cn1x1']  = Exp(shortname='Ctrl-C-2050', name='hcbrcp85cn1x1',  title='Exp 4 (CESM, 2050)', begindate='2045-01-01', enddate='2060-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1')
-# mid-21st century
-experiments['ensrcp85cn1x1d']  = Exp(shortname='Ens-2100',    name='ensrcp85cn1x1d',  title='CESM Ensemble Mean (2100)', begindate='2085-01-01', enddate='2145-01-01', grid='cesm1x1')
-experiments['mensrcp85cn1x1d'] = Exp(shortname='MEns-2100',   name='mensrcp85cn1x1d', title='CESM Mini Ensemble (2100)', begindate='2085-01-01', enddate='2130-01-01', grid='cesm1x1')
-experiments['seaice-5r-hfd']   = Exp(shortname='Seaice-2100', name='seaice-5r-hfd',   title='Seaice (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1')
-experiments['htbrcp85cn1x1d']  = Exp(shortname='Ctrl-1-2100', name='htbrcp85cn1x1d',  title='Exp 1 (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
-experiments['habrcp85cn1x1d']  = Exp(shortname='Ctrl-A-2100', name='habrcp85cn1x1d',  title='Exp 2 (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
-experiments['hbbrcp85cn1x1d']  = Exp(shortname='Ctrl-B-2100', name='hbbrcp85cn1x1d',  title='Exp 3 (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
-experiments['hcbrcp85cn1x1d']  = Exp(shortname='Ctrl-C-2100', name='hcbrcp85cn1x1d',  title='Exp 4 (CESM, 2100)', begindate='2085-01-01', enddate='2100-01-01', grid='cesm1x1', ensemble='ensrcp85cn1x1d')
-## an alternate dictionary using short names and aliases for referencing
-exps = OrderedDict()
-# use short names where available, normal names otherwise
-for key,item in experiments.iteritems():
-  exps[item.name] = item
-  if item.shortname is not None: 
-    exps[item.shortname] = item
-  # both, short and long name are added to list
-# add aliases here
-CESM_exps = exps # alias for whole dict
-CESM_experiments = experiments # alias for whole dict
-
-## dict of ensembles
-ensembles = CESM_ens = OrderedDict()
-# initial condition ensemble
-ensembles['ens20trcn1x1'] =   [tag+'20trcn1x1' for tag in 'tb', 'hab', 'hab', 'hab']
-ensembles['ensrcp85cn1x1'] =  [tag+'rcp85cn1x1' for tag in 'htb', 'hab', 'hab', 'hab']
-ensembles['ensrcp85cn1x1d'] = [tag+'rcp85cn1x1d' for tag in 'htb', 'hab', 'hab', 'hab']
-ensembles['mens20trcn1x1'] =   [tag+'20trcn1x1' for tag in 'hab', 'hab', 'hab']
-ensembles['mensrcp85cn1x1'] =  [tag+'rcp85cn1x1' for tag in 'hab', 'hab', 'hab']
-ensembles['mensrcp85cn1x1d'] = [tag+'rcp85cn1x1d' for tag in 'hab', 'hab', 'hab']
-
-# N.B.: static & meta data for the ensemble is copied from the first-listed member;
-#       this includes station attributes, such as the elevation error 
-# replace names with experiment instances
-for ensname,enslist in ensembles.items(): # don't use iter, because we chagne the dict!
-  members = tuple([experiments[expname] for expname in enslist])
-  ensembles[ensname] = members
-  ensembles[experiments[ensname].shortname] = members
-
-# ## dict of ensembles
-# ensembles = CESM_ens = OrderedDict()
-# ensemble_list = list(set([exp.ensemble for exp in experiments.values() if exp.ensemble]))
-# # ensemble_list.sort()
-# for ensemble in ensemble_list:
-#   #print ensemble, experiments[ensemble].shortname
-#   members = [exp for exp in experiments.values() if exp.ensemble and exp.ensemble == ensemble]
-# #   members.sort()
-#   ensembles[experiments[ensemble].shortname] = members
 
 # return name and folder
-def getFolderName(name=None, experiment=None, folder=None, mode='avg', cvdp_mode=None, lcheckExp=True):
+def getFolderName(name=None, experiment=None, folder=None, mode='avg', cvdp_mode=None, exps=None):
   ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
   # figure out experiment name
@@ -120,6 +57,7 @@ def getFolderName(name=None, experiment=None, folder=None, mode='avg', cvdp_mode
   else:
     # load experiment meta data
     if isinstance(experiment,Exp): pass # preferred option
+    elif exps is None: raise DatasetError, 'No dictionary of Exp instances specified.'
     elif isinstance(experiment,basestring): experiment = exps[experiment] 
     elif isinstance(name,basestring) and name in exps: experiment = exps[name]
     else: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(name or experiment)
@@ -346,7 +284,7 @@ def loadCVDP_Obs(name=None, grid=None, period=None, varlist=None, varatts=None,
 # CVDP diagnostics (monthly time-series, EOF pattern and correlations) 
 def loadCVDP(experiment=None, name=None, grid=None, period=None, varlist=None, varatts=None, 
              cvdp_mode=None, translateVars=None, lautoregrid=None, ignore_list=None, 
-             lcheckExp=True, lindices=False, leofs=False, lreplaceTime=True):
+             lcheckExp=True, lindices=False, leofs=False, lreplaceTime=True, exps=None):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
   if grid is not None: raise NotImplementedError
 #   if period is None: period = 15
@@ -358,77 +296,77 @@ def loadCVDP(experiment=None, name=None, grid=None, period=None, varlist=None, v
   return loadCESM_All(experiment=experiment, name=name, grid=grid, period=period, filetypes=('cvdp',), 
                   varlist=varlist, varatts=varatts, translateVars=translateVars, lautoregrid=lautoregrid, 
                   load3D=True, ignore_list=ignore_list, mode='CVDP', cvdp_mode=cvdp_mode, 
-                  lcheckExp=lcheckExp, lreplaceTime=lreplaceTime)
+                  lcheckExp=lcheckExp, lreplaceTime=lreplaceTime, exps=exps)
 
 # Station Time-Series (monthly)
 def loadCESM_StnTS(experiment=None, name=None, station=None, filetypes=None, varlist=None, 
                    varatts=None, translateVars=None, load3D=False, ignore_list=None, 
-                   lcheckExp=True, lreplaceTime=True, lwrite=False):
+                   lcheckExp=True, lreplaceTime=True, lwrite=False, exps=None):
   ''' Get a properly formatted CESM dataset with a monthly time-series at station locations. '''
   return loadCESM_All(experiment=experiment, name=name, grid=None, period=None, station=station, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, lreplaceTime=lreplaceTime, 
                       translateVars=translateVars, lautoregrid=False, load3D=load3D, lwrite=lwrite, 
                       ignore_list=ignore_list, mode='time-series', lcheckExp=lcheckExp, 
-                      check_vars='station_name')
+                      check_vars='station_name', exps=exps)
 
 # Station Time-Series (monthly)
 def loadCESM_ShpTS(experiment=None, name=None, shape=None, filetypes=None, varlist=None, varatts=None,  
                    translateVars=None, load3D=False, ignore_list=None, lcheckExp=True, lreplaceTime=True,
-                   lencl=False, lwrite=False):
+                   lencl=False, lwrite=False, exps=None):
   ''' Get a properly formatted CESM dataset with a monthly time-series averaged over regions. '''
   return loadCESM_All(experiment=experiment, name=name, grid=None, period=None, shape=shape, lencl=lencl, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, lreplaceTime=lreplaceTime, 
                       translateVars=translateVars, lautoregrid=False, load3D=load3D, station=None, 
                       ignore_list=ignore_list, mode='time-series', lcheckExp=lcheckExp, 
-                      lwrite=lwrite, check_vars='shape_name')
+                      lwrite=lwrite, check_vars='shape_name', exps=exps)
 
 # Time-Series (monthly)
 def loadCESM_TS(experiment=None, name=None, grid=None, filetypes=None, varlist=None, varatts=None,  
                 translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, lcheckExp=True,
-                lreplaceTime=True, lwrite=False):
+                lreplaceTime=True, lwrite=False, exps=None):
   ''' Get a properly formatted CESM dataset with a monthly time-series. (wrapper for loadCESM)'''
   return loadCESM_All(experiment=experiment, name=name, grid=grid, period=None, station=None, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, translateVars=translateVars, 
                       lautoregrid=lautoregrid, load3D=load3D, ignore_list=ignore_list, mode='time-series', 
-                      lcheckExp=lcheckExp, lreplaceTime=lreplaceTime, lwrite=lwrite)
+                      lcheckExp=lcheckExp, lreplaceTime=lreplaceTime, lwrite=lwrite, exps=exps)
 
 # Station Climatologies (monthly)
 def loadCESM_Stn(experiment=None, name=None, station=None, period=None, filetypes=None, varlist=None, 
                  varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, 
-                 lcheckExp=True, lwrite=False):
+                 lcheckExp=True, lwrite=False, exps=None):
   ''' Get a properly formatted CESM dataset with the monthly climatology at station locations. '''
   return loadCESM_All(experiment=experiment, name=name, grid=None, period=period, station=station, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, lreplaceTime=False, 
                       translateVars=translateVars, lautoregrid=lautoregrid, load3D=load3D, 
                       ignore_list=ignore_list, mode='climatology', lcheckExp=lcheckExp, 
-                      lwrite=lwrite, check_vars='station_name')
+                      lwrite=lwrite, check_vars='station_name', exps=exps)
 
 # Regional Climatologies (monthly)
 def loadCESM_Shp(experiment=None, name=None, shape=None, period=None, filetypes=None, varlist=None, 
                  varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, 
-                 lcheckExp=True, lencl=False, lwrite=False):
+                 lcheckExp=True, lencl=False, lwrite=False, exps=None):
   ''' Get a properly formatted CESM dataset with the monthly climatology averaged over regions. '''
   return loadCESM_All(experiment=experiment, name=name, grid=None, period=period, station=None, 
                       shape=shape, lencl=lencl, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                       lreplaceTime=False, translateVars=translateVars, lautoregrid=lautoregrid, 
-                      load3D=load3D, ignore_list=ignore_list, mode='climatology', 
+                      load3D=load3D, ignore_list=ignore_list, mode='climatology', exps=exps, 
                       lcheckExp=lcheckExp, lwrite=lwrite, check_vars='shape_name')
 
 # load minimally pre-processed CESM climatology files 
 def loadCESM(experiment=None, name=None, grid=None, period=None, filetypes=None, varlist=None, 
              varatts=None, translateVars=None, lautoregrid=None, load3D=False, ignore_list=None, 
-             lcheckExp=True, lreplaceTime=True, lencl=False, lwrite=False):
+             lcheckExp=True, lreplaceTime=True, lencl=False, lwrite=False, exps=None):
   ''' Get a properly formatted monthly CESM climatology as NetCDFDataset. '''
   return loadCESM_All(experiment=experiment, name=name, grid=grid, period=period, station=None, 
                       filetypes=filetypes, varlist=varlist, varatts=varatts, translateVars=translateVars, 
-                      lautoregrid=lautoregrid, load3D=load3D, ignore_list=ignore_list, 
+                      lautoregrid=lautoregrid, load3D=load3D, ignore_list=ignore_list, exps=exps, 
                       mode='climatology', lcheckExp=lcheckExp, lreplaceTime=lreplaceTime, lwrite=lwrite)
 
 
 # load any of the various pre-processed CESM climatology and time-series files 
 def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None, period=None, 
                  varlist=None, varatts=None, translateVars=None, lautoregrid=None, load3D=False, 
-                 ignore_list=None, mode='climatology', cvdp_mode=None, lcheckExp=True, 
+                 ignore_list=None, mode='climatology', cvdp_mode=None, lcheckExp=True, exps=None,
                  lreplaceTime=True, filetypes=None, lencl=False, lwrite=False, check_vars=None):
   ''' Get any of the monthly CESM files as a properly formatted NetCDFDataset. '''
   # period
@@ -441,23 +379,23 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
   lclim = False; lts = False; lcvdp = False; ldiag = False # mode switches
   if mode.lower() == 'climatology': # post-processed climatology files
     lclim = True
-    folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='avg', lcheckExp=lcheckExp)    
+    folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='avg', exps=exps)    
     if period is None: raise DateError, 'Currently CESM Climatologies have to be loaded with the period explicitly specified.'
   elif mode.lower() in ('time-series','timeseries'): # concatenated time-series files
     lts = True
-    folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='avg', lcheckExp=lcheckExp)
+    folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='avg', exps=exps)
     lclim = False; period = None; periodstr = None # to indicate time-series (but for safety, the input must be more explicit)
     if lautoregrid is None: lautoregrid = False # this can take very long!
   elif mode.lower() == 'cvdp': # concatenated time-series files
     lcvdp = True
     folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='cvdp', 
-                                           cvdp_mode=cvdp_mode, lcheckExp=lcheckExp)
+                                           cvdp_mode=cvdp_mode, exps=exps)
     if period is None:
       if not isinstance(experiment,Exp): raise DatasetError, 'Periods can only be inferred for registered datasets.'
       period = (experiment.beginyear, experiment.endyear)  
   elif mode.lower() == 'diag': # concatenated time-series files
     ldiag = True
-    folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='diag', lcheckExp=lcheckExp)
+    folder,experiment,name = getFolderName(name=name, experiment=experiment, folder=None, mode='diag', exps=exps)
     raise NotImplementedError, "Loading AMWG diagnostic files is not supported yet."
   else: raise NotImplementedError,"Unsupported mode: '{:s}'".format(mode)  
   # cast/copy varlist
@@ -624,26 +562,30 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
 def loadCESM_ShpEns(ensemble=None, name=None, shape=None, filetypes=None, years=None,
                     varlist=None, varatts=None, translateVars=None, load3D=False, lcheckVars=None, 
-                    ignore_list=None, lcheckExp=True, lencl=False, axis=None, lensembleAxis=False):
+                    ignore_list=None, lcheckExp=True, lencl=False, axis=None, lensembleAxis=False,
+                    exps=None, enses=None):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadCESM_Ensemble(ensemble=ensemble, name=name, grid=None, station=None, shape=shape, 
                            filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
                            translateVars=translateVars, lautoregrid=False, load3D=load3D, 
                            ignore_list=ignore_list, cvdp_mode='ensemble', lcheckExp=lcheckExp, 
                            mode='time-series', lreplaceTime=True, lencl=lencl, lcheckVars=lcheckVars,
-                           axis=axis, lensembleAxis=lensembleAxis, check_vars='shape_name')
+                           axis=axis, lensembleAxis=lensembleAxis, check_vars='shape_name',
+                           exps=exps, enses=enses)
 
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
 def loadCESM_StnEns(ensemble=None, name=None, station=None, filetypes=None, years=None,
                     varlist=None, varatts=None, translateVars=None, load3D=False, lcheckVars=None, 
-                    ignore_list=None, lcheckExp=True, axis=None, lensembleAxis=False):
+                    ignore_list=None, lcheckExp=True, axis=None, lensembleAxis=False,
+                    exps=None, enses=None):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   return loadCESM_Ensemble(ensemble=ensemble, name=name, grid=None, station=station, shape=None,
                            filetypes=filetypes, years=years, varlist=varlist, varatts=varatts, 
                            translateVars=translateVars, lautoregrid=False, load3D=load3D, 
                            ignore_list=ignore_list, cvdp_mode='ensemble', lcheckExp=lcheckExp, 
                            mode='time-series', lreplaceTime=True, lcheckVars=lcheckVars, axis=axis, 
-                           lensembleAxis=lensembleAxis, check_vars='station_name')
+                           lensembleAxis=lensembleAxis, check_vars='station_name',
+                           exps=exps, enses=enses)
 
   
 # load a pre-processed CESM ensemble and concatenate time-series (also for CVDP) 
@@ -651,7 +593,8 @@ def loadCESM_Ensemble(ensemble=None, name=None, title=None, grid=None, station=N
                       years=None, varlist=None, varatts=None, translateVars=None, lautoregrid=None, 
                       load3D=False, ignore_list=None, cvdp_mode='ensemble', lcheckExp=True, lencl=False, 
                       mode='time-series', lindices=False, leofs=False, filetypes=None, lreplaceTime=True,
-                      axis=None, lensembleAxis=False, lcheckVars=None, check_vars=None):
+                      axis=None, lensembleAxis=False, lcheckVars=None, check_vars=None,
+                      exps=None, enses=None):
   ''' A function to load all datasets in an ensemble and concatenate them along the time axis. '''
   # obviously this only works for modes that produce a time-axis
   if mode.lower() not in ('time-series','timeseries','cvdp'): 
@@ -660,17 +603,25 @@ def loadCESM_Ensemble(ensemble=None, name=None, title=None, grid=None, station=N
   if ensemble is None and name is not None: 
     ensemble = name; name = None # just switch
   if isinstance(ensemble,(tuple,list)):
-    if not all([isinstance(exp,(basestring,Exp)) for exp in ensemble]): raise TypeError
+    if not all([isinstance(exp,(basestring,Exp)) for exp in ensemble]): 
+      raise TypeError    
+    ensemble = [ens if isinstance(ens,Exp) else exps[ens] for ens in ensemble] # convert to Exp's    
+    # annotation
+    if name is None: name = ensemble[0].shortname
+    if title is None: title = ensemble[0].title
   else:
     if isinstance(ensemble,Exp): 
       # annotation (while ensemble is an Exp instance)
       if name is None: name = ensemble.shortname
       if title is None: title = ensemble.title              
-      ensemble = ensembles[ensemble.shortname]
+      ensemble = enses[ensemble.shortname]
     elif isinstance(ensemble,basestring): 
       if name is None: name = ensemble
       if title is None: title = ensemble                    
-      ensemble = ensembles[ensemble]
+      # convert name to actual ensemble object
+      if not isinstance(enses,dict): raise DatasetError, 'No dictionary of Exp instances specified.'
+      if ensemble in enses: ensemble = enses[ensemble]
+      else: raise TypeError, ensemble
     else: raise TypeError
   # figure out time period
   if years is None: years =15; yrtpl = (0,15)
@@ -760,6 +711,9 @@ if __name__ == '__main__':
 #   pntset = 'shpavg'
   pntset = 'ecprecip'
 
+  from projects.CESM_experiments import Exp, CESM_exps, ensembles
+  # N.B.: importing Exp through WRF_experiments is necessary, otherwise some isinstance() calls fail
+
   # pickle grid definition
   if mode == 'pickle_grid':
     
@@ -848,10 +802,12 @@ if __name__ == '__main__':
     print('')
     if pntset in ('shpavg',):
       dataset = loadCESM_ShpEns(ensemble='Ens', shape=pntset, filetypes=['atm'], 
-                                lensembleAxis=lensembleAxis, varlist=['precip'])
+                                lensembleAxis=lensembleAxis, varlist=['precip'], 
+                                exps=CESM_exps, enses=ensembles)
     else:
       dataset = loadCESM_StnEns(name='Ens', station=pntset, filetypes=['hydro'], 
-                                lensembleAxis=lensembleAxis, varlist=[variable])
+                                lensembleAxis=lensembleAxis, varlist=[variable], 
+                                exps=CESM_exps, enses=ensembles)
     print('')
     print(dataset)
     assert dataset.name == 'Ens'

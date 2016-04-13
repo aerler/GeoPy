@@ -8,7 +8,18 @@ This module contains meta data for all available WRF experiments.
 
 from collections import OrderedDict
 from datasets.common import addLoadFcts
-from datasets.WRF import Exp
+from datasets.WRF import Exp as WRF_Exp
+
+## EXP class with specific default values
+class Exp(WRF_Exp): 
+  parameters = WRF_Exp.parameters.copy()
+  defaults = WRF_Exp.defaults.copy()
+  # set some project specific defaults
+  defaults['parent'] = 'Ctrl-1' # CESM simulations that is driving most of the WRF runs   
+  defaults['project'] = 'WesternCanada' # most WRF runs so far are from this project
+  defaults['domains'] = 2 # most WRF runs have two domains
+  defaults['begindate'] = '1979-01-01' # most WRF runs start in 1979
+  defaults['grid'] = 'arb2' # Marc's Great Lakes domain
 
 ## list of experiments
 # N.B.: This is the reference list, with unambiguous, unique keys and no aliases/duplicate entries  

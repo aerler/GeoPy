@@ -49,11 +49,7 @@ class Exp(object):
   defaults = dict()
   defaults['shortname'] = lambda atts: atts['name']
   defaults['title'] = lambda atts: atts['name'] # need lambda, because parameters are not set yet
-  defaults['parent'] = 'Ctrl-1' # CESM simulations that is driving most of the WRF runs   
-  defaults['project'] = 'WesternCanada' # most WRF runs so far are from this project
-  defaults['domains'] = 2 # most WRF runs have two domains
   defaults['avgfolder'] = lambda atts: '{0:s}/{1:s}/{2:s}/'.format(avgfolder,atts['project'],atts['name'])
-  defaults['begindate'] = '1979-01-01'
   defaults['beginyear'] = lambda atts: int(atts['begindate'].split('-')[0])  if atts['begindate'] else None # first field
   defaults['endyear'] = lambda atts: int(atts['enddate'].split('-')[0]) if atts['enddate'] else None # first field
   
@@ -865,15 +861,14 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
         ensname = ensemble[:-4] 
         name = ensemble if name is None else name # save original name
       else: ensname = ensemble 
-      ensemble = exps[ensname] # treat ensemble like experiment until later
+      # convert name to actual ensemble object
+      if not isinstance(enses,dict): raise DatasetError, 'No dictionary of Exp instances specified.'
+      if ensname in enses: ensemble = enses[ensname]
+      else: raise TypeError, ensname
     else: raise TypeError
     # annotation (while ensemble is an Exp instance)
     if name is None: name = ensemble.shortname
     if title is None: title = ensemble.title
-    # convert actual ensemble to list
-    if not isinstance(enses,dict): raise DatasetError, 'No dictionary of Exp instances specified.'
-    if ensname in enses: ensemble = enses[ensname]
-    else: raise TypeError, ensname
   # figure out time period
   if years is None: montpl = (0,180)
   elif isinstance(years,(list,tuple)) and len(years)==2: 
