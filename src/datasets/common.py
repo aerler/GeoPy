@@ -78,18 +78,27 @@ shape_folder = data_root + '/shapes/' # folder for pickled grids
 ## utility functions for datasets
 
 
-def addLoadFcts(namespace, dataset, exps, comment=" (Experiment and Ensemble lists are already set.)"):
+def addLoadFcts(namespace, dataset, comment=" (Experiment and Ensemble lists are already set.)", **kwargs):
   ''' function to add dataset load functions to the local namespace, which already have a fixed experiments dictionary '''
   # search namespace for load functions
   vardict = dataset if isinstance(dataset, dict) else dataset.__dict__
   for name,fct in vardict.iteritems():
-    if isCallable(fct) and name[:4] == 'load':
-      newfct = functools.partial(fct, exps=exps)
+    if inspect.isfunction(fct) and name[:4] == 'load':
+      # check valid arguments (omit others)
+      arglist = inspect.getargs(fct.func_code)[0]
+      fctargs = {key:value for key,value in kwargs.iteritems() if key in arglist}
+      # apply arguments and update doc-string
+      newfct = functools.partial(fct, **fctargs)
       newfct.__doc__ = fct.__doc__ + comment # copy doc-string with comment
       namespace[name] = newfct
   # not really necessary, since dicts are passed by reference
   return namespace
 
+
+def nullNaN(data, var=None, slc=None):
+  ''' transform function to remove month with no precip from data (replace by NaN) '''
+  return np.where(data == 0., np.NaN, data)
+  
 
 # convenience method to convert a period tuple into a monthly coordinate tuple 
 def timeSlice(period):
@@ -498,7 +507,7 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology',
     # N.B.: for example, inspect does not work properly on functools.partial objects, and functools.partial does not return a function 
   # generate and check arguments
   kwargs.update(name=name, station=station, shape=shape, mode=mode, WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, CESM_ens=CESM_ens)
-  argspec, varargs, keywords = inspect.getargs(load_fct); del varargs, keywords
+  argspec, varargs, keywords = inspect.getargs(load_fct.func_code); del varargs, keywords
   kwargs = {key:value for key,value in kwargs.iteritems() if key in argspec}
   # load dataset
   dataset = load_fct(**kwargs)
@@ -590,8 +599,8 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
                    slices=None, obsslices=None, years=None, reduction=None, shape=None, station=None, 
                    constraints=None, filetypes=None, domain=None, ldataset=False, lcheckVar=False, 
                    lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', lminmax=False,
-                   master=None, lall=True, ensemble_list=None, ensemble_product='inner',
-                   lensembleAxis=False, **kwargs):
+                   master=None, lall=True, ensemble_list=None, ensemble_product='inner', lensembleAxis=False,
+                   WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -618,7 +627,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
     name = loadarg.pop('names',None); name_tag = loadarg.pop('name_tags',None)
     slcs = loadarg.pop('slices',None); obsslcs = loadarg.pop('obsslices',None)    
     # load individual dataset
-    dataset = loadDataset(name=name, **loadarg)
+    dataset = loadDataset(name=name, WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, CESM_ens=CESM_ens, **loadarg)
     if name_tag is not None: 
       if name_tag[0] == '_': dataset.name += name_tag
       else: dataset.name = name_tag

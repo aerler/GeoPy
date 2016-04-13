@@ -17,7 +17,7 @@ from collections import OrderedDict
 # internal imports
 from datasets.CRU import loadCRU_StnTS
 from datasets.common import days_per_month, data_root, selectElements, translateVarNames
-from datasets.common import CRU_vars, stn_params
+from datasets.common import CRU_vars, stn_params, nullNaN
 from geodata.misc import ParseError, DateError, VariableError, ArgumentError, DatasetError, AxisError
 from geodata.misc import RecordClass, StrictRecordClass, isNumber, isInt 
 from geodata.base import Axis, Variable, Dataset
@@ -36,9 +36,6 @@ tsfile_prov = 'ec{0:s}_{1:s}_monthly.nc' # filename pattern with province: stati
 avgfile = 'ec{0:s}_clim{1:s}.nc' # filename pattern: station type and ('_'+period)
 avgfolder = root_folder + 'ecavg/'  # folder for user data
 
-def nullNaN(data, var=None, slc=None):
-  ''' transform function to remove month with no precip from data (replace by NaN) '''
-  return np.where(data == 0., np.NaN, data)
 
 # variable attributes and name
 varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Average 2m Temperature')), # 2m average temperature

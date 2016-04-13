@@ -13,13 +13,12 @@ import collections as col
 import os, pickle
 import osr
 # from atmdyn.properties import variablePlotatts
-from datasets.EC import nullNaN
 from wrfavg.derived_variables import precip_thresholds
 from geodata.base import concatDatasets
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt, EmptyDatasetError
-from datasets.common import translateVarNames, data_root, grid_folder, selectElements, stn_params, shp_params
+from datasets.common import translateVarNames, data_root, grid_folder, selectElements, stn_params, shp_params, nullNaN
 from geodata.gdal import loadPickledGridDef, griddef_pickle
 #from projects.WRF_experiments import Exp, exps, ensembles 
 from warnings import warn

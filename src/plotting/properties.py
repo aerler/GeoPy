@@ -9,7 +9,7 @@ Note that default scale-factors assume that the data is in SI units (not plot un
 
 from collections import namedtuple
 from types import NoneType
-from atmdyn.constants import cp, g0
+from utils.constants import cp, g0
 
 ## dictionary of plot attributes for some common variables
 

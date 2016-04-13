@@ -258,12 +258,12 @@ for key in name_list:
   WRF_ens[key] = ensembles[key]
 ensembles = WRF_ens
 
+
 ## generate loadWRF* versions with these experiments
 # import datasets.WRF as dataset
-import inspect,functools
 from datasets.WRF import loadWRF, loadWRF_Shp, loadWRF_Stn, loadWRF_TS, loadWRF_ShpTS, loadWRF_StnTS, loadWRF_Ensemble, loadWRF_ShpEns, loadWRF_StnEns
-addLoadFcts(locals(), locals(), exps)
-# loadWRF = functools.partial(loadWRF, exps=WRF_exps)
+addLoadFcts(locals(), locals(), exps=WRF_exps, enses=WRF_ens)
+
 
 if __name__ == '__main__':
     
@@ -272,9 +272,3 @@ if __name__ == '__main__':
     s = '  {:s}: '.format(name)
     for member in members: s += ' {:s},'.format(member.name)
     print(s)
-    
-  ## print signature of new load fcts.
-  fct = loadWRF
-  print
-  print fct
-  print fct.__doc__
