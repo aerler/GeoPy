@@ -35,8 +35,6 @@
 
 *.nc
 
-Articles/
-archive/
 data/
 figures/
 .settings/
