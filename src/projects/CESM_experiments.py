@@ -63,11 +63,11 @@ CESM_experiments = experiments # alias for whole dict
 ## dict of ensembles
 ensembles = CESM_ens = OrderedDict()
 # initial condition ensemble
-ensembles['ens20trcn1x1'] =   [tag+'20trcn1x1' for tag in 'tb', 'hab', 'hab', 'hab']
-ensembles['ensrcp85cn1x1'] =  [tag+'rcp85cn1x1' for tag in 'htb', 'hab', 'hab', 'hab']
-ensembles['ensrcp85cn1x1d'] = [tag+'rcp85cn1x1d' for tag in 'htb', 'hab', 'hab', 'hab']
-ensembles['mens20trcn1x1'] =   [tag+'20trcn1x1' for tag in 'hab', 'hab', 'hab']
-ensembles['mensrcp85cn1x1'] =  [tag+'rcp85cn1x1' for tag in 'hab', 'hab', 'hab']
+ensembles['ens20trcn1x1']    = [tag+'20trcn1x1'   for tag in  'tb', 'hab', 'hab', 'hab']
+ensembles['ensrcp85cn1x1']   = [tag+'rcp85cn1x1'  for tag in 'htb', 'hab', 'hab', 'hab']
+ensembles['ensrcp85cn1x1d']  = [tag+'rcp85cn1x1d' for tag in 'htb', 'hab', 'hab', 'hab']
+ensembles['mens20trcn1x1']   = [tag+'20trcn1x1'   for tag in 'hab', 'hab', 'hab']
+ensembles['mensrcp85cn1x1']  = [tag+'rcp85cn1x1'  for tag in 'hab', 'hab', 'hab']
 ensembles['mensrcp85cn1x1d'] = [tag+'rcp85cn1x1d' for tag in 'hab', 'hab', 'hab']
 
 # N.B.: static & meta data for the ensemble is copied from the first-listed member;
@@ -77,16 +77,6 @@ for ensname,enslist in ensembles.items(): # don't use iter, because we chagne th
   members = tuple([experiments[expname] for expname in enslist])
   ensembles[ensname] = members
   ensembles[experiments[ensname].shortname] = members
-
-# ## dict of ensembles
-# ensembles = CESM_ens = OrderedDict()
-# ensemble_list = list(set([exp.ensemble for exp in experiments.values() if exp.ensemble]))
-# # ensemble_list.sort()
-# for ensemble in ensemble_list:
-#   #print ensemble, experiments[ensemble].shortname
-#   members = [exp for exp in experiments.values() if exp.ensemble and exp.ensemble == ensemble]
-# #   members.sort()
-#   ensembles[experiments[ensemble].shortname] = members
 
 
 ## generate loadCESM* versions with these experiments

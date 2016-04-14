@@ -8,8 +8,8 @@ Meta data related to the Athabasca River Basin downscaling project; primarily ma
 
 from plotting.mapsetup import getMapSetup
 from datasets.WSC import basins_info
+from figure_settings import figure_folder
 
-figure_folder = '/home/data/Figures/'
 map_folder = figure_folder + '.mapsetup/'
 # actual Athabasca River Basin (shape file from Aquanty)
 #ARB_shapefolder = grid_folder+'/ARB_Aquanty/' 
@@ -158,8 +158,8 @@ getARBsetup = getSetup # more specific alias (for backwards compatability)
 # create pickles
 if __name__ == '__main__':
 
-#   proj_list = None
-  proj_list = ['lcc-fine']
+  proj_list = None
+#   proj_list = ['lcc-fine']
 
   if proj_list is None: proj_list = projection_dict.keys()    
   # loop over projections

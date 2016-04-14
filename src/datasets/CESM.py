@@ -9,7 +9,6 @@ This module contains common meta data and access functions for CESM model output
 # external imports
 import numpy as np
 import os, pickle
-from collections import OrderedDict
 # from atmdyn.properties import variablePlotatts
 from geodata.base import Variable, Axis, concatDatasets, monthlyUnitsList
 from geodata.netcdf import DatasetNetCDF, VarNC
@@ -642,9 +641,9 @@ def loadCESM_Ensemble(ensemble=None, name=None, title=None, grid=None, station=N
                         lcheckExp=lcheckExp, lreplaceTime=lreplaceTime, check_vars=check_vars).load()
     elif lcvdp:
       ds = loadCVDP(experiment=exp, name=None, varlist=varlist, varatts=varatts, period=years, 
-                    translateVars=translateVars, lautoregrid=lautoregrid, lencl=lencl, 
+                    translateVars=translateVars, lautoregrid=lautoregrid, #lencl=lencl, check_vars=check_vars, 
                     ignore_list=ignore_list, cvdp_mode=cvdp_mode, lcheckExp=lcheckExp, leofs=leofs, 
-                    lindices=lindices, lreplaceTime=lreplaceTime, check_vars=check_vars).load()
+                    lindices=lindices, lreplaceTime=lreplaceTime).load()
     else: raise NotImplementedError
     if montpl or yrtpl: ds = ds(year=yrtpl, time=montpl, lidx=True) # slice the time dimension to make things consistent
     datasets.append(ds)
@@ -698,13 +697,13 @@ if __name__ == '__main__':
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-  mode = 'test_point_ensemble'
+#   mode = 'test_point_ensemble'
 #   mode = 'test_cvdp'
-#   mode = 'pickle_grid'
+  mode = 'pickle_grid'
 #     mode = 'shift_lon'
-#     experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
-#     experiments += ['Ctrl-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
-  experiments = ('Ctrl-1-2050',)
+  experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
+#   experiments += ['Ctrl-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
+#   experiments = ('Ctrl-1',)
   periods = (15,)
   filetypes = ('atm',) # ['atm','lnd','ice']
   grids = ('cesm1x1',)*len(experiments) # grb1_d01
@@ -712,7 +711,7 @@ if __name__ == '__main__':
   pntset = 'ecprecip'
 
   from projects.CESM_experiments import Exp, CESM_exps, ensembles
-  # N.B.: importing Exp through WRF_experiments is necessary, otherwise some isinstance() calls fail
+  # N.B.: importing Exp through CESM_experiments is necessary, otherwise some isinstance() calls fail
 
   # pickle grid definition
   if mode == 'pickle_grid':
@@ -724,7 +723,7 @@ if __name__ == '__main__':
       print('')
       
       # load GridDefinition
-      dataset = loadCESM(experiment=experiment, grid=None, filetypes=['lnd'], period=(1979,1989))
+      dataset = loadCESM(experiment=CESM_exps[experiment], grid=None, filetypes=['lnd'], period=(1979,1989))
       griddef = dataset.griddef
       #del griddef.xlon, griddef.ylat      
       print griddef
@@ -751,7 +750,7 @@ if __name__ == '__main__':
     
     print('')
 #     dataset = loadCESM_Ensemble(ensemble='Ens-2050', varlist=['precip'], filetypes=['atm'])
-    dataset = loadCESM_Ensemble(ensemble='Ens-2050', mode='cvdp')
+    dataset = loadCESM_Ensemble(ensemble='Ens-2050', mode='cvdp', exps=CESM_exps, enses=ensembles)
     print('')
     print(dataset)
     print('')
@@ -763,7 +762,8 @@ if __name__ == '__main__':
     
     print('')
     if pntset in ('shpavg',):
-      dataset = loadCESM_Shp(experiment='Ctrl-1', shape=pntset, filetypes=['atm'], period=(1979,1994))
+      dataset = loadCESM_Shp(experiment='Ctrl-1', shape=pntset, filetypes=['atm'], period=(1979,1994),
+                             exps=CESM_exps)
       print('')
       print(dataset)
       print('')
@@ -771,7 +771,8 @@ if __name__ == '__main__':
       print(dataset.shape.coord)
       assert dataset.shape.coord[-1] == len(dataset.shape)  # this is a global model!    
     else:
-      dataset = loadCESM_Stn(experiment='Ctrl-1', station=pntset, filetypes=['atm'], period=(1979,1994))
+      dataset = loadCESM_Stn(experiment='Ctrl-1', station=pntset, filetypes=['atm'], period=(1979,1994),
+                             exps=CESM_exps)
       print('')
       print(dataset)
       print('')
@@ -783,9 +784,11 @@ if __name__ == '__main__':
   elif mode == 'test_point_timeseries':    
     print('')
     if pntset in ('shpavg',):
-      dataset = loadCESM_ShpTS(experiment='Ctrl-1', shape=pntset, filetypes=['atm'], lensembleAxis=True)
+      dataset = loadCESM_ShpTS(experiment='Ctrl-1', shape=pntset, filetypes=['atm'], exps=CESM_exps, 
+                               lwrite=True)
     else:
-      dataset = loadCESM_StnTS(experiment='Ctrl-1', station=pntset, filetypes=['atm'], lwrite=False)
+      dataset = loadCESM_StnTS(experiment='Ctrl-1', station=pntset, filetypes=['atm'], lwrite=True,
+                               exps=CESM_exps)
     print('')
     print(dataset)
     assert 'w' in dataset.mode
@@ -802,7 +805,7 @@ if __name__ == '__main__':
     print('')
     if pntset in ('shpavg',):
       dataset = loadCESM_ShpEns(ensemble='Ens', shape=pntset, filetypes=['atm'], 
-                                lensembleAxis=lensembleAxis, varlist=['precip'], 
+                                lensembleAxis=lensembleAxis, varlist=[variable], 
                                 exps=CESM_exps, enses=ensembles)
     else:
       dataset = loadCESM_StnEns(name='Ens', station=pntset, filetypes=['hydro'], 
@@ -826,10 +829,12 @@ if __name__ == '__main__':
       
       print('')
       if mode == 'test_timeseries':
-        dataset = loadCESM_TS(experiment=experiment, varlist=None, grid=grid, filetypes=filetypes)
+        dataset = loadCESM_TS(experiment=experiment, varlist=None, grid=grid, filetypes=filetypes, 
+                              exps=CESM_exps)
       else:
         period = periods[0] # just use first element, no need to loop
-        dataset = loadCESM(experiment=experiment, varlist=['precip'], grid=grid, filetypes=filetypes, period=period)
+        dataset = loadCESM(experiment=experiment, varlist=['precip'], grid=grid, filetypes=filetypes, 
+                           period=period, exps=CESM_exps)
       print(dataset)
       print('')
       print(dataset.geotransform)
@@ -868,7 +873,8 @@ if __name__ == '__main__':
       
       print('')
       period = periods[0] # just use first element, no need to loop
-      dataset = loadCVDP(experiment=experiment, period=period, cvdp_mode='ensemble') # lindices=True
+      dataset = loadCVDP(experiment=experiment, period=period, cvdp_mode='ensemble', 
+                         exps=CESM_exps) # lindices=True
       #dataset = loadCVDP_Obs(name='GPCP')
       print(dataset)
 #       print(dataset.geotransform)

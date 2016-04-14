@@ -1,17 +1,26 @@
 '''
 Created on 2013-11-13
 
-This module defines variable and figure properties commonly used in plots.      
+This module defines variable and figure properties for use in the GreatLakes project.      
 
 @author: Andre R. Erler, GPL v3
 '''
 
+import os
 import matplotlib as mpl
 import numpy as np
 from geodata.base import VariableError
 from datasets.common import name_of_month # for annotation; days_per_month, days_per_month_365, 
 from plotting.colormaps import cm
 #import mpl_toolkits.basemap.cm as bmcm
+
+# figure folder and prefix
+figure_subdir = 'GreatLakes'
+# read base figure folder from environment variable
+figure_root = os.getenv('FIGURE_ROOT')
+if not figure_root: raise IOError, 'No FIGURE_ROOT environment variable set.'
+# assemble figure folder
+figure_folder = '{:s}/{:s}/'.format(figure_root,figure_subdir)
 
 # my own colormap
 cdict = dict()
