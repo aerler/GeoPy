@@ -30,7 +30,7 @@ from geodata.base import DatasetError
 from datasets.WSC import basins_info
 from datasets.EC import province_info
 from datasets.common import stn_params
-from plotting.legacy import loadDatasets, checkItemList
+from legacy_plotting.legacy import loadDatasets, checkItemList
 # project related stuff
 # Western Canada
 # from projects.WesternCanada import getSetup, figure_folder, map_folder, getFigureSettings, getVariableSettings

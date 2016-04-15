@@ -23,11 +23,10 @@ from datasets.CFSR import loadCFSR
 from datasets.NARR import loadNARR
 from datasets.Unity import loadUnity
 from datasets.WSC import Basin
-from plotting.legacy import loadDatasets # for annotation
-from plotting.settings import getFigureSettings
+from legacy_plotting.legacy import loadDatasets # for annotation
 from plotting.misc import loadStyleSheet
 # ARB project related stuff
-from projects.ARB_settings import figure_folder
+from projects.WesternCanada import figure_folder, getFigureSettings, WRF_exps, CESM_exps
 
 def getVarSettings(plottype, area, lPRISM=False, mode='all'):
   flxlabel = r'Water Flux [$10^6$ kg/s]' 
@@ -209,7 +208,7 @@ if __name__ == '__main__':
 #   plottypes += ['sfroff'] #
   lPRISM = False
   lPCIC = False
-  lUnity = True
+  lUnity = False
   lgage = True
   titles = None
   areas = []
@@ -245,7 +244,8 @@ if __name__ == '__main__':
       lCRU = False; lGPCC = False
 
       ## variable settings
-      loadlist = set(['datamask']); allfiletypes = set()
+#       loadlist = set(['datamask']); allfiletypes = set()
+      loadlist = set(); allfiletypes = set()
       lCFSR = False; lNARR = False
       for plottype in plottypes:
         varlist, filetypes, lcfsr, lnarr = getVarSettings(plottype, area, lPRISM=lPRISM, mode='load')
@@ -260,7 +260,8 @@ if __name__ == '__main__':
                                          domains=domains, grids=grid,
                                          resolutions='025', filetypes=allfiletypes,                                          
                                          lWRFnative=False, ltuple=True,
-                                         lbackground=False,lautoregrid=True)
+                                         lbackground=False,lautoregrid=True,
+                                         WRF_exps=WRF_exps, CESM_exps=CESM_exps)
       ref = exps[0][0]; nlen = len(exps)
       # observations  
       if period == 9: period = 10 # nine is only because some experiments don't have 10 yet...
