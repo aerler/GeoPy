@@ -10,7 +10,7 @@ A package that contains settings for the WesternCanada region projects for use w
 from figure_settings import getVariableSettings, getFigureSettings, figure_folder
 
 # import map projection settings (basemap)
-from map_settings import getSetup
+from map_settings import getSetup, map_folder
 
 ## import load functions with GreatLakes experiments into local namespace
 

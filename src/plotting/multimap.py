@@ -29,12 +29,14 @@ from mpl_toolkits.basemap import maskoceans # used for masking data
 from geodata.base import DatasetError
 from datasets.WSC import basins_info
 from datasets.EC import province_info
-from plotting.legacy import loadDatasets, checkItemList
-from plotting.settings import getFigureSettings, getVariableSettings
 from datasets.common import stn_params
+from plotting.legacy import loadDatasets, checkItemList
 # project related stuff
-# from projects.ARB_settings import getSetup, figure_folder, map_folder # Western Canada
-from projects.GLB_settings import getSetup, figure_folder, map_folder # Great Lakes
+# Western Canada
+# from projects.WesternCanada import getSetup, figure_folder, map_folder, getFigureSettings, getVariableSettings
+# Great Lakes
+from projects.GreatLakes import getSetup, getFigureSettings, getVariableSettings
+from projects.GreatLakes import figure_folder, map_folder, WRF_exps, CESM_exps
 
 station_constraints = dict()
 station_constraints['min_len'] = 15 # for valid climatology
@@ -93,7 +95,7 @@ if __name__ == '__main__':
 #   WRFfiletypes += ['lsm']
   WRFfiletypes += ['srfc']
 #   WRFfiletypes += ['xtrm']
-  WRFfiletypes += ['plev3d']
+#   WRFfiletypes += ['plev3d']
   ## select variables and seasons
   variables = [] # variables
 #   variables += ['Ts']
@@ -616,7 +618,8 @@ if __name__ == '__main__':
   exps, axtitles, nexps = loadDatasets(explist, n=None, varlist=variables, titles=exptitles, periods=period, 
                                        domains=domain, grids=grid, resolutions=resolution, 
                                        filetypes=WRFfiletypes, lWRFnative=lWRFnative, ltuple=True, 
-                                       lbackground=lbackground, lautoregrid=True)
+                                       lbackground=lbackground, lautoregrid=True,
+                                       WRF_exps=WRF_exps, CESM_exps=CESM_exps)
   nlen = len(exps)
 #   print exps[-1][-1]
   # load reference list
@@ -626,7 +629,8 @@ if __name__ == '__main__':
     if refdom is None: refdom = domain
     refs, a, b = loadDatasets(reflist, n=None, varlist=refvars, titles=None, periods=refprd, 
                               domains=refdom, grids=grid, resolutions=resolution, filetypes=WRFfiletypes, 
-                              lWRFnative=lWRFnative, ltuple=True, lbackground=lbackground)
+                              lWRFnative=lWRFnative, ltuple=True, lbackground=lbackground,
+                              WRF_exps=WRF_exps, CESM_exps=CESM_exps)
     # merge lists
     if len(exps) != len(refs): 
       raise DatasetError, 'Experiments and reference list need to have the same length!'
@@ -836,13 +840,13 @@ if __name__ == '__main__':
               # N.B.: for some reason, using np.ones_like() causes a masked data array to fill with zeros  
               #print bdy.mean(), data[n][m].__class__.__name__, data[n][m].fill_value 
               bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
-              maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', 
+              maps[n].contour(x[n][m],y[n][m],bdy,[-1,0,1],ax=ax[n], colors='k', 
                               linewidths=framewidths, fill=False) # draw boundary of data
             if lframe:
               if isinstance(domain,(tuple,list)) and not ( domain[0] == 0 and m == 0):
                 bdy = ma.ones(x[n][m].shape)   
                 bdy[0,:]=0; bdy[-1,:]=0; bdy[:,0]=0; bdy[:,-1]=0 # demarcate domain boundaries        
-                maps[n].contour(x[n][m],y[n][m],bdy,[1,0,-1],ax=ax[n], colors='k', 
+                maps[n].contour(x[n][m],y[n][m],bdy,[-1,0,1],ax=ax[n], colors='k', 
                                 linewidths=framewidths, fill=False) # draw boundary of domain
       # draw data
       norm = mpl.colors.Normalize(vmin=min(clevs),vmax=max(clevs),clip=True) # for colormap
