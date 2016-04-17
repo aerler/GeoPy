@@ -25,7 +25,7 @@ from processing.misc import getMetaData, getTargetFile
 # WRF specific
 from projects.WRF_experiments import WRF_exps, WRF_ens
 # CESM specific
-from datasets.CESM import CESM_exps, CESM_ens
+from projects.CESM_experiments import CESM_exps, CESM_ens
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed

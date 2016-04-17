@@ -20,7 +20,7 @@ from processing.process import CentralProcessingUnit
 from processing.multiprocess import asyncPoolEC
 # WRF specific
 from datasets.WRF import loadWRF_TS, fileclasses
-from projects.WRF_experiments import WRF_exps, Exp, WRF_experiments
+from projects.WRF_experiments import WRF_exps, Exp
 
 
 def computeClimatology(experiment, filetype, domain, periods=None, offset=0, griddef=None, varlist=None, 
@@ -288,7 +288,7 @@ if __name__ == '__main__':
     grid = 'native' 
 
   # expand experiments
-  if experiments is None: experiments = WRF_experiments.values() # do all 
+  if experiments is None: experiments = WRF_exps.values() # do all 
   else: experiments = [WRF_exps[exp] for exp in experiments] 
 
   # shall we do some fancy regridding?

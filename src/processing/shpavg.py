@@ -25,7 +25,7 @@ from processing.process import CentralProcessingUnit
 # WRF specific
 from projects.WRF_experiments import WRF_exps, WRF_ens
 # CESM specific
-from datasets.CESM import CESM_exps, CESM_ens
+from projects.CESM_experiments import CESM_exps, CESM_ens
 
 # import shape objects
 from datasets.WSC import basins

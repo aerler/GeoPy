@@ -9,6 +9,7 @@ This module contains meta data for all available WRF experiments.
 from importlib import import_module
 from collections import OrderedDict
 from datasets.common import addLoadFcts
+from datasets.WRF import Exp
 
 # list of projects to merge
 project_list = OrderedDict(GreatLakes='GL',WesternCanada='WC')
