@@ -175,8 +175,8 @@ if __name__ == '__main__':
   if not lbatch:
     NP = 1 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
-    modes = ('time-series',) # 'climatology','time-series'
-#     modes = ('climatology',) # 'climatology','time-series'
+#    modes = ('time-series',) # 'climatology','time-series'
+    modes = ('climatology',) # 'climatology','time-series'
     loverwrite = False
 #     loverwrite = True
     varlist = None
@@ -184,10 +184,10 @@ if __name__ == '__main__':
     periods = []
 #     periods += [1]
 #     periods += [3]
-    periods += [5]
-    periods += [10]
+#    periods += [5]
+#    periods += [10]
     periods += [15]
-    periods += [30]
+#    periods += [30]
     # Observations/Reanalysis
     lLTM = True 
 #     datasets = None; resolutions = None
@@ -212,7 +212,7 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['atm'] # ,'lnd'
     CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
-    WRF_experiments = ['g-ens-B_gl', ] # use None to process all WRF experiments
+    WRF_experiments = ['g-ctrl_gl', ] # use None to process all WRF experiments
 #     WRF_experiments += ['max-ens-A']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][1:]
 #     WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  

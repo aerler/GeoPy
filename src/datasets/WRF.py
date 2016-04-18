@@ -24,7 +24,7 @@ from warnings import warn
 from collections import OrderedDict
 
 
-avgfolder = data_root + 'WRF/' + 'wrfavg/' # long-term mean folder
+avgfolder = data_root + '/WRF/wrfavg/' # long-term mean folder
 ## class that defines experiments
 class Exp(object):
   ''' class of objects that contain meta data for WRF experiments '''
@@ -220,14 +220,15 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
     else:
       if name in exps: experiment = exps[name] # load experiment meta data
       elif lexp: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(names[0])
-  # assign unassigned domains
-  domains = [experiment.domains if dom is None else dom for dom in domains]
+  if not ( experiment or folder ): raise DatasetError, "Need to specify either a valid experiment name or a full path."
   # patch up folder
-  if folder is None: # should already have checked that either folder or experiment are specified
+  if experiment: # should already have checked that either folder or experiment are specified
     folder = experiment.avgfolder
+    # assign unassigned domains
+    domains = [experiment.domains if dom is None else dom for dom in domains]
   elif isinstance(folder,basestring): 
     if not folder.endswith((name,name+'/')): folder = '{:s}/{:s}/'.format(folder,name)
-  else: raise TypeError
+  else: raise TypeError, folder
   # check types
   if not isinstance(domains,(tuple,list)): raise TypeError    
   if not all(isInt(domains)): raise TypeError
@@ -489,7 +490,7 @@ class Axes(FileType):
 
 # data source/location
 fileclasses = dict(const=Const(), srfc=Srfc(), hydro=Hydro(), lsm=LSM(), rad=Rad(), xtrm=Xtrm(), plev3d=Plev3D(), axes=Axes())
-root_folder = data_root + 'WRF/' # long-term mean folder
+root_folder = data_root + '/WRF/' # long-term mean folder
 outfolder = root_folder + 'wrfout/' # WRF output folder
 avgfolder = root_folder + 'wrfavg/' # long-term mean folder
 
@@ -860,14 +861,18 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
         ensname = ensemble[:-4] 
         name = ensemble if name is None else name # save original name
       else: ensname = ensemble 
-      # convert name to actual ensemble object
-      if not isinstance(enses,dict): raise DatasetError, 'No dictionary of Exp instances specified.'
-      if ensname in enses: ensemble = enses[ensname]
-      else: raise TypeError, ensname
+      # convert name to experiment object
+      if not isinstance(exps,dict): raise DatasetError, 'No dictionary of Exp instances specified.'
+      if ensname in exps: ensemble = exps[ensname]
+      else: raise KeyError, "Experiment name '{:s}' not found in experiment list.".format(ensname)
     else: raise TypeError
     # annotation (while ensemble is an Exp instance)
     if name is None: name = ensemble.shortname
     if title is None: title = ensemble.title
+    # convert name to actual ensemble object
+    if not isinstance(enses,dict): raise DatasetError, 'No dictionary of ensemble tuples specified.'
+    if ensname in enses: ensemble = enses[ensname]
+    else: raise KeyError, "Ensemble name '{:s}' not found in ensemble list.".format(ensname)
   # figure out time period
   if years is None: montpl = (0,180)
   elif isinstance(years,(list,tuple)) and len(years)==2: 
@@ -887,6 +892,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
     # load datasets (and load!)
     datasets = []
     for exp in ensemble:
+      #print exp.name
       ds = loadWRF_All(experiment=None, name=exp, grid=grid, station=station, shape=shape, 
                        period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                        mode='time-series', lencl=lencl, lautoregrid=lautoregrid, lctrT=lctrT, 
@@ -935,12 +941,12 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-#   mode = 'test_climatology'
-#   mode = 'test_timeseries'
+#  mode = 'test_climatology'
+#  mode = 'test_timeseries'
   mode = 'test_ensemble'
-  mode = 'test_point_climatology'
-#   mode = 'test_point_timeseries'
-#   mode = 'test_point_ensemble'
+#  mode = 'test_point_climatology'
+#  mode = 'test_point_timeseries'
+#  mode = 'test_point_ensemble'
 #   mode = 'pickle_grid' 
 #   pntset = 'shpavg'
   pntset = 'ecprecip'
@@ -952,7 +958,7 @@ if __name__ == '__main__':
 #   grids = ['wc2']; experiments = ['erai-wc2-2013']; domains = [1,2]
 #   grids = ['arb2-120km']; experiments = ['max-lowres']; domains = [1,]   
     
-  from projects.WRF_experiments import Exp, WRF_exps, ensembles
+  from projects.WesternCanada.WRF_experiments import Exp, WRF_exps, ensembles
   # N.B.: importing Exp through WRF_experiments is necessary, otherwise some isinstance() calls fail
     
   # pickle grid definition
@@ -1032,7 +1038,7 @@ if __name__ == '__main__':
   elif mode == 'test_ensemble':
     
     print('')
-    dataset = loadWRF_Ensemble(ensemble='max-ens', varlist=['precip','MaxPrecip_1d'], filetypes=['hydro'], exps=WRF_exps, enses=ensembles)
+    dataset = loadWRF_Ensemble(ensemble='max-ens', varlist=['precip','MaxPrecip_1d'], filetypes=['hydro'], domains=2, exps=WRF_exps, enses=ensembles)
 #     dataset = loadWRF_Ensemble(ensemble=['max-ctrl'], varlist=['precip','MaxPrecip_1d'], filetypes=['xtrm'])
 #     dataset = loadWRF_Ensemble(ensemble=['max-ctrl','max-ctrl'], varlist=['precip','MaxPrecip_1d'], filetypes=['xtrm'])
     # 2.03178e-05 0.00013171

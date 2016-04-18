@@ -89,10 +89,10 @@ def getMetaData(dataset, mode, dataargs):
     avgfolder = exp.avgfolder
     # load source data
     if lclim:
-      loadfct = functools.partial(loadWRF, experiment=dataset_name, name=None, domains=domain, grid=None, 
+      loadfct = functools.partial(loadWRF, experiment=exp, name=None, domains=domain, grid=None, 
                                   period=period, filetypes=[filetype], varatts=None, lconst=True) # still want topography...
     elif lts:
-      loadfct = functools.partial(loadWRF_TS, experiment=dataset_name, name=None, domains=domain, grid=None, 
+      loadfct = functools.partial(loadWRF_TS, experiment=exp, name=None, domains=domain, grid=None, 
                                   filetypes=[filetype], varatts=None, lconst=True) # still want topography...
     filepath = '{:s}/{:s}'.format(avgfolder,filename)
   elif dataset == 'CESM': 
@@ -123,10 +123,10 @@ def getMetaData(dataset, mode, dataargs):
     # load source data 
     load3D = dataargs.pop('load3D',None) # if 3D fields should be loaded (default: False)
     if lclim:
-      loadfct = functools.partial(loadCESM, experiment=dataset_name, name=None, grid=None, period=period, 
+      loadfct = functools.partial(loadCESM, experiment=exp, name=None, grid=None, period=period, 
                                   filetypes=[filetype], varatts=None, load3D=load3D, translateVars=None)
     elif lts:
-      loadfct = functools.partial(loadCESM_TS, experiment=dataset_name, name=None, grid=None, 
+      loadfct = functools.partial(loadCESM_TS, experiment=exp, name=None, grid=None, 
                                   filetypes=[filetype], varatts=None, load3D=load3D, translateVars=None)     
     filepath = '{:s}/{:s}'.format(avgfolder,filename)
   elif dataset == dataset.upper() or dataset == 'Unity':

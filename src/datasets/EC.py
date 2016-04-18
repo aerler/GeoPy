@@ -38,7 +38,7 @@ dv = imp.load_source('derived_variables', os.getenv('CODE_ROOT')+'/WRF Tools/Pyt
 ## EC (Environment Canada) Meta-data
 
 dataset_name = 'EC'
-root_folder = data_root  + '/' + dataset_name + '/'
+root_folder = data_root  + '/EC/'
 orig_ts_file = '{0:s}{1:s}.txt' # filename pattern: variable name and station ID
 tsfile = 'ec{0:s}_monthly.nc' # filename pattern: station type
 tsfile_prov = 'ec{0:s}_{1:s}_monthly.nc' # filename pattern with province: station type, province  

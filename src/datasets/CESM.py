@@ -21,7 +21,7 @@ from datasets.WRF import Exp as WRF_Exp
 from processing.process import CentralProcessingUnit
 
 # some meta data (needed for defaults)
-root_folder = data_root + 'CESM/' # long-term mean folder
+root_folder = data_root + '/CESM/' # long-term mean folder
 outfolder = root_folder + 'cesmout/' # WRF output folder
 avgfolder = root_folder + 'cesmavg/' # monthly averages and climatologies
 cvdpfolder = root_folder + 'cvdp/' # CVDP output (netcdf files and HTML tree)
