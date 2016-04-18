@@ -9,7 +9,7 @@ This module defines variable and figure properties for use in the GreatLakes pro
 import os
 import matplotlib as mpl
 import numpy as np
-from geodata.base import VariableError
+from geodata.base import VariableError, ArgumentError
 from datasets.common import name_of_month # for annotation; days_per_month, days_per_month_365, 
 from plotting.colormaps import cm
 #import mpl_toolkits.basemap.cm as bmcm
@@ -18,7 +18,8 @@ from plotting.colormaps import cm
 figure_subdir = 'GreatLakes'
 # read base figure folder from environment variable
 figure_root = os.getenv('FIGURE_ROOT')
-if not figure_root: raise IOError, 'No FIGURE_ROOT environment variable set.'
+if not figure_root: raise ArgumentError, 'No FIGURE_ROOT environment variable set.'
+if not os.path.exists(figure_root): raise IOError, "The figure root '{:s}' directory set in the FIGURE_ROOT environment variable does not exist!".format(figure_root)
 # assemble figure folder
 figure_folder = '{:s}/{:s}/'.format(figure_root,figure_subdir)
 

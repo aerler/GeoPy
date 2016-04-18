@@ -173,7 +173,7 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    NP = 3 ; ldebug = False # for quick computations
+    NP = 1 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
     modes = ('time-series',) # 'climatology','time-series'
 #     modes = ('climatology',) # 'climatology','time-series'
@@ -212,7 +212,7 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['atm'] # ,'lnd'
     CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
-    WRF_experiments = ['g-ens-B', ] # use None to process all WRF experiments
+    WRF_experiments = ['g-ens-B_gl', ] # use None to process all WRF experiments
 #     WRF_experiments += ['max-ens-A']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][1:]
 #     WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
@@ -252,24 +252,25 @@ if __name__ == '__main__':
     CESM_experiments = None
     CESM_filetypes = ('atm','lnd')    
     # WRF
-    WRF_experiments = [] # process all WRF experiments
+    WRF_experiments = None # process all WRF experiments
+#    WRF_experiments = [] # process all WRF experiments
     # Western Canada
-    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',] # main "best" IC ensemble
-    WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
-    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
-    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
-    WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', ] # new config (arb3)     
-    WRF_experiments += ['old-ctrl', 'old-ctrl-2050', 'old-ctrl-2100'] # old/default config
-    WRF_experiments += ['ctrl-1', 'ctrl-ens-A', 'ctrl-ens-B', 'ctrl-ens-C'] # new "standard" IC ensemble
-    WRF_experiments += ['ctrl-2050', 'ctrl-ens-A-2050', 'ctrl-ens-B-2050', 'ctrl-ens-C-2050']
-    WRF_experiments += ['ctrl-2100', 'ctrl-ens-A-2100', 'ctrl-ens-B-2100', 'ctrl-ens-C-2100']
+#    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',] # main "best" IC ensemble
+#    WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
+#    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+#    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+#    WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', ] # new config (arb3)     
+#    WRF_experiments += ['old-ctrl', 'old-ctrl-2050', 'old-ctrl-2100'] # old/default config
+#    WRF_experiments += ['ctrl-1', 'ctrl-ens-A', 'ctrl-ens-B', 'ctrl-ens-C'] # new "standard" IC ensemble
+#    WRF_experiments += ['ctrl-2050', 'ctrl-ens-A-2050', 'ctrl-ens-B-2050', 'ctrl-ens-C-2050']
+#    WRF_experiments += ['ctrl-2100', 'ctrl-ens-A-2100', 'ctrl-ens-B-2100', 'ctrl-ens-C-2100']
     # Great Lakes
-    WRF_experiments += ['t-ctrl', 't-ens-A', 't-ens-B', 't-ens-C', 'erai-t'] # Marc's ctrl ensemble
-    WRF_experiments += ['t-ctrl-2050', 't-ens-A-2050', 't-ens-B-2050', 't-ens-C-2050']
-    WRF_experiments += ['t-ctrl-2100', 't-ens-A-2100', 't-ens-B-2100', 't-ens-C-2100'] # last three are 
-    WRF_experiments += ['g-ctrl', 'g-ens-A', 'g-ens-B', 'g-ens-C', 'erai-t'] # Marc's max ensemble
-    WRF_experiments += ['g-ctrl-2050', 'g-ens-A-2050', 'g-ens-B-2050', 'g-ens-C-2050']
-    WRF_experiments += ['g-ctrl-2100', 'g-ens-A-2100', 'g-ens-B-2100', 'g-ens-C-2100'] # last three are not finished yet
+#    WRF_experiments += ['t-ctrl', 't-ens-A', 't-ens-B', 't-ens-C', 'erai-t'] # Marc's ctrl ensemble
+#    WRF_experiments += ['t-ctrl-2050', 't-ens-A-2050', 't-ens-B-2050', 't-ens-C-2050']
+#    WRF_experiments += ['t-ctrl-2100', 't-ens-A-2100', 't-ens-B-2100', 't-ens-C-2100'] # last three are 
+#    WRF_experiments += ['g-ctrl', 'g-ens-A', 'g-ens-B', 'g-ens-C', 'erai-t'] # Marc's max ensemble
+#    WRF_experiments += ['g-ctrl-2050', 'g-ens-A-2050', 'g-ens-B-2050', 'g-ens-C-2050']
+#    WRF_experiments += ['g-ctrl-2100', 'g-ens-A-2100', 'g-ens-B-2100', 'g-ens-C-2100'] # last three are not finished yet
     domains = None # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
 #     WRF_filetypes = ('xtrm','hydro','srfc','lsm') # only surface...
@@ -285,10 +286,14 @@ if __name__ == '__main__':
   # expand experiments
   if WRF_experiments is None: # do all (except ensembles)
     WRF_experiments = [exp for exp in WRF_exps.itervalues() if exp.shortname not in WRF_ens] 
-  else: WRF_experiments = [WRF_exps[exp] for exp in WRF_experiments]
+  else: 
+    try: WRF_experiments = [WRF_exps[exp] for exp in WRF_experiments]
+    except KeyError: raise KeyError, "WRF experiment '{:s}' not found in WRF experiment list.".format(exp)
   if CESM_experiments is None: # do all (except ensembles)
     CESM_experiments = [exp for exp in CESM_exps.itervalues() if exp.shortname not in CESM_ens] 
-  else: CESM_experiments = [CESM_exps[exp] for exp in CESM_experiments]  
+  else: 
+    try: CESM_experiments = [CESM_exps[exp] for exp in CESM_experiments]  
+    except KeyError: raise KeyError, "CESM experiment '{:s}' not found in CESM experiment list.".format(exp)
   # expand datasets and resolutions
   if datasets is None: datasets = gridded_datasets
   # expand shapes (and enforce consistent sorting)

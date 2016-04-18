@@ -16,7 +16,7 @@ import functools
 from operator import isCallable
 # internal imports
 from utils.misc import expandArgumentList
-from geodata.misc import AxisError, DatasetError, DateError, ArgumentError, EmptyDatasetError
+from geodata.misc import AxisError, DatasetError, DateError, ArgumentError, EmptyDatasetError, DataError
 from geodata.base import Dataset, Variable, Axis, Ensemble
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import GDALError, addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
@@ -73,7 +73,8 @@ CRU_vars = ['T2','Tmin','Tmax','Q2','pet','precip','cldfrc','wetfrq','frzfrq']
 
 # read data root folder from environment variable
 data_root = os.getenv('DATA_ROOT')
-if not data_root: raise IOError, 'No DATA_ROOT environment variable set.'
+if not data_root: raise ArgumentError, 'No DATA_ROOT environment variable set!'
+if not os.path.exists(data_root): raise DataError, "The data root '{:s}' directory set in the DATA_ROOT environment variable does not exist!".format(data_root)
 
 # standard folder for grids and shapefiles  
 grid_folder = data_root + '/grids/' # folder for pickled grids
