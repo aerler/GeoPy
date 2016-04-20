@@ -10,6 +10,7 @@ Script to produce climatology files from monthly mean time-series' for all or a 
 import numpy as np
 import os, gc
 from datetime import datetime
+from importlib import import_module
 # internal
 from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
@@ -19,8 +20,7 @@ from datasets.common import name_of_month, days_per_month, getCommonGrid
 from processing.process import CentralProcessingUnit
 from processing.multiprocess import asyncPoolEC
 # WRF specific
-from datasets.WRF import loadWRF_TS, fileclasses
-from projects.WRF_experiments import WRF_exps, Exp
+from datasets.WRF import loadWRF_TS, fileclasses, Exp
 
 
 def computeClimatology(experiment, filetype, domain, periods=None, offset=0, griddef=None, varlist=None, 
@@ -233,10 +233,11 @@ if __name__ == '__main__':
   
   # default settings
   if not lbatch:
-    NP = 4 ; ldebug = False # for quick computations
-#     NP = 1 ; ldebug = True # just for tests
+    NP = 2 ; ldebug = False # for quick computations
+    NP = 1 ; ldebug = True # just for tests
     loverwrite = False
     varlist = None # ['lat2D', ]
+    project = 'GreatLakes'
     experiments = ['g-ens-B']
 #     experiments += ['g-ctrl'+tag for tag in ('-2050','-2100')]
 #     experiments += ['erai-3km','max-3km']
@@ -259,37 +260,36 @@ if __name__ == '__main__':
 #     periods += [3]
     periods += [5]
 #     periods += [9]
-    periods += [10]
-    periods += [15]
-    domains = (1,) # domains to be processed
+#     periods += [10]
+#     periods += [15]
+    domains = (2,) # domains to be processed
 #     domains = None # process all domains
-#     filetypes = ['plev3d'] # filetypes to be processed
 #     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
-#     filetypes = ['srfc','xtrm','lsm','hydro']
-#     filetypes = ['hydro'] # filetypes to be processed
-    filetypes = ['plev3d',]
+    filetypes = ['hydro'] # filetypes to be processed
     grid = 'native'
   else:
-    NP = NP or 2
+    NP = NP or 3
     ldebug=False
     loverwrite = False
     varlist = None # all variables
-    experiments = None # WRF experiment names (passed through WRF_exps)
-#     experiments = [] # list of most important experiments
-#     experiments += ['max-1deg', 'max-1deg-2050','max-1deg-2100',]
-#     experiments += ['erai-max', 'max-seaice-2050','max-seaice-2100',]
-#     experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-#     experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
-#     experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+    project = None # all available regions
+    experiments = None # all available WRF experiments
     offset = 0 # number of years from simulation start
     periods = (5,10,15,) # averaging period
     domains = None # domains to be processed (None means all domains)
     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # , rad
     grid = 'native' 
 
-  # expand experiments
-  if experiments is None: experiments = WRF_exps.values() # do all 
-  else: experiments = [WRF_exps[exp] for exp in experiments] 
+  # load WRF experiments list
+  project = 'projects' if not project else 'projects.{:s}'.format(project)
+  mod = import_module('{:s}.WRF_experiments'.format(project))
+  WRF_exps, WRF_ens = mod.WRF_exps, mod.WRF_ens; del mod
+  # expand WRF experiments
+  if experiments is None: # do all (except ensembles)
+    experiments = [exp for exp in WRF_exps.itervalues() if exp.shortname not in WRF_ens] 
+  else: 
+    try: experiments = [WRF_exps[exp] for exp in experiments]
+    except KeyError: raise KeyError, "WRF experiment '{:s}' not found in WRF experiment list.".format(exp)
 
   # shall we do some fancy regridding?
   if grid == 'native':

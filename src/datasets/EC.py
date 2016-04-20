@@ -17,7 +17,7 @@ from collections import OrderedDict
 # internal imports
 from datasets.CRU import loadCRU_StnTS
 from datasets.common import days_per_month, data_root, selectElements, translateVarNames
-from datasets.common import CRU_vars, stn_params, nullNaNthresholds
+from datasets.common import CRU_vars, stn_params, nullNaN
 from geodata.misc import ParseError, DateError, VariableError, ArgumentError, DatasetError, AxisError
 from geodata.misc import RecordClass, StrictRecordClass, isNumber, isInt 
 from geodata.base import Axis, Variable, Dataset
@@ -29,7 +29,7 @@ import imp, os
 # read code root folder from environment variable
 code_root = os.getenv('CODE_ROOT')
 if not code_root : raise ArgumentError, 'No CODE_ROOT environment variable set!'
-if not os.path.exists(code_root ): raise ImportError, "The code root '{:s}' directory set in the CODE_ROOT environment variable does not exist!".format(code_root)
+if not os.path.exists(code_root): raise ImportError, "The code root '{:s}' directory set in the CODE_ROOT environment variable does not exist!".format(code_root)
 # import module from WRF Tools explicitly to avoid name collision
 dv = imp.load_source('derived_variables', os.getenv('CODE_ROOT')+'/WRF Tools/Python/wrfavg/derived_variables.py') # need explicit absolute import due to name collision
 #dv = importlib.import_module('wrfavg.derived_variables') # need explicit absolute import due to name collision

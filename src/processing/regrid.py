@@ -24,9 +24,6 @@ from processing.process import CentralProcessingUnit
 from processing.misc import getMetaData, getTargetFile
 # WRF specific
 from datasets.WRF import getWRFgrid
-from projects.WRF_experiments import WRF_exps
-# CESM specific
-from projects.CESM_experiments import CESM_exps
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
@@ -211,6 +208,7 @@ if __name__ == '__main__':
 #     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
+    CESM_project = None # all available experiments
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
 #     CESM_experiments += ['Ctrl-1-2050']
@@ -220,11 +218,12 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['atm','lnd']
     CESM_filetypes = ['atm']
     # WRF experiments (short or long name)
+    WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
 #     WRF_experiments += ['max-ctrl-2050']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
-#     WRF_experiments += ['erai-3km','max-3km']
+    WRF_experiments += ['erai-3km','max-3km']
 #     WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
 #     WRF_experiments += ['max-ens-2050','max-ens-2100']
 #     WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
@@ -261,23 +260,21 @@ if __name__ == '__main__':
 #     grids['CRU'] = (None,) # CRU grid
   else:
     NP = NP or 2 # time-series might take more memory or overheat
-#     modes = ('climatology','time-series')
-#     modes = ('time-series',)
     modes = ('climatology',)
     loverwrite = False
     varlist = None # process all variables
     periods = (5,10,15,) # climatology periods to process
-    #periods = (15,) # for tests
     # Datasets
     datasets = None # process all applicable
-#     datasets = [] # don't process observational datasets
     resolutions = None # process all applicable
     lLTM = True 
     # CESM
+    CESM_project = None # all available experiments
     load3D = False
     CESM_experiments = None
     CESM_filetypes = ('atm','lnd')    
     # WRF
+    WRF_project = None # all available experiments
     WRF_experiments = [] # process WRF experiments on different grids
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
@@ -287,29 +284,37 @@ if __name__ == '__main__':
 #     WRF_experiments += ['cam-ctrl', 'cam-ctrl-1-2050', 'cam-ctrl-2-2050', 'cam-ctrl-2-2100'] # old cam simulations (arb1) 
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)    
-    domains = None # domains to be processed
     domains = (2,) # inner domain onto inner domain 
-    WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
-    #WRF_filetypes = WRF_filetypes = ('hydro',) # for tests
+    WRF_filetypes = ('srfc','xtrm','hydro','lsm') # process all filetypes except 'rad' and 'plev3d'
     # grid to project onto
     lpickle = True
-    #d12 = ('d01','d02')
-    #grids = dict(arb1=d12, arb2=d12, arb3=d12) # dict with list of resolutions
-    #grids = dict(arb2=('d02',),cesm1x1=(None,)) # dict with list of resolutions
-    grids = dict(arb2=('d01','d02'),glb1=('d01','d02')) # dict with list of resolutions  
+    grids = dict(arb2=('d02',),glb1=('d02',)) # dict with list of resolutions  
     
   
   ## process arguments    
   if periods is None: periods = [None]
-  # expand experiments
-  if WRF_experiments is None: WRF_experiments = WRF_exps.values() # do all 
-  else: WRF_experiments = [WRF_exps[exp] for exp in WRF_experiments]
-  if CESM_experiments is None: CESM_experiments = CESM_exps.values() # do all 
-  else: CESM_experiments = [CESM_exps[exp] for exp in CESM_experiments]  
+  # load WRF experiments list
+  WRF_project = 'projects' if not WRF_project else 'projects.{:s}'.format(WRF_project)
+  mod = import_module('{:s}.WRF_experiments'.format(WRF_project))
+  WRF_exps, WRF_ens = mod.WRF_exps, mod.WRF_ens; del mod
+  # expand WRF experiments
+  if WRF_experiments is None: # do all (except ensembles)
+    WRF_experiments = [exp for exp in WRF_exps.itervalues() if exp.shortname not in WRF_ens] 
+  else: 
+    try: WRF_experiments = [WRF_exps[exp] for exp in WRF_experiments]
+    except KeyError: raise KeyError, "WRF experiment '{:s}' not found in WRF experiment list.".format(exp)
+  # load CESM experiments list
+  CESM_project = 'projects' if not CESM_project else 'projects.{:s}'.format(CESM_project)
+  mod = import_module('{:s}.CESM_experiments'.format(CESM_project))
+  CESM_exps, CESM_ens = mod.CESM_exps, mod.CESM_ens; del mod
+  # expand CESM experiments
+  if CESM_experiments is None: # do all (except ensembles)
+    CESM_experiments = [exp for exp in CESM_exps.itervalues() if exp.shortname not in CESM_ens] 
+  else: 
+    try: CESM_experiments = [CESM_exps[exp] for exp in CESM_experiments]  
+    except KeyError: raise KeyError, "CESM experiment '{:s}' not found in CESM experiment list.".format(exp)
   # expand datasets and resolutions
   if datasets is None: datasets = gridded_datasets  
-#   if resolutions is None: resolutions = dict()
-#   elif not isinstance(resolutions,dict): raise TypeError 
   
   # print an announcement
   if len(WRF_experiments) > 0:

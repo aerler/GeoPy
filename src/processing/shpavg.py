@@ -22,10 +22,6 @@ from datasets import gridded_datasets
 from processing.misc import getMetaData, getTargetFile
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
-# WRF specific
-from projects.GreatLakes.WRF_experiments import WRF_exps, WRF_ens
-# CESM specific
-from projects.CESM_experiments import CESM_exps, CESM_ens
 
 # import shape objects
 from datasets.WSC import basins
@@ -203,6 +199,7 @@ if __name__ == '__main__':
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025']}
 #     datasets += ['Unity']
     # CESM experiments (short or long name) 
+    CESM_project = None # use all experiments in project module
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
 #     CESM_experiments += ['Ctrl-1']
@@ -212,7 +209,7 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['atm'] # ,'lnd'
     CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
-    WRF_experiments = ['g-ctrl_gl', ] # use None to process all WRF experiments
+    WRF_project = 'WesternCanda' # only use GreatLakes experiments
 #     WRF_experiments += ['max-ens-A']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][1:]
 #     WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
@@ -241,17 +238,19 @@ if __name__ == '__main__':
     modes = ('time-series',) # too many small files...
     loverwrite = False
     varlist = None # process all variables
-    periods = (5,10,15,30) # climatology periods to process
+    periods = (5,10,15) # climatology periods to process
     # Datasets
     datasets = None # process all applicable
     # N.B.: processing 0.5 deg CRU & GPCC time-series at the same time, can crash the system
     resolutions = None # process all applicable
     lLTM = False # again, not necessary
     # CESM
+    CESM_project = '' # use all experiments in project module
     load3D = False # takes very long
     CESM_experiments = None
     CESM_filetypes = ('atm','lnd')    
     # WRF
+    WRF_project = 'GreatLakes' # only use GreatLakes experiments
     WRF_experiments = None # process all WRF experiments
 #    WRF_experiments = [] # process all WRF experiments
     # Western Canada
@@ -274,21 +273,29 @@ if __name__ == '__main__':
     domains = 2 # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
     WRF_filetypes = ('xtrm','hydro','srfc','lsm') # only surface...
-#     WRF_filetypes = ('hydro',) # only hydro...
     # define shape data
-    shape_name = 'shpavg'
-    shapes = dict()
+    shape_name = 'shpavg'; shapes = dict()
     shapes['provinces'] = None # all Canadian provinces from EC module
     shapes['basins'] = None # all river basins (in Canada) from WSC module
     
+ 
   ## process arguments    
   if periods is None: periods = [None]
-  # expand experiments
+  # load WRF experiments list
+  WRF_project = 'projects' if not WRF_project else 'projects.{:s}'.format(WRF_project)
+  mod = import_module('{:s}.WRF_experiments'.format(WRF_project))
+  WRF_exps, WRF_ens = mod.WRF_exps, mod.WRF_ens; del mod
+  # expand WRF experiments
   if WRF_experiments is None: # do all (except ensembles)
     WRF_experiments = [exp for exp in WRF_exps.itervalues() if exp.shortname not in WRF_ens] 
   else: 
     try: WRF_experiments = [WRF_exps[exp] for exp in WRF_experiments]
     except KeyError: raise KeyError, "WRF experiment '{:s}' not found in WRF experiment list.".format(exp)
+  # load CESM experiments list
+  CESM_project = 'projects' if not CESM_project else 'projects.{:s}'.format(CESM_project)
+  mod = import_module('{:s}.CESM_experiments'.format(CESM_project))
+  CESM_exps, CESM_ens = mod.CESM_exps, mod.CESM_ens; del mod
+  # expand CESM experiments
   if CESM_experiments is None: # do all (except ensembles)
     CESM_experiments = [exp for exp in CESM_exps.itervalues() if exp.shortname not in CESM_ens] 
   else: 
@@ -315,10 +322,10 @@ if __name__ == '__main__':
     
   # print an announcement
   if len(WRF_experiments) > 0:
-    print('\n Averaging from WRF Datasets:')
+    print('\n Averaging from WRF Datasets ({:s}):'.format(WRF_project))
     print([exp.name for exp in WRF_experiments])
   if len(CESM_experiments) > 0:
-    print('\n Averaging from CESM Datasets:')
+    print('\n Averaging from CESM Datasets ({:s}):'.format(CESM_project))
     print([exp.name for exp in CESM_experiments])
   if len(datasets) > 0:
     print('\n Averaging from Observational Datasets:')
