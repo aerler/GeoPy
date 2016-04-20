@@ -21,6 +21,23 @@ from datasets.WRF import loadWRF, loadWRF_TS
 from datasets.CESM import loadCESM, loadCESM_TS
 
 
+## convenience function to load WRF experiment list and replace names with Exp objects
+def getExperimentList(experiments, project, dataset):
+  ''' load WRF or CESM experiment list and replace names with Exp objects '''
+  # load WRF experiments list
+  project = 'projects' if not project else 'projects.{:s}'.format(project)
+  mod = import_module('{:s}.{:s}_experiments'.format(project,dataset))
+  exps, enss = mod.exps, mod.enss; del mod
+  # expand WRF experiments
+  if experiments is None: # do all (except ensembles)
+    experiments = [exp for exp in exps.itervalues() if exp.shortname not in enss] 
+  else: 
+    try: experiments = [exps[exp] for exp in experiments]
+    except KeyError: # throw exception is experiment is not found
+      raise KeyError, "{1:s} experiment '{0:s}' not found in {1:s} experiment list (loaded from '{2:s}').".format(exp,dataset,project)
+  # return expanded list of experiments
+  return experiments
+
 ## prepare target dataset
 def getTargetFile(name, dataset, mode, module, dataargs, lwrite):
   ''' generate filename for target dataset '''

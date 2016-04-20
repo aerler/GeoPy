@@ -61,7 +61,7 @@ CESM_exps = exps # alias for whole dict
 CESM_experiments = experiments # alias for whole dict
 
 ## dict of ensembles
-ensembles = CESM_ens = OrderedDict()
+ensembles = OrderedDict()
 # initial condition ensemble
 ensembles['ens20trcn1x1']    = [tag+'20trcn1x1'   for tag in  'tb', 'hab', 'hab', 'hab']
 ensembles['ensrcp85cn1x1']   = [tag+'rcp85cn1x1'  for tag in 'htb', 'hab', 'hab', 'hab']
@@ -69,6 +69,8 @@ ensembles['ensrcp85cn1x1d']  = [tag+'rcp85cn1x1d' for tag in 'htb', 'hab', 'hab'
 ensembles['mens20trcn1x1']   = [tag+'20trcn1x1'   for tag in 'hab', 'hab', 'hab']
 ensembles['mensrcp85cn1x1']  = [tag+'rcp85cn1x1'  for tag in 'hab', 'hab', 'hab']
 ensembles['mensrcp85cn1x1d'] = [tag+'rcp85cn1x1d' for tag in 'hab', 'hab', 'hab']
+# add aliases 
+CESM_ens = enss = ensembles
 
 # N.B.: static & meta data for the ensemble is copied from the first-listed member;
 #       this includes station attributes, such as the elevation error 

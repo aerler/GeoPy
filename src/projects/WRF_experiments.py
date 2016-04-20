@@ -32,8 +32,8 @@ for abbr,mod in zip(project_list.values(),mod_list):
     experiments['{:s}_{:s}'.format(name,tag)] = exp
 
 # add aliases here
-WRF_exps = experiments # alias for experiments
-WRF_ens = ensembles # alias for ensembles
+WRF_exps = exps = experiments # alias for experiments
+WRF_ens = enss = ensembles # alias for ensembles
 
 
 ## generate loadWRF* versions with these experiments

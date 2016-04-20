@@ -21,7 +21,7 @@ from datasets import gridded_datasets
 from datasets.common import addLengthAndNamesOfMonth, getCommonGrid, grid_folder
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
-from processing.misc import getMetaData, getTargetFile
+from processing.misc import getMetaData, getTargetFile, getExperimentList
 # WRF specific
 from datasets.WRF import getWRFgrid
 
@@ -179,7 +179,7 @@ if __name__ == '__main__':
   else: loverwrite = ldebug # False means only update old files
   
   # default settings
-  if not lbatch:
+  if lbatch:
     NP = 2 ; ldebug = False # for quick computations
 #     NP = 3 ; ldebug = True # just for tests
     modes = ('climatology',) # 'climatology','time-series'
@@ -194,10 +194,6 @@ if __name__ == '__main__':
     periods += [10]
     periods += [15]
 #     periods += [30]
-#     periods += [(1984,1994)]
-#     periods += [(1989,1994)]
-#     periods += [(1949,2009)]
-#     periods += [(1997,1998)]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
     datasets = []
@@ -259,60 +255,43 @@ if __name__ == '__main__':
 #     grids['NARR'] = (None,) # NARR grid
 #     grids['CRU'] = (None,) # CRU grid
   else:
-    NP = NP or 2 # time-series might take more memory or overheat
-    modes = ('climatology',)
-    loverwrite = False
-    varlist = None # process all variables
-    periods = (5,10,15,) # climatology periods to process
+    ldebug = False
+    # load YAML configuration file
+    import yaml
+    with open('regrid.yaml') as f: config = yaml.load(f, Loader=yaml.Loader)
+    # read config object
+    NP = NP or config['NP']
+    loverwrite = config['loverwrite']
+    # source data specs
+    modes = config['modes']
+    varlist = config['varlist']
+    periods = config['periods']
     # Datasets
-    datasets = None # process all applicable
-    resolutions = None # process all applicable
-    lLTM = True 
+    datasets = config['datasets']
+    resolutions = config['resolutions']
+    lLTM = config['lLTM']
     # CESM
-    CESM_project = None # all available experiments
-    load3D = False
-    CESM_experiments = None
-    CESM_filetypes = ('atm','lnd')    
+    CESM_project = config['CESM_project']
+    CESM_experiments = config['CESM_experiments']
+    CESM_filetypes = config['CESM_filetypes']
+    load3D = config['load3D']
     # WRF
-    WRF_project = None # all available experiments
-    WRF_experiments = [] # process WRF experiments on different grids
-#     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
-#     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
-#     WRF_experiments += ['new-v36-nmp', 'new-v36-noah', 'erai-v36-noah', 'new-v36-clm',]
-#     WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', ] # new standard runs (arb3) 
-#     WRF_experiments += ['new-grell', 'new-grell-old', 'new-noah', 'v35-noah'] # new sensitivity tests (arb3)
-#     WRF_experiments += ['cam-ctrl', 'cam-ctrl-1-2050', 'cam-ctrl-2-2050', 'cam-ctrl-2-2100'] # old cam simulations (arb1) 
-#     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
-#     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)    
-    domains = (2,) # inner domain onto inner domain 
-    WRF_filetypes = ('srfc','xtrm','hydro','lsm') # process all filetypes except 'rad' and 'plev3d'
-    # grid to project onto
-    lpickle = True
-    grids = dict(arb2=('d02',),glb1=('d02',)) # dict with list of resolutions  
+    WRF_project = config['WRF_project']
+    WRF_experiments = config['WRF_experiments']
+    WRF_filetypes = config['WRF_filetypes']
+    domains = config['domains']
+    # target data specs
+    lpickle = config['lpickle']
+    grids = config['grids']
     
   
   ## process arguments    
-  if periods is None: periods = [None]
-  # load WRF experiments list
-  WRF_project = 'projects' if not WRF_project else 'projects.{:s}'.format(WRF_project)
-  mod = import_module('{:s}.WRF_experiments'.format(WRF_project))
-  WRF_exps, WRF_ens = mod.WRF_exps, mod.WRF_ens; del mod
-  # expand WRF experiments
-  if WRF_experiments is None: # do all (except ensembles)
-    WRF_experiments = [exp for exp in WRF_exps.itervalues() if exp.shortname not in WRF_ens] 
-  else: 
-    try: WRF_experiments = [WRF_exps[exp] for exp in WRF_experiments]
-    except KeyError: raise KeyError, "WRF experiment '{:s}' not found in WRF experiment list.".format(exp)
-  # load CESM experiments list
-  CESM_project = 'projects' if not CESM_project else 'projects.{:s}'.format(CESM_project)
-  mod = import_module('{:s}.CESM_experiments'.format(CESM_project))
-  CESM_exps, CESM_ens = mod.CESM_exps, mod.CESM_ens; del mod
-  # expand CESM experiments
-  if CESM_experiments is None: # do all (except ensembles)
-    CESM_experiments = [exp for exp in CESM_exps.itervalues() if exp.shortname not in CESM_ens] 
-  else: 
-    try: CESM_experiments = [CESM_exps[exp] for exp in CESM_experiments]  
-    except KeyError: raise KeyError, "CESM experiment '{:s}' not found in CESM experiment list.".format(exp)
+  if not isinstance(periods, (tuple,list)): periods = [periods]
+  # check and expand WRF experiment list
+  WRF_experiments = getExperimentList(WRF_experiments, WRF_project, 'WRF')
+  if not isinstance(domains, (tuple,list)): domains = [domains]
+  # check and expand CESM experiment list
+  CESM_experiments = getExperimentList(CESM_experiments, CESM_project, 'CESM')
   # expand datasets and resolutions
   if datasets is None: datasets = gridded_datasets  
   

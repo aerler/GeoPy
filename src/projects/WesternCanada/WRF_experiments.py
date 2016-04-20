@@ -214,7 +214,7 @@ WRF_ens = OrderedDict()
 name_list = ensembles.keys(); name_list.sort()
 for key in name_list:
   WRF_ens[key] = ensembles[key]
-ensembles = WRF_ens
+ensembles = enss = WRF_ens
 
 
 ## generate loadWRF* versions with these experiments
