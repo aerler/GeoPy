@@ -23,7 +23,7 @@ from processing.misc import getMetaData, getTargetFile
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
 # WRF specific
-from projects.WRF_experiments import WRF_exps, WRF_ens
+from projects.GreatLakes.WRF_experiments import WRF_exps, WRF_ens
 # CESM specific
 from projects.CESM_experiments import CESM_exps, CESM_ens
 
@@ -248,7 +248,7 @@ if __name__ == '__main__':
     resolutions = None # process all applicable
     lLTM = False # again, not necessary
     # CESM
-    load3D = False # doesn't hurt... data is small
+    load3D = False # takes very long
     CESM_experiments = None
     CESM_filetypes = ('atm','lnd')    
     # WRF
@@ -271,10 +271,10 @@ if __name__ == '__main__':
 #    WRF_experiments += ['g-ctrl', 'g-ens-A', 'g-ens-B', 'g-ens-C', 'erai-t'] # Marc's max ensemble
 #    WRF_experiments += ['g-ctrl-2050', 'g-ens-A-2050', 'g-ens-B-2050', 'g-ens-C-2050']
 #    WRF_experiments += ['g-ctrl-2100', 'g-ens-A-2100', 'g-ens-B-2100', 'g-ens-C-2100'] # last three are not finished yet
-    domains = None # domains to be processed
+    domains = 2 # domains to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # process all filetypes except 'rad'
-#     WRF_filetypes = ('xtrm','hydro','srfc','lsm') # only surface...
-    WRF_filetypes = ('hydro',) # only hydro...
+    WRF_filetypes = ('xtrm','hydro','srfc','lsm') # only surface...
+#     WRF_filetypes = ('hydro',) # only hydro...
     # define shape data
     shape_name = 'shpavg'
     shapes = dict()
