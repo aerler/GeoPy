@@ -58,11 +58,6 @@ default_varatts = dict(pmsl     = dict(name='pmsl', units='Pa'), # sea-level pre
                        y        = dict(name='y', units='m')) # projected south-north coordinate
 default_varatts['p-et'] = dict(name='p-et', units='kg/m^2/s') # net precipitation; only legal as a string                                
 
-# thresholds for wet-day variables (from AMS glossary and ETCCDI Climate Change Indices) 
-precip_thresholds = [0.2, 1., 10., 20.]
-# N.B.: importing from wrfavg in WRF Tools causes a name collition
-#from wrfavg.derived_variables import precip_thresholds
-
 # parameters used in shape files
 shp_params = ['shape_name','shp_long_name','shp_type','shp_area','shp_encl','shp_full','shp_empty']
 # N.B.: 'shp_mask' should not be loaded by default, because it can not be concatenated, if the grid is different 

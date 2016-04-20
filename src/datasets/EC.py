@@ -17,7 +17,7 @@ from collections import OrderedDict
 # internal imports
 from datasets.CRU import loadCRU_StnTS
 from datasets.common import days_per_month, data_root, selectElements, translateVarNames
-from datasets.common import CRU_vars, stn_params, nullNaN, precip_thresholds
+from datasets.common import CRU_vars, stn_params, nullNaNthresholds
 from geodata.misc import ParseError, DateError, VariableError, ArgumentError, DatasetError, AxisError
 from geodata.misc import RecordClass, StrictRecordClass, isNumber, isInt 
 from geodata.base import Axis, Variable, Dataset
@@ -34,6 +34,8 @@ if not os.path.exists(code_root ): raise ImportError, "The code root '{:s}' dire
 dv = imp.load_source('derived_variables', os.getenv('CODE_ROOT')+'/WRF Tools/Python/wrfavg/derived_variables.py') # need explicit absolute import due to name collision
 #dv = importlib.import_module('wrfavg.derived_variables') # need explicit absolute import due to name collision
 #import wrfavg.derived_variables as dv
+from utils.constants import precip_thresholds
+#from wrfavg.derived_variables import precip_thresholds
 
 ## EC (Environment Canada) Meta-data
 
