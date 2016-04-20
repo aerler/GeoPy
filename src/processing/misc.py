@@ -11,6 +11,7 @@ import os
 import numpy as np
 from importlib import import_module
 import functools
+import yaml,os
 # internal imports
 from geodata.misc import DatasetError, DateError, isInt
 from utils.misc import namedTuple
@@ -19,6 +20,32 @@ from datasets.common import getFileName
 from datasets.WRF import loadWRF, loadWRF_TS
 # CESM specific
 from datasets.CESM import loadCESM, loadCESM_TS
+
+
+# load YAML configuration file
+def loadYAML(default, lfeedback=True):
+  ''' load YAML configuration file and return config object '''
+  # check for environment variable
+  if os.environ.has_key('PYAVG_YAML'): 
+    yamlfile = os.environ['PYAVG_YAML']
+    # try to guess variations, if path is not valid
+    if not os.path.exists(yamlfile): 
+      if os.path.isdir(yamlfile): # use default filename in directory
+        yamlfile = '{:s}/{:s}'.format(yamlfile,default)
+      else: # use filename in current directory
+        yamlfile = '{:s}/{:s}'.format(os.getcwd(),yamlfile)
+    if lfeedback: print("\nLoading user-specified YAML configuration file:\n '{:s}'".format(yamlfile))
+  else: # use default in current directory
+    yamlfile = '{:s}/{:s}'.format(os.getcwd(),default)
+    if lfeedback: print("\nLoading default YAML configuration file:\n '{:s}'".format(yamlfile))
+  # check if file exists  
+  if not os.path.exists(yamlfile): 
+    raise IOError, "YAML configuration file not found!\n ('{:s}')".format(yamlfile)
+  # read file
+  with open(yamlfile) as f: 
+    config = yaml.load(f, Loader=yaml.Loader)
+  # return config object
+  return config
 
 
 ## convenience function to load WRF experiment list and replace names with Exp objects

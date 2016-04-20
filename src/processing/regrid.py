@@ -21,7 +21,7 @@ from datasets import gridded_datasets
 from datasets.common import addLengthAndNamesOfMonth, getCommonGrid, grid_folder
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
-from processing.misc import getMetaData, getTargetFile, getExperimentList
+from processing.misc import getMetaData, getTargetFile, getExperimentList, loadYAML
 # WRF specific
 from datasets.WRF import getWRFgrid
 
@@ -160,7 +160,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
 
 if __name__ == '__main__':
   
-  ## read arguments
+  ## read environment variables
   # number of processes NP 
   if os.environ.has_key('PYAVG_THREADS'): 
     NP = int(os.environ['PYAVG_THREADS'])
@@ -168,18 +168,46 @@ if __name__ == '__main__':
   # run script in debug mode
   if os.environ.has_key('PYAVG_DEBUG'): 
     ldebug =  os.environ['PYAVG_DEBUG'] == 'DEBUG' 
-  else: ldebug = False # i.e. append
+  else: ldebug = False
   # run script in batch or interactive mode
   if os.environ.has_key('PYAVG_BATCH'): 
     lbatch =  os.environ['PYAVG_BATCH'] == 'BATCH' 
-  else: lbatch = False # i.e. append  
+  else: lbatch = True
   # re-compute everything or just update 
   if os.environ.has_key('PYAVG_OVERWRITE'): 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
   
-  # default settings
+  ## define settings
   if lbatch:
+    # load YAML configuration
+    config = loadYAML('regrid.yaml', lfeedback=True)
+    # read config object
+    NP = NP or config['NP']
+    loverwrite = config['loverwrite']
+    # source data specs
+    modes = config['modes']
+    varlist = config['varlist']
+    periods = config['periods']
+    # Datasets
+    datasets = config['datasets']
+    resolutions = config['resolutions']
+    lLTM = config['lLTM']
+    # CESM
+    CESM_project = config['CESM_project']
+    CESM_experiments = config['CESM_experiments']
+    CESM_filetypes = config['CESM_filetypes']
+    load3D = config['load3D']
+    # WRF
+    WRF_project = config['WRF_project']
+    WRF_experiments = config['WRF_experiments']
+    WRF_filetypes = config['WRF_filetypes']
+    domains = config['domains']
+    # target data specs
+    lpickle = config['lpickle']
+    grids = config['grids']
+  else:
+    # settings for testing and debugging
     NP = 2 ; ldebug = False # for quick computations
 #     NP = 3 ; ldebug = True # just for tests
     modes = ('climatology',) # 'climatology','time-series'
@@ -254,35 +282,6 @@ if __name__ == '__main__':
 #     grids['cesm1x1'] = (None,) # CESM grid
 #     grids['NARR'] = (None,) # NARR grid
 #     grids['CRU'] = (None,) # CRU grid
-  else:
-    ldebug = False
-    # load YAML configuration file
-    import yaml
-    with open('regrid.yaml') as f: config = yaml.load(f, Loader=yaml.Loader)
-    # read config object
-    NP = NP or config['NP']
-    loverwrite = config['loverwrite']
-    # source data specs
-    modes = config['modes']
-    varlist = config['varlist']
-    periods = config['periods']
-    # Datasets
-    datasets = config['datasets']
-    resolutions = config['resolutions']
-    lLTM = config['lLTM']
-    # CESM
-    CESM_project = config['CESM_project']
-    CESM_experiments = config['CESM_experiments']
-    CESM_filetypes = config['CESM_filetypes']
-    load3D = config['load3D']
-    # WRF
-    WRF_project = config['WRF_project']
-    WRF_experiments = config['WRF_experiments']
-    WRF_filetypes = config['WRF_filetypes']
-    domains = config['domains']
-    # target data specs
-    lpickle = config['lpickle']
-    grids = config['grids']
     
   
   ## process arguments    
@@ -388,10 +387,6 @@ if __name__ == '__main__':
       
   # static keyword arguments
   kwargs = dict(loverwrite=loverwrite, varlist=varlist)
-  
-#   def execute_regridding(dataset, mode, griddef, dataargs, **kwargs):
-#     return performRegridding(dataset, mode, griddef, dataargs, loverwrite=loverwrite, varlist=varlist, **kwargs)
-#   ec = asyncPoolEC(execute_regridding, args, {}, NP=NP, ldebug=ldebug, ltrialnerror=True)
   
   ## call parallel execution function
   ec = asyncPoolEC(performRegridding, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
