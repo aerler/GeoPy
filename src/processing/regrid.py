@@ -172,7 +172,7 @@ if __name__ == '__main__':
   # run script in batch or interactive mode
   if os.environ.has_key('PYAVG_BATCH'): 
     lbatch =  os.environ['PYAVG_BATCH'] == 'BATCH' 
-  else: lbatch = True
+  else: lbatch = False # for debugging
   # re-compute everything or just update 
   if os.environ.has_key('PYAVG_OVERWRITE'): 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
@@ -273,10 +273,8 @@ if __name__ == '__main__':
     lpickle = True
     grids = dict()
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
-#     grids['col2'] = ('d03','d02','d01') # innermost WRF Columbia domain
     grids['glb1'] = ('d02',) # Marc's standard GRB inner domain
 #     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
-#     grids['arb3'] = ('d02',) # WRF new ARB inner domain
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids
 #     grids['cesm1x1'] = (None,) # CESM grid
@@ -285,10 +283,10 @@ if __name__ == '__main__':
     
   
   ## process arguments    
-  if not isinstance(periods, (tuple,list)): periods = [periods]
+  if isinstance(periods, (np.integer,int)): periods = [periods]
   # check and expand WRF experiment list
   WRF_experiments = getExperimentList(WRF_experiments, WRF_project, 'WRF')
-  if not isinstance(domains, (tuple,list)): domains = [domains]
+  if isinstance(domains, (np.integer,int)): domains = [domains]
   # check and expand CESM experiment list
   CESM_experiments = getExperimentList(CESM_experiments, CESM_project, 'CESM')
   # expand datasets and resolutions

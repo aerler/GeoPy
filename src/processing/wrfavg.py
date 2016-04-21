@@ -10,7 +10,6 @@ Script to produce climatology files from monthly mean time-series' for all or a 
 import numpy as np
 import os, gc
 from datetime import datetime
-from importlib import import_module
 # internal
 from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
@@ -19,6 +18,7 @@ from geodata.misc import isInt, DateError
 from datasets.common import name_of_month, days_per_month, getCommonGrid
 from processing.process import CentralProcessingUnit
 from processing.multiprocess import asyncPoolEC
+from processing.misc import getExperimentList, loadYAML
 # WRF specific
 from datasets.WRF import loadWRF_TS, fileclasses, Exp
 
@@ -204,7 +204,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
 
 if __name__ == '__main__':
   
-  ## read arguments
+  ## read environment Variables
   # number of processes NP 
   if os.environ.has_key('PYAVG_THREADS'): 
     NP = int(os.environ['PYAVG_THREADS'])
@@ -216,42 +216,37 @@ if __name__ == '__main__':
   # run script in batch or interactive mode
   if os.environ.has_key('PYAVG_BATCH'): 
     lbatch =  os.environ['PYAVG_BATCH'] == 'BATCH' 
-  else: lbatch = False # i.e. append  
+  else: lbatch = False # for debugging
   # re-compute everything or just update 
   if os.environ.has_key('PYAVG_OVERWRITE'): 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
-    # file types to process 
-  # domains to process
-  if os.environ.has_key('PYAVG_DOMAINS'): 
-    domains = os.environ['PYAVG_DOMAINS'].split(';') # semi-colon separated list
-  else: domains = None # defaults are set below
-  if os.environ.has_key('PYAVG_FILETYPES'): 
-    filetypes = os.environ['PYAVG_FILETYPES'].split(';') # semi-colon separated list
-  else: filetypes = None # defaults are set below
 
   
-  # default settings
-  if not lbatch:
-    NP = 2 ; ldebug = False # for quick computations
+  ## define settings
+  if lbatch:
+    # load YAML configuration
+    config = loadYAML('regrid.yaml', lfeedback=True)
+    # read config object
+    NP = NP or config['NP']
+    loverwrite = config['loverwrite']
+    # source data specs
+    varlist = config['varlist']
+    periods = config['periods']
+    offset = config['offset']
+    project = config['project']
+    experiments = config['experiments']
+    filetypes = config['filetypes']
+    domains = config['domains']
+    grid = config['grid']
+  else:
     NP = 1 ; ldebug = True # just for tests
     loverwrite = False
     varlist = None # ['lat2D', ]
     project = 'GreatLakes'
     experiments = ['g-ens-B']
 #     experiments += ['g-ctrl'+tag for tag in ('-2050','-2100')]
-#     experiments += ['erai-3km','max-3km']
-#     experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
-#     experiments += ['new','noah','max','max-2050']
-#     experiments += ['new-grell-old','new','max-nmp','max-nmp-old','max-clm','max']
-#     experiments += ['max-1deg', 'max-1deg-2050','max-1deg-2100']
-#     experiments += ['new-v36-nmp', 'new-v36-noah', 'erai-v36-noah', 'new-v36-clm']
 #     experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-#     experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
-#     experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
-#     experiments += ['max-nofdda','max-fdda']
-#     experiments += ['max-ctrl-2100']
-#     experiments += ['ctrl-arb1', 'ctrl-arb1-2050', 'ctrl-2-arb1',]
 #     experiments += ['max-3km']
 #     experiments += ['erai-max']
     offset = 0 # number of years from simulation start
@@ -262,40 +257,20 @@ if __name__ == '__main__':
 #     periods += [9]
 #     periods += [10]
 #     periods += [15]
-    domains = (2,) # domains to be processed
+    domains = 2 # domains to be processed
 #     domains = None # process all domains
 #     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
     filetypes = ['hydro'] # filetypes to be processed
     grid = 'native'
-  else:
-    NP = NP or 3
-    ldebug=False
-    loverwrite = False
-    varlist = None # all variables
-    project = None # all available regions
-    experiments = None # all available WRF experiments
-    offset = 0 # number of years from simulation start
-    periods = (5,10,15,) # averaging period
-    domains = None # domains to be processed (None means all domains)
-    filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # , rad
-    grid = 'native' 
 
-  # load WRF experiments list
-  project = 'projects' if not project else 'projects.{:s}'.format(project)
-  mod = import_module('{:s}.WRF_experiments'.format(project))
-  WRF_exps, WRF_ens = mod.WRF_exps, mod.WRF_ens; del mod
-  # expand WRF experiments
-  if experiments is None: # do all (except ensembles)
-    experiments = [exp for exp in WRF_exps.itervalues() if exp.shortname not in WRF_ens] 
-  else: 
-    try: experiments = [WRF_exps[exp] for exp in experiments]
-    except KeyError: raise KeyError, "WRF experiment '{:s}' not found in WRF experiment list.".format(exp)
+  # check and expand WRF experiment list
+  experiments = getExperimentList(experiments, project, 'WRF')
+  if isinstance(domains, (np.integer,int)): domains = [domains]
+  if isinstance(periods, (np.integer,int)): periods = [periods]
 
-  # shall we do some fancy regridding?
-  if grid == 'native':
-    griddef = None
-  else:
-    griddef = getCommonGrid(grid)
+  # shall we do some fancy regridding on-the-fly?
+  if grid == 'native': griddef = None
+  else: griddef = getCommonGrid(grid)
   
   # print an announcement
   print('\n Computing Climatologies for WRF experiments:\n')

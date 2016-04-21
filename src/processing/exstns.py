@@ -21,7 +21,7 @@ from geodata.base import Dataset
 from datasets import gridded_datasets
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
-from processing.misc import getMetaData, getTargetFile
+from processing.misc import getMetaData, getTargetFile, getExperimentList, loadYAML
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
@@ -155,7 +155,7 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
 
 if __name__ == '__main__':
   
-  ## read arguments
+  ## read environment variables
   # number of processes NP 
   if os.environ.has_key('PYAVG_THREADS'): 
     NP = int(os.environ['PYAVG_THREADS'])
@@ -163,120 +163,95 @@ if __name__ == '__main__':
   # run script in debug mode
   if os.environ.has_key('PYAVG_DEBUG'): 
     ldebug =  os.environ['PYAVG_DEBUG'] == 'DEBUG' 
-  else: ldebug = False # i.e. append
+  else: ldebug = False
   # run script in batch or interactive mode
   if os.environ.has_key('PYAVG_BATCH'): 
     lbatch =  os.environ['PYAVG_BATCH'] == 'BATCH' 
-  else: lbatch = False # i.e. append  
+  else: lbatch = False # for debugging
   # re-compute everything or just update 
   if os.environ.has_key('PYAVG_OVERWRITE'): 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
   
-  # default settings
-  if not lbatch:
+  ## define settings
+  if lbatch:
+    # load YAML configuration
+    config = loadYAML('regrid.yaml', lfeedback=True)
+    # read config object
+    NP = NP or config['NP']
+    loverwrite = config['loverwrite']
+    # source data specs
+    modes = config['modes']
+    varlist = config['varlist']
+    periods = config['periods']
+    # Datasets
+    datasets = config['datasets']
+    resolutions = config['resolutions']
+    lLTM = config['lLTM']
+    # CESM
+    CESM_project = config['CESM_project']
+    CESM_experiments = config['CESM_experiments']
+    CESM_filetypes = config['CESM_filetypes']
+    load3D = config['load3D']
+    # WRF
+    WRF_project = config['WRF_project']
+    WRF_experiments = config['WRF_experiments']
+    WRF_filetypes = config['WRF_filetypes']
+    domains = config['domains']
+    # target data specs
+    stations = config['stations']
+  else:
     NP = 2 ; ldebug = False # for quick computations
-#     NP = 1 ; ldebug = False # just for tests
     modes = ('climatology',) # 'climatology','time-series'
-#     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
-#     varlist = ['precip',]
     periods = []
 #     periods += [1]
 #     periods += [3]
 #     periods += [5]
 #     periods += [10]
     periods += [15]
-#     periods += [30]
     # Observations/Reanalysis
     datasets = []; resolutions = None
     lLTM = True # also regrid the long-term mean climatologies 
-#     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
-#     datasets += ['GPCC']; resolutions = {'GPCC':['025']}
 #     datasets += ['CRU']
 #     datasets += ['Unity']    
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
-#     CESM_experiments += ['Ctrl-1']
 #     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
-#     CESM_experiments += ['Ctrl-1-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
-#     CESM_experiments += ['Ens', 'Ens-2050']
     CESM_filetypes = ['atm'] # ,'lnd'
-#     CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['marc-g','marc-gg','marc-g-2050','marc-gg-2050']
 #     WRF_experiments += ['marc-m','marc-mm', 'marc-t','marc-m-2050','marc-mm-2050', 'marc-t-2050']
     WRF_experiments += ['erai']
-#     WRF_experiments += ['max-kf']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
 #     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        
-#     WRF_experiments += ['max-ens','max-ens-2050'] # requires different implementation...
     # other WRF parameters 
-    domains = None # domains to be processed
-    domains = (2,) # domains to be processed
-#     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
+    domains = 2 # domains to be processed
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-    WRF_filetypes = ('lsm',)
-#     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
-    #WRF_filetypes = ('const',); periods = None
+    WRF_filetypes = ('hydro',)
+#     WRF_filetypes = ('const',); periods = None
     # station datasets to match    
-#     stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
     stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
-  else:
-    NP = NP or 2 # station extraction is actually I/O limited
-    modes = ('time-series',) # too many small files...
-    loverwrite = False
-    varlist = None # process all variables
-    periods = None # (5,10,15,) # climatology periods to process
-    # Datasets
-    datasets = None # process all applicable
-    resolutions = None # process all applicable
-    lLTM = False # again, not necessary
-    # CESM
-    CESM_project = None # all available experiments
-    load3D = True # doesn't hurt... data is small
-    CESM_experiments = None
-    CESM_filetypes = ('atm','lnd')    
-    # WRF
-    WRF_project = None # all available experiments
-    WRF_experiments = None # process all WRF experiments
-    domains = None # domains to be processed
-    WRF_filetypes = ('srfc','xtrm','hydro','lsm') # process all filetypes except 'rad' and 'plev3d'
-    stations = dict(EC=('precip', 'temp')) # currently there is only one type: the EC weather stations
+  
   
   ## process arguments    
-  if periods is None: periods = [None]
-  # load WRF experiments list
-  WRF_project = 'projects' if not WRF_project else 'projects.{:s}'.format(WRF_project)
-  mod = import_module('{:s}.WRF_experiments'.format(WRF_project))
-  WRF_exps, WRF_ens = mod.WRF_exps, mod.WRF_ens; del mod
-  # expand WRF experiments
-  if WRF_experiments is None: # do all (except ensembles)
-    WRF_experiments = [exp for exp in WRF_exps.itervalues() if exp.shortname not in WRF_ens] 
-  else: 
-    try: WRF_experiments = [WRF_exps[exp] for exp in WRF_experiments]
-    except KeyError: raise KeyError, "WRF experiment '{:s}' not found in WRF experiment list.".format(exp)
-  # load CESM experiments list
-  CESM_project = 'projects' if not CESM_project else 'projects.{:s}'.format(CESM_project)
-  mod = import_module('{:s}.CESM_experiments'.format(CESM_project))
-  CESM_exps, CESM_ens = mod.CESM_exps, mod.CESM_ens; del mod
-  # expand CESM experiments
-  if CESM_experiments is None: # do all (except ensembles)
-    CESM_experiments = [exp for exp in CESM_exps.itervalues() if exp.shortname not in CESM_ens] 
-  else: 
-    try: CESM_experiments = [CESM_exps[exp] for exp in CESM_experiments]  
-    except KeyError: raise KeyError, "CESM experiment '{:s}' not found in CESM experiment list.".format(exp)
+  if isinstance(periods, (np.integer,int)): periods = [periods]
+  # check and expand WRF experiment list
+  WRF_experiments = getExperimentList(WRF_experiments, WRF_project, 'WRF')
+  if isinstance(domains, (np.integer,int)): domains = [domains]
+  # check and expand CESM experiment list
+  CESM_experiments = getExperimentList(CESM_experiments, CESM_project, 'CESM')
   # expand datasets and resolutions
   if datasets is None: datasets = gridded_datasets  
   

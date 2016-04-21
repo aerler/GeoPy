@@ -1,0 +1,14 @@
+# YAML configuration file for batch averaging of WRF time-series (processing.wrfavg.py)
+# 20/04/2016, Andre R. Erler
+
+NP: 3 # environment variable has precedence
+loverwrite: false # only recompute if source is newer
+varlist: Null # process all variables
+periods: [5,10,15,] # climatology periods to process
+offset: 0 # number of years from simulation start
+project: 'WesternCanada' # all available experiments
+experiments: Null # all available experiments
+domains: Null # inner domain onto inner domain 
+filetypes: ['srfc','xtrm','hydro','lsm','plev3d'] # process all filetypes except 'rad' and 'plev3d'
+# grid to project onto
+grid: native # no on-the-fly regridding
