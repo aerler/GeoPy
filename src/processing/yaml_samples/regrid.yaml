@@ -17,7 +17,7 @@ CESM_experiments: Null
 CESM_filetypes: ['atm','lnd']
 # WRF
 WRF_project: 'WesternCanada' # all available experiments
-WRF_experiments: [] # all available experiments
+WRF_experiments: Null # all available experiments
 #[ # process WRF experiments on different grids
 #  'new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100',
 #  'erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',
