@@ -226,7 +226,7 @@ if __name__ == '__main__':
   ## define settings
   if lbatch:
     # load YAML configuration
-    config = loadYAML('regrid.yaml', lfeedback=True)
+    config = loadYAML('wrfavg.yaml', lfeedback=True)
     # read config object
     NP = NP or config['NP']
     loverwrite = config['loverwrite']
