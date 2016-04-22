@@ -450,11 +450,11 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     mapSize = var.shape[-2:]
     if not all(mapSize): raise AxisError, 'Horizontal dimensions have to be of finite, non-zero length.'
     if var.ndim == 2: bands = 1 
-    else: bands = np.prod(var.shape[:-2])          
+    else: bands = np.prod(var.shape[:-2])
     # infer or check geotransform
     geotransform = getGeotransform(xlon, ylat, geotransform=geotransform)
     # add new instance attributes (projection parameters)
-    var.__dict__['isProjected'] = isProjected    
+    var.__dict__['isProjected'] = isProjected
     var.__dict__['projection'] = projection
     var.__dict__['geotransform'] = geotransform
     var.__dict__['mapSize'] = mapSize
@@ -699,25 +699,72 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     # add new method to object
     var.mapMean = types.MethodType(mapMean, var) 
     
-    # save variable as  Arc/Info ASCII Grid / ASCII raster file using GDAL
-    def ASCII_raster(self, filename=None, folder=None, filepath=None, wrap360=False, fillValue=None, **slices):
-      ''' Export data to  Arc/Info ASCII Grid (ASCII raster format); if no filename is given, the filename will be constructed 
-          from the variable name and the slice; note that each file can only contain a single horizontal 
-          slice. '''
-      # slice variable
-      if slices: self = self(**slices)
-      if self.ndim != 2: raise NotImplementedError
-      # get GDAL datast
-      dataset = getGDAL(self, load=True, allocate=True, wrap360=wrap360, fillValue=fillValue)
+    # save variable as Arc/Info ASCII Grid / ASCII raster file using GDAL
+    def ASCII_raster(self, prefix=None, folder=None, ext='asc', filepath=None, wrap360=False, 
+                     fillValue=None, lcoord=False):
+      ''' Export data to  Arc/Info ASCII Grid (ASCII raster format); if no filename is given, the filename will 
+          be constructed from the variable name and the slice; note that each file can only contain a single 
+          horizontal slice. 
+          N.B.: The implementation is recursive, i.e. variables with more than two dimensions are sliced and 
+          each a number of speperate calls to this function equal to the length of the dimension is issued; this
+          is repeated for every dimension (over two), until the input is two-dimensional.
+      '''
+      if lcoord: 
+        raise NotImplementedError, "Filenames with coordinate values (instead of indices) is not supported yet."
       # figure out filepath
-      if filepath is None:
+      if filepath:
+        # N.B.: This is basically a special option to export 2D fields to a custom path; if the dataset
+        #       is not 2D, the path is disassembled into folder, prefix and extension to allow output
+        #       to multiple files with coordinate indices.
+        if self.ndim != 2: # only 2D fields
+          # seperate folder and filename
+          fp = filepath.split('/') # currently only works for Linux paths
+          folder = '/'.join(fp[:-1]); filename = fp[-1]
+          if '.' in filename: 
+            fn = filename.split('.')
+            if len(fn) != 2: raise NotImplementedError
+            prefix = fn[0]; ext = fn[1]
+          else: 
+            prefix = filename; ext = None
+      else:
         if folder is None: 
           raise IOError, "Need to specify a folder or absolute path to export to ASCII raster file."
-        filename = filename or self.name
-        filepath = '{:s}/{:s}'.format(folder,filename)
-      # write ASCII raster file
-      ascii = gdal.GetDriverByName('AAIGrid')
-      ascii.CreateCopy(filepath, dataset)
+        prefix = prefix or self.name
+      # handle different cases with recursion
+      if self.ndim == 2: 
+        # N.B.: GDAL can only write 2D datasets to ASCII raster; multi-dimensional datasets are 
+        #       sliced recursively until they are 2D; at this point the recursion ends and the 
+        #       sliced dataset/Variable can be exported to ASCII raster format (one per file).
+        # get GDAL datast
+        dataset = getGDAL(self, load=True, allocate=True, wrap360=wrap360, fillValue=fillValue)
+        # get ASCII raster file driver
+        ascii = gdal.GetDriverByName('AAIGrid')
+        # construct filepath for 2D fields
+        if not filepath: 
+          filepath = '{:s}/{:s}'.format(folder,prefix)
+          if ext: filepath = '{:s}.{:s}'.format(filepath,ext)
+        # easy: just write ASCII raster file
+        ascii.CreateCopy(filepath, dataset)
+        # for good form, indirectly close the dataset
+        dataset = None; ascii = None
+      elif self.ndim > 2: 
+        # for ND fields, a new file for each band is necessary, hence filepath changes for every band
+        fax = self.axes[0] # take first axis to iterate over
+        lenax = len(fax); axname = fax.name
+        fmt = '{{:0{:d}d}}'.format(int(np.ceil(np.log10(lenax+1)))) # number of digits
+        # N.B.: start counting at 1, hence +1 --- Fortran convention
+        prefix = '{:s}_{:s}'.format(prefix,fmt)
+        # loop over bands
+        for i in xrange(lenax):
+          # work on each slice individually
+          slcvar = self.slicing(lidx=True, **{axname:i})
+          # assemble simplified file path
+          pf = prefix.format(i+1) # start index at 1 --- Fortran convention
+          # now call this function recursively for every slice, until input is 2D
+          filepath = ASCII_raster(slcvar, prefix=pf, folder=folder, ext=ext, filepath=None, 
+                                  wrap360=wrap360, fillValue=fillValue)
+          # N.B.: the function basically returns the last filepath
+      else: raise NotImplementedError, self
       # return full path to file
       return filepath
     # add new method to object

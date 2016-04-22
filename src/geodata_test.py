@@ -1627,10 +1627,11 @@ class GDALVarTest(NetCDFVarTest):
     ''' test function to write Arc/Info ASCII Grid / ASCII raster files '''
     # get test objects
     var = self.var # NCVar object
-    print var
     # write test file
     if RAM:
-      filepath = var.ASCII_raster(folder=ramdisk, time=0, lidx=True)
+      var = var(time=slice(0,100,10))
+      print var
+      filepath = var.ASCII_raster(folder=ramdisk, lcoord=True)
       print(filepath)
       assert os.path.exists(filepath)
 
@@ -1707,7 +1708,7 @@ if __name__ == "__main__":
     print('OMP_NUM_THREADS = {:s}\n'.format(os.environ['OMP_NUM_THREADS']))    
         
     specific_tests = []
-#     specific_tests += ['WriteASCII']
+    specific_tests += ['WriteASCII']
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
 #     specific_tests += ['Ensemble']
@@ -1718,7 +1719,7 @@ if __name__ == "__main__":
 #     specific_tests += ['Copy']
 #     specific_tests += ['ApplyToAll']
 #     specific_tests += ['AddProjection']
-    specific_tests += ['Indexing']
+#     specific_tests += ['Indexing']
 #     specific_tests += ['SeasonalReduction']
 #     specific_tests += ['ConcatVars']
 #     specific_tests += ['ConcatDatasets']
@@ -1729,11 +1730,11 @@ if __name__ == "__main__":
     # list of variable tests
 #     tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()
