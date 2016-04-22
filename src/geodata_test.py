@@ -396,7 +396,7 @@ class BaseVarTest(unittest.TestCase):
     # get test objects
     var = self.var
     lsimple = self.__class__ is BaseVarTest
-    # indexing (getitem) test  
+    # indexing (getitem) and slicing (call) tests  
     if var.ndim >= 3:
       tmp = var[:]; var.unload(); var[:] = tmp.copy()
       # __setitem__ & __getitem__
@@ -1603,6 +1603,37 @@ class GDALVarTest(NetCDFVarTest):
     assert data is not None
     assert data.ReadAsArray()[:,:,:].shape == (var.bands,)+var.mapSize 
 
+  def testIndexing(self):
+    # check if GDAL features are propagated
+    var = self.var
+    if var.ndim >= 3:
+      assert var.gdal 
+      # find any map and non-map axis
+      for ax in var.axes:
+        if ax != var.xlon and ax != var.ylat: nmx = ax
+        else: amx = ax
+      # slice while keeping the map axes (one gets trimmed)
+      slcvar = var(lidx=True, lsqueeze=True, **{nmx.name:0, amx.name:slice(0,2)})
+      assert 'gdal' in slcvar.__dict__ 
+      assert slcvar.gdal 
+      # slice with removing a map axes
+      slcvar = var(lidx=True, lsqueeze=True, **{amx.name:0})
+      assert 'gdal' in slcvar.__dict__ 
+      assert not slcvar.gdal 
+    # do standard tests
+    super(GDALVarTest,self).testIndexing()
+    
+  def testWriteASCII(self):
+    ''' test function to write Arc/Info ASCII Grid / ASCII raster files '''
+    # get test objects
+    var = self.var # NCVar object
+    print var
+    # write test file
+    if RAM:
+      filepath = var.ASCII_raster(folder=ramdisk, time=0, lidx=True)
+      print(filepath)
+      assert os.path.exists(filepath)
+
 
 class DatasetGDALTest(DatasetNetCDFTest):  
   
@@ -1654,6 +1685,7 @@ if __name__ == "__main__":
     print('OMP_NUM_THREADS = {:s}\n'.format(os.environ['OMP_NUM_THREADS']))    
         
     specific_tests = []
+    specific_tests += ['WriteASCII']
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
 #     specific_tests += ['Ensemble']
@@ -1675,7 +1707,7 @@ if __name__ == "__main__":
     # list of variable tests
 #     tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']

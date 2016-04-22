@@ -257,8 +257,8 @@ class VarNC(Variable):
     # return data
     return data
   
-  def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, asVar=None, lsqueeze=True, 
-               lcheck=False, lcopy=False, lslices=False, linplace=False, asNC=None, **axes):
+  def slicing(self, lidx=None, lrng=None, years=None, listAxis=None, asVar=None, lsqueeze=True, 
+              lcheck=False, lcopy=False, lslices=False, linplace=False, asNC=None, **axes):
     ''' This method implements access to slices via coordinate values and returns Variable objects. 
         Default behavior for different argument types: 
           - index by coordinate value, not array index, except if argument is a Slice object
@@ -268,7 +268,7 @@ class VarNC(Variable):
         Type-based defaults are ignored if appropriate keyword arguments are specified. 
         N.B.: this VarNC implementation will by default return another VarNC object, 
               referencing the original NetCDF variable, but with a new slice. '''
-    newvar,slcs = super(VarNC,self).__call__(lidx=lidx, lrng=lrng, years=years, listAxis=listAxis, 
+    newvar,slcs = super(VarNC,self).slicing(lidx=lidx, lrng=lrng, years=years, listAxis=listAxis, 
                                         asVar=asVar, lsqueeze=lsqueeze, lcheck=lcheck, 
                                         lcopy=lcopy, lslices=True, linplace=linplace, **axes)
     # transform sliced Variable into VarNC
@@ -288,9 +288,10 @@ class VarNC(Variable):
       # create new VarNC instance with different slices
       newvar = asVarNC(newvar, self.ncvar, mode=self.mode, axes=axes, slices=slcs, squeeze=lsqueeze,
                        scalefactor=self.scalefactor, offset=self.offset, transform=self.transform)
-    # N.B.: the copy method can also cast as VarNC and it is called in __call__; however, __call__
+    # N.B.: the copy method can also cast as VarNC and it is called in slicing; however, slicing
     #       can not communicate slices correctly, so that casting as VarNC has to happen here
-    return newvar
+    if lslices: return newvar, slcs
+    else: return newvar
   
   def getArray(self, idx=None, axes=None, broadcast=False, unmask=False, fillValue=None, copy=True):
     ''' Copy the entire data array or a slice; option to unmask and to reorder/reshape to specified axes. '''
@@ -315,7 +316,7 @@ class VarNC(Variable):
     copyvar = super(VarNC,self).copy(deepcopy=deepcopy, **newargs) # just call superior - returns a regular Variable instance
     if asNC is None: asNC = not deepcopy and not 'data' in newargs 
     # N.B.: copy as VarNC, if no deepcopy and no data provided, otherwise as regular Variable;
-    #       this method is also called in __call__, but since sliced data is passed without a slice-
+    #       this method is also called in slicing, but since sliced data is passed without a slice-
     #       argument, it has to be casted as a regular Variable and converted later
     if asNC: 
       if 'scalefactor' not in newargs: newargs['scalefactor'] = self.scalefactor
@@ -369,7 +370,7 @@ class VarNC(Variable):
       # extract axes; remove axes from kwargs to avoid slicing again in super-call
       axes = {ax:kwargs.pop(ax) for ax in kwargs.iterkeys() if self.hasAxis(ax)}
       if len(axes) > 0: 
-        self, slcs = self.__call__(asVar=True, lslices=True, linplace=True, **axes) # this is poorly tested...
+        self, slcs = self.slicing(asVar=True, lslices=True, linplace=True, **axes) # this is poorly tested...
         if data is not None and data.shape != self.shape: data = data.__getitem__(slcs) # slice input data, if appropriate 
     if data is None:
       if self.data: 

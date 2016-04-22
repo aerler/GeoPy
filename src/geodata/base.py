@@ -179,7 +179,7 @@ class ReduceVar(object): # not a Variable child!!!
           if not var.hasAxis(axes, lany=not lall, lall=lall):
             return None # nothing to do
             # if not lrecursive, missing axes will be skipped 
-      # N.B.: leave checking of slices to var.__call__ (below)
+      # N.B.: leave checking of slices to var.slicing (below)
       ## get data from Variable  
       # use overloaded call method to index with coordinate values directly 
       if slcaxes: var = var(asVar=True, **slcaxes)
@@ -675,8 +675,8 @@ class Variable(object):
         raise DataError, "Data array shape does not match variable shape\n(slice was ignored, since no data array was present before)."
       else: self.data_array = data         
     
-  def __call__(self, lidx=None, lrng=None, years=None, listAxis=None, asVar=None, lfirst=False, lminmax=False,
-               lsqueeze=True, lcheck=False, lcopy=False, lslices=False, linplace=False, **axes):
+  def slicing(self, lidx=None, lrng=None, years=None, listAxis=None, asVar=None, lfirst=False, lminmax=False,
+              lsqueeze=True, lcheck=False, lcopy=False, lslices=False, linplace=False, **axes):
     ''' This method implements access to slices via coordinate values and returns Variable objects. 
         Default behavior for different argument types: 
           - index by coordinate value, not array index, except if argument is a Slice object
@@ -885,12 +885,19 @@ class Variable(object):
     # return results and slices, if requested
     if lslices: return newvar, slcs
     else: return newvar
+  # a convenient alias to slicing
+  def __call__(self, lslices=False, **kwargs):
+    ''' Defers the call to the 'slicing' method. '''
+    if lslices: 
+      newvar, slcs = self.slicing(lslices=True, **kwargs)
+      return newvar, slcs
+    else: return self.slicing(lslices=False, **kwargs)
   
   def load(self, data=None, mask=None, fillValue=None, lrecast=False, **axes):
     ''' Method to attach numpy data array to variable instance (also used in constructor). '''
     # optional slicing
     if any([self.hasAxis(ax) for ax in axes.iterkeys()]):
-      self, slcs = self.__call__(asVar=True, lslices=True, linplace=True, **axes) # this is poorly tested...
+      self, slcs = self.slicing(asVar=True, lslices=True, linplace=True, **axes) # this is poorly tested...
       if data is not None and data.shape != self.shape: 
         data = data.__getitem__(slcs) # slice input data, if appropriate     
     # now load data       
@@ -1160,7 +1167,7 @@ class Variable(object):
     else: 
       return None
     
-  # decorator arguments: slcaxes are passed on to __call__, axis and axes are converted to axidx
+  # decorator arguments: slcaxes are passed on to slicing, axis and axes are converted to axidx
   #                      (axes is a list of reduction axes that are applied in sequence)
   # ReduceVar(asVar=None, axis=None, axes=None, lcheckAxis=True, **slcaxes)
   
@@ -2747,7 +2754,7 @@ class Dataset(object):
       if check: raise AxisError, "Axis '{:s}' not found!".format(axname)
       else: return None
       
-  def __call__(self, lidx=None, lrng=None, lminmax=False, lsqueeze=True, lcopy=False, years=None, lfirst=False, 
+  def slicing(self, lidx=None, lrng=None, lminmax=False, lsqueeze=True, lcopy=False, years=None, lfirst=False, 
                listAxis=None, lrmOther=False, lcpOther=False, **axes):
     ''' This method implements access to slices via coordinate values and returns Variable objects. 
         Default behavior for different argument types: 
@@ -2818,6 +2825,11 @@ class Dataset(object):
     # copy dataset
     return self.copy(axes=axes, variables=variables, varlist=varlist, atts=singlevaratts,
                      varargs=None, axesdeep=True, varsdeep=False)
+  # a convenient alias for slicing
+  def __call__(self, **kwargs):
+    ''' Defers the call to the 'slicing' method. '''
+    return self.slicing(**kwargs)
+
 
   def copy(self, axes=None, variables=None, varlist=None, varargs=None, axesdeep=True, varsdeep=False, 
            **kwargs): # this methods will have to be overloaded, if class-specific behavior is desired
@@ -3353,7 +3365,7 @@ class Ensemble(object):
   
   def __call__(self, *args, **kwargs):
     ''' Overloading the call method allows coordinate slicing on Ensembles. '''
-    return self.__getattr__('__call__')(*args, **kwargs)
+    return self.__getattr__('slicing')(*args, **kwargs)
   
   def __getattr__(self, attr):
     ''' This is where all the magic happens: defer calls to methods etc. to the 

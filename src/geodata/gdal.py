@@ -470,7 +470,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     # append projection info  
     def prettyPrint(self, short=False):
       ''' Add projection information in to string in long format. '''
-      string = var.__class__.prettyPrint(self, short=short)
+      string = self.__class__.prettyPrint(self, short=short)
       if not short:
         if var.projection is not None:
           string += '\nProjection: {0:s}'.format(self.projection.ExportToWkt())
@@ -478,18 +478,51 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     # add new method to object
     var.prettyPrint = types.MethodType(prettyPrint, var)
     
+    # overload slicing
+    def slicing(self, lslices=False, **kwargs):
+      ''' This method implements access to slices via coordinate values and returns Variable objects. 
+          Default behavior for different argument types: 
+            - index by coordinate value, not array index, except if argument is a Slice object
+            - interprete tuples of length 2 or 3 as ranges
+            - treat lists and arrays as coordinate lists (can specify new list axis)
+            - for backwards compatibility, None values are accepted and indicate the entire range 
+          Type-based defaults are ignored if appropriate keyword arguments are specified. 
+          Additionally, this method has been patched to propagate GDAL features.
+      '''
+      # slice and get new variable
+      if lslices: newvar, slcs = self.__class__.slicing(self, lslices=True, **kwargs)
+      else: newvar = self.__class__.slicing(self, lslices=False, **kwargs)      
+      # propagate GDAL features
+      if newvar.hasAxis(self.xlon.name) and newvar.hasAxis(self.ylat.name):
+        if self.xlon.name in kwargs or self.ylat.name in kwargs:
+          geotransform = None
+        else: geotransform = self.geotransform
+        newvar = addGDALtoVar(newvar, projection=self.projection, geotransform=geotransform)  # add GDAL functionality      
+      else:
+        newvar.__dict__['gdal'] = False # mark as negative
+      # return results and slices, if requested
+      if lslices: return newvar, slcs
+      else: return newvar
+    # add new method to object
+    var.slicing = types.MethodType(slicing, var)      
+    
+    # overload copy method to propagate GDAL features
     def copy(self, projection=None, geotransform=None, **newargs):
       ''' A method to copy the Variable with just a link to the data. '''
       var = self.__class__.copy(self, **newargs)  # use class copy() function
       # handle geotransform
-      if geotransform is None:
+      if not geotransform and not projection:
         if 'axes' in newargs:  # if axes were changed, geotransform can change!
-          geotransform = None  # infer from new axes
-#           if var.hasAxis(self.xlon) and var.hasAxis(self.ylat): geotransform = self.geotransform
-        else: geotransform = self.geotransform
-      # handle projection
-      if projection is None: projection = self.projection
-      var = addGDALtoVar(var, projection=projection, geotransform=geotransform)  # add GDAL functionality      
+          var = addGDALtoVar(var, projection=self.projection) # infer from new axes
+        else:
+          var = addGDALtoVar(var, griddef=self.griddef) # just copy old grid
+      else:
+        # handle projection
+        if projection is None: projection = self.projection
+        if geotransform is None:
+          if 'axes' in newargs: geotransform = None # infer from axes
+          else: geotransform = self.geotransform # use old (should be unchanged) 
+        var = addGDALtoVar(var, projection=projection, geotransform=geotransform) # add GDAL functionality
       return var
     # add new method to object
     var.copy = types.MethodType(copy, var)
@@ -664,7 +697,31 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
       # return new variable
       return newvar
     # add new method to object
-    var.mapMean = types.MethodType(mapMean, var)       
+    var.mapMean = types.MethodType(mapMean, var) 
+    
+    # save variable as  Arc/Info ASCII Grid / ASCII raster file using GDAL
+    def ASCII_raster(self, filename=None, folder=None, filepath=None, wrap360=False, fillValue=None, **slices):
+      ''' Export data to  Arc/Info ASCII Grid (ASCII raster format); if no filename is given, the filename will be constructed 
+          from the variable name and the slice; note that each file can only contain a single horizontal 
+          slice. '''
+      # slice variable
+      if slices: self = self(**slices)
+      if self.ndim != 2: raise NotImplementedError
+      # get GDAL datast
+      dataset = getGDAL(self, load=True, allocate=True, wrap360=wrap360, fillValue=fillValue)
+      # figure out filepath
+      if filepath is None:
+        if folder is None: 
+          raise IOError, "Need to specify a folder or absolute path to export to ASCII raster file."
+        filename = filename or self.name
+        filepath = '{:s}/{:s}'.format(folder,filename)
+      # write ASCII raster file
+      ascii = gdal.GetDriverByName('AAIGrid')
+      ascii.CreateCopy(filepath, dataset)
+      # return full path to file
+      return filepath
+    # add new method to object
+    var.ASCII_raster = types.MethodType(ASCII_raster, var) 
   
   # # the return value is actually not necessary, since the object is modified immediately
   return var
