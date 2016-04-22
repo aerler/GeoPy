@@ -811,6 +811,32 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       return string
     # add new method to object
     dataset.prettyPrint = types.MethodType(prettyPrint, dataset)
+    
+    # overload slicing
+    def slicing(self, **kwargs):
+      ''' This method implements access to slices via coordinate values and returns a Dataset object; the 
+          method relies on the Variable method for actual slicing but preserves the dataset integrity.
+          Default behavior for different argument types: 
+            - index by coordinate value, not array index, except if argument is a Slice object
+            - interprete tuples of length 2 or 3 as ranges
+            - treat lists and arrays as coordinate lists (can specify new list axis)
+            - for backwards compatibility, None values are accepted and indicate the entire range 
+          Type-based defaults are ignored if appropriate keyword arguments are specified.
+          Additionally, this method has been patched to propagate GDAL features. '''
+      # slice and get new variable
+      newds = self.__class__.slicing(self, **kwargs)      
+      # propagate GDAL features
+      if newds.hasAxis(self.xlon.name) and newds.hasAxis(self.ylat.name):
+        if self.xlon.name in kwargs or self.ylat.name in kwargs:
+          geotransform = None
+        else: geotransform = self.geotransform
+        newds = addGDALtoDataset(newds, projection=self.projection, geotransform=geotransform)  # add GDAL functionality      
+      else:
+        newds.__dict__['gdal'] = False # mark as negative
+      # return results and slices, if requested
+      return newds
+    # add new method to object
+    dataset.slicing = types.MethodType(slicing, dataset)      
 
     def copy(self, griddef=None, projection=None, geotransform=None, **newargs):
       ''' A method to copy the Dataset with just a link to the data. Also supports new projections. '''

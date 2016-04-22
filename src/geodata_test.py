@@ -1675,6 +1675,28 @@ class DatasetGDALTest(DatasetNetCDFTest):
     # check variables
     for var in dataset.variables.values():
       assert (var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat)) == var.gdal              
+
+  def testIndexing(self):
+    # check if GDAL features are propagated
+    dataset = self.dataset # dataset object
+    if len(dataset.axes) >= 3:
+      assert dataset.gdal
+      # find any map and non-map axis
+      print dataset.axes
+      for ax in dataset.axes.itervalues():
+        if ax != dataset.xlon and ax != dataset.ylat: nmx = ax
+        else: amx = ax
+      print nmx, amx
+      # slice while keeping the map axes (one gets trimmed)
+      slcds = dataset(lidx=True, lsqueeze=True, **{nmx.name:0, amx.name:slice(0,2)})
+      assert 'gdal' in slcds.__dict__ 
+      assert slcds.gdal 
+      # slice with removing a map axes
+      slcds = dataset(lidx=True, lsqueeze=True, **{amx.name:0})
+      assert 'gdal' in slcds.__dict__ 
+      assert not slcds.gdal 
+    # do standard tests
+    super(DatasetGDALTest,self).testIndexing()
     
     
 if __name__ == "__main__":
@@ -1685,7 +1707,7 @@ if __name__ == "__main__":
     print('OMP_NUM_THREADS = {:s}\n'.format(os.environ['OMP_NUM_THREADS']))    
         
     specific_tests = []
-    specific_tests += ['WriteASCII']
+#     specific_tests += ['WriteASCII']
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
 #     specific_tests += ['Ensemble']
@@ -1696,7 +1718,7 @@ if __name__ == "__main__":
 #     specific_tests += ['Copy']
 #     specific_tests += ['ApplyToAll']
 #     specific_tests += ['AddProjection']
-#     specific_tests += ['Indexing']
+    specific_tests += ['Indexing']
 #     specific_tests += ['SeasonalReduction']
 #     specific_tests += ['ConcatVars']
 #     specific_tests += ['ConcatDatasets']
@@ -1707,11 +1729,11 @@ if __name__ == "__main__":
     # list of variable tests
 #     tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()

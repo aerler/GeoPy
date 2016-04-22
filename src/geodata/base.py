@@ -2756,7 +2756,8 @@ class Dataset(object):
       
   def slicing(self, lidx=None, lrng=None, lminmax=False, lsqueeze=True, lcopy=False, years=None, lfirst=False, 
                listAxis=None, lrmOther=False, lcpOther=False, **axes):
-    ''' This method implements access to slices via coordinate values and returns Variable objects. 
+    ''' This method implements access to slices via coordinate values and returns a Dataset object; the 
+        method relies on the Variable method for actual slicing but preserves the dataset integrity.
         Default behavior for different argument types: 
           - index by coordinate value, not array index, except if argument is a Slice object
           - interprete tuples of length 2 or 3 as ranges
