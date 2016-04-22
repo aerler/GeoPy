@@ -1,0 +1,34 @@
+# YAML configuration file for conversion to ASCII raster (processing.ascii_raster.py)
+# 21/04/2016, Andre R. Erler
+
+NP: 3 # environment variable has precedence
+loverwrite: false # only recompute if source is newer
+modes: [climatology,]
+varlist: [T2, precip,] # process all variables
+periods: [15,] # climatology periods to process
+# Datasets
+datasets: [] # process all applicable
+resolutions: Null # process all applicable
+lLTM: true 
+# CESM
+CESM_project: Null # all available experiments
+load3D: false
+CESM_experiments: Null
+CESM_filetypes: ['atm','lnd'] # used to load dataset; not processed individually
+# WRF
+WRF_project: 'GreatLakes' # all available experiments
+WRF_experiments: Null # all available experiments
+#[ # process WRF experiments on different grids
+#  'new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100',
+#  'erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',
+#  'new-v36-nmp', 'new-v36-noah', 'erai-v36-noah', 'new-v36-clm',
+#  'new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', # new standard runs (arb3) 
+#  'new-grell', 'new-grell-old', 'new-noah', 'v35-noah', # new sensitivity tests (arb3)
+#]
+domains: 2 # inner domain onto inner domain 
+WRF_filetypes: ['srfc','xtrm','hydro','lsm'] # used to load dataset; not processed individually
+# grid to project onto
+lpickle: true
+grids: # mapping with list of resolutions  
+#  arb2: ['d02',] # inner Western Canada
+  glb1: ['d02',] # inner Great Lakes
