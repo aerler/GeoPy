@@ -19,7 +19,7 @@ from utils.misc import expandArgumentList
 from geodata.misc import AxisError, DatasetError, DateError, ArgumentError, EmptyDatasetError, DataError
 from geodata.base import Dataset, Variable, Axis, Ensemble
 from geodata.netcdf import DatasetNetCDF, VarNC
-from geodata.gdal import GDALError, addGDALtoDataset, GridDefinition, loadPickledGridDef, griddef_pickle
+from geodata.gdal import GDALError, addGDALtoDataset, loadPickledGridDef, griddef_pickle
 # import some calendar definitions
 from geodata.misc import name_of_month, days_per_month, days_per_month_365, seconds_per_month, seconds_per_month_365
 
@@ -681,41 +681,28 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
 
 # function to return grid definitions for some common grids
 def getCommonGrid(grid, res=None):
-  ''' return grid definitions of some commonly used grids '''
-  # look in known datasets first
-  try :
-    dataset = import_module(grid)
-    if res is None:
-      griddef = dataset.default_grid
-    else:
-      griddef = dataset.grid_def[res]
-  except ImportError:
-    lgrid = True
-    # select grid
-    if grid == 'ARB_small':   slon, slat, elon, elat = -160.25, 32.75, -90.25, 72.75
-    elif grid == 'ARB_large': slon, slat, elon, elat = -179.75, 3.75, -69.75, 83.75
-    else: lgrid = False
-    # select resolution:
-    lres = True
-    if res is None: res = '025' # default    
-    if res == '025':   dlon = dlat = 0.25 # resolution
-    elif res == '05':  dlon = dlat = 0.5
-    elif res == '10':  dlon = dlat = 1.0
-    elif res == '25':  dlon = dlat = 2.5
-    else: lres = False
-    if lgrid and lres:    
-      assert (elon-slon) % dlon == 0 
-      lon = np.linspace(slon+dlon/2,elon-dlon/2,(elon-slon)/dlon)
-      assert (elat-slat) % dlat == 0
-      lat = np.linspace(slat+dlat/2,elat-dlat/2,(elat-slat)/dlat)
-      # add new geographic coordinate axes for projected map
-      xlon = Axis(coord=lon, atts=dict(name='lon', long_name='longitude', units='deg E'))
-      ylat = Axis(coord=lat, atts=dict(name='lat', long_name='latitude', units='deg N'))
-      gridstr = '{0:s}_{1:s}'.format(grid,res) if res is not None else grid
-      griddef = GridDefinition(name=gridstr, projection=None, xlon=xlon, ylat=ylat) # projection=None >> lat/lon
-    else: 
+  ''' return definitions of commonly used grids (either from datasets or pickles) '''
+  # try pickle first
+  griddef = loadPickledGridDef(grid=grid, res=res, gridfolder=grid_folder, check=False)
+  # alternatively look in known datasets
+  if griddef is None:
+    try:
+      dataset = import_module(grid)
+      if res is None:
+        griddef = dataset.default_grid
+      else:
+        griddef = dataset.grid_def[res]
+    except ImportError:
       griddef = None
-  # return grid definition object
+#       assert (elon-slon) % dlon == 0 
+#       lon = np.linspace(slon+dlon/2,elon-dlon/2,(elon-slon)/dlon)
+#       assert (elat-slat) % dlat == 0
+#       lat = np.linspace(slat+dlat/2,elat-dlat/2,(elat-slat)/dlat)
+#       # add new geographic coordinate axes for projected map
+#       xlon = Axis(coord=lon, atts=dict(grid='lon', long_name='longitude', units='deg E'))
+#       ylat = Axis(coord=lat, atts=dict(grid='lat', long_name='latitude', units='deg N'))
+#       gridstr = '{0:s}_{1:s}'.format(grid,res) if res is not None else grid
+  # return grid definition object (or None, if none found)
   return griddef
 
 

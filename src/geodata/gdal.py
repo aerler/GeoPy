@@ -70,7 +70,8 @@ class GridDefinition(object):
   lon2D = None # 2D field of longitude at each grid point
   lat2D = None # 2D field of latitude at each grid point
       
-  def __init__(self, name='', projection=None, geotransform=None, size=None, xlon=None, ylat=None, lwrap360=None, geolocator=True):
+  def __init__(self, name='', projection=None, geotransform=None, size=None, xlon=None, ylat=None, 
+               lwrap360=None, geolocator=True):
     ''' This class can be initialized in several ways. Some form of projections has to be defined (using a 
         GDAL SpatialReference, WKT, EPSG code, or Proj4 conventions), or a simple geographic (lat/lon) 
         coordinate system will be assumed. 
@@ -406,7 +407,7 @@ def getGeotransform(xlon=None, ylat=None, geotransform=None):
   return geotransform
 
 
-# # functions to add GDAL functionality to existing Variable and Dataset instances
+## functions to add GDAL functionality to existing Variable and Dataset instances
 
 def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfolder=None):
   ''' 

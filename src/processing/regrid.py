@@ -16,14 +16,12 @@ import logging
 from geodata.misc import DateError, printList
 from geodata.netcdf import DatasetNetCDF
 from geodata.base import Dataset
-from geodata.gdal import GDALError, GridDefinition, addGeoLocator, loadPickledGridDef
+from geodata.gdal import GDALError, GridDefinition, addGeoLocator
 from datasets import gridded_datasets
-from datasets.common import addLengthAndNamesOfMonth, getCommonGrid, grid_folder
+from datasets.common import addLengthAndNamesOfMonth, getCommonGrid
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
 from processing.misc import getMetaData, getTargetFile, getExperimentList, loadYAML
-# WRF specific
-from datasets.WRF import getWRFgrid
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
@@ -323,17 +321,7 @@ if __name__ == '__main__':
       for res in reses:
         
         # load target grid definition
-        if lpickle:
-          griddef = loadPickledGridDef(grid=grid, res=res, folder=grid_folder)
-        else:
-          griddef = getCommonGrid(grid) # try this first (common grids)
-          # else, determine new grid from existing dataset
-          if griddef is None:
-            if grid == grid.lower(): # WRF grid      
-              griddef = getWRFgrid(experiment=grid, domains=[1])
-            elif grid == grid.upper(): # observations
-              griddef = import_module(grid[0:4]).__dict__[grid+'_grid']
-            else: pass # we could try CESM grids here, at a later stage
+        griddef = getCommonGrid(grid, res=res)
         # check if grid was defined properly
         if not isinstance(griddef,GridDefinition): 
           raise GDALError, 'No valid grid defined! (grid={0:s})'.format(grid)        

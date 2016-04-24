@@ -100,10 +100,12 @@ def getWRFproj(dataset, name=''):
   return getProjFromDict(projdict, name=name, GeoCS='WGS84', convention='Proj4')  
 
 # infer grid (projection and axes) from constants file
-def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='wrfconst_d{0:0=2d}.nc', ncformat='NETCDF4', exps=None):
+def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='wrfconst_d{0:0=2d}.nc', 
+               ncformat='NETCDF4', exps=None):
   ''' Infer the WRF grid configuration from an output file and return a GridDefinition object. '''
   # check input
-  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder, exps=exps)
+  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, 
+                                                        folder=folder, exps=exps)
   if isinstance(filename,basestring): filepath = '{}/{}'.format(folder,filename) # still contains formaters
   else: raise TypeError, filename
   # figure out experiment
