@@ -709,16 +709,10 @@ def getCommonGrid(grid, res=None):
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
     
-  
-#   mode = 'test_climatology'
-#   mode = 'test_timeseries'
   mode = 'pickle_grid'
-  grids = dict( ARB_small=['025','05','10','25'],
-                ARB_large=['025','05','10','25'],
-                CFSR=['031','05'],
+  grids = dict( CFSR=['031','05'],
                 GPCC=['025','05','10','25'],
                 CRU=[None],NARR=[None],PRISM=[None],PCIC=[None])
-  #grids = dict( CFSR=['031','05'],)
     
   # pickle grid definition
   if mode == 'pickle_grid':

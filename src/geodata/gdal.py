@@ -71,7 +71,7 @@ class GridDefinition(object):
   lat2D = None # 2D field of latitude at each grid point
       
   def __init__(self, name='', projection=None, geotransform=None, size=None, xlon=None, ylat=None, 
-               lwrap360=None, geolocator=True):
+               lwrap360=None, geolocator=True, convention=None):
     ''' This class can be initialized in several ways. Some form of projections has to be defined (using a 
         GDAL SpatialReference, WKT, EPSG code, or Proj4 conventions), or a simple geographic (lat/lon) 
         coordinate system will be assumed. 
@@ -94,9 +94,12 @@ class GridDefinition(object):
           #projection = dict(proj='longlat',lon_0=0,lat_0=0,x_0=0,y_0=0) # lon = [0,360]
         else: projection = dict(proj='longlat',lon_0=0,lat_0=0,x_0=0,y_0=0) # wraps at dateline          
       if isinstance(projection, dict): 
-        gdalsr = getProjFromDict(projdict=projection, name='', GeoCS='WGS84')  # get projection from dictionary
+        if convention is None: convention = 'Proj4'
+        gdalsr = getProjFromDict(projdict=projection, name='', GeoCS='WGS84', convention=convention)  # get projection from dictionary
       elif isinstance(projection, basestring):
-        gdalsr.ImportFromWkt(projection)  # from Well-Known-Text
+        if convention is None: convention = 'Wkt'
+        if convention.lower() == 'wkt': gdalsr.ImportFromWkt(projection)  # from Well-Known-Text
+        elif convention.lower() == 'proj4': gdalsr.ImportFromProj4(projection)  # from Proj4 convention
       elif isinstance(projection, np.number):
         gdalsr.ImportFromEpsg(projection)  # from EPSG code    
       else: 
@@ -234,18 +237,37 @@ def loadPickledGridDef(grid=None, res=None, filename=None, folder=None, check=Tr
     tmp = '{0:s}_{1:s}'.format(grid,res) if res else grid
     filename = griddef_pickle.format(tmp)
   if folder is not None: 
-    filename = '{0:s}/{1:s}'.format(folder,filename)
+    filepath = '{0:s}/{1:s}'.format(folder,filename)
   # load pickle
-  if os.path.exists(filename):
-    filehandle = open(filename, 'r')
+  if os.path.exists(filepath):
+    filehandle = open(filepath, 'r')
     griddef = pickle.load(filehandle)
     filehandle.close()
   elif check: 
-    raise IOError, "GridDefinition pickle file '{0:s}' not found!".format(filename) 
+    raise IOError, "GridDefinition pickle file '{0:s}' not found!".format(filepath) 
   else:
     griddef = None
   # return
   return griddef
+# save GridDef to pickle
+def pickleGridDef(griddef=None, folder=None, filename=None, lfeedback=True):
+  ''' function to pickle griddefs in a standardized way '''
+  if not isinstance(griddef,GridDefinition): raise TypeError
+  if filename is not None and not isinstance(filename,basestring): raise TypeError
+  if folder is not None and not isinstance(folder,basestring): raise TypeError
+  # construct name
+  filename = griddef_pickle.format(griddef.name) if filename is None else filename
+  filepath = '{0:s}/{1:s}'.format(grid_folder if folder is None else folder,filename)
+  # open file and save pickle
+  filehandle = open(filepath, 'w')
+  pickle.dump(griddef, filehandle)
+  filehandle.close()
+  # print some feedback
+  if not os.path.exists(filepath):
+    raise IOError, "Error while saving Pickle to '{0:s}'".format(filepath)
+  elif lfeedback: print("   Saved Pickle to '{0:s}'".format(filepath))
+  # return filename
+  return filepath
 
 
 # a utility function
@@ -1096,23 +1118,54 @@ class NamedShape(Shape):
     self.shapetype = shapetype 
 
 
-# # run a test    
+## run a test    
 if __name__ == '__main__':
 
+  from datasets.common import grid_folder
+
+#   mode = 'read_shape'
+  mode = 'create_grid'
+  
   ## test reading shapefile
-  from datasets.common import grid_folder, shape_folder
-  # load shapefile
-  #folder = shape_folder+'ARB_Aquanty'; shapefile='ARB_Basins_Outline_WGS84.shp'
-#   folder = '/data/WSC/Basins/Athabasca River Basin/'; shapefile='UpperARB.shp' 
-#   folder = '/data/WSC/Basins/Fraser River Basin/'; shapefile='WholeFRB.shp'
-#   folder = '/data/EC/Provinces/Alberta/'; shapefile='Alberta.shp'
-#   folder = '/data/EC/Provinces/British Columbia/'; shapefile='British Columbia.shp'
-  folder = '/data/EC/Provinces/Manitoba/'; shapefile='Manitoba.shp'
-  shape = Shape(folder=folder, shapefile=shapefile)  
-  # get mask from shape file
-  griddef = loadPickledGridDef('arb2_d02', res=None, folder=grid_folder)
-  shp_mask = shape.rasterize(griddef=griddef, invert=False, ldebug=True)
-#   assert np.all( shp_mask[[0,-1],:] == True ) and np.all( shp_mask[:,[0,-1]] == True )
-  # display
-  import pylab as pyl
-  pyl.imshow(np.flipud(shp_mask[:,:])); pyl.colorbar(); pyl.show(block=True)
+  if mode == 'read_shape':
+    
+    # load shapefile
+    #folder = shape_folder+'ARB_Aquanty'; shapefile='ARB_Basins_Outline_WGS84.shp'
+    #   folder = '/data/WSC/Basins/Athabasca River Basin/'; shapefile='UpperARB.shp' 
+    #   folder = '/data/WSC/Basins/Fraser River Basin/'; shapefile='WholeFRB.shp'
+    #   folder = '/data/EC/Provinces/Alberta/'; shapefile='Alberta.shp'
+    #   folder = '/data/EC/Provinces/British Columbia/'; shapefile='British Columbia.shp'
+    folder = '/data/EC/Provinces/Manitoba/'; shapefile='Manitoba.shp'
+    shape = Shape(folder=folder, shapefile=shapefile)  
+    # get mask from shape file
+    griddef = loadPickledGridDef('arb2_d02', res=None, folder=grid_folder)
+    shp_mask = shape.rasterize(griddef=griddef, invert=False, ldebug=True)
+    #   assert np.all( shp_mask[[0,-1],:] == True ) and np.all( shp_mask[:,[0,-1]] == True )
+    # display
+    import pylab as pyl
+    pyl.imshow(np.flipud(shp_mask[:,:])); pyl.colorbar(); pyl.show(block=True)
+
+  ## create a new grid
+  elif mode == 'create_grid':
+    
+    # parameters for UTM 17
+    name = 'grw1'
+    projection = "+proj=utm +zone=17 +north +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+    geotransform = [0,1.e4,0,0,0,1.e4]; size = (20,40)
+    # N.B.: [x_0, dx, 0, y_0, 0, dy]
+    #       GT(0),GT(3) are the coordinates of the bottom left corner
+    #       GT(1) & GT(5) are pixel width and height
+    #       GT(2) & GT(4) are usually zero for North-up, non-rotated maps
+    # create grid
+    griddef = GridDefinition(name=name, projection=projection, geotransform=geotransform, size=size, 
+                             xlon=None, ylat=None, lwrap360=False, geolocator=True, convention='Proj4')
+
+    # save pickle to standard location
+    filepath = pickleGridDef(griddef, folder=grid_folder, filename=None, lfeedback=True)
+    assert os.path.exists(filepath)
+    print('')
+    
+    # load pickle to make sure it is right
+    del griddef
+    griddef = loadPickledGridDef(grid=name, res=None, folder=grid_folder)
+    print(griddef)
