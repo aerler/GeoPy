@@ -10,6 +10,7 @@ import unittest
 import netCDF4 as nc
 import numpy as np
 import numpy.ma as ma
+import scipy.stats as ss
 import os
 import gc
 
@@ -259,7 +260,9 @@ class BaseVarTest(unittest.TestCase):
                           lcrossval=not lsimple, ncv=0.2, # messes up sums in histograms & moments
                           lpersist=False, ldebug=False)
       elif lsimple: 
-        tmp = getattr(var,dist)(axis=t.name, lpersist=True, f0=0)
+        kwargs = dict(axis=t.name, lpersist=True)
+        if getattr(ss._continuous_distns,dist).numargs > 0: kwargs['f0'] = 0
+        tmp = getattr(var,dist)(**kwargs)
         if tmp.shape[-1] > 2: assert isZero(tmp.data_array[:,:,0]) # held fixed
       else:
         tmp = getattr(var,dist)(axis=t.name, lpersist=True, ldebug=False)
@@ -1731,7 +1734,7 @@ if __name__ == "__main__":
 #     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
+    tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
 #     tests += ['DatasetGDAL']
     

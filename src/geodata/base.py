@@ -26,6 +26,8 @@ from utils.misc import histogram, binedges, detrend, percentile, tabulate
      
 # used for climatology and seasons
 monthlyUnitsList = ('month','months','month of the year')
+# global casting rule (for operations between arrays of different type)
+casting_rule = 'same_kind' # default since NumPy 1.7
 
 class UnaryCheckAndCreateVar(object):
   ''' Decorator class for unary arithmetic operations that implements some sanity checks and 
@@ -97,12 +99,20 @@ def BinaryCheckAndCreateVar(sameUnits=True, linplace=False):
         elif other.ndim < orig.ndim: 
           raise NotImplementedError, "Can only broadcast second Variable in binary operation. "
       else:
-        otherdata = other
         othername = str(other)
         otherunits = None
+        otherdata = np.asanyarray(other)
       # call original method
-      data, name, units = self.binOp(orig, otherdata, othername=othername, otherunits=otherunits, 
-                                     linplace=linplace, **kwargs)
+      try:
+        data, name, units = self.binOp(orig, otherdata, othername=othername, otherunits=otherunits, 
+                                       linplace=linplace, **kwargs)
+      except TypeError:
+        if linplace and not np.issubdtype(orig.dtype, np.inexact) and np.issubdtype(otherdata.dtype, np.inexact):
+          warn("Warning: casting Variable '{:s}' as dtype 'float'.".format(orig.name))
+          orig.data_array = orig.data_array.astype('float')
+          data, name, units = self.binOp(orig, otherdata, othername=othername, otherunits=otherunits, 
+                                       linplace=linplace, **kwargs)
+        else: raise # previous exception
       if linplace:
         var = orig # in-place operation should already have changed data_array 
       elif asVar:
@@ -2104,18 +2114,28 @@ class Variable(object):
   @UnaryCheckAndCreateVar
   def standardize(self, axis=None, name=None, linplace=False, lcheckVar=True, lcheckAxis=True,
                   lstandardize=True, ldetrend=False, ltrend=False, lsmooth=False, lresidual=False, 
-                  degree=1, rcond=None, w=None, window_len=11, window='hanning'):
+                  degree=1, rcond=None, w=None, window_len=11, window='hanning', casting=casting_rule):
     ''' Standardize Variable, i.e. subtract mean and divide by standard deviation '''
     if self.dtype.kind in ('S',): 
       if lcheckVar: raise VariableError, "Standardization does not work with string Variables!"
       else: return None
-    if linplace: data = self.data_array # this is just a link
-    else: data = self.data_array.copy()
+    if name is None: name = '{:s}_std' # allow use of original name in function
+    if linplace: 
+      if not np.issubdtype(self.dtype, np.inexact):
+        warn("Warning: casting Variable '{:s}' as dtype 'float'.".format(self.name))
+        self.data_array = self.data_array.astype('float') # only copies if necessary
+      data = self.data_array        
+    else: 
+      if not np.issubdtype(self.dtype, np.inexact):
+        warn("Warning: casting new Variable '{:s}' as dtype 'float'.".format(name))
+        data = self.data_array.astype('float')
+      else: data = self.data_array.copy()
+      # N.B.: 
     # apply detrending and smoothing
     if axis is None:
       iaxis = None
       if lsmooth and data.size <= window_len: window_len = data.size-1 # shrink window, if data too short
-      # apply over flattened array
+      # apply over flattened array (detrend always operates in-place --- either on copy or original)
       data = detrend(data, ax=None, lcopy=False, 
                      ldetrend=ldetrend, ltrend=ltrend, degree=degree, rcond=rcond, w=w, 
                      lsmooth=lsmooth, lresidual=lresidual, window_len=window_len, window=window)
@@ -2134,11 +2154,11 @@ class Variable(object):
         # reassigning array (apply_along_axis creates a new results array)
     # standardize (subtract mean and divide by standard deviation)
     if lstandardize:
-      data -= np.nanmean(data, axis=iaxis, keepdims=True)
-      data /= np.nanstd(data, axis=iaxis, keepdims=True)
+      # in-place with unsafe casting
+      np.subtract(data, np.nanmean(data, axis=iaxis, keepdims=True), out=data, casting=casting)
+      np.divide(data, np.nanstd(data, axis=iaxis, keepdims=True), out=data, casting=casting)
     # N.B.: we standardize last, so as to ensure that the standard deviation is indeed unity
     # meta data
-    if name is None: name = '{:s}_std' # allow use of original name in function
     name = name.format(self.name) # only used for new variables
     units = '' if lstandardize else self.units # no units after normalization
     # return results to decorator/wrapper
@@ -2224,88 +2244,88 @@ class Variable(object):
   @BinaryCheckAndCreateVar(sameUnits=True, linplace=True)    
   def __iadd__(self, a, othername=None, otherunits=None, linplace=True):
     ''' Add a number or an array to the existing data. '''
-    self.data_array += a    
     assert linplace, 'This is strictly an in-place operation!'      
+    np.add(self.data_array, a, out=self.data_array, casting=casting_rule)
     return self.data_array, self.name, self.units # return array as result
 
   @BinaryCheckAndCreateVar(sameUnits=True, linplace=True)
   def __isub__(self, a, othername=None, otherunits=None, linplace=True):
     ''' Subtract a number or an array from the existing data. '''      
-    self.data_array -= a
     assert linplace, 'This is strictly an in-place operation!'      
+    np.subtract(self.data_array, a, out=self.data_array, casting=casting_rule)
     return self.data_array, self.name, self.units # return array as result
 
   @BinaryCheckAndCreateVar(sameUnits=False, linplace=True)
   def __imul__(self, a, othername=None, otherunits=None, linplace=True):
     ''' Multiply the existing data with a number or an array. '''      
-    self.data_array *= a
     assert linplace, 'This is strictly an in-place operation!'      
+    np.multiply(self.data_array, a, out=self.data_array, casting=casting_rule)
     return self.data_array, self.name, self.units # return array as result
 
   @BinaryCheckAndCreateVar(sameUnits=False, linplace=True)
   def __idiv__(self, a, othername=None, otherunits=None, linplace=True):
     ''' Divide the existing data by a number or an array. '''      
-    self.data_array /= a
     assert linplace, 'This is strictly an in-place operation!'      
+    np.divide(self.data_array, a, out=self.data_array, casting=casting_rule)
     return self.data_array, self.name, self.units # return array as result
 
   @BinaryCheckAndCreateVar(sameUnits=False, linplace=True)
   def __ipow__(self, a, othername=None, otherunits=None, linplace=True):
     ''' Take a power of the existing data with a number or an array. '''      
-    self.data_array **= a
+    assert linplace, 'This is strictly an in-place operation!'      
+    np.power(self.data_array, a, out=self.data_array, casting=casting_rule)
     # generally we don't change the name for in-place operations
     units = '{:s}^{:s}'.format(self.units,str(a)) # units change
-    assert linplace, 'This is strictly an in-place operation!'      
     return self.data_array, self.name, units # return array as result
 
   @BinaryCheckAndCreateVar(sameUnits=True, linplace=False)
   def __add__(self, a, othername=None, otherunits=None, linplace=False):
     ''' Add two variables and return a new variable. '''
-    data = self.data_array + a
+    assert not linplace, 'This operation is strictly not in-place!'
+    data = np.add(self.data_array, a, casting=casting_rule)
     name = '{:s} + {:s}'.format(self.name,othername)
     units = self.units
-    assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
 
   @BinaryCheckAndCreateVar(sameUnits=True, linplace=False)
   def __sub__(self, a, othername=None, otherunits=None, linplace=False):
     ''' Subtract two variables and return a new variable. '''
-    data = self.data_array - a
+    assert not linplace, 'This operation is strictly not in-place!'
+    data = np.subtract(self.data_array, a, casting=casting_rule)
     name = '{:s} - {:s}'.format(self.name,othername)
     units = self.units
-    assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
   
   @BinaryCheckAndCreateVar(sameUnits=False, linplace=False)
   def __mul__(self, a, othername=None, otherunits=None, linplace=False):
     ''' Multiply two variables and return a new variable. '''
-    data = self.data_array * a
+    assert not linplace, 'This operation is strictly not in-place!'
+    data = np.multiply(self.data_array, a, casting=casting_rule)
     name = '{:s} x {:s}'.format(self.name,othername)
     if otherunits is None: units = self.units 
     else: units = '{:s} {:s}'.format(self.units,otherunits)
-    assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
 
   @BinaryCheckAndCreateVar(sameUnits=False, linplace=False)
   def __div__(self, a, othername=None, otherunits=None, linplace=False):
     ''' Divide two variables and return a new variable. '''
-    data = self.data_array / a
+    assert not linplace, 'This operation is strictly not in-place!'
+    data = np.divide(self.data_array, a, casting=casting_rule)
     name = '{:s} / {:s}'.format(self.name,othername)
     if otherunits is None: units = self.units
     else:
       if self.units == otherunits: units = ''
       else: units = '{:s} / ({:s})'.format(self.units,otherunits)
-    assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
 
   @BinaryCheckAndCreateVar(sameUnits=False, linplace=False)
   def __pow__(self, a, othername=None, otherunits=None, linplace=False):
     ''' Raise a variable to a power and return a new variable. '''
-    data = self.data_array ** a
+    assert not linplace, 'This operation is strictly not in-place!'
+    data = np.power(self.data_array, a, casting=casting_rule)
     astr = '{}'.format(str(a))
     name = '{:s}^{:s}'.format(self.name,astr)
     units = '{:s}^{:s}'.format(self.units,astr)
-    assert not linplace, 'This operation is strictly not in-place!'
     return data, name, units
      
 
