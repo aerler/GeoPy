@@ -29,9 +29,12 @@ from plotting.figure import getFigAx
 from geodata.stats import mwtest, kstest, wrstest, VarRV
 
 
-# RAM disk settings ("global" variable)
-RAM = True # whether or not to use a RAM disk
-ramdisk = '/media/tmp/' # folder where RAM disk is mounted
+# work directory settings ("global" variable)
+# the environment variable RAMDISK contains the path to the RAM disk
+RAM = bool(os.getenv('RAMDISK', '')) # whether or not to use a RAM disk
+# either RAM disk or data directory
+workdir = os.getenv('RAMDISK', '') if RAM else '{:s}/test/'.format(os.getenv('DATA_ROOT', '')) 
+if not os.path.isdir(workdir): raise IOError, workdir
 # stylesheet = None
 figargs = dict(stylesheet='myggplot', lpresentation=True, lpublication=False)
 
@@ -354,13 +357,13 @@ if __name__ == "__main__":
     # DistPlot
 #     specific_tests += ['BasicHistogram']
 #     specific_tests += ['BootstrapCI']
-    specific_tests += ['SamplePlot']
+#     specific_tests += ['SamplePlot']
     
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['LinePlot'] 
-    tests += ['DistPlot']
+    tests += ['LinePlot'] 
+#     tests += ['DistPlot']
     
 
     # construct dictionary of test classes defined above

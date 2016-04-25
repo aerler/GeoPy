@@ -86,8 +86,8 @@ class MyAxes(Axes):
     ## figure out plot arguments
     # reset color cycle
     if reset_color is False: pass
-    elif reset_color is True: self.set_color_cycle(None) # reset
-    else: self.set_color_cycle(reset_color)
+    elif reset_color is True: self.set_prop_cycle(None) # reset
+    else: self.set_prop_cycle(reset_color)
     # figure out label list
     if labels is None: labels = self._getPlotLabels(varlist)           
     elif len(labels) < len(varlist): raise ArgumentError, "Incompatible length of varlist and labels."
@@ -209,8 +209,8 @@ class MyAxes(Axes):
     ## figure out plot arguments
     # reset color cycle
     if reset_color is False: pass
-    elif reset_color is True: self.set_color_cycle(None) # reset
-    else: self.set_color_cycle(reset_color)
+    elif reset_color is True: self.set_prop_cycle(None) # reset
+    else: self.set_prop_cycle(reset_color)
     # figure out label list
     if labels is None: labels = self._getPlotLabels(upper)           
     elif len(labels) != len(upper): raise ArgumentError, "Incompatible length of varlist and labels."
@@ -273,7 +273,7 @@ class MyAxes(Axes):
     ''' function to add an error band to a plot '''
     # get color from line object        
     CC = mpl.colors.ColorConverter()
-    if color is None: color = self._get_lines.color_cycle.next()
+    if color is None: color = self._get_lines.prop_cycler.next()['color']
     color = CC.to_rgb(color)
     # make darker edges
     if edgecolor is None: edgecolor = 0.5
@@ -468,8 +468,8 @@ class MyAxes(Axes):
     bins, binedgs = binedges(bins=bins, binedgs=binedgs, limits=(vmin,vmax), lcheckVar=True)
     # reset color cycle
     if reset_color is False: pass
-    elif reset_color is True: self.set_color_cycle(None) # reset
-    else: self.set_color_cycle(reset_color)
+    elif reset_color is True: self.set_prop_cycle(None) # reset
+    else: self.set_prop_cycle(reset_color)
     # figure out label list
     if labels is None: labels = self._getPlotLabels(varlist)           
     elif len(labels) != len(varlist): 

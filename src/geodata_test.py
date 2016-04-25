@@ -24,9 +24,12 @@ from datasets.common import data_root
 from wrfavg.wrfout_average import ldebug
 from copy import deepcopy
 
-# RAM disk settings ("global" variable)
-RAM = True # whether or not to use a RAM disk
-ramdisk = '/media/tmp/' # folder where RAM disk is mounted
+# work directory settings ("global" variable)
+# the environment variable RAMDISK contains the path to the RAM disk
+RAM = bool(os.getenv('RAMDISK', '')) # whether or not to use a RAM disk
+# either RAM disk or data directory
+workdir = os.getenv('RAMDISK', '') if RAM else '{:s}/test/'.format(os.getenv('DATA_ROOT', '')) 
+if not os.path.isdir(workdir): raise IOError, workdir
 
 class BaseVarTest(unittest.TestCase):  
   
@@ -36,8 +39,7 @@ class BaseVarTest(unittest.TestCase):
   
   def setUp(self):
     ''' create Axis and a Variable instance for testing '''
-    if RAM: self.folder = ramdisk
-    else: self.folder = os.path.expanduser('~') # just use home directory (will be removed)
+    self.folder = workdir
     self.dataset_name = 'TEST'
     # some setting that will be saved for comparison
     self.size = (48,2,4) # size of the data array and axes
@@ -880,8 +882,7 @@ class BaseDatasetTest(unittest.TestCase):
   
   def setUp(self):
     ''' create Dataset with Axes and a Variables for testing '''
-    if RAM: self.folder = ramdisk
-    else: self.folder = os.path.expanduser('~') # just use home directory (will be removed)
+    self.folder = workdir
     self.dataset_name = 'TEST'
     # some setting that will be saved for comparison
     self.size = (12,3,3) # size of the data array and axes
@@ -1314,8 +1315,7 @@ class NetCDFVarTest(BaseVarTest):
   
   def setUp(self):
     self.dataset_name = self.dataset
-    if RAM: folder = ramdisk
-    else: folder = '/{:s}/{:s}/'.format(data_root,self.dataset) # dataset name is also in folder name
+    folder = workdir
     # select dataset
     if self.dataset == 'GPCC': # single file
       filelist = ['gpcc_test/full_data_v6_precip_25.nc'] # variable to test
@@ -1424,8 +1424,7 @@ class DatasetNetCDFTest(BaseDatasetTest):
   
   def setUp(self):
     
-    if RAM: folder = ramdisk
-    else: folder = '/{:s}/{:s}/'.format(data_root,self.dataset_name) # dataset name is also in folder name
+    folder = workdir
     self.folder = folder
     # select dataset
     name = self.dataset_name
@@ -1631,7 +1630,7 @@ class GDALVarTest(NetCDFVarTest):
     if RAM:
       var = var(time=slice(0,100,10))
       print var
-      filepath = var.ASCII_raster(folder=ramdisk, lcoord=True)
+      filepath = var.ASCII_raster(folder=workdir, lcoord=True)
       print(filepath)
       assert os.path.exists(filepath)
 
@@ -1708,7 +1707,7 @@ if __name__ == "__main__":
     print('OMP_NUM_THREADS = {:s}\n'.format(os.environ['OMP_NUM_THREADS']))    
         
     specific_tests = []
-    specific_tests += ['WriteASCII']
+#     specific_tests += ['WriteASCII']
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
 #     specific_tests += ['Ensemble']
@@ -1728,9 +1727,9 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
+    tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
