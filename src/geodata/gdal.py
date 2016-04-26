@@ -1151,7 +1151,7 @@ if __name__ == '__main__':
     # parameters for UTM 17
     name = 'grw1'
     projection = "+proj=utm +zone=17 +north +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
-    geotransform = [0,1.e4,0,0,0,1.e4]; size = (20,40)
+    geotransform = [500.e3,1.e3,0,4740.e3,0,1.e3]; size = (132,162)
     # N.B.: [x_0, dx, 0, y_0, 0, dy]
     #       GT(0),GT(3) are the coordinates of the bottom left corner
     #       GT(1) & GT(5) are pixel width and height
