@@ -683,7 +683,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
 def getCommonGrid(grid, res=None):
   ''' return definitions of commonly used grids (either from datasets or pickles) '''
   # try pickle first
-  griddef = loadPickledGridDef(grid=grid, res=res, gridfolder=grid_folder, check=False)
+  griddef = loadPickledGridDef(grid=grid, res=res, folder=grid_folder, check=False)
   # alternatively look in known datasets
   if griddef is None:
     try:

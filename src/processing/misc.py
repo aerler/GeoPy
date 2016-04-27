@@ -7,7 +7,6 @@ Some utility functions related to processing datasets (to avoid code repetition)
 '''
 
 # external imports
-import os
 import numpy as np
 from importlib import import_module
 import functools
@@ -100,6 +99,7 @@ def getMetaData(dataset, mode, dataargs):
   else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
   # defaults for specific variables
   obs_res = None; domain = None; filetype = None
+  varlist = dataargs.get('varlist',None)
   # determine meta data based on dataset type
   if dataset == 'WRF': 
     # WRF datasets
@@ -133,10 +133,10 @@ def getMetaData(dataset, mode, dataargs):
     avgfolder = exp.avgfolder
     # load source data
     if lclim:
-      loadfct = functools.partial(loadWRF, experiment=exp, name=None, domains=domain, grid=None, 
+      loadfct = functools.partial(loadWRF, experiment=exp, name=None, domains=domain, grid=None, varlist=varlist,
                                   period=period, filetypes=[filetype], varatts=None, lconst=True) # still want topography...
     elif lts:
-      loadfct = functools.partial(loadWRF_TS, experiment=exp, name=None, domains=domain, grid=None, 
+      loadfct = functools.partial(loadWRF_TS, experiment=exp, name=None, domains=domain, grid=None, varlist=varlist,
                                   filetypes=[filetype], varatts=None, lconst=True) # still want topography...
     filepath = '{:s}/{:s}'.format(avgfolder,filename)
   elif dataset == 'CESM': 
@@ -167,10 +167,10 @@ def getMetaData(dataset, mode, dataargs):
     # load source data 
     load3D = dataargs.pop('load3D',None) # if 3D fields should be loaded (default: False)
     if lclim:
-      loadfct = functools.partial(loadCESM, experiment=exp, name=None, grid=None, period=period, 
+      loadfct = functools.partial(loadCESM, experiment=exp, name=None, grid=None, period=period, varlist=varlist, 
                                   filetypes=[filetype], varatts=None, load3D=load3D, translateVars=None)
     elif lts:
-      loadfct = functools.partial(loadCESM_TS, experiment=exp, name=None, grid=None, 
+      loadfct = functools.partial(loadCESM_TS, experiment=exp, name=None, grid=None, varlist=varlist,
                                   filetypes=[filetype], varatts=None, load3D=load3D, translateVars=None)     
     filepath = '{:s}/{:s}'.format(avgfolder,filename)
   elif dataset == dataset.upper() or dataset == 'Unity':
@@ -197,10 +197,10 @@ def getMetaData(dataset, mode, dataargs):
     avgfolder = module.avgfolder
     # load pre-processed climatology
     if lclim:
-      loadfct = functools.partial(module.loadClimatology, name=dataset_name, period=period, grid=None, 
+      loadfct = functools.partial(module.loadClimatology, name=dataset_name, period=period, grid=None, varlist=varlist,
                                   resolution=resolution, varatts=None, folder=module.avgfolder, filelist=None)
     elif lts:
-      loadfct = functools.partial(module.loadTimeSeries, name=dataset_name, grid=None, 
+      loadfct = functools.partial(module.loadTimeSeries, name=dataset_name, grid=None, varlist=varlist,
                                   resolution=resolution, varatts=None, folder=None, filelist=None)
     # check if the source file is actually correct
     filepath = '{:s}/{:s}'.format(avgfolder,filename)
@@ -214,7 +214,7 @@ def getMetaData(dataset, mode, dataargs):
   ## assemble and return meta data
   if not os.path.exists(filepath): raise IOError, "Source file '{:s}' does not exist!".format(filepath)        
   dataargs = namedTuple(dataset_name=dataset_name, period=period, periodstr=periodstr, avgfolder=avgfolder, 
-                        filetype=filetype, domain=domain, obs_res=obs_res) 
+                        filetype=filetype, domain=domain, obs_res=obs_res, varlist=varlist) 
   # return meta data
   return module, dataargs, loadfct, filepath, datamsgstr
     

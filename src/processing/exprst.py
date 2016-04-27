@@ -16,22 +16,22 @@ import logging
 from geodata.misc import DateError, printList, ArgumentError
 from geodata.netcdf import DatasetNetCDF
 from geodata.base import Dataset
-from geodata.gdal import GDALError, GridDefinition, addGeoLocator
+from geodata.gdal import addGeoLocator
 from datasets import gridded_datasets
-from datasets.common import addLengthAndNamesOfMonth, getCommonGrid
+from datasets.common import addLengthAndNamesOfMonth
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
-from processing.misc import getMetaData, getTargetFile, getExperimentList, loadYAML
+from processing.misc import getMetaData,  getExperimentList, loadYAML
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
-def performExport(dataset, mode, griddef, formats, dataargs, loverwrite=False, varlist=None, lwrite=True, 
-                      lreturn=False, ldebug=False, lparallel=False, pidstr='', logger=None):
+def performExport(dataset, mode, dataargs, expargs, loverwrite=False, lwrite=True, 
+                  lreturn=False, ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to perform regridding for a given dataset and target grid '''
   # input checking
   if not isinstance(dataset,basestring): raise TypeError
+  if not isinstance(formats,dict): raise TypeError # formats and kwargs for export methods
   if not isinstance(dataargs,dict): raise TypeError # all dataset arguments are kwargs 
-  if not isinstance(griddef,GridDefinition): raise TypeError
   if lparallel: 
     if not lwrite: raise IOError, 'Can only write to disk in parallel mode (i.e. lwrite = True).'
     if lreturn: raise IOError, 'Can not return datasets in parallel mode (i.e. lreturn = False).'
@@ -48,16 +48,21 @@ def performExport(dataset, mode, griddef, formats, dataargs, loverwrite=False, v
 
   ## extract meta data from arguments
   module, dataargs, loadfct, filepath, datamsgstr = getMetaData(dataset, mode, dataargs)
-  dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr; avgfolder = dataargs.avgfolder
+  dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr; avgfolder = dataargs.avgfolder; grid = dataargs.grid
 
   # determine age of source file
   if not loverwrite: sourceage = datetime.fromtimestamp(os.path.getmtime(filepath))          
           
-  # get filename for target dataset and do some checks
-  filename = getTargetFile(griddef.name.lower(), dataset, mode, module, dataargs, lwrite)
+  # parse export options
+  project=expargs['export_project']
+  varlist=expargs['export_varlist']
+  folder=expargs['export_folder']
+  formats=expargs['export_formats']
+  # get folder for target dataset and do some checks
+  folder = export_folder.format(project, dataset_name, grid)
     
   # prepare target dataset
-  if ldebug: filename = 'test_' + filename
+  if ldebug: folder = folder + 'test/'
   if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
   lskip = False # else just go ahead
   if lwrite:
@@ -203,22 +208,21 @@ if __name__ == '__main__':
     domains = config['domains']
     grids = config['grids']
     # target data specs
-    folder = config['folder']
-    formats = config['formats']
+    export_arguments = config['export_arguments'] # this is actually a larger data structure
   else:
     # settings for testing and debugging
-    NP = 2 ; ldebug = False # for quick computations
-#     NP = 3 ; ldebug = True # just for tests
+#     NP = 2 ; ldebug = False # for quick computations
+    NP = 1 ; ldebug = True # just for tests
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
-    varlist = None
-#     varlist = ['lat2D',]
+#     varlist = None
+    load_list = ['precip',]
     periods = []
 #     periods += [1]
 #     periods += [3]
-    periods += [5]
-    periods += [10]
+#     periods += [5]
+#     periods += [10]
     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
@@ -229,7 +233,7 @@ if __name__ == '__main__':
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR', 'NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
-    datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
+#     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
@@ -241,9 +245,10 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['atm','lnd']
     CESM_filetypes = ['atm']
     # WRF experiments (short or long name)
-    WRF_project = 'WesternCanada' # only WesternCanada experiments
+    WRF_project = 'GreatLakes' # only GreatLakes experiments
+#     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-#     WRF_experiments += ['max-ctrl-2050']
+    WRF_experiments += ['g-ctrl']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
 #     WRF_experiments += ['erai-3km','max-3km']
@@ -269,8 +274,9 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); periods = None
     # typically a specific grid is required
-    grids = dict()
-    grids['grw1'] = (None,) # special high-resolution grid for GRW HGS model
+    grids = [] # list of grids to process
+    grids += ['NATIVE'] # special keyword for native grid
+#     grids['grw1'] = (None,) # special high-resolution grid for GRW HGS model
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['glb1'] = ('d02',) # Marc's standard GRB inner domain
 #     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
@@ -279,12 +285,17 @@ if __name__ == '__main__':
 #     grids['cesm1x1'] = (None,) # CESM grid
 #     grids['NARR'] = (None,) # NARR grid
 #     grids['CRU'] = (None,) # CRU grid
+    ## export parameters
+    project = 'GRW' # project designation    
+    varlist = 'precip' # varlist for export
     # export destination/folder
-    folder = '{}/HGS/'
+    folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/'.format(os.getenv('DATA_ROOT', None)) # project/experiment/grid
     # formats to export to
     formats = dict()
     formats['ASCII_raster'] = None # or dictionary of parameters
-    
+    # assemble export arguments
+    export_arguments = dict(project=project, varlist=varlist, folder=folder, formats=formats,)
+    formats = export_arguments['formats']
   
   ## process arguments    
   if isinstance(periods, (np.integer,int)): periods = [periods]
@@ -306,17 +317,15 @@ if __name__ == '__main__':
   if len(datasets) > 0:
     print('\n And Observational Datasets:')
     print(datasets)
-  print('\n To Grid and Resolution:')
-  for grid,reses in grids.iteritems():
-    print('   {0:s}_{1:s}'.format(grid,printList(reses)))
-  print('\n And File Formats:')
+  print('\n From Grid/Resolution:\n   {:s}'.format(printList(grids)))
+  print('\n To File Formats:')
   for fileformat,params in formats.iteritems():
-    print('   {0:s} ({1:s})'.format(fileformat,printList(params)))
+    print('   {0:s} ({1:s})'.format(fileformat,printList(params) if params else ''))
   print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
   
   # check formats (will be iterated over in export function, hence not part of task list)
   for fileformat in formats.iterkeys():
-    if fileformat not in ('ascii_raster','netcdf'):
+    if fileformat.lower() not in ('ascii_raster','netcdf'):
       raise ArgumentError, "Unsupported file format: '{:s}'".format(fileformat)
     
   ## construct argument list
@@ -329,16 +338,8 @@ if __name__ == '__main__':
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
 
     # loop over target grids ...
-    for grid,reses in grids.iteritems():
-      # ... and resolutions
-      for res in reses:
-        
-        # load target grid definition
-        griddef = getCommonGrid(grid, res=res) # try this first (common grids)
-        # check if grid was defined properly
-        if not isinstance(griddef,GridDefinition): 
-          raise GDALError, 'No valid grid defined! (grid={0:s})'.format(grid)        
-        
+    for grid in grids:
+      
         # observational datasets (grid depends on dataset!)
         for dataset in datasets:
           mod = import_module('datasets.{0:s}'.format(dataset))
@@ -352,26 +353,27 @@ if __name__ == '__main__':
               if resolutions is None: dsreses = mod.LTM_grids
               elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.LTM_grids]  
               for dsres in dsreses: 
-                args.append( (dataset, mode, griddef, dict(period=None, resolution=dsres)) ) # append to list
+                args.append( (dataset, mode, dict(grid=grid, varlist=load_list, period=None, resolution=dsres)) ) # append to list
             # climatologies derived from time-series
             if resolutions is None: dsreses = mod.TS_grids
             elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
             for dsres in dsreses:
               for period in periodlist:
-                args.append( (dataset, mode, griddef, dict(period=period, resolution=dsres)) ) # append to list            
+                args.append( (dataset, mode, dict(grid=grid, varlist=load_list, period=period, resolution=dsres)) ) # append to list            
           elif mode == 'time-series': 
             # regrid the entire time-series
             if resolutions is None: dsreses = mod.TS_grids
             elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
             for dsres in dsreses:
-              args.append( (dataset, mode, griddef, dict(period=None, resolution=dsres)) ) # append to list            
+              args.append( (dataset, mode, dict(grid=grid, varlist=load_list, period=None, resolution=dsres)) ) # append to list            
         
         # CESM datasets
         for experiment in CESM_experiments:
           for filetype in CESM_filetypes:
             for period in periodlist:
               # arguments for worker function: dataset and dataargs       
-              args.append( ('CESM', mode, griddef, dict(experiment=experiment, filetypes=[filetype], period=period, load3D=load3D)) )
+              args.append( ('CESM', mode, dict(experiment=experiment, filetypes=[filetype], grid=grid, varlist=load_list, 
+                                               period=period, load3D=load3D)) )
         # WRF datasets
         for experiment in WRF_experiments:
           for filetype in WRF_filetypes:
@@ -382,10 +384,11 @@ if __name__ == '__main__':
             for domain in tmpdom:
               for period in periodlist:
                 # arguments for worker function: dataset and dataargs       
-                args.append( ('WRF', mode, griddef, dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)) )
+                args.append( ('WRF', mode, dict(experiment=experiment, filetypes=[filetype], grid=grid, varlist=load_list, 
+                                                domain=domain, period=period)) )
       
   # static keyword arguments
-  kwargs = dict(formats=formats, loverwrite=loverwrite, varlist=varlist)
+  kwargs = dict(expargs=export_arguments, loverwrite=loverwrite)
   # N.B.: formats will be iterated over inside export function
   
   ## call parallel execution function

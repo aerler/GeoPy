@@ -85,7 +85,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
   else:
           
     ## actually load datasets
-    source = loadfct(varlist=varlist) # load source 
+    source = loadfct() # load source 
     # check period
     if 'period' in source.atts and dataargs.periodstr != source.atts.period: # a NetCDF attribute
       raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
@@ -339,26 +339,27 @@ if __name__ == '__main__':
               if resolutions is None: dsreses = mod.LTM_grids
               elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.LTM_grids]  
               for dsres in dsreses: 
-                args.append( (dataset, mode, griddef, dict(period=None, resolution=dsres)) ) # append to list
+                args.append( (dataset, mode, griddef, dict(varlist=varlist, period=None, resolution=dsres)) ) # append to list
             # climatologies derived from time-series
             if resolutions is None: dsreses = mod.TS_grids
             elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
             for dsres in dsreses:
               for period in periodlist:
-                args.append( (dataset, mode, griddef, dict(period=period, resolution=dsres)) ) # append to list            
+                args.append( (dataset, mode, griddef, dict(varlist=varlist, period=period, resolution=dsres)) ) # append to list            
           elif mode == 'time-series': 
             # regrid the entire time-series
             if resolutions is None: dsreses = mod.TS_grids
             elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
             for dsres in dsreses:
-              args.append( (dataset, mode, griddef, dict(period=None, resolution=dsres)) ) # append to list            
+              args.append( (dataset, mode, griddef, dict(varlist=varlist, period=None, resolution=dsres)) ) # append to list            
         
         # CESM datasets
         for experiment in CESM_experiments:
           for filetype in CESM_filetypes:
             for period in periodlist:
               # arguments for worker function: dataset and dataargs       
-              args.append( ('CESM', mode, griddef, dict(experiment=experiment, filetypes=[filetype], period=period, load3D=load3D)) )
+              args.append( ('CESM', mode, griddef, dict(experiment=experiment, varlist=varlist, filetypes=[filetype], 
+                                                        period=period, load3D=load3D)) )
         # WRF datasets
         for experiment in WRF_experiments:
           for filetype in WRF_filetypes:
@@ -369,7 +370,8 @@ if __name__ == '__main__':
             for domain in tmpdom:
               for period in periodlist:
                 # arguments for worker function: dataset and dataargs       
-                args.append( ('WRF', mode, griddef, dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)) )
+                args.append( ('WRF', mode, griddef, dict(experiment=experiment, varlist=varlist, filetypes=[filetype], 
+                                                         domain=domain, period=period)) )
       
   # static keyword arguments
   kwargs = dict(loverwrite=loverwrite, varlist=varlist)
