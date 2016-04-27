@@ -1,8 +1,7 @@
 '''
 Created on 2016-04-21
 
-A script to convert variables from a datasets to ASCII raster format using GDAL. 
-The script can also perform regridding and some variable transformations.
+A script to convert datasets to raster format using GDAL. 
 
 @author: Andre R. Erler, GPL v3
 '''
@@ -14,21 +13,19 @@ from importlib import import_module
 from datetime import datetime
 import logging     
 # internal imports
-from geodata.misc import DateError, printList
+from geodata.misc import DateError, printList, ArgumentError
 from geodata.netcdf import DatasetNetCDF
 from geodata.base import Dataset
-from geodata.gdal import GDALError, GridDefinition, addGeoLocator, loadPickledGridDef
+from geodata.gdal import GDALError, GridDefinition, addGeoLocator
 from datasets import gridded_datasets
 from datasets.common import addLengthAndNamesOfMonth, getCommonGrid
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
 from processing.misc import getMetaData, getTargetFile, getExperimentList, loadYAML
-# WRF specific
-from datasets.WRF import getWRFgrid
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
-def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlist=None, lwrite=True, 
+def performExport(dataset, mode, griddef, formats, dataargs, loverwrite=False, varlist=None, lwrite=True, 
                       lreturn=False, ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to perform regridding for a given dataset and target grid '''
   # input checking
@@ -204,9 +201,10 @@ if __name__ == '__main__':
     WRF_experiments = config['WRF_experiments']
     WRF_filetypes = config['WRF_filetypes']
     domains = config['domains']
-    # target data specs
-    lpickle = config['lpickle']
     grids = config['grids']
+    # target data specs
+    folder = config['folder']
+    formats = config['formats']
   else:
     # settings for testing and debugging
     NP = 2 ; ldebug = False # for quick computations
@@ -248,7 +246,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2050']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
-    WRF_experiments += ['erai-3km','max-3km']
+#     WRF_experiments += ['erai-3km','max-3km']
 #     WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
 #     WRF_experiments += ['max-ens-2050','max-ens-2100']
 #     WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
@@ -264,23 +262,28 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-    domains = None # domains to be processed
+    domains = 2 # domains to be processed
 #     domains = None # process all domains
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); periods = None
-    # grid to project onto
-    lpickle = True
+    # typically a specific grid is required
     grids = dict()
+    grids['grw1'] = (None,) # special high-resolution grid for GRW HGS model
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
-    grids['glb1'] = ('d02',) # Marc's standard GRB inner domain
+#     grids['glb1'] = ('d02',) # Marc's standard GRB inner domain
 #     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids
 #     grids['cesm1x1'] = (None,) # CESM grid
 #     grids['NARR'] = (None,) # NARR grid
 #     grids['CRU'] = (None,) # CRU grid
+    # export destination/folder
+    folder = '{}/HGS/'
+    # formats to export to
+    formats = dict()
+    formats['ASCII_raster'] = None # or dictionary of parameters
     
   
   ## process arguments    
@@ -295,19 +298,26 @@ if __name__ == '__main__':
   
   # print an announcement
   if len(WRF_experiments) > 0:
-    print('\n Regridding WRF Datasets:')
+    print('\n Exporting WRF Datasets:')
     print([exp.name for exp in WRF_experiments])
   if len(CESM_experiments) > 0:
-    print('\n Regridding CESM Datasets:')
+    print('\n Exporting CESM Datasets:')
     print([exp.name for exp in CESM_experiments])
   if len(datasets) > 0:
     print('\n And Observational Datasets:')
     print(datasets)
   print('\n To Grid and Resolution:')
   for grid,reses in grids.iteritems():
-    print('   {0:s} {1:s}'.format(grid,printList(reses)))
+    print('   {0:s}_{1:s}'.format(grid,printList(reses)))
+  print('\n And File Formats:')
+  for fileformat,params in formats.iteritems():
+    print('   {0:s} ({1:s})'.format(fileformat,printList(params)))
   print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
   
+  # check formats (will be iterated over in export function, hence not part of task list)
+  for fileformat in formats.iterkeys():
+    if fileformat not in ('ascii_raster','netcdf'):
+      raise ArgumentError, "Unsupported file format: '{:s}'".format(fileformat)
     
   ## construct argument list
   args = []  # list of job packages
@@ -375,9 +385,10 @@ if __name__ == '__main__':
                 args.append( ('WRF', mode, griddef, dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)) )
       
   # static keyword arguments
-  kwargs = dict(loverwrite=loverwrite, varlist=varlist)
+  kwargs = dict(formats=formats, loverwrite=loverwrite, varlist=varlist)
+  # N.B.: formats will be iterated over inside export function
   
   ## call parallel execution function
-  ec = asyncPoolEC(performRegridding, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
+  ec = asyncPoolEC(performExport, args, kwargs, NP=NP, ldebug=ldebug, ltrialnerror=True)
   # exit with fraction of failures (out of 10) as exit code
   exit(int(10+np.ceil(10.*ec/len(args))) if ec > 0 else 0)

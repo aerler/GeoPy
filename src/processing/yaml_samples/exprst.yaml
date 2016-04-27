@@ -32,3 +32,5 @@ lpickle: true
 grids: # mapping with list of resolutions  
 #  arb2: ['d02',] # inner Western Canada
   glb1: ['d02',] # inner Great Lakes
+formats: # mapping which functions as a list of formats with associated parameters
+  ASCII_raster: Null # ArcInfo ASCII raster format (no paramters yet)
