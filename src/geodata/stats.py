@@ -68,11 +68,16 @@ def normaltest_wrapper(data, axis=None, ignoreNaN=True):
       This is a combination of the skewtest and the kurtosistest and can be applied along a 
       specified axis of a multi-dimensional arrays (using the 'axis' keyword), or over the 
       flattened array (axis=None). '''
-  if axis is None and ignoreNaN: 
+  if ignoreNaN:
+    if axis is not None: raise DataError, "NaN removal does not work reliably with ND-arrays."
     nonans = np.invert(np.isnan(data)) # test for NaN's
     if np.sum(nonans) < 3: return np.NaN # return, if less than 3 non-NaN's
     data = data[nonans] # remove NaN's
-  k2, pval = ss.normaltest(data, axis=axis); del k2
+  # N.B.: unfortunately this is still the best way to handle this...
+  #       'propagate' will return NaN for the entire array if any NaN are present,
+  #       'omit' will fail if any axis has less than 8 non-NaN values
+  # nan_policy = 'omit' if ignoreNaN else 'propagate'
+  k2, pval = ss.normaltest(data, axis=axis, nan_policy='propagate'); del k2
   return pval
 
 # global variable that is used to retain parameters for Shapiro-wilk test

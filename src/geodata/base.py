@@ -1525,11 +1525,11 @@ class Variable(object):
     return qvar
   
   def apply_stat_test(self, asVar=True, name=None, axis=None, axis_idx=None, test=None, dist='norm', 
-                      lflatten=False, lstatistic=False, lonesided=False, fillValue=None, ignoreNaN=None,
+                      lflatten=False, lstatistic=False, lonesided=False, fillValue=None, ignoreNaN=True,
                       lcheckVar=True, lcheckAxis=True, paxatts=None, pvaratts=None, **kwargs):
     ''' Apply a statistical test along a axis and return a variable containing the resulting p-values. '''
-    if ignoreNaN is None:
-      ignoreNaN = test.lower() != 'normaltest' or lflatten
+#     if ignoreNaN is None: 
+#       ignoreNaN = test.lower() != 'normaltest' or lflatten
     # some input checking
     if lflatten and axis is not None: raise ArgumentError
     if not lflatten and axis is None: 
@@ -1593,15 +1593,15 @@ class Variable(object):
     else: # use reduce to only apply to selected axis      
       # select test function for multi-dimensional test
       # N.B.: these "operations" will be called through the reduce method (see above for details)
-      if test.lower() in ('normaltest',):
-        laax = False # don't need to use Numpy's apply_along_axis
-        if ignoreNaN: 
-          raise NotImplementedError, "NaN-removal does not work with 'normaltest' and multi-dimensional arrays."
-        testfct = normaltest_wrapper
-        # N.B.: the normaltest just works on multi-dimensional data
+      if test.lower() in ('normaltest',) and not ignoreNaN:
+        laax = False # the only exception
+        # N.B.: the normaltest just works on multi-dimensional data, but not with NaN removal!
+        testfct = functools.partial(normaltest_wrapper, ignoreNaN=ignoreNaN)
       else:
-        laax = True # have to use Numpy's apply_along_axis
-        if test.lower() in ('anderson',): 
+        laax = True # have to use Numpy's apply_along_axis for most cases
+        if test.lower() in ('normaltest',): 
+          testfct = functools.partial(normaltest_wrapper, ignoreNaN=ignoreNaN)
+        elif test.lower() in ('anderson',): 
           testfct = functools.partial(anderson_wrapper, dist=dist, ignoreNaN=ignoreNaN)
         elif test.lower() in ('kstest',):
           testfct = functools.partial(kstest_wrapper, dist=dist, ignoreNaN=ignoreNaN, **kwargs)
@@ -1610,8 +1610,8 @@ class Variable(object):
           if lreta: 
             global shapiro_a # global variable to retain parameters
             shapiro_a = None # reset, just to be safe!
-          testfct = functools.partial(shapiro_wrapper, reta=lreta, ignoreNaN=ignoreNaN)
-        else: raise NotImplementedError, test
+            testfct = functools.partial(shapiro_wrapper, reta=lreta, ignoreNaN=ignoreNaN)
+          else: raise NotImplementedError, test
       # create a helper function that apllies the histogram along the specified axis
       def aaa_testfct(data, axis=None):
         if axis < 0: axis += data.ndim

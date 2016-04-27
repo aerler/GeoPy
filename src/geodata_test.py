@@ -1,7 +1,7 @@
 '''
 Created on 2013-08-24 
 
-Unittest for the PyGeoDat main package geodata.
+Unittest for the GeoPy main package geodata.
 
 @author: Andre R. Erler, GPL v3
 '''
@@ -17,7 +17,7 @@ import gc
 # import modules to be tested
 import utils.nanfunctions as nf
 from utils.nctools import writeNetCDF
-from geodata.misc import isZero, isOne, isEqual
+from geodata.misc import isZero, isOne, isEqual, isNumber
 from geodata.base import Variable, Axis, Dataset, Ensemble, concatVars, concatDatasets
 from geodata.stats import VarKDE, VarRV, asDistVar
 from geodata.stats import kstest, ttest, mwtest, wrstest, pearsonr, spearmanr
@@ -223,7 +223,9 @@ class BaseVarTest(unittest.TestCase):
     assert (var.atts is not self.var.atts) and (var.atts != self.var.atts) # ...dictionaries are not
     # N.B.: note that due to the name change, their atts are different!
     for key,value in var.atts.iteritems():
-      if key == 'name': assert np.any(value != self.var.atts[key]) 
+      if key == 'name': assert np.any(value != self.var.atts[key])
+      elif isinstance(value,(int,np.integer,float,np.inexact)):  
+        np.allclose(value, self.var.atts[key], equal_nan=True)
       else: assert np.all(value == self.var.atts[key])
     assert isEqual(var.data_array,self.var.data_array) 
     # change array
@@ -1710,7 +1712,7 @@ if __name__ == "__main__":
     print('OMP_NUM_THREADS = {:s}\n'.format(os.environ['OMP_NUM_THREADS']))    
         
     specific_tests = []
-#     specific_tests += ['WriteASCII']
+    specific_tests += ['WriteASCII']
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
 #     specific_tests += ['Ensemble']
@@ -1730,13 +1732,13 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
+#     tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
+#     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()
