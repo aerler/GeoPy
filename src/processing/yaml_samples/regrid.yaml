@@ -28,7 +28,6 @@ WRF_experiments: Null # all available experiments
 domains: 1 # inner domain onto inner domain 
 WRF_filetypes: ['srfc','xtrm','hydro','lsm'] # process all filetypes except 'rad' and 'plev3d'
 # grid to project onto
-lpickle: true
 grids: # mapping with list of resolutions  
 #  arb2: ['d02',] # inner Western Canada
   glb1: ['d02',] # inner Great Lakes

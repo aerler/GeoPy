@@ -202,7 +202,6 @@ if __name__ == '__main__':
     WRF_filetypes = config['WRF_filetypes']
     domains = config['domains']
     # target data specs
-    lpickle = config['lpickle']
     grids = config['grids']
   else:
     # settings for testing and debugging
@@ -268,10 +267,10 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); periods = None
     # grid to project onto
-    lpickle = True
     grids = dict()
+    grids['grw2'] = None # small grid, ideal for testing
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
-    grids['glb1'] = ('d02',) # Marc's standard GRB inner domain
+#     grids['glb1'] = ('d02',) # Marc's standard GRB inner domain
 #     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids
@@ -302,7 +301,7 @@ if __name__ == '__main__':
     print(datasets)
   print('\n To Grid and Resolution:')
   for grid,reses in grids.iteritems():
-    print('   {0:s} {1:s}'.format(grid,printList(reses)))
+    print('   {0:s} {1:s}'.format(grid,printList(reses) if reses else ''))
   print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
   
     
@@ -318,6 +317,7 @@ if __name__ == '__main__':
     # loop over target grids ...
     for grid,reses in grids.iteritems():
       # ... and resolutions
+      if reses is None: reses = (None,)
       for res in reses:
         
         # load target grid definition
