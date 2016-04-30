@@ -29,7 +29,8 @@ os.environ.setdefault('GDAL_DATA','/usr/local/share/gdal')
 
 # import all base functionality from PyGeoDat
 from geodata.base import Variable, Axis, Dataset
-from geodata.misc import separateCamelCase, printList, isEqual, isInt, isFloat, isNumber 
+from geodata.misc import separateCamelCase, printList, isEqual, isInt, isFloat, isNumber ,\
+  ArgumentError
 from geodata.misc import DataError, AxisError, GDALError, DatasetError
 
 
@@ -723,8 +724,8 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     var.mapMean = types.MethodType(mapMean, var) 
     
     # save variable as Arc/Info ASCII Grid / ASCII raster file using GDAL
-    def ASCII_raster(self, prefix=None, folder=None, ext='asc', filepath=None, wrap360=False, 
-                     fillValue=None, lcoord=False):
+    def ASCII_raster(self, prefix=None, folder=None, ext='.asc', filepath=None, wrap360=False, 
+                     fillValue=None, lcoord=False, lfortran=True, formatter=None):
       ''' Export data to  Arc/Info ASCII Grid (ASCII raster format); if no filename is given, the filename will 
           be constructed from the variable name and the slice; note that each file can only contain a single 
           horizontal slice. 
@@ -732,8 +733,6 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           each a number of speperate calls to this function equal to the length of the dimension is issued; this
           is repeated for every dimension (over two), until the input is two-dimensional.
       '''
-      if lcoord: 
-        raise NotImplementedError, "Filenames with coordinate values (instead of indices) is not supported yet."
       # figure out filepath
       if filepath:
         # N.B.: This is basically a special option to export 2D fields to a custom path; if the dataset
@@ -746,7 +745,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           if '.' in filename: 
             fn = filename.split('.')
             if len(fn) != 2: raise NotImplementedError
-            prefix = fn[0]; ext = fn[1]
+            prefix = fn[0]; ext = '.{:s}'.format(fn[1]) # add dot back in
           else: 
             prefix = filename; ext = None
       else:
@@ -765,7 +764,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         # construct filepath for 2D fields
         if not filepath: 
           filepath = '{:s}/{:s}'.format(folder,prefix)
-          if ext: filepath = '{:s}.{:s}'.format(filepath,ext)
+          if ext: filepath = '{:s}{:s}'.format(filepath,ext)
         # easy: just write ASCII raster file
         ascii.CreateCopy(filepath, dataset)
         # for good form, indirectly close the dataset
@@ -774,15 +773,27 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         # for ND fields, a new file for each band is necessary, hence filepath changes for every band
         fax = self.axes[0] # take first axis to iterate over
         lenax = len(fax); axname = fax.name
-        fmt = '{{:0{:d}d}}'.format(int(np.ceil(np.log10(lenax+1)))) # number of digits
-        # N.B.: start counting at 1, hence +1 --- Fortran convention
-        prefix = '{:s}_{:s}'.format(prefix,fmt)
+        if not lcoord: one = 1 if lfortran else 0 # Fortran or C indexing
+        # figure out formatter
+        if formatter and axname in formatter:
+          fmt = formatter[axname]
+          if isinstance(fmt, (list,tuple)):
+            axtag = fmt[0]; fmt = fmt[1]
+          else: axtag = None # assign below           
+        else:
+          axtag = None # assign below
+          if lcoord: fmt = '{}' # just a default... usually user-specified
+          else: fmt = '{{:0{:d}d}}'.format(int(np.ceil(np.log10(lenax+one)))) # number of digits
+          # N.B.: for Fortran convetion, start counting at 1, hence +1
+        if axtag is None: axtag = axname if lcoord else 'i{:s}'.format(axname.title())
+        prefix = '{:s}_{:s}_{:s}'.format(prefix,axtag,fmt)
         # loop over bands
         for i in xrange(lenax):
           # work on each slice individually
           slcvar = self.slicing(lidx=True, **{axname:i})
           # assemble simplified file path
-          pf = prefix.format(i+1) # start index at 1 --- Fortran convention
+          if lcoord: pf = prefix.format(fax[i]) # use actual coordinate value
+          else: pf = prefix.format(i+one) # start index at 1 --- Fortran convention
           # now call this function recursively for every slice, until input is 2D
           filepath = ASCII_raster(slcvar, prefix=pf, folder=folder, ext=ext, filepath=None, 
                                   wrap360=wrap360, fillValue=fillValue)
@@ -913,7 +924,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       # griddef supersedes all other arguments
       if griddef is not None:
         projection = griddef.projection
-        geotransform = griddef.geotransform
+        #geotransform = griddef.geotransform
         if not 'axes' in newargs: newargs['axes'] = dict()
         newargs['axes'][self.xlon.name] = griddef.xlon
         newargs['axes'][self.ylat.name] = griddef.ylat
@@ -988,8 +999,42 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
     # add new method to object
     dataset.mapMean = types.MethodType(mapMean, dataset)
     
-            
-  # # the return value is actually not necessary, since the object is modified immediately
+    # save variable as Arc/Info ASCII Grid / ASCII raster file using GDAL
+    def ASCII_raster(self, varlist=None, prefix=None, folder=None, ext='.asc', wrap360=False, 
+                     fillValue=None, lcoord=False, lfortran=True, formatter=None):
+      ''' Export data to  Arc/Info ASCII Grid (ASCII raster format); the filename will be constructed 
+          from a prefix, the variable name and the slice; note that each file can only contain a single 
+          horizontal slice (2D).  
+      '''
+      # check arguments
+      if varlist is None: varlist = self.variables.keys()
+      if not isinstance(varlist, (dict,tuple,list)): raise TypeError, varlist
+      if isinstance(varlist, (tuple,list)): varlist = {var:None for var in varlist}
+      # N.B.: the keys of a varlist are the variables that are to be exported and the values are the
+      #       corresponding variable prefixes (instead of the variable names, which is the default)
+      if prefix is None: prefix=dataset.name
+      if formatter is not None and not isinstance(formatter, (dict)): raise TypeError, formatter
+      # N.B.: formatter keys are axes and values are either index formatting strings or tuples
+      #       consisting of a new axis name and an index formatter
+      if not folder: 
+        raise ArgumentError, "A valid folder is necessary to export a dataset to ASCII raster format."
+      if not os.path.exists(folder): os.makedirs(folder) # make sure folder exists
+      # loop over variables
+      for varname,vartag in varlist.iteritems():
+        var = self.variables[varname] # variable isntance
+        if vartag is None: vartag = var.name
+        # skip variables that are not gdal enabled
+        if var.gdal: 
+          # add prefix to variable name
+          pf = '{:s}_{:s}'.format(prefix,vartag) if prefix else vartag
+          # call export function on each variable
+          var.ASCII_raster(prefix=pf, folder=folder, ext=ext, filepath=None, wrap360=wrap360, 
+                           fillValue=fillValue, lcoord=lcoord, lfortran=lfortran, formatter=formatter)
+      return folder
+    # add new method to object
+    dataset.ASCII_raster = types.MethodType(ASCII_raster, dataset)    
+      
+  ## the return value is actually not necessary, since the object is modified immediately
   return dataset
   
 

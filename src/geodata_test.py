@@ -24,6 +24,7 @@ from geodata.stats import kstest, ttest, mwtest, wrstest, pearsonr, spearmanr
 from datasets.common import data_root
 from wrfavg.wrfout_average import ldebug
 from copy import deepcopy
+import shutil
 
 # work directory settings ("global" variable)
 # the environment variable RAMDISK contains the path to the RAM disk
@@ -1631,13 +1632,20 @@ class GDALVarTest(NetCDFVarTest):
     ''' test function to write Arc/Info ASCII Grid / ASCII raster files '''
     # get test objects
     var = self.var # NCVar object
-    # write test file
-    if RAM:
-      var = var(time=slice(0,100,10))
-      print var
-      filepath = var.ASCII_raster(folder=workdir, lcoord=True)
-      print(filepath)
-      assert os.path.exists(filepath)
+    var = var(time=slice(0,100,10)) # not too much...
+    # prepare folder for tes data
+    folder = '{:s}/ASCII_raster/'.format(workdir)
+    print("\nASCII_raster folder: '{:s}'".format(folder)) # print data folder
+    if os.path.exists(folder): shutil.rmtree(folder)
+    os.mkdir(folder)
+    # simple case
+    filepath = var.ASCII_raster(folder=folder, lcoord=False)
+    assert os.path.exists(filepath), filepath
+    # fancy case with formatter
+    formatter = dict(time=('Time','{:04.0f}'))
+    filepath = var.ASCII_raster(folder=folder, lcoord=True, formatter=formatter,
+                                prefix=var.atts.long_name, ext='')
+    assert os.path.exists(filepath), filepath
 
 
 class DatasetGDALTest(DatasetNetCDFTest):  
@@ -1703,6 +1711,30 @@ class DatasetGDALTest(DatasetNetCDFTest):
     # do standard tests
     super(DatasetGDALTest,self).testIndexing()
     
+  def testWriteASCII(self):
+    ''' test function to write Arc/Info ASCII Grid / ASCII raster files '''
+    # get test objects
+    dataset = self.dataset # Dataset object
+    # load slice
+    if len(dataset.axes) >= 3:
+      sl = {'time':slice(0,12,1),dataset.ylat.name:slice(20,50,5),dataset.xlon.name:slice(70,140,15)}
+      dataset = dataset(**sl).load() # not too much...
+      # clean/create folder for test data
+      folder = '{:s}/ASCII_raster/'.format(workdir)
+      print("\nASCII_raster folder: '{:s}'".format(folder)) # print data folder
+      if os.path.exists(folder): shutil.rmtree(folder)
+      # simple case, sequential indexing
+      folder = dataset.ASCII_raster(folder=folder)
+      assert os.path.exists(folder), folder
+      # fancy case with coordinate indexing and formatter
+      varlist = [self.var.name]
+      formatter = dict(time=('Time','{:04.0f}'))
+      folder = dataset.ASCII_raster(varlist=varlist, folder=folder, lcoord=True, 
+                                      formatter=formatter, prefix='TEST', ext='')
+      # this filename should exist
+      filepath = '{:s}/TEST_{:s}_Time_{:04.0f}'.format(folder,self.var.name,dataset.axes['time'][0])
+      assert os.path.exists(filepath), filepath
+        
     
 if __name__ == "__main__":
 
