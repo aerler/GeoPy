@@ -47,14 +47,11 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       raise TypeError, 'Expected logger ID/handle in logger KW; got {}'.format(str(logger))
 
   ## extract meta data from arguments
-  module, dataargs, loadfct, filepath, datamsgstr = getMetaData(dataset, mode, dataargs)
+  dataargs, loadfct, srcage, datamsgstr = getMetaData(dataset, mode, dataargs)
   dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr; avgfolder = dataargs.avgfolder
 
-  # determine age of source file
-  if not loverwrite: sourceage = datetime.fromtimestamp(os.path.getmtime(filepath))          
-          
   # get filename for target dataset and do some checks
-  filename = getTargetFile(griddef.name.lower(), dataset, mode, module, dataargs, lwrite)
+  filename = getTargetFile(griddef.name.lower(), dataset, mode, dataargs, lwrite)
     
   # prepare target dataset
   if ldebug: filename = 'test_' + filename
@@ -72,7 +69,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       if not loverwrite: 
         age = datetime.fromtimestamp(os.path.getmtime(filepath))
         # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
-        if age > sourceage and os.path.getsize(filepath) > 1e6: lskip = True
+        if age > srcage and os.path.getsize(filepath) > 1e6: lskip = True
         # N.B.: NetCDF files smaller than 1MB are usually incomplete header fragments from a previous crashed
       if not lskip: os.remove(filepath) # recompute
   
@@ -87,7 +84,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     ## actually load datasets
     source = loadfct() # load source 
     # check period
-    if 'period' in source.atts and dataargs.periodstr != source.atts.period: # a NetCDF attribute
+    if 'period' in source.atts and dataargs.periodstr[1:] != source.atts.period: # a NetCDF attribute
       raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
 
     # print message
@@ -216,8 +213,8 @@ if __name__ == '__main__':
 #     periods += [1]
 #     periods += [3]
     periods += [5]
-    periods += [10]
-    periods += [15]
+#     periods += [10]
+#     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
@@ -227,7 +224,7 @@ if __name__ == '__main__':
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR', 'NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
-    datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
+#     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
@@ -239,12 +236,12 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['atm','lnd']
     CESM_filetypes = ['atm']
     # WRF experiments (short or long name)
-    WRF_project = 'WesternCanada' # only WesternCanada experiments
+    WRF_project = 'GreatLakes' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
 #     WRF_experiments += ['max-ctrl-2050']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
-    WRF_experiments += ['erai-3km','max-3km']
+    WRF_experiments += ['g-ctrl']
 #     WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
 #     WRF_experiments += ['max-ens-2050','max-ens-2100']
 #     WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
@@ -260,7 +257,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-    domains = None # domains to be processed
+    domains = 2 # domains to be processed
 #     domains = None # process all domains
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'

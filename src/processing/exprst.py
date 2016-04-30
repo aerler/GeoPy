@@ -7,13 +7,13 @@ A script to convert datasets to raster format using GDAL.
 '''
 
 # external imports
-import os # check if files are present
+import os, shutil # check if files are present etc.
 import numpy as np
 from importlib import import_module
 from datetime import datetime
 import logging     
 # internal imports
-from geodata.misc import DateError, printList, ArgumentError
+from geodata.misc import DateError, printList, ArgumentError, VariableError
 from geodata.netcdf import DatasetNetCDF
 from geodata.base import Dataset
 from geodata.gdal import addGeoLocator
@@ -25,16 +25,12 @@ from processing.misc import getMetaData,  getExperimentList, loadYAML
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
-def performExport(dataset, mode, dataargs, expargs, loverwrite=False, lwrite=True, 
-                  lreturn=False, ldebug=False, lparallel=False, pidstr='', logger=None):
+def performExport(dataset, mode, dataargs, expargs, loverwrite=False, 
+                  ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to perform regridding for a given dataset and target grid '''
   # input checking
   if not isinstance(dataset,basestring): raise TypeError
-  if not isinstance(formats,dict): raise TypeError # formats and kwargs for export methods
   if not isinstance(dataargs,dict): raise TypeError # all dataset arguments are kwargs 
-  if lparallel: 
-    if not lwrite: raise IOError, 'Can only write to disk in parallel mode (i.e. lwrite = True).'
-    if lreturn: raise IOError, 'Can not return datasets in parallel mode (i.e. lreturn = False).'
   
   # logging
   if logger is None: # make new logger     
@@ -47,117 +43,98 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False, lwrite=Tru
       raise TypeError, 'Expected logger ID/handle in logger KW; got {}'.format(str(logger))
 
   ## extract meta data from arguments
-  module, dataargs, loadfct, filepath, datamsgstr = getMetaData(dataset, mode, dataargs)
-  dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr; avgfolder = dataargs.avgfolder; grid = dataargs.grid
+  dataargs, loadfct, srcage, datamsgstr = getMetaData(dataset, mode, dataargs)
+  dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr
 
-  # determine age of source file
-  if not loverwrite: sourceage = datetime.fromtimestamp(os.path.getmtime(filepath))          
-          
   # parse export options
-  project=expargs['export_project']
-  varlist=expargs['export_varlist']
-  folder=expargs['export_folder']
-  formats=expargs['export_formats']
+  project = expargs.pop('project')
+  varlist = expargs.pop('varlist')
+  expfolder = expargs.pop('folder')
+  expformat = expargs.pop('format')
+  lm3 = expargs.pop('lm3') # convert kg/m^2 to m^3 (water flux)
   # get folder for target dataset and do some checks
-  folder = export_folder.format(project, dataset_name, grid)
+  expfolder = expfolder.format(project, dataset_name, grid)
     
-  # prepare target dataset
-  if ldebug: folder = folder + 'test/'
-  if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
-  lskip = False # else just go ahead
-  if lwrite:
-    if lreturn: tmpfilename = filename # no temporary file if dataset is passed on (can't rename the file while it is open!)
-    else: 
-      if lparallel: tmppfx = 'tmp_regrid_{:s}_'.format(pidstr[1:-1])
-      else: tmppfx = 'tmp_regrid_'.format(pidstr[1:-1])
-      tmpfilename = tmppfx + filename      
-    filepath = avgfolder + filename
-    tmpfilepath = avgfolder + tmpfilename
-    if os.path.exists(filepath): 
-      if not loverwrite: 
-        age = datetime.fromtimestamp(os.path.getmtime(filepath))
-        # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
-        if age > sourceage and os.path.getsize(filepath) > 1e6: lskip = True
-        # N.B.: NetCDF files smaller than 1MB are usually incomplete header fragments from a previous crashed
-      if not lskip: os.remove(filepath) # recompute
+  # prepare target dataset (which is mainly just a folder)
+  if ldebug: expfolder = expfolder + 'test/' # test in subfolder
+  if not os.path.exists(expfolder): 
+    # create new folder
+    os.makedirs(expfolder)
+    lskip = False # actually do export
+  elif loverwrite:
+    shutil.rmtree(expfolder) # remove old folder and contents
+    os.makedirs(expfolder) # create new folder
+    lskip = False # actually do export
+  else:
+    age = datetime.fromtimestamp(os.path.getmtime(expfolder))
+    # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
+    lskip = ( age > srcage ) # skip if newer than source    
+  assert os.path.exists(expfolder), expfolder
   
   # depending on last modification time of file or overwrite setting, start computation, or skip
   if lskip:        
     # print message
-    skipmsg =  "\n{:s}   >>>   Skipping: file '{:s}' in dataset '{:s}' already exists and is newer than source file.".format(pidstr,filename,dataset_name)
-    skipmsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,filepath)
+    skipmsg =  "\n{:s}   >>>   Skipping: Format '{:s} for dataset '{:s}' already exists and is newer than source file.".format(pidstr,expformat,dataset_name)
+    skipmsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,expfolder)
     logger.info(skipmsg)              
   else:
           
     ## actually load datasets
-    source = loadfct(varlist=varlist) # load source 
+    dataset = loadfct() # load source data
     # check period
-    if 'period' in source.atts and dataargs.periodstr != source.atts.period: # a NetCDF attribute
-      raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
+    if 'period' in dataset.atts and dataargs.periodstr[1:] != dataset.atts.period: # a NetCDF attribute
+      raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,dataset.atts.period)
 
     # print message
-    if mode == 'climatology': opmsgstr = 'Regridding Climatology ({:s}) to {:s} Grid'.format(periodstr, griddef.name)
-    elif mode == 'time-series': opmsgstr = 'Regridding Time-series to {:s} Grid'.format(griddef.name)
+    if mode == 'climatology': opmsgstr = 'Exporting Climatology ({:s}) to {:s} Format'.format(periodstr, expformat)
+    elif mode == 'time-series': opmsgstr = 'Exporting Time-series to {:s} Format'.format(expformat)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
     # print feedback to logger
     logger.info('\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
-    if not lparallel and ldebug: logger.info('\n'+str(source)+'\n')
+    if not lparallel and ldebug: logger.info('\n'+str(dataset)+'\n')
     
-    ## create new sink/target file
-    # set attributes   
-    atts=source.atts.copy()
-    atts['period'] = periodstr; atts['name'] = dataset_name; atts['grid'] = griddef.name
-    if mode == 'climatology': atts['title'] = '{:s} Climatology on {:s} Grid'.format(dataset_name, griddef.name)
-    elif mode == 'time-series':  atts['title'] = '{:s} Time-series on {:s} Grid'.format(dataset_name, griddef.name)
-      
-    # make new dataset
-    if lwrite: # write to NetCDF file 
-      if os.path.exists(tmpfilepath): os.remove(tmpfilepath) # remove old temp files 
-      sink = DatasetNetCDF(folder=avgfolder, filelist=[tmpfilename], atts=atts, mode='w')
-    else: sink = Dataset(atts=atts) # ony create dataset in memory
-    
-    # initialize processing
-    CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=False, feedback=ldebug)
-  
-    # perform regridding (if target grid is different from native grid!)
-    if griddef.name != dataset:
-      # reproject and resample (regrid) dataset
-      CPU.Regrid(griddef=griddef, flush=True)
-
-    # get results    
-    CPU.sync(flush=True)
-    
-    # add geolocators
-    sink = addGeoLocator(sink, griddef=griddef, lgdal=True, lreplace=True, lcheck=True)
-    # N.B.: WRF datasets come with their own geolocator arrays - we need to replace those!
-    
-    # add length and names of month
-    if mode == 'climatology' and not sink.hasVariable('length_of_month') and sink.hasVariable('time'): 
-      addLengthAndNamesOfMonth(sink, noleap=True if dataset.upper() in ('WRF','CESM') else False) 
+    # Compute intermediate variables, if necessary
+    for var in varlist:
+      if var in dataset:
+        dataset[var].load() # load data (may not have to load all)
+      else:
+        if var == 'waterflx':
+          if all(v in dataset for v in ('liqprec','evap','snwmlt')):
+            pass
+          else: raise VariableError, "Prerequisites for Variable '{:s}' not found.".format(var)
+        else: raise VariableError, "Unsupported Variable '{:s}'.".format(var)
+            
+    # convert units for water flux
+    if lm3:
+      for varname in varlist:
+        var = dataset[varname] # this is just a reference
+        if var.units == 'kg/m^2/s':
+          var /= 1000. # divide to get m^3/s
+          var.units = 'm^3/s' # update units
+          assert dataset[varname].units == 'm^3/s'
     
     # print dataset
     if not lparallel and ldebug:
-      logger.info('\n'+str(sink)+'\n')   
-    # write results to file
-    if lwrite:
-      sink.sync()
-      writemsg =  "\n{:s}   >>>   Writing to file '{:s}' in dataset {:s}".format(pidstr,filename,dataset_name)
-      writemsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,filepath)
-      logger.info(writemsg)      
+      logger.info('\n'+str(dataset)+'\n')
       
-      # rename file to proper name
-      if not lreturn:
-        sink.unload(); sink.close(); del sink # destroy all references 
-        if os.path.exists(filepath): os.remove(filepath) # remove old file
-        os.rename(tmpfilepath,filepath) # this would also overwrite the old file...
-      # N.B.: there is no temporary file if the dataset is returned, because an open file can't be renamed
-        
+    # export to selected format (by variable)
+    if expformat == 'ASCII_raster':
+      for var in varlist:
+        # call export function for format from Variable
+        filepath = getattr(dataset[var],expformat)(folder=expfolder, **expargs)
+        if not os.path.exists(filepath): raise IOError, filepath # independent check
+    elif expformat == 'NetCDF':
+      raise NotImplementedError
+      
+      
+    # write results to file
+    writemsg =  "\n{:s}   >>>   Export of Dataset '{:s}' to Format '{:s}' complete.".format(pidstr,dataset_name, expformat)
+    writemsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,expfolder)
+    logger.info(writemsg)      
+       
     # clean up and return
-    source.unload(); del source, CPU
-    if lreturn:      
-      return sink # return dataset for further use (netcdf file still open!)
-    else:            
-      return 0 # "exit code"
+    dataset.unload(); #del dataset
+    return 0 # "exit code"
     # N.B.: garbage is collected in multi-processing wrapper
 
 
@@ -190,7 +167,7 @@ if __name__ == '__main__':
     loverwrite = config['loverwrite']
     # source data specs
     modes = config['modes']
-    varlist = config['varlist']
+    load_list = config['load_list']
     periods = config['periods']
     # Datasets
     datasets = config['datasets']
@@ -217,31 +194,21 @@ if __name__ == '__main__':
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
 #     varlist = None
-    load_list = ['precip',]
+    load_list = ['waterflx','liqprec','evap','snwmlt']
     periods = []
-#     periods += [1]
-#     periods += [3]
-#     periods += [5]
-#     periods += [10]
     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
     datasets = []
     lLTM = True # also regrid the long-term mean climatologies 
-#     datasets += ['PRISM','GPCC']; periods = None
-#     datasets += ['PCIC']; periods = None
-#     datasets += ['CFSR', 'NARR']
-#     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
-#     CESM_experiments += ['Ctrl-1-2050']
 #     CESM_experiments += ['CESM','CESM-2050']
 #     CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
-#     CESM_experiments += ['Ctrl-2050', 'Ens-A-2050', 'Ens-B-2050', 'Ens-C-2050']
 #     CESM_filetypes = ['atm','lnd']
     CESM_filetypes = ['atm']
     # WRF experiments (short or long name)
@@ -250,52 +217,27 @@ if __name__ == '__main__':
     WRF_experiments = [] # use None to process all WRF experiments
     WRF_experiments += ['g-ctrl']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
-#     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
 #     WRF_experiments += ['erai-3km','max-3km']
-#     WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
-#     WRF_experiments += ['max-ens-2050','max-ens-2100']
-#     WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
-#     WRF_experiments += ['max','max-clm','max-nmp','max-nosub']
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-#     WRF_experiments += ['max-ens','max-ens-2050']
-#     WRF_experiments += ['ctrl-1-arb1', 'new-ctrl', 'max-ctrl'] #  old ctrl simulations (arb1)
-#     WRF_experiments += ['new-ctrl', 'new-ctrl-2050', 'cfsr-new', 'new-grell',] # new standard runs (arb3) 
-#     WRF_experiments += ['new-grell-old', 'new-noah', 'v35-noah'] # new sensitivity tests (arb3)
-#     WRF_experiments += ['cam-ctrl', 'cam-ctrl-1-2050', 'cam-ctrl-2-2050', 'cam-ctrl-2-2100'] # old cam simulations (arb1) 
-#     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
-#     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
     domains = 2 # domains to be processed
 #     domains = None # process all domains
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
-#     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
-#     WRF_filetypes = ('const',); periods = None
     # typically a specific grid is required
     grids = [] # list of grids to process
-    grids += ['NATIVE'] # special keyword for native grid
-#     grids['grw1'] = (None,) # special high-resolution grid for GRW HGS model
-#     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
-#     grids['glb1'] = ('d02',) # Marc's standard GRB inner domain
-#     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
-#     grids['ARB_small'] = ('025','05') # small custom geographic grids
-#     grids['ARB_large'] = ('025','05') # large custom geographic grids
-#     grids['cesm1x1'] = (None,) # CESM grid
-#     grids['NARR'] = (None,) # NARR grid
-#     grids['CRU'] = (None,) # CRU grid
+#     grids += [None] # special keyword for native grid
+    grids += ['grw2']# small grid for HGS GRW project
     ## export parameters
     project = 'GRW' # project designation    
-    varlist = 'precip' # varlist for export
-    # export destination/folder
-    folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/'.format(os.getenv('DATA_ROOT', None)) # project/experiment/grid
-    # formats to export to
-    formats = dict()
-    formats['ASCII_raster'] = None # or dictionary of parameters
+    varlist = ['waterflx'] # varlist for export    
+    expfolder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/'.format(os.getenv('DATA_ROOT', None)) # project/experiment/grid 
+    expformat = 'ASCII_raster' # formats to export to
+    lm3 = True # convert water flux from kg/m^2/s to m^3/s
     # assemble export arguments
-    export_arguments = dict(project=project, varlist=varlist, folder=folder, formats=formats,)
-    formats = export_arguments['formats']
+    export_arguments = dict(project=project, varlist=varlist, format=expformat, folder=expfolder, lm3=lm3)
   
   ## process arguments    
   if isinstance(periods, (np.integer,int)): periods = [periods]
@@ -318,15 +260,13 @@ if __name__ == '__main__':
     print('\n And Observational Datasets:')
     print(datasets)
   print('\n From Grid/Resolution:\n   {:s}'.format(printList(grids)))
-  print('\n To File Formats:')
-  for fileformat,params in formats.iteritems():
-    print('   {0:s} ({1:s})'.format(fileformat,printList(params) if params else ''))
+  print('\n To File Format {:s}'.format(expformat))
+  print('   ({:s})'.format(expfolder))
   print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
   
   # check formats (will be iterated over in export function, hence not part of task list)
-  for fileformat in formats.iterkeys():
-    if fileformat.lower() not in ('ascii_raster','netcdf'):
-      raise ArgumentError, "Unsupported file format: '{:s}'".format(fileformat)
+  if expformat.lower() not in ('ascii_raster','netcdf'):
+    raise ArgumentError, "Unsupported file format: '{:s}'".format(expformat)
     
   ## construct argument list
   args = []  # list of job packages

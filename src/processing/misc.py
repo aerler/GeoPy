@@ -9,16 +9,16 @@ Some utility functions related to processing datasets (to avoid code repetition)
 # external imports
 import numpy as np
 from importlib import import_module
-import functools
+from functools import partial
 import yaml,os
+from datetime import datetime
 # internal imports
 from geodata.misc import DatasetError, DateError, isInt
 from utils.misc import namedTuple
 from datasets.common import getFileName
-# WRF specific
-from datasets.WRF import loadWRF, loadWRF_TS
-# CESM specific
-from datasets.CESM import loadCESM, loadCESM_TS
+# specific datasets
+import datasets.WRF as WRF
+import datasets.CESM as CESM
 
 
 # load YAML configuration file
@@ -64,8 +64,23 @@ def getExperimentList(experiments, project, dataset):
   # return expanded list of experiments
   return experiments
 
+def getPeriodGridString(period, grid, exp=None, beginyear=None):
+  ''' utility function to check period and grid and return valid and usable strings '''
+  # period
+  if period is None: pass
+  elif isinstance(period,(int,np.integer)):
+    if beginyear is None: beginyear = int(exp.begindate[0:4]) # most datasets begin in 1979
+    period = (beginyear, beginyear+period)
+  elif len(period) != 2 and all(isInt(period)): raise DateError
+  periodstr = '_{0:4d}-{1:4d}'.format(*period) if period else ''
+  # grid
+  gridstr = '_'+grid if grid  else ''
+  # return
+  return periodstr, gridstr
+
+
 ## prepare target dataset
-def getTargetFile(name, dataset, mode, module, dataargs, lwrite):
+def getTargetFile(name, dataset, mode, dataargs, lwrite):
   ''' generate filename for target dataset '''
   # extract some variables
   periodstr = dataargs.periodstr; filetype = dataargs.filetype; domain = dataargs.domain
@@ -73,12 +88,12 @@ def getTargetFile(name, dataset, mode, module, dataargs, lwrite):
   pstr = '_{}'.format(periodstr) if periodstr else ''
   # figure out filename
   if dataset == 'WRF' and lwrite:
-    if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,domain,sstr,pstr)
-    elif mode == 'time-series': filename = module.ts_file_pattern.format(filetype,domain,sstr)
+    if mode == 'climatology': filename = WRF.clim_file_pattern.format(filetype,domain,sstr,pstr)
+    elif mode == 'time-series': filename = WRF.ts_file_pattern.format(filetype,domain,sstr)
     else: raise NotImplementedError
   elif dataset == 'CESM' and lwrite:
-    if mode == 'climatology': filename = module.clim_file_pattern.format(filetype,sstr,pstr)
-    elif mode == 'time-series': filename = module.ts_file_pattern.format(filetype,sstr)
+    if mode == 'climatology': filename = CESM.clim_file_pattern.format(filetype,sstr,pstr)
+    elif mode == 'time-series': filename = CESM.ts_file_pattern.format(filetype,sstr)
     else: raise NotImplementedError
   elif ( dataset == dataset.upper() or dataset == 'Unity' ) and lwrite: # observational datasets
     filename = getFileName(grid=name, period=dataargs.period, name=dataargs.obs_res, filetype=mode)      
@@ -88,136 +103,141 @@ def getTargetFile(name, dataset, mode, module, dataargs, lwrite):
   # return filename
   return filename
 
+def getSourceAge(filelist=None, fileclasses=None, filetypes=None, exp=None, domain=None,
+                 periodstr=None, gridstr=None, lclim=None, lts=None):
+  ''' function to to get the latest modification date of a set of filetypes '''
+  srcage = datetime.fromordinal(1) # the beginning of time (proleptic Gregorian calendar)
+  # if complete file list is given, just check each file
+  if filelist:
+    for filepath in filelist:
+      if not os.path.exists(filepath): raise IOError, "Source file '{:s}' does not exist!".format(filepath)        
+      # determine age of source file
+      fileage = datetime.fromtimestamp(os.path.getmtime(filepath))          
+      if srcage < fileage: srcage = fileage # use latest modification date
+  else:    
+    # figure out period
+    # assemble filenames from dataset arguments
+    for filetype in filetypes:
+      fileclass = fileclasses[filetype] # avoid WRF & CESM name collision
+      if domain is None:
+        if lclim: filename = fileclass.climfile.format(gridstr,periodstr) # insert grid and period
+        elif lts: filename = fileclass.tsfile.format(gridstr) # insert grid
+      else:
+        if lclim: filename = fileclass.climfile.format(domain,gridstr,periodstr) # insert domain number, grid, and period
+        elif lts: filename = fileclass.tsfile.format(domain,gridstr) # insert domain number, and grid
+      filepath = '{:s}/{:s}'.format(exp.avgfolder,filename)
+      if not os.path.exists(filepath): raise IOError, "Source file '{:s}' does not exist!".format(filepath)        
+      # determine age of source file
+      fileage = datetime.fromtimestamp(os.path.getmtime(filepath))          
+      if srcage < fileage: srcage = fileage # use latest modification date
+  # return latest modification date
+  return srcage
 
 ## determine dataset metadata
-def getMetaData(dataset, mode, dataargs):
+def getMetaData(dataset, mode, dataargs, lone=True):
   ''' determine dataset type and meta data, as well as path to main source file '''
   # determine dataset mode
   lclim = False; lts = False
   if mode == 'climatology': lclim = True
   elif mode == 'time-series': lts = True
   else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
-  # defaults for specific variables
-  obs_res = None; domain = None; filetype = None
+  # general arguments (dataset independent)
   varlist = dataargs.get('varlist',None)
+  grid = dataargs.get('grid',None) # get grid
+  period = dataargs.get('period',None)
+  if period is None and lclim: 
+    raise DatasetError, "A 'period' argument is required to load climatologies!"
   # determine meta data based on dataset type
   if dataset == 'WRF': 
     # WRF datasets
-    module = import_module('datasets.WRF')
-    exp = dataargs['experiment']    
+    obs_res = None # only for datasets (not used here)
+    exp = dataargs['experiment'] # need that one
     dataset_name = exp.name
-    domain = dataargs['domain']
-    grid = dataargs.get('grid',None)
-    # figure out period
-    period = dataargs['period']
-    if period is None: pass
-    elif isinstance(period,(int,np.integer)):
-      beginyear = int(exp.begindate[0:4])
-      period = (beginyear, beginyear+period)
-    elif len(period) != 2 and all(isInt(period)): raise DateError
-    if period is None: periodstr = '' 
-    else: periodstr = '{0:4d}-{1:4d}'.format(*period)
-    gridstr = grid if grid is not None else ''      
-    # identify file and domain
-    if len(dataargs['filetypes']) > 1: raise DatasetError # process only one file at a time
-    filetype = dataargs['filetypes'][0]
-    if isinstance(domain,(list,tuple)): domain = domain[0]
-    if not isinstance(domain, (np.integer,int)): raise DatasetError    
-    datamsgstr = "Processing WRF '{:s}'-file from Experiment '{:s}' (d{:02d})".format(filetype, dataset_name, domain)
-    # assemble filename to check modification dates (should be only one file)    
-    fileclass = module.fileclasses[filetype] # avoid WRF & CESM name collision
-    pstr = '_'+periodstr if periodstr else ''
-    gstr = '_'+gridstr if gridstr else ''
-    if lclim: filename = fileclass.climfile.format(domain,gstr,pstr) # insert domain number, grid, and period
-    elif lts: filename = fileclass.tsfile.format(domain,gstr) # insert domain number, and grid
     avgfolder = exp.avgfolder
+    filetypes = dataargs['filetypes']
+    domain = dataargs.get('domain',None)
+    periodstr, gridstr = getPeriodGridString(period, grid, exp=exp)
+    # check arguments
+    if lone and len(filetypes) > 1: raise DatasetError # process only one file at a time
+    if not isinstance(domain, (np.integer,int)): raise DatasetError   
+    # construct dataset message
+    if lone: 
+      datamsgstr = "Processing WRF '{:s}'-file from Experiment '{:s}' (d{:02d})".format(filetypes[0], dataset_name, domain)
+    else: datamsgstr = "Processing WRF dataset from Experiment '{:s}' (d{:02d})".format(dataset_name, domain)       
+    # figure out age of source file(s)
+    srcage = getSourceAge(fileclasses=WRF.fileclasses, filetypes=filetypes, exp=exp, domain=domain,
+                          periodstr=periodstr, gridstr=gridstr, lclim=lclim, lts=lts)
     # load source data
     if lclim:
-      loadfct = functools.partial(loadWRF, experiment=exp, name=None, domains=domain, grid=None, varlist=varlist,
-                                  period=period, filetypes=[filetype], varatts=None, lconst=True) # still want topography...
+      loadfct = partial(WRF.loadWRF, experiment=exp, name=None, domains=domain, grid=grid, varlist=varlist,
+                        period=period, filetypes=filetypes, varatts=None, lconst=True) # still want topography...
     elif lts:
-      loadfct = functools.partial(loadWRF_TS, experiment=exp, name=None, domains=domain, grid=None, varlist=varlist,
-                                  filetypes=[filetype], varatts=None, lconst=True) # still want topography...
-    filepath = '{:s}/{:s}'.format(avgfolder,filename)
+      loadfct = partial(WRF.loadWRF_TS, experiment=exp, name=None, domains=domain, grid=grid, varlist=varlist,
+                        filetypes=filetypes, varatts=None, lconst=True) # still want topography...
   elif dataset == 'CESM': 
     # CESM datasets
-    module = import_module('datasets.CESM')
-    exp = dataargs['experiment']    
-    dataset_name = exp.name
-    # figure out period
-    period = dataargs['period']
-    if period is None: pass
-    elif isinstance(period,(int,np.integer)):
-      beginyear = int(exp.begindate[0:4])
-      period = (beginyear, beginyear+period)
-    elif len(period) != 2 and all(isInt(period)): raise DateError
-    # identify file
-    if len(dataargs['filetypes']) > 1: raise DatasetError # process only one file at a time
-    filetype = dataargs['filetypes'][0]        
-    # check period
-    if period is None: periodstr = ''
-    else: periodstr = '{0:4d}-{1:4d}'.format(*period)
-    datamsgstr = "Processing CESM '{:s}'-file from Experiment '{:s}'".format(filetype, dataset_name) 
-    # assemble filename to check modification dates (should be only one file)    
-    fileclass = module.fileclasses[filetype] # avoid WRF & CESM name collision
-    pstr = '_'+periodstr if periodstr else ''
-    if lclim: filename = fileclass.climfile.format('',pstr) # insert domain number, grid, and period
-    elif lts: filename = fileclass.tsfile.format('') # insert domain number, and grid
+    obs_res = None # only for datasets (not used here)
+    exp = dataargs['experiment']  
     avgfolder = exp.avgfolder
+    dataset_name = exp.name
+    periodstr, gridstr = getPeriodGridString(period, grid, exp=exp)
+    # identify filetypes
+    filetypes = dataargs['filetypes']
+    if lone and len(filetypes) > 1: raise DatasetError # process only one file at a time
+    # construct dataset message
+    if lone:
+      datamsgstr = "Processing CESM '{:s}'-file from Experiment '{:s}'".format(filetypes[0], dataset_name) 
+    else: datamsgstr = "Processing CESM dataset from Experiment '{:s}'".format(dataset_name) 
+    # figure out age of source file(s)
+    srcage = getSourceAge(fileclasses=CESM.fileclasses, filetypes=filetypes, exp=exp, domain=None,
+                          periodstr=periodstr, gridstr=gridstr, lclim=lclim, lts=lts)
     # load source data 
     load3D = dataargs.pop('load3D',None) # if 3D fields should be loaded (default: False)
     if lclim:
-      loadfct = functools.partial(loadCESM, experiment=exp, name=None, grid=None, period=period, varlist=varlist, 
-                                  filetypes=[filetype], varatts=None, load3D=load3D, translateVars=None)
+      loadfct = partial(CESM.loadCESM, experiment=exp, name=None, grid=grid, period=period, varlist=varlist, 
+                        filetypes=filetypes, varatts=None, load3D=load3D, translateVars=None)
     elif lts:
-      loadfct = functools.partial(loadCESM_TS, experiment=exp, name=None, grid=None, varlist=varlist,
-                                  filetypes=[filetype], varatts=None, load3D=load3D, translateVars=None)     
-    filepath = '{:s}/{:s}'.format(avgfolder,filename)
+      loadfct = partial(CESM.loadCESM_TS, experiment=exp, name=None, grid=grid, varlist=varlist,
+                        filetypes=filetypes, varatts=None, load3D=load3D, translateVars=None)     
   elif dataset == dataset.upper() or dataset == 'Unity':
     # observational datasets
+    filetypes = [None] # only for CESM & WRF
     module = import_module('datasets.{0:s}'.format(dataset))      
     dataset_name = module.dataset_name
     resolution = dataargs['resolution']
     if resolution: obs_res = '{0:s}_{1:s}'.format(dataset_name,resolution)
     else: obs_res = dataset_name   
     # figure out period
-    period = dataargs['period']    
-    if period is None: pass
-    elif isinstance(period,(int,np.integer)):
-      period = (1979, 1979+period) # they all begin in 1979
-    elif len(period) != 2 and not all(isInt(period)): raise DateError
+    periodstr, gridstr = getPeriodGridString(period, grid, beginyear=1979)
     datamsgstr = "Processing Dataset '{:s}'".format(dataset_name)
-    # check period
-    if period is None: 
-      if mode == 'climatology': periodstr = 'Long-Term Mean'
-      else: periodstr = ''
-    else: periodstr = '{0:4d}-{1:4d}'.format(*period)
     # assemble filename to check modification dates (should be only one file)    
-    filename = getFileName(grid=None, period=period, name=obs_res, filetype=mode)
+    filename = getFileName(grid=grid, period=period, name=obs_res, filetype=mode)
     avgfolder = module.avgfolder
+    filepath = '{:s}/{:s}'.format(avgfolder,filename)
     # load pre-processed climatology
     if lclim:
-      loadfct = functools.partial(module.loadClimatology, name=dataset_name, period=period, grid=None, varlist=varlist,
-                                  resolution=resolution, varatts=None, folder=module.avgfolder, filelist=None)
+      loadfct = partial(module.loadClimatology, name=dataset_name, period=period, grid=grid, 
+                        varlist=varlist, resolution=resolution, varatts=None)
     elif lts:
-      loadfct = functools.partial(module.loadTimeSeries, name=dataset_name, grid=None, varlist=varlist,
-                                  resolution=resolution, varatts=None, folder=None, filelist=None)
+      loadfct = partial(module.loadTimeSeries, name=dataset_name, grid=grid, varlist=varlist,
+                        resolution=resolution, varatts=None)
     # check if the source file is actually correct
-    filepath = '{:s}/{:s}'.format(avgfolder,filename)
-    if not os.path.exists(filepath): 
-      source = loadfct() # no varlist - obs don't have many variables anyways
-      filepath = source.filelist[0]
+    if os.path.exists(filepath): filelist = [filepath]
+    else:
+      source = loadfct() # don't load dataset, just construct the file list
+      filelist = source.filelist
+    # figure out age of source file(s)
+    srcage = getSourceAge(filelist=filelist, lclim=lclim, lts=lts)
       # N.B.: it would be nice to print a message, but then we would have to make the logger available,
       #       which would be too much trouble
   else:
     raise DatasetError, "Dataset '{:s}' not found!".format(dataset)
   ## assemble and return meta data
-  if not os.path.exists(filepath): raise IOError, "Source file '{:s}' does not exist!".format(filepath)        
   dataargs = namedTuple(dataset_name=dataset_name, period=period, periodstr=periodstr, avgfolder=avgfolder, 
-                        filetype=filetype, domain=domain, obs_res=obs_res, varlist=varlist) 
+                        filetypes=filetypes,filetype=filetypes[0], domain=domain, obs_res=obs_res, 
+                        varlist=varlist, grid=grid, gridstr=gridstr) 
   # return meta data
-  return module, dataargs, loadfct, filepath, datamsgstr
-    
+  return dataargs, loadfct, srcage, datamsgstr    
 
 
 if __name__ == '__main__':

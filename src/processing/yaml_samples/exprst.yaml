@@ -4,7 +4,7 @@
 NP: 3 # environment variable has precedence
 loverwrite: false # only recompute if source is newer
 modes: [climatology,]
-varlist: [T2, precip,] # process all variables
+load_list: [waterflx, liqprec, evap, snwmlt] # process all variables
 periods: [15,] # climatology periods to process
 # Datasets
 datasets: [] # process all applicable
@@ -18,19 +18,16 @@ CESM_filetypes: ['atm','lnd'] # used to load dataset; not processed individually
 # WRF
 WRF_project: 'GreatLakes' # all available experiments
 WRF_experiments: Null # all available experiments
-#[ # process WRF experiments on different grids
-#  'new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100',
-#  'erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',
-#  'new-v36-nmp', 'new-v36-noah', 'erai-v36-noah', 'new-v36-clm',
-#  'new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', # new standard runs (arb3) 
-#  'new-grell', 'new-grell-old', 'new-noah', 'v35-noah', # new sensitivity tests (arb3)
-#]
-domains: 2 # inner domain onto inner domain 
-WRF_filetypes: ['srfc','xtrm','hydro','lsm'] # used to load dataset; not processed individually
-# grid to project onto
-lpickle: true
+WRF_domains: Null # inner domain onto inner domain 
+#WRF_filetypes: ['srfc','xtrm','hydro','lsm'] # used to load dataset; not processed individually
+WRF_filetypes: ['hydro'] # used to load dataset; not processed individually
 grids: # mapping with list of resolutions  
-#  arb2: ['d02',] # inner Western Canada
-  glb1: ['d02',] # inner Great Lakes
-formats: # mapping which functions as a list of formats with associated parameters
-  ASCII_raster: Null # ArcInfo ASCII raster format (no paramters yet)
+  grw1: Null # Grand River Watershed, 1km resolution
+  grw2: Null # Grand River Watershed, 5km resolution
+# export parameters
+export_parameters:
+  project: 'GRW' # project tag, mainly for folder
+  varlist: ['waterflx',] # output variables
+  folder: '/data-3/HGS/{0:s}/{1:s}/{2:s}/' # (folder specification: project/experiment/grid) 
+  format: ASCII_raster # ArcInfo ASCII raster format
+  lm3: true # convert water flux from kg/m^2/s to m^3/s

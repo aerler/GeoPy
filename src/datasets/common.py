@@ -709,7 +709,10 @@ def getCommonGrid(grid, res=None):
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
     
-  mode = 'pickle_grid'
+  from geodata.gdal import GridDefinition, pickleGridDef
+  
+#   mode = 'pickle_grid'
+  mode = 'create_grid'
   grids = dict( CFSR=['031','05'],
                 GPCC=['025','05','10','25'],
                 CRU=[None],NARR=[None],PRISM=[None],PCIC=[None])
@@ -752,3 +755,30 @@ if __name__ == '__main__':
           griddef = loadPickledGridDef(grid, res=res, folder=grid_folder)
           print(griddef)
         print('')
+
+  ## create a new grid
+  elif mode == 'create_grid':
+    
+    # parameters for UTM 17
+#     name = 'grw1' # 1km resolution
+#     geotransform = [500.e3,1.e3,0,4740.e3,0,1.e3]; size = (132,162)
+    name = 'grw2' # 5km resolution
+    geotransform = [500.e3,5.e3,0,4740.e3,0,5.e3]; size = (27,33)
+    projection = "+proj=utm +zone=17 +north +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+    # N.B.: [x_0, dx, 0, y_0, 0, dy]
+    #       GT(0),GT(3) are the coordinates of the bottom left corner
+    #       GT(1) & GT(5) are pixel width and height
+    #       GT(2) & GT(4) are usually zero for North-up, non-rotated maps
+    # create grid
+    griddef = GridDefinition(name=name, projection=projection, geotransform=geotransform, size=size, 
+                             xlon=None, ylat=None, lwrap360=False, geolocator=True, convention='Proj4')
+
+    # save pickle to standard location
+    filepath = pickleGridDef(griddef, folder=grid_folder, filename=None, lfeedback=True)
+    assert os.path.exists(filepath)
+    print('')
+    
+    # load pickle to make sure it is right
+    del griddef
+    griddef = loadPickledGridDef(grid=name, res=None, folder=grid_folder)
+    print(griddef)

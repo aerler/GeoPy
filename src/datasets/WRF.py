@@ -353,7 +353,7 @@ class Hydro(FileType):
     for threshold in precip_thresholds: # add variables with different wet-day thresholds
         suffix = '_{:03d}'.format(int(10*threshold))
         self.atts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    
-        self.atts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day thre
+        self.atts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day threshold
         self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s', 
                                                 atts=dict(fillValue=0), transform=nullNaN) # wet-day precipitation rate (kg/m^2/s)
     self.vars = self.atts.keys()
@@ -944,9 +944,9 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-#  mode = 'test_climatology'
+  mode = 'test_climatology'
 #  mode = 'test_timeseries'
-  mode = 'test_ensemble'
+#   mode = 'test_ensemble'
 #  mode = 'test_point_climatology'
 #  mode = 'test_point_timeseries'
 #  mode = 'test_point_ensemble'
@@ -961,7 +961,8 @@ if __name__ == '__main__':
 #   grids = ['wc2']; experiments = ['erai-wc2-2013']; domains = [1,2]
 #   grids = ['arb2-120km']; experiments = ['max-lowres']; domains = [1,]   
     
-  from projects.WesternCanada.WRF_experiments import Exp, WRF_exps, ensembles
+#   from projects.WesternCanada.WRF_experiments import Exp, WRF_exps, ensembles
+  from projects.GreatLakes.WRF_experiments import Exp, WRF_exps, ensembles
   # N.B.: importing Exp through WRF_experiments is necessary, otherwise some isinstance() calls fail
     
   # pickle grid definition
@@ -1004,9 +1005,10 @@ if __name__ == '__main__':
   elif mode == 'test_climatology':
     
     print('')
-#     dataset = loadWRF(experiment='max-1deg', domains=2, grid='arb2_d02', filetypes=['srfc'], period=(1979,1994), exps=WRF_exps)
-    dataset = loadWRF(experiment='max-ensemble', domains=None, filetypes=['plev3d'], period=(1979,1994),
-                      varlist=['u','qhv','cqwu','cqw','RH'], lconst=True, exps=WRF_exps)
+    dataset = loadWRF(experiment='g-ctrl', domains=2, grid='grw2', filetypes=['hydro'], 
+                      period=(1979,1994), exps=WRF_exps)
+#     dataset = loadWRF(experiment='max-ensemble', domains=None, filetypes=['plev3d'], period=(1979,1994),
+#                       varlist=['u','qhv','cqwu','cqw','RH'], lconst=True, exps=WRF_exps)
     print(dataset)
 #     dataset.lon2D.load()
 #     print('')
