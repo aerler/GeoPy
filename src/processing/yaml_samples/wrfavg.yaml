@@ -11,4 +11,4 @@ experiments: Null # all available experiments
 domains: Null # inner domain onto inner domain 
 filetypes: ['srfc','xtrm','hydro','lsm','plev3d'] # process all filetypes except 'rad' and 'plev3d'
 # grid to project onto
-grid: native # no on-the-fly regridding
+grid: Null # no on-the-fly regridding

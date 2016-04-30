@@ -202,13 +202,13 @@ if __name__ == '__main__':
     grids = config['grids']
   else:
     # settings for testing and debugging
-    NP = 2 ; ldebug = True # for quick computations
+    NP = 1 ; ldebug = True # for quick computations
 #     NP = 3 ; ldebug = True # just for tests
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
 #     varlist = None
-    varlist = ['lat2D',]
+    varlist = ['precip',]
     periods = []
 #     periods += [1]
 #     periods += [3]
@@ -217,19 +217,18 @@ if __name__ == '__main__':
 #     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
-    resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
+    resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031']}
     datasets = []
-    lLTM = True # also regrid the long-term mean climatologies 
-#     datasets += ['PRISM','GPCC']; periods = None
-#     datasets += ['PCIC']; periods = None
-#     datasets += ['CFSR', 'NARR']
-    datasets += ['GPCC']; resolutions = {'GPCC':['25']}
+    lLTM = False # also regrid the long-term mean climatologies 
+    datasets += ['PRISM','GPCC','PCIC']; periods = None
+#     datasets += ['CFSR', 'NARR'] # CFSR_05 does not have precip
+#     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
-    CESM_experiments += ['Ctrl-1-2050']
+#     CESM_experiments += ['Ctrl-1-2050']
 #     CESM_experiments += ['CESM','CESM-2050']
 #     CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
 #     CESM_experiments += ['Ctrl-2050', 'Ens-A-2050', 'Ens-B-2050', 'Ens-C-2050']
@@ -241,7 +240,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2050']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
-    WRF_experiments += ['g-ctrl']
+#     WRF_experiments += ['g-ctrl']
 #     WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
 #     WRF_experiments += ['max-ens-2050','max-ens-2100']
 #     WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
@@ -307,8 +306,10 @@ if __name__ == '__main__':
   # loop over modes
   for mode in modes:
     # only climatology mode has periods    
-    if mode == 'climatology': periodlist = periods
-    elif mode == 'time-series': periodlist = (None,)
+    if mode == 'climatology': 
+      periodlist = periods if isinstance(periods, (tuple,list)) else (periods,)
+    elif mode == 'time-series': 
+      periodlist = (None,) # ignore periods
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
 
     # loop over target grids ...

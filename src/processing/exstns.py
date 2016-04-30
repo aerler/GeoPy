@@ -198,7 +198,7 @@ if __name__ == '__main__':
     # target data specs
     stations = config['stations']
   else:
-    NP = 2 ; ldebug = False # for quick computations
+    NP = 1 ; ldebug = True # for quick computations
     modes = ('climatology',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
@@ -214,7 +214,7 @@ if __name__ == '__main__':
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
-    datasets += ['NARR']
+#     datasets += ['NARR']
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
 #     datasets += ['CRU']
 #     datasets += ['Unity']    
@@ -222,6 +222,7 @@ if __name__ == '__main__':
     CESM_project = None # all available experiments
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
+    CESM_experiments += ['Ctrl-1']
 #     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
     CESM_filetypes = ['atm'] # ,'lnd'
     # WRF experiments (short or long name)
@@ -229,7 +230,7 @@ if __name__ == '__main__':
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['marc-g','marc-gg','marc-g-2050','marc-gg-2050']
 #     WRF_experiments += ['marc-m','marc-mm', 'marc-t','marc-m-2050','marc-mm-2050', 'marc-t-2050']
-    WRF_experiments += ['erai']
+#     WRF_experiments += ['erai']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
 #     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        

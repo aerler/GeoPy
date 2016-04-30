@@ -241,8 +241,8 @@ if __name__ == '__main__':
     grid = config['grid']
   else:
     NP = 1 ; ldebug = True # just for tests
-    loverwrite = False
-    varlist = None # ['lat2D', ]
+    loverwrite = True
+    varlist = ['precip', ]
     project = 'GreatLakes'
     experiments = ['g-ens-B']
 #     experiments += ['g-ctrl'+tag for tag in ('-2050','-2100')]
@@ -261,7 +261,7 @@ if __name__ == '__main__':
 #     domains = None # process all domains
 #     filetypes = ['srfc','xtrm','plev3d','hydro','lsm'] # filetypes to be processed # ,'rad'
     filetypes = ['hydro'] # filetypes to be processed
-    grid = 'native'
+    grid = None # use native grid
 
   # check and expand WRF experiment list
   experiments = getExperimentList(experiments, project, 'WRF')
@@ -269,7 +269,7 @@ if __name__ == '__main__':
   if isinstance(periods, (np.integer,int)): periods = [periods]
 
   # shall we do some fancy regridding on-the-fly?
-  if grid == 'native': griddef = None
+  if not grid: griddef = None
   else: griddef = getCommonGrid(grid)
   
   # print an announcement
