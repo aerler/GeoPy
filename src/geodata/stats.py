@@ -1306,7 +1306,7 @@ class VarRV(DistVar):
       #pval = pval if isinstance(pval,(str,basestring)) else "{:3.2f}".format(pval)
       pval = "{:3.2f}".format(float(pval.mean()))
       if self.crossval > 1: crossval = "1/{:d}".format(self.crossval)
-      else: crossval = "{:2.0f}%".format(100*self.crossval)
+      else: crossval = "{:2.0%}".format(self.crossval)
       print("{:s} Cross-validation: {:s} (K-S test, {:s})".format(self.name, pval, crossval)) 
   
   def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
