@@ -84,7 +84,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     ## actually load datasets
     source = loadfct() # load source 
     # check period
-    if 'period' in source.atts and dataargs.periodstr[1:] != source.atts.period: # a NetCDF attribute
+    if 'period' in source.atts and dataargs.periodstr != source.atts.period: # a NetCDF attribute
       raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
 
     # print message
@@ -202,13 +202,13 @@ if __name__ == '__main__':
     grids = config['grids']
   else:
     # settings for testing and debugging
-    NP = 2 ; ldebug = False # for quick computations
+    NP = 2 ; ldebug = True # for quick computations
 #     NP = 3 ; ldebug = True # just for tests
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
-    varlist = None
-#     varlist = ['lat2D',]
+#     varlist = None
+    varlist = ['lat2D',]
     periods = []
 #     periods += [1]
 #     periods += [3]
@@ -223,13 +223,13 @@ if __name__ == '__main__':
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR', 'NARR']
-#     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
+    datasets += ['GPCC']; resolutions = {'GPCC':['25']}
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
-#     CESM_experiments += ['Ctrl-1-2050']
+    CESM_experiments += ['Ctrl-1-2050']
 #     CESM_experiments += ['CESM','CESM-2050']
 #     CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
 #     CESM_experiments += ['Ctrl-2050', 'Ens-A-2050', 'Ens-B-2050', 'Ens-C-2050']

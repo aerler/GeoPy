@@ -82,7 +82,7 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     ## actually load datasets
     dataset = loadfct() # load source data
     # check period
-    if 'period' in dataset.atts and dataargs.periodstr[1:] != dataset.atts.period: # a NetCDF attribute
+    if 'period' in dataset.atts and dataargs.periodstr != dataset.atts.period: # a NetCDF attribute
       raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,dataset.atts.period)
 
     # print message

@@ -51,14 +51,11 @@ def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwr
       raise TypeError, 'Expected logger ID/handle in logger KW; got {}'.format(str(logger))
 
   ## extract meta data from arguments
-  module, dataargs, loadfct, filepath, datamsgstr = getMetaData(dataset, mode, dataargs)  
+  dataargs, loadfct, srcage, datamsgstr = getMetaData(dataset, mode, dataargs)  
   dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr; avgfolder = dataargs.avgfolder
-  
-  # determine age of source file
-  if not loverwrite: sourceage = datetime.fromtimestamp(os.path.getmtime(filepath))
             
   # get filename for target dataset and do some checks
-  filename = getTargetFile(shape_name, dataset, mode, module, dataargs, lwrite)
+  filename = getTargetFile(shape_name, dataset, mode, dataargs, lwrite)
   if ldebug: filename = 'test_' + filename  
   if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)  
   lskip = False # else just go ahead
@@ -75,7 +72,7 @@ def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwr
       if not loverwrite: 
         age = datetime.fromtimestamp(os.path.getmtime(filepath))
         # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
-        if age > sourceage and os.path.getsize(filepath) > 1e4: lskip = True
+        if age > srcage and os.path.getsize(filepath) > 1e4: lskip = True
         # N.B.: NetCDF files smaller than 10kB are usually incomplete header fragments from a previous crashed
       if not lskip: os.remove(filepath) # recompute
   
@@ -196,7 +193,7 @@ if __name__ == '__main__':
     shape_name = config['shape_name']
     shapes = config['shapes']
   else:
-    NP = 1 ; ldebug = False # for quick computations
+    NP = 1 ; ldebug = True # for quick computations
     modes = ('climatology',) # 'climatology','time-series'
     loverwrite = False
     varlist = None
@@ -213,10 +210,6 @@ if __name__ == '__main__':
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
-#     datasets += ['NARR']
-#     datasets += ['CRU']
-#     datasets += ['GPCC']; resolutions = {'GPCC':['025','05','10','25']}
-#     datasets += ['GPCC']; resolutions = {'GPCC':['025']}
 #     datasets += ['Unity']
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
@@ -228,7 +221,7 @@ if __name__ == '__main__':
     # WRF experiments (short or long name)
     WRF_project = 'WesternCanada' # only use GreatLakes experiments
     WRF_experiments = []
-#     WRF_experiments += ['max-ens-A']
+    WRF_experiments += ['max-ens-A']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][1:]
 #     WRF_experiments += ['erai-max','cfsr-max','max-seaice-2050','max-seaice-2100']  
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
@@ -245,9 +238,9 @@ if __name__ == '__main__':
     # define shape data  
     shape_name = 'shpavg' # Canadian shapes
     shapes = dict()
-    shapes['basins'] = None # river basins (in Canada) from WSC module
-    shapes['provinces'] = None # Canadian provinces from EC module
-#     shapes['provinces'] = ['BC'] # Canadian provinces from EC module
+#     shapes['basins'] = None # river basins (in Canada) from WSC module
+#     shapes['provinces'] = None # Canadian provinces from EC module
+    shapes['provinces'] = ['BC'] # Canadian provinces from EC module
     
  
   ## process arguments    

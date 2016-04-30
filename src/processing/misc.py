@@ -72,9 +72,9 @@ def getPeriodGridString(period, grid, exp=None, beginyear=None):
     if beginyear is None: beginyear = int(exp.begindate[0:4]) # most datasets begin in 1979
     period = (beginyear, beginyear+period)
   elif len(period) != 2 and all(isInt(period)): raise DateError
-  periodstr = '_{0:4d}-{1:4d}'.format(*period) if period else ''
+  periodstr = '{0:4d}-{1:4d}'.format(*period) if period else ''
   # grid
-  gridstr = '_'+grid if grid  else ''
+  gridstr = grid if grid  else ''
   # return
   return periodstr, gridstr
 
@@ -115,7 +115,9 @@ def getSourceAge(filelist=None, fileclasses=None, filetypes=None, exp=None, doma
       fileage = datetime.fromtimestamp(os.path.getmtime(filepath))          
       if srcage < fileage: srcage = fileage # use latest modification date
   else:    
-    # figure out period
+    # prepare period and grid strings
+    periodstr = '_{}'.format(periodstr) if periodstr else ''
+    gridstr = '_{}'.format(gridstr) if gridstr else ''    
     # assemble filenames from dataset arguments
     for filetype in filetypes:
       fileclass = fileclasses[filetype] # avoid WRF & CESM name collision
@@ -145,8 +147,6 @@ def getMetaData(dataset, mode, dataargs, lone=True):
   varlist = dataargs.get('varlist',None)
   grid = dataargs.get('grid',None) # get grid
   period = dataargs.get('period',None)
-  if period is None and lclim: 
-    raise DatasetError, "A 'period' argument is required to load climatologies!"
   # determine meta data based on dataset type
   if dataset == 'WRF': 
     # WRF datasets
@@ -158,6 +158,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
     domain = dataargs.get('domain',None)
     periodstr, gridstr = getPeriodGridString(period, grid, exp=exp)
     # check arguments
+    if period is None and lclim: raise DatasetError, "A 'period' argument is required to load climatologies!"
     if lone and len(filetypes) > 1: raise DatasetError # process only one file at a time
     if not isinstance(domain, (np.integer,int)): raise DatasetError   
     # construct dataset message
@@ -177,12 +178,14 @@ def getMetaData(dataset, mode, dataargs, lone=True):
   elif dataset == 'CESM': 
     # CESM datasets
     obs_res = None # only for datasets (not used here)
+    domain = None # only for WRF
     exp = dataargs['experiment']  
     avgfolder = exp.avgfolder
     dataset_name = exp.name
     periodstr, gridstr = getPeriodGridString(period, grid, exp=exp)
-    # identify filetypes
     filetypes = dataargs['filetypes']
+    # check arguments
+    if period is None and lclim: raise DatasetError, "A 'period' argument is required to load climatologies!"
     if lone and len(filetypes) > 1: raise DatasetError # process only one file at a time
     # construct dataset message
     if lone:
@@ -202,6 +205,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
   elif dataset == dataset.upper() or dataset == 'Unity':
     # observational datasets
     filetypes = [None] # only for CESM & WRF
+    domain = None # only for WRF
     module = import_module('datasets.{0:s}'.format(dataset))      
     dataset_name = module.dataset_name
     resolution = dataargs['resolution']
@@ -209,6 +213,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
     else: obs_res = dataset_name   
     # figure out period
     periodstr, gridstr = getPeriodGridString(period, grid, beginyear=1979)
+    if period is None and lclim: periodstr = 'LTM'
     datamsgstr = "Processing Dataset '{:s}'".format(dataset_name)
     # assemble filename to check modification dates (should be only one file)    
     filename = getFileName(grid=grid, period=period, name=obs_res, filetype=mode)

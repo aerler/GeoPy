@@ -52,7 +52,7 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
   else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
   
   ## extract meta data from arguments
-  module, dataargs, loadfct, filepath, datamsgstr = getMetaData(dataset, mode, dataargs)
+  dataargs, loadfct, srcage, datamsgstr = getMetaData(dataset, mode, dataargs)
   dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr; avgfolder = dataargs.avgfolder
 
   # load template dataset
@@ -60,11 +60,8 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
   if not isinstance(stndata, Dataset): raise TypeError
   # N.B.: the loading function is necessary, because DataseNetCDF instances do not pickle well 
             
-  # determine age of source file
-  if not loverwrite: sourceage = datetime.fromtimestamp(os.path.getmtime(filepath))    
-          
   # get filename for target dataset and do some checks
-  filename = getTargetFile(stndata.name, dataset, mode, module, dataargs, lwrite)
+  filename = getTargetFile(stndata.name, dataset, mode, dataargs, lwrite)
   if ldebug: filename = 'test_' + filename
   if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
   lskip = False # else just go ahead
@@ -81,7 +78,7 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
       if not loverwrite: 
         age = datetime.fromtimestamp(os.path.getmtime(filepath))
         # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
-        if age > sourceage and os.path.getsize(filepath) > 1e5: lskip = True
+        if age > srcage and os.path.getsize(filepath) > 1e5: lskip = True
         # N.B.: NetCDF files smaller than 100kB are usually incomplete header fragments from a previous crashed
       if not lskip: os.remove(filepath) # recompute
   
