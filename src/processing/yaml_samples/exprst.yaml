@@ -1,7 +1,7 @@
 # YAML configuration file for conversion to ASCII raster (processing.ascii_raster.py)
 # 21/04/2016, Andre R. Erler
 
-NP: 2 # environment variable has precedence; likely I/O limited
+NP: 3 # environment variable has precedence; likely I/O limited
 loverwrite: true # this is usually run manually anyway...
 modes: [climatology,]
 load_list: ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet']
@@ -22,12 +22,13 @@ WRF_domains: Null # inner domain onto inner domain
 #WRF_filetypes: ['srfc','xtrm','hydro','lsm'] # used to load dataset; not processed individually
 WRF_filetypes: ['hydro'] # used to load dataset; not processed individually
 grids: # mapping with list of resolutions  
-#  grw1: Null # Grand River Watershed, 1km resolution
-  grw2: Null # Grand River Watershed, 5km resolution
+  grw1: Null # Grand River Watershed, 1km resolution
+#  grw2: Null # Grand River Watershed, 5km resolution
 # export parameters
 export_parameters:
   project: 'GRW' # project tag, mainly for folder
   varlist: ['waterflx','liqwatflx','pet'] # varlist for export    
-  folder: '/data-3/HGS/{0:s}/{1:s}/{2:s}/' # (folder specification: project/experiment/grid) 
+  folder: '/data-3/HGS/{0:s}/{1:s}/{2:s}/{3:s}/' # (folder specification: project/grid/experiment/period/) 
+  prefix: '{0:s}_{1:s}_{2:s}_{3:s}' # (argument order: project/grid/experiment/period/)
   format: ASCII_raster # ArcInfo ASCII raster format
   lm3: true # convert water flux from kg/m^2/s to m^3/s

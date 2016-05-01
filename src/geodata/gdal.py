@@ -767,6 +767,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           if ext: filepath = '{:s}{:s}'.format(filepath,ext)
         # easy: just write ASCII raster file
         ascii.CreateCopy(filepath, dataset)
+        filelist = filepath # this will be returned
         # for good form, indirectly close the dataset
         dataset = None; ascii = None
       elif self.ndim > 2: 
@@ -788,6 +789,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         if axtag is None: axtag = axname if lcoord else 'i{:s}'.format(axname.title())
         prefix = '{:s}_{:s}_{:s}'.format(prefix,axtag,fmt)
         # loop over bands
+        filelist = []
         for i in xrange(lenax):
           # work on each slice individually
           slcvar = self.slicing(lidx=True, **{axname:i})
@@ -797,10 +799,12 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           # now call this function recursively for every slice, until input is 2D
           filepath = ASCII_raster(slcvar, prefix=pf, folder=folder, ext=ext, filepath=None, 
                                   wrap360=wrap360, fillValue=fillValue)
+          if isinstance(filepath, basestring): filelist.append(filepath)
+          else: filelist.extend(filepath)
           # N.B.: the function basically returns the last filepath
       else: raise NotImplementedError, self
       # return full path to file
-      return filepath
+      return filelist
     # add new method to object
     var.ASCII_raster = types.MethodType(ASCII_raster, var) 
   
@@ -1020,6 +1024,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
         raise ArgumentError, "A valid folder is necessary to export a dataset to ASCII raster format."
       if not os.path.exists(folder): os.makedirs(folder) # make sure folder exists
       # loop over variables
+      filedict = dict()
       for varname,vartag in varlist.iteritems():
         var = self.variables[varname] # variable isntance
         if vartag is None: vartag = var.name
@@ -1028,9 +1033,12 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
           # add prefix to variable name
           pf = '{:s}_{:s}'.format(prefix,vartag) if prefix else vartag
           # call export function on each variable
-          var.ASCII_raster(prefix=pf, folder=folder, ext=ext, filepath=None, wrap360=wrap360, 
-                           fillValue=fillValue, lcoord=lcoord, lfortran=lfortran, formatter=formatter)
-      return folder
+          filelist = var.ASCII_raster(prefix=pf, folder=folder, ext=ext, filepath=None, wrap360=wrap360, 
+                                      fillValue=fillValue, lcoord=lcoord, lfortran=lfortran, 
+                                      formatter=formatter)
+          if isinstance(filelist,basestring): filelist = [filelist]
+          filedict[vartag] = filelist
+      return filedict
     # add new method to object
     dataset.ASCII_raster = types.MethodType(ASCII_raster, dataset)    
       

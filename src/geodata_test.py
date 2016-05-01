@@ -1639,13 +1639,13 @@ class GDALVarTest(NetCDFVarTest):
     if os.path.exists(folder): shutil.rmtree(folder)
     os.mkdir(folder)
     # simple case
-    filepath = var.ASCII_raster(folder=folder, lcoord=False)
-    assert os.path.exists(filepath), filepath
+    filelist = var.ASCII_raster(folder=folder, lcoord=False)
+    for filepath in filelist: assert os.path.exists(filepath), filepath
     # fancy case with formatter
     formatter = dict(time=('Time','{:04.0f}'))
-    filepath = var.ASCII_raster(folder=folder, lcoord=True, formatter=formatter,
+    filelist = var.ASCII_raster(folder=folder, lcoord=True, formatter=formatter,
                                 prefix=var.atts.long_name, ext='')
-    assert os.path.exists(filepath), filepath
+    for filepath in filelist: assert os.path.exists(filepath), filepath
 
 
 class DatasetGDALTest(DatasetNetCDFTest):  
@@ -1724,13 +1724,18 @@ class DatasetGDALTest(DatasetNetCDFTest):
       print("\nASCII_raster folder: '{:s}'".format(folder)) # print data folder
       if os.path.exists(folder): shutil.rmtree(folder)
       # simple case, sequential indexing
-      folder = dataset.ASCII_raster(folder=folder)
-      assert os.path.exists(folder), folder
+      filedict = dataset.ASCII_raster(folder=folder)
+      for var,filelist in filedict.iteritems():
+        assert var in dataset
+        for filepath in filelist: assert os.path.exists(filepath), filepath
       # fancy case with coordinate indexing and formatter
       varlist = [self.var.name]
       formatter = dict(time=('Time','{:04.0f}'))
-      folder = dataset.ASCII_raster(varlist=varlist, folder=folder, lcoord=True, 
+      filedict = dataset.ASCII_raster(varlist=varlist, folder=folder, lcoord=True, 
                                       formatter=formatter, prefix='TEST', ext='')
+      for var,filelist in filedict.iteritems():
+        assert var in dataset
+        for filepath in filelist: assert os.path.exists(filepath), filepath
       # this filename should exist
       filepath = '{:s}/TEST_{:s}_Time_{:04.0f}'.format(folder,self.var.name,dataset.axes['time'][0])
       assert os.path.exists(filepath), filepath
@@ -1744,7 +1749,7 @@ if __name__ == "__main__":
     print('OMP_NUM_THREADS = {:s}\n'.format(os.environ['OMP_NUM_THREADS']))    
         
     specific_tests = []
-#     specific_tests += ['WriteASCII']
+    specific_tests += ['WriteASCII']
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
 #     specific_tests += ['Ensemble']
@@ -1770,7 +1775,7 @@ if __name__ == "__main__":
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()

@@ -130,11 +130,14 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
   project = expargs.pop('project')
   varlist = expargs.pop('varlist')
   expfolder = expargs.pop('folder')
+  expprefix = expargs.pop('prefix')
   expformat = expargs.pop('format')
   lm3 = expargs.pop('lm3') # convert kg/m^2 to m^3 (water flux)
   # get folder for target dataset and do some checks
   expname = '{:s}_d{:02d}'.format(dataset_name,dataargs.domain) if dataargs.domain else dataset_name
-  expfolder = expfolder.format(project, expname, grid)
+  expprd = 'clim_{:s}'.format(periodstr) if periodstr else 'timeseries' 
+  expfolder = expfolder.format(project, grid, expname, expprd)
+  expprefix = expprefix.format(project, grid, expname, expprd)
     
   # prepare target dataset (which is mainly just a folder)
   if ldebug: expfolder = expfolder + 'test/' # test in subfolder
@@ -208,14 +211,15 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
       
     # export to selected format (by variable)
     if expformat == 'ASCII_raster':
-      folder = sink.ASCII_raster(varlist=None, folder=expfolder)
+      # export dataset to raster format
+      folder = sink.ASCII_raster(prefix=expprefix, varlist=None, folder=expfolder, **expargs)
       if not os.path.exists(folder): raise IOError, folder # independent check
     elif expformat == 'NetCDF':
       raise NotImplementedError # not sure if this will ever be useful...
       
       
     # write results to file
-    writemsg =  "\n{:s}   >>>   Export of Dataset '{:s}' to Format '{:s}' complete.".format(pidstr,dataset_name, expformat)
+    writemsg =  "\n{:s}   >>>   Export of Dataset '{:s}' to Format '{:s}' complete.".format(pidstr,expname, expformat)
     writemsg += "\n{:s}   >>>   ('{:s}')\n".format(pidstr,expfolder)
     logger.info(writemsg)      
        
@@ -245,7 +249,7 @@ if __name__ == '__main__':
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
   
-  lbatch = False
+  lbatch = True
   ## define settings
   if lbatch:
     # load YAML configuration
@@ -274,10 +278,6 @@ if __name__ == '__main__':
     grids = config['grids']
     # target data specs
     export_arguments = config['export_parameters'] # this is actually a larger data structure
-    project = export_arguments['project'] # project designation    
-    varlist = export_arguments['varlist'] # varlist for export    
-    expfolder = export_arguments['folder'] # project/experiment/grid 
-    expformat = export_arguments['format'] # formats to export to
     lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/s    
   else:
     # settings for testing and debugging
@@ -314,7 +314,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
     # other WRF parameters 
-    domains = 2 # domains to be processed
+    domains = None # domains to be processed
 #     domains = None # process all domains
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
@@ -323,13 +323,13 @@ if __name__ == '__main__':
 #     grids += [None] # special keyword for native grid
     grids += ['grw2']# small grid for HGS GRW project
     ## export parameters
-    project = 'GRW' # project designation    
-    varlist = ['waterflx','liqwatflx','pet'] # varlist for export    
-    expfolder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/'.format(os.getenv('DATA_ROOT', None)) # project/experiment/grid 
-    expformat = 'ASCII_raster' # formats to export to
-    lm3 = True # convert water flux from kg/m^2/s to m^3/s
-    # assemble export arguments
-    export_arguments = dict(project=project, varlist=varlist, format=expformat, folder=expfolder, lm3=lm3)
+    export_arguments = dict(
+        project = 'GRW', # project designation    
+        varlist = ['waterflx','liqwatflx','pet'], # varlist for export    
+        folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/{{3:s}}/'.format(os.getenv('DATA_ROOT', None)),
+        prefix = '{0:s}_{1:s}_{2:s}_{3:s}', # argument order: project/grid/experiment/period/
+        format = 'ASCII_raster', # formats to export to
+        lm3 = True) # convert water flux from kg/m^2/s to m^3/s
   
   ## process arguments    
   if isinstance(periods, (np.integer,int)): periods = [periods]
@@ -352,13 +352,17 @@ if __name__ == '__main__':
     print('\n And Observational Datasets:')
     print(datasets)
   print('\n From Grid/Resolution:\n   {:s}'.format(printList(grids)))
-  print('\n To File Format {:s}'.format(expformat))
-  print('   ({:s})'.format(expfolder))
+  print('To File Format {:s}'.format(export_arguments['format']))
+  print('\n Project Designation: {:s}'.format(export_arguments['project']))
+  print('Export Folder: {:s}'.format(export_arguments['folder']))
+  print('File Prefix: {:s}'.format(export_arguments['prefix']))
+  print('Export Variable List: {:s}'.format(printList(export_arguments['varlist'])))
+  if export_arguments['lm3']: '\n Converting kg/m^2/s (mm/s) into m^3/s'
   print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
   
   # check formats (will be iterated over in export function, hence not part of task list)
-  if expformat.lower() not in ('ascii_raster','netcdf'):
-    raise ArgumentError, "Unsupported file format: '{:s}'".format(expformat)
+  if export_arguments['format'] not in ('ASCII_raster',):
+    raise ArgumentError, "Unsupported file format: '{:s}'".format(export_arguments['format'])
     
   ## construct argument list
   args = []  # list of job packages

@@ -760,10 +760,10 @@ if __name__ == '__main__':
   elif mode == 'create_grid':
     
     # parameters for UTM 17
-#     name = 'grw1' # 1km resolution
-#     geotransform = [500.e3,1.e3,0,4740.e3,0,1.e3]; size = (132,162)
-    name = 'grw2' # 5km resolution
-    geotransform = [500.e3,5.e3,0,4740.e3,0,5.e3]; size = (27,33)
+    name = 'grw1' # 1km resolution
+    geotransform = [500.e3,1.e3,0,4740.e3,0,1.e3]; size = (132,162)
+#     name = 'grw2' # 5km resolution
+#     geotransform = [500.e3,5.e3,0,4740.e3,0,5.e3]; size = (27,33)
     projection = "+proj=utm +zone=17 +north +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
     # N.B.: [x_0, dx, 0, y_0, 0, dy]
     #       GT(0),GT(3) are the coordinates of the bottom left corner
