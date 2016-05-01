@@ -133,7 +133,8 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
   expformat = expargs.pop('format')
   lm3 = expargs.pop('lm3') # convert kg/m^2 to m^3 (water flux)
   # get folder for target dataset and do some checks
-  expfolder = expfolder.format(project, dataset_name, grid)
+  expname = '{:s}_d{:02d}'.format(dataset_name,dataargs.domain) if dataargs.domain else dataset_name
+  expfolder = expfolder.format(project, expname, grid)
     
   # prepare target dataset (which is mainly just a folder)
   if ldebug: expfolder = expfolder + 'test/' # test in subfolder
@@ -174,7 +175,7 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     if not lparallel and ldebug: logger.info('\n'+str(source)+'\n')
     
     # create GDAL-enabled target dataset
-    sink = Dataset(axes=(source.xlon,source.ylat), name=source.name)
+    sink = Dataset(axes=(source.xlon,source.ylat), name=expname)
     addGDALtoDataset(dataset=sink, griddef=source.griddef)
     assert sink.gdal, sink
     
@@ -244,6 +245,7 @@ if __name__ == '__main__':
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
   
+  lbatch = False
   ## define settings
   if lbatch:
     # load YAML configuration
@@ -279,8 +281,8 @@ if __name__ == '__main__':
     lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/s    
   else:
     # settings for testing and debugging
-#     NP = 2 ; ldebug = False # for quick computations
-    NP = 1 ; ldebug = True # just for tests
+    NP = 2 ; ldebug = False # for quick computations
+#     NP = 1 ; ldebug = True # just for tests
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
@@ -299,13 +301,13 @@ if __name__ == '__main__':
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
 #     CESM_experiments += ['Ens']
-#     CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
+    CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
     CESM_filetypes = ['atm','lnd']
     # WRF experiments (short or long name)
     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-    WRF_experiments += ['g-ctrl']
+    WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-3km','max-3km']
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']

@@ -1,7 +1,7 @@
 # YAML configuration file for conversion to ASCII raster (processing.ascii_raster.py)
 # 21/04/2016, Andre R. Erler
 
-NP: 1 # environment variable has precedence
+NP: 2 # environment variable has precedence; likely I/O limited
 loverwrite: true # this is usually run manually anyway...
 modes: [climatology,]
 load_list: ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet']
