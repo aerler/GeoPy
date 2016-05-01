@@ -443,7 +443,8 @@ class CentralProcessingUnit(object):
             zs_err.append(zs[j,i]-stn_zs[n])          
           ixlon.append(i); iylat.append(j); istn.append(n)
     # N.B.: it is necessary to append, because we don't know the number of valid points
-    ixlon = np.array(ixlon); iylat = np.array(iylat); istn = np.array(istn); zs_err = np.array(zs_err)
+    ixlon = np.array(ixlon, dtype='int'); iylat = np.array(iylat, dtype='int')
+    istn = np.array(istn, dtype='int'); zs_err = np.array(zs_err, dtype='float')
     # prepare target dataset
     # N.B.: attributes should already be set in target dataset (by caller module)
     #       we are also assuming the new dataset has no axes yet
