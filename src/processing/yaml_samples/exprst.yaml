@@ -1,20 +1,20 @@
 # YAML configuration file for conversion to ASCII raster (processing.ascii_raster.py)
 # 21/04/2016, Andre R. Erler
 
-NP: 3 # environment variable has precedence
-loverwrite: false # only recompute if source is newer
+NP: 1 # environment variable has precedence
+loverwrite: true # this is usually run manually anyway...
 modes: [climatology,]
-load_list: [waterflx, liqprec, evap, snwmlt] # process all variables
+load_list: ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet']
 periods: [15,] # climatology periods to process
 # Datasets
-datasets: [] # process all applicable
+datasets: [] # this will generally not work, because we don't have snow/-melt...
 resolutions: Null # process all applicable
-lLTM: true 
+lLTM: false # not relevant anyway 
 # CESM
 CESM_project: Null # all available experiments
 load3D: false
 CESM_experiments: Null
-CESM_filetypes: ['atm','lnd'] # used to load dataset; not processed individually
+CESM_filetypes: ['atm','lnd'] # used to load dataset; both are necessary
 # WRF
 WRF_project: 'GreatLakes' # all available experiments
 WRF_experiments: Null # all available experiments
@@ -22,12 +22,12 @@ WRF_domains: Null # inner domain onto inner domain
 #WRF_filetypes: ['srfc','xtrm','hydro','lsm'] # used to load dataset; not processed individually
 WRF_filetypes: ['hydro'] # used to load dataset; not processed individually
 grids: # mapping with list of resolutions  
-  grw1: Null # Grand River Watershed, 1km resolution
+#  grw1: Null # Grand River Watershed, 1km resolution
   grw2: Null # Grand River Watershed, 5km resolution
 # export parameters
 export_parameters:
   project: 'GRW' # project tag, mainly for folder
-  varlist: ['waterflx',] # output variables
+  varlist: ['waterflx','liqwatflx','pet'] # varlist for export    
   folder: '/data-3/HGS/{0:s}/{1:s}/{2:s}/' # (folder specification: project/experiment/grid) 
   format: ASCII_raster # ArcInfo ASCII raster format
   lm3: true # convert water flux from kg/m^2/s to m^3/s

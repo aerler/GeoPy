@@ -2530,7 +2530,7 @@ class Dataset(object):
     implements collective operations on all variables in the dataset.
   '''
   
-  def __init__(self, name=None, title=None, varlist=None, atts=None):
+  def __init__(self, name=None, title=None, varlist=None, axes=None, atts=None):
     ''' 
       Create a dataset from a list of variables. The basic dataset class has no capability to create variables.
       
@@ -2553,6 +2553,8 @@ class Dataset(object):
     # load global attributes, if given
     if atts: self.__dict__['atts'] = AttrDict(**atts)
     else: self.__dict__['atts'] = AttrDict()
+    # add explicitly passed axes
+    if axes: assert self.addAxis(axes, copy=False, lall=True)
     # load variables (automatically adds axes linked to variables)
     if varlist is None: varlist = []
     # add variables (ApplyTestOverList-decorator takes care of iteration)

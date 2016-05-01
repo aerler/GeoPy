@@ -28,7 +28,7 @@ def loadYAML(default, lfeedback=True):
   if os.environ.has_key('PYAVG_YAML'): 
     yamlfile = os.environ['PYAVG_YAML']
     # try to guess variations, if path is not valid
-    if not os.path.exists(yamlfile): 
+    if not os.path.isfile(yamlfile): 
       if os.path.isdir(yamlfile): # use default filename in directory
         yamlfile = '{:s}/{:s}'.format(yamlfile,default)
       else: # use filename in current directory

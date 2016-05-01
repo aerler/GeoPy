@@ -13,15 +13,94 @@ from importlib import import_module
 from datetime import datetime
 import logging     
 # internal imports
-from geodata.misc import DateError, printList, ArgumentError, VariableError
-from geodata.netcdf import DatasetNetCDF
 from geodata.base import Dataset
-from geodata.gdal import addGeoLocator
+from geodata.gdal import addGDALtoDataset
+from geodata.misc import DateError, printList, ArgumentError, VariableError
 from datasets import gridded_datasets
-from datasets.common import addLengthAndNamesOfMonth
 from processing.multiprocess import asyncPoolEC
-from processing.process import CentralProcessingUnit
 from processing.misc import getMetaData,  getExperimentList, loadYAML
+
+## functions to compute relevant variables
+
+# compute surface water flux
+def computeWaterFlux(dataset):
+  ''' function to compute the net water flux at the surface '''
+  # check prerequisites
+  if 'liqprec' in dataset: # this is the preferred computation
+    for pv in ('evap','snwmlt'): 
+      if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for net water flux not found.".format(pv)
+      else: dataset[pv].load() # load data for computation
+    # compute waterflux (returns a Variable instance)
+    var = dataset['liqprec'] + dataset['snwmlt'] - dataset['evap']
+  elif 'solprec' in dataset: # alternative computation, mainly for CESM
+    for pv in ('precip','evap','snwmlt'): 
+      if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for net water flux not found.".format(pv)
+      else: dataset[pv].load() # load data for computation
+    # compute waterflux (returns a Variable instance)
+    var = dataset['precip'] - dataset['solprec'] + dataset['snwmlt'] - dataset['evap']
+  else: 
+    raise VariableError, "No liquid or solid precip found to compute net water flux."
+  var.name = 'waterflx' # give correct name (units should be correct)
+  assert var.units == dataset['evap'].units, var
+  # return new variable
+  return var
+
+# compute downward/liquid component of surface water flux
+def computeLiquidWaterFlux(dataset):
+  ''' function to compute the downward/liquid component of water flux at the surface '''
+  # check prerequisites
+  if 'liqprec' in dataset: # this is the preferred computation
+    for pv in ('liqprec','snwmlt'): 
+      if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for liquid water flux not found.".format(pv)
+      else: dataset[pv].load() # load data for computation
+    # compute waterflux (returns a Variable instance)
+    var = dataset['liqprec'] + dataset['snwmlt']
+  elif 'solprec' in dataset: # alternative computation, mainly for CESM
+    for pv in ('precip','snwmlt'): 
+      if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for net water flux not found.".format(pv)
+      else: dataset[pv].load() # load data for computation
+    # compute waterflux (returns a Variable instance)
+    var = dataset['precip'] - dataset['solprec'] + dataset['snwmlt']
+  else: 
+    raise VariableError, "No liquid or solid precip found to compute net water flux.".format(pv)
+  var.name = 'liqwatflx' # give correct name (units should be correct)
+  assert var.units == dataset['snwmlt'].units, var
+  # return new variable
+  return var
+
+# compute potential evapo-transpiration
+def computePotEvapPM(dataset):
+  ''' function to compute potential evapotranspiration (according to Penman-Monteith method:
+      https://en.wikipedia.org/wiki/Penman%E2%80%93Monteith_equation,
+      http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
+  '''
+  raise NotImplementedError
+  # check prerequisites
+  for pv in (): 
+    if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for potential evapo-transpiration not found.".format(pv)
+    else: dataset[pv].load() # load data for computation
+  # compute waterflux (returns a Variable instance)
+  var = dataset['']
+  var.name = 'pet' # give correct name (units should be correct)
+  assert var.units == dataset[''].units, var
+  # return new variable
+  return var
+
+# compute potential evapo-transpiration
+def computePotEvapTh(dataset):
+  ''' function to compute potential evapotranspiration (according to Thornthwaite method:
+      https://en.wikipedia.org/wiki/Potential_evaporation) '''
+  raise NotImplementedError
+  # check prerequisites
+  for pv in (): 
+    if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for potential evapo-transpiration not found.".format(pv)
+    else: dataset[pv].load() # load data for computation
+  # compute waterflux (returns a Variable instance)
+  var = dataset['']
+  var.name = 'pet' # give correct name (units should be correct)
+  assert var.units == dataset[''].units, var
+  # return new variable
+  return var
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
@@ -43,10 +122,11 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
       raise TypeError, 'Expected logger ID/handle in logger KW; got {}'.format(str(logger))
 
   ## extract meta data from arguments
-  dataargs, loadfct, srcage, datamsgstr = getMetaData(dataset, mode, dataargs)
+  dataargs, loadfct, srcage, datamsgstr = getMetaData(dataset, mode, dataargs, lone=False)
   dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr
 
   # parse export options
+  expargs = expargs.copy() # first copy, then modify...
   project = expargs.pop('project')
   varlist = expargs.pop('varlist')
   expfolder = expargs.pop('folder')
@@ -80,10 +160,10 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
   else:
           
     ## actually load datasets
-    dataset = loadfct() # load source data
+    source = loadfct() # load source data
     # check period
-    if 'period' in dataset.atts and dataargs.periodstr != dataset.atts.period: # a NetCDF attribute
-      raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,dataset.atts.period)
+    if 'period' in source.atts and dataargs.periodstr != source.atts.period: # a NetCDF attribute
+      raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
 
     # print message
     if mode == 'climatology': opmsgstr = 'Exporting Climatology ({:s}) to {:s} Format'.format(periodstr, expformat)
@@ -91,40 +171,46 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
     # print feedback to logger
     logger.info('\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
-    if not lparallel and ldebug: logger.info('\n'+str(dataset)+'\n')
+    if not lparallel and ldebug: logger.info('\n'+str(source)+'\n')
+    
+    # create GDAL-enabled target dataset
+    sink = Dataset(axes=(source.xlon,source.ylat), name=source.name)
+    addGDALtoDataset(dataset=sink, griddef=source.griddef)
+    assert sink.gdal, sink
     
     # Compute intermediate variables, if necessary
-    for var in varlist:
-      if var in dataset:
-        dataset[var].load() # load data (may not have to load all)
+    for varname in varlist:
+      if varname in source:
+        var = source[varname].load() # load data (may not have to load all)
       else:
-        if var == 'waterflx':
-          if all(v in dataset for v in ('liqprec','evap','snwmlt')):
-            pass
-          else: raise VariableError, "Prerequisites for Variable '{:s}' not found.".format(var)
+        if varname == 'waterflx': var = computeWaterFlux(source)
+        elif varname == 'liqwatflx': var = computeLiquidWaterFlux(source)
+        elif varname == 'pet' or varname == 'pet_pm': var = None # skip for now
+          #var = computePotEvapPM(source) # default
+        elif varname == 'pet_th': var = None # skip for now
+          #var = computePotEvapTh(source) # simplified formula (less prerequisites)
         else: raise VariableError, "Unsupported Variable '{:s}'.".format(var)
-            
-    # convert units for water flux
-    if lm3:
-      for varname in varlist:
-        var = dataset[varname] # this is just a reference
-        if var.units == 'kg/m^2/s':
-          var /= 1000. # divide to get m^3/s
-          var.units = 'm^3/s' # update units
-          assert dataset[varname].units == 'm^3/s'
+      # for now, skip variables that are None
+      if var:
+        # convert units
+        if lm3:
+          if var.units == 'kg/m^2/s':
+            var /= 1000. # divide to get m^3/s
+            var.units = 'm^3/s' # update units
+        # add to new dataset
+        sink += var
+      
     
     # print dataset
     if not lparallel and ldebug:
-      logger.info('\n'+str(dataset)+'\n')
+      logger.info('\n'+str(sink)+'\n')
       
     # export to selected format (by variable)
     if expformat == 'ASCII_raster':
-      for var in varlist:
-        # call export function for format from Variable
-        filepath = getattr(dataset[var],expformat)(folder=expfolder, **expargs)
-        if not os.path.exists(filepath): raise IOError, filepath # independent check
+      folder = sink.ASCII_raster(varlist=None, folder=expfolder)
+      if not os.path.exists(folder): raise IOError, folder # independent check
     elif expformat == 'NetCDF':
-      raise NotImplementedError
+      raise NotImplementedError # not sure if this will ever be useful...
       
       
     # write results to file
@@ -133,7 +219,7 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     logger.info(writemsg)      
        
     # clean up and return
-    dataset.unload(); #del dataset
+    source.unload(); #del source
     return 0 # "exit code"
     # N.B.: garbage is collected in multi-processing wrapper
 
@@ -161,7 +247,7 @@ if __name__ == '__main__':
   ## define settings
   if lbatch:
     # load YAML configuration
-    config = loadYAML('regrid.yaml', lfeedback=True)
+    config = loadYAML('exprst.yaml', lfeedback=True)
     # read config object
     NP = NP or config['NP']
     loverwrite = config['loverwrite']
@@ -182,10 +268,15 @@ if __name__ == '__main__':
     WRF_project = config['WRF_project']
     WRF_experiments = config['WRF_experiments']
     WRF_filetypes = config['WRF_filetypes']
-    domains = config['domains']
+    domains = config['WRF_domains']
     grids = config['grids']
     # target data specs
-    export_arguments = config['export_arguments'] # this is actually a larger data structure
+    export_arguments = config['export_parameters'] # this is actually a larger data structure
+    project = export_arguments['project'] # project designation    
+    varlist = export_arguments['varlist'] # varlist for export    
+    expfolder = export_arguments['folder'] # project/experiment/grid 
+    expformat = export_arguments['format'] # formats to export to
+    lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/s    
   else:
     # settings for testing and debugging
 #     NP = 2 ; ldebug = False # for quick computations
@@ -194,23 +285,22 @@ if __name__ == '__main__':
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
 #     varlist = None
-    load_list = ['waterflx','liqprec','evap','snwmlt']
+    load_list = ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet']
     periods = []
     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
-    datasets = []
-    lLTM = True # also regrid the long-term mean climatologies 
+    datasets = [] # this will generally not work, because we don't have snow/-melt...
+    lLTM = False # also regrid the long-term mean climatologies 
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
-#     CESM_experiments += ['CESM','CESM-2050']
+#     CESM_experiments += ['Ens']
 #     CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
-#     CESM_filetypes = ['atm','lnd']
-    CESM_filetypes = ['atm']
+    CESM_filetypes = ['atm','lnd']
     # WRF experiments (short or long name)
     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_project = 'WesternCanada' # only WesternCanada experiments
@@ -232,7 +322,7 @@ if __name__ == '__main__':
     grids += ['grw2']# small grid for HGS GRW project
     ## export parameters
     project = 'GRW' # project designation    
-    varlist = ['waterflx'] # varlist for export    
+    varlist = ['waterflx','liqwatflx','pet'] # varlist for export    
     expfolder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/'.format(os.getenv('DATA_ROOT', None)) # project/experiment/grid 
     expformat = 'ASCII_raster' # formats to export to
     lm3 = True # convert water flux from kg/m^2/s to m^3/s
@@ -309,23 +399,21 @@ if __name__ == '__main__':
         
         # CESM datasets
         for experiment in CESM_experiments:
-          for filetype in CESM_filetypes:
-            for period in periodlist:
-              # arguments for worker function: dataset and dataargs       
-              args.append( ('CESM', mode, dict(experiment=experiment, filetypes=[filetype], grid=grid, varlist=load_list, 
-                                               period=period, load3D=load3D)) )
+          for period in periodlist:
+            # arguments for worker function: dataset and dataargs       
+            args.append( ('CESM', mode, dict(experiment=experiment, filetypes=CESM_filetypes, grid=grid, 
+                                             varlist=load_list, period=period, load3D=load3D)) )
         # WRF datasets
         for experiment in WRF_experiments:
-          for filetype in WRF_filetypes:
-            # effectively, loop over domains
-            if domains is None:
-              tmpdom = range(1,experiment.domains+1)
-            else: tmpdom = domains
-            for domain in tmpdom:
-              for period in periodlist:
-                # arguments for worker function: dataset and dataargs       
-                args.append( ('WRF', mode, dict(experiment=experiment, filetypes=[filetype], grid=grid, varlist=load_list, 
-                                                domain=domain, period=period)) )
+          # effectively, loop over domains
+          if domains is None:
+            tmpdom = range(1,experiment.domains+1)
+          else: tmpdom = domains
+          for domain in tmpdom:
+            for period in periodlist:
+              # arguments for worker function: dataset and dataargs       
+              args.append( ('WRF', mode, dict(experiment=experiment, filetypes=WRF_filetypes, grid=grid, 
+                                              varlist=load_list, domain=domain, period=period)) )
       
   # static keyword arguments
   kwargs = dict(expargs=export_arguments, loverwrite=loverwrite)

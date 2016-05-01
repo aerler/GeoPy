@@ -624,7 +624,8 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   if filetypes is None: filetypes = ('hydro','xtrm','srfc','plev3d','lsm')
   if isinstance(filetypes,(tuple,set)): filetypes = list(filetypes)
   elif isinstance(filetypes,basestring): filetypes = [filetypes,]
-  elif not isinstance(filetypes,list): raise TypeError  
+  elif isinstance(filetypes,list): filetypes = list(filetypes) # also make copy for modification
+  else: raise TypeError
   if 'axes' not in filetypes: filetypes.append('axes')
   #if 'const' not in filetypes and grid is None: filetypes.append('const')
   atts = dict(); filelist = []; typelist = []
