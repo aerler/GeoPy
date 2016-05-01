@@ -207,20 +207,20 @@ if __name__ == '__main__':
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
-#     varlist = None
-    varlist = ['precip',]
+    varlist = None
+#     varlist = ['precip',]
     periods = []
 #     periods += [1]
 #     periods += [3]
-    periods += [5]
+#     periods += [5]
 #     periods += [10]
-#     periods += [15]
+    periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031']}
     datasets = []
     lLTM = False # also regrid the long-term mean climatologies 
-    datasets += ['PRISM','GPCC','PCIC']; periods = None
+#     datasets += ['PRISM','GPCC','PCIC']; periods = None
 #     datasets += ['CFSR', 'NARR'] # CFSR_05 does not have precip
 #     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
@@ -240,7 +240,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2050']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
-#     WRF_experiments += ['g-ctrl']
+    WRF_experiments += ['g-ctrl']
 #     WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
 #     WRF_experiments += ['max-ens-2050','max-ens-2100']
 #     WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
@@ -264,7 +264,8 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('const',); periods = None
     # grid to project onto
     grids = dict()
-    grids['grw2'] = None # small grid, ideal for testing
+    grids['grw1'] = None # smaller grid, ideal for testing
+#     grids['grw2'] = None # very small grid, ideal for testing
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['glb1'] = ('d02',) # Marc's standard GRB inner domain
 #     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain

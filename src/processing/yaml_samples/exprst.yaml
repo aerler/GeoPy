@@ -17,13 +17,13 @@ CESM_experiments: Null
 CESM_filetypes: ['atm','lnd'] # used to load dataset; both are necessary
 # WRF
 WRF_project: 'GreatLakes' # all available experiments
-WRF_experiments: Null # all available experiments
+WRF_experiments: [] # all available experiments
 WRF_domains: Null # inner domain onto inner domain 
 #WRF_filetypes: ['srfc','xtrm','hydro','lsm'] # used to load dataset; not processed individually
 WRF_filetypes: ['hydro'] # used to load dataset; not processed individually
 grids: # mapping with list of resolutions  
   grw1: Null # Grand River Watershed, 1km resolution
-#  grw2: Null # Grand River Watershed, 5km resolution
+  grw2: Null # Grand River Watershed, 5km resolution
 # export parameters
 export_parameters:
   project: 'GRW' # project tag, mainly for folder

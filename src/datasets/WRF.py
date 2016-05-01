@@ -1006,7 +1006,7 @@ if __name__ == '__main__':
   elif mode == 'test_climatology':
     
     print('')
-    dataset = loadWRF(experiment='g-ctrl', domains=2, grid='grw2', filetypes=['hydro'], 
+    dataset = loadWRF(experiment='g-ctrl', domains=2, grid='grw1', filetypes=['hydro'], 
                       period=(1979,1994), exps=WRF_exps)
 #     dataset = loadWRF(experiment='max-ensemble', domains=None, filetypes=['plev3d'], period=(1979,1994),
 #                       varlist=['u','qhv','cqwu','cqw','RH'], lconst=True, exps=WRF_exps)
