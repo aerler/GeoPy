@@ -212,8 +212,10 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     # export to selected format (by variable)
     if expformat == 'ASCII_raster':
       # export dataset to raster format
-      folder = sink.ASCII_raster(prefix=expprefix, varlist=None, folder=expfolder, **expargs)
-      if not os.path.exists(folder): raise IOError, folder # independent check
+      filedict = sink.ASCII_raster(prefix=expprefix, varlist=None, folder=expfolder, **expargs)
+      # check first and last
+      if not os.path.exists(filedict.values()[0][0]): raise IOError, filedict.values()[0][0] # random check
+      if not os.path.exists(filedict.values()[-1][-1]): raise IOError, filedict.values()[-1][-1] # random check
     elif expformat == 'NetCDF':
       raise NotImplementedError # not sure if this will ever be useful...
       
