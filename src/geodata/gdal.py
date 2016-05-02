@@ -472,6 +472,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
   if lgdal:    
     # determine gdal-relevant shape parameters
     mapSize = var.shape[-2:]
+    assert mapSize == (len(xlon),len(ylat)), mapSize
     if not all(mapSize): raise AxisError, 'Horizontal dimensions have to be of finite, non-zero length.'
     if var.ndim == 2: bands = 1 
     else: bands = np.prod(var.shape[:-2])
@@ -588,11 +589,11 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         # enforce orientation
         if lupperleft and geotransform[5] > 0:
           # use upper-left corner as reference; default in GDAL applications and requires dy < 0
-          geotransform[3] = geotransform[3] + self.mapsize[1]*geotransform[5] # shift North
+          geotransform[3] = geotransform[3] + self.mapSize[1]*geotransform[5] # shift North
           geotransform[5] = -1*geotransform[5] # make dy < 0
         elif not lupperleft and geotransform[5] < 0:
           # use lower-left corner as reference; default in GeoPy and works, if dy > 0
-          geotransform[3] = geotransform[3] + self.mapsize[1]*geotransform[5] # shift South, dy < 0 !!!
+          geotransform[3] = geotransform[3] + self.mapSize[1]*geotransform[5] # shift South, dy < 0 !!!
           geotransform[5] = -1*geotransform[5] # make dy > 0
         # determine GDAL data type        
         if self.dtype == 'float32': gdt = gdal.GDT_Float32
