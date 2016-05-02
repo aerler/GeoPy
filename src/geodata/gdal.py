@@ -552,7 +552,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     var.copy = types.MethodType(copy, var)
         
     # define GDAL-related 'class methods'  
-    def getGDAL(self, load=True, allocate=True, wrap360=False, fillValue=None):
+    def getGDAL(self, load=True, allocate=True, wrap360=False, fillValue=None, lupperleft=False):
       ''' Method that returns a gdal dataset, ready for use with GDAL routines. '''
       lperi = False
       if self.gdal and self.projection is not None:
@@ -585,6 +585,15 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           if load: data = np.roll(data, shift, axis=2) # shift data along the x-axis
           geotransform[0] = geotransform[0] - shift*geotransform[1] # record shift in geotransform 
         else: geotransform = self.geotransform
+        # enforce orientation
+        if lupperleft and geotransform[5] > 0:
+          # use upper-left corner as reference; default in GDAL applications and requires dy < 0
+          geotransform[3] = geotransform[3] + self.mapsize[1]*geotransform[5] # shift North
+          geotransform[5] = -1*geotransform[5] # make dy < 0
+        elif not lupperleft and geotransform[5] < 0:
+          # use lower-left corner as reference; default in GeoPy and works, if dy > 0
+          geotransform[3] = geotransform[3] + self.mapsize[1]*geotransform[5] # shift South, dy < 0 !!!
+          geotransform[5] = -1*geotransform[5] # make dy > 0
         # determine GDAL data type        
         if self.dtype == 'float32': gdt = gdal.GDT_Float32
         elif self.dtype == 'float64': gdt = gdal.GDT_Float64
@@ -625,6 +634,13 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         axstr = "'x' and 'y'" if isProjected else "'lon' and 'lat'"
         if (var.axisIndex(xlon) != var.ndim-1) or (var.axisIndex(ylat) != var.ndim-2):
           raise NotImplementedError, "Horizontal axes ({:s}) have to be the last indices.".format(axstr)        
+        # check that GDAL and GeoPy datsets have the same coordinate system and grid
+        geotransform = dataset.GetGeoTransform()
+        if self.geotransform != geotransform: 
+          raise GDALError, "Geotransform of Variable ({:s}) differs from geotransform of GDAL dataset ({:s}).".format(self.geotransform,geotransform)
+        projection = dataset.GetProjection()
+        if self.geotransform != geotransform: 
+          raise GDALError, "Projection of Variable ({:s}) differs from projection of GDAL dataset ({:s}).".format(self.projection,projection)        
         # get data field
         if self.bands == 1: data = dataset.ReadAsArray()[:, :]  # for 2D fields
         else: data = dataset.ReadAsArray()[0:self.bands, :, :]  # ReadAsArray(0,0,xe,ye)
@@ -758,7 +774,8 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         #       sliced recursively until they are 2D; at this point the recursion ends and the 
         #       sliced dataset/Variable can be exported to ASCII raster format (one per file).
         # get GDAL datast
-        dataset = getGDAL(self, load=True, allocate=True, wrap360=wrap360, fillValue=fillValue)
+        dataset = getGDAL(self, load=True, allocate=True, wrap360=wrap360, fillValue=fillValue, lupperleft=True)
+        # N.B.: apparently the raster driver always assumes that the geotransform reference point is the upper left corner
         # get ASCII raster file driver
         ascii = gdal.GetDriverByName('AAIGrid')
         # construct filepath for 2D fields
