@@ -17,6 +17,7 @@ import types  # needed to bind functions to objects
 import pickle
 # gdal imports
 from osgeo import gdal, osr, ogr
+from utils.misc import flip
 # register RAM driver
 ramdrv = gdal.GetDriverByName('MEM')
 # use exceptions (off by default)
@@ -595,11 +596,13 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           geotransform = (geotransform[0],geotransform[1],geotransform[2],
                           geotransform[3] + self.mapSize[0]*geotransform[5], # shift North
                           geotransform[4], -1*geotransform[5]) # make dy < 0
+          data = flip(data, axis=-2) # flip y-axis
         elif not lupperleft and geotransform[5] < 0:
           # use lower-left corner as reference; default in GeoPy and works, if dy > 0
           geotransform = (geotransform[0],geotransform[1],geotransform[2],
                           geotransform[3] + self.mapSize[0]*geotransform[5], # shift South, dy < 0 !!!
                           geotransform[4], -1*geotransform[5]) # make dy > 0
+          data = flip(data, axis=-2) # flip y-axis
         # determine GDAL data type        
         if self.dtype == 'float32': gdt = gdal.GDT_Float32
         elif self.dtype == 'float64': gdt = gdal.GDT_Float64
@@ -632,7 +635,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     # add new method to object
     var.getGDAL = types.MethodType(getGDAL, var)
     
-    def loadGDAL(self, dataset, mask=True, wrap360=False, fillValue=None):
+    def loadGDAL(self, dataset, mask=True, wrap360=False, fillValue=None, lyflip=True):
       ''' Load data from the bands of a GDAL dataset into the variable. '''
       # check input
       if not isinstance(dataset, gdal.Dataset): raise TypeError
@@ -641,15 +644,24 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         if (var.axisIndex(xlon) != var.ndim-1) or (var.axisIndex(ylat) != var.ndim-2):
           raise NotImplementedError, "Horizontal axes ({:s}) have to be the last indices.".format(axstr)        
         # check that GDAL and GeoPy datsets have the same coordinate system and grid
-        geotransform = dataset.GetGeoTransform()
-        if self.geotransform != geotransform: 
-          raise GDALError, "Geotransform of Variable ({:s}) differs from geotransform of GDAL dataset ({:s}).".format(self.geotransform,geotransform)
         projection = dataset.GetProjection()
         if self.geotransform != geotransform: 
           raise GDALError, "Projection of Variable ({:s}) differs from projection of GDAL dataset ({:s}).".format(self.projection,projection)        
+        geotransform = dataset.GetGeoTransform()
+        lyf = False # whether or not y-flip is necessary 
+        if self.geotransform != geotransform:
+          # check if upper/lower corner flipped
+          geotransform = (geotransform[0],geotransform[1],geotransform[2],
+                          geotransform[3] + self.mapSize[0]*geotransform[5], # shift North
+                          geotransform[4], -1*geotransform[5]) # make dy < 0
+          if self.geotransform == geotransform: lyf = lyflip # flip data array and continue
+          else: 
+            raise GDALError, "Geotransform of Variable ({:s}) differs from geotransform of GDAL dataset ({:s}).".format(self.geotransform,geotransform)
         # get data field
         if self.bands == 1: data = dataset.ReadAsArray()[:, :]  # for 2D fields
         else: data = dataset.ReadAsArray()[0:self.bands, :, :]  # ReadAsArray(0,0,xe,ye)
+        # fix upper/lower corner issue
+        if lyf: data = flip(data, axis=-2) # flip y-axis
         # to insure correct wrapping, geographic coordinate systems with longitudes reanging 
         # from 0 to 360 can optionally be shifted back by 180, to conform to GDAL conventions 
         # (the shift will only affect the GDAL Dataset, not the actual Variable) 

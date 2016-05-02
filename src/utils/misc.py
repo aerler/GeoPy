@@ -429,6 +429,13 @@ def standardize(var, axis=None, lcopy=True, **kwargs):
   var /= var.std(axis=axis, keepdims=True)
   return var
 
+# function to reverse or flip along a particular axis
+def flip(a, axis=0):
+  ''' function to reverse or flip along a particular axis ''' 
+  idx = [slice(None)]*a.ndim # construct list of indexing slices
+  idx[axis] = slice(None, None, -1) # this one reverses the order
+  return a[idx] # apply abd return
+  
 # function to detrend a time-series
 def detrend(var, ax=None, lcopy=True, ldetrend=True, ltrend=False, degree=1, rcond=None, w=None,  
             lsmooth=False, lresidual=False, window_len=11, window='hanning'): 
