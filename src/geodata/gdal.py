@@ -441,7 +441,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
       isProjected = False # whether lat/lon spherical (False) or a geographic projection (True)
       projection = None # a GDAL spatial reference object
       geotransform = None # a GDAL geotransform vector (can e inferred from coordinate vectors)
-      mapSize = None # size of horizontal dimensions
+      mapSize = None # size of horizontal dimensions (y/lat,x/lon)
       bands = None # all dimensions except, the map coordinates 
       xlon = None # West-East axis
       ylat = None # South-North axis  
@@ -464,7 +464,8 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         griddef = loadPickledGridDef(grid=griddef, res=None, filename=None, folder=gridfolder)
       elif not isinstance(griddef,GridDefinition): raise TypeError
       projection, isProjected, xlon, ylat = griddef.getProjection()
-      lgdal = xlon is not None and ylat is not None # need non-None xlon & ylat
+      lgdal = ( ( xlon is not None and ylat is not None ) and # need non-None xlon & ylat
+                ( var.hasAxis(ylat.name) and var.hasAxis(xlon.name)) ) # and need them in the Variable
   else: lgdal = False
   # add result to Variable instance
   var.__dict__['gdal'] = lgdal  # all variables have this after going through this process
@@ -472,7 +473,8 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
   if lgdal:    
     # determine gdal-relevant shape parameters
     mapSize = var.shape[-2:]
-    assert mapSize == (len(xlon),len(ylat)), mapSize
+    if mapSize != (len(ylat),len(xlon)):
+      raise GDALError, (mapSize, (len(ylat),len(xlon)))
     if not all(mapSize): raise AxisError, 'Horizontal dimensions have to be of finite, non-zero length.'
     if var.ndim == 2: bands = 1 
     else: bands = np.prod(var.shape[:-2])
@@ -518,7 +520,8 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
       if lslices: newvar, slcs = self.__class__.slicing(self, lslices=True, **kwargs)
       else: newvar = self.__class__.slicing(self, lslices=False, **kwargs)      
       # propagate GDAL features
-      if newvar.hasAxis(self.xlon.name) and newvar.hasAxis(self.ylat.name):
+      if ( len(newvar.shape) >= 2 and ( self.ylat and self.xlon ) and 
+           ( newvar.hasAxis(self.ylat.name) and newvar.hasAxis(self.xlon.name) ) ):
         if self.xlon.name in kwargs or self.ylat.name in kwargs:
           geotransform = None
         else: geotransform = self.geotransform
@@ -589,12 +592,14 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         # enforce orientation
         if lupperleft and geotransform[5] > 0:
           # use upper-left corner as reference; default in GDAL applications and requires dy < 0
-          geotransform[3] = geotransform[3] + self.mapSize[1]*geotransform[5] # shift North
-          geotransform[5] = -1*geotransform[5] # make dy < 0
+          geotransform = (geotransform[0],geotransform[1],geotransform[2],
+                          geotransform[3] + self.mapSize[0]*geotransform[5], # shift North
+                          geotransform[4], -1*geotransform[5]) # make dy < 0
         elif not lupperleft and geotransform[5] < 0:
           # use lower-left corner as reference; default in GeoPy and works, if dy > 0
-          geotransform[3] = geotransform[3] + self.mapSize[1]*geotransform[5] # shift South, dy < 0 !!!
-          geotransform[5] = -1*geotransform[5] # make dy > 0
+          geotransform = (geotransform[0],geotransform[1],geotransform[2],
+                          geotransform[3] + self.mapSize[0]*geotransform[5], # shift South, dy < 0 !!!
+                          geotransform[4], -1*geotransform[5]) # make dy > 0
         # determine GDAL data type        
         if self.dtype == 'float32': gdt = gdal.GDT_Float32
         elif self.dtype == 'float64': gdt = gdal.GDT_Float64
@@ -678,11 +683,22 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     def load(self, data=None, mask=None):
       ''' Load new data array. '''
       var.__class__.load(self, data=data, mask=mask)    
-      if len(self.shape) >= 2:  # 2D or more
+      if ( len(self.shape) >= 2 and ( self.ylat and self.xlon ) and 
+           ( self.hasAxis(self.ylat.name) and self.hasAxis(self.xlon.name) ) ):  
+        # 2D (or more) with y/lat and x/lon axes keep GDAL status
         self.__dict__['mapSize'] = self.shape[-2:]  # need to update
-      else:  # less than 2D can't be GDAL enabled
-        self.__dict__['mapSize'] = None
+        if self.mapSize != (len(self.ylat),len(self.xlon)):
+          raise GDALError, (self.mapSize, (len(self.xlon),len(self.ylat)))
+      else:  
+        # if less than 2D or y/lat or x/lon axes missing, strip GDAL status
         self.__dict__['gdal'] = False
+        self.__dict__['mapSize'] = None
+        self.__dict__['projection'] = None
+        self.__dict__['geotransform'] = None
+        self.__dict__['bands'] = None
+        self.__dict__['xlon'] = None
+        self.__dict__['ylat'] = None
+        # keep griddef - might be useful
       # for convenience
       return self
     # add new method to object
@@ -842,7 +858,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       xlon = None # West-East axis
       ylat = None # South-North axis
       geotransform = None # a GDAL geotransform vector (can e inferred from coordinate vectors)
-      mapSize = None # length of the lon/x and lat/y axes
+      mapSize = None # length of the lat/y and lon/x axes (in that order)
       griddef = None # grid definition object  
       gridfolder = None # default search folder for shapefiles/masks and for GridDef, if passed by name
   '''
@@ -889,7 +905,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
     dataset.__dict__['xlon'] = xlon
     dataset.__dict__['ylat'] = ylat
     dataset.__dict__['geotransform'] = geotransform
-    dataset.__dict__['mapSize'] = (len(xlon),len(ylat))
+    dataset.__dict__['mapSize'] = (len(ylat),len(xlon))
     dataset.__dict__['griddef'] = griddef
     dataset.__dict__['gridfolder'] = gridfolder
     

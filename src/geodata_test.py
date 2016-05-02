@@ -1749,7 +1749,8 @@ if __name__ == "__main__":
     print('OMP_NUM_THREADS = {:s}\n'.format(os.environ['OMP_NUM_THREADS']))    
         
     specific_tests = []
-    specific_tests += ['WriteASCII']
+#     specific_tests += ['LoadSlice']
+#     specific_tests += ['WriteASCII']
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
 #     specific_tests += ['Ensemble']
@@ -1775,7 +1776,7 @@ if __name__ == "__main__":
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()
