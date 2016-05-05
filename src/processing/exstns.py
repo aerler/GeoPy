@@ -61,7 +61,9 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
   # N.B.: the loading function is necessary, because DataseNetCDF instances do not pickle well 
             
   # get filename for target dataset and do some checks
-  filename = getTargetFile(stndata.name, dataset, mode, dataargs, lwrite)
+  filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, 
+                           grid=stndata.name, period=None, filetype=None) 
+  
   if ldebug: filename = 'test_' + filename
   if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
   lskip = False # else just go ahead

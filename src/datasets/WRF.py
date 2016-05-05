@@ -145,7 +145,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
     return nx,ny
   dx = float(dn.DX); dy = float(dn.DY)
   nx,ny = getXYlen(dn)
-  x0 = -float(nx+1)*dx/2.; y0 = -float(ny+1)*dy/2.
+  x0 = -float(nx)*dx/2.; y0 = -float(ny)*dy/2.
   x0 += cx; y0 += cy # shift center, if necessary 
   size = (nx, ny); geotransform = (x0,dx,0.,y0,0.,dy)
   name = names[0] if 1 in domains else 'tmp'  # update name, if first domain has a name...
@@ -248,6 +248,15 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
 # convert water mass mixing ratio to water vapor partial pressure ( kg/kg -> Pa ) 
 Q = 96000.*28./18. # surface pressure * molecular weight ratio ( air / water )
 class FileType(object): pass # ''' Container class for all attributes of of the constants files. '''
+# auxiliary files with derived variables
+class Aux(FileType):
+  ''' Variables and attributes for auxiliary files. '''
+  def __init__(self):
+    self.name = 'aux'
+    self.atts = dict() # should be properly formatted already
+    self.vars = self.atts.keys()    
+    self.climfile = 'wrfaux_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
+    self.tsfile = 'wrfaux_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
 # constants
 class Const(FileType):
   ''' Variables and attributes of the constants files. '''
@@ -315,7 +324,7 @@ class Srfc(FileType):
     self.vars = self.atts.keys()    
     self.climfile = 'wrfsrfc_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfsrfc_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
-# hydro variables
+# hydro variables (mostly for HGS)
 class Hydro(FileType):
   ''' Variables and attributes of the hydrological files. '''
   def __init__(self):
@@ -359,7 +368,7 @@ class Hydro(FileType):
     self.vars = self.atts.keys()
     self.climfile = 'wrfhydro_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfhydro_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
-# lsm variables
+# land surface model variables
 class LSM(FileType):
   ''' Variables and attributes of the land surface files. '''
   def __init__(self):
@@ -379,7 +388,7 @@ class LSM(FileType):
     self.vars = self.atts.keys()    
     self.climfile = 'wrflsm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrflsm_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
-# lsm variables
+# radiation variables
 class Rad(FileType):
   ''' Variables and attributes of the radiation files. '''
   def __init__(self):

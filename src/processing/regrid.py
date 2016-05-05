@@ -51,7 +51,8 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
   dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr; avgfolder = dataargs.avgfolder
 
   # get filename for target dataset and do some checks
-  filename = getTargetFile(griddef.name.lower(), dataset, mode, dataargs, lwrite)
+  filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, 
+                           grid=griddef.name.lower(), period=None, filetype=None) 
     
   # prepare target dataset
   if ldebug: filename = 'test_' + filename

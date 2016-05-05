@@ -55,7 +55,9 @@ def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwr
   dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr; avgfolder = dataargs.avgfolder
             
   # get filename for target dataset and do some checks
-  filename = getTargetFile(shape_name, dataset, mode, dataargs, lwrite)
+  filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, 
+                           grid=shape_name, period=None, filetype=None) 
+    
   if ldebug: filename = 'test_' + filename  
   if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)  
   lskip = False # else just go ahead

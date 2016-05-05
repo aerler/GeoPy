@@ -12,8 +12,8 @@ from figure_settings import getVariableSettings, getFigureSettings, figure_folde
 # import map projection settings (basemap)
 try: 
   from map_settings import getSetup, map_folder
-except ImportError: pass
-#   print("Error importing map settings - 'basemap' is likely not installed.")
+except ImportError: 
+  print("Error importing map settings - 'basemap' is likely not installed.")
 
 ## import load functions with GreatLakes experiments into local namespace
 

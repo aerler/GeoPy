@@ -645,8 +645,8 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           raise NotImplementedError, "Horizontal axes ({:s}) have to be the last indices.".format(axstr)        
         # check that GDAL and GeoPy datsets have the same coordinate system and grid
         projection = dataset.GetProjection()
-        if self.geotransform != geotransform: 
-          raise GDALError, "Projection of Variable ({:s}) differs from projection of GDAL dataset ({:s}).".format(self.projection,projection)        
+        if self.projection.ExportToWkt() != projection: 
+          raise GDALError, "Projection of Variable ({:s}) differs from projection of GDAL dataset ({:s}).".format(self.projection.ExportToWkt(),projection)        
         geotransform = dataset.GetGeoTransform()
         lyf = False # whether or not y-flip is necessary 
         if self.geotransform != geotransform:
