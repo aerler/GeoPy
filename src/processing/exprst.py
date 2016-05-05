@@ -102,6 +102,95 @@ def computePotEvapTh(dataset):
   # return new variable
   return var
 
+class FileFormat(object):
+  ''' A parent class from which specific format classes will be derived; the purpose is to provide a 
+      unified interface for several different file formats. '''
+  
+  def __init__(self, **expargs):
+    ''' take arguments that have been passed from caller and initialize parameters '''
+    pass
+  
+  @property
+  def destination(self):
+    ''' access output destination '''
+    return self.filepath
+  
+  def defineDataset(self, name=None, period=None, grid=None, ldebug=False, **kwargs):
+    ''' a method to set external parameters about the Dataset, so that the export destination
+        can be determined (and returned) '''
+    self.filepath = None
+    return self.filepath
+
+  def prepareDestination(self, srcage=None, loverwrite=False):
+    ''' create or clear the destination folder, as necessary, and check if source is newer (for skipping) '''
+    pass
+
+  def exportDataset(self, dataset):
+    ''' method to write a Dataset instance to disk in the given format; this will be format specific '''
+    pass
+        
+class ASCII_raster(FileFormat):
+  ''' A class to handle exports to ASCII_raster format. '''
+  
+  def __init__(self, project=None, folder=None, prefix=None, **expargs):
+    ''' take arguments that have been passed from caller and initialize parameters '''
+    self.project = project; self.folder_pattern = folder; self.prefix_pattern = prefix
+    self.export_arguments = expargs
+  
+  @property
+  def destination(self):
+    ''' access output destination '''
+    return self.folder
+      
+  def defineDataset(self, name=None, period=None, grid=None, ldebug=False, **kwargs):
+    ''' a method to set exteral parameters about the Dataset, so that the export destination
+        can be determined (and returned) '''
+    expname = '{:s}_d{:02d}'.format(name,domain) if domain else name
+    expprd = 'clim_{:s}'.format(period) if period else 'timeseries' 
+    self.folder = self.folder_pattern.format(self.project, grid, expname, expprd)
+    if ldebug: self.folder = self.folder + '/test/' # test in subfolder
+    self.prefix = self.prefix_pattern.format(self.project, grid, expname, expprd)
+    return self.folder
+  
+  def prepareDestination(self, srcage=None, loverwrite=False):
+    ''' create or clear the destination folder, as necessary, and check if source is newer (for skipping) '''
+    # prepare target dataset (which is mainly just a folder)
+    if not os.path.exists(self.folder): 
+      # create new folder
+      os.makedirs(self.folder)
+      lskip = False # actually do export
+    elif loverwrite:
+      shutil.rmtree(self.folder) # remove old folder and contents
+      os.makedirs(self.folder) # create new folder
+      lskip = False # actually do export
+    else:
+      age = datetime.fromtimestamp(os.path.getmtime(self.folder))
+      # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
+      lskip = ( age > srcage ) # skip if newer than source    
+    if not os.path.exists(self.folder): raise IOError, self.folder
+    # return with a decision on skipping
+    return lskip 
+    
+  def exportDataset(self, dataset):
+    ''' method to write a Dataset instance to disk in the given format; this will be format specific '''
+    # export dataset to raster format
+    filedict = dataset.ASCII_raster(prefix=self.prefix, varlist=None, folder=self.folder, **self.export_arguments)
+    # check first and last
+    if not os.path.exists(filedict.values()[0][0]): raise IOError, filedict.values()[0][0] # random check
+    if not os.path.exists(filedict.values()[-1][-1]): raise IOError, filedict.values()[-1][-1] # random check
+
+  
+def getFileFormat(fileformat, **expargs):
+  ''' function that returns an instance of a specific FileFormat child class specified in expformat; 
+      other kwargs are passed on to constructor of FileFormat '''
+  # decide based on expformat; instantiate object
+  if fileformat == 'ASCII_raster':
+    fileFormat = ASCII_raster(**expargs)
+  else:
+    raise NotImplementedError, fileformat
+  # return fileFormat instance
+  return fileFormat
+  
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
 def performExport(dataset, mode, dataargs, expargs, loverwrite=False, 
@@ -124,36 +213,21 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
   ## extract meta data from arguments
   dataargs, loadfct, srcage, datamsgstr = getMetaData(dataset, mode, dataargs, lone=False)
   dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr
+  grid = dataargs.grid; domain = dataargs.domain
 
   # parse export options
   expargs = expargs.copy() # first copy, then modify...
-  project = expargs.pop('project')
-  varlist = expargs.pop('varlist')
-  expfolder = expargs.pop('folder')
-  expprefix = expargs.pop('prefix')
-  expformat = expargs.pop('format')
   lm3 = expargs.pop('lm3') # convert kg/m^2 to m^3 (water flux)
+  expformat = expargs.pop('format') # needed to get FileFormat object
+  varlist = expargs.pop('varlist') # this handled outside of export
+  # initialize FileFormat class instance
+  fileFormat = getFileFormat(expformat, **expargs)
   # get folder for target dataset and do some checks
-  expname = '{:s}_d{:02d}'.format(dataset_name,dataargs.domain) if dataargs.domain else dataset_name
-  expprd = 'clim_{:s}'.format(periodstr) if periodstr else 'timeseries' 
-  expfolder = expfolder.format(project, grid, expname, expprd)
-  expprefix = expprefix.format(project, grid, expname, expprd)
-    
-  # prepare target dataset (which is mainly just a folder)
-  if ldebug: expfolder = expfolder + 'test/' # test in subfolder
-  if not os.path.exists(expfolder): 
-    # create new folder
-    os.makedirs(expfolder)
-    lskip = False # actually do export
-  elif loverwrite:
-    shutil.rmtree(expfolder) # remove old folder and contents
-    os.makedirs(expfolder) # create new folder
-    lskip = False # actually do export
-  else:
-    age = datetime.fromtimestamp(os.path.getmtime(expfolder))
-    # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
-    lskip = ( age > srcage ) # skip if newer than source    
-  assert os.path.exists(expfolder), expfolder
+  expname = '{:s}_d{:02d}'.format(dataset_name,domain) if domain else dataset_name
+  expfolder = fileFormat.defineDataset(name=dataset_name, domain=domain, period=periodstr, grid=grid, ldebug=ldebug)
+
+  # prepare destination for new dataset
+  lskip = fileFormat.prepareDestination(srcage=srcage, loverwrite=loverwrite)
   
   # depending on last modification time of file or overwrite setting, start computation, or skip
   if lskip:        
@@ -209,16 +283,8 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     if not lparallel and ldebug:
       logger.info('\n'+str(sink)+'\n')
       
-    # export to selected format (by variable)
-    if expformat == 'ASCII_raster':
-      # export dataset to raster format
-      filedict = sink.ASCII_raster(prefix=expprefix, varlist=None, folder=expfolder, **expargs)
-      # check first and last
-      if not os.path.exists(filedict.values()[0][0]): raise IOError, filedict.values()[0][0] # random check
-      if not os.path.exists(filedict.values()[-1][-1]): raise IOError, filedict.values()[-1][-1] # random check
-    elif expformat == 'NetCDF':
-      raise NotImplementedError # not sure if this will ever be useful...
-      
+    # export new dataset to selected format
+    fileFormat.exportDataset(sink)
       
     # write results to file
     writemsg =  "\n{:s}   >>>   Export of Dataset '{:s}' to Format '{:s}' complete.".format(pidstr,expname, expformat)
@@ -251,7 +317,7 @@ if __name__ == '__main__':
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
   
-  lbatch = True
+#   lbatch = True
   ## define settings
   if lbatch:
     # load YAML configuration
@@ -303,13 +369,13 @@ if __name__ == '__main__':
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
 #     CESM_experiments += ['Ens']
-    CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
+#     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
     CESM_filetypes = ['atm','lnd']
     # WRF experiments (short or long name)
     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-    WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
+    WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100'][:1]
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-3km','max-3km']
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']
