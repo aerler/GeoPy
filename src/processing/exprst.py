@@ -18,89 +18,12 @@ from geodata.gdal import addGDALtoDataset
 from geodata.misc import DateError, printList, ArgumentError, VariableError
 from datasets import gridded_datasets
 from processing.multiprocess import asyncPoolEC
-from processing.misc import getMetaData,  getExperimentList, loadYAML
+from processing.misc import getMetaData,  getExperimentList, loadYAML, getTargetFile
+# new variable functions
+import processing.newvars as newvars
+from utils.nctools import writeNetCDF
 
-## functions to compute relevant variables
-
-# compute surface water flux
-def computeWaterFlux(dataset):
-  ''' function to compute the net water flux at the surface '''
-  # check prerequisites
-  if 'liqprec' in dataset: # this is the preferred computation
-    for pv in ('evap','snwmlt'): 
-      if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for net water flux not found.".format(pv)
-      else: dataset[pv].load() # load data for computation
-    # compute waterflux (returns a Variable instance)
-    var = dataset['liqprec'] + dataset['snwmlt'] - dataset['evap']
-  elif 'solprec' in dataset: # alternative computation, mainly for CESM
-    for pv in ('precip','evap','snwmlt'): 
-      if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for net water flux not found.".format(pv)
-      else: dataset[pv].load() # load data for computation
-    # compute waterflux (returns a Variable instance)
-    var = dataset['precip'] - dataset['solprec'] + dataset['snwmlt'] - dataset['evap']
-  else: 
-    raise VariableError, "No liquid or solid precip found to compute net water flux."
-  var.name = 'waterflx' # give correct name (units should be correct)
-  assert var.units == dataset['evap'].units, var
-  # return new variable
-  return var
-
-# compute downward/liquid component of surface water flux
-def computeLiquidWaterFlux(dataset):
-  ''' function to compute the downward/liquid component of water flux at the surface '''
-  # check prerequisites
-  if 'liqprec' in dataset: # this is the preferred computation
-    for pv in ('liqprec','snwmlt'): 
-      if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for liquid water flux not found.".format(pv)
-      else: dataset[pv].load() # load data for computation
-    # compute waterflux (returns a Variable instance)
-    var = dataset['liqprec'] + dataset['snwmlt']
-  elif 'solprec' in dataset: # alternative computation, mainly for CESM
-    for pv in ('precip','snwmlt'): 
-      if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for net water flux not found.".format(pv)
-      else: dataset[pv].load() # load data for computation
-    # compute waterflux (returns a Variable instance)
-    var = dataset['precip'] - dataset['solprec'] + dataset['snwmlt']
-  else: 
-    raise VariableError, "No liquid or solid precip found to compute net water flux.".format(pv)
-  var.name = 'liqwatflx' # give correct name (units should be correct)
-  assert var.units == dataset['snwmlt'].units, var
-  # return new variable
-  return var
-
-# compute potential evapo-transpiration
-def computePotEvapPM(dataset):
-  ''' function to compute potential evapotranspiration (according to Penman-Monteith method:
-      https://en.wikipedia.org/wiki/Penman%E2%80%93Monteith_equation,
-      http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
-  '''
-  raise NotImplementedError
-  # check prerequisites
-  for pv in (): 
-    if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for potential evapo-transpiration not found.".format(pv)
-    else: dataset[pv].load() # load data for computation
-  # compute waterflux (returns a Variable instance)
-  var = dataset['']
-  var.name = 'pet' # give correct name (units should be correct)
-  assert var.units == dataset[''].units, var
-  # return new variable
-  return var
-
-# compute potential evapo-transpiration
-def computePotEvapTh(dataset):
-  ''' function to compute potential evapotranspiration (according to Thornthwaite method:
-      https://en.wikipedia.org/wiki/Potential_evaporation) '''
-  raise NotImplementedError
-  # check prerequisites
-  for pv in (): 
-    if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for potential evapo-transpiration not found.".format(pv)
-    else: dataset[pv].load() # load data for computation
-  # compute waterflux (returns a Variable instance)
-  var = dataset['']
-  var.name = 'pet' # give correct name (units should be correct)
-  assert var.units == dataset[''].units, var
-  # return new variable
-  return var
+## helper classes to handle different file formats
 
 class FileFormat(object):
   ''' A parent class from which specific format classes will be derived; the purpose is to provide a 
@@ -128,7 +51,56 @@ class FileFormat(object):
   def exportDataset(self, dataset):
     ''' method to write a Dataset instance to disk in the given format; this will be format specific '''
     pass
-        
+     
+class NetCDF(object):
+  ''' A class to handle exports to NetCDF format (v4 by default). '''
+  
+  def __init__(self, project=None, filetype='aux', folder=None, **expargs):
+    ''' take arguments that have been passed from caller and initialize parameters '''
+    self.filetype = filetype; self.folder_pattern = folder
+    self.export_arguments = expargs
+  
+  @property
+  def destination(self):
+    ''' access output destination '''
+    return self.filepath
+  
+  def defineDataset(self, name=None, dataset=None, mode=None, dataargs=None, lwrite=True, ldebug=False):
+    ''' a method to set external parameters about the Dataset, so that the export destination
+        can be determined (and returned) '''
+    # get filename for target dataset and do some checks
+    if self.folder_pattern is None: avgfolder = dataargs.avgfolder # regular source dataset location
+    else: self.folder_pattern.format(dataset, self.project, name,) # this could be expanded with dataargs 
+    if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
+    filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, 
+                             grid=None, period=None, filetype=self.filetype)
+    self.filepath = '{:s}/{:s}'.format(avgfolder,filename)
+    return self.filepath
+
+  def prepareDestination(self, srcage=None, loverwrite=False, lparallel=True):
+    ''' create or clear the destination folder, as necessary, and check if source is newer (for skipping) '''
+    # prepare target dataset (which is a NetCDF file)
+    filepath = self.filepath
+    if os.path.exists(filepath):
+      if loverwrite:
+        os.remove(filepath) # remove old file
+        lskip = False # actually do export
+      else:
+        age = datetime.fromtimestamp(os.path.getmtime(filepath))
+        # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
+        lskip = ( age > srcage ) and os.path.getsize(filepath) > 1e4 # skip if newer than source
+    else: lskip = False    
+    # return with a decision on skipping
+    return lskip 
+
+  def exportDataset(self, dataset):
+    ''' method to export a Dataset instance to NetCDF format and write to disk '''
+    # create NetCDF file
+    filepath = self.filepath
+    writeNetCDF(dataset=dataset, ncfile=filepath, **self.export_arguments)
+    # check first and last
+    if not os.path.exists(filepath): raise IOError, filepath
+   
 class ASCII_raster(FileFormat):
   ''' A class to handle exports to ASCII_raster format. '''
   
@@ -142,14 +114,20 @@ class ASCII_raster(FileFormat):
     ''' access output destination '''
     return self.folder
       
-  def defineDataset(self, name=None, period=None, grid=None, ldebug=False, **kwargs):
+  def defineDataset(self, name=None, dataset=None, mode=None, dataargs=None, lwrite=True, ldebug=False):
     ''' a method to set exteral parameters about the Dataset, so that the export destination
         can be determined (and returned) '''
-    expname = '{:s}_d{:02d}'.format(name,domain) if domain else name
-    expprd = 'clim_{:s}'.format(period) if period else 'timeseries' 
+    # extract variables
+    dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr
+    grid = dataargs.grid; domain = dataargs.domain
+    # assemble specific names
+    expname = '{:s}_d{:02d}'.format(dataset_name,domain) if domain else dataset_name
+    expprd = 'clim_{:s}'.format(periodstr) if periodstr else 'timeseries'
+    # insert into patterns 
     self.folder = self.folder_pattern.format(self.project, grid, expname, expprd)
     if ldebug: self.folder = self.folder + '/test/' # test in subfolder
     self.prefix = self.prefix_pattern.format(self.project, grid, expname, expprd)
+    # return folder (no filename)
     return self.folder
   
   def prepareDestination(self, srcage=None, loverwrite=False):
@@ -165,7 +143,7 @@ class ASCII_raster(FileFormat):
       lskip = False # actually do export
     else:
       age = datetime.fromtimestamp(os.path.getmtime(self.folder))
-      # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
+      # if source file is newer than target folder, recompute, otherwise skip
       lskip = ( age > srcage ) # skip if newer than source    
     if not os.path.exists(self.folder): raise IOError, self.folder
     # return with a decision on skipping
@@ -185,11 +163,11 @@ def getFileFormat(fileformat, **expargs):
       other kwargs are passed on to constructor of FileFormat '''
   # decide based on expformat; instantiate object
   if fileformat == 'ASCII_raster':
-    fileFormat = ASCII_raster(**expargs)
+    return ASCII_raster(**expargs)
+  elif fileformat.lower() in ('netcdf','netcdf4'):
+    return NetCDF(**expargs)
   else:
     raise NotImplementedError, fileformat
-  # return fileFormat instance
-  return fileFormat
   
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
@@ -212,9 +190,8 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
 
   ## extract meta data from arguments
   dataargs, loadfct, srcage, datamsgstr = getMetaData(dataset, mode, dataargs, lone=False)
-  dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr
-  grid = dataargs.grid; domain = dataargs.domain
-
+  dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr; domain = dataargs.domain
+  
   # parse export options
   expargs = expargs.copy() # first copy, then modify...
   lm3 = expargs.pop('lm3') # convert kg/m^2 to m^3 (water flux)
@@ -224,7 +201,7 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
   fileFormat = getFileFormat(expformat, **expargs)
   # get folder for target dataset and do some checks
   expname = '{:s}_d{:02d}'.format(dataset_name,domain) if domain else dataset_name
-  expfolder = fileFormat.defineDataset(name=dataset_name, domain=domain, period=periodstr, grid=grid, ldebug=ldebug)
+  expfolder = fileFormat.defineDataset(name=dataset_name, dataset=dataset, mode=mode, dataargs=dataargs, lwrite=True, ldebug=ldebug)
 
   # prepare destination for new dataset
   lskip = fileFormat.prepareDestination(srcage=srcage, loverwrite=loverwrite)
@@ -252,7 +229,7 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     if not lparallel and ldebug: logger.info('\n'+str(source)+'\n')
     
     # create GDAL-enabled target dataset
-    sink = Dataset(axes=(source.xlon,source.ylat), name=expname)
+    sink = Dataset(axes=(source.xlon,source.ylat), name=expname, title=source.title)
     addGDALtoDataset(dataset=sink, griddef=source.griddef)
     assert sink.gdal, sink
     
@@ -261,8 +238,8 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
       if varname in source:
         var = source[varname].load() # load data (may not have to load all)
       else:
-        if varname == 'waterflx': var = computeWaterFlux(source)
-        elif varname == 'liqwatflx': var = computeLiquidWaterFlux(source)
+        if varname == 'waterflx': var = newvars.computeWaterFlux(source)
+        elif varname == 'liqwatflx': var = newvars.computeLiquidWaterFlux(source)
         elif varname == 'pet' or varname == 'pet_pm': var = None # skip for now
           #var = computePotEvapPM(source) # default
         elif varname == 'pet_th': var = None # skip for now
@@ -394,10 +371,12 @@ if __name__ == '__main__':
     export_arguments = dict(
         project = 'GRW', # project designation    
         varlist = ['waterflx','liqwatflx','pet'], # varlist for export    
-        folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/{{3:s}}/'.format(os.getenv('DATA_ROOT', None)),
-        prefix = '{0:s}_{1:s}_{2:s}_{3:s}', # argument order: project/grid/experiment/period/
-        format = 'ASCII_raster', # formats to export to
-        lm3 = True) # convert water flux from kg/m^2/s to m^3/s
+#         folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/{{3:s}}/'.format(os.getenv('DATA_ROOT', None)),
+#         prefix = '{0:s}_{1:s}_{2:s}_{3:s}', # argument order: project/grid/experiment/period/
+#         format = 'ASCII_raster', # formats to export to
+#         lm3 = True) # convert water flux from kg/m^2/s to m^3/s
+        format = 'NetCDF',
+        lm3 = False) # convert water flux from kg/m^2/s to m^3/s
   
   ## process arguments    
   if isinstance(periods, (np.integer,int)): periods = [periods]
@@ -422,14 +401,17 @@ if __name__ == '__main__':
   print('\n From Grid/Resolution:\n   {:s}'.format(printList(grids)))
   print('To File Format {:s}'.format(export_arguments['format']))
   print('\n Project Designation: {:s}'.format(export_arguments['project']))
-  print('Export Folder: {:s}'.format(export_arguments['folder']))
-  print('File Prefix: {:s}'.format(export_arguments['prefix']))
   print('Export Variable List: {:s}'.format(printList(export_arguments['varlist'])))
   if export_arguments['lm3']: '\n Converting kg/m^2/s (mm/s) into m^3/s'
   print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
   
   # check formats (will be iterated over in export function, hence not part of task list)
-  if export_arguments['format'] not in ('ASCII_raster',):
+  if export_arguments['format'] == 'ASCII_raster':
+    print('Export Folder: {:s}'.format(export_arguments['folder']))
+    print('File Prefix: {:s}'.format(export_arguments['prefix']))
+  elif export_arguments['format'].lower() in ('netcdf','netcdf4'):
+    pass
+  else:
     raise ArgumentError, "Unsupported file format: '{:s}'".format(export_arguments['format'])
     
   ## construct argument list

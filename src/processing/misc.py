@@ -80,23 +80,26 @@ def getPeriodGridString(period, grid, exp=None, beginyear=None):
 
 
 ## prepare target dataset
-def getTargetFile(name, dataset, mode, dataargs, lwrite):
+def getTargetFile(dataset=None, mode=None, dataargs=None, lwrite=True, grid=None, period=None, filetype=None):
   ''' generate filename for target dataset '''
-  # extract some variables
-  periodstr = dataargs.periodstr; filetype = dataargs.filetype; domain = dataargs.domain
-  sstr = '_{}'.format(name) # use name as "grid" designation for station data
-  pstr = '_{}'.format(periodstr) if periodstr else ''
+  # prepare some variables
+  domain = dataargs.domain
+  if filetype is None: filetype = dataargs.filetype
+  if grid is None: grid = dataargs.gridstr # also use grid for station type
+  if period is None: period = dataargs.periodstr
+  gstr = '_{}'.format(grid) if grid else ''
+  pstr = '_{}'.format(period) if period else ''
   # figure out filename
   if dataset == 'WRF' and lwrite:
-    if mode == 'climatology': filename = WRF.clim_file_pattern.format(filetype,domain,sstr,pstr)
-    elif mode == 'time-series': filename = WRF.ts_file_pattern.format(filetype,domain,sstr)
+    if mode == 'climatology': filename = WRF.clim_file_pattern.format(filetype,domain,gstr,pstr)
+    elif mode == 'time-series': filename = WRF.ts_file_pattern.format(filetype,domain,gstr)
     else: raise NotImplementedError
   elif dataset == 'CESM' and lwrite:
-    if mode == 'climatology': filename = CESM.clim_file_pattern.format(filetype,sstr,pstr)
-    elif mode == 'time-series': filename = CESM.ts_file_pattern.format(filetype,sstr)
+    if mode == 'climatology': filename = CESM.clim_file_pattern.format(filetype,gstr,pstr)
+    elif mode == 'time-series': filename = CESM.ts_file_pattern.format(filetype,gstr)
     else: raise NotImplementedError
   elif ( dataset == dataset.upper() or dataset == 'Unity' ) and lwrite: # observational datasets
-    filename = getFileName(grid=name, period=dataargs.period, name=dataargs.obs_res, filetype=mode)      
+    filename = getFileName(grid=grid, period=dataargs.period, name=dataargs.obs_res, filetype=mode)      
   elif not lwrite: raise DatasetError
   if not os.path.exists(dataargs.avgfolder): 
     raise IOError, "Dataset folder '{:s}' does not exist!".format(dataargs.avgfolder)
