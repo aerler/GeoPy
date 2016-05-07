@@ -298,7 +298,7 @@ if __name__ == '__main__':
   ## define settings
   if lbatch:
     # load YAML configuration
-    config = loadYAML('exprst.yaml', lfeedback=True)
+    config = loadYAML('export.yaml', lfeedback=True)
     # read config object
     NP = NP or config['NP']
     loverwrite = config['loverwrite']
