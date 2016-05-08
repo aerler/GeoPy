@@ -294,7 +294,6 @@ if __name__ == '__main__':
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
   
-#   lbatch = True
   ## define settings
   if lbatch:
     # load YAML configuration
@@ -332,7 +331,7 @@ if __name__ == '__main__':
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
 #     varlist = None
-    load_list = ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet']
+    load_list = ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet','lat2D','lon2D','zs']
     periods = []
     periods += [15]
 #     periods += [30]
@@ -370,13 +369,13 @@ if __name__ == '__main__':
     ## export parameters
     export_arguments = dict(
         project = 'GRW', # project designation    
-        varlist = ['waterflx','liqwatflx','pet'], # varlist for export    
-#         folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/{{3:s}}/'.format(os.getenv('DATA_ROOT', None)),
-#         prefix = '{0:s}_{1:s}_{2:s}_{3:s}', # argument order: project/grid/experiment/period/
-#         format = 'ASCII_raster', # formats to export to
-#         lm3 = True) # convert water flux from kg/m^2/s to m^3/s
-        format = 'NetCDF',
-        lm3 = False) # convert water flux from kg/m^2/s to m^3/s
+        varlist = ['waterflx','liqwatflx','pet','lat2D','lon2D','zs'], # varlist for export    
+        folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/{{3:s}}/'.format(os.getenv('DATA_ROOT', None)),
+        prefix = '{0:s}_{1:s}_{2:s}_{3:s}', # argument order: project/grid/experiment/period/
+        format = 'ASCII_raster', # formats to export to
+        lm3 = True) # convert water flux from kg/m^2/s to m^3/s
+#         format = 'NetCDF',
+#         lm3 = False) # convert water flux from kg/m^2/s to m^3/s
   
   ## process arguments    
   if isinstance(periods, (np.integer,int)): periods = [periods]
