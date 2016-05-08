@@ -666,16 +666,15 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if not lstation and not lshape:
     if grid is None:
-      try:
-        # load pickled griddefs from disk (much faster than recomputing!)
-        if not lpickleGrid or experiment is None: raise IOError # don't load pickle!
-        griddefs = []
-        for domain in domains:
-          # different "native" grid for each domain
-          griddefs.append( loadPickledGridDef(grid=experiment.grid, res='d0{:d}'.format(domain), 
-                                              filename=None, folder=grid_folder, check=True) )
-        # this is mainly to speed up loading datasets
-      except:
+      # load pickled griddefs from disk (much faster than recomputing!)
+      if not lpickleGrid or experiment is None: raise IOError # don't load pickle!
+      griddefs = []
+      for domain in domains:
+        # different "native" grid for each domain
+        griddefs.append( loadPickledGridDef(grid=experiment.grid, res='d0{:d}'.format(domain), 
+                                            filename=None, folder=grid_folder, check=True) )
+      # N.B.: pickles are mainly used to speed up loading datasets; if pickles are not available, infer grid from files
+      if not all(griddefs):
         # print warning to alert user that this takes a bit longer
         if experiment is not None:
           name = "'{:s}' ('{:s}')".format(experiment.name,experiment.grid) 
@@ -691,6 +690,8 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
             griddefs = getWRFgrid(name=names, experiment=experiment, domains=domains, folder=folder, filename=filename, exps=exps)
           except IOError:
             c += 1
+            if c >= len(fileclasses.values()): 
+              raise GDALError, "Unable to infer grid definition for experiment '{:s}'.\n Not enough information in source files or required source file not available.".format(name)
             filename = fileclasses.values()[c].tsfile
     else:
       griddefs = [loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder, check=True)]*len(domains)
@@ -954,13 +955,13 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-  mode = 'test_climatology'
+#   mode = 'test_climatology'
 #  mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #  mode = 'test_point_climatology'
 #  mode = 'test_point_timeseries'
 #  mode = 'test_point_ensemble'
-#   mode = 'pickle_grid' 
+  mode = 'pickle_grid' 
 #   pntset = 'shpavg'
   pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
