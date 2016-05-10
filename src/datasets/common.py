@@ -460,18 +460,18 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology',
       raise ArgumentError, "No CVDP dataset matching '{:s}' found.".format(name)
     # nothing to do for CESM runs
     dataset_name = 'CESM' # also in CESM module
-  elif WRF_exps and ( name in WRF_exps or name[:-4] in WRF_exps ):
-    # this is most likely a WRF experiment
-    dataset_name = 'WRF'
   elif WRF_ens and ( name in WRF_ens or name[:-4] in WRF_ens ):
     # this is most likely a WRF ensemble
     dataset_name = 'WRF'; lensemble = True
-  elif CESM_exps and name in CESM_exps:
-    # this is most likely a CESM experiment
-    dataset_name = 'CESM'
+  elif WRF_exps and ( name in WRF_exps or name[:-4] in WRF_exps ):
+    # this is most likely a WRF experiment
+    dataset_name = 'WRF'
   elif CESM_ens and name in CESM_ens:
     # this is most likely a CESM ensemble
     dataset_name = 'CESM'; lensemble = True
+  elif CESM_exps and name in CESM_exps:
+    # this is most likely a CESM experiment
+    dataset_name = 'CESM'
   else:
     # this is most likely an observational dataset
     if name[:3].lower() == 'obs': dataset_name = 'EC' if station else 'Unity' # alias... 
@@ -508,6 +508,8 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology',
     # N.B.: for example, inspect does not work properly on functools.partial objects, and functools.partial does not return a function 
   # generate and check arguments
   kwargs.update(name=name, station=station, shape=shape, mode=mode, WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, CESM_ens=CESM_ens)
+  if dataset_name == 'WRF': kwargs.update(exps=WRF_exps, enses=WRF_ens)
+  elif dataset_name == 'CESM': kwargs.update(exps=CESM_exps, enses=CESM_ens)
   argspec, varargs, keywords = inspect.getargs(load_fct.func_code); del varargs, keywords
   kwargs = {key:value for key,value in kwargs.iteritems() if key in argspec}
   # load dataset

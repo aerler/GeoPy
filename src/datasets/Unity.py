@@ -21,6 +21,7 @@ from datasets.GPCC import loadGPCC, loadGPCC_Shp
 from datasets.CRU import loadCRU, loadCRU_Shp, loadCRU_ShpTS
 from datasets.PRISM import loadPRISM, loadPRISM_Shp
 from datasets.PCIC import loadPCIC, loadPCIC_Shp
+from utils.constants import precip_thresholds
 # from geodata.utils import DatasetError
 from warnings import warn
 from plotting.properties import variablePlotatts
@@ -90,7 +91,6 @@ def loadSpecialObs(varlist=None, **kwargs):
   if ldryprec and 'dryprec' not in dataset: 
     dataset += dataset.precip.copy(plot=variablePlotatts['dryprec'], **varatts['dryprec'])
   if lwetdays:
-    from wrfavg.derived_variables import precip_thresholds
     for threshold in precip_thresholds:
       varname = 'wetfrq_{:03d}'.format(int(threshold*10))
       if varname not in dataset:

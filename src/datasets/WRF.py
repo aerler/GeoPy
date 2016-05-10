@@ -593,7 +593,8 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   # prepare input  
   if experiment is None and name is not None: 
     experiment = name; name=None # allow 'name' to define an experiment  
-  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, folder=folder, exps=exps)
+  folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, 
+                                                        folder=folder, exps=exps)
   if lctrT and experiment is None: 
     raise DatasetError, "Experiment '{0:s}' not found in database; need time information to center time axis.".format(names[0])    
   # figure out period
@@ -960,10 +961,10 @@ if __name__ == '__main__':
 #   mode = 'test_ensemble'
 #  mode = 'test_point_climatology'
 #  mode = 'test_point_timeseries'
-#  mode = 'test_point_ensemble'
-  mode = 'pickle_grid' 
-#   pntset = 'shpavg'
-  pntset = 'ecprecip'
+  mode = 'test_point_ensemble'
+#   mode = 'pickle_grid' 
+  pntset = 'shpavg'
+#   pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['glb1','arb1', 'arb2', 'arb3']; regions = ['GreatLakes']+['WesternCanada']*3; domains = [1,2]
   experiments = ['g-ctrl','rrtmg', 'ctrl', 'new']
@@ -1119,10 +1120,10 @@ if __name__ == '__main__':
     print('')
     if pntset in ('shpavg',):
 #       dataset = loadWRF_ShpEns(ensemble=['max-ctrl','max-ens-A'], shape=pntset, domains=None, filetypes=['hydro','srfc'])
-      dataset = loadWRF_ShpEns(ensemble='max-ens', shape=pntset, varlist=['precip','runoff'], domains=2, 
+      dataset = loadWRF_ShpEns(ensemble='g-ens', shape=pntset, varlist=['precip','runoff'], domains=2, 
                                filetypes=['srfc','lsm',], lensembleAxis=lensembleAxis, exps=WRF_exps, enses=ensembles)
     else:
-      dataset = loadWRF_StnEns(ensemble='max-ens-2100', station=pntset, lensembleAxis=lensembleAxis,  
+      dataset = loadWRF_StnEns(ensemble='g-ens-2100', station=pntset, lensembleAxis=lensembleAxis,  
                                varlist=['MaxPrecip_6h'], filetypes=['srfc'], exps=WRF_exps, enses=ensembles)
     assert not lensembleAxis or dataset.hasAxis('ensemble')
     dataset.load()
