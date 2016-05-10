@@ -28,6 +28,7 @@ from plotting.properties import variablePlotatts
 ## Unity Meta-data
 
 dataset_name = 'Unity'
+root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # the dataset root folder
 # N.B.: doesn't have a native grid!
 
 # variable attributes and name (basically no alterations necessary...)
@@ -54,7 +55,6 @@ varatts = dict(# PRISM variables
 # list of variables to load
 varlist = varatts.keys() # also includes coordinate fields    
 # variable and file lists settings
-root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 
 ## Functions that provide access to well-formatted PRISM NetCDF files

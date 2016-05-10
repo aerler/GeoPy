@@ -21,7 +21,7 @@ from processing.process import CentralProcessingUnit
 ## CRU Meta-data
 
 dataset_name = 'CRU'
-root_folder = data_root + dataset_name + '/'
+root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # the dataset root folder
 
 # CRU grid definition           
 geotransform = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)

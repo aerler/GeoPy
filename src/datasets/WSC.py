@@ -25,7 +25,7 @@ from warnings import warn
 ## WSC (Water Survey Canada) Meta-data
 
 dataset_name = 'WSC'
-root_folder = data_root  + '/WSC/'
+root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # the dataset root folder
 
 # variable attributes and name
 variable_attributes = dict(runoff = dict(name='runoff', units='kg/m^2/s', atts=dict(long_name='Average Runoff Rate')), # average flow rate

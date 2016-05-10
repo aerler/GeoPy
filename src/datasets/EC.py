@@ -40,7 +40,7 @@ from utils.constants import precip_thresholds
 ## EC (Environment Canada) Meta-data
 
 dataset_name = 'EC'
-root_folder = data_root  + '/EC/'
+root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # long-term mean folder
 orig_ts_file = '{0:s}{1:s}.txt' # filename pattern: variable name and station ID
 tsfile = 'ec{0:s}_monthly.nc' # filename pattern: station type
 tsfile_prov = 'ec{0:s}_{1:s}_monthly.nc' # filename pattern with province: station type, province  

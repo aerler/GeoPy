@@ -20,6 +20,7 @@ from processing.process import CentralProcessingUnit
 ## CRU Meta-data
 
 dataset_name = 'CFSR'
+root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # long-term mean folder
 
 # CFSR grid definition           
 # geotransform_031 = (-180.15625, 0.3125, 0.0, 89.915802001953125, 0.0, -0.30960083)
@@ -72,8 +73,6 @@ lowresstatic = {key:'pgbh06.gdas.{0:s}.grb2.nc'.format(value) for key,value in l
 varlist_hires = hiresfiles.keys() + hiresstatic.keys() + list(nofile) # hires + coordinates    
 varlist_lowres = lowresfiles.keys() + lowresstatic.keys() + list(nofile) # hires + coordinates
 
-# variable and file lists settings
-root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 
 ## Functions to load different types of CFSR datasets 

@@ -21,6 +21,7 @@ from processing.process import CentralProcessingUnit
 ## NARR Meta-data
 
 dataset_name = 'NARR'
+root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # long-term mean folder
 
 # NARR projection
 projdict = dict(proj  = 'lcc', # Lambert Conformal Conic  
@@ -66,8 +67,6 @@ tsvarlist = ['air', 'prate', 'lon', 'lat'] # 'air' is actually 2m temperature...
 nofile = ('lat','lon','x','y','time') # variables that don't have their own files
 special = dict(air='air.2m') # some variables need special treatment
 
-# variable and file lists settings
-root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 ## Functions to load different types of NARR datasets 
 

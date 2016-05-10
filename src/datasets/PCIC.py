@@ -23,6 +23,7 @@ from geodata.gdal import GridDefinition
 ## PCIC PRISM Meta-data
 
 dataset_name = 'PCIC'
+root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # long-term mean folder
 
 # PRISM grid definition
 dlat = dlon = 1./120. #  0.0083333333
@@ -39,8 +40,6 @@ size = (nlon,nlat) # (x,y) map size of PRISM grid
 # make GridDefinition instance
 PCIC_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotransform, size=size)
 
-# variable and file lists settings
-root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 ## Functions that handle access to the original PCIC NetCDF files
 

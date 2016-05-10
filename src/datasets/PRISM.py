@@ -20,6 +20,7 @@ from geodata.gdal import GridDefinition
 ## PRISM Meta-data
 
 dataset_name = 'PRISM'
+root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # long-term mean folder
 
 # PRISM grid definition
 dlat = dlon = 1./24. #  0.041666666667
@@ -48,9 +49,6 @@ varatts = dict(T2 = dict(name='T2', units='K', atts=dict(long_name='Average 2m T
 # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
 # list of variables to load
 varlist = varatts.keys() # also includes coordinate fields    
-
-# variable and file lists settings
-root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 
 ## Functions that provide access to well-formatted PRISM NetCDF files

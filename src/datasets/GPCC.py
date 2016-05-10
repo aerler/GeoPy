@@ -25,6 +25,7 @@ from processing.process import CentralProcessingUnit
 ## GPCC Meta-data
 
 dataset_name = 'GPCC'
+root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # long-term mean folder
 
 # GPCC grid definition           
 geotransform_025 = (-180.0, 0.25, 0.0, -90.0, 0.0, 0.25)
@@ -57,8 +58,6 @@ tsvaratts = dict(time=dict(name='time', units='day', offset=-28854), **varatts)
 # list of variables to load
 varlist = varatts.keys() # also includes coordinate fields    
 
-# variable and file lists settings
-root_folder = data_root + dataset_name + '/' # long-term mean folder
 
 ## Functions to load different types of GPCC datasets 
 
