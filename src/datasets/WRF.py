@@ -485,8 +485,8 @@ class Axes(FileType):
   ''' A mock-filetype for axes. '''
   def __init__(self):
     self.name = 'axes'
-    self.atts = dict(Time        = dict(name='time', units='month'), # time coordinate
-                     time        = dict(name='time', units='month'), # time coordinate
+    self.atts = dict(time        = dict(name='time', units='month'), # time coordinate
+                     #Time        = dict(name='Time', units='day'), # original WRF time coordinate
                      # N.B.: the time coordinate is only used for the monthly time-series data, not the LTM
                      #       the time offset is chose such that 1979 begins with the origin (time=0)
                      west_east   = dict(name='x', units='m'), # projected west-east coordinate
@@ -957,10 +957,10 @@ if __name__ == '__main__':
     
   
 #   mode = 'test_climatology'
-#  mode = 'test_timeseries'
+#   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #  mode = 'test_point_climatology'
-#  mode = 'test_point_timeseries'
+#   mode = 'test_point_timeseries'
   mode = 'test_point_ensemble'
 #   mode = 'pickle_grid' 
   pntset = 'shpavg'
@@ -1034,7 +1034,8 @@ if __name__ == '__main__':
   elif mode == 'test_timeseries':
     
 #     dataset = loadWRF_TS(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['srfc'], exps=WRF_exps)
-    dataset = loadWRF_TS(experiment='max-ctrl', domains=None, varlist=None, filetypes=['srfc'], exps=WRF_exps)
+    dataset = loadWRF_TS(experiment='g-ctrl', domains=None, varlist=None, lconst=True,
+                         filetypes=['lsm'], exps=WRF_exps)
 #     dataset = loadWRF_All(name='new-ctrl-2050', folder='/data/WRF/wrfavg/', domains=2, filetypes=['hydro'], 
 #                           lctrT=True, mode='time-series', exps=WRF_exps)
 #     for dataset in datasets:
@@ -1042,6 +1043,7 @@ if __name__ == '__main__':
     print(dataset)
     print(dataset.name)
     print(dataset.title)
+    print(dataset.filelist)
     print('')
     var = dataset.zs
     print(var)
@@ -1098,8 +1100,8 @@ if __name__ == '__main__':
     
     print('')
     if pntset in ('shpavg',):
-      dataset = loadWRF_ShpTS(experiment='max-ctrl', domains=None, varlist=None, #['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
-                              shape=pntset, filetypes=['srfc','lsm'], exps=WRF_exps)
+      dataset = loadWRF_ShpTS(experiment='g-ctrl', domains=None, varlist=None, #['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
+                              shape=pntset, filetypes=['hydro'], exps=WRF_exps)
     else:
       dataset = loadWRF_StnTS(experiment='max-ens-A', domains=None, varlist=['zs','stn_zs','MaxPrecip_6h'],
 #                               varlist=['zs','stn_zs','precip','MaxPrecip_6h','MaxPreccu_1h','MaxPrecip_1d'], 

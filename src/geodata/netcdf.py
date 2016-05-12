@@ -685,8 +685,10 @@ class DatasetNetCDF(Dataset):
     self.__dict__['datasets'] = datasets
     self.__dict__['filelist'] = filelist
     # initialize Dataset using parent constructor
-    if axes: axes = tuple(set(axes.values())) # same axis can have multiple names here
-    super(DatasetNetCDF,self).__init__(name=name, title=title, varlist=variables, axes=axes, atts=ncattrs)
+    #if axes: axes = tuple(set(axes.values())) # same axis can have multiple names here
+    super(DatasetNetCDF,self).__init__(name=name, title=title, varlist=variables, axes=None, atts=ncattrs)
+    # N.B.: don't pass axes explicitly, otherwise we are adding a lot of unneccessary axes, which causes confusion
+    #       (in particular, the singular Time axis from constant files will be loaded, which causes problems)
     # check that stuff was loaded
     if len(self.variables) == 0 and mode != 'w': raise EmptyDatasetError
     # catch exception if an empty dataset is OK
