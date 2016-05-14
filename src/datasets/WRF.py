@@ -381,7 +381,7 @@ class LSM(FileType):
                      ACSNOW = dict(name='snwacc', units='kg/m^2/s'), # snow accumulation rate
                      SFCEVP = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
                      POTEVP = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
-                     pet    = dict(name='pet', units='kg/m^2/s', scalefactor=2./3.), # correction for pre-processed PET
+                     #pet    = dict(name='pet', units='kg/m^2/s', scalefactor=2./3.), # correction for pre-processed PET
                      SFROFF = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
                      UDROFF = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off
                      Runoff = dict(name='runoff', units='kg/m^2/s'), # total surface and sub-surface run-off

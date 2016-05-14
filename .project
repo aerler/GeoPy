@@ -4,6 +4,7 @@
 	<comment></comment>
 	<projects>
 		<project>LazyArray</project>
+		<project>Projects</project>
 		<project>WAFO</project>
 		<project>WRF Tools</project>
 	</projects>

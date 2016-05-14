@@ -90,11 +90,12 @@ def computePotEvapPM(dataset):
   D = Delta(T) # slope of saturation vapor pressure w.r.t. temperature
   # compute potential evapotranspiration according to Penman-Monteith method 
   # (http://www.fao.org/docrep/x0490e/x0490e06.htm#fao%20penman%20monteith%20equation)
-  data = evaluate('( 35.2512 * D * (Rn - G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) )')
+  data = evaluate('( 35.2512 * D * (Rn - G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
-  var = Variable(data=data, name='pet', units='kg/m^2/s', axes=dataset['ps'].axes)
+  var = Variable(data=data, name='pet_pm', units='kg/m^2/s', axes=dataset['ps'].axes)
   assert var.units == dataset['waterflx'].units, var
-  assert False, "TODO: verify net radiation terms and overall results!"
+  from warnings import warn
+  warn("TODO: verify net radiation terms and overall results!")
   # return new variable
   return var
 

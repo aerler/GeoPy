@@ -240,8 +240,8 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
       else:
         if varname == 'waterflx': var = newvars.computeWaterFlux(source)
         elif varname == 'liqwatflx': var = newvars.computeLiquidWaterFlux(source)
-        elif varname == 'pet' or varname == 'pet_pm': var = None # skip for now
-          #var = computePotEvapPM(source) # default
+        elif varname == 'pet' or varname == 'pet_pm':
+          var = newvars.computePotEvapPM(source) # default
         elif varname == 'pet_th': var = None # skip for now
           #var = computePotEvapTh(source) # simplified formula (less prerequisites)
         else: raise VariableError, "Unsupported Variable '{:s}'.".format(var)
@@ -325,13 +325,14 @@ if __name__ == '__main__':
     lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/s    
   else:
     # settings for testing and debugging
-    NP = 2 ; ldebug = False # for quick computations
-#     NP = 1 ; ldebug = True # just for tests
+#     NP = 2 ; ldebug = False # for quick computations
+    NP = 1 ; ldebug = True # just for tests
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
 #     varlist = None
-    load_list = ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet','lat2D','lon2D','zs']
+    load_list = ['waterflx','liqprec','solprec','precip','evap','snwmlt','lat2D','lon2D','zs','pet']
+    load_list += ['hfx','A','SWD','GLW','ps','U10','Q2','Tmin','Tmax','Tmean'] # PET stuff
     periods = []
     periods += [15]
 #     periods += [30]
@@ -358,24 +359,24 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
     # other WRF parameters 
-    domains = None # domains to be processed
+    domains = 2 # domains to be processed
 #     domains = None # process all domains
-#     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-    WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
+    WRF_filetypes = ('hydro','srfc','xtrm','lsm') # filetypes to be processed
+#     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
     # typically a specific grid is required
     grids = [] # list of grids to process
 #     grids += [None] # special keyword for native grid
     grids += ['grw2']# small grid for HGS GRW project
     ## export parameters
     export_arguments = dict(
-        project = 'GRW', # project designation    
-        varlist = ['waterflx','liqwatflx','pet','lat2D','lon2D','zs'], # varlist for export    
-        folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/{{3:s}}/'.format(os.getenv('DATA_ROOT', None)),
-        prefix = '{0:s}_{1:s}_{2:s}_{3:s}', # argument order: project/grid/experiment/period/
-        format = 'ASCII_raster', # formats to export to
-        lm3 = True) # convert water flux from kg/m^2/s to m^3/s
-#         format = 'NetCDF',
-#         lm3 = False) # convert water flux from kg/m^2/s to m^3/s
+        project = 'GRW', # project designation  
+        varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','pet_pm','pet'], # varlist for export                         
+#         folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/{{3:s}}/'.format(os.getenv('DATA_ROOT', None)),
+#         prefix = '{0:s}_{1:s}_{2:s}_{3:s}', # argument order: project/grid/experiment/period/
+#         format = 'ASCII_raster', # formats to export to
+#         lm3 = True) # convert water flux from kg/m^2/s to m^3/s
+        format = 'NetCDF',
+        lm3 = False) # convert water flux from kg/m^2/s to m^3/s
   
   ## process arguments    
   if isinstance(periods, (np.integer,int)): periods = [periods]
