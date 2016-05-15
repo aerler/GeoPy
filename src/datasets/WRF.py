@@ -337,8 +337,9 @@ class Hydro(FileType):
                      RAINNC       = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate
                      SFCEVP       = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
                      ACSNOM       = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
-                     POTEVP       = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
-#                      pet          = dict(name='pet', units='kg/m^2/s', scalefactor=2./3.), # correction for pre-processed PET
+                     POTEVP       = dict(name='pet', units='kg/m^2/s'), # potential evapo-transpiration rate
+#                      POTEVP       = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
+#                      pet          = dict(name='pet', units='kg/m^2/s', scalefactor=1./999.70), # correction for pre-processed PET
                      NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
                      LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
                      SolidPrecip  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
