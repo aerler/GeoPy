@@ -290,12 +290,12 @@ class Srfc(FileType):
                      LH           = dict(name='lhfx', units='W/m^2'), # surface latent heat flux
                      QFX          = dict(name='evap', units='kg/m^2/s'), # surface evaporation
                      OLR          = dict(name='OLR', units='W/m^2'), # Outgoing Longwave Radiation
-                     GLW          = dict(name='GLW', units='W/m^2'), # Ground Longwave Radiation
-                     SWDOWN       = dict(name='SWD', units='W/m^2'), # Downwelling Shortwave Radiation
-                     SWNORM       = dict(name='SWN', units='W/m^2'), # Downwelling Normal Shortwave Radiation
+                     GLW          = dict(name='GLW', units='W/m^2'), # Downwelling Longwave Radiation at Surface
+                     SWDOWN       = dict(name='SWD', units='W/m^2'), # Downwelling Shortwave Radiation at Surface
+                     SWNORM       = dict(name='SWN', units='W/m^2'), # Downwelling Normal Shortwave Radiation at Surface
                      NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
-                     LiquidPrecip = dict(name='liqprec_sr', units='kg/m^2/s'), # liquid precipitation rate
-                     SolidPrecip  = dict(name='solprec_sr', units='kg/m^2/s'), # solid precipitation rate
+                     LiquidPrecip_SR = dict(name='liqprec_sr', units='kg/m^2/s'), # liquid precipitation rate
+                     SolidPrecip_SR  = dict(name='solprec_sr', units='kg/m^2/s'), # solid precipitation rate
                      WaterVapor   = dict(name='Q2', units='Pa'), # water vapor partial pressure
                      U10          = dict(name='u10', units='m/s'), # Westerly Wind (at 10m)
                      V10          = dict(name='v10', units='m/s'), # Southerly Wind (at 10m)
@@ -339,7 +339,7 @@ class Hydro(FileType):
                      ACSNOM       = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
                      POTEVP       = dict(name='pet', units='kg/m^2/s'), # potential evapo-transpiration rate
 #                      POTEVP       = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
-#                      pet          = dict(name='pet', units='kg/m^2/s', scalefactor=1./999.70), # correction for pre-processed PET
+                     pet          = dict(name='pet', units='kg/m^2/s', scalefactor=1./999.70), # correction for pre-processed PET
                      NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
                      LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
                      SolidPrecip  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
@@ -377,6 +377,7 @@ class LSM(FileType):
   def __init__(self):
     self.name = 'lsm'
     self.atts = dict(ALBEDO = dict(name='A', units=''), # Albedo
+                     EMISS  = dict(name='e', units=''), # surface emissivity
                      SNOWC  = dict(name='snwcvr', units=''), # snow cover (binary)
                      ACSNOM = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
                      ACSNOW = dict(name='snwacc', units='kg/m^2/s'), # snow accumulation rate
@@ -412,8 +413,9 @@ class Xtrm(FileType):
                      T2STD         = dict(name='Tstd', units='K'),   # daily Temperature standard deviation (at 2m)
                      SummerDays = dict(name='sumfrq', units='', atts=dict(long_name='Fraction of Summer Days (>25C)')),
                      FrostDays  = dict(name='frzfrq', units='', atts=dict(long_name='Fraction of Frost Days (< 0C)')),
-                     #SKINTEMPMEAN  = dict(name='TSmean', units='K'),  # daily mean Skin Temperature
-                     SKINTEMPMEAN  = dict(name='Ts', units='K'),  # daily mean Skin Temperature
+                     SKINTEMPMEAN  = dict(name='TSmean', units='K'),  # daily mean Skin Temperature
+                     Ts            = dict(name='TSmean', units='K'),  # daily mean Skin Temperature
+                     #SKINTEMPMEAN  = dict(name='Ts', units='K'),  # daily mean Skin Temperature
                      SKINTEMPMIN   = dict(name='TSmin', units='K'),   # daily minimum Skin Temperature
                      SKINTEMPMAX   = dict(name='TSmax', units='K'),   # daily maximum Skin Temperature
                      SKINTEMPSTD   = dict(name='TSstd', units='K'),   # daily Skin Temperature standard deviation                     

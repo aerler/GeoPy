@@ -7,18 +7,26 @@ A collection of functions to compute derived variables, primarily for WRF but al
 '''
 
 # external imports
+from warnings import warn
 from numexpr import evaluate, set_num_threads, set_vml_num_threads
 # numexpr parallelisation: don't parallelize at this point!
 set_num_threads(1); set_vml_num_threads(1)
 # internal imports
 from geodata.base import Variable, VariableError
+from utils.constants import sig
 
 ## helper functions
 
 # net radiation balance 
-def radiation(A,SW,LW):
-  ''' net radiation  [W/m^2] at the surface (long and short wave) '''
-  return evaluate('( ( 1 - A ) * SW ) + LW')
+def radiation(A, SW, LW, e, Ts, TSmax=None):
+  ''' net radiation  [W/m^2] at the surface: downwelling long and short wave minus upwelling terrestrial radiation '''
+  if TSmax is None:
+    # using average skin temperature for terrestrial long wave emission
+    warn('Using average skin temperature; diurnal min/max skin temperature is preferable due to strong nonlinearity.')
+    return evaluate('( ( 1 - A ) * SW ) + ( LW * e ) - ( e * sig * Ts**4 )')
+  else:
+    # using min/max skin temperature to account for nonlinearity
+    return evaluate('( ( 1 - A ) * SW ) + ( LW * e ) - ( e * sig * ( Ts**4 + TSmax**4 ) / 2 )')
 
 # 2m wind speed [m/s]
 def wind(u, z=10):
@@ -32,7 +40,7 @@ def gamma(p):
   ''' psychrometric constant [Pa/K] for a given air pressure [Pa]
       (http://www.fao.org/docrep/x0490e/x0490e07.htm#psychrometric%20constant%20%28g%29) 
   '''
-  return 665e-6 * p
+  return 665.e-6 * p
 
 # slope of saturation vapor pressure [Pa/K]
 def Delta(T):
@@ -49,6 +57,7 @@ def e_sat(T, Tmax=None):
   '''
   if Tmax is None: 
     # Magnus formula
+    warn('Using average 2m temperature; diurnal min/max 2m temperature is preferable due to strong nonlinearity.')
     return evaluate('610.8 * exp( 17.27 * (T - 273.15) / (T - 35.85) )')
   else:
     # use average of saturation pressure from Tmin and Tmax (because of nonlinearity)
@@ -62,20 +71,24 @@ def computePotEvapPM(dataset):
       https://en.wikipedia.org/wiki/Penman%E2%80%93Monteith_equation,
       http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
   '''
+  # get temperature
+  if 'Tmean' in dataset: T = dataset['Tmean'][:]
+  elif 'T2' in dataset: T = dataset['T2'][:]
+  else: raise VariableError, "Cannot determine 2m mean temperature for PET calculation."
   # get radiation adn heat flux
   if 'hfx' in dataset: G= dataset['hfx'][:] # upward sensible heat flux
   else: raise VariableError, "Cannot determine surface heat flux for PET calculation."
-  if 'A' in dataset and 'SWD' in dataset and 'GLW' in dataset: 
-    Rn = radiation(dataset['A'][:],dataset['SWD'][:],dataset['GLW'][:]) # downward total net radiation
+  if 'A' in dataset and 'SWD' in dataset and 'GLW' in dataset and 'e' in dataset:
+    if 'TSmin' in dataset and 'TSmax' in dataset: Ts = dataset['TSmin'][:]; TSmax = dataset['TSmax'][:]
+    elif 'TSmean' in dataset: Ts = dataset['TSmean'][:]; TSmax = None
+    elif 'Ts' in dataset: Ts = dataset['Ts'][:]; TSmax = None
+    else: raise VariableError, "Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation."
+    Rn = radiation(dataset['A'][:],dataset['SWD'][:],dataset['GLW'][:],dataset['e'][:],Ts,TSmax) # downward total net radiation
   else: raise VariableError, "Cannot determine net radiation for PET calculation."
   # get wind speed
   if 'U2' in dataset: u2 = dataset['U2'][:]
   elif 'U10' in dataset: u2 = wind(dataset['U10'][:], z=10)
   else: raise VariableError, "Cannot determine 2m wind speed for PET calculation."
-  # get temperature
-  if 'Tmean' in dataset: T = dataset['Tmean'][:]
-  elif 'T2' in dataset: T = dataset['T2'][:]
-  else: raise VariableError, "Cannot determine 2m mean temperature for PET calculation."
   # get psychrometric variables
   if 'ps' in dataset: p = dataset['ps'][:]
   else: raise VariableError, "Cannot determine surface air pressure for PET calculation."
@@ -86,7 +99,7 @@ def computePotEvapPM(dataset):
   # get saturation water vapor
   if 'Tmin' in dataset and 'Tmax' in dataset: es = e_sat(dataset['Tmin'][:],dataset['Tmax'][:])
 #   else: Es = e_sat(T) # backup, but not very accurate
-  else: raise VariableError, "Cannot determine saturation water vapor pressure for PET calculation."
+  else: raise VariableError, "'Tmin' and 'Tmax' are required to compute saturation water vapor pressure for PET calculation."
   D = Delta(T) # slope of saturation vapor pressure w.r.t. temperature
   # compute potential evapotranspiration according to Penman-Monteith method 
   # (http://www.fao.org/docrep/x0490e/x0490e06.htm#fao%20penman%20monteith%20equation)
@@ -94,8 +107,6 @@ def computePotEvapPM(dataset):
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
   var = Variable(data=data, name='pet_pm', units='kg/m^2/s', axes=dataset['ps'].axes)
   assert var.units == dataset['waterflx'].units, var
-  from warnings import warn
-  warn("TODO: verify net radiation terms and overall results!")
   # return new variable
   return var
 
@@ -175,7 +186,7 @@ if __name__ == '__main__':
   if mode == 'test_PenmanMonteith':
     
     print('')
-    varlist = ['hfx','A','SWD','GLW','ps','U10','Q2','Tmin','Tmax','Tmean','waterflx','liqwatflx']
+    varlist = ['hfx','A','SWD','e','GLW','ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax','waterflx','liqwatflx']
     dataset = loadWRF(experiment='g-ctrl', domains=2, grid='grw2', filetypes=['hydro','srfc','xtrm','lsm'], 
                       period=15, varlist=varlist)
     print(dataset)

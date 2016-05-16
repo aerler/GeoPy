@@ -332,7 +332,7 @@ if __name__ == '__main__':
     loverwrite = True
 #     varlist = None
     load_list = ['waterflx','liqprec','solprec','precip','evap','snwmlt','lat2D','lon2D','zs','pet']
-    load_list += ['hfx','A','SWD','GLW','ps','U10','Q2','Tmin','Tmax','Tmean'] # PET stuff
+    load_list += ['hfx','A','SWD','e','GLW','ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # PET stuff
     periods = []
     periods += [15]
 #     periods += [30]
@@ -359,14 +359,15 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
     # other WRF parameters 
-    domains = 2 # domains to be processed
+    domains = 1 # domains to be processed
 #     domains = None # process all domains
     WRF_filetypes = ('hydro','srfc','xtrm','lsm') # filetypes to be processed
 #     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
     # typically a specific grid is required
     grids = [] # list of grids to process
-#     grids += [None] # special keyword for native grid
-    grids += ['grw2']# small grid for HGS GRW project
+    grids += [None] # special keyword for native grid
+#     grids += ['grw2']# small grid for HGS GRW project
+#     grids += ['glb1_d02']# small grid for HGS GRW project
     ## export parameters
     export_arguments = dict(
         project = 'GRW', # project designation  

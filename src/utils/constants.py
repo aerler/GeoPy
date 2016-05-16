@@ -23,7 +23,7 @@ kappa = R/Cp # ~7/2, adiabatic exponent for dry air
 # not exactly physical constants
 fc = 2*Omega*sin(pi/4) # Coriolis parameter at 45 deg N
 p0 = 1e5 # reference pressure (e.g. for potential temperature)
-
+sig = 5.67051e-8 # Stefan-Boltzmann constant (AMS Glossary, WRF)
 
 # thresholds for wet-day variables (from AMS glossary and ETCCDI Climate Change Indices) 
 precip_thresholds = [0.2, 1., 10., 20.]
