@@ -14,8 +14,9 @@ from datetime import datetime
 import logging     
 # internal imports
 from geodata.base import Dataset
-from geodata.gdal import addGDALtoDataset
-from geodata.misc import DateError, printList, ArgumentError, VariableError
+from geodata.gdal import addGDALtoDataset, addGDALtoVar
+from geodata.misc import DateError, printList, ArgumentError, VariableError,\
+  GDALError
 from datasets import gridded_datasets
 from processing.multiprocess import asyncPoolEC
 from processing.misc import getMetaData,  getExperimentList, loadYAML, getTargetFile
@@ -74,6 +75,7 @@ class NetCDF(object):
     if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
     filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, 
                              grid=None, period=None, filetype=self.filetype)
+    if ldebug: filename = 'test_{:s}'.format(filename)
     self.filepath = '{:s}/{:s}'.format(avgfolder,filename)
     return self.filepath
 
@@ -244,17 +246,20 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
           var = newvars.computePotEvapPM(source) # default
         elif varname == 'pet_th': var = None # skip for now
           #var = computePotEvapTh(source) # simplified formula (less prerequisites)
-        else: raise VariableError, "Unsupported Variable '{:s}'.".format(var)
+        else: raise VariableError, "Unsupported Variable '{:s}'.".format(varname)
       # for now, skip variables that are None
       if var:
-        # convert units
-        if lm3:
-          if var.units == 'kg/m^2/s':
-            var /= 1000. # divide to get m^3/s
-            var.units = 'm^3/s' # update units
+        addGDALtoVar(var=var, griddef=sink.griddef)
+        if not var.gdal and isinstance(fileFormat,ASCII_raster):
+          raise GDALError, "Exporting to ASCII_raster format requires GDAL-enabled variables."
         # add to new dataset
         sink += var
-      
+    # convert units
+    if lm3:
+      for var in sink:
+        if var.units == 'kg/m^2/s':
+          var /= 1000. # divide to get m^3/s
+          var.units = 'm^3/s' # update units
     
     # print dataset
     if not lparallel and ldebug:
@@ -295,6 +300,7 @@ if __name__ == '__main__':
   else: loverwrite = ldebug # False means only update old files
   
   ## define settings
+  lbatch = False
   if lbatch:
     # load YAML configuration
     config = loadYAML('export.yaml', lfeedback=True)
@@ -325,14 +331,14 @@ if __name__ == '__main__':
     lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/s    
   else:
     # settings for testing and debugging
-#     NP = 2 ; ldebug = False # for quick computations
-    NP = 1 ; ldebug = True # just for tests
+    NP = 2 ; ldebug = False # for quick computations
+#     NP = 1 ; ldebug = True # just for tests
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
 #     varlist = None
-    load_list = ['waterflx','liqprec','solprec','precip','evap','snwmlt','lat2D','lon2D','zs','pet']
-    load_list += ['hfx','A','SWD','e','GLW','ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # PET stuff
+    load_list = ['waterflx','liqprec','solprec','precip','evap','snwmlt','lat2D','lon2D','zs']
+    load_list += ['grdflx','A','SWD','e','GLW','ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # PET stuff
     periods = []
     periods += [15]
 #     periods += [30]
@@ -352,26 +358,27 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-    WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100'][:1]
+    WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+#     WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100'][:1]
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-3km','max-3km']
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
     # other WRF parameters 
-    domains = 1 # domains to be processed
+    domains = 2 # domains to be processed
 #     domains = None # process all domains
     WRF_filetypes = ('hydro','srfc','xtrm','lsm') # filetypes to be processed
 #     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
     # typically a specific grid is required
     grids = [] # list of grids to process
-    grids += [None] # special keyword for native grid
-#     grids += ['grw2']# small grid for HGS GRW project
+#     grids += [None] # special keyword for native grid
+    grids += ['grw2']# small grid for HGS GRW project
 #     grids += ['glb1_d02']# small grid for HGS GRW project
     ## export parameters
     export_arguments = dict(
         project = 'GRW', # project designation  
-        varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','pet_pm','pet'], # varlist for export                         
+        varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','pet'], # varlist for export                         
 #         folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/{{3:s}}/'.format(os.getenv('DATA_ROOT', None)),
 #         prefix = '{0:s}_{1:s}_{2:s}_{3:s}', # argument order: project/grid/experiment/period/
 #         format = 'ASCII_raster', # formats to export to

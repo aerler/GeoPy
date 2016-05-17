@@ -75,6 +75,303 @@ class Exp(object):
         # if the argument is not required, just assign None 
         self.__dict__[argname] = None    
 
+  
+## variable attributes and name
+# convert water mass mixing ratio to water vapor partial pressure ( kg/kg -> Pa ) 
+Q = 96000.*28./18. # surface pressure * molecular weight ratio ( air / water )
+class FileType(object): pass # ''' Container class for all attributes of of the constants files. '''
+# auxiliary files with derived variables
+class Aux(FileType):
+  ''' Variables and attributes for auxiliary files. '''
+  def __init__(self):
+    self.name = 'aux'
+    self.atts = dict() # should be properly formatted already
+    self.vars = self.atts.keys()    
+    self.climfile = 'wrfaux_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
+    self.tsfile = 'wrfaux_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
+# constants
+class Const(FileType):
+  ''' Variables and attributes of the constants files. '''
+  def __init__(self):
+    self.name = 'const' 
+    self.atts = dict(HGT    = dict(name='zs', units='m'), # surface elevation
+                     XLONG  = dict(name='lon2D', units='deg E'), # geographic longitude field
+                     XLAT   = dict(name='lat2D', units='deg N'), # geographic latitude field
+                     SINALPHA = dict(name='sina', units=''), # sine of map rotation
+                     COSALPHA = dict(name='cosa', units='')) # cosine of map rotation                   
+    self.vars = self.atts.keys()    
+    self.climfile = None #'wrfconst_d{0:0=2d}{1:s}.nc' # the filename needs to be extended by (domain,'_'+grid)
+    self.tsfile = 'wrfconst_d{0:0=2d}.nc' # the filename needs to be extended by (domain,)
+# surface variables
+class Srfc(FileType):
+  ''' Variables and attributes of the surface files. '''
+  def __init__(self):
+    self.name = 'srfc'
+    self.atts = dict(T2           = dict(name='T2', units='K'), # 2m Temperature
+                     TSK          = dict(name='Ts', units='K'), # Skin Temperature (SST)
+                     SummerDays   = dict(name='sumfrq', units='', atts=dict(long_name='Fraction of Summer Days (>25C)')),
+                     FrostDays    = dict(name='frzfrq', units='', atts=dict(long_name='Fraction of Frost Days (< 0C)')),
+                     Q2           = dict(name='q2', units='kg/kg'), # 2m water vapor mass mixing ratio
+                     RAIN         = dict(name='precip', units='kg/m^2/s'), # total precipitation rate (kg/m^2/s)
+                     RAINC        = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate (kg/m^2/s)
+                     RAINNC       = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate (kg/m^2/s)
+                     SNOW         = dict(name='snow', units='kg/m^2'), # snow water equivalent
+                     SNOWH        = dict(name='snowh', units='m'), # snow depth
+                     PSFC         = dict(name='ps', units='Pa'), # surface pressure
+                     HFX          = dict(name='hfx', units='W/m^2'), # surface sensible heat flux
+                     LH           = dict(name='lhfx', units='W/m^2'), # surface latent heat flux
+                     QFX          = dict(name='evap', units='kg/m^2/s'), # surface evaporation
+                     OLR          = dict(name='OLR', units='W/m^2'), # Outgoing Longwave Radiation
+                     GLW          = dict(name='GLW', units='W/m^2'), # Downwelling Longwave Radiation at Surface
+                     SWDOWN       = dict(name='SWD', units='W/m^2'), # Downwelling Shortwave Radiation at Surface
+                     SWNORM       = dict(name='SWN', units='W/m^2'), # Downwelling Normal Shortwave Radiation at Surface
+                     NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
+                     LiquidPrecip_SR = dict(name='liqprec_sr', units='kg/m^2/s'), # liquid precipitation rate
+                     SolidPrecip_SR  = dict(name='solprec_sr', units='kg/m^2/s'), # solid precipitation rate
+                     WaterVapor   = dict(name='Q2', units='Pa'), # water vapor partial pressure
+                     U10          = dict(name='u10', units='m/s'), # Westerly Wind (at 10m)
+                     V10          = dict(name='v10', units='m/s'), # Southerly Wind (at 10m)
+                     #WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
+                     #WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
+                     #WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)                     MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
+                     MaxACSNOW    = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # maximum daily precip
+                     MaxACSNOW_1d = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # maximum daily precip                             
+                     MaxACSNOW_5d = dict(name='MaxSolprec_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
+                     MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
+                     MaxRAINC     = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # maximum 6-hourly convective precip
+                     MaxRAINNC    = dict(name='MaxPrecnc_6h', units='kg/m^2/s'), # maximum 6-hourly non-convective precip
+                     MaxPrecip    = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # for short-term consistency                    
+                     MaxPreccu    = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # for short-term consistency
+                     MaxPrecnc    = dict(name='MaxPrecnc_6h', units='kg/m^2/s'), # for short-term consistency
+                     MaxRAIN_1d   = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
+                     MaxRAINC_1d  = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # maximum daily convective precip
+                     MaxRAINNC_1d = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # maximum daily non-convective precip
+                     MaxPrecip_1d = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
+                     MaxPreccu_1d = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # for short-term consistency
+                     MaxPrecnc_1d = dict(name='MaxPrecnc_1d', units='kg/m^2/s')) # for short-term consistency
+    for threshold in precip_thresholds: # add variables with different wet-day thresholds
+        suffix = '_{:03d}'.format(int(10*threshold))
+        self.atts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    
+        self.atts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day thre
+        self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s', 
+                                                atts=dict(fillValue=0), transform=nullNaN) # wet-day precipitation rate (kg/m^2/s)
+    self.vars = self.atts.keys()    
+    self.climfile = 'wrfsrfc_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
+    self.tsfile = 'wrfsrfc_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
+# hydro variables (mostly for HGS)
+class Hydro(FileType):
+  ''' Variables and attributes of the hydrological files. '''
+  def __init__(self):
+    self.name = 'hydro'
+    self.atts = dict(T2MEAN       = dict(name='Tmean', units='K'), # daily mean 2m Temperature
+                     RAIN         = dict(name='precip', units='kg/m^2/s'), # total precipitation rate
+                     RAINC        = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate
+                     RAINNC       = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate
+                     SFCEVP       = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
+                     ACSNOM       = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
+                     POTEVP       = dict(name='pet', units='kg/m^2/s'), # potential evapo-transpiration rate
+                     #POTEVP       = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
+                     #pet          = dict(name='pet', units='kg/m^2/s', scalefactor=1./999.70), # correction for pre-processed PET
+                     NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
+                     LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
+                     SolidPrecip  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
+                     NetWaterFlux = dict(name='waterflx', units='kg/m^2/s'), # total water downward flux
+                     #WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
+                     #WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
+                     #WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)
+                     MaxNetWaterFlux = dict(name='MaxWaterFlx_1d', units='kg/m^2/s'), # for short-term consistency
+                     MaxPrecip    = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
+                     MaxPrecnc    = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # for short-term consistency
+                     MaxPreccu    = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # for short-term consistency
+                     MaxRAIN      = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
+                     MaxRAIN_5d   = dict(name='MaxPrecip_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
+                     MaxACSNOW    = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # maximum daily precip
+                     MaxACSNOW_5d = dict(name='MaxSolprec_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
+                     MaxRAINC     = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # maximum daily convective precip
+                     MaxRAINNC    = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # maximum daily non-convective precip
+                     #MaxACSNOW    = dict(name='MaxSnow_1d', units='kg/m^2/s'), # maximum daily snow fall
+                     #MaxACSNOW_5d = dict(name='MaxSnow_5d', units='kg/m^2/s'), # maximum pendat (5 day) snow
+                     MaxPrecip_1d = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
+                     MaxPreccu_1d = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # for short-term consistency
+                     MaxPrecnc_1d = dict(name='MaxPrecnc_1d', units='kg/m^2/s'),) # for short-term consistency                     
+    for threshold in precip_thresholds: # add variables with different wet-day thresholds
+        suffix = '_{:03d}'.format(int(10*threshold))
+        self.atts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    
+        self.atts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day threshold
+        self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s', 
+                                                atts=dict(fillValue=0), transform=nullNaN) # wet-day precipitation rate (kg/m^2/s)
+    self.vars = self.atts.keys()
+    self.climfile = 'wrfhydro_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
+    self.tsfile = 'wrfhydro_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
+# land surface model variables
+class LSM(FileType):
+  ''' Variables and attributes of the land surface files. '''
+  def __init__(self):
+    self.name = 'lsm'
+    self.atts = dict(ALBEDO   = dict(name='A', units=''), # Albedo
+                     EMISS    = dict(name='e', units=''), # surface emissivity
+                     ACGRDFLX = dict(name='grdflx', units='W/m^2'), # heat released from the soil (upward)
+                     ACLHF    = dict(name='lhflx', units='W/m^2'), # latent heat flux from surface (upward)
+                     ACHFX    = dict(name='hflx', units='W/m^2'), # sensible heat flux from surface (upward)
+                     SNOWC    = dict(name='snwcvr', units=''), # snow cover (binary)
+                     ACSNOM   = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
+                     ACSNOW   = dict(name='snwacc', units='kg/m^2/s'), # snow accumulation rate
+                     SFCEVP   = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
+                     POTEVP   = dict(name='pet', units='kg/m^2/s'), # potential evapo-transpiration rate
+                     #POTEVP   = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
+                     #pet      = dict(name='pet', units='kg/m^2/s', scalefactor=2./3.), # correction for pre-processed PET
+                     SFROFF   = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
+                     UDROFF   = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off
+                     Runoff   = dict(name='runoff', units='kg/m^2/s'), # total surface and sub-surface run-off
+                     SMOIS    = dict(name='aSM', units='m^3/m^3'), # absolute soil moisture
+                     SMCREL   = dict(name='rSM', units='')) # relative soil moisture
+    self.vars = self.atts.keys()    
+    self.climfile = 'wrflsm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
+    self.tsfile = 'wrflsm_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
+# radiation variables
+class Rad(FileType):
+  ''' Variables and attributes of the radiation files. '''
+  def __init__(self):
+    self.name = 'rad'
+    self.atts = dict() # currently empty
+    self.vars = self.atts.keys()    
+    self.climfile = 'wrfrad_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
+    self.tsfile = 'wrfrad_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
+# extreme value variables
+class Xtrm(FileType):
+  ''' Variables and attributes of the extreme value files. '''
+  def __init__(self):
+    self.name = 'xtrm'
+    self.atts = dict(#T2MEAN        = dict(name='Tmean', units='K'),  # daily mean Temperature (at 2m)
+                     T2MEAN        = dict(name='Tmean', units='K'),  # daily mean Temperature (at 2m)
+                     T2MIN         = dict(name='Tmin', units='K'),   # daily minimum Temperature (at 2m)
+                     T2MAX         = dict(name='Tmax', units='K'),   # daily maximum Temperature (at 2m)
+                     T2STD         = dict(name='Tstd', units='K'),   # daily Temperature standard deviation (at 2m)
+                     SummerDays = dict(name='sumfrq', units='', atts=dict(long_name='Fraction of Summer Days (>25C)')),
+                     FrostDays  = dict(name='frzfrq', units='', atts=dict(long_name='Fraction of Frost Days (< 0C)')),
+                     SKINTEMPMEAN  = dict(name='TSmean', units='K'),  # daily mean Skin Temperature
+                     Ts            = dict(name='TSmean', units='K'),  # daily mean Skin Temperature
+                     #SKINTEMPMEAN  = dict(name='Ts', units='K'),  # daily mean Skin Temperature
+                     SKINTEMPMIN   = dict(name='TSmin', units='K'),   # daily minimum Skin Temperature
+                     SKINTEMPMAX   = dict(name='TSmax', units='K'),   # daily maximum Skin Temperature
+                     SKINTEMPSTD   = dict(name='TSstd', units='K'),   # daily Skin Temperature standard deviation                     
+                     #Q2MEAN        = dict(name='Qmean', units='Pa', scalefactor=Q), # daily mean Water Vapor Pressure (at 2m)
+                     Q2MEAN        = dict(name='Q2', units='Pa', scalefactor=Q), # daily mean Water Vapor Pressure (at 2m)
+                     Q2MIN         = dict(name='Qmin', units='Pa', scalefactor=Q),  # daily minimum Water Vapor Pressure (at 2m)
+                     Q2MAX         = dict(name='Qmax', units='Pa', scalefactor=Q),  # daily maximum Water Vapor Pressure (at 2m)
+                     Q2STD         = dict(name='Qstd', units='Pa', scalefactor=Q),  # daily Water Vapor Pressure standard deviation (at 2m)
+                     #SPDUV10MEAN   = dict(name='U10mean', units='m/s'), # daily mean Wind Speed (at 10m)
+                     SPDUV10MEAN   = dict(name='U10', units='m/s'), # daily mean Wind Speed (at 10m)
+                     SPDUV10MAX    = dict(name='Umax', units='m/s'),  # daily maximum Wind Speed (at 10m)
+                     SPDUV10STD    = dict(name='Ustd', units='m/s'),  # daily Wind Speed standard deviation (at 10m)
+                     #U10MEAN       = dict(name='u10mean', units='m/s'), # daily mean Westerly Wind (at 10m)
+                     #V10MEAN       = dict(name='v10mean', units='m/s'), # daily mean Southerly Wind (at 10m)
+                     U10MEAN       = dict(name='u10', units='m/s'), # daily mean Westerly Wind (at 10m)
+                     V10MEAN       = dict(name='v10', units='m/s'), # daily mean Southerly Wind (at 10m)
+                     #RAINMEAN      = dict(name='precipmean', units='kg/m^2/s'), # daily mean precipitation rate
+                     RAINMEAN      = dict(name='precip', units='kg/m^2/s'), # daily mean precipitation rate
+                     RAINMAX       = dict(name='precipmax', units='kg/m^2/s'), # daily maximum precipitation rate
+                     RAINSTD       = dict(name='precipstd', units='kg/m^2/s'), # daily precip standard deviation                     
+                     #RAINCVMEAN    = dict(name='preccumean', units='kg/m^2/s'), # daily mean convective precipitation rate
+                     RAINCVMEAN    = dict(name='preccu', units='kg/m^2/s'), # daily mean convective precipitation rate
+                     RAINCVMAX     = dict(name='preccumax', units='kg/m^2/s'), # daily maximum convective precipitation rate
+                     RAINCVSTD     = dict(name='preccustd', units='kg/m^2/s'), # daily convective precip standard deviation
+                     #RAINNCVMEAN   = dict(name='precncmean', units='kg/m^2/s'), # daily mean grid-scale precipitation rate
+                     RAINNCVMEAN   = dict(name='precnc', units='kg/m^2/s'), # daily mean grid-scale precipitation rate
+                     RAINNCVMAX    = dict(name='precncmax', units='kg/m^2/s'), # daily maximum grid-scale precipitation rate
+                     RAINNCVSTD    = dict(name='precncstd', units='kg/m^2/s'), # daily grid-scale precip standard deviation
+                     WetDays       = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
+                     MaxRAINMEAN   = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
+                     MaxRAINCVMEAN = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # maximum daily convective precip
+                     MaxPrecip     = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
+                     MaxPreccu     = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # for short-term consistency                     
+                     MaxPrecnc     = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # for short-term consistency
+                     MaxRAINCVMAX  = dict(name='MaxPreccu_1h', units='kg/m^2/s'), # maximum hourly convective precip                    
+                     MaxRAINNCVMAX = dict(name='MaxPrecnc_1h', units='kg/m^2/s'), # maximum hourly non-convective precip
+                     MaxPreccumax  = dict(name='MaxPreccu_1h', units='kg/m^2/s'), # maximum hourly convective precip                    
+                     MaxPrecncmax  = dict(name='MaxPrecnc_1h', units='kg/m^2/s'),) # maximum hourly non-convective precip
+    self.vars = self.atts.keys()    
+    self.climfile = 'wrfxtrm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
+    self.tsfile = 'wrfxtrm_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
+# variables on selected pressure levels: 850 hPa, 700 hPa, 500 hPa, 250 hPa, 100 hPa
+class Plev3D(FileType):
+  ''' Variables and attributes of the pressure level files. '''
+  def __init__(self):
+    self.name = 'plev3d'
+    self.atts = dict(T_PL      = dict(name='T',  units='K',   fillValue=-999, atts=dict(long_name='Temperature')), # Temperature
+                     TD_PL     = dict(name='Td', units='K',   fillValue=-999, atts=dict(long_name='Dew-point Temperature')), # Dew-point Temperature
+                     RH_PL     = dict(name='RH', units='\%',  fillValue=-999, atts=dict(long_name='Relative Humidity')), # Relative Humidity
+                     GHT_PL    = dict(name='Z',  units='m',   fillValue=-999, atts=dict(long_name='Geopotential Height ')), # Geopotential Height 
+                     S_PL      = dict(name='U',  units='m/s', fillValue=-999, atts=dict(long_name='Absolute Wind Speed')), # Wind Speed
+                     U_PL      = dict(name='u',  units='m/s', fillValue=-999, atts=dict(long_name='Zonal Wind Speed')), # Zonal Wind Speed
+                     V_PL      = dict(name='v',  units='m/s', fillValue=-999, atts=dict(long_name='Meridional Wind Speed')), # Meridional Wind Speed
+                     WaterFlux_U      = dict(name='qwu',  units='kg/m^2/s', fillValue=-999, atts=dict(ong_name='Zonal Water Vapor Flux')), # zonal water (vapor) flux
+                     WaterFlux_V      = dict(name='qwv',  units='kg/m^2/s', fillValue=-999, atts=dict(ong_name='Meridional Water Vapor Flux')), # meridional water (vapor) flux
+                     WaterTransport_U = dict(name='cqwu', units='kg/m/s',   fillValue=-999, atts=dict(ong_name='column-integrated Zonal Water Vapor Transport')), # column-integrated zonal water (vapor) transport
+                     WaterTransport_V = dict(name='cqwv', units='kg/m/s',   fillValue=-999, atts=dict(ong_name='column-integrated Meridional Water Vapor Transport')), # column-integrated meridional water (vapor) transport
+                     ColumnWater      = dict(name='cqw',  units='kg/m^2',   fillValue=-999, atts=dict(ong_name='Column-integrated Water Vapor Content')), # column-integrated water (vapor) content
+                     HeatFlux_U       = dict(name='qhu',  units='J/m^2/s',  fillValue=-999, atts=dict(ong_name='Zonal Heat Flux')), # zonal heat flux
+                     HeatFlux_V       = dict(name='qhv',  units='J/m^2/s',  fillValue=-999, atts=dict(ong_name='Meridional Heat Flux')), # meridional heat flux
+                     HeatTransport_U  = dict(name='cqhu', units='J/m/s',    fillValue=-999, atts=dict(ong_name='Column-integrated Zonal Heat Transport')), # column-integrated zonal heat transport
+                     HeatTransport_V  = dict(name='cqhv', units='J/m/s',    fillValue=-999, atts=dict(ong_name='Column-integrated Meridional Heat Transport')), # column-integrated meridional heat transport
+                     ColumnHeat       = dict(name='cqh',  units='J/m^2',    fillValue=-999, atts=dict(ong_name='Column-integrated Heat Content')), # column-integrated heat content
+                     Vorticity        = dict(name='zeta', units='1/s',      fillValue=-999, atts=dict(ong_name='Relative Vorticity')), # (relative) Vorticity
+                     P_PL      = dict(name='p', units='Pa', atts=dict(long_name='Pressure')))  # Pressure
+    self.vars = self.atts.keys()    
+    self.climfile = 'wrfplev3d_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
+    self.tsfile = 'wrfplev3d_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
+
+# axes (don't have their own file)
+class Axes(FileType):
+  ''' A mock-filetype for axes. '''
+  def __init__(self):
+    self.name = 'axes'
+    self.atts = dict(time        = dict(name='time', units='month'), # time coordinate
+                     #Time        = dict(name='Time', units='day'), # original WRF time coordinate
+                     # N.B.: the time coordinate is only used for the monthly time-series data, not the LTM
+                     #       the time offset is chose such that 1979 begins with the origin (time=0)
+                     west_east   = dict(name='x', units='m'), # projected west-east coordinate
+                     south_north = dict(name='y', units='m'), # projected south-north coordinate
+                     x           = dict(name='x', units='m'), # projected west-east coordinate
+                     y           = dict(name='y', units='m'), # projected south-north coordinate
+                     soil_layers_stag = dict(name='i_s', units=''), # soil layer coordinate
+                     num_press_levels_stag = dict(name='i_p', units=''), # pressure coordinate
+                     station     = dict(name='station', units='#') ) # station axis for station data
+    self.vars = self.atts.keys()
+    self.climfile = None
+    self.tsfile = None
+
+# data source/location
+fileclasses = dict(const=Const(), srfc=Srfc(), hydro=Hydro(), lsm=LSM(), rad=Rad(), xtrm=Xtrm(), plev3d=Plev3D(), axes=Axes())
+root_folder = data_root + '/WRF/' # long-term mean folder
+outfolder = root_folder + 'wrfout/' # WRF output folder
+avgfolder = root_folder + 'wrfavg/' # long-term mean folder
+
+# add generic extremes to varatts dicts
+for fileclass in fileclasses.itervalues():
+  atts = dict()
+  for key,val in fileclass.atts.iteritems():
+#     if val['units'].lower() == 'k': 
+#     else: extrema = ('Max',) # precip et al. only has maxima
+    extrema = ('Max','Min') # only temperature has extreme minima
+    for x in extrema:
+      if key[:3] not in ('Max','Min'):
+        att = val.copy()
+        att['name'] = x+att['name'].title()
+        atts[x+key] = att
+        if fileclass.name in ('hydro','lsm'):
+          att = att.copy()
+          att['name'] = att['name']+'_5d'
+          atts[x+key+'_5d'] = att
+        if fileclass.name in ('xtrm',):
+          att = att.copy()
+          att['name'] = 'Tof'+att['name'][0].upper()+att['name'][1:]
+          #del att['units'] # just leave units as they are
+          att['units'] = 'min' # minutes since simulation start
+          atts['T'+key] = att
+  atts.update(fileclass.atts) # don't overwrite existing definitions
+  fileclass.atts = atts
+
 
 ## get WRF projection and grid definition 
 # N.B.: Unlike with observational datasets, model Meta-data depends on the experiment and has to be 
@@ -243,298 +540,6 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
   if not os.path.exists(folder): raise IOError, folder
   # return name and folder
   return folder, experiment, tuple(names), tuple(domains)
-  
-## variable attributes and name
-# convert water mass mixing ratio to water vapor partial pressure ( kg/kg -> Pa ) 
-Q = 96000.*28./18. # surface pressure * molecular weight ratio ( air / water )
-class FileType(object): pass # ''' Container class for all attributes of of the constants files. '''
-# auxiliary files with derived variables
-class Aux(FileType):
-  ''' Variables and attributes for auxiliary files. '''
-  def __init__(self):
-    self.name = 'aux'
-    self.atts = dict() # should be properly formatted already
-    self.vars = self.atts.keys()    
-    self.climfile = 'wrfaux_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
-    self.tsfile = 'wrfaux_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
-# constants
-class Const(FileType):
-  ''' Variables and attributes of the constants files. '''
-  def __init__(self):
-    self.name = 'const' 
-    self.atts = dict(HGT    = dict(name='zs', units='m'), # surface elevation
-                     XLONG  = dict(name='lon2D', units='deg E'), # geographic longitude field
-                     XLAT   = dict(name='lat2D', units='deg N'), # geographic latitude field
-                     SINALPHA = dict(name='sina', units=''), # sine of map rotation
-                     COSALPHA = dict(name='cosa', units='')) # cosine of map rotation                   
-    self.vars = self.atts.keys()    
-    self.climfile = None #'wrfconst_d{0:0=2d}{1:s}.nc' # the filename needs to be extended by (domain,'_'+grid)
-    self.tsfile = 'wrfconst_d{0:0=2d}.nc' # the filename needs to be extended by (domain,)
-# surface variables
-class Srfc(FileType):
-  ''' Variables and attributes of the surface files. '''
-  def __init__(self):
-    self.name = 'srfc'
-    self.atts = dict(T2           = dict(name='T2', units='K'), # 2m Temperature
-                     TSK          = dict(name='Ts', units='K'), # Skin Temperature (SST)
-                     SummerDays   = dict(name='sumfrq', units='', atts=dict(long_name='Fraction of Summer Days (>25C)')),
-                     FrostDays    = dict(name='frzfrq', units='', atts=dict(long_name='Fraction of Frost Days (< 0C)')),
-                     Q2           = dict(name='q2', units='kg/kg'), # 2m water vapor mass mixing ratio
-                     RAIN         = dict(name='precip', units='kg/m^2/s'), # total precipitation rate (kg/m^2/s)
-                     RAINC        = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate (kg/m^2/s)
-                     RAINNC       = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate (kg/m^2/s)
-                     SNOW         = dict(name='snow', units='kg/m^2'), # snow water equivalent
-                     SNOWH        = dict(name='snowh', units='m'), # snow depth
-                     PSFC         = dict(name='ps', units='Pa'), # surface pressure
-                     HFX          = dict(name='hfx', units='W/m^2'), # surface sensible heat flux
-                     LH           = dict(name='lhfx', units='W/m^2'), # surface latent heat flux
-                     QFX          = dict(name='evap', units='kg/m^2/s'), # surface evaporation
-                     OLR          = dict(name='OLR', units='W/m^2'), # Outgoing Longwave Radiation
-                     GLW          = dict(name='GLW', units='W/m^2'), # Downwelling Longwave Radiation at Surface
-                     SWDOWN       = dict(name='SWD', units='W/m^2'), # Downwelling Shortwave Radiation at Surface
-                     SWNORM       = dict(name='SWN', units='W/m^2'), # Downwelling Normal Shortwave Radiation at Surface
-                     NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
-                     LiquidPrecip_SR = dict(name='liqprec_sr', units='kg/m^2/s'), # liquid precipitation rate
-                     SolidPrecip_SR  = dict(name='solprec_sr', units='kg/m^2/s'), # solid precipitation rate
-                     WaterVapor   = dict(name='Q2', units='Pa'), # water vapor partial pressure
-                     U10          = dict(name='u10', units='m/s'), # Westerly Wind (at 10m)
-                     V10          = dict(name='v10', units='m/s'), # Southerly Wind (at 10m)
-                     #WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
-                     #WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
-                     #WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)                     MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
-                     MaxACSNOW    = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # maximum daily precip
-                     MaxACSNOW_1d = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # maximum daily precip                             
-                     MaxACSNOW_5d = dict(name='MaxSolprec_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
-                     MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
-                     MaxRAINC     = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # maximum 6-hourly convective precip
-                     MaxRAINNC    = dict(name='MaxPrecnc_6h', units='kg/m^2/s'), # maximum 6-hourly non-convective precip
-                     MaxPrecip    = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # for short-term consistency                    
-                     MaxPreccu    = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # for short-term consistency
-                     MaxPrecnc    = dict(name='MaxPrecnc_6h', units='kg/m^2/s'), # for short-term consistency
-                     MaxRAIN_1d   = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
-                     MaxRAINC_1d  = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # maximum daily convective precip
-                     MaxRAINNC_1d = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # maximum daily non-convective precip
-                     MaxPrecip_1d = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
-                     MaxPreccu_1d = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # for short-term consistency
-                     MaxPrecnc_1d = dict(name='MaxPrecnc_1d', units='kg/m^2/s')) # for short-term consistency
-    for threshold in precip_thresholds: # add variables with different wet-day thresholds
-        suffix = '_{:03d}'.format(int(10*threshold))
-        self.atts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    
-        self.atts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day thre
-        self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s', 
-                                                atts=dict(fillValue=0), transform=nullNaN) # wet-day precipitation rate (kg/m^2/s)
-    self.vars = self.atts.keys()    
-    self.climfile = 'wrfsrfc_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
-    self.tsfile = 'wrfsrfc_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
-# hydro variables (mostly for HGS)
-class Hydro(FileType):
-  ''' Variables and attributes of the hydrological files. '''
-  def __init__(self):
-    self.name = 'hydro'
-    self.atts = dict(T2MEAN       = dict(name='Tmean', units='K'), # daily mean 2m Temperature
-                     RAIN         = dict(name='precip', units='kg/m^2/s'), # total precipitation rate
-                     RAINC        = dict(name='preccu', units='kg/m^2/s'), # convective precipitation rate
-                     RAINNC       = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate
-                     SFCEVP       = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
-                     ACSNOM       = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
-                     POTEVP       = dict(name='pet', units='kg/m^2/s'), # potential evapo-transpiration rate
-#                      POTEVP       = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
-                     pet          = dict(name='pet', units='kg/m^2/s', scalefactor=1./999.70), # correction for pre-processed PET
-                     NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
-                     LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
-                     SolidPrecip  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
-                     NetWaterFlux = dict(name='waterflx', units='kg/m^2/s'), # total water downward flux
-                     #WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
-                     #WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
-                     #WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)
-                     MaxNetWaterFlux = dict(name='MaxWaterFlx_1d', units='kg/m^2/s'), # for short-term consistency
-                     MaxPrecip    = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
-                     MaxPrecnc    = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # for short-term consistency
-                     MaxPreccu    = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # for short-term consistency
-                     MaxRAIN      = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
-                     MaxRAIN_5d   = dict(name='MaxPrecip_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
-                     MaxACSNOW    = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # maximum daily precip
-                     MaxACSNOW_5d = dict(name='MaxSolprec_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
-                     MaxRAINC     = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # maximum daily convective precip
-                     MaxRAINNC    = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # maximum daily non-convective precip
-                     #MaxACSNOW    = dict(name='MaxSnow_1d', units='kg/m^2/s'), # maximum daily snow fall
-                     #MaxACSNOW_5d = dict(name='MaxSnow_5d', units='kg/m^2/s'), # maximum pendat (5 day) snow
-                     MaxPrecip_1d = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
-                     MaxPreccu_1d = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # for short-term consistency
-                     MaxPrecnc_1d = dict(name='MaxPrecnc_1d', units='kg/m^2/s'),) # for short-term consistency                     
-    for threshold in precip_thresholds: # add variables with different wet-day thresholds
-        suffix = '_{:03d}'.format(int(10*threshold))
-        self.atts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    
-        self.atts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day threshold
-        self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s', 
-                                                atts=dict(fillValue=0), transform=nullNaN) # wet-day precipitation rate (kg/m^2/s)
-    self.vars = self.atts.keys()
-    self.climfile = 'wrfhydro_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
-    self.tsfile = 'wrfhydro_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
-# land surface model variables
-class LSM(FileType):
-  ''' Variables and attributes of the land surface files. '''
-  def __init__(self):
-    self.name = 'lsm'
-    self.atts = dict(ALBEDO = dict(name='A', units=''), # Albedo
-                     EMISS  = dict(name='e', units=''), # surface emissivity
-                     SNOWC  = dict(name='snwcvr', units=''), # snow cover (binary)
-                     ACSNOM = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
-                     ACSNOW = dict(name='snwacc', units='kg/m^2/s'), # snow accumulation rate
-                     SFCEVP = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
-                     POTEVP = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
-                     #pet    = dict(name='pet', units='kg/m^2/s', scalefactor=2./3.), # correction for pre-processed PET
-                     SFROFF = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
-                     UDROFF = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off
-                     Runoff = dict(name='runoff', units='kg/m^2/s'), # total surface and sub-surface run-off
-                     SMOIS  = dict(name='aSM', units='m^3/m^3'), # absolute soil moisture
-                     SMCREL = dict(name='rSM', units='')) # relative soil moisture
-    self.vars = self.atts.keys()    
-    self.climfile = 'wrflsm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
-    self.tsfile = 'wrflsm_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
-# radiation variables
-class Rad(FileType):
-  ''' Variables and attributes of the radiation files. '''
-  def __init__(self):
-    self.name = 'rad'
-    self.atts = dict() # currently empty
-    self.vars = self.atts.keys()    
-    self.climfile = 'wrfrad_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
-    self.tsfile = 'wrfrad_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
-# extreme value variables
-class Xtrm(FileType):
-  ''' Variables and attributes of the extreme value files. '''
-  def __init__(self):
-    self.name = 'xtrm'
-    self.atts = dict(#T2MEAN        = dict(name='Tmean', units='K'),  # daily mean Temperature (at 2m)
-                     T2MEAN        = dict(name='Tmean', units='K'),  # daily mean Temperature (at 2m)
-                     T2MIN         = dict(name='Tmin', units='K'),   # daily minimum Temperature (at 2m)
-                     T2MAX         = dict(name='Tmax', units='K'),   # daily maximum Temperature (at 2m)
-                     T2STD         = dict(name='Tstd', units='K'),   # daily Temperature standard deviation (at 2m)
-                     SummerDays = dict(name='sumfrq', units='', atts=dict(long_name='Fraction of Summer Days (>25C)')),
-                     FrostDays  = dict(name='frzfrq', units='', atts=dict(long_name='Fraction of Frost Days (< 0C)')),
-                     SKINTEMPMEAN  = dict(name='TSmean', units='K'),  # daily mean Skin Temperature
-                     Ts            = dict(name='TSmean', units='K'),  # daily mean Skin Temperature
-                     #SKINTEMPMEAN  = dict(name='Ts', units='K'),  # daily mean Skin Temperature
-                     SKINTEMPMIN   = dict(name='TSmin', units='K'),   # daily minimum Skin Temperature
-                     SKINTEMPMAX   = dict(name='TSmax', units='K'),   # daily maximum Skin Temperature
-                     SKINTEMPSTD   = dict(name='TSstd', units='K'),   # daily Skin Temperature standard deviation                     
-                     #Q2MEAN        = dict(name='Qmean', units='Pa', scalefactor=Q), # daily mean Water Vapor Pressure (at 2m)
-                     Q2MEAN        = dict(name='Q2', units='Pa', scalefactor=Q), # daily mean Water Vapor Pressure (at 2m)
-                     Q2MIN         = dict(name='Qmin', units='Pa', scalefactor=Q),  # daily minimum Water Vapor Pressure (at 2m)
-                     Q2MAX         = dict(name='Qmax', units='Pa', scalefactor=Q),  # daily maximum Water Vapor Pressure (at 2m)
-                     Q2STD         = dict(name='Qstd', units='Pa', scalefactor=Q),  # daily Water Vapor Pressure standard deviation (at 2m)
-                     #SPDUV10MEAN   = dict(name='U10mean', units='m/s'), # daily mean Wind Speed (at 10m)
-                     SPDUV10MEAN   = dict(name='U10', units='m/s'), # daily mean Wind Speed (at 10m)
-                     SPDUV10MAX    = dict(name='Umax', units='m/s'),  # daily maximum Wind Speed (at 10m)
-                     SPDUV10STD    = dict(name='Ustd', units='m/s'),  # daily Wind Speed standard deviation (at 10m)
-                     #U10MEAN       = dict(name='u10mean', units='m/s'), # daily mean Westerly Wind (at 10m)
-                     #V10MEAN       = dict(name='v10mean', units='m/s'), # daily mean Southerly Wind (at 10m)
-                     U10MEAN       = dict(name='u10', units='m/s'), # daily mean Westerly Wind (at 10m)
-                     V10MEAN       = dict(name='v10', units='m/s'), # daily mean Southerly Wind (at 10m)
-                     #RAINMEAN      = dict(name='precipmean', units='kg/m^2/s'), # daily mean precipitation rate
-                     RAINMEAN      = dict(name='precip', units='kg/m^2/s'), # daily mean precipitation rate
-                     RAINMAX       = dict(name='precipmax', units='kg/m^2/s'), # daily maximum precipitation rate
-                     RAINSTD       = dict(name='precipstd', units='kg/m^2/s'), # daily precip standard deviation                     
-                     #RAINCVMEAN    = dict(name='preccumean', units='kg/m^2/s'), # daily mean convective precipitation rate
-                     RAINCVMEAN    = dict(name='preccu', units='kg/m^2/s'), # daily mean convective precipitation rate
-                     RAINCVMAX     = dict(name='preccumax', units='kg/m^2/s'), # daily maximum convective precipitation rate
-                     RAINCVSTD     = dict(name='preccustd', units='kg/m^2/s'), # daily convective precip standard deviation
-                     #RAINNCVMEAN   = dict(name='precncmean', units='kg/m^2/s'), # daily mean grid-scale precipitation rate
-                     RAINNCVMEAN   = dict(name='precnc', units='kg/m^2/s'), # daily mean grid-scale precipitation rate
-                     RAINNCVMAX    = dict(name='precncmax', units='kg/m^2/s'), # daily maximum grid-scale precipitation rate
-                     RAINNCVSTD    = dict(name='precncstd', units='kg/m^2/s'), # daily grid-scale precip standard deviation
-                     WetDays       = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
-                     MaxRAINMEAN   = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
-                     MaxRAINCVMEAN = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # maximum daily convective precip
-                     MaxPrecip     = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
-                     MaxPreccu     = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # for short-term consistency                     
-                     MaxPrecnc     = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # for short-term consistency
-                     MaxRAINCVMAX  = dict(name='MaxPreccu_1h', units='kg/m^2/s'), # maximum hourly convective precip                    
-                     MaxRAINNCVMAX = dict(name='MaxPrecnc_1h', units='kg/m^2/s'), # maximum hourly non-convective precip
-                     MaxPreccumax  = dict(name='MaxPreccu_1h', units='kg/m^2/s'), # maximum hourly convective precip                    
-                     MaxPrecncmax  = dict(name='MaxPrecnc_1h', units='kg/m^2/s'),) # maximum hourly non-convective precip
-    self.vars = self.atts.keys()    
-    self.climfile = 'wrfxtrm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
-    self.tsfile = 'wrfxtrm_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
-# variables on selected pressure levels: 850 hPa, 700 hPa, 500 hPa, 250 hPa, 100 hPa
-class Plev3D(FileType):
-  ''' Variables and attributes of the pressure level files. '''
-  def __init__(self):
-    self.name = 'plev3d'
-    self.atts = dict(T_PL      = dict(name='T',  units='K',   fillValue=-999, atts=dict(long_name='Temperature')), # Temperature
-                     TD_PL     = dict(name='Td', units='K',   fillValue=-999, atts=dict(long_name='Dew-point Temperature')), # Dew-point Temperature
-                     RH_PL     = dict(name='RH', units='\%',  fillValue=-999, atts=dict(long_name='Relative Humidity')), # Relative Humidity
-                     GHT_PL    = dict(name='Z',  units='m',   fillValue=-999, atts=dict(long_name='Geopotential Height ')), # Geopotential Height 
-                     S_PL      = dict(name='U',  units='m/s', fillValue=-999, atts=dict(long_name='Absolute Wind Speed')), # Wind Speed
-                     U_PL      = dict(name='u',  units='m/s', fillValue=-999, atts=dict(long_name='Zonal Wind Speed')), # Zonal Wind Speed
-                     V_PL      = dict(name='v',  units='m/s', fillValue=-999, atts=dict(long_name='Meridional Wind Speed')), # Meridional Wind Speed
-                     WaterFlux_U      = dict(name='qwu',  units='kg/m^2/s', fillValue=-999, atts=dict(ong_name='Zonal Water Vapor Flux')), # zonal water (vapor) flux
-                     WaterFlux_V      = dict(name='qwv',  units='kg/m^2/s', fillValue=-999, atts=dict(ong_name='Meridional Water Vapor Flux')), # meridional water (vapor) flux
-                     WaterTransport_U = dict(name='cqwu', units='kg/m/s',   fillValue=-999, atts=dict(ong_name='column-integrated Zonal Water Vapor Transport')), # column-integrated zonal water (vapor) transport
-                     WaterTransport_V = dict(name='cqwv', units='kg/m/s',   fillValue=-999, atts=dict(ong_name='column-integrated Meridional Water Vapor Transport')), # column-integrated meridional water (vapor) transport
-                     ColumnWater      = dict(name='cqw',  units='kg/m^2',   fillValue=-999, atts=dict(ong_name='Column-integrated Water Vapor Content')), # column-integrated water (vapor) content
-                     HeatFlux_U       = dict(name='qhu',  units='J/m^2/s',  fillValue=-999, atts=dict(ong_name='Zonal Heat Flux')), # zonal heat flux
-                     HeatFlux_V       = dict(name='qhv',  units='J/m^2/s',  fillValue=-999, atts=dict(ong_name='Meridional Heat Flux')), # meridional heat flux
-                     HeatTransport_U  = dict(name='cqhu', units='J/m/s',    fillValue=-999, atts=dict(ong_name='Column-integrated Zonal Heat Transport')), # column-integrated zonal heat transport
-                     HeatTransport_V  = dict(name='cqhv', units='J/m/s',    fillValue=-999, atts=dict(ong_name='Column-integrated Meridional Heat Transport')), # column-integrated meridional heat transport
-                     ColumnHeat       = dict(name='cqh',  units='J/m^2',    fillValue=-999, atts=dict(ong_name='Column-integrated Heat Content')), # column-integrated heat content
-                     Vorticity        = dict(name='zeta', units='1/s',      fillValue=-999, atts=dict(ong_name='Relative Vorticity')), # (relative) Vorticity
-                     P_PL      = dict(name='p', units='Pa', atts=dict(long_name='Pressure')))  # Pressure
-    self.vars = self.atts.keys()    
-    self.climfile = 'wrfplev3d_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
-    self.tsfile = 'wrfplev3d_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
-
-# axes (don't have their own file)
-class Axes(FileType):
-  ''' A mock-filetype for axes. '''
-  def __init__(self):
-    self.name = 'axes'
-    self.atts = dict(time        = dict(name='time', units='month'), # time coordinate
-                     #Time        = dict(name='Time', units='day'), # original WRF time coordinate
-                     # N.B.: the time coordinate is only used for the monthly time-series data, not the LTM
-                     #       the time offset is chose such that 1979 begins with the origin (time=0)
-                     west_east   = dict(name='x', units='m'), # projected west-east coordinate
-                     south_north = dict(name='y', units='m'), # projected south-north coordinate
-                     x           = dict(name='x', units='m'), # projected west-east coordinate
-                     y           = dict(name='y', units='m'), # projected south-north coordinate
-                     soil_layers_stag = dict(name='i_s', units=''), # soil layer coordinate
-                     num_press_levels_stag = dict(name='i_p', units=''), # pressure coordinate
-                     station     = dict(name='station', units='#') ) # station axis for station data
-    self.vars = self.atts.keys()
-    self.climfile = None
-    self.tsfile = None
-
-# data source/location
-fileclasses = dict(const=Const(), srfc=Srfc(), hydro=Hydro(), lsm=LSM(), rad=Rad(), xtrm=Xtrm(), plev3d=Plev3D(), axes=Axes())
-root_folder = data_root + '/WRF/' # long-term mean folder
-outfolder = root_folder + 'wrfout/' # WRF output folder
-avgfolder = root_folder + 'wrfavg/' # long-term mean folder
-
-# add generic extremes to varatts dicts
-for fileclass in fileclasses.itervalues():
-  atts = dict()
-  for key,val in fileclass.atts.iteritems():
-#     if val['units'].lower() == 'k': 
-#     else: extrema = ('Max',) # precip et al. only has maxima
-    extrema = ('Max','Min') # only temperature has extreme minima
-    for x in extrema:
-      if key[:3] not in ('Max','Min'):
-        att = val.copy()
-        att['name'] = x+att['name'].title()
-        atts[x+key] = att
-        if fileclass.name in ('hydro','lsm'):
-          att = att.copy()
-          att['name'] = att['name']+'_5d'
-          atts[x+key+'_5d'] = att
-        if fileclass.name in ('xtrm',):
-          att = att.copy()
-          att['name'] = 'Tof'+att['name'][0].upper()+att['name'][1:]
-          #del att['units'] # just leave units as they are
-          att['units'] = 'min' # minutes since simulation start
-          atts['T'+key] = att
-  atts.update(fileclass.atts) # don't overwrite existing definitions
-  fileclass.atts = atts
 
 
 ## Functions to load different types of WRF datasets

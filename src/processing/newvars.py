@@ -71,13 +71,7 @@ def computePotEvapPM(dataset):
       https://en.wikipedia.org/wiki/Penman%E2%80%93Monteith_equation,
       http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
   '''
-  # get temperature
-  if 'Tmean' in dataset: T = dataset['Tmean'][:]
-  elif 'T2' in dataset: T = dataset['T2'][:]
-  else: raise VariableError, "Cannot determine 2m mean temperature for PET calculation."
   # get radiation adn heat flux
-  if 'hfx' in dataset: G= dataset['hfx'][:] # upward sensible heat flux
-  else: raise VariableError, "Cannot determine surface heat flux for PET calculation."
   if 'A' in dataset and 'SWD' in dataset and 'GLW' in dataset and 'e' in dataset:
     if 'TSmin' in dataset and 'TSmax' in dataset: Ts = dataset['TSmin'][:]; TSmax = dataset['TSmax'][:]
     elif 'TSmean' in dataset: Ts = dataset['TSmean'][:]; TSmax = None
@@ -85,6 +79,8 @@ def computePotEvapPM(dataset):
     else: raise VariableError, "Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation."
     Rn = radiation(dataset['A'][:],dataset['SWD'][:],dataset['GLW'][:],dataset['e'][:],Ts,TSmax) # downward total net radiation
   else: raise VariableError, "Cannot determine net radiation for PET calculation."
+  if 'grdflx' in dataset: G = dataset['grdflx'][:] # heat release by the soil
+  else: raise VariableError, "Cannot determine soil heat flux for PET calculation."
   # get wind speed
   if 'U2' in dataset: u2 = dataset['U2'][:]
   elif 'U10' in dataset: u2 = wind(dataset['U10'][:], z=10)
@@ -94,18 +90,22 @@ def computePotEvapPM(dataset):
   else: raise VariableError, "Cannot determine surface air pressure for PET calculation."
   g = gamma(p) # psychrometric constant (pressure-dependent)
   if 'Q2' in dataset: ea = dataset['Q2'][:]
-  elif 'q' in dataset: ea = dataset['q2'][:] * dataset['ps'][:] * 28.96 / 18.02
+  elif 'q2' in dataset: ea = dataset['q2'][:] * dataset['ps'][:] * 28.96 / 18.02
   else: raise VariableError, "Cannot determine 2m water vapor pressure for PET calculation."
+  # get temperature
+  if 'Tmean' in dataset: T = dataset['Tmean'][:]
+  elif 'T2' in dataset: T = dataset['T2'][:]
+  else: raise VariableError, "Cannot determine 2m mean temperature for PET calculation."
   # get saturation water vapor
   if 'Tmin' in dataset and 'Tmax' in dataset: es = e_sat(dataset['Tmin'][:],dataset['Tmax'][:])
-#   else: Es = e_sat(T) # backup, but not very accurate
+  # else: Es = e_sat(T) # backup, but not very accurate
   else: raise VariableError, "'Tmin' and 'Tmax' are required to compute saturation water vapor pressure for PET calculation."
   D = Delta(T) # slope of saturation vapor pressure w.r.t. temperature
   # compute potential evapotranspiration according to Penman-Monteith method 
   # (http://www.fao.org/docrep/x0490e/x0490e06.htm#fao%20penman%20monteith%20equation)
-  data = evaluate('( 0.0352512 * D * (Rn - G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
+  data = evaluate('( 0.0352512 * D * (Rn + G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
-  var = Variable(data=data, name='pet_pm', units='kg/m^2/s', axes=dataset['ps'].axes)
+  var = Variable(data=data, name='pet', units='kg/m^2/s', axes=dataset['ps'].axes)
   assert var.units == dataset['waterflx'].units, var
   # return new variable
   return var
