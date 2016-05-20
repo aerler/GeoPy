@@ -196,7 +196,7 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
   
   # parse export options
   expargs = expargs.copy() # first copy, then modify...
-  lm3 = expargs.pop('lm3') # convert kg/m^2 to m^3 (water flux)
+  lm3 = expargs.pop('lm3') # convert kg/m^2/s to m^3/m^2/s (water flux)
   expformat = expargs.pop('format') # needed to get FileFormat object
   varlist = expargs.pop('varlist') # this handled outside of export
   # initialize FileFormat class instance
@@ -258,8 +258,8 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     if lm3:
       for var in sink:
         if var.units == 'kg/m^2/s':
-          var /= 1000. # divide to get m^3/s
-          var.units = 'm^3/s' # update units
+          var /= 1000. # divide to get m^3/m^2/s
+          var.units = 'm^3/m^2/s' # update units
     
     # print dataset
     if not lparallel and ldebug:
@@ -300,7 +300,6 @@ if __name__ == '__main__':
   else: loverwrite = ldebug # False means only update old files
   
   ## define settings
-  lbatch = False
   if lbatch:
     # load YAML configuration
     config = loadYAML('export.yaml', lfeedback=True)
@@ -328,7 +327,7 @@ if __name__ == '__main__':
     grids = config['grids']
     # target data specs
     export_arguments = config['export_parameters'] # this is actually a larger data structure
-    lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/s    
+    lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/m^2/s    
   else:
     # settings for testing and debugging
     NP = 2 ; ldebug = False # for quick computations
@@ -382,9 +381,9 @@ if __name__ == '__main__':
 #         folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/{{3:s}}/'.format(os.getenv('DATA_ROOT', None)),
 #         prefix = '{0:s}_{1:s}_{2:s}_{3:s}', # argument order: project/grid/experiment/period/
 #         format = 'ASCII_raster', # formats to export to
-#         lm3 = True) # convert water flux from kg/m^2/s to m^3/s
+#         lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
         format = 'NetCDF',
-        lm3 = False) # convert water flux from kg/m^2/s to m^3/s
+        lm3 = False) # convert water flux from kg/m^2/s to m^3/m^2/s
   
   ## process arguments    
   if isinstance(periods, (np.integer,int)): periods = [periods]
@@ -410,7 +409,7 @@ if __name__ == '__main__':
   print('To File Format {:s}'.format(export_arguments['format']))
   print('\n Project Designation: {:s}'.format(export_arguments['project']))
   print('Export Variable List: {:s}'.format(printList(export_arguments['varlist'])))
-  if export_arguments['lm3']: '\n Converting kg/m^2/s (mm/s) into m^3/s'
+  if export_arguments['lm3']: '\n Converting kg/m^2/s (mm/s) into m^3/m^2/s (m/s)'
   print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
   
   # check formats (will be iterated over in export function, hence not part of task list)
