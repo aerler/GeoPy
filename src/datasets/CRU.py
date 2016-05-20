@@ -29,7 +29,7 @@ size = (720, 360) # (x,y) map size of CRU grid
 # make GridDefinition instance
 CRU_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotransform, size=size)
 
-# variable attributes and name
+# variable attributes and names (only applied to original time-series!)
 varatts = dict(tmp = dict(name='T2', units='K', offset=273.15), # 2m average temperature
                tmn = dict(name='Tmin', units='K', offset=273.15), # 2m minimum temperature
                tmx = dict(name='Tmax', units='K', offset=273.15), # 2m maximum temperature

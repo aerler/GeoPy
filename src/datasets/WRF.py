@@ -255,11 +255,11 @@ class Xtrm(FileType):
                      SKINTEMPMIN   = dict(name='TSmin', units='K'),   # daily minimum Skin Temperature
                      SKINTEMPMAX   = dict(name='TSmax', units='K'),   # daily maximum Skin Temperature
                      SKINTEMPSTD   = dict(name='TSstd', units='K'),   # daily Skin Temperature standard deviation                     
-                     #Q2MEAN        = dict(name='Qmean', units='Pa', scalefactor=Q), # daily mean Water Vapor Pressure (at 2m)
-                     Q2MEAN        = dict(name='Q2', units='Pa', scalefactor=Q), # daily mean Water Vapor Pressure (at 2m)
-                     Q2MIN         = dict(name='Qmin', units='Pa', scalefactor=Q),  # daily minimum Water Vapor Pressure (at 2m)
-                     Q2MAX         = dict(name='Qmax', units='Pa', scalefactor=Q),  # daily maximum Water Vapor Pressure (at 2m)
-                     Q2STD         = dict(name='Qstd', units='Pa', scalefactor=Q),  # daily Water Vapor Pressure standard deviation (at 2m)
+                     Q2MEAN        = dict(name='qmean', units='kg/kg', scalefactor=1), # daily mean Water Vapor Mixing Ratio (at 2m)
+                     Q2            = dict(name='qmean', units='kg/kg', scalefactor=1./Q), # daily mean Water Vapor Mixing Ratio (at 2m)
+                     Q2MIN         = dict(name='qmin', units='kg/kg', scalefactor=1),  # daily minimum Water Vapor Mixing Ratio (at 2m)
+                     Q2MAX         = dict(name='qmax', units='kg/kg', scalefactor=1),  # daily maximum Water Vapor Mixing Ratio (at 2m)
+                     Q2STD         = dict(name='qstd', units='kg/kg', scalefactor=1),  # daily Water Vapor Mixing Ratio standard deviation (at 2m)
                      #SPDUV10MEAN   = dict(name='U10mean', units='m/s'), # daily mean Wind Speed (at 10m)
                      SPDUV10MEAN   = dict(name='U10', units='m/s'), # daily mean Wind Speed (at 10m)
                      SPDUV10MAX    = dict(name='Umax', units='m/s'),  # daily maximum Wind Speed (at 10m)
