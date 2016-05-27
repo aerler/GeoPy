@@ -65,20 +65,37 @@ def e_sat(T, Tmax=None):
 
 ## functions to compute relevant variables (from a dataset)
 
+# compute net radiation (for PET)
+def computeNetRadiation(dataset, asVar=True):
+  ''' function to compute net radiation at surface for Penman-Monteith equation
+      (http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
+  '''
+  if 'A' in dataset and 'SWD' in dataset and 'GLW' in dataset and 'e' in dataset:
+    if 'TSmin' in dataset and 'TSmax' in dataset: Ts = dataset['TSmin'][:]; TSmax = dataset['TSmax'][:]
+    elif 'TSmean' in dataset: Ts = dataset['TSmean'][:]; TSmax = None
+    elif 'Ts' in dataset: Ts = dataset['Ts'][:]; TSmax = None
+    else: raise VariableError, "Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation."
+    data = radiation(dataset['A'][:],dataset['SWD'][:],dataset['GLW'][:],dataset['e'][:],Ts,TSmax) # downward total net radiation
+  else: raise VariableError, "Cannot determine net radiation for PET calculation."
+  # cast as Variable
+  if asVar:
+    var = Variable(data=data, name='pet', units='kg/m^2/s', axes=dataset['ps'].axes)
+    assert var.units == dataset['waterflx'].units, var
+  else: var = data
+  # return new variable
+  return var
+
 # compute potential evapo-transpiration
 def computePotEvapPM(dataset):
   ''' function to compute potential evapotranspiration (according to Penman-Monteith method:
       https://en.wikipedia.org/wiki/Penman%E2%80%93Monteith_equation,
       http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
   '''
-  # get radiation adn heat flux
-  if 'A' in dataset and 'SWD' in dataset and 'GLW' in dataset and 'e' in dataset:
-    if 'TSmin' in dataset and 'TSmax' in dataset: Ts = dataset['TSmin'][:]; TSmax = dataset['TSmax'][:]
-    elif 'TSmean' in dataset: Ts = dataset['TSmean'][:]; TSmax = None
-    elif 'Ts' in dataset: Ts = dataset['Ts'][:]; TSmax = None
-    else: raise VariableError, "Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation."
-    Rn = radiation(dataset['A'][:],dataset['SWD'][:],dataset['GLW'][:],dataset['e'][:],Ts,TSmax) # downward total net radiation
-  else: raise VariableError, "Cannot determine net radiation for PET calculation."
+  # get net radiation at surface
+  if 'netrad' in dataset: Rn = dataset['netrad'][:] # net radiation
+  if 'Rn' in dataset: Rn = dataset['Rn'][:] # alias
+  else: Rn = computeNetRadiation(dataset, asVar=False) # try to compute
+  # heat flux in and out of the ground
   if 'grdflx' in dataset: G = dataset['grdflx'][:] # heat release by the soil
   else: raise VariableError, "Cannot determine soil heat flux for PET calculation."
   # get wind speed

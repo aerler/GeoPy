@@ -242,6 +242,7 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
       else:
         if varname == 'waterflx': var = newvars.computeWaterFlux(source)
         elif varname == 'liqwatflx': var = newvars.computeLiquidWaterFlux(source)
+        elif varname == 'netrad': var = newvars.computeNetRadiation(source, asVar=True)
         elif varname == 'pet' or varname == 'pet_pm':
           var = newvars.computePotEvapPM(source) # default
         elif varname == 'pet_th': var = None # skip for now
@@ -337,7 +338,7 @@ if __name__ == '__main__':
     loverwrite = True
 #     varlist = None
     load_list = ['waterflx','liqprec','solprec','precip','evap','snwmlt','lat2D','lon2D','zs']
-    load_list += ['grdflx','A','SWD','e','GLW','ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # PET stuff
+    load_list += ['grdflx','A','SWD','e','GLW','ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax','netrad'] # PET stuff
     periods = []
     periods += [15]
 #     periods += [30]
@@ -377,7 +378,7 @@ if __name__ == '__main__':
     ## export parameters
     export_arguments = dict(
         project = 'GRW', # project designation  
-        varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','pet'], # varlist for export                         
+        varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','netrad','pet'], # varlist for export                         
 #         folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/{{3:s}}/'.format(os.getenv('DATA_ROOT', None)),
 #         prefix = '{0:s}_{1:s}_{2:s}_{3:s}', # argument order: project/grid/experiment/period/
 #         format = 'ASCII_raster', # formats to export to
