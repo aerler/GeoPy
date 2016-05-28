@@ -971,13 +971,13 @@ if __name__ == '__main__':
 #   mode = 'test_ensemble'
 #  mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-  mode = 'test_point_ensemble'
-#   mode = 'pickle_grid' 
+#  mode = 'test_point_ensemble'
+  mode = 'pickle_grid' 
   pntset = 'shpavg'
 #   pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
-  grids = ['glb1','arb1', 'arb2', 'arb3']; regions = ['GreatLakes']+['WesternCanada']*3; domains = [1,2]
-  experiments = ['g-ctrl','rrtmg', 'ctrl', 'new']
+  grids = ['glb1-90km','glb1','arb1', 'arb2', 'arb3']; regions = ['GreatLakes']*2+['WesternCanada']*3; domains = [(1,)]+[(1,2)]*4
+  experiments = ['g3-ctrl','g-ctrl','rrtmg', 'ctrl', 'new']
 #   grids = ['col1','col2','coast1']; experiments = ['columbia','max-3km','coast']; domains = [1,2,3]   
 #   grids = ['grb1']; experiments = ['']; domains = [1,2]
 #   grids = ['wc2']; experiments = ['erai-wc2-2013']; domains = [1,2]
@@ -990,9 +990,9 @@ if __name__ == '__main__':
   # pickle grid definition
   if mode == 'pickle_grid':
     
-    for region,grid in zip(regions,grids):
+    for region,grid,doms in zip(regions,grids,domains):
       
-      for domain in domains:
+      for domain in doms:
         
         print('')
         res = 'd{0:02d}'.format(domain) # for compatibility with dataset.common
