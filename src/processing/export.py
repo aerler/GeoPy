@@ -235,6 +235,9 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     addGDALtoDataset(dataset=sink, griddef=source.griddef)
     assert sink.gdal, sink
     
+    # N.B.: data are not loaded immediately but on demand; this way I/O and computing are further
+    #       disentangled and not all variables are always needed
+    
     # Compute intermediate variables, if necessary
     for varname in varlist:
       if varname in source:
@@ -331,14 +334,14 @@ if __name__ == '__main__':
     lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/m^2/s    
   else:
     # settings for testing and debugging
-    NP = 2 ; ldebug = False # for quick computations
+    NP = 1 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
-    modes = ('climatology',) # 'climatology','time-series'
-#     modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('climatology',) # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
 #     varlist = None
     load_list = ['waterflx','liqprec','solprec','precip','evap','snwmlt','lat2D','lon2D','zs']
-    load_list += ['grdflx','A','SWD','e','GLW','ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax','netrad'] # PET stuff
+    load_list += ['grdflx','A','SWD','e','GLW','ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # PET stuff
     periods = []
     periods += [15]
 #     periods += [30]
@@ -358,7 +361,8 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-    WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+    WRF_experiments = ['erai-g']
+#     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
 #     WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100'][:1]
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-3km','max-3km']
@@ -372,8 +376,8 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
     # typically a specific grid is required
     grids = [] # list of grids to process
-#     grids += [None] # special keyword for native grid
-    grids += ['grw2']# small grid for HGS GRW project
+    grids += [None] # special keyword for native grid
+#     grids += ['grw2']# small grid for HGS GRW project
 #     grids += ['glb1_d02']# small grid for HGS GRW project
     ## export parameters
     export_arguments = dict(

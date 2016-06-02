@@ -178,7 +178,8 @@ class VarNC(Variable):
         if ncvar.shape[-1] != dtype.itemsize: raise AxisError, ncvar
         assert strlen == dtype.itemsize
       elif slices is not None: 
-        if not squeeze and ncvar.ndim != len(slices): raise AxisError, (slices,ncvar)
+        if not isinstance(slices, (list,tuple)): raise TypeError
+        elif not squeeze and ncvar.ndim != len(slices): raise AxisError, (slices,ncvar)
         elif squeeze and len([l for l in ncvar.shape if l > 1]) != len(slices): raise AxisError, (slices,ncvar)
       else:
         axshape = tuple(ax._len for ax in axes)
@@ -239,6 +240,11 @@ class VarNC(Variable):
         # figure out slices
         for i in xrange(self.ncvar.ndim):
           if self.ncvar.shape[i] == 1: slcs.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
+      # check for existing slicing directive
+      if self.slices:
+        assert isinstance(self.slices,(list,tuple)) and isinstance(slcs,list)
+        # substitute None-slices with the preset slicing directive
+        slcs = [sslc if oslc == slice(None) else oslc for oslc,sslc in zip(slcs,self.slices)]
       # finally, get data!
       data = self.ncvar.__getitem__(slcs) # exceptions handled by netcdf module
       if self.dtype is not None and not np.issubdtype(data.dtype,self.dtype):

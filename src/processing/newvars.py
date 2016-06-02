@@ -79,7 +79,7 @@ def computeNetRadiation(dataset, asVar=True):
   else: raise VariableError, "Cannot determine net radiation for PET calculation."
   # cast as Variable
   if asVar:
-    var = Variable(data=data, name='pet', units='kg/m^2/s', axes=dataset['ps'].axes)
+    var = Variable(data=data, name='netrad', units='kg/m^2/s', axes=dataset['SWD'].axes)
     assert var.units == dataset['waterflx'].units, var
   else: var = data
   # return new variable
