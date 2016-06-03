@@ -203,8 +203,8 @@ if __name__ == '__main__':
     grids = config['grids']
   else:
     # settings for testing and debugging
-#     NP = 1 ; ldebug = True # for quick computations
-    NP = 3 ; ldebug = False # just for tests
+    NP = 1 ; ldebug = True # for quick computations
+#     NP = 3 ; ldebug = False # just for tests
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
@@ -242,7 +242,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2050']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
-    WRF_experiments += ['g-ctrl']
+#     WRF_experiments += ['g-ensemble-2100']
 #     WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
 #     WRF_experiments += ['max-ens-2050','max-ens-2100']
 #     WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
