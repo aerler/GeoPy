@@ -648,8 +648,10 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         if self.projection.ExportToWkt() != projection: 
           raise GDALError, "Projection of Variable ({:s}) differs from projection of GDAL dataset ({:s}).".format(self.projection.ExportToWkt(),projection)        
         geotransform = dataset.GetGeoTransform()
+        if wrap360: # is we need to wrap/shift by 180 degrees, there is an offset
+          geotransform = list(geotransform); geotransform[0] += 180.
         lyf = False # whether or not y-flip is necessary 
-        if self.geotransform != geotransform:
+        if self.geotransform != tuple(geotransform):
           # check if upper/lower corner flipped
           geotransform = (geotransform[0],geotransform[1],geotransform[2],
                           geotransform[3] + self.mapSize[0]*geotransform[5], # shift North

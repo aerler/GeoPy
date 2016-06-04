@@ -203,8 +203,8 @@ if __name__ == '__main__':
     grids = config['grids']
   else:
     # settings for testing and debugging
-    NP = 1 ; ldebug = True # for quick computations
-#     NP = 3 ; ldebug = False # just for tests
+#     NP = 1 ; ldebug = True # for quick computations
+    NP = 1 ; ldebug = False # just for tests
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
@@ -220,16 +220,16 @@ if __name__ == '__main__':
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031']}
     datasets = []
-    lLTM = False # also regrid the long-term mean climatologies 
+    lLTM = True # also regrid the long-term mean climatologies 
 #     datasets += ['PRISM','GPCC','PCIC']; periods = None
 #     datasets += ['CFSR', 'NARR'] # CFSR_05 does not have precip
-#     datasets += ['GPCC']; resolutions = {'GPCC':['25']}
-#     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
+#     datasets += ['GPCC']; resolutions = {'GPCC':['025']}
+    datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
-#     CESM_experiments += ['Ctrl-1-2050']
+#     CESM_experiments += ['Ens','Ens-2050','Ens-2100']
 #     CESM_experiments += ['CESM','CESM-2050']
 #     CESM_experiments += ['Ctrl', 'Ens-A', 'Ens-B', 'Ens-C']
 #     CESM_experiments += ['Ctrl-2050', 'Ens-A-2050', 'Ens-B-2050', 'Ens-C-2050']
@@ -260,20 +260,20 @@ if __name__ == '__main__':
     # other WRF parameters 
 #     domains = 2 # domains to be processed
     domains = None # process all domains
-#     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-    WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
+#     WRF_filetypes = ('hydro','xtrm','srfc','lsm','aux') # filetypes to be processed
+#     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); periods = None
     # grid to project onto
     grids = dict()
 #     grids['grw1'] = None # smaller grid, ideal for testing
-    grids['grw2'] = None # very small grid, ideal for testing
+#     grids['grw2'] = None # very small grid, ideal for testing
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
-#     grids['glb1'] = ('d02',) # Marc's standard GRB inner domain
+#     grids['glb1'] = ('d01',) # Marc's standard GRB inner domain
 #     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids
-#     grids['cesm1x1'] = (None,) # CESM grid
+    grids['cesm1x1'] = (None,) # CESM grid
 #     grids['NARR'] = (None,) # NARR grid
 #     grids['CRU'] = (None,) # CRU grid
     

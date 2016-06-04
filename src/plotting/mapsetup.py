@@ -73,8 +73,9 @@ class MapSetup(object):
     if maskland: basemap.fillcontinents(color='white',lake_color='white') # mask land
     else: basemap.drawcountries(linewidth=0.5)
     # add general map stuff
+    basemap.drawcountries(linewidth=1., linestyle='solid', color='k', antialiased=1, ax=None, zorder=None)
     basemap.drawcoastlines(linewidth=0.5)
-    basemap.drawmapboundary(fill_color='k',linewidth=2)
+    basemap.drawmapboundary(fill_color='k',linewidth=1.)
         
       
   # mark stations

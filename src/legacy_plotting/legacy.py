@@ -87,7 +87,7 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
         ext = loadCVDP_Obs(name=exp, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
       axt = ext.title
     else: # all other uppercase names are CESM runs
-      from datasets.CESM import CESM_exps, loadCESM
+      from datasets.CESM import loadCESM
       exp = CESM_exps[exp]
       #print exp.name, exp.title
       ext = loadCESM(experiment=exp, period=prd, grid=grd, varlist=varlist, filetypes=filetypes, 
@@ -101,7 +101,8 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
     if isinstance(dom,(list,tuple)):
       if 0 == dom[0]:
         dom = dom[1:]
-        parent, tmp = loadDataset(exp.parent, prd, dom, grd, res, varlist=varlist, lbackground=False, lautoregrid=lautoregrid); del tmp    
+        parent, tmp = loadDataset(exp.parent, prd, dom, grd, res, varlist=varlist, lbackground=False, 
+                                  lautoregrid=lautoregrid, WRF_exps=WRF_exps, CESM_exps=CESM_exps); del tmp    
     if lWRFnative: grd = None
     ext = loadWRF(experiment=exp, period=prd, grid=grd, domains=dom, filetypes=filetypes, 
                   varlist=varlist, varatts=None, lautoregrid=lautoregrid, exps=WRF_exps)
@@ -199,7 +200,14 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
       else: vl.add(var)
     vl.update(('lon2D','lat2D','landmask','landfrac')) # landfrac is needed for CESM landmask
     varlists.append(vl)
-    
+
+  def addPeriodExt(exp, prd):
+    if exp[-5:] not in ('-2050','-2100'):
+      if prd[:5] in ('2045-','2050-'): newexp = exp + '-2050'
+      elif prd[:5] in ('2085-','2090-'): newexp = exp + '-2100' 
+      else: newexp = exp     
+    return newexp
+
   # resolve experiment list
   print("Loading Datasets:")
   dslist = []; axtitles = []
@@ -211,6 +219,7 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
       if len(dom) != len(exp): raise ValueError, 'Only one domain is is not supported for each experiment!'          
       ext = []; axt = []        
       for ex,dm in zip(exp,dom):
+        ex = addPeriodExt(ex, prd)
         et, at = loadDataset(ex, prd, dm, grd, res, filetypes=filetypes, varlist=vl, 
                              lbackground=False, lWRFnative=lWRFnative, lautoregrid=lautoregrid,
                              WRF_exps=WRF_exps, CESM_exps=CESM_exps)
@@ -224,6 +233,7 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
       ext = tuple(ext); axt = tuple(axt)
     else:
       print("  - " + exp)
+      exp = addPeriodExt(exp, prd)
       ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=vl, 
                              lbackground=lbackground, lWRFnative=lWRFnative, lautoregrid=lautoregrid,
                              WRF_exps=WRF_exps, CESM_exps=CESM_exps)

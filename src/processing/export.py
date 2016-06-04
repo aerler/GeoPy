@@ -246,6 +246,8 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
         if varname == 'waterflx': var = newvars.computeWaterFlux(source)
         elif varname == 'liqwatflx': var = newvars.computeLiquidWaterFlux(source)
         elif varname == 'netrad': var = newvars.computeNetRadiation(source, asVar=True)
+        elif varname == 'netrad_0': var = newvars.computeNetRadiation(source, asVar=True, lA=False, name='netrad_0')
+        elif varname == 'vapdef': var = newvars.computeVaporDeficit(source)
         elif varname == 'pet' or varname == 'pet_pm':
           var = newvars.computePotEvapPM(source) # default
         elif varname == 'pet_th': var = None # skip for now
@@ -334,10 +336,10 @@ if __name__ == '__main__':
     lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/m^2/s    
   else:
     # settings for testing and debugging
-    NP = 1 ; ldebug = False # for quick computations
+    NP = 2 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
-#     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology','time-series'
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
 #     varlist = None
     load_list = ['waterflx','liqprec','solprec','precip','evap','snwmlt','lat2D','lon2D','zs']
@@ -361,7 +363,7 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-    WRF_experiments = ['erai-g']
+    WRF_experiments = ['erai-g','erai-t']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
 #     WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100'][:1]
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']

@@ -53,12 +53,13 @@ def getExperimentList(experiments, project, dataset, lensembles=True):
   # load WRF experiments list
   project = 'projects' if not project else 'projects.{:s}'.format(project)
   mod = import_module('{:s}.{:s}_experiments'.format(project,dataset))
-  exps, enss = mod.experiments, mod.enss; del mod
   # expand WRF experiments
   if experiments is None: # do all (with or without ensembles)
-    if lensembles: experiments = [exp for exp in exps.itervalues()] 
+    exps, enss = mod.experiments, mod.enss; del mod # use list without shortcuts to avoid duplication
+    if lensembles: experiments = [exp for exp in exps.itervalues()]  
     else: experiments = [exp for exp in exps.itervalues() if exp.shortname not in enss] 
   else: 
+    exps, enss = mod.exps, mod.enss; del mod # use list with shortcuts added
     try: experiments = [exps[exp] for exp in experiments]
     except KeyError: # throw exception is experiment is not found
       raise KeyError, "{1:s} experiment '{0:s}' not found in {1:s} experiment list (loaded from '{2:s}').".format(exp,dataset,project)

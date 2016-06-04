@@ -434,6 +434,7 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
         if 'atm' not in tmp: tmp.append('atm')
       elif ft in ('lsm','snow'):
         if 'lnd' not in tmp: tmp.append('lnd')
+      elif ft in ('aux'): pass # currently not supported
 #       elif ft in (,):
 #         if 'atm' not in tmp: tmp.append('atm')
 #         if 'lnd' not in tmp: tmp.append('lnd')        
@@ -701,9 +702,9 @@ if __name__ == '__main__':
 #   mode = 'test_cvdp'
   mode = 'pickle_grid'
 #     mode = 'shift_lon'
-  experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
+#   experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #   experiments += ['Ctrl-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
-#   experiments = ('Ctrl-1',)
+  experiments = ('Ctrl-1',)
   periods = (15,)
   filetypes = ('atm',) # ['atm','lnd','ice']
   grids = ('cesm1x1',)*len(experiments) # grb1_d01
@@ -744,6 +745,7 @@ if __name__ == '__main__':
       griddef = loadPickledGridDef(grid, res=None, folder=grid_folder)
       print(griddef)
       print('')
+      print griddef.wrap360
       
   # load ensemble "time-series"
   elif mode == 'test_ensemble':

@@ -66,22 +66,42 @@ def e_sat(T, Tmax=None):
 ## functions to compute relevant variables (from a dataset)
 
 # compute net radiation (for PET)
-def computeNetRadiation(dataset, asVar=True):
+def computeNetRadiation(dataset, asVar=True, lA=True, name='netrad'):
   ''' function to compute net radiation at surface for Penman-Monteith equation
-      (http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
+      (http://www.fao.org/docrep/x0490e/x0490e07.htm#radiation)
   '''
-  if 'A' in dataset and 'SWD' in dataset and 'GLW' in dataset and 'e' in dataset:
+  if 'SWD' in dataset and 'GLW' in dataset and 'e' in dataset:
+    if not lA: A = 0.23 # reference Albedo for grass
+    elif lA and 'A' in dataset: A = dataset['A'][:]
+    else: raise VariableError, "Actual Albedo is not available for radiation calculation."
     if 'TSmin' in dataset and 'TSmax' in dataset: Ts = dataset['TSmin'][:]; TSmax = dataset['TSmax'][:]
     elif 'TSmean' in dataset: Ts = dataset['TSmean'][:]; TSmax = None
     elif 'Ts' in dataset: Ts = dataset['Ts'][:]; TSmax = None
     else: raise VariableError, "Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation."
-    data = radiation(dataset['A'][:],dataset['SWD'][:],dataset['GLW'][:],dataset['e'][:],Ts,TSmax) # downward total net radiation
-  else: raise VariableError, "Cannot determine net radiation for PET calculation."
+    data = radiation(A,dataset['SWD'][:],dataset['GLW'][:],dataset['e'][:],Ts,TSmax) # downward total net radiation
+  else: raise VariableError, "Cannot determine net radiation calculation."
   # cast as Variable
   if asVar:
-    var = Variable(data=data, name='netrad', units='kg/m^2/s', axes=dataset['SWD'].axes)
-    assert var.units == dataset['waterflx'].units, var
+    var = Variable(data=data, name=name, units='W/m^2', axes=dataset['SWD'].axes)
   else: var = data
+  # return new variable
+  return var
+
+# compute potential evapo-transpiration
+def computeVaporDeficit(dataset):
+  ''' function to compute water vapor deficit for Penman-Monteith PET
+      (http://www.fao.org/docrep/x0490e/x0490e07.htm#air%20humidity)
+  '''
+  if 'Q2' in dataset: ea = dataset['Q2'][:] # actual vapor pressure
+  elif 'q2' in dataset and 'ps' in dataset: # water vapor mixing ratio
+    ea = dataset['q2'][:] * dataset['ps'][:] * 28.96 / 18.02
+  else: raise VariableError, "Cannot determine 2m water vapor pressure for PET calculation."
+  # get saturation water vapor
+  if 'Tmin' in dataset and 'Tmax' in dataset: es = e_sat(dataset['Tmin'][:],dataset['Tmax'][:])
+  # else: Es = e_sat(T) # backup, but not very accurate
+  else: raise VariableError, "'Tmin' and 'Tmax' are required to compute saturation water vapor pressure for PET calculation."
+  var = Variable(data=es-ea, name='vapdef', units='kg/m^2/s', axes=dataset['Tmin'].axes)
+  assert var.units == dataset['waterflx'].units, var
   # return new variable
   return var
 
