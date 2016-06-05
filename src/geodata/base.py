@@ -731,14 +731,17 @@ class Variable(object):
           raise AxisError, "Time-axis has to start at a full year for keyword 'years'!"
         if lidx: raise ArgumentError, "Keyword 'years' only works with coordinate indexing, not direct indexing!"
         # convert years to time-axis coordinates
-        if '1979' in time.atts.long_name: offset = 1979
-        else: offset = 0
-        if isinstance(years,np.number): months = (years - offset)*12
-        elif isinstance(years,(list,tuple)): months = [(yr - offset)*12 for yr in years]
+        if isinstance(years,(int,float,np.integer,np.inexact)): 
+          months = years*12 # if just a number, assume slicing from origin 
+        elif isinstance(years,(list,tuple)): 
+          if '1979' in time.atts.long_name: offset = 1979 # convention...
+          else: offset = 0
+          months = [(yr - offset)*12 for yr in years]
+        else: raise NotImplementedError, years
         if isinstance(years,tuple): 
           if len(months) == 2: months = (months[0],months[1]-1)
           elif len(months) == 3: months = (months[0],months[1]-1,months[2]) # passed to np.linspace
-          else: raise NotImplementedError
+          else: raise NotImplementedError, years
         axes['time'] = months
       if self.hasAxis('year'):
         year = self.getAxis('year')
