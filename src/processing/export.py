@@ -336,10 +336,10 @@ if __name__ == '__main__':
     lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/m^2/s    
   else:
     # settings for testing and debugging
-    NP = 2 ; ldebug = False # for quick computations
+    NP = 3 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
-    modes = ('climatology',) # 'climatology','time-series'
-#     modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('climatology',) # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
 #     varlist = None
     load_list = ['waterflx','liqprec','solprec','precip','evap','snwmlt','lat2D','lon2D','zs']
@@ -363,9 +363,9 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-    WRF_experiments = ['erai-g','erai-t']
+#     WRF_experiments = ['erai-g','erai-t']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-#     WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100'][:1]
+    WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-3km','max-3km']
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']
@@ -384,7 +384,7 @@ if __name__ == '__main__':
     ## export parameters
     export_arguments = dict(
         project = 'GRW', # project designation  
-        varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','netrad','pet'], # varlist for export                         
+        varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','netrad','netrad_0','vapdef','pet'], # varlist for export                         
 #         folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/{{3:s}}/'.format(os.getenv('DATA_ROOT', None)),
 #         prefix = '{0:s}_{1:s}_{2:s}_{3:s}', # argument order: project/grid/experiment/period/
 #         format = 'ASCII_raster', # formats to export to

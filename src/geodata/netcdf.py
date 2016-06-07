@@ -187,7 +187,8 @@ class VarNC(Variable):
         #       is the Axis itself, not all class attributes are initialized yet, but self._len is!
         if ncvar.ndim != len(axes) or ncvar.shape != axshape:
           sqshape = tuple(axl for axl in ncvar.shape if axl > 1)
-          if len(sqshape) != len(axshape) or sqshape != axshape: raise AxisError, ncvar          
+          if len(sqshape) != len(axshape) or sqshape != axshape: 
+            raise AxisError, ncvar          
       # N.B.: slicing with index lists can change the shape
     else: ncatts = atts
     # check transform

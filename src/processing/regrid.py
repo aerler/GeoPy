@@ -204,10 +204,10 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 1 ; ldebug = False # just for tests
+    NP = 4 ; ldebug = False # just for tests
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = True
+    loverwrite = False
     varlist = None
 #     varlist = ['precip',]
     periods = []
@@ -239,10 +239,10 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only WesternCanada experiments
 #     WRF_experiments = None # use None to process all WRF experiments
     WRF_experiments = []
+#     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
 #     WRF_experiments += ['max-ctrl-2050']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
-#     WRF_experiments += ['g-ensemble-2100']
 #     WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
 #     WRF_experiments += ['max-ens-2050','max-ens-2100']
 #     WRF_experiments += ['max-1deg','max-1deg-2050','max-1deg-2100']
@@ -258,10 +258,10 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-#     domains = 2 # domains to be processed
-    domains = None # process all domains
-#     WRF_filetypes = ('hydro','xtrm','srfc','lsm','aux') # filetypes to be processed
-#     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
+    domains = 1 # domains to be processed
+#     domains = None # process all domains
+    WRF_filetypes = ('hydro','xtrm','srfc','lsm','aux') # filetypes to be processed
+#     WRF_filetypes = ('srfc',) # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); periods = None
     # grid to project onto
@@ -269,11 +269,13 @@ if __name__ == '__main__':
 #     grids['grw1'] = None # smaller grid, ideal for testing
 #     grids['grw2'] = None # very small grid, ideal for testing
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
-#     grids['glb1'] = ('d01',) # Marc's standard GRB inner domain
+#     grids['glb1'] = ('d01',) # Marc's standard GLB outer domain
+    grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
+#     grids['glb1-90km'] = ('d01',) # 90km GLB domain
 #     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids
-    grids['cesm1x1'] = (None,) # CESM grid
+#     grids['cesm1x1'] = (None,) # CESM grid
 #     grids['NARR'] = (None,) # NARR grid
 #     grids['CRU'] = (None,) # CRU grid
     
