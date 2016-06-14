@@ -10,7 +10,7 @@ Random utility functions...
 import numpy as np
 import scipy.linalg as la
 from utils.signalsmooth import smooth
-from collections import namedtuple
+import collections as col
 # internal imports
 from geodata.misc import ArgumentError, isEqual, AxisError
 
@@ -110,14 +110,30 @@ def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}'
   return string
 
 
-
+# wrapper for namedtuple that supports defaults
+def defaultNamedtuple(typename, field_names, defaults=None):
+  ''' wrapper for namedtuple that supports defaults; adapted from stackoverflow:
+      https://stackoverflow.com/questions/11351032/named-tuple-and-optional-keyword-arguments ''' 
+  T = col.namedtuple(typename, field_names) # make named tuple
+  T.__new__.__defaults__ = (None,) * len(T._fields) # set defaults to None
+  # add custom defaults
+  if defaults is not None:
+    if isinstance(defaults, col.Mapping):
+        prototype = T(**defaults)
+    elif isinstance(defaults, col.Iterable):
+        prototype = T(*defaults)
+    else: raise ArgumentError(str(defaults))
+    T.__new__.__defaults__ = tuple(prototype)
+  # return namedtuple with defaults
+  return T
+  
 # create a named tuple instance on the fly from dictionary
 def namedTuple(typename=None, field_names=None, verbose=False, rename=False, **kwargs):
   ''' a wrapper for namedtuple that can create the class on the fly from a dict '''
   if typename is None: typename = 'NamedTuple'
   if field_names is None: field_names = kwargs.keys()
   # create namedtuple class
-  NT = namedtuple(typename, field_names, verbose=verbose, rename=rename)
+  NT = col.namedtuple(typename, field_names, verbose=verbose, rename=rename)
   # create namedtuple instance and populate with values from kwargs
   nt = NT(**kwargs) 
   # return tuple instance 
