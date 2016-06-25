@@ -233,7 +233,25 @@ class Rad(FileType):
   ''' Variables and attributes of the radiation files. '''
   def __init__(self):
     self.name = 'rad'
-    self.atts = dict() # currently empty
+    self.atts = dict(# radiation at surface (=*B)
+                     ACSWUPB = dict(name='SWUPB', units='W/m^2'), # SW = short-wave
+                     ACSWDNB = dict(name='SWDNB', units='W/m^2'), # LW = long-wave
+                     ACLWUPB = dict(name='LWUPB', units='W/m^2'), # UP = up-welling
+                     ACLWDNB = dict(name='LWDNB', units='W/m^2'), # DN = down-welling
+                     # radiation at ToA (=*T)
+                     ACSWUPT = dict(name='SWUPT', units='W/m^2'), 
+                     ACSWDNT = dict(name='SWDNT', units='W/m^2'),
+                     ACLWUPT = dict(name='LWUPT', units='W/m^2'),
+                     ACLWDNT = dict(name='LWDNT', units='W/m^2'),
+                     # clear sky (=*C)
+                     ACSWUPBC = dict(name='SWUPBC', units='W/m^2'),
+                     ACSWDNBC = dict(name='SWDNBC', units='W/m^2'),
+                     ACLWUPBC = dict(name='LWUPBC', units='W/m^2'),
+                     ACLWDNBC = dict(name='LWDNBC', units='W/m^2'),
+                     ACSWUPTC = dict(name='SWUPTC', units='W/m^2'),
+                     ACSWDNTC = dict(name='SWDNTC', units='W/m^2'),
+                     ACLWUPTC = dict(name='LWUPTC', units='W/m^2'),
+                     ACLWDNTC = dict(name='LWDNTC', units='W/m^2'),                     )
     self.vars = self.atts.keys()    
     self.climfile = 'wrfrad_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfrad_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
