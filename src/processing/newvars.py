@@ -17,8 +17,8 @@ from utils.constants import sig
 
 ## helper functions
 
-# net radiation balance 
-def radiation(A, SW, LW, e, Ts, TSmax=None):
+# net radiation balance using black-body radiation from skin temperature
+def radiation_black(A, SW, LW, e, Ts, TSmax=None):
   ''' net radiation  [W/m^2] at the surface: downwelling long and short wave minus upwelling terrestrial radiation '''
   if TSmax is None:
     # using average skin temperature for terrestrial long wave emission
@@ -27,6 +27,12 @@ def radiation(A, SW, LW, e, Ts, TSmax=None):
   else:
     # using min/max skin temperature to account for nonlinearity
     return evaluate('( ( 1 - A ) * SW ) + ( LW * e ) - ( e * sig * ( Ts**4 + TSmax**4 ) / 2 )')
+
+# net radiation balance using accumulated quantities
+def radiation(SWDN, LWDN, SWUP, LWUP, ):
+  ''' net radiation  [W/m^2] at the surface: downwelling long and short wave minus upwelling '''
+  # using min/max skin temperature to account for nonlinearity
+  return evaluate('SWDN + LWDN - SWUP - LWUP')
 
 # 2m wind speed [m/s]
 def wind(u, z=10):
@@ -66,11 +72,13 @@ def e_sat(T, Tmax=None):
 ## functions to compute relevant variables (from a dataset)
 
 # compute net radiation (for PET)
-def computeNetRadiation(dataset, asVar=True, lA=True, name='netrad'):
+def computeNetRadiation(dataset, asVar=True, lA=True, lrad=True, name='netrad'):
   ''' function to compute net radiation at surface for Penman-Monteith equation
       (http://www.fao.org/docrep/x0490e/x0490e07.htm#radiation)
   '''
-  if 'SWD' in dataset and 'GLW' in dataset and 'e' in dataset:
+  if lrad and 'SWDNB' in dataset and 'LWDNB' in dataset and 'SWUPB' in dataset and 'LWUPB' in dataset:
+    data = radiation(dataset['SWDNB'][:],dataset['LWDNB'][:],dataset['SWUPB'][:],dataset['LWUPB'][:]) # downward total net radiation
+  elif 'SWD' in dataset and 'GLW' in dataset and 'e' in dataset:
     if not lA: A = 0.23 # reference Albedo for grass
     elif lA and 'A' in dataset: A = dataset['A'][:]
     else: raise VariableError, "Actual Albedo is not available for radiation calculation."
@@ -78,7 +86,7 @@ def computeNetRadiation(dataset, asVar=True, lA=True, name='netrad'):
     elif 'TSmean' in dataset: Ts = dataset['TSmean'][:]; TSmax = None
     elif 'Ts' in dataset: Ts = dataset['Ts'][:]; TSmax = None
     else: raise VariableError, "Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation."
-    data = radiation(A,dataset['SWD'][:],dataset['GLW'][:],dataset['e'][:],Ts,TSmax) # downward total net radiation
+    data = radiation_black(A,dataset['SWD'][:],dataset['GLW'][:],dataset['e'][:],Ts,TSmax) # downward total net radiation
   else: raise VariableError, "Cannot determine net radiation calculation."
   # cast as Variable
   if asVar:
