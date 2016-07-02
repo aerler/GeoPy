@@ -688,7 +688,7 @@ class DistVar(Variable):
       sz = samples.shape[-1] # all sample dimensions should be collapsed by now
       lns = bool(nsamples)
       if nsamples is None: nsamples = sz
-      if nsamples < 2: raise ValueError, nsamples
+      if nsamples < 2: raise ValueError, nsamples # check samples[:] as well!
       if nsamples > sz: raise ValueError, sz  
       ## add bootstrap axis and generate bootstrap samples
       if lbootstrap:

@@ -124,6 +124,13 @@ def defaultNamedtuple(typename, field_names, defaults=None):
         prototype = T(*defaults)
     else: raise ArgumentError(str(defaults))
     T.__new__.__defaults__ = tuple(prototype)
+#     # add self-referenc defaults
+#     if ref_prefix:
+#       l = len(ref_prefix)
+#       for field,value in T._asdict().iteritems():
+#         if isinstance(value,basestring) and value[:l] == ref_prefix:
+#           T.__dict__[field] = T.__dict__[value[l:]]
+#     # N.B.: this would have to go into the constructor in order to work...
   # return namedtuple with defaults
   return T
   
