@@ -175,7 +175,7 @@ class MyFigure(Figure):
       ax.updateAxes(mode='adjust')
         
   # add common/shared legend to a multi-panel plot
-  def addSharedLegend(self, plots=None, labels=None, fontsize=None, **kwargs):
+  def addSharedLegend(self, plots=None, labels=None, fontsize=None, hscl=1., hpad=0.005, **kwargs):
     ''' add a common/shared legend to a multi-panel plot '''
     # complete input
     if labels is None: labels = [plt.get_label() for plt in plots]
@@ -188,10 +188,10 @@ class MyFigure(Figure):
     if fontsize > 11: ncols = 2 if nlen == 4 else 3
     else: ncols = 3 if nlen == 6 else 4              
     # make room for legend
-    leghgt = np.ceil(float(nlen)/float(ncols)) * fontsize/300. + 0.003
-    ax = self.add_axes([0, 0, 1,leghgt]) # new axes to hold legend, with some attributes
+    leghgt = ( np.ceil(float(nlen)/float(ncols)) * fontsize/300.) * hscl
+    self.updateSubplots(mode='shift', bottom=leghgt+hpad) # shift bottom upwards (add height pad)
+    ax = self.add_axes([0, -0.005, 1,leghgt]) # new axes to hold legend, with some attributes
     ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
-    self.updateSubplots(mode='shift', bottom=leghgt) # shift bottom upwards
     # define legend parameters
     legargs = dict(loc=10, ncol=ncols, borderaxespad=0., fontsize=fontsize, frameon=True,
                    labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)

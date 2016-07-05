@@ -14,7 +14,7 @@ from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 from types import NoneType
 # internal imports
 from geodata.base import Variable
-from geodata.misc import ListError, ArgumentError, isEqual, VariableError, AxisError
+from geodata.misc import ListError, ArgumentError, isEqual, AxisError
 from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile, checkSample
 from collections import OrderedDict
 from utils.misc import binedges, expandArgumentList
@@ -189,7 +189,7 @@ class MyAxes(Axes):
 
   def bandPlot(self, upper=None, lower=None, varname=None, bins=None, support=None, lignore=False,   
                legend=None, llabel=False, labels=None, hline=None, vline=None, title=None,   
-               lrescale=False, scalefactor=1., offset=0., bootstrap_axis='bootstrap',     
+               lrescale=False, scalefactor=1., offset=0., bootstrap_axis='bootstrap', band_vars=None,  
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
                xlog=None, ylog=None, xlim=None, ylim=None, lsmooth=False, lperi=False, lprint=False, 
                expand_list=None, lproduct='inner', method='pdf', plotatts=None, **plotargs):
@@ -227,7 +227,7 @@ class MyAxes(Axes):
       self.variables[str(label)+'_bnd'] = (upvar,lowvar) # save band variables under special name
     # loop over variables and plot arguments
     for upvar,lowvar,plotarg,label in zip(upper,lower,plotargs,labels):
-      if upvar or lowvar:
+      if ( upvar or lowvar ) and ( band_vars is None or label in band_vars ):
         if upvar:
           varax = upvar.axes[0]
           assert lowvar is None or ( lowvar.hasAxis(varax.name) and lowvar.ndim == 1 )
@@ -292,7 +292,7 @@ class MyAxes(Axes):
     else: self.fill_between(x=axes, y1=lower, y2=upper, interpolate=True, **band_args) # interpolate=True
   
   def samplePlot(self, varlist, varname=None, bins=None, support=None, percentiles=(0.25,0.75),   
-                 sample_axis=None, lmedian=None, median_fmt='', lmean=True, mean_fmt='', 
+                 sample_axis=None, lmedian=None, median_fmt='', lmean=True, mean_fmt='', band_vars=None, 
                  bootstrap_axis=None, lrescale=False, scalefactor=1., offset=0., colors=None, color = None,
                  legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
                  flipxy=None, xlabel=True, ylabel=False, xticks=True, yticks=True, reset_color=None, 
@@ -377,7 +377,7 @@ class MyAxes(Axes):
         tmpplts = self.bandPlot(upper=uppers, lower=lowers, lignore=lignore, llabel=False, labels=None,
                                 xlabel=xlabel, ylabel=ylabel, xticks=xticks, yticks=yticks, 
                                 xlim=xlim, ylim=ylim, scalefactor=scalefactor, offset=offset,
-                                lrescale=lrescale, legend=False, 
+                                lrescale=lrescale, legend=False, band_vars=band_vars,
                                 flipxy=flipxy, reset_color=False, lsmooth=lsmoothBand, lprint=False, 
                                 where=where, alpha=bandalpha, edgecolor=edgecolor, colors=facecolor,
                                 expand_list=expand_list, lproduct=lproduct, plotatts=plotatts, **band_args)
@@ -387,7 +387,7 @@ class MyAxes(Axes):
   
   def bootPlot(self, varlist, varname=None, bins=None, support=None, method='pdf', percentiles=(0.25,0.75),   
                bootstrap_axis='bootstrap', lmedian=None, median_fmt='', lmean=False, mean_fmt='', 
-               lvar=False, lvarBand=False, lrescale=False, scalefactor=1., offset=0.,
+               lvar=False, lvarBand=False, band_vars=None, lrescale=False, scalefactor=1., offset=0.,
                legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
                flipxy=None, xlabel=True, ylabel=False, xticks=True, yticks=False, reset_color=None, 
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False,
@@ -440,8 +440,8 @@ class MyAxes(Axes):
                     labels=None, hline=None, vline=None, title=None, flipxy=flipxy, xlabel=False, 
                     ylabel=False, xticks=xticks, yticks=yticks, reset_color=False, xlog=xlog, ylog=ylog, 
                     xlim=xlim, ylim=ylim, lsmooth=lsmooth, lprint=False, lignore=lignore, plotatts=plotatts, 
-                    expand_list=expand_list, lproduct=lproduct, bandarg=bandarg, where=where, 
-                    bandalpha=bandalpha, edgecolor=edgecolor, facecolor=facecolor, **plotargs)
+                    expand_list=expand_list, lproduct=lproduct, bandarg=bandarg,  band_vars=band_vars, 
+                    where=where, bandalpha=bandalpha, edgecolor=edgecolor, facecolor=facecolor, **plotargs)
     # done! 
     return plts
   
