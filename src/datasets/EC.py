@@ -783,7 +783,7 @@ def test_lon(val,index,dataset,axis):
   ''' check if station is located within selected longitude band ''' 
   return val[0] <= dataset.stn_lon[index] <= val[1] 
 def test_cluster(val,index,dataset,axis, cluster_name='cluster_id', lcheckVar=True):
-  ''' check if station is located within selected longitude band '''
+  ''' check if station is member of a cluster '''
   if not dataset.hasVariable(cluster_name):
     if lcheckVar: raise DatasetError
     else: return True # most datasets don't have this field...
@@ -791,6 +791,13 @@ def test_cluster(val,index,dataset,axis, cluster_name='cluster_id', lcheckVar=Tr
     return dataset[cluster_name][index] == val
   elif isinstance(val, (tuple,list,np.ndarray)):
     return dataset[cluster_name][index] in val
+  else: ValueError, val
+def test_name(val,index,dataset,axis):
+  ''' check if station name is in provided list (val) '''
+  if isinstance(val, basestring): 
+    return dataset['station_name'][index].strip() == val
+  elif isinstance(val, (tuple,list)):
+    return dataset['station_name'][index].strip() in val
   else: ValueError, val
 # apply tests to list
 def apply_test_suite(tests, index, dataset, axis):
@@ -858,6 +865,11 @@ def selectStations(datasets, stnaxis='station', master=None, linplace=False, lal
       varname = cluster_name
       if ( not isinstance(val,(list,tuple,np.ndarray)) or not all(isInt(l) for l in val)) and not isInt(val): raise TypeError  
       tests.append(functools.partial(test_cluster, val, cluster_name=cluster_name, lcheckVar=lcheckVar))
+    elif key == 'name':
+      varname = 'station_name'
+      if not ( ( isinstance(val,(list,tuple)) and all(isinstance(v,basestring) for v in val) ) or 
+               isinstance(val,basestring) ): raise TypeError  
+      tests.append(functools.partial(test_name, val))
     else:
       raise NotImplementedError, "Unknown condition/test: '{:s}'".format(key)
     # record, which datasets have all variables 

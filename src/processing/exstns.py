@@ -228,12 +228,12 @@ if __name__ == '__main__':
 #     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
     CESM_filetypes = ['atm'] # ,'lnd'
     # WRF experiments (short or long name)
-    WRF_project = 'WesternCanada' # only WesternCanada experiments
+    WRF_project = 'GreatLakes' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['marc-g','marc-gg','marc-g-2050','marc-gg-2050']
 #     WRF_experiments += ['marc-m','marc-mm', 'marc-t','marc-m-2050','marc-mm-2050', 'marc-t-2050']
-#     WRF_experiments += ['erai']
-    WRF_experiments += ['ctrl-1','ctrl-2050','ctrl-2100',]
+    WRF_experiments += ['erai-g','erai-t']
+#     WRF_experiments += ['ctrl-1','ctrl-2050','ctrl-2100',]
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][:1]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
 #     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        

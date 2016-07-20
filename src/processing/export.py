@@ -249,6 +249,8 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
         elif varname == 'netrad_0': var = newvars.computeNetRadiation(source, asVar=True, lA=False, name='netrad_0')
         elif varname == 'netrad_bb': var = newvars.computeNetRadiation(source, asVar=True, lrad=False, name='netrad_bb')
         elif varname == 'vapdef': var = newvars.computeVaporDeficit(source)
+        elif varname == 'petrad': var = newvars.computeRadiationTerm(source, asVar=True)
+        elif varname == 'petwnd': var = newvars.computeWindTerm(source)
         elif varname == 'pet' or varname == 'pet_pm':
           var = newvars.computePotEvapPM(source) # default
         elif varname == 'pet_th': var = None # skip for now
