@@ -375,7 +375,7 @@ tmp = PlotAtts(name = r'$LW_{up}$', title = '(Residual) Upward LW Radiative Flux
 variablePlotatts['rfx'] = tmp
 
 ## Outgoing Longwave Radiation
-tmp = PlotAtts(name = r'OLR', title = 'Outgoing Longwave Radiation', 
+tmp = PlotAtts(name = 'OLR', title = 'Outgoing Longwave Radiation', 
                units = r'$W/m^2$', scalefactor = 1.)
 # add to collection
 variablePlotatts['OLR'] = tmp
@@ -385,6 +385,22 @@ tmp = PlotAtts(name = 'PET', title = 'Potential Evapo-Transpiration',
                units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
 # add to collection
 variablePlotatts['pet'] = tmp
+## Radiation Term (PET)
+tmp = PlotAtts(name = 'Rad. Term', title = 'Radiation Term of PET', 
+               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+# add to collection
+variablePlotatts['petrad'] = tmp
+## Wind Term (PET)
+tmp = PlotAtts(name = 'Wind Term', title = 'Wind Term of PET', 
+               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+# add to collection
+variablePlotatts['petwnd'] = tmp
+
+## Vapor Deficit (PET)
+tmp = PlotAtts(name = 'Vapor Deficit', title = 'Water Vapor Deficit', 
+               units = 'Pa', scalefactor = 1.)
+# add to collection
+variablePlotatts['vapdef'] = tmp
 
 ## Evapo-Transpiration
 tmp = PlotAtts(name = 'ET', title = 'Evapo-Transpiration', 

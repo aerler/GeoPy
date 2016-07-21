@@ -240,29 +240,34 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     
     # Compute intermediate variables, if necessary
     for varname in varlist:
+      vars = None # variable list
       if varname in source:
         var = source[varname].load() # load data (may not have to load all)
       else:
+        var = None
         if varname == 'waterflx': var = newvars.computeWaterFlux(source)
         elif varname == 'liqwatflx': var = newvars.computeLiquidWaterFlux(source)
         elif varname == 'netrad': var = newvars.computeNetRadiation(source, asVar=True)
         elif varname == 'netrad_0': var = newvars.computeNetRadiation(source, asVar=True, lA=False, name='netrad_0')
         elif varname == 'netrad_bb': var = newvars.computeNetRadiation(source, asVar=True, lrad=False, name='netrad_bb')
         elif varname == 'vapdef': var = newvars.computeVaporDeficit(source)
-        elif varname == 'petrad': var = newvars.computeRadiationTerm(source, asVar=True)
-        elif varname == 'petwnd': var = newvars.computeWindTerm(source)
         elif varname == 'pet' or varname == 'pet_pm':
-          var = newvars.computePotEvapPM(source) # default
+          vars = newvars.computePotEvapPM(source, lterms=True) # default; returns mutliple PET terms
+          #var = newvars.computePotEvapPM(source, lterms=False) # returns only PET
         elif varname == 'pet_th': var = None # skip for now
           #var = computePotEvapTh(source) # simplified formula (less prerequisites)
         else: raise VariableError, "Unsupported Variable '{:s}'.".format(varname)
       # for now, skip variables that are None
-      if var:
-        addGDALtoVar(var=var, griddef=sink.griddef)
-        if not var.gdal and isinstance(fileFormat,ASCII_raster):
-          raise GDALError, "Exporting to ASCII_raster format requires GDAL-enabled variables."
-        # add to new dataset
-        sink += var
+      if var or vars:
+        # handle lists as well
+        if var and vars: raise VariableError, (var,vars)
+        if var: vars = (var,)
+        for var in vars:
+          addGDALtoVar(var=var, griddef=sink.griddef)
+          if not var.gdal and isinstance(fileFormat,ASCII_raster):
+            raise GDALError, "Exporting to ASCII_raster format requires GDAL-enabled variables."
+          # add to new dataset
+          sink += var
     # convert units
     if lm3:
       for var in sink:
@@ -339,7 +344,7 @@ if __name__ == '__main__':
     lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/m^2/s    
   else:
     # settings for testing and debugging
-    NP = 3 ; ldebug = False # for quick computations
+    NP = 2 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
 #     modes = ('climatology',) # 'climatology','time-series'
     modes = ('time-series',) # 'climatology','time-series'
@@ -366,16 +371,16 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-#     WRF_experiments = ['erai-g','erai-t']
+    WRF_experiments = ['erai-g','erai-t'][:1]
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-    WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
+#     WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-3km','max-3km']
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
     # other WRF parameters 
-    domains = 2 # domains to be processed
+    domains = 1 # domains to be processed
 #     domains = None # process all domains
     WRF_filetypes = ('hydro','srfc','xtrm','lsm') # filetypes to be processed
 #     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'
@@ -387,7 +392,7 @@ if __name__ == '__main__':
     ## export parameters
     export_arguments = dict(
         project = 'GRW', # project designation  
-        varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','netrad','netrad_0','vapdef','pet'], # varlist for export                         
+        varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','netrad','vapdef','pet'], # varlist for export                         
 #         folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/{{3:s}}/'.format(os.getenv('DATA_ROOT', None)),
 #         prefix = '{0:s}_{1:s}_{2:s}_{3:s}', # argument order: project/grid/experiment/period/
 #         format = 'ASCII_raster', # formats to export to

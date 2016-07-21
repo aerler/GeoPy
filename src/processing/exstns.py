@@ -232,15 +232,15 @@ if __name__ == '__main__':
     WRF_experiments = [] # use None to process all CESM experiments
 #     WRF_experiments += ['marc-g','marc-gg','marc-g-2050','marc-gg-2050']
 #     WRF_experiments += ['marc-m','marc-mm', 'marc-t','marc-m-2050','marc-mm-2050', 'marc-t-2050']
-    WRF_experiments += ['erai-g','erai-t']
+    WRF_experiments += ['erai-g','erai-t'][:1]
 #     WRF_experiments += ['ctrl-1','ctrl-2050','ctrl-2100',]
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][:1]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
 #     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        
     # other WRF parameters 
-    domains = 2 # domains to be processed
+    domains = 1 # domains to be processed
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-    WRF_filetypes = ('hydro',)
+    WRF_filetypes = ('aux',)
 #     WRF_filetypes = ('const',); periods = None
     # station datasets to match    
     stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
