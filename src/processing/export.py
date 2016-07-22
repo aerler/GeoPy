@@ -344,7 +344,7 @@ if __name__ == '__main__':
     lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/m^2/s    
   else:
     # settings for testing and debugging
-    NP = 2 ; ldebug = False # for quick computations
+    NP = 3 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
 #     modes = ('climatology',) # 'climatology','time-series'
     modes = ('time-series',) # 'climatology','time-series'
@@ -371,16 +371,19 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-    WRF_experiments = ['erai-g','erai-t'][:1]
+#     WRF_experiments = ['erai-g','erai-t']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
 #     WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-3km','max-3km']
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
+    WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',]
+    WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
+    WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
     # other WRF parameters 
-    domains = 1 # domains to be processed
+    domains = 2 # domains to be processed
 #     domains = None # process all domains
     WRF_filetypes = ('hydro','srfc','xtrm','lsm') # filetypes to be processed
 #     WRF_filetypes = ('hydro',) # filetypes to be processed # ,'rad'

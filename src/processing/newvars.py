@@ -63,7 +63,7 @@ def e_sat(T, Tmax=None):
   '''
   if Tmax is None: 
     # Magnus formula
-    warn('Using average 2m temperature; diurnal min/max 2m temperature is preferable due to strong nonlinearity.')
+    #warn('Using average 2m temperature; diurnal min/max 2m temperature is preferable due to strong nonlinearity.')
     return evaluate('610.8 * exp( 17.27 * (T - 273.15) / (T - 35.85) )')
   else:
     # use average of saturation pressure from Tmin and Tmax (because of nonlinearity)

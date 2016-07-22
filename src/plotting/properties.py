@@ -236,7 +236,7 @@ tmp = PlotAtts(name = 'Soil Moisture', title = '(absolute) Soil Moisture',
 # add to collection
 variablePlotatts['aSM'] = tmp
 
-## 2 m Water Vapor Mixing Ratio
+## 2 m Water Vapor Pressure
 tmp = PlotAtts(name = '$Q_{2m}$', title = '2 m Water Vapor', 
                units = 'hPa', scalefactor = 1.e-2)
 # add to collection
@@ -398,7 +398,7 @@ variablePlotatts['petwnd'] = tmp
 
 ## Vapor Deficit (PET)
 tmp = PlotAtts(name = 'Vapor Deficit', title = 'Water Vapor Deficit', 
-               units = 'Pa', scalefactor = 1.)
+               units = 'hPa', scalefactor = 1.e-2)
 # add to collection
 variablePlotatts['vapdef'] = tmp
 

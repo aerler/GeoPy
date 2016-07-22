@@ -829,7 +829,8 @@ class MyAxes(Axes):
       if len(yticks) > 0 and yticks[-1].get_visible(): ylabel = self._axLabel(ylabel, name, units)
     if isinstance(ylabel,basestring):
       # set Y-label
-      ax.set_ylabel(ylabel, labelpad=self.ypad) # labelpad is ignored by AxesGrid
+      ypad = self.ypad + 2 if self.yright else self.ypad # need a little more space on right hand side
+      ax.set_ylabel(ylabel, labelpad=ypad) # labelpad is ignored by AxesGrid
       # label position
       ax.yaxis.set_label_position('right' if self.yright else 'left')
     return ylabel    
