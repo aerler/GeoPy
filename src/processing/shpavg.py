@@ -196,8 +196,9 @@ if __name__ == '__main__':
     shapes = config['shapes']
   else:
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 1 ; ldebug = False # for quick computations
-    modes = ('time-series',) # 'climatology','time-series'
+    NP = 3 ; ldebug = False # for quick computations
+#     modes = ('time-series',) # 'climatology','time-series'
+    modes = ('time-series','climatology') 
     loverwrite = True
     varlist = None # ['T2']
     periods = []
@@ -209,11 +210,11 @@ if __name__ == '__main__':
     # Observations/Reanalysis
     lLTM = True 
     datasets = []; resolutions = None
-#     resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':'05'}
+    resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':'05'}
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
-#     datasets += ['CRU']
+    datasets += ['GPCC','Unity']
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False
@@ -224,7 +225,7 @@ if __name__ == '__main__':
     # WRF experiments (short or long name)
     WRF_project = 'GreatLakes' # only use GreatLakes experiments
     WRF_experiments = []
-    WRF_experiments += ['erai-t', 'erai-g']
+#     WRF_experiments += ['erai-t', 'erai-g']
 #     WRF_experiments += ['g-ctrl', 'g-ctrl-2050', 'g-ctrl-2100']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][1:]
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
@@ -244,7 +245,8 @@ if __name__ == '__main__':
 #     shape_name = 'basins' # only Canadian river basins
 #     shapes = dict()
     shapes['basins'] = ['GLB','GRW'] # river basins (in Canada) from WSC module
-    
+    shapes['provinces'] = ['ON'] # Canadian provinces from EC module
+     
  
   ## process arguments    
   if isinstance(periods, (np.integer,int)): periods = [periods]

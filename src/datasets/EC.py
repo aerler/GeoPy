@@ -52,19 +52,10 @@ avgfolder = root_folder + 'ecavg/'  # folder for user data
 varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Average 2m Temperature')), # 2m average temperature
                Tmin       = dict(name='Tmin', units='K', atts=dict(long_name='Minimum 2m Temperature')), # 2m minimum temperature
                Tmax       = dict(name='Tmax', units='K', atts=dict(long_name='Maximum 2m Temperature')), # 2m maximum temperature
-               SummerDays = dict(name='sumfrq', units='', atts=dict(long_name='Fraction of Summer Days (>25C)')),
-               FrostDays  = dict(name='frzfrq', units='', atts=dict(long_name='Fraction of Frost Days (< 0C)')),
                precip     = dict(name='precip', units='kg/m^2/s', atts=dict(long_name='Total Precipitation')), # total precipitation
-               MaxPrecip  = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency 
-               MinPrecip  = dict(name='MinPrecip_1d', units='kg/m^2/s'), # for short-term consistency
                solprec    = dict(name='solprec', units='kg/m^2/s', atts=dict(long_name='Solid Precipitation')), # solid precipitation
-                MaxSolprec = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # for short-term consistency
-#                MaxSolprec = dict(name='MaxSnow_1d', units='kg/m^2/s'), # for short-term consistency
-#                MaxSolprec_5d = dict(name='MaxSnow_5d', units='kg/m^2/s'), # for short-term consistency
-               MinSolprec = dict(name='MinSolprec_1d', units='kg/m^2/s'), # for short-term consistency
                liqprec    = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
-               MaxLiqprec = dict(name='MaxLiqprec_1d', units='kg/m^2/s'), # for short-term consistency
-               MinLiqprec = dict(name='MinLiqprec_1d', units='kg/m^2/s'), # for short-term consistency
+               # N.B.: note that some variables are defined after the PrecipDef and TempDef classes below
                # meta/constant data variables
                # N.B.: 'stn'/'station' prefix is to allow consistent naming and avoid name collisions with variables in other datasets
                name    = dict(name='station_name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
@@ -244,7 +235,7 @@ class DailyStationRecord(StrictRecordClass):
 class VarDef(RecordClass):
   # variable specific
   name        = '' # full variable name (used in source files)
-  atts        = None # dictionary with PyGeoData variable attributes
+  atts        = None # dictionary with GeoPy variable attributes
   prefix      = '' # file prefix for source file name (used with station ID)
   fileext     = '.txt' # file name extension (used for source files)
   # type specific
@@ -282,10 +273,11 @@ class VarDef(RecordClass):
       kwargs[arg] = getattr(self,arg)
     return kwargs
   
+## variable definitions for EC datasets
+
+
 # definition for precipitation files
 class PrecipDef(VarDef):
-#   recordunits = 'mm' # actually 'mm/day' but reported as 'mm'
-#   units       = 'kg/m^2/s' # units after scaling (SI)
   scalefactor = 1./(24.*60.*60.) # convert from mm/day to mm/s 
   offset      = 0 
   datatype    = 'precip'
@@ -295,22 +287,6 @@ class PrecipDef(VarDef):
   varmin      = 0. # smallest allowed value in data
   varmax      = 1.e3 # largest allowed value in data
   
-# definition for temperature files
-class TempDef(VarDef):
-#   recordunits = u'°C'
-#   units       = 'K'
-  scalefactor = 1 
-  offset      = 273.15 # convert to Kelvin 
-  datatype    = 'temp'
-  title       = 'EC Temperature Records'
-  encoding    = 'ISO-8859-15' # for some reason temperature files have a strange encodign scheme...
-  missing     = '-9999.9' # string indicating missing value
-  flags       = 'Ea' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
-  varmin      = -100. # smallest allowed value in data
-  varmax      = 100. # largest allowed value in data
-
-## variable definitions for EC datasets
-
 # daily precipitation variables in data
 precip_vars = dict(precip=PrecipDef(name='precipitation', prefix='dt', atts=varatts['precip']),
                    solprec=PrecipDef(name='snowfall', prefix='ds', atts=varatts['solprec']),
@@ -332,6 +308,19 @@ for threshold in precip_thresholds:
   tmpatts = dict(var='precip', threshold=threshold/86400., klass=dv.ConsecutiveExtrema)
   precip_xtrm.append(dict(name='CWD'+suffix, mode='above', long_name='Consecutive Wet Days (>'+name_suffix, **tmpatts))
   precip_xtrm.append(dict(name='CDD'+suffix, mode='below', long_name='Consecutive Dry Days (<'+name_suffix, **tmpatts))
+
+
+# definition for temperature files
+class TempDef(VarDef):
+  scalefactor = 1 
+  offset      = 273.15 # convert to Kelvin 
+  datatype    = 'temp'
+  title       = 'EC Temperature Records'
+  encoding    = 'ISO-8859-15' # for some reason temperature files have a strange encodign scheme...
+  missing     = '-9999.9' # string indicating missing value
+  flags       = 'Ea' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
+  varmin      = -100. # smallest allowed value in data
+  varmax      = 100. # largest allowed value in data
 
 # daily temperature variables in data
 temp_vars   = dict(T2=TempDef(name='mean temperature', prefix='dm', atts=varatts['T2']),
@@ -381,7 +370,7 @@ class StationRecords(object):
   '''
     A class that provides methods to load station data and associated meta data from files of a given format;
     The format itself will be defines in child classes.
-    The data will be converted to monthly statistics and accessible as a PyGeoData dataset or can be written 
+    The data will be converted to monthly statistics and accessible as a GeoPy dataset or can be written 
     to a NetCDF file.
   '''
   # arguments
@@ -399,7 +388,7 @@ class StationRecords(object):
   constraints    = None # constraints to limit the number of stations that are loaded
   # internal variables
   stationlists   = None # list of station objects
-  dataset        = None # PyGeoData Dataset (will hold results) 
+  dataset        = None # GeoPy Dataset (will hold results) 
   
   def __init__(self, folder='', stationfile='stations.txt', variables=None, extremes=None, interval='daily', 
                encoding='', header_format=None, station_format=None, constraints=None, atts=None, varmap=None):
@@ -501,7 +490,7 @@ class StationRecords(object):
     assert len(self.stationlists[varname]) == ns # make sure we got all (lists should have the same length)
     
   def prepareDataset(self, filename=None, folder=None):
-    ''' prepare a PyGeoData dataset for the station data (with all the meta data); 
+    ''' prepare a GeoPy dataset for the station data (with all the meta data); 
         create a NetCDF file for monthly data; also add derived variables          '''
     if folder is None: folder = '{:s}/ecavg/'.format(root_folder) # default folder scheme 
     elif not isinstance(folder,basestring): raise TypeError
@@ -636,7 +625,7 @@ class StationRecords(object):
         tmp = np.ma.empty(varobj.shape, dtype=varobj.dtype); tmp.fill(np.NaN) 
         # N.B.: some derived variable types may return masked arrays
         monlydata[wrfvar] = tmp
-    # loop over time steps      
+    # loop over time steps to compute nonlinear variables from daily values    
     tmpvars = dict()
     for m,mon in enumerate(varobj.axes[1].coord):
       # figure out length of month
@@ -728,7 +717,7 @@ def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varat
                         varatts=varatts, filelist=None, folder=None, **kwargs) # just an alias
     # N.B.: for some operations we need a time axis...
   # supplement with CRU gridded data, if necessary
-  if varlist and any(var not in dataset for var in varlist):
+  if lloadCRU and varlist and any(var not in dataset for var in varlist):
     dataset.load() # not much data anyway..
     crulist = [var for var in varlist if ( var not in dataset and var in CRU_vars )]
     #print crulist
@@ -910,9 +899,9 @@ if __name__ == '__main__':
 
 #   mode = 'test_station_object'
 #   mode = 'test_station_reader'
-  mode = 'test_conversion'
+#   mode = 'test_conversion'
 #   mode = 'convert_all_stations'
-#   mode = 'convert_prov_stations'
+  mode = 'convert_prov_stations'
 #   mode = 'test_timeseries'
 #   mode = 'test_selection'
   
@@ -1065,8 +1054,8 @@ if __name__ == '__main__':
   elif mode == 'convert_prov_stations':
     
     # loop over provinces
-#     for prov in ('BC',):
-    for prov in ('BC', 'YT', 'NT', 'NU', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL'):
+    for prov in ('BC',):
+#     for prov in ('BC', 'YT', 'NT', 'NU', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL'):
       # loop over variable types
 #       for variables in (precip_vars,): # precip_vars, temp_vars,
       for variables in (precip_vars, temp_vars,): # precip_vars, temp_vars,
