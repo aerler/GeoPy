@@ -773,7 +773,7 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
         # values, so explicitly replace them with NaN.
         var = _copyto(var, np.nan, isbad)
         
-        # check if keepdims worked, otherwise reshape manually
+    # check if keepdims worked, otherwise reshape manually
     if keepdims and axis is not None and var.ndim < arr.ndim:
       shape = list(arr.shape)
       shape[axis] = 1
@@ -1008,7 +1008,7 @@ def nansem(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
         # values, so explicitly replace them with NaN.
         sem = _copyto(sem, np.nan, isbad)
         
-        # check if keepdims worked, otherwise reshape manually
+    # check if keepdims worked, otherwise reshape manually
     if keepdims and axis is not None and sem.ndim < arr.ndim:
       shape = list(arr.shape)
       shape[axis] = 1

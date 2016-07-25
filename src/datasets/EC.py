@@ -31,7 +31,10 @@ code_root = os.getenv('CODE_ROOT')
 if not code_root : raise ArgumentError, 'No CODE_ROOT environment variable set!'
 if not os.path.exists(code_root): raise ImportError, "The code root '{:s}' directory set in the CODE_ROOT environment variable does not exist!".format(code_root)
 # import module from WRF Tools explicitly to avoid name collision
-dv = imp.load_source('derived_variables', os.getenv('CODE_ROOT')+'/WRF Tools/Python/wrfavg/derived_variables.py') # need explicit absolute import due to name collision
+if os.path.exists(code_root+'/WRF-Tools/Python/wrfavg/derived_variables.py'):
+  dv = imp.load_source('derived_variables', code_root+'/WRF-Tools/Python/wrfavg/derived_variables.py') # need explicit absolute import due to name collision
+elif os.path.exists(code_root+'/WRF Tools/Python/wrfavg/derived_variables.py'):
+  dv = imp.load_source('derived_variables', code_root+'/WRF Tools/Python/wrfavg/derived_variables.py') # need explicit absolute import due to name collision
 #dv = importlib.import_module('wrfavg.derived_variables') # need explicit absolute import due to name collision
 #import wrfavg.derived_variables as dv
 from utils.constants import precip_thresholds
@@ -73,6 +76,8 @@ varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Aver
                # axes (also sort of meta data)
                time     = dict(name='time', units='month', atts=dict(long_name='Month since 1979-01')), # time coordinate
                station  = dict(name='station', units='#', atts=dict(long_name='Station Number'))) # ordinal number of statio
+varatts['SummerDays_+25'] = dict(name='sumfrq', units='', atts=dict(long_name='Fraction of Summer Days (>25C)')), # N.B.: rename on load,
+varatts['FrostDays_+0']   = dict(name='frzfrq', units='', atts=dict(long_name='Fraction of Frost Days (< 0C)')),  #       same as WRF
 # add variables with different wet-day thresholds
 for threshold in precip_thresholds:
     suffix = '_{:03d}'.format(int(10*threshold))
@@ -492,7 +497,7 @@ class StationRecords(object):
   def prepareDataset(self, filename=None, folder=None):
     ''' prepare a GeoPy dataset for the station data (with all the meta data); 
         create a NetCDF file for monthly data; also add derived variables          '''
-    if folder is None: folder = '{:s}/ecavg/'.format(root_folder) # default folder scheme 
+    if folder is None: folder = avgfolder # default folder scheme 
     elif not isinstance(folder,basestring): raise TypeError
     if filename is None: filename = 'ec{:s}_monthly.nc'.format(self.datatype) # default folder scheme 
     elif not isinstance(filename,basestring): raise TypeError
@@ -543,8 +548,6 @@ class StationRecords(object):
       recatts['long_name'] = recatts['long_name']+' for {:s}'.format(varname.title())
       tmpatts['name'] = 'stn_'+varname+'_len'; tmpatts['atts'] = recatts
       dataset += Variable(axes=(station,), data=np.zeros(len(station), dtype='int16'),  **tmpatts)
-    # add some attributes
-#     dataset.atts['dryday_threshold'] = dv.dryday_threshold
     # write dataset to file
     ncfile = '{:s}/{:s}'.format(folder,filename)      
     #zlib = dict(chunksizes=dict(station=len(station))) # compression settings; probably OK as is 
@@ -695,7 +698,7 @@ def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None,
                             multifile=False, ncformat='NETCDF4', **kwargs)
   return dataset
 # wrapper
-def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varatts, lloadCRU=True, **kwargs):
+def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varatts, lloadCRU=False, **kwargs):
   ''' Load a monthly time-series of pre-processed EC station data. '''
   if station is None: raise ArgumentError, "A 'filetype' needs to be specified ('ectemp' or 'ecprecip')."
   elif station in ('ectemp','ecprecip'):
@@ -716,6 +719,7 @@ def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varat
     dataset = loadEC_TS(name=name, filetype=station, prov=prov, varlist=varlist+['precip','T2'], 
                         varatts=varatts, filelist=None, folder=None, **kwargs) # just an alias
     # N.B.: for some operations we need a time axis...
+    
   # supplement with CRU gridded data, if necessary
   if lloadCRU and varlist and any(var not in dataset for var in varlist):
     dataset.load() # not much data anyway..
@@ -897,13 +901,13 @@ loadStationClimatology = loadEC # pre-processed, standardized climatology
 
 if __name__ == '__main__':
 
-#   mode = 'test_station_object'
+#   mode = 'test_selection'
+#   mode = 'test_timeseries'
+  mode = 'test_station_object'
 #   mode = 'test_station_reader'
 #   mode = 'test_conversion'
+#   mode = 'convert_prov_stations'
 #   mode = 'convert_all_stations'
-  mode = 'convert_prov_stations'
-#   mode = 'test_timeseries'
-#   mode = 'test_selection'
   
   # test wrapper function to load time series data from EC stations
   if mode == 'test_selection':
