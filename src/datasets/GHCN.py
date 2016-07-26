@@ -55,7 +55,13 @@ varatts = dict(T2         = dict(name='T2', units='C', atts=dict(long_name='Aver
                Tmax       = dict(name='Tmax', units='C', atts=dict(long_name='Maximum Temperature')), # maximum temperature
                precip     = dict(name='precip', units='mm', atts=dict(long_name='Precipitation')), # total precipitation
                solprec    = dict(name='solprec', units='kg/m^2/s', atts=dict(long_name='Solid Precipitation')), # solid precipitation
-               liqprec    = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
+               #liqprec    = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
+               # N.B.: note that some variables are defined after the PrecipDef and TempDef classes below
+               # secondary variables for consistent loading (currently only precip)
+               MaxPrecip     = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
+               MaxPrecip_5d  = dict(name='MaxPrecip_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
+               MaxSolprec    = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # maximum daily precip
+               MaxSolprec_5d = dict(name='MaxSolprec_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
                # meta/constant data variables
                # N.B.: 'stn'/'station' prefix is to allow consistent naming and avoid name collisions with variables in other datasets
                name        = dict(name='station_name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
