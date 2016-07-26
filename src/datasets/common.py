@@ -682,18 +682,18 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
 ## Miscellaneous utility functions
 
 # function to return grid definitions for some common grids
-def getCommonGrid(grid, res=None):
+def getCommonGrid(grid, res=None, lfilepath=False):
   ''' return definitions of commonly used grids (either from datasets or pickles) '''
   # try pickle first
-  griddef = loadPickledGridDef(grid=grid, res=res, folder=grid_folder, check=False)
+  griddef = loadPickledGridDef(grid=grid, res=res, folder=grid_folder, 
+                               check=False, lfilepath=lfilepath)
   # alternatively look in known datasets
   if griddef is None:
     try:
       dataset = import_module(grid)
-      if res is None:
-        griddef = dataset.default_grid
-      else:
-        griddef = dataset.grid_def[res]
+      if res is None: griddef = dataset.default_grid
+      else: griddef = dataset.grid_def[res]
+      if lfilepath: griddef.filepath = None # monkey-patch...
     except ImportError:
       griddef = None
 #       assert (elon-slon) % dlon == 0 

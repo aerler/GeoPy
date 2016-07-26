@@ -70,7 +70,11 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
       if not loverwrite: 
         age = datetime.fromtimestamp(os.path.getmtime(filepath))
         # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
-        if age > srcage and os.path.getsize(filepath) > 1e6: lskip = True
+        if age > srcage and os.path.getsize(filepath) > 1e6: 
+          lskip = True
+          if hasattr(griddef, 'filepath') and griddef.filepath is not None:
+            gridage = datetime.fromtimestamp(os.path.getmtime(griddef.filepath))
+            if age < gridage: lskip = False
         # N.B.: NetCDF files smaller than 1MB are usually incomplete header fragments from a previous crashed
       if not lskip: os.remove(filepath) # recompute
   
@@ -324,7 +328,7 @@ if __name__ == '__main__':
       for res in reses:
         
         # load target grid definition
-        griddef = getCommonGrid(grid, res=res)
+        griddef = getCommonGrid(grid, res=res, lfilepath=True)
         # check if grid was defined properly
         if not isinstance(griddef,GridDefinition): 
           raise GDALError, 'No valid grid defined! (grid={0:s})'.format(grid)        
