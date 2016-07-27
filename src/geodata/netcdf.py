@@ -522,7 +522,7 @@ class DatasetNetCDF(Dataset):
       # either use available NetCDF datasets directly, ...  
       if isinstance(dataset,nc.Dataset):
         datasets = [dataset]  # datasets is used later
-        if 'filepath' in dir(dataset): filelist = [dataset.filepath] # only available in newer versions
+        if 'filepath' in dir(dataset): filelist = [dataset.filepath()] # only available in newer versions
       elif isinstance(dataset,(list,tuple)):
         if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
         datasets = dataset
@@ -673,7 +673,7 @@ class DatasetNetCDF(Dataset):
       if isinstance(variables,dict): variables = variables.values()
       if isinstance(dataset,nc.Dataset):
         datasets = [dataset]  # datasets is used later
-        if 'filepath' in dir(dataset): filelist = [dataset.filepath] # only available in newer versions
+        if 'filepath' in dir(dataset): filelist = [dataset.filepath()] # only available in newer versions
         else: raise ValueError
       elif isinstance(dataset,(list,tuple)):
         if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError

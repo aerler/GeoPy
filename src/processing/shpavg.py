@@ -196,10 +196,11 @@ if __name__ == '__main__':
     shapes = config['shapes']
   else:
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 4 ; ldebug = False # for quick computations
-    modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = False
-    varlist = None
+    NP = 3 ; ldebug = False # for quick computations
+#     modes = ('time-series',) # 'climatology','time-series'
+    modes = ('time-series','climatology') 
+    loverwrite = True
+    varlist = None # ['T2']
     periods = []
 #     periods += [1]
 #     periods += [3]
@@ -209,11 +210,11 @@ if __name__ == '__main__':
     # Observations/Reanalysis
     lLTM = True 
     datasets = []; resolutions = None
-#     resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':'05'}
+    resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':'05'}
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
-#     datasets += ['Unity']
+    datasets += ['GPCC','Unity']
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False
@@ -225,26 +226,27 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only use GreatLakes experiments
     WRF_experiments = []
 #     WRF_experiments += ['erai-t', 'erai-g']
-    WRF_experiments += ['g-ctrl', 'g-ctrl-2050', 'g-ctrl-2100']
+#     WRF_experiments += ['g-ctrl', 'g-ctrl-2050', 'g-ctrl-2100']
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][1:]
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
     # other WRF parameters 
 #     domains = None # domains to be processed
     domains = (2,) # domains to be processed
-    WRF_filetypes = ('aux',)
+    WRF_filetypes = ('srfc',)
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None
     # define shape data  
     shape_name = 'shpavg' # Canadian shapes
     shapes = dict()
-    shapes['basins'] = None # river basins (in Canada) from WSC module
-    shapes['provinces'] = None # Canadian provinces from EC module
+#     shapes['basins'] = None # river basins (in Canada) from WSC module
+#     shapes['provinces'] = None # Canadian provinces from EC module
 #     shapes['provinces'] = ['BC'] # Canadian provinces from EC module
 #     shape_name = 'basins' # only Canadian river basins
 #     shapes = dict()
-#     shapes['basins'] = None # river basins (in Canada) from WSC module
-    
+    shapes['basins'] = ['GLB','GRW'] # river basins (in Canada) from WSC module
+    shapes['provinces'] = ['ON'] # Canadian provinces from EC module
+     
  
   ## process arguments    
   if isinstance(periods, (np.integer,int)): periods = [periods]

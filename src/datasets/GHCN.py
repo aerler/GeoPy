@@ -1,11 +1,11 @@
 # coding: utf-8
 '''
-Created on 2014-08-20
+Created on 2016-07-2
 
-A module to load station daily data from Environment Canada from ASCII files and convert them to monthly 
+A module to load daily station data from the Global Historical Climatology Network in ASCII format and convert them to monthly 
 NetCDF datasets (with extremes); the module also provides a wrapper to load the NetCDF datasets. 
 
-@author: Andre R. Erler, GPL v3
+@author: Yiling Huo, Andre R. Erler, GPL v3
 '''
 
 # external imports
@@ -13,17 +13,15 @@ import numpy as np
 from copy import deepcopy
 import codecs, calendar, functools
 from warnings import warn
-from collections import OrderedDict
 # internal imports
 from datasets.CRU import loadCRU_StnTS
 from datasets.common import days_per_month, data_root, selectElements, translateVarNames
 from datasets.common import CRU_vars, stn_params, nullNaN
-from geodata.misc import ParseError, DateError, VariableError, ArgumentError, DatasetError, AxisError
+from geodata.misc import ParseError, ArgumentError, DatasetError, AxisError
 from geodata.misc import RecordClass, StrictRecordClass, isNumber, isInt 
 from geodata.base import Axis, Variable, Dataset
 from utils.nctools import writeNetCDF
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import NamedShape, ShapeInfo
 # import derived variables from the WRF Tools package wrfavg
 import imp, os
 # read code root folder from environment variable
@@ -40,24 +38,24 @@ elif os.path.exists(code_root+'/WRF Tools/Python/wrfavg/derived_variables.py'):
 from utils.constants import precip_thresholds
 #from wrfavg.derived_variables import precip_thresholds
 
-## EC (Environment Canada) Meta-data
+## GHCN (Environment Canada) Meta-data
 
-dataset_name = 'EC'
+dataset_name = 'GHCN'
 root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # long-term mean folder
-orig_ts_file = '{0:s}{1:s}.txt' # filename pattern: variable name and station ID
-tsfile = 'ec{0:s}_monthly.nc' # filename pattern: station type
-tsfile_prov = 'ec{0:s}_{1:s}_monthly.nc' # filename pattern with province: station type, province  
-avgfile = 'ec{0:s}_clim{1:s}.nc' # filename pattern: station type and ('_'+period)
-avgfolder = root_folder + 'ecavg/'  # folder for user data
+orig_ts_file = '{1:s}.dly' # filename pattern: variable name and station ID
+tsfile = 'ghcn{0:s}_monthly.nc' # filename pattern: station type
+#tsfile_prov = 'ghcn{0:s}_{1:s}_monthly.nc' # filename pattern with province: station type, province  
+avgfile = 'ghcn{0:s}_clim{1:s}.nc' # filename pattern: station type and ('_'+period)
+avgfolder = root_folder + 'ghcnavg/'  # folder for user data
 
 
 # variable attributes and name
-varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Average 2m Temperature')), # 2m average temperature
-               Tmin       = dict(name='Tmin', units='K', atts=dict(long_name='Minimum 2m Temperature')), # 2m minimum temperature
-               Tmax       = dict(name='Tmax', units='K', atts=dict(long_name='Maximum 2m Temperature')), # 2m maximum temperature
-               precip     = dict(name='precip', units='kg/m^2/s', atts=dict(long_name='Total Precipitation')), # total precipitation
+varatts = dict(T2         = dict(name='T2', units='C', atts=dict(long_name='Average Temperature')), # average temperature
+               Tmin       = dict(name='Tmin', units='C', atts=dict(long_name='Minimum Temperature')), # minimum temperature
+               Tmax       = dict(name='Tmax', units='C', atts=dict(long_name='Maximum Temperature')), # maximum temperature
+               precip     = dict(name='precip', units='mm', atts=dict(long_name='Precipitation')), # total precipitation
                solprec    = dict(name='solprec', units='kg/m^2/s', atts=dict(long_name='Solid Precipitation')), # solid precipitation
-               liqprec    = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
+               #liqprec    = dict(name='liqprec', units='kg/m^2/s', atts=dict(long_name='Liquid Precipitation')), # liquid precipitation
                # N.B.: note that some variables are defined after the PrecipDef and TempDef classes below
                # secondary variables for consistent loading (currently only precip)
                MaxPrecip     = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
@@ -66,20 +64,18 @@ varatts = dict(T2         = dict(name='T2', units='K', atts=dict(long_name='Aver
                MaxSolprec_5d = dict(name='MaxSolprec_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
                # meta/constant data variables
                # N.B.: 'stn'/'station' prefix is to allow consistent naming and avoid name collisions with variables in other datasets
-               name    = dict(name='station_name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
-               prov    = dict(name='stn_prov', units='', atts=dict(long_name='Province')), # in which Canadian Province the station is located
-               joined  = dict(name='stn_joined', units='', atts=dict(long_name='Joined Record or Single Station')), # whether or not the record contains more than one station 
-               lat  = dict(name='stn_lat', units='deg N', atts=dict(long_name='Latitude')), # geographic latitude field
-               lon  = dict(name='stn_lon', units='deg E', atts=dict(long_name='Longitude')), # geographic longitude field
-               alt  = dict(name='stn_zs', units='m', atts=dict(long_name='Station Elevation')), # station elevation
-               begin_date = dict(name='stn_begin_date', units='month', atts=dict(long_name='Month since 1979-01', # begin of station record
-                                                                             description='Begin of Station Record (relative to 1979-01)')), 
-               end_date   = dict(name='stn_end_date', units='month', atts=dict(long_name='Month since 1979-01', # begin of station record
-                                                                         description='End of Station Record (relative to 1979-01)')),
-               stn_rec_len    = dict(name='stn_rec_len', units='month', atts=dict(long_name='Length of Record', # actual length of station record
-                                                                         description='Number of Month with valid Data')),
+               name        = dict(name='station_name', units='', atts=dict(long_name='Station Name')), # the proper name of the station
+               lat         = dict(name='stn_lat', units='deg N', atts=dict(long_name='Latitude')), # geographic latitude field
+               lon         = dict(name='stn_lon', units='deg E', atts=dict(long_name='Longitude')), # geographic longitude field
+               alt         = dict(name='stn_zs', units='m', atts=dict(long_name='Station Elevation')), # station elevation
+               begin_date  = dict(name='stn_begin_date', units='month', atts=dict(long_name='Month since 1980-01', # begin of station record
+                                                                              description='Begin of Station Record (relative to 1980-01)')), 
+               end_date    = dict(name='stn_end_date', units='month', atts=dict(long_name='Month since 1980-01', # begin of station record
+                                                                          description='End of Station Record (relative to 1980-01)')),
+               stn_rec_len = dict(name='stn_rec_len', units='month', atts=dict(long_name='Length of Record', # actual length of station record
+                                                                      description='Number of Month with valid Data')),
                # axes (also sort of meta data)
-               time     = dict(name='time', units='month', atts=dict(long_name='Month since 1979-01')), # time coordinate
+               time     = dict(name='time', units='month', atts=dict(long_name='Month since 1980-01')), # time coordinate
                station  = dict(name='station', units='#', atts=dict(long_name='Station Number'))) # ordinal number of statio
 varatts['SummerDays_+25'] = dict(name='sumfrq', units='', atts=dict(long_name='Fraction of Summer Days (>25C)')), # N.B.: rename on load,
 varatts['FrostDays_+0']   = dict(name='frzfrq', units='', atts=dict(long_name='Fraction of Frost Days (< 0C)')),  #       same as WRF
@@ -94,38 +90,6 @@ for threshold in precip_thresholds:
 # list of variables to load
 variable_list = varatts.keys() # also includes coordinate fields    
 
-# expand province names
-province_names = OrderedDict() # make sure they are sorted alphabeically
-province_names['AB'] = 'Alberta'
-province_names['BC'] = 'British Columbia'
-province_names['MB'] = 'Manitoba'
-province_names['NB'] = 'New Brunswick'
-province_names['NL'] = 'Newfoundland and Labrador'
-province_names['NS'] = 'Nova Scotia'
-province_names['NT'] = 'Northwest Territories'
-province_names['NU'] = 'Nunavut'
-province_names['PE'] = 'Prince Edward Island'
-province_names['ON'] = 'Ontario'
-province_names['QC'] = 'Quebec'
-province_names['SK'] = 'Saskatchewan'
-province_names['YT'] = 'Yukon Territory'
-province_names['CAN'] = 'Canada'
-
-# generate province info objects
-province_info = OrderedDict()
-provinces = OrderedDict()
-for key,val in province_names.iteritems():
-  shapetype = 'NAT' if key == 'CAN' else 'PRV'
-  prov = ShapeInfo(name=key, long_name=val, shapefiles=[val], shapetype=shapetype, 
-                   data_source='', folder=root_folder+'/Provinces/')
-  province_info[key] = prov
-  if len(prov.shapefiles) == 1 :
-    provinces[prov.name] = NamedShape(area=prov, subarea=None)
-  else: 
-    for subarea in prov.shapefiles.iterkeys():
-      provinces[prov.name] = NamedShape(area=prov, subarea=subarea)
-
-## a class that handles access to station records in ASCII files
 class DailyStationRecord(StrictRecordClass):
   '''
     A class that is used by StationRecords to facilitate access to daily station records from ASCII files.  
@@ -137,13 +101,13 @@ class DailyStationRecord(StrictRecordClass):
   units      = '' # data units used in record
   dtype      = '' # data type (default: float32)
   missing    = '' # string indicating missing value
-  flags      = '' # legal data flags (case sensitive)
+  mflag       = ''
+  qflag       = ''
+  sflag       = ''
   varmin     = 0. # smallest allowed value in data
   varmax     = 0. # largest allowed value in data
-  filename   = '' # absolute path of ASCII file containing data record
+  filename    = '' # absolute path of ASCII file containing data record
   encoding   = '' # text file encoding
-  prov       = '' # province (in Canada)  
-  joined     = False # whether station record was merged with another nearby  
   begin_year = 0 # year of first record
   begin_mon  = 0 # month of first record
   end_year   = 0 # year of last record 
@@ -151,24 +115,13 @@ class DailyStationRecord(StrictRecordClass):
   lat        = 0. # latitude of station location
   lon        = 0. # longitude of station location
   alt        = 0. # station elevation (altitude)
-  
   # id='', name='', datatype='', filename='', prov='', begin_year=0, begin_mon=0, end_year=0, end_mon=0, lat=0, lon=0
       
   def validateHeader(self, headerline):
     ''' validate header information against stored meta data '''
     # parse header line (print header if an error occurs)
-    header = [elt.strip().lower() for elt in headerline.split(',')]
-    if self.id.lower() != header[0]: raise ParseError, headerline # station ID
-    if self.name.lower() != header[1]: raise ParseError, headerline # station name
-    if self.prov.lower() != header[2]: raise ParseError, headerline # province
-    if 'joined' not in header[3]: raise ParseError, headerline # station joined or not
-    else:
-      if self.joined and 'not' in header[3]: raise ParseError, headerline # station joined or not
-      if not self.joined and 'not' not in header[3]: raise ParseError, headerline # station joined or not
-    if 'daily' not in header[4]: raise ParseError, headerline # this class only deals with daily values
-    if self.variable.lower() not in header[4]: raise ParseError, headerline # variable name
-    if self.units.lower() not in header[5]: raise ParseError, headerline # variable units
-    # if no error was raised, we are good
+    header = headerline
+    if self.id.lower() != header[:11].lower(): raise ParseError, headerline # station ID
     
   def checkHeader(self):
     ''' open the station file and validate the header information; then close '''
@@ -178,64 +131,75 @@ class DailyStationRecord(StrictRecordClass):
     f.close()
   
   def parseRecord(self):
-    ''' open the station file and parse records; return a daiy time-series '''
+    ''' open the station file and parse records; return a daily time-series '''
     # open file
     f = codecs.open(self.filename, 'r', encoding=self.encoding)
-    self.validateHeader(f.readline()) # read first line as header
+    infoline=f.readlines()
+    ll=infoline[0]
+    self.begin_year = int(ll[11:15])
+    self.begin_mon = int(ll[15:17])
+    #existflag=False
+    off=-270 #number of characters in a line
+    f.seek(off, 2)#-270 from the end of file
+    infoline = f.readlines() 
+    if len(infoline)>=2: 
+      raise ParseError,'last line incomplete'
+    else:
+      ll=infoline[-1]
+      self.end_year = int(ll[11:15])
+      self.end_mon = int(ll[15:17])
+    oldyear = self.begin_year; oldmon = self.begin_mon -1;
     # allocate daily data array (31 days per month, filled with NaN for missing values)
     tlen = ( (self.end_year - self.begin_year) * 12 + (self.end_mon - self.begin_mon +1) ) * 31
     data = np.empty((tlen,), dtype=self.dtype); data.fill(np.NaN) # use NaN as missing values
     # some stuff to remember
-    lfloat = 'float' in self.dtype; lint = 'int' in self.dtype; lm = len(self.missing)
+    lm = len(self.missing)
     # iterate over line
-    oldyear = self.begin_year; oldmon = self.begin_mon -1; z = 0
-    for line in f:      
-      ll = line.replace('-9999.9', ' -9999.9').split() # without the replace, the split doesn't work      
-      if ll[0].isdigit() and ll[1].isdigit():
-        year = int(ll[0]); mon = int(ll[1])
+    z = 0
+    f.seek(0,0)
+    for line in f:
+      ll=line
+      if self.variable==ll[17:21]:#check if it's the variable we're looking for
+        year = int(ll[11:15]); mon = int(ll[15:17])  
         # check continuity
+        discontinuity_flag = False
         if year == oldyear and mon == oldmon+1: pass
         elif year == oldyear+1 and oldmon == 12 and mon ==1: pass 
-        else: raise DateError, line
-        oldyear = year; oldmon = mon
-#         # rigorous check of date bounds
-#         if year == self.begin_year and mon < self.begin_mon: raise DateError, line
-#         elif year < self.begin_year: raise DateError, line
-#         if year == self.end_year and mon > self.end_mon: raise DateError, line
-#         elif year > self.end_year: raise DateError, line
-        # skip dates outside the specified begin/end dates
-        if year < self.begin_year or year > self.end_year: pass # outside range 
-        elif year == self.begin_year and mon < self.begin_mon: pass # start later
-        elif year == self.end_year and mon > self.end_mon: pass # basically done
-        else: # else we can proceed
-          assert len(ll) < 34, line
-          zz = z 
+        else:
+          discontinuity_flag = True
+          print 'discontinuity', oldyear, oldmon
+          while (discontinuity_flag):
+            z+=31
+            if oldmon == 12:
+              oldmon=1;oldyear+=1
+            else:
+              oldmon+=1
+            if year == oldyear and mon == oldmon+1: discontinuity_flag=False
+            elif year == oldyear+1 and oldmon == 12 and mon ==1: discontinuity_flag=False 
+        oldyear=year;oldmon=mon
+          #assert len(ll) ==269, line
+        zz = z 
           # loop over daily values
-          for num in ll[2:]:
+        count=21
+        while(count < 266):
+            num=ll[count:count+5]
             # evaluate daily value
             assert zz < data.size, line              
-            if num[:lm] == self.missing: pass # missing value; already pre-filled NaN;  or num[-1] == 'M'
+            if num[:lm] == self.missing: 
+                pass # missing value; already pre-filled NaN;  or num[-1] == 'M'
             else:
-              if lfloat and '.' in num and 1 < len(num): # at least 1 digit plus decimal, i.e. ignore the flag
-                if num[-1].isdigit(): n = float(num)
-                elif num[-2].isdigit() and num[-1] in self.flags: n = float(num[:-1]) # remove data flag
-                else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
-              elif lint and 0 < len(num):# almost the same as for floats
-                if num[-1].isdigit(): n = int(num)
-                elif num[-2].isdigit() and num[-1] in self.flags: n = int(num[:-1]) # remove data flag
-                else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
-              else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
+              n = int(num)
               if n < self.varmin: warn("Encountered value '{:s}' below minimum in line (ignored):\n {:s}".format(num,line))
               elif n > self.varmax: warn("Encountered value '{:s}' above maximum in line (ignored):\n {:s}".format(num,line))
               else: data[zz] = n # only now, we can accept the value
-            # increment daily counter
+            # increment count in line
             zz += 1 # here each month has 31 days (padded with missing values)
-          if zz != z+31: raise ParseError, 'Line has {:d} values instead of 31:\n {:s}'.format(zz-z,line)  
-          # increment counter
-          z += 31
-      elif ll[0] != 'Year' or ll[1] != 'Mo':
-        raise ParseError, "No valid title or data found at begining of file:\n {:s}".format(self.filename)
-    if z < tlen: raise ParseError, 'Reached end of file before specified end date: {:s}'.format(self.filename)    
+            count += 8 # here each month has 31 days (padded with missing values)
+        if zz != z+31: raise ParseError, 'Line has {:d} values instead of 31:\n {:s}'.format(zz-z,line)  
+        # increment counter
+        z += 31
+    #if existflag==False:tlen=0
+    #if z < tlen: raise ParseError, 'Reached end of file before specified end date: {:s}'.format(self.filename)    
     f.close() # close again
     # return array
     return data
@@ -247,17 +211,19 @@ class VarDef(RecordClass):
   name        = '' # full variable name (used in source files)
   atts        = None # dictionary with GeoPy variable attributes
   prefix      = '' # file prefix for source file name (used with station ID)
-  fileext     = '.txt' # file name extension (used for source files)
+  fileext     = '.dly' # file name extension (used for source files)
   # type specific
   datatype    = '' # defined in child class; type of source file
   recordunits = '' # units used for data  (in source files)
   units       = '' # units after conversion
   scalefactor = 1 # constant scaling factor for conversion 
   offset      = 0 # constant offset for conversion
-  dtype       = 'float32' # data type used for data
+  dtype       = 'float32' # data type used for data in source files
   encoding    = 'UTF-8' # file encoding (used in source files)
-  missing     = '' # string indicating missing value
-  flags       = '' # legal data flags (case sensitive)
+  missing     = '-9999' # string indicating missing value
+  mflag       = ' BDHKLOPTW' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
+  qflag       = ' DGIKLMNORSTWXZ'
+  sflag       = ' 067AaBbCEFGHIKMNQRrSsTUuWXZz'
   varmin      = 0. # smallest allowed value in data
   varmax      = 0. # largest allowed value in data
   # inferred variables
@@ -267,40 +233,36 @@ class VarDef(RecordClass):
   def __init__(self, **kwargs):
     super(VarDef,self).__init__(**kwargs)
     self.variable = self.name
-    self.filepath = '{0:s}/{0:s}{1:s}{2:s}'.format(self.prefix,'{:s}',self.fileext)
+    self.filepath = '{0:s}{1:s}'.format('{:s}',self.fileext)
     
   def convert(self, data): 
-    if self.scalefactor != 1: data *= self.scalefactor
+    if self.scalefactor != 1: data *= self.scalefactor;
     if self.offset != 0: data += self.offset
     return data
   
   def getKWargs(self, *args):
     ''' Return a dictionary with the specified arguments and their values '''
     if len(args) == 0: 
-      args = ['variable', 'units', 'varmin', 'varmax', 'missing', 'flags', 'dtype', 'encoding']
+      args = ['variable', 'units', 'varmin', 'varmax', 'missing', 'mflag', 'qflag', 'sflag', 'dtype', 'encoding']
     kwargs = dict()
     for arg in args:
       kwargs[arg] = getattr(self,arg)
     return kwargs
   
-## variable definitions for EC datasets
-
-
+## variable definitions for GHCN datasets
+  
 # definition for precipitation files
 class PrecipDef(VarDef):
-  scalefactor = 1./(24.*60.*60.) # convert from mm/day to mm/s 
+  scalefactor = .1/(24.*60.*60.) # convert from mm/day to mm/s 
   offset      = 0 
   datatype    = 'precip'
-  title       = 'EC Precipitation Records'
-  missing     = '-9999.99' # string indicating missing value (apparently not all have 'M'...)
-  flags       = 'TEFACLXYZ' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
+  title       = 'GHCN Precipitation Records'
   varmin      = 0. # smallest allowed value in data
-  varmax      = 1.e3 # largest allowed value in data
-  
+  varmax      = 1.e4 # largest allowed value in data
+
 # daily precipitation variables in data
-precip_vars = dict(precip=PrecipDef(name='precipitation', prefix='dt', atts=varatts['precip']),
-                   solprec=PrecipDef(name='snowfall', prefix='ds', atts=varatts['solprec']),
-                   liqprec=PrecipDef(name='rainfall', prefix='dr', atts=varatts['liqprec']))
+precip_vars = dict(precip=PrecipDef(name='PRCP', atts=varatts['precip']),
+                   solprec=PrecipDef(name='SNOW', atts=varatts['solprec']))
 # precipitation extremes (and other derived variables)
 precip_xtrm = []
 for threshold in precip_thresholds:
@@ -319,25 +281,21 @@ for threshold in precip_thresholds:
   precip_xtrm.append(dict(name='CWD'+suffix, mode='above', long_name='Consecutive Wet Days (>'+name_suffix, **tmpatts))
   precip_xtrm.append(dict(name='CDD'+suffix, mode='below', long_name='Consecutive Dry Days (<'+name_suffix, **tmpatts))
 
-
 # definition for temperature files
 class TempDef(VarDef):
-  scalefactor = 1 
+  scalefactor = 0.1 
   offset      = 273.15 # convert to Kelvin 
   datatype    = 'temp'
-  title       = 'EC Temperature Records'
-  encoding    = 'ISO-8859-15' # for some reason temperature files have a strange encodign scheme...
-  missing     = '-9999.9' # string indicating missing value
-  flags       = 'Ea' # legal data flags (case sensitive; 'M' for missing should be screened earlier)
-  varmin      = -100. # smallest allowed value in data
-  varmax      = 100. # largest allowed value in data
+  title       = 'GHCN Temperature Records'
+  varmin      = -1000. # smallest allowed value in data
+  varmax      = 1000. # largest allowed value in data
 
 # daily temperature variables in data
-temp_vars   = dict(T2=TempDef(name='mean temperature', prefix='dm', atts=varatts['T2']),
-                   Tmin=TempDef(name='minimum temperature', prefix='dn', atts=varatts['Tmin']),
-                   Tmax=TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax']))  
+temp_vars   = dict(T2=TempDef(name='TAVG', atts=varatts['T2']),
+                   Tmax=TempDef(name='TMAX', atts=varatts['Tmax']),  
+                   Tmin=TempDef(name='TMIN', atts=varatts['Tmin']),)
 # temperature extremes (and other derived variables)
-temp_xtrm   = [dv.FrostDays(threshold=0., temp='T2MIN', ignoreNaN=True), dv.SummerDays(threshold=25., temp='T2MAX'),]
+temp_xtrm   = [dv.FrostDays(threshold=0., temp='TAMIN', ignoreNaN=True), dv.SummerDays(threshold=25., temp='TAMAX'),]
 for var in temp_vars:
   for mode in ('min','max'):
     # ordinary & interval extrema: var, mode, [interval=7,] name=None, dimmap=None
@@ -350,46 +308,47 @@ temp_xtrm.append(dict(name='CSD', var='Tmax', mode='above', threshold=273.15+25.
                       long_name='Consecutive Summer Days (>25C)', klass=dv.ConsecutiveExtrema))
 temp_xtrm.append(dict(name='CFD', var='Tmin', mode='below', threshold=273.15, 
                       long_name='Consecutive Frost Days (< 0C)', klass=dv.ConsecutiveExtrema))
-
 # map from common variable names to WRF names (which are used in the derived_variables module)
-ec_varmap = dict(RAIN='precip', south_north='time', time='station', west_east=None, # swap order of axes                 
-                 T2MIN='Tmin', T2MAX='Tmax', FrostDays='frzfrq', SummerDays='sumfrq') 
+ghcn_varmap = dict(RAIN='precip', south_north='time', time='station', west_east=None, # swap order of axes                 
+                 TAMIN='Tmin', TAMAX='Tmax', FrostDays='frzfrq', SummerDays='sumfrq') 
 for threshold in precip_thresholds:
   suffix = '_{:03d}'.format(int(10*threshold))
-  ec_varmap['WetDays'+suffix] = 'wetfrq'+suffix
-  ec_varmap['WetDayRain'+suffix] ='dryprec'+suffix
-  ec_varmap['WetDayPrecip'+suffix] ='wetprec'+suffix
+  ghcn_varmap['WetDays'+suffix] = 'wetfrq'+suffix
+  ghcn_varmap['WetDayRain'+suffix] ='dryprec'+suffix
+  ghcn_varmap['WetDayPrecip'+suffix] ='wetprec'+suffix
 
+# combine temperature and precip variables
+all_vars = precip_vars.copy(); all_vars.update(temp_vars)
+all_xtrm = precip_xtrm + temp_xtrm
 # definition of station meta data format 
-ec_header_format = ('No','StnId','Prov','From','To','Lat(deg)','Long(deg)','Elev(m)','Joined','Station','name') 
-ec_station_format = tuple([(None, int), 
-                          ('id', str),                            
-                          ('prov', str),                        
-                          ('begin_year', int),     
-                          ('begin_mon', int),
-                          ('end_year', int),   
-                          ('end_mon', int),
-                          ('lat', float),                     
-                          ('lon', float),                       
-                          ('alt', float),                       
-                          ('joined', lambda l: l.upper() == 'Y'),
-                          ('name', str),])
+ghcn_station_format = tuple([('id', str),                           
+                            ('lat', float),
+                            ('lon', float),
+                            ('alt', float), 
+                            ('name', str), # the name variable can have multiple words
+                            ('begin_year', int), # these are processed later    
+                            ('begin_mon', int),
+                            ('end_year', int),   
+                            ('end_mon', int),])                               
+#TODO: We should probably add the columns/field numbers corresponding to each variable and parse based 
+#      on column/field number, rather than separating by white space; the begin- and end-years can be 
+#      added to the station definition independently, since here they are not read from the file.
+#      In its current form the station name is cut off after the first word (e.g. 'ST' for 'ST JOHNS').
     
 ## class to read station records and return a dataset
 class StationRecords(object):
   '''
     A class that provides methods to load station data and associated meta data from files of a given format;
     The format itself will be defines in child classes.
-    The data will be converted to monthly statistics and accessible as a GeoPy dataset or can be written 
-    to a NetCDF file.
+    The data will be converted to monthly statistics and accessible as a GeoPy dataset or can be written to a NetCDF file.
   '''
   # arguments
-  folder      = '' # root folder for station data: interval and datatype (source folder)
-  stationfile = 'stations.txt' # file that contains station meta data (to load station records)
+  folder      = root_folder # root folder for station data: interval and datatype (source folder)
+  stationfile = 'ghcnd-stations.txt' # file that contains station meta data (to load station records)
   encoding    = '' # encoding of station file
   interval    = '' # source data interval (currently only daily)
-  datatype    = '' # variable class, e.g. temperature or precipitation types
-  title       = '' # dataset title
+  datatype    = 'all' # GHCN does not seperate different data types
+  title       = 'GHCN Station Data' # dataset title
   variables   = None # parameters and definitions associated with variables
   extremes    = None # list of derived/extreme variables to be computed as well
   atts        = None # attributes of resulting dataset (including name and title)
@@ -400,42 +359,34 @@ class StationRecords(object):
   stationlists   = None # list of station objects
   dataset        = None # GeoPy Dataset (will hold results) 
   
-  def __init__(self, folder='', stationfile='stations.txt', variables=None, extremes=None, interval='daily', 
+  def __init__(self, folder=root_folder, stationfile='ghcnd-stations.txt', variables=None, extremes=None, interval='daily', 
                encoding='', header_format=None, station_format=None, constraints=None, atts=None, varmap=None):
     ''' Parse station file and initialize station records. '''
     # some input checks
     if not isinstance(stationfile,basestring): raise TypeError
     if interval != 'daily': raise NotImplementedError
-    if header_format is None: header_format = ec_header_format # default
-    elif not isinstance(header_format,(tuple,list)): raise TypeError
-    if station_format is None: station_format = ec_station_format # default    
+    if station_format is None: station_format = ghcn_station_format # default    
     elif not isinstance(station_format,(tuple,list)): raise TypeError
     if not isinstance(constraints,dict) and constraints is not None: raise TypeError
     # variables et al.
     if not isinstance(variables,dict): raise TypeError
-    datatype = variables.values()[0].datatype; title = variables.values()[0].title;
-    if not all([var.datatype == datatype for var in variables.values()]): raise VariableError
-    if not all([var.title == title for var in variables.values()]): raise VariableError
-    if extremes is None and datatype == 'precip': extremes = deepcopy(precip_xtrm)
-    elif extremes is None and datatype == 'temp': extremes = deepcopy(temp_xtrm)
+    extremes = deepcopy(all_xtrm) # no datatype distinction
     # N.B.: need to use deepcopy, because we are modifying the objects      
     if not isinstance(extremes,(list,tuple)): raise TypeError
-    if varmap is None: varmap = ec_varmap
+    if varmap is None: varmap = ghcn_varmap
     elif not isinstance(varmap, dict): raise TypeError
     # utils
     encoding = encoding or variables.values()[0].encoding 
-    if atts is None: atts = dict(name=datatype, title=title) # default name
+    if atts is None: atts = dict(name=self.datatype, title=self.title) # default name
     elif not isinstance(atts,dict): raise TypeError # resulting dataset attributes
     if not isinstance(encoding,basestring): raise TypeError
-    folder = folder or '{:s}/{:s}_{:s}/'.format(root_folder,interval,datatype) # default folder scheme 
+    folder = folder #or '{:s}/{:s}_{:s}/'.format(root_folder,interval,datatype) # default folder scheme 
     if not isinstance(folder,basestring): raise TypeError
     # save arguments
     self.folder = folder
     self.stationfile = stationfile
     self.encoding = encoding
     self.interval = interval
-    self.datatype = datatype
-    self.title = title
     self.variables = variables
     self.extremes = extremes
     self.varmap = varmap
@@ -448,39 +399,25 @@ class StationRecords(object):
     # open and parse station file
     stationfile = '{:s}/{:s}'.format(folder,stationfile)
     f = codecs.open(stationfile, 'r', encoding=encoding)
-    # initialize station objects and add to list
-    header = f.readline() # read first line of header (title)
-    if not datatype.lower() in header.lower(): raise ParseError
-    f.readline() # discard second line (French)
-    header = f.readline() # read third line (column definitions)
-    for key,col in zip(header_format,header.split()):
-      if key.lower() != col.lower(): 
-        raise ParseError, "Column headers do not match format specification: {:s} != {:s} \n {:s}".format(key,col,header)
-    f.readline() # discard forth line (French)    
     # initialize station list
     self.stationlists = {varname:[] for varname in variables.iterkeys()} # a separate list for each variable
     z = 0 # row counter 
     ns = 0 # station counter
-    # loop over lines (each defiens a station)
+    # loop over lines (each defines a station)
     for line in f:
       z += 1 # increment counter
       collist = line.split()
+#XXX: this needs to be revised based on column/field number, not white space delimiters
       if len(collist) > 0: # skip empty lines
         stdef = dict() # station specific arguments to instantiate station object
         # loop over column titles
         zz = 0 # column counter
-        for key,fct in station_format[:-1]: # loop over columns
-          if key is None: # None means skip this column
-            if zz == 0: # first column
-              if z != fct(collist[zz]): raise ParseError, "Station number is not consistent with line count:\n {:s}".format(line)
-          else:
-            stdef[key] = fct(collist[zz]) # convert value and assign to argument
+        for key,fct in station_format[0:5]: # loop over columns
+          stdef[key] = fct(collist[zz]) # convert value and assign to argument
           zz += 1 # increment column
         assert zz <= len(collist) # not done yet
-        # collect all remaining elements
-        key,fct = station_format[-1]
-        stdef[key] = fct(' '.join(collist[zz:]))
-        # check station constraints
+        for key,fct in station_format[-4:]:
+          stdef[key]=fct('0')
         if constraints is None: ladd = True
         else:
           ladd = True
@@ -491,52 +428,82 @@ class StationRecords(object):
           ns += 1
           # loop over variable definitions
           for varname,vardef in variables.iteritems():
-            filename = '{0:s}/{1:s}'.format(folder,vardef.filepath.format(stdef['id']))
+            filename = '{0:s}/ghcnd_all/{1:s}.dly'.format(folder, format(stdef['id']))
             kwargs = dict() # combine station and variable attributes
             kwargs.update(stdef); kwargs.update(vardef.getKWargs())
             station = DailyStationRecord(filename=filename, **kwargs)
             station.checkHeader() 
             self.stationlists[varname].append(station)
+            begin_end_dates=[station.begin_year,station.begin_mon,station.end_year,station.end_mon]
+            count=0
+            for key,fct in station_format[-4:]:
+              stdef[key]=fct(str(begin_end_dates[count]))
+              count+=1
+#XXX: we don't really need to use the station format to add these...
+
     assert len(self.stationlists[varname]) == ns # make sure we got all (lists should have the same length)
     
-  def prepareDataset(self, filename=None, folder=None):
+  def prepareDataset(self, filename=None, folder=None, station_folder=None):
     ''' prepare a GeoPy dataset for the station data (with all the meta data); 
         create a NetCDF file for monthly data; also add derived variables          '''
     if folder is None: folder = avgfolder # default folder scheme 
-    elif not isinstance(folder,basestring): raise TypeError
-    if filename is None: filename = 'ec{:s}_monthly.nc'.format(self.datatype) # default folder scheme 
-    elif not isinstance(filename,basestring): raise TypeError
+    elif not isinstance(folder,basestring): raise TypeError, folder
+    if station_folder is None: station_folder = '{:s}/ghcnd_all/'.format(root_folder) # default folder scheme 
+    elif not isinstance(station_folder,basestring): raise TypeError, station_folder
+    if filename is None: filename = 'ghcn{:s}_monthly.nc'.format(self.datatype)# default folder scheme 
+    elif not isinstance(filename,basestring): raise TypeError, filename
     # meta data arrays
     dataset = Dataset(atts=self.atts)
     # station axis (by ordinal number)
     stationlist = self.stationlists.values()[0] # just use first list, since meta data is the same
     assert all([len(stationlist) == len(stnlst) for stnlst in self.stationlists.values()]) # make sure none is missing
-    station = Axis(coord=np.arange(1,len(stationlist)+1, dtype='int16'), **varatts['station']) # start at 1
+    station = Axis(coord=np.arange(1,len(stationlist)+1, dtype='int'), **varatts['station']) # start at 1
     # station name
     namelen = max([len(stn.name) for stn in stationlist])
     strarray = np.array([stn.name.ljust(namelen) for stn in stationlist], dtype='|S{:d}'.format(namelen))
     dataset += Variable(axes=(station,), data=strarray, **varatts['name'])
-    # station province
-    strarray = np.array([stn.prov for stn in stationlist], dtype='|S2') # always two letters
-    dataset += Variable(axes=(station,), data=strarray, **varatts['prov'])
-    # station joined
-    boolarray = np.array([stn.joined for stn in stationlist], dtype='bool') # boolean
-    dataset += Variable(axes=(station,), data=boolarray, **varatts['joined'])
     # geo locators (lat/lon/alt)
     for coord in ('lat','lon','alt'):
       coordarray = np.array([getattr(stn,coord) for stn in stationlist], dtype='float32') # single precision float
       dataset += Variable(axes=(station,), data=coordarray, **varatts[coord])
-    # start/end dates (month relative to 1979-01)
+    # start/end dates (month relative to 1980-01)
+    begin_year = np.zeros(len(stationlist), dtype='int16');
+    begin_mon  = np.zeros(len(stationlist), dtype='int16');
+    end_year   = np.zeros(len(stationlist), dtype='int16');
+    end_mon    = np.zeros(len(stationlist), dtype='int16');
+    datearray  = np.empty([2,len(stationlist)], dtype='int16');
+    pntcounter = 0
+    print self.variables
     for pnt in ('begin','end'):
-      yeararray = np.array([getattr(stn,pnt+'_year') for stn in stationlist], dtype='int16') # single precision integer
-      monarray = np.array([getattr(stn,pnt+'_mon') for stn in stationlist], dtype='int16') # single precision integer
-      datearray = ( yeararray - 1979 )*12 + monarray - 1  # compute month relative to 1979-01
-      dataset += Variable(axes=(station,), data=datearray, **varatts[pnt+'_date'])
+      s = 0 #station counter
+      for stations in stationlist:
+        filenamedly = '{0:s}/{1:s}.dly'.format(station_folder,stations.id)
+        # open file
+        f = codecs.open(filenamedly, 'r','UTF-8')
+        infoline=f.readlines()
+        ll=infoline[0]
+        begin_year[s] = int(ll[11:15])
+        begin_mon[s] = int(ll[15:17])
+        off=-270
+        f.seek(off, 2)
+        infoline = f.readlines()
+        if len(infoline)>=2:
+          raise ParseError,'last line incomplete'
+        else:
+          ll=infoline[-1]
+          end_year[s] = int(ll[11:15])
+          end_mon[s] = int(ll[15:17])
+        f.close()     
+        datearray[0,s] = ( begin_year[s] - 1980 )*12 + begin_mon[s] - 1  # compute month relative to 1980-01
+        datearray[1,s] = ( end_year[s] - 1980 )*12 + end_mon[s] - 1  # compute month relative to 1980-01
+        s+=1
+      dataset += Variable(axes=(station,), data=datearray[pntcounter], **varatts[pnt+'_date'])
+      pntcounter+=1   
       # save bounds to determine size of time dimension
-      if pnt == 'begin': 
+      if pnt == 'begin':
         begin_date = np.min(datearray)
         if begin_date%12: begin_date = (begin_date//12)*12 # always rounds down, no correction necessary 
-      elif pnt == 'end': 
+      elif pnt == 'end':
         end_date = np.max(datearray)
         if end_date%12: end_date = (end_date//12+1)*12 # exclusive, i.e. this value is not included in range
     assert begin_date%12 == 0 and end_date%12 == 0
@@ -572,12 +539,10 @@ class StationRecords(object):
       xvar.normalize = False # different aggregation
       # check axes
       if len(xvar.axes) != 2 or xvar.axes != (varatts['station']['name'], varatts['time']['name']):
-        print xvar.axes
         raise dv.DerivedVariableError, "Axes ('station', 'time') are required; adjust varmap as needed."
       # finalize
       xvar.checkPrerequisites(ncset, const=None, varmap=self.varmap)
       if xvar.name in self.varmap: xvar.name = self.varmap[xvar.name] # rename
-#       print xvar.name
       xvar.createVariable(ncset)
       extremes.append(xvar)
     self.extremes = extremes
@@ -633,12 +598,12 @@ class StationRecords(object):
         tmp = np.ma.empty(varobj.shape, dtype=varobj.dtype); tmp.fill(np.NaN) 
         # N.B.: some derived variable types may return masked arrays
         monlydata[wrfvar] = tmp
-    # loop over time steps to compute nonlinear variables from daily values    
+    # loop over time steps      
     tmpvars = dict()
     for m,mon in enumerate(varobj.axes[1].coord):
       # figure out length of month
       if mon%12 == 1: # February
-        if calendar.isleap(1979 + mon/12): lmon = 29
+        if calendar.isleap(1980 + mon/12): lmon = 29
         else: lmon = 28
       else: lmon = days_per_month[mon%12]
       # construct arrays for this month
@@ -684,45 +649,37 @@ class StationRecords(object):
     self.dataset.sync()
     
     
-## load pre-processed EC station time-series
-def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None, 
+## load pre-processed GHCN station time-series
+def loadGHCN_TS(name=None, filetype='all', varlist=None, varatts=None, 
               filelist=None, folder=None, **kwargs): 
-  ''' Load a monthly time-series of pre-processed EC station data. '''
-  if filetype is None: raise ArgumentError, "A 'filetype' needs to be specified ('temp' or 'precip')."
-  elif not filetype in ('temp','precip'): raise ArgumentError
-  name = name or 'EC' # 'ec{:s}'.format(filetype) # prepend ec to the filetype
-  if prov is not None and not isinstance(prov,basestring): raise TypeError
+  ''' Load a monthly time-series of pre-processed GHCN station data. '''
+  if filetype != 'all': raise NotImplementedError, filetype
+  if name is None: name = 'GHCN'
   if folder is None: folder = avgfolder
-  if filelist is None:
-    if prov: filelist = [tsfile_prov.format(filetype, prov)]
-    else: filelist = [tsfile.format(filetype)]
+  if filelist is None: filelist = [tsfile.format(filetype)]
   if varlist is not None: # translate varlist
     varlist = translateVarNames(varlist, varatts)
   # open NetCDF file (name, varlist, and varatts are passed on directly)
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                             multifile=False, ncformat='NETCDF4', **kwargs)
   return dataset
-# wrapper
-def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varatts, lloadCRU=False, **kwargs):
-  ''' Load a monthly time-series of pre-processed EC station data. '''
-  if station is None: raise ArgumentError, "A 'filetype' needs to be specified ('ectemp' or 'ecprecip')."
-  elif station in ('ectemp','ecprecip'):
-    name = name or 'EC'  
-    station = station[2:] # internal convention
-  else: raise ArgumentError
+
+## wrapper for loadGHCN_TS with additional functionality
+def loadGHCN_StnTS(name=None, varlist=None, varatts=varatts, lloadCRU=False, filetype='all', **kwargs):
+  ''' Load a monthly time-series of pre-processed GHCN station data. '''
+  if filetype != 'all': raise NotImplementedError, filetype
   
   if varlist is not None: 
     if isinstance(varlist,basestring): varlist = [varlist]
     varlist = list(set(varlist).union(stn_params)) 
   # load station data
   #print varlist  
-  dataset = loadEC_TS(name=name, filetype=station, prov=prov, varlist=varlist, varatts=varatts, 
-                      filelist=None, folder=None, **kwargs) # just an alias
+  dataset = loadGHCN_TS(name=name, varlist=varlist, varatts=varatts, **kwargs) # just an alias
   # make sure we have a time-dependent variable
   if not dataset.hasAxis('time'):  
     #raise DatasetError, "No time-dependent variables in Dataset:\n{:s}".format(str(dataset)) # error, if no time-dependent variable
-    dataset = loadEC_TS(name=name, filetype=station, prov=prov, varlist=varlist+['precip','T2'], 
-                        varatts=varatts, filelist=None, folder=None, **kwargs) # just an alias
+    dataset = loadGHCN_TS(name=name, varlist=varlist+['precip','T'], 
+                        varatts=varatts, **kwargs) # just an alias
     # N.B.: for some operations we need a time axis...
     
   # supplement with CRU gridded data, if necessary
@@ -731,7 +688,7 @@ def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varat
     crulist = [var for var in varlist if ( var not in dataset and var in CRU_vars )]
     #print crulist
     if len(crulist) > 0:
-      cru = loadCRU_StnTS(station='ec'+station, varlist=crulist).load() # need to load for slicing
+      cru = loadCRU_StnTS(station='ghcn{}'.format(filetype), varlist=crulist).load() # need to load for slicing
       if cru.hasAxis('time'): # skip, if no time-dependent variable
         #print dataset
         cru = cru(time=dataset.time.limits()) # slice to same length
@@ -742,17 +699,17 @@ def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varat
   return dataset
 
 ## load pre-processed EC station climatology
-def loadEC(): 
-  ''' Load a pre-processed EC station climatology. '''
+def loadGHCN(): 
+  ''' Load a pre-processed GHCN station climatology. '''
   return NotImplementedError
-loadEC_Stn = loadEC
+loadGHCN_Stn = loadGHCN
 
 
 ## some helper functions to test conditions
 # defined in module main to facilitate pickling
-def test_prov(val,index,dataset,axis):
-  ''' check if station province is in provided list ''' 
-  return dataset.stn_prov[index] in val
+#def test_prov(val,index,dataset,axis):
+#  ''' check if station province is in provided list ''' 
+#  return dataset.stn_prov[index] in val
 def test_begin(val,index,dataset,axis):
   ''' check if station record begins before given year ''' 
   return dataset.stn_begin_date[index] <= val # converted to month beforehand 
@@ -781,7 +738,7 @@ def test_lon(val,index,dataset,axis):
   ''' check if station is located within selected longitude band ''' 
   return val[0] <= dataset.stn_lon[index] <= val[1] 
 def test_cluster(val,index,dataset,axis, cluster_name='cluster_id', lcheckVar=True):
-  ''' check if station is member of a cluster '''
+  ''' check if station is located within selected longitude band '''
   if not dataset.hasVariable(cluster_name):
     if lcheckVar: raise DatasetError
     else: return True # most datasets don't have this field...
@@ -789,13 +746,6 @@ def test_cluster(val,index,dataset,axis, cluster_name='cluster_id', lcheckVar=Tr
     return dataset[cluster_name][index] == val
   elif isinstance(val, (tuple,list,np.ndarray)):
     return dataset[cluster_name][index] in val
-  else: ValueError, val
-def test_name(val,index,dataset,axis):
-  ''' check if station name is in provided list (val) '''
-  if isinstance(val, basestring): 
-    return dataset['station_name'][index].strip() == val
-  elif isinstance(val, (tuple,list)):
-    return dataset['station_name'][index].strip() in val
   else: ValueError, val
 # apply tests to list
 def apply_test_suite(tests, index, dataset, axis):
@@ -822,13 +772,7 @@ def selectStations(datasets, stnaxis='station', master=None, linplace=False, lal
   varcheck = [True]*len(datasets)
   for key,val in kwcond.iteritems():
     key = key.lower()
-    if key == 'prov':
-      varname = 'stn_prov'
-      if not isinstance(val,(tuple,list)): val = (val,)
-      if not isinstance(val,tuple): val = tuple(val)
-      if not all(isinstance(prov,basestring) for prov in val): raise TypeError
-      tests.append(functools.partial(test_prov, val))
-    elif key == 'min_len':
+    if key == 'min_len':
       varname = 'stn_rec_len'
       if not isNumber(val): raise TypeError
       val = val*12 # units in dataset are month  
@@ -836,12 +780,12 @@ def selectStations(datasets, stnaxis='station', master=None, linplace=False, lal
     elif key == 'begin_before':
       varname = 'stn_begin_date'
       if not isNumber(val): raise TypeError
-      val = (val-1979.)*12. # units in dataset are month since Jan 1979  
+      val = (val-1980.)*12. # units in dataset are month since Jan 1980  
       tests.append(functools.partial(test_begin, val))    
     elif key == 'end_after':
       varname = 'stn_end_date'
       if not isNumber(val): raise TypeError
-      val = (val-1979.)*12. # units in dataset are month since Jan 1979  
+      val = (val-1980.)*12. # units in dataset are month since Jan 1980  
       tests.append(functools.partial(test_end, val))    
     elif key == 'max_zerr':
       varname = 'zs_err'
@@ -863,11 +807,6 @@ def selectStations(datasets, stnaxis='station', master=None, linplace=False, lal
       varname = cluster_name
       if ( not isinstance(val,(list,tuple,np.ndarray)) or not all(isInt(l) for l in val)) and not isInt(val): raise TypeError  
       tests.append(functools.partial(test_cluster, val, cluster_name=cluster_name, lcheckVar=lcheckVar))
-    elif key == 'name':
-      varname = 'station_name'
-      if not ( ( isinstance(val,(list,tuple)) and all(isinstance(v,basestring) for v in val) ) or 
-               isinstance(val,basestring) ): raise TypeError  
-      tests.append(functools.partial(test_name, val))
     else:
       raise NotImplementedError, "Unknown condition/test: '{:s}'".format(key)
     # record, which datasets have all variables 
@@ -901,37 +840,35 @@ default_grid = None
 loadLongTermMean = None # climatology provided by publisher
 loadTimeSeries = None # time-series data
 loadClimatology = None # pre-processed, standardized climatology
-loadStationTimeSeries = loadEC_TS # time-series data
-loadStationClimatology = loadEC # pre-processed, standardized climatology
+loadStationTimeSeries = loadGHCN_StnTS # time-series data
+loadStationClimatology = None # pre-processed, standardized climatology
 
 if __name__ == '__main__':
 
 #   mode = 'test_selection'
 #   mode = 'test_timeseries'
-  mode = 'test_station_object'
+#   mode = 'test_station_object'
 #   mode = 'test_station_reader'
 #   mode = 'test_conversion'
-#   mode = 'convert_prov_stations'
-#   mode = 'convert_all_stations'
+  mode = 'convert_all_stations'
   
-  # test wrapper function to load time series data from EC stations
   if mode == 'test_selection':
     
     # some foreign imports
     from geodata.base import Ensemble
     from datasets.WRF import loadWRF_StnEns
     # load pre-processed time-series file
-    stn='ecprecip'
+    stn='ghcnprecip'
     print('')
-    stnens = Ensemble(loadEC_StnTS(station=stn), loadWRF_StnEns(ensemble='max-ens-2100', station=stn, 
+    stnens = Ensemble(loadGHCN_StnTS(station=stn), loadWRF_StnEns(ensemble='max-ens-2100', station=stn, 
                       filetypes='hydro', domains=2)) # including WRF data for test
     print(stnens[0])    
     print('')
     var = stnens[-1].axes['station']; print(''); print(var)
     for var in stnens.station: print(var.min(),var.mean(),var.max())
     # test station selector
-    cluster = (4,7,8); cluster_name = 'cluster_projection'; prov = ('BC','AB'); max_zserr = 300; lat = (40,50)
-    min_len = 50; begin_before = 1920; end_after = 2000
+    cluster = (4,7,8); cluster_name = 'cluster_projection';  max_zserr = 300; lat = (40,50)
+    min_len = 50; begin_before = 1985; end_after = 2000
 #     stnens = selectStations(stnens, prov=prov, min_len=min_len, lat=lat, max_zerr=max_zserr, lcheckVar=True,
 #                             stnaxis='station', imaster=1, linplace=False, lall=False); cluster = None
     stnens = selectStations(stnens, min_len=min_len, cluster=cluster, lat=lat, max_zerr=max_zserr,
@@ -945,37 +882,32 @@ if __name__ == '__main__':
     for var in stnens.station: print(var.min(),var.mean(),var.max())
     
     print('')
-    print(stnens[0].stn_prov.data_array)
+    #print(stnens[0].stn_prov.data_array)
     print(stnens[0][cluster_name].data_array)
     for stn in stnens:
-      assert all(elt in prov for elt in stn.stn_prov.data_array)
+    # assert all(elt in prov for elt in stn.stn_prov.data_array)
       assert all(lat[0]<=elt<=lat[1] for elt in stn.stn_lat.data_array)
       assert all(min_len<=elt for elt in stn.stn_rec_len.data_array)
-      if cluster is not None and cluster_name in stn: # only EC stations
+      if cluster is not None and cluster_name in stn: # only GHCN stations
         assert all(elt in cluster for elt in stn[cluster_name].data_array)
       if 'zs_err' in stn: # only WRF datasets
         assert all(elt < max_zserr for elt in stn.zs_err.data_array)
     
         
-  # test wrapper function to load time series data from EC stations
+  # test wrapper function to load time series data from GHCN stations
   elif mode == 'test_timeseries':
     
     # load pre-processed time-series file
     print('')
-    lloadCRU = True
-#     dataset = loadEC_TS(filetype='temp', prov='PE').load()
-    dataset = loadEC_StnTS(station='ecprecip', varlist=['MaxSnow_1d','MaxSnow_5d','T2'], lloadCRU=lloadCRU).load()
+    dataset = loadGHCN_TS(filetype='temp').load()
+    #dataset = loadGHCN_StnTS(station='ghcnprecip', varlist=['solprec','T']).load()
     print(dataset)
     print('')
-    print('ATHABASCA', dataset.station_name.findValues('ATHABASCA'))
+    print('DHABI', dataset.station_name.findValues('DHABI'))
     print('')
     print(dataset.time)
     print(dataset.time.coord)
     print(dataset.stn_begin_date.min())
-    if not lloadCRU:
-      origin = np.ceil(dataset.stn_begin_date.min()*(-1./12.))*12
-      print(dataset.time.coord[origin]) # Jan 1979, the origin of time...
-      assert dataset.time.coord[origin] == 0
     assert dataset.time.coord[0]%12. == 0
     assert (dataset.time.coord[-1]+1)%12. == 0
         
@@ -983,55 +915,40 @@ if __name__ == '__main__':
   elif mode == 'test_station_object':  
     
     # initialize station (new way with VarDef)
-#     var = PrecipDef(name='precipitation', prefix='dt', atts=varatts['precip'])
-#     test = DailyStationRecord(id='250M001', name='MOULD BAY', filename='/data/EC/daily_precip/dt/dt250M001.txt',  
-#                               begin_year=1948, begin_mon=1, end_year=2007, end_mon=11, prov='NT', joined=True, 
-#                               lat=76.2, lon=-119.3, alt=2, **var.getKWargs())    
-    var = TempDef(name='maximum temperature', prefix='dx', atts=varatts['Tmax'])
-    test = DailyStationRecord(id='5010640', name='CYPRESS RIVER', filename='/data/EC/daily_temp/dx/dx5010640.txt',
-                              begin_year=1949, begin_mon=1, end_year=2012, end_mon=3, prov='MB', joined=False, 
-                              lat=49.55, lon=-99.08, alt=374, **var.getKWargs())
+    var = PrecipDef(name='PRCP', prefix='dt', atts=varatts['precip'])
+    test = DailyStationRecord(id='BR002955013', name='ALEGRETE-ELETROSUL', filename=root_folder+'/ghcnd_all/BR002955013.dly',
+                              begin_year=1986, begin_mon=2, end_year=1998, end_mon=4, 
+                              lat=-29.78, lon=-59.77, alt=80, **var.getKWargs())
     test.checkHeader() # fail early...
     data = var.convert(test.parseRecord())    
     print data.shape, data.dtype
-    print np.nanmin(data), np.nanmean(data), np.nanmax(data)
-  
+    print np.nanmin(data), np.nanmean(data), np.nanmax(data)  
   
   # tests station reader initialization
   elif mode == 'test_station_reader':
     
     # prepare input
-    variables = temp_vars
-    # initialize station record container (PE only has 3 stations - ideal for testing!)
-    test = StationRecords(folder='', variables=variables, constraints=dict(prov=('PE',)))
+    test = StationRecords(folder=root_folder, variables=all_vars, stationfile='ghcnd-stations-debug.txt')
     # show dataset
     test.prepareDataset()
     print test.dataset
+    print test.dataset.filelist
     print('')
     # test netcdf file
-    dataset = DatasetNetCDF(filelist=['/data/EC/ecavg/ectemp_monthly.nc'])
+    dataset = DatasetNetCDF(filelist=[avgfolder+'ghcnall_monthly.nc'])
     print dataset
     print('')
-    print dataset.station_name[1:,] # test string variable recall
+    print dataset.station_name[:] # test string variable recall
     
   
   # tests entire conversion process
   elif mode == 'test_conversion':
     
-    prov = 'PE'
-    # prepare input
-#     variables = temp_vars #dict(T2=temp_vars['T2'])
-    variables = precip_vars #dict(precip=temp_vars['precip'])
     # initialize station record container (PE only has 3 stations - ideal for testing!)
-    test = StationRecords(folder='', variables=variables, constraints=dict(prov=(prov,)))
+    test = StationRecords(folder=root_folder, variables=all_vars, stationfile='ghcnd-stations-debug.txt')
     # create netcdf file
     print('')
-#            CWD:  0.00 |  6.43 | 55.00
-#            CDD:  0.00 |  4.87 | 26.00
-#        WetDays:  0.00 |  0.38 |  0.84
-#     print('Dry-day Threshold: {:f}'.format(dv.dryday_threshold))
-#     print('')
-    filename = tsfile_prov.format(variables.values()[0].datatype,prov)        
+    filename = tsfile.format(all_vars.values()[0].datatype)        
     test.prepareDataset(filename=filename, folder=None)
     # read actual station data
     test.readStationData()
@@ -1039,52 +956,35 @@ if __name__ == '__main__':
     print('')
     print(dataset)
     print('\n')
+    precip_list = precip_vars.keys() + precip_xtrm
     for varname,var in dataset.variables.iteritems():
       if var.hasAxis('time') and var.hasAxis('station'):
         data = var.getArray()
-        if 'precip' in variables:
-          if var.units == 'kg/m^2/s': data  *= 86400. 
-          print('{:>14s}: {:5.2f} | {:5.2f} | {:5.2f}'.format(
-                var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data))) 
+        if var.units == 'kg/m^2/s': 
+          data  *= 86400. 
+          if np.all(data.mask):
+            # some stations do not have all variables
+            print('{:>14s}:    NaN  |    NaN  |    NaN  [{:s}]'.format(var.name, var.units)) 
+          else:
+            print('{:>14s}: {:5.2f} | {:5.2f} | {:5.2f} [{:s}]'.format(
+                  var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data), var.units)) 
         else: 
-          print('{:>10s}: {:5.1f} | {:5.1f} | {:5.1f}'.format(
-                var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data)))
+          print('{:>14s}: {:5.1f} | {:5.1f} | {:5.1f} [{:s}]'.format(
+                var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data), var.units))
     # record length
     for pfx in ['stn_rec',]: # +variables.keys() # currently the only one (all others are the same!)
       var = dataset[pfx+'_len']
       data = var.getArray()
-      if 'precip' in variables:
-        print('{:>14s}: {:5d} | {:5.1f} | {:5d}'.format(var.name,np.min(data), np.mean(data), np.max(data))) 
-      else:
-        print('{:>10s}: {:5d} | {:5.1f} | {:5d}'.format(var.name,np.min(data), np.mean(data), np.max(data)))
+      print('{:>14s}: {:5d} | {:5.1f} | {:5d} [{:s}]'.format(var.name,np.min(data), np.mean(data), 
+                                                      np.max(data), var.units))
     
   
-  # convert provincial station date to NetCDF
-  elif mode == 'convert_prov_stations':
-    
-    # loop over provinces
-    for prov in ('BC',):
-#     for prov in ('BC', 'YT', 'NT', 'NU', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL'):
-      # loop over variable types
-#       for variables in (precip_vars,): # precip_vars, temp_vars,
-      for variables in (precip_vars, temp_vars,): # precip_vars, temp_vars,
-        
-        # initialize station record container
-        stations = StationRecords(variables=variables, constraints=dict(prov=(prov,)))
-        # create netcdf file (one per province)
-        filename = tsfile_prov.format(variables.values()[0].datatype,prov)        
-        stations.prepareDataset(filename=filename, folder=None)
-        # read actual station data
-        stations.readStationData()
-
-
   # convert all station date to NetCDF
   elif mode == 'convert_all_stations':
     
     # loop over variable types
-#     for variables in (precip_vars, temp_vars,): # precip_vars, temp_vars,
-#     for variables in (precip_vars,):
-    for variables in (temp_vars,):
+    #for variables in ( temp_vars,): # precip_vars, temp_vars, all_vars
+    for variables in (all_vars,):
       
       # initialize station record container
       stations = StationRecords(variables=variables, constraints=None)
@@ -1092,5 +992,3 @@ if __name__ == '__main__':
       stations.prepareDataset(filename=None, folder=None) # default settings
       # read actual station data
       stations.readStationData()
-      
-      

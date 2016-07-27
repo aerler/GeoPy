@@ -112,7 +112,7 @@ def loadUnity(name=dataset_name, period=None, grid=None, varlist=None, varatts=N
     warn('A climatology is not available for the Unified Dataset; loading period {0:4d}-{1:4d}.'.format(*period))
   # this dataset has not native/default grid
   if grid is None: 
-    grid = 'arb2_d02'
+    grid = 'glb1_d02'
     warn('The Unified Dataset has no native grid; loading {0:s} grid.'.format(grid))
   # load standardized climatology dataset with PRISM-specific parameters  
   dataset = loadSpecialObs(name=name, folder=folder, period=period, grid=grid, shape=None, station=None, 
@@ -214,8 +214,8 @@ if __name__ == '__main__':
 #   grids += ['arb3_d02']
 #   grids += ['arb3_d01']
 #   grids += ['arb3_d02']
-  grids += ['glb1_d01']
-#   grids += ['glb1_d02']
+#   grids += ['glb1_d01']
+  grids += ['glb1_d02']
 #   grids += ['col1_d01']
 #   grids += ['col1_d02'] 
 #   grids += ['col1_d03']

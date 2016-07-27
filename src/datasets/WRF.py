@@ -131,24 +131,18 @@ class Srfc(FileType):
                      WaterVapor   = dict(name='Q2', units='Pa'), # water vapor partial pressure
                      U10          = dict(name='u10', units='m/s'), # Westerly Wind (at 10m)
                      V10          = dict(name='v10', units='m/s'), # Southerly Wind (at 10m)
-                     #WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
-                     #WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
-                     #WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)                     MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
-                     MaxACSNOW    = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # maximum daily precip
-                     MaxACSNOW_1d = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # maximum daily precip                             
-                     MaxACSNOW_5d = dict(name='MaxSolprec_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
+                     MaxACSNOW    = dict(name='MaxSolprec_6h', units='kg/m^2/s'), # maximum 6-hourly solid precip
+                     MaxACSNOW_1d = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # maximum daily solid precip                             
+                     MaxACSNOW_5d = dict(name='MaxSolprec_5d', units='kg/m^2/s'), # maximum pendat (5 day) solid precip
                      MaxRAIN      = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # maximum 6-hourly precip                    
-                     MaxRAINC     = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # maximum 6-hourly convective precip
-                     MaxRAINNC    = dict(name='MaxPrecnc_6h', units='kg/m^2/s'), # maximum 6-hourly non-convective precip
-                     MaxPrecip    = dict(name='MaxPrecip_6h', units='kg/m^2/s'), # for short-term consistency                    
-                     MaxPreccu    = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # for short-term consistency
-                     MaxPrecnc    = dict(name='MaxPrecnc_6h', units='kg/m^2/s'), # for short-term consistency
                      MaxRAIN_1d   = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
+                     MaxRAIN_5d   = dict(name='MaxPrecip_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
+                     MaxRAINC     = dict(name='MaxPreccu_6h', units='kg/m^2/s'), # maximum 6-hourly convective precip
                      MaxRAINC_1d  = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # maximum daily convective precip
+                     MaxRAINC_5d  = dict(name='MaxPreccu_5d', units='kg/m^2/s'), # maximum pendat (5 day) conv. precip
+                     MaxRAINNC    = dict(name='MaxPrecnc_6h', units='kg/m^2/s'), # maximum 6-hourly non-convective precip
                      MaxRAINNC_1d = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # maximum daily non-convective precip
-                     MaxPrecip_1d = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
-                     MaxPreccu_1d = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # for short-term consistency
-                     MaxPrecnc_1d = dict(name='MaxPrecnc_1d', units='kg/m^2/s')) # for short-term consistency
+                     MaxRAINNC_5d = dict(name='MaxPrecnc_5d', units='kg/m^2/s'),) # maximum pendat (5 day) n-c precip
     for threshold in precip_thresholds: # add variables with different wet-day thresholds
         suffix = '_{:03d}'.format(int(10*threshold))
         self.atts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    
@@ -180,20 +174,14 @@ class Hydro(FileType):
                      #WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
                      #WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)
                      MaxNetWaterFlux = dict(name='MaxWaterFlx_1d', units='kg/m^2/s'), # for short-term consistency
-                     MaxPrecip    = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
-                     MaxPrecnc    = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # for short-term consistency
-                     MaxPreccu    = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # for short-term consistency
                      MaxRAIN      = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # maximum daily precip                    
                      MaxRAIN_5d   = dict(name='MaxPrecip_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
                      MaxACSNOW    = dict(name='MaxSolprec_1d', units='kg/m^2/s'), # maximum daily precip
                      MaxACSNOW_5d = dict(name='MaxSolprec_5d', units='kg/m^2/s'), # maximum pendat (5 day) precip
                      MaxRAINC     = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # maximum daily convective precip
+                     MaxRAINC_5d  = dict(name='MaxPreccu_5d', units='kg/m^2/s'), # maximum pendat convective precip
                      MaxRAINNC    = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # maximum daily non-convective precip
-                     #MaxACSNOW    = dict(name='MaxSnow_1d', units='kg/m^2/s'), # maximum daily snow fall
-                     #MaxACSNOW_5d = dict(name='MaxSnow_5d', units='kg/m^2/s'), # maximum pendat (5 day) snow
-                     MaxPrecip_1d = dict(name='MaxPrecip_1d', units='kg/m^2/s'), # for short-term consistency                    
-                     MaxPreccu_1d = dict(name='MaxPreccu_1d', units='kg/m^2/s'), # for short-term consistency
-                     MaxPrecnc_1d = dict(name='MaxPrecnc_1d', units='kg/m^2/s'),) # for short-term consistency                     
+                     MaxRAINNC_5d = dict(name='MaxPrecnc_5d', units='kg/m^2/s'),) # maximum pendat non-convective precip
     for threshold in precip_thresholds: # add variables with different wet-day thresholds
         suffix = '_{:03d}'.format(int(10*threshold))
         self.atts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    

@@ -63,7 +63,7 @@ def e_sat(T, Tmax=None):
   '''
   if Tmax is None: 
     # Magnus formula
-    warn('Using average 2m temperature; diurnal min/max 2m temperature is preferable due to strong nonlinearity.')
+    #warn('Using average 2m temperature; diurnal min/max 2m temperature is preferable due to strong nonlinearity.')
     return evaluate('610.8 * exp( 17.27 * (T - 273.15) / (T - 35.85) )')
   else:
     # use average of saturation pressure from Tmin and Tmax (because of nonlinearity)
@@ -108,13 +108,12 @@ def computeVaporDeficit(dataset):
   if 'Tmin' in dataset and 'Tmax' in dataset: es = e_sat(dataset['Tmin'][:],dataset['Tmax'][:])
   # else: Es = e_sat(T) # backup, but not very accurate
   else: raise VariableError, "'Tmin' and 'Tmax' are required to compute saturation water vapor pressure for PET calculation."
-  var = Variable(data=es-ea, name='vapdef', units='kg/m^2/s', axes=dataset['Tmin'].axes)
-  assert var.units == dataset['waterflx'].units, var
+  var = Variable(data=es-ea, name='vapdef', units='Pa', axes=dataset['Tmin'].axes)
   # return new variable
   return var
 
 # compute potential evapo-transpiration
-def computePotEvapPM(dataset):
+def computePotEvapPM(dataset, lterms=True):
   ''' function to compute potential evapotranspiration (according to Penman-Monteith method:
       https://en.wikipedia.org/wiki/Penman%E2%80%93Monteith_equation,
       http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
@@ -148,12 +147,22 @@ def computePotEvapPM(dataset):
   D = Delta(T) # slope of saturation vapor pressure w.r.t. temperature
   # compute potential evapotranspiration according to Penman-Monteith method 
   # (http://www.fao.org/docrep/x0490e/x0490e06.htm#fao%20penman%20monteith%20equation)
-  data = evaluate('( 0.0352512 * D * (Rn + G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
+  if lterms:
+    Dgu = evaluate('( D + g * (1 + 0.34 * u2) ) * 86400') # common denominator
+    rad = evaluate('0.0352512 * D * (Rn + G) / Dgu') # radiation term
+    wnd = evaluate('g * u2 * (es - ea) * 0.9 / T / Dgu') # wind term (vapor deficit)
+    pet = evaluate('( 0.0352512 * D * (Rn + G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
+    import numpy as np
+    assert np.allclose(pet, rad+wnd, equal_nan=True)
+    rad = Variable(data=rad, name='petrad', units='kg/m^2/s', axes=dataset['ps'].axes)
+    wnd = Variable(data=wnd, name='petwnd', units='kg/m^2/s', axes=dataset['ps'].axes)
+  else:
+    pet = evaluate('( 0.0352512 * D * (Rn + G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
-  var = Variable(data=data, name='pet', units='kg/m^2/s', axes=dataset['ps'].axes)
-  assert var.units == dataset['waterflx'].units, var
-  # return new variable
-  return var
+  pet = Variable(data=pet, name='pet', units='kg/m^2/s', axes=dataset['ps'].axes)
+  assert pet.units == dataset['waterflx'].units, pet
+  # return new variable(s)
+  return pet,rad,wnd if lterms else pet
 
 # compute potential evapo-transpiration
 def computePotEvapTh(dataset):
