@@ -198,7 +198,7 @@ if __name__ == '__main__':
 #     NP = 1 ; ldebug = True # for quick computations
     NP = 3 ; ldebug = False # for quick computations
 #     modes = ('time-series',) # 'climatology','time-series'
-    modes = ('time-series','climatology') 
+    modes = ('climatology',) 
     loverwrite = True
     varlist = None # ['T2']
     periods = []
@@ -207,6 +207,7 @@ if __name__ == '__main__':
 #    periods += [5]
 #    periods += [10]
     periods += [15]
+    periods += [30]
     # Observations/Reanalysis
     lLTM = True 
     datasets = []; resolutions = None
@@ -214,7 +215,7 @@ if __name__ == '__main__':
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
-    datasets += ['GPCC','Unity']
+    datasets += ['Unity']
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False
@@ -239,13 +240,13 @@ if __name__ == '__main__':
     # define shape data  
     shape_name = 'shpavg' # Canadian shapes
     shapes = dict()
-#     shapes['basins'] = None # river basins (in Canada) from WSC module
-#     shapes['provinces'] = None # Canadian provinces from EC module
+    shapes['basins'] = None # river basins (in Canada) from WSC module
+    shapes['provinces'] = None # Canadian provinces from EC module
 #     shapes['provinces'] = ['BC'] # Canadian provinces from EC module
 #     shape_name = 'basins' # only Canadian river basins
 #     shapes = dict()
-    shapes['basins'] = ['GLB','GRW'] # river basins (in Canada) from WSC module
-    shapes['provinces'] = ['ON'] # Canadian provinces from EC module
+#     shapes['basins'] = ['GLB','GRW'] # river basins (in Canada) from WSC module
+#     shapes['provinces'] = ['ON'] # Canadian provinces from EC module
      
  
   ## process arguments    

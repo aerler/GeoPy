@@ -235,7 +235,7 @@ if __name__ == '__main__':
 #   periods += [(1984,1994)]
 #   periods += [(1989,1994)]
 #   periods += [(1997,1998)]
-#   periods += [(1979,2009)]
+  periods += [(1979,2009)]
 #   periods += [(1949,2009)]
 #   pntset = 'shpavg'
   pntset = 'ecprecip'
