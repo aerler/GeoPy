@@ -380,6 +380,11 @@ tmp = PlotAtts(name = 'OLR', title = 'Outgoing Longwave Radiation',
 # add to collection
 variablePlotatts['OLR'] = tmp
 
+## Potential Evapo-Transpiration (WRF)
+tmp = PlotAtts(name = 'WRF PET', title = 'Potential Evapo-Transpiration (WRF)', 
+               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+# add to collection
+variablePlotatts['pet_wrf'] = tmp
 ## Potential Evapo-Transpiration
 tmp = PlotAtts(name = 'PET', title = 'Potential Evapo-Transpiration', 
                units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)

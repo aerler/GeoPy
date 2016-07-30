@@ -200,22 +200,23 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-  mode = 'merge_climatologies'
-#   mode = 'merge_timeseries'
+#   mode = 'merge_climatologies'
+  mode = 'merge_timeseries'
 #   mode = 'test_climatology'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
   
   # settings to generate dataset
   grids = []
-#   grids += ['shpavg']
+  grids += ['shpavg']
 #   grids += ['arb2_d01']
 #   grids += ['arb2_d02']
 #   grids += ['arb3_d02']
 #   grids += ['arb3_d01']
 #   grids += ['arb3_d02']
 #   grids += ['glb1_d01']
-  grids += ['glb1_d02']
+#   grids += ['glb1_d02']
+#   grids += ['grw2']
 #   grids += ['col1_d01']
 #   grids += ['col1_d02'] 
 #   grids += ['col1_d03']
@@ -229,16 +230,16 @@ if __name__ == '__main__':
   periods = []
 #   periods += [(1979,1980)]
 #   periods += [(1979,1982)]
-#   periods += [(1979,1984)]
-#   periods += [(1979,1989)]
+  periods += [(1979,1984)]
+  periods += [(1979,1989)]
   periods += [(1979,1994)]
 #   periods += [(1984,1994)]
 #   periods += [(1989,1994)]
 #   periods += [(1997,1998)]
   periods += [(1979,2009)]
 #   periods += [(1949,2009)]
-#   pntset = 'shpavg'
-  pntset = 'ecprecip'
+  pntset = 'shpavg'
+#   pntset = 'ecprecip'
   
   ## do some tests
   if mode == 'test_climatology':  

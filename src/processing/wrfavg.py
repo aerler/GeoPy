@@ -276,7 +276,7 @@ if __name__ == '__main__':
   # print an announcement
   print('\n Computing Climatologies for WRF experiments:\n')
   print([exp.name for exp in experiments])
-  if grid != 'native': print('\nRegridding to \'{0:s}\' grid.\n'.format(grid))
+  if grid: print('\nRegridding to \'{0:s}\' grid.\n'.format(grid))
   print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
       
   # assemble argument list and do regridding
