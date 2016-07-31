@@ -85,7 +85,8 @@ class Aux(FileType):
   ''' Variables and attributes for auxiliary files. '''
   def __init__(self):
     self.name = 'aux'
-    self.atts = dict(netrad = dict(name='netrad', units='W/m^2')) # should be properly formatted already
+    self.atts = dict() # should be properly formatted already
+    #self.atts = dict(netrad = dict(name='netrad', units='W/m^2'))
     self.vars = self.atts.keys()    
     self.climfile = 'wrfaux_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfaux_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)

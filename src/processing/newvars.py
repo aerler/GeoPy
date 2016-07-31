@@ -162,7 +162,7 @@ def computePotEvapPM(dataset, lterms=True):
   pet = Variable(data=pet, name='pet', units='kg/m^2/s', axes=dataset['ps'].axes)
   assert pet.units == dataset['waterflx'].units, pet
   # return new variable(s)
-  return pet,rad,wnd if lterms else pet
+  return (pet,rad,wnd) if lterms else pet
 
 # compute potential evapo-transpiration
 def computePotEvapTh(dataset):
