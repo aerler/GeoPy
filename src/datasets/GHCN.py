@@ -406,9 +406,12 @@ class StationRecords(object):
     # loop over lines (each defines a station)
     for line in f:
       z += 1 # increment counter
-      collist = line.split()
+      collist=line[0:38].split()
+      collist.append(line[41:71])
+      lat=float(collist[1])
+      lon=float(collist[2])
+      if lat>5 and lat<49 and lon>55 and lon<135:#Tibet lat and lon range
 #XXX: this needs to be revised based on column/field number, not white space delimiters
-      if len(collist) > 0: # skip empty lines
         stdef = dict() # station specific arguments to instantiate station object
         # loop over column titles
         zz = 0 # column counter
