@@ -636,8 +636,8 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
       else: dataset.name = name_tag
     # apply slicing
     if obsslcs and ( dataset.name[:3].lower() == 'obs' or dataset.name.isupper() ):
-      if slcs is None: slcs = obsslcs
-      else: slcs.update(**obsslcs) # add special slices for obs
+      slcs = dict() if slcs is None else slcs.copy()
+      slcs.update(**obsslcs) # add special slices for obs
       # N.B.: currently VarNC's can only be sliced once, because we can't combine slices yet
     if slcs: dataset = dataset(lminmax=lminmax, **slcs) # slice immediately 
     if not ldataset: ensemble += dataset.load() # load data and add to ensemble

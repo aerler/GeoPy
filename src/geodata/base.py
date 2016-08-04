@@ -611,15 +611,6 @@ class Variable(object):
     # return confirmation, i.e. True, if replacement was successful
     return self.hasAxis(newaxis)
 
-#   def __contains__(self, axis):
-#     ''' Check if the variable instance has a particular axis. '''
-#     # same as class method
-#     return self.hasAxis(axis)
-#   
-#   def __len__(self):
-#     ''' Return number of dimensions. '''
-#     return self.__dict__['ndim']
-
   @ApplyTestOverList
   def getAxis(self, axis, lcheck=True):
     ''' Return a reference to the Axis object or one with the same name. '''
@@ -1233,7 +1224,7 @@ class Variable(object):
     units = self.units
     return data, name, units
   
-  def reduce(self, operation, blklen=None, blkidx=None, axis=None, mode=None, offset=0, 
+  def reduce(self, operation, blklen=None, blkidx=None, axis=None, mode=None, 
                   asVar=None, axatts=None, varatts=None, fillValue=None, data_view=None,
                   lcheckVar=True, lcheckAxis=True, **kwargs):
     ''' Reduce a time-series; there are two modes:
@@ -1259,9 +1250,8 @@ class Variable(object):
       else: return None # just do nothing and return original Variable
     if isinstance(axis,basestring): axis = self.getAxis(axis)
     if not isinstance(axis,Axis): raise TypeError
-    axlen = len(axis); iax = self.axisIndex(axis)
-    # offset definition: start blocks at this index
-    if offset != 0: raise NotImplementedError
+    iax = self.axisIndex(axis)
+    axlen = len(axis) if data_view is None else data_view.shape[iax]; 
     # block definition
     if blklen is not None:
       if isinstance(blkidx,(list,tuple,np.ndarray)): 
@@ -1317,7 +1307,11 @@ class Variable(object):
       if 'coord' in raxatts:
         coord = raxatts.pop('coord') # use user-defiend coordinates 
       elif lblk: # use the beginning of each block as new coordinates (not divided by block length!) 
-        coord = oaxis.coord.reshape(nblks,blklen)[:,0].copy()
+        if axlen == len(oaxis):
+          coord = oaxis.coord.reshape(nblks,blklen)[:,0].copy()
+        else:
+          coord = np.arange(oaxis.coord[0]//blklen,oaxis.coord[-1]//blklen+1)*blklen
+        assert nblks == coord.size
       elif lperi or lall: # just enumerate block elements
         coord = np.arange(blklen) if blklen > 0 else None
       axes = list(self.axes)
@@ -1647,13 +1641,17 @@ class Variable(object):
     if not time.units.lower() in monthlyUnitsList: 
       raise NotImplementedError, "Time units='month' required to extract seasons! (got '{:s}')".format(time.units)
     #if 'long_name' not in time.atts and lstrictCheck: raise KeyError, time.prettyPrint(short=False)
-    if lbegin and ( (not lclim and tcoord[0]%12 != 0) or 
-                    (lclim and tcoord[0]%12 != 1) ): 
-      raise NotImplementedError, "Time-axis has to start in January; front-padding is currently not supported."
-    # TODO: implement front-padding in _getCompleteYears(); maybe return front offset here
+    if 'long_name' in time.atts:
+      if lclim and 'climatology' in time.atts['long_name'].lower():
+        if tcoord != np.arange(1,13): raise AxisError, tcoord        
+      elif not lclim and 'month since 1979-01' in time.atts['long_name'].lower(): 
+        pass
+      else: 
+        raise NotImplementedError, "Unable to determin time offset: {}".format(time.atts['long_name'])
+    else:    
+      raise NotImplementedError, "Unable to determin time offset: {}".format(str(time))
     if np.any( np.diff(tcoord, axis=0) != 1 ): 
-      raise NotImplementedError, "Time-axis cannot have missing coordinates (month)!"
-    # no return value - just throw exceptions
+      raise NotImplementedError, "Time-axis cannot have missing coordinate values (month)!"
     
   def seasonalSample(self, season=None, asVar=True, lcheckAxis=False, lcheckVar=True, linplace=False, 
                     lstrict=True, taxis='time', svaratts=None, saxatts=None):
@@ -1695,30 +1693,41 @@ class Variable(object):
     # return results
     return svar
 
-  def _getCompleteYears(self, taxis='time', ltrim=False, lfront=False, lback=True, asVar=False, 
+  def _getCompleteYears(self, taxis='time', ltrim=False, lfront=True, lback=True, asVar=False, 
                         lcheck=True, lclim=False):
     ''' helper function that generates a trimmed or padded view of the data, either extending or 
         trimming the time axis ''' 
     if asVar: raise NotImplementedError, 'currently we can only return a bare array view, not a variable'
     # N.B.: to return a Variable, we would also have to trim/pad the time axis 
-    if lfront: raise NotImplementedError, 'currently we can only pad the back, not the front'
     time = self.getAxis(taxis); itime = self.axisIndex(taxis); tcoord = time.coord
     if lcheck: self._checkMonthlyAxis(taxis=taxis, lbegin=not lfront, lclim=lclim)
     # define new shape
-    tlen = tcoord.size; slen = tlen//12; tover = tlen%12 # determine dimension length
     if not self.data: raise DataError, 'Need to load data for trimming and padding.'
-    data_view = self.data_array
+    if lclim: offset = (tcoord[0]-1)%12; over = tcoord[-1]%12
+    else: offset = tcoord[0]%12; over = (tcoord[-1]+1)%12
+    tlen = tcoord.size; data_view = self.data_array
+    if not lfront and offset > 0: 
+      warn('Front-padding disabled; setting offset to zero (offset={:d}'.format(offset))
+      offset = 0
+    if not lback and over > 0: 
+      warn('Back-padding disabled; setting overshoot to zero (over={:d}'.format(over))
+      offset = 0
     # handle incomplete years
-    if tover > 0:
+    if offset > 0 or over > 0:
       if ltrim: 
-        data_view = data_view.take(range(tlen-tover), axis=itime) # only use complete years 
+        start = 0 if offset == 0 else 12 - offset; end = tlen - over
+        data_view = data_view.take(range(start,end), axis=itime) # only use complete years 
       else:
-        pshape = self.shape[:itime]+(12-tover,)+self.shape[itime+1:] # padding shape  
-        padding = np.ones(pshape)*self.fillValue # create padding using fillValue 
-        data_view = np.concatenate((data_view,padding), axis=itime) # append paddign array
-        if self.masked and data_view.mask: 
-          data_view.mask[...,tlen-tover:] = True # also mask pad, if applicable
-        slen += 1
+        front = self.shape[:itime]+(offset,)+self.shape[itime+1:] # shape/size for front padding  
+        frontpad = ma.ones(front, dtype=self.dtype) # create a masked array for padding 
+        frontpad *= frontpad.fill_value ; frontpad.mask = True
+        end = 0 if over == 0 else 12 - over # how much to add at the back
+        back = self.shape[:itime]+(end,)+self.shape[itime+1:] # shape/size for back padding
+        backpad = ma.ones(back, dtype=self.dtype) # create a masked array for padding 
+        backpad *= backpad.fill_value ; backpad.mask = True
+        if not isinstance(data_view, ma.MaskedArray): 
+          data_view = ma.asanyarray(data_view) # need masked arrays, so that pads can be masked
+        data_view = ma.concatenate((frontpad,data_view,backpad), axis=itime) # append padding array
     assert data_view.shape[itime]%12 == 0, data_view.shape # should be divisible by 12 now
     # return padded/trimmed view
     return data_view
@@ -1769,7 +1778,7 @@ class Variable(object):
     # return results
     return svar
   
-  def reduceToAnnual(self, season, operation, asVar=False, name=None, offset=0, taxis='time', 
+  def reduceToAnnual(self, season, operation, asVar=False, name=None, taxis='time', 
                      checkUnits=True, lcheckVar=True, lcheckAxis=True, taxatts=None, varatts=None, 
                      mean_list=None, ltrim=False, lstrict=True, lclim=False, **kwargs):
     ''' Reduce a monthly time-series to an annual time-series, using mean/min/max over a subset of month or seasons. '''
@@ -1780,13 +1789,8 @@ class Variable(object):
       if lcheckVar: raise VariableError, "Seasonal reduction does not work with string Variables!"
       else: return None
     data_view = self._getCompleteYears(taxis=taxis, ltrim=ltrim, asVar=False, lcheck=lstrict, lclim=lclim)
-    taxis = self.getAxis(taxis); te = len(taxis); tax = self.axisIndex(taxis.name)
-    assert data_view.shape[self.axisIndex(taxis)]%12 == 0, data_view.shape # should be divisible by 12 now          
-#     if checkUnits and not taxis.units.lower() in monthlyUnitsList: 
-#       raise AxisError, "Seasonal reduction requires monthly data! (time units: '{:s}')".format(taxis.units)
-#     te = len(taxis); tax = self.axisIndex(taxis.name)
-#     if te%12 != 0 or not (taxis.coord[0]%12 == 0 or taxis.coord[0]%12 == 1): 
-#       raise NotImplementedError, 'Currently seasonal reduction only works with full years.'
+    taxis = self.getAxis(taxis); tax = self.axisIndex(taxis.name); te = data_view.shape[tax]
+    assert te%12 == 0, data_view.shape # should be divisible by 12 now          
     # hadling of exceptions: some variables in Datasets should only be averaged
     if mean_list is not None and self.name in mean_list: operation = np.nanmean    
     # modify variable
@@ -1807,7 +1811,7 @@ class Variable(object):
     # translate definiton of month or season
     idx = translateSeasons(season)
     # call general reduction function
-    avar =  self.reduce(operation, blklen=12, blkidx=idx, axis=taxis, mode='block', offset=offset, 
+    avar =  self.reduce(operation, blklen=12, blkidx=idx, axis=taxis, mode='block',
                         asVar=asVar, axatts=tatts, varatts=varatts, data_view=data_view, 
                         lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **kwargs)
     # check shape of annual variable
