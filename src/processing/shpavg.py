@@ -197,8 +197,8 @@ if __name__ == '__main__':
   else:
 #     NP = 1 ; ldebug = True # for quick computations
     NP = 3 ; ldebug = False # for quick computations
-#     modes = ('time-series',) # 'climatology','time-series'
-    modes = ('climatology',) 
+    modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('climatology',) 
     loverwrite = True
     varlist = None # ['T2']
     periods = []
@@ -215,7 +215,7 @@ if __name__ == '__main__':
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
-    datasets += ['Unity']
+#     datasets += ['Unity']
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False
@@ -228,25 +228,28 @@ if __name__ == '__main__':
     WRF_experiments = []
 #     WRF_experiments += ['erai-t', 'erai-g']
 #     WRF_experiments += ['g-ctrl', 'g-ctrl-2050', 'g-ctrl-2100']
+#     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',][1:]
+    WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',][1:]
+    WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',][1:]
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][1:]
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
     # other WRF parameters 
 #     domains = None # domains to be processed
     domains = (2,) # domains to be processed
-    WRF_filetypes = ('srfc',)
+    WRF_filetypes = ('hydro',)
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None
     # define shape data  
     shape_name = 'shpavg' # Canadian shapes
     shapes = dict()
-    shapes['basins'] = None # river basins (in Canada) from WSC module
-    shapes['provinces'] = None # Canadian provinces from EC module
+#     shapes['basins'] = None # river basins (in Canada) from WSC module
+#     shapes['provinces'] = None # Canadian provinces from EC module
 #     shapes['provinces'] = ['BC'] # Canadian provinces from EC module
 #     shape_name = 'basins' # only Canadian river basins
 #     shapes = dict()
-#     shapes['basins'] = ['GLB','GRW'] # river basins (in Canada) from WSC module
-#     shapes['provinces'] = ['ON'] # Canadian provinces from EC module
+    shapes['basins'] = ['GLB','GRW'] # river basins (in Canada) from WSC module
+    shapes['provinces'] = ['ON'] # Canadian provinces from EC module
      
  
   ## process arguments    

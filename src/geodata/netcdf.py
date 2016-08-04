@@ -522,11 +522,11 @@ class DatasetNetCDF(Dataset):
       # either use available NetCDF datasets directly, ...  
       if isinstance(dataset,nc.Dataset):
         datasets = [dataset]  # datasets is used later
-        if 'filepath' in dir(dataset): filelist = [dataset.filepath()] # only available in newer versions
+        if hasattr(dataset,'filepath'): filelist = [dataset.filepath()] # only available in newer versions
       elif isinstance(dataset,(list,tuple)):
         if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
         datasets = dataset
-        filelist = [dataset.filepath() for dataset in datasets if 'filepath' in dir(dataset)]
+        filelist = [dataset.filepath() for dataset in datasets if hasattr(dataset,'filepath')]
       # ... create a new NetCDF file, ...
       elif isinstance(mode,basestring) and 'w' == mode and filelist:    
         if isinstance(filelist,col.Iterable): filelist = filelist[0]
@@ -673,12 +673,16 @@ class DatasetNetCDF(Dataset):
       if isinstance(variables,dict): variables = variables.values()
       if isinstance(dataset,nc.Dataset):
         datasets = [dataset]  # datasets is used later
-        if 'filepath' in dir(dataset): filelist = [dataset.filepath()] # only available in newer versions
+        if hasattr(dataset,'filepath'): filelist = [dataset.filepath()] # only available in newer versions
         else: raise ValueError
       elif isinstance(dataset,(list,tuple)):
         if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
         datasets = dataset
-        filelist = [dataset.filepath() for dataset in datasets if 'filepath' in dir(dataset)]
+#         try:
+#           filelist = [dataset.filepath() for dataset in datasets if hasattr(dataset,'filepath')]
+#         except ValueError:
+# N.B.: apparently filepath() tends to cause the netCDF library to crash... need to find a workaround...
+        if folder: filelist = [folder+filename for filename in filelist]
         if len(filelist) == 0: raise ValueError
       else: raise ArgumentError
       if filelist is None: raise ArgumentError
