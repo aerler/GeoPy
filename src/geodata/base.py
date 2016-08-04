@@ -725,7 +725,7 @@ class Variable(object):
         if isinstance(years,(int,float,np.integer,np.inexact)): 
           months = years*12 # if just a number, assume slicing from origin 
         elif isinstance(years,(list,tuple)): 
-          if '1979' in time.atts.long_name: offset = 1979 # convention...
+          if 'month since 1979' in time.atts.long_name.lower(): offset = 1979 # convention...
           else: offset = 0
           months = [(yr - offset)*12 for yr in years]
         else: raise NotImplementedError, years
@@ -742,7 +742,7 @@ class Variable(object):
         if 'long_name' not in year.atts: raise KeyError, self.prettyPrint(short=True)
         if lidx: raise ArgumentError, "Keyword 'years' only works with coordinate indexing, not direct indexing!"
         # convert years to time-axis coordinates
-        if '1979' in year.atts.long_name: offset = 1979
+        if 'month since 1979' in year.atts.long_name.lower(): offset = 1979
         else: offset = 0
         if isinstance(years,np.number): new_years = years - offset
         elif isinstance(years,(list,tuple)): new_years = [(yr - offset) for yr in years]
@@ -1398,7 +1398,7 @@ class Variable(object):
       # call reduce to perform operation
       axatts['coord'] = bins # reduce() reads this and uses it as new axis coordinates
       hvar = self.reduce(operation=histfct, blklen=len(bins), blkidx=None, axis=axis, mode='all', 
-                         offset=0, asVar=asVar, axatts=axatts, varatts=varatts, fillValue=fillValue)
+                         asVar=asVar, axatts=axatts, varatts=varatts, fillValue=fillValue)
     if asVar:
       if ldensity: hvar.plot = variablePlotatts['pdf'].copy()
       else: hvar.plot = variablePlotatts['hist'].copy()
@@ -1516,7 +1516,7 @@ class Variable(object):
       # call reduce to perform operation
       axatts['coord'] = qcoord # reduce() reads this and uses it as new axis coordinates
       qvar = self.reduce(operation=qfct, blklen=len(q), blkidx=None, axis=axis, mode='all', 
-                         offset=0, asVar=asVar, axatts=axatts, varatts=varatts, fillValue=fillValue)
+                         asVar=asVar, axatts=axatts, varatts=varatts, fillValue=fillValue)
 #     if asVar: qvar.plot = variablePlotatts[self.name].copy()
     # return new variable instance (or data)
     return qvar
@@ -1616,7 +1616,7 @@ class Variable(object):
         return pval
       # call reduce to perform operation
       pvar = var.reduce(operation=aaa_testfct, blklen=0, blkidx=None, axis=axis, mode='all', 
-                         offset=0, asVar=asVar, axatts=None, varatts=varatts, fillValue=fillValue)
+                         asVar=asVar, axatts=None, varatts=varatts, fillValue=fillValue)
     if asVar: pvar.plot = variablePlotatts['pval'].copy()
     # return new variable instance (or data)
     return pvar
@@ -1640,13 +1640,10 @@ class Variable(object):
     # make sure the time axis is well-formatted, because we are making a lot of assumptions!
     if not time.units.lower() in monthlyUnitsList: 
       raise NotImplementedError, "Time units='month' required to extract seasons! (got '{:s}')".format(time.units)
-    #if 'long_name' not in time.atts and lstrictCheck: raise KeyError, time.prettyPrint(short=False)
     if 'long_name' in time.atts:
       if lclim and 'climatology' in time.atts['long_name'].lower():
         if tcoord != np.arange(1,13): raise AxisError, tcoord        
-      elif not lclim and 'month since 1979-01' in time.atts['long_name'].lower(): 
-        pass
-      else: 
+      elif not ( not lclim and 'month since 1979-01' in time.atts['long_name'].lower() ): 
         raise NotImplementedError, "Unable to determin time offset: {}".format(time.atts['long_name'])
     else:    
       raise NotImplementedError, "Unable to determin time offset: {}".format(str(time))
@@ -1654,7 +1651,7 @@ class Variable(object):
       raise NotImplementedError, "Time-axis cannot have missing coordinate values (month)!"
     
   def seasonalSample(self, season=None, asVar=True, lcheckAxis=False, lcheckVar=True, linplace=False, 
-                    lstrict=True, taxis='time', svaratts=None, saxatts=None):
+                     lstrict=True, loffset=True, taxis='time', svaratts=None, saxatts=None):
     ''' A method to extract a subset of month from a monthly timeseries and return a concatenated 
         time-series of values for the specified season. '''
     # check input
@@ -1663,6 +1660,8 @@ class Variable(object):
       if lstrict: self._checkMonthlyAxis(taxis=taxis, lbegin=True)
       # translate season string
       idx = translateSeasons(season) # does most of the remining input/type checking
+      # account for offset in coordinate axis: change indices
+      if loffset: idx -= int(tcoord[0]%12) # at which month we start counting
       # extend the list of indices to the length of the time axis
       idxlen = idx.size; tlen = tcoord.size; yrlen = tlen//12; tover = tlen%12
       # basically, construct a 2D array of years and month, and flatten afterwards
@@ -1705,13 +1704,13 @@ class Variable(object):
     if not self.data: raise DataError, 'Need to load data for trimming and padding.'
     if lclim: offset = (tcoord[0]-1)%12; over = tcoord[-1]%12
     else: offset = tcoord[0]%12; over = (tcoord[-1]+1)%12
-    tlen = tcoord.size; data_view = self.data_array
+    tlen = tcoord.size; data_view = self.data_array; offset = int(offset); over = int(over)
     if not lfront and offset > 0: 
       warn('Front-padding disabled; setting offset to zero (offset={:d}'.format(offset))
       offset = 0
     if not lback and over > 0: 
       warn('Back-padding disabled; setting overshoot to zero (over={:d}'.format(over))
-      offset = 0
+      over = 0
     # handle incomplete years
     if offset > 0 or over > 0:
       if ltrim: 
@@ -1732,14 +1731,14 @@ class Variable(object):
     # return padded/trimmed view
     return data_view
   
-  def climSample(self, lstrict=True, ltrim=False, asVar=True, lcheckAxis=False, lcheckVar=True, linplace=False, 
+  def climSample(self, lstrict=True, ltrim=False, lpad=True, asVar=True, lcheckAxis=False, lcheckVar=True, linplace=False, 
                  taxis='time', saxis=None, saxatts=None, caxis=None, caxatts=None, svaratts=None):
     ''' A method to reshaped a Variable to a seasonal cycle axis and all samples (years) for each month
         along a new sample axis. '''    
     # check input
     if self.hasAxis(taxis):
       # get array view with complete years
-      data = self._getCompleteYears(taxis=taxis, ltrim=ltrim, asVar=False, lcheck=lstrict)
+      data = self._getCompleteYears(taxis=taxis, ltrim=ltrim, asVar=False, lcheck=lstrict, lfront=lpad, lback=lpad)
       time = self.getAxis(taxis); itime = self.axisIndex(taxis); tcoord = time.coord
       assert data.shape[itime]%12 == 0, data.shape # should be divisible by 12 now      
       # define new shape
@@ -1854,7 +1853,7 @@ class Variable(object):
     ''' Return a time-series of annual averages of the specified season. '''    
     return self.reduceToAnnual(season=season, operation=nf.nanmin, **kwargs)
   
-  def reduceToClimatology(self, operation, yridx=None, asVar=True, name=None, offset=0, taxis='time', 
+  def reduceToClimatology(self, operation, yridx=None, asVar=True, name=None, taxis='time', 
                           lcheckVar=True, lcheckAxis=True, checkUnits=True, taxatts=None, varatts=None, 
                           mean_list=None, ltrim=False, lstrict=True, **kwargs):
     ''' Reduce a monthly time-series to an annual climatology; use 'yridx' to limit the reduction to 
@@ -1868,12 +1867,6 @@ class Variable(object):
     data_view = self._getCompleteYears(taxis=taxis, ltrim=ltrim, asVar=False, lcheck=lstrict)
     taxis = self.getAxis(taxis); tax = self.axisIndex(taxis.name)
     assert data_view.shape[self.axisIndex(taxis)]%12 == 0, data_view.shape # should be divisible by 12 now          
-#     taxis = self.getAxis(taxis)    
-#     if checkUnits and not taxis.units.lower() in monthlyUnitsList: 
-#       raise AxisError, "Reduction to climatology requires monthly data! (time units: '{:s}')".format(taxis.units)
-#     te = len(taxis); tax = self.axisIndex(taxis.name)
-#     if te%12 != 0 or not (taxis.coord[0]%12 == 0 or taxis.coord[0]%12 == 1): 
-#       raise NotImplementedError, 'Currently reduction to climatology only works with full years.'
     # hadling of exceptions: some variables in Datasets should only be averaged
     if mean_list is not None and self.name in mean_list: operation = np.nanmean    
     # modify variable
@@ -1890,7 +1883,7 @@ class Variable(object):
     else: tatts = None; varatts = None # irrelevant
     # call general reduction function
     avar =  self.reduce(operation, blklen=12, blkidx=yridx, axis=taxis, mode='periodic',
-                        offset=offset, asVar=asVar, axatts=tatts, varatts=varatts, 
+                        asVar=asVar, axatts=tatts, varatts=varatts, 
                         lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **kwargs)
     # check shape of annual variable
     assert avar.shape == self.shape[:tax]+(12,)+self.shape[tax+1:]

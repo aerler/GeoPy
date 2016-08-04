@@ -54,7 +54,7 @@ class BaseVarTest(unittest.TestCase):
     #print data
     self.data = data
     # create axis instances
-    t = Axis(name='time', units='month', coord=(1,te,te))
+    t = Axis(name='time', units='month', coord=(0,te-1,te)) # January == 0
     y = Axis(name='y', units='none', coord=(1,ye,ye))
     x = Axis(name='x', units='none', coord=(1,xe,xe))
     self.axes = (t,y,x)
@@ -698,7 +698,7 @@ class BaseVarTest(unittest.TestCase):
       assert cvar.shape != var.shape and cvar.shape == svar.shape
       assert isEqual(svar.data_array, cvar.data_array)
       # test climatological sample (need time-axis in month)
-      svar = var.climSample(asVar=True, linplace=False, lstrict=lstrict)
+      svar = var.climSample(asVar=True, linplace=False, lstrict=lstrict, lpad=lstrict)
       assert svar.ndim == var.ndim+1
       assert len(svar.getAxis('time')) == 12 
       assert len(var.getAxis('time')) == len(svar.getAxis('sample'))*12
@@ -712,7 +712,7 @@ class BaseVarTest(unittest.TestCase):
       # test in-place extraction
       cvar = var.copy(deepcopy=True)
       assert cvar.shape == var.shape
-      cvar.climSample(asVar=True, linplace=True, lstrict=lstrict)
+      cvar.climSample(asVar=True, linplace=True, lstrict=lstrict, lpad=lstrict)
       assert cvar.shape != var.shape and cvar.shape == svar.shape
       assert isEqual(svar.data_array, cvar.data_array)
       
@@ -1772,7 +1772,7 @@ if __name__ == "__main__":
     # list of variable tests
 #     tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
