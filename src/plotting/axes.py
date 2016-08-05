@@ -43,7 +43,7 @@ class MyAxes(Axes):
   xtop               = False
   yname              = None
   yunits             = None
-  ypad               = 0
+  ypad               = 2
   yright             = False
   figure             = None
   parasite_axes      = None
@@ -830,6 +830,11 @@ class MyAxes(Axes):
     if isinstance(ylabel,basestring):
       # set Y-label
       ypad = self.ypad + 2 if self.yright else self.ypad # need a little more space on right hand side
+      # if there are only some negative values, reduce pad a bit
+      yvis = np.asarray([ytick.get_visible() for ytick in ax.yaxis.get_ticklabels()])
+      ylocs = ax.yaxis.get_ticklocs()[yvis]; yneg = sum(ylocs < 0)
+      if yneg > 0 and float(yneg)/ylocs.size < 0.35: ypad -= 5
+      print yneg,ylocs.size,float(yneg)/ylocs.size,ypad
       ax.set_ylabel(ylabel, labelpad=ypad) # labelpad is ignored by AxesGrid
       # label position
       ax.yaxis.set_label_position('right' if self.yright else 'left')
