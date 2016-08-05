@@ -522,11 +522,13 @@ class DatasetNetCDF(Dataset):
       # either use available NetCDF datasets directly, ...  
       if isinstance(dataset,nc.Dataset):
         datasets = [dataset]  # datasets is used later
-        if hasattr(dataset,'filepath'): filelist = [dataset.filepath()] # only available in newer versions
+        #if hasattr(dataset,'filepath'): filelist = [dataset.filepath()] # only available in newer versions
+        # N.B.: apparently filepath() tends to cause the netCDF library to crash... need to find a workaround...
       elif isinstance(dataset,(list,tuple)):
         if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
         datasets = dataset
-        filelist = [dataset.filepath() for dataset in datasets if hasattr(dataset,'filepath')]
+        #filelist = [dataset.filepath() for dataset in datasets if hasattr(dataset,'filepath')]
+        # N.B.: apparently filepath() tends to cause the netCDF library to crash... need to find a workaround...
       # ... create a new NetCDF file, ...
       elif isinstance(mode,basestring) and 'w' == mode and filelist:    
         if isinstance(filelist,col.Iterable): filelist = filelist[0]
@@ -555,7 +557,7 @@ class DatasetNetCDF(Dataset):
         # translate modes
         ncmode = 'a' if 'r' in mode and 'w' in mode else mode # 'rw' -> 'a' for "append"     
         # open netcdf datasets from netcdf files
-        if not isinstance(filelist,col.Iterable): raise TypeError
+        if not isinstance(filelist,col.Iterable): raise TypeError, filelist
         # check if file exists
         for filename in filelist:
           if not os.path.exists(folder+filename): 
@@ -671,21 +673,20 @@ class DatasetNetCDF(Dataset):
       variables = variables.values()
     else:
       if isinstance(variables,dict): variables = variables.values()
+      if filelist is None: raise ArgumentError, filelist
+      if folder: filelist = [folder+filename for filename in filelist]
       if isinstance(dataset,nc.Dataset):
         datasets = [dataset]  # datasets is used later
-        if hasattr(dataset,'filepath'): filelist = [dataset.filepath()] # only available in newer versions
-        else: raise ValueError
+        #if hasattr(dataset,'filepath'): filelist = [dataset.filepath()] # only available in newer versions
+        # N.B.: apparently filepath() tends to cause the netCDF library to crash... need to find a workaround...
+        if len(filelist) != 1: raise ValueError, filelist
       elif isinstance(dataset,(list,tuple)):
         if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
         datasets = dataset
-#         try:
-#           filelist = [dataset.filepath() for dataset in datasets if hasattr(dataset,'filepath')]
-#         except ValueError:
-# N.B.: apparently filepath() tends to cause the netCDF library to crash... need to find a workaround...
-        if folder: filelist = [folder+filename for filename in filelist]
-        if len(filelist) == 0: raise ValueError
-      else: raise ArgumentError
-      if filelist is None: raise ArgumentError
+        #filelist = [dataset.filepath() for dataset in datasets if hasattr(dataset,'filepath')]
+        # N.B.: apparently filepath() tends to cause the netCDF library to crash... need to find a workaround...
+        if len(filelist) == 0: raise ValueError, filelist
+      else: raise ArgumentError, dataset
       mode = 'r' # for now, only allow read
     # get attributes from NetCDF dataset
     ncattrs = joinDicts(*[ds.__dict__ for ds in datasets])

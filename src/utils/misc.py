@@ -12,7 +12,7 @@ import scipy.linalg as la
 from utils.signalsmooth import smooth
 import collections as col
 # internal imports
-from geodata.misc import ArgumentError, isEqual, AxisError
+from geodata.misc import ArgumentError, isEqual, AxisError, isNumber
 
 ## a method to tabulate variables (adapted from Variable) 
 def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}', cell_idx=None, cell_fct=None, 
@@ -431,8 +431,22 @@ def PCA(data, degree=None, lprewhiten=False, lpostwhiten=False, lEOF=False, lfee
 
 # histogram wrapper that suppresses additional output
 def histogram(a, bins=10, range=None, weights=None, density=None): 
-  ''' histogram wrapper that suppresses bin edge output, but is otherwise the same '''
-  return np.histogram(a, bins=bins, range=range, weights=weights, density=density)[0]
+  ''' histogram wrapper that suppresses bin edge output and handles NaN inputs'''
+  # make sure NaNs don't cause range errors
+  # if all is NaN, we need to handle the return array manually
+  if np.all(np.isnan(a)):
+    # determin number of bins
+    if isinstance(bins, (list,tuple,np.ndarray)):l = len(bins)-1 # array of bin *edges*
+    elif isinstance(bins,(int,np.integer)): l = bins
+    else: raise TypeError, bins
+    # make histogram for invalid data... 
+    h = np.zeros(l) # counts per bin: nothing
+    if density: h *= np.NaN # normalized by integral of nothing...
+  else:
+    # in all other cases, use standard fct.
+    if range is None: range = (np.nanmin(a),np.nanmax(a))
+    h = np.histogram(a, bins=bins, range=range, weights=weights, density=density)[0]
+  return h
 
 # percentile wrapper that casts the output into a single array
 def percentile(a, q, axis=None, interpolation='linear', keepdims=False): 

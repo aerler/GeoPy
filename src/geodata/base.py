@@ -1377,8 +1377,9 @@ class Variable(object):
       if self.masked: data = self.data_array.filled(fillValue)
       else: data = self.data_array
       # N.B.: to ignore masked values they have to be replaced by NaNs or out-of-bounds values 
-      hdata, bin_edges = np.histogram(data, bins=binedgs, **kwargs) # will flatten automatically
-      assert isEqual(bin_edges, binedgs)
+      #hdata, bin_edges = np.histogram(data, bins=binedgs, **kwargs) # will flatten automatically
+      #assert isEqual(bin_edges, binedgs)
+      hdata = histogram(data, bins=binedgs, **kwargs) # will flatten automatically
       assert hdata.shape == (len(binedgs)-1,)
       # create new Axis and Variable objects (1-D)
       if asVar: hvar = Variable(data=hdata, axes=(Axis(coord=bins, atts=axatts),), atts=varatts)
