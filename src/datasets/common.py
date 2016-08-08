@@ -273,7 +273,7 @@ def getFileName(name=None, resolution=None, period=None, filetype='climatology',
     # assemble filename
     if filepattern is None: filepattern = name.lower() + '{0:s}_clim{1:s}.nc' 
     filename = filepattern.format(gridstr,periodstr)
-  else: raise NotImplementedError, "Unrecognized filetype: '{:s}'".format(filetype)
+  else: raise NotImplementedError, "Unrecognized filetype/mode: '{:s}'".format(filetype)
   # return final name
   assert filename == filename.lower(), "By convention, climatology files only have lower-case names!"
   return filename
