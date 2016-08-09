@@ -79,7 +79,7 @@ class LinePlotTest(unittest.TestCase):
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var0 = self.var0; var1 = self.var1; var2 = self.var2
     # create plot
-    plts = ax.linePlot([var1, var2], ylabel='custom label [{1:s}]', llabel=True, 
+    plts = ax.linePlot([var1, var2], ylabel='custom label [{UNITS:s}]', llabel=True, 
                        ylim=var1.limits(), legend=2, hline=2., vline=(2,3))
     assert len(plts) == 2
     # add rescaled plot
@@ -99,7 +99,7 @@ class LinePlotTest(unittest.TestCase):
     # create plot
     plts = ax.linePlot([var1, var2], errorbar=[err1, err2], 
                        errorevery=[1, 3,], expand_list=['errorevery'], # expand skip interval
-                       ylabel='Variables with Errors [{1:s}]', llabel=True, 
+                       ylabel='Variables with Errors [{UNITS:s}]', llabel=True, 
                        ylim=var1.limits(), legend=2, hline=2., vline=(2,3))
     assert len(plts) == 2
     # add label
@@ -116,7 +116,7 @@ class LinePlotTest(unittest.TestCase):
     # create plot
     plts = ax.linePlot([var1, var2], errorbar=[err1, err2], lparasiteMeans=True,
                        errorevery=[1, 3,], expand_list=['errorevery'], # expand skip interval
-                       ylabel='Variables with Errors [{1:s}]', llabel=True, 
+                       ylabel='Variables with Errors [{UNITS:s}]', llabel=True, 
                        ylim=var1.limits(), legend=2, hline=2., vline=(2,3))
     assert len(plts) == 2
     # add label
@@ -133,7 +133,7 @@ class LinePlotTest(unittest.TestCase):
     # create plot
     plts = ax.linePlot([var1, var2], errorband=[err1, err2], 
                        edgecolor=('k',1), expand_list=('edgecolor',),
-                       ylabel='Variables with Error Bands [{1:s}]', llabel=True, 
+                       ylabel='Variables with Error Bands [{UNITS:s}]', llabel=True, 
                        ylim=var1.limits(), legend=2, hline=2., vline=(2,3))
     assert len(plts) == 2
     # add label
@@ -151,7 +151,7 @@ class LinePlotTest(unittest.TestCase):
     # create plot
     bnds = ax.bandPlot(upper=[upvar1, upvar2], lower=[lowvar1, lowvar2], edgecolor=0.1)
     assert len(bnds) == 2
-    plts = ax.linePlot([var1, var2], ylabel='Variables with Difference Bands [{1:s}]', 
+    plts = ax.linePlot([var1, var2], ylabel='Variables with Difference Bands [{UNITS:s}]', 
                        llabel=True, ylim=var1.limits(), legend=2,)
     assert len(plts) == 2
     # add label
@@ -353,7 +353,7 @@ if __name__ == "__main__":
 #     specific_tests += ['AdvancedLinePlot']
 #     specific_tests += ['CombinedLinePlot']
 #     specific_tests += ['AxesGridLinePlot']    
-    specific_tests += ['MeanAxisPlot']
+#     specific_tests += ['MeanAxisPlot']
     # DistPlot
 #     specific_tests += ['BasicHistogram']
 #     specific_tests += ['BootstrapCI']
@@ -363,7 +363,7 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['LinePlot'] 
-#     tests += ['DistPlot']
+    tests += ['DistPlot']
     
 
     # construct dictionary of test classes defined above
