@@ -95,11 +95,11 @@ def getTargetFile(dataset=None, mode=None, dataargs=None, lwrite=True, grid=None
   if dataset == 'WRF' and lwrite:
     if mode == 'climatology': filename = WRF.clim_file_pattern.format(filetype,domain,gstr,pstr)
     elif mode == 'time-series': filename = WRF.ts_file_pattern.format(filetype,domain,gstr)
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
+    else: raise NotImplementedError, "Unsupported Mode: '{:s}'".format(mode)        
   elif dataset == 'CESM' and lwrite:
     if mode == 'climatology': filename = CESM.clim_file_pattern.format(filetype,gstr,pstr)
     elif mode == 'time-series': filename = CESM.ts_file_pattern.format(filetype,gstr)
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
+    else: raise NotImplementedError, "Unsupported Mode: '{:s}'".format(mode)        
   elif ( dataset == dataset.upper() or dataset == 'Unity' ) and lwrite: # observational datasets
     filename = getFileName(grid=grid, period=dataargs.period, name=dataargs.obs_res, filetype=mode)      
   elif not lwrite: raise DatasetError

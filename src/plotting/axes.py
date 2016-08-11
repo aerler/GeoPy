@@ -802,7 +802,7 @@ class MyAxes(Axes):
     units = self.xunits if units is None else units
     # figure out label 
     if isinstance(xlabel,basestring):
-      xlabel = xlabel.format(name,units)
+      xlabel = xlabel.format(NAME=name,UNITS=units)
     elif xlabel is not None and xlabel is not False:
       # only apply label, if ticks are also present
       xticks = self.xaxis.get_ticklabels()
@@ -822,7 +822,7 @@ class MyAxes(Axes):
     units = self.yunits if units is None else units
     # figure out label 
     if isinstance(ylabel,basestring):
-      ylabel = ylabel.format(name,units)
+      ylabel = ylabel.format(NAME=name,UNITS=units)
     elif ylabel is not None and ylabel is not False:
       # only apply label, if ticks are also present
       yticks = ax.yaxis.get_ticklabels()
@@ -844,11 +844,11 @@ class MyAxes(Axes):
     ''' helper method to format axes lables '''
     if label is True: 
       if not name and not units: label = ''
-      elif not units: label = '{0:s}'.format(name)
+      elif not units: label = '{:s}'.format(name)
       elif not name: label = '[{:s}]'.format(units)
       else: label = '{0:s} [{1:s}]'.format(name,units)
     elif label is False or label is None: label = ''
-    elif isinstance(label,basestring): label = label.format(name,units)
+    elif isinstance(label,basestring): label = label.format(NAME=name,UNITS=units)
     else: raise ValueError, label
     return label
     

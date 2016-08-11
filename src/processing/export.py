@@ -71,7 +71,7 @@ class NetCDF(object):
         can be determined (and returned) '''
     # get filename for target dataset and do some checks
     if self.folder_pattern is None: avgfolder = dataargs.avgfolder # regular source dataset location
-    else: self.folder_pattern.format(dataset, self.project, name,) # this could be expanded with dataargs 
+    else: self.folder_pattern.format(dataset, self.project, dataargs.dataset_name,) # this could be expanded with dataargs 
     if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
     filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, 
                              grid=None, period=None, filetype=self.filetype)
@@ -116,21 +116,23 @@ class ASCII_raster(FileFormat):
     ''' access output destination '''
     return self.folder
       
-  def defineDataset(self, name=None, dataset=None, mode=None, dataargs=None, lwrite=True, ldebug=False):
+  def defineDataset(self, dataset=None, mode=None, dataargs=None, lwrite=True, ldebug=False):
     ''' a method to set exteral parameters about the Dataset, so that the export destination
         can be determined (and returned) '''
     # extract variables
-    periodstr = dataargs.periodstr; grid = dataargs.grid; domain = dataargs.domain
+    dataset_name = dataargs.dataset_name; domain = dataargs.domain
+    periodstr = dataargs.periodstr; grid = dataargs.grid
     # assemble specific names
-    expname = '{:s}_d{:02d}'.format(name,domain) if domain else name
-    if mode == 'climatology':  expprd = 'clim_{:s}'.format(periodstr)
-    elif mode == 'time-series': expprd = 'timeseries'
-    elif mode[-5:] == '-mean': expprd = '{:s}_{:s}'.format(mode[:-5],periodstr)
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
+    expname = '{:s}_d{:02d}'.format(dataset_name,domain) if domain else dataset_name
+    if mode == 'cliamtology': expprd = 'clim_{:s}'.format(periodstr)
+    elif mode == 'time-series': expprd = '{:s}_{:s}'.format(mode[:-5],periodstr)
+    elif mode[-5:] == '-mean': expprd = 'timeseries'
+    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
     # insert into patterns 
-    self.folder = self.folder_pattern.format(self.project, grid, expname, expprd)
+    metadict = dict(PROJECT=self.project, GRID=grid, EXPERIMENT=expname, PERIOD=expprd)
+    self.folder = self.folder_pattern.format(**metadict)
     if ldebug: self.folder = self.folder + '/test/' # test in subfolder
-    self.prefix = self.prefix_pattern.format(self.project, grid, expname, expprd)
+    self.prefix = self.prefix_pattern.format(**metadict)
     # return folder (no filename)
     return self.folder
   
@@ -205,7 +207,7 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
   fileFormat = getFileFormat(expformat, **expargs)
   # get folder for target dataset and do some checks
   expname = '{:s}_d{:02d}'.format(dataset_name,domain) if domain else dataset_name
-  expfolder = fileFormat.defineDataset(name=dataset_name, dataset=dataset, mode=mode, dataargs=dataargs, lwrite=True, ldebug=ldebug)
+  expfolder = fileFormat.defineDataset(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=True, ldebug=ldebug)
 
   # prepare destination for new dataset
   lskip = fileFormat.prepareDestination(srcage=srcage, loverwrite=loverwrite)
@@ -227,7 +229,7 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     # print message
     if mode == 'climatology': opmsgstr = 'Exporting Climatology ({:s}) to {:s} Format'.format(periodstr, expformat)
     elif mode == 'time-series': opmsgstr = 'Exporting Time-series to {:s} Format'.format(expformat)
-    if mode[-5:] == '-mean': opmsgstr = 'Exporting {:s} Mean ({:s}) to {:s} Format'.format(mode[:-5],periodstr, expformat)
+    elif mode[-5:] == '-mean': opmsgstr = 'Exporting {:s}-Mean ({:s}) to {:s} Format'.format(mode[:-5], periodstr, expformat)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
     # print feedback to logger
     logger.info('\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
@@ -278,9 +280,9 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
         if var.units == 'kg/m^2/s':
           var /= 1000. # divide to get m^3/m^2/s
           var.units = 'm^3/m^2/s' # update units
-          
-    # compute seasonal/annual mean
-    if mode[-5:] == '-mean': sink.seasonalMean(season=mode[:-5])
+    
+    # compute seasonal mean if we are in mean-mode
+    if mode[-5:] == '-mean': sink = sink.seasonalMean(season=mode[:-5])
     
     # print dataset
     if not lparallel and ldebug:
