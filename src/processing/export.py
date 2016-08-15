@@ -124,9 +124,9 @@ class ASCII_raster(FileFormat):
     periodstr = dataargs.periodstr; grid = dataargs.grid
     # assemble specific names
     expname = '{:s}_d{:02d}'.format(dataset_name,domain) if domain else dataset_name
-    if mode == 'cliamtology': expprd = 'clim_{:s}'.format(periodstr)
-    elif mode == 'time-series': expprd = '{:s}_{:s}'.format(mode[:-5],periodstr)
-    elif mode[-5:] == '-mean': expprd = 'timeseries'
+    if mode == 'climatology': expprd = 'clim_{:s}'.format(periodstr)
+    elif mode == 'time-series': expprd = 'timeseries'
+    elif mode[-5:] == '-mean': expprd = '{:s}_{:s}'.format(mode[:-5],periodstr)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
     # insert into patterns 
     metadict = dict(PROJECT=self.project, GRID=grid, EXPERIMENT=expname, PERIOD=expprd)
@@ -282,7 +282,10 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
           var.units = 'm^3/m^2/s' # update units
     
     # compute seasonal mean if we are in mean-mode
-    if mode[-5:] == '-mean': sink = sink.seasonalMean(season=mode[:-5])
+    if mode[-5:] == '-mean': 
+      sink = sink.seasonalMean(season=mode[:-5], taxatts=dict(name='time'))
+      # N.B.: to remain consistent with other output modes, 
+      #       we need to prevent renaming of the time axis
     
     # print dataset
     if not lparallel and ldebug:
@@ -323,6 +326,7 @@ if __name__ == '__main__':
   else: loverwrite = ldebug # False means only update old files
   
   ## define settings
+  lbatch = True
   if lbatch:
     # load YAML configuration
     config = loadYAML('export.yaml', lfeedback=True)
@@ -458,7 +462,8 @@ if __name__ == '__main__':
   # loop over modes
   for mode in modes:
     # only climatology mode has periods    
-    if mode == 'climatology': periodlist = periods
+    if mode[-5:] == '-mean': periodlist = periods
+    elif mode == 'climatology': periodlist = periods
     elif mode == 'time-series': periodlist = (None,)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
 
