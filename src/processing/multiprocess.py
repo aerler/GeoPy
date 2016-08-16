@@ -211,8 +211,7 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=False, ltrialnerror=True):
   ## loop over and process all job sets
   if lparallel:
     # create pool of workers   
-    if NP is None: pool = multiprocessing.Pool() 
-    else: pool = multiprocessing.Pool(processes=NP)
+    pool = multiprocessing.Pool(processes=NP) # NP=None uses all available CPUs
     # distribute tasks to workers
     for arguments in args:
       #exitcodes.append(pool.apply_async(func, arguments, kwargs))
