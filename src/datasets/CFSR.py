@@ -121,16 +121,17 @@ def loadCFSR_TS(name=dataset_name, grid=None, varlist=None, varatts=None, resolu
         files = [hiresstatic[var] for var in varlist if var in hiresstatic]
       elif resolution == 'lowres' or resolution == '05': 
         files = [lowresstatic[var] for var in varlist if var in lowresstatic]
-      # create singleton time axis
-      staticdata = DatasetNetCDF(name=name, folder=folder, filelist=files, varlist=varlist, varatts=varatts, 
-                                 axes=dict(lon=dataset.lon, lat=dataset.lat), multifile=False, 
-                                 check_override=['time'], ncformat='NETCDF4_CLASSIC')
-      # N.B.: need to override the axes, so that the datasets are consistent
-    if len(staticdata.variables) > 0:
-      for var in staticdata.variables.values(): 
-        if not dataset.hasVariable(var.name):
-          var.squeeze() # remove time dimension
-          dataset.addVariable(var, copy=False) # no need to copy... but we can't write to the netcdf file!
+      # load constants, if any (and with singleton time axis)
+      if len(files) > 0:
+        staticdata = DatasetNetCDF(name=name, folder=folder, filelist=files, varlist=varlist, varatts=varatts, 
+                                   axes=dict(lon=dataset.lon, lat=dataset.lat), multifile=False, 
+                                   check_override=['time'], ncformat='NETCDF4_CLASSIC')
+        # N.B.: need to override the axes, so that the datasets are consistent
+        if len(staticdata.variables) > 0:
+          for var in staticdata.variables.values(): 
+            if not dataset.hasVariable(var.name):
+              var.squeeze() # remove time dimension
+              dataset.addVariable(var, copy=False) # no need to copy... but we can't write to the netcdf file!
     # replace time axis with number of month since Jan 1979 
     data = np.arange(0,len(dataset.time),1, dtype='int16') # month since 1979 (Jan 1979 = 0)
     timeAxis = Axis(name='time', units='month', coord=data, atts=dict(long_name='Month since 1979-01'))
@@ -246,8 +247,8 @@ if __name__ == '__main__':
 #   mode = 'test_timeseries'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-#   reses = ('031',) # for testing
-  reses = ( '031','05',)
+  reses = ('05',) # for testing
+#   reses = ( '031','05',)
 #   period = (1979,1984)
 #   period = (1979,1989)
   period = (1979,1994)

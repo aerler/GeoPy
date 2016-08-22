@@ -24,6 +24,7 @@ from geodata.misc import genStrArray, translateSeasons
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 from processing.multiprocess import apply_along_axis
 from utils.misc import histogram, binedges, detrend, percentile, tabulate
+from __builtin__ import NotImplemented
      
 # used for climatology and seasons
 monthlyUnitsList = ('month','months','month of the year')
@@ -2332,6 +2333,9 @@ class Variable(object):
     units = '{:s}^{:s}'.format(self.units,astr)
     return data, name, units
      
+  def __eq__(self, other):
+    ''' test equality of variables based on meta data and actual data '''
+    return NotImplemented
 
 class Axis(Variable):
   '''
@@ -2375,6 +2379,10 @@ class Axis(Variable):
       elif all(np.diff(self.coord) < 0): self.ascending = False
 #       else: self.ascending = None
       else: raise AxisError, "Coordinates must be strictly monotonically increasing or decreasing."
+
+  def __eq__(self, other):
+    ''' test equality of axes based on meta data and coordinate values '''
+    raise NotImplementedError
 
   def _transformCoord(self, data):
     ''' a coordinate vector will be converted, based on input conventions '''
