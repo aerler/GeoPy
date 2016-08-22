@@ -257,10 +257,17 @@ class VarNC(Variable):
       if self.strvar: data = nc.chartostring(data)
       #assert self.ndim == data.ndim # make sure that squeezing works!
       # N.B.: the shape and even dimension number can change dynamically when a slice is loaded, so don't check for that, or it will fail!
-      # apply scalefactor and offset
-      if self.scalefactor != 1: data *= self.scalefactor
-      if self.offset != 0: data += self.offset
-      if self.transform is not None: data = self.transform(data, var=self, slc=slc)
+      # apply transformations (try in-place first)
+      if self.scalefactor != 1: 
+        try: data *= self.scalefactor
+        except TypeError: data = data * self.scalefactor
+      if self.offset != 0: 
+        try: data += self.offset
+        except TypeError: data = data + self.offset
+      if self.transform is not None: 
+        data = self.transform(data, var=self, slc=slc)
+      # make sure dtype is correct, since it may have changed
+      if not np.issubdtype(data.dtype,self.dtype): self.dtype = data.dtype
     # return data
     return data
   

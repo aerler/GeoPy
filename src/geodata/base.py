@@ -424,8 +424,7 @@ class Variable(object):
     return dtype   
   @dtype.setter
   def dtype(self, dtype):
-    if self.data:
-      self.data_array = self.data_array.astype(dtype)
+    if self.data: self.data_array = self.data_array.astype(dtype)
     self._dtype = dtype
 
   @property

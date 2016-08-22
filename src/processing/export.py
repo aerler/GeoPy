@@ -141,7 +141,7 @@ class ASCII_raster(FileFormat):
     metadict = dict(PROJECT=self.project, GRID=grid, EXPERIMENT=expname, PERIOD=expprd)
     self.folder = self.folder_pattern.format(**metadict)
     if ldebug: self.folder = self.folder + '/test/' # test in subfolder
-    self.prefix = self.prefix_pattern.format(**metadict)
+    self.prefix = self.prefix_pattern.format(**metadict) if self.prefix_pattern else None
     # create link with alternate period designation
     self.altprdlnk = None
     if lnkprd is not None:
@@ -358,7 +358,7 @@ if __name__ == '__main__':
   else: loverwrite = ldebug # False means only update old files
   
   ## define settings
-  lbatch = True
+  lbatch = False
   if lbatch:
     # load YAML configuration
     config = loadYAML('export.yaml', lfeedback=True)
@@ -391,16 +391,16 @@ if __name__ == '__main__':
     # settings for testing and debugging
     NP = 2 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
-    modes = ('annual-mean','climatology')
-#     modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('annual-mean','climatology')
+    modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
 #     varlist = None
     load_list = ['lat2D','lon2D','zs']
-    load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt'] # (net) precip
+#     load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt'] # (net) precip
     # PET variables
-    load_list += ['ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # wind
-    load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
+#     load_list += ['ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # wind
+#     load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
     periods = []
     periods += [15]
 #     periods += [30]
@@ -420,9 +420,10 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-    WRF_experiments = ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050',
-                       't3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
+#     WRF_experiments = ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050',
+#                        't3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
 #     WRF_experiments = ['erai-g3','erai-t3']
+    WRF_experiments = ['erai-g3','erai-g']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
 #     WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
@@ -440,16 +441,20 @@ if __name__ == '__main__':
     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # without radiation files
     # typically a specific grid is required
     grids = [] # list of grids to process
-#     grids += [None] # special keyword for native grid
-    grids += ['grw2']# small grid for HGS GRW project
+    grids += [None] # special keyword for native grid
+#     grids += ['grw2']# small grid for HGS GRW project
 #     grids += ['glb1_d02']# small grid for HGS GRW project
     ## export parameters
     export_arguments = dict(
-        project = 'GRW', # project designation  
-        varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','netrad','vapdef','pet'], # varlist for export                         
+        project = 'Grids', # project designation  
+        varlist = ['lat2D','lon2D','zs'], # varlist for export
+        folder = '{0:s}/HGS/{{PROJECT}}/{{EXPERIMENT}}/'.format(os.getenv('DATA_ROOT', None)),
+        prefix = None, # based on keyword arguments or None
+        #         project = 'GRW', # project designation  
+#         varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','netrad','vapdef','pet'], # varlist for export
 #         varlist = ['pet'],
-        folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/'.format(os.getenv('DATA_ROOT', None)),
-        prefix = '{GRID}', # argument order: project/grid/experiment/period/
+#         folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/'.format(os.getenv('DATA_ROOT', None)),
+#         prefix = '{GRID}', # based on keyword arguments
         format = 'ASCII_raster', # formats to export to
         lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
 #         format = 'NetCDF',

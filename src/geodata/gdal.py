@@ -1067,7 +1067,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       if isinstance(varlist, (tuple,list)): varlist = {var:None for var in varlist}
       # N.B.: the keys of a varlist are the variables that are to be exported and the values are the
       #       corresponding variable prefixes (instead of the variable names, which is the default)
-      if prefix is None: prefix=dataset.name
+      #if prefix is None: prefix=dataset.name
       if formatter is not None and not isinstance(formatter, (dict)): raise TypeError, formatter
       # N.B.: formatter keys are axes and values are either index formatting strings or tuples
       #       consisting of a new axis name and an index formatter
