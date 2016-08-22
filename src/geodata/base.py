@@ -18,7 +18,8 @@ from warnings import warn
 # my own imports
 import utils.nanfunctions as nf
 from plotting.properties import getPlotAtts, variablePlotatts # import plot properties from different file
-from geodata.misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, floateps
+from geodata.misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, floateps,\
+  TimeAxisError
 from geodata.misc import genStrArray, translateSeasons
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 from processing.multiprocess import apply_along_axis
@@ -1639,17 +1640,20 @@ class Variable(object):
     ''' helper function to check certain assumptions about the time axis '''
     time = self.getAxis(taxis); tcoord = time.coord
     # make sure the time axis is well-formatted, because we are making a lot of assumptions!
-    if not time.units.lower() in monthlyUnitsList: 
-      raise NotImplementedError, "Time units='month' required to extract seasons! (got '{:s}')".format(time.units)
-    if 'long_name' in time.atts:
-      if lclim and 'climatology' in time.atts['long_name'].lower():
-        if tcoord != np.arange(1,13): raise AxisError, tcoord        
-      elif not ( not lclim and 'month since 1979-01' in time.atts['long_name'].lower() ): 
-        raise NotImplementedError, "Unable to determin time offset: {}".format(time.atts['long_name'])
-    else:    
-      raise NotImplementedError, "Unable to determin time offset: {}".format(str(time))
+    if lclim:
+      if time.units.lower() in monthlyUnitsList: 
+        if np.any(tcoord != np.arange(1,13)): 
+          raise TimeAxisError("Invalid coordinate values for monthly climatology: {}".format(tcoord))
+      else:
+        raise TimeAxisError("Time units='month' required to extract seasons! (got '{:s}')".format(time.units))
+    else:
+      if 'long_name' in time.atts:
+        if not  'month since 1979-01' in time.atts['long_name'].lower(): 
+          raise TimeAxisError("Unable to determin time offset: {}".format(time.atts['long_name']))
+      else:    
+        raise TimeAxisError("Unable to determin time offset: {}".format(str(time)))
     if np.any( np.diff(tcoord, axis=0) != 1 ): 
-      raise NotImplementedError, "Time-axis cannot have missing coordinate values (month)!"
+      raise TimeAxisError("Time-axis cannot have missing coordinate values (month)!")
     
   def seasonalSample(self, season=None, asVar=True, lcheckAxis=False, lcheckVar=True, linplace=False, 
                      lstrict=True, loffset=True, taxis='time', svaratts=None, saxatts=None):

@@ -245,7 +245,10 @@ if __name__ == '__main__':
     loverwrite = True
     varlist = None
     project = 'GreatLakes'
-    experiments = ['g-ens-A','g-ctrl']
+#     experiments = ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050',
+#                    't3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
+    experiments = ['erai-g3','erai-t3']
+#     experiments = ['g-ens-A','g-ctrl']
 #     experiments += ['g-ctrl'+tag for tag in ('-2050','-2100')]
 #     experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     experiments += ['max-3km']
@@ -258,10 +261,10 @@ if __name__ == '__main__':
 #     periods += [9]
 #     periods += [10]
     periods += [15]
-    domains = 2 # domains to be processed
-#     domains = None # process all domains
-    filetypes = ['srfc','xtrm','plev3d','hydro','lsm'][1:] # filetypes to be processed # ,'rad'
-#     filetypes = ['srfc'] # filetypes to be processed
+#     domains = 2 # domains to be processed
+    domains = None # process all domains
+#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed # ,'rad'
+#     filetypes = ['rad'] # filetypes to be processed
     grid = None # use native grid
 
   # check and expand WRF experiment list

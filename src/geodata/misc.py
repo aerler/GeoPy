@@ -389,6 +389,10 @@ class AxisError(VariableError):
   ''' Exceptions related to Axes. '''
   pass
 
+class TimeAxisError(VariableError):
+  ''' Errors specifically related to the time Axes. '''
+  pass
+
 class PermissionError(VariableError):
   ''' Exceptions raised when permissions are missing (such as defined by 'mode'). '''
   pass

@@ -120,25 +120,44 @@ class ASCII_raster(FileFormat):
     ''' a method to set exteral parameters about the Dataset, so that the export destination
         can be determined (and returned) '''
     # extract variables
-    dataset_name = dataargs.dataset_name; domain = dataargs.domain
-    periodstr = dataargs.periodstr; grid = dataargs.grid
+    dataset_name = dataargs.dataset_name; domain = dataargs.domain; grid = dataargs.grid
+    if dataargs.period is None: pass
+    elif isinstance(dataargs.period,(tuple,list)):
+      periodstr = '{0:02d}'.format(int(dataargs.period[1]-dataargs.period[0]))
+    else: periodstr = '{0:02d}'.format(dataargs.period)
+    lnkprdstr = dataargs.periodstr
     # assemble specific names
     expname = '{:s}_d{:02d}'.format(dataset_name,domain) if domain else dataset_name
-    if mode == 'climatology': expprd = 'clim_{:s}'.format(periodstr)
-    elif mode == 'time-series': expprd = 'timeseries'
-    elif mode[-5:] == '-mean': expprd = '{:s}_{:s}'.format(mode[:-5],periodstr)
+    if mode == 'climatology': 
+      expprd = 'clim_{:s}'.format(periodstr)
+      lnkprd = 'clim_{:s}'.format(lnkprdstr)
+    elif mode == 'time-series': 
+      expprd = 'timeseries'; lnkprd = None
+    elif mode[-5:] == '-mean': 
+      expprd = '{:s}_{:s}'.format(mode[:-5],periodstr)
+      lnkprd = '{:s}_{:s}'.format(mode[:-5],lnkprdstr)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
     # insert into patterns 
     metadict = dict(PROJECT=self.project, GRID=grid, EXPERIMENT=expname, PERIOD=expprd)
     self.folder = self.folder_pattern.format(**metadict)
     if ldebug: self.folder = self.folder + '/test/' # test in subfolder
     self.prefix = self.prefix_pattern.format(**metadict)
+    # create link with alternate period designation
+    self.altprdlnk = None
+    if lnkprd is not None:
+      i = self.folder_pattern.find('{PERIOD')
+      if i > -1:
+        root_folder = self.folder_pattern[:i].format(**metadict)
+        period_pattern = self.folder_pattern[i:].split('/')[0]
+        link_name = period_pattern.format(PERIOD=lnkprd)
+        link_dest = period_pattern.format(PERIOD=expprd)
+        self.altprdlnk = (root_folder, link_dest, link_name)
     # return folder (no filename)
     return self.folder
   
   def prepareDestination(self, srcage=None, loverwrite=False):
     ''' create or clear the destination folder, as necessary, and check if source is newer (for skipping) '''
-    # prepare target dataset (which is mainly just a folder)
+    ## prepare target dataset (which is mainly just a folder)
     if not os.path.exists(self.folder): 
       # create new folder
       os.makedirs(self.folder)
@@ -150,8 +169,21 @@ class ASCII_raster(FileFormat):
     else:
       age = datetime.fromtimestamp(os.path.getmtime(self.folder))
       # if source file is newer than target folder, recompute, otherwise skip
-      lskip = ( age > srcage ) # skip if newer than source    
+      lskip = ( age > srcage ) # skip if newer than source 
     if not os.path.exists(self.folder): raise IOError, self.folder
+    ## put in alternative symlink (relative path) for period section
+    if self.altprdlnk:
+      root_folder, link_dest, link_name = self.altprdlnk
+      pwd = os.getcwd(); os.chdir(root_folder)
+      if not os.path.exists(link_name): 
+        os.symlink(link_dest, link_name) # create new symlink
+      if os.path.islink(link_name): 
+        os.remove(link_name) # remove old link before creating new one
+        os.symlink(link_dest, link_name) # create new symlink      
+      elif loverwrite:  
+        shutil.rmtree(link_name) # remove old folder and contents
+        os.symlink(link_dest, link_name) # create new symlink
+      os.chdir(pwd) # return to original directory
     # return with a decision on skipping
     return lskip 
     
@@ -357,9 +389,9 @@ if __name__ == '__main__':
     lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/m^2/s    
   else:
     # settings for testing and debugging
-    NP = 1 ; ldebug = False # for quick computations
+    NP = 2 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
-    modes = ('annual-mean',) # 'climatology','time-series'
+    modes = ('annual-mean','climatology')
 #     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
@@ -388,7 +420,9 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-    WRF_experiments = ['erai-g','erai-t'][:1]
+    WRF_experiments = ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050',
+                       't3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
+#     WRF_experiments = ['erai-g3','erai-t3']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
 #     WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
@@ -401,7 +435,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
     # other WRF parameters 
 #     domains = 2 # domains to be processed
-    domains = 1 # process all domains
+    domains = None # process all domains
 #     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # without radiation files
     # typically a specific grid is required
@@ -412,10 +446,10 @@ if __name__ == '__main__':
     ## export parameters
     export_arguments = dict(
         project = 'GRW', # project designation  
-#         varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','netrad','vapdef','pet'], # varlist for export                         
-        varlist = ['pet'],
-        folder = '{0:s}/HGS/{{0:s}}/{{1:s}}/{{2:s}}/{{3:s}}/'.format(os.getenv('DATA_ROOT', None)),
-        prefix = '{0:s}_{1:s}_{2:s}_{3:s}', # argument order: project/grid/experiment/period/
+        varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','netrad','vapdef','pet'], # varlist for export                         
+#         varlist = ['pet'],
+        folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/'.format(os.getenv('DATA_ROOT', None)),
+        prefix = '{GRID}', # argument order: project/grid/experiment/period/
         format = 'ASCII_raster', # formats to export to
         lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
 #         format = 'NetCDF',
