@@ -480,7 +480,18 @@ class Variable(object):
 #       self.data_array.set_fill_value = fillValue
 #       ma.set_fill_value(self.data_array,fillValue)
     
-  
+  def __eq__(self, other):
+    ''' test equality of variables based on meta data and data arrays; if compared with a string,
+        simply compare against the name of the Variable '''    
+    if self is other: return True # true identity -> trivial
+    elif isinstance(other, basestring): 
+      return self.name == other # special case for string input
+    elif isinstance(other, Variable): # variable comparison based on (meta-)data
+      return ( self.name == other.name and self.units == other.units and 
+               self.dtype == other.dtype and self.shape == other.shape and self.axes == other.axes and
+              ( not ( self.data and other.data ) or np.all(self.data_array == other.data_array) ) )
+    else: return False # default for other objects
+
   def __str__(self):
     ''' Built-in method; we just overwrite to call 'prettyPrint()'. '''
     return self.prettyPrint(short=False) # print is a reserved word  
@@ -982,7 +993,8 @@ class Variable(object):
       if axes is not None:
         if idx is not None: raise NotImplementedError
         for ax in self.axes:
-          assert (ax in axes) or (ax.name in axes), "Can not broadcast Variable '{:s}' to dimension '{:s}' ".format(self.name,ax.name)
+          if not ( (ax in axes) or (ax.name in axes) ):
+            raise AxisError("Need to have complete Axis list to broadcast; Axis '{:s}' in Variable '{:s}' is missing.".format(ax.name,self.name))
         # order dimensions as in broadcast axes list
         order = [self.axisIndex(ax) for ax in axes if self.hasAxis(ax)] # indices of broadcast list axes in instance axes list (self.axes)
         datacopy = np.transpose(datacopy,axes=order) # reorder dimensions to match broadcast list
@@ -996,8 +1008,8 @@ class Variable(object):
         datacopy = datacopy.reshape(shape)
       # true broadcasting: extend array to match given axes and dimensions
       if broadcast:
-        assert all([isinstance(ax,Axis) and len(ax)>0 for ax in axes]),\
-           'All axes need to have a defined length in order broadcast the array.'
+        if not all([isinstance(ax,Axis) and len(ax)>0 for ax in axes]):
+          raise AxisError('All axes need to have a defined length in order broadcast the array.')
         # get tiling list
         tiling = [len(ax) if l == 1 else 1 for ax,l in zip(axes,datacopy.shape)]
         datacopy = np.tile(datacopy, reps=tiling)
@@ -2333,9 +2345,6 @@ class Variable(object):
     units = '{:s}^{:s}'.format(self.units,astr)
     return data, name, units
      
-  def __eq__(self, other):
-    ''' test equality of variables based on meta data and actual data '''
-    return NotImplemented
 
 class Axis(Variable):
   '''
@@ -2381,8 +2390,16 @@ class Axis(Variable):
       else: raise AxisError, "Coordinates must be strictly monotonically increasing or decreasing."
 
   def __eq__(self, other):
-    ''' test equality of axes based on meta data and coordinate values '''
-    raise NotImplementedError
+    ''' test equality of axes based on meta data and coordinate values; if compared with a string,
+        simply compare against the name of the Axis '''    
+    if self is other: return True # true identity -> trivial
+    elif isinstance(other, basestring): 
+      return self.name == other # special case for string input
+    elif isinstance(other, Axis): # axes comparison based on (meta-)data
+      return ( self.name == other.name and self.units == other.units and 
+               self.dtype == other.dtype and self.len == other.len and 
+               ( not ( self.data and other.data ) or np.all(self.coord == other.coord) ) )
+    else: return False # default for other objects
 
   def _transformCoord(self, data):
     ''' a coordinate vector will be converted, based on input conventions '''
@@ -2749,8 +2766,8 @@ class Dataset(object):
       return self.variables.has_key(var) # look up by name
     elif isinstance(var,Variable):
       if self.variables.has_key(var.name):
-        if strict: return self.variables[var.name] is var # verify identity
-        return True # name found and identity verified 
+        # name found and identity verified 
+        return not strict or self.variables[var.name] is var
       else: return False # not found
     else: # invalid input
       raise DatasetError, "Need a Variable instance or name to check for a Variable in the Dataset!"

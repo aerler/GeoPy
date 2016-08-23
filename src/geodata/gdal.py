@@ -422,14 +422,18 @@ def getGeotransform(xlon=None, ylat=None, geotransform=None):
     geotransform = tuple(float(f) for f in geotransform)
     if xlon.data or ylat.data:
       # check if GDAL geotransform vector is consistent with coordinate vectors
-      assert len(geotransform) == 6, '\'geotransform\' has to be a vector or list with 6 elements.'
+      if not len(geotransform) == 6:
+        raise GDALError('\'geotransform\' has to be a vector or list with 6 elements.')
       dx = geotransform[1]; dy = geotransform[5]; ulx = geotransform[0]; uly = geotransform[3] 
       # assert isZero(np.diff(xlon)-dx) and isZero(np.diff(ylat)-dy), 'Coordinate vectors have to be compatible with geotransform!'
       #print geotransform
       #print ulx + dx / 2., xlon[0], uly + dy / 2., ylat[0]
-      assert isEqual(ulx + dx / 2., float(xlon[0])) and isEqual(uly + dy / 2., float(ylat[0]))  # coordinates of upper left corner (same for source and sink)       
+      # coordinates of upper left corner (same for source and sink)       
+      if not isEqual(ulx + dx / 2., float(xlon[0])): raise GDALError('{} != {}'.format(ulx + dx / 2., float(xlon[0])))
+      if not isEqual(uly + dy / 2., float(ylat[0])): raise GDALError('{} != {}'.format(uly + dy / 2., float(ylat[0])))
     else: 
-      assert len(geotransform) == 6 and all(isFloat(geotransform)), '\'geotransform\' has to be a vector or list of 6 floating-point numbers.'
+      if not ( len(geotransform) == 6 and all(isFloat(geotransform)) ):
+        raise GDALError('\'geotransform\' has to be a vector or list of 6 floating-point numbers.')
   # return results
   return geotransform
 

@@ -1753,7 +1753,7 @@ if __name__ == "__main__":
 #     specific_tests += ['WriteASCII']
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
-#     specific_tests += ['Ensemble']
+    specific_tests += ['Ensemble']
 #     specific_tests += ['DistributionVariables']
 #     specific_tests += ['StatsTests']   
 #     specific_tests += ['UnaryArithmetic']
@@ -1770,13 +1770,13 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
+#     tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
+#     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()
