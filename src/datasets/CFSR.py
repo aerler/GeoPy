@@ -26,7 +26,7 @@ root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # long-term mean folde
 # geotransform_031 = (-180.15625, 0.3125, 0.0, 89.915802001953125, 0.0, -0.30960083)
 geotransform_031 = (-0.15625, 0.3125, 0.0, 89.915802001953125, 0.0, -0.30960083)
 size_031 = (1152,576) # (x,y) map size
-geotransform_05 = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)
+# geotransform_05 = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)
 geotransform_05 = (-0.25, 0.5, 0.0, 90.25, 0.0, -0.5) # this grid actually has a grid point at the poles!
 size_05 = (720,361) # (x,y) map size
 
@@ -154,9 +154,10 @@ def loadCFSR_TS(name=dataset_name, grid=None, varlist=None, varatts=None, resolu
 avgfolder = root_folder + 'cfsravg/' 
 avgfile = 'cfsr{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 # function to load these files...
-def loadCFSR(name=dataset_name, period=None, grid=None, resolution=None, varlist=None, varatts=None, 
+def loadCFSR(name=dataset_name, period=None, grid=None, resolution='031', varlist=None, varatts=None, 
              folder=avgfolder, filelist=None, lautoregrid=True):
   ''' Get the pre-processed monthly CFSR climatology as a DatasetNetCDF. '''
+  grid, resolution = checkGridRes(grid=grid, resolution=resolution)
   # load standardized climatology dataset with CFSR-specific parameters
   dataset = loadObservations(name=name, folder=folder, projection=None, resolution=resolution,
                              period=period, grid=grid, shape=None, station=None, 
@@ -247,8 +248,8 @@ if __name__ == '__main__':
 #   mode = 'test_timeseries'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-  reses = ('05',) # for testing
-#   reses = ( '031','05',)
+#   reses = ('05',) # for testing
+  reses = ( '031','05',)
 #   period = (1979,1984)
 #   period = (1979,1989)
   period = (1979,1994)
@@ -338,8 +339,8 @@ if __name__ == '__main__':
       # shift longitude axis by 180 degrees left (i.e. 0 - 360 -> -180 - 180)
       CPU.Shift(lon=-180, flush=False)
       
-      # sync temporary storage with output
-      CPU.sync(flush=True)
+      # sync temporary storage with output (sink variable; do not flush!)
+      CPU.sync(flush=False)
 
       # make new masks
       if sink.hasVariable('landmask'):

@@ -211,7 +211,7 @@ if __name__ == '__main__':
     NP = 4 ; ldebug = False # just for tests
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = False
+    loverwrite = True
     varlist = None
 #     varlist = ['precip',]
     periods = []
@@ -226,7 +226,7 @@ if __name__ == '__main__':
     datasets = []
     lLTM = True # also regrid the long-term mean climatologies 
 #     datasets += ['PRISM','GPCC','PCIC']; periods = None
-    datasets += ['CFSR', 'NARR']; resolutions = {'NARR':'','CFSR':'',}# CFSR_05 does not have precip
+    datasets += ['CFSR', ] # CFSR_05 does not have precip
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025']}
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 

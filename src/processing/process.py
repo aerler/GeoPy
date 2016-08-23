@@ -149,13 +149,15 @@ class CentralProcessingUnit(object):
           newvar = function(var) # perform actual processing
           if not ldata: var.unload() # if it was already loaded, don't unload        
           self.target.addVariable(newvar, copy=True) # copy=True allows recasting as, e.g., a NC variable
+          newvar.unload() # sicne we already made a copy
         else:
           raise DatasetError, "Variable '%s' not found in input dataset."%varname
         assert varname == newvar.name
         # flush data to disk immediately      
         if flush: 
-          self.output.variables[varname].unload() # again, free memory
-        newvar.unload(); del var, newvar # free space; already added to new dataset
+          newvar.unload() # again, free memory
+          self.output.variables[varname].unload()
+        del var, newvar # free space; already added to new dataset
     # after everything is said and done:
     self.source = self.target # set target to source for next time
     
@@ -768,9 +770,11 @@ class CentralProcessingUnit(object):
     if byteShift:
       # shift coordinate vector like data
       coord = np.roll(axis.getArray(unmask=False), shift) # 1-D      
+      coord_shift = shift * (axis[1] - axis[0])
     else:              
       coord = axis.getArray(unmask=False) + shift # shift coordinates
       # transform coordinate shifts into index shifts (linear scaling)
+      coord_shift = shift # save for later
       shift = int( shift / (axis[1] - axis[0]) )    
     axis.coord = coord
     # add axis to output dataset      
@@ -778,6 +782,12 @@ class CentralProcessingUnit(object):
     elif self.target.hasAxis(axis.name): self.target.repalceAxis(axis)
     else: self.target.addAxis(axis, copy=True) # copy=True allows recasting as, e.g., a NC variable
     axis = self.target.axes[axis.name] # make sure we have the right version!
+    # handle GDAL (need to change geotransform, if GDAL axis was shifted)
+    if hasattr(self.input, 'gdal') and self.input.gdal:
+      geotransform = list(self.input.geotransform)
+      if axis.name == self.input.xlon: geotransform[0] += coord_shift
+      if axis.name == self.input.ylat: geotransform[3] += coord_shift
+      self.target = addGDALtoDataset(self.target, projection=self.input.projection, geotransform=geotransform)
     # prepare function call
     function = functools.partial(self.processShift, # already set parameters
                                  shift=shift, axis=axis)
@@ -792,7 +802,8 @@ class CentralProcessingUnit(object):
     if var.hasAxis(axis.name):
       if self.feedback: print('\n'+var.name), # put line break before test, instead of after      
       # shift data array
-      newdata = np.roll(var.getArray(unmask=False), shift, axis=var.axisIndex(axis))
+      var.load()
+      newdata = np.roll(var.data_array, shift, axis=var.axisIndex(axis))
       # create new Variable
       axes = tuple([axis if ax.name == axis.name else ax for ax in var.axes]) # replace axis with shifted version
       newvar = var.copy(axes=axes, data=newdata) # and, of course, load new data
