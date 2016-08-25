@@ -3,6 +3,7 @@
 
 NP: 3 # environment variable has precedence
 loverwrite: false # only recompute if source is newer
+lappend: true # append to existing file, instead of recompute all
 modes: ['time-series',]
 varlist: Null # process all variables
 periods: Null # climatology periods to process

@@ -24,7 +24,6 @@ from geodata.misc import genStrArray, translateSeasons
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
 from processing.multiprocess import apply_along_axis
 from utils.misc import histogram, binedges, detrend, percentile, tabulate
-from __builtin__ import NotImplemented
      
 # used for climatology and seasons
 monthlyUnitsList = ('month','months','month of the year')

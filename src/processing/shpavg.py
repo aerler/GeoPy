@@ -30,7 +30,8 @@ from datasets.EC import provinces
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
 def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwrite=False, varlist=None, 
-                        lwrite=True, lreturn=False, ldebug=False, lparallel=False, pidstr='', logger=None):
+                        lwrite=True, lreturn=False, lappend=True,
+                        ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to extract point data from gridded dataset '''  
   # input checking
   if not isinstance(dataset,basestring): raise TypeError
@@ -76,7 +77,7 @@ def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwr
         # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
         if age > srcage and os.path.getsize(filepath) > 1e4: lskip = True
         # N.B.: NetCDF files smaller than 10kB are usually incomplete header fragments from a previous crashed
-      if not lskip: os.remove(filepath) # recompute
+      if not lskip and not lappend: os.remove(filepath) # recompute or append
   
   # depending on last modification time of file or overwrite setting, start computation, or skip
   if lskip:        
@@ -86,6 +87,8 @@ def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwr
     logger.info(skipmsg)              
   else:
               
+    if lappend: raise NotImplementedError
+    
     ## actually load datasets
     source = loadfct() # load source 
     # check period
@@ -173,6 +176,7 @@ if __name__ == '__main__':
     # read config object
     NP = NP or config['NP']
     loverwrite = config['loverwrite']
+    lappend = config['lappend']
     # source data specs
     modes = config['modes']
     varlist = config['varlist']
