@@ -9,14 +9,14 @@ the data is stored in human-readable text files and tables.
 
 # external imports
 import numpy as np
-import functools
-import fileinput
+import os, functools
 from collections import OrderedDict
 from copy import deepcopy
 # internal imports
 from datasets.common import selectElements, data_root
 from geodata.netcdf import DatasetNetCDF
 from geodata.misc import FileError, isNumber
+from utils import nanfunctions as nf
 from geodata.gdal import NamedShape, ShapeInfo
 from geodata.station import StationDataset, Variable, Axis
 # from geodata.utils import DatasetError
@@ -91,85 +91,31 @@ class BasinInfo(ShapeInfo):
           warn('Duplicate station name: {}\n  {}\n  {}'.format(station,self.stationfiles[station],filename))
         else: self.stationfiles[station] = filename
       
-# dictionary with basin meta data
-basins_info = OrderedDict() # maintain order
-# meta data for specific basins
-
-basins_info['AY']  = BasinInfo(name='AY', long_name='Alaska and Yukon', rivers=[], data_source='WSC',
-                               stations=dict(), subbasins=['WholeAY'])
-basins_info['AO']  = BasinInfo(name='AO', long_name='Arctic Ocean', rivers=[], data_source='WSC',
-                               stations=dict(), subbasins=['WholeAO'])
-basins_info['ARB'] = BasinInfo(name='ARB', long_name='Athabasca River Basin', rivers=['Athabasca'], data_source='WSC',
-                               stations=dict(Athabasca=['Embarras','McMurray']),
-                               subbasins=['WholeARB','UpperARB','LowerARB'])
-basins_info['CRB'] = BasinInfo(name='CRB', long_name='Columbia River Basin', rivers=['Columbia'], data_source='WSC',
-                               stations=dict(), subbasins=['WholeCRB'])
-basins_info['FRB'] = BasinInfo(name='FRB', long_name='Fraser River Basin', rivers=['Fraser'], data_source='WSC',
-                               stations=dict(Fraser=['PortMann','Mission']),
-                               subbasins=['WholeFRB','UpperFRB','LowerFRB'])
-basins_info['GLB'] = BasinInfo(name='GLB', long_name='Great Lakes Basin', rivers=['Upper Saint Lawrence'], data_source='WSC',
-                              stations=dict(), subbasins=['WholeGLB'])
-basins_info['GRW'] = BasinInfo(name='GRW', long_name='Grand River Watershed', rivers=['Grand River'], data_source='Aquanty',
-                               stations={'Grand River':['Brantford']}, subbasins=['WholeGRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW'])
-basins_info['GSL'] = BasinInfo(name='GSL', long_name='Great Slave Lake', rivers=[], data_source='WSC',
-                               stations=dict(), subbasins=['WholeGSL'])
-basins_info['LS']  = BasinInfo(name='LS', long_name='Labrador Sea', rivers=[], data_source='WSC',
-                               stations=dict(), subbasins=['WholeLS'])
-basins_info['MKB'] = BasinInfo(name='MKB', long_name='MacKenzie Basin', rivers=['MacKenzie'], data_source='',
-                               stations=dict(), subbasins=['WholeMKB'])
-basins_info['MRB'] = BasinInfo(name='MRB', long_name='Missouri River Basin', rivers=['Missouri'], data_source='WSC',
-                               stations=dict(), subbasins=['WholeMRB'])
-basins_info['NRB'] = BasinInfo(name='NRB', long_name='Nelson River Basin', rivers=['Nelson'], data_source='WSC',
-                               stations=dict(), subbasins=['WholeNRB'])
-basins_info['NHB'] = BasinInfo(name='NHB', long_name='Northern Hudson Bay', rivers=[], data_source='WSC',
-                               stations=dict(), subbasins=['WholeNHB'])
-basins_info['NO']  = BasinInfo(name='NO', long_name='Northern Ontario', rivers=[], data_source='WSC',
-                               stations=dict(), subbasins=['WholeNO'])
-basins_info['PO']  = BasinInfo(name='PO', long_name='Pacific Ocean', rivers=[], data_source='WSC',
-                               stations=dict(), subbasins=['WholePO'])
-basins_info['PSB'] = BasinInfo(name='PSB', long_name='Pacific Seaboard', rivers=[], data_source='WSC',
-                               stations=dict(), subbasins=['WholePSB','NorthernPSB','SouthernPSB'])
-basins_info['SLR'] = BasinInfo(name='SLR', long_name='Saint Lawrence River', rivers=['Saint Lawrence'], data_source='WSC',
-                               stations=dict(), subbasins=['WholeSLR'])
-basins_info['SSR'] = BasinInfo(name='SSR', long_name='South Sasketchewan River', rivers=['South Sasketchewan River'], data_source='Aquanty',
-                               stations=dict(), subbasins=['WholeSSR'])
-
-# N.B.: to add new gage stations add the name to the statins-dict and download the CSV files for monthly values and meta data
-#       from the WSC historical archive (no missing days): http://wateroffice.ec.gc.ca/search/search_e.html?sType=h2oArc
-
-# N.B.: all shapefiles from Water Survey of Canada
-
-# dictionary of basins
-basins = OrderedDict() # maintain order
-for name,basin in basins_info.iteritems():
-  # add main basin
-  basins[basin.name] = Basin(basin=basin, subbasin=None)
-  if len(basin.subbasins) > 1 :
-    # preserve grouping
-    for subbasin in basin.subbasins[1:]: # skip first
-      basins[subbasin] = Basin(basin=basin, subbasin=subbasin)
-    
-# get hydrographs from WSC here: https://wateroffice.ec.gc.ca/search/search_e.html?sType=h2oArc
 
 ## Functions that handle access to ASCII files
 def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='climatology', 
-                    aggregation=None, filetype='monthly', folder=None, filename=None):
+                    aggregation=None, filetype='monthly', folder=None, filename=None,
+                    basins=None, basins_info=None):
   ''' Function to load hydrograph climatologies for a given basin '''
-  # resolve input
-  if isinstance(basin,(basestring,BasinInfo)):
-    if isinstance(basin,basestring):
-      if basin in basins: basin = basins_info[basin]
-      else: raise ValueError, 'Unknown basin: {}'.format(basin)
-    folder = basin.folder
+  ## resolve input
+  # resolve basin
+  if isinstance(basin,basestring) and basin in basins: 
+    basin = basins_info[basin]
+  # determine basin meta data
+  if isinstance(basin,BasinInfo):
+    folder = basin.folder if folder is None else folder
+    basin_name = basin.name
+    # figure out station
     if station is None: station = basin.maingage      
-    elif not isinstance(station,basestring): raise TypeError
+    if not isinstance(station,basestring): raise TypeError(station)
     if station in basin.stationfiles: filename = basin.stationfiles[station]
-    else: raise GageStationError, 'Unknown station: {}'.format(station)
-    river = filename.split('_')[0].lower()
-    atts = dict(basin=basin.name, river=river) # first component of file name       
-  elif isinstance(folder,basestring) and isinstance(filename,basestring):
-    atts = None; river = None
-  else: raise TypeError, 'Specify either basin & station or folder & filename.'
+    elif filename is None: # only a problem if there is no file to open
+      raise GageStationError('Unknown station: {}'.format(station))
+  # test folder and filename
+  if isinstance(folder,basestring) and isinstance(filename,basestring):
+    os.path.exists('{}/{}'.format(folder,filename))
+  else: raise TypeError('Specify either basin & station or folder & filename.')
+    
   # variable attributes
   if varlist is None: varlist = variable_list
   elif not isinstance(varlist,(list,tuple)): raise TypeError  
@@ -178,6 +124,7 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
     if aggregation is None: varatts = deepcopy(variable_attributes) # because of nested dicts
     else: varatts = deepcopy(agg_varatts) # because of nested dicts
   elif not isinstance(varatts,dict): raise TypeError
+  
   ## read csv data
   filepath = '{}/{}'.format(folder,filename)
   data = np.genfromtxt(filepath, dtype=np.float32, delimiter=',', skip_header=1, filling_values=np.nan,  
@@ -186,79 +133,78 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   data = np.ma.masked_less(data, 10) # remove some invalid values
   data *= 1000. # m^3 == 1000 kg (water)
   ## load meta data
-  # open namelist file for reading   
-  filehandle = fileinput.FileInput(['{}/{}'.format(folder,filename.replace('Monthly', 'Metadata'))], mode='r')  
+  # open namelist file for reading  
+  filepath = '{}/{}'.format(folder,filename.replace('Monthly', 'Metadata')) 
   # parse file and load data into a dictionary
-  l = 0
-  for line in filehandle:
-    linesplit = line.split(',')
-    if l == 0: keys = linesplit
-    elif l == 1: values = linesplit
-    else: raise IOError, line
-    l += 1 # count lines...
+  with open(filepath, mode='r') as filehandle:
+    lines = filehandle.readlines()
+    assert len(lines) == 2, lines
+    keys = lines[0].split(',')
+    values = lines[1].split(',')
   assert len(keys) == len(values)
+  # add some additional attributes
   metadata = {key:value for key,value in zip(keys,values)}
+  metadata['long_name'] = metadata['Station Name']
+  metadata['ID'] = metadata['Station Number']
+  metadata['shape_name'] = basin_name
+  metadata['shp_area'] = float(metadata['Drainage Area']) * 1e6 # km^2 == 1e6 m^2
   # create dataset for station
-  atts['long_name'] = metadata['Station Name']
-  atts['ID'] = metadata['Station Number']
-  atts['shape_name'] = basin.name if basin is not None else None
-  atts['shp_area'] = float(metadata['Drainage Area']) * 1e6 # km^2 == 1e6 m^2
-  metadata.update(atts)
   dataset = StationDataset(name='WSC', title=metadata['Station Name'], varlist=[], atts=metadata,) 
   if mode == 'climatology': 
     # make common time axis for climatology
     te = 12 # length of time axis: 12 month
     climAxis = Axis(name='time', units='month', length=12, coord=np.arange(1,te+1,1)) # monthly climatology
-  else: raise NotImplementedError, 'Currently only climatologies are supported.'
-  dataset.addAxis(climAxis, copy=False)
-  # extract variables (min/max/mean are separate variables)
-  doa = data / atts['shp_area']
-  from utils import nanfunctions as nf
-  if aggregation is None or aggregation.lower() == 'mean':
-    # load mean discharge
-    tmpdata = nf.nanmean(data, axis=0)
-    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discharge'])
-    dataset.addVariable(tmpvar, copy=False)
-    # load mean runoff
-    tmpdata = nf.nanmean(doa, axis=0)
-    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['runoff'])
-    dataset.addVariable(tmpvar, copy=False)
-  if aggregation is None or aggregation.lower() == 'std':
-    # load  discharge standard deviation
-    tmpdata = nf.nanstd(data, axis=0, ddof=1) # very few values means large uncertainty!
-    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discstd'])
-    dataset.addVariable(tmpvar, copy=False)
-    # load  runoff standard deviation
-    tmpdata = nf.nanstd(doa, axis=0, ddof=1)
-    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_std'])
-    dataset.addVariable(tmpvar, copy=False)
-  if aggregation is None or aggregation.lower() == 'sem':
-    # load  discharge standard deviation
-    tmpdata = nf.nansem(data, axis=0, ddof=1) # very few values means large uncertainty!
-    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discsem'])
-    dataset.addVariable(tmpvar, copy=False)
-    # load  runoff standard deviation
-    tmpdata = nf.nansem(doa, axis=0, ddof=1)
-    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_sem'])
-    dataset.addVariable(tmpvar, copy=False)
-  if aggregation is None or aggregation.lower() == 'max':
-    # load maximum discharge
-    tmpdata = nf.nanmax(data, axis=0)
-    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discmax'])
-    dataset.addVariable(tmpvar, copy=False)
-    # load maximum runoff
-    tmpdata = nf.nanmax(doa, axis=0)
-    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_max'])
-    dataset.addVariable(tmpvar, copy=False)
-  if aggregation is None or aggregation.lower() == 'min':
-    # load minimum discharge
-    tmpdata = nf.nanmin(data, axis=0)
-    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discmin'])
-    dataset.addVariable(tmpvar, copy=False)
-    # load minimum runoff
-    tmpdata = nf.nanmin(doa, axis=0)
-    tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_min'])
-    dataset.addVariable(tmpvar, copy=False)
+    dataset.addAxis(climAxis, copy=False)
+    # extract variables (min/max/mean are separate variables)
+    # N.B.: this is mainly for backwards compatibility
+    doa = data / metadata['shp_area']  
+    if aggregation is None or aggregation.lower() == 'mean':
+      # load mean discharge
+      tmpdata = nf.nanmean(data, axis=0)
+      tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discharge'])
+      dataset.addVariable(tmpvar, copy=False)
+      # load mean runoff
+      tmpdata = nf.nanmean(doa, axis=0)
+      tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['runoff'])
+      dataset.addVariable(tmpvar, copy=False)
+    if aggregation is None or aggregation.lower() == 'std':
+      # load  discharge standard deviation
+      tmpdata = nf.nanstd(data, axis=0, ddof=1) # very few values means large uncertainty!
+      tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discstd'])
+      dataset.addVariable(tmpvar, copy=False)
+      # load  runoff standard deviation
+      tmpdata = nf.nanstd(doa, axis=0, ddof=1)
+      tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_std'])
+      dataset.addVariable(tmpvar, copy=False)
+    if aggregation is None or aggregation.lower() == 'sem':
+      # load  discharge standard deviation
+      tmpdata = nf.nansem(data, axis=0, ddof=1) # very few values means large uncertainty!
+      tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discsem'])
+      dataset.addVariable(tmpvar, copy=False)
+      # load  runoff standard deviation
+      tmpdata = nf.nansem(doa, axis=0, ddof=1)
+      tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_sem'])
+      dataset.addVariable(tmpvar, copy=False)
+    if aggregation is None or aggregation.lower() == 'max':
+      # load maximum discharge
+      tmpdata = nf.nanmax(data, axis=0)
+      tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discmax'])
+      dataset.addVariable(tmpvar, copy=False)
+      # load maximum runoff
+      tmpdata = nf.nanmax(doa, axis=0)
+      tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_max'])
+      dataset.addVariable(tmpvar, copy=False)
+    if aggregation is None or aggregation.lower() == 'min':
+      # load minimum discharge
+      tmpdata = nf.nanmin(data, axis=0)
+      tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['discmin'])
+      dataset.addVariable(tmpvar, copy=False)
+      # load minimum runoff
+      tmpdata = nf.nanmin(doa, axis=0)
+      tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_min'])
+      dataset.addVariable(tmpvar, copy=False)
+  else: 
+    raise NotImplementedError, "Time axis mode '{}' is not supported.".format(mode)
   # return station dataset
   return dataset   
 
@@ -331,6 +277,9 @@ def selectStations(datasets, shpaxis='shape', imaster=None, linplace=True, lall=
 ## abuse main block for testing
 if __name__ == '__main__':
   
+  from projects.WSC_basins import basins_info, basins, BasinInfo
+  # N.B.: importing BasinInfo through WSC_basins is necessary, otherwise some isinstance() calls fail
+  
   basin_name = 'GRW'
     
   # verify basin info
@@ -350,7 +299,7 @@ if __name__ == '__main__':
   print
   print station
   print
-  assert station.ID == loadGageStation(basin=basin_name).ID
+  assert station.ID == loadGageStation(basin=basin_name, basins=basins, basins_info=basins_info).ID
   print station.discharge.getArray()
   
   # print basins
