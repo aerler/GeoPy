@@ -1103,7 +1103,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
 
 ## shapefile contianer class
 class Shape(object):
-  ''' A wrapper class for shapefiles, with some added functionality and raster itnerface '''
+  ''' A wrapper class for shapefiles, with some added functionality and raster interface '''
   
   def __init__(self, name=None, long_name=None, shapefile=None, folder=None, load=False, ldebug=False):
     ''' load shapefile '''
@@ -1112,10 +1112,11 @@ class Shape(object):
     if shapefile is not None and not isinstance(shapefile,basestring): raise TypeError
     # resolve file name and open file
     if ldebug: print(' - loading shapefile')
-    if shapefile is None: shapefile = name + '.shp'
-    if name is None: name = os.path.basename(shapefile)
-    if long_name is None: long_name = name
+    if shapefile is None: shapefile = name + '.shp' # will be absolute path
+    elif shapefile[-4:] != '.shp': shapefile = shapefile + '.shp' # and need extension
     if folder is not None: shapefile = folder + '/' + shapefile
+    if name is None: name = os.path.splitext(os.path.basename(shapefile))[0]
+    if long_name is None: long_name = name
     else: folder = os.path.dirname(shapefile)
     if not os.path.exists(shapefile): raise IOError, 'File \'{}\' not found!'.format(shapefile)
     if ldebug: print(' - using shapefile \'{}\''.format(shapefile))
@@ -1132,6 +1133,11 @@ class Shape(object):
     ''' access to OGR dataset '''
     if self._ogr is None: self._ogr = ogr.Open(self.shapefile) # load data, if not already done 
     return self._ogr
+  
+  def load(self):
+    ''' load data and return self '''
+    if self._ogr is None: self._ogr = ogr.Open(self.shapefile) # load data, if not already done 
+    return self
   
   def getLayer(self, layer):
     ''' return a layer from the shapefile '''
@@ -1173,57 +1179,72 @@ class Shape(object):
     # return mask array
     return mask  
 
-# a container class for shape meta data
-class ShapeInfo(object): 
-  ''' basin meta data '''
-  def __init__(self, name=None, long_name=None, shapefiles=None, shapetype=None, data_source=None, folder=None):
-    ''' some common operations and inferences '''
-    self.name = name
-    self.long_name = long_name
-    self.data_source = data_source # source documentation...
-    self.folder = folder+long_name+'/' # shapefile always has its own folder
-    self.shapefiles = OrderedDict()
-    for shp in shapefiles:
-      if shp[-4:] == '.shp':
-        self.shapefiles[shp[:-4]] = self.folder + shp
-      else: 
-        self.shapefiles[shp] = self.folder + shp + '.shp'
-    self.outline = self.shapefiles.keys()[0]    
-    self.shapetype = shapetype          
-      
-
-# container class for known shapes with meta data
-class NamedShape(Shape):
-  ''' Just a container for shapes with additional meta information '''
-  def __init__(self, area=None, subarea=None, folder=None, shapefile=None, shapetype=None, shapes_dict=None, load=False, ldebug=False):
-    ''' save meta information; should be initialized from a BasinInfo instance '''
-    # resolve input
-    if isinstance(area,(basestring,ShapeInfo)):
-      if isinstance(area,basestring):
-        if area in shapes_dict: area = shapes_dict[area]
-        else: raise ValueError, 'Unknown area: {}'.format(area)
-      folder = area.folder
-      if subarea is None: 
-        subarea = area.outline
-        name = area.name      
-        long_name = area.long_name
-      elif isinstance(subarea,basestring):
-        name = subarea 
-        long_name = separateCamelCase(subarea, **{area.name:area.long_name})
-      else: raise TypeError
-      if subarea not in area.shapefiles: raise ValueError, 'Unknown subarea: {}'.format(subarea)
-      shapefile = area.shapefiles[subarea]
-      shapetype = area.shapetype            
-    elif isinstance(shapefile,basestring):
-      if folder is not None and isinstance(folder,basestring): shapefile = folder+'/'+shapefile
-      name = area 
-      long_name = None       
-    else: raise TypeError, 'Specify either area & station or folder & shapefile.'
+# a container class that also acts as a shape for the outline
+class ShapeSet(Shape): 
+  ''' a container class for a set of shapes within a common outline and with common meta data; also acts as a Shape '''
+  _ShapeClass = Shape # the class that is used to initialize the shape collection
+  
+  def __init__(self, name=None, long_name=None, shapefiles=None, folder=None, load=False, ldebug=False,
+               data_source=None, outline=None, **kwargs):
+    ''' initialize shapes '''
+    # sort shapes into ordered dictionary
+    if isinstance(shapefiles,dict):       
+      shape_list = [self._ShapeClass(name=name, shapefile=shapefile, folder=folder, ldebug=ldebug, 
+                                     load=load, **kwargs) for name,shapefile in shapefiles.iteritems()]
+    else:
+      shape_list = [self._ShapeClass(name=None, shapefile=shapefile, folder=folder, ldebug=ldebug,
+                                     load=load, **kwargs) for shapefile in shapefiles]
+    shapes = OrderedDict(); shapefiles = OrderedDict()
+    for shape in shape_list:
+      shapes[shape.name] = shape; shapefiles[shape.name] = shape.shapefile
+    # determine outline
+    if outline is None: outline = shapes.keys()[0]    
+    # N.B.: the shapefile of the outline will be added by the Shape constructor
     # call Shape constructor
-    super(NamedShape,self).__init__(name=name, long_name=long_name, shapefile=shapefile, load=load, ldebug=ldebug)
-    # add info
-    self.info = area
-    self.shapetype = shapetype 
+    super(ShapeSet,self).__init__(name=name, long_name=long_name, shapefile=shapefiles[outline], 
+                                  load=load, ldebug=ldebug, **kwargs)
+    # add remaining attributes
+    self.data_source = data_source # source documentation...
+    self.outline = outline # name of the main shape which traces the outline
+    self.shapefiles = shapefiles # absolute path to actual shapefiles
+    self.shapes = shapes # OrderedDict of Shape instances
+    
+  def getShape(self, name):
+    ''' wrapper method to return requested shape or None '''
+    return self.shapes.get(name,None)
+
+# # container class for known shapes with meta data
+# class NamedShape(Shape):
+#   ''' Just a container for shapes with additional meta information '''
+#   def __init__(self, area=None, subarea=None, folder=None, shapefile=None, shapetype=None, shapes_dict=None, load=False, ldebug=False):
+#     ''' save meta information; should be initialized from a BasinInfo instance '''
+#     # resolve input
+#     if isinstance(area,(basestring,ShapeInfo)):
+#       if isinstance(area,basestring):
+#         if area in shapes_dict: area = shapes_dict[area]
+#         else: raise ValueError, 'Unknown area: {}'.format(area)
+#       folder = area.folder
+#       if subarea is None: 
+#         subarea = area.outline
+#         name = area.name      
+#         long_name = area.long_name
+#       elif isinstance(subarea,basestring):
+#         name = subarea 
+#         long_name = separateCamelCase(subarea, **{area.name:area.long_name})
+#       else: raise TypeError
+#       if subarea not in area.shapefiles: raise ValueError, 'Unknown subarea: {}'.format(subarea)
+#       shapefile = area.shapefiles[subarea]
+#       shapetype = area.shapetype            
+#     elif isinstance(shapefile,basestring):
+#       if folder is not None and isinstance(folder,basestring): shapefile = folder+'/'+shapefile
+#       name = area 
+#       long_name = None       
+#     else: raise TypeError, 'Specify either area & station or folder & shapefile.'
+#     # call Shape constructor
+#     super(NamedShape,self).__init__(name=name, long_name=long_name, shapefile=shapefile, load=load, ldebug=ldebug)
+#     # add info
+#     self.info = area
+#     self.shapetype = shapetype 
 
 
 ## run a test    

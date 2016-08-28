@@ -10,17 +10,16 @@ the data is stored in human-readable text files and tables.
 # external imports
 import numpy as np
 import os, functools
-from collections import OrderedDict
 from copy import deepcopy
 # internal imports
 from datasets.common import selectElements, data_root
 from geodata.netcdf import DatasetNetCDF
-from geodata.misc import FileError, isNumber
+from geodata.misc import FileError, isNumber, ArgumentError
 from utils import nanfunctions as nf
-from geodata.gdal import NamedShape, ShapeInfo
+from geodata.gdal import Shape, ShapeSet
 from geodata.station import StationDataset, Variable, Axis
 # from geodata.utils import DatasetError
-from warnings import warn
+from collections import OrderedDict
 
 ## WSC (Water Survey Canada) Meta-data
 
@@ -56,51 +55,95 @@ class GageStationError(FileError):
 
   
 # container class for stations and area files
-class Basin(NamedShape):
-  ''' Just a container for basin information and associated station data '''
-  def __init__(self, basin=None, subbasin=None, folder=None, shapefile=None, basins_dict=None, load=False, ldebug=False):
+class Basin(Shape):
+  ''' a Shape class for river basins with associated gage station information '''
+  def __init__(self, name=None, long_name=None, shapefile=None, folder=None, load=False, ldebug=False,
+               subbasins=None, rivers=None, stations=None):
     ''' save meta information; should be initialized from a BasinInfo instance '''
-    super(Basin,self).__init__(area=basin,  subarea=subbasin, folder=folder, shapefile=shapefile, shapes_dict=basins_dict, load=load, ldebug=ldebug)
-    self.maingage = basin.maingage if basin is not None else None 
+    super(Basin,self).__init__(name=name, long_name=long_name, shapefile=shapefile, folder=folder, 
+                               load=load, ldebug=ldebug)
+    # figure out if we are the outline/main basin
+    name = self.name
+    if 'Whole{:s}'.format(self.name) in subbasins: name = 'Whole{:s}'.format(self.name)
+    assert name in subbasins, (name,subbasins)
+    # add gage station from dict (based on name)
+    if isinstance(subbasins,dict) and name in subbasins and subbasins[name]:
+      maingage = subbasins[name]
+      if isinstance(station, (list,tuple)): maingage = '{}_{}'.format(*maingage)        
+    elif rivers and stations and name[:5] == 'Whole':
+      maingage = '{}_{}'.format(rivers[0],stations[rivers[0]][0]) # first station of first river (from outflow)
+    else: maingage = None # no gage station defined
+    # initialize gage station
+    self.maingage = None if maingage is None else GageStation(basin=name, name=maingage, folder=folder) # just name, for now
     
-  def getMainGage(self, varlist=None, varatts=None, aggregation=None, mode='climatology', filetype='monthly'):
+  def getMainGage(self, varlist=None, varatts=None, aggregation=None, mode='climatology', 
+                  filetype='monthly'):
     ''' return a dataset with data from the main gaging station '''
     if self.maingage is not None:
-      station = loadGageStation(basin=self.info, varlist=varlist, varatts=varatts, aggregation=aggregation, mode=mode, filetype=filetype)
+      station = loadGageStation(basin=self.name, varlist=varlist, varatts=varatts, 
+                                aggregation=aggregation, mode=mode, filetype=filetype)
     else: station = None 
     return station
 
 # a container class for basin meta data
-class BasinInfo(ShapeInfo): 
-  ''' basin meta data '''
+class BasinSet(ShapeSet,Basin): 
+  ''' a container class for basins with associated subbasins '''
+  _ShapeClass = Basin # the class that is used to initialize the shape collection
+  
   def __init__(self, name=None, long_name=None, rivers=None, stations=None, subbasins=None, data_source=None, folder=None):
     ''' some common operations and inferences '''
     # call parent constructor 
-    if folder is None: folder = root_folder + '/Basins/'
-    super(BasinInfo,self).__init__(name=name, long_name=long_name, shapefiles=subbasins, shapetype='BSN', 
-                                   data_source=data_source, folder=folder)
+    if folder is None: folder = '{:s}/Basins/{:s}/'.format(root_folder,long_name)
+    shapefiles = subbasins.keys() if isinstance(subbasins, dict) else subbasins
+    super(BasinSet,self).__init__(name=name, long_name=long_name, shapefiles=shapefiles, 
+                                  data_source=data_source, folder=folder, # ShapeSet arguments
+                                  rivers=rivers, stations=stations, subbasins=subbasins) 
+                                  # N.B.: addition arguments for Basin constructor
     # add basin specific stuff
-    self.subbasins = subbasins
-    self.maingage = stations[rivers[0]][0] if stations else None 
-    self.stationfiles = dict()
+    self.subbasins = self.shapes # alias
+    # self.maingage = stations[rivers[0]][0] if stations else None # should already be set by Basin init
+    assert self.maingage is not None or not stations, stations # internal check
+    self.rivers = rivers
+    # add list of gage stations
+    self.river_stations = OrderedDict(); self.stations = OrderedDict()
     for river,station_list in stations.items():
-      for station in station_list: 
-        #filename = '{0:s}_{1:}.dat'.format(river,station)
-        filename = '{0:s}_{1:}_Monthly.csv'.format(river,station)
-        if station in self.stationfiles: 
-          warn('Duplicate station name: {}\n  {}\n  {}'.format(station,self.stationfiles[station],filename))
-        else: self.stationfiles[station] = filename
+      self.river_stations = [GageStation(name=station, river=river, folder=folder) 
+                             for station in station_list]
+      for station in self.river_stations: self.stations[station.name] = station     
+        
       
-
+# a class to hold meta data of gaging stations
+class GageStation(object):
+  ''' a class that provides access to station meta data and gage data '''
+  meta_ext = '_Metadata.csv'
+  meta_file = None
+  monthly_ext = '_Monthly.csv'
+  monthly_file = None
+  
+  def __init__(self, basin=None, river=None, name=None, folder=None):
+    ''' initialize gage station based on various input data '''
+    if name is None: raise ArgumentError()
+    if folder is None: folder = '{:s}/Basins/{:s}/'.format(root_folder,basin)
+    if not os.path.isdir(folder): IOError(folder)
+    if river is not None and river not in name: name = '{:s}_{:s}'.format(river,name)
+    if not os.path.isdir(folder): IOError(folder)
+    self.folder = folder # usually basin folder
+    self.name = name # or prefix...
+    if os.path.isfile('{:s}/{:s}'.format(folder,name + self.meta_ext)):
+      self.meta_file = name + self.meta_ext
+    if os.path.isfile('{:s}/{:s}'.format(folder,name + self.monthly_ext)):
+      self.meta_file = name + self.monthly_ext
+    
+    
 ## Functions that handle access to ASCII files
 def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='climatology', 
                     aggregation=None, filetype='monthly', folder=None, filename=None,
-                    basins=None, basins_info=None):
+                    basins=None, basin_list=None):
   ''' Function to load hydrograph climatologies for a given basin '''
   ## resolve input
   # resolve basin
   if isinstance(basin,basestring) and basin in basins: 
-    basin = basins_info[basin]
+    basin = basin_list[basin]
   # determine basin meta data
   if isinstance(basin,BasinInfo):
     folder = basin.folder if folder is None else folder
@@ -277,29 +320,28 @@ def selectStations(datasets, shpaxis='shape', imaster=None, linplace=True, lall=
 ## abuse main block for testing
 if __name__ == '__main__':
   
-  from projects.WSC_basins import basins_info, basins, BasinInfo
+  from projects.WSC_basins import basin_list, basins, BasinSet
   # N.B.: importing BasinInfo through WSC_basins is necessary, otherwise some isinstance() calls fail
   
   basin_name = 'GRW'
     
   # verify basin info
-  basin_info = basins_info[basin_name]
-  print basin_info.long_name
-  print basin_info.stationfiles
+  basin_set = basin_list[basin_name]
+  print basin_set.long_name
+  print basin_set.stations
   
   # load basins
   basin = basins[basin_name]
   print basin.long_name
   print basin
-  assert basin.info == basin_info
-  assert basin.shapetype == 'BSN'
+  assert basin.name == 'Whole'+basin_name
   
   # load station data
   station = basin.getMainGage(aggregation='std')
   print
   print station
   print
-  assert station.ID == loadGageStation(basin=basin_name, basins=basins, basins_info=basins_info).ID
+  assert station.ID == loadGageStation(basin=basin_name, basins=basins, basin_list=basin_list).ID
   print station.discharge.getArray()
   
   # print basins
