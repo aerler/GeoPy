@@ -24,8 +24,9 @@ from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
 
 # import shape objects
-from datasets.WSC import basins
 from datasets.EC import provinces
+from projects.WSC_basins import basins
+#TODO: dynamically load basins based on selected project
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
