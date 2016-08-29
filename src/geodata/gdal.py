@@ -1200,9 +1200,11 @@ class ShapeSet(Shape):
     # determine outline
     if outline is None: outline = shapes.keys()[0]    
     # N.B.: the shapefile of the outline will be added by the Shape constructor
+    shapefile = os.path.basename(shapefiles[outline]) # use relaive path and folder
+    folder = os.path.dirname(shapefiles[outline])
     # call Shape constructor
-    super(ShapeSet,self).__init__(name=name, long_name=long_name, shapefile=shapefiles[outline], 
-                                  load=load, ldebug=ldebug, **kwargs)
+    super(ShapeSet,self).__init__(name=name, long_name=long_name, shapefile=shapefile, 
+                                  folder=folder, load=load, ldebug=ldebug, **kwargs)
     # add remaining attributes
     self.data_source = data_source # source documentation...
     self.outline = outline # name of the main shape which traces the outline

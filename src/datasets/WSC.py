@@ -80,7 +80,7 @@ class Basin(Shape):
                   filetype='monthly'):
     ''' return a dataset with data from the main gaging station '''
     if self.maingage is not None:
-      station = loadGageStation(basin=self.name, varlist=varlist, varatts=varatts, 
+      station = loadGageStation(basin=self, station=self.maingage, varlist=varlist, varatts=varatts, 
                                 aggregation=aggregation, mode=mode, filetype=filetype)
     else: station = None 
     return station
@@ -90,7 +90,8 @@ class BasinSet(ShapeSet,Basin):
   ''' a container class for basins with associated subbasins '''
   _ShapeClass = Basin # the class that is used to initialize the shape collection
   
-  def __init__(self, name=None, long_name=None, rivers=None, stations=None, subbasins=None, data_source=None, folder=None):
+  def __init__(self, name=None, long_name=None, rivers=None, stations=None, subbasins=None, 
+               data_source=None, folder=None):
     ''' some common operations and inferences '''
     # call parent constructor 
     if folder is None: folder = '{:s}/Basins/{:s}/'.format(root_folder,long_name)
@@ -129,35 +130,76 @@ class GageStation(object):
     if not os.path.isdir(folder): IOError(folder)
     self.folder = folder # usually basin folder
     self.name = name # or prefix...
-    if os.path.isfile('{:s}/{:s}'.format(folder,name + self.meta_ext)):
-      self.meta_file = name + self.meta_ext
-    if os.path.isfile('{:s}/{:s}'.format(folder,name + self.monthly_ext)):
-      self.meta_file = name + self.monthly_ext
+    self.basin_name = basin # has to be a long_name in order to construct the folder
+    self.meta_file = '{:s}/{:s}'.format(folder,name + self.meta_ext)  
+    if not os.path.isfile(self.meta_file): self.meta_file = None # clear if not available
+    self.monthly_file = '{:s}/{:s}'.format(folder,name + self.monthly_ext)
+    if not os.path.isfile(self.monthly_file): self.monthly_file = None # clear if not available
     
+  def getMetaData(self):
+    ''' parse meta data file and save and return as dictionary '''
+    if self.meta_file:
+      # parse file and load data into a dictionary
+      with open(self.meta_file, mode='r') as filehandle:
+        lines = filehandle.readlines()
+        assert len(lines) == 2, lines
+        keys = lines[0].split(',')
+        values = lines[1].split(',')
+      assert len(keys) == len(values)
+      # add some additional attributes
+      metadata = {key:value for key,value in zip(keys,values)}
+      metadata['long_name'] = metadata['Station Name']
+      metadata['ID'] = metadata['Station Number']
+      metadata['shape_name'] = self.basin_name
+      metadata['shp_area'] = float(metadata['Drainage Area']) * 1e6 # km^2 == 1e6 m^2
+    else:
+      metadata = None
+    # add to station
+    self.atts = metadata
+    return metadata
     
-## Functions that handle access to ASCII files
-def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='climatology', 
-                    aggregation=None, filetype='monthly', folder=None, filename=None,
-                    basins=None, basin_list=None):
-  ''' Function to load hydrograph climatologies for a given basin '''
-  ## resolve input
+# function to get a GageStation instance
+def getGageStation(basin=None, station=None, name=None, folder=None, river=None, basin_list=None):
+  ''' return an initialized GageStation instance, but infer parameters from input '''
+  if isinstance(station, GageStation):
+    return station # very simple shortcut!
   # resolve basin
-  if isinstance(basin,basestring) and basin in basins: 
-    basin = basin_list[basin]
+  if isinstance(basin,basestring) and basin in basin_list: basin = basin_list[basin]
+  else: basin_name = basin
+  name = name or station # name actually has precedence
   # determine basin meta data
-  if isinstance(basin,BasinInfo):
+  if isinstance(basin,Basin):
     folder = basin.folder if folder is None else folder
     basin_name = basin.name
     # figure out station
-    if station is None: station = basin.maingage      
-    if not isinstance(station,basestring): raise TypeError(station)
-    if station in basin.stationfiles: filename = basin.stationfiles[station]
-    elif filename is None: # only a problem if there is no file to open
-      raise GageStationError('Unknown station: {}'.format(station))
-  # test folder and filename
-  if isinstance(folder,basestring) and isinstance(filename,basestring):
-    os.path.exists('{}/{}'.format(folder,filename))
-  else: raise TypeError('Specify either basin & station or folder & filename.')
+    if name is None and basin.maingage is not None: 
+      return basin.maingage # simple!
+    if isinstance(basin,BasinSet):
+      if name in basin.stations: 
+        return basin.stations[name] # also straight forward
+      if river in basin.rivers:
+        name = '{}_{}'.format(river,name)
+        if name in basin.stations: 
+          return basin.stations[name] # also straight forward      
+  elif river is not None and river not in name:
+      name = '{}_{}'.format(river,name)
+  # if we are not done yet, make sure we have valid folder and file names now!
+  if not (isinstance(folder,basestring) and isinstance(name,basestring)):
+    raise TypeError('Specify either basin (and station) or folder & station prefix/name.')
+  if not os.path.exists(folder): raise IOError(folder)
+  # instantiate and return GageStation
+  return GageStation(basin=basin_name, river=None, name=name, folder=folder)
+      
+    
+## Functions that handle access to ASCII files
+def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='climatology', 
+                    aggregation=None, filetype='monthly', folder=None, name=None,
+                    basin_list=None):
+  ''' Function to load hydrograph climatologies for a given basin '''
+  ## resolve input
+  # get GageStation instance
+  station = getGageStation(basin=basin, station=station, name=name, folder=folder, 
+                           river=None, basin_list=basin_list)
     
   # variable attributes
   if varlist is None: varlist = variable_list
@@ -169,28 +211,13 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   elif not isinstance(varatts,dict): raise TypeError
   
   ## read csv data
-  filepath = '{}/{}'.format(folder,filename)
-  data = np.genfromtxt(filepath, dtype=np.float32, delimiter=',', skip_header=1, filling_values=np.nan,  
+  data = np.genfromtxt(station.monthly_file, dtype=np.float32, delimiter=',', skip_header=1, filling_values=np.nan,  
                        usecols=np.arange(4,28,2), usemask=True, loose=True, invalid_raise=True)
   # for some reason every value if followed by an extra comma...
   data = np.ma.masked_less(data, 10) # remove some invalid values
   data *= 1000. # m^3 == 1000 kg (water)
   ## load meta data
-  # open namelist file for reading  
-  filepath = '{}/{}'.format(folder,filename.replace('Monthly', 'Metadata')) 
-  # parse file and load data into a dictionary
-  with open(filepath, mode='r') as filehandle:
-    lines = filehandle.readlines()
-    assert len(lines) == 2, lines
-    keys = lines[0].split(',')
-    values = lines[1].split(',')
-  assert len(keys) == len(values)
-  # add some additional attributes
-  metadata = {key:value for key,value in zip(keys,values)}
-  metadata['long_name'] = metadata['Station Name']
-  metadata['ID'] = metadata['Station Number']
-  metadata['shape_name'] = basin_name
-  metadata['shp_area'] = float(metadata['Drainage Area']) * 1e6 # km^2 == 1e6 m^2
+  metadata = station.getMetaData()
   # create dataset for station
   dataset = StationDataset(name='WSC', title=metadata['Station Name'], varlist=[], atts=metadata,) 
   if mode == 'climatology': 
@@ -320,9 +347,12 @@ def selectStations(datasets, shpaxis='shape', imaster=None, linplace=True, lall=
 ## abuse main block for testing
 if __name__ == '__main__':
   
-  from projects.WSC_basins import basin_list, basins, BasinSet
+#   from projects.WSC_basins import basin_list, basins, BasinSet
   # N.B.: importing BasinInfo through WSC_basins is necessary, otherwise some isinstance() calls fail
-  
+  basin_list = dict()
+  basin_list['GRW'] = BasinSet(name='GRW', long_name='Grand River Watershed', rivers=['Grand River'], data_source='Aquanty',
+                               stations={'Grand River':['Brantford']}, subbasins=['WholeGRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW'])
+
   basin_name = 'GRW'
     
   # verify basin info
@@ -331,20 +361,20 @@ if __name__ == '__main__':
   print basin_set.stations
   
   # load basins
-  basin = basins[basin_name]
+  basin = basin_list[basin_name]
   print basin.long_name
   print basin
-  assert basin.name == 'Whole'+basin_name
+  assert basin.name == basin_name
   
   # load station data
   station = basin.getMainGage(aggregation='std')
   print
   print station
   print
-  assert station.ID == loadGageStation(basin=basin_name, basins=basins, basin_list=basin_list).ID
+  assert station.ID == loadGageStation(basin=basin_name, basin_list=basin_list).ID
   print station.discharge.getArray()
   
   # print basins
   print
-  for bsn in basins.iterkeys():
+  for bsn in basin_list.iterkeys():
     print bsn
