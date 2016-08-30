@@ -11,16 +11,15 @@ the data is stored in human-readable text files and tables.
 import numpy as np
 import os, functools
 from copy import deepcopy
+from collections import OrderedDict
 # internal imports
 from datasets.common import selectElements, data_root
 from geodata.netcdf import DatasetNetCDF
 from geodata.misc import FileError, isNumber, ArgumentError
 from utils import nanfunctions as nf
 from geodata.gdal import Shape, ShapeSet
-from geodata.station import StationDataset, Variable, Axis
+from geodata.base import Dataset, Variable, Axis
 # from geodata.utils import DatasetError
-from collections import OrderedDict
-from bokeh.charts.operations import Aggregate
 
 ## WSC (Water Survey Canada) Meta-data
 
@@ -149,7 +148,7 @@ class GageStation(object):
       assert len(keys) == len(values)
       # add some additional attributes
       metadata = {key:value for key,value in zip(keys,values)}
-      metadata['long_name'] = metadata['Station Name']
+      metadata['long_name'] = metadata['Station Name'].replace('"', '').title() # clean up name
       metadata['ID'] = metadata['Station Number']
       metadata['shape_name'] = self.basin_name
       metadata['shp_area'] = float(metadata['Drainage Area']) * 1e6 # km^2 == 1e6 m^2
@@ -270,7 +269,7 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   metadata = station.getMetaData()
 
   ## create dataset for station
-  dataset = StationDataset(name='WSC', title=metadata['Station Name'], varlist=[], atts=metadata,) 
+  dataset = Dataset(name='WSC', title=metadata['Station Name'], varlist=[], atts=metadata,) 
   if mode == 'timeseries': 
     time = time.flatten(); data = data.flatten()
     # make time axis based on time coordinate from csv file
@@ -419,9 +418,9 @@ if __name__ == '__main__':
   
 #   from projects.WSC_basins import basin_list, basins, BasinSet
   # N.B.: importing BasinInfo through WSC_basins is necessary, otherwise some isinstance() calls fail
-  basin_list = dict()
-  basin_list['GRW'] = BasinSet(name='GRW', long_name='Grand River Watershed', rivers=['Grand River'], data_source='Aquanty',
-                               stations={'Grand River':['Brantford']}, subbasins=['WholeGRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW'])
+  basin_list = dict(GRW=BasinSet(name='GRW', long_name='Grand River Watershed', rivers=['Grand River'], 
+                                 data_source='Aquanty', stations={'Grand River':['Brantford']}, 
+                                 subbasins=['WholeGRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW']))
 
   basin_name = 'GRW'
     
@@ -441,7 +440,7 @@ if __name__ == '__main__':
   print
   print station
   print
-  assert station.ID == loadGageStation(basin=basin_name, basin_list=basin_list).ID
+  assert station.atts.ID == loadGageStation(basin=basin_name, basin_list=basin_list).atts.ID
   print station.discharge.climMean()[:]
   
   # print basins
