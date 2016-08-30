@@ -20,6 +20,7 @@ from geodata.gdal import Shape, ShapeSet
 from geodata.station import StationDataset, Variable, Axis
 # from geodata.utils import DatasetError
 from collections import OrderedDict
+from bokeh.charts.operations import Aggregate
 
 ## WSC (Water Survey Canada) Meta-data
 
@@ -76,9 +77,9 @@ class Basin(Shape):
     # initialize gage station
     self.maingage = None if maingage is None else GageStation(basin=name, name=maingage, folder=folder) # just name, for now
     
-  def getMainGage(self, varlist=None, varatts=None, aggregation=None, mode='climatology', 
+  def getMainGage(self, varlist=None, varatts=None, aggregation=None, mode='timeseries', 
                   filetype='monthly'):
-    ''' return a dataset with data from the main gaging station '''
+    ''' return a dataset with data from the main gaging station (default: timeseries) '''
     if self.maingage is not None:
       station = loadGageStation(basin=self, station=self.maingage, varlist=varlist, varatts=varatts, 
                                 aggregation=aggregation, mode=mode, filetype=filetype)
@@ -157,7 +158,56 @@ class GageStation(object):
     # add to station
     self.atts = metadata
     return metadata
-    
+  
+  def getTimeseriesData(self, units='kg/s', lcheck=True, lexpand=True, lfill=True):
+    ''' extract time series data and time coordinates from a WSC monthly CSV file '''
+    if self.monthly_file:
+      # use numpy's CSV functionality
+      # get timeseries data
+      data = np.genfromtxt(self.monthly_file, dtype=np.float32, delimiter=',', skip_header=1, filling_values=np.nan,  
+                           usecols=np.arange(4,28,2), usemask=True, loose=True, invalid_raise=True)
+      assert data.shape[1] == 12, data.shape
+      # for some reason every value if followed by an extra comma...
+      #data = np.ma.masked_less(data, 10) # remove some invalid values
+      # N.B.: some values appear unrealistically small, however, these are removed in the check-
+      #       section below (it appears they consistently fail the ckeck test)
+      if units.lower() == 'kg/s': data *= 1000. # m^3 == 1000 kg (water)
+      elif units.lower() == 'm^3/s': pass # original units
+      else: raise ArgumentError("Unknown units: {}".format(units))
+      # get time coordinates and verify
+      check = np.genfromtxt(self.monthly_file, dtype=np.float32, delimiter=',', skip_header=1, filling_values=np.nan,  
+                           usecols=np.arange(1,4,1), usemask=True, loose=True, invalid_raise=True)
+      assert check.shape[0] == data.shape[0], check.shape
+      time = check[:,2] # this is the year (time coordinate)
+      # determine valid entries
+      if lcheck:
+        check = np.all(check[:,:2]==1, axis=1) # require all entries to be one
+        # N.B.: I'm not sure what it means if values are not equal to one, but the flow values look 
+        #       unrealistically small (see above); probably different units...
+        data = data[check,:]; time = time[check]
+        assert time.shape[0] == data.shape[0], check.shape
+      # fill in missing time periods/years
+      if lfill:
+        idx = np.asarray(time - time[0], dtype=np.int32); tlen = idx[-1]+1 # start at 0; length is last value (+1)
+        pad_time = np.arange(time[0],time[-1]+1) # form continuous sequence
+        #assert np.all( pad_time[idx] == time ), idx # potentially expensive
+        time = pad_time # new continuous time coordinate
+        pad_data = np.ma.zeros((tlen,12), dtype=np.float32)*np.NaN # pre-allocate with NaN
+        pad_data.mask = True # mask everywhere for now
+        pad_data[idx,:] = data; #pad_data.mask[idx,:] = data.mask
+        #assert np.all( pad_data.mask[idx,:] == data.mask ) # potentially expensive
+        data = pad_data
+      # now, expand time coordinate by adding month
+      if lexpand:
+        time = time.reshape((time.size,1))
+        coord = np.repeat((time-1979)*12, 12, axis=1) + np.arange(0,12).reshape((1,12))
+        assert coord.shape == data.shape, coord.shape
+        #assert np.all( np.diff(coord.flatten()) == 1 ), coord  # potentially expensive
+        time = coord
+      # return data array and coordinate vector
+      return data, time
+      
+        
 # function to get a GageStation instance
 def getGageStation(basin=None, station=None, name=None, folder=None, river=None, basin_list=None):
   ''' return an initialized GageStation instance, but infer parameters from input '''
@@ -195,12 +245,13 @@ def getGageStation(basin=None, station=None, name=None, folder=None, river=None,
 def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='climatology', 
                     aggregation=None, filetype='monthly', folder=None, name=None,
                     basin_list=None):
-  ''' Function to load hydrograph climatologies for a given basin '''
+  ''' function to load hydrograph climatologies and timeseries for a given basin '''
   ## resolve input
+  if mode == 'timeseries' and aggregation: 
+    raise ArgumentError('Timeseries does not support aggregation.')
   # get GageStation instance
   station = getGageStation(basin=basin, station=station, name=name, folder=folder, 
                            river=None, basin_list=basin_list)
-    
   # variable attributes
   if varlist is None: varlist = variable_list
   elif not isinstance(varlist,(list,tuple)): raise TypeError  
@@ -211,16 +262,28 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   elif not isinstance(varatts,dict): raise TypeError
   
   ## read csv data
-  data = np.genfromtxt(station.monthly_file, dtype=np.float32, delimiter=',', skip_header=1, filling_values=np.nan,  
-                       usecols=np.arange(4,28,2), usemask=True, loose=True, invalid_raise=True)
-  # for some reason every value if followed by an extra comma...
-  data = np.ma.masked_less(data, 10) # remove some invalid values
-  data *= 1000. # m^3 == 1000 kg (water)
-  ## load meta data
+  # time series data and time coordinates
+  lexpand = True; lfill = True
+  if mode == 'climatology': lexpand = False; lfill = False
+  data, time = station.getTimeseriesData(units='kg/s', lcheck=True, lexpand=lexpand, lfill=lfill)
+  # station meta data
   metadata = station.getMetaData()
-  # create dataset for station
+
+  ## create dataset for station
   dataset = StationDataset(name='WSC', title=metadata['Station Name'], varlist=[], atts=metadata,) 
-  if mode == 'climatology': 
+  if mode == 'timeseries': 
+    time = time.flatten(); data = data.flatten()
+    # make time axis based on time coordinate from csv file
+    timeAxis = Axis(name='time', units='month', coord=time, # time series centered at 1979-01
+                    atts=dict(long_name='Month since 1979-01'))
+    dataset += timeAxis
+    # load mean discharge
+    dataset += Variable(axes=[timeAxis], data=data, atts=varatts['discharge'])
+    # load mean runoff
+    doa = data / metadata['shp_area']  
+    dataset += Variable(axes=[timeAxis], data=doa, atts=varatts['runoff'])
+  elif mode == 'climatology': 
+    # N.B.: this is primarily for backwards compatibility; it should not be used anymore...
     # make common time axis for climatology
     te = 12 # length of time axis: 12 month
     climAxis = Axis(name='time', units='month', length=12, coord=np.arange(1,te+1,1)) # monthly climatology
@@ -277,6 +340,13 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
     raise NotImplementedError, "Time axis mode '{}' is not supported.".format(mode)
   # return station dataset
   return dataset   
+
+def loadGageStation_TS(basin=None, station=None, varlist=None, varatts=None, 
+                       filetype='monthly', folder=None, name=None, basin_list=None):
+  ''' wrapper function to load hydrograph timeseries for a given basin '''
+  return loadGageStation(basin=basin, station=station, varlist=varlist, varatts=varatts, 
+                         mode='timeseries', aggregation=None, filetype=filetype, 
+                         folder=folder, name=name, basin_list=basin_list)
 
 
 ## some helper functions to test conditions
@@ -367,12 +437,12 @@ if __name__ == '__main__':
   assert basin.name == basin_name
   
   # load station data
-  station = basin.getMainGage(aggregation='std')
+  station = basin.getMainGage(aggregation=None)
   print
   print station
   print
   assert station.ID == loadGageStation(basin=basin_name, basin_list=basin_list).ID
-  print station.discharge.getArray()
+  print station.discharge.climMean()[:]
   
   # print basins
   print

@@ -2415,7 +2415,7 @@ class Axis(Variable):
       else: data = self.data_array
       # N.B.: this is necessary to prevent shrinking of the coordinate vector after successive slicing
     else: #data = data
-      raise TypeError, 'Data type not supported for coordinate values.'
+      raise TypeError('Data type not supported for coordinate values: {}'.format(data))
     return data
 
   @property
