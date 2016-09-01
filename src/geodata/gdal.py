@@ -1105,7 +1105,8 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
 class Shape(object):
   ''' A wrapper class for shapefiles, with some added functionality and raster interface '''
   
-  def __init__(self, name=None, long_name=None, shapefile=None, folder=None, load=False, ldebug=False):
+  def __init__(self, name=None, long_name=None, shapefile=None, folder=None, data_source=None, 
+               load=False, ldebug=False):
     ''' load shapefile '''
     if name is not None and not isinstance(name,basestring): raise TypeError
     if folder is not None and not isinstance(folder,basestring): raise TypeError
@@ -1125,6 +1126,7 @@ class Shape(object):
     self.long_name = long_name
     self.folder = folder
     self.shapefile = shapefile
+    self.data_source = data_source # source documentation...
     # load shapefile (or not)
     self._ogr = ogr.Open(shapefile) if load else None
   
@@ -1189,11 +1191,11 @@ class ShapeSet(Shape):
     ''' initialize shapes '''
     # sort shapes into ordered dictionary
     if isinstance(shapefiles,dict):       
-      shape_list = [self._ShapeClass(name=name, shapefile=shapefile, folder=folder, ldebug=ldebug, 
-                                     load=load, **kwargs) for name,shapefile in shapefiles.iteritems()]
+      shape_list = [self._ShapeClass(name=name, shapefile=shapefile, folder=folder, ldebug=ldebug, load=load, 
+                                     data_source=data_source, **kwargs) for name,shapefile in shapefiles.iteritems()]
     else:
-      shape_list = [self._ShapeClass(name=None, shapefile=shapefile, folder=folder, ldebug=ldebug,
-                                     load=load, **kwargs) for shapefile in shapefiles]
+      shape_list = [self._ShapeClass(name=None, shapefile=shapefile, folder=folder, ldebug=ldebug, 
+                                     data_source=data_source, load=load, **kwargs) for shapefile in shapefiles]
     shapes = OrderedDict(); shapefiles = OrderedDict()
     for shape in shape_list:
       shapes[shape.name] = shape; shapefiles[shape.name] = shape.shapefile
@@ -1203,10 +1205,9 @@ class ShapeSet(Shape):
     shapefile = os.path.basename(shapefiles[outline]) # use relaive path and folder
     folder = os.path.dirname(shapefiles[outline])
     # call Shape constructor
-    super(ShapeSet,self).__init__(name=name, long_name=long_name, shapefile=shapefile, 
-                                  folder=folder, load=load, ldebug=ldebug, **kwargs)
+    super(ShapeSet,self).__init__(name=name, long_name=long_name, shapefile=shapefile, folder=folder, 
+                                  data_source=data_source, load=load, ldebug=ldebug, **kwargs)
     # add remaining attributes
-    self.data_source = data_source # source documentation...
     self.outline = outline # name of the main shape which traces the outline
     self.shapefiles = shapefiles # absolute path to actual shapefiles
     self.shapes = shapes # OrderedDict of Shape instances

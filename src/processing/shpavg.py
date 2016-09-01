@@ -25,7 +25,7 @@ from processing.process import CentralProcessingUnit
 
 # import shape objects
 from datasets.EC import provinces
-from projects.WSC_basins import basins
+from projects.WSC_basins import basins, great_lakes
 #TODO: dynamically load basins based on selected project
 
 
@@ -276,6 +276,10 @@ if __name__ == '__main__':
     items = basins.keys()
     if not isinstance(basins, OrderedDict): items.sort()
     shapes['basins'] = items
+  if 'great_lakes' in shapes and shapes['great_lakes'] is None:
+    items = great_lakes.keys()
+    if not isinstance(great_lakes, OrderedDict): items.sort()
+    shapes['great_lakes'] = items
       
   # add shapes of different categories
   shape_dict = OrderedDict()
@@ -283,6 +287,8 @@ if __name__ == '__main__':
     for shp in shapes['provinces']: shape_dict[shp] = provinces[shp]
   if 'basins' in shapes:
     for shp in shapes['basins']: shape_dict[shp] = basins[shp]
+  if 'great_lakes' in shapes:
+    for shp in shapes['great_lakes']: shape_dict[shp] = great_lakes[shp]
     
   # print an announcement
   if len(WRF_experiments) > 0:

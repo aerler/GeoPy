@@ -53,15 +53,47 @@ class GageStationError(FileError):
   ''' Exception indicating that gage station data is missing '''
   pass
 
+
+# shape class for lakes
+class Lake(Shape):
+  ''' a Shape class for lakes with associated gage station information '''
+  def __init__(self, name=None, long_name=None, shapefile=None, folder=None, load=False, ldebug=False,
+               subbasins=None, rivers=None, stations=None, data_source=None):
+    ''' save meta information; should be initialized from a BasinInfo instance '''
+    if folder is None: folder = '{:s}/Lakes/{:s}/'.format(root_folder,long_name)
+    super(Lake,self).__init__(name=name, long_name=long_name, shapefile=shapefile, folder=folder, 
+                               load=load, ldebug=ldebug, data_source=data_source)
+    # figure out if we are the outline/main basin
+    name = self.name
+    if name[:4].lower() != 'lake': name = 'Lake{:s}'.format(self.name)
+    # add gage station from dict (based on name)
+    if isinstance(subbasins,dict) and name in subbasins and subbasins[name]:
+      maingage = subbasins[name]
+      if isinstance(station, (list,tuple)): maingage = '{}_{}'.format(*maingage)        
+    elif rivers and stations:
+      maingage = '{}_{}'.format(rivers[0],stations[rivers[0]][0]) # first station of first river (from outflow)
+    else: maingage = None # no gage station defined
+    # initialize gage station
+    self.maingage = None if maingage is None else GageStation(basin=name, name=maingage, folder=folder) # just name, for now
+    
+  def getMainGage(self, varlist=None, varatts=None, aggregation=None, mode='timeseries', 
+                  filetype='monthly'):
+    ''' return a dataset with data from the main gaging station (default: timeseries) '''
+    if self.maingage is not None:
+      station = loadGageStation(basin=self, station=self.maingage, varlist=varlist, varatts=varatts, 
+                                aggregation=aggregation, mode=mode, filetype=filetype)
+    else: station = None 
+    return station
   
-# container class for stations and area files
+# shape class for basins
 class Basin(Shape):
   ''' a Shape class for river basins with associated gage station information '''
   def __init__(self, name=None, long_name=None, shapefile=None, folder=None, load=False, ldebug=False,
-               subbasins=None, rivers=None, stations=None):
+               subbasins=None, rivers=None, stations=None, data_source=None):
     ''' save meta information; should be initialized from a BasinInfo instance '''
+    if folder is None: folder = '{:s}/Basins/{:s}/'.format(root_folder,long_name)
     super(Basin,self).__init__(name=name, long_name=long_name, shapefile=shapefile, folder=folder, 
-                               load=load, ldebug=ldebug)
+                               load=load, ldebug=ldebug, data_source=data_source)
     # figure out if we are the outline/main basin
     name = self.name
     if 'Whole{:s}'.format(self.name) in subbasins: name = 'Whole{:s}'.format(self.name)
