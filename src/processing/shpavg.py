@@ -31,7 +31,7 @@ from projects.WSC_basins import basins, great_lakes
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
 def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwrite=False, varlist=None, 
-                        lwrite=True, lreturn=False, lappend=True,
+                        lwrite=True, lreturn=False, lappend=False,
                         ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to extract point data from gridded dataset '''  
   # input checking
@@ -201,10 +201,10 @@ if __name__ == '__main__':
     shapes = config['shapes']
   else:
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 3 ; ldebug = False # for quick computations
+    NP = 1 ; ldebug = False # for quick computations
     modes = ('time-series',) # 'climatology','time-series'
 #     modes = ('climatology',) 
-    loverwrite = True
+    loverwrite = False
     varlist = None # ['T2']
     periods = []
 #     periods += [1]
@@ -212,15 +212,15 @@ if __name__ == '__main__':
 #    periods += [5]
 #    periods += [10]
     periods += [15]
-    periods += [30]
+#     periods += [30]
     # Observations/Reanalysis
     lLTM = True 
     datasets = []; resolutions = None
     resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':'05'}
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
-#     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
-#     datasets += ['Unity']
+    datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
+#     datasets += ['CFSR','NARR']
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False
@@ -231,30 +231,33 @@ if __name__ == '__main__':
     # WRF experiments (short or long name)
     WRF_project = 'GreatLakes' # only use GreatLakes experiments
     WRF_experiments = []
-#     WRF_experiments += ['erai-t', 'erai-g']
+#     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
 #     WRF_experiments += ['g-ctrl', 'g-ctrl-2050', 'g-ctrl-2100']
 #     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',][1:]
-    WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',][1:]
-    WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',][1:]
+#     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',][1:]
+#     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',][1:]
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][1:]
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
     # other WRF parameters 
-#     domains = None # domains to be processed
-    domains = (2,) # domains to be processed
-    WRF_filetypes = ('hydro',)
+    domains = None # domains to be processed
+#     domains = (2,) # domains to be processed
+    WRF_filetypes = ('srfc','hydro','xtrm')
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None
     # define shape data  
-    shape_name = 'shpavg' # Canadian shapes
-    shapes = dict()
+#     shape_name = 'shpavg' # Canadian shapes
+#     shapes = dict()
 #     shapes['basins'] = None # river basins (in Canada) from WSC module
 #     shapes['provinces'] = None # Canadian provinces from EC module
 #     shapes['provinces'] = ['BC'] # Canadian provinces from EC module
 #     shape_name = 'basins' # only Canadian river basins
 #     shapes = dict()
-    shapes['basins'] = ['GLB','GRW'] # river basins (in Canada) from WSC module
-    shapes['provinces'] = ['ON'] # Canadian provinces from EC module
+#     shapes['basins'] = ['GLB','GRW'] # river basins (in Canada) from WSC module
+#     shapes['provinces'] = ['ON'] # Canadian provinces from EC module
+    shape_name = 'glakes' # Great Lakes
+    shapes = dict()
+    shapes['great_lakes'] = None # the Great Lakes of North America
      
  
   ## process arguments    

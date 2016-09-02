@@ -58,42 +58,41 @@ class GageStationError(FileError):
 class Lake(Shape):
   ''' a Shape class for lakes with associated gage station information '''
   def __init__(self, name=None, long_name=None, shapefile=None, folder=None, load=False, ldebug=False,
-               subbasins=None, rivers=None, stations=None, data_source=None):
+               data_source=None, shapetype=None):
     ''' save meta information; should be initialized from a BasinInfo instance '''
+    if shapetype is None: shapetype = 'LKE'
     if folder is None: folder = '{:s}/Lakes/{:s}/'.format(root_folder,long_name)
     super(Lake,self).__init__(name=name, long_name=long_name, shapefile=shapefile, folder=folder, 
-                               load=load, ldebug=ldebug, data_source=data_source)
-    # figure out if we are the outline/main basin
-    name = self.name
-    if name[:4].lower() != 'lake': name = 'Lake{:s}'.format(self.name)
-    # add gage station from dict (based on name)
-    if isinstance(subbasins,dict) and name in subbasins and subbasins[name]:
-      maingage = subbasins[name]
-      if isinstance(station, (list,tuple)): maingage = '{}_{}'.format(*maingage)        
-    elif rivers and stations:
-      maingage = '{}_{}'.format(rivers[0],stations[rivers[0]][0]) # first station of first river (from outflow)
-    else: maingage = None # no gage station defined
-    # initialize gage station
-    self.maingage = None if maingage is None else GageStation(basin=name, name=maingage, folder=folder) # just name, for now
+                              load=load, ldebug=ldebug, data_source=data_source, shapetype=shapetype)    
     
-  def getMainGage(self, varlist=None, varatts=None, aggregation=None, mode='timeseries', 
-                  filetype='monthly'):
-    ''' return a dataset with data from the main gaging station (default: timeseries) '''
-    if self.maingage is not None:
-      station = loadGageStation(basin=self, station=self.maingage, varlist=varlist, varatts=varatts, 
-                                aggregation=aggregation, mode=mode, filetype=filetype)
-    else: station = None 
-    return station
+# a container class for lake meta data
+class LakeSet(ShapeSet,Lake): 
+  ''' a container class for sets of lakes with associated lakes '''
+  _ShapeClass = Lake # the class that is used to initialize the shape collection
   
+  def __init__(self, name=None, long_name=None, lakes=None, data_source=None, folder=None, shapetype=None):
+    ''' some common operations and inferences '''
+    # call parent constructor 
+    if shapetype is None: shapetype = 'LKE'
+    if folder is None: folder = '{:s}/Lakes/{:s}/'.format(root_folder,long_name)
+    #shapefiles = lakes.keys() if isinstance(lakes, dict) else lakes
+    super(LakeSet,self).__init__(name=name, long_name=long_name, shapefiles=lakes, 
+                                 data_source=data_source, folder=folder, shapetype=shapetype,) # ShapeSet arguments
+                                  # N.B.: addition arguments for Basin constructor
+    # add lake specific stuff
+    self.lakes = self.shapes # alias
+
+ 
 # shape class for basins
 class Basin(Shape):
   ''' a Shape class for river basins with associated gage station information '''
   def __init__(self, name=None, long_name=None, shapefile=None, folder=None, load=False, ldebug=False,
-               subbasins=None, rivers=None, stations=None, data_source=None):
+               subbasins=None, rivers=None, stations=None, data_source=None, shapetype=None):
     ''' save meta information; should be initialized from a BasinInfo instance '''
+    if shapetype is None: shapetype = 'BSN'
     if folder is None: folder = '{:s}/Basins/{:s}/'.format(root_folder,long_name)
     super(Basin,self).__init__(name=name, long_name=long_name, shapefile=shapefile, folder=folder, 
-                               load=load, ldebug=ldebug, data_source=data_source)
+                               load=load, ldebug=ldebug, data_source=data_source, shapetype=shapetype)
     # figure out if we are the outline/main basin
     name = self.name
     if 'Whole{:s}'.format(self.name) in subbasins: name = 'Whole{:s}'.format(self.name)
@@ -123,13 +122,14 @@ class BasinSet(ShapeSet,Basin):
   _ShapeClass = Basin # the class that is used to initialize the shape collection
   
   def __init__(self, name=None, long_name=None, rivers=None, stations=None, subbasins=None, 
-               data_source=None, folder=None):
+               data_source=None, folder=None, shapetype=None):
     ''' some common operations and inferences '''
     # call parent constructor 
+    if shapetype is None: shapetype = 'BSN'
     if folder is None: folder = '{:s}/Basins/{:s}/'.format(root_folder,long_name)
-    shapefiles = subbasins.keys() if isinstance(subbasins, dict) else subbasins
-    super(BasinSet,self).__init__(name=name, long_name=long_name, shapefiles=shapefiles, 
-                                  data_source=data_source, folder=folder, # ShapeSet arguments
+    #shapefiles = subbasins.keys() if isinstance(subbasins, dict) else subbasins
+    super(BasinSet,self).__init__(name=name, long_name=long_name, shapefiles=subbasins, 
+                                  data_source=data_source, folder=folder, shapetype=shapetype, # ShapeSet arguments
                                   rivers=rivers, stations=stations, subbasins=subbasins) 
                                   # N.B.: addition arguments for Basin constructor
     # add basin specific stuff
@@ -465,7 +465,7 @@ if __name__ == '__main__':
   basin = basin_list[basin_name]
   print basin.long_name
   print basin
-  assert basin.name == basin_name
+  assert basin.name == basin_name, basin.name
   
   # load station data
   station = basin.getMainGage(aggregation=None)

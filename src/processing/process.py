@@ -20,8 +20,7 @@ from geodata.misc import VariableError, AxisError, PermissionError, DatasetError
 from geodata.base import Axis, Dataset, Variable
 from geodata.netcdf import DatasetNetCDF, asDatasetNC
 from utils.nctools import writeNetCDF
-from geodata.gdal import addGDALtoDataset, GridDefinition, gdalInterp,\
-  NamedShape
+from geodata.gdal import addGDALtoDataset, GridDefinition, gdalInterp, Shape
 from collections import OrderedDict
 # default data types
 dtype_int = np.dtype('int16')
@@ -175,7 +174,7 @@ class CentralProcessingUnit(object):
         to MB in temporary (it does not include loading the variable into RAM, though). '''
     if not self.source.gdal: raise DatasetError, "Source dataset must be GDAL enabled! {:s} is not.".format(self.source.name)
     if not isinstance(shape_dict,OrderedDict): raise TypeError
-    if not all(isinstance(shape,NamedShape) for shape in shape_dict.itervalues()): raise TypeError
+    if not all(isinstance(shape,Shape) for shape in shape_dict.itervalues()): raise TypeError
     # make temporary dataset
     if self.source is self.target:
       if self.tmp: assert self.source == self.tmpput and self.target == self.tmpput

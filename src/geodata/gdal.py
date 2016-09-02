@@ -1106,7 +1106,7 @@ class Shape(object):
   ''' A wrapper class for shapefiles, with some added functionality and raster interface '''
   
   def __init__(self, name=None, long_name=None, shapefile=None, folder=None, data_source=None, 
-               load=False, ldebug=False):
+               load=False, ldebug=False, shapetype=None):
     ''' load shapefile '''
     if name is not None and not isinstance(name,basestring): raise TypeError
     if folder is not None and not isinstance(folder,basestring): raise TypeError
@@ -1127,6 +1127,8 @@ class Shape(object):
     self.folder = folder
     self.shapefile = shapefile
     self.data_source = data_source # source documentation...
+    shapetype = self.__class__.__name__ if shapetype is None else shapetype
+    self.shapetype = shapetype # for specific types of shapes, e.g. Basin, Lake, Prov, Natl
     # load shapefile (or not)
     self._ogr = ogr.Open(shapefile) if load else None
   
@@ -1187,15 +1189,19 @@ class ShapeSet(Shape):
   _ShapeClass = Shape # the class that is used to initialize the shape collection
   
   def __init__(self, name=None, long_name=None, shapefiles=None, folder=None, load=False, ldebug=False,
-               data_source=None, outline=None, **kwargs):
+               data_source=None, outline=None, shapetype=None, **kwargs):
     ''' initialize shapes '''
     # sort shapes into ordered dictionary
-    if isinstance(shapefiles,dict):       
-      shape_list = [self._ShapeClass(name=name, shapefile=shapefile, folder=folder, ldebug=ldebug, load=load, 
-                                     data_source=data_source, **kwargs) for name,shapefile in shapefiles.iteritems()]
-    else:
-      shape_list = [self._ShapeClass(name=None, shapefile=shapefile, folder=folder, ldebug=ldebug, 
-                                     data_source=data_source, load=load, **kwargs) for shapefile in shapefiles]
+    if isinstance(shapefiles,dict):
+      names = shapefiles.keys(); shapefiles = shapefiles.values()
+    else: names = [None]*len(shapefiles)
+    shape_list = []
+    # add to list, if already an instance, otherwise create new shape instance
+    for name,shapefile in zip(names,shapefiles):
+      if isinstance(shapefile, self._ShapeClass): shape = shapefile # trivial
+      else: shape = self._ShapeClass(name=name, shapefile=shapefile, folder=folder, ldebug=ldebug, load=load, 
+                                     data_source=data_source, shapetype=shapetype, **kwargs)
+      shape_list.append(shape)
     shapes = OrderedDict(); shapefiles = OrderedDict()
     for shape in shape_list:
       shapes[shape.name] = shape; shapefiles[shape.name] = shape.shapefile
@@ -1206,7 +1212,7 @@ class ShapeSet(Shape):
     folder = os.path.dirname(shapefiles[outline])
     # call Shape constructor
     super(ShapeSet,self).__init__(name=name, long_name=long_name, shapefile=shapefile, folder=folder, 
-                                  data_source=data_source, load=load, ldebug=ldebug, **kwargs)
+                                  data_source=data_source, shapetype=shapetype, load=load, ldebug=ldebug, **kwargs)
     # add remaining attributes
     self.outline = outline # name of the main shape which traces the outline
     self.shapefiles = shapefiles # absolute path to actual shapefiles
