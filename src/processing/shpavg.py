@@ -227,7 +227,7 @@ if __name__ == '__main__':
     # WRF experiments (short or long name)
     WRF_project = 'GreatLakes' # only use GreatLakes experiments
     WRF_experiments = []
-#     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
+    WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
 #     WRF_experiments += ['g-ctrl', 'g-ctrl-2050', 'g-ctrl-2100']
 #     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',][1:]
 #     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',][1:]
@@ -270,14 +270,18 @@ if __name__ == '__main__':
   proj_dict = getProjectVars(shapes.keys(), project=WRF_project, module=None)
   # assemble shape dictionary
   shape_dict = OrderedDict()
-  for shapename,shapelist in shapes.items():
+  shapenames = shapes.keys(); 
+  shapenames.sort(); shapenames.reverse() # for backwards compatibility
+  for shapename in shapenames:
     proj_shapes = proj_dict[shapename]
     if not isinstance(proj_shapes, dict): raise TypeError(proj_shapes)
+    shapelist = shapes[shapename]
     if shapelist is None: 
       shapelist = proj_shapes.keys()
       if not isinstance(proj_shapes, OrderedDict): shapelist.sort() # sort names in-place
       shapes[shapename] = shapelist # update shapes for report
-    try: shape_dict[shapename] = {key:proj_shapes[key] for key in shapelist}
+    try:
+      for key in shapelist: shape_dict[key] = proj_shapes[key]
     except KeyError: 
       raise KeyError("Name '{:s}' not found in shape dictionary '{:s}'.".format(key,shapename))
 
