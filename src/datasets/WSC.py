@@ -25,6 +25,7 @@ from geodata.base import Dataset, Variable, Axis
 
 dataset_name = 'WSC'
 root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # the dataset root folder
+shape_root = '{:s}/shapes/'.format(data_root) # the shapefile root folder
 
 # variable attributes and name
 variable_attributes = dict(runoff = dict(name='runoff', units='kg/m^2/s', atts=dict(long_name='Average Runoff Rate')), # average flow rate
@@ -54,6 +55,52 @@ class GageStationError(FileError):
   pass
 
 
+# expand province names
+province_names = OrderedDict() # make sure they are sorted alphabeically
+province_names['AB'] = 'Alberta'
+province_names['BC'] = 'British Columbia'
+province_names['MB'] = 'Manitoba'
+province_names['NB'] = 'New Brunswick'
+province_names['NL'] = 'Newfoundland and Labrador'
+province_names['NS'] = 'Nova Scotia'
+province_names['NT'] = 'Northwest Territories'
+province_names['NU'] = 'Nunavut'
+province_names['PE'] = 'Prince Edward Island'
+province_names['ON'] = 'Ontario'
+province_names['QC'] = 'Quebec'
+province_names['SK'] = 'Saskatchewan'
+province_names['YT'] = 'Yukon Territory'
+province_names['CAN'] = 'Canada'
+
+# shape class for lakes
+class Province(Shape):
+  ''' a Shape class for provinces '''
+  def __init__(self, name=None, long_name=None, shapefile=None, folder=None, load=False, ldebug=False,
+               data_source=None, shapetype=None):
+    ''' soem additional information '''
+    if shapetype is None: shapetype = 'PRV'
+    if folder is None: folder = '{:s}/Provinces/{:s}/'.format(shape_root,long_name)
+    super(Province,self).__init__(name=name, long_name=long_name, shapefile=shapefile, folder=folder, 
+                               load=load, ldebug=ldebug, data_source=data_source, shapetype=shapetype)    
+    
+# a container class for lake meta data
+class Nation(ShapeSet,Province): 
+  ''' a container class for sets of provinces '''
+  _ShapeClass = Province # the class that is used to initialize the shape collection
+  
+  def __init__(self, name=None, long_name=None, provinces=None, data_source=None, 
+               folder=None, shapetype=None):
+    ''' some common operations and inferences '''
+    # call parent constructor 
+    if shapetype is None: shapetype = 'NAT'
+    if folder is None: folder = '{:s}/Provinces/{:s}/'.format(shape_root,long_name)
+    super(Nation,self).__init__(name=name, long_name=long_name, shapefiles=provinces, 
+                                 data_source=data_source, folder=folder, shapetype=shapetype) # ShapeSet arguments
+                                  # N.B.: addition arguments for Basin constructor
+    # add lake specific stuff
+    self.provinces = self.shapes # alias
+
+
 # shape class for lakes
 class Lake(Shape):
   ''' a Shape class for lakes with associated gage station information '''
@@ -61,7 +108,7 @@ class Lake(Shape):
                data_source=None, shapetype=None):
     ''' save meta information; should be initialized from a BasinInfo instance '''
     if shapetype is None: shapetype = 'LKE'
-    if folder is None: folder = '{:s}/Lakes/{:s}/'.format(root_folder,long_name)
+    if folder is None: folder = '{:s}/Lakes/{:s}/'.format(shape_root,long_name)
     super(Lake,self).__init__(name=name, long_name=long_name, shapefile=shapefile, folder=folder, 
                               load=load, ldebug=ldebug, data_source=data_source, shapetype=shapetype)    
     
@@ -74,7 +121,7 @@ class LakeSet(ShapeSet,Lake):
     ''' some common operations and inferences '''
     # call parent constructor 
     if shapetype is None: shapetype = 'LKE'
-    if folder is None: folder = '{:s}/Lakes/{:s}/'.format(root_folder,long_name)
+    if folder is None: folder = '{:s}/Lakes/{:s}/'.format(shape_root,long_name)
     #shapefiles = lakes.keys() if isinstance(lakes, dict) else lakes
     super(LakeSet,self).__init__(name=name, long_name=long_name, shapefiles=lakes, 
                                  data_source=data_source, folder=folder, shapetype=shapetype,) # ShapeSet arguments
@@ -90,7 +137,7 @@ class Basin(Shape):
                subbasins=None, rivers=None, stations=None, data_source=None, shapetype=None):
     ''' save meta information; should be initialized from a BasinInfo instance '''
     if shapetype is None: shapetype = 'BSN'
-    if folder is None: folder = '{:s}/Basins/{:s}/'.format(root_folder,long_name)
+    if folder is None: folder = '{:s}/Basins/{:s}/'.format(shape_root,long_name)
     super(Basin,self).__init__(name=name, long_name=long_name, shapefile=shapefile, folder=folder, 
                                load=load, ldebug=ldebug, data_source=data_source, shapetype=shapetype)
     # figure out if we are the outline/main basin
@@ -126,7 +173,7 @@ class BasinSet(ShapeSet,Basin):
     ''' some common operations and inferences '''
     # call parent constructor 
     if shapetype is None: shapetype = 'BSN'
-    if folder is None: folder = '{:s}/Basins/{:s}/'.format(root_folder,long_name)
+    if folder is None: folder = '{:s}/Basins/{:s}/'.format(shape_root,long_name)
     #shapefiles = subbasins.keys() if isinstance(subbasins, dict) else subbasins
     super(BasinSet,self).__init__(name=name, long_name=long_name, shapefiles=subbasins, 
                                   data_source=data_source, folder=folder, shapetype=shapetype, # ShapeSet arguments

@@ -94,61 +94,6 @@ for threshold in precip_thresholds:
 # list of variables to load
 variable_list = varatts.keys() # also includes coordinate fields    
 
-# expand province names
-province_names = OrderedDict() # make sure they are sorted alphabeically
-province_names['AB'] = 'Alberta'
-province_names['BC'] = 'British Columbia'
-province_names['MB'] = 'Manitoba'
-province_names['NB'] = 'New Brunswick'
-province_names['NL'] = 'Newfoundland and Labrador'
-province_names['NS'] = 'Nova Scotia'
-province_names['NT'] = 'Northwest Territories'
-province_names['NU'] = 'Nunavut'
-province_names['PE'] = 'Prince Edward Island'
-province_names['ON'] = 'Ontario'
-province_names['QC'] = 'Quebec'
-province_names['SK'] = 'Saskatchewan'
-province_names['YT'] = 'Yukon Territory'
-province_names['CAN'] = 'Canada'
-
-# shape class for lakes
-class Province(Shape):
-  ''' a Shape class for provinces '''
-  def __init__(self, name=None, long_name=None, shapefile=None, folder=None, load=False, ldebug=False,
-               data_source=None, shapetype=None):
-    ''' soem additional information '''
-    if shapetype is None: shapetype = 'PRV'
-    if folder is None: folder = '{:s}/Provinces/{:s}/'.format(root_folder,long_name)
-    super(Province,self).__init__(name=name, long_name=long_name, shapefile=shapefile, folder=folder, 
-                               load=load, ldebug=ldebug, data_source=data_source, shapetype=shapetype)    
-    
-# a container class for lake meta data
-class Nation(ShapeSet,Province): 
-  ''' a container class for sets of provinces '''
-  _ShapeClass = Province # the class that is used to initialize the shape collection
-  
-  def __init__(self, name=None, long_name=None, provinces=None, data_source=None, 
-               folder=None, shapetype=None):
-    ''' some common operations and inferences '''
-    # call parent constructor 
-    if shapetype is None: shapetype = 'NAT'
-    if folder is None: folder = '{:s}/Provinces/{:s}/'.format(root_folder,long_name)
-    super(Nation,self).__init__(name=name, long_name=long_name, shapefiles=provinces, 
-                                 data_source=data_source, folder=folder, shapetype=shapetype) # ShapeSet arguments
-                                  # N.B.: addition arguments for Basin constructor
-    # add lake specific stuff
-    self.provinces = self.shapes # alias
-
-# generate province info objects
-province_list = OrderedDict()
-provinces = OrderedDict()
-for key,val in province_names.iteritems():
-  prov = Province(name=key, long_name=val, shapefile=val, data_source='?')
-  province_list[key] = prov
-  if key != 'CAN': provinces[key] = prov
-# the whole nation
-province_list['CAN'] = Nation(name='CAN', long_name=province_names['CAN'], 
-                              provinces=province_list.values(), data_source='?')
 
 ## a class that handles access to station records in ASCII files
 class DailyStationRecord(StrictRecordClass):
@@ -931,7 +876,6 @@ loadStationClimatology = loadEC # pre-processed, standardized climatology
 
 if __name__ == '__main__':
 
-  mode = 'list_provs'
 #   mode = 'test_selection'
 #   mode = 'test_timeseries'
 #   mode = 'test_station_object'
@@ -940,18 +884,8 @@ if __name__ == '__main__':
 #   mode = 'convert_prov_stations'
 #   mode = 'convert_all_stations'
   
-  if mode == 'list_provs':
-    
-      ## print Great Lakes
-    for name,prov in province_list.iteritems():
-      s = '  {:3s} ({:s}): '.format(name,prov.shapetype)
-      if hasattr(prov, 'provinces'):
-        for province in prov.provinces: s += ' {:3s}'.format('{:s},'.format(province))
-      print(s)
-      #print(lake.folder)
-  
   # test wrapper function to load time series data from EC stations
-  elif mode == 'test_selection':
+  if mode == 'test_selection':
     
     # some foreign imports
     from geodata.base import Ensemble

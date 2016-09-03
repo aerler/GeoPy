@@ -1197,9 +1197,9 @@ class ShapeSet(Shape):
     else: names = [None]*len(shapefiles)
     shape_list = []
     # add to list, if already an instance, otherwise create new shape instance
-    for name,shapefile in zip(names,shapefiles):
+    for shapename,shapefile in zip(names,shapefiles):
       if isinstance(shapefile, self._ShapeClass): shape = shapefile # trivial
-      else: shape = self._ShapeClass(name=name, shapefile=shapefile, folder=folder, ldebug=ldebug, load=load, 
+      else: shape = self._ShapeClass(name=shapename, shapefile=shapefile, folder=folder, ldebug=ldebug, load=load, 
                                      data_source=data_source, shapetype=shapetype, **kwargs)
       shape_list.append(shape)
     shapes = OrderedDict(); shapefiles = OrderedDict()

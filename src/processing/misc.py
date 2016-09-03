@@ -48,7 +48,7 @@ def loadYAML(default, lfeedback=True):
 
 
 ## convenience function to load WRF experiment list and replace names with Exp objects
-def getExperimentList(experiments, project, dataset, lensembles=True):
+def getExperimentList(experiments, project=None, dataset='WRF', lensembles=True):
   ''' load WRF or CESM experiment list and replace names with Exp objects '''
   # load WRF experiments list
   project = 'projects' if not project else 'projects.{:s}'.format(project)
@@ -65,6 +65,24 @@ def getExperimentList(experiments, project, dataset, lensembles=True):
       raise KeyError, "{1:s} experiment '{0:s}' not found in {1:s} experiment list (loaded from '{2:s}').".format(exp,dataset,project)
   # return expanded list of experiments
   return experiments
+
+
+## convenience function to load WRF experiment list and replace names with Exp objects
+def getProjectVars(varlist, project=None, module=None):
+  ''' load a list of variables from a project (module) '''
+  # load WRF experiments list
+  project = 'projects' if not project else 'projects.{:s}'.format(project)
+  module = '__init__' if not module else module
+  mod = import_module('{:s}.{:s}'.format(project,module))
+  # load varlist from project (module) namespace
+  vardict = dict()
+  for varname in varlist:
+    try: vardict[varname] = mod.__dict__[varname]
+    except KeyError: # throw exception is experiment is not found
+      raise KeyError, "Variable '{:s}' not found in {:s} project (module '{:s}').".format(varname,project,module)
+  # return expanded list of experiments
+  return vardict
+
 
 def getPeriodGridString(period, grid, exp=None, beginyear=None):
   ''' utility function to check period and grid and return valid and usable strings '''

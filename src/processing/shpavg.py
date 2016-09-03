@@ -19,14 +19,10 @@ from geodata.misc import DateError, printList
 from geodata.netcdf import DatasetNetCDF
 from geodata.base import Dataset
 from datasets import gridded_datasets
-from processing.misc import getMetaData, getTargetFile, getExperimentList, loadYAML
+from processing.misc import getMetaData, getTargetFile, getExperimentList, loadYAML,\
+  getProjectVars
 from processing.multiprocess import asyncPoolEC
 from processing.process import CentralProcessingUnit
-
-# import shape objects
-from datasets.EC import provinces
-from projects.WSC_basins import basins, great_lakes
-#TODO: dynamically load basins based on selected project
 
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
@@ -216,11 +212,11 @@ if __name__ == '__main__':
     # Observations/Reanalysis
     lLTM = True 
     datasets = []; resolutions = None
-    resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':'05'}
+    resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':['031','05']}
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
-    datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
-#     datasets += ['CFSR','NARR']
+#     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
+    datasets += ['CFSR','NARR']
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False
@@ -256,7 +252,7 @@ if __name__ == '__main__':
 #     shapes['basins'] = ['GLB','GRW'] # river basins (in Canada) from WSC module
 #     shapes['provinces'] = ['ON'] # Canadian provinces from EC module
     shape_name = 'glakes' # Great Lakes
-    shapes = dict()
+    shapes = OrderedDict()
     shapes['great_lakes'] = None # the Great Lakes of North America
      
  
@@ -270,28 +266,21 @@ if __name__ == '__main__':
   # expand datasets and resolutions
   if datasets is None: datasets = gridded_datasets  
 
-  # expand shapes (and enforce consistent sorting)
-  if 'provinces' in shapes and shapes['provinces'] is None:
-    items = provinces.keys()
-    if not isinstance(provinces, OrderedDict): items.sort()     
-    shapes['provinces'] = items
-  if 'basins' in shapes and shapes['basins'] is None:
-    items = basins.keys()
-    if not isinstance(basins, OrderedDict): items.sort()
-    shapes['basins'] = items
-  if 'great_lakes' in shapes and shapes['great_lakes'] is None:
-    items = great_lakes.keys()
-    if not isinstance(great_lakes, OrderedDict): items.sort()
-    shapes['great_lakes'] = items
-      
-  # add shapes of different categories
+  # import shapes from project
+  proj_dict = getProjectVars(shapes.keys(), project=WRF_project, module=None)
+  # assemble shape dictionary
   shape_dict = OrderedDict()
-  if 'provinces' in shapes:
-    for shp in shapes['provinces']: shape_dict[shp] = provinces[shp]
-  if 'basins' in shapes:
-    for shp in shapes['basins']: shape_dict[shp] = basins[shp]
-  if 'great_lakes' in shapes:
-    for shp in shapes['great_lakes']: shape_dict[shp] = great_lakes[shp]
+  for shapename,shapelist in shapes.items():
+    proj_shapes = proj_dict[shapename]
+    if not isinstance(proj_shapes, dict): raise TypeError(proj_shapes)
+    if shapelist is None: 
+      shapelist = proj_shapes.keys()
+      if not isinstance(proj_shapes, OrderedDict): shapelist.sort() # sort names in-place
+      shapes[shapename] = shapelist # update shapes for report
+    try: shape_dict[shapename] = {key:proj_shapes[key] for key in shapelist}
+    except KeyError: 
+      raise KeyError("Name '{:s}' not found in shape dictionary '{:s}'.".format(key,shapename))
+
     
   # print an announcement
   if len(WRF_experiments) > 0:
