@@ -190,7 +190,7 @@ class MyFigure(Figure):
     # make room for legend
     leghgt = ( np.ceil(float(nlen)/float(ncols)) * fontsize/300.) * hscl
     self.updateSubplots(mode='shift', bottom=leghgt+hpad) # shift bottom upwards (add height pad)
-    ax = self.add_axes([0, -0.005, 1,leghgt]) # new axes to hold legend, with some attributes
+    ax = self.add_axes([0, hpad-0.005, 1,leghgt]) # new axes to hold legend, with some attributes
     ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
     # define legend parameters
     legargs = dict(loc=10, ncol=ncols, borderaxespad=0., fontsize=fontsize, frameon=True,
