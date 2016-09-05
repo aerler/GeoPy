@@ -703,7 +703,7 @@ class Variable(object):
       dataset = self.dataset 
       axes = axes.copy() # might be changed...
       for key,val in axes.iteritems():
-        if val is not None and dataset.hasVariable(key):
+        if val is not None and dataset.hasVariable(key) and not dataset.hasAxis(key):
           del axes[key] # remove pseudo axis
           var = dataset.getVariable(key)
           if isinstance(val,(tuple,list,np.ndarray)): 
@@ -2365,15 +2365,14 @@ class Axis(Variable):
     # initialize dimensions
     if axes is None: axes = (self,)
     elif not isinstance(axes,(list,tuple)) and len(axes) == 1:
-      raise ArgumentError
-#     axes = (self,)
+      raise ArgumentError(axes)
     # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple
-    if coord is not None: 
+    if coord is not None: # coord has precedence
       data = self._transformCoord(coord)
       if length > 0:
-        if data.size != length: raise AxisError, "Specified length and coordinate vector are incompatible!"
+        if data.size != length: 
+          raise AxisError("Specified length and coordinate vector are incompatible!")
       else: length = data.size
-    else: data = None
     self.__dict__['_len'] = length
     # initialize as a subclass of Variable, depending on the multiple inheritance chain    
     super(Axis, self).__init__(axes=axes, data=data, **varargs)
@@ -2385,8 +2384,8 @@ class Axis(Variable):
     if self.coord is not None:
       if all(np.diff(self.coord) > 0): self.ascending = True
       elif all(np.diff(self.coord) < 0): self.ascending = False
-#       else: self.ascending = None
-      else: raise AxisError, "Coordinates must be strictly monotonically increasing or decreasing."
+      else: 
+        raise AxisError("Coordinates must be strictly monotonically increasing or decreasing.")
 
   def __eq__(self, other):
     ''' test equality of axes based on meta data and coordinate values; if compared with a string,
@@ -3008,13 +3007,25 @@ class Dataset(object):
     return Dataset(name=name,title=title,varlist=varlist,atts=atts)
     
   def __iadd__(self, var):
-    ''' Add a Variable to an existing dataset. '''      
-    assert self.addVariable(var), "A problem occurred adding Variable '{:s}' to Dataset.".format(var.name)    
+    ''' Add a Variable to an existing dataset. ''' 
+    if isinstance(var,Axis):
+      if not self.addAxis(var):
+        raise AxisError("A problem occurred adding Axis '{:s}' to Dataset.".format(var.name))
+    elif isinstance(var,Variable):
+      if not self.addVariable(var):
+        raise VariableError("A problem occurred adding Variable '{:s}' to Dataset.".format(var.name))
+    else: raise DatasetError("Object '{}' cannot be added to Dataset.".format(var))
     return self # return self as result
 
   def __isub__(self, var):
     ''' Remove a Variable to an existing dataset. '''      
-    assert self.removeVariable(var), "A proble occurred removing Variable '{:s}' from Dataset.".format(var.name)
+    if isinstance(var,Axis):
+      if not self.removeAxis(var):
+        raise AxisError("A proble occurred removing Axis '{:s}' from Dataset.".format(var.name))
+    elif isinstance(var,Variable):
+      if not self.removeVariable(var):
+        raise VariableError("A problem occurred removing Variable '{:s}' from Dataset.".format(var.name))
+    else: raise DatasetError("Object '{}' cannot be removed from Dataset.".format(var))
     return self # return self as result
   
   def load(self, **kwargs):
