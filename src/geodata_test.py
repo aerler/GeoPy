@@ -31,7 +31,7 @@ import shutil
 RAM = bool(os.getenv('RAMDISK', '')) # whether or not to use a RAM disk
 # either RAM disk or data directory
 workdir = os.getenv('RAMDISK', '') if RAM else '{:s}/test/'.format(os.getenv('DATA_ROOT', '')) 
-if not os.path.isdir(workdir): raise IOError, workdir
+if not os.path.exists(workdir): raise IOError, workdir
 
 class BaseVarTest(unittest.TestCase):  
   
@@ -1753,7 +1753,7 @@ if __name__ == "__main__":
 #     specific_tests += ['WriteASCII']
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
-    specific_tests += ['Ensemble']
+#     specific_tests += ['Ensemble']
 #     specific_tests += ['DistributionVariables']
 #     specific_tests += ['StatsTests']   
 #     specific_tests += ['UnaryArithmetic']
@@ -1770,12 +1770,12 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['BaseVar'] 
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
     tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above

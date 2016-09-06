@@ -1767,7 +1767,8 @@ class Variable(object):
       if asVar:
         if not caxis:
           # create new climatology axis
-          caxis = time.copy(coord=np.arange(1,13), atts=time.atts if caxatts is None else caxatts)
+          atts = time.atts if caxatts is None else caxatts
+          caxis = time.copy(coord=np.arange(1,13), atts=atts)
         else:
           if not isinstance(caxis, Axis): raise TypeError, caxis 
           if len(caxis) != 12: raise Axis, caxis
@@ -2367,16 +2368,17 @@ class Axis(Variable):
     elif not isinstance(axes,(list,tuple)) and len(axes) == 1:
       raise ArgumentError(axes)
     # N.B.: Axis objects carry a circular reference to themselves in the dimensions tuple
+    data = varargs.pop('data',None)
     if coord is not None: # coord has precedence
+      varargs.pop('dtype',None) # should be determined from data
       data = self._transformCoord(coord)
       if length > 0:
         if data.size != length: 
           raise AxisError("Specified length and coordinate vector are incompatible!")
       else: length = data.size
-    data = coord
     self.__dict__['_len'] = length
     # initialize as a subclass of Variable, depending on the multiple inheritance chain    
-    super(Axis, self).__init__(axes=axes, data=data, **varargs)
+    super(Axis, self).__init__(axes=axes, data=None, **varargs)
     # add coordinate vector
     if data is not None: 
       self.coord = data
