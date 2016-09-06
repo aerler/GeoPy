@@ -2373,7 +2373,7 @@ class Axis(Variable):
       if length > 0:
         if data.size != length: raise AxisError, "Specified length and coordinate vector are incompatible!"
       else: length = data.size
-    else: data = None
+    data = coord
     self.__dict__['_len'] = length
     # initialize as a subclass of Variable, depending on the multiple inheritance chain    
     super(Axis, self).__init__(axes=axes, data=data, **varargs)
