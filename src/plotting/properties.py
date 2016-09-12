@@ -425,6 +425,12 @@ tmp = PlotAtts(name = 'Water Flux', title = 'Net Water Flux',
 # add to collection
 variablePlotatts['waterflx'] = tmp
 
+## Water Flux into the Land Surface
+tmp = PlotAtts(name = 'Water Flux', title = 'Liquid Water Flux', 
+               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+# add to collection
+variablePlotatts['liqwatflx'] = tmp
+
 ## Snowmelt (water equivalent)
 tmp = PlotAtts(name = 'Snowmelt', title = 'Snowmelt', 
                units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)

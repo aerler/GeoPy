@@ -709,7 +709,7 @@ class DatasetNetCDF(Dataset):
     # N.B.: don't pass axes explicitly, otherwise we are adding a lot of unneccessary axes, which causes confusion
     #       (in particular, the singular Time axis from constant files will be loaded, which causes problems)
     # check that stuff was loaded
-    if len(self.variables) == 0 and mode != 'w': raise EmptyDatasetError
+#     if len(self.variables) == 0 and mode != 'w': raise EmptyDatasetError
     # catch exception if an empty dataset is OK
     
   @property
