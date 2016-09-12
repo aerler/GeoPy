@@ -358,7 +358,6 @@ if __name__ == '__main__':
   else: loverwrite = ldebug # False means only update old files
   
   ## define settings
-  lbatch = False
   if lbatch:
     # load YAML configuration
     config = loadYAML('export.yaml', lfeedback=True)
