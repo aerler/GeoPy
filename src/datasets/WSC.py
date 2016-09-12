@@ -313,7 +313,8 @@ def getGageStation(basin=None, station=None, name=None, folder=None, river=None,
       name = '{}_{}'.format(river,name)
   # if we are not done yet, make sure we have valid folder and file names now!
   if not (isinstance(folder,basestring) and isinstance(name,basestring)):
-    raise TypeError('Specify either basin (and station) or folder & station prefix/name.')
+    raise GageStationError('Specify either basin (and station) or folder & station prefix/name.')
+    # N.B.: this Error also indicates that no gage station is available
   if not os.path.exists(folder): raise IOError(folder)
   # instantiate and return GageStation
   return GageStation(basin=basin_name, river=None, name=name, folder=folder)
