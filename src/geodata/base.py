@@ -1827,7 +1827,7 @@ class Variable(object):
     # translate definiton of month or season
     idx = translateSeasons(season)
     # call general reduction function
-    avar =  self.reduce(operation, blklen=12, blkidx=idx, axis=taxis, mode='block',
+    avar =  self.reduce(operation=operation, blklen=12, blkidx=idx, axis=taxis, mode='block',
                         asVar=asVar, axatts=tatts, varatts=varatts, data_view=data_view, 
                         lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **kwargs)
     # check shape of annual variable
@@ -1899,8 +1899,8 @@ class Variable(object):
       if varatts is not None: vatts.update(varatts)
     else: tatts = None; varatts = None # irrelevant
     # call general reduction function
-    avar =  self.reduce(operation, blklen=12, blkidx=yridx, axis=taxis, mode='periodic',
-                        asVar=asVar, axatts=tatts, varatts=varatts, 
+    avar =  self.reduce(operation=operation, blklen=12, blkidx=yridx, axis=taxis, mode='periodic',
+                        asVar=asVar, axatts=tatts, varatts=varatts, data_view=data_view, 
                         lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **kwargs)
     # check shape of annual variable
     assert avar.shape == self.shape[:tax]+(12,)+self.shape[tax+1:]
