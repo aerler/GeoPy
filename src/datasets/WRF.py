@@ -8,10 +8,11 @@ This module contains common meta data and access functions for WRF model output.
 
 # external imports
 import numpy as np
+import numpy.ma as ma
 import netCDF4 as nc
 import collections as col
 import os, pickle
-import osr
+import osr # from GDAL
 # from atmdyn.properties import variablePlotatts
 from geodata.base import concatDatasets
 from geodata.netcdf import DatasetNetCDF
@@ -75,6 +76,13 @@ class Exp(object):
         # if the argument is not required, just assign None 
         self.__dict__[argname] = None    
 
+def mask_array(data, var=None, slc=None):
+  ''' mask the value missing_value found in var.atts in the data array '''
+  if not var.masked and 'missing_value' in var.atts:
+    missing_value = var.atts['missing_value']
+    data = ma.masked_equal(data, missing_value, copy=False)
+  # return array, masked or not...
+  return data
   
 ## variable attributes and name
 # convert water mass mixing ratio to water vapor partial pressure ( kg/kg -> Pa ) 
@@ -143,7 +151,23 @@ class Srfc(FileType):
                      MaxRAINC_5d  = dict(name='MaxPreccu_5d', units='kg/m^2/s'), # maximum pendat (5 day) conv. precip
                      MaxRAINNC    = dict(name='MaxPrecnc_6h', units='kg/m^2/s'), # maximum 6-hourly non-convective precip
                      MaxRAINNC_1d = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # maximum daily non-convective precip
-                     MaxRAINNC_5d = dict(name='MaxPrecnc_5d', units='kg/m^2/s'),) # maximum pendat (5 day) n-c precip
+                     MaxRAINNC_5d = dict(name='MaxPrecnc_5d', units='kg/m^2/s'), # maximum pendat (5 day) n-c precip
+                     # lake variables (some need to be masked explicitly)
+                     SSTSK        = dict(name='SSTs', units='K', transform=mask_array, # Sea Surface Skin Temperature (WRF)
+                                         atts=dict(missing_value=0, long_name='Sea Surface Skin Temperature')), 
+                     SEAICE       = dict(name='seaice', units='', atts=dict(long_name='Sea/Lake Ice Cover')),# Sea/Lake Ice Cover (WRF)                                          
+                     T_SFC_LAKE   = dict(name='Tlake', units='K', transform=mask_array,  # lake surface temperature (FLake)
+                                         atts=dict(missing_value=0, long_name='Lake Surface Temperature')),
+                     T_ICE_LAKE   = dict(name='Tice', units='K', transform=mask_array, # lake ice temperature (FLake)
+                                         atts=dict(missing_value=0, long_name='Lake Ice Temperature')), 
+                     T_SNOW_LAKE  = dict(name='Tsnow', units='K', transform=mask_array, # lake snow temperature (FLake)
+                                         atts=dict(missing_value=0, long_name='Lake Snow Temperature')), 
+                     T_WML_LAKE   = dict(name='Tmix', units='K', transform=mask_array, # mixed layer temperature (FLake)
+                                         atts=dict(missing_value=0, long_name='Mixed Layer Temperature')), 
+                     H_ICE_LAKE   = dict(name='Hice', units='m', atts=dict(long_name='Lake Ice Height')), # FLake
+                     H_SNOW_LAKE  = dict(name='Hsnow', units='m', atts=dict(long_name='Lake Snow Height')), # FLake
+                     H_ML_LAKE    = dict(name='Hmix', units='m', atts=dict(long_name='Mixed Layer Height')), # FLake
+                     )
     for threshold in precip_thresholds: # add variables with different wet-day thresholds
         suffix = '_{:03d}'.format(int(10*threshold))
         self.atts['WetDays'+suffix]      = dict(name='wetfrq'+suffix, units='') # fraction of wet/rainy days                    

@@ -1041,9 +1041,9 @@ class Variable(object):
         if self.masked: data.mask = ma.nomask # unmask, sort of...
       self.__dict__['data_array'] = ma.array(data, mask=mask)
     elif maskValue is not None:
-      if isinstance(self.dtype,(int,bool,np.integer,np.bool)): 
+      if np.issubdtype(self.dtype,np.integer) or np.issubdtype(self.dtype,np.bool): 
         self.__dict__['data_array'] = ma.masked_equal(self.data_array, maskValue, copy=False)
-      elif isinstance(self.dtype,(float,np.inexact)):
+      elif np.issubdtype(self.dtype,np.inexact):
         self.__dict__['data_array'] = ma.masked_values(self.data_array, maskValue, copy=False)
     # update fill value (stored in atts dict)
     self.fillValue = fillValue or ( self.data_array.fill_value if self.data_array._fill_value is None
