@@ -152,6 +152,8 @@ class Srfc(FileType):
                      MaxRAINNC    = dict(name='MaxPrecnc_6h', units='kg/m^2/s'), # maximum 6-hourly non-convective precip
                      MaxRAINNC_1d = dict(name='MaxPrecnc_1d', units='kg/m^2/s'), # maximum daily non-convective precip
                      MaxRAINNC_5d = dict(name='MaxPrecnc_5d', units='kg/m^2/s'), # maximum pendat (5 day) n-c precip
+                     OrographicIndex = dict(name='OI', units='', atts=dict(long_name='Orographic Index')), # projection of wind onto slope
+                     CovOIP       = dict(name='COIP', units='', atts=dict(long_name='Cov(OI,p)')), # covariance of OI and precip
                      # lake variables (some need to be masked explicitly)
                      SSTSK        = dict(name='SSTs', units='K', transform=mask_array, # Sea Surface Skin Temperature (WRF)
                                          atts=dict(missing_value=0, long_name='Sea Surface Skin Temperature')), 
@@ -348,6 +350,7 @@ class Plev3D(FileType):
                      HeatTransport_V  = dict(name='cqhv', units='J/m/s',    fillValue=-999, atts=dict(ong_name='Column-integrated Meridional Heat Transport')), # column-integrated meridional heat transport
                      ColumnHeat       = dict(name='cqh',  units='J/m^2',    fillValue=-999, atts=dict(ong_name='Column-integrated Heat Content')), # column-integrated heat content
                      Vorticity        = dict(name='zeta', units='1/s',      fillValue=-999, atts=dict(ong_name='Relative Vorticity')), # (relative) Vorticity
+                     OrographicIndex  = dict(name='OI', units='', atts=dict(long_name='Orographic Index')), # projection of wind onto slope
                      P_PL      = dict(name='p', units='Pa', atts=dict(long_name='Pressure')))  # Pressure
     self.vars = self.atts.keys()    
     self.climfile = 'wrfplev3d_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)

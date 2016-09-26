@@ -167,9 +167,9 @@ def genCoord():
 if __name__ == '__main__':
     
 #   mode = 'test_climatology'
-  mode = 'test_point_climatology'
-#   mode = 'convert_ASCII'
-  pntset = 'shpavg' # 'ecprecip
+#   mode = 'test_point_climatology'
+  mode = 'convert_ASCII'
+#   pntset = 'shpavg' # 'ecprecip
   
   # do some tests
   if mode == 'test_climatology':  

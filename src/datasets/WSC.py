@@ -56,7 +56,7 @@ class GageStationError(FileError):
 
 
 # expand province names
-province_names = OrderedDict() # make sure they are sorted alphabeically
+province_names = OrderedDict() # make sure they are sorted alphabetically
 province_names['AB'] = 'Alberta'
 province_names['BC'] = 'British Columbia'
 province_names['MB'] = 'Manitoba'

@@ -27,8 +27,6 @@ mpl.rc('font', size=10)
 from mpl_toolkits.basemap import maskoceans # used for masking data
   
 from geodata.base import DatasetError
-from datasets.WSC import basins_info
-from datasets.EC import province_info
 from datasets.common import stn_params
 from legacy_plotting.legacy import loadDatasets, checkItemList
 # project related stuff
@@ -37,6 +35,7 @@ from legacy_plotting.legacy import loadDatasets, checkItemList
 # Great Lakes
 from projects.GreatLakes import getSetup, getFigureSettings, getVariableSettings
 from projects.GreatLakes import figure_folder, map_folder, WRF_exps, CESM_exps
+from projects.GreatLakes import basins, provinces
 
 station_constraints = dict()
 station_constraints['min_len'] = 15 # for valid climatology
@@ -946,7 +945,7 @@ if __name__ == '__main__':
           # add basin outlines          
           if lbasins:
             for basin in basinlist:      
-              basininfo = basins_info[basin]
+              basininfo = basins[basin]
               try:
                 if basin in subbasins:
                   for subbasin in subbasins[basin]:		  
@@ -964,7 +963,7 @@ if __name__ == '__main__':
           # add certain provinces
           if lprovinces: 
             for province in provlist:    
-              provinfo = province_info[province]
+              provinfo = province[province]
               bmap.readshapefile(provinfo.shapefiles[provinfo.long_name][:-4], province, 
                                  drawbounds=True, linewidth = 0.5, color='k')            
 

@@ -217,8 +217,8 @@ if __name__ == '__main__':
     periods = []
 #     periods += [1]
 #     periods += [3]
-#     periods += [5]
-#     periods += [10]
+    periods += [5]
+    periods += [10]
     periods += [15]
     periods += [30]
     # Observations/Reanalysis
@@ -226,9 +226,10 @@ if __name__ == '__main__':
     datasets = []
     lLTM = True # also regrid the long-term mean climatologies 
 #     datasets += ['PRISM','GPCC','PCIC']; periods = None
-    datasets += ['CFSR', ] # CFSR_05 does not have precip
-#     datasets += ['GPCC']; resolutions = {'GPCC':['025']}
-#     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
+#     datasets += ['CFSR', ] # CFSR_05 does not have precip
+#     datasets += ['GPCC']; resolutions = {'GPCC':['025','05']}
+#     datasets += ['GPCC']; resolutions = {'GPCC':['05']}
+    datasets += ['CRU']
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
@@ -276,10 +277,11 @@ if __name__ == '__main__':
 #     grids['grw1'] = None # smaller grid, ideal for testing
     grids['grw2'] = None # very small grid, ideal for testing
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
-    grids['glb1'] = ('d01',) # Marc's standard GLB outer domain
-    grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
+#     grids['glb1'] = ('d01',) # Marc's standard GLB outer domain
+#     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
 #     grids['glb1-90km'] = ('d01',) # 90km GLB domain
-#     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
+    grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
+    grids['arb3'] = ('d01','d02') # WRF standard ARB inner domain
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids
 #     grids['cesm1x1'] = (None,) # CESM grid
