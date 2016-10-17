@@ -13,6 +13,7 @@ Simple methods for copying and averaging variables will already be provided in t
 import numpy as np
 import numpy.ma as ma
 import functools
+import shutil
 import gc
 from osgeo import gdal, osr
 # internal imports
@@ -36,23 +37,23 @@ class CentralProcessingUnit(object):
     ''' Initialize processor and pass input and output datasets. '''
     # check varlist
     if varlist is None: varlist = source.variables.keys() # all source variables
-    elif not isinstance(varlist,(list,tuple)): raise TypeError
+    elif not isinstance(varlist,(list,tuple)): raise TypeError(varlist)
     self.varlist = varlist # list of variable to be processed
     # ignore list (e.g. variables that will cause errors)
     if ignorelist is None: ignorelist = [] # an empty list
-    elif not isinstance(ignorelist,(list,tuple)): raise TypeError
+    elif not isinstance(ignorelist,(list,tuple)): raise TypeError(ignorelist)
     self.ignorelist = ignorelist # list of variable *not* to be processed    
     # check input
-    if not isinstance(source,Dataset): raise TypeError
-    if isinstance(source,DatasetNetCDF) and not 'r' in source.mode: raise PermissionError
+    if not isinstance(source,Dataset): raise TypeError(source)
+    if isinstance(source,DatasetNetCDF) and not 'r' in source.mode: raise PermissionError(source)
     self.input = source
     self.source = source
     # check output
     if target is not None:       
-      if not isinstance(target,Dataset): raise TypeError
-      if isinstance(target,DatasetNetCDF) and not 'w' in target.mode: raise PermissionError
+      if not isinstance(target,Dataset): raise TypeError(target)
+      if isinstance(target,DatasetNetCDF) and not 'w' in target.mode: raise PermissionError(target)
     else:
-      if not tmp: raise DatasetError, "Need target location, if temporary storage is disables (tmp=False)." 
+      if not tmp: raise DatasetError("Need target location, if temporary storage is disables (tmp=False).")
     self.output = target
     # temporary dataset
     self.tmp = tmp
@@ -66,10 +67,10 @@ class CentralProcessingUnit(object):
         
   def getTmp(self, asNC=False, filename=None, deepcopy=False, **kwargs):
     ''' Get a copy of the temporary data in dataset format. '''
-    if not self.tmp: raise DatasetError
+    if not self.tmp: raise DatasetError(self.tmp)
     # make new dataset (name and title should transfer in atts dict)
     if asNC:
-      if not isinstance(filename,basestring): raise TypeError
+      if not isinstance(filename,basestring): raise TypeError(filename)
       writeData = kwargs.pop('writeData',False)
       ncformat = kwargs.pop('ncformat','NETCDF4')
       zlib = kwargs.pop('zlib',True)
@@ -82,7 +83,7 @@ class CentralProcessingUnit(object):
   
   def sync(self, varlist=None, flush=False, gdal=True, copydata=True):
     ''' Transfer contents of temporary storage to output/target dataset. '''
-    if not isinstance(self.output,Dataset): raise DatasetError, "Cannot sync without target Dataset!"
+    if not isinstance(self.output,Dataset): raise DatasetError("Cannot sync without target Dataset!\n{:}".format(self.output))
     if self.tmp:
       if varlist is None: varlist = self.tmpput.variables.keys()  
       for varname in varlist:
@@ -104,7 +105,7 @@ class CentralProcessingUnit(object):
   def writeNetCDF(self, filename=None, folder=None, ncformat='NETCDF4', zlib=True, writeData=True, close=False, flush=False):
     ''' Write current temporary storage to a NetCDF file. '''
     if self.tmp:
-      if not isinstance(filename,basestring): raise TypeError
+      if not isinstance(filename,basestring): raise TypeError(filename)
       if folder is not None: filename = folder + filename       
       output = writeNetCDF(self.tmpput, filename, ncformat=ncformat, zlib=zlib, writeData=writeData, close=False)
       if flush: self.tmpput.unload()
@@ -123,7 +124,7 @@ class CentralProcessingUnit(object):
     ''' This method applies the desired operation/function to each variable in varlist. '''
     if flush: # this function is to save RAM by flushing results to disk immediately
       if not isinstance(self.output,DatasetNetCDF):
-        raise ProcessError, "Flush can only be used with NetCDF Datasets (and not with temporary storage)."
+        raise ProcessError("Flush can only be used with NetCDF Datasets (and not with temporary storage).\n{:}".format(self.output))
       if self.tmp: # flush requires output to be target
         if self.source.gdal and not self.tmpput.gdal:
           self.tmpput = addGDALtoDataset(self.tmpput, projection=self.source.projection, geotransform=self.source.geotransform)
@@ -133,24 +134,41 @@ class CentralProcessingUnit(object):
     # loop over input variables
     for varname in self.varlist:
       # check agaisnt ignore list
-      if varname not in self.ignorelist: 
-        # check if variable already exists
-        if self.target.hasVariable(varname):
-          # "in-place" operations
-          var = self.target.variables[varname]         
-          newvar = function(var) # perform actual processing
-          if newvar.ndim != var.ndim or newvar.shape != var.shape: raise VariableError
-          if newvar is not var: self.target.replaceVariable(var,newvar)
-        elif self.source.hasVariable(varname):        
-          var = self.source.variables[varname]
-          ldata = var.data # whether data was pre-loaded 
-          # perform operation from source and copy results to target
-          newvar = function(var) # perform actual processing
-          if not ldata: var.unload() # if it was already loaded, don't unload        
-          self.target.addVariable(newvar, copy=True) # copy=True allows recasting as, e.g., a NC variable
-          newvar.unload() # sicne we already made a copy
-        else:
-          raise DatasetError, "Variable '%s' not found in input dataset."%varname
+      if varname not in self.ignorelist:
+        try: 
+          # check if variable already exists
+          if self.target.hasVariable(varname):
+            # "in-place" operations
+            srcds = self.target
+            var = srcds.variables[varname]         
+            newvar = function(var) # perform actual processing
+            if newvar.ndim != var.ndim or newvar.shape != var.shape: raise VariableError('{:}\n\n{:}'.format(var,newvar))
+            if newvar is not var: self.target.replaceVariable(var,newvar)
+          elif self.source.hasVariable(varname):        
+            srcds = self.source
+            var = srcds.variables[varname]         
+            ldata = var.data # whether data was pre-loaded 
+            # perform operation from source and copy results to target
+            newvar = function(var) # perform actual processing
+            if not ldata: var.unload() # if it was already loaded, don't unload        
+            self.target.addVariable(newvar, copy=True) # copy=True allows recasting as, e.g., a NC variable
+            newvar.unload() # since we already made a copy
+          else:
+            srcds = self.source # need to define for error message below
+            raise DatasetError("Variable '{:s}' not found in input dataset.".format(varname))
+        except Exception, err:
+          if srcds.filelist and len(srcds.filelist) == 1:              
+            filename = srcds.filelist[0] # should be the absolute path
+            print("ERROR: an error occurred while processing Variable '{:s}' from source file '{:s}'.".format(varname,filename))
+            if 'NetCDF: HDF error' in str(err):
+              backup = filename + '.HDFerror'
+              print("HDF Error: moving source file to '{:s}'".format(backup))
+              shutil.move(filename, backup)
+              # N.B.: this error occurs when files are corrupted; moving them to a backup destination 
+              #       will cause the files to be downloaded again
+          else:
+            print("ERROR: an error occurred while processing Variable '{:s}' from Dataset '{:s}'.".format(varname,srcds.name))
+          raise # raise previous exception
         assert varname == newvar.name
         # flush data to disk immediately      
         if flush: 
@@ -172,9 +190,9 @@ class CentralProcessingUnit(object):
         A dictionary of NamedShape objects is expected to define the averaging areas. 
         'memory' controls the garbage collection interval and approximately corresponds 
         to MB in temporary (it does not include loading the variable into RAM, though). '''
-    if not self.source.gdal: raise DatasetError, "Source dataset must be GDAL enabled! {:s} is not.".format(self.source.name)
-    if not isinstance(shape_dict,OrderedDict): raise TypeError
-    if not all(isinstance(shape,Shape) for shape in shape_dict.itervalues()): raise TypeError
+    if not self.source.gdal: raise DatasetError("Source dataset must be GDAL enabled! {:s} is not.".format(self.source.name))
+    if not isinstance(shape_dict,OrderedDict): raise TypeError(shape_dict)
+    if not all(isinstance(shape,Shape) for shape in shape_dict.itervalues()): raise TypeError(shape)
     # make temporary dataset
     if self.source is self.target:
       if self.tmp: assert self.source == self.tmpput and self.target == self.tmpput
@@ -329,7 +347,7 @@ class CentralProcessingUnit(object):
             cnt = 0 # reset counter
             gc.collect() # collect garbage in certain itnervals
             if self.feedback: print 'garbage collected'  
-      else: raise AxisError 
+      else: raise AxisError(var)
       # create new Variable
       assert shape == tgtdata.shape
       newvar = var.copy(axes=axes, data=tgtdata) # new axes and data
@@ -344,14 +362,14 @@ class CentralProcessingUnit(object):
   def Extract(self, template=None, stnax=None, xlon=None, ylat=None, laltcorr=True, **kwargs):
     ''' Extract station data points from gridded datasets; calls processExtract. 
         A station dataset can be passed as template (must have station coordinates. '''
-    if not self.source.gdal: raise DatasetError, "Source dataset must be GDAL enabled! {:s} is not.".format(self.source.name)
-    if template is None: raise NotImplementedError
+    if not self.source.gdal: raise DatasetError("Source dataset must be GDAL enabled! {:s} is not.".format(self.source.name))
+    if template is None: raise NotImplementedError()
     elif isinstance(template, Dataset):
-      if not template.hasAxis('station'): raise DatasetError, "Template station dataset needs to have a station axis."
+      if not template.hasAxis('station'): raise DatasetError("Template station dataset needs to have a station axis.")
       if not ( (template.hasVariable('lat') or template.hasVariable('stn_lat')) and 
                (template.hasVariable('lon') or template.hasVariable('stn_lon')) ): 
-        raise DatasetError, "Template station dataset needs to have lat/lon arrays for the stations."      
-    else: raise TypeError
+        raise DatasetError("Template station dataset needs to have lat/lon arrays for the stations.")
+    else: raise TypeError(template)
     # make temporary dataset
     if self.source is self.target:
       if self.tmp: assert self.source == self.tmpput and self.target == self.tmpput
@@ -367,17 +385,17 @@ class CentralProcessingUnit(object):
     else: srcgrd = src.griddef
     # figure out horizontal axes (will be replaced with station axis)
     if isinstance(xlon,Axis): 
-      if not src.hasAxis(xlon, check=True): raise DatasetError
+      if not src.hasAxis(xlon, check=True): raise DatasetError(src)
     elif isinstance(xlon,basestring): xlon = src.getAxis(xlon)
     else: xlon = src.x if srcgrd.isProjected else src.lon
     if isinstance(ylat,Axis):
-      if not src.hasAxis(ylat, check=True): raise DatasetError
+      if not src.hasAxis(ylat, check=True): raise DatasetError(src)
     elif isinstance(ylat,basestring): ylat = src.getAxis(ylat)
     else: ylat = src.y if srcgrd.isProjected else src.lat
     if stnax: # not in source dataset!
-      if src.hasAxis(stnax, check=True): raise DatasetError, "Source dataset must not have a 'station' axis!"
+      if src.hasAxis(stnax, check=True): raise DatasetError("Source dataset must not have a 'station' axis!\n{}".format(src))
     elif template: stnax = template.station # station axis
-    else: raise ArgumentError, "A station axis needs to be supplied." 
+    else: raise ArgumentError("A station axis needs to be supplied.\n{}".format(stnax))
     assert isinstance(xlon,Axis) and isinstance(ylat,Axis) and isinstance(stnax,Axis)
     # transform to dataset-native coordinate system
     if template: 
@@ -385,7 +403,7 @@ class CentralProcessingUnit(object):
       else: lats = template.stn_lat.getArray()
       if template.hasVariable('lon'): lons = template.lon.getArray()
       else: lons = template.stn_lon.getArray()
-    else: raise NotImplementedError, "Cannot extract station data without a station template Dataset"
+    else: raise NotImplementedError("Cannot extract station data without a station template Dataset")
     # adjust longitudes
     if srcgrd.isProjected:
       if lons.max() > 180.: lons = np.where(lons > 180., 360.-lons, lons)
@@ -409,7 +427,7 @@ class CentralProcessingUnit(object):
     lstnzs = template.hasVariable('zs') or  template.hasVariable('stn_zs')
     if laltcorr and lzs and lstnzs:
       if src.zs.ndim > 2: src.zs = src.zs(time=0, lidx=True) # first time-slice (for CESM)
-      if src.zs.ndim != 2 or not src.gdal or src.zs.units != 'm': raise VariableError
+      if src.zs.ndim != 2 or not src.gdal or src.zs.units != 'm': raise VariableError(src)
       # consider altidue of surrounding points as well      
       zs = src.zs.getArray(unmask=True,fillValue=-300)
       if template.hasVariable('zs'): stn_zs = template.zs.getArray(unmask=True,fillValue=-300)
@@ -508,7 +526,7 @@ class CentralProcessingUnit(object):
         tgtdata = srcdata[ixlon,iylat] # constructed above
       elif srcdata.ndim > 2:
         tgtdata = srcdata[ixlon,iylat,:] # constructed above
-      else: raise AxisError
+      else: raise AxisError(srcdata)
       #try: except: print srcdata.shape, [slc.max() for slc in slices] 
       # create new Variable
       assert shape == tgtdata.shape
@@ -535,9 +553,9 @@ class CentralProcessingUnit(object):
     if 'gdal' in self.target.__dict__: 
       # gdal info alread present      
       if griddef is not None or projection is not None or geotransform is not None: 
-        raise AttributeError, "Target Dataset '%s' is already GDAL enabled - cannot overwrite settings!"%self.target.name
-      if self.target.xlon is None: raise GDALError, "Map axis 'xlon' not found!"
-      if self.target.ylat is None: raise GDALError, "Map axis 'ylat' not found!"
+        raise AttributeError("Target Dataset '{}' is already GDAL enabled - cannot overwrite settings!".format(self.target.name))
+      if self.target.xlon is None: raise GDALError("Map axis 'xlon' not found!\n{}".format(self.target))
+      if self.target.ylat is None: raise GDALError("Map axis 'ylat' not found!\n{}".format(self.target))
       xlon = self.target.xlon; ylat = self.target.ylat
     else:
       # need to set GDAL parameters
@@ -634,7 +652,7 @@ class CentralProcessingUnit(object):
       del srcdata # clean up (just to make sure)
       # N.B.: the target array should be allocated and prefilled with missing values, otherwise ReprojectImage
       #       will just fill missing values with zeros!  
-      if err != 0: raise GDALError, 'ERROR CODE %i'%err
+      if err != 0: raise GDALError('ERROR CODE {:}'.format(err))
       #tgtdata.FlushCash()  
       # load data into new variable
       newvar.loadGDAL(tgtdata, mask=lmask, wrap360=lwrapTgt, fillValue=var.fillValue)      
@@ -648,14 +666,14 @@ class CentralProcessingUnit(object):
   # function pair to compute a climatology from a time-series      
   def Climatology(self, timeAxis='time', climAxis=None, period=None, offset=0, shift=0, timeSlice=None, **kwargs):
     ''' Setup climatology and start computation; calls processClimatology. '''
-    if period is not None and not isinstance(period,(np.integer,int)): raise TypeError # period in years
-    if not isinstance(offset,(np.integer,int)): raise TypeError # offset in years (from start of record)
-    if not isinstance(shift,(np.integer,int)): raise TypeError # shift in month (if first month is not January)
+    if period is not None and not isinstance(period,(np.integer,int)): raise TypeError(period) # period in years
+    if not isinstance(offset,(np.integer,int)): raise TypeError(offset) # offset in years (from start of record)
+    if not isinstance(shift,(np.integer,int)): raise TypeError(shift) # shift in month (if first month is not January)
     # construct new time axis for climatology
     if climAxis is None:        
       climAxis = Axis(name=timeAxis, units='month', length=12, coord=np.arange(1,13,1), dtype=dtype_int) # monthly climatology
     else: 
-      if not isinstance(climAxis,Axis): raise TypeError
+      if not isinstance(climAxis,Axis): raise TypeError(climAxis)
     # add axis to output dataset    
     if self.target.hasAxis(climAxis.name): 
       self.target.repalceAxis(climAxis, check=False) # will have different shape
@@ -667,7 +685,7 @@ class CentralProcessingUnit(object):
       start = offset * len(climAxis); end = start + period * len(climAxis)
       timeSlice = slice(start,end,None)
     else: 
-      if not isinstance(timeSlice,slice): raise TypeError, timeSlice
+      if not isinstance(timeSlice,slice): raise TypeError(timeSlice)
     # add variables that will cause errors to ignorelist (e.g. strings)
     for varname,var in self.source.variables.iteritems():
       if var.hasAxis(timeAxis) and var.dtype.kind == 'S': self.ignorelist.append(varname)
@@ -695,7 +713,7 @@ class CentralProcessingUnit(object):
       interval = len(climAxis)
       newshape = list(var.shape)
       newshape[tidx] = interval # shape of the climatology field  
-      if not (interval == 12): raise NotImplementedError
+      if not (interval == 12): raise NotImplementedError(interval)
       # load data
       if timeSlice is not None:
         idx = tuple([timeSlice if ax.name == timeAxis else slice(None) for ax in var.axes])
@@ -756,15 +774,15 @@ class CentralProcessingUnit(object):
       for key,value in kwargs.iteritems():
         if self.target.hasAxis(key) or self.input.hasAxis(key):
           if axis is None: axis = key; shift = value
-          else: raise ProcessError, "Can only process one coordinate shift at a time."
+          else: raise ProcessError("Can only process one coordinate shift at a time.")
       del kwargs[axis] # remove entry 
     # check input
     if isinstance(axis,basestring):
       if self.target.hasAxis(axis): axis = self.target.axes[axis]
       elif self.input.hasAxis(axis): axis = self.input.axes[axis].copy()
-      else: raise AxisError, "Axis '%s' not found in Dataset."%axis
+      else: raise AxisError("Axis '{}' not found in Dataset.".format(axis))
     else: 
-      if not isinstance(axis,Axis): raise TypeError
+      if not isinstance(axis,Axis): raise TypeError(axis)
     # apply shift to new axis
     if byteShift:
       # shift coordinate vector like data
