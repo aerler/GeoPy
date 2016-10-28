@@ -200,8 +200,8 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-  mode = 'merge_climatologies'
-#   mode = 'merge_timeseries'
+#   mode = 'merge_climatologies'
+  mode = 'merge_timeseries'
 #   mode = 'test_climatology'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
@@ -209,6 +209,7 @@ if __name__ == '__main__':
   # settings to generate dataset
   grids = []
 #   grids += ['shpavg']
+  grids += ['wcshp']
 #   grids += ['arb2_d01']
 #   grids += ['arb2_d02']
 #   grids += ['arb3_d01']
@@ -224,7 +225,7 @@ if __name__ == '__main__':
 #   grids += ['col2_d03'] 
 #   grids += ['ARB_small_025']
 #   grids += ['ARB_large_025']
-  grids += ['cesm1x1']
+#   grids += ['cesm1x1']
 #   grids += ['NARR']
   periods = []
 #   periods += [(1979,1980)]
@@ -316,7 +317,7 @@ if __name__ == '__main__':
         ## load source datasets
 #         period = (1979,2009)
         period = (1979,1994)
-        if grid in ('shpavg',):
+        if grid in ('shpavg','wcshp','glbshp','glakes'):
           # regional averages: shape index as grid
           uclim = loadUnity_Shp(shape=pntset, period=period)
           cruclim = loadCRU_Shp(shape=grid, period=period)

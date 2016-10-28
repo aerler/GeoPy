@@ -1259,7 +1259,7 @@ class ShapeSet(Shape):
 ## run a test    
 if __name__ == '__main__':
 
-  from datasets.common import grid_folder
+  from datasets.common import grid_folder, data_root
 
   mode = 'read_shape'
   
@@ -1267,12 +1267,9 @@ if __name__ == '__main__':
   if mode == 'read_shape':
     
     # load shapefile
-    #folder = shape_folder+'ARB_Aquanty'; shapefile='ARB_Basins_Outline_WGS84.shp'
-    #   folder = '/data/WSC/Basins/Athabasca River Basin/'; shapefile='UpperARB.shp' 
-    #   folder = '/data/WSC/Basins/Fraser River Basin/'; shapefile='WholeFRB.shp'
-    #   folder = '/data/EC/Provinces/Alberta/'; shapefile='Alberta.shp'
-    #   folder = '/data/EC/Provinces/British Columbia/'; shapefile='British Columbia.shp'
-    folder = '/data/EC/Provinces/Manitoba/'; shapefile='Manitoba.shp'
+#     folder = data_root+'/shapes/Provinces/Manitoba/'; shapefile='Manitoba.shp'
+    folder = data_root+'/shapes/Basins/Athabasca River Basin/'; shapefile='WholeARB.shp'
+#     folder = data_root+'/shapes/Basins/South Sasketchewan River/'; shapefile='WholeSSR.shp'
     shape = Shape(folder=folder, shapefile=shapefile)  
     # get mask from shape file
     griddef = loadPickledGridDef('arb2_d02', res=None, folder=grid_folder)

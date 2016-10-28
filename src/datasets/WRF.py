@@ -1005,10 +1005,10 @@ if __name__ == '__main__':
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #  mode = 'test_point_climatology'
-#   mode = 'test_point_timeseries'
+  mode = 'test_point_timeseries'
 #  mode = 'test_point_ensemble'
-  mode = 'pickle_grid' 
-  pntset = 'shpavg'
+#   mode = 'pickle_grid' 
+  pntset = 'wcshp'
 #   pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
   grids = ['glb1-90km','glb1','arb1', 'arb2', 'arb3']; regions = ['GreatLakes']*2+['WesternCanada']*3; domains = [(1,)]+[(1,2)]*4
@@ -1018,8 +1018,8 @@ if __name__ == '__main__':
 #   grids = ['wc2']; experiments = ['erai-wc2-2013']; domains = [1,2]
 #   grids = ['arb2-120km']; experiments = ['max-lowres']; domains = [1,]   
     
-#   from projects.WesternCanada.WRF_experiments import Exp, WRF_exps, ensembles
-  from projects.GreatLakes.WRF_experiments import Exp, WRF_exps, ensembles
+  from projects.WesternCanada.WRF_experiments import Exp, WRF_exps, ensembles
+#   from projects.GreatLakes.WRF_experiments import Exp, WRF_exps, ensembles
   # N.B.: importing Exp through WRF_experiments is necessary, otherwise some isinstance() calls fail
     
   # pickle grid definition
@@ -1122,7 +1122,7 @@ if __name__ == '__main__':
   elif mode == 'test_point_climatology':
     
     print('')
-    if pntset in ('shpavg',):
+    if pntset in ('shpavg','wcshp','glbshp','glakes'):
       dataset = loadWRF_Shp(experiment='max', domains=None, shape=pntset, filetypes=['hydro'], period=(1979,1994), exps=WRF_exps)
       print('')
       print(dataset.shape)
@@ -1144,8 +1144,8 @@ if __name__ == '__main__':
   elif mode == 'test_point_timeseries':
     
     print('')
-    if pntset in ('shpavg',):
-      dataset = loadWRF_ShpTS(experiment='g-ctrl', domains=None, varlist=None, #['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
+    if pntset in ('shpavg','wcshp','glbshp','glakes'):
+      dataset = loadWRF_ShpTS(experiment='max-ctrl', domains=None, varlist=None, #['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
                               shape=pntset, filetypes=['hydro'], exps=WRF_exps)
     else:
       dataset = loadWRF_StnTS(experiment='max-ens-A', domains=None, varlist=['zs','stn_zs','MaxPrecip_6h'],
@@ -1159,18 +1159,20 @@ if __name__ == '__main__':
     print(dataset.time)
     print(dataset.time.offset)
     print(dataset.time.coord)
+    print('')
+    for name in dataset.shape_name[:]: print(name)
     
   
   # load station ensemble "time-series"
   elif mode == 'test_point_ensemble':
     lensembleAxis = False
     print('')
-    if pntset in ('shpavg',):
+    if pntset in ('shpavg','wcshp','glbshp','glakes'):
 #       dataset = loadWRF_ShpEns(ensemble=['max-ctrl','max-ens-A'], shape=pntset, domains=None, filetypes=['hydro','srfc'])
-      dataset = loadWRF_ShpEns(ensemble='g-ens', shape=pntset, varlist=['precip','runoff'], domains=2, 
+      dataset = loadWRF_ShpEns(ensemble='max-ens', shape=pntset, varlist=['precip','runoff'], domains=2, 
                                filetypes=['srfc','lsm',], lensembleAxis=lensembleAxis, exps=WRF_exps, enses=ensembles)
     else:
-      dataset = loadWRF_StnEns(ensemble='g-ens-2100', station=pntset, lensembleAxis=lensembleAxis,  
+      dataset = loadWRF_StnEns(ensemble='max-ens-2100', station=pntset, lensembleAxis=lensembleAxis,  
                                varlist=['MaxPrecip_6h'], filetypes=['srfc'], exps=WRF_exps, enses=ensembles)
     assert not lensembleAxis or dataset.hasAxis('ensemble')
     dataset.load()

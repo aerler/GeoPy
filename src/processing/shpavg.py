@@ -197,9 +197,9 @@ if __name__ == '__main__':
     shapes = config['shapes']
   else:
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 1 ; ldebug = False # for quick computations
-#     modes = ('time-series',) # 'climatology','time-series'
-    modes = ('climatology',) 
+    NP = 2 ; ldebug = False # for quick computations
+    modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('climatology',) 
     loverwrite = True
     varlist = None # ['T2']
     periods = []
@@ -216,7 +216,7 @@ if __name__ == '__main__':
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
-    datasets += ['NARR']
+#     datasets += ['NARR']
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False
@@ -225,23 +225,30 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['atm'] # ,'lnd'
     CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
-    WRF_project = 'GreatLakes' # only use GreatLakes experiments
+    WRF_project = 'WesternCanada' # only use GreatLakes experiments
     WRF_experiments = []
 #     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
 #     WRF_experiments += ['g-ctrl', 'g-ctrl-2050', 'g-ctrl-2100']
 #     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',][1:]
 #     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',][1:]
 #     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',][1:]
-#     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][1:]
+    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
     # other WRF parameters 
 #     domains = None # domains to be processed
     domains = (2,) # domains to be processed
-    WRF_filetypes = ('srfc',)
+    WRF_filetypes = ('hydro','lsm','xtrm')
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None
     # define shape data  
+    shape_name = 'wcavg' # Western Canadian shapes
+    shapes = OrderedDict()
+    shapes['provinces'] = ['BC','AB'] # Canadian provinces from EC module
+    shapes['basins'] = ['PSB','NorthernPSB','SouthernPSB','FRB','UpperFRB','LowerFRB','CRB',
+                        'ARB','UpperARB','LowerARB','SSR','NRB',] # river basins (in Canada) from WSC module
 #     shape_name = 'shpavg' # Canadian shapes
 #     shapes = dict()
 #     shapes['basins'] = None # river basins (in Canada) from WSC module
@@ -251,9 +258,9 @@ if __name__ == '__main__':
 #     shapes = dict()
 #     shapes['basins'] = ['GLB','GRW'] # river basins (in Canada) from WSC module
 #     shapes['provinces'] = ['ON'] # Canadian provinces from EC module
-    shape_name = 'glakes' # Great Lakes
-    shapes = OrderedDict()
-    shapes['great_lakes'] = None # the Great Lakes of North America
+#     shape_name = 'glakes' # Great Lakes
+#     shapes = OrderedDict()
+#     shapes['great_lakes'] = None # the Great Lakes of North America
      
  
   ## process arguments    
