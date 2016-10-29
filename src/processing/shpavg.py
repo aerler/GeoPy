@@ -222,24 +222,25 @@ if __name__ == '__main__':
     load3D = False
     CESM_experiments = [] # use None to process all CESM experiments
 #     CESM_experiments += ['Ctrl-1']
-#     CESM_filetypes = ['atm'] # ,'lnd'
-    CESM_filetypes = ['lnd']
+    CESM_filetypes = ['atm'] # ,'lnd'
+#     CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
     WRF_project = 'WesternCanada' # only use GreatLakes experiments
-    WRF_experiments = []
+    WRF_experiments = ['max-ens-B-2050']
 #     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
 #     WRF_experiments += ['g-ctrl', 'g-ctrl-2050', 'g-ctrl-2100']
 #     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',][1:]
 #     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',][1:]
 #     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',][1:]
-    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
-    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+#     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+#     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
     # other WRF parameters 
 #     domains = None # domains to be processed
     domains = (2,) # domains to be processed
-    WRF_filetypes = ('hydro','lsm','xtrm')
+    WRF_filetypes = ('srfc',)
+#     WRF_filetypes = ('hydro','lsm','xtrm')
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None

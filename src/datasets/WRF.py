@@ -527,7 +527,7 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
   # name check
   if isinstance(name,(list,tuple)) and all([isinstance(n,basestring) for n in name]): names = name
   elif isinstance(name,basestring): names = [name]
-  else: raise TypeError
+  else: raise TypeError(name)
   # domain check
   if not isinstance(domains,(list,tuple)): domains = [domains]*len(names)
   elif isinstance(domains,tuple): domains = list(domains)
