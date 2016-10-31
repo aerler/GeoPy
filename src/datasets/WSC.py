@@ -500,10 +500,13 @@ if __name__ == '__main__':
   # N.B.: importing BasinInfo through WSC_basins is necessary, otherwise some isinstance() calls fail
   basin_list = dict(GRW=BasinSet(name='GRW', long_name='Grand River Watershed', rivers=['Grand River'], 
                                  data_source='Aquanty', stations={'Grand River':['Brantford']}, 
-                                 subbasins=['WholeGRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW']))
+                                 subbasins=['WholeGRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW']),
+                    SSR=BasinSet(name='SSR', long_name='South Saskatchewan River', rivers=['South Saskatchewan'], 
+                                 data_source='Aquanty', stations={'South Saskatchewan':['St Louis','Saskatoon']}, 
+                                 subbasins=['WholeSSR']))
+#   basin_name = 'GRW'
+  basin_name = 'SSR'
 
-  basin_name = 'GRW'
-    
   # verify basin info
   basin_set = basin_list[basin_name]
   print basin_set.long_name

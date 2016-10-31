@@ -13,6 +13,7 @@ import numpy.ma as ma
 import os, gc
 # internal imports
 from geodata.base import Variable
+from geodata.misc import DatasetError
 from geodata.netcdf import DatasetNetCDF 
 from datasets.common import days_per_month, name_of_month,  shp_params, CRU_vars
 from datasets.common import getFileName, data_root, loadObservations, grid_folder
@@ -103,7 +104,7 @@ avgfolder = root_folder + 'unityavg/' # prefix
 avgfile = 'unity{0:s}_clim{1:s}.nc' # formatted NetCDF file
 # function to load these files...
 def loadUnity(name=dataset_name, period=None, grid=None, varlist=None, varatts=None, 
-              folder=avgfolder, filelist=None, lautoregrid=False, resolution=None):
+              folder=avgfolder, filelist=None, lautoregrid=False, resolution=None, unity_grid=None):
   ''' Get the pre-processed, unified monthly climatology as a DatasetNetCDF. '''
   #if lautoregrid: warn("Auto-regridding is currently not available for the unified dataset - use the generator routine instead.")
   # a climatology is not available
@@ -112,7 +113,9 @@ def loadUnity(name=dataset_name, period=None, grid=None, varlist=None, varatts=N
     warn('A climatology is not available for the Unified Dataset; loading period {0:4d}-{1:4d}.'.format(*period))
   # this dataset has not native/default grid
   if grid is None: 
-    grid = 'glb1_d02'
+    if unity_grid is None: 
+      raise DatasetError("The Unified Dataset has no native grid; need to define a default grid 'unity_grid'.")
+    grid = unity_grid
     warn('The Unified Dataset has no native grid; loading {0:s} grid.'.format(grid))
   # load standardized climatology dataset with PRISM-specific parameters  
   dataset = loadSpecialObs(name=name, folder=folder, period=period, grid=grid, shape=None, station=None, 
@@ -200,8 +203,8 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-#   mode = 'merge_climatologies'
-  mode = 'merge_timeseries'
+  mode = 'merge_climatologies'
+#   mode = 'merge_timeseries'
 #   mode = 'test_climatology'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
@@ -209,9 +212,10 @@ if __name__ == '__main__':
   # settings to generate dataset
   grids = []
 #   grids += ['shpavg']
-  grids += ['wcshp']
+#   grids += ['wcshp']
+#   grids += ['wcavg']
 #   grids += ['arb2_d01']
-#   grids += ['arb2_d02']
+  grids += ['arb2_d02']
 #   grids += ['arb3_d01']
 #   grids += ['arb3_d02']
 #   grids += ['glb1_d01']
@@ -230,13 +234,13 @@ if __name__ == '__main__':
   periods = []
 #   periods += [(1979,1980)]
 #   periods += [(1979,1982)]
-  periods += [(1979,1984)]
-  periods += [(1979,1989)]
+#   periods += [(1979,1984)]
+#   periods += [(1979,1989)]
   periods += [(1979,1994)]
 #   periods += [(1984,1994)]
 #   periods += [(1989,1994)]
 #   periods += [(1997,1998)]
-#   periods += [(1979,2009)]
+  periods += [(1979,2009)]
 #   periods += [(1949,2009)]
   pntset = 'shpavg'
 #   pntset = 'ecprecip'
@@ -317,9 +321,9 @@ if __name__ == '__main__':
         ## load source datasets
 #         period = (1979,2009)
         period = (1979,1994)
-        if grid in ('shpavg','wcshp','glbshp','glakes'):
+        if grid in ('shpavg','wcavg','wcshp','glbshp','glakes'):
           # regional averages: shape index as grid
-          uclim = loadUnity_Shp(shape=pntset, period=period)
+          uclim = loadUnity_Shp(shape=grid, period=period)
           cruclim = loadCRU_Shp(shape=grid, period=period)
           cruts = loadCRU_ShpTS(shape=grid)           
         else:
@@ -359,7 +363,7 @@ if __name__ == '__main__':
               unityarray = var.load().data_array.repeat(reps, axis=1)
               climarray = climvar.load().data_array.repeat(reps, axis=1)
               tsarray = tsvar.load().data_array
-              assert unityarray.shape == climarray.shape == tsarray.shape, climarray.shape
+              assert unityarray.shape == climarray.shape == tsarray.shape, (unityarray.shape,climarray.shape,tsarray.shape)
               array = tsarray - climarray + unityarray
               newvar = var.copy(data=array, axes=tsvar.axes) # generate variable copy
               tsvar.unload(); climvar.unload(); var.unload()

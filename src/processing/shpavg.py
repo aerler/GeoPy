@@ -15,7 +15,7 @@ from datetime import datetime
 import logging   
 from collections import OrderedDict
 # internal imports
-from geodata.misc import DateError, printList
+from geodata.misc import DateError, DatasetError, printList
 from geodata.netcdf import DatasetNetCDF
 from geodata.base import Dataset
 from datasets import gridded_datasets
@@ -181,6 +181,7 @@ if __name__ == '__main__':
     # Datasets
     datasets = config['datasets']
     resolutions = config['resolutions']
+    unity_grid = config.get('unity_grid',None)
     lLTM = config['lLTM']
     # CESM
     CESM_project = config['CESM_project']
@@ -197,9 +198,9 @@ if __name__ == '__main__':
     shapes = config['shapes']
   else:
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 2 ; ldebug = False # for quick computations
-    modes = ('time-series',) # 'climatology','time-series'
-#     modes = ('climatology',) 
+    NP = 4 ; ldebug = False # for quick computations
+#     modes = ('time-series',) # 'climatology','time-series'
+    modes = ('climatology',) 
     loverwrite = True
     varlist = None # ['T2']
     periods = []
@@ -207,16 +208,16 @@ if __name__ == '__main__':
 #     periods += [3]
 #    periods += [5]
 #    periods += [10]
-    periods += [15]
-#     periods += [30]
+#     periods += [15]
+    periods += [30]
     # Observations/Reanalysis
     lLTM = True 
-    datasets = []; resolutions = None
+    datasets = []; resolutions = None; unity_grid = None #'arb2_d02'
     resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':['031','05']}
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
-#     datasets += ['NARR']
+    datasets += ['Unity']    
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False
@@ -225,8 +226,9 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm'] # ,'lnd'
 #     CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
-    WRF_project = 'WesternCanada' # only use GreatLakes experiments
-    WRF_experiments = ['max-ens-B-2050']
+    WRF_project = 'WesternCanada' # only use WesternCanada experiments
+#     WRF_project = 'GreatLakes' # only use GreatLakes experiments
+    WRF_experiments = []
 #     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
 #     WRF_experiments += ['g-ctrl', 'g-ctrl-2050', 'g-ctrl-2100']
 #     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',][1:]
@@ -272,7 +274,11 @@ if __name__ == '__main__':
   # check and expand CESM experiment list
   CESM_experiments = getExperimentList(CESM_experiments, CESM_project, 'CESM')
   # expand datasets and resolutions
-  if datasets is None: datasets = gridded_datasets  
+  if datasets is None: datasets = gridded_datasets
+  if unity_grid is None and 'Unity' in datasets:
+    if WRF_project: unity_grid = import_module('projects.{:s}'.format(WRF_project)).unity_grid
+    else: raise DatasetError("Dataset 'Unity' has no native grid - please set 'unity_grid'.") 
+  
 
   # import shapes from project
   proj_dict = getProjectVars(shapes.keys(), project=WRF_project, module=None)
@@ -332,19 +338,19 @@ if __name__ == '__main__':
           if resolutions is None: dsreses = mod.LTM_grids
           elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.LTM_grids]  
           for dsres in dsreses: 
-            args.append( (dataset, mode, shape_name, shape_dict, dict(varlist=varlist, period=None, resolution=dsres)) ) # append to list
+            args.append( (dataset, mode, shape_name, shape_dict, dict(varlist=varlist, period=None, resolution=dsres, unity_grid=unity_grid)) ) # append to list
         # climatologies derived from time-series
         if resolutions is None: dsreses = mod.TS_grids
         elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
         for dsres in dsreses:
           for period in periodlist:
-            args.append( (dataset, mode, shape_name, shape_dict, dict(varlist=varlist, period=period, resolution=dsres)) ) # append to list            
+            args.append( (dataset, mode, shape_name, shape_dict, dict(varlist=varlist, period=period, resolution=dsres, unity_grid=unity_grid)) ) # append to list            
       elif mode == 'time-series': 
         # regrid the entire time-series
         if resolutions is None: dsreses = mod.TS_grids
         elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
         for dsres in dsreses:
-          args.append( (dataset, mode, shape_name, shape_dict, dict(varlist=varlist, period=None, resolution=dsres)) ) # append to list            
+          args.append( (dataset, mode, shape_name, shape_dict, dict(varlist=varlist, period=None, resolution=dsres, unity_grid=unity_grid)) ) # append to list            
     
     # CESM datasets
     for experiment in CESM_experiments:

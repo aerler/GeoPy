@@ -15,8 +15,7 @@ import logging
 # internal imports
 from geodata.base import Dataset
 from geodata.gdal import addGDALtoDataset, addGDALtoVar
-from geodata.misc import DateError, printList, ArgumentError, VariableError,\
-  GDALError
+from geodata.misc import DateError, DatasetError, printList, ArgumentError, VariableError, GDALError
 from datasets import gridded_datasets
 from processing.multiprocess import asyncPoolEC
 from processing.misc import getMetaData,  getExperimentList, loadYAML, getTargetFile
@@ -371,6 +370,7 @@ if __name__ == '__main__':
     # Datasets
     datasets = config['datasets']
     resolutions = config['resolutions']
+    unity_grid = config.get('unity_grid',None)
     lLTM = config['lLTM']
     # CESM
     CESM_project = config['CESM_project']
@@ -404,7 +404,7 @@ if __name__ == '__main__':
     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
-    resolutions = {'CRU':'','GPCC':'25','NARR':'','CFSR':'05'}
+    resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031']}; unity_grid = 'arb2_d02'
     datasets = [] # this will generally not work, because we don't have snow/-melt...
     lLTM = False # also regrid the long-term mean climatologies 
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
@@ -468,7 +468,10 @@ if __name__ == '__main__':
   CESM_experiments = getExperimentList(CESM_experiments, CESM_project, 'CESM')
   # expand datasets and resolutions
   if datasets is None: datasets = gridded_datasets  
-  
+  if unity_grid is None and 'Unity' in datasets:
+    if WRF_project: unity_grid = import_module('projects.{:s}'.format(WRF_project)).unity_grid
+    else: raise DatasetError("Dataset 'Unity' has no native grid - please set 'unity_grid'.") 
+
   # print an announcement
   if len(WRF_experiments) > 0:
     print('\n Exporting WRF Datasets:')
@@ -521,19 +524,19 @@ if __name__ == '__main__':
               if resolutions is None: dsreses = mod.LTM_grids
               elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.LTM_grids]  
               for dsres in dsreses: 
-                args.append( (dataset, mode, dict(grid=grid, varlist=load_list, period=None, resolution=dsres)) ) # append to list
+                args.append( (dataset, mode, dict(grid=grid, varlist=load_list, period=None, resolution=dsres, unity_grid=unity_grid)) ) # append to list
             # climatologies derived from time-series
             if resolutions is None: dsreses = mod.TS_grids
             elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
             for dsres in dsreses:
               for period in periodlist:
-                args.append( (dataset, mode, dict(grid=grid, varlist=load_list, period=period, resolution=dsres)) ) # append to list            
+                args.append( (dataset, mode, dict(grid=grid, varlist=load_list, period=period, resolution=dsres, unity_grid=unity_grid)) ) # append to list            
           elif mode == 'time-series': 
             # regrid the entire time-series
             if resolutions is None: dsreses = mod.TS_grids
             elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
             for dsres in dsreses:
-              args.append( (dataset, mode, dict(grid=grid, varlist=load_list, period=None, resolution=dsres)) ) # append to list            
+              args.append( (dataset, mode, dict(grid=grid, varlist=load_list, period=None, resolution=dsres, unity_grid=unity_grid)) ) # append to list            
         
         # CESM datasets
         for experiment in CESM_experiments:

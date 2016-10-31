@@ -245,12 +245,11 @@ def getMetaData(dataset, mode, dataargs, lone=True):
     avgfolder = module.avgfolder
     filepath = '{:s}/{:s}'.format(avgfolder,filename)
     # load pre-processed climatology
-    if lclim:
-      loadfct = partial(module.loadClimatology, name=dataset_name, period=period, grid=grid, 
-                        varlist=varlist, resolution=resolution, varatts=None)
-    elif lts:
-      loadfct = partial(module.loadTimeSeries, name=dataset_name, grid=grid, varlist=varlist,
-                        resolution=resolution, varatts=None)
+    kwargs = dict(name=dataset_name, grid=grid, varlist=varlist, resolution=resolution, varatts=None)
+    if dataset == 'Unity': kwargs['unity_grid'] = dataargs['unity_grid']
+    if lclim: loadfct = partial(module.loadClimatology, period=period, **kwargs)
+    elif lts: loadfct = partial(module.loadTimeSeries, **kwargs)
+    else: raise DatasetError('Unable to identify time aggregation mode.')
     # check if the source file is actually correct
     if os.path.exists(filepath): filelist = [filepath]
     else:
@@ -261,7 +260,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
       # N.B.: it would be nice to print a message, but then we would have to make the logger available,
       #       which would be too much trouble
   else:
-    raise DatasetError, "Dataset '{:s}' not found!".format(dataset)
+    raise DatasetError("Dataset '{:s}' not found!".format(dataset))
   ## assemble and return meta data
   dataargs = namedTuple(dataset_name=dataset_name, period=period, periodstr=periodstr, avgfolder=avgfolder, 
                         filetypes=filetypes,filetype=filetypes[0], domain=domain, obs_res=obs_res, 
