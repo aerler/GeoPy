@@ -42,7 +42,7 @@ class ElementWise():
       l = len(args[0])
       for arg in args: # check consistency
         if not isinstance(arg, col.Iterable) and len(arg)==l: 
-          raise TypeError, 'All list arguments have to be of the same length!'
+          raise TypeError('All list arguments have to be of the same length!')
       results = [] # output list
       for i in xrange(l):
         eltargs = [arg[i] for arg in args] # construct argument list for this element
@@ -97,7 +97,7 @@ def isZero(data, eps=None, masked_equal=True):
       return np.absolute(data) <= eps
   elif isinstance(data,(int,bool)) or isinstance(data, (np.integer,np.bool)):
       return data == 0
-  else: raise TypeError
+  else: raise TypeError(data)
 # check if an array is one within machine precision
 def isOne(data, eps=None, masked_equal=True):
   ''' This function checks if a numpy array or scalar is one within machine precision, and returns a scalar logical. '''
@@ -111,7 +111,7 @@ def isOne(data, eps=None, masked_equal=True):
       return np.absolute(data-1) <= eps
   elif isinstance(data,(int,bool)) or isinstance(data, (np.integer,np.bool)):
       return data == 1
-  else: raise TypeError
+  else: raise TypeError(data)
 
 # check if two arrays are equal within machine precision
 def isEqual(left, right, eps=None, masked_equal=True):
@@ -119,7 +119,7 @@ def isEqual(left, right, eps=None, masked_equal=True):
   diff_type = "Both arguments to function 'isEqual' must be of the same class!"
   if isinstance(left,np.ndarray):
     # ndarray
-    if not isinstance(right,np.ndarray): raise TypeError, diff_type 
+    if not isinstance(right,np.ndarray): raise TypeError(diff_type)
     if not left.dtype==right.dtype:
       right = right.astype(left.dtype) # casting='same_kind' doesn't work...
     if np.issubdtype(left.dtype, np.inexact): # also catch float32 etc
@@ -129,7 +129,7 @@ def isEqual(left, right, eps=None, masked_equal=True):
       return np.all( left == right ) # need to use numpy's all()
   elif isinstance(left,(float,np.inexact)):
     # numbers
-    if not isinstance(right,(float,np.inexact)): raise TypeError, diff_type
+    if not isinstance(right,(float,np.inexact)): raise TypeError(diff_type)
     if eps is None: eps = 100.*floateps # default
     if ( isinstance(right,float) or isinstance(right,float) ) or left.dtype.itemsize == right.dtype.itemsize: 
       return np.absolute(left-right) <= eps
@@ -139,9 +139,9 @@ def isEqual(left, right, eps=None, masked_equal=True):
       return np.absolute(left-right) <= eps  
   elif isinstance(left,(int,bool,np.integer,np.bool)):
     # logicals
-    if not isinstance(right,(int,bool,np.integer,np.bool)): raise TypeError, diff_type
+    if not isinstance(right,(int,bool,np.integer,np.bool)): raise TypeError(diff_type)
     return left == right
-  else: raise TypeError
+  else: raise TypeError(left)
  
 
 def translateSeasons(months):
@@ -155,7 +155,7 @@ def translateSeasons(months):
     elif all([isinstance(s,basestring) for s in months]):
       # list of names of month, optionally abbreviated, case insensitive
       idx = [abbr_of_month.index(mon[:3].lower()) for mon in months] 
-    else: raise TypeError      
+    else: raise TypeError(months)
   elif isinstance(months,basestring):
     ssn = months.lower() # ignore case
     if ssn in abbr_of_month: # name of a month, optionally abbreviated, case insensitive 
@@ -174,8 +174,8 @@ def translateSeasons(months):
       elif ssn in year: 
         s = year.find(ssn) # find first occurrence of sequence
         idx = np.arange(s,s+len(ssn))%12 # and use range of months
-      else: raise ValueError, "Unknown key word/months/season: '{:s}'".format(str(months))
-  else: raise TypeError, "Unknown identifier for months/season: '{:s}'".format(str(months))
+      else: raise ValueError("Unknown key word/months/season: '{:s}'".format(str(months)))
+  else: raise TypeError("Unknown identifier for months/season: '{:s}'".format(str(months)))
   # return indices for selected month
   idx = np.asarray(idx, dtype=np.int32) # return integers
   return idx
@@ -183,10 +183,10 @@ def translateSeasons(months):
 # utility function
 def genStrArray(string_list):
   ''' utility function to generate a string array from a list of strings '''
-  if not isinstance(string_list,(list,tuple)): raise TypeError
+  if not isinstance(string_list,(list,tuple)): raise TypeError(string_list)
   strlen = 0; new_list = []
   for string in string_list:
-    if not isinstance(string,basestring): raise TypeError
+    if not isinstance(string,basestring): raise TypeError(string)
     strlen = max(len(string),strlen)
     new_list.append(string.ljust(strlen))
   strarray = np.array(new_list, dtype='|S{:d}'.format(strlen))
@@ -296,18 +296,18 @@ class RecordClass(object):
         # simple type checking
         if getattr(self,key) is None: pass # no type checking...
         elif isinstance(getattr(self,key), basestring) and not isinstance(value, basestring):
-          raise TypeError, "Parameter '{:s}' has to be of type 'basestring'.".format(key)  
+          raise TypeError("Parameter '{:s}' has to be of type 'basestring'.".format(key)  )
         elif ( isinstance(getattr(self,key), (float,np.inexact)) and 
                not isinstance(value, (int,np.integer,float,np.inexact)) ):
-          raise TypeError, "Parameter '{:s}' has to be of a numeric type.".format(key)
+          raise TypeError("Parameter '{:s}' has to be of a numeric type.".format(key))
         elif ( isinstance(getattr(self,key), (int,np.integer)) and 
                not isinstance(value, (int,np.integer)) ):
-          raise TypeError, "Parameter '{:s}' has to be of an integer type.".format(key)
+          raise TypeError("Parameter '{:s}' has to be of an integer type.".format(key))
         elif isinstance(getattr(self,key), (bool,np.bool)) and not isinstance(value, (bool,np.bool)):
-          raise TypeError, "Parameter '{:s}' has to be of boolean type.".format(key)  
+          raise TypeError("Parameter '{:s}' has to be of boolean type.".format(key))
         # unfortunately this automated approach makes type checking a bit clumsy
         self.__dict__[key] = value
-      else: raise ArgumentError, "Invalid parameter: '{:s}'".format(key)
+      else: raise ArgumentError("Invalid parameter: '{:s}'".format(key))
       
 class StrictRecordClass(RecordClass):
   '''
@@ -320,7 +320,7 @@ class StrictRecordClass(RecordClass):
     # check that all parameters are set
     for param in self.__params__:
       if param not in self.__dict__:
-        raise ArgumentError, "Parameter '{:s}' was not set (missing argument).".format(param)    
+        raise ArgumentError("Parameter '{:s}' was not set (missing argument).".format(param))
 
 
 ## Error handling classes

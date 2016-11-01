@@ -12,7 +12,7 @@ import scipy.linalg as la
 from utils.signalsmooth import smooth
 import collections as col
 # internal imports
-from geodata.misc import ArgumentError, isEqual, AxisError, isNumber
+from geodata.misc import ArgumentError, isEqual, AxisError
 
 ## a method to tabulate variables (adapted from Variable) 
 def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}', cell_idx=None, cell_fct=None, 
@@ -21,29 +21,29 @@ def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}'
       cell_str controls formatting of each cell, and also supports multiple arguments along 
       an axis. lflatten skips cell axis checking and lumps all remaining axes together. '''
   # check input
-  if not isinstance(data, np.ndarray): raise TypeError
+  if not isinstance(data, np.ndarray): raise TypeError()
   if cell_idx is not None:
-    if not data.ndim == 3: raise AxisError
+    if not data.ndim == 3: raise AxisError()
   elif lflatten:
-    if not data.ndim >= 2: raise AxisError
-  elif not data.ndim == 2: raise AxisError
-  if not isinstance(cell_str,basestring): raise TypeError, cell_str
+    if not data.ndim >= 2: raise AxisError()
+  elif not data.ndim == 2: raise AxisError()
+  if not isinstance(cell_str,basestring): raise TypeError(cell_str)
   if cell_fct: 
-    if not callable(cell_fct): raise TypeError, cell_fct
+    if not callable(cell_fct): raise TypeError(cell_fct)
     lcellfct = True
   else: lcellfct = False
-  if cell_idx >= data.ndim: raise AxisError, cell_idx
+  if cell_idx >= data.ndim: raise AxisError(cell_idx)
   collen = data.shape[col_idx]; rowlen = data.shape[row_idx] 
   if row_idx < col_idx: col_idx -= 1 # this is a shortcut for later (data gets sliced by row)
   llabel = False; lheader = False
   if labels: 
-    if len(labels) != rowlen: raise AxisError, data.shape
+    if len(labels) != rowlen: raise AxisError(data.shape)
     llabel = True 
   if header: 
     if llabel:
       if len(header) == collen: header = ('',) + tuple(header)
-      elif not len(header) == collen+1: raise AxisError, header
-    elif not len(header) == collen: raise AxisError, header
+      elif not len(header) == collen+1: raise AxisError(header)
+    elif not len(header) == collen: raise AxisError(header)
     lheader = True
   ## assemble table in nested list
   table = [] # list of rows
@@ -58,7 +58,7 @@ def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}'
       # pass data to string of function
       if isinstance(celldata, np.ndarray):
         if lflatten: celldata = celldata.ravel() 
-        elif celldata.ndim > 1: raise AxisError, celldata.shape
+        elif celldata.ndim > 1: raise AxisError(celldata.shape)
         cell = cell_fct(celldata) if lcellfct else cell_str.format(*celldata) 
       else: 
         cell = cell_fct(celldata) if lcellfct else cell_str.format(celldata)
@@ -155,18 +155,18 @@ def toNumpyScalar(num, dtype=None):
     if isinstance(num, float): num = np.float64(num)
     elif isinstance(num, int): num = np.int64(num)
     elif isinstance(num, bool): num = np.bool8(num)
-    else: raise NotImplementedError, num
+    else: raise NotImplementedError(num)
   return num
 
 # transform an n-dim array to a 2-dim array by collapsing all but the last/innermost dimension
 def collapseOuterDims(ndarray, axis=None, laddOuter=True):
   ''' transform an n-dim array to a 2-dim array by collapsing all but the last/innermost dimension '''
-  if not isinstance(ndarray, np.ndarray): raise TypeError, ndarray
+  if not isinstance(ndarray, np.ndarray): raise TypeError(ndarray)
   if ndarray.ndim <2:
     if laddOuter: ndarray.reshape((1,ndarray.size))
-    else: raise AxisError, ndarray.shape
+    else: raise AxisError(ndarray.shape)
   if axis is not None and not (axis == -1 or axis == ndarray.ndim-1):
-    if not isinstance(axis,(int,np.integer)): raise TypeError, axis
+    if not isinstance(axis,(int,np.integer)): raise TypeError(axis)
     ndarray = np.rollaxis(ndarray, axis=axis, start=ndarray.ndim) # make desired axis innermost axis
   shape = (np.prod(ndarray.shape[:-1]), ndarray.shape[-1]) # new 2D shape
   ndarray = np.reshape(ndarray, shape) # just a new view
@@ -182,11 +182,11 @@ def apply_over_arrays(fct, *arrays, **kwargs):
   arrays = [collapseOuterDims(array, axis=axis, laddOuter=True) for array in arrays]
   ie = arrays[0].shape[0]
   if not all(array.shape[0]==ie for array in arrays): 
-    raise AxisError, "Cannot coerce input arrays into compatible shapes."
+    raise AxisError("Cannot coerce input arrays into compatible shapes.")
   # special handling of output arrays
   if lout: 
     out = collapseOuterDims(kwargs['out'], axis=axis, laddOuter=True)
-    if out.shape[0] != ie: raise AxisError, "Output array has incompatible shape."  
+    if out.shape[0] != ie: raise AxisError("Output array has incompatible shape.")
   # loop over outer dimension and apply function
   if lexitcode: ecs = [] # exit code
   for i in xrange(ie):
@@ -194,7 +194,7 @@ def apply_over_arrays(fct, *arrays, **kwargs):
     if lout: kwargs['out'] = out[i,:]
     ec = fct(*arrslc, **kwargs)
     if lexitcode: ecs.append(ec)
-  #if lexitcode and not all(ecs): raise AssertionError, "Some function executions were not successful!"
+  #if lexitcode and not all(ecs): raise AssertionError("Some function executions were not successful!")
   # return output list (or None's if fct has no exit code)
   return ecs if lexitcode else None
 
@@ -233,7 +233,7 @@ def _prepareList(exp_list, kwargs):
   exp_dict = {el:kwargs[el] for el in exp_list}
   for el in exp_list: del kwargs[el]
   for el in exp_list: # check types 
-    if not isinstance(exp_dict[el], (list,tuple)): raise TypeError, el
+    if not isinstance(exp_dict[el], (list,tuple)): raise TypeError(el)
   return exp_list, exp_dict
 
 # helper function to form inner and outer product of multiple lists
@@ -250,10 +250,10 @@ def expandArgumentList(inner_list=None, outer_list=None, expand_list=None, lprod
       
     # handle legacy arguments
     if expand_list is not None:
-      if inner_list is not None or outer_list is not None: raise ArgumentError, "Can not mix input modes!"      
+      if inner_list is not None or outer_list is not None: raise ArgumentError("Can not mix input modes!")
       if lproduct.lower() == 'inner': inner_list = expand_list
       elif lproduct.lower() == 'outer': outer_list = expand_list
-      else: raise ArgumentError, lproduct
+      else: raise ArgumentError(lproduct)
     outer_list = outer_list or []; inner_list = inner_list or []
       
     # handle outer product expansion first
@@ -270,12 +270,12 @@ def expandArgumentList(inner_list=None, outer_list=None, expand_list=None, lprod
           # retrieve parallel expansion group 
           par_args = [kwtmp.pop(name) for name in kw]
           if not all([len(args) == len(par_args[0]) for args in par_args]): 
-            raise ArgumentError, "Lists for parallel expansion arguments have to be of same length!"
+            raise ArgumentError("Lists for parallel expansion arguments have to be of same length!")
           # introduce fake argument and save record
           fake = 'TMP_'+'_'.join(kw)+'_{:d}'.format(len(kw)) # long name that is unlikely to interfere...
           par_dict[fake] = kw # store record of parallel expansion for reassembly later
           kwtmp[fake] = zip(*par_args) # transpose lists to get a list of tuples                      
-        elif not isinstance(kw,basestring): raise TypeError, kw
+        elif not isinstance(kw,basestring): raise TypeError(kw)
       # replace entries in outer list
       if len(par_dict)>0:
         outer_list = outer_list[:] # copy list
@@ -317,7 +317,7 @@ def expandArgumentList(inner_list=None, outer_list=None, expand_list=None, lprod
         if len(inner_dict[el]) == 1: 
           inner_dict[el] = inner_dict[el]*lstlen # broadcast singleton list
         elif len(inner_dict[el]) != lstlen: 
-          raise TypeError, 'Lists have to be of same length to form inner product!'
+          raise TypeError('Lists have to be of same length to form inner product!')
       list_dict = inner_dict
       
     ## generate list of argument dicts
@@ -366,17 +366,17 @@ def binedges(bins=None, binedgs=None, limits=None, lcheckVar=True):
   # check input
   if bins is None and binedgs is None: raise ArgumentError
   elif bins is not None and binedgs is not None:
-    if len(bins)+1 != len(binedgs): raise ArgumentError
+    if len(bins)+1 != len(binedgs): raise ArgumentError(len(bins))
   if bins is not None:
     if limits is not None: vmin, vmax = limits
-    else: raise ArgumentError
+    else: raise ArgumentError(bins)
     # expand bins (values refer to center of bins)
     if isinstance(bins,(int,np.integer)):
       if bins == 1: bins = np.asarray(( (vmin+vmax)/2. ,)) 
       else: bins = np.linspace(vmin,vmax,bins)  
     elif isinstance(bins,(tuple,list)) and  0 < len(bins) < 4: 
       bins = np.linspace(*bins)
-    elif not isinstance(bins,(list,np.ndarray)): raise TypeError
+    elif not isinstance(bins,(list,np.ndarray)): raise TypeError(bins)
     if len(bins) == 1: 
       tmpbinedgs = np.asarray((vmin,vmax))
     else:
@@ -387,7 +387,7 @@ def binedges(bins=None, binedgs=None, limits=None, lcheckVar=True):
   if binedgs is not None:
     # expand bin edges
     if not isinstance(binedgs,(tuple,list)): binedgs = np.asarray(binedgs)
-    elif not isinstance(binedgs,np.ndarray): raise TypeError  
+    elif not isinstance(binedgs,np.ndarray): raise TypeError(binedgs)
     tmpbins = binedgs[1:] - ( np.diff(binedgs) / 2. ) # make sure this is a float!
     if bins is None: bins = tmpbins # compute from binedgs
     elif lcheckVar: assert isEqual(bins, np.asarray(tmpbins, dtype=bins.dtype))
@@ -399,7 +399,7 @@ def binedges(bins=None, binedgs=None, limits=None, lcheckVar=True):
 def PCA(data, degree=None, lprewhiten=False, lpostwhiten=False, lEOF=False, lfeedback=False):
   ''' A function to perform principal component analysis and return the time-series of the leading EOF's. '''
   data = np.asarray(data)
-  if not data.ndim == 2: raise ArgumentError
+  if not data.ndim == 2: raise ArgumentError(data.ndim)
   # pre-whiten features
   if lprewhiten:
     data -= data.mean(axis=0, keepdims=True)
@@ -438,7 +438,7 @@ def histogram(a, bins=10, range=None, weights=None, density=None):
     # determin number of bins
     if isinstance(bins, (list,tuple,np.ndarray)):l = len(bins)-1 # array of bin *edges*
     elif isinstance(bins,(int,np.integer)): l = bins
-    else: raise TypeError, bins
+    else: raise TypeError(bins)
     # make histogram for invalid data... 
     h = np.zeros(l) # counts per bin: nothing
     if density: h *= np.NaN # normalized by integral of nothing...
@@ -491,11 +491,11 @@ def detrend(var, ax=None, lcopy=True, ldetrend=True, ltrend=False, degree=1, rco
     # fit linear trend
     trend = np.polyfit(ax, var, deg=degree, rcond=rcond, w=w, full=False, cov=False)
     # evaluate and subtract linear trend
-    if ldetrend and ltrend: raise ArgumentError, "Can either return trend/polyfit or residuals, not both."
+    if ldetrend and ltrend: raise ArgumentError("Can either return trend/polyfit or residuals, not both.")
     elif ldetrend and not ltrend: var -= np.polyval(trend, ax) # residuals
     elif ltrend and not ldetrend: var = np.polyval(trend, ax) # residuals
   # apply optional smoothing
-  if lsmooth and lresidual: raise ArgumentError, "Can either return smoothed array or residuals, not both."
+  if lsmooth and lresidual: raise ArgumentError("Can either return smoothed array or residuals, not both.")
   elif lsmooth: var = smooth(var, window_len=window_len, window=window)  
   elif lresidual: var -= smooth(var, window_len=window_len, window=window)
   # return detrended and/or smoothed time-series
@@ -505,7 +505,7 @@ def detrend(var, ax=None, lcopy=True, ldetrend=True, ltrend=False, degree=1, rco
 # function to smooth a vector (numpy array): moving mean, nothing fancy
 def movingMean(x,i):
   ''' smooth a vector (x, numpy array) using a moving mean of window width 2*i+1 '''
-  if x.ndim > 1: raise ValueError
+  if x.ndim > 1: raise ValueError(x.ndim)
   xs = x.copy() # smoothed output vector
   i = 2*i
   d = i+1 # denominator  for later

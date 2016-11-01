@@ -2442,13 +2442,13 @@ class Axis(Variable):
   def len(self):
     ''' The length of the axis; if a coordinate vector is present, it is the length of that vector. '''
     if self.data and self._len != self.coord.size: 
-      raise AxisError, "Length of axis '{:s}' and coordinate size do not match!".format(self.name)
+      raise AxisError("Length of axis '{:s}' and coordinate size do not match!".format(self.name))
     return self._len    
   @len.setter
   def len(self, length):
     ''' Update the length, or check for conflict if a coordinate vector is present. (Default length is 0)'''
     if self.data and length != self.coord.size:
-      raise AxisError, 'Axis instance \'{:s}\' already has a coordinate vector of length {:d} ({:d} given)'.format(self.name,len(self),length)        
+      raise AxisError('Axis instance \'{:s}\' already has a coordinate vector of length {:d} ({:d} given)'.format(self.name,len(self),length))
     self._len = length
   
   def __len__(self):

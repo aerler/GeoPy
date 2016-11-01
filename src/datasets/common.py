@@ -13,7 +13,6 @@ import numpy as np
 import pickle
 import os
 import functools
-from operator import isCallable
 # internal imports
 from utils.misc import expandArgumentList
 from geodata.misc import AxisError, DatasetError, DateError, ArgumentError, EmptyDatasetError, DataError
@@ -68,8 +67,9 @@ CRU_vars = ['T2','Tmin','Tmax','Q2','pet','precip','cldfrc','wetfrq','frzfrq']
 
 # read data root folder from environment variable
 data_root = os.getenv('DATA_ROOT')
-if not data_root: raise ArgumentError, 'No DATA_ROOT environment variable set!'
-if not os.path.exists(data_root): raise DataError, "The data root '{:s}' directory set in the DATA_ROOT environment variable does not exist!".format(data_root)
+if not data_root: raise ArgumentError('No DATA_ROOT environment variable set!')
+if not os.path.exists(data_root): 
+  raise DataError("The data root '{:s}' directory set in the DATA_ROOT environment variable does not exist!".format(data_root))
 
 # standard folder for grids and shapefiles  
 grid_folder = data_root + '/grids/' # folder for pickled grids
@@ -111,9 +111,9 @@ def timeSlice(period):
 def addLandMask(dataset, varname='precip', maskname='landmask', atts=None):
   ''' Add a landmask variable with meta data from a masked variable to a dataset. '''
   # check
-  if not isinstance(dataset,Dataset): raise TypeError
+  if not isinstance(dataset,Dataset): raise TypeError(dataset)
   if dataset.hasVariable(maskname): 
-    raise DatasetError, "The Dataset '%s' already has a field called '%s'."%(dataset.name,maskname)
+    raise DatasetError("The Dataset '%s' already has a field called '%s'."%(dataset.name,maskname))
   # attributes and meta data
   if atts is None:
     atts = default_varatts[maskname].copy()
@@ -124,8 +124,8 @@ def addLandMask(dataset, varname='precip', maskname='landmask', atts=None):
   axes = var.axes[-2:] # last two axes (i.e. map axes)
   data = var.getMask().__getitem__((0,)*(var.ndim-2)+(slice(None),)*2)
   if 'gdal' in dataset.__dict__ and dataset.gdal:
-    if dataset.xlon not in axes or dataset.ylat not in axes: raise AxisError
-  if not all([ax.name in ('x','y','lon','lat') for ax in axes]): raise AxisError
+    if dataset.xlon not in axes or dataset.ylat not in axes: raise AxisError(dataset.axes)
+  if not all([ax.name in ('x','y','lon','lat') for ax in axes]): raise AxisError(dataset.axes)
   # create variable and add to dataset
   if isinstance(dataset, DatasetNetCDF) and 'w' in dataset.mode: 
     dataset.addVariable(Variable(axes=axes, name=maskname, data=data, atts=atts), asNC=True)
@@ -137,7 +137,7 @@ def addLandMask(dataset, varname='precip', maskname='landmask', atts=None):
 # annotate dataset with names and length of months (for climatology mostly)
 def addLengthAndNamesOfMonth(dataset, noleap=False, length=None, names=None):
   ''' Function to add the names and length of month to a NetCDF dataset. '''
-  if not isinstance(dataset,Dataset): raise TypeError
+  if not isinstance(dataset,Dataset): raise TypeError(dataset)
   # attributes
   lenatts = dict(name='length_of_month', units='days',long_name='Length of Month')
   stratts = dict(name='name_of_month', units='', long_name='Name of the Month')
@@ -171,7 +171,7 @@ def addLengthAndNamesOfMonth(dataset, noleap=False, length=None, names=None):
 # transform function to convert monthly precip amount into precip rate on-the-fly
 def transformPrecip(data, l365=False, var=None, slc=None):
   ''' convert monthly precip amount to SI units (mm/s) '''
-  if not isinstance(var,VarNC): raise TypeError
+  if not isinstance(var,VarNC): raise TypeError(var)
   if var.units == 'kg/m^2/month' or var.units == 'mm/month':
     assert data.ndim == var.ndim
     tax = var.axisIndex('time')
@@ -182,13 +182,13 @@ def transformPrecip(data, l365=False, var=None, slc=None):
     if tslc is None or tslc == slice(None):
       # trivial case
       te = len(var.time)
-      if not ( data.shape[tax] == te and te%12 == 0 ): raise NotImplementedError, "The record has to start and end at a full year!"
+      if not ( data.shape[tax] == te and te%12 == 0 ): raise NotImplementedError("The record has to start and end at a full year!")
     else:  
       # special treatment if time axis was sliced
       tlc = slc[tax]
       ts = tlc.start or 0 
       te = ( tlc.stop or len(var.time) ) - ts
-      if not ( ts%12 == 0 and te%12 == 0 ): raise NotImplementedError, "The record has to start and end at a full year!"
+      if not ( ts%12 == 0 and te%12 == 0 ): raise NotImplementedError("The record has to start and end at a full year!")
       assert data.shape[tax] == te
       # assuming the record starts some year in January, and we always need to load full years
     shape = [1,]*data.ndim; shape[tax] = te # dimensions of length 1 will be expanded as needed
@@ -212,14 +212,14 @@ def transformDays(data, l365=False, var=None, slc=None):
       # trivial case
       te = len(var.time)
       if not ( data.shape[tax] == te and te%12 == 0 ): 
-        raise NotImplementedError, "The record has to start and end at a full year!"
+        raise NotImplementedError("The record has to start and end at a full year!")
     else:  
       # special treatment if time axis was sliced
       tlc = slc[tax]
       ts = tlc.start or 0 
       te = ( tlc.stop or len(var.time) ) - ts
       if not ( ts%12 == 0 and te%12 == 0 ): 
-        raise NotImplementedError, "The record has to start and end at a full year!"
+        raise NotImplementedError("The record has to start and end at a full year!")
       assert data.shape[tax] == te
       # assuming the record starts some year in January, and we always need to load full years
     shape = [1,]*data.ndim; shape[tax] = te # dimensions of length 1 will be expanded as needed
@@ -236,7 +236,7 @@ def translateVarNames(varlist, varatts):
   ''' Simple function to replace names in a variable list with their original names as inferred from the 
       attributes dictionary. Note that this requires the dictionary to have the field 'name'. '''
   if isinstance(varlist,basestring): varlist = [varlist]
-  if not isinstance(varlist,(list,tuple,set)) or not isinstance(varatts,dict): raise TypeError 
+  if not isinstance(varlist,(list,tuple,set)) or not isinstance(varatts,dict): raise TypeError(varlist)
   varlist = list(varlist) # make copy, since operation is in-place, and to avoid interference
   # cycle over names in variable attributes (i.e. final names, not original names)  
   for key,atts in varatts.iteritems():
@@ -273,7 +273,7 @@ def getFileName(name=None, resolution=None, period=None, filetype='climatology',
     # assemble filename
     if filepattern is None: filepattern = name.lower() + '{0:s}_clim{1:s}.nc' 
     filename = filepattern.format(gridstr,periodstr)
-  else: raise NotImplementedError, "Unrecognized filetype/mode: '{:s}'".format(filetype)
+  else: raise NotImplementedError("Unrecognized filetype/mode: '{:s}'".format(filetype))
   # return final name
   assert filename == filename.lower(), "By convention, climatology files only have lower-case names!"
   return filename
@@ -308,11 +308,11 @@ def loadObservations(name=None, folder=None, period=None, grid=None, station=Non
     # transform period
     if period is None or period == '':
       if name not in ('PCIC','PRISM','GPCC','NARR'): 
-        raise ValueError, "A period is required to load observational climatologies."
+        raise ValueError("A period is required to load observational climatologies.")
     elif isinstance(period,basestring):
       period = tuple([int(prd) for prd in period.split('-')]) 
     elif not isinstance(period,(int,np.integer)) and ( not isinstance(period,tuple) and len(period) == 2 ): 
-      raise TypeError
+      raise TypeError(period)
   elif mode.lower() in ('time-series','timeseries'): # concatenated time-series files
     period = None # to indicate time-series (but for safety, the input must be more explicit)
     if lautoregrid is None: lautoregrid = False # this can take very long!
@@ -320,10 +320,10 @@ def loadObservations(name=None, folder=None, period=None, grid=None, station=Non
   if isinstance(varlist,basestring): varlist = [varlist] # cast as list
   elif varlist is not None: varlist = list(varlist) # make copy to avoid interference
   # figure out station and shape options
-  if station and shape: raise ArgumentError
+  if station and shape: raise ArgumentError()
   elif station or shape: 
-    if grid is not None: raise NotImplementedError, 'Currently observational station data can only be loaded from the native grid.'
-    if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.'   
+    if grid is not None: raise NotImplementedError('Currently observational station data can only be loaded from the native grid.')
+    if lautoregrid: raise GDALError('Station data can not be regridded, since it is not map data.')
     lstation = bool(station); lshape = bool(shape)
     grid = station if lstation else shape
     # add station/shape parameters
@@ -350,8 +350,8 @@ def loadObservations(name=None, folder=None, period=None, grid=None, station=Non
           griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder)
           dataargs = dict(period=period, resolution=resolution)
           performRegridding(name, 'climatology',griddef, dataargs) # default kwargs
-        else: raise IOError, "The dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.".format(filename,grid) 
-      else: raise IOError, "The dataset file '{:s}' does not exits!\n('{:s}')".format(filename,filepath)
+        else: raise IOError("The dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.".format(filename,grid) )
+      else: raise IOError("The dataset file '{:s}' does not exits!\n('{:s}')".format(filename,filepath))
   # load dataset
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=[filename], varlist=varlist, varatts=varatts, 
                           axes=axes, multifile=False, ncformat='NETCDF4')
@@ -361,9 +361,9 @@ def loadObservations(name=None, folder=None, period=None, grid=None, station=Non
     dataset.mask(mask='shp_encl', invert=True, skiplist=shp_params)
   # correct ordinal number of shape (should start at 1, not 0)
   if lshape:
-    if dataset.hasAxis('shapes'): raise AxisError, "Axis 'shapes' should be renamed to 'shape'!"
+    if dataset.hasAxis('shapes'): raise AxisError("Axis 'shapes' should be renamed to 'shape'!")
     if not dataset.hasAxis('shape'): 
-      raise AxisError
+      raise AxisError()
     if dataset.shape.coord[0] == 0: dataset.shape.coord += 1
 # figure out grid
   if not lstation and not lshape:
@@ -373,7 +373,7 @@ def loadObservations(name=None, folder=None, period=None, grid=None, station=Non
   #     griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder)
       # add GDAL functionality to dataset 
       dataset = addGDALtoDataset(dataset, griddef=grid, gridfolder=grid_folder)
-    else: raise TypeError
+    else: raise TypeError(dataset)
     # N.B.: projection should be auto-detected, if geographic (lat/lon)
   return dataset
 
@@ -457,7 +457,7 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology',
     elif name.lower()[:3] == 'obs': # load observational data for comparison (also includes reanalysis)
       lobs = True; name = None # select dataset based on variable list (in loadCVDP_Obs)
     elif not name in CESM_exps: 
-      raise ArgumentError, "No CVDP dataset matching '{:s}' found.".format(name)
+      raise ArgumentError("No CVDP dataset matching '{:s}' found.".format(name))
     # nothing to do for CESM runs
     dataset_name = 'CESM' # also in CESM module
   elif WRF_ens and ( name in WRF_ens or name[:-4] in WRF_ens ):
@@ -478,7 +478,7 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology',
     else: dataset_name = name 
   # import dataset based on name
   try: dataset = import_module('datasets.{0:s}'.format(dataset_name))
-  except ImportError: raise ArgumentError, "No dataset matching '{:s}' found.".format(dataset_name)
+  except ImportError: raise ArgumentError("No dataset matching '{:s}' found.".format(dataset_name))
   # identify load function  
   if mode.upper() in ('CVDP',):
     load_fct = 'loadCVDP'
@@ -486,7 +486,7 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology',
   else:
     load_fct = 'load{:s}'.format(dataset_name)
     if mode.lower() in ('climatology',):
-      if lensemble and station: raise ArgumentError
+      if lensemble and station: raise ArgumentError(station)
       if station: load_fct += '_Stn'
       elif shape: load_fct += '_Shp'
     elif mode.lower() in ('time-series','timeseries',):
@@ -502,9 +502,9 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology',
   if load_fct in dataset.__dict__: 
     load_fct = dataset.__dict__[load_fct]
   else: 
-    raise ArgumentError, "Dataset '{:s}' has no method '{:s}'".format(dataset_name,load_fct)
+    raise ArgumentError("Dataset '{:s}' has no method '{:s}'".format(dataset_name,load_fct))
   if not inspect.isfunction(load_fct): 
-    raise ArgumentError, "Attribute '{:s}' in module '{:s}' is not a function".format(load_fct.__name__,dataset_name)
+    raise ArgumentError("Attribute '{:s}' in module '{:s}' is not a function".format(load_fct.__name__,dataset_name))
     # N.B.: for example, inspect does not work properly on functools.partial objects, and functools.partial does not return a function 
   # generate and check arguments
   kwargs.update(name=name, station=station, shape=shape, mode=mode, WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, CESM_ens=CESM_ens)
@@ -515,7 +515,7 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology',
   # load dataset
   dataset = load_fct(**kwargs)
   if orig_name == name: 
-    if dataset.name != name: raise DatasetError, load_fct.__name__
+    if dataset.name != name: raise DatasetError(load_fct.__name__)
   else: dataset.name = orig_name
   # return dataset
   return dataset
@@ -525,14 +525,14 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology',
 def selectElements(datasets, axis, testFct=None, master=None, linplace=False, lall=False):
   ''' Extract common points that meet a specific criterion from a list of datasets. 
       The test function has to accept the following input: index, dataset, axis'''
-  if linplace: raise NotImplementedError, "Option 'linplace' does not work currently."
+  if linplace: raise NotImplementedError("Option 'linplace' does not work currently.")
   # check input
-  if not isinstance(datasets, (list,tuple,Ensemble)): raise TypeError
-  if not all(isinstance(dataset,Dataset) for dataset in datasets): raise TypeError 
-  if not isCallable(testFct) and testFct is not None: raise TypeError
+  if not isinstance(datasets, (list,tuple,Ensemble)): raise TypeError(datasets)
+  if not all(isinstance(dataset,Dataset) for dataset in datasets): raise TypeError(dataset)
+  if not callable(testFct) and testFct is not None: raise TypeError(testFct)
   if isinstance(axis, Axis): axis = axis.name
-  if not isinstance(axis, basestring): raise TypeError
-  if lall and master is not None: raise ArgumentError, "The options 'lall' and 'imaster' are mutually exclusive!"
+  if not isinstance(axis, basestring): raise TypeError(axis)
+  if lall and master is not None: raise ArgumentError("The options 'lall' and 'imaster' are mutually exclusive!")
   # save some ensemble parameters for later  
   lnotest = testFct is None
   lens = isinstance(datasets,Ensemble)
@@ -548,9 +548,9 @@ def selectElements(datasets, axis, testFct=None, master=None, linplace=False, la
     for i,dataset in enumerate(datasets): 
       if dataset.name == master: 
         imaster = i; break
-    if imaster is None: raise ArgumentError, "Master '{:s}' not found in datasets".format(master)
+    if imaster is None: raise ArgumentError("Master '{:s}' not found in datasets".format(master))
   else: imaster = master
-  if not imaster is None and not isinstance(imaster,(int,np.integer)): raise TypeError, imaster
+  if not imaster is None and not isinstance(imaster,(int,np.integer)): raise TypeError(imaster)
   elif imaster >= len(datasets) or imaster < 0: raise ValueError 
   maxis = axes.pop(imaster) # extraxt shortest axis for loop
   if lall: 
@@ -582,7 +582,7 @@ def selectElements(datasets, axis, testFct=None, master=None, linplace=False, la
           itpls.append((i,)+tuple(ax.coord.searchsorted(x) for ax in axes))
           # N.B.: since we can expect exact matches, plain searchsorted is fastest (side='left') 
   # check if there is anything left...
-  if len(itpls) == 0: raise DatasetError, "Aborting: no data points match all criteria!"
+  if len(itpls) == 0: raise DatasetError("Aborting: no data points match all criteria!")
   # construct axis indices for each dataset (need to remember to move shortest axis back in line)
   idxs = [[] for ds in datasets] # create unique empty lists
   for itpl in itpls:
@@ -616,7 +616,7 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
       for var in shp_params: # necessary to select shapes
         if var not in varlist: varlist.append(var)
   # perpare ensemble and arguments
-  if ldataset and ensemble_list: raise ArgumentError 
+  if ldataset and ensemble_list: raise ArgumentError()
   elif not ldataset: ensemble = Ensemble(name=name, title=title, basetype='Dataset')
   # expand argument list
   if ensemble_list is None: ensemble_list = ['names'] if not ldataset else None
@@ -665,8 +665,8 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
       if isinstance(op, basestring): ensemble = getattr(ensemble,op)(axis=ax)
       elif isinstance(op, (int,np.integer,float,np.inexact)): ensemble = ensemble(**{ax:op})
   # extract seasonal/climatological values/extrema
-  if (ldataset and len(ensemble)==0): raise EmptyDatasetError, varlist
-  if not ldataset and any([len(ds)==0 for ds in ensemble]): raise EmptyDatasetError, ensemble
+  if (ldataset and len(ensemble)==0): raise EmptyDatasetError(varlist)
+  if not ldataset and any([len(ds)==0 for ds in ensemble]): raise EmptyDatasetError(ensemble)
   # N.B.: the operations below should work with Ensembles as well as Datasets 
   if aggregation:
     method = aggregation if aggregation.isupper() else aggregation.title() 
