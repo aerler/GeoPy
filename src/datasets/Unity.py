@@ -203,8 +203,8 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-  mode = 'merge_climatologies'
-#   mode = 'merge_timeseries'
+#   mode = 'merge_climatologies'
+  mode = 'merge_timeseries'
 #   mode = 'test_climatology'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
@@ -212,10 +212,10 @@ if __name__ == '__main__':
   # settings to generate dataset
   grids = []
 #   grids += ['shpavg']
-#   grids += ['wcshp']
+  grids += ['wcshp']
 #   grids += ['wcavg']
 #   grids += ['arb2_d01']
-  grids += ['arb2_d02']
+#   grids += ['arb2_d02']
 #   grids += ['arb3_d01']
 #   grids += ['arb3_d02']
 #   grids += ['glb1_d01']
@@ -397,7 +397,7 @@ if __name__ == '__main__':
       for period in periods: 
         
         ## load source datasets
-        if grid in ('shpavg',):
+        if grid in ('shpavg','wcavg','wcshp','glbshp','glakes'):
           lshp = True
           # regional averages: shape index as grid
           # N.B.: currently doesn't work with stations, because station indices are not consistent
