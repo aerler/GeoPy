@@ -152,7 +152,7 @@ class Basin(Shape):
       maingage = '{}_{}'.format(rivers[0],stations[rivers[0]][0]) # first station of first river (from outflow)
     else: maingage = None # no gage station defined
     # initialize gage station
-    self.maingage = None if maingage is None else GageStation(basin=name, name=maingage, folder=folder) # just name, for now
+    self.maingage = None if maingage is None else GageStation(basin=self.name, name=maingage, folder=folder) # just name, for now
     
   def getMainGage(self, varlist=None, varatts=None, aggregation=None, mode='timeseries', 
                   filetype='monthly'):
@@ -350,7 +350,7 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
 
   ## create dataset for station
   dataset = Dataset(name='WSC', title=metadata['Station Name'], varlist=[], atts=metadata,) 
-  if mode == 'timeseries': 
+  if mode.lower() in ('timeseries','time-series'): 
     time = time.flatten(); data = data.flatten()
     # make time axis based on time coordinate from csv file
     timeAxis = Axis(name='time', units='month', coord=time, # time series centered at 1979-01

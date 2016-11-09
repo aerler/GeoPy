@@ -18,10 +18,9 @@ from warnings import warn
 # my own imports
 import utils.nanfunctions as nf
 from plotting.properties import getPlotAtts, variablePlotatts # import plot properties from different file
-from geodata.misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, floateps,\
-  TimeAxisError
+from geodata.misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, floateps, TimeAxisError
 from geodata.misc import genStrArray, translateSeasons
-from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError
+from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError, EmptyDatasetError
 from processing.multiprocess import apply_along_axis
 from utils.misc import histogram, binedges, detrend, percentile, tabulate
      
@@ -3103,6 +3102,8 @@ class Dataset(object):
         on all Variables using _apply_to_all '''
     # N.B.: this method is only called as a fallback, if no class/instance attribute exists,
     #       i.e. Dataset methods and attributes will always have precedent 
+    if len(self.variables) == 0: 
+      raise EmptyDatasetError("Unable to to apply request to Variables; Dataset empty: \n{:s}".format(str(self)))
     # check if Variables have this attribute
     if any([hasattr(var,attr) for var in self.variables.itervalues()]):
       # get all attributes into a dict, using None if not present
@@ -3506,6 +3507,14 @@ class Ensemble(object):
     if not isinstance(member, self.basetype): 
       raise TypeError, "Ensemble members have to be of '{:s}' type; received '{:s}'.".format(self.basetype.__name__,member.__class__.__name__)       
     self.members.append(member)
+    self.__dict__[getattr(member,self.idkey)] = member
+    return self.hasMember(member)
+  
+  def insertMember(self, i, member):
+    ''' insert a new member at location 'i' '''
+    if not isinstance(member, self.basetype): 
+      raise TypeError, "Ensemble members have to be of '{:s}' type; received '{:s}'.".format(self.basetype.__name__,member.__class__.__name__)       
+    self.members.insert(i,member)
     self.__dict__[getattr(member,self.idkey)] = member
     return self.hasMember(member)
   
