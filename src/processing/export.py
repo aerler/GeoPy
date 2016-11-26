@@ -396,10 +396,10 @@ if __name__ == '__main__':
     loverwrite = True
 #     varlist = None
     load_list = ['lat2D','lon2D','zs']
-#     load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt'] # (net) precip
+    load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet_wrf'] # (net) precip
     # PET variables
-#     load_list += ['ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # wind
-#     load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
+    load_list += ['ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # wind
+    load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
     periods = []
     periods += [15]
 #     periods += [30]
@@ -422,8 +422,9 @@ if __name__ == '__main__':
 #     WRF_experiments = ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050',
 #                        't3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
 #     WRF_experiments = ['erai-g3','erai-t3']
-    WRF_experiments = ['erai-g3','erai-g']
+#     WRF_experiments = ['erai-g3','erai-g']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+    WRF_experiments += ['t-ensemble-2100']
 #     WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-3km','max-3km']
@@ -434,19 +435,19 @@ if __name__ == '__main__':
 #     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
     # other WRF parameters 
-#     domains = 2 # domains to be processed
-    domains = None # process all domains
+    domains = 2 # domains to be processed
+#     domains = None # process all domains
 #     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # without radiation files
     # typically a specific grid is required
     grids = [] # list of grids to process
-    grids += [None] # special keyword for native grid
-#     grids += ['grw2']# small grid for HGS GRW project
+#     grids += [None] # special keyword for native grid
+    grids += ['grw2']# small grid for HGS GRW project
 #     grids += ['glb1_d02']# small grid for HGS GRW project
     ## export parameters
     export_arguments = dict(
         project = 'Grids', # project designation  
-        varlist = ['lat2D','lon2D','zs'], # varlist for export
+        varlist = ['lat2D','lon2D','zs','pet_wrf'], # varlist for export
         folder = '{0:s}/HGS/{{PROJECT}}/{{EXPERIMENT}}/'.format(os.getenv('DATA_ROOT', None)),
         prefix = None, # based on keyword arguments or None
         #         project = 'GRW', # project designation  

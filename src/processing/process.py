@@ -126,9 +126,11 @@ class CentralProcessingUnit(object):
       if not isinstance(self.output,DatasetNetCDF):
         raise ProcessError("Flush can only be used with NetCDF Datasets (and not with temporary storage).\n{:}".format(self.output))
       if self.tmp: # flush requires output to be target
-        if self.source.gdal and not self.tmpput.gdal:
-          self.tmpput = addGDALtoDataset(self.tmpput, projection=self.source.projection, geotransform=self.source.geotransform)
+        if self.source.gdal and not ( hasattr(self.tmpput,'gdal') and self.tmpput.gdal ):
+          self.tmpput = addGDALtoDataset(self.tmpput, griddef=self.source.griddef, lforce=True)
         self.source = self.tmpput
+        if self.target.gdal and not ( hasattr(self.output,'gdal') and self.output.gdal ):
+          self.output = addGDALtoDataset(self.output, griddef=self.target.griddef, lforce=True)
         self.target = self.output
         self.tmp = False # not using temporary storage anymore
     # loop over input variables
@@ -157,7 +159,7 @@ class CentralProcessingUnit(object):
             srcds = self.source # need to define for error message below
             raise DatasetError("Variable '{:s}' not found in input dataset.".format(varname))
         except Exception, err:
-          if srcds.filelist and len(srcds.filelist) == 1:              
+          if hasattr(srcds, 'filelist') and srcds.filelist and len(srcds.filelist) == 1:              
             filename = srcds.filelist[0] # should be the absolute path
             print("ERROR: an error occurred while processing Variable '{:s}' from source file '{:s}'.".format(varname,filename))
             if 'NetCDF: HDF error' in str(err):
@@ -292,7 +294,7 @@ class CentralProcessingUnit(object):
     self.process(function, **kwargs) # currently 'flush' is the only kwarg
     if self.feedback: print('\n')
     if self.tmp: self.tmpput = self.target
-    if ltmptoo: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
+    if ltmptoo and self.tmp: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
   # the previous method sets up the process, the next method performs the computation
   def processShapeAverage(self, var, masks=None, ylat=None, xlon=None, shpax=None, memory=500):
     ''' Compute masked area averages from variable data. 'memory' controls the garbage collection 
@@ -499,7 +501,7 @@ class CentralProcessingUnit(object):
     self.process(function, **kwargs) # currently 'flush' is the only kwarg
     if self.feedback: print('\n')
     if self.tmp: self.tmpput = self.target
-    if ltmptoo: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
+    if ltmptoo and self.tmp: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
   # the previous method sets up the process, the next method performs the computation
   def processExtract(self, var, ixlon=None, iylat=None, ylat=None, xlon=None, stnax=None):
     ''' Extract grid poitns corresponding to stations. '''
@@ -619,7 +621,7 @@ class CentralProcessingUnit(object):
     self.target = addGDALtoDataset(self.target, griddef=griddef)
     if self.feedback: print('\n')
     if self.tmp: self.tmpput = self.target
-    if ltmptoo: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
+    if ltmptoo and self.tmp: assert self.tmpput.name == 'tmptoo' # set above, when temp. dataset is created    
   # the previous method sets up the process, the next method performs the computation
   def processRegrid(self, var, ylat=None, xlon=None, lwrapSrc=False, lwrapTgt=False, lmask=True, int_interp=None, float_interp=None):
     ''' Compute a climatology from a variable time-series. '''

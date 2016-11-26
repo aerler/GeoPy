@@ -218,10 +218,10 @@ if __name__ == '__main__':
     periods = []
 #     periods += [1]
 #     periods += [3]
-    periods += [5]
-    periods += [10]
+#     periods += [5]
+#     periods += [10]
     periods += [15]
-    periods += [30]
+#     periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031']}; unity_grid = 'arb2_d02'
     datasets = []
@@ -230,7 +230,7 @@ if __name__ == '__main__':
 #     datasets += ['CFSR', ] # CFSR_05 does not have precip
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05']}
 #     datasets += ['GPCC']; resolutions = {'GPCC':['05']}
-    datasets += ['CRU']
+#     datasets += ['CRU']
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
@@ -248,8 +248,9 @@ if __name__ == '__main__':
 #     WRF_experiments += ['erai-g3','erai-t3']
 #     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050',]
 #     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
-#     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble9-2100']
-#     WRF_experiments += ['max-ctrl-2050']
+#     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+#     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
+    WRF_experiments += ['t-ensemble-2050']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
 #     WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
@@ -269,8 +270,8 @@ if __name__ == '__main__':
     # other WRF parameters 
     domains = 1 # domains to be processed
 #     domains = None # process all domains
-    WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad','aux') # filetypes to be processed
-#     WRF_filetypes = ('rad',) # filetypes to be processed # ,'rad'
+#     WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad',) # filetypes to be processed
+    WRF_filetypes = ('srfc',) # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); periods = None
     # grid to project onto
@@ -281,8 +282,8 @@ if __name__ == '__main__':
 #     grids['glb1'] = ('d01',) # Marc's standard GLB outer domain
 #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
 #     grids['glb1-90km'] = ('d01',) # 90km GLB domain
-    grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
-    grids['arb3'] = ('d01','d02') # WRF standard ARB inner domain
+#     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
+#     grids['arb3'] = ('d01','d02') # WRF standard ARB inner domain
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids
 #     grids['cesm1x1'] = (None,) # CESM grid

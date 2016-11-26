@@ -13,7 +13,7 @@ from datetime import datetime
 # internal
 from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import GridDefinition
+from geodata.gdal import GridDefinition, addGDALtoDataset
 from geodata.misc import isInt, DateError
 from datasets.common import name_of_month, days_per_month, getCommonGrid
 from processing.process import CentralProcessingUnit
@@ -121,10 +121,13 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
           logger.info(skipmsg)              
         else:
            
+          if griddef is None: lregrid = False
+          else: lregrid = True
+          
           ## begin actual computation
           beginmsg = "\n{:s}   <<<   Computing '{:s}' (d{:02d}) Climatology from {:s}".format(
                       pidstr,dataset_name,domain,periodstr)
-          if griddef is None: beginmsg += "  >>>   \n" 
+          if not lregrid: beginmsg += "  >>>   \n" 
           else: beginmsg += " ('{:s}' grid)  >>>   \n".format(griddef.name)
           logger.info(beginmsg)
   
@@ -137,10 +140,9 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
           if os.path.exists(tmpfilepath): os.remove(tmpfilepath) # remove old temp files
           sink = DatasetNetCDF(name='WRF Climatology', folder=expfolder, filelist=[tmpfilename], atts=source.atts.copy(), mode='w')
           sink.atts.period = periodstr 
+#           if lregrid: addGDALtoDataset(sink, griddef=griddef)
           
           # initialize processing
-          if griddef is None: lregrid = False
-          else: lregrid = True
           CPU = CentralProcessingUnit(source, sink, varlist=varlist, tmp=lregrid, feedback=ldebug) # no need for lat/lon
           
           # start processing climatology
@@ -152,7 +154,8 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
           # reproject and resample (regrid) dataset
           if lregrid:
             CPU.Regrid(griddef=griddef, flush=True)
-            logger.info('%s    ---   '+str(griddef.geotansform)+'   ---   \n'%(pidstr))              
+            logger.info('{:s}   ---   {:s}   ---   \n'.format(pidstr,griddef.name))              
+            logger.debug('{:s}   ---   {:s}   ---   \n'.format(pidstr,str(griddef)))              
           
           # sync temporary storage with output dataset (sink)
           CPU.sync(flush=True)
@@ -241,15 +244,22 @@ if __name__ == '__main__':
     grid = config['grid']
   else:
 #     NP = 1 ; ldebug = True # just for tests
-    NP = 2 ; ldebug = False # just for tests
+    NP = 1 ; ldebug = False # just for tests
     loverwrite = True
     varlist = None
     project = 'GreatLakes'
+    experiments = ['g-ens-C']
+#     experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',
+#                    'g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',
+#                    'g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
+#     experiments += [ 't-ctrl','t-ens-A','t-ens-B','t-ens-C',
+#                    't-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',
+#                    't-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
 #     experiments = ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050',
 #                    't3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
-    experiments = ['erai-g3','erai-t3']
+#     experiments = ['erai-g3','erai-t3']
 #     experiments = ['g-ens-A','g-ctrl']
-#     experiments += ['g-ctrl'+tag for tag in ('-2050','-2100')]
+#     experiments += ['g-ctrl'+tag for tag in ('','-2050','-2100')]
 #     experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
 #     experiments += ['max-3km']
 #     experiments += ['erai-max']
@@ -262,10 +272,11 @@ if __name__ == '__main__':
 #     periods += [10]
     periods += [15]
 #     domains = 2 # domains to be processed
-    domains = None # process all domains
+    domains = 1 # process all domains
 #     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed # ,'rad'
+    filetypes = ['hydro',] #'xtrm','hydro','lsm','rad']
 #     filetypes = ['rad'] # filetypes to be processed
-    grid = None # use native grid
+    grid = 'grw2' # use native grid
 
   # check and expand WRF experiment list
   experiments = getExperimentList(experiments, project, 'WRF')

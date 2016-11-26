@@ -866,7 +866,8 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
   # # the return value is actually not necessary, since the object is modified immediately
   return var
 
-def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, gridfolder=None, lwrap360=None, geolocator=False):
+def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, gridfolder=None, 
+                     lwrap360=None, geolocator=False, lforce=False):
   ''' 
     A function that adds GDAL-based geographic projection features to an existing Dataset instance
     and all its Variables.
@@ -886,25 +887,28 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
   # check some special conditions
   assert isinstance(dataset, Dataset), 'This function can only be used to add GDAL functionality to a \'Dataset\' instance!'
   # only for 2D variables!
-  if len(dataset.axes) >= 2:  # else not a map-type
+  if griddef:
     # infer or check projection and related parameters       
-    if griddef is None:
-      lgdal, projection, isProjected, xlon, ylat = getProjection(dataset, projection=projection)
-    else:
-      # use GridDefinition object 
-      if isinstance(griddef,basestring): # load from pickle file
-        griddef = loadPickledGridDef(grid=griddef, res=None, filename=None, folder=gridfolder)
-      elif isinstance(griddef,GridDefinition): pass 
-      else: raise TypeError
-      lgdal, projection, isProjected, xlon, ylat = getProjection(dataset, projection=griddef.projection)
-      # safety checks
-      xlon_name,ylat_name = ('x','y') if isProjected else ('lon','lat')
+    # use GridDefinition object 
+    if isinstance(griddef,basestring): # load from pickle file
+      griddef = loadPickledGridDef(grid=griddef, res=None, filename=None, folder=gridfolder)
+    elif isinstance(griddef,GridDefinition): pass 
+    else: raise TypeError
+    if lforce and griddef.xlon.name not in dataset.axes: dataset.addAxis(griddef.xlon)
+    if lforce and griddef.ylat.name not in dataset.axes: dataset.addAxis(griddef.ylat)
+    lgdal, projection, isProjected, xlon, ylat = getProjection(dataset, projection=griddef.projection)
+    # safety checks
+    xlon_name,ylat_name = ('x','y') if isProjected else ('lon','lat')
+    if xlon_name in dataset.axes:
       assert dataset.axes[xlon_name].units == griddef.xlon.units and np.all(dataset.axes[xlon_name][:] == griddef.xlon[:])
-      assert dataset.axes[ylat_name].units == griddef.ylat.units and np.all(dataset.axes[ylat_name][:] == griddef.ylat[:])
       assert all([dataset.axes[xlon_name] == var.getAxis(xlon_name) for var in dataset.variables.values() if var.hasAxis(xlon_name)])
+    if ylat_name in dataset.axes:
+      assert dataset.axes[ylat_name].units == griddef.ylat.units and np.all(dataset.axes[ylat_name][:] == griddef.ylat[:])
       assert all([dataset.axes[ylat_name] == var.getAxis(ylat_name) for var in dataset.variables.values() if var.hasAxis(ylat_name)])
 #       projection, isProjected, xlon, ylat = griddef.getProjection()
 #       lgdal = xlon is not None and ylat is not None # need non-None xlon & ylat        
+  elif griddef is None and len(dataset.axes) >= 2:
+    lgdal, projection, isProjected, xlon, ylat = getProjection(dataset, projection=projection)
   else: lgdal = False
   # modify instance attributes
   dataset.__dict__['gdal'] = lgdal  # all variables have this after going through this process
