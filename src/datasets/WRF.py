@@ -1004,15 +1004,15 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
-#  mode = 'test_point_climatology'
-  mode = 'test_point_timeseries'
-#  mode = 'test_point_ensemble'
-#   mode = 'pickle_grid' 
+#   mode = 'test_point_climatology'
+#   mode = 'test_point_timeseries'
+#   mode = 'test_point_ensemble'
+  mode = 'pickle_grid' 
   pntset = 'wcshp'
 #   pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
-  grids = ['glb1-90km','glb1','arb1', 'arb2', 'arb3']; regions = ['GreatLakes']*2+['WesternCanada']*3; domains = [(1,)]+[(1,2)]*4
-  experiments = ['g3-ctrl','g-ctrl','rrtmg', 'ctrl', 'new']
+  grids = ['glb1-90km','glb1','arb1', 'arb2', 'arb2-120km', 'arb3']; regions = ['GreatLakes']*2+['WesternCanada']*4
+  domains = [(1,)]+[(1,2)]*3+[(1,),(1,2,3)]; experiments = ['g3-ctrl','g-ctrl','rrtmg', 'max','max-lowres', 'max-3km']
 #   grids = ['col1','col2','coast1']; experiments = ['columbia','max-3km','coast']; domains = [1,2,3]   
 #   grids = ['grb1']; experiments = ['']; domains = [1,2]
 #   grids = ['wc2']; experiments = ['erai-wc2-2013']; domains = [1,2]
