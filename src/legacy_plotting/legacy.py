@@ -202,7 +202,7 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
     varlists.append(vl)
 
   def addPeriodExt(exp, prd):
-    if exp[-5:] not in ('-2050','-2100'):
+    if prd and exp[-5:] not in ('-2050','-2100'):
       if prd[:5] in ('2045-','2050-'): exp = exp + '-2050'
       elif prd[:5] in ('2085-','2090-'): exp = exp + '-2100' 
     return exp

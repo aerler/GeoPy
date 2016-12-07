@@ -69,7 +69,7 @@ def loadPCIC_LTM(name=dataset_name, varlist=None, varatts=ltmvaratts, filelist=N
   filelist = [ltmfile.format(var) for var in varlist if var not in ('time','lat','lon')]
   # load variables separately
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, ncformat='NETCDF4')
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
+  dataset = addGDALtoDataset(dataset, projection=None, geotransform=geotransform, gridfolder=grid_folder)
   # N.B.: projection should be auto-detected as geographic    
   # return formatted dataset
   return dataset
@@ -153,8 +153,8 @@ loadShapeClimatology = loadPCIC_Shp
 if __name__ == '__main__':
     
 #   mode = 'test_climatology'
-  mode = 'test_point_climatology'
-#   mode = 'convert_climatology'
+#   mode = 'test_point_climatology'
+  mode = 'convert_climatology'
   pntset = 'shpavg' # 'ecprecip
     
   # do some tests

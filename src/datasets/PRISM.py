@@ -243,7 +243,7 @@ if __name__ == '__main__':
     ## create NetCDF file
     
     # initialize netcdf dataset structure
-    outfile = avgfolder+avgfile
+    outfile = avgfolder+'prism_clim.nc' # avgfile
     print('\nWriting data to disk: %s'%outfile)
     # create groups for different resolution
     outdata = nc.Dataset(outfile, 'w', format='NETCDF4') # outgrp.createGroup('fineres')
