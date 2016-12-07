@@ -46,8 +46,7 @@ PCIC_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geot
 # variable attributes and names in original PCIC files
 ltmvaratts = dict(tmin = dict(name='Tmin', units='K', atts=dict(long_name='Minimum 2m Temperature'), offset=273.15), # 2m minimum temperature
                tmax = dict(name='Tmax', units='K', atts=dict(long_name='Maximum 2m Temperature'), offset=273.15), # 2m maximum temperature
-               pr   = dict(name='precip', units='mm/month', atts=dict(long_name='Total Precipitation'), 
-                           scalefactor=1., transform=transformPrecip), # total precipitation
+               pr   = dict(name='precip', units='mm/month', atts=dict(long_name='Total Precipitation'), transform=transformPrecip), # total precipitation
                # axes (don't have their own file; listed in axes)
                time = dict(name='time', units='days', atts=dict(long_name='days since beginning of year'), offset=-5493), # time coordinate
                lon  = dict(name='lon', units='deg E', atts=dict(long_name='Longitude')), # geographic longitude field
@@ -69,7 +68,7 @@ def loadPCIC_LTM(name=dataset_name, varlist=None, varatts=ltmvaratts, filelist=N
   filelist = [ltmfile.format(var) for var in varlist if var not in ('time','lat','lon')]
   # load variables separately
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, ncformat='NETCDF4')
-  dataset = addGDALtoDataset(dataset, projection=None, geotransform=geotransform, gridfolder=grid_folder)
+  dataset = addGDALtoDataset(dataset, projection=None, geotransform=None, gridfolder=grid_folder)
   # N.B.: projection should be auto-detected as geographic    
   # return formatted dataset
   return dataset
@@ -193,23 +192,23 @@ if __name__ == '__main__':
   elif mode == 'convert_climatology': 
     
     # load dataset
-    source = loadPCIC_LTM()
+    source = loadPCIC_LTM().load() # load, otherwise masking does not work!
     # change meta-data
     source.name = 'PCIC'
     source.title = 'PCIC PRISM Climatology'
     # load data into memory (and ignore last time step, which is just the annual average)
-#     source.load(time=(0,12)) # exclusive the last index
-    source.load(time=(0,12)) # for testing
+    # source.load(time=(0,12)) # exclusive the last index
+    # N.B.: now we need to trim the files beforehand...
     # make normal dataset
     dataset = source.copy()
     source.close()
     
     ## add new variables
     # add landmask (it's not really a landmask, thought)
+    dataset.precip.mask(maskValue=-9999.) # mask all fields using the missing value flag
     maskatts = dict(name='datamask', units='', long_name='Mask for Climatology Fields', 
                 description='where this mask is non-zero, no data is available')
     addLandMask(dataset, maskname='datamask',atts=maskatts) # create mask from precip mask
-    dataset.mask(dataset.datamask) # mask all fields using the new data mask      
     # add length and names of month
     addLengthAndNamesOfMonth(dataset, noleap=False)       
     # add mean temperature
@@ -220,7 +219,7 @@ if __name__ == '__main__':
     dataset += T2 # add to dataset
     # rewrite time axis
     time = dataset.time
-    time.load(data=np.arange(1,13))
+    time.load(data=np.arange(1,13, dtype=time.dtype)) # 1 to 12 (incl.) for climatology
     time.units = 'month'; time.atts.long_name='Month of the Year'
     print(time)
     # print diagnostic
@@ -228,7 +227,8 @@ if __name__ == '__main__':
     print('')
     for var in dataset:
       #print(var)
-      print('Mean {0:s}: {1:s} {2:s}'.format(var.atts.long_name, str(var.mean()), var.units))
+      if not var.strvar:
+        print('Mean {0:s}: {1:s} {2:s}'.format(var.atts.long_name, str(var.mean()), var.units))
       #print('')
     print('')
        
@@ -238,8 +238,8 @@ if __name__ == '__main__':
     if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)      
     # write data and some annotation
     sink = writeNetCDF(dataset, avgfolder+filename, close=False)
-    add_strvar(sink,'name_of_month', name_of_month, 'time', # add names of month
-               atts=dict(name='name_of_month', units='', long_name='Name of the Month'))          
+#     add_strvar(sink,'name_of_month', name_of_month, 'time', # add names of month
+#                atts=dict(name='name_of_month', units='', long_name='Name of the Month'))          
     sink.close() # close...
     print('Saving Climatology to: '+filename)
     print(avgfolder)
