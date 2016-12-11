@@ -235,16 +235,18 @@ if __name__ == '__main__':
   
 #   mode = 'test_climatology'; reses = ('025',); period = None
 #   mode = 'test_timeseries'; reses = ('25',)
-  mode = 'test_point_climatology'; reses = ('025',); period = None
+#   mode = 'test_point_climatology'; reses = ('025',); period = None
 #   mode = 'test_point_timeseries'; reses = ('05',)  
 #   mode = 'convert_climatology'; reses = ('25',); period = None
 #   reses = ('025','05', '10', '25'); period = None  
-#   mode = 'average_timeseries'; reses = ('25',) # for testing
-#   reses = ('05', '10', '25')
+  mode = 'average_timeseries'; reses = ('25',) # for testing
+  reses = ('05', '10', '25')
 #   reses = ('25',)
 #   period = (1979,1982)
+  period = (1979,1983)
 #   period = (1979,1984)
 #   period = (1979,1989)
+#   period = (1979,1991)
 #   period = (1979,1994)
 #   period = (1984,1994)
 #   period = (1989,1994)

@@ -212,7 +212,7 @@ if __name__ == '__main__':
     NP = 4 ; ldebug = False # just for tests
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = True
+    loverwrite = False
     varlist = None
 #     varlist = ['precip',]
     periods = []
@@ -230,7 +230,7 @@ if __name__ == '__main__':
 #     datasets += ['CFSR', ] # CFSR_05 does not have precip
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05']}
 #     datasets += ['GPCC']; resolutions = {'GPCC':['05']}
-#     datasets += ['CRU']
+    datasets += ['CRU']
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
@@ -250,7 +250,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
 #     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
-    WRF_experiments += ['t-ensemble-2050']
+#     WRF_experiments += ['t-ensemble-2050']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
 #     WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
@@ -277,13 +277,14 @@ if __name__ == '__main__':
     # grid to project onto
     grids = dict()
 #     grids['grw1'] = None # smaller grid, ideal for testing
-    grids['grw2'] = None # very small grid, ideal for testing
+#     grids['grw2'] = None # very small grid, ideal for testing
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['glb1'] = ('d01',) # Marc's standard GLB outer domain
 #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
 #     grids['glb1-90km'] = ('d01',) # 90km GLB domain
 #     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
 #     grids['arb3'] = ('d01','d02') # WRF standard ARB inner domain
+    grids['arb3'] = ('d03',) # WRF standard ARB inner domain
 #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 #     grids['ARB_large'] = ('025','05') # large custom geographic grids
 #     grids['cesm1x1'] = (None,) # CESM grid
