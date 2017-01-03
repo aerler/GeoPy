@@ -1627,13 +1627,31 @@ class GDALVarTest(NetCDFVarTest):
       assert not slcvar.gdal 
     # do standard tests
     super(GDALVarTest,self).testIndexing()
+
+  def testReadASCII(self):
+    ''' test function to read Arc/Info ASCII Grid / ASCII raster files '''
+    # get folder with test data
+    ascii_folder = workdir+'/nrcan_test/'
+    print("\nASCII raster test folder: '{:s}'".format(ascii_folder)) # print data folder
+    if not os.path.exists(ascii_folder): 
+      raise IOError("\nASCII raster test folder does not exist!\n('{:s}')".format(ascii_folder))
+    # simple case: load a single compressed 2D raster file
+#     filepath = ascii_folder+'/CA_hist/rain/1981/rain_01.asc.gz'
+    filepath = ascii_folder+'test.asc.gz'
+    print("\nASCII raster test file: '{:s}'".format(filepath)) # print data folder
+    if not os.path.exists(filepath): 
+      raise IOError("\nASCII raster 2D test file does not exist!\n('{:s}')".format(filepath))
+    from geodata.gdal import readASCIIraster
+    data, geotransform = readASCIIraster(filepath, lgzip=None, dtype=np.float, lmask=True, fillValue=None, lgeotransform=True)
+    print data.shape, geotransform
+    assert np.any(data.mask), data
     
   def testWriteASCII(self):
     ''' test function to write Arc/Info ASCII Grid / ASCII raster files '''
     # get test objects
     var = self.var # NCVar object
     var = var(time=slice(0,100,10)) # not too much...
-    # prepare folder for tes data
+    # prepare folder for test data
     folder = '{:s}/ASCII_raster/'.format(workdir)
     print("\nASCII_raster folder: '{:s}'".format(folder)) # print data folder
     if os.path.exists(folder): shutil.rmtree(folder)
@@ -1751,6 +1769,7 @@ if __name__ == "__main__":
     specific_tests = []
 #     specific_tests += ['LoadSlice']
 #     specific_tests += ['WriteASCII']
+    specific_tests += ['ReadASCII']
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
 #     specific_tests += ['Ensemble']
@@ -1770,13 +1789,13 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
+#     tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()

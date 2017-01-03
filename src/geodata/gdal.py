@@ -35,7 +35,49 @@ from geodata.misc import separateCamelCase, printList, isEqual, isInt, isFloat, 
 from geodata.misc import DataError, AxisError, GDALError, DatasetError
 
 
-# # utility functions and classes to handle projection information and related meta data
+## functions to load ASCII raster data
+
+def readASCIIraster(filepath, lgzip=None, dtype=np.float32, lmask=True, fillValue=None, skip_header=6, 
+                    lgeotransform=True, **kwargs):
+  ''' load a 2D field from an ASCII raster file (can be compressed); return (masked) numpy array and geotransform '''
+  
+  # handle compression (currently only gzip)
+  if lgzip is None: lgzip = filepath[-3:] == '.gz' # try to auto-detect
+  if lgzip:
+    import gzip
+    Raster = gzip.open(filepath, mode='rb')
+  else: Raster = open(filepath, mode='rb')
+  
+  # open file
+  with Raster:
+    
+    # read header information
+    headers = ('NCOLS','NROWS','XLLCORNER','YLLCORNER','CELLSIZE','NODATA_VALUE')
+    hdtypes = (int,int,float,float,float,dtype)
+    assert len(headers) == skip_header, headers
+    hvalues = []
+    # loop over items
+    for header,hdtype in zip(headers,hdtypes):
+      name, val = Raster.readline().split()
+      if name.upper() != header: 
+        raise IOError("Unknown header info: '{:s}' != '{:s}'".format(name,header))
+      hvalues.append(hdtype(val))
+    ie, je, xll, yll, d, na = hvalues
+    # derive geotransform
+    if lgeotransform: geotransform = (xll, d, 0., yll, 0., d)
+    
+    # read data
+    #print ie, je, xll, yll, d, na
+    # N.B.: the file cursor is already moved to the end of the header, hence skip_header=0
+    data = np.genfromtxt(Raster, skip_header=0, dtype=dtype, usemask=lmask, 
+                         missing_values=na, filling_values=fillValue, **kwargs)
+    if not data.shape == (je,ie):
+      raise IOError(data.shape, ie, je, xll, yll, d, na,)
+    
+  # return data and geotransform
+  return (data, geotransform) if lgeotransform else data # or just data, no geotransform
+
+## utility functions and classes to handle projection information and related meta data
 
 # utility function to check if longitude runs from 0 to 360, instead of -180 - 180
 def checkWrap360(lwrap360, xlon):
