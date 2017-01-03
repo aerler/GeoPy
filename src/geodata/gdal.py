@@ -12,6 +12,7 @@ and methods to an existing object/class instance.
 
 import numpy as np
 import numpy.ma as ma
+import pandas as pd
 from collections import OrderedDict
 import types  # needed to bind functions to objects
 import pickle
@@ -37,40 +38,86 @@ from geodata.misc import DataError, AxisError, GDALError, DatasetError
 
 ## functions to load ASCII raster data
 
-def readASCIIraster(filepath, lgzip=None, dtype=np.float32, lmask=True, fillValue=None, skip_header=6, 
+
+def readASCIIraster(filepath, lgzip=None, lgdal=True, dtype=np.float32, lmask=True, fillValue=None, skip_header=6, 
                     lgeotransform=True, **kwargs):
   ''' load a 2D field from an ASCII raster file (can be compressed); return (masked) numpy array and geotransform '''
   
   # handle compression (currently only gzip)
   if lgzip is None: lgzip = filepath[-3:] == '.gz' # try to auto-detect
-  if lgzip:
-    import gzip
-    Raster = gzip.open(filepath, mode='rb')
-  else: Raster = open(filepath, mode='rb')
   
-  # open file
-  with Raster:
     
-    # read header information
-    headers = ('NCOLS','NROWS','XLLCORNER','YLLCORNER','CELLSIZE','NODATA_VALUE')
-    hdtypes = (int,int,float,float,float,dtype)
-    assert len(headers) == skip_header, headers
-    hvalues = []
-    # loop over items
-    for header,hdtype in zip(headers,hdtypes):
-      name, val = Raster.readline().split()
-      if name.upper() != header: 
-        raise IOError("Unknown header info: '{:s}' != '{:s}'".format(name,header))
-      hvalues.append(hdtype(val))
-    ie, je, xll, yll, d, na = hvalues
-    # derive geotransform
-    if lgeotransform: geotransform = (xll, d, 0., yll, 0., d)
+  if lgdal:
+      
+    ## use GDAL to read raster and parse meta data
+    try: 
+      
+      # if file is compressed, create temporary decompresse file
+      if lgzip:
+        import gzip, shutil, tempfile
+        with gzip.open(filepath, mode='rb') as gz, tempfile.NamedTemporaryFile(mode='wb', delete=False) as tmp:
+          shutil.copyfileobj(gz, tmp)
+        filepath = tmp.name # full path of the temporary file (must not be deleted upon close!)
+      else: tmp = None
+        
+      # open file as GDAL dataset and read raster band into Numpy array
+      ds = gdal.Open(filepath)
+        
+      assert ds.RasterCount == 1, ds.RasterCount
+      band = ds.GetRasterBand(1)
+      
+      # get some meta data
+      ie, je = band.XSize, band.YSize
+      na = band.GetNoDataValue()
+      if lgeotransform: geotransform = ds.GetGeoTransform()
+      
+      # get data array and transform into a masked array
+      data = band.ReadAsArray(0, 0, ie, je).astype(dtype)
+      data = flip(data, axis=-2) # flip y-axis
+      data = ma.masked_equal(data, value=na, copy=False)
+      
+      
+    finally:
+      
+      # clean-up
+      del ds, tmp # close GDAL dataset and temporary file
+      #print tmp.name # print full path of temporary file
+      if lgzip: os.remove(filepath) # remove temporary file
+
+  else:
+      
+    ## parse header manually and use Numpy's genfromtxt to read array
     
-    # read data
-    #print ie, je, xll, yll, d, na
-    # N.B.: the file cursor is already moved to the end of the header, hence skip_header=0
-    data = np.genfromtxt(Raster, skip_header=0, dtype=dtype, usemask=lmask, 
-                         missing_values=na, filling_values=fillValue, **kwargs)
+    # handle compression on the fly (no temporary file)
+    if lgzip:
+      import gzip
+      Raster = gzip.open(filepath, mode='rb')
+    else: Raster = open(filepath, mode='rb')
+
+    # open file
+    with Raster:
+    
+      # read header information
+      headers = ('NCOLS','NROWS','XLLCORNER','YLLCORNER','CELLSIZE','NODATA_VALUE')
+      hdtypes = (int,int,float,float,float,dtype)
+      assert len(headers) == skip_header, headers
+      hvalues = []
+      # loop over items
+      for header,hdtype in zip(headers,hdtypes):
+        name, val = Raster.readline().split()
+        if name.upper() != header: 
+          raise IOError("Unknown header info: '{:s}' != '{:s}'".format(name,header))
+        hvalues.append(hdtype(val))
+      ie, je, xll, yll, d, na = hvalues
+      # derive geotransform
+      if lgeotransform: geotransform = (xll, d, 0., yll, 0., d)
+      
+      # read data
+      #print ie, je, xll, yll, d, na
+      # N.B.: the file cursor is already moved to the end of the header, hence skip_header=0
+      data = np.genfromtxt(Raster, skip_header=0, dtype=dtype, usemask=lmask, 
+                           missing_values=na, filling_values=fillValue, **kwargs)
+      
     if not data.shape == (je,ie):
       raise IOError(data.shape, ie, je, xll, yll, d, na,)
     
@@ -713,7 +760,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         else: data = dataset.ReadAsArray()[0:self.bands, :, :]  # ReadAsArray(0,0,xe,ye)
         # fix upper/lower corner issue
         if lyf: data = flip(data, axis=-2) # flip y-axis
-        # to insure correct wrapping, geographic coordinate systems with longitudes reanging 
+        # to insure correct wrapping, geographic coordinate systems with longitudes ranging 
         # from 0 to 360 can optionally be shifted back by 180, to conform to GDAL conventions 
         # (the shift will only affect the GDAL Dataset, not the actual Variable) 
         if wrap360:

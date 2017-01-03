@@ -1636,8 +1636,8 @@ class GDALVarTest(NetCDFVarTest):
     if not os.path.exists(ascii_folder): 
       raise IOError("\nASCII raster test folder does not exist!\n('{:s}')".format(ascii_folder))
     # simple case: load a single compressed 2D raster file
-#     filepath = ascii_folder+'/CA_hist/rain/1981/rain_01.asc.gz'
-    filepath = ascii_folder+'test.asc.gz'
+    filepath = ascii_folder+'/CA_hist/rain/1981/rain_01.asc.gz'
+#     filepath = ascii_folder+'test.asc.gz'
     print("\nASCII raster test file: '{:s}'".format(filepath)) # print data folder
     if not os.path.exists(filepath): 
       raise IOError("\nASCII raster 2D test file does not exist!\n('{:s}')".format(filepath))
