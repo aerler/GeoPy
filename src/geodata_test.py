@@ -6,13 +6,12 @@ Unittest for the GeoPy main package geodata.
 @author: Andre R. Erler, GPL v3
 '''
 
-import unittest
+import unittest, os, gc, shutil
+from copy import deepcopy
 import netCDF4 as nc
 import numpy as np
 import numpy.ma as ma
 import scipy.stats as ss
-import os
-import gc
 
 # import modules to be tested
 import utils.nanfunctions as nf
@@ -23,15 +22,14 @@ from geodata.stats import VarKDE, VarRV, asDistVar
 from geodata.stats import kstest, ttest, mwtest, wrstest, pearsonr, spearmanr
 from datasets.common import data_root
 from wrfavg.wrfout_average import ldebug
-from copy import deepcopy
-import shutil
 
 # work directory settings ("global" variable)
 # the environment variable RAMDISK contains the path to the RAM disk
 RAM = bool(os.getenv('RAMDISK', '')) # whether or not to use a RAM disk
 # either RAM disk or data directory
-workdir = os.getenv('RAMDISK', '') if RAM else '{:s}/test/'.format(os.getenv('DATA_ROOT', '')) 
-if not os.path.exists(workdir): raise IOError, workdir
+workdir = os.getenv('RAMDISK', '') if RAM else os.getenv('DATA_ROOT', '')
+workdir += 'test/' # test folder 
+if not os.path.exists(workdir): raise IOError(workdir)
 
 class BaseVarTest(unittest.TestCase):  
   
@@ -1630,21 +1628,41 @@ class GDALVarTest(NetCDFVarTest):
 
   def testReadASCII(self):
     ''' test function to read Arc/Info ASCII Grid / ASCII raster files '''
+    from utils.ascii import readASCIIraster, readRasterArray
     # get folder with test data
     ascii_folder = workdir+'/nrcan_test/'
-    print("\nASCII raster test folder: '{:s}'".format(ascii_folder)) # print data folder
+    print("ASCII raster test folder: '{:s}'".format(ascii_folder)) # print data folder
     if not os.path.exists(ascii_folder): 
       raise IOError("\nASCII raster test folder does not exist!\n('{:s}')".format(ascii_folder))
-    # simple case: load a single compressed 2D raster file
+    
+    ## simple case: load a single compressed 2D raster file
     filepath = ascii_folder+'/CA_hist/rain/1981/rain_01.asc.gz'
-#     filepath = ascii_folder+'test.asc.gz'
-    print("\nASCII raster test file: '{:s}'".format(filepath)) # print data folder
+    #filepath = ascii_folder+'test.asc.gz'
+    print("ASCII raster test file: '{:s}'".format(filepath)) # print data folder
     if not os.path.exists(filepath): 
       raise IOError("\nASCII raster 2D test file does not exist!\n('{:s}')".format(filepath))
-    from geodata.gdal import readASCIIraster
-    data, geotransform = readASCIIraster(filepath, lgzip=None, dtype=np.float, lmask=True, fillValue=None, lgeotransform=True)
-    print data.shape, geotransform
-    assert np.any(data.mask), data
+    data2D, geotransform2D = readASCIIraster(filepath, lgzip=None, lgdal=True, dtype=np.float, lmask=True, 
+                                         fillValue=None, lgeotransform=True)
+    #print data.shape, geotransform
+    assert data2D.ndim == 2
+    assert np.any(data2D.mask), data2D
+    
+    ## multi-dimensional case: load a bunch of compressed 2D raster files
+    file_pattern = ascii_folder+'/CA_hist/rain/{YEAR:04d}/rain_{MONTH:02d}.asc.gz'
+    years = [1981,1982]; months = range(1,13)
+    #filepath = ascii_folder+'test.asc.gz'
+    print("ASCII raster test file pattern: '{:s}'".format(file_pattern)) # print data folder
+    filepath = file_pattern.format(YEAR=years[0],MONTH=months[0])
+    if not os.path.exists(filepath): 
+      raise IOError("\nASCII raster test file does not exist!\n('{:s}')".format(filepath))
+    data, geotransform = readRasterArray(file_pattern, YEAR=years, MONTH=months, axes=['YEAR','MONTH'], 
+                                         lgzip=None, lgdal=True, dtype=np.float, lmask=True, 
+                                         fillValue=None, lgeotransform=True)
+    #print data.shape, geotransform
+    assert geotransform == geotransform2D, geotransform
+    assert data.shape[-2:] == data2D.shape, data.shape
+    assert data.shape[:-2] == (len(years),len(months)), data.shape
+    assert np.all(data.mask[0] == data2D.mask), data    
     
   def testWriteASCII(self):
     ''' test function to write Arc/Info ASCII Grid / ASCII raster files '''
