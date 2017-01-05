@@ -12,7 +12,9 @@ import numpy.ma as ma
 import gzip, shutil, tempfile
 import os, gc
 # internal imports
-from geodata.misc import AxisError
+from geodata.base import Variable, Axis, Dataset
+from geodata.gdal import addGDALtoDataset, addGDALtoVar
+from geodata.misc import AxisError, ArgumentError
 from utils.misc import flip, expandArgumentList
 
 # the environment variable RAMDISK contains the path to the RAM disk
@@ -21,11 +23,22 @@ if ramdisk and not os.path.exists(ramdisk):
   raise IOError(ramdisk)
 
 
+## functions to construct Variables and Datasets from ASCII raster data
+
+def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype=None, projection=None, 
+                   file_pattern=None, lgzip=None, lgdal=True, lmask=True, fillValue=None,):
+    ''' function to read multi-dimensional raster data and construct a GDAL-enabled Variable object '''
+    pass
+    
+
+
 ## functions to load ASCII raster data
 
-def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmask=True, fillValue=None, lgeotransform=True, 
-                    axes=None, **kwargs):
+def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmask=True, fillValue=None, 
+                    lgeotransform=True, axes=None, lna=False, lskipMissing=False, **kwargs):
     ''' function to load a multi-dimensional numpy array from several structured ASCII raster files '''
+    
+    if lskipMissing and not lmask: raise ArgumentError
     
     if axes is None: raise NotImplementedError
     #TODO: implement automatic detection of axes arguments and axes order
@@ -49,12 +62,20 @@ def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmas
     
     ## load data from raster files and assemble array
     
-    # load first 2D raster to determine shape
-    filepath = file_pattern.format(**file_kwargs_list[0]) # construct file name
+    # find first valid 2D raster to determine shape
+    i0 = 0; filepath = file_pattern.format(**file_kwargs_list[i0]) # construct file name
+    if not os.path.exists(filepath): 
+        if lskipMissing: # find first valid
+            while not os.path.exists(filepath):
+                i0 += 1; filepath = file_pattern.format(**file_kwargs_list[i0]) # try next in line
+        else: # or raise error
+            raise IOError(filepath)
+      
     # read first 2D raster file
-    data2D = readASCIIraster(filepath, lgzip=lgzip, lgdal=lgdal, dtype=dtype, 
+    data2D = readASCIIraster(filepath, lgzip=lgzip, lgdal=lgdal, dtype=dtype, lna=True,
                              lmask=lmask, fillValue=fillValue, lgeotransform=lgeotransform, **kwargs)
-    if lgeotransform: data2D, geotransform0 = data2D
+    if lgeotransform: data2D, geotransform0, na = data2D
+    else: data2D, na = data2D # we might still need na, but no need to check if it is the same
     shape2D = data2D.shape # get 2D raster shape for later use
     
     # allocate data array
@@ -62,42 +83,57 @@ def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmas
     if lmask:
         data = ma.empty(list_shape, dtype=dtype)
         if fillValue is None: data._fill_value = data2D._fill_value 
-        else: data._fill_value = fillValue 
+        else: data._fill_value = fillValue
+        data.mask = True # initialize everything as masked 
     else: data = np.empty(list_shape, dtype=dtype) # allocate the array
     assert data.shape[0] == len(file_kwargs_list), (data.shape, len(file_kwargs_list))
-    # insert first raster before continuing
-    data[0,:,:] = data2D
+    # insert (up to) first raster before continuing
+    if lskipMissing and i0 > 0:
+      data[:i0,:,:] = ma.masked # mask all invalid rasters up to first valid raster
+    data[i0,:,:] = data2D # add first (valid) raster
     
     # loop over remaining 2D raster files
-    for i,file_kwargs in enumerate(file_kwargs_list[1:]):
+    for i,file_kwargs in enumerate(file_kwargs_list[i0:]):
         
         filepath = file_pattern.format(**file_kwargs) # construct file name
-        # read 2D raster file
-        data2D = readASCIIraster(filepath, lgzip=lgzip, lgdal=lgdal, dtype=dtype, 
-                                 lmask=lmask, fillValue=fillValue, lgeotransform=lgeotransform, **kwargs)
-        # check geotransform
-        if lgeotransform: 
-            data2D, geotransform = data2D
-            if not geotransform == geotransform0:
-                raise AxisError(geotransform) # to make sure all geotransforms are identical!
-        else: geotransform = None
-        # size information
-        if not shape2D == data2D.shape:
-            raise AxisError(data2D.shape) # to make sure all geotransforms are identical!
-        
-        # insert 2D raster into 3D array
-        data[i+1,:,:] = data2D # raster shape has to match
+        if os.path.exists(filepath):
+            # read 2D raster file
+            data2D = readASCIIraster(filepath, lgzip=lgzip, lgdal=lgdal, dtype=dtype, lna=False,
+                                     lmask=lmask, fillValue=fillValue, lgeotransform=lgeotransform, **kwargs)
+            # check geotransform
+            if lgeotransform: 
+                data2D, geotransform = data2D
+                if not geotransform == geotransform0:
+                    raise AxisError(geotransform) # to make sure all geotransforms are identical!
+            else: geotransform = None
+            # size information
+            if not shape2D == data2D.shape:
+                raise AxisError(data2D.shape) # to make sure all geotransforms are identical!            
+            # insert 2D raster into 3D array
+            data[i+i0,:,:] = data2D # raster shape has to match
+        elif lskipMissing:
+            # fill with masked values
+            data[i+i0,:,:] = ma.masked # mask missing raster
+        else:
+          raise IOError(filepath)
     
     # reshape and check dimensions
-    assert i+2 == data.shape[0], i+2
+    assert i+i0 == data.shape[0]-1, (i,i0)
     data = data.reshape(shape+shape2D) # now we have the full shape
     gc.collect() # remove duplicate data
     
-    # return data and geotransform
-    return (data, geotransform) if lgeotransform else data # or just data, no geotransform
+    # return data and optional meta data
+    if lgeotransform or lna:
+        return_data = (data,)
+        if lgeotransform: return_data += (geotransform,)
+        if lna: return_data += (na,)
+    else: 
+        return_data = data
+    return return_data
 
 
-def readASCIIraster(filepath, lgzip=None, lgdal=True, dtype=np.float32, lmask=True, fillValue=None, lgeotransform=True, **kwargs):
+def readASCIIraster(filepath, lgzip=None, lgdal=True, dtype=np.float32, lmask=True, fillValue=None, 
+                    lgeotransform=True, lna=False, **kwargs):
     ''' load a 2D field from an ASCII raster file (can be compressed); return (masked) numpy array and geotransform '''
     
     # handle compression (currently only gzip)
@@ -178,5 +214,11 @@ def readASCIIraster(filepath, lgzip=None, lgdal=True, dtype=np.float32, lmask=Tr
         if not data.shape == (je,ie):
             raise IOError(data.shape, ie, je, xll, yll, d, na,)
       
-    # return data and geotransform
-    return (data, geotransform) if lgeotransform else data # or just data, no geotransform
+    # return data and optional meta data
+    if lgeotransform or lna:
+        return_data = (data,)
+        if lgeotransform: return_data += (geotransform,)
+        if lna: return_data += (na,)
+    else: 
+        return_data = data
+    return return_data

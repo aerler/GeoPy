@@ -1642,27 +1642,33 @@ class GDALVarTest(NetCDFVarTest):
     if not os.path.exists(filepath): 
       raise IOError("\nASCII raster 2D test file does not exist!\n('{:s}')".format(filepath))
     data2D, geotransform2D = readASCIIraster(filepath, lgzip=None, lgdal=True, dtype=np.float, lmask=True, 
-                                         fillValue=None, lgeotransform=True)
+                                         fillValue=None, lgeotransform=True, lna=False)
     #print data.shape, geotransform
     assert data2D.ndim == 2
     assert np.any(data2D.mask), data2D
     
     ## multi-dimensional case: load a bunch of compressed 2D raster files
     file_pattern = ascii_folder+'/CA_hist/rain/{YEAR:04d}/rain_{MONTH:02d}.asc.gz'
-    years = [1981,1982]; months = range(1,13)
+    years = [1980,1981,1982,1983]; months = range(1,13)
     #filepath = ascii_folder+'test.asc.gz'
     print("ASCII raster test file pattern: '{:s}'".format(file_pattern)) # print data folder
-    filepath = file_pattern.format(YEAR=years[0],MONTH=months[0])
+    filepath = file_pattern.format(YEAR=years[1],MONTH=months[0])
     if not os.path.exists(filepath): 
       raise IOError("\nASCII raster test file does not exist!\n('{:s}')".format(filepath))
     data, geotransform = readRasterArray(file_pattern, YEAR=years, MONTH=months, axes=['YEAR','MONTH'], 
                                          lgzip=None, lgdal=True, dtype=np.float, lmask=True, 
-                                         fillValue=None, lgeotransform=True)
+                                         fillValue=None, lgeotransform=True, lskipMissing=True)
     #print data.shape, geotransform
+    #print data.mask.sum(),data.mask.size
+    #print data.mask[0,:].sum(),data.mask[0,:].size
+    #print data.mask[1,:].sum(),data.mask[1,:].size
     assert geotransform == geotransform2D, geotransform
     assert data.shape[-2:] == data2D.shape, data.shape
     assert data.shape[:-2] == (len(years),len(months)), data.shape
-    assert np.all(data.mask[0] == data2D.mask), data    
+    assert np.all(data.mask[0,:] == True), data.mask[0,:]
+    assert np.all(data.mask[1,:] == data2D.mask), data.mask[1,:]
+    assert np.all(data.mask[2,:] == data2D.mask), data.mask[2,:]
+    assert np.all(data.mask[3,:] == True), data.mask[3,:]
     
   def testWriteASCII(self):
     ''' test function to write Arc/Info ASCII Grid / ASCII raster files '''
