@@ -1628,7 +1628,7 @@ class GDALVarTest(NetCDFVarTest):
 
   def testReadASCII(self):
     ''' test function to read Arc/Info ASCII Grid / ASCII raster files '''
-    from utils.ascii import readASCIIraster, readRasterArray
+    from utils.ascii import readASCIIraster, readRasterArray, rasterVariable
     # get folder with test data
     ascii_folder = workdir+'/nrcan_test/'
     print("ASCII raster test folder: '{:s}'".format(ascii_folder)) # print data folder
@@ -1647,17 +1647,33 @@ class GDALVarTest(NetCDFVarTest):
     assert data2D.ndim == 2
     assert np.any(data2D.mask), data2D
     
-    ## multi-dimensional case: load a bunch of compressed 2D raster files
-    file_pattern = ascii_folder+'/CA_hist/rain/{YEAR:04d}/rain_{MONTH:02d}.asc.gz'
-    years = [1980,1981,1982,1983]; months = range(1,13)
-    #filepath = ascii_folder+'test.asc.gz'
-    print("ASCII raster test file pattern: '{:s}'".format(file_pattern)) # print data folder
-    filepath = file_pattern.format(YEAR=years[1],MONTH=months[0])
-    if not os.path.exists(filepath): 
-      raise IOError("\nASCII raster test file does not exist!\n('{:s}')".format(filepath))
-    data, geotransform = readRasterArray(file_pattern, YEAR=years, MONTH=months, axes=['YEAR','MONTH'], 
-                                         lgzip=None, lgdal=True, dtype=np.float, lmask=True, 
-                                         fillValue=None, lgeotransform=True, lskipMissing=True)
+#     ## multi-dimensional case: load a bunch of compressed 2D raster files
+#     file_pattern = ascii_folder+'/CA_hist/rain/{YEAR:04d}/rain_{MONTH:02d}.asc.gz'
+#     years = [1980,1981,1982,1983]; months = range(1,13)
+#     #filepath = ascii_folder+'test.asc.gz'
+#     print("ASCII raster test file pattern: '{:s}'".format(file_pattern)) # print data folder
+#     filepath = file_pattern.format(YEAR=years[1],MONTH=months[0])
+#     if not os.path.exists(filepath): 
+#       raise IOError("\nASCII raster test file does not exist!\n('{:s}')".format(filepath))
+#     data, geotransform = readRasterArray(file_pattern, YEAR=years, MONTH=months, axes=['YEAR','MONTH'], 
+#                                          lgzip=None, lgdal=True, dtype=np.float, lmask=True, 
+#                                          fillValue=None, lgeotransform=True, lskipMissing=True)
+    
+    ## test Variable creation from rasters
+    # create axes
+    years = Axis(name='year', units='year', coord=range(1,5)) # year starting in 1979 as origin
+    assert len(years)==4, years
+    months = Axis(name='month',units='month', coord=range(1,12+1))
+    assert len(months)==12, months
+    axes = (years, months, None, None)
+    file_pattern = ascii_folder+'/CA_hist/rain/{year:04d}/rain_{month:02d}.asc.gz'
+    # load variable
+    var = rasterVariable(name='precip', units='mm/day', axes=axes, atts=None, plot=None, dtype=np.float32, 
+                         projection=None, griddef=None, # geographic projection (lat/lon)
+                         file_pattern=file_pattern, lgzip=None, lgdal=True, lmask=True, fillValue=None, 
+                         lskipMissing=True, year=range(1980,1983+1))
+    assert np.all( var.axes[0].coord == np.arange(1,5) ), var.axes[0].coord 
+    data, geotransform = var.data_array, var.geotransform
     #print data.shape, geotransform
     #print data.mask.sum(),data.mask.size
     #print data.mask[0,:].sum(),data.mask[0,:].size

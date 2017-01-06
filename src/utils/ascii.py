@@ -13,7 +13,7 @@ import gzip, shutil, tempfile
 import os, gc
 # internal imports
 from geodata.base import Variable, Axis, Dataset
-from geodata.gdal import addGDALtoDataset, addGDALtoVar
+from geodata.gdal import addGDALtoDataset, addGDALtoVar, getAxes
 from geodata.misc import AxisError, ArgumentError
 from utils.misc import flip, expandArgumentList
 
@@ -25,11 +25,55 @@ if ramdisk and not os.path.exists(ramdisk):
 
 ## functions to construct Variables and Datasets from ASCII raster data
 
-def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype=None, projection=None, 
-                   file_pattern=None, lgzip=None, lgdal=True, lmask=True, fillValue=None,):
+def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype=None, projection=None, griddef=None,
+                   file_pattern=None, lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, **kwargs):
     ''' function to read multi-dimensional raster data and construct a GDAL-enabled Variable object '''
-    pass
     
+    ## figure out axes arguments and load data
+    # figure out axes (list/tuple of axes has to be ordered correctly!)
+    axes_list = [ax.name for ax in axes[:-2]]
+    # N.B.: the last two axes are the two horizontal map axes (x&y); they can be None and will be inferred from raster
+    # N.B.: coordinate values can be overridden with keyword arguments, but length must be consistent
+    # figure out coordinates for axes
+    for ax in axes[:-2]:
+        if ax.name in kwargs:
+            # just make sure the dimensions match, but use keyword argument
+            if not len(kwargs[ax.name]) == len(ax):
+                raise AxisError("Length of Variable axis and raster file dimension have to be equal.")
+        else:
+            # use Axis coordinates and add to kwargs for readRasterArray call
+            kwargs[ax.name] = tuple(ax.coord)
+    # load raster data
+    data, geotransform = readRasterArray(file_pattern, lgzip=lgzip, lgdal=lgdal, dtype=dtype, lmask=lmask, 
+                                         fillValue=fillValue, lgeotransform=True, axes=axes_list, lna=False, 
+                                         lskipMissing=lskipMissing, **kwargs)
+    
+    ## create Variable object and add GDAL
+    # check map axes and generate if necessary
+    xlon, ylat = getAxes(geotransform, xlen=data.shape[-1], ylen=data.shape[-2], 
+                         projected=griddef.isProjected if griddef else bool(projection))
+    axes = list(axes)
+    if axes[-1] is None: axes[-1] = xlon
+    elif len(axes[-1]) != len(xlon): raise AxisError(axes[-1])
+    if axes[-2] is None: axes[-2] = ylat
+    elif len(axes[-2]) != len(ylat): raise AxisError(axes[-2])
+    # create regular Variable with data in memory
+    var = Variable(name=name, units=units, axes=axes, data=data, dtype=dtype, mask=None, fillValue=fillValue, 
+                   atts=atts, plot=plot)
+    # add GDAL functionality
+    if griddef is not None:
+        # perform some consistency checks
+        if projection is None: 
+            projection = griddef.projection
+        elif projection != griddef.projection:
+            raise ArgumentError("Conflicting projection and GridDef!")
+        if geotransform != griddef.geotransform:
+            raise ArgumentError("Conflicting geotransform (from raster) and GridDef!")
+    # add GDAL functionality
+    var = addGDALtoVar(var, griddef=griddef, projection=projection, geotransform=geotransform, gridfolder=None)
+    
+    # return final, GDAL-enabled variable
+    return var
 
 
 ## functions to load ASCII raster data
@@ -67,7 +111,10 @@ def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmas
     if not os.path.exists(filepath): 
         if lskipMissing: # find first valid
             while not os.path.exists(filepath):
-                i0 += 1; filepath = file_pattern.format(**file_kwargs_list[i0]) # try next in line
+                i0 += 1 # go to next raster file
+                if i0 >= len(file_kwargs_list): 
+                  raise IOError("No valid input raster files found!")
+                filepath = file_pattern.format(**file_kwargs_list[i0]) # nest in line
         else: # or raise error
             raise IOError(filepath)
       
