@@ -406,7 +406,8 @@ def getAxes(geotransform, xlen=0, ylen=0, projected=False):
 
 
 def getGeotransform(xlon=None, ylat=None, geotransform=None):
-  ''' Function to check or infer GDAL geotransform from coordinate axes. '''
+  ''' Function to check or infer GDAL geotransform from coordinate axes. 
+      Note that due to machine-precision errors, recomputing the geotransform from coordinates can cause problems. '''
   if geotransform is None:  # infer geotransform from axes
     if not isinstance(ylat, Axis) or not isinstance(xlon, Axis): raise TypeError     
     if xlon.data and ylat.data:
@@ -439,7 +440,7 @@ def getGeotransform(xlon=None, ylat=None, geotransform=None):
 
 ## functions to add GDAL functionality to existing Variable and Dataset instances
 
-def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfolder=None):
+def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfolder=None, loverride=False):
   ''' 
     A function that adds GDAL-based geographic projection features to an existing Variable instance.
     
@@ -458,13 +459,18 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
   # check some special conditions
   if not isinstance(var, Variable): 
     raise TypeError, 'This function can only be used to add GDAL functionality to \'Variable\' instances!'
+  
+  ## skip, if already GDAL-ensembled (and not in override mode)
+  if not loverride and 'gdal' in var.__dict__: 
+      return var# return immediately
+    
   # only for 2D variables!
   if var.ndim >= 2:  # map-type: GDAL potential
     # infer or check projection and related parameters       
     if griddef is None:
       lgdal, projection, isProjected, xlon, ylat = getProjection(var, projection=projection)
       if lgdal and xlon is not None and ylat is not None:
-        griddef = GridDefinition(projection=projection, xlon=xlon, ylat=ylat)
+        griddef = GridDefinition(projection=projection, xlon=xlon, ylat=ylat, geotransform=geotransform)
     else:
       # use GridDefinition object 
       if isinstance(griddef,basestring): # load from pickle file
@@ -866,7 +872,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
   return var
 
 def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, gridfolder=None, 
-                     lwrap360=None, geolocator=False, lforce=False):
+                     lwrap360=None, geolocator=False, lforce=False, loverride=False):
   ''' 
     A function that adds GDAL-based geographic projection features to an existing Dataset instance
     and all its Variables.
@@ -885,6 +891,11 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
   '''
   # check some special conditions
   assert isinstance(dataset, Dataset), 'This function can only be used to add GDAL functionality to a \'Dataset\' instance!'
+  
+  ## skip, if already GDAL-ensembled (and not in override mode)
+  if not loverride and 'gdal' in dataset.__dict__: 
+      return dataset # return immediately
+    
   # only for 2D variables!
   if griddef:
     # infer or check projection and related parameters       

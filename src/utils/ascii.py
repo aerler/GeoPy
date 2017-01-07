@@ -25,6 +25,90 @@ if ramdisk and not os.path.exists(ramdisk):
 
 ## functions to construct Variables and Datasets from ASCII raster data
 
+
+def rasterDataset(name=None, title=None, vardefs=None, axdefs=None, atts=None, projection=None, griddef=None,
+                  lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, lgeolocator=True,
+                  variable_pattern=None, axes_pattern=None, **kwargs):
+    ''' function to load a set of variables that are stored in raster format in a systematic directory tree into a Dataset
+        Variables and Axis are defined as follows:
+          vardefs[varname] = dict(name=string, units=string, axes=tuple of strings, atts=dict, plot=dict, dtype=np.dtype, fillValue=value)
+          axdefs[axname]   = dict(name=string, units=string, atts=dict, coords=array or list) or None
+        The path to raster files is constructed as variable_pattern+axes_pattern, where axes_pattern is defined through the axes, 
+        (as in rasterVarialbe) and variable_pattern takes the special keywords VAR, which is the variable key in vardefs.
+    '''
+  
+    ## prepare input data and axes
+    if griddef: 
+        xlon,ylat = griddef.xlon,griddef.ylat
+        if projection is None: 
+            projection = griddef.projection
+        elif projection != griddef.projection:
+            raise ArgumentError("Conflicting projection and GridDef!")
+        geotransform = griddef.geotransform
+        isProjected = griddef.isProjected
+    else: 
+        xlon = ylat = geotransform = None
+        isProjected = False if projection is None else True
+    # construct axes dict
+    axes = dict()
+    for axname,axdef in axdefs.items():
+        assert 'coord' in axdef, axdef
+        assert ( 'name' in axdef and 'units' in axdef ) or 'atts' in axdef, axdef
+        if axdef is None:
+            axes[axname] = None
+        else:
+            ax = Axis(**axdef)
+            axes[ax.name] = ax
+    # check for map Axis
+    if isProjected:
+        if 'x' not in axes: axes['x'] = xlon
+        if 'y' not in axes: axes['y'] = ylat
+    else:
+        if 'lon' not in axes: axes['lon'] = xlon
+        if 'lat' not in axes: axes['lat'] = ylat
+      
+    ## load raster data into Variable objects
+    varlist = []
+    for varname,vardef in vardefs.items():
+        # construct file_pattern
+        file_pattern = variable_pattern.format(VAR=varname) + axes_pattern
+        # check definitions
+        assert 'axes' in vardef and 'dtype' in vardef, vardef
+        assert ( 'name' in vardef and 'units' in vardef ) or 'atts' in vardef, vardef 
+        # determine relevant axes
+        vardef = vardef.copy()
+        axes_list = [None if ax is None else axes[ax] for ax in vardef.pop('axes')]
+        # add kwargs and relevant axis indices
+        relaxes = [ax.name for ax in axes_list if ax is not None] # relevant axes
+        for key,value in kwargs.items():
+          if key not in axes or key in relaxes:
+              vardef[key] = value
+        # create Variable object
+        var = rasterVariable(projection=projection, griddef=griddef, file_pattern=file_pattern, lgzip=lgzip, lgdal=lgdal, 
+                             lmask=lmask, lskipMissing=lskipMissing, axes=axes_list, **vardef) # name, units, atts, plot, dtype, fillValue,
+        varlist.append(var)
+        # check that map axes are correct
+        for ax in var.xlon,var.ylat:
+            if axes[ax.name] is None: axes[ax.name] = ax
+            elif axes[ax.name] != ax: raise AxisError("{} axes are incompatible.".format(ax.name))
+        if griddef is None: griddef = var.griddef
+        elif griddef != var.griddef: raise AxisError("GridDefs are inconsistent.")
+        if geotransform is None: geotransform = var.geotransform
+        elif geotransform != var.geotransform: raise AxisError("Geotransforms are inconsistent.")
+        
+    ## create Dataset
+    # create dataset
+    dataset = Dataset(name=name, title=title, varlist=varlist, axes=axes, atts=atts)
+    # add GDAL functionality
+    dataset = addGDALtoDataset(dataset, griddef=griddef, projection=projection, geotransform=geotransform, gridfolder=None, 
+                               lwrap360=None, geolocator=lgeolocator, lforce=False)
+    # N.B.: for some reason we also need to pass the geotransform, otherwise it is recomputed internally and some consistency
+    #       checks fail due to machine-precision differences
+    
+    # return GDAL-enabled Dataset
+    return dataset
+    
+
 def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype=None, projection=None, griddef=None,
                    file_pattern=None, lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, **kwargs):
     ''' function to read multi-dimensional raster data and construct a GDAL-enabled Variable object '''
@@ -68,6 +152,7 @@ def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype
         elif projection != griddef.projection:
             raise ArgumentError("Conflicting projection and GridDef!")
         if geotransform != griddef.geotransform:
+            print geotransform,griddef.geotransform
             raise ArgumentError("Conflicting geotransform (from raster) and GridDef!")
     # add GDAL functionality
     var = addGDALtoVar(var, griddef=griddef, projection=projection, geotransform=geotransform, gridfolder=None)

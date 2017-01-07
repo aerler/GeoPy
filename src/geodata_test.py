@@ -1659,7 +1659,7 @@ class GDALVarTest(NetCDFVarTest):
 #                                          lgzip=None, lgdal=True, dtype=np.float, lmask=True, 
 #                                          fillValue=None, lgeotransform=True, lskipMissing=True)
     
-    ## test Variable creation from rasters
+    ## test Variable creation from rasters (includes multi-dimensional raster)
     # create axes
     years = Axis(name='year', units='year', coord=range(1,5)) # year starting in 1979 as origin
     assert len(years)==4, years
@@ -1768,6 +1768,34 @@ class DatasetGDALTest(DatasetNetCDFTest):
       assert not slcds.gdal 
     # do standard tests
     super(DatasetGDALTest,self).testIndexing()
+
+  def testReadASCII(self):
+    ''' test function to read Arc/Info ASCII Grid / ASCII raster files '''
+    from utils.ascii import rasterDataset
+    # get folder with test data
+    ascii_folder = workdir+'/nrcan_test/'
+    print("ASCII raster test folder: '{:s}'".format(ascii_folder)) # print data folder
+    if not os.path.exists(ascii_folder): 
+      raise IOError("\nASCII raster test folder does not exist!\n('{:s}')".format(ascii_folder))
+        
+    ## test Variable creation from rasters (includes multi-dimensional raster)
+    # axes definitions
+    axdefs = dict()
+    axdefs['year']  = dict(name='year', units='year', coord=range(1,5)) # year starting in 1979 as origin
+    axdefs['month'] = dict(name='month',units='month', coord=range(1,12+1))
+    variable_pattern = ascii_folder+'/CA_hist/{VAR:s}/'
+    axes_pattern = '/{year:04d}/rain_{month:02d}.asc.gz'
+    # variables definitions
+    vardefs = dict()
+    vardefs['rain'] = dict(name='precip', units='mm/day', axes=('year','month','lat','lon'), dtype=np.float32, )
+    vardefs['rain_alt'] = dict(name='precip_alt', units='mm/day', axes=('year','month',None,None), dtype=np.float32, )
+    # load variable
+    dataset = rasterDataset(name='NRCAN', title='NRCan', atts=None, projection=None, griddef=None, # geographic projection (lat/lon)
+                            vardefs=vardefs, axdefs=axdefs, variable_pattern=variable_pattern, axes_pattern=axes_pattern, 
+                            lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, year=range(1980,1983+1))
+    print dataset
+    assert dataset.gdal
+    assert 'lon' in dataset.axes and 'lat' in dataset.axes
     
   def testWriteASCII(self):
     ''' test function to write Arc/Info ASCII Grid / ASCII raster files '''
@@ -1831,11 +1859,11 @@ if __name__ == "__main__":
     # list of variable tests
 #     tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()

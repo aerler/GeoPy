@@ -2583,7 +2583,9 @@ class Dataset(object):
     if atts: self.__dict__['atts'] = AttrDict(**atts)
     else: self.__dict__['atts'] = AttrDict()
     # add explicitly passed axes
-    if axes: assert self.addAxis(axes, copy=False, lall=True)
+    if axes: 
+      if isinstance(axes,dict): axes = axes.values()
+      assert self.addAxis(axes, copy=False, lall=True)
     # load variables (automatically adds axes linked to variables)
     if varlist is None: varlist = []
     # add variables (ApplyTestOverList-decorator takes care of iteration)
@@ -2618,7 +2620,7 @@ class Dataset(object):
   @ApplyTestOverList
   def addAxis(self, ax, copy=False, loverwrite=False):
     ''' Method to add an Axis to the Dataset. If the Axis is already present, check that it is the same. '''
-    if not isinstance(ax,Axis): raise TypeError
+    if not isinstance(ax,Axis): raise TypeError(ax)
     if not self.hasAxis(ax.name): # add new axis, if it does not already exist        
       if ax.name in self.__dict__: 
         raise AttributeError, "Cannot add Axis '{:s}' to Dataset, because an attribute of the same name already exits!".format(ax.name)
