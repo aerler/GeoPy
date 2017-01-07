@@ -169,7 +169,7 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
 #   mode = 'test_point_climatology'
   mode = 'convert_ASCII'
-#   pntset = 'shpavg' # 'ecprecip
+  pntset = 'shpavg' # 'ecprecip
   
   # do some tests
   if mode == 'test_climatology':  

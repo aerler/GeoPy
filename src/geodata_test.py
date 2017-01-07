@@ -1666,12 +1666,12 @@ class GDALVarTest(NetCDFVarTest):
     months = Axis(name='month',units='month', coord=range(1,12+1))
     assert len(months)==12, months
     axes = (years, months, None, None)
-    file_pattern = ascii_folder+'/CA_hist/rain/{year:04d}/rain_{month:02d}.asc.gz'
+    file_pattern = ascii_folder+'/CA_hist/rain/{year:04d}/{NAME:s}_{month:02d}.asc.gz'
     # load variable
     var = rasterVariable(name='precip', units='mm/day', axes=axes, atts=None, plot=None, dtype=np.float32, 
                          projection=None, griddef=None, # geographic projection (lat/lon)
                          file_pattern=file_pattern, lgzip=None, lgdal=True, lmask=True, fillValue=None, 
-                         lskipMissing=True, year=range(1980,1983+1))
+                         lskipMissing=True, year=range(1980,1983+1), path_params=dict(NAME='rain'))
     assert np.all( var.axes[0].coord == np.arange(1,5) ), var.axes[0].coord 
     data, geotransform = var.data_array, var.geotransform
     #print data.shape, geotransform
@@ -1783,15 +1783,17 @@ class DatasetGDALTest(DatasetNetCDFTest):
     axdefs = dict()
     axdefs['year']  = dict(name='year', units='year', coord=range(1,5)) # year starting in 1979 as origin
     axdefs['month'] = dict(name='month',units='month', coord=range(1,12+1))
-    variable_pattern = ascii_folder+'/CA_hist/{VAR:s}/'
-    axes_pattern = '/{year:04d}/rain_{month:02d}.asc.gz'
     # variables definitions
     vardefs = dict()
-    vardefs['rain'] = dict(name='precip', units='mm/day', axes=('year','month','lat','lon'), dtype=np.float32, )
-    vardefs['rain_alt'] = dict(name='precip_alt', units='mm/day', axes=('year','month',None,None), dtype=np.float32, )
+    vardefs['rain'] = dict(name='precip', units='mm/day', axes=('year','month','lat','lon'), 
+                           dtype=np.float32, path_params=dict(NAME='rain') )
+    vardefs['rain_alt'] = dict(name='precip_alt', units='mm/day', axes=('year','month',None,None), 
+                               dtype=np.float32, path_params=dict(NAME='rain') )
+    # path definition
+    file_pattern = ascii_folder+'/CA_hist/{VAR:s}/{year:04d}/{NAME:s}_{month:02d}.asc.gz'
     # load variable
     dataset = rasterDataset(name='NRCAN', title='NRCan', atts=None, projection=None, griddef=None, # geographic projection (lat/lon)
-                            vardefs=vardefs, axdefs=axdefs, variable_pattern=variable_pattern, axes_pattern=axes_pattern, 
+                            vardefs=vardefs, axdefs=axdefs, file_pattern=file_pattern, 
                             lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, year=range(1980,1983+1))
     print dataset
     assert dataset.gdal
@@ -1859,7 +1861,7 @@ if __name__ == "__main__":
     # list of variable tests
 #     tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
