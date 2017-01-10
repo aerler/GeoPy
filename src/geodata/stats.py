@@ -1304,10 +1304,13 @@ class VarRV(DistVar):
                          #N=2000, alternative='two-sided', mode='approx',
                          asVar=False, lcheckVar=True, lcheckAxis=True).mean()
       #pval = pval if isinstance(pval,(str,basestring)) else "{:3.2f}".format(pval)
-      pval = "{:3.2f}".format(float(pval.mean()))
-      if self.crossval > 1: crossval = "1/{:d}".format(self.crossval)
-      else: crossval = "{:2.0%}".format(self.crossval)
-      print("{:s} Cross-validation: {:s} (K-S test, {:s})".format(self.name, pval, crossval)) 
+      if pval is np.ma.masked: 
+        print("Unable to evaluate cross-validation: too many invalid/masked values")
+      else:
+        pval = "{:3.2f}".format(float(pval))
+        if self.crossval > 1: crossval = "1/{:d}".format(self.crossval)
+        else: crossval = "{:2.0%}".format(self.crossval)
+        print("{:s} Cross-validation: {:s} (K-S test, {:s})".format(self.name, pval, crossval)) 
   
   def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Variable with just a link to the data. '''
