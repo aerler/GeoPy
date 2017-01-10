@@ -32,7 +32,7 @@ def rasterDataset(name=None, title=None, vardefs=None, axdefs=None, atts=None, p
     ''' function to load a set of variables that are stored in raster format in a systematic directory tree into a Dataset
         Variables and Axis are defined as follows:
           vardefs[varname] = dict(name=string, units=string, axes=tuple of strings, atts=dict, plot=dict, dtype=np.dtype, fillValue=value)
-          axdefs[axname]   = dict(name=string, units=string, atts=dict, coords=array or list) or None
+          axdefs[axname]   = dict(name=string, units=string, atts=dict, coord=array or list) or None
         The path to raster files is constructed as variable_pattern+axes_pattern, where axes_pattern is defined through the axes, 
         (as in rasterVarialbe) and variable_pattern takes the special keywords VAR, which is the variable key in vardefs.
     '''
@@ -97,7 +97,8 @@ def rasterDataset(name=None, title=None, vardefs=None, axdefs=None, atts=None, p
         if griddef is None: griddef = var.griddef
         elif griddef != var.griddef: raise AxisError("GridDefs are inconsistent.")
         if geotransform is None: geotransform = var.geotransform
-        elif geotransform != var.geotransform: raise AxisError("Geotransforms are inconsistent.")
+        elif geotransform != var.geotransform: 
+            raise AxisError("Conflicting geotransform (from Variable) and GridDef!\n {} != {}".format(var.geotransform,geotransform))
         
     ## create Dataset
     # create dataset
@@ -114,7 +115,7 @@ def rasterDataset(name=None, title=None, vardefs=None, axdefs=None, atts=None, p
 
 def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype=None, projection=None, griddef=None,
                    file_pattern=None, lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, 
-                   path_params=None, **kwargs):
+                   path_params=None, offset=0, scalefactor=1, transform=None, **kwargs):
     ''' function to read multi-dimensional raster data and construct a GDAL-enabled Variable object '''
     
     ## figure out axes arguments and load data
@@ -135,7 +136,9 @@ def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype
     data, geotransform = readRasterArray(file_pattern, lgzip=lgzip, lgdal=lgdal, dtype=dtype, lmask=lmask, 
                                          fillValue=fillValue, lgeotransform=True, axes=axes_list, lna=False, 
                                          lskipMissing=lskipMissing, path_params=path_params, **kwargs)
-    
+    # shift and rescale
+    if offset != 0: data += offset
+    if scalefactor != 1: data *= scalefactor
     ## create Variable object and add GDAL
     # check map axes and generate if necessary
     xlon, ylat = getAxes(geotransform, xlen=data.shape[-1], ylen=data.shape[-2], 
@@ -148,16 +151,20 @@ def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype
     # create regular Variable with data in memory
     var = Variable(name=name, units=units, axes=axes, data=data, dtype=dtype, mask=None, fillValue=fillValue, 
                    atts=atts, plot=plot)
+    # apply transform (if any), now that we have axes etc.
+    if transform is not None:
+      raise NotImplementedError
     # add GDAL functionality
     if griddef is not None:
-        # perform some consistency checks
+        # perform some consistency checks ...
         if projection is None: 
             projection = griddef.projection
         elif projection != griddef.projection:
-            raise ArgumentError("Conflicting projection and GridDef!")
-        if geotransform != griddef.geotransform:
-            print geotransform,griddef.geotransform
-            raise ArgumentError("Conflicting geotransform (from raster) and GridDef!")
+            raise ArgumentError("Conflicting projection and GridDef!\n {} != {}".format(projection,griddef.projection))
+        if not np.isclose(geotransform, griddef.geotransform).all():
+            raise ArgumentError("Conflicting geotransform (from raster) and GridDef!\n {} != {}".format(geotransform,griddef.geotransform))
+        # ... and use provided geotransform (due to issues with numerical precision, this is usually better)
+        geotransform = griddef.geotransform # if we don't pass the geotransform explicitly, it will be recomputed from the axes
     # add GDAL functionality
     var = addGDALtoVar(var, griddef=griddef, projection=projection, geotransform=geotransform, gridfolder=None)
     
@@ -205,7 +212,7 @@ def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmas
             while not os.path.exists(filepath):
                 i0 += 1 # go to next raster file
                 if i0 >= len(file_kwargs_list): 
-                  raise IOError("No valid input raster files found!")
+                  raise IOError("No valid input raster files found!\n'{}'".format(filepath))
                 path_params.update(file_kwargs_list[i0]) # update axes parameters
                 filepath = file_pattern.format(**path_params) # nest in line
         else: # or raise error
@@ -306,11 +313,18 @@ def readASCIIraster(filepath, lgzip=None, lgdal=True, dtype=np.float32, lmask=Tr
             # get some meta data
             ie, je = band.XSize, band.YSize
             na = band.GetNoDataValue()
-            if lgeotransform: geotransform = ds.GetGeoTransform()
+            if lgeotransform: 
+                geotransform = ds.GetGeoTransform()
+                lflip = geotransform[5] < 0 
+            else: lflip = True
             
             # get data array and transform into a masked array
             data = band.ReadAsArray(0, 0, ie, je).astype(dtype)
-            data = flip(data, axis=-2) # flip y-axis
+            if lflip:
+                data = flip(data, axis=-2) # flip y-axis
+                if lgeotransform:
+                    assert geotransform[4] == 0, geotransform
+                    geotransform = geotransform[:3]+(geotransform[3]+je*geotransform[5],0,-1*geotransform[5])
             data = ma.masked_equal(data, value=na, copy=False)
             if fillValue is not None: data._fill_value = fillValue
           

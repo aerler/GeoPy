@@ -169,10 +169,11 @@ def addLengthAndNamesOfMonth(dataset, noleap=False, length=None, names=None):
 
 
 # transform function to convert monthly precip amount into precip rate on-the-fly
-def transformPrecip(data, l365=False, var=None, slc=None):
-  ''' convert monthly precip amount to SI units (mm/s) '''
+def transformMonthly(data, l365=False, var=None, slc=None):
+  ''' convert monthly amount to rate in SI units (e.g. mm/month to mm/s) '''
   if not isinstance(var,VarNC): raise TypeError(var)
-  if var.units == 'kg/m^2/month' or var.units == 'mm/month':
+  if var.units[-6:].lower() == '/month':
+    if not var.units[-6:] == '/month': raise NotImplementedError
     assert data.ndim == var.ndim
     tax = var.axisIndex('time')
     # expand slices
@@ -194,8 +195,9 @@ def transformPrecip(data, l365=False, var=None, slc=None):
     shape = [1,]*data.ndim; shape[tax] = te # dimensions of length 1 will be expanded as needed
     spm = seconds_per_month_365 if l365 else seconds_per_month
     data /= np.tile(spm, te/12).reshape(shape) # convert in-place
-    var.units = 'kg/m^2/s'
+    var.units = var.units.replace('month', 's')
   return data      
+transformPrecip = transformMonthly # for backwards compatibility
       
 # transform function to convert days per month into a ratio
 def transformDays(data, l365=False, var=None, slc=None):
