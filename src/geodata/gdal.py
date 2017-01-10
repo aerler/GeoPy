@@ -910,11 +910,25 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
     # safety checks
     xlon_name,ylat_name = ('x','y') if isProjected else ('lon','lat')
     if xlon_name in dataset.axes:
-      assert dataset.axes[xlon_name].units == griddef.xlon.units and np.all(dataset.axes[xlon_name][:] == griddef.xlon[:])
-      assert all([dataset.axes[xlon_name] == var.getAxis(xlon_name) for var in dataset.variables.values() if var.hasAxis(xlon_name)])
+      if dataset.axes[xlon_name].units != griddef.xlon.units:
+        raise AxisError("Units of Dataset and GridDef x-axes do not match: {} != {}".format(dataset.axes[xlon_name].units,griddef.xlon.units))
+      if not isEqual(dataset.axes[xlon_name][:], griddef.xlon[:]):
+        bias = np.mean(dataset.axes[xlon_name][:] - griddef.xlon[:])
+        cc = np.corrcoef(dataset.axes[xlon_name][:], griddef.xlon[:])[0,-1]
+        raise AxisError("Coordinates of Dataset and GridDef x-axes are inconsistent! Bias: {} Correltation: {}".format(bias,cc))
+      if any([dataset.axes[xlon_name] != var.getAxis(xlon_name) for var in dataset.variables.values() if var.hasAxis(xlon_name)]):
+        raise AxisError("X-Axes of Variables in Dataset are inconsistent!")
     if ylat_name in dataset.axes:
-      assert dataset.axes[ylat_name].units == griddef.ylat.units and np.all(dataset.axes[ylat_name][:] == griddef.ylat[:])
-      assert all([dataset.axes[ylat_name] == var.getAxis(ylat_name) for var in dataset.variables.values() if var.hasAxis(ylat_name)])
+      if dataset.axes[ylat_name].units != griddef.ylat.units:
+        raise AxisError("Units of Dataset and GridDef y-axes do not match: {} != {}".format(dataset.axes[ylat_name].units,griddef.ylat.units))
+      if not isEqual(dataset.axes[ylat_name][:], griddef.ylat[:]):
+        bias = np.mean(dataset.axes[ylat_name][:] - griddef.ylat[:])
+        cc = np.corrcoef(dataset.axes[ylat_name][:], griddef.ylat[:])[0,-1]
+        raise AxisError("Coordinates of Dataset and GridDef y-axes are inconsistent! Bias: {} Correltation: {}".format(bias,cc))
+      if any([dataset.axes[ylat_name] != var.getAxis(ylat_name) for var in dataset.variables.values() if var.hasAxis(ylat_name)]):
+        raise AxisError("Y-Axes of Variables in Dataset are inconsistent!")
+#       assert dataset.axes[ylat_name].units == griddef.ylat.units and np.all(dataset.axes[ylat_name][:] == griddef.ylat[:])
+#       assert all([dataset.axes[ylat_name] == var.getAxis(ylat_name) for var in dataset.variables.values() if var.hasAxis(ylat_name)])
 #       projection, isProjected, xlon, ylat = griddef.getProjection()
 #       lgdal = xlon is not None and ylat is not None # need non-None xlon & ylat        
   elif griddef is None and len(dataset.axes) >= 2:

@@ -215,18 +215,18 @@ class VarNC(Variable):
     # sync?
     if 'w' in self.mode: self.sync() 
   
-  def __getitem__(self, slc):
+  def __getitem__(self, slcs):
     ''' Method implementing access to the actual data; if data is not loaded, give direct access to NetCDF file. '''
     # determine what to do
     if self.data:
       # call parent method
-      data = super(VarNC,self).__getitem__(slc) # load actual data using parent method      
+      data = super(VarNC,self).__getitem__(slcs) # load actual data using parent method      
     else:
       # provide direct access to netcdf data on file
-      if isinstance(slc,(list,tuple)):
-        if (not self.strvar and len(slc) != self.ncvar.ndim) or (self.strvar and len(slc)+1 != self.ncvar.ndim): 
-          raise AxisError, slc
-        slcs = list(slc) # need to insert items
+      if isinstance(slcs,(list,tuple)):
+        if (not self.strvar and len(slcs) != self.ncvar.ndim) or (self.strvar and len(slcs)+1 != self.ncvar.ndim): 
+          raise AxisError(slcs)
+        slcs = list(slcs) # need to insert items
         # NetCDF can't deal wit negative list indices
         for i,slc in enumerate(slcs):
           lendim = self.ncvar.shape[i] # add dimension length to negative values
@@ -235,7 +235,7 @@ class VarNC(Variable):
           elif isinstance(slc,np.ndarray):
             slcs[i] = np.where(slc<0,slc+lendim,slc) 
       else: 
-        slcs = [slc,]*self.ndim # trivial case: expand slices to all axes
+        slcs = [slcs,]*self.ndim # trivial case: expand slices to all axes
       # handle squeezed vars
       if self.squeezed:
         # figure out slices
@@ -265,7 +265,7 @@ class VarNC(Variable):
         try: data += self.offset
         except TypeError: data = data + self.offset
       if self.transform is not None: 
-        data = self.transform(data, var=self, slc=slc)
+        data = self.transform(data=data, var=self, slc=slcs)
       # make sure dtype is correct, since it may have changed
       if not np.issubdtype(data.dtype,self.dtype): self.dtype = data.dtype
     # return data

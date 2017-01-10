@@ -182,10 +182,10 @@ loadShapeTimeSeries = loadCRU_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
 #   mode = 'test_climatology'
-#   mode = 'test_timeseries'
+  mode = 'test_timeseries'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-  mode = 'average_timeseries'
+#   mode = 'average_timeseries'
 #   period = (1971,2001)
 #   period = (1979,2009)
 #   period = (1949,2009)
@@ -218,12 +218,15 @@ if __name__ == '__main__':
     
     # load original time-series file
     print('')
-    dataset = loadCRU_TS(grid='arb2_d02')
+    dataset = loadCRU_TS(grid=None)
     print(dataset)
     print('')
     print(dataset.time)
     print(dataset.time.coord)
-    print(dataset.time.coord[78*12])
+    assert dataset.time.coord[78*12] == 0
+    print('')
+    print(dataset.precip)
+    print(dataset.precip[0:12,:,:].mean()*86400)
 
 
   elif mode == 'test_point_climatology':
@@ -236,6 +239,7 @@ if __name__ == '__main__':
     print('')
     print(dataset.time)
     print(dataset.time.coord)
+    
         
   elif mode == 'test_point_timeseries':
     

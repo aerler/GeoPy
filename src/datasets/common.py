@@ -15,7 +15,8 @@ import os
 import functools
 # internal imports
 from utils.misc import expandArgumentList
-from geodata.misc import AxisError, DatasetError, DateError, ArgumentError, EmptyDatasetError, DataError
+from geodata.misc import AxisError, DatasetError, DateError, ArgumentError, EmptyDatasetError, DataError,\
+  VariableError
 from geodata.base import Dataset, Variable, Axis, Ensemble
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import GDALError, addGDALtoDataset, loadPickledGridDef, griddef_pickle
@@ -169,42 +170,59 @@ def addLengthAndNamesOfMonth(dataset, noleap=False, length=None, names=None):
 
 
 # transform function to convert monthly precip amount into precip rate on-the-fly
-def transformMonthly(data, l365=False, var=None, slc=None):
-  ''' convert monthly amount to rate in SI units (e.g. mm/month to mm/s) '''
-  if not isinstance(var,VarNC): raise TypeError(var)
-  if var.units[-6:].lower() == '/month':
-    if not var.units[-6:] == '/month': raise NotImplementedError
-    assert data.ndim == var.ndim
+def transformMonthly(data=None, var=None, slc=None, l365=False, lvar=None):
+    ''' convert monthly amount to rate in SI units (e.g. mm/month to mm/s) '''
+    if not isinstance(var,Variable): raise TypeError(var)
+    if data is None: 
+        data = var.data_array
+        if lvar is None: lvar = True
+    elif not isinstance(data,np.ndarray): raise TypeError(data)
+    if slc is None and ( data.ndim != var.ndim or data.shape != var.shape ):
+        raise DataError("Dimensions of data array and Variable are incompatible!\n {} != {}".format(data.shape,var.shape))
+    if var.units[-6:].lower() != '/month':
+        raise VariableError("Units check failed: this function converts from month accumulations to rates in SI units.")
     tax = var.axisIndex('time')
     # expand slices
     if slc is None or isinstance(slc,slice): tslc = slc
     elif isinstance(slc,(list,tuple)): tslc = slc[tax]
     # handle sliced or non-sliced axis
     if tslc is None or tslc == slice(None):
-      # trivial case
-      te = len(var.time)
-      if not ( data.shape[tax] == te and te%12 == 0 ): raise NotImplementedError("The record has to start and end at a full year!")
+        # trivial case
+        te = len(var.time)
+        if not ( data.shape[tax] == te and te%12 == 0 ): 
+          raise NotImplementedError("The record has to start and end at a full year!")
     else:  
-      # special treatment if time axis was sliced
-      tlc = slc[tax]
-      ts = tlc.start or 0 
-      te = ( tlc.stop or len(var.time) ) - ts
-      if not ( ts%12 == 0 and te%12 == 0 ): raise NotImplementedError("The record has to start and end at a full year!")
-      assert data.shape[tax] == te
-      # assuming the record starts some year in January, and we always need to load full years
+        # special treatment if time axis was sliced
+        tlc = slc[tax]
+        ts = tlc.start or 0 
+        te = ( tlc.stop or len(var.time) ) - ts
+        if not ( ts%12 == 0 and te%12 == 0 ): raise NotImplementedError("The record has to start and end at a full year!")
+        assert data.shape[tax] == te
+        # assuming the record starts some year in January, and we always need to load full years
     shape = [1,]*data.ndim; shape[tax] = te # dimensions of length 1 will be expanded as needed
     spm = seconds_per_month_365 if l365 else seconds_per_month
     data /= np.tile(spm, te/12).reshape(shape) # convert in-place
-    var.units = var.units.replace('month', 's')
-  return data      
+    var.units = var.units[:-6]+'/s' # per second
+    # return Variable, not just array
+    if lvar:
+        var.data_array = data
+        data = var
+    # return data array (default) or Variable instance
+    return data      
 transformPrecip = transformMonthly # for backwards compatibility
       
 # transform function to convert days per month into a ratio
-def transformDays(data, l365=False, var=None, slc=None):
-  ''' convert days per month to fraction '''
-  if not isinstance(var,VarNC): raise TypeError
-  if var.units == 'days':
-    assert data.ndim == var.ndim
+def transformDays(data=None, var=None, slc=None, l365=False, lvar=None):
+    ''' convert days per month to fraction '''
+    if not isinstance(var,Variable): raise TypeError(var)
+    if data is None: 
+        data = var.data_array
+        if lvar is None: lvar = True
+    elif not isinstance(data,np.ndarray): raise TypeError(data)
+    if data.ndim != var.ndim or data.shape != var.shape:
+        raise DataError("Dimensions of data array and Variable are incompatible!\n {} != {}".format(data.shape,var.shape))
+    if var.units[:4].lower() != 'days':
+        raise VariableError("Units check failed: this function converts from days per month to fractions.")
     tax = var.axisIndex('time')
     # expand slices
     if slc is None or isinstance(slc,slice): tslc = slc
@@ -228,7 +246,12 @@ def transformDays(data, l365=False, var=None, slc=None):
     spm = days_per_month_365 if l365 else days_per_month
     data /= np.tile(spm, te/12).reshape(shape) # convert in-place
     var.units = '' # fraction
-  return data      
+    # return Variable, not just array
+    if lvar:
+        var.data_array = data
+        data = var
+    # return data array (default) or Variable instance
+    return data      
       
       
 ## functions to load a dataset

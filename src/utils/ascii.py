@@ -152,8 +152,7 @@ def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype
     var = Variable(name=name, units=units, axes=axes, data=data, dtype=dtype, mask=None, fillValue=fillValue, 
                    atts=atts, plot=plot)
     # apply transform (if any), now that we have axes etc.
-    if transform is not None:
-      raise NotImplementedError
+    if transform is not None: var = transform(var=var)
     # add GDAL functionality
     if griddef is not None:
         # perform some consistency checks ...
