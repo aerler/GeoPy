@@ -42,6 +42,7 @@ default_varatts = dict(pmsl     = dict(name='pmsl', units='Pa'), # sea-level pre
                        pwtr     = dict(name='pwtr', units='kg/m^2'), # total precipitable water (kg/m^2)
                        snow     = dict(name='snow', units='kg/m^2'), # snow water equivalent
                        snowh    = dict(name='snowh', units='m'), # snow depth
+                       snwmlt   = dict(name='snwmlt', units='kg/m^2/s'), # snow melt (rate)
                        sfroff   = dict(name='sfroff', units='kg/m^2/s'), # surface run-off                      
                        ugroff   = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off      
                        runoff   = dict(name='runoff', units='kg/m^2/s'), # total surface and sub-surface run-off
@@ -169,19 +170,21 @@ def addLengthAndNamesOfMonth(dataset, noleap=False, length=None, names=None):
 #   return precip
 
 
-# transform function to convert monthly precip amount into precip rate on-the-fly
-def transformMonthly(data=None, var=None, slc=None, l365=False, lvar=None):
-    ''' convert monthly amount to rate in SI units (e.g. mm/month to mm/s) '''
-    if not isinstance(var,Variable): raise TypeError(var)
+# apply a periodic monthly scalefactor or offset
+def monthlyTransform(var=None, data=None, slc=None, lvar=None, scalefactor=None, offset=None, linplace=True):
+    ''' apply a periodic monthly scalefactor or offset to a variable '''
+    # check input
     if data is None: 
         data = var.data_array
         if lvar is None: lvar = True
     elif not isinstance(data,np.ndarray): raise TypeError(data)
     if slc is None and ( data.ndim != var.ndim or data.shape != var.shape ):
         raise DataError("Dimensions of data array and Variable are incompatible!\n {} != {}".format(data.shape,var.shape))
-    if var.units[-6:].lower() != '/month':
-        raise VariableError("Units check failed: this function converts from month accumulations to rates in SI units.")
     tax = var.axisIndex('time')
+    if scalefactor is not None and not len(scalefactor) == 12: 
+        raise ArgumentError("the 'scalefactor' array/list needs to have length 12 (one entry for each month).\n {}".format(scalefactor))
+    if offset is not None and not len(offset) == 12: 
+        raise ArgumentError("the 'offset' array/list needs to have length 12 (one entry for each month).\n {}".format(offset))
     # expand slices
     if slc is None or isinstance(slc,slice): tslc = slc
     elif isinstance(slc,(list,tuple)): tslc = slc[tax]
@@ -200,57 +203,45 @@ def transformMonthly(data=None, var=None, slc=None, l365=False, lvar=None):
         assert data.shape[tax] == te
         # assuming the record starts some year in January, and we always need to load full years
     shape = [1,]*data.ndim; shape[tax] = te # dimensions of length 1 will be expanded as needed
-    spm = seconds_per_month_365 if l365 else seconds_per_month
-    data /= np.tile(spm, te/12).reshape(shape) # convert in-place
-    var.units = var.units[:-6]+'/s' # per second
+    if not linplace: data = data.copy() # make copy if not inplace
+    if scalefactor is not None: data *= np.tile(scalefactor, te/12).reshape(shape) # scale in-place
+    if offset is not None: data += np.tile(offset, te/12).reshape(shape) # shift in-place
     # return Variable, not just array
     if lvar:
         var.data_array = data
         data = var
     # return data array (default) or Variable instance
+    return data
+
+# transform function to convert monthly precip amount into precip rate on-the-fly
+def transformMonthly(data=None, var=None, slc=None, l365=False, lvar=None, linplace=True):
+    ''' convert monthly amount to rate in SI units (e.g. mm/month to mm/s) '''
+    # check input, makesure this makes sense
+    if not isinstance(var,Variable): raise TypeError(var)
+    elif var.units[-6:].lower() != '/month':
+        raise VariableError("Units check failed: this function converts from month accumulations to rates in SI units.")
+    # prepare scalefactor
+    spm = 1. / (seconds_per_month_365 if l365 else seconds_per_month) # divide by seconds
+    # actually scale by month
+    data = monthlyTransform(var=var, data=data, slc=slc, lvar=lvar, scalefactor=spm, offset=None, linplace=linplace)
+    # return data array (default) or Variable instance
+    var.units = var.units[:-6]+'/s' # per second
     return data      
 transformPrecip = transformMonthly # for backwards compatibility
       
 # transform function to convert days per month into a ratio
-def transformDays(data=None, var=None, slc=None, l365=False, lvar=None):
+def transformDays(data=None, var=None, slc=None, l365=False, lvar=None, linplace=True):
     ''' convert days per month to fraction '''
+    # check input, makesure this makes sense
     if not isinstance(var,Variable): raise TypeError(var)
-    if data is None: 
-        data = var.data_array
-        if lvar is None: lvar = True
-    elif not isinstance(data,np.ndarray): raise TypeError(data)
-    if data.ndim != var.ndim or data.shape != var.shape:
-        raise DataError("Dimensions of data array and Variable are incompatible!\n {} != {}".format(data.shape,var.shape))
-    if var.units[:4].lower() != 'days':
+    elif var.units[:4].lower() != 'days':
         raise VariableError("Units check failed: this function converts from days per month to fractions.")
-    tax = var.axisIndex('time')
-    # expand slices
-    if slc is None or isinstance(slc,slice): tslc = slc
-    elif isinstance(slc,(list,tuple)): tslc = slc[tax]
-    # handle sliced or non-sliced axis
-    if tslc is None or tslc == slice(None):
-      # trivial case
-      te = len(var.time)
-      if not ( data.shape[tax] == te and te%12 == 0 ): 
-        raise NotImplementedError("The record has to start and end at a full year!")
-    else:  
-      # special treatment if time axis was sliced
-      tlc = slc[tax]
-      ts = tlc.start or 0 
-      te = ( tlc.stop or len(var.time) ) - ts
-      if not ( ts%12 == 0 and te%12 == 0 ): 
-        raise NotImplementedError("The record has to start and end at a full year!")
-      assert data.shape[tax] == te
-      # assuming the record starts some year in January, and we always need to load full years
-    shape = [1,]*data.ndim; shape[tax] = te # dimensions of length 1 will be expanded as needed
-    spm = days_per_month_365 if l365 else days_per_month
-    data /= np.tile(spm, te/12).reshape(shape) # convert in-place
+    # prepare scalefactor
+    dpm = 1. / (days_per_month_365 if l365 else days_per_month ) # divide by days
+    # actually scale by month
+    data = monthlyTransform(var=var, data=data, slc=slc, lvar=lvar, scalefactor=dpm, offset=None, linplace=linplace)
+        # return data array (default) or Variable instance
     var.units = '' # fraction
-    # return Variable, not just array
-    if lvar:
-        var.data_array = data
-        data = var
-    # return data array (default) or Variable instance
     return data      
       
       
@@ -738,13 +729,14 @@ if __name__ == '__main__':
     
   from geodata.gdal import GridDefinition, pickleGridDef
   
-#   mode = 'pickle_grid'
-  mode = 'create_grid'
+  mode = 'pickle_grid'
+#   mode = 'create_grid'
   grids = dict( CFSR=['031','05'],
                 GPCC=['025','05','10','25'],
+                NRCan=['NA12','CA12','CA24'],
                 CRU=[None],NARR=[None],PRISM=[None],PCIC=[None])
     
-  # pickle grid definition
+  ## pickle grid definition
   if mode == 'pickle_grid':
     
     for grid,reses in grids.items():

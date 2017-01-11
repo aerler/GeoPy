@@ -530,7 +530,7 @@ def traverseList(lsl, fct):
 # adapted from Stack Overflow:
 # 'https://stackoverflow.com/questions/136168/get-last-n-lines-of-a-file-with-python-similar-to-tail' 
 def tail(f, n=20):
-    ''' Returns the last `n` lines of file `f` as a list. '''
+    ''' Returns the last 'n' lines of file 'f' as a list. '''
     if n == 0:
         return []
     BUFSIZ = 1024

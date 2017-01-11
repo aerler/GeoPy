@@ -270,15 +270,16 @@ def writeNetCDF(dataset, ncfile, ncformat='NETCDF4', zlib=True, writeData=True, 
   #if ncfile.mode == 'r': raise NCDataError, "Need write permission on NetCDF dataset."
   ncfile.setncatts(coerceAtts(dataset.atts))
   # add coordinate variables first
-  for name,ax in dataset.axes.iteritems():
+  for name,ax in dataset.axes.items():
     # only need to add real coordinate axes; simple dimensions are added on-the-fly by ariables
     data = ax.getArray(unmask=True) if writeData and ( ax.data or not skipUnloaded ) else None
     add_coord(ncfile, name, length=len(ax), data=data, atts=coerceAtts(ax.atts), dtype=ax.dtype, zlib=zlib, fillValue=ax.fillValue)
   # now add variables
-  for name,var in dataset.variables.iteritems():
+  for name,var in dataset.variables.items():
     dims = tuple([ax.name for ax in var.axes])
-    data = var.getArray(unmask=True) if writeData and ( var.data or not skipUnloaded ) else None  
-    add_var(ncfile, name, dims=dims, data=data, atts=coerceAtts(var.atts), dtype=var.dtype, zlib=zlib, fillValue=var.fillValue)
+    #data = var.getArray(unmask=True) if writeData and ( var.data or not skipUnloaded ) else None  
+    add_var(ncfile, name, dims=dims, data=var.data_array, atts=coerceAtts(var.atts), 
+            dtype=var.dtype, zlib=zlib, fillValue=var.fillValue)
   # close file or return file handle
   ncfile.sync()
   if close: ncfile.close()

@@ -145,7 +145,7 @@ class GridDefinition(object):
       if geolocator:
         x2D, y2D = np.meshgrid(xlon.coord, ylat.coord) # if we have x/y arrays
         xx = x2D.flatten().astype(np.float64); yy = y2D.flatten().astype(np.float64)
-        lon2D = np.zeros_like(xx); lat2D = np.zeros_like(yy) 
+        lon2D = np.zeros_like(xx, dtype=np.float32); lat2D = np.zeros_like(yy, dtype=np.float32) 
         #for i in xrange(xx.size):
         #  (lon2D[i],lat2D[i],tmp) = tx.TransformPoint(xx[i],yy[i])
         # N.B.: apparently TransformPoints is not much faster than a simple loop... 
@@ -153,12 +153,13 @@ class GridDefinition(object):
         #print point_array.shape; print point_array[:3,:]
         point_array = np.asarray(tx.TransformPoints(point_array.astype(np.float64)), dtype=np.float32)
         #print tmp.shape; print tmp[:3,:] # (lon2D,lat2D,zzz)
-        lon2D = point_array[:,0]; lat2D = point_array[:,1] 
+        lon2D[:] = point_array[:,0]; lat2D[:] = point_array[:,1] 
         lon2D = lon2D.reshape(x2D.shape); lat2D = lat2D.reshape(y2D.shape)
     else:
       self.scale = ( geotransform[1] + geotransform[5] ) / 2 # pretty straight forward
       if geolocator:
         lon2D, lat2D = np.meshgrid(xlon.coord, ylat.coord) # if we have x/y arrays
+        lon2D = lon2D.astype(np.float32); lat2D = lat2D.astype(np.float32) # astype always returns a newly allocated copy
     # set geotransform/axes attributes
     self.xlon = xlon
     self.ylat = ylat
@@ -282,13 +283,13 @@ def addGeoLocator(dataset, griddef=None, lcheck=True, asNC=True, lgdal=False, lr
   axes = (griddef.ylat,griddef.xlon)
   # add longitude field
   if lreplace or not dataset.hasVariable('lon2D'):
-    lon2D = Variable('lon2D', units='deg E', axes=axes, data=griddef.lon2D)
+    lon2D = Variable('lon2D', units='deg E', axes=axes, data=griddef.lon2D, dtype=np.float32)
     if dataset.hasVariable('lon2D'): dataset.replaceVariable(lon2D, deepcopy=True, asNC=asNC)
     else: dataset.addVariable(lon2D, deepcopy=True, asNC=asNC)
   elif lcheck: raise DatasetError
   # add latitude field
   if lreplace or not dataset.hasVariable('lat2D'):
-    lat2D = Variable('lat2D', units='deg N', axes=axes, data=griddef.lat2D)
+    lat2D = Variable('lat2D', units='deg N', axes=axes, data=griddef.lat2D, dtype=np.float32)
     if dataset.hasVariable('lat2D'): dataset.replaceVariable(lat2D, deepcopy=True, asNC=asNC)
     else: dataset.addVariable(lat2D, deepcopy=True)
   elif lcheck: raise DatasetError
