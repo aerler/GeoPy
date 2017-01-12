@@ -261,9 +261,19 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
         elif var == 'snow':
             if not 'snowh' in dataset: # check prerequisites
                 raise VariableError("Prerequisites for '{:s}' not found.\n{}".format(var,dataset))
+            # N.B.: before we can compute anything, we need estimates of snow density; the values below are seasonal
+            #       estimates from the Canadian Meteorological Centre for maritime climates (Table 4):
+            #       https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/
+            #       a factor of 1000 has been applied, because snow depth is in m (and not mm)
+            # Maritime snow cover
+            density = np.asarray([0.2165, 0.2485, 0.2833, 0.332, 0.3963, 0.501, 0.501, 0.501, 0.16, 0.16, 0.1835, 0.1977], dtype=np.float32)*1000.
+            # Ephemeral snow cover
+            #density = np.asarray([0.3168, 0.3373, 0.3643, 0.4046, 0.4586, 0.5098, 0.5098, 0.5098, 0.25, 0.25, 0.3, 0.3351], dtype=np.float32)*1000.
+            # Prairie snow cover
+            #density = np.asarray([0.2137, 0.2416, 0.2610, 0.308, 0.3981, 0.4645, 0.4645, 0.4645, 0.14, 0.14, 0.1616, 0.1851], dtype=np.float32)*1000.
+            # Note: these snow density values are for maritime climates only! values for the Prairies and the North are 
+            #       substantially different! this is for applications in southern Ontario
             # compute values and add to dataset
-            density = np.asarray([0.25, 0.25, 0.35, 0.45, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.4, 0.3], dtype=np.float32)*1000.
-            # these values for snow density are pretty ad hoc! the 1000 factor is because snow depth is in meters
             dataset[var] = monthlyTransform(var=dataset.snowh.copy(deepcopy=True), lvar=True, linplace=True, scalefactor=density)
         # Snowmelt as residual of snow fall and snow accumulation (water equivalent) changes
         elif var == 'snwmlt':
@@ -283,6 +293,14 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
             newvar += dataset.solprec # ad that in-place as well
             newvar.data_array.clip(min=0, out=newvar.data_array) # clip values smaller than zero (in-place)
             dataset[var] = newvar
+            # normalize snowmelt so that it does not exceed snow fall
+            r = dataset.snwmlt.mean(axis=0,keepdims=True,asVar=False)/dataset.solprec.mean(axis=0,keepdims=True,asVar=False)
+            rm = r.mean()
+            print("\nSnowmelt to snowfall ratio: {}\n".format(rm))            
+            if rm > 1:
+              #r0 = dataset.snwmlt.mean(axis=0,keepdims=True,asVar=False)/dataset.solprec.mean(axis=0,keepdims=True,asVar=False) 
+              dataset.snwmlt.data_array /= r # normalize to total snow fall annually and grid point-wise
+            assert np.ma.allclose(dataset.snwmlt.mean(axis=0,asVar=False), dataset.solprec.mean(axis=0,asVar=False)), dataset.snwmlt.mean()/dataset.solprec.mean() 
         else: raise VariableError(var)
         # for completeness, add attributes
         dataset[var].atts = varatts[var]

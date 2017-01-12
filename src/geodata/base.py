@@ -139,7 +139,7 @@ class ReduceVar(object): # not a Variable child!!!
     ''' Save original operation. '''
     self.reduceop = reduceop
   def __call__(self, var, asVar=None, axis=None, axes=None, lcheckVar=True, lcheckAxis=True,
-                          fillValue=None, lrecursive=False, lall=True, **kwaxes):
+                          fillValue=None, lrecursive=False, lall=True, keepdims=False, **kwaxes):
     ''' Figure out axes, perform sanity checks, then execute operation, and return result as a Variable 
         instance. Axes are specified either in a list ('axes') or as keyword arguments with corresponding
         slices. '''
@@ -189,6 +189,8 @@ class ReduceVar(object): # not a Variable child!!!
           if not var.hasAxis(axes, lany=not lall, lall=lall):
             return None # nothing to do
             # if not lrecursive, missing axes will be skipped 
+      # convert instances and indices to names
+      axes = [var.getAxis(ax).name for ax in axes]
       # N.B.: leave checking of slices to var.slicing (below)
       ## get data from Variable  
       # use overloaded call method to index with coordinate values directly 
@@ -206,7 +208,7 @@ class ReduceVar(object): # not a Variable child!!!
         name = var.name; units = var.units # defaults, in case axlist is empty...    
         for axis in axlist:
           # apply reduction operation with axis argument, looping over axes
-          data, name, units = self.reduceop(var, data, axidx=var.axisIndex(axis), **kwargs)
+          data, name, units = self.reduceop(var, data, axidx=var.axisIndex(axis), keepdims=keepdims, **kwargs)
       else:
         if len(axes) > 1:
           # merge axes
@@ -218,21 +220,28 @@ class ReduceVar(object): # not a Variable child!!!
           else: var = tmp
           data = var.getArray(unmask= not fillValue is None, fillValue=fillValue)
           # apply reduction operation over merged axes
-          data, name, units = self.reduceop(var, data, axidx=var.axisIndex(sample_axis), **kwargs)
+          data, name, units = self.reduceop(var, data, axidx=var.axisIndex(sample_axis), keepdims=keepdims, **kwargs)
         else:
           # apply reduction operation over axis
           data = var.getArray(unmask= not fillValue is None, fillValue=fillValue)
-          data, name, units = self.reduceop(var, data, axidx=var.axisIndex(tuple(axes)[0]), **kwargs)
+          data, name, units = self.reduceop(var, data, axidx=var.axisIndex(tuple(axes)[0]), keepdims=keepdims, **kwargs)
       # squeeze removed dimension (but no other!)
-      newshape = [len(ax) for ax in var.axes if not ax.name in axes]
+      if keepdims: newshape = [1 if ax.name in axes else len(ax) for ax in var.axes]
+      else: newshape = [len(ax) for ax in var.axes if not ax.name in axes]      
       #print data.shape, newshape
       data = data.reshape(newshape)
       # N.B.: other singleton dimensions will have been removed, too
     ## cast into Variable
     # whether or not to cast as Variable (default: Yes)
     if asVar is None: asVar = True # default for iterative reduction
-    if asVar: newaxes = [ax for ax in var.axes if not ax.name in axes]
-    if asVar: 
+    if asVar:
+      if keepdims:
+        # repeat the array along the singleton axes, in order to fit the Axis
+        for i,ax in enumerate(var.axes):
+          if ax.name in axes: 
+            data = np.ma.repeat(data, repeats=len(ax), axis=i)
+        newaxes = var.axes # use old axes
+      else: newaxes = [ax for ax in var.axes if not ax.name in axes] # remove squeezed axes
       redvar = var.copy(name=name, units=units, axes=newaxes, data=data)
 #       redvar = Variable(name=var.name, units=var.units, axes=newaxes, data=data, 
 #                      fillValue=var.fillValue, atts=var.atts.copy(), plot=var.plot.copy())
@@ -590,7 +599,9 @@ class Variable(object):
   def hasAxis(self, axis, strict=True):
     ''' Check if the variable instance has a particular axis. '''
     if not strict and isinstance(axis,Variable): axis = axis.name
-    if isinstance(axis,basestring): # by name
+    if isinstance(axis,(int,np.integer)): # by index
+      if axis < self.ndim: return True
+    elif isinstance(axis,basestring): # by name
       for i in xrange(len(self.axes)):
         if self.axes[i].name == axis: return True
     elif isinstance(axis,Variable): # by name
@@ -599,8 +610,7 @@ class Variable(object):
     elif isinstance(axis,Variable): # by object ID
       for i in xrange(len(self.axes)):
         if self.axes[i] == axis: return True
-    # if all fails
-    return False
+    else: return False # if all fails
   
   def replaceAxis(self, oldaxis, newaxis=None):
     ''' Replace an existing axis with a different one with similar general properties. '''
@@ -625,7 +635,8 @@ class Variable(object):
   @ApplyTestOverList
   def getAxis(self, axis, lcheck=True):
     ''' Return a reference to the Axis object or one with the same name. '''
-    lhas = self.hasAxis(axis)        
+    if isinstance(axis,(int,np.integer)): lhas = axis < self.ndim
+    else: lhas = self.hasAxis(axis)        
     if not lhas and lcheck:
       if isinstance(axis,Axis): axis = axis.name  
       raise AxisError, "Variable '{:s}' has no axis named '{:s}'".format(self.name,axis) 
@@ -636,7 +647,9 @@ class Variable(object):
   @ApplyTestOverList
   def axisIndex(self, axis, strict=True, lcheck=True):
     ''' Return the index of a particular axis. (return None if not found) '''
-    if isinstance(axis,basestring): # by name
+    if isinstance(axis,(int,np.integer)): # by index
+      return axis
+    elif isinstance(axis,basestring): # by name
       for i in xrange(len(self.axes)):
         if self.axes[i].name == axis: return i
     elif isinstance(axis,Axis): # by object ID
@@ -1188,50 +1201,50 @@ class Variable(object):
   # ReduceVar(asVar=None, axis=None, axes=None, lcheckAxis=True, **slcaxes)
   
   @ReduceVar
-  def sum(self, data, axidx=None):
-    data = nf.nansum(data, axis=axidx)
+  def sum(self, data, axidx=None, keepdims=False):
+    data = nf.nansum(data, axis=axidx, keepdims=keepdims)
     name = '{:s}_sum'.format(self.name)
     units = self.units
     return data, name, units
   
   @ReduceVar
-  def mean(self, data, axidx=None):
-    data = nf.nanmean(data, axis=axidx)
+  def mean(self, data, axidx=None, keepdims=False):
+    data = nf.nanmean(data, axis=axidx, keepdims=keepdims)
     name = '{:s}_mean'.format(self.name)
     units = self.units
     return data, name, units
   
   @ReduceVar
-  def std(self, data, axidx=None, ddof=0):
-    data = nf.nanstd(data, axis=axidx, ddof=ddof) # ddof: degrees of freedom
+  def std(self, data, axidx=None, ddof=0, keepdims=False):
+    data = nf.nanstd(data, axis=axidx, ddof=ddof, keepdims=keepdims) # ddof: degrees of freedom
     name = '{:s}_std'.format(self.name)
     units = self.units # variance has squared units    
     return data, name, units
  
   @ReduceVar
-  def sem(self, data, axidx=None, ddof=0):
-    data = nf.nansem(data, axis=axidx, ddof=ddof) # ddof: degrees of freedom
+  def sem(self, data, axidx=None, ddof=0, keepdims=False):
+    data = nf.nansem(data, axis=axidx, ddof=ddof, keepdims=keepdims) # ddof: degrees of freedom
     name = '{:s}_sem'.format(self.name)
     units = self.units # variance has squared units    
     return data, name, units
   
   @ReduceVar
-  def var(self, data, axidx=None, ddof=0):
-    data = nf.nanvar(data, axis=axidx, ddof=ddof) # ddof: degrees of freedom
+  def var(self, data, axidx=None, ddof=0, keepdims=False):
+    data = nf.nanvar(data, axis=axidx, ddof=ddof, keepdims=keepdims) # ddof: degrees of freedom
     name = '{:s}_var'.format(self.name)
     units = '({:s})^2'.format(self.units) # variance has squared units    
     return data, name, units
   
   @ReduceVar
-  def max(self, data, axidx=None):
-    data = nf.nanmax(data, axis=axidx)
+  def max(self, data, axidx=None, keepdims=False):
+    data = nf.nanmax(data, axis=axidx, keepdims=keepdims)
     name = '{:s}_max'.format(self.name)
     units = self.units
     return data, name, units
   
   @ReduceVar
-  def min(self, data, axidx=None):
-    data = nf.nanmin(data, axis=axidx)
+  def min(self, data, axidx=None, keepdims=False):
+    data = nf.nanmin(data, axis=axidx, keepdims=keepdims)
     name = '{:s}_min'.format(self.name)
     units = self.units
     return data, name, units
