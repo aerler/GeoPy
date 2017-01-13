@@ -300,7 +300,10 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
             if rm > 1:
               #r0 = dataset.snwmlt.mean(axis=0,keepdims=True,asVar=False)/dataset.solprec.mean(axis=0,keepdims=True,asVar=False) 
               dataset.snwmlt.data_array /= r # normalize to total snow fall annually and grid point-wise
-            assert np.ma.allclose(dataset.snwmlt.mean(axis=0,asVar=False), dataset.solprec.mean(axis=0,asVar=False)), dataset.snwmlt.mean()/dataset.solprec.mean() 
+            assert np.ma.allclose(dataset.snwmlt.mean(axis=0,asVar=False), dataset.solprec.mean(axis=0,asVar=False)), dataset.snwmlt.mean()/dataset.solprec.mean()
+            # add snow ratio as diagnostic
+            atts = dict(name='ratio', units='', long_name='Ratio of Snowfall to Snowmelt')
+            dataset += addGDALtoVar(Variable(data=r.squeeze(), axes=snow.axes[1:], atts=atts), griddef=dataset.griddef)    
         else: raise VariableError(var)
         # for completeness, add attributes
         dataset[var].atts = varatts[var]
