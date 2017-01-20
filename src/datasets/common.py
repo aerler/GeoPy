@@ -298,11 +298,11 @@ def getFileName(name=None, resolution=None, period=None, filetype='climatology',
 # common climatology load function that will be imported by datasets (for backwards compatibility)
 def loadObs(name=None, folder=None, resolution=None, period=None, grid=None, varlist=None, 
              varatts=None, filepattern=None, filelist=None, projection=None, geotransform=None, 
-             axes=None, lautoregrid=None):
+             griddef=None, axes=None, lautoregrid=None):
   ''' A function to load standardized observational climatologies. '''
   return loadObservations(name=name, folder=folder, resolution=resolution, period=period, grid=grid, station=None, 
                           varlist=varlist, varatts=varatts, filepattern=filepattern, filelist=filelist, 
-                          projection=projection, geotransform=geotransform, axes=axes, 
+                          projection=projection, geotransform=geotransform, axes=axes, griddef=griddef, 
                           lautoregrid=lautoregrid, mode='climatology')
 
 # common climatology load function that will be imported by datasets (for backwards compatibility)
@@ -311,20 +311,20 @@ def loadObs_StnTS(name=None, folder=None, resolution=None, varlist=None, station
     ''' A function to load standardized observational time-series at station locations. '''
     return loadObservations(name=name, folder=folder, resolution=resolution, station=station, 
                           varlist=varlist, varatts=varatts, filepattern=filepattern, filelist=filelist, 
-                          projection=None, geotransform=None, axes=axes, period=None, grid=None,
+                          projection=None, geotransform=None, griddef=None, axes=axes, period=None, grid=None,
                           lautoregrid=False, mode='time-series')
   
 # universal load function that will be imported by datasets
 def loadObservations(name=None, folder=None, period=None, grid=None, station=None, shape=None, lencl=False, 
                      varlist=None, varatts=None, filepattern=None, filelist=None, resolution=None, 
-                     projection=None, geotransform=None, axes=None, lautoregrid=None, mode='climatology'):
+                     projection=None, geotransform=None, griddef=None, axes=None, lautoregrid=None, mode='climatology'):
   ''' A function to load standardized observational datasets. '''
   # prepare input
   if mode.lower() == 'climatology': # post-processed climatology files
     # transform period
-    if period is None or period == '':
-      if name not in ('PCIC','PRISM','GPCC','NARR'): 
-        raise ValueError("A period is required to load observational climatologies.")
+    if period is None or period == '': pass
+#       if name not in ('PCIC','PRISM','GPCC','NARR'): 
+#         raise ValueError("A period is required to load observational climatologies.")
     elif isinstance(period,basestring):
       period = tuple([int(prd) for prd in period.split('-')]) 
     elif not isinstance(period,(int,np.integer)) and ( not isinstance(period,tuple) and len(period) == 2 ): 
@@ -381,10 +381,10 @@ def loadObservations(name=None, folder=None, period=None, grid=None, station=Non
     if not dataset.hasAxis('shape'): 
       raise AxisError()
     if dataset.shape.coord[0] == 0: dataset.shape.coord += 1
-# figure out grid
+  # figure out grid
   if not lstation and not lshape:
     if grid is None or grid == name:
-      dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform, gridfolder=grid_folder)
+      dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform, griddef=griddef, gridfolder=grid_folder)
     elif isinstance(grid,basestring): # load from pickle file
   #     griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder)
       # add GDAL functionality to dataset 
@@ -731,10 +731,12 @@ if __name__ == '__main__':
   
   mode = 'pickle_grid'
 #   mode = 'create_grid'
-  grids = dict( CFSR=['031','05'],
-                GPCC=['025','05','10','25'],
-                NRCan=['NA12','CA12','CA24'],
-                CRU=[None],NARR=[None],PRISM=[None],PCIC=[None])
+  grids = dict( 
+#                CFSR=['031','05'],
+#                GPCC=['025','05','10','25'],
+               NRCan=['NA12','CA12','CA24'],
+#                CRU=[None],NARR=[None],PRISM=[None],PCIC=[None]
+               )
     
   ## pickle grid definition
   if mode == 'pickle_grid':

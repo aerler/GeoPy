@@ -430,8 +430,8 @@ def getGeotransform(xlon=None, ylat=None, geotransform=None):
       #print geotransform
       #print ulx + dx / 2., xlon[0], uly + dy / 2., ylat[0]
       # coordinates of upper left corner (same for source and sink)       
-      if not isEqual(ulx + dx / 2., float(xlon[0])): raise GDALError('{} != {}'.format(ulx + dx / 2., float(xlon[0])))
-      if not isEqual(uly + dy / 2., float(ylat[0])): raise GDALError('{} != {}'.format(uly + dy / 2., float(ylat[0])))
+      if not isEqual(ulx, float(xlon[0]) - dx / 2.): raise GDALError('{} != {}'.format(ulx, float(xlon[0]) - dx / 2.))
+      if not isEqual(uly, float(ylat[0]) - dy / 2.): raise GDALError('{} != {}'.format(uly, float(ylat[0]) - dy / 2.))
     else: 
       if not ( len(geotransform) == 6 and all(isFloat(geotransform)) ):
         raise GDALError('\'geotransform\' has to be a vector or list of 6 floating-point numbers.')

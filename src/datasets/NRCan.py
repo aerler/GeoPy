@@ -12,7 +12,7 @@ import numpy as np
 import numpy.ma as ma
 import os
 # internal imports
-from geodata.base import Variable, Axis
+from geodata.base import Variable
 from geodata.gdal import GridDefinition, addGDALtoVar
 from datasets.common import data_root, loadObservations, transformMonthly, addLengthAndNamesOfMonth,\
   monthlyTransform
@@ -69,17 +69,22 @@ nofile = ('T2','solprec','lat','lon','time') # variables that don't have their o
 ## Functions to load different types of NRCan datasets 
 
 def checkGridRes(grid, resolution, period=None, lclim=False):
-  ''' helper function to verify grid/resoluton selection ''' 
-  # prepare input
+  ''' helper function to verify grid/resoluton selection '''
+  # figure out resolution and grid
   if resolution is None: 
-      resolution = '12' 
-  elif grid[:2].upper() in ('NA','CA'): 
-      resolution = grid[2:]; grid = None
+      if grid is None:  
+          resolution = 'na12'
+      else: 
+          resolution = grid
+          grid = None
+  if not isinstance(resolution, basestring): raise TypeError(resolution) 
+  # figure out clim/TS
+  if period is not None: lclim=True
   # check for valid resolution 
-  if resolution not in ('12','24',): 
-      raise DatasetError, "Selected resolution '%s' is not available!"%resolution  
-  if resolution == '24' and period is not None: 
-      raise DatasetError, "The highest resolution is only available for the long-term mean!"
+  if lclim and resolution.upper() not in LTM_grids: 
+      raise DatasetError("Selected resolution '{:s}' is not available for long-term means!".format(resolution))
+  if not lclim and resolution.upper() not in TS_grids: 
+      raise DatasetError("Selected resolution '{:s}' is not available for historical time-series!".format(resolution))
   # return
   return grid, resolution
 
@@ -95,7 +100,7 @@ def loadNRCan(name=dataset_name, resolution=None, period=None, grid=None, varlis
     grid, resolution = checkGridRes(grid, resolution, period=period, lclim=True)
     # load standardized climatology dataset with NRCan-specific parameters
     dataset = loadObservations(name=name, folder=folder, projection=None, resolution=resolution, period=period, 
-                               grid=grid, varlist=varlist, varatts=varatts, filepattern=avgfile, 
+                               grid=grid, varlist=varlist, varatts=varatts, filepattern=avgfile, griddef=NRCan_NA12_grid,
                                filelist=filelist, lautoregrid=lautoregrid, mode='climatology')
     # return formatted dataset
     return dataset
@@ -266,11 +271,11 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
             #       https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/
             #       a factor of 1000 has been applied, because snow depth is in m (and not mm)
             # Maritime snow cover
-            density = np.asarray([0.2165, 0.2485, 0.2833, 0.332, 0.3963, 0.501, 0.501, 0.501, 0.16, 0.16, 0.1835, 0.1977], dtype=np.float32)*1000.
+#             density = np.asarray([0.2165, 0.2485, 0.2833, 0.332, 0.3963, 0.501, 0.501, 0.501, 0.16, 0.16, 0.1835, 0.1977], dtype=np.float32)*1000.
             # Ephemeral snow cover
-            #density = np.asarray([0.3168, 0.3373, 0.3643, 0.4046, 0.4586, 0.5098, 0.5098, 0.5098, 0.25, 0.25, 0.3, 0.3351], dtype=np.float32)*1000.
+            density = np.asarray([0.3168, 0.3373, 0.3643, 0.4046, 0.4586, 0.5098, 0.5098, 0.5098, 0.25, 0.25, 0.3, 0.3351], dtype=np.float32)*1000.
             # Prairie snow cover
-            #density = np.asarray([0.2137, 0.2416, 0.2610, 0.308, 0.3981, 0.4645, 0.4645, 0.4645, 0.14, 0.14, 0.1616, 0.1851], dtype=np.float32)*1000.
+#             density = np.asarray([0.2137, 0.2416, 0.2610, 0.308, 0.3981, 0.4645, 0.4645, 0.4645, 0.14, 0.14, 0.1616, 0.1851], dtype=np.float32)*1000.
             # Note: these snow density values are for maritime climates only! values for the Prairies and the North are 
             #       substantially different! this is for applications in southern Ontario
             # compute values and add to dataset
@@ -371,11 +376,77 @@ loadShapeTimeSeries = loadNRCan_ShpTS # time-series without associated grid (e.g
 
 if __name__ == '__main__':
   
+    mode = 'test_climatology'
+#     mode = 'test_timeseries'
+#     mode = 'test_point_climatology'
+#     mode = 'test_point_timeseries'
+#     mode = 'convert_Normals'
+    pntset = 'shpavg' # 'ecprecip'
+    period = None; res = 'na12'; grid = None
     
-    mode = 'convert_ASCII'
+    if mode == 'test_climatology':
+            
+        # load averaged climatology file
+        print('')
+        dataset = loadNRCan(grid=grid,period=period,resolution=res)
+        print(dataset)
+        print('')
+        print(dataset.geotransform)
+        print(dataset.precip.getArray().mean())
+        print(dataset.precip.masked)
+        
+        # print time coordinate
+        print
+        print dataset.time.atts
+        print
+        print dataset.time.data_array
+          
+    elif mode == 'test_timeseries':
+      
+        # load time-series file
+        print('')
+        dataset = loadNRCan_TS(grid=grid,resolution=res)
+        print(dataset)
+        print('')
+        print(dataset.time)
+        print(dataset.time.coord)
+        print(dataset.time.coord[78*12]) # Jan 1979
+          
+    if mode == 'test_point_climatology':
+            
+        # load averaged climatology file
+        print('')
+        if pntset in ('shpavg',): 
+            dataset = loadNRCan_Shp(shape=pntset, resolution=res, period=period)
+            print(dataset.shp_area.mean())
+            print('')
+        else: dataset = loadNRCan_Stn(station=pntset, resolution=res, period=period)
+        dataset.load()
+        print(dataset)
+        print('')
+        print(dataset.precip.mean())
+        print(dataset.precip.masked)
+        
+        # print time coordinate
+        print
+        print dataset.time.atts
+        print
+        print dataset.time.data_array
+
+    elif mode == 'test_point_timeseries':
     
-    
-    if mode == 'convert_ASCII':
+        # load station time-series file
+        print('') 
+        if pntset in ('shpavg',): dataset = loadNRCan_ShpTS(shape=pntset, resolution=res)
+        else: dataset = loadNRCan_StnTS(station=pntset, resolution=res)
+        print(dataset)
+        print('')
+        print(dataset.time)
+        print(dataset.time.coord)
+        assert dataset.time.coord[78*12] == 0 # Jan 1979
+        assert dataset.shape[0] == 1
+        
+    elif mode == 'convert_Normals':
         
         # parameters
         resolution = 12; grdstr = '_na{:d}'.format(resolution); prdstr = ''
