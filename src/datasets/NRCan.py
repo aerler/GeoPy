@@ -53,6 +53,7 @@ varatts = dict(Tmax    = dict(name='Tmax', units='K'), # 2m maximum temperature
                solprec = dict(name='liqprec', units='kg/m^2/s'), # total precipitation
                snow    = dict(name='snow', units='kg/m^2'), # snow water equivalent
                snwmlt  = dict(name='snwmlt', units='kg/m^2/s'), # snow melt (rate)
+               liqwatflx = dict(name='liqwatflx', units='kg/m^2/s'), # liquid water forcing (rate)
                # axes (don't have their own file; listed in axes)
                time = dict(name='time', units='month', ), # time coordinate
                # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
@@ -179,7 +180,7 @@ norm_vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.
                     rain = dict(grid='CA12', name='liqprec', units='kg/m^2/month', transform=transformMonthly, **norm_defaults), # total precipitation
                     snwd = dict(grid='CA12', name='snowh', units='m', scalefactor=1./100., **norm_defaults), ) # snow depth
 norm_axdefs = dict(time = dict(name='time', units='month', coord=np.arange(1,13)),) # time coordinate
-norm_derived = ('T2','solprec','snow','snwmlt')
+norm_derived = ('T2','solprec','snow','snwmlt','liqwatflx')
 norm_grid_pattern = root_folder+'{GRID:s}_normals/' # dataset root folder
 norm_var_pattern = '{VAR:s}/{VAR:s}_{time:02d}.asc.gz' # path to variables
 norm_title = 'NRCan Gridded Normals'
@@ -271,11 +272,11 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
             #       https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/
             #       a factor of 1000 has been applied, because snow depth is in m (and not mm)
             # Maritime snow cover
-#             density = np.asarray([0.2165, 0.2485, 0.2833, 0.332, 0.3963, 0.501, 0.501, 0.501, 0.16, 0.16, 0.1835, 0.1977], dtype=np.float32)*1000.
+            #density = np.asarray([0.2165, 0.2485, 0.2833, 0.332, 0.3963, 0.501, 0.501, 0.501, 0.16, 0.16, 0.1835, 0.1977], dtype=np.float32)*1000.
             # Ephemeral snow cover
-            density = np.asarray([0.3168, 0.3373, 0.3643, 0.4046, 0.4586, 0.5098, 0.5098, 0.5098, 0.25, 0.25, 0.3, 0.3351], dtype=np.float32)*1000.
+            #density = np.asarray([0.3168, 0.3373, 0.3643, 0.4046, 0.4586, 0.5098, 0.5098, 0.5098, 0.25, 0.25, 0.3, 0.3351], dtype=np.float32)*1000.
             # Prairie snow cover
-#             density = np.asarray([0.2137, 0.2416, 0.2610, 0.308, 0.3981, 0.4645, 0.4645, 0.4645, 0.14, 0.14, 0.1616, 0.1851], dtype=np.float32)*1000.
+            density = np.asarray([0.2137, 0.2416, 0.2610, 0.308, 0.3981, 0.4645, 0.4645, 0.4645, 0.14, 0.14, 0.1616, 0.1851], dtype=np.float32)*1000.
             # Note: these snow density values are for maritime climates only! values for the Prairies and the North are 
             #       substantially different! this is for applications in southern Ontario
             # compute values and add to dataset
@@ -309,6 +310,16 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
             # add snow ratio as diagnostic
             atts = dict(name='ratio', units='', long_name='Ratio of Snowfall to Snowmelt')
             dataset += addGDALtoVar(Variable(data=r.squeeze(), axes=snow.axes[1:], atts=atts), griddef=dataset.griddef)    
+        elif var == 'liqwatflx':
+            # surface water forcing (not including ET)
+            if not ( 'liqprec' in dataset and 'snwmlt' in dataset ): # check prerequisites
+                raise VariableError("Prerequisites for '{:s}' not found.\n{}".format(var,dataset))
+            # create variable and compute data
+            assert dataset.liqprec.units == 'kg/m^2/s', dataset.liqprec.units
+            assert dataset.snwmlt.units == 'kg/m^2/s', dataset.snwmlt.units  
+            data = dataset.liqprec[:] + dataset.snwmlt[:]
+            newvar = addGDALtoVar(Variable(data=data, axes=dataset.liqprec.axes, name=var, units='kg/m^2/s'), griddef=dataset.griddef)
+            dataset[var] = newvar
         else: raise VariableError(var)
         # for completeness, add attributes
         dataset[var].atts = varatts[var]
@@ -376,13 +387,13 @@ loadShapeTimeSeries = loadNRCan_ShpTS # time-series without associated grid (e.g
 
 if __name__ == '__main__':
   
-    mode = 'test_climatology'
+#     mode = 'test_climatology'
 #     mode = 'test_timeseries'
 #     mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
-#     mode = 'convert_Normals'
+    mode = 'convert_Normals'
     pntset = 'shpavg' # 'ecprecip'
-    period = None; res = 'na12'; grid = None
+    period = None; res = None; grid = None
     
     if mode == 'test_climatology':
             
