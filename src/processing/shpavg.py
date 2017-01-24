@@ -213,11 +213,12 @@ if __name__ == '__main__':
     # Observations/Reanalysis
     lLTM = True 
     datasets = []; resolutions = None; unity_grid = None #'arb2_d02'
-    resolutions = {'CRU':'','GPCC':'05','NARR':'','CFSR':['031','05']}
+    resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['031','05'],'NRCan':'NA12'}
+    datasets += ['NRCan']; periods = None; lLTM = True
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
-    datasets += ['Unity']    
+#     datasets += ['Unity']    
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False
@@ -226,7 +227,8 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm'] # ,'lnd'
 #     CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
-    WRF_project = 'WesternCanada' # only use WesternCanada experiments
+    WRF_project = None
+#     WRF_project = 'WesternCanada' # only use WesternCanada experiments
 #     WRF_project = 'GreatLakes' # only use GreatLakes experiments
     WRF_experiments = []
 #     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
@@ -247,23 +249,19 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None
     # define shape data  
-    shape_name = 'wcavg' # Western Canadian shapes
     shapes = OrderedDict()
-    shapes['provinces'] = ['BC','AB'] # Canadian provinces from EC module
-    shapes['basins'] = ['PSB','NorthernPSB','SouthernPSB','FRB','UpperFRB','LowerFRB','CRB',
-                        'ARB','UpperARB','LowerARB','SSR','NRB',] # river basins (in Canada) from WSC module
-#     shape_name = 'shpavg' # Canadian shapes
-#     shapes = dict()
-#     shapes['basins'] = None # river basins (in Canada) from WSC module
+#     shape_name = 'shpavg' # all Canadian shapes
 #     shapes['provinces'] = None # Canadian provinces from EC module
-#     shapes['provinces'] = ['BC'] # Canadian provinces from EC module
-#     shape_name = 'basins' # only Canadian river basins
-#     shapes = dict()
-#     shapes['basins'] = ['GLB','GRW'] # river basins (in Canada) from WSC module
+#     shapes['basins'] = None # river basins (in Canada) from WSC module
+#     shape_name = 'wcavg' # Western Canadian shapes
+#     shapes['provinces'] = ['BC','AB'] # Canadian provinces from EC module
+#     shapes['basins'] = ['PSB','NorthernPSB','SouthernPSB','FRB','UpperFRB','LowerFRB','CRB',
+#                         'ARB','UpperARB','LowerARB','SSR','NRB',] # river basins (in Canada) from WSC module
+#     shape_name = 'glbshp' # only Canadian river basins
 #     shapes['provinces'] = ['ON'] # Canadian provinces from EC module
-#     shape_name = 'glakes' # Great Lakes
-#     shapes = OrderedDict()
-#     shapes['great_lakes'] = None # the Great Lakes of North America
+#     shapes['basins'] = ['LandGLB','GLB','GRW'] # river basins (in Canada) from WSC module
+    shape_name = 'glakes' # Great Lakes
+    shapes['great_lakes'] = None # the Great Lakes of North America
      
  
   ## process arguments    
@@ -321,7 +319,7 @@ if __name__ == '__main__':
   # loop over modes
   for mode in modes:
     # only climatology mode has periods    
-    if mode == 'climatology': periodlist = periods
+    if mode == 'climatology': periodlist = [] if periods is None else periods
     elif mode == 'time-series': periodlist = (None,)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
 

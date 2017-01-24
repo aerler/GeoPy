@@ -202,7 +202,8 @@ if __name__ == '__main__':
     stations = config['stations']
   else:
     NP = 2 ; ldebug = False # for quick computations
-    modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
+    modes = ('climatology',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
     periods = []
@@ -212,9 +213,10 @@ if __name__ == '__main__':
 #     periods += [10]
     periods += [15]
     # Observations/Reanalysis
-    resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031']}; unity_grid = 'arb2_d02'
+    resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
     lLTM = True # also regrid the long-term mean climatologies 
+    datasets += ['NRCan']; periods = None
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
@@ -235,9 +237,9 @@ if __name__ == '__main__':
 #     WRF_experiments += ['marc-g','marc-gg','marc-g-2050','marc-gg-2050']
 #     WRF_experiments += ['marc-m','marc-mm', 'marc-t','marc-m-2050','marc-mm-2050', 'marc-t-2050']
 #     WRF_experiments += ['erai-g','erai-t']
-    WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',]
-    WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
-    WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
+#     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',]
+#     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
+#     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
 #     WRF_experiments += ['ctrl-1','ctrl-2050','ctrl-2100',]
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][:1]
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
@@ -248,7 +250,7 @@ if __name__ == '__main__':
     WRF_filetypes = ('aux',)
 #     WRF_filetypes = ('const',); periods = None
     # station datasets to match    
-    stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
+    stations = dict(EC=('precip','temp')) # currently there is only one type: the EC weather stations
   
   
   ## process arguments    
@@ -285,7 +287,7 @@ if __name__ == '__main__':
   # loop over modes
   for mode in modes:
     # only climatology mode has periods    
-    if mode == 'climatology': periodlist = periods
+    if mode == 'climatology': periodlist = [] if periods is None else periods
     elif mode == 'time-series': periodlist = (None,)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
 
