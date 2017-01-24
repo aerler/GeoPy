@@ -291,8 +291,7 @@ def getFileName(name=None, resolution=None, period=None, filetype='climatology',
     filename = filepattern.format(gridstr,periodstr)
   else: raise NotImplementedError("Unrecognized filetype/mode: '{:s}'".format(filetype))
   # return final name
-  assert filename == filename.lower(), "By convention, climatology files only have lower-case names!"
-  return filename
+  return filename.lower() # By convention, climatology files only have lower-case names
   
   
 # common climatology load function that will be imported by datasets (for backwards compatibility)

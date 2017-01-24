@@ -118,9 +118,9 @@ def getTargetFile(dataset=None, mode=None, dataargs=None, lwrite=True, grid=None
     if mode == 'climatology': filename = CESM.clim_file_pattern.format(filetype,gstr,pstr)
     elif mode == 'time-series': filename = CESM.ts_file_pattern.format(filetype,gstr)
     else: raise NotImplementedError, "Unsupported Mode: '{:s}'".format(mode)        
-  elif ( dataset == dataset.upper() or dataset == 'Unity' ) and lwrite: # observational datasets
+  elif lwrite: # assume observational datasets
     filename = getFileName(grid=grid, period=dataargs.period, name=dataargs.obs_res, filetype=mode)      
-  elif not lwrite: raise DatasetError
+  else: raise DatasetError(dataset)
   if not os.path.exists(dataargs.avgfolder): 
     raise IOError, "Dataset folder '{:s}' does not exist!".format(dataargs.avgfolder)
   # return filename
@@ -227,11 +227,14 @@ def getMetaData(dataset, mode, dataargs, lone=True):
     elif lts:
       loadfct = partial(CESM.loadCESM_TS, experiment=exp, name=None, grid=grid, varlist=varlist,
                         filetypes=filetypes, varatts=None, load3D=load3D, translateVars=None)     
-  elif dataset == dataset.upper() or dataset == 'Unity':
-    # observational datasets
+  else:
+    # assume observational datasets
     filetypes = [None] # only for CESM & WRF
     domain = None # only for WRF
-    module = import_module('datasets.{0:s}'.format(dataset))      
+    try:
+      module = import_module('datasets.{0:s}'.format(dataset))
+    except ImportError:
+      raise DatasetError("Error loading dataset module '{:s}' from 'datasets' package!".format(dataset))      
     dataset_name = module.dataset_name
     resolution = dataargs['resolution']
     if resolution: obs_res = '{0:s}_{1:s}'.format(dataset_name,resolution)
@@ -259,8 +262,6 @@ def getMetaData(dataset, mode, dataargs, lone=True):
     srcage = getSourceAge(filelist=filelist, lclim=lclim, lts=lts)
       # N.B.: it would be nice to print a message, but then we would have to make the logger available,
       #       which would be too much trouble
-  else:
-    raise DatasetError("Dataset '{:s}' not found!".format(dataset))
   ## assemble and return meta data
   dataargs = namedTuple(dataset_name=dataset_name, period=period, periodstr=periodstr, avgfolder=avgfolder, 
                         filetypes=filetypes,filetype=filetypes[0], domain=domain, obs_res=obs_res, 
