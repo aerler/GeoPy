@@ -446,7 +446,8 @@ if __name__ == '__main__':
     # typically a specific grid is required
     grids = [] # list of grids to process
 #     grids += [None] # special keyword for native grid
-    grids += ['grw2']# small grid for HGS GRW project
+#     grids += ['grw2']# small grid for HGS GRW project
+    grids += ['asb1']# small grid for HGS GRW project
 #     grids += ['glb1_d02']# small grid for HGS GRW project
     ## export parameters
     export_arguments = dict(
@@ -454,7 +455,7 @@ if __name__ == '__main__':
 #         varlist = ['lat2D','lon2D','zs','pet_wrf'], # varlist for export
 #         folder = '{0:s}/HGS/{{PROJECT}}/{{EXPERIMENT}}/'.format(os.getenv('DATA_ROOT', None)),
 #         prefix = None, # based on keyword arguments or None
-                project = 'GRW', # project designation  
+        project = 'GRW', # project designation  
 #         varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','netrad','vapdef','pet'], # varlist for export
 #         varlist = ['lat2D','lon2D','liqwatflx','pet','waterflx'], # varlist for export
         varlist = ['lat2D','lon2D','liqwatflx','pet'], # varlist for export

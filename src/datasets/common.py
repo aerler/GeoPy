@@ -728,8 +728,8 @@ if __name__ == '__main__':
     
   from geodata.gdal import GridDefinition, pickleGridDef
   
-  mode = 'pickle_grid'
-#   mode = 'create_grid'
+#   mode = 'pickle_grid'
+  mode = 'create_grid'
   grids = dict( 
 #                CFSR=['031','05'],
 #                GPCC=['025','05','10','25'],
@@ -779,13 +779,21 @@ if __name__ == '__main__':
   ## create a new grid
   elif mode == 'create_grid':
     
-    # parameters for UTM 17
-    name = 'grw1' # 1km resolution
-    geotransform = [500.e3,1.e3,0,4740.e3,0,1.e3]; size = (132,162)
+    # parameters for UTM 17 GRW grids
+#     name = 'grw1' # 1km resolution
+#     geotransform = [500.e3,1.e3,0,4740.e3,0,1.e3]; size = (132,162)
 #     name = 'grw2' # 5km resolution
 #     geotransform = [500.e3,5.e3,0,4740.e3,0,5.e3]; size = (27,33)
-    projection = "+proj=utm +zone=17 +north +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
-    # N.B.: [x_0, dx, 0, y_0, 0, dy]
+#     projection = "+proj=utm +zone=17 +north +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+    # parameters for UTM 17 Assiniboine River Basin grids
+    name = 'asb1' # 5km resolution
+#     geotransform = [246749.8, 5.e3, 0., 5524545., 0., 5.e3]; size = ((438573.1-246749.8)/5.e3,(5682634.-5524545.)/5.e3)
+#     print size
+#     size = tuple(int(i) for i in size)
+#     print size
+    geotransform = (245.e3, 5.e3, 0., 5524.e3, 0., 5.e3); size = (39,32)
+    projection = "+proj=utm +zone=14 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+    # N.B.: (x_0, dx, 0, y_0, 0, dy); (xl,yl)
     #       GT(0),GT(3) are the coordinates of the bottom left corner
     #       GT(1) & GT(5) are pixel width and height
     #       GT(2) & GT(4) are usually zero for North-up, non-rotated maps
