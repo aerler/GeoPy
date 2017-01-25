@@ -13,7 +13,7 @@ from importlib import import_module
 from datetime import datetime
 import logging     
 # internal imports
-from geodata.base import Dataset
+from geodata.base import Dataset, concatDatasets
 from geodata.gdal import addGDALtoDataset, addGDALtoVar
 from geodata.misc import DateError, DatasetError, printList, ArgumentError, VariableError, GDALError
 from datasets import gridded_datasets
@@ -314,9 +314,11 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     
     # compute seasonal mean if we are in mean-mode
     if mode[-5:] == '-mean': 
-      sink = sink.seasonalMean(season=mode[:-5], taxatts=dict(name='time'), lclim=True)
+      sink = sink.seasonalMean(season=mode[:-5], lclim=True)
       # N.B.: to remain consistent with other output modes, 
       #       we need to prevent renaming of the time axis
+      sink = concatDatasets([sink,sink], axis='time', lensembleAxis=True)
+      sink.squeeze() # we need the year-axis until now to distinguish constant fields; now remove
     
     # print dataset
     if not lparallel and ldebug:
@@ -406,8 +408,9 @@ if __name__ == '__main__':
 #     periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
-    datasets = ['NRCan'] # this will generally not work, because we don't have snow/-melt...
     lLTM = True # also regrid the long-term mean climatologies 
+    datasets = []
+    datasets += ['NRCan'] # this will generally not work, because we don't have snow/-melt...
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
@@ -453,6 +456,7 @@ if __name__ == '__main__':
 #         prefix = None, # based on keyword arguments or None
                 project = 'GRW', # project designation  
 #         varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','netrad','vapdef','pet'], # varlist for export
+#         varlist = ['lat2D','lon2D','liqwatflx','pet','waterflx'], # varlist for export
         varlist = ['lat2D','lon2D','liqwatflx','pet'], # varlist for export
         folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(os.getenv('DATA_ROOT', None)),
         prefix = '{GRID}', # based on keyword arguments

@@ -2763,12 +2763,12 @@ class Dataset(object):
     ''' Remove singleton axes from all variables; return axes that were entirely removed. '''
     axes = set()
     # squeeze variables
-    for var in self.variable.values():
+    for var in self.variables.values():
       var.squeeze() # get axes that were removed
       axes.add(var.axes) # collect axes that are still needed
     # remove axes that are no longer needed
     retour = []
-    for ax in self.axes:
+    for ax in self.axes.values():
       if ax not in axes: 
         self.removeAxis(ax)
         retour.append(ax)        
