@@ -120,7 +120,7 @@ class ASCII_raster(FileFormat):
         can be determined (and returned) '''
     # extract variables
     dataset_name = dataargs.dataset_name; domain = dataargs.domain; grid = dataargs.grid
-    if dataargs.period is None: pass
+    if dataargs.period is None: periodstr = None
     elif isinstance(dataargs.period,(tuple,list)):
       periodstr = '{0:02d}'.format(int(dataargs.period[1]-dataargs.period[0]))
     else: periodstr = '{0:02d}'.format(dataargs.period)
@@ -128,13 +128,13 @@ class ASCII_raster(FileFormat):
     # assemble specific names
     expname = '{:s}_d{:02d}'.format(dataset_name,domain) if domain else dataset_name
     if mode == 'climatology': 
-      expprd = 'clim_{:s}'.format(periodstr)
-      lnkprd = 'clim_{:s}'.format(lnkprdstr)
+      expprd = 'clim' if periodstr is None else 'clim_{:s}'.format(periodstr) 
+      lnkprd = 'clim' if lnkprdstr is None else 'clim_{:s}'.format(lnkprdstr)
     elif mode == 'time-series': 
       expprd = 'timeseries'; lnkprd = None
     elif mode[-5:] == '-mean': 
-      expprd = '{:s}_{:s}'.format(mode[:-5],periodstr)
-      lnkprd = '{:s}_{:s}'.format(mode[:-5],lnkprdstr)
+      expprd = mode[:-5] if periodstr is None else '{:s}_{:s}'.format(mode[:-5],periodstr)
+      lnkprd = mode[:-5] if lnkprdstr is None else '{:s}_{:s}'.format(mode[:-5],lnkprdstr)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
     # insert into patterns 
     metadict = dict(PROJECT=self.project, GRID=grid, EXPERIMENT=expname, PERIOD=expprd)
@@ -143,7 +143,7 @@ class ASCII_raster(FileFormat):
     self.prefix = self.prefix_pattern.format(**metadict) if self.prefix_pattern else None
     # create link with alternate period designation
     self.altprdlnk = None
-    if lnkprd is not None:
+    if lnkprd is not None and hasattr(os,'symlink'): # Windows does not have symlinks, so this does not work
       i = self.folder_pattern.find('{PERIOD')
       if i > -1:
         root_folder = self.folder_pattern[:i].format(**metadict)
@@ -314,7 +314,7 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     
     # compute seasonal mean if we are in mean-mode
     if mode[-5:] == '-mean': 
-      sink = sink.seasonalMean(season=mode[:-5], taxatts=dict(name='time'))
+      sink = sink.seasonalMean(season=mode[:-5], taxatts=dict(name='time'), lclim=True)
       # N.B.: to remain consistent with other output modes, 
       #       we need to prevent renaming of the time axis
     
@@ -390,23 +390,24 @@ if __name__ == '__main__':
     # settings for testing and debugging
     NP = 2 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
-#     modes = ('annual-mean','climatology')
-    modes = ('climatology',) # 'climatology','time-series'
+    modes = ('annual-mean','climatology')
+#     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
-#     varlist = None
-    load_list = ['lat2D','lon2D','zs']
-    load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet_wrf'] # (net) precip
+    varlist = None
+    load_list = ['lat2D','lon2D','liqwatflx','pet']
+#     load_list = ['lat2D','lon2D','zs']
+#     load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet_wrf'] # (net) precip
     # PET variables
-    load_list += ['ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # wind
-    load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
+#     load_list += ['ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # wind
+#     load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
     periods = []
-    periods += [15]
+#     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
-    resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031']}; unity_grid = 'arb2_d02'
-    datasets = [] # this will generally not work, because we don't have snow/-melt...
-    lLTM = False # also regrid the long-term mean climatologies 
+    resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
+    datasets = ['NRCan'] # this will generally not work, because we don't have snow/-melt...
+    lLTM = True # also regrid the long-term mean climatologies 
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
@@ -424,7 +425,7 @@ if __name__ == '__main__':
 #     WRF_experiments = ['erai-g3','erai-t3']
 #     WRF_experiments = ['erai-g3','erai-g']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-    WRF_experiments += ['t-ensemble-2100']
+#     WRF_experiments += ['t-ensemble-2100']
 #     WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-3km','max-3km']
@@ -446,15 +447,15 @@ if __name__ == '__main__':
 #     grids += ['glb1_d02']# small grid for HGS GRW project
     ## export parameters
     export_arguments = dict(
-        project = 'Grids', # project designation  
-        varlist = ['lat2D','lon2D','zs','pet_wrf'], # varlist for export
-        folder = '{0:s}/HGS/{{PROJECT}}/{{EXPERIMENT}}/'.format(os.getenv('DATA_ROOT', None)),
-        prefix = None, # based on keyword arguments or None
-        #         project = 'GRW', # project designation  
+#         project = 'Grids', # project designation  
+#         varlist = ['lat2D','lon2D','zs','pet_wrf'], # varlist for export
+#         folder = '{0:s}/HGS/{{PROJECT}}/{{EXPERIMENT}}/'.format(os.getenv('DATA_ROOT', None)),
+#         prefix = None, # based on keyword arguments or None
+                project = 'GRW', # project designation  
 #         varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','netrad','vapdef','pet'], # varlist for export
-#         varlist = ['pet'],
-#         folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/'.format(os.getenv('DATA_ROOT', None)),
-#         prefix = '{GRID}', # based on keyword arguments
+        varlist = ['lat2D','lon2D','liqwatflx','pet'], # varlist for export
+        folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(os.getenv('DATA_ROOT', None)),
+        prefix = '{GRID}', # based on keyword arguments
         format = 'ASCII_raster', # formats to export to
         lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
 #         format = 'NetCDF',
@@ -519,7 +520,7 @@ if __name__ == '__main__':
             if dataset not in resolutions: resolutions[dataset] = ('',)
             elif not isinstance(resolutions[dataset],(list,tuple)): resolutions[dataset] = (resolutions[dataset],)                
           elif resolutions is not None: raise TypeError                                
-          if mode == 'climatology':
+          if mode[-5:] == '-mean' or mode == 'climatology':
             # some datasets come with a climatology 
             if lLTM:
               if resolutions is None: dsreses = mod.LTM_grids

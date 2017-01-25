@@ -220,7 +220,7 @@ def computeLiquidWaterFlux(dataset):
     # compute waterflux (returns a Variable instance)
     var = dataset['precip'] - dataset['solprec'] + dataset['snwmlt']
   else: 
-    raise VariableError, "No liquid or solid precip found to compute net water flux.".format(pv)
+    raise VariableError, "No liquid or solid precip found to compute net water flux."
   var.name = 'liqwatflx' # give correct name (units should be correct)
   assert var.units == dataset['snwmlt'].units, var
   # return new variable

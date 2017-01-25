@@ -389,10 +389,11 @@ if __name__ == '__main__':
   
 #     mode = 'test_climatology'
 #     mode = 'test_timeseries'
-#     mode = 'test_point_climatology'
+    mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
-    mode = 'convert_Normals'
-    pntset = 'shpavg' # 'ecprecip'
+#     mode = 'convert_Normals'
+    pntset = 'glbshp' # 'ecprecip'
+#     pntset = 'ecprecip'
     period = None; res = None; grid = None
     
     if mode == 'test_climatology':
