@@ -610,7 +610,7 @@ class Variable(object):
     elif isinstance(axis,Variable): # by object ID
       for i in xrange(len(self.axes)):
         if self.axes[i] == axis: return True
-    else: return False # if all fails
+    return False # if all fails
   
   def replaceAxis(self, oldaxis, newaxis=None):
     ''' Replace an existing axis with a different one with similar general properties. '''
@@ -701,7 +701,7 @@ class Variable(object):
       else: self.data_array = data         
     
   def slicing(self, lidx=None, lrng=None, years=None, listAxis=None, asVar=None, lfirst=False, lminmax=False,
-              lsqueeze=True, lcheck=False, lcopy=False, lslices=False, linplace=False, **axes):
+              lsqueeze=True, lcheck=False, lcopy=False, lslices=False, linplace=False, lignoreEmpty=False, **axes):
     ''' This method implements access to slices via coordinate values and returns Variable objects. 
         Default behavior for different argument types: 
           - index by coordinate value, not array index, except if argument is a Slice object
@@ -723,9 +723,14 @@ class Variable(object):
             raise NotImplementedError, "Currently only single coordiante values/indices are supported for pseudo-axes."        
           if var.ndim == 1: # possibly valid pseudo-axis!
             lpseudo = True
-            coord = var.findValues(val, lidx=lidx, lfirst=lfirst, lminmax=lminmax, lflatten=False)          
-          else: raise AxisError, "Pseudo-axis can only have one axis!"
-          axes[var.axes[0].name] = coord # create new entry with actual axis
+            coord = var.findValues(val, lidx=lidx, lfirst=lfirst, lminmax=lminmax, lflatten=False, lsqueeze=False)          
+          else: 
+            raise AxisError("Pseudo-axis can only have one axis!")
+          # see what we've got
+          if not lignoreEmpty and (coord is None or coord.size == 0):
+            raise ValueError("Value '{}' not found in Variable '{}'!".format(val,key))
+          else:
+            axes[var.axes[0].name] = coord # create new entry with actual axis
           # N.B.: not that this automatically squeezes the pseudo-axis, since it is just a values...
         elif val is not None and dataset.hasAxis(key): lnonpseudo = True
       # pseudo-axes work with ranges, but return indices, and we can't mix ranges with indices!
@@ -2822,7 +2827,7 @@ class Dataset(object):
       else: return None
       
   def slicing(self, lidx=None, lrng=None, lminmax=False, lsqueeze=True, lcopy=False, years=None, lfirst=False, 
-               listAxis=None, lrmOther=False, lcpOther=False, **axes):
+               listAxis=None, lrmOther=False, lcpOther=False, lignoreEmpty=False, **axes):
     ''' This method implements access to slices via coordinate values and returns a Dataset object; the 
         method relies on the Variable method for actual slicing but preserves the dataset integrity.
         Default behavior for different argument types: 
@@ -2844,10 +2849,17 @@ class Dataset(object):
         del axes[key] # remove pseudo axis
         var = self.getVariable(key)
         if var.ndim == 1: # possibly valid pseudo-axis!
-          coord = var.findValues(val, lidx=lidx, lfirst=lfirst, lminmax=lminmax, lflatten=False)          
-        else: raise AxisError, "Pseudo-axis can only have one axis!"
-        axes[var.axes[0].name] = coord # create new entry with actual axis
+          lpseudo = True
+          coord = var.findValues(val, lidx=lidx, lfirst=lfirst, lminmax=lminmax, lflatten=False, lsqueeze=False)          
+        else: 
+          raise AxisError("Pseudo-axis can only have one axis!")
+        # see what we've got
+        if not lignoreEmpty and (coord is None or coord.size == 0):
+          raise ValueError("Value '{}' not found in Variable '{}'!".format(val,key))
+        else:
+          axes[var.axes[0].name] = coord # create new entry with actual axis
         # N.B.: not that this automatically squeezes the pseudo-axis, since it is just a values...
+      elif val is not None and self.hasAxis(key): lnonpseudo = True
     # pseudo-axes work with ranges, but return indices, and we can't mix ranges with indices!
     if lrng and lpseudo: 
       lrng = False
@@ -3404,7 +3416,7 @@ class Ensemble(object):
       
   def _recastList(self, fs):
     ''' internal helper method to decide if a list or Ensemble should be returned '''
-    if all(f is None for f in fs): return # suppress list of None's
+    if all(f is None for f in fs): return None # suppress list of None's
     elif all([not callable(f) and not isinstance(f, (Variable,Dataset)) for f in fs]): return fs  
     elif all([isinstance(f, (Variable,Dataset)) for f in fs]):
       # N.B.: technically, Variable instances are callable, but that's not what we want here...
