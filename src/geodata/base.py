@@ -723,7 +723,7 @@ class Variable(object):
             raise NotImplementedError, "Currently only single coordiante values/indices are supported for pseudo-axes."        
           if var.ndim == 1: # possibly valid pseudo-axis!
             lpseudo = True
-            coord = var.findValues(val, lidx=lidx, lfirst=lfirst, lminmax=lminmax, lflatten=False, lsqueeze=False)          
+            coord = var.findValues(val, lidx=lidx, lfirst=lfirst, lminmax=lminmax, lflatten=False)          
           else: 
             raise AxisError("Pseudo-axis can only have one axis!")
           # see what we've got
