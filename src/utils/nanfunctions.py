@@ -1010,8 +1010,9 @@ def nansem(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
         
     # check if keepdims worked, otherwise reshape manually
     if keepdims and axis is not None and sem.ndim < arr.ndim:
-      shape = list(arr.shape)
-      shape[axis] = 1
-      sem = sem.reshape(shape)
-
+        shape = list(arr.shape)
+        shape[axis] = 1
+        sem = sem.reshape(shape)
+    elif axis is None and not keepdims and sem.size == 1:
+        sem = np.asscalar(sem)
     return sem
