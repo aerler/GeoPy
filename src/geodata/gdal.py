@@ -570,28 +570,31 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     var.copy = types.MethodType(copy, var)
         
     # define GDAL-related 'class methods'  
-    def getGDAL(self, load=True, allocate=True, wrap360=False, fillValue=None, lupperleft=False):
+    def getGDAL(self, load=True, allocate=True, wrap360=False, fillValue=None, lupperleft=False, lfillNaN=False):
       ''' Method that returns a gdal dataset, ready for use with GDAL routines. '''
       lperi = False
       if self.gdal and self.projection is not None:
         axstr = "'x' and 'y'" if isProjected else "'lon' and 'lat'"
         if (var.axisIndex(xlon) != var.ndim-1) or (var.axisIndex(ylat) != var.ndim-2):
           raise NotImplementedError, "Horizontal axes ({:s}) have to be the last indices.".format(axstr)
+        if fillValue is None:
+          if self.fillValue is not None: fillValue = self.fillValue  # use default 
+          elif self.dtype is not None: fillValue = ma.default_fill_value(self.dtype)
+          else: raise GDALError, "Need Variable with valid dtype to pre-allocate GDAL array!"
         if load:
           if not self.data: self.load()
           if not self.data: raise DataError, 'Need data in Variable instance in order to load data into GDAL dataset!'
-          data = self.getArray(unmask=True)  # get unmasked data
+          data = self.getArray(unmask=True, fillValue=fillValue)  # get unmasked data
           data = data.reshape(self.bands, self.mapSize[0], self.mapSize[1])  # reshape to fit bands
           if lperi: 
             tmp = np.zeros((self.bands, self.mapSize[0], self.mapSize[1]+1))
             tmp[:,:,0:-1] = data; tmp[:,:,-1] = data[:,:,0]
             data = tmp
         elif allocate: 
-          if fillValue is None:
-            if self.fillValue is not None: fillValue = self.fillValue  # use default 
-            elif self.dtype is not None: fillValue = ma.default_fill_value(self.dtype)
-            else: raise GDALError, "Need Variable with valid dtype to pre-allocate GDAL array!"
           data = np.zeros((self.bands,) + self.mapSize, dtype=self.dtype) + fillValue
+        # if we have a fillValue, replace NaN's with the fillValues
+        if lfillNaN and fillValue is not None and np.issubdtype(data.dtype, np.inexact): 
+          data[np.isnan(data)] = fillValue
         # to insure correct wrapping, geographic coordinate systems with longitudes reanging 
         # from 0 to 360 can optionally be shifted back by 180, to conform to GDAL conventions 
         # (the shift will only affect the GDAL Dataset, not the actual Variable) 
@@ -641,7 +644,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           # assign data
           for i in xrange(self.bands):
             dataset.GetRasterBand(i + 1).WriteArray(data[i, :, :])
-            if self.masked: dataset.GetRasterBand(i + 1).SetNoDataValue(float(self.fillValue))
+            if self.masked: dataset.GetRasterBand(i + 1).SetNoDataValue(float(fillValue))
       else: dataset = None
       # return dataset
       return dataset
@@ -818,7 +821,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         #       sliced recursively until they are 2D; at this point the recursion ends and the 
         #       sliced dataset/Variable can be exported to ASCII raster format (one per file).
         # get GDAL datast
-        dataset = getGDAL(self, load=True, allocate=True, wrap360=wrap360, fillValue=fillValue, lupperleft=True)
+        dataset = getGDAL(self, load=True, allocate=True, wrap360=wrap360, fillValue=fillValue, lupperleft=True, lfillNaN=True)
         # N.B.: apparently the raster driver always assumes that the geotransform reference point is the upper left corner
         # get ASCII raster file driver
         ascii = gdal.GetDriverByName('AAIGrid')
