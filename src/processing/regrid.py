@@ -209,7 +209,7 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 2 ; ldebug = False # just for tests
+    NP = 1 ; ldebug = False # just for tests
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
@@ -220,12 +220,12 @@ if __name__ == '__main__':
 #     periods += [3]
 #     periods += [5]
 #     periods += [10]
-    periods += [15]
+#     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
-    lLTM = True # also regrid the long-term mean climatologies 
+    lLTM = False # also regrid the long-term mean climatologies 
     datasets += ['NRCan']; periods = None
 #     datasets += ['PRISM','GPCC','PCIC']; periods = None
 #     datasets += ['CFSR', ] # CFSR_05 does not have precip
@@ -277,9 +277,10 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('const',); periods = None
     # grid to project onto
     grids = dict()
+#     grids['asb1'] = None # small grid for Assiniboine subbasin, 5km
+#     grids['can1'] = None # large grid for whole Canada
 #     grids['grw1'] = None # high-res grid for GRW, 1km
-#     grids['grw2'] = None # small grid for GRW, 5km
-    grids['asb1'] = None # small grid for Assiniboine subbasin, 5km
+    grids['grw2'] = None # small grid for GRW, 5km
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 # #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain

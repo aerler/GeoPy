@@ -18,7 +18,7 @@ from utils.misc import expandArgumentList
 from geodata.misc import AxisError, DatasetError, DateError, ArgumentError, EmptyDatasetError, DataError,\
   VariableError
 from geodata.base import Dataset, Variable, Axis, Ensemble
-from geodata.netcdf import DatasetNetCDF, VarNC
+from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import GDALError, addGDALtoDataset, loadPickledGridDef, griddef_pickle
 # import some calendar definitions
 from geodata.misc import name_of_month, days_per_month, days_per_month_365, seconds_per_month, seconds_per_month_365
@@ -779,20 +779,26 @@ if __name__ == '__main__':
   ## create a new grid
   elif mode == 'create_grid':
     
-    # parameters for UTM 17 GRW grids
+    ## parameters for UTM 17 GRW grids
 #     name = 'grw1' # 1km resolution
 #     geotransform = [500.e3,1.e3,0,4740.e3,0,1.e3]; size = (132,162)
 #     name = 'grw2' # 5km resolution
 #     geotransform = [500.e3,5.e3,0,4740.e3,0,5.e3]; size = (27,33)
 #     projection = "+proj=utm +zone=17 +north +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
-    # parameters for UTM 17 Assiniboine River Basin grids
-    name = 'asb1' # 5km resolution
-#     geotransform = [246749.8, 5.e3, 0., 5524545., 0., 5.e3]; size = ((438573.1-246749.8)/5.e3,(5682634.-5524545.)/5.e3)
-#     print size
-#     size = tuple(int(i) for i in size)
-#     print size
-    geotransform = (245.e3, 5.e3, 0., 5524.e3, 0., 5.e3); size = (39,32)
-    projection = "+proj=utm +zone=14 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+    ## parameters for UTM 17 Assiniboine River Basin grids
+#     name = 'asb1' # 5km resolution
+# #     geotransform = [246749.8, 5.e3, 0., 5524545., 0., 5.e3]; size = ((438573.1-246749.8)/5.e3,(5682634.-5524545.)/5.e3)
+# #     print size
+# #     size = tuple(int(i) for i in size)
+# #     print size
+#     geotransform = (245.e3, 5.e3, 0., 5524.e3, 0., 5.e3); size = (39,32)
+#     projection = "+proj=utm +zone=14 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+    ## parameters for Canada-wide Lambert Azimuthal Equal-area
+    name = 'can1' # 5km resolution
+    llx = -3500000; lly = -425000; urx = 3000000; ury = 4000000; dx = dy = 5.e3
+    geotransform = [llx, dx, 0., lly, 0., dy]; size = ((urx-llx)/dx,(ury-lly)/dy)
+    size = tuple(int(i) for i in size)
+    projection = "+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +ellps=sphere +units=m +no_defs"
     # N.B.: (x_0, dx, 0, y_0, 0, dy); (xl,yl)
     #       GT(0),GT(3) are the coordinates of the bottom left corner
     #       GT(1) & GT(5) are pixel width and height

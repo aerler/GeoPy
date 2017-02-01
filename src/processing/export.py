@@ -276,7 +276,7 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     
     # Compute intermediate variables, if necessary
     for varname in varlist:
-      vars = None # variable list
+      variables = None # variable list
       if varname in source:
         var = source[varname].load() # load data (may not have to load all)
       else:
@@ -289,17 +289,17 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
         elif varname == 'vapdef': var = newvars.computeVaporDeficit(source)
         elif varname == 'pet' or varname == 'pet_pm':
           if 'petrad' in varlist or 'petwnd' in varlist:
-            vars = newvars.computePotEvapPM(source, lterms=True) # default; returns mutliple PET terms
+            variables = newvars.computePotEvapPM(source, lterms=True) # default; returns mutliple PET terms
           else: var = newvars.computePotEvapPM(source, lterms=False) # returns only PET
         elif varname == 'pet_th': var = None # skip for now
           #var = computePotEvapTh(source) # simplified formula (less prerequisites)
         else: raise VariableError, "Unsupported Variable '{:s}'.".format(varname)
       # for now, skip variables that are None
-      if var or vars:
+      if var or variables:
         # handle lists as well
-        if var and vars: raise VariableError, (var,vars)
-        elif var: vars = (var,)
-        for var in vars:
+        if var and variables: raise VariableError, (var,variables)
+        elif var: variables = (var,)
+        for var in variables:
           addGDALtoVar(var=var, griddef=sink.griddef)
           if not var.gdal and isinstance(fileFormat,ASCII_raster):
             raise GDALError, "Exporting to ASCII_raster format requires GDAL-enabled variables."
@@ -392,25 +392,28 @@ if __name__ == '__main__':
     # settings for testing and debugging
     NP = 2 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
-#     modes = ('annual-mean','climatology')
+    modes = ('annual-mean','climatology')
 #     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series', 'climatology')
-    loverwrite = False
+#     modes = ('time-series', 'climatology')
+    loverwrite = True
     varlist = None
-#     load_list = ['lat2D','lon2D','liqwatflx','pet']
-    load_list = ['lat2D','lon2D','zs']
-    load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet_wrf'] # (net) precip
-    # PET variables
-    load_list += ['ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # wind
-    load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
+    # obs variables
+    load_list = ['lat2D','lon2D','liqwatflx','pet']
+#     load_list = ['lat2D','lon2D','liqwatflx','pet','precip']
+    # WRF variables
+#     load_list = ['lat2D','lon2D','zs']
+#     load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet_wrf'] # (net) precip
+    # PET variables (for WRF)
+#     load_list += ['ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # wind
+#     load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
     periods = []
-    periods += [15]
+#     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     lLTM = True # also regrid the long-term mean climatologies 
     datasets = []
-#     datasets += ['NRCan'] # this will generally not work, because we don't have snow/-melt...
+    datasets += ['NRCan'] # this will generally not work, because we don't have snow/-melt...
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
@@ -437,9 +440,9 @@ if __name__ == '__main__':
 #     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',]
 #     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
 #     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
-    WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]
-    WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
-    WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
+#     WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]
+#     WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
+#     WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
     # other WRF parameters 
     domains = 2 # domains to be processed
@@ -448,30 +451,33 @@ if __name__ == '__main__':
     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # without radiation files
     ## export to ASCII raster
     # typically a specific grid is required
-#     grids = [] # list of grids to process
-#     grids += ['grw2']# small grid for HGS GRW project
+    grids = [] # list of grids to process
+    grids += ['grw2']# small grid for HGS GRW project
 #     grids += ['asb1']# small grid for HGS GRW project
-#     grids += ['glb1_d02']# small grid for HGS GRW project
-#     export_arguments = dict(
+#     grids += ['can1']# large Canada-wide grid
+    export_arguments = dict(
 #         project = 'Grids', # project designation  
 #         varlist = ['lat2D','lon2D','zs','pet_wrf'], # varlist for export
 #         folder = '{0:s}/HGS/{{PROJECT}}/{{EXPERIMENT}}/'.format(os.getenv('DATA_ROOT', None)),
 #         prefix = None, # based on keyword arguments or None
-#         project = 'GRW', # project designation  
-#         varlist = ['waterflx','liqwatflx','lat2D','lon2D','zs','netrad','vapdef','pet'], # varlist for export
-#         varlist = ['lat2D','lon2D','liqwatflx','pet','waterflx'], # varlist for export
-#         varlist = ['lat2D','lon2D','liqwatflx','pet'], # varlist for export
-#         folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(os.getenv('DATA_ROOT', None)),
-#         prefix = '{GRID}', # based on keyword arguments
-#         format = 'ASCII_raster', # formats to export to
-#         lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
+#         varlist = ['lat2D','lon2D','liqwatflx','pet','waterflx'], # varlist for WRF
+        project = 'GRW', # project designation  
+#         project = 'ASB', # project designation
+#         project = 'CAN', # project designation
+        fillValue = 0, # in case we interpolate across a missing value...
+        varlist = ['lat2D','lon2D','liqwatflx','pet'], # varlist for Obs
+#         varlist = ['lat2D','lon2D','liqwatflx','pet','precip'], # varlist for Obs
+        folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}_15/climate_forcing/'.format(os.getenv('DATA_ROOT', None)),
+        prefix = '{GRID}', # based on keyword arguments
+        format = 'ASCII_raster', # formats to export to
+        lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
     ## export to NetCDF (aux-file)
-    grids = [None] # special keyword for native grid
-    export_arguments = dict(
-        project = 'aux',
-        varlist = ['waterflx','liqwatflx','netrad','netrad_0','netrad_bb','vapdef','pet','pet_wrf','zs','lat2D','lon2D'], 
-        format = 'NetCDF',
-        lm3 = False) # do not convert water flux from kg/m^2/s to m^3/m^2/s
+#     grids = [None] # special keyword for native grid
+#     export_arguments = dict(
+#         project = 'aux',
+#         varlist = ['waterflx','liqwatflx','netrad','netrad_0','netrad_bb','vapdef','pet','pet_wrf','zs','lat2D','lon2D'], 
+#         format = 'NetCDF',
+#         lm3 = False) # do not convert water flux from kg/m^2/s to m^3/m^2/s
   
   ## process arguments    
   if isinstance(periods, (np.integer,int)): periods = [periods]
