@@ -280,7 +280,9 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
             # Note: these snow density values are for maritime climates only! values for the Prairies and the North are 
             #       substantially different! this is for applications in southern Ontario
             # compute values and add to dataset
-            dataset[var] = monthlyTransform(var=dataset.snowh.copy(deepcopy=True), lvar=True, linplace=True, scalefactor=density)
+            newvar = monthlyTransform(var=dataset.snowh.copy(deepcopy=True), lvar=True, linplace=True, scalefactor=density)
+            newvar.atts['long_name'] = 'Snow Water Equivalent at the end of the month.'
+            dataset[var] = newvar
         # Snowmelt as residual of snow fall and snow accumulation (water equivalent) changes
         elif var == 'snwmlt':
             if not ( 'solprec' in dataset and 'snow' in dataset ): # check prerequisites
@@ -292,21 +294,23 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
             delta = ma.diff(swe, axis=0); dd = ( swe[0,:] - swe[-1,:] ).reshape((1,)+swe.shape[1:])
             assert dd.ndim == swe.ndim
             assert np.all( dd.mask[0,:] == swe.mask[0,:] ), dd
-            data = -1 * ( ma.concatenate((dd,delta), axis=0) + ma.concatenate((delta,dd), axis=0) ) / 2.
+            #data = -1 * ( ma.concatenate((dd,delta), axis=0) + ma.concatenate((delta,dd), axis=0) ) / 2.
+            #data += dataset.solprec # add that in-place as well
+            data = dataset.solprec.data_array - ma.concatenate((dd,delta), axis=0) 
+            # N.B.: snow values are already at the end of the month, so differences are average snowmelt over the month
             # create snowmelt variable and do some conversions
             newvar = addGDALtoVar(Variable(data=data, axes=snow.axes, name=var, units='kg/m^2/month'), griddef=dataset.griddef)
             newvar = transformMonthly(var=newvar, slc=None, l365=False, lvar=True, linplace=True)
-            newvar += dataset.solprec # ad that in-place as well
             newvar.data_array.clip(min=0, out=newvar.data_array) # clip values smaller than zero (in-place)
             dataset[var] = newvar
-            # normalize snowmelt so that it does not exceed snow fall
+            ## normalize snowmelt so that it does not exceed snow fall
             r = dataset.snwmlt.mean(axis=0,keepdims=True,asVar=False)/dataset.solprec.mean(axis=0,keepdims=True,asVar=False)
             rm = r.mean()
             print("\nSnowmelt to snowfall ratio: {}\n".format(rm))            
             if rm > 1:
               #r0 = dataset.snwmlt.mean(axis=0,keepdims=True,asVar=False)/dataset.solprec.mean(axis=0,keepdims=True,asVar=False) 
               dataset.snwmlt.data_array /= r # normalize to total snow fall annually and grid point-wise
-            assert np.ma.allclose(dataset.snwmlt.mean(axis=0,asVar=False), dataset.solprec.mean(axis=0,asVar=False)), dataset.snwmlt.mean()/dataset.solprec.mean()
+              assert np.ma.allclose(dataset.snwmlt.mean(axis=0,asVar=False), dataset.solprec.mean(axis=0,asVar=False)), dataset.snwmlt.mean()/dataset.solprec.mean()
             # add snow ratio as diagnostic
             atts = dict(name='ratio', units='', long_name='Ratio of Snowfall to Snowmelt')
             dataset += addGDALtoVar(Variable(data=r.squeeze(), axes=snow.axes[1:], atts=atts), griddef=dataset.griddef)    
@@ -389,9 +393,9 @@ if __name__ == '__main__':
   
 #     mode = 'test_climatology'
 #     mode = 'test_timeseries'
-    mode = 'test_point_climatology'
+#     mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
-#     mode = 'convert_Normals'
+    mode = 'convert_Normals'
     pntset = 'glbshp' # 'ecprecip'
 #     pntset = 'ecprecip'
     period = None; res = None; grid = None
