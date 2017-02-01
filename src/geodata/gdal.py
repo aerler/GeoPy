@@ -570,7 +570,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     var.copy = types.MethodType(copy, var)
         
     # define GDAL-related 'class methods'  
-    def getGDAL(self, load=True, allocate=True, wrap360=False, fillValue=None, lupperleft=False, lfillNaN=False):
+    def getGDAL(self, load=True, allocate=True, wrap360=False, fillValue=None, noDataValue=None, lupperleft=False, lfillNaN=False):
       ''' Method that returns a gdal dataset, ready for use with GDAL routines. '''
       lperi = False
       if self.gdal and self.projection is not None:
@@ -581,6 +581,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           if self.fillValue is not None: fillValue = self.fillValue  # use default 
           elif self.dtype is not None: fillValue = ma.default_fill_value(self.dtype)
           else: raise GDALError, "Need Variable with valid dtype to pre-allocate GDAL array!"
+        if noDataValue is None: noDataValue = fillValue
         if load:
           if not self.data: self.load()
           if not self.data: raise DataError, 'Need data in Variable instance in order to load data into GDAL dataset!'
@@ -644,7 +645,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           # assign data
           for i in xrange(self.bands):
             dataset.GetRasterBand(i + 1).WriteArray(data[i, :, :])
-            if self.masked: dataset.GetRasterBand(i + 1).SetNoDataValue(float(fillValue))
+            if self.masked: dataset.GetRasterBand(i + 1).SetNoDataValue(float(noDataValue))
       else: dataset = None
       # return dataset
       return dataset
@@ -788,7 +789,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     
     # save variable as Arc/Info ASCII Grid / ASCII raster file using GDAL
     def ASCII_raster(self, prefix=None, folder=None, ext='.asc', filepath=None, wrap360=False, 
-                     fillValue=None, lcoord=False, lfortran=True, formatter=None):
+                     fillValue=None, noDataValue=None, lcoord=False, lfortran=True, formatter=None):
       ''' Export data to  Arc/Info ASCII Grid (ASCII raster format); if no filename is given, the filename will 
           be constructed from the variable name and the slice; note that each file can only contain a single 
           horizontal slice. 
@@ -821,7 +822,8 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         #       sliced recursively until they are 2D; at this point the recursion ends and the 
         #       sliced dataset/Variable can be exported to ASCII raster format (one per file).
         # get GDAL datast
-        dataset = getGDAL(self, load=True, allocate=True, wrap360=wrap360, fillValue=fillValue, lupperleft=True, lfillNaN=True)
+        dataset = getGDAL(self, load=True, allocate=True, wrap360=wrap360, lupperleft=True, 
+                          lfillNaN=True, fillValue=fillValue, noDataValue=noDataValue)
         # N.B.: apparently the raster driver always assumes that the geotransform reference point is the upper left corner
         # get ASCII raster file driver
         ascii = gdal.GetDriverByName('AAIGrid')
@@ -1092,7 +1094,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
     
     # save variable as Arc/Info ASCII Grid / ASCII raster file using GDAL
     def ASCII_raster(self, varlist=None, prefix=None, folder=None, ext='.asc', wrap360=False, 
-                     fillValue=None, lcoord=False, lfortran=True, formatter=None):
+                     fillValue=None, noDataValue=None, lcoord=False, lfortran=True, formatter=None):
       ''' Export data to  Arc/Info ASCII Grid (ASCII raster format); the filename will be constructed 
           from a prefix, the variable name and the slice; note that each file can only contain a single 
           horizontal slice (2D).  
@@ -1121,8 +1123,8 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
           pf = '{:s}_{:s}'.format(prefix,vartag) if prefix else vartag
           # call export function on each variable
           filelist = var.ASCII_raster(prefix=pf, folder=folder, ext=ext, filepath=None, wrap360=wrap360, 
-                                      fillValue=fillValue, lcoord=lcoord, lfortran=lfortran, 
-                                      formatter=formatter)
+                                      fillValue=fillValue, noDataValue=noDataValue, lcoord=lcoord, 
+                                      lfortran=lfortran, formatter=formatter)
           if isinstance(filelist,basestring): filelist = [filelist]
           filedict[vartag] = filelist
       return filedict

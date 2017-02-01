@@ -452,19 +452,19 @@ if __name__ == '__main__':
     ## export to ASCII raster
     # typically a specific grid is required
     grids = [] # list of grids to process
-    grids += ['grw2']# small grid for HGS GRW project
+#     grids += ['grw2']# small grid for HGS GRW project
 #     grids += ['asb1']# small grid for HGS GRW project
-#     grids += ['can1']# large Canada-wide grid
+    grids += ['can1']# large Canada-wide grid
     export_arguments = dict(
 #         project = 'Grids', # project designation  
 #         varlist = ['lat2D','lon2D','zs','pet_wrf'], # varlist for export
 #         folder = '{0:s}/HGS/{{PROJECT}}/{{EXPERIMENT}}/'.format(os.getenv('DATA_ROOT', None)),
 #         prefix = None, # based on keyword arguments or None
 #         varlist = ['lat2D','lon2D','liqwatflx','pet','waterflx'], # varlist for WRF
-        project = 'GRW', # project designation  
+#         project = 'GRW', # project designation  
 #         project = 'ASB', # project designation
-#         project = 'CAN', # project designation
-        fillValue = 0, # in case we interpolate across a missing value...
+        project = 'CAN', # project designation
+        fillValue = 0, noDataValue = -9999, # in case we interpolate across a missing value...
         varlist = ['lat2D','lon2D','liqwatflx','pet'], # varlist for Obs
 #         varlist = ['lat2D','lon2D','liqwatflx','pet','precip'], # varlist for Obs
         folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}_15/climate_forcing/'.format(os.getenv('DATA_ROOT', None)),
