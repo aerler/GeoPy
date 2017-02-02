@@ -272,11 +272,11 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
             #       https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/
             #       a factor of 1000 has been applied, because snow depth is in m (and not mm)
             # Maritime snow cover
-            #density = np.asarray([0.2165, 0.2485, 0.2833, 0.332, 0.3963, 0.501, 0.501, 0.501, 0.16, 0.16, 0.1835, 0.1977], dtype=np.float32)*1000.
+            density = np.asarray([0.2165, 0.2485, 0.2833, 0.332, 0.3963, 0.501, 0.501, 0.501, 0.16, 0.16, 0.1835, 0.1977], dtype=np.float32)*1000.
             # Ephemeral snow cover
             #density = np.asarray([0.3168, 0.3373, 0.3643, 0.4046, 0.4586, 0.5098, 0.5098, 0.5098, 0.25, 0.25, 0.3, 0.3351], dtype=np.float32)*1000.
             # Prairie snow cover
-            density = np.asarray([0.2137, 0.2416, 0.2610, 0.308, 0.3981, 0.4645, 0.4645, 0.4645, 0.14, 0.14, 0.1616, 0.1851], dtype=np.float32)*1000.
+            #density = np.asarray([0.2137, 0.2416, 0.2610, 0.308, 0.3981, 0.4645, 0.4645, 0.4645, 0.14, 0.14, 0.1616, 0.1851], dtype=np.float32)*1000.
             # Note: these snow density values are for maritime climates only! values for the Prairies and the North are 
             #       substantially different! this is for applications in southern Ontario
             # compute values and add to dataset
@@ -295,12 +295,12 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
             assert dd.ndim == swe.ndim
             assert np.all( dd.mask[0,:] == swe.mask[0,:] ), dd
             #data = -1 * ( ma.concatenate((dd,delta), axis=0) + ma.concatenate((delta,dd), axis=0) ) / 2.
-            #data += dataset.solprec # add that in-place as well
-            data = dataset.solprec.data_array - ma.concatenate((dd,delta), axis=0) 
+            data = -1 * ma.concatenate((dd,delta), axis=0) 
             # N.B.: snow values are already at the end of the month, so differences are average snowmelt over the month
             # create snowmelt variable and do some conversions
             newvar = addGDALtoVar(Variable(data=data, axes=snow.axes, name=var, units='kg/m^2/month'), griddef=dataset.griddef)
             newvar = transformMonthly(var=newvar, slc=None, l365=False, lvar=True, linplace=True)
+            data += dataset.solprec # add that in-place as well, but after transforming monthly SWE change to SI rate
             newvar.data_array.clip(min=0, out=newvar.data_array) # clip values smaller than zero (in-place)
             dataset[var] = newvar
             ## normalize snowmelt so that it does not exceed snow fall
