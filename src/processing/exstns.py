@@ -82,7 +82,7 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
         # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
         if age > srcage and os.path.getsize(filepath) > 1e5: lskip = True
         # N.B.: NetCDF files smaller than 100kB are usually incomplete header fragments from a previous crashed
-      if not lskip: os.remove(filepath) # recompute
+
   
   # depending on last modification time of file or overwrite setting, start computation, or skip
   if lskip:        

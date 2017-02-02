@@ -74,7 +74,7 @@ def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwr
         # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
         if age > srcage and os.path.getsize(filepath) > 1e4: lskip = True
         # N.B.: NetCDF files smaller than 10kB are usually incomplete header fragments from a previous crashed
-      if not lskip and not lappend: os.remove(filepath) # recompute or append
+
   
   # depending on last modification time of file or overwrite setting, start computation, or skip
   if lskip:        
@@ -131,7 +131,7 @@ def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwr
       logger.info(writemsg)      
       
       # rename file to proper name
-      if not lreturn:
+      if not lreturn and not lappend:
         sink.unload(); sink.close(); del sink # destroy all references 
         if os.path.exists(filepath): os.remove(filepath) # remove old file
         os.rename(tmpfilepath,filepath)

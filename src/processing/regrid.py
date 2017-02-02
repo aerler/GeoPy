@@ -76,7 +76,6 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
             gridage = datetime.fromtimestamp(os.path.getmtime(griddef.filepath))
             if age < gridage: lskip = False
         # N.B.: NetCDF files smaller than 1MB are usually incomplete header fragments from a previous crashed
-      if not lskip: os.remove(filepath) # recompute
   
   # depending on last modification time of file or overwrite setting, start computation, or skip
   if lskip:        
@@ -220,13 +219,13 @@ if __name__ == '__main__':
 #     periods += [3]
 #     periods += [5]
 #     periods += [10]
-#     periods += [15]
+    periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
     lLTM = False # also regrid the long-term mean climatologies 
-    datasets += ['NRCan']; periods = None
+#     datasets += ['NRCan']; periods = None
 #     datasets += ['PRISM','GPCC','PCIC']; periods = None
 #     datasets += ['CFSR', ] # CFSR_05 does not have precip
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05']}
@@ -249,8 +248,8 @@ if __name__ == '__main__':
 #     WRF_experiments += ['erai-g3','erai-t3']
 #     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050',]
 #     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
-#     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-#     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
+    WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+    WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
 #     WRF_experiments += ['t-ensemble-2050']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
@@ -272,7 +271,7 @@ if __name__ == '__main__':
     domains = 1 # domains to be processed
 #     domains = None # process all domains
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad',) # filetypes to be processed
-    WRF_filetypes = ('srfc',) # filetypes to be processed # ,'rad'
+    WRF_filetypes = ('aux',) # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); periods = None
     # grid to project onto

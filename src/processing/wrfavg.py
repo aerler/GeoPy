@@ -13,7 +13,7 @@ from datetime import datetime
 # internal
 from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import GridDefinition, addGDALtoDataset
+from geodata.gdal import GridDefinition
 from geodata.misc import isInt, DateError
 from datasets.common import name_of_month, days_per_month, getCommonGrid
 from processing.process import CentralProcessingUnit

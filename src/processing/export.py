@@ -207,10 +207,10 @@ def getFileFormat(fileformat, **expargs):
     raise NotImplementedError, fileformat
   
 
-# worker function that is to be passed to asyncPool for parallel execution; use of the decorator is assumed
+# worker function that is to be passed to asyncPool for parallel execution; use of the TrialNError decorator is assumed
 def performExport(dataset, mode, dataargs, expargs, loverwrite=False, 
                   ldebug=False, lparallel=False, pidstr='', logger=None):
-  ''' worker function to perform regridding for a given dataset and target grid '''
+  ''' worker function to export ASCII rasters for a given dataset '''
   # input checking
   if not isinstance(dataset,basestring): raise TypeError
   if not isinstance(dataargs,dict): raise TypeError # all dataset arguments are kwargs 
