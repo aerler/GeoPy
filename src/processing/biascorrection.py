@@ -195,7 +195,7 @@ def generateBiasCorrection(dataset, mode, dataargs, obs_dataset, bc_method, bc_a
     ## pickle bias-correction object with trained parameters
     # open file and save pickle
     if os.path.exists(picklepath): os.remove(picklepath)
-    filehandle = open(picklepath, 'w')
+    filehandle = open(picklepath, 'wb')
     pickle.dump(BC, filehandle)
     filehandle.close()
     if not os.path.exists(picklepath):

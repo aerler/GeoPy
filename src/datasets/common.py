@@ -728,8 +728,8 @@ if __name__ == '__main__':
     
   from geodata.gdal import GridDefinition, pickleGridDef
   
-#   mode = 'pickle_grid'
-  mode = 'create_grid'
+  mode = 'pickle_grid'
+#   mode = 'create_grid'
   grids = dict( 
 #                CFSR=['031','05'],
 #                GPCC=['025','05','10','25'],
@@ -763,7 +763,7 @@ if __name__ == '__main__':
         else:
           # save pickle
           filename = '{0:s}/{1:s}'.format(grid_folder,griddef_pickle.format(gridstr))
-          filehandle = open(filename, 'w')
+          filehandle = open(filename, 'wb')
           pickle.dump(griddef, filehandle)
           filehandle.close()
           

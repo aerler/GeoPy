@@ -264,7 +264,7 @@ def pickleGridDef(griddef=None, folder=None, filename=None, lfeedback=True):
   filename = griddef_pickle.format(griddef.name) if filename is None else filename
   filepath = '{0:s}/{1:s}'.format(grid_folder if folder is None else folder,filename)
   # open file and save pickle
-  filehandle = open(filepath, 'w')
+  filehandle = open(filepath, 'wb')
   pickle.dump(griddef, filehandle)
   filehandle.close()
   # print some feedback
