@@ -225,7 +225,7 @@ if __name__ == '__main__':
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
     lLTM = False # also regrid the long-term mean climatologies 
-#     datasets += ['NRCan']; periods = None
+    datasets += ['NRCan']; periods = None
 #     datasets += ['PRISM','GPCC','PCIC']; periods = None
 #     datasets += ['CFSR', ] # CFSR_05 does not have precip
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05']}
@@ -248,8 +248,8 @@ if __name__ == '__main__':
 #     WRF_experiments += ['erai-g3','erai-t3']
 #     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050',]
 #     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
-    WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-    WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
+#     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+#     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
 #     WRF_experiments += ['t-ensemble-2050']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
@@ -276,7 +276,7 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('const',); periods = None
     # grid to project onto
     grids = dict()
-#     grids['asb1'] = None # small grid for Assiniboine subbasin, 5km
+#     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 #     grids['can1'] = None # large grid for whole Canada
 #     grids['grw1'] = None # high-res grid for GRW, 1km
     grids['grw2'] = None # small grid for GRW, 5km

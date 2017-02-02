@@ -786,19 +786,20 @@ if __name__ == '__main__':
 #     geotransform = [500.e3,5.e3,0,4740.e3,0,5.e3]; size = (27,33)
 #     projection = "+proj=utm +zone=17 +north +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
     ## parameters for UTM 17 Assiniboine River Basin grids
-#     name = 'asb1' # 5km resolution
-# #     geotransform = [246749.8, 5.e3, 0., 5524545., 0., 5.e3]; size = ((438573.1-246749.8)/5.e3,(5682634.-5524545.)/5.e3)
-# #     print size
-# #     size = tuple(int(i) for i in size)
-# #     print size
-#     geotransform = (245.e3, 5.e3, 0., 5524.e3, 0., 5.e3); size = (39,32)
-#     projection = "+proj=utm +zone=14 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
-    ## parameters for Canada-wide Lambert Azimuthal Equal-area
-    name = 'can1' # 5km resolution
-    llx = -3500000; lly = -425000; urx = 3000000; ury = 4000000; dx = dy = 5.e3
-    geotransform = [llx, dx, 0., lly, 0., dy]; size = ((urx-llx)/dx,(ury-lly)/dy)
-    size = tuple(int(i) for i in size)
-    projection = "+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +ellps=sphere +units=m +no_defs"
+    # Bird River, a subbasin of the Assiniboine River Basin
+    name = 'brd1' # 5km resolution 
+#     geotransform = [246749.8, 5.e3, 0., 5524545., 0., 5.e3]; size = ((438573.1-246749.8)/5.e3,(5682634.-5524545.)/5.e3)
+#     print size
+#     size = tuple(int(i) for i in size)
+#     print size
+    geotransform = (245.e3, 5.e3, 0., 5524.e3, 0., 5.e3); size = (39,32)
+    projection = "+proj=utm +zone=14 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+#     ## parameters for Canada-wide Lambert Azimuthal Equal-area
+#     name = 'can1' # 5km resolution
+#     llx = -3500000; lly = -425000; urx = 3000000; ury = 4000000; dx = dy = 5.e3
+#     geotransform = [llx, dx, 0., lly, 0., dy]; size = ((urx-llx)/dx,(ury-lly)/dy)
+#     size = tuple(int(i) for i in size)
+#     projection = "+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +ellps=sphere +units=m +no_defs"
     # N.B.: (x_0, dx, 0, y_0, 0, dy); (xl,yl)
     #       GT(0),GT(3) are the coordinates of the bottom left corner
     #       GT(1) & GT(5) are pixel width and height
