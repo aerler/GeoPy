@@ -483,10 +483,13 @@ class Variable(object):
   def fillValue(self, fillValue):
     self.atts['fillValue'] = fillValue
     if self.data and self.masked:
-      self.data_array._fill_value = fillValue
       # I'm not sure which one does work, but this seems to work more reliably!
-#       self.data_array.set_fill_value = fillValue
-#       ma.set_fill_value(self.data_array,fillValue)
+      self.data_array._fill_value = np.asarray(fillValue) if fillValue is not None else None
+      # N.B.: Numpy MaskedArray's are very unreliable w.r.t. _fill_values; the set_fill_value methods do
+      #       not always seem to work, so setting it directly is more reliable; however, Numpy expects 
+      #       an array type as _fill_value, eventhough it just has one value
+      # self.data_array.set_fill_value = fillValue
+      # ma.set_fill_value(self.data_array,fillValue)
     
   def __eq__(self, other):
     ''' test equality of variables based on meta data and data arrays; if compared with a string,
@@ -948,21 +951,24 @@ class Variable(object):
         else: raise DataError, "Dtypes of Variable and array are inconsistent."
       if np.issubdtype(data.dtype, np.inexact) and not isinstance(data, ma.masked_array):
         data = ma.masked_invalid(data, copy=False)     
-        data._fill_value = fillValue if fillValue is not None else self.fillValue
-#         ma.set_fill_value(data, fillValue if fillValue is not None else self.fillValue) # this seems to work more reliably!
+        data._fill_value = np.asarray(fillValue) if fillValue is not None else self.fillValue
+      # N.B.: Numpy MaskedArray's are very unreliable w.r.t. _fill_values; the set_fill_value methods do
+      #       not always seem to work, so setting it directly is more reliable; however, Numpy expects 
+      #       an array type as _fill_value, eventhough it just has one value
+      # ma.set_fill_value(data,self.atts['fillValue'])
+      # data.set_fill_value(self.atts['fillValue']) 
       # handle/apply mask
       if mask is not None: data = ma.array(data, mask=mask) 
       if isinstance(data,ma.MaskedArray): # figure out fill value for masked array
         if fillValue is not None: # override variable preset 
           if isinstance(fillValue,np.generic): fillValue = fillValue.astype(self.dtype)
           self.atts['fillValue'] = fillValue
-          data._fill_value =  fillValue
+          data._fill_value =  np.asarray(fillValue) if fillValue is not None else None
           # I'm not sure which one does work, but this seems to work more reliably!
         elif 'fillValue' in self.atts and self.atts['fillValue'] is not None: # use variable preset
-          data._fill_value = self.atts['fillValue'] 
+          fillValue = self.atts['fillValue']
+          data._fill_value =  np.asarray(fillValue) if fillValue is not None else None
           # I'm not sure which one does work, but this seems to work more reliably!
-#           ma.set_fill_value(data,self.atts['fillValue'])
-#           data.set_fill_value(self.atts['fillValue']) 
         else: # use data default
           self.atts['fillValue'] = data._fill_value if data._fill_value is not None else data.fill_value
         if self.atts['fillValue'] is None or not ( self.atts['fillValue'] == data._fill_value  
