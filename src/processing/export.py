@@ -392,28 +392,28 @@ if __name__ == '__main__':
     # settings for testing and debugging
     NP = 2 ; ldebug = False # for quick computations
 #     NP = 1 ; ldebug = True # just for tests
-    modes = ('annual-mean','climatology')
-#     modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('annual-mean','climatology')
+    modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series', 'climatology')
-    loverwrite = True
+    loverwrite = False
     varlist = None
     # obs variables
-    load_list = ['lat2D','lon2D','liqwatflx','pet']
+#     load_list = ['lat2D','lon2D','liqwatflx','pet']
 #     load_list = ['lat2D','lon2D','liqwatflx','pet','precip']
     # WRF variables
-#     load_list = ['lat2D','lon2D','zs']
-#     load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet_wrf'] # (net) precip
+    load_list = ['lat2D','lon2D','zs']
+    load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet_wrf'] # (net) precip
     # PET variables (for WRF)
-#     load_list += ['ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # wind
-#     load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
+    load_list += ['ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # wind
+    load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
     periods = []
-#     periods += [15]
+    periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     lLTM = True # also regrid the long-term mean climatologies 
     datasets = []
-    datasets += ['NRCan'] # this will generally not work, because we don't have snow/-melt...
+#     datasets += ['NRCan'] # this will generally not work, because we don't have snow/-melt...
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
@@ -437,7 +437,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['erai-3km','max-3km']
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
-#     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',]
+    WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',]
 #     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
 #     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
 #     WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]
@@ -445,17 +445,17 @@ if __name__ == '__main__':
 #     WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
     # other WRF parameters 
-    domains = 2 # domains to be processed
+    domains = 1 # domains to be processed
 #     domains = None # process all domains
 #     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
-    WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # without radiation files
+    WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # with radiation files
     ## export to ASCII raster
     # typically a specific grid is required
-    grids = [] # list of grids to process
+#     grids = [] # list of grids to process
 #     grids += ['grw2']# small grid for HGS GRW project
-#     grids += ['asb1']# small grid for HGS GRW project
-    grids += ['can1']# large Canada-wide grid
-    export_arguments = dict(
+#     grids += ['brd1']# small grid for HGS GRW project
+#     grids += ['can1']# large Canada-wide grid
+#     export_arguments = dict(
 #         project = 'Grids', # project designation  
 #         varlist = ['lat2D','lon2D','zs','pet_wrf'], # varlist for export
 #         folder = '{0:s}/HGS/{{PROJECT}}/{{EXPERIMENT}}/'.format(os.getenv('DATA_ROOT', None)),
@@ -463,21 +463,21 @@ if __name__ == '__main__':
 #         varlist = ['lat2D','lon2D','liqwatflx','pet','waterflx'], # varlist for WRF
 #         project = 'GRW', # project designation  
 #         project = 'ASB', # project designation
-        project = 'CAN', # project designation
-        fillValue = 0, noDataValue = -9999, # in case we interpolate across a missing value...
-        varlist = ['lat2D','lon2D','liqwatflx','pet'], # varlist for Obs
+#         project = 'CAN', # project designation
+#         fillValue = 0, noDataValue = -9999, # in case we interpolate across a missing value...
+#         varlist = ['lat2D','lon2D','liqwatflx','pet'], # varlist for Obs
 #         varlist = ['lat2D','lon2D','liqwatflx','pet','precip'], # varlist for Obs
-        folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}_15/climate_forcing/'.format(os.getenv('DATA_ROOT', None)),
-        prefix = '{GRID}', # based on keyword arguments
-        format = 'ASCII_raster', # formats to export to
-        lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
+#         folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}_15/climate_forcing/'.format(os.getenv('DATA_ROOT', None)),
+#         prefix = '{GRID}', # based on keyword arguments
+#         format = 'ASCII_raster', # formats to export to
+#         lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
     ## export to NetCDF (aux-file)
-#     grids = [None] # special keyword for native grid
-#     export_arguments = dict(
-#         project = 'aux',
-#         varlist = ['waterflx','liqwatflx','netrad','netrad_0','netrad_bb','vapdef','pet','pet_wrf','zs','lat2D','lon2D'], 
-#         format = 'NetCDF',
-#         lm3 = False) # do not convert water flux from kg/m^2/s to m^3/m^2/s
+    grids = [None] # special keyword for native grid
+    export_arguments = dict(
+        project = 'aux',
+        varlist = ['waterflx','liqwatflx','netrad','netrad_0','netrad_bb','vapdef','pet','pet_wrf','zs','lat2D','lon2D'], 
+        format = 'NetCDF',
+        lm3 = False) # do not convert water flux from kg/m^2/s to m^3/m^2/s
   
   ## process arguments    
   if isinstance(periods, (np.integer,int)): periods = [periods]
