@@ -622,8 +622,19 @@ class DatasetNetCDF(Dataset):
       variables = dict()
       if not isinstance(check_vars, (list,tuple)): check_vars = (check_vars,)
       for ds in datasets:
-        if varlist is None: dsvars = [var for var in ds.variables.keys() if not var in ignore_list] 
-        else: dsvars = [var for var in varlist if ds.variables.has_key(var)] # varlist overrides ignore_list 
+        # figure out desired variables
+        dsvars = []
+        for var in ds.variables.keys():
+          if var in varatts:
+            varatt = varatts[var]
+            if 'name' in  varatt: alt = varatt['name']
+            elif 'atts' in  varatt and 'name' in  varatt['atts']: alt = varatt['atts']['name']  
+            else: alt = None
+            if varlist is None:
+              if not var in ignore_list and alt not in ignore_list: dsvars.append(var)
+              # N.B.: ignored variables usually don't have varatts...
+            else:   
+              if var in varlist or alt in varlist: dsvars.append(var)
         # loop over variables in dataset
         for var in dsvars:
           ncvar= ds.variables[var]

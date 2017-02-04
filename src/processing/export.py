@@ -393,19 +393,20 @@ if __name__ == '__main__':
 #     NP = 2 ; ldebug = False # for quick computations
     NP = 1 ; ldebug = True # just for tests
 #     modes = ('annual-mean','climatology')
-    modes = ('climatology',) # 'climatology','time-series'
-#     modes = ('time-series', 'climatology')
+#     modes = ('climatology',) # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology'
     loverwrite = True
     varlist = None
     # obs variables
 #     load_list = ['lat2D','lon2D','liqwatflx','pet']
 #     load_list = ['lat2D','lon2D','liqwatflx','pet','precip']
     # WRF variables
-    load_list = ['lat2D','lon2D','zs']
-    load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet_wrf'] # (net) precip
-    # PET variables (for WRF)
-    load_list += ['ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # wind
-    load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
+    load_list = ['pet_wrf']
+#     load_list = ['lat2D','lon2D','zs']
+#     load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet_wrf'] # (net) precip
+#     # PET variables (for WRF)
+#     load_list += ['ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # wind
+#     load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
     periods = []
     periods += [15]
 #     periods += [30]
@@ -475,7 +476,8 @@ if __name__ == '__main__':
     grids = [None] # special keyword for native grid
     export_arguments = dict(
         project = 'aux',
-        varlist = ['waterflx','liqwatflx','netrad','netrad_0','netrad_bb','vapdef','pet','pet_wrf','zs','lat2D','lon2D'], 
+        varlist = ['pet_wrf'],
+#         varlist = ['waterflx','liqwatflx','netrad','netrad_0','netrad_bb','vapdef','pet','pet_wrf','zs','lat2D','lon2D'], 
         format = 'NetCDF',
         lm3 = False) # do not convert water flux from kg/m^2/s to m^3/m^2/s
   

@@ -191,7 +191,6 @@ class Hydro(FileType):
                      SFCEVP       = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
                      ACSNOM       = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
                      POTEVP       = dict(name='pet_wrf', units='kg/m^2/s',), # potential evapo-transpiration rate
-                     pet_wrf      = dict(name='pet_wrf', units='kg/m^2/s',), # potential evapo-transpiration rate
                      pet          = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=1./999.70), # correction for pre-processed PET
                      #POTEVP       = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
                      NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
@@ -233,9 +232,9 @@ class LSM(FileType):
                      ACSNOM   = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
                      ACSNOW   = dict(name='snwacc', units='kg/m^2/s'), # snow accumulation rate
                      SFCEVP   = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
-                     POTEVP   = dict(name='pet', units='kg/m^2/s'), # potential evapo-transpiration rate
-                     #POTEVP   = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
-                     #pet      = dict(name='pet', units='kg/m^2/s', scalefactor=2./3.), # correction for pre-processed PET
+                     #POTEVP   = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
+                     POTEVP   = dict(name='pet_wrf', units='kg/m^2/s'), # potential evapo-transpiration rate
+                     pet      = dict(name='pet_wrf', units='kg/m^2/s',), # correction for pre-processed PET
                      SFROFF   = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
                      UDROFF   = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off
                      Runoff   = dict(name='runoff', units='kg/m^2/s'), # total surface and sub-surface run-off
