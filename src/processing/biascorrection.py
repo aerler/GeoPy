@@ -10,18 +10,23 @@ BiasCorrection object; the actual correction is carried out inthe export module.
 # external imports
 import pickle, os # check if files are present etc.
 import numpy as np
+import collections as col
 from datetime import datetime 
 from importlib import import_module
 import logging     
 # internal imports
-from geodata.misc import DateError, printList
+from geodata.misc import DateError, printList, isEqual
 from datasets import gridded_datasets
 from processing.multiprocess import asyncPoolEC
 from processing.misc import getMetaData,  getExperimentList, loadYAML
 from datasets.common import loadDataset
+from geodata.netcdf import DatasetNetCDF
 
+# some helper stuff for validation
+eps = np.finfo(np.float32).eps # single precision rounding error is good enough
+Stats = col.namedtuple('Stats', ('Bias','RMSE','Corr'))
 
-## helper classes to handle different file formats
+## classes that implement bias correction 
 
 class BiasCorrection(object):
   ''' A parent class from which specific bias correction classes will be derived; the purpose is to provide a 
@@ -36,22 +41,92 @@ class BiasCorrection(object):
     self.varlist = varlist
   
   def train(self, dataset, observations, **kwargs):
-    ''' optimize parameters for best fit of dataset to observations and save parameters '''
-    pass
+    ''' loop over variables that need to be corrected and call method-specific training function '''
+    # figure out varlist
+    if self.varlist is None: 
+        self._getVarlist(dataset, observations) # process all that are present in both datasets        
+    # loop over variables that will be corrected
+    self._correction = dict()
+    for varname in self.varlist:
+        # get variable object
+        var = dataset[varname]
+        if not var.data: var.load() # assume it is a VarNC, if there is no data
+        obsvar = observations[varname] # should be loaded
+        if not obsvar.data: obsvar.load() # assume it is a VarNC, if there is no data
+        assert var.data and obsvar.data, obsvar.data      
+        # check if they are actually equal
+        if isEqual(var.data_array, obsvar.data_array, eps=eps, masked_equal=True):
+            correction = None
+        else: 
+            correction = self._trainVar(var, obsvar, **kwargs)
+        # save correction parameters
+        self._correction[varname] = correction
 
-  def correct(self, dataset, **kwargs):
-    ''' apply bias correction to (new or old) dataset and return bias-corrected dataset '''
-    bcds = dataset # do nothing, just return input
+  def _trainVar(self, var, obsvar, **kwargs):
+    ''' optimize parameters for best fit of dataset to observations and save parameters;
+        this method should be implemented for each method '''
+    return None # do nothing
+
+  def correct(self, dataset, asNC=False, **kwargs):
+    ''' loop over variables and apply correction function based on specific method using stored parameters '''
+    if not asNC and isinstance(dataset,DatasetNetCDF): dataset.load() # otherwise we loose data
+    bcds = dataset.copy(axesdeep=True, varsdeep=False, asNC=asNC) # make a copy, but don't duplicate data
+    # loop over variables that will be corrected
+    for varname in self.varlist:
+        # get variable object
+        oldvar = dataset[varname].load()
+        newvar = bcds[varname] # should be loaded
+        assert varname in self._correction, self._correction
+        # bias-correct data and load in new variable 
+        if self._correction[varname] is not None:
+            newvar.load(self._correctVar(oldvar))
+    # return bias-corrected dataset
     return bcds
   
-  def validate(self, dataset, observations, **kwargs):
+  def _correctVar(self, var, **kwargs):
+    ''' apply bias correction to new variable and return bias-corrected data;
+        this method should be implemented for each method '''
+    return var.data_array # do nothing, just return input
+  
+  def _getVarlist(self, dataset, observations):
+    ''' find all valid candidate variables for bias correction present in both input datasets '''
+    varlist = []
+    # loop over variables
+    for varname in observations.variables.keys():
+        if varname in dataset.variables and not dataset[varname].strvar:
+            #if np.issubdtype(dataset[varname].dtype,np.inexact) or np.issubdtype(dataset[varname].dtype,np.integer):
+            varlist.append(varname) # now we have a valid variable
+    # save and return varlist
+    self.varlist = varlist
+    return varlist        
+
+  def validate(self, dataset, observations, lprint=True, **kwargs):
     ''' apply correction to dataset and return statistics of fit to observations '''
-    # apply correction
+    # apply correction    
     bcds = self.correct(dataset, **kwargs)
-    # evaluate fit
-    delta = bcds - observations
+    validation = dict()
+    # evaluate fit by variable
+    for varname in self.varlist:
+        # get variable object
+        bcvar = bcds[varname].load()
+        obsvar = observations[varname] # should be loaded
+        assert bcvar.data and obsvar.data, obsvar.data
+        # compute statistics if bias correction was actually performed
+        if self._correction[varname] is None:
+            stats = None
+        else:
+            delta = bcvar.data_array - obsvar.data_array
+            bias = delta.mean()
+            if bias < eps: bias = 0.
+            rmse = np.asscalar(np.sqrt(np.mean(delta**2)))
+            if rmse < eps: rmse = 0.
+            corr = np.corrcoef(bcvar.data_array.flatten(),obsvar.data_array.flatten())[0,1]
+            stats = Stats(Bias=bias,RMSE=rmse,Corr=corr)
+        if lprint: print(varname,stats)
+        validation[varname] = stats
     # return fit statistics
-    return delta
+    self._validation = validation # also store
+    return validation
   
   def picklefile(self, obs_name=None, grid_name=None):
     ''' generate a name for the pickle file, based on methd and options '''
@@ -69,27 +144,49 @@ class BiasCorrection(object):
       text += '\n  Picklefile: {:s}'.format(self._picklefile) 
     return text
     
-  def __getstate__(self):
-    ''' support pickling '''
-    pickle = self.__dict__.copy()
-    # handle attributes that don't pickle
-    pass
-    # return instance dict to pickle
-    return pickle
-  
-  def __setstate__(self, pickle):
-    ''' support pickling '''
-    # handle attirbutes that don't pickle
-    pass
-    # update instance dict with pickle dict
-    self.__dict__.update(pickle)
+#   def __getstate__(self):
+#     ''' support pickling '''
+#     pickle = self.__dict__.copy()
+#     # handle attributes that don't pickle
+#     pass
+#     # return instance dict to pickle
+#     return pickle
+#   
+#   def __setstate__(self, pickle):
+#     ''' support pickling '''
+#     # handle attirbutes that don't pickle
+#     pass
+#     # update instance dict with pickle dict
+#     self.__dict__.update(pickle)
     
     
+class Delta(BiasCorrection):
+  ''' A class that implements a simple grid point-based Delta-Method bias correction. '''
+  name = 'delta' # name used in file names
+  long_name = 'Simple Delta-Method' # name for printing
+  _ratio_units = ('mm/day','kg/m^2/s','J/m^2/s','W/m^2') # variable units that indicate ratio
+    
+  def _trainVar(self, var, obsvar, **kwargs):
+    ''' take difference (or ratio) between observations and simulation and use as correction '''
+    # decide between difference or ratio based on variable type
+    if var.units in self._ratio_units: # ratio for fluxes
+        delta = obsvar.data_array / var.data_array 
+    else: # default behavior is differences
+        delta = obsvar.data_array - var.data_array
+    # return correction parameters, i.e. delta
+    return delta
+        
+  def _correctVar(self, var, **kwargs):
+    ''' use stored ratios to bias-correct the input dataset and return a new copy '''
+    # decide between difference or ratio based on variable type
+    if var.units in self._ratio_units: # ratio for fluxes
+        data = var.data_array * self._correction[var.name]
+    else: # default behavior is differences
+        data = var.data_array + self._correction[var.name]    
+    # return bias-corrected data (copy)
+    return data
 
 class MyBC(BiasCorrection):
-  pass
-
-class Delta(BiasCorrection):
   pass
 
 class SMBC(BiasCorrection):
@@ -191,6 +288,9 @@ def generateBiasCorrection(dataset, mode, dataargs, obs_dataset, bc_method, bc_a
     # print bias-correction
     if not lparallel and ldebug:
       logger.info('\n'+str(BC)+'\n')
+      print("Bias-correction Statistics:")
+      BC.validate(dataset, obs_dataset, lprint=True)    
+      print('')  
       
     ## pickle bias-correction object with trained parameters
     # open file and save pickle
@@ -292,12 +392,12 @@ if __name__ == '__main__':
 #     WRF_experiments += ['erai-g3','erai-t3']
 #     WRF_experiments += ['erai-g3','erai-g']
 #     WRF_experiments += ['g-ensemble']
-    WRF_experiments += ['t-ensemble']
+    WRF_experiments += ['g-ctrl']
     # other WRF parameters 
     domains = 1 # domains to be processed
 #     domains = None # process all domains
-#     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
-    WRF_filetypes = ('aux',) # only preprocessed auxiliary files
+    WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
+#     WRF_filetypes = ('aux',) # only preprocessed auxiliary files
     ## observations (i.e. the reference dataset; arguments passed to loadDataset)
     obs_name = 'NRCan'
     obs_mode = 'climatology'
@@ -306,7 +406,7 @@ if __name__ == '__main__':
     load_list = None # variables that need to be loaded
     varlist = None # variables that should be bias-corrected
     grid = 'grw2' # need a common grid for all datasets
-    bc_method = 'test' # bias correction method
+    bc_method = 'Delta' # bias correction method
     bc_args = dict() # paramters for bias correction
   
   ## process arguments
@@ -324,7 +424,7 @@ if __name__ == '__main__':
   obs_args['varlist'] = load_list   
 
   ## load observations/reference dataset
-  obs_dataset = loadDataset(name=obs_name, mode=obs_mode, **obs_args)
+  obs_dataset = loadDataset(name=obs_name, mode=obs_mode, **obs_args).load()
   
   # print an announcement
   if len(WRF_experiments) > 0:

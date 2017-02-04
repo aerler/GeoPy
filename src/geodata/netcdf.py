@@ -16,8 +16,7 @@ import os, functools
 # from nctools import * # my own netcdf toolkit
 from geodata.base import Variable, Axis, Dataset, ApplyTestOverList
 from geodata.misc import checkIndex, isEqual, joinDicts
-from geodata.misc import ( DatasetError, DataError, AxisError, NetCDFError, PermissionError, 
-                           FileError, VariableError, ArgumentError, EmptyDatasetError )
+from geodata.misc import DatasetError, DataError, AxisError, NetCDFError, PermissionError, FileError, VariableError, ArgumentError 
 from utils.nctools import coerceAtts, writeNetCDF, add_var, add_coord, checkFillValue
 
 
@@ -640,7 +639,7 @@ class DatasetNetCDF(Dataset):
               else: 
                 if varobj.shape != ncvar.shape or varobj.ncvar.dimensions != ncvar.dimensions:              
                   raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files have incompatible dimensions.".format(var)
-                if 'units' in ncvar.ncattrs() and varobj.ncvar.units != ncvar.units: # check units as well              
+                if 'units' in ncvar.ncattrs() and not ( varobj.ncvar.units == ncvar.units or varobj.units == ncvar.units ): # check units as well              
                   raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files have incompatible units.".format(var)
               # check values only of requested
               if var in check_vars:
