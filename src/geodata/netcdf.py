@@ -630,11 +630,12 @@ class DatasetNetCDF(Dataset):
             if 'name' in  varatt: alt = varatt['name']
             elif 'atts' in  varatt and 'name' in  varatt['atts']: alt = varatt['atts']['name']  
             else: alt = None
-            if varlist is None:
-              if not var in ignore_list and alt not in ignore_list: dsvars.append(var)
-              # N.B.: ignored variables usually don't have varatts...
-            else:   
-              if var in varlist or alt in varlist: dsvars.append(var)
+          else: alt = None
+          if varlist is None:
+            if var not in ignore_list and alt not in ignore_list: dsvars.append(var)
+            # N.B.: ignored variables usually don't have varatts...
+          else:   
+            if var in varlist or alt in varlist: dsvars.append(var)
         # loop over variables in dataset
         for var in dsvars:
           ncvar= ds.variables[var]
