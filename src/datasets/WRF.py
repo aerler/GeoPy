@@ -190,9 +190,9 @@ class Hydro(FileType):
                      RAINNC       = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate
                      SFCEVP       = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
                      ACSNOM       = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
-                     POTEVP       = dict(name='pet_wrf', units='kg/m^2/s',), # potential evapo-transpiration rate
-                     pet          = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=1./999.70), # correction for pre-processed PET
-                     #POTEVP       = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
+                     pet          = dict(name='pet_wrf', units='kg/m^2/s',), # just renaming of old variable
+                     POTEVP       = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
+                     # N.B.: for some strange reason WRF outputs PET in m/s, rather than kg/m^2/s
                      NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
                      LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
                      SolidPrecip  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
@@ -232,9 +232,9 @@ class LSM(FileType):
                      ACSNOM   = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
                      ACSNOW   = dict(name='snwacc', units='kg/m^2/s'), # snow accumulation rate
                      SFCEVP   = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
-                     #POTEVP   = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
-                     POTEVP   = dict(name='pet_wrf', units='kg/m^2/s'), # potential evapo-transpiration rate
-                     pet      = dict(name='pet_wrf', units='kg/m^2/s',), # correction for pre-processed PET
+                     pet      = dict(name='pet_wrf', units='kg/m^2/s',), # just renaming of old variable
+                     POTEVP   = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
+                     # N.B.: for some strange reason WRF outputs PET in m/s, rather than kg/m^2/s
                      SFROFF   = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
                      UDROFF   = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off
                      Runoff   = dict(name='runoff', units='kg/m^2/s'), # total surface and sub-surface run-off
