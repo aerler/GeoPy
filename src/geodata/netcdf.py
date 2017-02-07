@@ -583,23 +583,45 @@ class DatasetNetCDF(Dataset):
           filenames.append(tmpfile)
         filelist = filenames # original file list, absolute path        
       # from here on, dataset creation is based on the netcdf-Dataset(s) in 'datasets'
-      if ignore_list is not None:
-        if isinstance(ignore_list,(list,tuple,set)): ignore_list = set(ignore_list) # order doesn't matter
-        elif not isinstance(ignore_list,set): raise TypeError         
-      else: ignore_list = set()
-      # create axes from netcdf dimensions and coordinate variables
-      if varatts is None: varatts = dict() # empty dictionary means no parameters...
+      # figure out per-dataset varatts and ignore_lists 
+      if varatts is None: varatts_list = [dict()]*len(datasets) # empty dictionary means no parameters...
+      elif isinstance(varatts,dict): varatts_list = [varatts]*len(datasets)
+      elif isinstance(varatts,(tuple,list)):
+        if len(varatts) != len(datasets): 
+          raise ArgumentError("{} != {}".format(len(varatts),len(datasets)))
+        else: varatts_list = varatts
+      else: 
+        raise TypeError("'varatts' has to be a dictionary or a list of dictionaries; found: {}".format(varatts))
+      if ignore_list is None: ignore_lists  = [set()]*len(datasets) # empty set means no none...
+      elif isinstance(ignore_list,set): ignore_lists = [ignore_list]*len(datasets)
+      elif isinstance(varatts,(tuple,list)):
+        if all(isinstance(e,basestring) for e in ignore_list):
+          ignore_lists = [set((ignore_list,))]*len(datasets)
+        elif all(isinstance(e,(list,tuple,set)) for e in ignore_list):
+          ignore_lists = [set(ignore_list)]*len(datasets)
+        else:
+          raise TypeError("'ignore_list' has to be a set or a list of sets; found: {}".format(ignore_lists))
+        if len(ignore_list) != len(datasets): 
+          raise ArgumentError("{} != {}".format(len(ignore_list),len(datasets)))
+        else: ignore_lists = ignore_list
+      else: 
+        raise TypeError("'ignore_list' has to be a set or a list of sets; found: {}".format(ignore_lists))
       # generate list of variables that have already been converted
-      check_rename = dict()
-      for varname,varatt in varatts.iteritems():
-        if 'name' in varatt: # if name is not in varatt, there is no renaming, hence no need to record 
-          check_rename[varatt['name']] = dict(units=varatt.get('units',''), old_name=varname)
+      check_rename_list = []
+      for varatts in varatts_list:
+        check_rename = dict()
+        for varname,varatt in varatts.items():
+          if 'name' in varatt: # if name is not in varatt, there is no renaming, hence no need to record 
+            check_rename[varatt['name']] = dict(units=varatt.get('units',''), old_name=varname)
+        check_rename_list.append(check_rename)
       if check_override is None: check_override = [] # list of variables (and axes) that is not checked for consistency
       # N.B.: check_override may be necessary to combine datasets from different files with inconsistent axis instances 
+      assert len(datasets) == len(varatts_list) == len(ignore_lists) == len(check_rename_list)
+      # create axes from netcdf dimensions and coordinate variables
       if axes is None: axes = dict()
       else: check_override += axes.keys() # don't check externally provided axes   
       if not isinstance(axes,dict): raise TypeError
-      for ds in datasets:
+      for ds,varatts,ignore_list,check_rename in zip(datasets,varatts_list,ignore_lists,check_rename_list):
         for dim in ds.dimensions.keys():
           if dim not in ignore_list:
             if dim[:8] == 'str_dim_': pass # dimensions added to store strings as charater arrays        
@@ -621,7 +643,7 @@ class DatasetNetCDF(Dataset):
       # create variables from netcdf variables    
       variables = dict()
       if not isinstance(check_vars, (list,tuple)): check_vars = (check_vars,)
-      for ds in datasets:
+      for ds,varatts,ignore_list,check_rename in zip(datasets,varatts_list,ignore_lists,check_rename_list):
         # figure out desired variables
         dsvars = []
         for var in ds.variables.keys():

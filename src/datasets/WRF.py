@@ -18,7 +18,7 @@ from geodata.base import concatDatasets
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt, EmptyDatasetError
-from datasets.common import translateVarNames, data_root, grid_folder, selectElements, stn_params, shp_params, nullNaN
+from datasets.common import data_root, grid_folder, selectElements, stn_params, shp_params, nullNaN
 from geodata.gdal import loadPickledGridDef, griddef_pickle
 #from projects.WRF_experiments import Exp, exps, ensembles 
 from warnings import warn
@@ -627,8 +627,8 @@ def loadWRF(experiment=None, name=None, domains=None, grid=None, period=None, fi
                      lautoregrid=lautoregrid, lctrT=lctrT, mode='climatology', lwrite=lwrite, ltrimT=ltrimT)  
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
-def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=None, shape=None, 
-                period=None, filetypes=None, varlist=None, varatts=None, lconst=True, lautoregrid=True, 
+def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=None, shape=None, period=None, 
+                filetypes=None, varlist=None, varatts=None, lfilevaratts=False, lconst=True, lautoregrid=True, 
                 lencl=False, lctrT=False, folder=None, lpickleGrid=True, mode='climatology', 
                 lwrite=False, ltrimT=False, check_vars=None, exps=None):
   ''' Get any WRF data files as a properly formatted NetCDFDataset. '''
@@ -680,9 +680,9 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   elif isinstance(filetypes,basestring): filetypes = [filetypes,]
   elif isinstance(filetypes,list): filetypes = list(filetypes) # also make copy for modification
   else: raise TypeError
-  if 'axes' not in filetypes: filetypes.append('axes')
+  if 'axes' in filetypes: del filetypes[filetypes.index('axes')] # remove axes - not a real filetype
   #if 'const' not in filetypes and grid is None: filetypes.append('const')
-  atts = dict(); filelist = []; typelist = []
+  atts = []; filelist = []; typelist = []
   for filetype in filetypes: # last filetype in list has precedence
     fileclass = fileclasses[filetype]    
     if lclim and fileclass.climfile is not None:
@@ -692,21 +692,37 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       if fileclass.tsfile is not None: 
         filelist.append(fileclass.tsfile)
         typelist.append(filetype) # this eliminates const files
-#       if not lstation and grid is None: 
-    atts.update(fileclass.atts) # only for original time-series      
-  if varatts is not None: atts.update(varatts)
+    # get varatts
+    att = fileclasses['axes'].atts.copy()
+    att.update(fileclass.atts) # use axes atts as basis and override with filetype-specific atts
+    atts.append(att) # list of atts for each filetype    
+  # resolve varatts argument and update default atts
+  if varatts is None: pass
+  elif isinstance(varatts,dict):
+    if lfilevaratts:
+      for filetype,att in varatts.items():
+        if not isinstance(att, dict): raise TypeError(filetype,att)
+        atts[typelist.index(filetype, )].update(att) # happens in-place
+    else:
+      for att in atts: att.update(varatts) # happens in-place
+  elif isinstance(varatts,(list,tuple)):
+    for att,varatt in zip(atts,varatts): att.update(varatt) # happens in-place
+  else:
+    raise TypeError(varatts)
   # NetCDF file mode
   ncmode = 'rw' if lwrite else 'r' 
   # center time axis to 1979
   if lctrT and experiment is not None:
-    if 'time' in atts: tatts = atts['time']
-    else: tatts = dict()
-    ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1   
-    tatts['offset'] = (ys-1979)*12 + (ms-1)
-    tatts['atts'] = dict(long_name='Month since 1979-01')
-    atts['time'] = tatts   
+    for att in atts: # loop over all filetypes and change time axis atts based on experiment meta data
+      if 'time' in att: tatt = att['time']
+      else: tatt = dict()
+      ys,ms,ds = [int(t) for t in experiment.begindate.split('-')]; assert ds == 1   
+      tatt['offset'] = (ys-1979)*12 + (ms-1)
+      tatt['atts'] = dict(long_name='Month since 1979-01')
+      att['time'] = tatt # this should happen in-place  
   # translate varlist
-  if varlist is not None: varlist = translateVarNames(varlist, atts) # default_varatts
+  #if varlist is not None: varlist = translateVarNames(varlist, atts) # default_varatts
+  # N.B.: renaming of variables in the varlist is now handled in theDatasetNetCDF initialization routine
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if not lstation and not lshape:
@@ -1003,11 +1019,12 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
-#   mode = 'test_point_climatology'
+  mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
-  mode = 'pickle_grid' 
+#   mode = 'pickle_grid' 
   pntset = 'wcshp'
+#   pntset = 'glbshp'
 #   pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
 #   grids = ['glb1-90km','glb1','arb1', 'arb2', 'arb2-120km', 'arb3']

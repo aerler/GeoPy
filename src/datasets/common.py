@@ -8,6 +8,7 @@ Some tools and data that are used by many datasets, but not much beyond that.
 
 # external imports
 from importlib import import_module
+from warnings import warn
 import inspect
 import numpy as np
 import pickle
@@ -251,6 +252,7 @@ def transformDays(data=None, var=None, slc=None, l365=False, lvar=None, linplace
 def translateVarNames(varlist, varatts):
   ''' Simple function to replace names in a variable list with their original names as inferred from the 
       attributes dictionary. Note that this requires the dictionary to have the field 'name'. '''
+  warn("WARNING: this function is deprecated - the functionality is not handled by DatasetNetCDF directly")
   if isinstance(varlist,basestring): varlist = [varlist]
   if not isinstance(varlist,(list,tuple,set)) or not isinstance(varatts,dict): raise TypeError(varlist)
   varlist = list(varlist) # make copy, since operation is in-place, and to avoid interference
@@ -350,7 +352,8 @@ def loadObservations(name=None, folder=None, period=None, grid=None, station=Non
     lstation = False; lshape = False
   # varlist (varlist = None means all variables)
   if varatts is None: varatts = default_varatts.copy()
-  if varlist is not None: varlist = translateVarNames(varlist, varatts)
+  #if varlist is not None: varlist = translateVarNames(varlist, varatts)
+  # N.B.: renaming of variables in the varlist is now handled in theDatasetNetCDF initialization routine
   # filelist
   if filelist is None: 
     filename = getFileName(name=name, resolution=resolution, period=period, grid=grid, filepattern=filepattern)
