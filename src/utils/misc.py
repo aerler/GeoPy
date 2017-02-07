@@ -258,7 +258,7 @@ def expandArgumentList(inner_list=None, outer_list=None, expand_list=None, lprod
       
     # handle outer product expansion first
     if len(outer_list) > 0:
-      kwtmp = {key:value for key,value in kwargs.iteritems() if key not in inner_list}
+      kwtmp = {key:value for key,value in kwargs.items() if key not in inner_list}
       
       # detect variables for parallel expansion
       # N.B.: parallel outer expansion is handled by replacing the arguments in each parallel expansion group
@@ -279,7 +279,7 @@ def expandArgumentList(inner_list=None, outer_list=None, expand_list=None, lprod
       # replace entries in outer list
       if len(par_dict)>0:
         outer_list = outer_list[:] # copy list
-        for fake,names in par_dict.iteritems():
+        for fake,names in par_dict.items():
           if names in outer_list:
             outer_list[outer_list.index(names)] = fake
       assert all([ isinstance(arg,basestring) for arg in outer_list])
