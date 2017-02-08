@@ -15,7 +15,7 @@ from datetime import datetime
 from importlib import import_module
 import logging     
 # internal imports
-from geodata.misc import DateError, printList, isEqual
+from geodata.misc import DateError, printList, isEqual, DataError
 from datasets import gridded_datasets
 from processing.multiprocess import asyncPoolEC
 from processing.misc import getMetaData,  getExperimentList, loadYAML
@@ -128,12 +128,14 @@ class BiasCorrection(object):
     self._validation = validation # also store
     return validation
   
-  def picklefile(self, obs_name=None, grid_name=None):
+  def picklefile(self, obs_name=None, grid_name=None, domain=None, tag=None):
     ''' generate a name for the pickle file, based on methd and options '''
     if self._picklefile is None:
       name = self.name
       if obs_name: name += '_{:s}'.format(obs_name)
       if grid_name: name += '_{:s}'.format(grid_name)
+      if domain: name += '_d{:02d}'.format(domain)
+      if tag: name += '_{:s}'.format(tag)
       self._picklefile = 'bias_{:s}.pickle'.format(name)
     return self._picklefile
   
@@ -162,7 +164,7 @@ class BiasCorrection(object):
     
 class Delta(BiasCorrection):
   ''' A class that implements a simple grid point-based Delta-Method bias correction. '''
-  name = 'delta' # name used in file names
+  name = 'Delta' # name used in file names
   long_name = 'Simple Delta-Method' # name for printing
   _ratio_units = ('mm/day','kg/m^2/s','J/m^2/s','W/m^2') # variable units that indicate ratio
     
@@ -186,11 +188,65 @@ class Delta(BiasCorrection):
     # return bias-corrected data (copy)
     return data
 
-class MyBC(BiasCorrection):
-  pass
+class SMBC(Delta):
+  name = 'SMBC' # name used in file names
+  long_name = 'Simple Monthly Mean Adjustment' # name for printing
+    
+  def _trainVar(self, var, obsvar, **kwargs):
+    ''' take difference (or ratio) between spatially averaged observations and simulation and use as correction '''
+    obsdata = obsvar.data_array; vardata = var.data_array
+    if obsdata.ndim == 3:
+        assert obsdata.shape[0] == 12, obsvar
+        # average spatially but keep seasonal cycle (but need to keep singleton dimensions)
+        for n in range(1,obsdata.ndim):
+            obsdata = obsdata.mean(axis=n, keepdims=True)
+            vardata = vardata.mean(axis=n, keepdims=True)
+    else:
+        # average spatially, assuming not time dimension - very simple!
+        obsdata = obsdata.mean(); vardata = vardata.mean()
+    # decide between difference or ratio based on variable type
+    if var.units in self._ratio_units: # ratio for fluxes
+        r = obsdata / vardata 
+    else: # default behavior is differences
+        r = obsdata - vardata
+    # consistency check
+    if obsdata.ndim == 3 and r.size != 12: 
+        raise DataError(r.shape)
+    elif obsdata.ndim != 3 and not np.isscalar(r):
+        raise DataError(r)
+    # return correction parameters (12-element vector)
+    return r
 
-class SMBC(BiasCorrection):
-  pass
+class AABC(Delta):
+  name = 'AABC' # name used in file names
+  long_name = 'Simple Annual Average Correction' # name for printing
+    
+  def _trainVar(self, var, obsvar, **kwargs):
+    ''' take difference (or ratio) between averaged observations and simulation and use as correction '''
+    obsdata = obsvar.data_array; vardata = var.data_array
+    # average spatially and temporally (over seasonal cycle) - very simple!
+    obsdata = obsdata.mean(); vardata = vardata.mean()
+    # decide between difference or ratio based on variable type
+    if var.units in self._ratio_units: # ratio for fluxes
+        r = obsdata / vardata 
+    else: # default behavior is differences
+        r = obsdata - vardata
+    if not np.isscalar(r): raise DataError(r)
+    # return correction parameter
+    return r
+        
+class MyBC(BiasCorrection):
+  ''' A BiasCorrection class that implements snowmelt shift and utilizes different (unobserved) precipitation types '''
+  
+  def _trainVar(self, var, obsvar, **kwargs):
+    ''' optimize parameters for best fit of dataset to observations and save parameters;
+        this method should be implemented for each method '''
+    raise NotImplementedError
+
+  def _correctVar(self, var, **kwargs):
+    ''' apply bias correction to new variable and return bias-corrected data;
+        this method should be implemented for each method '''
+    raise NotImplementedError
 
 
 def getBCmethods(method, **bcargs):
@@ -203,14 +259,16 @@ def getBCmethods(method, **bcargs):
     return MyBC(**bcargs)
   elif method.lower() == 'delta':
     return Delta(**bcargs)
-  elif method == 'SMBC':
+  elif method.upper() == 'SMBC':
     return SMBC(**bcargs)
+  elif method.upper() == 'AABC':
+    return AABC(**bcargs)
   else:
     raise NotImplementedError(method)
   
 
 # worker function that is to be passed to asyncPool for parallel execution; use of TrialNError decorator is assumed
-def generateBiasCorrection(dataset, mode, dataargs, obs_dataset, bc_method, bc_args, loverwrite=False, 
+def generateBiasCorrection(dataset, mode, dataargs, obs_dataset, bc_method, bc_args, loverwrite=False, lgzip=None, tag=None, 
                            ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to generate a bias correction objects for a given dataset '''
   # input checking
@@ -236,22 +294,21 @@ def generateBiasCorrection(dataset, mode, dataargs, obs_dataset, bc_method, bc_a
   # initialize BiasCorrection class instance
   BC = getBCmethods(bc_method, **bc_args)
   # get folder for target dataset and do some checks
-  picklefile = BC.picklefile(obs_name=obs_dataset.name, grid_name=dataargs.grid)
+  picklefile = BC.picklefile(obs_name=obs_dataset.name, grid_name=dataargs.grid, domain=dataargs.domain, tag=tag)
   if ldebug: picklefile = 'test_' + picklefile 
   picklepath = '{:s}/{:s}'.format(avgfolder,picklefile)
   
   # check if we are overwriting an existing file
   if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
   lskip = False # else just go ahead
-  if os.path.exists(picklepath): 
-    if not loverwrite: 
-      age = datetime.fromtimestamp(os.path.getmtime(picklepath))
-      # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
-      if age > srcage: 
-        lskip = True
-        if hasattr(obs_dataset, 'filepath') and obs_dataset.filepath is not None:
-          obsage = datetime.fromtimestamp(os.path.getmtime(obs_dataset.filepath))
-          if age < obsage: lskip = False
+  if os.path.exists(picklepath) and not loverwrite: 
+    age = datetime.fromtimestamp(os.path.getmtime(picklepath))
+    # if source file is newer than sink file or if sink file is a stub, recompute, otherwise skip
+    if age > srcage: 
+      lskip = True
+      if hasattr(obs_dataset, 'filepath') and obs_dataset.filepath is not None:
+        obsage = datetime.fromtimestamp(os.path.getmtime(obs_dataset.filepath))
+        if age < obsage: lskip = False
 
   
   # depending on last modification time of file or overwrite setting, start computation, or skip
@@ -295,9 +352,11 @@ def generateBiasCorrection(dataset, mode, dataargs, obs_dataset, bc_method, bc_a
     ## pickle bias-correction object with trained parameters
     # open file and save pickle
     if os.path.exists(picklepath): os.remove(picklepath)
-    filehandle = open(picklepath, 'wb')
-    pickle.dump(BC, filehandle)
-    filehandle.close()
+    if lgzip: 
+      from gzip import open
+      picklepath += '.gz'
+    with open(picklepath, 'wb') as filehandle:
+      pickle.dump(BC, filehandle)
     if not os.path.exists(picklepath):
       raise IOError, "Error while saving Pickle to '{0:s}'".format(picklepath)
 
@@ -358,15 +417,15 @@ if __name__ == '__main__':
     WRF_project = config['WRF_project']
     WRF_experiments = config['WRF_experiments']
     WRF_filetypes = config['WRF_filetypes']
-    domains = config['WRF_domains']
+    WRF_domains = config['WRF_domains']
     grids = config['grids']
     # target data specs
     export_arguments = config['export_parameters'] # this is actually a larger data structure
     lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/m^2/s    
   else:
     # settings for testing and debugging
-#     NP = 2 ; ldebug = False # for quick computations
-    NP = 1 ; ldebug = True # just for tests
+    NP = 1 ; ldebug = False # for quick computations
+#     NP = 1 ; ldebug = True # just for tests
     modes = ('climatology',) # 'climatology','time-series'
     loverwrite = True
     ## datasets to be bias-corrected
@@ -391,11 +450,12 @@ if __name__ == '__main__':
 #     WRF_experiments += ['g3-ensemble','t3-ensemble',]
 #     WRF_experiments += ['erai-g3','erai-t3']
 #     WRF_experiments += ['erai-g3','erai-g']
+    WRF_experiments += ['g-ensemble','t-ensemble']
+    WRF_experiments += ['g3-ensemble','t3-ensemble']
 #     WRF_experiments += ['g-ensemble']
-    WRF_experiments += ['g-ctrl']
     # other WRF parameters 
-    domains = 1 # domains to be processed
-#     domains = None # process all domains
+#     WRF_domains = 1 # domains to be processed (None=all)
+    WRF_domains = None # process all domains
     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
 #     WRF_filetypes = ('aux',) # only preprocessed auxiliary files
     ## observations (i.e. the reference dataset; arguments passed to loadDataset)
@@ -403,17 +463,19 @@ if __name__ == '__main__':
     obs_mode = 'climatology'
     obs_args = dict(resolution='na12')
     ## remaining parameters
+    lgzip = True # compress pickles
+    tag = None # an additional tag string for pickle name
     load_list = None # variables that need to be loaded
     varlist = None # variables that should be bias-corrected
     grid = 'grw2' # need a common grid for all datasets
-    bc_method = 'Delta' # bias correction method
+    bc_method = 'AABC' # bias correction method
     bc_args = dict() # paramters for bias correction
   
   ## process arguments
   if isinstance(periods, (np.integer,int)): periods = [periods]
   # check and expand WRF experiment list
   WRF_experiments = getExperimentList(WRF_experiments, WRF_project, 'WRF')
-  if isinstance(domains, (np.integer,int)): domains = [domains]
+  if isinstance(WRF_domains, (np.integer,int)): WRF_domains = [WRF_domains]
   # check and expand CESM experiment list
   CESM_experiments = getExperimentList(CESM_experiments, CESM_project, 'CESM')
   # expand datasets and resolutions
@@ -490,9 +552,9 @@ if __name__ == '__main__':
     # WRF datasets
     for experiment in WRF_experiments:
       # effectively, loop over domains
-      if domains is None:
+      if WRF_domains is None:
         tmpdom = range(1,experiment.domains+1)
-      else: tmpdom = domains
+      else: tmpdom = WRF_domains
       for domain in tmpdom:
         for period in periodlist:
           # arguments for worker function: dataset and dataargs       
@@ -500,7 +562,7 @@ if __name__ == '__main__':
                                           varlist=load_list, domain=domain, period=period)) )
       
   # static keyword arguments
-  kwargs = dict(obs_dataset=obs_dataset, bc_method=bc_method, bc_args=bc_args, loverwrite=loverwrite)
+  kwargs = dict(obs_dataset=obs_dataset, bc_method=bc_method, bc_args=bc_args, loverwrite=loverwrite, lgzip=lgzip, tag=tag)
   # N.B.: formats will be iterated over inside export function
   
   ## call parallel execution function
