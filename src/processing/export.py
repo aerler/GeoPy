@@ -391,10 +391,10 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 2 ; ldebug = False # for quick computations
-    NP = 1 ; ldebug = True # just for tests
+    NP = 2 ; ldebug = True # just for tests
 #     modes = ('annual-mean','climatology')
-#     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology'
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology'
     loverwrite = True
     varlist = None
     # obs variables
@@ -432,13 +432,13 @@ if __name__ == '__main__':
 #     WRF_experiments = ['erai-g3','erai-t3']
 #     WRF_experiments = ['erai-g3','erai-g']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-#     WRF_experiments += ['t-ensemble-2100']
+    WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-3km','max-3km']
 #     WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
-    WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',][-1:]
+#     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',]
 #     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
 #     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
 #     WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]
@@ -446,8 +446,8 @@ if __name__ == '__main__':
 #     WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
     # other WRF parameters 
-    domains = 1 # domains to be processed
-#     domains = None # process all domains
+#     domains = 1 # domains to be processed
+    domains = None # process all domains
 #     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # with radiation files
     ## export to ASCII raster

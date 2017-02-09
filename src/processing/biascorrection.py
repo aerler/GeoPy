@@ -26,6 +26,25 @@ from geodata.netcdf import DatasetNetCDF
 eps = np.finfo(np.float32).eps # single precision rounding error is good enough
 Stats = col.namedtuple('Stats', ('Bias','RMSE','Corr'))
 
+def getPickleFile(method=None, obs_name=None, mode=None, periodstr=None, gridstr=None, domain=None, tag=None, 
+                  pattern='bias_{:s}.pickle'):
+  ''' generate a name for a bias-correction pickle file, based on parameters '''
+  # abbreviation for data mode
+  if mode == 'climatology': aggregation = 'clim'
+  elif mode == 'time-series': aggregation = 'monthly'
+  elif mode[-5:] == '-mean': aggregation = mode[:-5]
+  else: mode = None
+  # string together different parameter arguments
+  name = method if method else '' # initialize
+  if obs_name: name += '_{:s}'.format(obs_name)
+  if mode: name += '_{:s}'.format(aggregation)
+  if periodstr: name += '_{:s}'.format(periodstr)
+  if gridstr: name += '_{:s}'.format(gridstr)
+  if domain: name += '_d{:02d}'.format(domain)
+  if tag: name += '_{:s}'.format(tag)
+  picklefile = pattern.format(name) # insert name into fixed pattern
+  return picklefile
+
 ## classes that implement bias correction 
 
 class BiasCorrection(object):
@@ -128,15 +147,11 @@ class BiasCorrection(object):
     self._validation = validation # also store
     return validation
   
-  def picklefile(self, obs_name=None, grid_name=None, domain=None, tag=None):
-    ''' generate a name for the pickle file, based on methd and options '''
-    if self._picklefile is None:
-      name = self.name
-      if obs_name: name += '_{:s}'.format(obs_name)
-      if grid_name: name += '_{:s}'.format(grid_name)
-      if domain: name += '_d{:02d}'.format(domain)
-      if tag: name += '_{:s}'.format(tag)
-      self._picklefile = 'bias_{:s}.pickle'.format(name)
+  def picklefile(self, obs_name=None, mode=None, periodstr=None, gridstr=None, domain=None, tag=None):
+    ''' generate a standardized name for the pickle file, based on arguments '''
+    if self._picklefile is None:      
+      self._picklefile = getPickleFile(method=self.name, obs_name=obs_name, mode=mode, periodstr=periodstr, 
+                                       gridstr=gridstr, domain=domain, tag=tag) 
     return self._picklefile
   
   def __str__(self):
@@ -294,7 +309,8 @@ def generateBiasCorrection(dataset, mode, dataargs, obs_dataset, bc_method, bc_a
   # initialize BiasCorrection class instance
   BC = getBCmethods(bc_method, **bc_args)
   # get folder for target dataset and do some checks
-  picklefile = BC.picklefile(obs_name=obs_dataset.name, grid_name=dataargs.grid, domain=dataargs.domain, tag=tag)
+  picklefile = BC.picklefile(obs_name=obs_dataset.name, mode=mode, 
+                             gridstr=dataargs.grid, domain=dataargs.domain, tag=tag)
   if ldebug: picklefile = 'test_' + picklefile 
   picklepath = '{:s}/{:s}'.format(avgfolder,picklefile)
   
@@ -468,7 +484,7 @@ if __name__ == '__main__':
     load_list = None # variables that need to be loaded
     varlist = None # variables that should be bias-corrected
     grid = 'grw2' # need a common grid for all datasets
-    bc_method = 'AABC' # bias correction method
+    bc_method = 'Delta' # bias correction method
     bc_args = dict() # paramters for bias correction
   
   ## process arguments
