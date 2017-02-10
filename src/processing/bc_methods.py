@@ -96,7 +96,7 @@ class BiasCorrection(object):
             this method should be implemented for each method '''
         return None # do nothing
   
-    def correct(self, dataset, asNC=False, **kwargs):
+    def correct(self, dataset, asNC=False, varlist=None, varmap=None, **kwargs):
         ''' loop over variables and apply correction function based on specific method using stored parameters '''
         # NetCDF datasets get special handling, so we only replace the variables we need to replace
         if isinstance(dataset,DatasetNetCDF):
@@ -105,26 +105,39 @@ class BiasCorrection(object):
         else: 
             asNC=False
             bcds = dataset.copy(axesdeep=True, varsdeep=False) # make a copy, but don't duplicate data
+        # prepare variable map, so we can iterate easily
+        itermap = dict() # the map we are going to iterate over
+        varlist = self.varlist if varlist is None else varlist
+        for varname in varlist:
+            if varmap and varname in varmap:
+                maplist = varmap[varname]
+                if isinstance(maplist, (list,tuple)): itermap[varname] = maplist
+                elif isinstance(maplist, basestring): itermap[varname] = (maplist,)
+                else: raise TypeError(maplist)
+            else:
+                itermap[varname] = (varname,)
         # loop over variables that will be corrected
-        for varname in self.varlist:
-            if varname in dataset:
-                # get variable object
-                oldvar = dataset[varname].load()
-                newvar = bcds[varname] # should be loaded
-                if isinstance(newvar,VarNC): # the corrected variable needs to load data, hence can't be VarNC          
-                    newvar = newvar.copy(axesdeep=False, varsdeep=False, asNC=False) 
-                assert varname in self._correction, self._correction
-                # bias-correct data and load in new variable 
-                if self._correction[varname] is not None:
-                    newvar.load(self._correctVar(oldvar))
-                if newvar is not bcds[varname]: 
-                    bcds[varname] = newvar # attach new (non-NC) var
+        for srcvar,maplist in itermap.items():
+            for tgtvar in maplist:
+                if tgtvar in dataset:
+                    # get variable object
+                    oldvar = dataset[tgtvar].load()
+                    newvar = bcds[tgtvar] # should be loaded
+                    if isinstance(newvar,VarNC): # the corrected variable needs to load data, hence can't be VarNC          
+                        newvar = newvar.copy(axesdeep=False, varsdeep=False, asNC=False) 
+                    assert varname in self._correction, self._correction
+                    # bias-correct data and load in new variable 
+                    if self._correction[srcvar] is not None:
+                        newvar.load(self._correctVar(oldvar, srcvar))
+                    if newvar is not bcds[tgtvar]: 
+                        bcds[tgtvar] = newvar # attach new (non-NC) var
         # return bias-corrected dataset
         return bcds
     
-    def _correctVar(self, var, **kwargs):
+    def _correctVar(self, var, varname=None, **kwargs):
         ''' apply bias correction to new variable and return bias-corrected data;
             this method should be implemented for each method '''
+        if varname is None: varname = var.name # allow for variable mapping
         return var.data_array # do nothing, just return input
     
     def _getVarlist(self, dataset, observations):
@@ -214,13 +227,14 @@ class Delta(BiasCorrection):
         # return correction parameters, i.e. delta
         return delta
           
-    def _correctVar(self, var, **kwargs):
+    def _correctVar(self, var, varname=None, **kwargs):
         ''' use stored ratios to bias-correct the input dataset and return a new copy '''
+        if varname is None: varname = var.name # allow for variable mapping
         # decide between difference or ratio based on variable type
         if var.units in self._ratio_units: # ratio for fluxes
-            data = var.data_array * self._correction[var.name]
+            data = var.data_array * self._correction[varname]
         else: # default behavior is differences
-            data = var.data_array + self._correction[var.name]    
+            data = var.data_array + self._correction[varname]    
         # return bias-corrected data (copy)
         return data
 
@@ -282,7 +296,8 @@ class MyBC(BiasCorrection):
             this method should be implemented for each method '''
         raise NotImplementedError
   
-    def _correctVar(self, var, **kwargs):
+    def _correctVar(self, var, varname=None, **kwargs):
         ''' apply bias correction to new variable and return bias-corrected data;
             this method should be implemented for each method '''
+        if varname is None: varname = var.name # allow for variable mapping
         raise NotImplementedError

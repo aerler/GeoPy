@@ -180,6 +180,20 @@ def computePotEvapTh(dataset):
   # return new variable
   return var
 
+# recompute total precip from solid and liquid precip
+def computeTotalPrecip(dataset):
+  ''' function to recompute total precip from solid and liquid precip '''
+  # check prerequisites
+  for pv in ('liqprec','solprec'): 
+    if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for net water flux not found.".format(pv)
+    else: dataset[pv].load() # load data for computation
+  # recompute total precip (returns a Variable instance)
+  var = dataset['liqprec'] + dataset['solprec']
+  var.name = 'precip' # give correct name (units should be correct)
+  assert var.units == dataset['liqprec'].units, var
+  # return new variable
+  return var
+
 # compute surface water flux
 def computeWaterFlux(dataset):
   ''' function to compute the net water flux at the surface '''
