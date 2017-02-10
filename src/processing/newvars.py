@@ -13,7 +13,7 @@ from numexpr import evaluate, set_num_threads, set_vml_num_threads
 set_num_threads(1); set_vml_num_threads(1)
 # internal imports
 from geodata.base import Variable, VariableError
-from utils.constants import sig
+from utils.constants import sig # used in calculation for clack body radiation
 
 ## helper functions
 

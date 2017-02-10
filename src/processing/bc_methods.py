@@ -17,7 +17,7 @@ from geodata.netcdf import DatasetNetCDF, VarNC
 
 # some helper stuff for validation
 eps = np.finfo(np.float32).eps # single precision rounding error is good enough
-Stats = col.namedtuple('Stats', ('Bias','RMSE','Corr'))
+Stats = col.namedtuple('Stats', ('Correction','RMSE','Correlation','Bias',))
 
 def getBCmethods(method, **bcargs):
     ''' function that returns an instance of a specific BiasCorrection child class specified as method; 
@@ -155,12 +155,13 @@ class BiasCorrection(object):
                 stats = None
             else:
                 delta = bcvar.data_array - obsvar.data_array
+                correction = np.mean(self._correction[varname]) # can be scalar 
                 bias = delta.mean()
                 if bias < eps: bias = 0.
                 rmse = np.asscalar(np.sqrt(np.mean(delta**2)))
                 if rmse < eps: rmse = 0.
-                corr = np.corrcoef(bcvar.data_array.flatten(),obsvar.data_array.flatten())[0,1]
-                stats = Stats(Bias=bias,RMSE=rmse,Corr=corr)
+                correlation = np.corrcoef(bcvar.data_array.flatten(),obsvar.data_array.flatten())[0,1]
+                stats = Stats(Correction=correction,RMSE=rmse,Correlation=correlation,Bias=bias,)
             if lprint: print(varname,stats)
             validation[varname] = stats
         # return fit statistics

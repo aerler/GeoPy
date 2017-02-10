@@ -47,7 +47,8 @@ varatts = dict(Tmax    = dict(name='Tmax', units='K'), # 2m maximum temperature
                pet     = dict(name='pet', units='kg/m^2/s'), # potential evapo-transpiration
                liqprec = dict(name='liqprec', units='kg/m^2/s'), # total precipitation
                snowh   = dict(name='snowh', units='m'), # snow depth
-               SWD     = dict(name='SWD', units='J/m^2/s'), # solar radiation
+               SWD     = dict(name='SWDNB', units='W/m^2', scalefactor=30.4e6), # solar radiation, corrected (MJ/day->J/month)
+               SWDNB   = dict(name='SWDNB', units='W/m^2'), # solar radiation
                # diagnostic variables
                T2      = dict(name='T2', units='K'), # 2m average temperature
                solprec = dict(name='liqprec', units='kg/m^2/s'), # total precipitation
@@ -60,7 +61,7 @@ varatts = dict(Tmax    = dict(name='Tmax', units='K'), # 2m maximum temperature
                lon  = dict(name='lon', units='deg E'), # geographic longitude field
                lat  = dict(name='lat', units='deg N')) # geographic latitude field
 
-tsvaratts = varatts
+tsvaratts = varatts.copy()
 # list of variables to load
 varlist = varatts.keys() # also includes coordinate fields    
 # variable and file lists settings
@@ -172,11 +173,11 @@ from utils.ascii import rasterDataset
 
 # Normals (long-term means): ASCII data specifications
 norm_defaults = dict(axes=('time',None,None), dtype=np.float32)
-norm_vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.15, **norm_defaults), # 2m maximum temperature
+norm_vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.15, **norm_defaults), # 2m maximum temperature, originally in degrees Celsius
                     mint = dict(grid='NA12', name='Tmin', units='K', offset=273.15, **norm_defaults), # 2m minimum temperature
                     pcp  = dict(grid='NA12', name='precip', units='kg/m^2/month', transform=transformMonthly, **norm_defaults), # total precipitation
                     pet  = dict(grid='NA12', name='pet', units='kg/m^2/month', transform=transformMonthly, **norm_defaults), # potential evapo-transpiration
-                    rrad = dict(grid='NA12', name='SWD', units='J/m^2/month', transform=transformMonthly, **norm_defaults), # solar radiation
+                    rrad = dict(grid='NA12', name='SWDNB', units='W/m^2', scalefactor=1e6/86400., **norm_defaults), # solar radiation, originally in MJ/m^2/day
                     rain = dict(grid='CA12', name='liqprec', units='kg/m^2/month', transform=transformMonthly, **norm_defaults), # total precipitation
                     snwd = dict(grid='CA12', name='snowh', units='m', scalefactor=1./100., **norm_defaults), ) # snow depth
 norm_axdefs = dict(time = dict(name='time', units='month', coord=np.arange(1,13)),) # time coordinate
@@ -391,9 +392,9 @@ loadShapeTimeSeries = loadNRCan_ShpTS # time-series without associated grid (e.g
 
 if __name__ == '__main__':
   
-#     mode = 'test_climatology'
+    mode = 'test_climatology'
 #     mode = 'test_timeseries'
-    mode = 'test_point_climatology'
+#     mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
 #     mode = 'convert_Normals'
     pntset = 'glbshp' # 'ecprecip'
@@ -404,12 +405,12 @@ if __name__ == '__main__':
             
         # load averaged climatology file
         print('')
-        dataset = loadNRCan(grid=grid,period=period,resolution=res)
+        dataset = loadNRCan(grid=grid,period=period,resolution=res, varatts=dict(pet=dict(name='pet_wrf')))
         print(dataset)
         print('')
         print(dataset.geotransform)
-        print(dataset.precip.getArray().mean())
-        print(dataset.precip.masked)
+        print(dataset.SWDNB.mean())
+        print(dataset.SWDNB.masked)
         
         # print time coordinate
         print

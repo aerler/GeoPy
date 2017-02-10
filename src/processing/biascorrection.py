@@ -183,10 +183,10 @@ if __name__ == '__main__':
     lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/m^2/s    
   else:
     # settings for testing and debugging
-    NP = 1 ; ldebug = False # for quick computations
-#     NP = 1 ; ldebug = True # just for tests
+#     NP = 1 ; ldebug = False # for quick computations
+    NP = 1 ; ldebug = True # just for tests
     modes = ('climatology',) # 'climatology','time-series'
-    loverwrite = False
+    loverwrite = True
     ## datasets to be bias-corrected
     periods = []
     periods += [15]
@@ -206,20 +206,20 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-    WRF_experiments += ['erai-g3','erai-t3']
-    WRF_experiments += ['erai-g','erai-t']
-    WRF_experiments += ['g-ensemble','t-ensemble']
-    WRF_experiments += ['g3-ensemble','t3-ensemble']
-#     WRF_experiments += ['g-ensemble']
+#     WRF_experiments += ['erai-g3','erai-t3']
+#     WRF_experiments += ['erai-g','erai-t']
+#     WRF_experiments += ['g-ensemble','t-ensemble']
+#     WRF_experiments += ['g3-ensemble','t3-ensemble']
+    WRF_experiments += ['g-ensemble']
     # other WRF parameters 
-#     WRF_domains = 1 # domains to be processed (None=all)
-    WRF_domains = None # process all domains
+    WRF_domains = 1 # domains to be processed (None=all)
+#     WRF_domains = None # process all domains
     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
 #     WRF_filetypes = ('aux',) # only preprocessed auxiliary files
     ## observations (i.e. the reference dataset; arguments passed to loadDataset)
     obs_name = 'NRCan'
     obs_mode = 'climatology'
-    obs_args = dict(resolution='na12')
+    obs_args = dict(resolution='na12', varatts=dict(pet=dict(name='pet_wrf')))
     ## remaining parameters
     lgzip = True # compress pickles
     tag = None # an additional tag string for pickle name
