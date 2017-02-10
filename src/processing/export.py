@@ -7,7 +7,9 @@ A script to convert datasets to raster format using GDAL.
 '''
 
 # external imports
-import os, shutil # check if files are present etc.
+try: import cPickle as pickle
+except: import pickle
+import os, shutil, gzip # check if files are present etc.
 import numpy as np
 from importlib import import_module
 from datetime import datetime
@@ -19,9 +21,10 @@ from geodata.misc import DateError, DatasetError, printList, ArgumentError, Vari
 from datasets import gridded_datasets
 from processing.multiprocess import asyncPoolEC
 from processing.misc import getMetaData,  getExperimentList, loadYAML, getTargetFile
-# new variable functions
-import processing.newvars as newvars
 from utils.nctools import writeNetCDF
+# new variable functions and bias-correction 
+import processing.newvars as newvars
+from processing.bc_methods import getPickleFileName
 
 ## helper classes to handle different file formats
 
@@ -208,7 +211,7 @@ def getFileFormat(fileformat, **expargs):
   
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the TrialNError decorator is assumed
-def performExport(dataset, mode, dataargs, expargs, loverwrite=False, 
+def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False, 
                   ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to export ASCII rasters for a given dataset '''
   # input checking
@@ -229,6 +232,45 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
   dataargs, loadfct, srcage, datamsgstr = getMetaData(dataset, mode, dataargs, lone=False)
   dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr; domain = dataargs.domain
   
+  # figure out bias correction parameters
+  if bcargs:
+    bcargs = bcargs.copy() # first copy, then modify...
+    bc_method = bcargs.pop('method',None)
+    if bc_method is None: raise ArgumentError("Need to specify bias-correction method to use bias correction!")
+    bc_obs = bcargs.pop('obs_dataset',None)
+    if bc_obs is None: raise ArgumentError("Need to specify observational dataset to use bias correction!")
+    bc_reference = bcargs.pop('reference',None)
+    if bc_reference is None: # infer from experiment name
+      if dataset_name[-5:] in ('-2050','-2100'): bc_reference = dataset_name[:-5] # cut of period indicator and hope for the best 
+      else: bc_reference = dataset_name 
+    bc_mode = bcargs.pop('mode',None)
+    if bc_mode is None: bc_mode = mode
+    bc_grid = bcargs.pop('grid',None)
+    if bc_grid is None: bc_grid = dataargs.grid
+    bc_domain = bcargs.pop('domain',None)
+    if bc_domain is None: bc_domain = domain       
+    bc_period = bcargs.pop('period',None) # usually not used and no default
+    bc_tag = bcargs.pop('tag',None) # an optional name extension/tag
+    bc_pattern = bcargs.pop('file_pattern',None) # usually default in getPickleFile
+    lgzip = bcargs.pop('lgzip',None) # if pickle is gzipped (None: auto-detect based on file name extension)
+    # get name of pickle file (and folder)
+    picklefolder = dataargs.avgfolder.replace(dataset_name,bc_reference)
+    picklefile = getPickleFileName(method=bc_method, obs_name=bc_obs, mode=bc_mode, periodstr=bc_period, 
+                                   gridstr=bc_grid, domain=bc_domain, tag=bc_tag, pattern=bc_pattern)
+    picklepath = '{:s}/{:s}'.format(picklefolder,picklefile)
+    if lgzip:
+      picklepath += '.gz' # add extension
+      if not os.path.exists(picklepath): raise IOError(picklepath)
+    elif lgzip is None:
+      lgzip = False
+      if not os.path.exists(picklepath):
+        lgzip = True # assume gzipped file
+        picklepath += '.gz' # try with extension...
+        if not os.path.exists(picklepath): raise IOError(picklepath)
+    elif not os.path.exists(picklepath): raise IOError(picklepath)
+    pickleage = datetime.fromtimestamp(os.path.getmtime(picklepath))
+    # determine age of pickle file and compare against source age
+  
   # parse export options
   expargs = expargs.copy() # first copy, then modify...
   lm3 = expargs.pop('lm3') # convert kg/m^2/s to m^3/m^2/s (water flux)
@@ -241,8 +283,8 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
   expfolder = fileFormat.defineDataset(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=True, ldebug=ldebug)
 
   # prepare destination for new dataset
-  lskip = fileFormat.prepareDestination(srcage=srcage, loverwrite=loverwrite)
-  
+  lskip = fileFormat.prepareDestination(srcage=max(srcage,pickleage), loverwrite=loverwrite)
+
   # depending on last modification time of file or overwrite setting, start computation, or skip
   if lskip:        
     # print message
@@ -256,14 +298,25 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     # check period
     if 'period' in source.atts and dataargs.periodstr != source.atts.period: # a NetCDF attribute
       raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
-
+    
+    # load BiasCorrection object from pickle
+    if bc_method:      
+      op = gzip.open if lgzip else open
+      with op(picklepath, 'r') as filehandle:
+        BC = pickle.load(filehandle) 
+      # assemble logger entry
+      bcmsgstr = "(performing bias-correction using {:s} from {:s} towards {:s})".format(BC.long_name,bc_reference,bc_obs)
+    
     # print message
     if mode == 'climatology': opmsgstr = 'Exporting Climatology ({:s}) to {:s} Format'.format(periodstr, expformat)
     elif mode == 'time-series': opmsgstr = 'Exporting Time-series to {:s} Format'.format(expformat)
     elif mode[-5:] == '-mean': opmsgstr = 'Exporting {:s}-Mean ({:s}) to {:s} Format'.format(mode[:-5], periodstr, expformat)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
     # print feedback to logger
-    logger.info('\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
+    logmsg = '\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr)
+    if bc_method:
+      logmsg += "{0:s}   ***   {1:^65s}   ***   \n".format(pidstr,bcmsgstr)
+    logger.info(logmsg)
     if not lparallel and ldebug: logger.info('\n'+str(source)+'\n')
     
     # create GDAL-enabled target dataset
@@ -271,10 +324,14 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
     addGDALtoDataset(dataset=sink, griddef=source.griddef)
     assert sink.gdal, sink
     
-    # N.B.: data are not loaded immediately but on demand; this way I/O and computing are further
-    #       disentangled and not all variables are always needed
+    # apply bias-correction
+    if bc_method:
+      source = BC.correct(source, asNC=False) # load bias-corrected variables into memory
+      
+    # N.B.: for variables that are not bias-corrected, data are not loaded immediately but on demand; this way 
+    #       I/O and computing can be further disentangled and not all variables are always needed
     
-    # Compute intermediate variables, if necessary
+    # compute intermediate variables, if necessary
     for varname in varlist:
       variables = None # variable list
       if varname in source:
@@ -284,8 +341,8 @@ def performExport(dataset, mode, dataargs, expargs, loverwrite=False,
         if varname == 'waterflx': var = newvars.computeWaterFlux(source)
         elif varname == 'liqwatflx': var = newvars.computeLiquidWaterFlux(source)
         elif varname == 'netrad': var = newvars.computeNetRadiation(source, asVar=True)
-        elif varname == 'netrad_0': var = newvars.computeNetRadiation(source, asVar=True, lA=False, name='netrad_0')
         elif varname == 'netrad_bb': var = newvars.computeNetRadiation(source, asVar=True, lrad=False, name='netrad_bb')
+        elif varname == 'netrad_bb0': var = newvars.computeNetRadiation(source, asVar=True, lrad=False, lA=False, name='netrad_bb0')
         elif varname == 'vapdef': var = newvars.computeVaporDeficit(source)
         elif varname == 'pet' or varname == 'pet_pm':
           if 'petrad' in varlist or 'petwnd' in varlist:
@@ -385,13 +442,20 @@ if __name__ == '__main__':
     WRF_filetypes = config['WRF_filetypes']
     domains = config['WRF_domains']
     grids = config['grids']
+    # bias correction
+    bc_args = config.get('bias_correction',None) # missing parameters are inferred from experiment
+    if bc_args is not None:    
+        bc_method = bc_args.pop('method') # bias-correction method
+        obs_dataset = bc_args.pop('obs_dataset') # observations used for bias correction
+        bc_reference = bc_args.pop('reference',None) # reference experiment (None: auto-detect based on name)
+    else: method = None # method == None: no bias correction
     # target data specs
     export_arguments = config['export_parameters'] # this is actually a larger data structure
-    lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/m^2/s    
+    lm3 = export_arguments.pop('lm3',False) # convert water flux from kg/m^2/s to m^3/m^2/s    
   else:
     # settings for testing and debugging
 #     NP = 2 ; ldebug = False # for quick computations
-    NP = 2 ; ldebug = True # just for tests
+    NP = 1 ; ldebug = True # just for tests
 #     modes = ('annual-mean','climatology')
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology'
@@ -401,12 +465,12 @@ if __name__ == '__main__':
 #     load_list = ['lat2D','lon2D','liqwatflx','pet']
 #     load_list = ['lat2D','lon2D','liqwatflx','pet','precip']
     # WRF variables
-    load_list = ['pet_wrf']
-#     load_list = ['lat2D','lon2D','zs']
-#     load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet_wrf'] # (net) precip
-#     # PET variables (for WRF)
-#     load_list += ['ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # wind
-#     load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
+    #load_list = ['pet_wrf']
+    load_list = ['lat2D','lon2D','zs']
+    load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet_wrf'] # (net) precip
+    # PET variables (for WRF)
+    load_list += ['ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax'] # wind
+    load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
     periods = []
     periods += [15]
 #     periods += [30]
@@ -430,9 +494,10 @@ if __name__ == '__main__':
 #     WRF_experiments = ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050',
 #                        't3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
 #     WRF_experiments = ['erai-g3','erai-t3']
-#     WRF_experiments = ['erai-g3','erai-g']
+#     WRF_experiments = ['erai-g','erai-g']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-    WRF_experiments += ['g-ensemble','t-ensemble']
+#     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
+    WRF_experiments += ['t-ensemble']
 #     WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-3km','max-3km']
@@ -446,10 +511,15 @@ if __name__ == '__main__':
 #     WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
     # other WRF parameters 
-#     domains = 1 # domains to be processed
-    domains = None # process all domains
+    domains = None # domains to be processed
+#     domains = None # process all domains
 #     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # with radiation files
+    ## bias-correction paramter
+    bc_method = 'AABC' # bias correction method (None: no bias correction)
+    obs_dataset = 'NRCan' # the observational dataset 
+    bc_reference = None # reference experiment (None: auto-detect based on name)
+    bc_args = dict(mode='clim', grid=None, domain=None, lgzip=True) # missing/None parameters are inferred from experiment
     ## export to ASCII raster
     # typically a specific grid is required
 #     grids = [] # list of grids to process
@@ -473,12 +543,13 @@ if __name__ == '__main__':
 #         format = 'ASCII_raster', # formats to export to
 #         lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
     ## export to NetCDF (aux-file)
-    grids = [None] # special keyword for native grid
+    grids = ['grw2'] # special keyword for native grid
     export_arguments = dict(
-        project = 'aux',
-        varlist = ['pet_wrf'],
-#         varlist = ['waterflx','liqwatflx','netrad','netrad_0','netrad_bb','vapdef','pet','pet_wrf','zs','lat2D','lon2D'], 
+        project = bc_method if bc_method else 'AUX',
+        #varlist = ['pet_wrf'],
+        varlist = ['waterflx','liqwatflx','netrad','netrad_bb0','netrad_bb','vapdef','pet','pet_wrf','zs','lat2D','lon2D'], 
         format = 'NetCDF',
+        filetype = bc_method.lower() if bc_method else 'aux',
         lm3 = False) # do not convert water flux from kg/m^2/s to m^3/m^2/s
   
   ## process arguments    
@@ -507,10 +578,11 @@ if __name__ == '__main__':
   print('\n From Grid/Resolution:\n   {:s}'.format(printList(grids)))
   print('To File Format {:s}'.format(export_arguments['format']))
   print('\n Project Designation: {:s}'.format(export_arguments['project']))
+  if bc_method:
+    print('\n And Observational Datasets:')
+    print(datasets)
   print('Export Variable List: {:s}'.format(printList(export_arguments['varlist'])))
   if export_arguments['lm3']: '\n Converting kg/m^2/s (mm/s) into m^3/m^2/s (m/s)'
-  print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
-  
   # check formats (will be iterated over in export function, hence not part of task list)
   if export_arguments['format'] == 'ASCII_raster':
     print('Export Folder: {:s}'.format(export_arguments['folder']))
@@ -519,6 +591,14 @@ if __name__ == '__main__':
     pass
   else:
     raise ArgumentError, "Unsupported file format: '{:s}'".format(export_arguments['format'])
+  print('\nOVERWRITE: {0:s}'.format(str(loverwrite)))
+  # bias-correction parameters (if used)
+  print('\nBias-Correction: {}'.format(bc_method))
+  if bc_method:
+    print('  Observational Dataset: {:s}'.format(obs_dataset))
+    print('  Reference Dataset: {:s}'.format(bc_reference))
+    print('  Parameters: {}'.format(bc_args))
+  print('\n') # separator space
     
   ## construct argument list
   args = []  # list of job packages
@@ -577,9 +657,14 @@ if __name__ == '__main__':
               # arguments for worker function: dataset and dataargs       
               args.append( ('WRF', mode, dict(experiment=experiment, filetypes=WRF_filetypes, grid=grid, 
                                               varlist=load_list, domain=domain, period=period)) )
-      
+  
+  # put bias correction arguments into a single dict
+  if bc_method:
+      bc_args['method'] = bc_method
+      bc_args['obs_dataset'] = obs_dataset 
+      bc_args['reference'] = bc_reference
   # static keyword arguments
-  kwargs = dict(expargs=export_arguments, loverwrite=loverwrite)
+  kwargs = dict(expargs=export_arguments, bcargs=bc_args, loverwrite=loverwrite, )
   # N.B.: formats will be iterated over inside export function
   
   ## call parallel execution function
