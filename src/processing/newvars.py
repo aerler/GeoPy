@@ -35,10 +35,13 @@ def radiation(SWDN, LWDN, SWUP, LWUP, ):
   return evaluate('SWDN + LWDN - SWUP - LWUP')
 
 # 2m wind speed [m/s]
-def wind(u, z=10):
+def wind(u, v=None, z=10):
   ''' approximate 2m wind speed from wind speed at different height (z [m]; default 10m)
       (http://www.fao.org/docrep/x0490e/x0490e07.htm#wind%20profile%20relationship)
   '''
+  if v is not None: u = evaluate('sqrt( 5*u**2 + 10*v**2 )') # estimate wind speed from u and v components
+  # N.B.: the scale factors (5&10) are necessary, because absolute wind speeds are about 2.5 times higher than
+  #       the mean of the compnents. This is because opposing directions average to zero.
   return evaluate('( u * 4.87 ) / log( 67.8 * z - 5.42 )')
 
 # psychrometric constant [Pa/K]
@@ -113,7 +116,7 @@ def computeVaporDeficit(dataset):
   return var
 
 # compute potential evapo-transpiration
-def computePotEvapPM(dataset, lterms=True):
+def computePotEvapPM(dataset, lterms=True, lmeans=False):
   ''' function to compute potential evapotranspiration (according to Penman-Monteith method:
       https://en.wikipedia.org/wiki/Penman%E2%80%93Monteith_equation,
       http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
@@ -127,7 +130,8 @@ def computePotEvapPM(dataset, lterms=True):
   else: raise VariableError, "Cannot determine soil heat flux for PET calculation."
   # get wind speed
   if 'U2' in dataset: u2 = dataset['U2'][:]
-  elif 'U10' in dataset: u2 = wind(dataset['U10'][:], z=10)
+  elif lmeans and 'U10' in dataset: u2 = wind(dataset['U10'][:], z=10)
+  elif 'u10' in dataset and 'v10' in dataset: u2 = wind(u=dataset['u10'][:],v=dataset['v10'][:], z=10)
   else: raise VariableError, "Cannot determine 2m wind speed for PET calculation."
   # get psychrometric variables
   if 'ps' in dataset: p = dataset['ps'][:]
@@ -137,7 +141,7 @@ def computePotEvapPM(dataset, lterms=True):
   elif 'q2' in dataset: ea = dataset['q2'][:] * dataset['ps'][:] * 28.96 / 18.02
   else: raise VariableError, "Cannot determine 2m water vapor pressure for PET calculation."
   # get temperature
-  if 'Tmean' in dataset: T = dataset['Tmean'][:]
+  if lmeans and 'Tmean' in dataset: T = dataset['Tmean'][:]
   elif 'T2' in dataset: T = dataset['T2'][:]
   else: raise VariableError, "Cannot determine 2m mean temperature for PET calculation."
   # get saturation water vapor
@@ -160,7 +164,7 @@ def computePotEvapPM(dataset, lterms=True):
     pet = evaluate('( 0.0352512 * D * (Rn + G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
   pet = Variable(data=pet, name='pet', units='kg/m^2/s', axes=dataset['ps'].axes)
-  assert pet.units == dataset['waterflx'].units, pet
+  assert 'waterflx' not in dataset or pet.units == dataset['waterflx'].units, pet
   # return new variable(s)
   return (pet,rad,wnd) if lterms else pet
 
@@ -254,11 +258,21 @@ if __name__ == '__main__':
   if mode == 'test_PenmanMonteith':
     
     print('')
-    varlist = ['hfx','A','SWD','e','GLW','ps','U10','Q2','Tmin','Tmax','Tmean','TSmin','TSmax','waterflx','liqwatflx']
-    dataset = loadWRF(experiment='g-ctrl', domains=2, grid='grw2', filetypes=['hydro','srfc','xtrm','lsm'], 
-                      period=15, varlist=varlist)
+    load_list = ['ps','u10','v10','Q2','Tmin','Tmax','T2','TSmin','TSmax','Tmean','U10', # wind
+                 'grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
+        
+    dataset = loadWRF(experiment='g-ensemble-2100', domains=1, grid='grw2', filetypes=['hydro','srfc','xtrm','lsm','rad'], 
+                      period=15, varlist=load_list)
     print(dataset)
     print('')
-    var = computePotEvapPM(dataset)
+    var = computePotEvapPM(dataset, lterms=False, lmeans=True)
     print(var)
+    print('')
+    print('PET using MEAN variables from WRF xtrm files:')
     print(var.min(),var.mean(),var.std(),var.max())
+    print('PET using averages from WRF srfc files:')
+    var = computePotEvapPM(dataset, lterms=False, lmeans=False)
+    print(var.min(),var.mean(),var.std(),var.max())
+    import numpy as np
+    print('Ratio of Wind Terms:', np.mean( dataset['U10'][:] / np.sqrt(5*dataset['u10'][:]**2 + 10*dataset['v10'][:]**2) ) )
+    print('Difference of Temperature Terms:', np.mean( dataset['T2'][:] - dataset['Tmean'][:]) )
