@@ -541,7 +541,7 @@ if __name__ == '__main__':
 #             varlist = ['lat2D','lon2D','liqwatflx','pet'], # varlist for Obs
 #             varlist = ['lat2D','lon2D','liqwatflx','pet','precip'], # varlist for Obs
 #             folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}_15/climate_forcing/'.format(os.getenv('DATA_ROOT', None)),
-            folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}_{{PERIOD}}_15/climate_forcing/'.format(
+            folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}_{{PERIOD}}/climate_forcing/'.format(
                                                                             os.getenv('DATA_ROOT', None),bc_method),
             prefix = '{GRID}', # based on keyword arguments
             format = 'ASCII_raster', # formats to export to

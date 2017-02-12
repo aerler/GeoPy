@@ -864,7 +864,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           else: pf = prefix.format(i+one) # start index at 1 --- Fortran convention
           # now call this function recursively for every slice, until input is 2D
           filepath = ASCII_raster(slcvar, prefix=pf, folder=folder, ext=ext, filepath=None, 
-                                  wrap360=wrap360, fillValue=fillValue)
+                                  wrap360=wrap360, fillValue=fillValue, noDataValue=noDataValue)
           if isinstance(filepath, basestring): filelist.append(filepath)
           else: filelist.extend(filepath)
           # N.B.: the function basically returns the last filepath
