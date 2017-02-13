@@ -18,6 +18,7 @@ from datasets.common import data_root, loadObservations, transformMonthly, addLe
   monthlyTransform
 from geodata.misc import DatasetError, VariableError
 from utils.nctools import writeNetCDF
+from utils.ascii import rasterDataset
 
 
 ## NRCan Meta-data
@@ -169,7 +170,6 @@ def loadNRCan_ShpTS(name=dataset_name, shape=None, resolution=None, varlist=None
 
 
 ## functions to load ASCII data and generate complete GeoPy datasets
-from utils.ascii import rasterDataset
 
 # Normals (long-term means): ASCII data specifications
 norm_defaults = dict(axes=('time',None,None), dtype=np.float32)
@@ -335,7 +335,7 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
     # return properly formatted dataset
     return dataset
 
-# Historical time-series
+# Historical CMC snow time-series
 hist_vardefs = NotImplemented
 hist_axdefs = NotImplemented
 # N.B.: the time-series time offset has to be chose such that 1979 begins with the origin (time=0)
@@ -366,6 +366,43 @@ def loadASCII_Hist(name=dataset_name, title=hist_title, atts=None, derived_vars=
     # return dataset
     return dataset
 
+# Historical time-series
+CMC_vardefs = NotImplemented # add snow (SWE???)
+CMC_axdefs = NotImplemented # add year and month
+# N.B.: the time-series time offset has to be chose such that 1979 begins with the origin (time=0)
+CMC_derived = NotImplemented
+CMC_root = data_root+'CMC_hist/'
+CMC_var_pattern = '{VAR:s}/ps_cmc_sdepth_analyses_{year:04d}_ascii/{year:04d}_{month:02d}_01.tif'
+CMC_title = 'CMC Historical Gridded Snow Time-series'
+
+# load normals (from different/unspecified periods... ), computer some derived variables, and combine NA and CA grids
+def loadCMC_Hist(name=dataset_name, title=hist_title, atts=None, derived_vars=hist_derived, varatts=varatts, 
+                 grid='NA12', resolution=12, grid_defs=None, period=(1998,2015),
+                 lmergeTime=False, # merge the year and month "axes" into a single monthly time axis 
+                 var_pattern=hist_var_pattern, data_root=CMC_root, vardefs=CMC_vardefs, axdefs=CMC_axdefs):
+    ''' load CMC historical snow time-series from GeoTIFF files, merge with NRCan dataset and recompute snowmelt '''
+  
+    # determine grids / resolution
+    if grid_defs is None: 
+      grid_defs = grid_def # define in API; register for all pre-defined grids
+    if resolution is not None:
+      resolution = str(resolution)
+      grid = 'NA{:s}'.format(resolution) if grid is None else grid.upper()            
+      
+    # load NA grid
+    dataset = rasterDataset(name=name, title=title, vardefs=CMC_vardefs, axdefs=CMC_axdefs, atts=atts, projection=None, 
+                            griddef=grid_defs[grid], lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, 
+                            lgeolocator=False, file_pattern=data_root+var_pattern )    
+
+    # merge year and month axes
+    
+    # compute climatology
+    
+    # shift values by one month, since these values are for the 1st of the month
+
+    # return dataset
+    return dataset
+
 
 ## Dataset API
 
@@ -392,11 +429,12 @@ loadShapeTimeSeries = loadNRCan_ShpTS # time-series without associated grid (e.g
 
 if __name__ == '__main__':
   
-    mode = 'test_climatology'
+#     mode = 'test_climatology'
 #     mode = 'test_timeseries'
 #     mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
 #     mode = 'convert_Normals'
+    mode = 'convert_CMC'
     pntset = 'glbshp' # 'ecprecip'
 #     pntset = 'ecprecip'
     period = None; res = None; grid = None
@@ -479,3 +517,19 @@ if __name__ == '__main__':
         writeNetCDF(dataset=dataset, ncfile=ncfile, ncformat='NETCDF4', zlib=True, writeData=True, overwrite=True, 
                     skipUnloaded=False, feedback=True, close=True)
         assert os.path.exists(ncfile), ncfile
+        
+    elif mode == 'add_CMC':
+        
+        # parameters
+        resolution = 12; grdstr = '_na{:d}'.format(resolution); prdstr = ''        
+        # load ASCII dataset with default values
+        dataset = loadCMC_Hist(name='CMC', title='CMC Snow Dataset', atts=None, period=(1998,2015), 
+                             resolution=resolution, grid_defs=grid_def,)        
+        # test 
+        print(dataset)
+        # add to NRCan NetCDF
+        print('')
+        ncfile = avgfolder + avgfile.format(grdstr,prdstr)
+        assert os.path.exists(ncfile), ncfile        
+#         writeNetCDF(dataset=dataset, ncfile=ncfile, ncformat='NETCDF4', zlib=True, writeData=True, overwrite=True, 
+#                     skipUnloaded=False, feedback=True, close=True)
