@@ -298,26 +298,26 @@ def getFileName(name=None, resolution=None, period=None, filetype='climatology',
   
 # common climatology load function that will be imported by datasets (for backwards compatibility)
 def loadObs(name=None, folder=None, resolution=None, period=None, grid=None, varlist=None, 
-             varatts=None, filepattern=None, filelist=None, projection=None, geotransform=None, 
+             varatts=None, filepattern=None, filelist=None, filemode='r', projection=None, geotransform=None, 
              griddef=None, axes=None, lautoregrid=None):
   ''' A function to load standardized observational climatologies. '''
   return loadObservations(name=name, folder=folder, resolution=resolution, period=period, grid=grid, station=None, 
                           varlist=varlist, varatts=varatts, filepattern=filepattern, filelist=filelist, 
                           projection=projection, geotransform=geotransform, axes=axes, griddef=griddef, 
-                          lautoregrid=lautoregrid, mode='climatology')
+                          lautoregrid=lautoregrid, mode='climatology', filemode=filemode)
 
 # common climatology load function that will be imported by datasets (for backwards compatibility)
 def loadObs_StnTS(name=None, folder=None, resolution=None, varlist=None, station=None, 
-                  varatts=None, filepattern=None, filelist=None, axes=None):
+                  varatts=None, filepattern=None, filelist=None, filemode='r', axes=None):
     ''' A function to load standardized observational time-series at station locations. '''
     return loadObservations(name=name, folder=folder, resolution=resolution, station=station, 
                           varlist=varlist, varatts=varatts, filepattern=filepattern, filelist=filelist, 
                           projection=None, geotransform=None, griddef=None, axes=axes, period=None, grid=None,
-                          lautoregrid=False, mode='time-series')
+                          lautoregrid=False, mode='time-series', filemode=filemode)
   
 # universal load function that will be imported by datasets
 def loadObservations(name=None, folder=None, period=None, grid=None, station=None, shape=None, lencl=False, 
-                     varlist=None, varatts=None, filepattern=None, filelist=None, resolution=None, 
+                     varlist=None, varatts=None, filepattern=None, filelist=None, filemode='r', resolution=None,
                      projection=None, geotransform=None, griddef=None, axes=None, lautoregrid=None, mode='climatology'):
   ''' A function to load standardized observational datasets. '''
   # prepare input
@@ -370,9 +370,10 @@ def loadObservations(name=None, folder=None, period=None, grid=None, station=Non
           performRegridding(name, 'climatology',griddef, dataargs) # default kwargs
         else: raise IOError("The dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.".format(filename,grid) )
       else: raise IOError("The dataset file '{:s}' does not exits!\n('{:s}')".format(filename,filepath))
+    filelist = [filename]
   # load dataset
-  dataset = DatasetNetCDF(name=name, folder=folder, filelist=[filename], varlist=varlist, varatts=varatts, 
-                          axes=axes, multifile=False, ncformat='NETCDF4')
+  dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
+                          axes=axes, multifile=False, ncformat='NETCDF4', mode=filemode)
   # mask all shapes that are incomplete in dataset
   if shape and lencl and 'shp_encl' in dataset: 
     dataset.load() # need to load data before masking; is cheap for shape averages, anyway

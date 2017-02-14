@@ -177,8 +177,6 @@ def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmas
                     lgeotransform=True, axes=None, lna=False, lskipMissing=False, path_params=None, **kwargs):
     ''' function to load a multi-dimensional numpy array from several structured ASCII raster files '''
     
-    if lskipMissing and not lmask: raise ArgumentError
-    
     if axes is None: raise NotImplementedError
     #TODO: implement automatic detection of axes arguments and axes order
     
@@ -235,7 +233,7 @@ def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmas
     assert data.shape[0] == len(file_kwargs_list), (data.shape, len(file_kwargs_list))
     # insert (up to) first raster before continuing
     if lskipMissing and i0 > 0:
-      data[:i0,:,:] = ma.masked # mask all invalid rasters up to first valid raster
+      data[:i0,:,:] = ma.masked if lmask else fillValue # mask all invalid rasters up to first valid raster
     data[i0,:,:] = data2D # add first (valid) raster
     
     # loop over remaining 2D raster files
@@ -324,8 +322,11 @@ def readASCIIraster(filepath, lgzip=None, lgdal=True, dtype=np.float32, lmask=Tr
                 if lgeotransform:
                     assert geotransform[4] == 0, geotransform
                     geotransform = geotransform[:3]+(geotransform[3]+je*geotransform[5],0,-1*geotransform[5])
-            data = ma.masked_equal(data, value=na, copy=False)
-            if fillValue is not None: data._fill_value = fillValue
+            if lmask: 
+              data = ma.masked_equal(data, value=na, copy=False)
+              if fillValue is not None: data._fill_value = fillValue
+            elif fillValue is not None: 
+              data[data == na] = fillValue # relplace original fill value 
           
         finally:
           

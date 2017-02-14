@@ -1913,7 +1913,7 @@ class Variable(object):
     # modify variable
     if asVar:      
       # create new time axis (still monthly)
-      tatts = self.time.atts.copy()
+      tatts = taxis.atts.copy()
       if taxatts is not None: tatts.update(taxatts)      
       # create new variable
       vatts = self.atts.copy()
@@ -2010,7 +2010,7 @@ class Variable(object):
           raise DatasetError, "Dataset '{:s}' does not have Axis '{:s}'.".format(ds.name,
                                                       ax.name if isinstance(ax,Axis) else ax)
       axes = tmp_axes
-    # check axes determin reordering
+    # check axes amd determine reordering
     if len(axes) == 0: lcheck = False
     elif lvarall: lcheck = all(self.hasAxis(ax, strict=lstrict) for ax in axes)
     else: lcheck = any(self.hasAxis(ax, strict=lstrict) for ax in axes)

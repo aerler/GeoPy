@@ -805,7 +805,9 @@ class DatasetNetCDF(Dataset):
   @ApplyTestOverList
   def addVariable(self, var, asNC=None, copy=True, loverwrite=False, lautoTrim=False, deepcopy=False):
     ''' Method to add a new Variable to the Dataset. '''
-    if asNC is None: asNC = copy
+    if asNC is None: asNC = copy and 'w' in self.mode
+    if asNC and 'w' not in self.mode: 
+        raise NetCDFError("Cannot add new NetCDF Variables in read-only mode; open in write mode.")
     if var.name in self.__dict__: 
       # replace axes, if permitted; need to use NetCDF method immediately, though
       if loverwrite and self.hasVariable(var.name): 
