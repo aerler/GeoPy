@@ -15,7 +15,7 @@ import os
 from geodata.base import Variable
 from geodata.gdal import GridDefinition, addGDALtoVar
 from datasets.common import data_root, loadObservations, transformMonthly, addLengthAndNamesOfMonth,\
-  monthlyTransform
+  monthlyTransform, addLandMask
 from geodata.misc import DatasetError, VariableError
 from utils.nctools import writeNetCDF
 from utils.ascii import rasterDataset
@@ -51,14 +51,16 @@ varatts = dict(Tmax    = dict(name='Tmax', units='K'), # 2m maximum temperature
                SWD     = dict(name='SWDNB', units='W/m^2', scalefactor=30.4e6), # solar radiation, corrected (MJ/day->J/month)
                SWDNB   = dict(name='SWDNB', units='W/m^2'), # solar radiation
                # diagnostic variables
-               T2      = dict(name='T2', units='K'), # 2m average temperature
-               solprec = dict(name='liqprec', units='kg/m^2/s'), # total precipitation
-               snow    = dict(name='snow', units='kg/m^2'), # snow water equivalent
-               snwmlt  = dict(name='snwmlt', units='kg/m^2/s'), # snow melt (rate)
+               T2        = dict(name='T2', units='K'), # 2m average temperature
+               solprec   = dict(name='liqprec', units='kg/m^2/s'), # total precipitation
+               snow      = dict(name='snow', units='kg/m^2'), # snow water equivalent
+               snwmlt    = dict(name='snwmlt', units='kg/m^2/s'), # snow melt (rate)
+               snow_acc  = dict(name='snow_acc', units='kg/m^2/s'), # rat of change of snowpack - in lieu of actual snowmelt
                liqwatflx = dict(name='liqwatflx', units='kg/m^2/s'), # liquid water forcing (rate)
+               landmask  = dict(name='landmask', units='N/A'), # the land mask...
                # axes (don't have their own file; listed in axes)
-               time = dict(name='time', units='month', ), # time coordinate
-               # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
+               time = dict(name='time', units='month',), # time coordinate
+               # N.B.: the time-series time offset has to be chosen such that 1979 begins with the origin (time=0)
                lon  = dict(name='lon', units='deg E'), # geographic longitude field
                lat  = dict(name='lat', units='deg N')) # geographic latitude field
 
@@ -98,25 +100,25 @@ tsfile = 'nrcan{0:s}_monthly.nc' # extend with grid type only
 
 # function to load these files...
 def loadNRCan(name=dataset_name, resolution=None, period=None, grid=None, varlist=None, varatts=None, 
-              folder=avgfolder, filelist=None, lautoregrid=True):
+              folder=avgfolder, filelist=None, lautoregrid=True, filemode='r'):
     ''' Get the pre-processed monthly NRCan climatology as a DatasetNetCDF. '''
     grid, resolution = checkGridRes(grid, resolution, period=period, lclim=True)
     # load standardized climatology dataset with NRCan-specific parameters
     dataset = loadObservations(name=name, folder=folder, projection=None, resolution=resolution, period=period, 
                                grid=grid, varlist=varlist, varatts=varatts, filepattern=avgfile, griddef=NRCan_NA12_grid,
-                               filelist=filelist, lautoregrid=lautoregrid, mode='climatology')
+                               filelist=filelist, lautoregrid=lautoregrid, mode='climatology', filemode=filemode)
     # return formatted dataset
     return dataset
 
 # function to load Time-series (monthly)
 def loadNRCan_TS(name=dataset_name, grid=None, resolution=None, varlist=None, varatts=None, 
-                 folder=avgfolder, filelist=None, lautoregrid=True):
+                 folder=avgfolder, filelist=None, lautoregrid=True, filemode='r'):
     ''' Get the pre-processed monthly NRCan time-series as a DatasetNetCDF at station locations. '''
     grid, resolution = checkGridRes(grid, resolution, period=None, lclim=False)
     # load standardized time-series dataset with NRCan-specific parameters
     dataset = loadObservations(name=name, folder=folder, projection=None, period=None, grid=grid, 
                                varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
-                               resolution=resolution, lautoregrid=False, mode='time-series')
+                               resolution=resolution, lautoregrid=False, mode='time-series', filemode=filemode)
     # return formatted dataset
     return dataset
 
@@ -274,15 +276,19 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
             #       a factor of 1000 has been applied, because snow depth is in m (and not mm)
             # Maritime snow cover
             density = np.asarray([0.2165, 0.2485, 0.2833, 0.332, 0.3963, 0.501, 0.501, 0.501, 0.16, 0.16, 0.1835, 0.1977], dtype=np.float32)*1000.
+            density_note = "Snow density extimates from CMC for maritime climates (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
             # Ephemeral snow cover
             #density = np.asarray([0.3168, 0.3373, 0.3643, 0.4046, 0.4586, 0.5098, 0.5098, 0.5098, 0.25, 0.25, 0.3, 0.3351], dtype=np.float32)*1000.
+            #density_note = "Snow density extimates from CMC for ephemeral snow cover (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
             # Prairie snow cover
             #density = np.asarray([0.2137, 0.2416, 0.2610, 0.308, 0.3981, 0.4645, 0.4645, 0.4645, 0.14, 0.14, 0.1616, 0.1851], dtype=np.float32)*1000.
+            #density_note = "Snow density extimates from CMC for the prairies (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
             # Note: these snow density values are for maritime climates only! values for the Prairies and the North are 
             #       substantially different! this is for applications in southern Ontario
             # compute values and add to dataset
             newvar = monthlyTransform(var=dataset.snowh.copy(deepcopy=True), lvar=True, linplace=True, scalefactor=density)
             newvar.atts['long_name'] = 'Snow Water Equivalent at the end of the month.'
+            newvar.atts['note'] = density_note
             dataset[var] = newvar
         # Snowmelt as residual of snow fall and snow accumulation (water equivalent) changes
         elif var == 'snwmlt':
@@ -303,6 +309,7 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
             newvar = transformMonthly(var=newvar, slc=None, l365=False, lvar=True, linplace=True)
             newvar += dataset.solprec # add that in-place as well, but after transforming monthly SWE change to SI rate
             newvar.data_array.clip(min=0, out=newvar.data_array) # clip values smaller than zero (in-place)
+            newvar.atts['note'] = density_note
             dataset[var] = newvar
             ## normalize snowmelt so that it does not exceed snow fall
             r = dataset.snwmlt.mean(axis=0,keepdims=True,asVar=False)/dataset.solprec.mean(axis=0,keepdims=True,asVar=False)
@@ -324,13 +331,16 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
             assert dataset.snwmlt.units == 'kg/m^2/s', dataset.snwmlt.units  
             data = dataset.liqprec[:] + dataset.snwmlt[:]
             newvar = addGDALtoVar(Variable(data=data, axes=dataset.liqprec.axes, name=var, units='kg/m^2/s'), griddef=dataset.griddef)
+            newvar.data_array.clip(min=0, out=newvar.data_array) # clip values smaller than zero (in-place)
+            newvar.atts['note'] = density_note
             dataset[var] = newvar
         else: raise VariableError(var)
         # for completeness, add attributes
-        dataset[var].atts = varatts[var]
+        dataset[var].atts.update(varatts[var])
     
     # add length and names of month
     addLengthAndNamesOfMonth(dataset)
+    addLandMask(dataset, varname='precip', maskname='landmask', atts=None)
     
     # return properly formatted dataset
     return dataset
@@ -340,7 +350,7 @@ hist_vardefs = NotImplemented
 hist_axdefs = NotImplemented
 # N.B.: the time-series time offset has to be chose such that 1979 begins with the origin (time=0)
 hist_derived = NotImplemented
-hist_grid_pattern = data_root+'{GRID:s}_hist/'
+hist_grid_pattern = root_folder+'{GRID:s}_hist/'
 hist_var_pattern = '{VAR:s}/{year:04d}/{VAR:s}_{month:02d}.asc.gz'
 hist_title = 'NRCan Historical Gridded Time-series'
 
@@ -367,19 +377,22 @@ def loadASCII_Hist(name=dataset_name, title=hist_title, atts=None, derived_vars=
     return dataset
 
 # Historical time-series
-CMC_vardefs = NotImplemented # add snow (SWE???)
-CMC_axdefs = NotImplemented # add year and month
+CMC_period = (1998,2015)
+CMC_vardefs = dict(snow = dict(grid='NA12', name='snow', units='kg/m^2', dtype=np.float32, # Snow Water Equivalent in mm
+                               axes=('year','month',None,None),),) # this is the axes order in which the data are read                   
+CMC_axdefs = dict(year = dict(name='year', units='year', coord=np.arange(CMC_period[0],CMC_period[1]+1)), # yearly coordinate
+                  month = dict(name='month', units='month', coord=np.arange(1,13)),) # monthly coordinate - will be replaced
 # N.B.: the time-series time offset has to be chose such that 1979 begins with the origin (time=0)
-CMC_derived = NotImplemented
-CMC_root = data_root+'CMC_hist/'
+CMC_derived = ('snow_acc',)
+CMC_root = root_folder+'/CMC_hist/'
 CMC_var_pattern = '{VAR:s}/ps_cmc_sdepth_analyses_{year:04d}_ascii/{year:04d}_{month:02d}_01.tif'
 CMC_title = 'CMC Historical Gridded Snow Time-series'
 
 # load normals (from different/unspecified periods... ), computer some derived variables, and combine NA and CA grids
-def loadCMC_Hist(name=dataset_name, title=hist_title, atts=None, derived_vars=hist_derived, varatts=varatts, 
-                 grid='NA12', resolution=12, grid_defs=None, period=(1998,2015),
+def loadCMC_Hist(name='CMC', title=CMC_title, atts=None, derived_vars=CMC_derived, varatts=varatts, 
+                 grid='NA12', resolution=12, grid_defs=None, period=CMC_period, lcheck=True, mask=None,
                  lmergeTime=False, # merge the year and month "axes" into a single monthly time axis 
-                 var_pattern=hist_var_pattern, data_root=CMC_root, vardefs=CMC_vardefs, axdefs=CMC_axdefs):
+                 var_pattern=CMC_var_pattern, data_root=CMC_root, vardefs=CMC_vardefs, axdefs=CMC_axdefs):
     ''' load CMC historical snow time-series from GeoTIFF files, merge with NRCan dataset and recompute snowmelt '''
   
     # determine grids / resolution
@@ -388,17 +401,53 @@ def loadCMC_Hist(name=dataset_name, title=hist_title, atts=None, derived_vars=hi
     if resolution is not None:
       resolution = str(resolution)
       grid = 'NA{:s}'.format(resolution) if grid is None else grid.upper()            
+    # update period
+    if period is not None: # this is mainly for testing
+      axdefs['year']['coord'] = np.arange(period[0],period[1]+1)
       
     # load NA grid
-    dataset = rasterDataset(name=name, title=title, vardefs=CMC_vardefs, axdefs=CMC_axdefs, atts=atts, projection=None, 
-                            griddef=grid_defs[grid], lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, 
+    dataset = rasterDataset(name=name, title=title, vardefs=vardefs, axdefs=axdefs, atts=atts, projection=None, 
+                            griddef=grid_defs[grid], lgzip=None, lgdal=True, lmask=False, fillValue=0, lskipMissing=True, 
                             lgeolocator=False, file_pattern=data_root+var_pattern )    
 
     # merge year and month axes
+    dataset = dataset.mergeAxes(axes=axdefs.keys(), axatts=varatts['time'], linplace=True)
+    assert dataset.hasAxis('time'), dataset
+    assert dataset.time[0] == 0, dataset.time.coord
+    dataset.time.coord += 12 * ( axdefs['year']['coord'][0] - 1979 ) # set origin to Jan 1979! (convention)
+    dataset.time.atts['long_name'] = 'Month since 1979-01'
     
-    # compute climatology
+    # apply mask
+    if mask:
+        if not isinstance(mask,Variable): raise TypeError, mask
+        dataset.mask(mask=mask) 
     
-    # shift values by one month, since these values are for the 1st of the month
+    # shift snow values by one month, since these values are for the 1st of the month
+    snow = dataset.snow; tax = snow.axisIndex('time'); tlen1 = snow.shape[tax]-1
+    assert lcheck is False or ( snow.masked and np.all( snow.data_array.mask.take([0], axis=tax) ) ), snow.data_array.mask.take([0], axis=tax).sum()
+    snow.data_array = np.roll(snow.data_array, -1, axis=tax) # there is no MA function, for some reason it works just fine... 
+    assert lcheck is False or ( snow.masked and np.all( snow.data_array.mask.take([tlen1], axis=tax) ) ), snow.data_array.mask.take([tlen1], axis=tax).sum()
+    assert 'long_name' not in snow.atts, snow.atts['long_name']
+    snow.atts['long_name'] = "Snow Water Equivalent (end of month)"
+    
+    # compute derived variables
+    for var in derived_vars:
+        if var == 'snow_acc':
+            # compute snow accumulation
+            snow = dataset.snow; tax = snow.axisIndex('time'); data = snow[:]
+            delta = ma.empty_like(data)
+            assert tax == 0, snow            
+            delta[1:,:] = ma.diff(data, axis=tax); delta[1,:] = ma.masked
+            # N.B.: the snow/SWE date has already been shifted to the end of the month
+            # create snow accumulation variable and divide by time
+            newvar = Variable(data=delta, axes=snow.axes, name=var, units='kg/m^2/month')
+            newvar = addGDALtoVar(newvar, griddef=dataset.griddef)
+            newvar = transformMonthly(var=newvar, slc=None, l365=False, lvar=True, linplace=True)
+            dataset[var] = newvar
+    # apply varatts
+    for varname,var in dataset.variables.items(): 
+      var.atts.update(varatts[varname]) # update in-place 
+
 
     # return dataset
     return dataset
@@ -434,7 +483,8 @@ if __name__ == '__main__':
 #     mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
 #     mode = 'convert_Normals'
-    mode = 'convert_CMC'
+    mode = 'add_CMC'
+#     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
 #     pntset = 'ecprecip'
     period = None; res = None; grid = None
@@ -508,10 +558,12 @@ if __name__ == '__main__':
         ncfile = avgfolder + avgfile.format(grdstr,prdstr)
         if not os.path.exists(avgfolder): os.mkdir(avgfolder)
         # load ASCII dataset with default values
-        dataset = loadASCII_Normals(name='NRCan', title='NRCan Test Dataset', atts=None, 
+        dataset = loadASCII_Normals(name='NRCan', title='NRCan Climate Normals', atts=None, 
                                     NA_grid=None, CA_grid=None, resolution=resolution, grid_defs=grid_def,)        
         # test 
         print(dataset)
+        print('')
+        print(dataset.snow)
         # write to NetCDF
         print('')
         writeNetCDF(dataset=dataset, ncfile=ncfile, ncformat='NETCDF4', zlib=True, writeData=True, overwrite=True, 
@@ -520,16 +572,82 @@ if __name__ == '__main__':
         
     elif mode == 'add_CMC':
         
-        # parameters
-        resolution = 12; grdstr = '_na{:d}'.format(resolution); prdstr = ''        
+#         period = (1998,1999) # for tests
+#         filelist = ['test_' + avgfile.format('_na{:d}'.format(12),'')]
+        period = (1998,2015) # all data
+        filelist = None
+        
+        # load NRCan dataset (for precip and to add variables)
+        nrcan = loadNRCan(filelist=filelist, filemode='rw')
+
         # load ASCII dataset with default values
-        dataset = loadCMC_Hist(name='CMC', title='CMC Snow Dataset', atts=None, period=(1998,2015), 
-                             resolution=resolution, grid_defs=grid_def,)        
+        cmc = loadCMC_Hist(period=period, mask=nrcan.landmask)        
         # test 
-        print(dataset)
-        # add to NRCan NetCDF
+        print(cmc)
+        # climatology
         print('')
-        ncfile = avgfolder + avgfile.format(grdstr,prdstr)
-        assert os.path.exists(ncfile), ncfile        
-#         writeNetCDF(dataset=dataset, ncfile=ncfile, ncformat='NETCDF4', zlib=True, writeData=True, overwrite=True, 
-#                     skipUnloaded=False, feedback=True, close=True)
+        cmc = cmc.climMean()
+#         print(cmc)
+        # values
+        print('')
+        var = cmc.snow.mean(axes=('lat','lon'))
+        print(var[:])
+        print('')
+        for varname,var in cmc.variables.items():
+            if var.masked:
+                print(varname, float(var.data_array.mask.sum())/float(var.data_array.size))
+        # add liquid water flux, based on precip and snow accumulation/storage changes
+        print('')
+        lwf = 'liqwatflx'; data = ( nrcan.precip[:] - cmc.snow_acc[:] ).clip(min=0) # clip smaller than zero
+        cmc[lwf] = addGDALtoVar(Variable(data=data, axes=cmc.snow_acc.axes, atts=varatts[lwf]), griddef=cmc.griddef)        
+        print(cmc[lwf]) 
+        # values
+        print('')
+        var = cmc[lwf].mean(axes=('lat','lon'))
+        print(var[:])
+        
+#         print('')
+#         print(nrcan)
+        # merge datasets
+        for varname,var in cmc.variables.items():
+#             assert varname+'_CMC' not in nrcan, nrcan
+            if varname in CMC_derived or varname in CMC_vardefs or varname == lwf:
+                nrcan[varname+'_CMC'] = var # overwrite existing
+#             newname = varname+'_CMC'
+#             nrcan.addVariable(var.copy(name=newname), asNC=True,)
+#             nrcan[newname].sync() # add to NC file
+#         print('')
+#         print(nrcan)
+        # save additional variables
+        nrcan.close(); del nrcan # implies sync
+        
+        # now check
+        print('')
+        nrcan = loadNRCan(filelist=filelist)
+        print(nrcan)
+        print('')
+        for varname,var in cmc.variables.items():
+            if varname in CMC_derived or varname in CMC_vardefs:
+                assert varname+'_CMC' in nrcan, nrcan
+#             print('')
+#             print(nrcan[varname+'_CMC'])
+        
+    elif mode == 'test_CMC':
+        
+        # load ASCII dataset with default values
+        period = (1998,2000)
+        cmc = loadCMC_Hist(period=period, lcheck=True)        
+        # test 
+        print(cmc)
+        assert cmc.time[0] == 12*(period[0]-1979), cmc.time[:] 
+        # climatology
+        print('')
+        cmc = cmc.climMean()
+#         print(cmc)
+        # values
+        print('')
+        var = cmc.snow.mean(axes=('lat','lon'))
+        print(var[:])
+        for varname,var in cmc.variables.items():
+            print(varname, var.masked, float(var.data_array.mask.sum())/float(var.data_array.size))
+        
