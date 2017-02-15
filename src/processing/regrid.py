@@ -225,7 +225,7 @@ if __name__ == '__main__':
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
     lLTM = False # also regrid the long-term mean climatologies 
-    datasets += ['NRCan']; periods = None
+    datasets += ['NRCan']; periods = [(1980,2010)] # NRCan normals period
 #     datasets += ['PRISM','GPCC','PCIC']; periods = None
 #     datasets += ['CFSR', ] # CFSR_05 does not have precip
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05']}
@@ -277,9 +277,9 @@ if __name__ == '__main__':
     # grid to project onto
     grids = dict()
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
-#     grids['can1'] = None # large grid for whole Canada
 #     grids['grw1'] = None # high-res grid for GRW, 1km
     grids['grw2'] = None # small grid for GRW, 5km
+    grids['can1'] = None # large grid for whole Canada
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 # #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain

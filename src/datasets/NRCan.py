@@ -94,12 +94,14 @@ def checkGridRes(grid, resolution, period=None, lclim=False):
   return grid, resolution
 
 # pre-processed climatology and timeseries files (varatts etc. should not be necessary)
+clim_period = (1970,2000) # default time period for long-term means
+#clim_period = (1980,2010) # default time period for long-term means
 avgfolder = root_folder + 'nrcanavg/' 
 avgfile = 'nrcan{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 tsfile = 'nrcan{0:s}_monthly.nc' # extend with grid type only
 
 # function to load these files...
-def loadNRCan(name=dataset_name, resolution=None, period=None, grid=None, varlist=None, varatts=None, 
+def loadNRCan(name=dataset_name, resolution=None, period=clim_period, grid=None, varlist=None, varatts=None, 
               folder=avgfolder, filelist=None, lautoregrid=True, filemode='r'):
     ''' Get the pre-processed monthly NRCan climatology as a DatasetNetCDF. '''
     grid, resolution = checkGridRes(grid, resolution, period=period, lclim=True)
@@ -123,7 +125,7 @@ def loadNRCan_TS(name=dataset_name, grid=None, resolution=None, varlist=None, va
     return dataset
 
 # function to load station climatologies
-def loadNRCan_Stn(name=dataset_name, period=None, station=None, resolution=None, varlist=None, varatts=None, 
+def loadNRCan_Stn(name=dataset_name, period=clim_period, station=None, resolution=None, varlist=None, varatts=None, 
                   folder=avgfolder, filelist=None, lautoregrid=True):
     ''' Get the pre-processed monthly NRCan climatology as a DatasetNetCDF at station locations. '''
     grid, resolution = checkGridRes(None, resolution, period=period, lclim=True); del grid
@@ -147,7 +149,7 @@ def loadNRCan_StnTS(name=dataset_name, station=None, resolution=None, varlist=No
     return dataset
 
 # function to load regionally averaged climatologies
-def loadNRCan_Shp(name=dataset_name, period=None, shape=None, resolution=None, varlist=None, varatts=None, 
+def loadNRCan_Shp(name=dataset_name, period=clim_period, shape=None, resolution=None, varlist=None, varatts=None, 
                   folder=avgfolder, filelist=None, lautoregrid=True, lencl=False):
     ''' Get the pre-processed monthly NRCan climatology as a DatasetNetCDF averaged over regions. '''
     grid, resolution = checkGridRes(None, resolution, period=period, lclim=True); del grid
@@ -172,6 +174,7 @@ def loadNRCan_ShpTS(name=dataset_name, shape=None, resolution=None, varlist=None
 
 
 ## functions to load ASCII data and generate complete GeoPy datasets
+norm_period = (1971,2000)
 
 # Normals (long-term means): ASCII data specifications
 norm_defaults = dict(axes=('time',None,None), dtype=np.float32)
@@ -184,13 +187,13 @@ norm_vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.
                     snwd = dict(grid='CA12', name='snowh', units='m', scalefactor=1./100., **norm_defaults), ) # snow depth
 norm_axdefs = dict(time = dict(name='time', units='month', coord=np.arange(1,13)),) # time coordinate
 norm_derived = ('T2','solprec','snow','snwmlt','liqwatflx')
-norm_grid_pattern = root_folder+'{GRID:s}_normals/' # dataset root folder
+norm_grid_pattern = root_folder+'{GRID:s}_normals{PRDSTR:s}/' # dataset root folder
 norm_var_pattern = '{VAR:s}/{VAR:s}_{time:02d}.asc.gz' # path to variables
 norm_title = 'NRCan Gridded Normals'
 
 # load normals (from different/unspecified periods... ), computer some derived variables, and combine NA and CA grids
 def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_vars=norm_derived, varatts=varatts, 
-                      NA_grid=None, CA_grid=None, resolution=12, grid_defs=None,
+                      NA_grid=None, CA_grid=None, resolution=12, grid_defs=None, period=norm_period,
                       var_pattern=norm_var_pattern, grid_pattern=norm_grid_pattern, vardefs=norm_vardefs, axdefs=norm_axdefs):
     ''' load NRCan normals from ASCII files, merge CA and NA grids and compute some additional variables; return Dataset '''
     
@@ -210,14 +213,17 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
         elif grid.upper() == CA_grid: CA_vardefs[key] = var
         else: raise VariableError(grid)
         
+    # determine period extension
+    prdstr = '_{0:04d}-{1:04d}'.format(*period) if period is not None else ''
+        
     # load NA grid
     dataset = rasterDataset(name=name, title=title, vardefs=NA_vardefs, axdefs=axdefs, atts=atts, projection=None, 
                             griddef=grid_defs[NA_grid], lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, 
-                            lgeolocator=True, file_pattern=grid_pattern.format(GRID=NA_grid)+var_pattern )    
+                            lgeolocator=True, file_pattern=grid_pattern.format(GRID=NA_grid,PRDSTR=prdstr)+var_pattern )    
     # load CA grid
     ca_ds = rasterDataset(name=name, title=title, vardefs=CA_vardefs, axdefs=axdefs, atts=atts, projection=None, 
                           griddef=grid_defs[CA_grid], lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, 
-                          lgeolocator=False, file_pattern=grid_pattern.format(GRID=CA_grid)+var_pattern )
+                          lgeolocator=False, file_pattern=grid_pattern.format(GRID=CA_grid,PRDSTR=prdstr)+var_pattern )
     
     # merge grids
     naaxes = dataset.axes
@@ -478,16 +484,16 @@ loadShapeTimeSeries = loadNRCan_ShpTS # time-series without associated grid (e.g
 
 if __name__ == '__main__':
   
-#     mode = 'test_climatology'
+    mode = 'test_climatology'
 #     mode = 'test_timeseries'
 #     mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
 #     mode = 'convert_Normals'
-    mode = 'add_CMC'
+#     mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
 #     pntset = 'ecprecip'
-    period = None; res = None; grid = None
+    period = (1980,2010); res = None; grid = None
     
     if mode == 'test_climatology':
             
@@ -554,11 +560,12 @@ if __name__ == '__main__':
     elif mode == 'convert_Normals':
         
         # parameters
-        resolution = 12; grdstr = '_na{:d}'.format(resolution); prdstr = ''
+        period = (1981,2010); prdstr = '_1980-2010'
+        resolution = 12; grdstr = '_na{:d}'.format(resolution)
         ncfile = avgfolder + avgfile.format(grdstr,prdstr)
         if not os.path.exists(avgfolder): os.mkdir(avgfolder)
         # load ASCII dataset with default values
-        dataset = loadASCII_Normals(name='NRCan', title='NRCan Climate Normals', atts=None, 
+        dataset = loadASCII_Normals(name='NRCan', title='NRCan Climate Normals', atts=None, period=period,
                                     NA_grid=None, CA_grid=None, resolution=resolution, grid_defs=grid_def,)        
         # test 
         print(dataset)
@@ -572,16 +579,15 @@ if __name__ == '__main__':
         
     elif mode == 'add_CMC':
         
-#         period = (1998,1999) # for tests
-#         filelist = ['test_' + avgfile.format('_na{:d}'.format(12),'')]
-        period = (1998,2015) # all data
-        filelist = None
+#         CMC_period = (1998,1999) # for tests
+#         filelist = ['test_' + avgfile.format('_na{:d}'.format(12),'_1970-2000')]
+        filelist = None; norm_period = (1980,2010)
         
         # load NRCan dataset (for precip and to add variables)
-        nrcan = loadNRCan(filelist=filelist, filemode='rw')
+        nrcan = loadNRCan(filelist=filelist, period=norm_period, filemode='rw')
 
         # load ASCII dataset with default values
-        cmc = loadCMC_Hist(period=period, mask=nrcan.landmask)        
+        cmc = loadCMC_Hist(period=CMC_period, mask=nrcan.landmask)        
         # test 
         print(cmc)
         # climatology
@@ -623,7 +629,7 @@ if __name__ == '__main__':
         
         # now check
         print('')
-        nrcan = loadNRCan(filelist=filelist)
+        nrcan = loadNRCan(filelist=filelist, period=norm_period)
         print(nrcan)
         print('')
         for varname,var in cmc.variables.items():
