@@ -18,7 +18,6 @@ from datasets.common import data_root, loadObservations, transformMonthly, addLe
   monthlyTransform, addLandMask
 from geodata.misc import DatasetError, VariableError
 from utils.nctools import writeNetCDF
-from utils.ascii import rasterDataset
 
 
 ## NRCan Meta-data
@@ -197,6 +196,8 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
                       var_pattern=norm_var_pattern, grid_pattern=norm_grid_pattern, vardefs=norm_vardefs, axdefs=norm_axdefs):
     ''' load NRCan normals from ASCII files, merge CA and NA grids and compute some additional variables; return Dataset '''
     
+    from utils.ascii import rasterDataset
+
     # determine grids / resolution
     if grid_defs is None: 
       grid_defs = grid_def # define in API; register for all pre-defined grids
@@ -367,7 +368,9 @@ def loadASCII_Hist(name=dataset_name, title=hist_title, atts=None, derived_vars=
                    var_pattern=hist_var_pattern, grid_pattern=hist_grid_pattern, vardefs=hist_vardefs, axdefs=hist_axdefs):
     ''' load NRCan historical time-series from ASCII files, merge CA and NA grids and compute some additional variables; 
         merge year and month axes and return as Dataset '''
-  
+
+    from utils.ascii import rasterDataset
+
     # load exactly like normals and let it merge the grids
     dataset = loadASCII_Normals(name=dataset_name, title=hist_title, atts=atts, derived_vars=hist_derived, 
                                 varatts=varatts, NA_grid=NA_grid, CA_grid=CA_grid, 
@@ -400,7 +403,9 @@ def loadCMC_Hist(name='CMC', title=CMC_title, atts=None, derived_vars=CMC_derive
                  lmergeTime=False, # merge the year and month "axes" into a single monthly time axis 
                  var_pattern=CMC_var_pattern, data_root=CMC_root, vardefs=CMC_vardefs, axdefs=CMC_axdefs):
     ''' load CMC historical snow time-series from GeoTIFF files, merge with NRCan dataset and recompute snowmelt '''
-  
+
+    from utils.ascii import rasterDataset
+
     # determine grids / resolution
     if grid_defs is None: 
       grid_defs = grid_def # define in API; register for all pre-defined grids
