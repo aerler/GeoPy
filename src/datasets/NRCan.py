@@ -74,13 +74,12 @@ nofile = ('T2','solprec','lat','lon','time') # variables that don't have their o
 
 def checkGridRes(grid, resolution, period=None, lclim=False):
   ''' helper function to verify grid/resoluton selection '''
-  # figure out resolution and grid
-  if resolution is None: 
-      if grid is None:  
-          resolution = 'na12'
-      else: 
-          resolution = grid
-          grid = None
+  # prepare input
+  if grid is not None and grid[0:2].lower() in ('na','ca'): 
+    resolution = grid[2:]
+    grid = None
+  elif resolution is None: 
+    resolution = 'na12'
   if not isinstance(resolution, basestring): raise TypeError(resolution) 
   # figure out clim/TS
   if period is not None: lclim=True
