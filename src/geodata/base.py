@@ -1001,12 +1001,17 @@ class Variable(object):
     # self.__dict__['shape'] = None # retain shape for later use
     gc.collect() # enforce garbage collection
       
-  def getArray(self, idx=None, axes=None, broadcast=False, unmask=False, fillValue=None, copy=True):
+  def getArray(self, idx=None, axes=None, broadcast=False, unmask=False, fillValue=None, dtype=None, copy=True):
     ''' Copy the entire data array or a slice; option to unmask and to reorder/reshape to specified axes. '''
     # without data, this will fail
     if self.data:
-      if copy: datacopy = self.data_array.copy() # copy, if desired
-      else: datacopy = self.data_array 
+      if copy:
+        if dtype is not None:
+          datacopy = self.data_array.astype(dtype) # make a copy of new dtype 
+        else: datacopy = self.data_array.copy() 
+      else: 
+        if dtype is not None: raise ArgumentError(dtype)
+        datacopy = self.data_array 
       # unmask    
       if unmask and self.masked: 
         # N.B.: if no data is loaded, self.mask is usually false...
