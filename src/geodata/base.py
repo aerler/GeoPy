@@ -3414,10 +3414,10 @@ class Ensemble(object):
     self.idkeys = []
     for member in self.members:
       memid = getattr(member, self.idkey)
-      self.idkeys.append(memid)
       if not isinstance(memid, basestring): raise TypeError, "Member ID key '{:s}' should be a string-type, but received '{:s}'.".format(str(memid),memid.__class__)
       if memid in self.__dict__:
-        raise AttributeError, "Cannot overwrite existing attribute '{:s}'.".format(memid)
+        raise AttributeError, "Cannot overwrite existing attribute '{:s}'\n({}).".format(memid,self.idkeys)
+      self.idkeys.append(memid)
       self.__dict__[memid] = member
       
   def _recastList(self, fs):

@@ -90,7 +90,7 @@ class MyAxes(Axes):
     else: self.set_prop_cycle(reset_color)
     # figure out label list
     if labels is None: labels = self._getPlotLabels(varlist)           
-    elif len(labels) < len(varlist): raise ArgumentError, "Incompatible length of varlist and labels."
+    elif len(labels) < len(varlist): raise ArgumentError("Incompatible length of varlist and labels.")
     elif len(labels) > len(varlist): labels = labels[:len(varlist)] # truncate 
     label_list = labels if llabel else [None]*len(labels) # used for plot labels later
     assert len(labels) == len(varlist)
