@@ -420,12 +420,14 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   # return station dataset
   return dataset   
 
-def loadGageStation_TS(basin=None, station=None, varlist=None, varatts=None, 
+def loadGageStation_TS(basin=None, station=None, varlist=None, period=None, varatts=None, 
                        filetype='monthly', folder=None, name=None, basin_list=None):
   ''' wrapper function to load hydrograph timeseries for a given basin '''
-  return loadGageStation(basin=basin, station=station, varlist=varlist, varatts=varatts, 
-                         mode='timeseries', aggregation=None, filetype=filetype, 
-                         folder=folder, name=name, basin_list=basin_list)
+  dataset = loadGageStation(basin=basin, station=station, varlist=varlist, varatts=varatts, 
+                            mode='timeseries', aggregation=None, filetype=filetype, 
+                            folder=folder, name=name, basin_list=basin_list)
+  if period: dataset = dataset(years=period) # slice years for compatibility with time-series
+  return dataset
 
 
 ## some helper functions to test conditions

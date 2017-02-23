@@ -643,7 +643,7 @@ class MyAxes(Axes):
       vals = values.copy()
       if errors is not None: errs = errors.copy()
     # average means
-    val = vals.mean().repeat(3)
+    val = np.nanmean(vals).repeat(3) # there can be missing values - just omit them...
     # average variances (not std directly)
     if errors is not None:
       if lperi: err = ((errs**2).mean(keepdims=True)**0.5)
