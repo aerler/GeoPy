@@ -638,7 +638,7 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
     return avg
 
 
-def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+def nanvar(a, axis=None, dtype=None, out=None, dof=None, ddof=0, keepdims=False):
     """
     Compute the variance along the specified axis, while ignoring NaNs.
 
@@ -667,6 +667,8 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
         Alternate output array in which to place the result.  It must have
         the same shape as the expected output, but the type is cast if
         necessary.
+    dof : int, optional
+        Degrees of Freedom; usually determined from size of array and ddof
     ddof : int, optional
         "Delta Degrees of Freedom": the divisor used in the calculation is
         ``N - ddof``, where ``N`` represents the number of non-NaN
@@ -726,6 +728,9 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     """
     arr, mask = _replace_nan(a, 0)
     if mask is None:
+        if dof is not None:
+            cnt = arr.size if axis is None else arr.shape[axis]
+            ddof = cnt - dof
         return np.var(arr, axis=axis, dtype=dtype, out=out, ddof=ddof,
                       keepdims=keepdims)
 
@@ -763,7 +768,7 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
         if var.ndim < cnt.ndim:
             # Subclasses of ndarray may ignore keepdims, so check here.
             cnt = cnt.squeeze(axis)
-        dof = cnt - ddof
+        if dof is None: dof = cnt - ddof
         var = _divide_by_count(var, dof)
 
     isbad = (dof <= 0)
@@ -782,7 +787,7 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     return var
 
 
-def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+def nanstd(a, axis=None, dtype=None, out=None, dof=None, ddof=0, keepdims=False):
     """
     Compute the standard deviation along the specified axis, while
     ignoring NaNs.
@@ -812,6 +817,8 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
         Alternative output array in which to place the result. It must have
         the same shape as the expected output but the type (of the
         calculated values) will be cast if necessary.
+    dof : int, optional
+        Degrees of Freedom; usually determined from size of array and ddof
     ddof : int, optional
         Means Delta Degrees of Freedom.  The divisor used in calculations
         is ``N - ddof``, where ``N`` represents the number of non-NaN
@@ -870,7 +877,7 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     array([ 0.,  0.5])
 
     """
-    var = nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+    var = nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof, dof=dof,
                  keepdims=keepdims)
     if isinstance(var, np.ndarray):
         std = np.sqrt(var, out=var)
@@ -886,16 +893,19 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     return std
 
 
-def sem(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+def sem(a, axis=None, dtype=None, out=None, dof=None, ddof=0, keepdims=False):
     """
     Compute the standard error of the mean along the specified axis.
     """
-    dof = (a.shape[axis] if axis is not None else a.size) -ddof
+    if dof is None:
+        dof = (a.shape[axis] if axis is not None else a.size) -ddof
+    elif dof <= 0: 
+        raise ValueError(dof)
     sse = np.var(a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)        
     return np.sqrt(sse/dof)
 
 
-def nansem(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+def nansem(a, axis=None, dtype=None, out=None, dof=None, ddof=0, keepdims=False):
     """
     Compute the standard error of the mean along the specified axis, while
     ignoring NaNs.
@@ -925,6 +935,8 @@ def nansem(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
         Alternative output array in which to place the result. It must have
         the same shape as the expected output but the type (of the
         calculated values) will be cast if necessary.
+    dof : int, optional
+        Degrees of Freedom; usually determined from size of array and ddof
     ddof : int, optional
         Means Delta Degrees of Freedom.  The divisor used in calculations
         is ``N - ddof``, where ``N`` represents the number of non-NaN
@@ -951,7 +963,10 @@ def nansem(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     """
     arr, mask = _replace_nan(a, 0)
     if mask is None:
-        dof = (arr.shape[axis] if axis is not None else arr.size) -ddof
+        if dof is None:
+            dof = (arr.shape[axis] if axis is not None else arr.size) -ddof
+        elif dof <= 0: 
+            raise ValueError(dof)
         sse = np.var(arr, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)        
         return np.sqrt(sse/dof)
 
@@ -998,7 +1013,7 @@ def nansem(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
             if isinstance(cnt, np.ndarray) and sse.ndim < cnt.ndim: cnt = cnt.squeeze(axis)
         else:
             sem = sse.dtype.type(np.sqrt(sse))
-        dof = cnt - ddof
+        if dof is None: dof = cnt - ddof
         sem = _divide_by_count(sem, dof)
 
     isbad = (dof <= 0)

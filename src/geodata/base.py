@@ -1231,21 +1231,21 @@ class Variable(object):
     return data, name, units
   
   @ReduceVar
-  def std(self, data, axidx=None, ddof=0, keepdims=False):
+  def std(self, data, axidx=None, dof=None, ddof=0, keepdims=False):
     data = nf.nanstd(data, axis=axidx, ddof=ddof, keepdims=keepdims) # ddof: degrees of freedom
     name = '{:s}_std'.format(self.name)
     units = self.units # variance has squared units    
     return data, name, units
  
   @ReduceVar
-  def sem(self, data, axidx=None, ddof=0, keepdims=False):
+  def sem(self, data, axidx=None, dof=None, ddof=0, keepdims=False):
     data = nf.nansem(data, axis=axidx, ddof=ddof, keepdims=keepdims) # ddof: degrees of freedom
     name = '{:s}_sem'.format(self.name)
     units = self.units # variance has squared units    
     return data, name, units
   
   @ReduceVar
-  def var(self, data, axidx=None, ddof=0, keepdims=False):
+  def var(self, data, axidx=None, dof=None, ddof=0, keepdims=False):
     data = nf.nanvar(data, axis=axidx, ddof=ddof, keepdims=keepdims) # ddof: degrees of freedom
     name = '{:s}_var'.format(self.name)
     units = '({:s})^2'.format(self.units) # variance has squared units    
