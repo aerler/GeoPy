@@ -208,10 +208,10 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 1 ; ldebug = False # just for tests
+    NP = 3 ; ldebug = False # just for tests
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = True
+    loverwrite = False
     varlist = None
 #     varlist = ['precip',]
     periods = []
@@ -225,7 +225,7 @@ if __name__ == '__main__':
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
     lLTM = False # also regrid the long-term mean climatologies 
-    datasets += ['NRCan']; periods = [(1980,2010)] # NRCan normals period
+#     datasets += ['NRCan']; periods = [(1980,2010)] # NRCan normals period
 #     datasets += ['PRISM','GPCC','PCIC']; periods = None
 #     datasets += ['CFSR', ] # CFSR_05 does not have precip
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05']}
@@ -250,6 +250,9 @@ if __name__ == '__main__':
 #     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
 #     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
+#     WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
+#     WRF_experiments += ['t-ctrl','t-ctrl-2050','t-ctrl-2100']
+    WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['t-ensemble-2050']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
@@ -268,20 +271,20 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-    domains = 1 # domains to be processed
-#     domains = None # process all domains
-#     WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad',) # filetypes to be processed
-    WRF_filetypes = ('aux',) # filetypes to be processed # ,'rad'
+#     domains = 1 # domains to be processed
+    domains = None # process all domains
+    WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad',) # filetypes to be processed
+#     WRF_filetypes = ('srfc',) # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); periods = None
     # grid to project onto
     grids = dict()
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 #     grids['grw1'] = None # high-res grid for GRW, 1km
-#     grids['grw2'] = None # small grid for GRW, 5km
+    grids['grw2'] = None # small grid for GRW, 5km
 #     grids['can1'] = None # large grid for whole Canada
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
-    grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
+#     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 # #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
 #     grids['glb1-90km'] = ('d01',) # 90km GLB domain
 #     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
