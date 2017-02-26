@@ -306,11 +306,11 @@ class VarNC(Variable):
     if lslices: return newvar, slcs
     else: return newvar
   
-  def getArray(self, idx=None, axes=None, broadcast=False, unmask=False, fillValue=None, copy=True):
+  def getArray(self, idx=None, axes=None, broadcast=False, unmask=False, fillValue=None, dtype=None,  copy=True):
     ''' Copy the entire data array or a slice; option to unmask and to reorder/reshape to specified axes. '''
     # use __getitem__ to get slice
     if not self.data: self.load()       
-    return super(VarNC,self).getArray(idx=idx, axes=axes, broadcast=broadcast, unmask=unmask, 
+    return super(VarNC,self).getArray(idx=idx, axes=axes, broadcast=broadcast, unmask=unmask, dtype=dtype, 
                                       fillValue=fillValue, copy=copy) # just call superior
    
   def squeeze(self, **kwargs):
