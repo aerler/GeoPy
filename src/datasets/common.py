@@ -493,8 +493,9 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology',
     dataset_name = 'CESM'
   else:
     # this is most likely an observational dataset
-    if name[:3].lower() == 'obs': dataset_name = 'EC' if station else 'Unity' # alias... 
-    else: dataset_name = name 
+    dataset_name = name
+#     if name[:3].lower() == 'obs': dataset_name = 'EC' if station else 'Unity' # alias... 
+#     else: dataset_name = name 
   # import dataset based on name
   try: dataset = import_module('datasets.{0:s}'.format(dataset_name))
   except ImportError: raise ArgumentError("No dataset matching '{:s}' found.".format(dataset_name))
@@ -618,11 +619,11 @@ def selectElements(datasets, axis, testFct=None, master=None, linplace=False, la
 # a function to load station data
 @BatchLoad
 def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, prov=None, 
-                   slices=None, obsslices=None, years=None, reduction=None, shape=None, station=None, 
+                   slices=None, obsslices=None, years=None, period=None, reduction=None, shape=None, station=None, 
                    constraints=None, filetypes=None, domain=None, ldataset=False, lcheckVar=False, 
                    lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', lminmax=False,
                    master=None, lall=True, ensemble_list=None, ensemble_product='inner', lensembleAxis=False,
-                   WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, **kwargs):
+                   WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, obs_list=None, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -639,23 +640,28 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   elif not ldataset: ensemble = Ensemble(name=name, title=title, basetype='Dataset')
   # expand argument list
   if ensemble_list is None: ensemble_list = ['names'] if not ldataset else None
+  elif 'aggregation' in ensemble_list: raise ArgumentError("'aggregation' can not be expanded")
   loadargs = expandArgumentList(names=names, station=station, prov=prov, shape=shape, varlist=varlist, 
                                 mode=dataset_mode, filetypes=filetypes, domains=domain, lwrite=lwrite,
-                                slices=slices, obsslices=obsslices, name_tags=name_tags, ltrimT=ltrimT,
-                                years=years, expand_list=ensemble_list, lproduct=ensemble_product,
-                                lensembleAxis=lensembleAxis)
+                                slices=slices, obsslices=obsslices, period=period, years=years, 
+                                name_tags=name_tags, ltrimT=ltrimT, lensembleAxis=lensembleAxis,
+                                expand_list=ensemble_list, lproduct=ensemble_product,)
   for loadarg in loadargs:
-    # clean up argumetns
+    # clean up arguments
     name = loadarg.pop('names',None); name_tag = loadarg.pop('name_tags',None)
-    slcs = loadarg.pop('slices',None); obsslcs = loadarg.pop('obsslices',None)    
+    slcs = loadarg.pop('slices',dict()).copy(); obsslcs = loadarg.pop('obsslices',None)
+    # special handling of periods for time-series: user for slicing by year!
+    if loadarg['mode'][:4].lower() == 'time': 
+        prd = loadarg.pop('period',None)
+        if prd is not None: slcs['years'] = prd          
     # load individual dataset
-    dataset = loadDataset(name=name, WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, CESM_ens=CESM_ens, **loadarg)
+    dataset = loadDataset(name=name, WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, 
+                          CESM_ens=CESM_ens, **loadarg)
     if name_tag is not None: 
-      if name_tag[0] == '_': dataset.name += name_tag
+      if name_tag.startswith('_'): dataset.name += name_tag
       else: dataset.name = name_tag
     # apply slicing
     if obsslcs and ( dataset.name[:3].lower() == 'obs' or dataset.name.isupper() ):
-      slcs = dict() if slcs is None else slcs.copy()
       slcs.update(**obsslcs) # add special slices for obs
       # N.B.: currently VarNC's can only be sliced once, because we can't combine slices yet
     if slcs: dataset = dataset(lminmax=lminmax, **slcs) # slice immediately 

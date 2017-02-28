@@ -237,7 +237,7 @@ class GageStation(object):
     self.atts = metadata
     return metadata
   
-  def getTimeseriesData(self, units='kg/s', lcheck=True, lexpand=True, lfill=True):
+  def getTimeseriesData(self, units='kg/s', lcheck=True, lexpand=True, lfill=True, period=None, lflatten=True):
     ''' extract time series data and time coordinates from a WSC monthly CSV file '''
     if self.monthly_file:
       # use numpy's CSV functionality
@@ -245,18 +245,19 @@ class GageStation(object):
       data = np.genfromtxt(self.monthly_file, dtype=np.float32, delimiter=',', skip_header=1, filling_values=np.nan,  
                            usecols=np.arange(4,28,2), usemask=True, loose=True, invalid_raise=True)
       assert data.shape[1] == 12, data.shape
-      # for some reason every value if followed by an extra comma...
+      # for some reason every value is followed by an extra comma...
       #data = np.ma.masked_less(data, 10) # remove some invalid values
       # N.B.: some values appear unrealistically small, however, these are removed in the check-
       #       section below (it appears they consistently fail the ckeck test)
       if units.lower() == 'kg/s': data *= 1000. # m^3 == 1000 kg (water)
       elif units.lower() == 'm^3/s': pass # original units
       else: raise ArgumentError("Unknown units: {}".format(units))
-      # get time coordinates and verify
-      check = np.genfromtxt(self.monthly_file, dtype=np.float32, delimiter=',', skip_header=1, filling_values=np.nan,  
+      # get time coordinates and verification flag
+      check = np.genfromtxt(self.monthly_file, dtype=np.int, delimiter=',', skip_header=1, filling_values=-9999,  
                            usecols=np.arange(1,4,1), usemask=True, loose=True, invalid_raise=True)
       assert check.shape[0] == data.shape[0], check.shape
-      time = check[:,2] # this is the year (time coordinate)
+      assert np.all(check >= 0), np.sum(check < 0)
+      time = check[:,2].astype(np.int) # this is the year (time coordinate)
       # determine valid entries
       if lcheck:
         check = np.all(check[:,:2]==1, axis=1) # require all entries to be one
@@ -264,10 +265,16 @@ class GageStation(object):
         #       unrealistically small (see above); probably different units...
         data = data[check,:]; time = time[check]
         assert time.shape[0] == data.shape[0], check.shape
+      # slice off values outside the period of interest
+      if period:
+        valid = np.logical_and(time >= period[0],time < period[1])
+        time = time[valid]; data = data[valid]
       # fill in missing time periods/years
       if lfill:
-        idx = np.asarray(time - time[0], dtype=np.int32); tlen = idx[-1]+1 # start at 0; length is last value (+1)
-        pad_time = np.arange(time[0],time[-1]+1) # form continuous sequence
+        if period: time0 = period[0]; time1 = period[1]
+        else: time0 = time[0]; time1 = time[-1]+1
+        idx = np.asarray(time - time0, dtype=np.int32); tlen = time1 - time0 # start at 0; length is last value (+1)
+        pad_time = np.arange(time0,time1) # form continuous sequence
         #assert np.all( pad_time[idx] == time ), idx # potentially expensive
         time = pad_time # new continuous time coordinate
         pad_data = np.ma.zeros((tlen,12), dtype=np.float32)*np.NaN # pre-allocate with NaN
@@ -282,6 +289,8 @@ class GageStation(object):
         assert coord.shape == data.shape, coord.shape
         #assert np.all( np.diff(coord.flatten()) == 1 ), coord  # potentially expensive
         time = coord
+      if lflatten:
+        time = time.flatten(); data = data.flatten()
       # return data array and coordinate vector
       return data, time
       
@@ -322,8 +331,8 @@ def getGageStation(basin=None, station=None, name=None, folder=None, river=None,
     
 ## Functions that handle access to ASCII files
 def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='climatology', 
-                    aggregation=None, filetype='monthly', folder=None, name=None,
-                    basin_list=None):
+                    aggregation=None, filetype='monthly', folder=None, name=None, period=None,
+                    basin_list=None, lcheck=True, lexpand=True, lfill=True, lflatten=True):
   ''' function to load hydrograph climatologies and timeseries for a given basin '''
   ## resolve input
   if mode == 'timeseries' and aggregation: 
@@ -343,15 +352,16 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   ## read csv data
   # time series data and time coordinates
   lexpand = True; lfill = True
-  if mode == 'climatology': lexpand = False; lfill = False
-  data, time = station.getTimeseriesData(units='kg/s', lcheck=True, lexpand=lexpand, lfill=lfill)
+  if mode == 'climatology': lexpand = False; lfill = False; lflatten = False
+  data, time = station.getTimeseriesData(units='kg/s', lcheck=True, lexpand=lexpand, lfill=lfill,
+                                         period=period, lflatten=lflatten)
   # station meta data
   metadata = station.getMetaData()
 
   ## create dataset for station
   dataset = Dataset(name='WSC', title=metadata['Station Name'], varlist=[], atts=metadata,) 
   if mode.lower() in ('timeseries','time-series'): 
-    time = time.flatten(); data = data.flatten()
+    time = time.flatten(); data = data.flatten() # just to make sure...
     # make time axis based on time coordinate from csv file
     timeAxis = Axis(name='time', units='month', coord=time, # time series centered at 1979-01
                     atts=dict(long_name='Month since 1979-01'))

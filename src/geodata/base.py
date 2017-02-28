@@ -740,7 +740,7 @@ class Variable(object):
       if lrng and lpseudo: 
         lrng = False
         if lnonpseudo: 
-          raise ArgumentError, "'lrng' was reset to False, but other variables are not yet processed."          
+          raise ArgumentError("'lrng' was reset to False, but other variables are not yet processed.")          
       
     # resolve special key words
     if years is not None:
@@ -784,7 +784,7 @@ class Variable(object):
           else: raise NotImplementedError
         axes['year'] = new_years
       elif lcheck: 
-        raise AxisError, "Axis 'time' required for keyword 'years'!"
+        raise AxisError("Axis 'time' or 'year' required for keyword 'years'!")
       # N.B.: if lcheck is False, these keywords will just be ignored without a time-axis
     varaxes = dict(); idxmodes = dict() ; rngmodes = dict(); lstmodes = dict()
     # parse axes arguments and determine slicing
@@ -807,7 +807,7 @@ class Variable(object):
           rngmodes[key] = lrng
         lstmodes[key] = not rngmodes[key] and isinstance(val,(tuple,list,np.ndarray))
       elif lcheck: # default is to ignore axes that the variable doesn't have
-        raise AxisError, "Variable '{:s}' has no Axis '{:s}'.".format(self.name,key)
+        raise AxisError("Variable '{:s}' has no Axis '{:s}'.".format(self.name,key))
     ## create Slice tuple to slice data array and axes
     slcs = []; lists = [] # lists need special treatment
     # loop over axes of variable
