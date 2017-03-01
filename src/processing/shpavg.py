@@ -201,7 +201,7 @@ if __name__ == '__main__':
     NP = 3 ; ldebug = False # for quick computations
     modes = ('time-series','climatology')
 #     modes = ('climatology',) 
-    loverwrite = True
+    loverwrite = False
     varlist = None # ['T2']
     periods = []
 #     periods += [1]

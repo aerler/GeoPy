@@ -14,6 +14,12 @@ import collections as col
 # internal imports
 from geodata.misc import ArgumentError, isEqual, AxisError
 
+## reverse enumrator
+def reverse_enumerate(iterable):
+    ''' return a tuple with the elements of 'iterable' in reverse order, along with the proper indices;
+        a better implementation would be to define an actual iterator, but this is sufficient for now '''
+    return zip(range(len(iterable)-1,-1,-1),iterable[::-1])
+
 ## a method to tabulate variables (adapted from Variable) 
 def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}', cell_idx=None, cell_fct=None, 
              lflatten=False, mode='mylatex', filename=None, folder=None, lfeedback=True, **kwargs):

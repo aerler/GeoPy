@@ -214,10 +214,11 @@ if __name__ == '__main__':
 #   grids += ['shpavg']
 #   grids += ['wcshp']
 #   grids += ['wcavg']
-#   grids += ['arb2_d01']
+  grids += ['arb2_d01']
   grids += ['arb2_d02']
-#   grids += ['arb3_d01']
-#   grids += ['arb3_d02']
+  grids += ['arb3_d01']
+  grids += ['arb3_d02']
+  grids += ['arb3_d03']
 #   grids += ['glb1_d01']
 #   grids += ['glb1_d02']
 #   grids += ['grw2']
@@ -240,7 +241,7 @@ if __name__ == '__main__':
 #   periods += [(1984,1994)]
 #   periods += [(1989,1994)]
 #   periods += [(1997,1998)]
-#   periods += [(1979,2009)]
+  periods += [(1979,2009)]
 #   periods += [(1949,2009)]
   pntset = 'shpavg'
 #   pntset = 'ecprecip'
