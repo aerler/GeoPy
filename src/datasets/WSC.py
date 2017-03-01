@@ -55,23 +55,6 @@ class GageStationError(FileError):
   pass
 
 
-# expand province names
-province_names = OrderedDict() # make sure they are sorted alphabetically
-province_names['AB'] = 'Alberta'
-province_names['BC'] = 'British Columbia'
-province_names['MB'] = 'Manitoba'
-province_names['NB'] = 'New Brunswick'
-province_names['NL'] = 'Newfoundland and Labrador'
-province_names['NS'] = 'Nova Scotia'
-province_names['NT'] = 'Northwest Territories'
-province_names['NU'] = 'Nunavut'
-province_names['PE'] = 'Prince Edward Island'
-province_names['ON'] = 'Ontario'
-province_names['QC'] = 'Quebec'
-province_names['SK'] = 'Saskatchewan'
-province_names['YT'] = 'Yukon Territory'
-province_names['CAN'] = 'Canada'
-
 # shape class for lakes
 class Province(Shape):
   ''' a Shape class for provinces '''
@@ -301,7 +284,22 @@ def getGageStation(basin=None, station=None, name=None, folder=None, river=None,
   if isinstance(station, GageStation):
     return station # very simple shortcut!
   # resolve basin
-  if isinstance(basin,basestring) and basin in basin_list: basin = basin_list[basin]
+  if basin_list is not None:
+      if isinstance(basin,basestring): 
+          # select basin from basin list
+          if basin not in basin_list: raise GageStationError(basin)
+          else: basin = basin_list[basin]
+      elif isinstance(station,basestring) and basin is None:
+          # search for station in basin list to determine basin
+          for basin_set in basin_list.values():
+              for station_list in basin_set.stations.values():
+                  if station in station_list:
+                      basin = basin_set # station found!
+                      break # break inner loop
+              if basin is not None: 
+                  break # break outer loop
+      else:
+        raise GageStationError(basin)
   else: basin_name = basin
   name = name or station # name actually has precedence
   # determine basin meta data
@@ -430,15 +428,58 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   # return station dataset
   return dataset   
 
-def loadGageStation_TS(basin=None, station=None, varlist=None, period=None, varatts=None, 
-                       filetype='monthly', folder=None, name=None, basin_list=None):
-  ''' wrapper function to load hydrograph timeseries for a given basin '''
-  dataset = loadGageStation(basin=basin, station=station, varlist=varlist, varatts=varatts, 
-                            mode='timeseries', aggregation=None, filetype=filetype, 
-                            folder=folder, name=name, basin_list=basin_list)
-  if period: dataset = dataset(years=period) # slice years for compatibility with time-series
-  return dataset
+# helper function to convert arguments
+def _sliceArgs(slices=None, basin=None, station=None, period=None, years=None):
+    ''' a helper function to translate arguments from standard datasets to WSC specifics; the main difference is
+        that basins and stations can be loaded directly (without slicing) '''
+    period = period or slices.get('period',None) or years or slices.get('years',None)
+    basin = basin or slices.get('basin',None) or slices.get('shape_name',None)
+    station = station or slices.get('station',None) or slices.get('station_name',None)
+    return dict(period=period, basin=basin, station=station) 
 
+# function to load gage station climatologies
+def loadWSC_Stn(name=dataset_name, station=None, basin=None, varlist=None, varatts=None, folder=None, 
+                period=None, years=None, filetype='monthly', basin_list=None, slices=None):
+    ''' Get monthly WSC gage station climatology by station name. '''
+    dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='climatology', aggregation='mean', 
+                              filetype=filetype, folder=folder, name=None, basin_list=basin_list,
+                              **_sliceArgs(slices=slices, basin=basin, station=station, period=period, years=years))
+    if name: dataset.name = name
+    # return formatted dataset
+    return dataset
+
+# function to load station time-series
+def loadWSC_StnTS(name=dataset_name, station=None, basin=None, varlist=None, varatts=None, folder=None, 
+                  period=None, years=None, filetype='monthly', basin_list=None, slices=None):
+    ''' Get monthly WSC gage station time-series by station name. '''
+    dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='time-series', aggregation=None, 
+                              filetype=filetype, folder=folder, name=None, basin_list=basin_list,
+                              **_sliceArgs(slices=slices, basin=basin, station=station, period=period, years=years))
+    if name: dataset.name = name
+    # return formatted dataset
+    return dataset
+
+# function to load regionally averaged climatologies
+def loadWSC_Shp(name=dataset_name, shape=None, basin=None, station=None, varlist=None, varatts=None,
+                folder=None, period=None, years=None, filetype='monthly', basin_list=None, slices=None):
+    ''' Get monthly WSC gage station climatology by river basin or region. '''
+    dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='climatology', aggregation='mean', 
+                              filetype=filetype, folder=folder, name=None, basin_list=basin_list,
+                              **_sliceArgs(slices=slices, basin=basin, station=station, period=period, years=years))
+    if name: dataset.name = name
+    # return formatted dataset
+    return dataset
+
+# function to load regional/shape time-series
+def loadWSC_ShpTS(name=dataset_name, shape=None, basin=None, station=None, varlist=None, varatts=None, 
+                  folder=None, period=None, years=None, filetype='monthly', basin_list=None, slices=None):
+    ''' Get monthly WSC gage station time-series by river basin or region. '''
+    dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='time-series', aggregation=None, 
+                              filetype=filetype, folder=folder, name=None, basin_list=basin_list,
+                              **_sliceArgs(slices=slices, basin=basin, station=station, period=period, years=years))
+    if name: dataset.name = name
+    # return formatted dataset
+    return dataset
 
 ## some helper functions to test conditions
 # defined in module main to facilitate pickling

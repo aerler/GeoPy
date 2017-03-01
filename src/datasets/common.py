@@ -435,30 +435,10 @@ class BatchLoad(object):
     # return list or ensemble of datasets
     return datasets
 
-
-# convenience shortcut to load only climatologies 
-@BatchLoad
-def loadClim(name=None, WRF_exps=None, CESM_exps=None, **kwargs):
-  ''' A function to load any standardized climatologies; identifies source by name heuristics '''
-  return loadDataset(name=name, station=None, mode='climatology', WRF_exps=WRF_exps, CESM_exps=CESM_exps, **kwargs)
-
-# convenience shortcut to load only staton time-series
-@BatchLoad
-def loadStnTS(name=None, station=None, WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, **kwargs):
-    ''' A function to load any standardized time-series at station locations. '''
-    return loadDataset(name=name, station=station, shape=None, mode='time-series', 
-                       WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, CESM_ens=CESM_ens, **kwargs)
-
-# convenience shortcut to load only regionally averaged time-series
-@BatchLoad
-def loadShpTS(name=None, shape=None, WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, **kwargs):
-    ''' A function to load any standardized time-series averaged over regions. '''
-    return loadDataset(name=name, station=None, shape=shape, mode='time-series', 
-                       WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, CESM_ens=CESM_ens, **kwargs)
   
 # universal load function that will be imported by datasets
 @BatchLoad
-def loadDataset(name=None, station=None, shape=None, mode='climatology', 
+def loadDataset(name=None, station=None, shape=None, mode='climatology', basin_list=None,
                 WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, **kwargs):
   ''' A function to load any datasets; identifies source by name heuristics. '''
   # some private imports (prevent import errors)  
@@ -527,7 +507,8 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology',
     raise ArgumentError("Attribute '{:s}' in module '{:s}' is not a function".format(load_fct.__name__,dataset_name))
     # N.B.: for example, inspect does not work properly on functools.partial objects, and functools.partial does not return a function 
   # generate and check arguments
-  kwargs.update(name=name, station=station, shape=shape, mode=mode, WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, CESM_ens=CESM_ens)
+  kwargs.update(name=name, station=station, shape=shape, mode=mode, basin_list=basin_list,
+                WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, CESM_ens=CESM_ens)
   if dataset_name == 'WRF': kwargs.update(exps=WRF_exps, enses=WRF_ens)
   elif dataset_name == 'CESM': kwargs.update(exps=CESM_exps, enses=CESM_ens)
   argspec, varargs, keywords = inspect.getargs(load_fct.func_code); del varargs, keywords
@@ -623,7 +604,8 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
                    constraints=None, filetypes=None, domain=None, ldataset=False, lcheckVar=False, 
                    lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', lminmax=False,
                    master=None, lall=True, ensemble_list=None, ensemble_product='inner', lensembleAxis=False,
-                   WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, obs_list=None, **kwargs):
+                   WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, obs_list=None, 
+                   basin_list=None, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -654,16 +636,15 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
     if loadarg['mode'][:4].lower() == 'time': 
         prd = loadarg.pop('period',None)
         if prd is not None: slcs['years'] = prd          
+    if obsslcs and name in obs_list: slcs.update(**obsslcs) # add special slices for obs
+    # N.B.: currently VarNC's can only be sliced once, because we can't combine slices yet
     # load individual dataset
     dataset = loadDataset(name=name, WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, 
-                          CESM_ens=CESM_ens, **loadarg)
+                          CESM_ens=CESM_ens, basin_list=basin_list, slices=slcs, **loadarg)
     if name_tag is not None: 
       if name_tag.startswith('_'): dataset.name += name_tag
       else: dataset.name = name_tag
     # apply slicing
-    if obsslcs and ( dataset.name[:3].lower() == 'obs' or dataset.name.isupper() ):
-      slcs.update(**obsslcs) # add special slices for obs
-      # N.B.: currently VarNC's can only be sliced once, because we can't combine slices yet
     if slcs: dataset = dataset(lminmax=lminmax, **slcs) # slice immediately 
     if not ldataset: ensemble += dataset.load() # load data and add to ensemble
   # if input was not a list, just return dataset

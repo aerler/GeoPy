@@ -198,9 +198,9 @@ if __name__ == '__main__':
     shapes = config['shapes']
   else:
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 4 ; ldebug = False # for quick computations
-#     modes = ('time-series',) # 'climatology','time-series'
-    modes = ('climatology',) 
+    NP = 3 ; ldebug = False # for quick computations
+    modes = ('time-series','climatology')
+#     modes = ('climatology',) 
     loverwrite = True
     varlist = None # ['T2']
     periods = []
@@ -208,13 +208,14 @@ if __name__ == '__main__':
 #     periods += [3]
 #    periods += [5]
 #    periods += [10]
-#     periods += [15]
+    periods += [15]
     periods += [30]
     # Observations/Reanalysis
     lLTM = True 
     datasets = []; resolutions = None; unity_grid = None #'arb2_d02'
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['031','05'],'NRCan':'NA12'}
-    datasets += ['NRCan']; periods = None; lLTM = True
+#     datasets += ['NRCan']; periods = [(1970,2000),(1980,2010)]; lLTM = False
+    datasets = None
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
@@ -227,9 +228,9 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm'] # ,'lnd'
 #     CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
-    WRF_project = None
+#     WRF_project = None
 #     WRF_project = 'WesternCanada' # only use WesternCanada experiments
-#     WRF_project = 'GreatLakes' # only use GreatLakes experiments
+    WRF_project = 'GreatLakes' # only use GreatLakes experiments
     WRF_experiments = []
 #     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
 #     WRF_experiments += ['g-ctrl', 'g-ctrl-2050', 'g-ctrl-2100']
@@ -257,11 +258,11 @@ if __name__ == '__main__':
 #     shapes['provinces'] = ['BC','AB'] # Canadian provinces from EC module
 #     shapes['basins'] = ['PSB','NorthernPSB','SouthernPSB','FRB','UpperFRB','LowerFRB','CRB',
 #                         'ARB','UpperARB','LowerARB','SSR','NRB',] # river basins (in Canada) from WSC module
-#     shape_name = 'glbshp' # only Canadian river basins
-#     shapes['provinces'] = ['ON'] # Canadian provinces from EC module
-#     shapes['basins'] = ['LandGLB','GLB','GRW'] # river basins (in Canada) from WSC module
-    shape_name = 'glakes' # Great Lakes
-    shapes['great_lakes'] = None # the Great Lakes of North America
+    shape_name = 'glbshp' # only Canadian river basins
+    shapes['provinces'] = ['MB','ON','QC'] # Canadian provinces from EC module
+    shapes['basins'] = ['LandGLB','GLB','GRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW'] # river basins (in Canada) from WSC module
+#     shape_name = 'glakes' # Great Lakes
+#     shapes['great_lakes'] = None # the Great Lakes of North America
      
  
   ## process arguments    
