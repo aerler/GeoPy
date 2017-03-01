@@ -631,7 +631,8 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   for loadarg in loadargs:
     # clean up arguments
     name = loadarg.pop('names',None); name_tag = loadarg.pop('name_tags',None)
-    slcs = loadarg.pop('slices',dict()).copy(); obsslcs = loadarg.pop('obsslices',None)
+    slcs = loadarg.pop('slices',None); obsslcs = loadarg.pop('obsslices',None)
+    slcs = dict() if slcs is None else slcs.copy()
     # special handling of periods for time-series: user for slicing by year!
     if loadarg['mode'][:4].lower() == 'time': 
         prd = loadarg.pop('period',None)
