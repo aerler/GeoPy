@@ -724,8 +724,8 @@ if __name__ == '__main__':
 #   mode = 'create_grid'
   grids = dict( 
 #                CFSR=['031','05'],
-#                GPCC=['025','05','10','25'],
-               NRCan=['NA12','CA12','CA24'],
+                GPCC=['025','05','10','25'],
+#                NRCan=['NA12','CA12','CA24'],
 #                CRU=[None],NARR=[None],PRISM=[None],PCIC=[None]
                )
     

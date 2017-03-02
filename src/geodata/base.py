@@ -2694,7 +2694,7 @@ class Dataset(object):
       for ax in var.axes: 
         if not self.hasAxis(ax.name):
           self.addAxis(ax, copy=copy) # add new axis          
-        elif ax is not self.axes[ax.name]:
+        if ax is not self.axes[ax.name]:
           var.replaceAxis(ax, self.axes[ax.name]) # or use old one of the same name
         # N.B.: replacing the axes in the variable is to ensure consistent axes within the dataset 
       # finally, if everything is OK, add variable

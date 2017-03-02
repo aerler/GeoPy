@@ -24,8 +24,8 @@ from geodata.base import Dataset, Variable, Axis
 ## WSC (Water Survey Canada) Meta-data
 
 dataset_name = 'WSC'
-root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # the dataset root folder
 shape_root = '{:s}/shapes/'.format(data_root) # the shapefile root folder
+root_folder = shape_root
 
 # variable attributes and name
 variable_attributes = dict(runoff = dict(name='runoff', units='kg/m^2/s', atts=dict(long_name='Average Runoff Rate')), # average flow rate
