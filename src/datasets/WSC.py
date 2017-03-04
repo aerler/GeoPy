@@ -276,7 +276,8 @@ class GageStation(object):
         time = time.flatten(); data = data.flatten()
       # return data array and coordinate vector
       return data, time
-      
+    else:
+      raise IOError()
         
 # function to get a GageStation instance
 def getGageStation(basin=None, station=None, name=None, folder=None, river=None, basin_list=None):
@@ -312,10 +313,12 @@ def getGageStation(basin=None, station=None, name=None, folder=None, river=None,
     if isinstance(basin,BasinSet):
       if name in basin.stations: 
         return basin.stations[name] # also straight forward
-      if river in basin.rivers:
-        name = '{}_{}'.format(river,name)
-        if name in basin.stations: 
-          return basin.stations[name] # also straight forward      
+      if not basin.rivers: pass
+      elif river is None: river = basin.rivers[0]
+      elif river not in basin.rivers: raise GageStationError(river,basin.rivers)
+      name = '{}_{}'.format(river,name) # try with adding river name
+      if name in basin.stations: 
+        return basin.stations[name] # also straight forward      
   elif river is not None and river not in name:
       name = '{}_{}'.format(river,name)
   # if we are not done yet, make sure we have valid folder and file names now!
