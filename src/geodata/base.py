@@ -819,19 +819,23 @@ class Variable(object):
           # values and ranges are in coordinate values
           # translate coordinate values into indices
           if isinstance(axval,(tuple,list,np.ndarray)): 
-            idxslc = [ax.getIndex(idx, outOfBounds=True) for idx in axval]
-            # expand ranges
-            if rngmod:
-              # coordinate values are inclusive, unlike indices
-              if idxslc[1] is not None: idxslc[1] += 1 
-              # out-of-bounds values (None) should be handled correctly by slice              
-              slcs.append(slice(*idxslc)) # use slice with index bounds 
-            else:
-              #idxslc = [idx for idx in idxslc if idx is not None] # remove out-of-bounds values              
-              slcs.append(idxslc) # use list of converted indices
+            if axval[0] > ax[-1] or axval[1] < ax[0]: 
+              raise AxisError, "Coordinate values {} are out of bounds for axis '{:s}'.".format(axval,ax.name)
+            else: 
+              idxslc = [ax.getIndex(idx, outOfBounds=True) for idx in axval]
+              # expand ranges
+              if rngmod:
+                # coordinate values are inclusive, unlike indices
+                if idxslc[1] is not None: idxslc[1] += 1 
+                # out-of-bounds values (None) should be handled correctly by slice              
+                slcs.append(slice(*idxslc)) # use slice with index bounds 
+              else:
+                #idxslc = [idx for idx in idxslc if idx is not None] # remove out-of-bounds values              
+                slcs.append(idxslc) # use list of converted indices
           else:
             idxslc = ax.getIndex(axval, outOfBounds=True)
-            if idxslc is None: raise AxisError, "Coordinate value {:s} out of bounds for axis '{:s}'.".format(str(axval),ax.name)  
+            if idxslc is None:
+              raise AxisError, "Coordinate value {:s} out of bounds for axis '{:s}'.".format(str(axval),ax.name)  
             slcs.append(idxslc)
         else:
           # values and ranges are indices
