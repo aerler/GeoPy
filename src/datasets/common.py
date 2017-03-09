@@ -67,6 +67,11 @@ shp_params = ['shape_name','shp_long_name','shp_type','shp_area','shp_encl','shp
 stn_params = ['station_name', 'stn_prov', 'zs_err', 'stn_zs', 'stn_lat', 'stn_lon', 'stn_rec_len', 'stn_begin_date', 'stn_end_date']
 # variables contained in the CRU dataset
 CRU_vars = ['T2','Tmin','Tmax','Q2','pet','precip','cldfrc','wetfrq','frzfrq']
+# list of reanalysis, station, and gridded observational datasets currently available
+reanalysis_datasets = ['CFSR','NARR']
+station_obs_datasets = ['EC','GHCN','WSC']
+gridded_obs_datasets = ['CRU','GPCC','NRCan','PCIC','PRISM','Unity']
+observational_datasets = reanalysis_datasets + station_obs_datasets + gridded_obs_datasets
 
 # read data root folder from environment variable
 data_root = os.getenv('DATA_ROOT')
@@ -600,12 +605,12 @@ def selectElements(datasets, axis, testFct=None, master=None, linplace=False, la
 # a function to load station data
 @BatchLoad
 def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, prov=None, 
-                   slices=None, obsslices=None, years=None, period=None, reduction=None, shape=None, station=None, 
-                   constraints=None, filetypes=None, domain=None, ldataset=False, lcheckVar=False, 
+                   shape=None, station=None, slices=None, obsslices=None, years=None, period=None, obs_period=None, 
+                   reduction=None, constraints=None, filetypes=None, domain=None, ldataset=False, lcheckVar=False, 
                    lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', lminmax=False,
                    master=None, lall=True, ensemble_list=None, ensemble_product='inner', lensembleAxis=False,
-                   WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, obs_list=None, 
-                   basin_list=None, **kwargs):
+                   WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, 
+                   obs_list=observational_datasets, basin_list=None, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -625,19 +630,21 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   elif 'aggregation' in ensemble_list: raise ArgumentError("'aggregation' can not be expanded")
   loadargs = expandArgumentList(names=names, station=station, prov=prov, shape=shape, varlist=varlist, 
                                 mode=dataset_mode, filetypes=filetypes, domains=domain, lwrite=lwrite,
-                                slices=slices, obsslices=obsslices, period=period, years=years, 
-                                name_tags=name_tags, ltrimT=ltrimT, lensembleAxis=lensembleAxis,
+                                slices=slices, obsslices=obsslices, period=period, obs_period=obs_period, 
+                                years=years, name_tags=name_tags, ltrimT=ltrimT, lensembleAxis=lensembleAxis,
                                 expand_list=ensemble_list, lproduct=ensemble_product,)
   for loadarg in loadargs:
     # clean up arguments
     name = loadarg.pop('names',None); name_tag = loadarg.pop('name_tags',None)
     slcs = loadarg.pop('slices',None); obsslcs = loadarg.pop('obsslices',None)
-    slcs = dict() if slcs is None else slcs.copy()
+    slcs = dict() if slcs is None else slcs.copy(); 
+    prd = loadarg.pop('period',None); obsprd = loadarg.pop('obs_period',None)
+    if name in obs_list: prd = obsprd or prd 
     # special handling of periods for time-series: user for slicing by year!
-    if loadarg['mode'][:4].lower() == 'time': 
-        prd = loadarg.pop('period',None)
-        if prd is not None: slcs['years'] = prd          
+    mode = loadarg['mode'].lower(); lts = 'time' in mode and 'series' in mode 
+    if lts and prd: slcs['years'] = prd          
     if obsslcs and name in obs_list: slcs.update(**obsslcs) # add special slices for obs
+    if not lts: loadarg['period'] = prd
     # N.B.: currently VarNC's can only be sliced once, because we can't combine slices yet
     # load individual dataset
     dataset = loadDataset(name=name, WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, 

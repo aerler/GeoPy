@@ -210,12 +210,13 @@ if __name__ == '__main__':
 #    periods += [10]
     periods += [15]
 #     periods += [30]
+    grid = None # just a default value - native grid
     # Observations/Reanalysis
     lLTM = True 
     datasets = []; resolutions = None; unity_grid = None #'arb2_d02'
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['031','05'],'NRCan':'NA12'}
     datasets = []
-#     datasets += ['NRCan']; periods = [(1970,2000),(1980,2010)]; lLTM = False
+    datasets += ['NRCan']; periods = [(1970,2000),(1980,2010)]; lLTM = False
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
@@ -232,7 +233,7 @@ if __name__ == '__main__':
 #     WRF_project = 'WesternCanada' # only use WesternCanada experiments
     WRF_project = 'GreatLakes' # only use GreatLakes experiments
     WRF_experiments = []
-    WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
+#     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
 #     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050']
 #     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
@@ -254,7 +255,7 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None
     WRF_filetypes = ('aabc',)
-    grid = 'grw2' # grid parameter to load datasets
+#     grid = 'grw2' # grid parameter to load datasets
     # define shape data  
     shapes = OrderedDict()
 #     shape_name = 'shpavg' # all Canadian shapes

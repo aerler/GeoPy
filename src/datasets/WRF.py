@@ -879,6 +879,8 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     if not lstation and not lshape:
       # add projection
       dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, geolocator=True)      
+    # add resolution string
+    dataset.atts['resstr'] = "{:d}km".format(int((dataset.atts['DX']+dataset.atts['DY'])/2000.))
     # append to list
     datasets.append(dataset) 
   # return formatted dataset
@@ -970,7 +972,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
     # N.B.: passing exps or enses should not be necessary here
   else:
     # load datasets (and load!)
-    datasets = []
+    datasets = []; res = None
     for exp in ensemble:
       #print exp.name
       ds = loadWRF_All(experiment=None, name=exp, grid=grid, station=station, shape=shape, 
@@ -978,6 +980,9 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
                        mode='time-series', lencl=lencl, lautoregrid=lautoregrid, lctrT=lctrT, 
                        lconst=lconst, domains=domains, lwrite=lwrite, check_vars=check_vars).load()
       if montpl: ds = ds(time=montpl, lidx=True) # slice the time dimension to make things consistent
+      if res is None: res = ds.atts['resstr']
+      elif res != ds.atts['resstr']: 
+        raise DatasetError("Resolution of ensemble members has to be the same: {} != {}".format(res,ds.atts['resstr']))
       datasets.append(ds)
     # harmonize axes
     for axname,ax in ds.axes.iteritems():
