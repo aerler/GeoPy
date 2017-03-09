@@ -104,15 +104,22 @@ def flipLon(data, flip=144, lrev=False, var=None, slc=None):
 
 
 ## variable attributes and name
+# a generic class for CESM file types
 class FileType(object): 
-  ''' Container class for all attributes of of the constants files. '''
-  atts = NotImplemented
-  vars = NotImplemented
-  climfile = None
-  tsfile = None
-  cvdpfile = None
-  diagfile = None
-  
+  ''' A generic class that describes CESM file types. '''
+  def __init__(self, *args, **kwargs):
+    ''' generate generic attributes using a name argument '''
+    if len(args) == 1: 
+      name = args[0]
+      self.name = name
+      self.atts = dict() # should be properly formatted already
+      #self.atts = dict(netrad = dict(name='netrad', units='W/m^2'))
+      self.vars = []    
+      self.climfile = 'cesm{:s}{{0:s}}_clim{{1:s}}.nc'.format(name) # generic climatology name 
+      # final filename needs to be extended by ('_'+grid,'_'+period)
+      self.tsfile = 'cesm{:s}{{0:s}}_monthly.nc'.format(name) # generic time-series name
+      # final filename needs to be extended by ('_'+grid,)
+    else: raise ArgumentError  
 # surface variables
 class ATM(FileType):
   ''' Variables and attributes of the surface files. '''
@@ -444,7 +451,7 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
   else: raise TypeError  
   atts = dict(); filelist = []; typelist = []
   for filetype in filetypes:
-    fileclass = fileclasses[filetype]
+    fileclass = fileclasses[filetype] if filetype in fileclasses else FileType(filetype)
     if lclim and fileclass.climfile is not None: filelist.append(fileclass.climfile)
     elif lts and fileclass.tsfile is not None: filelist.append(fileclass.tsfile)
     elif lcvdp and fileclass.cvdpfile is not None: filelist.append(fileclass.cvdpfile)

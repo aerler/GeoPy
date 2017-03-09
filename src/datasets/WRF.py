@@ -87,17 +87,22 @@ def mask_array(data, var=None, slc=None):
 ## variable attributes and name
 # convert water mass mixing ratio to water vapor partial pressure ( kg/kg -> Pa ) 
 Q = 96000.*28./18. # surface pressure * molecular weight ratio ( air / water )
-class FileType(object): pass # ''' Container class for all attributes of of the constants files. '''
-# auxiliary files with derived variables
-class Aux(FileType):
-  ''' Variables and attributes for auxiliary files. '''
-  def __init__(self):
-    self.name = 'aux'
-    self.atts = dict() # should be properly formatted already
-    #self.atts = dict(netrad = dict(name='netrad', units='W/m^2'))
-    self.vars = self.atts.keys()    
-    self.climfile = 'wrfaux_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
-    self.tsfile = 'wrfaux_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
+# a generic class for WRF file types
+class FileType(object): 
+  ''' A generic class that describes WRF file types. '''
+  def __init__(self, *args, **kwargs):
+    ''' generate generic attributes using a name argument '''
+    if len(args) == 1: 
+      name = args[0]
+      self.name = name
+      self.atts = dict() # should be properly formatted already
+      #self.atts = dict(netrad = dict(name='netrad', units='W/m^2'))
+      self.vars = []    
+      self.climfile = 'wrf{:s}_d{{0:0=2d}}{{1:s}}_clim{{2:s}}.nc'.format(name) # generic climatology name 
+      # final filename needs to be extended by (domain,'_'+grid,'_'+period)
+      self.tsfile = 'wrf{:s}_d{{0:0=2d}}{{1:s}}_monthly.nc'.format(name) # generic time-series name
+      # final filename needs to be extended by (domain, grid)
+    else: raise ArgumentError  
 # constants
 class Const(FileType):
   ''' Variables and attributes of the constants files. '''
@@ -376,7 +381,7 @@ class Axes(FileType):
     self.tsfile = None
 
 # data source/location
-fileclasses = dict(aux=Aux(), const=Const(), srfc=Srfc(), hydro=Hydro(), lsm=LSM(), rad=Rad(), xtrm=Xtrm(), plev3d=Plev3D(), axes=Axes())
+fileclasses = dict(aux=FileType('aux'), const=Const(), srfc=Srfc(), hydro=Hydro(), lsm=LSM(), rad=Rad(), xtrm=Xtrm(), plev3d=Plev3D(), axes=Axes())
 root_folder = data_root + '/WRF/' # long-term mean folder
 outfolder = root_folder + 'wrfout/' # WRF output folder
 avgfolder = root_folder + 'wrfavg/' # long-term mean folder
@@ -684,7 +689,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   #if 'const' not in filetypes and grid is None: filetypes.append('const')
   atts = []; filelist = []; typelist = []
   for filetype in filetypes: # last filetype in list has precedence
-    fileclass = fileclasses[filetype]    
+    fileclass = fileclasses[filetype] if filetype in fileclasses else FileType(filetype)
     if lclim and fileclass.climfile is not None:
       filelist.append(fileclass.climfile)
       typelist.append(filetype) # this eliminates const files

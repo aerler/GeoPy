@@ -180,6 +180,10 @@ def getMetaData(dataset, mode, dataargs, lone=True):
     dataset_name = exp.name
     avgfolder = exp.avgfolder
     filetypes = dataargs['filetypes']
+    fileclasses = WRF.fileclasses.copy()
+    for filetype in filetypes:
+      if filetype not in fileclasses:
+        fileclasses[filetype] = WRF.FileType(filetype)
     domain = dataargs.get('domain',None)
     periodstr, gridstr = getPeriodGridString(period, grid, exp=exp)
     # check arguments
@@ -191,7 +195,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
       datamsgstr = "Processing WRF '{:s}'-file from Experiment '{:s}' (d{:02d})".format(filetypes[0], dataset_name, domain)
     else: datamsgstr = "Processing WRF dataset from Experiment '{:s}' (d{:02d})".format(dataset_name, domain)       
     # figure out age of source file(s)
-    srcage = getSourceAge(fileclasses=WRF.fileclasses, filetypes=filetypes, exp=exp, domain=domain,
+    srcage = getSourceAge(fileclasses=fileclasses, filetypes=filetypes, exp=exp, domain=domain,
                           periodstr=periodstr, gridstr=gridstr, lclim=lclim, lts=lts)
     # load source data
     if lclim:
@@ -209,6 +213,10 @@ def getMetaData(dataset, mode, dataargs, lone=True):
     dataset_name = exp.name
     periodstr, gridstr = getPeriodGridString(period, grid, exp=exp)
     filetypes = dataargs['filetypes']
+    fileclasses = CESM.fileclasses.copy()
+    for filetype in filetypes:
+      if filetype not in fileclasses:
+        fileclasses[filetype] = CESM.FileType(filetype)
     # check arguments
     if period is None and lclim: raise DatasetError, "A 'period' argument is required to load climatologies!"
     if lone and len(filetypes) > 1: raise DatasetError # process only one file at a time
@@ -217,7 +225,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
       datamsgstr = "Processing CESM '{:s}'-file from Experiment '{:s}'".format(filetypes[0], dataset_name) 
     else: datamsgstr = "Processing CESM dataset from Experiment '{:s}'".format(dataset_name) 
     # figure out age of source file(s)
-    srcage = getSourceAge(fileclasses=CESM.fileclasses, filetypes=filetypes, exp=exp, domain=None,
+    srcage = getSourceAge(fileclasses=fileclasses, filetypes=filetypes, exp=exp, domain=None,
                           periodstr=periodstr, gridstr=gridstr, lclim=lclim, lts=lts)
     # load source data 
     load3D = dataargs.pop('load3D',None) # if 3D fields should be loaded (default: False)

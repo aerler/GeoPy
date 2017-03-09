@@ -199,8 +199,8 @@ if __name__ == '__main__':
   else:
 #     NP = 1 ; ldebug = True # for quick computations
     NP = 3 ; ldebug = False # for quick computations
-    modes = ('time-series','climatology')
-#     modes = ('climatology',) 
+#     modes = ('time-series','climatology')
+    modes = ('climatology',) 
     loverwrite = False
     varlist = None # ['T2']
     periods = []
@@ -209,13 +209,13 @@ if __name__ == '__main__':
 #    periods += [5]
 #    periods += [10]
     periods += [15]
-    periods += [30]
+#     periods += [30]
     # Observations/Reanalysis
     lLTM = True 
     datasets = []; resolutions = None; unity_grid = None #'arb2_d02'
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['031','05'],'NRCan':'NA12'}
+    datasets = []
 #     datasets += ['NRCan']; periods = [(1970,2000),(1980,2010)]; lLTM = False
-    datasets = None
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
@@ -232,7 +232,12 @@ if __name__ == '__main__':
 #     WRF_project = 'WesternCanada' # only use WesternCanada experiments
     WRF_project = 'GreatLakes' # only use GreatLakes experiments
     WRF_experiments = []
-#     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
+    WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
+#     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050']
+#     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
+#     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+#     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
+#     WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['g-ctrl', 'g-ctrl-2050', 'g-ctrl-2100']
 #     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',][1:]
 #     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',][1:]
@@ -242,13 +247,14 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
     # other WRF parameters 
-#     domains = None # domains to be processed
-    domains = (2,) # domains to be processed
-    WRF_filetypes = ('srfc',)
+    domains = None # domains to be processed
+#     domains = (2,) # domains to be processed
 #     WRF_filetypes = ('hydro','lsm','xtrm')
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None
+    WRF_filetypes = ('aabc',)
+    grid = 'grw2' # grid parameter to load datasets
     # define shape data  
     shapes = OrderedDict()
 #     shape_name = 'shpavg' # all Canadian shapes
@@ -337,19 +343,22 @@ if __name__ == '__main__':
           if resolutions is None: dsreses = mod.LTM_grids
           elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.LTM_grids]  
           for dsres in dsreses: 
-            args.append( (dataset, mode, shape_name, shape_dict, dict(varlist=varlist, period=None, resolution=dsres, unity_grid=unity_grid)) ) # append to list
+            args.append( (dataset, mode, shape_name, shape_dict, dict(varlist=varlist, period=None, resolution=dsres, 
+                                                                      grid=grid, unity_grid=unity_grid)) ) # append to list
         # climatologies derived from time-series
         if resolutions is None: dsreses = mod.TS_grids
         elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
         for dsres in dsreses:
           for period in periodlist:
-            args.append( (dataset, mode, shape_name, shape_dict, dict(varlist=varlist, period=period, resolution=dsres, unity_grid=unity_grid)) ) # append to list            
+            args.append( (dataset, mode, shape_name, shape_dict, dict(varlist=varlist, period=period, resolution=dsres, 
+                                                                      grid=grid, unity_grid=unity_grid)) ) # append to list            
       elif mode == 'time-series': 
         # regrid the entire time-series
         if resolutions is None: dsreses = mod.TS_grids
         elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
         for dsres in dsreses:
-          args.append( (dataset, mode, shape_name, shape_dict, dict(varlist=varlist, period=None, resolution=dsres, unity_grid=unity_grid)) ) # append to list            
+          args.append( (dataset, mode, shape_name, shape_dict, dict(varlist=varlist, period=None, resolution=dsres, 
+                                                                    grid=grid, unity_grid=unity_grid)) ) # append to list            
     
     # CESM datasets
     for experiment in CESM_experiments:
@@ -357,7 +366,7 @@ if __name__ == '__main__':
         for period in periodlist:
           # arguments for worker function: dataset and dataargs       
           args.append( ('CESM', mode, shape_name, shape_dict, dict(experiment=experiment, varlist=varlist, filetypes=[filetype], 
-                                                                   period=period, load3D=load3D)) )
+                                                                   grid=grid, period=period, load3D=load3D)) )
     # WRF datasets
     for experiment in WRF_experiments:
       for filetype in WRF_filetypes:
@@ -369,7 +378,7 @@ if __name__ == '__main__':
           for period in periodlist:
             # arguments for worker function: dataset and dataargs       
             args.append( ('WRF', mode, shape_name, shape_dict, dict(experiment=experiment, varlist=varlist, filetypes=[filetype], 
-                                                                    domain=domain, period=period)) )
+                                                                    grid=grid, domain=domain, period=period)) )
       
   # static keyword arguments
   kwargs = dict(loverwrite=loverwrite, varlist=varlist)
