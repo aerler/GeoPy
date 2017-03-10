@@ -606,11 +606,11 @@ def selectElements(datasets, axis, testFct=None, master=None, linplace=False, la
 @BatchLoad
 def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, prov=None, 
                    shape=None, station=None, slices=None, obsslices=None, years=None, period=None, obs_period=None, 
-                   reduction=None, constraints=None, filetypes=None, domain=None, ldataset=False, lcheckVar=False, 
-                   lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', lminmax=False,
-                   master=None, lall=True, ensemble_list=None, ensemble_product='inner', lensembleAxis=False,
-                   WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, 
-                   obs_list=observational_datasets, basin_list=None, **kwargs):
+                   reduction=None, constraints=None, filetypes=None, domain=None, grid=None, ldataset=False, 
+                   lcheckVar=False, lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', 
+                   lminmax=False, master=None, lall=True, ensemble_list=None, ensemble_product='inner', 
+                   lensembleAxis=False, WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, 
+                   bias_correction=None, obs_list=observational_datasets, basin_list=None, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -629,10 +629,10 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
   if ensemble_list is None: ensemble_list = ['names'] if not ldataset else None
   elif 'aggregation' in ensemble_list: raise ArgumentError("'aggregation' can not be expanded")
   loadargs = expandArgumentList(names=names, station=station, prov=prov, shape=shape, varlist=varlist, 
-                                mode=dataset_mode, filetypes=filetypes, domains=domain, lwrite=lwrite,
+                                mode=dataset_mode, filetypes=filetypes, domains=domain, grid=grid, lwrite=lwrite, 
                                 slices=slices, obsslices=obsslices, period=period, obs_period=obs_period, 
-                                years=years, name_tags=name_tags, ltrimT=ltrimT, lensembleAxis=lensembleAxis,
-                                expand_list=ensemble_list, lproduct=ensemble_product,)
+                                years=years, name_tags=name_tags, ltrimT=ltrimT, bias_correction=bias_correction, 
+                                lensembleAxis=lensembleAxis, expand_list=ensemble_list, lproduct=ensemble_product,)
   for loadarg in loadargs:
     # clean up arguments
     name = loadarg.pop('names',None); name_tag = loadarg.pop('name_tags',None)
