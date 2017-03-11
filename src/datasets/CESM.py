@@ -243,6 +243,8 @@ class Axes(FileType):
                      levgrnd = dict(name='s', units=''), # soil layers
                      lev = dict(name='lev', units='')) # hybrid pressure coordinate
     self.vars = self.atts.keys()
+    self.climfile = None
+    self.tsfile = None
 
 # data source/location
 fileclasses = dict(atm=ATM(), lnd=LND(), axes=Axes(), cvdp=CVDP()) # ice=ICE() is currently not supported because of the grid
@@ -410,7 +412,6 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
   # handle stations and shapes
   if station and shape: raise ArgumentError
   elif station or shape: 
-    if grid is not None: raise NotImplementedError, 'Currently CESM station data can only be loaded from the native grid.'
     if lcvdp: raise NotImplementedError, 'CVDP data is not available as station data.'
     if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.'   
     lstation = bool(station); lshape = bool(shape)
@@ -479,14 +480,12 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
   # NetCDF file mode
   ncmode = 'rw' if lwrite else 'r'   
   # get grid or station-set name
-  if lstation:
-    # the station name can be inserted as the grid name
-    gridstr = '_'+station.lower(); # only use lower case for filenames
+  if lstation or lshape:
+    # the station or shape name can be inserted as the grid name
+    if lstation: gridstr = '_'+station.lower(); # only use lower case for filenames
+    elif lshape: gridstr = '_'+shape.lower(); # only use lower case for filenames
     griddef = None
-  elif lshape:
-    # the station name can be inserted as the grid name
-    gridstr = '_'+shape.lower(); # only use lower case for filenames
-    griddef = None
+    if grid and grid != experiment.grid: gridstr += '_'+grid.lower(); # only use lower case for filenames
   else:
     if grid is None or grid == experiment.grid: 
       gridstr = ''; griddef = None
@@ -705,9 +704,9 @@ if __name__ == '__main__':
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-#   mode = 'test_point_ensemble'
+  mode = 'test_point_ensemble'
 #   mode = 'test_cvdp'
-  mode = 'pickle_grid'
+#   mode = 'pickle_grid'
 #     mode = 'shift_lon'
 #   experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #   experiments += ['Ctrl-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']

@@ -325,7 +325,7 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
       if not lparallel and ldebug: logger.info('\n'+str(source)+'\n')
       
       # create GDAL-enabled target dataset
-      sink = Dataset(axes=(source.xlon,source.ylat), name=expname, title=source.title)
+      sink = Dataset(axes=(source.xlon,source.ylat), name=expname, title=source.title, atts=source.atts.copy())
       addGDALtoDataset(dataset=sink, griddef=source.griddef)
       assert sink.gdal, sink
       
