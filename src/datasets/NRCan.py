@@ -172,7 +172,7 @@ def loadNRCan_ShpTS(name=dataset_name, shape=None, resolution=None, varlist=None
 
 
 ## functions to load ASCII data and generate complete GeoPy datasets
-norm_period = (1971,2000)
+norm_period = (1970,2000)
 
 # Normals (long-term means): ASCII data specifications
 norm_defaults = dict(axes=('time',None,None), dtype=np.float32)
@@ -214,7 +214,7 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
         else: raise VariableError(grid)
         
     # determine period extension
-    prdstr = '_{0:04d}-{1:04d}'.format(*period) if period is not None else ''
+    prdstr = '_{0:04d}-{1:04d}'.format(period[0]+1, period[1]) if period is not None else ''
         
     # load NA grid
     dataset = rasterDataset(name=name, title=title, vardefs=NA_vardefs, axdefs=axdefs, atts=atts, projection=None, 
@@ -282,7 +282,7 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
             #       a factor of 1000 has been applied, because snow depth is in m (and not mm)
             # Maritime snow cover
             density = np.asarray([0.2165, 0.2485, 0.2833, 0.332, 0.3963, 0.501, 0.501, 0.501, 0.16, 0.16, 0.1835, 0.1977], dtype=np.float32)*1000.
-            density_note = "Snow density extimates from CMC for maritime climates (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
+            density_note = "Snow density estimates from CMC for maritime climates (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
             # Ephemeral snow cover
             #density = np.asarray([0.3168, 0.3373, 0.3643, 0.4046, 0.4586, 0.5098, 0.5098, 0.5098, 0.25, 0.25, 0.3, 0.3351], dtype=np.float32)*1000.
             #density_note = "Snow density extimates from CMC for ephemeral snow cover (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
@@ -488,16 +488,18 @@ loadShapeTimeSeries = loadNRCan_ShpTS # time-series without associated grid (e.g
 
 if __name__ == '__main__':
   
-    mode = 'test_climatology'
+#     mode = 'test_climatology'
 #     mode = 'test_timeseries'
 #     mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
 #     mode = 'convert_Normals'
-#     mode = 'add_CMC'
+    mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
 #     pntset = 'ecprecip'
-    period = (1980,2010); res = None; grid = None
+#     period = (1970,2000)
+    period = (1980,2010) 
+    res = None; grid = None
     
     if mode == 'test_climatology':
             
@@ -507,8 +509,8 @@ if __name__ == '__main__':
         print(dataset)
         print('')
         print(dataset.geotransform)
-        print(dataset.SWDNB.mean())
-        print(dataset.SWDNB.masked)
+        print(dataset.liqwatflx.mean())
+        print(dataset.liqwatflx.masked)
         
         # print time coordinate
         print
@@ -564,7 +566,7 @@ if __name__ == '__main__':
     elif mode == 'convert_Normals':
         
         # parameters
-        period = (1981,2010); prdstr = '_1980-2010'
+        prdstr = '_{}-{}'.format(*period)
         resolution = 12; grdstr = '_na{:d}'.format(resolution)
         ncfile = avgfolder + avgfile.format(grdstr,prdstr)
         if not os.path.exists(avgfolder): os.mkdir(avgfolder)
@@ -585,10 +587,10 @@ if __name__ == '__main__':
         
 #         CMC_period = (1998,1999) # for tests
 #         filelist = ['test_' + avgfile.format('_na{:d}'.format(12),'_1970-2000')]
-        filelist = None; norm_period = (1980,2010)
+        filelist = None
         
         # load NRCan dataset (for precip and to add variables)
-        nrcan = loadNRCan(filelist=filelist, period=norm_period, filemode='rw')
+        nrcan = loadNRCan(filelist=filelist, period=period, filemode='rw')
 
         # load ASCII dataset with default values
         cmc = loadCMC_Hist(period=CMC_period, mask=nrcan.landmask)        
@@ -616,18 +618,18 @@ if __name__ == '__main__':
         var = cmc[lwf].mean(axes=('lat','lon'))
         print(var[:])
         
-#         print('')
-#         print(nrcan)
-        # merge datasets
+        # create merged lwf and add to NRCan
+        nrcan[lwf+'_NRCan'] = nrcan[lwf].load().copy() # load liqwatflx and rename
+        nrcan[lwf][:] = np.where(nrcan[lwf].data_array.mask,cmc[lwf].data_array,nrcan[lwf].data_array)
+        nrcan[lwf].atts['long_name'] = 'Merged Lqiquid Water Flux'
+        nrcan[lwf].atts['note'] = 'merged data from NRCan and CMC'
+        print(nrcan[lwf])
+        # add other CMC variables to NRCan datasets
         for varname,var in cmc.variables.items():
-#             assert varname+'_CMC' not in nrcan, nrcan
             if varname in CMC_derived or varname in CMC_vardefs or varname == lwf:
                 nrcan[varname+'_CMC'] = var # overwrite existing
-#             newname = varname+'_CMC'
-#             nrcan.addVariable(var.copy(name=newname), asNC=True,)
-#             nrcan[newname].sync() # add to NC file
-#         print('')
-#         print(nrcan)
+        print('')
+        print(nrcan)
         # save additional variables
         nrcan.close(); del nrcan # implies sync
         
