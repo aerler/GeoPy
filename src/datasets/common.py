@@ -270,12 +270,17 @@ def translateVarNames(varlist, varatts):
 
 
 # universal function to generate file names for climatologies and time-series
-def getFileName(name=None, resolution=None, period=None, filetype='climatology', grid=None, filepattern=None):
+def getFileName(name=None, resolution=None, period=None, grid=None, shape=None, station=None, 
+                filetype='climatology', filepattern=None):
   ''' A function to generate a standardized filename for climatology and time-series files, based on grid type and period.  '''
   if name is None: name = ''
   # grid (this is a *non-native grid*)
   if grid is None or grid == name: gridstr = ''
   else: gridstr = '_{0:s}'.format(grid.lower()) # only use lower case for filenames
+  # prepend shape or station type before grid 
+  if shape and station: raise ArgumentError
+  elif shape: gridstr = '_{0:s}{1:s}'.format(shape,gridstr)
+  elif station: gridstr = '_{0:s}{1:s}'.format(station,gridstr)
   # resolution is the native resolution (behind dataset name, prepended to the grid 
   if resolution: gridstr = '_{0:s}{1:s}'.format(resolution,gridstr)
   # period

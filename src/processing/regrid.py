@@ -51,8 +51,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
   dataset_name = dataargs.dataset_name; periodstr = dataargs.periodstr; avgfolder = dataargs.avgfolder
 
   # get filename for target dataset and do some checks
-  filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, 
-                           grid=griddef.name.lower(), period=None, filetype=None) 
+  filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, grid=griddef.name.lower(),) 
     
   # prepare target dataset
   if ldebug: filename = 'test_' + filename
@@ -280,14 +279,14 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('const',); periods = None
     # grid to project onto
     grids = dict()
-#     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
+    grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 #     grids['grw1'] = None # high-res grid for GRW, 1km
-#     grids['grw2'] = None # small grid for GRW, 5km
-#     grids['can1'] = None # large grid for whole Canada
-#     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
+    grids['grw2'] = None # small grid for GRW, 5km
+    grids['can1'] = None # large grid for whole Canada
+    grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 # #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
-#     grids['glb1-90km'] = ('d01',) # 90km GLB domain
+    grids['glb1-90km'] = ('d01',) # 90km GLB domain
     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
     grids['arb3'] = ('d01','d02','d03',) # WRF standard ARB inner domain
 # #     grids['arb3'] = ('d03',) # WRF standard ARB inner domain

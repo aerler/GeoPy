@@ -61,8 +61,7 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
   # N.B.: the loading function is necessary, because DataseNetCDF instances do not pickle well 
             
   # get filename for target dataset and do some checks
-  filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, 
-                           grid=stndata.name, period=None, filetype=None) 
+  filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, station=stndata.name) 
   
   if ldebug: filename = 'test_' + filename
   if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
@@ -216,7 +215,7 @@ if __name__ == '__main__':
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
     lLTM = True # also regrid the long-term mean climatologies 
-    datasets += ['NRCan']; periods = None
+    datasets += ['NRCan']; periods = [(1970,2000),(1980,2010)]; lLTM = False
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}

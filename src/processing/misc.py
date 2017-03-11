@@ -13,7 +13,7 @@ from functools import partial
 import yaml,os
 from datetime import datetime
 # internal imports
-from geodata.misc import DatasetError, DateError, isInt
+from geodata.misc import DatasetError, DateError, isInt, ArgumentError
 from utils.misc import namedTuple
 from datasets.common import getFileName
 # specific datasets
@@ -100,14 +100,19 @@ def getPeriodGridString(period, grid, exp=None, beginyear=None):
 
 
 ## prepare target dataset
-def getTargetFile(dataset=None, mode=None, dataargs=None, lwrite=True, grid=None, period=None, filetype=None):
+def getTargetFile(dataset=None, mode=None, dataargs=None, grid=None, shape=None, station=None, period=None, filetype=None, 
+                  lwrite=True):
   ''' generate filename for target dataset '''
   # prepare some variables
   domain = dataargs.domain
   if filetype is None: filetype = dataargs.filetype
-  if grid is None: grid = dataargs.gridstr # also use grid for station type
+  if grid is None: grid = dataargs.gridstr # also use grid for station/shape type
   if period is None: period = dataargs.periodstr
   gstr = '_{}'.format(grid) if grid else ''
+  # prepend shape or station type before grid 
+  if shape and station: raise ArgumentError
+  elif shape: gstr = '_{}{}'.format(shape,gstr)
+  elif station: gstr = '_{}{}'.format(station,gstr)
   pstr = '_{}'.format(period) if period else ''
   # figure out filename
   if dataset == 'WRF' and lwrite:
@@ -119,7 +124,7 @@ def getTargetFile(dataset=None, mode=None, dataargs=None, lwrite=True, grid=None
     elif mode == 'time-series': filename = CESM.ts_file_pattern.format(filetype,gstr)
     else: raise NotImplementedError, "Unsupported Mode: '{:s}'".format(mode)        
   elif lwrite: # assume observational datasets
-    filename = getFileName(grid=grid, period=dataargs.period, name=dataargs.obs_res, filetype=mode)      
+    filename = getFileName(grid=grid, shape=shape, station=station, period=dataargs.period, name=dataargs.obs_res, filetype=mode)      
   else: raise DatasetError(dataset)
   if not os.path.exists(dataargs.avgfolder): 
     raise IOError, "Dataset folder '{:s}' does not exist!".format(dataargs.avgfolder)

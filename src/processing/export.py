@@ -75,8 +75,7 @@ class NetCDF(object):
     if self.folder_pattern is None: avgfolder = dataargs.avgfolder # regular source dataset location
     else: self.folder_pattern.format(dataset, self.project, dataargs.dataset_name,) # this could be expanded with dataargs 
     if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
-    filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, 
-                             grid=None, period=None, filetype=self.filetype)
+    filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, filetype=self.filetype)
     if ldebug: filename = 'test_{:s}'.format(filename)
     self.filepath = '{:s}/{:s}'.format(avgfolder,filename)
     return self.filepath
