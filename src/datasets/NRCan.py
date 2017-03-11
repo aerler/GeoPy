@@ -36,6 +36,7 @@ size_CA24 = (2136, 1008) # (x,y) map size of NRCan grid
 NRCan_NA12_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotransform_NA12, size=size_NA12)
 NRCan_CA12_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotransform_CA12, size=size_CA12)
 NRCan_CA24_grid = GridDefinition(name=dataset_name, projection=None, geotransform=geotransform_CA24, size=size_CA24)
+NRCan_grids = ['NA12','CA12','CA24']
 # default grid (NA12)
 NRCan_grid = NRCan_NA12_grid; geotransform = geotransform_NA12; size = size_NA12
 
@@ -75,11 +76,10 @@ nofile = ('T2','solprec','lat','lon','time') # variables that don't have their o
 def checkGridRes(grid, resolution, period=None, lclim=False):
   ''' helper function to verify grid/resoluton selection '''
   # prepare input
-  if grid is not None and grid[0:2].lower() in ('na','ca'): 
-    resolution = grid[2:]
-    grid = None
-  elif resolution is None: 
-    resolution = 'na12'
+  if grid is not None and grid.upper() in NRCan_grids:
+      resolution = grid.lower()
+      grid = None
+  if resolution is None: resolution = 'na12' # default
   if not isinstance(resolution, basestring): raise TypeError(resolution) 
   # figure out clim/TS
   if period is not None: lclim=True
