@@ -198,7 +198,7 @@ if __name__ == '__main__':
     shapes = config['shapes']
   else:
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 3 ; ldebug = False # for quick computations
+    NP = 4 ; ldebug = False # for quick computations
 #     modes = ('time-series','climatology')
     modes = ('climatology',) 
     loverwrite = False
@@ -234,10 +234,10 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only use GreatLakes experiments
     WRF_experiments = []
     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
-#     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050']
-#     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
-#     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-#     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
+    WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050']
+    WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
+    WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+    WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
 #     WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['g-ctrl', 'g-ctrl-2050', 'g-ctrl-2100']
 #     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',][1:]
@@ -254,7 +254,7 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None
-    WRF_filetypes = ('aabc',)
+    WRF_filetypes = ('aux','aabc')
     grid = 'grw2' # grid parameter to load datasets
     # define shape data  
     shapes = OrderedDict()

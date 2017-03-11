@@ -649,7 +649,10 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
     mode = loadarg['mode'].lower(); lts = 'time' in mode and 'series' in mode 
     if lts and prd: slcs['years'] = prd          
     if obsslcs and name in obs_list: slcs.update(**obsslcs) # add special slices for obs
-    if not lts: loadarg['period'] = prd
+    if not lts: 
+      if prd: loadarg['period'] = prd
+      elif 'years' in slcs: loadarg['period'] = slcs['years']
+      if 'years' in slcs: del slcs['years'] # will cause an error with climatologies
     # N.B.: currently VarNC's can only be sliced once, because we can't combine slices yet
     # load individual dataset
     dataset = loadDataset(name=name, WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, 

@@ -462,7 +462,7 @@ if __name__ == '__main__':
         lm3 = export_arguments.pop('lm3',False) # convert water flux from kg/m^2/s to m^3/m^2/s    
     else:
         # settings for testing and debugging
-        NP =2 ; ldebug = False # for quick computations
+        NP = 3; ldebug = False # for quick computations
 #         NP = 1 ; ldebug = True # just for tests
 #         modes = ('annual-mean','climatology')
         modes = ('climatology',) # 'climatology','time-series'
@@ -499,11 +499,11 @@ if __name__ == '__main__':
         WRF_project = 'GreatLakes'; unity_grid = 'glb1_d02' # only GreatLakes experiments
     #     WRF_project = 'WesternCanada'; unity_grid = 'arb2_d02' # only WesternCanada experiments
         WRF_experiments = [] # use None to process all WRF experiments
-#         WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050']
-#         WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
         WRF_experiments += ['erai-g3','erai-t3','erai-g','erai-t']
-#         WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-#         WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
+        WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050']
+        WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
+        WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+        WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
 #         WRF_experiments += ['g-ensemble','t-ensemble']
 #         WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #         WRF_experiments += ['t-ctrl','t-ctrl-2050','t-ctrl-2100']
@@ -561,7 +561,7 @@ if __name__ == '__main__':
         exp_list = ['netrad','netrad_bb0','netrad_bb','vapdef','pet','pet_wrf','petrad','petwnd']
         exp_list += ['Tmin','Tmax','T2','Tmean','TSmin','TSmax','SWD','SWDNB','SWUPB','zs','lat2D','lon2D',]
         exp_list += ['waterflx','liqwatflx','liqprec','solprec','precip','snow','snowh','snwmlt',]
-        compute_list = ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
+        compute_list = ['waterflx','liqwatflx','pet'] # variables that should be (re-)computed
         export_arguments = dict( format = 'NetCDF',
             exp_list= exp_list, compute_list=compute_list, 
             project = bc_method if bc_method else 'AUX',
