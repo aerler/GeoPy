@@ -72,6 +72,7 @@ reanalysis_datasets = ['CFSR','NARR']
 station_obs_datasets = ['EC','GHCN','WSC']
 gridded_obs_datasets = ['CRU','GPCC','NRCan','PCIC','PRISM','Unity']
 observational_datasets = reanalysis_datasets + station_obs_datasets + gridded_obs_datasets
+timeseries_datasets = ['CFSR','NARR','EC','GHCN','WSC','CRU','GPCC',]
 
 # read data root folder from environment variable
 data_root = os.getenv('DATA_ROOT')
