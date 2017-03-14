@@ -195,8 +195,10 @@ class Hydro(FileType):
                      RAINNC       = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate
                      SFCEVP       = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
                      ACSNOM       = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
-                     pet          = dict(name='pet_wrf', units='kg/m^2/s',), # just renaming of old variable
-                     POTEVP       = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
+                     #pet          = dict(name='pet_wrf', units='kg/m^2/s',), # just renaming of old variable
+                     pet          = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just renaming of old variable
+                     #pet_wrf      = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just rescaling of old variable
+                     POTEVP       = dict(name='pet_wrf', units='kg/m^2/s'), # potential evapo-transpiration rate
                      # N.B.: for some strange reason WRF outputs PET in m/s, rather than kg/m^2/s
                      NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
                      LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
@@ -237,8 +239,9 @@ class LSM(FileType):
                      ACSNOM   = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
                      ACSNOW   = dict(name='snwacc', units='kg/m^2/s'), # snow accumulation rate
                      SFCEVP   = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
-                     pet      = dict(name='pet_wrf', units='kg/m^2/s',), # just renaming of old variable
-                     POTEVP   = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
+                     pet      = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just renaming of old variable
+                     #pet_wrf  = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just rescaling of old variable
+                     POTEVP   = dict(name='pet_wrf', units='kg/m^2/s'), # potential evapo-transpiration rate
                      # N.B.: for some strange reason WRF outputs PET in m/s, rather than kg/m^2/s
                      SFROFF   = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
                      UDROFF   = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off
@@ -888,7 +891,9 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       # add projection
       dataset = addGDALtoDataset(dataset, griddef=griddef, gridfolder=grid_folder, geolocator=True)      
     # add resolution string
-    dataset.atts['resstr'] = "{:d}km".format(int((dataset.atts['DX']+dataset.atts['DY'])/2000.))
+    if 'DX' in dataset.atts and 'DY' in dataset.atts:
+        dataset.atts['resstr'] = "{:d}km".format(int((dataset.atts['DX']+dataset.atts['DY'])/2000.))
+    else: dataset.atts['resstr'] = None
     # N.B.: all WRF datasets should inherit these attributed from the original netcdf files!
     # append to list
     datasets.append(dataset) 
@@ -1038,9 +1043,9 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
-#   mode = 'test_point_climatology'
+  mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-  mode = 'test_point_ensemble'
+#   mode = 'test_point_ensemble'
 #   mode = 'pickle_grid' 
 #   pntset = 'wcshp'
   pntset = 'glbshp'
@@ -1157,8 +1162,8 @@ if __name__ == '__main__':
     
     print('')
     if pntset in ('shpavg','wcshp','glbshp','glakes'):
-      dataset = loadWRF_Shp(experiment='erai-g', domains=1, shape=pntset, grid='grw2', period=(1979,1994), 
-                            filetypes=['aabc'],exps=WRF_exps)
+      dataset = loadWRF_Shp(experiment='erai-g3', domains=1, shape=pntset, grid='grw2', period=(1979,1994), 
+                            filetypes=['aux'],exps=WRF_exps)
       print('')
       print(dataset.shape)
       print(dataset.shape.coord)
@@ -1173,15 +1178,18 @@ if __name__ == '__main__':
     print('')
     print(dataset)
     print('')
-    
+    print('')
+    print(dataset.pet_wrf)
+    print('')
+    print(dataset.pet_wrf.mean())
     
   # load station time-series file
   elif mode == 'test_point_timeseries':
     
     print('')
     if pntset in ('shpavg','wcshp','glbshp','glakes'):
-      dataset = loadWRF_ShpTS(experiment='erai-g', domains=None, varlist=None, #['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
-                              shape=pntset, filetypes=['hydro'], exps=WRF_exps)
+      dataset = loadWRF_ShpTS(experiment='erai-g', domains=1, varlist=None, #['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
+                              shape=pntset, filetypes=['lsm'], exps=WRF_exps)
     else:
       dataset = loadWRF_StnTS(experiment='erai-g', domains=None, varlist=['zs','stn_zs','MaxPrecip_6h'],
 #                               varlist=['zs','stn_zs','precip','MaxPrecip_6h','MaxPreccu_1h','MaxPrecip_1d'], 
@@ -1196,7 +1204,10 @@ if __name__ == '__main__':
     print(dataset.time.coord)
     print('')
     for name in dataset.shape_name[:]: print(name)
-    
+    print('')
+    print(dataset.pet_wrf)
+    print('')
+    print(dataset.pet_wrf.mean())    
   
   # load station ensemble "time-series"
   elif mode == 'test_point_ensemble':
