@@ -40,7 +40,8 @@ def getPickleFileName(method=None, obs_name=None, mode=None, periodstr=None, gri
     ''' generate a name for a bias-correction pickle file, based on parameters '''
     if pattern is None: pattern = 'bias_{:s}.pickle'
     # abbreviation for data mode
-    if mode == 'climatology': aggregation = 'clim'
+    if mode is None: pass
+    elif mode == 'climatology': aggregation = 'clim'
     elif mode == 'time-series': aggregation = 'monthly'
     elif mode[-5:] == '-mean': aggregation = mode[:-5]
     else: aggregation = mode
@@ -48,9 +49,9 @@ def getPickleFileName(method=None, obs_name=None, mode=None, periodstr=None, gri
     name = method if method else '' # initialize
     if obs_name: name += '_{:s}'.format(obs_name)
     if mode: name += '_{:s}'.format(aggregation)
+    if domain: name += '_d{:02d}'.format(domain)
     if periodstr: name += '_{:s}'.format(periodstr)
     if gridstr: name += '_{:s}'.format(gridstr)
-    if domain: name += '_d{:02d}'.format(domain)
     if tag: name += '_{:s}'.format(tag)
     picklefile = pattern.format(name) # insert name into fixed pattern
     return picklefile
@@ -184,7 +185,7 @@ class BiasCorrection(object):
     def picklefile(self, obs_name=None, mode=None, periodstr=None, gridstr=None, domain=None, tag=None):
         ''' generate a standardized name for the pickle file, based on arguments '''
         if self._picklefile is None:      
-            self._picklefile = getPickleFileName(method=self.name, obs_name=obs_name, mode=mode, periodstr=periodstr, 
+            self._picklefile = getPickleFileName(method=self.name, obs_name=obs_name, periodstr=periodstr, 
                                                  gridstr=gridstr, domain=domain, tag=tag) 
         return self._picklefile
     

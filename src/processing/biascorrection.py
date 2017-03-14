@@ -51,8 +51,7 @@ def generateBiasCorrection(dataset, mode, dataargs, obs_dataset, bc_method, bc_a
   # initialize BiasCorrection class instance
   BC = getBCmethods(bc_method, **bc_args)
   # get folder for target dataset and do some checks
-  picklefile = BC.picklefile(obs_name=obs_dataset.name, mode=mode, 
-                             gridstr=dataargs.grid, domain=dataargs.domain, tag=tag)
+  picklefile = BC.picklefile(obs_name=obs_dataset.name, gridstr=dataargs.grid, domain=dataargs.domain, tag=tag)
   if ldebug: picklefile = 'test_' + picklefile 
   picklepath = '{:s}/{:s}'.format(avgfolder,picklefile)
   
@@ -183,8 +182,8 @@ if __name__ == '__main__':
     lm3 = export_arguments['lm3'] # convert water flux from kg/m^2/s to m^3/m^2/s    
   else:
     # settings for testing and debugging
-#     NP = 1 ; ldebug = False # for quick computations
-    NP = 1 ; ldebug = True # just for tests
+    NP = 1 ; ldebug = False # for quick computations
+#     NP = 1 ; ldebug = True # just for tests
     modes = ('climatology',) # 'climatology','time-series'
     loverwrite = True
     ## datasets to be bias-corrected
@@ -206,14 +205,14 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-#     WRF_experiments += ['erai-g3','erai-t3']
-#     WRF_experiments += ['erai-g','erai-t']
-#     WRF_experiments += ['g-ensemble','t-ensemble']
-#     WRF_experiments += ['g3-ensemble','t3-ensemble']
-    WRF_experiments += ['g-ensemble']
+    WRF_experiments += ['erai-g3','erai-t3']
+    WRF_experiments += ['erai-g','erai-t']
+    WRF_experiments += ['g-ensemble','t-ensemble']
+    WRF_experiments += ['g3-ensemble','t3-ensemble']
+#     WRF_experiments += ['g-ensemble']
     # other WRF parameters 
-    WRF_domains = 1 # domains to be processed (None=all)
-#     WRF_domains = None # process all domains
+#     WRF_domains = 1 # domains to be processed (None=all)
+    WRF_domains = None # process all domains
     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
 #     WRF_filetypes = ('aux',) # only preprocessed auxiliary files
     ## observations (i.e. the reference dataset; arguments passed to loadDataset)

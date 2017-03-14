@@ -242,22 +242,19 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
         if bc_reference is None: # infer from experiment name
             if dataset_name[-5:] in ('-2050','-2100'): bc_reference = dataset_name[:-5] # cut of period indicator and hope for the best 
             else: bc_reference = dataset_name 
-        bc_mode = bcargs.pop('mode',None)
-        if bc_mode is None: bc_mode = mode
         bc_grid = bcargs.pop('grid',None)
         if bc_grid is None: bc_grid = dataargs.grid
         bc_domain = bcargs.pop('domain',None)
         if bc_domain is None: bc_domain = domain
         bc_varlist = bcargs.pop('varlist',None)
         bc_varmap = bcargs.pop('varmap',None)       
-        bc_period = bcargs.pop('period',None) # usually not used and no default
         bc_tag = bcargs.pop('tag',None) # an optional name extension/tag
         bc_pattern = bcargs.pop('file_pattern',None) # usually default in getPickleFile
         lgzip = bcargs.pop('lgzip',None) # if pickle is gzipped (None: auto-detect based on file name extension)
         # get name of pickle file (and folder)
         picklefolder = dataargs.avgfolder.replace(dataset_name,bc_reference)
-        picklefile = getPickleFileName(method=bc_method, obs_name=bc_obs, mode=bc_mode, periodstr=bc_period, 
-                                       gridstr=bc_grid, domain=bc_domain, tag=bc_tag, pattern=bc_pattern)
+        picklefile = getPickleFileName(method=bc_method, obs_name=bc_obs, gridstr=bc_grid, domain=bc_domain, 
+                                       tag=bc_tag, pattern=bc_pattern)
         picklepath = '{:s}/{:s}'.format(picklefolder,picklefile)
         if lgzip:
             picklepath += '.gz' # add extension
@@ -465,8 +462,9 @@ if __name__ == '__main__':
         NP = 3; ldebug = False # for quick computations
 #         NP = 1 ; ldebug = True # just for tests
 #         modes = ('annual-mean','climatology')
-        modes = ('climatology','time-series',) # 'climatology','time-series'
+#         modes = ('climatology','time-series',) # 'climatology','time-series'
 #         modes = ('time-series',) # 'climatology'
+        modes = ('climatology',)  
         loverwrite = True
         exp_list= None
         # obs variables
@@ -474,8 +472,8 @@ if __name__ == '__main__':
 #         load_list = ['lat2D','lon2D','liqwatflx','pet','precip','liqwatflx_CMC']
         # WRF variables
         #load_list = ['pet_wrf']
-        load_list = ['lat2D','lon2D','zs','snow']
-        load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet_wrf'] # (net) precip
+        load_list = ['lat2D','lon2D','zs','snow','pet_wrf']
+        load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt'] # (net) precip
         # PET variables (for WRF)
         load_list += ['ps','u10','v10','Q2','Tmin','Tmax','T2','TSmin','TSmax',] # wind
         load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
@@ -500,11 +498,11 @@ if __name__ == '__main__':
         WRF_project = 'GreatLakes'; unity_grid = 'glb1_d02' # only GreatLakes experiments
     #     WRF_project = 'WesternCanada'; unity_grid = 'arb2_d02' # only WesternCanada experiments
         WRF_experiments = [] # use None to process all WRF experiments
-#         WRF_experiments += ['erai-g3','erai-t3','erai-g','erai-t']
-#         WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050']
-#         WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
-#         WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-#         WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
+        WRF_experiments += ['erai-g3','erai-t3','erai-g','erai-t']
+        WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100']
+        WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
+        WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+        WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
 #         WRF_experiments += ['g-ensemble','t-ensemble']
 #         WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #         WRF_experiments += ['t-ctrl','t-ctrl-2050','t-ctrl-2100']
@@ -532,42 +530,43 @@ if __name__ == '__main__':
         bc_reference = None # reference experiment (None: auto-detect based on name)
         bc_varmap = dict(Tmin=('Tmin','TSmin'), Tmax=('Tmax','TSmax'), T2=('T2','Tmean'), pet_wrf=('pet_wrf','evap'), 
                          SWDNB=('SWDNB','SWUPB','SWD'),SWD=('SWDNB','SWUPB','SWD'),)
-        bc_args = dict(mode='clim', grid=None, domain=None, lgzip=True, varmap=bc_varmap) # missing/None parameters are inferred from experiment
+        bc_args = dict(grid=None, domain=None, lgzip=True, varmap=bc_varmap) # missing/None parameters are inferred from experiment
         ## export to ASCII raster
         # typically a specific grid is required
         grids = [] # list of grids to process
-        grids += [None] # special keyword for native grid
-#         grids += ['grw2'] # small grid for HGS GRW project
+#         grids += [None] # special keyword for native grid
+        grids += ['grw2'] # small grid for HGS GRW project
 #         grids += ['brd1']# small grid for HGS GRW project
 #         grids += ['can1']# large Canada-wide grid
-#         export_arguments = dict(
-# #             project = 'Grids', # project designation  
-# #             folder = '{0:s}/HGS/{{PROJECT}}/{{EXPERIMENT}}/'.format(os.getenv('DATA_ROOT', None)),
-# #             prefix = None, # based on keyword arguments or None
-# #             compute_list = [], exp_list= ['lat2D','lon2D','liqwatflx','pet',], # varlist for NRCan
-#             project = 'GRW', # project designation  
-# #             project = 'ASB', # project designation
-# #             project = 'CAN', # project designation
-#             compute_list = ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
-#             exp_list= ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
-# #             exp_list = load_list, # varlist for Obs is same as load_list
-# #             folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(os.getenv('DATA_ROOT', None)),
-#             folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}_{{PERIOD}}/climate_forcing/'.format(
-#                                                                             os.getenv('DATA_ROOT', None),bc_method),
-#             prefix = '{GRID}', # based on keyword arguments
-#             format = 'ASCII_raster', # formats to export to
-#             fillValue = 0, noDataValue = -9999, # in case we interpolate across a missing value...
-#             lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
-        ## export to NetCDF (aux-file)
-        exp_list = ['netrad','netrad_bb0','netrad_bb','vapdef','pet','pet_wrf','petrad','petwnd']
-        exp_list += ['Tmin','Tmax','T2','Tmean','TSmin','TSmax','SWD','SWDNB','SWUPB','zs','lat2D','lon2D',]
-        exp_list += ['waterflx','liqwatflx','liqprec','solprec','precip','snow','snowh','snwmlt',]
-        compute_list = ['waterflx','liqwatflx','pet'] # variables that should be (re-)computed
-        export_arguments = dict( format = 'NetCDF',
-            exp_list= exp_list, compute_list=compute_list, 
-            project = bc_method if bc_method else 'AUX',
-            filetype = bc_method.lower() if bc_method else 'aux',
-            lm3 = False) # do not convert water flux from kg/m^2/s to m^3/m^2/s
+        export_arguments = dict(
+#             project = 'Grids', # project designation  
+#             folder = '{0:s}/HGS/{{PROJECT}}/{{EXPERIMENT}}/'.format(os.getenv('DATA_ROOT', None)),
+#             prefix = None, # based on keyword arguments or None
+#             compute_list = [], exp_list= ['lat2D','lon2D','liqwatflx','pet',], # varlist for NRCan
+            project = 'GRW', # project designation  
+#             project = 'ASB', # project designation
+#             project = 'CAN', # project designation
+            compute_list = ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
+            exp_list= ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
+#             exp_list= ['pet_wrf'], compute_list = [], # varlist for export
+#             exp_list = load_list, # varlist for Obs is same as load_list
+#             folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(os.getenv('DATA_ROOT', None)),
+            folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}_{{PERIOD}}/climate_forcing/'.format(
+                                                                            os.getenv('DATA_ROOT', None),bc_method),
+            prefix = '{GRID}', # based on keyword arguments
+            format = 'ASCII_raster', # formats to export to
+            fillValue = 0, noDataValue = -9999, # in case we interpolate across a missing value...
+            lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
+#         ## export to NetCDF (aux-file)
+#         exp_list = ['netrad','netrad_bb0','netrad_bb','vapdef','pet','pet_wrf','petrad','petwnd']
+#         exp_list += ['Tmin','Tmax','T2','Tmean','TSmin','TSmax','SWD','SWDNB','SWUPB','zs','lat2D','lon2D',]
+#         exp_list += ['waterflx','liqwatflx','liqprec','solprec','precip','snow','snowh','snwmlt',]
+#         compute_list = ['waterflx','liqwatflx','pet'] # variables that should be (re-)computed
+#         export_arguments = dict( format = 'NetCDF',
+#             exp_list= exp_list, compute_list=compute_list, 
+#             project = bc_method if bc_method else 'AUX',
+#             filetype = bc_method.lower() if bc_method else 'aux',
+#             lm3 = False) # do not convert water flux from kg/m^2/s to m^3/m^2/s
       
     ## process arguments    
     if isinstance(periods, (np.integer,int)): periods = [periods]
