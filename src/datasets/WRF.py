@@ -711,9 +711,11 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
         filelist.append(fileclass.tsfile)
         typelist.append(filetype) # this eliminates const files
     # get varatts
-    att = fileclasses['axes'].atts.copy()
-    att.update(fileclass.atts) # use axes atts as basis and override with filetype-specific atts
-    atts.append(att) # list of atts for each filetype    
+    if filetype == 'const': lconst = True
+    else:
+      att = fileclasses['axes'].atts.copy()
+      att.update(fileclass.atts) # use axes atts as basis and override with filetype-specific atts
+      atts.append(att) # list of atts for each filetype    
   # resolve varatts argument and update default atts
   if varatts is None: pass
   elif isinstance(varatts,dict):
@@ -800,6 +802,8 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     # load constants
     if llconst:              
       constfile = fileclasses['const']    
+      catts = fileclasses['axes'].atts.copy()
+      catts.update(fileclass.atts) # use axes atts as basis and override with filetype-specific atts
       filename = constfile.tsfile.format(domain,gridstr)  
       # check file path
       constfolder = folder
@@ -809,7 +813,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
         raise IOError, "Constant file for experiment '{:s}' not found.\n('{:s}')".format(name,'{:s}/{:s}'.format(constfolder,filename))
       # i.e. if there is no constant file in the experiment folder, use the one in the grid definition folder (if available)
       # load dataset
-      const = DatasetNetCDF(name=name, folder=constfolder, filelist=[filename], varatts=constfile.atts, 
+      const = DatasetNetCDF(name=name, folder=constfolder, filelist=[filename], varatts=catts, 
                             axes=axes, varlist=constfile.vars, multifile=False, ncformat='NETCDF4', 
                             mode=ncmode, squeeze=True)      
       lenc = len(const) # length of const dataset

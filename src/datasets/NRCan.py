@@ -619,10 +619,16 @@ if __name__ == '__main__':
         print(var[:])
         
         # create merged lwf and add to NRCan
-        nrcan[lwf+'_NRCan'] = nrcan[lwf].load().copy() # load liqwatflx and rename
-        nrcan[lwf][:] = np.where(nrcan[lwf].data_array.mask,cmc[lwf].data_array,nrcan[lwf].data_array)
-        nrcan[lwf].atts['long_name'] = 'Merged Lqiquid Water Flux'
-        nrcan[lwf].atts['note'] = 'merged data from NRCan and CMC'
+        for varname in (lwf,'snow'):
+            if varname+'_NRCan' in nrcan:
+                nrcan_var = nrcan[varname+'_NRCan'] 
+            else:
+                nrcan_var = nrcan[varname].load().copy(deepcopy=True) # load liqwatflx and rename
+                nrcan[varname+'_NRCan'] = nrcan_var
+            nrcan[varname][:] = np.where(nrcan_var.data_array.mask,cmc[varname].data_array,nrcan_var.data_array)
+            nrcan[varname].atts['note'] = 'merged data from NRCan and CMC'
+            if varname == lwf: nrcan[varname].atts['long_name'] = 'Merged Liquid Water Flux'
+            if varname == 'snow': nrcan[varname].atts['long_name'] = 'Merged Snow Water Equivalent'
         print(nrcan[lwf])
         # add other CMC variables to NRCan datasets
         for varname,var in cmc.variables.items():
