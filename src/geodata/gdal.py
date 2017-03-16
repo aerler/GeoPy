@@ -14,7 +14,10 @@ import numpy as np
 import numpy.ma as ma
 from collections import OrderedDict
 import types  # needed to bind functions to objects
-import os, pickle, gzip # griddef pickles compress well
+import os, gzip # griddef pickles compress well
+try: import cPickle as pickle
+except: import pickle
+
 
 # gdal imports
 from osgeo import gdal, osr, ogr
@@ -251,8 +254,16 @@ def loadPickledGridDef(grid=None, res=None, filename=None, folder=None, check=Tr
     filename = griddef_pickle.format('{0:s}_{1:s}'.format(grid,res) if res else grid)
   filepath = '{0:s}/{1:s}'.format(grid_folder if folder is None else folder,filename)
   # figure out compression
-  if lgzip is None: lgzip = filename.endswith('.gz')
-  elif lgzip and not filename.endswith('.gz'): filename += '.gz'
+  fpgz =  filepath if filename.endswith('.gz') else filepath + '.gz'
+  fp = filepath[:-3] if filename.endswith('.gz') else filepath
+  if lgzip is None:
+    if os.path.exists(fpgz) and ( filename.endswith('.gz') or not os.path.exists(fp) ): 
+        lgzip = True; filepath = fpgz # use gzipped pickle if file ends in gz or other file is not present  
+    elif os.path.exists(fp) and ( not filename.endswith('.gz') or not os.path.exists(fpgz) ): 
+        lgzip = False; filepath = fp # use unzipped pickle is file doesn't end in gz or gzipped pickle doen't exist
+    elif check:
+        raise ArgumentError("Unable to infer gzip option; it appears neither the gzipped nor the unzipped file are present:\n'{}'").format(filepath)
+  elif lgzip and os.path.exists(fpgz): filepath = fpgz
   elif not lgzip and filename.endswith('.gz'): 
       raise ValueError("The file extension '.gz' suggests a compressed pickle file, yet lgzip=False...")
   # load pickle
@@ -272,7 +283,7 @@ def loadPickledGridDef(grid=None, res=None, filename=None, folder=None, check=Tr
   return griddef
 
 # save GridDef to pickle
-def pickleGridDef(griddef=None, folder=None, filename=None, lfeedback=True, lgzip=None):
+def pickleGridDef(griddef=None, folder=None, filename=None, loverwrite=True, lfeedback=True, lgzip=None):
   ''' function to pickle griddefs in a standardized way '''
   if not isinstance(griddef,GridDefinition): raise TypeError
   if filename is not None and not isinstance(filename,basestring): raise TypeError(filename)
@@ -286,6 +297,7 @@ def pickleGridDef(griddef=None, folder=None, filename=None, lfeedback=True, lgzi
   elif not lgzip and filename.endswith('.gz'): 
     raise ValueError("The file extension '.gz' suggests a compressed pickle file, yet lgzip=False")
   # open file and save pickle
+  if os.path.exists(filepath): os.remove(filepath)
   op = gzip.open if lgzip else open
   with op(filepath, 'wb') as filehandle:
       pickle.dump(griddef, filehandle)

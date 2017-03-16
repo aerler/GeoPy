@@ -8,7 +8,10 @@ This module contains common meta data and access functions for CESM model output
 
 # external imports
 import numpy as np
-import os, pickle
+import os
+try: import cPickle as pickle
+except: import pickle
+
 # from atmdyn.properties import variablePlotatts
 from geodata.base import Variable, Axis, concatDatasets, monthlyUnitsList
 from geodata.netcdf import DatasetNetCDF, VarNC
@@ -16,7 +19,7 @@ from geodata.gdal import addGDALtoDataset, GDALError
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt
 from datasets.common import ( translateVarNames, data_root, grid_folder, default_varatts, 
                               addLengthAndNamesOfMonth, selectElements, stn_params, shp_params )
-from geodata.gdal import loadPickledGridDef, griddef_pickle
+from geodata.gdal import loadPickledGridDef, pickleGridDef
 from datasets.WRF import Exp as WRF_Exp
 from processing.process import CentralProcessingUnit
 
@@ -704,9 +707,9 @@ if __name__ == '__main__':
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-  mode = 'test_point_ensemble'
+#   mode = 'test_point_ensemble'
 #   mode = 'test_cvdp'
-#   mode = 'pickle_grid'
+  mode = 'pickle_grid'
 #     mode = 'shift_lon'
 #   experiments = ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
 #   experiments += ['Ctrl-2050', 'Ctrl-A-2050', 'Ctrl-B-2050', 'Ctrl-C-2050']
@@ -737,13 +740,9 @@ if __name__ == '__main__':
       griddef.name = grid
       print('   Loading Definition from \'{0:s}\''.format(dataset.name))
       # save pickle
-      filename = '{0:s}/{1:s}'.format(grid_folder,griddef_pickle.format(grid))
-      if os.path.exists(filename): os.remove(filename) # overwrite
-      filehandle = open(filename, 'w')
-      pickle.dump(griddef, filehandle)
-      filehandle.close()
+      filepath = pickleGridDef(griddef, lfeedback=True, loverwrite=True, lgzip=True)
       
-      print('   Saving Pickle to \'{0:s}\''.format(filename))
+      print('   Saving Pickle to \'{0:s}\''.format(filepath))
       print('')
       
       # load pickle to make sure it is right

@@ -11,15 +11,16 @@ import numpy as np
 import numpy.ma as ma
 import netCDF4 as nc
 import collections as col
-import os, pickle
+import os
+try: import cPickle as pickle
+except: import pickle
 import osr # from GDAL
 # from atmdyn.properties import variablePlotatts
 from geodata.base import concatDatasets
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError
+from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError, loadPickledGridDef, pickleGridDef
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt, EmptyDatasetError
 from datasets.common import data_root, grid_folder, selectElements, stn_params, shp_params, nullNaN
-from geodata.gdal import loadPickledGridDef, griddef_pickle
 #from projects.WRF_experiments import Exp, exps, ensembles 
 from warnings import warn
 from collections import OrderedDict
@@ -469,8 +470,10 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   projection = getWRFproj(dn, name=gridname) # same for all
   # get coordinates of center point  
   clon = dn.CEN_LON; clat = dn.CEN_LAT
-  wgs84 = osr.SpatialReference (); wgs84.ImportFromEPSG (4326) # regular lat/lon geographic grid
-  tx = osr.CoordinateTransformation (wgs84, projection) # transformation object
+  wgs84 = osr.SpatialReference() # create coordinate/spatial reference system
+  wgs84.SetWellKnownGeogCS("WGS84") # set to regular lat/lon
+#   wgs84.ImportFromEPSG(4326) # for some reason this causes an OGR Error...
+  tx = osr.CoordinateTransformation(wgs84, projection) # transformation object
   cx, cy, cz = tx.TransformPoint(float(clon),float(clat)); del cz # center point in projected (WRF) coordinates
   #print ' (CX,CY,CZ) = ', cx, cy, cz 
   # infer size and geotransform
@@ -1047,18 +1050,17 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
-  mode = 'test_point_climatology'
+#   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
-#   mode = 'pickle_grid' 
+  mode = 'pickle_grid' 
 #   pntset = 'wcshp'
   pntset = 'glbshp'
 #   pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
-#   grids = ['glb1-90km','glb1','arb1', 'arb2', 'arb2-120km', 'arb3']
-#   domains = [(1,)]+[(1,2)]*3+[(1,),(1,2,3)]; regions = ['GreatLakes']*2+['WesternCanada']*4
-#   grids = ['col1','col2','coast1']   
-  grids = ['wc2']; domains = [(1,2)]; regions = ['Columbia']
+  grids = ['glb1-90km','glb1','arb1', 'arb2', 'arb2-120km', 'arb3']
+  domains = [(1,)]+[(1,2)]*3+[(1,),(1,2,3)]; regions = ['GreatLakes']*2+['WesternCanada']*4
+#   grids = ['wc2']; domains = [(1,2)]; regions = ['Columbia']
 #   grids = ['arb2-120km']; experiments = ['max-lowres']; domains = [1,]   
     
 #   from projects.WesternCanada.WRF_experiments import Exp, WRF_exps, ensembles
@@ -1081,18 +1083,14 @@ if __name__ == '__main__':
         
         # load GridDefinition
         
-        griddef, = getWRFgrid(name=grid, folder=folder, domains=domain, exps=None) # filename='wrfconst_d{0:0=2d}.nc', experiment=experiment
+        griddef = getWRFgrid(name=grid, folder=folder, domains=domain, exps=None)[0] # filename='wrfconst_d{0:0=2d}.nc', experiment=experiment
         griddef.name = gridstr
         print('   Loading Definition from \'{0:s}\''.format(folder))
 #         print(griddef)
         # save pickle
-        filename = '{0:s}/{1:s}'.format(grid_folder,griddef_pickle.format(gridstr))
-        if os.path.exists(filename): os.remove(filename) # overwrite 
-        filehandle = open(filename, 'w')
-        pickle.dump(griddef, filehandle)
-        filehandle.close()
+        filepath = pickleGridDef(griddef, lfeedback=True, loverwrite=True, lgzip=True)
         
-        print('   Saving Pickle to \'{0:s}\''.format(filename))
+        print('   Saving Pickle to \'{0:s}\''.format(filepath))
         print('')
         
         # load pickle to make sure it is right

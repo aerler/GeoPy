@@ -728,10 +728,10 @@ if __name__ == '__main__':
   mode = 'pickle_grid'
 #   mode = 'create_grid'
   grids = dict( 
-#                CFSR=['031','05'],
+                CFSR=['031','05'],
                 GPCC=['025','05','10','25'],
-#                NRCan=['NA12','CA12','CA24'],
-#                CRU=[None],NARR=[None],PRISM=[None],PCIC=[None]
+                NRCan=['NA12','CA12','CA24'],
+                CRU=[None],NARR=[None],PRISM=[None],PCIC=[None]
                )
     
   ## pickle grid definition
@@ -759,11 +759,7 @@ if __name__ == '__main__':
           print('GridDefinition object for {0:s} not found!'.format(gridstr))         
         else:
           # save pickle
-          filename = pickleGridDef(griddef, lfeedback=None, lgzip=True)
-#           filename = '{0:s}/{1:s}'.format(grid_folder,griddef_pickle.format(gridstr))
-#           filehandle = open(filename, 'wb')
-#           pickle.dump(griddef, filehandle)
-#           filehandle.close()
+          filename = pickleGridDef(griddef, lfeedback=True, loverwrite=True, lgzip=True)
           
           print('   Saving Pickle to \'{0:s}\''.format(filename))
           print('')
