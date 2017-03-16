@@ -28,7 +28,7 @@ from wrfavg.wrfout_average import ldebug
 RAM = bool(os.getenv('RAMDISK', '')) # whether or not to use a RAM disk
 # either RAM disk or data directory
 workdir = os.getenv('RAMDISK', '') if RAM else os.getenv('DATA_ROOT', '')
-workdir += 'test/' # test folder 
+# workdir += 'test/' # test folder 
 if not os.path.exists(workdir): raise IOError(workdir)
 
 class BaseVarTest(unittest.TestCase):  
@@ -1859,12 +1859,12 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
+    tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
+    tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
 #     tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above

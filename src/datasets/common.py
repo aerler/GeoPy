@@ -11,7 +11,6 @@ from importlib import import_module
 from warnings import warn
 import inspect
 import numpy as np
-import pickle
 import os
 import functools
 # internal imports
@@ -20,7 +19,7 @@ from geodata.misc import AxisError, DatasetError, DateError, ArgumentError, Empt
   VariableError
 from geodata.base import Dataset, Variable, Axis, Ensemble
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import GDALError, addGDALtoDataset, loadPickledGridDef, griddef_pickle
+from geodata.gdal import GDALError, addGDALtoDataset, loadPickledGridDef, grid_folder, shape_folder, data_root
 # import some calendar definitions
 from geodata.misc import name_of_month, days_per_month, days_per_month_365, seconds_per_month, seconds_per_month_365
 
@@ -73,16 +72,6 @@ station_obs_datasets = ['EC','GHCN','WSC']
 gridded_obs_datasets = ['CRU','GPCC','NRCan','PCIC','PRISM','Unity']
 observational_datasets = reanalysis_datasets + station_obs_datasets + gridded_obs_datasets
 timeseries_datasets = ['CFSR','NARR','EC','GHCN','WSC','CRU','GPCC',]
-
-# read data root folder from environment variable
-data_root = os.getenv('DATA_ROOT')
-if not data_root: raise ArgumentError('No DATA_ROOT environment variable set!')
-if not os.path.exists(data_root): 
-  raise DataError("The data root '{:s}' directory set in the DATA_ROOT environment variable does not exist!".format(data_root))
-
-# standard folder for grids and shapefiles  
-grid_folder = data_root + '/grids/' # folder for pickled grids
-shape_folder = data_root + '/shapes/' # folder for pickled grids
 
 
 ## utility functions for datasets
@@ -770,17 +759,18 @@ if __name__ == '__main__':
           print('GridDefinition object for {0:s} not found!'.format(gridstr))         
         else:
           # save pickle
-          filename = '{0:s}/{1:s}'.format(grid_folder,griddef_pickle.format(gridstr))
-          filehandle = open(filename, 'wb')
-          pickle.dump(griddef, filehandle)
-          filehandle.close()
+          filename = pickleGridDef(griddef, lfeedback=None, lgzip=True)
+#           filename = '{0:s}/{1:s}'.format(grid_folder,griddef_pickle.format(gridstr))
+#           filehandle = open(filename, 'wb')
+#           pickle.dump(griddef, filehandle)
+#           filehandle.close()
           
           print('   Saving Pickle to \'{0:s}\''.format(filename))
           print('')
           
           # load pickle to make sure it is right
           del griddef
-          griddef = loadPickledGridDef(grid, res=res, folder=grid_folder)
+          griddef = loadPickledGridDef(grid, res=res)
           print(griddef)
         print('')
 

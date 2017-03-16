@@ -594,18 +594,17 @@ class DatasetNetCDF(Dataset):
         raise TypeError("'varatts' has to be a dictionary or a list of dictionaries; found: {}".format(varatts))
       if ignore_list is None: ignore_lists  = [set()]*len(datasets) # empty set means no none...
       elif isinstance(ignore_list,set): ignore_lists = [ignore_list]*len(datasets)
-      elif isinstance(varatts,(tuple,list)):
+      elif isinstance(ignore_list,(tuple,list)):
         if all(isinstance(e,basestring) for e in ignore_list):
           ignore_lists = [set((ignore_list,))]*len(datasets)
         elif all(isinstance(e,(list,tuple,set)) for e in ignore_list):
           ignore_lists = [set(ignore_list)]*len(datasets)
         else:
           raise TypeError("'ignore_list' has to be a set or a list of sets; found: {}".format(ignore_lists))
-        if len(ignore_list) != len(datasets): 
-          raise ArgumentError("{} != {}".format(len(ignore_list),len(datasets)))
-        else: ignore_lists = ignore_list
       else: 
         raise TypeError("'ignore_list' has to be a set or a list of sets; found: {}".format(ignore_lists))
+      if len(ignore_lists) != len(datasets): 
+        raise ArgumentError("{} != {}".format(len(ignore_lists),len(datasets)))
       # generate list of variables that have already been converted
       check_rename_list = []
       for varatts in varatts_list:

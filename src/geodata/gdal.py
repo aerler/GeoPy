@@ -14,7 +14,8 @@ import numpy as np
 import numpy.ma as ma
 from collections import OrderedDict
 import types  # needed to bind functions to objects
-import pickle
+import os, pickle, gzip # griddef pickles compress well
+
 # gdal imports
 from osgeo import gdal, osr, ogr
 from utils.misc import flip
@@ -25,13 +26,22 @@ gdal.UseExceptions()
 osr.UseExceptions()
 ogr.UseExceptions()
 # set default environment variable to prevent problems in IPython Notebooks
-import os
 os.environ.setdefault('GDAL_DATA','/usr/local/share/gdal')
 
 # import all base functionality from PyGeoDat
 from geodata.base import Variable, Axis, Dataset
 from geodata.misc import printList, isEqual, isInt, isFloat, isNumber , ArgumentError
 from geodata.misc import DataError, AxisError, GDALError, DatasetError
+
+# read data root folder from environment variable
+data_root = os.getenv('DATA_ROOT')
+if not data_root: raise ArgumentError('No DATA_ROOT environment variable set!')
+if not os.path.exists(data_root): 
+  raise DataError("The data root '{:s}' directory set in the DATA_ROOT environment variable does not exist!".format(data_root))
+
+# standard folder for grids and shapefiles (imported by datasets.common)
+grid_folder = data_root + '/grids/' # folder for pickled grids
+shape_folder = data_root + '/shapes/' # folder for pickled grids
 
 
 ## utility functions and classes to handle projection information and related meta data
@@ -226,50 +236,62 @@ def getGridDef(var):
                         size=var.mapSize, xlon=var.xlon, ylat=var.ylat)
 
 
+## gid pickle functions
+griddef_pickle = '{0:s}_griddef.pickle.gz' # file pattern for pickled grids
+
 # function to load pickled grid definitions
-griddef_pickle = '{0:s}_griddef.pickle' # file pattern for pickled grids
-def loadPickledGridDef(grid=None, res=None, filename=None, folder=None, check=True, lfilepath=False):
+def loadPickledGridDef(grid=None, res=None, filename=None, folder=None, check=True, lfilepath=False, lgzip=None):
   ''' function to load pickled datasets '''
-  if grid is not None and not isinstance(grid,basestring): raise TypeError
-  if res is not None and not isinstance(res,basestring): raise TypeError
-  if filename is not None and not isinstance(filename,basestring): raise TypeError
-  if folder is not None and not isinstance(folder,basestring): raise TypeError
+  if grid is not None and not isinstance(grid,basestring): raise TypeError(grid)
+  if res is not None and not isinstance(res,basestring): raise TypeError(res)
+  if filename is not None and not isinstance(filename,basestring): raise TypeError(filename)
+  if folder is not None and not isinstance(folder,basestring): raise TypeError(folder)
   # figure out filename
   if filename is None:
-    tmp = '{0:s}_{1:s}'.format(grid,res) if res else grid
-    filename = griddef_pickle.format(tmp)
-  if folder is not None: 
-    filepath = '{0:s}/{1:s}'.format(folder,filename)
+    filename = griddef_pickle.format('{0:s}_{1:s}'.format(grid,res) if res else grid)
+  filepath = '{0:s}/{1:s}'.format(grid_folder if folder is None else folder,filename)
+  # figure out compression
+  if lgzip is None: lgzip = filename.endswith('.gz')
+  elif lgzip and not filename.endswith('.gz'): filename += '.gz'
+  elif not lgzip and filename.endswith('.gz'): 
+      raise ValueError("The file extension '.gz' suggests a compressed pickle file, yet lgzip=False...")
   # load pickle
   if os.path.exists(filepath):
-    filehandle = open(filepath, 'r')
-    griddef = pickle.load(filehandle)
-    filehandle.close()
+      # open file and load pickle
+      op = gzip.open if lgzip else open
+      with op(filepath, 'r') as filehandle:
+          griddef = pickle.load(filehandle)
   elif check: 
-    raise IOError, "GridDefinition pickle file '{0:s}' not found!".format(filepath) 
+      raise IOError, "GridDefinition pickle file '{0:s}' not found!".format(filepath) 
   else:
-    griddef = None
+      griddef = None
   # add path of pickle file, if desired
   if griddef and lfilepath: 
-    griddef.filepath = filepath # monkey-patch...
+      griddef.filepath = filepath # monkey-patch...
   # return
   return griddef
+
 # save GridDef to pickle
-def pickleGridDef(griddef=None, folder=None, filename=None, lfeedback=True):
+def pickleGridDef(griddef=None, folder=None, filename=None, lfeedback=True, lgzip=None):
   ''' function to pickle griddefs in a standardized way '''
   if not isinstance(griddef,GridDefinition): raise TypeError
-  if filename is not None and not isinstance(filename,basestring): raise TypeError
-  if folder is not None and not isinstance(folder,basestring): raise TypeError
+  if filename is not None and not isinstance(filename,basestring): raise TypeError(filename)
+  if folder is not None and not isinstance(folder,basestring): raise TypeError(folder)
   # construct name
   filename = griddef_pickle.format(griddef.name) if filename is None else filename
   filepath = '{0:s}/{1:s}'.format(grid_folder if folder is None else folder,filename)
+  # figure out compression
+  if lgzip is None: lgzip = filename.endswith('.gz')
+  elif lgzip and not filename.endswith('.gz'): filename += '.gz'
+  elif not lgzip and filename.endswith('.gz'): 
+    raise ValueError("The file extension '.gz' suggests a compressed pickle file, yet lgzip=False")
   # open file and save pickle
-  filehandle = open(filepath, 'wb')
-  pickle.dump(griddef, filehandle)
-  filehandle.close()
+  op = gzip.open if lgzip else open
+  with op(filepath, 'wb') as filehandle:
+      pickle.dump(griddef, filehandle)
   # print some feedback
   if not os.path.exists(filepath):
-    raise IOError, "Error while saving Pickle to '{0:s}'".format(filepath)
+      raise IOError, "Error while saving Pickle to '{0:s}'".format(filepath)
   elif lfeedback: print("   Saved Pickle to '{0:s}'".format(filepath))
   # return filename
   return filepath
@@ -1256,45 +1278,10 @@ class ShapeSet(Shape):
     ''' wrapper method to return requested shape or None '''
     return self.shapes.get(name,None)
 
-# # container class for known shapes with meta data
-# class NamedShape(Shape):
-#   ''' Just a container for shapes with additional meta information '''
-#   def __init__(self, area=None, subarea=None, folder=None, shapefile=None, shapetype=None, shapes_dict=None, load=False, ldebug=False):
-#     ''' save meta information; should be initialized from a BasinInfo instance '''
-#     # resolve input
-#     if isinstance(area,(basestring,ShapeInfo)):
-#       if isinstance(area,basestring):
-#         if area in shapes_dict: area = shapes_dict[area]
-#         else: raise ValueError, 'Unknown area: {}'.format(area)
-#       folder = area.folder
-#       if subarea is None: 
-#         subarea = area.outline
-#         name = area.name      
-#         long_name = area.long_name
-#       elif isinstance(subarea,basestring):
-#         name = subarea 
-#         long_name = separateCamelCase(subarea, **{area.name:area.long_name})
-#       else: raise TypeError
-#       if subarea not in area.shapefiles: raise ValueError, 'Unknown subarea: {}'.format(subarea)
-#       shapefile = area.shapefiles[subarea]
-#       shapetype = area.shapetype            
-#     elif isinstance(shapefile,basestring):
-#       if folder is not None and isinstance(folder,basestring): shapefile = folder+'/'+shapefile
-#       name = area 
-#       long_name = None       
-#     else: raise TypeError, 'Specify either area & station or folder & shapefile.'
-#     # call Shape constructor
-#     super(NamedShape,self).__init__(name=name, long_name=long_name, shapefile=shapefile, load=load, ldebug=ldebug)
-#     # add info
-#     self.info = area
-#     self.shapetype = shapetype 
-
 
 ## run a test    
 if __name__ == '__main__':
-
-  from datasets.common import grid_folder, data_root
-
+  
   mode = 'read_shape'
   
   ## test reading shapefile
