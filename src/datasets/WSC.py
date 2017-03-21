@@ -169,10 +169,12 @@ class BasinSet(ShapeSet,Basin):
     self.rivers = rivers
     # add list of gage stations
     self.river_stations = OrderedDict(); self.stations = OrderedDict()
-    for river,station_list in stations.items():
-      self.river_stations = [GageStation(name=station, river=river, folder=folder) 
-                             for station in station_list]
-      for station in self.river_stations: self.stations[station.name] = station     
+    for river in rivers:
+      if  river in stations:
+          station_list = stations[river]
+          self.river_stations = [GageStation(name=station, river=river, folder=folder) 
+                                 for station in station_list]
+          for station in self.river_stations: self.stations[station.name] = station     
         
       
 # a class to hold meta data of gaging stations
@@ -183,7 +185,7 @@ class GageStation(object):
   monthly_ext = '_Monthly.csv'
   monthly_file = None
   
-  def __init__(self, basin=None, river=None, name=None, folder=None):
+  def __init__(self, basin=None, river=None, name=None, folder=None, lcheck=False):
     ''' initialize gage station based on various input data '''
     if name is None: raise ArgumentError()
     if folder is None: folder = '{:s}/Basins/{:s}/'.format(root_folder,basin)
@@ -194,11 +196,15 @@ class GageStation(object):
     self.name = name # or prefix...
     self.basin_name = basin # has to be a long_name in order to construct the folder
     self.meta_file = '{:s}/{:s}'.format(folder,name + self.meta_ext)  
-    if not os.path.isfile(self.meta_file): self.meta_file = None # clear if not available
+    if not os.path.isfile(self.meta_file): 
+      if lcheck: raise IOError(self.meta_file)
+      else: self.meta_file = None # clear if not available
     self.monthly_file = '{:s}/{:s}'.format(folder,name + self.monthly_ext)
-    if not os.path.isfile(self.monthly_file): self.monthly_file = None # clear if not available
+    if not os.path.isfile(self.monthly_file): 
+      if lcheck: raise IOError(self.monthly_file)
+      else: self.monthly_file = None # clear if not available
     
-  def getMetaData(self):
+  def getMetaData(self, lcheck=False):
     ''' parse meta data file and save and return as dictionary '''
     if self.meta_file:
       # parse file and load data into a dictionary
@@ -214,6 +220,8 @@ class GageStation(object):
       metadata['ID'] = metadata['Station Number']
       metadata['shape_name'] = self.basin_name
       metadata['shp_area'] = float(metadata['Drainage Area']) * 1e6 # km^2 == 1e6 m^2
+    elif lcheck:
+      raise GageStationError("No metadata available for gage station '{}'.".format(self.name))
     else:
       metadata = None
     # add to station
@@ -277,10 +285,10 @@ class GageStation(object):
       # return data array and coordinate vector
       return data, time
     else:
-      raise IOError()
+      raise IOError("No timeseries file defined or file not found for gage station '{}'.\n(folder: '{}')".format(self.name,self.folder))
         
 # function to get a GageStation instance
-def getGageStation(basin=None, station=None, name=None, folder=None, river=None, basin_list=None):
+def getGageStation(basin=None, station=None, name=None, folder=None, river=None, basin_list=None, **kwargs):
   ''' return an initialized GageStation instance, but infer parameters from input '''
   if isinstance(station, GageStation):
     return station # very simple shortcut!
@@ -327,7 +335,7 @@ def getGageStation(basin=None, station=None, name=None, folder=None, river=None,
     # N.B.: this Error also indicates that no gage station is available
   if not os.path.exists(folder): raise IOError(folder)
   # instantiate and return GageStation
-  return GageStation(basin=basin_name, river=None, name=name, folder=folder)
+  return GageStation(basin=basin_name, river=None, name=name, folder=folder, **kwargs)
       
     
 ## Functions that handle access to ASCII files
@@ -340,7 +348,7 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
     raise ArgumentError('Timeseries does not support aggregation.')
   # get GageStation instance
   station = getGageStation(basin=basin, station=station, name=name, folder=folder, 
-                           river=None, basin_list=basin_list)
+                           river=None, basin_list=basin_list, lcheck=True)
   # variable attributes
   if varlist is None: varlist = variable_list
   elif not isinstance(varlist,(list,tuple)): raise TypeError  
@@ -357,7 +365,7 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   data, time = station.getTimeseriesData(units='kg/s', lcheck=True, lexpand=lexpand, lfill=lfill,
                                          period=period, lflatten=lflatten)
   # station meta data
-  metadata = station.getMetaData()
+  metadata = station.getMetaData(lcheck=True)
 
   ## create dataset for station
   dataset = Dataset(name='WSC', title=metadata['Station Name'], varlist=[], atts=metadata,) 
@@ -554,15 +562,22 @@ if __name__ == '__main__':
   
 #   from projects.WSC_basins import basin_list, basins, BasinSet
   # N.B.: importing BasinInfo through WSC_basins is necessary, otherwise some isinstance() calls fail
-  basin_list = dict(GRW=BasinSet(name='GRW', long_name='Grand River Watershed', rivers=['Grand River'], 
-                                 data_source='Aquanty', stations={'Grand River':['Brantford']}, 
+  GRW_stations = {'Grand River':['Brantford','Marsville'], 'Conestogo River':['Glen Allan'],
+                  'Fairchild Creek':['Brantford'],'Speed River':['Guelph'], 'Whitemans Creek':['Mount Vernon']}
+  basin_list = dict(GRW=BasinSet(name='GRW', long_name='Grand River Watershed', data_source='Aquanty', stations=GRW_stations, 
+                                 rivers=['Grand River', 'Conestogo River', 'Fairchild Creek', 'Speed River', 'Whitemans Creek'], 
                                  subbasins=['WholeGRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW']),
                     SSR=BasinSet(name='SSR', long_name='South Saskatchewan River', rivers=['South Saskatchewan'], 
                                  data_source='Aquanty', stations={'South Saskatchewan':['St Louis','Saskatoon']}, 
                                  subbasins=['WholeSSR']))
-#   basin_name = 'GRW'
-  basin_name = 'SSR'
+  basin_name = 'GRW'
+#   basin_name = 'SSR'
 
+  # load a random station
+  station = 'Conestogo River_Glen Allan'
+  stnds = loadGageStation(basin=basin_name, basin_list=basin_list, station=station)
+  print(stnds)
+  
   # verify basin info
   basin_set = basin_list[basin_name]
   print basin_set.long_name
@@ -575,7 +590,7 @@ if __name__ == '__main__':
   assert basin.name == basin_name, basin.name
   
   # load station data
-  station = basin.getMainGage(aggregation=None)
+  station = basin.getMainGage(aggregation=None,)
   print
   print station
   print
