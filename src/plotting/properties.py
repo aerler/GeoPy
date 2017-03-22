@@ -457,7 +457,7 @@ variablePlotatts['ugroff'] = tmp
 
 ## Discharge (river flow)
 tmp = PlotAtts(name = 'Discharge', title = 'Discharge', 
-               units = r'$10^4 kg s^{-1}$', scalefactor = 1e-4)
+               units = r'$10^6 kg s^{-1}$', scalefactor = 1e-6)
 # add to collection
 variablePlotatts['discharge'] = tmp
 

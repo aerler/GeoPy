@@ -199,9 +199,9 @@ if __name__ == '__main__':
   else:
 #     NP = 1 ; ldebug = True # for quick computations
     NP = 3 ; ldebug = False # for quick computations
-#     modes = ('time-series','climatology')
-    modes = ('climatology',) 
-    loverwrite = False
+    modes = ('time-series','climatology')
+#     modes = ('time-series',) 
+    loverwrite = True
     varlist = None # ['T2']
     periods = []
 #     periods += [1]
@@ -216,7 +216,7 @@ if __name__ == '__main__':
     datasets = []; resolutions = None; unity_grid = None #'arb2_d02'
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['031','05'],'NRCan':'NA12'}
     datasets = []
-    datasets += ['NRCan']; periods = [(1970,2000),(1980,2010)]; lLTM = False
+#     datasets += ['NRCan']; periods = [(1970,2000),(1980,2010)]; lLTM = False
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
@@ -233,12 +233,24 @@ if __name__ == '__main__':
 #     WRF_project = 'WesternCanada' # only use WesternCanada experiments
     WRF_project = 'GreatLakes' # only use GreatLakes experiments
     WRF_experiments = []
-#     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
+    WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
 #     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050']
 #     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
 #     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
 #     WRF_experiments += ['g-ensemble','t-ensemble']
+    WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
+    WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
+    WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
+    WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
+    WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
+    WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
+    WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]
+    WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
+    WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
+    WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]
+    WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
+    WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
 #     WRF_experiments += ['g-ctrl', 'g-ctrl-2050', 'g-ctrl-2100']
 #     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',]
 #     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
@@ -255,7 +267,7 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None
 #     WRF_filetypes = ('aux','aabc')
-    WRF_filetypes = ('aux',)
+    WRF_filetypes = ('hydro',)
 #     grid = 'grw2' # grid parameter to load datasets
     # define shape data  
     shapes = OrderedDict()
