@@ -262,7 +262,7 @@ def loadPickledGridDef(grid=None, res=None, filename=None, folder=None, check=Tr
     elif os.path.exists(fp) and ( not filename.endswith('.gz') or not os.path.exists(fpgz) ): 
         lgzip = False; filepath = fp # use unzipped pickle is file doesn't end in gz or gzipped pickle doen't exist
     elif check:
-        raise ArgumentError("Unable to infer gzip option; it appears neither the gzipped nor the unzipped file are present:\n'{}'").format(filepath)
+        raise ArgumentError("Unable to infer gzip option; it appears neither the gzipped nor the unzipped file are present:\n'{}'".format(filepath))
   elif lgzip and os.path.exists(fpgz): filepath = fpgz
   elif not lgzip and filename.endswith('.gz'): 
       raise ValueError("The file extension '.gz' suggests a compressed pickle file, yet lgzip=False...")
