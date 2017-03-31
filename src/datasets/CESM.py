@@ -162,9 +162,12 @@ class ATM(FileType):
                      SHFLX    = dict(name='hfx', units='W/m^2'), # surface sensible heat flux
                      LHFLX    = dict(name='lhfx', units='W/m^2'), # surface latent heat flux
                      QFLX     = dict(name='evap', units='kg/m^2/s'), # surface evaporation
-                     FLUT     = dict(name='OLR', units='W/m^2'), # Outgoing Longwave Radiation
-                     FLDS     = dict(name='GLW', units='W/m^2'), # Ground Longwave Radiation
-                     FSDS     = dict(name='SWD', units='W/m^2'), # Downwelling Shortwave Radiation                     
+                     FLUT     = dict(name='LWUPT', units='W/m^2'), # Outgoing Longwave Radiation
+                     FLDS     = dict(name='LWDNB', units='W/m^2'), # Ground Longwave Radiation
+                     FSDS     = dict(name='SWDNB', units='W/m^2'), # Downwelling Shortwave Radiation                     
+                     OLR      = dict(name='LWUPT', units='W/m^2'), # Outgoing Longwave Radiation
+                     GLW      = dict(name='LWDNB', units='W/m^2'), # Ground Longwave Radiation
+                     SWD      = dict(name='SWDNB', units='W/m^2'), # Downwelling Shortwave Radiation                     
                      PS       = dict(name='ps', units='Pa'), # surface pressure
                      PSL      = dict(name='pmsl', units='Pa'), # mean sea level pressure
                      PHIS     = dict(name='zs', units='m', scalefactor=1./9.81), # surface elevation
@@ -185,6 +188,7 @@ class LND(FileType):
                      QOVER    = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
                      QRUNOFF  = dict(name='runoff', units='kg/m^2/s'), # total surface and sub-surface run-off
                      QIRRIG   = dict(name='irrigation', units='kg/m^2/s'), # water flux through irrigation
+                     H2OSOI   = dict(name='aSM', units='m^3/m^3'), # absolute soil moisture
                      )
     self.vars = self.atts.keys()    
     self.climfile = 'cesmlnd{0:s}_clim{1:s}.nc' # the filename needs to be extended by ('_'+grid,'_'+period)
@@ -243,7 +247,7 @@ class Axes(FileType):
                      lat           = dict(name='lat', units='deg N'), # south-north coordinate
                      LON           = dict(name='lon', units='deg E'), # west-east coordinate (actually identical to lon!)
                      LAT           = dict(name='lat', units='deg N'), # south-north coordinate (actually identical to lat!)                     
-                     levgrnd = dict(name='s', units=''), # soil layers
+                     levgrnd       = dict(name='s', units=''), # soil layers
                      lev = dict(name='lev', units='')) # hybrid pressure coordinate
     self.vars = self.atts.keys()
     self.climfile = None

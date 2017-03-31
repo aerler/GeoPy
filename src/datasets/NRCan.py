@@ -488,12 +488,12 @@ loadShapeTimeSeries = loadNRCan_ShpTS # time-series without associated grid (e.g
 
 if __name__ == '__main__':
   
-#     mode = 'test_climatology'
+    mode = 'test_climatology'
 #     mode = 'test_timeseries'
 #     mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
 #     mode = 'convert_Normals'
-    mode = 'add_CMC'
+#     mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
 #     pntset = 'ecprecip'
@@ -505,7 +505,8 @@ if __name__ == '__main__':
             
         # load averaged climatology file
         print('')
-        dataset = loadNRCan(grid=grid,period=period,resolution=res, varatts=dict(pet=dict(name='pet_wrf')))
+        dataset = loadNRCan(grid=grid,period=period,resolution=res, varatts=dict(pet=dict(name='pet_wrf')),
+                            varlist=['SWDNB'])
         print(dataset)
         print('')
         print(dataset.geotransform)

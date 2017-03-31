@@ -355,12 +355,15 @@ tmp = PlotAtts(name = r'$LW_{down}$', title = 'Downward LW Radiative Flux',
                units = r'$W/m^2$', scalefactor = 1.)
 # add to collection
 variablePlotatts['GLW'] = tmp
+variablePlotatts['LWDNB'] = tmp
 
 ## Surface Downward SW Radiative Flux
 tmp = PlotAtts(name = r'$SW_{down}$', title = 'Downward SW Radiative Flux', 
                units = r'$W/m^2$', scalefactor = 1.)
 # add to collection
 variablePlotatts['SWDOWN'] = tmp
+variablePlotatts['SWDNB'] = tmp
+variablePlotatts['SWD'] = tmp
 
 ## Surface Normal SW Radiative Flux
 tmp = PlotAtts(name = r'$SW_{norm}$', title = 'Surface Normal (SW) Radiative Flux', 
@@ -379,6 +382,7 @@ tmp = PlotAtts(name = 'OLR', title = 'Outgoing Longwave Radiation',
                units = r'$W/m^2$', scalefactor = 1.)
 # add to collection
 variablePlotatts['OLR'] = tmp
+variablePlotatts['LWUPT'] = tmp
 
 ## Potential Evapo-Transpiration (WRF)
 tmp = PlotAtts(name = 'WRF PET', title = 'Potential Evapo-Transpiration (WRF)', 

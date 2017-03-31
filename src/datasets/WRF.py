@@ -136,9 +136,12 @@ class Srfc(FileType):
                      HFX          = dict(name='hfx', units='W/m^2'), # surface sensible heat flux
                      LH           = dict(name='lhfx', units='W/m^2'), # surface latent heat flux
                      QFX          = dict(name='evap', units='kg/m^2/s'), # surface evaporation
-                     OLR          = dict(name='OLR', units='W/m^2'), # Outgoing Longwave Radiation
-                     GLW          = dict(name='GLW', units='W/m^2'), # Downwelling Longwave Radiation at Surface
-                     SWDOWN       = dict(name='SWD', units='W/m^2'), # Downwelling Shortwave Radiation at Surface
+#                      OLR          = dict(name='OLR', units='W/m^2'), # Outgoing Longwave Radiation
+#                      GLW          = dict(name='GLW', units='W/m^2'), # Downwelling Longwave Radiation at Surface
+#                      SWDOWN       = dict(name='SWD', units='W/m^2'), # Downwelling Shortwave Radiation at Surface
+                     OLR          = dict(name='LWUPT', units='W/m^2'), # Outgoing Longwave Radiation
+                     GLW          = dict(name='LWDNB', units='W/m^2'), # Downwelling Longwave Radiation at Surface
+                     SWD          = dict(name='SWDNB', units='W/m^2'), # Downwelling Shortwave Radiation at Surface
                      SWNORM       = dict(name='SWN', units='W/m^2'), # Downwelling Normal Shortwave Radiation at Surface
                      NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
                      LiquidPrecip_SR = dict(name='liqprec_sr', units='kg/m^2/s'), # liquid precipitation rate
