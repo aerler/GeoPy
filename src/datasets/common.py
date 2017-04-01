@@ -84,8 +84,9 @@ def addLoadFcts(namespace, dataset, comment=" (Experiment and Ensemble lists are
   for name,fct in vardict.iteritems():
     if inspect.isfunction(fct) and name[:4] == 'load':
       # check valid arguments (omit others)
-      arglist = inspect.getargs(fct.func_code)[0]
-      fctargs = {key:value for key,value in kwargs.iteritems() if key in arglist}
+      arglist = inspect.getargs(fct.func_code)
+      arglist = None if arglist[2] is not None else arglist[0]
+      fctargs = {key:value for key,value in kwargs.iteritems() if arglist is None or  key in arglist}
       # apply arguments and update doc-string
       newfct = functools.partial(fct, **fctargs)
       newfct.__doc__ = fct.__doc__ + comment # copy doc-string with comment
@@ -437,7 +438,7 @@ class BatchLoad(object):
 
   
 # universal load function that will be imported by datasets
-@BatchLoad
+# @BatchLoad
 def loadDataset(name=None, station=None, shape=None, mode='climatology', basin_list=None,
                 WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, **kwargs):
   ''' A function to load any datasets; identifies source by name heuristics. '''
@@ -521,6 +522,8 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', basin_l
   # return dataset
   return dataset
 
+# loadDataset version with BatchLoad capability
+loadDatasets = BatchLoad(loadDataset)
 
 # function to extract common points that meet a specific criterion from a list of datasets
 def selectElements(datasets, axis, testFct=None, master=None, linplace=False, lall=False):
@@ -598,14 +601,13 @@ def selectElements(datasets, axis, testFct=None, master=None, linplace=False, la
 
 
 # a function to load station data
-@BatchLoad
-def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, prov=None, 
-                   shape=None, station=None, slices=None, obsslices=None, years=None, period=None, obs_period=None, 
-                   reduction=None, constraints=None, filetypes=None, domain=None, grid=None, ldataset=False, 
-                   lcheckVar=False, lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', 
-                   lminmax=False, master=None, lall=True, ensemble_list=None, ensemble_product='inner', 
-                   lensembleAxis=False, WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, 
-                   bias_correction=None, obs_list=observational_datasets, basin_list=None, **kwargs):
+def loadEnsemble(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, prov=None, 
+                 shape=None, station=None, slices=None, obsslices=None, years=None, period=None, obs_period=None, 
+                 reduction=None, constraints=None, filetypes=None, domain=None, grid=None, ldataset=False, 
+                 lcheckVar=False, lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', 
+                 lminmax=False, master=None, lall=True, ensemble_list=None, ensemble_product='inner', 
+                 lensembleAxis=False, WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, 
+                 bias_correction=None, obs_list=observational_datasets, basin_list=None, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -690,6 +692,11 @@ def loadEnsembleTS(names=None, name=None, title=None, varlist=None, aggregation=
     ensemble = ensemble.seasonalSample(season=season)
   # return dataset
   return ensemble
+
+# convenience versions of loadEnsemble with BatchLoad capability or 'TS' suffix (for backwards-compatibility)
+loadEnsembles = BatchLoad(loadEnsemble)
+loadEnsembleTS = loadEnsemble # for backwards-compatibility
+
 
 ## Miscellaneous utility functions
 
