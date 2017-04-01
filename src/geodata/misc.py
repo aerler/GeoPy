@@ -264,9 +264,11 @@ def joinDicts(*dicts):
         for key,value in d.iteritems():
           if key in conflicting: pass # conflicting entry
           elif key in joined: # either conflicting or same
-            if value.__class__ != joined[key].__class__: equal = False  
-            elif isinstance(value,basestring): equal = (value == joined[key])
-            else: equal = isEqual(value,joined[key])              
+            # check equality
+            try: 
+                equal = isEqual(value,joined[key]) # try numerical equality first
+            except TypeError: 
+                equal = (value == joined[key]) # fallback, if not an array or numerical
             if not equal:
               del joined[key] # remove conflicting
               conflicting.add(key)

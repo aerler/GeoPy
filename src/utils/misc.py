@@ -27,12 +27,14 @@ def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}'
       cell_str controls formatting of each cell, and also supports multiple arguments along 
       an axis. lflatten skips cell axis checking and lumps all remaining axes together. '''
   # check input
-  if not isinstance(data, np.ndarray): raise TypeError()
+  if not isinstance(data, np.ndarray):
+    try: data = np.asarray(data) 
+    except: raise TypeError(data)
   if cell_idx is not None:
-    if not data.ndim == 3: raise AxisError()
+    if not data.ndim == 3: raise AxisError(cell_idx)
   elif lflatten:
-    if not data.ndim >= 2: raise AxisError()
-  elif not data.ndim == 2: raise AxisError()
+    if not data.ndim >= 2: raise AxisError(cell_idx)
+  elif not data.ndim == 2: raise AxisError(cell_idx)
   if not isinstance(cell_str,basestring): raise TypeError(cell_str)
   if cell_fct: 
     if not callable(cell_fct): raise TypeError(cell_fct)
