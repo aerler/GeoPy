@@ -83,6 +83,7 @@ def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}'
     tab_begin = kwargs.pop('tab_begin','') # by default, no tab environment
     tab_end = kwargs.pop('tab_end','') # by default, no tab environment
     extra_hline = kwargs.pop('extra_hline', []) # row_idx or label with extra \hline command
+    lpercent = kwargs.pop('lpercent',True) # escape the percent symbol (LaTeX comment)
     # align cells
     nrow = rowlen+1 if lheader else rowlen
     ncol = collen+1 if llabel else collen
@@ -102,6 +103,7 @@ def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}'
       if lheaderhline and i == 0: string += ' \\hline' # always put one behind the header
       string += '\n' # add actual line break 
     if tab_end: string += (tab_end+'\n') 
+    if lpercent: string = string.replace('%', '\%') # escape percent signs
   else:
     # use the tabulate module (it's not standard, so import only when needed)
     from tabulate import tabulate 
