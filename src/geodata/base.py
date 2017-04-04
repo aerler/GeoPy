@@ -78,12 +78,13 @@ def BinaryCheckAndCreateVar(sameUnits=True, linplace=False):
         if orig.shape != other.shape:
           mind = min(orig.ndim,other.ndim)
           if orig.ndim == other.ndim or orig.shape[:mind] != other.shape[:mind]:
-            raise AxisError, 'Variables need to have the same shape and compatible axes!'
+            raise AxisError('Variables need to have the same shape and compatible axes!')
           # else we can broadcast
         if sameUnits and orig.units != other.units: 
-          raise VariableError, 'Variable units have to be identical for addition!'
+          raise VariableError('Variable units have to be identical for addition!')
         for lax,rax in zip(orig.axes,other.axes):
-          if (lax.coord != rax.coord).any(): raise AxisError,  'Variables need to have identical coordinate arrays!'
+          if not isEqual(lax[:],rax[:]): 
+              raise AxisError('Variables need to have identical coordinate arrays!\n{}'.format(lax[:]-rax[:]))
         if not other.data: other.load()
       elif not isinstance(other, (np.ndarray,numbers.Number,np.integer,np.inexact)): 
         raise TypeError, 'Can only operate with Variables or numerical types!'
@@ -97,7 +98,7 @@ def BinaryCheckAndCreateVar(sameUnits=True, linplace=False):
         if other.ndim < orig.ndim: 
           otherdata = otherdata.reshape(other.shape+(1,)*(orig.ndim-other.ndim))
         elif other.ndim < orig.ndim: 
-          raise NotImplementedError, "Can only broadcast second Variable in binary operation. "
+          raise NotImplementedError("Can only broadcast second Variable in binary operation.")
       else:
         othername = str(other)
         otherunits = None
