@@ -139,8 +139,8 @@ class ReduceVar(object): # not a Variable child!!!
   def __init__(self, reduceop):
     ''' Save original operation. '''
     self.reduceop = reduceop
-  def __call__(self, var, asVar=None, axis=None, axes=None, lcheckVar=True, lcheckAxis=True,
-                          fillValue=None, lrecursive=False, lall=True, keepdims=False, **kwaxes):
+  def __call__(self, var, asVar=None, axis=None, axes=None, lcheckVar=True, lcheckAxis=True, fillValue=None, 
+               lrecursive=False, lall=True, keepdims=False, keepname=False, **kwaxes):
     ''' Figure out axes, perform sanity checks, then execute operation, and return result as a Variable 
         instance. Axes are specified either in a list ('axes') or as keyword arguments with corresponding
         slices. '''
@@ -243,7 +243,7 @@ class ReduceVar(object): # not a Variable child!!!
             data = np.ma.repeat(data, repeats=len(ax), axis=i)
         newaxes = var.axes # use old axes
       else: newaxes = [ax for ax in var.axes if not ax.name in axes] # remove squeezed axes
-      redvar = var.copy(name=name, units=units, axes=newaxes, data=data)
+      redvar = var.copy(name=var.name if keepname else name, units=units, axes=newaxes, data=data)
 #       redvar = Variable(name=var.name, units=var.units, axes=newaxes, data=data, 
 #                      fillValue=var.fillValue, atts=var.atts.copy(), plot=var.plot.copy())
     else: redvar = data

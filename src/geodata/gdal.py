@@ -33,7 +33,8 @@ os.environ.setdefault('GDAL_DATA','/usr/local/share/gdal')
 
 # import all base functionality from PyGeoDat
 from geodata.base import Variable, Axis, Dataset
-from geodata.misc import printList, isEqual, isInt, isFloat, isNumber , ArgumentError
+from geodata.misc import printList, isEqual, isInt, isFloat, isNumber , ArgumentError,\
+  VariableError
 from geodata.misc import DataError, AxisError, GDALError, DatasetError
 
 # read data root folder from environment variable
@@ -50,6 +51,25 @@ shape_folder = data_root + '/shapes/' # folder for pickled grids
 R = 6371000 # in meters, from Wikipedia
 
 ## utility functions and classes to handle projection information and related meta data
+
+
+# metric for spherical coordinates
+def sphericalMetric(ylat, integral=False, R=R, asVar=True):
+    ''' create a metric for spherical coordinates, based on latitude vector '''
+    if ylat.max() > 90 and ylat.min() > -90: 
+        raise AxisError(ylat)
+    metric = np.cos(ylat[:]*np.pi/180.)
+    if integral: 
+      metric *= (4*np.pi*R**2)/metric.mean() # normalize by area of sphere
+      units = 'm^2'; name = 'area' # Radius is in meters, area units
+    else: 
+      metric /= metric.mean() # just normalize axis
+      units = ''; name = 'metric' # no units, just weighing factors
+    # create variable object
+    if asVar: 
+        metric = Variable(data=metric, axes=(ylat,), name=name, units=units)
+    # return metric
+    return metric
 
 # utility function to check if longitude runs from 0 to 360, instead of -180 - 180
 def checkWrap360(lwrap360, xlon):
@@ -795,8 +815,9 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         mask = shape.rasterize(griddef=self.griddef, invert=invert, asVar=False)
       else: shape = None      
       # determine relevant axes
-      axes = {self.xlon.name:None, self.ylat.name:None} # the relevant map axes; entire coordinate
+      axes = {self.xlon.name:None, self.ylat.name:None,} # the relevant map axes; entire coordinate
       kwargs.update(axes)# update dictionary with arguments to be passes to self.mean()
+      if 'keepname' not in kwargs: kwargs['keepname'] = True
       # apply temporary mask, if necessary
       if mask is not None:
           if self.masked: oldmask = ma.getmask(self.data_array) # save old mask
@@ -811,21 +832,13 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           if isinstance(metric,basestring):
               # special metrics
               if metric[:3].lower() == 'lat'  and not self.isProjected: 
-                  # metric for spherical coordinates
-                  if self.ylat.max() > 90 and self.ylat.min() > -90: raise AxisError(self.ylat)
-                  metric = np.cos(self.ylat[:]*np.pi/180.)
-                  if integral: 
-                    metric *= (4*np.pi*R**2)/metric.mean() # normalize by area of sphere
-                    units = 'm^2' # Radius is in meters 
-                  else: metric /= metric.mean() # just normalize axis
+                  metric = sphericalMetric(self.ylat, integral=integral, R=R, asVar=False)
                   # adjust shape for broadcasting
                   shape = [1]*self.ndim
                   shape[self.axisIndex(self.ylat.name)] = metric.size
                   metric = metric.reshape(shape)
               else: 
                   raise NotImplementedError("Special keyword for metric not recognized: '{}'".format(metric))
-              if not self.isProjected:
-                  if integral: metric *= 4*np.pi*R**2 # multiply by surface area of globe... 
           if isinstance(metric,Variable):
               # metric is given as a Variable (or Axis)
               if metric.ndim == 1:
@@ -833,7 +846,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
                   if not ( self.hasAxis(axname) and metric.shape[0] == len(self.getAxis(axname)) ):
                       raise AxisError("Metric axes are incompatible with Variable: {} != {}".format(metric.shape,self.shape))
                   shape = [1]*self.ndim
-                  shape[self.axisIndex(metric.name)] = metric.shape[0]
+                  shape[self.axisIndex(axname)] = metric.shape[0]
               elif metric.ndim == 2:
                   for lax,rax in zip(self.axes[-2:],metric.axes):
                     if lax != rax: # check axes 
@@ -1144,7 +1157,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
     # add new method to object
     dataset.maskShape = types.MethodType(maskShape, dataset)
     
-    def mapMean(self, mask=None, integral=False, invert=False, squeeze=True, checkAxis=True, coordIndex=True):
+    def mapMean(self, mask=None, integral=False, R=R, metric=None, invert=False, squeeze=True, lcheckAxis=True, coordIndex=True):
       ''' Average entire dataset over horizontal map coordinates; optionally apply 2D mask. '''
       newset = Dataset(name=self.name, varlist=[], atts=self.atts.copy()) 
       # N.B.: the returned dataset will not be GDAL enabled, because the map dimensions will be gone! 
@@ -1155,20 +1168,30 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       else: shape = None
       # relevant axes
       axes = {self.xlon.name:None, self.ylat.name:None} # the relevant map axes; entire coordinate
+      # determine default metric
+      if not self.isProjected and metric is None: metric = 'lat' # defaulf for spherical coordinates
+      if isinstance(metric,basestring):
+          # special metrics
+          if metric[:3].lower() == 'lat'  and not self.isProjected: 
+              metric = sphericalMetric(self.ylat, integral=integral, R=R, asVar=True)
+          else: 
+              raise NotImplementedError("Special keyword for metric not recognized: '{}'".format(metric))
+      if isinstance(metric,Variable): 
+          if not all([self.hasAxis(ax.name) for ax in metric.axes]): raise AxisError(metric)
+          if ( not integral and metric.units ) or ( integral and not metric.units ): raise VariableError(metric)
+      elif not metric is None: raise TypeError(metric)
       # loop over variables
       for var in self.variables.values():
         # figure out, which axes apply
         tmpax = {key:value for key,value in axes.iteritems() if var.hasAxis(key)}
         # get averaged variable
         if len(tmpax) == 2:
-          newset.addVariable(var.mapMean(mask=mask, integral=integral, invert=invert, coordIndex=coordIndex, 
-                                       squeeze=True, checkAxis=True), copy=False) # new variable/values anyway
+          newset.addVariable(var.mapMean(mask=mask, integral=integral, R=R, metric=metric, invert=invert, keepname=True,
+                                         squeeze=squeeze, lcheckAxis=lcheckAxis, asVar=True), copy=False) # new variable/values anyway
         elif len(tmpax) == 1:
-          newset.addVariable(var.mean(coordIndex=coordIndex, squeeze=True, checkAxis=True, asVar=True, 
-                                      **tmpax), copy=False) # new variable/values anyway        
+          newset.addVariable(var.mean(squeeze=squeeze, lcheckAxis=lcheckAxis, asVar=True, keepname=True, **tmpax), copy=False) # new variable/values anyway        
         elif len(tmpax) == 0: 
-          newset.addVariable(var, copy=True, deepcopy=True) # copy values
-#         else: raise GDALError
+          newset.addVariable(var, copy=True, deepcopy=True) # copy variables and data
       # add some record
       for key,value in axes.iteritems():
         if isinstance(value,(list,tuple)): newset.atts[key] = printList(value)

@@ -1606,24 +1606,6 @@ class GDALVarTest(NetCDFVarTest):
     assert data is not None
     assert data.ReadAsArray()[:,:,:].shape == (var.bands,)+var.mapSize 
 
-  def testMapReduction(self):
-    # test mapMean
-    var = self.var
-    if var.ndim >= 3:
-      assert var.gdal 
-      # find any map and non-map axis
-      noax = []; mapax = []
-      for ax in var.axes:
-        if ax != var.xlon and ax != var.ylat: noax.append(ax)
-        else: mapax.append(ax)
-      # compute map mean
-      mvar = var.mapMean()
-      assert mvar.ndim+2 == var.ndim, mvar
-      assert mvar.shape == var.shape[:-2], mvar
-      # compare
-      if not var.isProjected and var.name == 'p':
-          assert mvar.mean() > var.mean(), mvar
-
   def testIndexing(self):
     # check if GDAL features are propagated
     var = self.var
@@ -1643,6 +1625,24 @@ class GDALVarTest(NetCDFVarTest):
       assert not slcvar.gdal 
     # do standard tests
     super(GDALVarTest,self).testIndexing()
+
+  def testMapReduction(self):
+    # test mapMean
+    var = self.var
+    if var.ndim >= 3:
+      assert var.gdal 
+      # find any map and non-map axis
+      noax = []; mapax = []
+      for ax in var.axes:
+        if ax != var.xlon and ax != var.ylat: noax.append(ax)
+        else: mapax.append(ax)
+      # compute map mean
+      mvar = var.mapMean()
+      assert mvar.ndim+2 == var.ndim, mvar
+      assert mvar.shape == var.shape[:-2], mvar
+      # compare
+      if not var.isProjected and var.name == 'p':
+          assert mvar.mean() > var.mean(), mvar
 
   def testReadASCII(self):
     ''' test function to read Arc/Info ASCII Grid / ASCII raster files '''
@@ -1786,6 +1786,26 @@ class DatasetGDALTest(DatasetNetCDFTest):
       assert not slcds.gdal 
     # do standard tests
     super(DatasetGDALTest,self).testIndexing()
+    
+  def testMapReduction(self):
+    # test mapMean
+    dataset = self.dataset.load() # dataset object
+    assert dataset.gdal 
+    # find any map and non-map axis
+    noax = []; mapax = []
+    for ax in dataset.axes:
+      if ax != dataset.xlon and ax != dataset.ylat: noax.append(ax)
+      else: mapax.append(ax)
+    # compute map mean
+    mds = dataset.mapMean()
+    for mvar in mds:
+        var = dataset[mvar.name]
+        if var.hasAxis(dataset.xlon.name) and var.hasAxis(dataset.ylat.name):
+            assert mvar.ndim+2 == var.ndim, mvar
+            assert mvar.shape == var.shape[:-2], mvar
+            # compare
+            if not var.isProjected and var.name == 'p':
+                assert mvar.mean() > var.mean(), mvar
 
   def testReadASCII(self):
     ''' test function to read Arc/Info ASCII Grid / ASCII raster files '''
@@ -1880,11 +1900,11 @@ if __name__ == "__main__":
     # list of variable tests
 #     tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['GDALVar']
     # list of dataset tests
 #     tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
-#     tests += ['DatasetGDAL']
+    tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()
