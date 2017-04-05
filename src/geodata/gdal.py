@@ -46,6 +46,8 @@ if not os.path.exists(data_root):
 grid_folder = data_root + '/grids/' # folder for pickled grids
 shape_folder = data_root + '/shapes/' # folder for pickled grids
 
+# Earth's radius
+R = 6371000 # in meters, from Wikipedia
 
 ## utility functions and classes to handle projection information and related meta data
 
@@ -510,7 +512,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
       # use GridDefinition object 
       if isinstance(griddef,basestring): # load from pickle file
         griddef = loadPickledGridDef(grid=griddef, res=None, filename=None, folder=gridfolder)
-      elif not isinstance(griddef,GridDefinition): raise TypeError
+      elif not isinstance(griddef,GridDefinition): raise TypeError(griddef)
       projection, isProjected, xlon, ylat = griddef.getProjection()
       lgdal = ( ( xlon is not None and ylat is not None ) and # need non-None xlon & ylat
                 ( var.hasAxis(ylat.name) and var.hasAxis(xlon.name)) ) # and need them in the Variable
@@ -784,8 +786,8 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     var.getMapMask = types.MethodType(getMapMask, var)   
     
     # extension to mean
-    def mapMean(self, mask=None, integral=False, invert=False, squeeze=True, **kwargs):
-      ''' Compute mean over the horizontal axes, optionally applying a 2D shape or mask. '''
+    def mapMean(self, mask=None, integral=False, R=R, metric=None, invert=False, squeeze=True, **kwargs):
+      ''' Compute mean over the horizontal axes, optionally applying a 2D shape or mask or a metric. '''
       if not self.data: raise DataError
       # if mask is a shape object, create the mask
       if isinstance(mask,Shape):
@@ -794,22 +796,79 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
       else: shape = None      
       # determine relevant axes
       axes = {self.xlon.name:None, self.ylat.name:None} # the relevant map axes; entire coordinate
-      # temporarily mask 
-      if self.masked: oldmask = ma.getmask(self.data_array) # save old mask
+      kwargs.update(axes)# update dictionary with arguments to be passes to self.mean()
+      # apply temporary mask, if necessary
+      if mask is not None:
+          if self.masked: oldmask = ma.getmask(self.data_array) # save old mask
+          else: oldmask = None
+          self.mask(mask=mask, invert=invert, merge=True) # new mask on top of old mask
       else: oldmask = None
-      self.mask(mask=mask, invert=invert, merge=True) # new mask on top of old mask
-      # compute average
-      kwargs.update(axes)# update dictionary
-      newvar = self.mean(**kwargs)
-      if squeeze: newvar.squeeze()
-      # if integrating
-      if integral:
-        if not self.isProjected: raise NotImplementedError
-        dx = self.geotransform[1]; dy = self.geotransform[5] 
-        area = (1-mask).sum()*dx*dy
-        newvar *= area # in-place scaling
-        if self.xlon.units == self.ylat.units: newvar.units = '{} {}^2'.format(newvar.units,self.ylat.units) 
-        else: newvar.units ='{} {} {}'.format(newvar.units,self.xlon.units,self.ylat.units)
+      ## compute average
+      if not self.isProjected or metric:
+          # determine metric
+          if not self.isProjected and metric is None: metric = 'lat' # defaulf for spherical coordinates
+          units = None
+          if isinstance(metric,basestring):
+              # special metrics
+              if metric[:3].lower() == 'lat'  and not self.isProjected: 
+                  # metric for spherical coordinates
+                  if self.ylat.max() > 90 and self.ylat.min() > -90: raise AxisError(self.ylat)
+                  metric = np.cos(self.ylat[:]*np.pi/180.)
+                  if integral: 
+                    metric *= (4*np.pi*R**2)/metric.mean() # normalize by area of sphere
+                    units = 'm^2' # Radius is in meters 
+                  else: metric /= metric.mean() # just normalize axis
+                  # adjust shape for broadcasting
+                  shape = [1]*self.ndim
+                  shape[self.axisIndex(self.ylat.name)] = metric.size
+                  metric = metric.reshape(shape)
+              else: 
+                  raise NotImplementedError("Special keyword for metric not recognized: '{}'".format(metric))
+              if not self.isProjected:
+                  if integral: metric *= 4*np.pi*R**2 # multiply by surface area of globe... 
+          if isinstance(metric,Variable):
+              # metric is given as a Variable (or Axis)
+              if metric.ndim == 1:
+                  axname = metric.axes[0].name
+                  if not ( self.hasAxis(axname) and metric.shape[0] == len(self.getAxis(axname)) ):
+                      raise AxisError("Metric axes are incompatible with Variable: {} != {}".format(metric.shape,self.shape))
+                  shape = [1]*self.ndim
+                  shape[self.axisIndex(metric.name)] = metric.shape[0]
+              elif metric.ndim == 2:
+                  for lax,rax in zip(self.axes[-2:],metric.axes):
+                    if lax != rax: # check axes 
+                      raise AxisError("Metric axes are incompatible with Variable: {} != {}".format(metric.shape,self.shape))
+                  shape = (1,)*(self.ndim-2)+metric.shape
+              metric = metric[:].reshape(shape)
+          if not isinstance(metric,np.ndarray): raise TypeError(metric)
+          # now the metric can only be a Numpy array
+          if metric.ndim == self.ndim: 
+              if not all(l==r or l==1 for l,r in zip(metric.shape,self.shape)):
+                  raise AxisError("Metric axes are incompatible with Variable: {} != {}".format(metric.shape,self.shape)) 
+          elif metric.ndim == 2:
+              if not all(l==r or l==1 for l,r in zip(metric.shape,self.shape[-2:])):
+                  raise AxisError("Metric axes are incompatible with Variable: {} != {}".format(metric.shape,self.shape))
+              shape = (1,)*(self.ndim-2)+metric.shape
+              metric = metric.reshape(shape)
+          if not integral: metric = metric / metric.mean() # normalize metric
+          # make copy, apply metric and average
+          newvar = self.deepcopy() # use a copy of the variable
+          newvar *= metric # apply metric and normalize (first)
+          if integral:
+              newvar = newvar.sum(**kwargs)
+              if units: newvar.units = '{} {}'.format(newvar.units,units)
+          else: 
+              newvar = newvar.mean(**kwargs) # simple mean and smae units 
+      else:
+          newvar = self.mean(**kwargs)
+          if squeeze: newvar.squeeze()
+          # if integrating
+          if integral:
+            dx = self.geotransform[1]; dy = self.geotransform[5] 
+            area = (1-mask).sum()*dx*dy
+            newvar *= area # in-place scaling
+            if self.xlon.units == self.ylat.units: newvar.units = '{} {}^2'.format(newvar.units,self.ylat.units) 
+            else: newvar.units ='{} {} {}'.format(newvar.units,self.xlon.units,self.ylat.units)
       # lift mask
       if oldmask is not None: 
         self.data_array.mask = oldmask # change back to old mask

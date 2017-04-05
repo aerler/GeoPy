@@ -1606,6 +1606,24 @@ class GDALVarTest(NetCDFVarTest):
     assert data is not None
     assert data.ReadAsArray()[:,:,:].shape == (var.bands,)+var.mapSize 
 
+  def testMapReduction(self):
+    # test mapMean
+    var = self.var
+    if var.ndim >= 3:
+      assert var.gdal 
+      # find any map and non-map axis
+      noax = []; mapax = []
+      for ax in var.axes:
+        if ax != var.xlon and ax != var.ylat: noax.append(ax)
+        else: mapax.append(ax)
+      # compute map mean
+      mvar = var.mapMean()
+      assert mvar.ndim+2 == var.ndim, mvar
+      assert mvar.shape == var.shape[:-2], mvar
+      # compare
+      if not var.isProjected and var.name == 'p':
+          assert mvar.mean() > var.mean(), mvar
+
   def testIndexing(self):
     # check if GDAL features are propagated
     var = self.var
@@ -1852,6 +1870,7 @@ if __name__ == "__main__":
 #     specific_tests += ['AddProjection']
 #     specific_tests += ['Indexing']
 #     specific_tests += ['SeasonalReduction']
+    specific_tests += ['MapReduction']
 #     specific_tests += ['ConcatVars']
 #     specific_tests += ['ConcatDatasets']
 #     specific_tests += ['Print']
@@ -1859,13 +1878,13 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
+#     tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()
