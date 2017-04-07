@@ -1175,7 +1175,7 @@ class BaseDatasetTest(unittest.TestCase):
     # select variables
     var2 = dataset[self.lar.name] if self.lar is not None else None; 
     var3 = dataset[self.var.name]
-    if len(dataset.axes) == 3:
+    if var3.ndim == 3:
       # get axis that is not in var2 first
       ax0, ax1, ax2 = var3.axes
       co0 = ax0.coord; co1 = ax1.coord; co2 = ax2.coord
@@ -1277,7 +1277,7 @@ class BaseDatasetTest(unittest.TestCase):
           else: 
             raise AssertionError
           assert avar.shape == var.shape
-    else: raise AssertionError
+    else: raise AssertionError, dataset
 
   def testPrint(self):
     ''' just print the string representation '''
@@ -1828,7 +1828,7 @@ class DatasetGDALTest(DatasetNetCDFTest):
     vardefs['rain_alt'] = dict(name='precip_alt', units='mm/day', axes=('year','month',None,None), 
                                dtype=np.float32, path_params=dict(NAME='rain') )
     # path definition
-    file_pattern = ascii_folder+'/CA_hist/{VAR:s}/{year:04d}/{NAME:s}_{month:02d}.asc.gz'
+    file_pattern = ascii_folder+'/CA_hist/{NAME:s}/{year:04d}/{NAME:s}_{month:02d}.asc.gz'
     # load variable
     dataset = rasterDataset(name='NRCAN', title='NRCan', atts=None, projection=None, griddef=None, # geographic projection (lat/lon)
                             vardefs=vardefs, axdefs=axdefs, file_pattern=file_pattern, 
@@ -1890,7 +1890,7 @@ if __name__ == "__main__":
 #     specific_tests += ['AddProjection']
 #     specific_tests += ['Indexing']
 #     specific_tests += ['SeasonalReduction']
-    specific_tests += ['MapReduction']
+#     specific_tests += ['MapReduction']
 #     specific_tests += ['ConcatVars']
 #     specific_tests += ['ConcatDatasets']
 #     specific_tests += ['Print']
@@ -1898,12 +1898,12 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
-#     tests += ['NetCDFVar']
-#     tests += ['GDALVar']
+    tests += ['BaseVar'] 
+    tests += ['NetCDFVar']
+    tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
-#     tests += ['DatasetNetCDF']
+    tests += ['BaseDataset']
+    tests += ['DatasetNetCDF']
     tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above

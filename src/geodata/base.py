@@ -3275,7 +3275,7 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
     vatts = var0.atts.copy()
     vatts['name'] = name or var0.name; vatts['units'] = units or var0.units
     if varatts is not None: vatts.update(varatts)
-    return Variable(data=data, axes=axes, atts=vatts)
+    return var0.copy(data=data, axes=axes, atts=vatts)
     # or return data
   else: return data
   
