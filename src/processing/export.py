@@ -453,7 +453,7 @@ if __name__ == '__main__':
             bc_method = bc_args.pop('method') # bias-correction method
             obs_dataset = bc_args.pop('obs_dataset') # observations used for bias correction
             bc_reference = bc_args.pop('reference',None) # reference experiment (None: auto-detect based on name)
-        else: method = None # method == None: no bias correction
+        else: bc_method = None # bc_method == None: no bias correction
         # target data specs
         export_arguments = config['export_parameters'] # this is actually a larger data structure
         lm3 = export_arguments.pop('lm3',False) # convert water flux from kg/m^2/s to m^3/m^2/s    
@@ -501,9 +501,9 @@ if __name__ == '__main__':
 #         WRF_experiments += ['erai-g3','erai-t3','erai-g','erai-t']
 #         WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100']
 #         WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
-#         WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-#         WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
-        WRF_experiments += ['g-ensemble-2050',]
+        WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+        WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
+#         WRF_experiments += ['g-ensemble-2050',]
 #         WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #         WRF_experiments += ['t-ctrl','t-ctrl-2050','t-ctrl-2100']
 #         WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
@@ -525,7 +525,7 @@ if __name__ == '__main__':
 #         WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
         # other WRF parameters 
 #         domains = 1 # domains to be processed
-        domains = 2 # process all domains
+        domains = None # process all domains
     #     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
         WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # with radiation files
         ## bias-correction paramter
