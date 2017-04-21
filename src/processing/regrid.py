@@ -208,8 +208,8 @@ if __name__ == '__main__':
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
     NP = 1 ; ldebug = False # just for tests
-    modes = ('climatology','time-series') # 'climatology','time-series'
-#     modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('climatology','time-series') # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
 #     varlist = ['precip',]
@@ -224,12 +224,12 @@ if __name__ == '__main__':
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
     lLTM = True # also regrid the long-term mean climatologies 
-#     datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
-    datasets += ['PRISM','GPCC','PCIC']; #periods = None
+    datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
+#     datasets += ['PRISM','GPCC','PCIC']; #periods = None
 #     datasets += ['CFSR', ] # CFSR_05 does not have precip
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05']}
 #     datasets += ['GPCC']; # resolutions = {'GPCC':['05']}
-    datasets += ['CRU']
+#     datasets += ['CRU']
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
@@ -241,8 +241,8 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['atm','lnd']
     CESM_filetypes = ['atm']
     # WRF experiments (short or long name)
-#     WRF_project = 'GreatLakes' # only GreatLakes experiments
-    WRF_project = 'WesternCanada' # only WesternCanada experiments
+    WRF_project = 'GreatLakes' # only GreatLakes experiments
+#     WRF_project = 'WesternCanada' # only WesternCanada experiments
 #     WRF_experiments = None # use None to process all WRF experiments
     WRF_experiments = []
 #     WRF_experiments += ['erai-g3','erai-t3']
@@ -281,12 +281,12 @@ if __name__ == '__main__':
     grids = dict()
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 # #     grids['grw1'] = None # high-res grid for GRW, 1km
-#     grids['grw2'] = None # small grid for GRW, 5km
+    grids['grw2'] = None # small grid for GRW, 5km
 #     grids['can1'] = None # large grid for whole Canada
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
-    grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
+#     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 # #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
-    grids['glb1-90km'] = ('d01',) # 90km GLB domain
+#     grids['glb1-90km'] = ('d01',) # 90km GLB domain
 #     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
 #     grids['arb3'] = ('d01','d02','d03',) # WRF standard ARB inner domain
 # #     grids['arb3'] = ('d03',) # WRF standard ARB inner domain

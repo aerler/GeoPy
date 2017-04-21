@@ -176,7 +176,7 @@ def loadNRCan_ShpTS(name=dataset_name, shape=None, resolution=None, varlist=None
 # a universal load function for normals and historical timeseries; also computes some derived variables, and combines NA and CA grids
 def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=None, NA_grid=None, CA_grid=None, 
                  merged_axis=None, time_axis='time', resolution=None, grid_defs=None, period=None, var_pattern=None, 
-                 grid_pattern=None, vardefs=None, axdefs=None):
+                 grid_pattern=None, vardefs=None, axdefs=None, lfeedback=True):
     ''' load NRCan time-series data from ASCII files, merge CA and NA grids and compute some additional variables; return Dataset '''
     
     from utils.ascii import rasterDataset
@@ -203,12 +203,12 @@ def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=No
     # load NA grid
     dataset = rasterDataset(name=name, title=title, vardefs=NA_vardefs, axdefs=axdefs, atts=atts, projection=None, 
                             griddef=grid_defs[NA_grid], lgzip=None, lgdal=True, lmask=True, fillValue=None, 
-                            lskipMissing=True, lgeolocator=True, time_axis=time_axis, 
+                            lskipMissing=True, lgeolocator=True, time_axis=time_axis, lfeedback=lfeedback,
                             file_pattern=grid_pattern.format(GRID=NA_grid,PRDSTR=prdstr)+var_pattern )    
     # load CA grid
     ca_ds = rasterDataset(name=name, title=title, vardefs=CA_vardefs, axdefs=axdefs, atts=atts, projection=None, 
                           griddef=grid_defs[CA_grid], lgzip=None, lgdal=True, lmask=True, fillValue=None, 
-                          lskipMissing=True, lgeolocator=False, time_axis=time_axis,
+                          lskipMissing=True, lgeolocator=False, time_axis=time_axis, lfeedback=lfeedback,
                           file_pattern=grid_pattern.format(GRID=CA_grid,PRDSTR=prdstr)+var_pattern )
     
     # merge grids
@@ -234,6 +234,7 @@ def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=No
         dataset.addVariable(newvar, copy=False)
     # snow needs some special care: replace mask with mask from rain and set the rest to zero
     if 'snowh' in dataset:
+        assert 'liqprec' in dataset
         assert dataset.snowh.shape == dataset.liqprec.shape, dataset
         snwd = ma.masked_where(condition=dataset.liqprec.data_array.mask, a=dataset.snowh.data_array.filled(0), copy=False)
         dataset.snowh.data_array = snwd # reassingment is necessary, because filled() creates a copy
@@ -560,7 +561,7 @@ if __name__ == '__main__':
         print('')
         print(dataset.time)
         print(dataset.time.coord)
-        print(dataset.time.coord[78*12]) # Jan 1979
+        print(dataset.time.coord[29*12]) # Jan 1979
           
     if mode == 'test_point_climatology':
             
@@ -593,7 +594,7 @@ if __name__ == '__main__':
         print('')
         print(dataset.time)
         print(dataset.time.coord)
-        assert dataset.time.coord[78*12] == 0 # Jan 1979
+        assert dataset.time.coord[29*12] == 0 # Jan 1979
         assert dataset.shape[0] == 1
         
     elif mode == 'convert_Normals':
@@ -624,7 +625,7 @@ if __name__ == '__main__':
         # use actual, real values
         period = hist_period; vardefs = hist_vardefs; derived_vars = hist_derived
         # test values
-        period = (1981,1982) # for testing
+        period = (1981,2010) # for testing
 #         vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.15, **hist_defaults), # 2m maximum temperature, originally in degrees Celsius
 #                        mint = dict(grid='NA12', name='Tmin', units='K', offset=273.15, **hist_defaults), # 2m minimum temperature
 #                        snwd = dict(grid='CA12', name='snowh', units='m', scalefactor=1./100., **hist_defaults), # snow depth

@@ -28,7 +28,7 @@ if ramdisk and not os.path.exists(ramdisk):
 
 def rasterDataset(name=None, title=None, vardefs=None, axdefs=None, atts=None, projection=None, griddef=None,
                   lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, lgeolocator=True,
-                  file_pattern=None, **kwargs):
+                  file_pattern=None, lfeedback=True, **kwargs):
     ''' function to load a set of variables that are stored in raster format in a systematic directory tree into a Dataset
         Variables and Axis are defined as follows:
           vardefs[varname] = dict(name=string, units=string, axes=tuple of strings, atts=dict, plot=dict, dtype=np.dtype, fillValue=value)
@@ -87,7 +87,8 @@ def rasterDataset(name=None, title=None, vardefs=None, axdefs=None, atts=None, p
               vardef[key] = value
         # create Variable object
         var = rasterVariable(projection=projection, griddef=griddef, file_pattern=file_pattern, lgzip=lgzip, lgdal=lgdal, 
-                             lmask=lmask, lskipMissing=lskipMissing, axes=axes_list, path_params=path_params, **vardef) 
+                             lmask=lmask, lskipMissing=lskipMissing, axes=axes_list, path_params=path_params, 
+                             lfeedback=lfeedback, **vardef) 
         # vardef components: name, units, atts, plot, dtype, fillValue
         varlist.append(var)
         # check that map axes are correct
@@ -115,9 +116,12 @@ def rasterDataset(name=None, title=None, vardefs=None, axdefs=None, atts=None, p
 
 def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype=None, projection=None, griddef=None,
                    file_pattern=None, lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, 
-                   path_params=None, offset=0, scalefactor=1, transform=None, time_axis=None, **kwargs):
+                   path_params=None, offset=0, scalefactor=1, transform=None, time_axis=None, lfeedback=False, **kwargs):
     ''' function to read multi-dimensional raster data and construct a GDAL-enabled Variable object '''
-    
+
+    # print status
+    if lfeedback: print "Loading variable '{}': ".format(name),  # no newline
+
     ## figure out axes arguments and load data
     # figure out axes (list/tuple of axes has to be ordered correctly!)
     axes_list = [ax.name for ax in axes[:-2]]
@@ -133,9 +137,10 @@ def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype
             # use Axis coordinates and add to kwargs for readRasterArray call
             kwargs[ax.name] = tuple(ax.coord)
     # load raster data
+    if lfeedback: print("'{}'".format(file_pattern))
     data, geotransform = readRasterArray(file_pattern, lgzip=lgzip, lgdal=lgdal, dtype=dtype, lmask=lmask, 
                                          fillValue=fillValue, lgeotransform=True, axes=axes_list, lna=False, 
-                                         lskipMissing=lskipMissing, path_params=path_params, **kwargs)
+                                         lskipMissing=lskipMissing, path_params=path_params, lfeedback=lfeedback, **kwargs)
     # shift and rescale
     if offset != 0: data += offset
     if scalefactor != 1: data *= scalefactor
@@ -173,7 +178,7 @@ def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype
 
 ## functions to load ASCII raster data
 
-def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmask=True, fillValue=None, 
+def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmask=True, fillValue=None, lfeedback=False,
                     lgeotransform=True, axes=None, lna=False, lskipMissing=False, path_params=None, **kwargs):
     ''' function to load a multi-dimensional numpy array from several structured ASCII raster files '''
     
@@ -210,6 +215,7 @@ def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmas
                 i0 += 1 # go to next raster file
                 if i0 >= len(file_kwargs_list): 
                   raise IOError("No valid input raster files found!\n'{}'".format(filepath))
+                if lfeedback: print ' ',
                 path_params.update(file_kwargs_list[i0]) # update axes parameters
                 filepath = file_pattern.format(**path_params) # nest in line
         else: # or raise error
@@ -242,6 +248,7 @@ def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmas
         path_params.update(file_kwargs) # update axes parameters
         filepath = file_pattern.format(**path_params) # construct file name
         if os.path.exists(filepath):
+            if lfeedback: print '.', # indicate data with bar/pipe
             # read 2D raster file
             data2D = readASCIIraster(filepath, lgzip=lgzip, lgdal=lgdal, dtype=dtype, lna=False,
                                      lmask=lmask, fillValue=fillValue, lgeotransform=lgeotransform, **kwargs)
@@ -259,8 +266,12 @@ def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmas
         elif lskipMissing:
             # fill with masked values
             data[i+i0,:,:] = ma.masked # mask missing raster
+            if lfeedback: print ' ', # indicate missing with dot
         else:
           raise IOError(filepath)
+
+    # complete feedback with linebreak
+    if lfeedback: print ''
     
     # reshape and check dimensions
     assert i+i0 == data.shape[0]-1, (i,i0)
