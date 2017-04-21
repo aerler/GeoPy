@@ -168,7 +168,7 @@ def addLengthAndNamesOfMonth(dataset, noleap=False, length=None, names=None):
 
 
 # apply a periodic monthly scalefactor or offset
-def monthlyTransform(var=None, data=None, slc=None, lvar=None, scalefactor=None, offset=None, linplace=True):
+def monthlyTransform(var=None, data=None, slc=None, time_axis='time', lvar=None, scalefactor=None, offset=None, linplace=True):
     ''' apply a periodic monthly scalefactor or offset to a variable '''
     # check input
     if data is None: 
@@ -177,7 +177,7 @@ def monthlyTransform(var=None, data=None, slc=None, lvar=None, scalefactor=None,
     elif not isinstance(data,np.ndarray): raise TypeError(data)
     if slc is None and ( data.ndim != var.ndim or data.shape != var.shape ):
         raise DataError("Dimensions of data array and Variable are incompatible!\n {} != {}".format(data.shape,var.shape))
-    tax = var.axisIndex('time')
+    tax = var.axisIndex(time_axis)
     if scalefactor is not None and not len(scalefactor) == 12: 
         raise ArgumentError("the 'scalefactor' array/list needs to have length 12 (one entry for each month).\n {}".format(scalefactor))
     if offset is not None and not len(offset) == 12: 
@@ -188,14 +188,14 @@ def monthlyTransform(var=None, data=None, slc=None, lvar=None, scalefactor=None,
     # handle sliced or non-sliced axis
     if tslc is None or tslc == slice(None):
         # trivial case
-        te = len(var.time)
+        te = len(var.axes[tax])
         if not ( data.shape[tax] == te and te%12 == 0 ): 
           raise NotImplementedError("The record has to start and end at a full year!")
     else:  
         # special treatment if time axis was sliced
         tlc = slc[tax]
         ts = tlc.start or 0 
-        te = ( tlc.stop or len(var.time) ) - ts
+        te = ( tlc.stop or len(var.axes[tax]) ) - ts
         if not ( ts%12 == 0 and te%12 == 0 ): raise NotImplementedError("The record has to start and end at a full year!")
         assert data.shape[tax] == te
         # assuming the record starts some year in January, and we always need to load full years
@@ -211,7 +211,7 @@ def monthlyTransform(var=None, data=None, slc=None, lvar=None, scalefactor=None,
     return data
 
 # transform function to convert monthly precip amount into precip rate on-the-fly
-def transformMonthly(data=None, var=None, slc=None, l365=False, lvar=None, linplace=True):
+def transformMonthly(data=None, var=None, slc=None, time_axis='time', l365=False, lvar=None, linplace=True):
     ''' convert monthly amount to rate in SI units (e.g. mm/month to mm/s) '''
     # check input, makesure this makes sense
     if not isinstance(var,Variable): raise TypeError(var)
@@ -220,7 +220,8 @@ def transformMonthly(data=None, var=None, slc=None, l365=False, lvar=None, linpl
     # prepare scalefactor
     spm = 1. / (seconds_per_month_365 if l365 else seconds_per_month) # divide by seconds
     # actually scale by month
-    data = monthlyTransform(var=var, data=data, slc=slc, lvar=lvar, scalefactor=spm, offset=None, linplace=linplace)
+    data = monthlyTransform(var=var, data=data, slc=slc, time_axis=time_axis, lvar=lvar, 
+                            scalefactor=spm, offset=None, linplace=linplace)
     # return data array (default) or Variable instance
     var.units = var.units[:-6]+'/s' # per second
     return data      

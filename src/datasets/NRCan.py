@@ -12,11 +12,11 @@ import numpy as np
 import numpy.ma as ma
 import os
 # internal imports
-from geodata.base import Variable
+from geodata.base import Variable, Axis
 from geodata.gdal import GridDefinition, addGDALtoVar
 from datasets.common import data_root, loadObservations, transformMonthly, addLengthAndNamesOfMonth,\
   monthlyTransform, addLandMask
-from geodata.misc import DatasetError, VariableError
+from geodata.misc import DatasetError, VariableError, AxisError
 from utils.nctools import writeNetCDF
 
 
@@ -172,28 +172,12 @@ def loadNRCan_ShpTS(name=dataset_name, shape=None, resolution=None, varlist=None
 
 
 ## functions to load ASCII data and generate complete GeoPy datasets
-norm_period = (1970,2000)
 
-# Normals (long-term means): ASCII data specifications
-norm_defaults = dict(axes=('time',None,None), dtype=np.float32)
-norm_vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.15, **norm_defaults), # 2m maximum temperature, originally in degrees Celsius
-                    mint = dict(grid='NA12', name='Tmin', units='K', offset=273.15, **norm_defaults), # 2m minimum temperature
-                    pcp  = dict(grid='NA12', name='precip', units='kg/m^2/month', transform=transformMonthly, **norm_defaults), # total precipitation
-                    pet  = dict(grid='NA12', name='pet', units='kg/m^2/month', transform=transformMonthly, **norm_defaults), # potential evapo-transpiration
-                    rrad = dict(grid='NA12', name='SWDNB', units='W/m^2', scalefactor=1e6/86400., **norm_defaults), # solar radiation, originally in MJ/m^2/day
-                    rain = dict(grid='CA12', name='liqprec', units='kg/m^2/month', transform=transformMonthly, **norm_defaults), # total precipitation
-                    snwd = dict(grid='CA12', name='snowh', units='m', scalefactor=1./100., **norm_defaults), ) # snow depth
-norm_axdefs = dict(time = dict(name='time', units='month', coord=np.arange(1,13)),) # time coordinate
-norm_derived = ('T2','solprec','snow','snwmlt','liqwatflx')
-norm_grid_pattern = root_folder+'{GRID:s}_normals{PRDSTR:s}/' # dataset root folder
-norm_var_pattern = '{VAR:s}/{VAR:s}_{time:02d}.asc.gz' # path to variables
-norm_title = 'NRCan Gridded Normals'
-
-# load normals (from different/unspecified periods... ), computer some derived variables, and combine NA and CA grids
-def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_vars=norm_derived, varatts=varatts, 
-                      NA_grid=None, CA_grid=None, resolution=12, grid_defs=None, period=norm_period,
-                      var_pattern=norm_var_pattern, grid_pattern=norm_grid_pattern, vardefs=norm_vardefs, axdefs=norm_axdefs):
-    ''' load NRCan normals from ASCII files, merge CA and NA grids and compute some additional variables; return Dataset '''
+# a universal load function for normals and historical timeseries; also computes some derived variables, and combines NA and CA grids
+def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=None, NA_grid=None, CA_grid=None, 
+                 merged_axis=None, time_axis='time', resolution=None, grid_defs=None, period=None, var_pattern=None, 
+                 grid_pattern=None, vardefs=None, axdefs=None):
+    ''' load NRCan time-series data from ASCII files, merge CA and NA grids and compute some additional variables; return Dataset '''
     
     from utils.ascii import rasterDataset
 
@@ -218,12 +202,14 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
         
     # load NA grid
     dataset = rasterDataset(name=name, title=title, vardefs=NA_vardefs, axdefs=axdefs, atts=atts, projection=None, 
-                            griddef=grid_defs[NA_grid], lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, 
-                            lgeolocator=True, file_pattern=grid_pattern.format(GRID=NA_grid,PRDSTR=prdstr)+var_pattern )    
+                            griddef=grid_defs[NA_grid], lgzip=None, lgdal=True, lmask=True, fillValue=None, 
+                            lskipMissing=True, lgeolocator=True, time_axis=time_axis, 
+                            file_pattern=grid_pattern.format(GRID=NA_grid,PRDSTR=prdstr)+var_pattern )    
     # load CA grid
     ca_ds = rasterDataset(name=name, title=title, vardefs=CA_vardefs, axdefs=axdefs, atts=atts, projection=None, 
-                          griddef=grid_defs[CA_grid], lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, 
-                          lgeolocator=False, file_pattern=grid_pattern.format(GRID=CA_grid,PRDSTR=prdstr)+var_pattern )
+                          griddef=grid_defs[CA_grid], lgzip=None, lgdal=True, lmask=True, fillValue=None, 
+                          lskipMissing=True, lgeolocator=False, time_axis=time_axis,
+                          file_pattern=grid_pattern.format(GRID=CA_grid,PRDSTR=prdstr)+var_pattern )
     
     # merge grids
     naaxes = dataset.axes
@@ -247,14 +233,25 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
         newvar = addGDALtoVar(newvar, griddef=dataset.griddef,)
         dataset.addVariable(newvar, copy=False)
     # snow needs some special care: replace mask with mask from rain and set the rest to zero
-    assert dataset.snowh.shape == dataset.liqprec.shape, dataset
-    snwd = ma.masked_where(condition=dataset.liqprec.data_array.mask, a=dataset.snowh.data_array.filled(0), copy=False)
-    dataset.snowh.data_array = snwd # reassingment is necessary, because filled() creates a copy
-    dataset.snowh.fillValue = dataset.liqprec.fillValue 
-    assert np.all( dataset.snowh.data_array.mask == dataset.liqprec.data_array.mask ), dataset.snowh.data_array
-    assert dataset.snowh.fillValue == dataset.liqprec.fillValue, dataset.snowh.data_array
+    if 'snowh' in dataset:
+        assert dataset.snowh.shape == dataset.liqprec.shape, dataset
+        snwd = ma.masked_where(condition=dataset.liqprec.data_array.mask, a=dataset.snowh.data_array.filled(0), copy=False)
+        dataset.snowh.data_array = snwd # reassingment is necessary, because filled() creates a copy
+        dataset.snowh.fillValue = dataset.liqprec.fillValue 
+        assert np.all( dataset.snowh.data_array.mask == dataset.liqprec.data_array.mask ), dataset.snowh.data_array
+        assert dataset.snowh.fillValue == dataset.liqprec.fillValue, dataset.snowh.data_array
+    
+    # merge time axes (for historical timeseries)
+    if merged_axis:
+        if merged_axis.name == 'time':
+            if not 'merged_axes' in merged_axis.atts: 
+                raise AxisError('No list/tuple of merge_axes specified in merged_axis atts!')
+            merge_axes = merged_axis.atts['merged_axes']
+            dataset = dataset.mergeAxes(axes=merge_axes, new_axis=merged_axis, axatts=None, asVar=True, linplace=True, 
+                                        lcheckAxis=False, lcheckVar=None, lvarall=True, ldsall=True, lstrict=True)
     
     # compute some secondary/derived variables
+    if derived_vars is None: derived_vars = []
     for var in derived_vars:
         # don't overwrite existing variables
         if var in dataset: raise DatasetError(var)
@@ -345,44 +342,78 @@ def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_va
         dataset[var].atts.update(varatts[var])
     
     # add length and names of month
-    addLengthAndNamesOfMonth(dataset)
+    if dataset.hasAxis('time') and len(dataset.time) == 12:
+        addLengthAndNamesOfMonth(dataset) # basically only works for climatologies
     addLandMask(dataset, varname='precip', maskname='landmask', atts=None)
     
     # return properly formatted dataset
     return dataset
 
-# Historical CMC snow time-series
-hist_vardefs = NotImplemented
-hist_axdefs = NotImplemented
+# Normals (long-term means): ASCII data specifications
+norm_period = (1970,2000)
+norm_defaults = dict(axes=('time',None,None), dtype=np.float32)
+norm_vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.15, **norm_defaults), # 2m maximum temperature, originally in degrees Celsius
+                    mint = dict(grid='NA12', name='Tmin', units='K', offset=273.15, **norm_defaults), # 2m minimum temperature
+                    pcp  = dict(grid='NA12', name='precip', units='kg/m^2/month', transform=transformMonthly, **norm_defaults), # total precipitation
+                    pet  = dict(grid='NA12', name='pet', units='kg/m^2/month', transform=transformMonthly, **norm_defaults), # potential evapo-transpiration
+                    rrad = dict(grid='NA12', name='SWDNB', units='W/m^2', scalefactor=1e6/86400., **norm_defaults), # solar radiation, originally in MJ/m^2/day
+                    rain = dict(grid='CA12', name='liqprec', units='kg/m^2/month', transform=transformMonthly, **norm_defaults), # total precipitation
+                    snwd = dict(grid='CA12', name='snowh', units='m', scalefactor=1./100., **norm_defaults), ) # snow depth
+norm_axdefs = dict(time = dict(name='time', units='month', coord=np.arange(1,13)),) # time coordinate
+norm_derived = ('T2','solprec','snow','snwmlt','liqwatflx')
+norm_grid_pattern = root_folder+'{GRID:s}_normals{PRDSTR:s}/' # dataset root folder
+norm_var_pattern = '{VAR:s}/{VAR:s}_{time:02d}.asc.gz' # path to variables
+norm_title = 'NRCan Gridded Normals'
+
+def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_vars=norm_derived, varatts=varatts, 
+                      NA_grid=None, CA_grid=None, resolution=12, grid_defs=None, period=norm_period,
+                      var_pattern=norm_var_pattern, grid_pattern=norm_grid_pattern, vardefs=norm_vardefs, axdefs=norm_axdefs):
+    ''' load NRCan normals from ASCII files, merge CA and NA grids and compute some additional variables; return Dataset '''
+    return loadASCII_TS(name=name, title=title, atts=atts, derived_vars=derived_vars, varatts=varatts, 
+                        NA_grid=NA_grid, CA_grid=CA_grid, merged_axis=None, resolution=resolution, grid_defs=grid_defs, 
+                        period=period, var_pattern=var_pattern, grid_pattern=grid_pattern, vardefs=vardefs, axdefs=axdefs)
+
+
+# Historical time-series: ASCII data specifications
+# hist_period = (1866,2013) # precip and min/max T only
+hist_period = (1950,2010) # with rain, and snow from 1958 - 2010
+hist_defaults = dict(axes=('year','month',None,None), dtype=np.float32)
+hist_vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.15, **hist_defaults), # 2m maximum temperature, originally in degrees Celsius
+                    mint = dict(grid='NA12', name='Tmin', units='K', offset=273.15, **hist_defaults), # 2m minimum temperature
+                    pcp  = dict(grid='NA12', name='precip', units='kg/m^2/month', transform=transformMonthly, **hist_defaults), # total precipitation
+                    rain = dict(grid='CA12', name='liqprec', units='kg/m^2/month', transform=transformMonthly, **hist_defaults), # total precipitation
+                    snwd = dict(grid='CA12', name='snowh', units='m', scalefactor=1./100., **hist_defaults), ) # snow depth
+hist_axdefs = dict(year = dict(name='year', units='year', coord=None), # yearly coordinate; select coordinate based on period
+                   month = dict(name='month', units='month', coord=np.arange(1,13)),) # monthly coordinate
+# define merged time axis
+merged_atts = dict(name='time', units='month', long_name='Month since 1979-01', merged_axes = ('year','month'))
 # N.B.: the time-series time offset has to be chose such that 1979 begins with the origin (time=0)
-hist_derived = NotImplemented
+hist_derived = norm_derived # same as for normals
 hist_grid_pattern = root_folder+'{GRID:s}_hist/'
 hist_var_pattern = '{VAR:s}/{year:04d}/{VAR:s}_{month:02d}.asc.gz'
 hist_title = 'NRCan Historical Gridded Time-series'
 
-# load normals (from different/unspecified periods... ), computer some derived variables, and combine NA and CA grids
 def loadASCII_Hist(name=dataset_name, title=hist_title, atts=None, derived_vars=hist_derived, varatts=varatts, 
-                   NA_grid=None, CA_grid=None, resolution=12, grid_defs=None,
-                   lmergeTime=False, # merge the year and month "axes" into a single monthly time axis 
+                   NA_grid=None, CA_grid=None, resolution=12, grid_defs=None, period=hist_period, merged_axis=merged_atts,
                    var_pattern=hist_var_pattern, grid_pattern=hist_grid_pattern, vardefs=hist_vardefs, axdefs=hist_axdefs):
-    ''' load NRCan historical time-series from ASCII files, merge CA and NA grids and compute some additional variables; 
-        merge year and month axes and return as Dataset '''
-
-    from utils.ascii import rasterDataset
-
-    # load exactly like normals and let it merge the grids
-    dataset = loadASCII_Normals(name=dataset_name, title=hist_title, atts=atts, derived_vars=hist_derived, 
-                                varatts=varatts, NA_grid=NA_grid, CA_grid=CA_grid, 
-                                resolution=resolution, grid_defs=grid_defs, var_pattern=hist_var_pattern, 
-                                grid_pattern=hist_grid_pattern, vardefs=hist_vardefs, axdefs=hist_axdefs)
-    
-    # merge different time axes
-    if lmergeTime is not None:
-        raise NotImplementedError
-        # use dataset.mergeAxes() to merge year and month, but need to come up with something to recenter at 1979
-    
-    # return dataset
-    return dataset
+    ''' load historical NRCan timeseries from ASCII files, merge CA and NA grids and compute some additional variables; return Dataset '''
+    # figure out time period for merged time axis
+    for axname,axdef in axdefs.items():
+        if 'coord' not in axdef or axdef['coord'] is None:
+            assert axdef['units'].lower() == 'year', axdef
+            axdef['coord'] = np.arange(period[0],period[1]+1)
+    if merged_axis:
+        if isinstance(merged_axis,dict) and hist_period:
+            merged_axis = Axis(coord=np.arange((period[0]-1979)*12,(period[1]-1978)*12), atts=merged_axis)
+            assert 'merged_axes' in merged_axis.atts
+            nlen = np.prod([len(hist_axdefs[axname]['coord']) for axname in merged_axis.atts['merged_axes']])
+            assert len(merged_axis) == nlen, (nlen,merged_axis.prettyPrint(short=True)) 
+        elif not isinstance(merged_axis,Axis):
+            raise TypeError(merged_axis)
+    # load ASCII data
+    return loadASCII_TS(name=name, title=title, atts=atts, derived_vars=derived_vars, varatts=varatts, time_axis='month',
+                        NA_grid=NA_grid, CA_grid=CA_grid, merged_axis=merged_axis, resolution=resolution, grid_defs=grid_defs, 
+                        period=period, var_pattern=var_pattern, grid_pattern=grid_pattern, vardefs=vardefs, axdefs=axdefs)
 
 # Historical time-series
 CMC_period = (1998,2015)
@@ -488,11 +519,12 @@ loadShapeTimeSeries = loadNRCan_ShpTS # time-series without associated grid (e.g
 
 if __name__ == '__main__':
   
-    mode = 'test_climatology'
+#     mode = 'test_climatology'
 #     mode = 'test_timeseries'
 #     mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
 #     mode = 'convert_Normals'
+    mode = 'convert_Historical'
 #     mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
@@ -572,12 +604,39 @@ if __name__ == '__main__':
         ncfile = avgfolder + avgfile.format(grdstr,prdstr)
         if not os.path.exists(avgfolder): os.mkdir(avgfolder)
         # load ASCII dataset with default values
-        dataset = loadASCII_Normals(name='NRCan', title='NRCan Climate Normals', atts=None, period=period,
-                                    NA_grid=None, CA_grid=None, resolution=resolution, grid_defs=grid_def,)        
+        dataset = loadASCII_Normals(period=period, resolution=resolution, grid_defs=grid_def,)        
         # test 
         print(dataset)
         print('')
         print(dataset.snow)
+        # write to NetCDF
+        print('')
+        writeNetCDF(dataset=dataset, ncfile=ncfile, ncformat='NETCDF4', zlib=True, writeData=True, overwrite=True, 
+                    skipUnloaded=False, feedback=True, close=True)
+        assert os.path.exists(ncfile), ncfile
+        
+    elif mode == 'convert_Historical':
+        
+        # parameters
+        resolution = 12; grdstr = '_na{:d}'.format(resolution)
+        ncfile = avgfolder + tsfile.format(grdstr)
+        if not os.path.exists(avgfolder): os.mkdir(avgfolder)
+        # use actual, real values
+        period = hist_period; vardefs = hist_vardefs; derived_vars = hist_derived
+        # test values
+        period = (1981,1982) # for testing
+#         vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.15, **hist_defaults), # 2m maximum temperature, originally in degrees Celsius
+#                        mint = dict(grid='NA12', name='Tmin', units='K', offset=273.15, **hist_defaults), # 2m minimum temperature
+#                        snwd = dict(grid='CA12', name='snowh', units='m', scalefactor=1./100., **hist_defaults), # snow depth
+#                        pcp  = dict(grid='NA12', name='precip', units='kg/m^2/month', transform=transformMonthly, **hist_defaults),)
+#         derived_vars = ('T2',)
+        # load ASCII dataset with default values
+        dataset = loadASCII_Hist(period=period, vardefs=vardefs, derived_vars=derived_vars, 
+                                 resolution=resolution, grid_defs=grid_def,)        
+        # test 
+        print(dataset)
+        print('')
+        print(dataset.precip)
         # write to NetCDF
         print('')
         writeNetCDF(dataset=dataset, ncfile=ncfile, ncformat='NETCDF4', zlib=True, writeData=True, overwrite=True, 

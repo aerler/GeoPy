@@ -115,7 +115,7 @@ def rasterDataset(name=None, title=None, vardefs=None, axdefs=None, atts=None, p
 
 def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype=None, projection=None, griddef=None,
                    file_pattern=None, lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, 
-                   path_params=None, offset=0, scalefactor=1, transform=None, **kwargs):
+                   path_params=None, offset=0, scalefactor=1, transform=None, time_axis=None, **kwargs):
     ''' function to read multi-dimensional raster data and construct a GDAL-enabled Variable object '''
     
     ## figure out axes arguments and load data
@@ -152,7 +152,7 @@ def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype
     var = Variable(name=name, units=units, axes=axes, data=data, dtype=dtype, mask=None, fillValue=fillValue, 
                    atts=atts, plot=plot)
     # apply transform (if any), now that we have axes etc.
-    if transform is not None: var = transform(var=var)
+    if transform is not None: var = transform(var=var, time_axis=time_axis)
     # add GDAL functionality
     if griddef is not None:
         # perform some consistency checks ...

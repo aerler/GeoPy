@@ -2061,8 +2061,8 @@ class Variable(object):
           if axatts is not None: satts.update(axatts) 
           new_axis = Axis(coord=np.arange(nlen), atts=satts)
         else:
-          if not isinstance(new_axis,Axis): raise TypeError, new_axis
-          if not len(new_axis)==nlen: raise AxisError, new_axis 
+          if not isinstance(new_axis,Axis): raise TypeError(new_axis)
+          if not len(new_axis)==nlen: raise AxisError(new_axis) 
         varatts = {new_axis.name:tuple(ax.name if isinstance(ax,Axis) else ax for ax in axes)} # save merge history
         axes = var.axes[:imin]+(new_axis,)+var.axes[imin+mdim:] # finally, assemble new axes
         var = var._createVar(axes=axes, data=data, linplace=True, atts=varatts) # already made a copy

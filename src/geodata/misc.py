@@ -21,6 +21,7 @@ seconds_per_month_365 = days_per_month_365 * 86400.
 # human-readable names
 name_of_month = ['January  ', 'February ', 'March    ', 'April    ', 'May      ', 'June     ', #
                  'July     ', 'August   ', 'September', 'October  ', 'November ', 'December ']
+stripped_month = [mon.strip().lower() for mon in name_of_month] # better case-isensitive
 abbr_of_month = [mon[:3].lower() for mon in name_of_month] # better case-isensitive
 
 ## useful decorators
@@ -158,8 +159,10 @@ def translateSeasons(months):
     else: raise TypeError(months)
   elif isinstance(months,basestring):
     ssn = months.lower() # ignore case
-    if ssn in abbr_of_month: # name of a month, optionally abbreviated, case insensitive 
-      idx = np.asarray([abbr_of_month.index(mon[:3])])
+    if ssn in abbr_of_month: # abbreviated name of a month, case insensitive 
+      idx = np.asarray([abbr_of_month.index(ssn[:3])])
+    elif ssn in stripped_month: # name of a month, case insensitive 
+      idx = np.asarray([stripped_month.index(ssn)])
     else: # some definition of a season
       year = 'jfmamjjasondjfmamjjasond' # all month, twice
       # N.B.: regular Python indexing, starting at 0 for Jan and going to 11 for Dec
