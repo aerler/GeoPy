@@ -13,17 +13,15 @@ import numpy as np
 from copy import deepcopy
 import codecs, calendar, functools
 from warnings import warn
-from collections import OrderedDict
 # internal imports
 from datasets.CRU import loadCRU_StnTS
-from datasets.common import days_per_month, data_root, selectElements, translateVarNames
+from datasets.common import days_per_month, getRootFolder, selectElements, translateVarNames
 from datasets.common import CRU_vars, stn_params, nullNaN
 from geodata.misc import ParseError, DateError, VariableError, ArgumentError, DatasetError, AxisError
 from geodata.misc import RecordClass, StrictRecordClass, isNumber, isInt 
 from geodata.base import Axis, Variable, Dataset
 from utils.nctools import writeNetCDF
 from geodata.netcdf import DatasetNetCDF
-from geodata.gdal import Shape, ShapeSet
 # import derived variables from the WRF Tools package wrfavg
 import imp, os
 # read code root folder from environment variable
@@ -43,7 +41,7 @@ from utils.constants import precip_thresholds
 ## EC (Environment Canada) Meta-data
 
 dataset_name = 'EC'
-root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # long-term mean folder
+root_folder = getRootFolder(dataset_name=dataset_name) # get dataset root folder based on environment variables
 orig_ts_file = '{0:s}{1:s}.txt' # filename pattern: variable name and station ID
 tsfile = 'ec{0:s}_monthly.nc' # filename pattern: station type
 tsfile_prov = 'ec{0:s}_{1:s}_monthly.nc' # filename pattern with province: station type, province  
@@ -877,7 +875,7 @@ loadStationClimatology = loadEC # pre-processed, standardized climatology
 if __name__ == '__main__':
 
 #   mode = 'test_selection'
-#   mode = 'test_timeseries'
+  mode = 'test_timeseries'
 #   mode = 'test_station_object'
 #   mode = 'test_station_reader'
 #   mode = 'test_conversion'

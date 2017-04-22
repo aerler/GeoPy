@@ -14,8 +14,7 @@ import os
 # internal imports
 from geodata.base import Variable, Axis
 from geodata.gdal import GridDefinition, addGDALtoVar
-from datasets.common import data_root, loadObservations, transformMonthly, addLengthAndNamesOfMonth,\
-  monthlyTransform, addLandMask
+from datasets.common import getRootFolder, loadObservations, transformMonthly, addLengthAndNamesOfMonth, monthlyTransform, addLandMask
 from geodata.misc import DatasetError, VariableError, AxisError
 from utils.nctools import writeNetCDF
 
@@ -23,7 +22,7 @@ from utils.nctools import writeNetCDF
 ## NRCan Meta-data
 
 dataset_name = 'NRCan'
-root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # the dataset root folder
+root_folder = getRootFolder(dataset_name=dataset_name) # get dataset root folder based on environment variables
 
 # NRCan grid definitions           
 geotransform_NA12 = (-168.0, 1./12., 0.0, 25.0, 0.0, 1./12.)

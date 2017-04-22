@@ -17,14 +17,15 @@ from geodata.base import Variable, Axis, concatDatasets, monthlyUnitsList
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, GDALError
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt
-from datasets.common import ( translateVarNames, data_root, grid_folder, default_varatts, 
-                              addLengthAndNamesOfMonth, selectElements, stn_params, shp_params )
+from datasets.common import translateVarNames, grid_folder, default_varatts, getRootFolder
+from datasets.common import addLengthAndNamesOfMonth, selectElements, stn_params, shp_params
 from geodata.gdal import loadPickledGridDef, pickleGridDef
 from datasets.WRF import Exp as WRF_Exp
 from processing.process import CentralProcessingUnit
 
 # some meta data (needed for defaults)
-root_folder = data_root + '/CESM/' # long-term mean folder
+dataset_name = 'CESM' # dataset name
+root_folder = getRootFolder(dataset_name=dataset_name, fallback_name='WRF')
 outfolder = root_folder + 'cesmout/' # WRF output folder
 avgfolder = root_folder + 'cesmavg/' # monthly averages and climatologies
 cvdpfolder = root_folder + 'cvdp/' # CVDP output (netcdf files and HTML tree)
@@ -682,7 +683,7 @@ def loadCESM_Ensemble(ensemble=None, name=None, title=None, grid=None, station=N
 
 ## Dataset API
 
-dataset_name = 'CESM' # dataset name
+dataset_name # dataset name
 root_folder # root folder of the dataset
 avgfolder # root folder for monthly averages
 outfolder # root folder for direct WRF output

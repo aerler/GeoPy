@@ -16,7 +16,7 @@ from geodata.base import Variable
 from geodata.misc import DatasetError
 from geodata.netcdf import DatasetNetCDF 
 from datasets.common import days_per_month, name_of_month,  shp_params, CRU_vars
-from datasets.common import getFileName, data_root, loadObservations, grid_folder
+from datasets.common import getFileName, getRootFolder, loadObservations, grid_folder
 from geodata.gdal import loadPickledGridDef
 from datasets.GPCC import loadGPCC, loadGPCC_Shp
 from datasets.CRU import loadCRU, loadCRU_Shp, loadCRU_ShpTS
@@ -30,7 +30,7 @@ from plotting.properties import variablePlotatts
 ## Unity Meta-data
 
 dataset_name = 'Unity'
-root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # the dataset root folder
+root_folder = getRootFolder(dataset_name=dataset_name) # get dataset root folder based on environment variables
 # N.B.: doesn't have a native grid!
 
 # variable attributes and name (basically no alterations necessary...)

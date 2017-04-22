@@ -13,8 +13,8 @@ import os
 # internal imports
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset
-from utils.nctools import writeNetCDF, add_strvar
-from datasets.common import name_of_month, data_root, grid_folder, transformPrecip
+from utils.nctools import writeNetCDF
+from datasets.common import getRootFolder, grid_folder, transformPrecip
 from datasets.common import translateVarNames, loadObservations, addLandMask, addLengthAndNamesOfMonth, getFileName
 # from geodata.utils import DatasetError
 from warnings import warn
@@ -23,7 +23,7 @@ from geodata.gdal import GridDefinition
 ## PCIC PRISM Meta-data
 
 dataset_name = 'PCIC'
-root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # long-term mean folder
+root_folder = getRootFolder(dataset_name=dataset_name) # get dataset root folder based on environment variables
 
 # PRISM grid definition
 dlat = dlon = 1./120. #  0.0083333333

@@ -13,14 +13,14 @@ import os
 from geodata.netcdf import DatasetNetCDF, Axis
 from geodata.misc import DatasetError
 from geodata.gdal import addGDALtoDataset, GridDefinition
-from datasets.common import translateVarNames, name_of_month, data_root, loadObservations, grid_folder
+from datasets.common import translateVarNames, name_of_month, getRootFolder, loadObservations, grid_folder
 from processing.process import CentralProcessingUnit
 
 
 ## CRU Meta-data
 
 dataset_name = 'CFSR'
-root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # long-term mean folder
+root_folder = getRootFolder(dataset_name=dataset_name) # get dataset root folder based on environment variables
 
 # CFSR grid definition           
 # geotransform_031 = (-180.15625, 0.3125, 0.0, 89.915802001953125, 0.0, -0.30960083)

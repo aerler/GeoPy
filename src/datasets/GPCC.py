@@ -18,14 +18,14 @@ from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, addGeoLocator
 from geodata.misc import DatasetError
 from utils.nctools import writeNetCDF
-from datasets.common import data_root, grid_folder, transformPrecip, timeSlice
+from datasets.common import getRootFolder, grid_folder, transformPrecip, timeSlice
 from datasets.common import translateVarNames, loadObservations, addLandMask, addLengthAndNamesOfMonth, getFileName
 from processing.process import CentralProcessingUnit
 
 ## GPCC Meta-data
 
 dataset_name = 'GPCC'
-root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # long-term mean folder
+root_folder = getRootFolder(dataset_name=dataset_name) # get dataset root folder based on environment variables
 
 # GPCC grid definition           
 geotransform_025 = (-180.0, 0.25, 0.0, -90.0, 0.0, 0.25)

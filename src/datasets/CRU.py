@@ -13,7 +13,7 @@ import os
 from geodata.base import Variable, Axis
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition
-from datasets.common import translateVarNames, days_per_month, name_of_month, data_root 
+from datasets.common import translateVarNames, days_per_month, name_of_month, getRootFolder 
 from datasets.common import loadObservations, grid_folder, transformPrecip, transformDays, timeSlice
 from processing.process import CentralProcessingUnit
 
@@ -21,7 +21,7 @@ from processing.process import CentralProcessingUnit
 ## CRU Meta-data
 
 dataset_name = 'CRU'
-root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # the dataset root folder
+root_folder = getRootFolder(dataset_name=dataset_name) # get dataset root folder based on environment variables
 
 # CRU grid definition           
 geotransform = (-180.0, 0.5, 0.0, -90.0, 0.0, 0.5)

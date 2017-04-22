@@ -20,14 +20,15 @@ from geodata.base import concatDatasets
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError, loadPickledGridDef, pickleGridDef
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt, EmptyDatasetError
-from datasets.common import data_root, grid_folder, selectElements, stn_params, shp_params, nullNaN
+from datasets.common import grid_folder, selectElements, stn_params, shp_params, nullNaN, getRootFolder
 #from projects.WRF_experiments import Exp, exps, ensembles 
 from warnings import warn
 from collections import OrderedDict
 from utils.constants import precip_thresholds
 
+dataset_name = 'WRF' # dataset name
+root_folder = getRootFolder(dataset_name=dataset_name)
 
-avgfolder = data_root + '/WRF/wrfavg/' # long-term mean folder
 ## class that defines experiments
 class Exp(object):
   ''' class of objects that contain meta data for WRF experiments '''
@@ -389,7 +390,6 @@ class Axes(FileType):
 
 # data source/location
 fileclasses = dict(aux=FileType('aux'), const=Const(), srfc=Srfc(), hydro=Hydro(), lsm=LSM(), rad=Rad(), xtrm=Xtrm(), plev3d=Plev3D(), axes=Axes())
-root_folder = data_root + '/WRF/' # long-term mean folder
 outfolder = root_folder + 'wrfout/' # WRF output folder
 avgfolder = root_folder + 'wrfavg/' # long-term mean folder
 
@@ -1026,7 +1026,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
 
 ## Dataset API
 
-dataset_name = 'WRF' # dataset name
+dataset_name # dataset name
 root_folder # root folder of the dataset
 avgfolder # root folder for monthly averages
 outfolder # root folder for direct WRF output
@@ -1050,13 +1050,13 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-#   mode = 'test_climatology'
+  mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
-  mode = 'pickle_grid' 
+#   mode = 'pickle_grid' 
 #   pntset = 'wcshp'
   pntset = 'glbshp'
 #   pntset = 'ecprecip'

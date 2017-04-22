@@ -14,14 +14,14 @@ from geodata.base import Axis
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition
 from geodata.misc import DatasetError 
-from datasets.common import translateVarNames, name_of_month, data_root, loadObservations, grid_folder
+from datasets.common import translateVarNames, name_of_month, getRootFolder, loadObservations, grid_folder
 from processing.process import CentralProcessingUnit
 
 
 ## NARR Meta-data
 
 dataset_name = 'NARR'
-root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # long-term mean folder
+root_folder = getRootFolder(dataset_name=dataset_name) # get dataset root folder based on environment variables
 
 # NARR projection
 projdict = dict(proj  = 'lcc', # Lambert Conformal Conic  

@@ -95,6 +95,22 @@ def addLoadFcts(namespace, dataset, comment=" (Experiment and Ensemble lists are
   return namespace
 
 
+def getRootFolder(dataset_name=None, fallback_name=None, data_root=data_root):
+    ''' figure out dataset root folder from environment variable and fallbacks '''
+    root_folder = os.getenv(dataset_name+'_ROOT',None) # no modification necessary
+    if not root_folder or not os.path.exists(root_folder):
+        tmp = os.getenv('WRF_ROOT',None)
+        if tmp: root_folder = tmp.replace('WRF',dataset_name)
+    if not root_folder or not os.path.exists(root_folder):
+        root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # the dataset root folder
+    if not root_folder:
+        raise IOError("No environment variable to indicate dataset root folder found")
+    if not os.path.exists(root_folder): 
+        raise DataError("The dataset root '{:s}' directory set in the HGS_ROOT or WRF_ROOT environment variables does not exist!".format(root_folder))
+    if root_folder[-1] != '/': root_folder += '/'
+    return root_folder
+
+
 def nullNaN(data, var=None, slc=None):
   ''' transform function to remove month with no precip from data (replace by NaN) '''
   return np.where(data == 0., np.NaN, data)
