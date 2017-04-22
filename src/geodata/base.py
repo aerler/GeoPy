@@ -18,7 +18,8 @@ from warnings import warn
 # my own imports
 import utils.nanfunctions as nf
 from plotting.properties import getPlotAtts, variablePlotatts # import plot properties from different file
-from geodata.misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, floateps, TimeAxisError
+from geodata.misc import checkIndex, isEqual, isInt, isNumber, AttrDict, joinDicts, floateps, TimeAxisError,\
+  EnsembleError
 from geodata.misc import genStrArray, translateSeasons
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError, EmptyDatasetError
 from processing.multiprocess import apply_along_axis
@@ -3579,36 +3580,36 @@ class Ensemble(object):
     # return check
     return not self.hasMember(member)
   
-  def __mul__(self, n):
-    ''' how to combine with other objects '''
-    if isInt(n):
-      return self.members*n
-    else:
-      raise TypeError
-
-  def __add__(self, other):
-    ''' how to combine with other objects '''
-    if isinstance(other, Ensemble):
-      for member in other: self.addMember(member)
-      return self
-    elif isinstance(other, list):
-      return self.members + other
-    elif isinstance(other, tuple):
-      return tuple(self.members) * other
-    else:
-      raise TypeError
-
-  def __radd__(self, other):
-    ''' how to combine with other objects '''
-    if isinstance(other, Ensemble):
-      for member in other: self.addMember(member)
-      return self
-    elif isinstance(other, list):
-      return other + self.members
-    elif isinstance(other, tuple):
-      return other + tuple(self.members)
-    else:
-      raise TypeError
+#   def __mul__(self, n):
+#     ''' how to combine with other objects '''
+#     if isInt(n):
+#       return self.members*n
+#     else:
+#       raise TypeError
+# 
+#   def __add__(self, other):
+#     ''' how to combine with other objects '''
+#     if isinstance(other, Ensemble):
+#       for member in other: self.addMember(member)
+#       return self
+#     elif isinstance(other, list):
+#       return self.members + other
+#     elif isinstance(other, tuple):
+#       return tuple(self.members) * other
+#     else:
+#       raise TypeError
+# 
+#   def __radd__(self, other):
+#     ''' how to combine with other objects '''
+#     if isinstance(other, Ensemble):
+#       for member in other: self.addMember(member)
+#       return self
+#     elif isinstance(other, list):
+#       return other + self.members
+#     elif isinstance(other, tuple):
+#       return other + tuple(self.members)
+#     else:
+#       raise TypeError
 
   def __getitem__(self, item):
     ''' Yet another way to access members by name... conforming to the container protocol. 
@@ -3626,9 +3627,9 @@ class Ensemble(object):
           # N.B.: this is useful to load different Variables from Datasets by name, 
           #       without having to use getattr()
         except AttributeError:
-          if self.basetype is Dataset: raise DatasetError, item
-          elif self.basetype is Variable: raise VariableError, item
-          else: raise AttributeError, item
+          if self.basetype is Dataset: raise DatasetError(item)
+          elif self.basetype is Variable: raise VariableError(item)
+          else: raise AttributeError(item)
         #return self.__getattr__(item) # call like an attribute
     elif isinstance(item, (int,np.integer,slice)):
       # access members like list/tuple 
@@ -3666,22 +3667,31 @@ class Ensemble(object):
   
   def __iadd__(self, member):
     ''' Add a Dataset to an existing Ensemble. '''
+    ec = False # confirm that everything worked
     if isinstance(member, self.basetype):
-      assert self.addMember(member), "A problem occurred adding Dataset '{:s}' to Ensemble.".format(member.name)    
-    elif isinstance(member, Variable):
-      assert all(self.addVariable(member)), "A problem occurred adding Variable '{:s}' to Ensemble Members.".format(member.name)    
-    elif all([isinstance(m, Variable) for m in member]):
-      assert all(self.addVariable(member)), "A problem occurred adding Variable '{:s}' to Ensemble Members.".format(member.name)    
+        ec = self.addMember(member) 
+    elif isinstance(member,(Ensemble,list,tuple)) and all([isinstance(m, self.basetype) for m in member]):
+        for m in member: ec = self.addMember(m)
+    elif self.basetype is Dataset:    
+        if isinstance(member, Variable):
+            ec = all(self.addVariable(member))
+        elif isinstance(member,(Ensemble,list,tuple)) and all([isinstance(m, Variable) for m in member]):
+            ec = all(self.addVariable(member))
+    if not ec: 
+        raise EnsembleError("A problem occurred adding '{:s}' to Ensemble.".format(member.name))
     return self # return self as result
 
   def __isub__(self, member):
-    ''' Remove a Dataset to an existing Ensemble. '''      
+    ''' Remove a Dataset to an existing Ensemble. '''
+    ec = False # confirm that everything worked
     if isinstance(member, basestring) and self.hasMember(member):
-      assert self.removeMember(member), "A proble occurred removing Dataset '{:s}' from Ensemble.".format(member)    
+        ec = self.removeMember(member)    
     elif isinstance(member, self.basetype):
-      assert self.removeMember(member), "A proble occurred removing Dataset '{:s}' from Ensemble.".format(member.name)
+        ec = self.removeMember(member)
     elif isinstance(member, (basestring,Variable)):
-      assert all(self.removeVariable(member)), "A problem occurred removing Variable '{:s}' from Ensemble Members.".format(member.name)    
+        ec = all(self.removeVariable(member))
+    if not ec:
+        raise EnsembleError("A problem occurred removing Variable '{:s}' from Ensemble Members.".format(member.name))    
     return self # return self as result
 
   

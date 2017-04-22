@@ -430,6 +430,10 @@ class EmptyDatasetError(Exception):
   ''' Error to indicate that a loaded Dataset is empty. '''
   pass
 
+class EnsembleError(VariableError):
+  ''' Base class for exceptions occurring in Ensemble methods. '''
+  pass
+
 class DateError(VariableError):
   ''' Exception indicating invalid dates passed to processor. '''
   pass
