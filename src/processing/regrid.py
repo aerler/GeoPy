@@ -209,7 +209,8 @@ if __name__ == '__main__':
 #     NP = 1 ; ldebug = True # for quick computations
     NP = 1 ; ldebug = False # just for tests
 #     modes = ('climatology','time-series') # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology','time-series'
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
 #     varlist = ['precip',]
@@ -225,6 +226,7 @@ if __name__ == '__main__':
     datasets = []
     lLTM = True # also regrid the long-term mean climatologies 
     datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
+    resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies']}
 #     datasets += ['PRISM','GPCC','PCIC']; #periods = None
 #     datasets += ['CFSR', ] # CFSR_05 does not have precip
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05']}

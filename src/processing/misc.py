@@ -278,7 +278,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
   ## assemble and return meta data
   dataargs = namedTuple(dataset_name=dataset_name, period=period, periodstr=periodstr, avgfolder=avgfolder, 
                         filetypes=filetypes,filetype=filetypes[0], domain=domain, obs_res=obs_res, 
-                        varlist=varlist, grid=grid, gridstr=gridstr) 
+                        varlist=varlist, grid=grid, gridstr=gridstr, resolution=resolution) 
   # return meta data
   return dataargs, loadfct, srcage, datamsgstr    
 

@@ -139,7 +139,7 @@ class ASCII_raster(FileFormat):
       lnkprd = mode[:-5] if lnkprdstr is None else '{:s}_{:s}'.format(mode[:-5],lnkprdstr)
     else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
     # insert into patterns 
-    metadict = dict(PROJECT=self.project, GRID=grid, EXPERIMENT=expname, PERIOD=expprd)
+    metadict = dict(PROJECT=self.project, GRID=grid, EXPERIMENT=expname, PERIOD=expprd, RESOLUTION=dataargs.resolution)
     self.folder = self.folder_pattern.format(**metadict)
     if ldebug: self.folder = self.folder + '/test/' # test in subfolder
     self.prefix = self.prefix_pattern.format(**metadict) if self.prefix_pattern else None
@@ -462,8 +462,8 @@ if __name__ == '__main__':
         NP = 1; ldebug = False # for quick computations
 #         NP = 1 ; ldebug = True # just for tests
 #         modes = ('annual-mean','climatology')
-        modes = ('time-series',) # 'climatology','time-series'
-#         modes = ('climatology',)  
+#         modes = ('time-series',) # 'climatology','time-series'
+        modes = ('climatology',)  
         loverwrite = True
         exp_list= None
         # obs variables
@@ -484,7 +484,8 @@ if __name__ == '__main__':
         resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}
         lLTM = False # also regrid the long-term mean climatologies 
         datasets = []
-        datasets += ['NRCan']; periods = [(1980,2010),] # this will generally not work, because we don't have snow/-melt...
+        datasets += ['NRCan']; periods = [(1970,2000),] # this will generally not work, because we don't have snow/-melt...
+        resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies']}
     #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
         # CESM experiments (short or long name) 
         CESM_project = None # all available experiments
@@ -539,22 +540,22 @@ if __name__ == '__main__':
         # typically a specific grid is required
         grids = [] # list of grids to process
 #         grids += [None] # special keyword for native grid
-#         grids += ['grw2'] # small grid for HGS GRW project
-        grids += ['brd1']# small grid for HGS GRW project
+        grids += ['grw2'] # small grid for HGS GRW project
+#         grids += ['brd1']# small grid for HGS GRW project
 #         grids += ['can1']# large Canada-wide grid
         export_arguments = dict(
 #             project = 'Grids', # project designation  
 #             folder = '{0:s}/HGS/{{PROJECT}}/{{EXPERIMENT}}/'.format(os.getenv('DATA_ROOT', None)),
 #             prefix = None, # based on keyword arguments or None
             compute_list = [], exp_list= ['lat2D','lon2D','liqwatflx','pet',], # varlist for NRCan
-#             project = 'GRW', # project designation  
-            project = 'ASB', # project designation
+            project = 'GRW', # project designation  
+#             project = 'ASB', # project designation
 #             project = 'CAN', # project designation
 #             compute_list = ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
 #             exp_list= ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
 #             exp_list= ['pet_wrf'], compute_list = [], # varlist for export
 #             exp_list = load_list, # varlist for Obs is same as load_list
-            folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(os.getenv('DATA_ROOT', None)),
+            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/{{RESOLUTION}}/'.format(os.getenv('HGS_ROOT', None)),
 #             folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}_{{PERIOD}}/climate_forcing/'.format(
 #                                                                             os.getenv('DATA_ROOT', None),bc_method),
             prefix = '{GRID}', # based on keyword arguments

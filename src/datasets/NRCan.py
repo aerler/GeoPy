@@ -83,7 +83,7 @@ def checkGridRes(grid, resolution, period=None, lclim=False):
   # figure out clim/TS
   if period is not None: lclim=True
   # check for valid resolution 
-  if lclim and resolution.upper() not in LTM_grids: 
+  if lclim and resolution not in LTM_grids and resolution.upper() not in LTM_grids: 
       raise DatasetError("Selected resolution '{:s}' is not available for long-term means!".format(resolution))
   if not lclim and resolution.upper() not in TS_grids: 
       raise DatasetError("Selected resolution '{:s}' is not available for historical time-series!".format(resolution))
@@ -175,7 +175,7 @@ def loadNRCan_ShpTS(name=dataset_name, shape=None, resolution=None, varlist=None
 # a universal load function for normals and historical timeseries; also computes some derived variables, and combines NA and CA grids
 def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=None, NA_grid=None, CA_grid=None, 
                  merged_axis=None, time_axis='time', resolution=None, grid_defs=None, period=None, var_pattern=None, 
-                 grid_pattern=None, vardefs=None, axdefs=None, lfeedback=True):
+                 snow_density='maritime',grid_pattern=None, vardefs=None, axdefs=None, lfeedback=True):
     ''' load NRCan time-series data from ASCII files, merge CA and NA grids and compute some additional variables; return Dataset '''
     
     from utils.ascii import rasterDataset
@@ -277,17 +277,19 @@ def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=No
             #       estimates from the Canadian Meteorological Centre for maritime climates (Table 4):
             #       https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/
             #       a factor of 1000 has been applied, because snow depth is in m (and not mm)
-            # Maritime snow cover
-            density = np.asarray([0.2165, 0.2485, 0.2833, 0.332, 0.3963, 0.501, 0.501, 0.501, 0.16, 0.16, 0.1835, 0.1977], dtype=np.float32)*1000.
-            density_note = "Snow density estimates from CMC for maritime climates (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
-            # Ephemeral snow cover
-            #density = np.asarray([0.3168, 0.3373, 0.3643, 0.4046, 0.4586, 0.5098, 0.5098, 0.5098, 0.25, 0.25, 0.3, 0.3351], dtype=np.float32)*1000.
-            #density_note = "Snow density extimates from CMC for ephemeral snow cover (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
-            # Prairie snow cover
-            #density = np.asarray([0.2137, 0.2416, 0.2610, 0.308, 0.3981, 0.4645, 0.4645, 0.4645, 0.14, 0.14, 0.1616, 0.1851], dtype=np.float32)*1000.
-            #density_note = "Snow density extimates from CMC for the prairies (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
-            # Note: these snow density values are for maritime climates only! values for the Prairies and the North are 
-            #       substantially different! this is for applications in southern Ontario
+            if snow_density.lower() == 'maritime':
+              # Maritime snow cover
+              density = np.asarray([0.2165, 0.2485, 0.2833, 0.332, 0.3963, 0.501, 0.501, 0.501, 0.16, 0.16, 0.1835, 0.1977], dtype=np.float32)*1000.
+              density_note = "Snow density estimates from CMC for maritime climates (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
+            if snow_density.lower() == 'ephemeral':
+              # Ephemeral snow cover
+              density = np.asarray([0.3168, 0.3373, 0.3643, 0.4046, 0.4586, 0.5098, 0.5098, 0.5098, 0.25, 0.25, 0.3, 0.3351], dtype=np.float32)*1000.
+              density_note = "Snow density extimates from CMC for ephemeral snow cover (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
+            elif snow_density.lower() == 'prairies':
+              # Prairie snow cover
+              density = np.asarray([0.2137, 0.2416, 0.2610, 0.308, 0.3981, 0.4645, 0.4645, 0.4645, 0.14, 0.14, 0.1616, 0.1851], dtype=np.float32)*1000.
+              density_note = "Snow density extimates from CMC for the prairies (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
+            # Note: these snow density values are for southern Canada; values for the high latitudes are substantially different!
             # compute values and add to dataset
             newvar = monthlyTransform(var=dataset.snowh.copy(deepcopy=True), lvar=True, linplace=True, scalefactor=density)
             newvar.atts['long_name'] = 'Snow Water Equivalent at the end of the month.'
@@ -366,10 +368,10 @@ norm_var_pattern = '{VAR:s}/{VAR:s}_{time:02d}.asc.gz' # path to variables
 norm_title = 'NRCan Gridded Normals'
 
 def loadASCII_Normals(name=dataset_name, title=norm_title, atts=None, derived_vars=norm_derived, varatts=varatts, 
-                      NA_grid=None, CA_grid=None, resolution=12, grid_defs=None, period=norm_period,
+                      NA_grid=None, CA_grid=None, resolution=12, grid_defs=None, period=norm_period, snow_density='maritime',
                       var_pattern=norm_var_pattern, grid_pattern=norm_grid_pattern, vardefs=norm_vardefs, axdefs=norm_axdefs):
     ''' load NRCan normals from ASCII files, merge CA and NA grids and compute some additional variables; return Dataset '''
-    return loadASCII_TS(name=name, title=title, atts=atts, derived_vars=derived_vars, varatts=varatts, 
+    return loadASCII_TS(name=name, title=title, atts=atts, derived_vars=derived_vars, varatts=varatts, snow_density=snow_density,
                         NA_grid=NA_grid, CA_grid=CA_grid, merged_axis=None, resolution=resolution, grid_defs=grid_defs, 
                         period=period, var_pattern=var_pattern, grid_pattern=grid_pattern, vardefs=vardefs, axdefs=axdefs)
 
@@ -393,7 +395,7 @@ hist_grid_pattern = root_folder+'{GRID:s}_hist/'
 hist_var_pattern = '{VAR:s}/{year:04d}/{VAR:s}_{month:02d}.asc.gz'
 hist_title = 'NRCan Historical Gridded Time-series'
 
-def loadASCII_Hist(name=dataset_name, title=hist_title, atts=None, derived_vars=hist_derived, varatts=varatts, 
+def loadASCII_Hist(name=dataset_name, title=hist_title, atts=None, derived_vars=hist_derived, varatts=varatts, snow_density='maritime',
                    NA_grid=None, CA_grid=None, resolution=12, grid_defs=None, period=hist_period, merged_axis=merged_atts,
                    var_pattern=hist_var_pattern, grid_pattern=hist_grid_pattern, vardefs=hist_vardefs, axdefs=hist_axdefs):
     ''' load historical NRCan timeseries from ASCII files, merge CA and NA grids and compute some additional variables; return Dataset '''
@@ -411,7 +413,8 @@ def loadASCII_Hist(name=dataset_name, title=hist_title, atts=None, derived_vars=
         elif not isinstance(merged_axis,Axis):
             raise TypeError(merged_axis)
     # load ASCII data
-    return loadASCII_TS(name=name, title=title, atts=atts, derived_vars=derived_vars, varatts=varatts, time_axis='month',
+    return loadASCII_TS(name=name, title=title, atts=atts, derived_vars=derived_vars, varatts=varatts, time_axis='month', 
+                        snow_density=snow_density,
                         NA_grid=NA_grid, CA_grid=CA_grid, merged_axis=merged_axis, resolution=resolution, grid_defs=grid_defs, 
                         period=period, var_pattern=var_pattern, grid_pattern=grid_pattern, vardefs=vardefs, axdefs=axdefs)
 
@@ -504,7 +507,9 @@ clim_file_pattern = avgfile # filename pattern: variable name and resolution
 data_folder = avgfolder # folder for user data
 grid_def = {'NA12':NRCan_NA12_grid, 'CA12':NRCan_CA12_grid, 'CA24':NRCan_CA24_grid} # standardized grid dictionary
 LTM_grids = ['NA12','CA12','CA24'] # grids that have long-term mean data 
+LTM_grids += ['na12_ephemeral','na12_maritime','na12_prairies'] # some fake grids to accommodate different snow densities
 TS_grids = ['NA12','CA12'] # grids that have time-series data
+TS_grids += ['na12_ephemeral','na12_maritime','na12_prairies'] # some fake grids to accommodate different snow densities
 grid_res = {'NA12':1./12.,'CA12':1./12.,'CA24':1./24.} # no special name, since there is only one...
 default_grid = NRCan_NA12_grid
 # functions to access specific datasets
@@ -599,12 +604,17 @@ if __name__ == '__main__':
     elif mode == 'convert_Normals':
         
         # parameters
+        period = (1980,2010)
+#         period = (1970,2000) 
+#         snow_density = 'ephemeral'
+        snow_density = 'maritime'
+#         snow_density = 'prairies'
         prdstr = '_{}-{}'.format(*period)
-        resolution = 12; grdstr = '_na{:d}'.format(resolution)
+        resolution = 12; grdstr = '_na{:d}_{:s}'.format(resolution, snow_density)
         ncfile = avgfolder + avgfile.format(grdstr,prdstr)
         if not os.path.exists(avgfolder): os.mkdir(avgfolder)
         # load ASCII dataset with default values
-        dataset = loadASCII_Normals(period=period, resolution=resolution, grid_defs=grid_def,)        
+        dataset = loadASCII_Normals(period=period, resolution=resolution, snow_density=snow_density, grid_defs=grid_def,)        
         # test 
         print(dataset)
         print('')
@@ -618,13 +628,16 @@ if __name__ == '__main__':
     elif mode == 'convert_Historical':
         
         # parameters
-        resolution = 12; grdstr = '_na{:d}'.format(resolution)
+#         snow_density = 'ephemeral'
+#         snow_density = 'maritime'
+        snow_density = 'prairies'
+        resolution = 12; grdstr = '_na{:d}_{:s}'.format(resolution, snow_density)
         ncfile = avgfolder + tsfile.format(grdstr)
         if not os.path.exists(avgfolder): os.mkdir(avgfolder)
         # use actual, real values
         period = hist_period; vardefs = hist_vardefs; derived_vars = hist_derived
         # test values
-        period = (1981,2010) # for testing
+        period = (1991,2000) # for testing
 #         vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.15, **hist_defaults), # 2m maximum temperature, originally in degrees Celsius
 #                        mint = dict(grid='NA12', name='Tmin', units='K', offset=273.15, **hist_defaults), # 2m minimum temperature
 #                        snwd = dict(grid='CA12', name='snowh', units='m', scalefactor=1./100., **hist_defaults), # snow depth
@@ -632,7 +645,7 @@ if __name__ == '__main__':
 #         derived_vars = ('T2',)
         # load ASCII dataset with default values
         dataset = loadASCII_Hist(period=period, vardefs=vardefs, derived_vars=derived_vars, 
-                                 resolution=resolution, grid_defs=grid_def,)        
+                                 resolution=resolution, snow_density=snow_density, grid_defs=grid_def,)        
         # test 
         print(dataset)
         print('')
