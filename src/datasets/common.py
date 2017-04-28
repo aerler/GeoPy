@@ -797,12 +797,19 @@ if __name__ == '__main__':
   ## create a new grid
   elif mode == 'create_grid':
     
+    convention='Proj4'
     ## parameters for UTM 17 GRW grids
 #     name = 'grw1' # 1km resolution
 #     geotransform = [500.e3,1.e3,0,4740.e3,0,1.e3]; size = (132,162)
-    name = 'grw2' # 5km resolution
-    geotransform = [500.e3,5.e3,0,4740.e3,0,5.e3]; size = (27,33)
-    projection = "+proj=utm +zone=17 +north +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+#     name = 'grw2' # 5km resolution
+#     geotransform = [500.e3,5.e3,0,4740.e3,0,5.e3]; size = (27,33)
+#     projection = "+proj=utm +zone=17 +north +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+    ## parameters for South Nation grids
+    name = 'snw1' # 9km resolution
+    geotransform = [401826.125365249,9.e3,0,4851533.71730136,0,9.e3]; size = (22,29)
+    projection = "+proj=utm +zone=18 +north +ellps=NAD83 +datum=NAD83 +units=m +no_defs"
+#     projection = 'PROJCS["NAD_1983_UTM_Zone_14N",GEOGCS["GCS_North_American_1983",DATUM["D_North_American_1983",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["false_easting",500000.0],PARAMETER["false_northing",0.0],PARAMETER["central_meridian",-99.0],PARAMETER["scale_factor",0.9996],PARAMETER["latitude_of_origin",0.0],UNIT["Meter",1.0]]'
+#     convention='Wkt'
     ## parameters for UTM 17 Assiniboine River Basin grids
     # Bird River, a subbasin of the Assiniboine River Basin
 #     name = 'brd1' # 5km resolution 

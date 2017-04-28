@@ -83,9 +83,9 @@ def checkGridRes(grid, resolution, period=None, lclim=False):
   # figure out clim/TS
   if period is not None: lclim=True
   # check for valid resolution 
-  if lclim and resolution not in LTM_grids and resolution.upper() not in LTM_grids: 
+  if lclim and resolution not in LTM_grids and resolution not in LTM_grids: 
       raise DatasetError("Selected resolution '{:s}' is not available for long-term means!".format(resolution))
-  if not lclim and resolution.upper() not in TS_grids: 
+  if not lclim and resolution not in TS_grids: 
       raise DatasetError("Selected resolution '{:s}' is not available for historical time-series!".format(resolution))
   # return
   return grid, resolution
@@ -560,7 +560,7 @@ if __name__ == '__main__':
       
         # load time-series file
         print('')
-        dataset = loadNRCan_TS(grid=grid,resolution=res)
+        dataset = loadNRCan_TS(grid=grid,resolution='na12_maritime')
         print(dataset)
         print('')
         print(dataset.time)
@@ -629,15 +629,16 @@ if __name__ == '__main__':
         
         # parameters
 #         snow_density = 'ephemeral'
-#         snow_density = 'maritime'
-        snow_density = 'prairies'
+        snow_density = 'maritime'
+#         snow_density = 'prairies'
         resolution = 12; grdstr = '_na{:d}_{:s}'.format(resolution, snow_density)
         ncfile = avgfolder + tsfile.format(grdstr)
         if not os.path.exists(avgfolder): os.mkdir(avgfolder)
         # use actual, real values
         period = hist_period; vardefs = hist_vardefs; derived_vars = hist_derived
         # test values
-        period = (1991,2000) # for testing
+        period = (1970,2000) # for production        
+#         period = (1991,2000) # for testing
 #         vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.15, **hist_defaults), # 2m maximum temperature, originally in degrees Celsius
 #                        mint = dict(grid='NA12', name='Tmin', units='K', offset=273.15, **hist_defaults), # 2m minimum temperature
 #                        snwd = dict(grid='CA12', name='snowh', units='m', scalefactor=1./100., **hist_defaults), # snow depth
