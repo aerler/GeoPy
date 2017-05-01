@@ -175,6 +175,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
   else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
   # general arguments (dataset independent)
   varlist = dataargs.get('varlist',None)
+  resolution = dataargs.get('resolution',None)
   grid = dataargs.get('grid',None) # get grid
   period = dataargs.get('period',None)
   # determine meta data based on dataset type

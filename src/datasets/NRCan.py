@@ -637,8 +637,8 @@ if __name__ == '__main__':
         # use actual, real values
         period = hist_period; vardefs = hist_vardefs; derived_vars = hist_derived
         # test values
-#         period = (1970,2000) # for production
-        period = (1981,2010) # for production
+        period = (1970,2000) # for production
+#         period = (1981,2010) # for production
 #         period = (1991,2000) # for testing
 #         vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.15, **hist_defaults), # 2m maximum temperature, originally in degrees Celsius
 #                        mint = dict(grid='NA12', name='Tmin', units='K', offset=273.15, **hist_defaults), # 2m minimum temperature
