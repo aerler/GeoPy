@@ -213,6 +213,12 @@ tmp = PlotAtts(name = r'$T_s$', title = 'Skin Temperature',
 variablePlotatts['Ts'] = tmp
 
 ## Skin Temperature
+tmp = PlotAtts(name = r'$T_soil$', title = 'Soil Temperature', 
+               units = 'K', scalefactor = 1.)
+# add to collection
+variablePlotatts['Tslb'] = tmp
+
+## Sea Ice Fraction
 tmp = PlotAtts(name = 'sea-ice', title = 'Sea Ice Fraction', 
                units = '', scalefactor = 1.)
 # add to collection

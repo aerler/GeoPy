@@ -211,7 +211,7 @@ if __name__ == '__main__':
 #     modes = ('climatology','time-series') # 'climatology','time-series'
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = True
+    loverwrite = False
     varlist = None
 #     varlist = ['precip',]
     periods = []
@@ -220,7 +220,7 @@ if __name__ == '__main__':
 #     periods += [5]
 #     periods += [10]
     periods += [15]
-    periods += [30]
+#     periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []

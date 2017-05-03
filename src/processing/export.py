@@ -461,21 +461,21 @@ if __name__ == '__main__':
         # settings for testing and debugging
         NP = 1; ldebug = False # for quick computations
 #         NP = 1 ; ldebug = True # just for tests
-        modes = ('time-series','climatology')
+#         modes = ('time-series','climatology')
 #         modes = ('time-series',) # 'climatology','time-series'
-#         modes = ('climatology',)  
+        modes = ('climatology',)  
         loverwrite = True
         exp_list= None
         # obs variables
-        load_list = ['lat2D','lon2D','liqwatflx','pet']
-#         load_list = ['lat2D','lon2D','liqwatflx','pet','precip','liqwatflx_CMC']
-#         # WRF variables
-#         #load_list = ['pet_wrf']
-#         load_list = ['lat2D','lon2D','zs','snow','pet_wrf']
-#         load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt'] # (net) precip
-#         # PET variables (for WRF)
-#         load_list += ['ps','u10','v10','Q2','Tmin','Tmax','T2','TSmin','TSmax',] # wind
-#         load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
+#         load_list = ['lat2D','lon2D','liqwatflx','pet']
+        load_list = ['lat2D','lon2D','liqwatflx','pet','precip','liqwatflx_CMC']
+        # WRF variables
+        #load_list = ['pet_wrf']
+        load_list = ['lat2D','lon2D','zs','snow','pet_wrf']
+        load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt'] # (net) precip
+        # PET variables (for WRF)
+        load_list += ['ps','u10','v10','Q2','Tmin','Tmax','T2','TSmin','TSmax',] # wind
+        load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
         # period list
         periods = [] 
         periods += [15]
@@ -484,8 +484,8 @@ if __name__ == '__main__':
         resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}
         lLTM = False # also regrid the long-term mean climatologies 
         datasets = []
-        datasets += ['NRCan']; periods = [(1970,2000),] # this will generally not work, because we don't have snow/-melt...
-        resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies'][2:]}
+#         datasets += ['NRCan']; periods = [(1970,2000),] # this will generally not work, because we don't have snow/-melt...
+#         resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies'][2:]}
     #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
         # CESM experiments (short or long name) 
         CESM_project = None # all available experiments
@@ -498,11 +498,11 @@ if __name__ == '__main__':
         WRF_project = 'GreatLakes'; unity_grid = 'glb1_d02' # only GreatLakes experiments
     #     WRF_project = 'WesternCanada'; unity_grid = 'arb2_d02' # only WesternCanada experiments
         WRF_experiments = [] # use None to process all WRF experiments
-#         WRF_experiments += ['erai-g3','erai-t3','erai-g','erai-t']
-#         WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100']
-#         WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
-#         WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-#         WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
+        WRF_experiments += ['erai-g3','erai-t3','erai-g','erai-t']
+        WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100']
+        WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
+        WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+        WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
 #         WRF_experiments += ['g-ensemble-2050',]
 #         WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #         WRF_experiments += ['t-ctrl','t-ctrl-2050','t-ctrl-2100']
@@ -524,8 +524,8 @@ if __name__ == '__main__':
 #         WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
 #         WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
         # other WRF parameters 
-#         domains = 1 # domains to be processed
-        domains = None # process all domains
+        domains = 1 # domains to be processed
+#         domains = None # process all domains
     #     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
         WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # with radiation files
         ## bias-correction paramter
@@ -541,25 +541,25 @@ if __name__ == '__main__':
         grids = [] # list of grids to process
 #         grids += [None] # special keyword for native grid
 #         grids += ['grw2'] # small grid for HGS GRW project
-        grids += ['brd1']# small grid for HGS GRW project
-#         grids += ['can1']# large Canada-wide grid
+#         grids += ['brd1']# small grid for HGS GRW project
+        grids += ['can1']# large Canada-wide grid
 #         grids += ['snw1'] # south nation watershed
         export_arguments = dict(
 #             project = 'Grids', # project designation  
 #             folder = '{0:s}/HGS/{{PROJECT}}/{{EXPERIMENT}}/'.format(os.getenv('DATA_ROOT', None)),
 #             prefix = None, # based on keyword arguments or None
-            compute_list = [], exp_list= ['lat2D','lon2D','liqwatflx','pet',], # varlist for NRCan
+#             compute_list = [], exp_list= ['lat2D','lon2D','liqwatflx','pet',], # varlist for NRCan
 #             project = 'GRW', # project designation  
-            project = 'ASB', # project designation
-#             project = 'CAN', # project designation
+#             project = 'ASB', # project designation
+            project = 'CAN', # project designation
 #             project = 'SNW', # project designation
-#             compute_list = ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
-#             exp_list= ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
+            compute_list = ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
+            exp_list= ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
 #             exp_list= ['pet_wrf'], compute_list = [], # varlist for export
 #             exp_list = load_list, # varlist for Obs is same as load_list
-            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/{{RESOLUTION}}/'.format(os.getenv('HGS_ROOT', None)),
-#             folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}_{{PERIOD}}/climate_forcing/'.format(
-#                                                                             os.getenv('DATA_ROOT', None),bc_method),
+#             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/{{RESOLUTION}}/'.format(os.getenv('HGS_ROOT', None)),
+#             folder = '{0:s}/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}_{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT', None),bc_method),
+            folder = 'D:/HGS/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/',
             prefix = '{GRID}', # based on keyword arguments
             format = 'ASCII_raster', # formats to export to
             fillValue = 0, noDataValue = -9999, # in case we interpolate across a missing value...
