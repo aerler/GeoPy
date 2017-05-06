@@ -684,7 +684,10 @@ class DatasetNetCDF(Dataset):
               # check both, name and units, to minimize confusion
               tmpatts = varatts[check_rename[var]['old_name']] # must be in varatts, too
               old_name = check_rename[var]['old_name'] # also store old name
-              # N.B.: if variable has likely already been renamed, apply new attributes anyway
+              # N.B.: if variable has likely already been renamed, apply new attributes anyway,
+              #       but remove scale factors and transforms, since the have already been applied
+              for att in ('offset','scalefactor','transform'):
+                  if att in tmpatts: del tmpatts[att]
             elif var in varatts: 
               tmpatts = varatts[var] # rename and apply new attributes
               old_name = var # store old name

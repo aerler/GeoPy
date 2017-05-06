@@ -804,22 +804,30 @@ if __name__ == '__main__':
 #     name = 'grw2' # 5km resolution
 #     geotransform = [500.e3,5.e3,0,4740.e3,0,5.e3]; size = (27,33)
 #     projection = "+proj=utm +zone=17 +north +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
-    ## parameters for South Nation grids
-    name = 'snw1' # 9km resolution
-    geotransform = [401826.125365249,9.e3,0,4851533.71730136,0,9.e3]; size = (22,29)
-    projection = "+proj=utm +zone=18 +north +ellps=NAD83 +datum=NAD83 +units=m +no_defs"
+#     ## parameters for South Nation grids
+#     name = 'snw1' # 9km resolution
+#     geotransform = [401826.125365249,9.e3,0,4851533.71730136,0,9.e3]; size = (22,29)
+#     projection = "+proj=utm +zone=18 +north +ellps=NAD83 +datum=NAD83 +units=m +no_defs"
 #     projection = 'PROJCS["NAD_1983_UTM_Zone_14N",GEOGCS["GCS_North_American_1983",DATUM["D_North_American_1983",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["false_easting",500000.0],PARAMETER["false_northing",0.0],PARAMETER["central_meridian",-99.0],PARAMETER["scale_factor",0.9996],PARAMETER["latitude_of_origin",0.0],UNIT["Meter",1.0]]'
 #     convention='Wkt'
-    ## parameters for UTM 17 Assiniboine River Basin grids
-    # Bird River, a subbasin of the Assiniboine River Basin
-#     name = 'brd1' # 5km resolution 
+    # parameters for UTM 17 Assiniboine River Basin grids
+# #     # Bird River, a subbasin of the Assiniboine River Basin
+# #     name = 'brd1' # 5km resolution 
 #     geotransform = [246749.8, 5.e3, 0., 5524545., 0., 5.e3]; size = ((438573.1-246749.8)/5.e3,(5682634.-5524545.)/5.e3)
 #     print size
 #     size = tuple(int(i) for i in size)
 #     print size
-#     geotransform = (245.e3, 5.e3, 0., 5524.e3, 0., 5.e3); size = (39,32)
-#     projection = "+proj=utm +zone=14 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
-#     ## parameters for Canada-wide Lambert Azimuthal Equal-area
+# #     geotransform = (245.e3, 5.e3, 0., 5524.e3, 0., 5.e3); size = (39,32)
+# #      projection = "+proj=utm +zone=14 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+    # Assiniboine River Basin
+    name = 'asb1' # 5km resolution 
+#     geotransform = [-158200.6 , 5.e3, 0., 5202386., 0., 5.e3]; size = ((791696.2 +158200.6)/5.e3,(5880695.-5202386.)/5.e3)
+#     print size
+#     size = tuple(int(i) for i in size)
+#     print size
+    geotransform = (-159.e3, 5.e3, 0., 5202.e3, 0., 5.e3); size = (191,135)
+    projection = "+proj=utm +zone=14 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+    ## parameters for Canada-wide Lambert Azimuthal Equal-area
 #     name = 'can1' # 5km resolution
 #     llx = -3500000; lly = -425000; urx = 3000000; ury = 4000000; dx = dy = 5.e3
 #     geotransform = [llx, dx, 0., lly, 0., dy]; size = ((urx-llx)/dx,(ury-lly)/dy)

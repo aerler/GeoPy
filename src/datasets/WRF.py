@@ -201,10 +201,10 @@ class Hydro(FileType):
                      RAINNC       = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate
                      SFCEVP       = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
                      ACSNOM       = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
-                     #pet          = dict(name='pet_wrf', units='kg/m^2/s',), # just renaming of old variable
-                     pet          = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just renaming of old variable
-                     #pet_wrf      = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just rescaling of old variable
                      POTEVP       = dict(name='pet_wrf', units='kg/m^2/s'), # potential evapo-transpiration rate
+                     #pet          = dict(name='pet_wrf', units='kg/m^2/s',), # just renaming of old variable
+                     #pet          = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just renaming of old variable
+                     #pet_wrf      = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just rescaling of old variable
                      # N.B.: for some strange reason WRF outputs PET in m/s, rather than kg/m^2/s
                      NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
                      LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
@@ -245,9 +245,9 @@ class LSM(FileType):
                      ACSNOM   = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
                      ACSNOW   = dict(name='snwacc', units='kg/m^2/s'), # snow accumulation rate
                      SFCEVP   = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
-                     pet      = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just renaming of old variable
-                     #pet_wrf  = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just rescaling of old variable
                      POTEVP   = dict(name='pet_wrf', units='kg/m^2/s'), # potential evapo-transpiration rate
+                     #pet      = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just renaming of old variable
+                     #pet_wrf  = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just rescaling of old variable
                      # N.B.: for some strange reason WRF outputs PET in m/s, rather than kg/m^2/s
                      SFROFF   = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
                      UDROFF   = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off
@@ -596,65 +596,65 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
 
 # Station Time-series (monthly, with extremes)
 def loadWRF_StnTS(experiment=None, name=None, domains=None, station=None, grid=None, filetypes=None, 
-                  varlist=None, varatts=None, lctrT=True, lwrite=False, ltrimT=True, exps=None,
-                  bias_correction=None):
+                  varlist=None, varatts=None, lctrT=True, lfixPET=True, lwrite=False, ltrimT=True, 
+                  exps=None, bias_correction=None):
   ''' Get a properly formatted WRF dataset with monthly time-series at station locations. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=station, 
                      period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
-                     lconst=False, lautoregrid=False, lctrT=lctrT, mode='time-series', 
+                     lconst=False, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode='time-series', 
                      lwrite=lwrite, ltrimT=ltrimT, check_vars='station_name', exps=exps,
                      bias_correction=bias_correction)  
 
 # Regiona/Shape Time-series (monthly, with extremes)
 def loadWRF_ShpTS(experiment=None, name=None, domains=None, shape=None, grid=None, filetypes=None, varlist=None, 
-                  varatts=None, lctrT=True, lencl=False, lwrite=False, ltrimT=True, exps=None,
+                  varatts=None, lctrT=True, lfixPET=True, lencl=False, lwrite=False, ltrimT=True, exps=None,
                   bias_correction=None):
   ''' Get a properly formatted WRF dataset with monthly time-series averaged over regions. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, shape=shape, lencl=lencl, 
                      station=None, period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
-                     lconst=False, lautoregrid=False, lctrT=lctrT, mode='time-series', lwrite=lwrite, 
+                     lconst=False, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode='time-series', lwrite=lwrite, 
                      ltrimT=ltrimT, check_vars='shape_name', exps=exps, bias_correction=bias_correction)  
 
 def loadWRF_TS(experiment=None, name=None, domains=None, grid=None, filetypes=None, varlist=None, 
-               varatts=None, lconst=True, lautoregrid=True, lctrT=True, lwrite=False, ltrimT=True, 
+               varatts=None, lconst=True, lautoregrid=True, lctrT=True, lfixPET=True, lwrite=False, ltrimT=True, 
                exps=None, bias_correction=None):
   ''' Get a properly formatted WRF dataset with monthly time-series. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, exps=exps, 
                      period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
-                     lautoregrid=lautoregrid, lctrT=lctrT, mode='time-series', lwrite=lwrite, ltrimT=ltrimT,
-                     bias_correction=bias_correction)  
+                     lautoregrid=lautoregrid, lctrT=lctrT, lfixPET=lfixPET, mode='time-series', lwrite=lwrite, 
+                     ltrimT=ltrimT, bias_correction=bias_correction)  
 
 def loadWRF_Stn(experiment=None, name=None, domains=None, station=None, grid=None, period=None, filetypes=None, 
-                varlist=None, varatts=None, lctrT=True, lwrite=False, ltrimT=False, exps=None,
+                varlist=None, varatts=None, lctrT=True, lfixPET=True, lwrite=False, ltrimT=False, exps=None,
                 bias_correction=None):
   ''' Get a properly formatted station dataset from a monthly WRF climatology at station locations. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=station, 
                      period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
-                     lautoregrid=False, lctrT=lctrT, mode='climatology', lwrite=lwrite, ltrimT=ltrimT,
-                     check_vars='station_name', exps=exps, bias_correction=bias_correction)  
+                     lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode='climatology', lwrite=lwrite, 
+                     ltrimT=ltrimT, check_vars='station_name', exps=exps, bias_correction=bias_correction)  
 
 def loadWRF_Shp(experiment=None, name=None, domains=None, shape=None, grid=None, period=None, filetypes=None, 
-                varlist=None, varatts=None, lctrT=True, lencl=False, lwrite=False, ltrimT=False, exps=None,
-                bias_correction=None):
+                varlist=None, varatts=None, lctrT=True, lfixPET=True, lencl=False, lwrite=False, ltrimT=False, 
+                exps=None, bias_correction=None):
   ''' Get a properly formatted station dataset from a monthly WRF climatology averaged over regions. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, shape=shape, lencl=lencl,
                      station=None, period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, 
-                     lconst=False, lautoregrid=False, lctrT=lctrT, mode='climatology', lwrite=lwrite, 
+                     lconst=False, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode='climatology', lwrite=lwrite, 
                      ltrimT=ltrimT, check_vars='shape_name', exps=exps, bias_correction=bias_correction)  
 
 def loadWRF(experiment=None, name=None, domains=None, grid=None, period=None, filetypes=None, varlist=None, 
-            varatts=None, lconst=True, lautoregrid=True, lctrT=True, lwrite=False, ltrimT=False, exps=None,
-            bias_correction=None):
+            varatts=None, lconst=True, lautoregrid=True, lctrT=True, lfixPET=True, lwrite=False, ltrimT=False, 
+            exps=None, bias_correction=None):
   ''' Get a properly formatted monthly WRF climatology as NetCDFDataset. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, exps=exps, 
                      period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
-                     lautoregrid=lautoregrid, lctrT=lctrT, mode='climatology', lwrite=lwrite, ltrimT=ltrimT,
-                     bias_correction=bias_correction)  
+                     lautoregrid=lautoregrid, lctrT=lctrT, lfixPET=lfixPET, mode='climatology', lwrite=lwrite, 
+                     ltrimT=ltrimT, bias_correction=bias_correction)  
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
 def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=None, shape=None, period=None, 
                 filetypes=None, varlist=None, varatts=None, lfilevaratts=False, lconst=True, lautoregrid=True, 
-                lencl=False, lctrT=False, folder=None, lpickleGrid=True, mode='climatology', 
+                lencl=False, lctrT=False, lfixPET=True, folder=None, lpickleGrid=True, mode='climatology', 
                 lwrite=False, ltrimT=False, check_vars=None, exps=None, bias_correction=None):
   ''' Get any WRF data files as a properly formatted NetCDFDataset. '''
   # prepare input  
@@ -888,6 +888,17 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
 #           dataset.time.coord -= ( t0 - 1 )
 #           dataset.time.offset -= ( t0 - 1 )
       # correct ordinal number of shape (should start at 1, not 0)
+    if lfixPET and 'pet_wrf' in dataset:
+        pet_wrf = dataset['pet_wrf'].load()
+        assert pet_wrf.units == 'kg/m^2/s', pet_wrf
+        if pet_wrf.mean() < 1e-7: 
+            warn("WARNING: WRF PET values too low; multiplying by 999.7!")
+            pet_wrf *= 999.70
+        elif pet_wrf.mean() > 1e-4: 
+            pet_wrf /= 999.70
+            warn("WARNING: WRF PET values too high; divinding by 999.7!")
+        # N.B.: this is quite ugly, but seems to be necessayr to clear up the mess with PET; 
+        #       ideally it should not stay here for long...
     if lshape:
       # mask all shapes that are incomplete in dataset
       if lencl and 'shp_encl' in dataset: dataset.mask(mask='shp_encl', invert=True)
@@ -1052,11 +1063,11 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-  mode = 'test_climatology'
+#   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
-#   mode = 'test_point_timeseries'
+  mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
 #   mode = 'pickle_grid' 
 #   pntset = 'wcshp'
@@ -1195,8 +1206,8 @@ if __name__ == '__main__':
     
     print('')
     if pntset in ('shpavg','wcshp','glbshp','glakes'):
-      dataset = loadWRF_ShpTS(experiment='erai-g', domains=1, varlist=None, #['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
-                              shape=pntset, filetypes=['lsm'], exps=WRF_exps)
+      dataset = loadWRF_ShpTS(experiment='g-ctrl-2100', domains=1, varlist=None, #['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
+                              shape=pntset, filetypes=['aux','hydro'], exps=WRF_exps,)
     else:
       dataset = loadWRF_StnTS(experiment='erai-g', domains=None, varlist=['zs','stn_zs','MaxPrecip_6h'],
 #                               varlist=['zs','stn_zs','precip','MaxPrecip_6h','MaxPreccu_1h','MaxPrecip_1d'], 
@@ -1212,7 +1223,7 @@ if __name__ == '__main__':
     print('')
     for name in dataset.shape_name[:]: print(name)
     print('')
-    print(dataset.pet_wrf)
+    print(dataset.pet.mean())
     print('')
     print(dataset.pet_wrf.mean())    
   

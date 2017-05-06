@@ -188,7 +188,7 @@ if __name__ == '__main__':
     loverwrite = True
     ## datasets to be bias-corrected
     periods = []
-    periods += [15]
+#     periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}
@@ -207,8 +207,8 @@ if __name__ == '__main__':
     WRF_experiments = [] # use None to process all WRF experiments
     WRF_experiments += ['erai-g3','erai-t3']
     WRF_experiments += ['erai-g','erai-t']
-    WRF_experiments += ['g-ensemble','t-ensemble']
-    WRF_experiments += ['g3-ensemble','t3-ensemble']
+#     WRF_experiments += ['g-ensemble','t-ensemble']
+#     WRF_experiments += ['g3-ensemble','t3-ensemble']
 #     WRF_experiments += ['g-ensemble']
     # other WRF parameters 
 #     WRF_domains = 1 # domains to be processed (None=all)
@@ -224,7 +224,7 @@ if __name__ == '__main__':
     tag = None # an additional tag string for pickle name
     load_list = None # variables that need to be loaded
     varlist = None # variables that should be bias-corrected
-    grid = 'grw2' # need a common grid for all datasets
+    grid = 'asb1' # need a common grid for all datasets
     bc_method = 'AABC' # bias correction method
     bc_args = dict() # paramters for bias correction
   

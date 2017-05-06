@@ -244,11 +244,12 @@ if __name__ == '__main__':
     grid = config['grid']
   else:
 #     NP = 1 ; ldebug = True # just for tests
-    NP = 1 ; ldebug = False # just for tests
+    NP = 3 ; ldebug = False # just for tests
     loverwrite = True
     varlist = None
     project = 'GreatLakes'
-    experiments = ['g-ens-C']
+    experiments = []
+#     experiments = ['g-ens-C']
 #     experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',
 #                    'g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',
 #                    'g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
@@ -257,7 +258,8 @@ if __name__ == '__main__':
 #                    't-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
 #     experiments = ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050',
 #                    't3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
-#     experiments = ['erai-g3','erai-t3']
+    experiments += ['erai-g3','erai-t3']
+    experiments += ['erai-g','erai-t']
 #     experiments = ['g-ens-A','g-ctrl']
 #     experiments += ['g-ctrl'+tag for tag in ('','-2050','-2100')]
 #     experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
@@ -271,12 +273,13 @@ if __name__ == '__main__':
 #     periods += [9]
 #     periods += [10]
     periods += [15]
+    periods += [30]
 #     domains = 2 # domains to be processed
-    domains = 1 # process all domains
-#     filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed # ,'rad'
-    filetypes = ['hydro',] #'xtrm','hydro','lsm','rad']
+    domains = None # process all domains
+    filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed # ,'rad'
+#     filetypes = ['hydro',] #'xtrm','hydro','lsm','rad']
 #     filetypes = ['rad'] # filetypes to be processed
-    grid = 'grw2' # use native grid
+    grid = None # use native grid
 
   # check and expand WRF experiment list
   experiments = getExperimentList(experiments, project, 'WRF')
