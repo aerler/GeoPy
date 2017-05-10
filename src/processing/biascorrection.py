@@ -189,7 +189,7 @@ if __name__ == '__main__':
     ## datasets to be bias-corrected
     periods = []
 #     periods += [15]
-#     periods += [30]
+    periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}
     lLTM = True # also regrid the long-term mean climatologies 
@@ -218,13 +218,13 @@ if __name__ == '__main__':
     ## observations (i.e. the reference dataset; arguments passed to loadDataset)
     obs_name = 'NRCan'
     obs_mode = 'climatology'
-    obs_args = dict(resolution='na12', varatts=dict(pet=dict(name='pet_wrf')))
+    obs_args = dict(resolution='na12', varatts=dict(pet=dict(name='pet_wrf')), period=(1980,2010))
     ## remaining parameters
     lgzip = True # compress pickles
     tag = None # an additional tag string for pickle name
     load_list = None # variables that need to be loaded
     varlist = None # variables that should be bias-corrected
-    grid = 'asb1' # need a common grid for all datasets
+    grid = 'snw1' # need a common grid for all datasets
     bc_method = 'AABC' # bias correction method
     bc_args = dict() # paramters for bias correction
   

@@ -261,13 +261,13 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
     # other WRF parameters 
-#     domains = None # domains to be processed
-    domains = (2,) # domains to be processed
+    domains = None # domains to be processed
+#     domains = (2,) # domains to be processed
 #     WRF_filetypes = ('lsm','xtrm','rad','srfc') # 'hydro',
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None
-    WRF_filetypes = ('aux','aabc')
+    WRF_filetypes = ('aux',) #'aabc')
 #     WRF_filetypes = ('hydro',)
 #     grid = 'grw2' # grid parameter to load datasets
     # define shape data  
@@ -281,7 +281,7 @@ if __name__ == '__main__':
 #                         'ARB','UpperARB','LowerARB','SSR','NRB',] # river basins (in Canada) from WSC module
     shape_name = 'glbshp' # only Canadian river basins
     shapes['provinces'] = ['MB','ON','QC'] # Canadian provinces from EC module
-    shapes['basins'] = ['LandGLB','GLB','GRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW'] # river basins (in Canada) from WSC module
+    shapes['basins'] = ['LandGLB','GLB','GRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW','SNW'] # river basins (in Canada) from WSC module
 #     shape_name = 'glakes' # Great Lakes
 #     shapes['great_lakes'] = None # the Great Lakes of North America
      
