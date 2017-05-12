@@ -235,8 +235,8 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only use GreatLakes experiments
     WRF_experiments = []
     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
-#     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050']
-#     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
+    WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100']
+    WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
 #     WRF_experiments += ['g-ensemble','t-ensemble']
@@ -267,9 +267,9 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None
-    WRF_filetypes = ('aux',) #'aabc')
+    WRF_filetypes = ('aux','aabc')
 #     WRF_filetypes = ('hydro',)
-#     grid = 'grw2' # grid parameter to load datasets
+    grid = 'grw2' # grid parameter to load datasets
     # define shape data  
     shapes = OrderedDict()
 #     shape_name = 'shpavg' # all Canadian shapes

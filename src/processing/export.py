@@ -461,9 +461,9 @@ if __name__ == '__main__':
         # settings for testing and debugging
         NP = 3; ldebug = False # for quick computations
 #         NP = 1 ; ldebug = True # just for tests
-        modes = ('time-series','climatology')
+#         modes = ('time-series','climatology')
 #         modes = ('time-series',) # 'climatology','time-series'
-#         modes = ('climatology',)  
+        modes = ('climatology',)  
         loverwrite = True
         exp_list= None
         # obs variables
@@ -530,8 +530,9 @@ if __name__ == '__main__':
     #     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
         WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # with radiation files
         ## bias-correction paramter
-        bc_method = None
+        bc_method = None; bc_tag = ''
 #         bc_method = 'AABC' # bias correction method (None: no bias correction)
+#         bc_tag = bc_method+'_'
 #         obs_dataset = 'NRCan' # the observational dataset 
 #         bc_reference = None # reference experiment (None: auto-detect based on name)
 #         bc_varmap = dict(Tmin=('Tmin','TSmin'), Tmax=('Tmax','TSmax'), T2=('T2','Tmean'), pet_wrf=('pet_wrf','evap'), 
@@ -540,12 +541,12 @@ if __name__ == '__main__':
         ## export to ASCII raster
         # typically a specific grid is required
         grids = [] # list of grids to process
-        grids += [None] # special keyword for native grid
+#         grids += [None] # special keyword for native grid
         grids += ['grw2'] # small grid for HGS GRW project
-        grids += ['asb1']# small grid for HGS ASB project
+#         grids += ['asb1']# small grid for HGS ASB project
 #         grids += ['brd1']# small grid for HGS ASB project
 #         grids += ['can1']# large Canada-wide grid
-        grids += ['snw1'] # south nation watershed
+#         grids += ['snw1'] # south nation watershed
 #         export_arguments = dict(
 # #             project = 'Grids', # project designation  
 # #             folder = '{0:s}/HGS/{{PROJECT}}/{{EXPERIMENT}}/'.format(os.getenv('DATA_ROOT', None)),
@@ -561,8 +562,7 @@ if __name__ == '__main__':
 # #             exp_list= ['pet_wrf'], compute_list = [], # varlist for export
 # #             exp_list = load_list, # varlist for Obs is same as load_list
 # #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/{{RESOLUTION}}/'.format(os.getenv('HGS_ROOT'),
-#             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT')),
-# #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}_{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT'),bc_method),
+#             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT'),bc_tag),
 # #             folder = '//AQFS1/Data/temp_data_exchange/{PROJECT}/{GRID}/{EXPERIMENT}/{PERIOD}/climate_forcing/',
 #             prefix = '{GRID}', # based on keyword arguments
 #             format = 'ASCII_raster', # formats to export to

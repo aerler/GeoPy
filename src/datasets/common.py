@@ -624,7 +624,7 @@ def loadEnsemble(names=None, name=None, title=None, varlist=None, aggregation=No
                  lcheckVar=False, lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', 
                  lminmax=False, master=None, lall=True, ensemble_list=None, ensemble_product='inner', 
                  lensembleAxis=False, WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, 
-                 bias_correction=None, obs_list=observational_datasets, basin_list=None, **kwargs):
+                 bias_correction=None, obs_list=observational_datasets, basin_list=None, aggargs=None, **kwargs):
   ''' a convenience function to load an ensemble of time-series, based on certain criteria; works 
       with either stations or regions; seasonal/climatological aggregation is also supported '''
   # prepare ensemble
@@ -646,7 +646,7 @@ def loadEnsemble(names=None, name=None, title=None, varlist=None, aggregation=No
                                 mode=dataset_mode, filetypes=filetypes, domains=domain, grid=grid, lwrite=lwrite, 
                                 slices=slices, obsslices=obsslices, period=period, obs_period=obs_period, 
                                 years=years, name_tags=name_tags, ltrimT=ltrimT, bias_correction=bias_correction, 
-                                lensembleAxis=lensembleAxis, expand_list=ensemble_list, lproduct=ensemble_product,)
+                                lensembleAxis=lensembleAxis, expand_list=ensemble_list, lproduct=ensemble_product, **kwargs)
   for loadarg in loadargs:
     # clean up arguments
     name = loadarg.pop('names',None); name_tag = loadarg.pop('name_tags',None)
@@ -698,15 +698,16 @@ def loadEnsemble(names=None, name=None, title=None, varlist=None, aggregation=No
   # extract seasonal/climatological values/extrema
   if (ldataset and len(ensemble)==0): raise EmptyDatasetError(varlist)
   if not ldataset and any([len(ds)==0 for ds in ensemble]): raise EmptyDatasetError(ensemble)
-  # N.B.: the operations below should work with Ensembles as well as Datasets 
+  # N.B.: the operations below should work with Ensembles as well as Datasets
+  if aggargs is None: aggargs = dict()
   if aggregation:
     method = aggregation if aggregation.isupper() else aggregation.title() 
     if season is None:
-      ensemble = getattr(ensemble,'clim'+method)(taxis='time', **kwargs)
+      ensemble = getattr(ensemble,'clim'+method)(taxis='time', **aggargs)
     else:
-      ensemble = getattr(ensemble,'seasonal'+method)(season=season, taxis='time', **kwargs)
+      ensemble = getattr(ensemble,'seasonal'+method)(season=season, taxis='time', **aggargs)
   elif season: # but not aggregation
-    ensemble = ensemble.seasonalSample(season=season)
+    ensemble = ensemble.seasonalSample(season=season, **aggargs)
   # return dataset
   return ensemble
 
