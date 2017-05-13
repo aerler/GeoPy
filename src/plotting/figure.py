@@ -239,6 +239,7 @@ class MyFigure(Figure):
     # get option
     folder = kwargs.pop('folder', None)
     lfeedback = kwargs.pop('lfeedback', None) or kwargs.pop('feedback', None)
+    lreplaceSpace = kwargs.pop('lreplaceSpace', True) and kwargs.pop('lreplaceSpace', True)
     filetype = kwargs.pop('filetype', 'pdf')
     if not filetype.startswith('.'): filetype = '.'+filetype
     # construct filename
@@ -251,6 +252,9 @@ class MyFigure(Figure):
         filename += '_'
     filename = filename[:-1] # remove last underscore
     if not filename.endswith(filetype): filename += filetype
+    # replace spaces, if desired
+    if lreplaceSpace:
+        filename = filename.replace(' ', '_')
     # update print settings
     sf = self.print_setings.copy() # print properties
     sf.update(kwargs) # update with kwargs

@@ -362,7 +362,7 @@ def getGageStation(basin=None, station=None, name=None, folder=None, river=None,
 def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='climatology', 
                     aggregation=None, filetype='monthly', folder=None, name=None, period=None,
                     basin_list=None, lcheck=True, lexpand=True, lfill=True, lflatten=True,
-                    scalefactors=None,):
+                    scalefactors=None, title=None):
   ''' function to load hydrograph climatologies and timeseries for a given basin '''
   ## resolve input
   if mode == 'timeseries' and aggregation: 
@@ -389,7 +389,7 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   metadata = station.getMetaData(lcheck=True)
 
   ## create dataset for station
-  dataset = Dataset(name='WSC', title=metadata['Station Name'], varlist=[], atts=metadata,) 
+  dataset = Dataset(name='WSC', title=title or metadata['Station Name'], varlist=[], atts=metadata,) 
   if mode.lower() in ('timeseries','time-series'): 
     time = time.flatten(); data = data.flatten() # just to make sure...
     # make time axis based on time coordinate from csv file
@@ -479,10 +479,10 @@ def _sliceArgs(slices=None, basin=None, station=None, period=None, years=None):
     return dict(period=period, basin=basin, station=station) 
 
 # function to load gage station climatologies
-def loadWSC_Stn(name=dataset_name, station=None, basin=None, varlist=None, varatts=None, folder=None, 
+def loadWSC_Stn(name=dataset_name, title=None, station=None, basin=None, varlist=None, varatts=None, folder=None, 
                 period=None, years=None, filetype='monthly', basin_list=None, slices=None, scalefactors=None):
     ''' Get monthly WSC gage station climatology by station name. '''
-    dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='climatology', aggregation='mean', 
+    dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='climatology', aggregation='mean',  title=title,
                               filetype=filetype, folder=folder, name=None, basin_list=basin_list, scalefactors=scalefactors,
                               **_sliceArgs(slices=slices, basin=basin, station=station, period=period, years=years))
     if name: dataset.name = name
@@ -490,10 +490,10 @@ def loadWSC_Stn(name=dataset_name, station=None, basin=None, varlist=None, varat
     return dataset
 
 # function to load station time-series
-def loadWSC_StnTS(name=dataset_name, station=None, basin=None, varlist=None, varatts=None, folder=None, 
+def loadWSC_StnTS(name=dataset_name, title=None, station=None, basin=None, varlist=None, varatts=None, folder=None, 
                   period=None, years=None, filetype='monthly', basin_list=None, slices=None, scalefactors=None):
     ''' Get monthly WSC gage station time-series by station name. '''
-    dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='time-series', aggregation=None, 
+    dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='time-series', aggregation=None,  title=title,
                               filetype=filetype, folder=folder, name=None, basin_list=basin_list, scalefactors=scalefactors,
                               **_sliceArgs(slices=slices, basin=basin, station=station, period=period, years=years))
     if name: dataset.name = name
@@ -501,10 +501,10 @@ def loadWSC_StnTS(name=dataset_name, station=None, basin=None, varlist=None, var
     return dataset
 
 # function to load regionally averaged climatologies
-def loadWSC_Shp(name=dataset_name, shape=None, basin=None, station=None, varlist=None, varatts=None,
+def loadWSC_Shp(name=dataset_name, title=None, shape=None, basin=None, station=None, varlist=None, varatts=None,
                 folder=None, period=None, years=None, filetype='monthly', basin_list=None, slices=None, scalefactors=None):
     ''' Get monthly WSC gage station climatology by river basin or region. '''
-    dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='climatology', aggregation='mean', 
+    dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='climatology', aggregation='mean',  title=title,
                               filetype=filetype, folder=folder, name=None, basin_list=basin_list, scalefactors=scalefactors,
                               **_sliceArgs(slices=slices, basin=basin, station=station, period=period, years=years))
     if name: dataset.name = name
@@ -512,10 +512,10 @@ def loadWSC_Shp(name=dataset_name, shape=None, basin=None, station=None, varlist
     return dataset
 
 # function to load regional/shape time-series
-def loadWSC_ShpTS(name=dataset_name, shape=None, basin=None, station=None, varlist=None, varatts=None, 
+def loadWSC_ShpTS(name=dataset_name, title=None, shape=None, basin=None, station=None, varlist=None, varatts=None, 
                   folder=None, period=None, years=None, filetype='monthly', basin_list=None, slices=None, scalefactors=None):
     ''' Get monthly WSC gage station time-series by river basin or region. '''
-    dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='time-series', aggregation=None, 
+    dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='time-series', aggregation=None, title=title, 
                               filetype=filetype, folder=folder, name=None, basin_list=basin_list, scalefactors=scalefactors,
                               **_sliceArgs(slices=slices, basin=basin, station=station, period=period, years=years))
     if name: dataset.name = name
