@@ -198,9 +198,9 @@ if __name__ == '__main__':
     shapes = config['shapes']
   else:
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 3 ; ldebug = False # for quick computations
-#     modes = ('time-series','climatology')
-    modes = ('climatology',)
+    NP = 3; ldebug = False # for quick computations
+    modes = ('time-series','climatology')
+#     modes = ('climatology',)
 #     modes = ('time-series',) 
     loverwrite = True
     varlist = None # ['T2']
@@ -233,13 +233,13 @@ if __name__ == '__main__':
 #     WRF_project = None
 #     WRF_project = 'WesternCanada' # only use WesternCanada experiments
     WRF_project = 'GreatLakes' # only use GreatLakes experiments
-    WRF_experiments = []
-    WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
-    WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100']
-    WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
-    WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-    WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
-#     WRF_experiments += ['g-ensemble','t-ensemble']
+    WRF_experiments = None
+#     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
+#     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100']
+#     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
+#     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+#     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
+# #     WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
 #     WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
 #     WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
@@ -264,12 +264,12 @@ if __name__ == '__main__':
     domains = None # domains to be processed
 #     domains = (2,) # domains to be processed
 #     WRF_filetypes = ('lsm','xtrm','rad','srfc') # 'hydro',
-#     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
+    WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm','rad','aux') # filetypes to be processed
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None
-    WRF_filetypes = ('aux','aabc')
+#     WRF_filetypes = ('aux','aabc',)
 #     WRF_filetypes = ('hydro',)
-    grid = 'grw2' # grid parameter to load datasets
+    grid = None # grid parameter to load datasets
     # define shape data  
     shapes = OrderedDict()
 #     shape_name = 'shpavg' # all Canadian shapes

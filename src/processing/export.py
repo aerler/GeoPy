@@ -459,11 +459,11 @@ if __name__ == '__main__':
         lm3 = export_arguments.pop('lm3',False) # convert water flux from kg/m^2/s to m^3/m^2/s    
     else:
         # settings for testing and debugging
-        NP = 3; ldebug = False # for quick computations
+        NP = 2; ldebug = False # for quick computations
 #         NP = 1 ; ldebug = True # just for tests
-#         modes = ('time-series','climatology')
+        modes = ('time-series','climatology')
 #         modes = ('time-series',) # 'climatology','time-series'
-        modes = ('climatology',)  
+#         modes = ('climatology',)  
         loverwrite = True
         exp_list= None
         # obs variables
@@ -512,37 +512,37 @@ if __name__ == '__main__':
 #         WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']
 #         WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #         WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-#         WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
-#         WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
-#         WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
-#         WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
-#         WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
-#         WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
-#         WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]
-#         WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
-#         WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
-#         WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]
-#         WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
-#         WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
+        WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
+        WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
+        WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
+        WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
+        WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
+        WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
+        WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]
+        WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
+        WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
+        WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]
+        WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
+        WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
         # other WRF parameters 
 #         domains = 2 # domains to be processed
         domains = None # process all domains
     #     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
         WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # with radiation files
         ## bias-correction paramter
-        bc_method = None; bc_tag = ''
-#         bc_method = 'AABC' # bias correction method (None: no bias correction)
-#         bc_tag = bc_method+'_'
-#         obs_dataset = 'NRCan' # the observational dataset 
-#         bc_reference = None # reference experiment (None: auto-detect based on name)
-#         bc_varmap = dict(Tmin=('Tmin','TSmin'), Tmax=('Tmax','TSmax'), T2=('T2','Tmean'), pet_wrf=('pet_wrf','evap'), 
-#                          SWDNB=('SWDNB','SWUPB','SWD'),SWD=('SWDNB','SWUPB','SWD'),)
-#         bc_args = dict(grid=None, domain=None, lgzip=True, varmap=bc_varmap) # missing/None parameters are inferred from experiment
+#         bc_method = None; bc_tag = ''
+        bc_method = 'AABC' # bias correction method (None: no bias correction)
+        bc_tag = bc_method+'_'
+        obs_dataset = 'NRCan' # the observational dataset 
+        bc_reference = None # reference experiment (None: auto-detect based on name)
+        bc_varmap = dict(Tmin=('Tmin','TSmin'), Tmax=('Tmax','TSmax'), T2=('T2','Tmean'), pet_wrf=('pet_wrf','evap'), 
+                         SWDNB=('SWDNB','SWUPB','SWD'),SWD=('SWDNB','SWUPB','SWD'),)
+        bc_args = dict(grid=None, domain=None, lgzip=True, varmap=bc_varmap) # missing/None parameters are inferred from experiment
         ## export to ASCII raster
         # typically a specific grid is required
-        grids = [] # list of grids to process
+#         grids = [] # list of grids to process
 #         grids += [None] # special keyword for native grid
-        grids += ['grw2'] # small grid for HGS GRW project
+#         grids += ['grw2'] # small grid for HGS GRW project
 #         grids += ['asb1']# small grid for HGS ASB project
 #         grids += ['brd1']# small grid for HGS ASB project
 #         grids += ['can1']# large Canada-wide grid
@@ -570,6 +570,7 @@ if __name__ == '__main__':
 #             lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
         ## export to NetCDF (aux-file)
 #         grids = [None] # special keyword for native grid
+        grids = ['grw2'] # GRW main grid
         exp_list = ['netrad','netrad_bb0','netrad_bb','vapdef','pet','pet_wrf','petrad','petwnd']
         exp_list += ['Tmin','Tmax','T2','Tmean','TSmin','TSmax','SWD','SWDNB','SWUPB','zs','lat2D','lon2D',]
         exp_list += ['waterflx','liqwatflx','liqprec','solprec','precip','snow','snowh','snwmlt',]
