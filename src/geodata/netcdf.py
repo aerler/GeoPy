@@ -238,8 +238,11 @@ class VarNC(Variable):
       # handle squeezed vars
       if self.squeezed:
         # figure out slices
-        for i in xrange(self.ncvar.ndim):
-          if self.ncvar.shape[i] == 1: slcs.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
+        if self.ndim == 0 and self.ncvar.ndim == ( 2 if self.strvar else 1 ):
+            slcs = 0 # special case to produce scalar
+        else:
+            for i in xrange(self.ncvar.ndim):
+              if self.ncvar.shape[i] == 1: slcs.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
       # check for existing slicing directive
       if self.slices:
         assert isinstance(self.slices,(list,tuple)) and isinstance(slcs,list)

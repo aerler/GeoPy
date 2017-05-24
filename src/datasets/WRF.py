@@ -719,11 +719,11 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
         filelist.append(fileclass.tsfile)
         typelist.append(filetype) # this eliminates const files
     # get varatts
-    if filetype == 'const': lconst = True
-    else:
-      att = fileclasses['axes'].atts.copy()
-      att.update(fileclass.atts) # use axes atts as basis and override with filetype-specific atts
-      atts.append(att) # list of atts for each filetype    
+#     if filetype == 'const': lconst = True
+#     else:
+    att = fileclasses['axes'].atts.copy()
+    att.update(fileclass.atts) # use axes atts as basis and override with filetype-specific atts
+    atts.append(att) # list of atts for each filetype    
   # resolve varatts argument and update default atts
   if varatts is None: pass
   elif isinstance(varatts,dict):

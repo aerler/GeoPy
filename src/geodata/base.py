@@ -451,7 +451,8 @@ class Variable(object):
   def ndim(self):
     ''' The number of dimensions (inferred from axes). '''
     ndim = len(self.axes)
-    if self.data and ndim != self.data_array.ndim: raise DataError, 'Dimension mismatch!' 
+    if self.data and ndim != self.data_array.ndim: 
+        raise DataError('Dimension mismatch!')
     return ndim   
   
   @property
@@ -459,7 +460,7 @@ class Variable(object):
     ''' The length of each dimension (shape of data; inferred from axes). '''
     shape = tuple(len(ax) for ax in self.axes)
     if self.data and shape != self.data_array.shape: 
-      raise DataError, 'Shape mismatch!'
+        raise DataError('Shape mismatch!')
     return shape
   
   @property
@@ -945,16 +946,17 @@ class Variable(object):
     # now load data       
     if data is None:
       if not self.data:
-        raise DataError, 'No data loaded and no external data supplied!'        
+        raise DataError('No data loaded and no external data supplied!')        
     else:   
       # check types   
-      if not isinstance(data,np.ndarray): raise TypeError, 'The data argument must be a numpy array!'
+      if len(self.axes) > 0 and not isinstance(data,np.ndarray): # allow scalars, but avoid safety checks
+          raise TypeError('The data argument must be a numpy array or a scalar!')        
       if self.dtype is None: self.dtype = data.dtype
       elif data.dtype == self.dtype: pass
       elif np.issubdtype(data.dtype, self.dtype): data = data.astype(self.dtype) 
       else: 
         if lrecast: data = data.astype(self.dtype)
-        else: raise DataError, "Dtypes of Variable and array are inconsistent."
+        else: raise DataError("Dtypes of Variable and array are inconsistent.")
       if np.issubdtype(data.dtype, np.inexact) and not isinstance(data, ma.masked_array):
         data = ma.masked_invalid(data, copy=False)     
         data._fill_value = np.asarray(fillValue) if fillValue is not None else self.fillValue

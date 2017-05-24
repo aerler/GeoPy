@@ -254,14 +254,14 @@ if __name__ == '__main__':
 #     WRF_experiments += ['erai-g','erai-t']
 #     WRF_experiments += ['erai-g3','erai-t3']
 #     WRF_experiments += ['t3-ensemble-2100','g3-ensemble-2100']
-    WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]
-    WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
-    WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
-    WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]
-    WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
-    WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
+#     WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]
+#     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
+#     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
+#     WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]
+#     WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
+#     WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
 #     WRF_experiments += ['g-ensemble','t-ensemble']
-#     WRF_experiments += ['t-ensemble-2050']
+    WRF_experiments += ['g-ensemble']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
 #     WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
@@ -284,16 +284,16 @@ if __name__ == '__main__':
     WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad',) # filetypes to be processed
 #     WRF_filetypes = ('hydro',) # filetypes to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
-#     WRF_filetypes = ('const',); periods = None
+    WRF_filetypes = ('const',); periods = None
     # grid to project onto
     grids = dict()
-#     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
-#     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
-# #     grids['grw1'] = None # high-res grid for GRW, 1km
+    grids['asb1'] = None # small grid for Assiniboine river basin, 5km
+    grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
+    grids['grw1'] = None # high-res grid for GRW, 1km
     grids['grw2'] = None # small grid for GRW, 5km
-#     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
-#     grids['snw1'] = None # large grid for whole Canada
+    grids['snw1'] = None # large grid for whole Canada
 #     grids['can1'] = None # large grid for whole Canada
+#     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 # #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
 #     grids['glb1-90km'] = ('d01',) # 90km GLB domain
