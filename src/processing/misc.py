@@ -115,13 +115,11 @@ def getTargetFile(dataset=None, mode=None, dataargs=None, grid=None, shape=None,
   elif station: gstr = '_{}{}'.format(station,gstr)
   pstr = '_{}'.format(period) if period else ''
   # figure out filename
-  if dataset == 'WRF' and lwrite:
-    if mode == 'climatology': filename = WRF.clim_file_pattern.format(filetype,domain,gstr,pstr)
-    elif mode == 'time-series': filename = WRF.ts_file_pattern.format(filetype,domain,gstr)
-    else: raise NotImplementedError, "Unsupported Mode: '{:s}'".format(mode)        
-  elif dataset == 'CESM' and lwrite:
-    if mode == 'climatology': filename = CESM.clim_file_pattern.format(filetype,gstr,pstr)
-    elif mode == 'time-series': filename = CESM.ts_file_pattern.format(filetype,gstr)
+  if dataset in ('WRF','CESM') and lwrite:
+    if dataset == 'WRF': fileclass = WRF.fileclasses[filetype]
+    elif dataset == 'CESM': fileclass = CESM.fileclasses[filetype]
+    if mode == 'climatology': filename = fileclass.climfile.format(domain,gstr,pstr)
+    elif mode == 'time-series': filename = fileclass.tsfile.format(domain,gstr)
     else: raise NotImplementedError, "Unsupported Mode: '{:s}'".format(mode)        
   elif lwrite: # assume observational datasets
     filename = getFileName(grid=grid, shape=shape, station=station, period=dataargs.period, name=dataargs.obs_res, filetype=mode)      

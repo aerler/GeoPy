@@ -99,7 +99,8 @@ class FileType(object):
       self.name = name
       self.atts = dict() # should be properly formatted already
       #self.atts = dict(netrad = dict(name='netrad', units='W/m^2'))
-      self.vars = []    
+      self.vars = [] 
+      self.ignore_list = []
       self.climfile = 'wrf{:s}_d{{0:0=2d}}{{1:s}}_clim{{2:s}}.nc'.format(name) # generic climatology name 
       # final filename needs to be extended by (domain,'_'+grid,'_'+period)
       self.tsfile = 'wrf{:s}_d{{0:0=2d}}{{1:s}}_monthly.nc'.format(name) # generic time-series name
@@ -116,8 +117,9 @@ class Const(FileType):
                      SINALPHA = dict(name='sina', units=''), # sine of map rotation
                      COSALPHA = dict(name='cosa', units='')) # cosine of map rotation                   
     self.vars = self.atts.keys()    
-    self.climfile = None #'wrfconst_d{0:0=2d}{1:s}.nc' # the filename needs to be extended by (domain,'_'+grid)
-    self.tsfile = 'wrfconst_d{0:0=2d}.nc' # the filename needs to be extended by (domain,)
+    self.ignore_list = ['CON']
+    self.climfile = 'wrfconst_d{0:0=2d}{1:s}.nc' # the filename needs to be extended by (domain,'_'+grid)
+    self.tsfile = 'wrfconst_d{0:0=2d}{1:s}.nc' # the filename needs to be extended by (domain,grid)
 # surface variables
 class Srfc(FileType):
   ''' Variables and attributes of the surface files. '''
@@ -187,7 +189,8 @@ class Srfc(FileType):
         self.atts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day thre
         self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s', 
                                                 atts=dict(fillValue=0), transform=nullNaN) # wet-day precipitation rate (kg/m^2/s)
-    self.vars = self.atts.keys()    
+    self.vars = self.atts.keys()  
+    self.ignore_list = []  
     self.climfile = 'wrfsrfc_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfsrfc_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
 # hydro variables (mostly for HGS)
@@ -229,6 +232,7 @@ class Hydro(FileType):
         self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s', 
                                                 atts=dict(fillValue=0), transform=nullNaN) # wet-day precipitation rate (kg/m^2/s)
     self.vars = self.atts.keys()
+    self.ignore_list = []
     self.climfile = 'wrfhydro_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfhydro_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
 # land surface model variables
@@ -255,7 +259,8 @@ class LSM(FileType):
                      TSLB     = dict(name='Tslb', units='K'), # soil temperature
                      SMOIS    = dict(name='aSM', units='m^3/m^3'), # absolute soil moisture
                      SMCREL   = dict(name='rSM', units='')) # relative soil moisture
-    self.vars = self.atts.keys()    
+    self.vars = self.atts.keys() 
+    self.ignore_list = []   
     self.climfile = 'wrflsm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrflsm_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
 # radiation variables
@@ -282,7 +287,8 @@ class Rad(FileType):
                      ACSWDNTC = dict(name='SWDNTC', units='W/m^2'),
                      ACLWUPTC = dict(name='LWUPTC', units='W/m^2'),
                      ACLWDNTC = dict(name='LWDNTC', units='W/m^2'),                     )
-    self.vars = self.atts.keys()    
+    self.vars = self.atts.keys()
+    self.ignore_list = []    
     self.climfile = 'wrfrad_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfrad_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
 # extreme value variables
@@ -338,7 +344,8 @@ class Xtrm(FileType):
                      MaxRAINNCVMAX = dict(name='MaxPrecnc_1h', units='kg/m^2/s'), # maximum hourly non-convective precip
                      MaxPreccumax  = dict(name='MaxPreccu_1h', units='kg/m^2/s'), # maximum hourly convective precip                    
                      MaxPrecncmax  = dict(name='MaxPrecnc_1h', units='kg/m^2/s'),) # maximum hourly non-convective precip
-    self.vars = self.atts.keys()    
+    self.vars = self.atts.keys() 
+    self.ignore_list = []   
     self.climfile = 'wrfxtrm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfxtrm_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
 # variables on selected pressure levels: 850 hPa, 700 hPa, 500 hPa, 250 hPa, 100 hPa
@@ -366,7 +373,8 @@ class Plev3D(FileType):
                      Vorticity        = dict(name='zeta', units='1/s',      fillValue=-999, atts=dict(ong_name='Relative Vorticity')), # (relative) Vorticity
                      OrographicIndex  = dict(name='OI', units='', atts=dict(long_name='Orographic Index')), # projection of wind onto slope
                      P_PL      = dict(name='p', units='Pa', atts=dict(long_name='Pressure')))  # Pressure
-    self.vars = self.atts.keys()    
+    self.vars = self.atts.keys()  
+    self.ignore_list = []  
     self.climfile = 'wrfplev3d_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfplev3d_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
 
@@ -387,6 +395,7 @@ class Axes(FileType):
                      num_press_levels_stag = dict(name='i_p', units=''), # pressure coordinate
                      station     = dict(name='station', units='#') ) # station axis for station data
     self.vars = self.atts.keys()
+    self.ignore_list = []
     self.climfile = None
     self.tsfile = None
 
@@ -708,7 +717,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   #if 'const' not in filetypes and grid is None: filetypes.append('const')
   if bias_correction: # optional filetype for bias-corrected data
       filetypes = [bias_correction.lower(),]+filetypes # add before others, so that bias-corrected variables are loaded
-  atts = []; filelist = []; typelist = []
+  atts = []; filelist = []; typelist = []; ignore_lists = []
   for filetype in filetypes: # last filetype in list has precedence
     fileclass = fileclasses[filetype] if filetype in fileclasses else FileType(filetype)
     if lclim and fileclass.climfile is not None:
@@ -718,6 +727,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       if fileclass.tsfile is not None: 
         filelist.append(fileclass.tsfile)
         typelist.append(filetype) # this eliminates const files
+    ignore_lists.append(fileclass.ignore_list) # list of ignore lists
     # get varatts
 #     if filetype == 'const': lconst = True
 #     else:
@@ -823,7 +833,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       # load dataset
       const = DatasetNetCDF(name=name, folder=constfolder, filelist=[filename], varatts=catts, 
                             axes=axes, varlist=constfile.vars, multifile=False, ncformat='NETCDF4', 
-                            mode=ncmode, squeeze=True)      
+                            mode=ncmode, squeeze=True, ignore_list=[constfile.ignore_list])      
       lenc = len(const) # length of const dataset
     else: lenc = 0 # empty
     ## load regular variables
@@ -854,8 +864,8 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     check_override = ['time'] if lctrT else None
     try:
       dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 
-                              varatts=atts, multifile=False, ncformat='NETCDF4', mode=ncmode, 
-                              squeeze=True, check_override=check_override, check_vars=check_vars)
+                              varatts=atts, multifile=False, ncformat='NETCDF4', ignore_list=ignore_lists, 
+                              mode=ncmode, squeeze=True, check_override=check_override, check_vars=check_vars)
     except EmptyDatasetError:
       if lenc == 0: raise # allow loading of cosntants without other variables
     if ltrimT and dataset.hasAxis('time') and len(dataset.time) > 180:

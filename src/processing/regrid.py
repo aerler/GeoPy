@@ -213,7 +213,7 @@ if __name__ == '__main__':
     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = False
     varlist = None
-#     varlist = ['precip',]
+#     varlist = ['LU_INDEX',]
     periods = []
 #     periods += [1]
 #     periods += [3]
@@ -292,7 +292,7 @@ if __name__ == '__main__':
     grids['grw1'] = None # high-res grid for GRW, 1km
     grids['grw2'] = None # small grid for GRW, 5km
     grids['snw1'] = None # large grid for whole Canada
-#     grids['can1'] = None # large grid for whole Canada
+    grids['can1'] = None # large grid for whole Canada
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 # #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain

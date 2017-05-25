@@ -599,9 +599,11 @@ class DatasetNetCDF(Dataset):
       elif isinstance(ignore_list,set): ignore_lists = [ignore_list]*len(datasets)
       elif isinstance(ignore_list,(tuple,list)):
         if all(isinstance(e,basestring) for e in ignore_list):
-          ignore_lists = [set((ignore_list,))]*len(datasets)
-        elif all(isinstance(e,(list,tuple,set)) for e in ignore_list):
           ignore_lists = [set(ignore_list)]*len(datasets)
+        elif all(isinstance(e,(list,tuple,set)) for e in ignore_list):
+          if len(ignore_list) != len(datasets): 
+              raise ArgumentError(len(ignore_list),len(datasets))
+          ignore_lists = [set(e) for e in ignore_list]
         else:
           raise TypeError("'ignore_list' has to be a set or a list of sets; found: {}".format(ignore_lists))
       else: 
