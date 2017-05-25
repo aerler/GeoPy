@@ -152,9 +152,9 @@ class VarNC(Variable):
       if dtype.kind == 'S' and dtype.itemsize > 1:
         lstrvar = ncvar.dtype == np.dtype('|S1')
         strlen = ncvar.shape[-1] # last dimension
-      elif not np.issubdtype(ncvar.dtype,dtype):
-        if 'scale_factor' not in ncvar.ncattrs(): # data is not being scaled in NetCDF module
-          raise DataError, "NetCDF data dtype does not match Variable dtype (ncvar.dtype={:s})".format(ncvar.dtype)
+#       elif not np.issubdtype(ncvar.dtype,dtype):
+#         if 'scale_factor' not in ncvar.ncattrs(): # data is not being scaled in NetCDF module
+#           raise DataError, "NetCDF data dtype does not match Variable dtype (ncvar.dtype={:s})".format(ncvar.dtype)
     # read actions
     if 'r' in mode: 
       # construct attribute dictionary from netcdf attributes
@@ -252,10 +252,11 @@ class VarNC(Variable):
       data = self.ncvar.__getitem__(slcs) # exceptions handled by netcdf module
       if self.dtype is not None and not np.issubdtype(data.dtype,self.dtype):
         if 'scale_factor' in self.ncvar.ncattrs():
-          self.dtype = data.dtype # data was scaled automatically in NetCDF module
-          if isinstance(data,np.ma.MaskedArray): self.fillValue = data.fill_value # possibly scaled
+            self.dtype = data.dtype # data was scaled automatically in NetCDF module
         else: 
-          raise DataError, "NetCDF data dtype does not match Variable dtype (ncvar.dtype={:s})".format(self.ncvar.dtype) 
+            data = np.asarray(data, dtype=self.dtype) # cast to preset dtype
+#           raise DataError, "NetCDF data dtype does not match Variable dtype (ncvar.dtype={:s})".format(self.ncvar.dtype) 
+        if isinstance(data,np.ma.MaskedArray): self.fillValue = data.fill_value # possibly scaled
       if self.strvar: data = nc.chartostring(data)
       #assert self.ndim == data.ndim # make sure that squeezing works!
       # N.B.: the shape and even dimension number can change dynamically when a slice is loaded, so don't check for that, or it will fail!

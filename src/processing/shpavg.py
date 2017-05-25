@@ -202,7 +202,7 @@ if __name__ == '__main__':
 #     modes = ('time-series','climatology')
 #     modes = ('climatology',)
     modes = ('time-series',) 
-    loverwrite = True
+    loverwrite = False
     varlist = None # ['T2']
     periods = []
 #     periods += [1]

@@ -211,7 +211,7 @@ if __name__ == '__main__':
 #     modes = ('climatology','time-series') # 'climatology','time-series'
 #     modes = ('climatology',) # 'climatology','time-series'
     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = False
+    loverwrite = True
     varlist = None
 #     varlist = ['LU_INDEX',]
     periods = []
@@ -279,8 +279,8 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-#     domains = 1 # domains to be processed
-    domains = None # process all domains
+    domains = 1 # domains to be processed
+#     domains = None # process all domains
     WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad',) # filetypes to be processed
 #     WRF_filetypes = ('hydro',) # filetypes to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
