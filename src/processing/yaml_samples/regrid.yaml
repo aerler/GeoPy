@@ -5,7 +5,7 @@ NP: 3 # environment variable has precedence
 loverwrite: false # only recompute if source is newer
 modes: ['climatology',]
 varlist: Null # process all variables
-periods: [5,10,15,] # climatology periods to process
+periods: [15,] # climatology periods to process
 # Datasets
 datasets: [] # process all applicable
 resolutions: Null # process all applicable
@@ -16,7 +16,7 @@ load3D: false
 CESM_experiments: Null
 CESM_filetypes: ['atm','lnd']
 # WRF
-WRF_project: 'WesternCanada' # all available experiments
+WRF_project: Null # all available experiments
 WRF_experiments: Null # all available experiments
 #[ # process WRF experiments on different grids
 #  'new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100',
@@ -25,9 +25,9 @@ WRF_experiments: Null # all available experiments
 #  'new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', # new standard runs (arb3) 
 #  'new-grell', 'new-grell-old', 'new-noah', 'v35-noah', # new sensitivity tests (arb3)
 #]
-domains: 1 # inner domain onto inner domain 
-WRF_filetypes: ['srfc','xtrm','hydro','lsm'] # process all filetypes except 'rad' and 'plev3d'
+domains: Null # inner domain onto inner domain 
+WRF_filetypes: ['srfc','xtrm','hydro','lsm','rad','plev3d'] # process all filetypes except snow
 # grid to project onto
 grids: # mapping with list of resolutions  
-#  arb2: ['d02',] # inner Western Canada
+  arb2: ['d02',] # inner Western Canada
   glb1: ['d02',] # inner Great Lakes

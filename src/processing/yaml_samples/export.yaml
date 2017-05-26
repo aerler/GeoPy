@@ -1,10 +1,11 @@
 # YAML configuration file for conversion to ASCII raster (processing.ascii_raster.py)
 # 21/04/2016, Andre R. Erler
 
-NP: 3 # environment variable has precedence; likely I/O limited
+NP: 1 # environment variable has precedence; likely I/O limited
 loverwrite: true # this is usually run manually anyway...
 modes: [climatology,]
-load_list: ['waterflx','liqprec','solprec','precip','evap','snwmlt','pet']
+load_list: ['lat2D','lon2D','zs','snow','pet_wrf','waterflx','liqprec','solprec','precip','evap','snwmlt',
+            'ps','u10','v10','Q2','Tmin','Tmax','T2','TSmin','TSmax','grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB']
 periods: [15,] # climatology periods to process
 # Datasets
 datasets: [] # this will generally not work, because we don't have snow/-melt...
@@ -17,18 +18,40 @@ CESM_experiments: Null
 CESM_filetypes: ['atm','lnd'] # used to load dataset; both are necessary
 # WRF
 WRF_project: 'GreatLakes' # all available experiments
-WRF_experiments: [] # all available experiments
+WRF_experiments: Null # all available experiments
 WRF_domains: Null # inner domain onto inner domain 
-#WRF_filetypes: ['srfc','xtrm','hydro','lsm'] # used to load dataset; not processed individually
-WRF_filetypes: ['hydro'] # used to load dataset; not processed individually
+WRF_filetypes: ['srfc','xtrm','hydro','lsm','rad'] # used to load dataset; not processed individually
+# bias correction parameters
+bc_method: Null
+bc_tag: ''
+#bc_method: 'AABC' # bias correction method (Null: no bias correction)
+#bc_tag: 'AABC_'
+#obs_dataset: 'NRCan' # the observational dataset 
+#bc_reference: Null # reference experiment (Null: auto-detect based on name)
+#bc_args: { grid: Null, domain: Null, lgzip: True, # missing/Null parameters are inferred from experiment 
+#           varmap: [ Tmin: ['Tmin','TSmin'], Tmax: ['Tmax','TSmax'], T2: ['T2','Tmean'], pet_wrf: ['pet_wrf','evap'], 
+#                     SWDNB: ['SWDNB','SWUPB','SWD'], SWD: ['SWDNB','SWUPB','SWD'], ] }
+#grids: # mapping with list of resolutions  
+#  - grw2 # Grand River Watershed, 5km resolution
+## export parameters for ASCII
+#export_parameters: 
+#  project: 'GRW' # project tag, mainly for folder
+#  format: ASCII_raster # ArcInfo ASCII raster format
+#  compute_list: ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
+#  exp_list: ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
+#  folder: '/data/HGS/{PROJECT:s}/{GRID:s}/{EXPERIMENT:s}/{PERIOD:s}/climate_forcing/' # destination folder
+#  prefix: '{GRID:s}' # file prefix
+#  noDataValue: -9999 # masked/missing values
+#  fillValue: 0 # in case we interpolate across a missing value...
+#  lm3: true # convert water flux from kg/m^2/s to m^3/s
 grids: # mapping with list of resolutions  
-  grw1: Null # Grand River Watershed, 1km resolution
-  grw2: Null # Grand River Watershed, 5km resolution
-# export parameters
+  - Null # native grid
+# export parameters for NetCDF
 export_parameters:
-  project: 'GRW' # project tag, mainly for folder
-  varlist: ['waterflx','liqwatflx','pet'] # varlist for export    
-  folder: '/data-3/HGS/{0:s}/{1:s}/{2:s}/{3:s}/' # (folder specification: project/grid/experiment/period/) 
-  prefix: '{0:s}_{1:s}_{2:s}_{3:s}' # (argument order: project/grid/experiment/period/)
-  format: ASCII_raster # ArcInfo ASCII raster format
-  lm3: true # convert water flux from kg/m^2/s to m^3/s
+  project: 'AUX' # project tag, mainly for folder
+  format: 'NetCDF' # ArcInfo ASCII raster format
+  compute_list: ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
+  exp_list: ['netrad','netrad_bb0','netrad_bb','vapdef','pet','pet_wrf','petrad','petwnd','Tmin','Tmax','T2','Tmean','TSmin','TSmax',
+             'SWD','SWDNB','SWUPB','zs','lat2D','lon2D','waterflx','liqwatflx','liqprec','solprec','precip','snow','snowh','snwmlt',]
+  filetype: 'aux' # filetype name of export file
+  lm3: false # convert water flux from kg/m^2/s to m^3/s

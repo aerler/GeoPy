@@ -4,11 +4,11 @@
 NP: 3 # environment variable has precedence
 loverwrite: false # only recompute if source is newer
 varlist: Null # process all variables
-periods: [5,10,15,] # climatology periods to process
+periods: [15,] # climatology periods to process
 offset: 0 # number of years from simulation start
 project: Null # all available experiments
 experiments: Null # all available experiments
 domains: Null # inner domain onto inner domain 
-filetypes: ['srfc','xtrm','hydro','lsm','plev3d'] # process all filetypes except 'rad' and 'plev3d'
+filetypes: ['srfc','xtrm','hydro','lsm','plev3d','rad'] # process all filetypes
 # grid to project onto
 grid: Null # no on-the-fly regridding

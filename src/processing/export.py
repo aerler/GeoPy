@@ -464,7 +464,7 @@ if __name__ == '__main__':
 #         modes = ('time-series','climatology')
         modes = ('time-series',) # 'climatology','time-series'
 #         modes = ('climatology',)  
-        loverwrite = True
+        loverwrite = False
         exp_list= None
         # obs variables
 #         load_list = ['lat2D','lon2D','liqwatflx','pet']
@@ -477,8 +477,8 @@ if __name__ == '__main__':
 #         load_list += ['ps','u10','v10','Q2','Tmin','Tmax','T2','TSmin','TSmax',] # wind
 #         load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
         # WRF cosntants
-        load_list= ['lat2D','lon2D','zs','LU_MASK','LU_INDEX','LANDUSEF','VEGCAT','SHDMAX','SHDMIN',
-                    'SOILHGT','SOILCAT','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'] # constants
+        load_list= ['lat2D','lon2D','zs','landuse','landmask','LANDUSEF','vegcat','SHDMAX','SHDMIN',
+                    'SOILHGT','soilcat','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'] # constants
         # period list
         periods = [] 
         periods += [15]
@@ -529,20 +529,19 @@ if __name__ == '__main__':
 #         WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
         # other WRF parameters 
 #         domains = 2 # domains to be processed
-        domains = 1 # domains to be processed
-#         domains = None # process all domains
-    #     WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
-#         WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # with radiation files
-        WRF_filetypes = ('const',) # with radiation files
+#         domains = 1 # domains to be processed
+        domains = None # process all domains
+        WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
+#         WRF_filetypes = ('const',) # with radiation files
         ## bias-correction paramter
-        bc_method = None; bc_tag = ''
-#         bc_method = 'AABC' # bias correction method (None: no bias correction)
-#         bc_tag = bc_method+'_'
-#         obs_dataset = 'NRCan' # the observational dataset 
-#         bc_reference = None # reference experiment (None: auto-detect based on name)
-#         bc_varmap = dict(Tmin=('Tmin','TSmin'), Tmax=('Tmax','TSmax'), T2=('T2','Tmean'), pet_wrf=('pet_wrf','evap'), 
-#                          SWDNB=('SWDNB','SWUPB','SWD'),SWD=('SWDNB','SWUPB','SWD'),)
-#         bc_args = dict(grid=None, domain=None, lgzip=True, varmap=bc_varmap) # missing/None parameters are inferred from experiment
+#         bc_method = None; bc_tag = ''
+        bc_method = 'AABC' # bias correction method (None: no bias correction)
+        bc_tag = bc_method+'_'
+        obs_dataset = 'NRCan' # the observational dataset 
+        bc_reference = None # reference experiment (None: auto-detect based on name)
+        bc_varmap = dict(Tmin=('Tmin','TSmin'), Tmax=('Tmax','TSmax'), T2=('T2','Tmean'), pet_wrf=('pet_wrf','evap'), 
+                         SWDNB=('SWDNB','SWUPB','SWD'),SWD=('SWDNB','SWUPB','SWD'),)
+        bc_args = dict(grid=None, domain=None, lgzip=True, varmap=bc_varmap) # missing/None parameters are inferred from experiment
         ## export to ASCII raster
         # typically a specific grid is required
         grids = [] # list of grids to process
@@ -562,9 +561,10 @@ if __name__ == '__main__':
             project = 'CAN', # project designation
 #             project = 'SNW', # project designation
             compute_list = ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
-            exp_list= ['lat2D','lon2D','zs','LU_MASK','LU_INDEX','LANDUSEF','VEGCAT','SHDMAX','SHDMIN',
-                       'SOILHGT','SOILCAT','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'], # constants
-#             exp_list= ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
+#             exp_list= ['landuse','landmask'],
+#             exp_list= ['lat2D','lon2D','zs','LU_MASK','LU_INDEX','LANDUSEF','VEGCAT','SHDMAX','SHDMIN',
+#                        'SOILHGT','SOILCAT','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'], # constants
+            exp_list= ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
 #             compute_list = ['liqwatflx',], exp_list= ['lat2D','lon2D','zs','liqwatflx','pet_wrf'], # short varlist for quick export
 #             exp_list= ['pet_wrf'], compute_list = [], # varlist for export
 #             exp_list = load_list, # varlist for Obs is same as load_list
@@ -572,7 +572,7 @@ if __name__ == '__main__':
 #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT'),bc_tag),
 #             folder = '//AQFS1/Data/temp_data_exchange/{PROJECT}/{GRID}/{EXPERIMENT}/{PERIOD}/climate_forcing/',
 #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/land_data/'.format(os.getenv('HGS_ROOT'),bc_tag),
-            folder = '//AQFS1/Data/temp_data_exchange/{PROJECT}/{GRID}/{EXPERIMENT}/land_data/',
+#             folder = '//AQFS1/Data/temp_data_exchange/{PROJECT}/{GRID}/{EXPERIMENT}/land_data/',
             prefix = '{GRID}', # based on keyword arguments
             format = 'ASCII_raster', # formats to export to
             fillValue = 0, noDataValue = -9999, # in case we interpolate across a missing value...

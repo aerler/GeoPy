@@ -17,32 +17,23 @@ load3D: false
 CESM_experiments: Null
 CESM_filetypes: ['atm','lnd']
 # WRF
-WRF_project: 'GreatLakes' # all available experiments
+WRF_project: 'WesternCanada' # all available experiments
 WRF_experiments: Null # all available experiments
-#[ # process WRF experiments on different grids
-  # Western Canada
-#  'max-ctrl','max-ens-A','max-ens-B','max-ens-C', # main "best" IC ensemble
-#  'erai-max','cfsr-max','max-seaice-2050','max-seaice-2100',
-#  'max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',
-#  'max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',
-#  'new-ctrl', 'new-ctrl-2050', 'new-ctrl-2100', 'cfsr-new', # new config (arb3)     
-#  'old-ctrl', 'old-ctrl-2050', 'old-ctrl-2100', # old/default config
-#  'ctrl-1', 'ctrl-ens-A', 'ctrl-ens-B', 'ctrl-ens-C', # new "standard" IC ensemble
-#  'ctrl-2050', 'ctrl-ens-A-2050', 'ctrl-ens-B-2050', 'ctrl-ens-C-2050',
-#  'ctrl-2100', 'ctrl-ens-A-2100', 'ctrl-ens-B-2100', 'ctrl-ens-C-2100',
-  # Great Lakes
-#  't-ctrl', 't-ens-A', 't-ens-B', 't-ens-C', 'erai-t', # Marc's ctrl ensemble
-#  't-ctrl-2050', 't-ens-A-2050', 't-ens-B-2050', 't-ens-C-2050',
-#  't-ctrl-2100', 't-ens-A-2100', 't-ens-B-2100', 't-ens-C-2100', # last three are 
-#  'g-ctrl', 'g-ens-A', 'g-ens-B', 'g-ens-C', 'erai-t', # Marc's max ensemble
-#  'g-ctrl-2050', 'g-ens-A-2050', 'g-ens-B-2050', 'g-ens-C-2050',
-#  'g-ctrl-2100', 'g-ens-A-2100', 'g-ens-B-2100', 'g-ens-C-2100', # last three are not finished yet
-#]
-domains: 2 # inner domain onto inner domain 
-WRF_filetypes: ['srfc','xtrm','hydro','lsm'] # process all filetypes except 'rad' and 'plev3d'
+domains: Null # inner domain onto inner domain 
+WRF_filetypes: ['srfc','xtrm','hydro','lsm','rad','plev3d'] # process all filetypes except snow
 # define shape data
-shape_name: 'shpavg'
-shapes:
-  provinces: Null # all Canadian provinces from EC module
-  basins: Null # all river basins (in Canada) from WSC module
+#shape_name: 'shpavg'
+#shapes:
+#  provinces: Null # all Canadian provinces from EC module
+#  basins: Null # all river basins (in Canada) from WSC module
+shape_name: 'wcavg' # Western Canadian shapes
+  provinces: ['BC','AB'] # Canadian provinces from EC module
+  basins: ['PSB','NorthernPSB','SouthernPSB','FRB','UpperFRB','LowerFRB','CRB',
+           'ARB','UpperARB','LowerARB','SSR','NRB',] # river basins (in Canada) from WSC module
+#shape_name: 'glbshp' # only Canadian river basins
+#  provinces: ['MB','ON','QC'] # Canadian provinces from EC module
+#  basins: ['LandGLB','GLB','GRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW','SNW'] # river basins (in Canada) from WSC module
+#shape_name: 'glakes' # Great Lakes
+#  great_lakes: None # the Great Lakes of North America
+  
 # N.B.: averaging over many shapes is computationally very expensive

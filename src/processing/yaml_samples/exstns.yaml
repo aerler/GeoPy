@@ -20,7 +20,7 @@ CESM_filetypes: ['atm','lnd']
 WRF_project: Null # all available experiments (fast enough)
 WRF_experiments: Null # all available experiments
 domains: Null # inner domain onto inner domain 
-WRF_filetypes: ['srfc','xtrm','hydro','lsm'] # process all filetypes except 'rad' and 'plev3d'
+WRF_filetypes: ['srfc','xtrm','hydro','lsm','rad','plev3d'] # process all filetypes except snow
 # define station data
 stations:
   EC: # all Environment Canada weather stations
