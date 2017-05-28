@@ -17,23 +17,28 @@ load3D: false
 CESM_experiments: Null
 CESM_filetypes: ['atm','lnd']
 # WRF
-WRF_project: 'WesternCanada' # all available experiments
 WRF_experiments: Null # all available experiments
 domains: Null # inner domain onto inner domain 
-WRF_filetypes: ['srfc','xtrm','hydro','lsm','rad','plev3d'] # process all filetypes except snow
+WRF_filetypes: ['srfc','xtrm','hydro','lsm','rad','plev3d','aux'] # process all filetypes except snow
 # define shape data
+#WRF_project: Null # all available experiments
 #shape_name: 'shpavg'
 #shapes:
 #  provinces: Null # all Canadian provinces from EC module
 #  basins: Null # all river basins (in Canada) from WSC module
+WRF_project: 'WesternCanada' # just western Canada
 shape_name: 'wcavg' # Western Canadian shapes
+shapes:
   provinces: ['BC','AB'] # Canadian provinces from EC module
   basins: ['PSB','NorthernPSB','SouthernPSB','FRB','UpperFRB','LowerFRB','CRB',
            'ARB','UpperARB','LowerARB','SSR','NRB',] # river basins (in Canada) from WSC module
+#WRF_project: 'GreatLakes' # just Great Lakes simulations
 #shape_name: 'glbshp' # only Canadian river basins
+#shapes:
 #  provinces: ['MB','ON','QC'] # Canadian provinces from EC module
 #  basins: ['LandGLB','GLB','GRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW','SNW'] # river basins (in Canada) from WSC module
 #shape_name: 'glakes' # Great Lakes
+#shapes:
 #  great_lakes: None # the Great Lakes of North America
   
 # N.B.: averaging over many shapes is computationally very expensive

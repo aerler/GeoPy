@@ -25,6 +25,8 @@ from geodata.base import Dataset, Variable, Axis
 
 dataset_name = 'WSC'
 shape_root = '{:s}/shapes/'.format(data_root) # the shapefile root folder
+if not os.path.exists(shape_root):
+    raise IOError("Folder for shape files not found!\n('{:s}')".format(shape_root))
 root_folder = shape_root
 
 # variable attributes and name

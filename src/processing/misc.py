@@ -16,9 +16,6 @@ from datetime import datetime
 from geodata.misc import DatasetError, DateError, isInt, ArgumentError
 from utils.misc import namedTuple
 from datasets.common import getFileName
-# specific datasets
-import datasets.WRF as WRF
-import datasets.CESM as CESM
 
 
 # load YAML configuration file
@@ -116,8 +113,12 @@ def getTargetFile(dataset=None, mode=None, dataargs=None, grid=None, shape=None,
   pstr = '_{}'.format(period) if period else ''
   # figure out filename
   if dataset in ('WRF','CESM') and lwrite:
-    if dataset == 'WRF': fileclass = WRF.fileclasses[filetype]
-    elif dataset == 'CESM': fileclass = CESM.fileclasses[filetype]
+    if dataset == 'WRF': 
+        import datasets.WRF as WRF
+        fileclass = WRF.fileclasses[filetype]
+    elif dataset == 'CESM': 
+        import datasets.CESM as CESM
+        fileclass = CESM.fileclasses[filetype]
     if mode == 'climatology': filename = fileclass.climfile.format(domain,gstr,pstr)
     elif mode == 'time-series': filename = fileclass.tsfile.format(domain,gstr)
     else: raise NotImplementedError, "Unsupported Mode: '{:s}'".format(mode)        
@@ -178,6 +179,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
   period = dataargs.get('period',None)
   # determine meta data based on dataset type
   if dataset == 'WRF': 
+    import datasets.WRF as WRF
     # WRF datasets
     obs_res = None # only for datasets (not used here)
     exp = dataargs['experiment'] # need that one
@@ -209,6 +211,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
       loadfct = partial(WRF.loadWRF_TS, experiment=exp, name=None, domains=domain, grid=grid, varlist=varlist,
                         filetypes=filetypes, varatts=None, lconst=True, ltrimT=False) # still want topography...
   elif dataset == 'CESM': 
+    import datasets.CESM as CESM
     # CESM datasets
     obs_res = None # only for datasets (not used here)
     domain = None # only for WRF

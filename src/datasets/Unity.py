@@ -18,10 +18,6 @@ from geodata.netcdf import DatasetNetCDF
 from datasets.common import days_per_month, name_of_month,  shp_params, CRU_vars
 from datasets.common import getFileName, getRootFolder, loadObservations, grid_folder
 from geodata.gdal import loadPickledGridDef
-from datasets.GPCC import loadGPCC, loadGPCC_Shp
-from datasets.CRU import loadCRU, loadCRU_Shp, loadCRU_ShpTS
-from datasets.PRISM import loadPRISM, loadPRISM_Shp
-from datasets.PCIC import loadPCIC, loadPCIC_Shp
 from utils.constants import precip_thresholds
 # from geodata.utils import DatasetError
 from warnings import warn
@@ -316,6 +312,7 @@ if __name__ == '__main__':
   ## begin processing
   if mode == 'merge_timeseries':
     # produce a merged dataset for a given time period and grid    
+    from datasets.CRU import loadCRU_Shp, loadCRU_ShpTS
     
     for grid in grids:
                 
@@ -393,7 +390,11 @@ if __name__ == '__main__':
   ## begin processing
   if mode == 'merge_climatologies':
     # produce a merged dataset for a given time period and grid    
-    
+    from datasets.GPCC import loadGPCC, loadGPCC_Shp
+    from datasets.CRU import loadCRU
+    from datasets.PRISM import loadPRISM, loadPRISM_Shp
+    from datasets.PCIC import loadPCIC, loadPCIC_Shp
+
     for grid in grids:
       for period in periods: 
         

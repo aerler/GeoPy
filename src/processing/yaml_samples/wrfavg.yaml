@@ -9,6 +9,6 @@ offset: 0 # number of years from simulation start
 project: Null # all available experiments
 experiments: Null # all available experiments
 domains: Null # inner domain onto inner domain 
-filetypes: ['srfc','xtrm','hydro','lsm','plev3d','rad'] # process all filetypes
+filetypes: ['srfc','xtrm','hydro','lsm','plev3d','rad'] # process all output filetypes, except 'snow'
 # grid to project onto
 grid: Null # no on-the-fly regridding

@@ -1566,7 +1566,12 @@ class DatasetNetCDFTest(BaseDatasetTest):
 
 # import modules to be tested
 from geodata.gdal import addGDALtoVar, addGDALtoDataset
-from datasets.NARR import projdict
+# NARR projection (avoid dependency)
+projdict = dict(proj  = 'lcc', # Lambert Conformal Conic  
+                lat_1 =   50., # Latitude of first standard parallel
+                lat_2 =   50., # Latitude of second standard parallel
+                lat_0 =   50., # Latitude of natural origin
+                lon_0 = -107.) # Longitude of natural origin
 
 class GDALVarTest(NetCDFVarTest):  
   
@@ -1646,7 +1651,7 @@ class GDALVarTest(NetCDFVarTest):
 
   def testReadASCII(self):
     ''' test function to read Arc/Info ASCII Grid / ASCII raster files '''
-    from utils.ascii import readASCIIraster, readRasterArray, rasterVariable
+    from utils.ascii import readASCIIraster, rasterVariable
     # get folder with test data
     ascii_folder = workdir+'/nrcan_test/'
     print("ASCII raster test folder: '{:s}'".format(ascii_folder)) # print data folder

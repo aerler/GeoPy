@@ -17,7 +17,7 @@ load3D: false
 CESM_experiments: Null
 CESM_filetypes: ['atm','lnd'] # used to load dataset; both are necessary
 # WRF
-WRF_project: 'GreatLakes' # all available experiments
+WRF_project: Null # all available experiments
 WRF_experiments: Null # all available experiments
 WRF_domains: Null # inner domain onto inner domain 
 WRF_filetypes: ['srfc','xtrm','hydro','lsm','rad'] # used to load dataset; not processed individually
@@ -32,10 +32,10 @@ bc_tag: ''
 #           varmap: [ Tmin: ['Tmin','TSmin'], Tmax: ['Tmax','TSmax'], T2: ['T2','Tmean'], pet_wrf: ['pet_wrf','evap'], 
 #                     SWDNB: ['SWDNB','SWUPB','SWD'], SWD: ['SWDNB','SWUPB','SWD'], ] }
 #grids: # mapping with list of resolutions  
-#  - grw2 # Grand River Watershed, 5km resolution
+#  - can1 # Continental Scale (mostly Canada), 5km resolution
 ## export parameters for ASCII
 #export_parameters: 
-#  project: 'GRW' # project tag, mainly for folder
+#  project: 'CAN' # project tag, mainly for folder
 #  format: ASCII_raster # ArcInfo ASCII raster format
 #  compute_list: ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
 #  exp_list: ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
@@ -50,7 +50,7 @@ grids: # mapping with list of resolutions
 export_parameters:
   project: 'AUX' # project tag, mainly for folder
   format: 'NetCDF' # ArcInfo ASCII raster format
-  compute_list: ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
+  compute_list: ['waterflx','liqwatflx','pet'] # variables that should be (re-)computed
   exp_list: ['netrad','netrad_bb0','netrad_bb','vapdef','pet','pet_wrf','petrad','petwnd','Tmin','Tmax','T2','Tmean','TSmin','TSmax',
              'SWD','SWDNB','SWUPB','zs','lat2D','lon2D','waterflx','liqwatflx','liqprec','solprec','precip','snow','snowh','snwmlt',]
   filetype: 'aux' # filetype name of export file
