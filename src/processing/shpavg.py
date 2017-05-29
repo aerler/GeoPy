@@ -276,7 +276,7 @@ if __name__ == '__main__':
 #     shape_name = 'shpavg' # all Canadian shapes
 #     shapes['provinces'] = None # Canadian provinces from EC module
 #     shapes['basins'] = None # river basins (in Canada) from WSC module
-#     shape_name = 'wcavg' # Western Canadian shapes
+#     shape_name = 'wcshp' # Western Canadian shapes
 #     shapes['provinces'] = ['BC','AB'] # Canadian provinces from EC module
 #     shapes['basins'] = ['PSB','NorthernPSB','SouthernPSB','FRB','UpperFRB','LowerFRB','CRB',
 #                         'ARB','UpperARB','LowerARB','SSR','NRB',] # river basins (in Canada) from WSC module

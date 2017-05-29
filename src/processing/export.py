@@ -456,7 +456,6 @@ if __name__ == '__main__':
         else: bc_method = None # bc_method == None: no bias correction
         # target data specs
         export_arguments = config['export_parameters'] # this is actually a larger data structure
-        lm3 = export_arguments.pop('lm3',False) # convert water flux from kg/m^2/s to m^3/m^2/s    
     else:
         # settings for testing and debugging
         NP = 1; ldebug = False # for quick computations
