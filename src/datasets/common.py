@@ -98,7 +98,6 @@ def addLoadFcts(namespace, dataset, comment=" (Experiment and Ensemble lists are
 def getRootFolder(dataset_name=None, fallback_name=None, data_root=data_root):
     ''' figure out dataset root folder from environment variable and fallbacks '''
     root_folder = os.getenv(dataset_name+'_ROOT',None) # no modification necessary
-    if dataset_name not in ('CESM','WRF',): raise IOError
     if not root_folder or not os.path.exists(root_folder):
         tmp = os.getenv('WRF_ROOT',None)
         if tmp: root_folder = tmp.replace('WRF',dataset_name)

@@ -265,9 +265,13 @@ def getMetaData(dataset, mode, dataargs, lone=True):
     # load pre-processed climatology
     kwargs = dict(name=dataset_name, grid=grid, varlist=varlist, resolution=resolution, varatts=None)
     if dataset == 'Unity': kwargs['unity_grid'] = dataargs['unity_grid']
-    if lclim: loadfct = partial(module.loadClimatology, period=period, **kwargs)
-    elif lts: loadfct = partial(module.loadTimeSeries, **kwargs)
-    else: raise DatasetError('Unable to identify time aggregation mode.')
+    if lclim and module.loadClimatology is not None: 
+        loadfct = partial(module.loadClimatology, period=period, **kwargs)
+    elif lts and module.loadTimeSeries is not None: 
+        loadfct = partial(module.loadTimeSeries, **kwargs)
+    else: 
+        raise DatasetError("Unable to identify time aggregation mode; the dataset " + 
+                           "'{}' may not support selected mode '{}'.".format(dataset,mode))
     # check if the source file is actually correct
     if os.path.exists(filepath): filelist = [filepath]
     else:

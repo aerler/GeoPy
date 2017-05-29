@@ -226,7 +226,8 @@ if __name__ == '__main__':
     load_list = None # variables that need to be loaded
     varlist = None # variables that should be bias-corrected
     grid = 'grw2' # need a common grid for all datasets
-    bc_method = 'AABC' # bias correction method
+#     bc_method = 'AABC' # annual average bias correction method
+    bc_method = 'Delta' # grid-point-wise monthly bias correction method
     bc_args = dict() # paramters for bias correction
   
   ## process arguments

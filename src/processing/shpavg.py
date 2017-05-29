@@ -199,9 +199,9 @@ if __name__ == '__main__':
   else:
 #     NP = 1 ; ldebug = True # for quick computations
     NP = 3; ldebug = False # for quick computations
-#     modes = ('time-series','climatology')
+    modes = ('time-series','climatology')
 #     modes = ('climatology',)
-    modes = ('time-series',) 
+#     modes = ('time-series',) 
     loverwrite = False
     varlist = None # ['T2']
     periods = []
@@ -214,14 +214,14 @@ if __name__ == '__main__':
     grid = None # just a default value - native grid
     # Observations/Reanalysis
     lLTM = True 
-    datasets = []; resolutions = None; unity_grid = None #'arb2_d02'
+    datasets = []; resolutions = None; unity_grid = None
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['031','05'],'NRCan':'NA12'}
     datasets = []
 #     datasets += ['NRCan']; periods = [(1970,2000),(1980,2010)]; lLTM = False
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}
-#     datasets += ['Unity']    
+#     datasets += ['Unity']; periods = [15,30] 
     # CESM experiments (short or long name) 
     CESM_project = None # use all experiments in project module
     load3D = False
@@ -231,16 +231,17 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['lnd']
     # WRF experiments (short or long name)
 #     WRF_project = None
-#     WRF_project = 'WesternCanada' # only use WesternCanada experiments
-    WRF_project = 'GreatLakes' # only use GreatLakes experiments
-    WRF_experiments = []
+    WRF_project = 'GreatLakes'; unity_grid = 'glb1_d02' # only GreatLakes experiments
+#     WRF_project = 'WesternCanada'; unity_grid = 'arb2_d02' # only WesternCanada experiments
+    WRF_experiments = None
+#     WRF_experiments = []
 #     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
 #     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100']
 #     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
 #     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
 # #     WRF_experiments += ['g-ensemble','t-ensemble']
-    WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
+#     WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
 #     WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
 #     WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
 #     WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
@@ -261,8 +262,8 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
     # other WRF parameters 
-#     domains = None # domains to be processed
-    domains = (1,) # domains to be processed
+    domains = None # domains to be processed
+#     domains = (1,) # domains to be processed
 #     WRF_filetypes = ('lsm','xtrm','rad','srfc') # 'hydro',
     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm','rad','aux') # filetypes to be processed
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
