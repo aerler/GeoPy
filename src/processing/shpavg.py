@@ -235,7 +235,7 @@ if __name__ == '__main__':
 #     WRF_project = 'WesternCanada'; unity_grid = 'arb2_d02' # only WesternCanada experiments
     WRF_experiments = None
 #     WRF_experiments = []
-#     WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
+    WRF_experiments += ['erai-t', 'erai-g','erai-t3', 'erai-g3']
 #     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100']
 #     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']

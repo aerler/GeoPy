@@ -6,9 +6,9 @@ loverwrite: false # only recompute if source is newer
 varlist: Null # process all variables
 periods: [15,] # climatology periods to process
 offset: 0 # number of years from simulation start
-project: Null # all available experiments
-experiments: Null # all available experiments
+WRF_project: Null # all available experiments
+WRF_experiments: Null # all available experiments
 domains: Null # inner domain onto inner domain 
-filetypes: ['srfc','xtrm','hydro','lsm','plev3d','rad'] # process all output filetypes, except 'snow'
+WRF_filetypes: ['srfc','xtrm','hydro','lsm','plev3d','rad'] # process all output filetypes, except 'snow'
 # grid to project onto
 grid: Null # no on-the-fly regridding
