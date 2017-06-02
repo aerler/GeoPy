@@ -777,6 +777,9 @@ class DistVar(Variable):
     # N.B.: in this variable dtype and units refer to the sample data, not the distribution!
     if params.ndim > 0 and self.hasAxis(params_name):
       self.paramAxis = self.getAxis(params_name) 
+    if lbootstrap:
+      self.bootstrap_axis = self.axes[0]
+      assert self.hasAxis(self.bootstrap_axis, strict=True)
     # aliases
     self.pdf = self.PDF
     self.cdf = self.CDF
@@ -1322,6 +1325,8 @@ class VarRV(DistVar):
     ''' use methods of from RV distribution through _get_dist wrapper '''
     if hasattr(self.dist_class, attr):
       attr = functools.partial(self._get_dist, self._compute_distribution, attr, rv_fct=attr)
+    else: 
+      raise AttributeError("The distribution class '{}' does not support the method/attibute '{}'.".format(self.dist_class.__class__.__name__, attr))
     return attr
   
   # distribution-specific method; should be overloaded by subclass
