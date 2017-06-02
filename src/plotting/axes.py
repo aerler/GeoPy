@@ -493,6 +493,7 @@ class MyAxes(Axes):
         # scale variable values(axes are irrelevant)
         val, varunits, varname = getPlotValues(var, checkunits=varunits, checkname=None)
         val = val.ravel() # flatten array
+        val = val[~np.isnan(val)] # remove NaN's
         if not varname.endswith('_bins'): varname += '_bins'
         if lprint: print varname, varunits, np.nanmean(val), np.nanstd(val)
         # get default plotargs consistent with linePlot (but only color will be used)  

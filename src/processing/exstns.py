@@ -235,7 +235,7 @@ if __name__ == '__main__':
     # WRF experiments (short or long name)
     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all CESM experiments
-    WRF_experiments = ['erai-3km']
+    WRF_experiments = ['erai-3km','max-3km','max-3km-2100']
 #     WRF_experiments += ['marc-g','marc-gg','marc-g-2050','marc-gg-2050']
 #     WRF_experiments += ['marc-m','marc-mm', 'marc-t','marc-m-2050','marc-mm-2050', 'marc-t-2050']
 #     WRF_experiments += ['erai-g','erai-t']
