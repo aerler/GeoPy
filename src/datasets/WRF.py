@@ -611,22 +611,22 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
 # Station Time-series (monthly, with extremes)
 def loadWRF_StnTS(experiment=None, name=None, domains=None, station=None, grid=None, filetypes=None, 
                   varlist=None, varatts=None, lctrT=True, lfixPET=True, lwrite=False, ltrimT=True, 
-                  exps=None, bias_correction=None):
+                  exps=None, bias_correction=None, lconst=True):
   ''' Get a properly formatted WRF dataset with monthly time-series at station locations. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=station, 
                      period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
-                     lconst=False, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode='time-series', 
+                     lconst=lconst, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode='time-series', 
                      lwrite=lwrite, ltrimT=ltrimT, check_vars='station_name', exps=exps,
                      bias_correction=bias_correction)  
 
 # Regiona/Shape Time-series (monthly, with extremes)
 def loadWRF_ShpTS(experiment=None, name=None, domains=None, shape=None, grid=None, filetypes=None, varlist=None, 
                   varatts=None, lctrT=True, lfixPET=True, lencl=False, lwrite=False, ltrimT=True, exps=None,
-                  bias_correction=None):
+                  bias_correction=None, lconst=True):
   ''' Get a properly formatted WRF dataset with monthly time-series averaged over regions. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, shape=shape, lencl=lencl, 
                      station=None, period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
-                     lconst=False, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode='time-series', lwrite=lwrite, 
+                     lconst=lconst, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode='time-series', lwrite=lwrite, 
                      ltrimT=ltrimT, check_vars='shape_name', exps=exps, bias_correction=bias_correction)  
 
 def loadWRF_TS(experiment=None, name=None, domains=None, grid=None, filetypes=None, varlist=None, 
@@ -640,20 +640,20 @@ def loadWRF_TS(experiment=None, name=None, domains=None, grid=None, filetypes=No
 
 def loadWRF_Stn(experiment=None, name=None, domains=None, station=None, grid=None, period=None, filetypes=None, 
                 varlist=None, varatts=None, lctrT=True, lfixPET=True, lwrite=False, ltrimT=False, exps=None,
-                bias_correction=None):
+                bias_correction=None, lconst=True):
   ''' Get a properly formatted station dataset from a monthly WRF climatology at station locations. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=station, 
-                     period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=False, 
+                     period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
                      lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode='climatology', lwrite=lwrite, 
                      ltrimT=ltrimT, check_vars='station_name', exps=exps, bias_correction=bias_correction)  
 
 def loadWRF_Shp(experiment=None, name=None, domains=None, shape=None, grid=None, period=None, filetypes=None, 
                 varlist=None, varatts=None, lctrT=True, lfixPET=True, lencl=False, lwrite=False, ltrimT=False, 
-                exps=None, bias_correction=None):
+                exps=None, bias_correction=None, lconst=True):
   ''' Get a properly formatted station dataset from a monthly WRF climatology averaged over regions. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, shape=shape, lencl=lencl,
                      station=None, period=period, filetypes=filetypes, varlist=varlist, varatts=varatts, 
-                     lconst=False, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode='climatology', lwrite=lwrite, 
+                     lconst=lconst, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode='climatology', lwrite=lwrite, 
                      ltrimT=ltrimT, check_vars='shape_name', exps=exps, bias_correction=bias_correction)  
 
 def loadWRF(experiment=None, name=None, domains=None, grid=None, period=None, filetypes=None, varlist=None, 
@@ -826,7 +826,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     if llconst:              
       constfile = fileclasses['const']    
       catts = fileclasses['axes'].atts.copy()
-      catts.update(fileclass.atts) # use axes atts as basis and override with filetype-specific atts
+      catts.update(constfile.atts) # use axes atts as basis and override with filetype-specific atts
       filename = constfile.tsfile.format(domain,gridstr)  
       # check file path
       constfolder = folder
@@ -1152,8 +1152,8 @@ if __name__ == '__main__':
   elif mode == 'test_timeseries':
     
 #     dataset = loadWRF_TS(experiment='new-ctrl', domains=2, grid='arb2_d02', filetypes=['srfc'], exps=WRF_exps)
-    dataset = loadWRF_TS(experiment='g-ctrl', domains=None, varlist=None, lconst=False,
-                         filetypes=['const'], exps=WRF_exps)
+    dataset = loadWRF_TS(experiment='g-ctrl', domains=None, varlist=None, lconst=True,
+                         filetypes=['hydro'], exps=WRF_exps)
 #     dataset = loadWRF_All(name='new-ctrl-2050', folder='/data/WRF/wrfavg/', domains=2, filetypes=['hydro'], 
 #                           lctrT=True, mode='time-series', exps=WRF_exps)
 #     for dataset in datasets:

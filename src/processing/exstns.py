@@ -202,8 +202,8 @@ if __name__ == '__main__':
     stations = config['stations']
   else:
     NP = 2 ; ldebug = False # for quick computations
-#     modes = ('time-series',) # 'climatology','time-series'
-    modes = ('climatology',) # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('climatology',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
     periods = []
@@ -217,7 +217,7 @@ if __name__ == '__main__':
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
     lLTM = True # also regrid the long-term mean climatologies 
-    datasets += ['NRCan']; periods = [(1970,2000),(1980,2010)]; lLTM = False
+#     datasets += ['NRCan']; periods = [(1970,2000),(1980,2010)]; lLTM = False
 #     datasets += ['PRISM','GPCC']; periods = None
 #     datasets += ['PCIC']; periods = None
 #     datasets += ['CFSR']; resolutions = {'CFSR':'031'}
@@ -233,8 +233,9 @@ if __name__ == '__main__':
 #     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
     CESM_filetypes = ['atm'] # ,'lnd'
     # WRF experiments (short or long name)
-    WRF_project = 'GreatLakes' # only WesternCanada experiments
+    WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all CESM experiments
+    WRF_experiments = ['erai-3km']
 #     WRF_experiments += ['marc-g','marc-gg','marc-g-2050','marc-gg-2050']
 #     WRF_experiments += ['marc-m','marc-mm', 'marc-t','marc-m-2050','marc-mm-2050', 'marc-t-2050']
 #     WRF_experiments += ['erai-g','erai-t']
@@ -246,13 +247,13 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
 #     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        
     # other WRF parameters 
-    domains = None # domains to be processed
+    domains = 3 # domains to be processed
 #     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-    WRF_filetypes = ('aux',)
+    WRF_filetypes = ('hydro',)
 #     WRF_filetypes = ('const',); periods = None
-    grid = 'grw2'
+#     grid = 'grw2'
     # station datasets to match    
-    stations = dict(EC=('precip','temp')) # currently there is only one type: the EC weather stations
+    stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
   
   
   ## process arguments    
