@@ -777,6 +777,9 @@ class DistVar(Variable):
     # N.B.: in this variable dtype and units refer to the sample data, not the distribution!
     if params.ndim > 0 and self.hasAxis(params_name):
       self.paramAxis = self.getAxis(params_name) 
+    if lbootstrap:
+      self.bootstrap_axis = self.axes[0]
+      assert self.hasAxis(self.bootstrap_axis, strict=True)
     # aliases
     self.pdf = self.PDF
     self.cdf = self.CDF
