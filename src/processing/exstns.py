@@ -247,9 +247,9 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
 #     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        
     # other WRF parameters 
-    domains = 3 # domains to be processed
-#     WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
-    WRF_filetypes = ('hydro',)
+    domains = None # domains to be processed
+    WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
+#     WRF_filetypes = ('hydro',)
 #     WRF_filetypes = ('const',); periods = None
 #     grid = 'grw2'
     # station datasets to match    
