@@ -14,7 +14,7 @@ from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 import numpy as np
 # internal imports
 from geodata.misc import isInt , ArgumentError
-from plotting.axes import MyAxes, MyLocatableAxes, Axes
+from plotting.axes import MyAxes, MyLocatableAxes, Axes, MyPolarAxes
 from plotting.misc import loadStyleSheet, toGGcolors
 import matplotlib as mpl
 # just for convenience
@@ -270,6 +270,7 @@ class MyFigure(Figure):
 def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  stylesheet=None,
              variable_plotargs=None, dataset_plotargs=None, plot_labels=None, yright=False, xtop=False,
              sharex=None, sharey=None, AxesGrid=False, ngrids=None, direction='row',
+             PolarAxes=False, # experimental implementation of PolarAxes
              axes_pad = None, add_all=True, share_all=None, aspect=False, margins=None,
              label_mode='L', cbar_mode=None, cbar_location='right', lreduce=True,
              cbar_pad=None, cbar_size='5%', axes_class=None, axes_args=None,
@@ -361,7 +362,9 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
     if sharex: hspace -= 0.015
     if sharey: wspace -= 0.015
     # other axes arguments
-    if axes_class is None: axes_class=MyAxes
+    if axes_class is None:
+        # select default axes based on other arguments 
+        axes_class = MyPolarAxes if PolarAxes else MyAxes 
     if axes_args is not None and not isinstance(axes_args,dict): raise TypeError
     # create figure
     from matplotlib.pyplot import subplots    

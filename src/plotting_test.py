@@ -341,6 +341,115 @@ class DistPlotTest(unittest.TestCase):
     pstr += '   2-samples   {:3.2f}\n'.format(kstest(varlist[0], varlist[1], lflatten=True))
     ax.addLabel(label=pstr, loc=1, lstroke=False, lalphabet=True, size=None, prop=None)
 
+
+
+class PolarPlotTest(unittest.TestCase):  
+
+  def setUp(self):
+    ''' create two test variables '''
+    # define plot ranges
+    self.thetamin = 0.; self.Rmin = 0.; self.thetamax = 2*np.pi; self.Rmax = 2.
+    # create theta axis and variable instances (values are radius values, I believe)
+    theta1 = np.linspace(self.thetamin,self.thetamax,361)
+    thax1 = Axis(atts=dict(name='$\\theta$-Axis', units='Radians'), coord=theta1) 
+    var0 = Variable(axes=(thax1,), data=np.sin(theta1), atts=dict(name='Blue', units='units'))
+    tmp = theta1.copy()*(self.Rmax-self.Rmin)/(self.thetamax-self.thetamin)
+    var1 = Variable(axes=(thax1,), data=tmp, atts=dict(name='Red', units='units'))
+    self.var0 = var0; self.var1 = var1; self.xax1 = theta1
+    # create error variables with random noise
+    noise0 = np.random.rand(len(thax1))*var0.data_array.std()/2.
+    err0 = Variable(axes=(thax1,), data=noise0, atts=dict(name='Blue Noise', units='units'))
+    noise1 = np.random.rand(len(thax1))*var1.data_array.std()/2.
+    err1 = Variable(axes=(thax1,), data=noise1, atts=dict(name='Red Noise', units='units'))
+    self.err1 = err1; self.err0 = err0
+    # add to list
+    self.vars = [var0, var1]
+    self.errs = [err0, err1]
+    self.axes = [thax1,]
+
+#   def setUp(self):
+#     ''' create a reference and two test variables for Taylor plot'''
+#     # create axis and variable instances (make *copies* of data and attributes!)
+#     self.x1 = np.linspace(0,10,11); self.xax1 = Axis(name='X1-Axis', units='X Units', coord=self.x1)
+#     self.data0 = np.sin(self.x1)
+#     self.var0 = Variable(axes=(self.xax1,), data=self.data0, atts=dict(name='Reference', units='units'))
+#     # create error variables with random noise
+#     self.data1 = self.data0 + np.random.rand(len(self.xax1))*0.1
+#     self.var1 = Variable(axes=(self.xax1,), data=self.data1, atts=dict(name='Blue', units='units'))
+#     self.data2 = self.data0 + np.random.rand(len(self.xax1))*0.3
+#     self.var2 = Variable(axes=(self.xax1,), data=self.data2, atts=dict(name='Red', units='units'))
+#     # add to list
+#     self.vars = [self.var0, self.var1, self.var2]
+#     self.data = [self.data0, self.data1, self.data2]
+#     self.axes = [self.xax1,]
+        
+  def tearDown(self):
+    ''' clean up '''
+    for var in self.vars:     
+      var.unload() # just to do something... free memory
+    for ax in self.axes:
+      ax.unload()
+    
+  ## basic plotting tests
+
+  def testBasicLinePlot(self):
+    ''' test a simple line plot with two lines '''    
+    fig,ax = getFigAx(1, PolarAxes=True, 
+                      name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyPolarAxes'
+    assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
+    var0 = self.var0; var1 = self.var1
+    # create plot
+    plts = ax.linePlot([var0, var1], ylabel='custom label [{UNITS:s}]', llabel=True,
+                       ylim=(self.Rmin,self.Rmax), legend=2, hline=1., vline=(np.pi/4.,np.pi/2.,np.pi))
+    assert len(plts) == 2
+    # add label
+    ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
+      
+  def testAdvancedLinePlot(self):
+    ''' test more advanced options of the line plot function '''    
+    var1 = self.var1; var0 = self.var0
+    varatts = dict() # set some default values
+    for var in var1,var0: varatts[var.name] = dict(color=var.name, marker='1', markersize=15)    
+    fig,ax = getFigAx(1, title='Fancy Plot Styles', name=sys._getframe().f_code.co_name[4:], 
+                      PolarAxes=True,
+                      variable_plotargs=varatts, **figargs) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyPolarAxes'
+    assert not isinstance(ax,(list,tuple,np.ndarray)) # should return a "naked" axes
+    assert isinstance(ax.variable_plotargs, dict)
+    # define fancy attributes
+    plotatts = dict() # override some defaults
+    plotatts[var1.name] = dict(color='red', marker='*', markersize=5)        
+    # define fancy legend
+    legend = dict(loc=2, labelspacing=0.125, handlelength=2.5, handletextpad=0.5, fancybox=True)
+    # create plot
+    plts = ax.linePlot([var0, var1], linestyles=('--','-.'), plotatts=plotatts, legend=legend, ylim=(self.Rmin,self.Rmax))
+    assert len(plts) == 2
+       
+  def testCombinedLinePlot(self):
+    ''' test a two panel line plot with combined legend '''    
+    fig,axes = getFigAx(4, sharey=True, sharex=True, PolarAxes=True,
+                        name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyPolarAxes'
+    assert isinstance(axes,np.ndarray) # should return a list of axes
+    var1 = self.var1; var0 = self.var0
+    # create plot
+    for i,ax in enumerate(axes.ravel()):
+      plts = ax.linePlot([var0, var1], legend=0, ylim=(self.Rmin,self.Rmax))
+      ax.addTitle('Panel {:d}'.format(i+1))
+      assert len(plts) == 2
+    # add common legend
+    fig.addSharedLegend(plots=plts)
+    # add labels
+    fig.addLabels(labels=None, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
+    # add a line
+    ax.addHline(3)
+    
+
+
 if __name__ == "__main__":
 
     
@@ -352,18 +461,23 @@ if __name__ == "__main__":
 #     specific_tests += ['FancyBandPlot']
 #     specific_tests += ['AdvancedLinePlot']
 #     specific_tests += ['CombinedLinePlot']
-#     specific_tests += ['AxesGridLinePlot']    
+    specific_tests += ['AxesGridLinePlot']    
 #     specific_tests += ['MeanAxisPlot']
     # DistPlot
-    specific_tests += ['BasicHistogram']
+#     specific_tests += ['BasicHistogram']
 #     specific_tests += ['BootstrapCI']
 #     specific_tests += ['SamplePlot']
-    
+    # PolarPlot
+#     specific_tests += ['BasicLinePlot']
+#     specific_tests += ['AdvancedLinePlot']
+#     specific_tests += ['CombinedLinePlot']
+        
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['LinePlot'] 
-    tests += ['DistPlot']
+    tests += ['LinePlot'] 
+#     tests += ['DistPlot']
+#     tests += ['PolarPlot']
     
 
     # construct dictionary of test classes defined above

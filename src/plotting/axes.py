@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
+from matplotlib.projections import PolarAxes
 from types import NoneType
 # internal imports
 from geodata.base import Variable
@@ -834,7 +835,8 @@ class MyAxes(Axes):
       # if there are only some negative values, reduce pad a bit
       ymin,ymax = ax.get_ylim()
       yvis = np.asarray([ytick.get_visible() for ytick in ax.yaxis.get_ticklabels()])
-      ylocs = np.asarray([yt for yt in ax.yaxis.get_ticklocs()[yvis] if ( yt <= ymax and yt >= ymin ) ])
+      tmp = np.asarray(ax.yaxis.get_ticklocs()) # make sure this is an array!
+      ylocs = np.asarray([yt for yt in tmp[yvis] if ( yt <= ymax and yt >= ymin ) ])
       yneg = np.sum(ylocs < 0)
       if yneg > 0 and float(yneg)/ylocs.size < 0.35: ypad -= 5
       ax.set_ylabel(ylabel, labelpad=ypad) # labelpad is ignored by AxesGrid
@@ -951,8 +953,13 @@ class MyAxes(Axes):
 
     
 # a new class that combines the new axes with LocatableAxes for use with AxesGrid 
-class MyLocatableAxes(LocatableAxes,MyAxes):
-  ''' A new Axes class that adds functionality from MyAxes to a LocatableAxes for use in AxesGrid '''
+class MyLocatableAxes(MyAxes,LocatableAxes):
+  ''' A new Axes class that adds functionality from MyAxes to LocatableAxes for use in AxesGrid '''
+
+
+# a new PolarAxes class that adds the new axes features to PolarAxes 
+class MyPolarAxes(MyAxes,PolarAxes):
+  ''' A new Axes class that adds functionality from MyAxes to PolarAxes '''
 
 
 if __name__ == '__main__':
