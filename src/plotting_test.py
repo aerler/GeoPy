@@ -179,7 +179,7 @@ class LinePlotTest(unittest.TestCase):
 
   def testAxesGridLinePlot(self):
     ''' test a two panel line plot with combined legend '''        
-    fig,axes = getFigAx(4, AxesGrid=True, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    fig,axes = getFigAx(4, lAxesGrid=True, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     #assert grid.__class__.__name__ == 'ImageGrid'
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyLocatableAxes'
@@ -367,22 +367,6 @@ class PolarPlotTest(unittest.TestCase):
     self.errs = [err0, err1]
     self.axes = [thax1,]
 
-#   def setUp(self):
-#     ''' create a reference and two test variables for Taylor plot'''
-#     # create axis and variable instances (make *copies* of data and attributes!)
-#     self.x1 = np.linspace(0,10,11); self.xax1 = Axis(name='X1-Axis', units='X Units', coord=self.x1)
-#     self.data0 = np.sin(self.x1)
-#     self.var0 = Variable(axes=(self.xax1,), data=self.data0, atts=dict(name='Reference', units='units'))
-#     # create error variables with random noise
-#     self.data1 = self.data0 + np.random.rand(len(self.xax1))*0.1
-#     self.var1 = Variable(axes=(self.xax1,), data=self.data1, atts=dict(name='Blue', units='units'))
-#     self.data2 = self.data0 + np.random.rand(len(self.xax1))*0.3
-#     self.var2 = Variable(axes=(self.xax1,), data=self.data2, atts=dict(name='Red', units='units'))
-#     # add to list
-#     self.vars = [self.var0, self.var1, self.var2]
-#     self.data = [self.data0, self.data1, self.data2]
-#     self.axes = [self.xax1,]
-        
   def tearDown(self):
     ''' clean up '''
     for var in self.vars:     
@@ -394,7 +378,7 @@ class PolarPlotTest(unittest.TestCase):
 
   def testBasicLinePlot(self):
     ''' test a simple line plot with two lines '''    
-    fig,ax = getFigAx(1, PolarAxes=True, 
+    fig,ax = getFigAx(1, lPolarAxes=True, 
                       name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyPolarAxes'
@@ -413,15 +397,14 @@ class PolarPlotTest(unittest.TestCase):
     varatts = dict() # set some default values
     for var in var1,var0: varatts[var.name] = dict(color=var.name, marker='1', markersize=15)    
     fig,ax = getFigAx(1, title='Fancy Plot Styles', name=sys._getframe().f_code.co_name[4:], 
-                      PolarAxes=True,
-                      variable_plotargs=varatts, **figargs) # use test method name as title
+                      lPolarAxes=True, variable_plotargs=varatts, **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyPolarAxes'
     assert not isinstance(ax,(list,tuple,np.ndarray)) # should return a "naked" axes
     assert isinstance(ax.variable_plotargs, dict)
     # define fancy attributes
     plotatts = dict() # override some defaults
-    plotatts[var1.name] = dict(color='red', marker='*', markersize=5)        
+    plotatts[var1.name] = dict(color='red', marker='*', markersize=5, markevery=20)        
     # define fancy legend
     legend = dict(loc=2, labelspacing=0.125, handlelength=2.5, handletextpad=0.5, fancybox=True)
     # create plot
@@ -430,10 +413,10 @@ class PolarPlotTest(unittest.TestCase):
        
   def testCombinedLinePlot(self):
     ''' test a two panel line plot with combined legend '''    
-    fig,axes = getFigAx(4, sharey=True, sharex=True, PolarAxes=True,
+    fig,axes = getFigAx(4, lPolarAxes=[True,False]*2,
                         name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
-    assert fig.axes_class.__name__ == 'MyPolarAxes'
+    assert fig.axes_class.__name__ in ('MyPolarAxes','MyAxes')
     assert isinstance(axes,np.ndarray) # should return a list of axes
     var1 = self.var1; var0 = self.var0
     # create plot
@@ -449,6 +432,42 @@ class PolarPlotTest(unittest.TestCase):
     ax.addHline(3)
     
 
+class TaylorPlotTest(PolarPlotTest):  
+
+  def setUp(self):
+    ''' create a reference and two test variables for Taylor plot'''
+    self.thetamin = 0.; self.Rmin = 0.; self.thetamax = np.pi/2.; self.Rmax = 2.
+    # create axis and variable instances (make *copies* of data and attributes!)
+    self.x1 = np.linspace(0,10,11); self.xax1 = Axis(name='X1-Axis', units='X Units', coord=self.x1)
+    self.data0 = np.sin(self.x1)
+    self.var0 = Variable(axes=(self.xax1,), data=self.data0, atts=dict(name='Reference', units='units'))
+    # create error variables with random noise
+    self.data1 = self.data0 + np.random.rand(len(self.xax1))*0.1
+    self.var1 = Variable(axes=(self.xax1,), data=self.data1, atts=dict(name='Blue', units='units'))
+    self.data2 = self.data0 + np.random.rand(len(self.xax1))*0.3
+    self.var2 = Variable(axes=(self.xax1,), data=self.data2, atts=dict(name='Red', units='units'))
+    # add to list
+    self.vars = [self.var0, self.var1, self.var2]
+    self.data = [self.data0, self.data1, self.data2]
+    self.axes = [self.xax1,]
+    
+  ## basic plotting tests
+  def testBasicTaylorPlot(self):
+    ''' test a simple line plot with two lines '''    
+    fig,ax = getFigAx(1, lTaylor=True, 
+                      name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'TaylorAxes'
+    assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
+    var0 = self.var0; var1 = self.var1; var2 = self.var2
+    # set up reference
+    ax.setReference(var0)
+    # add some dots...
+    plts = ax.taylorPlot([var0, var1],)
+    assert len(plts) == 2
+    # add label
+    ax.addLabel(label=0, loc=1, lstroke=False, lalphabet=True, size=None, prop=None)
+
 
 if __name__ == "__main__":
 
@@ -461,7 +480,7 @@ if __name__ == "__main__":
 #     specific_tests += ['FancyBandPlot']
 #     specific_tests += ['AdvancedLinePlot']
 #     specific_tests += ['CombinedLinePlot']
-    specific_tests += ['AxesGridLinePlot']    
+#     specific_tests += ['AxesGridLinePlot']    
 #     specific_tests += ['MeanAxisPlot']
     # DistPlot
 #     specific_tests += ['BasicHistogram']
@@ -471,13 +490,16 @@ if __name__ == "__main__":
 #     specific_tests += ['BasicLinePlot']
 #     specific_tests += ['AdvancedLinePlot']
 #     specific_tests += ['CombinedLinePlot']
+    # TaylorPlot
+    specific_tests += ['BasicTaylorPlot']
         
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['LinePlot'] 
+#     tests += ['LinePlot'] 
 #     tests += ['DistPlot']
 #     tests += ['PolarPlot']
+    tests += ['TaylorPlot']
     
 
     # construct dictionary of test classes defined above

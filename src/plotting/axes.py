@@ -19,6 +19,7 @@ from geodata.misc import ListError, ArgumentError, isEqual, AxisError
 from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile, checkSample
 from collections import OrderedDict
 from utils.misc import binedges, expandArgumentList
+from matplotlib.axes._subplots import subplot_class_factory
 
 # list of plot arguments that apply only to lines
 line_args = ('lineformats','linestyles','markers','lineformat','linestyle','marker')
@@ -808,7 +809,7 @@ class MyAxes(Axes):
     elif xlabel is not None and xlabel is not False:
       # only apply label, if ticks are also present
       xticks = self.xaxis.get_ticklabels()
-      # len(xticks) > 0 is necessary to avoid errors with AxesGrid, which removes invisible tick labels      
+      # len(xticks) > 0 is necessary to avoid errors with AxesGrid, which removes invisible tick labels
       if len(xticks) > 0 and xticks[-1].get_visible(): xlabel = self._axLabel(xlabel, name, units)
     if isinstance(xlabel,basestring):
       # N.B.: labelpad is ignored by AxesGrid
@@ -845,14 +846,16 @@ class MyAxes(Axes):
     return ylabel    
   def _axLabel(self, label, name, units):
     ''' helper method to format axes lables '''
-    if label is True: 
-      if not name and not units: label = ''
-      elif not units: label = '{:s}'.format(name)
-      elif not name: label = '[{:s}]'.format(units)
-      else: label = '{0:s} [{1:s}]'.format(name,units)
+    if isinstance(self,PolarAxes):
+        label = None # PolarAxes don't have default labels
+    elif label is True: 
+        if not name and not units: label = ''
+        elif not units: label = '{:s}'.format(name)
+        elif not name: label = '[{:s}]'.format(units)
+        else: label = '{0:s} [{1:s}]'.format(name,units)
     elif label is False or label is None: label = ''
     elif isinstance(label,basestring): label = label.format(NAME=name,UNITS=units)
-    else: raise ValueError, label
+    else: raise ValueError(label)
     return label
     
   def xTickLabels(self, xticks, n=None, loverlap=False):
@@ -960,6 +963,88 @@ class MyLocatableAxes(MyAxes,LocatableAxes):
 # a new PolarAxes class that adds the new axes features to PolarAxes 
 class MyPolarAxes(MyAxes,PolarAxes):
   ''' A new Axes class that adds functionality from MyAxes to PolarAxes '''
+  def __new__(self, *args, **kwargs):
+    return PolarAxes.__new__(self, *args, **kwargs)
+
+# a new child class of MyPolarAxes for drawing Taylor Diagrams
+from matplotlib.axes._subplots import subplot_class_factory
+from mpl_toolkits.axes_grid1.parasite_axes import host_axes_class_factory
+from mpl_toolkits.axisartist.axislines import Axes as ALaxes
+from mpl_toolkits.axisartist.floating_axes import floatingaxes_class_factory, GridHelperCurveLinear
+from mpl_toolkits.axisartist.grid_finder import FixedLocator, DictFormatter
+
+class TaylorAxes(MyAxes):
+    ''' 
+    An axes class specifically for drawing Taylor diagrams.
+    
+    The axes class that implements methods for drawing Taylor diagrams; this class is not used directly:
+    it is combined with several mix-in classes from Matplotlib in order to implement the specific requirements of 
+    the Taylor plot (specifically, only plotting the first quadrant).
+    
+    Taylor diagram reference (Taylor, 2001):
+    http://www-pcmdi.llnl.gov/about/staff/Taylor/CV/Taylor_diagram_primer.htm 
+    '''
+
+    def __new__(cls, fig, rect, **axes_args):
+        ''' Create a new PolarAxes instance following the method of Yannick Copin <yannick.copin@laposte.net> '''
+
+        
+        #print cls.__name__
+        if cls.__name__ == 'TaylorAxesSubplot': cls = cls._axes_class
+        # N.B.: if the class if constructed through add_subplot, there is already a Subplot axesclass mix-in,
+        #       which needs to be removed, to avoid conflicts when it is added back in later
+        
+        if cls.__name__ == 'TaylorAxes':
+        
+            # Correlation labels
+            rlocs = np.concatenate((np.arange(10)/10.,[0.95,0.99]))
+            tlocs = np.arccos(rlocs)        # Conversion to polar angles
+            gl1 = FixedLocator(tlocs)    # Positions
+            tf1 = DictFormatter(dict(zip(tlocs, map(str,rlocs))))
+    
+            ghelper = GridHelperCurveLinear(PolarAxes.PolarTransform(),
+                                            extremes=(0,np.pi/2, # 1st quadrant
+                                                      0,1.5), # radius
+                                            grid_locator1=gl1,
+                                            tick_formatter1=tf1,)
+
+            # figure out succession of class mix-ins
+            TA = type('Taylor',(ALaxes,cls),{})
+            TA = host_axes_class_factory(TA)
+            TA = subplot_class_factory(TA)
+            TA = floatingaxes_class_factory(TA)
+            # create axes instance
+            ax = TA(fig, rect, grid_helper=ghelper)
+
+            # Adjust axes annotation
+            ax.axis["top"].set_axis_direction("bottom")  # "Angle axis"
+            ax.axis["top"].toggle(ticklabels=True, label=True)
+            ax.axis["top"].major_ticklabels.set_axis_direction("top")
+            ax.axis["top"].label.set_axis_direction("top")
+            ax.axis["top"].label.set_text("Correlation")
+            ax.axis["left"].set_axis_direction("bottom") # "X axis"
+            ax.axis["left"].label.set_text("Standard deviation")
+            ax.axis["right"].set_axis_direction("top")   # "Y axis"
+            ax.axis["right"].toggle(ticklabels=True)
+            ax.axis["right"].major_ticklabels.set_axis_direction("left")
+            ax.axis["bottom"].set_visible(False)         # Useless
+
+        else:
+        
+            # recursion terminates - MyAxes has default __new__
+            ax = MyAxes.__new__(cls, fig, rect, **axes_args)
+
+        # return axis instance
+        return ax
+
+      
+    def setReference(self, *args, **kwargs):
+        ''' Define a reference dataset w.r.t. which correlations and relative standard deviations are computed '''
+        raise NotImplementedError
+        
+    def taylorPlot(self, *args, **kwargs):
+        ''' Add data points to Taylor diagram '''
+        raise NotImplementedError
 
 
 if __name__ == '__main__':

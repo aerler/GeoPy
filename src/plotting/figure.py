@@ -14,11 +14,11 @@ from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 import numpy as np
 # internal imports
 from geodata.misc import isInt , ArgumentError
-from plotting.axes import MyAxes, MyLocatableAxes, Axes, MyPolarAxes
+from plotting.axes import MyAxes, MyLocatableAxes, Axes, MyPolarAxes, TaylorAxes
 from plotting.misc import loadStyleSheet, toGGcolors
 import matplotlib as mpl
 # just for convenience
-from matplotlib.pyplot import show
+from matplotlib.pyplot import show, figure
 
 ## my new figure class
 class MyFigure(Figure):
@@ -41,19 +41,23 @@ class MyFigure(Figure):
     # parse arguments
     if 'axes_class' in kwargs:
       axes_class = kwargs.pop('axes_class')
-      if not issubclass(axes_class, Axes): raise TypeError
+      if not issubclass(axes_class, Axes): raise TypeError(axes_class)
     else: axes_class = MyAxes # default
     if 'axes_args' in kwargs:
       axes_args = kwargs.pop('axes_args')
       if axes_args is not None and not isinstance(axes_args, dict): raise TypeError
     else: axes_args = None # default
+    if 'print_settings' in kwargs:
+      print_settings = kwargs.pop('print_settings')
+    else: print_settings = None
     # call parent constructor
     super(MyFigure,self).__init__(*args, **kwargs)
     # save axes class for later
     self.axes_class = axes_class   
     self.axes_args = axes_args 
-    # default print options
-    self.print_setings = dict(dpi=300, transparent=False)
+    # print options
+    self.print_settings = dict(dpi=300, transparent=False) # defaults
+    if print_settings: self.print_settings.update(print_settings)
     
 # N.B.: using the built-in mechanism to choose Axes seems to cause more problems
 #     from matplotlib.projections import register_projection
@@ -87,7 +91,8 @@ class MyFigure(Figure):
       #       if 'projection' not in kwargs: kwargs['projection'] = 'my'
       #       axes_class, kwargs, key = process_projection_requirements(
       #           self, *args, **kwargs)
-      axes_class = self.axes_class # defaults to my new custom axes (MyAxes)
+      axes_class = kwargs.pop('axes_class',None)  
+      if axes_class is None: axes_class = self.axes_class # defaults to my new custom axes (MyAxes)
       key = self._make_key(*args, **kwargs)
       # check that an axes of this type doesn't already exist, if it
       # does, set it as active and return it
@@ -123,8 +128,9 @@ class MyFigure(Figure):
     else:
       #       if 'projection' not in kwargs: kwargs['projection'] = 'my'
       #       axes_class, kwargs, key = process_projection_requirements(
-      #           self, *args, **kwargs)      
-      axes_class = self.axes_class # defaults to my new custom axes (MyAxes)
+      #           self, *args, **kwargs)    
+      axes_class = kwargs.pop('axes_class',None)  
+      if axes_class is None: axes_class = self.axes_class # defaults to my new custom axes (MyAxes)
       key = self._make_key(*args, **kwargs)
       # try to find the axes with this key in the stack
       ax = self._axstack.get(key)
@@ -269,8 +275,8 @@ class MyFigure(Figure):
 ## convenience function to return a figure and an array of ImageGrid axes
 def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  stylesheet=None,
              variable_plotargs=None, dataset_plotargs=None, plot_labels=None, yright=False, xtop=False,
-             sharex=None, sharey=None, AxesGrid=False, ngrids=None, direction='row',
-             PolarAxes=False, # experimental implementation of PolarAxes
+             sharex=None, sharey=None, lAxesGrid=False, ngrids=None, direction='row',
+             lPolarAxes=False, lTaylor = False, # experimental implementation of PolarAxes/TaylorAxes
              axes_pad = None, add_all=True, share_all=None, aspect=False, margins=None,
              label_mode='L', cbar_mode=None, cbar_location='right', lreduce=True,
              cbar_pad=None, cbar_size='5%', axes_class=None, axes_args=None,
@@ -327,7 +333,16 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
 #     margins = list(margins)
 #     margins[0] += 0.015; margins[1] -= 0.01 # left, bottom
 #     margins[2] += 0.02; margins[3] += 0.02 # width, height
-  if AxesGrid:
+  # handle special TaylorPlot axes
+  if lTaylor:
+      if not lPolarAxes: lPolarAxes = True
+      if not axes_class: axes_class = TaylorAxes
+  # handle mixed Polar/Axes
+  if isinstance(lPolarAxes, (list,tuple,np.ndarray)):
+      polar_axes_class = axes_class if axes_class else MyPolarAxes
+      axes_class = [polar_axes_class if lpolar else None for lpolar in lPolarAxes]
+  # create axes
+  if lAxesGrid:
     if share_all is None: share_all = True
     if axes_pad is None: axes_pad = 0.05
     # adjust margins for ignored label pads
@@ -337,7 +352,7 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
     # create axes using the Axes Grid package
     if axes_class is None: axes_class=MyLocatableAxes
     fig = mpl.pylab.figure(facecolor='white', figsize=figsize, axes_class=axes_class, 
-                           FigureClass=MyFigure, **figure_args)
+                           FigureClass=figure_class, **figure_args)
     if axes_args is None: axes_class = (axes_class,{})
     elif isinstance(axes_args,dict): axes_class = (axes_class,axes_args)
     else: raise TypeError
@@ -349,9 +364,34 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
                      cbar_pad=cbar_pad, cbar_size=cbar_size, axes_class=axes_class)
     # return figure and axes
     axes = np.asarray(grid).reshape(subplot) # don't want flattened array
-    #axes = tuple([ax for ax in grid]) # this is already flattened
-    if lreduce and len(axes) == 1: axes = axes[0] # return a bare axes instance, if there is only one axes    
+    #axes = tuple([ax for ax in grid]) # this is already flattened  
+  elif isinstance(axes_class, (list,tuple,np.ndarray)):
+    # PolarAxes can't share axes and by default don't have labels
+    if figure_args is None: figure_args = dict()
+    fig = figure(facecolor='white', figsize=figsize, FigureClass=figure_class, **figure_args)
+    # now create list of axes
+    if axes_args is None: axes_args = dict()
+    axes = np.empty(subplot, dtype=object); n = 0
+    for i in range(subplot[0]):
+        for j in range(subplot[1]):
+            n += 1
+            axes[i,j] = fig.add_subplot(subplot[0], subplot[1], n, axes_class=axes_class[n-1], **axes_args)      
+    # just adjust margins
+    if axes_pad is None: axes_pad = 0.03
+    wspace = hspace = 0.1
+    margin_dict = dict(left=margins[0], bottom=margins[1], right=margins[0]+margins[2], 
+                       top=margins[1]+margins[3], wspace=wspace, hspace=hspace)
+    fig.subplots_adjust(**margin_dict)      
   else:
+    # select default axes based on other arguments 
+    if axes_class is None:
+        if lPolarAxes:
+            axes_class = MyPolarAxes
+            share_all = sharex = sharey = False
+            # N.B.: PolarAxes does not support sharing of axes, and
+            #       default behavior is to hide labels
+        else:
+            axes_class = MyAxes 
     # create axes using normal subplot routine
     if axes_pad is None: axes_pad = 0.03
     wspace = hspace = axes_pad
@@ -362,36 +402,38 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
     if sharex: hspace -= 0.015
     if sharey: wspace -= 0.015
     # other axes arguments
-    if axes_class is None:
-        # select default axes based on other arguments 
-        axes_class = MyPolarAxes if PolarAxes else MyAxes 
     if axes_args is not None and not isinstance(axes_args,dict): raise TypeError
     # create figure
     from matplotlib.pyplot import subplots    
     # GridSpec: http://matplotlib.org/users/gridspec.html 
     fig, axes = subplots(subplot[0], subplot[1], sharex=sharex, sharey=sharey,squeeze=lreduce, 
-                         facecolor='white', figsize=figsize, FigureClass=MyFigure, 
+                         facecolor='white', figsize=figsize, FigureClass=figure_class, 
                          subplot_kw=axes_args, axes_class=axes_class, **figure_args)    
     # there is also a subplot_kw=dict() and fig_kw=dict()
     # just adjust margins
     margin_dict = dict(left=margins[0], bottom=margins[1], right=margins[0]+margins[2], 
                        top=margins[1]+margins[3], wspace=wspace, hspace=hspace)
     fig.subplots_adjust(**margin_dict)
+  # apply reduction
+  if lreduce:
+      if isinstance(axes,np.ndarray): axes = axes.squeeze() # remove singleton dimensions
+      if isinstance(axes,(list,tuple,np.ndarray)) and len(axes) == 1: axes = axes[0] # return a bare axes instance, if there is only one axes
   ## set label positions
-  # X-/Y-labels and -ticks
-  yright = not sharey and subplot[0]==2 if yright is None else yright
-  xtop = not sharex and subplot[1]==2 if xtop is None else xtop
-  if isinstance(axes, Axes): 
-    axes.yright = yright
-    axes.xtop = xtop
-  else:
-    if axes.ndim == 1:
-      if subplot[0] == 2: axes[-1].yright = yright # right panel
-      if subplot[1] == 2: axes[0].xtop = xtop # top panel
-    elif axes.ndim == 2:
-      for ax in axes[:,-1]: ax.yright = yright # right column
-      for ax in axes[0,:]: ax.xtop = xtop # top row
-    else: raise ValueError
+  if not lPolarAxes:
+      # X-/Y-labels and -ticks
+      yright = not sharey and subplot[0]==2 if yright is None else yright
+      xtop = not sharex and subplot[1]==2 if xtop is None else xtop
+      if isinstance(axes, Axes): 
+        axes.yright = yright
+        axes.xtop = xtop
+      else:
+        if axes.ndim == 1:
+          if subplot[0] == 2: axes[-1].yright = yright # right panel
+          if subplot[1] == 2: axes[0].xtop = xtop # top panel
+        elif axes.ndim == 2:
+          for ax in axes[:,-1]: ax.yright = yright # right column
+          for ax in axes[0,:]: ax.xtop = xtop # top row
+        else: raise ValueError
   # add figure title
   if name is None: name = title
   if name is not None: fig.canvas.set_window_title(name) # window title
