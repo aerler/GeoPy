@@ -61,6 +61,97 @@ class MyAxes(Axes):
     self.updateAxes(mode='shift') # initialize
     
     
+  def scatterPlot(self, xvars=None, yvars=None, datasets=None,  xname=None, yname=None,
+                  legend=None, llabel=True, labels=None, hline=None, vline=None, title=None, lignore=False,        
+                  flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
+                  lparasiteAxes=False, lrescale=False, scalefactor=1., offset=0., 
+                  lprint=False, lfracdiff=False, xlog=False, ylog=False, xlim=None, ylim=None, 
+                  expand_list=None, lproduct='inner', plotatts=None, **plotargs):
+    ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on 
+        variable properties; extra keyword arguments (plotargs) are passed through expandArgumentList,
+        before being passed to Axes.plot(). '''
+    ## figure out variables
+    xvars = checkVarlist(xvars or datasets, varname=xname, ndim=1, lignore=lignore)
+    yvars = checkVarlist(yvars or datasets, varname=yname, ndim=1, lignore=lignore)
+    assert len(xvars) == len(yvars)
+    # initialize axes names and units
+    self.flipxy = flipxy
+    if self.flipxy: yname,yunits,xname,xunits = self.xname,self.xunits,self.yname,self.yunits
+    else: xname,xunits,yname,yunits = self.xname,self.xunits,self.yname,self.yunits
+    ## figure out plot arguments
+    # reset color cycle
+    if reset_color is False: pass
+    elif reset_color is True: self.set_prop_cycle(None) # reset
+    else: self.set_prop_cycle(reset_color)
+    # figure out label list
+    if labels is None: 
+        xlabels = self._getPlotLabels(xvars)
+        ylabels = self._getPlotLabels(yvars)
+        labels = []
+        for xlabel,ylabel in zip(xlabels,ylabels):
+            if xlabel == ylabel: labels.append(xlabel) # typically be the case for datasets
+            else: labels.append('{}_{}'.format(xlabel,ylabel))
+    elif len(labels) < len(xvars): raise ArgumentError("Incompatible length of varlist and labels.")
+    elif len(labels) > len(xvars): labels = labels[:len(xvars)] # truncate 
+    label_list = labels if llabel else [None]*len(labels) # used for plot labels later
+    assert len(labels) == len(xvars) == len(yvars)
+    # finally, expand keyword arguments
+    plotargs = self._expandArgumentList(labels=label_list, expand_list=expand_list, 
+                                        lproduct=lproduct, plotargs=plotargs)
+    assert len(plotargs) == len(xvars)
+    # initialize parasitic axes for univariate scatter
+    if lparasiteAxes: raise NotImplementedError
+    ## generate individual scatter plots
+    plts = [] # list of plot handles
+    for label,xvar,yvar in zip(labels,xvars,yvars): 
+        self.variables[label] = (xvar,yvar) # save plot variables
+    # loop over variables and plot arguments
+    if lprint and lfracdiff: 
+        raise NotImplementedError("See frac/diff implementation in linePlot for an example...") # tmp_frac = None; tmp_diff = None
+    N = len(xvars); xlen = ylen = None
+    for n,xvar,yvar,plotarg,label in zip(xrange(N),xvars,yvars,plotargs,labels):
+      if xvar is not None and yvar is not None:
+        # check common axis
+        assert xvar.shape == yvar.shape, ( xvar.shape, yvar.shape )
+        assert xvar.axes[0].units == yvar.axes[0].units
+        # scale axis and variable values 
+        xval, xunits, xname = self._getPlotValues(xvar, checkunits=xunits, lrescale=lrescale, scalefactor=scalefactor, offset=offset)
+        yval, yunits, yname = self._getPlotValues(yvar, checkunits=yunits, lrescale=lrescale, scalefactor=scalefactor, offset=offset)
+        # N.B.: other scaling behavior could be added here
+        if lprint:
+          xymean = (np.nanmean(xval),np.nanmean(yval))
+          xystd = (np.nanstd(xval),np.nanstd(yval))
+          print n, label, xymean, xystd
+          if lfracdiff: raise NotImplementedError("See frac/diff implementation in linePlot for an example...") 
+        # update plotargs from defaults
+        plotarg = self._getPlotArgs(label=label, var=xvar, llabel=llabel, plotatts=plotatts, plotarg=plotarg)
+        plotarg['fmt'] = plotarg.pop('lineformat','') # rename (I prefer a different name)
+        # set some scatter plot defaults
+        if 'linestyle' not in plotarg: plotarg['linestyle'] = ' '
+        if 'marker' not in plotarg: plotarg['marker'] = '.'
+        # N.B.: '' (empty string) is the default, None means no line is plotted, only errors!
+        # figure out orientation and call plot function
+        if self.flipxy: # flipped axes
+          xlen = len(yval); ylen = len(xval) # used later
+          plt = self.scatter(yval, xval, **plotarg)[0]
+        else: # default orientation
+          xlen = len(xval); ylen = len(yval) # used later
+          plt = self.errorbar(xval, yval, **plotarg)[0]
+        plts.append(plt); self.plots[label] = plt
+      else: plts.append(None)
+    ## format axes and add annotation
+    # set axes labels  
+    if not lrescale: # don't reset name/units when variables were rescaled to existing axes
+      if self.flipxy: self.xname,self.xunits,self.yname,self.yunits = yname,yunits,xname,xunits
+      else: self.xname,self.xunits,self.yname,self.yunits = xname,xunits,yname,yunits
+    # apply standard formatting and annotation
+    self.formatAxesAndAnnotation(title=title, legend=legend, xlabel=xlabel, ylabel=ylabel, 
+                                 hline=hline, vline=vline, xlim=xlim, xlog=xlog, xticks=xticks, 
+                                 ylim=ylim, ylog=ylog, yticks=yticks, xlen=xlen, ylen=ylen)
+    # return handles to line objects
+    return plts
+
+    
   def linePlot(self, varlist, varname=None, bins=None, support=None, errorbar=None, errorband=None,  
                legend=None, llabel=True, labels=None, hline=None, vline=None, title=None, lignore=False,        
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
