@@ -84,7 +84,7 @@ def checkVarlist(varlist, varname=None, ndim=1, bins=None, support=None, method=
   else: raise TypeError
   if not all([isinstance(var,(Variable, NoneType)) for var in varlist]): raise TypeError
   for var in varlist: 
-    if var is not None: var.squeeze() # remove singleton dimensions
+    if var is not None and var.data_array.size > 1: var.squeeze() # remove singleton dimensions
   # evaluate distribution variables on support/bins
   if bins is not None or support is not None:
     varlist = evalDistVars(varlist, bins=bins, support=support, method=method, 
@@ -158,7 +158,7 @@ def getPlotValues(var, checkunits=None, checkname=None, lsmooth=False, lperi=Fal
   if checkunits is not None and  varunits != checkunits: 
     raise VariableError, "Units for variable '{}': expected {}, found {}.".format(var.name,checkunits,varunits) 
   # some post-processing
-  val = val.squeeze()
+  if val.size > 1: val = val.squeeze()
   if lsmooth: val = smooth(val)
   if lperi: 
     if laxis: 

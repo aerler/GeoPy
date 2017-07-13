@@ -442,7 +442,7 @@ class TaylorPlotTest(PolarPlotTest):
     self.data0 = np.sin(self.x1)
     self.var0 = Variable(axes=(self.xax1,), data=self.data0, atts=dict(name='Reference', units='units'))
     # create error variables with random noise
-    self.data1 = self.data0 + np.random.rand(len(self.xax1))*0.9
+    self.data1 = self.data0 + np.random.rand(len(self.xax1))*0.5
     self.var1 = Variable(axes=(self.xax1,), data=self.data1, atts=dict(name='Blue', units='units'))
     self.data2 = self.data0 + np.random.rand(len(self.xax1))*0.3
     self.var2 = Variable(axes=(self.xax1,), data=self.data2, atts=dict(name='Red', units='units'))
@@ -455,32 +455,34 @@ class TaylorPlotTest(PolarPlotTest):
 
   def testBasicScatterPlot(self):
     ''' test a simple scatter plot with two variables '''    
-    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    fig,ax = getFigAx(1, lTaylor=True, axes_args=dict(std=1.5),
+                      name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
-    assert fig.axes_class.__name__ == 'MyAxes' # in this case, just regular rectilinear axes
+#     assert fig.axes_class.__name__ == 'TaylorAxes' # in this case, just regular rectilinear axes
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var0 = self.var0; var1 = self.var1; # var2 = self.var2
     # create plot
-    plts = ax.scatterPlot(var0, var1, llabel=True, legend=2, )
+    plts = ax.scatterPlot(xvars=var0, yvars=var1, llabel=True, legend=0, )
     assert len(plts) == 1
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
 
   def testBasicTaylorPlot(self):
     ''' test a simple Taylor plot with two variables/timeseries and a reference '''    
-    fig,ax = getFigAx(1, lTaylor=True, 
-                      name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    fig,ax = getFigAx(1, lTaylor=True, axes_args=dict(std=2),
+                       name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'TaylorAxes'
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var0 = self.var0; var1 = self.var1; var2 = self.var2
     # set up reference
-    ax.setReference(var0)
+#     print(ax.setReference(var0))
+#     ax.showRefLines()
     # add some dots...
-    plts = ax.taylorPlot([var1, var2],)
+    plts = ax.taylorPlot([var1, var2], reference=var0, legend=1,)
     assert len(plts) == 2
     # add label
-    ax.addLabel(label=0, loc=1, lstroke=False, lalphabet=True, size=None, prop=None)
+    ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
 
 
 if __name__ == "__main__":
@@ -505,8 +507,8 @@ if __name__ == "__main__":
 #     specific_tests += ['AdvancedLinePlot']
 #     specific_tests += ['CombinedLinePlot']
     # TaylorPlot
-#     specific_tests += ['BasicTaylorPlot']
-    specific_tests += ['BasicScatterPlot']
+#     specific_tests += ['BasicScatterPlot']
+    specific_tests += ['BasicTaylorPlot']
         
     # list of tests to be performed
     tests = [] 
