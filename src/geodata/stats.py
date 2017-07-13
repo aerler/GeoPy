@@ -250,7 +250,7 @@ def ranksums_wrapper(data, size1=None, ignoreNaN=True):
 ## bivariate statistical functions
 
 # Pearson's Correlation Coefficient between two samples
-def pearsonr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, lstandardize=False, 
+def pearsonr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, lstandardize=False,
              lsmooth=False, window_len=11, window='hanning', ldetrend=False, dof=None, **kwargs):
   ''' Compute and return the linear correlation coefficient and/or the p-value
       of Pearson's correlation. 
@@ -303,7 +303,7 @@ def pearsonr_wrapper(data, size1=None, lpval=False, lrho=True, ignoreNaN=True, l
 
 
 # Spearman's Rank-order Correlation Coefficient between two samples
-def spearmanr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, lstandardize=False, 
+def spearmanr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, lstandardize=False,
               lsmooth=False, window_len=11, window='hanning', ldetrend=False, dof=None, **kwargs):
   ''' Compute and return the linear correlation coefficient and/or the p-value
       of Spearman's Rank-order Correlation Coefficient. 
@@ -316,7 +316,7 @@ def spearmanr(sample1, sample2, lpval=False, lrho=True, ignoreNaN=True, lstandar
                               lstandardize=lstandardize, ldetrend=ldetrend, dof=dof,
                               lsmooth=lsmooth, window_len=window_len, window=window)
   laax = lsmooth or ldetrend # true, if any of these, false otherwise
-  rvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, 
+  rvar = apply_stat_test_2samp(sample1, sample2, fct=testfct,  
                                lpval=lpval, lrho=lrho, laax=laax, **kwargs)
   return rvar
 spearmancc = spearmanr
@@ -362,13 +362,15 @@ def spearmanr_wrapper(data, size1=None, axis=None, lpval=False, lrho=True, ignor
 
 
 # generic applicator function for 2 sample statistical tests
-def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, name=None, laax=True, 
-                          lflatten=False, fillValue=None, lpval=True, lrho=False, asVar=None,
+def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, axes=None, name=None, laax=True, 
+                          lflatten=False, fillValue=None, lpval=True, lrho=False, asVar=None, keepdims=False,
                           lcheckVar=True, lcheckAxis=True, pvaratts=None, rvaratts=None, **kwargs):
   ''' Apply a bivariate statistical test or function to two sample Variables and return the result 
       as a Variable object; the function will be applied along the specified axis or over flattened arrays. 
       This function can return both, the p-value and the function result (other than the p-value). '''
   # some input checking
+  if axes is not None and axis is not None: raise ArgumentError
+  elif axes and axis is None: axis = axes
   if lflatten and axis is not None: raise ArgumentError
   if not lflatten and axis is None and axis_idx is None: 
     if sample2.ndim > 1 and sample2.ndim > 1: raise ArgumentError
@@ -387,14 +389,17 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
   elif axis_idx is None and axis is not None: 
     if not lvar1 and not lvar2: ArgumentError, "Keyword 'axis' requires at least one sample to be a Variable instance."
     if isinstance(axis,(tuple,list)):
-      if not lvar1 or not lvar2: ArgumentError, "Merging multiple 'axis' requires both samples to be a Variable instances."
-      # if sample includes multiple axes, merge them and introduce new sample axis
-      sample1 = sample1.mergeAxes(axes=axis, new_axis='new_KS_sample_axis', asVar=True, linplace=False, lcheckAxis=lcheckAxis)
-      sample2 = sample2.mergeAxes(axes=axis, new_axis='new_KS_sample_axis', asVar=True, linplace=False, lcheckAxis=lcheckAxis)
-      if sample1 is None or sample2 is None: 
-        if lcheckAxis: raise AxisError, sample1 or sample2
-        else: return None
-      axis = 'new_KS_sample_axis' # now operate on the new sample axis, as if it was just one    
+      if len(axis) == 1: 
+          axis = axis[0] # trivial case
+      else:
+          if not lvar1 or not lvar2: ArgumentError, "Merging multiple 'axis' requires both samples to be a Variable instances."
+          # if sample includes multiple axes, merge them and introduce new sample axis
+          sample1 = sample1.mergeAxes(axes=axis, new_axis='new_KS_sample_axis', asVar=True, linplace=False, lcheckAxis=lcheckAxis)
+          sample2 = sample2.mergeAxes(axes=axis, new_axis='new_KS_sample_axis', asVar=True, linplace=False, lcheckAxis=lcheckAxis)
+          if sample1 is None or sample2 is None: 
+            if lcheckAxis: raise AxisError, sample1 or sample2
+            else: return None
+          axis = 'new_KS_sample_axis' # now operate on the new sample axis, as if it was just one    
     if lvar1: axis_idx1 = sample1.axisIndex(axis)
     if lvar2: axis_idx2 = sample2.axisIndex(axis)
     if not lvar1: axis_idx1 = axis_idx2
@@ -516,10 +521,23 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
       assert res.shape == rshape
       if lpval: pvar = res
       elif lrho: rvar = res
+    newaxes = sample1.axes[:axis_idx1] + sample1.axes[axis_idx1+1:]
+    if keepdims:
+        remaxes = [ax.name for ax in newaxes]
+        newaxes = []; newshp = []
+        for ax in sample1.axes:
+            if ax.name in remaxes:
+                # make copy of old axis as is
+                newaxes.append(ax.copy()); newshp.append(len(ax))
+            else:
+                # create a new axis with same attributes but length 1 and NaN as coordinate vectore
+                newax = Axis(coord=[np.NaN], atts=ax.atts)
+                newaxes.append(newax); newshp.append(1)
+        if lrho: rvar = rvar.reshape(newshp)
+        if lpval: pvar = pvar.reshape(newshp)
     if asVar:
-      axes = sample1.axes[:axis_idx1] + sample1.axes[axis_idx1+1:]
-      if lpval: pvar = Variable(data=pvar, axes=axes, atts=pvaratts, plot=pvarplot)
-      if lrho: rvar = Variable(data=rvar, axes=axes, atts=rvaratts, plot=rvarplot)
+      if lrho: rvar = Variable(data=rvar, axes=newaxes, atts=rvaratts, plot=rvarplot)
+      if lpval: pvar = Variable(data=pvar, axes=newaxes, atts=pvaratts, plot=pvarplot)
   # return results
   if lrho and lpval: return rvar, pvar
   elif lpval: return pvar

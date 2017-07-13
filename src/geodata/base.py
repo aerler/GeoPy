@@ -162,6 +162,7 @@ class ReduceVar(object): # not a Variable child!!!
           axis = None
       axes =axes.union(slcaxes.keys())
     # take shortcut?
+    newaxes = None # used later
     if axis is None and axes is None:
       # simple and quick, less overhead
       if not var.data: var.load()
@@ -237,13 +238,25 @@ class ReduceVar(object): # not a Variable child!!!
     # whether or not to cast as Variable (default: Yes)
     if asVar is None: asVar = True # default for iterative reduction
     if asVar:
-      if keepdims:
+      if isinstance(newaxes,tuple): pass # already assigned in shortcut (see above)
+      elif keepdims:
         # repeat the array along the singleton axes, in order to fit the Axis
+        newaxes = []
         for i,ax in enumerate(var.axes):
-          if ax.name in axes: 
-            data = np.ma.repeat(data, repeats=len(ax), axis=i)
-        newaxes = var.axes # use old axes
-      else: newaxes = [ax for ax in var.axes if not ax.name in axes] # remove squeezed axes
+            if ax.name in axes:
+                # create a new axis with same attributes but length 1 and NaN as coordinate vectore
+                assert data.shape[i] == 1
+                newax = Axis(coord=[np.NaN], atts=ax.atts)
+                newaxes.append(newax)
+            else:
+                # create copy of old axis
+                assert data.shape[i] == len(ax) 
+                newaxes.append(ax.copy())
+#         for i,ax in enumerate(var.axes):
+#           if ax.name in axes:
+#             data = np.ma.repeat(data, repeats=len(ax), axis=i)
+#         newaxes = var.axes # use old axes
+      else: newaxes = tuple([ax for ax in var.axes if not ax.name in axes]) # remove squeezed axes
       redvar = var.copy(name=var.name if keepname else name, units=units, axes=newaxes, data=data)
 #       redvar = Variable(name=var.name, units=var.units, axes=newaxes, data=data, 
 #                      fillValue=var.fillValue, atts=var.atts.copy(), plot=var.plot.copy())
