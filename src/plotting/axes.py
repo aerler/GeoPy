@@ -13,13 +13,13 @@ from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 from matplotlib.projections import PolarAxes
 from types import NoneType
+from warnings import warn
 # internal imports
 from geodata.base import Variable
 from geodata.misc import ListError, ArgumentError, isEqual, AxisError
 from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile, checkSample
 from collections import OrderedDict
 from utils.misc import binedges, expandArgumentList
-from matplotlib.axes._subplots import subplot_class_factory
 from geodata.stats import pearsonr
 
 # list of plot arguments that apply only to lines
@@ -62,7 +62,7 @@ class MyAxes(Axes):
     self.updateAxes(mode='shift') # initialize
     
     
-  def scatterPlot(self, xvars=None, yvars=None, datasets=None,  xname=None, yname=None,
+  def scatterPlot(self, xvars=None, yvars=None, datasets=None,  xname=None, yname=None, label_ext='',
                   legend=None, llabel=True, labels=None, hline=None, vline=None, title=None, lignore=False,        
                   flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
                   lparasiteAxes=False, lrescale=False, scalefactor=1., offset=0., 
@@ -125,15 +125,17 @@ class MyAxes(Axes):
           print n, label, xymean, xystd
           if lfracdiff: raise NotImplementedError("See frac/diff implementation in linePlot for an example...") 
         # update plotargs from defaults
-        plotarg = self._getPlotArgs(label=label, var=xvar, llabel=llabel, plotatts=plotatts, plotarg=plotarg)
+        plotarg = self._getPlotArgs(label=label, var=xvar, llabel=llabel, label_ext=label_ext, plotatts=plotatts, plotarg=plotarg)
+        s = plotarg.pop('markersize')**2 if 'markersize' in plotarg else None 
+        c = plotarg.pop('markercolor',plotarg.pop('color',None)) # markercolor supersedes color, but both work
         # figure out orientation and call plot function
         if self.flipxy: # flipped axes
           xlen = len(yval); ylen = len(xval) # used later
-          plt = self.scatter(yval, xval, **plotarg)
+          plt = self.scatter(yval, xval, s, c, **plotarg)
         else: # default orientation
           xlen = len(xval); ylen = len(yval) # used later
-          plt = self.scatter(xval, yval, **plotarg)
-        plts.append(plt); self.plots[label] = plt
+          plt = self.scatter(xval, yval, s, c, **plotarg)
+        plts.append(plt); self.plots[label+label_ext] = plt
       else: plts.append(None)
     ## format axes and add annotation
     # set axes labels  
@@ -145,14 +147,14 @@ class MyAxes(Axes):
                                  hline=hline, vline=vline, xlim=xlim, xlog=xlog, xticks=xticks, 
                                  ylim=ylim, ylog=ylog, yticks=yticks, xlen=xlen, ylen=ylen)
     # return handles to line objects
-    return plts
+    return (plts,) # in tuple, for consistency with linePlot
     
   def linePlot(self, varlist, varname=None, bins=None, support=None, errorbar=None, errorband=None,  
-               legend=None, llabel=True, labels=None, hline=None, vline=None, title=None, lignore=False,        
+               legend=None, llabel=True, labels=None, label_ext='', hline=None, vline=None, title=None,        
                flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
                lparasiteMeans=False, lparasiteErrors=False, parasite_axes=None, lrescale=False, 
                scalefactor=1., offset=0., bootstrap_axis='bootstrap', lprint=False, lfracdiff=False,
-               xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lperi=False,
+               xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lperi=False, lignore=False,
                expand_list=None, lproduct='inner', method='pdf', plotatts=None, **plotargs):
     ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on 
         variable properties; extra keyword arguments (plotargs) are passed through expandArgumentList,
@@ -226,7 +228,7 @@ class MyAxes(Axes):
           else:
             print var.name, tmp_mean, np.nanstd(val), tmp_mean/tmp_frac, tmp_mean-tmp_diff  
         # update plotargs from defaults
-        plotarg = self._getPlotArgs(label=label, var=var, llabel=llabel, plotatts=plotatts, plotarg=plotarg)
+        plotarg = self._getPlotArgs(label=label, var=var, llabel=llabel, label_ext=label_ext, plotatts=plotatts, plotarg=plotarg)
         plotarg['fmt'] = plotarg.pop('lineformat','') # rename (I prefer a different name)
         # N.B.: '' (empty string) is the default, None means no line is plotted, only errors!
         # extract arguments for error band
@@ -258,7 +260,7 @@ class MyAxes(Axes):
           if errorscale is not None: bnd *= errorscale
           self._drawBand(axe, val+bnd, val-bnd, where=where, color=(facecolor or plt.get_color()), 
                          alpha=bandalpha*plotarg.get('alpha',1.), edgecolor=edgecolor, **bndarg)  
-        plts.append(plt); self.plots[label] = plt
+        plts.append(plt); self.plots[label+label_ext] = plt
       else: plts.append(None)
     ## format axes and add annotation
     # set axes labels  
@@ -820,7 +822,7 @@ class MyAxes(Axes):
       labels = range(len(varlist))
     return labels
   
-  def _getPlotArgs(self, label, var, llabel=False, plotatts=None, plotarg=None, plot_labels=None):
+  def _getPlotArgs(self, label, var, llabel=False, plotatts=None, plotarg=None, label_ext=None, plot_labels=None):
     ''' function to return plotting arguments/styles based on defaults and explicit arguments '''
     if not isinstance(label, (basestring,int,np.integer)): raise TypeError, label
     if not isinstance(var, Variable): raise TypeError
@@ -832,18 +834,21 @@ class MyAxes(Axes):
       if var.dataset_name is not None and self.dataset_plotargs is not None: 
         args.update(self.dataset_plotargs.get(var.dataset_name,{}))
       if self.variable_plotargs is not None: args.update(self.variable_plotargs.get(var.name,{}))
-    else: # dataset name has precedence
-      if self.variable_plotargs is not None: args.update(self.variable_plotargs.get(var.name,{}))
-      if var.dataset_name is not None and self.dataset_plotargs is not None: 
-        args.update(self.dataset_plotargs.get(var.dataset_name,{}))
+    else: # dataset name has precedence (also used as fallback)
+      if self.variable_plotargs is not None: 
+          args.update(self.variable_plotargs.get(var.name,self.variable_plotargs.get(label,{})))
+      if self.dataset_plotargs is not None: 
+        args.update(self.dataset_plotargs.get(var.dataset_name,self.dataset_plotargs.get(label,{})))
     # apply axes/local defaults
-    if plotatts is not None: args.update(plotatts.get(label,{}))
     if plotarg is not None: args.update(plotarg)
+    if plotatts is not None: args.update(plotatts.get(label,{}))
     # relabel (simple name mapping)
     if plot_labels is None: plot_labels = self.plot_labels
     if plot_labels and label in plot_labels:
       if llabel: args['label'] = plot_labels[label] # only, if we actually want labels!
       label = plot_labels[label]
+    # add label extension for this plot
+    if label_ext: args['label'] = args['label'] + label_ext
     # return dictionary with keyword argument for plotting function
     return args
 
@@ -1074,6 +1079,7 @@ class TaylorAxes(MyAxes):
     reference = None
     ref_std   = None
     ref_mean  = None
+    std_max   = 1.5  # set by kwarg during axes creation
     _showgrid = False
 
     def __new__(cls, fig, rect, std=1.5,  **axes_args):
@@ -1094,11 +1100,8 @@ class TaylorAxes(MyAxes):
             tf1 = DictFormatter(dict(zip(tlocs, map(str,rlocs))))
             
             tr = PolarAxes.PolarTransform()
-            ghelper = GridHelperCurveLinear(tr,
-                                            extremes=(0,np.pi/2, # 1st quadrant
-                                                      0,std), # radius
-                                            grid_locator1=gl1,
-                                            tick_formatter1=tf1,)
+            ghelper = GridHelperCurveLinear(tr, extremes=(0,np.pi/2, 0,std), # 1st quadrant and std as radius
+                                            grid_locator1=gl1, tick_formatter1=tf1,)
 
             # figure out succession of class mix-ins
             TA = type('TaylorGrid',(ALaxes,cls),{})
@@ -1130,6 +1133,8 @@ class TaylorAxes(MyAxes):
             ax.scatter = ax.polaraxes.scatter 
             ax._plot = ax.plot
             ax.plot = ax.polaraxes.plot
+            # store radius
+            ax.std_max = std
                       
         else:
         
@@ -1149,15 +1154,14 @@ class TaylorAxes(MyAxes):
         self.reference = reference
         self.ref_ts = reference.data_array # the reference array
         self.ref_std = reference.std(asVar=False) # this is the radial axis scale
-        if lparasiteMeans: # prepare by default, in case it is needed
-            self.ref_mean = reference.mean(asVar=False) # needed for parasite axis with means 
+        self.ref_mean = reference.mean(asVar=False) # needed for parasite axis with means 
         # print feedback
         if lprint: 
             print(reference.name, self.ref_mean, self.ref_std)
         # return foinspection, if desired
         return self.reference
         
-    def showRefLines(self, rmse=None, lnormalize=True, color='#959595', linestyle='--', linewidth=1):
+    def showRefLines(self, rmse=6, lnormalize=True, color='#959595', linestyle='--', linewidth=1):
         ''' Add reference lines for reference standard deviation and RMSE cirles '''
         if self.reference is None: raise ArgumentError
         # add some standard annotation
@@ -1167,13 +1171,15 @@ class TaylorAxes(MyAxes):
         self.plot(t,r, linestyle='-', color=color, linewidth=linewidth, label='_', zorder=-5)
         # add cirles of constant RMSE
         self.drawRMSE(rmse=rmse, lnormalize=lnormalize, color=color, linestyle=linestyle, linewidth=linewidth)
+        # indicate that grid has been drawn
+        self._showgrid = True
         
-    def drawRMSE(self, rmse=None, lnormalize=True, color='#959595', linestyle='--', linewidth=1, **plotargs):
+    def drawRMSE(self, rmse=6, lnormalize=True, color='#959595', linestyle='--', linewidth=1, **plotargs):
         ''' Draw circles showing constant RMSE w.r.t. reference '''   
         if self.reference is None: raise ArgumentError
         # defaults
-        if rmse is None: 
-            rmse = [0.25, 0.5, 0.75, 1., 1.25, 1.5]
+        if isinstance(rmse, (int,np.integer)):
+            rmse = np.linspace(0,self.std_max,rmse+1)[1:] # [0.25, 0.5, 0.75, 1., 1.25, 1.5]
             if not lnormalize: rmse = [r*self.ref_std for r in rmse]
         s = 1 if lnormalize else self.ref_std # center point
         # draw circles
@@ -1184,51 +1190,81 @@ class TaylorAxes(MyAxes):
             self._plot(x,y, linestyle=linestyle, color=color, linewidth=linewidth, label='_', zorder=-5, **plotargs)        
         
     def taylorPlot(self, varlist, varname=None, legend=None, llabel=True, labels=None, title=None, 
-                   lignore=False, rmse_lines=None, 
+                   lparasiteMeans=False, lignore=False, rmse_lines=6, 
                    xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
-                   lparasiteMeans=False, lrescale=False, scalefactor=1., offset=0., lnormalize=True,
-                   lprint=False, std_lim=None, reference=None,
+                   lrescale=False, scalefactor=1., offset=0., lnormalize=True, labs=True,
+                   lprint=False, ldebug=False, std_lim=None, reference=None, loverride=False, pval=0.05,
                    expand_list=None, lproduct='inner', plotatts=None, corr_args=None, **plotargs):
         ''' Compute standard deviation and correlation to reference data and add data points to Taylor diagram '''
-        # some preliminaries
-        if reference: 
-            if self.reference is not None: 
-                raise ArgumentError("Reference for Taylor diagram is already set!")
-            self.setReference(reference, varname=varname, lignore=lignore, lprint=lprint, lnormalize=lnormalize, lparasiteMeans=lparasiteMeans)
-        if not self._showgrid: 
-            self.showRefLines(rmse=rmse_lines, lnormalize=lnormalize,)
-        ## prepare input data (compute statistics)
+        ## check imputs and assign reference, if necessary
         # check input
         varlist = checkVarlist(varlist, varname=varname, ndim=1, lignore=lignore)
+        # figure out sensible plot labels
+        if labels is None: labels = self._getPlotLabels(varlist)
+        # identify and assign reference
+        if not reference and not self.reference: 
+            raise ArgumentError('No reference datset specified.')
+        elif reference and self.reference and not loverride: 
+            raise ArgumentError("Reference for Taylor diagram is already set! (use loverride=True to override reference)")
+        elif isinstance(reference,basestring):
+            # use one of the datasets in varlist as reference, identified by label 
+            if reference not in labels:
+                raise ArgumentError('Invalid reference label {}'.format(reference))
+            i = labels.index(reference) # search for label to use as reference
+            reference = varlist[i] # use this dataset as reference... 
+            del varlist[i]; del labels[i] # ... and remove from list
+            self.setReference(reference, varname=varname, lignore=lignore, lprint=lprint, lnormalize=lnormalize, lparasiteMeans=lparasiteMeans)
+        elif reference:
+            self.setReference(reference, varname=varname, lignore=lignore, lprint=lprint, lnormalize=lnormalize, lparasiteMeans=lparasiteMeans)
+        # make sure grid lines are shown
+        if not self._showgrid: 
+            self.showRefLines(rmse=rmse_lines, lnormalize=lnormalize,)                    
+        ## prepare input data (compute statistics)
         # arguments for computation of correlation
-        cargs = dict(lpval=False, lrho=True, ignoreNaN=True, lstandardize=False)
+        cargs = dict(ignoreNaN=True, lstandardize=False)
         if corr_args: cargs.update(corr_args)
         # compute std and rho/corr
+        if plotatts is None: plotatts = dict()
         stdlist = []; corrlist = []; meanlist = []
-        for var in varlist:
+        for label,var in zip(labels,varlist):
+            # correlation
+            if pval is None:
+                corr = pearsonr(var, self.reference, asVar=True, axes=var.axes, keepdims=True, lpval=False, lrho=True, **cargs)
+            else:
+                corr, pvar = pearsonr(var, self.reference, asVar=True, axes=var.axes, keepdims=True, lpval=True, lrho=True, **cargs)
+            if corr.mean() < 0:
+                if labs: 
+                    corr *= -1
+                    warn("Inverting negative correlation ('{}').".format(label))
+                else: warn("Negative correlation encountered ('{}'); use labs=True to invert.".format(label))
+            corr.data_array = np.arccos(corr.data_array)
+            corr.plot = None # don't rescale or anythinof that sort!
+            corrlist.append(corr) 
+            # assign significance via edge color (black means significant)
+            if pval is not None:
+                if label not in plotatts: plotatts[label] = dict() 
+                plotatts[label]['edgecolors'] = 'k' if pval and pvar.mean() < pval else 'none'
             # std
             std = var.std(asVar=True, axes=var.axes, keepdims=True)
             if lnormalize: std /= self.ref_std
+            std.plot = None # don't rescale or anythinof that sort!
             stdlist.append(std)
-            # correlation
-            corr = pearsonr(var, self.reference, asVar=True, axes=var.axes, keepdims=True, **cargs)
-            corr.data_array = np.arccos(corr.data_array)
-            corrlist.append(corr) 
             # means/biases
-            if lparasiteMeans:
+            if lparasiteMeans or lprint:
                 mean = var.mean(asVar=True, axes=var.axes, keepdims=True)
                 if lnormalize: mean /= self.ref_mean
+                mean.plot = None # don't rescale or anythinof that sort!
                 meanlist.append(mean)
             # print feedback
-            if lprint: raise NotImplementedError
+            if lprint: 
+                s = '{:s}: cc={:3.2f} (p={:3.2f}), std={:3.2f}, mean={:3.2f}'
+                print(s.format(label,np.cos(corr.mean()),pvar.mean(),std.mean(),mean.mean()))
         ## add data points to plot
-        # figure out sensible plot labels
-        if labels is None: labels = self._getPlotLabels(varlist)
         # add elements of Taylor diagram 
         plts = self.scatterPlot(xvars=corrlist, yvars=stdlist, legend=legend, llabel=llabel, labels=labels, title=title,  
-                                lignore=lignore, xlabel=xlabel, ylabel=ylabel, xticks=xticks,  
+                                lignore=lignore, xlabel=xlabel, ylabel=ylabel, ylim=std_lim, xticks=xticks,  
                                 yticks=yticks, reset_color=reset_color, lrescale=lrescale, scalefactor=scalefactor, offset=offset,  
-                                lprint=lprint, ylim=std_lim, expand_list=expand_list, lproduct=lproduct, **plotargs)
+                                lprint=ldebug, expand_list=expand_list, lproduct=lproduct, plotatts=plotatts, **plotargs)
         # add parasite axes with means/relative biases
         if lparasiteMeans:
             raise NotImplementedError

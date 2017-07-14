@@ -442,13 +442,15 @@ class TaylorPlotTest(PolarPlotTest):
     self.data0 = np.sin(self.x1)
     self.var0 = Variable(axes=(self.xax1,), data=self.data0, atts=dict(name='Reference', units='units'))
     # create error variables with random noise
-    self.data1 = self.data0 + np.random.rand(len(self.xax1))*0.5
+    self.data1 = self.data0 + ( np.random.rand(len(self.xax1))-0.5 )*0.5
     self.var1 = Variable(axes=(self.xax1,), data=self.data1, atts=dict(name='Blue', units='units'))
-    self.data2 = self.data0 + np.random.rand(len(self.xax1))*0.3
+    self.data2 = self.data0 + ( np.random.rand(len(self.xax1))-0.5 )*1.5
     self.var2 = Variable(axes=(self.xax1,), data=self.data2, atts=dict(name='Red', units='units'))
+    self.data3 = 1. + np.random.rand(len(self.xax1))*1.5
+    self.var3 = Variable(axes=(self.xax1,), data=self.data3, atts=dict(name='Random', units='units'))
     # add to list
-    self.vars = [self.var0, self.var1, self.var2]
-    self.data = [self.data0, self.data1, self.data2]
+    self.vars = [self.var0, self.var1, self.var2, self.var3]
+    self.data = [self.data0, self.data1, self.data2, self.data3]
     self.axes = [self.xax1,]
     
   ## basic plotting tests
@@ -479,8 +481,17 @@ class TaylorPlotTest(PolarPlotTest):
 #     print(ax.setReference(var0))
 #     ax.showRefLines()
     # add some dots...
-    plts = ax.taylorPlot([var1, var2], reference=var0, legend=1,)
+    plts, = ax.taylorPlot([var1, var2], reference=var0, rmse_lines=5)
     assert len(plts) == 2
+    plts, = ax.taylorPlot([var1*1.5, var2/2., var0], reference='Reference', loverride=True)
+    assert len(plts) == 2
+    # add a negative correlation
+    negvar1 = var1 * -1
+    plts, = ax.taylorPlot(negvar1, legend=1, lprint=True, label_ext=' (neg.)')
+    assert len(plts) == 1
+    # add a random variable (should have no correlation
+    plts, = ax.taylorPlot(self.var3, legend=1, pval=0.01, lprint=True)
+    assert len(plts) == 1
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
 

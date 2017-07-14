@@ -30,7 +30,7 @@ class MyFigure(Figure):
   # some default parameters
   title_height    = 0.06
   title_size      = 'large'
-  print_setings   = None
+  print_settings  = None
   shared_legend   = None
   legend_axes     = None
   shared_colorbar = None
@@ -181,7 +181,7 @@ class MyFigure(Figure):
       ax.updateAxes(mode='adjust')
         
   # add common/shared legend to a multi-panel plot
-  def addSharedLegend(self, plots=None, labels=None, fontsize=None, hscl=1., hpad=0.005, **kwargs):
+  def addSharedLegend(self, plots=None, labels=None, fontsize=None, hscl=1., hpad=0.005, location='bottom', loc=None, ncols=None, **kwargs):
     ''' add a common/shared legend to a multi-panel plot '''
     # complete input
     if labels is None: labels = [plt.get_label() for plt in plots]
@@ -191,15 +191,23 @@ class MyFigure(Figure):
     # figure out fontsize and row numbers  
     fontsize = fontsize or self.axes[0].get_yaxis().get_label().get_fontsize() # or fig._suptitle.get_fontsize()
     nlen = len(plots) if plots else len(labels)
-    if fontsize > 11: ncols = 2 if nlen == 4 else 3
-    else: ncols = 3 if nlen == 6 else 4              
+    if ncols is None:
+        if fontsize > 11: ncols = 2 if nlen == 4 else 3
+        else: ncols = 3 if nlen == 6 else 4              
     # make room for legend
-    leghgt = ( np.ceil(float(nlen)/float(ncols)) * fontsize/300.) * hscl
-    self.updateSubplots(mode='shift', bottom=leghgt+hpad) # shift bottom upwards (add height pad)
-    ax = self.add_axes([0, hpad-0.005, 1,leghgt]) # new axes to hold legend, with some attributes
+    if location.lower() == 'bottom':
+        leghgt = ( np.ceil(float(nlen)/float(ncols)) * fontsize/300.) * hscl
+        self.updateSubplots(mode='shift', bottom=leghgt+hpad) # shift bottom upwards (add height pad)
+        ax = self.add_axes([0, hpad-0.005, 1,leghgt-hpad], axes_class=MyAxes) # new axes to hold legend, with some attributes
+        if loc is None: loc = 9 
+    elif location.lower() == 'right':
+        leghgt = ( ncols * fontsize/40.) * hscl
+        self.updateSubplots(mode='shift', right=-leghgt-hpad) # shift bottom upwards (add height pad)
+        ax = self.add_axes([0.99-leghgt-hpad, 0, leghgt+hpad,1-self.title_height-hpad], axes_class=MyAxes) # new axes to hold legend, with some attributes
+        if loc is None: loc = 2 # upper left
     ax.set_frame_on(False); ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
     # define legend parameters
-    legargs = dict(loc=10, ncol=ncols, borderaxespad=0., fontsize=fontsize, frameon=True,
+    legargs = dict(loc=loc, ncol=ncols, borderaxespad=0., fontsize=fontsize, frameon=True,
                    labelspacing=0.1, handlelength=1.3, handletextpad=0.3, fancybox=True)
     legargs.update(kwargs)
     # create legend and return handle
@@ -262,7 +270,7 @@ class MyFigure(Figure):
     if lreplaceSpace:
         filename = filename.replace(' ', '_')
     # update print settings
-    sf = self.print_setings.copy() # print properties
+    sf = self.print_settings.copy() # print properties
     sf.update(kwargs) # update with kwargs
     # save file
     if lfeedback: print('Saving figure in '+filename)
@@ -338,9 +346,16 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
       if not lPolarAxes: lPolarAxes = True
       if not axes_class: axes_class = TaylorAxes
   # handle mixed Polar/Axes
-  if isinstance(lPolarAxes, (list,tuple,np.ndarray)):
-      polar_axes_class = axes_class if axes_class else MyPolarAxes
-      axes_class = [polar_axes_class if lpolar else None for lpolar in lPolarAxes]
+  if isinstance(axes_class, (list,tuple,np.ndarray)):
+      for i,axcls in enumerate(axes_class):
+          if axcls is None:
+              if lTaylor: axes_class[i] = TaylorAxes
+              elif lPolarAxes: axes_class[i] = MyPolarAxes
+              else: axes_class[i] = MyAxes
+          elif axcls.lower() == 'taylor': axes_class[i] = TaylorAxes
+          elif axcls.lower() == 'polar': axes_class[i] = MyPolarAxes
+          elif axcls.lower() in ('regular','default'): axes_class[i] = MyAxes
+          if not issubclass(axcls, Axes): raise TypeError(axcls) 
   # create axes
   if lAxesGrid:
     if share_all is None: share_all = True

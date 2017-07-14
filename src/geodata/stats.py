@@ -515,7 +515,8 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
       assert res.ndim == sample1.ndim
       assert res.shape == rshape+(2,)
       res = np.rollaxis(res, axis=res.ndim-1, start=0)
-      rvar = res[0,:]; pvar = res[1,:]
+      if res.ndim == 1: rvar = res[0,]; pvar = res[1,]
+      else: rvar = res[0,:]; pvar = res[1,:]        
     else:
       assert res.ndim == sample1.ndim-1
       assert res.shape == rshape
