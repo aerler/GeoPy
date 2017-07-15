@@ -471,7 +471,7 @@ class TaylorPlotTest(PolarPlotTest):
 
   def testBasicTaylorPlot(self):
     ''' test a simple Taylor plot with two variables/timeseries and a reference '''    
-    fig,ax = getFigAx(1, lTaylor=True, axes_args=dict(std=2),
+    fig,ax = getFigAx(1, lTaylor=True, axes_args=dict(std=1.2, leps=True),
                        name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'TaylorAxes'
@@ -481,7 +481,7 @@ class TaylorPlotTest(PolarPlotTest):
 #     print(ax.setReference(var0))
 #     ax.showRefLines()
     # add some dots...
-    plts, = ax.taylorPlot([var1, var2], reference=var0, rmse_lines=5)
+    plts, = ax.taylorPlot([var1, var2], reference=var0, rmse_lines=6)
     assert len(plts) == 2
     plts, = ax.taylorPlot([var1*1.5, var2/2., var0], reference='Reference', loverride=True)
     assert len(plts) == 2

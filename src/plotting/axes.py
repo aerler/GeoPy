@@ -126,7 +126,7 @@ class MyAxes(Axes):
           if lfracdiff: raise NotImplementedError("See frac/diff implementation in linePlot for an example...") 
         # update plotargs from defaults
         plotarg = self._getPlotArgs(label=label, var=xvar, llabel=llabel, label_ext=label_ext, plotatts=plotatts, plotarg=plotarg)
-        s = plotarg.pop('markersize')**2 if 'markersize' in plotarg else None 
+        s = plotarg.pop('markersize')**2 if 'markersize' in plotarg else 25 # equivalent to markersize=5 
         c = plotarg.pop('markercolor',plotarg.pop('color',None)) # markercolor supersedes color, but both work
         # figure out orientation and call plot function
         if self.flipxy: # flipped axes
@@ -1062,7 +1062,7 @@ from matplotlib.axes._subplots import subplot_class_factory
 from mpl_toolkits.axes_grid1.parasite_axes import host_axes_class_factory
 from mpl_toolkits.axisartist.axislines import Axes as ALaxes
 from mpl_toolkits.axisartist.floating_axes import floatingaxes_class_factory, GridHelperCurveLinear
-from mpl_toolkits.axisartist.grid_finder import FixedLocator, DictFormatter
+from mpl_toolkits.axisartist.grid_finder import FixedLocator, DictFormatter, MaxNLocator
 
 class TaylorAxes(MyAxes):
     ''' 
@@ -1082,7 +1082,7 @@ class TaylorAxes(MyAxes):
     std_max   = 1.5  # set by kwarg during axes creation
     _showgrid = False
 
-    def __new__(cls, fig, rect, std=1.5,  **axes_args):
+    def __new__(cls, fig, rect, std=1.5, leps=False,  **axes_args):
         ''' Create a new PolarAxes instance following the method of Yannick Copin <yannick.copin@laposte.net> '''
 
         
@@ -1099,9 +1099,22 @@ class TaylorAxes(MyAxes):
             gl1 = FixedLocator(tlocs)    # Positions
             tf1 = DictFormatter(dict(zip(tlocs, map(str,rlocs))))
             
+            # Standard Deviation labels
+#             std = np.float64(std)
+#             print type(std), np.finfo(type(std)).eps
+            eps = np.finfo(type(std)).eps # machine precision
+            if leps: std += eps
+            # N.B.: sometimes there are machine precision issues that cause the last tick to be larger than the axis limit
+            #       if both are supposed to have the same value; leps adds a machine-precision value to the axis limit
+            gl2 = MaxNLocator(9, prune=None); tf2 = None
+#             rlocs = MaxNLocator(9, prune=None).tick_values(0, std)
+#             gl2 = FixedLocator(rlocs) # Positions
+#             tf2 = DictFormatter(dict(zip(rlocs, ['{:3.2f}'.format(rloc) for rloc in rlocs])))
+            
             tr = PolarAxes.PolarTransform()
             ghelper = GridHelperCurveLinear(tr, extremes=(0,np.pi/2, 0,std), # 1st quadrant and std as radius
-                                            grid_locator1=gl1, tick_formatter1=tf1,)
+                                            grid_locator1=gl1, tick_formatter1=tf1,  # theta
+                                            grid_locator2=gl2, tick_formatter2=tf2,) # radius
 
             # figure out succession of class mix-ins
             TA = type('TaylorGrid',(ALaxes,cls),{})
@@ -1123,7 +1136,7 @@ class TaylorAxes(MyAxes):
             ax.axis["right"].toggle(ticklabels=True)
             ax.axis["right"].major_ticklabels.set_axis_direction("left")
             ax.axis["bottom"].set_visible(False)         # Useless
-            # make sure the grid appears in the back
+            # make sure the grid appears in the very back
             ax.grid(zorder=-10)
     
             # get actual Polar coordinates            
@@ -1133,8 +1146,9 @@ class TaylorAxes(MyAxes):
             ax.scatter = ax.polaraxes.scatter 
             ax._plot = ax.plot
             ax.plot = ax.polaraxes.plot
-            # store radius
+            # store radius and eps
             ax.std_max = std
+            ax.eps = eps 
                       
         else:
         
@@ -1161,7 +1175,7 @@ class TaylorAxes(MyAxes):
         # return foinspection, if desired
         return self.reference
         
-    def showRefLines(self, rmse=6, lnormalize=True, color='#959595', linestyle='--', linewidth=1):
+    def showRefLines(self, rmse=6, lnormalize=True, color='#959595', linestyle='--', linewidth=1, markersize=4,):
         ''' Add reference lines for reference standard deviation and RMSE cirles '''
         if self.reference is None: raise ArgumentError
         # add some standard annotation
@@ -1184,7 +1198,7 @@ class TaylorAxes(MyAxes):
         s = 1 if lnormalize else self.ref_std # center point
         # draw circles
         for r in rmse:
-            x = np.concatenate( [np.linspace(1.-r,1., 100), np.linspace(1.,1.+r, 50)] ) # denser support near origin
+            x = np.concatenate( [np.linspace(1.-r+self.eps,1., 100), np.linspace(1.,1.+r-self.eps, 50)] ) # denser support near origin
             y = np.sqrt( r**2 - (x-s)**2 ) # shifted half-circle in rectilinear coordinates
             # plot using the original rectilinear plot function (easier)
             self._plot(x,y, linestyle=linestyle, color=color, linewidth=linewidth, label='_', zorder=-5, **plotargs)        

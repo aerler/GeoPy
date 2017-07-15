@@ -28,8 +28,8 @@ class MyFigure(Figure):
     (This class does not support built-in projections; use the Basemap functionality instead.)  
   '''
   # some default parameters
-  title_height    = 0.06
-  title_size      = 'large'
+  title_height    = 0.05
+  title_size      = 'x-large'
   print_settings  = None
   shared_legend   = None
   legend_axes     = None
@@ -281,13 +281,13 @@ class MyFigure(Figure):
 
 
 ## convenience function to return a figure and an array of ImageGrid axes
-def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  stylesheet=None,
+def getFigAx(subplot, name=None, title=None, title_font='x-large', title_height=None, figsize=None,
              variable_plotargs=None, dataset_plotargs=None, plot_labels=None, yright=False, xtop=False,
              sharex=None, sharey=None, lAxesGrid=False, ngrids=None, direction='row',
-             lPolarAxes=False, lTaylor = False, # experimental implementation of PolarAxes/TaylorAxes
+             lPolarAxes=False, lTaylor = False, 
              axes_pad = None, add_all=True, share_all=None, aspect=False, margins=None,
              label_mode='L', cbar_mode=None, cbar_location='right', lreduce=True,
-             cbar_pad=None, cbar_size='5%', axes_class=None, axes_args=None,
+             cbar_pad=None, cbar_size='5%', axes_class=None, axes_args=None,  stylesheet=None,
              lpresentation=False, lpublication=False, figure_class=None, **figure_args):
   # load stylesheet
   if stylesheet is not None:
@@ -332,9 +332,7 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
     elif subplot == (2,1) or subplot == (3,1): margins = (0.09,0.11,0.88,0.82)
     elif subplot == (2,2) or subplot == (3,3): margins = (0.06,0.08,0.92,0.92)
     else: margins = (0.09,0.11,0.88,0.82)
-    #elif subplot == (2,2) or subplot == (3,3): margins = (0.09,0.11,0.88,0.82)
-    #else: raise NotImplementedError
-    title_height = getattr(figure_class, 'title_height', 0.05) # use default from figure
+    if title_height is None: title_height = getattr(figure_class, 'title_height', 0.05) # use default from figure
     if title is not None: margins = margins[:3]+(margins[3]-title_height,) # make room for title
 #   # some style sheets have different label sizes
 #   if stylesheet.lower() in ('myggplot','ggplot'):
@@ -452,8 +450,11 @@ def getFigAx(subplot, name=None, title=None, title_font='large', figsize=None,  
   # add figure title
   if name is None: name = title
   if name is not None: fig.canvas.set_window_title(name) # window title
-  if isinstance(title_font,basestring): title_font = dict(fontsize=title_font)
-  if title is not None: fig.suptitle(title, **title_font) # title on figure (printable)
+  if title is not None:
+      y = 1. - ( title_height / ( 5. if 'x' in title_font else 8. ) ) # smaller title closer to the top
+      if isinstance(title_font,basestring): title_font = dict(fontsize=title_font, y=y)
+      fig.suptitle(title, **title_font) # title on figure (printable)
+  fig.title_height = title_height # save value
   # add default line styles for variables and datasets to axes (figure doesn't need to know)
   if isinstance(axes, np.ndarray):
     for ax in axes.ravel(): 
