@@ -490,7 +490,7 @@ class TaylorPlotTest(PolarPlotTest):
     plts, = ax.taylorPlot(negvar1, legend=1, lprint=True, label_ext=' (neg.)')
     assert len(plts) == 1
     # add a random variable (should have no correlation
-    plts, = ax.taylorPlot(self.var3, legend=1, pval=0.01, lprint=True)
+    plts, = ax.taylorPlot(self.var3, legend=1, pval=0.01, lprint=True, linsig=True)
     assert len(plts) == 1
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)

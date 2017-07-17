@@ -184,7 +184,7 @@ class MyFigure(Figure):
   def addSharedLegend(self, plots=None, labels=None, fontsize=None, hscl=1., hpad=0.005, location='bottom', loc=None, ncols=None, **kwargs):
     ''' add a common/shared legend to a multi-panel plot '''
     # complete input
-    if labels is None: labels = [plt.get_label() for plt in plots]
+    if labels is None: labels = [None if plt is None else plt.get_label() for plt in plots ]
     elif not isinstance(labels, (list,tuple)): raise TypeError
     if plots is None: plots = self.axes[0].plots
     elif not isinstance(plots, (list,tuple,NoneType)): raise TypeError

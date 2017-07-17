@@ -1204,10 +1204,10 @@ class TaylorAxes(MyAxes):
             self._plot(x,y, linestyle=linestyle, color=color, linewidth=linewidth, label='_', zorder=-5, **plotargs)        
         
     def taylorPlot(self, varlist, varname=None, legend=None, llabel=True, labels=None, title=None, 
-                   lparasiteMeans=False, lignore=False, rmse_lines=6, 
+                   lparasiteMeans=False, lignore=False, rmse_lines=6, pval=0.05, linsig=False,
                    xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
                    lrescale=False, scalefactor=1., offset=0., lnormalize=True, labs=True,
-                   lprint=False, ldebug=False, std_lim=None, reference=None, loverride=False, pval=0.05,
+                   lprint=False, ldebug=False, std_lim=None, reference=None, loverride=False,
                    expand_list=None, lproduct='inner', plotatts=None, corr_args=None, **plotargs):
         ''' Compute standard deviation and correlation to reference data and add data points to Taylor diagram '''
         ## check imputs and assign reference, if necessary
@@ -1246,33 +1246,41 @@ class TaylorAxes(MyAxes):
                 corr = pearsonr(var, self.reference, asVar=True, axes=var.axes, keepdims=True, lpval=False, lrho=True, **cargs)
             else:
                 corr, pvar = pearsonr(var, self.reference, asVar=True, axes=var.axes, keepdims=True, lpval=True, lrho=True, **cargs)
-            if corr.mean() < 0:
-                if labs: 
-                    corr *= -1
-                    warn("Inverting negative correlation ('{}').".format(label))
-                else: warn("Negative correlation encountered ('{}'); use labs=True to invert.".format(label))
-            corr.data_array = np.arccos(corr.data_array)
-            corr.plot = None # don't rescale or anythinof that sort!
-            corrlist.append(corr) 
-            # assign significance via edge color (black means significant)
-            if pval is not None:
-                if label not in plotatts: plotatts[label] = dict() 
-                plotatts[label]['edgecolors'] = 'k' if pval and pvar.mean() < pval else 'none'
-            # std
-            std = var.std(asVar=True, axes=var.axes, keepdims=True)
-            if lnormalize: std /= self.ref_std
-            std.plot = None # don't rescale or anythinof that sort!
-            stdlist.append(std)
-            # means/biases
-            if lparasiteMeans or lprint:
-                mean = var.mean(asVar=True, axes=var.axes, keepdims=True)
-                if lnormalize: mean /= self.ref_mean
-                mean.plot = None # don't rescale or anythinof that sort!
-                meanlist.append(mean)
-            # print feedback
-            if lprint: 
-                s = '{:s}: cc={:3.2f} (p={:3.2f}), std={:3.2f}, mean={:3.2f}'
-                print(s.format(label,np.cos(corr.mean()),pvar.mean(),std.mean(),mean.mean()))
+            # skip datasets with insignificant correlations
+            if linsig and pval is not None and pvar.mean() >= pval: 
+                # skip this dataset and move to next one
+                if lprint: print('Skipping {:s}: p={:3.2f} (cc={:3.2f})'.format(label,pvar.mean(),corr.mean(),))
+                corrlist.append(None); stdlist.append(None); meanlist.append(None) # None is a placeholder
+            else:
+                # invert negative correlations
+                if corr.mean() < 0:
+                    if labs: 
+                        corr *= -1
+                        warn("Inverting negative correlation ('{}').".format(label))
+                    else: warn("Negative correlation encountered ('{}'); use labs=True to invert.".format(label))
+                corr.data_array = np.arccos(corr.data_array)
+                corr.plot = None # don't rescale or anythinof that sort!
+                corrlist.append(corr) 
+                # assign significance via edge color (black means significant)
+                if pval is not None:
+                    if label not in plotatts: plotatts[label] = dict() 
+                    plotatts[label]['edgecolors'] = 'k' if pval and pvar.mean() < pval else 'none'
+                # std
+                std = var.std(asVar=True, axes=var.axes, keepdims=True)
+                if lnormalize: std /= self.ref_std
+                std.plot = None # don't rescale or anythinof that sort!
+                stdlist.append(std)
+                # means/biases
+                if lparasiteMeans or lprint:
+                    mean = var.mean(asVar=True, axes=var.axes, keepdims=True)
+                    if lnormalize: mean /= self.ref_mean
+                    mean.plot = None # don't rescale or anythinof that sort!
+                    meanlist.append(mean)
+                else: meanlist.append(None)
+                # print feedback
+                if lprint: 
+                    s = '{:s}: cc={:3.2f} (p={:3.2f}), std={:3.2f}, mean={:3.2f}'
+                    print(s.format(label,np.cos(corr.mean()),pvar.mean(),std.mean(),mean.mean()))
         ## add data points to plot
         # add elements of Taylor diagram 
         plts = self.scatterPlot(xvars=corrlist, yvars=stdlist, legend=legend, llabel=llabel, labels=labels, title=title,  
