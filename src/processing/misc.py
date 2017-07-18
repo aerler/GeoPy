@@ -115,12 +115,12 @@ def getTargetFile(dataset=None, mode=None, dataargs=None, grid=None, shape=None,
     pstr = '_{}'.format(period) if period else ''
     if dataset == 'WRF': 
         import datasets.WRF as WRF
-        fileclass = WRF.fileclasses[filetype]
+        fileclass = WRF.fileclasses[filetype] if filetype in WRF.fileclasses else WRF.FileType(filetype)
         if mode == 'climatology': filename = fileclass.climfile.format(domain,gstr,pstr)
         elif mode == 'time-series': filename = fileclass.tsfile.format(domain,gstr)
     elif dataset == 'CESM': 
         import datasets.CESM as CESM
-        fileclass = CESM.fileclasses[filetype]
+        fileclass = CESM.fileclasses[filetype] if filetype in CESM.fileclasses else CESM.FileType(filetype)
         if mode == 'climatology': filename = fileclass.climfile.format(gstr,pstr)
         elif mode == 'time-series': filename = fileclass.tsfile.format(gstr)
     else: raise NotImplementedError, "Unsupported Mode: '{:s}'".format(mode)        
