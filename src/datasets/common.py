@@ -15,8 +15,7 @@ import os
 import functools
 # internal imports
 from utils.misc import expandArgumentList
-from geodata.misc import AxisError, DatasetError, DateError, ArgumentError, EmptyDatasetError, DataError,\
-  VariableError
+from geodata.misc import AxisError, DatasetError, DateError, ArgumentError, EmptyDatasetError, DataError, VariableError
 from geodata.base import Dataset, Variable, Axis, Ensemble
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import GDALError, addGDALtoDataset, loadPickledGridDef, grid_folder, shape_folder, data_root

@@ -218,9 +218,9 @@ if __name__ == '__main__':
 #     periods += [1]
 #     periods += [3]
 #     periods += [5]
-    periods += [7]
+#     periods += [7]
 #     periods += [10]
-#     periods += [15]
+    periods += [15]
 #     periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
@@ -244,11 +244,11 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['atm','lnd']
     CESM_filetypes = ['atm']
     # WRF experiments (short or long name)
-#     WRF_project = 'GreatLakes' # only GreatLakes experiments
-    WRF_project = 'WesternCanada' # only WesternCanada experiments
+    WRF_project = 'GreatLakes' # only GreatLakes experiments
+#     WRF_project = 'WesternCanada' # only WesternCanada experiments
 #     WRF_experiments = None # use None to process all WRF experiments
     WRF_experiments = []
-    WRF_experiments += ['3km-ensemble','erai-3km','max-3km','max-3km-2100'][2:]
+#     WRF_experiments += ['3km-ensemble','erai-3km','max-3km','max-3km-2100'][2:]
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
 #     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
 #     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100',]
@@ -262,6 +262,12 @@ if __name__ == '__main__':
 #     WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]
 #     WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
 #     WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
+    WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
+    WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
+    WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
+    WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
+    WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
+    WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
 #     WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['g-ensemble']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
@@ -281,10 +287,10 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-    domains = (1,2) # domains to be processed
+    domains = (1,) # domains to be processed
 #     domains = None # process all domains
-#     WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad',) # filetypes to be processed
-    WRF_filetypes = ('hydro',) # filetypes to be processed
+    WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad',) # filetypes to be processed
+#     WRF_filetypes = ('hydro',) # filetypes to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); modes = ('time-series',); periods = None
     # grid to project onto
@@ -292,7 +298,7 @@ if __name__ == '__main__':
 #     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 #     grids['grw1'] = None # high-res grid for GRW, 1km
-#     grids['grw2'] = None # small grid for GRW, 5km
+    grids['grw2'] = None # small grid for GRW, 5km
 #     grids['snw1'] = None # large grid for whole Canada
 #     grids['can1'] = None # large grid for whole Canada
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
@@ -301,7 +307,7 @@ if __name__ == '__main__':
 #     grids['glb1-90km'] = ('d01',) # 90km GLB domain
 #     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
 #     grids['arb3'] = ('d01','d02','d03',) # WRF standard ARB inner domain
-    grids['arb3'] = ('d03',) # WRF standard ARB inner domain
+#     grids['arb3'] = ('d03',) # WRF standard ARB inner domain
 # #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 # #     grids['ARB_large'] = ('025','05') # large custom geographic grids
 #     grids['cesm1x1'] = None # CESM 1-deg. grid
