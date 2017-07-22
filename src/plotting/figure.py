@@ -255,29 +255,41 @@ class MyFigure(Figure):
     lfeedback = kwargs.pop('lfeedback', None) or kwargs.pop('feedback', None)
     lreplaceSpace = kwargs.pop('lreplaceSpace', True) and kwargs.pop('lreplaceSpace', True)
     filetype = kwargs.pop('filetype', 'pdf')
-    if not filetype.startswith('.'): filetype = '.'+filetype
+    lword = kwargs.pop('lword', True) # also produce M$ Word compatible filetype (mainly EPS version of PDFs) 
     # construct filename
-    filename = ''
+    basename = ''
     for arg in args: 
       if arg is not None:
         if isinstance(arg, (list,tuple)):
-          for a in arg: filename += str(a)
-        else: filename += str(arg)
-        filename += '_'
-    filename = filename[:-1] # remove last underscore
-    if not filename.endswith(filetype): filename += filetype
+          for a in arg: basename += str(a)
+        else: basename += str(arg)
+        basename += '_'
+    basename = basename[:-1] # remove last underscore
     # replace spaces, if desired
     if lreplaceSpace:
-        filename = filename.replace(' ', '_')
+        basename = basename.replace(' ', '_')
+    # add filename extension
+    filename = '{}.{}'.format(basename,filetype)
     # update print settings
     sf = self.print_settings.copy() # print properties
     sf.update(kwargs) # update with kwargs
     # save file
-    if lfeedback: print('Saving figure in '+filename)
-    if folder is not None:
+    if lfeedback: print("Saving figure as '{:s}'".format(filename))
+    if folder:
       filename = '{:s}/{:s}'.format(folder,filename)
       if lfeedback: print("('{:s}')".format(folder))
     self.savefig(filename, **sf) # save figure to pdf
+    # save M$ Word compatible file version
+    if lword:
+        # determine alternative filetype
+        alttype = None
+        if filetype.lower() == 'pdf': alttype = 'eps'
+        # save alternative format
+        if alttype:
+            altname = '{}.{}'.format(basename,alttype)
+            if lfeedback: print("(Saving alternate format as '{:s}')".format(altname))
+            if folder: altname = '{:s}/{:s}'.format(folder,altname)
+            self.savefig(altname, **sf) # save figure to pdf
 
 
 ## convenience function to return a figure and an array of ImageGrid axes
