@@ -283,7 +283,7 @@ class MyFigure(Figure):
     if lword:
         # determine alternative filetype
         alttype = None
-        if filetype.lower() == 'pdf': alttype = 'eps'
+        if filetype.lower() in ('pdf','eps','svg'): alttype = 'png'
         # save alternative format
         if alttype:
             altname = '{}.{}'.format(basename,alttype)
