@@ -460,9 +460,9 @@ if __name__ == '__main__':
         # settings for testing and debugging
         NP = 2; ldebug = False # for quick computations
 #         NP = 1 ; ldebug = True # just for tests
-#         modes = ('time-series','climatology')
+        modes = ('time-series','climatology')
 #         modes = ('annual-mean',) # 'climatology','time-series'
-        modes = ('climatology',)  
+#         modes = ('climatology',)  
         loverwrite = False
         exp_list= None
         # obs variables
@@ -523,9 +523,9 @@ if __name__ == '__main__':
 #         WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]  # bc_reference = 'g-ensemble'
 #         WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
 #         WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
-#         WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]  # bc_reference = 't-ensemble'
-#         WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
-#         WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
+        WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]  # bc_reference = 't-ensemble'
+        WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
+        WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
         # other WRF parameters 
 #         domains = 2 # domains to be processed
 #         domains = 1 # domains to be processed
@@ -537,6 +537,7 @@ if __name__ == '__main__':
         bc_method = 'AABC'; bc_tag = bc_method+'_' # bias correction method (None: no bias correction)        
         obs_dataset = 'NRCan' # the observational dataset 
         bc_reference = None # reference experiment (None: auto-detect based on name)
+        bc_reference = 't-ensemble'
         bc_varmap = dict(Tmin=('Tmin','TSmin'), Tmax=('Tmax','TSmax'), T2=('T2','Tmean'), pet_wrf=('pet_wrf','evap'), 
                          SWDNB=('SWDNB','SWUPB','SWD'),SWD=('SWDNB','SWUPB','SWD'),)
         bc_args = dict(grid=None, domain=None, lgzip=True, varmap=bc_varmap) # missing/None parameters are inferred from experiment
