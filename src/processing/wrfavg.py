@@ -245,7 +245,7 @@ if __name__ == '__main__':
   else:
 #     NP = 1 ; ldebug = True # just for tests
     NP = 3 ; ldebug = False # just for tests
-    loverwrite = True
+    loverwrite = False
     varlist = None
     WRF_project = 'GreatLakes'
     WRF_experiments = []
@@ -253,13 +253,13 @@ if __name__ == '__main__':
 #     WRF_experiments += ['g-ctrl','g-ens-A','g-ens-B','g-ens-C',
 #                    'g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',
 #                    'g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
-#     WRF_experiments += [ 't-ctrl','t-ens-A','t-ens-B','t-ens-C',
-#                    't-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',
-#                    't-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
+    WRF_experiments += [ 't-ctrl','t-ens-A','t-ens-B','t-ens-C',
+                   't-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',
+                   't-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
 #     WRF_experiments = ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2050',
 #                    't3-ensemble','t3-ensemble-2050','t3-ensemble-2050']
-    WRF_experiments += ['erai-g3','erai-t3']
-    WRF_experiments += ['erai-g','erai-t']
+#     WRF_experiments += ['erai-g3','erai-t3']
+#     WRF_experiments += ['erai-g','erai-t']
 #     WRF_experiments = ['g-ens-A','g-ctrl']
 #     WRF_experiments += ['g-ctrl'+tag for tag in ('','-2050','-2100')]
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
@@ -273,13 +273,13 @@ if __name__ == '__main__':
 #     periods += [9]
 #     periods += [10]
     periods += [15]
-    periods += [30]
+#     periods += [30]
 #     domains = 2 # domains to be processed
     domains = None # process all domains
-    WRF_filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed # ,'rad'
-#     WRF_filetypes = ['hydro',] #'xtrm','hydro','lsm','rad']
+#     WRF_filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed # ,'rad'
+    WRF_filetypes = ['hydro','xtrm','hydro','lsm','rad']
 #     WRF_filetypes = ['rad'] # filetypes to be processed
-    grid = None # use native grid
+    grid = 'can1' # use native grid
 
   # check and expand WRF experiment list
   WRF_experiments = getExperimentList(WRF_experiments, WRF_project, 'WRF')

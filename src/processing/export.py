@@ -463,7 +463,7 @@ if __name__ == '__main__':
         modes = ('time-series','climatology')
 #         modes = ('annual-mean',) # 'climatology','time-series'
 #         modes = ('climatology',)  
-        loverwrite = False
+        loverwrite = True
         exp_list= None
         # obs variables
 #         load_list = ['lat2D','lon2D','liqwatflx','pet']
@@ -514,15 +514,15 @@ if __name__ == '__main__':
 #         WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']
 #         WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #         WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-#         WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
-#         WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
-#         WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
-#         WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
-#         WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
-#         WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
-#         WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]  # bc_reference = 'g-ensemble'
-#         WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
-#         WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
+        WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
+        WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
+        WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
+        WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
+        WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
+        WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
+        WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]  # bc_reference = 'g-ensemble'
+        WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
+        WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
         WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]  # bc_reference = 't-ensemble'
         WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
         WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
@@ -533,18 +533,18 @@ if __name__ == '__main__':
         WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
 #         WRF_filetypes = ('const',) # with radiation files
         ## bias-correction paramter
-#         bc_method = None; bc_tag = '' # no bias correction
-        bc_method = 'AABC'; bc_tag = bc_method+'_' # bias correction method (None: no bias correction)        
+        bc_method = None; bc_tag = '' # no bias correction
+#         bc_method = 'AABC'; bc_tag = bc_method+'_' # bias correction method (None: no bias correction)        
         obs_dataset = 'NRCan' # the observational dataset 
-        bc_reference = None # reference experiment (None: auto-detect based on name)
-        bc_reference = 't-ensemble'
+#         bc_reference = None # reference experiment (None: auto-detect based on name)
+        bc_reference = 'g-ensemble'
         bc_varmap = dict(Tmin=('Tmin','TSmin'), Tmax=('Tmax','TSmax'), T2=('T2','Tmean'), pet_wrf=('pet_wrf','evap'), 
                          SWDNB=('SWDNB','SWUPB','SWD'),SWD=('SWDNB','SWUPB','SWD'),)
         bc_args = dict(grid=None, domain=None, lgzip=True, varmap=bc_varmap) # missing/None parameters are inferred from experiment
         ## export to ASCII raster
 #         # typically a specific grid is required
 #         grids = [] # list of grids to process
-# #         grids += [None] # special keyword for native grid
+# #         grids += [None]; project = None # special keyword for native grid
 #         grids += ['grw2']; project = 'GRW' # small grid for GRW project
 # #         grids += ['asb1']; project = 'ASB' # main grid for ASB project
 # #         grids += ['brd1']; project = 'ASB' # small grid for ASB project
@@ -563,8 +563,8 @@ if __name__ == '__main__':
 # #             compute_list = ['liqwatflx',], exp_list= ['lat2D','lon2D','zs','liqwatflx','pet_wrf'], # short varlist for quick export
 # #             exp_list= ['pet_wrf'], compute_list = [], # varlist for export
 # #             exp_list = load_list, # varlist for Obs is same as load_list
-#             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT'),bc_tag),
-# #             folder = '//AQFS1/Data/temp_data_exchange/{PROJECT}/{GRID}/{EXPERIMENT}/{PERIOD}/climate_forcing/',
+# #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT'),bc_tag),
+#             folder = '//AQFS1/Data/temp_data_exchange/{PROJECT}/{GRID}/{EXPERIMENT}/{PERIOD}/climate_forcing/',
 # #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/land_data/'.format(os.getenv('HGS_ROOT')),
 # #             folder = '//AQFS1/Data/temp_data_exchange/{PROJECT}/{GRID}/{EXPERIMENT}/land_data/',
 #             prefix = '{GRID}', # based on keyword arguments
@@ -572,8 +572,8 @@ if __name__ == '__main__':
 #             fillValue = 0, noDataValue = -9999, # in case we interpolate across a missing value...
 #             lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
         ## export to NetCDF (aux-file)
-#         grids = [None] # special keyword for native grid
-        grids = ['grw2'] # GRW main grid
+        grids = [None] # special keyword for native grid
+#         grids = ['grw2'] # GRW main grid
         exp_list = ['netrad','netrad_bb0','netrad_bb','vapdef','pet','pet_wrf','petrad','petwnd']
         exp_list += ['Tmin','Tmax','T2','Tmean','TSmin','TSmax','SWD','SWDNB','SWUPB','zs','lat2D','lon2D',]
         exp_list += ['waterflx','liqwatflx','liqprec','solprec','precip','snow','snowh','snwmlt',]

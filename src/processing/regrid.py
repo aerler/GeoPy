@@ -207,11 +207,11 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 2 ; ldebug = False # just for tests
+    NP = 4 ; ldebug = False # just for tests
 #     modes = ('climatology','time-series') # 'climatology','time-series'
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = True
+    loverwrite = False
     varlist = None
 #     varlist = ['LU_INDEX',]
     periods = []
@@ -256,18 +256,18 @@ if __name__ == '__main__':
 #     WRF_experiments += ['erai-g','erai-t']
 #     WRF_experiments += ['erai-g3','erai-t3']
 #     WRF_experiments += ['t3-ensemble-2100','g3-ensemble-2100']
-#     WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]
-#     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
-#     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
-#     WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]
-#     WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
-#     WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
-    WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
-    WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
-    WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
-    WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
-    WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
-    WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
+    WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]
+    WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
+    WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
+    WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]
+    WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
+    WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
+#     WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
+#     WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
+#     WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
+#     WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
+#     WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
+#     WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
 #     WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['g-ensemble']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
@@ -298,9 +298,9 @@ if __name__ == '__main__':
 #     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 #     grids['grw1'] = None # high-res grid for GRW, 1km
-    grids['grw2'] = None # small grid for GRW, 5km
+#     grids['grw2'] = None # small grid for GRW, 5km
 #     grids['snw1'] = None # large grid for whole Canada
-#     grids['can1'] = None # large grid for whole Canada
+    grids['can1'] = None # large grid for whole Canada
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 # #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain

@@ -1009,11 +1009,13 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
     if ensname in enses: ensemble = enses[ensname]
     else: raise KeyError, "Ensemble name '{:s}' not found in ensemble list.".format(ensname)
   # figure out time period
-  if years is None: montpl = (0,180)
+  if years is None: 
+    montpl = (0,180-1)
+    warn('Trimming ensemble members to 15 years (time_idx=[0,179]).')
   elif isinstance(years,(list,tuple)) and len(years)==2: 
     if not all([isInt(yr) for yr in years]): raise TypeError, years
-    montpl = (years[0]*12,years[1]*12)
-  elif isInt(years): montpl = (0,years*12)
+    montpl = (years[0]*12,years[1]*12-1)
+  elif isInt(years): montpl = (0,years*12-1)
   else: raise TypeError, years
   # special treatment for single experiments (i.e. not an ensemble...)
   if not isinstance(ensemble,(tuple,list)):
@@ -1080,11 +1082,11 @@ if __name__ == '__main__':
     
   
 #   mode = 'test_climatology'
-  mode = 'test_timeseries'
+#   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
-#   mode = 'test_point_ensemble'
+  mode = 'test_point_ensemble'
 #   mode = 'pickle_grid' 
 #   pntset = 'wcshp'
   pntset = 'glbshp'
@@ -1135,7 +1137,7 @@ if __name__ == '__main__':
   elif mode == 'test_climatology':
     
     print('')
-    dataset = loadWRF(experiment='g-ctrl', domains=2, grid='grw1', filetypes=['hydro'], 
+    dataset = loadWRF(experiment='g-ctrl', domains=2, grid=None, filetypes=['hydro'], 
                       period=(1979,1994), exps=WRF_exps)
 #     dataset = loadWRF(experiment='max-ensemble', domains=None, filetypes=['plev3d'], period=(1979,1994),
 #                       varlist=['u','qhv','cqwu','cqw','RH'], lconst=True, exps=WRF_exps)
@@ -1177,7 +1179,7 @@ if __name__ == '__main__':
   elif mode == 'test_ensemble':
     
     print('')
-    dataset = loadWRF_Ensemble(ensemble='max-ens', varlist=['precip','MaxPrecip_1d'], filetypes=['hydro'], domains=2, exps=WRF_exps, enses=ensembles)
+    dataset = loadWRF_Ensemble(ensemble='g-ens', varlist=['precip','MaxPrecip_1d'], filetypes=['hydro'], domains=2, exps=WRF_exps, enses=ensembles)
 #     dataset = loadWRF_Ensemble(ensemble=['max-ctrl'], varlist=['precip','MaxPrecip_1d'], filetypes=['xtrm'])
 #     dataset = loadWRF_Ensemble(ensemble=['max-ctrl','max-ctrl'], varlist=['precip','MaxPrecip_1d'], filetypes=['xtrm'])
     # 2.03178e-05 0.00013171
@@ -1185,9 +1187,9 @@ if __name__ == '__main__':
     print(dataset)
     print(dataset.name)
     print(dataset.title)
-    print('')
-    print(dataset.precip.mean())
-    print(dataset.MaxPrecip_1d.mean())
+#     print('')
+#     print(dataset.precip.mean())
+#     print(dataset.MaxPrecip_1d.mean())
 #   print('')
 #     print(dataset.time)
 #     print(dataset.time.coord)
