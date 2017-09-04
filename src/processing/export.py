@@ -458,7 +458,7 @@ if __name__ == '__main__':
         export_arguments = config['export_parameters'] # this is actually a larger data structure
     else:
         # settings for testing and debugging
-        NP = 2; ldebug = False # for quick computations
+        NP = 3; ldebug = False # for quick computations
 #         NP = 1 ; ldebug = True # just for tests
         modes = ('time-series','climatology')
 #         modes = ('annual-mean',) # 'climatology','time-series'
@@ -514,22 +514,22 @@ if __name__ == '__main__':
 #         WRF_experiments += ['max-ctrl','max-ctrl-2050','max-ctrl-2100']
 #         WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
 #         WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-        WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
-        WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
-        WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
-        WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
-        WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
-        WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
-        WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]  # bc_reference = 'g-ensemble'
-        WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
-        WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
-        WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]  # bc_reference = 't-ensemble'
-        WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
-        WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
+#         WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
+#         WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
+#         WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
+#         WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
+#         WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
+#         WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
+#         WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]  # bc_reference = 'g-ensemble'
+#         WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
+#         WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
+        WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',] # bc_reference = 't-ensemble'
+#         WRF_experiments += ['t-ctrl-2050','t-ens-A-2050','t-ens-B-2050','t-ens-C-2050',]
+#         WRF_experiments += ['t-ctrl-2100','t-ens-A-2100','t-ens-B-2100','t-ens-C-2100',]
         # other WRF parameters 
-#         domains = 2 # domains to be processed
+        domains = 2 # domains to be processed
 #         domains = 1 # domains to be processed
-        domains = None # process all domains
+#         domains = None # process all domains
         WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
 #         WRF_filetypes = ('const',) # with radiation files
         ## bias-correction paramter

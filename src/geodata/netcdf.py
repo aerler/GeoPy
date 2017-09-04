@@ -39,9 +39,9 @@ def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs
   if not isinstance(ncvar,(nc.Variable,nc.Dataset)): raise TypeError
   atts = kwargs.pop('atts',var.atts.copy()) # name and units are also stored in atts!
   plot = kwargs.pop('plot',var.plot.copy())
-  varnc = VarNC(ncvar, axes=axes, atts=atts, plot=plot, dtype=var.dtype, mode=mode, **kwargs)
-  # copy data
-  if var.data: varnc.load(data=var.getArray(unmask=False,copy=deepcopy))
+  data = var.data_array.copy() if deepcopy else var.data_array
+  varnc = VarNC(ncvar, axes=axes, atts=atts, plot=plot, dtype=var.dtype, mode=mode, 
+                data=data, **kwargs)
   # return VarNC
   return varnc
 
@@ -144,7 +144,11 @@ class VarNC(Variable):
     if dtype is not None: dtype = np.dtype(dtype) # proper formatting
     # some type checking
     if not isinstance(ncvar,nc.Variable): raise TypeError, "Argument 'ncvar' has to be a NetCDF Variable or Dataset."        
-    if data is not None and slices is None and data.shape != ncvar.shape: raise DataError
+    if data is not None:
+      if axes is not None:
+          if data.shape != tuple(len(ax) for ax in axes): raise DataError
+      elif data.shape != ncvar.shape: 
+          raise DataError
     if data is not None and slices is not None and len(slices) != data.ndim:
       raise DataError, "Data and slice have incompatible dimensions!"      
     lstrvar = False; strlen = None
@@ -180,12 +184,12 @@ class VarNC(Variable):
         if not isinstance(slices, (list,tuple)): raise TypeError
         elif not squeeze and ncvar.ndim != len(slices): raise AxisError, (slices,ncvar)
         elif squeeze and len([l for l in ncvar.shape if l > 1]) != len(slices): raise AxisError, (slices,ncvar)
-      else:
+      elif data is None:
         axshape = tuple(ax._len for ax in axes)
         # N.B.: Because this constructor is also used in Axis initialization, and the axis of an Axis 
         #       is the Axis itself, not all class attributes are initialized yet, but self._len is!
         if ncvar.ndim != len(axes) or ncvar.shape != axshape:
-          sqshape = tuple(axl for axl in ncvar.shape if axl > 1)
+          sqshape = tuple(axl for axl in ncvar.shape if axl > 1) # try again, without singleton dimensions
           if len(sqshape) != len(axshape) or sqshape != axshape: 
             raise AxisError, ncvar          
       # N.B.: slicing with index lists can change the shape
@@ -209,8 +213,8 @@ class VarNC(Variable):
     # handle data
     if load and data is not None: raise DataError, "Arguments 'load' and 'data' are mutually exclusive, i.e. only one can be used!"
     elif load and 'r' in self.mode: self.load(data=None) # load data from file
-    # N.B.: load will automatically load teh specified slice
-    elif data is not None and 'w' in self.mode: self.load(data=data) # load data from array
+    # N.B.: load without a data argument will automatically load the specified slice
+    elif data is not None: self.load(data=data) # load data from array
     # sync?
     if 'w' in self.mode: self.sync() 
   
@@ -248,6 +252,8 @@ class VarNC(Variable):
         assert isinstance(self.slices,(list,tuple)) and isinstance(slcs,list)
         # substitute None-slices with the preset slicing directive
         slcs = [sslc if oslc == slice(None) else oslc for oslc,sslc in zip(slcs,self.slices)]
+        # set slices to None, since they unneccessary now, and cause problems when slicing
+        self.slices = None
       # finally, get data!
       data = self.ncvar.__getitem__(slcs) # exceptions handled by netcdf module
       if self.dtype is not None and not np.issubdtype(data.dtype,self.dtype):
@@ -286,10 +292,10 @@ class VarNC(Variable):
         N.B.: this VarNC implementation will by default return another VarNC object, 
               referencing the original NetCDF variable, but with a new slice. '''
     newvar,slcs = super(VarNC,self).slicing(lidx=lidx, lrng=lrng, years=years, listAxis=listAxis, 
-                                        asVar=asVar, lsqueeze=lsqueeze, lcheck=lcheck, 
-                                        lcopy=lcopy, lslices=True, linplace=linplace, **axes)
+                                            asVar=asVar, lsqueeze=lsqueeze, lcheck=lcheck, 
+                                            lcopy=lcopy, lslices=True, linplace=linplace, **axes)
     # transform sliced Variable into VarNC
-    asNC = isinstance(newvar,Variable) and not linplace if asNC is None else asNC
+    asNC = ( isinstance(newvar,Variable) and not linplace and not self.data ) if asNC is None else asNC
     if asNC:
       #for ax in newvar.axes: ax.unload() # will retain its slice, just for test
       axes = []
@@ -301,7 +307,21 @@ class VarNC(Variable):
           else: axes.append(newax) # keep as is
         else: axes.append(newax) # this can be a coordinate list axis
       # figure out slices
-      
+      if self.data: 
+          slcs = None # slices cause problems when data is already loaded
+      elif self.slices and slcs:
+          assert len(self.slices) == len(slcs)
+          newslcs = []
+          for sslc,slc in zip(self.slices,slcs):
+              lsslc = sslc not in (None,slice(None))
+              lslc = slc not in (None,slice(None))
+              if lsslc and lslc: 
+                  # if both slices are non-empty, merging is not trivial... 
+                  raise NotImplementedError("Resolving two actual slices for the same dimension is not implemented at the moment.")
+              elif lsslc: newslcs.append(sslc) # use old slice
+              elif lslc: newslcs.append(slc) # use new slice
+              else: newslcs.append(slice(None)) # empty slice
+          slcs = newslcs
       # create new VarNC instance with different slices
       newvar = asVarNC(newvar, self.ncvar, mode=self.mode, axes=axes, slices=slcs, squeeze=lsqueeze,
                        scalefactor=self.scalefactor, offset=self.offset, transform=self.transform)
@@ -634,7 +654,7 @@ class DatasetNetCDF(Dataset):
               if dim in axes: # if already present, make sure axes are essentially the same
                 tmpax = AxisNC(ncvar=ds.variables[dim], mode='r', **varatts.get(dim,{})) # apply all correction factors...
                 if dim not in check_override and not isEqual(axes[dim][:],tmpax[:]): 
-                  raise DatasetError, "Error constructing Dataset: NetCDF files have incompatible {:s} dimension.".format(dim)
+                  raise DatasetError, "Error constructing Dataset: NetCDF files have incompatible {:s} dimensions: {:d} != {:d}".format(dim,len(axes[dim]),len(tmpax)) 
               else: # if this is a new axis, add it to the list
                 if ds.variables[dim].dtype == '|S1': pass # Variables of type char are currently not implemented
                 else: axes[dim] = AxisNC(ncvar=ds.variables[dim], mode=mode, **varatts.get(dim,{})) # also use overrride parameters

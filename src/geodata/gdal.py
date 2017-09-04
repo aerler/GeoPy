@@ -436,11 +436,14 @@ def getProjection(var, projection=None):
       #       be treated as a GDAL variable, because their geotransform would be different
   # if the variable is map-like, add GDAL properties
   if xlon is not None and ylat is not None:
-    lgdal = True
     # check axes
     axstr = "'x' and 'y'" if isProjected else "'lon' and 'lat'"
     if not isinstance(xlon, Axis) and not isinstance(ylat, Axis): 
       raise AxisError, "Error: attributes {:s} have to be axes.".format(axstr)
+    # check map axes order for variables
+    if isinstance(var,Variable):
+        lgdal = ( var.axes[-2] == ylat and var.axes[-1] == xlon ) # we need the (y,x) or (lat,lon) order for the map
+    else: lgdal = True # for datasets the order does not matter
   else: lgdal = False   
   # return
   return lgdal, projection, isProjected, xlon, ylat

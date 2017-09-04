@@ -546,12 +546,12 @@ class BaseVarTest(unittest.TestCase):
     else:
       # crop data because these tests just take way too long!
       if self.dataset_name == 'NARR':
-        var = self.var(time=slice(0,5), y=slice(190,195), x=slice(0,10))
+        var = self.var(y=slice(190,195), x=slice(0,10))
       else:
-        var = self.var(time=slice(0,5), lat=(50,70), lon=(-120,-110))
+        var = self.var(lat=(50,70), lon=(-120,-110))
     print('') # generic version with cell dimension
     t,x,y = var.axes
-    print var.tabulate(row=y.name, column=x.name, header=None, labels=None, 
+    print var(time=slice(0,5), lidx=True).tabulate(row=y.name, column=x.name, header=None, labels=None, 
                        cell_str='{0:}', cell_axis=t.name, mode='simple', filename=None)
     print('') # generic version without cell dimension
     print var(time=0, lidx=True).tabulate(row=y.name, column=x.name, header=None, labels=None, 
@@ -1659,7 +1659,7 @@ class GDALVarTest(NetCDFVarTest):
       raise IOError("\nASCII raster test folder does not exist!\n('{:s}')".format(ascii_folder))
     
     ## simple case: load a single compressed 2D raster file
-    filepath = ascii_folder+'/CA_hist/rain/1981/rain_01.asc.gz'
+    filepath = ascii_folder+'/CA12_hist/rain/1981/rain_01.asc.gz'
     #filepath = ascii_folder+'test.asc.gz'
     print("ASCII raster test file: '{:s}'".format(filepath)) # print data folder
     if not os.path.exists(filepath): 
@@ -1689,7 +1689,7 @@ class GDALVarTest(NetCDFVarTest):
     months = Axis(name='month',units='month', coord=range(1,12+1))
     assert len(months)==12, months
     axes = (years, months, None, None)
-    file_pattern = ascii_folder+'/CA_hist/rain/{year:04d}/{NAME:s}_{month:02d}.asc.gz'
+    file_pattern = ascii_folder+'/CA12_hist/rain/{year:04d}/{NAME:s}_{month:02d}.asc.gz'
     # load variable
     var = rasterVariable(name='precip', units='mm/day', axes=axes, atts=None, plot=None, dtype=np.float32, 
                          projection=None, griddef=None, # geographic projection (lat/lon)
@@ -1704,7 +1704,9 @@ class GDALVarTest(NetCDFVarTest):
     assert geotransform == geotransform2D, geotransform
     assert data.shape[-2:] == data2D.shape, data.shape
     assert data.shape[:-2] == (len(years),len(months)), data.shape
-    assert np.all(data.mask[0,:] == True), data.mask[0,:]
+    # N.B.: we only want to load 1981 and 1982; 1980 and 1983 are only loaded to test missing value detection; therefor 
+    #       the first and the last year should be missing entirely and the other years should have the expected mask
+    assert np.all(data.mask[0,:] == True), (np.sum(data.mask[0,:]),data.mask[0,:].size)
     assert np.all(data.mask[1,:] == data2D.mask), data.mask[1,:]
     assert np.all(data.mask[2,:] == data2D.mask), data.mask[2,:]
     assert np.all(data.mask[3,:] == True), data.mask[3,:]
@@ -1833,7 +1835,7 @@ class DatasetGDALTest(DatasetNetCDFTest):
     vardefs['rain_alt'] = dict(name='precip_alt', units='mm/day', axes=('year','month',None,None), 
                                dtype=np.float32, path_params=dict(NAME='rain') )
     # path definition
-    file_pattern = ascii_folder+'/CA_hist/{NAME:s}/{year:04d}/{NAME:s}_{month:02d}.asc.gz'
+    file_pattern = ascii_folder+'/CA12_hist/{NAME:s}/{year:04d}/{NAME:s}_{month:02d}.asc.gz'
     # load variable
     dataset = rasterDataset(name='NRCAN', title='NRCan', atts=None, projection=None, griddef=None, # geographic projection (lat/lon)
                             vardefs=vardefs, axdefs=axdefs, file_pattern=file_pattern, 

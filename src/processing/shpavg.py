@@ -241,13 +241,13 @@ if __name__ == '__main__':
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
 #     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
 # #     WRF_experiments += ['g-ensemble','t-ensemble']
-    WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
+#     WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
 #     WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
 #     WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
-    WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
+#     WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
 #     WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
 #     WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
-    WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]
+#     WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]
 #     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
 #     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
     WRF_experiments += ['t-ctrl',     't-ens-A',     't-ens-B',     't-ens-C',]
@@ -262,14 +262,14 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
     # other WRF parameters 
-    domains = None # domains to be processed
-#     domains = (1,) # domains to be processed
+#     domains = None # domains to be processed
+    domains = (2,) # domains to be processed
 #     WRF_filetypes = ('lsm','xtrm','rad','srfc') # 'hydro',
-    WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm','rad','aux') # filetypes to be processed
+#     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm','rad','aux') # filetypes to be processed
 #     WRF_filetypes = ('xtrm','lsm') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None
 #     WRF_filetypes = ('aux','aabc',)
-#     WRF_filetypes = ('hydro',)
+    WRF_filetypes = ('aux',)
     grid = None # grid parameter to load datasets
     # define shape data  
     shapes = OrderedDict()

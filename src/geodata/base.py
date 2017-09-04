@@ -465,7 +465,7 @@ class Variable(object):
     ''' The number of dimensions (inferred from axes). '''
     ndim = len(self.axes)
     if self.data and ndim != self.data_array.ndim: 
-        raise DataError('Dimension mismatch!')
+        raise DataError('Dimension mismatch: {} != {}'.format(ndim,self.data_array.ndim))
     return ndim   
   
   @property
@@ -473,7 +473,7 @@ class Variable(object):
     ''' The length of each dimension (shape of data; inferred from axes). '''
     shape = tuple(len(ax) for ax in self.axes)
     if self.data and shape != self.data_array.shape: 
-        raise DataError('Shape mismatch!')
+        raise DataError('Shape mismatch: {} != {}'.format(shape,self.data_array.shape))
     return shape
   
   @property
@@ -493,7 +493,7 @@ class Variable(object):
         fillValue = self.data_array._fill_value
       elif fillValue != self.data_array._fill_value:
         if not np.isnan(fillValue) or not np.isnan(self.data_array._fill_value):
-          raise DataError, 'FillValue mismatch!' # N.B.: NaN's are never equal           
+          raise DataError('FillValue mismatch: {} != {}'.format(fillValue, self.data_array._fill_value)) # N.B.: NaN's are never equal           
     return fillValue
   @fillValue.setter
   def fillValue(self, fillValue):
