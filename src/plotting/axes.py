@@ -64,7 +64,7 @@ class MyAxes(Axes):
     
   def scatterPlot(self, xvars=None, yvars=None, datasets=None,  xname=None, yname=None, label_ext='',
                   legend=None, llabel=True, labels=None, hline=None, vline=None, title=None, lignore=False,        
-                  flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
+                  flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=False, 
                   lparasiteAxes=False, lrescale=False, scalefactor=1., offset=0., 
                   lprint=False, lfracdiff=False, xlog=False, ylog=False, xlim=None, ylim=None, 
                   expand_list=None, lproduct='inner', plotatts=None, **plotargs):
@@ -151,7 +151,7 @@ class MyAxes(Axes):
     
   def linePlot(self, varlist, varname=None, bins=None, support=None, errorbar=None, errorband=None,  
                legend=None, llabel=True, labels=None, label_ext='', hline=None, vline=None, title=None,        
-               flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
+               flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=False, 
                lparasiteMeans=False, lparasiteErrors=False, parasite_axes=None, lrescale=False, 
                scalefactor=1., offset=0., bootstrap_axis='bootstrap', lprint=False, lfracdiff=False,
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lperi=False, lignore=False,
@@ -244,6 +244,8 @@ class MyAxes(Axes):
           if err is not None: err *= errorscale
         if errorevery is None:
           errorevery = len(axe)//25 + 1
+        if 'color' not in plotarg: 
+          plotarg['color'] = self._get_lines.prop_cycler.next()['color']
         # figure out orientation and call plot function
         if self.flipxy: # flipped axes
           xlen = len(val); ylen = len(axe) # used later
@@ -280,7 +282,7 @@ class MyAxes(Axes):
   def bandPlot(self, upper=None, lower=None, varname=None, bins=None, support=None, lignore=False,   
                legend=None, llabel=False, labels=None, hline=None, vline=None, title=None,   
                lrescale=False, scalefactor=1., offset=0., bootstrap_axis='bootstrap', band_vars=None,  
-               flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
+               flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=False, 
                xlog=None, ylog=None, xlim=None, ylim=None, lsmooth=False, lperi=False, lprint=False, 
                expand_list=None, lproduct='inner', method='pdf', plotatts=None, **plotargs):
     ''' A function to draw a colored bands between two lists of 1D variables representing the upper
@@ -385,7 +387,7 @@ class MyAxes(Axes):
                  sample_axis=None, lmedian=None, median_fmt='', lmean=True, mean_fmt='', band_vars=None, 
                  bootstrap_axis=None, lrescale=False, scalefactor=1., offset=0., colors=None, color = None,
                  legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
-                 flipxy=None, xlabel=True, ylabel=False, xticks=True, yticks=True, reset_color=None, 
+                 flipxy=None, xlabel=True, ylabel=False, xticks=True, yticks=True, reset_color=False, 
                  xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False,
                  lignore=False, expand_list=None, lproduct='inner', plotatts=None, method='pdf',
                  where=None, bandalpha=None, edgecolor=None, facecolor=None, bandarg=None, **plotargs):
@@ -479,7 +481,7 @@ class MyAxes(Axes):
                bootstrap_axis='bootstrap', lmedian=None, median_fmt='', lmean=False, mean_fmt='', 
                lvar=False, lvarBand=False, band_vars=None, lrescale=False, scalefactor=1., offset=0.,
                legend=None, llabel=True, labels=None, hline=None, vline=None, title=None,        
-               flipxy=None, xlabel=True, ylabel=False, xticks=True, yticks=False, reset_color=None, 
+               flipxy=None, xlabel=True, ylabel=False, xticks=True, yticks=False, reset_color=False, 
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lprint=False,
                lignore=False, expand_list=None, lproduct='inner', plotatts=None,
                where=None, bandalpha=None, edgecolor=None, facecolor=None, bandarg=None,  
@@ -539,7 +541,7 @@ class MyAxes(Axes):
                 lnormalize=True, lcumulative=0, legend=None, llabel=True, labels=None, lflatten=True,
                 colors=None, color=None, align='mid', rwidth=None, bottom=None, weights=None, 
                 xlabel=True, ylabel=True, lignore=False,  
-                xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=True, 
+                xticks=True, yticks=True, hline=None, vline=None, title=None, reset_color=False, 
                 flipxy=None, log=False, xlim=None, ylim=None, lprint=False, plotatts=None, **histargs):
     ''' A function to draw histograms of a list of 1D variables into an axes, 
         and annotate the plot based on variable properties. '''
@@ -1205,7 +1207,7 @@ class TaylorAxes(MyAxes):
         
     def taylorPlot(self, varlist, varname=None, legend=None, llabel=True, labels=None, title=None, 
                    lparasiteMeans=False, lignore=False, rmse_lines=6, pval=0.05, linsig=False,
-                   xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=None, 
+                   xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=False, 
                    lrescale=False, scalefactor=1., offset=0., lnormalize=True, labs=True,
                    lprint=False, ldebug=False, std_lim=None, reference=None, loverride=False,
                    expand_list=None, lproduct='inner', plotatts=None, corr_args=None, **plotargs):

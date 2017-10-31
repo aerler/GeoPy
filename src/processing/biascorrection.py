@@ -202,14 +202,16 @@ if __name__ == '__main__':
 #     CESM_experiments += ['Ens']
     CESM_filetypes = ['atm','lnd']
     # WRF experiments (short or long name)
-    WRF_project = 'GreatLakes' # only GreatLakes experiments
-#     WRF_project = 'WesternCanada' # only WesternCanada experiments
+#     WRF_project = 'GreatLakes' # only GreatLakes experiments
+    WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-    WRF_experiments += ['erai-g3','erai-t3']
-    WRF_experiments += ['erai-g','erai-t']
+#     WRF_experiments += ['erai-g3','erai-t3']
+#     WRF_experiments += ['erai-g','erai-t']
 #     WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['g3-ensemble','t3-ensemble']
 #     WRF_experiments += ['g-ensemble']
+    WRF_experiments += ['erai-max','erai-ctrl']
+    WRF_experiments += ['max-ensemble','ctrl-ensemble']
     # other WRF parameters 
 #     WRF_domains = 1 # domains to be processed (None=all)
     WRF_domains = None # process all domains
@@ -228,7 +230,7 @@ if __name__ == '__main__':
     varlist = None # variables that should be bias-corrected
 #     grid = 'grw2' # need a common grid for all datasets
 #     grid = 'asb1' # need a common grid for all datasets
-    grid = 'snw1' # need a common grid for all datasets
+#     grid = 'snw1' # need a common grid for all datasets
     bc_method = 'AABC' # annual average bias correction method
 #     bc_method = 'Delta' # grid-point-wise monthly bias correction method
     bc_args = dict() # paramters for bias correction
