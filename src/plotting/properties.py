@@ -32,6 +32,7 @@ class PlotAtts(namedtuple('PlotAtts', ['name','title','units','scale', 'preserve
     ''' create a copy of the namedtuple (new instance); fields specified as kwargs will be replaced '''
     return self._replace(**kwargs)
       
+precip_units = r'$mm/day$' # equivalent to '$kg m^{-2} day^{-1}$'
 
 # dictionary of variable specific plot
 variablePlotatts = dict()
@@ -268,43 +269,43 @@ variablePlotatts['acprec'] = tmp
 
 ## Cumulus Precipitation Rate
 tmp = PlotAtts(name = 'precip (cu)', title = 'Cumulus Precipitation Rate', 
-               units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['preccu'] = tmp
 
 ## Accumulated Grid-scale Precipitation
 tmp = PlotAtts(name = 'precip (grid)', title = 'Grid-scale Precipitation Rate', 
-               units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['precnc'] = tmp
 
 ## Solid Precipitation Rate
 tmp = PlotAtts(name = 'solprec', title = 'Solid Precipitation Rate', 
-               units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['solprec'] = tmp
 
 ## Liquid Precipitation Rate
 tmp = PlotAtts(name = 'liqprec', title = 'Liquid Precipitation Rate', 
-               units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['liqprec'] = tmp
 
 ## Total Precipitation Rate
 tmp = PlotAtts(name = 'precip', title = 'Total Precipitation Rate', 
-               units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['precip'] = tmp
 
 ## Wet-day Precipitation Rate
 tmp = PlotAtts(name = 'Wet-day Precip', title = 'Wet-day Precipitation Rate', 
-               units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['wetprec'] = tmp
 
 ## Wet-day Precipitation Rate
 tmp = PlotAtts(name = 'Corrected Precip', title = 'Precipitation Exceeding Dry-day Threshold', 
-               units = '$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['dryprec'] = tmp
 
@@ -392,22 +393,22 @@ variablePlotatts['LWUPT'] = tmp
 
 ## Potential Evapo-Transpiration (WRF)
 tmp = PlotAtts(name = 'WRF PET', title = 'Potential Evapo-Transpiration (WRF)', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['pet_wrf'] = tmp
 ## Potential Evapo-Transpiration
 tmp = PlotAtts(name = 'PET', title = 'Potential Evapo-Transpiration', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['pet'] = tmp
 ## Radiation Term (PET)
 tmp = PlotAtts(name = 'Rad. Term', title = 'Radiation Term of PET', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['petrad'] = tmp
 ## Wind Term (PET)
 tmp = PlotAtts(name = 'Wind Term', title = 'Wind Term of PET', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['petwnd'] = tmp
 
@@ -419,55 +420,55 @@ variablePlotatts['vapdef'] = tmp
 
 ## Evapo-Transpiration
 tmp = PlotAtts(name = 'ET', title = 'Evapo-Transpiration', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['evap'] = tmp
 
 ## Net Precipitation
 tmp = PlotAtts(name = 'P - ET', title = 'Precipitation - Evaporation', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['p-et'] = tmp
 
 ## Net Surface Moisture Flux
 tmp = PlotAtts(name = 'Water Flux', title = 'Net Water Flux', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['waterflx'] = tmp
 
 ## Water Flux into the Land Surface
 tmp = PlotAtts(name = 'Water Flux', title = 'Liquid Water Flux', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['liqwatflx'] = tmp
 
 ## Snowmelt (water equivalent)
 tmp = PlotAtts(name = 'Snowmelt', title = 'Snowmelt', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['snwmlt'] = tmp
 
 ## Total Runoff
 tmp = PlotAtts(name = 'Runoff', title = 'Total Runoff', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['runoff'] = tmp
 
 ## Surface Runoff
 tmp = PlotAtts(name = 'Srfc. RO', title = 'Surface Runoff', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['sfroff'] = tmp
 
 ## Underground Runoff
 tmp = PlotAtts(name = 'Sub-srfc. RO', title = 'Underground Runoff', 
-               units = r'$kg m^{-2} day^{-1}$', scalefactor = 86400.)
+               units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['ugroff'] = tmp
 
 ## Discharge (river flow)
 tmp = PlotAtts(name = 'Discharge', title = 'Discharge', 
-               units = r'$10^6 kg s^{-1}$', scalefactor = 1e-6)
+               units = r'$m^3 s^{-1}$', scalefactor = 1e-3)
 # add to collection
 variablePlotatts['discharge'] = tmp
 

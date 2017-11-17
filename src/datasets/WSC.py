@@ -30,26 +30,33 @@ if not os.path.exists(shape_root):
 root_folder = shape_root
 
 # variable attributes and name
-variable_attributes = dict(runoff = dict(name='runoff', units='kg/m^2/s', atts=dict(long_name='Average Runoff Rate')), # average flow rate
-                           roff_std = dict(name='roff_std', units='kg/m^2/s', atts=dict(long_name='Runoff Rate Variability')), # flow rate variability
-                           roff_sem = dict(name='roff_sem', units='kg/m^2/s', atts=dict(long_name='Runoff Rate Error')), # flow rate error
-                           roff_max = dict(name='roff_max', units='kg/m^2/s', atts=dict(long_name='Maximum Runoff Rate')), # maximum flow rate
-                           roff_min = dict(name='roff_min', units='kg/m^2/s', atts=dict(long_name='Minimum Runoff Rate')), # minimum flow rate
-                           discharge = dict(name='discharge', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Average Flow Rate')), # average flow rate
-                           discstd = dict(name='StdDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Flow Rate Variability')), # flow rate variability
-                           discsem = dict(name='SEMDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Flow Rate Error')), # flow rate error
-                           discmax = dict(name='MaxDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Maximum Flow Rate')), # maximum flow rate
-                           discmin = dict(name='MinDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Minimum Flow Rate')), # minimum flow rate
-                           level = dict(name='level', units='m', atts=dict(long_name='Water Level'))) # water level
+variable_attributes_kgs = dict(runoff = dict(name='runoff', units='kg/m^2/s', atts=dict(long_name='Average Runoff Rate')), # average flow rate
+                               roff_std = dict(name='roff_std', units='kg/m^2/s', atts=dict(long_name='Runoff Rate Variability')), # flow rate variability
+                               roff_sem = dict(name='roff_sem', units='kg/m^2/s', atts=dict(long_name='Runoff Rate Error')), # flow rate error
+                               roff_max = dict(name='roff_max', units='kg/m^2/s', atts=dict(long_name='Maximum Runoff Rate')), # maximum flow rate
+                               roff_min = dict(name='roff_min', units='kg/m^2/s', atts=dict(long_name='Minimum Runoff Rate')), # minimum flow rate
+                               discharge = dict(name='discharge', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Average Flow Rate')), # average flow rate
+                               discstd = dict(name='StdDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Flow Rate Variability')), # flow rate variability
+                               discsem = dict(name='SEMDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Flow Rate Error')), # flow rate error
+                               discmax = dict(name='MaxDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Maximum Flow Rate')), # maximum flow rate
+                               discmin = dict(name='MinDisc', units='kg/s', fileunits='m^3/s', scalefactor=1000., atts=dict(long_name='Minimum Flow Rate')), # minimum flow rate
+                               level = dict(name='level', units='m', atts=dict(long_name='Water Level'))) # water level
+kgs_to_mms = {'kg/m^2/s':'mm/s', 'kg/s':'m^3/s'}
+variable_attributes_mms = deepcopy(variable_attributes_kgs)
+for varatts in variable_attributes_mms.values():
+    varatts['units'] = kgs_to_mms.get(varatts['units'],varatts['units'])
 # list of variables to load
-variable_list = variable_attributes.keys() # also includes coordinate fields    
+variable_list = variable_attributes_kgs.keys() # also includes coordinate fields    
 # alternate WSC runoff variable names (for use with aggregation mode)
-agg_varatts = dict()
-for varname,varatts in variable_attributes.iteritems():
+agg_varatts_kgs = dict()
+for varname,varatts in variable_attributes_kgs.items():
   tmpatts = varatts.copy() 
   if tmpatts['units'] == 'kg/m^2/s': tmpatts['name'] = 'runoff'  # always name 'runoff'
   elif tmpatts['units'] == 'kg/s': tmpatts['name'] = 'discharge'  # always name 'discharge'
-  agg_varatts[varname] = tmpatts    
+  agg_varatts_kgs[varname] = tmpatts    
+agg_varatts_mms = deepcopy(agg_varatts_kgs)
+for varatts in agg_varatts_mms.values():
+    varatts['units'] = kgs_to_mms.get(varatts['units'],varatts['units'])
 
 
 # change scalefactor and update PlotAtts of Variables
@@ -59,14 +66,19 @@ def updateScalefactor(dataset, varlist, scalefactor=None):
     if isinstance(varlist,dict): vardict = varlist
     elif isinstance(varlist,(list,tuple)): vardict = {varname:scalefactor for varname in varlist}
     else: raise TypeError(varlist)
+    # scalefactor string
+    scalestr = lambda s: None if s == 1 else '10^{:d}'.format(-1*int(np.log10(s)))
     # loop over variables
     for varname,scalefactor in vardict.items():
         if varname in dataset and scalefactor is not None:
             var = dataset[varname]
-            plot = var.plot
+            oldstr = scalestr(var.plot.scalefactor)
+            newstr = scalestr(scalefactor)
             # replace old PlotAtts with new ones
-            var.plot = plot.copy(units=plot.units.replace('10^6','10^{:d}'.format(-1*int(np.log10(scalefactor)))), 
-                                 scalefactor=scalefactor)
+            if oldstr and newstr: units = var.plot.units.replace(oldstr,newstr)
+            elif oldstr: units = var.plot.units.replace(oldstr,'').strip()
+            else: units = r'${}$ {}'.format(newstr,var.plot.units)
+            var.plot = var.plot.copy(units=units, scalefactor=scalefactor)
     # return dataset, although not really necessary
     return dataset
 
@@ -82,7 +94,7 @@ class Province(Shape):
   ''' a Shape class for provinces '''
   def __init__(self, name=None, long_name=None, shapefile=None, folder=None, load=False, ldebug=False,
                data_source=None, shapetype=None):
-    ''' soem additional information '''
+    ''' some additional information '''
     if shapetype is None: shapetype = 'PRV'
     if folder is None: folder = '{:s}/Provinces/{:s}/'.format(shape_root,long_name)
     super(Province,self).__init__(name=name, long_name=long_name, shapefile=shapefile, folder=folder, 
@@ -160,11 +172,11 @@ class Basin(Shape):
     self.maingage = None if maingage is None else GageStation(basin=self.name, name=maingage, folder=folder) # just name, for now
     
   def getMainGage(self, varlist=None, varatts=None, aggregation=None, mode='timeseries', 
-                  filetype='monthly'):
+                  filetype='monthly', lkgs=True):
     ''' return a dataset with data from the main gaging station (default: timeseries) '''
     if self.maingage is not None:
       station = loadGageStation(basin=self, station=self.maingage, varlist=varlist, varatts=varatts, 
-                                aggregation=aggregation, mode=mode, filetype=filetype)
+                                aggregation=aggregation, mode=mode, filetype=filetype, lkgs=lkgs)
     else: station = None 
     return station
 
@@ -364,7 +376,7 @@ def getGageStation(basin=None, station=None, name=None, folder=None, river=None,
 def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='climatology', 
                     aggregation=None, filetype='monthly', folder=None, name=None, period=None,
                     basin_list=None, lcheck=True, lexpand=True, lfill=True, lflatten=True,
-                    scalefactors=None, title=None):
+                    lkgs=True, scalefactors=None, title=None):
   ''' function to load hydrograph climatologies and timeseries for a given basin '''
   ## resolve input
   if mode == 'timeseries' and aggregation: 
@@ -377,19 +389,19 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   elif not isinstance(varlist,(list,tuple)): raise TypeError  
   varlist = list(varlist) # make copy of varlist to avoid interference
   if varatts is None: 
-    if aggregation is None: varatts = deepcopy(variable_attributes) # because of nested dicts
-    else: varatts = deepcopy(agg_varatts) # because of nested dicts
+    if aggregation is None: varatts = variable_attributes_kgs if lkgs else variable_attributes_mms
+    else: varatts = agg_varatts_kgs if lkgs else agg_varatts_mms
   elif not isinstance(varatts,dict): raise TypeError
   
   ## read csv data
   # time series data and time coordinates
   lexpand = True; lfill = True
   if mode == 'climatology': lexpand = False; lfill = False; lflatten = False
-  data, time = station.getTimeseriesData(units='kg/s', lcheck=True, lexpand=lexpand, lfill=lfill,
-                                         period=period, lflatten=lflatten)
+  data, time = station.getTimeseriesData(units='kg/s' if lkgs else 'm^3/s', lcheck=True, lexpand=lexpand, 
+                                         lfill=lfill, period=period, lflatten=lflatten)
   # station meta data
   metadata = station.getMetaData(lcheck=True)
-
+  den = metadata['shp_area'] if lkgs else ( metadata['shp_area'] / 1000. )
   ## create dataset for station
   dataset = Dataset(name='WSC', title=title or metadata['Station Name'], varlist=[], atts=metadata,) 
   if mode.lower() in ('timeseries','time-series'): 
@@ -401,7 +413,7 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
     # load mean discharge
     dataset += Variable(axes=[timeAxis], data=data, atts=varatts['discharge'])
     # load mean runoff
-    doa = data / metadata['shp_area']  
+    doa = data / den 
     dataset += Variable(axes=[timeAxis], data=doa, atts=varatts['runoff'])
   elif mode == 'climatology': 
     # N.B.: this is primarily for backwards compatibility; it should not be used anymore...
@@ -411,7 +423,7 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
     dataset.addAxis(climAxis, copy=False)
     # extract variables (min/max/mean are separate variables)
     # N.B.: this is mainly for backwards compatibility
-    doa = data / metadata['shp_area']  
+    doa = data / den
     if aggregation is None or aggregation.lower() == 'mean':
       # load mean discharge
       tmpdata = nf.nanmean(data, axis=0)
@@ -482,10 +494,12 @@ def _sliceArgs(slices=None, basin=None, station=None, period=None, years=None):
 
 # function to load gage station climatologies
 def loadWSC_Stn(name=dataset_name, title=None, station=None, basin=None, varlist=None, varatts=None, folder=None, 
-                period=None, years=None, filetype='monthly', basin_list=None, slices=None, scalefactors=None):
+                period=None, years=None, filetype='monthly', basin_list=None, slices=None, lkgs=True, 
+                scalefactors=None):
     ''' Get monthly WSC gage station climatology by station name. '''
     dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='climatology', aggregation='mean',  title=title,
-                              filetype=filetype, folder=folder, name=None, basin_list=basin_list, scalefactors=scalefactors,
+                              filetype=filetype, folder=folder, name=None, basin_list=basin_list, 
+                              lkgs=lkgs, scalefactors=scalefactors,
                               **_sliceArgs(slices=slices, basin=basin, station=station, period=period, years=years))
     if name: dataset.name = name
     # return formatted dataset
@@ -493,10 +507,12 @@ def loadWSC_Stn(name=dataset_name, title=None, station=None, basin=None, varlist
 
 # function to load station time-series
 def loadWSC_StnTS(name=dataset_name, title=None, station=None, basin=None, varlist=None, varatts=None, folder=None, 
-                  period=None, years=None, filetype='monthly', basin_list=None, slices=None, scalefactors=None):
+                  period=None, years=None, filetype='monthly', basin_list=None, slices=None, lkgs=True, 
+                  scalefactors=None):
     ''' Get monthly WSC gage station time-series by station name. '''
     dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='time-series', aggregation=None,  title=title,
-                              filetype=filetype, folder=folder, name=None, basin_list=basin_list, scalefactors=scalefactors,
+                              filetype=filetype, folder=folder, name=None, basin_list=basin_list, 
+                              lkgs=lkgs, scalefactors=scalefactors,
                               **_sliceArgs(slices=slices, basin=basin, station=station, period=period, years=years))
     if name: dataset.name = name
     # return formatted dataset
@@ -504,10 +520,12 @@ def loadWSC_StnTS(name=dataset_name, title=None, station=None, basin=None, varli
 
 # function to load regionally averaged climatologies
 def loadWSC_Shp(name=dataset_name, title=None, shape=None, basin=None, station=None, varlist=None, varatts=None,
-                folder=None, period=None, years=None, filetype='monthly', basin_list=None, slices=None, scalefactors=None):
+                folder=None, period=None, years=None, filetype='monthly', basin_list=None, slices=None, lkgs=True, 
+                scalefactors=None):
     ''' Get monthly WSC gage station climatology by river basin or region. '''
     dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='climatology', aggregation='mean',  title=title,
-                              filetype=filetype, folder=folder, name=None, basin_list=basin_list, scalefactors=scalefactors,
+                              filetype=filetype, folder=folder, name=None, basin_list=basin_list, 
+                              lkgs=lkgs, scalefactors=scalefactors, 
                               **_sliceArgs(slices=slices, basin=basin, station=station, period=period, years=years))
     if name: dataset.name = name
     # return formatted dataset
@@ -515,10 +533,12 @@ def loadWSC_Shp(name=dataset_name, title=None, shape=None, basin=None, station=N
 
 # function to load regional/shape time-series
 def loadWSC_ShpTS(name=dataset_name, title=None, shape=None, basin=None, station=None, varlist=None, varatts=None, 
-                  folder=None, period=None, years=None, filetype='monthly', basin_list=None, slices=None, scalefactors=None):
+                  folder=None, period=None, years=None, filetype='monthly', basin_list=None, slices=None, lkgs=True,
+                  scalefactors=None):
     ''' Get monthly WSC gage station time-series by river basin or region. '''
     dataset = loadGageStation(varlist=varlist, varatts=varatts, mode='time-series', aggregation=None, title=title, 
-                              filetype=filetype, folder=folder, name=None, basin_list=basin_list, scalefactors=scalefactors,
+                              filetype=filetype, folder=folder, name=None, basin_list=basin_list, 
+                              lkgs=lkgs, scalefactors=scalefactors,
                               **_sliceArgs(slices=slices, basin=basin, station=station, period=period, years=years))
     if name: dataset.name = name
     # return formatted dataset
@@ -608,7 +628,7 @@ if __name__ == '__main__':
   # load a random station
   station = 'Conestogo River_Glen Allan'
   stnds = loadGageStation(basin=basin_name, basin_list=basin_list, station=station,
-                          scalefactors=1e-4)
+                          scalefactors=1e-4, lkgs=True)
   print(stnds.discharge.plot)
   
   # verify basin info
@@ -623,7 +643,7 @@ if __name__ == '__main__':
   assert basin.name == basin_name, basin.name
   
   # load station data
-  station = basin.getMainGage(aggregation=None,)
+  station = basin.getMainGage(aggregation=None, lkgs=False)
   print
   print station
   print
