@@ -443,7 +443,9 @@ class Variable(object):
     ''' The data type of the Variable (inferred from data). '''
     dtype = self._dtype
     if self.data and dtype != self.data_array.dtype:
-      DataError, "Dtype mismatch!"
+        dtype = self.data_array.dtype
+        self._dtype = dtype
+#       raise DataError(("Dtype mismatch!",dtype))
     return dtype   
   @dtype.setter
   def dtype(self, dtype):

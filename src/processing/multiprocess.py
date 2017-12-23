@@ -260,7 +260,8 @@ def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, laax=Tr
   if not axis == data.ndim-1:
     data = np.rollaxis(data, axis=axis, start=data.ndim) # roll sample axis to last (innermost) position
   arrayshape,samplesize = data.shape[:-1],data.shape[-1]
-  arraysize = np.prod(arrayshape)
+#   arraysize = np.prod(arrayshape) if arrayshape else 1
+  arraysize = int(np.prod(arrayshape))
   # flatten array for redistribution
   data = np.reshape(data,(arraysize,samplesize))
   # compute

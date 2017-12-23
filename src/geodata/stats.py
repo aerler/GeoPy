@@ -92,15 +92,16 @@ def shapiro_wrapper(data, reta=False, ignoreNaN=True):
     nonans = np.invert(np.isnan(data)) # test for NaN's
     if np.sum(nonans) < 3: return np.NaN # return, if less than 3 non-NaN's
     data = data[nonans] # remove NaN's
-  if reta:
-    global shapiro_a
-    if  shapiro_a is None or len(shapiro_a) != len(data)//2:
-      W, pval, a = ss.shapiro(data, a=None, reta=True); del W
-      shapiro_a = a # save parameters
-    else:
-      W, pval = ss.shapiro(data, a=shapiro_a, reta=False); del W
-  else:
-    W, pval = ss.shapiro(data, a=None, reta=False); del W
+#   if reta:
+#     global shapiro_a
+#     if  shapiro_a is None or len(shapiro_a) != len(data)//2:
+#       W, pval, a = ss.shapiro(data, a=None, reta=True); del W
+#       shapiro_a = a # save parameters
+#     else:
+#       W, pval = ss.shapiro(data, a=shapiro_a, reta=False); del W
+#   else:
+  W, pval = ss.shapiro(data, ); del W
+    #W, pval = ss.shapiro(data, a=None, reta=False); del W
   return pval
   # N.B.: a only depends on the length of data, so it can be easily reused in array operation
 
@@ -1289,7 +1290,7 @@ def rv_stats_test(data_array, nparams=0, dist_type=None, stats_test=None, ignore
     elif stats_test in ('normtest','normaltest'): 
       pval = normaltest_wrapper(data_array[nparams:], ignoreNaN=ignoreNaN)
     elif stats_test in ('sw','shapiro','shapirowilk'): 
-      pval = shapiro_wrapper(data_array[nparams:], ignoreNaN=ignoreNaN, reta=reta)    
+      pval = shapiro_wrapper(data_array[nparams:], ignoreNaN=ignoreNaN)    
     else: raise ArgumentError, stats_test
   return pval
 
@@ -1553,7 +1554,7 @@ class VarRV(DistVar):
       idx_dtype = np.int16 if sz < 32767 else (np.int32 if sz < 2147483647 else np.int64) # save some memory
       if self.crossval_mask is not None: # created for random subset (default)
         assert self.crossval_mask.shape == sample_data.shape, self.crossval_mask.shape 
-        check_mask = self.crossval_mask.sum(axis=-1); mask_len = check_mask.mean() 
+        check_mask = self.crossval_mask.sum(axis=-1); mask_len = int(check_mask.mean())
         subsample = np.zeros(check_mask.shape+(mask_len,), dtype=sample_data.dtype, order='C')
         apply_over_arrays(np.compress, self.crossval_mask, sample_data, out=subsample, axis=-1)
         sample_data = subsample # replace sample with appropriate sub-sample

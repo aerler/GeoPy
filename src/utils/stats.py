@@ -8,7 +8,15 @@ Modified statistical functions from scipy.stats
 
 import numpy as np
 # imports from scipy's internal stats-helper module
-from scipy.stats.stats import betai, ss, _chk_asarray, rankdata, distributions
+from scipy.stats.stats import _chk_asarray, rankdata, distributions, _sum_of_squares
+from scipy.special import betainc
+
+
+# helper function
+def _betai(a, b, x):
+    x = np.asarray(x)
+    x = np.where(x < 1.0, x, 1.0)  # if x > 1 then return 1.0
+    return betainc(a, b, x)
 
 ## Pearson's linear correlation coefficient
 def pearsonr(x, y, dof=None):
@@ -59,7 +67,7 @@ def pearsonr(x, y, dof=None):
     my = y.mean()
     xm, ym = x-mx, y-my
     r_num = np.add.reduce(xm * ym)
-    r_den = np.sqrt(ss(xm) * ss(ym))
+    r_den = np.sqrt(_sum_of_squares(xm) * _sum_of_squares(ym))
     r = r_num / r_den
 
     # Presumably, if abs(r) > 1, then it is only some small artifact of floating
@@ -70,7 +78,7 @@ def pearsonr(x, y, dof=None):
         prob = 0.0
     else:
         t_squared = r*r * (df / ((1.0 - r) * (1.0 + r)))
-        prob = betai(0.5*df, 0.5, df / (df + t_squared))
+        prob = _betai(0.5*df, 0.5, df / (df + t_squared))
     return r, prob
 
 

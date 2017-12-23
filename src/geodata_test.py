@@ -751,8 +751,8 @@ class BaseVarTest(unittest.TestCase):
     stdvar = trendvar.standardize(linplace=False, name='{}_test', axis='time', lstandardize=False, ldetrend=True, lsmooth=True)
     assert stdvar.shape == var.shape
     assert stdvar.name == var.name+'_test'
-    assert stdvar.mean() < trendvar.mean()
-    assert stdvar.std() < trendvar.std()
+    assert stdvar.mean() < trendvar.mean(), (stdvar.mean(),trendvar.mean())
+    assert stdvar.std() < trendvar.std(), (stdvar.std(),trendvar.std())
     # now standardize in-place
     name = var.name
     var.standardize(linplace=True, axis=None, lstandardize=True, ldetrend=False, lsmooth=False) # make variables more likely to test positive
@@ -762,14 +762,14 @@ class BaseVarTest(unittest.TestCase):
     all_axis = tuple(ax.name for ax in var.axes)
     # run simple kstest test
     pval = var.kstest(asVar=False, lflatten=True, axis=None, dist='norm', args=(0,1))    
-    assert pval >= 0 # this will usually be close to zero, since none of these are normally distributed
+    assert pval >= 0, pval # this will usually be close to zero, since none of these are normally distributed
     # check that merging all axes gives the same result as flattening
     all_pval = var.kstest(asVar=False, lflatten=False, axis=all_axis, dist='norm', args=(0,1))
-    assert pval == all_pval 
+    assert pval == all_pval, (pval,all_pval)
     # Anderson-Darling test
     pval = var.anderson(asVar=False, lflatten=True, dist='extreme1')    
     #print pval
-    assert pval >= 0 # this will usually be close to zero, since none of these are normally distributed  
+    assert pval >= 0, pval # this will usually be close to zero, since none of these are normally distributed  
     # run variable test (normaltest)
     pvar = var.normaltest(asVar=True, axis='time', lflatten=False)
     assert pvar.shape == var.shape[1:]
@@ -780,7 +780,7 @@ class BaseVarTest(unittest.TestCase):
     # fit normal distribution over entire range 
     nvar = var.norm(axis=t.name, lflatten=True, ldebug=False)
     pval = nvar.fittest(var.data_array.ravel(), asVar=False) # should use normaltest
-    assert pval >= 0.
+    assert pval >= 0., pval
     assert pval.shape == nvar.shape[:-1]
     xvar = var.genextreme(axis=t.name, lflatten=False, ldebug=False)
     pvar = xvar.fittest(var) # should use K-S test
@@ -788,12 +788,12 @@ class BaseVarTest(unittest.TestCase):
     assert np.all(pvar.data_array >= 0)
     del xvar, pvar, nvar; gc.collect()
 
-    rav = var.copy(); sin = rav.sin(); cos = var.cos()
+    rav = var.copy(deepcopy=True); sin = rav.sin(); cos = var.cos()
     ## bivariate stats tests
     pval = kstest(var, rav, lflatten=True, axis=None, asVar=False)
-    assert pval > 0.95 # this will usually be close to zero, since none of these are normally distributed
+    assert pval > 0.95, pval # this will be large, since they are the same
     alt_pval = kstest(var, rav, lflatten=False, axis=all_axis, asVar=False)
-    assert pval == alt_pval
+    assert pval == alt_pval, (pval,all_pval)
     pvar = ttest(var, rav, axis='time')    
     #print pvar
     #print pvar.data_array
@@ -812,8 +812,8 @@ class BaseVarTest(unittest.TestCase):
     rnd = var.copy(); rnd.data_array = np.random.randn(var.data_array.size).reshape(var.shape)
     rho,pval = pearsonr(var, rav, lpval=True, lrho=True, lflatten=True, lstandardize=True, lsmooth=True, window_len=5)
     #print rho, pval
-    assert rho > 0.99
-    assert pval < 0.01 # this will usually be close to zero, since none of these are normally distributed
+    assert rho > 0.99, rho
+    assert pval < 0.01, pval # this will usually be close to zero, since the timeseries are the same
     rvar,pvar = spearmanr(var, rav, lpval=True, lrho=True, axis='time', lstandardize=True, lsmooth=True)
     assert rvar.data_array.mean() > 0.95 # not all tests are that accurate...
     assert pvar.data_array.mean() < 0.05 # not all tests are that accurate...
@@ -1905,12 +1905,12 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['BaseVar'] 
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
     tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above

@@ -207,8 +207,8 @@ class VarNC(Variable):
     self.__dict__['transform'] = transform
     self.__dict__['squeezed'] = False
     self.__dict__['slices'] = slices # initial default (i.e. everything)
-    assert self.strvar == lstrvar
-    assert self.strlen == strlen
+    self.ncstrvar = lstrvar
+    self.ncstrlen = strlen
     if squeeze: self.squeeze() # may set 'squeezed' to True
     # handle data
     if load and data is not None: raise DataError, "Arguments 'load' and 'data' are mutually exclusive, i.e. only one can be used!"
@@ -227,7 +227,7 @@ class VarNC(Variable):
     else:
       # provide direct access to netcdf data on file
       if isinstance(slcs,(list,tuple)):
-        if (not self.strvar and len(slcs) != self.ncvar.ndim) or (self.strvar and len(slcs)+1 != self.ncvar.ndim): 
+        if (not self.ncstrvar and len(slcs) != self.ncvar.ndim) or (self.ncstrvar and len(slcs)+1 != self.ncvar.ndim): 
           raise AxisError(slcs)
         slcs = list(slcs) # need to insert items
         # NetCDF can't deal wit negative list indices
@@ -242,7 +242,7 @@ class VarNC(Variable):
       # handle squeezed vars
       if self.squeezed:
         # figure out slices
-        if self.ndim == 0 and self.ncvar.ndim == ( 2 if self.strvar else 1 ):
+        if self.ndim == 0 and self.ncvar.ndim == ( 2 if self.ncstrvar else 1 ):
             slcs = 0 # special case to produce scalar
         else:
             for i in xrange(self.ncvar.ndim):
@@ -263,7 +263,7 @@ class VarNC(Variable):
             data = np.asarray(data, dtype=self.dtype) # cast to preset dtype
 #           raise DataError, "NetCDF data dtype does not match Variable dtype (ncvar.dtype={:s})".format(self.ncvar.dtype) 
         if isinstance(data,np.ma.MaskedArray): self.fillValue = data.fill_value # possibly scaled
-      if self.strvar: data = nc.chartostring(data)
+      if self.ncstrvar: data = nc.chartostring(data)
       #assert self.ndim == data.ndim # make sure that squeezing works!
       # N.B.: the shape and even dimension number can change dynamically when a slice is loaded, so don't check for that, or it will fail!
       # apply transformations (try in-place first)
@@ -437,7 +437,7 @@ class VarNC(Variable):
     ncvar = self.ncvar
     # update netcdf variable    
     if 'w' in self.mode:
-      if self.strvar and ncvar.shape[:-1] == self.shape: pass
+      if self.ncstrvar and ncvar.shape[:-1] == self.shape: pass
       elif not self.squeezed and ncvar.shape == self.shape: pass
       elif self.squeezed and tuple([n for n in ncvar.shape if n > 1]) == self.shape: pass
       else: 
@@ -448,7 +448,7 @@ class VarNC(Variable):
         if isinstance(self.data_array,np.bool_): 
           ncvar[:] = self.data_array.astype('i1') # cast boolean as 8-bit integers
           if fillValue is not None: fillValue = 1 if fillValue else 0
-        elif self.strvar:
+        elif self.ncstrvar:
           ncvar[:] = nc.stringtochar(self.data_array) # transform string array to char array with one more dimension
           if fillValue is not None: raise NotImplementedError
         else: ncvar[:] = self.data_array # masking should be handled by the NetCDF module
@@ -692,7 +692,7 @@ class DatasetNetCDF(Dataset):
             varobj = variables[var] 
             if var not in check_override:
               # check shape (don't load)
-              if varobj.strvar and varobj.ndim == ncvar.ndim-1:
+              if varobj.ncstrvar and varobj.ndim == ncvar.ndim-1:
                 if varobj.shape != ncvar.shape[:-1] or varobj.ncvar.dimensions != ncvar.dimensions:
                   raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files have incompatible dimensions.".format(var)
               else: 
