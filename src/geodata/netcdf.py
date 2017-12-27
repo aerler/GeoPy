@@ -264,6 +264,7 @@ class VarNC(Variable):
 #           raise DataError, "NetCDF data dtype does not match Variable dtype (ncvar.dtype={:s})".format(self.ncvar.dtype) 
         if isinstance(data,np.ma.MaskedArray): self.fillValue = data.fill_value # possibly scaled
       if self.ncstrvar: data = nc.chartostring(data)
+      # N.B.: nc.chartostring() may not work anymore - not sure...
       #assert self.ndim == data.ndim # make sure that squeezing works!
       # N.B.: the shape and even dimension number can change dynamically when a slice is loaded, so don't check for that, or it will fail!
       # apply transformations (try in-place first)
