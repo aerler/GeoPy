@@ -494,7 +494,7 @@ if __name__ == '__main__':
         lLTM = False # also regrid the long-term mean climatologies 
         datasets = []
         datasets += ['NRCan']; periods = [(1980,2010),] # this will generally not work, because we don't have snow/-melt...
-#         resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies'][2:]}
+        resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies'][1:2]}
     #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
         # CESM experiments (short or long name) 
         CESM_project = None # all available experiments
@@ -557,8 +557,8 @@ if __name__ == '__main__':
 #         grids += ['grw2']; project = 'GRW' # small grid for GRW project
 #         grids += ['asb1']; project = 'ASB' # main grid for ASB project
 #         grids += ['brd1']; project = 'ASB' # small grid for ASB project
-        grids += ['can1']; project = 'CAN' # large Canada-wide grid
-#         grids += ['snw1']; project = 'SNW' # south nation watershed
+#         grids += ['can1']; project = 'CAN' # large Canada-wide grid
+        grids += ['snw1']; project = 'SNW' # south nation watershed
         export_arguments = dict(
             # NRCan
 #             prefix = None, # based on keyword arguments or None

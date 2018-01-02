@@ -2437,8 +2437,13 @@ class Axis(Variable):
       assert self.data == True
     # determine direction of ascend
     if self.coord is not None:
-      if all(np.diff(self.coord) > 0): self.ascending = True
-      elif all(np.diff(self.coord) < 0): self.ascending = False
+      # special handling for datetime...
+      if np.issubdtype(self.coord.dtype,np.datetime64):
+          time_coord = ( self.coord.astype('datetime64[s]') - self.coord[0].astype('datetime64[s]') ) / np.timedelta64(1,'s')     
+      else: time_coord = self.coord
+      # check differences (does ot work with datetime64)
+      if all(np.diff(time_coord) > 0): self.ascending = True
+      elif all(np.diff(time_coord) < 0): self.ascending = False
       else: 
         raise AxisError("Coordinates must be strictly monotonically increasing or decreasing.")
 

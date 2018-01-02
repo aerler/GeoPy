@@ -208,8 +208,8 @@ if __name__ == '__main__':
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
     NP = 4 ; ldebug = False # just for tests
-#     modes = ('climatology','time-series') # 'climatology','time-series'
-    modes = ('climatology',) # 'climatology','time-series'
+    modes = ('climatology','time-series') # 'climatology','time-series'
+#     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
@@ -220,13 +220,13 @@ if __name__ == '__main__':
 #     periods += [5]
 #     periods += [7]
 #     periods += [10]
-    periods += [15]
-#     periods += [30]
+#     periods += [15]
+    periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
     lLTM = True # also regrid the long-term mean climatologies 
-#     datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
+    datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
 #     resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies'][2:]}
 #     datasets += ['PRISM','GPCC','PCIC']; #periods = None
 #     datasets += ['CFSR', ] # CFSR_05 does not have precip
@@ -269,7 +269,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
 #     WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
 #     WRF_experiments += ['g-ensemble','t-ensemble']
-    WRF_experiments += ['t-ensemble']
+#     WRF_experiments += ['t-ensemble']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
 #     WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']
@@ -298,8 +298,8 @@ if __name__ == '__main__':
 #     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 #     grids['grw1'] = None # high-res grid for GRW, 1km
-    grids['grw2'] = None # small grid for GRW, 5km
-#     grids['snw1'] = None # large grid for whole Canada
+#     grids['grw2'] = None # small grid for GRW, 5km
+    grids['snw1'] = None # large grid for whole Canada
 #     grids['can1'] = None # large grid for whole Canada
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
