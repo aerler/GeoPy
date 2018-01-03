@@ -466,11 +466,11 @@ tmp = PlotAtts(name = 'Sub-srfc. RO', title = 'Underground Runoff',
 # add to collection
 variablePlotatts['ugroff'] = tmp
 
-## Discharge (river flow)
-tmp = PlotAtts(name = 'Discharge', title = 'Discharge', 
-               units = r'$m^3 s^{-1}$', scalefactor = 1e-3)
-# add to collection
-variablePlotatts['discharge'] = tmp
+# ## Discharge (river flow)
+# tmp = PlotAtts(name = 'Discharge', title = 'Discharge', 
+#                units = r'$m^3 s^{-1}$', scalefactor = 1e-3)
+# # add to collection
+# variablePlotatts['discharge'] = tmp
 
 ## *** Standard Vars (3D) ***
 
@@ -699,6 +699,8 @@ def getPlotAtts(name=None, units=None, atts=None, plot=None, plotatts_dict=None)
         plotatts = variablePlotatts[basename.lower()].copy()
       else:
         # last resort...
+        name = name.title() if name == name.lower() else name
+        if '^' in units or '{' in units and '$' not in units: units = '$'+units+'$'
         plotatts = PlotAtts(name=name, units=units, title=name)  
   # modify according to variable specifics
   if len(postfix) > 0: # these are mostly things like, e.g., '7d' for 7d means

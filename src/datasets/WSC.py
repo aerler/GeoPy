@@ -75,10 +75,14 @@ def updateScalefactor(dataset, varlist, scalefactor=None):
             oldstr = scalestr(var.plot.scalefactor)
             newstr = scalestr(scalefactor)
             # replace old PlotAtts with new ones
-            if oldstr and newstr: units = var.plot.units.replace(oldstr,newstr)
+            if oldstr and newstr: 
+              if oldstr == newstr: units = None
+              else: units = var.plot.units.replace(oldstr,newstr)
             elif oldstr: units = var.plot.units.replace(oldstr,'').strip()
-            else: units = r'${}$ {}'.format(newstr,var.plot.units)
-            var.plot = var.plot.copy(units=units, scalefactor=scalefactor)
+            elif newstr is not None: units = r'${}$ {}'.format(newstr,var.plot.units)
+            else: units = None
+            if units is not None:
+                var.plot = var.plot.copy(units=units, scalefactor=scalefactor)
     # return dataset, although not really necessary
     return dataset
 

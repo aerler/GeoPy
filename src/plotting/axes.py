@@ -51,6 +51,7 @@ class MyAxes(Axes):
   figure             = None
   parasite_axes      = None
   axes_shift         = None
+  ldatetime          = None
   
   def __init__(self, *args, **kwargs):
     ''' constructor to initialize some variables / counters '''  
@@ -202,7 +203,7 @@ class MyAxes(Axes):
       if var is not None:
         varax = var.axes[0]
         # scale axis and variable values 
-        axe, axunits, axname = self._getPlotValues(varax, checkunits=axunits, laxis=True, lperi=lperi)
+        axe, axunits, axname = self._getPlotValues(varax, checkunits=axunits, laxis=True, lperi=lperi)        
         val, varunits, varname = self._getPlotValues(var, lrescale=lrescale, scalefactor=scalefactor, offset=offset,
                                                      checkunits=varunits, lsmooth=lsmooth, lperi=lperi, lshift=True)
         if errvar is not None: # for error bars
@@ -639,7 +640,7 @@ class MyAxes(Axes):
     if not isinstance(hline,(list,tuple,np.ndarray)): hline = (hline,)
     lines = []
     for hl in list(hline):
-      if isinstance(hl,(int,np.integer,float,np.inexact)): 
+      if isinstance(hl,(int,np.integer,float,np.inexact,np.datetime64)): 
         lines.append(self.axhline(y=hl, **kwargs))
         if self.parasite_axes: 
           self.parasite_axes.axhline(y=hl, **kwargs)
@@ -652,7 +653,7 @@ class MyAxes(Axes):
     if not isinstance(vline,(list,tuple,np.ndarray)): vline = (vline,)
     lines = []
     for hl in list(vline):
-      if isinstance(hl,(int,np.integer,float,np.inexact)): 
+      if isinstance(hl,(int,np.integer,float,np.inexact,np.datetime64)): 
         lines.append(self.axvline(x=hl, **kwargs))
       else: raise TypeError, hl.__class__
     return lines    
@@ -798,6 +799,8 @@ class MyAxes(Axes):
     if lrescale: checkunits = None
     val, varunits, varname = getPlotValues(var, checkunits=checkunits, checkname=None, lsmooth=lsmooth, 
                                            lperi=lperi, laxis=laxis)
+    if laxis:
+        self.ldatetime = np.issubdtype(val.dtype,np.datetime64)
     if lrescale:
       if self.flipxy: vlim,varunits = self.get_xlim(),self.xunits
       else: vlim,varunits = self.get_ylim(),self.yunits
@@ -891,6 +894,15 @@ class MyAxes(Axes):
     # add orientation lines
     if hline is not None: self.addHline(hline)
     if vline is not None: self.addVline(vline)
+    # overwrite tick labels for datetime64 axis
+    if self.ldatetime:
+        axis = self.yaxis if self.flipxy else self.xaxis 
+        # format the ticks
+        major_locator = mpl.dates.AutoDateLocator()
+        axis.set_major_locator(major_locator)
+#         major_formater = mpl.dates.DateFormatter(major_locator)
+#         axis.set_major_formatter(major_formater)
+        # N.B.: for some reason this does not work and the formatter causes errors...
   
   def xLabel(self, xlabel, name=None, units=None):
     ''' format x-axis label '''
@@ -956,11 +968,12 @@ class MyAxes(Axes):
     xaxis = self.xaxis
     xticks = self._tickLabels(xticks, xaxis)
     yticks = self.yaxis.get_ticklabels()
-    # tick label position
-    if self.xtop: 
-      self.xaxis.set_tick_params(labeltop=True, labelbottom=False)
-    # minor ticks
-    if n is not None: self._minorTicks(xticks, n, xaxis)
+    if not self.ldatetime or self.flipxy:
+        # tick label position
+        if self.xtop: 
+          self.xaxis.set_tick_params(labeltop=True, labelbottom=False)
+        # minor ticks
+        if n is not None: self._minorTicks(xticks, n, xaxis)
     # tick label visibility
     if not loverlap and len(xticks) > 0 and (
         len(yticks) == 0 or not yticks[-1].get_visible() ):
@@ -975,13 +988,14 @@ class MyAxes(Axes):
     if not loverlap and len(yticks) > 0 and (
         len(xticks) == 0 or not xticks[-1].get_visible() ):
         yticks[0].set_visible(False)
-    # tick label position
-    if self.yright:
-      self.yaxis.set_tick_params(labelleft=False) # always need to switch off on master yaxis
-      yaxis.set_tick_params(labelright=True, labelleft=False) # switch on on active yaxis
-    # minor ticks (apply to major and parasite axes)
-    for ax in self,self.parasite_axes:      
-      if ax and n is not None: self._minorTicks(yticks, n, ax.yaxis)
+    if not self.ldatetime or not self.flipxy:
+        # tick label position
+        if self.yright:
+          self.yaxis.set_tick_params(labelleft=False) # always need to switch off on master yaxis
+          yaxis.set_tick_params(labelright=True, labelleft=False) # switch on on active yaxis
+        # minor ticks (apply to major and parasite axes)
+        for ax in self,self.parasite_axes:      
+          if ax and n is not None: self._minorTicks(yticks, n, ax.yaxis)
     return yticks
   def _minorTicks(self, ticks, n, axis):
     ''' helper method to format axes ticks '''

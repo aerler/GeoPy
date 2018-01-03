@@ -11,7 +11,7 @@ import netCDF4 as nc
 import numpy as np
 import numpy.ma as ma
 import os, sys
-
+import pandas as pd
 import matplotlib as mpl
 import matplotlib.pylab as pyl
 # mpl.use('Agg') # enforce QT4
@@ -40,15 +40,26 @@ figargs = dict(stylesheet='myggplot', lpresentation=True, lpublication=False)
 
 
 class LinePlotTest(unittest.TestCase):  
+  
+  ldatetime = True # does not work with all plots...
    
   def setUp(self):
     ''' create two test variables '''
     # create axis and variable instances (make *copies* of data and attributes!)
-    x1 = np.linspace(0,10,11); xax1 = Axis(name='X1-Axis', units='X Units', coord=x1) 
+    x1 = np.linspace(0,10,15); 
+    x2 = np.linspace(2,8,18);
+    if self.ldatetime:
+        start_datetime, end_datetime = pd.to_datetime('1981-05-01'), pd.to_datetime('1981-05-16')
+        t1 = np.arange(start_datetime, end_datetime, dtype='datetime64[D]') 
+        xax1 = Axis(name='Time1-Axis', units='X Time', coord=t1) 
+        t2 = np.arange(start_datetime, end_datetime+np.timedelta64(3, 'D'), dtype='datetime64[D]')
+        xax2 = Axis(name='Time2-Axis', units='X Time', coord=t2)
+    else:
+        xax1 = Axis(name='X1-Axis', units='X Units', coord=x1)
+        xax2 = Axis(name='X2-Axis', units='X Units', coord=x2)
     var0 = Variable(axes=(xax1,), data=np.sin(x1), atts=dict(name='relative', units=''))
     var1 = Variable(axes=(xax1,), data=x1.copy(), atts=dict(name='blue', units='units'))
     self.var0 = var0; self.var1 = var1; self.xax1 = xax1
-    x2 = np.linspace(2,8,13); xax2 = Axis(name='X2-Axis', units='X Units', coord=x2)
     var2 = Variable(name='purple',units='units',axes=(xax2,), data=(x2**2)/5.)
     self.var2 = var2; self.xax2 = xax2
     # create error variables with random noise
@@ -79,8 +90,9 @@ class LinePlotTest(unittest.TestCase):
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var0 = self.var0; var1 = self.var1; var2 = self.var2
     # create plot
+    vline = np.datetime64('1981-05-16') if self.ldatetime else (2,3)
     plts = ax.linePlot([var1, var2], ylabel='custom label [{UNITS:s}]', llabel=True, 
-                       ylim=var1.limits(), legend=2, hline=2., vline=(2,3))
+                       ylim=var1.limits(), legend=2, hline=2., vline=vline)
     assert len(plts) == 2
     # add rescaled plot
     plts = ax.linePlot(var0, lrescale=True, scalefactor=2, offset=-1, llabel=True, legend=2, linestyle=':')
@@ -501,7 +513,7 @@ if __name__ == "__main__":
     
     specific_tests = []
     # LinePlot
-#     specific_tests += ['BasicLinePlot']
+    specific_tests += ['BasicLinePlot']
 #     specific_tests += ['BasicErrorPlot']
 #     specific_tests += ['FancyErrorPlot']
 #     specific_tests += ['FancyBandPlot']
@@ -519,15 +531,15 @@ if __name__ == "__main__":
 #     specific_tests += ['CombinedLinePlot']
     # TaylorPlot
 #     specific_tests += ['BasicScatterPlot']
-    specific_tests += ['BasicTaylorPlot']
+#     specific_tests += ['BasicTaylorPlot']
         
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['LinePlot'] 
+    tests += ['LinePlot'] 
 #     tests += ['DistPlot']
 #     tests += ['PolarPlot']
-    tests += ['TaylorPlot']
+#     tests += ['TaylorPlot']
     
 
     # construct dictionary of test classes defined above
