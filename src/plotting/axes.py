@@ -196,9 +196,14 @@ class MyAxes(Axes):
     ## generate individual line plots
     plts = [] # list of plot handles
     for label,var in zip(labels,varlist): self.variables[label] = var # save plot variables
-    # loop over variables and plot arguments
-    if lprint and lfracdiff: tmp_frac = None; tmp_diff = None
+    # print legend for print statistics
+    if lprint:
+        if lfracdiff:
+            tmp_frac = None; tmp_diff = None
+            print('Label (Variable): Average, Standard Deviation, Relative Bias, Absolute Bias')  
+        else: print('Label (Variable): Average, Standard Deviation')
     N = len(varlist); xlen = ylen = None
+    # loop over variables and plot arguments
     for n,var,errvar,bndvar,plotarg,label in zip(xrange(N),varlist,errlist,bndlist,plotargs,labels):
       if var is not None:
         varax = var.axes[0]
@@ -222,12 +227,12 @@ class MyAxes(Axes):
         if lprint:
           tmp_mean = np.nanmean(val)
           if not lfracdiff:
-            print var.name, tmp_mean, np.nanstd(val)
+            print('{} ({}): {}, {}'.format(label, var.name, tmp_mean, np.nanstd(val)))
           elif tmp_frac is None and tmp_diff is None: 
             tmp_frac = tmp_mean; tmp_diff = tmp_mean
-            print var.name, tmp_mean, np.nanstd(val)
+            print('{} ({}): {}, {}'.format(label, var.name, tmp_mean, np.nanstd(val)))
           else:
-            print var.name, tmp_mean, np.nanstd(val), tmp_mean/tmp_frac, tmp_mean-tmp_diff  
+            print('{} ({}): {}, {}, {}, {}'.format(label, var.name, tmp_mean, np.nanstd(val), tmp_mean/tmp_frac, tmp_mean-tmp_diff))  
         # update plotargs from defaults
         plotarg = self._getPlotArgs(label=label, var=var, llabel=llabel, label_ext=label_ext, plotatts=plotatts, plotarg=plotarg)
         plotarg['fmt'] = plotarg.pop('lineformat','') # rename (I prefer a different name)

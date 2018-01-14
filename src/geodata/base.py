@@ -455,7 +455,7 @@ class Variable(object):
   @property
   def strvar(self):
     ''' If the data type is a String kind '''
-    return self.dtype.kind == 'S'   
+    return self.dtype.kind in ('S','U')   
 
   @property
   def strlen(self):
@@ -2917,11 +2917,14 @@ class Dataset(object):
                      lcopy=False, years=years, listAxis=listAxis, **axes)    
         # convert to Python scalar (of sorts)
         if isinstance(attval,np.ndarray):
-          if np.issubdtype(attval.dtype, np.str): attval = str(attval).rstrip()    
+          if np.issubdtype(attval.dtype, np.str): attval = str(attval).rstrip()
+          elif np.issubdtype(attval.dtype, np.unicode): attval = str(attval).rstrip()
+          elif np.issubdtype(attval.dtype, basestring): attval = str(attval).rstrip()    
           elif np.issubdtype(attval.dtype, np.integer): attval = int(attval)
           elif np.issubdtype(attval.dtype, np.float): attval = float(attval)
           else: raise TypeError, attval
         singlevaratts[var.name] = attval
+        np.unicode
       else:
         # properly slice variable
         newvar = var(lidx=lidx, lrng=lrng, asVar=True, lcheck=False, lsqueeze=lsqueeze, 

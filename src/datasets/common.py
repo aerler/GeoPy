@@ -282,7 +282,7 @@ def getFileName(name=None, resolution=None, period=None, grid=None, shape=None, 
   ''' A function to generate a standardized filename for climatology and time-series files, based on grid type and period.  '''
   if name is None: name = ''
   # grid (this is a *non-native grid*)
-  if grid is None or grid == name: gridstr = ''
+  if ( not grid ) or grid == name: gridstr = ''
   else: gridstr = '_{0:s}'.format(grid.lower()) # only use lower case for filenames
   # prepend shape or station type before grid 
   if shape and station: raise ArgumentError
