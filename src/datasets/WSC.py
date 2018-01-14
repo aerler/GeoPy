@@ -625,12 +625,15 @@ if __name__ == '__main__':
                                  subbasins=['WholeGRW','UpperGRW','LowerGRW','NorthernGRW','SouthernGRW','WesternGRW']),
                     SSR=BasinSet(name='SSR', long_name='South Saskatchewan River', rivers=['South Saskatchewan'], 
                                  data_source='Aquanty', stations={'South Saskatchewan':['St Louis','Saskatoon']}, 
-                                 subbasins=['WholeSSR']))
-  basin_name = 'GRW'
+                                 subbasins=['WholeSSR']),
+                    PRW=BasinSet(name='PRW', long_name='Payne River Watershed', data_source='Aquanty',
+                                 rivers=['Payne River', ], stations={'Payne River':['Berwick',],}, subbasins=['WholePRW',]),
+                    )
+  basin_name = 'PRW'
 #   basin_name = 'SSR'
 
   # load a random station
-  station = 'Conestogo River_Glen Allan'
+  station = 'Payne River_Berwick'
   stnds = loadGageStation(basin=basin_name, basin_list=basin_list, station=station,
                           scalefactors=1e-4, lkgs=True)
   print(stnds.discharge.plot)
