@@ -629,11 +629,12 @@ if __name__ == '__main__':
                     PRW=BasinSet(name='PRW', long_name='Payne River Watershed', data_source='Aquanty',
                                  rivers=['Payne River', ], stations={'Payne River':['Berwick',],}, subbasins=['WholePRW',]),
                     )
-  basin_name = 'PRW'
-#   basin_name = 'SSR'
+
+#   basin_name = 'PRW'; station = 'Payne River_Berwick'
+#   basin_name = 'SSR'; station = 'St Louis'
+  basin_name = 'GRW'; station = 'Grand River_Brantford'
 
   # load a random station
-  station = 'Payne River_Berwick'
   stnds = loadGageStation(basin=basin_name, basin_list=basin_list, station=station,
                           scalefactors=1e-4, lkgs=True)
   print(stnds.discharge.plot)
