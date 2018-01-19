@@ -491,6 +491,7 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
 def _sliceArgs(slices=None, basin=None, station=None, period=None, years=None):
     ''' a helper function to translate arguments from standard datasets to WSC specifics; the main difference is
         that basins and stations can be loaded directly (without slicing) '''
+    if slices is None: slices = dict()
     period = period or slices.get('period',None) or years or slices.get('years',None)
     basin = basin or slices.get('basin',None) or slices.get('shape_name',None)
     station = station or slices.get('station',None) or slices.get('station_name',None)
