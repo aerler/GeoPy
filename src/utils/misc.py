@@ -14,12 +14,29 @@ import collections as col
 # internal imports
 from geodata.misc import ArgumentError, isEqual, AxisError
 
+
 ## reverse enumrator
 def reverse_enumerate(iterable):
     ''' return a tuple with the elements of 'iterable' in reverse order, along with the proper indices;
         a better implementation would be to define an actual iterator, but this is sufficient for now '''
     return zip(range(len(iterable)-1,-1,-1),iterable[::-1])
-
+  
+  
+## determine container depth
+def containerDepth(container, classes=(tuple,list)):
+    ''' a recursive function to determine how many layers of containers are present; 
+        assumes homogeneous structure '''
+    if isinstance(container,classes):
+        # go to next level
+        if len(container) > 0: counter = containerDepth(container[0], classes=classes)
+        else: counter = 0 # special case: empty container (counts, but no next level)
+        counter += 1
+    else:
+        # terminate recursion
+        counter = 0
+    return counter
+          
+          
 ## a method to tabulate variables (adapted from Variable) 
 def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}', cell_idx=None, cell_fct=None, 
              lflatten=False, mode='mylatex', filename=None, folder=None, lfeedback=True, **kwargs):

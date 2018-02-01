@@ -41,7 +41,7 @@ figargs = dict(stylesheet='myggplot', lpresentation=True, lpublication=False)
 
 class LinePlotTest(unittest.TestCase):  
   
-  ldatetime = True # does not work with all plots...
+  ldatetime = False # does not work with all plots...
    
   def setUp(self):
     ''' create two test variables '''
@@ -141,9 +141,10 @@ class LinePlotTest(unittest.TestCase):
     assert fig.axes_class.__name__ == 'MyAxes'
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var1 = self.var1; var2 = self.var2
-    err1 = self.err1; err2 = self.err2
+    errup1 = self.var1+self.err1*2.; errup2 = self.var2+self.err2*2.
+    errdn1 = self.var1-self.err1/2.; errdn2 = self.var2-self.err2/2.
     # create plot
-    plts = ax.linePlot([var1, var2], errorband=[err1, err2], 
+    plts = ax.linePlot([var1, var2], errorband=([errdn1, errdn2],[errup1, errup2]), 
                        edgecolor=('k',1), expand_list=('edgecolor',),
                        ylabel='Variables with Error Bands [{UNITS:s}]', llabel=True, 
                        ylim=var1.limits(), legend=2, hline=2., vline=(2,3))
@@ -513,9 +514,9 @@ if __name__ == "__main__":
     
     specific_tests = []
     # LinePlot
-    specific_tests += ['BasicLinePlot']
+#     specific_tests += ['BasicLinePlot']
 #     specific_tests += ['BasicErrorPlot']
-#     specific_tests += ['FancyErrorPlot']
+    specific_tests += ['FancyErrorPlot']
 #     specific_tests += ['FancyBandPlot']
 #     specific_tests += ['AdvancedLinePlot']
 #     specific_tests += ['CombinedLinePlot']

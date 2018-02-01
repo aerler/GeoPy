@@ -15,11 +15,11 @@ from matplotlib.projections import PolarAxes
 from types import NoneType
 from warnings import warn
 # internal imports
-from geodata.base import Variable
+from geodata.base import Variable, Ensemble
 from geodata.misc import ListError, ArgumentError, isEqual, AxisError
 from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile, checkSample
 from collections import OrderedDict
-from utils.misc import binedges, expandArgumentList
+from utils.misc import binedges, expandArgumentList, containerDepth
 from geodata.stats import pearsonr
 
 # list of plot arguments that apply only to lines
@@ -161,15 +161,43 @@ class MyAxes(Axes):
         variable properties; extra keyword arguments (plotargs) are passed through expandArgumentList,
         before being passed to Axes.plot(). '''
     ## figure out variables
+    container = (list,tuple,Ensemble)
+    vardepth = containerDepth(varlist, classes=container) # count nested containers
     varlist = checkVarlist(varlist, varname=varname, ndim=1, bins=bins, support=support, 
                            method=method, lignore=lignore, bootstrap_axis=bootstrap_axis)
-    if errorbar: errlist = checkVarlist(errorbar, varname=varname, ndim=1, lignore=lignore, 
-                                        bins=bins, support=support, method=method, bootstrap_axis=bootstrap_axis)
-    else: errlist = [None]*len(varlist) # no error bars
-    if errorband: bndlist = checkVarlist(errorband, varname=varname, ndim=1, lignore=lignore, 
-                                         bins=bins, support=support, method=method, bootstrap_axis=bootstrap_axis)
-    else: bndlist = [None]*len(varlist) # no error bands
-    assert len(varlist) == len(errlist) == len(bndlist)
+    if errorbar:
+      errordepth = containerDepth(errorbar, classes=container) 
+      if errordepth == vardepth+1:
+          assert len(errorbar)==2, errorbar 
+          errdnlst = checkVarlist(errorbar[0], varname=varname, ndim=1, lignore=lignore, bins=bins, 
+                               bootstrap_axis=bootstrap_axis)
+          erruplst = checkVarlist(errorbar[1], varname=varname, ndim=1, lignore=lignore, bins=bins, 
+                               bootstrap_axis=bootstrap_axis)
+          assert len(errdnlst) == len(erruplst), (len(errdnlst),len(erruplst))
+      elif errordepth == vardepth:
+          erruplst = checkVarlist(errorbar, varname=varname, ndim=1, lignore=lignore, bins=bins, 
+                               bootstrap_axis=bootstrap_axis)
+          errdnlst = [None]*len(varlist) # no min/max error, only one margin
+      else:
+          raise ArgumentError(errordepth)
+    else: erruplst = errdnlst = [None]*len(varlist) # no error bars
+    if errorband:
+      banddepth = containerDepth(errorband, classes=container) 
+      if banddepth == vardepth+1:
+          assert len(errorband)==2, errorband
+          bnddnlst = checkVarlist(errorband[0], varname=varname, ndim=1, lignore=lignore, bins=bins, 
+                               support=support, method=method, bootstrap_axis=bootstrap_axis)
+          bnduplst = checkVarlist(errorband[1], varname=varname, ndim=1, lignore=lignore, bins=bins, 
+                               support=support, method=method, bootstrap_axis=bootstrap_axis)
+          assert len(bnddnlst) == len(bnduplst), (len(bnddnlst),len(bnduplst))
+      elif banddepth == vardepth:
+          bnduplst = checkVarlist(errorband, varname=varname, ndim=1, lignore=lignore, bins=bins, 
+                               support=support, method=method, bootstrap_axis=bootstrap_axis)
+          bnddnlst = [None]*len(varlist) # no min/max error, only one margin
+      else: 
+          raise ArgumentError(banddepth)
+    else: bnduplst = bnddnlst = [None]*len(varlist) # no error bands
+    assert len(varlist) == len(erruplst) == len(bnduplst)== len(errdnlst) == len(bnddnlst)
     # initialize axes names and units
     self.flipxy = flipxy
     if self.flipxy: varname,varunits,axname,axunits = self.xname,self.xunits,self.yname,self.yunits
@@ -204,21 +232,29 @@ class MyAxes(Axes):
         else: print('Label (Variable): Average, Standard Deviation')
     N = len(varlist); xlen = ylen = None
     # loop over variables and plot arguments
-    for n,var,errvar,bndvar,plotarg,label in zip(xrange(N),varlist,errlist,bndlist,plotargs,labels):
+    for n,var,errupvar,errdnvar,bndupvar,bnddnvar,plotarg,label in zip(xrange(N),varlist,erruplst,errdnlst,bnduplst,bnddnlst,plotargs,labels):
       if var is not None:
         varax = var.axes[0]
         # scale axis and variable values 
         axe, axunits, axname = self._getPlotValues(varax, checkunits=axunits, laxis=True, lperi=lperi)        
         val, varunits, varname = self._getPlotValues(var, lrescale=lrescale, scalefactor=scalefactor, offset=offset,
                                                      checkunits=varunits, lsmooth=lsmooth, lperi=lperi, lshift=True)
-        if errvar is not None: # for error bars
-          err, varunits, errname = self._getPlotValues(errvar, lrescale=lrescale, scalefactor=scalefactor, offset=offset, 
+        if errupvar is not None: # for upper/symmetric error bars
+          errup, varunits, errname = self._getPlotValues(errupvar, lrescale=lrescale, scalefactor=scalefactor, offset=offset, 
                                                        checkunits=varunits, lsmooth=lsmooth, lperi=lperi, lshift=False); del errname
-        else: err = None
-        if bndvar is not None: # semi-transparent error bands
-          bnd, varunits, bndname = self._getPlotValues(bndvar, lrescale=lrescale, scalefactor=scalefactor, offset=offset,
+        else: errup = None
+        if errdnvar is not None: # for lower error bars
+          errdn, varunits, errname = self._getPlotValues(errdnvar, lrescale=lrescale, scalefactor=scalefactor, offset=offset, 
+                                                       checkunits=varunits, lsmooth=lsmooth, lperi=lperi, lshift=False); del errname
+        else: errdn = None
+        if bndupvar is not None: # for upper/symmetric semi-transparent error bands
+          bndup, varunits, bndname = self._getPlotValues(bndupvar, lrescale=lrescale, scalefactor=scalefactor, offset=offset,
                                                        checkunits=varunits, lsmooth=lsmooth, lperi=lperi, lshift=False); del bndname
-        else: bnd = None
+        else: bndup = None
+        if bnddnvar is not None: # for lower semi-transparent error bands
+          bnddn, varunits, bndname = self._getPlotValues(bnddnvar, lrescale=lrescale, scalefactor=scalefactor, offset=offset,
+                                                       checkunits=varunits, lsmooth=lsmooth, lperi=lperi, lshift=False); del bndname
+        else: bnddn = None
         # variable and axis scaling is not always independent...
         if var.plot is not None and varax.plot is not None: 
           if varax.units != axunits and var.plot.preserve == 'area':
@@ -245,13 +281,30 @@ class MyAxes(Axes):
         facecolor = plotarg.pop('facecolor',None)
         errorscale = plotarg.pop('errorscale',None)
         errorevery = plotarg.pop('errorevery',None)
-        if errorscale is not None: 
-          errorscale = errorPercentile(errorscale)
-          if err is not None: err *= errorscale
-        if errorevery is None:
-          errorevery = len(axe)//25 + 1
         if 'color' not in plotarg: 
           plotarg['color'] = self._get_lines.prop_cycler.next()['color']
+        # figure out boundaries for error bands (may be needed for parasite axes)
+        if bndup is not None: 
+          if bnddn is None:
+              if errorscale is not None: bndup *= errorscale
+              bnddn = val - bndup
+              bndup += val
+          else:
+              if errorscale is not None: raise NotImplementedError
+        # figure out errorbars
+        if errorevery is None:
+          errorevery = len(axe)//25 + 1
+        if errorscale is not None: 
+          errorscale = errorPercentile(errorscale)
+        if errup is not None: 
+          if errdn is None: 
+              err = np.stack((errup,errup)) # same errors up and down
+              if errorscale is not None: err *= errorscale
+          else: 
+              err = np.stack((errdn,errup)) - val.reshape((1,val.size))
+              # N.B.: interpreted as upper and lower bounds (as in percentiles), not deviations
+              if errorscale is not None: raise NotImplementedError
+        else: err = None
         # figure out orientation and call plot function
         if self.flipxy: # flipped axes
           xlen = len(val); ylen = len(axe) # used later
@@ -260,14 +313,17 @@ class MyAxes(Axes):
         else: # default orientation
           xlen = len(axe); ylen = len(val) # used later
           plt = self.errorbar(axe, val, xerr=None, yerr=err, errorevery=errorevery, **plotarg)[0]
-          if lparasiteMeans:
-            perr = err if err is not None else bnd # wouldn't work with bands, so use normal errorbars
+          if lparasiteMeans:            
+            if err is not None: perr = err # use same errors 
+            elif bndup is not None: perr = np.stack((bnddn,bndup)) - val.reshape((1,val.size))
+            else: perr = None 
+            # N.B.: parasite erros wouldn't work with bands, so convert normal errorbars                
             self.addParasiteMean(val, errors=perr if lparasiteErrors else None, n=n, N=N, lperi=lperi, style='myerrorbar', **plotarg)
-        # figure out parameters for error bands
-        if bnd is not None: 
-          if errorscale is not None: bnd *= errorscale
-          self._drawBand(axe, val+bnd, val-bnd, where=where, color=(facecolor or plt.get_color()), 
-                         alpha=bandalpha*plotarg.get('alpha',1.), edgecolor=edgecolor, **bndarg)  
+        # draw error bands
+        if bndup is not None: 
+          self._drawBand(axe, bndup, bnddn, where=where, color=(facecolor or plt.get_color()), 
+                         alpha=bandalpha*plotarg.get('alpha',1.), edgecolor=edgecolor, **bndarg)
+        # save plot handles and labels  
         plts.append(plt); self.plots[label+label_ext] = plt
       else: plts.append(None)
     ## format axes and add annotation
@@ -737,7 +793,7 @@ class MyAxes(Axes):
     # average values (three points, to avoid cut-off)
     if lperi: 
       vals = values[1:-1].copy() # cut off boundaries
-      if errors is not None: errs = errors[1:-1].copy() # cut off boundaries
+      if errors is not None: errs = errors[:,1:-1].copy() # cut off boundaries
     else:
       vals = values.copy()
       if errors is not None: errs = errors.copy()
@@ -745,10 +801,11 @@ class MyAxes(Axes):
     val = np.nanmean(vals).repeat(3) # there can be missing values - just omit them...
     # average variances (not std directly)
     if errors is not None:
-      if lperi: err = ((errs**2).mean(keepdims=True)**0.5)
-      else: err = (((errs**2).mean(keepdims=True) + vals.var(keepdims=True))**0.5)
-      err = err.repeat(3)
+      if lperi: err = ((errs**2).mean(axis=1, keepdims=True)**0.5)
+      else: err = (((errs**2).mean(axis=1, keepdims=True) + vals.var(axis=1, keepdims=True))**0.5)
+      # N.B.: we use upper and lower errors, so errs has the shape (2,N)
       # N.B.: std = sqrt( mean of variances + variance of means )
+      err = err.repeat(3, axis=1)
     else: err = None
     # remove some style parameters that don't apply
     kwargs.pop('errorevery', None)
@@ -841,14 +898,16 @@ class MyAxes(Axes):
     args = dict()
     # apply figure/project defaults
     if label == var.name: # variable name has precedence
-      if var.dataset_name is not None and self.dataset_plotargs is not None: 
-        args.update(self.dataset_plotargs.get(var.dataset_name,{}))
-      if self.variable_plotargs is not None: args.update(self.variable_plotargs.get(var.name,{}))
-    else: # dataset name has precedence (also used as fallback)
-      if self.variable_plotargs is not None: 
-          args.update(self.variable_plotargs.get(var.name,self.variable_plotargs.get(label,{})))
-      if self.dataset_plotargs is not None: 
-        args.update(self.dataset_plotargs.get(var.dataset_name,self.dataset_plotargs.get(label,{})))
+      if self.dataset_plotargs: args.update(self.dataset_plotargs.get(var.dataset_name,{}))
+      if self.variable_plotargs: args.update(self.variable_plotargs.get(var.name,{}))
+    elif label == var.dataset_name: # dataset name has precedence
+      if self.variable_plotargs: args.update(self.variable_plotargs.get(var.name,{}))
+      if self.dataset_plotargs: args.update(self.dataset_plotargs.get(var.dataset_name,{}))
+    else: # label has precedence
+      if self.variable_plotargs: args.update(self.variable_plotargs.get(var.name,{}))
+      if self.dataset_plotargs: args.update(self.dataset_plotargs.get(var.dataset_name,{}))
+      if self.variable_plotargs: args.update(self.variable_plotargs.get(label,{}))
+      if self.dataset_plotargs: args.update(self.dataset_plotargs.get(label,{}))
     # apply axes/local defaults
     if plotarg is not None: args.update(plotarg)
     if plotatts is not None: args.update(plotatts.get(label,{}))
