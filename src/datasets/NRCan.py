@@ -526,16 +526,16 @@ if __name__ == '__main__':
   
 #     mode = 'test_climatology'
 #     mode = 'test_timeseries'
-#     mode = 'test_point_climatology'
+    mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
 #     mode = 'convert_Normals'
-    mode = 'convert_Historical'
+#     mode = 'convert_Historical'
 #     mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
 #     pntset = 'ecprecip'
-#     period = (1970,2000)
-    period = (1980,2010) 
+    period = (1970,2000)
+#     period = (1980,2010) 
     res = None; grid = None
     
     if mode == 'test_climatology':
@@ -579,8 +579,14 @@ if __name__ == '__main__':
         dataset.load()
         print(dataset)
         print('')
-        print(dataset.precip.mean())
+        dataset = dataset(shape_name='GRW')
+        print(dataset)
+        print('')
+        print(dataset.atts.shp_area)
+        print(dataset.liqprec.mean()*86400)
         print(dataset.precip.masked)
+        print(dataset.T2.mean())
+        print(dataset.atts.shp_empty,dataset.atts.shp_full,dataset.atts.shp_encl,)
         
         # print time coordinate
         print
@@ -604,8 +610,8 @@ if __name__ == '__main__':
     elif mode == 'convert_Normals':
         
         # parameters
-        period = (1980,2010)
-#         period = (1970,2000) 
+#         period = (1980,2010)
+        period = (1970,2000) 
 #         snow_density = 'ephemeral'
         snow_density = 'maritime'
 #         snow_density = 'prairies'
@@ -629,8 +635,8 @@ if __name__ == '__main__':
         
         # parameters
 #         snow_density = 'ephemeral'
-#         snow_density = 'maritime'
-        snow_density = 'prairies'
+        snow_density = 'maritime'
+#         snow_density = 'prairies'
         resolution = 12; grdstr = '_na{:d}_{:s}'.format(resolution, snow_density)
         ncfile = avgfolder + tsfile.format(grdstr)
         if not os.path.exists(avgfolder): os.mkdir(avgfolder)

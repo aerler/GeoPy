@@ -809,13 +809,16 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     var.getMapMask = types.MethodType(getMapMask, var)   
     
     # extension to mean
-    def mapMean(self, mask=None, integral=False, R=R, metric=None, invert=False, squeeze=True, **kwargs):
-      ''' Compute mean over the horizontal axes, optionally applying a 2D shape or mask or a metric. '''
+    def mapMean(self, mask=None, integral=False, R=R, metric=None, invert=True, squeeze=True, **kwargs):
+      ''' Compute mean over the horizontal axes, optionally applying a 2D shape or mask or a metric. 
+          N.B.: if the mask shows invalid/masked values as True and valid values as False, set 
+                invert==False (numpy.ma convention; if valid values are shown as True and masked/invalid
+                values as False, leave at invert=True '''
       if not self.data: raise DataError
       # if mask is a shape object, create the mask
       if isinstance(mask,Shape):
         shape = mask 
-        mask = shape.rasterize(griddef=self.griddef, invert=invert, asVar=False)
+        mask = shape.rasterize(griddef=self.griddef, invert=not invert, asVar=False)
       else: shape = None      
       # determine relevant axes
       axes = {self.xlon.name:None, self.ylat.name:None,} # the relevant map axes; entire coordinate
@@ -826,11 +829,12 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           if self.masked: oldmask = ma.getmask(self.data_array) # save old mask
           else: oldmask = None
           self.mask(mask=mask, invert=invert, merge=True) # new mask on top of old mask
+          # N.B.: invert=True is necessary, if the mask indicates True for valid values and Fals for missing/invalid values
       else: oldmask = None
       ## compute average
-      if not self.isProjected or metric:
-          # determine metric
-          if not self.isProjected and metric is None: metric = 'lat' # defaulf for spherical coordinates
+      # determine metric
+      if not self.isProjected and metric is None: metric = 'lat' # defaulf for spherical coordinates
+      if metric:
           units = None
           if isinstance(metric,basestring):
               # special metrics
@@ -840,6 +844,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
                   shape = [1]*self.ndim
                   shape[self.axisIndex(self.ylat.name)] = metric.size
                   metric = metric.reshape(shape)
+                  units = 'm^2' if integral else ''
               else: 
                   raise NotImplementedError("Special keyword for metric not recognized: '{}'".format(metric))
           if isinstance(metric,Variable):
@@ -856,6 +861,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
                       raise AxisError("Metric axes are incompatible with Variable: {} != {}".format(metric.shape,self.shape))
                   shape = (1,)*(self.ndim-2)+metric.shape
               metric = metric[:].reshape(shape)
+              units = metric.units
           if not isinstance(metric,np.ndarray): raise TypeError(metric)
           # now the metric can only be a Numpy array
           if metric.ndim == self.ndim: 
@@ -866,22 +872,28 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
                   raise AxisError("Metric axes are incompatible with Variable: {} != {}".format(metric.shape,self.shape))
               shape = (1,)*(self.ndim-2)+metric.shape
               metric = metric.reshape(shape)
-          if not integral: metric = metric / metric.mean() # normalize metric
+          if not integral: 
+              if self.masked:
+                  masked_metric = np.broadcast_to(metric, shape=self.shape, subok=True)
+                  mean_metric = ma.array(masked_metric, mask=self.getMask()).mean()
+              else: mean_metric = metric.mean()
+              metric = metric / mean_metric # normalize metric
           # make copy, apply metric and average
           newvar = self.deepcopy() # use a copy of the variable
           newvar *= metric # apply metric and normalize (first)
           if integral:
-              newvar = newvar.sum(**kwargs)
+              newvar = newvar.sum(**kwargs) # area is included in metric
               if units: newvar.units = '{} {}'.format(newvar.units,units)
           else: 
-              newvar = newvar.mean(**kwargs) # simple mean and smae units 
+              newvar = newvar.mean(**kwargs) # simple mean and same units 
       else:
           newvar = self.mean(**kwargs)
           if squeeze: newvar.squeeze()
           # if integrating
           if integral:
-            dx = self.geotransform[1]; dy = self.geotransform[5] 
-            area = (1-mask).sum()*dx*dy
+            da = self.geotransform[1] * self.geotransform[5] 
+            if invert: area = mask.sum()*da
+            else: area = (1-mask).sum()*da
             newvar *= area # in-place scaling
             if self.xlon.units == self.ylat.units: newvar.units = '{} {}^2'.format(newvar.units,self.ylat.units) 
             else: newvar.units ='{} {} {}'.format(newvar.units,self.xlon.units,self.ylat.units)
@@ -1307,8 +1319,8 @@ class Shape(object):
     #if not isinstance(griddef,GridDefinition): raise TypeError # this is always False. probably due to pickling
     if not isinstance(invert,(bool,np.bool)): raise TypeError
     # fill values
-    if invert: inside, outside = 1,0
-    else: inside, outside = 0,1
+    if invert: inside, outside = 0,1
+    else: inside, outside = 1,0
     shp_lyr = self.getLayer(layer) # get shape layer
     # create raster to burn shape onto
     if ldebug: print(' - creating raster')

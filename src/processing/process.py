@@ -254,15 +254,15 @@ class CentralProcessingUnit(object):
     # N.B.: rasterize() returns mask in (y,x) shape, size is ordered as (x,y)
     shape_masks = []; shp_full = []; shp_empty = []; shp_encl = []
     for i,shape in enumerate(shape_dict.itervalues()):
-      mask = shape.rasterize(griddef=srcgrd, asVar=False)
+      mask = shape.rasterize(griddef=srcgrd, asVar=False, invert=False)
       mask_array[i,:] = mask
       masksum = mask.sum() 
-      lfull = masksum == 0; shp_full.append( lfull )
-      lempty = masksum == mask.size; shp_empty.append( lempty )
+      lfull = masksum == mask.size; shp_full.append( lfull )
+      lempty = masksum == 0; shp_empty.append( lempty )
       shape_masks.append( mask if not lempty else None )
       if lempty: shp_encl.append( False )
       else:
-        shp_encl.append( np.all( mask[[0,-1],:] == True ) and np.all( mask[:,[0,-1]] == True ) )
+        shp_encl.append( np.all( mask[[0,-1],:] == False ) and np.all( mask[:,[0,-1]] == False ) )
         # i.e. if boundaries are masked
     # N.B.: shapes that have no overlap with grid will be skipped and filled with NaN
     # add rasterized masks to new dataset
@@ -271,7 +271,7 @@ class CentralProcessingUnit(object):
                     asNC=True, copy=True)
     # add area enclosed by shape
     da = srcgrd.geotransform[1]*srcgrd.geotransform[5]
-    mask_area = (1-mask_array).mean(axis=2).mean(axis=1)*da
+    mask_area = mask_array.mean(axis=2).mean(axis=1)*da
     atts = dict(name='shp_area', long_name='Area Contained in the Shape', 
                 units= 'm^2' if srcgrd.isProjected else 'deg^2' )
     tgt.addVariable(Variable(data=mask_area, axes=(shpax,), atts=atts), asNC=True, copy=True)
@@ -332,7 +332,7 @@ class CentralProcessingUnit(object):
       if var.ndim == 2:
         for i,mask in enumerate(masks): 
           if mask is None: tgtdata[i] = np.NaN # NaN for missing values (i.e. no overlap)
-          else: tgtdata[i] = var.mapMean(mask=mask, asVar=False, squeeze=True) # compute the averages
+          else: tgtdata[i] = var.mapMean(mask=mask, invert=True, asVar=False, squeeze=True) # compute the averages
           if self.feedback: print varname, i
           # garbage collection is typically not necessary for 2D fields
       elif var.ndim > 2:
@@ -340,7 +340,7 @@ class CentralProcessingUnit(object):
         for i,mask in enumerate(masks):
           if mask is None: tgtdata[i,:] = np.NaN # NaN for missing values (i.e. no overlap) 
           else:
-            tgtdata[i,:] = var.mapMean(mask=mask, asVar=False, squeeze=True).filled(np.NaN) # mapMean returns a masked array
+            tgtdata[i,:] = var.mapMean(mask=mask, invert=True, asVar=False, squeeze=True).filled(np.NaN) # mapMean returns a masked array
             # N.B.: this is necessary, because sometimes shapes only contain invalid values
             cnt += inc # keep track of memory
             # N.B.: mapMean creates a lot of temporary arrays that don't get garbage-collected

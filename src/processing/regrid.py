@@ -211,7 +211,7 @@ if __name__ == '__main__':
     modes = ('climatology','time-series') # 'climatology','time-series'
 #     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = True
+    loverwrite = False
     varlist = None
 #     varlist = ['LU_INDEX',]
     periods = []
@@ -295,22 +295,22 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('const',); modes = ('time-series',); periods = None
     # grid to project onto
     grids = dict()
-#     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
+    grids['asb1'] = None # small grid for Assiniboine river basin, 5km
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 #     grids['grw1'] = None # high-res grid for GRW, 1km
-#     grids['grw2'] = None # small grid for GRW, 5km
+    grids['grw2'] = None # small grid for GRW, 5km
     grids['snw1'] = None # large grid for whole Canada
-#     grids['can1'] = None # large grid for whole Canada
+    grids['can1'] = None # large grid for whole Canada
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
-#     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
+    grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 # #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
-#     grids['glb1-90km'] = ('d01',) # 90km GLB domain
+    grids['glb1-90km'] = ('d01',) # 90km GLB domain
 #     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
 #     grids['arb3'] = ('d01','d02','d03',) # WRF standard ARB inner domain
 #     grids['arb3'] = ('d03',) # WRF standard ARB inner domain
 # #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 # #     grids['ARB_large'] = ('025','05') # large custom geographic grids
-#     grids['cesm1x1'] = None # CESM 1-deg. grid
+    grids['cesm1x1'] = None # CESM 1-deg. grid
 #     grids['NARR'] = None # NARR grid
 #     grids['CRU'] = None # CRU grid
 #     grids['GPCC'] = ('025',) # GPCC LTM grid
