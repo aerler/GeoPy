@@ -301,7 +301,7 @@ class MyAxes(Axes):
               err = np.stack((errup,errup)) # same errors up and down
               if errorscale is not None: err *= errorscale
           else: 
-              err = np.stack((errdn,errup)) - val.reshape((1,val.size))
+              err = np.abs( np.stack((errdn,errup)) - val.reshape((1,val.size)) )
               # N.B.: interpreted as upper and lower bounds (as in percentiles), not deviations
               if errorscale is not None: raise NotImplementedError
         else: err = None

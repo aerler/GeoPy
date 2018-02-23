@@ -526,11 +526,11 @@ if __name__ == '__main__':
   
 #     mode = 'test_climatology'
 #     mode = 'test_timeseries'
-    mode = 'test_point_climatology'
+#     mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
 #     mode = 'convert_Normals'
 #     mode = 'convert_Historical'
-#     mode = 'add_CMC'
+    mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
 #     pntset = 'ecprecip'
@@ -671,7 +671,7 @@ if __name__ == '__main__':
         filelist = None
         
         # load NRCan dataset (for precip and to add variables)
-        nrcan = loadNRCan(filelist=filelist, period=period, filemode='rw')
+        nrcan = loadNRCan(filelist=filelist, period=period, filemode='rw').load()
 
         # load ASCII dataset with default values
         cmc = loadCMC_Hist(period=CMC_period, mask=nrcan.landmask)        
