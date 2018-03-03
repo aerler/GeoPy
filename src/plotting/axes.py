@@ -933,9 +933,9 @@ class MyAxes(Axes):
       if self.parasite_axes is not None: self.parasite_axes.set_yscale('log' if ylog else 'linear')
     # set axes limits
     if isinstance(xlim,(list,tuple)) and len(xlim)==2: self.set_xlim(*xlim)
-    elif xlim is not None: raise TypeError
+    elif xlim is not None: raise TypeError(xlim)
     if isinstance(ylim,(list,tuple)) and len(ylim)==2: self.set_ylim(*ylim)
-    elif ylim is not None: raise TypeError 
+    elif ylim is not None: raise TypeError(ylim)
     if self.parasite_axes: # mirror y-limits on parasite axes
       self.parasite_axes.set_ylim(self.get_ylim())
     # set title

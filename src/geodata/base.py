@@ -308,7 +308,7 @@ class Variable(object):
   '''
   
   def __init__(self, name=None, units=None, axes=None, data=None, dtype=None, mask=None, fillValue=None, 
-               atts=None, plot=None):
+               atts=None, plot=None, plotatts_dict=None):
     ''' 
       Initialize variable and attributes.
       
@@ -364,7 +364,8 @@ class Variable(object):
 #     if fillValue is not None: atts['missing_value'] = fillValue # slightly irregular treatment...
     self.__dict__['atts'] = AttrDict(**atts)
     # try to find sensible default values
-    self.__dict__['plot'] = getPlotAtts(name=name, units=units, atts=atts, plot=plot)
+    self.__dict__['plot'] = getPlotAtts(name=name, units=units, atts=atts, 
+                                        plot=plot, plotatts_dict=plotatts_dict)
     # set defaults - make all of them instance variables! (atts and plot are set below)
     self.__dict__['data_array'] = None
     self.__dict__['_dtype'] = dtype

@@ -88,6 +88,7 @@ tmp = PlotAtts(name = 'Lat', title = 'Latitude',
 # add to collection
 variablePlotatts['lat'] = tmp
 
+
 ## ** Surface Vars (2D) ***
 
 ## Land Mask
@@ -662,10 +663,10 @@ def getPlotAtts(name=None, units=None, atts=None, plot=None, plotatts_dict=None)
   if units is not None: pass 
   elif atts is not None and 'units' in atts: units = atts['units']  
   else: raise ArgumentError
-  if not isinstance(atts,(dict,NoneType)): raise TypeError, atts
-  if not isinstance(plot,(dict,PlotAtts,NoneType)): raise TypeError, plot
-  plotatts_dict = plotatts_dict or variablePlotatts
-  if not isinstance(plotatts_dict,dict): raise TypeError, plotatts_dict
+  if not isinstance(atts,(dict,NoneType)): raise TypeError(atts)
+  if not isinstance(plot,(dict,PlotAtts,NoneType)): raise TypeError(plot)
+  if plotatts_dict is None: plotatts_dict = variablePlotatts
+  if not isinstance(plotatts_dict,dict): raise TypeError(plotatts_dict)
   # find variable in plotatts_dict (based on name)
   prefix = postfix = ''
   basename = name
@@ -673,30 +674,30 @@ def getPlotAtts(name=None, units=None, atts=None, plot=None, plotatts_dict=None)
   # get base plotatts atts
   if isinstance(plot,PlotAtts):
     plotatts = plot.copy() 
-  elif name in variablePlotatts: 
-    plotatts = variablePlotatts[name].copy()
+  elif name in plotatts_dict: 
+    plotatts = plotatts_dict[name].copy()
   else:
     if name[:3].lower() in ('min','max'):
       prefix = name[:3].lower()
       basename = name[3:]
-    if basename in variablePlotatts:
-      plotatts = variablePlotatts[basename].copy()
-    elif basename.lower() in variablePlotatts:
-      plotatts = variablePlotatts[basename.lower()].copy()
+    if basename in plotatts_dict:
+      plotatts = plotatts_dict[basename].copy()
+    elif basename.lower() in plotatts_dict:
+      plotatts = plotatts_dict[basename.lower()].copy()
     else:
       namelist = basename.split('_')
       basename = namelist[0]
       postfix = namelist[1] if len(namelist)>1 else ''
-      if postfix in variablePlotatts:
+      if postfix in plotatts_dict:
         ldistvar = True
-        plotatts = variablePlotatts[postfix].copy()
-      elif postfix.lower() in variablePlotatts:
+        plotatts = plotatts_dict[postfix].copy()
+      elif postfix.lower() in plotatts_dict:
         ldistvar = True
-        plotatts = variablePlotatts[postfix.lower()].copy()
-      elif basename in variablePlotatts: 
-        plotatts = variablePlotatts[basename].copy()
-      elif basename.lower() in variablePlotatts: 
-        plotatts = variablePlotatts[basename.lower()].copy()
+        plotatts = plotatts_dict[postfix.lower()].copy()
+      elif basename in plotatts_dict: 
+        plotatts = plotatts_dict[basename].copy()
+      elif basename.lower() in plotatts_dict: 
+        plotatts = plotatts_dict[basename.lower()].copy()
       else:
         # last resort...
         name = name.title() if name == name.lower() else name
@@ -733,7 +734,7 @@ def getPlotAtts(name=None, units=None, atts=None, plot=None, plotatts_dict=None)
 ## function to update all variable properties in a dataset
 def updateAllPlotAtts(dataset, mode='update', plot=None, default=True):
   # defaults (see above)
-  if not plot: plot = variablePlotatts
+  if plot is None: plot = variablePlotatts.copy()
   # loop over variables
   for var in dataset.vardict.iterkeys():
     if plot.has_key(var):
