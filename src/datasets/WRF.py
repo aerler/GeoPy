@@ -1081,13 +1081,13 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-#   mode = 'test_climatology'
+  mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
-  mode = 'pickle_grid' 
+#   mode = 'pickle_grid' 
 #   pntset = 'wcshp'
   pntset = 'glbshp'
 #   pntset = 'ecprecip'

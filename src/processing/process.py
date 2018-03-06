@@ -720,7 +720,7 @@ class CentralProcessingUnit(object):
       if timeSlice is not None:
         idx = tuple([timeSlice if ax.name == timeAxis else slice(None) for ax in var.axes])
       else: idx = None
-      dataarray = var.getArray(idx=idx, unmask=False, copy=False)    
+      dataarray = var.getArray(unmask=False, copy=False)[idx]
       if var.masked: avgdata = ma.zeros(newshape, dtype=var.dtype) # allocate array
       else: avgdata = np.zeros(newshape, dtype=var.dtype) # allocate array    
       # average data

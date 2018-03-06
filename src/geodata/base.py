@@ -1025,7 +1025,7 @@ class Variable(object):
     # self.__dict__['shape'] = None # retain shape for later use
     gc.collect() # enforce garbage collection
       
-  def getArray(self, idx=None, axes=None, broadcast=False, unmask=False, fillValue=None, dtype=None, copy=True):
+  def getArray(self, axes=None, broadcast=False, unmask=False, fillValue=None, dtype=None, copy=True):
     ''' Copy the entire data array or a slice; option to unmask and to reorder/reshape to specified axes. '''
     # without data, this will fail
     if self.data:
@@ -1043,7 +1043,6 @@ class Variable(object):
         datacopy = datacopy.filled(fill_value=fillValue) # I don't know if this generates a copy or not...
       # reorder and reshape to match axes (add missing dimensions as singleton dimensions)
       if axes is not None:
-        if idx is not None: raise NotImplementedError
         for ax in self.axes:
           if not ( (ax in axes) or (ax.name in axes) ):
             raise AxisError("Need to have complete Axis list to broadcast; Axis '{:s}' in Variable '{:s}' is missing.".format(ax.name,self.name))
