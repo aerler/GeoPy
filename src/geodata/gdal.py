@@ -1163,7 +1163,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       if filename is not None and not isinstance(filename,basestring): raise TypeError
       # get mask from shapefile
       shpfolder = self.gridfolder if filename is None else None
-      shape = Shape(name=name, folder=shpfolder, hsapefile=filename) # load shape file
+      shape = Shape(name=name, folder=shpfolder, shapefile=filename) # load shape file
       mask = shape.rasterize(griddef=self.griddef, invert=invert, asVar=True) # extract mask
       # apply mask to dataset 
       self.mask(mask=mask, invert=False) # kwargs: merge=True, varlist=None, skiplist=None

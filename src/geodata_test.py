@@ -11,6 +11,7 @@ from copy import deepcopy
 import netCDF4 as nc
 import numpy as np
 import numpy.ma as ma
+import numpy.random as rnd
 import scipy.stats as ss
 
 # import modules to be tested
@@ -395,13 +396,33 @@ class BaseVarTest(unittest.TestCase):
     assert not ens.hasMember(var.name)
     # test call
     tes = ens(time=slice(0,3,2))
-    assert all(len(tax)==2 for tax in tes.time)
+    assert all(len(tax)==2 for tax in tes.time)      
       
+  def testGridData(self):
+    ''' test interpolation of point data to regular grid'''
+    # get test objects
+    lsimple = self.__class__ is BaseVarTest
+    if lsimple:
+        pts = 100; size = 10
+        s = Axis(name='s', units='', coord=np.arange(pts)) # point/sample axis
+        t = Axis(name='t', units='', coord=np.arange(12)) # point/sample axis
+        # point values and coordinates
+        var = Variable(axes=(s,t), data=np.ones((pts,len(t))), name='data', units='none')
+        xv = Variable(axes=(s,), data=rnd.uniform(0,10,pts), name='x', units='m')
+        yv = Variable(axes=(s,), data=rnd.uniform(0,-10,pts), name='y', units='m')
+        # new regular axes
+        x = Axis(name='x', units='m', coord=np.linspace(-10,10,size)) # grid axis
+        y = Axis(name='y', units='m', coord=np.linspace(-10,10,size)) # grid axis
+        # interpolate data and create variable on new grid
+        gridvar = var.gridVar(point_axis=s.name, coord_vars=(xv,yv), grid_axes=(x,y))
+        # check
+        assert gridvar.hasAxis(x.name) and gridvar.hasAxis(y.name), gridvar
+        assert gridvar.shape == (len(t),len(x),len(y)), gridvar
+
   def testIndexing(self):
     ''' test indexing and slicing '''
     # get test objects
     var = self.var
-    lsimple = self.__class__ is BaseVarTest
     # indexing (getitem) and slicing (call) tests  
     if var.ndim >= 3:
       tmp = var[:]; var.unload(); var[:] = tmp.copy()
@@ -968,7 +989,7 @@ class BaseDatasetTest(unittest.TestCase):
   def testApplyToAll(self):
     ''' test apply-to-all functionality for Variable methods '''
     # get some data
-    lsimple = self.__class__ is BaseVarTest
+    lsimple = self.__class__ is BaseDatasetTest
     if lsimple: dataset = self.dataset
     else:
       # crop data because these tests just take way too long!
@@ -1104,6 +1125,28 @@ class BaseDatasetTest(unittest.TestCase):
     assert isinstance(copy,Dataset) and not isinstance(copy,DatasetNetCDF)
     assert all([copy.hasAxis(ax.name) for ax in dataset.axes.values()])
     assert all([copy.hasVariable(var.name) for var in dataset.variables.values()])
+
+  def testGridData(self):
+    ''' test interpolation of point data to regular grid'''
+    # get test objects
+    dataset = self.dataset
+    lsimple = self.__class__ is BaseDatasetTest
+    if lsimple:
+        pts = 100; size = 10
+        s = Axis(name='s', units='', coord=np.arange(pts)) # point/sample axis
+        t = Axis(name='tt', units='', coord=np.arange(12)) # point/sample axis
+        # point values and coordinates
+        dataset += Variable(axes=(s,t), data=np.ones((pts,len(t))), name='data', units='none')
+        dataset += Variable(axes=(s,), data=rnd.uniform(0,10,pts), name='xx', units='m')
+        dataset += Variable(axes=(s,), data=rnd.uniform(0,-10,pts), name='yy', units='m')
+        # new regular axes
+        x = Axis(name='xx', units='m', coord=np.linspace(-10,10,size)) # grid axis
+        y = Axis(name='yy', units='m', coord=np.linspace(-10,10,size)) # grid axis
+        # interpolate data and create variable on new grid
+        grid_ds = dataset.gridDataset(grid_axes=(x,y))
+        # check
+        assert grid_ds.hasAxis(x.name) and grid_ds.hasAxis(y.name), grid_ds
+        assert not grid_ds.hasAxis(s.name), grid_ds
 
   def testEnsemble(self):
     ''' test the Ensemble container class '''
@@ -1882,6 +1925,7 @@ if __name__ == "__main__":
     print('OMP_NUM_THREADS = {:s}\n'.format(os.environ['OMP_NUM_THREADS']))    
         
     specific_tests = []
+#     specific_tests += ['GridData']
 #     specific_tests += ['LoadSlice']
 #     specific_tests += ['WriteASCII']
 #     specific_tests += ['ReadASCII']

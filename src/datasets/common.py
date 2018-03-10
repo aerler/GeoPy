@@ -802,13 +802,13 @@ if __name__ == '__main__':
     ## parameters for UTM 17 GRW grids
 #     name = 'grw1' # 1km resolution
 #     geotransform = [500.e3,1.e3,0,4740.e3,0,1.e3]; size = (132,162)
-#     name = 'grw2' # 5km resolution
-#     geotransform = [500.e3,5.e3,0,4740.e3,0,5.e3]; size = (27,33)
-#     projection = "+proj=utm +zone=17 +north +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
-    name = 'son1' # 5km resolution
-    # X 320919.7943000002 Y 4624073.9199, C 5890 R 4062 x 100m
-    geotransform = [320920.,5.e3,0,4624073.,0,5.e3]; size = (118,82)
+    name = 'grw2' # 5km resolution
+    geotransform = [500.e3,5.e3,0,4740.e3,0,5.e3]; size = (27,33)
     projection = "+proj=utm +zone=17 +north +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+#     name = 'son1' # 5km resolution
+#     # X 320919.7943000002 Y 4624073.9199, C 5890 R 4062 x 100m
+#     geotransform = [320920.,5.e3,0,4624073.,0,5.e3]; size = (118,82)
+#     projection = "+proj=utm +zone=17 +north +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
 #     ## parameters for South Nation grids
 #     name = 'snw1' # 9km resolution
 #     geotransform = [401826.125365249,9.e3,0,4851533.71730136,0,9.e3]; size = (22,29)

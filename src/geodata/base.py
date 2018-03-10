@@ -11,6 +11,7 @@ import numpy as np
 import numpy.ma as ma # masked arrays
 from numpy.lib.stride_tricks import as_strided
 import scipy.stats as ss
+from scipy.interpolate import griddata
 import numbers
 import functools
 import gc # garbage collection
@@ -24,6 +25,7 @@ from geodata.misc import genStrArray, translateSeasons
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError, EmptyDatasetError
 from processing.multiprocess import apply_along_axis
 from utils.misc import histogram, binedges, detrend, percentile, tabulate
+from copy import deepcopy
      
 # used for climatology and seasons
 monthlyUnitsList = ('month','months','month of the year')
@@ -2180,6 +2182,61 @@ class Variable(object):
     # return new variable
     return var
   
+  def gridVar(self, point_axis=None, coord_vars=None, grid_axes=None, method='cubic', fill_value=np.NaN, 
+              rescale=None, asVar=True, lcheckAxis=True, lcheckVar=True):
+    ''' interpolate a one-dimensional point vector to a regular 2D grid '''
+    # some eligibility checks
+    if self.dtype.kind in ('S',): 
+        if lcheckVar: 
+            raise VariableError("Standardization does not work with string Variables!")
+        else: 
+            return None
+    if not self.hasAxis(point_axis):
+        if lcheckAxis:
+            raise AxisError("Point/Sample Axis '{}' not found in Variable '{}'".format(point_axis.name,self.name))
+        else: 
+            return None
+    # check inputs
+    pax = self.getAxis(point_axis, lcheck=True)
+    pe = len(pax)
+    if len(coord_vars) != len(grid_axes):
+        raise ArgumentError("Each Coordinate Variable has to correspond to one Grid Axis.")
+    # prepare coordinate vectors
+    cvec = []; gvec = []; gce = len(coord_vars); gshp = []
+    for i,cvar,gax in zip(range(gce),coord_vars,grid_axes):
+        if cvar.ndim != 1: raise AxisError(cvar)
+        if not isinstance(gax, Axis): raise AxisError(gax)
+        if cvar.shape[0] != pe: raise Axis(cvar)
+        cvec.append( cvar[:] )
+        idxshp = [1]*gce; idxshp[i] = len(gax)
+        gvec.append( gax[:].reshape(idxshp) )
+        gshp.append( len(gax) )
+    cvec = tuple(cvec); gvec = tuple(gvec); gshp = tuple(gshp)    
+    # interpolate to regular grid
+    data = self.data_array
+    if data.ndim == 1:
+        grid_data = griddata(cvec, data, gvec, method=method, fill_value=fill_value, rescale=rescale)
+        assert grid_data.shape == gshp 
+    else:
+        data = np.moveaxis(data, self.axisIndex(pax,), -1) # move point dimension to the back
+        assert data.shape[-1] == pe
+        rshp = data.shape[:-1] # old shape of remaining dimensions
+        re = data.size/pe
+        data = data.reshape((re,pe)) # flatten other dimensions
+        # loop over dimensions
+        grid_data = np.zeros((re,)+gshp) # allocate new array
+        for i in range(re):
+            grid_data[i,:] = griddata(cvec, data[i,:], gvec, method=method, fill_value=fill_value, rescale=rescale) 
+        grid_data = grid_data.reshape(rshp+gshp) # return other dimensions to old shape
+    # create new axes tuple and new variable
+    if asVar: 
+      axes = tuple([ax for ax in self.axes if ax.name != pax.name]) + grid_axes
+      var = self._createVar(axes=axes, data=grid_data, linplace=False)
+    else: var = grid_data
+    # return variable
+    return var
+
+  
   @UnaryCheckAndCreateVar
   def standardize(self, axis=None, name=None, linplace=False, lcheckVar=True, lcheckAxis=True,
                   lstandardize=True, ldetrend=False, ltrend=False, lsmooth=False, lresidual=False, 
@@ -3141,6 +3198,34 @@ class Dataset(object):
     for var in self.variables.itervalues():
       var.load(fillValue=fillValue, **kwargs)
       
+  def gridDataset(self, grid_axes=None, dsatts=None, method='cubic', fill_value=np.NaN, rescale=None,
+                  asVar=True, lcheckAxis=True, lcheckVar=True, deepcopy=False):
+    ''' a wrapper for gridVar, which infers the point Axis and axes variables from the Dataset '''
+    # check axes
+    point_axis = None; coord_vars = []
+    for ax in grid_axes:
+        if not isinstance(ax, Axis): raise ArgumentError(ax)
+        if not self.hasVariable(ax.name): raise ArgumentError(ax)
+        cvar = self.getVariable(ax.name)
+        if cvar.ndim != 1: raise VariableError(cvar)
+        if point_axis and not cvar.hasAxis(point_axis): raise VariableError(cvar)
+        else: point_axis = cvar.axes[0]
+        coord_vars.append( cvar )
+    # apply gridVar to all variables and return new dataset
+    newvars = dict()
+    for varname,var in self.variables.items():
+        if var in coord_vars: # this has to come first
+            newvars[varname] = None # these variables will cause conflicts with the grid axes
+        elif var.hasAxis(point_axis): # this is the actual interpolation
+            newvars[varname] = var.gridVar(point_axis=point_axis, coord_vars=tuple(coord_vars), 
+                                           grid_axes=grid_axes, 
+                                           method=method, fill_value=fill_value, rescale=rescale, 
+                                           asVar=asVar, lcheckAxis=lcheckAxis, lcheckVar=lcheckVar)
+        else:
+            newvars[varname] = var.copy(deepcopy=deepcopy) # variables that are just copies
+    # create new dataset with regridded and old variables
+    return self.copy(variables=newvars, atts=dsatts)
+              
   def _apply_to_all(self, fctsdict, asVar=True, dsatts=None, copyother=True, deepcopy=False, 
                     lcheckVar=False, lcheckAxis=False, lkeepName=True, **kwargs):
     ''' Apply functions from fctsdict to variables in dataset and return a new dataset. '''
