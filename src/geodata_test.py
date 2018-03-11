@@ -1040,6 +1040,7 @@ class BaseDatasetTest(unittest.TestCase):
     del dds; gc.collect()      
     # test standardization
     dsstd = dataset.standardize(axis=None)
+    assert isinstance(dsstd,Dataset), dsstd
     
   def testConcatDatasets(self):
     ''' test concatenation of datasets '''
@@ -1126,6 +1127,26 @@ class BaseDatasetTest(unittest.TestCase):
     assert all([copy.hasAxis(ax.name) for ax in dataset.axes.values()])
     assert all([copy.hasVariable(var.name) for var in dataset.variables.values()])
 
+  def testDatasetArithmetic(self):
+    ''' test binary arithmetic with datasets '''
+    # get test objects
+    dataset = self.dataset
+    var = self.var 
+    varname = var.name # var name for reference
+    lsimple = self.__class__ is BaseDatasetTest
+    # multiplication
+    dataset = dataset * 2
+    assert np.allclose(dataset[varname][:], var[:]*2, equal_nan=True)
+    # division
+    dataset = dataset / 2
+    assert np.allclose(dataset[varname][:], var[:], equal_nan=True)
+    # addition
+    dataset = dataset + dataset
+    assert np.allclose(dataset[varname][:], var[:]*2, equal_nan=True)
+    # subtraction
+    dataset = dataset - dataset
+    assert np.allclose(dataset[varname][:], 0, equal_nan=True)
+      
   def testGridData(self):
     ''' test interpolation of point data to regular grid'''
     # get test objects
@@ -1932,6 +1953,7 @@ if __name__ == "__main__":
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
 #     specific_tests += ['Ensemble']
+#     specific_tests += ['DatasetArithmetic']
     specific_tests += ['DistributionVariables']
     specific_tests += ['StatsTests']   
 #     specific_tests += ['UnaryArithmetic']

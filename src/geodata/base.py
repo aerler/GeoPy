@@ -2668,6 +2668,53 @@ class Axis(Variable):
     return idxs
                   
 
+def BinaryCheckAndCreateDataset(laddsub=True,):
+  ''' A decorator function that accepts arguments and returns a decorator class with fixed parameter values. '''
+  class BinaryCheckAndCreateDataset_Class(object):
+    ''' A decorator that applies the intended operation to each variable in a Dataset or between 
+    corresponding variables of two datasets. '''
+    def __init__(self, binOp):
+        ''' Save original operation and parameters. '''
+        self.binOp = binOp
+    # define method wrapper (this is now the actual decorator)
+    def __call__(self, orig, other, laddsub=laddsub, deepcopy=True, lrename=False, **kwargs):
+        ''' Perform sanity checks, then execute operation, and return result. '''
+        if isinstance(other,Dataset): # raise TypeError, 'Can only add two Variable instances!'
+            if not laddsub: 
+                raise DatasetError("Only subtraction and addition can be peerformed between two Datasets.")
+        elif isinstance(other, (np.ndarray,numbers.Number,np.integer,np.inexact)):
+            if laddsub: 
+                raise DatasetError("Only multiply or divide Datasets with numerical types.")
+        else: 
+            raise TypeError, 'Can only operate with Datasets or numerical types!'
+        # loop over variables
+        variables = dict()
+        for varname,var in orig.variables.items():
+            if var.strvar:
+                newvar = var.copy(deepcopy=deepcopy)
+            elif laddsub:
+                # call original method with two variables
+                if varname not in other: 
+                    newvar = var.copy(deepcopy=deepcopy)
+                else: 
+                    newvar = self.binOp(var, other[varname], **kwargs)
+                    if not lrename: newvar.name = var.name
+            else:
+                # call original method with one variable and one number
+                newvar = self.binOp(var, other, **kwargs)
+                if not lrename: newvar.name = var.name
+            variables[varname] = newvar
+        # create new dataset from old with new variables
+        dataset = orig.copy(variables=variables)
+        # return new Dataset instance
+        return dataset
+    def __get__(self, instance, klass):
+        ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
+        return functools.partial(self.__call__, instance)
+  # return decorator class  
+  return BinaryCheckAndCreateDataset_Class
+
+
 class Dataset(object):
   '''
     A container class for variable and axes objects, as well as some meta information. This class also 
@@ -3127,14 +3174,34 @@ class Dataset(object):
     ''' Get the number of Variables in the Dataset. '''
     return len(self.variables)
   
-  def __add__(self, other):
-    ''' create new dataset from two existing ones '''
-    name = self.name if self.name == other.name else "{:s} & {:s}".format(self.name,other.name)
-    title = self.title if self.title == other.title else "{:s} & {:s}".format(self.title,other.title)
-    varlist = self.variables.values() + other.variables.values()
-    atts = other.atts.copy(); atts.update(self.atts)
-    return Dataset(name=name,title=title,varlist=varlist,atts=atts)
-    
+#   def __add__(self, other):
+#     ''' create new dataset from two existing ones '''
+#     name = self.name if self.name == other.name else "{:s} + {:s}".format(self.name,other.name)
+#     title = self.title if self.title == other.title else "{:s} + {:s}".format(self.title,other.title)
+#     varlist = self.variables.values() + other.variables.values()
+#     atts = other.atts.copy(); atts.update(self.atts)
+#     return Dataset(name=name,title=title,varlist=varlist,atts=atts)
+
+  @BinaryCheckAndCreateDataset(laddsub=True)
+  def __add__(self, a,):
+    ''' Add corresponding Variables of two Datasets and return new Dataset. '''
+    return self + a
+
+  @BinaryCheckAndCreateDataset(laddsub=True)
+  def __sub__(self, a,):
+    ''' Subtract corresponding Variables of two Datasets and return new Dataset. '''
+    return self - a
+  
+  @BinaryCheckAndCreateDataset(laddsub=False)
+  def __mul__(self, a,):
+    ''' Multiply the Variables of a Dataset with a constant numerical factor. '''
+    return self * a
+
+  @BinaryCheckAndCreateDataset(laddsub=False)
+  def __div__(self, a,):
+    ''' Divide the Variables of a Dataset with a constant numerical factor. '''
+    return self / a
+
   def __iadd__(self, var):
     ''' Add a Variable to an existing dataset. ''' 
     if isinstance(var,Axis):
