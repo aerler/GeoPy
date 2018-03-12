@@ -1133,7 +1133,15 @@ class BaseDatasetTest(unittest.TestCase):
     dataset = self.dataset
     var = self.var 
     varname = var.name # var name for reference
-    lsimple = self.__class__ is BaseDatasetTest
+    #lsimple = self.__class__ is BaseDatasetTest
+    # test adding to dataset
+    othername = 'some_other_var'; axname = 'some_other_ax' 
+    other = Dataset(varlist = [Variable(name=othername,units='none',
+                                        axes=(Axis(name=axname, units='none'),))])
+    test = dataset + other
+    assert test.hasVariable(othername), test
+    assert test.hasAxis(axname), test
+    ## test arithmetic
     # multiplication
     dataset = dataset * 2
     assert np.allclose(dataset[varname][:], var[:]*2, equal_nan=True)
@@ -1141,11 +1149,27 @@ class BaseDatasetTest(unittest.TestCase):
     dataset = dataset / 2
     assert np.allclose(dataset[varname][:], var[:], equal_nan=True)
     # addition
-    dataset = dataset + dataset
-    assert np.allclose(dataset[varname][:], var[:]*2, equal_nan=True)
+    dataset = dataset + 2
+    assert np.allclose(dataset[varname][:], var[:]+2, equal_nan=True)
     # subtraction
-    dataset = dataset - dataset
-    assert np.allclose(dataset[varname][:], 0, equal_nan=True)
+    dataset = dataset - 2
+    assert np.allclose(dataset[varname][:], var[:], equal_nan=True)
+    # multiplication
+    test = dataset * dataset
+    assert np.allclose(test[varname][:], var[:]**2, equal_nan=True)
+    # division
+    test = dataset / dataset
+    assert np.allclose(test[varname][:], 1., equal_nan=True)
+    # addition
+    test = dataset + dataset
+    assert np.allclose(test[varname][:], var[:]*2, equal_nan=True)
+    # subtraction
+    test = dataset - dataset
+    assert np.allclose(test[varname][:], 0, equal_nan=True)
+    # power operator (actually fractional change / relative bias)
+    dataset = dataset*2 // dataset
+    assert np.allclose(dataset[varname][:], 1., equal_nan=True)
+    
       
   def testGridData(self):
     ''' test interpolation of point data to regular grid'''

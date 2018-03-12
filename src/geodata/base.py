@@ -2454,6 +2454,17 @@ class Variable(object):
     units = '{:s}^{:s}'.format(self.units,astr)
     return data, name, units
      
+  @BinaryCheckAndCreateVar(sameUnits=True, linplace=False)
+  def __floordiv__(self, a, othername=None, otherunits=None, linplace=False):
+    ''' compute fractional change / relative bias '''
+    assert not linplace, 'This operation is strictly not in-place!'
+    data = np.divide(self.data_array, a, casting=casting_rule) - 1
+    name = '{:s} / {:s} - 1'.format(self.name,othername)
+    if self.units == otherunits: units = ''
+    else: 
+        raise VariableError("Computing fractional change / relative bias requires variables to have the same units!")
+    return data, name, units
+
 
 class Axis(Variable):
   '''
@@ -2668,51 +2679,50 @@ class Axis(Variable):
     return idxs
                   
 
-def BinaryCheckAndCreateDataset(laddsub=True,):
-  ''' A decorator function that accepts arguments and returns a decorator class with fixed parameter values. '''
-  class BinaryCheckAndCreateDataset_Class(object):
-    ''' A decorator that applies the intended operation to each variable in a Dataset or between 
-    corresponding variables of two datasets. '''
-    def __init__(self, binOp):
-        ''' Save original operation and parameters. '''
-        self.binOp = binOp
-    # define method wrapper (this is now the actual decorator)
-    def __call__(self, orig, other, laddsub=laddsub, deepcopy=True, lrename=False, **kwargs):
-        ''' Perform sanity checks, then execute operation, and return result. '''
-        if isinstance(other,Dataset): # raise TypeError, 'Can only add two Variable instances!'
-            if not laddsub: 
-                raise DatasetError("Only subtraction and addition can be peerformed between two Datasets.")
-        elif isinstance(other, (np.ndarray,numbers.Number,np.integer,np.inexact)):
-            if laddsub: 
-                raise DatasetError("Only multiply or divide Datasets with numerical types.")
-        else: 
-            raise TypeError, 'Can only operate with Datasets or numerical types!'
-        # loop over variables
-        variables = dict()
-        for varname,var in orig.variables.items():
-            if var.strvar:
-                newvar = var.copy(deepcopy=deepcopy)
-            elif laddsub:
-                # call original method with two variables
-                if varname not in other: 
-                    newvar = var.copy(deepcopy=deepcopy)
-                else: 
-                    newvar = self.binOp(var, other[varname], **kwargs)
-                    if not lrename: newvar.name = var.name
-            else:
-                # call original method with one variable and one number
-                newvar = self.binOp(var, other, **kwargs)
-                if not lrename: newvar.name = var.name
-            variables[varname] = newvar
-        # create new dataset from old with new variables
-        dataset = orig.copy(variables=variables)
-        # return new Dataset instance
-        return dataset
-    def __get__(self, instance, klass):
-        ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
-        return functools.partial(self.__call__, instance)
-  # return decorator class  
-  return BinaryCheckAndCreateDataset_Class
+class BinaryCheckAndCreateDataset(object):
+  ''' A decorator that applies the intended operation to each variable in a Dataset or between 
+  corresponding variables of two datasets. '''
+  def __init__(self, binOp):
+      ''' Save original operation and parameters. '''
+      self.binOp = binOp
+  # define method wrapper (this is now the actual decorator)
+  def __call__(self, orig, other, deepcopy=True, laddother=True, lrename=False, **kwargs):
+      ''' Perform sanity checks, then execute operation, and return result. '''
+      if isinstance(other,Dataset): 
+          ldataset = True
+      elif isinstance(other, (np.ndarray,numbers.Number,np.integer,np.inexact)):
+          ldataset = False
+      else: 
+          raise TypeError, 'Can only operate with Datasets or numerical types!'
+      # loop over variables
+      variables = dict()
+      for varname,var in orig.variables.items():
+          if var.strvar:
+              newvar = var.copy(deepcopy=deepcopy)
+          elif ldataset:
+              # call original method with two variables
+              if varname not in other: 
+                  newvar = var.copy(deepcopy=deepcopy)
+              else: 
+                  newvar = self.binOp(var, other[varname], **kwargs)
+                  if not lrename: newvar.name = var.name
+          else:
+              # call original method with one variable and one number
+              newvar = self.binOp(var, other, **kwargs)
+              if not lrename: newvar.name = var.name
+          variables[varname] = newvar
+      # add remaining variables from other dataset
+      if ldataset and laddother:
+          for varname,var in other.variables.items():
+              if varname not in variables: 
+                  variables[varname] = var.copy(deepcopy=deepcopy)
+      # create new dataset from old with new variables
+      dataset = orig.copy(variables=variables, varlist=variables.keys())
+      # return new Dataset instance
+      return dataset
+  def __get__(self, instance, klass):
+      ''' Support instance methods. This is necessary, so that this class can be bound to the parent instance. '''
+      return functools.partial(self.__call__, instance)
 
 
 class Dataset(object):
@@ -3182,26 +3192,32 @@ class Dataset(object):
 #     atts = other.atts.copy(); atts.update(self.atts)
 #     return Dataset(name=name,title=title,varlist=varlist,atts=atts)
 
-  @BinaryCheckAndCreateDataset(laddsub=True)
+  @BinaryCheckAndCreateDataset
   def __add__(self, a,):
-    ''' Add corresponding Variables of two Datasets and return new Dataset. '''
+    ''' Add corresponding Variables of two Datasets or add a constant number and return new Dataset. '''
     return self + a
 
-  @BinaryCheckAndCreateDataset(laddsub=True)
+  @BinaryCheckAndCreateDataset
   def __sub__(self, a,):
-    ''' Subtract corresponding Variables of two Datasets and return new Dataset. '''
+    ''' Subtract corresponding Variables of two Datasets or add a constant number and return new Dataset. '''
     return self - a
   
-  @BinaryCheckAndCreateDataset(laddsub=False)
+  @BinaryCheckAndCreateDataset
   def __mul__(self, a,):
-    ''' Multiply the Variables of a Dataset with a constant numerical factor. '''
+    ''' Multiply corresponding Variables of two Datasets or add a constant number and return new Dataset. '''
     return self * a
 
-  @BinaryCheckAndCreateDataset(laddsub=False)
+  @BinaryCheckAndCreateDataset
   def __div__(self, a,):
-    ''' Divide the Variables of a Dataset with a constant numerical factor. '''
+    ''' Divide corresponding Variables of two Datasets or add a constant number and return new Dataset. '''
     return self / a
-
+  
+  @BinaryCheckAndCreateDataset
+  def __floordiv__(self, a,):
+    ''' Compute fractional change / relative bias beteewn corresponding Variables of two Datasets or 
+        w.r.t a constant numerical factor and return a new Dataset. '''
+    return self.__floordiv__(a)
+  
   def __iadd__(self, var):
     ''' Add a Variable to an existing dataset. ''' 
     if isinstance(var,Axis):
