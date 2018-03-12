@@ -19,7 +19,7 @@ from geodata.base import Variable, Ensemble
 from geodata.misc import ListError, ArgumentError, isEqual, AxisError
 from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile, checkSample
 from collections import OrderedDict
-from utils.misc import binedges, expandArgumentList, containerDepth
+from utils.misc import binedges, expandArgumentList, containerDepth, tabulate
 from geodata.stats import pearsonr
 
 # list of plot arguments that apply only to lines
@@ -39,7 +39,7 @@ class MyAxes(Axes):
   title_height       = 0.025 # fraction of figure height
   title_size         = None
   legend_handle      = None
-  flipxy             = False
+  flipxy             = None
   xname              = None
   xunits             = None
   xpad               = 2    # pixels
@@ -62,6 +62,69 @@ class MyAxes(Axes):
     self.axes_shift = np.zeros(4, dtype=np.float32)
     self.updateAxes(mode='shift') # initialize
     
+  def surfacePlot(self, var, varname=None, clim=None, cmap=None, clevs=None, title=None,           
+                  xlabel=True, ylabel=True, xticks=True, yticks=True, xlim=None, ylim=None,
+                  llabel=True, labels=None, label_ext='', flipxy=False,   
+                  lparasiteMeans=False, parasite_axes=None, xlog=False, ylog=False, clog=False,  
+                  lprint=False, lfracdiff=False, hline=None, vline=None, 
+                  lsmooth=False, lperi=False, lignore=False, 
+                  lcontour=False, shading='gouraud',
+                  expand_list=None, lproduct='inner', plotatts=None, **plotargs):
+    ''' create filled contour of pcolor plot of a single variable '''
+    # get plot variable
+    var = checkVarlist(var, varname=varname, ndim=2, bins=None, support=None, 
+                       method=None, lignore=lignore, bootstrap_axis=None)[0]
+    # some options that will be implemented later
+    if lsmooth: raise NotImplementedError
+    if clog: raise NotImplementedError
+    if lparasiteMeans: raise NotImplementedError
+    if lperi: raise NotImplementedError
+    # infer axes orientation
+    if flipxy is not None: self.flipxy = flipxy
+    if self.flipxy is None:
+        ax0 = var.axes[0].name.lower(); ax1 = var.axes[1].name.lower()
+        if ( ax0[0] == 'x' or 'lon' in ax0 ) and ( ax1[0] == 'y' or 'lat' in ax1 ): self.flipxy = False
+        elif ( ax0[0] == 'y' or 'lat' in ax0 ) and ( ax1[0] == 'x' or 'lon' in ax1 ): self.flipxy = True
+    xi,yi = (1,0) if self.flipxy else (0,1)
+    # get plot values
+    vardata, varunits, varname = getPlotValues(var, checkunits=None, checkname=None, 
+                                           lsmooth=False, lperi=False, laxis=False)
+    self.cname,self.cunits = varname,varunits
+    xax, xunits, xname = getPlotValues(var.axes[xi], checkunits=None, checkname=None, 
+                                           lsmooth=False, lperi=False, laxis=True)
+    self.xname,self.xunits = xname,xunits
+    yax, yunits, yname = getPlotValues(var.axes[yi], checkunits=None, checkname=None,
+                                           lsmooth=False, lperi=False, laxis=True)
+    self.yname,self.yunits = yname,yunits
+    # print diagnostics
+    if lprint:
+        print_label = "{} [{}]".format(varname,varunits)
+        #print(print_label)
+        print_header = ['Mean', 'Std.', 'Min.', 'Max.']
+        print_values = [vardata.mean(), vardata.std(), vardata.min(), vardata.max()]
+        string = tabulate([print_values],header=print_header, labels=[print_label], 
+                          cell_str='{:6.4f}', mode='plain', )
+        print(string)
+    # create surface plot
+    if lcontour:
+        # filled contour plot 
+        raise NotImplementedError
+    else:
+        # pcolor pixel plot
+        xx,yy = np.meshgrid(xax,yax)
+        if not self.flipxy: vardata = vardata.transpose()
+        plt = self.pcolormesh(xx,yy,vardata, shading=shading)
+        # set color limits
+        if clim: plt.set_clim(vmin=clim[0],vmax=clim[1])
+        elif clevs: plt.set_clim(vmin=min(clevs),vmax=max(clevs))
+    # format axes
+    # apply standard formatting and annotation
+    self.formatAxesAndAnnotation(title=title, legend=None, xlabel=xlabel, ylabel=ylabel, 
+                                 hline=hline, vline=vline, xlim=xlim, xlog=xlog, xticks=xticks, 
+                                 ylim=ylim, ylog=ylog, yticks=yticks, xlen=len(xax), ylen=len(yax))
+    # return plot handles
+    return plt
+            
     
   def scatterPlot(self, xvars=None, yvars=None, datasets=None,  xname=None, yname=None, label_ext='',
                   legend=None, llabel=True, labels=None, hline=None, vline=None, title=None, lignore=False,        
@@ -108,8 +171,11 @@ class MyAxes(Axes):
     for label,xvar,yvar in zip(labels,xvars,yvars): 
         self.variables[label] = (xvar,yvar) # save plot variables
     # loop over variables and plot arguments
-    if lprint and lfracdiff: 
-        raise NotImplementedError("See frac/diff implementation in linePlot for an example...") # tmp_frac = None; tmp_diff = None
+    if lprint:
+        if lfracdiff: 
+            raise NotImplementedError("See frac/diff implementation in linePlot for an example...") # tmp_frac = None; tmp_diff = None
+        print_headers = ['Label', 'X Mean', 'Y Mean', 'X Std.', 'Y Std.',]
+        print_values = []; print_labels = []
     N = len(xvars); xlen = ylen = None
     for n,xvar,yvar,plotarg,label in zip(xrange(N),xvars,yvars,plotargs,labels):
       if xvar is not None and yvar is not None:
@@ -121,10 +187,8 @@ class MyAxes(Axes):
         yval, yunits, yname = self._getPlotValues(yvar, checkunits=yunits, lrescale=lrescale, scalefactor=scalefactor, offset=offset)
         # N.B.: other scaling behavior could be added here
         if lprint:
-          xymean = (np.nanmean(xval),np.nanmean(yval))
-          xystd = (np.nanstd(xval),np.nanstd(yval))
-          print n, label, xymean, xystd
-          if lfracdiff: raise NotImplementedError("See frac/diff implementation in linePlot for an example...") 
+          print_values.append( (np.nanmean(xval),np.nanmean(yval),np.nanstd(xval),np.nanstd(yval)) )
+          print_labels.append('{:2d} {}'.format(n,label))
         # update plotargs from defaults
         plotarg = self._getPlotArgs(label=label, var=xvar, llabel=llabel, label_ext=label_ext, plotatts=plotatts, plotarg=plotarg)
         s = plotarg.pop('markersize')**2 if 'markersize' in plotarg else 25 # equivalent to markersize=5 
@@ -138,6 +202,10 @@ class MyAxes(Axes):
           plt = self.scatter(xval, yval, s, c, **plotarg)
         plts.append(plt); self.plots[label+label_ext] = plt
       else: plts.append(None)
+    if lprint:
+        string = tabulate(print_values, header=print_headers, labels=print_labels, 
+                          cell_str='{:4f}', mode='plain',)
+        print(string) 
     ## format axes and add annotation
     # set axes labels  
     if not lrescale: # don't reset name/units when variables were rescaled to existing axes
@@ -149,6 +217,7 @@ class MyAxes(Axes):
                                  ylim=ylim, ylog=ylog, yticks=yticks, xlen=xlen, ylen=ylen)
     # return handles to line objects
     return (plts,) # in tuple, for consistency with linePlot
+    
     
   def linePlot(self, varlist, varname=None, bins=None, support=None, errorbar=None, errorband=None,  
                legend=None, llabel=True, labels=None, label_ext='', hline=None, vline=None, title=None,        
@@ -227,9 +296,10 @@ class MyAxes(Axes):
     # print legend for print statistics
     if lprint:
         if lfracdiff:
-            tmp_frac = None; tmp_diff = None
-            print('Label (Variable): Average, Standard Deviation, Relative Bias, Absolute Bias')  
-        else: print('Label (Variable): Average, Standard Deviation')
+            fracdiff = None
+            print_headers = ['Label (Variable)', 'Mean', 'Std.', 'Rel. Bias', 'Abs. Bias',]
+        else: print_headers = ['Label (Variable)', 'Mean', 'Std.', ]
+        print_values = []; print_labels = []
     N = len(varlist); xlen = ylen = None
     # loop over variables and plot arguments
     for n,var,errupvar,errdnvar,bndupvar,bnddnvar,plotarg,label in zip(xrange(N),varlist,erruplst,errdnlst,bnduplst,bnddnlst,plotargs,labels):
@@ -261,14 +331,15 @@ class MyAxes(Axes):
             val /= varax.plot.scalefactor
         # N.B.: other scaling behavior could be added here
         if lprint:
+          print_labels.append("{:2d} {} ({})".format(n, label, var.name))
           tmp_mean = np.nanmean(val)
           if not lfracdiff:
-            print('{} ({}): {}, {}'.format(label, var.name, tmp_mean, np.nanstd(val)))
-          elif tmp_frac is None and tmp_diff is None: 
-            tmp_frac = tmp_mean; tmp_diff = tmp_mean
-            print('{} ({}): {}, {}'.format(label, var.name, tmp_mean, np.nanstd(val)))
+            print_values.append( (tmp_mean, np.nanstd(val)) )
+          elif fracdiff is None: 
+            fracdiff = tmp_mean
+            print_values.append( (tmp_mean, np.nanstd(val), np.NaN, np.NaN) )
           else:
-            print('{} ({}): {}, {}, {}, {}'.format(label, var.name, tmp_mean, np.nanstd(val), tmp_mean/tmp_frac, tmp_mean-tmp_diff))  
+            print_values.append( (tmp_mean, np.nanstd(val), tmp_mean/fracdiff, tmp_mean-fracdiff) )
         # update plotargs from defaults
         plotarg = self._getPlotArgs(label=label, var=var, llabel=llabel, label_ext=label_ext, plotatts=plotatts, plotarg=plotarg)
         plotarg['fmt'] = plotarg.pop('lineformat','') # rename (I prefer a different name)
@@ -326,6 +397,10 @@ class MyAxes(Axes):
         # save plot handles and labels  
         plts.append(plt); self.plots[label+label_ext] = plt
       else: plts.append(None)
+    if lprint:
+        string = tabulate(print_values, header=print_headers, labels=print_labels, 
+                          cell_str='{:6.4f}', mode='plain',)
+        print(string) 
     ## format axes and add annotation
     # set axes labels  
     if not lrescale: # don't reset name/units when variables were rescaled to existing axes

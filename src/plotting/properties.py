@@ -88,6 +88,18 @@ tmp = PlotAtts(name = 'Lat', title = 'Latitude',
 # add to collection
 variablePlotatts['lat'] = tmp
 
+## West-East Coordinate
+tmp = PlotAtts(name = 'X', title = 'Easting', 
+               units = 'km', scalefactor = 1e-3)
+# add to collection
+variablePlotatts['x'] = tmp
+
+## South-North Coordinate
+tmp = PlotAtts(name = 'Y', title = 'Northing', 
+               units = 'km', scalefactor = 1e-3)
+# add to collection
+variablePlotatts['y'] = tmp
+
 
 ## ** Surface Vars (2D) ***
 

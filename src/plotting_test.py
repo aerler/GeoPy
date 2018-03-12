@@ -39,6 +39,47 @@ if not os.path.isdir(workdir): raise IOError, workdir
 figargs = dict(stylesheet='myggplot', lpresentation=True, lpublication=False)
 
 
+class SurfacePlotTest(unittest.TestCase):  
+  
+  def setUp(self):
+    ''' create a 2D test variable '''
+    # create axis and variable instances (make *copies* of data and attributes!)
+    xax = Axis(name='X-Axis', units='X Units', coord=np.linspace(0,10,15))
+    yax = Axis(name='Y-Axis', units='Y Units', coord=np.linspace(2,8,18))
+    xx,yy = np.meshgrid(yax[:],xax[:],) # create mesh (transposed w.r.t. values)
+    var0 = Variable(axes=(xax,yax), data=np.sin(xx)*np.cos(yy), atts=dict(name='Color', units='Color Units'))
+    var1 = Variable(axes=(xax,yax), data=np.cos(xx)*np.sin(yy), atts=dict(name='Contour', units='Contour Units'))
+    self.var0 = var0; self.var1 = var1; self.xax = xax; self.yax = yax
+    # add to list
+    self.axes = [xax, yax]
+    self.vars = [var0, var1]
+        
+  def tearDown(self):
+    ''' clean up '''
+    for var in self.vars:     
+      var.unload() # just to do something... free memory
+    for ax in self.axes:
+      ax.unload()
+    
+  ## basic plotting tests
+
+  def testBasicSurfacePlot(self):
+    ''' test a simple line plot with two lines '''    
+    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyAxes'
+    assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
+    var0 = self.var0; var1 = self.var1
+    # create plot
+    vline = (2,3)
+    plt = ax.surfacePlot(var0, ylabel='custom label [{UNITS:s}]', llabel=True, lprint=True,
+                         ylim=self.yax.limits(), clim=var0.limits(), hline=2., vline=vline)
+    assert plt
+    # add label
+    ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
+
+
+
 class LinePlotTest(unittest.TestCase):  
   
   ldatetime = False # does not work with all plots...
@@ -91,7 +132,7 @@ class LinePlotTest(unittest.TestCase):
     var0 = self.var0; var1 = self.var1; var2 = self.var2
     # create plot
     vline = np.datetime64('1981-05-16') if self.ldatetime else (2,3)
-    plts = ax.linePlot([var1, var2], ylabel='custom label [{UNITS:s}]', llabel=True, 
+    plts = ax.linePlot([var1, var2], ylabel='custom label [{UNITS:s}]', llabel=True, lprint=True,
                        ylim=var1.limits(), legend=2, hline=2., vline=vline)
     assert len(plts) == 2
     # add rescaled plot
@@ -477,7 +518,7 @@ class TaylorPlotTest(PolarPlotTest):
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
     var0 = self.var0; var1 = self.var1; # var2 = self.var2
     # create plot
-    plts = ax.scatterPlot(xvars=var0, yvars=var1, llabel=True, legend=0, )
+    plts = ax.scatterPlot(xvars=var0, yvars=var1, llabel=True, legend=0, lprint=True)
     assert len(plts) == 1
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
@@ -513,10 +554,12 @@ if __name__ == "__main__":
 
     
     specific_tests = []
+    # SurfacePlot
+    specific_tests += ['BasicSurfacePlot']
     # LinePlot
 #     specific_tests += ['BasicLinePlot']
 #     specific_tests += ['BasicErrorPlot']
-    specific_tests += ['FancyErrorPlot']
+#     specific_tests += ['FancyErrorPlot']
 #     specific_tests += ['FancyBandPlot']
 #     specific_tests += ['AdvancedLinePlot']
 #     specific_tests += ['CombinedLinePlot']
@@ -537,7 +580,8 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['LinePlot'] 
+    tests += ['SurfacePlot'] 
+#     tests += ['LinePlot'] 
 #     tests += ['DistPlot']
 #     tests += ['PolarPlot']
 #     tests += ['TaylorPlot']
