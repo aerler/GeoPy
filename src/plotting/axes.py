@@ -64,7 +64,7 @@ class MyAxes(Axes):
     
   def surfacePlot(self, var, varname=None, clim=None, cmap=None, clevs=None, title=None,           
                   xlabel=True, ylabel=True, xticks=True, yticks=True, xlim=None, ylim=None,
-                  llabel=True, labels=None, label_ext='', flipxy=False,   
+                  llabel=True, labels=None, label_ext='', flipxy=None,   
                   lparasiteMeans=False, parasite_axes=None, xlog=False, ylog=False, clog=False,  
                   lprint=False, lfracdiff=False, hline=None, vline=None, 
                   lsmooth=False, lperi=False, lignore=False, 
@@ -113,11 +113,12 @@ class MyAxes(Axes):
         # pcolor pixel plot
         xx,yy = np.meshgrid(xax,yax)
         if not self.flipxy: vardata = vardata.transpose()
-        plt = self.pcolormesh(xx,yy,vardata, shading=shading)
+        plt = self.pcolormesh(xx,yy,vardata, shading=shading, cmap=cmap)
         # set color limits
         if clim: plt.set_clim(vmin=clim[0],vmax=clim[1])
         elif clevs: plt.set_clim(vmin=min(clevs),vmax=max(clevs))
-    # format axes
+        # save handle
+        self.color_plt = plt 
     # apply standard formatting and annotation
     self.formatAxesAndAnnotation(title=title, legend=None, xlabel=xlabel, ylabel=ylabel, 
                                  hline=hline, vline=vline, xlim=xlim, xlog=xlog, xticks=xticks, 

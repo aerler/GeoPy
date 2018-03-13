@@ -134,8 +134,10 @@ tmp = PlotAtts(name = 'Frost-days', title = 'Frost-day Frequency',
 variablePlotatts['frzfrq'] = tmp
 
 ## Surface Geopotential Height
+# tmp = PlotAtts(name = r'$Z_s$', title = 'Terrain Height', 
+#                units = 'km', scalefactor = 1e-3)
 tmp = PlotAtts(name = r'$Z_s$', title = 'Terrain Height', 
-               units = 'km', scalefactor = 1e-3)
+               units = 'm', scalefactor = 1.)
 # add to collection
 variablePlotatts['zs'] = tmp
 

@@ -28,6 +28,7 @@ class MyFigure(Figure):
     (This class does not support built-in projections; use the Basemap functionality instead.)  
   '''
   # some default parameters
+  axes_list       = None # list of current subplot axes
   title_height    = 0.05
   title_size      = 'x-large'
   print_settings  = None
@@ -55,6 +56,7 @@ class MyFigure(Figure):
     # save axes class for later
     self.axes_class = axes_class   
     self.axes_args = axes_args 
+    self.axes_list = [] # list of actual subplots
     # print options
     self.print_settings = dict(dpi=300, transparent=False) # defaults
     if print_settings: self.print_settings.update(print_settings)
@@ -70,7 +72,7 @@ class MyFigure(Figure):
 #     super(MyFigure,self).__init__(*args, **kwargs)
   
   def add_axes(self, *args, **kwargs):
-    ''' overloading original add_subplot in order to use custom Axes (adapted from parent) '''
+    ''' overloading original add_axes in order to use custom Axes (adapted from parent) '''
     if not len(args):
         return
     # shortcut the projection "key" modifications later on, if an axes
@@ -155,6 +157,9 @@ class MyFigure(Figure):
       a = subplot_class_factory(axes_class)(self, *args, **axes_args)
     self._axstack.add(key, a)
     self.sca(a)
+    # add to list of current subplots
+    self.axes_list.append(a)
+    # return axes
     return a
   
   # function to adjust subplot parameters
@@ -218,6 +223,56 @@ class MyFigure(Figure):
     self.shared_legend = legend
     return legend
     
+  # add common/shared legend to a multi-panel plot
+  def addSharedColorbar(self, mappable=None, size=None, ipad=None, opad=None, clevs=None, fmt='{:3.2f}', 
+                        lunits=False, location='bottom', orientation=None, extend='both', **kwargs):
+    ''' add a common/shared colorbar to a multi-panel plot '''
+    gca = self.gca() 
+    if mappable is None:
+        mappable = gca.color_plt # use color plot on current axes
+    # make room for colorbar
+    if location.lower() == 'bottom':
+        orientation = orientation or 'horizontal' 
+        if clevs is None: clevs = 5 
+        if ipad is None: ipad = 0.01 
+        if size is None: size = 0.04
+        if opad is None: opad = 0.07
+        self.updateSubplots(mode='shift', bottom=ipad+size+opad) # shift bottom upwards (add height pad)
+        ax = self.add_axes([0, opad, 1,size], axes_class=Axes) # new axes to hold legend, with some attributes
+    elif location.lower() == 'right':
+        orientation = orientation or 'vertical'
+        if clevs is None: clevs = 9
+        if ipad is None: ipad = 0.005 
+        if size is None: size = 0.03
+        if opad is None: opad = 0.075
+        self.updateSubplots(mode='shift', right=-(ipad+size+opad)) # shift bottom upwards (add height pad)
+        ax = self.add_axes([1-size-opad, self.title_height/2., size,1-self.title_height], axes_class=Axes) # new axes to hold legend, with some attributes
+    ax.set_frame_on(False); #ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
+    # define colorbar parameters
+    cbargs = dict(orientation=orientation, extend=extend,)
+    cbargs.update(kwargs)
+    # create legend and return handle
+#     cbargs['ticks'] = clevs
+    cbar = self.colorbar(cax=ax, mappable=mappable, **cbargs)
+    # add tick labels
+    if clevs:
+        cmin,cmax = mappable.get_clim()
+        if isinstance(clevs, (np.integer,int)): clevs = np.linspace(cmin,cmax,clevs)
+        elif isinstance(clevs, tuple) and len(clevs) == 3: clevs = np.linspace(*clevs)
+        elif not isinstance(clevs, (list,tuple,np.ndarray)):
+            raise TypeError(clevs)
+        cbar.set_ticks(clevs)
+        if fmt:
+            cbar.ax.xaxis.set_tick_params(pad=2)
+            cbar.ax.yaxis.set_tick_params(pad=4)
+            if lunits and hasattr(gca,'cunits'): fmt = fmt+gca.cunits
+            clev_lbls = [fmt.format(clev) for clev in clevs]
+            cbar.set_ticklabels(clev_lbls)
+    # store axes handle and legend
+    self.colorbar_axes = ax
+    self.shared_colorbar = cbar
+    return cbar
+
   # add subplot/axes labels
   def addLabels(self, labels=None, loc=1, lstroke=False, lalphabet=True, size=None, prop=None, **kwargs):
     # expand list

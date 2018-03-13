@@ -64,12 +64,12 @@ class SurfacePlotTest(unittest.TestCase):
   ## basic plotting tests
 
   def testBasicSurfacePlot(self):
-    ''' test a simple line plot with two lines '''    
+    ''' test a simple color/surface plot '''    
     fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
     assert fig.axes_class.__name__ == 'MyAxes'
     assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
-    var0 = self.var0; var1 = self.var1
+    var0 = self.var0
     # create plot
     vline = (2,3)
     plt = ax.surfacePlot(var0, ylabel='custom label [{UNITS:s}]', llabel=True, lprint=True,
@@ -78,7 +78,22 @@ class SurfacePlotTest(unittest.TestCase):
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
 
-
+  def testSharedColorbar(self):
+    ''' test a simple shared colorbar between to surface plots '''
+    name = sys._getframe().f_code.co_name[4:]    
+    fig,axes = getFigAx(2, name=name, title=name, **figargs) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyAxes'
+    assert isinstance(axes,(np.ndarray,list,tuple)) # should return a "naked" axes
+    # create plot
+    for ax,var in zip(axes,self.vars):
+        ax.surfacePlot(var, lprint=True, clim=var.limits(), )        
+    # add labels
+    fig.addLabels(loc=4, lstroke=False, lalphabet=True,)
+    fig.updateSubplots(left=0.02, bottom=0.03)
+    # add shared colorbar
+    cbar = fig.addSharedColorbar(location='bottom', clevs=3, lunits=True)
+    assert cbar
 
 class LinePlotTest(unittest.TestCase):  
   
@@ -555,7 +570,8 @@ if __name__ == "__main__":
     
     specific_tests = []
     # SurfacePlot
-    specific_tests += ['BasicSurfacePlot']
+#     specific_tests += ['BasicSurfacePlot']
+    specific_tests += ['SharedColorbar']
     # LinePlot
 #     specific_tests += ['BasicLinePlot']
 #     specific_tests += ['BasicErrorPlot']
