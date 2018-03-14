@@ -101,7 +101,7 @@ class MyAxes(Axes):
         print_label = "{} [{}]".format(varname,varunits)
         #print(print_label)
         print_header = ['Mean', 'Std.', 'Min.', 'Max.']
-        print_values = [vardata.mean(), vardata.std(), vardata.min(), vardata.max()]
+        print_values = [np.nanmean(vardata), np.nanstd(vardata), np.nanmin(vardata), np.nanmax(vardata)]
         string = tabulate([print_values],header=print_header, labels=[print_label], 
                           cell_str='{:6.4f}', mode='plain', )
         print(string)
@@ -116,7 +116,9 @@ class MyAxes(Axes):
         plt = self.pcolormesh(xx,yy,vardata, shading=shading, cmap=cmap)
         # set color limits
         if clim: plt.set_clim(vmin=clim[0],vmax=clim[1])
-        elif clevs: plt.set_clim(vmin=min(clevs),vmax=max(clevs))
+        elif clevs:
+          if isinstance(clevs, tuple) and len(clevs) == 3: plt.set_clim(clevs[0],clevs[1])
+          else: plt.set_clim(vmin=min(clevs),vmax=max(clevs))
         # save handle
         self.color_plt = plt 
     # apply standard formatting and annotation
