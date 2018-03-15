@@ -824,13 +824,13 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
       axes = {self.xlon.name:None, self.ylat.name:None,} # the relevant map axes; entire coordinate
       kwargs.update(axes)# update dictionary with arguments to be passes to self.mean()
       if 'keepname' not in kwargs: kwargs['keepname'] = True
-      # apply temporary mask, if necessary
+      # apply temporary mask, if necessary      
       if mask is not None:
+          lmask = self.masked
           if self.masked: oldmask = ma.getmask(self.data_array) # save old mask
-          else: oldmask = None
+          else: oldmask = ma.nomask
           self.mask(mask=mask, invert=invert, merge=True) # new mask on top of old mask
           # N.B.: invert=True is necessary, if the mask indicates True for valid values and Fals for missing/invalid values
-      else: oldmask = None
       ## compute average
       # determine metric
       if not self.isProjected and metric is None: metric = 'lat' # defaulf for spherical coordinates
@@ -898,11 +898,9 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
             if self.xlon.units == self.ylat.units: newvar.units = '{} {}^2'.format(newvar.units,self.ylat.units) 
             else: newvar.units ='{} {} {}'.format(newvar.units,self.xlon.units,self.ylat.units)
       # lift mask
-      if oldmask is not None: 
-        self.data_array.mask = oldmask # change back to old mask
-      else: 
-        self.data_array.mask = ma.nomask # remove mask
-        if not self.masked: self.data_array = np.asarray(self.data_array) # and change class to ndarray
+      if mask is not None:
+          if lmask: self.data_array.mask = oldmask # change back to old mask
+          else: self.data_array = np.asarray(self.data_array) # and change class to ndarray
       # return new variable
       return newvar
     # add new method to object
@@ -1165,6 +1163,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       shpfolder = self.gridfolder if filename is None else None
       shape = Shape(name=name, folder=shpfolder, shapefile=filename) # load shape file
       mask = shape.rasterize(griddef=self.griddef, invert=invert, asVar=True) # extract mask
+      assert mask.gdal, mask
       # apply mask to dataset 
       self.mask(mask=mask, invert=False) # kwargs: merge=True, varlist=None, skiplist=None
       # return mask variable
@@ -1201,6 +1200,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
         tmpax = {key:value for key,value in axes.iteritems() if var.hasAxis(key)}
         # get averaged variable
         if len(tmpax) == 2:
+          assert var.gdal, var
           newset.addVariable(var.mapMean(mask=mask, integral=integral, R=R, metric=metric, invert=invert, keepname=True,
                                          squeeze=squeeze, lcheckAxis=lcheckAxis, asVar=True), copy=False) # new variable/values anyway
         elif len(tmpax) == 1:
@@ -1344,7 +1344,8 @@ class Shape(object):
     # convert to Variable object, is desired
     if asVar: 
       mask = Variable(name=self.name, units='mask', axes=(griddef.ylat,griddef.xlon), data=mask, 
-                      dtype=np.bool, mask=None, fillValue=outside, atts=None, plot=None) 
+                      dtype=np.bool, mask=None, fillValue=outside, atts=None, plot=None)
+      mask = addGDALtoVar(mask, griddef=griddef,) # add GDAL to mask       
     # return mask array
     return mask  
 
