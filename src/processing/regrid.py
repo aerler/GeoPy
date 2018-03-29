@@ -209,8 +209,8 @@ if __name__ == '__main__':
 #     NP = 1 ; ldebug = True # for quick computations
     NP = 4 ; ldebug = False # just for tests
 #     modes = ('climatology','time-series') # 'climatology','time-series'
-#     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology','time-series'
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = False
     varlist = None
 #     varlist = ['LU_INDEX',]
@@ -220,13 +220,13 @@ if __name__ == '__main__':
 #     periods += [5]
 #     periods += [7]
 #     periods += [10]
-#     periods += [15]
-    periods += [30]
+    periods += [15]
+#     periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
     lLTM = True # also regrid the long-term mean climatologies 
-    datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
+#     datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
 #     resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies'][2:]}
 #     datasets += ['PRISM','GPCC','PCIC']; #periods = None
 #     datasets += ['CFSR', ] # CFSR_05 does not have precip
@@ -249,10 +249,10 @@ if __name__ == '__main__':
 #     WRF_experiments = None # use None to process all WRF experiments
     WRF_experiments = []
 #     WRF_experiments += ['3km-ensemble','erai-3km','max-3km','max-3km-2100'][2:]
-#     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-#     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
-#     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100',]
-#     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
+    WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+    WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
+    WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100',]
+    WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
 #     WRF_experiments += ['erai-g','erai-t']
 #     WRF_experiments += ['erai-g3','erai-t3']
 #     WRF_experiments += ['t3-ensemble-2100','g3-ensemble-2100']
@@ -287,8 +287,8 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-    domains = (2,) # domains to be processed
-#     domains = None # process all domains
+#     domains = (2,) # domains to be processed
+    domains = None # process all domains
     WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad','aux') # filetypes to be processed
 #     WRF_filetypes = ('hydro',) # filetypes to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'

@@ -543,8 +543,8 @@ if __name__ == '__main__':
         WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
 #         WRF_filetypes = ('const',) # with radiation files
         ## bias-correction paramter
-        bc_method = None; bc_tag = '' # no bias correction
-#         bc_method = 'AABC'; bc_tag = bc_method+'_' # bias correction method (None: no bias correction)        
+#         bc_method = None; bc_tag = '' # no bias correction
+        bc_method = 'AABC'; bc_tag = bc_method+'_' # bias correction method (None: no bias correction)        
         obs_dataset = 'NRCan' # the observational dataset 
         bc_reference = None # reference experiment (None: auto-detect based on name)
 #         bc_reference = 't-ensemble'
@@ -555,12 +555,12 @@ if __name__ == '__main__':
         # typically a specific grid is required
         grids = [] # list of grids to process
 #         grids += [None]; project = None # special keyword for native grid
-        grids += ['grw2']; project = 'GRW' # small grid for GRW project
+#         grids += ['grw2']; project = 'GRW' # small grid for GRW project
 #         grids += ['asb1']; project = 'ASB' # main grid for ASB project
 #         grids += ['brd1']; project = 'ASB' # small grid for ASB project
 #         grids += ['can1']; project = 'CAN' # large Canada-wide grid
 #         grids += ['snw1']; project = 'SNW' # south nation watershed
-#         grids += ['son1']; project = 'SON' # southern Ontario watersheds
+        grids += ['son1']; project = 'SON' # southern Ontario watersheds
         export_arguments = dict(
             # NRCan
 #             prefix = None, # based on keyword arguments or None
@@ -573,8 +573,8 @@ if __name__ == '__main__':
             compute_list = ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
             exp_list= ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
 #             compute_list = ['liqwatflx',], exp_list= ['lat2D','lon2D','zs','liqwatflx','pet_wrf'], # short varlist for quick export
-            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT'),bc_tag),
-#             folder = '//AQFS1/Data/temp_data_exchange/{PROJECT}/{GRID}/{EXPERIMENT}/{PERIOD}/climate_forcing/',
+#             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT'),bc_tag),
+            folder = '//aquanty-nas/share/temp_data_exchange/Erler/{PROJECT}/{EXPERIMENT}/{PERIOD}/',
 #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/land_data/'.format(os.getenv('HGS_ROOT')),
 #             folder = '//AQFS1/Data/temp_data_exchange/{PROJECT}/{GRID}/{EXPERIMENT}/land_data/',
             # common

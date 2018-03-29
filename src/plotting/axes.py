@@ -357,6 +357,11 @@ class MyAxes(Axes):
         errorevery = plotarg.pop('errorevery',None)
         if 'color' not in plotarg: 
           plotarg['color'] = self._get_lines.prop_cycler.next()['color']
+        # figure out errorbars
+        if errorevery is None:
+          errorevery = len(axe)//25 + 1
+        if errorscale is not None: 
+          errorscale = errorPercentile(errorscale)
         # figure out boundaries for error bands (may be needed for parasite axes)
         if bndup is not None: 
           if bnddn is None:
@@ -365,11 +370,6 @@ class MyAxes(Axes):
               bndup += val
           else:
               if errorscale is not None: raise NotImplementedError
-        # figure out errorbars
-        if errorevery is None:
-          errorevery = len(axe)//25 + 1
-        if errorscale is not None: 
-          errorscale = errorPercentile(errorscale)
         if errup is not None: 
           if errdn is None: 
               err = np.stack((errup,errup)) # same errors up and down
