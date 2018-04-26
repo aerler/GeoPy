@@ -151,6 +151,9 @@ class ReduceVar(object): # not a Variable child!!!
     if var.dtype.kind in ('S',): 
       if lcheckVar: raise VariableError, "Reduction does not work with string Variables!"
       else: return None
+    # list of axis is axes
+    if isinstance(axis,(tuple,list,)): 
+        axes = axis; axis = None
     # extract axes and keyword arguments      
     slcaxes = dict(); kwargs = dict()
     for key,value in kwaxes.iteritems():
@@ -3282,14 +3285,15 @@ class Dataset(object):
       var.load(fillValue=fillValue, **kwargs)
       
   def gridDataset(self, grid_axes=None, dsatts=None, method='cubic', fill_value=np.NaN, rescale=None,
-                  asVar=True, lcheckAxis=True, lcheckVar=True, deepcopy=False):
+                  asVar=True, lcheckAxis=True, lcheckVar=True, deepcopy=False, coord_map=None):
     ''' a wrapper for gridVar, which infers the point Axis and axes variables from the Dataset '''
     # check axes
     point_axis = None; coord_vars = []
     for ax in grid_axes:
         if not isinstance(ax, Axis): raise ArgumentError(ax)
-        if not self.hasVariable(ax.name): raise ArgumentError(ax)
-        cvar = self.getVariable(ax.name)
+        axname = coord_map.get(ax.name,ax.name) if coord_map else ax.name
+        if not self.hasVariable(axname): raise ArgumentError(ax)
+        cvar = self.getVariable(axname)
         if cvar.ndim != 1: raise VariableError(cvar)
         if point_axis and not cvar.hasAxis(point_axis): raise VariableError(cvar)
         else: point_axis = cvar.axes[0]
