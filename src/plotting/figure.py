@@ -225,7 +225,7 @@ class MyFigure(Figure):
     
   # add common/shared legend to a multi-panel plot
   def addSharedColorbar(self, mappable=None, size=None, ipad=None, opad=None, clevs=None, fmt='{:3.2f}', 
-                        scale=1., lunits=False, location='bottom', orientation=None, extend='both', **kwargs):
+                        scale=1., length=1., lunits=False, location='bottom', orientation=None, extend='both', **kwargs):
     ''' add a common/shared colorbar to a multi-panel plot '''
     gca = self.gca() 
     if mappable is None:
@@ -238,7 +238,7 @@ class MyFigure(Figure):
         if size is None: size = 0.04 * scale
         if opad is None: opad = 0.07 * scale
         self.updateSubplots(mode='shift', bottom=ipad+size+opad) # shift bottom upwards (add height pad)
-        ax = self.add_axes([0, opad, 1,size], axes_class=MyAxes) # new axes to hold legend, with some attributes
+        ax = self.add_axes([(1.-length)/2., opad, length,size], axes_class=MyAxes) # new axes to hold legend, with some attributes
     elif location.lower() == 'right':
         orientation = orientation or 'vertical'
         if clevs is None: clevs = 9
@@ -246,7 +246,8 @@ class MyFigure(Figure):
         if size is None: size = 0.03 * scale
         if opad is None: opad = 0.075 * scale
         self.updateSubplots(mode='shift', right=-(ipad+size+opad)) # shift bottom upwards (add height pad)
-        ax = self.add_axes([1-size-opad, self.title_height/2., size,1-self.title_height], axes_class=MyAxes) # new axes to hold legend, with some attributes
+        length = length - self.title_height
+        ax = self.add_axes([1-size-opad, (1.-length)/2., size,length], axes_class=MyAxes) # new axes to hold legend, with some attributes
     ax.set_frame_on(False); #ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
     # define colorbar parameters
     cbargs = dict(orientation=orientation, extend=extend,)
