@@ -78,6 +78,27 @@ class SurfacePlotTest(unittest.TestCase):
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
 
+  def testIrregularSurfacePlot(self):
+    ''' test a color/surface plot with irregular coordiante variables '''    
+    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyAxes'
+    assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
+    var0 = self.var0
+    # create coordiante variables
+    xax,yax = var0.axes
+    xx,yy = np.meshgrid(xax[:],yax[:], indexing='ij')
+    xax = Variable(name='X Coordinate', units='X Units', data=xx, axes=var0.axes)
+    yax = Variable(name='Y Coordinate', units='Y Units', data=yy, axes=var0.axes)
+    # create plot
+    plt = ax.surfacePlot(var0, flipxy=False, clog=True,
+#                          xax=var0.axes[0], yax=var0.axes[1],
+                         xax=xax, yax=yax,
+                         llabel=True, lprint=True, clim=var0.limits(),)
+    assert plt
+    # add label
+    ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
+
   def testSharedColorbar(self):
     ''' test a simple shared colorbar between to surface plots '''
     name = sys._getframe().f_code.co_name[4:]    
@@ -92,8 +113,27 @@ class SurfacePlotTest(unittest.TestCase):
     fig.addLabels(loc=4, lstroke=False, lalphabet=True,)
     fig.updateSubplots(left=0.02, bottom=0.03)
     # add shared colorbar
-    cbar = fig.addSharedColorbar(location='bottom', clevs=3, lunits=True)
+    cbar = fig.addSharedColorbar(ax=axes[1], location='bottom', clevs=3, lunits=True, length=0.8)
     assert cbar
+
+  def testLogSurfacePlot(self):
+    ''' test a surface plot with one logarithmic and one linear panel and a shared colorbar '''
+    name = sys._getframe().f_code.co_name[4:]    
+    fig,axes = getFigAx(2, name=name, title=name, **figargs) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyAxes'
+    assert isinstance(axes,(np.ndarray,list,tuple)) # should return a "naked" axes
+    # create plot
+    expvar = ( self.var0 * 10 ).exp() # large exponents for large effects
+    axes[0].surfacePlot(expvar, lprint=True, clog=False, )        
+    axes[1].surfacePlot(expvar, lprint=True, clog=True, )        
+    # add labels
+    fig.addLabels(loc=4, lstroke=False, lalphabet=True,)
+    fig.updateSubplots(left=0.02, bottom=0.03)
+    # add shared colorbar
+    cbar = fig.addSharedColorbar(ax=axes[0], location='bottom', clevs=3, lunits=True, length=0.8)
+    assert cbar
+
 
 class LinePlotTest(unittest.TestCase):  
   
@@ -571,7 +611,9 @@ if __name__ == "__main__":
     specific_tests = []
     # SurfacePlot
 #     specific_tests += ['BasicSurfacePlot']
+#     specific_tests += ['IrregularSurfacePlot']
     specific_tests += ['SharedColorbar']
+    specific_tests += ['LogSurfacePlot']
     # LinePlot
 #     specific_tests += ['BasicLinePlot']
 #     specific_tests += ['BasicErrorPlot']

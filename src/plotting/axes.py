@@ -9,6 +9,7 @@ A custom Axes class that provides some specialized plotting functions and retain
 # external imports
 import numpy as np
 import matplotlib as mpl
+from matplotlib.colors import LogNorm
 from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 from matplotlib.projections import PolarAxes
@@ -18,6 +19,7 @@ from warnings import warn
 from geodata.base import Variable, Ensemble
 from geodata.misc import ListError, ArgumentError, isEqual, AxisError
 from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile, checkSample
+from plotting.misc import checkPseudoAxis, expandAxes
 from collections import OrderedDict
 from utils.misc import binedges, expandArgumentList, containerDepth, tabulate
 from geodata.stats import pearsonr
@@ -62,23 +64,22 @@ class MyAxes(Axes):
     self.axes_shift = np.zeros(4, dtype=np.float32)
     self.updateAxes(mode='shift') # initialize
     
-  def surfacePlot(self, var, varname=None, clim=None, cmap=None, clevs=None, title=None,           
+  def surfacePlot(self, vards, varname=None, xax=None, yax=None, clim=None, cmap=None, clevs=None, 
                   xlabel=True, ylabel=True, xticks=True, yticks=True, xlim=None, ylim=None,
-                  llabel=True, labels=None, label_ext='', flipxy=None,   
+                  llabel=True, labels=None, label_ext='', flipxy=None, title=None,
                   lparasiteMeans=False, parasite_axes=None, xlog=False, ylog=False, clog=False,  
                   lprint=False, lfracdiff=False, hline=None, vline=None, 
                   lsmooth=False, lperi=False, lignore=False, 
                   lcontour=False, shading='gouraud',
                   expand_list=None, lproduct='inner', plotatts=None, **plotargs):
     ''' create filled contour of pcolor plot of a single variable '''
-    # get plot variable
-    var = checkVarlist(var, varname=varname, ndim=2, bins=None, support=None, 
-                       method=None, lignore=lignore, bootstrap_axis=None)[0]
     # some options that will be implemented later
     if lsmooth: raise NotImplementedError
-    if clog: raise NotImplementedError
     if lparasiteMeans: raise NotImplementedError
     if lperi: raise NotImplementedError
+    # get plot variable
+    var = checkVarlist(vards, varname=varname, ndim=2, bins=None, support=None, 
+                       method=None, lignore=lignore, bootstrap_axis=None)[0]
     # infer axes orientation
     if flipxy is not None: self.flipxy = flipxy
     if self.flipxy is None:
@@ -86,15 +87,22 @@ class MyAxes(Axes):
         if ( ax0[0] == 'x' or 'lon' in ax0 ) and ( ax1[0] == 'y' or 'lat' in ax1 ): self.flipxy = False
         elif ( ax0[0] == 'y' or 'lat' in ax0 ) and ( ax1[0] == 'x' or 'lon' in ax1 ): self.flipxy = True
     xi,yi = (1,0) if self.flipxy else (0,1)
+    # evaluate pseudo-axes
+    if self.flipxy:
+        yaxis = checkPseudoAxis(xax, dataset=vards, variable=var, ndim=(1,2),) if xax else var.axes[0]
+        xaxis = checkPseudoAxis(yax, dataset=vards, variable=var, ndim=(1,2),) if yax else var.axes[1]
+    else: 
+        xaxis = checkPseudoAxis(xax, dataset=vards, variable=var, ndim=(1,2),) if xax else var.axes[0]
+        yaxis = checkPseudoAxis(yax, dataset=vards, variable=var, ndim=(1,2),) if yax else var.axes[1]
     # get plot values
     vardata, varunits, varname = getPlotValues(var, checkunits=None, checkname=None, 
-                                           lsmooth=False, lperi=False, laxis=False)
+                                               lsmooth=False, lperi=False, laxis=False)
     self.cname,self.cunits = varname,varunits
-    xax, xunits, xname = getPlotValues(var.axes[xi], checkunits=None, checkname=None, 
-                                           lsmooth=False, lperi=False, laxis=True)
+    xax, xunits, xname = getPlotValues(xaxis, checkunits=None, checkname=None, 
+                                       lsmooth=False, lperi=False, laxis=True)
     self.xname,self.xunits = xname,xunits
-    yax, yunits, yname = getPlotValues(var.axes[yi], checkunits=None, checkname=None,
-                                           lsmooth=False, lperi=False, laxis=True)
+    yax, yunits, yname = getPlotValues(yaxis, checkunits=None, checkname=None,
+                                       lsmooth=False, lperi=False, laxis=True)
     self.yname,self.yunits = yname,yunits
     # print diagnostics
     if lprint:
@@ -105,20 +113,30 @@ class MyAxes(Axes):
         string = tabulate([print_values],header=print_header, labels=[print_label], 
                           cell_str='{:6.4f}', mode='plain', )
         print(string)
+
+    # broadcast and transpose data
+    if not self.flipxy: 
+        vardata = vardata.transpose()
+    xx,yy = expandAxes(xax, yax, vardata.shape, ltranspose=not self.flipxy)
+#     xx,yy = np.meshgrid(xax,yax)
+         
     # create surface plot
     if lcontour:
         # filled contour plot 
         raise NotImplementedError
     else:
+        # determine limits
+        if not clim and clevs:
+            if isinstance(clevs, tuple) and len(clevs) == 3: clim = (clevs[0],clevs[1])
+            else: clim = (min(clevs),max(clevs))                           
         # pcolor pixel plot
-        xx,yy = np.meshgrid(xax,yax)
-        if not self.flipxy: vardata = vardata.transpose()
-        plt = self.pcolormesh(xx,yy,vardata, shading=shading, cmap=cmap)
-        # set color limits
-        if clim: plt.set_clim(vmin=clim[0],vmax=clim[1])
-        elif clevs:
-          if isinstance(clevs, tuple) and len(clevs) == 3: plt.set_clim(clevs[0],clevs[1])
-          else: plt.set_clim(vmin=min(clevs),vmax=max(clevs))
+        if clog:
+            if not clim: clim  = (vardata.min(),vardata.max())
+            plt = self.pcolormesh(xx,yy,vardata, shading=shading, cmap=cmap, 
+                                  norm=LogNorm(vmin=clim[0],vmax=clim[1]))
+        else:
+            plt = self.pcolormesh(xx,yy,vardata, shading=shading, cmap=cmap)
+            if clim: plt.set_clim(vmin=clim[0],vmax=clim[1]) # set color limits        
         # save handle
         self.color_plt = plt 
     # apply standard formatting and annotation

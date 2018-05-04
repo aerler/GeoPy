@@ -224,12 +224,11 @@ class MyFigure(Figure):
     return legend
     
   # add common/shared legend to a multi-panel plot
-  def addSharedColorbar(self, mappable=None, size=None, ipad=None, opad=None, clevs=None, fmt='{:3.2f}', 
+  def addSharedColorbar(self, ax=None, mappable=None, size=None, ipad=None, opad=None, clevs=None, fmt='{:3.2f}', 
                         scale=1., length=1., lunits=False, location='bottom', orientation=None, extend='both', **kwargs):
     ''' add a common/shared colorbar to a multi-panel plot '''
-    gca = self.gca() 
-    if mappable is None:
-        mappable = gca.color_plt # use color plot on current axes
+    gca = self.gca() if ax is None else ax
+    if mappable is None: mappable = gca.color_plt # use color plot on current axes
     # make room for colorbar
     if location.lower() == 'bottom':
         orientation = orientation or 'horizontal' 

@@ -94,13 +94,51 @@ def checkVarlist(varlist, varname=None, ndim=1, bins=None, support=None, method=
     if var is None: pass
     elif isinstance(ndim,(list,tuple)):
       if var.ndim not in ndim: 
-        raise AxisError, "Variable '{:s}' does not have compatible dimension(s): {:d}.".format(var.name,var.ndim)
+        raise AxisError("Variable '{:s}' does not have compatible dimension(s): {:d}.".format(var.name,var.ndim))
     elif var.ndim > ndim and not lflatten: 
-      raise AxisError, "Variable '{:s}' has more than {:d} dimension(s); consider squeezing.".format(var.name,ndim)
+      raise AxisError("Variable '{:s}' has more than {:d} dimension(s); consider squeezing.".format(var.name,ndim))
     elif var.ndim < ndim: 
-      raise AxisError, "Variable '{:s}' has less than {:d} dimension(s); consider display as a line.".format(var.name,ndim)
+      raise AxisError("Variable '{:s}' has less than {:d} dimension(s); consider display as a line.".format(var.name,ndim))
   # return cleaned-up and checkd variable list
   return varlist    
+
+
+# function to detect coordinate fields that can be used instead of axes
+def checkPseudoAxis(axis, dataset=None, variable=None, ndim=(1,2)):
+  ''' detect coordinate variables and prepare for use in plotting '''
+  # get coordinate variable
+  if isinstance(axis,basestring):
+      if isinstance(dataset,Dataset):
+          axis = dataset[axis]
+      else:
+          raise TypeError("Need a Dataset object to look up coordinate variable (pseudo-axis): {}".format(dataset))
+  elif not isinstance(axis, Variable):
+      raise TypeError("The coordinate variable (pseudo-axis) can either be a Variable object of a name: {}".format(axis))
+  if axis.ndim not in ndim: 
+      raise AxisError("Coordinate variable '{:s}' does not have a compatible number of dimensions: {:d}.".format(axis.name,axis.ndim))
+  # check against data variable
+  if isinstance(variable, Variable):
+      for ax in axis.axes:
+          if not variable.hasAxis(ax.name):
+              raise AxisError("Coordinate Variable '{}' has Axis '{}', but the Axis is not present in the data Variable '{}'".format(axis.name,ax.name,variable.name))
+      if axis.ndim == 2 and axis.shape != variable.shape:
+          raise AxisError("Coordinate variable '{:s}' does not have a compatible shape/dimensions: {}.".format(axis.name,axis.shape))          
+  # return checked coordiante variable
+  return axis
+
+# helper function to expand 
+def expandAxes(xax, yax, shape, ltranspose=False):
+    ''' a function similar to meshgrid that expands 1-D arrays, but lets 2D arrays pass (or transposes) '''
+    ye,xe = shape
+    if xax.ndim ==1: xax = xax.reshape((1,xe)).repeat(repeats=ye, axis=0)
+    elif ltranspose: xax = xax.transpose()
+    assert xax.shape == shape, xax.shape
+    if yax.ndim ==1: yax = yax.reshape((ye,1)).repeat(repeats=xe, axis=1)
+    elif ltranspose: yax = yax.transpose()
+    assert yax.shape == shape, yax.shape
+    # return 2D coordinate arrays, like meshgrid
+    return xax,yax
+
 
 # function to check and prepare sample variables (including handling of bootstrapping)
 def checkSample(varlist, varname=None, bins=None, support=None, method='pdf', lignore=False, 
@@ -137,13 +175,14 @@ def checkSample(varlist, varname=None, bins=None, support=None, method='pdf', li
   return varlist, sample_axis
   
 # method to check units and name, and return scaled plot value (primarily and internal helper function)
-def getPlotValues(var, checkunits=None, checkname=None, lsmooth=False, lperi=False, laxis=False):
+def getPlotValues(var, checkunits=None, checkname=None, lsmooth=False, lperi=False,
+                  pseudo_axis=None, laxis=False):
   ''' Helper function to check variable/axis, get (scaled) values for plot, and return appropriate units. '''
   # figure out units
   if var.plot is not None: 
     varname = var.plot.name 
     if checkname is not None and varname != checkname: # only check plotname! 
-      raise VariableError, "Expected variable name '{}', found '{}'.".format(checkname,varname)
+      raise VariableError("Expected variable name '{}', found '{}'.".format(checkname,varname))
   else: varname = var.atts['name']
   if np.issubdtype(var.dtype, np.datetime64): val = var.data_array.copy() # need to preserve dates
   else: val = var.getArray(unmask=True, fillValue=np.NaN, dtype=np.float, copy=True) # the data to plot
@@ -157,7 +196,7 @@ def getPlotValues(var, checkunits=None, checkname=None, lsmooth=False, lperi=Fal
   else: 
     varunits = var.atts['units']    
   if checkunits is not None and  varunits != checkunits: 
-    raise VariableError, "Units for variable '{}': expected {}, found {}.".format(var.name,checkunits,varunits) 
+    raise VariableError("Units for variable '{}': expected {}, found {}.".format(var.name,checkunits,varunits) )
   # some post-processing
   if val.size > 1: val = val.squeeze()
   if lsmooth: val = smooth(val)
