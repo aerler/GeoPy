@@ -108,7 +108,7 @@ class SurfacePlotTest(unittest.TestCase):
     assert isinstance(axes,(np.ndarray,list,tuple)) # should return a "naked" axes
     # create plot
     for ax,var in zip(axes,self.vars):
-        ax.surfacePlot(var, lprint=True, clim=var.limits(), )        
+        ax.surfacePlot(var, lprint=True, clim=var.limits(), centroids=dict(color='black'))        
     # add labels
     fig.addLabels(loc=4, lstroke=False, lalphabet=True,)
     fig.updateSubplots(left=0.02, bottom=0.03)
@@ -613,7 +613,7 @@ if __name__ == "__main__":
 #     specific_tests += ['BasicSurfacePlot']
 #     specific_tests += ['IrregularSurfacePlot']
     specific_tests += ['SharedColorbar']
-    specific_tests += ['LogSurfacePlot']
+#     specific_tests += ['LogSurfacePlot']
     # LinePlot
 #     specific_tests += ['BasicLinePlot']
 #     specific_tests += ['BasicErrorPlot']

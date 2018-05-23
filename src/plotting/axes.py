@@ -70,7 +70,7 @@ class MyAxes(Axes):
                   lparasiteMeans=False, parasite_axes=None, xlog=False, ylog=False, clog=False,  
                   lprint=False, lfracdiff=False, hline=None, vline=None, 
                   lsmooth=False, lperi=False, lignore=False, 
-                  lcontour=False, shading='gouraud',
+                  lcontour=False, shading='gouraud', centroids=False,
                   expand_list=None, lproduct='inner', plotatts=None, **plotargs):
     ''' create filled contour of pcolor plot of a single variable '''
     # some options that will be implemented later
@@ -86,7 +86,6 @@ class MyAxes(Axes):
         ax0 = var.axes[0].name.lower(); ax1 = var.axes[1].name.lower()
         if ( ax0[0] == 'x' or 'lon' in ax0 ) and ( ax1[0] == 'y' or 'lat' in ax1 ): self.flipxy = False
         elif ( ax0[0] == 'y' or 'lat' in ax0 ) and ( ax1[0] == 'x' or 'lon' in ax1 ): self.flipxy = True
-    xi,yi = (1,0) if self.flipxy else (0,1)
     # evaluate pseudo-axes
     if self.flipxy:
         yaxis = checkPseudoAxis(xax, dataset=vards, variable=var, ndim=(1,2),) if xax else var.axes[0]
@@ -133,12 +132,17 @@ class MyAxes(Axes):
         if clog:
             if not clim: clim  = (vardata.min(),vardata.max())
             plt = self.pcolormesh(xx,yy,vardata, shading=shading, cmap=cmap, 
-                                  norm=LogNorm(vmin=clim[0],vmax=clim[1]))
+                                  norm=LogNorm(vmin=clim[0],vmax=clim[1]), **plotargs)
         else:
-            plt = self.pcolormesh(xx,yy,vardata, shading=shading, cmap=cmap)
-            if clim: plt.set_clim(vmin=clim[0],vmax=clim[1]) # set color limits        
+            plt = self.pcolormesh(xx,yy,vardata, shading=shading, cmap=cmap, **plotargs)
+            if clim: plt.set_clim(vmin=clim[0],vmax=clim[1]) # set color limits   
         # save handle
         self.color_plt = plt 
+    # show centroids
+    if centroids:
+        tmpatts = dict(color='black', marker='.', s=1, linewidth=0.5)
+        if isinstance(centroids,dict): tmpatts.update(centroids)
+        self.scatter(xx,yy, **tmpatts)
     # apply standard formatting and annotation
     self.formatAxesAndAnnotation(title=title, legend=None, xlabel=xlabel, ylabel=ylabel, 
                                  hline=hline, vline=vline, xlim=xlim, xlog=xlog, xticks=xticks, 
