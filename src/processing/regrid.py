@@ -207,11 +207,11 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 4 ; ldebug = False # just for tests
+    NP = 2 ; ldebug = False # just for tests
 #     modes = ('climatology','time-series') # 'climatology','time-series'
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = False
+    loverwrite = True
     varlist = None
 #     varlist = ['LU_INDEX',]
     periods = []
@@ -227,7 +227,7 @@ if __name__ == '__main__':
     datasets = []
     lLTM = True # also regrid the long-term mean climatologies 
 #     datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
-#     resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies'][2:]}
+#     resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies'][1:2]}
 #     datasets += ['PRISM','GPCC','PCIC']; #periods = None
 #     datasets += ['CFSR', ] # CFSR_05 does not have precip
 #     datasets += ['GPCC']; resolutions = {'GPCC':['025','05']}
@@ -253,8 +253,8 @@ if __name__ == '__main__':
     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100',]
     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
-#     WRF_experiments += ['erai-g','erai-t']
-#     WRF_experiments += ['erai-g3','erai-t3']
+    WRF_experiments += ['erai-g','erai-t']
+    WRF_experiments += ['erai-g3','erai-t3']
 #     WRF_experiments += ['t3-ensemble-2100','g3-ensemble-2100']
 #     WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]
 #     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
@@ -287,7 +287,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-#     domains = (2,) # domains to be processed
+#     domains = (1,) # domains to be processed
     domains = None # process all domains
     WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad','aux') # filetypes to be processed
 #     WRF_filetypes = ('hydro',) # filetypes to be processed
@@ -298,8 +298,9 @@ if __name__ == '__main__':
 #     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 #     grids['grw1'] = None # high-res grid for GRW, 1km
-    grids['son1'] = None # small grid for GRW, 5km
+#     grids['son1'] = None # small grid for GRW, 5km
 #     grids['grw2'] = None # small grid for GRW, 5km
+    grids['grw3'] = None # fine grid for GRW, 500m
 #     grids['snw1'] = None # large grid for whole Canada
 #     grids['can1'] = None # large grid for whole Canada
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)

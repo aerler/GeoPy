@@ -9,7 +9,7 @@ A custom Axes class that provides some specialized plotting functions and retain
 # external imports
 import numpy as np
 import matplotlib as mpl
-from matplotlib.colors import LogNorm
+from matplotlib.colors import LogNorm, Normalize
 from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 from matplotlib.projections import PolarAxes
@@ -35,6 +35,8 @@ class MyAxes(Axes):
   '''
   variables          = None
   plots              = None
+  color_plot         = None # only one
+  contours           = None
   variable_plotargs  = None
   dataset_plotargs   = None
   plot_labels        = None
@@ -64,15 +66,20 @@ class MyAxes(Axes):
     self.axes_shift = np.zeros(4, dtype=np.float32)
     self.updateAxes(mode='shift') # initialize
     
+  def contourPlot(self, vards, lcontour=True, lfilled=False, colors='k', linewidth=1, **plotargs):
+    ''' a wrapper for surfacePlot that defaults to simpel line contours '''
+    return self.surfacePlot(vards, lcontour=lcontour, lfilled=lfilled, 
+                            colors=colors, linewidth=linewidth, **plotargs)
+    
   def surfacePlot(self, vards, varname=None, xax=None, yax=None, clim=None, cmap=None, clevs=None, 
                   xlabel=True, ylabel=True, xticks=True, yticks=True, xlim=None, ylim=None,
                   llabel=True, labels=None, label_ext='', flipxy=None, title=None,
                   lparasiteMeans=False, parasite_axes=None, xlog=False, ylog=False, clog=False,  
                   lprint=False, lfracdiff=False, hline=None, vline=None, 
-                  lsmooth=False, lperi=False, lignore=False, 
-                  lcontour=False, shading='gouraud', centroids=False,
+                  lsmooth=False, lperi=False, lignore=False, aspect=None, norm=None,
+                  lcontour=False, lfilled=True, shading='gouraud', centroids=False,
                   expand_list=None, lproduct='inner', plotatts=None, **plotargs):
-    ''' create filled contour of pcolor plot of a single variable '''
+    ''' create contour or pcolor plot of a single variable '''
     # some options that will be implemented later
     if lsmooth: raise NotImplementedError
     if lparasiteMeans: raise NotImplementedError
@@ -96,7 +103,11 @@ class MyAxes(Axes):
     # get plot values
     vardata, varunits, varname = getPlotValues(var, checkunits=None, checkname=None, 
                                                lsmooth=False, lperi=False, laxis=False)
-    self.cname,self.cunits = varname,varunits
+    if lcontour and not lfilled:
+        if self.cname is None and self.cunits is None:
+            self.cname,self.cunits = varname,varunits # these are the units for color
+    else:
+        self.cname,self.cunits = varname,varunits # these are the units for color
     xax, xunits, xname = getPlotValues(xaxis, checkunits=None, checkname=None, 
                                        lsmooth=False, lperi=False, laxis=True)
     self.xname,self.xunits = xname,xunits
@@ -119,25 +130,45 @@ class MyAxes(Axes):
     xx,yy = expandAxes(xax, yax, vardata.shape, ltranspose=not self.flipxy)
 #     xx,yy = np.meshgrid(xax,yax)
          
+    # set aspect ratio
+    if aspect is None:
+        # default for axes with same units
+        if xunits == yunits: aspect = 'equal'
+    if aspect:
+        self.set_aspect(aspect)
+    
     # create surface plot
+    # determine limits
+    if clim is None and clevs is None: clim  = (vardata.min(),vardata.max())
     if lcontour:
-        # filled contour plot 
-        raise NotImplementedError
-    else:
-        # determine limits
-        if not clim and clevs:
-            if isinstance(clevs, tuple) and len(clevs) == 3: clim = (clevs[0],clevs[1])
-            else: clim = (min(clevs),max(clevs))                           
-        # pcolor pixel plot
-        if clog:
-            if not clim: clim  = (vardata.min(),vardata.max())
-            plt = self.pcolormesh(xx,yy,vardata, shading=shading, cmap=cmap, 
-                                  norm=LogNorm(vmin=clim[0],vmax=clim[1]), **plotargs)
+        if clevs is None and clim is not None: clevs = tuple(clim)
+        if isinstance(clevs,(np.integer,int)):
+            if clim is None: clim  = (vardata.min(),vardata.max())
+            clevs = clim + (clevs,) # number of levels
+        if isinstance(clevs, tuple) and len(clevs) == 2: clevs = clevs + (10,) # 10 contour levels
+    if isinstance(clevs, tuple) and len(clevs) == 3: 
+        if clog: clevs = np.logspace(*clevs)
+        else: clevs = np.linspace(*clevs)
+    if clim is None and clevs is not None:
+        clim = (min(clevs),max(clevs))                           
+    # filled contour plot
+    if norm is None:
+        norm = LogNorm(vmin=clim[0],vmax=clim[1]) if clog else Normalize(vmin=clim[0],vmax=clim[1])
+        # linear norm is mainly used to set color limits...
+    if lcontour:
+        if lfilled:
+            plt = self.contourf(xx,yy,vardata, clevs, cmap=cmap, norm=norm, **plotargs)
+            self.color_plot = plt # save handle
         else:
-            plt = self.pcolormesh(xx,yy,vardata, shading=shading, cmap=cmap, **plotargs)
-            if clim: plt.set_clim(vmin=clim[0],vmax=clim[1]) # set color limits   
-        # save handle
-        self.color_plt = plt 
+            plt = self.contour(xx,yy,vardata, clevs, norm=norm, cmap=cmap, **plotargs)
+            if self.contours is None: self.contours = []
+            self.contours.append(plt)
+    else:
+        # pcolor pixel plot
+        plt = self.pcolormesh(xx,yy,vardata, shading=shading, cmap=cmap, norm=norm, **plotargs)
+        self.color_plot = plt # save handle
+#     # set contour/color limits 
+#     if norm is None: plt.set_clim(vmin=clim[0],vmax=clim[1]) # set color limits   
     # show centroids
     if centroids:
         tmpatts = dict(color='black', marker='.', s=1, linewidth=0.5)

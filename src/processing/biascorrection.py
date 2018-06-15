@@ -205,8 +205,8 @@ if __name__ == '__main__':
     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-#     WRF_experiments += ['erai-g3','erai-t3']
-#     WRF_experiments += ['erai-g','erai-t']
+    WRF_experiments += ['erai-g3','erai-t3']
+    WRF_experiments += ['erai-g','erai-t']
     WRF_experiments += ['g-ensemble','t-ensemble']
     WRF_experiments += ['g3-ensemble','t3-ensemble']
 #     WRF_experiments += ['g-ensemble']
@@ -229,9 +229,11 @@ if __name__ == '__main__':
     load_list = None # variables that need to be loaded
     varlist = None # variables that should be bias-corrected
 #     grid = 'grw2' # need a common grid for all datasets
+    grid = 'grw3' # need a common grid for all datasets
 #     grid = 'asb1' # need a common grid for all datasets
+#     grid = 'brd1' # need a common grid for all datasets
 #     grid = 'snw1' # need a common grid for all datasets
-    grid = 'son1' # need a common grid for all datasets
+#     grid = 'son1' # need a common grid for all datasets
     bc_method = 'AABC' # annual average bias correction method
 #     bc_method = 'Delta' # grid-point-wise monthly bias correction method
     bc_args = dict() # paramters for bias correction

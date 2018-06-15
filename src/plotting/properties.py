@@ -77,25 +77,25 @@ tmp = PlotAtts(name = 'Time', title = 'Elapsed Time',
 variablePlotatts['xtime'] = tmp
 
 ## Longitude
-tmp = PlotAtts(name = 'Lon', title = 'Longitude', 
+tmp = PlotAtts(name = 'Longitude', title = 'Longitude', 
                units = r'$^\circ$E')
 # add to collection
 variablePlotatts['lon'] = tmp
 
 ## Latitude
-tmp = PlotAtts(name = 'Lat', title = 'Latitude', 
+tmp = PlotAtts(name = 'Latitude', title = 'Latitude', 
                units = r'$^\circ$N')
 # add to collection
 variablePlotatts['lat'] = tmp
 
 ## West-East Coordinate
-tmp = PlotAtts(name = 'X', title = 'Easting', 
+tmp = PlotAtts(name = 'Easting', title = 'UTM Easting', 
                units = 'km', scalefactor = 1e-3)
 # add to collection
 variablePlotatts['x'] = tmp
 
 ## South-North Coordinate
-tmp = PlotAtts(name = 'Y', title = 'Northing', 
+tmp = PlotAtts(name = 'Northing', title = 'UTM Northing', 
                units = 'km', scalefactor = 1e-3)
 # add to collection
 variablePlotatts['y'] = tmp
@@ -109,11 +109,11 @@ tmp = PlotAtts(name = 'Land', title = 'Land Mask',
 # add to collection
 variablePlotatts['lnd'] = tmp
 
-## Land Classes
-tmp = PlotAtts(name = 'Land Cat.', title = 'Land Classes', 
+## Land Use Classes
+tmp = PlotAtts(name = 'LU Cat.', title = 'Land Use Classes', 
                units = '', scalefactor = 1.)
 # add to collection
-variablePlotatts['lndcls'] = tmp
+variablePlotatts['lu'] = tmp
 
 ## Station Distribution
 tmp = PlotAtts(name = 'Stations', title = 'Station Distribution', 
@@ -486,6 +486,76 @@ tmp = PlotAtts(name = 'Sub-srfc. RO', title = 'Underground Runoff',
                units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['ugroff'] = tmp
+
+
+## *** HGS Variables ***
+
+## Vertical Darcy flux
+tmp = PlotAtts(name = 'Vertical Flux', title = 'Vertical Darcy Flux', 
+               units = precip_units, scalefactor = -86400000.)
+# add to collection
+variablePlotatts['dflx'] = tmp
+
+## Surface-subsurface Exchange Flux
+tmp = PlotAtts(name = 'Exchange Flux', title = 'Surface-subsurface Exchange Flux', 
+               units = precip_units, scalefactor = -86400000.)
+# add to collection
+variablePlotatts['exflx'] = tmp
+
+## Porous Media Evaporation
+tmp = PlotAtts(name = 'PM Evaporation', title = 'Porous Media Evaporation', 
+               units = precip_units, scalefactor = -86400000.)
+# add to collection
+variablePlotatts['evap_pm'] = tmp
+
+## Surface Evaporation
+tmp = PlotAtts(name = 'Evaporation', title = 'Surface Evaporation', 
+               units = precip_units, scalefactor = -86400000.)
+# add to collection
+variablePlotatts['evap'] = tmp
+
+## Porous Media Transpiration
+tmp = PlotAtts(name = 'Transpiration', title = 'Porous Media Transpiration', 
+               units = precip_units, scalefactor = -86400000.)
+# add to collection
+variablePlotatts['trans'] = tmp
+
+## Total Evapo-Transpiration
+tmp = PlotAtts(name = 'Total ET', title = 'Total Evapo-Transpiration', 
+               units = precip_units, scalefactor = -86400000.)
+# add to collection
+variablePlotatts['ET'] = tmp
+
+## Infiltration into the Subsurface
+tmp = PlotAtts(name = 'Infiltration', title = 'Infiltration into the Subsurface', 
+               units = precip_units, scalefactor = 86400000.)
+# add to collection
+variablePlotatts['infil'] = tmp
+
+## Exfiltration from the Subsurface
+tmp = PlotAtts(name = 'Exfiltration', title = 'Exfiltration from the Subsurface', 
+               units = precip_units, scalefactor = 86400000.)
+# add to collection
+variablePlotatts['exfil'] = tmp
+
+## Groundwater Recharge
+tmp = PlotAtts(name = 'Recharge', title = 'Groundwater Recharge', 
+               units = precip_units, scalefactor = 86400000.)
+# add to collection
+variablePlotatts['recharge'] = tmp
+
+## Depth to Groundwater Table
+tmp = PlotAtts(name = 'GW Depth', title = 'Depth to Groundwater Table', 
+               units = 'm', scalefactor = 1.)
+# add to collection
+variablePlotatts['d_gw'] = tmp
+
+## Soil Saturation
+tmp = PlotAtts(name = 'Saturation', title = 'Soil Saturation', 
+               units = '$\%$', scalefactor = 100.)
+# add to collection
+variablePlotatts['sat'] = tmp
+
 
 # ## Discharge (river flow)
 # tmp = PlotAtts(name = 'Discharge', title = 'Discharge', 

@@ -78,6 +78,23 @@ class SurfacePlotTest(unittest.TestCase):
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
 
+  def testBasicContourPlot(self):
+    ''' test a simple color/surface plot '''    
+    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+#     assert fig.axes_class.__name__ == 'MyAxes'
+    assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
+    var0 = self.var0
+    # create plot
+    plt = ax.surfacePlot(var0, ylabel='custom label [{UNITS:s}]', llabel=True, lprint=True, 
+                         aspect=1, lcontour=True, clevs=3,
+                         ylim=self.xax.limits(), hline=(2,8), vline=None)
+    assert plt
+    plt = ax.surfacePlot(var0, lcontour=True, clevs=10, lfilled=False, colors='k', linewidth=2)
+    assert plt
+    # add label
+    ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
+
   def testIrregularSurfacePlot(self):
     ''' test a color/surface plot with irregular coordiante variables '''    
     fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
@@ -91,9 +108,7 @@ class SurfacePlotTest(unittest.TestCase):
     xax = Variable(name='X Coordinate', units='X Units', data=xx, axes=var0.axes)
     yax = Variable(name='Y Coordinate', units='Y Units', data=yy, axes=var0.axes)
     # create plot
-    plt = ax.surfacePlot(var0, flipxy=False, clog=True,
-#                          xax=var0.axes[0], yax=var0.axes[1],
-                         xax=xax, yax=yax,
+    plt = ax.surfacePlot(var0, flipxy=False, clog=False, xax=xax, yax=yax,
                          llabel=True, lprint=True, clim=var0.limits(),)
     assert plt
     # add label
@@ -611,6 +626,7 @@ if __name__ == "__main__":
     specific_tests = []
     # SurfacePlot
 #     specific_tests += ['BasicSurfacePlot']
+#     specific_tests += ['BasicContourPlot']
 #     specific_tests += ['IrregularSurfacePlot']
     specific_tests += ['SharedColorbar']
 #     specific_tests += ['LogSurfacePlot']

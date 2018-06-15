@@ -224,11 +224,14 @@ class MyFigure(Figure):
     return legend
     
   # add common/shared legend to a multi-panel plot
-  def addSharedColorbar(self, ax=None, mappable=None, size=None, ipad=None, opad=None, clevs=None, fmt='{:3.2f}', 
-                        scale=1., length=1., lunits=False, location='bottom', orientation=None, extend='both', **kwargs):
+  def addSharedColorbar(self, ax=None, mappable=None, size=None, ipad=None, opad=None, clevs=None, 
+                        fmt='{:3.2f}', title=None, scale=1., length=1., lunits=False, location='bottom', 
+                        orientation=None, extend='both', **kwargs):
     ''' add a common/shared colorbar to a multi-panel plot '''
     gca = self.gca() if ax is None else ax
-    if mappable is None: mappable = gca.color_plt # use color plot on current axes
+    if mappable is None: mappable = gca.color_plot # use color plot on current axes
+    # axes title (defaults to units for vertical axis)
+    units = gca.cunits if lunits and hasattr(gca,'cunits') else None
     # make room for colorbar
     if location.lower() == 'bottom':
         orientation = orientation or 'horizontal' 
@@ -240,14 +243,18 @@ class MyFigure(Figure):
         ax = self.add_axes([(1.-length)/2., opad, length,size], axes_class=MyAxes) # new axes to hold legend, with some attributes
     elif location.lower() == 'right':
         orientation = orientation or 'vertical'
+        if units and orientation.lower() == 'vertical' and title is None: title = '  [{UNITS}]'
         if clevs is None: clevs = 9
         if ipad is None: ipad = 0.005 * scale
         if size is None: size = 0.03 * scale
         if opad is None: opad = 0.075 * scale
         self.updateSubplots(mode='shift', right=-(ipad+size+opad)) # shift bottom upwards (add height pad)
-        length = length - self.title_height
-        ax = self.add_axes([1-size-opad, (1.-length)/2., size,length], axes_class=MyAxes) # new axes to hold legend, with some attributes
+        height = 1 - self.title_height # effective available height
+        length = height * length
+        ax = self.add_axes([1-size-opad, (height-length)/2., size,length], axes_class=MyAxes) # new axes to hold legend, with some attributes
     ax.set_frame_on(False); #ax.axes.get_yaxis().set_visible(False); ax.axes.get_xaxis().set_visible(False)
+    # set title
+    if title: ax.set_title(title.format(UNITS=units))
     # define colorbar parameters
     cbargs = dict(orientation=orientation, extend=extend,)
     cbargs.update(kwargs)
@@ -265,8 +272,11 @@ class MyFigure(Figure):
         if fmt:
             cbar.ax.xaxis.set_tick_params(pad=2)
             cbar.ax.yaxis.set_tick_params(pad=4)
-            if lunits and hasattr(gca,'cunits'): fmt = fmt+gca.cunits
-            clev_lbls = [fmt.format(clev) for clev in clevs]
+            if units and 'UNITS' in fmt:
+                clev_lbls = [fmt.format(clev, UNITS=units) for clev in clevs]
+            else:
+                if units and orientation.lower() == 'horizontal': fmt = fmt + units
+                clev_lbls = [fmt.format(clev) for clev in clevs]
             cbar.set_ticklabels(clev_lbls)
     # store axes handle and legend
     self.colorbar_axes = ax
@@ -455,7 +465,8 @@ def getFigAx(subplot, name=None, title=None, title_font='x-large', title_height=
     for i in range(subplot[0]):
         for j in range(subplot[1]):
             n += 1
-            axes[i,j] = fig.add_subplot(subplot[0], subplot[1], n, axes_class=axes_class[n-1], **axes_args)      
+            axes[i,j] = fig.add_subplot(subplot[0], subplot[1], n, axes_class=axes_class[n-1], 
+                                        aspect=aspect, **axes_args)      
     # just adjust margins
     if axes_pad is None: axes_pad = 0.03
     wspace = hspace = 0.1
@@ -496,8 +507,11 @@ def getFigAx(subplot, name=None, title=None, title_font='x-large', title_height=
     fig.subplots_adjust(**margin_dict)
   # apply reduction
   if lreduce:
-      if isinstance(axes,np.ndarray): axes = axes.squeeze() # remove singleton dimensions
-      if isinstance(axes,(list,tuple,np.ndarray)) and len(axes) == 1: axes = axes[0] # return a bare axes instance, if there is only one axes
+      if isinstance(axes,np.ndarray): 
+          axes = axes.squeeze() # remove singleton dimensions
+          if axes.ndim == 0: axes = axes.item()
+      if isinstance(axes,(list,tuple)) and len(axes) == 1: 
+          axes = axes[0] # return a bare axes instance, if there is only one axes
   ## set label positions
   if not lPolarAxes:
       # X-/Y-labels and -ticks
