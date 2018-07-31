@@ -741,6 +741,7 @@ tmp = PlotAtts(name = 'WMO-TP', title = 'WMO Tropopause Height',
 # add to collection
 variablePlotatts['WMOTP'] = tmp
 
+
 from geodata.misc import ArgumentError
 
 ## function to retrieve plot atts based on a variable name, units, and atts
@@ -790,9 +791,25 @@ def getPlotAtts(name=None, units=None, atts=None, plot=None, plotatts_dict=None)
         plotatts = plotatts_dict[basename.lower()].copy()
       else:
         # last resort...
-        name = name.title() if name == name.lower() else name
+        name = name.title() if name.islower() else name
         if '^' in units or '{' in units and '$' not in units: units = '$'+units+'$'
         plotatts = PlotAtts(name=name, units=units, title=name)  
+  # intercept variables that express relative change 
+  # i.e. display var1 / var0 - 1 as +/--percentage
+  if units == '':
+      if isinstance(atts,dict): 
+          binop_name = atts.get('binop_name',name)
+      else: binop_name = name
+      binop_name = binop_name.split()
+      if len(binop_name) >= 4: # needs at least 4 components: var1 / var2 -1
+        if (binop_name[-1] == '-1' or ( binop_name[-2] == '-' and binop_name[-1] == '1' ) ):
+          if '/' in binop_name:
+            name = plotatts.name; title = plot.title
+            name = name.title() if name.islower() else name
+            title = title.title() if title.islower() else title
+            plotatts = PlotAtts(name = '{:s} Ratio'.format(name), 
+                                title = 'Relative {:s} Differences'.format(title), 
+                                units = '$\%$', scalefactor = 1e2)
   # modify according to variable specifics
   if len(postfix) > 0: # these are mostly things like, e.g., '7d' for 7d means
     if ldistvar: 

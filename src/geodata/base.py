@@ -25,7 +25,6 @@ from geodata.misc import genStrArray, translateSeasons
 from geodata.misc import VariableError, AxisError, DataError, DatasetError, ArgumentError, EmptyDatasetError
 from processing.multiprocess import apply_along_axis
 from utils.misc import histogram, binedges, detrend, percentile, tabulate
-from copy import deepcopy
      
 # used for climatology and seasons
 monthlyUnitsList = ('month','months','month of the year')
@@ -123,7 +122,13 @@ def BinaryCheckAndCreateVar(sameUnits=True, linplace=False):
         # construct resulting variable (copy from orig)
         if hasattr(other,'atts'): atts = joinDicts(orig.atts, other.atts)
         else: atts = orig.atts.copy()
-        atts['name'] = name; atts['units'] = units
+        if orig.atts['name'] == other.atts['name']:
+            # use original name, if names are the same (likely some kind of change or differences)
+            atts['name'] = orig.atts['name'] 
+            atts['binop_name'] = name
+        else:    
+            atts['name'] = name
+        atts['units'] = units # units can still change, though
         var = orig.copy(data=data, atts=atts)
       else:
         var = data
@@ -1724,13 +1729,13 @@ class Variable(object):
       raise TimeAxisError("Time-axis cannot have missing coordinate values (month)!")
     
   def seasonalSample(self, season=None, asVar=True, lcheckAxis=False, lcheckVar=True, linplace=False, 
-                     lstrict=True, loffset=True, taxis='time', svaratts=None, saxatts=None):
+                     lstrict=True, loffset=True, lclim=False, taxis='time', svaratts=None, saxatts=None):
     ''' A method to extract a subset of month from a monthly timeseries and return a concatenated 
         time-series of values for the specified season. '''
     # check input
     if season is not None and self.hasAxis(taxis):
       time = self.getAxis(taxis); itime = self.axisIndex(taxis); tcoord = time.coord
-      if lstrict: self._checkMonthlyAxis(taxis=taxis, lbegin=True)
+      if lstrict: self._checkMonthlyAxis(taxis=taxis, lbegin=True, lclim=lclim)
       # translate season string
       idx = translateSeasons(season) # does most of the remining input/type checking
       # account for offset in coordinate axis: change indices
@@ -3634,16 +3639,17 @@ class Ensemble(object):
     elif all([not callable(f) and not isinstance(f, (Variable,Dataset)) for f in fs]): return fs  
     elif all([isinstance(f, (Variable,Dataset)) for f in fs]):
       # N.B.: technically, Variable instances are callable, but that's not what we want here...
+      ens_args = dict(name=self.ens_name, title=self.ens_title)
       if all([isinstance(f, Axis) for f in fs]): 
         return fs
       # N.B.: axes are often shared, so we can't have an ensemble
       elif all([isinstance(f, Variable) for f in fs]): 
         # check for unique keys
         if len(fs) == len(set([f.name for f in fs if f.name is not None])): 
-          return Ensemble(*fs, idkey='name') # basetype=Variable,
+          return Ensemble(*fs, idkey='name', **ens_args) # basetype=Variable,
         elif len(fs) == len(set([f.dataset.name for f in fs if f.dataset is not None])): 
 #           for f in fs: f.dataset_name = f.dataset.name 
-          return Ensemble(*fs, idkey='dataset_name') # basetype=Variable, 
+          return Ensemble(*fs, idkey='dataset_name', **ens_args) # basetype=Variable, 
         else:
           #raise KeyError, "No unique keys found for Ensemble members (Variables)"
           # just re-use current keys
@@ -3657,17 +3663,17 @@ class Ensemble(object):
               setattr(f, self.idkey, getattr(member,self.idkey))
             else: raise DatasetError, self.idkey
 #             f.__dict__[self.idkey] = getattr(member,self.idkey)
-          return Ensemble(*fs, idkey=self.idkey) # axes from several variables can be the same objects
+          return Ensemble(*fs, idkey=self.idkey, **ens_args) # axes from several variables can be the same objects
       elif all([isinstance(f, Dataset) for f in fs]): 
         # check for unique keys
         if len(fs) == len(set([f.name for f in fs if f.name is not None])): 
-          return Ensemble(*fs, idkey='name') # basetype=Variable,
+          return Ensemble(*fs, idkey='name', **ens_args) # basetype=Variable,
         else:
 #           raise KeyError, "No unique keys found for Ensemble members (Datasets)"
           # just re-use current keys
           for f,member in zip(fs,self.members): 
             f.name = getattr(member,self.idkey)
-          return Ensemble(*fs, idkey=self.idkey) # axes from several variables can be the same objects
+          return Ensemble(*fs, idkey=self.idkey, **ens_args) # axes from several variables can be the same objects
       else:
         raise TypeError, "Resulting Ensemble members have inconsisent type."
   
