@@ -263,7 +263,13 @@ class LSM(FileType):
                      Runoff   = dict(name='runoff', units='kg/m^2/s'), # total surface and sub-surface run-off
                      TSLB     = dict(name='Tslb', units='K'), # soil temperature
                      SMOIS    = dict(name='aSM', units='m^3/m^3'), # absolute soil moisture
-                     SMCREL   = dict(name='rSM', units='')) # relative soil moisture
+                     SMCREL   = dict(name='rSM', units=''), # relative soil moisture
+                     # 3D lake variables
+                     T_LAKE3D       = dict(name='T_LAKE3D', units='K', atts=dict(missing_value=-999., long_name='Lake Temperature')),
+                     LAKE_ICEFRAC3D = dict(name='LAKE_ICEFRAC3D', units='', atts=dict(missing_value=-999., long_name='Lake Ice Fraction')),
+                     Z_LAKE3D       = dict(name='Z_LAKE3D', units='m', atts=dict(missing_value=-999., long_name='Lake Layer Depth')),
+                     DZ_LAKE3D      = dict(name='DZ_LAKE3D', units='m', atts=dict(missing_value=-999., long_name='Lake Layer Thickness')),
+                     )
     self.vars = self.atts.keys() 
     self.ignore_list = []   
     self.climfile = 'wrflsm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)

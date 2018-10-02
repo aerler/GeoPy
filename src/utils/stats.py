@@ -8,9 +8,12 @@ Modified statistical functions from scipy.stats
 
 import numpy as np
 # imports from scipy's internal stats-helper module
-from scipy.stats.stats import _chk_asarray, rankdata, distributions, _sum_of_squares
+from scipy.stats.stats import _chk_asarray, rankdata, distributions
 from scipy.special import betainc
 
+# helper function
+def _sum_of_squares(x):
+    return np.sum(x**2)
 
 # helper function
 def _betai(a, b, x):
