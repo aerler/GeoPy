@@ -262,7 +262,15 @@ class VarNC(Variable):
         else: 
             data = np.asarray(data, dtype=self.dtype) # cast to preset dtype
 #           raise DataError, "NetCDF data dtype does not match Variable dtype (ncvar.dtype={:s})".format(self.ncvar.dtype) 
-        if isinstance(data,np.ma.MaskedArray): self.fillValue = data.fill_value # possibly scaled
+      # figure out mask
+      if isinstance(data,np.ma.MaskedArray): 
+          if self.fillValue: data.fill_value = self.fillValue
+          else: self.fillValue = data.fill_value # possibly scaled
+      elif self.masked:
+          if np.issubdtype(self.dtype,np.inexact):
+              data = np.ma.masked_values(data, self.fillValue, copy=False)
+          else:
+              data = np.ma.masked_equal(data, self.fillValue, copy=False)
       if self.ncstrvar: data = nc.chartostring(data)
       # N.B.: nc.chartostring() may not work anymore - not sure...
       #assert self.ndim == data.ndim # make sure that squeezing works!

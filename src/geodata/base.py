@@ -368,9 +368,9 @@ class Variable(object):
     if units is not None: atts['units'] = units # units can also be accessed directly as a property
     elif 'units' not in atts: atts['units'] = 'N/A'
     # sync fillValue with atts
-    if 'fillValue' in atts:
-      if fillValue is None: fillValue = atts['fillValue']
-      else: atts['fillValue'] = fillValue
+    if 'fillValue' is None:
+      fillValue = atts.get('fillValue',None) or atts.get('missing_value',None)
+    atts['fillValue'] = fillValue
 #     if fillValue is not None: atts['missing_value'] = fillValue # slightly irregular treatment...
     self.__dict__['atts'] = AttrDict(**atts)
     # try to find sensible default values
