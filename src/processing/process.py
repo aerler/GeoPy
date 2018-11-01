@@ -806,7 +806,8 @@ class CentralProcessingUnit(object):
       geotransform = list(self.input.geotransform)
       if axis.name == self.input.xlon: geotransform[0] += coord_shift
       if axis.name == self.input.ylat: geotransform[3] += coord_shift
-      self.target = addGDALtoDataset(self.target, projection=self.input.projection, geotransform=geotransform)
+      self.target = addGDALtoDataset(self.target, projection=self.input.projection, 
+                                     geotransform=geotransform, loverride=True)
     # prepare function call
     function = functools.partial(self.processShift, # already set parameters
                                  shift=shift, axis=axis)
@@ -822,10 +823,13 @@ class CentralProcessingUnit(object):
       if self.feedback: print('\n'+var.name), # put line break before test, instead of after      
       # shift data array
       var.load()
-      newdata = np.roll(var.data_array, shift, axis=var.axisIndex(axis))
+      ai = var.axisIndex(axis)
+      newdata = np.roll(var.data_array, shift, axis=ai)
       # create new Variable
       axes = tuple([axis if ax.name == axis.name else ax for ax in var.axes]) # replace axis with shifted version
       newvar = var.copy(axes=axes, data=newdata) # and, of course, load new data
+      if 'valid_range' in newvar.axes[ai].atts:
+          del newvar.axes[ai].atts['valid_range']
       var.unload(); del var, newdata
     else:
       var.load() # need to load variables into memory, because we are not doing anything else...

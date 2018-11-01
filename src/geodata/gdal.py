@@ -171,6 +171,7 @@ class GridDefinition(object):
       frac = 1./5. # the fraction that is used to calculate the effective resolution (at the domain center)
       xs = int(size[0]*(0.5-frac/2.)); ys = int(size[1]*(0.5-frac/2.))
       xe = int(size[0]*(0.5+frac/2.)); ye = int(size[1]*((0.5+frac/2.)))
+      xe = max(xs+1,xe); ye = max(ys+1,ye); 
       (llx,lly,llz) = tx.TransformPoint(xlon.coord[xs].astype(np.float64),ylat.coord[ys].astype(np.float64)); del llz
       (urx,ury,urz) = tx.TransformPoint(xlon.coord[xe].astype(np.float64),ylat.coord[ye].astype(np.float64)); del urz
       # N.B.: for some reason GDAL is very sensitive to type and does not understand numpy types

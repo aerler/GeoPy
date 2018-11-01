@@ -1270,8 +1270,10 @@ def rv_stats(params, dist_type=None, fct_type=None, moments=None, n=None, fillVa
 
 # draw n random samples from the RV distribution
 def rv_resample(params, dist_type=None, n=None, fillValue=np.NaN, dtype=np.float):
-  if np.any(np.isnan(params)): res = np.zeros(n)+fillValue 
-  else: res = np.asarray(getattr(ss,dist_type).rvs(*params[:-2], loc=params[-2], scale=params[-1], size=n), dtype=dtype)
+  if np.any(np.isnan(params)): 
+      res = np.zeros(n)+fillValue 
+  else: 
+      res = np.asarray(getattr(ss,dist_type).rvs(*params[:-2], loc=params[-2], scale=params[-1], size=n), dtype=dtype)
   return res
 
 # perform a goodness of fit test
@@ -1422,7 +1424,7 @@ class VarRV(DistVar):
     n = len(support) # in order to use _get_dist(), we have to pass a dummy support
     fillValue = self.fillValue or np.NaN # for masked values
     fct = functools.partial(rv_resample, dist_type=self.dist_type, n=n, fillValue=fillValue, dtype=self.dtype)
-    samples = apply_along_axis(fct, self.ndim-1, self.data_array, chunksize=10000//n)
+    samples = apply_along_axis(fct, self.ndim-1, self.getArray(unmask=True, fillValue=np.NaN, copy=True), chunksize=10000//n)
     assert samples.shape == self.shape[:-1] + (n,)
     assert np.issubdtype(samples.dtype, self.dtype)
     return samples

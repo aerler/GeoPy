@@ -50,7 +50,9 @@ class UnaryCheckAndCreateVar(object):
       var = orig
       var.data_array = data
       var.units = units # don't change name, though
-    elif asVar: var = orig.copy(name=name, units=units, data=data)
+    elif asVar: 
+      if orig.masked: data = np.ma.MaskedArray(data, mask=orig.data_array.mask)
+      var = orig.copy(name=name, units=units, data=data)
     else: var = data
     if asVar and not isinstance(var,Variable): raise TypeError
     # return function result
@@ -120,14 +122,15 @@ def BinaryCheckAndCreateVar(sameUnits=True, linplace=False):
         var = orig # in-place operation should already have changed data_array 
       elif asVar:
         # construct resulting variable (copy from orig)
-        if hasattr(other,'atts'): atts = joinDicts(orig.atts, other.atts)
+        if hasattr(other,'atts'): 
+          atts = joinDicts(orig.atts, other.atts)
+          if orig.atts['name'] == other.atts['name']:
+              # use original name, if names are the same (likely some kind of change or differences)
+              atts['name'] = orig.atts['name'] 
+              atts['binop_name'] = name
+          else:    
+              atts['name'] = name
         else: atts = orig.atts.copy()
-        if orig.atts['name'] == other.atts['name']:
-            # use original name, if names are the same (likely some kind of change or differences)
-            atts['name'] = orig.atts['name'] 
-            atts['binop_name'] = name
-        else:    
-            atts['name'] = name
         atts['units'] = units # units can still change, though
         var = orig.copy(data=data, atts=atts)
       else:
@@ -2517,6 +2520,9 @@ class Axis(Variable):
       if np.issubdtype(self.coord.dtype,np.datetime64):
           time_coord = ( self.coord.astype('datetime64[s]') - self.coord[0].astype('datetime64[s]') ) / np.timedelta64(1,'s')     
       else: time_coord = self.coord
+      # remove masks - just in case
+      if isinstance(self.coord,np.ma.MaskedArray):
+          self.coord.mask = np.ma.nomask
       # check differences (does ot work with datetime64)
       if all(np.diff(time_coord) > 0): self.ascending = True
       elif all(np.diff(time_coord) < 0): self.ascending = False

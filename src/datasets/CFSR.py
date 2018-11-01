@@ -50,8 +50,8 @@ varatts = dict(TMP_L103_Avg = dict(name='T2', units='K'), # 2m average temperatu
                # axes (don't have their own file; listed in axes)
                time = dict(name='time', units='day', scalefactor=1/24., offset=-6.), # time coordinate
                # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
-               lon  = dict(name='lon', units='deg E'), # geographic longitude field
-               lat  = dict(name='lat', units='deg N')) # geographic latitude field
+               lon  = dict(name='lon', units='deg E', ), # geographic longitude field
+               lat  = dict(name='lat', units='deg N'), ) # geographic latitude field
 # N.B.: the time-series begins in 1979 (time=0), so no offset is necessary
 tsvaratts = varatts
 
@@ -243,8 +243,8 @@ loadShapeTimeSeries = loadCFSR_ShpTS # time-series without associated grid (e.g.
 ## (ab)use main execution for quick test
 if __name__ == '__main__':
   
-#   mode = 'test_climatology'
-  mode = 'average_timeseries'
+  mode = 'test_climatology'
+#   mode = 'average_timeseries'
 #   mode = 'test_timeseries'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
@@ -283,9 +283,10 @@ if __name__ == '__main__':
 #       print('')
 #       print(dataset.time)
 #       print(dataset.time.coord)
-      print('')
-      print(dataset.landmask)
-      assert dataset.landmask.gdal
+      if res == '031':
+          print('')
+          print(dataset.landmask)
+          assert dataset.landmask.gdal
     
     elif mode == 'test_point_climatology':
       

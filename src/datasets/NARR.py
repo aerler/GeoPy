@@ -232,16 +232,17 @@ if __name__ == '__main__':
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_point_climatology'
-  mode = 'test_point_timeseries'
-#   mode = 'average_timeseries'
+#   mode = 'test_point_timeseries'
+  mode = 'average_timeseries'
 #   mode = 'convert_climatology'
   grid = None
 #   grid = 'arb2_d02'
 #   period = (1979,1984)
 #   period = (1979,1989)
-  period = (1979,1994)
+#   period = (1979,1994)
 #   period = (1979,2009)
 #   period = (2010,2011)
+  period = (2006,2016)
   pntset = 'glbshp' # 'ecprecip'
   
   if mode == 'test_climatology':
@@ -345,7 +346,7 @@ if __name__ == '__main__':
     print(source)
     print('\n')
     # prepare sink
-    gridstr = '' if grid is 'NARR' else '_'+grid
+    gridstr = '' if grid is 'NARR' or grid is None else '_'+grid
     filename = avgfile.format(gridstr,'_'+periodstr)
     if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)
     sink = DatasetNetCDF(name='NARR Climatology', folder=avgfolder, filelist=[filename], atts=source.atts, mode='w')

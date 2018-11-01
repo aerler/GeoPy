@@ -534,8 +534,8 @@ if __name__ == '__main__':
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
 #     pntset = 'ecprecip'
-    period = (1970,2000)
-#     period = (1980,2010) 
+#     period = (1970,2000)
+    period = (1980,2010) 
     res = None; grid = None
     
     if mode == 'test_climatology':
@@ -610,8 +610,6 @@ if __name__ == '__main__':
     elif mode == 'convert_Normals':
         
         # parameters
-#         period = (1980,2010)
-        period = (1970,2000) 
 #         snow_density = 'ephemeral'
         snow_density = 'maritime'
 #         snow_density = 'prairies'

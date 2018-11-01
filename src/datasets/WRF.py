@@ -171,7 +171,6 @@ class Srfc(FileType):
                      MaxRAINNC_5d = dict(name='MaxPrecnc_5d', units='kg/m^2/s'), # maximum pendat (5 day) n-c precip
                      OrographicIndex = dict(name='OI', units='', atts=dict(long_name='Orographic Index')), # projection of wind onto slope
                      CovOIP       = dict(name='COIP', units='', atts=dict(long_name='Cov(OI,p)')), # covariance of OI and precip
-                     TSLB     = dict(name='Tslb', units='K'), # soil temperature
                      # lake variables (some need to be masked explicitly)
                      SSTSK        = dict(name='SSTs', units='K', transform=mask_array, # Sea Surface Skin Temperature (WRF)
                                          atts=dict(missing_value=0, long_name='Sea Surface Skin Temperature')), 
