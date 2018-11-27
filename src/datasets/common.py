@@ -99,7 +99,7 @@ def getRootFolder(dataset_name=None, fallback_name=None, data_root=data_root):
     root_folder = os.getenv(dataset_name+'_ROOT',None) # no modification necessary
     if not root_folder or not os.path.exists(root_folder):
         tmp = os.getenv(fallback_name+'_ROOT',None)
-        if tmp: root_folder = tmp.replace('WRF',dataset_name)
+        if tmp: root_folder = tmp.replace(fallback_name,dataset_name)
     if not root_folder or not os.path.exists(root_folder):
         root_folder = '{:s}/{:s}/'.format(data_root,dataset_name) # the dataset root folder
     if not root_folder:
