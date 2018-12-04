@@ -157,8 +157,7 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
         if shape[i] != len(dst.dimensions[dim]): 
           raise NCAxisError, 'Size of dimension %s does not match records! %i != %i'%(dim,shape[i],len(dst.dimensions[dim]))
     else: 
-      if shape[i] is not None: dst.createDimension(dim, size=shape[i])
-      else: raise NCAxisError, "Cannot construct dimension '%s' without size information."%(dims,)
+      dst.createDimension(dim, size=shape[i])
   dims = tuple(dims); shape = tuple(shape)
   # figure out parameters for variable
   varargs = dict() # arguments to be passed to createVariable

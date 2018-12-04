@@ -19,12 +19,15 @@ import pandas as pd
 import os, gzip
 import os.path as osp
 import numpy as np
+import netCDF4 as nc # netCDF4-python module
+import xarray as xr
 try: import cPickle as pickle
 except: import pickle
 
 # internal imports
-from geodata.misc import ArgumentError, VariableError, DataError, DatasetError, translateSeasons
 from geodata.misc import name_of_month
+from utils.nctools import add_coord, add_var
+from geodata.misc import ArgumentError, VariableError, DataError, DatasetError, translateSeasons
 from datasets.common import BatchLoad, getRootFolder
 from geodata.base import Dataset, Variable, Axis, concatDatasets
 from geodata.gdal import loadPickledGridDef, addGDALtoDataset, GridDefinition
@@ -69,11 +72,24 @@ netcdf_varatts = dict(# forcing variables
                       snwmlt    = dict(name='snwmlt',   units='kg/m^2/s',scalefactor= 1.e3/86400., long_name='Snow Melt Runoff at the Base of the Snow Pack'),
                       evap_snow = dict(name='evap_snow',units='kg/m^2/s',scalefactor=-1.e3/86400., long_name='Sublimation from the Snow Pack'),
                       evap_blow = dict(name='evap_blow',units='kg/m^2/s',scalefactor=-1.e3/86400., long_name='Sublimation of Blowing Snow'),
+                      # axes (don't have their own file)
+                      time_stamp = dict(name='time_stamp', units='', long_name='Time Stamp'), # readable time stamp (string)
+                      time = dict(name='time', units='day', long_name='Calendar Day'), # time coordinate
+                      lon  = dict(name='lon', units='deg E', long_name='Longitude'), # geographic longitude
+                      lat  = dict(name='lat', units='deg N', long_name='Latitude'), # geographic latitude
                       )
 # list of variables to load
 binary_varlist = binary_varatts.keys()
-
+# some SnoDAS settings
+missing_value = -9999 # missing data flag
+snodas_shape2d = (SnoDAS_grid.size[1],SnoDAS_grid.size[0]) # 4096x8192
+binary_dtype = np.dtype('>i2') # big-endian 16-bit signed integer
+# settings for NetCDF-4 files
 avgfolder = root_folder + dataset_name.lower()+'avg/' 
+daily_folder = root_folder + dataset_name.lower()+'_daily/' 
+netcdf_filename = 'snodas_{:s}_daily.nc'
+netcdf_dtype = np.dtype('<f4') # little-endian 32-bit float
+netcdf_settings = dict(chunksizes=(8,snodas_shape2d[0]/16,snodas_shape2d[1]/32))
 
 ## helper functions to handle binary files
 
@@ -103,49 +119,133 @@ def readBinaryData(fobj=None, lstr=True):
     # read binary data (16-bit signed integers, big-endian)
     if lstr:
         # read binary data from file stream (basically as string; mainly for gzip files)
-        data = np.fromstring(fobj.read(), dtype=np.dtype('>i2'), count=-1) # read binary data
+        data = np.fromstring(fobj.read(), dtype=binary_dtype, count=-1) # read binary data
     else:
         # read binary data from file system (does not work with gzip files)
-        data = np.fromfile(fobj, dtype=np.dtype('>i2'), count=-1) # read binary data
-    data = data.reshape((SnoDAS_grid.size[1],SnoDAS_grid.size[0])) # assign shape
+        data = np.fromfile(fobj, dtype=binary_dtype, count=-1) # read binary data
+    if data.size != snodas_shape2d[0]*snodas_shape2d[1]:
+        raise DataError(data)
+    data = data.reshape(snodas_shape2d) # assign shape
     return data
   
-def readBinaryFile(varname=None, date=None, root_folder=root_folder, lgzip=True, scalefactor=None, lmask=True):
+def readBinaryFile(varname=None, date=None, root_folder=root_folder, lgzip=True, scalefactor=None, 
+                   lmask=True, lmissing=True):
     ''' load SnoDAS binary data for one day into a numpy array with proper scaling and unites etc. '''
     # find file
     folder,filename = getFilenameFolder(varname=varname, date=date, root_folder=root_folder, lgzip=lgzip)
     filepath = folder+filename
-    if not osp.exists(filepath): 
-        raise IOError(filepath)               
-    # open file (gzipped or not)
-    with gzip.open(filepath, mode='rb') if lgzip else open(filepath, mode='rb') as fobj:              
-        data = readBinaryData(fobj=fobj, lstr=lgzip,) # read data        
-    # flip y-axis (in file upper-left corner is origin, we want lower-left)
-    data = np.flip(data, axis=0)
-    # N.B.: the order of the axes is (y,x)
-    # format such that we have actual variable values
-    if lmask:
-        fdata = np.ma.masked_array(data, dtype=np.dtype('<f4'))
-        fdata = np.ma.masked_where(data==-9999, fdata, copy=False)
-    else:
-        fdata = np.asarray(data, dtype=np.dtype('<f4'))
-    del data
-    # apply scalefactor
-    if scalefactor is None:
-        scalefactor = binary_varatts[varname]['scalefactor']*netcdf_varatts[varname]['scalefactor']
-    if scalefactor != 1:
-        fdata *= scalefactor
+    # check if present
+    try:
+        # open file (gzipped or not)
+        with gzip.open(filepath, mode='rb') if lgzip else open(filepath, mode='rb') as fobj:              
+            data = readBinaryData(fobj=fobj, lstr=lgzip,) # read data        
+        # flip y-axis (in file upper-left corner is origin, we want lower-left)
+        data = np.flip(data, axis=0)
+        # N.B.: the order of the axes is (y,x)
+        # format such that we have actual variable values
+        if lmask:
+            fdata = np.ma.masked_array(data, dtype=netcdf_dtype)
+            fdata = np.ma.masked_where(data==-9999, fdata, copy=False)
+        else:
+            fdata = np.asarray(data, dtype=netcdf_dtype)
+        del data
+        # apply scalefactor
+        if scalefactor is None:
+            scalefactor = binary_varatts[varname]['scalefactor']*netcdf_varatts[varname]['scalefactor']
+        if scalefactor != 1:
+            fdata *= scalefactor
+    except IOError:
+        if lmissing:
+            print("Warning: data for '{}' missing - creating empty array!\n  ('{:s}')".format(date, folder))
+            # create empty/masked array
+            if lmask: fdata = np.ma.masked_all(snodas_shape2d, dtype=netcdf_dtype)            
+            else: fdata = np.zeros(snodas_shape2d, dtype=netcdf_dtype)+missing_value
+        else:
+            print("Point of failure: {}/{}".format(varname,date))
+            raise IOError("Data folder for '{}' is missing:\n  '{:s}'".format(date, folder))
+    except DataError:
+        if lmissing:
+            print("Warning: data for '{}' incomplete - creating empty array!\n  ('{:s}')".format(date, folder))
+            # create empty/masked array
+            if lmask: fdata = np.ma.masked_all(snodas_shape2d, dtype=netcdf_dtype)            
+            else: fdata = np.zeros(snodas_shape2d, dtype=netcdf_dtype)+missing_value
+        else:
+            print("Point of failure: {}/{}".format(varname,date))
+            raise
+
     return fdata
+
+def creatNetCDF(varname, varatts=None, ncatts=None, data_folder=daily_folder, fillValue=missing_value):
+    ''' create a NetCDF-4 file for the given variable, create dimensions and variable, and allocate data;
+        also set options for chunking and compression in a sensible manner '''
+    if varatts is None: varatts = netcdf_varatts
+    if ncatts is None: ncatts = netcdf_settings
+    # create Dataset/file    
+    filename = netcdf_filename.format(varname.lower())
+    filepath = data_folder+filename
+    ds = nc.Dataset(filepath, mode='w', format='NETCDF4', clobber=True)
+    # add coordinate variables
+    # time is the outer-most (record) dimension
+    axes = [] # build axes order (need to add in order
+    atts = varatts['time']; axes.append(atts['name'])
+    add_coord(ds, atts['name'], data=None, length=None, atts=atts,
+              dtype=np.dtype('i4'), zlib=True, fillValue=fillValue,) # daily
+    # also add a time-stamp variable
+    atts = varatts['time_stamp']
+    add_var(ds, atts['name'], dims=axes, data=None, shape=(None,), 
+            atts=atts, dtype=np.dtype('S'), zlib=True, fillValue=None, lusestr=True) # daily time-stamp
+    # latitude (intermediate/regular dimension)
+    atts = varatts['lat']; axes.append(atts['name'])
+    add_coord(ds, atts['name'], data=SnoDAS_grid.ylat[:], length=SnoDAS_grid.size[1], atts=atts,
+              dtype=netcdf_dtype, zlib=True, fillValue=fillValue,)
+    # longitude is the inner-most dimension (continuous)
+    atts = varatts['lon']; axes.append(atts['name'])
+    add_coord(ds, atts['name'], data=SnoDAS_grid.xlon[:], length=SnoDAS_grid.size[0], atts=atts,
+              dtype=netcdf_dtype, zlib=True, fillValue=fillValue,)
+    # create NC variable
+    atts = varatts[varname].copy()
+    if 'scalefactor' in atts: del atts['scalefactor']
+    add_var(ds, atts['name'], dims=axes, data=None, shape=(None,)+snodas_shape2d, atts=atts, 
+            dtype=netcdf_dtype, zlib=True, fillValue=fillValue, lusestr=True, **ncatts)
+    # return dataset object
+    return ds
+  
+  
+## functions to load NetCDF datasets (using xarray)
+
+def loadSnoDAS_Daily(varname=None, folder=daily_folder, lxarray=True, chunks=None, time_chunks=8, **kwargs):
+    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray '''
+    if not lxarray: 
+        raise NotImplementedError("Only loading via xarray is currently implemented.")
+    if time_chunks:
+        cks = netcdf_settings['chunksizes'] if chunks is None else chunks
+        # use default netCDF chunks or user chunks, but multiply time by time_chunks
+        chunks = dict(time=cks[0]*time_chunks,lat=cks[1],lon=cks[2])
+    filepath = folder + netcdf_filename.format(varname)
+    xds = xr.open_dataset(filepath, chunks=chunks, **kwargs)
+    return xds
 
 ## abuse for testing
 if __name__ == '__main__':
 
 #   test_mode = 'test_binary_reader'
-  test_mode = 'test_convert'
 #   test_mode = 'convert_binary'
+  test_mode = 'load_daily'
 
 
-  if test_mode == 'test_binary_reader':
+  if test_mode == 'load_daily':
+          
+      varname = 'snwmlt'
+      xds = loadSnoDAS_Daily(varname=varname, time_chunks=32) # 32 may be possible
+      print(xds)
+      print('')
+      xv = xds[varname]
+      xv = xv.loc['2011-01-01':'2011-02-01',35:45,-100:-80]
+#       xv = xv.loc['2011-01-01',:,:]
+      print(xv)
+      print('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.))
+
+  elif test_mode == 'test_binary_reader':
     
       lgzip  = True
       # current date range
@@ -157,54 +257,176 @@ if __name__ == '__main__':
       date = '2010-11-18'
       # date at which eastern Canada and Quebec are fully assimilated: 23/08/2012
       date = '2012-08-23'
+      # a missing date
+      date = '2010-02-06'
+      date = '2014-07-29'
+      
 
-      date = '2010-06-14'
-      for varname in binary_varlist:
-#       for varname in ['liqprec']:
+#       for varname in binary_varlist:
+      for varname in ['evap_snow']:
 
           print('\n   ***   {}   ***   '.format(varname))
           # read data
-          data = readBinaryFile(varname=varname, date=date, lgzip=lgzip,)
+          data = readBinaryFile(varname=varname, date=date, lgzip=lgzip,lmissing=True)
           # some checks
           assert isinstance(data,np.ndarray), data
-          assert data.dtype == np.dtype('<f4'), data.dtype
+          assert data.shape == snodas_shape2d, data.shape
+          assert data.dtype == netcdf_dtype, data.dtype
           
           # diagnostics
-          print('Min: {:f}, Mean: {:f}, Max: {:f}'.format(data.min(),data.mean(),data.max()))              
+          if not np.all(data.mask):
+              print('Min: {:f}, Mean: {:f}, Max: {:f}'.format(data.min(),data.mean(),data.max()))  
+          else: 
+              print('No data available for timestep')
+          print('Size in Memory: {:6.1f} MB'.format(data.nbytes/1024./1024.))            
           # make plot
-          import pylab as pyl
+#           import pylab as pyl
 #           pyl.imshow(np.flipud(data[:,:])); pyl.colorbar(); pyl.show(block=True)
     
-  elif test_mode == 'test_convert':
-    
-      import dask
-      import dask.array as da
-      import xarray
-
-      datatype = np.dtype('<f4') # little-endian 32-bit float
-      shape2d = (SnoDAS_grid.size[1],SnoDAS_grid.size[0])
-      varname = 'snow'
-      # create datetime axis       
-      time_array = np.arange('2009-12-14','2010-01-14', dtype='datetime64[D]')
-      
-      # loop over days to construct dask execution graph
-      data_arrays = []
-      for day in time_array:
-          # create delayed array slices
-          print day
-          data2d = dask.delayed(readBinaryFile)(varname=varname, date=day,)
-          data_arrays.append(da.from_delayed(data2d, shape=shape2d, dtype=datatype)) 
-          
-      # construct delayed dask array from list of slices
-      data3d = da.stack(data_arrays)
-      print(data3d)
-      
-      # cast into xarray and write netcdf
-      data = xarray.DataArray(data3d, dims=['time','lat','lon'])
-      print(data)
-      data.to_netcdf(avgfolder+'test_daily.nc')
-  
   elif test_mode == 'convert_binary':
     
-      raise NotImplementedError
+      import gc, time
+
+      lappend = True
+#       netcdf_settings = dict(chunksizes=(1,snodas_shape2d[0]/4,snodas_shape2d[1]/8))
+      nc_time_chunk = netcdf_settings['chunksizes'][0]
+      start_date = '2009-12-14'; end_date = '2018-11-24'
+
+      if not osp.isdir(daily_folder): os.mkdir(daily_folder)
+
+      # loop over binary variables (netcdf vars have coordiantes as well...)
+#       for varname in ['evap_snow']:
+      for varname in binary_varlist:
+      
+
+          filename = netcdf_filename.format(varname.lower())
+          filepath = daily_folder+filename
+
+          # create or open NetCDF-4 file
+          start = time.time()
+          if not osp.exists(filepath) or not lappend:
+              # create NetCDF-4 dataset
+              print("\nCreating new NetCDF-4 dataset for variable '{:s}':\n  '{:s}'".format(varname,filepath))
+              ncds = creatNetCDF(varname, varatts=netcdf_varatts, ncatts=netcdf_settings, data_folder=daily_folder)
+              ncds.sync()
+              ncvar = ncds[varname]
+              assert filepath == ncds.filepath(), ncds.filepath()
+              ncts  = ncds['time_stamp']; nctc  = ncds['time']
+              time_offset = len(ncts)
+              assert  time_offset == 0, ncts
+              # create datetime axis       
+    #           time_array = np.arange('2009-12-14','2009-12-15', dtype='datetime64[D]')
+              time_array = np.arange('2009-12-14','2009-12-14', dtype='datetime64[D]')
+    #           time_array = np.arange('2009-12-14','2018-11-24', dtype='datetime64[D]')
+          else:
+              # append to existing file
+              print("\nOpening existing NetCDF-4 dataset for variable '{:s}':\n  '{:s}'".format(varname,filepath))
+              ncds = nc.Dataset(filepath, mode='a', format='NETCDF4', clobber=False)
+              ncvar = ncds[varname]
+              nc_time_chunk = ncvar.chunking()[0]
+              ncts  = ncds['time_stamp']; nctc  = ncds['time']
+              time_offset = len(nctc)
+              if nctc[0] != 0:
+                  if nctc[0] == 1:
+                      # some code to correct initial non-CF-compliant units (temporary...)
+                      nctc[:] = nctc[:]-1
+                      units = 'days since {:s}'.format(ncts[0])
+                      print(units)
+                      nctc.setncattr_string('units',units)
+                  else:
+                      raise ValueError(nctc[0])
+              # create datetime axis with correct start date
+              start_date = pd.to_datetime(ncts[-1]) + pd.Timedelta(2, unit='D')
+              # N.B.: need to add *two* days, because SnoDAS uses end-of-day time-stamp
+#               time_array = np.arange(start_date,end_date, dtype='datetime64[D]')
+              time_array = np.arange(start_date,'2009-12-14', dtype='datetime64[D]')
+              if len(time_array) > 0:
+                  print("First record time-stamp: {:s} (offset={:d}), Time Chunking: {:d}".format(time_array[0],time_offset,nc_time_chunk))  
+              else:
+                  print("\nSpecified records are already present; exiting.\n")
+                  ncds.close()
+                  continue # skip ahead to next variable
+          
+          flush_intervall = 64 if nc_time_chunk==1 else nc_time_chunk*4
+          
+          # loop over daily records and periodically write to disk
+          fi = 0; c = 0; var_chunks = []; tc_chunks = []; ts_chunks = []
+          print("\nIterating over daily rasters:\n")
+          for i,day in enumerate(time_array):
+              
+              ii = time_offset + i + 1 # one-based day
+              actual_day = day -1
+              ## N.B.: look into validity of time-stamp, i.e. end of day or beginning?
     
+              # load data and add to variable chunk list
+              var_chunks.append(readBinaryFile(varname=varname, date=day,))
+              # assign time stamp to time chunk list
+              tc_chunks.append(i) # zero-based
+              print("  {}".format(actual_day))
+              ts_chunks.append(str(actual_day))
+              
+              # now assign chunk to file
+              c += 1
+              if c == nc_time_chunk:
+                  ic = ii - nc_time_chunk # start of chunk
+                  # write data
+                  ncvar[ic:ii,:,:] = np.stack(var_chunks, axis=0)
+                  nctc[ic:ii] = np.stack(tc_chunks, axis=0)          
+                  ncts[ic:ii] = np.stack(ts_chunks, axis=0)
+                  # reset intervall counter and lists
+                  c = 0; var_chunks = []; tc_chunks = []; ts_chunks = []
+
+              # periodic flushing to disk
+              fi += 1
+              if fi == flush_intervall:
+                  print("Flushing data to disk ({:d}, {:s})".format(ii, actual_day))
+                  ncds.sync() # flush data
+                  fi = 0 # reset intervall counter
+                  gc.collect()
+                  
+          # write remaining data for incomplete chunk
+          if len(var_chunks) > 0:
+              ic = ii - c # start of chunk
+              # write data
+              ncvar[ic:ii,:,:] = np.stack(var_chunks, axis=0)
+              nctc[ic:ii] = np.stack(tc_chunks, axis=0)          
+              ncts[ic:ii] = np.stack(ts_chunks, axis=0)
+              # delete chunk lists lists
+              del var_chunks, tc_chunks, ts_chunks
+              gc.collect()
+          
+          print("\nCompleted iteration; read {:d} rasters and created NetCDF-4 variable:\n".format(ii))    
+          print(ncvar)
+
+          # make sure time units are set correctly
+          assert nctc[0] == 0, nctc
+          nctc.setncattr_string('units','days since {:s}'.format(ncts[0]))
+          # flush data to disk and close file
+          ncds.sync()
+          ncds.close()
+          
+          end =  time.time()
+          print('\n   Required time:   {:.0f} seconds\n'.format(end-start))
+                
+            
+#       import dask
+#       import dask.array as da
+#       import xarray
+
+#       # loop over days to construct dask execution graph
+#       data_arrays = []
+#       for day in time_array:
+#           # create delayed array slices
+#           print day
+#           data2d = dask.delayed(readBinaryFile)(varname=varname, date=day,)
+#           data_arrays.append(da.from_delayed(data2d, shape=snodas_shape2d, dtype=netcdf_dtype)) 
+#           
+#       # construct delayed dask array from list of slices
+#       data3d = da.stack(data_arrays)
+#       print(data3d)
+#       
+#       # cast into xarray and write netcdf
+#       data = xarray.DataArray(data3d, dims=['time','lat','lon'])
+#       print(data)
+#       data.to_netcdf(avgfolder+'test_daily.nc')
+  
