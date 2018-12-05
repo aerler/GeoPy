@@ -297,7 +297,7 @@ if __name__ == '__main__':
       if not osp.isdir(daily_folder): os.mkdir(daily_folder)
 
       # loop over binary variables (netcdf vars have coordiantes as well...)
-#       for varname in ['evap_snow']:
+#       for varname in ['snowh']:
       for varname in binary_varlist:
       
 
@@ -338,9 +338,9 @@ if __name__ == '__main__':
                   else:
                       raise ValueError(nctc[0])
               # create datetime axis with correct start date
-              start_date = pd.to_datetime(ncts[-1]) + pd.Timedelta(2, unit='D')
+              restart_date = pd.to_datetime(ncts[-1]) + pd.Timedelta(2, unit='D')
               # N.B.: need to add *two* days, because SnoDAS uses end-of-day time-stamp
-              time_array = np.arange(start_date,end_date, dtype='datetime64[D]')
+              time_array = np.arange(restart_date,end_date, dtype='datetime64[D]')
 #               time_array = np.arange(start_date,'2009-12-14', dtype='datetime64[D]')
               if len(time_array) > 0:
                   print("First record time-stamp: {:s} (offset={:d}), Time Chunking: {:d}".format(time_array[0],time_offset,nc_time_chunk))  
@@ -352,7 +352,7 @@ if __name__ == '__main__':
           flush_intervall = 64 if nc_time_chunk==1 else nc_time_chunk*4
           
           # loop over daily records and periodically write to disk
-          fi = 0; c = 0; var_chunks = []; tc_chunks = []; ts_chunks = []
+          ii = 0; fi = 0; c = 0; var_chunks = []; tc_chunks = []; ts_chunks = []
           print("\nIterating over daily rasters:\n")
           for i,day in enumerate(time_array):
               
