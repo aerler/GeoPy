@@ -40,6 +40,7 @@ dataset_name = 'SnoDAS'
 root_folder = getRootFolder(dataset_name=dataset_name, fallback_name='HGS') # get dataset root folder based on environment variables
 
 # SnoDAS grid definition
+projdict = dict(proj='longlat',lon_0=0,lat_0=0,x_0=0,y_0=0) # wraps at dateline
 # N.B.: this is the new grid (in use since Oct. 2013); the old grid was slightly shifted, but less than 1km
 geotransform = (-130.516666666667-0.00416666666666052, 0.00833333333333333, 0, 
                  24.1000000000000-0.00416666666666052, 0, 0.00833333333333333)
@@ -66,7 +67,7 @@ netcdf_varatts = dict(# forcing variables
                       solprec = dict(name='solprec',units='kg/m^2/s',scalefactor=1./86400., long_name='Solid Precipitation'),
                       # state variables
                       snow  = dict(name='snow',  units='kg/m^2', scalefactor=1.e3, long_name='Snow Water Equivalent'),
-                      snowh = dict(name='snowh', units='m',      scalefactor=1.,   long_name='Snow Water Equivalent'),
+                      snowh = dict(name='snowh', units='m',      scalefactor=1.,   long_name='Snow Height/Depth'),
                       Tsnow = dict(name='Tsnow', units='K',      scalefactor=1.,   long_name='Snow Pack Average Temperature'),
                       # diagnostic variables
                       snwmlt    = dict(name='snwmlt',   units='kg/m^2/s',scalefactor= 1.e3/86400., long_name='Snow Melt Runoff at the Base of the Snow Pack'),
@@ -224,13 +225,14 @@ def loadSnoDAS_Daily(varname=None, folder=daily_folder, lxarray=True, chunks=Non
     filepath = folder + netcdf_filename.format(varname)
     xds = xr.open_dataset(filepath, chunks=chunks, **kwargs)
     return xds
+loadDataset_Daily = loadSnoDAS_Daily # alias
 
 ## abuse for testing
 if __name__ == '__main__':
 
 #   test_mode = 'test_binary_reader'
-#   test_mode = 'convert_binary'
-  test_mode = 'load_daily'
+  test_mode = 'convert_binary'
+#   test_mode = 'load_daily'
 
 
   if test_mode == 'load_daily':
@@ -316,8 +318,8 @@ if __name__ == '__main__':
               assert  time_offset == 0, ncts
               # create datetime axis       
     #           time_array = np.arange('2009-12-14','2009-12-15', dtype='datetime64[D]')
-              time_array = np.arange('2009-12-14','2009-12-14', dtype='datetime64[D]')
-    #           time_array = np.arange('2009-12-14','2018-11-24', dtype='datetime64[D]')
+#               time_array = np.arange('2009-12-14','2009-12-14', dtype='datetime64[D]')
+              time_array = np.arange(start_date,end_date, dtype='datetime64[D]')
           else:
               # append to existing file
               print("\nOpening existing NetCDF-4 dataset for variable '{:s}':\n  '{:s}'".format(varname,filepath))
@@ -338,8 +340,8 @@ if __name__ == '__main__':
               # create datetime axis with correct start date
               start_date = pd.to_datetime(ncts[-1]) + pd.Timedelta(2, unit='D')
               # N.B.: need to add *two* days, because SnoDAS uses end-of-day time-stamp
-#               time_array = np.arange(start_date,end_date, dtype='datetime64[D]')
-              time_array = np.arange(start_date,'2009-12-14', dtype='datetime64[D]')
+              time_array = np.arange(start_date,end_date, dtype='datetime64[D]')
+#               time_array = np.arange(start_date,'2009-12-14', dtype='datetime64[D]')
               if len(time_array) > 0:
                   print("First record time-stamp: {:s} (offset={:d}), Time Chunking: {:d}".format(time_array[0],time_offset,nc_time_chunk))  
               else:
