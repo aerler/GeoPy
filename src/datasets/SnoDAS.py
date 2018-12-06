@@ -230,12 +230,78 @@ loadDataset_Daily = loadSnoDAS_Daily # alias
 ## abuse for testing
 if __name__ == '__main__':
 
-#   test_mode = 'test_binary_reader'
-  test_mode = 'convert_binary'
+  test_mode = 'add_variables'
 #   test_mode = 'load_daily'
+#   test_mode = 'test_binary_reader'
+#   test_mode = 'convert_binary'
+
+  if test_mode == 'add_variables':
+    
+      import dask, time
+#       from dask.distributed import Client, LocalCluster
+      
+      start = time.time()
+      
+      # force multiprocessing (4 cores)
+#       cluster = LocalCluster(n_workers=4, diagnostics_port=18787)
+#       client = Client(cluster)
+      from multiprocessing.pool import ThreadPool
+      dask.set_options(pool=ThreadPool(4))
+      
+      # load variables
+      time_chunks = 32 # 32 may be possible
+      ts_name = 'time_stamp'; var1 = 'snwmlt'; var2 = 'liqprec'
+      xds1 = loadSnoDAS_Daily(varname=var1, time_chunks=time_chunks)
+      print(xds1)
+      tsvar = xds1[ts_name].load()
+      xvar1 = xds1[var1]
+      xvar2 = loadSnoDAS_Daily(varname=var2, time_chunks=time_chunks)[var2]
+      
+      # optional slicing
+#       start_date = '2011-01-01'; end_date = '2011-02-01'
+#       lon_min = -85; lon_max = -75; lat_min = 40; lat_max = 45
+#       tsvar = tsvar.loc[start_date:end_date]
+#       xvar1 = xvar1.loc[start_date:end_date,] #lat_min:lat_max,lon_min:lon_max]
+#       xvar2 = xvar2.loc[start_date:end_date,] #lat_min:lat_max,lon_min:lon_max]
+      
+      chunks = netcdf_settings['chunksizes']
+      chunk_settings = dict(time=chunks[0]*time_chunks,lat=chunks[1],lon=chunks[2])
+#       xvar1.load(); xvar2.load()
+      
+      # define computation
+      print('\n')
+      var3 = 'liqwatflx'
+      xvar3 = xvar1 + xvar2
+      # define/copy metadata
+      xvar3.rename(var3)
+      xvar3.attrs = xvar1.attrs.copy()
+      xvar3.attrs['long_name'] = "Liquid Water Flux"
+      xvar3.attrs['name'] = var3
+      xvar3.chunk(chunks=chunk_settings)
+      print(xvar3)
+      
+#       # visualize task graph
+#       viz_file = daily_folder+'dask_sum.svg'
+#       xvar3.data.visualize(filename=viz_file)
+#       print(viz_file)
+      
+      # save results
+      print('\n')
+      xds3 = xr.Dataset({ts_name:tsvar, var3:xvar3,}, attrs=xds1.attrs.copy())
+      print(xds3)
+      # write to NetCDF
+      # netcdf_settings['chunksizes']
+      var3_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=netcdf_settings['chunksizes'])
+      nc_filepath = daily_folder + netcdf_filename.format(var3)
+      xds3.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
+                     encoding={var3:var3_enc,}, compute=True)
+      
+      # print timing
+      end =  time.time()
+      print('\n   Required time:   {:.0f} seconds\n'.format(end-start))
 
 
-  if test_mode == 'load_daily':
+  elif test_mode == 'load_daily':
           
       varname = 'snwmlt'
       xds = loadSnoDAS_Daily(varname=varname, time_chunks=32) # 32 may be possible

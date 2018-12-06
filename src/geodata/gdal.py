@@ -914,7 +914,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
           be constructed from the variable name and the slice; note that each file can only contain a single 
           horizontal slice. 
           N.B.: The implementation is recursive, i.e. variables with more than two dimensions are sliced and 
-          each a number of speperate calls to this function equal to the length of the dimension is issued; this
+          each a number of separate calls to this function equal to the length of the dimension is issued; this
           is repeated for every dimension (over two), until the input is two-dimensional.
       '''
       # figure out filepath
