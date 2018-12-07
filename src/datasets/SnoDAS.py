@@ -240,6 +240,7 @@ if __name__ == '__main__':
       import dask, time
 #       from dask.distributed import Client, LocalCluster
       
+      lappend = True
       start = time.time()
       
       # force multiprocessing (4 cores)
@@ -257,44 +258,100 @@ if __name__ == '__main__':
       xvar1 = xds1[var1]
       xvar2 = loadSnoDAS_Daily(varname=var2, time_chunks=time_chunks)[var2]
       
-      # optional slicing
-#       start_date = '2011-01-01'; end_date = '2011-02-01'
+      # optional slicing (tiem slicing completed below
+#       start_date = '2011-01-01'; end_date = '2011-01-08'
+      start_date = None; end_date = None #'2009-12-30'
 #       lon_min = -85; lon_max = -75; lat_min = 40; lat_max = 45
-#       tsvar = tsvar.loc[start_date:end_date]
-#       xvar1 = xvar1.loc[start_date:end_date,] #lat_min:lat_max,lon_min:lon_max]
-#       xvar2 = xvar2.loc[start_date:end_date,] #lat_min:lat_max,lon_min:lon_max]
+#       xvar1 = xvar1.loc[:,lat_min:lat_max,lon_min:lon_max]
+#       xvar2 = xvar2.loc[:,lat_min:lat_max,lon_min:lon_max]
+      
+      # target dataset
+      var3 = 'liqwatflx'
+      nc_filepath = daily_folder + netcdf_filename.format(var3)
+      if lappend and osp.exists(nc_filepath):
+          ncds = nc.Dataset(nc_filepath, mode='a')
+          ncvar3 = ncds[var3]
+          ncts = ncds[ts_name]
+          nctc = ncds['time'] # time coordinate
+          # update start date for after present data
+          start_date = pd.to_datetime(ncts[-1]) + pd.to_timedelta(1,unit='D')
+          end_dt = pd.to_datetime(tsvar.data[-1] if end_date is None else end_date)
+          if start_date > end_dt:
+              print("\nNothing to do - timeseries complete:\n {} > {}".format(start_date,end_dt))
+              ncds.close()
+              exit()
+      else: 
+          lappend = False
+          
+      # now, slice time axis
+      tsvar = tsvar.loc[start_date:end_date]
+      xvar1 = xvar1.loc[start_date:end_date,]
+      xvar2 = xvar2.loc[start_date:end_date,]
       
       chunks = netcdf_settings['chunksizes']
       chunk_settings = dict(time=chunks[0]*time_chunks,lat=chunks[1],lon=chunks[2])
 #       xvar1.load(); xvar2.load()
       
-      # define computation
       print('\n')
-      var3 = 'liqwatflx'
-      xvar3 = xvar1 + xvar2
+      ## define actual computation
+      xvar3 = xvar1.fillna(0) + xvar2.fillna(0) # fill missing values with zero
+      # N.B.: missing values are NaN in xarray; we need to fill with 0, or masked/missing values
+      #       in snowmelt will mask/invalidate valid values in precip
+      
       # define/copy metadata
       xvar3.rename(var3)
       xvar3.attrs = xvar1.attrs.copy()
       xvar3.attrs['long_name'] = "Liquid Water Flux"
+      xvar3.attrs['note'] = "masked/missing values have been replaced by zero"
       xvar3.attrs['name'] = var3
       xvar3.chunk(chunks=chunk_settings)
       print(xvar3)
+
       
 #       # visualize task graph
 #       viz_file = daily_folder+'dask_sum.svg'
 #       xvar3.data.visualize(filename=viz_file)
 #       print(viz_file)
       
-      # save results
-      print('\n')
-      xds3 = xr.Dataset({ts_name:tsvar, var3:xvar3,}, attrs=xds1.attrs.copy())
-      print(xds3)
-      # write to NetCDF
-      # netcdf_settings['chunksizes']
-      var3_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=netcdf_settings['chunksizes'])
-      nc_filepath = daily_folder + netcdf_filename.format(var3)
-      xds3.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
-                     encoding={var3:var3_enc,}, compute=True)
+      
+      ## now save data, according to destination/append mode
+      if lappend:
+          # append results to an existing file
+          print('\n')
+          # define chunking
+          offset = ncts.shape[0]; t_max = offset + tsvar.shape[0]
+          tc,yc,xc = xvar3.chunks # starting points of all blocks...
+          tc = np.concatenate([[0],np.cumsum(tc[:-1], dtype=np.int)])
+          yc = np.concatenate([[0],np.cumsum(yc[:-1], dtype=np.int)])
+          xc = np.concatenate([[0],np.cumsum(xc[:-1], dtype=np.int)])
+#           xvar3 = xvar3.chunk(chunks=(tc,xvar3.shape[1],xvar3.shape[2]))
+          # function to save each block individually (not sure if this works in parallel)
+          def save_chunk(block, block_id=None):
+              ts = offset + tc[block_id[0]]; te = ts + block.shape[0]
+              ys = yc[block_id[1]]; ye = ys + block.shape[1]
+              xs = xc[block_id[2]]; xe = xs + block.shape[2]
+              #print((ts,te),(ys,ye),(xs,xe))
+              print(block.shape)
+              ncvar3[ts:te,ys:ye,xs:xe] = block
+              return block
+          # append to NC variable
+          xvar3.data.map_blocks(save_chunk, dtype=xvar3.dtype).compute() # drop_axis=(0,1,2), 
+          print('\n')
+          # update time stamps and time axis
+          nctc[offset:t_max] = np.arange(offset,t_max)
+          for i in range(tsvar.shape[0]): ncts[i+offset] = tsvar.data[i] 
+          ncds.sync()
+          print(ncds)
+          ncds.close()
+      else:
+          # save results in new file
+          print('\n')
+          xds3 = xr.Dataset({ts_name:tsvar, var3:xvar3,}, attrs=xds1.attrs.copy())
+          print(xds3)
+          # write to NetCDF
+          var3_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=netcdf_settings['chunksizes'])
+          xds3.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
+                         encoding={var3:var3_enc,}, compute=True)
       
       # print timing
       end =  time.time()
