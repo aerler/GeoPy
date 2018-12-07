@@ -246,8 +246,8 @@ if __name__ == '__main__':
       # force multiprocessing (4 cores)
 #       cluster = LocalCluster(n_workers=4, diagnostics_port=18787)
 #       client = Client(cluster)
-      from multiprocessing.pool import ThreadPool
-      dask.set_options(pool=ThreadPool(4))
+#       from multiprocessing.pool import ThreadPool
+#       dask.set_options(pool=ThreadPool(4))
       
       # load variables
       time_chunks = 32 # 32 may be possible
@@ -260,7 +260,7 @@ if __name__ == '__main__':
       
       # optional slicing (tiem slicing completed below
 #       start_date = '2011-01-01'; end_date = '2011-01-08'
-      start_date = None; end_date = None #'2009-12-30'
+      start_date = None; end_date = None
 #       lon_min = -85; lon_max = -75; lat_min = 40; lat_max = 45
 #       xvar1 = xvar1.loc[:,lat_min:lat_max,lon_min:lon_max]
 #       xvar2 = xvar2.loc[:,lat_min:lat_max,lon_min:lon_max]
@@ -275,9 +275,10 @@ if __name__ == '__main__':
           nctc = ncds['time'] # time coordinate
           # update start date for after present data
           start_date = pd.to_datetime(ncts[-1]) + pd.to_timedelta(1,unit='D')
-          end_dt = pd.to_datetime(tsvar.data[-1] if end_date is None else end_date)
-          if start_date > end_dt:
-              print("\nNothing to do - timeseries complete:\n {} > {}".format(start_date,end_dt))
+          if end_date is None: end_date = tsvar.data[-1]
+          end_date = pd.to_datetime(end_date)
+          if start_date > end_date:
+              print("\nNothing to do - timeseries complete:\n {} > {}".format(start_date,end_date))
               ncds.close()
               exit()
       else: 
@@ -326,6 +327,7 @@ if __name__ == '__main__':
           xc = np.concatenate([[0],np.cumsum(xc[:-1], dtype=np.int)])
 #           xvar3 = xvar3.chunk(chunks=(tc,xvar3.shape[1],xvar3.shape[2]))
           # function to save each block individually (not sure if this works in parallel)
+          dummy = np.zeros((1,1,1), dtype=np.int8)
           def save_chunk(block, block_id=None):
               ts = offset + tc[block_id[0]]; te = ts + block.shape[0]
               ys = yc[block_id[1]]; ye = ys + block.shape[1]
@@ -333,9 +335,9 @@ if __name__ == '__main__':
               #print((ts,te),(ys,ye),(xs,xe))
               print(block.shape)
               ncvar3[ts:te,ys:ye,xs:xe] = block
-              return block
+              return dummy
           # append to NC variable
-          xvar3.data.map_blocks(save_chunk, dtype=xvar3.dtype).compute() # drop_axis=(0,1,2), 
+          xvar3.data.map_blocks(save_chunk, chunks=dummy.shape, dtype=dummy.dtype).compute() # drop_axis=(0,1,2), 
           print('\n')
           # update time stamps and time axis
           nctc[offset:t_max] = np.arange(offset,t_max)
