@@ -41,6 +41,7 @@ root_folder = getRootFolder(dataset_name=dataset_name, fallback_name='HGS') # ge
 
 # SnoDAS grid definition
 projdict = dict(proj='longlat',lon_0=0,lat_0=0,x_0=0,y_0=0) # wraps at dateline
+proj4_string = '+proj=longlat +ellps=WGS84 +datum=WGS84 +lon_0=0 +lat_0=0 +x_0=0 +y_0=0 +name=SnoDAS +no_defs'
 # N.B.: this is the new grid (in use since Oct. 2013); the old grid was slightly shifted, but less than 1km
 geotransform = (-130.516666666667-0.00416666666666052, 0.00833333333333333, 0, 
                  24.1000000000000-0.00416666666666052, 0, 0.00833333333333333)
@@ -214,8 +215,43 @@ def creatNetCDF(varname, varatts=None, ncatts=None, data_folder=daily_folder, fi
   
 ## functions to load NetCDF datasets (using xarray)
 
+# valid geographic/projected coordinates
+x_coords = (('lon','long','longitude',), ('x','easting') )
+y_coords = (('lat','latitude',),         ('y','northing'))
+
+def getGeoCoords(xvar, x_coords=x_coords, y_coords=y_coords):
+    ''' temporary helper function to identify lat/lon'''
+    # test geographic grid and projected grids separately
+    for i in range(len(x_coords)):
+        xlon,ylat = None,None
+        for name,coord in xvar.coords.items():
+            if name.lower() in x_coords[i]: 
+                xlon = coord; break
+        for name,coord in xvar.coords.items():
+            if name.lower() in y_coords[i]: 
+                ylat = coord; break
+        if xlon is not None and ylat is not None: break
+    # return a valid pair of geographic or projected coordinate axis
+    return xlon,ylat
+  
+def isGeoVar(xvar, x_coords=x_coords, y_coords=y_coords):
+    ''' temporary helper function to identify lat/lon'''
+    # test geographic grid and projected grids separately
+    for i in range(len(x_coords)):
+        xlon,ylat = False,False
+        for name in xvar.coords.keys():
+            if name.lower() in x_coords[i]: 
+                xlon = True; break
+        for name in xvar.coords.keys():
+            if name.lower() in y_coords[i]: 
+                ylat = True; break
+        if xlon and ylat: break
+    # if it has a valid pair of geographic or projected coordinate axis
+    return ( xlon and ylat )
+    
+
 def loadSnoDAS_Daily(varname=None, folder=daily_folder, lxarray=True, chunks=None, time_chunks=8, **kwargs):
-    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray '''
+    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
     if not lxarray: 
         raise NotImplementedError("Only loading via xarray is currently implemented.")
     if time_chunks:
@@ -224,14 +260,25 @@ def loadSnoDAS_Daily(varname=None, folder=daily_folder, lxarray=True, chunks=Non
         chunks = dict(time=cks[0]*time_chunks,lat=cks[1],lon=cks[2])
     filepath = folder + netcdf_filename.format(varname)
     xds = xr.open_dataset(filepath, chunks=chunks, **kwargs)
+    # add prjection
+    xds.attrs['proj4'] = proj4_string
+    xlon,ylat = getGeoCoords(xds)
+    xds.attrs['xlon'] = xlon.name
+    xds.attrs['ylat'] = ylat.name
+    for xvar in xds.data_vars.values(): 
+        if isGeoVar(xvar):
+            xvar.attrs['proj4'] = proj4_string
+            xvar.attrs['xlon'] = xlon.name
+            xvar.attrs['ylat'] = ylat.name
+            xvar.attrs['dim_order'] = ( xvar.dims[-2:] == (ylat.name, xlon.name) )
     return xds
 loadDataset_Daily = loadSnoDAS_Daily # alias
 
 ## abuse for testing
 if __name__ == '__main__':
 
-  test_mode = 'add_variables'
-#   test_mode = 'load_daily'
+  test_mode = 'load_daily'
+#   test_mode = 'add_variables'
 #   test_mode = 'test_binary_reader'
 #   test_mode = 'convert_binary'
 
