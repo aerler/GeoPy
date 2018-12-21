@@ -79,18 +79,23 @@ netcdf_varatts = dict(# forcing variables
                       time = dict(name='time', units='day', long_name='Calendar Day'), # time coordinate
                       lon  = dict(name='lon', units='deg E', long_name='Longitude'), # geographic longitude
                       lat  = dict(name='lat', units='deg N', long_name='Latitude'), # geographic latitude
+                      # derived variables
+                      liqwatflx = dict(name='liqwatflx',units='kg/m^2/s',scalefactor=1., long_name='Liquid Water Flux'),
                       )
 # list of variables to load
 binary_varlist = binary_varatts.keys()
+netcdf_varlist = ['liqprec','solprec','snow','snowh','Tsnow','snwmlt','evap_snow','evap_blow','liqwatflx']
 # some SnoDAS settings
 missing_value = -9999 # missing data flag
 snodas_shape2d = (SnoDAS_grid.size[1],SnoDAS_grid.size[0]) # 4096x8192
 binary_dtype = np.dtype('>i2') # big-endian 16-bit signed integer
 # settings for NetCDF-4 files
 avgfolder = root_folder + dataset_name.lower()+'avg/' 
-daily_folder = root_folder + dataset_name.lower()+'_daily/' 
-netcdf_filename = 'snodas_{:s}_daily.nc'
-netcdf_dtype = np.dtype('<f4') # little-endian 32-bit float
+avgfile   = 'snodas{0:s}_clim{1:s}.nc' # the filename needs to be extended grid and period
+tsfile    = 'snodas{0:s}_monthly.nc' # extend with grid type only
+daily_folder    = root_folder + dataset_name.lower()+'_daily/' 
+netcdf_filename = 'snodas_{:s}_daily.nc' # extend with variable name
+netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
 netcdf_settings = dict(chunksizes=(8,snodas_shape2d[0]/16,snodas_shape2d[1]/32))
 
 ## helper functions to handle binary files
@@ -250,7 +255,7 @@ def isGeoVar(xvar, x_coords=x_coords, y_coords=y_coords):
     return ( xlon and ylat )
     
 
-def loadSnoDAS_Daily(varname=None, folder=daily_folder, lxarray=True, chunks=None, time_chunks=8, **kwargs):
+def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, lxarray=True, chunks=None, time_chunks=8, **kwargs):
     ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
     if not lxarray: 
         raise NotImplementedError("Only loading via xarray is currently implemented.")
@@ -258,8 +263,14 @@ def loadSnoDAS_Daily(varname=None, folder=daily_folder, lxarray=True, chunks=Non
         cks = netcdf_settings['chunksizes'] if chunks is None else chunks
         # use default netCDF chunks or user chunks, but multiply time by time_chunks
         chunks = dict(time=cks[0]*time_chunks,lat=cks[1],lon=cks[2])
-    filepath = folder + netcdf_filename.format(varname)
-    xds = xr.open_dataset(filepath, chunks=chunks, **kwargs)
+    # load variables
+    if varname:
+        if varlist: 
+            raise ValueError(varname,varlist)
+        else: varlist = [varname]
+    filepaths = [folder + netcdf_filename.format(varname) for varname in varlist]
+    xds = xr.open_mfdataset(filepaths, chunks=chunks, compat='identical', **kwargs)
+#     xds = xr.merge([xr.open_dataset(fp, chunks=chunks, **kwargs) for fp in filepaths])    
     # add prjection
     xds.attrs['proj4'] = proj4_string
     xlon,ylat = getGeoCoords(xds)
@@ -270,32 +281,98 @@ def loadSnoDAS_Daily(varname=None, folder=daily_folder, lxarray=True, chunks=Non
             xvar.attrs['proj4'] = proj4_string
             xvar.attrs['xlon'] = xlon.name
             xvar.attrs['ylat'] = ylat.name
-            xvar.attrs['dim_order'] = ( xvar.dims[-2:] == (ylat.name, xlon.name) )
+            xvar.attrs['dim_order'] = int( xvar.dims[-2:] == (ylat.name, xlon.name) )
+            # N.B.: the NetCDF-4 backend does not like Python bools
     return xds
 loadDataset_Daily = loadSnoDAS_Daily # alias
 
 ## abuse for testing
 if __name__ == '__main__':
 
-  test_mode = 'load_daily'
+  import dask, time, gc 
+
+#   from dask.distributed import Client, LocalCluster
+#   # force multiprocessing (4 cores)
+#   cluster = LocalCluster(n_workers=4, diagnostics_port=18787)
+#   client = Client(cluster)
+
+#   from multiprocessing.pool import ThreadPool
+#   dask.set_options(pool=ThreadPool(4))
+
+#   test_mode = 'load_daily'
+  test_mode = 'monthly_mean'
 #   test_mode = 'add_variables'
 #   test_mode = 'test_binary_reader'
 #   test_mode = 'convert_binary'
 
-  if test_mode == 'add_variables':
-    
-      import dask, time
-#       from dask.distributed import Client, LocalCluster
+
+  if test_mode == 'monthly_mean':
+
+      print('xarray version: '+xr.__version__+'\n')
+      xr.set_options(keep_attrs=True)
       
+      # chunk sizes for monthly timeseries
+      chunks = (1,)+netcdf_settings['chunksizes'][1:]
+      chunk_settings = dict(time=chunks[0],lat=chunks[1],lon=chunks[2])
+
+      # optional slicing (time slicing completed below)
+#       start_date = '2011-01-20'; end_date = '2011-02-11'
+      start_date = None; end_date = None
+
+      # variable list
+#       varlist = ['snwmlt']
+      varlist = netcdf_varlist
+      ts_name = 'time_stamp'
+      
+      # start operation
+      start = time.time()
+          
+      # load variables object (not data!)
+      xds   = loadSnoDAS_Daily(varlist=varlist, time_chunks=1)
+      xds   = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
+      print(xds)
+      
+      print('\n')
+      # aggregate month
+      rds = xds.resample(time='MS',skipna=True,).mean()
+      rds.chunk(chunks=chunk_settings)
+      
+      # fix time stamps and time axis
+      tattrs = xds['time'].attrs.copy()
+      tattrs['long_name'] = 'Calendar Month'
+      tattrs['units'] = 'months since '+str(rds['time'].data[0].astype('datetime64[D]'))
+      tvar = xr.DataArray(np.arange(len(rds['time'])), dims=('time'), name='time', attrs=tattrs)
+      rds = rds.assign_coords(time=tvar)
+      print(rds)
+
+      
+      # save resampled dataset
+      filepath = avgfolder+tsfile.format('') # native grid...
+                # write to NetCDF
+      var_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=chunks)
+      encoding = {varname:var_enc for varname in varlist}
+#       encoding['time_stamp'] = dict(zlib=True, complevel=1, _FillValue='N/A')
+      rds.to_netcdf(filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
+                    encoding=encoding, compute=True)
+      
+      # add time-stamp (doesn't work properly with xarray)
+      ds = nc.Dataset(filepath, mode='a')
+      atts = netcdf_varatts[ts_name]
+      tsnc = add_var(ds, ts_name, dims=('time',), data=None, shape=(None,), 
+                     atts=atts, dtype=np.dtype('S'), zlib=True, fillValue=None, lusestr=True) # daily time-stamp
+      tsnc[:] = np.stack([str(t) for t in rds['time'].data.astype('datetime64[M]')], axis=0)
+      ds.sync(); ds.close()
+      
+      # print timing
+      end = time.time()
+      print('\n   Required time:   {:.0f} seconds\n'.format(end-start))
+
+
+  elif test_mode == 'add_variables':
+    
       lappend = True
       start = time.time()
-      
-      # force multiprocessing (4 cores)
-#       cluster = LocalCluster(n_workers=4, diagnostics_port=18787)
-#       client = Client(cluster)
-#       from multiprocessing.pool import ThreadPool
-#       dask.set_options(pool=ThreadPool(4))
-      
+          
       # load variables
       time_chunks = 32 # 32 may be possible
       ts_name = 'time_stamp'; var1 = 'snwmlt'; var2 = 'liqprec'
@@ -305,7 +382,7 @@ if __name__ == '__main__':
       xvar1 = xds1[var1]
       xvar2 = loadSnoDAS_Daily(varname=var2, time_chunks=time_chunks)[var2]
       
-      # optional slicing (tiem slicing completed below
+      # optional slicing (time slicing completed below)
 #       start_date = '2011-01-01'; end_date = '2011-01-08'
       start_date = None; end_date = None
 #       lon_min = -85; lon_max = -75; lat_min = 40; lat_max = 45
@@ -313,7 +390,7 @@ if __name__ == '__main__':
 #       xvar2 = xvar2.loc[:,lat_min:lat_max,lon_min:lon_max]
       
       # target dataset
-      var3 = 'liqwatflx'
+      var3 = 'liqwatflx'; var3atts = netcdf_varatts[var3]
       nc_filepath = daily_folder + netcdf_filename.format(var3)
       if lappend and osp.exists(nc_filepath):
           ncds = nc.Dataset(nc_filepath, mode='a')
@@ -349,9 +426,9 @@ if __name__ == '__main__':
       # define/copy metadata
       xvar3.rename(var3)
       xvar3.attrs = xvar1.attrs.copy()
-      xvar3.attrs['long_name'] = "Liquid Water Flux"
+      for att in ('name','units','long_name',):
+          xvar3.attrs[att] = var3atts[att]
       xvar3.attrs['note'] = "masked/missing values have been replaced by zero"
-      xvar3.attrs['name'] = var3
       xvar3.chunk(chunks=chunk_settings)
       print(xvar3)
 
@@ -408,9 +485,10 @@ if __name__ == '__main__':
 
 
   elif test_mode == 'load_daily':
+     
           
-      varname = 'snwmlt'
-      xds = loadSnoDAS_Daily(varname=varname, time_chunks=32) # 32 may be possible
+      varlist = ['snwmlt','liqwatflx']; varname = varlist[0]
+      xds = loadSnoDAS_Daily(varlist=varlist, time_chunks=32) # 32 may be possible
       print(xds)
       print('')
       xv = xds[varname]
@@ -419,7 +497,9 @@ if __name__ == '__main__':
       print(xv)
       print('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.))
 
+
   elif test_mode == 'test_binary_reader':
+
     
       lgzip  = True
       # current date range
@@ -457,10 +537,10 @@ if __name__ == '__main__':
 #           import pylab as pyl
 #           pyl.imshow(np.flipud(data[:,:])); pyl.colorbar(); pyl.show(block=True)
     
+    
   elif test_mode == 'convert_binary':
     
-      import gc, time
-
+    
       lappend = True
 #       netcdf_settings = dict(chunksizes=(1,snodas_shape2d[0]/4,snodas_shape2d[1]/8))
       nc_time_chunk = netcdf_settings['chunksizes'][0]
@@ -582,25 +662,4 @@ if __name__ == '__main__':
           end =  time.time()
           print('\n   Required time:   {:.0f} seconds\n'.format(end-start))
                 
-            
-#       import dask
-#       import dask.array as da
-#       import xarray
-
-#       # loop over days to construct dask execution graph
-#       data_arrays = []
-#       for day in time_array:
-#           # create delayed array slices
-#           print day
-#           data2d = dask.delayed(readBinaryFile)(varname=varname, date=day,)
-#           data_arrays.append(da.from_delayed(data2d, shape=snodas_shape2d, dtype=netcdf_dtype)) 
-#           
-#       # construct delayed dask array from list of slices
-#       data3d = da.stack(data_arrays)
-#       print(data3d)
-#       
-#       # cast into xarray and write netcdf
-#       data = xarray.DataArray(data3d, dims=['time','lat','lon'])
-#       print(data)
-#       data.to_netcdf(avgfolder+'test_daily.nc')
   
