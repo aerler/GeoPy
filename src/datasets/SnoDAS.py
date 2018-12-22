@@ -76,7 +76,7 @@ netcdf_varatts = dict(# forcing variables
                       evap_blow = dict(name='evap_blow',units='kg/m^2/s',scalefactor=-1.e3/86400., long_name='Sublimation of Blowing Snow'),
                       # axes (don't have their own file)
                       time_stamp = dict(name='time_stamp', units='', long_name='Time Stamp'), # readable time stamp (string)
-                      time = dict(name='time', units='day', long_name='Calendar Day'), # time coordinate
+                      time = dict(name='time', units='day', long_name='Days'), # time coordinate
                       lon  = dict(name='lon', units='deg E', long_name='Longitude'), # geographic longitude
                       lat  = dict(name='lat', units='deg N', long_name='Latitude'), # geographic latitude
                       # derived variables
@@ -92,7 +92,7 @@ binary_dtype = np.dtype('>i2') # big-endian 16-bit signed integer
 # settings for NetCDF-4 files
 avgfolder = root_folder + dataset_name.lower()+'avg/' 
 avgfile   = 'snodas{0:s}_clim{1:s}.nc' # the filename needs to be extended grid and period
-tsfile    = 'snodas{0:s}_monthly.nc' # extend with grid type only
+tsfile    = 'snodas_{0:s}{1:s}_monthly.nc' # extend with variable and grid type
 daily_folder    = root_folder + dataset_name.lower()+'_daily/' 
 netcdf_filename = 'snodas_{:s}_daily.nc' # extend with variable name
 netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
@@ -218,14 +218,16 @@ def creatNetCDF(varname, varatts=None, ncatts=None, data_folder=daily_folder, fi
     return ds
   
   
-## functions to load NetCDF datasets (using xarray)
+## convenience functions to handle GDAL-style georeferencing
 
 # valid geographic/projected coordinates
-x_coords = (('lon','long','longitude',), ('x','easting') )
-y_coords = (('lat','latitude',),         ('y','northing'))
+x_coords_def = (('lon','long','longitude',), ('x','easting') )
+y_coords_def = (('lat','latitude',),         ('y','northing'))
 
-def getGeoCoords(xvar, x_coords=x_coords, y_coords=y_coords):
+def getGeoCoords(xvar, x_coords=None, y_coords=None):
     ''' temporary helper function to identify lat/lon'''
+    if x_coords is None: x_coords = x_coords_def
+    if y_coords is None: y_coords = y_coords_def
     # test geographic grid and projected grids separately
     for i in range(len(x_coords)):
         xlon,ylat = None,None
@@ -239,8 +241,10 @@ def getGeoCoords(xvar, x_coords=x_coords, y_coords=y_coords):
     # return a valid pair of geographic or projected coordinate axis
     return xlon,ylat
   
-def isGeoVar(xvar, x_coords=x_coords, y_coords=y_coords):
+def isGeoVar(xvar, x_coords=None, y_coords=None):
     ''' temporary helper function to identify lat/lon'''
+    if x_coords is None: x_coords = x_coords_def
+    if y_coords is None: y_coords = y_coords_def
     # test geographic grid and projected grids separately
     for i in range(len(x_coords)):
         xlon,ylat = False,False
@@ -253,27 +257,11 @@ def isGeoVar(xvar, x_coords=x_coords, y_coords=y_coords):
         if xlon and ylat: break
     # if it has a valid pair of geographic or projected coordinate axis
     return ( xlon and ylat )
-    
 
-def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, lxarray=True, chunks=None, time_chunks=8, **kwargs):
-    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
-    if not lxarray: 
-        raise NotImplementedError("Only loading via xarray is currently implemented.")
-    if time_chunks:
-        cks = netcdf_settings['chunksizes'] if chunks is None else chunks
-        # use default netCDF chunks or user chunks, but multiply time by time_chunks
-        chunks = dict(time=cks[0]*time_chunks,lat=cks[1],lon=cks[2])
-    # load variables
-    if varname:
-        if varlist: 
-            raise ValueError(varname,varlist)
-        else: varlist = [varname]
-    filepaths = [folder + netcdf_filename.format(varname) for varname in varlist]
-    xds = xr.open_mfdataset(filepaths, chunks=chunks, compat='identical', **kwargs)
-#     xds = xr.merge([xr.open_dataset(fp, chunks=chunks, **kwargs) for fp in filepaths])    
-    # add prjection
+def addGeoReference(xds, proj4_string=proj4_string, x_coords=None, y_coords=None):
+    ''' helper function to add GDAL georeferencing to an xarray dataset '''
     xds.attrs['proj4'] = proj4_string
-    xlon,ylat = getGeoCoords(xds)
+    xlon,ylat = getGeoCoords(xds, x_coords=x_coords, y_coords=y_coords)
     xds.attrs['xlon'] = xlon.name
     xds.attrs['ylat'] = ylat.name
     for xvar in xds.data_vars.values(): 
@@ -284,12 +272,89 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, lxarray=Tr
             xvar.attrs['dim_order'] = int( xvar.dims[-2:] == (ylat.name, xlon.name) )
             # N.B.: the NetCDF-4 backend does not like Python bools
     return xds
+
+
+## functions to load NetCDF datasets (using xarray)
+
+def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, lxarray=True, lgeoref=True, 
+                     chunks=None, time_chunks=8, geoargs=None, **kwargs):
+    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
+    if not lxarray: 
+        raise NotImplementedError("Only loading via xarray is currently implemented.")
+    if time_chunks:
+        cks = netcdf_settings['chunksizes'] if chunks is None else chunks
+        # use default netCDF chunks or user chunks, but multiply time by time_chunks
+        chunks = dict(time=cks[0]*time_chunks,lat=cks[1],lon=cks[2])
+    # load variables
+    if varname and varlist: raise ValueError(varname,varlist)
+    elif varname:
+        # load a single variable
+        xds = xr.open_dataset(folder+netcdf_filename.format(varname), chunks=chunks, **kwargs)
+    else:
+        # load multifile dataset (variables are in different files
+        filepaths = [folder + netcdf_filename.format(varname) for varname in varlist]
+        xds = xr.open_mfdataset(filepaths, chunks=chunks, **kwargs)
+        #xds = xr.merge([xr.open_dataset(fp, chunks=chunks, **kwargs) for fp in filepaths])    
+    # add projection
+    if lgeoref:
+        if geoargs is None: geoargs = dict()
+        xds = addGeoReference(xds, **geoargs)
+    return xds
 loadDataset_Daily = loadSnoDAS_Daily # alias
+
+
+def loadSnoDAS_TS(varname=None, varlist=None, grid=None, folder=avgfolder, tsfile=tsfile, lxarray=True, 
+                  lgeoref=True, lmonthly=False, chunks=None, time_chunks=8, geoargs=None, **kwargs):
+    ''' function to load monthly transient SnoDAS data '''
+    if not lxarray: 
+        raise NotImplementedError("Only loading via xarray is currently implemented.")
+    if time_chunks:
+        cks = netcdf_settings['chunksizes'] if chunks is None else chunks
+        # use default netCDF chunks or user chunks, but multiply time by time_chunks
+        chunks = dict(time=cks[0]*time_chunks,lat=cks[1],lon=cks[2])
+    # set options
+    grid_str = '_'+grid if grid else ''
+    if lmonthly:
+        kwargs['decode_times'] = False
+    # load variables
+    if varname and varlist: raise ValueError(varname,varlist)
+    elif varname:
+        # load a single variable
+        xds = xr.open_dataset(folder + tsfile.format(varname,grid_str), chunks=chunks, **kwargs)
+    else:
+        # load multifile dataset (variables are in different files
+        filepaths = [folder + tsfile.format(varname,grid_str) for varname in varlist]
+        xds = xr.open_mfdataset(filepaths, chunks=chunks, **kwargs)
+    # fix time axis (deprecated - should not be necessary anymore)
+    if lmonthly:
+        # convert a monthly time index into a daily index, anchored at the first day of the month
+        tattrs = xds['time'].attrs.copy()
+        tattrs['long_name'] = 'Calendar Day'
+        tattrs['units'] = tattrs['units'].replace('months','days')
+        start_date = pd.to_datetime(' '.join(tattrs['units'].split()[2:]))
+        end_date = start_date + pd.Timedelta(len(xds['time'])+1, unit='M')
+        tdata = np.arange(start_date,end_date, dtype='datetime64[M]')
+        assert len(tdata) == len(xds['time'])
+        tvar = xr.DataArray(tdata, dims=('time'), name='time', attrs=tattrs)
+        xds = xds.assign_coords(time=tvar)        
+    # add projection
+    if lgeoref:
+        if geoargs is None: geoargs = dict()
+        if grid:
+            raise NotImplementedError
+        xds = addGeoReference(xds, **geoargs)
+    return xds
+loadDataset_TS = loadSnoDAS_TS # alias
+
 
 ## abuse for testing
 if __name__ == '__main__':
 
   import dask, time, gc 
+  
+  #print('xarray version: '+xr.__version__+'\n')
+  xr.set_options(keep_attrs=True)
+        
 
 #   from dask.distributed import Client, LocalCluster
 #   # force multiprocessing (4 cores)
@@ -299,14 +364,16 @@ if __name__ == '__main__':
 #   from multiprocessing.pool import ThreadPool
 #   dask.set_options(pool=ThreadPool(4))
 
+#   test_mode = 'monthly_normal'
+  test_mode = 'load_TimeSeries'
+#   test_mode = 'monthly_mean'
 #   test_mode = 'load_daily'
-  test_mode = 'monthly_mean'
 #   test_mode = 'add_variables'
 #   test_mode = 'test_binary_reader'
 #   test_mode = 'convert_binary'
 
 
-  if test_mode == 'monthly_mean':
+  if test_mode == 'monthly_normal':
 
       print('xarray version: '+xr.__version__+'\n')
       xr.set_options(keep_attrs=True)
@@ -316,19 +383,22 @@ if __name__ == '__main__':
       chunk_settings = dict(time=chunks[0],lat=chunks[1],lon=chunks[2])
 
       # optional slicing (time slicing completed below)
-#       start_date = '2011-01-20'; end_date = '2011-02-11'
-      start_date = None; end_date = None
+      start_date = '2011-01'; end_date = '2012-01'
+#       start_date = None; end_date = None
 
       # variable list
-#       varlist = ['snwmlt']
-      varlist = netcdf_varlist
+#       varlist = ['snwmlt',]
+#       varlist = netcdf_varlist
+      varlist = ['snow','snwmlt','liqprec','solprec','snowh','Tsnow','liqwatflx','evap_blow',]
+      # N.B.: 'evap_blow' seems to be causing problems at the moment - need to recompute
+
       ts_name = 'time_stamp'
       
       # start operation
       start = time.time()
           
       # load variables object (not data!)
-      xds   = loadSnoDAS_Daily(varlist=varlist, time_chunks=1)
+      xds   = loadSnoDAS_TS(varlist=None)
       xds   = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
       print(xds)
       
@@ -347,7 +417,7 @@ if __name__ == '__main__':
 
       
       # save resampled dataset
-      filepath = avgfolder+tsfile.format('') # native grid...
+      filepath = avgfolder+tsfile.format('','') # native grid...
                 # write to NetCDF
       var_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=chunks)
       encoding = {varname:var_enc for varname in varlist}
@@ -366,6 +436,97 @@ if __name__ == '__main__':
       # print timing
       end = time.time()
       print('\n   Required time:   {:.0f} seconds\n'.format(end-start))
+
+
+  elif test_mode == 'load_TimeSeries':
+     
+      
+      varlist = netcdf_varlist
+      varname = varlist[0]
+#       xds = loadSnoDAS_TS(varlist=varlist, time_chunks=1, lmonthly=False) # 32 may be possible
+      xds = loadSnoDAS_TS(varname=varname, time_chunks=1, lmonthly=False) # 32 may be possible      
+      print(xds)
+      print('')
+      xv = xds[varname]
+      xv = xv.loc['2011-01-01':'2011-01-31',]
+#       xv = xv.loc['2011-01-01',:,:]
+      print(xv)
+      print('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.))
+
+#       print('')
+#       print(xds['time'])
+      
+
+  elif test_mode == 'monthly_mean':
+
+      
+      # chunk sizes for monthly timeseries
+      chunks = (1,)+netcdf_settings['chunksizes'][1:]
+      chunk_settings = dict(time=chunks[0],lat=chunks[1],lon=chunks[2])
+
+      # optional slicing (time slicing completed below)
+#       start_date = '2011-01-20'; end_date = '2011-02-11'
+      start_date = None; end_date = None
+
+      # variable list
+#       varlist = ['snwmlt',]
+      varlist = netcdf_varlist
+
+      ts_name = 'time_stamp'
+      
+      # start operation
+      start = time.time()
+      
+      # loop over variables (processed separately)      
+      for varname in varlist:
+               
+          # load variables object (not data!)
+          xds   = loadSnoDAS_Daily(varname=varname, time_chunks=1)
+          xds   = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
+          #print(xds)
+          #print('\n')
+          
+          # aggregate month
+          rds = xds.resample(time='MS',skipna=True,).mean()
+          #rds.chunk(chunks=chunk_settings)         
+          print(rds)
+    
+          
+          # save resampled dataset
+          filepath = avgfolder+tsfile.format(varname,'') # native grid...
+          # write to NetCDF
+          netcdf_encoding = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=chunks)
+          rds.to_netcdf(filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
+                        encoding={varname:netcdf_encoding}, compute=True)
+          
+          # add time-stamp (doesn't work properly with xarray)
+          ds = nc.Dataset(filepath, mode='a')
+          atts = netcdf_varatts[ts_name]
+          tsnc = add_var(ds, ts_name, dims=('time',), data=None, shape=(None,), 
+                         atts=atts, dtype=np.dtype('S'), zlib=True, fillValue=None, lusestr=True) # daily time-stamp
+          tsnc[:] = np.stack([str(t) for t in rds['time'].data.astype('datetime64[M]')], axis=0)
+          ds.sync(); ds.close()
+          
+      # print timing
+      end = time.time()
+      print('\n   Required time:   {:.0f} seconds\n'.format(end-start))
+
+
+  elif test_mode == 'load_daily':
+     
+          
+#       varlist = netcdf_varlist
+      varlist = ['evap_snow', 'snwmlt','liqprec','solprec','snowh','Tsnow','liqwatflx','evap_blow',]
+#       varlist = ['snwmlt','evap_snow']
+      varname = varlist[0]
+      xds = loadSnoDAS_Daily(varlist=varlist, time_chunks=32) # 32 may be possible
+      print(xds)
+      print('')
+      xv = xds[varname]
+      xv = xv.loc['2011-01-01':'2011-02-01',35:45,-100:-80]
+#       xv = xv.loc['2011-01-01',:,:]
+      print(xv)
+      print('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.))
 
 
   elif test_mode == 'add_variables':
@@ -487,7 +648,10 @@ if __name__ == '__main__':
   elif test_mode == 'load_daily':
      
           
-      varlist = ['snwmlt','liqwatflx']; varname = varlist[0]
+#       varlist = netcdf_varlist
+      varlist = ['evap_snow', 'snwmlt','liqprec','solprec','snowh','Tsnow','liqwatflx','evap_blow',]
+#       varlist = ['snwmlt','evap_snow']
+      varname = varlist[0]
       xds = loadSnoDAS_Daily(varlist=varlist, time_chunks=32) # 32 may be possible
       print(xds)
       print('')
@@ -549,8 +713,8 @@ if __name__ == '__main__':
       if not osp.isdir(daily_folder): os.mkdir(daily_folder)
 
       # loop over binary variables (netcdf vars have coordiantes as well...)
-#       for varname in ['snowh']:
-      for varname in binary_varlist:
+      for varname in ['evap_snow']:
+#       for varname in binary_varlist:
       
 
           filename = netcdf_filename.format(varname.lower())
