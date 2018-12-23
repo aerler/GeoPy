@@ -21,17 +21,17 @@ import os.path as osp
 import numpy as np
 import netCDF4 as nc # netCDF4-python module
 import xarray as xr
-try: import cPickle as pickle
-except: import pickle
+from warnings import warn
+# try: import cPickle as pickle
+# except: import pickle
 
 # internal imports
 from geodata.misc import name_of_month
 from utils.nctools import add_coord, add_var
-from geodata.misc import ArgumentError, VariableError, DataError, DatasetError, translateSeasons
-from datasets.common import BatchLoad, getRootFolder
-from geodata.base import Dataset, Variable, Axis, concatDatasets
-from geodata.gdal import loadPickledGridDef, addGDALtoDataset, GridDefinition
-from geodata.gdal import grid_folder as common_grid_folder
+from datasets.common import getRootFolder
+from geodata.gdal import GridDefinition
+# from geodata.gdal import loadPickledGridDef, addGDALtoDataset
+# from geodata.gdal import grid_folder as common_grid_folder
 
 
 ## HGS Meta-vardata
@@ -81,6 +81,8 @@ netcdf_varatts = dict(# forcing variables
                       lat  = dict(name='lat', units='deg N', long_name='Latitude'), # geographic latitude
                       # derived variables
                       liqwatflx = dict(name='liqwatflx',units='kg/m^2/s',scalefactor=1., long_name='Liquid Water Flux'),
+                      rho_snw   = dict(name='rho_snw',  units='kg/m^3',  scalefactor=1., long_name='Snow Density'),
+                      precip    = dict(name='precip',   units='kg/m^2/s',scalefactor=1., long_name='Total Precipitation'),
                       )
 # list of variables to load
 binary_varlist = binary_varatts.keys()
@@ -99,6 +101,10 @@ netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
 netcdf_settings = dict(chunksizes=(8,snodas_shape2d[0]/16,snodas_shape2d[1]/32))
 
 ## helper functions to handle binary files
+
+class DataError(Exception):
+    ''' errors for binary reader '''
+    pass
 
 def getFilenameFolder(varname=None, date=None, root_folder=root_folder, lgzip=True):
     ''' simple function to generate the filename and folder of a file based on variable and date '''
@@ -291,6 +297,7 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, lxarray=Tr
         # load a single variable
         xds = xr.open_dataset(folder+netcdf_filename.format(varname), chunks=chunks, **kwargs)
     else:
+        if varlist is None: varlist = netcdf_varlist
         # load multifile dataset (variables are in different files
         filepaths = [folder + netcdf_filename.format(varname) for varname in varlist]
         xds = xr.open_mfdataset(filepaths, chunks=chunks, **kwargs)
@@ -304,14 +311,16 @@ loadDataset_Daily = loadSnoDAS_Daily # alias
 
 
 def loadSnoDAS_TS(varname=None, varlist=None, grid=None, folder=avgfolder, tsfile=tsfile, lxarray=True, 
-                  lgeoref=True, lmonthly=False, chunks=None, time_chunks=8, geoargs=None, **kwargs):
+                  lgeoref=True, lmonthly=False, chunks=None, time_chunks=1, geoargs=None, **kwargs):
     ''' function to load monthly transient SnoDAS data '''
     if not lxarray: 
         raise NotImplementedError("Only loading via xarray is currently implemented.")
     if time_chunks:
+        if grid: 
+            raise NotImplementedError("Default chunks are only available for native lat/lon grid.")
         cks = netcdf_settings['chunksizes'] if chunks is None else chunks
-        # use default netCDF chunks or user chunks, but multiply time by time_chunks
-        chunks = dict(time=cks[0]*time_chunks,lat=cks[1],lon=cks[2])
+        # use default netCDF chunks or user chunks; set time chunking with time_chunks
+        chunks = dict(time=time_chunks,lat=cks[1],lon=cks[2])
     # set options
     grid_str = '_'+grid if grid else ''
     if lmonthly:
@@ -322,11 +331,13 @@ def loadSnoDAS_TS(varname=None, varlist=None, grid=None, folder=avgfolder, tsfil
         # load a single variable
         xds = xr.open_dataset(folder + tsfile.format(varname,grid_str), chunks=chunks, **kwargs)
     else:
+        if varlist is None: varlist = netcdf_varlist
         # load multifile dataset (variables are in different files
         filepaths = [folder + tsfile.format(varname,grid_str) for varname in varlist]
         xds = xr.open_mfdataset(filepaths, chunks=chunks, **kwargs)
     # fix time axis (deprecated - should not be necessary anymore)
     if lmonthly:
+        warn("'lmonthly=True' should only be used to convert simple monthly indices into 'datetime64' coordinates.")
         # convert a monthly time index into a daily index, anchored at the first day of the month
         tattrs = xds['time'].attrs.copy()
         tattrs['long_name'] = 'Calendar Day'
@@ -365,73 +376,82 @@ if __name__ == '__main__':
 #   dask.set_options(pool=ThreadPool(4))
 
 #   test_mode = 'monthly_normal'
-  test_mode = 'load_TimeSeries'
+#   test_mode = 'load_TimeSeries'
 #   test_mode = 'monthly_mean'
 #   test_mode = 'load_daily'
-#   test_mode = 'add_variables'
+  test_mode = 'add_variables'
 #   test_mode = 'test_binary_reader'
 #   test_mode = 'convert_binary'
 
 
   if test_mode == 'monthly_normal':
 
-      print('xarray version: '+xr.__version__+'\n')
-      xr.set_options(keep_attrs=True)
-      
+     
       # chunk sizes for monthly timeseries
       chunks = (1,)+netcdf_settings['chunksizes'][1:]
       chunk_settings = dict(time=chunks[0],lat=chunks[1],lon=chunks[2])
 
       # optional slicing (time slicing completed below)
-      start_date = '2011-01'; end_date = '2012-01'
-#       start_date = None; end_date = None
-
-      # variable list
-#       varlist = ['snwmlt',]
-#       varlist = netcdf_varlist
-      varlist = ['snow','snwmlt','liqprec','solprec','snowh','Tsnow','liqwatflx','evap_blow',]
-      # N.B.: 'evap_blow' seems to be causing problems at the moment - need to recompute
+#       start_date = '2011-01'; end_date = '2011-12'
+      start_date = None; end_date = None
 
       ts_name = 'time_stamp'
-      
+
+      # variable list
+      varlist = netcdf_varlist
+#       varlist = ['snwmlt',]
+
       # start operation
       start = time.time()
           
       # load variables object (not data!)
-      xds   = loadSnoDAS_TS(varlist=None)
+      xds   = loadSnoDAS_TS(varlist=varlist)
       xds   = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
+      ts_var = xds[ts_name].load()
       print(xds)
       
+      # construct period string
       print('\n')
-      # aggregate month
-      rds = xds.resample(time='MS',skipna=True,).mean()
-      rds.chunk(chunks=chunk_settings)
+      prdstr = '{:04d}-{:04d}'.format(pd.to_datetime(ts_var.data[0]).year,
+                         (pd.to_datetime(ts_var.data[-1])+pd.Timedelta(31, unit='D')).year)
+      print(prdstr)
+          
+      print('\n')
+      # compute monthly normals
+      nds = xds.groupby('time.month').mean('time')
+      assert len(nds['month'])==12, nds
       
-      # fix time stamps and time axis
-      tattrs = xds['time'].attrs.copy()
-      tattrs['long_name'] = 'Calendar Month'
-      tattrs['units'] = 'months since '+str(rds['time'].data[0].astype('datetime64[D]'))
-      tvar = xr.DataArray(np.arange(len(rds['time'])), dims=('time'), name='time', attrs=tattrs)
-      rds = rds.assign_coords(time=tvar)
-      print(rds)
+      # convert time axis
+      nds = nds.rename({'month':'time'}) # the new time axis is named 'month'
+      tm = nds['time']
+      tm.attrs['name']       = 'time'
+      tm.attrs['long_name']  = 'Calendar Month'
+      tm.attrs['units']      = 'month'
+      tm.attrs['start_date'] = str(ts_var.data[0])
+      tm.attrs['end_date']   = str(ts_var.data[-1])
+      tm.attrs['period']     = prdstr
+      # add attributes to dataset
+      nds.attrs['start_date'] = str(ts_var.data[0])
+      nds.attrs['end_date']   = str(ts_var.data[-1])
+      nds.attrs['period']     = prdstr
+      print(nds)
 
       
       # save resampled dataset
-      filepath = avgfolder+tsfile.format('','') # native grid...
-                # write to NetCDF
+      filepath = avgfolder+avgfile.format('',prdstr) # native grid...
+      # write to NetCDF
       var_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=chunks)
       encoding = {varname:var_enc for varname in varlist}
-#       encoding['time_stamp'] = dict(zlib=True, complevel=1, _FillValue='N/A')
-      rds.to_netcdf(filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
+      nds.to_netcdf(filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
                     encoding=encoding, compute=True)
       
-      # add time-stamp (doesn't work properly with xarray)
-      ds = nc.Dataset(filepath, mode='a')
-      atts = netcdf_varatts[ts_name]
-      tsnc = add_var(ds, ts_name, dims=('time',), data=None, shape=(None,), 
-                     atts=atts, dtype=np.dtype('S'), zlib=True, fillValue=None, lusestr=True) # daily time-stamp
-      tsnc[:] = np.stack([str(t) for t in rds['time'].data.astype('datetime64[M]')], axis=0)
-      ds.sync(); ds.close()
+#       # add time-stamp (doesn't work properly with xarray)
+#       ds = nc.Dataset(filepath, mode='a')
+#       atts = netcdf_varatts[ts_name]
+#       tsnc = add_var(ds, ts_name, dims=('time',), data=None, shape=(None,), 
+#                      atts=atts, dtype=np.dtype('S'), zlib=True, fillValue=None, lusestr=True) # daily time-stamp
+#       tsnc[:] = np.stack([str(t) for t in rds['time'].data.astype('datetime64[M]')], axis=0)
+#       ds.sync(); ds.close()
       
       # print timing
       end = time.time()
@@ -515,8 +535,7 @@ if __name__ == '__main__':
   elif test_mode == 'load_daily':
      
           
-#       varlist = netcdf_varlist
-      varlist = ['evap_snow', 'snwmlt','liqprec','solprec','snowh','Tsnow','liqwatflx','evap_blow',]
+      varlist = netcdf_varlist
 #       varlist = ['snwmlt','evap_snow']
       varname = varlist[0]
       xds = loadSnoDAS_Daily(varlist=varlist, time_chunks=32) # 32 may be possible
@@ -531,17 +550,17 @@ if __name__ == '__main__':
 
   elif test_mode == 'add_variables':
     
-      lappend = True
+      lappend_master = False
       start = time.time()
           
       # load variables
       time_chunks = 32 # 32 may be possible
-      ts_name = 'time_stamp'; var1 = 'snwmlt'; var2 = 'liqprec'
-      xds1 = loadSnoDAS_Daily(varname=var1, time_chunks=time_chunks)
-      print(xds1)
-      tsvar = xds1[ts_name].load()
-      xvar1 = xds1[var1]
-      xvar2 = loadSnoDAS_Daily(varname=var2, time_chunks=time_chunks)[var2]
+      chunks = netcdf_settings['chunksizes']
+      chunk_settings = dict(time=chunks[0]*time_chunks,lat=chunks[1],lon=chunks[2])      
+      ts_name = 'time_stamp'
+      varlist = ['precip','rho_snw',]
+      xds = loadSnoDAS_Daily(varlist=None, time_chunks=time_chunks)
+      print(xds)
       
       # optional slicing (time slicing completed below)
 #       start_date = '2011-01-01'; end_date = '2011-01-08'
@@ -549,97 +568,113 @@ if __name__ == '__main__':
 #       lon_min = -85; lon_max = -75; lat_min = 40; lat_max = 45
 #       xvar1 = xvar1.loc[:,lat_min:lat_max,lon_min:lon_max]
 #       xvar2 = xvar2.loc[:,lat_min:lat_max,lon_min:lon_max]
-      
-      # target dataset
-      var3 = 'liqwatflx'; var3atts = netcdf_varatts[var3]
-      nc_filepath = daily_folder + netcdf_filename.format(var3)
-      if lappend and osp.exists(nc_filepath):
-          ncds = nc.Dataset(nc_filepath, mode='a')
-          ncvar3 = ncds[var3]
-          ncts = ncds[ts_name]
-          nctc = ncds['time'] # time coordinate
-          # update start date for after present data
-          start_date = pd.to_datetime(ncts[-1]) + pd.to_timedelta(1,unit='D')
-          if end_date is None: end_date = tsvar.data[-1]
-          end_date = pd.to_datetime(end_date)
-          if start_date > end_date:
-              print("\nNothing to do - timeseries complete:\n {} > {}".format(start_date,end_date))
-              ncds.close()
-              exit()
-      else: 
-          lappend = False
-          
-      # now, slice time axis
-      tsvar = tsvar.loc[start_date:end_date]
-      xvar1 = xvar1.loc[start_date:end_date,]
-      xvar2 = xvar2.loc[start_date:end_date,]
-      
-      chunks = netcdf_settings['chunksizes']
-      chunk_settings = dict(time=chunks[0]*time_chunks,lat=chunks[1],lon=chunks[2])
-#       xvar1.load(); xvar2.load()
-      
-      print('\n')
-      ## define actual computation
-      xvar3 = xvar1.fillna(0) + xvar2.fillna(0) # fill missing values with zero
-      # N.B.: missing values are NaN in xarray; we need to fill with 0, or masked/missing values
-      #       in snowmelt will mask/invalidate valid values in precip
-      
-      # define/copy metadata
-      xvar3.rename(var3)
-      xvar3.attrs = xvar1.attrs.copy()
-      for att in ('name','units','long_name',):
-          xvar3.attrs[att] = var3atts[att]
-      xvar3.attrs['note'] = "masked/missing values have been replaced by zero"
-      xvar3.chunk(chunks=chunk_settings)
-      print(xvar3)
 
+      # slice and load time coordinate
+      xds = xds.loc[{'time':slice(start_date,end_date),}]
+      tsvar = xds[ts_name].load()
+          
       
-#       # visualize task graph
-#       viz_file = daily_folder+'dask_sum.svg'
-#       xvar3.data.visualize(filename=viz_file)
-#       print(viz_file)
+      # loop over variables
+      for var in varlist:
       
-      
-      ## now save data, according to destination/append mode
-      if lappend:
-          # append results to an existing file
+          # target dataset
+          var_atts = netcdf_varatts[var]
+          nc_filepath = daily_folder + netcdf_filename.format(var)
+          if lappend_master and osp.exists(nc_filepath):
+              ncds = nc.Dataset(nc_filepath, mode='a')
+              ncvar3 = ncds[var]
+              ncts = ncds[ts_name]
+              nctc = ncds['time'] # time coordinate
+              # update start date for after present data
+              start_date = pd.to_datetime(ncts[-1]) + pd.to_timedelta(1,unit='D')
+              if end_date is None: end_date = tsvar.data[-1]
+              end_date = pd.to_datetime(end_date)
+              if start_date > end_date:
+                  print("\nNothing to do - timeseries complete:\n {} > {}".format(start_date,end_date))
+                  ncds.close()
+                  exit()
+              lappend = True
+          else: 
+              lappend = False
+              
+          
           print('\n')
-          # define chunking
-          offset = ncts.shape[0]; t_max = offset + tsvar.shape[0]
-          tc,yc,xc = xvar3.chunks # starting points of all blocks...
-          tc = np.concatenate([[0],np.cumsum(tc[:-1], dtype=np.int)])
-          yc = np.concatenate([[0],np.cumsum(yc[:-1], dtype=np.int)])
-          xc = np.concatenate([[0],np.cumsum(xc[:-1], dtype=np.int)])
-#           xvar3 = xvar3.chunk(chunks=(tc,xvar3.shape[1],xvar3.shape[2]))
-          # function to save each block individually (not sure if this works in parallel)
-          dummy = np.zeros((1,1,1), dtype=np.int8)
-          def save_chunk(block, block_id=None):
-              ts = offset + tc[block_id[0]]; te = ts + block.shape[0]
-              ys = yc[block_id[1]]; ye = ys + block.shape[1]
-              xs = xc[block_id[2]]; xe = xs + block.shape[2]
-              #print((ts,te),(ys,ye),(xs,xe))
-              print(block.shape)
-              ncvar3[ts:te,ys:ye,xs:xe] = block
-              return dummy
-          # append to NC variable
-          xvar3.data.map_blocks(save_chunk, chunks=dummy.shape, dtype=dummy.dtype).compute() # drop_axis=(0,1,2), 
-          print('\n')
-          # update time stamps and time axis
-          nctc[offset:t_max] = np.arange(offset,t_max)
-          for i in range(tsvar.shape[0]): ncts[i+offset] = tsvar.data[i] 
-          ncds.sync()
-          print(ncds)
-          ncds.close()
-      else:
-          # save results in new file
-          print('\n')
-          xds3 = xr.Dataset({ts_name:tsvar, var3:xvar3,}, attrs=xds1.attrs.copy())
-          print(xds3)
-          # write to NetCDF
-          var3_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=netcdf_settings['chunksizes'])
-          xds3.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
-                         encoding={var3:var3_enc,}, compute=True)
-      
+          ## define actual computation
+          if var == 'liqwatflx':
+              ref_var = 'snwmlt'; note = "masked/missing values have been replaced by zero"
+              xvar = xds['snwmlt'].fillna(0) + xds['liqprec'].fillna(0) # fill missing values with zero
+              # N.B.: missing values are NaN in xarray; we need to fill with 0, or masked/missing values
+              #       in snowmelt will mask/invalidate valid values in precip
+          elif var == 'precip':
+              ref_var = 'liqprec'; note = "masked/missing values have been replaced by zero"
+              xvar = xds['liqprec'].fillna(0) + xds['solprec'].fillna(0) # fill missing values with zero
+              # N.B.: missing values are NaN in xarray; we need to fill with 0, or masked/missing values
+              #       in snowmelt will mask/invalidate valid values in precip
+          elif var == 'rho_snw':
+              ref_var = 'snow'; note = "SWE divided by snow depth, divided by 1000"
+              xvar = xds['snow'] / xds['snowh']
+              
+          # define/copy metadata
+          xvar.rename(var)
+          xvar.attrs = xds[ref_var].attrs.copy()
+          for att in ('name','units','long_name',):
+              xvar.attrs[att] = var_atts[att]
+          xvar.attrs['note'] = note
+          xvar.chunk(chunks=chunk_settings)
+          print(xvar)
+    
+          
+    #       # visualize task graph
+    #       viz_file = daily_folder+'dask_sum.svg'
+    #       xvar3.data.visualize(filename=viz_file)
+    #       print(viz_file)
+          
+          
+          ## now save data, according to destination/append mode
+          if lappend:
+              # append results to an existing file
+              print('\n')
+              # define chunking
+              offset = ncts.shape[0]; t_max = offset + tsvar.shape[0]
+              tc,yc,xc = xvar.chunks # starting points of all blocks...
+              tc = np.concatenate([[0],np.cumsum(tc[:-1], dtype=np.int)])
+              yc = np.concatenate([[0],np.cumsum(yc[:-1], dtype=np.int)])
+              xc = np.concatenate([[0],np.cumsum(xc[:-1], dtype=np.int)])
+    #           xvar3 = xvar3.chunk(chunks=(tc,xvar3.shape[1],xvar3.shape[2]))
+              # function to save each block individually (not sure if this works in parallel)
+              dummy = np.zeros((1,1,1), dtype=np.int8)
+              def save_chunk(block, block_id=None):
+                  ts = offset + tc[block_id[0]]; te = ts + block.shape[0]
+                  ys = yc[block_id[1]]; ye = ys + block.shape[1]
+                  xs = xc[block_id[2]]; xe = xs + block.shape[2]
+                  #print((ts,te),(ys,ye),(xs,xe))
+                  print(block.shape)
+                  ncvar3[ts:te,ys:ye,xs:xe] = block
+                  return dummy
+              # append to NC variable
+              xvar.data.map_blocks(save_chunk, chunks=dummy.shape, dtype=dummy.dtype).compute() # drop_axis=(0,1,2), 
+              # update time stamps and time axis
+              nctc[offset:t_max] = np.arange(offset,t_max)
+              for i in range(tsvar.shape[0]): ncts[i+offset] = tsvar.data[i] 
+              ncds.sync()
+              print('\n')
+              print(ncds)
+              ncds.close()
+              del xvar, ncds 
+          else:
+              # save results in new file
+              nds = xr.Dataset({ts_name:tsvar, var:xvar,}, attrs=xds.attrs.copy())
+#               print('\n')
+#               print(nds)
+              # write to NetCDF
+              var_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=netcdf_settings['chunksizes'])
+              nds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
+                            encoding={var:var_enc,}, compute=True)
+              del nds, xvar
+              
+          # clean up
+          gc.collect()
+          
       # print timing
       end =  time.time()
       print('\n   Required time:   {:.0f} seconds\n'.format(end-start))
