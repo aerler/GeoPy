@@ -26,9 +26,9 @@ from warnings import warn
 # except: import pickle
 
 # internal imports
-from geodata.misc import name_of_month
+from geodata.misc import name_of_month, days_per_month
 from utils.nctools import add_coord, add_var
-from datasets.common import getRootFolder
+from datasets.common import getRootFolder, loadObservations
 from geodata.gdal import GridDefinition
 # from geodata.gdal import loadPickledGridDef, addGDALtoDataset
 # from geodata.gdal import grid_folder as common_grid_folder
@@ -86,7 +86,7 @@ netcdf_varatts = dict(# forcing variables
                       )
 # list of variables to load
 binary_varlist = binary_varatts.keys()
-netcdf_varlist = ['liqprec','solprec','snow','snowh','Tsnow','snwmlt','evap_snow','evap_blow','liqwatflx']
+netcdf_varlist = [varname for varname in netcdf_varatts.keys() if varname not in ('time','time_stamp','lat','lon')]
 # some SnoDAS settings
 missing_value = -9999 # missing data flag
 snodas_shape2d = (SnoDAS_grid.size[1],SnoDAS_grid.size[0]) # 4096x8192
@@ -335,6 +335,8 @@ def loadSnoDAS_TS(varname=None, varlist=None, grid=None, folder=avgfolder, tsfil
         # load multifile dataset (variables are in different files
         filepaths = [folder + tsfile.format(varname,grid_str) for varname in varlist]
         xds = xr.open_mfdataset(filepaths, chunks=chunks, **kwargs)
+    # load time stamps (like coordinate variables)
+    if 'time_stamp' in xds: xds['time_stamp'].load()
     # fix time axis (deprecated - should not be necessary anymore)
     if lmonthly:
         warn("'lmonthly=True' should only be used to convert simple monthly indices into 'datetime64' coordinates.")
@@ -355,7 +357,73 @@ def loadSnoDAS_TS(varname=None, varlist=None, grid=None, folder=avgfolder, tsfil
             raise NotImplementedError
         xds = addGeoReference(xds, **geoargs)
     return xds
-loadDataset_TS = loadSnoDAS_TS # alias
+loadTimeSeries = loadSnoDAS_TS # alias
+
+
+def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfolder, avgfile=avgfile, 
+               lxarray=False, lgeoref=True, chunks=None, time_chunks=1, geoargs=None, 
+               name=dataset_name, filemode='r', **kwargs):
+    ''' function to load monthly transient SnoDAS data '''
+    if time_chunks:
+        if grid: 
+            raise NotImplementedError("Default chunks are only available for native lat/lon grid.")
+        cks = netcdf_settings['chunksizes'] if chunks is None else chunks
+        # use default netCDF chunks or user chunks; set time chunking with time_chunks
+        chunks = dict(time=time_chunks,lat=cks[1],lon=cks[2])
+    # set options
+    grid_str = '_'+grid if grid else ''
+#     if lmonthly:
+#         kwargs['decode_times'] = False
+    if isinstance(period,basestring): prd_str = '_' + period
+    elif isinstance(period,(tuple,list)) and len(period) == 2: 
+        prd_str = '_{0:4d}-{1:4d}'.format(*period)
+    else: raise TypeError(period) 
+    # load dataset
+    filepath = folder + avgfile.format(grid_str,prd_str)
+    if lxarray:
+        if varname and varlist: raise ValueError(varname,varlist)
+        elif varname: varlist = [varname]
+        # load a single variable
+        dataset = xr.open_dataset(filepath, chunks=chunks, **kwargs)
+        # load time stamps (like coordinate variables)
+        if 'time_stamp' in dataset: dataset['time_stamp'].load()
+        # add projection
+        if lgeoref:
+            if geoargs is None: geoargs = dict()
+            if grid:
+                raise NotImplementedError
+            dataset = addGeoReference(dataset, **geoargs)
+    else:
+        # load standardized climatology dataset with NRCan-specific parameters
+        dataset = loadObservations(name=name, folder=folder, projection=None, resolution=None, filepattern=avgfile, 
+                                   period=period, grid=grid, varlist=varlist, varatts=None, griddef=SnoDAS_grid,
+                                   filelist=None, lautoregrid=False, mode='climatology', filemode=filemode)
+    # return formatted dataset
+    return dataset
+loadClimatology = loadSnoDAS # alias
+
+
+## Dataset API
+
+dataset_name # dataset name
+root_folder # root folder of the dataset
+orig_file_pattern = netcdf_filename # filename pattern: variable name (daily)
+ts_file_pattern = tsfile # filename pattern: variable name and grid
+clim_file_pattern = avgfile # filename pattern: grid and period
+data_folder = avgfolder # folder for user data
+grid_def = {'':SnoDAS_grid} # no special name, since there is only one...
+LTM_grids = [] # grids that have long-term mean data 
+TS_grids = [''] # grids that have time-series data
+grid_res = {'':0.00833333333333333} # no special name, since there is only one...
+default_grid = SnoDAS_grid
+# functions to access specific datasets
+loadLongTermMean = None # climatology provided by publisher
+loadTimeSeries = loadSnoDAS_TS # time-series data
+loadClimatology = loadSnoDAS # pre-processed, standardized climatology
+loadStationClimatology = None # climatologies without associated grid (e.g. stations) 
+loadStationTimeSeries = None # time-series without associated grid (e.g. stations)
+loadShapeClimatology = None # climatologies without associated grid (e.g. provinces or basins) 
+loadShapeTimeSeries = None # time-series without associated grid (e.g. provinces or basins)
 
 
 ## abuse for testing
@@ -375,16 +443,33 @@ if __name__ == '__main__':
 #   from multiprocessing.pool import ThreadPool
 #   dask.set_options(pool=ThreadPool(4))
 
+  test_mode = 'load_Climatology'
 #   test_mode = 'monthly_normal'
 #   test_mode = 'load_TimeSeries'
 #   test_mode = 'monthly_mean'
 #   test_mode = 'load_daily'
-  test_mode = 'add_variables'
+#   test_mode = 'add_variables'
 #   test_mode = 'test_binary_reader'
 #   test_mode = 'convert_binary'
 
 
-  if test_mode == 'monthly_normal':
+  if test_mode == 'load_Climatology':
+     
+      
+      varlist = netcdf_varlist
+      lxarray = False
+      ds = loadSnoDAS(varlist=varlist, period=(2011,2012), lxarray=lxarray) # load regular GeoPy dataset
+      print(ds)
+      print('')
+      varname = ds.variables.keys()[0]
+      var = ds[varname]
+      print(var)
+
+      if lxarray:
+          print('Size in Memory: {:6.1f} MB'.format(var.nbytes/1024./1024.))
+
+
+  elif test_mode == 'monthly_normal':
 
      
       # chunk sizes for monthly timeseries
@@ -392,14 +477,14 @@ if __name__ == '__main__':
       chunk_settings = dict(time=chunks[0],lat=chunks[1],lon=chunks[2])
 
       # optional slicing (time slicing completed below)
-#       start_date = '2011-01'; end_date = '2011-12'
       start_date = None; end_date = None
+#       start_date = '2011-01'; end_date = '2011-12'
 
       ts_name = 'time_stamp'
 
       # variable list
       varlist = netcdf_varlist
-#       varlist = ['snwmlt',]
+#       varlist = ['rho_snw',]
 
       # start operation
       start = time.time()
@@ -438,20 +523,27 @@ if __name__ == '__main__':
 
       
       # save resampled dataset
-      filepath = avgfolder+avgfile.format('',prdstr) # native grid...
+      filepath = avgfolder+avgfile.format('','_'+prdstr) # native grid...
       # write to NetCDF
       var_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=chunks)
       encoding = {varname:var_enc for varname in varlist}
       nds.to_netcdf(filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
                     encoding=encoding, compute=True)
       
-#       # add time-stamp (doesn't work properly with xarray)
-#       ds = nc.Dataset(filepath, mode='a')
-#       atts = netcdf_varatts[ts_name]
-#       tsnc = add_var(ds, ts_name, dims=('time',), data=None, shape=(None,), 
-#                      atts=atts, dtype=np.dtype('S'), zlib=True, fillValue=None, lusestr=True) # daily time-stamp
-#       tsnc[:] = np.stack([str(t) for t in rds['time'].data.astype('datetime64[M]')], axis=0)
-#       ds.sync(); ds.close()
+      # add name and length of month (doesn't work properly with xarray)
+      ds = nc.Dataset(filepath, mode='a')
+      # name of month
+      vatts = dict(name='name_of_month', units='', long_name='Name of the Month')
+      varnc = add_var(ds, vatts['name'], dims=('time',), data=None, shape=(None,), 
+                     atts=vatts, dtype=np.dtype('S'), zlib=True, fillValue=None, lusestr=True) # string variable
+      varnc[:] = np.stack(name_of_month, axis=0)
+      # length of month
+      vatts = dict(name='length_of_month', units='days',long_name='Length of Month')
+      varnc = add_var(ds, vatts['name'], dims=('time',), data=None, shape=(None,), 
+                     atts=vatts, dtype=np.dtype('float32'), zlib=True, fillValue=None,) # float variable
+      varnc[:] = np.stack(days_per_month, axis=0)
+      # close NetCDF dataset
+      ds.sync(); ds.close()
       
       # print timing
       end = time.time()
@@ -463,8 +555,8 @@ if __name__ == '__main__':
       
       varlist = netcdf_varlist
       varname = varlist[0]
-#       xds = loadSnoDAS_TS(varlist=varlist, time_chunks=1, lmonthly=False) # 32 may be possible
-      xds = loadSnoDAS_TS(varname=varname, time_chunks=1, lmonthly=False) # 32 may be possible      
+      xds = loadSnoDAS_TS(varlist=varlist, time_chunks=1, lmonthly=False) # 32 may be possible
+#       xds = loadSnoDAS_TS(varname=varname, time_chunks=1, lmonthly=False) # 32 may be possible      
       print(xds)
       print('')
       xv = xds[varname]
@@ -489,8 +581,8 @@ if __name__ == '__main__':
       start_date = None; end_date = None
 
       # variable list
-#       varlist = ['snwmlt',]
       varlist = netcdf_varlist
+#       varlist = ['precip','rho_snw']
 
       ts_name = 'time_stamp'
       
@@ -535,8 +627,8 @@ if __name__ == '__main__':
   elif test_mode == 'load_daily':
      
           
-      varlist = netcdf_varlist
-#       varlist = ['snwmlt','evap_snow']
+#       varlist = netcdf_varlist
+      varlist = ['precip','rho_snw']
       varname = varlist[0]
       xds = loadSnoDAS_Daily(varlist=varlist, time_chunks=32) # 32 may be possible
       print(xds)
