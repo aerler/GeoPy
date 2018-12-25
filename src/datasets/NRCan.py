@@ -526,11 +526,11 @@ if __name__ == '__main__':
   
 #     mode = 'test_climatology'
 #     mode = 'test_timeseries'
-#     mode = 'test_point_climatology'
+    mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
 #     mode = 'convert_Normals'
 #     mode = 'convert_Historical'
-    mode = 'add_CMC'
+#     mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
 #     pntset = 'ecprecip'
@@ -571,7 +571,7 @@ if __name__ == '__main__':
             
         # load averaged climatology file
         print('')
-        if pntset in ('shpavg',): 
+        if pntset in ('shpavg','glbshp'): 
             dataset = loadNRCan_Shp(shape=pntset, resolution=res, period=period)
             print(dataset.shp_area.mean())
             print('')
@@ -579,20 +579,26 @@ if __name__ == '__main__':
         dataset.load()
         print(dataset)
         print('')
-        dataset = dataset(shape_name='GRW')
-        print(dataset)
+        print(dataset['shape_name'])
         print('')
-        print(dataset.atts.shp_area)
-        print(dataset.liqprec.mean()*86400)
-        print(dataset.precip.masked)
-        print(dataset.T2.mean())
-        print(dataset.atts.shp_empty,dataset.atts.shp_full,dataset.atts.shp_encl,)
+        print(dataset['shape_name'][:])
+        print('')
+        print(dataset.filepath)
+
+#         dataset = dataset(shape_name='GRW')
+#         print(dataset)
+#         print('')
+#         print(dataset.atts.shp_area)
+#         print(dataset.liqprec.mean()*86400)
+#         print(dataset.precip.masked)
+#         print(dataset.T2.mean())
+#         print(dataset.atts.shp_empty,dataset.atts.shp_full,dataset.atts.shp_encl,)
         
-        # print time coordinate
-        print
-        print dataset.time.atts
-        print
-        print dataset.time.data_array
+#         # print time coordinate
+#         print
+#         print dataset.time.atts
+#         print
+#         print dataset.time.data_array
 
     elif mode == 'test_point_timeseries':
     

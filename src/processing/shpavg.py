@@ -200,7 +200,7 @@ if __name__ == '__main__':
 #     NP = 1 ; ldebug = True # for quick computations
     NP = 1; ldebug = False # for quick computations
 #     modes = ('time-series','climatology')
-    modes = ('climatology','time-series',)
+    modes = ('climatology',)
 #     modes = ('time-series',) 
     loverwrite = True
     varlist = None # ['precip']
@@ -217,9 +217,9 @@ if __name__ == '__main__':
     datasets = []; resolutions = None; unity_grid = None
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['031','05'], 'NRCan':'NA12'}
     datasets = []
-    datasets += ['SnoDAS']; periods = [(2009,2018),]; lLTM = True    
-    datasets += ['NRCan']; #periods = [(1970,2000),(1980,2010)]; lLTM = True
-    datasets += ['GPCC','CRU',]; lLTM = True
+#     datasets += ['SnoDAS']; periods = [(2009,2018),]; lLTM = True    
+    datasets += ['NRCan']; periods = [(1980,2010),(1970,2000),]; lLTM = False
+#     datasets += ['GPCC','CRU',]; lLTM = True
 #     datasets += ['PRISM']; periods = None; lLTM = True
 #     datasets += ['PCIC','PRISM']; periods = None; lLTM = True
 #     datasets += ['CFSR']; resolutions = {'CFSR':['031','05']}

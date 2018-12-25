@@ -307,7 +307,6 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, lxarray=Tr
         if geoargs is None: geoargs = dict()
         xds = addGeoReference(xds, **geoargs)
     return xds
-loadDataset_Daily = loadSnoDAS_Daily # alias
 
 
 def loadSnoDAS_TS(varname=None, varlist=None, grid=None, folder=avgfolder, tsfile=tsfile, lxarray=True, 
@@ -357,11 +356,10 @@ def loadSnoDAS_TS(varname=None, varlist=None, grid=None, folder=avgfolder, tsfil
             raise NotImplementedError
         xds = addGeoReference(xds, **geoargs)
     return xds
-loadTimeSeries = loadSnoDAS_TS # alias
 
 
 def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfolder, avgfile=avgfile, 
-               lxarray=False, lgeoref=True, chunks=None, time_chunks=1, geoargs=None, 
+               lxarray=False, lgeoref=True, chunks=None, time_chunks=None, geoargs=None, 
                name=dataset_name, filemode='r', **kwargs):
     ''' function to load monthly transient SnoDAS data '''
     if time_chunks:
@@ -400,7 +398,18 @@ def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfol
                                    filelist=None, lautoregrid=False, mode='climatology', filemode=filemode)
     # return formatted dataset
     return dataset
-loadClimatology = loadSnoDAS # alias
+
+
+# function to load averaged data
+def loadSnoDAS_Shp(name=dataset_name, period=None, shape=None, resolution=None, varlist=None, 
+                   varatts=None, folder=avgfolder, filelist=None, lencl=False):
+  ''' Get the pre-processed monthly PCIC PRISM climatology averaged over regions as a DatasetNetCDF. '''
+  # load standardized climatology dataset with PCIC-specific parameters  
+  dataset = loadObservations(name=name, folder=folder, grid=None, station=None, shape=shape, lencl=lencl, 
+                             varlist=varlist, varatts=varatts, filepattern=avgfile, projection=None, 
+                             filelist=filelist, lautoregrid=False, period=period, mode='climatology')
+  # return formatted dataset
+  return dataset
 
 
 ## Dataset API
@@ -408,22 +417,23 @@ loadClimatology = loadSnoDAS # alias
 dataset_name # dataset name
 root_folder # root folder of the dataset
 orig_file_pattern = netcdf_filename # filename pattern: variable name (daily)
-ts_file_pattern = tsfile # filename pattern: variable name and grid
+ts_file_pattern   = tsfile # filename pattern: variable name and grid
 clim_file_pattern = avgfile # filename pattern: grid and period
-data_folder = avgfolder # folder for user data
-grid_def = {'':SnoDAS_grid} # no special name, since there is only one...
+data_folder       = avgfolder # folder for user data
+grid_def  = {'':SnoDAS_grid} # no special name, since there is only one...
 LTM_grids = [] # grids that have long-term mean data 
-TS_grids = [''] # grids that have time-series data
-grid_res = {'':0.00833333333333333} # no special name, since there is only one...
+TS_grids  = [''] # grids that have time-series data
+grid_res  = {'':0.00833333333333333} # no special name, since there is only one...
 default_grid = SnoDAS_grid
 # functions to access specific datasets
-loadLongTermMean = None # climatology provided by publisher
-loadTimeSeries = loadSnoDAS_TS # time-series data
-loadClimatology = loadSnoDAS # pre-processed, standardized climatology
+loadLongTermMean       = None # climatology provided by publisher
+loadDailyTimeSeries    = loadSnoDAS_Daily # daily time-series data
+loadTimeSeries         = loadSnoDAS_TS # monthly time-series data
+loadClimatology        = loadSnoDAS # pre-processed, standardized climatology
 loadStationClimatology = None # climatologies without associated grid (e.g. stations) 
-loadStationTimeSeries = None # time-series without associated grid (e.g. stations)
-loadShapeClimatology = None # climatologies without associated grid (e.g. provinces or basins) 
-loadShapeTimeSeries = None # time-series without associated grid (e.g. provinces or basins)
+loadStationTimeSeries  = None # time-series without associated grid (e.g. stations)
+loadShapeClimatology   = None # climatologies without associated grid (e.g. provinces or basins) 
+loadShapeTimeSeries    = None # time-series without associated grid (e.g. provinces or basins)
 
 
 ## abuse for testing
@@ -443,7 +453,8 @@ if __name__ == '__main__':
 #   from multiprocessing.pool import ThreadPool
 #   dask.set_options(pool=ThreadPool(4))
 
-  test_mode = 'load_Climatology'
+  test_mode = 'load_Point_Climatology'; pntset = 'glbshp'
+#   test_mode = 'load_Climatology'
 #   test_mode = 'monthly_normal'
 #   test_mode = 'load_TimeSeries'
 #   test_mode = 'monthly_mean'
@@ -469,6 +480,20 @@ if __name__ == '__main__':
           print('Size in Memory: {:6.1f} MB'.format(var.nbytes/1024./1024.))
 
 
+  elif test_mode == 'load_Point_Climatology':
+    
+    
+    # load point climatology
+    print('')
+    varlist = netcdf_varlist
+    if pntset in ('shpavg','glbshp'): dataset = loadSnoDAS_Shp(shape=pntset, period=(2009,2018))
+    else: raise NotImplementedError(pntset)
+    print(dataset)
+    print('')
+    print(dataset.time)
+    print(dataset.time.coord)
+
+  
   elif test_mode == 'monthly_normal':
 
      

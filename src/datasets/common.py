@@ -67,9 +67,10 @@ stn_params = ['station_name', 'stn_prov', 'zs_err', 'stn_zs', 'stn_lat', 'stn_lo
 CRU_vars = ['T2','Tmin','Tmax','Q2','pet','precip','cldfrc','wetfrq','frzfrq']
 # list of reanalysis, station, and gridded observational datasets currently available
 reanalysis_datasets = ['CFSR','NARR']
+surface_reanalysis_datasets = ['SnoDAS']
 station_obs_datasets = ['EC','GHCN','WSC']
-gridded_obs_datasets = ['CRU','GPCC','NRCan','PCIC','PRISM','Unity']
-observational_datasets = reanalysis_datasets + station_obs_datasets + gridded_obs_datasets
+gridded_obs_datasets = ['CRU','GPCC','NRCan','PCIC','PRISM','Unity',]
+observational_datasets = reanalysis_datasets + surface_reanalysis_datasets + station_obs_datasets + gridded_obs_datasets
 timeseries_datasets = ['CFSR','NARR','EC','GHCN','WSC','CRU','GPCC','NRCan',]
 
 
