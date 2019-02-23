@@ -453,15 +453,18 @@ if __name__ == '__main__':
 #   from multiprocessing.pool import ThreadPool
 #   dask.set_options(pool=ThreadPool(4))
 
-  test_mode = 'load_Point_Climatology'; pntset = 'glbshp'
+#   test_mode = 'load_Point_Climatology'
 #   test_mode = 'load_Climatology'
 #   test_mode = 'monthly_normal'
 #   test_mode = 'load_TimeSeries'
 #   test_mode = 'monthly_mean'
 #   test_mode = 'load_daily'
-#   test_mode = 'add_variables'
+#   test_mode = 'fix_time'
+  test_mode = 'add_variables'
 #   test_mode = 'test_binary_reader'
 #   test_mode = 'convert_binary'
+
+  pntset = 'glbshp'
 
 
   if test_mode == 'load_Climatology':
@@ -651,11 +654,14 @@ if __name__ == '__main__':
 
   elif test_mode == 'load_daily':
      
+      time_chunks = 32 # 32 may be possible
+      chunks = netcdf_settings['chunksizes']
+      chunk_settings = dict(time=chunks[0]*time_chunks,lat=chunks[1],lon=chunks[2])      
           
 #       varlist = netcdf_varlist
-      varlist = ['precip','rho_snw']
+      varlist = ['liqwatflx','precip','rho_snw']
       varname = varlist[0]
-      xds = loadSnoDAS_Daily(varlist=varlist, time_chunks=32) # 32 may be possible
+      xds = loadSnoDAS_Daily(varlist=varlist, time_chunks=time_chunks) # 32 may be possible
       print(xds)
       print('')
       xv = xds[varname]
@@ -665,9 +671,21 @@ if __name__ == '__main__':
       print('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.))
 
 
+  elif test_mode == 'fix_time':
+
+      # loop over variables
+      for var in binary_varlist:
+      
+          # open with NetCDF library and fix time axis
+          ds = nc.Dataset(daily_folder + netcdf_filename.format(var), 'a')
+          ts = ds.variables['time'] # get time axis
+          ts[:] = np.arange(len(ts)) # assign new values
+          ds.sync(); ds.close() # sync & save
+          
+    
   elif test_mode == 'add_variables':
     
-      lappend_master = False
+      lappend_master = True
       start = time.time()
           
       # load variables
@@ -675,13 +693,16 @@ if __name__ == '__main__':
       chunks = netcdf_settings['chunksizes']
       chunk_settings = dict(time=chunks[0]*time_chunks,lat=chunks[1],lon=chunks[2])      
       ts_name = 'time_stamp'
-      varlist = ['precip','rho_snw',]
-      xds = loadSnoDAS_Daily(varlist=None, time_chunks=time_chunks)
+#       varlist = ['liqwatflx','precip','rho_snw',]
+      varlist = ['liqwatflx','rho_snw',]
+      xds = loadSnoDAS_Daily(varlist=binary_varlist, time_chunks=time_chunks)
+      # N.B.: need to avoid loading derived variables, because they may not have been extended yet (time length)
       print(xds)
       
       # optional slicing (time slicing completed below)
 #       start_date = '2011-01-01'; end_date = '2011-01-08'
       start_date = None; end_date = None
+#       start_date = '2018-11-23'; end_date = '2019-02-19'
 #       lon_min = -85; lon_max = -75; lat_min = 40; lat_max = 45
 #       xvar1 = xvar1.loc[:,lat_min:lat_max,lon_min:lon_max]
 #       xvar2 = xvar2.loc[:,lat_min:lat_max,lon_min:lon_max]
@@ -711,6 +732,10 @@ if __name__ == '__main__':
                   ncds.close()
                   exit()
               lappend = True
+              # update slicing (should not do anything if sliced before)
+              print("\n Appending data from {} to {}.\n".format(start_date.strftime("%Y-%m-%d"),end_date.strftime("%Y-%m-%d")))
+              xds = xds.loc[{'time':slice(start_date,end_date),}]
+              tsvar = tsvar.loc[{'time':slice(start_date,end_date),}]
           else: 
               lappend = False
               
@@ -764,8 +789,8 @@ if __name__ == '__main__':
                   ts = offset + tc[block_id[0]]; te = ts + block.shape[0]
                   ys = yc[block_id[1]]; ye = ys + block.shape[1]
                   xs = xc[block_id[2]]; xe = xs + block.shape[2]
-                  #print((ts,te),(ys,ye),(xs,xe))
-                  print(block.shape)
+                  print((ts,te),(ys,ye),(xs,xe))
+                  #print(block.shape)
                   ncvar3[ts:te,ys:ye,xs:xe] = block
                   return dummy
               # append to NC variable
@@ -795,23 +820,6 @@ if __name__ == '__main__':
       # print timing
       end =  time.time()
       print('\n   Required time:   {:.0f} seconds\n'.format(end-start))
-
-
-  elif test_mode == 'load_daily':
-     
-          
-#       varlist = netcdf_varlist
-      varlist = ['evap_snow', 'snwmlt','liqprec','solprec','snowh','Tsnow','liqwatflx','evap_blow',]
-#       varlist = ['snwmlt','evap_snow']
-      varname = varlist[0]
-      xds = loadSnoDAS_Daily(varlist=varlist, time_chunks=32) # 32 may be possible
-      print(xds)
-      print('')
-      xv = xds[varname]
-      xv = xv.loc['2011-01-01':'2011-02-01',35:45,-100:-80]
-#       xv = xv.loc['2011-01-01',:,:]
-      print(xv)
-      print('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.))
 
 
   elif test_mode == 'test_binary_reader':
@@ -860,13 +868,13 @@ if __name__ == '__main__':
       lappend = True
 #       netcdf_settings = dict(chunksizes=(1,snodas_shape2d[0]/4,snodas_shape2d[1]/8))
       nc_time_chunk = netcdf_settings['chunksizes'][0]
-      start_date = '2009-12-14'; end_date = '2018-11-24'
+      start_date = '2009-12-14'; end_date = '2019-02-21'
 
       if not osp.isdir(daily_folder): os.mkdir(daily_folder)
 
       # loop over binary variables (netcdf vars have coordiantes as well...)
-      for varname in ['evap_snow']:
-#       for varname in binary_varlist:
+#       for varname in ['evap_snow']:
+      for varname in binary_varlist:
       
 
           filename = netcdf_filename.format(varname.lower())
@@ -931,7 +939,7 @@ if __name__ == '__main__':
               # load data and add to variable chunk list
               var_chunks.append(readBinaryFile(varname=varname, date=day,))
               # assign time stamp to time chunk list
-              tc_chunks.append(i) # zero-based
+              tc_chunks.append(i+time_offset) # zero-based
               print("  {}".format(actual_day))
               ts_chunks.append(str(actual_day))
               

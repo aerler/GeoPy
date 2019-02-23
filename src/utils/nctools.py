@@ -177,7 +177,7 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
       # else: fillValue = None # for 'object'
     else: pass # if it is not a masked array and no missing value information was passed, don't assign fillValue 
   else:  
-    if data is not None and isinstance(data,ma.MaskedArray): data.set_fill_value(fillValue)
+    if data is not None and isinstance(data,ma.MaskedArray): data._fill_value = fillValue 
   # make sure fillValue is OK (there have been problems...)    
   fillValue = checkFillValue(fillValue, dtype)
   if fillValue is not None:

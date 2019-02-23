@@ -474,15 +474,17 @@ if __name__ == '__main__':
         loverwrite = True
         exp_list= None
         # obs variables
-# #         load_list = ['lat2D','lon2D','liqwatflx','pet']
-#         load_list = ['lat2D','lon2D','liqwatflx','pet','liqwatflx_CMC'] # 'precip',
+#         load_list = ['lat2D','lon2D','liqwatflx','pet']
+        CMC_adjusted = sum([['liqwatflx'+tag,'liqwatflx_CMC'+tag] for tag in ('','_adj30','_adj35')],[])
+        print CMC_adjusted
+        load_list = ['lat2D','lon2D','pet',]+CMC_adjusted # 'precip',
 #         # WRF variables
 #         #load_list = ['pet_wrf']
-        load_list = ['lat2D','lon2D','zs','snow','pet_wrf']
-        load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt'] # (net) precip
+#         load_list = ['lat2D','lon2D','zs','snow','pet_wrf']
+#         load_list += ['waterflx','liqprec','solprec','precip','evap','snwmlt'] # (net) precip
 #         # PET variables (for WRF)
-        load_list += ['ps','u10','v10','Q2','Tmin','Tmax','T2','TSmin','TSmax',] # wind
-        load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
+#         load_list += ['ps','u10','v10','Q2','Tmin','Tmax','T2','TSmin','TSmax',] # wind
+#         load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
         # WRF constants
 #         load_list= ['lat2D','lon2D','zs','landuse','landmask','LANDUSEF','vegcat','SHDMAX','SHDMIN',
 #                     'SOILHGT','soilcat','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'] # constants
@@ -494,7 +496,7 @@ if __name__ == '__main__':
         resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}
         lLTM = False # also regrid the long-term mean climatologies 
         datasets = []
-#         datasets += ['NRCan']; periods = [(1970,2000),(1980,2010),][:1] # this will generally not work, because we don't have snow/-melt...
+        datasets += ['NRCan']; periods = [(1970,2000),(1980,2010),][1:] # this will generally not work, because we don't have snow/-melt...
 #         resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies'][1:2]}
     #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
         # CESM experiments (short or long name) 
@@ -509,8 +511,8 @@ if __name__ == '__main__':
 #         WRF_project = 'WesternCanada'; unity_grid = 'arb2_d02' # only WesternCanada experiments
         WRF_experiments = [] # use None to process all WRF experiments
 #         WRF_experiments += ['erai-g','erai-t','erai-g3','erai-t3',]
-        WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
-        WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
+#         WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
+#         WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
 #         WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100']
 #         WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
 #         WRF_experiments += ['t3-ensemble-2100','g3-ensemble-2100']
@@ -555,8 +557,8 @@ if __name__ == '__main__':
         # typically a specific grid is required
         grids = [] # list of grids to process
 #         grids += [None]; project = None # special keyword for native grid
-        grids += ['uph1']; project = 'Elisha' # grid for Elisha
-#         grids += ['glb1']; project = 'GLB' # grid for Great Lakes Basin project
+#         grids += ['uph1']; project = 'Elisha' # grid for Elisha
+        grids += ['glb1']; project = 'GLB' # grid for Great Lakes Basin project
 #         grids += ['grw2']; project = 'GRW' # small grid for GRW project
 #         grids += ['grw3']; project = 'GRW' # fine grid for GRW project
 #         grids += ['asb1']; project = 'ASB' # main grid for ASB project
@@ -567,17 +569,17 @@ if __name__ == '__main__':
         ## export to ASCII raster
         export_arguments = dict(
             # NRCan
-#             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT', None)),
-#             compute_list = [], exp_list= ['lat2D','lon2D','liqwatflx','pet','liqwatflx_CMC',], # varlist for NRCan
+            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT', None)),
+            compute_list = [], exp_list= ['lat2D','lon2D','pet']+CMC_adjusted,   # varlist for NRCan
             # WRF
 #             exp_list= ['landuse','landmask'],
 #             exp_list= ['lat2D','lon2D','zs','LU_MASK','LU_INDEX','LANDUSEF','VEGCAT','SHDMAX','SHDMIN',
 #                        'SOILHGT','SOILCAT','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'], # constants
 #             compute_list = ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
 #             exp_list= ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
-            compute_list = ['liqwatflx','pet'], exp_list= ['lat2D','lon2D','zs','liqwatflx','pet'], # short varlist for quick export
+#             compute_list = ['liqwatflx','pet'], exp_list= ['lat2D','lon2D','zs','liqwatflx','pet'], # short varlist for quick export
 #             compute_list = ['liqwatflx',], exp_list= ['lat2D','lon2D','zs','liqwatflx','pet_wrf'], # short varlist for quick export
-            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT'),bc_tag),
+#             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT'),bc_tag),
 #             folder = '//aquanty-nas/share/temp_data_exchange/Erler/{PROJECT}/{EXPERIMENT}/{PERIOD}/',
 #             folder = '//aquanty-nas/share/temp_data_exchange/Erler/{{PROJECT}}/{{EXPERIMENT}}/{bc_tag:s}{{PERIOD}}/'.format(bc_tag=bc_tag),
 #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/land_data/'.format(os.getenv('HGS_ROOT')),

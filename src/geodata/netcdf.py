@@ -134,7 +134,7 @@ class VarNC(Variable):
       # construct a new netcdf variable in the given dataset and determine dtype
       if dtype is None and data is not None: dtype = data.dtype
       if name in ncvar.variables: 
-        ncvar = ncvar.variable[name] # hope it is the right one...
+        ncvar = ncvar.variables[name] # hope it is the right one...
         if dtype is None: dtype = ncvar.dtype
       else: 
         if dtype is None: raise TypeError, "No data (-type) to construct NetCDF variable!"

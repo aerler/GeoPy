@@ -504,7 +504,7 @@ class Variable(object):
     ''' The fillValue for masks (stored in the atts dictionary). '''
     fillValue = self.atts.get('fillValue',None)
     if self.data and self.masked:
-      if  fillValue is None:
+      if fillValue is None:
         #raise DataError('Invalid FillValue: None!')
         fillValue = self.data_array._fill_value
       elif fillValue != self.data_array._fill_value:

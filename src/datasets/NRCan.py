@@ -342,6 +342,7 @@ def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=No
         else: raise VariableError(var)
         # for completeness, add attributes
         dataset[var].atts.update(varatts[var])
+        dataset[var].data_array._fill_value = dataset[var].fillValue
     
     # add length and names of month
     if dataset.hasAxis('time') and len(dataset.time) == 12:
@@ -524,9 +525,9 @@ loadShapeTimeSeries = loadNRCan_ShpTS # time-series without associated grid (e.g
 
 if __name__ == '__main__':
   
-#     mode = 'test_climatology'
+    mode = 'test_climatology'
 #     mode = 'test_timeseries'
-    mode = 'test_point_climatology'
+#     mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
 #     mode = 'convert_Normals'
 #     mode = 'convert_Historical'
@@ -543,7 +544,7 @@ if __name__ == '__main__':
         # load averaged climatology file
         print('')
         dataset = loadNRCan(grid=grid,period=period,resolution=res, varatts=dict(pet=dict(name='pet_wrf')),
-                            varlist=['SWDNB'])
+                            varlist=['liqwatflx_adj30'])
         print(dataset)
         print('')
         print(dataset.geotransform)
@@ -670,6 +671,17 @@ if __name__ == '__main__':
         
     elif mode == 'add_CMC':
         
+        ## SWE correction for CMC data
+#         scale_tag = ''
+#         scale_factor = 1.
+#         scale_note = 'CMC SWE data have not been corrected'
+#         scale_tag = '_adj30'
+#         scale_factor = 3.
+#         scale_note = 'CMC SWE data has been scaled by 3.0 to match NRCan SWE over Canada'
+        scale_tag = '_adj35'
+        scale_factor = 3.5
+        scale_note = 'CMC SWE data has been scaled by 3.5 to match NRCan SWE over Canada'
+        
 #         CMC_period = (1998,1999) # for tests
 #         filelist = ['test_' + avgfile.format('_na{:d}'.format(12),'_1970-2000')]
         filelist = None
@@ -685,9 +697,14 @@ if __name__ == '__main__':
         print('')
         cmc = cmc.climMean()
 #         print(cmc)
+        # apply scale factor
+        for varname,var in cmc.variables.items():
+            if varname.lower().startswith('snow'):
+                var *= scale_factor # scale snow/SWE variables
+                # N.B.: we are mainly using SWE differences, but this is all linear...
         # values
         print('')
-        var = cmc.snow.mean(axes=('lat','lon'))
+        var = cmc.snow_acc.mean(axes=('lat','lon'))
         print(var[:])
         print('')
         for varname,var in cmc.variables.items():
@@ -710,15 +727,25 @@ if __name__ == '__main__':
             else:
                 nrcan_var = nrcan[varname].load().copy(deepcopy=True) # load liqwatflx and rename
                 nrcan[varname+'_NRCan'] = nrcan_var
-            nrcan[varname][:] = np.where(nrcan_var.data_array.mask,cmc[varname].data_array,nrcan_var.data_array)
-            nrcan[varname].atts['note'] = 'merged data from NRCan and CMC'
-            if varname == lwf: nrcan[varname].atts['long_name'] = 'Merged Liquid Water Flux'
-            if varname == 'snow': nrcan[varname].atts['long_name'] = 'Merged Snow Water Equivalent'
-        print(nrcan[lwf])
+            varname_tag = varname + scale_tag
+            new_var = nrcan_var.copy(deepcopy=False) # replace old variable
+            data = np.where(nrcan_var.data_array.mask,cmc[varname].data_array,nrcan_var.data_array)
+            new_var.data_array = data
+            new_var.atts['note'] = 'merged data from NRCan and CMC; '+scale_note
+            if varname == lwf: new_var.atts['long_name'] = 'Merged Liquid Water Flux'
+            if varname == 'snow': new_var.atts['long_name'] = 'Merged Snow Water Equivalent'
+            new_var.fillValue = -999.
+            # save variable in NRCan dataset
+            if varname_tag in nrcan: del nrcan[varname_tag] # remove old variable
+            nrcan[varname_tag] = new_var
+        print(nrcan[lwf+scale_tag])
         # add other CMC variables to NRCan datasets
         for varname,var in cmc.variables.items():
             if varname in CMC_derived or varname in CMC_vardefs or varname == lwf:
-                nrcan[varname+'_CMC'] = var # overwrite existing
+                var.atts['note'] = scale_note
+                cmc_var = varname+'_CMC'+scale_tag
+                if cmc_var in nrcan: del nrcan[cmc_var] # overwrite existing
+                nrcan[cmc_var] = var
         print('')
         print(nrcan)
         # save additional variables
@@ -726,12 +753,13 @@ if __name__ == '__main__':
         
         # now check
         print('')
-        nrcan = loadNRCan(filelist=filelist, period=norm_period)
+        nrcan = loadNRCan(filelist=filelist, period=period)
         print(nrcan)
+        print("\nNetCDF file path:\n '{}'".format(nrcan.filelist[0]))
         print('')
         for varname,var in cmc.variables.items():
             if varname in CMC_derived or varname in CMC_vardefs:
-                assert varname+'_CMC' in nrcan, nrcan
+                assert varname+'_CMC'+scale_tag in nrcan, nrcan
 #             print('')
 #             print(nrcan[varname+'_CMC'])
         

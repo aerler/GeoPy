@@ -226,10 +226,10 @@ if __name__ == '__main__':
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
     lLTM = True # also regrid the long-term mean climatologies 
-#     datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)][:] # NRCan normals period
-#     resolutions['NRCan'] = ['na12_ephemeral','na12_maritime','na12_prairies'][1:2]
+    datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)][:] # NRCan normals period
+    resolutions['NRCan'] = ['na12_ephemeral','na12_maritime','na12_prairies'][1:2]
 #     datasets += ['PRISM','GPCC','PCIC']; #periods = None
-    datasets += ['CFSR'] # CFSR_05 does not have precip
+#     datasets += ['CFSR'] # CFSR_05 does not have precip
 #     datasets += ['NARR'] 
 #     datasets += ['GPCC']; resolutions['GPCC'] = ['025','05']
 #     datasets += ['CRU']
@@ -295,28 +295,27 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('const',); modes = ('time-series',); periods = None
     # grid to project onto
     grids = dict()
-#     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
+    grids['asb1'] = None # small grid for Assiniboine river basin, 5km
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 #     grids['grw1'] = None # high-res grid for GRW, 1km
 #     grids['uph1'] = None # grid for Elisha, 5km
-#     grids['glb1'] = None # grid for the Great Lakes basin, 5km
-#     grids['glb1'] = None # grid for the Great Lakes basin, 5km
+    grids['glb1'] = None # grid for the Great Lakes basin, 5km
 #     grids['son1'] = None # grid for southern Ontario, 5km
 #     grids['grw2'] = None # small grid for GRW, 5km
 #     grids['grw3'] = None # fine grid for GRW, 500m
 #     grids['snw1'] = None # large grid for whole Canada
-#     grids['can1'] = None # large grid for whole Canada
+    grids['can1'] = None # large grid for whole Canada
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
-    grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
+#     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
-    grids['glb1-90km'] = ('d01',) # 90km GLB domain
+#     grids['glb1-90km'] = ('d01',) # 90km GLB domain
 #     grids['glb2'] = ('d01',) # a smaller GLB domain, based on Xiao et al. 2018
-    grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
-    grids['arb3'] = ('d01','d02','d03',) # WRF standard ARB inner domain
+#     grids['arb2'] = ('d01','d02') # WRF standard ARB inner domain
+#     grids['arb3'] = ('d01','d02','d03',) # WRF standard ARB inner domain
 #     grids['arb3'] = ('d03',) # WRF standard ARB inner domain
 # #     grids['ARB_small'] = ('025','05') # small custom geographic grids
 # #     grids['ARB_large'] = ('025','05') # large custom geographic grids
-    grids['cesm1x1'] = None # CESM 1-deg. grid
+#     grids['cesm1x1'] = None # CESM 1-deg. grid
 #     grids['NARR'] = None # NARR grid
 #     grids['CRU'] = None # CRU grid
 #     grids['GPCC'] = ('025',) # GPCC LTM grid
