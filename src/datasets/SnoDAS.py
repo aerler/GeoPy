@@ -116,7 +116,7 @@ def getFilenameFolder(varname=None, date=None, root_folder=root_folder, lgzip=Tr
     if varatts['variable_type'].lower() == 'driving': var_code = 'v0' + varatts['product_code'] + 'S'
     else: var_code = 'v1' + varatts['product_code']
     t_code = varatts['t_code']
-    if varatts['product_code'] == '1044' and date < dt.datetime(2010,02,17): t_code = 'T0001'
+    if varatts['product_code'] == '1044' and date < dt.datetime(2010,2,17): t_code = 'T0001'
     agg_code = varatts['v_code'] + t_code
     offset_code = 'P000' if varatts['variable_type'].lower() == 'diagnostic' else 'P001'
     I_code = 'H' if t_code.upper() == 'T0001' else 'D'
@@ -693,15 +693,14 @@ if __name__ == '__main__':
       chunks = netcdf_settings['chunksizes']
       chunk_settings = dict(time=chunks[0]*time_chunks,lat=chunks[1],lon=chunks[2])      
       ts_name = 'time_stamp'
-#       varlist = ['liqwatflx','precip','rho_snw',]
-      varlist = ['liqwatflx','rho_snw',]
+      varlist = ['liqwatflx','precip','rho_snw',]
       xds = loadSnoDAS_Daily(varlist=binary_varlist, time_chunks=time_chunks)
       # N.B.: need to avoid loading derived variables, because they may not have been extended yet (time length)
       print(xds)
       
       # optional slicing (time slicing completed below)
+      start_date = None; end_date = None # auto-detect available data
 #       start_date = '2011-01-01'; end_date = '2011-01-08'
-      start_date = None; end_date = None
 #       start_date = '2018-11-23'; end_date = '2019-02-19'
 #       lon_min = -85; lon_max = -75; lat_min = 40; lat_max = 45
 #       xvar1 = xvar1.loc[:,lat_min:lat_max,lon_min:lon_max]

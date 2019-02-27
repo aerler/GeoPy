@@ -1122,6 +1122,7 @@ def kde_eval(kde, support=None, n=0, fillValue=np.NaN):
 def kde_resample(kde, support=None, n=0, fillValue=np.NaN, dtype=np.float):
   if kde[0] is None: res = np.zeros(n)+fillValue 
   else: res = np.asarray(kde[0].resample(size=n), dtype=dtype).ravel()
+  res = res.astype(dtype, copy=False)
   return res
 
 # integrate KDE over a given support (from -inf)
@@ -1274,6 +1275,7 @@ def rv_resample(params, dist_type=None, n=None, fillValue=np.NaN, dtype=np.float
       res = np.zeros(n)+fillValue 
   else: 
       res = np.asarray(getattr(ss,dist_type).rvs(*params[:-2], loc=params[-2], scale=params[-1], size=n), dtype=dtype)
+  res = res.astype(dtype, copy=False)
   return res
 
 # perform a goodness of fit test

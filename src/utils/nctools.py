@@ -42,7 +42,8 @@ def checkFillValue(fillValue, dtype):
   if fillValue is not None:
     if isinstance(fillValue, np.ndarray): fillValue = np.asscalar(fillValue)
     fillValue = dtype.type(fillValue) # transform into appropriate numpy scalar
-    if not np.issubdtype(fillValue,dtype): raise TypeError, fillValue # convert to Numpy type      
+    if not np.issubdtype(fillValue,dtype): 
+        raise TypeError(fillValue) # convert to Numpy type      
   return fillValue
 
 def coerceAtts(atts):
@@ -132,16 +133,16 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   # use data array to infer dimensions and data type
   if data is not None:
     if not isinstance(data,np.ndarray): raise TypeError     
-    if len(dims) != data.ndim: raise NCDataError, "Number of dimensions in '%s' does not match data array."%(name,)    
+    if len(dims) != data.ndim: raise NCDataError("Number of dimensions in '%s' does not match data array."%(name,))    
     if shape: 
-      if shape != data.shape: raise NCDataError, "Shape of '%s' does not match data array."%(name,)
+      if shape != data.shape: raise NCDataError("Shape of '%s' does not match data array."%(name,))
     else: shape = data.shape
     # get dtype 
     if dtype: 
       if dtype != data.dtype: data = data.astype(dtype)
         # raise NCDataError, "Data type in '%s' does not match data array."%(name,) 
     else: dtype = data.dtype
-  if dtype is None: raise NCDataError, "Cannot construct a NetCDF Variable without a data array or an abstract data type."
+  if dtype is None: raise NCDataError("Cannot construct a NetCDF Variable without a data array or an abstract data type.")
   dtype = np.dtype(dtype) # use numpy types
   if dtype is np.dtype('bool_'): dtype = np.dtype('i1') # cast numpy bools as 8-bit integers
   lstrvar = ( dtype.kind == 'S' and not lusestr )
@@ -155,7 +156,7 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
         shape[i] = len(dst.dimensions[dim])
       else: 
         if shape[i] != len(dst.dimensions[dim]): 
-          raise NCAxisError, 'Size of dimension %s does not match records! %i != %i'%(dim,shape[i],len(dst.dimensions[dim]))
+          raise NCAxisError('Size of dimension %s does not match records! %i != %i'%(dim,shape[i],len(dst.dimensions[dim])))
     else: 
       dst.createDimension(dim, size=shape[i])
   dims = tuple(dims); shape = tuple(shape)
@@ -264,7 +265,7 @@ def writeNetCDF(dataset, ncfile, ncformat='NETCDF4', zlib=True, writeData=True, 
   if feedback: print("Writing to file: '{:s}'".format(ncfile)) # print feedback
   # open file
   if isinstance(ncfile,basestring): 
-    if not overwrite and os.path.exists(ncfile): raise IOError, "File '{:s}' already exists and 'overwrite' set to False.".format(ncfile)
+    if not overwrite and os.path.exists(ncfile): raise IOError("File '{:s}' already exists and 'overwrite' set to False.".format(ncfile))
     ncfile = nc.Dataset(ncfile, mode='w', format=ncformat, clobber=overwrite)
   elif not isinstance(ncfile,nc.Dataset): raise TypeError
   #if ncfile.mode == 'r': raise NCDataError, "Need write permission on NetCDF dataset."
