@@ -41,7 +41,7 @@ def test_func(n, wait=None, queue=None):
   global_var = n
 #   print(n,global_var)
   sleep(wait or n)  
-  print(n,global_var)
+  print((n,global_var))
   result = [n, 'hello', None]
   if queue is not None:
     queue.put(result)
@@ -54,22 +54,22 @@ def test_mq(func, NP):
   m = multiprocessing.Manager()
   q =m.Queue()
   pool = multiprocessing.Pool(processes=NP)
-  for n in xrange(NP):
+  for n in range(NP):
       pool.apply_async(func,(n,),dict(queue=q))
   pool.close()
   pool.join()
   results = []
-  for n in xrange(NP): 
+  for n in range(NP): 
     results.append(q.get())
   for result in results:
-    print result
+    print(result)
   
 def test_async(func, NP):
   ''' using pool async results '''
   print('\n   ***   using pool async results   ***\n')    
   pool = multiprocessing.Pool(processes=NP)
   results = []
-  for n in xrange(NP):
+  for n in range(NP):
       result = pool.apply_async(func,(n,))
       results.append(result)
   pool.close()
@@ -77,7 +77,7 @@ def test_async(func, NP):
   #print('\n   ***   joined   ***\n')
   results = [result.get() for result in results]
   for result in results:
-    print result
+    print(result)
 
 def test_func_ec(n, wait=1, lparallel=True, pidstr='', logger=None, ldebug=False):
   ''' test function that conforms to asyncPool requirements '''
@@ -117,7 +117,7 @@ class TrialNError():
     logger = kwargs['logger']
     # type checks
     if not isinstance(lparallel,bool): raise TypeError
-    if logger is not None and not isinstance(logger,basestring): raise TypeError
+    if logger is not None and not isinstance(logger,str): raise TypeError
 
     # logging
     if logger is None: 
@@ -231,7 +231,7 @@ def asyncPoolEC(func, args, kwargs, NP=1, ldebug=False, ltrialnerror=True):
   exitcode = 0
   for ec in exitcodes:
     #if lparallel: ec = ec.get() # not necessary, if callback is used
-    if ec < 0: raise ValueError, 'Exit codes have to be zero or positive!' 
+    if ec < 0: raise ValueError('Exit codes have to be zero or positive!') 
     elif ec > 0: ec = 1
     # else ec = 0, i.e. no errors
     exitcode += ec
@@ -267,8 +267,8 @@ def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, laax=Tr
   # compute
   if chunksize == 0: chunksize = 1 
   if not laax: kwargs['axis'] = 1 # for ufunc-like functions
-  elif len(kwargs) > 0: raise NotImplementedError, "np.apply_along_axis doesn't take kwargs"
-  if ldebug: print("Arraysize: {}, Chunksize: {}".format(arraysize,chunksize))
+  elif len(kwargs) > 0: raise NotImplementedError("np.apply_along_axis doesn't take kwargs")
+  if ldebug: print(("Arraysize: {}, Chunksize: {}".format(arraysize,chunksize)))
   if (NP == 1 or arraysize < 1.1*chunksize):
     # just use regular Numpy version... but always apply over last dimension
     if ldebug: print('\n   ***   Running in Serial Mode   ***')
@@ -277,7 +277,7 @@ def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, laax=Tr
   else:
     # adjust number of processors
     NP = int(min(NP,np.around(arraysize/chunksize)))
-    if ldebug: print('NP: {}'.format(NP))
+    if ldebug: print(('NP: {}'.format(NP)))
     # split up data
     if arraysize < (NP+1)*chunksize:
       cs = int(arraysize//NP) # chunksize; use integer division
@@ -287,15 +287,15 @@ def apply_along_axis(fct, axis, data, NP=0, chunksize=200, ldebug=False, laax=Tr
       nc = int(arraysize//chunksize) # number of chunks; use integer division
       if arraysize%chunksize != 0: nc += 1
       cs = chunksize
-    chunks = [data[i*cs:(i+1)*cs,:] for i in xrange(nc)] # views on subsets of the data
+    chunks = [data[i*cs:(i+1)*cs,:] for i in range(nc)] # views on subsets of the data
     # initialize worker pool
     if ldebug: print('\n   ***   firing up pool (using async results)   ***')
-    if ldebug: print('         OMP_NUM_THREADS = {:d}\n'.format(NP))
+    if ldebug: print(('         OMP_NUM_THREADS = {:d}\n'.format(NP)))
     pool = multiprocessing.Pool(processes=NP)
     results = [] # list of resulting chunks (concatenated later    
-    for n in xrange(nc):
+    for n in range(nc):
       # run computation on individual subsets/chunks
-      if ldebug: print('   Starting Chunk #{:d}'.format(n+1))
+      if ldebug: print(('   Starting Chunk #{:d}'.format(n+1)))
       if laax: # use Numpy's apply_along_axis
         result = pool.apply_async(np.apply_along_axis, (fct,1,chunks[n],)+args, kwargs)
       else: # for ufunc-like functions that can operate on multi-dimensional arrays
@@ -345,7 +345,7 @@ if __name__ == '__main__':
     assert data.shape == shape
     # parallel implementation using my wrapper
     pres = apply_along_axis(ff, axis, data, NP=2, ldebug=True, laax=laax)
-    print pres.shape
+    print(pres.shape)
     assert pres.shape == data.shape
     assert isZero(pres.mean(axis=axis)+kw) and isZero(pres.std(axis=axis)-1.)
     # straight-forward numpy version

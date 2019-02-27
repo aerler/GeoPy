@@ -8,7 +8,7 @@ A script to generate bias correction objects for WRF or other experiments; BiasC
 '''
 
 # external imports
-try: import cPickle as pickle # cPickle is the same, but faster
+try: import pickle as pickle # cPickle is the same, but faster
 except: import pickle
 import os, gzip # check if files are present etc.
 import numpy as np
@@ -29,7 +29,7 @@ def generateBiasCorrection(dataset, mode, dataargs, obs_dataset, bc_method, bc_a
                            ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to generate a bias correction objects for a given dataset '''
   # input checking
-  if not isinstance(dataset,basestring): raise TypeError
+  if not isinstance(dataset,str): raise TypeError
   if not isinstance(dataargs,dict): raise TypeError # all dataset arguments are kwargs 
   
   # logging
@@ -37,10 +37,10 @@ def generateBiasCorrection(dataset, mode, dataargs, obs_dataset, bc_method, bc_a
     logger = logging.getLogger() # new logger
     logger.addHandler(logging.StreamHandler())
   else:
-    if isinstance(logger,basestring): 
+    if isinstance(logger,str): 
       logger = logging.getLogger(name=logger) # connect to existing one
     elif not isinstance(logger,logging.Logger): 
-      raise TypeError, 'Expected logger ID/handle in logger KW; got {}'.format(str(logger))
+      raise TypeError('Expected logger ID/handle in logger KW; got {}'.format(str(logger)))
 
   ## extract meta data from arguments
   dataargs, loadfct, srcage, datamsgstr = getMetaData(dataset, mode, dataargs, lone=False)
@@ -56,7 +56,7 @@ def generateBiasCorrection(dataset, mode, dataargs, obs_dataset, bc_method, bc_a
   picklepath = '{:s}/{:s}'.format(avgfolder,picklefile)
   
   # check if we are overwriting an existing file
-  if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
+  if not os.path.exists(avgfolder): raise IOError("Dataset folder '{:s}' does not exist!".format(avgfolder))
   lskip = False # else just go ahead
   if os.path.exists(picklepath) and not loverwrite: 
     age = datetime.fromtimestamp(os.path.getmtime(picklepath))
@@ -81,13 +81,13 @@ def generateBiasCorrection(dataset, mode, dataargs, obs_dataset, bc_method, bc_a
     dataset = loadfct() # load source data
     # check period
     if 'period' in dataset.atts and dataargs.periodstr != dataset.atts.period: # a NetCDF attribute
-      raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,dataset.atts.period)
+      raise DateError("Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,dataset.atts.period))
 
     # print message
     if mode == 'climatology': opmsgstr = 'Bias-correcting Climatology ({:s}) using {:s}'.format(periodstr, BC.long_name)
     elif mode == 'time-series': opmsgstr = 'Bias-correcting Time-series using {:s}'.format(BC.long_name)
     elif mode[-5:] == '-mean': opmsgstr = 'Bias-correcting {:s}-Mean ({:s}) using {:s}'.format(mode[:-5], periodstr, BC.long_name)
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
+    else: raise NotImplementedError("Unrecognized Mode: '{:s}'".format(mode))        
     # print feedback to logger
     logger.info('\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
     if not lparallel and ldebug: logger.info('\n'+str(dataset)+'\n')
@@ -116,7 +116,7 @@ def generateBiasCorrection(dataset, mode, dataargs, obs_dataset, bc_method, bc_a
     with op(picklepath, 'wb') as filehandle:
       pickle.dump(BC, filehandle, protocol=-1) # should be new binary protocol
     if not os.path.exists(picklepath):
-      raise IOError, "Error while saving Pickle to '{0:s}'".format(picklepath)
+      raise IOError("Error while saving Pickle to '{0:s}'".format(picklepath))
 
       
     # write results to file
@@ -134,19 +134,19 @@ if __name__ == '__main__':
   
   ## read environment variables
   # number of processes NP 
-  if os.environ.has_key('PYAVG_THREADS'): 
+  if 'PYAVG_THREADS' in os.environ: 
     NP = int(os.environ['PYAVG_THREADS'])
   else: NP = None
   # run script in debug mode
-  if os.environ.has_key('PYAVG_DEBUG'): 
+  if 'PYAVG_DEBUG' in os.environ: 
     ldebug =  os.environ['PYAVG_DEBUG'] == 'DEBUG' 
   else: ldebug = False
   # run script in batch or interactive mode
-  if os.environ.has_key('PYAVG_BATCH'): 
+  if 'PYAVG_BATCH' in os.environ: 
     lbatch =  os.environ['PYAVG_BATCH'] == 'BATCH' 
   else: lbatch = False # for debugging
   # re-compute everything or just update 
-  if os.environ.has_key('PYAVG_OVERWRITE'): 
+  if 'PYAVG_OVERWRITE' in os.environ: 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
   
@@ -267,11 +267,11 @@ if __name__ == '__main__':
   if len(datasets) > 0:
     print('\n Bias-correcting Other Datasets:')
     print(datasets)
-  print('\n On Grid/Resolution:\n   {:s}'.format(grid))
-  print('\n Variable List: {:s}'.format('All' if varlist is None else printList(varlist)))
-  print('\n Bias-Correction Method: {:s}'.format(bc_method))
-  print('\n Observationa/Reference Dataset:\n   {:s}'.format(obs_dataset if ldebug else obs_dataset.name))
-  print('\n OVERWRITE: {0:s}\n'.format(str(loverwrite)))
+  print(('\n On Grid/Resolution:\n   {:s}'.format(grid)))
+  print(('\n Variable List: {:s}'.format('All' if varlist is None else printList(varlist))))
+  print(('\n Bias-Correction Method: {:s}'.format(bc_method)))
+  print(('\n Observationa/Reference Dataset:\n   {:s}'.format(obs_dataset if ldebug else obs_dataset.name)))
+  print(('\n OVERWRITE: {0:s}\n'.format(str(loverwrite))))
   
     
   ## construct argument list
@@ -282,7 +282,7 @@ if __name__ == '__main__':
     if mode[-5:] == '-mean': periodlist = periods
     elif mode == 'climatology': periodlist = periods
     elif mode == 'time-series': periodlist = (None,)
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
+    else: raise NotImplementedError("Unrecognized Mode: '{:s}'".format(mode))
 
       
     # observational datasets (grid depends on dataset!)
@@ -322,7 +322,7 @@ if __name__ == '__main__':
     for experiment in WRF_experiments:
       # effectively, loop over domains
       if WRF_domains is None:
-        tmpdom = range(1,experiment.domains+1)
+        tmpdom = list(range(1,experiment.domains+1))
       else: tmpdom = WRF_domains
       for domain in tmpdom:
         for period in periodlist:

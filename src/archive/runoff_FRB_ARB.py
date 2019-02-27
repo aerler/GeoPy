@@ -167,12 +167,12 @@ if __name__ == '__main__':
                        sharex=True, AxesGrid=False, direction='row',
                        axes_pad = 0., aspect=False, margins=(0.075,0.11,0.95,0.81),)
   # loop over panels/basins
-  for n,ax,basin in zip(xrange(nax),axes,basins):
+  for n,ax,basin in zip(range(nax),axes,basins):
 #   for basin in basins:
         
     # load meteo data
     if lfield: 
-      print ' - loading Data'
+      print(' - loading Data')
       unity = loadUnity_ShpTS(varlist=['precip'], shape='shpavg')
       unity = unity(shape_name=basin).load().climMean()
 #       unity['precip'][:] *= 86400. # scale with basin area
@@ -203,7 +203,7 @@ if __name__ == '__main__':
         s_sfroff = sfroff.copy(deepcopy=True)
         s_sfroff.name = 'Scaled Sfroff'
         s_sfroff *= discharge.getArray().mean()/sfroff.getArray().mean()
-        print s_sfroff 
+        print(s_sfroff) 
         varlist += [s_sfroff]
       elif lprecip:
         assert unity.precip.units == wrf.precip.units
@@ -230,7 +230,7 @@ if __name__ == '__main__':
     varatts['Difference'] = dict(color='red', linestyle='--')
     # add scaled variables
     satts = {}
-    for key,val in varatts.iteritems():
+    for key,val in varatts.items():
       val = val.copy(); val['linestyle'] = '-'
       satts['Scaled '+key] = val
     varatts.update(satts)
@@ -238,7 +238,7 @@ if __name__ == '__main__':
     if n == 0: legend = None
     else: legend = dict(loc=1, labelspacing=0.125, handlelength=2.5, handletextpad=0.5, fancybox=True)
     # plot runoff
-    print ' - creating plot'
+    print(' - creating plot')
     ax.title_size = 'large'
     ax.title_height = 0.04
     plts = ax.linePlot(varlist, plotatts=varatts, title=basin.long_name, hline=0, 
@@ -246,11 +246,11 @@ if __name__ == '__main__':
                        ylim=(-2.5,5), xlabel='Seasonal Cycle [{1:s}]', legend=legend, lprint=True)
                 
   if lprint:
-    print ' - writing file'
+    print(' - writing file')
     if ldisc: filename = 'runoff_discharge.pdf'
     elif lprecip: filename = 'runoff_precip.pdf'
     else: filename = 'runoff_test.pdf'
-    print('\nSaving figure in '+filename)
+    print(('\nSaving figure in '+filename))
     fig.savefig(paper_folder+filename, dpi=300) # save figure to pdf
     print(figure_folder)
       

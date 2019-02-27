@@ -43,19 +43,19 @@ variable_attributes_kgs = dict(runoff = dict(name='runoff', units='kg/m^2/s', at
                                level = dict(name='level', units='m', atts=dict(long_name='Water Level'))) # water level
 kgs_to_mms = {'kg/m^2/s':'mm/s', 'kg/s':'m^3/s'}
 variable_attributes_mms = deepcopy(variable_attributes_kgs)
-for varatts in variable_attributes_mms.values():
+for varatts in list(variable_attributes_mms.values()):
     varatts['units'] = kgs_to_mms.get(varatts['units'],varatts['units'])
 # list of variables to load
-variable_list = variable_attributes_kgs.keys() # also includes coordinate fields    
+variable_list = list(variable_attributes_kgs.keys()) # also includes coordinate fields    
 # alternate WSC runoff variable names (for use with aggregation mode)
 agg_varatts_kgs = dict()
-for varname,varatts in variable_attributes_kgs.items():
+for varname,varatts in list(variable_attributes_kgs.items()):
   tmpatts = varatts.copy() 
   if tmpatts['units'] == 'kg/m^2/s': tmpatts['name'] = 'runoff'  # always name 'runoff'
   elif tmpatts['units'] == 'kg/s': tmpatts['name'] = 'discharge'  # always name 'discharge'
   agg_varatts_kgs[varname] = tmpatts    
 agg_varatts_mms = deepcopy(agg_varatts_kgs)
-for varatts in agg_varatts_mms.values():
+for varatts in list(agg_varatts_mms.values()):
     varatts['units'] = kgs_to_mms.get(varatts['units'],varatts['units'])
 
 
@@ -69,7 +69,7 @@ def updateScalefactor(dataset, varlist, scalefactor=None):
     # scalefactor string
     scalestr = lambda s: None if s == 1 else '10^{:d}'.format(-1*int(np.log10(s)))
     # loop over variables
-    for varname,scalefactor in vardict.items():
+    for varname,scalefactor in list(vardict.items()):
         if varname in dataset and scalefactor is not None:
             var = dataset[varname]
             oldstr = scalestr(var.plot.scalefactor)
@@ -332,14 +332,14 @@ def getGageStation(basin=None, station=None, name=None, folder=None, river=None,
     return station # very simple shortcut!
   # resolve basin
   if basin_list is not None:
-      if isinstance(basin,basestring): 
+      if isinstance(basin,str): 
           # select basin from basin list
           if basin not in basin_list: raise GageStationError(basin)
           else: basin = basin_list[basin]
-      elif isinstance(station,basestring) and basin is None:
+      elif isinstance(station,str) and basin is None:
           # search for station in basin list to determine basin
-          for basin_set in basin_list.values():
-              for station_list in basin_set.stations.values():
+          for basin_set in list(basin_list.values()):
+              for station_list in list(basin_set.stations.values()):
                   if station in station_list:
                       basin = basin_set # station found!
                       break # break inner loop
@@ -368,7 +368,7 @@ def getGageStation(basin=None, station=None, name=None, folder=None, river=None,
   elif river is not None and river not in name:
       name = '{}_{}'.format(river,name)
   # if we are not done yet, make sure we have valid folder and file names now!
-  if not (isinstance(folder,basestring) and isinstance(name,basestring)):
+  if not (isinstance(folder,str) and isinstance(name,str)):
     raise GageStationError('Specify either basin (and station) or folder & station prefix/name.')
     # N.B.: this Error also indicates that no gage station is available
   if not os.path.exists(folder): raise IOError(folder)
@@ -474,7 +474,7 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
       tmpvar = Variable(axes=[climAxis], data=tmpdata, atts=varatts['roff_min'])
       dataset.addVariable(tmpvar, copy=False)
   else: 
-    raise NotImplementedError, "Time axis mode '{}' is not supported.".format(mode)
+    raise NotImplementedError("Time axis mode '{}' is not supported.".format(mode))
   # adjust scalefactors, if necessary
   if scalefactors:
       if isinstance(scalefactors,dict):
@@ -583,7 +583,7 @@ def selectStations(datasets, shpaxis='shape', imaster=None, linplace=True, lall=
   tests = [] # a list of tests to run on each station
   #loadlist =  (datasets[imaster],) if not lall and imaster is not None else datasets 
   # test definition
-  for key,val in kwcond.iteritems():
+  for key,val in kwcond.items():
     key = key.lower()
     if key[:4] == 'encl' or key[:4] == 'cont':
       val = bool(val)
@@ -603,7 +603,7 @@ def selectStations(datasets, shpaxis='shape', imaster=None, linplace=True, lall=
       val = val*1e6 # units in km^2  
       tests.append(functools.partial(test_maxa, val))
     else:
-      raise NotImplementedError, "Unknown condition/test: '{:s}'".format(key)
+      raise NotImplementedError("Unknown condition/test: '{:s}'".format(key))
   # define test function (all tests must pass)
   if len(tests) > 0:
     testFct = functools.partial(apply_test_suite, tests)
@@ -638,28 +638,28 @@ if __name__ == '__main__':
   # load a random station
   stnds = loadGageStation(basin=basin_name, basin_list=basin_list, station=station,
                           scalefactors=1e-4, lkgs=True)
-  print(stnds.discharge.plot)
+  print((stnds.discharge.plot))
   
   # verify basin info
   basin_set = basin_list[basin_name]
-  print basin_set.long_name
-  print basin_set.stations
+  print(basin_set.long_name)
+  print(basin_set.stations)
   
   # load basins
   basin = basin_list[basin_name]
-  print basin.long_name
-  print basin
+  print(basin.long_name)
+  print(basin)
   assert basin.name == basin_name, basin.name
   
   # load station data
   station = basin.getMainGage(aggregation=None, lkgs=False)
-  print
-  print station
-  print
+  print()
+  print(station)
+  print()
   assert station.atts.ID == loadGageStation(basin=basin_name, basin_list=basin_list).atts.ID
-  print station.discharge.climMean()[:]
+  print(station.discharge.climMean()[:])
   
   # print basins
-  print
-  for bsn in basin_list.iterkeys():
-    print bsn
+  print()
+  for bsn in basin_list.keys():
+    print(bsn)

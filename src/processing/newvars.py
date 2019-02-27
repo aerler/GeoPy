@@ -84,13 +84,13 @@ def computeNetRadiation(dataset, asVar=True, lA=True, lrad=True, name='netrad'):
   elif 'SWD' in dataset and 'GLW' in dataset and 'e' in dataset:
     if not lA: A = 0.23 # reference Albedo for grass
     elif lA and 'A' in dataset: A = dataset['A'][:]
-    else: raise VariableError, "Actual Albedo is not available for radiation calculation."
+    else: raise VariableError("Actual Albedo is not available for radiation calculation.")
     if 'TSmin' in dataset and 'TSmax' in dataset: Ts = dataset['TSmin'][:]; TSmax = dataset['TSmax'][:]
     elif 'TSmean' in dataset: Ts = dataset['TSmean'][:]; TSmax = None
     elif 'Ts' in dataset: Ts = dataset['Ts'][:]; TSmax = None
-    else: raise VariableError, "Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation."
+    else: raise VariableError("Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation.")
     data = radiation_black(A,dataset['SWD'][:],dataset['GLW'][:],dataset['e'][:],Ts,TSmax) # downward total net radiation
-  else: raise VariableError, "Cannot determine net radiation calculation."
+  else: raise VariableError("Cannot determine net radiation calculation.")
   # cast as Variable
   if asVar:
     var = Variable(data=data, name=name, units='W/m^2', axes=dataset['SWD'].axes)
@@ -106,11 +106,11 @@ def computeVaporDeficit(dataset):
   if 'Q2' in dataset: ea = dataset['Q2'][:] # actual vapor pressure
   elif 'q2' in dataset and 'ps' in dataset: # water vapor mixing ratio
     ea = dataset['q2'][:] * dataset['ps'][:] * 28.96 / 18.02
-  else: raise VariableError, "Cannot determine 2m water vapor pressure for PET calculation."
+  else: raise VariableError("Cannot determine 2m water vapor pressure for PET calculation.")
   # get saturation water vapor
   if 'Tmin' in dataset and 'Tmax' in dataset: es = e_sat(dataset['Tmin'][:],dataset['Tmax'][:])
   # else: Es = e_sat(T) # backup, but not very accurate
-  else: raise VariableError, "'Tmin' and 'Tmax' are required to compute saturation water vapor pressure for PET calculation."
+  else: raise VariableError("'Tmin' and 'Tmax' are required to compute saturation water vapor pressure for PET calculation.")
   var = Variable(data=es-ea, name='vapdef', units='Pa', axes=dataset['Tmin'].axes)
   # return new variable
   return var
@@ -127,27 +127,27 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False):
   else: Rn = computeNetRadiation(dataset, asVar=False) # try to compute
   # heat flux in and out of the ground
   if 'grdflx' in dataset: G = dataset['grdflx'][:] # heat release by the soil
-  else: raise VariableError, "Cannot determine soil heat flux for PET calculation."
+  else: raise VariableError("Cannot determine soil heat flux for PET calculation.")
   # get wind speed
   if 'U2' in dataset: u2 = dataset['U2'][:]
   elif lmeans and 'U10' in dataset: u2 = wind(dataset['U10'][:], z=10)
   elif 'u10' in dataset and 'v10' in dataset: u2 = wind(u=dataset['u10'][:],v=dataset['v10'][:], z=10)
-  else: raise VariableError, "Cannot determine 2m wind speed for PET calculation."
+  else: raise VariableError("Cannot determine 2m wind speed for PET calculation.")
   # get psychrometric variables
   if 'ps' in dataset: p = dataset['ps'][:]
-  else: raise VariableError, "Cannot determine surface air pressure for PET calculation."
+  else: raise VariableError("Cannot determine surface air pressure for PET calculation.")
   g = gamma(p) # psychrometric constant (pressure-dependent)
   if 'Q2' in dataset: ea = dataset['Q2'][:]
   elif 'q2' in dataset: ea = dataset['q2'][:] * dataset['ps'][:] * 28.96 / 18.02
-  else: raise VariableError, "Cannot determine 2m water vapor pressure for PET calculation."
+  else: raise VariableError("Cannot determine 2m water vapor pressure for PET calculation.")
   # get temperature
   if lmeans and 'Tmean' in dataset: T = dataset['Tmean'][:]
   elif 'T2' in dataset: T = dataset['T2'][:]
-  else: raise VariableError, "Cannot determine 2m mean temperature for PET calculation."
+  else: raise VariableError("Cannot determine 2m mean temperature for PET calculation.")
   # get saturation water vapor
   if 'Tmin' in dataset and 'Tmax' in dataset: es = e_sat(dataset['Tmin'][:],dataset['Tmax'][:])
   # else: Es = e_sat(T) # backup, but not very accurate
-  else: raise VariableError, "'Tmin' and 'Tmax' are required to compute saturation water vapor pressure for PET calculation."
+  else: raise VariableError("'Tmin' and 'Tmax' are required to compute saturation water vapor pressure for PET calculation.")
   D = Delta(T) # slope of saturation vapor pressure w.r.t. temperature
   # compute potential evapotranspiration according to Penman-Monteith method 
   # (http://www.fao.org/docrep/x0490e/x0490e06.htm#fao%20penman%20monteith%20equation)
@@ -175,7 +175,7 @@ def computePotEvapTh(dataset):
   raise NotImplementedError
   # check prerequisites
   for pv in (): 
-    if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for potential evapo-transpiration not found.".format(pv)
+    if pv not in dataset: raise VariableError("Prerequisite '{:s}' for potential evapo-transpiration not found.".format(pv))
     else: dataset[pv].load() # load data for computation
   # compute waterflux (returns a Variable instance)
   var = dataset['']
@@ -189,7 +189,7 @@ def computeTotalPrecip(dataset):
   ''' function to recompute total precip from solid and liquid precip '''
   # check prerequisites
   for pv in ('liqprec','solprec'): 
-    if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for net water flux not found.".format(pv)
+    if pv not in dataset: raise VariableError("Prerequisite '{:s}' for net water flux not found.".format(pv))
     else: dataset[pv].load() # load data for computation
   # recompute total precip (returns a Variable instance)
   var = dataset['liqprec'] + dataset['solprec']
@@ -204,18 +204,18 @@ def computeWaterFlux(dataset):
   # check prerequisites
   if 'liqprec' in dataset: # this is the preferred computation
     for pv in ('evap','snwmlt'): 
-      if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for net water flux not found.".format(pv)
+      if pv not in dataset: raise VariableError("Prerequisite '{:s}' for net water flux not found.".format(pv))
       else: dataset[pv].load() # load data for computation
     # compute waterflux (returns a Variable instance)
     var = dataset['liqprec'] + dataset['snwmlt'] - dataset['evap']
   elif 'solprec' in dataset: # alternative computation, mainly for CESM
     for pv in ('precip','evap','snwmlt'): 
-      if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for net water flux not found.".format(pv)
+      if pv not in dataset: raise VariableError("Prerequisite '{:s}' for net water flux not found.".format(pv))
       else: dataset[pv].load() # load data for computation
     # compute waterflux (returns a Variable instance)
     var = dataset['precip'] - dataset['solprec'] + dataset['snwmlt'] - dataset['evap']
   else: 
-    raise VariableError, "No liquid or solid precip found to compute net water flux."
+    raise VariableError("No liquid or solid precip found to compute net water flux.")
   var.name = 'waterflx' # give correct name (units should be correct)
   assert var.units == dataset['evap'].units, var
   # return new variable
@@ -227,18 +227,18 @@ def computeLiquidWaterFlux(dataset):
   # check prerequisites
   if 'liqprec' in dataset: # this is the preferred computation
     for pv in ('liqprec','snwmlt'): 
-      if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for liquid water flux not found.".format(pv)
+      if pv not in dataset: raise VariableError("Prerequisite '{:s}' for liquid water flux not found.".format(pv))
       else: dataset[pv].load() # load data for computation
     # compute waterflux (returns a Variable instance)
     var = dataset['liqprec'] + dataset['snwmlt']
   elif 'solprec' in dataset: # alternative computation, mainly for CESM
     for pv in ('precip','snwmlt'): 
-      if pv not in dataset: raise VariableError, "Prerequisite '{:s}' for net water flux not found.".format(pv)
+      if pv not in dataset: raise VariableError("Prerequisite '{:s}' for net water flux not found.".format(pv))
       else: dataset[pv].load() # load data for computation
     # compute waterflux (returns a Variable instance)
     var = dataset['precip'] - dataset['solprec'] + dataset['snwmlt']
   else: 
-    raise VariableError, "No liquid or solid precip found to compute net water flux."
+    raise VariableError("No liquid or solid precip found to compute net water flux.")
   var.name = 'liqwatflx' # give correct name (units should be correct)
   assert var.units == dataset['snwmlt'].units, var
   # return new variable
@@ -269,10 +269,10 @@ if __name__ == '__main__':
     print(var)
     print('')
     print('PET using MEAN variables from WRF xtrm files:')
-    print(var.min(),var.mean(),var.std(),var.max())
+    print((var.min(),var.mean(),var.std(),var.max()))
     print('PET using averages from WRF srfc files:')
     var = computePotEvapPM(dataset, lterms=False, lmeans=False)
-    print(var.min(),var.mean(),var.std(),var.max())
+    print((var.min(),var.mean(),var.std(),var.max()))
     import numpy as np
-    print('Ratio of Wind Terms:', np.mean( dataset['U10'][:] / np.sqrt(5*dataset['u10'][:]**2 + 10*dataset['v10'][:]**2) ) )
-    print('Difference of Temperature Terms:', np.mean( dataset['T2'][:] - dataset['Tmean'][:]) )
+    print(('Ratio of Wind Terms:', np.mean( dataset['U10'][:] / np.sqrt(5*dataset['u10'][:]**2 + 10*dataset['v10'][:]**2) ) ))
+    print(('Difference of Temperature Terms:', np.mean( dataset['T2'][:] - dataset['Tmean'][:]) ))

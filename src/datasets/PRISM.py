@@ -48,7 +48,7 @@ varatts = dict(T2 = dict(name='T2', units='K', atts=dict(long_name='Average 2m T
                lat  = dict(name='lat', units='deg N', atts=dict(long_name='Latitude'))) # geographic latitude field
 # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
 # list of variables to load
-varlist = varatts.keys() # also includes coordinate fields    
+varlist = list(varatts.keys()) # also includes coordinate fields    
 
 
 ## Functions that provide access to well-formatted PRISM NetCDF files
@@ -138,8 +138,8 @@ def loadASCII(var, fileformat='BCY_%s.%02ia', arrayshape=(601,697)):
   # allocate space
   data = zeros((ntime,)+arrayshape) # time = ntime, (x, y) = arrayshape  
   # loop over month
-  print('  Loading variable %s from file.'%(var))
-  for m in xrange(ntime):
+  print(('  Loading variable %s from file.'%(var)))
+  for m in range(ntime):
     # read data into array
     filename = fileformat%(var,m+1)
     tmp = genfromtxt(datadir+filename, dtype=float, skip_header=5, 
@@ -182,9 +182,9 @@ if __name__ == '__main__':
     stnds = loadPRISM_Stn(station='ecprecip')
     print(stnds)
     print('')
-    print(dataset.geotransform)
-    print(dataset.precip.masked)
-    print(dataset.precip.getArray().mean())
+    print((dataset.geotransform))
+    print((dataset.precip.masked))
+    print((dataset.precip.getArray().mean()))
     print('')
     # display
     import pylab as pyl
@@ -200,8 +200,8 @@ if __name__ == '__main__':
     else: dataset = loadPRISM_Stn(station=pntset)
     print(dataset)
     print('')
-    print(dataset.time)
-    print(dataset.time.coord)
+    print((dataset.time))
+    print((dataset.time.coord))
 
   
   ## convert ASCII files to NetCDF
@@ -218,7 +218,7 @@ if __name__ == '__main__':
     # rescale data (divide by 100 * days per month * seconds per day)
     ppt /= days_per_month.reshape((len(days_per_month),1,1)) * 8640000. # convert to kg/m^2/s
     # print diagnostic
-    print('Mean Precipitation: %f kg/m^2/s'%ppt.mean())
+    print(('Mean Precipitation: %f kg/m^2/s'%ppt.mean()))
     data['precip'] = ppt
     
     # read temperature data
@@ -228,7 +228,7 @@ if __name__ == '__main__':
 #     Tavg = loadASCII('Tavg'); Tavg /= 100.; Tavg += 273.15
     T2 = ( Tmin + Tmax ) / 2. # temporary solution for Tavg, because the data seems to be corrupted
     # print diagnostic
-    print('Min/Mean/Max Temperature: %3.1f / %3.1f / %3.1f K'%(Tmin.mean(),T2.mean(),Tmax.mean()))
+    print(('Min/Mean/Max Temperature: %3.1f / %3.1f / %3.1f K'%(Tmin.mean(),T2.mean(),Tmax.mean())))
     data['T2'] = T2; data['Tmin'] = Tmin; data['Tmax'] = Tmax
     
     # get coordinate axes
@@ -244,7 +244,7 @@ if __name__ == '__main__':
     
     # initialize netcdf dataset structure
     outfile = avgfolder+'prism_clim.nc' # avgfile
-    print('\nWriting data to disk: %s'%outfile)
+    print(('\nWriting data to disk: %s'%outfile))
     # create groups for different resolution
     outdata = nc.Dataset(outfile, 'w', format='NETCDF4') # outgrp.createGroup('fineres')
     # global attributes
@@ -253,12 +253,12 @@ if __name__ == '__main__':
     
     # create ncatts dictionary from varatts
     ncatts = dict()
-    for var,atts in varatts.iteritems():
+    for var,atts in varatts.items():
       newatts = dict() # new atts dictionary
       # and iterate over atts dict contents
-      for key1,val1 in atts.iteritems():
+      for key1,val1 in atts.items():
         if isinstance(val1,dict): # flatten nested dicts
-          for key2,val2 in val1.iteritems():
+          for key2,val2 in val1.items():
             newatts[key2] = val2 
         else: newatts[key1] = val1
       ncatts[var] = newatts      
@@ -276,7 +276,7 @@ if __name__ == '__main__':
     add_coord(outdata, 'lon', data=lon, atts=ncatts['lat'])
     # create climatology variables  
     fillValue = -9999; axes = ('time','lat','lon')
-    for name,field in data.iteritems():
+    for name,field in data.items():
       add_var(outdata, name, axes, data=field.filled(fillValue), atts=ncatts[name], fillValue=fillValue)
     # create land/sea/no-data mask
     mask = ma.getmaskarray(data['precip'])[0,:,:]
@@ -286,13 +286,13 @@ if __name__ == '__main__':
     
     # dataset feedback and diagnostics
     # print dataset meta data
-    print outdata
+    print(outdata)
     # print dimensions meta data
-    for dimobj in outdata.dimensions.values():
-      print dimobj
+    for dimobj in list(outdata.dimensions.values()):
+      print(dimobj)
     # print variable meta data
-    for varobj in outdata.variables.values():
-      print varobj
+    for varobj in list(outdata.variables.values()):
+      print(varobj)
     
     # close netcdf files  
     outdata.close() # output

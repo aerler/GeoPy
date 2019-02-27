@@ -51,10 +51,10 @@ class Variables(unittest.TestCase):
   
   def output(self, var, all, slice=None):
     # function to generate diagnostic output for a new variable  
-    print
-    print
-    print(' * '+var.atts['long_name']+' ['+var.atts['units']+']')
-    print(var.axes)  
+    print()
+    print()
+    print((' * '+var.atts['long_name']+' ['+var.atts['units']+']'))
+    print((var.axes))  
     if all:
       # compute slice only once and load in memory
       if slice is None: slice = self.slice
@@ -64,10 +64,10 @@ class Variables(unittest.TestCase):
       mean = slicedVar.mean()
       max = slicedVar.max()
       # print output
-      print
-      print('    min: %g'%(min))    
-      print('   mean: %g'%(mean))
-      print('    max: %g'%(max))
+      print()
+      print(('    min: %g'%(min)))    
+      print(('   mean: %g'%(mean)))
+      print(('    max: %g'%(max)))
       
   def makePlot(self, var, z=None, plotAxis='', slice=None, xlim=None, ylim=None):
     from numpy import mean
@@ -82,7 +82,7 @@ class Variables(unittest.TestCase):
       if plotAxis=='z' or plotAxis=='eta': vertical = True
       else: vertical = False   
     # collapse all dimensions except plotAxis 
-    for dim,lim in slice.iteritems():
+    for dim,lim in slice.items():
       if not dim==plotAxis: slice[dim] = mean(lim)  
     # construct plot
     ax = pyl.axes()
@@ -112,7 +112,7 @@ class Variables(unittest.TestCase):
 
   def testLoad(self):
     # print final dataset
-    print(self.data)
+    print((self.data))
     
   def testIntersect(self):
     from pygeode.formats.netcdf import open     
@@ -249,7 +249,7 @@ class Variables(unittest.TestCase):
 def suite(tests=[]):    
   # creates a testsuite  
   if tests != []: # only include sets given in list 
-    s = unittest.TestSuite(map(Variables,tests))
+    s = unittest.TestSuite(list(map(Variables,tests)))
   else: # test everything
     s = unittest.TestLoader().loadTestsFromTestCase(Variables)
   return s

@@ -32,7 +32,7 @@ def asVarNC(var=None, ncvar=None, mode='rw', axes=None, deepcopy=False, **kwargs
       if not len(axes) == var.ndim: raise AxisError
       if var.shape is not None and not var.shape == tuple([len(ax) for ax in axes]): raise AxisError  
     else: 
-      raise TypeError, "Argument 'axes' has to be of type dict, list, or tuple."
+      raise TypeError("Argument 'axes' has to be of type dict, list, or tuple.")
   else: axes = var.axes
   # create new VarNC instance (using the ncvar NetCDF Variable instance as file reference)
   if not isinstance(var,Variable): raise TypeError
@@ -68,10 +68,10 @@ def asDatasetNC(dataset=None, ncfile=None, mode='rw', deepcopy=False, writeData=
   atts = kwargs.pop('atts',dataset.atts.copy()) # name and title are also stored in atts!
   newset = DatasetNetCDF(dataset=ncfile, atts=atts, mode=mode, ncformat=ncformat, **kwargs)
   # copy axes data/coordinates
-  for axname,ax in dataset.axes.iteritems():
+  for axname,ax in dataset.axes.items():
     if ax.data: newset.axes[axname].coord = ax.getArray(unmask=False, copy=True)
   # copy variable data
-  for varname,var in dataset.variables.iteritems():
+  for varname,var in dataset.variables.items():
     if var.data: newset.variables[varname].load(data=var.getArray(unmask=False, copy=deepcopy))
   # return dataset
   return newset
@@ -86,7 +86,7 @@ class NoNetCDF(object):
   def __call__(self, ncvar, asNC=False, asVar=True, linplace=False, **kwargs):
     ''' Perform sanity checks, then execute operation, and return result. '''
     # input checks
-    if linplace or asNC: raise NotImplementedError, "This operation does not work on VarNC instances!"
+    if linplace or asNC: raise NotImplementedError("This operation does not work on VarNC instances!")
     # create regular Variable instance
     if not ncvar.data: ncvar.load() # load data
     nonc = ncvar.copy(asNC=False, deepcopy=False)
@@ -129,28 +129,28 @@ class VarNC(Variable):
     if isinstance(ncvar,nc.Dataset):
       #if 'w' not in mode: mode += 'w'
       if name is None and isinstance(atts,dict): name = atts.get('name',None)      
-      dims = [ax if isinstance(ax,basestring) else ax.name for ax in axes] # list axes names
-      dimshape = [None if isinstance(ax,basestring) else len(ax) for ax in axes]
+      dims = [ax if isinstance(ax,str) else ax.name for ax in axes] # list axes names
+      dimshape = [None if isinstance(ax,str) else len(ax) for ax in axes]
       # construct a new netcdf variable in the given dataset and determine dtype
       if dtype is None and data is not None: dtype = data.dtype
       if name in ncvar.variables: 
         ncvar = ncvar.variables[name] # hope it is the right one...
         if dtype is None: dtype = ncvar.dtype
       else: 
-        if dtype is None: raise TypeError, "No data (-type) to construct NetCDF variable!"
+        if dtype is None: raise TypeError("No data (-type) to construct NetCDF variable!")
         ncvar = add_var(ncvar, name, dims=dims, shape=dimshape, atts=atts, dtype=dtype, fillValue=fillValue, zlib=True)
     elif isinstance(ncvar,nc.Variable):
       if dtype is None: dtype = ncvar.dtype
     if dtype is not None: dtype = np.dtype(dtype) # proper formatting
     # some type checking
-    if not isinstance(ncvar,nc.Variable): raise TypeError, "Argument 'ncvar' has to be a NetCDF Variable or Dataset."        
+    if not isinstance(ncvar,nc.Variable): raise TypeError("Argument 'ncvar' has to be a NetCDF Variable or Dataset.")        
     if data is not None:
       if axes is not None:
           if data.shape != tuple(len(ax) for ax in axes): raise DataError
       elif data.shape != ncvar.shape: 
           raise DataError
     if data is not None and slices is not None and len(slices) != data.ndim:
-      raise DataError, "Data and slice have incompatible dimensions!"      
+      raise DataError("Data and slice have incompatible dimensions!")      
     lstrvar = False; strlen = None
     if dtype is not None: 
       if dtype.kind == 'S' and dtype.itemsize > 1:
@@ -177,13 +177,13 @@ class VarNC(Variable):
         if lstrvar: axes = tuple([str(dim) for dim in ncvar.dimensions[:-1]]) # omit last dim
         else: axes = tuple([str(dim) for dim in ncvar.dimensions]) # have to get rid of unicode
       elif lstrvar:
-        if len(ncvar.shape[:-1]) != len(axes) and len(ncvar.shape[:-1]) != len(slices): raise AxisError,ncvar
-        if ncvar.shape[-1] != dtype.itemsize: raise AxisError, ncvar
+        if len(ncvar.shape[:-1]) != len(axes) and len(ncvar.shape[:-1]) != len(slices): raise AxisError(ncvar)
+        if ncvar.shape[-1] != dtype.itemsize: raise AxisError(ncvar)
         assert strlen == dtype.itemsize
       elif slices is not None: 
         if not isinstance(slices, (list,tuple)): raise TypeError
-        elif not squeeze and ncvar.ndim != len(slices): raise AxisError, (slices,ncvar)
-        elif squeeze and len([l for l in ncvar.shape if l > 1]) != len(slices): raise AxisError, (slices,ncvar)
+        elif not squeeze and ncvar.ndim != len(slices): raise AxisError(slices,ncvar)
+        elif squeeze and len([l for l in ncvar.shape if l > 1]) != len(slices): raise AxisError(slices,ncvar)
       elif data is None:
         axshape = tuple(ax._len for ax in axes)
         # N.B.: Because this constructor is also used in Axis initialization, and the axis of an Axis 
@@ -191,7 +191,7 @@ class VarNC(Variable):
         if ncvar.ndim != len(axes) or ncvar.shape != axshape:
           sqshape = tuple(axl for axl in ncvar.shape if axl > 1) # try again, without singleton dimensions
           if len(sqshape) != len(axshape) or sqshape != axshape: 
-            raise AxisError, ncvar          
+            raise AxisError(ncvar)          
       # N.B.: slicing with index lists can change the shape
     else: ncatts = atts
     # check transform
@@ -211,7 +211,7 @@ class VarNC(Variable):
     self.ncstrlen = strlen
     if squeeze: self.squeeze() # may set 'squeezed' to True
     # handle data
-    if load and data is not None: raise DataError, "Arguments 'load' and 'data' are mutually exclusive, i.e. only one can be used!"
+    if load and data is not None: raise DataError("Arguments 'load' and 'data' are mutually exclusive, i.e. only one can be used!")
     elif load and 'r' in self.mode: self.load(data=None) # load data from file
     # N.B.: load without a data argument will automatically load the specified slice
     elif data is not None: self.load(data=data) # load data from array
@@ -245,7 +245,7 @@ class VarNC(Variable):
         if self.ndim == 0 and self.ncvar.ndim == ( 2 if self.ncstrvar else 1 ):
             slcs = 0 # special case to produce scalar
         else:
-            for i in xrange(self.ncvar.ndim):
+            for i in range(self.ncvar.ndim):
               if self.ncvar.shape[i] == 1: slcs.insert(i, 0) # '0' automatically squeezes out this dimension upon retrieval
       # check for existing slicing directive
       if self.slices:
@@ -411,10 +411,10 @@ class VarNC(Variable):
     ''' Method to load data from NetCDF file into RAM. '''
     slcs = self.slices
     # optional slicing
-    if any([self.hasAxis(ax) for ax in kwargs.iterkeys()]):
-      if slcs is not None: raise NotImplementedError, "Currently, VarNC instances can only be sliced once."
+    if any([self.hasAxis(ax) for ax in kwargs.keys()]):
+      if slcs is not None: raise NotImplementedError("Currently, VarNC instances can only be sliced once.")
       # extract axes; remove axes from kwargs to avoid slicing again in super-call
-      axes = {ax:kwargs.pop(ax) for ax in kwargs.iterkeys() if self.hasAxis(ax)}
+      axes = {ax:kwargs.pop(ax) for ax in kwargs.keys() if self.hasAxis(ax)}
       if len(axes) > 0: 
         self, slcs = self.slicing(asVar=True, lslices=True, linplace=True, **axes) # this is poorly tested...
         if data is not None and data.shape != self.shape: data = data.__getitem__(slcs) # slice input data, if appropriate 
@@ -429,11 +429,11 @@ class VarNC(Variable):
     elif all(checkIndex(data)):
       if isinstance(data,(list,tuple)):
         if len(data) != len(self.shape): 
-          raise IndexError, 'Length of index tuple has to equal to the number of dimensions!'       
+          raise IndexError('Length of index tuple has to equal to the number of dimensions!')       
         for ax,idx in zip(self.axes,data): ax.coord = idx
         data = self.__getitem__(data) # load slice
       else: 
-        if self.ndim != 1: raise IndexError, 'Multi-dimensional variable have to be indexed using tuples!'
+        if self.ndim != 1: raise IndexError('Multi-dimensional variable have to be indexed using tuples!')
         if self != self.axes[0]: ax.coord = data # prevent infinite loop due to self-reference
         data = self.__getitem__(idx=data) # load slice
     else: 
@@ -450,7 +450,7 @@ class VarNC(Variable):
       elif not self.squeezed and ncvar.shape == self.shape: pass
       elif self.squeezed and tuple([n for n in ncvar.shape if n > 1]) == self.shape: pass
       else: 
-        raise NetCDFError, "Cannot write to NetCDF variable: array shape in memory and on disk are inconsistent!"
+        raise NetCDFError("Cannot write to NetCDF variable: array shape in memory and on disk are inconsistent!")
       if self.data:
         fillValue = self.fillValue
         # special handling of some data types
@@ -478,7 +478,7 @@ class VarNC(Variable):
       # now sync dataset
       ncvar.group().sync()     
     else: 
-      raise PermissionError, "Cannot write to NetCDF variable: writing (mode = 'w') not enabled!"
+      raise PermissionError("Cannot write to NetCDF variable: writing (mode = 'w') not enabled!")
     # for convenience...
     return self
      
@@ -569,10 +569,10 @@ class DatasetNetCDF(Dataset):
         #filelist = [dataset.filepath() for dataset in datasets if hasattr(dataset,'filepath')]
         # N.B.: apparently filepath() tends to cause the netCDF library to crash... need to find a workaround...
       # ... create a new NetCDF file, ...
-      elif isinstance(mode,basestring) and 'w' == mode and filelist:    
+      elif isinstance(mode,str) and 'w' == mode and filelist:    
         if isinstance(filelist,col.Iterable): filelist = filelist[0]
         filename = folder + filelist; filelist = [filename] # filelist is used later
-        if os.path.exists(filename): raise NetCDFError, "File '%s' already exits - aborting!"%filename
+        if os.path.exists(filename): raise NetCDFError("File '%s' already exits - aborting!"%filename)
         if dataset: # add variables in dataset
           if not isinstance(dataset,Dataset): raise TypeError        
           dataset.atts.update(coerceAtts(atts))
@@ -596,11 +596,11 @@ class DatasetNetCDF(Dataset):
         # translate modes
         ncmode = 'a' if 'r' in mode and 'w' in mode else mode # 'rw' -> 'a' for "append"     
         # open netcdf datasets from netcdf files
-        if not isinstance(filelist,col.Iterable): raise TypeError, filelist
+        if not isinstance(filelist,col.Iterable): raise TypeError(filelist)
         # check if file exists
         for filename in filelist:
           if not os.path.exists(folder+filename): 
-            raise FileError, "File {0:s} not found in folder {1:s}".format(filename,folder)     
+            raise FileError("File {0:s} not found in folder {1:s}".format(filename,folder))     
         datasets = []; filenames = []
         for ncfile in filelist:        
           try: # NetCDF4 error messages are not very helpful...
@@ -612,7 +612,7 @@ class DatasetNetCDF(Dataset):
               tmpfile = folder+ncfile
               datasets.append(nc.Dataset(tmpfile, mode=ncmode, format=ncformat, clobber=False))
           except RuntimeError:
-            raise NetCDFError, "Error reading file '{0:s}' in folder {1:s}".format(ncfile,folder)
+            raise NetCDFError("Error reading file '{0:s}' in folder {1:s}".format(ncfile,folder))
           filenames.append(tmpfile)
         filelist = filenames # original file list, absolute path        
       # from here on, dataset creation is based on the netcdf-Dataset(s) in 'datasets'
@@ -628,7 +628,7 @@ class DatasetNetCDF(Dataset):
       if ignore_list is None: ignore_lists  = [set()]*len(datasets) # empty set means no none...
       elif isinstance(ignore_list,set): ignore_lists = [ignore_list]*len(datasets)
       elif isinstance(ignore_list,(tuple,list)):
-        if all(isinstance(e,basestring) for e in ignore_list):
+        if all(isinstance(e,str) for e in ignore_list):
           ignore_lists = [set(ignore_list)]*len(datasets)
         elif all(isinstance(e,(list,tuple,set)) for e in ignore_list):
           if len(ignore_list) != len(datasets): 
@@ -644,7 +644,7 @@ class DatasetNetCDF(Dataset):
       check_rename_list = []
       for varatts in varatts_list:
         check_rename = dict()
-        for varname,varatt in varatts.items():
+        for varname,varatt in list(varatts.items()):
           if 'name' in varatt: # if name is not in varatt, there is no renaming, hence no need to record 
             check_rename[varatt['name']] = dict(units=varatt.get('units',''), old_name=varname)
         check_rename_list.append(check_rename)
@@ -653,24 +653,24 @@ class DatasetNetCDF(Dataset):
       assert len(datasets) == len(varatts_list) == len(ignore_lists) == len(check_rename_list)
       # create axes from netcdf dimensions and coordinate variables
       if axes is None: axes = dict()
-      else: check_override += axes.keys() # don't check externally provided axes   
+      else: check_override += list(axes.keys()) # don't check externally provided axes   
       if not isinstance(axes,dict): raise TypeError
       for ds,varatts,ignore_list,check_rename in zip(datasets,varatts_list,ignore_lists,check_rename_list):
-        for dim in ds.dimensions.keys():
+        for dim in list(ds.dimensions.keys()):
           if dim not in ignore_list:
             if dim[:8] == 'str_dim_': pass # dimensions added to store strings as charater arrays        
             elif dim in ds.variables: # dimensions with an associated coordinate variable           
               if dim in axes: # if already present, make sure axes are essentially the same
                 tmpax = AxisNC(ncvar=ds.variables[dim], mode='r', **varatts.get(dim,{})) # apply all correction factors...
                 if dim not in check_override and not isEqual(axes[dim][:],tmpax[:]): 
-                  raise DatasetError, "Error constructing Dataset: NetCDF files have incompatible {:s} dimensions: {:d} != {:d}".format(dim,len(axes[dim]),len(tmpax)) 
+                  raise DatasetError("Error constructing Dataset: NetCDF files have incompatible {:s} dimensions: {:d} != {:d}".format(dim,len(axes[dim]),len(tmpax))) 
               else: # if this is a new axis, add it to the list
                 if ds.variables[dim].dtype == '|S1': pass # Variables of type char are currently not implemented
                 else: axes[dim] = AxisNC(ncvar=ds.variables[dim], mode=mode, **varatts.get(dim,{})) # also use overrride parameters
             else: # initialize dimensions without associated variable as regular Axis (not AxisNC)
               if dim in axes: # if already present, make sure axes are essentially the same
                 if len(axes[dim]) != len(ds.dimensions[dim]): 
-                  raise DatasetError, "Error constructing Dataset: NetCDF files have incompatible '{:s}' dimensions: {:d} != {:d}".format(dim,len(axes[dim]),len(ds.dimensions[dim])) 
+                  raise DatasetError("Error constructing Dataset: NetCDF files have incompatible '{:s}' dimensions: {:d} != {:d}".format(dim,len(axes[dim]),len(ds.dimensions[dim]))) 
               else: # if this is a new axis, add it to the list
                 params = dict(name=dim,coord=np.arange(len(ds.dimensions[dim]))); params.update(varatts.get(dim,{}))
                 axes[dim] = Axis(**params) # also use overrride parameters          
@@ -680,7 +680,7 @@ class DatasetNetCDF(Dataset):
       for ds,varatts,ignore_list,check_rename in zip(datasets,varatts_list,ignore_lists,check_rename_list):
         # figure out desired variables
         dsvars = []
-        for var in ds.variables.keys():
+        for var in list(ds.variables.keys()):
           if var in varatts:
             varatt = varatts[var]
             if 'name' in  varatt: alt = varatt['name']
@@ -703,16 +703,16 @@ class DatasetNetCDF(Dataset):
               # check shape (don't load)
               if varobj.ncstrvar and varobj.ndim == ncvar.ndim-1:
                 if varobj.shape != ncvar.shape[:-1] or varobj.ncvar.dimensions != ncvar.dimensions:
-                  raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files have incompatible dimensions.".format(var)
+                  raise DatasetError("Error constructing Dataset: Variables '{:s}' from different files have incompatible dimensions.".format(var))
               else: 
                 if varobj.shape != ncvar.shape or varobj.ncvar.dimensions != ncvar.dimensions:              
-                  raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files have incompatible dimensions.".format(var)
+                  raise DatasetError("Error constructing Dataset: Variables '{:s}' from different files have incompatible dimensions.".format(var))
                 if 'units' in ncvar.ncattrs() and not ( varobj.ncvar.units == ncvar.units or varobj.units == ncvar.units ): # check units as well              
-                  raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files have incompatible units.".format(var)
+                  raise DatasetError("Error constructing Dataset: Variables '{:s}' from different files have incompatible units.".format(var))
               # check values only of requested
               if var in check_vars:
                 if np.any(varobj.ncvar[:] != ncvar[:]):              
-                  raise DatasetError, "Error constructing Dataset: Variables '{:s}' from different files have incompatible values.".format(var)                
+                  raise DatasetError("Error constructing Dataset: Variables '{:s}' from different files have incompatible values.".format(var))                
           else: # if this is a new variable, add it to the list
             ncunits = ncvar.units if hasattr(ncvar,'units') else ''
             if var in check_rename and ncunits == check_rename[var]['units']:
@@ -746,24 +746,24 @@ class DatasetNetCDF(Dataset):
               # N.B.: using tmpatts['name'] as key is more reliable in preventing duplicate variables,
               #       because it also works when NetCDF names are different across files
             elif not any([dim in ignore_list for dim in ncvar.dimensions]): # legitimate omission
-              raise DatasetError, 'Error constructing Variable: Axes/coordinates not found:\n {:s}, {:s}'.format(str(var), str(ncvar.dimensions))
-      variables = variables.values()
+              raise DatasetError('Error constructing Variable: Axes/coordinates not found:\n {:s}, {:s}'.format(str(var), str(ncvar.dimensions)))
+      variables = list(variables.values())
     else:
-      if isinstance(variables,dict): variables = variables.values()
-      if filelist is None: raise ArgumentError, filelist
+      if isinstance(variables,dict): variables = list(variables.values())
+      if filelist is None: raise ArgumentError(filelist)
       if folder: filelist = [folder+filename for filename in filelist]
       if isinstance(dataset,nc.Dataset):
         datasets = [dataset]  # datasets is used later
         #if hasattr(dataset,'filepath'): filelist = [dataset.filepath()] # only available in newer versions
         # N.B.: apparently filepath() tends to cause the netCDF library to crash... need to find a workaround...
-        if len(filelist) != 1: raise ValueError, filelist
+        if len(filelist) != 1: raise ValueError(filelist)
       elif isinstance(dataset,(list,tuple)):
         if not all([isinstance(ds,nc.Dataset) for ds in dataset]): raise TypeError
         datasets = dataset
         #filelist = [dataset.filepath() for dataset in datasets if hasattr(dataset,'filepath')]
         # N.B.: apparently filepath() tends to cause the netCDF library to crash... need to find a workaround...
-        if len(filelist) == 0: raise ValueError, filelist
-      else: raise ArgumentError, dataset
+        if len(filelist) == 0: raise ValueError(filelist)
+      else: raise ArgumentError(dataset)
       mode = 'r' # for now, only allow read
     # get attributes from NetCDF dataset
     ncattrs = joinDicts(*[ds.__dict__ for ds in datasets])
@@ -796,7 +796,7 @@ class DatasetNetCDF(Dataset):
       if loverwrite and self.hasVariable(ax.name): 
         return self.replaceAxis(ax.name, ax, deepcopy=deepcopy)
       else: 
-        raise AttributeError, "Cannot add Variable '{:s}' to Dataset, because an attribute of the same name already exits!".format(ax.name)      
+        raise AttributeError("Cannot add Variable '{:s}' to Dataset, because an attribute of the same name already exits!".format(ax.name))      
     else:             
       if copy: # make a new instance or add it as is 
         # cast Axis instance as AxisNC (sort of implies copying)    
@@ -806,7 +806,7 @@ class DatasetNetCDF(Dataset):
           ax = ax.copy(deepcopy=deepcopy) # make a new instance or add it as is
       else:
           if asNC and not isinstance(ax,AxisNC): 
-            raise ArgumentError, "Cannot create NC variable without copying!"
+            raise ArgumentError("Cannot create NC variable without copying!")
     # hand-off to parent method and return status
     return super(DatasetNetCDF,self).addAxis(ax, copy=False, loverwrite=loverwrite) # already copied above
       
@@ -832,7 +832,7 @@ class DatasetNetCDF(Dataset):
       self.addAxis(newaxis, copy=False)
       # loop over variables with this axis    
       newaxis = self.axes[newaxis.name] # update reference
-      for var in self.variables.values():
+      for var in list(self.variables.values()):
         if var.hasAxis(oldname): var.replaceAxis(oldname,newaxis)    
     else: # no need for special treatment...
       super(DatasetNetCDF,self).replaceAxis(oldaxis, newaxis)
@@ -849,7 +849,7 @@ class DatasetNetCDF(Dataset):
       # replace axes, if permitted; need to use NetCDF method immediately, though
       if loverwrite and self.hasVariable(var.name): 
         return self.replaceVariable(var.name, var, deepcopy=deepcopy)
-      else: raise AttributeError, "Cannot add Variable '{:s}' to Dataset, because an attribute of the same name already exits!".format(var.name)      
+      else: raise AttributeError("Cannot add Variable '{:s}' to Dataset, because an attribute of the same name already exits!".format(var.name))      
     else:             
       if deepcopy: copy=True   
       # optionally, slice variable to conform to axes
@@ -860,7 +860,7 @@ class DatasetNetCDF(Dataset):
             dsax = self.axes[ax.name]
             if len(ax) > len(dsax) : trimaxes[ax.name] = (dsax[0],dsax[-1])
             elif len(ax) < len(dsax): 
-              raise AxisError, "Can only trim Variable axes, not extend: {:s}".format(ax)
+              raise AxisError("Can only trim Variable axes, not extend: {:s}".format(ax))
         # slice variable
         var = var(linplace=False, lidx=False, lrng=True, **trimaxes)
       # cast Axis instance as AxisNC
@@ -875,7 +875,7 @@ class DatasetNetCDF(Dataset):
           var = var.copy(deepcopy=deepcopy) # or just add as a normal Variable
       else:
         if asNC and not isinstance(var,VarNC): 
-          raise ArgumentError, "Cannot create NC variable without copying!"
+          raise ArgumentError("Cannot create NC variable without copying!")
       # hand-off to parent method and return status
       check = super(DatasetNetCDF,self).addVariable(var, copy=False, loverwrite=loverwrite)
       assert var.dataset == self
@@ -928,17 +928,17 @@ class DatasetNetCDF(Dataset):
     # only if writing is enabled
     if 'w' in self.mode:
       # sync coordinates with ncvars
-      for ax in self.axes.values(): 
+      for ax in list(self.axes.values()): 
         if isinstance(ax,AxisNC): ax.sync() 
       # sync variables with ncvars
-      for var in self.variables.values(): 
+      for var in list(self.variables.values()): 
         if isinstance(var,VarNC): var.sync()
       # synchronize NetCDF datasets with file system
       for dataset in self.datasets: 
         dataset.setncatts(coerceAtts(self.atts)) # synchronize attributes with NetCDF dataset
         dataset.sync() # synchronize data
     else: 
-      raise PermissionError, "Cannot write to NetCDF Dataset: writing (mode = 'w') not enabled!"
+      raise PermissionError("Cannot write to NetCDF Dataset: writing (mode = 'w') not enabled!")
     
   def unload(self):
     ''' Method to sync the currently loaded dataset to file and free up memory (discard data in memory) '''
@@ -957,10 +957,10 @@ class DatasetNetCDF(Dataset):
       # N.B.: we need to pre-load, so the data can be written later
     # figure out how variables will be copied (NC, or not NC)   
     if varargs is None: varargs = dict()
-    for varname,var in self.variables.iteritems():
+    for varname,var in self.variables.items():
       if isinstance(var, VarNC):
         vararg = varargs.get(varname,dict())
-        if not isinstance(vararg,dict): raise TypeError, vararg
+        if not isinstance(vararg,dict): raise TypeError(vararg)
         if 'asNC' not in vararg: vararg['asNC'] = asNC
         varargs[varname] = vararg  
     # first invoke parent method, to make regular copy
@@ -983,7 +983,7 @@ class DatasetNetCDF(Dataset):
   def axisAnnotation(self, name, strlist, dim, atts=None):
     ''' Add a list of string values along the specified axis. '''
     # figure out dimensions
-    if len(strlist) != len(self.axes[dim]) if isinstance(dim,basestring) else len(dim): raise AxisError
+    if len(strlist) != len(self.axes[dim]) if isinstance(dim,str) else len(dim): raise AxisError
     if isinstance(strlist,(list,tuple)): strlist = np.array(strlist)
     elif not isinstance(strlist,np.ndarray) and strlist.dtype.kind == 'S': raise TypeError
     # create netcdf dimension and variable

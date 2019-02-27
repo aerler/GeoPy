@@ -36,7 +36,7 @@ class CentralProcessingUnit(object):
   def __init__(self, source, target=None, varlist=None, ignorelist=None, tmp=True, feedback=True):
     ''' Initialize processor and pass input and output datasets. '''
     # check varlist
-    if varlist is None: varlist = source.variables.keys() # all source variables
+    if varlist is None: varlist = list(source.variables.keys()) # all source variables
     elif not isinstance(varlist,(list,tuple)): raise TypeError(varlist)
     self.varlist = varlist # list of variable to be processed
     # ignore list (e.g. variables that will cause errors)
@@ -70,7 +70,7 @@ class CentralProcessingUnit(object):
     if not self.tmp: raise DatasetError(self.tmp)
     # make new dataset (name and title should transfer in atts dict)
     if asNC:
-      if not isinstance(filename,basestring): raise TypeError(filename)
+      if not isinstance(filename,str): raise TypeError(filename)
       writeData = kwargs.pop('writeData',False)
       ncformat = kwargs.pop('ncformat','NETCDF4')
       zlib = kwargs.pop('zlib',True)
@@ -85,7 +85,7 @@ class CentralProcessingUnit(object):
     ''' Transfer contents of temporary storage to output/target dataset. '''
     if not isinstance(self.output,Dataset): raise DatasetError("Cannot sync without target Dataset!\n{:}".format(self.output))
     if self.tmp:
-      if varlist is None: varlist = self.tmpput.variables.keys()  
+      if varlist is None: varlist = list(self.tmpput.variables.keys())  
       for varname in varlist:
         if varname in self.tmpput.variables:
           var = self.tmpput.variables[varname]
@@ -105,15 +105,15 @@ class CentralProcessingUnit(object):
   def writeNetCDF(self, filename=None, folder=None, ncformat='NETCDF4', zlib=True, writeData=True, close=False, flush=False):
     ''' Write current temporary storage to a NetCDF file. '''
     if self.tmp:
-      if not isinstance(filename,basestring): raise TypeError(filename)
+      if not isinstance(filename,str): raise TypeError(filename)
       if folder is not None: filename = folder + filename       
       output = writeNetCDF(self.tmpput, filename, ncformat=ncformat, zlib=zlib, writeData=writeData, close=False)
       if flush: self.tmpput.unload()
-      if self.feedback: print('\nOutput written to {0:s}\n'.format(filename))
+      if self.feedback: print(('\nOutput written to {0:s}\n'.format(filename)))
     else: 
       self.output.sync()
       output = self.output.dataset # get (primary) NetCDF file
-      if self.feedback: print('\nSynchronized dataset {0:s} with temporary storage.\n'.format(output.name))
+      if self.feedback: print(('\nSynchronized dataset {0:s} with temporary storage.\n'.format(output.name)))
     # flush?
     if flush: self.output.unload()      
     # close file or return file handle
@@ -158,18 +158,18 @@ class CentralProcessingUnit(object):
           else:
             srcds = self.source # need to define for error message below
             raise DatasetError("Variable '{:s}' not found in input dataset.".format(varname))
-        except Exception, err:
+        except Exception as err:
           if hasattr(srcds, 'filelist') and srcds.filelist and len(srcds.filelist) == 1:              
             filename = srcds.filelist[0] # should be the absolute path
-            print("ERROR: an error occurred while processing Variable '{:s}' from source file '{:s}'.".format(varname,filename))
+            print(("ERROR: an error occurred while processing Variable '{:s}' from source file '{:s}'.".format(varname,filename)))
             if 'NetCDF: HDF error' in str(err):
               backup = filename + '.HDFerror'
-              print("HDF Error: moving source file to '{:s}'".format(backup))
+              print(("HDF Error: moving source file to '{:s}'".format(backup)))
               shutil.move(filename, backup)
               # N.B.: this error occurs when files are corrupted; moving them to a backup destination 
               #       will cause the files to be downloaded again
           else:
-            print("ERROR: an error occurred while processing Variable '{:s}' from Dataset '{:s}'.".format(varname,srcds.name))
+            print(("ERROR: an error occurred while processing Variable '{:s}' from Dataset '{:s}'.".format(varname,srcds.name)))
           raise # raise previous exception
         assert varname == newvar.name
         # flush data to disk immediately      
@@ -194,7 +194,7 @@ class CentralProcessingUnit(object):
         to MB in temporary (it does not include loading the variable into RAM, though). '''
     if not self.source.gdal: raise DatasetError("Source dataset must be GDAL enabled! {:s} is not.".format(self.source.name))
     if not isinstance(shape_dict,OrderedDict): raise TypeError(shape_dict)
-    if not all(isinstance(shape,Shape) for shape in shape_dict.itervalues()): raise TypeError(shape)
+    if not all(isinstance(shape,Shape) for shape in shape_dict.values()): raise TypeError(shape)
     # make temporary dataset
     if self.source is self.target:
       if self.tmp: assert self.source == self.tmpput and self.target == self.tmpput
@@ -211,16 +211,16 @@ class CentralProcessingUnit(object):
     # figure out horizontal axes (will be replaced with station axis)
     if isinstance(xlon,Axis): 
       if not src.hasAxis(xlon, check=True): raise DatasetError
-    elif isinstance(xlon,basestring): xlon = src.getAxis(xlon)
+    elif isinstance(xlon,str): xlon = src.getAxis(xlon)
     else: xlon = src.x if srcgrd.isProjected else src.lon
     if isinstance(ylat,Axis):
       if not src.hasAxis(ylat, check=True): raise DatasetError
-    elif isinstance(ylat,basestring): ylat = src.getAxis(ylat)
+    elif isinstance(ylat,str): ylat = src.getAxis(ylat)
     else: ylat = src.y if srcgrd.isProjected else src.lat
     # check/create shapes axis
     if shpax: # not in source dataset!
       # if shape axis supplied
-      if src.hasAxis(shpax, check=True): raise DatasetError, "Source dataset must not have a 'shape' axis!"
+      if src.hasAxis(shpax, check=True): raise DatasetError("Source dataset must not have a 'shape' axis!")
       if len(shpax) != len(shape_dict): raise AxisError
     else:
       # creat shape axis, if not supplied
@@ -234,26 +234,26 @@ class CentralProcessingUnit(object):
     # add station axis (trim to valid coordinates)
     tgt.addAxis(shpax, asNC=True, copy=True) # already new copy
     # add axes from source data
-    for axname,ax in src.axes.iteritems():
+    for axname,ax in src.axes.items():
       if axname not in (xlon.name,ylat.name):
         tgt.addAxis(ax, asNC=True, copy=True)
     # add shape names
-    shape_names = [shape.name for shape in shape_dict.itervalues()] # can construct Variable from list!
+    shape_names = [shape.name for shape in shape_dict.values()] # can construct Variable from list!
     atts = dict(name='shape_name', long_name='Name of Shape', units='')
     tgt.addVariable(Variable(data=shape_names, axes=(shpax,), atts=atts), asNC=True, copy=True)
     # add proper names
-    shape_long_names = [shape.long_name for shape in shape_dict.itervalues()] # can construct Variable from list!
+    shape_long_names = [shape.long_name for shape in shape_dict.values()] # can construct Variable from list!
     atts = dict(name='shp_long_name', long_name='Proper Name of Shape', units='')
     tgt.addVariable(Variable(data=shape_long_names, axes=(shpax,), atts=atts), asNC=True, copy=True)    
     # add shape category
-    shape_type = [shape.shapetype for shape in shape_dict.itervalues()] # can construct Variable from list!
+    shape_type = [shape.shapetype for shape in shape_dict.values()] # can construct Variable from list!
     atts = dict(name='shp_type', long_name='Type of Shape', units='')
     tgt.addVariable(Variable(data=shape_type, axes=(shpax,), atts=atts), asNC=True, copy=True)    
     # collect rasterized masks from shape files 
     mask_array = np.zeros((len(shpax),)+srcgrd.size[::-1], dtype=np.bool) 
     # N.B.: rasterize() returns mask in (y,x) shape, size is ordered as (x,y)
     shape_masks = []; shp_full = []; shp_empty = []; shp_encl = []
-    for i,shape in enumerate(shape_dict.itervalues()):
+    for i,shape in enumerate(shape_dict.values()):
       mask = shape.rasterize(griddef=srcgrd, asVar=False, invert=False)
       mask_array[i,:] = mask
       masksum = mask.sum() 
@@ -301,7 +301,7 @@ class CentralProcessingUnit(object):
         interval approximately corresponds to MB in RAM.'''
     # process gdal variables (if a variable has a horiontal grid, it should be GDAL enabled)
     if var.gdal and ( np.issubdtype(var.dtype,np.integer) or np.issubdtype(var.dtype,np.inexact) ):
-      if self.feedback: print('\n'+var.name),
+      if self.feedback: print(('\n'+var.name), end=' ')
       assert var.hasAxis(xlon) and var.hasAxis(ylat)
       assert len(masks) == len(shpax)
       tgt = self.target
@@ -319,11 +319,11 @@ class CentralProcessingUnit(object):
       # now we loop over all shapes/masks      
       if self.feedback: 
         varname = var.name
-        print '\n ... loading  ',varname 
+        print('\n ... loading  ',varname) 
       var.load()
       if self.feedback: 
         varname = var.name
-        print '\n ... averaging ',varname 
+        print('\n ... averaging ',varname) 
       ## compute shape averages for each time step
       # Basically, for each shape the entire array is masked, using the shape and the broadcasting 
       # functionality for horizontal masks of the Variable class (which creates a lot of overhead);
@@ -333,7 +333,7 @@ class CentralProcessingUnit(object):
         for i,mask in enumerate(masks): 
           if mask is None: tgtdata[i] = np.NaN # NaN for missing values (i.e. no overlap)
           else: tgtdata[i] = var.mapMean(mask=mask, invert=True, asVar=False, squeeze=True) # compute the averages
-          if self.feedback: print varname, i
+          if self.feedback: print(varname, i)
           # garbage collection is typically not necessary for 2D fields
       elif var.ndim > 2:
         cnt = float(0.); inc = float(var.data_array.nbytes) / (1024.*1024.) # counter/increment to estimate memory useage (in MB)
@@ -344,11 +344,11 @@ class CentralProcessingUnit(object):
             # N.B.: this is necessary, because sometimes shapes only contain invalid values
             cnt += inc # keep track of memory
             # N.B.: mapMean creates a lot of temporary arrays that don't get garbage-collected
-          if self.feedback: print varname, i, cnt
+          if self.feedback: print(varname, i, cnt)
           if cnt > memory: 
             cnt = 0 # reset counter
             gc.collect() # collect garbage in certain itnervals
-            if self.feedback: print 'garbage collected'  
+            if self.feedback: print('garbage collected')  
       else: raise AxisError(var)
       # create new Variable
       assert shape == tgtdata.shape
@@ -388,11 +388,11 @@ class CentralProcessingUnit(object):
     # figure out horizontal axes (will be replaced with station axis)
     if isinstance(xlon,Axis): 
       if not src.hasAxis(xlon, check=True): raise DatasetError(src)
-    elif isinstance(xlon,basestring): xlon = src.getAxis(xlon)
+    elif isinstance(xlon,str): xlon = src.getAxis(xlon)
     else: xlon = src.x if srcgrd.isProjected else src.lon
     if isinstance(ylat,Axis):
       if not src.hasAxis(ylat, check=True): raise DatasetError(src)
-    elif isinstance(ylat,basestring): ylat = src.getAxis(ylat)
+    elif isinstance(ylat,str): ylat = src.getAxis(ylat)
     else: ylat = src.y if srcgrd.isProjected else src.lat
     if stnax: # not in source dataset!
       if src.hasAxis(stnax, check=True): raise DatasetError("Source dataset must not have a 'station' axis!\n{}".format(src))
@@ -414,7 +414,7 @@ class CentralProcessingUnit(object):
       latlon.SetWellKnownGeogCS('WGS84') # a normal lat/lon coordinate system
       tx = osr.CoordinateTransformation(latlon,srcgrd.projection)
       xs = []; ys = [] 
-      for i in xrange(len(lons)):
+      for i in range(len(lons)):
         x,y,z = tx.TransformPoint(lons[i].astype(np.float64),lats[i].astype(np.float64))
         xs.append(x); ys.append(y); del z
       lons = np.array(xs); lats = np.array(ys)
@@ -437,7 +437,7 @@ class CentralProcessingUnit(object):
       if src.zs.axisIndex(xlon.name) == 0: zs.transpose() # assuming lat,lon or y,x order is more common
       ye,xe = zs.shape # assuming order lat,lon or y,x
       xe -= 1; ye -= 1 # last valid index, not length
-      for n,lon,lat in zip(xrange(len(stnax)),lons,lats):
+      for n,lon,lat in zip(range(len(stnax)),lons,lats):
         ip = xlon.getIndex(lon, mode='left', outOfBounds=True)
         jp = ylat.getIndex(lat, mode='left', outOfBounds=True)
         if ip is not None and jp is not None:
@@ -456,7 +456,7 @@ class CentralProcessingUnit(object):
           ixlon.append(ii); iylat.append(jj); istn.append(n); zs_err.append(zerr) # final selection          
     else: 
       # just choose horizontally closest point 
-      for n,lon,lat in zip(xrange(len(stnax)),lons,lats):
+      for n,lon,lat in zip(range(len(stnax)),lons,lats):
         i = xlon.getIndex(lon, mode='closest', outOfBounds=True)
         j = ylat.getIndex(lat, mode='closest', outOfBounds=True)
         if i is not None and j is not None: 
@@ -471,7 +471,7 @@ class CentralProcessingUnit(object):
     #       we are also assuming the new dataset has no axes yet
     assert len(tgt.axes) == 0
     # add axes from source data
-    for axname,ax in src.axes.iteritems():
+    for axname,ax in src.axes.items():
       if axname not in (xlon.name,ylat.name):
         tgt.addAxis(ax, asNC=True, copy=True)
     # add station axis (trim to valid coordinates)
@@ -484,7 +484,7 @@ class CentralProcessingUnit(object):
                         atts=dict(long_name='Station Elevation Error'))
       tgt.addVariable(zs_err, asNC=True, copy=True); del zs_err # need to copy to make NC var
     # add a bunch of other variables with station meta data
-    for var in template.variables.itervalues():
+    for var in template.variables.values():
       if var.ndim == 1 and var.hasAxis(stnax): # station attributes
         if var.name[-4:] != '_len' or var.name == 'stn_rec_len': # exclude certain attributes
           newvar = var.copy(data=var.getArray()[istn], axes=(newstnax,))
@@ -507,7 +507,7 @@ class CentralProcessingUnit(object):
     ''' Extract grid poitns corresponding to stations. '''
     # process gdal variables (if a variable has a horiontal grid, it should be GDAL enabled)
     if var.gdal:
-      if self.feedback: print('\n'+var.name),
+      if self.feedback: print(('\n'+var.name), end=' ')
       tgt = self.target
       assert xlon in var.axes and ylat in var.axes
       assert tgt.hasAxis(stnax, strict=False) and stnax not in var.axes 
@@ -627,7 +627,7 @@ class CentralProcessingUnit(object):
     ''' Compute a climatology from a variable time-series. '''
     # process gdal variables
     if var.gdal:
-      if self.feedback: print('\n'+var.name),
+      if self.feedback: print(('\n'+var.name), end=' ')
       # replace axes
       axes = list(var.axes)
       axes[var.axisIndex(var.ylat)] = ylat
@@ -689,7 +689,7 @@ class CentralProcessingUnit(object):
     else: 
       if not isinstance(timeSlice,slice): raise TypeError(timeSlice)
     # add variables that will cause errors to ignorelist (e.g. strings)
-    for varname,var in self.source.variables.iteritems():
+    for varname,var in self.source.variables.items():
       if var.hasAxis(timeAxis) and var.dtype.kind == 'S': self.ignorelist.append(varname)
     # prepare function call
     function = functools.partial(self.processClimatology, # already set parameters
@@ -709,7 +709,7 @@ class CentralProcessingUnit(object):
     ''' Compute a climatology from a variable time-series. '''
     # process variable that have a time axis
     if var.hasAxis(timeAxis):
-      if self.feedback: print('\n'+var.name),
+      if self.feedback: print(('\n'+var.name), end=' ')
       # prepare averaging
       tidx = var.axisIndex(timeAxis)
       interval = len(climAxis)
@@ -728,8 +728,8 @@ class CentralProcessingUnit(object):
       if timelength % interval == 0:
         # use array indexing
         climelts = np.arange(interval, dtype=dtype_int)
-        for t in xrange(0,timelength,interval):
-          if self.feedback: print('.'), # t/interval+1
+        for t in range(0,timelength,interval):
+          if self.feedback: print(('.'), end=' ') # t/interval+1
           avgdata += dataarray.take(t+climelts, axis=tidx)
         del dataarray # clean up
         # normalize
@@ -737,8 +737,8 @@ class CentralProcessingUnit(object):
       else: 
         # simple indexing
         climcnt = np.zeros(interval, dtype=dtype_int)
-        for t in xrange(timelength):
-          if self.feedback and t%interval == 0: print('.'), # t/interval+1
+        for t in range(timelength):
+          if self.feedback and t%interval == 0: print(('.'), end=' ') # t/interval+1
           idx = int(t%interval)
           climcnt[idx] += 1
           if dataarray.ndim == 1:
@@ -747,7 +747,7 @@ class CentralProcessingUnit(object):
             avgdata[idx,:] = avgdata[idx,:] + dataarray[t,:]
         del dataarray # clean up
         # normalize
-        for i in xrange(interval):
+        for i in range(interval):
           if avgdata.ndim == 1:
             if climcnt[i] > 0: avgdata[i] /= climcnt[i]
             else: avgdata[i] = 0 if np.issubdtype(var.dtype, np.integer) else np.NaN
@@ -773,13 +773,13 @@ class CentralProcessingUnit(object):
     ''' Method to initialize shift along a coordinate axis. '''
     # kwarg input
     if shift == 0 and axis == None:
-      for key,value in kwargs.iteritems():
+      for key,value in kwargs.items():
         if self.target.hasAxis(key) or self.input.hasAxis(key):
           if axis is None: axis = key; shift = value
           else: raise ProcessError("Can only process one coordinate shift at a time.")
       del kwargs[axis] # remove entry 
     # check input
-    if isinstance(axis,basestring):
+    if isinstance(axis,str):
       if self.target.hasAxis(axis): axis = self.target.axes[axis]
       elif self.input.hasAxis(axis): axis = self.input.axes[axis].copy()
       else: raise AxisError("Axis '{}' not found in Dataset.".format(axis))
@@ -820,7 +820,7 @@ class CentralProcessingUnit(object):
     ''' Method that shifts a data array along a given axis. '''
     # only process variables that have the specified axis
     if var.hasAxis(axis.name):
-      if self.feedback: print('\n'+var.name), # put line break before test, instead of after      
+      if self.feedback: print(('\n'+var.name), end=' ') # put line break before test, instead of after      
       # shift data array
       var.load()
       ai = var.axisIndex(axis)

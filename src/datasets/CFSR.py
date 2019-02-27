@@ -62,16 +62,16 @@ hiresfiles = dict(TMP_L103_Avg='TMP.2m', TMP_L1='TMP.SFC', PRATE_L1='PRATE.SFC',
 hiresstatic = dict(LAND_L1='LAND.SFC', HGT_L1='HGT.SFC')
 lowresfiles = dict(PRMSL_L101='PRMSL.MSL')
 lowresstatic = dict() # currently none available
-hiresfiles = {key:'flxf06.gdas.{0:s}.grb2.nc'.format(value) for key,value in hiresfiles.iteritems()}
-hiresstatic = {key:'flxf06.gdas.{0:s}.grb2.nc'.format(value) for key,value in hiresstatic.iteritems()}
-lowresfiles = {key:'pgbh06.gdas.{0:s}.grb2.nc'.format(value) for key,value in lowresfiles.iteritems()}
-lowresstatic = {key:'pgbh06.gdas.{0:s}.grb2.nc'.format(value) for key,value in lowresstatic.iteritems()}
+hiresfiles = {key:'flxf06.gdas.{0:s}.grb2.nc'.format(value) for key,value in hiresfiles.items()}
+hiresstatic = {key:'flxf06.gdas.{0:s}.grb2.nc'.format(value) for key,value in hiresstatic.items()}
+lowresfiles = {key:'pgbh06.gdas.{0:s}.grb2.nc'.format(value) for key,value in lowresfiles.items()}
+lowresstatic = {key:'pgbh06.gdas.{0:s}.grb2.nc'.format(value) for key,value in lowresstatic.items()}
 # N.B.: to trim time dimension to the common length, use: 
 #       ncks -a -O -d time,0,371 orig_flxf06.gdas.TMP.2m.grb2.nc flxf06.gdas.TMP.2m.grb2.nc
 # list of variables to load
 # varlist = ['precip','snowh'] + hiresstatic.keys() + list(nofile) # hires + coordinates
-varlist_hires = hiresfiles.keys() + hiresstatic.keys() + list(nofile) # hires + coordinates    
-varlist_lowres = lowresfiles.keys() + lowresstatic.keys() + list(nofile) # hires + coordinates
+varlist_hires = list(hiresfiles.keys()) + list(hiresstatic.keys()) + list(nofile) # hires + coordinates    
+varlist_lowres = list(lowresfiles.keys()) + list(lowresstatic.keys()) + list(nofile) # hires + coordinates
 
 
 
@@ -88,7 +88,7 @@ def checkGridRes(grid, resolution):
   if resolution == 'hires' or resolution == '03': resolution = '031' 
   elif resolution == 'lowres': resolution = '05' 
   elif resolution not in ('031','05'): 
-    raise DatasetError, "Selected resolution '{0:s}' is not available!".format(resolution)  
+    raise DatasetError("Selected resolution '{0:s}' is not available!".format(resolution))  
   # return
   return grid, resolution
 
@@ -128,7 +128,7 @@ def loadCFSR_TS(name=dataset_name, grid=None, varlist=None, varatts=None, resolu
                                    check_override=['time'], ncformat='NETCDF4_CLASSIC')
         # N.B.: need to override the axes, so that the datasets are consistent
         if len(staticdata.variables) > 0:
-          for var in staticdata.variables.values(): 
+          for var in list(staticdata.variables.values()): 
             if not dataset.hasVariable(var.name):
               var.squeeze() # remove time dimension
               dataset.addVariable(var, copy=False) # no need to copy... but we can't write to the netcdf file!
@@ -270,7 +270,7 @@ if __name__ == '__main__':
       dataset = loadCFSR(resolution=res,period=period)
       print(dataset)
       print('')
-      print(dataset.geotransform)
+      print((dataset.geotransform))
     
               
     elif mode == 'test_timeseries':
@@ -285,7 +285,7 @@ if __name__ == '__main__':
 #       print(dataset.time.coord)
       if res == '031':
           print('')
-          print(dataset.landmask)
+          print((dataset.landmask))
           assert dataset.landmask.gdal
     
     elif mode == 'test_point_climatology':
@@ -296,8 +296,8 @@ if __name__ == '__main__':
       else: dataset = loadCFSR_Stn(station=pntset, period=period)
       print(dataset)
       print('')
-      print(dataset.time)
-      print(dataset.time.coord)
+      print((dataset.time))
+      print((dataset.time.coord))
   
     elif mode == 'test_point_timeseries':
       
@@ -307,8 +307,8 @@ if __name__ == '__main__':
       else: dataset = loadCFSR_StnTS(station=pntset)
       print(dataset)
       print('')
-      print(dataset.time)
-      print(dataset.time.coord)
+      print((dataset.time))
+      print((dataset.time.coord))
       assert dataset.time.coord[0] == 0 # Jan 1979
       assert dataset.shape[0] == 1
 
@@ -318,7 +318,7 @@ if __name__ == '__main__':
       # load source
       periodstr = '{0:4d}-{1:4d}'.format(*period)
       print('\n')
-      print('   ***   Processing Resolution %s from %s   ***   '%(res,periodstr))
+      print(('   ***   Processing Resolution %s from %s   ***   '%(res,periodstr)))
       print('\n')
       source = loadCFSR_TS(resolution=res)
       print(source)

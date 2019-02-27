@@ -173,7 +173,7 @@ class MyFigure(Figure):
     # update subplot margins
     if mode == 'move': margins.update(kwargs)
     else: 
-      for key,val in kwargs.iteritems():
+      for key,val in kwargs.items():
         if key in margins:
           if mode == 'shift': margins[key] += val
           elif mode == 'scale': margins[key] *= val
@@ -339,10 +339,10 @@ class MyFigure(Figure):
     sf = self.print_settings.copy() # print properties
     sf.update(kwargs) # update with kwargs
     # save file
-    if lfeedback: print("Saving figure as '{:s}'".format(filename))
+    if lfeedback: print(("Saving figure as '{:s}'".format(filename)))
     if folder:
       filename = '{:s}/{:s}'.format(folder,filename)
-      if lfeedback: print("('{:s}')".format(folder))
+      if lfeedback: print(("('{:s}')".format(folder)))
     self.savefig(filename, **sf) # save figure to pdf
     # save M$ Word compatible file version
     if lword:
@@ -352,7 +352,7 @@ class MyFigure(Figure):
         # save alternative format
         if alttype:
             altname = '{}.{}'.format(basename,alttype)
-            if lfeedback: print("(Saving alternate format as '{:s}')".format(altname))
+            if lfeedback: print(("(Saving alternate format as '{:s}')".format(altname)))
             if folder: altname = '{:s}/{:s}'.format(folder,altname)
             self.savefig(altname, **sf) # save figure to pdf
 
@@ -533,7 +533,7 @@ def getFigAx(subplot, name=None, title=None, title_font='x-large', title_height=
   if name is not None: fig.canvas.set_window_title(name) # window title
   if title is not None:
       y = 1. - ( title_height / ( 5. if 'x' in title_font else 8. ) ) # smaller title closer to the top
-      if isinstance(title_font,basestring): title_font = dict(fontsize=title_font, y=y)
+      if isinstance(title_font,str): title_font = dict(fontsize=title_font, y=y)
       fig.suptitle(title, **title_font) # title on figure (printable)
   fig.title_height = title_height # save value
   # add default line styles for variables and datasets to axes (figure doesn't need to know)

@@ -19,7 +19,7 @@ from geodata.misc import ArgumentError, isEqual, AxisError
 def reverse_enumerate(iterable):
     ''' return a tuple with the elements of 'iterable' in reverse order, along with the proper indices;
         a better implementation would be to define an actual iterator, but this is sufficient for now '''
-    return zip(range(len(iterable)-1,-1,-1),iterable[::-1])
+    return list(zip(list(range(len(iterable)-1,-1,-1)),iterable[::-1]))
   
   
 ## determine container depth
@@ -52,7 +52,7 @@ def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}'
   elif lflatten:
     if not data.ndim >= 2: raise AxisError(cell_idx)
   elif not data.ndim == 2: raise AxisError(cell_idx)
-  if not isinstance(cell_str,basestring): raise TypeError(cell_str)
+  if not isinstance(cell_str,str): raise TypeError(cell_str)
   if cell_fct: 
     if not callable(cell_fct): raise TypeError(cell_fct)
     lcellfct = True
@@ -74,11 +74,11 @@ def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}'
   table = [] # list of rows
   if lheader: table.append(header) # first row
   # loop over rows
-  for i in xrange(rowlen):
+  for i in range(rowlen):
     row = [labels[i]] if labels else []
     rowdata = data.take(i, axis=row_idx)
     # loop over columns
-    for j in xrange(collen):
+    for j in range(collen):
       celldata = rowdata.take(j, axis=col_idx)
       # pass data to string of function
       if isinstance(celldata, np.ndarray):
@@ -107,9 +107,9 @@ def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}'
     nrow = rowlen+1 if lheader else rowlen
     ncol = collen+1 if llabel else collen
     col_fmts = [] # column width
-    for j in xrange(ncol):
+    for j in range(ncol):
       wd = 0
-      for i in xrange(nrow): wd = max(wd,len(table[i][j]))
+      for i in range(nrow): wd = max(wd,len(table[i][j]))
       col_fmts.append('{{:^{:d}s}}'.format(wd))
     # assemble table string
     string = tab_begin + '\n' if tab_begin else '' # initialize
@@ -166,7 +166,7 @@ def defaultNamedtuple(typename, field_names, defaults=None):
 def namedTuple(typename=None, field_names=None, verbose=False, rename=False, **kwargs):
   ''' a wrapper for namedtuple that can create the class on the fly from a dict '''
   if typename is None: typename = 'NamedTuple'
-  if field_names is None: field_names = kwargs.keys()
+  if field_names is None: field_names = list(kwargs.keys())
   # create namedtuple class
   NT = col.namedtuple(typename, field_names, verbose=verbose, rename=rename)
   # create namedtuple instance and populate with values from kwargs
@@ -217,7 +217,7 @@ def apply_over_arrays(fct, *arrays, **kwargs):
     if out.shape[0] != ie: raise AxisError("Output array has incompatible shape.")
   # loop over outer dimension and apply function
   if lexitcode: ecs = [] # exit code
-  for i in xrange(ie):
+  for i in range(ie):
     arrslc = [array[i,:] for array in arrays]
     if lout: kwargs['out'] = out[i,:]
     ec = fct(*arrslc, **kwargs)
@@ -234,7 +234,7 @@ def _loop_recursion(*args, **kwargs):
   if len(args) == 1:
     # initialize dictionary of lists (only first recursion level)
     loop_list = args[0][:] # use copy, since it will be decimated 
-    list_dict = {key:list() for key in kwargs.iterkeys()}
+    list_dict = {key:list() for key in kwargs.keys()}
   elif len(args) == 2:
     loop_list = args[0][:] # use copy of list, to avoid interference with other branches
     list_dict = args[1] # this is not a copy: all branches append to the same lists!
@@ -248,7 +248,7 @@ def _loop_recursion(*args, **kwargs):
       list_dict = _loop_recursion(loop_list, list_dict, **kwargs)
   else:
     # terminate recursion branch
-    for key,value in kwargs.iteritems():
+    for key,value in kwargs.items():
       list_dict[key].append(value)
   # return results 
   return list_dict
@@ -286,7 +286,7 @@ def expandArgumentList(inner_list=None, outer_list=None, expand_list=None, lprod
       
     # handle outer product expansion first
     if len(outer_list) > 0:
-      kwtmp = {key:value for key,value in kwargs.items() if key not in inner_list}
+      kwtmp = {key:value for key,value in list(kwargs.items()) if key not in inner_list}
       
       # detect variables for parallel expansion
       # N.B.: parallel outer expansion is handled by replacing the arguments in each parallel expansion group
@@ -302,15 +302,15 @@ def expandArgumentList(inner_list=None, outer_list=None, expand_list=None, lprod
           # introduce fake argument and save record
           fake = 'TMP_'+'_'.join(kw)+'_{:d}'.format(len(kw)) # long name that is unlikely to interfere...
           par_dict[fake] = kw # store record of parallel expansion for reassembly later
-          kwtmp[fake] = zip(*par_args) # transpose lists to get a list of tuples                      
-        elif not isinstance(kw,basestring): raise TypeError(kw)
+          kwtmp[fake] = list(zip(*par_args)) # transpose lists to get a list of tuples                      
+        elif not isinstance(kw,str): raise TypeError(kw)
       # replace entries in outer list
       if len(par_dict)>0:
         outer_list = outer_list[:] # copy list
-        for fake,names in par_dict.items():
+        for fake,names in list(par_dict.items()):
           if names in outer_list:
             outer_list[outer_list.index(names)] = fake
-      assert all([ isinstance(arg,basestring) for arg in outer_list])
+      assert all([ isinstance(arg,str) for arg in outer_list])
       
       outer_list, outer_dict = _prepareList(outer_list, kwtmp)
       lstlen = 1
@@ -319,15 +319,15 @@ def expandArgumentList(inner_list=None, outer_list=None, expand_list=None, lprod
       # execute recursive function for outer product expansion    
       list_dict = _loop_recursion(outer_list, **outer_dict) # use copy of
       # N.B.: returns a dictionary where all kwargs have been expanded to lists of appropriate length
-      assert all(key in outer_dict for key in list_dict.iterkeys()) 
+      assert all(key in outer_dict for key in list_dict.keys()) 
       assert all(len(list_dict[el])==lstlen for el in outer_list) # check length    
-      assert all(len(ld)==lstlen for ld in list_dict.itervalues()) # check length  
+      assert all(len(ld)==lstlen for ld in list_dict.values()) # check length  
       
       # disassemble parallel expansion tuple and reassemble as individual arguments
       if len(par_dict)>0:
-        for fake,names in par_dict.iteritems():
+        for fake,names in par_dict.items():
           assert fake in list_dict
-          par_args = zip(*list_dict.pop(fake)) # transpose, to get an expanded tuple for each argument
+          par_args = list(zip(*list_dict.pop(fake))) # transpose, to get an expanded tuple for each argument
           assert len(par_args) == len(names) 
           for name,args in zip(names,par_args): list_dict[name] = args
          
@@ -350,9 +350,9 @@ def expandArgumentList(inner_list=None, outer_list=None, expand_list=None, lprod
       
     ## generate list of argument dicts
     arg_dicts = []
-    for n in xrange(lstlen):
+    for n in range(lstlen):
       # assemble arguments
-      lstargs = {key:lst[n] for key,lst in list_dict.iteritems()}
+      lstargs = {key:lst[n] for key,lst in list_dict.items()}
       arg_dict = kwargs.copy(); arg_dict.update(lstargs)
       arg_dicts.append(arg_dict)    
   # return list of arguments
@@ -446,7 +446,7 @@ def PCA(data, degree=None, lprewhiten=False, lpostwhiten=False, lEOF=False, lfee
     string = "Variance explained by {:s} PCA's: {:s}; total variance explained: {:2.0f}%"
     eiglist = ', '.join('{:.0f}%'.format(e*100.) for e in eig)
     dgrstr = 'all' if degree is None else "{:d} leading".format(degree)
-    print(string.format(dgrstr, eiglist, eig.sum()*100.))
+    print((string.format(dgrstr, eiglist, eig.sum()*100.)))
   # project data onto (leading) EOF's
   pca = np.dot(data,eof) # inverse order, because the are transposed
   # post-whiten features

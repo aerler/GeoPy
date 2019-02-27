@@ -60,7 +60,7 @@ varatts = dict(air   = dict(name='T2', units='K'), # 2m Temperature
 ltmvaratts = varatts.copy()
 tsvaratts = varatts.copy()
 # list of variables to load
-ltmvarlist = varatts.keys() # also includes coordinate fields    
+ltmvarlist = list(varatts.keys()) # also includes coordinate fields    
 tsvarlist = ['air', 'prate', 'lon', 'lat'] # 'air' is actually 2m temperature...
 
 # variable and file lists settings
@@ -84,7 +84,7 @@ def loadNARR_LTM(name=dataset_name, varlist=None, grid=None, interval='monthly',
       pfx = '.mon.ltm.nc'; tlen = 12
     elif interval == 'daily': 
       pfx = '.day.ltm.nc'; tlen = 365
-    else: raise DatasetError, "Selected interval '%s' is not supported!"%interval
+    else: raise DatasetError("Selected interval '%s' is not supported!"%interval)
     # translate varlist
     if varlist and varatts: varlist = translateVarNames(varlist, varatts)  
     # axes dictionary, primarily to override time axis 
@@ -100,7 +100,7 @@ def loadNARR_LTM(name=dataset_name, varlist=None, grid=None, interval='monthly',
   else:
     # load from neatly formatted and regridded time-series files
     if folder is None: folder = avgfolder
-    raise NotImplementedError, "Need to implement loading neatly formatted and regridded time-series!"
+    raise NotImplementedError("Need to implement loading neatly formatted and regridded time-series!")
   # return formatted dataset
   return dataset
 
@@ -253,9 +253,9 @@ if __name__ == '__main__':
     dataset = loadNARR(grid=grid, period=period)
     print(dataset)
     print('')
-    print(dataset.geotransform)
+    print((dataset.geotransform))
     print('')
-    print(grid_def[''].scale)
+    print((grid_def[''].scale))
                       
   elif mode == 'test_timeseries':
     
@@ -265,8 +265,8 @@ if __name__ == '__main__':
     dataset = loadNARR_TS(grid=grid, varlist=['precip'])
     print(dataset)
     print('')
-    print(dataset.time)
-    print(dataset.time.coord)
+    print((dataset.time))
+    print((dataset.time.coord))
     assert dataset.time.coord[0] == 0 # Jan 1979
               
 
@@ -278,8 +278,8 @@ if __name__ == '__main__':
     else: dataset = loadNARR_Stn(station=pntset, period=period)
     print(dataset)
     print('')
-    print(dataset.time)
-    print(dataset.time.coord)
+    print((dataset.time))
+    print((dataset.time.coord))
 
   elif mode == 'test_point_timeseries':
     
@@ -290,11 +290,11 @@ if __name__ == '__main__':
     #dataset = dataset.load().climMean()
     print(dataset)
     print('')
-    print(dataset.time)
-    print(dataset.time.coord)
+    print((dataset.time))
+    print((dataset.time.coord))
     assert dataset.time.coord[0] == 0 # Jan 1979
     print('')
-    print(dataset.shape_name[:])
+    print((dataset.shape_name[:]))
 
 
   elif mode == 'convert_climatology':      
@@ -319,7 +319,7 @@ if __name__ == '__main__':
       
       # figure out a different filename
       filename = getFileName(grid='NARR', period=None, name='NARR', filepattern=avgfile)
-      print('\n'+filename+'\n')      
+      print(('\n'+filename+'\n'))      
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)      
       # write data and some annotation
       ncset = writeNetCDF(dataset, avgfolder+filename, close=False)
@@ -340,7 +340,7 @@ if __name__ == '__main__':
     # load source
     periodstr = '%4i-%4i'%period
     print('\n')
-    print('   ***   Processing Grid %s from %s   ***   '%(grid,periodstr))
+    print(('   ***   Processing Grid %s from %s   ***   '%(grid,periodstr)))
     print('\n')
     source = loadNARR_TS()
     print(source)

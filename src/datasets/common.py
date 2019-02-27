@@ -81,12 +81,12 @@ def addLoadFcts(namespace, dataset, comment=" (Experiment and Ensemble lists are
   ''' function to add dataset load functions to the local namespace, which already have a fixed experiments dictionary '''
   # search namespace for load functions
   vardict = dataset if isinstance(dataset, dict) else dataset.__dict__
-  for name,fct in vardict.iteritems():
+  for name,fct in vardict.items():
     if inspect.isfunction(fct) and name[:4] == 'load':
       # check valid arguments (omit others)
-      arglist = inspect.getargs(fct.func_code)
+      arglist = inspect.getargs(fct.__code__)
       arglist = None if arglist[2] is not None else arglist[0]
-      fctargs = {key:value for key,value in kwargs.iteritems() if arglist is None or  key in arglist}
+      fctargs = {key:value for key,value in kwargs.items() if arglist is None or  key in arglist}
       # apply arguments and update doc-string
       newfct = functools.partial(fct, **fctargs)
       newfct.__doc__ = fct.__doc__ + comment # copy doc-string with comment
@@ -266,11 +266,11 @@ def translateVarNames(varlist, varatts):
   ''' Simple function to replace names in a variable list with their original names as inferred from the 
       attributes dictionary. Note that this requires the dictionary to have the field 'name'. '''
   warn("WARNING: this function is deprecated - the functionality is not handled by DatasetNetCDF directly")
-  if isinstance(varlist,basestring): varlist = [varlist]
+  if isinstance(varlist,str): varlist = [varlist]
   if not isinstance(varlist,(list,tuple,set)) or not isinstance(varatts,dict): raise TypeError(varlist)
   varlist = list(varlist) # make copy, since operation is in-place, and to avoid interference
   # cycle over names in variable attributes (i.e. final names, not original names)  
-  for key,atts in varatts.iteritems():
+  for key,atts in varatts.items():
     if 'name' in atts and atts['name'] in varlist: varlist.append(key)
 #       varlist[varlist.index(atts['name'])] = key # original name is used as key in the attributes dict
   # return varlist with final names replaced by original names
@@ -298,13 +298,13 @@ def getFileName(name=None, resolution=None, period=None, grid=None, shape=None, 
     filename = filepattern.format(gridstr)
   elif filetype == 'climatology':
     if isinstance(period,(tuple,list)): pass
-    elif isinstance(period,basestring): pass
+    elif isinstance(period,str): pass
     elif period is None: pass
     elif isinstance(period,(int,np.integer)):
       period = (1979, 1979+period)
     else: raise DateError   
     if period is None or period == '': periodstr = ''
-    elif isinstance(period,basestring): periodstr = '_{0:s}'.format(period)
+    elif isinstance(period,str): periodstr = '_{0:s}'.format(period)
     else: periodstr = '_{0:4d}-{1:4d}'.format(*period)  
     # assemble filename
     if filepattern is None: filepattern = name.lower() + '{0:s}_clim{1:s}.nc' 
@@ -344,7 +344,7 @@ def loadObservations(name=None, title=None, folder=None, period=None, grid=None,
     if period is None or period == '': pass
 #       if name not in ('PCIC','PRISM','GPCC','NARR'): 
 #         raise ValueError("A period is required to load observational climatologies.")
-    elif isinstance(period,basestring):
+    elif isinstance(period,str):
       period = tuple([int(prd) for prd in period.split('-')]) 
     elif not isinstance(period,(int,np.integer)) and ( not isinstance(period,tuple) and len(period) == 2 ): 
       raise TypeError(period)
@@ -352,7 +352,7 @@ def loadObservations(name=None, title=None, folder=None, period=None, grid=None,
     period = None # to indicate time-series (but for safety, the input must be more explicit)
     if lautoregrid is None: lautoregrid = False # this can take very long!
   # cast/copy varlist
-  if isinstance(varlist,basestring): varlist = [varlist] # cast as list
+  if isinstance(varlist,str): varlist = [varlist] # cast as list
   elif varlist is not None: varlist = list(varlist) # make copy to avoid interference
   # figure out station and shape options
   if station and shape: raise ArgumentError()
@@ -407,7 +407,7 @@ def loadObservations(name=None, title=None, folder=None, period=None, grid=None,
   if not lstation and not lshape:
     if grid is None or grid == name:
       dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform, griddef=griddef, gridfolder=grid_folder)
-    elif isinstance(grid,basestring): # load from pickle file
+    elif isinstance(grid,str): # load from pickle file
   #     griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder)
       # add GDAL functionality to dataset 
       dataset = addGDALtoDataset(dataset, griddef=grid, gridfolder=grid_folder)
@@ -530,8 +530,8 @@ def loadDataset(name=None, station=None, shape=None, mode='climatology', basin_l
                 WRF_exps=WRF_exps, CESM_exps=CESM_exps, WRF_ens=WRF_ens, CESM_ens=CESM_ens)
   if dataset_name == 'WRF': kwargs.update(exps=WRF_exps, enses=WRF_ens)
   elif dataset_name == 'CESM': kwargs.update(exps=CESM_exps, enses=CESM_ens)
-  argspec, varargs, keywords = inspect.getargs(load_fct.func_code); del varargs, keywords
-  kwargs = {key:value for key,value in kwargs.iteritems() if key in argspec}
+  argspec, varargs, keywords = inspect.getargs(load_fct.__code__); del varargs, keywords
+  kwargs = {key:value for key,value in kwargs.items() if key in argspec}
   # load dataset
   dataset = load_fct(**kwargs)
   if orig_name == name: 
@@ -553,7 +553,7 @@ def selectElements(datasets, axis, testFct=None, master=None, linplace=False, la
   if not all(isinstance(dataset,Dataset) for dataset in datasets): raise TypeError(dataset)
   if not callable(testFct) and testFct is not None: raise TypeError(testFct)
   if isinstance(axis, Axis): axis = axis.name
-  if not isinstance(axis, basestring): raise TypeError(axis)
+  if not isinstance(axis, str): raise TypeError(axis)
   if lall and master is not None: raise ArgumentError("The options 'lall' and 'imaster' are mutually exclusive!")
   # save some ensemble parameters for later  
   lnotest = testFct is None
@@ -564,7 +564,7 @@ def selectElements(datasets, axis, testFct=None, master=None, linplace=False, la
   # use dataset with shortest axis as master sample (more efficient)
   axes = [dataset.getAxis(axis) for dataset in datasets]
   if master is None: imaster = np.argmin([len(ax) for ax in axes]) # find shortest axis
-  elif isinstance(master,basestring): 
+  elif isinstance(master,str): 
     # translate name of dataset into index
     imaster = None
     for i,dataset in enumerate(datasets): 
@@ -693,8 +693,8 @@ def loadEnsemble(names=None, name=None, title=None, varlist=None, aggregation=No
         if varname not in ds: ds.addVariable(var.copy()) 
   # apply general reduction operations
   if reduction is not None:
-    for ax,op in reduction.iteritems():
-      if isinstance(op, basestring): ensemble = getattr(ensemble,op)(axis=ax)
+    for ax,op in reduction.items():
+      if isinstance(op, str): ensemble = getattr(ensemble,op)(axis=ax)
       elif isinstance(op, (int,np.integer,float,np.inexact)): ensemble = ensemble(**{ax:op})
   # extract seasonal/climatological values/extrema
   if (ldataset and len(ensemble)==0): raise EmptyDatasetError(varlist)
@@ -763,7 +763,7 @@ if __name__ == '__main__':
   ## pickle grid definition
   if mode == 'pickle_grid':
     
-    for grid,reses in grids.items():
+    for grid,reses in list(grids.items()):
       
       if reses is None: reses = [None] # default grid
       
@@ -772,22 +772,22 @@ if __name__ == '__main__':
         print('')        
         if res is None:
           gridstr = grid
-          print('   ***   Pickling Grid Definition for {0:s}   ***   '.format(grid))
+          print(('   ***   Pickling Grid Definition for {0:s}   ***   '.format(grid)))
         else:
           gridstr = '{0:s}_{1:s}'.format(grid,res)  
-          print('   ***   Pickling Grid Definition for {0:s} Resolution {1:s}   ***   '.format(grid,res))
+          print(('   ***   Pickling Grid Definition for {0:s} Resolution {1:s}   ***   '.format(grid,res)))
         print('')
         
         # load GridDefinition      
         griddef = getCommonGrid(grid,res)         
         
         if griddef is None:
-          print('GridDefinition object for {0:s} not found!'.format(gridstr))         
+          print(('GridDefinition object for {0:s} not found!'.format(gridstr)))         
         else:
           # save pickle
           filename = pickleGridDef(griddef, lfeedback=True, loverwrite=True, lgzip=True)
           
-          print('   Saving Pickle to \'{0:s}\''.format(filename))
+          print(('   Saving Pickle to \'{0:s}\''.format(filename)))
           print('')
           
           # load pickle to make sure it is right

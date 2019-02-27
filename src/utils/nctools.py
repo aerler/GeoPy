@@ -36,7 +36,7 @@ class NCAxisError(Exception):
 def checkFillValue(fillValue, dtype):
   ''' check a fill value and return either return a valid value or raise an exception '''
   lstrvar = dtype.kind == 'S'
-  if not lstrvar and isinstance(fillValue, basestring): 
+  if not lstrvar and isinstance(fillValue, str): 
     fillValue = None # invalid value
     warn("Removed malformed fill_value '{:s}'.")
   if fillValue is not None:
@@ -51,12 +51,12 @@ def coerceAtts(atts):
   if not isinstance(atts,dict): raise TypeError
   ncatts = dict()
   # loop over items
-  for key,value in atts.iteritems():
+  for key,value in atts.items():
     if key in ('missing_value','fillValue','_FillValue'): pass
     # N.B.: these are special attributes that the NetCDF module will try to read
-    elif isinstance(key,basestring) and key[0] == '_' : pass # skip (internal attributes)
+    elif isinstance(key,str) and key[0] == '_' : pass # skip (internal attributes)
     elif value is None: pass # skip (invalid value / not assigned)
-    elif not isinstance(value,(basestring,np.ndarray,np.inexact,float,np.integer,int)):
+    elif not isinstance(value,(str,np.ndarray,np.inexact,float,np.integer,int)):
       if 'name' in dir(value):
         ncatts[key] = value.name # mostly for datasets and variables
       elif isinstance(value,col.Iterable):
@@ -90,9 +90,9 @@ def add_strvar(dst, name, strlist, dim, atts=None):
     dst.createDimension(dim, size=dimlen) # create dimension on the fly
   # allocate array
   chararray = np.ndarray((dimlen,strlen), dtype='S1')
-  for i in xrange(dimlen):
+  for i in range(dimlen):
     jlen = len(strlist[i])
-    for j in xrange(jlen):
+    for j in range(jlen):
       chararray[i,j] = strlist[i][j] # unfortunately, direct assignment of sequences does not work
     # fill remaining with spaces 
     if jlen < strlen: chararray[i,jlen:] = ' '
@@ -150,7 +150,7 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   if shape is None: shape = [None,]*len(dims)
   else: shape = list(shape)
   if len(shape) != len(dims): raise NCAxisError 
-  for i,dim in zip(xrange(len(dims)),dims):
+  for i,dim in zip(range(len(dims)),dims):
     if dim in dst.dimensions:
       if shape[i] is None: 
         shape[i] = len(dst.dimensions[dim])
@@ -218,19 +218,19 @@ def copy_ncatts(dst, src, prefix = '', incl_=True):
 def copy_vars(dst, src, varlist=None, namemap=None, dimmap=None, remove_dims=None, copy_data=True, copy_atts=True, \
               zlib=True, prefix='', incl_=True, fillValue=None, **kwargs):
   # prefix is passed to copy_ncatts, the remaining kwargs are passed to dst.createVariable()
-  if varlist is None: varlist = src.variables.keys() # just copy all
-  if dimmap: midmap = dict(zip(dimmap.values(),dimmap.keys())) # reverse mapping
+  if varlist is None: varlist = list(src.variables.keys()) # just copy all
+  if dimmap: midmap = dict(list(zip(list(dimmap.values()),list(dimmap.keys())))) # reverse mapping
   varargs = dict() # arguments to be passed to createVariable
   if zlib: varargs.update(zlib_default)
   varargs.update(kwargs)
   dtype = varargs.pop('dtype', None) 
   # loop over variable list
   for name in varlist:
-    if namemap and (name in namemap.keys()): rav = src.variables[namemap[name]] # apply name mapping 
+    if namemap and (name in list(namemap.keys())): rav = src.variables[namemap[name]] # apply name mapping 
     else: rav = src.variables[name]
     dims = [] # figure out dimension list
     for dim in rav.dimensions:
-      if dimmap and midmap.has_key(dim): dim = midmap[dim] # apply name mapping (in reverse)
+      if dimmap and dim in midmap: dim = midmap[dim] # apply name mapping (in reverse)
       if not (remove_dims and dim in remove_dims): dims.append(dim)
     # create new variable
     dtype = dtype or rav.dtype
@@ -242,7 +242,7 @@ def copy_vars(dst, src, varlist=None, namemap=None, dimmap=None, remove_dims=Non
 # copy dimensions and coordinate variables from one dataset to another
 def copy_dims(dst, src, dimlist=None, namemap=None, copy_coords=True, **kwargs):
   # all remaining kwargs are passed on to dst.createVariable()
-  if dimlist is None: dimlist = src.dimensions.keys() # just copy all
+  if dimlist is None: dimlist = list(src.dimensions.keys()) # just copy all
   if namemap is None: namemap = dict() # a dummy - assigning pointers in argument list is dangerous! 
   # loop over dimensions
   for name in dimlist:
@@ -252,7 +252,7 @@ def copy_dims(dst, src, dimlist=None, namemap=None, copy_coords=True, **kwargs):
   # create coordinate variable
   if copy_coords:
 #    if kwargs.has_key('dtype'): kwargs['datatype'] = kwargs.pop('dtype') # different convention... 
-    remove_dims = [dim for dim in src.dimensions.keys() if dim not in dimlist] # remove_dims=remove_dims
+    remove_dims = [dim for dim in list(src.dimensions.keys()) if dim not in dimlist] # remove_dims=remove_dims
     dimlist = [dim for dim in dimlist if dim in src.variables] # only the ones that have coordinates
     copy_vars(dst, src, varlist=dimlist, namemap=namemap, dimmap=namemap, remove_dims=remove_dims, **kwargs)
     
@@ -262,21 +262,21 @@ def copy_dims(dst, src, dimlist=None, namemap=None, copy_coords=True, **kwargs):
 def writeNetCDF(dataset, ncfile, ncformat='NETCDF4', zlib=True, writeData=True, overwrite=True, skipUnloaded=False, 
                 feedback=False, close=True):
   ''' A function to write the data in a generic Dataset to a NetCDF file. '''
-  if feedback: print("Writing to file: '{:s}'".format(ncfile)) # print feedback
+  if feedback: print(("Writing to file: '{:s}'".format(ncfile))) # print feedback
   # open file
-  if isinstance(ncfile,basestring): 
+  if isinstance(ncfile,str): 
     if not overwrite and os.path.exists(ncfile): raise IOError("File '{:s}' already exists and 'overwrite' set to False.".format(ncfile))
     ncfile = nc.Dataset(ncfile, mode='w', format=ncformat, clobber=overwrite)
   elif not isinstance(ncfile,nc.Dataset): raise TypeError
   #if ncfile.mode == 'r': raise NCDataError, "Need write permission on NetCDF dataset."
   ncfile.setncatts(coerceAtts(dataset.atts))
   # add coordinate variables first
-  for name,ax in dataset.axes.items():
+  for name,ax in list(dataset.axes.items()):
     # only need to add real coordinate axes; simple dimensions are added on-the-fly by ariables
     data = ax.getArray(unmask=True) if writeData and ( ax.data or not skipUnloaded ) else None
     add_coord(ncfile, name, length=len(ax), data=data, atts=coerceAtts(ax.atts), dtype=ax.dtype, zlib=zlib, fillValue=ax.fillValue)
   # now add variables
-  for name,var in dataset.variables.items():
+  for name,var in list(dataset.variables.items()):
     dims = tuple([ax.name for ax in var.axes])
     #data = var.getArray(unmask=True) if writeData and ( var.data or not skipUnloaded ) else None  
     add_var(ncfile, name, dims=dims, data=var.data_array, atts=coerceAtts(var.atts), 

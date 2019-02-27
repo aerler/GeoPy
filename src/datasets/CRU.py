@@ -46,14 +46,14 @@ varatts = dict(tmp = dict(name='T2', units='K', offset=273.15), # 2m average tem
                lon  = dict(name='lon', units='deg E'), # geographic longitude field
                lat  = dict(name='lat', units='deg N')) # geographic latitude field
 # enforce single precision (all double requires too much memory)
-for var,att in varatts.iteritems():
+for var,att in varatts.items():
   if var not in ('time',): att['dtype'] = np.dtype('float32')
   # N.B.: time is float in the original, but int in the pre-procesed files... just leave it alone
 
 # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
 tsvaratts = varatts
 # list of variables to load
-varlist = varatts.keys() # also includes coordinate fields    
+varlist = list(varatts.keys()) # also includes coordinate fields    
 # variable and file lists settings
 nofile = ('lat','lon','time') # variables that don't have their own files
 
@@ -72,7 +72,7 @@ def loadCRU_TS(name=dataset_name, grid=None, varlist=None, resolution=None, vara
     if folder is None: folder = orig_ts_folder
     # translate varlist
     if varatts is None: varatts = tsvaratts.copy()
-    if varlist is None: varlist = varatts.keys()
+    if varlist is None: varlist = list(varatts.keys())
     if varlist and varatts: varlist = translateVarNames(varlist, varatts)
     # assemble filelist
     if filelist is None: # generate default filelist
@@ -209,8 +209,8 @@ if __name__ == '__main__':
     dataset = loadCRU(period=period)
     print(dataset)
     print('')
-    print(dataset.geotransform)
-    print(dataset.precip.getArray().mean())
+    print((dataset.geotransform))
+    print((dataset.precip.getArray().mean()))
     stnds = loadCRU_Stn(station='ecprecip', period=period)
     print(stnds)
     print('')
@@ -222,12 +222,12 @@ if __name__ == '__main__':
     dataset = loadCRU_TS(grid=None)
     print(dataset)
     print('')
-    print(dataset.time)
-    print(dataset.time.coord)
+    print((dataset.time))
+    print((dataset.time.coord))
     assert dataset.time.coord[78*12] == 0
     print('')
-    print(dataset.precip)
-    print(dataset.precip[0:12,:,:].mean()*86400)
+    print((dataset.precip))
+    print((dataset.precip[0:12,:,:].mean()*86400))
 
 
   elif mode == 'test_point_climatology':
@@ -238,8 +238,8 @@ if __name__ == '__main__':
     else: dataset = loadCRU_Stn(station=pntset, period=period)
     print(dataset)
     print('')
-    print(dataset.time)
-    print(dataset.time.coord)
+    print((dataset.time))
+    print((dataset.time.coord))
     
         
   elif mode == 'test_point_timeseries':
@@ -250,8 +250,8 @@ if __name__ == '__main__':
     else: dataset = loadCRU_StnTS(station=pntset)
     print(dataset)
     print('')
-    print(dataset.time)
-    print(dataset.time.coord)
+    print((dataset.time))
+    print((dataset.time.coord))
     assert dataset.time.coord[78*12] == 0 # Jan 1979
 
         
@@ -260,7 +260,7 @@ if __name__ == '__main__':
     # load source
     periodstr = '%4i-%4i'%period
     print('\n')
-    print('   ***   Processing Time-series from %s   ***   '%(periodstr,))
+    print(('   ***   Processing Time-series from %s   ***   '%(periodstr,)))
     print('\n')
     source = loadCRU_TS()
     source = source(time=timeSlice(period)) # only get relevant time-slice    
@@ -288,11 +288,11 @@ if __name__ == '__main__':
     print('\n')
 
     # add landmask
-    print '   ===   landmask   ===   '
+    print('   ===   landmask   ===   ')
     tmpatts = dict(name='landmask', units='', long_name='Landmask for Climatology Fields', 
               description='where this mask is non-zero, no data is available')
     # find a masked variable
-    for var in sink.variables.itervalues():
+    for var in sink.variables.values():
       if var.masked and var.gdal: 
         mask = var.getMapMask(); break
     # add variable to dataset

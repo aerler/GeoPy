@@ -44,10 +44,10 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
   elif not isinstance(varlist,(tuple,list)) or not all([isinstance(var,Variable) for var in varlist]): raise TypeError
   for var in varlist: var.squeeze() # remove singleton dimensions
   # linestyles is just a list of line styles for each plot
-  if isinstance(linestyles,(basestring,NoneType)): linestyles = [linestyles]*len(varlist)
+  if isinstance(linestyles,(str,NoneType)): linestyles = [linestyles]*len(varlist)
   elif not isinstance(linestyles,(tuple,list)): 
-    if not all([isinstance(linestyles,basestring) for var in varlist]): raise TypeError
-    if len(varlist) != len(linestyles): raise ListError, "Failed to match linestyles to varlist!"
+    if not all([isinstance(linestyles,str) for var in varlist]): raise TypeError
+    if len(varlist) != len(linestyles): raise ListError("Failed to match linestyles to varlist!")
   # varatts are variable-specific attributes that are parsed for special keywords and then passed on to the
   if varatts is None: varatts = [dict()]*len(varlist)  
   elif isinstance(varatts,dict):
@@ -57,10 +57,10 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
   elif not isinstance(varatts,(tuple,list)): raise TypeError
   if not all([isinstance(atts,dict) for atts in varatts]): raise TypeError
   # check axis: they need to have only one axes, which has to be the same for all!
-  if len(varatts) != len(varlist): raise ListError, "Failed to match varatts to varlist!"  
+  if len(varatts) != len(varlist): raise ListError("Failed to match varatts to varlist!")  
   for var in varlist: 
-    if var.ndim > 1: raise AxisError, "Variable '{}' has more than one dimension; consider squeezing.".format(var.name)
-    elif var.ndim == 0: raise AxisError, "Variable '{}' is a scalar; consider display as a line.".format(var.name)
+    if var.ndim > 1: raise AxisError("Variable '{}' has more than one dimension; consider squeezing.".format(var.name))
+    elif var.ndim == 0: raise AxisError("Variable '{}' is a scalar; consider display as a line.".format(var.name))
   # loop over variables
   plts = []; varname = None; varunits = None; axname = None; axunits = None # list of plot handles
   for var,linestyle,varatt in zip(varlist,linestyles,varatts):
@@ -77,7 +77,7 @@ def linePlot(varlist, ax=None, fig=None, linestyles=None, varatts=None, legend=N
     kwatts = kwargs.copy(); kwatts.update(varatt) # join individual and common attributes     
     if 'label' not in kwatts: kwatts['label'] = var.name # default label: variable name
     # N.B.: other scaling behavior could be added here
-    if lprint: print varname, varunits, val.mean()    
+    if lprint: print(varname, varunits, val.mean())    
     if lsmooth: val = smooth(val)
     # figure out orientation
     if flipxy: xx,yy = val, axe 
@@ -185,7 +185,7 @@ def addErrorPatch(ax, var, err, color=None, axis=None, xerr=True, alpha=0.25, ch
     ix = append(y,y[::-1])
     iy = append(x-e,(x+e)[::-1])
   if color is None: raise NotImplementedError # should take color from plot line (variable)
-  patch = Polygon(zip(ix,iy), alpha=alpha, facecolor=color, edgecolor=color)
+  patch = Polygon(list(zip(ix,iy)), alpha=alpha, facecolor=color, edgecolor=color)
   ax.add_patch(patch)
   return patch 
 

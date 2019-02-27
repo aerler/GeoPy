@@ -22,7 +22,7 @@ from datasets.common import getFileName
 def loadYAML(default, lfeedback=True):
   ''' load YAML configuration file and return config object '''
   # check for environment variable
-  if os.environ.has_key('PYAVG_YAML'): 
+  if 'PYAVG_YAML' in os.environ: 
     yamlfile = os.environ['PYAVG_YAML']
     # try to guess variations, if path is not valid
     if not os.path.isfile(yamlfile): 
@@ -30,13 +30,13 @@ def loadYAML(default, lfeedback=True):
         yamlfile = '{:s}/{:s}'.format(yamlfile,default)
       else: # use filename in current directory
         yamlfile = '{:s}/{:s}'.format(os.getcwd(),yamlfile)
-    if lfeedback: print("\nLoading user-specified YAML configuration file:\n '{:s}'".format(yamlfile))
+    if lfeedback: print(("\nLoading user-specified YAML configuration file:\n '{:s}'".format(yamlfile)))
   else: # use default in current directory
     yamlfile = '{:s}/{:s}'.format(os.getcwd(),default)
-    if lfeedback: print("\nLoading default YAML configuration file:\n '{:s}'".format(yamlfile))
+    if lfeedback: print(("\nLoading default YAML configuration file:\n '{:s}'".format(yamlfile)))
   # check if file exists  
   if not os.path.exists(yamlfile): 
-    raise IOError, "YAML configuration file not found!\n ('{:s}')".format(yamlfile)
+    raise IOError("YAML configuration file not found!\n ('{:s}')".format(yamlfile))
   # read file
   with open(yamlfile) as f: 
     config = yaml.load(f, Loader=yaml.Loader)
@@ -53,13 +53,13 @@ def getExperimentList(experiments, project=None, dataset='WRF', lensembles=True)
   # expand WRF experiments
   if experiments is None: # do all (with or without ensembles)
     exps, enss = mod.experiments, mod.enss; del mod # use list without shortcuts to avoid duplication
-    if lensembles: experiments = [exp for exp in exps.itervalues()]  
-    else: experiments = [exp for exp in exps.itervalues() if exp.shortname not in enss] 
+    if lensembles: experiments = [exp for exp in exps.values()]  
+    else: experiments = [exp for exp in exps.values() if exp.shortname not in enss] 
   else: 
     exps, enss = mod.exps, mod.enss; del mod # use list with shortcuts added
     try: experiments = [exps[exp] for exp in experiments]
     except KeyError: # throw exception is experiment is not found
-      raise KeyError, "{1:s} experiment '{0:s}' not found in {1:s} experiment list (loaded from '{2:s}').".format(exp,dataset,project)
+      raise KeyError("{1:s} experiment '{0:s}' not found in {1:s} experiment list (loaded from '{2:s}').".format(exp,dataset,project))
   # return expanded list of experiments
   return experiments
 
@@ -76,7 +76,7 @@ def getProjectVars(varlist, project=None, module=None):
   for varname in varlist:
     try: vardict[varname] = mod.__dict__[varname]
     except KeyError: # throw exception is experiment is not found
-      raise KeyError, "Variable '{:s}' not found in {:s} project (module '{:s}').".format(varname,project,module)
+      raise KeyError("Variable '{:s}' not found in {:s} project (module '{:s}').".format(varname,project,module))
   # return expanded list of experiments
   return vardict
 
@@ -123,12 +123,12 @@ def getTargetFile(dataset=None, mode=None, dataargs=None, grid=None, shape=None,
         fileclass = CESM.fileclasses[filetype] if filetype in CESM.fileclasses else CESM.FileType(filetype)
         if mode == 'climatology': filename = fileclass.climfile.format(gstr,pstr)
         elif mode == 'time-series': filename = fileclass.tsfile.format(gstr)
-    else: raise NotImplementedError, "Unsupported Mode: '{:s}'".format(mode)        
+    else: raise NotImplementedError("Unsupported Mode: '{:s}'".format(mode))        
   elif lwrite: # assume observational datasets
     filename = getFileName(grid=grid, shape=shape, station=station, period=period, name=dataargs.obs_res, filetype=mode)      
   else: raise DatasetError(dataset)
   if not os.path.exists(dataargs.avgfolder): 
-    raise IOError, "Dataset folder '{:s}' does not exist!".format(dataargs.avgfolder)
+    raise IOError("Dataset folder '{:s}' does not exist!".format(dataargs.avgfolder))
   # return filename
   return filename
 
@@ -139,7 +139,7 @@ def getSourceAge(filelist=None, fileclasses=None, filetypes=None, exp=None, doma
   # if complete file list is given, just check each file
   if filelist:
     for filepath in filelist:
-      if not os.path.exists(filepath): raise IOError, "Source file '{:s}' does not exist!".format(filepath)        
+      if not os.path.exists(filepath): raise IOError("Source file '{:s}' does not exist!".format(filepath))        
       # determine age of source file
       fileage = datetime.fromtimestamp(os.path.getmtime(filepath))          
       if srcage < fileage: srcage = fileage # use latest modification date
@@ -157,7 +157,7 @@ def getSourceAge(filelist=None, fileclasses=None, filetypes=None, exp=None, doma
         if lclim: filename = fileclass.climfile.format(domain,gridstr,periodstr) # insert domain number, grid, and period
         elif lts: filename = fileclass.tsfile.format(domain,gridstr) # insert domain number, and grid
       filepath = '{:s}/{:s}'.format(exp.avgfolder,filename)
-      if not os.path.exists(filepath): raise IOError, "Source file '{:s}' does not exist!".format(filepath)        
+      if not os.path.exists(filepath): raise IOError("Source file '{:s}' does not exist!".format(filepath))        
       # determine age of source file
       fileage = datetime.fromtimestamp(os.path.getmtime(filepath))          
       if srcage < fileage: srcage = fileage # use latest modification date
@@ -173,7 +173,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
   elif mode == 'time-series': lts = True
   elif mode[-5:] == '-mean': 
     lclim = True; mode = 'climatology' # only for export to seasonal means (load entire monthly climatology)
-  else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
+  else: raise NotImplementedError("Unrecognized Mode: '{:s}'".format(mode))
   # general arguments (dataset independent)
   varlist = dataargs.get('varlist',None)
   resolution = dataargs.get('resolution',None)
@@ -195,7 +195,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
     domain = dataargs.get('domain',None)
     periodstr, gridstr = getPeriodGridString(period, grid, exp=exp)
     # check arguments
-    if period is None and lclim: raise DatasetError, "A 'period' argument is required to load climatologies!"
+    if period is None and lclim: raise DatasetError("A 'period' argument is required to load climatologies!")
     if lone and len(filetypes) > 1: raise DatasetError # process only one file at a time
     if not isinstance(domain, (np.integer,int)): raise DatasetError   
     # construct dataset message
@@ -227,7 +227,7 @@ def getMetaData(dataset, mode, dataargs, lone=True):
       if filetype not in fileclasses:
         fileclasses[filetype] = CESM.FileType(filetype)
     # check arguments
-    if period is None and lclim: raise DatasetError, "A 'period' argument is required to load climatologies!"
+    if period is None and lclim: raise DatasetError("A 'period' argument is required to load climatologies!")
     if lone and len(filetypes) > 1: raise DatasetError # process only one file at a time
     # construct dataset message
     if lone:

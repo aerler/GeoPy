@@ -26,11 +26,11 @@ def loadStyleSheet(stylesheet, lpresentation=False, lpublication=False):
   ''' convenience function to load a stylesheet according to some rules '''
   # select stylesheets
   if stylesheet is None: stylesheet = 'default'
-  if isinstance(stylesheet,basestring):     
+  if isinstance(stylesheet,str):     
     if lpublication: stylesheet = (stylesheet,'publication')       
     elif lpresentation: stylesheet = (stylesheet,'presentation',)
   # load stylesheets
-  if isinstance(stylesheet,(list,tuple,basestring)): 
+  if isinstance(stylesheet,(list,tuple,str)): 
     mpl.pyplot.style.use(stylesheet)
   else: raise TypeError
 
@@ -45,7 +45,7 @@ ggcolor['green']  = '#8EBA42'
 ggcolor['pink']   = '#FFB5B8'
 def toGGcolors(plotargs):
   ''' convenience function to replace color words with default hex codes for GG-plot colors '''
-  for val in plotargs.itervalues():
+  for val in plotargs.values():
     if 'color' in val and val['color'] in ggcolor: val['color'] = ggcolor[val['color']]
   return plotargs
 
@@ -67,7 +67,7 @@ def checkVarlist(varlist, varname=None, ndim=1, bins=None, support=None, method=
   # varlist is the list of variable objects that are to be plotted
   if isinstance(varlist,Variable): varlist = [varlist]
   elif isinstance(varlist,Dataset): 
-    if isinstance(varname,basestring): varlist = [varlist[varname]]
+    if isinstance(varname,str): varlist = [varlist[varname]]
     elif isinstance(varname,(tuple,list)):
       varlist = [varlist[name] if name in varlist else None for name in varname]
     else: raise TypeError
@@ -107,7 +107,7 @@ def checkVarlist(varlist, varname=None, ndim=1, bins=None, support=None, method=
 def checkPseudoAxis(axis, dataset=None, variable=None, ndim=(1,2)):
   ''' detect coordinate variables and prepare for use in plotting '''
   # get coordinate variable
-  if isinstance(axis,basestring):
+  if isinstance(axis,str):
       if isinstance(dataset,Dataset):
           axis = dataset[axis]
       else:
@@ -151,8 +151,8 @@ def checkSample(varlist, varname=None, bins=None, support=None, method='pdf', li
     else: sample_axis = (sample_axis, bootstrap_axis,)
     bootstrap_axis = None # i.e. checkVarList wont remove it
   # determine valid number of dimensions
-  n = 1 if isinstance(sample_axis,basestring) else len(sample_axis)
-  ndim = range(1,n+2)
+  n = 1 if isinstance(sample_axis,str) else len(sample_axis)
+  ndim = list(range(1,n+2))
   # check input and evaluate distribution variables
   varlist = checkVarlist(varlist, varname=varname, ndim=ndim, bins=bins, support=support, 
                          method=method, lignore=lignore, bootstrap_axis=bootstrap_axis)
@@ -160,8 +160,8 @@ def checkSample(varlist, varname=None, bins=None, support=None, method='pdf', li
   # if sample_axis is a list of axes, merge them
   if isinstance(sample_axis,(list,tuple)):
     if not any(var.hasAxis(sample_axis, lany=True) for var in varlist if var is not None):
-      print sample_axis, [var.hasAxis(ax) for ax in sample_axis for var in varlist if var is not None]
-      raise AxisError, "None of the Variables has any sample axes!"
+      print(sample_axis, [var.hasAxis(ax) for ax in sample_axis for var in varlist if var is not None])
+      raise AxisError("None of the Variables has any sample axes!")
     for i,var in enumerate(varlist): # merge sample axes, so we can compute sample means (and skip/keep others)
       if not (var is None or var.ndim == 1) and var.hasAxis(sample_axis, lany=True): 
         varlist[i] = var.mergeAxes(axes=sample_axis, new_axis=temporary_sample_axis, asVar=True, 
@@ -170,7 +170,7 @@ def checkSample(varlist, varname=None, bins=None, support=None, method='pdf', li
     sample_axis = temporary_sample_axis # avoid name collisions
   # check that at least some variables hve the (new) sample_axis
   if sample_axis is not None and not any(var.hasAxis(sample_axis) for var in varlist if var is not None):
-    raise AxisError, "None of the Variables has a '{:s}'-axis!".format(sample_axis)
+    raise AxisError("None of the Variables has a '{:s}'-axis!".format(sample_axis))
   # return preprocessed variables
   return varlist, sample_axis
   
@@ -218,7 +218,7 @@ def logTicks(ticks, base=None, power=0):
     if not isinstance(base,(int,np.number,float,np.inexact)): raise TypeError
     power = int(np.round(np.log(base)/np.log(10)))
   if not isinstance(power,(int,np.integer)): raise TypeError
-  print power
+  print(power)
   # generate ticks and apply template
   strtck = ['']*8
   for i in ticks:

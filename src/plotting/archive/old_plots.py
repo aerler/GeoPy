@@ -33,7 +33,7 @@ def multiPlot(f,varlist,titles='',clevs=None,labels=None,legends=None,cbls=None,
       (ie,je) = subplot 
   else: # assume scalar    
     # all possible subdivisions 
-    s = [(i,le/i) for i in xrange(1,le+1) if le%i==0]
+    s = [(i,le/i) for i in range(1,le+1) if le%i==0]
     # select "most square" 
     ss = [t[0]+t[1] for t in s]
     (ie,je) = s[ss.index(min(ss))]
@@ -44,8 +44,8 @@ def multiPlot(f,varlist,titles='',clevs=None,labels=None,legends=None,cbls=None,
   colorbar = kwargs.pop('colorbar',{'orientation':'vertical'})      
   ## create axes and draw plots
   axs = []; cf = []; n=0 # reset counter
-  for i in xrange(ie):
-    for j in xrange(je):          
+  for i in range(ie):
+    for j in range(je):          
       
       var = varlist[n]
       # if var is None, leave and empty space
@@ -98,7 +98,7 @@ def multiPlot(f,varlist,titles='',clevs=None,labels=None,legends=None,cbls=None,
               assert isinstance(label,str), 'labels have to be strings'
               label = [label]*ll
             # Note: here var is a *list* of all line plots that go into this axis!
-            cf.append([plotvar(var[m],ax=ax,label=label[m],**plotargs) for m in xrange(ll)])
+            cf.append([plotvar(var[m],ax=ax,label=label[m],**plotargs) for m in range(ll)])
             zz = isinstance(var[m].squeeze().axes[0],ZAxis)
           # or a single line plot per axis
           else: # len(var.squeeze().axes)==1:  
@@ -159,7 +159,7 @@ def linePlot(varlist, coord, axis=None, clevs=None,title='',subplot=(),expand=Tr
   # model axis list after varlist
   if not isinstance(axis,list): axis = [axis]*lv # alternate axes (variables with the same axes as the variables)
   assert len(axis)==lv, 'length of varlist and axis lists do not match'
-  for i in xrange(lv):
+  for i in range(lv):
     if not isinstance(axis[i],list): axis[i] = [axis[i]]*len(varlist[i])
     assert len(axis[i])==len(varlist[i]), 'length of varlist and axis lists in axis #%g do not match'%i
   
@@ -170,17 +170,17 @@ def linePlot(varlist, coord, axis=None, clevs=None,title='',subplot=(),expand=Tr
     if not subplot: subplot = (lc,lv) # use this as multiplot layout
     # expand lists
     if transpose:
-      coord = [co for v in xrange(lv) for co in coord] # varying slow (outer loop; horizontal)
-      varlist = [var for var in varlist for c in xrange(lc)] # varying fast (inner loop; vertical)
-      axis = [ax for ax in axis for c in xrange(lc)] # analogous to varlist
+      coord = [co for v in range(lv) for co in coord] # varying slow (outer loop; horizontal)
+      varlist = [var for var in varlist for c in range(lc)] # varying fast (inner loop; vertical)
+      axis = [ax for ax in axis for c in range(lc)] # analogous to varlist
       if len(clevs) == lv: # expand clevs like varlist if length matches
-        clevs = [clv for clv in clevs for c in xrange(lc)]
+        clevs = [clv for clv in clevs for c in range(lc)]
     else:
-      coord = [co for co in coord for v in xrange(lv)] # varying fast (inner loop; vertical)
-      varlist = [var for c in xrange(lc) for var in varlist] # varying slow (outer loop; horizontal)
-      axis = [ax for c in xrange(lc) for ax in axis] # analogous to varlist
+      coord = [co for co in coord for v in range(lv)] # varying fast (inner loop; vertical)
+      varlist = [var for c in range(lc) for var in varlist] # varying slow (outer loop; horizontal)
+      axis = [ax for c in range(lc) for ax in axis] # analogous to varlist
       if len(clevs) == lv: # expand clevs like varlist if length matches
-        clevs = [clv for c in xrange(lc) for clv in clevs]
+        clevs = [clv for c in range(lc) for clv in clevs]
   else:
     # do some simple adjustments and checks and use linear layout
     if lv==1: varlist = varlist*lc; axis = axis*lc
@@ -191,15 +191,15 @@ def linePlot(varlist, coord, axis=None, clevs=None,title='',subplot=(),expand=Tr
   if subplot: assert le==subplot[0]*subplot[1], 'subplot layout incompatible with number of variables and slices'
   # expand inner list (plots within one axis)  
   if expand[1]:
-    for n in xrange(le):
+    for n in range(le):
       # expand lists
       lc = len(coord[n]); lv = len(varlist[n])
-      coord[n] = [co for v in xrange(lv) for co in coord[n]] # varying fast
-      varlist[n] = [var for var in varlist[n] for c in xrange(lc)] # varying slow      
-      axis[n] = [ax for ax in axis[n] for c in xrange(lc)] # analogous to varlist 
+      coord[n] = [co for v in range(lv) for co in coord[n]] # varying fast
+      varlist[n] = [var for var in varlist[n] for c in range(lc)] # varying slow      
+      axis[n] = [ax for ax in axis[n] for c in range(lc)] # analogous to varlist 
   else:
     # do some simple adjustments and checks and use linear layout
-    for n in xrange(le):
+    for n in range(le):
       if len(varlist[n])==1: varlist[n] = varlist[n]*len(coord[n]); axis[n] = axis[n]*len(coord[n])
       elif len(coord[n])==1: coord[n] = coord[n]*len(varlist[n])
       else: assert len(coord[n])==len(varlist[n]), 'length of variable and coordinate list do not match; consider using the expand option'
@@ -208,17 +208,17 @@ def linePlot(varlist, coord, axis=None, clevs=None,title='',subplot=(),expand=Tr
   # prepare list of variables for plotting
   plotlist = []
   # loop over axes
-  for n in xrange(le):
+  for n in range(le):
     lm = len(varlist[n])
     assert len(coord[n])==lm, 'length mismatch between variable and coordinate list in axis number %.0f'%n
     linelist = [] # list of variables in one axis
     # loop over line plots
-    for m in xrange(lm):
+    for m in range(lm):
       if varlist[n][m] is not None:
         # select slice
         slvar = varlist[n][m](**coord[n][m])
         # copy plot properties of replaced axes
-        for i in xrange(slvar.naxes):
+        for i in range(slvar.naxes):
           slvar.axes[i].atts.update(varlist[n][m].axes[i].atts)
           slvar.axes[i].plotatts.update(varlist[n][m].axes[i].plotatts)
         # replace remaining axis with variable in axis-list, if given, 

@@ -56,7 +56,7 @@ ltmvaratts = dict(time=dict(name='time', units='month', offset=1), **varatts)
 tsvaratts = dict(time=dict(name='time', units='day', offset=-28854), **varatts)
 # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
 # list of variables to load
-varlist = varatts.keys() # also includes coordinate fields    
+varlist = list(varatts.keys()) # also includes coordinate fields    
 
 
 ## Functions to load different types of GPCC datasets 
@@ -67,9 +67,9 @@ def loadGPCC_LTM(name=dataset_name, varlist=None, resolution='025', varatts=ltmv
                  folder=ltmfolder):
   ''' Get a properly formatted dataset the monthly accumulated GPCC precipitation climatology. '''
   # prepare input
-  if resolution not in ('025','05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
+  if resolution not in ('025','05', '10', '25'): raise DatasetError("Selected resolution '%s' is not available!"%resolution)
   # translate varlist
-  if varlist is None: varlist = varatts.keys()
+  if varlist is None: varlist = list(varatts.keys())
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   # load variables separately
   if 'p' in varlist:
@@ -96,9 +96,9 @@ def checkGridRes(grid, resolution, period=None, lclim=False):
     resolution = '025' if period is None and lclim else '05'
   # check for valid resolution 
   if resolution not in ('025','05', '10', '25'): 
-    raise DatasetError, "Selected resolution '%s' is not available!"%resolution  
+    raise DatasetError("Selected resolution '%s' is not available!"%resolution)  
   if resolution == '025' and period is not None: 
-    raise DatasetError, "The highest resolution is only available for the long-term mean!"
+    raise DatasetError("The highest resolution is only available for the long-term mean!")
   # return
   return grid, resolution
 
@@ -113,10 +113,10 @@ def loadGPCC_TS(name=dataset_name, grid=None, varlist=None, resolution='25', var
     # load from original time-series files 
     if folder is None: folder = orig_ts_folder
     # prepare input  
-    if resolution not in ('05', '10', '25'): raise DatasetError, "Selected resolution '%s' is not available!"%resolution
+    if resolution not in ('05', '10', '25'): raise DatasetError("Selected resolution '%s' is not available!"%resolution)
     # translate varlist
     if varatts is None: varatts = tsvaratts.copy()
-    if varlist is None: varlist = varatts.keys()
+    if varlist is None: varlist = list(varatts.keys())
     if varlist and varatts: varlist = translateVarNames(varlist, varatts)
     if filelist is None: # generate default filelist
       filelist = []
@@ -269,15 +269,15 @@ if __name__ == '__main__':
       dataset = loadGPCC(grid=grid,resolution=res,period=period)
       print(dataset)
       print('')
-      print(dataset.geotransform)
-      print(dataset.precip.getArray().mean())
-      print(dataset.precip.masked)
+      print((dataset.geotransform))
+      print((dataset.precip.getArray().mean()))
+      print((dataset.precip.masked))
       
       # print time coordinate
-      print
-      print dataset.time.atts
-      print
-      print dataset.time.data_array
+      print()
+      print(dataset.time.atts)
+      print()
+      print(dataset.time.data_array)
           
     elif mode == 'test_timeseries':
       
@@ -286,9 +286,9 @@ if __name__ == '__main__':
       dataset = loadGPCC_TS(grid=grid,resolution=res)
       print(dataset)
       print('')
-      print(dataset.time)
-      print(dataset.time.coord)
-      print(dataset.time.coord[78*12]) # Jan 1979
+      print((dataset.time))
+      print((dataset.time.coord))
+      print((dataset.time.coord[78*12])) # Jan 1979
 #       print(dataset.time.masked)
 #       print('')
 #       print(dataset.geotransform)
@@ -302,20 +302,20 @@ if __name__ == '__main__':
       print('')
       if pntset in ('shpavg',): 
         dataset = loadGPCC_Shp(shape=pntset, resolution=res, period=period)
-        print(dataset.shp_area.mean())
+        print((dataset.shp_area.mean()))
         print('')
       else: dataset = loadGPCC_Stn(station=pntset, resolution=res, period=period)
       dataset.load()
       print(dataset)
       print('')
-      print(dataset.precip.mean())
-      print(dataset.precip.masked)
+      print((dataset.precip.mean()))
+      print((dataset.precip.masked))
       
       # print time coordinate
-      print
-      print dataset.time.atts
-      print
-      print dataset.time.data_array
+      print()
+      print(dataset.time.atts)
+      print()
+      print(dataset.time.data_array)
 
     elif mode == 'test_point_timeseries':
     
@@ -325,8 +325,8 @@ if __name__ == '__main__':
       else: dataset = loadGPCC_StnTS(station=pntset, resolution=res)
       print(dataset)
       print('')
-      print(dataset.time)
-      print(dataset.time.coord)
+      print((dataset.time))
+      print((dataset.time.coord))
       assert dataset.time.coord[78*12] == 0 # Jan 1979
       assert dataset.shape[0] == 1
 
@@ -351,7 +351,7 @@ if __name__ == '__main__':
       
       # figure out a different filename
       filename = getFileName(grid=res, period=None, name='GPCC', filepattern=avgfile)
-      print('\n'+filename+'\n')      
+      print(('\n'+filename+'\n'))      
       if os.path.exists(avgfolder+filename): os.remove(avgfolder+filename)      
       # write data and some annotation
       ncset = writeNetCDF(dataset, avgfolder+filename, close=False)
@@ -371,7 +371,7 @@ if __name__ == '__main__':
       
       # load source
       periodstr = 'Climatology' if period is None else '{0:4d}-{1:4d}'.format(*period)
-      print('\n\n   ***   Processing Resolution %s from %s   ***   \n\n'%(res,periodstr))
+      print(('\n\n   ***   Processing Resolution %s from %s   ***   \n\n'%(res,periodstr)))
       if period is None: source = loadGPCC_LTM(varlist=None,resolution=res) # ['stations','precip']
       else: source = loadGPCC_TS(varlist=None,resolution=res)
       source = source(time=timeSlice(period))
@@ -452,7 +452,7 @@ if __name__ == '__main__':
       print('')
       print(sink)
       del sink     
-      print
+      print()
 
 #       # print time coordinate
 #       dataset = loadGPCC(grid=grid,resolution=res,period=period)      

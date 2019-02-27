@@ -51,7 +51,7 @@ varatts = dict(# PRISM variables
                lat  = dict(name='lat', units='deg N', atts=dict(long_name='Latitude'))) # geographic latitude field
 # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
 # list of variables to load
-varlist = varatts.keys() # also includes coordinate fields    
+varlist = list(varatts.keys()) # also includes coordinate fields    
 # variable and file lists settings
 
 
@@ -65,7 +65,7 @@ def loadSpecialObs(varlist=None, **kwargs):
     ldryprec = True; lwetprec = True; lwetdays = True
   else:
     # cast/copy varlist
-    if isinstance(varlist,basestring): varlist = [varlist] # cast as list
+    if isinstance(varlist,str): varlist = [varlist] # cast as list
     else: varlist = list(varlist) # make copy to avoid interference
     # select options
     ldryprec = False; lwetprec = False; lwetdays = False
@@ -252,9 +252,9 @@ if __name__ == '__main__':
         #dataset = loadUnity()
         print(dataset)
         print('')
-        print(dataset.geotransform)
-        print(dataset.precip.getArray().mean())
-        print(dataset.precip.masked)
+        print((dataset.geotransform))
+        print((dataset.precip.getArray().mean()))
+        print((dataset.precip.masked))
         print('')
         # display
         import pylab as pyl
@@ -267,28 +267,28 @@ if __name__ == '__main__':
     print('')
     if pntset in ('shpavg',): 
       dataset = loadUnity_Shp(varlist=['dryprec','wetprec','shp_area'], shape=pntset, period=periods[0])
-      print(dataset.shp_area.mean())
+      print((dataset.shp_area.mean()))
       print('')
     else: 
       dataset = loadUnity_Stn(varlist=['precip','stn_rec_len'], station=pntset, period=periods[0])
-      print(dataset.stn_rec_len.mean())
+      print((dataset.stn_rec_len.mean()))
       print('')
     print(dataset)
     dataset.load()
     if 'precip' in dataset:
       print('')
-      print(dataset.precip.mean())
-      print(dataset.precip.masked)
+      print((dataset.precip.mean()))
+      print((dataset.precip.masked))
     if 'dryprec' in dataset:
       print('')
-      print(dataset.dryprec)
+      print((dataset.dryprec))
       assert dataset.dryprec.mean() == dataset.precip.mean() 
     
     # print time coordinate
-    print
-    print dataset.time.atts
-    print
-    print dataset.time.data_array
+    print()
+    print(dataset.time.atts)
+    print()
+    print(dataset.time.data_array)
 
   elif mode == 'test_point_timeseries':
             
@@ -299,14 +299,14 @@ if __name__ == '__main__':
     print(dataset)
     dataset.load()
     print('')
-    print(dataset.precip.mean())
-    print(dataset.precip.masked)
+    print((dataset.precip.mean()))
+    print((dataset.precip.masked))
     
     # print time coordinate
-    print
-    print dataset.time.atts
-    print
-    print dataset.time.data_array
+    print()
+    print(dataset.time.atts)
+    print()
+    print(dataset.time.data_array)
 
 
   ## begin processing
@@ -329,11 +329,11 @@ if __name__ == '__main__':
           
         grid_name = grid
         periodstr = '{0:4d}-{1:4d}'.format(*period)        
-        print('\n   ***   Merging Shape-Averaged Time-Series on {:s} Grid  ***   \n'.format(grid,))
+        print(('\n   ***   Merging Shape-Averaged Time-Series on {:s} Grid  ***   \n'.format(grid,)))
         ## prepare target dataset 
         filename = getFileName(grid=grid_name, period=None, name=None, filepattern=tsfile)
         filepath = avgfolder + filename
-        print(' Saving data to: \'{0:s}\'\n'.format(filepath))
+        print((' Saving data to: \'{0:s}\'\n'.format(filepath)))
         assert os.path.exists(avgfolder)
         if os.path.exists(filepath): os.remove(filepath) # remove old file
         # set attributes   
@@ -346,9 +346,9 @@ if __name__ == '__main__':
         sink.sync()       
                 
         ## correct data (create variables)
-        for varname,var in uclim.variables.iteritems():
-          print ''
-          print varname
+        for varname,var in uclim.variables.items():
+          print('')
+          print(varname)
           # correct time-series variables
           if var.hasAxis('time'):
             if varname in CRU_vars:
@@ -367,14 +367,14 @@ if __name__ == '__main__':
               tsvar.unload(); climvar.unload(); var.unload()
               gc.collect() # not really necessary for shape averages...
             else:
-              print var
+              print(var)
               newvar = None
           else:
             try:
               var.load()
               newvar = var.copy()
             except ValueError:
-              print var
+              print(var)
               newvar = None          
           # save variable 
           if newvar is not None: 
@@ -384,7 +384,7 @@ if __name__ == '__main__':
         sink.sync()     
         sink.close()
         print(sink)
-        print('\n Writing to: \'{0:s}\'\n'.format(filename))
+        print(('\n Writing to: \'{0:s}\'\n'.format(filename)))
         
   
   ## begin processing
@@ -438,18 +438,18 @@ if __name__ == '__main__':
           grid_name = grid
         periodstr = '{0:4d}-{1:4d}'.format(*period)
         
-        print('\n   ***   Merging Climatology from {0:s} on {1:s} Grid  ***   \n'.format(periodstr,grid,))
+        print(('\n   ***   Merging Climatology from {0:s} on {1:s} Grid  ***   \n'.format(periodstr,grid,)))
         ## prepare target dataset 
         filename = getFileName(grid=grid_name, period=period, name=None, filepattern=avgfile)
         filepath = avgfolder + filename
-        print(' Saving data to: \'{0:s}\'\n'.format(filepath))
+        print((' Saving data to: \'{0:s}\'\n'.format(filepath)))
         assert os.path.exists(avgfolder)
         if os.path.exists(filepath): os.remove(filepath) # remove old file
         # set attributes   
         atts=dict() # collect attributes, but add prefixes
-        for key,item in prism.atts.iteritems(): atts['PRISM_'+key] = item
+        for key,item in prism.atts.items(): atts['PRISM_'+key] = item
         #for key,item in gpcc025.atts.iteritems(): atts['GPCC_'+key] = item # GPCC atts cause problems... 
-        for key,item in cruprd.atts.iteritems(): atts['CRU_'+key] = item
+        for key,item in cruprd.atts.items(): atts['CRU_'+key] = item
         atts['period'] = periodstr; atts['name'] = dataset_name; atts['grid'] = grid_name
         atts['title'] = 'Unified Climatology from {0:s} on {1:s} Grid'.format(periodstr,grid_name)
         # make new dataset
@@ -534,4 +534,4 @@ if __name__ == '__main__':
         sink.sync()     
         sink.close()
         print(sink)
-        print('\n Writing to: \'{0:s}\'\n'.format(filename))
+        print(('\n Writing to: \'{0:s}\'\n'.format(filename)))

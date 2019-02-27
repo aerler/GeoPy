@@ -843,8 +843,8 @@ def updateAllPlotAtts(dataset, mode='update', plot=None, default=True):
   # defaults (see above)
   if plot is None: plot = variablePlotatts.copy()
   # loop over variables
-  for var in dataset.vardict.iterkeys():
-    if plot.has_key(var):
+  for var in dataset.vardict.keys():
+    if var in plot:
       if not hasattr(dataset.vardict[var],'plot'):
         # add plot if not present
         dataset.vardict[var] = plot[var]
@@ -864,7 +864,7 @@ def updateAllPlotAtts(dataset, mode='update', plot=None, default=True):
           pass # do nothing
     # if the variable/name is not in plot atts...
     else: 
-      print('Variable \'%s\' not found in plot attributes - no update performed.'%var)
+      print(('Variable \'%s\' not found in plot attributes - no update performed.'%var))
       if default:
         # generate default dictionary
         defpa = PlotAtts()

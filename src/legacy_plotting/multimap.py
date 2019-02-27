@@ -14,7 +14,7 @@ import numpy as np
 import numpy.ma as ma
 import matplotlib as mpl
        
-print "Importing 'pyplot' from 'matplotlib'\n"   
+print("Importing 'pyplot' from 'matplotlib'\n")   
   
 import matplotlib.pyplot as plt
 # N.B.: importing pyplot actually takes quite long! 
@@ -70,7 +70,7 @@ if __name__ == '__main__':
   lminor = True # draw minor tick mark labels
   locean = False # mask continent in white and omit country borders
   lstations = False; stations = 'EC'; cluster_symbols = {2:'o',5:'^',8:'s'}; cluster_name = 'cluster_projection'
-  cluster_symbols = {clu:dict(marker=sym, markersize=4, mfc='w', mec='k') for clu,sym in cluster_symbols.iteritems()}
+  cluster_symbols = {clu:dict(marker=sym, markersize=4, mfc='w', mec='k') for clu,sym in cluster_symbols.items()}
   lbasins = False; basinlist = ('ARB','FRB','GLB'); primary_basins = []; subbasins = {} #dict(ARB=('WholeARB','UpperARB','LowerCentralARB'))
   lprovinces = True; provlist = ('BC','AB','ON')
   cbo = None # default based on figure type
@@ -597,7 +597,7 @@ if __name__ == '__main__':
 #   case = 'arb'; basins = ('ARB',)
 
     
-  if not case: raise ValueError, 'Need to define a \'case\' name!'
+  if not case: raise ValueError('Need to define a \'case\' name!')
 
   # setup projection and map
   mapSetup = getSetup(maptype, lpickle=lpickle, folder=map_folder)
@@ -606,7 +606,7 @@ if __name__ == '__main__':
   if not lfrac and not ldiff: reflist = None
 
   if reflist is not None:
-    if isinstance(reflist,basestring): reflist = [reflist]
+    if isinstance(reflist,str): reflist = [reflist]
     elif not isinstance(reflist,(list,tuple)): raise TypeError
     if len(explist) > len(reflist):
       if len(reflist) == 1: reflist *= len(explist)  
@@ -632,8 +632,8 @@ if __name__ == '__main__':
                               WRF_exps=WRF_exps, CESM_exps=CESM_exps)
     # merge lists
     if len(exps) != len(refs): 
-      raise DatasetError, 'Experiments and reference list need to have the same length!'
-    for i in xrange(len(exps)):
+      raise DatasetError('Experiments and reference list need to have the same length!')
+    for i in range(len(exps)):
       if not isinstance(exps[i],tuple): raise TypeError 
       if not isinstance(refs[i],tuple): raise TypeError
       if len(exps[i]) != len(refs[i]): 
@@ -654,10 +654,10 @@ if __name__ == '__main__':
   maps = []; x = []; y = [] # projection objects and coordinate fields (only computed once)
   fn = -1 # figure counter
   N = len(variables)*len(seasons) # number of figures
-  comments = checkItemList(comments, N, basestring, default=None)
-  figtitles = checkItemList(figtitles, N, basestring, default=None)
-  variable_settings = checkItemList(variable_settings, N, basestring, default=None)
-  season_settings = checkItemList(season_settings, N, basestring, default=None)
+  comments = checkItemList(comments, N, str, default=None)
+  figtitles = checkItemList(figtitles, N, str, default=None)
+  variable_settings = checkItemList(variable_settings, N, str, default=None)
+  season_settings = checkItemList(season_settings, N, str, default=None)
   
 #   if figtitles is not None:
 #     if not isinstance(figtitles,(tuple,list)): figtitles = (figtitles,)*N
@@ -673,21 +673,21 @@ if __name__ == '__main__':
       M = len(exps) # number of panels
       
       # expand variables
-      if isinstance(varlist,basestring): varstr = varlist
+      if isinstance(varlist,str): varstr = varlist
       elif isinstance(varlist,(list,tuple)):
         if all([var==varlist[0] for var in varlist]): varstr = varlist[0]
         else: varstr = ''.join([s[0] for s in varlist])
       else: varstr = ''
-      varlist = checkItemList(varlist, M, basestring)
-      ravlist = checkItemList(ravlist, M, basestring)
+      varlist = checkItemList(varlist, M, str)
+      ravlist = checkItemList(ravlist, M, str)
 #       if ldiff or lfrac:
 #       else: 
 #         varlist = checkItemList(varlist, M, basestring)
       # expand seasons
-      if isinstance(sealist,basestring): seastr = '_'+sealist
+      if isinstance(sealist,str): seastr = '_'+sealist
       elif isinstance(sealist,(list,tuple)): seastr = '_'+''.join([s[0] for s in sealist])
       else: seastr = ''
-      sealist = checkItemList(sealist, M, basestring)
+      sealist = checkItemList(sealist, M, str)
       
       # get smart defaults for variables and seasons
       varlist_settings = variable_settings[fn] or varlist[0] # default: first variable
@@ -716,18 +716,18 @@ if __name__ == '__main__':
       if comments[fn]: figtitle += comments[fn]
       
       # feedback
-      print('\n\n   ***  %s %s (%s)   ***   \n'%(plottype,plat.title,varstr))
+      print(('\n\n   ***  %s %s (%s)   ***   \n'%(plottype,plat.title,varstr)))
       
       ## compute data
       data = []; lons = []; lats=[]  # list of data and coordinate fields to be plotted 
       # compute average WRF precip            
-      print(' - loading data ({0:s})'.format(varstr))
+      print((' - loading data ({0:s})'.format(varstr)))
       for var,rav,season,exptpl in zip(varlist,ravlist,sealist,exps):
         lontpl = []; lattpl = []; datatpl = []
         for i,exp in enumerate(exptpl):
           varname = rav if ( lfrac or ldiff ) and i >= len(exptpl)//2 else var 
           if varname not in exp: 
-            raise DatasetError, "Variable '{:s}' not found in Dataset '{:s}!".format(varname,exp.name)
+            raise DatasetError("Variable '{:s}' not found in Dataset '{:s}!".format(varname,exp.name))
           expvar = exp.variables[varname]
           expvar.load()
           #print expvar.name, exp.name, expvar.masked
@@ -744,9 +744,9 @@ if __name__ == '__main__':
             lon, lat = np.meshgrid(expvar.lon.getArray(),expvar.lat.getArray())
           lontpl.append(lon); lattpl.append(lat) # append to data list
           # reduce certain dimensions
-          for ax,la in level_agg.iteritems():
+          for ax,la in level_agg.items():
             if expvar.hasAxis(ax):
-              if isinstance(la, basestring): # aggregate over axis 
+              if isinstance(la, str): # aggregate over axis 
                 if ax == 'p' and la[:4] == 'low_':
                   la = la[4:]
                   expvar = expvar(asVar=True, p=(0,3), lidx=True) # slice axis (default rules)
@@ -767,11 +767,11 @@ if __name__ == '__main__':
             vardata = vardata * expvar.plot.scalefactor # apply plot unit conversion
           # figure out ocean mask          
           if lmskocn:
-            if exp.variables.has_key('landmask') and False:
+            if 'landmask' in exp.variables and False:
               vardata[exp.landmask.getArray()] = -2.
-            elif exp.variables.has_key('landfrac'): # CESM mostly 
+            elif 'landfrac' in exp.variables: # CESM mostly 
               vardata[exp.landfrac.getArray(unmask=True,fillValue=0)<0.75] = -2. # use land fraction
-            elif exp.variables.has_key('lndidx'): 
+            elif 'lndidx' in exp.variables: 
               mask = exp.lndidx.getArray()
               vardata[mask==16] = -2. # use land use index (ocean)  
               vardata[mask==24] = -2. # use land use index (lake)
@@ -779,9 +779,9 @@ if __name__ == '__main__':
               vardata = maskoceans(lon,lat,vardata,resolution=res,grid=grid)
           # figure out land mask
           if lmsklnd: 
-            if exp.variables.has_key('landfrac'): # CESM and CFSR 
+            if 'landfrac' in exp.variables: # CESM and CFSR 
               vardata[exp.lnd.getArray(unmask=True,fillValue=0)>0.75] = 0 # use land fraction
-            elif exp.variables.has_key('lndidx'): # use land use index (ocean and lake)
+            elif 'lndidx' in exp.variables: # use land use index (ocean and lake)
               mask = exp.lndidx.getArray(); tmp = vardata.copy(); vardata[:] = 0.
               vardata[mask==16] = tmp[mask==16]; vardata[mask==24] = tmp[mask==24]
           datatpl.append(vardata) # append to data list
@@ -789,7 +789,7 @@ if __name__ == '__main__':
         if ldiff or lfrac:
           assert len(datatpl)%2 == 0, 'needs to be divisible by 2'
           ntpl = len(datatpl)/2 # assuming (exp1, exp2, ..., ref1, ref2, ...)
-          for i in xrange(ntpl):
+          for i in range(ntpl):
             if ldiff: datatpl[i] = datatpl[i] - datatpl[i+ntpl] # compute differences in place
             elif lfrac: datatpl[i] = (datatpl[i]/datatpl[i+ntpl]-1)*100 # compute fractions in place
           del datatpl[ntpl+1:] # delete the rest 
@@ -803,7 +803,7 @@ if __name__ == '__main__':
       # make figure and axes
       f = plt.figure(facecolor='white', figsize=figsize)
       ax = []
-      for n in xrange(nax):
+      for n in range(nax):
         ax.append(f.add_subplot(subplot[0],subplot[1],n+1, axisbg='blue'))
       f.subplots_adjust(**margins) # hspace, wspace
       if not maps:
@@ -816,14 +816,14 @@ if __name__ == '__main__':
           maps.append(tmp) # one map for each panel!!  
       else:
         print(' - resetting map projection\n') 
-        for n in xrange(nax):
+        for n in range(nax):
           maps[n].ax=ax[n] # assign new axes to old projection
       # transform coordinates (on per-map basis)
       if not (x and y):
         print(' - transforming coordinate fields\n')
-        for n in xrange(nax):
+        for n in range(nax):
           xtpl = []; ytpl = []
-          for m in xrange(nexps[n]):
+          for m in range(nexps[n]):
             xx, yy = maps[n](lons[n][m],lats[n][m]) # convert to map-native coordinates
             xtpl.append(xx); ytpl.append(yy)
           x.append(xtpl); y.append(ytpl) 
@@ -832,8 +832,8 @@ if __name__ == '__main__':
       # draw boundaries of inner domain
       if loutline or lframe:
         print(' - drawing domain outlines\n')
-        for n in xrange(nax):
-          for m in xrange(nexps[n]):   
+        for n in range(nax):
+          for m in range(nexps[n]):   
             if loutline:
               bdy = ma.ones(data[n][m].shape); bdy[ma.getmaskarray(data[n][m])] = 0
               # N.B.: for some reason, using np.ones_like() causes a masked data array to fill with zeros  
@@ -851,20 +851,20 @@ if __name__ == '__main__':
       norm = mpl.colors.Normalize(vmin=min(clevs),vmax=max(clevs),clip=True) # for colormap
       cd = []
 #       print(' - creating plots\n')  
-      toString = lambda v: v if isinstance(v,basestring) else clbl%v
-      for n in xrange(nax): 
-        for m in xrange(nexps[n]):
+      toString = lambda v: v if isinstance(v,str) else clbl%v
+      for n in range(nax): 
+        for m in range(nexps[n]):
           vmean = toString(np.nanmean(data[n][m])) 
           vmin = toString(np.nanmin(data[n][m]))
           vmax = toString(np.nanmax(data[n][m]))
           if ldiff or lfrac: 
             vrms = toString(np.sqrt(np.nanmean(data[n][m]**2)))
-            print('panel {:d}: bias {:s} / rms {:s} / min {:s} / max {:s}'.format(
-                            n, vmean, vrms, vmin, vmax))
+            print(('panel {:d}: bias {:s} / rms {:s} / min {:s} / max {:s}'.format(
+                            n, vmean, vrms, vmin, vmax)))
           else: 
             vstd = toString(np.nanstd(data[n][m]))
-            print('panel {:d}: mean {:s} / std {:s} / min {:s} / max {:s}'.format(
-                            n, vmean, vstd, vmin, vmax))
+            print(('panel {:d}: mean {:s} / std {:s} / min {:s} / max {:s}'.format(
+                            n, vmean, vstd, vmin, vmax)))
           if lcontour: 
             cd.append(maps[n].contourf(x[n][m],y[n][m],data[n][m],clevs,ax=ax[n],cmap=cmap, 
                                        norm=norm,extend='both'))  
@@ -899,8 +899,8 @@ if __name__ == '__main__':
       msn = len(maps)/2 # place scale 
       mapSetup.drawScale(maps[msn])
       n = -1 # axes counter
-      for i in xrange(subplot[0]):
-        for j in xrange(subplot[1]):
+      for i in range(subplot[0]):
+        for j in range(subplot[1]):
           n += 1 # count up
           axn = ax[n] 
           axn.set_title(axtitles[n],fontsize=11) # axes title
@@ -912,8 +912,8 @@ if __name__ == '__main__':
           bmap = maps[n]
           kwargs = dict()
           # white-out continents, if we have no proper land mask 
-          if locean or ( lmsklnd and not (exps[n][0].variables.has_key('lndmsk') ) 
-                         or exps[n][0].variables.has_key('lndidx')): 
+          if locean or ( lmsklnd and not ('lndmsk' in exps[n][0].variables ) 
+                         or 'lndidx' in exps[n][0].variables): 
             kwargs['maskland'] = True          
           if ldiff or lfrac or locean: 
             kwargs['ocean_color'] = 'white' ; kwargs['land_color'] = 'white'
@@ -969,7 +969,7 @@ if __name__ == '__main__':
 
       # save figure to disk
       if lprint:
-        print('\nSaving figure in '+filename)
+        print(('\nSaving figure in '+filename))
         f.savefig(folder+filename, **sf) # save figure to pdf
         print(folder)
   

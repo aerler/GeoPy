@@ -19,7 +19,7 @@ from geodata.misc import isInt, DatasetError
 def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackground=True, lWRFnative=True, 
                 lautoregrid=False, WRF_exps=None, CESM_exps=None):
   ''' A function that loads a dataset, based on specified parameters '''
-  if not isinstance(exp,basestring): raise TypeError
+  if not isinstance(exp,str): raise TypeError
   if exp[0].isupper():
     if exp == 'Unity': 
       from datasets.Unity import loadUnity
@@ -122,9 +122,9 @@ def checkItemList(itemlist, length, dtype, default=NotImplemented, iterable=Fals
   if itemlist is None: itemlist = []
   if iterable:
     # if elements are lists or tuples etc.
-    if not isinstance(itemlist,(list,tuple,set)): raise TypeError, str(itemlist)
+    if not isinstance(itemlist,(list,tuple,set)): raise TypeError(str(itemlist))
     if not isinstance(default,(list,tuple,set)) and not default is None: # here the default has to be a list of items
-      raise TypeError, "Default for iterable items needs to be iterable." 
+      raise TypeError("Default for iterable items needs to be iterable.") 
     if len(itemlist) == 0: 
       itemlist = [default]*length # make default list
     elif all([not isinstance(item,(list,tuple,set)) for item in itemlist]):
@@ -138,17 +138,17 @@ def checkItemList(itemlist, length, dtype, default=NotImplemented, iterable=Fals
       else:
         if len(itemlist) == 1: itemlist *= length # extend to desired length
         elif len(itemlist) != length: 
-          raise TypeError, "Item list {:s} must be of length {:d} or 1.".format(str(itemlist),len(itemlist))
+          raise TypeError("Item list {:s} must be of length {:d} or 1.".format(str(itemlist),len(itemlist)))
       if dtype is not None:
         for item in itemlist:
           if item != default: # only checks the non-default values
             if not isinstance(itemlist,dtype):
-              raise TypeError, "Item {:s} must be of type {:s}".format(str(item),dtype.__name__)
+              raise TypeError("Item {:s} must be of type {:s}".format(str(item),dtype.__name__))
             # don't check length of sublists: that would cause problems with some code
     # type checking, but only the iterables which are items, not their items
     for item in itemlist: # check types 
       if item is not None and not isinstance(item,dtype): 
-        raise TypeError, "Item {:s} must be of type {:s}".format(str(item),dtype.__name__)
+        raise TypeError("Item {:s} must be of type {:s}".format(str(item),dtype.__name__))
   else:
     if isinstance(itemlist,(list,tuple,set)): # still want to exclude strings
       itemlist = list(itemlist)
@@ -162,14 +162,14 @@ def checkItemList(itemlist, length, dtype, default=NotImplemented, iterable=Fals
       else:
         if len(itemlist) == 1: itemlist *= length # extend to desired length
         elif len(itemlist) != length: 
-          raise TypeError, "Item list {:s} must be of length {:d} or 1.".format(str(itemlist),len(itemlist))    
+          raise TypeError("Item list {:s} must be of length {:d} or 1.".format(str(itemlist),len(itemlist)))    
       if dtype is not None:
         for item in itemlist:
           if not isinstance(item,dtype) and item != default: # only checks the non-default values
-            raise TypeError, "Item {:s} must be of type {:s}".format(str(item),dtype.__name__)        
+            raise TypeError("Item {:s} must be of type {:s}".format(str(item),dtype.__name__))        
     else:
       if not isinstance(itemlist,dtype): 
-        raise TypeError, "Item {:s} must be of type {:s}".format(str(itemlist),dtype.__name__)
+        raise TypeError("Item {:s} must be of type {:s}".format(str(itemlist),dtype.__name__))
       itemlist = [itemlist]*length
   return itemlist
 
@@ -182,19 +182,19 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
   # for load function (below)
   if lbackground and not ltuple: raise ValueError
   # check and expand lists
-  if n is None: n = 1 if isinstance(explist,basestring) else len(explist)
+  if n is None: n = 1 if isinstance(explist,str) else len(explist)
   elif not isinstance(n, (int,np.integer)): raise TypeError
-  explist = checkItemList(explist, n, (basestring,tuple))
-  titles = checkItemList(titles, n, basestring, default=None)
-  periods  = checkItemList(periods, n, (basestring,int,np.integer), default=None, iterable=False)
+  explist = checkItemList(explist, n, (str,tuple))
+  titles = checkItemList(titles, n, str, default=None)
+  periods  = checkItemList(periods, n, (str,int,np.integer), default=None, iterable=False)
   if isinstance(domains,tuple): ltpl = ltuple
   else: ltpl = False # otherwise this causes problems with expanding this  
   domains  = checkItemList(domains, n, (int,np.integer,tuple), default=None, iterable=ltpl) # to return a tuple, give a tuple of domains
-  grids  = checkItemList(grids, n, basestring, default=None)
-  resolutions  = checkItemList(resolutions, n, basestring, default=None)
+  grids  = checkItemList(grids, n, str, default=None)
+  resolutions  = checkItemList(resolutions, n, str, default=None)
   # expand variable list
   varlists = []
-  for i in xrange(len(explist)):
+  for i in range(len(explist)):
     vl = set()
     for var in varlist: 
       if isinstance(var,(tuple,list)): 
@@ -202,10 +202,10 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
         except:
           pass
         if isinstance(var[i], dict): 
-          vl.update(var[i].values())
+          vl.update(list(var[i].values()))
         else: 
           vl.add(var[i])
-      elif isinstance(var, dict): vl.update(var.values())
+      elif isinstance(var, dict): vl.update(list(var.values()))
       else: vl.add(var)
     vl.update(('lon2D','lat2D','landmask','landfrac')) # landfrac is needed for CESM landmask
     varlists.append(vl)
@@ -221,10 +221,10 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
   dslist = []; axtitles = []
   for exp,vl,tit,prd,dom,grd,res in zip(explist,varlists,titles,periods,domains,grids,resolutions): 
     if isinstance(exp,tuple):
-      print("  - " + ','.join(exp))  
-      if lbackground: raise ValueError, 'Adding Background is not supported in combination with experiment tuples!'
+      print(("  - " + ','.join(exp)))  
+      if lbackground: raise ValueError('Adding Background is not supported in combination with experiment tuples!')
       if not isinstance(dom,(list,tuple)): dom =(dom,)*len(exp)
-      if len(dom) != len(exp): raise ValueError, 'Only one domain is is not supported for each experiment!'          
+      if len(dom) != len(exp): raise ValueError('Only one domain is is not supported for each experiment!')          
       ext = []; axt = []        
       for ex,dm in zip(exp,dom):
         ex = addPeriodExt(ex, prd)
@@ -233,14 +233,14 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
                              WRF_exps=WRF_exps, CESM_exps=CESM_exps)
         for var in vl: 
           if var not in et and var not in ('lon2D','lat2D','landmask','landfrac'): 
-            raise DatasetError, "Variable '{:s}' not found in Dataset '{:s}!".format(var,et.name) 
+            raise DatasetError("Variable '{:s}' not found in Dataset '{:s}!".format(var,et.name)) 
         #if isinstance(et,(list,tuple)): ext += list(et); else: 
         ext.append(et)
         #if isinstance(at,(list,tuple)): axt += list(at); else: 
         axt.append(at)
       ext = tuple(ext); axt = tuple(axt)
     else:
-      print("  - " + exp)
+      print(("  - " + exp))
       exp = addPeriodExt(exp, prd)
       ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=vl, 
                              lbackground=lbackground, lWRFnative=lWRFnative, lautoregrid=lautoregrid,
@@ -248,15 +248,15 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
       for exp in ext if isinstance(ext,(tuple,list)) else (ext,):
         for var in vl: 
           if var not in exp and var not in ('lon2D','lat2D','landmask','landfrac'): 
-            print var, exp
-            raise DatasetError, "Variable '{:s}' not found in Dataset '{:s}'!".format(var,exp.name)         
+            print(var, exp)
+            raise DatasetError("Variable '{:s}' not found in Dataset '{:s}'!".format(var,exp.name))         
     dslist.append(ext) 
     if tit is not None: axtitles.append(tit)
     else: axtitles.append(axt)
   # count experiment tuples (layers per panel)
   if ltuple:
     nlist = [] # list of length for each element (tuple)
-    for n in xrange(len(dslist)):
+    for n in range(len(dslist)):
       if not isinstance(dslist[n],(tuple,list)): # should not be necessary
         dslist[n] = (dslist[n],)
       elif isinstance(dslist[n],list): # should not be necessary
@@ -315,7 +315,7 @@ def loadMPL(linewidth=None, mplrc=None, backend='QT4Agg', lion=False):
   # apply rc-parameters from dictionary (override custom defaults)
   if (mplrc is not None) and isinstance(mplrc,dict):
     # loop over parameter groups
-    for (key,value) in mplrc.iteritems():
+    for (key,value) in mplrc.items():
       mpl.rc(key,**value)  # apply parameters
   # prevent figures from closing: don't run in interactive mode, or pyl.show() will not block
   if lion: pyl.ion()
@@ -422,7 +422,7 @@ def updateSubplots(fig, mode='shift', **kwargs):
   # update subplot margins
   if mode == 'move': margins.update(kwargs)
   else: 
-    for key,val in kwargs.iteritems():
+    for key,val in kwargs.items():
       if key in margins:
         if mode == 'shift': margins[key] += val
         elif mode == 'scale': margins[key] *= val
@@ -456,7 +456,7 @@ def addLabel(ax, label=None, loc=1, stroke=False, size=None, prop=None, **kwargs
   args.update(kwargs)
   # cycle over axes
   at = [] # list of texts
-  for i in xrange(l):
+  for i in range(l):
     if label[i] is None:
       label[i] = '('+lowercase[i]+')'
     elif isinstance(label[i],int):

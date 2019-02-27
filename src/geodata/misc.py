@@ -39,13 +39,13 @@ class ElementWise():
   def __call__(self, *args, **kwargs):
     ''' Call function element-wise, by iterating over the argument list. Multiple arguments are supported using
         multiple list arguments (of the same length); key-word arguments are passed directly to the function. '''
-    if isinstance(args[0], col.Iterable) and not isinstance(args[0], basestring):
+    if isinstance(args[0], col.Iterable) and not isinstance(args[0], str):
       l = len(args[0])
       for arg in args: # check consistency
         if not isinstance(arg, col.Iterable) and len(arg)==l: 
           raise TypeError('All list arguments have to be of the same length!')
       results = [] # output list
-      for i in xrange(l):
+      for i in range(l):
         eltargs = [arg[i] for arg in args] # construct argument list for this element
         results.append(self.f(*eltargs, **kwargs)) # results are automatically wrapped into tuples, if necessary
     else:
@@ -153,11 +153,11 @@ def translateSeasons(months):
   elif isinstance(months,(list,tuple)):
     if all([isinstance(s,(int,np.integer)) for s in months]): 
       idx = [mon-1 for mon in months] # list of integers refering to calendar month
-    elif all([isinstance(s,basestring) for s in months]):
+    elif all([isinstance(s,str) for s in months]):
       # list of names of month, optionally abbreviated, case insensitive
       idx = [abbr_of_month.index(mon[:3].lower()) for mon in months] 
     else: raise TypeError(months)
-  elif isinstance(months,basestring):
+  elif isinstance(months,str):
     ssn = months.lower() # ignore case
     if ssn in abbr_of_month: # abbreviated name of a month, case insensitive 
       idx = np.asarray([abbr_of_month.index(ssn[:3])])
@@ -166,7 +166,7 @@ def translateSeasons(months):
     else: # some definition of a season
       year = 'jfmamjjasondjfmamjjasond' # all month, twice
       # N.B.: regular Python indexing, starting at 0 for Jan and going to 11 for Dec
-      if ssn == 'jfmamjjasond' or ssn == 'annual': idx = range(12)
+      if ssn == 'jfmamjjasond' or ssn == 'annual': idx = list(range(12))
       elif ssn == 'jja' or ssn == 'summer': idx = [5,6,7]
       elif ssn == 'djf' or ssn == 'winter': idx = [0,1,11]
       elif ssn == 'mam' or ssn == 'spring': idx = [2,3,4] # need to sort properly
@@ -189,7 +189,7 @@ def genStrArray(string_list):
   if not isinstance(string_list,(list,tuple)): raise TypeError(string_list)
   strlen = 0; new_list = []
   for string in string_list:
-    if not isinstance(string,basestring): raise TypeError(string)
+    if not isinstance(string,str): raise TypeError(string)
     strlen = max(len(string),strlen)
     new_list.append(string.ljust(strlen))
   strarray = np.array(new_list, dtype='|S{:d}'.format(strlen))
@@ -201,12 +201,12 @@ def separateCamelCase(string, **kwargs):
   ''' Utility function to separate a run-together camel-casestring and replace string sequences. '''
   # insert white spaces
   charlist = [string[0]]
-  for i in xrange(1,len(string)):
+  for i in range(1,len(string)):
     if string[i-1].islower() and string[i].isupper(): charlist.append(' ')
     charlist.append(string[i])
   string = str().join(charlist)
   # replace names
-  for old,new in kwargs.iteritems(): string = string.replace(old,new)
+  for old,new in kwargs.items(): string = string.replace(old,new)
   # return new string
   return string 
 
@@ -231,10 +231,10 @@ def loadGlobals(filename, warning=True):
         load_constants(path + '/atm_const.py')
         del path, fname, os '''
   new_symb = {} # store source namespace in this dictionary
-  execfile(filename, new_symb, None) # generate source namespace
+  exec(compile(open(filename).read(), filename, 'exec'), new_symb, None) # generate source namespace
   new_symb.pop('__builtins__')
   if warning: # detect any name collisions with existing global namespace
-    coll = [k for k in new_symb.keys() if k in globals().keys()]
+    coll = [k for k in list(new_symb.keys()) if k in list(globals().keys())]
     if len(coll) > 0: # report name collisions
       from warnings import warn
       warn ("%d constants have been redefined by %s.\n%s" % (len(coll), filename, coll.__repr__()), stacklevel=2)
@@ -264,7 +264,7 @@ def joinDicts(*dicts):
       ''' Join dictionaries, but remove all entries that are conflicting. '''      
       joined = dict(); conflicting = set()
       for d in dicts:
-        for key,value in d.iteritems():
+        for key,value in d.items():
           if key in conflicting: pass # conflicting entry
           elif key in joined: # either conflicting or same
             # check equality
@@ -296,11 +296,11 @@ class RecordClass(object):
     self.__params__ = parameters # save parameter list for references
     cls = self.__class__
     # parse input    
-    for key,value in kwargs.iteritems():
+    for key,value in kwargs.items():
       if key in parameters:
         # simple type checking
         if getattr(self,key) is None: pass # no type checking...
-        elif isinstance(getattr(self,key), basestring) and not isinstance(value, basestring):
+        elif isinstance(getattr(self,key), str) and not isinstance(value, str):
           raise TypeError("Parameter '{:s}' has to be of type 'basestring'.".format(key)  )
         elif ( isinstance(getattr(self,key), (float,np.inexact)) and 
                not isinstance(value, (int,np.integer,float,np.inexact)) ):
@@ -342,7 +342,7 @@ class VariableError(Exception):
   def __init__(self, *args):
     ''' Initialize with parent constructor and add message or variable instance. '''
     # parse special input
-    from base import Variable
+    from .base import Variable
     lmsg = False; msg = ''; lvar = False; var = None; arglist = []
     for arg in args:
       if isinstance(arg,str): # string input
@@ -450,4 +450,4 @@ class DistVarError(VariableError):
 if __name__ == '__main__':
 
   print('Floating-point precision on this machine:')
-  print(' '+str(floateps))
+  print((' '+str(floateps)))

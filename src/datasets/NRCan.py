@@ -65,7 +65,7 @@ varatts = dict(Tmax    = dict(name='Tmax', units='K'), # 2m maximum temperature
 
 tsvaratts = varatts.copy()
 # list of variables to load
-varlist = varatts.keys() # also includes coordinate fields    
+varlist = list(varatts.keys()) # also includes coordinate fields    
 # variable and file lists settings
 nofile = ('T2','solprec','lat','lon','time') # variables that don't have their own files
 
@@ -79,7 +79,7 @@ def checkGridRes(grid, resolution, period=None, lclim=False):
       resolution = grid.lower()
       grid = None
   if resolution is None: resolution = 'na12' # default
-  if not isinstance(resolution, basestring): raise TypeError(resolution) 
+  if not isinstance(resolution, str): raise TypeError(resolution) 
   # figure out clim/TS
   if period is not None: lclim=True
   # check for valid resolution 
@@ -190,7 +190,7 @@ def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=No
       
     # seperate variables
     NA_vardefs = dict(); CA_vardefs = dict()
-    for key,var in vardefs.items():
+    for key,var in list(vardefs.items()):
         var = var.copy(); grid = var.pop('grid',None).upper()
         if grid.upper() == NA_grid: NA_vardefs[key] = var
         elif grid.upper() == CA_grid: CA_vardefs[key] = var
@@ -220,7 +220,7 @@ def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=No
     nashp = dataset.mapSize # mapSize has the correct axis order (y,x)
     caje,caie = ca_ds.mapSize # axis order is (y,x)
     # create new variables
-    for key,var in ca_ds.variables.items():
+    for key,var in list(ca_ds.variables.items()):
         # create new data array
         assert var.shape[-2:] == (caje,caie)
         data = np.ma.empty(var.shape[:-2]+nashp, dtype=var.dtype) # use the shape of the NA grid and other axes from the original
@@ -319,7 +319,7 @@ def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=No
             ## normalize snowmelt so that it does not exceed snow fall
             r = dataset.snwmlt.mean(axis=0,keepdims=True,asVar=False)/dataset.solprec.mean(axis=0,keepdims=True,asVar=False)
             rm = r.mean()
-            print("\nSnowmelt to snowfall ratio: {}\n".format(rm))            
+            print(("\nSnowmelt to snowfall ratio: {}\n".format(rm)))            
             if rm > 1:
               #r0 = dataset.snwmlt.mean(axis=0,keepdims=True,asVar=False)/dataset.solprec.mean(axis=0,keepdims=True,asVar=False) 
               dataset.snwmlt.data_array /= r # normalize to total snow fall annually and grid point-wise
@@ -401,7 +401,7 @@ def loadASCII_Hist(name=dataset_name, title=hist_title, atts=None, derived_vars=
                    var_pattern=hist_var_pattern, grid_pattern=hist_grid_pattern, vardefs=hist_vardefs, axdefs=hist_axdefs):
     ''' load historical NRCan timeseries from ASCII files, merge CA and NA grids and compute some additional variables; return Dataset '''
     # figure out time period for merged time axis
-    for axname,axdef in axdefs.items():
+    for axname,axdef in list(axdefs.items()):
         if 'coord' not in axdef or axdef['coord'] is None:
             assert axdef['units'].lower() == 'year', axdef
             axdef['coord'] = np.arange(period[0],period[1]+1)
@@ -456,7 +456,7 @@ def loadCMC_Hist(name='CMC', title=CMC_title, atts=None, derived_vars=CMC_derive
                             lgeolocator=False, file_pattern=data_root+var_pattern )    
 
     # merge year and month axes
-    dataset = dataset.mergeAxes(axes=axdefs.keys(), axatts=varatts['time'], linplace=True)
+    dataset = dataset.mergeAxes(axes=list(axdefs.keys()), axatts=varatts['time'], linplace=True)
     assert dataset.hasAxis('time'), dataset
     assert dataset.time[0] == 0, dataset.time.coord
     dataset.time.coord += 12 * ( axdefs['year']['coord'][0] - 1979 ) # set origin to Jan 1979! (convention)
@@ -464,7 +464,7 @@ def loadCMC_Hist(name='CMC', title=CMC_title, atts=None, derived_vars=CMC_derive
     
     # apply mask
     if mask:
-        if not isinstance(mask,Variable): raise TypeError, mask
+        if not isinstance(mask,Variable): raise TypeError(mask)
         dataset.mask(mask=mask) 
     
     # shift snow values by one month, since these values are for the 1st of the month
@@ -490,7 +490,7 @@ def loadCMC_Hist(name='CMC', title=CMC_title, atts=None, derived_vars=CMC_derive
             newvar = transformMonthly(var=newvar, slc=None, l365=False, lvar=True, linplace=True)
             dataset[var] = newvar
     # apply varatts
-    for varname,var in dataset.variables.items(): 
+    for varname,var in list(dataset.variables.items()): 
       var.atts.update(varatts[varname]) # update in-place 
 
 
@@ -547,15 +547,15 @@ if __name__ == '__main__':
                             varlist=['liqwatflx_adj30'])
         print(dataset)
         print('')
-        print(dataset.geotransform)
-        print(dataset.liqwatflx.mean())
-        print(dataset.liqwatflx.masked)
+        print((dataset.geotransform))
+        print((dataset.liqwatflx.mean()))
+        print((dataset.liqwatflx.masked))
         
         # print time coordinate
-        print
-        print dataset.time.atts
-        print
-        print dataset.time.data_array
+        print()
+        print(dataset.time.atts)
+        print()
+        print(dataset.time.data_array)
           
     elif mode == 'test_timeseries':
       
@@ -564,9 +564,9 @@ if __name__ == '__main__':
         dataset = loadNRCan_TS(grid=grid,resolution='na12_maritime')
         print(dataset)
         print('')
-        print(dataset.time)
-        print(dataset.time.coord)
-        print(dataset.time.coord[29*12]) # Jan 1979
+        print((dataset.time))
+        print((dataset.time.coord))
+        print((dataset.time.coord[29*12])) # Jan 1979
           
     if mode == 'test_point_climatology':
             
@@ -574,17 +574,17 @@ if __name__ == '__main__':
         print('')
         if pntset in ('shpavg','glbshp'): 
             dataset = loadNRCan_Shp(shape=pntset, resolution=res, period=period)
-            print(dataset.shp_area.mean())
+            print((dataset.shp_area.mean()))
             print('')
         else: dataset = loadNRCan_Stn(station=pntset, resolution=res, period=period)
         dataset.load()
         print(dataset)
         print('')
-        print(dataset['shape_name'])
+        print((dataset['shape_name']))
         print('')
-        print(dataset['shape_name'][:])
+        print((dataset['shape_name'][:]))
         print('')
-        print(dataset.filepath)
+        print((dataset.filepath))
 
 #         dataset = dataset(shape_name='GRW')
 #         print(dataset)
@@ -609,8 +609,8 @@ if __name__ == '__main__':
         else: dataset = loadNRCan_StnTS(station=pntset, resolution=res)
         print(dataset)
         print('')
-        print(dataset.time)
-        print(dataset.time.coord)
+        print((dataset.time))
+        print((dataset.time.coord))
         assert dataset.time.coord[29*12] == 0 # Jan 1979
         assert dataset.shape[0] == 1
         
@@ -629,7 +629,7 @@ if __name__ == '__main__':
         # test 
         print(dataset)
         print('')
-        print(dataset.snow)
+        print((dataset.snow))
         # write to NetCDF
         print('')
         writeNetCDF(dataset=dataset, ncfile=ncfile, ncformat='NETCDF4', zlib=True, writeData=True, overwrite=True, 
@@ -662,7 +662,7 @@ if __name__ == '__main__':
         # test 
         print(dataset)
         print('')
-        print(dataset.precip)
+        print((dataset.precip))
         # write to NetCDF
         print('')
         writeNetCDF(dataset=dataset, ncfile=ncfile, ncformat='NETCDF4', zlib=True, writeData=True, overwrite=True, 
@@ -698,27 +698,27 @@ if __name__ == '__main__':
         cmc = cmc.climMean()
 #         print(cmc)
         # apply scale factor
-        for varname,var in cmc.variables.items():
+        for varname,var in list(cmc.variables.items()):
             if varname.lower().startswith('snow'):
                 var *= scale_factor # scale snow/SWE variables
                 # N.B.: we are mainly using SWE differences, but this is all linear...
         # values
         print('')
         var = cmc.snow_acc.mean(axes=('lat','lon'))
-        print(var[:])
+        print((var[:]))
         print('')
-        for varname,var in cmc.variables.items():
+        for varname,var in list(cmc.variables.items()):
             if var.masked:
-                print(varname, float(var.data_array.mask.sum())/float(var.data_array.size))
+                print((varname, float(var.data_array.mask.sum())/float(var.data_array.size)))
         # add liquid water flux, based on precip and snow accumulation/storage changes
         print('')
         lwf = 'liqwatflx'; data = ( nrcan.precip[:] - cmc.snow_acc[:] ).clip(min=0) # clip smaller than zero
         cmc[lwf] = addGDALtoVar(Variable(data=data, axes=cmc.snow_acc.axes, atts=varatts[lwf]), griddef=cmc.griddef)        
-        print(cmc[lwf]) 
+        print((cmc[lwf])) 
         # values
         print('')
         var = cmc[lwf].mean(axes=('lat','lon'))
-        print(var[:])
+        print((var[:]))
         
         # create merged lwf and add to NRCan
         for varname in (lwf,'snow'):
@@ -738,9 +738,9 @@ if __name__ == '__main__':
             # save variable in NRCan dataset
             if varname_tag in nrcan: del nrcan[varname_tag] # remove old variable
             nrcan[varname_tag] = new_var
-        print(nrcan[lwf+scale_tag])
+        print((nrcan[lwf+scale_tag]))
         # add other CMC variables to NRCan datasets
-        for varname,var in cmc.variables.items():
+        for varname,var in list(cmc.variables.items()):
             if varname in CMC_derived or varname in CMC_vardefs or varname == lwf:
                 var.atts['note'] = scale_note
                 cmc_var = varname+'_CMC'+scale_tag
@@ -755,9 +755,9 @@ if __name__ == '__main__':
         print('')
         nrcan = loadNRCan(filelist=filelist, period=period)
         print(nrcan)
-        print("\nNetCDF file path:\n '{}'".format(nrcan.filelist[0]))
+        print(("\nNetCDF file path:\n '{}'".format(nrcan.filelist[0])))
         print('')
-        for varname,var in cmc.variables.items():
+        for varname,var in list(cmc.variables.items()):
             if varname in CMC_derived or varname in CMC_vardefs:
                 assert varname+'_CMC'+scale_tag in nrcan, nrcan
 #             print('')
@@ -778,7 +778,7 @@ if __name__ == '__main__':
         # values
         print('')
         var = cmc.snow.mean(axes=('lat','lon'))
-        print(var[:])
-        for varname,var in cmc.variables.items():
-            print(varname, var.masked, float(var.data_array.mask.sum())/float(var.data_array.size))
+        print((var[:]))
+        for varname,var in list(cmc.variables.items()):
+            print((varname, var.masked, float(var.data_array.mask.sum())/float(var.data_array.size)))
         

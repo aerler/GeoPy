@@ -26,8 +26,8 @@ from geodata.netcdf import DatasetNetCDF
 import imp, os
 # read code root folder from environment variable
 code_root = os.getenv('CODE_ROOT')
-if not code_root : raise ArgumentError, 'No CODE_ROOT environment variable set!'
-if not os.path.exists(code_root): raise ImportError, "The code root '{:s}' directory set in the CODE_ROOT environment variable does not exist!".format(code_root)
+if not code_root : raise ArgumentError('No CODE_ROOT environment variable set!')
+if not os.path.exists(code_root): raise ImportError("The code root '{:s}' directory set in the CODE_ROOT environment variable does not exist!".format(code_root))
 # import module from WRF Tools explicitly to avoid name collision
 if os.path.exists(code_root+'/WRF-Tools/Python/wrfavg/derived_variables.py'):
   dv = imp.load_source('derived_variables', code_root+'/WRF-Tools/Python/wrfavg/derived_variables.py') # need explicit absolute import due to name collision
@@ -90,7 +90,7 @@ for threshold in precip_thresholds:
                                           atts=dict(fillValue=0), transform=nullNaN) # wet-day precipitation rate (kg/m^2/s)
 
 # list of variables to load
-variable_list = varatts.keys() # also includes coordinate fields    
+variable_list = list(varatts.keys()) # also includes coordinate fields    
 
 
 ## a class that handles access to station records in ASCII files
@@ -126,16 +126,16 @@ class DailyStationRecord(StrictRecordClass):
     ''' validate header information against stored meta data '''
     # parse header line (print header if an error occurs)
     header = [elt.strip().lower() for elt in headerline.split(',')]
-    if self.id.lower() != header[0]: raise ParseError, headerline # station ID
-    if self.name.lower() != header[1]: raise ParseError, headerline # station name
-    if self.prov.lower() != header[2]: raise ParseError, headerline # province
-    if 'joined' not in header[3]: raise ParseError, headerline # station joined or not
+    if self.id.lower() != header[0]: raise ParseError(headerline) # station ID
+    if self.name.lower() != header[1]: raise ParseError(headerline) # station name
+    if self.prov.lower() != header[2]: raise ParseError(headerline) # province
+    if 'joined' not in header[3]: raise ParseError(headerline) # station joined or not
     else:
-      if self.joined and 'not' in header[3]: raise ParseError, headerline # station joined or not
-      if not self.joined and 'not' not in header[3]: raise ParseError, headerline # station joined or not
-    if 'daily' not in header[4]: raise ParseError, headerline # this class only deals with daily values
-    if self.variable.lower() not in header[4]: raise ParseError, headerline # variable name
-    if self.units.lower() not in header[5]: raise ParseError, headerline # variable units
+      if self.joined and 'not' in header[3]: raise ParseError(headerline) # station joined or not
+      if not self.joined and 'not' not in header[3]: raise ParseError(headerline) # station joined or not
+    if 'daily' not in header[4]: raise ParseError(headerline) # this class only deals with daily values
+    if self.variable.lower() not in header[4]: raise ParseError(headerline) # variable name
+    if self.units.lower() not in header[5]: raise ParseError(headerline) # variable units
     # if no error was raised, we are good
     
   def checkHeader(self):
@@ -164,7 +164,7 @@ class DailyStationRecord(StrictRecordClass):
         # check continuity
         if year == oldyear and mon == oldmon+1: pass
         elif year == oldyear+1 and oldmon == 12 and mon ==1: pass 
-        else: raise DateError, line
+        else: raise DateError(line)
         oldyear = year; oldmon = mon
 #         # rigorous check of date bounds
 #         if year == self.begin_year and mon < self.begin_mon: raise DateError, line
@@ -187,23 +187,23 @@ class DailyStationRecord(StrictRecordClass):
               if lfloat and '.' in num and 1 < len(num): # at least 1 digit plus decimal, i.e. ignore the flag
                 if num[-1].isdigit(): n = float(num)
                 elif num[-2].isdigit() and num[-1] in self.flags: n = float(num[:-1]) # remove data flag
-                else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
+                else: raise ParseError("Unable to process value '{:s}' in line:\n {:s}".format(num,line))
               elif lint and 0 < len(num):# almost the same as for floats
                 if num[-1].isdigit(): n = int(num)
                 elif num[-2].isdigit() and num[-1] in self.flags: n = int(num[:-1]) # remove data flag
-                else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
-              else: raise ParseError, "Unable to process value '{:s}' in line:\n {:s}".format(num,line)
+                else: raise ParseError("Unable to process value '{:s}' in line:\n {:s}".format(num,line))
+              else: raise ParseError("Unable to process value '{:s}' in line:\n {:s}".format(num,line))
               if n < self.varmin: warn("Encountered value '{:s}' below minimum in line (ignored):\n {:s}".format(num,line))
               elif n > self.varmax: warn("Encountered value '{:s}' above maximum in line (ignored):\n {:s}".format(num,line))
               else: data[zz] = n # only now, we can accept the value
             # increment daily counter
             zz += 1 # here each month has 31 days (padded with missing values)
-          if zz != z+31: raise ParseError, 'Line has {:d} values instead of 31:\n {:s}'.format(zz-z,line)  
+          if zz != z+31: raise ParseError('Line has {:d} values instead of 31:\n {:s}'.format(zz-z,line))  
           # increment counter
           z += 31
       elif ll[0] != 'Year' or ll[1] != 'Mo':
-        raise ParseError, "No valid title or data found at begining of file:\n {:s}".format(self.filename)
-    if z < tlen: raise ParseError, 'Reached end of file before specified end date: {:s}'.format(self.filename)    
+        raise ParseError("No valid title or data found at begining of file:\n {:s}".format(self.filename))
+    if z < tlen: raise ParseError('Reached end of file before specified end date: {:s}'.format(self.filename))    
     f.close() # close again
     # return array
     return data
@@ -372,7 +372,7 @@ class StationRecords(object):
                encoding='', header_format=None, station_format=None, constraints=None, atts=None, varmap=None):
     ''' Parse station file and initialize station records. '''
     # some input checks
-    if not isinstance(stationfile,basestring): raise TypeError
+    if not isinstance(stationfile,str): raise TypeError
     if interval != 'daily': raise NotImplementedError
     if header_format is None: header_format = ec_header_format # default
     elif not isinstance(header_format,(tuple,list)): raise TypeError
@@ -381,9 +381,9 @@ class StationRecords(object):
     if not isinstance(constraints,dict) and constraints is not None: raise TypeError
     # variables et al.
     if not isinstance(variables,dict): raise TypeError
-    datatype = variables.values()[0].datatype; title = variables.values()[0].title;
-    if not all([var.datatype == datatype for var in variables.values()]): raise VariableError
-    if not all([var.title == title for var in variables.values()]): raise VariableError
+    datatype = list(variables.values())[0].datatype; title = list(variables.values())[0].title;
+    if not all([var.datatype == datatype for var in list(variables.values())]): raise VariableError
+    if not all([var.title == title for var in list(variables.values())]): raise VariableError
     if extremes is None and datatype == 'precip': extremes = deepcopy(precip_xtrm)
     elif extremes is None and datatype == 'temp': extremes = deepcopy(temp_xtrm)
     # N.B.: need to use deepcopy, because we are modifying the objects      
@@ -391,12 +391,12 @@ class StationRecords(object):
     if varmap is None: varmap = ec_varmap
     elif not isinstance(varmap, dict): raise TypeError
     # utils
-    encoding = encoding or variables.values()[0].encoding 
+    encoding = encoding or list(variables.values())[0].encoding 
     if atts is None: atts = dict(name=datatype, title=title) # default name
     elif not isinstance(atts,dict): raise TypeError # resulting dataset attributes
-    if not isinstance(encoding,basestring): raise TypeError
+    if not isinstance(encoding,str): raise TypeError
     folder = folder or '{:s}/{:s}_{:s}/'.format(root_folder,interval,datatype) # default folder scheme 
-    if not isinstance(folder,basestring): raise TypeError
+    if not isinstance(folder,str): raise TypeError
     # save arguments
     self.folder = folder
     self.stationfile = stationfile
@@ -407,7 +407,7 @@ class StationRecords(object):
     self.variables = variables
     self.extremes = extremes
     self.varmap = varmap
-    self.ravmap = dict((value,key) for key,value in varmap.iteritems() if value is not None) # reverse var map
+    self.ravmap = dict((value,key) for key,value in varmap.items() if value is not None) # reverse var map
     self.atts = atts
     self.header_format = header_format
     self.station_format = station_format
@@ -423,10 +423,10 @@ class StationRecords(object):
     header = f.readline() # read third line (column definitions)
     for key,col in zip(header_format,header.split()):
       if key.lower() != col.lower(): 
-        raise ParseError, "Column headers do not match format specification: {:s} != {:s} \n {:s}".format(key,col,header)
+        raise ParseError("Column headers do not match format specification: {:s} != {:s} \n {:s}".format(key,col,header))
     f.readline() # discard forth line (French)    
     # initialize station list
-    self.stationlists = {varname:[] for varname in variables.iterkeys()} # a separate list for each variable
+    self.stationlists = {varname:[] for varname in variables.keys()} # a separate list for each variable
     z = 0 # row counter 
     ns = 0 # station counter
     # loop over lines (each defiens a station)
@@ -440,7 +440,7 @@ class StationRecords(object):
         for key,fct in station_format[:-1]: # loop over columns
           if key is None: # None means skip this column
             if zz == 0: # first column
-              if z != fct(collist[zz]): raise ParseError, "Station number is not consistent with line count:\n {:s}".format(line)
+              if z != fct(collist[zz]): raise ParseError("Station number is not consistent with line count:\n {:s}".format(line))
           else:
             stdef[key] = fct(collist[zz]) # convert value and assign to argument
           zz += 1 # increment column
@@ -452,13 +452,13 @@ class StationRecords(object):
         if constraints is None: ladd = True
         else:
           ladd = True
-          for key,val in constraints.iteritems():
+          for key,val in constraints.items():
             if stdef[key] not in val: ladd = False
         # instantiate station objects for each variable and append to lists
         if ladd:
           ns += 1
           # loop over variable definitions
-          for varname,vardef in variables.iteritems():
+          for varname,vardef in variables.items():
             filename = '{0:s}/{1:s}'.format(folder,vardef.filepath.format(stdef['id']))
             kwargs = dict() # combine station and variable attributes
             kwargs.update(stdef); kwargs.update(vardef.getKWargs())
@@ -471,14 +471,14 @@ class StationRecords(object):
     ''' prepare a GeoPy dataset for the station data (with all the meta data); 
         create a NetCDF file for monthly data; also add derived variables          '''
     if folder is None: folder = avgfolder # default folder scheme 
-    elif not isinstance(folder,basestring): raise TypeError
+    elif not isinstance(folder,str): raise TypeError
     if filename is None: filename = 'ec{:s}_monthly.nc'.format(self.datatype) # default folder scheme 
-    elif not isinstance(filename,basestring): raise TypeError
+    elif not isinstance(filename,str): raise TypeError
     # meta data arrays
     dataset = Dataset(atts=self.atts)
     # station axis (by ordinal number)
-    stationlist = self.stationlists.values()[0] # just use first list, since meta data is the same
-    assert all([len(stationlist) == len(stnlst) for stnlst in self.stationlists.values()]) # make sure none is missing
+    stationlist = list(self.stationlists.values())[0] # just use first list, since meta data is the same
+    assert all([len(stationlist) == len(stnlst) for stnlst in list(self.stationlists.values())]) # make sure none is missing
     station = Axis(coord=np.arange(1,len(stationlist)+1, dtype='int16'), **varatts['station']) # start at 1
     # station name
     namelen = max([len(stn.name) for stn in stationlist])
@@ -513,7 +513,7 @@ class StationRecords(object):
     # add variables for monthly values
     time = Axis(coord=np.arange(begin_date, end_date, dtype='int16'), **varatts['time'])
     # loop over variables
-    for varname,vardef in self.variables.iteritems():
+    for varname,vardef in self.variables.items():
       # add actual variables
       dataset += Variable(axes=(station,time), dtype=vardef.dtype, **vardef.atts)
       # add length of record variable
@@ -540,8 +540,8 @@ class StationRecords(object):
       xvar.normalize = False # different aggregation
       # check axes
       if len(xvar.axes) != 2 or xvar.axes != (varatts['station']['name'], varatts['time']['name']):
-        print xvar.axes
-        raise dv.DerivedVariableError, "Axes ('station', 'time') are required; adjust varmap as needed."
+        print(xvar.axes)
+        raise dv.DerivedVariableError("Axes ('station', 'time') are required; adjust varmap as needed.")
       # finalize
       xvar.checkPrerequisites(ncset, const=None, varmap=self.varmap)
       if xvar.name in self.varmap: xvar.name = self.varmap[xvar.name] # rename
@@ -563,9 +563,9 @@ class StationRecords(object):
     dailydata = dict() # to store daily data for derived variables
     monlydata = dict() # monthly data, but transposed
     ravmap = self.ravmap # shortcut for convenience  
-    print("\n   ***   Preparing {:s}   ***\n   Constraints: {:s}\n".format(self.title,str(self.constraints)))
-    for var,vardef in self.variables.iteritems():
-      print("\n {:s} ('{:s}'):\n".format(vardef.name.title(),var))
+    print(("\n   ***   Preparing {:s}   ***\n   Constraints: {:s}\n".format(self.title,str(self.constraints))))
+    for var,vardef in self.variables.items():
+      print(("\n {:s} ('{:s}'):\n".format(vardef.name.title(),var)))
       varobj = self.dataset[var] # get variable object
       wrfvar = ravmap.get(varobj.name,varobj.name)
       # allocate array
@@ -574,7 +574,7 @@ class StationRecords(object):
       # loop over stations
       s = 0 # station counter
       for station in self.stationlists[var]:
-        print("   {:<15s} {:s}".format(station.name,station.filename))
+        print(("   {:<15s} {:s}".format(station.name,station.filename)))
         # read station file
         dailytmp[s,begin_idx[s]:end_idx[s]] = station.parseRecord()  
         s += 1 # next station
@@ -593,7 +593,7 @@ class StationRecords(object):
     if any(not var.linear for var in self.extremes): print('\n computing (nonlinear) daily variables:')
     for var in self.extremes:      
       if not var.linear:
-        print("   {:<15s} {:s}".format(var.name,str(tuple(self.varmap.get(varname,varname) for varname in var.prerequisites))))
+        print(("   {:<15s} {:s}".format(var.name,str(tuple(self.varmap.get(varname,varname) for varname in var.prerequisites)))))
         varobj = self.dataset[var.name] # get variable object
         if var.name not in ravmap: ravmap[var.name] = var.name # naming convention for tmp storage 
         wrfvar = ravmap[var.name] 
@@ -610,7 +610,7 @@ class StationRecords(object):
         else: lmon = 28
       else: lmon = days_per_month[mon%12]
       # construct arrays for this month
-      tmpdata = {varname:data[:,m,0:lmon] for varname,data in dailydata.iteritems()}      
+      tmpdata = {varname:data[:,m,0:lmon] for varname,data in dailydata.items()}      
       for var in self.extremes:      
         if not var.linear:
           varobj = self.dataset[var.name] # get variable object
@@ -627,7 +627,7 @@ class StationRecords(object):
       wrfvar = ravmap[var.name]
       if var.linear:
         # compute from available monthly data
-        print("   {:<15s} {:s}".format(var.name,str(tuple(self.varmap.get(varname,varname) for varname in var.prerequisites))))
+        print(("   {:<15s} {:s}".format(var.name,str(tuple(self.varmap.get(varname,varname) for varname in var.prerequisites)))))
         monlytmp = var.computeValues(monlydata, aggax=1, delta=86400.)
         monlydata[wrfvar] = monlytmp
       tmpload = monlydata[wrfvar]
@@ -635,7 +635,7 @@ class StationRecords(object):
       varobj.load(tmpload)
     # determine actual length of records (valid data points)
     minlen = None 
-    for varname in self.variables.iterkeys():
+    for varname in self.variables.keys():
       rec_len = self.dataset['stn_'+varname+'_len'] # get variable object
       varobj = self.dataset[varname]
       stlen,tlen = varobj.shape
@@ -656,10 +656,10 @@ class StationRecords(object):
 def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None, 
               filelist=None, folder=None, **kwargs): 
   ''' Load a monthly time-series of pre-processed EC station data. '''
-  if filetype is None: raise ArgumentError, "A 'filetype' needs to be specified ('temp' or 'precip')."
+  if filetype is None: raise ArgumentError("A 'filetype' needs to be specified ('temp' or 'precip').")
   elif not filetype in ('temp','precip'): raise ArgumentError
   name = name or 'EC' # 'ec{:s}'.format(filetype) # prepend ec to the filetype
-  if prov is not None and not isinstance(prov,basestring): raise TypeError
+  if prov is not None and not isinstance(prov,str): raise TypeError
   if folder is None: folder = avgfolder
   if filelist is None:
     if prov: filelist = [tsfile_prov.format(filetype, prov)]
@@ -673,14 +673,14 @@ def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None,
 # wrapper
 def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varatts, lloadCRU=False, **kwargs):
   ''' Load a monthly time-series of pre-processed EC station data. '''
-  if station is None: raise ArgumentError, "A 'filetype' needs to be specified ('ectemp' or 'ecprecip')."
+  if station is None: raise ArgumentError("A 'filetype' needs to be specified ('ectemp' or 'ecprecip').")
   elif station in ('ectemp','ecprecip'):
     name = name or 'EC'  
     station = station[2:] # internal convention
   else: raise ArgumentError
   
   if varlist is not None: 
-    if isinstance(varlist,basestring): varlist = [varlist]
+    if isinstance(varlist,str): varlist = [varlist]
     varlist = list(set(varlist).union(stn_params)) 
   # load station data
   #print varlist  
@@ -706,7 +706,7 @@ def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varat
         dataset = dataset(time=cru.time.limits()) # slice to same length
         for varname in crulist: 
           dataset += cru[varname] # add auxiliary variables
-      else: raise AxisError, "Time-dependent variables not found in fall-bak dataset (CRU)."
+      else: raise AxisError("Time-dependent variables not found in fall-bak dataset (CRU).")
   return dataset
 
 ## load pre-processed EC station climatology
@@ -760,7 +760,7 @@ def test_cluster(val,index,dataset,axis, cluster_name='cluster_id', lcheckVar=Tr
   else: ValueError, val
 def test_name(val,index,dataset,axis):
   ''' check if station name is in provided list (val) '''
-  if isinstance(val, basestring): 
+  if isinstance(val, str): 
     return dataset['station_name'][index].strip() == val
   elif isinstance(val, (tuple,list)):
     return dataset['station_name'][index].strip() in val
@@ -777,24 +777,24 @@ def apply_test_suite(tests, index, dataset, axis):
 def selectStations(datasets, stnaxis='station', master=None, linplace=False, lall=False, 
                   lcheckVar=False, cluster_name='cluster_id', **kwcond):
   ''' A wrapper for selectCoords that selects stations based on common criteria '''
-  if linplace: raise NotImplementedError, "Option 'linplace' does not work currently."
+  if linplace: raise NotImplementedError("Option 'linplace' does not work currently.")
   # pre-load NetCDF datasets
   for dataset in datasets: 
     if isinstance(dataset,DatasetNetCDF): dataset.load()
     if dataset.station_name.ndim > 1 and not dataset.station_name.hasAxis(stnaxis):
-      raise DatasetError, "Meta-data fields must only have a 'station' axis and no other!" 
+      raise DatasetError("Meta-data fields must only have a 'station' axis and no other!") 
   # list of possible constraints
   tests = [] # a list of tests to run on each station
   #loadlist =  (datasets[imaster],) if not lall and imaster is not None else datasets 
   # test definition
   varcheck = [True]*len(datasets)
-  for key,val in kwcond.iteritems():
+  for key,val in kwcond.items():
     key = key.lower()
     if key == 'prov':
       varname = 'stn_prov'
       if not isinstance(val,(tuple,list)): val = (val,)
       if not isinstance(val,tuple): val = tuple(val)
-      if not all(isinstance(prov,basestring) for prov in val): raise TypeError
+      if not all(isinstance(prov,str) for prov in val): raise TypeError
       tests.append(functools.partial(test_prov, val))
     elif key == 'min_len':
       varname = 'stn_rec_len'
@@ -833,15 +833,15 @@ def selectStations(datasets, stnaxis='station', master=None, linplace=False, lal
       tests.append(functools.partial(test_cluster, val, cluster_name=cluster_name, lcheckVar=lcheckVar))
     elif key == 'name':
       varname = 'station_name'
-      if not ( ( isinstance(val,(list,tuple)) and all(isinstance(v,basestring) for v in val) ) or 
-               isinstance(val,basestring) ): raise TypeError  
+      if not ( ( isinstance(val,(list,tuple)) and all(isinstance(v,str) for v in val) ) or 
+               isinstance(val,str) ): raise TypeError  
       tests.append(functools.partial(test_name, val))
     else:
-      raise NotImplementedError, "Unknown condition/test: '{:s}'".format(key)
+      raise NotImplementedError("Unknown condition/test: '{:s}'".format(key))
     # record, which datasets have all variables 
     varcheck = [dataset.hasVariable(varname) and vchk for dataset,vchk in zip(datasets,varcheck)]
   if not all(varcheck): 
-    if lall and lcheckVar: raise DatasetError, varcheck
+    if lall and lcheckVar: raise DatasetError(varcheck)
     else: warn("Some Datasets do not have all variables: {:s}".format(varcheck))
   # define test function (all tests must pass)
   if len(tests) > 0:
@@ -893,10 +893,10 @@ if __name__ == '__main__':
     print('')
     stnens = Ensemble(loadEC_StnTS(station=stn), loadWRF_StnEns(ensemble='max-ens-2100', station=stn, 
                       filetypes='hydro', domains=2)) # including WRF data for test
-    print(stnens[0])    
+    print((stnens[0]))    
     print('')
     var = stnens[-1].axes['station']; print(''); print(var)
-    for var in stnens.station: print(var.min(),var.mean(),var.max())
+    for var in stnens.station: print((var.min(),var.mean(),var.max()))
     # test station selector
     cluster = (4,7,8); cluster_name = 'cluster_projection'; prov = ('BC','AB'); max_zserr = 300; lat = (40,50)
     min_len = 50; begin_before = 1920; end_after = 2000
@@ -910,11 +910,11 @@ if __name__ == '__main__':
     print(stnens)    
     print('')
     var = stnens[-1].axes['station']; print(''); print(var)
-    for var in stnens.station: print(var.min(),var.mean(),var.max())
+    for var in stnens.station: print((var.min(),var.mean(),var.max()))
     
     print('')
-    print(stnens[0].stn_prov.data_array)
-    print(stnens[0][cluster_name].data_array)
+    print((stnens[0].stn_prov.data_array))
+    print((stnens[0][cluster_name].data_array))
     for stn in stnens:
       assert all(elt in prov for elt in stn.stn_prov.data_array)
       assert all(lat[0]<=elt<=lat[1] for elt in stn.stn_lat.data_array)
@@ -935,14 +935,14 @@ if __name__ == '__main__':
     dataset = loadEC_StnTS(station='ecprecip', varlist=['MaxSnow_1d','MaxSnow_5d','T2'], lloadCRU=lloadCRU).load()
     print(dataset)
     print('')
-    print('ATHABASCA', dataset.station_name.findValues('ATHABASCA'))
+    print(('ATHABASCA', dataset.station_name.findValues('ATHABASCA')))
     print('')
-    print(dataset.time)
-    print(dataset.time.coord)
-    print(dataset.stn_begin_date.min())
+    print((dataset.time))
+    print((dataset.time.coord))
+    print((dataset.stn_begin_date.min()))
     if not lloadCRU:
       origin = np.ceil(dataset.stn_begin_date.min()*(-1./12.))*12
-      print(dataset.time.coord[origin]) # Jan 1979, the origin of time...
+      print((dataset.time.coord[origin])) # Jan 1979, the origin of time...
       assert dataset.time.coord[origin] == 0
     assert dataset.time.coord[0]%12. == 0
     assert (dataset.time.coord[-1]+1)%12. == 0
@@ -961,8 +961,8 @@ if __name__ == '__main__':
                               lat=49.55, lon=-99.08, alt=374, **var.getKWargs())
     test.checkHeader() # fail early...
     data = var.convert(test.parseRecord())    
-    print data.shape, data.dtype
-    print np.nanmin(data), np.nanmean(data), np.nanmax(data)
+    print(data.shape, data.dtype)
+    print(np.nanmin(data), np.nanmean(data), np.nanmax(data))
   
   
   # tests station reader initialization
@@ -974,13 +974,13 @@ if __name__ == '__main__':
     test = StationRecords(folder='', variables=variables, constraints=dict(prov=('PE',)))
     # show dataset
     test.prepareDataset()
-    print test.dataset
+    print(test.dataset)
     print('')
     # test netcdf file
     dataset = DatasetNetCDF(filelist=['/data/EC/ecavg/ectemp_monthly.nc'])
-    print dataset
+    print(dataset)
     print('')
-    print dataset.station_name[1:,] # test string variable recall
+    print(dataset.station_name[1:,]) # test string variable recall
     
   
   # tests entire conversion process
@@ -999,7 +999,7 @@ if __name__ == '__main__':
 #        WetDays:  0.00 |  0.38 |  0.84
 #     print('Dry-day Threshold: {:f}'.format(dv.dryday_threshold))
 #     print('')
-    filename = tsfile_prov.format(variables.values()[0].datatype,prov)        
+    filename = tsfile_prov.format(list(variables.values())[0].datatype,prov)        
     test.prepareDataset(filename=filename, folder=None)
     # read actual station data
     test.readStationData()
@@ -1007,24 +1007,24 @@ if __name__ == '__main__':
     print('')
     print(dataset)
     print('\n')
-    for varname,var in dataset.variables.iteritems():
+    for varname,var in dataset.variables.items():
       if var.hasAxis('time') and var.hasAxis('station'):
         data = var.getArray()
         if 'precip' in variables:
           if var.units == 'kg/m^2/s': data  *= 86400. 
-          print('{:>14s}: {:5.2f} | {:5.2f} | {:5.2f}'.format(
-                var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data))) 
+          print(('{:>14s}: {:5.2f} | {:5.2f} | {:5.2f}'.format(
+                var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data)))) 
         else: 
-          print('{:>10s}: {:5.1f} | {:5.1f} | {:5.1f}'.format(
-                var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data)))
+          print(('{:>10s}: {:5.1f} | {:5.1f} | {:5.1f}'.format(
+                var.name, np.nanmin(data), np.nanmean(data), np.nanmax(data))))
     # record length
     for pfx in ['stn_rec',]: # +variables.keys() # currently the only one (all others are the same!)
       var = dataset[pfx+'_len']
       data = var.getArray()
       if 'precip' in variables:
-        print('{:>14s}: {:5d} | {:5.1f} | {:5d}'.format(var.name,np.min(data), np.mean(data), np.max(data))) 
+        print(('{:>14s}: {:5d} | {:5.1f} | {:5d}'.format(var.name,np.min(data), np.mean(data), np.max(data)))) 
       else:
-        print('{:>10s}: {:5d} | {:5.1f} | {:5d}'.format(var.name,np.min(data), np.mean(data), np.max(data)))
+        print(('{:>10s}: {:5d} | {:5.1f} | {:5d}'.format(var.name,np.min(data), np.mean(data), np.max(data))))
     
   
   # convert provincial station date to NetCDF
@@ -1040,7 +1040,7 @@ if __name__ == '__main__':
         # initialize station record container
         stations = StationRecords(variables=variables, constraints=dict(prov=(prov,)))
         # create netcdf file (one per province)
-        filename = tsfile_prov.format(variables.values()[0].datatype,prov)        
+        filename = tsfile_prov.format(list(variables.values())[0].datatype,prov)        
         stations.prepareDataset(filename=filename, folder=None)
         # read actual station data
         stations.readStationData()

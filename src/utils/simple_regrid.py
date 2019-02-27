@@ -96,7 +96,7 @@ def regridArray(data, srcprj, tgtprj, interpolation='bilinear', missing=None):
   fill = np.zeros((tye,txe))
   if missing: fill += missing     
   # assign data
-  for i in xrange(bnds):
+  for i in range(bnds):
     srcdata.GetRasterBand(i+1).WriteArray(data[i,:,:])
     # srcdata.GetRasterBand(i+1).WriteArray(np.flipud(data[i,:,:]))
     tgtdata.GetRasterBand(i+1).WriteArray(fill.copy())
@@ -109,12 +109,12 @@ def regridArray(data, srcprj, tgtprj, interpolation='bilinear', missing=None):
   elif interpolation == 'lanczos': gdal_interp = gdal.GRA_Lanczos
   elif interpolation == 'convolution': gdal_interp = gdal.GRA_Cubic # cubic convolution
   elif interpolation == 'cubicspline': gdal_interp = gdal.GRA_CubicSpline # cubic spline
-  else: print('Unknown interpolation method: '+interpolation)
+  else: print(('Unknown interpolation method: '+interpolation))
   ## reproject and resample
   # srcproj = srcprj.projection.ExportToWkt(); tgtproj =  tgtprj.projection.ExportToWkt()
   # err = gdal.ReprojectImage(srcdata, tgtdata, srcproj, tgtproj, gdal_interp)
   err = gdal.ReprojectImage(srcdata, tgtdata, None, None, gdal_interp)
-  if err != 0: print('ERROR CODE %i'%err)  
+  if err != 0: print(('ERROR CODE %i'%err))  
   # get data field
   if bnds == 1: outdata = tgtdata.ReadAsArray()[:,:] # for 2D fields
   else: outdata = tgtdata.ReadAsArray(0,0,txe,tye)[0:bnds,:,:] # ReadAsArray(0,0,xe,ye)
@@ -156,7 +156,7 @@ if __name__ == '__main__':
   
   # display
   import pylab as pyl
-  for i in xrange(1):
+  for i in range(1):
 #     pyl.imshow(outdata[i,:,:]); pyl.colorbar(); pyl.show(block=True)
 #     pyl.imshow(np.flipud(likeData.variables['rain'][i,:,:])); pyl.colorbar(); pyl.show(block=True)
     pyl.imshow(np.flipud(outdata[i,:,:])); pyl.colorbar(); pyl.show(block=True)

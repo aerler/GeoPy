@@ -53,7 +53,7 @@ ltmvaratts = dict(tmin = dict(name='Tmin', units='K', atts=dict(long_name='Minim
                lat  = dict(name='lat', units='deg N', atts=dict(long_name='Latitude'))) # geographic latitude field
 # N.B.: the time-series time offset is chose such that 1979 begins with the origin (time=0)
 # list of variables to load
-ltmvarlist = ltmvaratts.keys() # also includes coordinate fields    
+ltmvarlist = list(ltmvaratts.keys()) # also includes coordinate fields    
 
 # loads data from original PCIC NetCDF files
 # climatology
@@ -62,7 +62,7 @@ ltmfile = '{0:s}_monClim_PRISM_historical_run1_197101-200012.nc' # expand with v
 def loadPCIC_LTM(name=dataset_name, varlist=None, varatts=ltmvaratts, filelist=None, folder=ltmfolder):
   ''' Get a properly formatted dataset the monthly PCIC PRISM climatology. '''
   # translate varlist
-  if varlist is None: varlist = varatts.keys()
+  if varlist is None: varlist = list(varatts.keys())
   if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   # generate file list
   filelist = [ltmfile.format(var) for var in varlist if var not in ('time','lat','lon')]
@@ -167,9 +167,9 @@ if __name__ == '__main__':
     stnds = loadPCIC_Stn(station='ecprecip')
     print(stnds)
     print('')
-    print(dataset.geotransform)
-    print(dataset.precip.masked)
-    print(dataset.precip.getArray().mean())
+    print((dataset.geotransform))
+    print((dataset.precip.masked))
+    print((dataset.precip.getArray().mean()))
     print('')
     # display
     import pylab as pyl
@@ -185,8 +185,8 @@ if __name__ == '__main__':
     else: dataset = loadPCIC_Stn(station=pntset)
     print(dataset)
     print('')
-    print(dataset.time)
-    print(dataset.time.coord)
+    print((dataset.time))
+    print((dataset.time.coord))
     
   ## convert PCIC NetCDF files to proper climatology 
   elif mode == 'convert_climatology': 
@@ -228,7 +228,7 @@ if __name__ == '__main__':
     for var in dataset:
       #print(var)
       if not var.strvar:
-        print('Mean {0:s}: {1:s} {2:s}'.format(var.atts.long_name, str(var.mean()), var.units))
+        print(('Mean {0:s}: {1:s} {2:s}'.format(var.atts.long_name, str(var.mean()), var.units)))
       #print('')
     print('')
        
@@ -241,6 +241,6 @@ if __name__ == '__main__':
 #     add_strvar(sink,'name_of_month', name_of_month, 'time', # add names of month
 #                atts=dict(name='name_of_month', units='', long_name='Name of the Month'))          
     sink.close() # close...
-    print('Saving Climatology to: '+filename)
+    print(('Saving Climatology to: '+filename))
     print(avgfolder)
     

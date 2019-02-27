@@ -31,7 +31,7 @@ def loadMPL(linewidth=None, mplrc=None, backend='QT4Agg', lion=False):
   # apply rc-parameters from dictionary (override custom defaults)
   if (mplrc is not None) and isinstance(mplrc,dict):
     # loop over parameter groups
-    for (key,value) in mplrc.iteritems():
+    for (key,value) in mplrc.items():
       mpl.rc(key,**value)  # apply parameters
   # prevent figures from closing: don't run in interactive mode, or pyl.show() will not block
   if lion: pyl.ion()
@@ -46,7 +46,7 @@ def getPlotValues(var, checkunits=None, checkname=None):
   if var.plot is not None: 
     varname = var.plot.name 
     if checkname is not None and varname != checkname: # only check plotname! 
-      raise VariableError, "Expected variable name '{}', found '{}'.".format(checkname,varname)
+      raise VariableError("Expected variable name '{}', found '{}'.".format(checkname,varname))
   else: varname = var.atts['name']
   val = var.getArray(unmask=True, copy=True) # the data to plot
   if var.plot is not None:
@@ -57,7 +57,7 @@ def getPlotValues(var, checkunits=None, checkname=None):
     varunits = var.atts['units']
   if var.plot is not None and 'offset' in var.plot: val += var.plot.offset    
   if checkunits is not None and  varunits != checkunits: 
-    raise VariableError, "Units for variable '{}': expected {}, found {}.".format(var.name,checkunits,varunits) 
+    raise VariableError("Units for variable '{}': expected {}, found {}.".format(var.name,checkunits,varunits)) 
   # return values, units, name
   return val, varunits, varname     
 
@@ -71,7 +71,7 @@ def logTicks(ticks, base=None, power=0):
     if not isinstance(base,(int,np.number,float,np.inexact)): raise TypeError
     power = int(np.round(np.log(base)/np.log(10)))
   if not isinstance(power,(int,np.integer)): raise TypeError
-  print power
+  print(power)
   # generate ticks and apply template
   strtck = ['']*8
   for i in ticks:
@@ -223,7 +223,7 @@ def updateSubplots(fig, mode='shift', **kwargs):
   # update subplot margins
   if mode == 'move': margins.update(kwargs)
   else: 
-    for key,val in kwargs.iteritems():
+    for key,val in kwargs.items():
       if key in margins:
         if mode == 'shift': margins[key] += val
         elif mode == 'scale': margins[key] *= val
@@ -257,7 +257,7 @@ def addLabel(ax, label=None, loc=1, stroke=False, size=None, prop=None, **kwargs
   args.update(kwargs)
   # cycle over axes
   at = [] # list of texts
-  for i in xrange(l):
+  for i in range(l):
     if label[i] is None:
       label[i] = '('+lowercase[i]+')'
     elif isinstance(label[i],int):

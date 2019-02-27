@@ -85,8 +85,8 @@ netcdf_varatts = dict(# forcing variables
                       precip    = dict(name='precip',   units='kg/m^2/s',scalefactor=1., long_name='Total Precipitation'),
                       )
 # list of variables to load
-binary_varlist = binary_varatts.keys()
-netcdf_varlist = [varname for varname in netcdf_varatts.keys() if varname not in ('time','time_stamp','lat','lon')]
+binary_varlist = list(binary_varatts.keys())
+netcdf_varlist = [varname for varname in list(netcdf_varatts.keys()) if varname not in ('time','time_stamp','lat','lon')]
 # some SnoDAS settings
 missing_value = -9999 # missing data flag
 snodas_shape2d = (SnoDAS_grid.size[1],SnoDAS_grid.size[0]) # 4096x8192
@@ -169,21 +169,21 @@ def readBinaryFile(varname=None, date=None, root_folder=root_folder, lgzip=True,
             fdata *= scalefactor
     except IOError:
         if lmissing:
-            print("Warning: data for '{}' missing - creating empty array!\n  ('{:s}')".format(date, folder))
+            print(("Warning: data for '{}' missing - creating empty array!\n  ('{:s}')".format(date, folder)))
             # create empty/masked array
             if lmask: fdata = np.ma.masked_all(snodas_shape2d, dtype=netcdf_dtype)            
             else: fdata = np.zeros(snodas_shape2d, dtype=netcdf_dtype)+missing_value
         else:
-            print("Point of failure: {}/{}".format(varname,date))
+            print(("Point of failure: {}/{}".format(varname,date)))
             raise IOError("Data folder for '{}' is missing:\n  '{:s}'".format(date, folder))
     except DataError:
         if lmissing:
-            print("Warning: data for '{}' incomplete - creating empty array!\n  ('{:s}')".format(date, folder))
+            print(("Warning: data for '{}' incomplete - creating empty array!\n  ('{:s}')".format(date, folder)))
             # create empty/masked array
             if lmask: fdata = np.ma.masked_all(snodas_shape2d, dtype=netcdf_dtype)            
             else: fdata = np.zeros(snodas_shape2d, dtype=netcdf_dtype)+missing_value
         else:
-            print("Point of failure: {}/{}".format(varname,date))
+            print(("Point of failure: {}/{}".format(varname,date)))
             raise
 
     return fdata
@@ -237,10 +237,10 @@ def getGeoCoords(xvar, x_coords=None, y_coords=None):
     # test geographic grid and projected grids separately
     for i in range(len(x_coords)):
         xlon,ylat = None,None
-        for name,coord in xvar.coords.items():
+        for name,coord in list(xvar.coords.items()):
             if name.lower() in x_coords[i]: 
                 xlon = coord; break
-        for name,coord in xvar.coords.items():
+        for name,coord in list(xvar.coords.items()):
             if name.lower() in y_coords[i]: 
                 ylat = coord; break
         if xlon is not None and ylat is not None: break
@@ -254,10 +254,10 @@ def isGeoVar(xvar, x_coords=None, y_coords=None):
     # test geographic grid and projected grids separately
     for i in range(len(x_coords)):
         xlon,ylat = False,False
-        for name in xvar.coords.keys():
+        for name in list(xvar.coords.keys()):
             if name.lower() in x_coords[i]: 
                 xlon = True; break
-        for name in xvar.coords.keys():
+        for name in list(xvar.coords.keys()):
             if name.lower() in y_coords[i]: 
                 ylat = True; break
         if xlon and ylat: break
@@ -270,7 +270,7 @@ def addGeoReference(xds, proj4_string=proj4_string, x_coords=None, y_coords=None
     xlon,ylat = getGeoCoords(xds, x_coords=x_coords, y_coords=y_coords)
     xds.attrs['xlon'] = xlon.name
     xds.attrs['ylat'] = ylat.name
-    for xvar in xds.data_vars.values(): 
+    for xvar in list(xds.data_vars.values()): 
         if isGeoVar(xvar):
             xvar.attrs['proj4'] = proj4_string
             xvar.attrs['xlon'] = xlon.name
@@ -372,7 +372,7 @@ def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfol
     grid_str = '_'+grid if grid else ''
 #     if lmonthly:
 #         kwargs['decode_times'] = False
-    if isinstance(period,basestring): prd_str = '_' + period
+    if isinstance(period,str): prd_str = '_' + period
     elif isinstance(period,(tuple,list)) and len(period) == 2: 
         prd_str = '_{0:4d}-{1:4d}'.format(*period)
     else: raise TypeError(period) 
@@ -475,12 +475,12 @@ if __name__ == '__main__':
       ds = loadSnoDAS(varlist=varlist, period=(2011,2012), lxarray=lxarray) # load regular GeoPy dataset
       print(ds)
       print('')
-      varname = ds.variables.keys()[0]
+      varname = list(ds.variables.keys())[0]
       var = ds[varname]
       print(var)
 
       if lxarray:
-          print('Size in Memory: {:6.1f} MB'.format(var.nbytes/1024./1024.))
+          print(('Size in Memory: {:6.1f} MB'.format(var.nbytes/1024./1024.)))
 
 
   elif test_mode == 'load_Point_Climatology':
@@ -493,8 +493,8 @@ if __name__ == '__main__':
     else: raise NotImplementedError(pntset)
     print(dataset)
     print('')
-    print(dataset.time)
-    print(dataset.time.coord)
+    print((dataset.time))
+    print((dataset.time.coord))
 
   
   elif test_mode == 'monthly_normal':
@@ -575,7 +575,7 @@ if __name__ == '__main__':
       
       # print timing
       end = time.time()
-      print('\n   Required time:   {:.0f} seconds\n'.format(end-start))
+      print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
 
 
   elif test_mode == 'load_TimeSeries':
@@ -591,7 +591,7 @@ if __name__ == '__main__':
       xv = xv.loc['2011-01-01':'2011-01-31',]
 #       xv = xv.loc['2011-01-01',:,:]
       print(xv)
-      print('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.))
+      print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
 
 #       print('')
 #       print(xds['time'])
@@ -649,7 +649,7 @@ if __name__ == '__main__':
           
       # print timing
       end = time.time()
-      print('\n   Required time:   {:.0f} seconds\n'.format(end-start))
+      print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
 
 
   elif test_mode == 'load_daily':
@@ -668,7 +668,7 @@ if __name__ == '__main__':
       xv = xv.loc['2011-01-01':'2011-02-01',35:45,-100:-80]
 #       xv = xv.loc['2011-01-01',:,:]
       print(xv)
-      print('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.))
+      print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
 
 
   elif test_mode == 'fix_time':
@@ -727,12 +727,12 @@ if __name__ == '__main__':
               if end_date is None: end_date = tsvar.data[-1]
               end_date = pd.to_datetime(end_date)
               if start_date > end_date:
-                  print("\nNothing to do - timeseries complete:\n {} > {}".format(start_date,end_date))
+                  print(("\nNothing to do - timeseries complete:\n {} > {}".format(start_date,end_date)))
                   ncds.close()
                   exit()
               lappend = True
               # update slicing (should not do anything if sliced before)
-              print("\n Appending data from {} to {}.\n".format(start_date.strftime("%Y-%m-%d"),end_date.strftime("%Y-%m-%d")))
+              print(("\n Appending data from {} to {}.\n".format(start_date.strftime("%Y-%m-%d"),end_date.strftime("%Y-%m-%d"))))
               xds = xds.loc[{'time':slice(start_date,end_date),}]
               tsvar = tsvar.loc[{'time':slice(start_date,end_date),}]
           else: 
@@ -788,7 +788,7 @@ if __name__ == '__main__':
                   ts = offset + tc[block_id[0]]; te = ts + block.shape[0]
                   ys = yc[block_id[1]]; ye = ys + block.shape[1]
                   xs = xc[block_id[2]]; xe = xs + block.shape[2]
-                  print((ts,te),(ys,ye),(xs,xe))
+                  print(((ts,te),(ys,ye),(xs,xe)))
                   #print(block.shape)
                   ncvar3[ts:te,ys:ye,xs:xe] = block
                   return dummy
@@ -818,7 +818,7 @@ if __name__ == '__main__':
           
       # print timing
       end =  time.time()
-      print('\n   Required time:   {:.0f} seconds\n'.format(end-start))
+      print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
 
 
   elif test_mode == 'test_binary_reader':
@@ -842,7 +842,7 @@ if __name__ == '__main__':
 #       for varname in binary_varlist:
       for varname in ['evap_snow']:
 
-          print('\n   ***   {}   ***   '.format(varname))
+          print(('\n   ***   {}   ***   '.format(varname)))
           # read data
           data = readBinaryFile(varname=varname, date=date, lgzip=lgzip,lmissing=True)
           # some checks
@@ -852,10 +852,10 @@ if __name__ == '__main__':
           
           # diagnostics
           if not np.all(data.mask):
-              print('Min: {:f}, Mean: {:f}, Max: {:f}'.format(data.min(),data.mean(),data.max()))  
+              print(('Min: {:f}, Mean: {:f}, Max: {:f}'.format(data.min(),data.mean(),data.max())))  
           else: 
               print('No data available for timestep')
-          print('Size in Memory: {:6.1f} MB'.format(data.nbytes/1024./1024.))            
+          print(('Size in Memory: {:6.1f} MB'.format(data.nbytes/1024./1024.)))            
           # make plot
 #           import pylab as pyl
 #           pyl.imshow(np.flipud(data[:,:])); pyl.colorbar(); pyl.show(block=True)
@@ -883,7 +883,7 @@ if __name__ == '__main__':
           start = time.time()
           if not osp.exists(filepath) or not lappend:
               # create NetCDF-4 dataset
-              print("\nCreating new NetCDF-4 dataset for variable '{:s}':\n  '{:s}'".format(varname,filepath))
+              print(("\nCreating new NetCDF-4 dataset for variable '{:s}':\n  '{:s}'".format(varname,filepath)))
               ncds = creatNetCDF(varname, varatts=netcdf_varatts, ncatts=netcdf_settings, data_folder=daily_folder)
               ncds.sync()
               ncvar = ncds[varname]
@@ -897,7 +897,7 @@ if __name__ == '__main__':
               time_array = np.arange(start_date,end_date, dtype='datetime64[D]')
           else:
               # append to existing file
-              print("\nOpening existing NetCDF-4 dataset for variable '{:s}':\n  '{:s}'".format(varname,filepath))
+              print(("\nOpening existing NetCDF-4 dataset for variable '{:s}':\n  '{:s}'".format(varname,filepath)))
               ncds = nc.Dataset(filepath, mode='a', format='NETCDF4', clobber=False)
               ncvar = ncds[varname]
               nc_time_chunk = ncvar.chunking()[0]
@@ -918,7 +918,7 @@ if __name__ == '__main__':
               time_array = np.arange(restart_date,end_date, dtype='datetime64[D]')
 #               time_array = np.arange(start_date,'2009-12-14', dtype='datetime64[D]')
               if len(time_array) > 0:
-                  print("First record time-stamp: {:s} (offset={:d}), Time Chunking: {:d}".format(time_array[0],time_offset,nc_time_chunk))  
+                  print(("First record time-stamp: {:s} (offset={:d}), Time Chunking: {:d}".format(time_array[0],time_offset,nc_time_chunk)))  
               else:
                   print("\nSpecified records are already present; exiting.\n")
                   ncds.close()
@@ -939,7 +939,7 @@ if __name__ == '__main__':
               var_chunks.append(readBinaryFile(varname=varname, date=day,))
               # assign time stamp to time chunk list
               tc_chunks.append(i+time_offset) # zero-based
-              print("  {}".format(actual_day))
+              print(("  {}".format(actual_day)))
               ts_chunks.append(str(actual_day))
               
               # now assign chunk to file
@@ -956,7 +956,7 @@ if __name__ == '__main__':
               # periodic flushing to disk
               fi += 1
               if fi == flush_intervall:
-                  print("Flushing data to disk ({:d}, {:s})".format(ii, actual_day))
+                  print(("Flushing data to disk ({:d}, {:s})".format(ii, actual_day)))
                   ncds.sync() # flush data
                   fi = 0 # reset intervall counter
                   gc.collect()
@@ -972,7 +972,7 @@ if __name__ == '__main__':
               del var_chunks, tc_chunks, ts_chunks
               gc.collect()
           
-          print("\nCompleted iteration; read {:d} rasters and created NetCDF-4 variable:\n".format(ii))    
+          print(("\nCompleted iteration; read {:d} rasters and created NetCDF-4 variable:\n".format(ii)))    
           print(ncvar)
 
           # make sure time units are set correctly
@@ -983,6 +983,6 @@ if __name__ == '__main__':
           ncds.close()
           
           end =  time.time()
-          print('\n   Required time:   {:.0f} seconds\n'.format(end-start))
+          print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
                 
   

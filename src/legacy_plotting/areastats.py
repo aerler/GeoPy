@@ -78,7 +78,7 @@ def getVarSettings(plottype, area, lPRISM=False, mode='all'):
     varlist = ['runoff','sfroff']; filetypes = ['lsm','hydro']; # 'ugroff' 
     lsum = True; leg = (2,1); ylabel = flxlabel; ylim = flxlim
   else:
-    raise TypeError, '\'{}\' is not a valid plottype!'.format(plottype)
+    raise TypeError('\'{}\' is not a valid plottype!'.format(plottype))
   # return values
   lCFSR = False; lNARR = False
   if mode == 'all':
@@ -272,8 +272,8 @@ if __name__ == '__main__':
       if lUnity: unity = loadUnity(period=obsprd, grid=grid, varlist=loadlist, varatts=varatts)
       if lCFSR: cfsr = loadCFSR(period=period, grid=grid, varlist=loadlist, varatts=varatts)
       if lNARR: narr = loadNARR(period=period, grid=grid, varlist=loadlist, varatts=varatts)  
-      print ref
-      print ref.name
+      print(ref)
+      print(ref.name)
       
       ## create averaging mask
       if area == 'athabasca': 
@@ -285,7 +285,7 @@ if __name__ == '__main__':
       elif area == 'southcoast': 
         areaname = 'PSB'; subarea = 'SouthernPSB'; areatitle = 'Southern PSB'
       else: 
-        raise ValueError, 'Have to specify a river area or other shapefile to use as mask!'
+        raise ValueError('Have to specify a river area or other shapefile to use as mask!')
       basin = Basin(basin=areaname, subbasin=subarea)
       if lgage: maingage = basin.getMainGage()
       shp_mask = basin.rasterize(griddef=ref.griddef)
@@ -355,8 +355,8 @@ if __name__ == '__main__':
         
         # loop over axes
         n = -1 # axes counter
-        for i in xrange(subplot[0]):
-          for j in xrange(subplot[1]):
+        for i in range(subplot[0]):
+          for j in range(subplot[1]):
             n += 1 # count up
             # select axes
             ax,exptpl,title,linestyle = axes[i,j],exps[n],titles[n],linestyles[n]
@@ -393,7 +393,7 @@ if __name__ == '__main__':
               elif var == 'lhfx': color = 'blue'
               # loop over datasets in plot
               if not isinstance(linestyle,tuple): linestyle = (linestyle,)*len(exptpl)
-              for z,exp,ln in zip(xrange(len(exptpl)),exptpl,linestyle):           
+              for z,exp,ln in zip(range(len(exptpl)),exptpl,linestyle):           
                 # compute spatial average
                 if exp.hasVariable(var, strict=False):
                   if 'CESM' in title and var in ('Tmin','Tmax'): pass
@@ -404,16 +404,16 @@ if __name__ == '__main__':
                       wrfleg.append(var)
                     else:
                       ax.plot(time, S*vardata.getArray(), linestyle=ln, color=color, label=var)
-                    print
-                    print exp.name, vardata.name, S*vardata.getArray().mean()
+                    print()
+                    print(exp.name, vardata.name, S*vardata.getArray().mean())
               # river gage
               if lgage and var in ('sfroff',): 
                 vardata = maingage.variables['discharge']
                 label = '%s (%s)'%('discharge','obs')
                 obsplt.append(ax.plot(time, vardata.getArray()/1e6, 'o', markersize=5*linewidth, color=color, label=label)[0]) # , linewidth=1.5
                 obsleg.append(label)
-                print
-                print maingage.name, vardata.name, vardata.getArray().mean()/1e6
+                print()
+                print(maingage.name, vardata.name, vardata.getArray().mean()/1e6)
               # either PRISM ...
               elif lPRISM and prism.hasVariable(var, strict=False):
                 # compute spatial average for CRU
@@ -421,8 +421,8 @@ if __name__ == '__main__':
                 label = '%s (%s)'%(var,prism.name)
                 obsplt.append(ax.plot(time, S*vardata.getArray(), 'o', markersize=4*linewidth, color=color, label=label)[0]) # , linewidth=1.5
                 obsleg.append(label)
-                print
-                print prism.name, vardata.name, S*vardata.getArray().mean()
+                print()
+                print(prism.name, vardata.name, S*vardata.getArray().mean())
               # .. or Unity        
               elif lUnity and unity.hasVariable(var, strict=False):
                 # compute spatial average for CRU
@@ -430,8 +430,8 @@ if __name__ == '__main__':
                 label = '%s (%s)'%(var,'obs')
                 obsplt.append(ax.plot(time, S*vardata.getArray(), 'o', markersize=5*linewidth, color=color, label=label)[0])
                 obsleg.append(label)
-                print
-                print unity.name, vardata.name, S*vardata.getArray().mean()
+                print()
+                print(unity.name, vardata.name, S*vardata.getArray().mean())
               # ... or CRU, perhaps...        
               if lCRU and cru.hasVariable(var, strict=False):
                 # compute spatial average for CRU
@@ -439,8 +439,8 @@ if __name__ == '__main__':
                 label = '%s (%s)'%(var,cru.name)
                 obsplt.append(ax.plot(time, S*vardata.getArray(), 'x', markersize=6*linewidth, color=color, label=label)[0])
                 obsleg.append(label)
-                print
-                print cru.name, vardata.name, S*vardata.getArray().mean()
+                print()
+                print(cru.name, vardata.name, S*vardata.getArray().mean())
               # the rest can be added at will...
               if lGPCC and gpcc.hasVariable(var, strict=False):
                 # compute spatial average for GPCC
@@ -448,8 +448,8 @@ if __name__ == '__main__':
                 vardata = gpcc.variables[var].mean(x=None,y=None)
                 obsplt.append(ax.plot(time, S*vardata.getArray(), 'o', markersize=4*linewidth, color='purple', label=label)[0])
                 obsleg.append(label)
-                print
-                print gpcc.name, vardata.name, S*vardata.getArray().mean()
+                print()
+                print(gpcc.name, vardata.name, S*vardata.getArray().mean())
               if lCFSR and cfsr.hasVariable(var, strict=False):
                 # compute spatial average for CRU
                 if cfsr.isProjected: vardata = cfsr.variables[var].mean(x=None,y=None)
@@ -457,16 +457,16 @@ if __name__ == '__main__':
                 label = '%s (%s)'%(var,cfsr.name)
                 obsplt.append(ax.plot(time, S*vardata.getArray(), '--', color='blue', label=label)[0])
                 obsleg.append(label)
-                print
-                print cfsr.name, vardata.name, S*vardata.getArray().mean()
+                print()
+                print(cfsr.name, vardata.name, S*vardata.getArray().mean())
               if lNARR and narr.hasVariable(var, strict=False):
                 # compute spatial average for GPCC
                 label = '%s (%s)'%(var,narr.name)
                 vardata = narr.variables[var].mean(x=None,y=None)
                 obsplt.append(ax.plot(time, S*vardata.getArray(), '--', color='red', label=label)[0])
                 obsleg.append(label)
-                print
-                print narr.name, vardata.name, S*vardata.getArray().mean()
+                print()
+                print(narr.name, vardata.name, S*vardata.getArray().mean())
               # axes
               labelpad = 3 # lambda lim: -8 if lim[0] < 0 else 3       
               ax.set_xlim(xlim[0],xlim[1])
@@ -520,7 +520,7 @@ if __name__ == '__main__':
           tag = '_'+tag if tag else ''
           domtag = '_d{0:02d}'.format(domains) if isinstance(domains,int) and domains != 2 else '' 
           filename = '{0:s}_{1:s}_{2:s}{3:s}{4:s}.png'.format(areatag,plottype,expset,domtag,tag)
-          print('\nSaving figure in '+filename)
+          print(('\nSaving figure in '+filename))
           fig.savefig(folder+filename, **sf) # save figure to pdf
           print(folder)
       

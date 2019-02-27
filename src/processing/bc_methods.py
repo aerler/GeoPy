@@ -113,12 +113,12 @@ class BiasCorrection(object):
             if varmap and varname in varmap:
                 maplist = varmap[varname]
                 if isinstance(maplist, (list,tuple)): itermap[varname] = maplist
-                elif isinstance(maplist, basestring): itermap[varname] = (maplist,)
+                elif isinstance(maplist, str): itermap[varname] = (maplist,)
                 else: raise TypeError(maplist)
             else:
                 itermap[varname] = (varname,)
         # loop over variables that will be corrected
-        for srcvar,maplist in itermap.items():
+        for srcvar,maplist in list(itermap.items()):
             for tgtvar in maplist:
                 if tgtvar in dataset:
                     # get variable object
@@ -145,7 +145,7 @@ class BiasCorrection(object):
         ''' find all valid candidate variables for bias correction present in both input datasets '''
         varlist = []
         # loop over variables
-        for varname in observations.variables.keys():
+        for varname in list(observations.variables.keys()):
             if varname in dataset.variables and not dataset[varname].strvar:
                 #if np.issubdtype(dataset[varname].dtype,np.inexact) or np.issubdtype(dataset[varname].dtype,np.integer):
                 varlist.append(varname) # now we have a valid variable
@@ -176,7 +176,7 @@ class BiasCorrection(object):
                 if rmse < eps: rmse = 0.
                 correlation = np.corrcoef(bcvar.data_array.flatten(),obsvar.data_array.flatten())[0,1]
                 stats = Stats(Correction=correction,RMSE=rmse,Correlation=correlation,Bias=bias,)
-            if lprint: print(varname,stats)
+            if lprint: print((varname,stats))
             validation[varname] = stats
         # return fit statistics
         self._validation = validation # also store

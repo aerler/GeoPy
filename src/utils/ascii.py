@@ -51,7 +51,7 @@ def rasterDataset(name=None, title=None, vardefs=None, axdefs=None, atts=None, p
         isProjected = False if projection is None else True
     # construct axes dict
     axes = dict()
-    for axname,axdef in axdefs.items():
+    for axname,axdef in list(axdefs.items()):
         assert 'coord' in axdef, axdef
         assert ( 'name' in axdef and 'units' in axdef ) or 'atts' in axdef, axdef
         if axdef is None:
@@ -69,7 +69,7 @@ def rasterDataset(name=None, title=None, vardefs=None, axdefs=None, atts=None, p
       
     ## load raster data into Variable objects
     varlist = []
-    for varname,vardef in vardefs.items():
+    for varname,vardef in list(vardefs.items()):
         # check definitions
         assert 'axes' in vardef and 'dtype' in vardef, vardef
         assert ( 'name' in vardef and 'units' in vardef ) or 'atts' in vardef, vardef 
@@ -82,7 +82,7 @@ def rasterDataset(name=None, title=None, vardefs=None, axdefs=None, atts=None, p
         if 'VAR' not in path_params: path_params['VAR'] = varname # a special key
         # add kwargs and relevant axis indices
         relaxes = [ax.name for ax in axes_list if ax is not None] # relevant axes
-        for key,value in kwargs.items():
+        for key,value in list(kwargs.items()):
           if key not in axes or key in relaxes:
               vardef[key] = value
         # create Variable object
@@ -120,7 +120,7 @@ def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype
     ''' function to read multi-dimensional raster data and construct a GDAL-enabled Variable object '''
 
     # print status
-    if lfeedback: print "Loading variable '{}': ".format(name),  # no newline
+    if lfeedback: print("Loading variable '{}': ".format(name), end=' ')  # no newline
 
     ## figure out axes arguments and load data
     # figure out axes (list/tuple of axes has to be ordered correctly!)
@@ -137,7 +137,7 @@ def rasterVariable(name=None, units=None, axes=None, atts=None, plot=None, dtype
             # use Axis coordinates and add to kwargs for readRasterArray call
             kwargs[ax.name] = tuple(ax.coord)
     # load raster data
-    if lfeedback: print("'{}'".format(file_pattern))
+    if lfeedback: print(("'{}'".format(file_pattern)))
     data, geotransform = readRasterArray(file_pattern, lgzip=lgzip, lgdal=lgdal, dtype=dtype, lmask=lmask, 
                                          fillValue=fillValue, lgeotransform=True, axes=axes_list, lna=False, 
                                          lskipMissing=lskipMissing, path_params=path_params, lfeedback=lfeedback, **kwargs)
@@ -215,7 +215,7 @@ def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmas
                 i0 += 1 # go to next raster file
                 if i0 >= len(file_kwargs_list): 
                   raise IOError("No valid input raster files found!\n'{}'".format(filepath))
-                if lfeedback: print ' ',
+                if lfeedback: print(' ', end=' ')
                 path_params.update(file_kwargs_list[i0]) # update axes parameters
                 filepath = file_pattern.format(**path_params) # nest in line
         else: # or raise error
@@ -248,7 +248,7 @@ def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmas
         path_params.update(file_kwargs) # update axes parameters
         filepath = file_pattern.format(**path_params) # construct file name
         if os.path.exists(filepath):
-            if lfeedback: print '.', # indicate data with bar/pipe
+            if lfeedback: print('.', end=' ') # indicate data with bar/pipe
             # read 2D raster file
             data2D = readASCIIraster(filepath, lgzip=lgzip, lgdal=lgdal, dtype=dtype, lna=False,
                                      lmask=lmask, fillValue=fillValue, lgeotransform=lgeotransform, **kwargs)
@@ -266,12 +266,12 @@ def readRasterArray(file_pattern, lgzip=None, lgdal=True, dtype=np.float32, lmas
         elif lskipMissing:
             # fill with masked values
             data[i+i0,:,:] = ma.masked # mask missing raster
-            if lfeedback: print ' ', # indicate missing with dot
+            if lfeedback: print(' ', end=' ') # indicate missing with dot
         else:
           raise IOError(filepath)
 
     # complete feedback with linebreak
-    if lfeedback: print ''
+    if lfeedback: print('')
     
     # reshape and check dimensions
     assert i+i0 == data.shape[0]-1, (i,i0)

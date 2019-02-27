@@ -29,27 +29,27 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
                       ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to extract point data from gridded dataset '''  
   # input checking
-  if not isinstance(dataset,basestring): raise TypeError
+  if not isinstance(dataset,str): raise TypeError
   if not isinstance(dataargs,dict): raise TypeError # all dataset arguments are kwargs 
   if not callable(stnfct): raise TypeError # function to load station dataset
   if lparallel: 
-    if not lwrite: raise IOError, 'In parallel mode we can only write to disk (i.e. lwrite = True).'
-    if lreturn: raise IOError, 'Can not return datasets in parallel mode (i.e. lreturn = False).'
+    if not lwrite: raise IOError('In parallel mode we can only write to disk (i.e. lwrite = True).')
+    if lreturn: raise IOError('Can not return datasets in parallel mode (i.e. lreturn = False).')
   
   # logging
   if logger is None: # make new logger     
     logger = logging.getLogger() # new logger
     logger.addHandler(logging.StreamHandler())
   else:
-    if isinstance(logger,basestring): 
+    if isinstance(logger,str): 
       logger = logging.getLogger(name=logger) # connect to existing one
     elif not isinstance(logger,logging.Logger): 
-      raise TypeError, 'Expected logger ID/handle in logger KW; got {}'.format(str(logger))
+      raise TypeError('Expected logger ID/handle in logger KW; got {}'.format(str(logger)))
 
   lclim = False; lts = False
   if mode == 'climatology': lclim = True
   elif mode == 'time-series': lts = True
-  else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
+  else: raise NotImplementedError("Unrecognized Mode: '{:s}'".format(mode))
   
   ## extract meta data from arguments
   dataargs, loadfct, srcage, datamsgstr = getMetaData(dataset, mode, dataargs)
@@ -64,7 +64,7 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
   filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, station=stndata.name) 
   
   if ldebug: filename = 'test_' + filename
-  if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
+  if not os.path.exists(avgfolder): raise IOError("Dataset folder '{:s}' does not exist!".format(avgfolder))
   lskip = False # else just go ahead
   if lwrite:
     if lreturn: 
@@ -95,12 +95,12 @@ def performExtraction(dataset, mode, stnfct, dataargs, loverwrite=False, varlist
     source = loadfct() # load source 
     # check period
     if 'period' in source.atts and dataargs.periodstr != source.atts.period: # a NetCDF attribute
-      raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
+      raise DateError("Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period))
   
     # print message
     if lclim: opmsgstr = "Extracting '{:s}'-type Point Data from Climatology ({:s})".format(stndata.name, periodstr)
     elif lts: opmsgstr = "Extracting '{:s}'-type Point Data from Time-series".format(stndata.name)
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
+    else: raise NotImplementedError("Unrecognized Mode: '{:s}'".format(mode))
     # print feedback to logger
     logger.info('\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
     if not lparallel and ldebug: logger.info('\n'+str(source)+'\n')  
@@ -155,19 +155,19 @@ if __name__ == '__main__':
   
   ## read environment variables
   # number of processes NP 
-  if os.environ.has_key('PYAVG_THREADS'): 
+  if 'PYAVG_THREADS' in os.environ: 
     NP = int(os.environ['PYAVG_THREADS'])
   else: NP = None
   # run script in debug mode
-  if os.environ.has_key('PYAVG_DEBUG'): 
+  if 'PYAVG_DEBUG' in os.environ: 
     ldebug =  os.environ['PYAVG_DEBUG'] == 'DEBUG' 
   else: ldebug = False
   # run script in batch or interactive mode
-  if os.environ.has_key('PYAVG_BATCH'): 
+  if 'PYAVG_BATCH' in os.environ: 
     lbatch =  os.environ['PYAVG_BATCH'] == 'BATCH' 
   else: lbatch = False # for debugging
   # re-compute everything or just update 
-  if os.environ.has_key('PYAVG_OVERWRITE'): 
+  if 'PYAVG_OVERWRITE' in os.environ: 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
   
@@ -280,9 +280,9 @@ if __name__ == '__main__':
     print('\n Extracting from Observational Datasets:')
     print(datasets)
   print('\n According to Station Datasets:')
-  for stntype,datatypes in stations.iteritems():
-    print('   {0:s} {1:s}'.format(stntype,printList(datatypes)))
-  print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
+  for stntype,datatypes in stations.items():
+    print(('   {0:s} {1:s}'.format(stntype,printList(datatypes))))
+  print(('\nOVERWRITE: {0:s}\n'.format(str(loverwrite))))
   
     
   ## construct argument list
@@ -292,10 +292,10 @@ if __name__ == '__main__':
     # only climatology mode has periods    
     if mode == 'climatology': periodlist = [] if periods is None else periods
     elif mode == 'time-series': periodlist = (None,)
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
+    else: raise NotImplementedError("Unrecognized Mode: '{:s}'".format(mode))
 
     # loop over station dataset types ...
-    for stntype,datatypes in stations.iteritems():
+    for stntype,datatypes in stations.items():
       # ... and their filetypes
       for datatype in datatypes:
         
@@ -347,7 +347,7 @@ if __name__ == '__main__':
           for filetype in WRF_filetypes:
             # effectively, loop over domains
             if domains is None:
-              tmpdom = range(1,experiment.domains+1)
+              tmpdom = list(range(1,experiment.domains+1))
             else: tmpdom = domains
             for domain in tmpdom:
               for period in periodlist:

@@ -38,7 +38,7 @@ class WMOTP(Var):
     # if vertical boundaries are given, apply first
     if bnd: T = T(**{T.axes[iaxis].name: bnd})            
     # make vertical axis varying the fastest    
-    order = range(0,iaxis) + range(iaxis+1,T.naxes) + [iaxis]
+    order = list(range(0,iaxis)) + list(range(iaxis+1,T.naxes)) + [iaxis]
     T = T.transpose (*order)        
     ## precondition height data
     # if a source field is given
@@ -47,7 +47,7 @@ class WMOTP(Var):
       # if vertical boundaries are given, apply first
       if bnd: z = z(**{z.axes[iaxis].name: bnd})
       # make vertical axis varying the fastest    
-      order = range(0,iaxis) + range(iaxis+1,z.naxes) + [iaxis]
+      order = list(range(0,iaxis)) + list(range(iaxis+1,z.naxes)) + [iaxis]
       z = z.transpose (*order)
     # shorten axis, check again
     axis = T.getaxis(axis.name) # get new (shortened) axis    

@@ -81,7 +81,7 @@ class GeopotHeightVar(Var):
     assert T.hasaxis(Hybrid), 'this function only computes geopotential from hybrid coordinates'      
     # T: make vertical axis varying the slowest (default is 2nd slowest, after time)   
     ietaT = T.whichaxis(Hybrid)
-    inOrder = [ietaT] + range(0,ietaT) + range(ietaT+1,T.naxes)
+    inOrder = [ietaT] + list(range(0,ietaT)) + list(range(ietaT+1,T.naxes))
     self.T = T.transpose(*inOrder)
     # surface fields
     self.ps = ps # surface pressure

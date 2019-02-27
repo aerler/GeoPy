@@ -98,8 +98,8 @@ def getMapSetup(lpickle=False, folder=None, name=None, lrm=False, **kwargs):
   ''' function that serves a MapSetup instance with complementary pickles '''
   # handle pickling
   if lpickle:
-    if not isinstance(folder,basestring): raise TypeError 
-    if not os.path.exists(folder): raise IOError, folder
+    if not isinstance(folder,str): raise TypeError 
+    if not os.path.exists(folder): raise IOError(folder)
     filename = '{0:s}/{1:s}.pickle'.format(folder,name)
     if os.path.exists(filename) and not lrm:
       # open existing MapSetup from pickle

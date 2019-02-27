@@ -12,9 +12,9 @@ from matplotlib.pylab import show
 
 def modelOutput(var, all):
   # function to generate diagnostic output for a new variable  
-  print
-  print(' * '+var.atts['long_name']+' ['+var.atts['units']+']')
-  print(var.axes)  
+  print()
+  print((' * '+var.atts['long_name']+' ['+var.atts['units']+']'))
+  print((var.axes))  
   if all:
     # compute slice only once and load in memory
     slicedVar = var(lon=(20,25),lat=(40,45)).load()
@@ -23,10 +23,10 @@ def modelOutput(var, all):
     mean = slicedVar.mean()
     max = slicedVar.max()
     # print output
-    print
-    print('    min: %.4f'%(min))    
-    print('   mean: %.4f'%(mean))
-    print('    max: %.4f'%(max))
+    print()
+    print(('    min: %.4f'%(min)))    
+    print(('   mean: %.4f'%(mean)))
+    print(('    max: %.4f'%(max)))
     
 class TPanalysis(unittest.TestCase):
   # whether or not to test lengthy computations
@@ -70,8 +70,8 @@ class TPanalysis(unittest.TestCase):
     # select a variable
     var = self.data.T # Entropy
     # print some diagnostics
-    print; print
-    print(' --- '+var.name+' --- ')      
+    print(); print()
+    print((' --- '+var.name+' --- '))      
     modelOutput(var, self.all)
           
   def testProfile(self):      
@@ -178,7 +178,7 @@ class TPanalysis(unittest.TestCase):
 def suite(tests=[]):    
   # creates a testsuite  
   if tests != []: # only include sets given in list 
-    s = unittest.TestSuite(map(TPanalysis,tests))
+    s = unittest.TestSuite(list(map(TPanalysis,tests)))
   else: # test everything
     s = unittest.TestLoader().loadTestsFromTestCase(TPanalysis)
   return s

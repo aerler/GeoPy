@@ -7,7 +7,7 @@ A script to convert datasets to raster format using GDAL.
 '''
 
 # external imports
-try: import cPickle as pickle
+try: import pickle as pickle
 except: import pickle
 import os, shutil, gzip # check if files are present etc.
 import numpy as np
@@ -79,7 +79,7 @@ class NetCDF(object):
     # get filename for target dataset and do some checks
     if self.folder_pattern is None: avgfolder = dataargs.avgfolder # regular source dataset location
     else: self.folder_pattern.format(dataset, self.project, dataargs.dataset_name,) # this could be expanded with dataargs 
-    if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
+    if not os.path.exists(avgfolder): raise IOError("Dataset folder '{:s}' does not exist!".format(avgfolder))
     filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, filetype=self.filetype)
     if ldebug: filename = 'test_{:s}'.format(filename)
     self.filepath = '{:s}/{:s}'.format(avgfolder,filename)
@@ -107,7 +107,7 @@ class NetCDF(object):
     filepath = self.filepath
     writeNetCDF(dataset=dataset, ncfile=filepath, **self.export_arguments)
     # check first and last
-    if not os.path.exists(filepath): raise IOError, filepath
+    if not os.path.exists(filepath): raise IOError(filepath)
    
 class ASCII_raster(FileFormat):
   ''' A class to handle exports to ASCII_raster format. '''
@@ -142,7 +142,7 @@ class ASCII_raster(FileFormat):
     elif mode[-5:] == '-mean': 
       expprd = mode[:-5] if periodstr is None else '{:s}_{:s}'.format(mode[:-5],periodstr)
       lnkprd = mode[:-5] if lnkprdstr is None else '{:s}_{:s}'.format(mode[:-5],lnkprdstr)
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
+    else: raise NotImplementedError("Unrecognized Mode: '{:s}'".format(mode))        
     # insert into patterns 
     metadict = dict(PROJECT=self.project, GRID=grid, EXPERIMENT=expname, PERIOD=expprd, 
                     RESOLUTION=dataargs.resolution, BIAS=self.bc_method)
@@ -177,7 +177,7 @@ class ASCII_raster(FileFormat):
       age = datetime.fromtimestamp(os.path.getmtime(self.folder))
       # if source file is newer than target folder, recompute, otherwise skip
       lskip = ( age > srcage ) # skip if newer than source 
-    if not os.path.exists(self.folder): raise IOError, self.folder
+    if not os.path.exists(self.folder): raise IOError(self.folder)
     ## put in alternative symlink (relative path) for period section
     if self.altprdlnk:
       root_folder, link_dest, link_name = self.altprdlnk
@@ -199,8 +199,8 @@ class ASCII_raster(FileFormat):
     # export dataset to raster format
     filedict = dataset.ASCII_raster(prefix=self.prefix, varlist=None, folder=self.folder, **self.export_arguments)
     # check first and last
-    if not os.path.exists(filedict.values()[0][0]): raise IOError, filedict.values()[0][0] # random check
-    if not os.path.exists(filedict.values()[-1][-1]): raise IOError, filedict.values()[-1][-1] # random check
+    if not os.path.exists(list(filedict.values())[0][0]): raise IOError(list(filedict.values())[0][0]) # random check
+    if not os.path.exists(list(filedict.values())[-1][-1]): raise IOError(list(filedict.values())[-1][-1]) # random check
 
   
 def getFileFormat(fileformat, bc_method=None, **expargs):
@@ -212,7 +212,7 @@ def getFileFormat(fileformat, bc_method=None, **expargs):
   elif fileformat.lower() in ('netcdf','netcdf4'):
     return NetCDF(bc_method=bc_method, **expargs)
   else:
-    raise NotImplementedError, fileformat
+    raise NotImplementedError(fileformat)
   
 
 # worker function that is to be passed to asyncPool for parallel execution; use of the TrialNError decorator is assumed
@@ -220,7 +220,7 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
                   ldebug=False, lparallel=False, pidstr='', logger=None):
     ''' worker function to export ASCII rasters for a given dataset '''
     # input checking
-    if not isinstance(dataset,basestring): raise TypeError
+    if not isinstance(dataset,str): raise TypeError
     if not isinstance(dataargs,dict): raise TypeError # all dataset arguments are kwargs 
     
     # logging
@@ -228,10 +228,10 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
         logger = logging.getLogger() # new logger
         logger.addHandler(logging.StreamHandler())
     else:
-        if isinstance(logger,basestring): 
+        if isinstance(logger,str): 
             logger = logging.getLogger(name=logger) # connect to existing one
         elif not isinstance(logger,logging.Logger): 
-            raise TypeError, 'Expected logger ID/handle in logger KW; got {}'.format(str(logger))
+            raise TypeError('Expected logger ID/handle in logger KW; got {}'.format(str(logger)))
   
     ## extract meta data from arguments
     dataargs, loadfct, srcage, datamsgstr = getMetaData(dataset, mode, dataargs, lone=False)
@@ -305,7 +305,7 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
       source = loadfct() # load source data
       # check period
       if 'period' in source.atts and dataargs.periodstr != source.atts.period: # a NetCDF attribute
-          raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
+          raise DateError("Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period))
       
       # load BiasCorrection object from pickle
       if bc_method:      
@@ -319,7 +319,7 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
       if mode == 'climatology': opmsgstr = 'Exporting Climatology ({:s}) to {:s} Format'.format(periodstr, expformat)
       elif mode == 'time-series': opmsgstr = 'Exporting Time-series to {:s} Format'.format(expformat)
       elif mode[-5:] == '-mean': opmsgstr = 'Exporting {:s}-Mean ({:s}) to {:s} Format'.format(mode[:-5], periodstr, expformat)
-      else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
+      else: raise NotImplementedError("Unrecognized Mode: '{:s}'".format(mode))        
       # print feedback to logger
       logmsg = '\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr)
       if bc_method:
@@ -365,12 +365,12 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
           # for now, skip variables that are None
           if var or variables:
               # handle lists as well
-              if var and variables: raise VariableError, (var,variables)
+              if var and variables: raise VariableError(var,variables)
               elif var: variables = (var,)
               for var in variables:
                   addGDALtoVar(var=var, griddef=sink.griddef)
                   if not var.gdal and isinstance(fileFormat,ASCII_raster):
-                      raise GDALError, "Exporting to ASCII_raster format requires GDAL-enabled variables."
+                      raise GDALError("Exporting to ASCII_raster format requires GDAL-enabled variables.")
                   # add to new dataset
                   sink += var
       # convert units
@@ -410,19 +410,19 @@ if __name__ == '__main__':
   
     ## read environment variables
     # number of processes NP 
-    if os.environ.has_key('PYAVG_THREADS'): 
+    if 'PYAVG_THREADS' in os.environ: 
       NP = int(os.environ['PYAVG_THREADS'])
     else: NP = None
     # run script in debug mode
-    if os.environ.has_key('PYAVG_DEBUG'): 
+    if 'PYAVG_DEBUG' in os.environ: 
       ldebug =  os.environ['PYAVG_DEBUG'] == 'DEBUG' 
     else: ldebug = False
     # run script in batch or interactive mode
-    if os.environ.has_key('PYAVG_BATCH'): 
+    if 'PYAVG_BATCH' in os.environ: 
       lbatch =  os.environ['PYAVG_BATCH'] == 'BATCH' 
     else: lbatch = False # for debugging
     # re-compute everything or just update 
-    if os.environ.has_key('PYAVG_OVERWRITE'): 
+    if 'PYAVG_OVERWRITE' in os.environ: 
       loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
     else: loverwrite = ldebug # False means only update old files
     
@@ -476,7 +476,7 @@ if __name__ == '__main__':
         # obs variables
 #         load_list = ['lat2D','lon2D','liqwatflx','pet']
         CMC_adjusted = sum([['liqwatflx'+tag,'liqwatflx_CMC'+tag] for tag in ('','_adj30','_adj35')],[])
-        print CMC_adjusted
+        print(CMC_adjusted)
         load_list = ['lat2D','lon2D','pet',]+CMC_adjusted # 'precip',
 #         # WRF variables
 #         #load_list = ['pet_wrf']
@@ -624,29 +624,29 @@ if __name__ == '__main__':
     if len(datasets) > 0:
       print('\n And Observational Datasets:')
       print(datasets)
-    print('\n From Grid/Resolution:\n   {:s}'.format(printList(grids)))
-    print('To File Format {:s}'.format(export_arguments['format']))
-    print('\n Project Designation: {:s}'.format(export_arguments['project']))
+    print(('\n From Grid/Resolution:\n   {:s}'.format(printList(grids))))
+    print(('To File Format {:s}'.format(export_arguments['format'])))
+    print(('\n Project Designation: {:s}'.format(export_arguments['project'])))
     if bc_method:
       print('\n And Observational Datasets:')
       print(datasets)
-    print('Export Variable List: {:s}'.format(printList(export_arguments['exp_list'])))
+    print(('Export Variable List: {:s}'.format(printList(export_arguments['exp_list']))))
     if export_arguments['lm3']: '\n Converting kg/m^2/s (mm/s) into m^3/m^2/s (m/s)'
     # check formats (will be iterated over in export function, hence not part of task list)
     if export_arguments['format'] == 'ASCII_raster':
-      print('Export Folder: {:s}'.format(export_arguments['folder']))
-      print('File Prefix: {:s}'.format(export_arguments['prefix']))
+      print(('Export Folder: {:s}'.format(export_arguments['folder'])))
+      print(('File Prefix: {:s}'.format(export_arguments['prefix'])))
     elif export_arguments['format'].lower() in ('netcdf','netcdf4'):
       pass
     else:
-      raise ArgumentError, "Unsupported file format: '{:s}'".format(export_arguments['format'])
-    print('\nOVERWRITE: {0:s}'.format(str(loverwrite)))
+      raise ArgumentError("Unsupported file format: '{:s}'".format(export_arguments['format']))
+    print(('\nOVERWRITE: {0:s}'.format(str(loverwrite))))
     # bias-correction parameters (if used)
-    print('\nBias-Correction: {}'.format(bc_method))
+    print(('\nBias-Correction: {}'.format(bc_method)))
     if bc_method:
-      print('  Observational Dataset: {:s}'.format(obs_dataset))
-      print('  Reference Dataset: {:s}'.format(bc_reference))
-      print('  Parameters: {}'.format(bc_args))
+      print(('  Observational Dataset: {:s}'.format(obs_dataset)))
+      print(('  Reference Dataset: {:s}'.format(bc_reference)))
+      print(('  Parameters: {}'.format(bc_args)))
     print('\n') # separator space
       
     ## construct argument list
@@ -657,7 +657,7 @@ if __name__ == '__main__':
       if mode[-5:] == '-mean': periodlist = periods
       elif mode == 'climatology': periodlist = periods
       elif mode == 'time-series': periodlist = (None,)
-      else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
+      else: raise NotImplementedError("Unrecognized Mode: '{:s}'".format(mode))
   
       # loop over target grids ...
       for grid in grids:
@@ -699,7 +699,7 @@ if __name__ == '__main__':
           for experiment in WRF_experiments:
             # effectively, loop over domains
             if domains is None:
-              tmpdom = range(1,experiment.domains+1)
+              tmpdom = list(range(1,experiment.domains+1))
             else: tmpdom = domains
             for domain in tmpdom:
               for period in periodlist:

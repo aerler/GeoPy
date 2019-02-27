@@ -29,22 +29,22 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
                       lreturn=False, ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to perform regridding for a given dataset and target grid '''
   # input checking
-  if not isinstance(dataset,basestring): raise TypeError
+  if not isinstance(dataset,str): raise TypeError
   if not isinstance(dataargs,dict): raise TypeError # all dataset arguments are kwargs 
   if not isinstance(griddef,GridDefinition): raise TypeError
   if lparallel: 
-    if not lwrite: raise IOError, 'Can only write to disk in parallel mode (i.e. lwrite = True).'
-    if lreturn: raise IOError, 'Can not return datasets in parallel mode (i.e. lreturn = False).'
+    if not lwrite: raise IOError('Can only write to disk in parallel mode (i.e. lwrite = True).')
+    if lreturn: raise IOError('Can not return datasets in parallel mode (i.e. lreturn = False).')
   
   # logging
   if logger is None: # make new logger     
     logger = logging.getLogger() # new logger
     logger.addHandler(logging.StreamHandler())
   else:
-    if isinstance(logger,basestring): 
+    if isinstance(logger,str): 
       logger = logging.getLogger(name=logger) # connect to existing one
     elif not isinstance(logger,logging.Logger): 
-      raise TypeError, 'Expected logger ID/handle in logger KW; got {}'.format(str(logger))
+      raise TypeError('Expected logger ID/handle in logger KW; got {}'.format(str(logger)))
 
   ## extract meta data from arguments
   dataargs, loadfct, srcage, datamsgstr = getMetaData(dataset, mode, dataargs)
@@ -55,7 +55,7 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     
   # prepare target dataset
   if ldebug: filename = 'test_' + filename
-  if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)
+  if not os.path.exists(avgfolder): raise IOError("Dataset folder '{:s}' does not exist!".format(avgfolder))
   lskip = False # else just go ahead
   if lwrite:
     if lreturn: tmpfilename = filename # no temporary file if dataset is passed on (can't rename the file while it is open!)
@@ -88,12 +88,12 @@ def performRegridding(dataset, mode, griddef, dataargs, loverwrite=False, varlis
     source = loadfct() # load source 
     # check period
     if 'period' in source.atts and dataargs.periodstr != source.atts.period: # a NetCDF attribute
-      raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
+      raise DateError("Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period))
 
     # print message
     if mode == 'climatology': opmsgstr = 'Regridding Climatology ({:s}) to {:s} Grid'.format(periodstr, griddef.name)
     elif mode == 'time-series': opmsgstr = 'Regridding Time-series to {:s} Grid'.format(griddef.name)
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
+    else: raise NotImplementedError("Unrecognized Mode: '{:s}'".format(mode))        
     # print feedback to logger
     logger.info('\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
     if not lparallel and ldebug: logger.info('\n'+str(source)+'\n')
@@ -160,19 +160,19 @@ if __name__ == '__main__':
   
   ## read environment variables
   # number of processes NP 
-  if os.environ.has_key('PYAVG_THREADS'): 
+  if 'PYAVG_THREADS' in os.environ: 
     NP = int(os.environ['PYAVG_THREADS'])
   else: NP = None
   # run script in debug mode
-  if os.environ.has_key('PYAVG_DEBUG'): 
+  if 'PYAVG_DEBUG' in os.environ: 
     ldebug =  os.environ['PYAVG_DEBUG'] == 'DEBUG' 
   else: ldebug = False
   # run script in batch or interactive mode
-  if os.environ.has_key('PYAVG_BATCH'): 
+  if 'PYAVG_BATCH' in os.environ: 
     lbatch =  os.environ['PYAVG_BATCH'] == 'BATCH' 
   else: lbatch = False # for debugging
   # re-compute everything or just update 
-  if os.environ.has_key('PYAVG_OVERWRITE'): 
+  if 'PYAVG_OVERWRITE' in os.environ: 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
   
@@ -346,9 +346,9 @@ if __name__ == '__main__':
     print('\n And Observational Datasets:')
     print(datasets)
   print('\n To Grid and Resolution:')
-  for grid,reses in grids.iteritems():
-    print('   {0:s} {1:s}'.format(grid,printList(reses) if reses else ''))
-  print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
+  for grid,reses in grids.items():
+    print(('   {0:s} {1:s}'.format(grid,printList(reses) if reses else '')))
+  print(('\nOVERWRITE: {0:s}\n'.format(str(loverwrite))))
   
     
   ## construct argument list
@@ -360,10 +360,10 @@ if __name__ == '__main__':
       periodlist = periods if isinstance(periods, (tuple,list)) else (periods,)
     elif mode == 'time-series': 
       periodlist = (None,) # ignore periods
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
+    else: raise NotImplementedError("Unrecognized Mode: '{:s}'".format(mode))
 
     # loop over target grids ...
-    for grid,reses in grids.iteritems():
+    for grid,reses in grids.items():
       # ... and resolutions
       if reses is None: reses = (None,)
       for res in reses:
@@ -372,7 +372,7 @@ if __name__ == '__main__':
         griddef = getCommonGrid(grid, res=res, lfilepath=True)
         # check if grid was defined properly
         if not isinstance(griddef,GridDefinition): 
-          raise GDALError, 'No valid grid defined! (grid={0:s})'.format(grid)        
+          raise GDALError('No valid grid defined! (grid={0:s})'.format(grid))        
         
         # observational datasets (grid depends on dataset!)
         for dataset in datasets:
@@ -413,7 +413,7 @@ if __name__ == '__main__':
           for filetype in WRF_filetypes:
             # effectively, loop over domains
             if domains is None:
-              tmpdom = range(1,experiment.domains+1)
+              tmpdom = list(range(1,experiment.domains+1))
             else: tmpdom = domains
             for domain in tmpdom:
               for period in periodlist:

@@ -12,7 +12,7 @@ import numpy.ma as ma
 import netCDF4 as nc
 import collections as col
 import os
-try: import cPickle as pickle
+try: import pickle as pickle
 except: import pickle
 import osr # from GDAL
 # from atmdyn.properties import variablePlotatts
@@ -34,20 +34,20 @@ class Exp(object):
   ''' class of objects that contain meta data for WRF experiments '''
   # experiment parameter definition (class property)
   parameters = OrderedDict() # order matters, because parameters can depend on one another for defaults
-  parameters['name'] = dict(type=basestring,req=True) # name
-  parameters['shortname'] = dict(type=basestring,req=False) # short name
-  parameters['title'] = dict(type=basestring,req=False) # title used in plots
-  parameters['grid'] = dict(type=basestring,req=True) # name of the grid layout
+  parameters['name'] = dict(type=str,req=True) # name
+  parameters['shortname'] = dict(type=str,req=False) # short name
+  parameters['title'] = dict(type=str,req=False) # title used in plots
+  parameters['grid'] = dict(type=str,req=True) # name of the grid layout
   parameters['domains'] = dict(type=int,req=True) # number of domains
-  parameters['parent'] = dict(type=basestring,req=True) # driving dataset
-  parameters['project'] = dict(type=basestring,req=True) # project name dataset
-  parameters['ensemble'] = dict(type=basestring,req=False) # ensemble this run is a member of
-  parameters['begindate'] = dict(type=basestring,req=True) # simulation start date
+  parameters['parent'] = dict(type=str,req=True) # driving dataset
+  parameters['project'] = dict(type=str,req=True) # project name dataset
+  parameters['ensemble'] = dict(type=str,req=False) # ensemble this run is a member of
+  parameters['begindate'] = dict(type=str,req=True) # simulation start date
   parameters['beginyear'] = dict(type=int,req=True) # simulation start year
-  parameters['enddate'] = dict(type=basestring,req=False) # simulation end date (if it already finished)
+  parameters['enddate'] = dict(type=str,req=False) # simulation end date (if it already finished)
   parameters['endyear'] = dict(type=int,req=False) # simulation end year
-  parameters['avgfolder'] = dict(type=basestring,req=True) # folder for monthly averages
-  parameters['outfolder'] = dict(type=basestring,req=False) # folder for direct WRF averages
+  parameters['avgfolder'] = dict(type=str,req=True) # folder for monthly averages
+  parameters['outfolder'] = dict(type=str,req=False) # folder for direct WRF averages
   # default values (functions)
   defaults = dict()
   defaults['shortname'] = lambda atts: atts['name']
@@ -59,12 +59,12 @@ class Exp(object):
   def __init__(self, **kwargs):
     ''' initialize values from arguments '''
     # loop over simulation parameters
-    for argname,argatt in self.parameters.items():
+    for argname,argatt in list(self.parameters.items()):
       if argname in kwargs:
         # assign argument based on keyword
         arg = kwargs[argname]
         if not isinstance(arg,argatt['type']): 
-          raise TypeError, "Argument '{0:s}' must be of type '{1:s}'.".format(argname,argatt['type'].__name__)
+          raise TypeError("Argument '{0:s}' must be of type '{1:s}'.".format(argname,argatt['type'].__name__))
         self.__dict__[argname] = arg
       elif argname in self.defaults:
         # assign some default values, if necessary
@@ -73,7 +73,7 @@ class Exp(object):
         else: self.__dict__[argname] = self.defaults[argname]
       elif argatt['req']:
         # if the argument is required and there is no default, raise error
-        raise ValueError, "Argument '{0:s}' for experiment '{1:s}' required.".format(argname,self.name)
+        raise ValueError("Argument '{0:s}' for experiment '{1:s}' required.".format(argname,self.name))
       else:
         # if the argument is not required, just assign None 
         self.__dict__[argname] = None    
@@ -121,7 +121,7 @@ class Const(FileType):
                      XLAT     = dict(name='lat2D', units='deg N'), # geographic latitude field
                      SINALPHA = dict(name='sina', units=''), # sine of map rotation
                      COSALPHA = dict(name='cosa', units='')) # cosine of map rotation                   
-    self.vars = self.atts.keys()    
+    self.vars = list(self.atts.keys())    
     self.ignore_list = ['CON']
     self.climfile = 'wrfconst_d{0:0=2d}{1:s}.nc' # the filename needs to be extended by (domain,'_'+grid)
     self.tsfile = 'wrfconst_d{0:0=2d}{1:s}.nc' # the filename needs to be extended by (domain,grid)
@@ -193,7 +193,7 @@ class Srfc(FileType):
         self.atts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day thre
         self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s', 
                                                 atts=dict(fillValue=0), transform=nullNaN) # wet-day precipitation rate (kg/m^2/s)
-    self.vars = self.atts.keys()  
+    self.vars = list(self.atts.keys())  
     self.ignore_list = []  
     self.climfile = 'wrfsrfc_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfsrfc_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
@@ -235,7 +235,7 @@ class Hydro(FileType):
         self.atts['WetDayRain'+suffix]   = dict(name='dryprec'+suffix, units='kg/m^2/s') # precipitation rate above dry-day threshold
         self.atts['WetDayPrecip'+suffix] = dict(name='wetprec'+suffix, units='kg/m^2/s', 
                                                 atts=dict(fillValue=0), transform=nullNaN) # wet-day precipitation rate (kg/m^2/s)
-    self.vars = self.atts.keys()
+    self.vars = list(self.atts.keys())
     self.ignore_list = []
     self.climfile = 'wrfhydro_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfhydro_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
@@ -269,7 +269,7 @@ class LSM(FileType):
                      Z_LAKE3D       = dict(name='Z_LAKE3D', units='m', atts=dict(missing_value=-999., long_name='Lake Layer Depth')),
                      DZ_LAKE3D      = dict(name='DZ_LAKE3D', units='m', atts=dict(missing_value=-999., long_name='Lake Layer Thickness')),
                      )
-    self.vars = self.atts.keys() 
+    self.vars = list(self.atts.keys()) 
     self.ignore_list = []   
     self.climfile = 'wrflsm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrflsm_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
@@ -297,7 +297,7 @@ class Rad(FileType):
                      ACSWDNTC = dict(name='SWDNTC', units='W/m^2'),
                      ACLWUPTC = dict(name='LWUPTC', units='W/m^2'),
                      ACLWDNTC = dict(name='LWDNTC', units='W/m^2'),                     )
-    self.vars = self.atts.keys()
+    self.vars = list(self.atts.keys())
     self.ignore_list = []    
     self.climfile = 'wrfrad_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfrad_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
@@ -354,7 +354,7 @@ class Xtrm(FileType):
                      MaxRAINNCVMAX = dict(name='MaxPrecnc_1h', units='kg/m^2/s'), # maximum hourly non-convective precip
                      MaxPreccumax  = dict(name='MaxPreccu_1h', units='kg/m^2/s'), # maximum hourly convective precip                    
                      MaxPrecncmax  = dict(name='MaxPrecnc_1h', units='kg/m^2/s'),) # maximum hourly non-convective precip
-    self.vars = self.atts.keys() 
+    self.vars = list(self.atts.keys()) 
     self.ignore_list = []   
     self.climfile = 'wrfxtrm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfxtrm_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
@@ -383,7 +383,7 @@ class Plev3D(FileType):
                      Vorticity        = dict(name='zeta', units='1/s',      fillValue=-999, atts=dict(ong_name='Relative Vorticity')), # (relative) Vorticity
                      OrographicIndex  = dict(name='OI', units='', atts=dict(long_name='Orographic Index')), # projection of wind onto slope
                      P_PL      = dict(name='p', units='Pa', atts=dict(long_name='Pressure')))  # Pressure
-    self.vars = self.atts.keys()  
+    self.vars = list(self.atts.keys())  
     self.ignore_list = []  
     self.climfile = 'wrfplev3d_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfplev3d_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
@@ -404,7 +404,7 @@ class Axes(FileType):
                      soil_layers_stag = dict(name='i_s', units=''), # soil layer coordinate
                      num_press_levels_stag = dict(name='i_p', units=''), # pressure coordinate
                      station     = dict(name='station', units='#') ) # station axis for station data
-    self.vars = self.atts.keys()
+    self.vars = list(self.atts.keys())
     self.ignore_list = []
     self.climfile = None
     self.tsfile = None
@@ -415,9 +415,9 @@ outfolder = root_folder + 'wrfout/' # WRF output folder
 avgfolder = root_folder + 'wrfavg/' # long-term mean folder
 
 # add generic extremes to varatts dicts
-for fileclass in fileclasses.itervalues():
+for fileclass in fileclasses.values():
   atts = dict()
-  for key,val in fileclass.atts.iteritems():
+  for key,val in fileclass.atts.items():
 #     if val['units'].lower() == 'k': 
 #     else: extrema = ('Max',) # precip et al. only has maxima
     extrema = ('Max','Min') # only temperature has extreme minima
@@ -448,7 +448,7 @@ for fileclass in fileclasses.itervalues():
 def getWRFproj(dataset, name=''):
   ''' Method to infer projection parameters from a WRF output file and return a GDAL SpatialReference object. '''
   if not isinstance(dataset,nc.Dataset): raise TypeError
-  if not isinstance(name,basestring): raise TypeError
+  if not isinstance(name,str): raise TypeError
   if dataset.MAP_PROJ == 1: 
     # Lambert Conformal Conic projection parameters
     proj = 'lcc' # Lambert Conformal Conic  
@@ -458,7 +458,7 @@ def getWRFproj(dataset, name=''):
     lon_0 = dataset.STAND_LON # Longitude of natural origin
     lon_1 = dataset.CEN_LON # actual center of map
   else:
-    raise NotImplementedError, "Can only infer projection parameters for Lambert Conformal Conic projection (#1)."
+    raise NotImplementedError("Can only infer projection parameters for Lambert Conformal Conic projection (#1).")
   projdict = dict(proj=proj,lat_1=lat_1,lat_2=lat_2,lat_0=lat_0,lon_0=lon_0,lon_1=lon_1)
   # pass results to GDAL module to get projection object
   return getProjFromDict(projdict, name=name, GeoCS='WGS84', convention='Proj4')  
@@ -470,11 +470,11 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   # check input
   folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, 
                                                         folder=folder, exps=exps)
-  if isinstance(filename,basestring): filepath = '{}/{}'.format(folder,filename) # still contains formaters
-  else: raise TypeError, filename
+  if isinstance(filename,str): filepath = '{}/{}'.format(folder,filename) # still contains formaters
+  else: raise TypeError(filename)
   # figure out experiment
   if experiment is None:
-    if not isinstance(name,basestring): raise TypeError
+    if not isinstance(name,str): raise TypeError
     if isinstance(exps,dict):
       if name in exps: experiment = exps[name]
       elif len(names) > 0: 
@@ -483,11 +483,11 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   elif not isinstance(experiment,Exp): raise TypeError  
   maxdom = max(domains) # max domain
   # files to work with
-  for n in xrange(1,maxdom+1):
+  for n in range(1,maxdom+1):
     dnfile = filepath.format(n,'') # expects grid name as well, but we are only looking for the native grid
     if not os.path.exists(dnfile):
-      if n in domains: raise IOError, 'File {} for domain {:d} not found!'.format(dnfile,n)
-      else: raise IOError, 'File {} for domain {:d} not found; this file is necessary to infer the geotransform for other domains.'.format(dnfile,n)
+      if n in domains: raise IOError('File {} for domain {:d} not found!'.format(dnfile,n))
+      else: raise IOError('File {} for domain {:d} not found; this file is necessary to infer the geotransform for other domains.'.format(dnfile,n))
   # open first domain file (special treatment)
   dn = nc.Dataset(filepath.format(1,''), mode='r', format=ncformat)
   gridname = experiment.grid if isinstance(experiment,Exp) else name # use experiment name as default
@@ -507,7 +507,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
       nx = len(ds.dimensions['west_east']); ny = len(ds.dimensions['south_north'])
     elif 'x' in ds.dimensions and 'y' in ds.dimensions:
       nx = len(ds.dimensions['x']); ny = len(ds.dimensions['y'])
-    else: raise AxisError, 'No horizontal axis found, necessary to infer projection/grid configuration.'
+    else: raise AxisError('No horizontal axis found, necessary to infer projection/grid configuration.')
     return nx,ny
   dx = float(dn.DX); dy = float(dn.DY)
   nx,ny = getXYlen(dn)
@@ -523,7 +523,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
     # now infer grid of domain of interest
     geotransforms = [geotransform]
     # loop over grids
-    for n in xrange(2,maxdom+1):
+    for n in range(2,maxdom+1):
       # open file
       dn = nc.Dataset(filepath.format(n,''), mode='r', format=ncformat)
       if not n == dn.GRID_ID: raise DatasetError # just a check
@@ -553,14 +553,14 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
   if experiment is not None and name is None:
     if isinstance(experiment,Exp):
       name = experiment.name
-    elif isinstance(experiment,basestring) or isinstance(name,(list,tuple)): 
+    elif isinstance(experiment,str) or isinstance(name,(list,tuple)): 
       name = experiment # use name-logic to procede
       experiment = None # eventually reset below
     else: TypeError
   ## figure out experiment name(s) and domain(s) (potentially based on name)
   # name check
-  if isinstance(name,(list,tuple)) and all([isinstance(n,basestring) for n in name]): names = name
-  elif isinstance(name,basestring): names = [name]
+  if isinstance(name,(list,tuple)) and all([isinstance(n,str) for n in name]): names = name
+  elif isinstance(name,str): names = [name]
   else: raise TypeError(name)
   # domain check
   if not isinstance(domains,(list,tuple)): domains = [domains]*len(names)
@@ -577,7 +577,7 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
       domains[i] = int(name[-2:]) # overwrite domain list entry
       basenames.append(name[:-4]) # ... and truncate basename
     else: basenames.append(name)
-  if len(set(basenames)) != 1: raise DatasetError, "Dataset base names are inconsistent."
+  if len(set(basenames)) != 1: raise DatasetError("Dataset base names are inconsistent.")
   # ensure uniqueness of names
   if len(set(names)) != len(names):
     names = ['{0:s}_d{1:0=2d}'.format(name,domain) for name,domain in zip(names,domains)]
@@ -585,28 +585,28 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
   # evaluate experiment
   if experiment is None: 
     if exps is None:
-      if lexp: raise DatasetError, 'No dictionary of Exp instances specified.'
+      if lexp: raise DatasetError('No dictionary of Exp instances specified.')
     else:
       if name in exps: experiment = exps[name] # load experiment meta data
-      elif lexp: raise DatasetError, 'Dataset of name \'{0:s}\' not found!'.format(names[0])
-  if not ( experiment or folder ): raise DatasetError, "Need to specify either a valid experiment name or a full path."
+      elif lexp: raise DatasetError('Dataset of name \'{0:s}\' not found!'.format(names[0]))
+  if not ( experiment or folder ): raise DatasetError("Need to specify either a valid experiment name or a full path.")
   # patch up folder
   if experiment: # should already have checked that either folder or experiment are specified
     folder = experiment.avgfolder
     # assign unassigned domains
     domains = [experiment.domains if dom is None else dom for dom in domains]
-  elif isinstance(folder,basestring): 
+  elif isinstance(folder,str): 
     if not folder.endswith((name,name+'/')): folder = '{:s}/{:s}/'.format(folder,name)
-  else: raise TypeError, folder
+  else: raise TypeError(folder)
   # check types
   if not isinstance(domains,(tuple,list)): raise TypeError    
   if not all(isInt(domains)): raise TypeError
-  if not domains == sorted(domains): raise IndexError, 'Domains have to be sorted in ascending order.'
+  if not domains == sorted(domains): raise IndexError('Domains have to be sorted in ascending order.')
   if not isinstance(names,(tuple,list)): raise TypeError
-  if not all(isinstance(nm,basestring) for nm in names): raise TypeError
+  if not all(isinstance(nm,str) for nm in names): raise TypeError
   if len(domains) != len(names): raise ArgumentError  
   # check if folder exists
-  if not os.path.exists(folder): raise IOError, folder
+  if not os.path.exists(folder): raise IOError(folder)
   # return name and folder
   return folder, experiment, tuple(names), tuple(domains)
 
@@ -684,31 +684,31 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   folder,experiment,names,domains = getFolderNameDomain(name=name, experiment=experiment, domains=domains, 
                                                         folder=folder, exps=exps)
   if lctrT and experiment is None: 
-    raise DatasetError, "Experiment '{0:s}' not found in database; need time information to center time axis.".format(names[0])    
+    raise DatasetError("Experiment '{0:s}' not found in database; need time information to center time axis.".format(names[0]))    
   # figure out period
   if isinstance(period,(tuple,list)):
     if not all(isNumber(period)): raise ValueError
-  elif isinstance(period,basestring): period = [int(prd) for prd in period.split('-')]
+  elif isinstance(period,str): period = [int(prd) for prd in period.split('-')]
   elif isinstance(period,(int,np.integer)): 
     beginyear = int(experiment.begindate[0:4])
     period = (beginyear, beginyear+period)
   elif period is None: pass # handled later
-  else: raise DateError, "Illegal period definition: {:s}".format(str(period))
+  else: raise DateError("Illegal period definition: {:s}".format(str(period)))
   lclim = False; lts = False # mode switches
   if mode.lower() == 'climatology': # post-processed climatology files
     lclim = True
     periodstr = '_{0:4d}-{1:4d}'.format(*period)
-    if period is None: raise DateError, 'Currently WRF Climatologies have to be loaded with the period explicitly specified.'
+    if period is None: raise DateError('Currently WRF Climatologies have to be loaded with the period explicitly specified.')
   elif mode.lower() in ('time-series','timeseries'): # concatenated time-series files
     lts = True; lclim = False; period = None; periodstr = None # to indicate time-series (but for safety, the input must be more explicit)
     if lautoregrid is None: lautoregrid = False # this can take very long!
   # cast/copy varlist
-  if isinstance(varlist,basestring): varlist = [varlist] # cast as list
+  if isinstance(varlist,str): varlist = [varlist] # cast as list
   elif varlist is not None: varlist = list(varlist) # make copy to avoid interference
   # figure out station and shape options
   if station and shape: raise ArgumentError
   elif station or shape: 
-    if lautoregrid: raise GDALError, 'Station data can not be regridded, since it is not map data.'   
+    if lautoregrid: raise GDALError('Station data can not be regridded, since it is not map data.')   
     lstation = bool(station); lshape = bool(shape)
     # add station/shape parameters
     if varlist:
@@ -720,7 +720,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   # generate filelist and attributes based on filetypes and domain
   if filetypes is None: filetypes = ('hydro','xtrm','srfc','plev3d','lsm')
   if isinstance(filetypes,(tuple,set)): filetypes = list(filetypes)
-  elif isinstance(filetypes,basestring): filetypes = [filetypes,]
+  elif isinstance(filetypes,str): filetypes = [filetypes,]
   elif isinstance(filetypes,list): filetypes = list(filetypes) # also make copy for modification
   else: raise TypeError
   if 'axes' in filetypes: del filetypes[filetypes.index('axes')] # remove axes - not a real filetype
@@ -748,7 +748,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   if varatts is None: pass
   elif isinstance(varatts,dict):
     if lfilevaratts:
-      for filetype,att in varatts.items():
+      for filetype,att in list(varatts.items()):
         if not isinstance(att, dict): raise TypeError(filetype,att)
         atts[typelist.index(filetype, )].update(att) # happens in-place
     else:
@@ -791,7 +791,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
         warn("Recomputing Grid Definition for Experiment {:s}".format(name))
         # compute grid definition from wrfconst files (requires all parent domains) 
         griddefs = None; c = 0
-        filename = fileclasses.values()[c].tsfile # just use the first filetype
+        filename = list(fileclasses.values())[c].tsfile # just use the first filetype
         while griddefs is None:
           # some experiments do not have all files... try, until one works...
           try:
@@ -799,9 +799,9 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
             griddefs = getWRFgrid(name=names, experiment=experiment, domains=domains, folder=folder, filename=filename, exps=exps)
           except IOError:
             c += 1
-            if c >= len(fileclasses.values()): 
-              raise GDALError, "Unable to infer grid definition for experiment '{:s}'.\n Not enough information in source files or required source file not available.".format(name)
-            filename = fileclasses.values()[c].tsfile
+            if c >= len(list(fileclasses.values())): 
+              raise GDALError("Unable to infer grid definition for experiment '{:s}'.\n Not enough information in source files or required source file not available.".format(name))
+            filename = list(fileclasses.values())[c].tsfile
     else:
       griddefs = [loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder, check=True)]*len(domains)
     assert len(griddefs) == len(domains)
@@ -838,7 +838,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       if not os.path.exists('{:s}/{:s}'.format(constfolder,filename)) and experiment and experiment.grid:
           constfolder = folder[:folder.find(experiment.name)] + '{:s}/'.format(experiment.grid)
       if not os.path.exists('{:s}/{:s}'.format(constfolder,filename)):
-        raise IOError, "Constant file for experiment '{:s}' not found.\n('{:s}')".format(name,'{:s}/{:s}'.format(constfolder,filename))
+        raise IOError("Constant file for experiment '{:s}' not found.\n('{:s}')".format(name,'{:s}/{:s}'.format(constfolder,filename)))
       # i.e. if there is no constant file in the experiment folder, use the one in the grid definition folder (if available)
       # load dataset
       const = DatasetNetCDF(name=name, folder=constfolder, filelist=[filename], varatts=catts, 
@@ -863,12 +863,12 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
             from processing.regrid import performRegridding # causes circular reference if imported earlier
             #griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder) # already done above
             dataargs = dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)
-            print("The '{:s}' (WRF) dataset for the grid ('{:s}') is not available:\n Attempting regridding on-the-fly.".format(name,filename,grid))
+            print(("The '{:s}' (WRF) dataset for the grid ('{:s}') is not available:\n Attempting regridding on-the-fly.".format(name,filename,grid)))
             if performRegridding('WRF', 'climatology', griddef, dataargs): # True if exitcode 1
-              raise IOError, "Automatic regridding failed!"
-            print("Output: '{:s}'".format(name,filename,grid,filepath))            
-          else: raise IOError, "The  '{:s}' (WRF) dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.\n('{:s}')".format(name,filename,grid,filepath) 
-        else: raise IOError, "The file '{:s}' in WRF dataset '{:s}' does not exits!\n('{:s}')".format(filename,name,filepath)   
+              raise IOError("Automatic regridding failed!")
+            print(("Output: '{:s}'".format(name,filename,grid,filepath)))            
+          else: raise IOError("The  '{:s}' (WRF) dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.\n('{:s}')".format(name,filename,grid,filepath)) 
+        else: raise IOError("The file '{:s}' in WRF dataset '{:s}' does not exits!\n('{:s}')".format(filename,name,filepath))   
        
     # load dataset
     check_override = ['time'] if lctrT else None
@@ -879,7 +879,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     except EmptyDatasetError:
       if lenc == 0: raise # allow loading of cosntants without other variables
     if ltrimT and dataset.hasAxis('time') and len(dataset.time) > 180:
-      if lwrite: raise ArgumentError, "Cannot trim time-axis when NetCDF write mode is enabled!"
+      if lwrite: raise ArgumentError("Cannot trim time-axis when NetCDF write mode is enabled!")
       dataset = dataset(time=slice(0,180), lidx=True)
       assert len(dataset.time) == 180, len(dataset.time) 
     # check
@@ -923,7 +923,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     if lshape:
       # mask all shapes that are incomplete in dataset
       if lencl and 'shp_encl' in dataset: dataset.mask(mask='shp_encl', invert=True)
-      if dataset.hasAxis('shapes'): raise AxisError, "Axis 'shapes' should be renamed to 'shape'!"
+      if dataset.hasAxis('shapes'): raise AxisError("Axis 'shapes' should be renamed to 'shape'!")
       if not dataset.hasAxis('shape'): raise AxisError
       if dataset.shape.coord[0] == 0: dataset.shape.coord += 1
     # add constants to dataset
@@ -986,7 +986,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
     ensemble = name; name = None # just switch
   if isinstance(ensemble,(list,tuple)):
     for ens in ensemble:
-      if isinstance(ens,Exp) or ( isinstance(ens,basestring) and ens in exps ) : pass
+      if isinstance(ens,Exp) or ( isinstance(ens,str) and ens in exps ) : pass
       else: raise TypeError
     ensemble = [ens if isinstance(ens,Exp) else exps[ens] for ens in ensemble] # convert to Exp's    
     # annotation
@@ -994,7 +994,7 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
     if title is None: title = ensemble[0].title
   else:
     if isinstance(ensemble,Exp): ensname = ensemble.shortname
-    elif isinstance(ensemble,basestring): 
+    elif isinstance(ensemble,str): 
       # infer domain from suffix...
       if ensemble[-4:-2] == '_d' and int(ensemble[-2:]) > 0:
         domains = int(ensemble[-2:]) # overwrite domains argument
@@ -1002,29 +1002,29 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
         name = ensemble if name is None else name # save original name
       else: ensname = ensemble 
       # convert name to experiment object
-      if not isinstance(exps,dict): raise DatasetError, 'No dictionary of Exp instances specified.'
+      if not isinstance(exps,dict): raise DatasetError('No dictionary of Exp instances specified.')
       if ensname in exps: ensemble = exps[ensname]
-      else: raise KeyError, "Experiment name '{:s}' not found in experiment list.".format(ensname)
+      else: raise KeyError("Experiment name '{:s}' not found in experiment list.".format(ensname))
     else: raise TypeError
     # annotation (while ensemble is an Exp instance)
     if name is None: name = ensemble.shortname
     if title is None: title = ensemble.title
     # convert name to actual ensemble object
-    if not isinstance(enses,dict): raise DatasetError, 'No dictionary of ensemble tuples specified.'
+    if not isinstance(enses,dict): raise DatasetError('No dictionary of ensemble tuples specified.')
     if ensname in enses: ensemble = enses[ensname]
-    else: raise KeyError, "Ensemble name '{:s}' not found in ensemble list.".format(ensname)
+    else: raise KeyError("Ensemble name '{:s}' not found in ensemble list.".format(ensname))
   # figure out time period
   if years is None: 
     montpl = (0,180-1)
     warn('Trimming ensemble members to 15 years (time_idx=[0,179]).')
   elif isinstance(years,(list,tuple)) and len(years)==2: 
-    if not all([isInt(yr) for yr in years]): raise TypeError, years
+    if not all([isInt(yr) for yr in years]): raise TypeError(years)
     montpl = (years[0]*12,years[1]*12-1)
   elif isInt(years): montpl = (0,years*12-1)
-  else: raise TypeError, years
+  else: raise TypeError(years)
   # special treatment for single experiments (i.e. not an ensemble...)
   if not isinstance(ensemble,(tuple,list)):
-    if lensembleAxis: raise DatasetError, "Wont add singleton ensemble axis to single Dataset!"
+    if lensembleAxis: raise DatasetError("Wont add singleton ensemble axis to single Dataset!")
     dataset = loadWRF_All(experiment=None, name=ensemble, grid=grid, station=station, shape=shape, 
                           period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                           mode='time-series', lencl=lencl, lautoregrid=lautoregrid, lctrT=lctrT, 
@@ -1045,9 +1045,9 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
         raise DatasetError("Resolution of ensemble members has to be the same: {} != {}".format(res,ds.atts['resstr']))
       datasets.append(ds)
     # harmonize axes
-    for axname,ax in ds.axes.iteritems():
+    for axname,ax in ds.axes.items():
       if not all([dataset.hasAxis(axname) for dataset in datasets]): 
-        raise AxisError, "Not all datasets have Axis '{:s}'.".format(axname)
+        raise AxisError("Not all datasets have Axis '{:s}'.".format(axname))
       if not all([len(dataset.axes[axname]) == len(ax) for dataset in datasets]):
         datasets = selectElements(datasets, axis=axname, testFct=None, master=None, linplace=False, lall=True)
     # concatenate datasets (along 'time' axis, WRF doesn't have 'year')  
@@ -1117,19 +1117,19 @@ if __name__ == '__main__':
         res = 'd{0:02d}'.format(domain) # for compatibility with dataset.common
         folder = '{0:s}/{1:s}/'.format(avgfolder,region)
         gridstr = '{0:s}_{1:s}'.format(grid,res) 
-        print('   ***   Pickling Grid Definition for {0:s} Domain {1:d}   ***   '.format(grid,domain))
+        print(('   ***   Pickling Grid Definition for {0:s} Domain {1:d}   ***   '.format(grid,domain)))
         print('')
         
         # load GridDefinition
         
         griddef = getWRFgrid(name=grid, folder=folder, domains=domain, exps=None)[0] # filename='wrfconst_d{0:0=2d}.nc', experiment=experiment
         griddef.name = gridstr
-        print('   Loading Definition from \'{0:s}\''.format(folder))
+        print(('   Loading Definition from \'{0:s}\''.format(folder)))
 #         print(griddef)
         # save pickle
         filepath = pickleGridDef(griddef, lfeedback=True, loverwrite=True, lgzip=True)
         
-        print('   Saving Pickle to \'{0:s}\''.format(filepath))
+        print(('   Saving Pickle to \'{0:s}\''.format(filepath)))
         print('')
         
         # load pickle to make sure it is right
@@ -1151,9 +1151,9 @@ if __name__ == '__main__':
 #     print('')
 #     print(dataset.geotransform)
     print('')
-    print(dataset.zs)
+    print((dataset.zs))
     var = dataset.zs.getArray()
-    print(var.min(),var.mean(),var.std(),var.max())
+    print((var.min(),var.mean(),var.std(),var.max()))
   
   # load monthly time-series file
   elif mode == 'test_timeseries':
@@ -1166,15 +1166,15 @@ if __name__ == '__main__':
 #     for dataset in datasets:
     print('')
     print(dataset)
-    print(dataset.name)
-    print(dataset.title)
-    print(dataset.filelist)
+    print((dataset.name))
+    print((dataset.title))
+    print((dataset.filelist))
     print('')
     var = dataset.landuse
     print(var)
     print('')
-    print(var.dtype, var[:].dtype)
-    print(var.min(),var.mean(),var.std(),var.max())
+    print((var.dtype, var[:].dtype))
+    print((var.min(),var.mean(),var.std(),var.max()))
     print('')
 #     print(dataset.time)
 #     print(dataset.time.offset)
@@ -1190,8 +1190,8 @@ if __name__ == '__main__':
     # 2.03178e-05 0.00013171
     print('')
     print(dataset)
-    print(dataset.name)
-    print(dataset.title)
+    print((dataset.name))
+    print((dataset.title))
 #     print('')
 #     print(dataset.precip.mean())
 #     print(dataset.MaxPrecip_1d.mean())
@@ -1208,12 +1208,12 @@ if __name__ == '__main__':
       dataset = loadWRF_Shp(experiment='erai-g3', domains=1, shape=pntset, grid='grw2', period=(1979,1994), 
                             filetypes=['aux'],exps=WRF_exps)
       print('')
-      print(dataset.shape)
-      print(dataset.shape.coord)
+      print((dataset.shape))
+      print((dataset.shape.coord))
     else:
       dataset = loadWRF_Stn(experiment='erai-g', domains=None, station=pntset, filetypes=['hydro'], period=(1979,1984), exps=WRF_exps)
       zs_err = dataset.zs.getArray() - dataset.stn_zs.getArray()
-      print(zs_err.min(),zs_err.mean(),zs_err.std(),zs_err.max())
+      print((zs_err.min(),zs_err.mean(),zs_err.std(),zs_err.max()))
 #       print('')
 #       print(dataset.station)
 #       print(dataset.station.coord)
@@ -1222,9 +1222,9 @@ if __name__ == '__main__':
     print(dataset)
     print('')
     print('')
-    print(dataset.pet_wrf)
+    print((dataset.pet_wrf))
     print('')
-    print(dataset.pet_wrf.mean())
+    print((dataset.pet_wrf.mean()))
     
   # load station time-series file
   elif mode == 'test_point_timeseries':
@@ -1238,19 +1238,19 @@ if __name__ == '__main__':
 #                               varlist=['zs','stn_zs','precip','MaxPrecip_6h','MaxPreccu_1h','MaxPrecip_1d'], 
                               station=pntset, filetypes=['srfc'], exps=WRF_exps)
       zs_err = dataset.zs.getArray() - dataset.stn_zs.getArray()
-      print(zs_err.min(),zs_err.mean(),zs_err.std(),zs_err.max())
+      print((zs_err.min(),zs_err.mean(),zs_err.std(),zs_err.max()))
     print('')
     print(dataset)
     print('')
-    print(dataset.time)
-    print(dataset.time.offset)
-    print(dataset.time.coord)
+    print((dataset.time))
+    print((dataset.time.offset))
+    print((dataset.time.coord))
     print('')
     for name in dataset.shape_name[:]: print(name)
     print('')
-    print(dataset.pet.mean())
+    print((dataset.pet.mean()))
     print('')
-    print(dataset.pet_wrf.mean())    
+    print((dataset.pet_wrf.mean()))    
   
   # load station ensemble "time-series"
   elif mode == 'test_point_ensemble':

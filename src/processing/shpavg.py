@@ -31,22 +31,22 @@ def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwr
                         ldebug=False, lparallel=False, pidstr='', logger=None):
   ''' worker function to extract point data from gridded dataset '''  
   # input checking
-  if not isinstance(dataset,basestring): raise TypeError
+  if not isinstance(dataset,str): raise TypeError
   if not isinstance(dataargs,dict): raise TypeError # all dataset arguments are kwargs 
   if not isinstance(shape_dict, OrderedDict): raise TypeError
   if lparallel: 
-    if not lwrite: raise IOError, 'In parallel mode we can only write to disk (i.e. lwrite = True).'
-    if lreturn: raise IOError, 'Can not return datasets in parallel mode (i.e. lreturn = False).'
+    if not lwrite: raise IOError('In parallel mode we can only write to disk (i.e. lwrite = True).')
+    if lreturn: raise IOError('Can not return datasets in parallel mode (i.e. lreturn = False).')
   
   # logging
   if logger is None: # make new logger     
     logger = logging.getLogger() # new logger
     logger.addHandler(logging.StreamHandler())
   else:
-    if isinstance(logger,basestring): 
+    if isinstance(logger,str): 
       logger = logging.getLogger(name=logger) # connect to existing one
     elif not isinstance(logger,logging.Logger): 
-      raise TypeError, 'Expected logger ID/handle in logger KW; got {}'.format(str(logger))
+      raise TypeError('Expected logger ID/handle in logger KW; got {}'.format(str(logger)))
 
   ## extract meta data from arguments
   dataargs, loadfct, srcage, datamsgstr = getMetaData(dataset, mode, dataargs)  
@@ -56,7 +56,7 @@ def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwr
   filename = getTargetFile(dataset=dataset, mode=mode, dataargs=dataargs, lwrite=lwrite, shape=shape_name) 
     
   if ldebug: filename = 'test_' + filename  
-  if not os.path.exists(avgfolder): raise IOError, "Dataset folder '{:s}' does not exist!".format(avgfolder)  
+  if not os.path.exists(avgfolder): raise IOError("Dataset folder '{:s}' does not exist!".format(avgfolder))  
   lskip = False # else just go ahead
   if lwrite:
     if lreturn: 
@@ -89,12 +89,12 @@ def performShapeAverage(dataset, mode, shape_name, shape_dict, dataargs, loverwr
     source = loadfct() # load source 
     # check period
     if 'period' in source.atts and dataargs.periodstr != source.atts.period: # a NetCDF attribute
-      raise DateError, "Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period)
+      raise DateError("Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period))
 
     # common message
     if mode == 'climatology': opmsgstr = "Computing Area Averages from Climatology ({:s})".format(periodstr)
     elif mode == 'time-series': opmsgstr = "Computing Area Averages from Time-series"
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)        
+    else: raise NotImplementedError("Unrecognized Mode: '{:s}'".format(mode))        
     # print feedback to logger
     logger.info('\n{0:s}   ***   {1:^65s}   ***   \n{0:s}   ***   {2:^65s}   ***   \n'.format(pidstr,datamsgstr,opmsgstr))
     if not lparallel and ldebug: logger.info('\n'+str(source)+'\n')
@@ -149,19 +149,19 @@ if __name__ == '__main__':
   
   ## read environment variables
   # number of processes NP 
-  if os.environ.has_key('PYAVG_THREADS'): 
+  if 'PYAVG_THREADS' in os.environ: 
     NP = int(os.environ['PYAVG_THREADS'])
   else: NP = None
   # run script in debug mode
-  if os.environ.has_key('PYAVG_DEBUG'): 
+  if 'PYAVG_DEBUG' in os.environ: 
     ldebug =  os.environ['PYAVG_DEBUG'] == 'DEBUG' 
   else: ldebug = False # i.e. append
   # run script in batch or interactive mode
-  if os.environ.has_key('PYAVG_BATCH'): 
+  if 'PYAVG_BATCH' in os.environ: 
     lbatch =  os.environ['PYAVG_BATCH'] == 'BATCH' 
   else: lbatch = False # for debugging
   # re-compute everything or just update 
-  if os.environ.has_key('PYAVG_OVERWRITE'): 
+  if 'PYAVG_OVERWRITE' in os.environ: 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
   
@@ -305,17 +305,17 @@ if __name__ == '__main__':
   
 
   # import shapes from project
-  proj_dict = getProjectVars(shapes.keys(), project=WRF_project, module=None)
+  proj_dict = getProjectVars(list(shapes.keys()), project=WRF_project, module=None)
   # assemble shape dictionary
   shape_dict = OrderedDict()
-  shapenames = shapes.keys(); 
+  shapenames = list(shapes.keys()); 
   shapenames.sort(); shapenames.reverse() # for backwards compatibility
   for shapename in shapenames:
     proj_shapes = proj_dict[shapename]
     if not isinstance(proj_shapes, dict): raise TypeError(proj_shapes)
     shapelist = shapes[shapename]
     if shapelist is None: 
-      shapelist = proj_shapes.keys()
+      shapelist = list(proj_shapes.keys())
       if not isinstance(proj_shapes, OrderedDict): shapelist.sort() # sort names in-place
       shapes[shapename] = shapelist # update shapes for report
     try:
@@ -326,18 +326,18 @@ if __name__ == '__main__':
     
   # print an announcement
   if len(WRF_experiments) > 0:
-    print('\n Averaging from WRF Datasets ({:s}):'.format(WRF_project))
+    print(('\n Averaging from WRF Datasets ({:s}):'.format(WRF_project)))
     print([exp.name for exp in WRF_experiments])
   if len(CESM_experiments) > 0:
-    print('\n Averaging from CESM Datasets ({:s}):'.format(CESM_project))
+    print(('\n Averaging from CESM Datasets ({:s}):'.format(CESM_project)))
     print([exp.name for exp in CESM_experiments])
   if len(datasets) > 0:
     print('\n Averaging from Observational Datasets:')
     print(datasets)
   print('\n Using Shapefiles:')
-  for shptype,shplst in shapes.iteritems():
-    print('   {0:s} {1:s}'.format(shptype,printList(shplst)))
-  print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
+  for shptype,shplst in shapes.items():
+    print(('   {0:s} {1:s}'.format(shptype,printList(shplst))))
+  print(('\nOVERWRITE: {0:s}\n'.format(str(loverwrite))))
 
   
   ## construct argument list
@@ -347,7 +347,7 @@ if __name__ == '__main__':
     # only climatology mode has periods    
     if mode == 'climatology': periodlist = [] if periods is None else periods
     elif mode == 'time-series': periodlist = (None,)
-    else: raise NotImplementedError, "Unrecognized Mode: '{:s}'".format(mode)
+    else: raise NotImplementedError("Unrecognized Mode: '{:s}'".format(mode))
 
     # observational datasets (grid depends on dataset!)
     for dataset in datasets:
@@ -391,7 +391,7 @@ if __name__ == '__main__':
       for filetype in WRF_filetypes:
         # effectively, loop over domains
         if domains is None:
-          tmpdom = range(1,experiment.domains+1)
+          tmpdom = list(range(1,experiment.domains+1))
         else: tmpdom = domains
         for domain in tmpdom:
           for period in periodlist:

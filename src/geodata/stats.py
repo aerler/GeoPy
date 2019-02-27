@@ -69,7 +69,7 @@ def normaltest_wrapper(data, axis=None, ignoreNaN=True):
       specified axis of a multi-dimensional arrays (using the 'axis' keyword), or over the 
       flattened array (axis=None). '''
   if ignoreNaN:
-    if axis is not None: raise DataError, "NaN removal does not work reliably with ND-arrays."
+    if axis is not None: raise DataError("NaN removal does not work reliably with ND-arrays.")
     nonans = np.invert(np.isnan(data)) # test for NaN's
     if np.sum(nonans) < 3: return np.NaN # return, if less than 3 non-NaN's
     data = data[nonans] # remove NaN's
@@ -115,7 +115,7 @@ def ks_2samp(sample1, sample2, lstatistic=False, ignoreNaN=True, **kwargs):
       drawn from the same distribution. 
       The Kolmogorov-Smirnov Test is a non-parametric test that works well for all types of 
       distributions (normal and non-normal). '''
-  if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
+  if lstatistic: raise NotImplementedError("Return of test statistic is not yet implemented; only p-values are returned.")
   testfct = functools.partial(ks_2samp_wrapper, ignoreNaN=ignoreNaN)
   pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=True, 
                                lpval=True, lrho=False, **kwargs)
@@ -146,7 +146,7 @@ def ttest_ind(sample1, sample2, equal_var=True, lstatistic=False, ignoreNaN=True
       are drawn from the same underlying (continuous) distribution; a high p-value means, 
       the two samples are likely drawn from the same distribution. 
       The T-test implementation is vectoriezed (unlike all other tests).'''
-  if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
+  if lstatistic: raise NotImplementedError("Return of test statistic is not yet implemented; only p-values are returned.")
   testfct = functools.partial(ttest_ind_wrapper, ignoreNaN=ignoreNaN, equal_var=equal_var)
   pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=False, 
                                lpval=True, lrho=False, **kwargs)
@@ -183,7 +183,7 @@ def mannwhitneyu(sample1, sample2, ignoreNaN=True, lonesided=False, lstatistic=F
       Wilcoxon Ranksum Test and also handles ties between ranks. 
       One-sided p-values test the hypothesis that one distribution is larger than the other;
       the two-sided test just tests, if the distributions are different. '''
-  if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
+  if lstatistic: raise NotImplementedError("Return of test statistic is not yet implemented; only p-values are returned.")
   testfct = functools.partial(mannwhitneyu_wrapper, ignoreNaN=ignoreNaN, 
                               use_continuity=use_continuity)
   pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=True, 
@@ -223,7 +223,7 @@ def ranksums(sample1, sample2, lstatistic=False, ignoreNaN=True, **kwargs):
       The Ranksum Test has higher efficiency for non-normal distributions and is almost as
       reliable as the T-test for normal distributions. It is less sophisticated than the 
       Mann-Whitney Test and does not handle ties between ranks. '''
-  if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
+  if lstatistic: raise NotImplementedError("Return of test statistic is not yet implemented; only p-values are returned.")
   testfct = functools.partial(ranksums_wrapper, ignoreNaN=ignoreNaN)
   pvar = apply_stat_test_2samp(sample1, sample2, fct=testfct, laax=True, 
                                lpval=True, lrho=False, **kwargs)
@@ -385,7 +385,7 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
     if lvar1: axis = sample1.axes[axis_idx].name
     elif lvar2: axis = sample2.axes[axis_idx].name
     if lvar1 and lvar2 and not (axis != sample2.axes[axis_idx].name): 
-      raise AxisError, "Axis index '{:d}' does not refer to the same axis in the two samples.".format(axis_idx)
+      raise AxisError("Axis index '{:d}' does not refer to the same axis in the two samples.".format(axis_idx))
     axis_idx1 = axis_idx2 = axis_idx
   elif axis_idx is None and axis is not None: 
     if not lvar1 and not lvar2: ArgumentError, "Keyword 'axis' requires at least one sample to be a Variable instance."
@@ -398,7 +398,7 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
           sample1 = sample1.mergeAxes(axes=axis, new_axis='new_KS_sample_axis', asVar=True, linplace=False, lcheckAxis=lcheckAxis)
           sample2 = sample2.mergeAxes(axes=axis, new_axis='new_KS_sample_axis', asVar=True, linplace=False, lcheckAxis=lcheckAxis)
           if sample1 is None or sample2 is None: 
-            if lcheckAxis: raise AxisError, sample1 or sample2
+            if lcheckAxis: raise AxisError(sample1 or sample2)
             else: return None
           axis = 'new_KS_sample_axis' # now operate on the new sample axis, as if it was just one    
     if lvar1: axis_idx1 = sample1.axisIndex(axis)
@@ -411,14 +411,14 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
   # check sample variables
   for sample,lvar in ((sample1,lvar1),(sample2,lvar2)):
     if sample.dtype.kind in ('S',):
-      if lcheckVar: raise VariableError, "Statistical tests does not work with string Variables!"
+      if lcheckVar: raise VariableError("Statistical tests does not work with string Variables!")
       else: return None
     if isinstance(sample,Variable):
       if not lflatten and not sample.hasAxis(axis):
-        if lcheckAxis: raise AxisError, "Variable '{:s}' has no axis '{:s}'.".format(sample.name, axis)
+        if lcheckAxis: raise AxisError("Variable '{:s}' has no axis '{:s}'.".format(sample.name, axis))
         else: return None
     elif not isinstance(sample, np.ndarray):
-      raise TypeError, "Samples have to be Variable instances or Numpy 'ndarray'."
+      raise TypeError("Samples have to be Variable instances or Numpy 'ndarray'.")
     # choose a fillValue (triggers only once)
     lmasked = ( lvar and sample.masked ) or ( not lvar and isinstance(sample, np.ma.MaskedArray) )
     if lmasked and fillValue is None: fillValue = np.NaN
@@ -426,19 +426,19 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
 #       elif np.issubdtype(sample.dtype,np.inexact): fillValue = np.NaN
 #       else: raise NotImplementedError
   # check that dtype and dimensions are equal
-  if not np.issubdtype(sample1.dtype,np.number): raise TypeError, sample1.dtype
-  if not np.issubdtype(sample2.dtype,np.number): raise TypeError, sample2.dtype
+  if not np.issubdtype(sample1.dtype,np.number): raise TypeError(sample1.dtype)
+  if not np.issubdtype(sample2.dtype,np.number): raise TypeError(sample2.dtype)
 #   if sample1.dtype.kind != sample2.dtype.kind: 
 #     raise TypeError, "Samples need to have same dtype kind: {:s} != {:s}".kind(sample1.dtype.kind, sample2.dtype.kind)
   if not lflatten:
-    if sample1.ndim != sample2.ndim: raise AxisError, "Samples need to have same number of dimensions."
+    if sample1.ndim != sample2.ndim: raise AxisError("Samples need to have same number of dimensions.")
     rshape = sample1.shape[:axis_idx1] + sample1.shape[axis_idx1+1:]
     if rshape != sample2.shape[:axis_idx2] + sample2.shape[axis_idx2+1:]: 
-      raise AxisError, "Samples need to have same shape (except sample axis)."
+      raise AxisError("Samples need to have same shape (except sample axis).")
     if lvar1 and lvar2:
       axes1 = tuple(ax.name for ax in sample1.axes if ax.name != axis)
       axes2 = tuple(ax.name for ax in sample2.axes if ax.name != axis)
-      if axes1 != axes2: raise AxisError, "Axes of samples are inconsistent."
+      if axes1 != axes2: raise AxisError("Axes of samples are inconsistent.")
   # create attributes for new p-values variable object
   if asVar:
     if lpval:
@@ -476,7 +476,7 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
       else: data = sample.copy() 
       data = data.filled(fillValue)
     elif isinstance(sample,np.ndarray): data = sample.copy() 
-    else: raise TypeError, sample.__class__
+    else: raise TypeError(sample.__class__)
     # roll sampel axis to end (or flatten)
     if lflatten: data = data.ravel()
     else: data = np.rollaxis(data, axis=axis_idx, start=sample.ndim)
@@ -496,7 +496,7 @@ def apply_stat_test_2samp(sample1, sample2, fct=None, axis=None, axis_idx=None, 
     elif lpval: pvar = res
     elif lrho: rvar = res
     if asVar: # doesn't work here
-      raise NotImplementedError, "Cannot return a single scalar as a Variable object."
+      raise NotImplementedError("Cannot return a single scalar as a Variable object.")
   # apply test (parallel)
   else: 
     axis_idx = data1.ndim-1; size1 = data1.shape[-1] # shorcuts
@@ -562,7 +562,7 @@ variable_distributions = var_dists # alias for imports
 def defVarDist(var, var_dists=None):
   ''' return an appropriate distribution for a variable, based on some heuristics '''
   if not isinstance(var, Variable): raise TypeError
-  elif isinstance(var, DistVar): raise TypeError, "Variable is already a DistVar!"
+  elif isinstance(var, DistVar): raise TypeError("Variable is already a DistVar!")
   varname, units = var.name, var.units
   # check explicit definition first
   if var_dists is None: var_dists = variable_distributions
@@ -592,7 +592,7 @@ def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None,
   if not isinstance(var,Variable): raise VariableError
   # this really only works for numeric types
   if var.dtype.kind in ('S',): 
-    if lcheckVar: raise VariableError, "Distributions don't work with string Variables!"
+    if lcheckVar: raise VariableError("Distributions don't work with string Variables!")
     else: return None
   if not var.data: var.load()
   # select appropriate distribution, if not specified 
@@ -630,7 +630,7 @@ def asDistVar(var, axis='time', dist=None, lflatten=False, name=None, atts=None,
     dvar = VarRV(dist=dist, samples=var.data_array, axis=iaxis, axes=axes, nsamples=nsamples,
                  lflatten=lflatten, atts=varatts, lcrossval=lcrossval, ncv=ncv, **dist_args)
   else:
-    raise AttributeError, "Distribution '{:s}' not found in scipy.stats.".format(dist)
+    raise AttributeError("Distribution '{:s}' not found in scipy.stats.".format(dist))
   # return DistVar instance
   return dvar
 
@@ -677,7 +677,7 @@ class DistVar(Variable):
       # flatten, if required
       if lflatten: 
         samples = samples.ravel()
-        if axis is not None: raise AxisError, "'axis' keyword can not be used with lflatten=True"
+        if axis is not None: raise AxisError("'axis' keyword can not be used with lflatten=True")
       # ensure data type
       if dtype is None: dtype = samples.dtype
       elif not np.issubdtype(samples.dtype,dtype): raise DataError
@@ -698,7 +698,7 @@ class DistVar(Variable):
         # N.B.: we may also need some NaN/masked-value handling here...
       # check axes
       if lflatten:
-        if axes is not None: raise AxisError, "'axes' keyword can not be used with lflatten=True"
+        if axes is not None: raise AxisError("'axes' keyword can not be used with lflatten=True")
         samples = samples.ravel()
         axes = tuple() # empty tuple
       else:
@@ -708,8 +708,8 @@ class DistVar(Variable):
       sz = samples.shape[-1] # all sample dimensions should be collapsed by now
       lns = bool(nsamples)
       if nsamples is None: nsamples = sz
-      if nsamples < 2: raise ValueError, nsamples # check samples[:] as well!
-      if nsamples > sz: raise ValueError, sz  
+      if nsamples < 2: raise ValueError(nsamples) # check samples[:] as well!
+      if nsamples > sz: raise ValueError(sz)  
       ## add bootstrap axis and generate bootstrap samples
       if lbootstrap:
         # create and add bootstrap axis
@@ -722,7 +722,7 @@ class DistVar(Variable):
         if lns: # select a random subset (without replacement)
           bootstrap[0,:] = np.apply_along_axis(np.random.choice, -1, samples, size=nsamples, replace=False)
         else: bootstrap[0,:] = samples # first element is the real sample data
-        for i in xrange(1,nbs): # take random draws with replacement
+        for i in range(1,nbs): # take random draws with replacement
           bootstrap[i,:] = np.apply_along_axis(np.random.choice, -1, samples, size=nsamples, replace=True)
           #idx = np.random.randint(sz, size=nsamples) # select random indices
           #bootstrap[i,:] = samples.take(idx, axis=-1) # write random sample into array
@@ -744,7 +744,7 @@ class DistVar(Variable):
       if lcrossval:
         idx_dtype = np.int16 if sz < 32767 else (np.int32 if sz < 2147483647 else np.int64) # save some memory
         #ncv = 3 if lcrossval is True else int(lcrossval)
-        if 1 < ncv < 2: raise ValueError, lcrossval
+        if 1 < ncv < 2: raise ValueError(lcrossval)
         if crossval_mode.lower() == 'random': # default: use a random subset
           if ncv < 1: nncv = int(np.round((1-ncv)*sz)) # convert fraction to number of elements
           else: nncv = int(sz - np.round(sz/ncv)) # treat as denominator of fraction used for validation
@@ -759,9 +759,9 @@ class DistVar(Variable):
           assert check_mask.mean() == sz-nncv, (check_mask.mean(),nncv) 
         else:
           # a deterministic subset 
-          if ncv < 1: raise ValueError, lcrossval # denominator of fraction used for validation
+          if ncv < 1: raise ValueError(lcrossval) # denominator of fraction used for validation
           idx_rng = []
-          for icv in xrange(0,sz,ncv):
+          for icv in range(0,sz,ncv):
             idx_rng += np.arange(icv,min(icv+ncv-1,sz), order='C', dtype=idx_dtype)
           idx_rng = np.concatenate(idx_rng)
         #idx_rng = np.random.randint(saxlen, size=saxlen)[idx_rng] # use a randome sample...
@@ -899,7 +899,7 @@ class DistVar(Variable):
       if not isinstance(support,np.ndarray): raise TypeError
       dist_data = dist_op(support, **kwargs)
     elif moments is not None:
-      if isinstance(moments, (basestring)):
+      if isinstance(moments, (str)):
         dist_data = dist_op(moments=moments, **kwargs)
       elif isinstance(moments, (int,np.integer)):
         dist_data = dist_op(n=moments, **kwargs)
@@ -1295,7 +1295,7 @@ def rv_stats_test(data_array, nparams=0, dist_type=None, stats_test=None, ignore
       pval = normaltest_wrapper(data_array[nparams:], ignoreNaN=ignoreNaN)
     elif stats_test in ('sw','shapiro','shapirowilk'): 
       pval = shapiro_wrapper(data_array[nparams:], ignoreNaN=ignoreNaN)    
-    else: raise ArgumentError, stats_test
+    else: raise ArgumentError(stats_test)
   return pval
 
 # Subclass of DistVar implementing various random variable distributions
@@ -1313,12 +1313,12 @@ class VarRV(DistVar):
     elif dist.lower() in ('genpareto', 'gpd'): dist = 'genpareto' # 'pareto' is something else!
     # look up module & set distribution
     if dist == '':
-      raise ArgumentError, "No distribution 'dist' specified!"
+      raise ArgumentError("No distribution 'dist' specified!")
     elif dist in ss.__dict__: 
       self.dist_class = getattr(ss,dist) # distribution class (from SciPy)
       self.dist_type = dist # name of distribution (in SciPy)
     else: 
-      raise ArgumentError, "No distribution '{:s}' in module scipy.stats!".format(dist)
+      raise ArgumentError("No distribution '{:s}' in module scipy.stats!".format(dist))
     # N.B.: the distribution info will be available to the _estimate_distribution-method
     # initialize distribution variable
     super(VarRV,self).__init__(ic_shape=ic_shape, ic_args=ic_args, ic_loc=ic_loc, ic_scale=ic_scale, 
@@ -1337,7 +1337,7 @@ class VarRV(DistVar):
         pval = "{:3.2f}".format(float(pval))
         if self.crossval > 1: crossval = "1/{:d}".format(self.crossval)
         else: crossval = "{:2.0%}".format(self.crossval)
-        print("{:s} Cross-validation: {:s} (K-S test, {:s})".format(self.name, pval, crossval)) 
+        print(("{:s} Cross-validation: {:s} (K-S test, {:s})".format(self.name, pval, crossval))) 
   
   def copy(self, deepcopy=False, **newargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Variable with just a link to the data. '''
@@ -1494,7 +1494,7 @@ class VarRV(DistVar):
         dimension shifted to the back (all remaining sample dimensions are flattened). '''
     # check input
     if sample.dtype.kind in ('S',): 
-      if lcheckVar: raise VariableError, "Statistical tests do not work with string Variables!"
+      if lcheckVar: raise VariableError("Statistical tests do not work with string Variables!")
       else: return None
     # choose a fillValue, because np.histogram does not ignore masked values but does ignore NaNs
     if fillValue is None:
@@ -1507,10 +1507,10 @@ class VarRV(DistVar):
       assert self.axisIndex(self.paramAxis) == sax
       for ax in self.axes[:-1]:
         if not sample.hasAxis(ax.name): # last is parameter axis
-          if lcheckAxis: raise AxisError, "Sample Variable needs to have a '{:s}' axis.".format(ax.name)
+          if lcheckAxis: raise AxisError("Sample Variable needs to have a '{:s}' axis.".format(ax.name))
           else: return None
         if len(sample.getAxis(ax.name)) != len(ax): # last is parameter axis
-          if lcheckAxis: raise AxisError, "Axis '{:s}' in Sample and DistVar have different length!".format(ax.name)
+          if lcheckAxis: raise AxisError("Axis '{:s}' in Sample and DistVar have different length!".format(ax.name))
           else: return None
       sample_data = sample.getArray(unmask=True, fillValue=fillValue, copy=True) # actual data (will be reordered)
       # reorder axes so that shape is compatible
@@ -1530,7 +1530,7 @@ class VarRV(DistVar):
         sample_data = np.rollaxis(sample_data, axis=axis_idx, start=sample.ndim)
     # check dimensions of sample_data and reshape
     if sample_data.shape[:sax] != self.shape[:-1]: 
-      if lcheckAxis: raise AxisError, "Sample has incompatible shape."
+      if lcheckAxis: raise AxisError("Sample has incompatible shape.")
       else: return None
     # collapse all remaining dimensions at the end and use as sample dimension
     sample_data = sample_data.reshape(sample_data.shape[:sax]+(np.prod(sample_data.shape[sax:]),))
@@ -1545,9 +1545,9 @@ class VarRV(DistVar):
     ''' apply a Kolmogorov-Smirnov Test to the sample data, based on this distribution '''
     # check input
     if self.dtype.kind in ('S',): 
-      if lcheckVar: raise VariableError, "Statistical tests does not work with string Variables!"
+      if lcheckVar: raise VariableError("Statistical tests does not work with string Variables!")
       else: return None
-    if lstatistic: raise NotImplementedError, "Return of test statistic is not yet implemented; only p-values are returned."
+    if lstatistic: raise NotImplementedError("Return of test statistic is not yet implemented; only p-values are returned.")
     # get properly formatted sample data
     sax = self.ndim-1
     sample_data = self._extractSampleData(samples, axis_idx=axis_idx, fillValue=fillValue, 
@@ -1565,7 +1565,7 @@ class VarRV(DistVar):
         #print sample_data.shape, sample_data.mean()
       else:
         ncv = self.crossval if lcrossval is True else lcrossval
-        if ncv == 0 or int(ncv) != ncv: raise ValueError, self.crossval
+        if ncv == 0 or int(ncv) != ncv: raise ValueError(self.crossval)
         idx_rng = np.arange(ncv-1,sz,ncv, order='C', dtype=idx_dtype)  
         #idx_rng = np.random.randint(saxlen, size=saxlen)[idx_rng] # use a random sample...     
         sample_data = sample_data.take(idx_rng,axis=-1) # use only the remaining part of the data
@@ -1573,8 +1573,8 @@ class VarRV(DistVar):
     # handle number of draws
     lns = bool(nsamples)
     if nsamples is None: nsamples = sz
-    if nsamples < 2: raise ValueError, nsamples
-    if nsamples > sz: raise ValueError, sz        
+    if nsamples < 2: raise ValueError(nsamples)
+    if nsamples > sz: raise ValueError(sz)        
     # select a random subset
     if lns:
       sample_data = np.apply_along_axis(np.random.choice, -1, sample_data, size=nsamples, replace=False)
@@ -1611,7 +1611,7 @@ class VarRV(DistVar):
   # Kolmogorov-Smirnov Test for goodness-of-fit
   def kstest(self, sample, **kwargs):
     ''' wrapper for fittest that always chooses the K-S test '''
-    if 'stats_test' in kwargs: raise ArgumentError, kwargs['stats_test']
+    if 'stats_test' in kwargs: raise ArgumentError(kwargs['stats_test'])
     return self.fittest(sample, stats_test='ks', **kwargs)
   
   

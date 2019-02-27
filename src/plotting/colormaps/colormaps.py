@@ -13,7 +13,7 @@
 # obs:
 #
 
-from __future__ import division
+
 
 import os
 
@@ -145,7 +145,7 @@ for fname in glob('%s/*.dat' % cmap_path):
     arrays.update({cmap: data})
 
 cm = Bunch()
-for key, value in arrays.iteritems():
+for key, value in arrays.items():
     cm.update({key: cmat2cmpl(value)})
     cm.update({'%s_r' % key: cmat2cmpl(value, reverse=True)})
 
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     data = np.outer(np.arange(0, 1, 0.01), np.ones(10))
     fig = plt.figure(figsize=(10, 5))
     fig.subplots_adjust(top=0.8, bottom=0.05, left=0.01, right=0.99)
-    cmaps = sorted([m for m in cm.keys() if not m.endswith("_r")])
+    cmaps = sorted([m for m in list(cm.keys()) if not m.endswith("_r")])
     length = len(cmaps)
     for k, cmap in enumerate(cmaps):
         plt.subplot(1, length + 1, k + 1)

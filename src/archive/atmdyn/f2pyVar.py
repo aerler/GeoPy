@@ -92,7 +92,7 @@ class RelativeVorticity(Var):
         if min(extidx)<min(idx): lower = lower+1 # cut off first
         if max(extidx)>max(idx): upper = upper-1 # cut off last
         # trim axis
-        zeta = zeta.take(range(lower,upper),axis=i)                        
+        zeta = zeta.take(list(range(lower,upper)),axis=i)                        
     # return output
     return zeta
 
@@ -214,7 +214,7 @@ class PotentialVorticity(Var):
         if min(extidx)<min(idx): lower = lower+1 # cut off first
         if max(extidx)>max(idx): upper = upper-1 # cut off last
         # trim axis
-        PV = PV.take(range(lower,upper),axis=i)                        
+        PV = PV.take(list(range(lower,upper)),axis=i)                        
     # return output
     return PV
 
@@ -231,7 +231,7 @@ class Theta(Var):
     # input checks    
     if not T.axes==p.axes:
       # need to transpose p to fix axes order between T and p      
-      iaxes = range(len(T.axes))
+      iaxes = list(range(len(T.axes)))
       for i in range(len(T.axes)):
         
         assert p.hasaxis(T.axes[i]), 'Axes of T and p are incompatible!'

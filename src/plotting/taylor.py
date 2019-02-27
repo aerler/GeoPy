@@ -41,7 +41,7 @@ class TaylorDiagram(object):
         rlocs = NP.concatenate((NP.arange(10)/10.,[0.95,0.99]))
         tlocs = NP.arccos(rlocs)        # Conversion to polar angles
         gl1 = GF.FixedLocator(tlocs)    # Positions
-        tf1 = GF.DictFormatter(dict(zip(tlocs, map(str,rlocs))))
+        tf1 = GF.DictFormatter(dict(list(zip(tlocs, list(map(str,rlocs))))))
 
         ghelper = FA.GridHelperCurveLinear(tr,
                                            extremes=(0,NP.pi/2, # 1st quadrant
@@ -76,7 +76,7 @@ class TaylorDiagram(object):
         self.ax = ax.get_aux_axes(tr)   # Polar coordinates
 
         # Add reference point and stddev contour
-        print "Reference std:", self.ref.std()
+        print("Reference std:", self.ref.std())
         self.ax.plot([0],self.ref.std(),'ko', label='_')
         t = NP.linspace(0,NP.pi/2)
         r = NP.zeros_like(t) + self.ref.std()
@@ -92,7 +92,7 @@ class TaylorDiagram(object):
         corr = NP.corrcoef(self.ref, sample) # [[1,rho],[rho,1]]
         theta = NP.arccos(corr[0,1])
 
-        print "Sample std,rho:",std,corr[0,1]
+        print("Sample std,rho:",std,corr[0,1])
 
         return theta,std
 

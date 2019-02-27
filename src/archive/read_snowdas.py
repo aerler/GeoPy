@@ -40,8 +40,8 @@ tar_file ='SNODAS_unmasked_' + year + month[0:2] + day+ '.tar'
 
 product = 'zz_ssmv11034tS__T0001TTNATS' + year + month[0:2] + day + '05HP001.dat'
 
-print tar_file
-print product
+print(tar_file)
+print(product)
 
 snowdas_path = path + '/' + year + '/' + month 
 
@@ -56,12 +56,12 @@ ftp.retrlines('LIST')
 
 ftp.retrbinary("RETR " + tar_file, open(tar_file, 'wb').write)
 
-print 'Done downloading file', tar_file, '...'
+print('Done downloading file', tar_file, '...')
 
 
 ## untar file 
 
-print processing_dir + tar_file
+print(processing_dir + tar_file)
 
 os.system('ls -l /Users/menounos/snowdas/tmp')
 
@@ -76,7 +76,7 @@ files = os.listdir(processing_dir)
 
 for file in files:
     if file == product:
-        print 'writing header for file', file, 'now'
+        print('writing header for file', file, 'now')
         
         f_out = open(processing_dir + file[:-4] + '.hdr', 'wb')
         f_out.write('byteorder M')
@@ -103,7 +103,7 @@ for file in files:
         f_out.close()
         
 
-print 'warping and clipping'
+print('warping and clipping')
 
 
 ## project grid to BC Albers (EPSG:3005)
@@ -125,7 +125,7 @@ os.system('/Users/menounos/anaconda/bin/gdalwarp ' + \
           epsg_wgs84 + gdal_config + epsg_bcalb + bcalb_resample + f_name + " " + f_name2)
 
 
-print 'here!'
+print('here!')
 
 ## now do clipping 
 
@@ -133,27 +133,27 @@ os.system('/Users/menounos/snowdas/clip.sh')
 
 #subprocess.call(['./Users/menounos/snowdas/clip'])
 
-print 'here!!!'
+print('here!!!')
 
 ds = gdal.Open(processing_dir + 'swe_clip.tif', gdal.GA_ReadOnly)
 
 
 band = ds.GetRasterBand(1)
-print band.GetNoDataValue()
+print(band.GetNoDataValue())
 # None ## normally this would have a finite value, e.g. 1e+20
 ar = band.ReadAsArray()
-print np.isnan(ar).all()
+print(np.isnan(ar).all())
 # False
-print '%.1f%% masked' % (np.isnan(ar).sum() * 100.0 / ar.size)
+print('%.1f%% masked' % (np.isnan(ar).sum() * 100.0 / ar.size))
 # 43.0% masked
 
-print ar.max()
-print ar.min()
+print(ar.max())
+print(ar.min())
 
 ar[ar>20000] = 0 
 
 
-print ar.sum()/1e6
+print(ar.sum()/1e6)
 
 
 masked_array=np.ma.masked_where(ar == 0, ar)
@@ -168,7 +168,7 @@ plt.figure()
 
 plt.contourf(np.flipud(masked_array/1000.0), cmap=cmap, vmin=0.1, vmax=4)
 plt.title(r'Snow Water Equivalent (m): ' + year + '/' + month[0:2] + '/' + day + '\n' +
-          'Total Volume (km$^{3}$): ' + `round(ar.sum()/1e6, 2)`)
+          'Total Volume (km$^{3}$): ' + repr(round(ar.sum()/1e6, 2)))
 plt.colorbar()
 
 plt.savefig('/Users/menounos/snowdas/Snowdas_' + year + '_' + month[0:2] + '_' + day + '.jpg', dpi=600)

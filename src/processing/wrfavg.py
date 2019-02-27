@@ -28,7 +28,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
   ''' worker function to compute climatologies for given file parameters. '''
   # input type checks
   if not isinstance(experiment,Exp): raise TypeError
-  if not isinstance(filetype,basestring): raise TypeError
+  if not isinstance(filetype,str): raise TypeError
   if not isinstance(domain,(np.integer,int)): raise TypeError
   if periods is not None and not (isinstance(periods,(tuple,list)) and isInt(periods)): raise TypeError
   if not isinstance(offset,(np.integer,int)): raise TypeError
@@ -83,7 +83,7 @@ def computeClimatology(experiment, filetype, domain, periods=None, offset=0, gri
               
       # figure out period
       enddate = begindate + period     
-      if filebegin > enddate: raise DateError, 'End date earlier than begin date.'
+      if filebegin > enddate: raise DateError('End date earlier than begin date.')
       if enddate-1 > fileend: # if filebegin is 1979 and the simulation is 10 years, fileend will be 1988, not 1989!
         # if end date is not available, skip period
         endmsg = "\n{:s}   ---   Invalid Period for '{:s}': End Date {:4d} not in File!   ---   \n".format(pidstr,dataset_name,enddate)
@@ -209,19 +209,19 @@ if __name__ == '__main__':
   
   ## read environment Variables
   # number of processes NP 
-  if os.environ.has_key('PYAVG_THREADS'): 
+  if 'PYAVG_THREADS' in os.environ: 
     NP = int(os.environ['PYAVG_THREADS'])
   else: NP = None
   # run script in debug mode
-  if os.environ.has_key('PYAVG_DEBUG'): 
+  if 'PYAVG_DEBUG' in os.environ: 
     ldebug =  os.environ['PYAVG_DEBUG'] == 'DEBUG' 
   else: ldebug = False # i.e. append
   # run script in batch or interactive mode
-  if os.environ.has_key('PYAVG_BATCH'): 
+  if 'PYAVG_BATCH' in os.environ: 
     lbatch =  os.environ['PYAVG_BATCH'] == 'BATCH' 
   else: lbatch = False # for debugging
   # re-compute everything or just update 
-  if os.environ.has_key('PYAVG_OVERWRITE'): 
+  if 'PYAVG_OVERWRITE' in os.environ: 
     loverwrite =  os.environ['PYAVG_OVERWRITE'] == 'OVERWRITE' 
   else: loverwrite = ldebug # False means only update old files
 
@@ -293,8 +293,8 @@ if __name__ == '__main__':
   # print an announcement
   print('\n Computing Climatologies for WRF experiments:\n')
   print([exp.name for exp in WRF_experiments])
-  if grid: print('\nRegridding to \'{0:s}\' grid.\n'.format(grid))
-  print('\nOVERWRITE: {0:s}\n'.format(str(loverwrite)))
+  if grid: print(('\nRegridding to \'{0:s}\' grid.\n'.format(grid)))
+  print(('\nOVERWRITE: {0:s}\n'.format(str(loverwrite))))
       
   # assemble argument list and do regridding
   args = [] # list of arguments for workers, i.e. "work packages"
@@ -304,7 +304,7 @@ if __name__ == '__main__':
     for filetype in WRF_filetypes:                
       # effectively, loop over domains
       if domains is None:
-        tmpdom = range(1,experiment.domains+1)
+        tmpdom = list(range(1,experiment.domains+1))
       else: tmpdom = domains
       for domain in tmpdom:
         # arguments for worker function

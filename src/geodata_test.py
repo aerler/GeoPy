@@ -146,7 +146,7 @@ class BaseVarTest(unittest.TestCase):
     if (rav.data_array == 0).any(): # can't divide by zero!
       if (rav.data_array != 0).any():  # test masking: mask zeros
         rav.mask(np.logical_not(rav.data_array), fillValue=rav.fillValue, merge=True)
-      else: raise TypeError, 'Cannot divide by all-zero field!' 
+      else: raise TypeError('Cannot divide by all-zero field!') 
     del m; gc.collect()
     d = var / rav
     assert isOne(d.data_array)
@@ -201,9 +201,9 @@ class BaseVarTest(unittest.TestCase):
     assert concat_var.shape == tuple(shape)
     assert len(concat_var.time) == 24 and max(concat_var.time.coord) > 1000
     assert concat_var.name == 'concatVar'
-    assert isEqual(concat_var[:].take(xrange(12)),concat_data.take(xrange(12)))
+    assert isEqual(concat_var[:].take(range(12)),concat_data.take(range(12)))
     tlen = var.shape[tax]
-    assert isEqual(concat_var[:].take(xrange(12,24), axis=tax),concat_data.take(xrange(tlen,tlen+12), axis=tax))    
+    assert isEqual(concat_var[:].take(range(12,24), axis=tax),concat_data.take(range(tlen,tlen+12), axis=tax))    
     # simple test with ensemble
     concat_var = concatVars([var,copy], axis='ensemble', asVar=True, lcheckAxis=lckax)
     # N.B.: some datasets have tiem units in days or hours, which is not uniform 
@@ -222,7 +222,7 @@ class BaseVarTest(unittest.TestCase):
     assert (var.units == self.var.units) and (var.units is self.var.units) # strings are immutable...
     assert (var.atts is not self.var.atts) and (var.atts != self.var.atts) # ...dictionaries are not
     # N.B.: note that due to the name change, their atts are different!
-    for key,value in var.atts.iteritems():
+    for key,value in var.atts.items():
       if key == 'name': assert np.any(value != self.var.atts[key])
       elif isinstance(value,(int,np.integer,float,np.inexact)):  
         np.allclose(value, self.var.atts[key], equal_nan=True)
@@ -284,7 +284,7 @@ class BaseVarTest(unittest.TestCase):
         assert tmp1.units  == tmp2.units
         assert tmp1.dtype  == tmp2.dtype
         isEqual(tmp1[:],tmp2[:])
-      print "\n   ***   computed {:s} distribution   ***".format(dist.upper())
+      print("\n   ***   computed {:s} distribution   ***".format(dist.upper()))
       # some VarRV-specific stuff
       if dist != 'kde':
         # run simple kstest test
@@ -381,7 +381,7 @@ class BaseVarTest(unittest.TestCase):
     assert len(ens.members) == len(ens)
     # these var/ax names are specific to the test dataset...
     if all(ens.hasAxis('time')):
-      print ens.time 
+      print(ens.time) 
       assert ens.time == [var.time , copy.time]
     # collective add/remove
     # test adding a new member
@@ -391,7 +391,7 @@ class BaseVarTest(unittest.TestCase):
     assert not ens.hasMember(yacov)
     # perform a variable operation
     ens.mean(axis='time')
-    print(ens.prettyPrint(short=True))
+    print((ens.prettyPrint(short=True)))
     ens -= var.name # subtract by name
 #     print(''); print(ens); print('')    
     assert not ens.hasMember(var.name)
@@ -479,7 +479,7 @@ class BaseVarTest(unittest.TestCase):
         idx = var.findValues(val, lidx=True, lfirst=False, lflatten=True)
         assert isEqual( np.nonzero(var.data_array.ravel()==val )[0], idx)
       # test reordering of axes
-      iaxes = range(var.ndim); iaxes.reverse() # reverse order
+      iaxes = list(range(var.ndim)); iaxes.reverse() # reverse order
       axes = [var.axes[i].name for i in iaxes] # get names
       rvar = var.reorderAxes(axes=axes, asVar=True, linplace=False, lcheckAxis=True)
       assert rvar.shape == tuple(var.shape[i] for i in iaxes)
@@ -490,7 +490,7 @@ class BaseVarTest(unittest.TestCase):
       # now a bit more complicated...
       maxes = [var.axes[i].name for i in (0,-1)] # merge first and last
       mvar = var.mergeAxes(axes=maxes, new_axis='test_sample', axatts=None, asVar=True, linplace=False, lcheckAxis=True)
-      print maxes, mvar.atts.test_sample
+      print(maxes, mvar.atts.test_sample)
       assert mvar.atts.test_sample == tuple(maxes), mvar.atts.test_sample # check record
       assert all([not mvar.hasAxis(ax) for ax in maxes])
       slen = 1
@@ -505,8 +505,8 @@ class BaseVarTest(unittest.TestCase):
       assert avar.shape == var.shape[:1]+(10,)+var.shape[1:]
       assert np.all(avar[:,0:5,:]==avar[:,5:10,:])
       assert np.all(avar[:,5,:]==var[:]) 
-      print 
-      print avar[:,:,:].mean(),var[:,:].mean()
+      print() 
+      print(avar[:,:,:].mean(),var[:,:].mean())
       assert isEqual(avar[:,5:6,:].mean(),var[:,:].mean())
       #assert isEqual(avar[:,:,:].mean(axis=1).mean(),var[:,:].mean(), eps=1e-6*var[:,:].mean())
       #print np.__version__
@@ -557,7 +557,7 @@ class BaseVarTest(unittest.TestCase):
 #                             cell_str='{0:d}-{47:d}', cell_axis='time',
                             cell_fct=lambda data: '{0:2.1f}'.format(np.mean(data)), 
                             cell_axis='time', mode='mylatex', filename=filename)
-      print string
+      print(string)
       from utils.misc import tabulate
       alt_str = tabulate(var[:],row_idx=var.axisIndex('y'), col_idx=var.axisIndex('x'), labels=['row 1', 'row 2'],
                          header=['y','x_1','x_2','x_3','x_4'],  
@@ -573,18 +573,18 @@ class BaseVarTest(unittest.TestCase):
         var = self.var(lat=(50,70), lon=(-120,-110))
     print('') # generic version with cell dimension
     t,x,y = var.axes
-    print var(time=slice(0,5), lidx=True).tabulate(row=y.name, column=x.name, header=None, labels=None, 
-                       cell_str='{0:}', cell_axis=t.name, mode='simple', filename=None)
+    print(var(time=slice(0,5), lidx=True).tabulate(row=y.name, column=x.name, header=None, labels=None, 
+                       cell_str='{0:}', cell_axis=t.name, mode='simple', filename=None))
     print('') # generic version without cell dimension
-    print var(time=0, lidx=True).tabulate(row=y.name, column=x.name, header=None, labels=None, 
+    print(var(time=0, lidx=True).tabulate(row=y.name, column=x.name, header=None, labels=None, 
                                           cell_str='{0:}', cell_axis=None, mode='plain', 
-                                          lflatten=True, filename=None)
+                                          lflatten=True, filename=None))
     # print self-representation string
     print('')
     assert var.prettyPrint()
     print('')
     s = str(var)
-    print s
+    print(s)
     print('')
       
   def testReductionArithmetic(self):
@@ -725,7 +725,7 @@ class BaseVarTest(unittest.TestCase):
       assert svar.axisIndex('sample') == 0 and svar.axisIndex('time') == 1
       # N.B.: in the BaseVar case the value of the field should be the count of the month (Jan=1,...,Dec=12)
       if lsimple:
-        for i in xrange(len(svar.getAxis('time'))):
+        for i in range(len(svar.getAxis('time'))):
           assert np.all(svar[:,i,:] == i+1), svar[:,i,:] # make sure the values are ordered corectly
       assert isEqual(svar[:,:,0,0].ravel(),var[:,0,0])
       assert len(svar.getAxis('sample'))==1 or isEqual(svar[1,0,0,0],var[12,0,0])
@@ -774,7 +774,7 @@ class BaseVarTest(unittest.TestCase):
     assert stdvar.shape == var.shape
     assert stdvar.name == var.name+'_test'
     assert stdvar.mean() < trendvar.mean(), (stdvar.mean(),trendvar.mean())
-    print (stdvar.mean(),trendvar.mean())
+    print((stdvar.mean(),trendvar.mean()))
     assert stdvar.std() < trendvar.std(), (stdvar.std(),trendvar.std())
     # now standardize in-place
     name = var.name
@@ -967,18 +967,18 @@ class BaseDatasetTest(unittest.TestCase):
     dataset.removeAxis(ax)
     assert not dataset.hasAxis(ax)
     # replace variable
-    oldvar = dataset.variables.values()[-1]
+    oldvar = list(dataset.variables.values())[-1]
     newvar = Variable(name='another_test', units='none', axes=oldvar.axes, data=np.zeros_like(oldvar.getArray()))
 #     print oldvar.name, oldvar.data
 #     print oldvar.shape    
 #     print newvar.name, newvar.data
 #     print newvar.shape
     dataset.replaceVariable(oldvar,newvar)
-    print dataset
+    print(dataset)
     assert dataset.hasVariable(newvar, strict=False)
     assert not dataset.hasVariable(oldvar, strict=False)  
     # replace axis
-    oldax = dataset.axes.values()[-1]
+    oldax = list(dataset.axes.values())[-1]
     newax = Axis(name='z', units='none', coord=(1,len(oldax),len(oldax)))
 #     print oldax.name, oldax.data
 #     print oldax.data_array    
@@ -1001,7 +1001,7 @@ class BaseDatasetTest(unittest.TestCase):
         dataset = self.dataset(time=slice(0,10), lat=(50,70), lon=(-130,-110))
     # check container properties 
     assert len(dataset.variables) == len(dataset)
-    for varname,varobj in dataset.variables.iteritems():
+    for varname,varobj in dataset.variables.items():
       assert varname in dataset
       assert varobj in dataset
     dataset.load() # perform some computations with real data
@@ -1009,27 +1009,27 @@ class BaseDatasetTest(unittest.TestCase):
     # test apply-to-all functions
     mds = dataset.mean(axis='time') # mean() is of course a Variable method
     assert isinstance(mds,Dataset) and len(mds) <= len(dataset) # number of variables (less, because string vars don't average...)
-    for varname in mds.variables.iterkeys():
+    for varname in mds.variables.keys():
       assert varname in dataset or varname[:-5] in dataset # mean vars have '_mean' appended
-    assert not any([var.hasAxis('time') and not var.strvar for var in mds.variables.itervalues()])
+    assert not any([var.hasAxis('time') and not var.strvar for var in mds.variables.values()])
     del mds; gc.collect()
     hds = dataset.histogram(bins=3, lflatten=True, asVar=False, ldensity=False)
     assert isinstance(hds,dict) and len(hds) <= len(dataset) # number of variables (less, because string vars don't average...)
-    assert all([varname in dataset for varname in hds.iterkeys()])    
+    assert all([varname in dataset for varname in hds.keys()])    
 #     print [s.sum() for vn,s in hds.iteritems() if s is not None]
 #     print [(1-np.isnan(dataset[vn].data_array)).sum() for vn,s in hds.iteritems() if s is not None]
-    assert all([s.sum()==(1-np.isnan(dataset[vn].data_array)).sum() for vn,s in hds.iteritems() if s is not None])
+    assert all([s.sum()==(1-np.isnan(dataset[vn].data_array)).sum() for vn,s in hds.items() if s is not None])
 #     assert all([s.sum()==dataset[vn].data_array.size for vn,s in hds.iteritems() if s is not None])
     del hds; gc.collect()
     # make sure __getattr__ is not always called
-    assert isinstance(dataset.title,basestring)
+    assert isinstance(dataset.title,str)
     try: dataset.test_attr # make sure that non-existant attributes throw exceptions
     except AttributeError: pass 
     # test fitDist
 #     dds = dataset.fitDist(axis='time', lsuffix=True, lkeepName=False) # this is of course a Variable method
     dds = dataset.mean(axis='time', lkeepName=False) # this is of course a Variable method
     assert isinstance(dds,Dataset) and len(dds) <= len(dataset) # number of variables (less, because string vars don't average...)
-    for varname,var in dds.variables.iteritems():
+    for varname,var in dds.variables.items():
       assert not var.hasAxis('time') or var.strvar
       if varname in dataset:
         assert var.shape == dataset.variables[varname].shape
@@ -1066,7 +1066,7 @@ class BaseDatasetTest(unittest.TestCase):
     assert concat_data.shape == shape # this just tests concatVars
     # test dataset concat
     ccds = concatDatasets([ds, cp], axis=axname, coordlim=None, idxlim=None, offset=0, lcheckAxis=lckax)
-    print ccds
+    print(ccds)
     ccvar = ccds[varname] # test concatenated variable 
     assert ccvar.shape == shape
     assert isEqual(ccvar.data_array, concat_data) # masked_equal = True
@@ -1083,7 +1083,7 @@ class BaseDatasetTest(unittest.TestCase):
     check_var = 'pax' if ds.hasVariable('pax') else None
     ccds = concatDatasets([ds, cp], lensembleAxis=True, coordlim=None, idxlim=None, offset=0, 
                           lcheckAxis=lckax, check_vars=check_var)
-    print ccds
+    print(ccds)
     ccvar = ccds[varname] # test concatenated variable 
     assert ccvar.shape == shape
     assert isEqual(ccvar.data_array, concat_data) # masked_equal = True
@@ -1094,11 +1094,11 @@ class BaseDatasetTest(unittest.TestCase):
     dataset = self.dataset
     # check container properties 
     assert len(dataset.variables) == len(dataset)
-    for varname,varobj in dataset.variables.iteritems():
+    for varname,varobj in dataset.variables.items():
       assert varname in dataset
       assert varobj in dataset
     # test get, del, set
-    varname = dataset.variables.keys()[0]
+    varname = list(dataset.variables.keys())[0]
     var = dataset[varname]
     assert isinstance(var,Variable) and var.name == varname
     del dataset[varname]
@@ -1111,7 +1111,7 @@ class BaseDatasetTest(unittest.TestCase):
     assert 'units' not in dataset.__dict__ # hasattr is redirected to Variable attributes by __getattr__
     units = dataset.units # units is of course a property of Variables
     assert len(units) == len(dataset)
-    assert all([var.units == units[varname] for varname,var in dataset.variables.iteritems()])
+    assert all([var.units == units[varname] for varname,var in dataset.variables.items()])
     assert 'mean' not in dataset.__dict__ # hasattr is redirected to Variable attributes by __getattr__    
     dataset.load() # perform some computations with real data
     assert all(dataset.data.values())
@@ -1126,8 +1126,8 @@ class BaseDatasetTest(unittest.TestCase):
     # test
     assert copy is not dataset # should not be the same
     assert isinstance(copy,Dataset) and not isinstance(copy,DatasetNetCDF)
-    assert all([copy.hasAxis(ax.name) for ax in dataset.axes.values()])
-    assert all([copy.hasVariable(var.name) for var in dataset.variables.values()])
+    assert all([copy.hasAxis(ax.name) for ax in list(dataset.axes.values())])
+    assert all([copy.hasVariable(var.name) for var in list(dataset.variables.values())])
 
   def testDatasetArithmetic(self):
     ''' test binary arithmetic with datasets '''
@@ -1239,7 +1239,7 @@ class BaseDatasetTest(unittest.TestCase):
     ens -= 'test'
     # fancy test of Variable and Dataset integration
     assert not any(ens[self.var.name].mean(axis='time').hasAxis('time'))
-    print(ens.prettyPrint(short=True))
+    print((ens.prettyPrint(short=True)))
     # apply function to dataset ensemble
     if all(ax.units == 'month' for ax in ens.time):
       maxens = ens.seasonalMax(lstrict=not lsimple); del maxens
@@ -1247,7 +1247,7 @@ class BaseDatasetTest(unittest.TestCase):
     tes = ens(time=slice(0,3,2))
     assert all(len(tax)==2 for tax in tes.time)
     # test list indexing
-    sne = ens[range(len(ens)-1,-1,-1)]
+    sne = ens[list(range(len(ens)-1,-1,-1))]
     assert sne[-1] == ens[0] and sne[0] == ens[-1]
 
   def testIndexing(self):
@@ -1347,7 +1347,7 @@ class BaseDatasetTest(unittest.TestCase):
       slen = 1 # length of merged axis
       for ax in maxes: slen *= len(dataset.getAxis(ax))
       assert mergeds.hasAxis('test_sample') and len(mergeds.getAxis('test_sample')) == slen
-      print mergeds
+      print(mergeds)
       # test inserting a dummy axis
       axes = tuple(ax.name for ax in self.var.axes)
       lcopy = True
@@ -1357,7 +1357,7 @@ class BaseDatasetTest(unittest.TestCase):
       assert axds.hasAxis('test1') and axds.hasAxis('test2')
       assert len(axds.axes['test1'])==1*n and len(axds.axes['test2'])==2*n
       # more elaborate test of variables
-      for varname,var in dataset.variables.iteritems():
+      for varname,var in dataset.variables.items():
         avar = axds[varname]
         if tuple(ax.name for ax in var.axes) == axes:
           assert avar.hasAxis('test1') and avar.hasAxis('test2')
@@ -1367,13 +1367,13 @@ class BaseDatasetTest(unittest.TestCase):
           else: 
             raise AssertionError
           assert avar.shape == var.shape
-    else: raise AssertionError, dataset
+    else: raise AssertionError(dataset)
 
   def testPrint(self):
     ''' just print the string representation '''
     assert self.dataset.__str__()
     print('')
-    print(self.dataset)
+    print((self.dataset))
     print('')
     
   def testWrite(self):
@@ -1421,7 +1421,7 @@ class NetCDFVarTest(BaseVarTest):
       ncfile = filelist[0]; ncvar = varlist[0]
     # load a netcdf dataset, so that we have something to play with     
     if os.path.exists(folder+ncfile): self.ncdata = nc.Dataset(folder+ncfile,mode='r')
-    else: raise IOError, folder+ncfile
+    else: raise IOError(folder+ncfile)
     # load variable
     ncvar = self.ncdata.variables[ncvar]      
     # get dimensions and coordinate variables
@@ -1493,7 +1493,7 @@ class NetCDFVarTest(BaseVarTest):
       else:
         assert isEqual(self.data.__getitem__(sl).filled(var.fillValue), var.data_array)
     else: 
-      raise AssertionError, "There should be 3 dimensions!!!"
+      raise AssertionError("There should be 3 dimensions!!!")
 
   def testScaling(self):
     ''' test scale and offset operations '''
@@ -1574,8 +1574,8 @@ class DatasetNetCDFTest(BaseDatasetTest):
     # test
     assert copy is not dataset # should not be the same
     assert isinstance(copy,DatasetNetCDF)
-    assert all([copy.hasAxis(ax.name) for ax in dataset.axes.values()])
-    assert all([copy.hasVariable(var.name) for var in dataset.variables.values()])
+    assert all([copy.hasAxis(ax.name) for ax in list(dataset.axes.values())])
+    assert all([copy.hasVariable(var.name) for var in list(dataset.variables.values())])
     copy.close()
     assert os.path.exists(filename) # check for file
       
@@ -1691,7 +1691,7 @@ class GDALVarTest(NetCDFVarTest):
     var = self.var # NCVar object
 #     print var.xlon[:]
 #     print var.ylat[:]
-    print var.geotransform # need to subtract false easting and northing!
+    print(var.geotransform) # need to subtract false easting and northing!
     # trivial tests
     assert var.gdal
     if self.dataset == 'NARR': assert var.isProjected == True
@@ -1744,14 +1744,14 @@ class GDALVarTest(NetCDFVarTest):
     from utils.ascii import readASCIIraster, rasterVariable
     # get folder with test data
     ascii_folder = workdir+'/nrcan_test/'
-    print("ASCII raster test folder: '{:s}'".format(ascii_folder)) # print data folder
+    print(("ASCII raster test folder: '{:s}'".format(ascii_folder))) # print data folder
     if not os.path.exists(ascii_folder): 
       raise IOError("\nASCII raster test folder does not exist!\n('{:s}')".format(ascii_folder))
     
     ## simple case: load a single compressed 2D raster file
     filepath = ascii_folder+'/CA12_hist/rain/1981/rain_01.asc.gz'
     #filepath = ascii_folder+'test.asc.gz'
-    print("ASCII raster test file: '{:s}'".format(filepath)) # print data folder
+    print(("ASCII raster test file: '{:s}'".format(filepath))) # print data folder
     if not os.path.exists(filepath): 
       raise IOError("\nASCII raster 2D test file does not exist!\n('{:s}')".format(filepath))
     data2D, geotransform2D = readASCIIraster(filepath, lgzip=None, lgdal=True, dtype=np.float, lmask=True, 
@@ -1774,9 +1774,9 @@ class GDALVarTest(NetCDFVarTest):
     
     ## test Variable creation from rasters (includes multi-dimensional raster)
     # create axes
-    years = Axis(name='year', units='year', coord=range(1,5)) # year starting in 1979 as origin
+    years = Axis(name='year', units='year', coord=list(range(1,5))) # year starting in 1979 as origin
     assert len(years)==4, years
-    months = Axis(name='month',units='month', coord=range(1,12+1))
+    months = Axis(name='month',units='month', coord=list(range(1,12+1)))
     assert len(months)==12, months
     axes = (years, months, None, None)
     file_pattern = ascii_folder+'/CA12_hist/rain/{year:04d}/{NAME:s}_{month:02d}.asc.gz'
@@ -1784,7 +1784,7 @@ class GDALVarTest(NetCDFVarTest):
     var = rasterVariable(name='precip', units='mm/day', axes=axes, atts=None, plot=None, dtype=np.float32, 
                          projection=None, griddef=None, # geographic projection (lat/lon)
                          file_pattern=file_pattern, lgzip=None, lgdal=True, lmask=True, fillValue=None, 
-                         lskipMissing=True, year=range(1980,1983+1), path_params=dict(NAME='rain'))
+                         lskipMissing=True, year=list(range(1980,1983+1)), path_params=dict(NAME='rain'))
     assert np.all( var.axes[0].coord == np.arange(1,5) ), var.axes[0].coord 
     data, geotransform = var.data_array, var.geotransform
     #print data.shape, geotransform
@@ -1808,7 +1808,7 @@ class GDALVarTest(NetCDFVarTest):
     var = var(time=slice(0,100,10)) # not too much...
     # prepare folder for test data
     folder = '{:s}/ASCII_raster/'.format(workdir)
-    print("\nASCII_raster folder: '{:s}'".format(folder)) # print data folder
+    print(("\nASCII_raster folder: '{:s}'".format(folder))) # print data folder
     if os.path.exists(folder): shutil.rmtree(folder)
     os.mkdir(folder)
     # simple case
@@ -1859,7 +1859,7 @@ class DatasetGDALTest(DatasetNetCDFTest):
       assert dataset.isProjected == False
       assert dataset.xlon == dataset.lon and dataset.ylat == dataset.lat
     # check variables
-    for var in dataset.variables.values():
+    for var in list(dataset.variables.values()):
       assert (var.ndim >= 2 and var.hasAxis(dataset.xlon) and var.hasAxis(dataset.ylat)) == var.gdal              
 
   def testIndexing(self):
@@ -1868,11 +1868,11 @@ class DatasetGDALTest(DatasetNetCDFTest):
     if len(dataset.axes) >= 3:
       assert dataset.gdal
       # find any map and non-map axis
-      print dataset.axes
-      for ax in dataset.axes.itervalues():
+      print(dataset.axes)
+      for ax in dataset.axes.values():
         if ax != dataset.xlon and ax != dataset.ylat: nmx = ax
         else: amx = ax
-      print nmx, amx
+      print(nmx, amx)
       # slice while keeping the map axes (one gets trimmed)
       slcds = dataset(lidx=True, lsqueeze=True, **{nmx.name:0, amx.name:slice(0,2)})
       assert 'gdal' in slcds.__dict__ 
@@ -1909,15 +1909,15 @@ class DatasetGDALTest(DatasetNetCDFTest):
     from utils.ascii import rasterDataset
     # get folder with test data
     ascii_folder = workdir+'/nrcan_test/'
-    print("ASCII raster test folder: '{:s}'".format(ascii_folder)) # print data folder
+    print(("ASCII raster test folder: '{:s}'".format(ascii_folder))) # print data folder
     if not os.path.exists(ascii_folder): 
       raise IOError("\nASCII raster test folder does not exist!\n('{:s}')".format(ascii_folder))
         
     ## test Variable creation from rasters (includes multi-dimensional raster)
     # axes definitions
     axdefs = dict()
-    axdefs['year']  = dict(name='year', units='year', coord=range(1,5)) # year starting in 1979 as origin
-    axdefs['month'] = dict(name='month',units='month', coord=range(1,12+1))
+    axdefs['year']  = dict(name='year', units='year', coord=list(range(1,5))) # year starting in 1979 as origin
+    axdefs['month'] = dict(name='month',units='month', coord=list(range(1,12+1)))
     # variables definitions
     vardefs = dict()
     vardefs['rain'] = dict(name='precip', units='mm/day', axes=('year','month','lat','lon'), 
@@ -1929,8 +1929,8 @@ class DatasetGDALTest(DatasetNetCDFTest):
     # load variable
     dataset = rasterDataset(name='NRCAN', title='NRCan', atts=None, projection=None, griddef=None, # geographic projection (lat/lon)
                             vardefs=vardefs, axdefs=axdefs, file_pattern=file_pattern, 
-                            lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, year=range(1980,1983+1))
-    print dataset
+                            lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, year=list(range(1980,1983+1)))
+    print(dataset)
     assert dataset.gdal
     assert 'lon' in dataset.axes and 'lat' in dataset.axes
     
@@ -1944,11 +1944,11 @@ class DatasetGDALTest(DatasetNetCDFTest):
       dataset = dataset(**sl).load() # not too much...
       # clean/create folder for test data
       folder = '{:s}/ASCII_raster/'.format(workdir)
-      print("\nASCII_raster folder: '{:s}'".format(folder)) # print data folder
+      print(("\nASCII_raster folder: '{:s}'".format(folder))) # print data folder
       if os.path.exists(folder): shutil.rmtree(folder)
       # simple case, sequential indexing
       filedict = dataset.ASCII_raster(folder=folder)
-      for var,filelist in filedict.iteritems():
+      for var,filelist in filedict.items():
         assert var in dataset
         for filepath in filelist: assert os.path.exists(filepath), filepath
       # fancy case with coordinate indexing and formatter
@@ -1956,7 +1956,7 @@ class DatasetGDALTest(DatasetNetCDFTest):
       formatter = dict(time=('Time','{:04.0f}'))
       filedict = dataset.ASCII_raster(varlist=varlist, folder=folder, lcoord=True, 
                                       formatter=formatter, prefix='TEST', ext='')
-      for var,filelist in filedict.iteritems():
+      for var,filelist in filedict.items():
         assert var in dataset
         for filepath in filelist: assert os.path.exists(filepath), filepath
       # this filename should exist
@@ -1969,7 +1969,7 @@ if __name__ == "__main__":
 
     # use Intel MKL multithreading: OMP_NUM_THREADS=4
 #     import os
-    print('OMP_NUM_THREADS = {:s}\n'.format(os.environ['OMP_NUM_THREADS']))    
+    print(('OMP_NUM_THREADS = {:s}\n'.format(os.environ['OMP_NUM_THREADS'])))    
         
     specific_tests = []
 #     specific_tests += ['GridData']
@@ -2008,7 +2008,7 @@ if __name__ == "__main__":
     # construct dictionary of test classes defined above
     test_classes = dict()
     local_values = locals().copy()
-    for key,val in local_values.iteritems():
+    for key,val in local_values.items():
       if key[-4:] == 'Test':
         test_classes[key[:-4]] = val
     
@@ -2031,12 +2031,12 @@ if __name__ == "__main__":
       errs += e
       f = len(test.failures)
       fails += f
-      if e+ f != 0: print("\nErrors in '{:s}' Tests: {:s}".format(name,str(test)))
+      if e+ f != 0: print(("\nErrors in '{:s}' Tests: {:s}".format(name,str(test))))
     if errs + fails == 0:
-      print("\n   ***   All {:d} Test(s) successfull!!!   ***   \n".format(runs))
+      print(("\n   ***   All {:d} Test(s) successfull!!!   ***   \n".format(runs)))
     else:
-      print("\n   ###     Test Summary:      ###   \n" + 
+      print(("\n   ###     Test Summary:      ###   \n" + 
             "   ###     Ran {:2d} Test(s)     ###   \n".format(runs) + 
             "   ###      {:2d} Failure(s)     ###   \n".format(fails)+ 
-            "   ###      {:2d} Error(s)       ###   \n".format(errs))
+            "   ###      {:2d} Error(s)       ###   \n".format(errs)))
     
