@@ -553,7 +553,7 @@ class Variable(object):
       substr = name + ' '*(max(1,35-len(name)-len(shape))) + shape # the field is 35 wide, with at least 1 space
       string = '{:<35s}  {:s}'.format(substr,axes)
     else:
-      string = '{0:s} \'{1:s}\' [{2:s}]   {3:s}\n'.format(self.__class__.__name__,self.name,self.units,self.__class__)
+      string = "{0:s} '{1:s}' [{2:s}]   {3:s}\n".format(self.__class__.__name__,self.name,self.units,str(self.__class__))
       for ax in self.axes: string += '  {0:s}\n'.format(ax.prettyPrint(short=True))
       string += 'Attributes: {0:s}\n'.format(str(self.atts))
       string += 'Plot Attributes: {0:s}'.format(str(self.plot))
@@ -1339,7 +1339,7 @@ class Variable(object):
     if not isInt(blklen): raise TypeError
     if blkidx is not None:
       if blklen < np.max(blkidx) or np.min(blkidx) < 0: ArgumentError 
-    if lblk or lperi: nblks = axlen/blklen # number of blocks
+    if lblk or lperi: nblks = axlen//blklen # number of blocks
     # more checks
     if ( lblk or lperi ) and axlen%blklen != 0: 
       raise NotImplementedError('Currently seasonal means only work for full years.')
@@ -1521,9 +1521,10 @@ class Variable(object):
     if lnormalize: normsum = np.sum(data, axis=axis_idx) 
     np.cumsum(data, axis=axis_idx, out=data) # do this in-place!
 #     data = np.cumsum(data, axis=axis_idx)
-    if lnormalize: data /= normsum 
+    if lnormalize: data = data / normsum 
     # update and polish variable
     if asVar:
+      cvar.unload(); cvar.dtype = None # purge data, because normalization can change dtype
       cvar.load(data) # load new CDF data
       cvar.plot = variablePlotatts['cdf'].copy()
     else: cvar = data
@@ -2232,7 +2233,7 @@ class Variable(object):
         data = np.moveaxis(data, self.axisIndex(pax,), -1) # move point dimension to the back
         assert data.shape[-1] == pe
         rshp = data.shape[:-1] # old shape of remaining dimensions
-        re = data.size/pe
+        re = data.size//pe
         data = data.reshape((re,pe)) # flatten other dimensions
         # loop over dimensions
         grid_data = np.zeros((re,)+gshp) # allocate new array
@@ -2444,7 +2445,7 @@ class Variable(object):
     return data, name, units
 
   @BinaryCheckAndCreateVar(sameUnits=False, linplace=False)
-  def __div__(self, a, othername=None, otherunits=None, linplace=False):
+  def __truediv__(self, a, othername=None, otherunits=None, linplace=False):
     ''' Divide two variables and return a new variable. '''
     assert not linplace, 'This operation is strictly not in-place!'
     data = np.divide(self.data_array, a, casting=casting_rule)
@@ -3045,12 +3046,9 @@ class Dataset(object):
                      lcopy=False, years=years, listAxis=listAxis, **axes)    
         # convert to Python scalar (of sorts)
         if isinstance(attval,np.ndarray):
-          if np.issubdtype(attval.dtype, np.str): attval = str(attval).rstrip()
-          elif np.issubdtype(attval.dtype, np.str): attval = str(attval).rstrip()
-          elif np.issubdtype(attval.dtype, str): attval = str(attval).rstrip()    
-          elif np.issubdtype(attval.dtype, np.integer): attval = int(attval)
-          elif np.issubdtype(attval.dtype, np.float): attval = float(attval)
-          else: raise TypeError(attval)
+          if np.issubdtype(attval.dtype, np.integer): attval = int(attval)
+          elif np.issubdtype(attval.dtype, np.floating): attval = float(attval)
+          else: attval = str(attval).rstrip()
         singlevaratts[var.name] = attval
         np.str
       else:
@@ -3148,7 +3146,7 @@ class Dataset(object):
       klass = self.__class__.__name__ 
       string = '{:<20s} {:s}, {:s} ({:s})'.format(title,variables,axes,klass)
     else:
-      string = '{0:s} \'{1:s}\'   {2:s}\n'.format(self.__class__.__name__,self.title or self.name, self.__class__)
+      string = "{0:s} '{1:s}'   {2:s}\n".format(self.__class__.__name__,self.title or self.name, str(self.__class__))
       # print variables (sorted alphabetically)
       string += 'Variables:\n'
       varlisting = ['  {0:s}\n'.format(var.prettyPrint(short=True)) for var in list(self.variables.values())]
@@ -3222,7 +3220,7 @@ class Dataset(object):
     return self * a
 
   @BinaryCheckAndCreateDataset
-  def __div__(self, a,):
+  def __truediv__(self, a,):
     ''' Divide corresponding Variables of two Datasets or add a constant number and return new Dataset. '''
     return self / a
   

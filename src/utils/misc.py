@@ -57,7 +57,7 @@ def tabulate(data, row_idx=0, col_idx=1, header=None, labels=None, cell_str='{}'
     if not callable(cell_fct): raise TypeError(cell_fct)
     lcellfct = True
   else: lcellfct = False
-  if cell_idx >= data.ndim: raise AxisError(cell_idx)
+  if cell_idx is not None and cell_idx >= data.ndim: raise AxisError(cell_idx)
   collen = data.shape[col_idx]; rowlen = data.shape[row_idx] 
   if row_idx < col_idx: col_idx -= 1 # this is a shortcut for later (data gets sliced by row)
   llabel = False; lheader = False

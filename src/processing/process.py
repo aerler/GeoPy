@@ -31,7 +31,7 @@ class ProcessError(Exception):
   ''' Error class for exceptions occurring in methods of the CPU (CentralProcessingUnit). '''
   pass
 
-class CentralProcessingUnit(object):
+class CentralProcessingUnit():
   
   def __init__(self, source, target=None, varlist=None, ignorelist=None, tmp=True, feedback=True):
     ''' Initialize processor and pass input and output datasets. '''

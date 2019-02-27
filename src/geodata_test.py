@@ -22,7 +22,6 @@ from geodata.base import Variable, Axis, Dataset, Ensemble, concatVars, concatDa
 from geodata.stats import VarKDE, VarRV, asDistVar
 from geodata.stats import kstest, ttest, mwtest, wrstest, pearsonr, spearmanr
 from datasets.common import data_root
-from wrfavg.wrfout_average import ldebug
 
 # work directory settings ("global" variable)
 # the environment variable RAMDISK contains the path to the RAM disk
@@ -661,8 +660,7 @@ class BaseVarTest(unittest.TestCase):
 #     hvar = var.histogram(bins=bins, binedgs=binedgs, ldensity=False, asVar=False, axis=t.name)
 #     cvar = var.CDF(bins=bins, binedgs=binedgs, lnormalize=False, asVar=False, axis=t.name)
 #     assert isEqual(cdf, cvar, masked_equal=True)
-    cdf = np.cumsum(hvar.data_array, axis=0)
-    cdf /= np.sum(hvar.data_array,axis=0)
+    cdf = np.cumsum(hvar.data_array, axis=0) / np.sum(hvar.data_array,axis=0)
     del hvar; gc.collect()
     cvar = var.CDF(bins=bins, binedgs=binedgs, lnormalize=True, asVar=True, axis=t.name)
     assert isEqual(cdf, cvar.data_array, masked_equal=True)
@@ -688,10 +686,10 @@ class BaseVarTest(unittest.TestCase):
       assert cvar.shape == var.shape[:tax]+(12,)+var.shape[tax+1:]      
     if self.__class__ is BaseVarTest:
       # this only works with a specially prepared data field
-      yfake = np.ones((var.shape[0]/12,)+var.shape[1:])
+      yfake = np.ones((var.shape[0]//12,)+var.shape[1:])
       assert yvar.shape == yfake.shape
       assert isEqual(yvar.getArray(), yfake*6.5)
-      yfake = np.ones((var.shape[0]/12,)+var.shape[1:], dtype=var.dtype)
+      yfake = np.ones((var.shape[0]//12,)+var.shape[1:], dtype=var.dtype)
       # N.B.: the data increases linearly in time and is constant in space (see setup fct.)
       assert isEqual(var.seasonalMax('mam',asVar=False,lstrict=lstrict), yfake*5)
       assert isEqual(var.seasonalMin('mam',asVar=False,lstrict=lstrict), yfake*3)
@@ -1997,11 +1995,11 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
+    tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
+    tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
 #     tests += ['DatasetGDAL']
     

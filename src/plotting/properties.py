@@ -8,13 +8,12 @@ Note that default scale-factors assume that the data is in SI units (not plot un
 '''
 
 from collections import namedtuple
-from types import NoneType
 from utils.constants import cp, g0
 
 ## dictionary of plot attributes for some common variables
 
 # a class of plot attributes based on named tuples
-class PlotAtts(namedtuple('PlotAtts', ['name','title','units','scale', 'preserve','scalefactor','offset'], verbose=False, rename=False)):
+class PlotAtts(namedtuple('PlotAtts', ['name','title','units','scale', 'preserve','scalefactor','offset'], rename=False)):
   # define some sensible default values
   def __new__(cls, name        = 'unknown', 
                    title       = 'unknown variable', 
@@ -754,8 +753,8 @@ def getPlotAtts(name=None, units=None, atts=None, plot=None, plotatts_dict=None)
   if units is not None: pass 
   elif atts is not None and 'units' in atts: units = atts['units']  
   else: raise ArgumentError
-  if not isinstance(atts,(dict,NoneType)): raise TypeError(atts)
-  if not isinstance(plot,(dict,PlotAtts,NoneType)): raise TypeError(plot)
+  if atts is not None and not isinstance(atts,dict): raise TypeError(atts)
+  if plot is not None and not isinstance(plot,(dict,PlotAtts)): raise TypeError(plot)
   if plotatts_dict is None: plotatts_dict = variablePlotatts
   if not isinstance(plotatts_dict,dict): raise TypeError(plotatts_dict)
   # find variable in plotatts_dict (based on name)
