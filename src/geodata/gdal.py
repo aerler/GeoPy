@@ -266,8 +266,10 @@ def getGridDef(var):
 griddef_pickle = '{0:s}_griddef.pickle.gz' # file pattern for pickled grids
 
 # function to load pickled grid definitions
-def loadPickledGridDef(grid=None, res=None, filename=None, folder=None, check=True, lfilepath=False, lgzip=None):
-  ''' function to load pickled datasets '''
+def loadPickledGridDef(grid=None, res=None, filename=None, folder=None, check=True, lfilepath=False, 
+                       lgzip=None, encoding='latin1'):
+  ''' function to load pickled datasets; encoding='latin1' appears to be necessary to load objects 
+      pickled in Python 2 in Python 3 '''
   if grid is not None and not isinstance(grid,str): raise TypeError(grid)
   if res is not None and not isinstance(res,str): raise TypeError(res)
   if filename is not None and not isinstance(filename,str): raise TypeError(filename)
@@ -294,7 +296,8 @@ def loadPickledGridDef(grid=None, res=None, filename=None, folder=None, check=Tr
       # open file and load pickle
       op = gzip.open if lgzip else open
       with op(filepath, 'r') as filehandle:
-          griddef = pickle.load(filehandle)
+          if encoding: griddef = pickle.load(filehandle, encoding=encoding)
+          else: griddef = pickle.load(filehandle,)
   elif check: 
       raise IOError("GridDefinition pickle file '{0:s}' not found!".format(filepath)) 
   else:
