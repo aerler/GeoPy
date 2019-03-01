@@ -8,7 +8,6 @@ A custom Figure class that provides some specialized functions and uses a custom
 
 # external imports
 from warnings import warn
-from types import NoneType
 from matplotlib.figure import Figure, SubplotBase, subplot_class_factory
 from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 import numpy as np
@@ -192,7 +191,7 @@ class MyFigure(Figure):
     if labels is None: labels = [None if plt is None else plt.get_label() for plt in plots ]
     elif not isinstance(labels, (list,tuple)): raise TypeError
     if plots is None: plots = self.axes[0].plots
-    elif not isinstance(plots, (list,tuple,NoneType)): raise TypeError
+    elif plots is not None and not isinstance(plots, (list,tuple)): raise TypeError
     # figure out fontsize and row numbers  
     fontsize = fontsize or self.axes[0].get_yaxis().get_label().get_fontsize() # or fig._suptitle.get_fontsize()
     nlen = len(plots) if plots else len(labels)

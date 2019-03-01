@@ -1903,7 +1903,7 @@ class Variable(object):
       if tatts['units'].lower() == 'year' and taxis.units.lower() in monthlyUnitsList:
         raxis = avar.getAxis(tatts['name'])
         if taxis.coord[0]%12 == 1: # special treatment, if we start counting at 1(instead of 0)
-          raxis.coord -= 1; raxis.coord /= 12; raxis.coord += 1  
+          raxis.coord = ( ( raxis.coord -1 ) // 12 ) + 1  
         else: raxis.coord /= 12 # just divide by 12, assuming we count from 0
     # return data
     return avar
@@ -2401,7 +2401,7 @@ class Variable(object):
     return self.data_array, self.name, self.units # return array as result
 
   @BinaryCheckAndCreateVar(sameUnits=False, linplace=True)
-  def __idiv__(self, a, othername=None, otherunits=None, linplace=True):
+  def __itruediv__(self, a, othername=None, otherunits=None, linplace=True):
     ''' Divide the existing data by a number or an array. '''      
     assert linplace, 'This is strictly an in-place operation!'      
     np.divide(self.data_array, a, out=self.data_array, casting=casting_rule)
@@ -2938,10 +2938,10 @@ class Dataset(object):
     # squeeze variables
     for var in list(self.variables.values()):
       var.squeeze() # get axes that were removed
-      axes.add(var.axes) # collect axes that are still needed
+      for ax in var.axes: axes.add(ax.name) # collect axes that are still needed
     # remove axes that are no longer needed
     retour = []
-    for ax in list(self.axes.values()):
+    for ax in list(self.axes.keys()): # some reason, going by object causes an error: unhashable type
       if ax not in axes: 
         self.removeAxis(ax)
         retour.append(ax)        

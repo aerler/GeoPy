@@ -23,7 +23,6 @@ from processing.multiprocess import asyncPoolEC
 from processing.misc import getMetaData,  getExperimentList, loadYAML, getTargetFile
 from utils.nctools import writeNetCDF
 # new variable functions and bias-correction 
-import processing.newvars as newvars
 from processing.bc_methods import getPickleFileName
 
 ## helper classes to handle different file formats
@@ -345,6 +344,7 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
           var = None
           # (re-)compute variable, if desired...
           if varname in compute_list:
+              import processing.newvars as newvars
               if varname == 'precip': var = newvars.computeTotalPrecip(source)
               elif varname == 'waterflx': var = newvars.computeWaterFlux(source)
               elif varname == 'liqwatflx': var = newvars.computeLiquidWaterFlux(source)
@@ -468,7 +468,8 @@ if __name__ == '__main__':
 #         NP = 1 ; ldebug = True # just for tests
 #         modes = ('time-series','climatology')
 #         modes = ('annual-mean','climatology', 'time-series')
-        modes = ('annual-mean','climatology',)
+#         modes = ('annual-mean','climatology',)
+        modes = ('annual-mean',)
 #         modes = ('climatology',)  
 #         modes = ('time-series',)  
         loverwrite = True
@@ -496,8 +497,9 @@ if __name__ == '__main__':
         resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}
         lLTM = False # also regrid the long-term mean climatologies 
         datasets = []
-        datasets += ['NRCan']; periods = [(1970,2000),(1980,2010),][1:] # this will generally not work, because we don't have snow/-melt...
+        datasets += ['NRCan']; periods = [(1970,2000),(1980,2010),][:1] # this will generally not work, because we don't have snow/-melt...
 #         resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies'][1:2]}
+        resolutions = {'NRCan': ['na12_taiga','na12_alpine',][:1]}
     #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
         # CESM experiments (short or long name) 
         CESM_project = None # all available experiments
@@ -507,8 +509,8 @@ if __name__ == '__main__':
     #     CESM_experiments += ['Ctrl-1', 'Ctrl-A', 'Ctrl-B', 'Ctrl-C']
         CESM_filetypes = ['atm','lnd']
         # WRF experiments (short or long name)
-        WRF_project = 'GreatLakes'; unity_grid = 'glb1_d02' # only GreatLakes experiments
-#         WRF_project = 'WesternCanada'; unity_grid = 'arb2_d02' # only WesternCanada experiments
+#         WRF_project = 'GreatLakes'; unity_grid = 'glb1_d02' # only GreatLakes experiments
+        WRF_project = 'WesternCanada'; unity_grid = 'arb2_d02' # only WesternCanada experiments
         WRF_experiments = [] # use None to process all WRF experiments
 #         WRF_experiments += ['erai-g','erai-t','erai-g3','erai-t3',]
 #         WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
@@ -557,8 +559,9 @@ if __name__ == '__main__':
         # typically a specific grid is required
         grids = [] # list of grids to process
 #         grids += [None]; project = None # special keyword for native grid
+        grids += ['arb2']; project = 'ARB' # main grid for ARB project
 #         grids += ['uph1']; project = 'Elisha' # grid for Elisha
-        grids += ['glb1']; project = 'GLB' # grid for Great Lakes Basin project
+#         grids += ['glb1']; project = 'GLB' # grid for Great Lakes Basin project
 #         grids += ['grw2']; project = 'GRW' # small grid for GRW project
 #         grids += ['grw3']; project = 'GRW' # fine grid for GRW project
 #         grids += ['asb1']; project = 'ASB' # main grid for ASB project
@@ -569,8 +572,9 @@ if __name__ == '__main__':
         ## export to ASCII raster
         export_arguments = dict(
             # NRCan
-            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT', None)),
-            compute_list = [], exp_list= ['lat2D','lon2D','pet']+CMC_adjusted,   # varlist for NRCan
+            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/taiga/'.format(os.getenv('HGS_ROOT', None)),
+#             compute_list = [], exp_list= ['lat2D','lon2D','pet']+CMC_adjusted,   # varlist for NRCan
+            compute_list = [], exp_list= ['lat2D','lon2D','pet','liqwatflx'],   # varlist for NRCan
             # WRF
 #             exp_list= ['landuse','landmask'],
 #             exp_list= ['lat2D','lon2D','zs','LU_MASK','LU_INDEX','LANDUSEF','VEGCAT','SHDMAX','SHDMIN',

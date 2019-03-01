@@ -98,23 +98,21 @@ def getMapSetup(lpickle=False, folder=None, name=None, lrm=False, **kwargs):
   ''' function that serves a MapSetup instance with complementary pickles '''
   # handle pickling
   if lpickle:
-    if not isinstance(folder,str): raise TypeError 
-    if not os.path.exists(folder): raise IOError(folder)
-    filename = '{0:s}/{1:s}.pickle'.format(folder,name)
-    if os.path.exists(filename) and not lrm:
-      # open existing MapSetup from pickle
-      filehandle = open(filename, 'r')
-      mapSetup = pickle.load(filehandle)
-      filehandle.close()
-    else:
-      if lrm and os.path.exists(filename): os.remove(filename) 
-      # create new MapSetup and also pickle it
-      mapSetup = MapSetup(name=name, **kwargs)
-      filehandle = open(filename, 'w')
-      pickle.dump(mapSetup, filehandle)
-      filehandle.close()
+      if not isinstance(folder,str): raise TypeError 
+      if not os.path.exists(folder): raise IOError(folder)
+      filename = '{0:s}/{1:s}.pickle'.format(folder,name)
+      if os.path.exists(filename) and not lrm:
+          # open existing MapSetup from pickle
+          with open(filename, 'rb') as filehandle:
+              mapSetup = pickle.load(filehandle,)
+      else:
+          if lrm and os.path.exists(filename): os.remove(filename) 
+          # create new MapSetup and also pickle it
+          mapSetup = MapSetup(name=name, **kwargs)
+          with open(filename, 'wb') as filehandle:
+              pickle.dump(mapSetup, filehandle)
   else:
-    # instantiate object
-    mapSetup = MapSetup(name=name, **kwargs)
+      # instantiate object
+      mapSetup = MapSetup(name=name, **kwargs)
   # return MapSetup instance
   return mapSetup

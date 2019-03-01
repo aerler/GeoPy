@@ -10,7 +10,6 @@ utility functions, mostly for plotting, that are not called directly
 import scipy
 import numpy as np
 import matplotlib as mpl
-from types import NoneType
 # internal imports
 from geodata.base import Variable, Dataset, Ensemble
 from geodata.misc import VariableError, AxisError
@@ -82,7 +81,7 @@ def checkVarlist(varlist, varname=None, ndim=1, bins=None, support=None, method=
         else: raise TypeError
       varlist = tmplist; del tmplist
   else: raise TypeError
-  if not all([isinstance(var,(Variable, NoneType)) for var in varlist]): raise TypeError
+  if not all([var is None or isinstance(var,Variable) for var in varlist]): raise TypeError
   for var in varlist: 
     if var is not None and var.data_array.size > 1: var.squeeze() # remove singleton dimensions
   # evaluate distribution variables on support/bins

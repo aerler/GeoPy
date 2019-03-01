@@ -163,12 +163,12 @@ def defaultNamedtuple(typename, field_names, defaults=None):
   return T
   
 # create a named tuple instance on the fly from dictionary
-def namedTuple(typename=None, field_names=None, verbose=False, rename=False, **kwargs):
+def namedTuple(typename=None, field_names=None, rename=False, **kwargs):
   ''' a wrapper for namedtuple that can create the class on the fly from a dict '''
   if typename is None: typename = 'NamedTuple'
   if field_names is None: field_names = list(kwargs.keys())
   # create namedtuple class
-  NT = col.namedtuple(typename, field_names, verbose=verbose, rename=rename)
+  NT = col.namedtuple(typename, field_names, rename=rename)
   # create namedtuple instance and populate with values from kwargs
   nt = NT(**kwargs) 
   # return tuple instance 

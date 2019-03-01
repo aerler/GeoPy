@@ -274,21 +274,33 @@ def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=No
             if not 'snowh' in dataset: # check prerequisites
                 raise VariableError("Prerequisites for '{:s}' not found.\n{}".format(var,dataset))
             # N.B.: before we can compute anything, we need estimates of snow density; the values below are seasonal
-            #       estimates from the Canadian Meteorological Centre for maritime climates (Table 4):
-            #       https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/
+            #       estimates from the Canadian Meteorological Centre for maritime climates (Table 3):
+            #       https://nsidc.org/data/NSIDC-0447/versions/1
             #       a factor of 1000 has been applied, because snow depth is in m (and not mm)
-            if snow_density.lower() == 'maritime':
+            if snow_density.lower() == 'tundra':
+              # Tundra snow cover
+              density = np.asarray([0.2303, 0.2427, 0.2544, 0.2736, 0.3117, 0.3693, 0.3693, 0.3693, 0.2, 0.2, 0.2107, 0.2181], dtype=np.float32)*1000.
+              density_note = "Snow density extimates from CMC for Tundra (Tab. 3): https://nsidc.org/data/NSIDC-0447/versions/1#title15"
+            elif snow_density.lower() == 'taiga':
+              # Taiga snow cover
+              density = np.asarray([0.1931, 0.2059, 0.2218, 0.2632, 0.3190, 0.3934, 0.3934, 0.3934, 0.16, 0.16, 0.1769, 0.1798], dtype=np.float32)*1000.
+              density_note = "Snow density extimates from CMC for Taiga (Tab. 3): https://nsidc.org/data/NSIDC-0447/versions/1#title15"
+            elif snow_density.lower() == 'maritime':
               # Maritime snow cover
               density = np.asarray([0.2165, 0.2485, 0.2833, 0.332, 0.3963, 0.501, 0.501, 0.501, 0.16, 0.16, 0.1835, 0.1977], dtype=np.float32)*1000.
-              density_note = "Snow density estimates from CMC for maritime climates (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
-            if snow_density.lower() == 'ephemeral':
+              density_note = "Snow density estimates from CMC for Maritime climates (Tab. 3): https://nsidc.org/data/NSIDC-0447/versions/1#title15"
+            elif snow_density.lower() == 'ephemeral':
               # Ephemeral snow cover
               density = np.asarray([0.3168, 0.3373, 0.3643, 0.4046, 0.4586, 0.5098, 0.5098, 0.5098, 0.25, 0.25, 0.3, 0.3351], dtype=np.float32)*1000.
-              density_note = "Snow density extimates from CMC for ephemeral snow cover (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
+              density_note = "Snow density extimates from CMC for Ephemeral snow cover (Tab. 3): https://nsidc.org/data/NSIDC-0447/versions/1#title15"
             elif snow_density.lower() == 'prairies':
               # Prairie snow cover
               density = np.asarray([0.2137, 0.2416, 0.2610, 0.308, 0.3981, 0.4645, 0.4645, 0.4645, 0.14, 0.14, 0.1616, 0.1851], dtype=np.float32)*1000.
-              density_note = "Snow density extimates from CMC for the prairies (Tab. 4): https://nsidc.org/data/docs/daac/nsidc0447_CMC_snow_depth/"
+              density_note = "Snow density extimates from CMC for the Prairies (Tab. 3): https://nsidc.org/data/NSIDC-0447/versions/1#title15"
+            elif snow_density.lower() == 'alpine':
+              # Alpine snow cover
+              density = np.asarray([0.2072, 0.2415, 0.2635, 0.312, 0.3996, 0.4889, 0.4889, 0.4889, 0.16, 0.16, 0.172, 0.1816], dtype=np.float32)*1000.
+              density_note = "Snow density extimates from CMC for Alpine snow cover (Tab. 3): https://nsidc.org/data/NSIDC-0447/versions/1#title15"
             # Note: these snow density values are for southern Canada; values for the high latitudes are substantially different!
             # compute values and add to dataset
             newvar = monthlyTransform(var=dataset.snowh.copy(deepcopy=True), lvar=True, linplace=True, scalefactor=density)
@@ -508,9 +520,9 @@ clim_file_pattern = avgfile # filename pattern: variable name and resolution
 data_folder = avgfolder # folder for user data
 grid_def = {'NA12':NRCan_NA12_grid, 'CA12':NRCan_CA12_grid, 'CA24':NRCan_CA24_grid} # standardized grid dictionary
 LTM_grids = ['NA12','CA12','CA24'] # grids that have long-term mean data 
-LTM_grids += ['na12_ephemeral','na12_maritime','na12_prairies'] # some fake grids to accommodate different snow densities
+LTM_grids += ['na12_tundra','na12_taiga','na12_maritime','na12_ephemeral','na12_prairies','na12_alpine',] # some fake grids to accommodate different snow densities
 TS_grids = ['NA12','CA12'] # grids that have time-series data
-TS_grids += ['na12_ephemeral','na12_maritime','na12_prairies'] # some fake grids to accommodate different snow densities
+TS_grids += ['na12_tundra','na12_taiga','na12_maritime','na12_ephemeral','na12_prairies','na12_alpine',] # some fake grids to accommodate different snow densities
 grid_res = {'NA12':1./12.,'CA12':1./12.,'CA24':1./24.} # no special name, since there is only one...
 default_grid = NRCan_NA12_grid
 # functions to access specific datasets
@@ -529,14 +541,14 @@ if __name__ == '__main__':
 #     mode = 'test_timeseries'
 #     mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
-#     mode = 'convert_Normals'
+    mode = 'convert_Normals'
 #     mode = 'convert_Historical'
 #     mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
 #     pntset = 'ecprecip'
-#     period = (1970,2000)
-    period = (1980,2010) 
+    period = (1970,2000)
+#     period = (1980,2010) 
     res = None; grid = None
     
     if mode == 'test_climatology':
@@ -618,8 +630,10 @@ if __name__ == '__main__':
         
         # parameters
 #         snow_density = 'ephemeral'
-        snow_density = 'maritime'
+#         snow_density = 'maritime'
 #         snow_density = 'prairies'
+#         snow_density = 'taiga'
+        snow_density = 'alpine'        
         prdstr = '_{}-{}'.format(*period)
         resolution = 12; grdstr = '_na{:d}_{:s}'.format(resolution, snow_density)
         ncfile = avgfolder + avgfile.format(grdstr,prdstr)

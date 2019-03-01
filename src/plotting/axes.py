@@ -13,7 +13,6 @@ from matplotlib.colors import LogNorm, Normalize
 from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
 from matplotlib.projections import PolarAxes
-from types import NoneType
 from warnings import warn
 # internal imports
 from geodata.base import Variable, Ensemble
@@ -767,9 +766,9 @@ class MyAxes(Axes):
     if color and not colors: colors = color
     elif color and colors: raise ArgumentError
     if isinstance(colors,(tuple,list)): 
-      if not all([isinstance(color,(str,NoneType)) for color in colors]): raise TypeError
+      if not all([color is None or isinstance(color,str) for color in colors]): raise TypeError
       if len(varlist) != len(colors): raise ListError("Failed to match linestyles to varlist!")
-    elif isinstance(colors,(str,NoneType)): colors = [colors]*len(varlist)
+    elif colors is None or isinstance(colors,str): colors = [colors]*len(varlist)
     else: raise TypeError    
     ## generate list of values for histogram
     values = []; color_list = []; label_list = []; vlen = None # list of plot handles
