@@ -917,7 +917,7 @@ class Variable(object):
     # slice data using the variables __getitem__ method (which can also be overloaded)
     if self.data:
       if self.ndim > 0:
-        data = self.data_array.__getitem__(slcs) # just pass list of slices
+        data = self.data_array.__getitem__(tuple(slcs)) # just pass tuple of slices
       else: data = self.data_array.__getitem__(None)
       if lcopy and isinstance(data,np.ndarray): data = data.copy() # copy array
       if lsqueeze: data = np.squeeze(data) # squeeze

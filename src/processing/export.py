@@ -23,6 +23,7 @@ from processing.multiprocess import asyncPoolEC
 from processing.misc import getMetaData,  getExperimentList, loadYAML, getTargetFile
 from utils.nctools import writeNetCDF
 # new variable functions and bias-correction 
+import processing.newvars as newvars
 from processing.bc_methods import getPickleFileName
 
 ## helper classes to handle different file formats
@@ -343,8 +344,7 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
           variables = None # variable list
           var = None
           # (re-)compute variable, if desired...
-          if varname in compute_list:
-              import processing.newvars as newvars
+          if varname in compute_list:              
               if varname == 'precip': var = newvars.computeTotalPrecip(source)
               elif varname == 'waterflx': var = newvars.computeWaterFlux(source)
               elif varname == 'liqwatflx': var = newvars.computeLiquidWaterFlux(source)

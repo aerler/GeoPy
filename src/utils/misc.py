@@ -7,6 +7,7 @@ Random utility functions...
 '''
 
 # external imports
+import os
 import numpy as np
 import scipy.linalg as la
 from utils.signalsmooth import smooth
@@ -556,13 +557,15 @@ def traverseList(lsl, fct):
 
 # funcion that returns the last n lines of a file, like tail
 # adapted from Stack Overflow:
-# 'https://stackoverflow.com/questions/136168/get-last-n-lines-of-a-file-with-python-similar-to-tail' 
+# 'https://stackoverflow.com/questions/136168/get-last-n-lines-of-a-file-with-python-similar-to-tail'
+# with modification for Python 3 (does not allow seek from the end)
+# 'https://stackoverflow.com/questions/21533391/seeking-from-end-of-file-throwing-unsupported-exception/51131242#51131242'
 def tail(f, n=20):
     ''' Returns the last 'n' lines of file 'f' as a list. '''
     if n == 0:
         return []
     BUFSIZ = 1024
-    f.seek(0, 2)
+    f.seek(0, os.SEEK_END) # seek relative to the end
     bytes = f.tell()
     size = n + 1
     block = -1
@@ -570,7 +573,10 @@ def tail(f, n=20):
     while size > 0 and bytes > 0:
         if bytes - BUFSIZ > 0:
             # Seek back one whole BUFSIZ
-            f.seek(block * BUFSIZ, 2)
+            # f.seek(block * BUFSIZ, 2) # only works in Python 2
+            # for Python 3 (adapted from Stack Overflow
+            f.seek(0, os.SEEK_END)              # seek to end of file; f.seek(0, 2) is legal
+            f.seek(f.tell() + block * BUFSIZ, os.SEEK_SET)   # go backwards
             # read BUFFER
             data.insert(0, f.read(BUFSIZ))
         else:
