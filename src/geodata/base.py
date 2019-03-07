@@ -1904,7 +1904,7 @@ class Variable(object):
         raxis = avar.getAxis(tatts['name'])
         if taxis.coord[0]%12 == 1: # special treatment, if we start counting at 1(instead of 0)
           raxis.coord = ( ( raxis.coord -1 ) // 12 ) + 1  
-        else: raxis.coord /= 12 # just divide by 12, assuming we count from 0
+        else: raxis.coord = raxis.coord // 12 # just divide by 12, assuming we count from 0
     # return data
     return avar
   
@@ -3723,8 +3723,8 @@ class Ensemble(object):
       string += ', {:2d} Members ({:s})'.format(len(self.members),self.basetype.__name__)
     else:
       string = '{0:s}   {1:s}\n'.format(self.__class__.__name__,str(self.__class__))
-      string += 'Name: {0:s},  '.format(self.ens_name)
-      string += 'Title: {0:s}\n'.format(self.ens_title)
+      string += 'Name: {0:s},  '.format(str(self.ens_name))
+      string += 'Title: {0:s}\n'.format(str(self.ens_title))
       string += 'Members:\n'
       for member in self.members: string += ' {0:s}\n'.format(member.prettyPrint(short=True))
       string += 'Basetype: {0:s},  '.format(self.basetype.__name__)
