@@ -51,7 +51,7 @@ def getFolderName(name=None, experiment=None, folder=None, mode='avg', cvdp_mode
   ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
   # figure out experiment name
-  if experiment is None and name not in exps:
+  if exps is None or ( experiment is None and name not in exps ):
     if cvdp_mode is None: cvdp_mode = 'ensemble' # backwards-compatibility
     if not isinstance(folder,str):
       if mode == 'cvdp' and ( cvdp_mode == 'observations' or cvdp_mode == 'grand-ensemble' ): 

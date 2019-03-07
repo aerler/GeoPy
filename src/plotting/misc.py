@@ -7,6 +7,7 @@ utility functions, mostly for plotting, that are not called directly
 '''
 
 # external imports
+import os.path as osp
 import scipy
 import numpy as np
 import matplotlib as mpl
@@ -23,14 +24,29 @@ from utils.signalsmooth import smooth # commonly used in conjunction with plotti
 # convenience function to load a stylesheet according to some rules 
 def loadStyleSheet(stylesheet, lpresentation=False, lpublication=False):
   ''' convenience function to load a stylesheet according to some rules '''
+  
+  # put link to stylesheets to .config/matplotlib/stylelib (Linux) or
+  # .matplotlib/stylelib (all except Linux)
+  
   # select stylesheets
   if stylesheet is None: stylesheet = 'default'
   if isinstance(stylesheet,str):     
     if lpublication: stylesheet = (stylesheet,'publication')       
     elif lpresentation: stylesheet = (stylesheet,'presentation',)
   # load stylesheets
-  if isinstance(stylesheet,(list,tuple,str)): 
-    mpl.pyplot.style.use(stylesheet)
+  if isinstance(stylesheet,(list,tuple,str)):
+    try: 
+        mpl.pyplot.style.use(stylesheet)
+    except OSError as e:
+        message = str(e)+'\n' # get original message
+        # create a more informative error message
+        if not osp.exists(osp.expanduser('~')+'/.matplotlib/stylelib'):
+            message += '''\n -> if you are on Windows, you may have to create the folder '~/.matplotlib/stylelib'
+    and link your custom stylesheets to this folder for them to be detected.'''
+        if not osp.exists(osp.expanduser('~')+'/.config/matplotlib/stylelib'):
+            message += '''\n -> if you are on Linux, you may have to create the folder '~/.config/matplotlib/stylelib'
+    and link your custom stylesheets to this folder for them to be detected.'''
+        raise OSError(message) # raise previous error
   else: raise TypeError
 
 # GG-plot colors

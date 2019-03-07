@@ -683,8 +683,8 @@ class DatasetNetCDF(Dataset):
         for var in list(ds.variables.keys()):
           if var in varatts:
             varatt = varatts[var]
-            if 'name' in  varatt: alt = varatt['name']
-            elif 'atts' in  varatt and 'name' in  varatt['atts']: alt = varatt['atts']['name']  
+            if 'name' in varatt: alt = varatt['name']
+            elif 'atts' in varatt and 'name' in  varatt['atts']: alt = varatt['atts']['name']  
             else: alt = None
           else: alt = None
           if varlist is None:

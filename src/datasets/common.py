@@ -265,7 +265,7 @@ def transformDays(data=None, var=None, slc=None, l365=False, lvar=None, linplace
 def translateVarNames(varlist, varatts):
   ''' Simple function to replace names in a variable list with their original names as inferred from the 
       attributes dictionary. Note that this requires the dictionary to have the field 'name'. '''
-  warn("WARNING: this function is deprecated - the functionality is not handled by DatasetNetCDF directly")
+  warn("WARNING: this function is deprecated - the functionality is now handled by DatasetNetCDF directly")
   if isinstance(varlist,str): varlist = [varlist]
   if not isinstance(varlist,(list,tuple,set)) or not isinstance(varatts,dict): raise TypeError(varlist)
   varlist = list(varlist) # make copy, since operation is in-place, and to avoid interference
@@ -560,7 +560,7 @@ def selectElements(datasets, axis, testFct=None, master=None, linplace=False, la
   lens = isinstance(datasets,Ensemble)
   if lens:
     enskwargs = dict(basetype=datasets.basetype, idkey=datasets.idkey, 
-                     name=datasets.name, title=datasets.title) 
+                     name=datasets.ens_name, title=datasets.ens_title) 
   # use dataset with shortest axis as master sample (more efficient)
   axes = [dataset.getAxis(axis) for dataset in datasets]
   if master is None: imaster = np.argmin([len(ax) for ax in axes]) # find shortest axis

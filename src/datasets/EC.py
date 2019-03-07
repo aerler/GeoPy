@@ -15,7 +15,7 @@ import codecs, calendar, functools
 from warnings import warn
 # internal imports
 from datasets.CRU import loadCRU_StnTS
-from datasets.common import days_per_month, getRootFolder, selectElements, translateVarNames
+from datasets.common import days_per_month, getRootFolder, selectElements
 from datasets.common import CRU_vars, stn_params, nullNaN
 from geodata.misc import ParseError, DateError, VariableError, ArgumentError, DatasetError, AxisError
 from geodata.misc import RecordClass, StrictRecordClass, isNumber, isInt 
@@ -664,12 +664,13 @@ def loadEC_TS(name=None, filetype=None, prov=None, varlist=None, varatts=None,
   if filelist is None:
     if prov: filelist = [tsfile_prov.format(filetype, prov)]
     else: filelist = [tsfile.format(filetype)]
-  if varlist is not None: # translate varlist
-    varlist = translateVarNames(varlist, varatts)
+#   if varlist is not None: # translate varlist
+#     varlist = translateVarNames(varlist, varatts)
   # open NetCDF file (name, varlist, and varatts are passed on directly)
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                             multifile=False, ncformat='NETCDF4', **kwargs)
   return dataset
+
 # wrapper
 def loadEC_StnTS(name=None, station=None, prov=None, varlist=None, varatts=varatts, lloadCRU=False, **kwargs):
   ''' Load a monthly time-series of pre-processed EC station data. '''
@@ -842,7 +843,7 @@ def selectStations(datasets, stnaxis='station', master=None, linplace=False, lal
     varcheck = [dataset.hasVariable(varname) and vchk for dataset,vchk in zip(datasets,varcheck)]
   if not all(varcheck): 
     if lall and lcheckVar: raise DatasetError(varcheck)
-    else: warn("Some Datasets do not have all variables: {:s}".format(varcheck))
+    else: warn("Some Datasets do not have all variables: {:s}".format(str(varcheck)))
   # define test function (all tests must pass)
   if len(tests) > 0:
     testFct = functools.partial(apply_test_suite, tests)

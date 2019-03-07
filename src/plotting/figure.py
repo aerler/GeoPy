@@ -9,7 +9,7 @@ A custom Figure class that provides some specialized functions and uses a custom
 # external imports
 from warnings import warn
 from matplotlib.figure import Figure, SubplotBase, subplot_class_factory
-from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
+from mpl_toolkits.axes_grid1.axes_divider import LocatableAxes
 import numpy as np
 # internal imports
 from geodata.misc import isInt , ArgumentError
@@ -185,7 +185,7 @@ class MyFigure(Figure):
       ax.updateAxes(mode='adjust')
         
   # add common/shared legend to a multi-panel plot
-  def addSharedLegend(self, plots=None, labels=None, fontsize=None, hscl=1., hpad=0.005, location='bottom', loc=None, ncols=None, **kwargs):
+  def addSharedLegend(self, plots=None, labels=None, fontsize=None, hscl=1., hpad=0.015, location='bottom', loc=None, ncols=None, **kwargs):
     ''' add a common/shared legend to a multi-panel plot '''
     # complete input
     if labels is None: labels = [None if plt is None else plt.get_label() for plt in plots ]
@@ -200,9 +200,9 @@ class MyFigure(Figure):
         else: ncols = 3 if nlen == 6 else 4              
     # make room for legend
     if location.lower() == 'bottom':
-        leghgt = ( np.ceil(float(nlen)/float(ncols)) * fontsize/300.) * hscl
-        self.updateSubplots(mode='shift', bottom=leghgt+hpad) # shift bottom upwards (add height pad)
-        ax = self.add_axes([0, hpad-0.005, 1,leghgt-hpad], axes_class=MyAxes) # new axes to hold legend, with some attributes
+        leghgt = ( np.ceil(float(nlen)/float(ncols)) * fontsize/250.) * hscl
+        self.updateSubplots(mode='shift', bottom=leghgt) # shift bottom upwards (add height pad)
+        ax = self.add_axes([0, hpad, 1,leghgt], axes_class=MyAxes) # new axes to hold legend, with some attributes
         if loc is None: loc = 9 
     elif location.lower() == 'right':
         leghgt = ( ncols * fontsize/40.) * hscl
@@ -406,7 +406,7 @@ def getFigAx(subplot, name=None, title=None, title_font='x-large', title_height=
     if subplot == (1,1): margins = (0.1,0.1,0.85,0.85)
     elif subplot == (1,2) or subplot == (1,3): margins = (0.06,0.1,0.92,0.87)
     elif subplot == (2,1) or subplot == (3,1): margins = (0.09,0.11,0.88,0.82)
-    elif subplot == (2,2) or subplot == (3,3): margins = (0.06,0.08,0.92,0.92)
+    elif subplot == (2,2) or subplot == (3,3): margins = (0.09,0.1,0.9,0.88)
     else: margins = (0.09,0.11,0.88,0.82)
     if title_height is None: title_height = getattr(figure_class, 'title_height', 0.05) # use default from figure
     if title is not None: margins = margins[:3]+(margins[3]-title_height,) # make room for title

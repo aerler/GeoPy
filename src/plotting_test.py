@@ -35,7 +35,6 @@ RAM = bool(os.getenv('RAMDISK', '')) # whether or not to use a RAM disk
 # either RAM disk or data directory
 workdir = os.getenv('RAMDISK', '') if RAM else '{:s}/test/'.format(os.getenv('DATA_ROOT', '')) 
 if not os.path.isdir(workdir): raise IOError(workdir)
-# stylesheet = None
 figargs = dict(stylesheet='myggplot', lpresentation=True, lpublication=False)
 
 
@@ -519,7 +518,6 @@ class PolarPlotTest(unittest.TestCase):
     ''' test more advanced options of the line plot function '''    
     var1 = self.var1; var0 = self.var0
     varatts = dict() # set some default values
-    for var in var1,var0: varatts[var.name] = dict(color=var.name, marker='1', markersize=15)    
     fig,ax = getFigAx(1, title='Fancy Plot Styles', name=sys._getframe().f_code.co_name[4:], 
                       lPolarAxes=True, variable_plotargs=varatts, **figargs) # use test method name as title
     assert fig.__class__.__name__ == 'MyFigure'
@@ -528,6 +526,7 @@ class PolarPlotTest(unittest.TestCase):
     assert isinstance(ax.variable_plotargs, dict)
     # define fancy attributes
     plotatts = dict() # override some defaults
+    plotatts[var0.name] = dict(color='blue', marker='*', markersize=5, markevery=20)        
     plotatts[var1.name] = dict(color='red', marker='*', markersize=5, markevery=20)        
     # define fancy legend
     legend = dict(loc=2, labelspacing=0.125, handlelength=2.5, handletextpad=0.5, fancybox=True)
@@ -545,13 +544,13 @@ class PolarPlotTest(unittest.TestCase):
     var1 = self.var1; var0 = self.var0
     # create plot
     for i,ax in enumerate(axes.ravel()):
-      plts = ax.linePlot([var0, var1], legend=0, ylim=(self.Rmin,self.Rmax))
+      plts = ax.linePlot([var0, var1], legend=False, ylim=(self.Rmin,self.Rmax))
       ax.addTitle('Panel {:d}'.format(i+1))
       assert len(plts) == 2
     # add common legend
     fig.addSharedLegend(plots=plts)
     # add labels
-    fig.addLabels(labels=None, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
+    fig.addLabels(labels=None, loc='upper left', lstroke=False, lalphabet=True, size=None, prop=None)
     # add a line
     ax.addHline(3)
     
@@ -628,7 +627,7 @@ if __name__ == "__main__":
 #     specific_tests += ['BasicSurfacePlot']
 #     specific_tests += ['BasicContourPlot']
 #     specific_tests += ['IrregularSurfacePlot']
-    specific_tests += ['SharedColorbar']
+#     specific_tests += ['SharedColorbar']
 #     specific_tests += ['LogSurfacePlot']
     # LinePlot
 #     specific_tests += ['BasicLinePlot']
@@ -646,7 +645,7 @@ if __name__ == "__main__":
     # PolarPlot
 #     specific_tests += ['BasicLinePlot']
 #     specific_tests += ['AdvancedLinePlot']
-#     specific_tests += ['CombinedLinePlot']
+    specific_tests += ['CombinedLinePlot']
     # TaylorPlot
 #     specific_tests += ['BasicScatterPlot']
 #     specific_tests += ['BasicTaylorPlot']
@@ -654,11 +653,11 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['SurfacePlot'] 
+#     tests += ['SurfacePlot'] 
 #     tests += ['LinePlot'] 
 #     tests += ['DistPlot']
 #     tests += ['PolarPlot']
-#     tests += ['TaylorPlot']
+    tests += ['TaylorPlot']
     
 
     # construct dictionary of test classes defined above

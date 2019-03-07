@@ -985,7 +985,7 @@ class Variable(object):
       elif np.issubdtype(data.dtype, self.dtype): data = data.astype(self.dtype) 
       else: 
         if lrecast: data = data.astype(self.dtype)
-        else: raise DataError("Dtypes of Variable and array are inconsistent.")
+        else: raise DataError("Dtypes of Variable and array are inconsistent:\n {} != {}".format(data.dtype,self.dtype))
       if np.issubdtype(data.dtype, np.inexact) and not isinstance(data, ma.masked_array):
         data = ma.masked_invalid(data, copy=False)     
         data._fill_value = np.asarray(fillValue) if fillValue is not None else self.fillValue

@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib.colors import LogNorm, Normalize
 from matplotlib.axes import Axes
-from mpl_toolkits.axes_grid.axes_divider import LocatableAxes
+from mpl_toolkits.axes_grid1.axes_divider import LocatableAxes
 from matplotlib.projections import PolarAxes
 from warnings import warn
 # internal imports
@@ -408,7 +408,7 @@ class MyAxes(Axes):
         errorscale = plotarg.pop('errorscale',None)
         errorevery = plotarg.pop('errorevery',None)
         if 'color' not in plotarg: 
-          plotarg['color'] = self._get_lines.prop_cycler.next()['color']
+          plotarg['color'] = self._get_lines.prop_cycler.__next__()['color']
         # figure out errorbars
         if errorevery is None:
           errorevery = len(axe)//25 + 1
@@ -445,6 +445,7 @@ class MyAxes(Axes):
             else: perr = None 
             # N.B.: parasite erros wouldn't work with bands, so convert normal errorbars                
             self.addParasiteMean(val, errors=perr if lparasiteErrors else None, n=n, N=N, lperi=lperi, style='myerrorbar', **plotarg)
+        plt.set_label(label) # for some reason the keyword to errorbar does not always work...
         # draw error bands
         if bndup is not None: 
           self._drawBand(axe, bndup, bnddn, where=where, color=(facecolor or plt.get_color()), 
@@ -557,7 +558,7 @@ class MyAxes(Axes):
     ''' function to add an error band to a plot '''
     # get color from line object        
     CC = mpl.colors.ColorConverter()
-    if color is None: color = self._get_lines.prop_cycler.next()['color']
+    if color is None: color = self._get_lines.prop_cycler.__next__()['color']
     color = CC.to_rgb(color)
     # make darker edges
     if edgecolor is None: edgecolor = 0.5
@@ -805,7 +806,7 @@ class MyAxes(Axes):
     else: label_list = None     
     colors = color_list or None 
     hdata, bin_edges, patches = self.hist(values, bins=binedgs, color=colors, label=label_list, 
-                                          normed=lnormalize, weights=weights, cumulative=lcumulative,  
+                                          density=lnormalize, weights=weights, cumulative=lcumulative,  
                                           stacked=lstacked, bottom=bottom, histtype=histtype, log=log,
                                           align=align, orientation=orientation, rwidth=rwidth, 
                                           **histargs)
@@ -1217,7 +1218,7 @@ class MyAxes(Axes):
       
   # add subplot/axes label (alphabetical indexing, byt default)
   def addLabel(self, label, loc=1, lstroke=False, lalphabet=True, size='large', font='monospace', prop=None, **kwargs):
-    from string import lowercase # lowercase letters
+    from string import ascii_lowercase # lowercase letters
     from matplotlib.offsetbox import AnchoredText 
     from matplotlib.patheffects import withStroke    
     # settings
@@ -1226,7 +1227,7 @@ class MyAxes(Axes):
     args.update(kwargs)
     # create label    
     if lalphabet and isinstance(label,int):
-      label = '('+lowercase[label]+')'    
+      label = '('+ascii_lowercase[label]+')'    
     at = AnchoredText(label, loc=loc, prop=prop, **args)
     self.add_artist(at) # add to axes
     if lstroke: 
@@ -1258,14 +1259,14 @@ class MyAxes(Axes):
     
 # a new class that combines the new axes with LocatableAxes for use with AxesGrid 
 class MyLocatableAxes(MyAxes,LocatableAxes):
-  ''' A new Axes class that adds functionality from MyAxes to LocatableAxes for use in AxesGrid '''
+    ''' A new Axes class that adds functionality from MyAxes to LocatableAxes for use in AxesGrid '''
 
 
 # a new PolarAxes class that adds the new axes features to PolarAxes 
 class MyPolarAxes(MyAxes,PolarAxes):
-  ''' A new Axes class that adds functionality from MyAxes to PolarAxes '''
-  def __new__(self, *args, **kwargs):
-    return PolarAxes.__new__(self, *args, **kwargs)
+    ''' A new Axes class that adds functionality from MyAxes to PolarAxes '''
+    def __new__(cls, *args, **kwargs):
+        return PolarAxes.__new__(cls)
 
 # a new child class of MyPolarAxes for drawing Taylor Diagrams
 from matplotlib.axes._subplots import subplot_class_factory
@@ -1363,7 +1364,7 @@ class TaylorAxes(MyAxes):
         else:
         
             # recursion terminates - MyAxes has default __new__
-            ax = MyAxes.__new__(cls, fig, rect, **axes_args)
+            ax = MyAxes.__new__(cls,) # fig, rect, **axes_args
 
         # return axis instance
         return ax

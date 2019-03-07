@@ -17,7 +17,7 @@ axes.labelsize: large
 axes.labelcolor: black
 axes.axisbelow: False
 
-axes.color_cycle: b, g, r, c, m, y, k
+axes.prop_cycle: cycler('color', 'bgrcmyk')
 
 xtick.color: black
 xtick.direction: in

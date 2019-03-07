@@ -126,7 +126,7 @@ class DatasetsTest(unittest.TestCase):
     assert n == len(arg_list)
     # test simultaneous inner and outer product expansion
     n1 = len(args2) * len(args3) / len(args1)
-    tmp1 = args1*n1
+    tmp1 = args1*int(n1)
     arg_list = expandArgumentList(arg1=tmp1, arg2=args2, arg3=args3, arg4=arg4, arg5=arg5,
                                   outer_list=['arg2','arg3'], inner_list=['arg1'])
     assert len(arg_list) == len(args2) * len(args3) == len(tmp1)
@@ -158,147 +158,148 @@ class DatasetsTest(unittest.TestCase):
         n += 1
     assert n == len(arg_list)
     
-  def testLoadDataset(self):
-    ''' test universal dataset loading function '''
-    from datasets.common import loadDataset, loadClim, loadStnTS 
-    # test climtology
-    ds = loadClim(name='PCIC', grid='arb2_d02', varlist=['precip'])
-    assert isinstance(ds, Dataset)
-    assert ds.name == 'PCIC'
-    assert 'precip' in ds
-    assert ds.gdal and ds.isProjected
-    # test CVDP
-    ds = loadDataset(name='HadISST', period=None, varlist=None, mode='CVDP')
-    assert isinstance(ds, Dataset)
-    assert ds.name == 'HadISST'
-    assert 'PDO' in ds
-    assert ds.gdal and not ds.isProjected
-    # test CVDP with WRF
-    ds = loadDataset(name='phys-ens-2100', period=None, varlist=None, mode='CVDP')
-    assert isinstance(ds, Dataset)
-    assert ds.name == 'phys-ens-2100'
-    assert 'PDO' in ds
-    assert ds.gdal and not ds.isProjected    
-    # test WRF station time-series
-    ds = loadStnTS(name='ctrl-1_d02', varlist=['MaxPrecip_1d'], station='ecprecip', filetypes='hydro')
-    assert isinstance(ds, Dataset)
-    assert ds.name == 'ctrl-1_d02'
-    assert 'MaxPrecip_1d' in ds
-    # test example with list expansion
-    # test EC station time-series
-    dss = loadStnTS(name=['EC','ctrl-1'], varlist=['MaxPrecip_1d','precip'],
-                    station='ecprecip', filetypes='hydro',
-                    load_list=['name','varlist'], lproduct='outer')
-    assert len(dss) == 4
-    assert isinstance(ds, Dataset)
-    assert dss[1].name == 'EC' and dss[2].name == 'ctrl-1'
-    assert 'MaxPrecip_1d' in dss[0] and 'precip' in dss[1]
-    assert 'MaxPrecip_1d' not in dss[3] and 'precip' not in dss[2]
+#   def testLoadDataset(self):
+#     ''' test universal dataset loading function '''
+#     from datasets.common import loadDataset
+#     from projects.WesternCanada.WRF_experiments import WRF_exps
+#     # test climtology
+#     ds = loadClim(name='PCIC', grid='arb2_d02', varlist=['precip'])
+#     assert isinstance(ds, Dataset)
+#     assert ds.name == 'PCIC'
+#     assert 'precip' in ds
+#     assert ds.gdal and ds.isProjected
+#     # test CVDP
+#     ds = loadDataset(name='HadISST', period=None, varlist=None, mode='CVDP', exps=WRF_exps)
+#     assert isinstance(ds, Dataset)
+#     assert ds.name == 'HadISST'
+#     assert 'PDO' in ds
+#     assert ds.gdal and not ds.isProjected
+#     # test CVDP with WRF
+#     ds = loadDataset(name='phys-ens-2100', period=None, varlist=None, mode='CVDP', exps=WRF_exps)
+#     assert isinstance(ds, Dataset)
+#     assert ds.name == 'phys-ens-2100'
+#     assert 'PDO' in ds
+#     assert ds.gdal and not ds.isProjected    
+#     # test WRF station time-series
+#     ds = loadStnTS(name='ctrl-1_d02', varlist=['MaxPrecip_1d'], station='ecprecip', filetypes='hydro')
+#     assert isinstance(ds, Dataset)
+#     assert ds.name == 'ctrl-1_d02'
+#     assert 'MaxPrecip_1d' in ds
+#     # test example with list expansion
+#     # test EC station time-series
+#     dss = loadStnTS(name=['EC','ctrl-1'], varlist=['MaxPrecip_1d','precip'],
+#                     station='ecprecip', filetypes='hydro',
+#                     load_list=['name','varlist'], lproduct='outer')
+#     assert len(dss) == 4
+#     assert isinstance(ds, Dataset)
+#     assert dss[1].name == 'EC' and dss[2].name == 'ctrl-1'
+#     assert 'MaxPrecip_1d' in dss[0] and 'precip' in dss[1]
+#     assert 'MaxPrecip_1d' not in dss[3] and 'precip' not in dss[2]
     
-  def testBasicLoadEnsembleTS(self):
-    ''' test station data load functions (ensemble and list) '''
-    from datasets.common import loadEnsembleTS    
-    # test list expansion of ensembles loading
-    names = ['EC', 'phys-ens']; varlist = ['MaxPrecip_1d'] 
-    prov = ['BC','AB']; season = ['summer','winter']; mode = ['max','min']
-    constraints = dict(min_len=50, lat=(50,55), max_zerr=300, prov=('AB','BC'))
-    enslst = loadEnsembleTS(names=names, prov=prov, season=season, mode=mode, station='ecprecip', 
-                            constraints=constraints, varlist=varlist, filetypes=['hydro'], domain=2,
-                            load_list=[('mode','season'),'prov',], lproduct='outer', lwrite=False,
-                            lensembleAxis=True)
-    assert len(enslst) == 4
-    assert all(isinstance(ens, Ensemble) for ens in enslst)
-    assert all(ens.basetype.__name__ == 'Dataset' for ens in enslst)
-    assert all(ens.hasVariable(varlist[0]) for ens in enslst)
-    assert all(ens.hasAxis('ensemble') for ens in enslst)
-    assert all('EC' in ens for ens in enslst)
-    # test simple ensemble with basins
-    names = ['GPCC', 'phys-ens_d01','max-ens-2100']; varlist = ['precip'] 
-    aggregation = None; slices = dict(shape_name='ARB'); obsslices = dict(years=(1939,1945)) 
-    shpens = loadEnsembleTS(names=names, season=None, shape='shpavg', aggregation=aggregation, 
-                            slices=slices, varlist=varlist, filetypes=['hydro'], obsslices=obsslices)
-    assert isinstance(shpens, Ensemble)
-    assert shpens.basetype.__name__ == 'Dataset'
-    assert all(shpens.hasVariable(varlist[0]))
-    assert names[0] in shpens
-    assert len(shpens[names[0]].time) == 72 # time-series
-    assert len(shpens[names[-1]].time) == 720 # ensemble
-    assert all('ARB' == ds.atts.shape_name for ds in shpens)
+#   def testBasicLoadEnsembleTS(self):
+#     ''' test station data load functions (ensemble and list) '''
+#     from datasets.common import loadEnsembleTS, loadEnsembles
+#     # test list expansion of ensembles loading
+#     names = ['EC', 'phys-ens']; varlist = ['MaxPrecip_1d'] 
+#     prov = ['BC','AB']; season = ['summer','winter']; aggregation = ['max','min']
+#     constraints = dict(min_len=50, lat=(50,55), max_zerr=300, prov=('AB','BC'))
+#     enslst = loadEnsembles(names=names, prov=prov, season=season, aggregation=aggregation, station='ecprecip', 
+#                             constraints=constraints, varlist=varlist, filetypes=['hydro'], domain=2,
+#                             load_list=[('aggregation','season'),'prov',], lproduct='outer', lwrite=False,
+#                             lensembleAxis=True)
+#     assert len(enslst) == 4
+#     assert all(isinstance(ens, Ensemble) for ens in enslst)
+#     assert all(ens.basetype.__name__ == 'Dataset' for ens in enslst)
+#     assert all(ens.hasVariable(varlist[0]) for ens in enslst)
+#     assert all(ens.hasAxis('ensemble') for ens in enslst)
+#     assert all('EC' in ens for ens in enslst)
+#     # test simple ensemble with basins
+#     names = ['GPCC', 'phys-ens_d01','max-ens-2100']; varlist = ['precip'] 
+#     aggregation = None; slices = dict(shape_name='ARB'); obsslices = dict(years=(1939,1945)) 
+#     shpens = loadEnsembleTS(names=names, season=None, shape='shpavg', aggregation=aggregation, 
+#                             slices=slices, varlist=varlist, filetypes=['hydro'], obsslices=obsslices)
+#     assert isinstance(shpens, Ensemble)
+#     assert shpens.basetype.__name__ == 'Dataset'
+#     assert all(shpens.hasVariable(varlist[0]))
+#     assert names[0] in shpens
+#     assert len(shpens[names[0]].time) == 72 # time-series
+#     assert len(shpens[names[-1]].time) == 720 # ensemble
+#     assert all('ARB' == ds.atts.shape_name for ds in shpens)
 
-  def testAdvancedLoadEnsembleTS(self):
-    ''' test station data load functions (ensemble and list) '''
-    from datasets.common import loadEnsembleTS 
-    lwrite = False   
-    # test ensemble (inner) list expansion
-    names = 'CRU'; varlist = ['precip']; slices = dict(shape_name='FRB'); 
-    obsslices = [dict(years=(1914,1918)), dict(years=(1939,1945))]
-    name_tags = ['_1914','_1939']
-    shpens = loadEnsembleTS(names=names, shape='shpavg', name_tags=name_tags, obsslices=obsslices,
-                            slices=slices, varlist=varlist, filetypes=['hydro'],
-                            aggregation=None, season=None, 
-                            ensemble_list=['obsslices', 'name_tags'])
-    assert isinstance(shpens, Ensemble)
-    assert shpens.basetype.__name__ == 'Dataset'
-    assert all(shpens.hasVariable(varlist[0]))
-    assert all('CRU' == ds.name[:3] for ds in shpens)
-    assert len(shpens['CRU_1914'].time) == 48 # time-series
-    assert len(shpens['CRU_1939'].time) == 72 # time-series
-    assert all('FRB' == ds.atts.shape_name for ds in shpens)
-    # test ensemble (inner) list expansion with outer list expansion    
-    varlist = ['MaxPrecip_1d']; constraints = dict(min_len=50, lat=(50,55), max_zerr=300,)
-    # inner expansion
-    names = ['EC', 'EC', 'erai-max']; name_tags = ['_1990','_1940','WRF_1990']
-    obsslices = [dict(years=(1929,1945)), dict(years=(1979,1995)), dict()]
-    # outer expansion
-    prov = ['BC','AB']; season = ['summer','winter']; mode = ['max']
-    # load data
-    enslst = loadEnsembleTS(names=names, prov=prov, season=season, mode=mode, station='ecprecip', 
-                            constraints=constraints, name_tags=name_tags, obsslices=obsslices,  
-                            domain=2, filetypes=['hydro'], varlist=varlist, ensemble_product='inner',  
-                            ensemble_list=['names','name_tags','obsslices',], lwrite=lwrite,
-                            load_list=['mode','season','prov',], lproduct='outer',)
-    assert len(enslst) == 4
-    assert all(isinstance(ens, Ensemble) for ens in enslst)
-    assert all(ens.basetype.__name__ == 'Dataset' for ens in enslst)
-    assert all(ens.hasVariable(varlist[0]) for ens in enslst)
-    assert all('EC_1990' in ens for ens in enslst)
-    assert all('EC_1940' in ens for ens in enslst)
-    assert all('WRF_1990' in ens for ens in enslst)
-    # add CVDP data
-    cvdp = loadEnsembleTS(names=names, prov=prov, season=season, mode=mode, 
-                          name_tags=name_tags, obsslices=obsslices,  
-                          varlist=['PDO'], ensemble_product='inner',  
-                          ensemble_list=['names','name_tags','obsslices',], lwrite=lwrite,
-                          load_list=['mode','season','prov',], lproduct='outer',
-                          dataset_mode='CVDP')
-    assert all(ens.hasVariable('PDO') for ens in enslst)
-    # add PDO time-series to datasets
-    for ts,cv in zip(enslst,cvdp):
-      ts.addVariable(cv.PDO, lautoTrim=True)  
-    all(ens.hasVariable('PDO') for ens in enslst)  
-    # test slicing by PDO
-    ds = enslst[0]['WRF_1990']
-    assert ds(PDO=(-1,0.), lminmax=True)
-    ## some debugging test
-    # NetCDF datasets to add cluster_id to
-    wrfensnc = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C', # Ensembles don't have unique NetCDF files
-                'max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',
-                'max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
-    wrfensnc = loadEnsembleTS(names=wrfensnc, name='WRF_NC', title=None, varlist=None, 
-                              station='ecprecip', filetypes=['hydro'], domain=2, lwrite=lwrite)
-    # climatology
-    constraints = dict()
-    constraints['min_len'] = 10 # for valid climatology
-    constraints['lat'] = (45,60) 
-    #constraints['max_zerr'] = 100 # can't use this, because we are loading EC data separately from WRF
-    constraints['prov'] = ('BC','AB')
-    wrfens = loadEnsembleTS(names=['max-ens','max-ens-2050','max-ens-2100'], name='WRF', title=None, 
-                            varlist=None, 
-                            aggregation='mean', station='ecprecip', constraints=constraints, filetypes=['hydro'], 
-                            domain=2, lwrite=False)
-    wrfens = wrfens.copy(asNC=False) # read-only DatasetNetCDF can't add new variables (not as VarNC, anyway...)    
-#     gevens = [ens.fitDist(lflatten=True, axis=None) for ens in enslst]
-#     print(''); print(gevens[0][0])
+#   def testAdvancedLoadEnsembleTS(self):
+#     ''' test station data load functions (ensemble and list) '''
+#     from datasets.common import loadEnsembleTS 
+#     lwrite = False   
+#     # test ensemble (inner) list expansion
+#     names = 'CRU'; varlist = ['precip']; slices = dict(shape_name='FRB'); 
+#     obsslices = [dict(years=(1914,1918)), dict(years=(1939,1945))]
+#     name_tags = ['_1914','_1939']
+#     shpens = loadEnsembleTS(names=names, shape='shpavg', name_tags=name_tags, obsslices=obsslices,
+#                             slices=slices, varlist=varlist, filetypes=['hydro'],
+#                             aggregation=None, season=None, 
+#                             ensemble_list=['obsslices', 'name_tags'])
+#     assert isinstance(shpens, Ensemble)
+#     assert shpens.basetype.__name__ == 'Dataset'
+#     assert all(shpens.hasVariable(varlist[0]))
+#     assert all('CRU' == ds.name[:3] for ds in shpens)
+#     assert len(shpens['CRU_1914'].time) == 48 # time-series
+#     assert len(shpens['CRU_1939'].time) == 72 # time-series
+#     assert all('FRB' == ds.atts.shape_name for ds in shpens)
+#     # test ensemble (inner) list expansion with outer list expansion    
+#     varlist = ['MaxPrecip_1d']; constraints = dict(min_len=50, lat=(50,55), max_zerr=300,)
+#     # inner expansion
+#     names = ['EC', 'EC', 'erai-max']; name_tags = ['_1990','_1940','WRF_1990']
+#     obsslices = [dict(years=(1929,1945)), dict(years=(1979,1995)), dict()]
+#     # outer expansion
+#     prov = ['BC','AB']; season = ['summer','winter']; mode = ['max']
+#     # load data
+#     enslst = loadEnsembleTS(names=names, prov=prov, season=season, mode=mode, station='ecprecip', 
+#                             constraints=constraints, name_tags=name_tags, obsslices=obsslices,  
+#                             domain=2, filetypes=['hydro'], varlist=varlist, ensemble_product='inner',  
+#                             ensemble_list=['names','name_tags','obsslices',], lwrite=lwrite,
+#                             load_list=['mode','season','prov',], lproduct='outer',)
+#     assert len(enslst) == 4
+#     assert all(isinstance(ens, Ensemble) for ens in enslst)
+#     assert all(ens.basetype.__name__ == 'Dataset' for ens in enslst)
+#     assert all(ens.hasVariable(varlist[0]) for ens in enslst)
+#     assert all('EC_1990' in ens for ens in enslst)
+#     assert all('EC_1940' in ens for ens in enslst)
+#     assert all('WRF_1990' in ens for ens in enslst)
+#     # add CVDP data
+#     cvdp = loadEnsembleTS(names=names, prov=prov, season=season, mode=mode, 
+#                           name_tags=name_tags, obsslices=obsslices,  
+#                           varlist=['PDO'], ensemble_product='inner',  
+#                           ensemble_list=['names','name_tags','obsslices',], lwrite=lwrite,
+#                           load_list=['mode','season','prov',], lproduct='outer',
+#                           dataset_mode='CVDP')
+#     assert all(ens.hasVariable('PDO') for ens in enslst)
+#     # add PDO time-series to datasets
+#     for ts,cv in zip(enslst,cvdp):
+#       ts.addVariable(cv.PDO, lautoTrim=True)  
+#     all(ens.hasVariable('PDO') for ens in enslst)  
+#     # test slicing by PDO
+#     ds = enslst[0]['WRF_1990']
+#     assert ds(PDO=(-1,0.), lminmax=True)
+#     ## some debugging test
+#     # NetCDF datasets to add cluster_id to
+#     wrfensnc = ['max-ctrl','max-ens-A','max-ens-B','max-ens-C', # Ensembles don't have unique NetCDF files
+#                 'max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',
+#                 'max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+#     wrfensnc = loadEnsembleTS(names=wrfensnc, name='WRF_NC', title=None, varlist=None, 
+#                               station='ecprecip', filetypes=['hydro'], domain=2, lwrite=lwrite)
+#     # climatology
+#     constraints = dict()
+#     constraints['min_len'] = 10 # for valid climatology
+#     constraints['lat'] = (45,60) 
+#     #constraints['max_zerr'] = 100 # can't use this, because we are loading EC data separately from WRF
+#     constraints['prov'] = ('BC','AB')
+#     wrfens = loadEnsembleTS(names=['max-ens','max-ens-2050','max-ens-2100'], name='WRF', title=None, 
+#                             varlist=None, 
+#                             aggregation='mean', station='ecprecip', constraints=constraints, filetypes=['hydro'], 
+#                             domain=2, lwrite=False)
+#     wrfens = wrfens.copy(asNC=False) # read-only DatasetNetCDF can't add new variables (not as VarNC, anyway...)    
+# #     gevens = [ens.fitDist(lflatten=True, axis=None) for ens in enslst]
+# #     print(''); print(gevens[0][0])
 
   def testLoadStandardDeviation(self):
     ''' test station data load functions (ensemble and list) '''
@@ -321,17 +322,19 @@ if __name__ == "__main__":
 #     specific_tests += ['ApplyAlongAxis']
 #     specific_tests += ['AsyncPool']    
 #     specific_tests += ['ExpArgList']
+#     specific_tests += ['LoadStandardDeviation']
+
+## N.B.: these three tests are currently commented out and need to be revised completely;
+##       most of the dataset/ensemble loading functionality is no handled in the Projects repo
 #     specific_tests += ['LoadDataset']
 #     specific_tests += ['BasicLoadEnsembleTS']
 #     specific_tests += ['AdvancedLoadEnsembleTS']
-#     specific_tests += ['LoadStandardDeviation']
-
 
     # list of tests to be performed
     tests = [] 
     # list of variable tests
     tests += ['MultiProcess']
-#     tests += ['Datasets'] 
+    tests += ['Datasets'] 
     
 
     # construct dictionary of test classes defined above
