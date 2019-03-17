@@ -133,9 +133,9 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   # use data array to infer dimensions and data type
   if data is not None:
     if not isinstance(data,np.ndarray): raise TypeError     
-    if len(dims) != data.ndim: raise NCDataError("Number of dimensions in '%s' does not match data array."%(name,))    
+    if len(dims) != data.ndim: raise NCDataError("Number of dimensions in '{:s}' does not match data array.".format(name,))    
     if shape: 
-      if shape != data.shape: raise NCDataError("Shape of '%s' does not match data array."%(name,))
+      if shape != data.shape: raise NCDataError("Shape of '{:s}' does not match data array.".format(name,))
     else: shape = data.shape
     # get dtype 
     if dtype: 
@@ -145,20 +145,25 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   if dtype is None: raise NCDataError("Cannot construct a NetCDF Variable without a data array or an abstract data type.")
   dtype = np.dtype(dtype) # use numpy types
   if dtype is np.dtype('bool_'): dtype = np.dtype('i1') # cast numpy bools as 8-bit integers
-  lstrvar = ( dtype.kind == 'S' and not lusestr )
+  lstrvar = False # this uses nc.stringtochar() and creates an additional char dimension
+  if dtype.kind == 'S':
+      # N.B.: the dtype 'S' causes a TypeError, because NetCDF4 only allows 'S1', but Python str can be used instead
+      if lusestr: dtype = np.dtype(str)
+      else: lstrvar = True
+      
   # check/create dimensions
   if shape is None: shape = [None,]*len(dims)
   else: shape = list(shape)
   if len(shape) != len(dims): raise NCAxisError 
   for i,dim in zip(range(len(dims)),dims):
-    if dim in dst.dimensions:
-      if shape[i] is None: 
-        shape[i] = len(dst.dimensions[dim])
+      if dim in dst.dimensions:
+          if shape[i] is None: 
+              shape[i] = len(dst.dimensions[dim])
+          else: 
+              if shape[i] != len(dst.dimensions[dim]): 
+                  raise NCAxisError('Size of dimension {:s} does not match records! {:d} != {:d}'.format(dim,shape[i],len(dst.dimensions[dim])))
       else: 
-        if shape[i] != len(dst.dimensions[dim]): 
-          raise NCAxisError('Size of dimension %s does not match records! %i != %i'%(dim,shape[i],len(dst.dimensions[dim])))
-    else: 
-      dst.createDimension(dim, size=shape[i])
+          dst.createDimension(dim, size=shape[i])
   dims = tuple(dims); shape = tuple(shape)
   # figure out parameters for variable
   varargs = dict() # arguments to be passed to createVariable
@@ -166,35 +171,35 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   elif zlib: varargs.update(zlib_default)
   varargs.update(kwargs)
   if fillValue is None:
-    if atts and '_FillValue' in atts: fillValue = atts['_FillValue'] # will be removed later
-    elif atts and 'missing_value' in atts: fillValue = atts['missing_value']
-    elif data is not None and isinstance(data,ma.MaskedArray): # defaults values for numpy masked arrays
-      fillValue = ma.default_fill_value(dtype)
-      # if isinstance(dtype,np.bool_): fillValue = True
-      # elif isinstance(dtype,np.integer): fillValue = 999999
-      # elif isinstance(dtype,np.floating): fillValue = 1.e20
-      # elif isinstance(dtype,np.complexfloating): fillValue = 1.e20+0j
-      # elif isinstance(dtype,np.flexible): fillValue = 'N/A'
-      # else: fillValue = None # for 'object'
-    else: pass # if it is not a masked array and no missing value information was passed, don't assign fillValue 
+      if atts and '_FillValue' in atts: fillValue = atts['_FillValue'] # will be removed later
+      elif atts and 'missing_value' in atts: fillValue = atts['missing_value']
+      elif data is not None and isinstance(data,ma.MaskedArray): # defaults values for numpy masked arrays
+          fillValue = ma.default_fill_value(dtype)
+          # if isinstance(dtype,np.bool_): fillValue = True
+          # elif isinstance(dtype,np.integer): fillValue = 999999
+          # elif isinstance(dtype,np.floating): fillValue = 1.e20
+          # elif isinstance(dtype,np.complexfloating): fillValue = 1.e20+0j
+          # elif isinstance(dtype,np.flexible): fillValue = 'N/A'
+          # else: fillValue = None # for 'object'
+      else: pass # if it is not a masked array and no missing value information was passed, don't assign fillValue 
   else:  
-    if data is not None and isinstance(data,ma.MaskedArray): data._fill_value = fillValue 
+      if data is not None and isinstance(data,ma.MaskedArray): data._fill_value = fillValue 
   # make sure fillValue is OK (there have been problems...)    
   fillValue = checkFillValue(fillValue, dtype)
   if fillValue is not None:
-    atts['missing_value'] = fillValue # I use fillValue and missing_value the same way
+      atts['missing_value'] = fillValue # I use fillValue and missing_value the same way
   # add extra dimension for strings
-  if lstrvar and dtype.itemsize > 1:
-    # add extra dimension
-    shape = shape + (dtype.itemsize,)
-    dims = dims + ('str_dim_'+name,) # naming pattern for string dimensions
-    dst.createDimension(dims[-1], size=shape[-1])
-    # change dtype to single char string  
-    dtype = np.dtype('|S1')
-    # convert string arrays to char arrays
-    if data is not None: 
-      data = nc.stringtochar(data)
-      assert data.dtype == dtype, str(data.dtype)+', '+str(dtype)    
+  if lstrvar:
+      # add extra dimension
+      shape = shape + (dtype.itemsize,)
+      dims = dims + ('str_dim_'+name,) # naming pattern for string dimensions
+      dst.createDimension(dims[-1], size=shape[-1])
+      # change dtype to single char string  
+      dtype = np.dtype('|S1')
+      # convert string arrays to char arrays
+      if data is not None: 
+          data = nc.stringtochar(data)
+          assert data.dtype == dtype, str(data.dtype)+', '+str(dtype)    
   # create netcdf variable  
   var = dst.createVariable(name, dtype, dims, fill_value=fillValue, **varargs)
   # add attributes

@@ -217,8 +217,8 @@ def monthlyTransform(var=None, data=None, slc=None, time_axis='time', lvar=None,
         # assuming the record starts some year in January, and we always need to load full years
     shape = [1,]*data.ndim; shape[tax] = te # dimensions of length 1 will be expanded as needed
     if not linplace: data = data.copy() # make copy if not inplace
-    if scalefactor is not None: data *= np.tile(scalefactor, te/12).reshape(shape) # scale in-place
-    if offset is not None: data += np.tile(offset, te/12).reshape(shape) # shift in-place
+    if scalefactor is not None: data *= np.tile(scalefactor, te//12).reshape(shape) # scale in-place
+    if offset is not None: data += np.tile(offset, te//12).reshape(shape) # shift in-place
     # return Variable, not just array
     if lvar:
         var.data_array = data

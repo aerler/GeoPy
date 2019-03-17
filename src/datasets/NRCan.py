@@ -51,7 +51,7 @@ varatts = dict(Tmax    = dict(name='Tmax', units='K'), # 2m maximum temperature
                SWDNB   = dict(name='SWDNB', units='W/m^2'), # solar radiation
                # diagnostic variables
                T2        = dict(name='T2', units='K'), # 2m average temperature
-               solprec   = dict(name='liqprec', units='kg/m^2/s'), # total precipitation
+               solprec   = dict(name='solprec', units='kg/m^2/s'), # total precipitation
                snow      = dict(name='snow', units='kg/m^2'), # snow water equivalent
                snwmlt    = dict(name='snwmlt', units='kg/m^2/s'), # snow melt (rate)
                snow_acc  = dict(name='snow_acc', units='kg/m^2/s'), # rat of change of snowpack - in lieu of actual snowmelt
@@ -170,6 +170,33 @@ def loadNRCan_ShpTS(name=dataset_name, shape=None, resolution=None, varlist=None
     return dataset
 
 
+## snow density estimates
+
+def getSnowDensity(snow_class):
+    ''' '''
+    #       estimates from the Canadian Meteorological Centre for maritime climates (Table 3):
+    #       https://nsidc.org/data/NSIDC-0447/versions/1
+    #       a factor of 1000 has been applied, because snow depth is in m (and not mm)
+    if snow_class.lower() == 'tundra':
+      # Tundra snow cover
+      density = np.asarray([0.2303, 0.2427, 0.2544, 0.2736, 0.3117, 0.3693, 0.3693, 0.3693, 0.2, 0.2, 0.2107, 0.2181], dtype=np.float32)*1000.
+    elif snow_class.lower() == 'taiga':
+      # Taiga snow cover
+      density = np.asarray([0.1931, 0.2059, 0.2218, 0.2632, 0.3190, 0.3934, 0.3934, 0.3934, 0.16, 0.16, 0.1769, 0.1798], dtype=np.float32)*1000.
+    elif snow_class.lower() == 'maritime':
+      # Maritime snow cover
+      density = np.asarray([0.2165, 0.2485, 0.2833, 0.332, 0.3963, 0.501, 0.501, 0.501, 0.16, 0.16, 0.1835, 0.1977], dtype=np.float32)*1000.
+    elif snow_class.lower() == 'ephemeral':
+      # Ephemeral snow cover
+      density = np.asarray([0.3168, 0.3373, 0.3643, 0.4046, 0.4586, 0.5098, 0.5098, 0.5098, 0.25, 0.25, 0.3, 0.3351], dtype=np.float32)*1000.
+    elif snow_class.lower() == 'prairies':
+      # Prairie snow cover
+      density = np.asarray([0.2137, 0.2416, 0.2610, 0.308, 0.3981, 0.4645, 0.4645, 0.4645, 0.14, 0.14, 0.1616, 0.1851], dtype=np.float32)*1000.
+    elif snow_class.lower() == 'alpine':
+      # Alpine snow cover
+      density = np.asarray([0.2072, 0.2415, 0.2635, 0.312, 0.3996, 0.4889, 0.4889, 0.4889, 0.16, 0.16, 0.172, 0.1816], dtype=np.float32)*1000.
+    return density
+
 ## functions to load ASCII data and generate complete GeoPy datasets
 
 # a universal load function for normals and historical timeseries; also computes some derived variables, and combines NA and CA grids
@@ -273,35 +300,9 @@ def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=No
         elif var == 'snow':
             if not 'snowh' in dataset: # check prerequisites
                 raise VariableError("Prerequisites for '{:s}' not found.\n{}".format(var,dataset))
-            # N.B.: before we can compute anything, we need estimates of snow density; the values below are seasonal
-            #       estimates from the Canadian Meteorological Centre for maritime climates (Table 3):
-            #       https://nsidc.org/data/NSIDC-0447/versions/1
-            #       a factor of 1000 has been applied, because snow depth is in m (and not mm)
-            if snow_density.lower() == 'tundra':
-              # Tundra snow cover
-              density = np.asarray([0.2303, 0.2427, 0.2544, 0.2736, 0.3117, 0.3693, 0.3693, 0.3693, 0.2, 0.2, 0.2107, 0.2181], dtype=np.float32)*1000.
-              density_note = "Snow density extimates from CMC for Tundra (Tab. 3): https://nsidc.org/data/NSIDC-0447/versions/1#title15"
-            elif snow_density.lower() == 'taiga':
-              # Taiga snow cover
-              density = np.asarray([0.1931, 0.2059, 0.2218, 0.2632, 0.3190, 0.3934, 0.3934, 0.3934, 0.16, 0.16, 0.1769, 0.1798], dtype=np.float32)*1000.
-              density_note = "Snow density extimates from CMC for Taiga (Tab. 3): https://nsidc.org/data/NSIDC-0447/versions/1#title15"
-            elif snow_density.lower() == 'maritime':
-              # Maritime snow cover
-              density = np.asarray([0.2165, 0.2485, 0.2833, 0.332, 0.3963, 0.501, 0.501, 0.501, 0.16, 0.16, 0.1835, 0.1977], dtype=np.float32)*1000.
-              density_note = "Snow density estimates from CMC for Maritime climates (Tab. 3): https://nsidc.org/data/NSIDC-0447/versions/1#title15"
-            elif snow_density.lower() == 'ephemeral':
-              # Ephemeral snow cover
-              density = np.asarray([0.3168, 0.3373, 0.3643, 0.4046, 0.4586, 0.5098, 0.5098, 0.5098, 0.25, 0.25, 0.3, 0.3351], dtype=np.float32)*1000.
-              density_note = "Snow density extimates from CMC for Ephemeral snow cover (Tab. 3): https://nsidc.org/data/NSIDC-0447/versions/1#title15"
-            elif snow_density.lower() == 'prairies':
-              # Prairie snow cover
-              density = np.asarray([0.2137, 0.2416, 0.2610, 0.308, 0.3981, 0.4645, 0.4645, 0.4645, 0.14, 0.14, 0.1616, 0.1851], dtype=np.float32)*1000.
-              density_note = "Snow density extimates from CMC for the Prairies (Tab. 3): https://nsidc.org/data/NSIDC-0447/versions/1#title15"
-            elif snow_density.lower() == 'alpine':
-              # Alpine snow cover
-              density = np.asarray([0.2072, 0.2415, 0.2635, 0.312, 0.3996, 0.4889, 0.4889, 0.4889, 0.16, 0.16, 0.172, 0.1816], dtype=np.float32)*1000.
-              density_note = "Snow density extimates from CMC for Alpine snow cover (Tab. 3): https://nsidc.org/data/NSIDC-0447/versions/1#title15"
-            # Note: these snow density values are for southern Canada; values for the high latitudes are substantially different!
+            # before we can compute anything, we need estimates of snow density from a seasonal climatology
+            density = getSnowDensity(snow_density)
+            density_note = "Snow density extimates from CMC for {:s} snow cover (Tab. 3): https://nsidc.org/data/NSIDC-0447/versions/1#title15".format(snow_density.title())
             # compute values and add to dataset
             newvar = monthlyTransform(var=dataset.snowh.copy(deepcopy=True), lvar=True, linplace=True, scalefactor=density)
             newvar.atts['long_name'] = 'Snow Water Equivalent at the end of the month.'
@@ -433,12 +434,12 @@ def loadASCII_Hist(name=dataset_name, title=hist_title, atts=None, derived_vars=
 
 # Historical time-series
 CMC_period = (1998,2015)
-CMC_vardefs = dict(snow = dict(grid='NA12', name='snow', units='kg/m^2', dtype=np.float32, # Snow Water Equivalent in mm
+CMC_vardefs = dict(snowh = dict(grid='NA12', name='snowh', units='m', dtype=np.float32, scalefactor=0.01, # Snow depth, originally in cm
                                axes=('year','month',None,None),),) # this is the axes order in which the data are read                   
 CMC_axdefs = dict(year = dict(name='year', units='year', coord=np.arange(CMC_period[0],CMC_period[1]+1)), # yearly coordinate
                   month = dict(name='month', units='month', coord=np.arange(1,13)),) # monthly coordinate - will be replaced
 # N.B.: the time-series time offset has to be chose such that 1979 begins with the origin (time=0)
-CMC_derived = ('snow_acc',)
+CMC_derived = ('snow','snow_acc',)
 CMC_root = root_folder+'/CMC_hist/'
 CMC_var_pattern = '{VAR:s}/ps_cmc_sdepth_analyses_{year:04d}_ascii/{year:04d}_{month:02d}_01.tif'
 CMC_title = 'CMC Historical Gridded Snow Time-series'
@@ -480,16 +481,25 @@ def loadCMC_Hist(name='CMC', title=CMC_title, atts=None, derived_vars=CMC_derive
         dataset.mask(mask=mask) 
     
     # shift snow values by one month, since these values are for the 1st of the month
-    snow = dataset.snow; tax = snow.axisIndex('time'); tlen1 = snow.shape[tax]-1
-    assert lcheck is False or ( snow.masked and np.all( snow.data_array.mask.take([0], axis=tax) ) ), snow.data_array.mask.take([0], axis=tax).sum()
-    snow.data_array = np.roll(snow.data_array, -1, axis=tax) # there is no MA function, for some reason it works just fine... 
-    assert lcheck is False or ( snow.masked and np.all( snow.data_array.mask.take([tlen1], axis=tax) ) ), snow.data_array.mask.take([tlen1], axis=tax).sum()
-    assert 'long_name' not in snow.atts, snow.atts['long_name']
-    snow.atts['long_name'] = "Snow Water Equivalent (end of month)"
+    snowh = dataset.snowh; tax = snowh.axisIndex('time'); tlen1 = snowh.shape[tax]-1
+    assert lcheck is False or ( snowh.masked and np.all( snowh.data_array.mask.take([0], axis=tax) ) ), snowh.data_array.mask.take([0], axis=tax).sum()
+    snowh.data_array = np.roll(snowh.data_array, -1, axis=tax) # there is no MA function, for some reason it works just fine... 
+    assert lcheck is False or ( snowh.masked and np.all( snowh.data_array.mask.take([tlen1], axis=tax) ) ), snowh.data_array.mask.take([tlen1], axis=tax).sum()
+    assert 'long_name' not in snowh.atts, snowh.atts['long_name']
+    snowh.atts['long_name'] = "Snow Water Equivalent (end of month)"
     
     # compute derived variables
     for var in derived_vars:
-        if var == 'snow_acc':
+        if var == 'snow':
+            # compute snow water equivalent
+            # before we can compute anything, we need estimates of snow density from a seasonal climatology
+            density = getSnowDensity(snow_density)
+            density_note = "Snow density extimates from CMC for {:s} snow cover (Tab. 3): https://nsidc.org/data/NSIDC-0447/versions/1#title15".format(snow_density.title())
+            # compute values and add to dataset
+            newvar = monthlyTransform(var=dataset.snowh.copy(deepcopy=True), scalefactor=density, lvar=True, linplace=True)
+            newvar.atts['long_name'] = 'Snow Water Equivalent at the end of the month.'
+            newvar.atts['note'] = density_note
+        elif var == 'snow_acc':
             # compute snow accumulation
             snow = dataset.snow; tax = snow.axisIndex('time'); data = snow[:]
             delta = ma.empty_like(data)
@@ -498,13 +508,14 @@ def loadCMC_Hist(name='CMC', title=CMC_title, atts=None, derived_vars=CMC_derive
             # N.B.: the snow/SWE date has already been shifted to the end of the month
             # create snow accumulation variable and divide by time
             newvar = Variable(data=delta, axes=snow.axes, name=var, units='kg/m^2/month')
-            newvar = addGDALtoVar(newvar, griddef=dataset.griddef)
             newvar = transformMonthly(var=newvar, slc=None, l365=False, lvar=True, linplace=True)
-            dataset[var] = newvar
+        # general stuff for all variables
+        newvar = addGDALtoVar(newvar, griddef=dataset.griddef)
+        dataset[var] = newvar
     # apply varatts
     for varname,var in list(dataset.variables.items()): 
-      var.atts.update(varatts[varname]) # update in-place 
-
+        var.atts.update(varatts[varname]) # update in-place 
+        # N.B.: 'long_name' and 'note' are not in varatts, and 'snow_acc
 
     # return dataset
     return dataset
@@ -537,18 +548,28 @@ loadShapeTimeSeries = loadNRCan_ShpTS # time-series without associated grid (e.g
 
 if __name__ == '__main__':
   
-    mode = 'test_climatology'
+#     mode = 'test_climatology'
 #     mode = 'test_timeseries'
 #     mode = 'test_point_climatology'
 #     mode = 'test_point_timeseries'
-    mode = 'convert_Normals'
+#     mode = 'convert_Normals'
 #     mode = 'convert_Historical'
-#     mode = 'add_CMC'
+    mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
 #     pntset = 'ecprecip'
-    period = (1970,2000)
-#     period = (1980,2010) 
+
+    # period
+#     period = (1970,2000)
+    period = (1980,2010)
+    # snow density/type
+#         snow_density = 'ephemeral'
+    snow_density = 'maritime'
+#         snow_density = 'prairies'
+#         snow_density = 'taiga'
+#         snow_density = 'alpine'        
+
+     
     res = None; grid = None
     
     if mode == 'test_climatology':
@@ -629,11 +650,6 @@ if __name__ == '__main__':
     elif mode == 'convert_Normals':
         
         # parameters
-#         snow_density = 'ephemeral'
-#         snow_density = 'maritime'
-#         snow_density = 'prairies'
-#         snow_density = 'taiga'
-        snow_density = 'alpine'        
         prdstr = '_{}-{}'.format(*period)
         resolution = 12; grdstr = '_na{:d}_{:s}'.format(resolution, snow_density)
         ncfile = avgfolder + avgfile.format(grdstr,prdstr)
@@ -686,15 +702,15 @@ if __name__ == '__main__':
     elif mode == 'add_CMC':
         
         ## SWE correction for CMC data
-#         scale_tag = ''
-#         scale_factor = 1.
-#         scale_note = 'CMC SWE data have not been corrected'
+        scale_tag = ''
+        scale_factor = 1.
+        scale_note = None
 #         scale_tag = '_adj30'
 #         scale_factor = 3.
 #         scale_note = 'CMC SWE data has been scaled by 3.0 to match NRCan SWE over Canada'
-        scale_tag = '_adj35'
-        scale_factor = 3.5
-        scale_note = 'CMC SWE data has been scaled by 3.5 to match NRCan SWE over Canada'
+#         scale_tag = '_adj35'
+#         scale_factor = 3.5
+#         scale_note = 'CMC SWE data has been scaled by 3.5 to match NRCan SWE over Canada'
         
 #         CMC_period = (1998,1999) # for tests
 #         filelist = ['test_' + avgfile.format('_na{:d}'.format(12),'_1970-2000')]
@@ -714,8 +730,9 @@ if __name__ == '__main__':
         # apply scale factor
         for varname,var in list(cmc.variables.items()):
             if varname.lower().startswith('snow'):
-                var *= scale_factor # scale snow/SWE variables
-                # N.B.: we are mainly using SWE differences, but this is all linear...
+                if scale_factor != 1:
+                    var *= scale_factor # scale snow/SWE variables
+                    # N.B.: we are mainly using SWE differences, but this is all linear...
         # values
         print('')
         var = cmc.snow_acc.mean(axes=('lat','lon'))
@@ -735,7 +752,7 @@ if __name__ == '__main__':
         print((var[:]))
         
         # create merged lwf and add to NRCan
-        for varname in (lwf,'snow'):
+        for varname in (lwf,'snow','snowh'):
             if varname+'_NRCan' in nrcan:
                 nrcan_var = nrcan[varname+'_NRCan'] 
             else:
@@ -745,9 +762,11 @@ if __name__ == '__main__':
             new_var = nrcan_var.copy(deepcopy=False) # replace old variable
             data = np.where(nrcan_var.data_array.mask,cmc[varname].data_array,nrcan_var.data_array)
             new_var.data_array = data
-            new_var.atts['note'] = 'merged data from NRCan and CMC; '+scale_note
+            new_var.atts['note'] = 'merged data from NRCan and CMC'
+            if scale_note: new_var.atts['note'] = new_var.atts['note'] + '; ' + scale_note
             if varname == lwf: new_var.atts['long_name'] = 'Merged Liquid Water Flux'
             if varname == 'snow': new_var.atts['long_name'] = 'Merged Snow Water Equivalent'
+            if varname == 'snowh': new_var.atts['long_name'] = 'Merged Snow Depth'
             new_var.fillValue = -999.
             # save variable in NRCan dataset
             if varname_tag in nrcan: del nrcan[varname_tag] # remove old variable
@@ -756,7 +775,7 @@ if __name__ == '__main__':
         # add other CMC variables to NRCan datasets
         for varname,var in list(cmc.variables.items()):
             if varname in CMC_derived or varname in CMC_vardefs or varname == lwf:
-                var.atts['note'] = scale_note
+                if scale_note: var.atts['note'] = scale_note
                 cmc_var = varname+'_CMC'+scale_tag
                 if cmc_var in nrcan: del nrcan[cmc_var] # overwrite existing
                 nrcan[cmc_var] = var
