@@ -470,15 +470,16 @@ if __name__ == '__main__':
 #         modes = ('annual-mean','climatology', 'time-series')
 #         modes = ('annual-mean','climatology',)
 #         modes = ('annual-mean',)
-        modes = ('climatology',)  
-#         modes = ('time-series',)  
+#         modes = ('climatology',)  
+        modes = ('time-series',)  
         loverwrite = True
         exp_list= None
         # obs variables
+        load_list = ['liqwatflx',] # SnoDAS...
 #         load_list = ['lat2D','lon2D','liqwatflx','pet']
-        CMC_adjusted = sum([['liqwatflx'+tag,'liqwatflx_CMC'+tag] for tag in ('','_adj30','_adj35')],[])
-        print(CMC_adjusted)
-        load_list = ['lat2D','lon2D','pet',]+CMC_adjusted # 'precip',
+#         CMC_adjusted = sum([['liqwatflx'+tag,'liqwatflx_CMC'+tag] for tag in ('','_adj30','_adj35')],[])
+#         print(CMC_adjusted)
+#         load_list = ['lat2D','lon2D','pet',]+CMC_adjusted # 'precip',
 #         # WRF variables
 #         #load_list = ['pet_wrf']
 #         load_list = ['lat2D','lon2D','zs','snow','pet_wrf']
@@ -491,17 +492,18 @@ if __name__ == '__main__':
 #                     'SOILHGT','soilcat','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'] # constants
         # period list
         periods = [] 
-        periods += [15]
+#         periods += [15]
 #         periods += [30]
         # Observations/Reanalysis
         resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}
         lLTM = False # also regrid the long-term mean climatologies 
         datasets = []
-        datasets += ['NRCan']; periods = [(1970,2000),(1980,2010),] # this will generally not work, because we don't have snow/-melt...
-        resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies'][1:2]}
+#         datasets += ['NRCan']; periods = [(1970,2000),(1980,2010),] # this will generally not work, because we don't have snow/-melt...
+#         resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies'][1:2]}
 #         periods = [(1970,2000),]; resolutions = {'NRCan': ['na12_taiga','na12_alpine',][:1]}
-        periods = [(1980,2010),]; resolutions = {'NRCan': ['na12_maritime',]}
+#         periods = [(1980,2010),]; resolutions = {'NRCan': ['na12_maritime',]}
     #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
+        datasets = ['SnoDAS']; periods = [(2011,2019)]
         # CESM experiments (short or long name) 
         CESM_project = None # all available experiments
         load3D = False
@@ -562,7 +564,8 @@ if __name__ == '__main__':
 #         grids += [None]; project = None # special keyword for native grid
 #         grids += ['arb2']; project = 'ARB' # main grid for ARB project
 #         grids += ['uph1']; project = 'Elisha' # grid for Elisha
-        grids += ['glb1']; project = 'GLB' # grid for Great Lakes Basin project
+#         grids += ['glb1']; project = 'GLB' # grid for Great Lakes Basin project
+        grids += ['grw1']; project = 'GRW' # finer 1km grid for GRW project
 #         grids += ['grw2']; project = 'GRW' # small grid for GRW project
 #         grids += ['grw3']; project = 'GRW' # fine grid for GRW project
 #         grids += ['asb1']; project = 'ASB' # main grid for ASB project
@@ -573,9 +576,10 @@ if __name__ == '__main__':
         ## export to ASCII raster
         export_arguments = dict(
             # NRCan
-            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/'.format(os.getenv('HGS_ROOT', None)),
+            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT', None)),
 #             compute_list = [], exp_list= ['lat2D','lon2D','pet']+CMC_adjusted,   # varlist for NRCan
-            compute_list = [], exp_list= ['lat2D','lon2D','pet','liqwatflx','liqwatflx_CMC'], # varlist for NRCan
+#             compute_list = [], exp_list= ['lat2D','lon2D','pet','liqwatflx','liqwatflx_CMC'], # varlist for NRCan
+            compute_list = [], exp_list= ['liqwatflx',], # varlist for SnoDAS
             # WRF
 #             exp_list= ['landuse','landmask'],
 #             exp_list= ['lat2D','lon2D','zs','LU_MASK','LU_INDEX','LANDUSEF','VEGCAT','SHDMAX','SHDMIN',
