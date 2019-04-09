@@ -29,9 +29,8 @@ from warnings import warn
 from geodata.misc import name_of_month, days_per_month
 from utils.nctools import add_coord, add_var
 from datasets.common import getRootFolder, loadObservations
-from geodata.gdal import GridDefinition
-# from geodata.gdal import loadPickledGridDef, addGDALtoDataset
-# from geodata.gdal import grid_folder as common_grid_folder
+from geodata.gdal import GridDefinition, addGDALtoDataset, grid_folder
+from geodata.netcdf import DatasetNetCDF
 
 
 ## HGS Meta-vardata
@@ -313,55 +312,71 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, grid=None,
     return xds
 
 
-def loadSnoDAS_TS(varname=None, varlist=None, grid=None, folder=avgfolder, tsfile=tsfile, lxarray=True, 
+def loadSnoDAS_TS(varname=None, varlist=None, name=dataset_name, grid=None, folder=avgfolder, tsfile=tsfile, lxarray=True, 
                   lgeoref=True, lmonthly=False, chunks=None, time_chunks=1, geoargs=None, **kwargs):
     ''' function to load monthly transient SnoDAS data '''
-    if not lxarray: 
-        raise NotImplementedError("Only loading via xarray is currently implemented.")
-    if chunks is None and grid is None:
-        cks = netcdf_settings['chunksizes'] if chunks is None else chunks
-        # use default netCDF chunks or user chunks; set time chunking with time_chunks
-        chunks = dict(time=time_chunks,lat=cks[1],lon=cks[2])
-    # set options
-    grid_str = '_'+grid if grid else ''
-    if lmonthly:
-        kwargs['decode_times'] = False
-    for key in ('varatts','resolution','name'):
+    # remove some commong arguments that have no meaning
+    for key in ('resolution',):
         if key in kwargs: del kwargs[key]
-    # load variables
-    if varname and varlist: raise ValueError(varname,varlist)
-    elif varname:
-        # load a single variable
-        xds = xr.open_dataset(folder + tsfile.format(varname,grid_str), chunks=chunks, **kwargs)
+    if lxarray: 
+        ## laod as xarray dataset
+        if chunks is None and grid is None:
+            cks = netcdf_settings['chunksizes'] if chunks is None else chunks
+            # use default netCDF chunks or user chunks; set time chunking with time_chunks
+            chunks = dict(time=time_chunks,lat=cks[1],lon=cks[2])
+        # set options
+        grid_str = '_'+grid if grid else ''
+        if lmonthly:
+            kwargs['decode_times'] = False
+        # load variables
+        if varname and varlist: raise ValueError(varname,varlist)
+        elif varname:
+            # load a single variable
+            xds = xr.open_dataset(folder + tsfile.format(varname,grid_str), chunks=chunks, **kwargs)
+        else:
+            if varlist is None: varlist = netcdf_varlist
+            # load multifile dataset (variables are in different files
+            filepaths = [folder + tsfile.format(varname,grid_str) for varname in varlist]
+            xds = xr.open_mfdataset(filepaths, chunks=chunks, **kwargs)
+        xds.attrs['name'] = name
+        # load time stamps (like coordinate variables)
+        if 'time_stamp' in xds: xds['time_stamp'].load()
+        # fix time axis (deprecated - should not be necessary anymore)
+        if lmonthly:
+            warn("'lmonthly=True' should only be used to convert simple monthly indices into 'datetime64' coordinates.")
+            # convert a monthly time index into a daily index, anchored at the first day of the month
+            tattrs = xds['time'].attrs.copy()
+            tattrs['long_name'] = 'Calendar Day'
+            tattrs['units'] = tattrs['units'].replace('months','days')
+            start_date = pd.to_datetime(' '.join(tattrs['units'].split()[2:]))
+            end_date = start_date + pd.Timedelta(len(xds['time'])+1, unit='M')
+            tdata = np.arange(start_date,end_date, dtype='datetime64[M]')
+            assert len(tdata) == len(xds['time'])
+            tvar = xr.DataArray(tdata, dims=('time'), name='time', attrs=tattrs)
+            xds = xds.assign_coords(time=tvar)        
+        # add projection
+        if lgeoref:
+            if geoargs is None: 
+                if grid:
+                    if 'proj4' in xds.attrs: addGeoReference(xds, proj4_string=xds.attrs['proj4'])
+                    else: raise ValueError("No projection information available for selected grid '{}'.".format(grid))
+                else: xds = addGeoReference(xds,) # add default lat/lon
+            else: xds = addGeoReference(xds, **geoargs)
+        dataset = xds
     else:
-        if varlist is None: varlist = netcdf_varlist
+        ## load as GeoPy dataset
+        grid_str = '_'+grid if grid else ''
+        # load variables
+        if varname and varlist: raise ValueError(varname,varlist)
+        elif varname: varlist = [varname]
+        elif varlist is None: varlist = netcdf_varlist
         # load multifile dataset (variables are in different files
         filepaths = [folder + tsfile.format(varname,grid_str) for varname in varlist]
-        xds = xr.open_mfdataset(filepaths, chunks=chunks, **kwargs)
-    # load time stamps (like coordinate variables)
-    if 'time_stamp' in xds: xds['time_stamp'].load()
-    # fix time axis (deprecated - should not be necessary anymore)
-    if lmonthly:
-        warn("'lmonthly=True' should only be used to convert simple monthly indices into 'datetime64' coordinates.")
-        # convert a monthly time index into a daily index, anchored at the first day of the month
-        tattrs = xds['time'].attrs.copy()
-        tattrs['long_name'] = 'Calendar Day'
-        tattrs['units'] = tattrs['units'].replace('months','days')
-        start_date = pd.to_datetime(' '.join(tattrs['units'].split()[2:]))
-        end_date = start_date + pd.Timedelta(len(xds['time'])+1, unit='M')
-        tdata = np.arange(start_date,end_date, dtype='datetime64[M]')
-        assert len(tdata) == len(xds['time'])
-        tvar = xr.DataArray(tdata, dims=('time'), name='time', attrs=tattrs)
-        xds = xds.assign_coords(time=tvar)        
-    # add projection
-    if lgeoref:
-        if geoargs is None: 
-            if grid:
-                if 'proj4' in xds.attrs: addGeoReference(xds, proj4_string=xds.attrs['proj4'])
-                else: raise ValueError("No projection information available for selected grid '{}'.".format(grid))
-            else: xds = addGeoReference(xds,) # add default lat/lon
-        else: xds = addGeoReference(xds, **geoargs)
-    return xds
+        ds = DatasetNetCDF(name=name, filelist=filepaths, varlist=varlist, multifile=False, **kwargs)
+        # add GDAL to dataset
+        ds = addGDALtoDataset(ds, griddef=grid, gridfolder=grid_folder)
+        dataset = ds
+    return dataset
 
 
 def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfolder, avgfile=avgfile, 
@@ -436,12 +451,13 @@ default_grid = SnoDAS_grid
 # functions to access specific datasets
 loadLongTermMean       = None # climatology provided by publisher
 loadDailyTimeSeries    = loadSnoDAS_Daily # daily time-series data
-loadTimeSeries         = loadSnoDAS_TS # monthly time-series data
 loadClimatology        = loadSnoDAS # pre-processed, standardized climatology
 loadStationClimatology = None # climatologies without associated grid (e.g. stations) 
 loadStationTimeSeries  = None # time-series without associated grid (e.g. stations)
 loadShapeClimatology   = None # climatologies without associated grid (e.g. provinces or basins) 
 loadShapeTimeSeries    = None # time-series without associated grid (e.g. provinces or basins)
+# monthly time-series data for batch processing
+def loadTimeSeries(lxarray=False, **kwargs): return loadSnoDAS_TS(lxarray=lxarray, **kwargs)
 
 
 ## abuse for testing
@@ -463,8 +479,8 @@ if __name__ == '__main__':
 
   modes = []
 #   modes += ['monthly_mean'          ]
-#   modes += ['load_TimeSeries'       ]
-  modes += ['monthly_normal'        ]
+#   modes += ['monthly_normal'        ]
+  modes += ['load_TimeSeries'       ]
 #   modes += ['load_Climatology'      ]
 #   modes += ['load_Point_Climatology']
 #   modes += ['load_daily'            ]
@@ -488,7 +504,7 @@ if __name__ == '__main__':
        
         
         lxarray = False
-        ds = loadSnoDAS(varlist=varlist, period=(2011,2019), grid=grid, lxarray=lxarray) # load regular GeoPy dataset
+        ds = loadSnoDAS(varlist=varlist, period=(2010,2019), grid=grid, lxarray=lxarray) # load regular GeoPy dataset
         print(ds)
         print('')
         varname = list(ds.variables.keys())[0]
@@ -592,17 +608,17 @@ if __name__ == '__main__':
   
     elif mode == 'load_TimeSeries':
        
-        
+        lxarray = False
         varname = varlist[0]
-        xds = loadSnoDAS_TS(varlist=varlist, time_chunks=1, grid=grid, lmonthly=False) # 32 may be possible
-  #       xds = loadSnoDAS_TS(varname=varname, time_chunks=1, lmonthly=False) # 32 may be possible      
+        xds = loadSnoDAS_TS(varlist=varlist, time_chunks=1, grid=grid, lxarray=lxarray) # 32 time chunks may be possible
         print(xds)
         print('')
         xv = xds[varname]
-        xv = xv.loc['2011-01-01':'2011-01-31',]
-  #       xv = xv.loc['2011-01-01',:,:]
+#         xv = xv.loc['2011-01-01':'2011-01-31',]
+#         xv = xv.loc['2011-01-01',:,:]
         print(xv)
-        print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
+        if lxarray:
+            print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
   
   #       print('')
   #       print(xds['time'])
@@ -619,7 +635,8 @@ if __name__ == '__main__':
   
         # optional slicing (time slicing completed below)
 #         start_date = '2011-01-20'; end_date = '2011-02-11'
-        start_date = None; end_date = None
+        start_date = '2010-01-01'; end_date = '2018-12-31'
+#         start_date = None; end_date = None
    
         ts_name = 'time_stamp'
         

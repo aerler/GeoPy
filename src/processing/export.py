@@ -152,13 +152,19 @@ class ASCII_raster(FileFormat):
     # create link with alternate period designation
     self.altprdlnk = None
     if lnkprd is not None and hasattr(os,'symlink'): # Windows does not have symlinks, so this does not work
-      i = self.folder_pattern.find('{PERIOD')
-      if i > -1:
-        root_folder = self.folder_pattern[:i].format(**metadict)
-        period_pattern = self.folder_pattern[i:].split('/')[0]
-        link_name = period_pattern.format(PERIOD=lnkprd)
-        link_dest = period_pattern.format(PERIOD=expprd)
-        self.altprdlnk = (root_folder, link_dest, link_name)
+        # find folder that contains period folder
+        folder_names = self.folder_pattern.split('/')
+        i = -1; lprd = False
+        for name in folder_names:
+            i += 1    
+            if '{PERIOD' in name:
+                lprd = True; break
+        if lprd:
+            root_folder = '/'.join(folder_names[:i]).format(**metadict)
+            period_pattern = folder_names[i] # the folder name containing the period string
+            link_name = period_pattern.format(PERIOD=lnkprd)
+            link_dest = period_pattern.format(PERIOD=expprd)
+            self.altprdlnk = (root_folder, link_dest, link_name)
     # return folder (no filename)
     return self.folder
   
@@ -468,10 +474,10 @@ if __name__ == '__main__':
 #         NP = 1 ; ldebug = True # just for tests
 #         modes = ('time-series','climatology')
 #         modes = ('annual-mean','climatology', 'time-series')
-#         modes = ('annual-mean','climatology',)
+        modes = ('annual-mean','climatology',)
 #         modes = ('annual-mean',)
 #         modes = ('climatology',)  
-        modes = ('time-series',)  
+#         modes = ('time-series',)  
         loverwrite = True
         exp_list= None
         # obs variables
@@ -500,8 +506,9 @@ if __name__ == '__main__':
         datasets = []
 #         datasets += ['NRCan']; periods = [(1970,2000),(1980,2010),] # this will generally not work, because we don't have snow/-melt...
 #         resolutions = {'NRCan': ['na12_ephemeral','na12_maritime','na12_prairies'][1:2]}
-#         periods = [(1970,2000),]; resolutions = {'NRCan': ['na12_taiga','na12_alpine',][:1]}
-#         periods = [(1980,2010),]; resolutions = {'NRCan': ['na12_maritime',]}
+#         datasets = ['NRCan']; periods = [(1970,2000),]; resolutions = {'NRCan': ['na12_taiga','na12_alpine',][:1]}
+#         datasets = ['NRCan']; periods = [(1980,2010),]; resolutions = {'NRCan': ['na12_maritime',]}
+#         datasets = ['NRCan']; periods = [(1970,2000),]; resolutions = {'NRCan': ['na12_maritime',]}
     #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
         datasets = ['SnoDAS']; periods = [(2011,2019)]
         # CESM experiments (short or long name) 
@@ -551,14 +558,14 @@ if __name__ == '__main__':
         WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
 #         WRF_filetypes = ('const',) # with radiation files
         ## bias-correction paramter
-        bc_method = None; bc_tag = '' # no bias correction
+#         bc_method = None; bc_tag = '' # no bias correction
+        bc_method = 'SMBC'; bc_tag = bc_method+'_' # bias correction method (None: no bias correction)        
 #         bc_method = 'AABC'; bc_tag = bc_method+'_' # bias correction method (None: no bias correction)        
-#         obs_dataset = 'NRCan' # the observational dataset 
-#         bc_reference = None # reference experiment (None: auto-detect based on name)
-# #         bc_reference = 't-ensemble'
-#         bc_varmap = dict(Tmin=('Tmin','TSmin'), Tmax=('Tmax','TSmax'), T2=('T2','Tmean'), pet_wrf=('pet_wrf','evap'), 
-#                          SWDNB=('SWDNB','SWUPB','SWD'),SWD=('SWDNB','SWUPB','SWD'),)
-#         bc_args = dict(grid=None, domain=None, lgzip=True, varmap=bc_varmap) # missing/None parameters are inferred from experiment
+        obs_dataset = 'NRCan' # the observational dataset 
+        bc_reference = None # reference experiment (None: auto-detect based on name)
+        bc_varmap = dict(Tmin=('Tmin','TSmin'), Tmax=('Tmax','TSmax'), T2=('T2','Tmean'), pet_wrf=('pet_wrf','evap'), 
+                         SWDNB=('SWDNB','SWUPB','SWD'),SWD=('SWDNB','SWUPB','SWD'),)
+        bc_args = dict(grid=None, domain=None, lgzip=True, varmap=bc_varmap) # missing/None parameters are inferred from experiment
         # typically a specific grid is required
         grids = [] # list of grids to process
 #         grids += [None]; project = None # special keyword for native grid
@@ -576,7 +583,7 @@ if __name__ == '__main__':
         ## export to ASCII raster
         export_arguments = dict(
             # NRCan
-            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT', None)),
+            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT', None),bc_tag),
 #             compute_list = [], exp_list= ['lat2D','lon2D','pet']+CMC_adjusted,   # varlist for NRCan
 #             compute_list = [], exp_list= ['lat2D','lon2D','pet','liqwatflx','liqwatflx_CMC'], # varlist for NRCan
             compute_list = [], exp_list= ['liqwatflx',], # varlist for SnoDAS
@@ -653,8 +660,8 @@ if __name__ == '__main__':
     # bias-correction parameters (if used)
     print(('\nBias-Correction: {}'.format(bc_method)))
     if bc_method:
-      print(('  Observational Dataset: {:s}'.format(obs_dataset)))
-      print(('  Reference Dataset: {:s}'.format(bc_reference)))
+      print(('  Observational Dataset: {}'.format(obs_dataset)))
+      print(('  Reference Dataset: {}'.format(bc_reference)))
       print(('  Parameters: {}'.format(bc_args)))
     print('\n') # separator space
       

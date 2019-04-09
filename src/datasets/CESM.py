@@ -156,9 +156,8 @@ class ATM(FileType):
                      MaxPrecip  = dict(name='MaxPrecip', units='kg/m^2/s', scalefactor=1.), # maximum daily precip                    
                      MaxPrecip_1d  = dict(name='MaxPrecip_1d', units='kg/m^2/s', scalefactor=1.), # maximum daily precip                    
                      MaxPreccu_1d  = dict(name='MaxPreccu_1d', units='kg/m^2/s', scalefactor=1.), # maximum daily precip                    
-                     #SNOWLND   = dict(name='snow', units='kg/m^2'), # snow water equivalent
-                     SNOWHLND = dict(name='snowh', units='m'), # snow depth
-                     SNOWHICE = dict(name='snowhice', units='m'), # snow depth
+                     SNOWHLND = dict(name='snow', units='kg/m^2', scalefactor=1000.), # actuall SWE, not snow depth
+                     SNOWHICE = dict(name='snow_ice', units='kg/m^2', scalefactor=1000.), # actuall SWE, not snow depth
                      ICEFRAC  = dict(name='seaice', units=''), # seaice fraction
                      SHFLX    = dict(name='hfx', units='W/m^2'), # surface sensible heat flux
                      LHFLX    = dict(name='lhfx', units='W/m^2'), # surface latent heat flux

@@ -21,7 +21,7 @@ seconds_per_month_365 = days_per_month_365 * 86400.
 # human-readable names
 name_of_month = ['January  ', 'February ', 'March    ', 'April    ', 'May      ', 'June     ', #
                  'July     ', 'August   ', 'September', 'October  ', 'November ', 'December ']
-stripped_month = [mon.strip().lower() for mon in name_of_month] # better case-isensitive
+stripped_month = [mon.strip().lower() for mon in name_of_month] # better case-insensitive
 abbr_of_month = [mon[:3].lower() for mon in name_of_month] # better case-isensitive
 
 ## useful decorators

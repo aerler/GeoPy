@@ -890,7 +890,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       # N.B.: we can directly change axis vectors, since they reside in memory;
       #       the source file is not changed, unless sync() is called
       if lts:
-        dataset.time.coord = np.arange(len(dataset.time)) + (ys-1979)*12 + (ms-1)
+        dataset.time.coord = np.arange(len(dataset.time), dtype=dataset.time.dtype) + (ys-1979)*12 + (ms-1)
         # N.B.: shifting is dangerous, because of potential repeated application
 #         t0 = dataset.time.coord[0]
 #         tm = t0%12; ty = int(np.floor(t0/12))  
@@ -901,7 +901,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
 #           dataset.time.coord -= ( ty+1979 - ys )*12
 #           dataset.time.offset -= ( ty+1979 - ys )*12 
       elif lclim:
-        dataset.time.coord = np.arange(len(dataset.time)) + 1
+        dataset.time.coord = np.arange(len(dataset.time), dtype=dataset.time.dtype) + 1
         # N.B.: shifting is dangerous, because of potential repeated application
 #         t0 = dataset.time.coord[0]
 #         # there is no "year" - just start with "1" for january 

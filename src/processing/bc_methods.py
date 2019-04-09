@@ -11,7 +11,7 @@ definition in a separate module, so it can be pickled and imported in other modu
 import collections as col
 import numpy as np
 # internal imports
-from geodata.misc import isEqual, DataError
+from geodata.misc import isEqual, DataError, VariableError
 from geodata.netcdf import DatasetNetCDF, VarNC
 
 
@@ -217,9 +217,25 @@ class Delta(BiasCorrection):
     name = 'Delta' # name used in file names
     long_name = 'Simple Delta-Method' # name for printing
     _ratio_units = ('mm/day','kg/m^2/s','J/m^2/s','W/m^2') # variable units that indicate ratio
-      
-    def _trainVar(self, var, obsvar, **kwargs):
+    
+    def _checkClim(self, time_axis, modvar, obsvar):
+        # check if we are dealing with a monthly climatology
+        for var,typ in zip([modvar,obsvar],['model','ref/obs']):
+            tax = var.getAxis(time_axis)
+            if len(tax) != 12 and 'month' not in tax.units.lower(): 
+                raise VariableError("The Variable '{}' ({}) does notappear to be a monthly climatology:\n{}".format(var.name,typ,str(var)))
+    
+    def _extendClim(self, correction, var, time_axis):
+        # extend monthly normal correction factors to multiple years
+        tidx = var.axisIndex(time_axis)
+        assert var.ndim == correction.ndim
+        assert correction.shape[tidx] == 12
+        assert var.shape[tidx]%12 == 0
+        return np.repeat(correction, var.shape[tidx]//12, axis=tidx)
+        
+    def _trainVar(self, var, obsvar, time_axis='time', **kwargs):
         ''' take difference (or ratio) between observations and simulation and use as correction '''
+        self._checkClim(time_axis, var, obsvar) # check time axis
         # decide between difference or ratio based on variable type
         if var.units in self._ratio_units: # ratio for fluxes
             delta = obsvar.data_array / var.data_array 
@@ -228,14 +244,16 @@ class Delta(BiasCorrection):
         # return correction parameters, i.e. delta
         return delta
           
-    def _correctVar(self, var, varname=None, **kwargs):
+    def _correctVar(self, var, varname=None, time_axis='time', **kwargs):
         ''' use stored ratios to bias-correct the input dataset and return a new copy '''
         if varname is None: varname = var.name # allow for variable mapping
+        # format correction
+        correction = self._extendClim(self._correction[varname], var, time_axis)
         # decide between difference or ratio based on variable type
         if var.units in self._ratio_units: # ratio for fluxes
-            data = var.data_array * self._correction[varname]
+            data = var.data_array * correction
         else: # default behavior is differences
-            data = var.data_array + self._correction[varname]    
+            data = var.data_array + correction
         # return bias-corrected data (copy)
         return data
 
@@ -244,8 +262,9 @@ class SMBC(Delta):
     name = 'SMBC' # name used in file names
     long_name = 'Simple Monthly Mean Adjustment' # name for printing
       
-    def _trainVar(self, var, obsvar, **kwargs):
+    def _trainVar(self, var, obsvar, time_axis='time', **kwargs):
         ''' take difference (or ratio) between spatially averaged observations and simulation and use as correction '''
+        self._checkClim(time_axis, var, obsvar) # check time axis
         obsdata = obsvar.data_array; vardata = var.data_array
         if obsdata.ndim == 3:
             assert obsdata.shape[0] == 12, obsvar
@@ -274,7 +293,7 @@ class AABC(Delta):
     name = 'AABC' # name used in file names
     long_name = 'Simple Annual Average Correction' # name for printing
       
-    def _trainVar(self, var, obsvar, **kwargs):
+    def _trainVar(self, var, obsvar, time_axis='time', **kwargs):
         ''' take difference (or ratio) between averaged observations and simulation and use as correction '''
         obsdata = obsvar.data_array; vardata = var.data_array
         # average spatially and temporally (over seasonal cycle) - very simple!
@@ -292,12 +311,12 @@ class AABC(Delta):
 class MyBC(BiasCorrection):
     ''' A BiasCorrection class that implements snowmelt shift and utilizes different (unobserved) precipitation types '''
     
-    def _trainVar(self, var, obsvar, **kwargs):
+    def _trainVar(self, var, obsvar, time_axis='time', **kwargs):
         ''' optimize parameters for best fit of dataset to observations and save parameters;
             this method should be implemented for each method '''
         raise NotImplementedError
   
-    def _correctVar(self, var, varname=None, **kwargs):
+    def _correctVar(self, var, varname=None, time_axis='time', **kwargs):
         ''' apply bias correction to new variable and return bias-corrected data;
             this method should be implemented for each method '''
         if varname is None: varname = var.name # allow for variable mapping

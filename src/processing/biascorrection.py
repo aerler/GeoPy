@@ -193,7 +193,7 @@ if __name__ == '__main__':
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}
     lLTM = True # also regrid the long-term mean climatologies 
-    datasets = []
+    datasets = ['SnoDAS']; periods = [(2011,2019)]
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
@@ -207,7 +207,7 @@ if __name__ == '__main__':
     WRF_experiments = [] # use None to process all WRF experiments
 #     WRF_experiments += ['erai-g3','erai-t3']
 #     WRF_experiments += ['erai-g','erai-t']
-    WRF_experiments += ['g-ensemble','t-ensemble']
+#     WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['g3-ensemble','t3-ensemble']
 #     WRF_experiments += ['g-ensemble']
 #     WRF_experiments += ['erai-max','erai-ctrl']
@@ -229,14 +229,16 @@ if __name__ == '__main__':
     tag = None # an additional tag string for pickle name
     load_list = None # variables that need to be loaded
     varlist = None # variables that should be bias-corrected
+    grid = 'grw1' # need a common grid for all datasets
 #     grid = 'grw2' # need a common grid for all datasets
 #     grid = 'grw3' # need a common grid for all datasets
-    grid = 'uph1' # grid for Elisha
+#     grid = 'uph1' # grid for Elisha
 #     grid = 'asb1' # need a common grid for all datasets
 #     grid = 'brd1' # need a common grid for all datasets
 #     grid = 'snw1' # need a common grid for all datasets
 #     grid = 'son1' # need a common grid for all datasets
-    bc_method = 'AABC' # annual average bias correction method
+#     bc_method = 'AABC' # annual average bias correction method
+    bc_method = 'SMBC' # annual average bias correction method
 #     bc_method = 'Delta' # grid-point-wise monthly bias correction method
     bc_args = dict() # paramters for bias correction
   

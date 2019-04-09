@@ -113,7 +113,7 @@ def loadCFSR_TS(name=dataset_name, grid=None, varlist=None, varatts=None, resolu
       elif resolution == 'lowres' or resolution == '05': 
         files = [lowresfiles[var] for var in varlist if var in lowresfiles]
     # load dataset
-    dataset = DatasetNetCDF(name=name, folder=folder, filelist=files, varlist=varlist, varatts=varatts, 
+    dataset = DatasetNtCDF(name=name, folder=folder, filelist=files, varlist=varlist, varatts=varatts, 
                             check_override=['time'], multifile=False, ncformat='NETCDF4_CLASSIC')
     # load static data
     if filelist is None: # generate default filelist
