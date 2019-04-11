@@ -24,7 +24,7 @@ from processing.misc import getMetaData,  getExperimentList, loadYAML, getTarget
 from utils.nctools import writeNetCDF
 # new variable functions and bias-correction 
 import processing.newvars as newvars
-from processing.bc_methods import getPickleFileName
+from processing.bc_methods import findPicklePath, getBCpickle
 
 ## helper classes to handle different file formats
 
@@ -265,21 +265,10 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
         lgzip = bcargs.pop('lgzip',None) # if pickle is gzipped (None: auto-detect based on file name extension)
         # get name of pickle file (and folder)
         picklefolder = dataargs.avgfolder.replace(dataset_name,bc_reference)
-        picklefile = getPickleFileName(method=bc_method, obs_name=bc_obs, gridstr=bc_grid, domain=bc_domain, 
-                                       tag=bc_tag, pattern=bc_pattern)
-        picklepath = '{:s}/{:s}'.format(picklefolder,picklefile)
-        if lgzip:
-            picklepath += '.gz' # add extension
-            if not os.path.exists(picklepath): raise IOError(picklepath)
-        elif lgzip is None:
-            lgzip = False
-            if not os.path.exists(picklepath):
-                lgzip = True # assume gzipped file
-                picklepath += '.gz' # try with extension...
-                if not os.path.exists(picklepath): raise IOError(picklepath)
-        elif not os.path.exists(picklepath): raise IOError(picklepath)
-        pickleage = datetime.fromtimestamp(os.path.getmtime(picklepath))
+        picklepath = findPicklePath(method=bc_method, obs_name=bc_obs, gridstr=bc_grid, domain=bc_domain, 
+                                    tag=bc_tag, pattern=bc_pattern, folder=picklefolder, lgzip=lgzip)
         # determine age of pickle file and compare against source age
+        pickleage = datetime.fromtimestamp(os.path.getmtime(picklepath))
     else:
       bc_method = False 
       pickleage = srcage
@@ -314,7 +303,13 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
           raise DateError("Specifed period is inconsistent with netcdf records: '{:s}' != '{:s}'".format(periodstr,source.atts.period))
       
       # load BiasCorrection object from pickle
-      if bc_method:      
+      if bc_method:     
+          # some code to inspect pickles (for testing)
+          #BC = getBCpickle(method=bc_method, obs_name=bc_obs, gridstr=bc_grid, domain=bc_domain, 
+          #                 tag=bc_tag, pattern=bc_pattern, folder=picklefolder, lgzip=lgzip)
+          #times = np.arange(np.datetime64('2009-01-01'), np.datetime64('2010-01-01'))
+          #test = BC.correctionByTime(varname='liqwatflx', time=times, )
+          #print(test.shape)
           op = gzip.open if lgzip else open
           with op(picklepath, 'r') as filehandle:
               BC = pickle.load(filehandle) 
@@ -474,8 +469,8 @@ if __name__ == '__main__':
 #         NP = 1 ; ldebug = True # just for tests
 #         modes = ('time-series','climatology')
 #         modes = ('annual-mean','climatology', 'time-series')
-        modes = ('annual-mean','climatology',)
-#         modes = ('annual-mean',)
+#         modes = ('annual-mean','climatology',)
+        modes = ('annual-mean',)
 #         modes = ('climatology',)  
 #         modes = ('time-series',)  
         loverwrite = True

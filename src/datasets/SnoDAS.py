@@ -290,19 +290,20 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, grid=None,
         cks = netcdf_settings['chunksizes'] if chunks is None else chunks
         # use default netCDF chunks or user chunks, but multiply time by time_chunks
         chunks = dict(time=cks[0]*time_chunks,lat=cks[1],lon=cks[2])
-    if grid:
-        folder = '{}/{}'.format(folder,grid) # non-native grids are stored in sub-folders
-        varname = '{}_{}'.format(varname,grid) # also append non-native grid name to varname
+    if grid: folder = '{}/{}'.format(folder,grid) # non-native grids are stored in sub-folders
     # load variables
     if varname and varlist: raise ValueError(varname,varlist)
     elif varname:
         # load a single variable
+        if grid: varname = '{}_{}'.format(varname,grid) # also append non-native grid name to varname
         filepath = '{}/{}'.format(folder,netcdf_filename.format(varname))
         xds = xr.open_dataset(filepath, chunks=chunks, **kwargs)
     else:
         if varlist is None: varlist = netcdf_varlist
+        if grid: # also append non-native grid name to varnames
+            varlist = ['{}_{}'.format(varname,grid) for varname in varlist]
         # load multifile dataset (variables are in different files
-        filepaths = [folder + netcdf_filename.format(varname) for varname in varlist]
+        filepaths = ['{}/{}'.format(folder,netcdf_filename.format(varname)) for varname in varlist]
         xds = xr.open_mfdataset(filepaths, chunks=chunks, **kwargs)
         #xds = xr.merge([xr.open_dataset(fp, chunks=chunks, **kwargs) for fp in filepaths])    
     # add projection
@@ -480,14 +481,14 @@ if __name__ == '__main__':
   modes = []
 #   modes += ['monthly_mean'          ]
 #   modes += ['monthly_normal'        ]
-  modes += ['load_TimeSeries'       ]
+#   modes += ['load_TimeSeries'       ]
 #   modes += ['load_Climatology'      ]
 #   modes += ['load_Point_Climatology']
-#   modes += ['load_daily'            ]
 #   modes += ['fix_time'              ]
-#   modes += ['add_variables'         ]
 #   modes += ['test_binary_reader'    ]
-#   modes += ['convert_binary'        ]
+  modes += ['convert_binary'        ]
+  modes += ['add_variables'         ]
+  modes += ['load_daily'            ]
 
   pntset = 'glbshp'
 #   grid = None # native
@@ -915,7 +916,7 @@ if __name__ == '__main__':
                 ncds = creatNetCDF(varname, varatts=netcdf_varatts, ncatts=netcdf_settings, data_folder=daily_folder)
                 ncds.sync()
                 ncvar = ncds[varname]
-                assert filepath == ncds.filepath(), ncds.filepath()
+                assert filepath.replace('/','\\') == ncds.filepath(), (filepath,ncds.filepath())
                 ncts  = ncds['time_stamp']; nctc  = ncds['time']
                 time_offset = len(ncts)
                 assert  time_offset == 0, ncts
