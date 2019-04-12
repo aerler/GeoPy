@@ -308,8 +308,12 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, grid=None,
         #xds = xr.merge([xr.open_dataset(fp, chunks=chunks, **kwargs) for fp in filepaths])    
     # add projection
     if lgeoref:
-        if geoargs is None: geoargs = dict()
-        xds = addGeoReference(xds, **geoargs)
+        if geoargs is None: 
+            if grid:
+                if 'proj4' in xds.attrs: addGeoReference(xds, proj4_string=xds.attrs['proj4'])
+                else: raise ValueError("No projection information available for selected grid '{}'.".format(grid))
+            else: xds = addGeoReference(xds,) # add default lat/lon
+        else: xds = addGeoReference(xds, **geoargs)
     return xds
 
 
@@ -486,7 +490,7 @@ if __name__ == '__main__':
 #   modes += ['load_Point_Climatology']
 #   modes += ['fix_time'              ]
 #   modes += ['test_binary_reader'    ]
-  modes += ['convert_binary'        ]
+#   modes += ['convert_binary'        ]
   modes += ['add_variables'         ]
   modes += ['load_daily'            ]
 
@@ -718,7 +722,7 @@ if __name__ == '__main__':
         start = time.time()
             
         # load variables
-        time_chunks = 32 # 32 may be possible
+        time_chunks = 8 # 32 may be possible
         chunks = netcdf_settings['chunksizes']
         chunk_settings = dict(time=chunks[0]*time_chunks,lat=chunks[1],lon=chunks[2])      
         ts_name = 'time_stamp'

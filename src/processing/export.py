@@ -7,8 +7,7 @@ A script to convert datasets to raster format using GDAL.
 '''
 
 # external imports
-try: import pickle as pickle
-except: import pickle
+import pickle
 import os, shutil, gzip # check if files are present etc.
 import numpy as np
 from importlib import import_module
@@ -24,7 +23,7 @@ from processing.misc import getMetaData,  getExperimentList, loadYAML, getTarget
 from utils.nctools import writeNetCDF
 # new variable functions and bias-correction 
 import processing.newvars as newvars
-from processing.bc_methods import findPicklePath, getBCpickle
+from processing.bc_methods import findPicklePath
 
 ## helper classes to handle different file formats
 
@@ -305,13 +304,14 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
       # load BiasCorrection object from pickle
       if bc_method:     
           # some code to inspect pickles (for testing)
-          #BC = getBCpickle(method=bc_method, obs_name=bc_obs, gridstr=bc_grid, domain=bc_domain, 
+          #from processing.bc_methods import loadBCpickle
+          #BC = loadBCpickle(method=bc_method, obs_name=bc_obs, gridstr=bc_grid, domain=bc_domain, 
           #                 tag=bc_tag, pattern=bc_pattern, folder=picklefolder, lgzip=lgzip)
           #times = np.arange(np.datetime64('2009-01-01'), np.datetime64('2010-01-01'))
           #test = BC.correctionByTime(varname='liqwatflx', time=times, )
           #print(test.shape)
           op = gzip.open if lgzip else open
-          with op(picklepath, 'r') as filehandle:
+          with op(picklepath, 'rb') as filehandle:
               BC = pickle.load(filehandle) 
           # assemble logger entry
           bcmsgstr = "(performing bias-correction using {:s} from {:s} towards {:s})".format(BC.long_name,bc_reference,bc_obs)
@@ -470,8 +470,8 @@ if __name__ == '__main__':
 #         modes = ('time-series','climatology')
 #         modes = ('annual-mean','climatology', 'time-series')
 #         modes = ('annual-mean','climatology',)
-        modes = ('annual-mean',)
-#         modes = ('climatology',)  
+#         modes = ('annual-mean',)
+        modes = ('climatology',)  
 #         modes = ('time-series',)  
         loverwrite = True
         exp_list= None
@@ -567,8 +567,8 @@ if __name__ == '__main__':
 #         grids += ['arb2']; project = 'ARB' # main grid for ARB project
 #         grids += ['uph1']; project = 'Elisha' # grid for Elisha
 #         grids += ['glb1']; project = 'GLB' # grid for Great Lakes Basin project
-        grids += ['grw1']; project = 'GRW' # finer 1km grid for GRW project
-#         grids += ['grw2']; project = 'GRW' # small grid for GRW project
+#         grids += ['grw1']; project = 'GRW' # finer 1km grid for GRW project
+        grids += ['grw1']; project = 'GRW' # small grid for GRW project
 #         grids += ['grw3']; project = 'GRW' # fine grid for GRW project
 #         grids += ['asb1']; project = 'ASB' # main grid for ASB project
 #         grids += ['brd1']; project = 'ASB' # small grid for ASB project

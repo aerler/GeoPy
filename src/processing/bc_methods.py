@@ -79,7 +79,7 @@ def findPicklePath(method=None, obs_name=None, gridstr=None, domain=None, tag=No
     # return validated path
     return picklepath
 
-def getBCpickle(method=None, obs_name=None, gridstr=None, domain=None, tag=None, pattern=None, 
+def loadBCpickle(method=None, obs_name=None, gridstr=None, domain=None, tag=None, pattern=None, 
                 folder=None, lgzip=None):
     ''' construct pickle path, autodetect gzip, and load pickle - return BiasCorrection object '''
     # get pickle path (autodetect gzip)
@@ -87,8 +87,10 @@ def getBCpickle(method=None, obs_name=None, gridstr=None, domain=None, tag=None,
                                 pattern=pattern, folder=folder, lgzip=lgzip)
     # load pickle from file
     op = gzip.open if lgzip else open
-    with op(picklepath, 'r') as filehandle:
+    with op(picklepath, 'rb') as filehandle:
         BC = pickle.load(filehandle) 
+    ## N.B.: for some reason this code in a function can cause errors, but if it is take out ouf the function
+    ##       and copied directly into the calling code, it works just fine... no idea why...
     return BC
   
 

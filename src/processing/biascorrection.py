@@ -8,8 +8,7 @@ A script to generate bias correction objects for WRF or other experiments; BiasC
 '''
 
 # external imports
-try: import pickle as pickle # cPickle is the same, but faster
-except: import pickle
+import pickle
 import os, gzip # check if files are present etc.
 import numpy as np
 from datetime import datetime 
@@ -114,7 +113,7 @@ def generateBiasCorrection(dataset, mode, dataargs, obs_dataset, bc_method, bc_a
       picklepath += '.gz'
     else: op = open
     with op(picklepath, 'wb') as filehandle:
-      pickle.dump(BC, filehandle, protocol=-1) # should be new binary protocol
+      pickle.dump(BC, filehandle, protocol=2) # should be new binary protocol
     if not os.path.exists(picklepath):
       raise IOError("Error while saving Pickle to '{0:s}'".format(picklepath))
 
@@ -193,7 +192,7 @@ if __name__ == '__main__':
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}
     lLTM = True # also regrid the long-term mean climatologies 
-    datasets = ['SnoDAS']; periods = [(2011,2019)]
+    datasets = ['SnoDAS']; periods = [(2010,2019)]
 #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
@@ -229,8 +228,8 @@ if __name__ == '__main__':
     tag = None # an additional tag string for pickle name
     load_list = None # variables that need to be loaded
     varlist = None # variables that should be bias-corrected
-    grid = 'grw1' # need a common grid for all datasets
-#     grid = 'grw2' # need a common grid for all datasets
+#     grid = 'grw1' # need a common grid for all datasets
+    grid = 'grw2' # need a common grid for all datasets
 #     grid = 'grw3' # need a common grid for all datasets
 #     grid = 'uph1' # grid for Elisha
 #     grid = 'asb1' # need a common grid for all datasets
