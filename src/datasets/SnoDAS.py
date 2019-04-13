@@ -483,20 +483,20 @@ if __name__ == '__main__':
 #   dask.set_options(pool=ThreadPool(4))
 
   modes = []
-#   modes += ['monthly_mean'          ]
-#   modes += ['monthly_normal'        ]
-#   modes += ['load_TimeSeries'       ]
-#   modes += ['load_Climatology'      ]
 #   modes += ['load_Point_Climatology']
 #   modes += ['fix_time'              ]
 #   modes += ['test_binary_reader'    ]
 #   modes += ['convert_binary'        ]
-  modes += ['add_variables'         ]
-  modes += ['load_daily'            ]
+#   modes += ['add_variables'         ]
+#   modes += ['load_daily'            ]
+  modes += ['monthly_mean'          ]
+  modes += ['monthly_normal'        ]
+  modes += ['load_TimeSeries'       ]
+  modes += ['load_Climatology'      ]
 
   pntset = 'glbshp'
-#   grid = None # native
-  grid = 'grw1'
+  grid = None # native
+#   grid = 'grw1'
 
   # variable list
   varlist = netcdf_varlist
@@ -692,7 +692,7 @@ if __name__ == '__main__':
         chunk_settings = dict(time=chunks[0]*time_chunks,lat=chunks[1],lon=chunks[2])      
             
   #       varlist = netcdf_varlist
-        varlist = ['liqwatflx','precip','rho_snw']
+#         varlist = ['liqwatflx','precip','rho_snw']
         varname = varlist[0]
         xds = loadSnoDAS_Daily(varlist=varlist, time_chunks=time_chunks) # 32 may be possible
         print(xds)
@@ -726,7 +726,7 @@ if __name__ == '__main__':
         chunks = netcdf_settings['chunksizes']
         chunk_settings = dict(time=chunks[0]*time_chunks,lat=chunks[1],lon=chunks[2])      
         ts_name = 'time_stamp'
-        varlist = ['liqwatflx','precip','rho_snw',]
+        derived_varlist = ['liqwatflx','precip','rho_snw',]
         xds = loadSnoDAS_Daily(varlist=binary_varlist, time_chunks=time_chunks)
         # N.B.: need to avoid loading derived variables, because they may not have been extended yet (time length)
         print(xds)
@@ -745,9 +745,10 @@ if __name__ == '__main__':
             
         
         # loop over variables
-        for var in varlist:
+        for var in derived_varlist:
         
             # target dataset
+            lexec = True
             var_atts = netcdf_varatts[var]
             nc_filepath = daily_folder + netcdf_filename.format(var)
             if lappend_master and osp.exists(nc_filepath):
@@ -762,92 +763,94 @@ if __name__ == '__main__':
                 if start_date > end_date:
                     print(("\nNothing to do - timeseries complete:\n {} > {}".format(start_date,end_date)))
                     ncds.close()
-                    exit()
-                lappend = True
-                # update slicing (should not do anything if sliced before)
-                print(("\n Appending data from {} to {}.\n".format(start_date.strftime("%Y-%m-%d"),end_date.strftime("%Y-%m-%d"))))
-                xds = xds.loc[{'time':slice(start_date,end_date),}]
-                tsvar = tsvar.loc[{'time':slice(start_date,end_date),}]
+                    lexec = False
+                else:
+                    lappend = True
+                    # update slicing (should not do anything if sliced before)
+                    print(("\n Appending data from {} to {}.\n".format(start_date.strftime("%Y-%m-%d"),end_date.strftime("%Y-%m-%d"))))
+                    xds = xds.loc[{'time':slice(start_date,end_date),}]
+                    tsvar = tsvar.loc[{'time':slice(start_date,end_date),}]
             else: 
                 lappend = False
                 
-            
-            print('\n')
-            ## define actual computation
-            if var == 'liqwatflx':
-                ref_var = 'snwmlt'; note = "masked/missing values have been replaced by zero"
-                xvar = xds['snwmlt'].fillna(0) + xds['liqprec'].fillna(0) # fill missing values with zero
-                # N.B.: missing values are NaN in xarray; we need to fill with 0, or masked/missing values
-                #       in snowmelt will mask/invalidate valid values in precip
-            elif var == 'precip':
-                ref_var = 'liqprec'; note = "masked/missing values have been replaced by zero"
-                xvar = xds['liqprec'].fillna(0) + xds['solprec'].fillna(0) # fill missing values with zero
-                # N.B.: missing values are NaN in xarray; we need to fill with 0, or masked/missing values
-                #       in snowmelt will mask/invalidate valid values in precip
-            elif var == 'rho_snw':
-                ref_var = 'snow'; note = "SWE divided by snow depth, divided by 1000"
-                xvar = xds['snow'] / xds['snowh']
-                
-            # define/copy metadata
-            xvar.rename(var)
-            xvar.attrs = xds[ref_var].attrs.copy()
-            for att in ('name','units','long_name',):
-                xvar.attrs[att] = var_atts[att]
-            xvar.attrs['note'] = note
-            xvar.chunk(chunks=chunk_settings)
-            print(xvar)
-      
-            
-      #       # visualize task graph
-      #       viz_file = daily_folder+'dask_sum.svg'
-      #       xvar3.data.visualize(filename=viz_file)
-      #       print(viz_file)
-            
-            
-            ## now save data, according to destination/append mode
-            if lappend:
-                # append results to an existing file
+            if lexec:
+              
                 print('\n')
-                # define chunking
-                offset = ncts.shape[0]; t_max = offset + tsvar.shape[0]
-                tc,yc,xc = xvar.chunks # starting points of all blocks...
-                tc = np.concatenate([[0],np.cumsum(tc[:-1], dtype=np.int)])
-                yc = np.concatenate([[0],np.cumsum(yc[:-1], dtype=np.int)])
-                xc = np.concatenate([[0],np.cumsum(xc[:-1], dtype=np.int)])
-      #           xvar3 = xvar3.chunk(chunks=(tc,xvar3.shape[1],xvar3.shape[2]))
-                # function to save each block individually (not sure if this works in parallel)
-                dummy = np.zeros((1,1,1), dtype=np.int8)
-                def save_chunk(block, block_id=None):
-                    ts = offset + tc[block_id[0]]; te = ts + block.shape[0]
-                    ys = yc[block_id[1]]; ye = ys + block.shape[1]
-                    xs = xc[block_id[2]]; xe = xs + block.shape[2]
-                    print(((ts,te),(ys,ye),(xs,xe)))
-                    #print(block.shape)
-                    ncvar3[ts:te,ys:ye,xs:xe] = block
-                    return dummy
-                # append to NC variable
-                xvar.data.map_blocks(save_chunk, chunks=dummy.shape, dtype=dummy.dtype).compute() # drop_axis=(0,1,2), 
-                # update time stamps and time axis
-                nctc[offset:t_max] = np.arange(offset,t_max)
-                for i in range(tsvar.shape[0]): ncts[i+offset] = tsvar.data[i] 
-                ncds.sync()
-                print('\n')
-                print(ncds)
-                ncds.close()
-                del xvar, ncds 
-            else:
-                # save results in new file
-                nds = xr.Dataset({ts_name:tsvar, var:xvar,}, attrs=xds.attrs.copy())
-  #               print('\n')
-  #               print(nds)
-                # write to NetCDF
-                var_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=netcdf_settings['chunksizes'])
-                nds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
-                              encoding={var:var_enc,}, compute=True)
-                del nds, xvar
+                ## define actual computation
+                if var == 'liqwatflx':
+                    ref_var = 'snwmlt'; note = "masked/missing values have been replaced by zero"
+                    xvar = xds['snwmlt'].fillna(0) + xds['liqprec'].fillna(0) # fill missing values with zero
+                    # N.B.: missing values are NaN in xarray; we need to fill with 0, or masked/missing values
+                    #       in snowmelt will mask/invalidate valid values in precip
+                elif var == 'precip':
+                    ref_var = 'liqprec'; note = "masked/missing values have been replaced by zero"
+                    xvar = xds['liqprec'].fillna(0) + xds['solprec'].fillna(0) # fill missing values with zero
+                    # N.B.: missing values are NaN in xarray; we need to fill with 0, or masked/missing values
+                    #       in snowmelt will mask/invalidate valid values in precip
+                elif var == 'rho_snw':
+                    ref_var = 'snow'; note = "SWE divided by snow depth, divided by 1000"
+                    xvar = xds['snow'] / xds['snowh']
+                    
+                # define/copy metadata
+                xvar.rename(var)
+                xvar.attrs = xds[ref_var].attrs.copy()
+                for att in ('name','units','long_name',):
+                    xvar.attrs[att] = var_atts[att]
+                xvar.attrs['note'] = note
+                xvar.chunk(chunks=chunk_settings)
+                print(xvar)
+          
                 
-            # clean up
-            gc.collect()
+          #       # visualize task graph
+          #       viz_file = daily_folder+'dask_sum.svg'
+          #       xvar3.data.visualize(filename=viz_file)
+          #       print(viz_file)
+                
+                
+                ## now save data, according to destination/append mode
+                if lappend:
+                    # append results to an existing file
+                    print('\n')
+                    # define chunking
+                    offset = ncts.shape[0]; t_max = offset + tsvar.shape[0]
+                    tc,yc,xc = xvar.chunks # starting points of all blocks...
+                    tc = np.concatenate([[0],np.cumsum(tc[:-1], dtype=np.int)])
+                    yc = np.concatenate([[0],np.cumsum(yc[:-1], dtype=np.int)])
+                    xc = np.concatenate([[0],np.cumsum(xc[:-1], dtype=np.int)])
+          #           xvar3 = xvar3.chunk(chunks=(tc,xvar3.shape[1],xvar3.shape[2]))
+                    # function to save each block individually (not sure if this works in parallel)
+                    dummy = np.zeros((1,1,1), dtype=np.int8)
+                    def save_chunk(block, block_id=None):
+                        ts = offset + tc[block_id[0]]; te = ts + block.shape[0]
+                        ys = yc[block_id[1]]; ye = ys + block.shape[1]
+                        xs = xc[block_id[2]]; xe = xs + block.shape[2]
+                        #print(((ts,te),(ys,ye),(xs,xe)))
+                        #print(block.shape)
+                        ncvar3[ts:te,ys:ye,xs:xe] = block
+                        return dummy
+                    # append to NC variable
+                    xvar.data.map_blocks(save_chunk, chunks=dummy.shape, dtype=dummy.dtype).compute() # drop_axis=(0,1,2), 
+                    # update time stamps and time axis
+                    nctc[offset:t_max] = np.arange(offset,t_max)
+                    for i in range(tsvar.shape[0]): ncts[i+offset] = tsvar.data[i] 
+                    ncds.sync()
+                    print('\n')
+                    print(ncds)
+                    ncds.close()
+                    del xvar, ncds 
+                else:
+                    # save results in new file
+                    nds = xr.Dataset({ts_name:tsvar, var:xvar,}, attrs=xds.attrs.copy())
+      #               print('\n')
+      #               print(nds)
+                    # write to NetCDF
+                    var_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=netcdf_settings['chunksizes'])
+                    nds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
+                                  encoding={var:var_enc,}, compute=True)
+                    del nds, xvar
+                    
+                # clean up
+                gc.collect()
             
         # print timing
         end =  time.time()
@@ -900,7 +903,7 @@ if __name__ == '__main__':
         lappend = True
   #       netcdf_settings = dict(chunksizes=(1,snodas_shape2d[0]/4,snodas_shape2d[1]/8))
         nc_time_chunk = netcdf_settings['chunksizes'][0]
-        start_date = '2009-12-14'; end_date = '2019-02-21'
+        start_date = '2009-12-14'; end_date = '2019-04-10'
   
         if not osp.isdir(daily_folder): os.mkdir(daily_folder)
   
