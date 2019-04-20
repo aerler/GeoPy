@@ -432,6 +432,7 @@ class MyAxes(Axes):
               if errorscale is not None: raise NotImplementedError
         else: err = None
         # figure out orientation and call plot function
+        label_kw = plotarg.pop('label',None) # the label keyword does not work, so we set it manually below
         if self.flipxy: # flipped axes
           xlen = len(val); ylen = len(axe) # used later
           plt = self.errorbar(val, axe, xerr=err, yerr=None, errorevery=errorevery, **plotarg)[0]
@@ -445,7 +446,7 @@ class MyAxes(Axes):
             else: perr = None 
             # N.B.: parasite erros wouldn't work with bands, so convert normal errorbars                
             self.addParasiteMean(val, errors=perr if lparasiteErrors else None, n=n, N=N, lperi=lperi, style='myerrorbar', **plotarg)
-        plt.set_label(label) # for some reason the keyword to errorbar does not always work...
+        plt.set_label(label_kw) # for some reason the keyword to errorbar does not always work...
         # draw error bands
         if bndup is not None: 
           self._drawBand(axe, bndup, bnddn, where=where, color=(facecolor or plt.get_color()), 
