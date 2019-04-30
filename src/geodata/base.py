@@ -3263,7 +3263,7 @@ class Dataset(object):
     for var in self.variables.values():
       var.unload(**kwargs)
       
-  def mask(self, mask=None, maskSelf=False, varlist=None, skiplist=None, invert=False, merge=True, **kwargs):
+  def mask(self, mask=None, maskSelf=False, varlist=None, skiplist=None, invert=False, merge=True, laddMask=True, **kwargs):
     ''' Apply 'mask' to all variables and add the mask, if it is a variable. '''
     # figure out variable list
     if isinstance(mask,str): mask = self.variables[mask]
@@ -3286,7 +3286,8 @@ class Dataset(object):
           elif all([var.hasAxis(ax) for ax in mask.axes]): lOK = True
         if lOK: var.mask(mask=mask, invert=invert, merge=merge, **kwargs) # if everything is OK, apply mask
     # add mask do dataset
-    if isinstance(mask,Variable) and not self.hasVariable(mask): self.addVariable(mask)
+    if laddMask and isinstance(mask,Variable) and not self.hasVariable(mask): 
+        self.addVariable(mask)
     
   def unmask(self, fillValue=None, **kwargs):
     ''' Unmask all Variables in the Dataset. '''

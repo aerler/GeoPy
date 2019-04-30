@@ -1159,7 +1159,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
     # add new method to object
     dataset.copy = types.MethodType(copy, dataset)
     
-    def maskShape(self, name=None, filename=None, invert=False, **kwargs):
+    def maskShape(self, name=None, filename=None, invert=False, laddMask=True, **kwargs):
       ''' A method that generates a raster mask from a shape file and applies it to all GDAL variables. '''
       if name is not None and not isinstance(name,str): raise TypeError
       if filename is not None and not isinstance(filename,str): raise TypeError
@@ -1169,7 +1169,7 @@ def addGDALtoDataset(dataset, griddef=None, projection=None, geotransform=None, 
       mask = shape.rasterize(griddef=self.griddef, invert=invert, asVar=True) # extract mask
       assert mask.gdal, mask
       # apply mask to dataset 
-      self.mask(mask=mask, invert=False) # kwargs: merge=True, varlist=None, skiplist=None
+      self.mask(mask=mask, invert=False, laddMask=laddMask) # kwargs: merge=True, varlist=None, skiplist=None
       # return mask variable
       return mask
     # add new method to object

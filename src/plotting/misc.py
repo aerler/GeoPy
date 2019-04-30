@@ -85,7 +85,7 @@ def checkVarlist(varlist, varname=None, ndim=1, bins=None, support=None, method=
     if isinstance(varname,str): varlist = [varlist[varname]]
     elif isinstance(varname,(tuple,list)):
       varlist = [varlist[name] if name in varlist else None for name in varname]
-    else: raise TypeError
+    else: raise TypeError(varname)
   elif isinstance(varlist,(tuple,list,Ensemble)):
     if varname is not None:
       tmplist = []
@@ -94,9 +94,9 @@ def checkVarlist(varlist, varname=None, ndim=1, bins=None, support=None, method=
         elif isinstance(var,Dataset):
           if var.hasVariable(varname): tmplist.append(var[varname])
           else: tmplist.append(None)
-        else: raise TypeError
+        else: raise TypeError(var)
       varlist = tmplist; del tmplist
-  else: raise TypeError
+  else: raise TypeError(varlist)
   if not all([var is None or isinstance(var,Variable) for var in varlist]): raise TypeError
   for var in varlist: 
     if var is not None and var.data_array.size > 1: var.squeeze() # remove singleton dimensions
