@@ -2712,7 +2712,7 @@ class BinaryCheckAndCreateDataset(object):
       # loop over variables
       variables = dict()
       for varname,var in list(orig.variables.items()):
-          if var.strvar or np.issubdtype(var.dtype,np.bool): 
+          if var.strvar or np.issubdtype(var.dtype,np.bool_): 
               # N.B.: bools don't work with arithmetic operations anymore...
               newvar = var.copy(deepcopy=deepcopy)
           elif ldataset:
