@@ -305,7 +305,8 @@ if __name__ == '__main__':
 #     grids['uph1'] = None # grid for Elisha, 5km
 #     grids['glb1'] = None # grid for the Great Lakes basin, 5km
 #     grids['son1'] = None # grid for southern Ontario, 5km
-    grids['grw2'] = None # coarser grid for GRW, 5km
+    grids['son2'] = None # grid for southern Ontario, 1km
+#     grids['grw2'] = None # coarser grid for GRW, 5km
 #     grids['grw1'] = None # fine grid for GRW, 1km
 #     grids['grw3'] = None # very fine grid for GRW, 500m
 #     grids['snw1'] = None # large grid for whole Canada

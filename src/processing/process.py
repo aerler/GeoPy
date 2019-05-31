@@ -691,6 +691,8 @@ class CentralProcessingUnit():
     # add variables that will cause errors to ignorelist (e.g. strings)
     for varname,var in self.source.variables.items():
       if var.hasAxis(timeAxis) and var.dtype.kind == 'S': self.ignorelist.append(varname)
+      if self.feedback and np.issubdtype(var.dtype,np.integer): 
+          print("Variable '{}' of type '{}' will be converted to '{}'".format(var.name,var.dtype,dtype_float))
     # prepare function call
     function = functools.partial(self.processClimatology, # already set parameters
                                  timeAxis=timeAxis, climAxis=climAxis, timeSlice=timeSlice, shift=shift)
@@ -721,8 +723,10 @@ class CentralProcessingUnit():
         idx = tuple([timeSlice if ax.name == timeAxis else slice(None) for ax in var.axes])
       else: idx = None
       dataarray = var.getArray(unmask=False, copy=False)[idx]
-      if var.masked: avgdata = ma.zeros(newshape, dtype=var.dtype) # allocate array
-      else: avgdata = np.zeros(newshape, dtype=var.dtype) # allocate array    
+      if np.issubdtype(var.dtype,np.integer): dtype = dtype_float
+      else: dtype = var.dtype          
+      if var.masked: avgdata = ma.zeros(newshape, dtype=dtype) # allocate array
+      else: avgdata = np.zeros(newshape, dtype=dtype) # allocate array    
       # average data
       timelength = dataarray.shape[tidx]
       if timelength % interval == 0:
@@ -733,7 +737,7 @@ class CentralProcessingUnit():
           avgdata += dataarray.take(t+climelts, axis=tidx)
         del dataarray # clean up
         # normalize
-        avgdata /= (timelength/interval) 
+        avgdata /= (timelength//interval) 
       else: 
         # simple indexing
         climcnt = np.zeros(interval, dtype=dtype_int)
@@ -758,7 +762,7 @@ class CentralProcessingUnit():
       if shift != 0: avgdata = np.roll(avgdata, shift, axis=tidx)
       # create new Variable
       axes = tuple([climAxis if ax.name == timeAxis else ax for ax in var.axes]) # exchange time axis
-      newvar = var.copy(axes=axes, data=avgdata, dtype=var.dtype) # and, of course, load new data
+      newvar = var.copy(axes=axes, data=avgdata, dtype=dtype) # and, of course, load new data
       del avgdata # clean up - just to make sure
       #     print newvar.name, newvar.masked
       #     print newvar.fillValue

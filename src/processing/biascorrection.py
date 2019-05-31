@@ -220,8 +220,8 @@ if __name__ == '__main__':
     ## observations (i.e. the reference dataset; arguments passed to loadDataset)
     obs_name = 'NRCan'
     obs_mode = 'climatology'
-    obs_args = dict(resolution='na12', varatts=dict(pet=dict(name='pet_wrf')), period=(1970,2000))
-#     obs_args = dict(resolution='na12', varatts=dict(pet=dict(name='pet_wrf')), period=(1980,2010))
+#     obs_args = dict(resolution='na12', varatts=dict(pet=dict(name='pet_wrf')), period=(1970,2000))
+    obs_args = dict(resolution='na12', varatts=dict(pet=dict(name='pet_wrf')), period=(1980,2010))
     # renaming NRCan pet to pet_wrf is necessary to bias-correct WRF PET
     ## remaining parameters
     lgzip = True # compress pickles
@@ -229,13 +229,14 @@ if __name__ == '__main__':
     load_list = None # variables that need to be loaded
     varlist = None # variables that should be bias-corrected
 #     grid = 'grw1' # need a common grid for all datasets
-    grid = 'grw2' # need a common grid for all datasets
+#     grid = 'grw2' # need a common grid for all datasets
 #     grid = 'grw3' # need a common grid for all datasets
 #     grid = 'uph1' # grid for Elisha
 #     grid = 'asb1' # need a common grid for all datasets
 #     grid = 'brd1' # need a common grid for all datasets
 #     grid = 'snw1' # need a common grid for all datasets
-#     grid = 'son1' # need a common grid for all datasets
+#     grid = 'son1' # 5km southern Ontario
+    grid = 'son2' # 1km southern Ontario
 #     bc_method = 'AABC' # annual average bias correction method
     bc_method = 'SMBC' # annual average bias correction method
 #     bc_method = 'Delta' # grid-point-wise monthly bias correction method
