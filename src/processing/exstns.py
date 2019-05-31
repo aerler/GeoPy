@@ -201,6 +201,7 @@ if __name__ == '__main__':
     # target data specs
     stations = config['stations']
   else:
+#     NP = 1 ; ldebug = True # for quick computations
     NP = 2 ; ldebug = False # for quick computations
     modes = ('time-series',) # 'climatology','time-series'
 #     modes = ('climatology',) # 'climatology','time-series'
@@ -211,7 +212,7 @@ if __name__ == '__main__':
 #     periods += [3]
 #     periods += [5]
 #     periods += [10]
-    periods += [15]
+#     periods += [15]
     grid = None
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
@@ -235,7 +236,8 @@ if __name__ == '__main__':
     # WRF experiments (short or long name)
     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all CESM experiments
-    WRF_experiments = ['erai-3km','max-3km','max-3km-2100']
+    WRF_experiments += ['erai-wc2']
+#     WRF_experiments = ['erai-3km','max-3km','max-3km-2100']
 #     WRF_experiments += ['marc-g','marc-gg','marc-g-2050','marc-gg-2050']
 #     WRF_experiments += ['marc-m','marc-mm', 'marc-t','marc-m-2050','marc-mm-2050', 'marc-t-2050']
 #     WRF_experiments += ['erai-g','erai-t']
@@ -248,12 +250,12 @@ if __name__ == '__main__':
 #     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        
     # other WRF parameters 
     domains = None # domains to be processed
-    WRF_filetypes = ('hydro','xtrm','srfc','lsm') # filetypes to be processed
+    WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad','plev3d') # filetypes to be processed
 #     WRF_filetypes = ('hydro',)
 #     WRF_filetypes = ('const',); periods = None
 #     grid = 'grw2'
     # station datasets to match    
-    stations = dict(EC=('precip',)) # currently there is only one type: the EC weather stations
+    stations = dict(EC=('temp',)) # currently there is only one type: the EC weather stations
   
   
   ## process arguments    

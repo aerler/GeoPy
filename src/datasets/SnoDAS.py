@@ -497,6 +497,7 @@ if __name__ == '__main__':
   pntset = 'glbshp'
   grid = None # native
 #   grid = 'grw1'
+  grid = 'wc2_d01'
 
   # variable list
   varlist = netcdf_varlist

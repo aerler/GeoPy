@@ -563,11 +563,11 @@ if __name__ == '__main__':
 #     period = (1970,2000)
     period = (1980,2010)
     # snow density/type
-#         snow_density = 'ephemeral'
+#     snow_density = 'ephemeral'
     snow_density = 'maritime'
-#         snow_density = 'prairies'
-#         snow_density = 'taiga'
-#         snow_density = 'alpine'        
+#     snow_density = 'prairies'
+#     snow_density = 'taiga'
+#     snow_density = 'alpine'        
 
      
     res = None; grid = None

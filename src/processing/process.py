@@ -479,7 +479,7 @@ class CentralProcessingUnit():
     tgt.addAxis(newstnax, asNC=True, copy=True) # already new copy
     # create variable for elevation error
     if lzs:
-      assert len(zs_err) > 0
+#       assert len(zs_err) > 0
       zs_err = Variable(name='zs_err', units='m', data=zs_err, axes=(newstnax,),
                         atts=dict(long_name='Station Elevation Error'))
       tgt.addVariable(zs_err, asNC=True, copy=True); del zs_err # need to copy to make NC var

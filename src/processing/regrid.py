@@ -207,11 +207,11 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 3 ; ldebug = False # just for tests
+    NP = 2 ; ldebug = False # just for tests
 #     modes = ('climatology','time-series') # 'climatology','time-series'
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = True
+    loverwrite = False
     varlist = None
 #     varlist = ['Tsnow','evap_blow','evap_snow','snwmlt','liqprec','precip','rho_snw',]
     periods = []
@@ -221,7 +221,7 @@ if __name__ == '__main__':
 #     periods += [7]
 #     periods += [10]
 #     periods += [15]
-#     periods += [30]
+    periods += [30]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
@@ -229,12 +229,12 @@ if __name__ == '__main__':
 #     datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
 #     resolutions['NRCan'] = ['na12_ephemeral','na12_maritime','na12_prairies','na12_taiga','na12_alpine',]
 #     datasets = ['NRCan']; lLTM = False; periods = [(1970,2000),]; resolutions['NRCan'] = ['na12_taiga','na12_alpine',]
-#     datasets = ['NRCan']; lLTM = False; periods = [(1980,2010),]; resolutions['NRCan'] = ['na12_maritime',]
+#     datasets = ['NRCan']; lLTM = False; periods = [(1980,2010),]; #resolutions['NRCan'] = ['na12_alpine','na12_maritime','na12_taiga',]
 #     datasets += ['PRISM','GPCC','PCIC']; lLTM = True; periods = None
-#     datasets += ['CFSR'] # CFSR_05 does not have precip
+    datasets += ['CFSR','NARR'] # CFSR_05 does not have precip
 #     datasets += ['NARR'] 
-#     datasets += ['GPCC', 'CRU']; resolutions['GPCC'] = ['025','05']
-    datasets += ['SnoDAS']; periods = [(2010,2019)]; NP=1 # large fields...
+    datasets += ['GPCC', 'CRU']; #resolutions['GPCC'] = ['025','05']
+#     datasets += ['SnoDAS']; periods = [(2010,2019)]; NP=1 # large fields...
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
@@ -305,13 +305,13 @@ if __name__ == '__main__':
 #     grids['uph1'] = None # grid for Elisha, 5km
 #     grids['glb1'] = None # grid for the Great Lakes basin, 5km
 #     grids['son1'] = None # grid for southern Ontario, 5km
-    grids['son2'] = None # grid for southern Ontario, 1km
+#     grids['son2'] = None # grid for southern Ontario, 1km
 #     grids['grw2'] = None # coarser grid for GRW, 5km
 #     grids['grw1'] = None # fine grid for GRW, 1km
 #     grids['grw3'] = None # very fine grid for GRW, 500m
 #     grids['snw1'] = None # large grid for whole Canada
 #     grids['can1'] = None # large grid for whole Canada
-#     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
+    grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
 #     grids['glb1-90km'] = ('d01',) # 90km GLB domain
