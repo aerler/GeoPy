@@ -276,11 +276,11 @@ if __name__ == '__main__':
 #     periods += [10]
 #     periods += [15]
 #     periods += [30]
-    domains = 1 # domains to be processed
-#     domains = None # process all domains
-#     WRF_filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed # ,'rad'
+#     domains = 1 # domains to be processed
+    domains = None # process all domains
+    WRF_filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad'] # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ['hydro','xtrm','hydro','lsm','rad']
-    WRF_filetypes = ['plev3d'] # filetypes to be processed
+#     WRF_filetypes = ['rad'] # filetypes to be processed
     grid = None # use native grid
 
   # check and expand WRF experiment list
