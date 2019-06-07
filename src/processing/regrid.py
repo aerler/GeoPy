@@ -211,7 +211,7 @@ if __name__ == '__main__':
 #     modes = ('climatology','time-series') # 'climatology','time-series'
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = False
+    loverwrite = True
     varlist = None
 #     varlist = ['Tsnow','evap_blow','evap_snow','snwmlt','liqprec','precip','rho_snw',]
     periods = []
@@ -231,9 +231,10 @@ if __name__ == '__main__':
 #     datasets = ['NRCan']; lLTM = False; periods = [(1970,2000),]; resolutions['NRCan'] = ['na12_taiga','na12_alpine',]
 #     datasets = ['NRCan']; lLTM = False; periods = [(1980,2010),]; #resolutions['NRCan'] = ['na12_alpine','na12_maritime','na12_taiga',]
 #     datasets += ['PRISM','GPCC','PCIC']; lLTM = True; periods = None
-    datasets += ['CFSR','NARR'] # CFSR_05 does not have precip
+#     datasets += ['PCIC','GPCC',]; lLTM = True; periods = None
+#     datasets += ['CFSR','NARR'] # CFSR_05 does not have precip
 #     datasets += ['NARR'] 
-    datasets += ['GPCC', 'CRU']; #resolutions['GPCC'] = ['025','05']
+    datasets += ['GPCC', 'CRU']; lLTM = False #resolutions['GPCC'] = ['025','05']
 #     datasets += ['SnoDAS']; periods = [(2010,2019)]; NP=1 # large fields...
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
@@ -246,8 +247,8 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['atm','lnd']
     CESM_filetypes = ['atm']
     # WRF experiments (short or long name)
-    WRF_project = 'GreatLakes' # only GreatLakes experiments
-#     WRF_project = 'WesternCanada' # only WesternCanada experiments
+#     WRF_project = 'GreatLakes' # only GreatLakes experiments
+    WRF_project = 'WesternCanada' # only WesternCanada experiments
 #     WRF_experiments = None # use None to process all WRF experiments
     WRF_experiments = []
 #     WRF_experiments += ['3km-ensemble','erai-3km','max-3km','max-3km-2100'][2:]

@@ -10,7 +10,7 @@ Some utility functions related to processing datasets (to avoid code repetition)
 import numpy as np
 from importlib import import_module
 from functools import partial
-import yaml,os
+import os
 from datetime import datetime
 # internal imports
 from geodata.misc import DatasetError, DateError, isInt, ArgumentError
@@ -21,6 +21,7 @@ from datasets.common import getFileName
 # load YAML configuration file
 def loadYAML(default, lfeedback=True):
   ''' load YAML configuration file and return config object '''
+  import yaml
   # check for environment variable
   if 'PYAVG_YAML' in os.environ: 
     yamlfile = os.environ['PYAVG_YAML']
@@ -81,12 +82,16 @@ def getProjectVars(varlist, project=None, module=None):
   return vardict
 
 
-def getPeriodGridString(period, grid, exp=None, beginyear=None):
+def getPeriodGridString(period, grid, exp=None, beginyear=None, periodstr=None):
   ''' utility function to check period and grid and return valid and usable strings '''
   # period
   if period is None: pass
   elif isinstance(period,(int,np.integer)):
-    if beginyear is None: beginyear = int(exp.begindate[0:4]) # most datasets begin in 1979
+    if beginyear is not None: pass
+    elif exp: beginyear = int(exp.begindate[0:4]) # most datasets begin in 1979
+    elif periodstr: beginyear = int(periodstr[0:4]) # most datasets begin in 1979
+    else:
+        raise ValueError(period)
     period = (beginyear, beginyear+period)
   elif len(period) != 2 and all(isInt(period)): raise DateError
   periodstr = '{0:4d}-{1:4d}'.format(*period) if period else ''
@@ -101,8 +106,9 @@ def getTargetFile(dataset=None, mode=None, dataargs=None, grid=None, shape=None,
                   lwrite=True):
   ''' generate filename for target dataset '''
   # for CESM & WRF
-  if grid is None: grid = dataargs.gridstr # also use grid for station/shape type
-  if period is None: period = dataargs.periodstr
+  if grid is None: grid = dataargs.grid # also use grid for station/shape type
+  if period is None: period = dataargs.period
+  period, grid = getPeriodGridString(period, grid, exp=None, beginyear=None, periodstr=dataargs.periodstr)
   if dataset in ('WRF','CESM') and lwrite:
     # prepare some variables
     domain = dataargs.domain

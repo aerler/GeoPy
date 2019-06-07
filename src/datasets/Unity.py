@@ -199,9 +199,9 @@ loadClimatology = loadUnity # pre-processed, standardized climatology
 if __name__ == '__main__':
   
   # select mode
-  mode = 'merge_climatologies'
+#   mode = 'merge_climatologies'
 #   mode = 'merge_timeseries'
-#   mode = 'test_climatology'
+  mode = 'test_climatology'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
   
@@ -210,11 +210,13 @@ if __name__ == '__main__':
 #   grids += ['shpavg']
 #   grids += ['wcshp']
 #   grids += ['wcavg']
-  grids += ['arb2_d01']
-  grids += ['arb2_d02']
-  grids += ['arb3_d01']
-  grids += ['arb3_d02']
-  grids += ['arb3_d03']
+  grids += ['wc2_d01']
+  grids += ['wc2_d02']
+#   grids += ['arb2_d01']
+#   grids += ['arb2_d02']
+#   grids += ['arb3_d01']
+#   grids += ['arb3_d02']
+#   grids += ['arb3_d03']
 #   grids += ['glb1_d01']
 #   grids += ['glb1_d02']
 #   grids += ['grw2']
@@ -233,7 +235,7 @@ if __name__ == '__main__':
 #   periods += [(1979,1982)]
 #   periods += [(1979,1984)]
 #   periods += [(1979,1989)]
-  periods += [(1979,1994)]
+#   periods += [(2010,2016)]
 #   periods += [(1984,1994)]
 #   periods += [(1989,1994)]
 #   periods += [(1997,1998)]
@@ -485,7 +487,7 @@ if __name__ == '__main__':
 #         array = ma.where(array.filled(-999) == -999, gpcc025array, array) # add background climatology        
         array = array - gpccclimarray + gpccprdarray # add temporal variation
         # save variable 
-        var.load(data=array)
+        var.load(data=array, lrecast=True)
         sink.addVariable(var, asNC=True, copy=True, deepcopy=True)
         
         # Temperature
@@ -502,7 +504,7 @@ if __name__ == '__main__':
           array = ma.where(array.mask, cruclimarray, array) # generate climatology        
           array = array - cruclimarray + cruprdarray # add temporal variation
           # save variable 
-          var.load(data=array)
+          var.load(data=array, lrecast=True)
           sink.addVariable(var, asNC=True, copy=True, deepcopy=True)
     
         

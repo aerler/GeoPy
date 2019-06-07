@@ -1092,13 +1092,15 @@ if __name__ == '__main__':
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
-#   mode = 'pickle_grid' 
+  mode = 'pickle_grid' 
 #   pntset = 'wcshp'
   pntset = 'glbshp'
 #   pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
-  grids = ['glb1-90km','glb1','arb1', 'arb2', 'arb2-120km', 'arb3']
-  domains = [(1,)]+[(1,2)]*3+[(1,),(1,2,3)]; regions = ['GreatLakes']*2+['WesternCanada']*4
+#   grids = ['glb1-90km','glb1','arb1', 'arb2', 'arb2-120km', 'arb3']
+#   domains = [(1,)]+[(1,2)]*3+[(1,),(1,2,3)]; regions = ['GreatLakes']*2+['WesternCanada']*4
+  grids = ['arb1', 'arb2', 'arb2-120km', 'arb3']
+  domains = [(1,)]+[(1,2)]*2+[(1,),(1,2,3)]; regions = ['WesternCanada']*4
 #   grids = ['wc2']; domains = [(1,2)]; regions = ['Columbia']
 #   grids = ['arb2-120km']; experiments = ['max-lowres']; domains = [1,]   
     

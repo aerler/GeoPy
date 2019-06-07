@@ -203,7 +203,14 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   # create netcdf variable  
   var = dst.createVariable(name, dtype, dims, fill_value=fillValue, **varargs)
   # add attributes
-  if atts: var.setncatts(coerceAtts(atts))
+  if atts: 
+    for key,item in coerceAtts(atts).items(): 
+      var.setncattr(key,item)
+#         try: 
+#             var.setncattr(key,item)
+#         except: 
+#           print(key,item)
+#           raise
   # assign coordinate data if given
   if data is not None: var[:] = data   
   # return var reference

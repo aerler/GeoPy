@@ -774,9 +774,9 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
     var.loadGDAL = types.MethodType(loadGDAL, var)    
     
     # update new instance attributes
-    def load(self, data=None, mask=None):
+    def load(self, data=None, mask=None, **kwargs):
       ''' Load new data array. '''
-      var.__class__.load(self, data=data, mask=mask)    
+      var.__class__.load(self, data=data, mask=mask, **kwargs)    
       if ( len(self.shape) >= 2 and ( self.ylat and self.xlon ) and 
            ( self.hasAxis(self.ylat.name) and self.hasAxis(self.xlon.name) ) ):  
         # 2D (or more) with y/lat and x/lon axes keep GDAL status
