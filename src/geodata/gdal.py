@@ -764,7 +764,7 @@ def addGDALtoVar(var, griddef=None, projection=None, geotransform=None, gridfold
         if mask:
           # mask array where zero (in accord with ReprojectImage convention)
           if fillValue is None and self.fillValue is not None: fillValue = self.fillValue  # use default 
-          if self.fillValue is None: fillValue = ma.default_fill_value(data.dtype)
+          if self.fillValue is None: self.fillValue = ma.default_fill_value(data.dtype)
           data = ma.masked_values(data, fillValue)              
         # load data
         self.load(data=data)

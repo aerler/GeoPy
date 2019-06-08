@@ -207,7 +207,7 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 2 ; ldebug = False # just for tests
+    NP = 3 ; ldebug = False # just for tests
 #     modes = ('climatology','time-series') # 'climatology','time-series'
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
@@ -231,7 +231,7 @@ if __name__ == '__main__':
 #     datasets = ['NRCan']; lLTM = False; periods = [(1970,2000),]; resolutions['NRCan'] = ['na12_taiga','na12_alpine',]
 #     datasets = ['NRCan']; lLTM = False; periods = [(1980,2010),]; #resolutions['NRCan'] = ['na12_alpine','na12_maritime','na12_taiga',]
 #     datasets += ['PRISM','GPCC','PCIC']; lLTM = True; periods = None
-#     datasets += ['PCIC','GPCC',]; lLTM = True; periods = None
+#     datasets += ['PRISM',]; lLTM = True; periods = None
 #     datasets += ['CFSR','NARR'] # CFSR_05 does not have precip
 #     datasets += ['NARR'] 
     datasets += ['GPCC', 'CRU']; lLTM = False #resolutions['GPCC'] = ['025','05']
@@ -313,6 +313,7 @@ if __name__ == '__main__':
 #     grids['snw1'] = None # large grid for whole Canada
 #     grids['can1'] = None # large grid for whole Canada
     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
+#     grids['wc2'] = ('d01',) # new Brian's Columbia domain (Western Canada 2)
 #     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
 #     grids['glb1-90km'] = ('d01',) # 90km GLB domain
