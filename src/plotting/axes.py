@@ -184,15 +184,15 @@ class MyAxes(Axes):
   def scatterPlot(self, xvars=None, yvars=None, datasets=None,  xname=None, yname=None, label_ext='',
                   legend=None, llabel=True, labels=None, hline=None, vline=None, title=None, lignore=False,        
                   flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=False, 
-                  lparasiteAxes=False, lrescale=False, scalefactor=1., offset=0., 
+                  lparasiteAxes=False, lrescale=False, scalefactor=1., offset=0., lflatten=True,
                   lprint=False, lfracdiff=False, xlog=False, ylog=False, xlim=None, ylim=None, 
                   expand_list=None, lproduct='inner', plotatts=None, **plotargs):
     ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on 
         variable properties; extra keyword arguments (plotargs) are passed through expandArgumentList,
         before being passed to Axes.plot(). '''
     ## figure out variables
-    xvars = checkVarlist(xvars or datasets, varname=xname, ndim=1, lignore=lignore)
-    yvars = checkVarlist(yvars or datasets, varname=yname, ndim=1, lignore=lignore)
+    xvars = checkVarlist(xvars or datasets, varname=xname, ndim=1, lignore=lignore, lflatten=lflatten)
+    yvars = checkVarlist(yvars or datasets, varname=yname, ndim=1, lignore=lignore, lflatten=lflatten)
     assert len(xvars) == len(yvars)
     # initialize axes names and units
     self.flipxy = flipxy
@@ -208,9 +208,9 @@ class MyAxes(Axes):
         xlabels = self._getPlotLabels(xvars)
         ylabels = self._getPlotLabels(yvars)
         labels = []
-        for xlabel,ylabel in zip(xlabels,ylabels):
-            if xlabel == ylabel: labels.append(xlabel) # typically be the case for datasets
-            else: labels.append('{}_{}'.format(xlabel,ylabel))
+        for xlbl,ylbl in zip(xlabels,ylabels):
+            if xlbl == ylbl: labels.append(xlbl) # typically be the case for datasets
+            else: labels.append('{}_{}'.format(xlbl,ylbl))
     elif len(labels) < len(xvars): raise ArgumentError("Incompatible length of varlist and labels.")
     elif len(labels) > len(xvars): labels = labels[:len(xvars)] # truncate 
     label_list = labels if llabel else [None]*len(labels) # used for plot labels later
@@ -1211,7 +1211,7 @@ class MyAxes(Axes):
       ticklist = axis.get_ticklabels()
       for tick in ticklist: tick.set_visible(False)
       ticklist = []
-    elif isinstance(ticks,list,tuple): 
+    elif isinstance(ticks,(list,tuple)): 
       axis.set_ticklabels(ticks)
       ticklist = axis.get_ticklabels()
     else: raise ValueError(ticks)

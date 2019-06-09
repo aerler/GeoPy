@@ -98,73 +98,73 @@ avgfile = 'nrcan{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'
 tsfile = 'nrcan{0:s}_monthly.nc' # extend with grid type only
 
 # function to load these files...
-def loadNRCan(name=dataset_name, resolution=None, period=clim_period, grid=None, varlist=None, varatts=None, 
-              folder=avgfolder, filelist=None, lautoregrid=True, filemode='r'):
+def loadNRCan(name=dataset_name, title=dataset_name, resolution=None, period=clim_period, grid=None, varlist=None, 
+              varatts=None, folder=avgfolder, filelist=None, lautoregrid=True, filemode='r'):
     ''' Get the pre-processed monthly NRCan climatology as a DatasetNetCDF. '''
     grid, resolution = checkGridRes(grid, resolution, period=period, lclim=True)
     # load standardized climatology dataset with NRCan-specific parameters
-    dataset = loadObservations(name=name, folder=folder, projection=None, resolution=resolution, period=period, 
+    dataset = loadObservations(name=name, title=title, folder=folder, projection=None, resolution=resolution, period=period, 
                                grid=grid, varlist=varlist, varatts=varatts, filepattern=avgfile, griddef=NRCan_NA12_grid,
                                filelist=filelist, lautoregrid=lautoregrid, mode='climatology', filemode=filemode)
     # return formatted dataset
     return dataset
 
 # function to load Time-series (monthly)
-def loadNRCan_TS(name=dataset_name, grid=None, resolution=None, varlist=None, varatts=None, 
+def loadNRCan_TS(name=dataset_name, title=dataset_name, grid=None, resolution=None, varlist=None, varatts=None, 
                  folder=avgfolder, filelist=None, lautoregrid=True, filemode='r'):
     ''' Get the pre-processed monthly NRCan time-series as a DatasetNetCDF at station locations. '''
     grid, resolution = checkGridRes(grid, resolution, period=None, lclim=False)
     # load standardized time-series dataset with NRCan-specific parameters
-    dataset = loadObservations(name=name, folder=folder, projection=None, period=None, grid=grid, 
+    dataset = loadObservations(name=name, title=title, folder=folder, projection=None, period=None, grid=grid, 
                                varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
                                resolution=resolution, lautoregrid=False, mode='time-series', filemode=filemode)
     # return formatted dataset
     return dataset
 
 # function to load station climatologies
-def loadNRCan_Stn(name=dataset_name, period=clim_period, station=None, resolution=None, varlist=None, varatts=None, 
-                  folder=avgfolder, filelist=None, lautoregrid=True):
+def loadNRCan_Stn(name=dataset_name, title=dataset_name, period=clim_period, station=None, resolution=None, varlist=None, 
+                  varatts=None, folder=avgfolder, filelist=None, lautoregrid=True):
     ''' Get the pre-processed monthly NRCan climatology as a DatasetNetCDF at station locations. '''
     grid, resolution = checkGridRes(None, resolution, period=period, lclim=True); del grid
     # load standardized climatology dataset with NRCan-specific parameters
-    dataset = loadObservations(name=name, folder=folder, projection=None, period=period, station=station, 
+    dataset = loadObservations(name=name, title=title, folder=folder, projection=None, period=period, station=station, 
                                varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
                                resolution=resolution, lautoregrid=False, mode='climatology')
     # return formatted dataset
     return dataset
 
 # function to load station time-series
-def loadNRCan_StnTS(name=dataset_name, station=None, resolution=None, varlist=None, varatts=None, 
+def loadNRCan_StnTS(name=dataset_name, title=dataset_name, station=None, resolution=None, varlist=None, varatts=None, 
                     folder=avgfolder, filelist=None, lautoregrid=True):
     ''' Get the pre-processed monthly NRCan time-series as a DatasetNetCDF at station locations. '''
     grid, resolution = checkGridRes(None, resolution, period=None, lclim=False); del grid
     # load standardized time-series dataset with NRCan-specific parameters
-    dataset = loadObservations(name=name, folder=folder, projection=None, period=None, station=station, 
+    dataset = loadObservations(name=name, title=title, folder=folder, projection=None, period=None, station=station, 
                                varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
                                resolution=resolution, lautoregrid=False, mode='time-series')
     # return formatted dataset
     return dataset
 
 # function to load regionally averaged climatologies
-def loadNRCan_Shp(name=dataset_name, period=clim_period, shape=None, resolution=None, varlist=None, varatts=None, 
-                  folder=avgfolder, filelist=None, lautoregrid=True, lencl=False):
+def loadNRCan_Shp(name=dataset_name, title=dataset_name, period=clim_period, shape=None, resolution=None, varlist=None, 
+                  varatts=None, folder=avgfolder, filelist=None, lautoregrid=True, lencl=False):
     ''' Get the pre-processed monthly NRCan climatology as a DatasetNetCDF averaged over regions. '''
     grid, resolution = checkGridRes(None, resolution, period=period, lclim=True); del grid
     # load standardized climatology dataset with NRCan-specific parameters
-    dataset = loadObservations(name=name, folder=folder, projection=None, period=period, shape=shape, lencl=lencl,
-                               station=None, varlist=varlist, varatts=varatts, filepattern=avgfile, 
+    dataset = loadObservations(name=name, title=title, folder=folder, projection=None, period=period, shape=shape, 
+                               lencl=lencl, station=None, varlist=varlist, varatts=varatts, filepattern=avgfile, 
                                filelist=filelist, resolution=resolution, lautoregrid=False, mode='climatology')
     # return formatted dataset
     return dataset
 
 # function to load regional/shape time-series
-def loadNRCan_ShpTS(name=dataset_name, shape=None, resolution=None, varlist=None, varatts=None, 
+def loadNRCan_ShpTS(name=dataset_name, title=dataset_name, shape=None, resolution=None, varlist=None, varatts=None, 
                     folder=avgfolder, filelist=None, lautoregrid=True, lencl=False):
     ''' Get the pre-processed monthly NRCan time-series as a DatasetNetCDF averaged over regions. '''
     grid, resolution = checkGridRes(None, resolution, period=None, lclim=False); del grid
     # load standardized time-series dataset with NRCan-specific parameters
-    dataset = loadObservations(name=name, folder=folder, projection=None, shape=shape, station=None, lencl=lencl, 
-                               varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
+    dataset = loadObservations(name=name, title=title, folder=folder, projection=None, shape=shape, station=None, 
+                               lencl=lencl, varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
                                resolution=resolution, lautoregrid=False, mode='time-series', period=None)
     # return formatted dataset
     return dataset

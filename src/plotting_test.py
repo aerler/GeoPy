@@ -390,6 +390,37 @@ class DistPlotTest(unittest.TestCase):
     ax.addLabel(label=pstr, loc=1, lstroke=False, lalphabet=True, size=None, prop=None)
 
 
+  def testWeightedHistogram(self):
+    ''' a weighted historgram '''    
+    fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+    assert fig.__class__.__name__ == 'MyFigure'
+    assert fig.axes_class.__name__ == 'MyAxes'
+    assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
+    # settings
+    nleg = 1 # for regular Normal distributions
+    varlist = [self.var1, self.var2]
+    for var in varlist:
+        nleg = 5 
+        var.data_array=np.linspace(-1, 1, num=var.shape[0])
+    weights = [np.arange(0,self.var1.shape[0]),np.arange(self.var2.shape[0],0,-1)]
+    nbins = 15
+    # create regular histogram
+    bins, ptchs = ax.histogram(varlist, bins=nbins, weights=weights, legend=nleg, alpha=0.5, rwidth=0.8, 
+                               histtype='bar', flipxy=True)
+    # histtype = 'bar' | 'barstacked' | 'step' | 'stepfilled'
+    assert len(ptchs) == 2
+    assert len(bins) == nbins
+    vmin = np.min([var.min() for var in varlist])
+    vmax = np.max([var.max() for var in varlist])
+    #print bins[0], vmin; print bins[-1], vmax
+    assert bins[0] == vmin and bins[-1] == vmax
+    # add a KDE plot
+    support = np.linspace(vmin, vmax, 100)
+    kdevars = [var.kde(weights=w, lflatten=True, lbootstrap=False, nbs=10) for var,w in zip(varlist,weights)]
+    # N.B.: the bootstrapping is just to test bootstrap tolerance in regular plotting methods
+    ax.linePlot(kdevars, support=support, linewidth=2, flipxy=True)
+
+
   def testBootstrapCI(self):
     ''' test a line plot with confidence intervals from bootstrapping '''    
     fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
@@ -640,12 +671,13 @@ if __name__ == "__main__":
 #     specific_tests += ['MeanAxisPlot']
     # DistPlot
 #     specific_tests += ['BasicHistogram']
+    specific_tests += ['WeightedHistogram']
 #     specific_tests += ['BootstrapCI']
 #     specific_tests += ['SamplePlot']
     # PolarPlot
 #     specific_tests += ['BasicLinePlot']
 #     specific_tests += ['AdvancedLinePlot']
-    specific_tests += ['CombinedLinePlot']
+#     specific_tests += ['CombinedLinePlot']
     # TaylorPlot
 #     specific_tests += ['BasicScatterPlot']
 #     specific_tests += ['BasicTaylorPlot']
@@ -655,9 +687,9 @@ if __name__ == "__main__":
     # list of variable tests
 #     tests += ['SurfacePlot'] 
 #     tests += ['LinePlot'] 
-#     tests += ['DistPlot']
+    tests += ['DistPlot']
 #     tests += ['PolarPlot']
-    tests += ['TaylorPlot']
+#     tests += ['TaylorPlot']
     
 
     # construct dictionary of test classes defined above

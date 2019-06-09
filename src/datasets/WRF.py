@@ -829,7 +829,8 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       axes = dict(west_east=griddef.xlon, south_north=griddef.ylat, x=griddef.xlon, y=griddef.ylat) # map axes
     # load constants
     if llconst:              
-      constfile = fileclasses['const']    
+      constfile = fileclasses['const']
+      constlist = list(set().intersection(varlist,constfile.vars))
       catts = fileclasses['axes'].atts.copy()
       catts.update(constfile.atts) # use axes atts as basis and override with filetype-specific atts
       filename = constfile.tsfile.format(domain,gridstr)  
@@ -842,7 +843,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       # i.e. if there is no constant file in the experiment folder, use the one in the grid definition folder (if available)
       # load dataset
       const = DatasetNetCDF(name=name, folder=constfolder, filelist=[filename], varatts=catts, 
-                            axes=axes, varlist=constfile.vars, multifile=False, ncformat='NETCDF4', 
+                            axes=axes, varlist=constlist, multifile=False, ncformat='NETCDF4', 
                             mode=ncmode, squeeze=True, ignore_list=[constfile.ignore_list])      
       lenc = len(const) # length of const dataset
     else: lenc = 0 # empty

@@ -307,7 +307,7 @@ class MyFigure(Figure):
           if not lalphabet: label += 1
         # create label artist
         ats.append(ax.addLabel(label, loc=loc[i], lstroke=lstroke[i], lalphabet=lalphabet, 
-                               prop=prop, **args))      
+                               prop=prop.copy(), **args))      
     return ats
   
   # save figure
