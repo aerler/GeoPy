@@ -25,8 +25,8 @@ from plotting.properties import variablePlotatts
 
 ## Unity Meta-data
 
-dataset_name = 'Unity'
-root_folder = getRootFolder(dataset_name=dataset_name) # get dataset root folder based on environment variables
+dataset_name = 'Merged Obs.'
+root_folder = getRootFolder(dataset_name='Unity') # get dataset root folder based on environment variables
 # N.B.: doesn't have a native grid!
 
 # variable attributes and name (basically no alterations necessary...)
