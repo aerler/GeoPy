@@ -271,7 +271,7 @@ if __name__ == '__main__':
 #     periods += [1]
 #     periods += [3]
 #     periods += [5]
-    periods += [6] # only for Columbia simulations
+    periods += [7] # only for Columbia simulations
 #     periods += [9]
 #     periods += [10]
 #     periods += [15]

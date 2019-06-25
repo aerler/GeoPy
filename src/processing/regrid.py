@@ -207,21 +207,22 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 2 ; ldebug = False # just for tests
+    NP = 3 ; ldebug = False # just for tests
 #     modes = ('climatology','time-series') # 'climatology','time-series'
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = False
+    loverwrite = True
     varlist = None
 #     varlist = ['Tsnow','evap_blow','evap_snow','snwmlt','liqprec','precip','rho_snw',]
     periods = []
 #     periods += [1]
 #     periods += [3]
 #     periods += [5]
-#     periods += [7]
+    periods += [7]
 #     periods += [10]
 #     periods += [15]
-    periods += [30]
+#     periods += [30]
+#     periods = [(2010,2016)]
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
@@ -231,9 +232,9 @@ if __name__ == '__main__':
 #     datasets = ['NRCan']; lLTM = False; periods = [(1970,2000),]; resolutions['NRCan'] = ['na12_taiga','na12_alpine',]
 #     datasets = ['NRCan']; lLTM = False; periods = [(1980,2010),]; #resolutions['NRCan'] = ['na12_alpine','na12_maritime','na12_taiga',]
 #     datasets += ['PRISM','GPCC','PCIC']; lLTM = True; periods = None
-    datasets += ['CFSR','NARR'] # CFSR_05 does not have precip
+#     datasets += ['CFSR','NARR'] # CFSR_05 does not have precip
 #     datasets += ['NARR'] 
-    datasets += ['GPCC', 'CRU']; #resolutions['GPCC'] = ['025','05']
+#     datasets += ['GPCC', 'CRU']; #resolutions['GPCC'] = ['025','05']
 #     datasets += ['SnoDAS']; periods = [(2010,2019)]; NP=1 # large fields...
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
@@ -246,10 +247,11 @@ if __name__ == '__main__':
 #     CESM_filetypes = ['atm','lnd']
     CESM_filetypes = ['atm']
     # WRF experiments (short or long name)
-    WRF_project = 'GreatLakes' # only GreatLakes experiments
-#     WRF_project = 'WesternCanada' # only WesternCanada experiments
+#     WRF_project = 'GreatLakes' # only GreatLakes experiments
+    WRF_project = 'WesternCanada' # only WesternCanada experiments
 #     WRF_experiments = None # use None to process all WRF experiments
     WRF_experiments = []
+    WRF_experiments += ['erai-wc2']    
 #     WRF_experiments += ['3km-ensemble','erai-3km','max-3km','max-3km-2100'][2:]
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
 #     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
@@ -291,9 +293,9 @@ if __name__ == '__main__':
     # other WRF parameters 
     domains = (1,) # domains to be processed
 #     domains = None # process all domains
-    WRF_filetypes = ('xtrm','srfc','lsm','rad',) # filetypes to be processed
+#     WRF_filetypes = ('xtrm','srfc','lsm','rad',) # filetypes to be processed
 #     WRF_filetypes = ('hydro',) # filetypes to be processed
-#     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm') # filetypes to be processed # ,'rad'
+    WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm','rad') # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); modes = ('time-series',); periods = None
     # grid to project onto
     grids = dict()
@@ -311,7 +313,9 @@ if __name__ == '__main__':
 #     grids['grw3'] = None # very fine grid for GRW, 500m
 #     grids['snw1'] = None # large grid for whole Canada
 #     grids['can1'] = None # large grid for whole Canada
-    grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
+#     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
+    grids['wc2'] = ('d02',) # new Brian's Columbia domain (Western Canada 2)
+#     grids['wc2'] = ('d01',) # new Brian's Columbia domain (Western Canada 2)
 #     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
 #     grids['glb1-90km'] = ('d01',) # 90km GLB domain

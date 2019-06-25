@@ -35,14 +35,14 @@ class NCAxisError(Exception):
 
 def checkFillValue(fillValue, dtype):
   ''' check a fill value and return either return a valid value or raise an exception '''
-  lstrvar = dtype.kind == 'S'
+  lstrvar = dtype.kind in ('S','U')
   if not lstrvar and isinstance(fillValue, str): 
     fillValue = None # invalid value
     warn("Removed malformed fill_value '{:s}'.")
   if fillValue is not None:
     if isinstance(fillValue, np.ndarray): fillValue = np.asscalar(fillValue)
     fillValue = dtype.type(fillValue) # transform into appropriate numpy scalar
-    if not np.issubdtype(fillValue,dtype): 
+    if not np.issubdtype(fillValue.dtype,dtype): 
         raise TypeError(fillValue) # convert to Numpy type      
   return fillValue
 
@@ -173,6 +173,7 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   if fillValue is None:
       if atts and '_FillValue' in atts: fillValue = atts['_FillValue'] # will be removed later
       elif atts and 'missing_value' in atts: fillValue = atts['missing_value']
+      elif atts and 'fillValue' in atts: fillValue = atts['fillValue']
       elif data is not None and isinstance(data,ma.MaskedArray): # defaults values for numpy masked arrays
           fillValue = ma.default_fill_value(dtype)
           # if isinstance(dtype,np.bool_): fillValue = True
@@ -182,8 +183,8 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
           # elif isinstance(dtype,np.flexible): fillValue = 'N/A'
           # else: fillValue = None # for 'object'
       else: pass # if it is not a masked array and no missing value information was passed, don't assign fillValue 
-  else:  
-      if data is not None and isinstance(data,ma.MaskedArray): data._fill_value = fillValue 
+  if data is not None and isinstance(data,ma.MaskedArray) and fillValue is not None: 
+      data._fill_value = fillValue 
   # make sure fillValue is OK (there have been problems...)    
   fillValue = checkFillValue(fillValue, dtype)
   if fillValue is not None:
@@ -203,7 +204,14 @@ def add_var(dst, name, dims, data=None, shape=None, atts=None, dtype=None, zlib=
   # create netcdf variable  
   var = dst.createVariable(name, dtype, dims, fill_value=fillValue, **varargs)
   # add attributes
-  if atts: var.setncatts(coerceAtts(atts))
+  if atts: 
+    for key,item in coerceAtts(atts).items(): 
+      var.setncattr(key,item)
+#         try: 
+#             var.setncattr(key,item)
+#         except: 
+#           print(key,item)
+#           raise
   # assign coordinate data if given
   if data is not None: var[:] = data   
   # return var reference

@@ -166,16 +166,16 @@ def genCoord():
 
 if __name__ == '__main__':
     
-#   mode = 'test_climatology'
+  mode = 'test_climatology'
 #   mode = 'test_point_climatology'
-  mode = 'convert_ASCII'
+#   mode = 'convert_ASCII'
   pntset = 'shpavg' # 'ecprecip
   
   # do some tests
   if mode == 'test_climatology':  
     
     # load NetCDF dataset    
-    dataset = loadPRISM(grid='arb2_d02')
+    dataset = loadPRISM(grid='wc2_d01')
 #     dataset = loadPRISM()
     print(dataset)
     print('')

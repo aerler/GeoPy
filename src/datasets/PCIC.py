@@ -151,17 +151,17 @@ loadShapeClimatology = loadPCIC_Shp
 
 if __name__ == '__main__':
     
-#   mode = 'test_climatology'
+  mode = 'test_climatology'
 #   mode = 'test_point_climatology'
-  mode = 'convert_climatology'
+#   mode = 'convert_climatology'
   pntset = 'shpavg' # 'ecprecip
     
   # do some tests
   if mode == 'test_climatology':  
     
     # load NetCDF dataset
-#     dataset = loadPCIC(grid='arb2_d02')
-    dataset = loadPCIC()
+    dataset = loadPCIC(grid='wc2_d01')
+#     dataset = loadPCIC()
     print(dataset)
     print('')
     stnds = loadPCIC_Stn(station='ecprecip')
@@ -231,6 +231,12 @@ if __name__ == '__main__':
         print(('Mean {0:s}: {1:s} {2:s}'.format(var.atts.long_name, str(var.mean()), var.units)))
       #print('')
     print('')
+    
+    # clean some offending attributes
+    for var in dataset.axes.values():
+        for name in ('NAME','CLASS'): 
+            if name in var.atts: del var.atts[name]
+            
        
     ## create new NetCDF file    
     # figure out a different filename

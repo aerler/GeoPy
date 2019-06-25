@@ -29,6 +29,10 @@ def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackgrou
       from datasets.NRCan import loadNRCan
       ext = loadNRCan(resolution=res, period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
       axt = 'NRCan Observations'
+    elif exp == 'SnoDAS': 
+      from datasets.SnoDAS import loadSnoDAS
+      ext = loadSnoDAS(period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid, lxarray=False)
+      axt = 'SnoDAS Observations'
     elif exp == 'GPCC': 
       from datasets.GPCC import loadGPCC
       ext = loadGPCC(resolution=res, period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)

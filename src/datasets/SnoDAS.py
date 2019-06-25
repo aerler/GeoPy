@@ -386,7 +386,7 @@ def loadSnoDAS_TS(varname=None, varlist=None, name=dataset_name, grid=None, fold
 
 def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfolder, avgfile=avgfile, 
                lxarray=False, lgeoref=True, chunks=None, time_chunks=None, geoargs=None, 
-               name=dataset_name, filemode='r', **kwargs):
+               name=dataset_name, title=dataset_name, filemode='r', **kwargs):
     ''' function to load monthly transient SnoDAS data '''
     if time_chunks:
         if grid: 
@@ -423,18 +423,18 @@ def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfol
         # load standardized climatology dataset with NRCan-specific parameters
         dataset = loadObservations(name=name, folder=folder, projection=None, resolution=None, filepattern=avgfile, 
                                    period=period, grid=grid, varlist=varlist, varatts=None, griddef=SnoDAS_grid,
-                                   filelist=None, lautoregrid=False, mode='climatology', filemode=filemode)
+                                   title=title, filelist=None, lautoregrid=False, mode='climatology', filemode=filemode)
     # return formatted dataset
     return dataset
 
 
 # function to load averaged data
-def loadSnoDAS_Shp(name=dataset_name, period=None, shape=None, resolution=None, varlist=None, 
+def loadSnoDAS_Shp(name=dataset_name, title=dataset_name, period=None, shape=None, resolution=None, varlist=None, 
                    varatts=None, folder=avgfolder, filelist=None, lencl=False):
   ''' Get the pre-processed monthly PCIC PRISM climatology averaged over regions as a DatasetNetCDF. '''
   # load standardized climatology dataset with PCIC-specific parameters  
   dataset = loadObservations(name=name, folder=folder, grid=None, station=None, shape=shape, lencl=lencl, 
-                             varlist=varlist, varatts=varatts, filepattern=avgfile, projection=None, 
+                             title=title, varlist=varlist, varatts=varatts, filepattern=avgfile, projection=None, 
                              filelist=filelist, lautoregrid=False, period=period, mode='climatology')
   # return formatted dataset
   return dataset

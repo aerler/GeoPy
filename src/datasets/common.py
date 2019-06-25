@@ -406,13 +406,19 @@ def loadObservations(name=None, title=None, folder=None, period=None, grid=None,
   # figure out grid
   if not lstation and not lshape:
     if grid is None or grid == name:
-      dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform, griddef=griddef, gridfolder=grid_folder)
+      dataset = addGDALtoDataset(dataset, projection=projection, geotransform=geotransform, griddef=griddef, 
+                                 gridfolder=grid_folder,geolocator=True)
     elif isinstance(grid,str): # load from pickle file
   #     griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder)
       # add GDAL functionality to dataset 
-      dataset = addGDALtoDataset(dataset, griddef=grid, gridfolder=grid_folder)
+      dataset = addGDALtoDataset(dataset, griddef=grid, gridfolder=grid_folder, geolocator=True)
     else: raise TypeError(dataset)
     # N.B.: projection should be auto-detected, if geographic (lat/lon)
+    # add geolocators
+    if 'lat2D' not in dataset:
+        dataset.addVariable(Variable(name='lat2D',units='deg N', data=griddef.lat2D)) 
+    if 'lon2D' not in dataset:
+        dataset.addVariable(Variable(name='lon2D',units='deg E', data=griddef.lat2D))         
   return dataset
 
 
