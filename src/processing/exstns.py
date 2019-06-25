@@ -255,7 +255,7 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('const',); periods = None
 #     grid = 'grw2'
     # station datasets to match    
-    stations = dict(EC=('temp',)) # currently there is only one type: the EC weather stations
+    stations = dict(EC=('temp','precip')) # currently there is only one type: the EC weather stations
   
   
   ## process arguments    

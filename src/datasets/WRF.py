@@ -830,7 +830,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     # load constants
     if llconst:              
       constfile = fileclasses['const']
-      constlist = list(set().intersection(varlist,constfile.vars))
+      constlist = list(set().intersection(varlist,constfile.vars) if varlist is not None else constfile.vars)
       catts = fileclasses['axes'].atts.copy()
       catts.update(constfile.atts) # use axes atts as basis and override with filetype-specific atts
       filename = constfile.tsfile.format(domain,gridstr)  
