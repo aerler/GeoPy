@@ -207,7 +207,7 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 3 ; ldebug = False # just for tests
+    NP = 4 ; ldebug = False # just for tests
 #     modes = ('climatology','time-series') # 'climatology','time-series'
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
@@ -218,9 +218,9 @@ if __name__ == '__main__':
 #     periods += [1]
 #     periods += [3]
 #     periods += [5]
-    periods += [7]
+#     periods += [7]
 #     periods += [10]
-#     periods += [15]
+    periods += [15]
 #     periods += [30]
 #     periods = [(2010,2016)]
     # Observations/Reanalysis
@@ -230,7 +230,7 @@ if __name__ == '__main__':
 #     datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
     resolutions['NRCan'] = ['na12_ephemeral','na12_maritime','na12_prairies','na12_taiga','na12_alpine',]
 #     datasets = ['NRCan']; lLTM = False; periods = [(1970,2000),]; resolutions['NRCan'] = ['na12_taiga','na12_alpine',]
-    datasets = ['NRCan']; lLTM = False; periods = [(1980,2010),]; #resolutions['NRCan'] = ['na12_alpine','na12_maritime','na12_taiga',]
+#     datasets = ['NRCan']; lLTM = False; periods = [(1980,2010),]; #resolutions['NRCan'] = ['na12_alpine','na12_maritime','na12_taiga',]
 #     datasets += ['PRISM','GPCC','PCIC']; lLTM = True; periods = None
 #     datasets += ['PRISM',]; lLTM = True; periods = None
 #     datasets += ['CFSR','NARR'] # CFSR_05 does not have precip
@@ -252,15 +252,16 @@ if __name__ == '__main__':
     WRF_project = 'WesternCanada' # only WesternCanada experiments
 #     WRF_experiments = None # use None to process all WRF experiments
     WRF_experiments = []
-    WRF_experiments += ['erai-wc2']    
+#     WRF_experiments += ['erai-wc2']    
 #     WRF_experiments += ['3km-ensemble','erai-3km','max-3km','max-3km-2100'][2:]
 #     WRF_experiments += ['g-ensemble','g-ensemble-2050','g-ensemble-2100']
 #     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
 #     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100',]
 #     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
+    WRF_experiments += ['max-ensemble','max-ensemble-2050','max-ensemble-2100']
+    WRF_experiments += ['ctrl-ensemble','ctrl-ensemble-2050','ctrl-ensemble-2100']
 #     WRF_experiments += ['erai-g','erai-t']
 #     WRF_experiments += ['erai-g3','erai-t3']
-#     WRF_experiments += ['t3-ensemble-2100','g3-ensemble-2100']
 #     WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]
 #     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
 #     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
@@ -273,6 +274,12 @@ if __name__ == '__main__':
 #     WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
 #     WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
 #     WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
+    WRF_experiments += ['max-ctrl',     'max-ens-A',     'max-ens-B',     'max-ens-C',]
+    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+    WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
+    WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]
+    WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]
 #     WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['t-ensemble']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
@@ -292,8 +299,8 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-    domains = (2,) # domains to be processed
-#     domains = None # process all domains
+#     domains = (2,) # domains to be processed
+    domains = None # process all domains
 #     WRF_filetypes = ('xtrm','srfc','lsm','rad',) # filetypes to be processed
 #     WRF_filetypes = ('hydro',) # filetypes to be processed
     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm','rad') # filetypes to be processed # ,'rad'
@@ -301,7 +308,7 @@ if __name__ == '__main__':
     # grid to project onto
     grids = dict()
 #     grids['arb1'] = None # high-res grid for Athabasca river basin, 1km    
-#     grids['arb2'] = None # high-res grid for Athabasca river basin, 5km    
+    grids['arb2'] = None # high-res grid for Athabasca river basin, 5km    
 #     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 #     grids['grw1'] = None # high-res grid for GRW, 1km
@@ -315,7 +322,7 @@ if __name__ == '__main__':
 #     grids['snw1'] = None # large grid for whole Canada
 #     grids['can1'] = None # large grid for whole Canada
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
-    grids['wc2'] = ('d02',) # new Brian's Columbia domain (Western Canada 2)
+#     grids['wc2'] = ('d02',) # new Brian's Columbia domain (Western Canada 2)
 #     grids['wc2'] = ('d01',) # new Brian's Columbia domain (Western Canada 2)
 #     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain

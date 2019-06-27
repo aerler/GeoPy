@@ -116,17 +116,23 @@ class BiasCorrection(object):
         # loop over variables that will be corrected
         self._correction = dict()
         for varname in self.varlist:
-            # get variable object
-            var = dataset[varname]
-            if not var.data: var.load() # assume it is a VarNC, if there is no data
-            obsvar = observations[varname] # should be loaded
-            if not obsvar.data: obsvar.load() # assume it is a VarNC, if there is no data
-            assert var.data and obsvar.data, obsvar.data      
-            # check if they are actually equal
-            if isEqual(var.data_array, obsvar.data_array, eps=eps, masked_equal=True):
-                correction = None
-            else: 
-                correction = self._trainVar(var, obsvar, **kwargs)
+            # check for special treatment
+            fctname = '_train_'+varname
+            if  hasattr(self, fctname):
+                # call custom training method for this variable
+                correction = getattr(self, fctname)(varname, dataset, observations, **kwargs)
+            else:
+                # otherwise get variable object
+                var = dataset[varname]
+                if not var.data: var.load() # assume it is a VarNC, if there is no data
+                obsvar = observations[varname] # should be loaded
+                if not obsvar.data: obsvar.load() # assume it is a VarNC, if there is no data
+                assert var.data and obsvar.data, obsvar.data      
+                # check if they are actually equal
+                if isEqual(var.data_array, obsvar.data_array, eps=eps, masked_equal=True):
+                    correction = None
+                else: 
+                    correction = self._trainVar(var, obsvar, **kwargs)
             # save correction parameters
             self._correction[varname] = correction
   
@@ -167,7 +173,14 @@ class BiasCorrection(object):
                     assert varname in self._correction, self._correction
                     # bias-correct data and load in new variable 
                     if self._correction[srcvar] is not None:
-                        newvar.load(self._correctVar(oldvar, srcvar))
+                        fctname = '_correct_'+varname
+                        if  hasattr(self, fctname):
+                            # call custom correction method for this variable
+                            corrected_array = getattr(self, fctname)(oldvar, srcvar, **kwargs)
+                        else:
+                            # use default correction (scale of shift based on units)
+                            corrected_array = self._correctVar(oldvar, srcvar)
+                        newvar.load(corrected_array)
                     if newvar is not bcds[tgtvar]: 
                         bcds[tgtvar] = newvar # attach new (non-NC) var
         # return bias-corrected dataset
@@ -402,16 +415,44 @@ class AABC(Delta):
         return r
         
         
-class MyBC(BiasCorrection):
-    ''' A BiasCorrection class that implements snowmelt shift and utilizes different (unobserved) precipitation types '''
-    
-    def _trainVar(self, var, obsvar, time_axis='time', **kwargs):
+class MyBC(AABC):
+    ''' A BiasCorrection class that implements snowmelt shift and estimates convective and 
+        non-convective precipitation via best fit of seasonal cycle to total precipitation '''
+  
+    # precipitation correction
+  
+    def _fitPrecip(self, varname, dataset, observations, time_axis='time', **kwargs):
         ''' optimize parameters for best fit of dataset to observations and save parameters;
             this method should be implemented for each method '''
-        raise NotImplementedError
+        assert 'precip' in observations, observations
+        return NotImplemented
+    
+    def _train_preccu(self, varname, dataset, observations, time_axis='time', **kwargs):
+        ''' call fit function if not done already (can be called through either preccu or precnc) '''
+        assert 'preccu' == varname and varname in dataset, dataset
+        if self._correction[varname] is None:
+            correction = self._fit_precip(varname, dataset, observations, time_axis, **kwargs)
+        else:
+            correction = self._correction[varname]
+        return correction 
+            
+    def _train_precnc(self, varname, dataset, observations, time_axis='time', **kwargs):
+        ''' call fit function if not done already (can be called through either preccu or precnc) '''
+        assert 'precnc' == varname and varname in dataset, dataset
+        if self._correction[varname] is None:
+            correction = self._fit_precip(varname, dataset, observations, time_axis, **kwargs)
+        else:
+            correction = self._correction[varname]
+        return correction 
   
-    def _correctVar(self, var, varname=None, time_axis='time', **kwargs):
-        ''' apply bias correction to new variable and return bias-corrected data;
-            this method should be implemented for each method '''
+    # snowmelt correction
+  
+    def _train_snwmlt(self, varname, dataset, observations, time_axis='time', **kwargs):
+        ''' estimate temporal offset to shift snowmelt variable in time, on top of bias-correction'''
+        assert 'solprec' in observations, observations
+        return NotImplemented
+    
+    def _correct_snwmlt(self, var, varname=None, time_axis='time', **kwargs):
+        ''' apply temporal shift and scale date; return bias-corrected, shifted data '''
         if varname is None: varname = var.name # allow for variable mapping
-        raise NotImplementedError
+        return var.data_array
