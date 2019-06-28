@@ -81,7 +81,8 @@ def computeNetRadiation(dataset, asVar=True, lA=True, lrad=True, name='netrad'):
   '''
   if lrad and 'SWDNB' in dataset and 'LWDNB' in dataset and 'SWUPB' in dataset and 'LWUPB' in dataset:
     data = radiation(dataset['SWDNB'][:],dataset['LWDNB'][:],dataset['SWUPB'][:],dataset['LWUPB'][:]) # downward total net radiation
-  elif 'SWD' in dataset and 'GLW' in dataset and 'e' in dataset:
+  else:
+    if 'e' not in dataset: raise VariableError("Emissivity is not available for radiation calculation.")
     if not lA: A = 0.23 # reference Albedo for grass
     elif lA and 'A' in dataset: A = dataset['A'][:]
     else: raise VariableError("Actual Albedo is not available for radiation calculation.")
@@ -89,8 +90,13 @@ def computeNetRadiation(dataset, asVar=True, lA=True, lrad=True, name='netrad'):
     elif 'TSmean' in dataset: Ts = dataset['TSmean'][:]; TSmax = None
     elif 'Ts' in dataset: Ts = dataset['Ts'][:]; TSmax = None
     else: raise VariableError("Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation.")
-    data = radiation_black(A,dataset['SWD'][:],dataset['GLW'][:],dataset['e'][:],Ts,TSmax) # downward total net radiation
-  else: raise VariableError("Cannot determine net radiation calculation.")
+    if 'LWDNB' in dataset: GLW = dataset['LWDNB'][:]
+    elif 'GLW' in dataset: GLW = dataset['GLW'][:]
+    else: raise VariableError("Downwelling LW radiation is not available for radiation calculation.")
+    if 'SWDNB' in dataset: SWD = dataset['SWDNB'][:]
+    elif 'SWD' in dataset: SWD = dataset['SWD'][:]
+    else: raise VariableError("Downwelling LW radiation is not available for radiation calculation.")
+    data = radiation_black(A,SWD,GLW,dataset['e'][:],Ts,TSmax) # downward total net radiation
   # cast as Variable
   if asVar:
     var = Variable(data=data, name=name, units='W/m^2', axes=dataset['SWD'].axes)
@@ -116,7 +122,7 @@ def computeVaporDeficit(dataset):
   return var
 
 # compute potential evapo-transpiration
-def computePotEvapPM(dataset, lterms=True, lmeans=False):
+def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True):
   ''' function to compute potential evapotranspiration (according to Penman-Monteith method:
       https://en.wikipedia.org/wiki/Penman%E2%80%93Monteith_equation,
       http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
@@ -124,7 +130,7 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False):
   # get net radiation at surface
   if 'netrad' in dataset: Rn = dataset['netrad'][:] # net radiation
   if 'Rn' in dataset: Rn = dataset['Rn'][:] # alias
-  else: Rn = computeNetRadiation(dataset, asVar=False) # try to compute
+  else: Rn = computeNetRadiation(dataset, lrad=lrad, asVar=False) # try to compute
   # heat flux in and out of the ground
   if 'grdflx' in dataset: G = dataset['grdflx'][:] # heat release by the soil
   else: raise VariableError("Cannot determine soil heat flux for PET calculation.")

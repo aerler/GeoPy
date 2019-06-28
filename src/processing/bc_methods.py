@@ -120,7 +120,8 @@ class BiasCorrection(object):
             fctname = '_train_'+varname
             if  hasattr(self, fctname):
                 # call custom training method for this variable
-                correction = getattr(self, fctname)(varname, dataset, observations, **kwargs)
+                getattr(self, fctname)(varname, dataset, observations, **kwargs)
+                # assignment of _correction item is done internally
             else:
                 # otherwise get variable object
                 var = dataset[varname]
@@ -133,8 +134,8 @@ class BiasCorrection(object):
                     correction = None
                 else: 
                     correction = self._trainVar(var, obsvar, **kwargs)
-            # save correction parameters
-            self._correction[varname] = correction
+                # save correction parameters
+                self._correction[varname] = correction
   
     def _trainVar(self, var, obsvar, **kwargs):
         ''' optimize parameters for best fit of dataset to observations and save parameters;
@@ -170,16 +171,16 @@ class BiasCorrection(object):
                     newvar = bcds[tgtvar] # should be loaded
                     if isinstance(newvar,VarNC): # the corrected variable needs to load data, hence can't be VarNC          
                         newvar = newvar.copy(axesdeep=False, varsdeep=False, asNC=False) 
-                    assert varname in self._correction, self._correction
+                    assert srcvar in self._correction, self._correction
                     # bias-correct data and load in new variable 
                     if self._correction[srcvar] is not None:
-                        fctname = '_correct_'+varname
+                        fctname = '_correct_'+tgtvar
                         if  hasattr(self, fctname):
                             # call custom correction method for this variable
-                            corrected_array = getattr(self, fctname)(oldvar, srcvar, **kwargs)
+                            corrected_array = getattr(self, fctname)(varname=tgtvar, dataset=dataset, **kwargs)
                         else:
                             # use default correction (scale of shift based on units)
-                            corrected_array = self._correctVar(oldvar, srcvar)
+                            corrected_array = self._correctVar(oldvar, varname=srcvar, **kwargs)
                         newvar.load(corrected_array)
                     if newvar is not bcds[tgtvar]: 
                         bcds[tgtvar] = newvar # attach new (non-NC) var
@@ -287,7 +288,7 @@ class Delta(BiasCorrection):
     def _extendClim(self, correction, var, time_axis):
         # extend monthly normal correction factors to multiple years
         tidx = var.axisIndex(time_axis)
-        assert var.ndim == correction.ndim
+        assert var.ndim == correction.ndim, var
         assert correction.shape[tidx] == 12
         assert var.shape[tidx]%12 == 0
         return np.repeat(correction, var.shape[tidx]//12, axis=tidx)
@@ -314,7 +315,9 @@ class Delta(BiasCorrection):
         if '_operation' not in self.__dict__:
             warn("The '_operation' dictionary was not found in the BiasCorrection instance '{}';\n it is likely an older version of the Class and should be recomputed.")
         # format correction
-        correction = self._extendClim(self._correction[varname], var, time_axis)
+        correction = self._correction[varname]
+        if isinstance(correction,np.ndarray):
+            correction = self._extendClim(correction, var, time_axis)
         # decide between difference or ratio based on variable type
         if self._operation[varname] == 'ratio': # ratio for fluxes
             data = var.data_array * correction
@@ -361,6 +364,22 @@ class Delta(BiasCorrection):
         return data
         
 
+# helper function
+def spatialAverage(var, time_axis='time', keepdims=True):
+    ''' helper function to compute spatial averages and preserve the tiem axis ''' 
+    data = var.load().data_array
+    if var.hasAxis(time_axis):
+        # handle variables with time axis
+        tax = var.axisIndex(time_axis)
+        for i in range(var.ndim-1,-1,-1):
+            # average spatial dimensions but not time
+            if i != tax:
+                data = data.mean(axis=i, keepdims=keepdims)
+    else:
+        # without time axis, this is simple
+        data = data.mean()
+    return data
+
 class SMBC(Delta):
     name = 'SMBC' # name used in file names
     long_name = 'Simple Monthly Mean Adjustment' # name for printing
@@ -368,16 +387,8 @@ class SMBC(Delta):
     def _trainVar(self, var, obsvar, time_axis='time', **kwargs):
         ''' take difference (or ratio) between spatially averaged observations and simulation and use as correction '''
         self._checkClim(time_axis, var, obsvar) # check time axis
-        obsdata = obsvar.data_array; vardata = var.data_array
-        if obsdata.ndim == 3:
-            assert obsdata.shape[0] == 12, obsvar
-            # average spatially but keep seasonal cycle (but need to keep singleton dimensions)
-            for n in range(1,obsdata.ndim):
-                obsdata = obsdata.mean(axis=n, keepdims=True)
-                vardata = vardata.mean(axis=n, keepdims=True)
-        else:
-            # average spatially, assuming not time dimension - very simple!
-            obsdata = obsdata.mean(); vardata = vardata.mean()
+        vardata = spatialAverage(var, time_axis=time_axis, keepdims=True)
+        obsdata = spatialAverage(obsvar, time_axis=time_axis, keepdims=True)
         # decide between difference or ratio based on variable type
         if var.units in self._ratio_units: # ratio for fluxes
             r = obsdata / vardata 
@@ -418,41 +429,170 @@ class AABC(Delta):
 class MyBC(AABC):
     ''' A BiasCorrection class that implements snowmelt shift and estimates convective and 
         non-convective precipitation via best fit of seasonal cycle to total precipitation '''
-  
-    # precipitation correction
+    name = 'MyBC' # name used in file names
+    long_name = 'Custom Bias Correction' # name for printing
+    # for temporary internal storage
+    _precip = None
+    _preccu = None
+    _precnc = None 
+    _liqprec = None
+    _solprec = None
+    _snwmlt = None
+    _liqwatflx = None 
+
+    
+    def _getVarlist(self, dataset, observations):
+        ''' do usual matching, but add precip types and remove others '''
+        # do matching
+        varlist = super(MyBC,self)._getVarlist(dataset, observations)
+        # remove some precip types
+        for varname in ('solprec','liqprec','precip'):
+            if varname in varlist: varlist.remove(varname)
+        # add convective and grid-scale precip (not in obs)
+        for varname in ('preccu','precnc'):
+            if varname not in varlist: varlist.append(varname)
+        # save and return varlist
+        self.varlist = varlist
+        return varlist        
+   
+    # helper functions
+    
+    def _objective(self, x, obs_precip=None, preccu=None, precnc=None):
+        ''' objective function to minimize '''
+        delta = obs_precip - x[0]*preccu - x[1]*precnc
+        return np.sum(delta**2)
+      
+    def _first_guess(self, obs_precip=None, preccu=None, precnc=None, time_idx=0):
+        ''' estimate reasonable first guess '''
+        assert obs_precip.shape == preccu.shape == precnc.shape
+        if obs_precip.shape[time_idx] == 12:
+            # assume winter is non-convective and deduce convective from sum
+            winter = (0,1,2,10,11,)
+            b = ( obs_precip.take(winter,axis=time_idx).sum(axis=time_idx,keepdims=False) /
+                                          precnc.take(winter,axis=time_idx).sum(axis=time_idx,keepdims=False) )
+            a = ( ( obs_precip.sum(axis=time_idx,keepdims=False) - b*precnc.sum(axis=time_idx,keepdims=False) ) /
+                                                                  preccu.sum(axis=time_idx,keepdims=False) )
+        else:
+            # otherwise start by assuming all is non-convective
+            a = 0
+            b = obs_precip.sum(axis=time_idx, keepdims=False)/precnc.sum(axis=time_idx, keepdims=False)
+        # return first-guess parameters as 1d array
+        return np.asarray((a, b))
+
+    # convective and grid-scale precipitation correction
   
     def _fitPrecip(self, varname, dataset, observations, time_axis='time', **kwargs):
         ''' optimize parameters for best fit of dataset to observations and save parameters;
             this method should be implemented for each method '''
         assert 'precip' in observations, observations
-        return NotImplemented
+        obs_precip = spatialAverage(observations['precip'], time_axis=time_axis, keepdims=False)
+        assert 'precnc' in dataset and 'preccu' in dataset, dataset
+        preccu = spatialAverage(dataset['preccu'], time_axis=time_axis, keepdims=False)
+        precnc = spatialAverage(dataset['precnc'], time_axis=time_axis, keepdims=False)
+        # calculate first guess
+        time_idx = observations['precip'].axisIndex(time_axis)
+        x0 = self._first_guess(obs_precip, preccu, precnc, time_idx=time_idx)
+#         self._correction['preccu'] = x0[0]
+#         self._correction['precnc'] = x0[1]
+        # optimize estimate
+        from scipy.optimize import minimize
+        res = minimize(self._objective, x0, (obs_precip, preccu, precnc),
+                       method='nelder-mead', options={'xtol': 1e-8, 'disp': True})
+        # assign values
+        self._correction['preccu'] = res.x[0]
+        self._correction['precnc'] = res.x[1]
     
     def _train_preccu(self, varname, dataset, observations, time_axis='time', **kwargs):
         ''' call fit function if not done already (can be called through either preccu or precnc) '''
         assert 'preccu' == varname and varname in dataset, dataset
-        if self._correction[varname] is None:
-            correction = self._fit_precip(varname, dataset, observations, time_axis, **kwargs)
-        else:
-            correction = self._correction[varname]
-        return correction 
+        if varname not in self._correction:
+            self._fitPrecip(varname, dataset, observations, time_axis, **kwargs)
             
     def _train_precnc(self, varname, dataset, observations, time_axis='time', **kwargs):
         ''' call fit function if not done already (can be called through either preccu or precnc) '''
         assert 'precnc' == varname and varname in dataset, dataset
-        if self._correction[varname] is None:
-            correction = self._fit_precip(varname, dataset, observations, time_axis, **kwargs)
-        else:
-            correction = self._correction[varname]
-        return correction 
-  
+        if varname not in self._correction:
+            self._fitPrecip(varname, dataset, observations, time_axis, **kwargs)
+
+    def _correct_preccu(self, varname=None, dataset=None, time_axis='time', **kwargs):
+        ''' correct convective precipitation and save for later use '''
+        assert 'preccu' in dataset, dataset
+        assert 'preccu' in self._correction, self._correction
+        if self._preccu is None:
+            self._preccu = self._correction['preccu'] * dataset.variables['preccu'].load().data_array
+        return self._preccu
+
+    def _correct_precnc(self, varname=None, dataset=None, time_axis='time', **kwargs):
+        ''' correct non-convective/grid-scale precipitation and save for later use '''
+        assert 'precnc' in dataset, dataset
+        assert 'precnc' in self._correction, self._correction
+        if self._preccu is None:
+            self._preccu = self._correction['precnc'] * dataset.variables['precnc'].load().data_array
+        return self._preccu
+            
+    # other precipitation types (liquid, solid, total)
+    
+    def _correct_liqprec(self, varname=None, dataset=None, time_axis='time', **kwargs):
+        ''' correct liquid precipitation based on precip types, assuming convective precip is always liquid '''
+        assert 'liqprec' in dataset and 'preccu' in dataset, dataset
+        assert 'precnc' in self._correction and 'preccu' in self._correction, self._correction
+        if self._liqprec is None:
+            b = self._correction['precnc']
+            liqprec = b * dataset.variables['liqprec'].load().data_array 
+            liqprec += ( self._correction['preccu'] - b ) * dataset.variables['preccu'].load().data_array
+            self._liqprec = liqprec
+        return self._liqprec
+      
+    def _correct_solprec(self, varname=None, dataset=None, time_axis='time', **kwargs):
+        ''' correct solid precipitation as non-convective/grid-scale precip '''
+        assert 'solprec' in dataset, dataset
+        assert 'precnc' in self._correction and 'preccu' in self._correction, self._correction
+        if self._solprec is None:
+            self._solprec = self._correction['precnc'] * dataset.variables['solprec'].load().data_array
+        return self._solprec
+
+    def _correct_precip(self, varname=None, dataset=None, time_axis='time', **kwargs):
+        ''' compute bias-corrected precip from convective and grid-scale precip '''
+        assert 'preccu' in dataset and 'precnc' in dataset, dataset
+        if self._precip is None:
+            if self._preccu is None:
+                self._correct_preccu(varname=varname, dataset=dataset, time_axis=time_axis, **kwargs)
+            if self._precnc is None:
+                self._correct_precnc(varname=varname, dataset=dataset, time_axis=time_axis, **kwargs)
+            self._precip = self._preccu + self._precnc
+        return self._precip
+       
     # snowmelt correction
   
     def _train_snwmlt(self, varname, dataset, observations, time_axis='time', **kwargs):
         ''' estimate temporal offset to shift snowmelt variable in time, on top of bias-correction'''
-        assert 'solprec' in observations, observations
-        return NotImplemented
+        # just use arbitrary one month shift, until we have something better
+        self._correction[varname] = -1
     
-    def _correct_snwmlt(self, var, varname=None, time_axis='time', **kwargs):
+    def _correct_snwmlt(self, varname=None, dataset=None, time_axis='time', **kwargs):
         ''' apply temporal shift and scale date; return bias-corrected, shifted data '''
-        if varname is None: varname = var.name # allow for variable mapping
-        return var.data_array
+        assert 'precnc' in self._correction, self._correction
+        if self._snwmlt is None:
+            var = dataset.variables['snwmlt'].load()
+            # temporal shift 
+            tax = var.axisIndex(time_axis)
+            assert var.shape[tax]%12 == 0, var # this is really only applicable to periodic monthly data...
+            assert 'month' in var.axes[tax].units.lower(), var.axes[tax]
+            data = np.roll(var.data_array, shift=self._correction['snwmlt'], axis=tax) 
+            # scale to grid-scale precip
+            data *= self._correction['precnc']
+            self._snwmlt = data
+        # return shifted and scaled data array       
+        return self._snwmlt
+
+    # liquid water flux
+  
+    def _correct_liqwatflx(self, varname=None, dataset=None, time_axis='time', **kwargs):
+        ''' compute bias-corrected liquid water flux from liquid precip and snowmelt '''
+        if self._liqwatflx is None:
+            if self._liqprec is None:
+                self._correct_liqprec(varname=varname, dataset=dataset, time_axis=time_axis, **kwargs)
+            if self._snwmlt is None:
+                self._correct_snwmlt(varname=varname, dataset=dataset, time_axis=time_axis, **kwargs)
+            self._liqwatflx = self._liqprec + self._snwmlt
+        return self._liqwatflx

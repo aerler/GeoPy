@@ -205,6 +205,7 @@ if __name__ == '__main__':
 #     WRF_project = 'GreatLakes' # only GreatLakes experiments
     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
+    WRF_experiments += ['ctrl-ensemble']
     WRF_experiments += ['max-ensemble']
 #     WRF_experiments += ['erai-g3','erai-t3']
 #     WRF_experiments += ['erai-g','erai-t']
@@ -214,9 +215,9 @@ if __name__ == '__main__':
 #     WRF_experiments += ['erai-max','erai-ctrl']
 #     WRF_experiments += ['max-ensemble','ctrl-ensemble']
     # other WRF parameters 
-    WRF_domains = 2 # domains to be processed (None=all)
-#     WRF_domains = None # process all domains
-    WRF_filetypes = ('hydro','srfc','xtrm','lsm','rad') # available input files
+#     WRF_domains = 1 # domains to be processed (None=all)
+    WRF_domains = None # process all domains
+    WRF_filetypes = ('hydro','srfc','xtrm','lsm',) # available input files
 #     WRF_filetypes = ('aux',) # only preprocessed auxiliary files
 #     WRF_filetypes = ('hydro',) # only preprocessed auxiliary files
     ## observations (i.e. the reference dataset; arguments passed to loadDataset)
