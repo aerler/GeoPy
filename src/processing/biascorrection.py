@@ -205,8 +205,8 @@ if __name__ == '__main__':
 #     WRF_project = 'GreatLakes' # only GreatLakes experiments
     WRF_project = 'WesternCanada' # only WesternCanada experiments
     WRF_experiments = [] # use None to process all WRF experiments
-    WRF_experiments += ['ctrl-ensemble']
     WRF_experiments += ['max-ensemble']
+    WRF_experiments += ['ctrl-ensemble']
 #     WRF_experiments += ['erai-g3','erai-t3']
 #     WRF_experiments += ['erai-g','erai-t']
 #     WRF_experiments += ['g-ensemble','t-ensemble']
@@ -221,10 +221,13 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('aux',) # only preprocessed auxiliary files
 #     WRF_filetypes = ('hydro',) # only preprocessed auxiliary files
     ## observations (i.e. the reference dataset; arguments passed to loadDataset)
-    obs_name = 'NRCan'
     obs_mode = 'climatology'
+    obs_name = 'Unity'
+    obs_args = dict(period=(1979,1994))
+#     obs_args = dict(varatts=dict(pet=dict(name='pet_wrf')), period=(1979,1994))
+#     obs_name = 'NRCan'
 #     obs_args = dict(resolution='na12', varatts=dict(pet=dict(name='pet_wrf')), period=(1970,2000))
-    obs_args = dict(resolution='na12', varatts=dict(pet=dict(name='pet_wrf')), period=(1980,2010))
+#     obs_args = dict(resolution='na12', varatts=dict(pet=dict(name='pet_wrf')), period=(1980,2010))
     # renaming NRCan pet to pet_wrf is necessary to bias-correct WRF PET
     ## remaining parameters
     lgzip = True # compress pickles
@@ -277,7 +280,7 @@ if __name__ == '__main__':
   print(('\n On Grid/Resolution:\n   {:s}'.format(grid)))
   print(('\n Variable List: {:s}'.format('All' if varlist is None else printList(varlist))))
   print(('\n Bias-Correction Method: {:s}'.format(bc_method)))
-  print(('\n Observationa/Reference Dataset:\n   {:s}'.format(obs_dataset if ldebug else obs_dataset.name)))
+  print(('\n Observationa/Reference Dataset:\n   {:s}'.format(str(obs_dataset) if ldebug else obs_dataset.name)))
   print(('\n OVERWRITE: {0:s}\n'.format(str(loverwrite))))
   
     

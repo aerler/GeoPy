@@ -468,7 +468,7 @@ if __name__ == '__main__':
         export_arguments = config['export_parameters'] # this is actually a larger data structure
     else:
         # settings for testing and debugging
-        NP = 2; ldebug = False # for quick computations
+        NP = 4; ldebug = False # for quick computations
 #         NP = 1 ; ldebug = True # just for tests
 #         modes = ('time-series','climatology')
 #         modes = ('annual-mean','climatology', 'time-series')
@@ -487,16 +487,17 @@ if __name__ == '__main__':
 #         load_list = ['lat2D','lon2D','pet',]+CMC_adjusted # 'precip',
 #         # WRF variables
         #load_list = ['pet_wrf']
-        load_list += ['lat2D','lon2D','zs','snow','pet_wrf']
-        load_list += ['waterflx','liqwatflx','evap','snwmlt'] # water flux
+        load_list += ['lat2D','lon2D','zs']
+        #load_list += ['waterflx','liqwatflx','evap','snwmlt','snow','pet_wrf'] # water flux
+        load_list += ['liqwatflx','snwmlt','pet_wrf','pet'] # water flux
         load_list += ['liqprec','solprec','precip','preccu','precnc'] # precip types
 #         # PET variables (for WRF)
-        load_list += ['ps','u10','v10','Q2','Tmin','Tmax','T2','TSmin','TSmax',] # wind
-        load_list += ['grdflx','A','SWDNB','e','LWDNB',] # radiation (short)
+#         load_list += ['ps','u10','v10','Q2','Tmin','Tmax','T2','TSmin','TSmax',] # wind
+#         load_list += ['grdflx','A','SWDNB','e','LWDNB',] # radiation (short)
         #load_list += ['grdflx','A','SWD','e','GLW','SWDNB','SWUPB','LWDNB','LWUPB'] # radiation
         # WRF constants
-        load_list += ['lat2D','lon2D','zs','landuse','landmask','LANDUSEF','vegcat','SHDMAX','SHDMIN',
-                    'SOILHGT','soilcat','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'] # constants
+#         load_list += ['lat2D','lon2D','zs','landuse','landmask','LANDUSEF','vegcat','SHDMAX','SHDMIN',
+#                     'SOILHGT','soilcat','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'] # constants
         # period list
         periods = [] 
         periods += [15]
@@ -529,7 +530,7 @@ if __name__ == '__main__':
 #         WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100']
 #         WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
 #         WRF_experiments += ['t3-ensemble-2100','g3-ensemble-2100']
-#         WRF_experiments += ['max-ensemble',]
+#         WRF_experiments += ['max-ensemble','ctrl-ensemble']
 #         WRF_experiments += ['g-ctrl','g-ctrl-2050','g-ctrl-2100']
 #         WRF_experiments += ['t-ctrl','t-ctrl-2050','t-ctrl-2100']
 #         WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
@@ -565,10 +566,11 @@ if __name__ == '__main__':
 #         bc_method = 'SMBC'; bc_tag = bc_method+'_' # bias correction method (None: no bias correction)        
 #         bc_method = 'AABC'; bc_tag = bc_method+'_' # bias correction method (None: no bias correction)        
         bc_method = 'MyBC'; bc_tag = bc_method+'_' # bias correction method (None: no bias correction)        
-        obs_dataset = 'NRCan' # the observational dataset 
+        obs_dataset = 'Unity' # the observational dataset 
         bc_reference = None # reference experiment (None: auto-detect based on name)
-        bc_varmap = dict(Tmin=('Tmin','TSmin'), Tmax=('Tmax','TSmax'), T2=('T2','Tmean'), pet_wrf=('pet_wrf','evap'), 
-                         SWDNB=('SWDNB','SWUPB','SWD'),SWD=('SWDNB','SWUPB','SWD'),LWDNB=('LWDNB','GLW'),GLW=('LWDNB','GLW'),)
+        bc_varmap = dict(TSmin='Tmin', TSmax='Tmax',Tmean='T2', 
+                         pet='pet_wrf', pet_wrf='pet', evap='pet', # pet='pet_wrf',
+                         SWUPB='SWDNB',SWD='SWDNB',SWDNB='SWD', LWDNB='GLW',GLW='LWDNB',)
         bc_args = dict(grid=None, domain=None, lgzip=True, varmap=bc_varmap) # missing/None parameters are inferred from experiment
         # typically a specific grid is required
         grids = [] # list of grids to process
@@ -585,44 +587,45 @@ if __name__ == '__main__':
 #         grids += ['snw1']; project = 'SNW' # south nation watershed
 #         grids += ['son1']; project = 'SON' # southern Ontario watersheds
         ## export to ASCII raster
-#         export_arguments = dict(
-#             # NRCan
+        export_arguments = dict(
+            # NRCan
 #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT', None),bc_tag),
-# #             compute_list = [], exp_list= ['lat2D','lon2D','pet']+CMC_adjusted,   # varlist for NRCan
-# #             compute_list = [], exp_list= ['lat2D','lon2D','pet','liqwatflx','liqwatflx_CMC'], # varlist for NRCan
+#             compute_list = [], exp_list= ['lat2D','lon2D','pet']+CMC_adjusted,   # varlist for NRCan
+#             compute_list = [], exp_list= ['lat2D','lon2D','pet','liqwatflx','liqwatflx_CMC'], # varlist for NRCan
 #             compute_list = [], exp_list= ['liqwatflx',], # varlist for SnoDAS
-#             # WRF
-# #             exp_list= ['landuse','landmask'],
-# #             exp_list= ['lat2D','lon2D','zs','LU_MASK','LU_INDEX','LANDUSEF','VEGCAT','SHDMAX','SHDMIN',
-# #                        'SOILHGT','SOILCAT','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'], # constants
-# #             compute_list = ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
-# #             exp_list= ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
-# #             compute_list = ['liqwatflx','pet'], exp_list= ['lat2D','lon2D','zs','liqwatflx','pet'], # short varlist for quick export
-# #             compute_list = ['liqwatflx',], exp_list= ['lat2D','lon2D','zs','liqwatflx','pet_wrf'], # short varlist for quick export
-# #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT'),bc_tag),
-# #             folder = '//aquanty-nas/share/temp_data_exchange/Erler/{PROJECT}/{EXPERIMENT}/{PERIOD}/',
-# #             folder = '//aquanty-nas/share/temp_data_exchange/Erler/{{PROJECT}}/{{EXPERIMENT}}/{bc_tag:s}{{PERIOD}}/'.format(bc_tag=bc_tag),
-# #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/land_data/'.format(os.getenv('HGS_ROOT')),
-# #             folder = '//AQFS1/Data/temp_data_exchange/{PROJECT}/{GRID}/{EXPERIMENT}/land_data/',
-#             # common
-#             project = project, # project designation  
-#             prefix = '{GRID}', # based on keyword arguments
-#             format = 'ASCII_raster', # formats to export to
-#             fillValue = 0, noDataValue = -9999, # in case we interpolate across a missing value...
-#             lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
+            # WRF
+#             exp_list= ['landuse','landmask'],
+#             exp_list= ['lat2D','lon2D','zs','LU_MASK','LU_INDEX','LANDUSEF','VEGCAT','SHDMAX','SHDMIN',
+#                        'SOILHGT','SOILCAT','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'], # constants
+#             compute_list = ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
+#             exp_list= ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
+#             compute_list = ['liqwatflx','pet'], exp_list= ['lat2D','lon2D','zs','liqwatflx','pet'], # short varlist for quick export
+            compute_list = ['liqwatflx'], exp_list= ['lat2D','lon2D','zs','pet','liqwatflx'], # short varlist for quick export
+            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT'),bc_tag),
+#             folder = '//aquanty-nas/share/temp_data_exchange/Erler/{PROJECT}/{EXPERIMENT}/{PERIOD}/',
+#             folder = '//aquanty-nas/share/temp_data_exchange/Erler/{{PROJECT}}/{{EXPERIMENT}}/{bc_tag:s}{{PERIOD}}/'.format(bc_tag=bc_tag),
+#             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/land_data/'.format(os.getenv('HGS_ROOT')),
+#             folder = '//AQFS1/Data/temp_data_exchange/{PROJECT}/{GRID}/{EXPERIMENT}/land_data/',
+            # common
+            project = project, # project designation  
+            prefix = '{GRID}', # based on keyword arguments
+            format = 'ASCII_raster', # formats to export to
+            fillValue = 0, noDataValue = -9999, # in case we interpolate across a missing value...
+            lm3 = True) # convert water flux from kg/m^2/s to m^3/m^2/s
         ## export to NetCDF (aux-file)
-        exp_list = []
-        exp_list += ['netrad','netrad_bb0','netrad_bb','vapdef','pet','pet_wrf','petrad','petwnd']
-        exp_list += ['Tmin','Tmax','T2','Tmean','TSmin','TSmax','SWDNB','LWDNB','zs','lat2D','lon2D',]
-#         exp_list += ['SWDNB','SWUPB',]
-        exp_list += ['waterflx','liqwatflx','liqprec','solprec','precip','snow','snowh','snwmlt',]
-#         compute_list = ['pet']
-        compute_list = ['waterflx','liqwatflx','pet'] # variables that should be (re-)computed
-        export_arguments = dict(format = 'NetCDF',
-                                exp_list= exp_list, compute_list=compute_list, 
-                                project = bc_method if bc_method else 'AUX',
-                                filetype = bc_method.lower() if bc_method else 'aux',
-                                lm3 = False) # do not convert water flux from kg/m^2/s to m^3/m^2/s
+#         exp_list = []
+# #         exp_list += ['netrad','netrad_bb0','netrad_bb','vapdef','pet','pet_wrf','petrad','petwnd']
+# #         exp_list += ['Tmin','Tmax','T2','Tmean','TSmin','TSmax','SWDNB','LWDNB','zs','lat2D','lon2D',]
+# #         exp_list += ['SWDNB','SWUPB',]
+# #         exp_list += ['waterflx','liqwatflx','liqprec','solprec','precip','snow','snowh','snwmlt',]
+#         exp_list += ['liqwatflx','liqprec','solprec','preccu','precnc','precip','snow','snwmlt','pet_wrf','pet']
+#         compute_list = []
+# #         compute_list = ['waterflx','liqwatflx','pet'] # variables that should be (re-)computed
+#         export_arguments = dict(format = 'NetCDF',
+#                                 exp_list= exp_list, compute_list=compute_list, 
+#                                 project = bc_method if bc_method else 'AUX',
+#                                 filetype = bc_method.lower() if bc_method else 'aux',
+#                                 lm3 = False) # do not convert water flux from kg/m^2/s to m^3/m^2/s
       
     ## process arguments    
     if isinstance(periods, (np.integer,int)): periods = [periods]

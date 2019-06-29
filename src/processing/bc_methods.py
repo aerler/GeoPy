@@ -151,39 +151,42 @@ class BiasCorrection(object):
         else: 
             asNC=False
             bcds = dataset.copy(axesdeep=True, varsdeep=False) # make a copy, but don't duplicate data
+            
         # prepare variable map, so we can iterate easily
-        itermap = dict() # the map we are going to iterate over
-        varlist = self.varlist if varlist is None else varlist
-        for varname in varlist:
-            if varmap and varname in varmap:
-                maplist = varmap[varname]
-                if isinstance(maplist, (list,tuple)): itermap[varname] = maplist
-                elif isinstance(maplist, str): itermap[varname] = (maplist,)
-                else: raise TypeError(maplist)
+        itermap = dict()
+        for varname in bcds.variables.keys():
+            if hasattr(self,'_correct_'+varname): 
+                itermap[varname] = '_correct_by_built-in_method'
+            elif varname in self._correction: 
+                itermap[varname] = varname
+            elif varname in varmap:
+                if varmap[varname] in self._correction: 
+                  itermap[varname] = varmap[varname]
+            
+
+        # loop over variables in soon-to-be bias-corrected dataset
+        for tgtvar,srcvar in itermap.items():
+            # get variable object
+            oldvar = dataset[tgtvar].load()
+            newvar = bcds[tgtvar] # should be loaded
+            if isinstance(newvar,VarNC): # the corrected variable needs to load data, hence can't be VarNC          
+                newvar = newvar.copy(axesdeep=False, varsdeep=False, asNC=False) 
+            # bias-correct data and load in new variable 
+            # figure out method
+            if srcvar == '_correct_by_built-in_method':
+                # call custom correction method for this variable
+                fctname = '_correct_'+tgtvar
+                corrected_array = getattr(self, fctname)(varname=tgtvar, dataset=dataset, **kwargs)
+                # load corrected data
+                newvar.load(corrected_array)
             else:
-                itermap[varname] = (varname,)
-        # loop over variables that will be corrected
-        for srcvar,maplist in list(itermap.items()):
-            for tgtvar in maplist:
-                if tgtvar in dataset:
-                    # get variable object
-                    oldvar = dataset[tgtvar].load()
-                    newvar = bcds[tgtvar] # should be loaded
-                    if isinstance(newvar,VarNC): # the corrected variable needs to load data, hence can't be VarNC          
-                        newvar = newvar.copy(axesdeep=False, varsdeep=False, asNC=False) 
-                    assert srcvar in self._correction, self._correction
-                    # bias-correct data and load in new variable 
-                    if self._correction[srcvar] is not None:
-                        fctname = '_correct_'+tgtvar
-                        if  hasattr(self, fctname):
-                            # call custom correction method for this variable
-                            corrected_array = getattr(self, fctname)(varname=tgtvar, dataset=dataset, **kwargs)
-                        else:
-                            # use default correction (scale of shift based on units)
-                            corrected_array = self._correctVar(oldvar, varname=srcvar, **kwargs)
-                        newvar.load(corrected_array)
-                    if newvar is not bcds[tgtvar]: 
-                        bcds[tgtvar] = newvar # attach new (non-NC) var
+                if self._correction[srcvar] is not None:
+                    # use default correction (scale of shift based on units)
+                    corrected_array = self._correctVar(oldvar, varname=srcvar, **kwargs)
+                    # load corrected data
+                    newvar.load(corrected_array)
+            if newvar is not bcds[tgtvar]: 
+                bcds[tgtvar] = newvar # attach new (non-NC) var
         # return bias-corrected dataset
         return bcds
     
@@ -198,9 +201,10 @@ class BiasCorrection(object):
         varlist = []
         # loop over variables
         for varname in list(observations.variables.keys()):
-            if varname in dataset.variables and not dataset[varname].strvar:
-                #if np.issubdtype(dataset[varname].dtype,np.inexact) or np.issubdtype(dataset[varname].dtype,np.integer):
-                varlist.append(varname) # now we have a valid variable
+            if varname in dataset.variables:
+                if np.issubdtype(dataset[varname].dtype, np.inexact)  and not dataset[varname].strvar:
+                    #if np.issubdtype(dataset[varname].dtype,np.inexact) or np.issubdtype(dataset[varname].dtype,np.integer):
+                    varlist.append(varname) # now we have a valid variable
         # save and return varlist
         self.varlist = varlist
         return varlist        
@@ -448,8 +452,8 @@ class MyBC(AABC):
         # remove some precip types
         for varname in ('solprec','liqprec','precip'):
             if varname in varlist: varlist.remove(varname)
-        # add convective and grid-scale precip (not in obs)
-        for varname in ('preccu','precnc'):
+        # add convective and grid-scale precip (not in obs) and snowmelt
+        for varname in ('preccu','precnc','snwmlt'):
             if varname not in varlist: varlist.append(varname)
         # save and return varlist
         self.varlist = varlist
@@ -526,9 +530,9 @@ class MyBC(AABC):
         ''' correct non-convective/grid-scale precipitation and save for later use '''
         assert 'precnc' in dataset, dataset
         assert 'precnc' in self._correction, self._correction
-        if self._preccu is None:
-            self._preccu = self._correction['precnc'] * dataset.variables['precnc'].load().data_array
-        return self._preccu
+        if self._precnc is None:
+            self._precnc = self._correction['precnc'] * dataset.variables['precnc'].load().data_array
+        return self._precnc
             
     # other precipitation types (liquid, solid, total)
     
@@ -567,7 +571,7 @@ class MyBC(AABC):
     def _train_snwmlt(self, varname, dataset, observations, time_axis='time', **kwargs):
         ''' estimate temporal offset to shift snowmelt variable in time, on top of bias-correction'''
         # just use arbitrary one month shift, until we have something better
-        self._correction[varname] = -1
+        self._correction[varname] = 0
     
     def _correct_snwmlt(self, varname=None, dataset=None, time_axis='time', **kwargs):
         ''' apply temporal shift and scale date; return bias-corrected, shifted data '''
@@ -575,10 +579,14 @@ class MyBC(AABC):
         if self._snwmlt is None:
             var = dataset.variables['snwmlt'].load()
             # temporal shift 
-            tax = var.axisIndex(time_axis)
-            assert var.shape[tax]%12 == 0, var # this is really only applicable to periodic monthly data...
-            assert 'month' in var.axes[tax].units.lower(), var.axes[tax]
-            data = np.roll(var.data_array, shift=self._correction['snwmlt'], axis=tax) 
+            shift = self._correction['snwmlt']
+            if shift:
+                tax = var.axisIndex(time_axis)
+                assert var.shape[tax]%12 == 0, var # this is really only applicable to periodic monthly data...
+                assert 'month' in var.axes[tax].units.lower(), var.axes[tax]
+                data = np.roll(var.data_array, shift=shift, axis=tax) 
+            else:
+                data = var.data_array
             # scale to grid-scale precip
             data *= self._correction['precnc']
             self._snwmlt = data
