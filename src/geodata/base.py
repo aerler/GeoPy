@@ -156,7 +156,7 @@ class ReduceVar(object): # not a Variable child!!!
         instance. Axes are specified either in a list ('axes') or as keyword arguments with corresponding
         slices. '''
     # this really only works for numeric types
-    if var.dtype.kind in ('S',): 
+    if var.strvar: 
       if lcheckVar: raise VariableError("Reduction does not work with string Variables!")
       else: return None
     # list of axis is axes
@@ -1867,7 +1867,7 @@ class Variable(object):
     if not self.hasAxis(taxis): 
       if lcheckAxis: raise AxisError('Seasonal reduction requires a time axis!')
       else: return None # just skip and do nothing
-    if self.dtype.kind in ('S',): 
+    if self.strvar: 
       if lcheckVar: raise VariableError("Seasonal reduction does not work with string Variables!")
       else: return None
     data_view = self._getCompleteYears(taxis=taxis, ltrim=ltrim, asVar=False, lcheck=lstrict, lclim=lclim)
