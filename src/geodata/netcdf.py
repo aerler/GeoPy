@@ -269,8 +269,12 @@ class VarNC(Variable):
       elif self.masked:
           if np.issubdtype(self.dtype,np.inexact):
               data = np.ma.masked_values(data, self.fillValue, copy=False)
-          else:
+          elif np.issubdtype(self.dtype,np.integer):
               data = np.ma.masked_equal(data, self.fillValue, copy=False)
+          else:
+              # N.B.: this is just to see what goes here; my guess is, only string vars...
+              #            ... if this assert causes problems, it can be removed.
+              assert self.strvar, self.prettyPrint(short=False)
       if self.ncstrvar: data = nc.chartostring(data)
       # N.B.: nc.chartostring() may not work anymore - not sure...
       #assert self.ndim == data.ndim # make sure that squeezing works!

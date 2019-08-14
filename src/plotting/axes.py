@@ -1136,11 +1136,11 @@ class MyAxes(Axes):
       ypad = self.ypad + 2 if self.yright else self.ypad # need a little more space on right hand side
       # if there are only some negative values, reduce pad a bit
       ymin,ymax = ax.get_ylim()
-      yvis = np.asarray([ytick.get_visible() for ytick in ax.yaxis.get_ticklabels()])
-      tmp = np.asarray(ax.yaxis.get_ticklocs()) # make sure this is an array!
-      ylocs = np.asarray([yt for yt in tmp[yvis] if ( yt <= ymax and yt >= ymin ) ])
-      yneg = np.sum(ylocs < 0)
-      if yneg > 0 and float(yneg)/ylocs.size < 0.35: ypad -= 5
+      yneg = 0 # count occurences of visible negative values
+      for n,ytick in enumerate(ax.yaxis.get_major_ticks()):
+          yloc = ytick.get_loc()
+          if ytick.get_visible() and yloc < 0 and (yloc >= ymin and yloc <= ymax): yneg += 1
+      if yneg > 0 and float(yneg)/(n+1) < 0.35: ypad -= 5
       ax.set_ylabel(ylabel, labelpad=ypad) # labelpad is ignored by AxesGrid
       # label position
       ax.yaxis.set_label_position('right' if self.yright else 'left')
