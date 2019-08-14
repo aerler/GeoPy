@@ -222,7 +222,7 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('hydro',) # only preprocessed auxiliary files
     ## observations (i.e. the reference dataset; arguments passed to loadDataset)
     obs_mode = 'climatology'
-    obs_name = 'Unity'
+    obs_name = 'CRU'
     obs_args = dict(period=(1979,1994))
 #     obs_args = dict(varatts=dict(pet=dict(name='pet_wrf')), period=(1979,1994))
 #     obs_name = 'NRCan'

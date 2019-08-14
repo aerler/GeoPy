@@ -103,13 +103,23 @@ class BiasCorrection(object):
     long_name = 'Generic Bias-Correction' # name for printing
     varlist = None # variables that a being corrected
     _picklefile = None # name of the pickle file where the object will be stored
+    # meta data for dataset record
+    version = 1
+    note = ''
+    var_notes = None # variable-specific notes
+    obs_name = None
+    obs_title = None
     
     def __init__(self, varlist=None, **bcargs):
         ''' take arguments that have been passed from caller and initialize parameters '''
         self.varlist = varlist
-    
+        self.var_notes = dict() # this should be not be a class attribute
+
     def train(self, dataset, observations, **kwargs):
         ''' loop over variables that need to be corrected and call method-specific training function '''
+        # save meta data
+        self.obs_name = observations.name
+        self.obs_title = observations.title
         # figure out varlist
         if self.varlist is None: 
             self._getVarlist(dataset, observations) # process all that are present in both datasets        
@@ -165,28 +175,48 @@ class BiasCorrection(object):
             
 
         # loop over variables in soon-to-be bias-corrected dataset
-        for tgtvar,srcvar in itermap.items():
+        for varname,bcvar in itermap.items():
             # get variable object
-            oldvar = dataset[tgtvar].load()
-            newvar = bcds[tgtvar] # should be loaded
+            oldvar = dataset[varname].load()
+            newvar = bcds[varname] # should be loaded
             if isinstance(newvar,VarNC): # the corrected variable needs to load data, hence can't be VarNC          
                 newvar = newvar.copy(axesdeep=False, varsdeep=False, asNC=False) 
             # bias-correct data and load in new variable 
             # figure out method
-            if srcvar == '_correct_by_built-in_method':
+            if bcvar == '_correct_by_built-in_method':
                 # call custom correction method for this variable
-                fctname = '_correct_'+tgtvar
-                corrected_array = getattr(self, fctname)(varname=tgtvar, dataset=dataset, **kwargs)
+                fctname = '_correct_'+varname
+                corrected_array = getattr(self, fctname)(varname=varname, dataset=dataset, **kwargs)
                 # load corrected data
                 newvar.load(corrected_array)
             else:
-                if self._correction[srcvar] is not None:
+                if self._correction[bcvar] is not None:
                     # use default correction (scale of shift based on units)
-                    corrected_array = self._correctVar(oldvar, varname=srcvar, **kwargs)
+                    corrected_array = self._correctVar(oldvar, varname=bcvar, **kwargs)
                     # load corrected data
                     newvar.load(corrected_array)
-            if newvar is not bcds[tgtvar]: 
-                bcds[tgtvar] = newvar # attach new (non-NC) var
+            # save meta data about bias correction
+            newvar.atts['bc_method']    = self.name
+            newvar.atts['bc_long_name'] = self.long_name
+            newvar.atts['bc_version']   = self.version
+            newvar.atts['bc_variable']  = bcvar
+            if varname in self.var_notes: 
+                newvar.atts['bc_note']  = self.var_notes[varname]
+            elif bcvar in self.var_notes: 
+                newvar.atts['bc_note']  = self.var_notes[bcvar]
+            else:
+                newvar.atts['bc_note']  = ''
+            newvar.atts['bc_obs_name']  = self.obs_name
+            newvar.atts['bc_obs_title'] = self.obs_title
+            if newvar is not bcds[varname]: 
+                bcds[varname] = newvar # attach new (non-NC) var
+        # save meta data about bias correction
+        bcds.atts['bc_method']    = self.name
+        bcds.atts['bc_long_name'] = self.long_name
+        bcds.atts['bc_version']   = self.version
+        bcds.atts['bc_note']      = self.note
+        bcds.atts['bc_obs_name']  = self.obs_name
+        bcds.atts['bc_obs_title'] = self.obs_title
         # return bias-corrected dataset
         return bcds
     
@@ -435,6 +465,8 @@ class MyBC(AABC):
         non-convective precipitation via best fit of seasonal cycle to total precipitation '''
     name = 'MyBC' # name used in file names
     long_name = 'Custom Bias Correction' # name for printing
+    version = 1.0
+    note = 'distinguishes between convective and grid-scale precip'
     # for temporary internal storage
     _precip = None
     _preccu = None
@@ -505,6 +537,10 @@ class MyBC(AABC):
         # assign values
         self._correction['preccu'] = res.x[0]
         self._correction['precnc'] = res.x[1]
+        # add note
+        precip_note = 'convective and grid-scale precip are corrected simultaneously so as to match total observed precip'
+        for precip_type in ('precip','preccu','precnc','liqprec','solprec'):
+            self.var_notes[precip_type] = precip_note
     
     def _train_preccu(self, varname, dataset, observations, time_axis='time', **kwargs):
         ''' call fit function if not done already (can be called through either preccu or precnc) '''
@@ -572,6 +608,8 @@ class MyBC(AABC):
         ''' estimate temporal offset to shift snowmelt variable in time, on top of bias-correction'''
         # just use arbitrary one month shift, until we have something better
         self._correction[varname] = 0
+        self.var_notes['snwmlt'] = 'snowmelt is currently corrected like grid-scale precip (no temporal shift)'
+        self.var_notes['liqwatflx'] = 'liquid water flux is the sum of snowmelt and liquid precip, which are bias-corrected independently'
     
     def _correct_snwmlt(self, varname=None, dataset=None, time_axis='time', **kwargs):
         ''' apply temporal shift and scale date; return bias-corrected, shifted data '''
