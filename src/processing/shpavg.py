@@ -198,7 +198,7 @@ if __name__ == '__main__':
     shapes = config['shapes']
   else:
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 2; ldebug = False # for quick computations
+    NP = 4; ldebug = False # for quick computations
 #     modes = ('time-series','climatology')
     modes = ('climatology',)
 #     modes = ('time-series',) 
@@ -260,18 +260,21 @@ if __name__ == '__main__':
 #     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
 #     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
 #     WRF_experiments += ['max-ensemble',]
-    WRF_experiments += ['ctrl-ensemble','ctrl-ensemble-2050','ctrl-ensemble-2100']
-    WRF_experiments += ['max-ensemble','max-ensemble-2050','max-ensemble-2100']
-#     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
-#     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+#     WRF_experiments += ['ctrl-ensemble','ctrl-ensemble-2050','ctrl-ensemble-2100']
+#     WRF_experiments += ['max-ensemble','max-ensemble-2050','max-ensemble-2100']
+    WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
+    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+    WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
+    WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]    
+    WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]    
 #     WRF_experiments += ['max-ens','max-ens-2050','max-ens-2100'] # requires different implementation...
     # other WRF parameters 
     domains = None # domains to be processed
 #     domains = (2,) # domains to be processed
 #     WRF_filetypes = ('lsm','xtrm','hydro','srfc') # 'rad',
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm','rad','aux') # filetypes to be processed
-    WRF_filetypes = ('mybc1','mybc2','lsm','xtrm','hydro','srfc') # filetypes to be processed    
+    WRF_filetypes = ('mybc2','lsm','xtrm','hydro','srfc') # filetypes to be processed    
 #     WRF_filetypes = ('const',); periods = None
 #     WRF_filetypes = ('aux','aabc',)
 #     WRF_filetypes = ('aux',)

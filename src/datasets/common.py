@@ -357,10 +357,10 @@ def loadObservations(name=None, title=None, folder=None, period=None, grid=None,
   # figure out station and shape options
   if station and shape: raise ArgumentError()
   elif station or shape: 
-    if grid is not None: raise NotImplementedError('Currently observational station data can only be loaded from the native grid.')
     if lautoregrid: raise GDALError('Station data can not be regridded, since it is not map data.')
     lstation = bool(station); lshape = bool(shape)
-    grid = station if lstation else shape
+    if grid: grid = ( station if lstation else shape ) + '_' + grid
+    else: grid = station if lstation else shape
     # add station/shape parameters
     if varlist:
       params = stn_params if lstation else shp_params
@@ -627,7 +627,7 @@ def selectElements(datasets, axis, testFct=None, master=None, linplace=False, la
 # a function to load station data
 def loadEnsemble(names=None, name=None, title=None, varlist=None, aggregation=None, season=None, prov=None, 
                  shape=None, station=None, slices=None, obsslices=None, years=None, period=None, obs_period=None, 
-                 reduction=None, constraints=None, filetypes=None, domain=None, grid=None, ldataset=False, 
+                 reduction=None, constraints=None, filetypes=None, domains=None, grid=None, ldataset=False, 
                  lcheckVar=False, lwrite=False, ltrimT=True, name_tags=None, dataset_mode='time-series', 
                  lminmax=False, master=None, lall=True, ensemble_list=None, ensemble_product='inner', 
                  lensembleAxis=False, WRF_exps=None, CESM_exps=None, WRF_ens=None, CESM_ens=None, 
@@ -650,7 +650,7 @@ def loadEnsemble(names=None, name=None, title=None, varlist=None, aggregation=No
   if ensemble_list is None: ensemble_list = ['names'] if not ldataset else None
   elif 'aggregation' in ensemble_list: raise ArgumentError("'aggregation' can not be expanded")
   loadargs = expandArgumentList(names=names, station=station, prov=prov, shape=shape, varlist=varlist, 
-                                mode=dataset_mode, filetypes=filetypes, domains=domain, grid=grid, lwrite=lwrite, 
+                                mode=dataset_mode, filetypes=filetypes, domains=domains, grid=grid, lwrite=lwrite, 
                                 slices=slices, obsslices=obsslices, period=period, obs_period=obs_period, 
                                 years=years, name_tags=name_tags, ltrimT=ltrimT, bias_correction=bias_correction, 
                                 lensembleAxis=lensembleAxis, expand_list=ensemble_list, lproduct=ensemble_product, **kwargs)

@@ -55,6 +55,8 @@ class MyAxes(Axes):
   parasite_axes      = None
   axes_shift         = None
   ldatetime          = None
+  xoverlap           = False
+  yoverlap           = False
   
   def __init__(self, *args, **kwargs):
     ''' constructor to initialize some variables / counters '''  
@@ -1073,8 +1075,8 @@ class MyAxes(Axes):
     # set title
     if title is not None: self.addTitle(title)
     # format axes ticks
-    self.xTickLabels(xticks, n=xlen, loverlap=False) # False means overlaps will be prevented
-    self.yTickLabels(yticks, n=ylen, loverlap=False)
+    self.xTickLabels(xticks, n=xlen, loverlap=self.xoverlap) # False means overlaps will be prevented
+    self.yTickLabels(yticks, n=ylen, loverlap=self.yoverlap)
     ## add axes labels and annotation
     # format axes labels
     self.xLabel(xlabel)
@@ -1173,7 +1175,8 @@ class MyAxes(Axes):
     # tick label visibility
     if not loverlap and len(xticks) > 0 and (
         len(yticks) == 0 or not yticks[-1].get_visible() ):
-        xticks[0].set_visible(False)
+        if len(xaxis.get_ticklocs()) == len(xticks):
+            xticks[0].set_visible(False)
     return xticks
   def yTickLabels(self, yticks, n=None, loverlap=False):
     ''' format y-tick labels '''
@@ -1183,7 +1186,8 @@ class MyAxes(Axes):
     # tick label visibility
     if not loverlap and len(yticks) > 0 and (
         len(xticks) == 0 or not xticks[-1].get_visible() ):
-        yticks[0].set_visible(False)
+        if len(yaxis.get_ticklocs()) == len(yticks):
+            yticks[0].set_visible(False)
     if not self.ldatetime or not self.flipxy:
         # tick label position
         if self.yright:

@@ -121,7 +121,7 @@ def loadUnity(name=dataset_name, period=None, grid=None, varlist=None, varatts=N
   return dataset
 
 # function to load climatologies at station locations
-def loadUnity_Stn(name=dataset_name, period=None, station=None, varlist=None, varatts=None, 
+def loadUnity_Stn(name=dataset_name, period=None, station=None, varlist=None, varatts=None,  grid=None,
                   folder=avgfolder, filelist=None, lautoregrid=False, resolution=None, lencl=False):
   ''' Get the pre-processed, unified monthly climatology averaged over shapes as a DatasetNetCDF. '''
   # a climatology is not available
@@ -129,7 +129,7 @@ def loadUnity_Stn(name=dataset_name, period=None, station=None, varlist=None, va
     period = (1979,2009)
     warn('A climatology is not available for the Unified Dataset; loading period {0:4d}-{1:4d}.'.format(*period))
   # load standardized climatology dataset with PRISM-specific parameters  
-  dataset = loadSpecialObs(name=name, folder=folder, period=period, grid=None, station=station, shape=None, 
+  dataset = loadSpecialObs(name=name, folder=folder, period=period, grid=grid, station=station, shape=None, 
                            varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
                            projection=None, mode='climatology', lautoregrid=False, lencl=lencl)
   # return formatted dataset
@@ -137,18 +137,18 @@ def loadUnity_Stn(name=dataset_name, period=None, station=None, varlist=None, va
 
 # function to load time-series at station locations
 tsfile = 'unity{0:s}_monthly.nc' # formatted NetCDF file
-def loadUnity_StnTS(name=dataset_name, station=None, varlist=None, varatts=None, 
+def loadUnity_StnTS(name=dataset_name, station=None, varlist=None, varatts=None, grid=None,
                     folder=avgfolder, filelist=None, lautoregrid=False, resolution=None, lencl=False):
   ''' Get the pre-processed, unified monthly climatology averaged over shapes as a DatasetNetCDF. '''
   # load standardized climatology dataset with PRISM-specific parameters  
-  dataset = loadSpecialObs(name=name, folder=folder, period=None, grid=None, shape=None, station=station, 
+  dataset = loadSpecialObs(name=name, folder=folder, period=None, grid=grid, shape=None, station=station, 
                            varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
                            projection=None, mode='time-series', lautoregrid=False, lencl=lencl)
   # return formatted dataset
   return dataset
 
 # function to load these files...
-def loadUnity_Shp(name=dataset_name, period=None, shape=None, varlist=None, varatts=None, 
+def loadUnity_Shp(name=dataset_name, period=None, shape=None, varlist=None, varatts=None, grid=None,
                   folder=avgfolder, filelist=None, lautoregrid=False, resolution=None, lencl=False):
   ''' Get the pre-processed, unified monthly climatology averaged over shapes as a DatasetNetCDF. '''
   # a climatology is not available
@@ -156,7 +156,7 @@ def loadUnity_Shp(name=dataset_name, period=None, shape=None, varlist=None, vara
     period = (1979,2009)
     warn('A climatology is not available for the Unified Dataset; loading period {0:4d}-{1:4d}.'.format(*period))
   # load standardized climatology dataset with PRISM-specific parameters  
-  dataset = loadSpecialObs(name=name, folder=folder, period=period, grid=None, shape=shape, station=None, 
+  dataset = loadSpecialObs(name=name, folder=folder, period=period, grid=grid, shape=shape, station=None, 
                            varlist=varlist, varatts=varatts, filepattern=avgfile, filelist=filelist, 
                            projection=None, mode='climatology', lautoregrid=False, lencl=lencl)
   # return formatted dataset
@@ -164,11 +164,11 @@ def loadUnity_Shp(name=dataset_name, period=None, shape=None, varlist=None, vara
 
 # function to load shape-averaged time-series
 tsfile = 'unity{0:s}_monthly.nc' # formatted NetCDF file
-def loadUnity_ShpTS(name=dataset_name, shape=None, varlist=None, varatts=None, 
+def loadUnity_ShpTS(name=dataset_name, shape=None, varlist=None, varatts=None,  grid=None,
                     folder=avgfolder, filelist=None, lautoregrid=False, resolution=None, lencl=False):
   ''' Get the pre-processed, unified monthly climatology averaged over shapes as a DatasetNetCDF. '''
   # load standardized climatology dataset with PRISM-specific parameters  
-  dataset = loadSpecialObs(name=name, folder=folder, period=None, grid=None, shape=shape, station=None, 
+  dataset = loadSpecialObs(name=name, folder=folder, period=None, grid=grid, shape=shape, station=None, 
                            varlist=varlist, varatts=varatts, filepattern=tsfile, filelist=filelist, 
                            projection=None, mode='time-series', lautoregrid=False, lencl=lencl)
   # return formatted dataset
