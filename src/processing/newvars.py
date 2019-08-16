@@ -8,6 +8,7 @@ A collection of functions to compute derived variables, primarily for WRF but al
 
 # external imports
 from warnings import warn
+import numpy as np
 from numexpr import evaluate, set_num_threads, set_vml_num_threads
 # numexpr parallelisation: don't parallelize at this point!
 set_num_threads(1); set_vml_num_threads(1)
@@ -228,27 +229,70 @@ def computeWaterFlux(dataset):
   return var
 
 # compute downward/liquid component of surface water flux
-def computeLiquidWaterFlux(dataset):
+def computeLiquidWaterFlux(dataset, shift=0):
   ''' function to compute the downward/liquid component of water flux at the surface '''
+  if 'snwmlt' not in dataset: raise VariableError("Prerequisite 'snwmlt' for liquid water flux not found.")  
+  snwmlt = dataset['snwmlt'].load() # load data for computation
+  if shift: snwmlt = shiftVariable(snwmlt, shift=shift)
   # check prerequisites
   if 'liqprec' in dataset: # this is the preferred computation
-    for pv in ('liqprec','snwmlt'): 
-      if pv not in dataset: raise VariableError("Prerequisite '{:s}' for liquid water flux not found.".format(pv))
-      else: dataset[pv].load() # load data for computation
+    if 'liqprec' not in dataset: raise VariableError("Prerequisite 'liqprec' for liquid water flux not found.")
+    else: dataset['liqprec'].load() # load data for computation
     # compute waterflux (returns a Variable instance)
-    var = dataset['liqprec'] + dataset['snwmlt']
+    var = dataset['liqprec'] + snwmlt
   elif 'solprec' in dataset: # alternative computation, mainly for CESM
-    for pv in ('precip','snwmlt'): 
+    for pv in ('precip','solprec'): 
       if pv not in dataset: raise VariableError("Prerequisite '{:s}' for net water flux not found.".format(pv))
       else: dataset[pv].load() # load data for computation
     # compute waterflux (returns a Variable instance)
-    var = dataset['precip'] - dataset['solprec'] + dataset['snwmlt']
+    var = dataset['precip'] - dataset['solprec'] + snwmlt
   else: 
     raise VariableError("No liquid or solid precip found to compute net water flux.")
   var.name = 'liqwatflx' # give correct name (units should be correct)
-  assert var.units == dataset['snwmlt'].units, var
+  var.atts.long_name = 'Liquid Water Flux'
+  if shift: 
+      var.name += snwmlt.atts.bc_shift_str
+      var.atts.long_name += ' (Snowmelt shifted {})'
+      bc_note = snwmlt.atts.bc_note
+      bc_note = bc_note[bc_note.find('shifted by')]
+      if bc_note in var.atts and len(var.atts.bc_note): var.atts.bc_note += '; ' + bc_note
+      else: var.atts.bc_note = bc_note
+      assert var.name[-2] in ('-','+') or var.name[-3] in ('-','+'), var
+  assert var.units == snwmlt.units, var  
   # return new variable
   return var
+
+
+# generic function to shift a variable foreward or backward in time
+def shiftVariable(variable, shift=0, time_axis='time'):
+  ''' function to shift a single variable foreward or backward in time (roll over) '''
+  assert -10 < shift < 10, shift
+  variable.load()
+  # process shift
+  tax = variable.axisIndex(time_axis)
+  assert variable.shape[tax]%12 == 0, var # this is really only applicable to periodic monthly data...
+  assert 'month' in variable.axes[tax].units.lower(), variable.axes[tax]
+  if shift == int(shift):
+      data = np.roll(variable.data_array, shift=shift, axis=tax) 
+      shift_str = '{:+2d}'.format(int(shift))
+  else:
+      # use weighted average of upper and lower integer shift
+      data_floor = np.roll(variable.data_array, shift=int(np.floor(shift)), axis=tax) 
+      data_ceil  = np.roll(variable.data_array, shift=int(np.ceil(shift)), axis=tax)
+      data = (np.ceil(shift)-shift)*data_floor + (shift-np.floor(shift))*data_ceil
+      shift_str = '{:+03d}'.format(int(np.round(shift, decimals=1)*10))
+  # create new variable object
+  newvar = variable.copy(deepcopy=False,)
+  newvar.load(data)
+  newvar.name += shift_str
+  newvar.atts.bc_shift = shift
+  newvar.atts.bc_shift_str = shift_str
+  taxis = variable.axes[tax]
+  bc_note = "shifted by {} {} along axis '{}'".format(shift,taxis.units,taxis.name)
+  if bc_note in newvar.atts and len(newvar.atts.bc_note): newvar.atts.bc_note += '; ' + bc_note
+  else: newvar.atts.bc_note = bc_note
+  # return shifted variable
+  return newvar
 
 
 if __name__ == '__main__':
