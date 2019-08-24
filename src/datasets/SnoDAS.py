@@ -340,7 +340,7 @@ def loadSnoDAS_TS(varname=None, varlist=None, name=dataset_name, grid=None, fold
         if key in kwargs: del kwargs[key]
     # resolve filename strings
     grid_str = '_'+grid if grid else ''
-    bc_str = '_'+biascorrection if biascorrection else ''
+    bc_str = biascorrection+'_' if biascorrection else ''
     if lxarray: 
         ## laod as xarray dataset
         if chunks is None and grid is None:
@@ -389,7 +389,9 @@ def loadSnoDAS_TS(varname=None, varlist=None, name=dataset_name, grid=None, fold
         filepaths = [folder + tsfile.format(bc_str,varname,grid_str) for varname in varlist]
         dataset = DatasetNetCDF(name=name, filelist=filepaths, varlist=varlist, multifile=False, **kwargs)
         # add GDAL to dataset
-        dataset = addGDALtoDataset(dataset, griddef=grid, gridfolder=grid_folder)
+        default_geoargs = dict(griddef=grid, gridfolder=grid_folder)
+        if geoargs: default_geoargs.update(geoargs)
+        dataset = addGDALtoDataset(dataset, **default_geoargs)
     return dataset
 
 
@@ -422,7 +424,7 @@ def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfol
         # load time stamps (like coordinate variables)
         if 'time_stamp' in dataset: dataset['time_stamp'].load()
         # add projection
-        if lgeoref: dataset = checkGeoReference(dataset)
+        if lgeoref: dataset = checkGeoReference(dataset, geoargs)
     else:
         # load standardized climatology dataset with NRCan-specific parameters
         dataset = loadObservations(name=name, folder=folder, projection=None, resolution=biascorrection, 
@@ -494,7 +496,7 @@ if __name__ == '__main__':
 #   modes += ['convert_binary'        ]
 #   modes += ['add_variables'         ]
 #   modes += ['load_Daily'            ]
-  modes += ['monthly_mean'          ]
+#   modes += ['monthly_mean'          ]
 #   modes += ['monthly_normal'        ]
   modes += ['load_TimeSeries'       ]
 #   modes += ['load_Climatology'      ]
@@ -504,13 +506,9 @@ if __name__ == '__main__':
 #   grid = 'grw1'
 #   grid = 'wc2_d01'
   grid = 'on1' # large Ontario domain
-  # string for file names
-  grid_str = '' if grid is None else '_'+grid
 
 #   biascorrection = None # no bias correction
   biascorrection = 'rfbc' # random forest bias-correction
-  # string for file names
-  bc_str = '_'+biascorrection if biascorrection else ''
 
   # variable list
 #   varlist = netcdf_varlist
@@ -600,6 +598,8 @@ if __name__ == '__main__':
   
         
         # save resampled dataset
+        grid_str = '' if grid is None else '_'+grid
+        bc_str = '_'+biascorrection if biascorrection else ''
         filepath = avgfolder+avgfile.format(bc_str,grid_str,'_'+prdstr)
         # write to NetCDF
         var_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=chunks)
@@ -630,9 +630,11 @@ if __name__ == '__main__':
     elif mode == 'load_TimeSeries':
        
         lxarray = False
+        lpickle = False
+        geoargs = dict(griddef=None, ) if lpickle else None
         varname = varlist[0]
         xds = loadSnoDAS_TS(varlist=varlist, time_chunks=1, biascorrection=biascorrection, 
-                            grid=grid, lxarray=lxarray) # 32 time chunks may be possible
+                            grid=grid, lxarray=lxarray, geoargs=geoargs) # 32 time chunks may be possible
         print(xds)
         print('')
         xv = xds[varname]
@@ -644,6 +646,24 @@ if __name__ == '__main__':
   
   #       print('')
   #       print(xds['time'])
+        
+        # save pickle
+        if lpickle and not lxarray:
+            
+            from geodata.gdal import pickleGridDef, loadPickledGridDef
+            
+            print('')
+            griddef = xds.griddef
+            griddef.name = grid
+            
+            filename = pickleGridDef(griddef, lfeedback=True, loverwrite=True, lgzip=True)
+            
+            print('')
+            
+            # load pickle to make sure it is right
+            del griddef
+            griddef = loadPickledGridDef(grid,)
+            print(griddef)
         
   
     elif mode == 'monthly_mean':
@@ -681,6 +701,8 @@ if __name__ == '__main__':
       
             
             # save resampled dataset
+            grid_str = '' if grid is None else '_'+grid
+            bc_str = biascorrection+'_' if biascorrection else ''
             filepath = avgfolder+tsfile.format(bc_str,varname,grid_str) # native grid...
             # write to NetCDF
             netcdf_encoding = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=chunks)
