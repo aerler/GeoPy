@@ -207,11 +207,11 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 4 ; ldebug = False # just for tests
+    NP = 2 ; ldebug = False # just for tests
 #     modes = ('climatology','time-series') # 'climatology','time-series'
 #     modes = ('climatology',) # 'climatology','time-series'
     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = True
+    loverwrite = False
     varlist = None
 #     varlist = ['Tsnow','evap_blow','evap_snow','snwmlt','liqprec','precip','rho_snw',]
     periods = []

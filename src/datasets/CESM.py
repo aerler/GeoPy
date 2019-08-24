@@ -17,7 +17,7 @@ from geodata.base import Variable, Axis, concatDatasets, monthlyUnitsList
 from geodata.netcdf import DatasetNetCDF, VarNC
 from geodata.gdal import addGDALtoDataset, GDALError
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt
-from datasets.common import translateVarNames, grid_folder, default_varatts, getRootFolder
+from datasets.common import grid_folder, default_varatts, getRootFolder
 from datasets.common import addLengthAndNamesOfMonth, selectElements, stn_params, shp_params
 from geodata.gdal import loadPickledGridDef, pickleGridDef
 from datasets.WRF import Exp as WRF_Exp
@@ -481,8 +481,8 @@ def loadCESM_All(experiment=None, name=None, grid=None, station=None, shape=None
       varlist.remove('SST')
       if not 'Ts' in varlist: varlist.append('Ts')
       lSST = True # Ts is renamed to SST below
-    if translateVars is None: varlist = list(varlist) + translateVarNames(varlist, atts) # also aff translations, just in case
-    elif translateVars is True: varlist = translateVarNames(varlist, atts) 
+    #if translateVars is None: varlist = list(varlist) + translateVarNames(varlist, atts) # also aff translations, just in case
+    #elif translateVars is True: varlist = translateVarNames(varlist, atts) 
     # N.B.: DatasetNetCDF does never apply translation!
   # NetCDF file mode
   ncmode = 'rw' if lwrite else 'r'   

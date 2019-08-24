@@ -334,9 +334,10 @@ def loadObs_StnTS(name=None, title=None, folder=None, resolution=None, varlist=N
                           lautoregrid=False, mode='time-series', filemode=filemode)
   
 # universal load function that will be imported by datasets
-def loadObservations(name=None, title=None, folder=None, period=None, grid=None, station=None, shape=None, lencl=False, 
-                     varlist=None, varatts=None, filepattern=None, filelist=None, filemode='r', resolution=None,
-                     projection=None, geotransform=None, griddef=None, axes=None, lautoregrid=None, mode='climatology'):
+def loadObservations(name=None, title=None, folder=None, period=None, grid=None, station=None, shape=None, 
+                     lencl=False, varlist=None, varatts=None, filepattern=None, filelist=None, filemode='r', 
+                     resolution=None, projection=None, geotransform=None, griddef=None, axes=None, 
+                     lautoregrid=None, mode='climatology'):
   ''' A function to load standardized observational datasets. '''
   # prepare input
   if mode.lower() == 'climatology': # post-processed climatology files

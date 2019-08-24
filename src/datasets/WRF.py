@@ -208,8 +208,8 @@ class Hydro(FileType):
                      RAINNC       = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate
                      SFCEVP       = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
                      ACSNOM       = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
-                     POTEVP       = dict(name='pet_wrf', units='kg/m^2/s'), # potential evapo-transpiration rate
-                     #pet          = dict(name='pet_wrf', units='kg/m^2/s',), # just renaming of old variable
+                     POTEVP       = dict(name='pet', units='kg/m^2/s'), # potential evapo-transpiration rate
+                     pet_wrf      = dict(name='pet', units='kg/m^2/s',), # just renaming of old variable
                      #pet          = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just renaming of old variable
                      #pet_wrf      = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just rescaling of old variable
                      # N.B.: for some strange reason WRF outputs PET in m/s, rather than kg/m^2/s
@@ -253,7 +253,8 @@ class LSM(FileType):
                      ACSNOM   = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
                      ACSNOW   = dict(name='snwacc', units='kg/m^2/s'), # snow accumulation rate
                      SFCEVP   = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
-                     POTEVP   = dict(name='pet_wrf', units='kg/m^2/s'), # potential evapo-transpiration rate
+                     POTEVP   = dict(name='pet', units='kg/m^2/s'), # potential evapo-transpiration rate
+                     pet_wrf  = dict(name='pet', units='kg/m^2/s', scalefactor=999.70,), # just rescaling of old variable
                      #pet      = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just renaming of old variable
                      #pet_wrf  = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just rescaling of old variable
                      # N.B.: for some strange reason WRF outputs PET in m/s, rather than kg/m^2/s

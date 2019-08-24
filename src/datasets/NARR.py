@@ -14,7 +14,7 @@ from geodata.base import Axis
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition
 from geodata.misc import DatasetError 
-from datasets.common import translateVarNames, name_of_month, getRootFolder, loadObservations, grid_folder
+from datasets.common import name_of_month, getRootFolder, loadObservations, grid_folder
 from processing.process import CentralProcessingUnit
 
 
@@ -85,8 +85,6 @@ def loadNARR_LTM(name=dataset_name, varlist=None, grid=None, interval='monthly',
     elif interval == 'daily': 
       pfx = '.day.ltm.nc'; tlen = 365
     else: raise DatasetError("Selected interval '%s' is not supported!"%interval)
-    # translate varlist
-    if varlist and varatts: varlist = translateVarNames(varlist, varatts)  
     # axes dictionary, primarily to override time axis 
     axes = dict(time=Axis(name='time',units='day',coord=(1,tlen,tlen)),load=True)
     if filelist is None: # generate default filelist
@@ -117,7 +115,6 @@ def loadNARR_TS(name=dataset_name, grid=None, varlist=None, resolution=None, var
     # translate varlist
     if varatts is None: varatts = tsvaratts.copy()
     if varlist is None: varlist = tsvarlist
-    if varlist and varatts: varlist = translateVarNames(varlist, varatts)
     if filelist is None: # generate default filelist
       filelist = [orig_ts_file.format(special[var]) if var in special else orig_ts_file.format(var) for var in varlist 
                   if var not in nofile and var in varatts]

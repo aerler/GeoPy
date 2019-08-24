@@ -13,7 +13,7 @@ import os
 from geodata.netcdf import DatasetNetCDF, Axis
 from geodata.misc import DatasetError
 from geodata.gdal import addGDALtoDataset, GridDefinition
-from datasets.common import translateVarNames, name_of_month, getRootFolder, loadObservations, grid_folder
+from datasets.common import name_of_month, getRootFolder, loadObservations, grid_folder
 from processing.process import CentralProcessingUnit
 
 
@@ -106,14 +106,13 @@ def loadCFSR_TS(name=dataset_name, grid=None, varlist=None, varatts=None, resolu
     if varlist is None:
       if resolution == 'hires' or resolution == '03' or resolution == '031': varlist = varlist_hires
       elif resolution == 'lowres' or resolution == '05': varlist = varlist_lowres     
-    if varlist and varatts: varlist = translateVarNames(varlist, varatts)
     if filelist is None: # generate default filelist
       if resolution == 'hires' or resolution == '03' or resolution == '031': 
         files = [hiresfiles[var] for var in varlist if var in hiresfiles]
       elif resolution == 'lowres' or resolution == '05': 
         files = [lowresfiles[var] for var in varlist if var in lowresfiles]
     # load dataset
-    dataset = DatasetNtCDF(name=name, folder=folder, filelist=files, varlist=varlist, varatts=varatts, 
+    dataset = DatasetNetCDF(name=name, folder=folder, filelist=files, varlist=varlist, varatts=varatts, 
                             check_override=['time'], multifile=False, ncformat='NETCDF4_CLASSIC')
     # load static data
     if filelist is None: # generate default filelist

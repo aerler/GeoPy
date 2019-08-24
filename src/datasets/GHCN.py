@@ -15,7 +15,7 @@ import codecs, calendar, functools
 from warnings import warn
 # internal imports
 from datasets.CRU import loadCRU_StnTS
-from datasets.common import days_per_month, getRootFolder, selectElements, translateVarNames
+from datasets.common import days_per_month, getRootFolder, selectElements
 from datasets.common import CRU_vars, stn_params, nullNaN
 from geodata.misc import ParseError, ArgumentError, DatasetError, AxisError
 from geodata.misc import RecordClass, StrictRecordClass, isNumber, isInt 
@@ -660,8 +660,6 @@ def loadGHCN_TS(name=None, filetype='all', varlist=None, varatts=None,
   if name is None: name = 'GHCN'
   if folder is None: folder = avgfolder
   if filelist is None: filelist = [tsfile.format(filetype)]
-  if varlist is not None: # translate varlist
-    varlist = translateVarNames(varlist, varatts)
   # open NetCDF file (name, varlist, and varatts are passed on directly)
   dataset = DatasetNetCDF(name=name, folder=folder, filelist=filelist, varlist=varlist, varatts=varatts, 
                             multifile=False, ncformat='NETCDF4', **kwargs)

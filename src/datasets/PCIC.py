@@ -15,7 +15,7 @@ from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset
 from utils.nctools import writeNetCDF
 from datasets.common import getRootFolder, grid_folder, transformPrecip
-from datasets.common import translateVarNames, loadObservations, addLandMask, addLengthAndNamesOfMonth, getFileName
+from datasets.common import loadObservations, addLandMask, addLengthAndNamesOfMonth, getFileName
 # from geodata.utils import DatasetError
 from warnings import warn
 from geodata.gdal import GridDefinition
@@ -63,7 +63,7 @@ def loadPCIC_LTM(name=dataset_name, varlist=None, varatts=ltmvaratts, filelist=N
   ''' Get a properly formatted dataset the monthly PCIC PRISM climatology. '''
   # translate varlist
   if varlist is None: varlist = list(varatts.keys())
-  if varlist and varatts: varlist = translateVarNames(varlist, varatts)
+  #if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   # generate file list
   filelist = [ltmfile.format(var) for var in varlist if var not in ('time','lat','lon')]
   # load variables separately

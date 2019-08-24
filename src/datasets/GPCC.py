@@ -19,7 +19,7 @@ from geodata.gdal import addGDALtoDataset, GridDefinition, loadPickledGridDef, a
 from geodata.misc import DatasetError
 from utils.nctools import writeNetCDF
 from datasets.common import getRootFolder, grid_folder, transformPrecip, timeSlice
-from datasets.common import translateVarNames, loadObservations, addLandMask, addLengthAndNamesOfMonth, getFileName
+from datasets.common import loadObservations, addLandMask, addLengthAndNamesOfMonth, getFileName
 from processing.process import CentralProcessingUnit
 
 ## GPCC Meta-data
@@ -70,7 +70,6 @@ def loadGPCC_LTM(name=dataset_name, varlist=None, resolution='025', varatts=ltmv
   if resolution not in ('025','05', '10', '25'): raise DatasetError("Selected resolution '%s' is not available!"%resolution)
   # translate varlist
   if varlist is None: varlist = list(varatts.keys())
-  if varlist and varatts: varlist = translateVarNames(varlist, varatts)
   # load variables separately
   if 'p' in varlist:
     dataset = DatasetNetCDF(name=name, folder=folder, filelist=['normals_v2011_%s.nc'%resolution], varlist=['p'], 
@@ -117,7 +116,6 @@ def loadGPCC_TS(name=dataset_name, grid=None, varlist=None, resolution='25', var
     # translate varlist
     if varatts is None: varatts = tsvaratts.copy()
     if varlist is None: varlist = list(varatts.keys())
-    if varlist and varatts: varlist = translateVarNames(varlist, varatts)
     if filelist is None: # generate default filelist
       filelist = []
       if 'p' in varlist: filelist.append(orig_ts_file.format('precip',resolution))

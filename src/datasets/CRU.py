@@ -13,7 +13,7 @@ import os
 from geodata.base import Variable, Axis
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, GridDefinition
-from datasets.common import translateVarNames, days_per_month, name_of_month, getRootFolder 
+from datasets.common import days_per_month, name_of_month, getRootFolder 
 from datasets.common import loadObservations, grid_folder, transformPrecip, transformDays, timeSlice
 from processing.process import CentralProcessingUnit
 
@@ -73,7 +73,6 @@ def loadCRU_TS(name=dataset_name, grid=None, varlist=None, resolution=None, vara
     # translate varlist
     if varatts is None: varatts = tsvaratts.copy()
     if varlist is None: varlist = list(varatts.keys())
-    if varlist and varatts: varlist = translateVarNames(varlist, varatts)
     # assemble filelist
     if filelist is None: # generate default filelist
       filelist = [orig_ts_file.format(var) for var in varlist if var not in nofile]
