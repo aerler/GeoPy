@@ -92,7 +92,7 @@ snodas_shape2d = (SnoDAS_grid.size[1],SnoDAS_grid.size[0]) # 4096x8192
 binary_dtype = np.dtype('>i2') # big-endian 16-bit signed integer
 # settings for NetCDF-4 files
 avgfolder = root_folder + dataset_name.lower()+'avg/' 
-avgfile   = 'snodas{0:s}{1:s}_clim{2:s}.nc' # the filename needs to be extended: biascorrection, grid and period
+avgfile   = 'snodas{0:s}_clim{1:s}.nc' # the filename needs to be extended: biascorrection, grid and period
 tsfile    = 'snodas_{0:s}{1:s}{2:s}_monthly.nc' # extend with biascorrection, variable and grid type
 daily_folder    = root_folder + dataset_name.lower()+'_daily/' 
 netcdf_filename = 'snodas_{:s}_daily.nc' # extend with variable name
@@ -405,9 +405,7 @@ def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfol
         cks = netcdf_settings['chunksizes'] if chunks is None else chunks
         # use default netCDF chunks or user chunks; set time chunking with time_chunks
         chunks = dict(time=time_chunks,lat=cks[1],lon=cks[2])
-    # set options
-    grid_str = '_'+grid if grid else ''
-    bc_str = '_'+biascorrection if biascorrection else ''
+
 #     if lmonthly:
 #         kwargs['decode_times'] = False
     if isinstance(period,str): prd_str = '_' + period
@@ -415,8 +413,11 @@ def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfol
         prd_str = '_{0:4d}-{1:4d}'.format(*period)
     else: raise TypeError(period) 
     # load dataset
-    filepath = folder + avgfile.format(bc_str,grid_str,prd_str)
     if lxarray:
+        # set options
+        grid_str = '_'+grid if grid else ''
+        if biascorrection: grid_str = '_'+biascorrection + grid_str
+        filepath = folder + avgfile.format(grid_str,prd_str)
         if varname and varlist: raise ValueError(varname,varlist)
         elif varname: varlist = [varname]
         # load a single variable
@@ -497,9 +498,9 @@ if __name__ == '__main__':
 #   modes += ['add_variables'         ]
 #   modes += ['load_Daily'            ]
 #   modes += ['monthly_mean'          ]
-#   modes += ['monthly_normal'        ]
-  modes += ['load_TimeSeries'       ]
-#   modes += ['load_Climatology'      ]
+#   modes += ['load_TimeSeries'       ]
+  modes += ['monthly_normal'        ]
+  modes += ['load_Climatology'      ]
 
   pntset = 'glbshp'
 #   grid = None # native
@@ -556,8 +557,9 @@ if __name__ == '__main__':
         else: chunks = None
   
         # optional slicing (time slicing completed below)
-        start_date = None; end_date = None
-  #       start_date = '2011-01'; end_date = '2011-12'
+#         start_date = None; end_date = None
+#         start_date = '2011-01'; end_date = '2011-12'
+        start_date = '2011-01'; end_date = '2018-12'
   
         ts_name = 'time_stamp'
   
@@ -599,8 +601,8 @@ if __name__ == '__main__':
         
         # save resampled dataset
         grid_str = '' if grid is None else '_'+grid
-        bc_str = '_'+biascorrection if biascorrection else ''
-        filepath = avgfolder+avgfile.format(bc_str,grid_str,'_'+prdstr)
+        if biascorrection: grid_str = '_'+biascorrection + grid_str
+        filepath = avgfolder+avgfile.format(grid_str,'_'+prdstr)
         # write to NetCDF
         var_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=chunks)
         encoding = {varname:var_enc for varname in varlist}
@@ -677,8 +679,8 @@ if __name__ == '__main__':
   
         # optional slicing (time slicing completed below)
 #         start_date = '2011-01-20'; end_date = '2011-02-11'
-        start_date = '2010-01-01'; end_date = '2018-12-31'
-#         start_date = None; end_date = None
+#         start_date = '2010-01-01'; end_date = '2018-12-31'
+        start_date = None; end_date = None
    
         ts_name = 'time_stamp'
         
@@ -693,13 +695,12 @@ if __name__ == '__main__':
             xds   = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
             #print(xds)
             #print('\n')
-            
+              
             # aggregate month
             rds = xds.resample(time='MS',skipna=True,).mean()
             #rds.chunk(chunks=chunk_settings)         
             print(rds)
-      
-            
+                  
             # save resampled dataset
             grid_str = '' if grid is None else '_'+grid
             bc_str = biascorrection+'_' if biascorrection else ''
@@ -715,6 +716,14 @@ if __name__ == '__main__':
             tsnc = add_var(ds, ts_name, dims=('time',), data=None, shape=(None,), 
                            atts=atts, dtype=str, zlib=True, fillValue=None, lusestr=True) # daily time-stamp
             tsnc[:] = np.stack([str(t) for t in rds['time'].data.astype('datetime64[M]')], axis=0)  
+            # fix axes for regridded data
+            if grid:
+                from geodata.gdal import loadPickledGridDef
+                griddef = loadPickledGridDef(grid,)
+                for ax in (griddef.xlon,griddef.ylat):
+                    ncax = ds[ax.name]
+                    ncax[:] = ax[:]
+                    ncax.setncatts(ax.atts)               
             #ds.setncattr('resampling','nearest') 
             ds.sync(); ds.close()
             
