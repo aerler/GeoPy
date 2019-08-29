@@ -161,8 +161,9 @@ class ASCII_raster(FileFormat):
         if lprd:
             root_folder = '/'.join(folder_names[:i]).format(**metadict)
             period_pattern = folder_names[i] # the folder name containing the period string
-            link_name = period_pattern.format(PERIOD=lnkprd)
-            link_dest = period_pattern.format(PERIOD=expprd)
+            metadict.pop('PERIOD')
+            link_name = period_pattern.format(PERIOD=lnkprd,**metadict)
+            link_dest = period_pattern.format(PERIOD=expprd,**metadict)
             self.altprdlnk = (root_folder, link_dest, link_name)
     # return folder (no filename)
     return self.folder
@@ -278,6 +279,7 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
     expformat = expargs.pop('format') # needed to get FileFormat object
     exp_list= expargs.pop('exp_list') # this handled outside of export
     compute_list = expargs.pop('compute_list', []) # variables to be (re-)computed - by default all
+    src_varmap = expargs.pop('src_varmap', dict()) # names of variables in soruce dataset
     # initialize FileFormat class instance
     fileFormat = getFileFormat(expformat, bc_method=bc_method, **expargs)
     # get folder for target dataset and do some checks
@@ -383,8 +385,14 @@ def performExport(dataset, mode, dataargs, expargs, bcargs, loverwrite=False,
                       else: var = newvars.shiftVariable(source[variable], shift=shift)
                                                 
           # ... otherwise load from source file
-          if var is None and variables is None and varname in source:
-              var = source[varname].load() # load data (may not have to load all)
+          if var is None and variables is None:
+              if varname in source:
+                  var = source[varname].load() # load data (may not have to load all)
+              elif varname in src_varmap:
+                  srcname = src_varmap[varname] 
+                  if srcname in source:
+                      var = source[srcname].load() # load data (may not have to load all)
+                      var.name = varname # rename for output
           #else: raise VariableError, "Unsupported Variable '{:s}'.".format(varname)
           # for now, skip variables that are None
           if var or variables:
@@ -494,22 +502,23 @@ if __name__ == '__main__':
 #         modes = ('annual-mean','climatology', 'time-series')
 #         modes = ('annual-mean','climatology',)
 #         modes = ('annual-mean',)
-#         modes = ('climatology',)  
-        modes = ('time-series',)  
+        modes = ('climatology',)  
+#         modes = ('time-series',)  
         loverwrite = False
         exp_list= None
         load_list = []
         # obs variables
 #         load_list = ['liqwatflx',] # SnoDAS...
+        load_list = ['liqwatflx_swe',] # corrected SnoDAS...
 #         load_list = ['lat2D','lon2D','liqwatflx','pet']
 #         CMC_adjusted = sum([['liqwatflx'+tag,'liqwatflx_CMC'+tag] for tag in ('','_adj30','_adj35')],[])
 #         print(CMC_adjusted)
 #         load_list = ['lat2D','lon2D','pet',]+CMC_adjusted # 'precip',
 #         # WRF variables
-        #load_list = ['pet_wrf','pet']
-        load_list += ['lat2D','lon2D','zs']
-        load_list += ['snwmlt','liqprec','preccu','pet',] # to export HGS forcing (liquid water flux and PET)
-#         load_list += ['Q2','Tmin','Tmax','T2','TSmin','TSmax',] # temperature
+#         #load_list = ['pet_wrf','pet']
+#         load_list += ['lat2D','lon2D','zs']
+#         load_list += ['snwmlt','liqprec','preccu','pet',] # to export HGS forcing (liquid water flux and PET)
+# #         load_list += ['Q2','Tmin','Tmax','T2','TSmin','TSmax',] # temperature
         #load_list += ['waterflx','liqwatflx','evap','snwmlt','snow','pet_wrf'] # water flux
 #         load_list += ['snwmlt','pet_wrf','pet','evap'] # water flux
 #         load_list += ['liqprec','solprec','precip','preccu','precnc'] # precip types
@@ -534,7 +543,7 @@ if __name__ == '__main__':
 #         datasets = ['NRCan']; periods = [(1980,2010),]; resolutions = {'NRCan': ['na12_maritime',]}
 #         datasets = ['NRCan']; periods = [(1970,2000),]; resolutions = {'NRCan': ['na12_maritime',]}
     #     datasets += ['GPCC','CRU']; #resolutions = {'GPCC':['05']}
-#         datasets = ['SnoDAS']; periods = [(2011,2019)]
+        datasets = ['SnoDAS']; periods = [(2011,2019)]; resolutions['SnoDAS']=('','rfbc')
         # CESM experiments (short or long name) 
         CESM_project = None # all available experiments
         load3D = False
@@ -562,11 +571,11 @@ if __name__ == '__main__':
 #         WRF_experiments += ['ctrl-ensemble','ctrl-ensemble-2050','ctrl-ensemble-2100']
 #         WRF_experiments += ['max-ensemble','max-ensemble-2050','max-ensemble-2100']
 #         WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-        WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
-        WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]    
+#         WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]    
+#         WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]    
 #         WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
-        WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]    
-        WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]    
+#         WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]    
+#         WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]    
 #         WRF_experiments += ['g3-ctrl',     'g3-ens-A',     'g3-ens-B',     'g3-ens-C',]
 #         WRF_experiments += ['g3-ctrl-2050','g3-ens-A-2050','g3-ens-B-2050','g3-ens-C-2050',]
 #         WRF_experiments += ['g3-ctrl-2100','g3-ens-A-2100','g3-ens-B-2100','g3-ens-C-2100',]
@@ -588,26 +597,26 @@ if __name__ == '__main__':
         WRF_filetypes = ('hydro','srfc','xtrm','lsm',)[:1] # available input files
 #         WRF_filetypes = ('const',) # with radiation files
         ## bias-correction paramter
-#         bc_method = None; bc_tag = '' # no bias correction
-#         bc_method = 'SMBC'; bc_tag = bc_method+'_' # bias correction method (None: no bias correction)        
-#         bc_method = 'AABC'; bc_tag = bc_method+'_' # bias correction method (None: no bias correction)        
-        bc_method = 'MyBC' # bias correction method (None: no bias correction)        
-        obs_dataset = 'CRU' # the observational dataset 
-        bc_tag = bc_method+'_'+obs_dataset+'_' 
-        bc_reference = 'max-ensemble' # reference experiment (None: auto-detect based on name)
-#         bc_reference = None # auto-detect reference experiment based on name
-        bc_varmap = dict(TSmin='Tmin', TSmax='Tmax',Tmean='T2', 
-                         pet='pet_wrf', pet_wrf='pet', evap='pet', # pet='pet_wrf',
-                         SWUPB='SWDNB',SWD='SWDNB',SWDNB='SWD', LWDNB='GLW',GLW='LWDNB',)
-        bc_args = dict(grid=None, domain=None, lgzip=True, varmap=bc_varmap) # missing/None parameters are inferred from experiment
+        bc_method = None; bc_tag = '' # no bias correction
+# #         bc_method = 'SMBC'; bc_tag = bc_method+'_' # bias correction method (None: no bias correction)        
+# #         bc_method = 'AABC'; bc_tag = bc_method+'_' # bias correction method (None: no bias correction)        
+#         bc_method = 'MyBC' # bias correction method (None: no bias correction)        
+#         obs_dataset = 'CRU' # the observational dataset 
+#         bc_tag = bc_method+'_'+obs_dataset+'_' 
+#         bc_reference = 'max-ensemble' # reference experiment (None: auto-detect based on name)
+# #         bc_reference = None # auto-detect reference experiment based on name
+#         bc_varmap = dict(TSmin='Tmin', TSmax='Tmax',Tmean='T2', 
+#                          pet='pet_wrf', pet_wrf='pet', evap='pet', # pet='pet_wrf',
+#                          SWUPB='SWDNB',SWD='SWDNB',SWDNB='SWD', LWDNB='GLW',GLW='LWDNB',)
+#         bc_args = dict(grid=None, domain=None, lgzip=True, varmap=bc_varmap) # missing/None parameters are inferred from experiment
         # typically a specific grid is required
         grids = [] # list of grids to process
 #         grids += [None]; project = None # special keyword for native grid
-        grids += ['arb2']; project = 'ARB' # main grid for ARB project
+#         grids += ['arb2']; project = 'ARB' # main grid for ARB project
 #         grids += ['uph1']; project = 'Elisha' # grid for Elisha
 #         grids += ['glb1']; project = 'GLB' # grid for Great Lakes Basin project
-#         grids += ['grw1']; project = 'GRW' # finer 1km grid for GRW project
-#         grids += ['grw1']; project = 'GRW' # small grid for GRW project
+        grids += ['grw1']; project = 'GRW' # finer 1km grid for GRW project
+#         grids += ['grw2']; project = 'GRW' # small grid for GRW project
 #         grids += ['grw3']; project = 'GRW' # fine grid for GRW project
 #         grids += ['asb1']; project = 'ASB' # main grid for ASB project
 #         grids += ['brd1']; project = 'ASB' # small grid for ASB project
@@ -618,24 +627,25 @@ if __name__ == '__main__':
         export_arguments = dict(
             # NRCan
 #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT', None),bc_tag),
+            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/SWE{{RESOLUTION}}_avg_{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT', None)),
 #             compute_list = [], exp_list= ['lat2D','lon2D','pet']+CMC_adjusted,   # varlist for NRCan
 #             compute_list = [], exp_list= ['lat2D','lon2D','pet','liqwatflx','liqwatflx_CMC'], # varlist for NRCan
-#             compute_list = [], exp_list= ['liqwatflx',], # varlist for SnoDAS
+            exp_list= ['liqwatflx',], src_varmap=dict(liqwatflx='liqwatflx_swe'), # varlist for SnoDAS
             # WRF
-#             exp_list= ['landuse','landmask'],
-#             exp_list= ['lat2D','lon2D','zs','LU_MASK','LU_INDEX','LANDUSEF','VEGCAT','SHDMAX','SHDMIN',
-#                        'SOILHGT','SOILCAT','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'], # constants
-#             compute_list = ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
-#             exp_list= ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
-#             compute_list = ['liqwatflx','pet'], exp_list= ['lat2D','lon2D','zs','liqwatflx','pet'], # short varlist for quick export
-            compute_list = ['waterflx','waterflx-1','liqwatflx','liqwatflx-1','snwmlt-1','pet-1','liqwatflx-05','snwmlt-05','pet-05'],
-            exp_list= ['lat2D','lon2D','zs','pet','liqwatflx','liqwatflx-1','pet-1','liqwatflx-05','pet-05'], # varlist with shifts
-#             exp_list= ['lat2D','lon2D','zs','pet','liqwatflx'], # short varlist for quick export
-            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT'),bc_tag),
-#             folder = '//aquanty-nas/share/temp_data_exchange/Erler/{PROJECT}/{EXPERIMENT}/{PERIOD}/',
-#             folder = '//aquanty-nas/share/temp_data_exchange/Erler/{{PROJECT}}/{{EXPERIMENT}}/{bc_tag:s}{{PERIOD}}/'.format(bc_tag=bc_tag),
-#             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/land_data/'.format(os.getenv('HGS_ROOT')),
-#             folder = '//AQFS1/Data/temp_data_exchange/{PROJECT}/{GRID}/{EXPERIMENT}/land_data/',
+# #             exp_list= ['landuse','landmask'],
+# #             exp_list= ['lat2D','lon2D','zs','LU_MASK','LU_INDEX','LANDUSEF','VEGCAT','SHDMAX','SHDMIN',
+# #                        'SOILHGT','SOILCAT','SOILCTOP','SOILCBOT','LAKE_DEPTH','SUNSHINE','MAPFAC_M'], # constants
+# #             compute_list = ['waterflx','liqwatflx','pet'], # variables that should be (re-)computed
+# #             exp_list= ['lat2D','lon2D','zs','waterflx','liqwatflx','pet','pet_wrf'], # varlist for export
+# #             compute_list = ['liqwatflx','pet'], exp_list= ['lat2D','lon2D','zs','liqwatflx','pet'], # short varlist for quick export
+#             compute_list = ['waterflx','waterflx-1','liqwatflx','liqwatflx-1','snwmlt-1','pet-1','liqwatflx-05','snwmlt-05','pet-05'],
+#             exp_list= ['lat2D','lon2D','zs','pet','liqwatflx','liqwatflx-1','pet-1','liqwatflx-05','pet-05'], # varlist with shifts
+# #             exp_list= ['lat2D','lon2D','zs','pet','liqwatflx'], # short varlist for quick export
+#             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT'),bc_tag),
+# #             folder = '//aquanty-nas/share/temp_data_exchange/Erler/{PROJECT}/{EXPERIMENT}/{PERIOD}/',
+# #             folder = '//aquanty-nas/share/temp_data_exchange/Erler/{{PROJECT}}/{{EXPERIMENT}}/{bc_tag:s}{{PERIOD}}/'.format(bc_tag=bc_tag),
+# #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/land_data/'.format(os.getenv('HGS_ROOT')),
+# #             folder = '//AQFS1/Data/temp_data_exchange/{PROJECT}/{GRID}/{EXPERIMENT}/land_data/',
             # common
             project = project, # project designation  
             prefix = '{GRID}', # based on keyword arguments

@@ -209,10 +209,11 @@ if __name__ == '__main__':
 #     NP = 1 ; ldebug = True # for quick computations
     NP = 2 ; ldebug = False # just for tests
 #     modes = ('climatology','time-series') # 'climatology','time-series'
-#     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology','time-series'
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = False
     varlist = None
+#     varlist = ['precip']
 #     varlist = ['Tsnow','evap_blow','evap_snow','snwmlt','liqprec','precip','rho_snw',]
     periods = []
 #     periods += [1]
@@ -235,8 +236,8 @@ if __name__ == '__main__':
 #     datasets += ['PRISM',]; lLTM = True; periods = None
 #     datasets += ['CFSR','NARR'] # CFSR_05 does not have precip
 #     datasets += ['NARR'] 
-    datasets += ['GPCC', 'CRU']; lLTM = False #resolutions['GPCC'] = ['025','05']
-#     datasets += ['SnoDAS']; periods = [(2010,2019)]; NP=1 # large fields...
+#     datasets += ['GPCC', 'CRU']; lLTM = False #resolutions['GPCC'] = ['025','05']
+    datasets += ['SnoDAS']; periods = [(2011,2019)]; NP=1 # large fields...
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
@@ -274,12 +275,12 @@ if __name__ == '__main__':
 #     WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
 #     WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
 #     WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
-    WRF_experiments += ['max-ctrl',     'max-ens-A',     'max-ens-B',     'max-ens-C',]
-    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
-    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
-    WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
-    WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]
-    WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]
+#     WRF_experiments += ['max-ctrl',     'max-ens-A',     'max-ens-B',     'max-ens-C',]
+#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+#     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+#     WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
+#     WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]
+#     WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]
 #     WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['t-ensemble']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
@@ -305,15 +306,19 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('hydro',) # filetypes to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm',) # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); modes = ('time-series',); periods = None
+    src_grid = None # grid from which to load the data
+    src_grid = 'on1' # grid from which to load the data
+    resolutions['SnoDAS']=('','rfbc'); NP = 2 # smaller fields 
     # grid to project onto
     grids = dict()
 #     grids['arb1'] = None # high-res grid for Athabasca river basin, 1km    
-    grids['arb2'] = None # high-res grid for Athabasca river basin, 5km    
+#     grids['arb2'] = None # high-res grid for Athabasca river basin, 5km    
 #     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
-#     grids['grw1'] = None # high-res grid for GRW, 1km
+    grids['grw1'] = None # high-res grid for GRW, 1km
 #     grids['uph1'] = None # grid for Elisha, 5km
 #     grids['glb1'] = None # grid for the Great Lakes basin, 5km
+#     grids['on1'] = None # grid for southern Ontario, 5km
 #     grids['son1'] = None # grid for southern Ontario, 5km
 #     grids['son2'] = None # grid for southern Ontario, 1km
 #     grids['grw2'] = None # coarser grid for GRW, 5km
@@ -405,19 +410,22 @@ if __name__ == '__main__':
               if resolutions is None: dsreses = mod.LTM_grids
               elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.LTM_grids]  
               for dsres in dsreses: 
-                args.append( (dataset, mode, griddef, dict(varlist=varlist, period=None, resolution=dsres, unity_grid=unity_grid)) ) # append to list
+                args.append( (dataset, mode, griddef, dict(varlist=varlist, period=None, resolution=dsres, 
+                                                           grid=src_grid, unity_grid=unity_grid)) ) # append to list
             # climatologies derived from time-series
             if resolutions is None: dsreses = mod.TS_grids
             elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
             for dsres in dsreses:
               for period in periodlist:
-                args.append( (dataset, mode, griddef, dict(varlist=varlist, period=period, resolution=dsres, unity_grid=unity_grid)) ) # append to list            
+                args.append( (dataset, mode, griddef, dict(varlist=varlist, period=period, resolution=dsres, 
+                                                           grid=src_grid, unity_grid=unity_grid)) ) # append to list            
           elif mode == 'time-series': 
             # regrid the entire time-series
             if resolutions is None: dsreses = mod.TS_grids
             elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
             for dsres in dsreses:
-              args.append( (dataset, mode, griddef, dict(varlist=varlist, period=None, resolution=dsres, unity_grid=unity_grid)) ) # append to list            
+              args.append( (dataset, mode, griddef, dict(varlist=varlist, period=None, resolution=dsres, 
+                                                         grid=src_grid, unity_grid=unity_grid)) ) # append to list            
         
         # CESM datasets
         for experiment in CESM_experiments:
@@ -425,7 +433,7 @@ if __name__ == '__main__':
             for period in periodlist:
               # arguments for worker function: dataset and dataargs       
               args.append( ('CESM', mode, griddef, dict(experiment=experiment, varlist=varlist, filetypes=[filetype], 
-                                                        period=period, load3D=load3D)) )
+                                                        grid=src_grid, period=period, load3D=load3D)) )
         # WRF datasets
         for experiment in WRF_experiments:
           for filetype in WRF_filetypes:
@@ -437,7 +445,7 @@ if __name__ == '__main__':
               for period in periodlist:
                 # arguments for worker function: dataset and dataargs       
                 args.append( ('WRF', mode, griddef, dict(experiment=experiment, varlist=varlist, filetypes=[filetype], 
-                                                         domain=domain, period=period)) )
+                                                         grid=src_grid, domain=domain, period=period)) )
       
   # static keyword arguments
   kwargs = dict(loverwrite=loverwrite, varlist=varlist)

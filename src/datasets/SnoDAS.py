@@ -278,7 +278,7 @@ def addGeoReference(xds, proj4_string=proj4_string, x_coords=None, y_coords=None
             # N.B.: the NetCDF-4 backend does not like Python bools
     return xds
 
-def checkGeoReference(xds, geoargs):
+def checkGeoReference(xds, geoargs=None, grid=None):
     ''' helper function to check if georeference is available and apply '''
     if geoargs is None: 
         # default options            
@@ -310,6 +310,7 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, grid=None,
     if grid: folder = '{}/{}'.format(folder,grid) # non-native grids are stored in sub-folders
     # load variables
     if varname and varlist: raise ValueError(varname,varlist)
+    if biascorrection is None and 'resolution' in kwargs: biascorrection = kwargs['resolution'] # allow backdoor
     elif varname:
         # load a single variable
         if grid: varname = '{}_{}'.format(varname,grid) # also append non-native grid name to varname
@@ -327,19 +328,20 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, grid=None,
         xds = xr.open_mfdataset(filepaths, chunks=chunks, **kwargs)
         #xds = xr.merge([xr.open_dataset(fp, chunks=chunks, **kwargs) for fp in filepaths])    
     # add projection
-    if lgeoref: xds = checkGeoReference(xds, geoargs)
+    if lgeoref: xds = checkGeoReference(xds, geoargs=geoargs, grid=grid)
     return xds
 
 
 def loadSnoDAS_TS(varname=None, varlist=None, name=dataset_name, grid=None, folder=avgfolder, tsfile=tsfile, 
-                  biascorrection=None,
-                  lxarray=True, lgeoref=True, lmonthly=False, chunks=None, time_chunks=1, geoargs=None, **kwargs):
+                  biascorrection=None, lxarray=True, lgeoref=True, lmonthly=False, 
+                  chunks=None, time_chunks=1, geoargs=None, **kwargs):
     ''' function to load gridded monthly transient SnoDAS data '''
     # remove some commong arguments that have no meaning
     for key in ('resolution',):
         if key in kwargs: del kwargs[key]
     # resolve filename strings
     grid_str = '_'+grid if grid else ''
+    if biascorrection is None and 'resolution' in kwargs: biascorrection = kwargs['resolution'] # allow backdoor
     bc_str = biascorrection+'_' if biascorrection else ''
     if lxarray: 
         ## laod as xarray dataset
@@ -377,7 +379,7 @@ def loadSnoDAS_TS(varname=None, varlist=None, name=dataset_name, grid=None, fold
             tvar = xr.DataArray(tdata, dims=('time'), name='time', attrs=tattrs)
             xds = xds.assign_coords(time=tvar)        
         # add projection
-        if lgeoref: xds = checkGeoReference(xds, geoargs)
+        if lgeoref: xds = checkGeoReference(xds, geoargs=geoargs, grid=grid)
         dataset = xds
     else:
         ## load as GeoPy dataset
@@ -425,9 +427,10 @@ def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfol
         # load time stamps (like coordinate variables)
         if 'time_stamp' in dataset: dataset['time_stamp'].load()
         # add projection
-        if lgeoref: dataset = checkGeoReference(dataset, geoargs)
+        if lgeoref: dataset = checkGeoReference(dataset, geoargs=geoargs, grid=grid)
     else:
         # load standardized climatology dataset with NRCan-specific parameters
+        if biascorrection is None and 'resolution' in kwargs: biascorrection = kwargs['resolution'] # allow backdoor
         dataset = loadObservations(name=name, folder=folder, projection=None, resolution=biascorrection, 
                                    filepattern=avgfile, period=period, grid=grid, varlist=varlist, varatts=None, 
                                    griddef=SnoDAS_grid, title=title, filelist=None, lautoregrid=False, 
@@ -458,8 +461,8 @@ clim_file_pattern = avgfile # filename pattern: grid and period
 data_folder       = avgfolder # folder for user data
 grid_def  = {'':SnoDAS_grid} # no special name, since there is only one...
 LTM_grids = [] # grids that have long-term mean data 
-TS_grids  = [''] # grids that have time-series data
-grid_res  = {'':0.00833333333333333} # no special name, since there is only one...
+TS_grids  = ['','rfbc'] # grids that have time-series data
+grid_res  = {res:0.00833333333333333 for res in TS_grids} # no special name, since there is only one...
 default_grid = SnoDAS_grid
 # functions to access specific datasets
 loadLongTermMean       = None # climatology provided by publisher
@@ -497,22 +500,22 @@ if __name__ == '__main__':
 #   modes += ['convert_binary'        ]
 #   modes += ['add_variables'         ]
 #   modes += ['load_Daily'            ]
-#   modes += ['monthly_mean'          ]
-#   modes += ['load_TimeSeries'       ]
-  modes += ['monthly_normal'        ]
-  modes += ['load_Climatology'      ]
+  modes += ['monthly_mean'          ]
+  modes += ['load_TimeSeries'       ]
+#   modes += ['monthly_normal'        ]
+#   modes += ['load_Climatology'      ]
 
   pntset = 'glbshp'
-#   grid = None # native
+  grid = None # native
 #   grid = 'grw1'
 #   grid = 'wc2_d01'
   grid = 'on1' # large Ontario domain
 
-#   biascorrection = None # no bias correction
-  biascorrection = 'rfbc' # random forest bias-correction
+  biascorrection = None # no bias correction
+#   biascorrection = 'rfbc' # random forest bias-correction
 
   # variable list
-#   varlist = netcdf_varlist
+  varlist = netcdf_varlist
 #   varlist = ['liqwatflx']
   varlist = ['snow']
 
@@ -567,7 +570,7 @@ if __name__ == '__main__':
         start = time.time()
             
         # load variables object (not data!)
-        xds   = loadSnoDAS_TS(varlist=varlist, biascorrection=biascorrection, grid=grid)
+        xds   = loadSnoDAS_TS(varlist=varlist, biascorrection=biascorrection, grid=grid, lxarray=True) # need Dask!
         xds   = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
         ts_var = xds[ts_name].load()
         print(xds)
@@ -657,6 +660,12 @@ if __name__ == '__main__':
             print('')
             griddef = xds.griddef
             griddef.name = grid
+            
+            # add lat/lon fields
+            assert griddef.isProjected == 0, griddef
+            lon2D, lat2D = np.meshgrid(griddef.xlon.coord, griddef.ylat.coord) # if we have x/y arrays
+            griddef.lon2D = lon2D.astype(np.float32) 
+            griddef.lat2D = lat2D.astype(np.float32) # astype always returns a newly allocated copy
             
             filename = pickleGridDef(griddef, lfeedback=True, loverwrite=True, lgzip=True)
             
