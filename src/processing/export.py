@@ -627,7 +627,7 @@ if __name__ == '__main__':
         export_arguments = dict(
             # NRCan
 #             folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/{1:s}{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT', None),bc_tag),
-            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/SWE{{RESOLUTION}}_avg_{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT', None)),
+            folder = '{0:s}/{{PROJECT}}/{{GRID}}/{{EXPERIMENT}}/SWE{{RESOLUTION}}_{{PERIOD}}/climate_forcing/'.format(os.getenv('HGS_ROOT', None)),
 #             compute_list = [], exp_list= ['lat2D','lon2D','pet']+CMC_adjusted,   # varlist for NRCan
 #             compute_list = [], exp_list= ['lat2D','lon2D','pet','liqwatflx','liqwatflx_CMC'], # varlist for NRCan
             exp_list= ['liqwatflx',], src_varmap=dict(liqwatflx='liqwatflx_swe'), # varlist for SnoDAS

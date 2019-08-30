@@ -236,7 +236,7 @@ def copy_vars(dst, src, varlist=None, namemap=None, dimmap=None, remove_dims=Non
   varargs = dict() # arguments to be passed to createVariable
   if zlib: varargs.update(zlib_default)
   varargs.update(kwargs)
-  dtype = varargs.pop('dtype', None) 
+  override_dtype = varargs.pop('dtype', None) 
   # loop over variable list
   for name in varlist:
     if namemap and (name in list(namemap.keys())): rav = src.variables[namemap[name]] # apply name mapping 
@@ -246,7 +246,7 @@ def copy_vars(dst, src, varlist=None, namemap=None, dimmap=None, remove_dims=Non
       if dimmap and dim in midmap: dim = midmap[dim] # apply name mapping (in reverse)
       if not (remove_dims and dim in remove_dims): dims.append(dim)
     # create new variable
-    dtype = dtype or rav.dtype
+    dtype = override_dtype or rav.dtype
     if '_FillValue' in rav.ncattrs(): fillValue = rav.getncattr('_FillValue')
     var = dst.createVariable(name, dtype, dims, fill_value=fillValue, **varargs)
     if copy_atts: copy_ncatts(var, rav, prefix=prefix, incl_=incl_) # copy attributes, if desired (default) 

@@ -211,7 +211,7 @@ if __name__ == '__main__':
 #     modes = ('climatology','time-series') # 'climatology','time-series'
     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = False
+    loverwrite = True
     varlist = None
 #     varlist = ['precip']
 #     varlist = ['Tsnow','evap_blow','evap_snow','snwmlt','liqprec','precip','rho_snw',]

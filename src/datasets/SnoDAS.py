@@ -500,10 +500,10 @@ if __name__ == '__main__':
 #   modes += ['convert_binary'        ]
 #   modes += ['add_variables'         ]
 #   modes += ['load_Daily'            ]
-  modes += ['monthly_mean'          ]
-  modes += ['load_TimeSeries'       ]
-#   modes += ['monthly_normal'        ]
-#   modes += ['load_Climatology'      ]
+#   modes += ['monthly_mean'          ]
+#   modes += ['load_TimeSeries'       ]
+  modes += ['monthly_normal'        ]
+  modes += ['load_Climatology'      ]
 
   pntset = 'glbshp'
   grid = None # native
@@ -515,10 +515,16 @@ if __name__ == '__main__':
 #   biascorrection = 'rfbc' # random forest bias-correction
 
   # variable list
-  varlist = netcdf_varlist
+#   varlist = netcdf_varlist
+  varlist = binary_varlist + ['dswe'] # + ['liqwatflx', 'rho_snw', 'precip'] # should be netcdf_varlist...
+#   varlist = ['liqprec', 'solprec', 'snwmlt', 'Tsnow', ] # 'snow', 
+#   varlist = ['evap_snow', 'evap_blow', 'snowh',]
+#   varlist = ['liqwatflx', 'rho_snw', 'precip']
 #   varlist = ['liqwatflx']
-  varlist = ['snow']
-
+#   varlist = ['snow','dswe']
+  
+#   period = (2010,2019)
+  period = (2011,2019)
 
   # loop over modes 
   for mode in modes:
@@ -527,7 +533,7 @@ if __name__ == '__main__':
        
         
         lxarray = False
-        ds = loadSnoDAS(varlist=varlist, period=(2010,2019), biascorrection=biascorrection, grid=grid, 
+        ds = loadSnoDAS(varlist=varlist, period=period, biascorrection=biascorrection, grid=grid, 
                         lxarray=lxarray) # load regular GeoPy dataset
         print(ds)
         print('')
@@ -779,7 +785,7 @@ if __name__ == '__main__':
         start = time.time()
             
         # load variables
-        time_chunks = 8 # 32 may be possible
+        time_chunks = 1 # 32 may be possible
         chunks = netcdf_settings['chunksizes']
         chunk_settings = dict(time=chunks[0]*time_chunks,lat=chunks[1],lon=chunks[2])      
         ts_name = 'time_stamp'
@@ -808,7 +814,12 @@ if __name__ == '__main__':
             # target dataset
             lexec = True
             var_atts = netcdf_varatts[var]
-            nc_filepath = daily_folder + netcdf_filename.format(var)
+            varname = var; folder = daily_folder
+            if grid: 
+                varname = '{}_{}'.format(varname,grid) # also append non-native grid name to varname
+                folder = '{}/{}'.format(folder,grid)
+            if biascorrection: varname = '{}_{}'.format(biascorrection,varname) # prepend bias correction method
+            nc_filepath = '{}/{}'.format(folder,netcdf_filename.format(varname))
             if lappend_master and osp.exists(nc_filepath):
                 ncds = nc.Dataset(nc_filepath, mode='a')
                 ncvar3 = ncds[var]
