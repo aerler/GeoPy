@@ -231,13 +231,13 @@ if __name__ == '__main__':
 #     datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
 #     resolutions['NRCan'] = ['na12_ephemeral','na12_maritime','na12_prairies','na12_taiga','na12_alpine',]
 #     datasets = ['NRCan']; lLTM = False; periods = [(1970,2000),]; resolutions['NRCan'] = ['na12_taiga','na12_alpine',]
-#     datasets = ['NRCan']; lLTM = False; periods = [(1980,2010),]; #resolutions['NRCan'] = ['na12_alpine','na12_maritime','na12_taiga',]
+    datasets = ['NRCan']; lLTM = False; periods = [(1980,2010),]; resolutions['NRCan'] = ['na12_maritime',] # 'na12_taiga','na12_alpine',
 #     datasets += ['PRISM','GPCC','PCIC']; lLTM = True; periods = None
 #     datasets += ['PRISM',]; lLTM = True; periods = None
 #     datasets += ['CFSR','NARR'] # CFSR_05 does not have precip
 #     datasets += ['NARR'] 
 #     datasets += ['GPCC', 'CRU']; lLTM = False #resolutions['GPCC'] = ['025','05']
-    datasets += ['SnoDAS']; periods = [(2011,2019)]; NP=1 # large fields...
+#     datasets += ['SnoDAS']; periods = [(2011,2019)]; NP=1 # large fields...
     # CESM experiments (short or long name) 
     CESM_project = None # all available experiments
     load3D = False
@@ -307,18 +307,19 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm',) # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); modes = ('time-series',); periods = None
     src_grid = None # grid from which to load the data
-    src_grid = 'on1' # grid from which to load the data
-    resolutions['SnoDAS']=('','rfbc'); NP = 2 # smaller fields 
+#     src_grid = 'on1' # grid from which to load the data
+#     resolutions['SnoDAS']=('','rfbc'); NP = 2 # smaller fields 
     # grid to project onto
     grids = dict()
 #     grids['arb1'] = None # high-res grid for Athabasca river basin, 1km    
 #     grids['arb2'] = None # high-res grid for Athabasca river basin, 5km    
 #     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
-    grids['grw1'] = None # high-res grid for GRW, 1km
+#     grids['grw1'] = None # high-res grid for GRW, 1km
 #     grids['uph1'] = None # grid for Elisha, 5km
+    grids['hd1'] = None # Hugo's grid for Quebec, 5km
 #     grids['glb1'] = None # grid for the Great Lakes basin, 5km
-#     grids['on1'] = None # grid for southern Ontario, 5km
+#     grids['on1'] = None # Fraser's grid for SnoDAS (Ontario, 1km)
 #     grids['son1'] = None # grid for southern Ontario, 5km
 #     grids['son2'] = None # grid for southern Ontario, 1km
 #     grids['grw2'] = None # coarser grid for GRW, 5km
