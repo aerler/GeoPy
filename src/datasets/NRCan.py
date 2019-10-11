@@ -559,6 +559,7 @@ grid_def = {'NA12':NRCan_NA12_grid, 'NA60':NRCan_NA60_grid, 'CA12':NRCan_CA12_gr
 LTM_grids = ['NA12','CA12','CA24'] # grids that have long-term mean data 
 LTM_grids += ['na12_tundra','na12_taiga','na12_maritime','na12_ephemeral','na12_prairies','na12_alpine',] # some fake grids to accommodate different snow densities
 TS_grids = ['NA12','NA60','CA12'] # grids that have time-series data
+TS_grids += ['na60_'+var for var in varlist]
 TS_grids += ['na12_tundra','na12_taiga','na12_maritime','na12_ephemeral','na12_prairies','na12_alpine',] # some fake grids to accommodate different snow densities
 grid_res = {'NA12':1./12.,'NA60':1./60.,'CA12':1./12.,'CA24':1./24.} # no special name, since there is only one...
 default_grid = NRCan_NA12_grid

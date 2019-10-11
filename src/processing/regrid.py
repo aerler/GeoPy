@@ -207,10 +207,10 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 2 ; ldebug = False # just for tests
+    NP = 1 ; ldebug = False # just for tests
 #     modes = ('climatology','time-series') # 'climatology','time-series'
-    modes = ('climatology',) # 'climatology','time-series'
-#     modes = ('time-series',) # 'climatology','time-series'
+#     modes = ('climatology',) # 'climatology','time-series'
+    modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
 #     varlist = ['precip']
@@ -227,11 +227,12 @@ if __name__ == '__main__':
     # Observations/Reanalysis
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
-    lLTM = True # also regrid the long-term mean climatologies 
+    lLTM = True; lchkres = True # also regrid the long-term mean climatologies 
 #     datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
 #     resolutions['NRCan'] = ['na12_ephemeral','na12_maritime','na12_prairies','na12_taiga','na12_alpine',]
 #     datasets = ['NRCan']; lLTM = False; periods = [(1970,2000),]; resolutions['NRCan'] = ['na12_taiga','na12_alpine',]
-    datasets = ['NRCan']; lLTM = False; periods = [(1980,2010),]; resolutions['NRCan'] = ['na12_maritime',] # 'na12_taiga','na12_alpine',
+    datasets = ['NRCan']; lLTM = False; lchkres = False; periods = [(1980,2010),]; resolutions['NRCan'] = ['na12_maritime',] # 'na12_taiga','na12_alpine',
+#     datasets = ['NRCan']; lLTM = False; periods = [(2011,2019),]; lchkres = False; resolutions['NRCan'] = ['na60_precip',]
 #     datasets += ['PRISM','GPCC','PCIC']; lLTM = True; periods = None
 #     datasets += ['PRISM',]; lLTM = True; periods = None
 #     datasets += ['CFSR','NARR'] # CFSR_05 does not have precip
@@ -315,15 +316,14 @@ if __name__ == '__main__':
 #     grids['arb2'] = None # high-res grid for Athabasca river basin, 5km    
 #     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
-#     grids['grw1'] = None # high-res grid for GRW, 1km
 #     grids['uph1'] = None # grid for Elisha, 5km
     grids['hd1'] = None # Hugo's grid for Quebec, 5km
 #     grids['glb1'] = None # grid for the Great Lakes basin, 5km
 #     grids['on1'] = None # Fraser's grid for SnoDAS (Ontario, 1km)
 #     grids['son1'] = None # grid for southern Ontario, 5km
 #     grids['son2'] = None # grid for southern Ontario, 1km
-#     grids['grw2'] = None # coarser grid for GRW, 5km
 #     grids['grw1'] = None # fine grid for GRW, 1km
+#     grids['grw2'] = None # coarser grid for GRW, 5km
 #     grids['grw3'] = None # very fine grid for GRW, 500m
 #     grids['snw1'] = None # large grid for whole Canada
 #     grids['can1'] = None # large grid for whole Canada
@@ -409,13 +409,13 @@ if __name__ == '__main__':
             # some datasets come with a climatology 
             if lLTM:
               if resolutions is None: dsreses = mod.LTM_grids
-              elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.LTM_grids]  
+              elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if not lchkres or dsres in mod.LTM_grids]  
               for dsres in dsreses: 
                 args.append( (dataset, mode, griddef, dict(varlist=varlist, period=None, resolution=dsres, 
                                                            grid=src_grid, unity_grid=unity_grid)) ) # append to list
             # climatologies derived from time-series
             if resolutions is None: dsreses = mod.TS_grids
-            elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
+            elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if not lchkres or dsres in mod.TS_grids]  
             for dsres in dsreses:
               for period in periodlist:
                 args.append( (dataset, mode, griddef, dict(varlist=varlist, period=period, resolution=dsres, 
@@ -423,7 +423,7 @@ if __name__ == '__main__':
           elif mode == 'time-series': 
             # regrid the entire time-series
             if resolutions is None: dsreses = mod.TS_grids
-            elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if dsres in mod.TS_grids]  
+            elif isinstance(resolutions,dict): dsreses = [dsres for dsres in resolutions[dataset] if not lchkres or dsres in mod.TS_grids]  
             for dsres in dsreses:
               args.append( (dataset, mode, griddef, dict(varlist=varlist, period=None, resolution=dsres, 
                                                          grid=src_grid, unity_grid=unity_grid)) ) # append to list            

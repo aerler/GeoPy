@@ -214,6 +214,46 @@ class BasinSet(ShapeSet,Basin):
                                  for station in station_list]
           for station in self.river_stations: self.stations[station.name] = station     
         
+
+# shape class for catchments associated with a gauge
+class Catchment(Shape):
+  ''' a Shape class for the drainage area (catchment) associated wuth a gauge station '''
+  gauge = None
+  metadata = None
+  
+  def __init__(self, name=None, long_name=None, shapefile=None, folder=None, load=False, ldebug=False,
+               station=None, data_source='WSC', shapetype='CAT'):
+    ''' save meta information; should be initialized from a BasinInfo instance '''
+    if folder is None: 
+        folder = '{:s}/WSC_Gauge_Catchments/{:s}/{:s}/'.format(shape_root,name[:2],name)
+    if shapefile is None:
+        shapefile = name+'_1' if len(name) < 9 else name
+    super(Catchment,self).__init__(name=name, long_name=long_name, shapefile=shapefile, folder=folder, 
+                                   load=load, ldebug=ldebug, data_source=data_source, shapetype=shapetype)
+    # most attributes are set in Shape class
+    self.station = station or self.name # name of actual gauge station
+    self.gauge = None
+    # add gage station (based on name)
+    
+  def getGaugeSation(self, lcheck=True):
+    ''' load and return the GageStation object for this catchment '''
+    # load gauge object
+    gauge = GageStation(name=self.station, folder=self.folder, meta_file='Metadata.csv', 
+                        monthly_file='Monthly_flow.csv', lcheck=lcheck)
+    # assign variables
+    self.gauge = gauge
+    self.metadata = gauge.getMetaData(lcheck=lcheck)
+    return gauge
+    
+  def getGaugeDataset(self, varlist=None, varatts=None, aggregation=None, mode='timeseries', 
+                      filetype='monthly', lkgs=True):
+    ''' return a dataset with data from the main gaging station (default: timeseries) '''
+    if self.gauge is None:
+        self.getGaugeSation(lcheck=True)
+    dataset = loadGageStation(station=self.gauge, varlist=varlist, varatts=varatts, 
+                              aggregation=aggregation, mode=mode, filetype=filetype, lkgs=lkgs)
+    return dataset
+      
       
 # a class to hold meta data of gaging stations
 class GageStation(object):
@@ -223,21 +263,23 @@ class GageStation(object):
   monthly_ext = '_Monthly.csv'
   monthly_file = None
   
-  def __init__(self, basin=None, river=None, name=None, folder=None, lcheck=False):
+  def __init__(self, name=None, basin=None, river=None, folder=None, meta_file=None, monthly_file=None, 
+               lcheck=False):
     ''' initialize gage station based on various input data '''
     if name is None: raise ArgumentError()
     if folder is None: folder = '{:s}/Basins/{:s}/'.format(root_folder,basin)
     if not os.path.isdir(folder): IOError(folder)
     if river is not None and river not in name: name = '{:s}_{:s}'.format(river,name)
-    if not os.path.isdir(folder): IOError(folder)
     self.folder = folder # usually basin folder
     self.name = name # or prefix...
     self.basin_name = basin # has to be a long_name in order to construct the folder
-    self.meta_file = '{:s}/{:s}'.format(folder,name + self.meta_ext)  
+    if meta_file is None: meta_file = name + self.meta_ext
+    self.meta_file = '{:s}/{:s}'.format(folder,meta_file)  
     if not os.path.isfile(self.meta_file): 
       if lcheck: raise IOError(self.meta_file)
       else: self.meta_file = None # clear if not available
-    self.monthly_file = '{:s}/{:s}'.format(folder,name + self.monthly_ext)
+    if monthly_file is None: monthly_file = name + self.monthly_ext
+    self.monthly_file = '{:s}/{:s}'.format(folder,monthly_file)
     if not os.path.isfile(self.monthly_file): 
       if lcheck: raise IOError(self.monthly_file)
       else: self.monthly_file = None # clear if not available
@@ -247,7 +289,8 @@ class GageStation(object):
     if self.meta_file:
       # parse file and load data into a dictionary
       with open(self.meta_file, mode='r') as filehandle:
-        lines = filehandle.readlines()
+        lines = [line.encode('ascii',errors='ignore').decode() for line in filehandle.readlines()]
+        # N.B.: .encode('ascii',errors='ignore').decode() is to remove all non-ascii characters
         assert len(lines) == 2, lines
         keys = lines[0].split(',')
         values = lines[1].split(',')
@@ -271,7 +314,12 @@ class GageStation(object):
     if self.monthly_file:
       # use numpy's CSV functionality
       # get timeseries data
-      data = np.genfromtxt(self.monthly_file, dtype=np.float32, delimiter=',', skip_header=1, filling_values=np.nan,  
+      with open(self.monthly_file, 'r') as f:
+          for i,line in enumerate(f.readlines()):
+              if 'ID,PARAM,TYPE,Year'.lower() in line.lower(): break
+      header = i+1
+      if header > 2: raise ValueError('Header not detected correctly - file format may have changed.')
+      data = np.genfromtxt(self.monthly_file, dtype=np.float32, delimiter=',', skip_header=header, filling_values=np.nan,  
                            usecols=np.arange(4,28,2), usemask=True, loose=True, invalid_raise=True)
       assert data.shape[1] == 12, data.shape
       # for some reason every value is followed by an extra comma...
@@ -282,7 +330,7 @@ class GageStation(object):
       elif units.lower() == 'm^3/s': pass # original units
       else: raise ArgumentError("Unknown units: {}".format(units))
       # get time coordinates and verification flag
-      check = np.genfromtxt(self.monthly_file, dtype=np.int, delimiter=',', skip_header=1, filling_values=-9999,  
+      check = np.genfromtxt(self.monthly_file, dtype=np.int, delimiter=',', skip_header=header, filling_values=-9999,  
                            usecols=np.arange(1,4,1), usemask=True, loose=True, invalid_raise=True)
       assert check.shape[0] == data.shape[0], check.shape
       assert np.all(check >= 0), np.sum(check < 0)
@@ -385,9 +433,10 @@ def loadGageStation(basin=None, station=None, varlist=None, varatts=None, mode='
   ## resolve input
   if mode == 'timeseries' and aggregation: 
     raise ArgumentError('Timeseries does not support aggregation.')
-  # get GageStation instance
-  station = getGageStation(basin=basin, station=station, name=name, folder=folder, 
-                           river=None, basin_list=basin_list, lcheck=True)
+  # get GageStation instance (can be passes directly)
+  if isinstance(station,str) or station is None:
+      station = getGageStation(basin=basin, station=station, name=name, folder=folder, 
+                               river=None, basin_list=basin_list, lcheck=True)
   # variable attributes
   if varlist is None: varlist = variable_list
   elif not isinstance(varlist,(list,tuple)): raise TypeError  
@@ -616,6 +665,33 @@ def selectStations(datasets, shpaxis='shape', imaster=None, linplace=True, lall=
 
 ## abuse main block for testing
 if __name__ == '__main__':
+  
+  # test new Catchment class
+  name = '02GB001'
+  catch = Catchment(name=name, ldebug=True)
+  print(catch.station)
+  assert catch.gauge == None
+  
+  gauge = catch.getGaugeSation(lcheck=True)
+  assert isinstance(gauge,GageStation)
+  print(catch.metadata)
+  assert catch.metadata['ID'] == name
+  
+  gauge_ds = catch.getGaugeDataset(lkgs=False)
+  print(gauge_ds)
+  print(gauge_ds.discharge.mean())
+
+  name = '02GB006'
+  catch = Catchment(name=name, ldebug=True)
+  print(catch.station)
+  assert catch.gauge == None
+  
+  gauge = catch.getGaugeSation(lcheck=True)
+  print(gauge)
+  assert gauge is None
+  
+  print()
+  exit()
   
 #   from projects.WSC_basins import basin_list, basins, BasinSet
   # N.B.: importing BasinInfo through WSC_basins is necessary, otherwise some isinstance() calls fail

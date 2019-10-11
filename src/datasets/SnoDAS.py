@@ -498,10 +498,10 @@ if __name__ == '__main__':
 #   modes += ['fix_time'              ]
 #   modes += ['test_binary_reader'    ]
 #   modes += ['convert_binary'        ]
-#   modes += ['add_variables'         ]
-#   modes += ['load_Daily'            ]
-#   modes += ['monthly_mean'          ]
-#   modes += ['load_TimeSeries'       ]
+  modes += ['add_variables'         ]
+  modes += ['load_Daily'            ]
+  modes += ['monthly_mean'          ]
+  modes += ['load_TimeSeries'       ]
   modes += ['monthly_normal'        ]
   modes += ['load_Climatology'      ]
 
@@ -509,14 +509,15 @@ if __name__ == '__main__':
   grid = None # native
 #   grid = 'grw1'
 #   grid = 'wc2_d01'
-  grid = 'on1' # large Ontario domain
+#   grid = 'on1' # large Ontario domain
+  grid = 'hd1' # large Ontario domain
 
   biascorrection = None # no bias correction
 #   biascorrection = 'rfbc' # random forest bias-correction
 
   # variable list
-#   varlist = netcdf_varlist
-  varlist = binary_varlist + ['dswe'] # + ['liqwatflx', 'rho_snw', 'precip'] # should be netcdf_varlist...
+  varlist = netcdf_varlist
+#   varlist = binary_varlist + ['dswe'] # + ['liqwatflx', 'rho_snw', 'precip'] # should be netcdf_varlist...
 #   varlist = ['liqprec', 'solprec', 'snwmlt', 'Tsnow', ] # 'snow', 
 #   varlist = ['evap_snow', 'evap_blow', 'snowh',]
 #   varlist = ['liqwatflx', 'rho_snw', 'precip']
