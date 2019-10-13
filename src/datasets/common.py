@@ -341,6 +341,7 @@ def loadObservations(name=None, title=None, folder=None, period=None, grid=None,
   ''' A function to load standardized observational datasets. '''
   # prepare input
   if mode.lower() == 'climatology': # post-processed climatology files
+    mode = 'climatology' # for getFileName(...)
     # transform period
     if period is None or period == '': pass
 #       if name not in ('PCIC','PRISM','GPCC','NARR'): 
@@ -350,6 +351,7 @@ def loadObservations(name=None, title=None, folder=None, period=None, grid=None,
     elif not isinstance(period,(int,np.integer)) and ( not isinstance(period,tuple) and len(period) == 2 ): 
       raise TypeError(period)
   elif mode.lower() in ('time-series','timeseries'): # concatenated time-series files
+    mode = 'time-series' # for getFileName(...)
     period = None # to indicate time-series (but for safety, the input must be more explicit)
     if lautoregrid is None: lautoregrid = False # this can take very long!
   # cast/copy varlist
@@ -375,7 +377,8 @@ def loadObservations(name=None, title=None, folder=None, period=None, grid=None,
   # N.B.: renaming of variables in the varlist is now handled in theDatasetNetCDF initialization routine
   # filelist
   if filelist is None: 
-    filename = getFileName(name=name, resolution=resolution, period=period, grid=grid, filepattern=filepattern)
+    filename = getFileName(name=name, resolution=resolution, period=period, grid=grid, 
+                           filepattern=filepattern, filetype=mode)
     # check existance
     filepath = '{:s}/{:s}'.format(folder,filename)
     if not os.path.exists(filepath):

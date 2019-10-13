@@ -344,7 +344,7 @@ def loadSnoDAS_TS(varname=None, varlist=None, name=dataset_name, grid=None, fold
     if biascorrection is None and 'resolution' in kwargs: biascorrection = kwargs['resolution'] # allow backdoor
     bc_str = biascorrection+'_' if biascorrection else ''
     if lxarray: 
-        ## laod as xarray dataset
+        ## load as xarray dataset
         if chunks is None and grid is None:
             cks = netcdf_settings['chunksizes'] if chunks is None else chunks
             # use default netCDF chunks or user chunks; set time chunking with time_chunks
@@ -439,17 +439,50 @@ def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfol
     return dataset
 
 
-# function to load averaged data
+# function to load shape-averaged data
 def loadSnoDAS_Shp(name=dataset_name, title=dataset_name, period=None, shape=None, varlist=None, 
-                   biascorrection=None, varatts=None, folder=avgfolder, filelist=None, lencl=False):
+                   grid=None, biascorrection=None, varatts=None, folder=avgfolder, filelist=None, 
+                   lencl=False):
   ''' Get the pre-processed monthly SnoDAS climatology averaged over regions as a DatasetNetCDF. '''
   # load standardized climatology dataset with PCIC-specific parameters  
-  dataset = loadObservations(name=name, folder=folder, resolution=biascorrection, shape=shape, lencl=lencl, 
-                             title=title, varlist=varlist, varatts=varatts, filepattern=avgfile, 
-                             filelist=filelist, lautoregrid=False, period=period, mode='climatology')
+  dataset = loadObservations(name=name, folder=folder, resolution=biascorrection, shape=shape, 
+                             lencl=lencl, grid=grid, title=title, varlist=varlist, varatts=varatts, 
+                             filepattern=avgfile, filelist=filelist, lautoregrid=False, 
+                             period=period, mode='climatology')
   # return formatted dataset
   return dataset
 
+# function to load shape-averaged data
+def loadSnoDAS_ShpTS(name=dataset_name, title=dataset_name, shape=None, varlist=None, 
+                     grid=None, biascorrection=None, varatts=None, folder=avgfolder, filelist=None, 
+                     lencl=False, lfixTime=True):
+  ''' Get the pre-processed monthly SnoDAS time-series averaged over regions as a DatasetNetCDF. '''
+  # load standardized climatology dataset with PCIC-specific parameters  
+  shptsfile = 'snodas{0:s}_monthly.nc' # reduce arguments to one, since we don't have separate files for 
+  #                                    # for variables anymore, and biascorrection is handled differently
+  dataset = loadObservations(name=name, folder=folder, resolution=biascorrection, shape=shape, 
+                             lencl=lencl, grid=grid, title=title, varlist=varlist, varatts=varatts, 
+                             filepattern=shptsfile, filelist=filelist, lautoregrid=False, 
+                             mode='time-series')
+  # fix time axis
+  time =dataset.time
+  if lfixTime and 'units' in time.ncvar.ncattrs():
+      tunits = time.ncvar.getncattr('units')
+      if tunits.startswith('days since') and time.units == 'month':
+        from datetime import datetime
+        from dateutil import relativedelta
+        from geodata.base import Axis
+        #print(tunits[11:21])
+        startdate = datetime.strptime(tunits[11:21], '%Y-%m-%d'); 
+        date1979 = datetime.strptime('1979-01-01', '%Y-%m-%d')
+        r = relativedelta.relativedelta(startdate, date1979)
+        #print(r.years*12+r.months)
+        coord = r.years*12+r.months + np.arange(len(time))
+        new_time = Axis(coord=coord, atts=time.atts.copy())
+        dataset.replaceAxis(new_time, asNC=False)
+        
+  # return formatted dataset
+  return dataset
 
 ## Dataset API
 
@@ -495,22 +528,23 @@ if __name__ == '__main__':
 
   modes = []
 #   modes += ['load_Point_Climatology']
+  modes += ['load_Point_Timeseries']
 #   modes += ['fix_time'              ]
 #   modes += ['test_binary_reader'    ]
 #   modes += ['convert_binary'        ]
-  modes += ['add_variables'         ]
-  modes += ['load_Daily'            ]
-  modes += ['monthly_mean'          ]
-  modes += ['load_TimeSeries'       ]
-  modes += ['monthly_normal'        ]
-  modes += ['load_Climatology'      ]
+#   modes += ['add_variables'         ]
+#   modes += ['load_Daily'            ]
+#   modes += ['monthly_mean'          ]
+#   modes += ['load_TimeSeries'       ]
+#   modes += ['monthly_normal'        ]
+#   modes += ['load_Climatology'      ]
 
-  pntset = 'glbshp'
-  grid = None # native
+  pntset = 'oncat'
+#   grid = None # native
 #   grid = 'grw1'
 #   grid = 'wc2_d01'
-#   grid = 'on1' # large Ontario domain
-  grid = 'hd1' # large Ontario domain
+  grid = 'on1' # large Ontario domain
+#   grid = 'hd1' # large Ontario domain
 
   biascorrection = None # no bias correction
 #   biascorrection = 'rfbc' # random forest bias-correction
@@ -552,6 +586,20 @@ if __name__ == '__main__':
         # load point climatology
         print('')
         if pntset in ('shpavg','glbshp'): dataset = loadSnoDAS_Shp(shape=pntset, period=(2009,2018))
+        elif pntset in ('oncat'): dataset = loadSnoDAS_Shp(shape=pntset, grid=grid, period=(2011,2019))
+        else: raise NotImplementedError(pntset)
+        print(dataset)
+        print('')
+        print((dataset.time))
+        print((dataset.time.coord))
+  
+    
+    elif mode == 'load_Point_Timeseries':
+      
+      
+        # load point climatology
+        print('')
+        if pntset in ('oncat'): dataset = loadSnoDAS_ShpTS(shape=pntset, grid=grid, )
         else: raise NotImplementedError(pntset)
         print(dataset)
         print('')
@@ -798,7 +846,7 @@ if __name__ == '__main__':
         
         # optional slicing (time slicing completed below)
         start_date = None; end_date = None # auto-detect available data
-  #       start_date = '2011-01-01'; end_date = '2011-01-08'
+#         start_date = '2011-01-01'; end_date = '2011-01-08'
   #       start_date = '2018-11-23'; end_date = '2019-02-19'
   #       lon_min = -85; lon_max = -75; lat_min = 40; lat_max = 45
   #       xvar1 = xvar1.loc[:,lat_min:lat_max,lon_min:lon_max]

@@ -199,11 +199,12 @@ if __name__ == '__main__':
   else:
 #     NP = 1 ; ldebug = True # for quick computations
     NP = 2; ldebug = False # for quick computations
-    modes = ('time-series','climatology')
+#     modes = ('time-series','climatology')
 #     modes = ('climatology',)
-#     modes = ('time-series',) 
+    modes = ('time-series',) 
     loverwrite = True
     varlist = None
+    varlist =  ['liqprec','solprec','snow','snowh','Tsnow','snwmlt','evap_snow','evap_blow','dswe'] # SnoDAS binary + delta SWE
     periods = []
 #     periods += [1]
 #     periods += [3]
@@ -215,9 +216,11 @@ if __name__ == '__main__':
     # Observations/Reanalysis
     lLTM = True 
     datasets = []; resolutions = None; unity_grid = None
+    grid = 'on1' # grid parameter to load datasets
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['031','05'], 'NRCan':'NA12'}
     datasets = []
-    datasets += ['SnoDAS','NRCan']; periods = [(2011,2019),]; lLTM = False; resolutions = dict(NRCan='na60_precip')
+    datasets += ['SnoDAS',]; periods = [(2011,2019),]; lLTM = False; resolutions = dict(NRCan='na60_precip')
+    varlist =  ['snow','dswe']; resolutions['SnoDAS'] = ['rfbc'] # SnoDAS RFBC (only SWE and delta SWE)
 #     datasets += ['NRCan']; periods = [(1980,2010),(1970,2000),]; lLTM = False
 #     datasets += ['CRU',]; lLTM = True
 #     datasets += ['PRISM']; periods = None; lLTM = True
@@ -278,7 +281,6 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('const',); periods = None
 #     WRF_filetypes = ('aux','aabc',)
 #     WRF_filetypes = ('aux',)
-    grid = 'on1' # grid parameter to load datasets
     # define shape data  
     shapes = OrderedDict()
 #     shape_name = 'shpavg' # all Canadian shapes
