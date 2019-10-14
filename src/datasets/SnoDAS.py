@@ -336,13 +336,13 @@ def loadSnoDAS_TS(varname=None, varlist=None, name=dataset_name, grid=None, fold
                   biascorrection=None, lxarray=True, lgeoref=True, lmonthly=False, 
                   chunks=None, time_chunks=1, geoargs=None, **kwargs):
     ''' function to load gridded monthly transient SnoDAS data '''
-    # remove some commong arguments that have no meaning
-    for key in ('resolution',):
-        if key in kwargs: del kwargs[key]
     # resolve filename strings
     grid_str = '_'+grid if grid else ''
     if biascorrection is None and 'resolution' in kwargs: biascorrection = kwargs['resolution'] # allow backdoor
     bc_str = biascorrection+'_' if biascorrection else ''
+    # remove some common arguments that have no meaning
+    for key in ('resolution',):
+        if key in kwargs: del kwargs[key]
     if lxarray: 
         ## load as xarray dataset
         if chunks is None and grid is None:
@@ -478,7 +478,9 @@ def loadSnoDAS_ShpTS(name=dataset_name, title=dataset_name, shape=None, varlist=
         r = relativedelta.relativedelta(startdate, date1979)
         #print(r.years*12+r.months)
         coord = r.years*12+r.months + np.arange(len(time))
-        new_time = Axis(coord=coord, atts=time.atts.copy())
+        atts = time.atts.copy()
+        atts['long_name'] = 'month since 1979-01'
+        new_time = Axis(coord=coord, atts=atts)
         dataset.replaceAxis(new_time, asNC=False)
         
   # return formatted dataset
