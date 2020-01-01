@@ -15,8 +15,7 @@ import numpy.ma as ma
 from collections import OrderedDict
 import types  # needed to bind functions to objects
 import os, gzip # griddef pickles compress well
-try: import pickle as pickle
-except: import pickle
+import pickle
 
 
 # gdal imports

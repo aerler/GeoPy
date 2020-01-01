@@ -207,10 +207,10 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 1 ; ldebug = False # just for tests
+    NP = 2 ; ldebug = False # just for tests
 #     modes = ('climatology','time-series') # 'climatology','time-series'
-#     modes = ('climatology',) # 'climatology','time-series'
-    modes = ('time-series',) # 'climatology','time-series'
+    modes = ('climatology',) # 'climatology','time-series'
+#     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
 #     varlist = ['precip']
@@ -228,10 +228,10 @@ if __name__ == '__main__':
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
     lLTM = True; lchkres = True # also regrid the long-term mean climatologies 
-#     datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
-#     resolutions['NRCan'] = ['na12_ephemeral','na12_maritime','na12_prairies','na12_taiga','na12_alpine',]
+    datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
+    resolutions['NRCan'] = ['na12_ephemeral','na12_maritime','na12_prairies','na12_taiga','na12_alpine',][1:2]
 #     datasets = ['NRCan']; lLTM = False; periods = [(1970,2000),]; resolutions['NRCan'] = ['na12_taiga','na12_alpine',]
-    datasets = ['NRCan']; lLTM = False; lchkres = False; periods = [(1980,2010),]; resolutions['NRCan'] = ['na12_maritime',] # 'na12_taiga','na12_alpine',
+#     datasets = ['NRCan']; lLTM = False; lchkres = False; periods = [(1980,2010),]; resolutions['NRCan'] = ['na12_maritime',] # 'na12_taiga','na12_alpine',
 #     datasets = ['NRCan']; lLTM = False; periods = [(2011,2019),]; lchkres = False; resolutions['NRCan'] = ['na60_precip',]
 #     datasets += ['PRISM','GPCC','PCIC']; lLTM = True; periods = None
 #     datasets += ['PRISM',]; lLTM = True; periods = None
@@ -284,6 +284,7 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]
 #     WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['t-ensemble']
+#     WRF_experiments += ['max-3km', 'max-3km-2100', 'erai-3km']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
 #     WRF_experiments += ['erai-wc2-bugaboo','erai-wc2-rocks']

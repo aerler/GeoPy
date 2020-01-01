@@ -244,7 +244,7 @@ if __name__ == '__main__':
     grid = config['grid']
   else:
 #     NP = 1 ; ldebug = True # just for tests
-    NP = 4 ; ldebug = False # just for tests
+    NP = 1 ; ldebug = False # just for tests
     loverwrite = False
     varlist = None
     WRF_project = 'WesternCanada'
@@ -263,18 +263,18 @@ if __name__ == '__main__':
 #     WRF_experiments = ['g-ens-A','g-ctrl']
 #     WRF_experiments += ['g-ctrl'+tag for tag in ('','-2050','-2100')]
 #     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',]
-#     WRF_experiments += ['max-3km']
+    WRF_experiments += ['max-3km', 'max-3km-2100', 'erai-3km']
 #     WRF_experiments += ['erai-max']
-    WRF_experiments += ['erai-wc2']
+#     WRF_experiments += ['erai-wc2']
     offset = 0 # number of years from simulation start
     periods = [] # not that all periods are handled within one process! 
 #     periods += [1]
 #     periods += [3]
 #     periods += [5]
-    periods += [7] # only for Columbia simulations
+#     periods += [7] # only for Columbia simulations
 #     periods += [9]
 #     periods += [10]
-#     periods += [15]
+    periods += [15]
 #     periods += [30]
 #     domains = 1 # domains to be processed
     domains = None # process all domains

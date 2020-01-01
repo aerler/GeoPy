@@ -274,7 +274,6 @@ class MyFigure(Figure):
             if units and 'UNITS' in fmt:
                 clev_lbls = [fmt.format(clev, UNITS=units) for clev in clevs]
             else:
-                if units and orientation.lower() == 'horizontal': fmt = fmt + units
                 clev_lbls = [fmt.format(clev) for clev in clevs]
             cbar.set_ticklabels(clev_lbls)
     # store axes handle and legend
