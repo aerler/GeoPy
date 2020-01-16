@@ -6,6 +6,28 @@ A module to load different datasets obtained from the Canadian Surface Predictio
 @author: Andre R. Erler, GPL v3
 '''
 
+## some CDO commands to process CaSPAr data
+# 
+# # get timing of commands (with loops)
+# time bash -c 'command' # single quotes; execute in same folder
+# 
+# # ensemble mean for CaLDAS
+# for NC in ensemble_members/*_000.nc; do C=${NC%_000.nc}; D=${C#*/}; echo $D; cdo ensmean ensemble_members/${D}_???.nc ${D}.nc; done
+# 
+# # rename precip variable for experimental CaPA period (before March 2018)
+# for NC in *.nc; do echo $NC; ncrename -v .CaPA_fine_exp_A_PR_SFC,CaPA_fine_A_PR_SFC -v .CaPA_fine_exp_A_CFIA_SFC,CaPA_fine_A_CFIA_SFC $NC; done
+# 
+# # reproject rotated pole grid to custom grid 
+# # the CDO grid definition for a Lambert conic conformal projection is stored here:
+# lcc_snw_griddef.txt
+# 
+# # single execution (execute in source folder, write to target folder '../lcc_snw/')
+# cdo remapbil,../lcc_snw/lcc_snw_griddef.txt data.nc ../lcc_snw/data.nc
+# 
+# # paralel execution using GNU Parallel (execute in source folder, write to target folder '../lcc_snw/')
+# time ls -1 *.nc | parallel -j 6 --colsep '\t' cdo remapbil,../lcc_snw/lcc_snw_griddef.txt {1} ../lcc_snw/{1} :::: -
+
+
 # external imports
 import datetime as dt
 import pandas as pd
