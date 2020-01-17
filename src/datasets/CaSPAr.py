@@ -104,8 +104,14 @@ dataset_attributes = dict(CaSPAr = DSNT(name='CaSPAr',interval='6H', start_date=
                           CaLDAS = DSNT(name='CaLDAS',interval='6H', start_date='2017-05-23T00', end_date=end_date,
                                         varatts=caldas_varatts, ignore_list=caldas_ignore_list),
                           HRDPS  = DSNT(name='HRDPS', interval='6H', start_date='2017-05-22T00', end_date=end_date,
-                                        varatts=NotImplemented, ignore_list=NotImplemented),)
+                                        varatts=dict(), ignore_list=[]),)
 # N.B.: the effective start date for CaPA and all the rest is '2017-09-11T12'
+default_dataset_index = dict(precip='CaPA', snow='CaLDAS')
+for dataset,attributes in dataset_attributes.items():
+    for varatts in attributes.varatts.values():
+        varname = varatts['name']
+        if varname not in default_dataset_index: 
+            default_dataset_index[varname] = dataset 
 
 
 ## load functions
@@ -198,6 +204,42 @@ def loadCaSPAr_Raw(dataset=None, filelist=None, folder=raw_folder, grid=None, pe
     return xds
 
 
+def loadCaSPAr_6hourly(varname=None, varlist=None, dataset_index=None, folder=folder_6hourly, 
+                       grid=None, biascorrection=None, lxarray=True, **kwargs):
+    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
+    if not lxarray: 
+        raise NotImplementedError("Only loading via xarray is currently implemented.")
+    if varname and varlist: raise ValueError(varname,varlist)
+    elif varname: varlist = [varname]
+    elif varlist is None: varlist = caspar_varatts.keys()
+    # check dataset time intervals/timesteps
+    if dataset_index is None: dataset_index = default_dataset_index.copy()
+    for varname in varlist:
+        dataset = dataset_index.get(varname,'CaSPAr')
+        interval = dataset_attributes[dataset].interval
+        if interval != '6H': 
+            raise ValueError(varname,dataset,interval)
+    # load variables
+    if biascorrection is None and 'resolution' in kwargs: biascorrection = kwargs['resolution'] # allow backdoor
+    if len(varlist) == 1:
+        varname = varlist[0]
+        # load a single variable
+        dataset = dataset_index.get(varname,'CaSPAr')
+        if biascorrection : dataset = '{}_{}'.format(dataset,biascorrection) # append bias correction method
+        filepath = '{}/{}'.format(folder,filename_6hourly.format(DS=dataset,VAR=varname, GRD=grid))
+        xds = xr.open_dataset(filepath, **kwargs)
+    else:
+        # load multifile dataset (variables are in different files)
+        filepaths = []
+        for varname in varlist:
+            dataset = dataset_index.get(varname,'CaSPAr')
+            if biascorrection : dataset = '{}_{}'.format(dataset,biascorrection) # append bias correction method
+            filename = filename_6hourly.format(DS=dataset,VAR=varname, GRD=grid)  
+            filepaths.append('{}/{}'.format(folder,filename))
+        xds = xr.open_mfdataset(filepaths, **kwargs)
+        #xds = xr.merge([xr.open_dataset(fp, chunks=chunks, **kwargs) for fp in filepaths])    
+    return xds
+
 
 ## abuse for testing
 if __name__ == '__main__':
@@ -217,16 +259,36 @@ if __name__ == '__main__':
 #   dask.set_options(pool=ThreadPool(4))
 
   modes = []
-  modes += ['compute_variables']  
+#   modes += ['compute_variables']  
+  modes += ['load_6hourly']
 #   modes += ['load_raw']
 #   modes += ['fix_dataset']
 #   modes += ['test_georef']  
-  
+
+  # some settings  
+  grid = 'lcc_snw'
+  period = ('2017-09-11T12','2019-12-30T12')
   
   # loop over modes 
   for mode in modes:
     
-    if mode == 'compute_variables':
+                             
+    if mode == 'load_6hourly':
+       
+  #       varlist = netcdf_varlist
+        varlist = ['liqwatflx','precip','snow']
+        varname = varlist[0]
+        xds = loadCaSPAr_6hourly(varlist=varlist, grid=grid)
+        print(xds)
+        print('')
+        xv = xds[varname]
+        xv = xv.loc['2018-01-01':'2018-02-01',35:45,10:20]
+  #       xv = xv.loc['2011-01-01',:,:]
+        print(xv)
+        print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
+  
+    
+    elif mode == 'compute_variables':
        
         tic = time.time()
         
@@ -241,8 +303,6 @@ if __name__ == '__main__':
         # settings
         ts_name = 'time'
 #         period = ('2019-11-11T12','2019-12-01T12')
-        period = ('2017-09-11T12','2019-12-30T12')
-        grid = 'lcc_snw'
         folder = folder_6hourly # CaSPAr/caspar_6hourly/
         
         # load multi-file dataset (no time slicing necessary)        
@@ -324,12 +384,14 @@ if __name__ == '__main__':
         toc = time.time()
         print(toc-tic)
         
-                             
+  
     elif mode == 'load_raw':
        
         tic = time.time()
-        xds = loadCaSPAr_Raw(dataset='CaLDAS', grid='lcc_snw', #drop_variables=['confidence','test'],
-                             period=('2019-11-11T12','2019-12-01T12'), lcheck_files=True,
+        xds = loadCaSPAr_Raw(dataset='CaLDAS', 
+                             period=period, grid=grid,
+#                              grid='lcc_snw', #drop_variables=['confidence','test'],
+#                              period=('2019-11-11T12','2019-12-01T12'), lcheck_files=True,
 #                               filelist='2016??????.nc',
 #                               period=('2018-03-03T00','2019-12-30T12'), lcheck_files=True,
 #                               period=('2017-09-11T12','2019-12-30T12'), lcheck_files=True,
@@ -358,14 +420,14 @@ if __name__ == '__main__':
         dataset = 'CaPA' 
 #         dataset = 'CaLDAS'
 #         dataset = 'HRDPS'
-        grid = 'snw_rotpol'
+        src_grid = 'snw_rotpol'
         ds_atts = dataset_attributes[dataset]
         lmissing = (dataset == 'CaPA') # for CaPA set to missing, for others persist
         missing_value = np.NaN
         grid_mapping_list = ['rotated_pole']
         reference_file = None
         
-        folder = raw_folder.format(DS=dataset, GRD=grid)
+        folder = raw_folder.format(DS=dataset, GRD=src_grid)
         os.chdir(folder)
         with open('missing_files.txt',mode='a',newline='\n') as missing_record:
             # loop over dates
@@ -442,7 +504,7 @@ if __name__ == '__main__':
         from pyproj import Proj, transform
       
         # load single time-step
-        xds = loadCaSPAr_Raw(dataset='CaPA', grid='lcc_snw', period='2018-09-11T12', 
+        xds = loadCaSPAr_Raw(dataset='CaPA', grid=grid, period=period[1], 
                              lcheck_files=True, lgeoref=True)
         print(xds)
 #         # proj4 definition for rotated pole (does not work...)
