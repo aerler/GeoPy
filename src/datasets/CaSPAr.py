@@ -79,6 +79,40 @@ caldas_varatts = dict(CaLDAS_P_DN_SFC = dict(name='rho_snw', units='kg/m^3', sca
                       snow = dict(name='snow',  units='kg/m^2', scalefactor=1., long_name='Snow Water Equivalent'),)
 caldas_varlist = caldas_varatts.keys()
 caldas_ignore_list = ['CaLDAS_P_I2_SFC','CaLDAS_P_SD_Glacier','CaLDAS_A_SD_Veg','CaLDAS_P_SD_OpenWater','CaLDAS_P_SD_IceWater']
+# HRDPS
+hrdps_varatts = dict(HRDPS_P_TT_10000 = dict(name='T2', units='K', offset=273.15, long_name='2 m Temperature'),
+                     HRDPS_P_HU_10000 = dict(name='Q2', units='kg/kg', long_name='2 m Specific Humidity'),
+                     HRDPS_P_UU_10000 = dict(name='U2', units='m/s', scalefactor=1852./3600., long_name='2 m Zonal Wind'),
+                     HRDPS_P_VV_10000 = dict(name='V2', units='m/s', scalefactor=1852./3600., long_name='2 m Meridional Wind'),
+                     HRDPS_P_GZ_10000 = dict(name='zs', units='m', scalefactor=10., long_name='Surface Geopotential'),
+                     HRDPS_P_FB_SFC = dict(name='DNSW', units='W/m^2', long_name='Downward Solar Radiation'),
+                     HRDPS_P_FI_SFC = dict(name='DNLW', units='W/m^2', long_name='Downward Longwave Radiation'),
+                     HRDPS_P_PN_SFC = dict(name='mslp', units='Pa', scalefactor=100., long_name='Sea-level Pressure'),
+                     HRDPS_P_P0_SFC = dict(name='ps', units='Pa', scalefactor=100., long_name='Surface Pressure'),
+                     HRDPS_P_TM_SFC = dict(name='SST', units='K', long_name='Sea Surface Temperature'),
+                     HRDPS_P_GL_SFC = dict(name='seaice', units='', long_name='Sea Ice Fraction'),
+                     HRDPS_P_DN_SFC = dict(name='rho_snw', units='kg/m^3', scalefactor=1, long_name='Snow Density'),
+                     HRDPS_P_SD_Avg = dict(name='snowh', units='m', scalefactor=0.01, long_name='Snow Depth'),
+                     # derived variables
+                     Rn     = dict(name='Rn',    units='W/m^2', long_name='Net Surface Radiation'),
+                     e_def  = dict(name='e_def', units='Pa', long_name='Saturation Deficit'),
+                     e_vap  = dict(name='e_vap', units='Pa', long_name='Water Vapor Pressure'),
+                     RH     = dict(name='RH',    units='', long_name='Relative Humidity'),
+                     delta  = dict(name='delta', units='Pa/K', long_name='Saturation Slope'),
+                     u2     = dict(name='u2',    units='m/s', long_name='2 m Wind Speed'),
+                     gamma  = dict(name='gamma', units='Pa/K', long_name='Psychometric Constant'),
+                     pet_dgu = dict(name='pet_dgu', units='Pa/K', long_name='PET Denominator'),
+                     pet_rad = dict(name='pet_rad', units='kg/m^2/s', long_name='PET Radiation Term'),
+                     pet_wnd = dict(name='pet_wnd', units='kg/m^2/s', long_name='PET Wind Term'),
+                     snow  = dict(name='snow',  units='kg/m^2', long_name='Snow Water Equivalent'),) 
+hrdps_varlist = caldas_varatts.keys()
+hrdps_ignore_list = ['HRDPS_P_I2_SFC','HRDPS_P_SD_Glaciers','HRDPS_P_SD_Veg','HRDPS_P_SD_OpenWater','HRDPS_P_SD_IceWater', # from CaLDAS (snow); similar, but not identical
+                     'HRDPS_P_PT_SFC','HRDPS_P_LA_SFC','HRDPS_P_LO_SFC', # empty variables
+                     'HRDPS_P_FSF_SFC', 'HRDPS_P_FSD_SFC', # diffuse/direct radiation
+                     'HRDPS_P_N0_SFC','HRDPS_P_RN_SFC','HRDPS_P_PR_SFC','HRDPS_P_AV_SFC',  # water fluxes
+                     'HRDPS_P_TT_09950','HRDPS_P_HU_09950','HRDPS_P_GZ_09950', # upper levels (40m)
+                     'HRDPS_P_VVC_09950','HRDPS_P_VV_09950','HRDPS_P_UU_09950','HRDPS_P_UUC_09950', # upper levels (40m)
+                     'HRDPS_P_VVC_10000','HRDPS_P_UUC_10000'] # geographically corrected winds
 
 # settings for NetCDF-4 files
 avgfolder = root_folder + dataset_name.lower()+'avg/' 
@@ -104,7 +138,7 @@ dataset_attributes = dict(CaSPAr = DSNT(name='CaSPAr',interval='6H', start_date=
                           CaLDAS = DSNT(name='CaLDAS',interval='6H', start_date='2017-05-23T00', end_date=end_date,
                                         varatts=caldas_varatts, ignore_list=caldas_ignore_list),
                           HRDPS  = DSNT(name='HRDPS', interval='6H', start_date='2017-05-22T00', end_date=end_date,
-                                        varatts=dict(), ignore_list=[]),)
+                                        varatts=hrdps_varatts, ignore_list=hrdps_ignore_list),)
 # N.B.: the effective start date for CaPA and all the rest is '2017-09-11T12'
 default_dataset_index = dict(precip='CaPA', snow='CaLDAS')
 for dataset,attributes in dataset_attributes.items():
@@ -185,8 +219,10 @@ def loadCaSPAr_Raw(dataset=None, filelist=None, folder=raw_folder, grid=None, pe
             var = xds.variables[varname]
             atts = atts.copy() # because we will pop scalefactor...
             if var.attrs['units'] != atts['units']:
-                if atts['scalefactor'] != 1:
+                if 'scalefactor' in atts and atts['scalefactor'] != 1:
                     var *= atts['scalefactor'] # this should execute lazily...
+                if 'offset' in atts and atts['offset'] != 0:
+                    var += atts['offset'] # this should execute lazily...
             atts.pop('scalefactor',None)
             attrs = var.attrs.copy()
             attrs.update(atts)
@@ -205,7 +241,7 @@ def loadCaSPAr_Raw(dataset=None, filelist=None, folder=raw_folder, grid=None, pe
 
 
 def loadCaSPAr_6hourly(varname=None, varlist=None, dataset_index=None, folder=folder_6hourly, 
-                       grid=None, biascorrection=None, lxarray=True, **kwargs):
+                       grid=None, biascorrection=None, lxarray=True, time_chunks=None, **kwargs):
     ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
     if not lxarray: 
         raise NotImplementedError("Only loading via xarray is currently implemented.")
@@ -239,7 +275,7 @@ def loadCaSPAr_6hourly(varname=None, varlist=None, dataset_index=None, folder=fo
         xds = xr.open_mfdataset(filepaths, **kwargs)
         #xds = xr.merge([xr.open_dataset(fp, chunks=chunks, **kwargs) for fp in filepaths])    
     return xds
-
+loadHourlyTimeSeries = loadCaSPAr_6hourly
 
 ## abuse for testing
 if __name__ == '__main__':
@@ -259,8 +295,8 @@ if __name__ == '__main__':
 #   dask.set_options(pool=ThreadPool(4))
 
   modes = []
-#   modes += ['compute_variables']  
-  modes += ['load_6hourly']
+#   modes += ['load_6hourly']
+  modes += ['compute_variables']  
 #   modes += ['load_raw']
 #   modes += ['fix_dataset']
 #   modes += ['test_georef']  
@@ -292,17 +328,25 @@ if __name__ == '__main__':
        
         tic = time.time()
         
+        # HRDPS variable lists
+        first_derived = ['Rn', 'e_def', 'e_vap', 'RH', 'delta', 'u2', 'gamma', 'T2']
+        second_derived = ['pet_dgu', 'pet_rad', 'pet_wnd',]
+        
         # compute variable list
 #         load_variables = dict(CaPA=['precip']); compute_variables = dict(CaPA=['precip'])
 #         load_variables = dict(CaLDAS=['snowh','rho_snw']); compute_variables = dict(CaLDAS=['snow'])
-        load_variables = dict(CaLDAS=['snowh','rho_snw'], CaPA=['precip'])
-        compute_variables = dict(CaSPAr=['liqwatflx'])
+#         load_variables = dict(CaLDAS=['snowh','rho_snw'], CaPA=['precip'])
+#         compute_variables = dict(CaSPAr=['liqwatflx'])
+        load_variables = dict(HRDPS=None) # all
+#         compute_variables = dict(HRDPS=['gamma','T2'])
+        compute_variables = dict(HRDPS=['Rn'])    
+            
         drop_variables = 'default' # special keyword
         reference_dataset = next(iter(load_variables)) # just first dataset...
         
         # settings
         ts_name = 'time'
-#         period = ('2019-11-11T12','2019-12-01T12')
+        #period = ('2019-08-19T00','2019-08-19T06')
         folder = folder_6hourly # CaSPAr/caspar_6hourly/
         
         # load multi-file dataset (no time slicing necessary)        
@@ -315,11 +359,14 @@ if __name__ == '__main__':
         tsvar = ref_ds[ts_name].load()
 #         print(tsvar)
         
+        print("\n\n   ***   Computing Derived Variables   ***   ")
         # loop over variables: compute and save to file
         for dataset,varlist in compute_variables.items():
             for varname in varlist:
               
+                print('\n\n   ---   {} ({})   ---\n'.format(varname,dataset))
                 note = 'derived variable'
+                nvar = None
                 # compute variable
                 if dataset == 'CaSPAr':
                     # derived variables 
@@ -344,28 +391,45 @@ if __name__ == '__main__':
                         ref_var = ref_ds['snowh']
                         note = 'snow depth x density'
                         nvar = ref_ds['rho_snw'] * ref_ds['snowh']   
-                elif dataset in datasets:
-                    # generic operation
+                elif dataset == 'HRDPS':
                     ref_ds = datasets[dataset]
-                    if varname in ref_ds:
-                        # generic copy
-                        ref_var = ref_ds[varname]
-                        nvar = ref_ds[varname].copy()
+                    # derived HRDPS
+                    if varname == 'gamma':
+                        # psychometric constant
+                        ref_var = ref_ds['ps']
+                        note = '665.e-6 * ps'
+                        nvar = 665.e-6 * ref_ds['ps']   
+                    elif varname == 'Rn':
+                        from utils.constants import sig
+                        # net radiation
+                        ref_var = ref_ds['DNSW']
+                        note = '0.23*DNSW + DNLW - 0.93*s*T2**4'
+                        nvar = 0.23*ref_ds['DNSW'] + ref_ds['DNLW']- 0.93*sig*ref_ds['T2']**4
+                
+                # fallback is to copy
+                if nvar is None: 
+                    if dataset in datasets:
+                        # generic operation
+                        ref_ds = datasets[dataset]
+                        if varname in ref_ds:
+                            # generic copy
+                            ref_var = ref_ds[varname]
+                            nvar = ref_ds[varname].copy()
+                        else:
+                            raise NotImplementedError("Variable '{}' not found in dataset '{}'".fomat(varname,dataset))
                     else:
-                        raise NotImplementedError("Variable '{}' not found in dataset '{}'".fomat(varname,dataset))
-                else:
-                    raise NotImplementedError("No method to compute variable '{}' (dataset '{}'".fomat(varname,dataset))
+                        raise NotImplementedError("No method to compute variable '{}' (dataset '{}')".format(varname,dataset))
                 
                 # assign attributes
                 nvar.rename(varname)
                 nvar.attrs = ref_var.attrs.copy()
-                varatts = dataset_attributes[dataset].varatts[varname]
+                for srcname,varatts in dataset_attributes[dataset].varatts.items():
+                    if varatts['name'] == varname: break # use these varatts
                 for att in ('name','units','long_name',):
                     nvar.attrs[att] = varatts[att]
                 nvar.attrs['note'] = note
                 #nvar.chunk(chunks=chunk_settings)
                 
-                print('\n')
                 print(nvar)
                 
                 # save to file            
@@ -382,16 +446,16 @@ if __name__ == '__main__':
         gc.collect()            
         
         toc = time.time()
-        print(toc-tic)
+        print("\n\nOverall Timing:",toc-tic)
         
   
     elif mode == 'load_raw':
        
         tic = time.time()
-        xds = loadCaSPAr_Raw(dataset='CaLDAS', 
-                             period=period, grid=grid,
-#                              grid='lcc_snw', #drop_variables=['confidence','test'],
-#                              period=('2019-11-11T12','2019-12-01T12'), lcheck_files=True,
+        xds = loadCaSPAr_Raw(dataset='HRDPS', 
+#                              period=period, grid=grid,
+                              grid='lcc_snw', #drop_variables=['confidence','test'],
+                              period=('2019-11-11T12','2019-12-01T12'), lcheck_files=True,
 #                               filelist='2016??????.nc',
 #                               period=('2018-03-03T00','2019-12-30T12'), lcheck_files=True,
 #                               period=('2017-09-11T12','2019-12-30T12'), lcheck_files=True,
@@ -407,7 +471,7 @@ if __name__ == '__main__':
         assert dt.min() == dt.max() == 6, (dt.min(),dt.max())
 #         xv = xds['CaPA_fine_exp_A_PR_SFC']
 #         xv = xv.loc['2016-06-16T06',:,:]
-        varname = 'precip'
+        varname = 'time'
         if varname in xds:
             xv = xds[varname]
             print(xv)
@@ -417,25 +481,48 @@ if __name__ == '__main__':
       
     elif mode == 'fix_dataset':
         
-        dataset = 'CaPA' 
+        lmissing = False # efault is to persist
+        ref_delay = 1
+#         dataset = 'CaPA'; lmissing = True # precip can just 'no happen'
 #         dataset = 'CaLDAS'
-#         dataset = 'HRDPS'
+        dataset = 'HRDPS'; ref_delay = 4 # diurnal cycle
         src_grid = 'snw_rotpol'
-        ds_atts = dataset_attributes[dataset]
-        lmissing = (dataset == 'CaPA') # for CaPA set to missing, for others persist
+        ds_atts = dataset_attributes[dataset]        
         missing_value = np.NaN
         grid_mapping_list = ['rotated_pole']
-        reference_file = None
+        ref_varlen = None; ref_size = None
+        damaged_folder = 'damaged_files/'
         
         folder = raw_folder.format(DS=dataset, GRD=src_grid)
         os.chdir(folder)
         with open('missing_files.txt',mode='a',newline='\n') as missing_record:
             # loop over dates
             date_list = pd.date_range(start=ds_atts.start_date,end=ds_atts.end_date,freq=ds_atts.interval)
-            for date in date_list:
+            for i,date in enumerate(date_list):
                 
                 filename = netcdf_filename.format(Y=date.year,M=date.month,D=date.day,H=date.hour)
-                # add missing files
+                # construct reference file
+                ref_date = date_list[max(0,i-ref_delay)]
+                reference_file = netcdf_filename.format(Y=ref_date.year,M=ref_date.month,D=ref_date.day,H=ref_date.hour)
+                # identify damaged files by size (will be moved)
+                if ref_size is None:
+                    ref_size = os.path.getsize(filename)/2. # first file has to exist!                
+                    with nc.Dataset(filename, mode='a') as ds:
+                        ref_varlen = len(ds.variables)
+                if osp.exists(filename) and os.path.getsize(filename) < ref_size:
+                    # count variables
+                    with nc.Dataset(filename, mode='a') as ds:
+                        varlen = len(ds.variables)
+                    if ref_varlen is None:
+                        ref_varlen = varlen
+                    elif ref_varlen < varlen:
+                        raise ValueError("Additional variables detected in file '{}' - check reference file.".format(filename))
+                    elif ref_varlen > varlen:
+                        # move to separate folder
+                        os.makedirs(damaged_folder, exist_ok=True)
+                        print(filename,'->',damaged_folder)
+                        shutil.move(filename, damaged_folder)                        
+                # add missing (and damaged) files
                 if not osp.exists(filename):
                     # add to record
                     print(filename)
@@ -490,7 +577,7 @@ if __name__ == '__main__':
                         elif varname == 'time':
                             if 'coordinates' in variable.ncattrs(): variable.delncattr('coordinates')
                             if 'grid_mapping' in variable.ncattrs(): variable.delncattr('grid_mapping')
-                reference_file = filename # use file as reference for next step
+
         
         ## N.B.: in order to concatenate the entire time series of experimental and operational high-res CaPA data,
         #  we need to rename the variables in the experimental files using the following command (and a loop):
