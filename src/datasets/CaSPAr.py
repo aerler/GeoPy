@@ -104,6 +104,7 @@ hrdps_varatts = dict(HRDPS_P_TT_10000 = dict(name='T2', units='K', offset=273.15
                      pet_dgu = dict(name='pet_dgu', units='Pa/K', long_name='PET Denominator'),
                      pet_rad = dict(name='pet_rad', units='kg/m^2/s', long_name='PET Radiation Term'),
                      pet_wnd = dict(name='pet_wnd', units='kg/m^2/s', long_name='PET Wind Term'),
+                     pet   = dict(name='pet', units='kg/m^2/s', long_name='Potential Evapotranspiration'),
                      snow  = dict(name='snow',  units='kg/m^2', long_name='Snow Water Equivalent'),) 
 hrdps_varlist = caldas_varatts.keys()
 hrdps_ignore_list = ['HRDPS_P_I2_SFC','HRDPS_P_SD_Glaciers','HRDPS_P_SD_Veg','HRDPS_P_SD_OpenWater','HRDPS_P_SD_IceWater', # from CaLDAS (snow); similar, but not identical
@@ -127,7 +128,6 @@ raw_folder = root_folder + '{DS:s}/{GRD:s}/'
 netcdf_filename = '{Y:04d}{M:02d}{D:02d}{H:02d}.nc' # original source file
 
 # list of available datasets/collections
-dataset_list = ['CaPA','CaLDAS','HRDPS']
 DSNT = namedtuple(typename='Dataset', 
                   field_names=['name','interval','start_date','end_date','varatts', 'ignore_list'])
 end_date = '2019-12-30T12'
@@ -139,6 +139,7 @@ dataset_attributes = dict(CaSPAr = DSNT(name='CaSPAr',interval='6H', start_date=
                                         varatts=caldas_varatts, ignore_list=caldas_ignore_list),
                           HRDPS  = DSNT(name='HRDPS', interval='6H', start_date='2017-05-22T00', end_date=end_date,
                                         varatts=hrdps_varatts, ignore_list=hrdps_ignore_list),)
+dataset_list = list(dataset_attributes.keys())
 # N.B.: the effective start date for CaPA and all the rest is '2017-09-11T12'
 default_dataset_index = dict(precip='CaPA', snow='CaLDAS')
 for dataset,attributes in dataset_attributes.items():
@@ -240,39 +241,51 @@ def loadCaSPAr_Raw(dataset=None, filelist=None, folder=raw_folder, grid=None, pe
     return xds
 
 
-def loadCaSPAr_6hourly(varname=None, varlist=None, dataset_index=None, folder=folder_6hourly, 
-                       grid=None, biascorrection=None, lxarray=True, time_chunks=None, **kwargs):
+def loadCaSPAr_6hourly(varname=None, varlist=None, dataset=None, dataset_index=None, folder=folder_6hourly, 
+                       lignore_missing=False, grid=None, biascorrection=None, lxarray=True, time_chunks=None, **kwargs):
     ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
     if not lxarray: 
         raise NotImplementedError("Only loading via xarray is currently implemented.")
     if varname and varlist: raise ValueError(varname,varlist)
     elif varname: varlist = [varname]
-    elif varlist is None: varlist = caspar_varatts.keys()
+    elif varlist is None:
+        if dataset is None:
+            raise ValueError("Please specify a 'dataset' value in order to load a default variable list.\n"
+                             "Supported datasets: {}".format(dataset_list))
+        varlist = dataset_attributes[dataset].varatts.keys()
+        lignore_missing = True
     # check dataset time intervals/timesteps
     if dataset_index is None: dataset_index = default_dataset_index.copy()
     for varname in varlist:
-        dataset = dataset_index.get(varname,'CaSPAr')
-        interval = dataset_attributes[dataset].interval
+        ds_name = dataset_index.get(varname,'CaSPAr')
+        interval = dataset_attributes[ds_name].interval
         if interval != '6H': 
-            raise ValueError(varname,dataset,interval)
+            raise ValueError(varname,ds_name,interval)
     # load variables
     if biascorrection is None and 'resolution' in kwargs: biascorrection = kwargs['resolution'] # allow backdoor
     if len(varlist) == 1:
         varname = varlist[0]
         # load a single variable
-        dataset = dataset_index.get(varname,'CaSPAr')
-        if biascorrection : dataset = '{}_{}'.format(dataset,biascorrection) # append bias correction method
-        filepath = '{}/{}'.format(folder,filename_6hourly.format(DS=dataset,VAR=varname, GRD=grid))
+        ds_name = dataset_index.get(varname,'CaSPAr') if dataset is None else dataset
+        if biascorrection : ds_name = '{}_{}'.format(ds_name,biascorrection) # append bias correction method
+        filepath = '{}/{}'.format(folder,filename_6hourly.format(DS=ds_name,VAR=varname, GRD=grid))
         xds = xr.open_dataset(filepath, **kwargs)
     else:
         # load multifile dataset (variables are in different files)
         filepaths = []
         for varname in varlist:
-            dataset = dataset_index.get(varname,'CaSPAr')
-            if biascorrection : dataset = '{}_{}'.format(dataset,biascorrection) # append bias correction method
-            filename = filename_6hourly.format(DS=dataset,VAR=varname, GRD=grid)  
-            filepaths.append('{}/{}'.format(folder,filename))
-        xds = xr.open_mfdataset(filepaths, **kwargs)
+            ds_name = dataset_index.get(varname,'CaSPAr') if dataset is None else dataset
+            if biascorrection : ds_name = '{}_{}'.format(ds_name,biascorrection) # append bias correction method
+            filename = filename_6hourly.format(DS=ds_name,VAR=varname, GRD=grid)  
+            filepath = '{}/{}'.format(folder,filename)
+            if os.path.exists(filepath):
+                filepaths.append('{}/{}'.format(folder,filename))
+            elif not lignore_missing:
+                raise IOError(filepath)
+#         xds = xr.open_mfdataset(filepaths, combine='by_coords', concat_dim='time', join='right', parallel=True,   
+#                                 data_vars='minimal', compat='override', coords='minimal', **kwargs)
+        xds = xr.open_mfdataset(filepaths, combine='by_coords', concat_dim=None, parallel=True,   
+                                data_vars='minimal', coords='minimal', join='inner', **kwargs)
         #xds = xr.merge([xr.open_dataset(fp, chunks=chunks, **kwargs) for fp in filepaths])    
     return xds
 loadHourlyTimeSeries = loadCaSPAr_6hourly
@@ -312,13 +325,14 @@ if __name__ == '__main__':
     if mode == 'load_6hourly':
        
   #       varlist = netcdf_varlist
-        varlist = ['liqwatflx','precip','snow']
-        varname = varlist[0]
-        xds = loadCaSPAr_6hourly(varlist=varlist, grid=grid)
+        varlist = ['liqwatflx','precip','snow','test']
+        xds = loadCaSPAr_6hourly(varlist=None, grid=grid, dataset='HRDPS', lignore_missing=True)
         print(xds)
         print('')
-        xv = xds[varname]
-        xv = xv.loc['2018-01-01':'2018-02-01',35:45,10:20]
+        for varname,xv in xds.variables.items(): 
+            if xv.ndim == 3: break
+        xv = xds[varname] # get DataArray instead of Variable object
+        xv = xv.sel(time=slice('2018-01-01','2018-02-01'),x=slice(-3500,4500),y=slice(-1000,2000))
   #       xv = xv.loc['2011-01-01',:,:]
         print(xv)
         print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
@@ -328,32 +342,41 @@ if __name__ == '__main__':
        
         tic = time.time()
         
-        # HRDPS variable lists
-        first_derived = ['Rn', 'e_def', 'e_vap', 'RH', 'delta', 'u2', 'gamma', 'T2']
-        second_derived = ['pet_dgu', 'pet_rad', 'pet_wnd',]
-        
         # compute variable list
 #         load_variables = dict(CaPA=['precip']); compute_variables = dict(CaPA=['precip'])
 #         load_variables = dict(CaLDAS=['snowh','rho_snw']); compute_variables = dict(CaLDAS=['snow'])
 #         load_variables = dict(CaLDAS=['snowh','rho_snw'], CaPA=['precip'])
 #         compute_variables = dict(CaSPAr=['liqwatflx'])
         load_variables = dict(HRDPS=None) # all
+        # HRDPS/PET variable lists
 #         compute_variables = dict(HRDPS=['gamma','T2'])
-        compute_variables = dict(HRDPS=['Rn'])    
-            
+#         compute_variables = dict(HRDPS=['Rn', 'e_def', 'delta', 'u2', 'gamma', 'T2']) # 'RH', # first order variables
+#         compute_variables = dict(HRDPS=['pet_dgu', 'pet_rad', 'pet_wnd',]) # second order variables
+        lderived = True
+        derived_valist = ['Rn', 'e_def', 'delta', 'u2', 'gamma', 'T2', 'pet_dgu', 'pet_wnd', 'pet_rad']
+        # second order variables: denominator, radiation and wind terms, PET
+#         compute_variables = dict(HRDPS=['pet_dgu',]) # denominator
+#         compute_variables = dict(HRDPS=['pet_rad','pet_wnd']) # radiation and wind
+#         derived_valist = ['Rn', 'e_def', 'delta', 'u2', 'gamma', 'T2',]
+        compute_variables = dict(HRDPS=['pet']) # only PET
+        
         drop_variables = 'default' # special keyword
         reference_dataset = next(iter(load_variables)) # just first dataset...
         
         # settings
         ts_name = 'time'
-        #period = ('2019-08-19T00','2019-08-19T06')
+#         period = ('2019-08-19T00','2019-08-19T06')
         folder = folder_6hourly # CaSPAr/caspar_6hourly/
         
         # load multi-file dataset (no time slicing necessary)        
         datasets = dict()
         for dataset,varlist in load_variables.items():
-            datasets[dataset] = loadCaSPAr_Raw(dataset=dataset, grid=grid, 
-                                               period=period, drop_variables=drop_variables)
+            if lderived:
+                datasets[dataset] = loadCaSPAr_6hourly(grid=grid, varlist=derived_valist, 
+                                                       dataset=dataset, lignore_missing=True)
+            else:
+                datasets[dataset] = loadCaSPAr_Raw(dataset=dataset, grid=grid, 
+                                                   period=period, drop_variables=drop_variables)
         ref_ds = datasets[reference_dataset]
         print(ref_ds)
         tsvar = ref_ds[ts_name].load()
@@ -366,7 +389,7 @@ if __name__ == '__main__':
               
                 print('\n\n   ---   {} ({})   ---\n'.format(varname,dataset))
                 note = 'derived variable'
-                nvar = None
+                nvar = None; netcdf_dtype = np.dtype('<f4')
                 # compute variable
                 if dataset == 'CaSPAr':
                     # derived variables 
@@ -394,17 +417,79 @@ if __name__ == '__main__':
                 elif dataset == 'HRDPS':
                     ref_ds = datasets[dataset]
                     # derived HRDPS
-                    if varname == 'gamma':
-                        # psychometric constant
-                        ref_var = ref_ds['ps']
-                        note = '665.e-6 * ps'
-                        nvar = 665.e-6 * ref_ds['ps']   
+                    if varname == 'RH':
+                        # relative humidity
+                        ref_var = ref_ds['Q2']
+                        # actual water vapor pressure (from mixing ratio)
+                        e_vap = ref_ds['Q2'] * ref_ds['ps'] * ( 28.96 / 18.02 )
+                        # saturation vapor pressure (for temperature T2; Magnus Formula)
+                        e_sat = 610.8 * np.exp( 17.27 * (ref_ds['T2'] - 273.15) / (ref_ds['T2'] - 35.85) )
+                        note = 'e_vap / e_sat (using Magnus Formula)'
+                        nvar = e_vap / e_sat
+                        del e_sat, e_vap
+                    # first order PET variables
                     elif varname == 'Rn':
                         from utils.constants import sig
                         # net radiation
                         ref_var = ref_ds['DNSW']
                         note = '0.23*DNSW + DNLW - 0.93*s*T2**4'
                         nvar = 0.23*ref_ds['DNSW'] + ref_ds['DNLW']- 0.93*sig*ref_ds['T2']**4
+                        # N.B.: Albedo 0.23 and emissivity 0.93 are approximate average values...
+                    elif varname == 'u2':
+                        # wind speed
+                        ref_var = ref_ds['U2']
+                        note = 'SQRT(U2**2 + V2**2)'
+                        nvar = np.sqrt(ref_ds['U2']**2 + ref_ds['V2']**2) # will still be delayed
+                    elif varname == 'e_def':
+                        # saturation deficit
+                        ref_var = ref_ds['Q2']
+                        # actual water vapor pressure (from mixing ratio)
+                        e_vap = ref_ds['Q2'] * ref_ds['ps'] * ( 28.96 / 18.02 )
+                        # saturation vapor pressure (for temperature T2; Magnus Formula)
+                        e_sat = 610.8 * np.exp( 17.27 * (ref_ds['T2'] - 273.15) / (ref_ds['T2'] - 35.85) )
+                        note = 'e_sat - e_vap (using Magnus Formula)'
+                        nvar = e_sat - e_vap
+                        del e_sat, e_vap
+                    # PET helper variables (still first order)
+                    elif varname == 'delta':
+                        # slope of saturation vapor pressure (w.r.t. temperature T2; Magnus Formula)
+                        ref_var = ref_ds['T2']
+                        note = 'd(e_sat)/dT2 (using Magnus Formula)'
+                        nvar = 4098 * ( 610.8 * np.exp( 17.27 * (ref_ds['T2'] - 273.15) / (ref_ds['T2'] - 35.85) ) ) / (ref_ds['T2'] - 35.85)**2
+                    elif varname == 'gamma':
+                        # psychometric constant
+                        ref_var = ref_ds['ps']
+                        note = '665.e-6 * ps'
+                        nvar = 665.e-6 * ref_ds['ps']   
+                    # second order PET variables (only depend on first order variables and T2)
+                    elif varname == 'pet_dgu':
+                        # common denominator for PET calculation
+                        ref_var = ref_ds['delta']
+                        note = '( D + g * (1 + 0.34 * u2) ) * 86400'
+                        nvar = ( ref_ds['delta'] + ref_ds['gamma'] * (1 + 0.34 * ref_ds['u2']) ) * 86400
+                    elif varname == 'pet_rad':
+                        # radiation term for PET calculation
+                        ref_var = ref_ds['Rn']
+                        note = '0.0352512 * D * Rn / Dgu'
+                        nvar = 0.0352512 * ref_ds['delta'] * ref_ds['Rn'] / ref_ds['pet_dgu']
+                    elif varname == 'pet_wnd':
+                        # wind/vapor deficit term for PET calculation
+                        ref_var = ref_ds['u2']
+                        note = 'g * u2 * (es - ea) * 0.9 / T / Dgu'
+                        nvar = ref_ds['gamma'] * ref_ds['u2'] * ref_ds['e_def'] * 0.9 / ref_ds['T2'] / ref_ds['pet_dgu']
+                    elif varname == 'pet':
+                        if 'pet_rad' in ref_ds and 'pet_wnd' in ref_ds:
+                            # full PET from individual terms
+                            ref_var = ref_ds['pet_rad']
+                            note = 'Penman-Monteith (pet_rad + pet_wnd)'
+                            nvar = ref_ds['pet_rad'] + ref_ds['pet_wnd']
+                        else:
+                            # or PET from original derived variables (no terms)
+                            ref_var = ref_ds['Rn']
+                            note = 'Penman-Monteith from derived variables'
+                            nvar = ( 0.0352512 * ref_ds['delta'] * ref_ds['Rn'] + ( ref_ds['gamma'] * ref_ds['u2'] * ref_ds['e_def'] * 0.9 / ref_ds['T2'] ) ) / ( ref_ds['delta'] + ref_ds['gamma'] * (1 + 0.34 * ref_ds['u2']) ) / 86400
+                    
+                        
                 
                 # fallback is to copy
                 if nvar is None: 
@@ -420,6 +505,7 @@ if __name__ == '__main__':
                     else:
                         raise NotImplementedError("No method to compute variable '{}' (dataset '{}')".format(varname,dataset))
                 
+                nvar = nvar.astype(netcdf_dtype)
                 # assign attributes
                 nvar.rename(varname)
                 nvar.attrs = ref_var.attrs.copy()
