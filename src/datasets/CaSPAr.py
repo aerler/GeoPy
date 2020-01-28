@@ -31,19 +31,14 @@ A module to load different datasets obtained from the Canadian Surface Predictio
 # external imports
 import datetime as dt
 import pandas as pd
-import os, gzip
+import os
 import os.path as osp
 import numpy as np
 import netCDF4 as nc # netCDF4-python module
 import xarray as xr
-from warnings import warn
 from collections import namedtuple
 # internal imports
-from geodata.misc import name_of_month, days_per_month
-from utils.nctools import add_coord, add_var
-from datasets.common import getRootFolder, loadObservations
-from geodata.gdal import GridDefinition, addGDALtoDataset, grid_folder
-from geodata.netcdf import DatasetNetCDF
+from datasets.common import getRootFolder
 # for georeferencing
 from geospatial.xarray_tools import addGeoReference, readCFCRS
 
@@ -295,8 +290,7 @@ if __name__ == '__main__':
   
   import dask, time, gc, shutil
   
-  #print('xarray version: '+xr.__version__+'\n')
-  xr.set_options(keep_attrs=True)
+  print('xarray version: '+xr.__version__+'\n')
         
 
 #   from dask.distributed import Client, LocalCluster
@@ -349,11 +343,11 @@ if __name__ == '__main__':
 #         compute_variables = dict(CaSPAr=['liqwatflx'])
         load_variables = dict(HRDPS=None) # all
         # HRDPS/PET variable lists
-#         compute_variables = dict(HRDPS=['gamma','T2'])
-#         compute_variables = dict(HRDPS=['Rn', 'e_def', 'delta', 'u2', 'gamma', 'T2']) # 'RH', # first order variables
-#         compute_variables = dict(HRDPS=['pet_dgu', 'pet_rad', 'pet_wnd',]) # second order variables
         lderived = True
         derived_valist = ['Rn', 'e_def', 'delta', 'u2', 'gamma', 'T2', 'pet_dgu', 'pet_wnd', 'pet_rad']
+#         compute_variables = dict(HRDPS=['Rn',]); lderived = False
+#         compute_variables = dict(HRDPS=['Rn', 'e_def', 'delta', 'u2', 'gamma', 'T2']) # 'RH', # first order variables
+#         compute_variables = dict(HRDPS=['pet_dgu', 'pet_rad', 'pet_wnd',]) # second order variables
         # second order variables: denominator, radiation and wind terms, PET
 #         compute_variables = dict(HRDPS=['pet_dgu',]) # denominator
 #         compute_variables = dict(HRDPS=['pet_rad','pet_wnd']) # radiation and wind
@@ -433,7 +427,7 @@ if __name__ == '__main__':
                         # net radiation
                         ref_var = ref_ds['DNSW']
                         note = '0.23*DNSW + DNLW - 0.93*s*T2**4'
-                        nvar = 0.23*ref_ds['DNSW'] + ref_ds['DNLW']- 0.93*sig*ref_ds['T2']**4
+                        nvar = (1-0.23)*ref_ds['DNSW'] + ref_ds['DNLW']- 0.93*sig*ref_ds['T2']**4
                         # N.B.: Albedo 0.23 and emissivity 0.93 are approximate average values...
                     elif varname == 'u2':
                         # wind speed

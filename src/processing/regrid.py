@@ -318,7 +318,7 @@ if __name__ == '__main__':
 #     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 #     grids['uph1'] = None # grid for Elisha, 5km
-    grids['hd1'] = None # Hugo's grid for Quebec, 5km
+#     grids['hd1'] = None # Hugo's grid for Quebec, 5km
 #     grids['glb1'] = None # grid for the Great Lakes basin, 5km
 #     grids['on1'] = None # Fraser's grid for SnoDAS (Ontario, 1km)
 #     grids['son1'] = None # grid for southern Ontario, 5km
@@ -331,7 +331,7 @@ if __name__ == '__main__':
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['wc2'] = ('d02',) # new Brian's Columbia domain (Western Canada 2)
 #     grids['wc2'] = ('d01',) # new Brian's Columbia domain (Western Canada 2)
-#     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
+    grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
 #     grids['glb1-90km'] = ('d01',) # 90km GLB domain
 #     grids['glb2'] = ('d01',) # a smaller GLB domain, based on Xiao et al. 2018
