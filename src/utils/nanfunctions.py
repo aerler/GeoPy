@@ -228,7 +228,7 @@ def nanmin(a, axis=None, out=None, keepdims=False):
         # Check for all-NaN axis
         mask = np.all(mask, axis=axis, keepdims=keepdims)
         if np.any(mask):
-            res = _copyto(res, mask, np.nan)
+            res = _copyto(a=res, val=np.nan, mask=mask)
             warnings.warn("All-NaN axis encountered", RuntimeWarning)
 
     # check if keepdims worked, otherwise reshape manually
@@ -334,7 +334,7 @@ def nanmax(a, axis=None, out=None, keepdims=False):
         # Check for all-NaN axis
         mask = np.all(mask, axis=axis, keepdims=keepdims)
         if np.any(mask):
-            res = _copyto(res, mask, np.nan)
+            res = _copyto(a=res, val=np.nan, mask=mask)
             warnings.warn("All-NaN axis encountered", RuntimeWarning)
     
     # check if keepdims worked, otherwise reshape manually
@@ -523,7 +523,7 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=0):
     mask = np.all(mask, axis=axis, keepdims=keepdims)
     tot = np.sum(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
     if np.any(mask):
-        tot = _copyto(tot, np.nan, mask)
+        tot = _copyto(a=tot, val=np.nan, mask=mask)
         warnings.warn("In Numpy 1.9 the sum along empty slices will be zero.",
                       FutureWarning)
 
@@ -757,7 +757,7 @@ def nanvar(a, axis=None, dtype=None, out=None, dof=None, ddof=0, keepdims=False)
 
         # Compute squared deviation from mean.
         arr -= avg
-        arr = _copyto(arr, 0, mask)
+        arr = _copyto(a=arr, val=0, mask=mask)
         if issubclass(arr.dtype.type, np.complexfloating):
             sqr = np.multiply(arr, arr.conj(), out=arr).real
         else:
@@ -776,7 +776,7 @@ def nanvar(a, axis=None, dtype=None, out=None, dof=None, ddof=0, keepdims=False)
         warnings.warn("Degrees of freedom <= 0 for slice.", RuntimeWarning)
         # NaN, inf, or negative numbers are all possible bad
         # values, so explicitly replace them with NaN.
-        var = _copyto(var, np.nan, isbad)
+        var = _copyto(a=var, val=np.nan, mask=isbad)
         
     # check if keepdims worked, otherwise reshape manually
     if keepdims and axis is not None and var.ndim < arr.ndim:
@@ -998,7 +998,7 @@ def nansem(a, axis=None, dtype=None, out=None, dof=None, ddof=0, keepdims=False)
 
         # compute sum of square errors (SSE)
         arr -= avg
-        arr = _copyto(arr, 0, mask)
+        arr = _copyto(a=arr, val=0, mask=mask)
         if issubclass(arr.dtype.type, np.complexfloating):
             sqr = np.multiply(arr, arr.conj(), out=arr).real
         else:
@@ -1021,7 +1021,7 @@ def nansem(a, axis=None, dtype=None, out=None, dof=None, ddof=0, keepdims=False)
         warnings.warn("Degrees of freedom <= 0 for slice.", RuntimeWarning)
         # NaN, inf, or negative numbers are all possible bad
         # values, so explicitly replace them with NaN.
-        sem = _copyto(sem, np.nan, isbad)
+        sem = _copyto(a=sem, val=np.nan, mask=isbad)
         
     # check if keepdims worked, otherwise reshape manually
     if keepdims and axis is not None and sem.ndim < arr.ndim:
