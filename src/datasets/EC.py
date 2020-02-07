@@ -931,22 +931,29 @@ if __name__ == '__main__':
     
     # load pre-processed time-series file
     print('')
-    lloadCRU = True
+    lloadCRU = False; varname = 'MaxPrecip_1d'
 #     dataset = loadEC_TS(filetype='temp', prov='PE').load()
-    dataset = loadEC_StnTS(station='ecprecip', varlist=['MaxSnow_1d','MaxSnow_5d','T2'], lloadCRU=lloadCRU).load()
+#     dataset = loadEC_StnTS(station='ecprecip', varlist=['MaxSnow_1d','MaxSnow_5d','T2'], lloadCRU=lloadCRU).load()
+    dataset = loadEC_StnTS(station='ecprecip', varlist=[varname,'MaxPrecip_5d','T2'], lloadCRU=lloadCRU).load()
     print(dataset)
     print('')
-    print(('ATHABASCA', dataset.station_name.findValues('ATHABASCA')))
+    sn = dataset.station_name.findValues('ATHABASCA')-1
+    print(('ATHABASCA', dataset.station_name[sn]))
     print('')
-    print((dataset.time))
-    print((dataset.time.coord))
-    print((dataset.stn_begin_date.min()))
-    if not lloadCRU:
-      origin = np.ceil(dataset.stn_begin_date.min()*(-1./12.))*12
-      print((dataset.time.coord[origin])) # Jan 1979, the origin of time...
-      assert dataset.time.coord[origin] == 0
-    assert dataset.time.coord[0]%12. == 0
-    assert (dataset.time.coord[-1]+1)%12. == 0
+    print(dataset[varname])
+    print(dataset[varname].max(),dataset[varname].units)
+    print(np.isnan(dataset[varname][:]).sum(),dataset[varname][:].size)
+    print('')
+    print(dataset.filelist)
+#     print((dataset.time))
+#     print((dataset.time.coord))
+#     print((dataset.stn_begin_date.min()))
+#     if not lloadCRU:
+#       origin = np.ceil(dataset.stn_begin_date.min()*(-1./12.))*12
+#       print((dataset.time.coord[origin])) # Jan 1979, the origin of time...
+#       assert dataset.time.coord[origin] == 0
+#     assert dataset.time.coord[0]%12. == 0
+#     assert (dataset.time.coord[-1]+1)%12. == 0
         
   # test station object initialization
   elif mode == 'test_station_object':  

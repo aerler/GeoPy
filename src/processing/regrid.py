@@ -207,9 +207,9 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 2 ; ldebug = False # just for tests
-#     modes = ('climatology','time-series') # 'climatology','time-series'
-    modes = ('climatology',) # 'climatology','time-series'
+    NP = 4 ; ldebug = False # just for tests
+    modes = ('climatology','time-series') # 'climatology','time-series'
+#     modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
     loverwrite = True
     varlist = None
@@ -228,8 +228,8 @@ if __name__ == '__main__':
     resolutions = {'CRU':'','GPCC':['025','05','10','25'],'NARR':'','CFSR':['05','031'],'NRCan':'NA12'}; unity_grid = 'arb2_d02'
     datasets = []
     lLTM = True; lchkres = True # also regrid the long-term mean climatologies 
-    datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
-    resolutions['NRCan'] = ['na12_ephemeral','na12_maritime','na12_prairies','na12_taiga','na12_alpine',][1:2]
+#     datasets += ['NRCan']; lLTM = False; periods = [(1970,2000),(1980,2010)] # NRCan normals period
+#     resolutions['NRCan'] = ['na12_ephemeral','na12_maritime','na12_prairies','na12_taiga','na12_alpine',][1:2]
 #     datasets = ['NRCan']; lLTM = False; periods = [(1970,2000),]; resolutions['NRCan'] = ['na12_taiga','na12_alpine',]
 #     datasets = ['NRCan']; lLTM = False; lchkres = False; periods = [(1980,2010),]; resolutions['NRCan'] = ['na12_maritime',] # 'na12_taiga','na12_alpine',
 #     datasets = ['NRCan']; lLTM = False; periods = [(2011,2019),]; lchkres = False; resolutions['NRCan'] = ['na60_precip',]
@@ -276,12 +276,12 @@ if __name__ == '__main__':
 #     WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
 #     WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
 #     WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
-#     WRF_experiments += ['max-ctrl',     'max-ens-A',     'max-ens-B',     'max-ens-C',]
-#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
-#     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
-#     WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
-#     WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]
-#     WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]
+    WRF_experiments += ['max-ctrl',     'max-ens-A',     'max-ens-B',     'max-ens-C',]
+    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+    WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
+    WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]
+    WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]
 #     WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['t-ensemble']
 #     WRF_experiments += ['max-3km', 'max-3km-2100', 'erai-3km']
@@ -304,8 +304,8 @@ if __name__ == '__main__':
     # other WRF parameters 
 #     domains = (2,) # domains to be processed
     domains = None # process all domains
-    WRF_filetypes = ('xtrm','srfc','lsm','hydro',) # filetypes to be processed
-#     WRF_filetypes = ('hydro',) # filetypes to be processed
+#     WRF_filetypes = ('xtrm','srfc','lsm','hydro',) # filetypes to be processed
+    WRF_filetypes = ('hydro','lsm') # filetypes to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm',) # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); modes = ('time-series',); periods = None
     src_grid = None # grid from which to load the data
@@ -314,7 +314,7 @@ if __name__ == '__main__':
     # grid to project onto
     grids = dict()
 #     grids['arb1'] = None # high-res grid for Athabasca river basin, 1km    
-#     grids['arb2'] = None # high-res grid for Athabasca river basin, 5km    
+    grids['arb2'] = None # high-res grid for Athabasca river basin, 5km    
 #     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 #     grids['uph1'] = None # grid for Elisha, 5km
@@ -331,7 +331,7 @@ if __name__ == '__main__':
 #     grids['wc2'] = ('d02','d01') # new Brian's Columbia domain (Western Canada 2)
 #     grids['wc2'] = ('d02',) # new Brian's Columbia domain (Western Canada 2)
 #     grids['wc2'] = ('d01',) # new Brian's Columbia domain (Western Canada 2)
-    grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
+#     grids['glb1'] = ('d01','d02',) # Marc's/Jon's standard Great Lakes domain
 #     grids['glb1'] = ('d02',) # Marc's standard GLB inner domain
 #     grids['glb1-90km'] = ('d01',) # 90km GLB domain
 #     grids['glb2'] = ('d01',) # a smaller GLB domain, based on Xiao et al. 2018

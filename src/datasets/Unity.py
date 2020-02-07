@@ -212,11 +212,11 @@ if __name__ == '__main__':
 #   grids += ['wcavg']
 #   grids += ['wc2_d01']
 #   grids += ['wc2_d02']
-#   grids += ['arb2_d01']
+  grids += ['arb2_d01']
 #   grids += ['arb2_d02']
-#   grids += ['arb3_d01']
-#   grids += ['arb3_d02']
-#   grids += ['arb3_d03']
+  grids += ['arb3_d01']
+  grids += ['arb3_d02']
+  grids += ['arb3_d03']
 #   grids += ['glb1_d01']
 #   grids += ['glb1_d02']
 #   grids += ['grw2']
@@ -240,7 +240,7 @@ if __name__ == '__main__':
 #   periods += [(1984,1994)]
 #   periods += [(1989,1994)]
 #   periods += [(1997,1998)]
-#   periods += [(1979,2009)]
+  periods += [(1979,2009)]
 #   periods += [(1949,2009)]
   pntset = 'shpavg'
 #   pntset = 'ecprecip'
@@ -257,11 +257,11 @@ if __name__ == '__main__':
         print('')
         print((dataset.geotransform))
         print((dataset.precip.getArray().mean()))
-        print((dataset.precip.masked))
+        print((dataset.lat2D.masked))
         print('')
         # display
         import pylab as pyl
-        pyl.imshow(np.flipud(dataset.prismmask.getArray()[:,:])) 
+        pyl.imshow(np.flipud(dataset.lat2D.getArray()[:,:])) 
         pyl.colorbar(); pyl.show(block=True)
 
   elif mode == 'test_point_climatology':
@@ -459,7 +459,7 @@ if __name__ == '__main__':
         sink = DatasetNetCDF(folder=avgfolder, filelist=[filename], atts=atts, mode='w')
         # add a few variables that will remain unchanged
         if griddef is not None:
-          for var in [gpcc025.landmask, prism.lon2D, prism.lat2D]:
+          for var in [pcic.lon2D, pcic.lat2D, gpcc025.landmask]:
             var.load(); sink.addVariable(var, asNC=True, copy=True, deepcopy=True); var.unload()
         # add datamasks
         for ds in (prism, pcic):
@@ -531,7 +531,7 @@ if __name__ == '__main__':
         
         # apply higher resolution mask
         if griddef is not None:
-          sink.mask(sink.landmask, maskSelf=False, varlist=None, skiplist=['prismmask','lon2d','lat2d'], invert=False, merge=True)
+          sink.mask(sink.landmask, maskSelf=False, varlist=None, skiplist=['prismmask','pcicmask','lon2D','lat2D'], invert=False, merge=True)
             
         # finalize changes
         sink.sync()     

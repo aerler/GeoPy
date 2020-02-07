@@ -12,8 +12,6 @@ import numpy.ma as ma
 import netCDF4 as nc
 import collections as col
 import os
-try: import pickle as pickle
-except: import pickle
 import osr # from GDAL
 # from atmdyn.properties import variablePlotatts
 from geodata.base import concatDatasets
@@ -208,11 +206,9 @@ class Hydro(FileType):
                      RAINNC       = dict(name='precnc', units='kg/m^2/s'), # grid-scale precipitation rate
                      SFCEVP       = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
                      ACSNOM       = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
-                     POTEVP       = dict(name='pet', units='kg/m^2/s'), # potential evapo-transpiration rate
-                     pet_wrf      = dict(name='pet', units='kg/m^2/s',), # just renaming of old variable
-                     #pet          = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just renaming of old variable
-                     #pet_wrf      = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just rescaling of old variable
+                     POTEVP       = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
                      # N.B.: for some strange reason WRF outputs PET in m/s, rather than kg/m^2/s
+                     pet_wrf      = dict(name='pet', units='kg/m^2/s',), # just renaming of old variable
                      NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
                      LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
                      SolidPrecip  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
@@ -253,11 +249,9 @@ class LSM(FileType):
                      ACSNOM   = dict(name='snwmlt', units='kg/m^2/s'), # snow melting rate 
                      ACSNOW   = dict(name='snwacc', units='kg/m^2/s'), # snow accumulation rate
                      SFCEVP   = dict(name='evap', units='kg/m^2/s'), # actual surface evaporation/ET rate
-                     POTEVP   = dict(name='pet', units='kg/m^2/s'), # potential evapo-transpiration rate
-                     pet_wrf  = dict(name='pet', units='kg/m^2/s', scalefactor=999.70,), # just rescaling of old variable
-                     #pet      = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just renaming of old variable
-                     #pet_wrf  = dict(name='pet_wrf', units='kg/m^2/s', scalefactor=999.70,), # just rescaling of old variable
+                     POTEVP   = dict(name='pet', units='kg/m^2/s', scalefactor=999.70), # potential evapo-transpiration rate
                      # N.B.: for some strange reason WRF outputs PET in m/s, rather than kg/m^2/s
+                     pet_wrf  = dict(name='pet', units='kg/m^2/s',), # just rescaling of old variable
                      SFROFF   = dict(name='sfroff', units='kg/m^2/s'), # surface run-off
                      UDROFF   = dict(name='ugroff', units='kg/m^2/s'), # sub-surface/underground run-off
                      Runoff   = dict(name='runoff', units='kg/m^2/s'), # total surface and sub-surface run-off
@@ -911,8 +905,11 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
 #           dataset.time.coord -= ( t0 - 1 )
 #           dataset.time.offset -= ( t0 - 1 )
       # correct ordinal number of shape (should start at 1, not 0)
-    if lfixPET and 'pet_wrf' in dataset:
-        pet_wrf = dataset['pet_wrf'].load()
+    if lfixPET and ( 'pet_wrf' in dataset or 'pet' in dataset):
+        if 'pet_wrf' in dataset and 'pet' in dataset:
+            raise NotImplementedError("There can only be 'per_wrf' or 'pet' - not both!")
+        elif 'pet' in dataset: pet_wrf = dataset['pet'].load()
+        else: pet_wrf = dataset['pet_wrf'].load()
         assert pet_wrf.units == 'kg/m^2/s', pet_wrf
         if pet_wrf.mean() < 1e-7: 
             warn("WARNING: WRF PET values too low; multiplying by 999.7!")

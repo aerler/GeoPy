@@ -17,13 +17,14 @@ from geodata.misc import isInt, DatasetError
 
 # helper function for loadDatasets (see below)
 def loadDataset(exp, prd, dom, grd, res, filetypes=None, varlist=None, lbackground=True, lWRFnative=True, 
-                lautoregrid=False, WRF_exps=None, CESM_exps=None):
+                lautoregrid=False, WRF_exps=None, CESM_exps=None, unity_grid=None):
   ''' A function that loads a dataset, based on specified parameters '''
   if not isinstance(exp,str): raise TypeError
   if exp[0].isupper():
     if exp == 'Unity': 
       from datasets.Unity import loadUnity
-      ext = loadUnity(resolution=res, period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid)
+      ext = loadUnity(resolution=res, period=prd, grid=grd, varlist=varlist, lautoregrid=lautoregrid, 
+                      unity_grid=unity_grid)
       axt = 'Merged Observations'        
     elif exp == 'NRCan': 
       from datasets.NRCan import loadNRCan
@@ -181,7 +182,7 @@ def checkItemList(itemlist, length, dtype, default=NotImplemented, iterable=Fals
 # function to load a list of datasets/experiments based on names and other common parameters
 def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domains=None, grids=None,
                  resolutions='025', filetypes=None, lbackground=True, lWRFnative=True, ltuple=True, 
-                 lautoregrid=False, WRF_exps=None, CESM_exps=None):
+                 lautoregrid=False, WRF_exps=None, CESM_exps=None, unity_grid=None):
   ''' function to load a list of datasets/experiments based on names and other common parameters '''
   # for load function (below)
   if lbackground and not ltuple: raise ValueError
@@ -248,7 +249,7 @@ def loadDatasets(explist, n=None, varlist=None, titles=None, periods=None, domai
       exp = addPeriodExt(exp, prd)
       ext, axt = loadDataset(exp, prd, dom, grd, res, filetypes=filetypes, varlist=vl, 
                              lbackground=lbackground, lWRFnative=lWRFnative, lautoregrid=lautoregrid,
-                             WRF_exps=WRF_exps, CESM_exps=CESM_exps)
+                             WRF_exps=WRF_exps, CESM_exps=CESM_exps, unity_grid=unity_grid)
       for exp in ext if isinstance(ext,(tuple,list)) else (ext,):
         for var in vl: 
           if var not in exp and var not in ('lon2D','lat2D','landmask','landfrac'): 
@@ -444,7 +445,7 @@ def updateSubplots(fig, mode='shift', **kwargs):
 def addLabel(ax, label=None, loc=1, stroke=False, size=None, prop=None, **kwargs):
   from matplotlib.offsetbox import AnchoredText 
   from matplotlib.patheffects import withStroke
-  from string import lowercase
+  from string import ascii_lowercase
   warn('Deprecated function: use Figure or Axes class methods.')    
   # expand list
   if not isinstance(ax,(list,tuple)): ax = [ax] 
@@ -462,9 +463,9 @@ def addLabel(ax, label=None, loc=1, stroke=False, size=None, prop=None, **kwargs
   at = [] # list of texts
   for i in range(l):
     if label[i] is None:
-      label[i] = '('+lowercase[i]+')'
+      label[i] = '('+ascii_lowercase[i]+')'
     elif isinstance(label[i],int):
-      label[i] = '('+lowercase[label[i]]+')'
+      label[i] = '('+ascii_lowercase[label[i]]+')'
     # create label    
     at.append(AnchoredText(label[i], loc=loc[i], prop=prop, **args))
     ax[i].add_artist(at[i]) # add to axes

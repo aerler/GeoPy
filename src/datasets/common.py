@@ -564,7 +564,7 @@ def selectElements(datasets, axis, testFct=None, master=None, linplace=False, la
   if not callable(testFct) and testFct is not None: raise TypeError(testFct)
   if isinstance(axis, Axis): axis = axis.name
   if not isinstance(axis, str): raise TypeError(axis)
-  if lall and master is not None: raise ArgumentError("The options 'lall' and 'imaster' are mutually exclusive!")
+  if lall and master is not None: raise ArgumentError("The options 'lall' and 'master' are mutually exclusive!")
   # save some ensemble parameters for later  
   lnotest = testFct is None
   lens = isinstance(datasets,Ensemble)
