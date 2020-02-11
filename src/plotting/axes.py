@@ -21,6 +21,7 @@ from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile, 
 from plotting.misc import checkPseudoAxis, expandAxes
 from collections import OrderedDict
 from utils.misc import binedges, expandArgumentList, containerDepth, tabulate
+from utils.signalsmooth import smooth_image
 from geodata.stats import pearsonr
 
 # list of plot arguments that apply only to lines
@@ -51,6 +52,8 @@ class MyAxes(Axes):
   yunits             = None
   ypad               = 2
   yright             = False
+  cname              = None
+  cunits             = None
   figure             = None
   parasite_axes      = None
   axes_shift         = None
@@ -74,17 +77,11 @@ class MyAxes(Axes):
     
   def surfacePlot(self, vards, varname=None, xax=None, yax=None, clim=None, cmap=None, clevs=None, 
                   xlabel=True, ylabel=True, xticks=True, yticks=True, xlim=None, ylim=None,
-                  llabel=True, labels=None, label_ext='', flipxy=None, title=None,
-                  lparasiteMeans=False, parasite_axes=None, xlog=False, ylog=False, clog=False,  
-                  lprint=False, lfracdiff=False, hline=None, vline=None, 
-                  lsmooth=False, lperi=False, lignore=False, aspect=None, norm=None,
-                  lcontour=False, lfilled=True, shading='gouraud', centroids=False,
-                  expand_list=None, lproduct='inner', plotatts=None, **plotargs):
+                  flipxy=None, title=None, xlog=False, ylog=False, clog=False,  
+                  hline=None, vline=None, lperi=False, lignore=False, aspect=None, norm=None, 
+                  lprint=False, lsmooth=False, kernel_n=10,
+                  lcontour=False, lfilled=True, shading='gouraud', centroids=False, **plotargs):
     ''' create contour or pcolor plot of a single variable '''
-    # some options that will be implemented later
-    if lsmooth: raise NotImplementedError
-    if lparasiteMeans: raise NotImplementedError
-    if lperi: raise NotImplementedError
     # get plot variable
     var = checkVarlist(vards, varname=varname, ndim=2, bins=None, support=None, 
                        method=None, lignore=lignore, bootstrap_axis=None)[0]
@@ -102,8 +99,9 @@ class MyAxes(Axes):
         xaxis = checkPseudoAxis(xax, dataset=vards, variable=var, ndim=(1,2),) if xax else var.axes[0]
         yaxis = checkPseudoAxis(yax, dataset=vards, variable=var, ndim=(1,2),) if yax else var.axes[1]
     # get plot values
-    vardata, varunits, varname = getPlotValues(var, checkunits=None, checkname=None, 
-                                               lsmooth=False, lperi=False, laxis=False)
+    if lperi: raise NotImplementedError
+    vardata, varunits, varname = getPlotValues(var, checkunits=None, checkname=None,  lperi=False, laxis=False,
+                                               lsmooth=lsmooth, n=kernel_n, ny=None, mode='same',)
     if lcontour and not lfilled:
         if self.cname is None and self.cunits is None:
             self.cname,self.cunits = varname,varunits # these are the units for color

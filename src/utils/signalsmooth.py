@@ -6,6 +6,50 @@ from: http://scipy.org/Cookbook/SignalSmooth
 
 import numpy as np
 
+class UnmaskAndPad(object):
+    ''' decorator class to preprocess arrays for smoothing '''
+    
+    def __init__(self, smoother):
+        ''' store the smoothign operation we are going to apply '''
+        self.smoother = smoother
+
+    def __call__(self, data, pad_value=0, **kwargs):
+        ''' unmask and pad data, execute smoother, and restore mask '''
+        
+        if not isinstance(data,np.ndarray):
+            raise TypeError(data)
+        
+        # remove mask
+        if isinstance(data, np.ma.masked_array):
+            mask = data.mask; fill_value = data._fill_value
+            data = data.filled(pad_value) # not actually inplace
+        else:
+            mask = None
+        # remove NaN
+        if np.issubdtype(data.dtype, np.inexact):
+            nan_mask = np.isnan(data)
+            data[nan_mask] = pad_value
+            if np.isinf(data).any():
+                raise NotImplementedError("Non-finite values except NaN are currently not handled in smoothing.")
+        else:
+            nan_mask = None
+        
+        # apply smoother
+        data = self.smoother(data, **kwargs)
+        
+        # restore NaN
+        if nan_mask is not None:
+            data[nan_mask] = np.NaN
+        # restore mask
+        if mask is not None:
+            data = np.ma.masked_array(data, mask=mask)
+            data._fill_value = fill_value
+            
+        # return
+        return data              
+      
+
+@UnmaskAndPad
 def smooth(x, window_len=11, window='hanning'):
     """smooth the data using a window with requested size.
     
@@ -76,13 +120,14 @@ def gauss_kern(size, sizey=None):
     g = np.exp(-(x**2/float(size) + y**2/float(sizey)))
     return g / g.sum()
 
-def blur_image(im, n, ny=None) :
+@UnmaskAndPad
+def smooth_image(im, n=10, ny=None, mode='valid') :
     """ blurs the image by convolving with a gaussian kernel of typical
         size n. The optional keyword argument ny allows for a different
         size in the y direction.
     """
     g = gauss_kern(n, sizey=ny)
-    improc = signal.convolve(im, g, mode='valid')
+    improc = signal.convolve(im, g, mode=mode)
     return(improc)
 
 
@@ -131,7 +176,7 @@ if __name__=='__main__':
     # part 2: 2d
     X, Y = np.mgrid[-70:70, -70:70]
     Z = np.cos((X**2+Y**2)/200.)+ np.random.normal(size=X.shape)
-    Z2 = blur_image(Z, 3)
+    Z2 = smooth_image(Z, 3)
     plt.figure()
     plt.imshow(Z)
     plt.figure()

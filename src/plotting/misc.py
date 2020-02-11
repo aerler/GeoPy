@@ -15,7 +15,7 @@ import matplotlib as mpl
 from geodata.base import Variable, Dataset, Ensemble
 from geodata.misc import VariableError, AxisError
 from utils.misc import evalDistVars
-from utils.signalsmooth import smooth # commonly used in conjunction with plotting...
+from utils.signalsmooth import smooth, smooth_image # commonly used in conjunction with plotting...
 
 # import matplotlib as mpl
 # import matplotlib.pylab as pyl
@@ -191,7 +191,7 @@ def checkSample(varlist, varname=None, bins=None, support=None, method='pdf', li
   
 # method to check units and name, and return scaled plot value (primarily and internal helper function)
 def getPlotValues(var, checkunits=None, checkname=None, lsmooth=False, lperi=False,
-                  pseudo_axis=None, laxis=False):
+                  pseudo_axis=None, laxis=False, **kwargs):
   ''' Helper function to check variable/axis, get (scaled) values for plot, and return appropriate units. '''
   # figure out units
   if var.plot is not None: 
@@ -214,7 +214,14 @@ def getPlotValues(var, checkunits=None, checkname=None, lsmooth=False, lperi=Fal
     raise VariableError("Units for variable '{}': expected {}, found {}.".format(var.name,checkunits,varunits) )
   # some post-processing
   if val.size > 1: val = val.squeeze()
-  if lsmooth: val = smooth(val)
+  if lsmooth: 
+      if val.ndim == 1: 
+          val = smooth(val, **kwargs) # should automatically handle NaN and masks
+      if val.ndim == 2:
+          # apply zero-padded convolution with Gaussian kernel (return same size as input)
+          val = smooth_image(val, **kwargs) # should automatically handle NaN and masks
+      else:
+          raise NotImplementedError("Smoothing is not implemented for arrays of dimension '{}'".format(val.ndim))
   if lperi: 
     if laxis: 
       delta = np.diff(val)
