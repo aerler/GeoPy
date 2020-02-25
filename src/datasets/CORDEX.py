@@ -26,6 +26,7 @@ import os.path as osp
 import numpy as np
 import netCDF4 as nc # netCDF4-python module
 import xarray as xr
+from collections import namedtuple
 # internal imports
 from datasets.common import getRootFolder
 from utils.misc import defaultNamedtuple
@@ -82,30 +83,37 @@ dataset_list = list(dataset_attributes.keys())
 
 ## load functions
 
-def loadCORDEX_Raw(dataset=None, varname=None, folder=raw_folder, lgeoref=True,  
-                   domain='NAM-22', aggregation='mon', scenario='historical', 
-                   lxarray=True, lcheck_files=True, lmultifile=None, filelist=None, 
-                   drop_variables=None, varatts=None, aux_varatts=None, **kwargs):
-    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
+def loadCORDEX_RawVar(dataset=None, varname=None, folder=raw_folder, lgeoref=True,  
+                      domain='NAM-22', aggregation='mon', scenario='historical', 
+                      lxarray=True, lcheck_files=True, lmultifile=None, filelist=None, 
+                      drop_variables=None, varatts=None, aux_varatts=None, lraw=False, **kwargs):
+    ''' function to load CORDEX data from NetCDF-4 files using xarray and add some projection information '''
     if not lxarray: 
         raise NotImplementedError("Only loading via xarray is currently implemented.")
     if dataset is None: 
         raise ValueError('Please specify a dataset name ; valid datasets:\n',dataset_list)
-    if dataset not in dataset_list: 
-        raise ValueError("Dataset name '{}' not recognized; valid datasets:\n".format(dataset),dataset_list)
+    if isinstance(dataset,str):
+        if dataset not in dataset_list: 
+            raise ValueError("Dataset name '{}' not recognized; valid datasets:\n".format(dataset),dataset_list)
+    elif not isinstance(dataset,DSNT):
+        raise TypeError(dataset)
     if varname is None: 
         raise ValueError('Please specify a variable name (CF or local convention).')
     # set dataset attriutes
-    ds_atts = dataset_attributes[dataset]
+    if isinstance(dataset,str):
+        ds_atts = dataset_attributes[dataset]
+    else: ds_atts = dataset
     for key,value in kwargs.items():
         if key in ds_atts.__class__.__dict__: ds_atts.__dict__[key] = value # set as instance attribute
     if ds_atts.reanalysis: scenario = 'evaluation' # only one option
     # variable attributes
-    if varatts is None:
+    if lraw:
+        varatts = dict(); varmap = dict() # no translation
+    elif varatts is None:
         varatts = default_varatts; varmap = default_varmap
     else:
         if 'name' in varatts: varmap = dict()
-        else: varmap = {att['name']:vn for vn,att in varatts.itmes()}        
+        else: varmap = {att['name']:vn for vn,att in varatts.items()}        
     if varname in varmap: varname = varmap[varname] # translate varname
     if 'name' in varatts: 
         varatts = varatts.copy() # just a regular varatts dict
@@ -173,7 +181,7 @@ def loadCORDEX_Raw(dataset=None, varname=None, folder=raw_folder, lgeoref=True,
     # actually rename
     varmap = dict()
     for varname,atts in varatts_list:
-        if varname in xds: varmap[varname] = atts['name']  
+        if varname in xds and 'name' in atts: varmap[varname] = atts['name']  
     xds = xds.rename(varmap)
     # add projection
     if lgeoref:
@@ -182,6 +190,51 @@ def loadCORDEX_Raw(dataset=None, varname=None, folder=raw_folder, lgeoref=True,
     # return xarray Dataset
     return xds
 
+def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=raw_folder, lgeoref=True,  
+                   domain='NAM-22', aggregation='mon', scenario='historical', 
+                   lxarray=True, lcheck_files=True, merge_args=None, 
+                   drop_variables=None, varatts=None, aux_varatts=None, lraw=False, **kwargs):
+    ''' wrapper function to load multiple variables '''
+    if varname and varlist: raise ValueError("Can only use either 'varlist' or 'varname'.")
+    elif varname: varlist = [varname]
+#     # translate varnames
+#     if varatts is None: varatts = default_varatts; varmap = default_varmap
+#     else: varmap = {att['name']:vn for vn,att in varatts.itmes()}        
+#     varlist = [varmap.get(varname,varname) for varname in varlist]
+    # figure out dataset attriutes
+    if isinstance(dataset,str):
+        ds_atts = dataset_attributes[dataset]
+    else: ds_atts = dataset
+    for key,value in kwargs.items():
+        if key in ds_atts.__class__.__dict__: ds_atts.__dict__[key] = value # set as instance attribute
+    if ds_atts.reanalysis: scenario = 'evaluation' # only one option        
+    # figure out folder and potential varlist
+    if folder:
+        folder = folder.format(DOM=domain, INS=ds_atts.institute, GCM=ds_atts.GCM, SCR=scenario, RIP=ds_atts.realization,
+                               RCM=ds_atts.RCM, V=ds_atts.version, AGG=aggregation, VAR='', **kwargs)
+        if not osp.exists(folder): raise IOError(folder)
+        if varlist is None:
+            varlist = [varname for varname in os.listdir(folder) if os.path.isdir(os.path.join(folder,varname))]
+        folder += '{VAR:s}/' # will be substituted in single-variable function
+    # loop over variables
+    ds_list = []
+    for varname in varlist:
+        # load variable
+        var_ds = loadCORDEX_RawVar(dataset=ds_atts, varname=varname, folder=folder, lgeoref=False,  
+                                   domain=domain, aggregation=aggregation, scenario=scenario, 
+                                   lxarray=lxarray, lcheck_files=lcheck_files, drop_variables=drop_variables, 
+                                   varatts=varatts, aux_varatts=aux_varatts, lraw=lraw, **kwargs)
+        ds_list.append(var_ds)
+    # add to merged dataset
+    if merge_args is None: merge_args = dict(compat='override')
+    xds = xr.merge(ds_list, **merge_args)
+    # add projection
+    if lgeoref:
+        proj4_string = readCFCRS(xds, lraise=True, lproj4=True)
+        xds = addGeoReference(xds, proj4_string=proj4_string)
+    # return xarray Dataset
+    return xds
+    
 
 
 ## abuse for testing
@@ -202,6 +255,7 @@ if __name__ == '__main__':
 
   modes = []
 #   modes += ['load_timeseries']
+#   modes = ['extract_timeseries']
   modes += ['load_raw']
 #   modes += ['test_georef']  
 
@@ -231,22 +285,24 @@ if __name__ == '__main__':
     elif mode == 'load_raw':
        
         tic = time.time()
-        xds = loadCORDEX_Raw(dataset='ERAI-CRCM5', varname='precip', aggregation='mon',  
-                             lxarray=True, lgeoref=False, lmultifile=None)
+        xds = loadCORDEX_Raw(dataset='ERAI-CRCM5', varlist=None, aggregation='mon', lgeoref=False, lraw=True)
         toc = time.time()
         print(toc-tic)
         print(xds)
+        print('')
+        for name,var in xds.variables.items():
+            print(name,var.attrs.get('long_name',None))
         print('')
         dt = xds['time'].diff(dim='time').values / np.timedelta64(1,'D')
         print('Time Delta (days):', dt.min(),dt.max())
 #         xv = xds['CaPA_fine_exp_A_PR_SFC']
 #         xv = xv.loc['2016-06-16T06',:,:]
-        varname = 'time'
-        if varname in xds:
-            xv = xds[varname]
-            print(xv)
-            print("\nMean value:", xv[:].mean().values, xv.attrs['units'])
-            print(('Size in Memory: {:6.1f} kB'.format(xv.nbytes/1024.)))
+#         varname = 'time'
+#         if varname in xds:
+#             xv = xds[varname]
+#             print(xv)
+#             print("\nMean value:", xv[:].mean().values, xv.attrs['units'])
+#             print(('Size in Memory: {:6.1f} kB'.format(xv.nbytes/1024.)))
     
       
   

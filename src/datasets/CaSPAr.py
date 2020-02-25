@@ -148,7 +148,7 @@ for dataset,attributes in dataset_attributes.items():
 
 def loadCaSPAr_Raw(dataset=None, filelist=None, folder=raw_folder, grid=None, period=None, biascorrection=None,
                    lxarray=True, lgeoref=True, lcheck_files=True, lmultifile=None, drop_variables='default', **kwargs):
-    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
+    ''' function to load CaSPAr data from NetCDF-4 files using xarray and add some projection information '''
     if not lxarray: 
         raise NotImplementedError("Only loading via xarray is currently implemented.")
     if biascorrection: 
