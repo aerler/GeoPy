@@ -26,7 +26,6 @@ import os.path as osp
 import numpy as np
 import netCDF4 as nc # netCDF4-python module
 import xarray as xr
-from collections import namedtuple
 # internal imports
 from datasets.common import getRootFolder
 from utils.misc import defaultNamedtuple
@@ -41,8 +40,8 @@ root_folder = getRootFolder(dataset_name=dataset_name, fallback_name='WRF') # ge
 # attributes of variables in different collections
 # Axes and static variables
 aux_varatts = dict(time = dict(name='time', units='hours', long_name='Days'), # time coordinate
-                    lon = dict(name='lon', units='deg', long_name='Longitude'), # longitude coordinate
-                    lat = dict(name='lat', units='deg', long_name='Latitude'), # latitude coordinate
+                   lon = dict(name='lon', units='deg', long_name='Longitude'), # longitude coordinate
+                   lat = dict(name='lat', units='deg', long_name='Latitude'), # latitude coordinate
                     x  = dict(name='x', units='m', long_name='Easting'),
                     y  = dict(name='y', units='m', long_name='Northing'),)
 default_aux_varatts = aux_varatts
@@ -54,21 +53,18 @@ varlist = varmap.keys()
 ignore_list = []
 default_varatts = varatts; default_varmap = varmap; default_varlist = varlist; default_ignore_list = ignore_list
 
-# settings for NetCDF-4 files
-avgfolder = root_folder + dataset_name.lower()+'avg/' 
-avgfile   = '{DS:s}_{GRD:s}_clim_{PRD:s}.nc' # the filename needs to be extended: biascorrection, grid and period
-tsfile    = '{DS:s}_{GRD:s}_monthly.nc' # extend with biascorrection, variable and grid type
-folder_6hourly   = root_folder + dataset_name.lower()+'_6hourly/' 
-filename_6hourly = '{DS:s}_{VAR:s}_{GRD:s}_6hourly.nc' # dataset and variable name, grid name
-netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
+# netcdf settings
+zlib_default = dict(zlib=True, complevel=1, shuffle=True)
 
 # source data
 raw_folder = root_folder + '{DOM:s}/{INS:s}/{GCM:s}/{SCR:s}/{RIP:s}/{RCM:s}/{V:s}/{AGG:s}/{VAR:s}/' 
-netcdf_filename = '{Y:04d}{M:02d}{D:02d}{H:02d}.nc' # original source file
+netcdf_filename = '{DS:s}_{GRD:s}_{SCR:s}_{AGG:s}.nc' # original source file
+station_dataset_folder = 'station_datasets/'
 
 # list of available datasets/collections
-DSNT = defaultNamedtuple(typename='Dataset', field_names=['institute','GCM','realization','RCM','version','reanalysis'],
-                         defaults=dict(realization='r1i1p1', version='v1', reanalysis=False))
+dsnt_field_names = ['institute','GCM','realization','RCM','version','reanalysis']
+dsnt_defaults = dict(realization='r1i1p1', version='v1', reanalysis=False)
+DSNT = defaultNamedtuple(typename='Dataset', field_names=dsnt_field_names, defaults=dsnt_defaults)
 dataset_attributes = {# UQAM CRCM5 datasets
                       'ERAI-CRCM5' : DSNT(institute='UQAM', GCM='ECMWF-ERAINT', RCM='UQAM-CRCM5', reanalysis=True),
                       'CanESM-CRCM5' : DSNT(institute='UQAM', GCM='CCCma-CanESM2', RCM='UQAM-CRCM5'),
@@ -79,6 +75,34 @@ dataset_attributes = {# UQAM CRCM5 datasets
                       'MPIESMsea-CRCM5' : DSNT(institute='UQAM', GCM='UQAM-GEMatm-MPI-ESMsea', RCM='UQAM-CRCM5'), }
 
 dataset_list = list(dataset_attributes.keys())
+
+
+## helper functions
+
+def datasetAttributes(dataset, dataset_attributes=dataset_attributes, **kwargs):
+    ''' helper function to retrieve and update dataset attributes '''
+    if isinstance(dataset,str):
+        ds_atts = dataset_attributes[dataset]
+    elif isinstance(dataset,DSNT): ds_atts = dataset
+    else:
+        raise TypeError(dataset)
+    for key,value in kwargs.items():
+        if key in ds_atts.__class__.__dict__: ds_atts.__dict__[key] = value # set as instance attribute
+    # return updated named tuple for dataset
+    return ds_atts
+
+def expandFolder(dataset, varname='', domain='NAM-22', aggregation='mon', scenario='historical', 
+                 folder=raw_folder, lraise=True, **kwargs):
+    ''' helper function to expand dataset folder name with kwargs etc. '''
+    # for convenience, we can resolve dataset here
+    if isinstance(dataset, str): dataset = datasetAttributes(dataset, **kwargs)
+    if dataset.reanalysis: scenario = 'evaluation' # only one option        
+    # expand folder name
+    folder = folder.format(DOM=domain, INS=dataset.institute, GCM=dataset.GCM, SCR=scenario, RIP=dataset.realization,
+                           RCM=dataset.RCM, V=dataset.version, AGG=aggregation, VAR=varname, **kwargs)
+    if lraise and not osp.exists(folder): raise IOError(folder)
+    # return complete folder
+    return folder
 
 
 ## load functions
@@ -99,13 +123,9 @@ def loadCORDEX_RawVar(dataset=None, varname=None, folder=raw_folder, lgeoref=Tru
         raise TypeError(dataset)
     if varname is None: 
         raise ValueError('Please specify a variable name (CF or local convention).')
-    # set dataset attriutes
-    if isinstance(dataset,str):
-        ds_atts = dataset_attributes[dataset]
-    else: ds_atts = dataset
-    for key,value in kwargs.items():
-        if key in ds_atts.__class__.__dict__: ds_atts.__dict__[key] = value # set as instance attribute
-    if ds_atts.reanalysis: scenario = 'evaluation' # only one option
+    # figure out dataset attributes
+    ds_atts = datasetAttributes(dataset, **kwargs)
+    if ds_atts.reanalysis: scenario = 'evaluation' # only one option        
     # variable attributes
     if lraw:
         varatts = dict(); varmap = dict() # no translation
@@ -123,9 +143,8 @@ def loadCORDEX_RawVar(dataset=None, varname=None, folder=raw_folder, lgeoref=Tru
     else: varatts = dict()
     # construct file list
     if folder:
-        folder = folder.format(DOM=domain, INS=ds_atts.institute, GCM=ds_atts.GCM, SCR=scenario, RIP=ds_atts.realization,
-                               RCM=ds_atts.RCM, V=ds_atts.version, AGG=aggregation, VAR=varname, **kwargs)
-        if not osp.exists(folder): raise IOError(folder)
+        folder = expandFolder(dataset=ds_atts, folder=folder, varname=varname, domain=domain, 
+                              aggregation=aggregation, scenario=scenario, lraise=lcheck_files, **kwargs)
         if isinstance(filelist,(list,tuple)):
             filelist = [osp.join(folder,filename) for filename in filelist]
         elif isinstance(filelist,str): filelist = folder + '/' + filelist
@@ -151,8 +170,6 @@ def loadCORDEX_RawVar(dataset=None, varname=None, folder=raw_folder, lgeoref=Tru
     drop_variables = [varmap.get(varname,varname) for varname in drop_variables]
     if lmultifile:
         # load multifile dataset (variables are in different files)
-        if 'lat' not in drop_variables: drop_variables.append('lat')
-        if 'lon' not in drop_variables: drop_variables.append('lon')
         xds = xr.open_mfdataset(filelist, combine='by_coords', concat_dim='time', join='right', parallel=True,   
                                 data_vars='minimal', compat='override', coords='minimal', 
                                 drop_variables=drop_variables , **kwargs)
@@ -162,7 +179,10 @@ def loadCORDEX_RawVar(dataset=None, varname=None, folder=raw_folder, lgeoref=Tru
         else: filename = filelist
         xds = xr.open_dataset(filename, drop_variables=drop_variables, **kwargs)
     # update attributes using old names
-    if aux_varatts is None: aux_varatts = default_aux_varatts.copy()
+    if lraw: aux_varatts = dict()
+    elif aux_varatts is None: 
+        aux_varatts = default_aux_varatts.copy()
+        if lxarray: del aux_varatts['time'] # handled by xarray
     varatts_list = tuple(aux_varatts.items())+((varname,varatts),)
     for varname,atts in varatts_list:
         if varname in xds.variables:
@@ -190,6 +210,7 @@ def loadCORDEX_RawVar(dataset=None, varname=None, folder=raw_folder, lgeoref=Tru
     # return xarray Dataset
     return xds
 
+
 def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=raw_folder, lgeoref=True,  
                    domain='NAM-22', aggregation='mon', scenario='historical', 
                    lxarray=True, lcheck_files=True, merge_args=None, 
@@ -197,24 +218,18 @@ def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=raw_folder, 
     ''' wrapper function to load multiple variables '''
     if varname and varlist: raise ValueError("Can only use either 'varlist' or 'varname'.")
     elif varname: varlist = [varname]
-#     # translate varnames
-#     if varatts is None: varatts = default_varatts; varmap = default_varmap
-#     else: varmap = {att['name']:vn for vn,att in varatts.itmes()}        
-#     varlist = [varmap.get(varname,varname) for varname in varlist]
-    # figure out dataset attriutes
-    if isinstance(dataset,str):
-        ds_atts = dataset_attributes[dataset]
-    else: ds_atts = dataset
-    for key,value in kwargs.items():
-        if key in ds_atts.__class__.__dict__: ds_atts.__dict__[key] = value # set as instance attribute
-    if ds_atts.reanalysis: scenario = 'evaluation' # only one option        
+    # figure out dataset attributes
+    ds_atts = datasetAttributes(dataset, **kwargs)
+    if ds_atts.reanalysis: scenario = 'evaluation' # only one option            
     # figure out folder and potential varlist
     if folder:
-        folder = folder.format(DOM=domain, INS=ds_atts.institute, GCM=ds_atts.GCM, SCR=scenario, RIP=ds_atts.realization,
-                               RCM=ds_atts.RCM, V=ds_atts.version, AGG=aggregation, VAR='', **kwargs)
-        if not osp.exists(folder): raise IOError(folder)
+        folder = expandFolder(dataset=ds_atts, folder=folder, varname='', domain=domain, 
+                              aggregation=aggregation, scenario=scenario, lraise=lcheck_files, **kwargs)
         if varlist is None:
-            varlist = [varname for varname in os.listdir(folder) if os.path.isdir(os.path.join(folder,varname))]
+            varlist = []
+            for varname in os.listdir(folder):
+                if os.path.isdir(os.path.join(folder,varname)) and not varname.endswith('_datasets'):
+                    varlist.append(varname)
         folder += '{VAR:s}/' # will be substituted in single-variable function
     # loop over variables
     ds_list = []
@@ -228,6 +243,11 @@ def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=raw_folder, 
     # add to merged dataset
     if merge_args is None: merge_args = dict(compat='override')
     xds = xr.merge(ds_list, **merge_args)
+    # add meta data
+    xds.attrs['name'] = dataset
+    for att in dsnt_field_names:
+        xds.attrs[att] = str(getattr(ds_atts,att))
+    xds.attrs['domain'] = domain; xds.attrs['aggregation'] = aggregation; xds.attrs['scenario'] = scenario
     # add projection
     if lgeoref:
         proj4_string = readCFCRS(xds, lraise=True, lproj4=True)
@@ -255,12 +275,14 @@ if __name__ == '__main__':
 
   modes = []
 #   modes += ['load_timeseries']
-#   modes = ['extract_timeseries']
-  modes += ['load_raw']
+  modes = ['extract_timeseries']
+#   modes += ['load_raw']
 #   modes += ['test_georef']  
 
   # some settings  
   grid = None
+  domain = 'NAM-22'
+  aggregation = 'mon'
   
   # loop over modes 
   for mode in modes:
@@ -280,12 +302,62 @@ if __name__ == '__main__':
   #       xv = xv.loc['2011-01-01',:,:]
         print(xv)
         print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
-  
+    
+    
+    elif mode == 'extract_timeseries':
+        
+        # coordinates of interest
+        station_name = 'MLWC'
+        lat,lon = 57.45,-111.4
+                
+        for dataset in dataset_list:
+          
+            ds_atts = datasetAttributes(dataset)
+            if ds_atts.reanalysis: scenarios = ('evaluation',)
+            else: scenarios = ('historical','rcp85') 
+            
+            for scenario in scenarios:
+                
+                print("\n   ***   ",dataset,scenario,"   ***   \n")
+                xds = loadCORDEX_Raw(dataset=dataset, varlist=None, 
+                                     domain=domain, aggregation=aggregation, scenario=scenario,
+                                     lgeoref=False, lraw=True)
+                
+                # compute closest grid point in model
+                s = (xds.lat - lat)**2 + (xds.lon - lon)**2
+                (j,i) = np.unravel_index(np.argmin(s.values.ravel()), shape=s.shape)
+                print('Model I,J:',i,j)
+                slat,slon = xds.lat.values[j,i],xds.lon.values[j,i]
+                print('Lat/Lon: {:5.2f} / {:5.2f}'.format(slat,slon))
+                
+                # extract point
+                sds = xds.isel(rlat=[j],rlon=[i]).squeeze()
+                # add site/station data
+                sds.attrs['station_name'] = station_name
+                sds.attrs['stn_lat'] = slat
+                sds.attrs['stn_lon'] = slon
+                sds.attrs['stn_J'] = j
+                sds.attrs['stn_I'] = i
+                print('')
+                print(sds)
+                
+                # save to NetCDF file
+                station_folder = expandFolder(ds_atts, varname=station_dataset_folder, domain=domain, aggregation=aggregation, 
+                                              scenario=scenario, folder=raw_folder, lraise=False)
+                print('')
+                print(station_folder)
+                os.makedirs(station_folder, exist_ok=True)
+                station_file = netcdf_filename.format(DS=dataset, GRD=station_name, SCR=scenario, AGG=aggregation)
+                # write file
+                encoding = {varname:zlib_default for varname,var in sds.variables.items()}
+                sds.to_netcdf(os.path.join(station_folder,station_file), mode='w', 
+                              format='NETCDF4', encoding=encoding, compute=True)
+                print('')
     
     elif mode == 'load_raw':
        
         tic = time.time()
-        xds = loadCORDEX_Raw(dataset='ERAI-CRCM5', varlist=None, aggregation='mon', lgeoref=False, lraw=True)
+        xds = loadCORDEX_Raw(dataset='ERAI-CRCM5', varlist=None, aggregation='mon', lgeoref=False, lraw=False)
         toc = time.time()
         print(toc-tic)
         print(xds)
@@ -295,6 +367,8 @@ if __name__ == '__main__':
         print('')
         dt = xds['time'].diff(dim='time').values / np.timedelta64(1,'D')
         print('Time Delta (days):', dt.min(),dt.max())
+        print('')
+        print(xds.time)
 #         xv = xds['CaPA_fine_exp_A_PR_SFC']
 #         xv = xv.loc['2016-06-16T06',:,:]
 #         varname = 'time'
@@ -303,8 +377,7 @@ if __name__ == '__main__':
 #             print(xv)
 #             print("\nMean value:", xv[:].mean().values, xv.attrs['units'])
 #             print(('Size in Memory: {:6.1f} kB'.format(xv.nbytes/1024.)))
-    
-      
+
   
     elif mode == 'test_georef':
       
