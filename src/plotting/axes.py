@@ -21,7 +21,6 @@ from plotting.misc import smooth, checkVarlist, getPlotValues, errorPercentile, 
 from plotting.misc import checkPseudoAxis, expandAxes
 from collections import OrderedDict
 from utils.misc import binedges, expandArgumentList, containerDepth, tabulate
-from utils.signalsmooth import smooth_image
 from geodata.stats import pearsonr
 
 # list of plot arguments that apply only to lines

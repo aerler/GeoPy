@@ -53,7 +53,7 @@ axes_varatts = dict(time = dict(name='time', units='hours', long_name='Days'), #
                     lon = dict(name='lon', units='deg', long_name='Longitude'), # longitude coordinate
                     lat = dict(name='lat', units='deg', long_name='Latitude'), # latitude coordinate
                     x  = dict(name='x', units='m', long_name='Easting'),
-                    y  = dict(name='x', units='m', long_name='Northing'),)
+                    y  = dict(name='y', units='m', long_name='Northing'),)
 axes_varlist = axes_varatts.keys()
 # CaSPAr (general/mixed variables)
 caspar_varatts = dict(liqwatflx = dict(name='liqwatflx',units='kg/m^2/s',scalefactor=1., 
@@ -175,8 +175,8 @@ def loadCaSPAr_Raw(dataset=None, filelist=None, folder=raw_folder, grid=None, pe
             filelist = [osp.join(folder,filename) for filename in filelist]
         elif isinstance(filelist,str): filelist = folder + '/' + filelist
         elif filelist is None: filelist = folder + '/*.nc'
+    lraise = False
     if isinstance(filelist,(list,tuple)):
-        lraise = False
         for filename in filelist:
             if not osp.exists(filename):
                 if not lraise: print("Missing files:")
