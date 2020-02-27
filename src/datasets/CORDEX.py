@@ -30,7 +30,7 @@ import xarray as xr
 from datasets.common import getRootFolder
 from utils.misc import defaultNamedtuple
 # for georeferencing
-from geospatial.xarray_tools import addGeoReference, readCFCRS
+from geospatial.xarray_tools import addGeoReference, readCFCRS, updateVariableAttrs
 
 ## Meta-vardata
 
@@ -57,22 +57,22 @@ default_varatts = varatts; default_varmap = varmap; default_varlist = varlist; d
 zlib_default = dict(zlib=True, complevel=1, shuffle=True)
 
 # source data
-raw_folder = root_folder + '{DOM:s}/{INS:s}/{GCM:s}/{SCR:s}/{RIP:s}/{RCM:s}/{V:s}/{AGG:s}/{VAR:s}/' 
-netcdf_filename = '{DS:s}_{GRD:s}_{SCR:s}_{AGG:s}.nc' # original source file
-station_dataset_folder = 'station_datasets/'
+folder_pattern = root_folder + '{DOM:s}/{INS:s}/{GCM:s}/{SCR:s}/{RIP:s}/{RCM:s}/{V:s}/{AGG:s}/{VAR:s}/' 
+filename_pattern = '{DS:s}_{GRD:s}_{SCR:s}_{AGG:s}.nc' # original source file
+station_dataset_subfolder = 'station_datasets/'
 
 # list of available datasets/collections
-dsnt_field_names = ['institute','GCM','realization','RCM','version','reanalysis']
-dsnt_defaults = dict(realization='r1i1p1', version='v1', reanalysis=False)
+dsnt_field_names = ['name','institute','GCM','realization','RCM','version','reanalysis',]
+dsnt_defaults = dict(realization='r1i1p1', version='v1', reanalysis=False,)
 DSNT = defaultNamedtuple(typename='Dataset', field_names=dsnt_field_names, defaults=dsnt_defaults)
 dataset_attributes = {# UQAM CRCM5 datasets
-                      'ERAI-CRCM5' : DSNT(institute='UQAM', GCM='ECMWF-ERAINT', RCM='UQAM-CRCM5', reanalysis=True),
-                      'CanESM-CRCM5' : DSNT(institute='UQAM', GCM='CCCma-CanESM2', RCM='UQAM-CRCM5'),
-                      'MPILR-CRCM5' : DSNT(institute='UQAM', GCM='MPI-M-MPI-ESM-LR', RCM='UQAM-CRCM5'),
-                      'MPIESM-CRCM5' : DSNT(institute='UQAM', GCM='MPI-M-MPI-ESM-MR', RCM='UQAM-CRCM5'),
-                      'CanESMsea-CRCM5' : DSNT(institute='UQAM', GCM='UQAM-GEMatm-Can-ESMsea', RCM='UQAM-CRCM5'),
-                      'MPILRsea-CRCM5' : DSNT(institute='UQAM', GCM='UQAM-GEMatm-MPILRsea', RCM='UQAM-CRCM5'),
-                      'MPIESMsea-CRCM5' : DSNT(institute='UQAM', GCM='UQAM-GEMatm-MPI-ESMsea', RCM='UQAM-CRCM5'), }
+                      'ERAI-CRCM5' : DSNT(institute='UQAM', GCM='ECMWF-ERAINT', RCM='UQAM-CRCM5', reanalysis=True, name='ERAI-CRCM5'),
+                      'CanESM-CRCM5' : DSNT(institute='UQAM', GCM='CCCma-CanESM2', RCM='UQAM-CRCM5', name='CanESM-CRCM5'),
+                      'MPILR-CRCM5' : DSNT(institute='UQAM', GCM='MPI-M-MPI-ESM-LR', RCM='UQAM-CRCM5', name='MPILR-CRCM5'),
+                      'MPIESM-CRCM5' : DSNT(institute='UQAM', GCM='MPI-M-MPI-ESM-MR', RCM='UQAM-CRCM5', name='MPIESM-CRCM5'),
+                      'CanESMsea-CRCM5' : DSNT(institute='UQAM', GCM='UQAM-GEMatm-Can-ESMsea', RCM='UQAM-CRCM5', name='CanESMsea-CRCM5'),
+                      'MPILRsea-CRCM5' : DSNT(institute='UQAM', GCM='UQAM-GEMatm-MPILRsea', RCM='UQAM-CRCM5', name='MPILRsea-CRCM5'),
+                      'MPIESMsea-CRCM5' : DSNT(institute='UQAM', GCM='UQAM-GEMatm-MPI-ESMsea', RCM='UQAM-CRCM5', name='MPIESMsea-CRCM5'), }
 
 dataset_list = list(dataset_attributes.keys())
 
@@ -92,7 +92,7 @@ def datasetAttributes(dataset, dataset_attributes=dataset_attributes, **kwargs):
     return ds_atts
 
 def expandFolder(dataset, varname='', domain='NAM-22', aggregation='mon', scenario='historical', 
-                 folder=raw_folder, lraise=True, **kwargs):
+                 folder=folder_pattern, lraise=True, **kwargs):
     ''' helper function to expand dataset folder name with kwargs etc. '''
     # for convenience, we can resolve dataset here
     if isinstance(dataset, str): dataset = datasetAttributes(dataset, **kwargs)
@@ -104,10 +104,30 @@ def expandFolder(dataset, varname='', domain='NAM-22', aggregation='mon', scenar
     # return complete folder
     return folder
 
+def expandFilename(dataset, grid=None, station=None, shape=None, bias_correction=None,
+                   aggregation='mon', scenario='historical', filename=filename_pattern, **kwargs):
+    ''' helper function to expand dataset filename with kwargs etc. '''
+    # for convenience, we can resolve dataset here
+    if isinstance(dataset, str): dataset = datasetAttributes(dataset, **kwargs)
+    if dataset.reanalysis: scenario = 'evaluation' # only one option  
+    # figure out grid string
+    str_list = []
+    # add parameters in correct order
+    if bias_correction: str_list.append(bias_correction)
+    if shape and station: raise ValueError(shape,station)
+    elif station: str_list.append(station)
+    elif shape: str_list.append(shape)
+    if grid: str_list.append(grid)
+    grd_str = '_'.join(str_list)
+    # expand filename
+    filename = filename.format(DS=dataset.name, GRD=grd_str, SCR=scenario, AGG=aggregation, **kwargs)
+    # return complete filename
+    return filename
+
 
 ## load functions
 
-def loadCORDEX_RawVar(dataset=None, varname=None, folder=raw_folder, lgeoref=True,  
+def loadCORDEX_RawVar(dataset=None, varname=None, folder=folder_pattern, lgeoref=True,  
                       domain='NAM-22', aggregation='mon', scenario='historical', 
                       lxarray=True, lcheck_files=True, lmultifile=None, filelist=None, 
                       drop_variables=None, varatts=None, aux_varatts=None, lraw=False, **kwargs):
@@ -178,31 +198,15 @@ def loadCORDEX_RawVar(dataset=None, varname=None, folder=raw_folder, lgeoref=Tru
         if isinstance(filelist,(tuple,list)): filename = filelist[0]
         else: filename = filelist
         xds = xr.open_dataset(filename, drop_variables=drop_variables, **kwargs)
-    # update attributes using old names
-    if lraw: aux_varatts = dict()
-    elif aux_varatts is None: 
-        aux_varatts = default_aux_varatts.copy()
-        if lxarray: del aux_varatts['time'] # handled by xarray
-    varatts_list = tuple(aux_varatts.items())+((varname,varatts),)
-    for varname,atts in varatts_list:
-        if varname in xds.variables:
-            var = xds.variables[varname]
-            atts = atts.copy() # because we will pop scalefactor...
-            if 'units' in atts:
-              if 'units' not in var.attrs or var.attrs['units'] != atts['units']:
-                if 'scalefactor' in atts and atts['scalefactor'] != 1:
-                    var *= atts['scalefactor'] # this should execute lazily...
-                if 'offset' in atts and atts['offset'] != 0:
-                    var += atts['offset'] # this should execute lazily...
-            atts.pop('scalefactor',None)
-            attrs = var.attrs.copy()
-            attrs.update(atts)
-            var.attrs = attrs
-    # actually rename
-    varmap = dict()
-    for varname,atts in varatts_list:
-        if varname in xds and 'name' in atts: varmap[varname] = atts['name']  
-    xds = xds.rename(varmap)
+    # update attributes
+    if not lraw:
+        if aux_varatts is None: 
+            merged_varatts = default_aux_varatts.copy()
+            if 'time' in merged_varatts: del merged_varatts['time'] # handled by xarray
+        else:
+            merged_varatts = aux_varatts.copy()
+        merged_varatts[varname] = varatts # add variable we are loading
+        xds = updateVariableAttrs(xds, varatts=merged_varatts)
     # add projection
     if lgeoref:
         proj4_string = readCFCRS(xds, lraise=True, lproj4=True)
@@ -211,7 +215,7 @@ def loadCORDEX_RawVar(dataset=None, varname=None, folder=raw_folder, lgeoref=Tru
     return xds
 
 
-def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=raw_folder, lgeoref=True,  
+def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=folder_pattern, lgeoref=True,  
                    domain='NAM-22', aggregation='mon', scenario='historical', 
                    lxarray=True, lcheck_files=True, merge_args=None, 
                    drop_variables=None, varatts=None, aux_varatts=None, lraw=False, **kwargs):
@@ -244,7 +248,6 @@ def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=raw_folder, 
     if merge_args is None: merge_args = dict(compat='override')
     xds = xr.merge(ds_list, **merge_args)
     # add meta data
-    xds.attrs['name'] = dataset
     for att in dsnt_field_names:
         xds.attrs[att] = str(getattr(ds_atts,att))
     xds.attrs['domain'] = domain; xds.attrs['aggregation'] = aggregation; xds.attrs['scenario'] = scenario
@@ -256,6 +259,46 @@ def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=raw_folder, 
     return xds
     
 
+def loadCORDEX_TS(dataset=None, varlist=None, grid=None, station=None, shape=None, bias_correction=None,
+                  dataset_subfolder=None, folder=folder_pattern, filename=filename_pattern,
+                  domain='NAM-22', aggregation='mon', scenario='historical',
+                  varatts=None, aux_varatts=None, lxarray=True, lgeoref=False, lraw=False, **kwargs):
+    ''' function to load a consolidated CORDEX dataset '''
+    # figure out dataset attributes
+    ds_atts = datasetAttributes(dataset, **kwargs)
+    if ds_atts.reanalysis: scenario = 'evaluation' # only one option            
+    # figure out folder and potential varlist
+    filename = expandFilename(dataset=dataset, grid=grid, station=station, bias_correction=bias_correction, 
+                              shape=shape, aggregation=aggregation, scenario=scenario, filename=filename)
+    if folder:
+        folder = expandFolder(dataset=ds_atts, folder=folder, varname=dataset_subfolder, domain=domain, 
+                              aggregation=aggregation, scenario=scenario, lraise=True, **kwargs)
+        filepath = os.path.join(folder,filename)
+    else: filepath = filename
+    if not os.path.exists(filepath): 
+        raise IOError(filepath)
+        # variable attributes
+    if lraw:
+        varatts = dict(); varmap = dict() # no translation
+    elif varatts is None:
+        varatts = default_varatts.copy(); varmap = default_varmap.copy()
+    else:
+        varmap = {att['name']:vn for vn,att in varatts.items()}       
+    if lxarray:
+        ds = xr.open_dataset(filepath, **kwargs)
+        # update attributes
+        if not lraw:
+            if aux_varatts is None: 
+                merged_varatts = default_aux_varatts.copy()
+                if 'time' in merged_varatts: del merged_varatts['time'] # handled by xarray
+            else: merged_varatts = aux_varatts.copy()
+            if varatts is None: merged_varatts.update(default_varatts)
+            else: merged_varatts.update(varatts)
+            ds = updateVariableAttrs(ds, varatts=merged_varatts)
+    else:
+        raise NotImplementedError("Only loading via xarray is currently implemented.")
+    # return formated dataset
+    return ds
 
 ## abuse for testing
 if __name__ == '__main__':
@@ -275,14 +318,19 @@ if __name__ == '__main__':
 
   modes = []
 #   modes += ['load_timeseries']
-  modes = ['extract_timeseries']
-#   modes += ['load_raw']
+#   modes = ['extract_timeseries']
+  modes += ['load_raw']
 #   modes += ['test_georef']  
 
   # some settings  
   grid = None
   domain = 'NAM-22'
   aggregation = 'mon'
+  
+  # more settings
+  dataset = 'ERAI-CRCM5'
+  scenario = 'evaluation'
+  station_name = 'MLWC'
   
   # loop over modes 
   for mode in modes:
@@ -292,14 +340,15 @@ if __name__ == '__main__':
        
   #       varlist = netcdf_varlist
         varlist = ['liqwatflx','precip','snow','test']
-        xds = NotImplemented
+        xds = loadCORDEX_TS(dataset=dataset, grid=station_name, varlist=None, 
+                            dataset_subfolder=station_dataset_subfolder, 
+                            domain=domain, aggregation=aggregation, scenario=scenario, lraw=False)
         print(xds)
         print('')
         for varname,xv in xds.variables.items(): 
             if xv.ndim == 3: break
         xv = xds[varname] # get DataArray instead of Variable object
-        xv = xv.sel(time=slice('2018-01-01','2018-02-01'),x=slice(-3500,4500),y=slice(-1000,2000))
-  #       xv = xv.loc['2011-01-01',:,:]
+        xv = xv.sel(time=slice('2010-01-01','2011-02-01'),)
         print(xv)
         print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
     
@@ -307,8 +356,9 @@ if __name__ == '__main__':
     elif mode == 'extract_timeseries':
         
         # coordinates of interest
-        station_name = 'MLWC'
-        lat,lon = 57.45,-111.4
+        
+        if station_name == 'MLWC':
+            lat,lon = 57.45,-111.4
                 
         for dataset in dataset_list:
           
@@ -342,12 +392,12 @@ if __name__ == '__main__':
                 print(sds)
                 
                 # save to NetCDF file
-                station_folder = expandFolder(ds_atts, varname=station_dataset_folder, domain=domain, aggregation=aggregation, 
-                                              scenario=scenario, folder=raw_folder, lraise=False)
+                station_folder = expandFolder(ds_atts, varname=station_dataset_subfolder, domain=domain, aggregation=aggregation, 
+                                              scenario=scenario, folder=folder_pattern, lraise=False)
                 print('')
                 print(station_folder)
                 os.makedirs(station_folder, exist_ok=True)
-                station_file = netcdf_filename.format(DS=dataset, GRD=station_name, SCR=scenario, AGG=aggregation)
+                station_file = filename_pattern.format(DS=dataset, GRD=station_name, SCR=scenario, AGG=aggregation)
                 # write file
                 encoding = {varname:zlib_default for varname,var in sds.variables.items()}
                 sds.to_netcdf(os.path.join(station_folder,station_file), mode='w', 
@@ -357,7 +407,9 @@ if __name__ == '__main__':
     elif mode == 'load_raw':
        
         tic = time.time()
-        xds = loadCORDEX_Raw(dataset='ERAI-CRCM5', varlist=None, aggregation='mon', lgeoref=False, lraw=False)
+        xds = loadCORDEX_Raw(dataset=dataset, varlist=None, 
+                             aggregation=aggregation, domain=domain, scenario=scenario,
+                             lgeoref=False, lraw=False)
         toc = time.time()
         print(toc-tic)
         print(xds)
