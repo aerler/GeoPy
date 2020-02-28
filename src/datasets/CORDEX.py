@@ -7,7 +7,7 @@ A module to load different CORDEX datasets.
 '''
 
 ## wget command to download CORDEX simulations from UQAM server:
-# for E in CCCma-CanESM2/ MPI-M-MPI-ESM-LR/ MPI-M-MPI-ESM-MR/ UQAM-GEMatm-Can-ESMsea/ UQAM-GEMatm-MPI-ESMsea/ UQAM-GEMatm-MPI LRsea/
+# for E in CCCma-CanESM2/ MPI-M-MPI-ESM-LR/ MPI-M-MPI-ESM-MR/ UQAM-GEMatm-Can-ESMsea/ UQAM-GEMatm-MPI-ESMsea/ UQAM-GEMatm-MPILRsea/
 #   do 
 #     echo ''
 #     echo "$E"
@@ -20,13 +20,12 @@ A module to load different CORDEX datasets.
 
 # external imports
 import datetime as dt
-import pandas as pd
 import os
 import os.path as osp
 import numpy as np
-import netCDF4 as nc # netCDF4-python module
 import xarray as xr
 # internal imports
+from geodata.netcdf import DatasetNetCDF
 from datasets.common import getRootFolder
 from utils.misc import defaultNamedtuple
 # for georeferencing
@@ -37,17 +36,27 @@ from geospatial.xarray_tools import addGeoReference, readCFCRS, updateVariableAt
 dataset_name = 'CORDEX'
 root_folder = getRootFolder(dataset_name=dataset_name, fallback_name='WRF') # get dataset root folder based on environment variables
 
-# attributes of variables in different collections
-# Axes and static variables
-aux_varatts = dict(time = dict(name='time', units='hours', long_name='Days'), # time coordinate
-                   lon = dict(name='lon', units='deg', long_name='Longitude'), # longitude coordinate
-                   lat = dict(name='lat', units='deg', long_name='Latitude'), # latitude coordinate
-                    x  = dict(name='x', units='m', long_name='Easting'),
-                    y  = dict(name='y', units='m', long_name='Northing'),)
-default_aux_varatts = aux_varatts
 # variable attributes - should all follow CF convention
-varatts = dict(pr = dict(name='precip', long_name='Total Precipitation'),
-               tas = dict(name='T2', long_name='2m Temperature'), )
+varatts = dict(# CF compliant variables
+               pr  = dict(name='precip', units='kg/m^2/s', long_name='Total Precipitation'),
+               snw = dict(name='snow', units='kg/m^2', long_name='Snow Water Equivalent'),
+               tas = dict(name='T2', units='K', long_name='2m Temperature'),
+               tasmin = dict(name='Tmin', units='K', long_name='Minimum 2m Temperature'),
+               tasmax = dict(name='Tmax', units='K', long_name='Maximum 2m Temperature'),
+               psl = dict(name='pmsl', units='Pa', long_name='Mean-Sea-Level Pressure'),
+               huss = dict(name='q2', units='kg/kg', long_name='2m Specific Humidity'), # mass fraction of water in (moist) air
+               rsds = dict(name='SWDNB', units='W/m^2', long_name='Downwelling Solar Radiation'),
+               rsus = dict(name='SWUPB', units='W/m^2', long_name='Upwelling Solar Radiation'),
+               rlds = dict(name='LWDNB', units='W/m^2', long_name='Downwelling Longwave Radiation'),
+               rlus = dict(name='LWUPB', units='W/m^2', long_name='Upwelling Longwave Radiation'),
+               sfcWind = dict(name='U10', units='m/s', long_name='10m Wind Speed'),
+               # axes and static variables               
+               orog = dict(name='zs', units='m', long_name='Surface Elevation'),
+               time = dict(name='time', long_name='Time Coordinate'), # time coordinate (keep original units)
+               lon = dict(name='lon', units='deg', long_name='Longitude'), # longitude coordinate
+               lat = dict(name='lat', units='deg', long_name='Latitude'), # latitude coordinate
+               x   = dict(name='x', units='m', long_name='Easting'),
+               y   = dict(name='y', units='m', long_name='Northing'),)
 varmap = {att['name']:vn for vn,att in varatts.items()}
 varlist = varmap.keys()
 ignore_list = []
@@ -130,7 +139,7 @@ def expandFilename(dataset, grid=None, station=None, shape=None, bias_correction
 def loadCORDEX_RawVar(dataset=None, varname=None, folder=folder_pattern, lgeoref=True,  
                       domain='NAM-22', aggregation='mon', scenario='historical', 
                       lxarray=True, lcheck_files=True, lmultifile=None, filelist=None, 
-                      drop_variables=None, varatts=None, aux_varatts=None, lraw=False, **kwargs):
+                      drop_variables=None, varatts=None, lraw=False, **kwargs):
     ''' function to load CORDEX data from NetCDF-4 files using xarray and add some projection information '''
     if not lxarray: 
         raise NotImplementedError("Only loading via xarray is currently implemented.")
@@ -150,17 +159,16 @@ def loadCORDEX_RawVar(dataset=None, varname=None, folder=folder_pattern, lgeoref
     if lraw:
         varatts = dict(); varmap = dict() # no translation
     elif varatts is None:
-        varatts = default_varatts; varmap = default_varmap
+        varatts = default_varatts.copy(); varmap = default_varmap.copy()
+    elif 'name' in varatts: 
+        varatts = default_varatts.copy(); varmap = default_varmap.copy()
+        varmap[varname] = varatts['name']
+        varatts[varname] = varatts.copy()
     else:
-        if 'name' in varatts: varmap = dict()
-        else: varmap = {att['name']:vn for vn,att in varatts.items()}        
-    if varname in varmap: varname = varmap[varname] # translate varname
-    if 'name' in varatts: 
+        varmap = {att['name']:vn for vn,att in varatts.items()}
         varatts = varatts.copy() # just a regular varatts dict
-        if varatts['name'] != varname: 
-            raise ValueError("Inconsistent varname '{}' and varatts name '{}'.".format(varname,varatts['name']))
-    elif varname in varatts: varatts = varatts[varname].copy() # assumed to be a dict of dicts
-    else: varatts = dict()
+    # apply varmap
+    varname = varmap.get(varname,varname)
     # construct file list
     if folder:
         folder = expandFolder(dataset=ds_atts, folder=folder, varname=varname, domain=domain, 
@@ -200,13 +208,8 @@ def loadCORDEX_RawVar(dataset=None, varname=None, folder=folder_pattern, lgeoref
         xds = xr.open_dataset(filename, drop_variables=drop_variables, **kwargs)
     # update attributes
     if not lraw:
-        if aux_varatts is None: 
-            merged_varatts = default_aux_varatts.copy()
-            if 'time' in merged_varatts: del merged_varatts['time'] # handled by xarray
-        else:
-            merged_varatts = aux_varatts.copy()
-        merged_varatts[varname] = varatts # add variable we are loading
-        xds = updateVariableAttrs(xds, varatts=merged_varatts)
+        if 'time' in varatts and lxarray: del varatts['time'] # handled by xarray
+        xds = updateVariableAttrs(xds, varatts=varatts)
     # add projection
     if lgeoref:
         proj4_string = readCFCRS(xds, lraise=True, lproj4=True)
@@ -216,7 +219,7 @@ def loadCORDEX_RawVar(dataset=None, varname=None, folder=folder_pattern, lgeoref
 
 
 def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=folder_pattern, lgeoref=True,  
-                   domain='NAM-22', aggregation='mon', scenario='historical', 
+                   domain='NAM-22', aggregation='mon', scenario='historical', lconst=True,
                    lxarray=True, lcheck_files=True, merge_args=None, 
                    drop_variables=None, varatts=None, aux_varatts=None, lraw=False, **kwargs):
     ''' wrapper function to load multiple variables '''
@@ -225,6 +228,26 @@ def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=folder_patte
     # figure out dataset attributes
     ds_atts = datasetAttributes(dataset, **kwargs)
     if ds_atts.reanalysis: scenario = 'evaluation' # only one option            
+    # load variables in individual datasets and merge later
+    ds_list = []
+    # load constants/fixed fields
+    if lconst:
+        fixfolder = expandFolder(dataset=ds_atts, folder=folder, varname='', domain=domain, 
+                                 aggregation='fx', scenario=scenario, lraise=lcheck_files, **kwargs)
+        fixlist = []
+        # load all fixed fields
+        for varname in os.listdir(fixfolder):
+            if osp.isdir(osp.join(fixfolder,varname)) and not varname.endswith('_datasets'):
+                fixlist.append(varname)
+        fixfolder += '{VAR:s}/' # will be substituted in single-variable function
+        # loop over fixed variables
+        for fixvar in fixlist:
+            # load fixed variable
+            fix_ds = loadCORDEX_RawVar(dataset=ds_atts, varname=fixvar, folder=fixfolder, lgeoref=False,  
+                                       domain=domain, aggregation='fx', scenario=scenario, 
+                                       lxarray=lxarray, lcheck_files=lcheck_files, drop_variables=drop_variables, 
+                                       varatts=varatts, lraw=lraw, **kwargs)
+            ds_list.append(fix_ds)
     # figure out folder and potential varlist
     if folder:
         folder = expandFolder(dataset=ds_atts, folder=folder, varname='', domain=domain, 
@@ -232,17 +255,16 @@ def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=folder_patte
         if varlist is None:
             varlist = []
             for varname in os.listdir(folder):
-                if os.path.isdir(os.path.join(folder,varname)) and not varname.endswith('_datasets'):
+                if osp.isdir(osp.join(folder,varname)) and not varname.endswith('_datasets'):
                     varlist.append(varname)
         folder += '{VAR:s}/' # will be substituted in single-variable function
     # loop over variables
-    ds_list = []
     for varname in varlist:
         # load variable
         var_ds = loadCORDEX_RawVar(dataset=ds_atts, varname=varname, folder=folder, lgeoref=False,  
                                    domain=domain, aggregation=aggregation, scenario=scenario, 
                                    lxarray=lxarray, lcheck_files=lcheck_files, drop_variables=drop_variables, 
-                                   varatts=varatts, aux_varatts=aux_varatts, lraw=lraw, **kwargs)
+                                   varatts=varatts, lraw=lraw, **kwargs)
         ds_list.append(var_ds)
     # add to merged dataset
     if merge_args is None: merge_args = dict(compat='override')
@@ -262,7 +284,7 @@ def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=folder_patte
 def loadCORDEX_TS(dataset=None, varlist=None, grid=None, station=None, shape=None, bias_correction=None,
                   dataset_subfolder=None, folder=folder_pattern, filename=filename_pattern,
                   domain='NAM-22', aggregation='mon', scenario='historical',
-                  varatts=None, aux_varatts=None, lxarray=True, lgeoref=False, lraw=False, **kwargs):
+                  varatts=None, lxarray=True, lgeoref=False, lraw=False, **kwargs):
     ''' function to load a consolidated CORDEX dataset '''
     # figure out dataset attributes
     ds_atts = datasetAttributes(dataset, **kwargs)
@@ -277,28 +299,27 @@ def loadCORDEX_TS(dataset=None, varlist=None, grid=None, station=None, shape=Non
     else: filepath = filename
     if not os.path.exists(filepath): 
         raise IOError(filepath)
-        # variable attributes
-    if lraw:
-        varatts = dict(); varmap = dict() # no translation
-    elif varatts is None:
-        varatts = default_varatts.copy(); varmap = default_varmap.copy()
-    else:
-        varmap = {att['name']:vn for vn,att in varatts.items()}       
+    # variable attributes
+    if lraw: varatts = dict()
+    elif varatts is None: varatts = default_varatts.copy()
+    else: varatts = varatts.copy()
+    # load dataset
     if lxarray:
         ds = xr.open_dataset(filepath, **kwargs)
         # update attributes
         if not lraw:
-            if aux_varatts is None: 
-                merged_varatts = default_aux_varatts.copy()
-                if 'time' in merged_varatts: del merged_varatts['time'] # handled by xarray
-            else: merged_varatts = aux_varatts.copy()
-            if varatts is None: merged_varatts.update(default_varatts)
-            else: merged_varatts.update(varatts)
-            ds = updateVariableAttrs(ds, varatts=merged_varatts)
+            ds = updateVariableAttrs(ds, varlist=varlist, varatts=varatts)
+        # add projection
+        if lgeoref:
+            proj4_string = readCFCRS(xds, lraise=True, lproj4=True)
+            ds = addGeoReference(xds, proj4_string=proj4_string)
     else:
-        raise NotImplementedError("Only loading via xarray is currently implemented.")
+        ds = DatasetNetCDF(name=dataset, filelist=[filepath], varlist=varlist, varatts=varatts, **kwargs)
+        if lgeoref: 
+            raise NotImplementedError
     # return formated dataset
     return ds
+
 
 ## abuse for testing
 if __name__ == '__main__':
@@ -317,9 +338,10 @@ if __name__ == '__main__':
 #   dask.set_options(pool=ThreadPool(4))
 
   modes = []
+  modes += ['compute_forcing']
 #   modes += ['load_timeseries']
 #   modes = ['extract_timeseries']
-  modes += ['load_raw']
+#   modes += ['load_raw']
 #   modes += ['test_georef']  
 
   # some settings  
@@ -336,21 +358,62 @@ if __name__ == '__main__':
   for mode in modes:
     
                              
-    if mode == 'load_timeseries':
+    if mode == 'compute_forcing':
        
-  #       varlist = netcdf_varlist
-        varlist = ['liqwatflx','precip','snow','test']
-        xds = loadCORDEX_TS(dataset=dataset, grid=station_name, varlist=None, 
+        pet_varlist = ['T2','Tmin','Tmax','pmsl','zs','q2','U10','SWDNB','SWUPB','LWDNB','LWUPB']
+        lwf_varlist = ['snow','precip']
+        #dataset = 'CanESM-CRCM5'; scenario = 'historical'
+        ds = loadCORDEX_TS(dataset=dataset, grid=station_name, varlist=lwf_varlist+pet_varlist, 
+                           lxarray=False, load=True, mode='rw',
+                           dataset_subfolder=station_dataset_subfolder, 
+                           domain=domain, aggregation=aggregation, scenario=scenario, lraw=False,)
+        print(ds,'\n\n')
+
+        from geodata.base import Variable
+        from processing.newvars import computePotEvapPM
+        # compute PET
+        pet,rad,wnd = computePotEvapPM(ds, lterms=True, lmeans=True, lrad=True, lgrdflx=False, lpmsl=True)
+        pet.atts.long_name = 'Potential Evapotranspiration'
+        rad.atts.long_name = 'Radiation Term of PET'
+        wnd.atts.long_name = 'Wind Term of PET'
+        # add to dataset
+        print(pet,'\n\n')        
+
+        exit()
+        ds.addVariable(pet, asNC=True, copy=True)
+
+        # compute liquid water flux
+        dswe = np.gradient(ds.snow.data_array, axis=None)
+        dt = np.gradient(ds.time.data_array, axis=None)*86400.
+        assert 'days' in ds.time.units, ds.time
+        data = np.clip(ds.precip.data_array - dswe/dt, a_min=0, a_max=None)
+        lwf = Variable(name='liqwatflx', units=ds.precip.units, axes=ds.precip.axes, data=data, 
+                       long_name='Liquid Water Flux')
+        # add to dataset
+        print(lwf,'\n\n')        
+        ds.addVariable(lwf, asNC=True, copy=True)
+        
+        # save dataset
+        ds.sync()
+        print(ds)
+        ds.close()
+    
+    elif mode == 'load_timeseries':
+       
+        varlist = ['precip','T2','tasmax','tasmin']; lxarray = False
+        #dataset = 'CanESM-CRCM5'; scenario = 'historical'; lxarray = True
+        xds = loadCORDEX_TS(dataset=dataset, grid=station_name, varlist=varlist, lxarray=lxarray, 
                             dataset_subfolder=station_dataset_subfolder, 
                             domain=domain, aggregation=aggregation, scenario=scenario, lraw=False)
         print(xds)
         print('')
-        for varname,xv in xds.variables.items(): 
-            if xv.ndim == 3: break
-        xv = xds[varname] # get DataArray instead of Variable object
-        xv = xv.sel(time=slice('2010-01-01','2011-02-01'),)
-        print(xv)
-        print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
+        if lxarray:
+            for varname,xv in xds.variables.items(): 
+                if xv.ndim == 3: break
+            xv = xds[varname] # get DataArray instead of Variable object
+            xv = xv.sel(time=slice('2010-01-01','2011-02-01'),)
+            print(xv)
+            print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
     
     
     elif mode == 'extract_timeseries':
@@ -369,9 +432,18 @@ if __name__ == '__main__':
             for scenario in scenarios:
                 
                 print("\n   ***   ",dataset,scenario,"   ***   \n")
-                xds = loadCORDEX_Raw(dataset=dataset, varlist=None, 
+                xds = loadCORDEX_Raw(dataset=dataset, varlist=None, decode_times=False,
                                      domain=domain, aggregation=aggregation, scenario=scenario,
                                      lgeoref=False, lraw=True)
+                # N.B.: decode_times=False is necessary, so that the dataset can be written back to
+                #       a NetCDF file; for some reason writing from CFTime objects does not work
+                
+                if xds['time'].attrs['calendar'] == '365_day':
+                    time = xds['time']
+                    time.attrs['note'] = "original calendar: " + time.attrs['calendar']
+                    del time.attrs['calendar']
+                    time.values *= 365.2425/365. # correct for missing leap years
+                    # this correction is sufficient to prevent drift in monthly data, but not for daily 
                 
                 # compute closest grid point in model
                 s = (xds.lat - lat)**2 + (xds.lon - lon)**2
@@ -407,28 +479,20 @@ if __name__ == '__main__':
     elif mode == 'load_raw':
        
         tic = time.time()
-        xds = loadCORDEX_Raw(dataset=dataset, varlist=None, 
+        xds = loadCORDEX_Raw(dataset=dataset, varlist=None, #['precip','T2','tasmax','tasmin'], 
                              aggregation=aggregation, domain=domain, scenario=scenario,
-                             lgeoref=False, lraw=False)
+                             lgeoref=False, lraw=False, lconst=True)
         toc = time.time()
         print(toc-tic)
         print(xds)
         print('')
         for name,var in xds.variables.items():
-            print(name,var.attrs.get('long_name',None))
+            print(name,var.attrs.get('long_name',None), var.attrs.get('units',None))
         print('')
         dt = xds['time'].diff(dim='time').values / np.timedelta64(1,'D')
         print('Time Delta (days):', dt.min(),dt.max())
         print('')
-        print(xds.time)
-#         xv = xds['CaPA_fine_exp_A_PR_SFC']
-#         xv = xv.loc['2016-06-16T06',:,:]
-#         varname = 'time'
-#         if varname in xds:
-#             xv = xds[varname]
-#             print(xv)
-#             print("\nMean value:", xv[:].mean().values, xv.attrs['units'])
-#             print(('Size in Memory: {:6.1f} kB'.format(xv.nbytes/1024.)))
+        print(xds.zs)
 
   
     elif mode == 'test_georef':

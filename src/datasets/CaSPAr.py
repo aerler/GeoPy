@@ -82,7 +82,7 @@ hrdps_varatts = dict(HRDPS_P_TT_10000 = dict(name='T2', units='K', offset=273.15
                      HRDPS_P_GZ_10000 = dict(name='zs', units='m', scalefactor=10., long_name='Surface Geopotential'),
                      HRDPS_P_FB_SFC = dict(name='DNSW', units='W/m^2', long_name='Downward Solar Radiation'),
                      HRDPS_P_FI_SFC = dict(name='DNLW', units='W/m^2', long_name='Downward Longwave Radiation'),
-                     HRDPS_P_PN_SFC = dict(name='mslp', units='Pa', scalefactor=100., long_name='Sea-level Pressure'),
+                     HRDPS_P_PN_SFC = dict(name='pmsl', units='Pa', scalefactor=100., long_name='Sea-level Pressure'),
                      HRDPS_P_P0_SFC = dict(name='ps', units='Pa', scalefactor=100., long_name='Surface Pressure'),
                      HRDPS_P_TM_SFC = dict(name='SST', units='K', long_name='Sea Surface Temperature'),
                      HRDPS_P_GL_SFC = dict(name='seaice', units='', long_name='Sea Ice Fraction'),

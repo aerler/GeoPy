@@ -321,7 +321,7 @@ class Variable(object):
   '''
   
   def __init__(self, name=None, units=None, axes=None, data=None, dtype=None, mask=None, fillValue=None, 
-               atts=None, plot=None, plotatts_dict=None):
+               atts=None, plot=None, plotatts_dict=None, **kwatts):
     ''' 
       Initialize variable and attributes.
       
@@ -363,7 +363,8 @@ class Variable(object):
     super(Variable,self).__init__()
     ## set basic variable 
     # cast attributes dicts as AttrDict to facilitate easy access 
-    if atts is None: atts = dict()
+    if atts is None: atts = dict(**kwatts)
+    else: atts.update(**kwatts)
     # set name in atts
     if name is not None: atts['name'] = name # name can also be accessed directly as a property
     elif 'name' not in atts: atts['name'] = 'N/A'

@@ -37,13 +37,23 @@ def radiation(SWDN, LWDN, SWUP, LWUP, ):
 
 # 2m wind speed [m/s]
 def wind(u, v=None, z=10):
-  ''' approximate 2m wind speed from wind speed at different height (z [m]; default 10m)
+  ''' approximate 2m wind speed [m/s] from wind speed at different height (z [m]; default 10m)
       (http://www.fao.org/docrep/x0490e/x0490e07.htm#wind%20profile%20relationship)
   '''
   if v is not None: u = evaluate('sqrt( 5*u**2 + 10*v**2 )') # estimate wind speed from u and v components
   # N.B.: the scale factors (5&10) are necessary, because absolute wind speeds are about 2.5 times higher than
   #       the mean of the compnents. This is because opposing directions average to zero.
   return evaluate('( u * 4.87 ) / log( 67.8 * z - 5.42 )')
+
+def computeSrfcPressure(dataset, lpmsl=True):
+  ''' compute surface pressure [Pa] from elevation using Eq. 7 from FAO:
+      http://www.fao.org/3/x0490e/x0490e07.htm#atmospheric%20pressure%20(p) 
+  '''
+  zs = dataset['zs'][:]
+  pmsl = dataset['pmsl'][:] if lpmsl and 'pmsl' in dataset else 1013.
+  p = evaluate('pmsl * ( 1 - ( 0.0065*zs/293 ) )**5.26 ')
+  # return surface pressure estimate in Pa
+  return p      
 
 # psychrometric constant [Pa/K]
 def gamma(p):
@@ -122,8 +132,9 @@ def computeVaporDeficit(dataset):
   # return new variable
   return var
 
+
 # compute potential evapo-transpiration
-def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True):
+def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lgrdflx=True, lpmsl=True):
   ''' function to compute potential evapotranspiration (according to Penman-Monteith method:
       https://en.wikipedia.org/wiki/Penman%E2%80%93Monteith_equation,
       http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
@@ -133,8 +144,10 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True):
   if 'Rn' in dataset: Rn = dataset['Rn'][:] # alias
   else: Rn = computeNetRadiation(dataset, lrad=lrad, asVar=False) # try to compute
   # heat flux in and out of the ground
-  if 'grdflx' in dataset: G = dataset['grdflx'][:] # heat release by the soil
-  else: raise VariableError("Cannot determine soil heat flux for PET calculation.")
+  if lgrdflx:
+      if 'grdflx' in dataset: G = dataset['grdflx'][:] # heat release by the soil
+      else: raise VariableError("Cannot determine soil heat flux for PET calculation.")
+  else: G = 0
   # get wind speed
   if 'U2' in dataset: u2 = dataset['U2'][:]
   elif lmeans and 'U10' in dataset: u2 = wind(dataset['U10'][:], z=10)
@@ -142,10 +155,13 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True):
   else: raise VariableError("Cannot determine 2m wind speed for PET calculation.")
   # get psychrometric variables
   if 'ps' in dataset: p = dataset['ps'][:]
+  elif 'zs' in dataset: p = computeSrfcPressure(dataset, lpmsl=lpmsl)
   else: raise VariableError("Cannot determine surface air pressure for PET calculation.")
   g = gamma(p) # psychrometric constant (pressure-dependent)
   if 'Q2' in dataset: ea = dataset['Q2'][:]
-  elif 'q2' in dataset: ea = dataset['q2'][:] * dataset['ps'][:] * 28.96 / 18.02
+  elif 'q2' in dataset:
+      q2 = dataset['q2'][:] 
+      ea =  evaluate('q2 * p * 28.96 / 18.02')
   else: raise VariableError("Cannot determine 2m water vapor pressure for PET calculation.")
   # get temperature
   if lmeans and 'Tmean' in dataset: T = dataset['Tmean'][:]

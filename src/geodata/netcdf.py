@@ -110,7 +110,7 @@ class VarNC(Variable):
   
   def __init__(self, ncvar, name=None, units=None, axes=None, data=None, dtype=None, scalefactor=1, 
                offset=0, transform=None, atts=None, plot=None, fillValue=None, mode='r', load=False, 
-               squeeze=False, slices=None):
+               squeeze=False, slices=None, **kwatts):
     ''' 
       Initialize Variable instance based on NetCDF variable.
       
@@ -124,7 +124,11 @@ class VarNC(Variable):
         slices = None # slice with respect to NetCDF Variable
     '''
     # check mode
-    if not (mode == 'w' or mode == 'r' or mode == 'rw' or mode == 'wr'):  raise PermissionError  
+    if not (mode == 'w' or mode == 'r' or mode == 'rw' or mode == 'wr'):  
+        raise PermissionError  
+    # add kwargs to atts
+    if atts is None: atts = dict(**kwatts)
+    else: atts.update(**kwatts)
     # write-only actions
     if isinstance(ncvar,nc.Dataset):
       #if 'w' not in mode: mode += 'w'
@@ -367,7 +371,7 @@ class VarNC(Variable):
     if asNC is None: asNC = not deepcopy and not 'data' in newargs 
     # N.B.: copy as VarNC, if no deepcopy and no data provided, otherwise as regular Variable;
     #       this method is also called in slicing, but since sliced data is passed without a slice-
-    #       argument, it has to be casted as a regular Variable and converted later
+    #       argument, it has to be cast as a regular Variable and converted later
     if asNC: 
       if 'scalefactor' not in newargs: newargs['scalefactor'] = self.scalefactor
       if 'transform' not in newargs: newargs['transform'] = self.transform
@@ -503,7 +507,8 @@ class AxisNC(Axis,VarNC):
     A NetCDF Variable representing a coordinate axis.
   '''
   
-  def __init__(self, ncvar, name=None, length=0, coord=None, dtype=None, atts=None, fillValue=None, mode='r', load=None, **axargs):
+  def __init__(self, ncvar, name=None, length=0, coord=None, dtype=None, atts=None, fillValue=None, mode='r', 
+               load=None, **axargs):
     ''' Initialize a coordinate axis with appropriate values. '''
     if isinstance(ncvar,nc.Dataset):
       if 'w' not in mode: mode += 'w'
