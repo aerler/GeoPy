@@ -284,7 +284,7 @@ def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=folder_patte
 def loadCORDEX_TS(dataset=None, varlist=None, grid=None, station=None, shape=None, bias_correction=None,
                   dataset_subfolder=None, folder=folder_pattern, filename=filename_pattern,
                   domain='NAM-22', aggregation='mon', scenario='historical',
-                  varatts=None, lxarray=True, lgeoref=False, lraw=False, **kwargs):
+                  varatts=None, lxarray=True, lgeoref=False, lraw=False, lscalars=True, **kwargs):
     ''' function to load a consolidated CORDEX dataset '''
     # figure out dataset attributes
     ds_atts = datasetAttributes(dataset, **kwargs)
@@ -314,7 +314,8 @@ def loadCORDEX_TS(dataset=None, varlist=None, grid=None, station=None, shape=Non
             proj4_string = readCFCRS(xds, lraise=True, lproj4=True)
             ds = addGeoReference(xds, proj4_string=proj4_string)
     else:
-        ds = DatasetNetCDF(name=dataset, filelist=[filepath], varlist=varlist, varatts=varatts, **kwargs)
+        ds = DatasetNetCDF(name=dataset, filelist=[filepath], varlist=varlist, varatts=varatts,
+                           lscalars=lscalars, **kwargs)
         if lgeoref: 
             raise NotImplementedError
     # return formated dataset
@@ -359,44 +360,56 @@ if __name__ == '__main__':
     
                              
     if mode == 'compute_forcing':
+      
+        for dataset in dataset_list:
+          
+            ds_atts = datasetAttributes(dataset)
+            if ds_atts.reanalysis: scenarios = ('evaluation',)
+            else: scenarios = ('historical','rcp85') 
+            
+            for scenario in scenarios:
+
+                print("\n   ***   ",dataset,scenario,"   ***   \n")
        
-        pet_varlist = ['T2','Tmin','Tmax','pmsl','zs','q2','U10','SWDNB','SWUPB','LWDNB','LWUPB']
-        lwf_varlist = ['snow','precip']
-        #dataset = 'CanESM-CRCM5'; scenario = 'historical'
-        ds = loadCORDEX_TS(dataset=dataset, grid=station_name, varlist=lwf_varlist+pet_varlist, 
-                           lxarray=False, load=True, mode='rw',
-                           dataset_subfolder=station_dataset_subfolder, 
-                           domain=domain, aggregation=aggregation, scenario=scenario, lraw=False,)
-        print(ds,'\n\n')
-
-        from geodata.base import Variable
-        from processing.newvars import computePotEvapPM
-        # compute PET
-        pet,rad,wnd = computePotEvapPM(ds, lterms=True, lmeans=True, lrad=True, lgrdflx=False, lpmsl=True)
-        pet.atts.long_name = 'Potential Evapotranspiration'
-        rad.atts.long_name = 'Radiation Term of PET'
-        wnd.atts.long_name = 'Wind Term of PET'
-        # add to dataset
-        print(pet,'\n\n')        
-
-        exit()
-        ds.addVariable(pet, asNC=True, copy=True)
-
-        # compute liquid water flux
-        dswe = np.gradient(ds.snow.data_array, axis=None)
-        dt = np.gradient(ds.time.data_array, axis=None)*86400.
-        assert 'days' in ds.time.units, ds.time
-        data = np.clip(ds.precip.data_array - dswe/dt, a_min=0, a_max=None)
-        lwf = Variable(name='liqwatflx', units=ds.precip.units, axes=ds.precip.axes, data=data, 
-                       long_name='Liquid Water Flux')
-        # add to dataset
-        print(lwf,'\n\n')        
-        ds.addVariable(lwf, asNC=True, copy=True)
+                # load data using GeoPy/NetCDF4
+                pet_varlist = ['T2','Tmin','Tmax','pmsl','zs','q2','U10','SWDNB','SWUPB','LWDNB','LWUPB']
+                lwf_varlist = ['snow','precip']
+                #dataset = 'CanESM-CRCM5'; scenario = 'historical'
+                ds = loadCORDEX_TS(dataset=dataset, grid=station_name, varlist=lwf_varlist+pet_varlist, 
+                                   lxarray=False, load=True, mode='rw',
+                                   dataset_subfolder=station_dataset_subfolder, 
+                                   domain=domain, aggregation=aggregation, scenario=scenario, lraw=False,)
+                #print(ds,'\n\n')
         
-        # save dataset
-        ds.sync()
-        print(ds)
-        ds.close()
+                from geodata.base import Variable
+                from processing.newvars import computePotEvapPM
+                # compute PET
+                pet,rad,wnd = computePotEvapPM(ds, lterms=True, lmeans=True, lrad=True, lgrdflx=False, lpmsl=True)
+                pet.data_array = np.clip(pet.data_array, a_min=0, a_max=None) # remove negative PET
+                pet.atts.long_name = 'Potential Evapotranspiration'
+                rad.atts.long_name = 'Radiation Term of PET'
+                wnd.atts.long_name = 'Wind Term of PET'
+                # add to dataset
+                #print(pet,'\n\n')        
+                ds.addVariable(pet, asNC=True, copy=True)
+        
+        
+                # compute liquid water flux
+                dswe = np.gradient(ds.snow.data_array, axis=None)
+                dt = np.gradient(ds.time.data_array, axis=None)*86400.
+                assert 'days' in ds.time.units, ds.time
+                data = np.clip(ds.precip.data_array - dswe/dt, a_min=0, a_max=None)
+                lwf = Variable(name='liqwatflx', units=ds.precip.units, axes=ds.precip.axes, data=data, 
+                               long_name='Liquid Water Flux')
+                # add to dataset
+                #print(lwf,'\n\n')        
+                ds.addVariable(lwf, asNC=True, copy=True)
+                
+                # save dataset
+                ds.sync()
+                print(ds)
+                ds.close()
+                
     
     elif mode == 'load_timeseries':
        
@@ -432,6 +445,8 @@ if __name__ == '__main__':
             for scenario in scenarios:
                 
                 print("\n   ***   ",dataset,scenario,"   ***   \n")
+                
+                # load raw data using xarray
                 xds = loadCORDEX_Raw(dataset=dataset, varlist=None, decode_times=False,
                                      domain=domain, aggregation=aggregation, scenario=scenario,
                                      lgeoref=False, lraw=True)

@@ -259,7 +259,10 @@ class VarNC(Variable):
         # set slices to None, since they unneccessary now, and cause problems when slicing
         self.slices = None
       # finally, get data!
-      data = self.ncvar.__getitem__(slcs) # exceptions handled by netcdf module
+      if self.ndim == 0 and self.ncvar.ndim == 0:
+          data = self.ncvar.getValue() # special case for scalars
+      else:
+          data = self.ncvar.__getitem__(slcs) # exceptions handled by netcdf module
       if self.dtype is not None and not np.issubdtype(data.dtype,self.dtype):
         if 'scale_factor' in self.ncvar.ncattrs():
             self.dtype = data.dtype # data was scaled automatically in NetCDF module
@@ -533,7 +536,8 @@ class DatasetNetCDF(Dataset):
   
   def __init__(self, name=None, title=None, dataset=None, filelist=None, varlist=None, variables=None,
       	       varatts=None, atts=None, axes=None, multifile=False, check_override=None, ignore_list=None, 
-               folder='', mode='r', ncformat='NETCDF4', squeeze=True, load=False, check_vars=None):
+               folder='', mode='r', ncformat='NETCDF4', squeeze=True, lscalars=False, load=False, 
+               check_vars=None):
     ''' 
       Create a Dataset from one or more NetCDF files; Variables are created from NetCDF variables. 
       Alternatively, create a netcdf file from an existing Dataset (Variables can be added as well).  
@@ -553,6 +557,7 @@ class DatasetNetCDF(Dataset):
         mode           : file mode: whether read ('r') or write ('w') actions are intended/permitted (string; passed to netCDF4.Dataset)
         ncformat       : format of NetCDF file, i.e. NETCDF3 NETCDF4 or NETCDF_CLASSIC (string; passed to netCDF4.Dataset)
         squeeze        : squeeze singleton dimensions from all variables
+        lscalars       : load scalar variables or skip (default: skip)
         load           : load data from disk immediately (passed on to VarNC)
                        
       NetCDF Attributes:
@@ -705,7 +710,7 @@ class DatasetNetCDF(Dataset):
         for var in dsvars:
           ncvar= ds.variables[var]
           if var in axes: pass # do not treat coordinate variables as real variables 
-          elif ncvar.ndim == 0: pass # also ignore scalars for now...
+          elif ncvar.ndim == 0 and not lscalars: pass # also ignore scalars for now...
           elif var in variables: # if already present, make sure variables are essentially the same
             varobj = variables[var] 
             if var not in check_override:

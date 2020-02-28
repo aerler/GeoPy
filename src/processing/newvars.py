@@ -172,6 +172,9 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lgrdflx=True
   # else: Es = e_sat(T) # backup, but not very accurate
   else: raise VariableError("'Tmin' and 'Tmax' are required to compute saturation water vapor pressure for PET calculation.")
   D = Delta(T) # slope of saturation vapor pressure w.r.t. temperature
+  # determine reference variable (see what's available)
+  for refvar in ('ps','T2','Tmax','Tmin','Q2','q2','U10','u10',):
+      if refvar in dataset: break
   # compute potential evapotranspiration according to Penman-Monteith method 
   # (http://www.fao.org/docrep/x0490e/x0490e06.htm#fao%20penman%20monteith%20equation)
   if lterms:
@@ -179,15 +182,15 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lgrdflx=True
     rad = evaluate('0.0352512 * D * (Rn + G) / Dgu') # radiation term
     wnd = evaluate('g * u2 * (es - ea) * 0.9 / T / Dgu') # wind term (vapor deficit)
     pet = evaluate('( 0.0352512 * D * (Rn + G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
-    import numpy as np
     assert np.allclose(pet, rad+wnd, equal_nan=True)
-    rad = Variable(data=rad, name='petrad', units='kg/m^2/s', axes=dataset['ps'].axes)
-    wnd = Variable(data=wnd, name='petwnd', units='kg/m^2/s', axes=dataset['ps'].axes)
+    rad = Variable(data=rad, name='petrad', units='kg/m^2/s', axes=dataset[refvar].axes)
+    wnd = Variable(data=wnd, name='petwnd', units='kg/m^2/s', axes=dataset[refvar].axes)
   else:
     pet = evaluate('( 0.0352512 * D * (Rn + G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
-  pet = Variable(data=pet, name='pet', units='kg/m^2/s', axes=dataset['ps'].axes)
-  assert 'waterflx' not in dataset or pet.units == dataset['waterflx'].units, pet
+  pet = Variable(data=pet, name='pet', units='kg/m^2/s', axes=dataset[refvar].axes)
+  assert 'liqwatflx' not in dataset or pet.units == dataset['liqwatflx'].units, pet
+  assert 'precip' not in dataset or pet.units == dataset['precip'].units, pet
   # return new variable(s)
   return (pet,rad,wnd) if lterms else pet
 
