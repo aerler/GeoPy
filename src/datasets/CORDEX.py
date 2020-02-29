@@ -24,6 +24,7 @@ import os
 import os.path as osp
 import numpy as np
 import xarray as xr
+import inspect
 # internal imports
 from geodata.netcdf import DatasetNetCDF
 from datasets.common import getRootFolder
@@ -80,10 +81,11 @@ dataset_attributes = {# UQAM CRCM5 datasets
                       'MPILR-CRCM5' : DSNT(institute='UQAM', GCM='MPI-M-MPI-ESM-LR', RCM='UQAM-CRCM5', name='MPILR-CRCM5'),
                       'MPIESM-CRCM5' : DSNT(institute='UQAM', GCM='MPI-M-MPI-ESM-MR', RCM='UQAM-CRCM5', name='MPIESM-CRCM5'),
                       'CanESMsea-CRCM5' : DSNT(institute='UQAM', GCM='UQAM-GEMatm-Can-ESMsea', RCM='UQAM-CRCM5', name='CanESMsea-CRCM5'),
-                      'MPILRsea-CRCM5' : DSNT(institute='UQAM', GCM='UQAM-GEMatm-MPILRsea', RCM='UQAM-CRCM5', name='MPILRsea-CRCM5'),
-                      'MPIESMsea-CRCM5' : DSNT(institute='UQAM', GCM='UQAM-GEMatm-MPI-ESMsea', RCM='UQAM-CRCM5', name='MPIESMsea-CRCM5'), }
+                      'MPIESMsea-CRCM5' : DSNT(institute='UQAM', GCM='UQAM-GEMatm-MPI-ESMsea', RCM='UQAM-CRCM5', name='MPIESMsea-CRCM5'),
+                      'MPILRsea-CRCM5' : DSNT(institute='UQAM', GCM='UQAM-GEMatm-MPILRsea', RCM='UQAM-CRCM5', name='MPILRsea-CRCM5'),}
 
-dataset_list = list(dataset_attributes.keys())
+dataset_list = list(dataset_attributes.keys())[:6]
+# N.B.: the MPILRsea-CRCM5 appears to be incomplete
 
 
 ## helper functions
@@ -220,7 +222,7 @@ def loadCORDEX_RawVar(dataset=None, varname=None, folder=folder_pattern, lgeoref
 
 def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=folder_pattern, lgeoref=True,  
                    domain='NAM-22', aggregation='mon', scenario='historical', lconst=True,
-                   lxarray=True, lcheck_files=True, merge_args=None, 
+                   lxarray=True, lcheck_files=True, merge_args=None, lsqueeze=True,
                    drop_variables=None, varatts=None, aux_varatts=None, lraw=False, **kwargs):
     ''' wrapper function to load multiple variables '''
     if varname and varlist: raise ValueError("Can only use either 'varlist' or 'varname'.")
@@ -247,6 +249,7 @@ def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=folder_patte
                                        domain=domain, aggregation='fx', scenario=scenario, 
                                        lxarray=lxarray, lcheck_files=lcheck_files, drop_variables=drop_variables, 
                                        varatts=varatts, lraw=lraw, **kwargs)
+            if lsqueeze: fix_ds = fix_ds.squeeze(drop=True) # drop: don't want a meaningless time variable
             ds_list.append(fix_ds)
     # figure out folder and potential varlist
     if folder:
@@ -265,7 +268,8 @@ def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=folder_patte
                                    domain=domain, aggregation=aggregation, scenario=scenario, 
                                    lxarray=lxarray, lcheck_files=lcheck_files, drop_variables=drop_variables, 
                                    varatts=varatts, lraw=lraw, **kwargs)
-        ds_list.append(var_ds)
+        if lsqueeze: var_ds = var_ds.squeeze()
+        ds_list.append(var_ds) # remove singleton dims 
     # add to merged dataset
     if merge_args is None: merge_args = dict(compat='override')
     xds = xr.merge(ds_list, **merge_args)
@@ -283,7 +287,7 @@ def loadCORDEX_Raw(varlist=None, varname=None, dataset=None, folder=folder_patte
 
 def loadCORDEX_TS(dataset=None, varlist=None, grid=None, station=None, shape=None, bias_correction=None,
                   dataset_subfolder=None, folder=folder_pattern, filename=filename_pattern,
-                  domain='NAM-22', aggregation='mon', scenario='historical',
+                  domain='NAM-22', aggregation='mon', scenario='historical', lfixTime=True, datum_year=1979,
                   varatts=None, lxarray=True, lgeoref=False, lraw=False, lscalars=True, **kwargs):
     ''' function to load a consolidated CORDEX dataset '''
     # figure out dataset attributes
@@ -297,7 +301,7 @@ def loadCORDEX_TS(dataset=None, varlist=None, grid=None, station=None, shape=Non
                               aggregation=aggregation, scenario=scenario, lraise=True, **kwargs)
         filepath = os.path.join(folder,filename)
     else: filepath = filename
-    if not os.path.exists(filepath): 
+    if not os.path.exists(filepath):
         raise IOError(filepath)
     # variable attributes
     if lraw: varatts = dict()
@@ -305,6 +309,10 @@ def loadCORDEX_TS(dataset=None, varlist=None, grid=None, station=None, shape=Non
     else: varatts = varatts.copy()
     # load dataset
     if lxarray:
+        # fix arguments to prevent errors (no kwargs)
+        argspec, varargs, keywords = inspect.getargs(xr.open_dataset.__code__); del varargs, keywords
+        kwargs = {key:value for key,value in kwargs.items() if key in argspec}
+        # load dataset using simple single file mode
         ds = xr.open_dataset(filepath, **kwargs)
         # update attributes
         if not lraw:
@@ -316,10 +324,29 @@ def loadCORDEX_TS(dataset=None, varlist=None, grid=None, station=None, shape=Non
     else:
         ds = DatasetNetCDF(name=dataset, filelist=[filepath], varlist=varlist, varatts=varatts,
                            lscalars=lscalars, **kwargs)
+        if lfixTime:
+            if 'days since 1949-12-01' in ds.time.units:
+                ds.time.data_array = np.floor( 12*( (ds.time[:]-30) / 365.2425 - (datum_year-1950) ) )
+                ds.time.units = 'months since {:04d}-01'.format(datum_year)
+            else:
+                raise NotImplementedError("Non-standard Datum: '{}'".format(ds.time.units))
         if lgeoref: 
             raise NotImplementedError
     # return formated dataset
     return ds
+
+def loadCORDEX_StnTS(dataset=None, varlist=None, station=None, bias_correction=None, folder=folder_pattern, 
+                     dataset_subfolder=station_dataset_subfolder, filename=filename_pattern,
+                     domain='NAM-22', aggregation='mon', scenario='historical', load=True, 
+                     lfixTime=True, datum_year=1979,
+                     varatts=None, lxarray=True, lraw=False, lscalars=True, **kwargs):
+    ''' wrapper function to load station/point datasets ''' 
+    return loadCORDEX_TS(dataset=dataset, varlist=varlist, station=station, bias_correction=bias_correction,
+                  dataset_subfolder=dataset_subfolder, folder=folder, filename=filename,
+                  domain=domain, aggregation=aggregation, scenario=scenario, load=load, 
+                  lfixTime=lfixTime, datum_year=datum_year,
+                  varatts=varatts, lxarray=lxarray, lraw=lraw, lscalars=lscalars, **kwargs)
+
 
 
 ## abuse for testing
@@ -339,7 +366,8 @@ if __name__ == '__main__':
 #   dask.set_options(pool=ThreadPool(4))
 
   modes = []
-  modes += ['compute_forcing']
+  modes += ['test_timefix']
+#   modes += ['compute_forcing']
 #   modes += ['load_timeseries']
 #   modes = ['extract_timeseries']
 #   modes += ['load_raw']
@@ -358,9 +386,32 @@ if __name__ == '__main__':
   # loop over modes 
   for mode in modes:
     
-                             
-    if mode == 'compute_forcing':
+
+    if mode == 'test_timefix':
+       
+        dataset = dataset_list[3]; scenario = 'historical'; datum_year = 1979
+        varlist = ['precip',]; lxarray = False
+        ds = loadCORDEX_StnTS(dataset=dataset, station=station_name, varlist=varlist, lxarray=lxarray,
+                              lfixTime=True, datum_year=datum_year, 
+                              domain=domain, aggregation=aggregation, scenario=scenario, lraw=False)
+        print(ds)
+        print('')
+        if not lxarray:
+            print(ds.time[:12])
+            assert datum_year == 1979, datum_year
+            assert scenario == 'historical', datum_year
+            if dataset == 'ERAI-CRCM5': 
+                assert ds.time[0] == 0, ds.time[:12]
+            elif len(ds.time) == 672:
+                assert ds.time[0] == -29*12, ds.time[:12] 
+            elif len(ds.time) == 684:
+                assert ds.time[0] == -30*12, ds.time[:12] 
+            dt = np.diff(ds.time[:])
+            assert dt.min()==1 and dt.max()==1, (dt.min(),dt.max())
+    
+    elif mode == 'compute_forcing':
       
+        print(dataset_list)      
         for dataset in dataset_list:
           
             ds_atts = datasetAttributes(dataset)
@@ -415,6 +466,7 @@ if __name__ == '__main__':
        
         varlist = ['precip','T2','tasmax','tasmin']; lxarray = False
         #dataset = 'CanESM-CRCM5'; scenario = 'historical'; lxarray = True
+        dataset = 'MPILRsea-CRCM5'; scenario = 'rcp85'
         xds = loadCORDEX_TS(dataset=dataset, grid=station_name, varlist=varlist, lxarray=lxarray, 
                             dataset_subfolder=station_dataset_subfolder, 
                             domain=domain, aggregation=aggregation, scenario=scenario, lraw=False)
@@ -449,7 +501,7 @@ if __name__ == '__main__':
                 # load raw data using xarray
                 xds = loadCORDEX_Raw(dataset=dataset, varlist=None, decode_times=False,
                                      domain=domain, aggregation=aggregation, scenario=scenario,
-                                     lgeoref=False, lraw=True)
+                                     lgeoref=False, lraw=True, lsqueeze=True)
                 # N.B.: decode_times=False is necessary, so that the dataset can be written back to
                 #       a NetCDF file; for some reason writing from CFTime objects does not work
                 
@@ -496,7 +548,7 @@ if __name__ == '__main__':
         tic = time.time()
         xds = loadCORDEX_Raw(dataset=dataset, varlist=None, #['precip','T2','tasmax','tasmin'], 
                              aggregation=aggregation, domain=domain, scenario=scenario,
-                             lgeoref=False, lraw=False, lconst=True)
+                             lgeoref=False, lraw=False, lconst=True, lsqueeze=True)
         toc = time.time()
         print(toc-tic)
         print(xds)
@@ -506,6 +558,7 @@ if __name__ == '__main__':
         print('')
         dt = xds['time'].diff(dim='time').values / np.timedelta64(1,'D')
         print('Time Delta (days):', dt.min(),dt.max())
+        print(xds['time'].values[:10])
         print('')
         print(xds.zs)
 
