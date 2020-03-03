@@ -1383,7 +1383,7 @@ class Variable(object):
       if axatts is not None: raxatts.update(axatts)      
       # define coordinates for new axis
       if 'coord' in raxatts:
-        coord = raxatts.pop('coord') # use user-defiend coordinates 
+        coord = raxatts.pop('coord') # use user-defined coordinates 
       elif lblk: # use the beginning of each block as new coordinates (not divided by block length!) 
         if axlen == len(oaxis):
           coord = oaxis.coord.reshape(nblks,blklen)[:,0].copy()
@@ -1725,9 +1725,11 @@ class Variable(object):
       else:
         raise TimeAxisError("Time units='month' required to extract seasons! (got '{:s}')".format(time.units))
     else:
-      if 'long_name' in time.atts:
-        if not  'month since 1979-01' in time.atts['long_name'].lower(): 
-          raise TimeAxisError("Unable to determin time offset: {}".format(time.atts['long_name']))
+      if any([mu in time.units for mu in monthlyUnitsList]): 
+        if 'since 1979-01' in time.units.lower(): pass
+        elif 'long_name' in time.atts and 'since 1979-01' in time.atts['long_name'].lower(): pass
+        else: 
+            raise TimeAxisError("Unable to determin time offset: {}".format(str(time)))
       else:    
         raise TimeAxisError("Unable to determin time offset: {}".format(str(time)))
     if np.any( np.diff(tcoord, axis=0) != 1 ): 
@@ -1901,7 +1903,7 @@ class Variable(object):
     assert avar.shape == self.shape[:tax]+(te/12,)+self.shape[tax+1:]
     # convert time coordinate to years (from month)
     if asVar:
-      if tatts['units'].lower() == 'year' and taxis.units.lower() in monthlyUnitsList:
+      if tatts['units'].lower() == 'year' and any([mu in taxis.units.lower() for mu in monthlyUnitsList]):
         raxis = avar.getAxis(tatts['name'])
         if taxis.coord[0]%12 == 1: # special treatment, if we start counting at 1(instead of 0)
           raxis.coord = ( ( raxis.coord -1 ) // 12 ) + 1  

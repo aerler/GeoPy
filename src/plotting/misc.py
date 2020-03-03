@@ -217,7 +217,7 @@ def getPlotValues(var, checkunits=None, checkname=None, lsmooth=False, lperi=Fal
   if lsmooth: 
       if val.ndim == 1: 
           val = smooth(val, **kwargs) # should automatically handle NaN and masks
-      if val.ndim == 2:
+      elif val.ndim == 2:
           # apply zero-padded convolution with Gaussian kernel (return same size as input)
           val = smooth_image(val, **kwargs) # should automatically handle NaN and masks
       else:

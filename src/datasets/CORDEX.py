@@ -366,10 +366,10 @@ if __name__ == '__main__':
 #   dask.set_options(pool=ThreadPool(4))
 
   modes = []
-  modes += ['test_timefix']
+#   modes += ['test_timefix']
 #   modes += ['compute_forcing']
 #   modes += ['load_timeseries']
-#   modes = ['extract_timeseries']
+  modes = ['extract_timeseries']
 #   modes += ['load_raw']
 #   modes += ['test_georef']  
 
@@ -381,7 +381,8 @@ if __name__ == '__main__':
   # more settings
   dataset = 'ERAI-CRCM5'
   scenario = 'evaluation'
-  station_name = 'MLWC'
+#   station_name = 'MLWC'
+  station_name = 'FortMcMurray'
   
   # loop over modes 
   for mode in modes:
@@ -487,6 +488,8 @@ if __name__ == '__main__':
         
         if station_name == 'MLWC':
             lat,lon = 57.45,-111.4
+        elif station_name == 'FortMcMurray':
+            lat,lon = 56.65,-111.22
                 
         for dataset in dataset_list:
           
