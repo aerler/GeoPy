@@ -13,7 +13,8 @@ from numexpr import evaluate, set_num_threads, set_vml_num_threads
 # numexpr parallelisation: don't parallelize at this point!
 set_num_threads(1); set_vml_num_threads(1)
 # internal imports
-from geodata.base import Variable, VariableError
+from geodata.base import Dataset, Variable, VariableError, AxisError
+from geodata.misc import days_per_month, days_per_month_365, DatasetError
 from utils.constants import sig # used in calculation for clack body radiation
 
 ## helper functions
@@ -194,19 +195,179 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lgrdflx=True
   # return new variable(s)
   return (pet,rad,wnd) if lterms else pet
 
+
+## some helper functions to compute solar irradiance (ToA) and daylight hours
+
+# calendar day of the middle of the month
+def day_of_year(month, l365=False, time_offset=0):
+    ''' calculate the calendar day (day of year) of the middle of the month; values in time series will 
+        be used as zero- or one-based indices '''
+    if np.isscalar(month): month = np.asarray([month])
+    elif not isinstance(month,np.ndarray): month = np.asarray(month)
+    # compute day of the middle of the month
+    dpm = days_per_month_365 if l365 else days_per_month
+    mid_day_month = np.cumsum(np.concatenate(([0],dpm[:-1]))) + dpm/2.
+    # create index array
+    month_idx = ( month if time_offset == 0 else month+time_offset ) % 12
+    month_idx = month_idx.astype(np.int)
+    # select the mid-day of the year for each month
+    J = mid_day_month[month_idx]
+    # return day of the year of the middle of the month
+    return J
+
+# calculate solar declination angle from Julian day
+def solar_declination(J, ldeg=True):
+    ''' calculate the solar declination based on the day of the year; this is the CBM model from 
+        Forsythe et al. 1995 (Ecological Modelling), which is supposed to be more accurate and 
+        accounts for ellipticity of the orbit '''
+    th = 0.2163108 + 2*np.arctan(0.9671396 * np.tan(0.00860 * (J - 186) ) ) # solar orbital angle
+    dec = np.arcsin( 0.39795 * np.cos(th) ) # declination
+    if ldeg: dec = np.rad2deg(dec)
+    return dec
+
+# calculate length of day from declination and latitude
+def fraction_of_daylight(dec, lat, p='center', ldeg=True):
+    ''' calculate length of day from declination and latitude, with a daylight definition parameter; formulas have been adapted from 
+        Forsythe et al, (1995, Ecological Modeling 80): A model comparison for daylength as a function of latitude and day of year'''
+    if isinstance(p,str):
+        if p == 'center': p = 0
+        elif p == 'top': p = 0.26667
+        elif p == 'refrac': p = 0.8333
+        elif p == 'nautical': p = 12
+        elif p == 'civil': p = 18
+        elif p == 'astro': p = 6
+        else:
+            raise ValueError(p)
+        # values in degree from Table 1 in Forsythe et al. 1995
+        if not ldeg: p = np.deg2rad(p)
+    if ldeg:
+        dec = np.deg2rad(dec); lat = np.deg2rad(lat); p = np.deg2rad(p)
+    tmp = ( np.sin(p) + np.sin(lat)*np.sin(dec) ) / ( np.cos(lat)*np.cos(dec) )
+    np.clip(tmp, a_min=-1, a_max=1, out=tmp) # in place
+    frac = 1 - np.arccos(tmp)/np.pi
+    # return fraction of daylight ( 1 == 24 hours )
+    return frac
+
+
+# compute daylight hours from month and latitude
+def monthlyDaylight(month, lat, p='center', l365=False, time_offset=0, ldeg=True):
+    ''' compute fraction of daylight based on month (middle of the month), latitude and a 'horizon definition' p '''
+    # compute day of year
+    J = day_of_year(month, l365=l365, time_offset=time_offset)
+    # compute solar declination
+    D = solar_declination(J, ldeg=False)
+    if not np.isscalar(lat) and not np.isscalar(D):
+        lat = np.asarray(lat); D = np.asarray(D)
+        assert D.ndim == 1, D.shape
+        D = D.reshape(D.shape+(1,)*lat.ndim) # add singleton spatial dimensions
+        lat = lat.reshape((1,)+lat.shape) # add singleton time dimension        
+    # compute hours of daylight
+    if ldeg: lat = np.deg2rad(lat)
+    frac = fraction_of_daylight(D, lat, p=p, ldeg=False)
+    # return fraction of daylight ( 1 == 24 hours )
+    return frac
+
+
+# compute heat index for Thornthwaite PET formulation
+def heatIndex(T2, lKelvin=True, lkeepDims=True):
+    ''' formula to compute heat index (Thornthwaite 1948) from monthly normal temperatures '''
+    if T2.shape[0] != 12: 
+        raise ValueError(T2.shape)    
+    t = T2[:].copy()
+    if lKelvin: t -= 273.15 # convert temperatur
+    np.clip(t, a_min=0, a_max=None, out=t) # in-place
+    t /= 5. # operate in-place - if the arrays are small, this is trivial anyway
+    t **= 1.514
+    # compute sum along time axis
+    I = np.sum(t, axis=0, keepdims=lkeepDims)
+    # return cumulative heat index
+    return I
+
+def _inferLat(dataset, lat=None, ldeg=True):
+  ''' extract a latitude value or array from dataset and expand to reference dimensions '''
+  if lat is None:
+      # search for lat coordinate or field
+      for varname in ('lat2D', 'xlat', 'lat', 'latitude'):
+          if varname in dataset:
+              latvar = dataset[varname]
+              break
+      lat = latvar[:]
+  elif isinstance(lat,str):
+      if lat in dataset:
+          latvar = dataset[lat] # select this field
+      else:
+          raise DatasetError("Latitude variable '{}' not found in Dataset '{}'".format(lat,dataset.name))
+      lat = latvar[:]
+  else:
+      if isinstance(lat,Variable):
+          latvar = lat
+          lat = latvar[:]
+      else:
+          # use this value
+          latvar = None
+  if latvar:
+      units = lat.units
+      lat = lat[:]
+      if ldeg and 'deg' not in units and 'rad' in units: lat = np.rad2deg(lat)
+      elif not ldeg and 'deg' in units and 'rad' not in units: lat = np.rad2deg(lat)
+  # return data array
+  return lat
+
 # compute potential evapo-transpiration
-def computePotEvapTh(dataset):
-  ''' function to compute potential evapotranspiration (according to Thornthwaite method:
-      https://en.wikipedia.org/wiki/Potential_evaporation) '''
-  raise NotImplementedError
+def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p='center'):
+  ''' function to compute potential evapotranspiration according to Thornthwaite method
+      (Thornthwaite, 1948, Appendix 1 or https://en.wikipedia.org/wiki/Potential_evaporation) '''
   # check prerequisites
-  for pv in (): 
-    if pv not in dataset: raise VariableError("Prerequisite '{:s}' for potential evapo-transpiration not found.".format(pv))
-    else: dataset[pv].load() # load data for computation
-  # compute waterflux (returns a Variable instance)
-  var = dataset['']
-  var.name = 'pet' # give correct name (units should be correct)
-  assert var.units == dataset[''].units, var
+  if isinstance(dataset, Dataset):
+      if 'T2' not in dataset: 
+          raise VariableError("Prerequisite 'T2' for potential evapo-transpiration not found.")
+      else: T2 = dataset['T2'].load()
+  elif isinstance(dataset, Variable):
+      T2 = dataset.load()
+  else:
+      raise TypeError(dataset)
+  if not T2.hasAxis('time'): 
+      raise AxisError("Variable 'T2' needs to have a time coordinate for daylight calculation.")
+  else: time = T2.getAxis('time')
+  assert T2.axisIndex('time') == 0, T2
+  # infer latitude
+  lat = _inferLat(dataset, lat=lat, ldeg=True)
+  # compute heat index
+  if climT2 is None:
+      climT2 = T2.climMean()
+  if isinstance(climT2,Variable):
+      lKelvin = ( climT2.units == 'K' )
+      climt = climT2.load()[:]
+      if lKelvin: assert climt.min() > 150, climt
+      else: assert climt.max() < 60, climt
+  else:
+      climt = climT2
+      lKelvin = ( climt.min() > 150 )
+  I = heatIndex(climt, lKelvin=lKelvin, lkeepDims=True)
+  # compute PET 
+  a = evaluate('6.75e-7*I**3 - 7.71e-5*I**2 + 1.792e-2*I + 0.49239')
+  if T2.units == 'K': t = T2[:] - 273.15
+  elif 'C' in T2.units: t = T2[:].copy()
+  else:
+      raise VariableError("Cannot infer temperature units from unit string",T2.units)
+  np.clip(t, a_min=0, a_max=None, out=t)
+  pet = evaluate('(16./30.) * ( 10. * t/I )**a') # in mm/day for 12 hours of daylight
+  # compute daylight hours
+  dlf = monthlyDaylight(time[:], lat, p=p, l365=l365, time_offset=time_offset, ldeg=True)
+  if dlf.ndim < pet.ndim:
+      nd = dlf.ndim
+      if dlf.shape == pet.shape[:nd]:
+          dlf = dlf.reshape(dlf.shape+(1,)*(pet.ndim-nd)) # usually the longitude axis will be expanded
+      else:
+          raise NotImplementedError((dlf.shape,pet.shape))
+  else:
+      assert dlf.shape == pet.shape, (dlf.shape,pet.shape)
+  pet *= 2*dlf # here 'unity' should corresponds to 12h, not 24h
+  if T2.masked:
+      pet = np.ma.masked_array(pet, mask=T2.data_array.mask)
+  # create a Variable instance
+  atts = dict(name='pet_th', units='kg/m^2/s', long_name='PET (Thornthwaite)')
+  var = Variable(data=pet, axes=T2.axes, atts=atts)
   # return new variable
   return var
 

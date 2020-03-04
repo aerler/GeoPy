@@ -26,9 +26,11 @@ import numpy as np
 import xarray as xr
 import inspect
 # internal imports
+from geodata.base import Variable
 from geodata.netcdf import DatasetNetCDF
 from datasets.common import getRootFolder
 from utils.misc import defaultNamedtuple
+from plotting.properties import getPlotAtts
 # for georeferencing
 from geospatial.xarray_tools import addGeoReference, readCFCRS, updateVariableAttrs
 
@@ -325,9 +327,18 @@ def loadCORDEX_TS(dataset=None, varlist=None, grid=None, station=None, shape=Non
         ds = DatasetNetCDF(name=dataset, filelist=[filepath], varlist=varlist, varatts=varatts,
                            lscalars=lscalars, **kwargs)
         if lfixTime:
-            if 'days since 1949-12-01' in ds.time.units:
-                ds.time.data_array = np.floor( 12*( (ds.time[:]-30) / 365.2425 - (datum_year-1950) ) )
-                ds.time.units = 'months since {:04d}-01'.format(datum_year)
+            tax = ds.time
+            tunits = 'months since {:04d}-01'.format(datum_year)
+            if tunits == tax.units: 
+                print("Time Axis '{}' has already been converted to '{}'.".format(tax.name,tax.units))
+            elif 'days since 1949-12-01' in tax.units:
+                # create varaible with old data
+                ds += Variable(name='time_in_days', units=tax.units, axes=(tax,), 
+                               data=tax.data_array, atts=tax.atts.copy())
+                # fix time axis
+                tax.data_array = np.floor( 12*( (tax[:]-30) / 365.2425 - (datum_year-1950) ) )
+                tax.units = tunits
+                tax.plot = getPlotAtts(name='time', units=tunits, atts=tax.atts,)
             else:
                 raise NotImplementedError("Non-standard Datum: '{}'".format(ds.time.units))
         if lgeoref: 
@@ -366,10 +377,10 @@ if __name__ == '__main__':
 #   dask.set_options(pool=ThreadPool(4))
 
   modes = []
-#   modes += ['test_timefix']
+  modes += ['test_timefix']
 #   modes += ['compute_forcing']
 #   modes += ['load_timeseries']
-  modes = ['extract_timeseries']
+#   modes = ['extract_timeseries']
 #   modes += ['load_raw']
 #   modes += ['test_georef']  
 
@@ -391,7 +402,7 @@ if __name__ == '__main__':
     if mode == 'test_timefix':
        
         dataset = dataset_list[3]; scenario = 'historical'; datum_year = 1979
-        varlist = ['precip',]; lxarray = False
+        varlist = ['precip','pet_th']; lxarray = False
         ds = loadCORDEX_StnTS(dataset=dataset, station=station_name, varlist=varlist, lxarray=lxarray,
                               lfixTime=True, datum_year=datum_year, 
                               domain=domain, aggregation=aggregation, scenario=scenario, lraw=False)
@@ -411,6 +422,12 @@ if __name__ == '__main__':
             assert dt.min()==1 and dt.max()==1, (dt.min(),dt.max())
     
     elif mode == 'compute_forcing':
+        
+        # settings
+        loverwrite = False
+        pet_varlist = ['T2','Tmin','Tmax','pmsl','zs','q2','U10','SWDNB','SWUPB','LWDNB','LWUPB']
+        lwf_varlist = ['snow','precip']
+        new_varlist = ['pet','petrad','petwnd','pet_th','liqwatflx']
       
         print(dataset_list)      
         for dataset in dataset_list:
@@ -424,38 +441,54 @@ if __name__ == '__main__':
                 print("\n   ***   ",dataset,scenario,"   ***   \n")
        
                 # load data using GeoPy/NetCDF4
-                pet_varlist = ['T2','Tmin','Tmax','pmsl','zs','q2','U10','SWDNB','SWUPB','LWDNB','LWUPB']
-                lwf_varlist = ['snow','precip']
-                #dataset = 'CanESM-CRCM5'; scenario = 'historical'
-                ds = loadCORDEX_TS(dataset=dataset, grid=station_name, varlist=lwf_varlist+pet_varlist, 
+                ds = loadCORDEX_TS(dataset=dataset, grid=station_name, 
+                                   varlist=lwf_varlist+pet_varlist+new_varlist, 
                                    lxarray=False, load=True, mode='rw',
                                    dataset_subfolder=station_dataset_subfolder, 
                                    domain=domain, aggregation=aggregation, scenario=scenario, lraw=False,)
                 #print(ds,'\n\n')
-        
-                from geodata.base import Variable
-                from processing.newvars import computePotEvapPM
-                # compute PET
-                pet,rad,wnd = computePotEvapPM(ds, lterms=True, lmeans=True, lrad=True, lgrdflx=False, lpmsl=True)
-                pet.data_array = np.clip(pet.data_array, a_min=0, a_max=None) # remove negative PET
-                pet.atts.long_name = 'Potential Evapotranspiration'
-                rad.atts.long_name = 'Radiation Term of PET'
-                wnd.atts.long_name = 'Wind Term of PET'
-                # add to dataset
-                #print(pet,'\n\n')        
-                ds.addVariable(pet, asNC=True, copy=True)
-        
+                
+                if loverwrite or any([varname not in ds for varname in ('pet','petrad','petwnd')]):
+                    from processing.newvars import computePotEvapPM
+                    # compute PET
+                    pet,rad,wnd = computePotEvapPM(ds, lterms=True, lmeans=True, lrad=True, 
+                                                   lgrdflx=False, lpmsl=True)
+                    pet.data_array = np.clip(pet.data_array, a_min=0, a_max=None) # remove negative PET
+                    pet.atts.long_name = 'Potential Evapotranspiration'
+                    rad.atts.long_name = 'Radiation Term of PET'
+                    wnd.atts.long_name = 'Wind Term of PET'
+                    # add to dataset
+                    #print(pet,'\n\n')        
+                    if loverwrite or 'pet' not in ds: ds.addVariable(pet, asNC=True, copy=True)
+                    if loverwrite or 'petrad' not in ds: ds.addVariable(rad, asNC=True, copy=True)
+                    if loverwrite or 'petwnd' not in ds: ds.addVariable(wnd, asNC=True, copy=True)
+                    
+            
+                if loverwrite or 'pet_th' not in ds:
+                    from processing.newvars import computePotEvapTh
+                    # compute PET
+                    print(ds.time.atts)
+                    if 'note' in ds.time.atts and 'original calendar' in ds.time.atts['note']:
+                        l365 = ( '365_day' in ds.time.atts['note'] )
+                    else: l365 = None
+                    pet_th = computePotEvapTh(ds, climT2=None, lat=ds.atts.stn_lat, 
+                                              l365=l365, time_offset=0, p='center')
+                    # add to dataset
+                    #print(pet,'\n\n')        
+                    ds.addVariable(pet_th, asNC=True, copy=True)
         
                 # compute liquid water flux
-                dswe = np.gradient(ds.snow.data_array, axis=None)
-                dt = np.gradient(ds.time.data_array, axis=None)*86400.
-                assert 'days' in ds.time.units, ds.time
-                data = np.clip(ds.precip.data_array - dswe/dt, a_min=0, a_max=None)
-                lwf = Variable(name='liqwatflx', units=ds.precip.units, axes=ds.precip.axes, data=data, 
-                               long_name='Liquid Water Flux')
-                # add to dataset
-                #print(lwf,'\n\n')        
-                ds.addVariable(lwf, asNC=True, copy=True)
+                if loverwrite or 'liqwatflx' not in ds:
+                    from geodata.base import Variable
+                    dswe = np.gradient(ds.snow.data_array, axis=None)
+                    dt = np.gradient(ds.time_in_days.data_array, axis=None)*86400.
+                    assert 'days' in ds.time_in_days.units, ds.time
+                    data = np.clip(ds.precip.data_array - dswe/dt, a_min=0, a_max=None)
+                    lwf = Variable(name='liqwatflx', units=ds.precip.units, axes=ds.precip.axes, data=data, 
+                                   long_name='Liquid Water Flux')
+                    # add to dataset
+                    #print(lwf,'\n\n')        
+                    ds.addVariable(lwf, asNC=True, copy=True)
                 
                 # save dataset
                 ds.sync()
