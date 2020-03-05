@@ -416,6 +416,20 @@ tmp = PlotAtts(name = 'WRF PET', title = 'Potential Evapo-Transpiration (WRF)',
                units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['pet_wrf'] = tmp
+## Potential Evapo-Transpiration (Thornthwaite 1948 method)
+tmp = PlotAtts(name = 'PET (Th.)', title = 'PET (Thornthwaite)', 
+               units = precip_units, scalefactor = 86400.)
+## Potential Evapo-Transpiration (Hargreaves 1985 method)
+tmp = PlotAtts(name = 'PET (Har.)', title = 'PET (Hargreaves)', 
+               units = precip_units, scalefactor = 86400.)
+## Potential Evapo-Transpiration (Priestley-Taylor method)
+tmp = PlotAtts(name = 'PET (P-T)', title = 'PET (Priestley-Taylor)', 
+               units = precip_units, scalefactor = 86400.)
+## Potential Evapo-Transpiration (Hogg 1997 method)
+tmp = PlotAtts(name = 'PET (Hog)', title = 'PET (Hogg 1997)', 
+               units = precip_units, scalefactor = 86400.)
+# add to collection
+variablePlotatts['pet'] = tmp
 ## Potential Evapo-Transpiration
 tmp = PlotAtts(name = 'PET', title = 'Potential Evapo-Transpiration', 
                units = precip_units, scalefactor = 86400.)

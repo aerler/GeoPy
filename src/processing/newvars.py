@@ -15,7 +15,7 @@ set_num_threads(1); set_vml_num_threads(1)
 # internal imports
 from geodata.base import Dataset, Variable, VariableError, AxisError
 from geodata.misc import days_per_month, days_per_month_365, DatasetError
-from utils.constants import sig # used in calculation for clack body radiation
+from utils.constants import sig, lw, pi # used in calculation for clack body radiation
 
 ## helper functions
 
@@ -198,6 +198,40 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lgrdflx=True
 
 ## some helper functions to compute solar irradiance (ToA) and daylight hours
 
+# function to extract a suitable latitude value/array from a dataset
+def _inferLat(dataset, lat=None, ldeg=True):
+  ''' extract a latitude value or array from dataset and expand to reference dimensions '''
+  if lat is None:
+      # search for lat coordinate or field
+      latvar = None
+      for varname in ('lat2D', 'xlat', 'lat', 'latitude'):
+          if varname in dataset:
+              latvar = dataset[varname]
+              break
+      if latvar is None:
+          raise DatasetError("No suitable latitude variable found in dataset '{}'.".format(dataset.name))
+      lat = latvar[:]
+  elif isinstance(lat,str):
+      if lat in dataset:
+          latvar = dataset[lat] # select this field
+      else:
+          raise DatasetError("Latitude variable '{}' not found in Dataset '{}'".format(lat,dataset.name))
+      lat = latvar[:]
+  else:
+      if isinstance(lat,Variable):
+          latvar = lat
+          lat = latvar[:]
+      else:
+          # use this value
+          latvar = None
+  if latvar:
+      units = lat.units
+      lat = lat[:]
+      if ldeg and 'deg' not in units and 'rad' in units: lat = np.rad2deg(lat)
+      elif not ldeg and 'deg' in units and 'rad' not in units: lat = np.rad2deg(lat)
+  # return data array
+  return lat
+
 # calendar day of the middle of the month
 def day_of_year(month, l365=False, time_offset=0):
     ''' calculate the calendar day (day of year) of the middle of the month; values in time series will 
@@ -244,16 +278,17 @@ def fraction_of_daylight(dec, lat, p='center', ldeg=True):
         dec = np.deg2rad(dec); lat = np.deg2rad(lat); p = np.deg2rad(p)
     tmp = ( np.sin(p) + np.sin(lat)*np.sin(dec) ) / ( np.cos(lat)*np.cos(dec) )
     np.clip(tmp, a_min=-1, a_max=1, out=tmp) # in place
-    frac = 1 - np.arccos(tmp)/np.pi
+    frac = 1 - np.arccos(tmp)/pi
     # return fraction of daylight ( 1 == 24 hours )
     return frac
 
-
-# compute daylight hours from month and latitude
-def monthlyDaylight(month, lat, p='center', l365=False, time_offset=0, ldeg=True):
-    ''' compute fraction of daylight based on month (middle of the month), latitude and a 'horizon definition' p '''
-    # compute day of year
-    J = day_of_year(month, l365=l365, time_offset=time_offset)
+def _prepCoords(time, lat, lmonth=True, l365=False, time_offset=0, ldeg=True):
+    ''' compute calendar day and solar declination from timeseries, expand and convert latitude; 
+        declination and latitude are converted to radians '''
+    if lmonth:
+        # compute day of year
+        J = day_of_year(time, l365=l365, time_offset=time_offset)
+    else: J = time # assume time is calendar day
     # compute solar declination
     D = solar_declination(J, ldeg=False)
     if not np.isscalar(lat) and not np.isscalar(D):
@@ -261,11 +296,82 @@ def monthlyDaylight(month, lat, p='center', l365=False, time_offset=0, ldeg=True
         assert D.ndim == 1, D.shape
         D = D.reshape(D.shape+(1,)*lat.ndim) # add singleton spatial dimensions
         lat = lat.reshape((1,)+lat.shape) # add singleton time dimension        
-    # compute hours of daylight
     if ldeg: lat = np.deg2rad(lat)
+    # return calendar day, solar declination and latitude (declination and latitude in radians)
+    return J, D, lat
+
+
+# compute daylight hours from month and latitude
+def monthlyDaylight(time, lat, lmonth=True, l365=False, time_offset=0, ldeg=True, p='center'):
+    ''' compute fraction of daylight based on month (middle of the month), latitude and a 'horizon definition' p '''
+    J, D, lat = _prepCoords(time, lat, lmonth=lmonth, l365=l365, time_offset=time_offset, ldeg=ldeg); del J
+    # compute hours of daylight
     frac = fraction_of_daylight(D, lat, p=p, ldeg=False)
     # return fraction of daylight ( 1 == 24 hours )
     return frac
+
+
+# compute top-of-atmosphere (extra-terrestrial) radiation
+def toa_rad(time, lat, lmonth=True, l365=False, time_offset=0, ldeg=True):
+    ''' solar radiation at the top of the atmosphere; from Allen et al. (1998), FAO, Eq. 21 '''
+    J, D, lat = _prepCoords(time, lat, lmonth=lmonth, l365=l365, time_offset=time_offset, ldeg=ldeg) 
+    # compute inverse relative distance to sun (Eq. 23, Allen et al.)
+    rr = evaluate('1 + 0.033*cos( pi*2*J/365.2425 )')
+    # compute sunset hour angle (Eq. 26, Allen et al.)
+    ws = evaluate('arccos( -1*tan(lat)*tan(D) )')
+    # compute top-of-atmosphere solar radiation (extra-terrestrial)
+    Ra = evaluate('1366.67 * rr * ( ws*sin(lat)*sin(D) + cos(lat)*cos(D)*sin(ws) ) / pi')
+    # return solar radiation at ToA
+    return Ra
+
+
+# compute potential evapotranspiration based on Hargreaves method
+def computePotEvapHar(dataset, lat=None, l365=None, time_offset=0, lAllen=False):
+    ''' function to compute potetnial evapotranspiration following the Hargreaves method;
+        (Hargreaves & Allen, 2003, Eq. 8) '''
+    # get diurnal min/max 2m temperatures
+    if 'Tmin' in dataset: 
+        Tmin = dataset['Tmin'][:]; min_units = dataset['Tmin'].units
+    else: raise VariableError("Cannot determine diurnal minimum 2m temperature for PET calculation.")
+    if 'Tmax' in dataset: 
+        Tmax = dataset['Tmax'][:]; max_units = dataset['Tmax'].units
+    else: raise VariableError("Cannot determine diurnal maximum 2m temperature for PET calculation.")
+    assert max_units == min_units, (max_units,min_units)
+    # get 2m mean temperature
+    if 'Tmean' in dataset: 
+        TC = dataset['Tmean'][:]; tc_units = dataset['Tmean'].units
+    elif 'T2' in dataset: 
+        TC = dataset['T2'][:]; tc_units = dataset['T2'].units
+    else:
+        # estimate mean temperature as average of diurnal minimum and maximum
+        TC = (Tmax+Tmin)/2.; tc_units = min_units
+    assert tc_units == min_units, (tc_units,min_units)
+    if tc_units == 'K':
+        assert TC.min() > 150, TC
+        TC = TC - 273.15 # no need to convert min/max since only difference is used
+    elif 'C' in tc_units:
+        assert TC.max() < 70, TC
+    else:
+        raise VariableError("Cannot infer temperature units from unit string",tc_units)
+    # infer latitude
+    lat = _inferLat(dataset, lat=lat, ldeg=True)
+    # compute top-of-atmosphere solar radiation
+    time = dataset.time
+    Ra = toa_rad(time[:], lat=lat, lmonth=('month' in time.units.lower()), ldeg=True,
+                 l365=l365, time_offset=time_offset)    
+    # compute PET (need to convert Ra from J/m^/s to kg/m^2/s = mm/s and Kelvin to Celsius)    
+    if lAllen:
+        pet = evaluate('(0.0029/lw) * Ra * (TC + 20.) * (Tmax - Tmin)**0.4') # seems high-biased
+    else:
+        pet = evaluate('(0.0023/lw) * Ra * (TC + 17.8) * (Tmax - Tmin)**0.5')
+    refvar = dataset['Tmax']
+    if refvar.masked:
+        pet = np.ma.masked_array(pet, mask=refvar.data_array.mask)
+    # create a Variable instance
+    atts = dict(name='pet_har', units='kg/m^2/s', long_name='PET (Hargreaves)')
+    var = Variable(data=pet, axes=refvar.axes, atts=atts)
+    # return new variable
+    return var
 
 
 # compute heat index for Thornthwaite PET formulation
@@ -283,37 +389,7 @@ def heatIndex(T2, lKelvin=True, lkeepDims=True):
     # return cumulative heat index
     return I
 
-def _inferLat(dataset, lat=None, ldeg=True):
-  ''' extract a latitude value or array from dataset and expand to reference dimensions '''
-  if lat is None:
-      # search for lat coordinate or field
-      for varname in ('lat2D', 'xlat', 'lat', 'latitude'):
-          if varname in dataset:
-              latvar = dataset[varname]
-              break
-      lat = latvar[:]
-  elif isinstance(lat,str):
-      if lat in dataset:
-          latvar = dataset[lat] # select this field
-      else:
-          raise DatasetError("Latitude variable '{}' not found in Dataset '{}'".format(lat,dataset.name))
-      lat = latvar[:]
-  else:
-      if isinstance(lat,Variable):
-          latvar = lat
-          lat = latvar[:]
-      else:
-          # use this value
-          latvar = None
-  if latvar:
-      units = lat.units
-      lat = lat[:]
-      if ldeg and 'deg' not in units and 'rad' in units: lat = np.rad2deg(lat)
-      elif not ldeg and 'deg' in units and 'rad' not in units: lat = np.rad2deg(lat)
-  # return data array
-  return lat
-
-# compute potential evapo-transpiration
+# compute potential evapo-transpiration following Thornthwaite method
 def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p='center'):
   ''' function to compute potential evapotranspiration according to Thornthwaite method
       (Thornthwaite, 1948, Appendix 1 or https://en.wikipedia.org/wiki/Potential_evaporation) '''
@@ -339,7 +415,7 @@ def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p
       lKelvin = ( climT2.units == 'K' )
       climt = climT2.load()[:]
       if lKelvin: assert climt.min() > 150, climt
-      else: assert climt.max() < 60, climt
+      else: assert climt.max() < 70, climt
   else:
       climt = climT2
       lKelvin = ( climt.min() > 150 )
@@ -362,7 +438,8 @@ def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p
           raise NotImplementedError((dlf.shape,pet.shape))
   else:
       assert dlf.shape == pet.shape, (dlf.shape,pet.shape)
-  pet *= 2*dlf # here 'unity' should corresponds to 12h, not 24h
+  pet *= 2*dlf/86400 # here 'unity' should corresponds to 12h, not 24h
+  # N.B.: we also need to convert from per day to per second!
   if T2.masked:
       pet = np.ma.masked_array(pet, mask=T2.data_array.mask)
   # create a Variable instance

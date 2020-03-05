@@ -377,8 +377,8 @@ if __name__ == '__main__':
 #   dask.set_options(pool=ThreadPool(4))
 
   modes = []
-  modes += ['test_timefix']
-#   modes += ['compute_forcing']
+#   modes += ['test_timefix']
+  modes += ['compute_forcing']
 #   modes += ['load_timeseries']
 #   modes = ['extract_timeseries']
 #   modes += ['load_raw']
@@ -411,7 +411,7 @@ if __name__ == '__main__':
         if not lxarray:
             print(ds.time[:12])
             assert datum_year == 1979, datum_year
-            assert scenario == 'historical', datum_year
+            assert scenario == 'historical', scenario
             if dataset == 'ERAI-CRCM5': 
                 assert ds.time[0] == 0, ds.time[:12]
             elif len(ds.time) == 672:
@@ -473,6 +473,19 @@ if __name__ == '__main__':
                     else: l365 = None
                     pet_th = computePotEvapTh(ds, climT2=None, lat=ds.atts.stn_lat, 
                                               l365=l365, time_offset=0, p='center')
+                    # add to dataset
+                    #print(pet,'\n\n')        
+                    ds.addVariable(pet_th, asNC=True, copy=True)
+
+                if loverwrite or 'pet_har' not in ds:
+                    from processing.newvars import computePotEvapHar
+                    # compute PET
+                    print(ds.time.atts)
+                    if 'note' in ds.time.atts and 'original calendar' in ds.time.atts['note']:
+                        l365 = ( '365_day' in ds.time.atts['note'] )
+                    else: l365 = None
+                    pet_th = computePotEvapHar(ds, lat=ds.atts.stn_lat, lAllen=False, 
+                                              l365=l365, time_offset=0)
                     # add to dataset
                     #print(pet,'\n\n')        
                     ds.addVariable(pet_th, asNC=True, copy=True)

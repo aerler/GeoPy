@@ -24,6 +24,7 @@ kappa = R/Cp # ~7/2, adiabatic exponent for dry air
 fc = 2*Omega*sin(pi/4) # Coriolis parameter at 45 deg N
 p0 = 1e5 # reference pressure (e.g. for potential temperature)
 sig = 5.67051e-8 # Stefan-Boltzmann constant (AMS Glossary, WRF)
+lw =  2.45e6 # latent heat of vaporization [J/kg] of water at 20 deg Celsius and mean sealevel pressure (FAO)
 
 # thresholds for wet-day variables (from AMS glossary and ETCCDI Climate Change Indices) 
 precip_thresholds = [0.2, 1., 10., 20.]
