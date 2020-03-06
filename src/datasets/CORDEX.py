@@ -378,9 +378,9 @@ if __name__ == '__main__':
 
   modes = []
 #   modes += ['test_timefix']
-  modes += ['compute_forcing']
+#   modes += ['compute_forcing']
 #   modes += ['load_timeseries']
-#   modes = ['extract_timeseries']
+  modes = ['extract_timeseries']
 #   modes += ['load_raw']
 #   modes += ['test_georef']  
 
@@ -392,8 +392,8 @@ if __name__ == '__main__':
   # more settings
   dataset = 'ERAI-CRCM5'
   scenario = 'evaluation'
-#   station_name = 'MLWC'
-  station_name = 'FortMcMurray'
+  station_name = 'MLWC'
+#   station_name = 'FortMcMurray'
   
   # loop over modes 
   for mode in modes:

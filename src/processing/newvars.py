@@ -133,6 +133,28 @@ def computeVaporDeficit(dataset):
   # return new variable
   return var
 
+def _getTemperatures(dataset, lmeans=False):
+    ''' helper functions to extract temperature variables '''
+    # get diurnal min/max 2m temperatures
+    if 'Tmin' in dataset: 
+        Tmin = dataset['Tmin'][:]; min_units = dataset['Tmin'].units
+    else: raise VariableError("Cannot determine diurnal minimum 2m temperature for PET calculation.")
+    if 'Tmax' in dataset: 
+        Tmax = dataset['Tmax'][:]; max_units = dataset['Tmax'].units
+    else: raise VariableError("Cannot determine diurnal maximum 2m temperature for PET calculation.")
+    assert max_units == min_units, (max_units,min_units)
+    # get 2m mean temperature
+    if lmeans and 'Tmean' in dataset: 
+        T = dataset['Tmean'][:]; t_units = dataset['Tmean'].units
+    elif 'T2' in dataset: 
+        T = dataset['T2'][:]; t_units = dataset['T2'].units
+    else:
+        # estimate mean temperature as average of diurnal minimum and maximum
+        T = (Tmax+Tmin)/2.; t_units = min_units
+    assert t_units == min_units, (t_units,min_units)
+    # return 
+    return T, Tmin, Tmax, t_units
+  
 
 # compute potential evapo-transpiration
 def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lgrdflx=True, lpmsl=True):
@@ -165,11 +187,10 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lgrdflx=True
       ea =  evaluate('q2 * p * 28.96 / 18.02')
   else: raise VariableError("Cannot determine 2m water vapor pressure for PET calculation.")
   # get temperature
-  if lmeans and 'Tmean' in dataset: T = dataset['Tmean'][:]
-  elif 'T2' in dataset: T = dataset['T2'][:]
-  else: raise VariableError("Cannot determine 2m mean temperature for PET calculation.")
+  T, Tmin, Tmax, t_units = _getTemperatures(dataset, lmeans=lmeans)
+  assert t_units == 'K', t_units
   # get saturation water vapor
-  if 'Tmin' in dataset and 'Tmax' in dataset: es = e_sat(dataset['Tmin'][:],dataset['Tmax'][:])
+  if 'Tmin' in dataset and 'Tmax' in dataset: es = e_sat(Tmin,Tmax)
   # else: Es = e_sat(T) # backup, but not very accurate
   else: raise VariableError("'Tmin' and 'Tmax' are required to compute saturation water vapor pressure for PET calculation.")
   D = Delta(T) # slope of saturation vapor pressure w.r.t. temperature
@@ -189,48 +210,166 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lgrdflx=True
   else:
     pet = evaluate('( 0.0352512 * D * (Rn + G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
-  pet = Variable(data=pet, name='pet', units='kg/m^2/s', axes=dataset[refvar].axes)
+  atts = dict(name='pet', units='kg/m^2/s', long_name='PET (Penman-Monteith)')
+  pet = Variable(data=pet, axes=dataset[refvar].axes, atts=atts)
   assert 'liqwatflx' not in dataset or pet.units == dataset['liqwatflx'].units, pet
   assert 'precip' not in dataset or pet.units == dataset['precip'].units, pet
   # return new variable(s)
   return (pet,rad,wnd) if lterms else pet
 
 
+# compute potential evapo-transpiration
+def computePotEvapPT(dataset, alpha=1.26, lmeans=False, lrad=True, lgrdflx=True, lpmsl=True):
+  ''' function to compute potential evapotranspiration based on the Priestley-Taylor method (1972):
+      Priestley & Taylor (1972, MWR): On the Assessment of Surface Heat Flux and Evaporation Using Large-Scale Parameters
+      Note that different values for 'alpha' may be appropriate for different climates.
+  '''
+  # get net radiation at surface
+  if 'netrad' in dataset: Rn = dataset['netrad'][:] # net radiation
+  if 'Rn' in dataset: Rn = dataset['Rn'][:] # alias
+  else: Rn = computeNetRadiation(dataset, lrad=lrad, asVar=False) # try to compute
+  # heat flux in and out of the ground
+  if lgrdflx:
+      if 'grdflx' in dataset: G = dataset['grdflx'][:] # heat release by the soil
+      else: raise VariableError("Cannot determine soil heat flux for PET calculation.")
+  else: G = 0
+  # get psychrometric variables
+  if 'ps' in dataset: p = dataset['ps'][:]
+  elif 'zs' in dataset: p = computeSrfcPressure(dataset, lpmsl=lpmsl)
+  else: raise VariableError("Cannot determine surface air pressure for PET calculation.")
+  g = gamma(p) # psychrometric constant (pressure-dependent)
+  # get temperature
+  if lmeans and 'Tmean' in dataset: T = dataset['Tmean'][:]
+  elif 'T2' in dataset: T = dataset['T2'][:]
+  else: raise VariableError("Cannot determine 2m mean temperature for PET calculation.")
+  # get slope of saturation vapor pressure w.r.t. temperature
+  D = Delta(T)
+  # determine reference variable (see what's available)
+  for refvar in ('ps','T2','Tmean',):
+      if refvar in dataset: break
+  # compute potential evapotranspiration according to Priestley-Taylor method (1972)
+  pet = evaluate('( alpha * D * (Rn + G) ) / ( D + g ) / 86400') # Eq. 12, Stannard, 1993, WRR
+  # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
+  atts = dict(name='pet_pt', units='kg/m^2/s', long_name='PET (Priestley-Taylor)')
+  pet = Variable(data=pet, axes=dataset[refvar].axes, atts=atts)
+  assert 'liqwatflx' not in dataset or pet.units == dataset['liqwatflx'].units, pet
+  assert 'precip' not in dataset or pet.units == dataset['precip'].units, pet
+  # return new variable
+  return pet
+
+
+# function to extract a variable from suitable options
+def _extractVariable(dataset, var=None, name_list=None, latts=True, lunits=False):
+  ''' extract a variable (value or array) from dataset based on a list of options '''
+  units = None
+  if var is None:
+      variable = None
+      # search for lat coordinate or field
+      for varname in name_list:
+          if varname in dataset:
+              variable = dataset[varname]
+              break
+      if variable is None:
+          var = None
+          # search for attribute (constant value)
+          if latts:
+              for attname in name_list:
+                  if attname in dataset.atts:
+                      var = dataset.atts[attname]
+                      break
+          if var is None:
+              raise DatasetError("No suitable elevation variable or attribute found in dataset '{}'.".format(dataset.name))
+      else:
+          units = variable.units
+          var = variable[:]
+  elif isinstance(var,str):
+      if var in dataset:
+          variable = dataset[var] # select this field
+      else:
+          raise DatasetError("Latitude variable '{}' not found in Dataset '{}'".format(var,dataset.name))
+      units = variable.units
+      var = variable[:]
+  else:
+      if isinstance(var,Variable):
+          variable = var
+          units = variable.units
+          var = variable[:]
+      else:
+          pass # just use this value
+  # return data array
+  return (var, units) if lunits else var
+
+# wrapper to extract elevation
+def _inferElev(dataset, zs=None, name_list=None, latts=True, lunits=False):
+    ''' wrapper to extract elevation based on naem_list'''
+    if name_list is None: name_list = ('zs', 'elev', 'stn_zs')
+    return _extractVariable(dataset, var=zs, name_list=name_list, latts=latts, lunits=lunits)   
+
+
+# compute potential evapo-transpiration
+def computePotEvapHog(dataset, lmeans=False, lq2=False, zs=None):
+  ''' function to compute potential evapotranspiration based on Hogg's simplified formula (1997):
+      Hogg (1997, AgForMet): Temporal scaling of moisture and the forest-grassland boundary in western Canada
+  '''
+  # get surface elevation variables
+  zs, zs_units = _inferElev(dataset, zs=zs, latts=True, lunits=True) 
+  assert zs_units is None or zs_units == 'm', zs
+  T, Tmin, Tmax, t_units = _getTemperatures(dataset, lmeans=lmeans)
+  # make sure T is in Celsius
+  if t_units == 'K':
+      assert T.min() > 150, T
+      TC = T - 273.15 # no need to convert min/max since only difference is used
+  elif 'C' in t_units:
+      assert T.max() < 70, T
+      TC = T
+  else:
+      raise VariableError("Cannot infer temperature units from unit string",t_units)
+  # get saturation water vapor
+  es = e_sat(Tmin,Tmax)
+  # derive actual vapor pressure
+  if lq2 and 'Q2' in dataset: ea = dataset['Q2'][:]
+  elif lq2 and 'q2' in dataset and 'ps' in dataset:
+      q2 = dataset['q2'][:];  p = dataset['ps'][:]
+      ea =  evaluate('q2 * p * 28.96 / 18.02')
+  else: 
+      # estimate actual vapor pressure from Tmin
+      ea = e_sat(Tmin - 2.5) # 2.5K below Tmin - about 85% at night
+  # determine reference variable (see what's available)
+  for refvar in ('T2','Tmax','Tmin','Q2','q2'):
+      if refvar in dataset: break
+  refvar = dataset[refvar]
+  # compute potential evapotranspiration based on temperature (Hogg 1997, Eq. 4)
+  D = evaluate('(es - ea) * exp( zs/9300 ) / 1000.')
+  pet = np.where(TC>-5,evaluate('(6.2*TC + 31) * D'),0)
+  pet = np.where(TC>10,evaluate('93 * D'),pet)
+  # for TC < -5, PET = 0
+  # convert from mm/month to kg/m^2/s
+  pet /= days_per_month.mean()*86400
+  # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
+  if refvar.masked:
+      pet = np.ma.masked_array(pet, mask=refvar.data_array.mask)
+  atts = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)')
+  pet = Variable(data=pet, axes=refvar.axes, atts=atts)
+  assert 'liqwatflx' not in dataset or pet.units == dataset['liqwatflx'].units, pet
+  assert 'precip' not in dataset or pet.units == dataset['precip'].units, pet
+  # return new variable
+  return pet
+
+
 ## some helper functions to compute solar irradiance (ToA) and daylight hours
 
 # function to extract a suitable latitude value/array from a dataset
-def _inferLat(dataset, lat=None, ldeg=True):
+def _inferLat(dataset, lat=None, name_list=None, latts=True, ldeg=True, lunits=True):
   ''' extract a latitude value or array from dataset and expand to reference dimensions '''
-  if lat is None:
-      # search for lat coordinate or field
-      latvar = None
-      for varname in ('lat2D', 'xlat', 'lat', 'latitude'):
-          if varname in dataset:
-              latvar = dataset[varname]
-              break
-      if latvar is None:
-          raise DatasetError("No suitable latitude variable found in dataset '{}'.".format(dataset.name))
-      lat = latvar[:]
-  elif isinstance(lat,str):
-      if lat in dataset:
-          latvar = dataset[lat] # select this field
-      else:
-          raise DatasetError("Latitude variable '{}' not found in Dataset '{}'".format(lat,dataset.name))
-      lat = latvar[:]
-  else:
-      if isinstance(lat,Variable):
-          latvar = lat
-          lat = latvar[:]
-      else:
-          # use this value
-          latvar = None
-  if latvar:
-      units = lat.units
-      lat = lat[:]
-      if ldeg and 'deg' not in units and 'rad' in units: lat = np.rad2deg(lat)
-      elif not ldeg and 'deg' in units and 'rad' not in units: lat = np.rad2deg(lat)
+  if name_list is None: name_list = ('lat2D', 'xlat', 'lat', 'latitude', 'stn_lat')
+  lat, units = _extractVariable(dataset, var=lat, name_list=name_list, latts=latts, lunits=True)
+  if units:
+      if ldeg and 'deg' not in units and 'rad' in units: 
+          lat = np.rad2deg(lat); units = 'deg'
+      elif not ldeg and 'deg' in units and 'rad' not in units: 
+          lat = np.deg2rad(lat); units = 'rad' 
   # return data array
-  return lat
+  return (lat, units) if lunits else lat
 
 # calendar day of the middle of the month
 def day_of_year(month, l365=False, time_offset=0):
@@ -326,35 +465,20 @@ def toa_rad(time, lat, lmonth=True, l365=False, time_offset=0, ldeg=True):
 
 
 # compute potential evapotranspiration based on Hargreaves method
-def computePotEvapHar(dataset, lat=None, l365=None, time_offset=0, lAllen=False):
+def computePotEvapHar(dataset, lat=None, lmeans=False, l365=None, time_offset=0, lAllen=False):
     ''' function to compute potetnial evapotranspiration following the Hargreaves method;
         (Hargreaves & Allen, 2003, Eq. 8) '''
-    # get diurnal min/max 2m temperatures
-    if 'Tmin' in dataset: 
-        Tmin = dataset['Tmin'][:]; min_units = dataset['Tmin'].units
-    else: raise VariableError("Cannot determine diurnal minimum 2m temperature for PET calculation.")
-    if 'Tmax' in dataset: 
-        Tmax = dataset['Tmax'][:]; max_units = dataset['Tmax'].units
-    else: raise VariableError("Cannot determine diurnal maximum 2m temperature for PET calculation.")
-    assert max_units == min_units, (max_units,min_units)
-    # get 2m mean temperature
-    if 'Tmean' in dataset: 
-        TC = dataset['Tmean'][:]; tc_units = dataset['Tmean'].units
-    elif 'T2' in dataset: 
-        TC = dataset['T2'][:]; tc_units = dataset['T2'].units
+    T, Tmin, Tmax, t_units = _getTemperatures(dataset, lmeans=lmeans)
+    if t_units == 'K':
+        assert T.min() > 150, T
+        TC = T - 273.15 # no need to convert min/max since only difference is used
+    elif 'C' in t_units:
+        assert TC.max() < 70, T
+        TC = T
     else:
-        # estimate mean temperature as average of diurnal minimum and maximum
-        TC = (Tmax+Tmin)/2.; tc_units = min_units
-    assert tc_units == min_units, (tc_units,min_units)
-    if tc_units == 'K':
-        assert TC.min() > 150, TC
-        TC = TC - 273.15 # no need to convert min/max since only difference is used
-    elif 'C' in tc_units:
-        assert TC.max() < 70, TC
-    else:
-        raise VariableError("Cannot infer temperature units from unit string",tc_units)
+        raise VariableError("Cannot infer temperature units from unit string",t_units)
     # infer latitude
-    lat = _inferLat(dataset, lat=lat, ldeg=True)
+    lat = _inferLat(dataset, lat=lat, ldeg=True, lunits=False)
     # compute top-of-atmosphere solar radiation
     time = dataset.time
     Ra = toa_rad(time[:], lat=lat, lmonth=('month' in time.units.lower()), ldeg=True,
@@ -407,7 +531,7 @@ def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p
   else: time = T2.getAxis('time')
   assert T2.axisIndex('time') == 0, T2
   # infer latitude
-  lat = _inferLat(dataset, lat=lat, ldeg=True)
+  lat = _inferLat(dataset, lat=lat, ldeg=True, latts=True, lunits=False)
   # compute heat index
   if climT2 is None:
       climT2 = T2.climMean()
