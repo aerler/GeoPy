@@ -3393,8 +3393,17 @@ def concatVars(variables, axis=None, coordlim=None, idxlim=None, asVar=True, off
   if not isinstance(axis,str): raise TypeError
   if not all([isinstance(var,Variable) for var in variables]): raise TypeError
   var0 = variables[0] # shortcut
-  if not all([var.shape == var0.shape  for var in variables]): 
-    raise AxisError("All Variables need to have the same shape for concatenation!")
+  if var0.hasAxis(axis):
+      iax = var0.axisIndex(axis)
+      shp0 = var0.shape[:iax]+var0.shape[iax+1:]
+      for var in variables:
+          shp = var.shape[:iax]+var.shape[iax+1:]
+          if shp != shp0: 
+              raise AxisError("All Variables need to have the same shape for concatenation!\n (except along the dimension of concatenation)")
+  else:
+      for var in variables:
+          if var.shape != var0.shape: 
+              raise AxisError("All Variables need to have the same shape for concatenation!")
   if not var0.data: var.load()
   # get some axis info
   if lnew:

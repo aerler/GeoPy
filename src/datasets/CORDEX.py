@@ -378,9 +378,9 @@ if __name__ == '__main__':
 
   modes = []
 #   modes += ['test_timefix']
-#   modes += ['compute_forcing']
+  modes += ['compute_forcing']
 #   modes += ['load_timeseries']
-  modes = ['extract_timeseries']
+#   modes = ['extract_timeseries']
 #   modes += ['load_raw']
 #   modes += ['test_georef']  
 
@@ -393,7 +393,7 @@ if __name__ == '__main__':
   dataset = 'ERAI-CRCM5'
   scenario = 'evaluation'
   station_name = 'MLWC'
-#   station_name = 'FortMcMurray'
+  station_name = 'FortMcMurray'
   
   # loop over modes 
   for mode in modes:
@@ -424,10 +424,10 @@ if __name__ == '__main__':
     elif mode == 'compute_forcing':
         
         # settings
-        loverwrite = False
+        loverwrite = True
         pet_varlist = ['T2','Tmin','Tmax','pmsl','zs','q2','U10','SWDNB','SWUPB','LWDNB','LWUPB']
-        lwf_varlist = ['snow','precip']
-        new_varlist = ['pet','petrad','petwnd','pet_th','liqwatflx']
+        lwf_varlist = ['snow','precip','time_in_days']
+        new_varlist = ['pet','petrad','petwnd','pet_th','pet_har','pet_hog','liqwatflx']
       
         print(dataset_list)      
         for dataset in dataset_list:
@@ -449,6 +449,7 @@ if __name__ == '__main__':
                 #print(ds,'\n\n')
                 
                 if loverwrite or any([varname not in ds for varname in ('pet','petrad','petwnd')]):
+                    print("    adding PM PET ('pet') and radiation & wind terms ('petrad' & 'petwnd')")        
                     from processing.newvars import computePotEvapPM
                     # compute PET
                     pet,rad,wnd = computePotEvapPM(ds, lterms=True, lmeans=True, lrad=True, 
@@ -458,40 +459,33 @@ if __name__ == '__main__':
                     rad.atts.long_name = 'Radiation Term of PET'
                     wnd.atts.long_name = 'Wind Term of PET'
                     # add to dataset
-                    #print(pet,'\n\n')        
-                    if loverwrite or 'pet' not in ds: ds.addVariable(pet, asNC=True, copy=True)
-                    if loverwrite or 'petrad' not in ds: ds.addVariable(rad, asNC=True, copy=True)
-                    if loverwrite or 'petwnd' not in ds: ds.addVariable(wnd, asNC=True, copy=True)
-                    
-            
-                if loverwrite or 'pet_th' not in ds:
-                    from processing.newvars import computePotEvapTh
-                    # compute PET
-                    print(ds.time.atts)
-                    if 'note' in ds.time.atts and 'original calendar' in ds.time.atts['note']:
-                        l365 = ( '365_day' in ds.time.atts['note'] )
-                    else: l365 = None
-                    pet_th = computePotEvapTh(ds, climT2=None, lat=ds.atts.stn_lat, 
-                                              l365=l365, time_offset=0, p='center')
-                    # add to dataset
-                    #print(pet,'\n\n')        
-                    ds.addVariable(pet_th, asNC=True, copy=True)
+                    if loverwrite or 'pet' not in ds: ds.addVariable(pet, asNC=True, copy=True, loverwrite=loverwrite)
+                    if loverwrite or 'petrad' not in ds: ds.addVariable(rad, asNC=True, copy=True, loverwrite=loverwrite)
+                    if loverwrite or 'petwnd' not in ds: ds.addVariable(wnd, asNC=True, copy=True, loverwrite=loverwrite)
+                                    
+                ## add simplified PET methods
+                pet_methods = ['PT', 'Hog', 'Har', 'Th' ]
+                if 'note' in ds.time.atts and 'original calendar' in ds.time.atts['note']:
+                    l365 = ( '365_day' in ds.time.atts['note'] )
+                else: l365 = None
+                pet_options = dict(lat=ds.atts.stn_lat, l365=l365, lAllen=False, lgrdflx=False,
+                                   climT2=None, time_offset=0, p='center')
+                import processing.newvars as pet_mod
+                # Priestley-Taylor 1972, Hogg 1997, Hargreaves 1985, Thronthwaite 1948
+                for pet_method in pet_methods:
+                    varname = 'pet_' + pet_method.lower()
+                    if loverwrite or varname not in ds:
+                        print("    adding",pet_method,"PET","('{}')".format(varname))        
+                        function_name = 'computePotEvap'+pet_method
+                        pet_fct = getattr(pet_mod, function_name)
+                        # compute PET
+                        pet = pet_fct(ds, **pet_options)
+                        # add to dataset
+                        ds.addVariable(pet, asNC=True, copy=True, loverwrite=loverwrite)
 
-                if loverwrite or 'pet_har' not in ds:
-                    from processing.newvars import computePotEvapHar
-                    # compute PET
-                    print(ds.time.atts)
-                    if 'note' in ds.time.atts and 'original calendar' in ds.time.atts['note']:
-                        l365 = ( '365_day' in ds.time.atts['note'] )
-                    else: l365 = None
-                    pet_th = computePotEvapHar(ds, lat=ds.atts.stn_lat, lAllen=False, 
-                                              l365=l365, time_offset=0)
-                    # add to dataset
-                    #print(pet,'\n\n')        
-                    ds.addVariable(pet_th, asNC=True, copy=True)
-        
                 # compute liquid water flux
                 if loverwrite or 'liqwatflx' not in ds:
+                    print("    adding Liquid Water Flux ('liqwatflx')")
                     from geodata.base import Variable
                     dswe = np.gradient(ds.snow.data_array, axis=None)
                     dt = np.gradient(ds.time_in_days.data_array, axis=None)*86400.
@@ -501,7 +495,7 @@ if __name__ == '__main__':
                                    long_name='Liquid Water Flux')
                     # add to dataset
                     #print(lwf,'\n\n')        
-                    ds.addVariable(lwf, asNC=True, copy=True)
+                    ds.addVariable(lwf, asNC=True, copy=True, loverwrite=loverwrite)
                 
                 # save dataset
                 ds.sync()

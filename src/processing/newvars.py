@@ -157,7 +157,7 @@ def _getTemperatures(dataset, lmeans=False):
   
 
 # compute potential evapo-transpiration
-def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lgrdflx=True, lpmsl=True):
+def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lgrdflx=True, lpmsl=True, **kwargs):
   ''' function to compute potential evapotranspiration (according to Penman-Monteith method:
       https://en.wikipedia.org/wiki/Penman%E2%80%93Monteith_equation,
       http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
@@ -219,7 +219,7 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lgrdflx=True
 
 
 # compute potential evapo-transpiration
-def computePotEvapPT(dataset, alpha=1.26, lmeans=False, lrad=True, lgrdflx=True, lpmsl=True):
+def computePotEvapPT(dataset, alpha=1.26, lmeans=False, lrad=True, lgrdflx=True, lpmsl=True, **kwargs):
   ''' function to compute potential evapotranspiration based on the Priestley-Taylor method (1972):
       Priestley & Taylor (1972, MWR): On the Assessment of Surface Heat Flux and Evaporation Using Large-Scale Parameters
       Note that different values for 'alpha' may be appropriate for different climates.
@@ -248,7 +248,7 @@ def computePotEvapPT(dataset, alpha=1.26, lmeans=False, lrad=True, lgrdflx=True,
   for refvar in ('ps','T2','Tmean',):
       if refvar in dataset: break
   # compute potential evapotranspiration according to Priestley-Taylor method (1972)
-  pet = evaluate('( alpha * D * (Rn + G) ) / ( D + g ) / 86400') # Eq. 12, Stannard, 1993, WRR
+  pet = evaluate('alpha * D * (Rn + G) / ( D + g ) / lw') # Eq. 12, Stannard, 1993, WRR
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
   atts = dict(name='pet_pt', units='kg/m^2/s', long_name='PET (Priestley-Taylor)')
   pet = Variable(data=pet, axes=dataset[refvar].axes, atts=atts)
@@ -307,7 +307,7 @@ def _inferElev(dataset, zs=None, name_list=None, latts=True, lunits=False):
 
 
 # compute potential evapo-transpiration
-def computePotEvapHog(dataset, lmeans=False, lq2=False, zs=None):
+def computePotEvapHog(dataset, lmeans=False, lq2=False, zs=None, **kwargs):
   ''' function to compute potential evapotranspiration based on Hogg's simplified formula (1997):
       Hogg (1997, AgForMet): Temporal scaling of moisture and the forest-grassland boundary in western Canada
   '''
@@ -465,7 +465,7 @@ def toa_rad(time, lat, lmonth=True, l365=False, time_offset=0, ldeg=True):
 
 
 # compute potential evapotranspiration based on Hargreaves method
-def computePotEvapHar(dataset, lat=None, lmeans=False, l365=None, time_offset=0, lAllen=False):
+def computePotEvapHar(dataset, lat=None, lmeans=False, l365=None, time_offset=0, lAllen=False, **kwargs):
     ''' function to compute potetnial evapotranspiration following the Hargreaves method;
         (Hargreaves & Allen, 2003, Eq. 8) '''
     T, Tmin, Tmax, t_units = _getTemperatures(dataset, lmeans=lmeans)
@@ -514,7 +514,7 @@ def heatIndex(T2, lKelvin=True, lkeepDims=True):
     return I
 
 # compute potential evapo-transpiration following Thornthwaite method
-def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p='center'):
+def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p='center', **kwargs):
   ''' function to compute potential evapotranspiration according to Thornthwaite method
       (Thornthwaite, 1948, Appendix 1 or https://en.wikipedia.org/wiki/Potential_evaporation) '''
   # check prerequisites
