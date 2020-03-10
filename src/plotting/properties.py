@@ -252,13 +252,13 @@ tmp = PlotAtts(name = 'snow', title = 'SWE',
 variablePlotatts['snow'] = tmp
 
 ## Snow (depth/height)
-tmp = PlotAtts(name = 'snowh', title = 'Snow Depth', 
+tmp = PlotAtts(name = 'Snow Depth', title = 'Snow Depth', 
                units = 'm', scalefactor = 1.)
 # add to collection
 variablePlotatts['snowh'] = tmp
 
 ## (absolute) Soil Moisture
-tmp = PlotAtts(name = 'Soil Moisture', title = '(absolute) Soil Moisture', 
+tmp = PlotAtts(name = 'Soil Moist.', title = '(absolute) Soil Moisture', 
                units = '$m^3/m^3$', scalefactor = 1.)
 # add to collection
 variablePlotatts['aSM'] = tmp
@@ -288,31 +288,31 @@ tmp = PlotAtts(name = 'acc. precip', title = 'Accumulated Precipitation',
 variablePlotatts['acprec'] = tmp
 
 ## Cumulus Precipitation Rate
-tmp = PlotAtts(name = 'precip (cu)', title = 'Cumulus Precip.', 
+tmp = PlotAtts(name = 'Conv.', title = 'Cumulus Precip.', 
                units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['preccu'] = tmp
 
 ## Accumulated Grid-scale Precipitation
-tmp = PlotAtts(name = 'precip (grid)', title = 'Grid-scale Precip.', 
+tmp = PlotAtts(name = 'Grid Prec.', title = 'Grid-scale Precip.', 
                units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['precnc'] = tmp
 
 ## Solid Precipitation Rate
-tmp = PlotAtts(name = 'solprec', title = 'Solid Precip.', 
+tmp = PlotAtts(name = 'Solid', title = 'Solid Precip.', 
                units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['solprec'] = tmp
 
 ## Liquid Precipitation Rate
-tmp = PlotAtts(name = 'liqprec', title = 'Liquid Precip.', 
+tmp = PlotAtts(name = 'Liquid', title = 'Liquid Precip.', 
                units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['liqprec'] = tmp
 
 ## Total Precipitation Rate
-tmp = PlotAtts(name = 'precip', title = 'Precipitation', 
+tmp = PlotAtts(name = 'Precip.', title = 'Precipitation', 
                units = precip_units, scalefactor = 86400.)
 # add to collection
 variablePlotatts['precip'] = tmp

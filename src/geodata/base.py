@@ -780,7 +780,7 @@ class Variable(object):
       if self.hasAxis('time'):
         time = self.getAxis('time')
         # make sure the time axis is well-formatted, because we are making a lot of assumptions!
-        if not time.units.lower() in ('month','months'): 
+        if not 'month' in time.units.lower(): 
           raise NotImplementedError("Time units='month' required for keyword 'years'!")
         if 'long_name' not in time.atts: raise KeyError(self.prettyPrint(short=True))
         if time.coord[0]%12 != 0: 
@@ -790,7 +790,8 @@ class Variable(object):
         if isinstance(years,(int,float,np.integer,np.inexact)): 
           months = years*12 # if just a number, assume slicing from origin 
         elif isinstance(years,(list,tuple)): 
-          if 'month since 1979' in time.atts.long_name.lower(): offset = 1979 # convention...
+          if ( 'since 1979' in time.atts.long_name.lower()
+                or 'since 1979' in time.units.lower() ): offset = 1979 # convention...
           else: offset = 0
           months = [(yr - offset)*12 for yr in years]
         else: raise NotImplementedError(years)
@@ -1964,7 +1965,15 @@ class Variable(object):
       vatts = self.atts.copy()
       if name is not None: vatts['name'] = name
       else: vatts['name'] = self.name
-      vatts['units'] = self.units
+      if 'since' in self.units:
+          units = self.units
+          vatts['units'] = units[:units.find('since')].strip()
+          if self.plot and 'since' in self.plot.units:
+              units = self.plot.units
+              units = units[:units.find('since')].strip()                  
+              self.plot = self.plot.copy(units=units)
+      else:
+          vatts['units'] = self.units
       if varatts is not None: vatts.update(varatts)
     else: tatts = None; varatts = None # irrelevant
     # call general reduction function
@@ -1975,8 +1984,15 @@ class Variable(object):
     assert avar.shape == self.shape[:tax]+(12,)+self.shape[tax+1:]
     # construct time coordinate
     if asVar:
-      if tatts['units'].lower() in monthlyUnitsList:
+      if any([units in tatts['units'].lower() for units in monthlyUnitsList]):
         raxis = avar.getAxis(tatts['name'])
+        if 'since' in raxis.units:
+            units = raxis.units
+            raxis.units = units[:units.find('since')].strip()
+            if raxis.plot and 'since' in raxis.plot.units:
+                units = raxis.plot.units
+                units = units[:units.find('since')].strip()                  
+                raxis.plot = raxis.plot.copy(units=units)
         if raxis.coord[0] == 0: raxis.coord += 1 # customarily, month are counted, starting at 1, not 0 
     # return data
     return avar
