@@ -520,8 +520,8 @@ def getFigAx(subplot, name=None, title=None, title_font='x-large', title_height=
         axes.xtop = xtop
       else:
         if axes.ndim == 1:
-          if subplot[0] == 2: axes[-1].yright = yright # right panel
-          if subplot[1] == 2: axes[0].xtop = xtop # top panel
+          if subplot[1] == 2: axes[-1].yright = yright # right panel
+          if subplot[0] == 2: axes[0].xtop = xtop # top panel
         elif axes.ndim == 2:
           for ax in axes[:,-1]: ax.yright = yright # right column
           for ax in axes[0,:]: ax.xtop = xtop # top row

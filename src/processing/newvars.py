@@ -46,11 +46,12 @@ def wind(u, v=None, z=10):
   #       the mean of the compnents. This is because opposing directions average to zero.
   return evaluate('( u * 4.87 ) / log( 67.8 * z - 5.42 )')
 
-def computeSrfcPressure(dataset, lpmsl=True):
+def computeSrfcPressure(dataset, zs=None, lpmsl=True):
   ''' compute surface pressure [Pa] from elevation using Eq. 7 from FAO:
       http://www.fao.org/3/x0490e/x0490e07.htm#atmospheric%20pressure%20(p) 
   '''
-  zs = dataset['zs'][:]
+  zs, zs_units = _inferElev(dataset, zs=zs, latts=True, lunits=True) 
+  assert zs_units is None or zs_units == 'm', zs
   pmsl = dataset['pmsl'][:] if lpmsl and 'pmsl' in dataset else 1013.
   p = evaluate('pmsl * ( 1 - ( 0.0065*zs/293 ) )**5.26 ')
   # return surface pressure estimate in Pa
@@ -87,28 +88,37 @@ def e_sat(T, Tmax=None):
 ## functions to compute relevant variables (from a dataset)
 
 # compute net radiation (for PET)
-def computeNetRadiation(dataset, asVar=True, lA=True, lrad=True, name='netrad'):
+def computeNetRadiation(dataset, asVar=True, lA=True, lem=True, lrad=True, name='netrad'):
   ''' function to compute net radiation at surface for Penman-Monteith equation
       (http://www.fao.org/docrep/x0490e/x0490e07.htm#radiation)
   '''
   if lrad and 'SWDNB' in dataset and 'LWDNB' in dataset and 'SWUPB' in dataset and 'LWUPB' in dataset:
     data = radiation(dataset['SWDNB'][:],dataset['LWDNB'][:],dataset['SWUPB'][:],dataset['LWUPB'][:]) # downward total net radiation
   else:
-    if 'e' not in dataset: raise VariableError("Emissivity is not available for radiation calculation.")
+    if not lem: em = 0.93 # average value for soil
+    elif lem and 'e' in dataset: em = dataset['e'][:]
+    else:
+        raise VariableError("Emissivity is not available for radiation calculation.")
     if not lA: A = 0.23 # reference Albedo for grass
     elif lA and 'A' in dataset: A = dataset['A'][:]
-    else: raise VariableError("Actual Albedo is not available for radiation calculation.")
+    else: 
+        raise VariableError("Actual Albedo is not available for radiation calculation.")
     if 'TSmin' in dataset and 'TSmax' in dataset: Ts = dataset['TSmin'][:]; TSmax = dataset['TSmax'][:]
     elif 'TSmean' in dataset: Ts = dataset['TSmean'][:]; TSmax = None
     elif 'Ts' in dataset: Ts = dataset['Ts'][:]; TSmax = None
-    else: raise VariableError("Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation.")
+    elif 'Tmin' in dataset and 'Tmax' in dataset: Ts = dataset['Tmin'][:]; TSmax = dataset['Tmax'][:]
+    elif 'T2' in dataset: Ts = dataset['T2'][:]; TSmax = None
+    else: 
+        raise VariableError("Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation.")
     if 'LWDNB' in dataset: GLW = dataset['LWDNB'][:]
     elif 'GLW' in dataset: GLW = dataset['GLW'][:]
-    else: raise VariableError("Downwelling LW radiation is not available for radiation calculation.")
+    else: 
+        raise VariableError("Downwelling LW radiation is not available for radiation calculation.")
     if 'SWDNB' in dataset: SWD = dataset['SWDNB'][:]
     elif 'SWD' in dataset: SWD = dataset['SWD'][:]
-    else: raise VariableError("Downwelling LW radiation is not available for radiation calculation.")
-    data = radiation_black(A,SWD,GLW,dataset['e'][:],Ts,TSmax) # downward total net radiation
+    else: 
+        raise VariableError("Downwelling LW radiation is not available for radiation calculation.")
+    data = radiation_black(A,SWD,GLW,em,Ts,TSmax) # downward total net radiation
   # cast as Variable
   if asVar:
     var = Variable(data=data, name=name, units='W/m^2', axes=dataset['SWD'].axes)
@@ -226,7 +236,7 @@ def computePotEvapPT(dataset, alpha=1.26, lmeans=False, lrad=True, lgrdflx=True,
   '''
   # get net radiation at surface
   if 'netrad' in dataset: Rn = dataset['netrad'][:] # net radiation
-  if 'Rn' in dataset: Rn = dataset['Rn'][:] # alias
+  elif 'Rn' in dataset: Rn = dataset['Rn'][:] # alias
   else: Rn = computeNetRadiation(dataset, lrad=lrad, asVar=False) # try to compute
   # heat flux in and out of the ground
   if lgrdflx:
@@ -235,8 +245,10 @@ def computePotEvapPT(dataset, alpha=1.26, lmeans=False, lrad=True, lgrdflx=True,
   else: G = 0
   # get psychrometric variables
   if 'ps' in dataset: p = dataset['ps'][:]
-  elif 'zs' in dataset: p = computeSrfcPressure(dataset, lpmsl=lpmsl)
-  else: raise VariableError("Cannot determine surface air pressure for PET calculation.")
+  else: p = computeSrfcPressure(dataset, lpmsl=lpmsl)
+#   elif 'zs' in dataset: p = computeSrfcPressure(dataset, lpmsl=lpmsl)
+#   else: 
+#       raise VariableError("Cannot determine surface air pressure for PET calculation.")
   g = gamma(p) # psychrometric constant (pressure-dependent)
   # get temperature
   if lmeans and 'Tmean' in dataset: T = dataset['Tmean'][:]
@@ -278,7 +290,7 @@ def _extractVariable(dataset, var=None, name_list=None, latts=True, lunits=False
                       var = dataset.atts[attname]
                       break
           if var is None:
-              raise DatasetError("No suitable elevation variable or attribute found in dataset '{}'.".format(dataset.name))
+              raise DatasetError("No suitable variable {} or attribute found in dataset '{}'.".format(str(name_list),dataset.name))
       else:
           units = variable.units
           var = variable[:]
@@ -286,7 +298,7 @@ def _extractVariable(dataset, var=None, name_list=None, latts=True, lunits=False
       if var in dataset:
           variable = dataset[var] # select this field
       else:
-          raise DatasetError("Latitude variable '{}' not found in Dataset '{}'".format(var,dataset.name))
+          raise DatasetError("Variable '{}' not found in Dataset '{}'".format(var,dataset.name))
       units = variable.units
       var = variable[:]
   else:

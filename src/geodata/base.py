@@ -3851,6 +3851,7 @@ class Ensemble(object):
   def __getitem__(self, item):
     ''' Yet another way to access members by name... conforming to the container protocol. 
         If argument is not a member, it is called with __getattr__.'''
+    ensargs = dict(basetype=self.basetype, idkey=self.idkey, name=self.ens_name, title=self.ens_title)
     if isinstance(item, str): 
       if self.hasMember(item):
         # access members like dictionary
@@ -3868,14 +3869,17 @@ class Ensemble(object):
           elif self.basetype is Variable: raise VariableError(item)
           else: raise AttributeError(item)
         #return self.__getattr__(item) # call like an attribute
-    elif isinstance(item, (int,np.integer,slice)):
-      # access members like list/tuple 
+    elif isinstance(item, (int,np.integer)):
+      # return member
       return self.members[item]
+    elif isinstance(item, slice):
+      # slice like list/tuple
+      members = self.members[item]
+      return Ensemble(*members,**ensargs) # return new ensemble with selected members
     elif isinstance(item, (list,tuple,np.ndarray)):
       # index/label list like ndarray
       members = [self[i] for i in item] # select members
-      kwargs = dict(basetype=self.basetype, idkey=self.idkey, name=self.ens_name, title=self.ens_title)
-      return Ensemble(*members,**kwargs) # return new ensemble with selected members
+      return Ensemble(*members,**ensargs) # return new ensemble with selected members
     else: raise TypeError
   
   def __setitem__(self, name, member):

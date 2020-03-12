@@ -169,7 +169,7 @@ class BiasCorrection(object):
                 itermap[varname] = '_correct_by_built-in_method'
             elif varname in self._correction: 
                 itermap[varname] = varname
-            elif varname in varmap:
+            elif varmap is not None and varname in varmap:
                 if varmap[varname] in self._correction: 
                   itermap[varname] = varmap[varname]
             
@@ -182,34 +182,35 @@ class BiasCorrection(object):
             if isinstance(newvar,VarNC): # the corrected variable needs to load data, hence can't be VarNC          
                 newvar = newvar.copy(axesdeep=False, varsdeep=False, asNC=False) 
             # bias-correct data and load in new variable 
-            # figure out method
-            if bcvar == '_correct_by_built-in_method':
-                # call custom correction method for this variable
-                fctname = '_correct_'+varname
-                corrected_array = getattr(self, fctname)(varname=varname, dataset=dataset, **kwargs)
-                # load corrected data
-                newvar.load(corrected_array)
-            else:
-                if self._correction[bcvar] is not None:
-                    # use default correction (scale of shift based on units)
-                    corrected_array = self._correctVar(oldvar, varname=bcvar, **kwargs)
+            if varlist is None or varname in varlist:
+                # figure out method
+                if bcvar == '_correct_by_built-in_method':
+                    # call custom correction method for this variable
+                    fctname = '_correct_'+varname
+                    corrected_array = getattr(self, fctname)(varname=varname, dataset=dataset, **kwargs)
                     # load corrected data
                     newvar.load(corrected_array)
-            # save meta data about bias correction
-            newvar.atts['bc_method']    = self.name
-            newvar.atts['bc_long_name'] = self.long_name
-            newvar.atts['bc_version']   = self.version
-            newvar.atts['bc_variable']  = bcvar
-            if varname in self.var_notes: 
-                newvar.atts['bc_note']  = self.var_notes[varname]
-            elif bcvar in self.var_notes: 
-                newvar.atts['bc_note']  = self.var_notes[bcvar]
-            else:
-                newvar.atts['bc_note']  = ''
-            newvar.atts['bc_obs_name']  = self.obs_name
-            newvar.atts['bc_obs_title'] = self.obs_title
-            if newvar is not bcds[varname]: 
-                bcds[varname] = newvar # attach new (non-NC) var
+                else:
+                    if self._correction[bcvar] is not None:
+                        # use default correction (scale of shift based on units)
+                        corrected_array = self._correctVar(oldvar, varname=bcvar, **kwargs)
+                        # load corrected data
+                        newvar.load(corrected_array)
+                # save meta data about bias correction
+                newvar.atts['bc_method']    = self.name
+                newvar.atts['bc_long_name'] = self.long_name
+                newvar.atts['bc_version']   = self.version
+                newvar.atts['bc_variable']  = bcvar
+                if varname in self.var_notes: 
+                    newvar.atts['bc_note']  = self.var_notes[varname]
+                elif bcvar in self.var_notes: 
+                    newvar.atts['bc_note']  = self.var_notes[bcvar]
+                else:
+                    newvar.atts['bc_note']  = ''
+                newvar.atts['bc_obs_name']  = self.obs_name
+                newvar.atts['bc_obs_title'] = self.obs_title
+                if newvar is not bcds[varname]: 
+                    bcds[varname] = newvar # attach new (non-NC) var
         # save meta data about bias correction
         bcds.atts['bc_method']    = self.name
         bcds.atts['bc_long_name'] = self.long_name
@@ -325,7 +326,9 @@ class Delta(BiasCorrection):
         assert var.ndim == correction.ndim, var
         assert correction.shape[tidx] == 12
         assert var.shape[tidx]%12 == 0
-        return np.repeat(correction, var.shape[tidx]//12, axis=tidx)
+        tiling = [1,]*var.ndim
+        tiling[tidx] = var.shape[tidx]//12
+        return np.tile(correction, tiling)
         
     def _trainVar(self, var, obsvar, time_axis='time', **kwargs):
         ''' take difference (or ratio) between observations and simulation and use as correction '''
@@ -404,11 +407,12 @@ def spatialAverage(var, time_axis='time', keepdims=True):
     data = var.load().data_array
     if var.hasAxis(time_axis):
         # handle variables with time axis
-        tax = var.axisIndex(time_axis)
-        for i in range(var.ndim-1,-1,-1):
-            # average spatial dimensions but not time
-            if i != tax:
-                data = data.mean(axis=i, keepdims=keepdims)
+        if var.ndim > 1:
+            tax = var.axisIndex(time_axis)
+            for i in range(var.ndim-1,-1,-1):
+                # average spatial dimensions but not time
+                if i != tax:
+                    data = data.mean(axis=i, keepdims=keepdims)
     else:
         # without time axis, this is simple
         data = data.mean()
@@ -431,10 +435,18 @@ class SMBC(Delta):
             r = obsdata - vardata
             self._operation[var.name] = 'diff'
         # consistency check
-        if obsdata.ndim == 3 and r.size != 12: 
-            raise DataError(r.shape)
-        elif obsdata.ndim != 3 and not np.isscalar(r):
-            raise DataError(r)
+        if var.hasAxis(time_axis):
+            if r.size != 12: 
+                raise DataError(r.shape)
+        else:
+            if not np.isscalar(r):
+                raise DataError(r)
+        # make sure values are finite and replace invalid values with mean
+        if isinstance(r,np.ma.masked_array):
+            r = r.filled(np.NaN)
+        r = np.where(np.isfinite(r), r, np.NaN)
+        rm = np.nanmean(r)
+        r = np.where(np.isnan(r), rm, r)
         # return correction parameters (12-element vector)
         return r
 
