@@ -3661,7 +3661,8 @@ class Ensemble(object):
     self.idkeys = []
     for member in self.members:
       memid = getattr(member, self.idkey)
-      if not isinstance(memid, str): raise TypeError("Member ID key '{:s}' should be a string-type, but received '{:s}'.".format(str(memid),memid.__class__))
+      if not isinstance(memid, str): 
+        raise TypeError("Member ID key '{:s}' should be a string-type, but received '{:s}'.".format(str(memid),memid.__class__))
       if memid in self.__dict__:
         raise AttributeError("Cannot overwrite existing attribute '{:s}'\n({}).".format(memid,self.idkeys))
       self.idkeys.append(memid)
@@ -3741,6 +3742,23 @@ class Ensemble(object):
     else:
       # regular object
       return self._recastList(fs)
+    
+  def reindex(self):
+      ''' helper function to rebuilt key-to-member mapping, in case keys have changed '''
+      # delete old keys and short-cuts
+      for key in self.idkeys:
+          del self.__dict__[key]
+      self.idkeys = [] # start new list
+      # add updated keys and short-cuts
+      for member in self.members:
+          memid = getattr(member, self.idkey)
+          if not isinstance(memid, str): 
+              raise TypeError("Member ID key '{:s}' should be a string-type, but received '{:s}'.".format(str(memid),memid.__class__))
+          if memid in self.__dict__:
+              raise AttributeError("Cannot overwrite existing attribute '{:s}'\n({}).".format(memid,self.idkeys))
+          self.idkeys.append(memid)
+          self.__dict__[memid] = member
+
     
   def __str__(self):
     ''' Built-in method; we just overwrite to call 'prettyPrint()'. '''
