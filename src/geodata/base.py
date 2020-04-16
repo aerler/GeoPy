@@ -3177,7 +3177,14 @@ class Dataset(object):
       axlisting = ['  {0:s}\n'.format(ax.prettyPrint(short=True)) for ax in list(self.axes.values())]
       axlisting.sort()
       for axstr in axlisting: string += axstr
-      string += 'Attributes: {0:s}'.format(str(self.atts))
+      if 'history' in self.atts:
+          atts = self.atts.copy()
+          atts['history'] = '[... tl;dr ...]'
+      else: atts = self.atts
+      attstr = str(atts)
+      if len(attstr) > 132:
+          attstr = '[... too long - print separately ...]'
+      string += 'Attributes: {0:s}'.format(attstr)
     return string
     
   def __getitem__(self, varname):
