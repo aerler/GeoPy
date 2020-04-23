@@ -1142,7 +1142,7 @@ class Variable(object):
     return mask
   
   def findValues(self, value, lidx=False, lfirst=False, lminmax=False, lstrip=True, 
-                 lflatten=False, lsqueeze=True):
+                 lflatten=False, lsqueeze=True, ldecode=True):
     ''' Method to find all or only the first occurence of a value or a range of values and return the 
         coordinate or index values; The single occurence algorithm is actually pretty slow but works 
         for all types of data; the main difference to the Axis method getIndex is that it does not 
@@ -1161,23 +1161,29 @@ class Variable(object):
       idx = None if lfirst else []
       if isinstance(value,(tuple,list,np.ndarray)):
         # now scan through the values to extract matching index
+        if ldecode and self.strvar: # decode str vars into actual strings, if they happen to be bytes
+            value = [val.decode() if isinstance(val,bytes) else val for val in value]
         if lstrip: 
           vlen = min(len(val) for val in value)
           lstrip = vlen < self.dtype.itemsize
           if vlen > self.dtype.itemsize: 
             raise ValueError("Value is longer than string length: {:d} > {:d}".format(vlen,self.dtype.itemsize))
         for i,vv in enumerate(data):
+          if ldecode and self.strvar and isinstance(vv,bytes): vv = vv.decode()            
           if lstrip and len(vv) > vlen: vv = vv.rstrip() # strip trailing spaces (strvars get padded)
           if vv in value: 
             if lfirst: idx = i; break # terminate at first match
             else: idx.append(i) # add to list of hits
       else:
+        if ldecode and self.strvar: # decode str vars into actual strings, if they happen to be bytes
+            if isinstance(value,bytes): value = value.decode()
         if lstrip: 
           vlen = len(value)
           lstrip = vlen < self.dtype.itemsize 
           if vlen > self.dtype.itemsize: 
             raise ValueError("Value is longer than string length: {:d} > {:d}".format(vlen,self.dtype.itemsize))
         for i,vv in enumerate(data):
+          if ldecode and self.strvar and isinstance(vv,bytes): vv = vv.decode()
           # N.B.: this way we avoid false positives due to too short strings
           if lstrip and len(vv) > vlen: vv = vv.rstrip() # strip trailing spaces (strvars get padded)
           if vv == value: 

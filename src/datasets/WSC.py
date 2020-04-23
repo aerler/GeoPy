@@ -269,7 +269,7 @@ class GageStation(object):
     if name is None: raise ArgumentError()
     if folder is None: folder = '{:s}/Basins/{:s}/'.format(root_folder,basin)
     if not os.path.isdir(folder): IOError(folder)
-    if river is not None and river not in name: name = '{:s}_{:s}'.format(river,name)
+    if river is not None and river+'_' not in name: name = '{:s}_{:s}'.format(river,name)
     self.folder = folder # usually basin folder
     self.name = name # or prefix...
     self.basin_name = basin # has to be a long_name in order to construct the folder
@@ -413,7 +413,7 @@ def getGageStation(basin=None, station=None, name=None, folder=None, river=None,
       name = '{}_{}'.format(river,name) # try with adding river name
       if name in basin.stations: 
         return basin.stations[name] # also straight forward      
-  elif river is not None and river not in name:
+  elif river is not None and river+'_' not in name:
       name = '{}_{}'.format(river,name)
   # if we are not done yet, make sure we have valid folder and file names now!
   if not (isinstance(folder,str) and isinstance(name,str)):
