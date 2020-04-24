@@ -1743,6 +1743,7 @@ class Variable(object):
       raise TimeAxisError("Time-axis cannot have missing coordinate values (month)!")
     
   def seasonalSample(self, season=None, asVar=True, lcheckAxis=False, lcheckVar=True, linplace=False, 
+                     lwaterYear=False, year_offset=0,
                      lstrict=True, loffset=True, lclim=False, taxis='time', svaratts=None, saxatts=None):
     ''' A method to extract a subset of month from a monthly timeseries and return a concatenated 
         time-series of values for the specified season. '''
@@ -1750,6 +1751,24 @@ class Variable(object):
     if season is not None and self.hasAxis(taxis):
       time = self.getAxis(taxis); itime = self.axisIndex(taxis); tcoord = time.coord
       if lstrict: self._checkMonthlyAxis(taxis=taxis, lbegin=True, lclim=lclim)
+      data_array = self.data_array
+      if year_offset > 11 and year_offset < 0:
+          raise ValueError(year_offset)
+      # trim axis and array
+      if lwaterYear: 
+          year_offset = 9; loffset = True # i = 9 will typically be October (incl.)
+      if year_offset != 0:
+          if year_offset < 0: 
+              raise ValueError(year_offset)
+          wy_start = year_offset - tcoord[0]%12
+          if wy_start < 0: wy_start += 12
+          if year_offset == 0: wy_end = -(tcoord[-1]+1)%12
+          else: wy_end = year_offset - 12 - (tcoord[-1]+1)%12
+          # slice data
+          tslc = slice(wy_start,wy_end)
+          tcoord = tcoord[tslc]
+          slc = [slice(None)]*self.ndim; slc[itime] = tslc
+          data_array = data_array[slc]
       # translate season string
       idx = translateSeasons(season) # does most of the remining input/type checking
       # account for offset in coordinate axis: change indices
@@ -1764,7 +1783,7 @@ class Variable(object):
       idxarr = np.concatenate((idxarr,idxover), axis=0)
       assert idxarr.min() >= 0 and idxarr.max() < tlen
       # slice data and coordinate vector
-      data = self.data_array.take(idxarr, axis=itime)
+      data = data_array.take(idxarr, axis=itime)
       assert data.dtype == self.dtype
       assert data.shape == self.shape[:itime]+(len(idxarr),)+self.shape[itime+1:]
       if asVar:
@@ -1785,17 +1804,23 @@ class Variable(object):
     return svar
 
   def _getCompleteYears(self, taxis='time', ltrim=False, lfront=True, lback=True, asVar=False, 
-                        lcheck=True, lclim=False):
+                        lwaterYear=False, year_offset=0, lcheck=True, lclim=False):
     ''' helper function that generates a trimmed or padded view of the data, either extending or 
         trimming the time axis ''' 
     if asVar: raise NotImplementedError('currently we can only return a bare array view, not a variable')
     # N.B.: to return a Variable, we would also have to trim/pad the time axis 
     time = self.getAxis(taxis); itime = self.axisIndex(taxis); tcoord = time.coord
     if lcheck: self._checkMonthlyAxis(taxis=taxis, lbegin=not lfront, lclim=lclim)
+    # offset for typical water year (October to September)
+    if lwaterYear: 
+        year_offset = 9 # i = 9 will typically be October (incl.)
+        ltrim = True; lfront = True; lback = True # only full years
     # define new shape
     if not self.data: raise DataError('Need to load data for trimming and padding.')
     if lclim: offset = (tcoord[0]-1)%12; over = tcoord[-1]%12
     else: offset = tcoord[0]%12; over = (tcoord[-1]+1)%12
+    if year_offset > 0:
+        offset = (offset - year_offset)%12; over = (over - year_offset)%12
     tlen = tcoord.size; data_view = self.data_array; offset = int(offset); over = int(over)
     if not lfront and offset > 0: 
       warn('Front-padding disabled; setting offset to zero (offset={:d}'.format(offset))
@@ -1804,19 +1829,19 @@ class Variable(object):
       warn('Back-padding disabled; setting overshoot to zero (over={:d}'.format(over))
       over = 0
     # handle incomplete years
-    if offset > 0 or over > 0:
+    if offset != 0 or over != 0:
       if ltrim: 
-        start = 0 if offset == 0 else 12 - offset; end = tlen - over
+        start = -offset%12; end = tlen - over
         data_view = data_view.take(list(range(start,end)), axis=itime) # only use complete years 
       else:
         front = self.shape[:itime]+(offset,)+self.shape[itime+1:] # shape/size for front padding  
         frontpad = ma.ones(front, dtype=self.dtype) # create a masked array for padding 
         frontpad *= frontpad.fill_value ; frontpad.mask = True
-        end = 0 if over == 0 else 12 - over # how much to add at the back
+        end = -over%12 # how much to add at the back
         back = self.shape[:itime]+(end,)+self.shape[itime+1:] # shape/size for back padding
         backpad = ma.ones(back, dtype=self.dtype) # create a masked array for padding 
         backpad *= backpad.fill_value ; backpad.mask = True
-        if not isinstance(data_view, ma.MaskedArray): 
+        if not isinstance(data_view, ma.MaskedArray):
           data_view = ma.asanyarray(data_view) # need masked arrays, so that pads can be masked
         data_view = ma.concatenate((frontpad,data_view,backpad), axis=itime) # append padding array
     assert data_view.shape[itime]%12 == 0, data_view.shape # should be divisible by 12 now
@@ -1870,7 +1895,7 @@ class Variable(object):
     # return results
     return svar
   
-  def reduceToAnnual(self, season, operation, asVar=False, name=None, taxis='time', 
+  def reduceToAnnual(self, season, operation, asVar=False, name=None, taxis='time', lwaterYear=False, year_offset=0, 
                      checkUnits=True, lcheckVar=True, lcheckAxis=True, taxatts=None, varatts=None, 
                      mean_list=None, ltrim=False, lstrict=True, lclim=False, **kwargs):
     ''' Reduce a monthly time-series to an annual time-series, using mean/min/max over a subset of month or seasons. '''
@@ -1880,7 +1905,8 @@ class Variable(object):
     if self.strvar: 
       if lcheckVar: raise VariableError("Seasonal reduction does not work with string Variables!")
       else: return None
-    data_view = self._getCompleteYears(taxis=taxis, ltrim=ltrim, asVar=False, lcheck=lstrict, lclim=lclim)
+    data_view = self._getCompleteYears(taxis=taxis, lwaterYear=lwaterYear, year_offset=year_offset, ltrim=ltrim, 
+                                       asVar=False, lcheck=lstrict, lclim=lclim)
     taxis = self.getAxis(taxis); tax = self.axisIndex(taxis.name); te = data_view.shape[tax]
     assert te%12 == 0, data_view.shape # should be divisible by 12 now          
     # hadling of exceptions: some variables in Datasets should only be averaged
