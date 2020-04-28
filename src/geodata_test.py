@@ -693,6 +693,9 @@ class BaseVarTest(unittest.TestCase):
       # N.B.: the data increases linearly in time and is constant in space (see setup fct.)
       assert isEqual(var.seasonalMax('mam',asVar=False,lstrict=lstrict), yfake*5)
       assert isEqual(var.seasonalMin('mam',asVar=False,lstrict=lstrict), yfake*3)
+      # test water year
+      wy = var.seasonalMean('annual',asVar=False,lwaterYear=True,lstrict=lstrict)
+      print(var.shape,wy.shape)
       # test climatology
       assert tax == 0      
       cdata = self.data.reshape((4,12,)+var.shape[1:]).mean(axis=0)
@@ -1986,7 +1989,7 @@ if __name__ == "__main__":
 #     specific_tests += ['ApplyToAll']
 #     specific_tests += ['AddProjection']
 #     specific_tests += ['Indexing']
-#     specific_tests += ['SeasonalReduction']
+    specific_tests += ['SeasonalReduction']
 #     specific_tests += ['MapReduction']
 #     specific_tests += ['ConcatVars']
 #     specific_tests += ['ConcatDatasets']
@@ -1996,12 +1999,12 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
     tests += ['BaseVar'] 
-    tests += ['NetCDFVar']
-    tests += ['GDALVar']
+#     tests += ['NetCDFVar']
+#     tests += ['GDALVar']
     # list of dataset tests
-    tests += ['BaseDataset']
-    tests += ['DatasetNetCDF']
-    tests += ['DatasetGDAL']
+#     tests += ['BaseDataset']
+#     tests += ['DatasetNetCDF']
+#     tests += ['DatasetGDAL']
     
     # construct dictionary of test classes defined above
     test_classes = dict()

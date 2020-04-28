@@ -88,7 +88,7 @@ def checkGridRes(grid, resolution, snow_density=None, period=None, lclim=False):
       raise DatasetError("Selected resolution '{:s}' is not available for historical time-series!".format(resolution))
   # handle special case of snow density parameter: append to resolution
   if snow_density:
-      # check validity
+      # check validity (just to raise error if invalid)
       tmp = getSnowDensity(snow_class=snow_density, lraise=True); del tmp
       # append to resolution
       if resolution is None: resolution = snow_density
@@ -105,7 +105,7 @@ tsfile = 'nrcan{0:s}_monthly.nc' # extend with grid type only
 
 # function to load these files...
 def loadNRCan(name=dataset_name, title=dataset_name, resolution=None, period=clim_period, grid=None, varlist=None, 
-              snow_density=None, varatts=None, folder=avgfolder, filelist=None, lautoregrid=True, filemode='r'):
+              snow_density=None, varatts=None, folder=avgfolder, filelist=None, lautoregrid=False, filemode='r'):
     ''' Get the pre-processed monthly NRCan climatology as a DatasetNetCDF. '''
     grid, resolution = checkGridRes(grid, resolution, snow_density=snow_density, period=period, lclim=True)
     # load standardized climatology dataset with NRCan-specific parameters
@@ -117,7 +117,7 @@ def loadNRCan(name=dataset_name, title=dataset_name, resolution=None, period=cli
 
 # function to load Time-series (monthly)
 def loadNRCan_TS(name=dataset_name, title=dataset_name, grid=None, resolution=None, varlist=None, varatts=None, 
-                 snow_density=None, folder=avgfolder, filelist=None, lautoregrid=True, filemode='r'):
+                 snow_density=None, folder=avgfolder, filelist=None, lautoregrid=False, filemode='r'):
     ''' Get the pre-processed monthly NRCan time-series as a DatasetNetCDF at station locations. '''
     grid, resolution = checkGridRes(grid, resolution, snow_density=snow_density, period=None, lclim=False)
     # load standardized time-series dataset with NRCan-specific parameters
@@ -129,7 +129,7 @@ def loadNRCan_TS(name=dataset_name, title=dataset_name, grid=None, resolution=No
 
 # function to load station climatologies
 def loadNRCan_Stn(name=dataset_name, title=dataset_name, period=clim_period, station=None, resolution=None, varlist=None, 
-                  snow_density=None, varatts=None, folder=avgfolder, filelist=None, lautoregrid=True):
+                  snow_density=None, varatts=None, folder=avgfolder, filelist=None):
     ''' Get the pre-processed monthly NRCan climatology as a DatasetNetCDF at station locations. '''
     grid, resolution = checkGridRes(None, resolution, snow_density=snow_density, period=period, lclim=True); del grid
     # load standardized climatology dataset with NRCan-specific parameters
@@ -141,7 +141,7 @@ def loadNRCan_Stn(name=dataset_name, title=dataset_name, period=clim_period, sta
 
 # function to load station time-series
 def loadNRCan_StnTS(name=dataset_name, title=dataset_name, station=None, resolution=None, varlist=None, varatts=None, 
-                    snow_density=None, folder=avgfolder, filelist=None, lautoregrid=True):
+                    snow_density=None, folder=avgfolder, filelist=None):
     ''' Get the pre-processed monthly NRCan time-series as a DatasetNetCDF at station locations. '''
     grid, resolution = checkGridRes(None, resolution, snow_density=snow_density, period=None, lclim=False); del grid
     # load standardized time-series dataset with NRCan-specific parameters
@@ -153,7 +153,7 @@ def loadNRCan_StnTS(name=dataset_name, title=dataset_name, station=None, resolut
 
 # function to load regionally averaged climatologies
 def loadNRCan_Shp(name=dataset_name, title=dataset_name, period=clim_period, shape=None, resolution=None, varlist=None, 
-                  snow_density=None, varatts=None, folder=avgfolder, filelist=None, lautoregrid=True, lencl=False):
+                  snow_density=None, varatts=None, folder=avgfolder, filelist=None, lencl=False):
     ''' Get the pre-processed monthly NRCan climatology as a DatasetNetCDF averaged over regions. '''
     grid, resolution = checkGridRes(None, resolution, snow_density=snow_density, period=period, lclim=True); del grid
     # load standardized climatology dataset with NRCan-specific parameters
@@ -165,7 +165,7 @@ def loadNRCan_Shp(name=dataset_name, title=dataset_name, period=clim_period, sha
 
 # function to load regional/shape time-series
 def loadNRCan_ShpTS(name=dataset_name, title=dataset_name, shape=None, resolution=None, varlist=None, varatts=None, 
-                    snow_density=None, folder=avgfolder, filelist=None, lautoregrid=True, lencl=False):
+                    snow_density=None, folder=avgfolder, filelist=None, lencl=False):
     ''' Get the pre-processed monthly NRCan time-series as a DatasetNetCDF averaged over regions. '''
     grid, resolution = checkGridRes(None, resolution, snow_density=snow_density, period=None, lclim=False); del grid
     # load standardized time-series dataset with NRCan-specific parameters

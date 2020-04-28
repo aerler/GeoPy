@@ -3701,14 +3701,16 @@ class Ensemble(object):
           return Ensemble(*fs, idkey=self.idkey, **ens_args) # axes from several variables can be the same objects
       elif all([isinstance(f, Dataset) for f in fs]): 
         # check for unique keys
-        if len(fs) == len(set([f.name for f in fs if f.name is not None])): 
+        if len(fs) == len(set([getattr(f,self.idkey) for f in fs if getattr(f,self.idkey) is not None])): 
+          return Ensemble(*fs, idkey=self.idkey, **ens_args) # basetype=Variable,
+        elif len(fs) == len(set([f.name for f in fs if f.name is not None])): 
           return Ensemble(*fs, idkey='name', **ens_args) # basetype=Variable,
         else:
-#           raise KeyError, "No unique keys found for Ensemble members (Datasets)"
-          # just re-use current keys
-          for f,member in zip(fs,self.members): 
-            f.name = getattr(member,self.idkey)
-          return Ensemble(*fs, idkey=self.idkey, **ens_args) # axes from several variables can be the same objects
+          raise KeyError("No unique keys found for Ensemble members (Datasets)")
+#           # just re-use current keys
+#           for f,member in zip(fs,self.members): 
+#             f.name = getattr(member,self.idkey)
+#           return Ensemble(*fs, idkey=self.idkey, **ens_args) # axes from several variables can be the same objects
       else:
         raise TypeError("Resulting Ensemble members have inconsisent type.")
   

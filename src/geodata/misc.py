@@ -187,12 +187,9 @@ def translateSeasons(months):
 def genStrArray(string_list):
   ''' utility function to generate a string array from a list of strings '''
   if not isinstance(string_list,(list,tuple)): raise TypeError(string_list)
-  strlen = 0; new_list = []
   for string in string_list:
     if not isinstance(string,str): raise TypeError(string)
-    strlen = max(len(string),strlen)
-    new_list.append(string.ljust(strlen))
-  strarray = np.array(new_list, dtype='|S{:d}'.format(strlen))
+  strarray = np.array(string_list, dtype=np.unicode_)
   assert strarray.shape == (len(string_list),)
   return strarray
     
