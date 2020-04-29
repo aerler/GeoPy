@@ -28,7 +28,7 @@ from datasets.common import data_root
 RAM = bool(os.getenv('RAMDISK', '')) # whether or not to use a RAM disk
 # either RAM disk or data directory
 workdir = os.getenv('RAMDISK', '') if RAM else os.getenv('DATA_ROOT', '')
-# workdir += 'test/' # test folder 
+workdir += 'test/' # test folder 
 if not os.path.exists(workdir): raise IOError(workdir)
 
 class BaseVarTest(unittest.TestCase):  
@@ -694,8 +694,15 @@ class BaseVarTest(unittest.TestCase):
       assert isEqual(var.seasonalMax('mam',asVar=False,lstrict=lstrict), yfake*5)
       assert isEqual(var.seasonalMin('mam',asVar=False,lstrict=lstrict), yfake*3)
       # test water year
-      wy = var.seasonalMean('annual',asVar=False,lwaterYear=True,lstrict=lstrict)
-      print(var.shape,wy.shape)
+      if len(var.time) > 12:
+          wy = var.seasonalMin('annual',asVar=False,lwaterYear=True,lstrict=lstrict)
+          wy_shp = ((var.shape[0]/12)-1,)+var.shape[1:]
+          assert wy.shape == wy_shp
+          assert wy.max() == 1
+          wy = var.seasonalMax('annual',asVar=False,lwaterYear=True,lstrict=lstrict)
+          wy_shp = ((var.shape[0]/12)-1,)+var.shape[1:]
+          assert wy.shape == wy_shp
+          assert wy.min() == 12
       # test climatology
       assert tax == 0      
       cdata = self.data.reshape((4,12,)+var.shape[1:]).mean(axis=0)
@@ -704,7 +711,7 @@ class BaseVarTest(unittest.TestCase):
     if var.ndim >= 3:
       # test extraction of seasons (need time-axis in month)
       svar = var.seasonalSample(season='djf', asVar=True, linplace=False, lstrict=lstrict)
-      assert svar.shape != var.shape
+      assert svar.shape[0] == var.shape[0]/4
       tax = var.getAxis('time').coord 
       stax = svar.getAxis('time').coord
       assert stax[0] == tax[0] and stax[1] == tax[1] and stax[2] == tax[11]
@@ -712,6 +719,17 @@ class BaseVarTest(unittest.TestCase):
       if tover < 3: assert stax[-1] == tax[-1]
       if tover > 2: assert stax[-1] == tax[-1-(tover-2)] # not sure, if this is right... unlikely anyway
       assert len(stax) == 3*len(tax)//12 + min(2,tover)
+      # test water year code (only works with timeseries, not with climatology
+      if len(var.time) > 12:
+          # test seasonal extraction by water year
+          wvar = var.seasonalSample(season='djf', asVar=True, linplace=False, lstrict=lstrict, lwaterYear=True)
+          assert svar.shape[0] == wvar.shape[0]+3, wvar.shape[0]
+          assert wvar[0,:,:].mean() == var[11,:,:].mean(), wvar[0,0,0]
+          # N.B.: the mean is to avoid masked values...
+          # water year mean
+          wvarm = var.seasonalMean(season='annual', asVar=True, lstrict=lstrict, lwaterYear=True)
+          assert wvarm.shape[0] == wvar.shape[0]/3
+          assert wvarm[0,:,:].mean() == var[9:21,:,:].mean(), wvar[0,0,0]
       # test in-place extraction
       cvar = var.copy(deepcopy=True)
       assert cvar.shape == var.shape
@@ -1427,7 +1445,14 @@ class NetCDFVarTest(BaseVarTest):
     ncvar = self.ncdata.variables[ncvar]      
     # get dimensions and coordinate variables
     size = tuple([len(self.ncdata.dimensions[dim]) for dim in ncvar.dimensions])
-    axes = tuple([AxisNC(self.ncdata.variables[dim], length=le) for dim,le in zip(ncvar.dimensions,size)]) 
+    axes = list([AxisNC(self.ncdata.variables[dim], length=le) for dim,le in zip(ncvar.dimensions,size)])
+    # fix time axis
+    for i,ax in enumerate(axes):
+        if ax.name == 'time' and len(ax) > 12:
+            assert ax.units == 'days since 1901-01-01 00:00:00'
+            coord = np.arange(len(ax)) - 78*12
+            ax = Axis(name='time', coord=coord, units = 'months since 1979-01')
+            axes[i] = ax
     # initialize netcdf variable 
     self.ncvar = ncvar; self.axes = axes
     self.var = VarNC(ncvar, axes=axes, load=True)    
@@ -1979,7 +2004,7 @@ if __name__ == "__main__":
 #     specific_tests += ['ReadASCII']
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
-#     specific_tests += ['Ensemble']
+    specific_tests += ['Ensemble']
 #     specific_tests += ['DatasetArithmetic']
 #     specific_tests += ['DistributionVariables'] 
 #     specific_tests += ['StatsTests']   
@@ -1989,7 +2014,7 @@ if __name__ == "__main__":
 #     specific_tests += ['ApplyToAll']
 #     specific_tests += ['AddProjection']
 #     specific_tests += ['Indexing']
-    specific_tests += ['SeasonalReduction']
+#     specific_tests += ['SeasonalReduction']
 #     specific_tests += ['MapReduction']
 #     specific_tests += ['ConcatVars']
 #     specific_tests += ['ConcatDatasets']
@@ -1998,11 +2023,11 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-    tests += ['BaseVar'] 
+#     tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests
-#     tests += ['BaseDataset']
+    tests += ['BaseDataset']
 #     tests += ['DatasetNetCDF']
 #     tests += ['DatasetGDAL']
     

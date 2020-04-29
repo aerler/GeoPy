@@ -1309,8 +1309,8 @@ class Variable(object):
     units = self.units
     return data, name, units
   
-  def reduce(self, operation, blklen=None, blkidx=None, axis=None, mode=None, 
-                  asVar=None, axatts=None, varatts=None, fillValue=None, data_view=None,
+  def reduce(self, operation, blklen=None, blkidx=None, axis=None, mode=None, asVar=None,  
+                  axatts=None, varatts=None, fillValue=None, data_view=None, coord_view=None,
                   lcheckVar=True, lcheckAxis=True, **kwargs):
     ''' Reduce a time-series; there are two modes:
           'block'     reduce to one value representing each block, e.g. from monthly to yearly averages;
@@ -1356,7 +1356,7 @@ class Variable(object):
     # get actual data and reshape
     if data_view is None: odata = self.getArray()
     else: odata = data_view
-    # move reduction axis to the end, so that it is fastes varying
+    # move reduction axis to the end, so that it is fastes varying and continuous
     if iax < self.ndim-1: odata = np.rollaxis(odata, axis=iax, start=self.ndim)
     # reshape
     oshape = odata.shape
@@ -1387,16 +1387,19 @@ class Variable(object):
       # create new time axis (yearly)
       oaxis = self.axes[iax]
       raxatts = oaxis.atts.copy()      
-      if axatts is not None: raxatts.update(axatts)      
+      if axatts is not None: raxatts.update(axatts)
+      if coord_view is None: coord_view = oaxis.coord
       # define coordinates for new axis
       if 'coord' in raxatts:
         coord = raxatts.pop('coord') # use user-defined coordinates 
       elif lblk: # use the beginning of each block as new coordinates (not divided by block length!) 
         if axlen == len(oaxis):
-          coord = oaxis.coord.reshape(nblks,blklen)[:,0].copy()
+          coord = coord_view.reshape(nblks,blklen)[:,0].copy()
         else:
-          coord = np.arange(oaxis.coord[0]//blklen,oaxis.coord[-1]//blklen+1)*blklen
-        assert nblks == coord.size
+          coord = coord_view[::blklen] # pick start of each block as new coordinate value
+          #coord = np.arange(coord_view[0]//blklen,coord_view[-1]//blklen+1)*blklen
+        if nblks != coord.size:
+            raise AssertionError
       elif lperi or lall: # just enumerate block elements
         coord = np.arange(blklen) if blklen > 0 else None
       axes = list(self.axes)
@@ -1736,7 +1739,7 @@ class Variable(object):
         if 'since 1979-01' in time.units.lower(): pass
         elif 'long_name' in time.atts and 'since 1979-01' in time.atts['long_name'].lower(): pass
         else: 
-            raise TimeAxisError("Unable to determin time offset: {}".format(str(time)))
+            raise TimeAxisError("Unable to determine time offset: {}".format(str(time)))
       else:    
         raise TimeAxisError("Unable to determin time offset: {}".format(str(time)))
     if np.any( np.diff(tcoord, axis=0) != 1 ): 
@@ -1765,7 +1768,7 @@ class Variable(object):
           if year_offset == 0: wy_end = -(tcoord[-1]+1)%12
           else: wy_end = year_offset - 12 - (tcoord[-1]+1)%12
           # slice data
-          tslc = slice(wy_start,wy_end)
+          tslc = slice(int(wy_start),int(wy_end))
           tcoord = tcoord[tslc]
           slc = [slice(None)]*self.ndim; slc[itime] = tslc
           data_array = data_array[slc]
@@ -1773,6 +1776,8 @@ class Variable(object):
       idx = translateSeasons(season) # does most of the remining input/type checking
       # account for offset in coordinate axis: change indices
       if loffset: idx -= int(tcoord[0]%12) # at which month we start counting
+      # translate negative indices and sort
+      idx = idx%12; idx.sort()
       # extend the list of indices to the length of the time axis
       idxlen = idx.size; tlen = tcoord.size; yrlen = tlen//12; tover = tlen%12
       # basically, construct a 2D array of years and month, and flatten afterwards
@@ -1781,7 +1786,7 @@ class Variable(object):
       # add incomplete year at the end (extend array)
       idxover = np.asarray([yrlen*12+i for i in idx if i < tover], dtype=np.int32)
       idxarr = np.concatenate((idxarr,idxover), axis=0)
-      assert idxarr.min() >= 0 and idxarr.max() < tlen
+      assert idxarr.min() >= 0 and idxarr.max() < tlen, idxarr
       # slice data and coordinate vector
       data = data_array.take(idxarr, axis=itime)
       assert data.dtype == self.dtype
@@ -1804,7 +1809,7 @@ class Variable(object):
     return svar
 
   def _getCompleteYears(self, taxis='time', ltrim=False, lfront=True, lback=True, asVar=False, 
-                        lwaterYear=False, year_offset=0, lcheck=True, lclim=False):
+                        lwaterYear=False, year_offset=0, lcheck=True, lclim=False, lcoord=False):
     ''' helper function that generates a trimmed or padded view of the data, either extending or 
         trimming the time axis ''' 
     if asVar: raise NotImplementedError('currently we can only return a bare array view, not a variable')
@@ -1821,7 +1826,9 @@ class Variable(object):
     else: offset = tcoord[0]%12; over = (tcoord[-1]+1)%12
     if year_offset > 0:
         offset = (offset - year_offset)%12; over = (over - year_offset)%12
-    tlen = tcoord.size; data_view = self.data_array; offset = int(offset); over = int(over)
+    tlen = tcoord.size; data_view = self.data_array
+    if lcoord: coord_view = tcoord
+    offset = int(offset); over = int(over)
     if not lfront and offset > 0: 
       warn('Front-padding disabled; setting offset to zero (offset={:d}'.format(offset))
       offset = 0
@@ -1833,6 +1840,7 @@ class Variable(object):
       if ltrim: 
         start = -offset%12; end = tlen - over
         data_view = data_view.take(list(range(start,end)), axis=itime) # only use complete years 
+        if lcoord: coord_view = coord_view[start:end] # clip time axis as well            
       else:
         front = self.shape[:itime]+(offset,)+self.shape[itime+1:] # shape/size for front padding  
         frontpad = ma.ones(front, dtype=self.dtype) # create a masked array for padding 
@@ -1844,9 +1852,15 @@ class Variable(object):
         if not isinstance(data_view, ma.MaskedArray):
           data_view = ma.asanyarray(data_view) # need masked arrays, so that pads can be masked
         data_view = ma.concatenate((frontpad,data_view,backpad), axis=itime) # append padding array
+        if lcoord:
+            front_axis = np.arange(-offset,0,1) + coord_view[0]
+            rear_axis = np.arange(1,end+1,1) + coord_view[-1]
+            coord_view = np.concatenate((front_axis,coord_view,rear_axis))
     assert data_view.shape[itime]%12 == 0, data_view.shape # should be divisible by 12 now
+    if lcoord and len(coord_view) != data_view.shape[itime]:
+        raise AssertionError(len(coord_view),data_view.shape[itime])
     # return padded/trimmed view
-    return data_view
+    return (data_view, coord_view) if lcoord else data_view
   
   def climSample(self, lstrict=True, ltrim=False, lpad=True, asVar=True, lcheckAxis=False, lcheckVar=True, linplace=False, 
                  taxis='time', saxis=None, saxatts=None, caxis=None, caxatts=None, svaratts=None):
@@ -1905,8 +1919,8 @@ class Variable(object):
     if self.strvar: 
       if lcheckVar: raise VariableError("Seasonal reduction does not work with string Variables!")
       else: return None
-    data_view = self._getCompleteYears(taxis=taxis, lwaterYear=lwaterYear, year_offset=year_offset, ltrim=ltrim, 
-                                       asVar=False, lcheck=lstrict, lclim=lclim)
+    data_view, coord_view = self._getCompleteYears(taxis=taxis, lwaterYear=lwaterYear, year_offset=year_offset, 
+                                                  ltrim=ltrim, asVar=False, lcheck=lstrict, lclim=lclim, lcoord=True)
     taxis = self.getAxis(taxis); tax = self.axisIndex(taxis.name); te = data_view.shape[tax]
     assert te%12 == 0, data_view.shape # should be divisible by 12 now          
     # hadling of exceptions: some variables in Datasets should only be averaged
@@ -1930,7 +1944,7 @@ class Variable(object):
     idx = translateSeasons(season)
     # call general reduction function
     avar =  self.reduce(operation=operation, blklen=12, blkidx=idx, axis=taxis, mode='block',
-                        asVar=asVar, axatts=tatts, varatts=varatts, data_view=data_view, 
+                        asVar=asVar, axatts=tatts, varatts=varatts, data_view=data_view, coord_view=coord_view,
                         lcheckVar=lcheckVar, lcheckAxis=lcheckAxis, **kwargs)
     # check shape of annual variable
     assert avar.shape == self.shape[:tax]+(te/12,)+self.shape[tax+1:]
@@ -3718,38 +3732,22 @@ class Ensemble(object):
         return fs
       # N.B.: axes are often shared, so we can't have an ensemble
       elif all([isinstance(f, Variable) for f in fs]): 
-        # check for unique keys
-        if len(fs) == len(set([f.name for f in fs if f.name is not None])): 
-          return Ensemble(*fs, idkey='name', **ens_args) # basetype=Variable,
-        elif len(fs) == len(set([f.dataset.name for f in fs if f.dataset is not None])): 
-#           for f in fs: f.dataset_name = f.dataset.name 
+        # check for unique keys; first try original key then name, and then dataset_name
+        for key in (self.idkey, 'name'):
+            if len(fs) == len(set([getattr(f,key) for f in fs if getattr(f,key) is not None])):
+              return Ensemble(*fs, idkey=key, **ens_args)
+        # variables can also use the dataset name, which requires special treatment
+        if len(fs) == len(set([f.dataset.name for f in fs if f.dataset is not None])): # last resort
           return Ensemble(*fs, idkey='dataset_name', **ens_args) # basetype=Variable, 
         else:
-          #raise KeyError, "No unique keys found for Ensemble members (Variables)"
-          # just re-use current keys
-          for f,member in zip(fs,self.members):
-            if self.idkey == 'dataset_name':
-              if f.dataset_name is None: 
-                f.dataset_name = member.dataset_name
-              elif not f.dataset_name == member.dataset_name: 
-                raise DatasetError(f.dataset_name)
-            elif not hasattr(f, self.idkey): 
-              setattr(f, self.idkey, getattr(member,self.idkey))
-            else: raise DatasetError(self.idkey)
-#             f.__dict__[self.idkey] = getattr(member,self.idkey)
-          return Ensemble(*fs, idkey=self.idkey, **ens_args) # axes from several variables can be the same objects
+          raise KeyError("No unique keys found for Ensemble members (Variables)")
       elif all([isinstance(f, Dataset) for f in fs]): 
-        # check for unique keys
-        if len(fs) == len(set([getattr(f,self.idkey) for f in fs if getattr(f,self.idkey) is not None])): 
-          return Ensemble(*fs, idkey=self.idkey, **ens_args) # basetype=Variable,
-        elif len(fs) == len(set([f.name for f in fs if f.name is not None])): 
-          return Ensemble(*fs, idkey='name', **ens_args) # basetype=Variable,
-        else:
-          raise KeyError("No unique keys found for Ensemble members (Datasets)")
-#           # just re-use current keys
-#           for f,member in zip(fs,self.members): 
-#             f.name = getattr(member,self.idkey)
-#           return Ensemble(*fs, idkey=self.idkey, **ens_args) # axes from several variables can be the same objects
+        # check for unique keys; first try original key then name, title and dataset_name
+        for key in (self.idkey, 'name', 'title'):
+            if len(fs) == len(set([getattr(f,key) for f in fs if getattr(f,key) is not None])):
+              return Ensemble(*fs, idkey=key, **ens_args)
+        # if we have not retuned yet, there are no obvious unique keys...
+        raise KeyError("No unique keys found for Ensemble members (Datasets)")
       else:
         raise TypeError("Resulting Ensemble members have inconsisent type.")
   
