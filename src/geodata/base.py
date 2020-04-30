@@ -3579,10 +3579,10 @@ def concatDatasets(datasets, name=None, axis=None, coordlim=None, idxlim=None, o
       to make sure they are all in the same order (since only the first axis and ID variable
       (pseudo-axis) will be retained. '''
   if lensembleAxis and axis is None: axis = 'ensemble'
-  if lignoreConst and time_axes is None: time_axes = ('time','year')
   elif isinstance(axis,(Axis,str)) and not any([ds.hasAxis(axis) for ds in datasets]):
     if lensembleAxis is None: lensembleAxis = True
     elif lensembleAxis is False: raise ArgumentError        
+  if lignoreConst and time_axes is None: time_axes = ('time','year')
   if isinstance(axis,(Axis,str)): axislist = (axis,)
   else: axislist = axis
   nax = len(axislist)
