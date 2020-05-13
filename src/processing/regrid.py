@@ -207,11 +207,11 @@ if __name__ == '__main__':
   else:
     # settings for testing and debugging
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 4 ; ldebug = False # just for tests
-    modes = ('climatology','time-series') # 'climatology','time-series'
-#     modes = ('climatology',) # 'climatology','time-series'
+    NP = 8 ; ldebug = False # just for tests
+#     modes = ('climatology','time-series') # 'climatology','time-series'
+    modes = ('climatology',) # 'climatology','time-series'
 #     modes = ('time-series',) # 'climatology','time-series'
-    loverwrite = True
+    loverwrite = False
     varlist = None
 #     varlist = ['precip']
 #     varlist = ['Tsnow','evap_blow','evap_snow','snwmlt','liqprec','precip','rho_snw',]
@@ -260,8 +260,6 @@ if __name__ == '__main__':
 #     WRF_experiments += ['t-ensemble','t-ensemble-2050','t-ensemble-2100']
 #     WRF_experiments += ['g3-ensemble','g3-ensemble-2050','g3-ensemble-2100',]
 #     WRF_experiments += ['t3-ensemble','t3-ensemble-2050','t3-ensemble-2100']
-#     WRF_experiments += ['max-ensemble','max-ensemble-2050','max-ensemble-2100']
-#     WRF_experiments += ['ctrl-ensemble','ctrl-ensemble-2050','ctrl-ensemble-2100']
 #     WRF_experiments += ['erai-g','erai-t']
 #     WRF_experiments += ['erai-g3','erai-t3']
 #     WRF_experiments += ['g-ctrl',     'g-ens-A',     'g-ens-B',     'g-ens-C',]
@@ -276,14 +274,16 @@ if __name__ == '__main__':
 #     WRF_experiments += ['t3-ctrl',     't3-ens-A',     't3-ens-B',     't3-ens-C',]
 #     WRF_experiments += ['t3-ctrl-2050','t3-ens-A-2050','t3-ens-B-2050','t3-ens-C-2050',]
 #     WRF_experiments += ['t3-ctrl-2100','t3-ens-A-2100','t3-ens-B-2100','t3-ens-C-2100',]
-    WRF_experiments += ['max-ctrl',     'max-ens-A',     'max-ens-B',     'max-ens-C',]
-    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
-    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
-    WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
-    WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]
-    WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]
 #     WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['t-ensemble']
+    WRF_experiments += ['max-ensemble','max-ensemble-2050','max-ensemble-2100']
+    WRF_experiments += ['ctrl-ensemble','ctrl-ensemble-2050','ctrl-ensemble-2100']
+#     WRF_experiments += ['max-ctrl',     'max-ens-A',     'max-ens-B',     'max-ens-C',]
+#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+#     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]
+#     WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
+#     WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]
+#     WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]
 #     WRF_experiments += ['max-3km', 'max-3km-2100', 'erai-3km']
 #     WRF_experiments += ['new-v361-ctrl', 'new-v361-ctrl-2050', 'new-v361-ctrl-2100']
 #     WRF_experiments += ['erai-v361-noah', 'new-v361-ctrl', 'new-v36-clm',]
@@ -302,10 +302,10 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-#     domains = (2,) # domains to be processed
-    domains = None # process all domains
+    domains = (2,) # domains to be processed
+#     domains = None # process all domains
 #     WRF_filetypes = ('xtrm','srfc','lsm','hydro',) # filetypes to be processed
-    WRF_filetypes = ('hydro','lsm') # filetypes to be processed
+    WRF_filetypes = ('hydro','lsm','aux') # filetypes to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm',) # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); modes = ('time-series',); periods = None
     src_grid = None # grid from which to load the data

@@ -284,7 +284,7 @@ def checkGeoReference(xds, geoargs=None, grid=None):
         # default options            
         if 'proj4' in xds.attrs: 
             # read projection string
-            addGeoReference(xds, proj4_string=xds.attrs['proj4'])
+            xds = addGeoReference(xds, proj4_string=xds.attrs['proj4'])
         else: 
             # use default lat/lon
             if grid:

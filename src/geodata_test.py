@@ -2004,7 +2004,7 @@ if __name__ == "__main__":
 #     specific_tests += ['ReadASCII']
 #     specific_tests += ['ReductionArithmetic']
 #     specific_tests += ['Mask']
-    specific_tests += ['Ensemble']
+#     specific_tests += ['Ensemble']
 #     specific_tests += ['DatasetArithmetic']
 #     specific_tests += ['DistributionVariables'] 
 #     specific_tests += ['StatsTests']   
@@ -2023,7 +2023,7 @@ if __name__ == "__main__":
     # list of tests to be performed
     tests = [] 
     # list of variable tests
-#     tests += ['BaseVar'] 
+    tests += ['BaseVar'] 
 #     tests += ['NetCDFVar']
 #     tests += ['GDALVar']
     # list of dataset tests

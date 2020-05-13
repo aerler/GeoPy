@@ -120,7 +120,7 @@ class GridDefinition(object):
       gdalsr = projection # use as is
       if not gdalsr.IsProjected(): lwrap360 = checkWrap360(lwrap360, xlon)
     else:
-      gdalsr = osr.SpatialReference() 
+      gdalsr = osr.SpatialReference()
       gdalsr.SetWellKnownGeogCS('WGS84')                 
       if projection is None: # default: normal lat/lon projection
         lwrap360 = checkWrap360(lwrap360, xlon)

@@ -103,6 +103,9 @@ class FileType(object):
       # final filename needs to be extended by (domain,'_'+grid,'_'+period)
       self.tsfile = 'wrf{:s}_d{{0:0=2d}}{{1:s}}_monthly.nc'.format(name) # generic time-series name
       # final filename needs to be extended by (domain, grid)
+      self.dailyfile = 'wrf{:s}_d{{0:0=2d}}{{1:s}}_daily.nc'.format(name) # high-frequency (sub-)daily time-series name
+      # final filename needs to be extended by (domain, grid)
+      
     else: raise ArgumentError  
 # constants
 class Const(FileType):
@@ -123,6 +126,7 @@ class Const(FileType):
     self.ignore_list = ['CON']
     self.climfile = 'wrfconst_d{0:0=2d}{1:s}.nc' # the filename needs to be extended by (domain,'_'+grid)
     self.tsfile = 'wrfconst_d{0:0=2d}{1:s}.nc' # the filename needs to be extended by (domain,grid)
+    self.dailyfile = 'wrfconst_d{0:0=2d}{1:s}.nc' # the filename needs to be extended by (domain,grid)
 # surface variables
 class Srfc(FileType):
   ''' Variables and attributes of the surface files. '''
@@ -195,6 +199,7 @@ class Srfc(FileType):
     self.ignore_list = []  
     self.climfile = 'wrfsrfc_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfsrfc_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
+    self.dailyfile = 'wrfsrfc_d{0:0=2d}{1:s}_daily.nc' # the filename needs to be extended by (domain, grid)
 # hydro variables (mostly for HGS)
 class Hydro(FileType):
   ''' Variables and attributes of the hydrological files. '''
@@ -235,6 +240,7 @@ class Hydro(FileType):
     self.ignore_list = []
     self.climfile = 'wrfhydro_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfhydro_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
+    self.dailyfile = 'wrfhydro_d{0:0=2d}{1:s}_daily.nc' # the filename needs to be extended by (domain, grid)
 # land surface model variables
 class LSM(FileType):
   ''' Variables and attributes of the land surface files. '''
@@ -268,6 +274,7 @@ class LSM(FileType):
     self.ignore_list = []   
     self.climfile = 'wrflsm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrflsm_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
+    self.dailyfile = 'wrflsm_d{0:0=2d}{1:s}_daily.nc' # the filename needs to be extended by (domain, grid)
 # radiation variables
 class Rad(FileType):
   ''' Variables and attributes of the radiation files. '''
@@ -296,6 +303,7 @@ class Rad(FileType):
     self.ignore_list = []    
     self.climfile = 'wrfrad_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfrad_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
+    self.dailyfile = 'wrfrad_d{0:0=2d}{1:s}_daily.nc' # the filename needs to be extended by (domain, grid)
 # extreme value variables
 class Xtrm(FileType):
   ''' Variables and attributes of the extreme value files. '''
@@ -353,6 +361,7 @@ class Xtrm(FileType):
     self.ignore_list = []   
     self.climfile = 'wrfxtrm_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfxtrm_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
+    self.dailyfile = 'wrfxtrm_d{0:0=2d}{1:s}_daily.nc' # the filename needs to be extended by (domain, grid)
 # variables on selected pressure levels: 850 hPa, 700 hPa, 500 hPa, 250 hPa, 100 hPa
 class Plev3D(FileType):
   ''' Variables and attributes of the pressure level files. '''
@@ -382,6 +391,7 @@ class Plev3D(FileType):
     self.ignore_list = []  
     self.climfile = 'wrfplev3d_d{0:0=2d}{1:s}_clim{2:s}.nc' # the filename needs to be extended by (domain,'_'+grid,'_'+period)
     self.tsfile = 'wrfplev3d_d{0:0=2d}{1:s}_monthly.nc' # the filename needs to be extended by (domain, grid)
+    self.dailyfile = 'wrfplev3d_d{0:0=2d}{1:s}_daily.nc' # the filename needs to be extended by (domain, grid)
 
 # axes (don't have their own file)
 class Axes(FileType):
@@ -403,6 +413,7 @@ class Axes(FileType):
     self.ignore_list = []
     self.climfile = None
     self.tsfile = None
+    self.dailyfile = None
 
 # data source/location
 fileclasses = dict(aux=FileType('aux'), const=Const(), srfc=Srfc(), hydro=Hydro(), lsm=LSM(), rad=Rad(), xtrm=Xtrm(), plev3d=Plev3D(), axes=Axes())
@@ -630,7 +641,7 @@ def loadWRF_ShpTS(experiment=None, name=None, domains=None, shape=None, grid=Non
                      ltrimT=ltrimT, check_vars='shape_name', exps=exps, bias_correction=bias_correction)  
 
 def loadWRF_TS(experiment=None, name=None, domains=None, grid=None, filetypes=None, varlist=None, 
-               varatts=None, lconst=True, lautoregrid=True, lctrT=True, lfixPET=True, lwrite=False, ltrimT=True, 
+               varatts=None, lconst=True, lautoregrid=False, lctrT=True, lfixPET=True, lwrite=False, ltrimT=True, 
                exps=None, bias_correction=None):
   ''' Get a properly formatted WRF dataset with monthly time-series. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, exps=exps, 
@@ -657,7 +668,7 @@ def loadWRF_Shp(experiment=None, name=None, domains=None, shape=None, grid=None,
                      ltrimT=ltrimT, check_vars='shape_name', exps=exps, bias_correction=bias_correction)  
 
 def loadWRF(experiment=None, name=None, domains=None, grid=None, period=None, filetypes=None, varlist=None, 
-            varatts=None, lconst=True, lautoregrid=True, lctrT=True, lfixPET=True, lwrite=False, ltrimT=False, 
+            varatts=None, lconst=True, lautoregrid=False, lctrT=True, lfixPET=True, lwrite=False, ltrimT=False, 
             exps=None, bias_correction=None):
   ''' Get a properly formatted monthly WRF climatology as NetCDFDataset. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, exps=exps, 
@@ -667,7 +678,7 @@ def loadWRF(experiment=None, name=None, domains=None, grid=None, period=None, fi
 
 # pre-processed climatology files (varatts etc. should not be necessary) 
 def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=None, shape=None, period=None, 
-                filetypes=None, varlist=None, varatts=None, lfilevaratts=False, lconst=True, lautoregrid=True, 
+                filetypes=None, varlist=None, varatts=None, lfilevaratts=False, lconst=True, lautoregrid=False, 
                 lencl=False, lctrT=False, lfixPET=True, folder=None, lpickleGrid=True, mode='climatology', 
                 lwrite=False, ltrimT=False, check_vars=None, exps=None, bias_correction=None):
   ''' Get any WRF data files as a properly formatted NetCDFDataset. '''
@@ -719,7 +730,6 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   elif isinstance(filetypes,list): filetypes = list(filetypes) # also make copy for modification
   else: raise TypeError
   if 'axes' in filetypes: del filetypes[filetypes.index('axes')] # remove axes - not a real filetype
-  #if 'const' not in filetypes and grid is None: filetypes.append('const')
   if bias_correction: # optional filetype for bias-corrected data
       filetypes = [bias_correction.lower(),]+filetypes # add before others, so that bias-corrected variables are loaded
   atts = []; filelist = []; typelist = []; ignore_lists = []
@@ -734,8 +744,6 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
         typelist.append(filetype) # this eliminates const files
     ignore_lists.append(fileclass.ignore_list) # list of ignore lists
     # get varatts
-#     if filetype == 'const': lconst = True
-#     else:
     att = fileclasses['axes'].atts.copy()
     att.update(fileclass.atts) # use axes atts as basis and override with filetype-specific atts
     atts.append(att) # list of atts for each filetype    
@@ -763,9 +771,6 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       tatt['offset'] = (ys-1979)*12 + (ms-1)
       tatt['atts'] = dict(long_name='Month since 1979-01')
       att['time'] = tatt # this should happen in-place  
-  # translate varlist
-  #if varlist is not None: varlist = translateVarNames(varlist, atts) # default_varatts
-  # N.B.: renaming of variables in the varlist is now handled in theDatasetNetCDF initialization routine
   # infer projection and grid and generate horizontal map axes
   # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files  
   if not lstation and not lshape:
@@ -857,14 +862,13 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
         if os.path.exists(nativepath):
           if lautoregrid: # already set to False for stations
             from processing.regrid import performRegridding # causes circular reference if imported earlier
-            #griddef = loadPickledGridDef(grid=grid, res=None, folder=grid_folder) # already done above
             dataargs = dict(experiment=experiment, filetypes=[filetype], domain=domain, period=period)
-            print(("The '{:s}' (WRF) dataset for the grid ('{:s}') is not available:\n Attempting regridding on-the-fly.".format(name,filename,grid)))
+            print(("The '{}' (WRF) dataset for the grid ('{}') is not available:\n Attempting regridding on-the-fly.".format(name,filename,grid)))
             if performRegridding('WRF', 'climatology', griddef, dataargs): # True if exitcode 1
               raise IOError("Automatic regridding failed!")
-            print(("Output: '{:s}'".format(name,filename,grid,filepath)))            
-          else: raise IOError("The  '{:s}' (WRF) dataset '{:s}' for the selected grid ('{:s}') is not available - use the regrid module to generate it.\n('{:s}')".format(name,filename,grid,filepath)) 
-        else: raise IOError("The file '{:s}' in WRF dataset '{:s}' does not exits!\n('{:s}')".format(filename,name,filepath))   
+            print(("Output: '{}'".format(name,filename,grid,filepath)))            
+          else: raise IOError("The  '{}' (WRF) dataset '{}' for the selected grid ('{}') is not available - use the regrid module to generate it.\n('{}')".format(name,filename,grid,filepath)) 
+        else: raise IOError("The file '{}' in WRF dataset '{}' does not exits!\n('{}')".format(filename,name,filepath))   
        
     # load dataset
     check_override = ['time'] if lctrT else None
@@ -888,22 +892,9 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       if lts:
         dataset.time.coord = np.arange(len(dataset.time), dtype=dataset.time.dtype) + (ys-1979)*12 + (ms-1)
         # N.B.: shifting is dangerous, because of potential repeated application
-#         t0 = dataset.time.coord[0]
-#         tm = t0%12; ty = int(np.floor(t0/12))  
-#         if tm != ms - 1: 
-#           dataset.time.coord -= ( tm+1 - ms )
-#           dataset.time.offset -= ( tm+1 - ms )
-#         if ty != ys - 1979: 
-#           dataset.time.coord -= ( ty+1979 - ys )*12
-#           dataset.time.offset -= ( ty+1979 - ys )*12 
       elif lclim:
         dataset.time.coord = np.arange(len(dataset.time), dtype=dataset.time.dtype) + 1
         # N.B.: shifting is dangerous, because of potential repeated application
-#         t0 = dataset.time.coord[0]
-#         # there is no "year" - just start with "1" for january 
-#         if t0 != 1: 
-#           dataset.time.coord -= ( t0 - 1 )
-#           dataset.time.offset -= ( t0 - 1 )
       # correct ordinal number of shape (should start at 1, not 0)
     if lfixPET and ( 'pet_wrf' in dataset or 'pet' in dataset):
         if 'pet_wrf' in dataset and 'pet' in dataset:
@@ -916,8 +907,8 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
             pet_wrf *= 999.70
         elif pet_wrf.mean() > 1e-4: 
             pet_wrf /= 999.70
-            warn("WARNING: WRF PET values too high; divinding by 999.7!")
-        # N.B.: this is quite ugly, but seems to be necessayr to clear up the mess with PET; 
+            warn("WARNING: WRF PET values too high; dividing by 999.7!")
+        # N.B.: this is quite ugly, but seems to be necessary to clear up the mess with PET; 
         #       ideally it should not stay here for long...
     if lshape:
       # mask all shapes that are incomplete in dataset
@@ -1059,6 +1050,197 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
   return dataset
 
 
+## functions to load WRF data using xarray, mostly for (sub-)daily timeseries
+
+def loadWRF_Daily(experiment=None, name=None, domain=None, grid=None, filetypes=None, bias_correction=None, varlist=None, 
+                  varatts=None, lconst=True, exps=None):
+    ''' Get a properly formatted xarray Dataset a with high-freuqency time-series data. '''
+    return loadWRF_XR(experiment=experiment, name=name, domain=domain, grid=grid, exps=exps, 
+                      filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
+                      mode='daily', bias_correction=bias_correction)  
+
+# master function to load WRF xarray datasets
+def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None, shape=None, filetypes=None, bias_correction=None, 
+               varlist=None, varatts=None, lfilevaratts=False, mode='daily', period=None, lconst=False, lpickleGrid=True, 
+               ldropWRFatts=False, chunks=None, time_chunks=32, folder=None, exps=None, **xrargs):
+    ''' Get a properly formatted xarray Dataset from post-processed WRF NetCDF4 files. '''
+    import xarray as xr
+    from datasets.SnoDAS import addGeoReference
+    # some default settings for xarray
+    if chunks is None and time_chunks: chunks = dict(time=time_chunks)
+    xarray_kwargs = dict(decode_times=False, chunks=chunks)
+    # determine file and folder
+    if experiment is None and name is not None: 
+        experiment = name; name=None # allow 'name' to define an experiment  
+    folder,experiment,name,domain = getFolderNameDomain(name=name, experiment=experiment, domains=domain, folder=folder, exps=exps)
+    name = name[0]; domain = domain[0]
+    # set modes    
+    lclim = False; lts = False; ldaily = False # mode switches
+    periodstr = ''
+    if mode.lower() == 'climatology': # post-processed climatology files
+        lclim = True
+        # figure out period
+        if isinstance(period,(tuple,list)):
+          if not all(isNumber(period)): raise ValueError
+        elif isinstance(period,str): period = [int(prd) for prd in period.split('-')]
+        elif isinstance(period,(int,np.integer)): 
+            beginyear = int(experiment.begindate[0:4])
+            period = (beginyear, beginyear+period)
+        elif period is None:
+            period = (int(experiment.begindate[0:4]), int(experiment.enddate[0:4]))
+        else: 
+            raise DateError("Illegal period definition: {:s}".format(str(period))) 
+        periodstr = '_{0:4d}-{1:4d}'.format(*period)
+    elif mode.lower() in ('time-series','timeseries'): lts = True
+    elif mode.lower() in ('daily','hf'): 
+        ldaily = True
+        xarray_kwargs['decode_times'] = True
+    # cast/copy varlist
+    if isinstance(varlist,str): varlist = [varlist] # cast as list
+    elif varlist is not None: varlist = list(varlist) # make copy to avoid interference
+    # figure out station and shape options (add params to varlist)
+    if station and shape: raise ArgumentError
+    elif station or shape: 
+        lstation = bool(station); lshape = bool(shape)
+        # add station/shape parameters
+        if varlist is not None:
+            params = stn_params if lstation else shp_params
+            for param in params:
+                if param not in varlist: varlist.append(param)
+    else:
+        lstation = False; lshape = False
+    # generate filelist and attributes based on filetypes and domain
+    if filetypes is None: filetypes = ('hydro','xtrm','srfc','lsm')
+    if isinstance(filetypes,(tuple,set)): filetypes = list(filetypes)
+    elif isinstance(filetypes,str): filetypes = [filetypes,]
+    elif isinstance(filetypes,list): filetypes = list(filetypes) # also make copy for modification
+    else: raise TypeError(filetypes)
+    if 'axes' in filetypes: del filetypes[filetypes.index('axes')] # remove axes - not a real filetype
+    if bias_correction: # optional filetype for bias-corrected data
+        filetypes = [bias_correction.lower(),]+filetypes # add before others, so that bias-corrected variables are loaded
+    atts = []; filelist = []; typelist = []; ignore_lists = []
+    for filetype in filetypes: # last filetype in list has precedence
+        fileclass = fileclasses[filetype] if filetype in fileclasses else FileType(filetype)
+        if lclim and fileclass.climfile is not None: 
+            filelist.append(fileclass.climfile)
+        elif lts and fileclass.tsfile is not None: 
+            filelist.append(fileclass.tsfile)
+        elif ldaily and fileclass.dailyfile is not None: 
+            filelist.append(fileclass.dailyfile)      
+        typelist.append(filetype) # this eliminates const files
+        ignore_lists.append(fileclass.ignore_list) # list of ignore lists
+        # get varatts
+        att = fileclasses['axes'].atts.copy()
+        att.update(fileclass.atts) # use axes atts as basis and override with filetype-specific atts
+        atts.append(att) # list of atts for each filetype    
+    # axes mapping
+    axatts = fileclasses['axes'].atts.copy()
+    axmap = {axname:axatt['name'] for axname,axatt in axatts.items()}
+    # resolve varatts argument and update default atts
+    if varatts is None: pass
+    elif isinstance(varatts,dict):
+      if lfilevaratts:
+        for filetype,att in list(varatts.items()):
+          if not isinstance(att, dict): raise TypeError(filetype,att)
+          atts[typelist.index(filetype, )].update(att) # happens in-place
+      else:
+        for att in atts: att.update(varatts) # happens in-place
+    elif isinstance(varatts,(list,tuple)):
+      for att,varatt in zip(atts,varatts): att.update(varatt) # happens in-place
+    else:
+      raise TypeError(varatts)
+    # load projection/griddef
+    # N.B.: unlike with other datasets, the projection has to be inferred from the netcdf files or loaded from a pickle file  
+    if not lstation and not lshape:
+        if grid is None:
+            # load pickled griddefs from disk (much faster than recomputing!)
+            if experiment is None: raise IOError() # don't load pickle!
+            if lpickleGrid:
+                griddef = loadPickledGridDef(grid=experiment.grid, res='d0{:d}'.format(domain), filename=None, 
+                                             folder=grid_folder, check=True)
+                # N.B.: pickles are mainly used to speed up loading datasets; if pickles are not available, infer grid from files
+            else:
+                # print warning to alert user that this takes a bit longer
+                if experiment is None: name = "'{:s}'".format(name)        
+                else: name = "'{:s}' ('{:s}')".format(experiment.name,experiment.grid) 
+                warn("Recomputing Grid Definition for Experiment {:s}".format(name))
+                # compute grid definition from wrfconst files (requires all parent domains) 
+                griddef = None; c = 0
+                filename = list(fileclasses.values())[c].tsfile # just use the first filetype
+                while griddef is None:
+                  # some experiments do not have all files... try, until one works...
+                  try:
+                    if filename is None: raise IOError # skip and try next one
+                    griddef = getWRFgrid(name=name, experiment=experiment, domains=domain, folder=folder, filename=filename, exps=exps)
+                  except IOError:
+                    c += 1
+                    if c >= len(list(fileclasses.values())): 
+                      raise GDALError("Unable to infer grid definition for experiment '{:s}'.\n Not enough information in source files or required source file not available.".format(name))
+                    filename = list(fileclasses.values())[c].tsfile
+            gridstr = ''
+        else:
+            griddef = loadPickledGridDef(grid=grid, res=None, filename=None, folder=grid_folder, check=True)
+            gridstr = '_'+grid.lower(); # only use lower case for filenames
+            lconst = False # don't load constants
+    else:
+        # the station or shape name can be inserted as the grid name
+        if lstation: gridstr = '_'+station.lower(); # only use lower case for filenames
+        elif lshape: gridstr = '_'+shape.lower(); # only use lower case for filenames
+        if grid: gridstr += '_'+grid.lower(); # only use lower case for filenames
+        griddef = None # not relevant here...
+        lconst = False # don't load constants (some constants are already in the file anyway)
+    print(griddef)
+    ## assemble dataset
+    if lconst: raise NotImplementedError()   
+    # load variables iteratively from multiple datasets (files)
+    xarray_kwargs.update(**xrargs)
+    xds = xr.Dataset() # master dataset
+    for filepattern,varatts_dict in zip(filelist,atts):
+        filepath = '{}/{}'.format(folder,filepattern.format(domain,gridstr,periodstr))
+        ds = xr.open_dataset(filepath, **xarray_kwargs)
+        # clean up varlist
+        for varname,variable in ds.data_vars.items():
+            if varname in varatts_dict:
+                varatts = varatts_dict[varname]
+                new_name = varname # default
+                if 'name' in varatts: new_name = varatts['name']
+                elif 'atts' in varatts: 
+                    tmpatts = varatts['atts']
+                    if 'name' in tmpatts: new_name = tmpatts['name']
+                if varlist is None or new_name in varlist:
+                    variable = variable.rename({key:value for key,value in axmap.items() if key in variable.dims})
+                    if new_name != varname:
+                        variable.name = new_name
+                    variable.attrs['units'] = varatts['units']
+                    if 'atts' in varatts:
+                        variable.attrs.update(varatts['atts'])
+                    if 'scalefactor' in varatts:
+                        variable *= varatts['scalefactor']
+                    if 'offset' in varatts:
+                        variable += varatts['offset']
+                    # add formatted variable to dataset
+                    xds[new_name] = variable
+        # update dataset attributes 
+        if not ldropWRFatts: dsatts = ds.attrs.copy()
+        else: dsatts = {name:att for name,att in ds.attrs.items() if not name.isupper()}
+        xds.attrs.update(dsatts)
+    # add horizontal coordinates
+    coords = dict(); coord_atts = dict()
+    for ax in (griddef.xlon,griddef.ylat):
+        if ax.name in xds.dims: 
+            coords[ax.name] = ax.data_array
+            coord_atts[ax.name] = ax.atts.copy()
+    if coords: xds = xds.assign_coords(**coords)
+    for axname,axatt in coord_atts.items():
+        xds[axname].attrs.update(axatt)
+    # add projection info
+    #if lgeoref: xds = checkGeoReference(xds, geoargs=geoargs, grid=grid)
+    #xds.attrs['proj4'] = griddef.projection.ExportToProj4()
+    #xds.attrs['geotransform'] = griddef.geotransform()
+    xds = addGeoReference(xds, proj4_string=griddef.projection.ExportToProj4())
+    # return dataset
+    return xds
+
 ## Dataset API
 
 dataset_name # dataset name
@@ -1085,30 +1267,44 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-  mode = 'test_climatology'
+  mode = 'test_xarray'  
+#   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
 #   mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
-  mode = 'pickle_grid' 
-#   pntset = 'wcshp'
-  pntset = 'glbshp'
+#   mode = 'pickle_grid' 
+  pntset = 'wcshp'
+#   pntset = 'glbshp'
 #   pntset = 'ecprecip'
 #   filetypes = ['srfc','xtrm','plev3d','hydro','lsm','rad']
 #   grids = ['glb1-90km','glb1','arb1', 'arb2', 'arb2-120km', 'arb3']
 #   domains = [(1,)]+[(1,2)]*3+[(1,),(1,2,3)]; regions = ['GreatLakes']*2+['WesternCanada']*4
   grids = ['arb1', 'arb2', 'arb2-120km', 'arb3']
-  domains = [(1,)]+[(1,2)]*2+[(1,),(1,2,3)]; regions = ['WesternCanada']*4
+  domains = [(1,2)]*2+[(1,),(1,2,3)]; regions = ['WesternCanada']*4
 #   grids = ['wc2']; domains = [(1,2)]; regions = ['Columbia']
 #   grids = ['arb2-120km']; experiments = ['max-lowres']; domains = [1,]   
     
-#   from projects.WesternCanada.WRF_experiments import Exp, WRF_exps, ensembles
-  from projects.GreatLakes.WRF_experiments import Exp, WRF_exps, ensembles
+  from projects.WesternCanada.WRF_experiments import Exp, WRF_exps, ensembles
+#   from projects.GreatLakes.WRF_experiments import Exp, WRF_exps, ensembles
   # N.B.: importing Exp through WRF_experiments is necessary, otherwise some isinstance() calls fail
     
   # pickle grid definition
-  if mode == 'pickle_grid':
+  if mode == 'test_xarray':
+    
+      print('')
+      dataset = loadWRF_XR(experiment='max-ctrl', domain=2, grid=None, 
+                          varlist=['precip','T2','liqwatflx','pet'], 
+                           ldropWRFatts=True,
+                           filetypes=['hydro','lsm'], mode='timeseries',
+                           exps=WRF_exps)
+  
+      print(dataset)
+      print(dataset.pet)
+      print(dataset.x)
+
+  elif mode == 'pickle_grid':
     
     for region,grid,doms in zip(regions,grids,domains):
       
@@ -1231,9 +1427,9 @@ if __name__ == '__main__':
   elif mode == 'test_point_timeseries':
     
     print('')
-    if pntset in ('shpavg','wcshp','glbshp','glakes'):
-      dataset = loadWRF_ShpTS(experiment='g-ctrl-2100', domains=1, varlist=None, #['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
-                              shape=pntset, filetypes=['aux','hydro'], exps=WRF_exps,)
+    if pntset in ('shpavg','wcshp','glbshp','glakes','abshp'):
+      dataset = loadWRF_ShpTS(experiment='max-ctrl', domains=2, varlist=None, #['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
+                              shape=pntset, filetypes=['hydro'], exps=WRF_exps,)
     else:
       dataset = loadWRF_StnTS(experiment='erai-g', domains=None, varlist=['zs','stn_zs','MaxPrecip_6h'],
 #                               varlist=['zs','stn_zs','precip','MaxPrecip_6h','MaxPreccu_1h','MaxPrecip_1d'], 
