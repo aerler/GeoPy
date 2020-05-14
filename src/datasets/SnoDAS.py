@@ -306,7 +306,7 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, grid=None,
     if chunks is None and grid is None:
         cks = netcdf_settings['chunksizes'] if chunks is None else chunks
         # use default netCDF chunks or user chunks, but multiply time by time_chunks
-        chunks = dict(time=cks[0]*time_chunks,lat=cks[1],lon=cks[2])
+        chunks = dict(time=time_chunks,lat=cks[1],lon=cks[2])
     if grid: folder = '{}/{}'.format(folder,grid) # non-native grids are stored in sub-folders
     # load variables
     if varname and varlist: raise ValueError(varname,varlist)

@@ -217,7 +217,8 @@ class Hydro(FileType):
                      NetPrecip    = dict(name='p-et', units='kg/m^2/s'), # net precipitation rate
                      LiquidPrecip = dict(name='liqprec', units='kg/m^2/s'), # liquid precipitation rate
                      SolidPrecip  = dict(name='solprec', units='kg/m^2/s'), # solid precipitation rate
-                     NetWaterFlux = dict(name='waterflx', units='kg/m^2/s'), # total water downward flux
+                     NetWaterFlux = dict(name='waterflx', units='kg/m^2/s'), # net total water flux at the surface
+                     WaterForcing = dict(name='liqwatflx', units='kg/m^2/s'), # downward liquid water flux at the surface
                      #WetDays      = dict(name='wetfrq', units=''), # fraction of wet/rainy days 
                      #WetDayRain   = dict(name='dryprec', units='kg/m^2/s'), # precipitation rate above dry-day threshold (kg/m^2/s)
                      #WetDayPrecip = dict(name='wetprec', units='kg/m^2/s'), # wet-day precipitation rate (kg/m^2/s)
@@ -419,6 +420,7 @@ class Axes(FileType):
 fileclasses = dict(aux=FileType('aux'), const=Const(), srfc=Srfc(), hydro=Hydro(), lsm=LSM(), rad=Rad(), xtrm=Xtrm(), plev3d=Plev3D(), axes=Axes())
 outfolder = root_folder + 'wrfout/' # WRF output folder
 avgfolder = root_folder + 'wrfavg/' # long-term mean folder
+daily_folder = avgfolder # daily folder is the same, but will have subfolders for grids
 
 # add generic extremes to varatts dicts
 for fileclass in fileclasses.values():
@@ -550,7 +552,7 @@ def getWRFgrid(name=None, experiment=None, domains=None, folder=None, filename='
   return tuple(griddefs)  
 
 # return name and folder
-def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, lexp=False, exps=None):
+def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, lexp=False, exps=None, lreduce=False):
   ''' Convenience function to infer and type-check the name and folder of an experiment based on various input. '''
   # N.B.: 'experiment' can be a string name or an Exp instance
   if name is None and experiment is None: raise ArgumentError
@@ -605,16 +607,20 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
     if not folder.endswith((name,name+'/')): folder = '{:s}/{:s}/'.format(folder,name)
   else: raise TypeError(folder)
   # check types
-  if not isinstance(domains,(tuple,list)): raise TypeError    
-  if not all(isInt(domains)): raise TypeError
+  if not isinstance(domains,(tuple,list)): raise TypeError()
+  if not all(isInt(domains)): raise TypeError()
   if not domains == sorted(domains): raise IndexError('Domains have to be sorted in ascending order.')
-  if not isinstance(names,(tuple,list)): raise TypeError
-  if not all(isinstance(nm,str) for nm in names): raise TypeError
-  if len(domains) != len(names): raise ArgumentError  
+  if not isinstance(names,(tuple,list)): raise TypeError()
+  if not all(isinstance(nm,str) for nm in names): raise TypeError()
+  if len(domains) != len(names): raise ArgumentError()
   # check if folder exists
   if not os.path.exists(folder): raise IOError(folder)
   # return name and folder
-  return folder, experiment, tuple(names), tuple(domains)
+  if lreduce and len(names)==1:
+      names = names[0]; domains = domains[0]
+  else:
+      names = tuple(names); domains = tuple(domains)
+  return folder, experiment, names, domains
 
 
 ## Functions to load different types of WRF datasets
@@ -1052,12 +1058,15 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
 
 ## functions to load WRF data using xarray, mostly for (sub-)daily timeseries
 
-def loadWRF_Daily(experiment=None, name=None, domain=None, grid=None, filetypes=None, bias_correction=None, varlist=None, 
-                  varatts=None, lconst=True, exps=None):
+def loadWRF_Daily(experiment=None, name=None, domain=None, grid=None, filetypes=None, bias_correction=None, 
+                  varlist=None, varatts=None, lfilevaratts=False, lconst=False, lpickleGrid=True, 
+                  ldropWRFatts=False, chunks=None, time_chunks=32, folder=None, exps=None, **xrargs):
     ''' Get a properly formatted xarray Dataset a with high-freuqency time-series data. '''
-    return loadWRF_XR(experiment=experiment, name=name, domain=domain, grid=grid, exps=exps, 
-                      filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
-                      mode='daily', bias_correction=bias_correction)  
+    return loadWRF_XR(experiment=experiment, name=name, domain=domain, grid=grid, exps=exps, lpickleGrid=lpickleGrid,
+                      station=None, shape=None, period=None, mode='daily',  
+                      filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, ldropWRFatts=ldropWRFatts,
+                      bias_correction=bias_correction, chunks=chunks, time_chunks=time_chunks, 
+                      lfilevaratts=lfilevaratts, folder=folder, **xrargs)  
 
 # master function to load WRF xarray datasets
 def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None, shape=None, filetypes=None, bias_correction=None, 
@@ -1072,8 +1081,8 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
     # determine file and folder
     if experiment is None and name is not None: 
         experiment = name; name=None # allow 'name' to define an experiment  
-    folder,experiment,name,domain = getFolderNameDomain(name=name, experiment=experiment, domains=domain, folder=folder, exps=exps)
-    name = name[0]; domain = domain[0]
+    folder,experiment,name,domain = getFolderNameDomain(name=name, experiment=experiment, domains=domain, 
+                                                        folder=folder, exps=exps, lreduce=True)
     # set modes    
     lclim = False; lts = False; ldaily = False # mode switches
     periodstr = ''
@@ -1257,6 +1266,7 @@ default_grid = None
 loadLongTermMean = None # WRF doesn't have that...
 loadClimatology = loadWRF # pre-processed, standardized climatology
 loadTimeSeries = loadWRF_TS # time-series data
+loadDailyTimeSeries = loadWRF_Daily # daily time-series data
 loadStationClimatology = loadWRF_Stn # pre-processed, standardized climatology at stations
 loadStationTimeSeries = loadWRF_StnTS # time-series data at stations
 loadShapeClimatology = loadWRF_Shp # climatologies without associated grid (e.g. provinces or basins) 
@@ -1294,11 +1304,14 @@ if __name__ == '__main__':
   if mode == 'test_xarray':
     
       print('')
-      dataset = loadWRF_XR(experiment='max-ctrl', domain=2, grid=None, 
-                          varlist=['precip','T2','liqwatflx','pet'], 
-                           ldropWRFatts=True,
-                           filetypes=['hydro','lsm'], mode='timeseries',
-                           exps=WRF_exps)
+#       dataset = loadWRF_XR(experiment='max-ctrl', domain=2, grid=None, 
+#                            varlist=['precip','T2','liqwatflx','pet'], 
+#                            filetypes=['hydro','lsm'], mode='timeseries',
+#                            ldropWRFatts=True, exps=WRF_exps)
+      dataset = loadWRF_Daily(experiment='max-ctrl', domain=2, grid=None, 
+                              varlist=['precip','T2','liqwatflx','pet'], 
+                              filetypes=['hydro',], ldropWRFatts=True, exps=WRF_exps)
+
   
       print(dataset)
       print(dataset.pet)
