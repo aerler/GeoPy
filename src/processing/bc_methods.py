@@ -86,11 +86,11 @@ def loadBCpickle(method=None, obs_name=None, gridstr=None, domain=None, tag=None
     picklepath = findPicklePath(method=method, obs_name=obs_name, gridstr=gridstr, domain=domain, tag=tag, 
                                 pattern=pattern, folder=folder, lgzip=lgzip)
     # load pickle from file
+    if lgzip is None:
+        lgzip = picklepath.endswith('.gz')
     op = gzip.open if lgzip else open
     with op(picklepath, 'rb') as filehandle:
         BC = pickle.load(filehandle) 
-    ## N.B.: for some reason this code in a function can cause errors, but if it is take out ouf the function
-    ##       and copied directly into the calling code, it works just fine... no idea why...
     return BC
   
 
@@ -367,7 +367,7 @@ class Delta(BiasCorrection):
       
     def correctionByTime(self, varname, time, ldt=True, time_idx=0, **kwargs):
         ''' return formatted correction arrays based on an array or list of datetime objects '''
-        # interprete datetime: convert to monthly indices
+        # interpret datetime: convert to monthly indices
         if ldt:
             # if the time array/list is datetime-like, we have to extract the month
             if isinstance(time,(list,tuple)):
@@ -380,7 +380,14 @@ class Delta(BiasCorrection):
         # ... but in the end we need an array of indices
         time = np.asarray(time, dtype='int16')
         # construct view into correction array based on indices
-        correction = np.take(self._correction[varname], time, axis=time_idx,)
+        if varname in self._correction:
+            correction = self._correction[varname]
+        else:
+            raise ValueError("Requested variable '{}' is not available for bias correction;".format(varname) + 
+                             " available variables are:\n {}".format(tuple(self._correction.keys())))
+        if isinstance(correction,np.ndarray) and correction.ndim > time_idx and  correction.shape[time_idx] > 1:
+            assert correction.shape[time_idx] == len(time)
+            correction = np.take(correction, time, axis=time_idx,)
         # return correction factors for requested time indices
         return correction
 
@@ -390,6 +397,9 @@ class Delta(BiasCorrection):
         assert data_array.shape[time_idx] == len(time), (data_array.shape, len(time))
         # get correction array based on list of requested time stamps/indices
         correction = self.correctionByTime(varname, time, ldt=ldt, time_idx=time_idx, **kwargs)
+        # fix broadcasting
+        if correction.ndim < data_array.ndim:
+            correction = correction.reshape(correction.shape+(1,)*(data_array.ndim-correction.ndim)) 
         # decide between difference or ratio based on variable type
         if self._operation[varname] == 'ratio': # ratio for fluxes
             data = data_array * correction
