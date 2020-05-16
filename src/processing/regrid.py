@@ -302,10 +302,10 @@ if __name__ == '__main__':
 #     WRF_experiments += ['ctrl-1-arb1', 'ctrl-2-arb1', 'ctrl-arb1-2050'] #  old ctrl simulations (arb1)
 #     WRF_experiments += ['cfsr-cam', 'cam-ens-A', 'cam-ens-B', 'cam-ens-C'] # old ensemble simulations (arb1)
     # other WRF parameters 
-    domains = (2,) # domains to be processed
-#     domains = None # process all domains
-#     WRF_filetypes = ('xtrm','srfc','lsm','hydro',) # filetypes to be processed
-    WRF_filetypes = ('hydro','lsm','aux') # filetypes to be processed
+#     domains = (2,) # domains to be processed
+    domains = None # process all domains
+    WRF_filetypes = ('xtrm','srfc','lsm','hydro','aux',) # filetypes to be processed
+#     WRF_filetypes = ('hydro','lsm','aux') # filetypes to be processed
 #     WRF_filetypes = ('srfc','xtrm','plev3d','hydro','lsm',) # filetypes to be processed # ,'rad'
 #     WRF_filetypes = ('const',); modes = ('time-series',); periods = None
     src_grid = None # grid from which to load the data
@@ -314,7 +314,8 @@ if __name__ == '__main__':
     # grid to project onto
     grids = dict()
 #     grids['arb1'] = None # high-res grid for Athabasca river basin, 1km    
-    grids['arb2'] = None # high-res grid for Athabasca river basin, 5km    
+#     grids['arb2'] = None # high-res grid for Athabasca river basin, 5km
+    grids['arb3'] = None # smaller high-res grid for Athabasca river basin, 5km    
 #     grids['asb1'] = None # small grid for Assiniboine river basin, 5km
 #     grids['brd1'] = None # small grid for Assiniboine subbasin, 5km
 #     grids['uph1'] = None # grid for Elisha, 5km

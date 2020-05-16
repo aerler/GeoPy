@@ -203,17 +203,17 @@ if __name__ == '__main__':
     CESM_filetypes = ['atm','lnd']
     # WRF experiments (short or long name)
     WRF_experiments = [] # use None to process all WRF experiments
-    WRF_project = 'GreatLakes' # only GreatLakes experiments
+#     WRF_project = 'GreatLakes' # only GreatLakes experiments
 #     WRF_experiments += ['erai-g3','erai-t3']
 #     WRF_experiments += ['erai-g','erai-t']
-    WRF_experiments += ['g-ensemble','t-ensemble']
+#     WRF_experiments += ['g-ensemble','t-ensemble']
 #     WRF_experiments += ['g3-ensemble','t3-ensemble']
 #     WRF_experiments += ['g-ensemble']
-#     WRF_project = 'WesternCanada' # only WesternCanada experiments
+    WRF_project = 'WesternCanada' # only WesternCanada experiments
 #     WRF_experiments += ['max-ensemble']
 #     WRF_experiments += ['ctrl-ensemble']
 #     WRF_experiments += ['erai-max','erai-ctrl']
-#     WRF_experiments += ['max-ensemble','ctrl-ensemble']
+    WRF_experiments += ['max-ensemble','ctrl-ensemble']
     # other WRF parameters 
 #     WRF_domains = 1 # domains to be processed (None=all)
     WRF_domains = None # process all domains
@@ -222,23 +222,23 @@ if __name__ == '__main__':
 #     WRF_filetypes = ('hydro',) # only preprocessed auxiliary files
     ## observations (i.e. the reference dataset; arguments passed to loadDataset)
     obs_mode = 'climatology'
-#     obs_name = 'CRU'
-#     obs_args = dict(period=(1979,1994))
-#     obs_args = dict(varatts=dict(pet=dict(name='pet_wrf')), period=(1979,1994))
-    obs_name = 'NRCan'
-    obs_args = dict(resolution='na12', varatts=dict(pet=dict(name='pet_wrf')), period=(1970,2000))
-#     obs_args = dict(resolution='na12', varatts=dict(pet=dict(name='pet_wrf')), period=(1980,2010))
+    obs_name = 'CRU'
+    obs_args = dict(period=(1979,1994))
+#     obs_args = dict(varatts=dict(pet=dict(name='pet_wrf')), period=(1979,1994)) # pet_wrf is deprecated now
+#     obs_name = 'NRCan'
+#     obs_args = dict(resolution='na12', period=(1970,2000))
+#     obs_args = dict(resolution='na12', period=(1980,2010)) # deprecated: varatts=dict(pet=dict(name='pet_wrf')
     # renaming NRCan pet to pet_wrf is necessary to bias-correct WRF PET
     ## remaining parameters
     lgzip = True # compress pickles
     tag = None # an additional tag string for pickle name
     load_list = None # variables that need to be loaded
     varlist = None # variables that should be bias-corrected
-#     grid = 'arb2' # need a common grid for all datasets    
+    grid = 'arb3' # need a common grid for all datasets    
 #     grid = 'grw1' # need a common grid for all datasets
 #     grid = 'grw2' # need a common grid for all datasets
 #     grid = 'grw3' # need a common grid for all datasets
-    grid = 'uph1' # grid for Elisha
+#     grid = 'uph1' # grid for Elisha
 #     grid = 'asb1' # need a common grid for all datasets
 #     grid = 'brd1' # need a common grid for all datasets
 #     grid = 'snw1' # need a common grid for all datasets

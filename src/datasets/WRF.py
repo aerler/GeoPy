@@ -1059,19 +1059,19 @@ def loadWRF_Ensemble(ensemble=None, name=None, grid=None, station=None, shape=No
 ## functions to load WRF data using xarray, mostly for (sub-)daily timeseries
 
 def loadWRF_Daily(experiment=None, name=None, domain=None, grid=None, filetypes=None, bias_correction=None, 
-                  varlist=None, varatts=None, lfilevaratts=False, lconst=False, lpickleGrid=True, 
-                  ldropWRFatts=False, chunks=None, time_chunks=32, folder=None, exps=None, **xrargs):
+                  varlist=None, varatts=None, lfilevaratts=False, lconst=False, lpickleGrid=True, ldropWRFatts=False,  
+                  chunks=None, time_chunks=32, folder=None, resampling=None, exps=None, enses=None, **xrargs):
     ''' Get a properly formatted xarray Dataset a with high-freuqency time-series data. '''
-    return loadWRF_XR(experiment=experiment, name=name, domain=domain, grid=grid, exps=exps, lpickleGrid=lpickleGrid,
+    return loadWRF_XR(experiment=experiment, name=name, domain=domain, grid=grid, exps=exps, enses=enses, lpickleGrid=lpickleGrid,
                       station=None, shape=None, period=None, mode='daily',  
                       filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, ldropWRFatts=ldropWRFatts,
-                      bias_correction=bias_correction, chunks=chunks, time_chunks=time_chunks, 
+                      bias_correction=bias_correction, chunks=chunks, time_chunks=time_chunks, resampling=resampling,
                       lfilevaratts=lfilevaratts, folder=folder, **xrargs)  
 
 # master function to load WRF xarray datasets
 def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None, shape=None, filetypes=None, bias_correction=None, 
                varlist=None, varatts=None, lfilevaratts=False, mode='daily', period=None, lconst=False, lpickleGrid=True, 
-               ldropWRFatts=False, chunks=None, time_chunks=32, folder=None, exps=None, **xrargs):
+               ldropWRFatts=False, chunks=None, time_chunks=32, folder=None, resampling=None, exps=None, enses=None, **xrargs):
     ''' Get a properly formatted xarray Dataset from post-processed WRF NetCDF4 files. '''
     import xarray as xr
     from datasets.SnoDAS import addGeoReference
@@ -1198,14 +1198,19 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
         if grid: gridstr += '_'+grid.lower(); # only use lower case for filenames
         griddef = None # not relevant here...
         lconst = False # don't load constants (some constants are already in the file anyway)
-    print(griddef)
+    #print(griddef)
     ## assemble dataset
     if lconst: raise NotImplementedError()   
+    if grid: folder = '{}/{}'.format(folder,grid)
+    if resampling: folder = '{}/{}'.format(folder,resampling)
     # load variables iteratively from multiple datasets (files)
     xarray_kwargs.update(**xrargs)
     xds = xr.Dataset() # master dataset
     for filepattern,varatts_dict in zip(filelist,atts):
-        filepath = '{}/{}'.format(folder,filepattern.format(domain,gridstr,periodstr))
+        filename = filepattern.format(domain,gridstr,periodstr)
+        filepath = '{}/{}'.format(folder,filename)
+        if not os.path.exists(filepath):
+            raise IOError("Dataset file '{}' not found.".format(filepath))
         ds = xr.open_dataset(filepath, **xarray_kwargs)
         # clean up varlist
         for varname,variable in ds.data_vars.items():
@@ -1229,10 +1234,15 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
                         variable += varatts['offset']
                     # add formatted variable to dataset
                     xds[new_name] = variable
+            elif varlist is None or varname in varlist:
+                xds[varname] = variable # add original variable
         # update dataset attributes 
         if not ldropWRFatts: dsatts = ds.attrs.copy()
         else: dsatts = {name:att for name,att in ds.attrs.items() if not name.isupper()}
         xds.attrs.update(dsatts)
+    # raise error if dataset is empty
+    if len(xds.data_vars) == 0:
+        raise EmptyDatasetError(str(xds))
     # add horizontal coordinates
     coords = dict(); coord_atts = dict()
     for ax in (griddef.xlon,griddef.ylat):
@@ -1308,8 +1318,8 @@ if __name__ == '__main__':
 #                            varlist=['precip','T2','liqwatflx','pet'], 
 #                            filetypes=['hydro','lsm'], mode='timeseries',
 #                            ldropWRFatts=True, exps=WRF_exps)
-      dataset = loadWRF_Daily(experiment='max-ctrl', domain=2, grid=None, 
-                              varlist=['precip','T2','liqwatflx','pet'], 
+      dataset = loadWRF_Daily(experiment='max-ctrl', domain=2, grid='arb2', resampling='bilinear',
+                              varlist=['liqwatflx','pet'], 
                               filetypes=['hydro',], ldropWRFatts=True, exps=WRF_exps)
 
   
