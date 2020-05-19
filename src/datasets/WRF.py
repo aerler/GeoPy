@@ -14,7 +14,7 @@ import collections as col
 import os
 import osr # from GDAL
 # from atmdyn.properties import variablePlotatts
-from geodata.base import concatDatasets
+from geodata.base import concatDatasets, Axis
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError, loadPickledGridDef, pickleGridDef
 from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt, EmptyDatasetError,\
@@ -628,34 +628,34 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
 
 # Station Time-series (monthly, with extremes)
 def loadWRF_StnTS(experiment=None, name=None, domains=None, station=None, grid=None, filetypes=None, 
-                  varlist=None, varatts=None, lctrT=True, lfixPET=True, lwrite=False, ltrimT=True, 
+                  varlist=None, varatts=None, lctrT=True, lfixPET=True, lwrite=False, ltrimT=True, ldatetime=None,
                   mode='time-series', resampling='bilinear', exps=None, bias_correction=None, lconst=True):
   ''' Get a properly formatted WRF dataset with monthly time-series at station locations. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=station, 
-                     period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
-                     lconst=lconst, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode=mode, 
+                     period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
+                     lautoregrid=False, lctrT=lctrT, ldatetime=ldatetime, lfixPET=lfixPET, mode=mode, 
                      resampling=resampling, lwrite=lwrite, ltrimT=ltrimT, check_vars='station_name', 
                      exps=exps, bias_correction=bias_correction)  
 
 # Regional/Shape Time-series (monthly, with extremes)
 def loadWRF_ShpTS(experiment=None, name=None, domains=None, shape=None, grid=None, filetypes=None, varlist=None, 
-                  varatts=None, lctrT=True, lfixPET=True, lencl=False, lwrite=False, ltrimT=True, 
+                  varatts=None, lctrT=True, lfixPET=True, lencl=False, lwrite=False, ltrimT=True, ldatetime=None,
                   mode='time-series', resampling='bilinear', exps=None, bias_correction=None, lconst=True):
   ''' Get a properly formatted WRF dataset with monthly time-series averaged over regions. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, shape=shape, lencl=lencl, 
                      station=None, period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
                      lconst=lconst, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode=mode, 
-                     resampling=resampling, lwrite=lwrite, 
+                     resampling=resampling, ldatetime=ldatetime, lwrite=lwrite, 
                      ltrimT=ltrimT, check_vars='shape_name', exps=exps, bias_correction=bias_correction)  
 
-def loadWRF_TS(experiment=None, name=None, domains=None, grid=None, filetypes=None, varlist=None, 
+def loadWRF_TS(experiment=None, name=None, domains=None, grid=None, filetypes=None, varlist=None, ldatetime=None,
                mode='time-series', resampling='bilinear', varatts=None, lconst=True, lautoregrid=False, 
                lctrT=True, lfixPET=True, lwrite=False, ltrimT=True, exps=None, bias_correction=None):
   ''' Get a properly formatted WRF dataset with monthly time-series. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, exps=exps, 
                      period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
                      lautoregrid=lautoregrid, lctrT=lctrT, lfixPET=lfixPET, mode=mode, resampling=resampling,  
-                     lwrite=lwrite, ltrimT=ltrimT, bias_correction=bias_correction)  
+                     ldatetime=ldatetime, lwrite=lwrite, ltrimT=ltrimT, bias_correction=bias_correction)  
 
 def loadWRF_Stn(experiment=None, name=None, domains=None, station=None, grid=None, period=None, filetypes=None, 
                 varlist=None, varatts=None, lctrT=True, lfixPET=True, lwrite=False, ltrimT=False, exps=None,
@@ -923,11 +923,16 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
         if 'since' not in dataset.time.units:
             raise NetCDFError("Parsing of units for daily time axis failed: '{}'".format(dataset.time.units))
     if ldatetime:
-        tax = dataset.time
+        tax = dataset.time; ts_array = None
+        # try to load time stamps (preferred method)
         if 'time_stamp' in dataset.dataset.variables:
             ts_array = dataset.dataset.variables['time_stamp'][:]
-        else:
-            raise NotImplementedError("Can only construct datetime64 coordinates from 'time_stamp' variable (for now).")
+        elif 'Times' in dataset.dataset.variables:
+            ts_array = dataset.dataset.variables['Times'][:]
+        if isinstance(ts_array,np.ma.masked_array) and ts_array.mask.any():
+            ts_array = None
+        elif ts_array.ndim == 2:
+            ts_array = nc.chartostring(ts_array)
         # parse units of time
         if 'hour' in tax.units.lower(): sampling = 'h'
         elif 'day' in tax.units.lower(): sampling = 'D'
@@ -935,9 +940,25 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
         elif 'year' in tax.units.lower(): sampling = 'Y'
         else:
             raise AxisError("Unable to parse time units for datetime conversion: '{}'".format(tax.units))
-        # convert to datetime64 of appropriate sampling and assign as coordinate
-        tax.data_array = ts_array.astype('datetime64[{}]'.format(sampling)) 
-        # N.B.: Axis.coord is an attribute that checks dtype, so that assigning a different dtype via coord does not work        
+        # convert to datetime64 array
+        if ts_array is None:
+            # back-up method for monthly data
+            if sampling == 'M' and hasattr(experiment, 'begindate'):
+                startdate = np.datetime64(experiment.begindate, sampling)
+                enddate = startdate + np.timedelta64(len(tax), sampling)
+                dt_array = np.arange(startdate, enddate, dtype='datetime64[{}]'.format(sampling))
+            else:
+                raise NotImplementedError("Unable to infer valid dates for construction of datetime64 array.")
+                # N.B.: the above method may very well also work for other time intervals, but I have no data 
+                #       to test this at the moment, hence I am leaving it as 'not implemented' not now...
+        else:
+            # convert to datetime64 of appropriate sampling and assign as coordinate
+            dt_array = ts_array.astype('datetime64[{}]'.format(sampling))
+        assert len(tax)==dt_array.size, dt_array.shape
+        # create new time axis
+        new_tax = Axis(name='time', units=tax.units, coord=dt_array, atts=tax.atts)
+        dataset.replaceAxis(tax, new_tax, asNC=False)
+        # N.B.: need to create a new Axis, otherwise there are issues with the dtype        
     if lfixPET and ( 'pet_wrf' in dataset or 'pet' in dataset):
         if 'pet_wrf' in dataset and 'pet' in dataset:
             raise NotImplementedError("There can only be 'per_wrf' or 'pet' - not both!")
@@ -1324,13 +1345,13 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-  mode = 'test_daily'
+#   mode = 'test_daily'
 #   mode = 'test_xarray'  
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
-#   mode = 'test_point_timeseries'
+  mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
 #   mode = 'pickle_grid' 
   pntset = 'wcshp'
@@ -1501,25 +1522,26 @@ if __name__ == '__main__':
     print('')
     if pntset in ('shpavg','wcshp','glbshp','glakes','abshp'):
       dataset = loadWRF_ShpTS(experiment='max-ctrl', domains=2, varlist=None, #['zs','stn_zs','precip','MaxPrecip_1d','wetfrq_010'], 
-                              shape=pntset, filetypes=['hydro'], exps=WRF_exps,)
+                              shape=pntset, filetypes=['hydro'], exps=WRF_exps, ldatetime=True)
     else:
       dataset = loadWRF_StnTS(experiment='erai-g', domains=None, varlist=['zs','stn_zs','MaxPrecip_6h'],
 #                               varlist=['zs','stn_zs','precip','MaxPrecip_6h','MaxPreccu_1h','MaxPrecip_1d'], 
                               station=pntset, filetypes=['srfc'], exps=WRF_exps)
       zs_err = dataset.zs.getArray() - dataset.stn_zs.getArray()
       print((zs_err.min(),zs_err.mean(),zs_err.std(),zs_err.max()))
+      
+    dataset.load()
+    
     print('')
     print(dataset)
     print('')
     print((dataset.time))
-    print((dataset.time.offset))
+    #print((dataset.time.offset))
     print((dataset.time.coord))
     print('')
     for name in dataset.shape_name[:]: print(name)
     print('')
     print((dataset.pet.mean()))
-    print('')
-    print((dataset.pet_wrf.mean()))    
   
   # load station ensemble "time-series"
   elif mode == 'test_point_ensemble':
