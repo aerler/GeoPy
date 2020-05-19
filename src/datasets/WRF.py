@@ -17,7 +17,8 @@ import osr # from GDAL
 from geodata.base import concatDatasets
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset, getProjFromDict, GridDefinition, GDALError, loadPickledGridDef, pickleGridDef
-from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt, EmptyDatasetError
+from geodata.misc import DatasetError, AxisError, DateError, ArgumentError, isNumber, isInt, EmptyDatasetError,\
+  NetCDFError
 from datasets.common import grid_folder, selectElements, stn_params, shp_params, nullNaN, getRootFolder
 #from projects.WRF_experiments import Exp, exps, ensembles 
 from warnings import warn
@@ -628,32 +629,33 @@ def getFolderNameDomain(name=None, experiment=None, domains=None, folder=None, l
 # Station Time-series (monthly, with extremes)
 def loadWRF_StnTS(experiment=None, name=None, domains=None, station=None, grid=None, filetypes=None, 
                   varlist=None, varatts=None, lctrT=True, lfixPET=True, lwrite=False, ltrimT=True, 
-                  exps=None, bias_correction=None, lconst=True):
+                  mode='time-series', resampling='bilinear', exps=None, bias_correction=None, lconst=True):
   ''' Get a properly formatted WRF dataset with monthly time-series at station locations. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=station, 
                      period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
-                     lconst=lconst, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode='time-series', 
-                     lwrite=lwrite, ltrimT=ltrimT, check_vars='station_name', exps=exps,
-                     bias_correction=bias_correction)  
+                     lconst=lconst, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode=mode, 
+                     resampling=resampling, lwrite=lwrite, ltrimT=ltrimT, check_vars='station_name', 
+                     exps=exps, bias_correction=bias_correction)  
 
-# Regiona/Shape Time-series (monthly, with extremes)
+# Regional/Shape Time-series (monthly, with extremes)
 def loadWRF_ShpTS(experiment=None, name=None, domains=None, shape=None, grid=None, filetypes=None, varlist=None, 
-                  varatts=None, lctrT=True, lfixPET=True, lencl=False, lwrite=False, ltrimT=True, exps=None,
-                  bias_correction=None, lconst=True):
+                  varatts=None, lctrT=True, lfixPET=True, lencl=False, lwrite=False, ltrimT=True, 
+                  mode='time-series', resampling='bilinear', exps=None, bias_correction=None, lconst=True):
   ''' Get a properly formatted WRF dataset with monthly time-series averaged over regions. '''  
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, shape=shape, lencl=lencl, 
                      station=None, period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, 
-                     lconst=lconst, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode='time-series', lwrite=lwrite, 
+                     lconst=lconst, lautoregrid=False, lctrT=lctrT, lfixPET=lfixPET, mode=mode, 
+                     resampling=resampling, lwrite=lwrite, 
                      ltrimT=ltrimT, check_vars='shape_name', exps=exps, bias_correction=bias_correction)  
 
 def loadWRF_TS(experiment=None, name=None, domains=None, grid=None, filetypes=None, varlist=None, 
-               varatts=None, lconst=True, lautoregrid=False, lctrT=True, lfixPET=True, lwrite=False, ltrimT=True, 
-               exps=None, bias_correction=None):
+               mode='time-series', resampling='bilinear', varatts=None, lconst=True, lautoregrid=False, 
+               lctrT=True, lfixPET=True, lwrite=False, ltrimT=True, exps=None, bias_correction=None):
   ''' Get a properly formatted WRF dataset with monthly time-series. '''
   return loadWRF_All(experiment=experiment, name=name, domains=domains, grid=grid, station=None, exps=exps, 
                      period=None, filetypes=filetypes, varlist=varlist, varatts=varatts, lconst=lconst, 
-                     lautoregrid=lautoregrid, lctrT=lctrT, lfixPET=lfixPET, mode='time-series', lwrite=lwrite, 
-                     ltrimT=ltrimT, bias_correction=bias_correction)  
+                     lautoregrid=lautoregrid, lctrT=lctrT, lfixPET=lfixPET, mode=mode, resampling=resampling,  
+                     lwrite=lwrite, ltrimT=ltrimT, bias_correction=bias_correction)  
 
 def loadWRF_Stn(experiment=None, name=None, domains=None, station=None, grid=None, period=None, filetypes=None, 
                 varlist=None, varatts=None, lctrT=True, lfixPET=True, lwrite=False, ltrimT=False, exps=None,
@@ -685,8 +687,8 @@ def loadWRF(experiment=None, name=None, domains=None, grid=None, period=None, fi
 # pre-processed climatology files (varatts etc. should not be necessary) 
 def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=None, shape=None, period=None, 
                 filetypes=None, varlist=None, varatts=None, lfilevaratts=False, lconst=True, lautoregrid=False, 
-                lencl=False, lctrT=False, lfixPET=True, folder=None, lpickleGrid=True, mode='climatology', 
-                lwrite=False, ltrimT=False, check_vars=None, exps=None, bias_correction=None):
+                lencl=False, lctrT=False, lfixPET=True, folder=None, lpickleGrid=True, mode='climatology', ldatetime=None,
+                resampling='bilinear', lwrite=False, ltrimT=False, check_vars=None, exps=None, bias_correction=None):
   ''' Get any WRF data files as a properly formatted NetCDFDataset. '''
   # prepare input  
   ltuple = isinstance(domains,col.Iterable)  
@@ -706,14 +708,20 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     period = (beginyear, beginyear+period)
   elif period is None: pass # handled later
   else: raise DateError("Illegal period definition: {:s}".format(str(period)))
-  lclim = False; lts = False # mode switches
+  lclim = False; lts = False; ldaily = False # mode switches
   if mode.lower() == 'climatology': # post-processed climatology files
     lclim = True
     periodstr = '_{0:4d}-{1:4d}'.format(*period)
     if period is None: raise DateError('Currently WRF Climatologies have to be loaded with the period explicitly specified.')
   elif mode.lower() in ('time-series','timeseries'): # concatenated time-series files
-    lts = True; lclim = False; period = None; periodstr = None # to indicate time-series (but for safety, the input must be more explicit)
+    lts = True; period = None; periodstr = None # to indicate time-series (but for safety, the input must be more explicit)
     if lautoregrid is None: lautoregrid = False # this can take very long!
+  elif mode.lower() in ('daily','high-freq','hf'): # daily/HF time-series files
+    ldaily = True; period = None; periodstr = None # to indicate daily time-series
+    if ldatetime is None: ldatetime = True # default for (sub-)daily
+    if lautoregrid is None: lautoregrid = False # this can take very long!
+  else: 
+      raise ValueError(mode)
   # cast/copy varlist
   if isinstance(varlist,str): varlist = [varlist] # cast as list
   elif varlist is not None: varlist = list(varlist) # make copy to avoid interference
@@ -742,12 +750,14 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   for filetype in filetypes: # last filetype in list has precedence
     fileclass = fileclasses[filetype] if filetype in fileclasses else FileType(filetype)
     if lclim and fileclass.climfile is not None:
-      filelist.append(fileclass.climfile)
-      typelist.append(filetype) # this eliminates const files
-    elif lts: 
-      if fileclass.tsfile is not None: 
+        filelist.append(fileclass.climfile)
+    elif lts and fileclass.tsfile is not None: 
         filelist.append(fileclass.tsfile)
-        typelist.append(filetype) # this eliminates const files
+    elif ldaily and fileclass.dailyfile is not None: 
+        filelist.append(fileclass.dailyfile)
+    else:
+        raise NotImplementedError()
+    typelist.append(filetype) # this eliminates const files
     ignore_lists.append(fileclass.ignore_list) # list of ignore lists
     # get varatts
     att = fileclasses['axes'].atts.copy()
@@ -854,16 +864,20 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
       lenc = len(const) # length of const dataset
     else: lenc = 0 # empty
     ## load regular variables
+    if ldaily: # daily files are in subfolders (by grid)
+        if grid: 
+            folder = '{}/{}'.format(folder,grid)
+            if resampling: folder = '{}/{}'.format(folder,resampling)    
     filenames = []
     for filetype,fileformat in zip(typelist,filelist):
       if lclim: filename = fileformat.format(domain,gridstr,periodstr) # insert domain number, grid, and period
-      elif lts: filename = fileformat.format(domain,gridstr) # insert domain number, and grid
+      elif lts or ldaily: filename = fileformat.format(domain,gridstr) # insert domain number, and grid
       filenames.append(filename) # file list to be passed on to DatasetNetCDF
       # check existence
       filepath = '{:s}/{:s}'.format(folder,filename)
       if not os.path.exists(filepath):
         if lclim: nativename = fileformat.format(domain,'',periodstr) # original filename (before regridding)
-        elif lts: nativename = fileformat.format(domain,'') # original filename (before regridding)
+        elif lts or ldaily: nativename = fileformat.format(domain,'') # original filename (before regridding)
         nativepath = '{:s}/{:s}'.format(folder,nativename)
         if os.path.exists(nativepath):
           if lautoregrid: # already set to False for stations
@@ -878,6 +892,8 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
        
     # load dataset
     check_override = ['time'] if lctrT else None
+    if ldaily:
+        for tatt in atts: tatt.pop('time') # the default formatting is monthly; will be fixes below 
     try:
       dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 
                               varatts=atts, multifile=False, ncformat='NETCDF4', ignore_list=ignore_lists, 
@@ -902,6 +918,26 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
         dataset.time.coord = np.arange(len(dataset.time), dtype=dataset.time.dtype) + 1
         # N.B.: shifting is dangerous, because of potential repeated application
       # correct ordinal number of shape (should start at 1, not 0)
+    if ldaily and dataset.hasAxis('time'):
+        # check time axis (inferred from NetCDF)
+        if 'since' not in dataset.time.units:
+            raise NetCDFError("Parsing of units for daily time axis failed: '{}'".format(dataset.time.units))
+    if ldatetime:
+        tax = dataset.time
+        if 'time_stamp' in dataset.dataset.variables:
+            ts_array = dataset.dataset.variables['time_stamp'][:]
+        else:
+            raise NotImplementedError("Can only construct datetime64 coordinates from 'time_stamp' variable (for now).")
+        # parse units of time
+        if 'hour' in tax.units.lower(): sampling = 'h'
+        elif 'day' in tax.units.lower(): sampling = 'D'
+        elif 'month' in tax.units.lower(): sampling = 'M'
+        elif 'year' in tax.units.lower(): sampling = 'Y'
+        else:
+            raise AxisError("Unable to parse time units for datetime conversion: '{}'".format(tax.units))
+        # convert to datetime64 of appropriate sampling and assign as coordinate
+        tax.data_array = ts_array.astype('datetime64[{}]'.format(sampling)) 
+        # N.B.: Axis.coord is an attribute that checks dtype, so that assigning a different dtype via coord does not work        
     if lfixPET and ( 'pet_wrf' in dataset or 'pet' in dataset):
         if 'pet_wrf' in dataset and 'pet' in dataset:
             raise NotImplementedError("There can only be 'per_wrf' or 'pet' - not both!")
@@ -1071,7 +1107,7 @@ def loadWRF_Daily(experiment=None, name=None, domain=None, grid=None, filetypes=
 # master function to load WRF xarray datasets
 def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None, shape=None, filetypes=None, bias_correction=None, 
                varlist=None, varatts=None, lfilevaratts=False, mode='daily', period=None, lconst=False, lpickleGrid=True, 
-               ldropWRFatts=False, chunks=None, time_chunks=32, folder=None, resampling=None, exps=None, enses=None, **xrargs):
+               ldropWRFatts=False, chunks=None, time_chunks=32, folder=None, resampling='bilinear', exps=None, enses=None, **xrargs):
     ''' Get a properly formatted xarray Dataset from post-processed WRF NetCDF4 files. '''
     import xarray as xr
     from datasets.SnoDAS import addGeoReference
@@ -1201,8 +1237,9 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
     #print(griddef)
     ## assemble dataset
     if lconst: raise NotImplementedError()   
-    if grid: folder = '{}/{}'.format(folder,grid)
-    if resampling: folder = '{}/{}'.format(folder,resampling)
+    if grid: 
+        folder = '{}/{}'.format(folder,grid)
+        if resampling: folder = '{}/{}'.format(folder,resampling)
     # load variables iteratively from multiple datasets (files)
     xarray_kwargs.update(**xrargs)
     xds = xr.Dataset() # master dataset
@@ -1287,7 +1324,8 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-  mode = 'test_xarray'  
+  mode = 'test_daily'
+#   mode = 'test_xarray'  
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
@@ -1310,8 +1348,19 @@ if __name__ == '__main__':
 #   from projects.GreatLakes.WRF_experiments import Exp, WRF_exps, ensembles
   # N.B.: importing Exp through WRF_experiments is necessary, otherwise some isinstance() calls fail
     
-  # pickle grid definition
-  if mode == 'test_xarray':
+  # load daily timeseries
+  if mode == 'test_daily':
+    
+      print('')
+      dataset = loadWRF_TS(experiment='max-ctrl', domains=2, mode='daily', grid='arb3',  
+                           varlist=['liqwatflx','pet'], filetypes=['hydro',], exps=WRF_exps)
+  
+      print(dataset)
+      print(dataset.time)
+      print(dataset.time[:])
+
+  # test xarray code
+  elif mode == 'test_xarray':
     
       print('')
 #       dataset = loadWRF_XR(experiment='max-ctrl', domain=2, grid=None, 
