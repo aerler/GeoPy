@@ -57,6 +57,7 @@ class MyAxes(Axes):
   parasite_axes      = None
   axes_shift         = None
   ldatetime          = None
+  dateformatter       = '%Y-%m-%d'
   xoverlap           = False
   yoverlap           = False
   
@@ -182,9 +183,9 @@ class MyAxes(Axes):
     
   def scatterPlot(self, xvars=None, yvars=None, datasets=None,  xname=None, yname=None, label_ext='',
                   legend=None, llabel=True, labels=None, hline=None, vline=None, title=None, lignore=False,        
-                  flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=False, 
-                  lparasiteAxes=False, lrescale=False, scalefactor=1., offset=0., lflatten=True,
-                  lprint=False, lfracdiff=False, xlog=False, ylog=False, xlim=None, ylim=None, 
+                  flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, date_formatter=None, 
+                  reset_color=False, lparasiteAxes=False, lrescale=False, scalefactor=1., offset=0., 
+                  lflatten=True, lprint=False, lfracdiff=False, xlog=False, ylog=False, xlim=None, ylim=None, 
                   expand_list=None, lproduct='inner', plotatts=None, **plotargs):
     ''' A function to draw a list of 1D variables into an axes, and annotate the plot based on 
         variable properties; extra keyword arguments (plotargs) are passed through expandArgumentList,
@@ -266,8 +267,8 @@ class MyAxes(Axes):
       if self.flipxy: self.xname,self.xunits,self.yname,self.yunits = yname,yunits,xname,xunits
       else: self.xname,self.xunits,self.yname,self.yunits = xname,xunits,yname,yunits
     # apply standard formatting and annotation
-    self.formatAxesAndAnnotation(title=title, legend=legend, xlabel=xlabel, ylabel=ylabel, 
-                                 hline=hline, vline=vline, xlim=xlim, xlog=xlog, xticks=xticks, 
+    self.formatAxesAndAnnotation(title=title, legend=legend, xlabel=xlabel, ylabel=ylabel, hline=hline, vline=vline, 
+                                 xlim=xlim, xlog=xlog, xticks=xticks, date_formatter=date_formatter, 
                                  ylim=ylim, ylog=ylog, yticks=yticks, xlen=xlen, ylen=ylen)
     # return handles to line objects
     return (plts,) # in tuple, for consistency with linePlot
@@ -275,7 +276,7 @@ class MyAxes(Axes):
     
   def linePlot(self, varlist, varname=None, bins=None, support=None, errorbar=None, errorband=None,  
                legend=None, llabel=True, labels=None, label_ext='', hline=None, vline=None, title=None,        
-               flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=False, 
+               flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, date_formatter=None, reset_color=False, 
                lparasiteMeans=False, lparasiteErrors=False, parasite_axes=None, lrescale=False, 
                scalefactor=1., offset=0., bootstrap_axis='bootstrap', lprint=False, lfracdiff=False,
                xlog=False, ylog=False, xlim=None, ylim=None, lsmooth=False, lperi=False, lignore=False,
@@ -436,6 +437,7 @@ class MyAxes(Axes):
           xlen = len(val); ylen = len(axe) # used later
           plt = self.errorbar(val, axe, xerr=err, yerr=None, errorevery=errorevery, **plotarg)[0]
           if lparasiteMeans: raise NotImplementedError
+          self.fmt_ydata = mpl.dates.DateFormatter('%Y-%m-%d')
         else: # default orientation
           xlen = len(axe); ylen = len(val) # used later
           plt = self.errorbar(axe, val, xerr=None, yerr=err, errorevery=errorevery, **plotarg)[0]
@@ -465,8 +467,8 @@ class MyAxes(Axes):
     if self.flipxy: self.yname,self.yunits = axname,axunits # always set axis units
     else: self.xname,self.xunits = axname,axunits
     # apply standard formatting and annotation
-    self.formatAxesAndAnnotation(title=title, legend=legend, xlabel=xlabel, ylabel=ylabel, 
-                                 hline=hline, vline=vline, xlim=xlim, xlog=xlog, xticks=xticks, 
+    self.formatAxesAndAnnotation(title=title, legend=legend, xlabel=xlabel, ylabel=ylabel, hline=hline, vline=vline, 
+                                 xlim=xlim, xlog=xlog, xticks=xticks, date_formatter=date_formatter, 
                                  ylim=ylim, ylog=ylog, yticks=yticks, xlen=xlen, ylen=ylen)
     # return handles to line objects
     return plts
@@ -475,7 +477,7 @@ class MyAxes(Axes):
   def bandPlot(self, upper=None, lower=None, varname=None, bins=None, support=None, lignore=False,   
                legend=None, llabel=False, labels=None, hline=None, vline=None, title=None,   
                lrescale=False, scalefactor=1., offset=0., bootstrap_axis='bootstrap', band_vars=None,  
-               flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, reset_color=False, 
+               flipxy=None, xlabel=True, ylabel=True, xticks=True, yticks=True, date_formatter=None, reset_color=False, 
                xlog=None, ylog=None, xlim=None, ylim=None, lsmooth=False, lperi=False, lprint=False, 
                expand_list=None, lproduct='inner', method='pdf', plotatts=None, **plotargs):
     ''' A function to draw a colored bands between two lists of 1D variables representing the upper
@@ -548,8 +550,8 @@ class MyAxes(Axes):
     if self.flipxy: self.xname,self.xunits,self.yname,self.yunits = varname,varunits,axname,axunits
     else: self.xname,self.xunits,self.yname,self.yunits = axname,axunits,varname,varunits
     # apply standard formatting and annotation
-    self.formatAxesAndAnnotation(title=title, legend=legend, xlabel=xlabel, ylabel=ylabel, 
-                                 hline=hline, vline=vline, xlim=xlim, xlog=xlog, xticks=xticks, 
+    self.formatAxesAndAnnotation(title=title, legend=legend, xlabel=xlabel, ylabel=ylabel, hline=hline, vline=vline, 
+                                 xlim=xlim, xlog=xlog, xticks=xticks, date_formatter=date_formatter,
                                  ylim=ylim, ylog=ylog, yticks=yticks, xlen=xlen, ylen=ylen)
     # return handles to line objects
     return bnds 
@@ -990,10 +992,10 @@ class MyAxes(Axes):
                      laxis=False, lrescale=False, scalefactor=1., offset=0.):
     ''' retrieve plot values and apply optional scaling and offset (user-defined) '''
     if lrescale: checkunits = None
+    if laxis:
+        self.ldatetime = np.issubdtype(var.dtype,np.datetime64)
     val, varunits, varname = getPlotValues(var, checkunits=checkunits, checkname=None, lsmooth=lsmooth, 
                                            lperi=lperi, laxis=laxis)
-    if laxis:
-        self.ldatetime = np.issubdtype(val.dtype,np.datetime64)
     if lrescale:
       if self.flipxy: vlim,varunits = self.get_xlim(),self.xunits
       else: vlim,varunits = self.get_ylim(),self.yunits
@@ -1054,7 +1056,7 @@ class MyAxes(Axes):
 
   def formatAxesAndAnnotation(self, title=None, legend=None, xlabel=None, ylabel=None, 
                               hline=None, vline=None, xlim=None, ylim=None, xlog=None, ylog=None,                                
-                              xticks=None, xlen=None, yticks=None, ylen=None):
+                              xticks=None, xlen=None, yticks=None, ylen=None, date_formatter=None):
     ''' apply standard formatting and labeling to axes '''
     ## format axes
     # set plot scale (log/linear)
@@ -1090,14 +1092,19 @@ class MyAxes(Axes):
     if hline is not None: self.addHline(hline)
     if vline is not None: self.addVline(vline)
     # overwrite tick labels for datetime64 axis
-    if self.ldatetime:
-        axis = self.yaxis if self.flipxy else self.xaxis 
+    if self.ldatetime or date_formatter is not None:
+        axis = self.yaxis if self.flipxy else self.xaxis
+        # set default locator (auto) 
+        date_locator = mpl.dates.AutoDateLocator()
+        axis.set_major_locator(date_locator)
         # format the ticks
-        major_locator = mpl.dates.AutoDateLocator()
-        axis.set_major_locator(major_locator)
-#         major_formater = mpl.dates.DateFormatter(major_locator)
-#         axis.set_major_formatter(major_formater)
-        # N.B.: for some reason this does not work and the formatter causes errors...
+        date_formatter = self.dateformatter if date_formatter is None else date_formatter
+        if isinstance(self.dateformatter, str):
+            date_formatter = mpl.dates.DateFormatter(date_formatter)
+        axis.set_major_formatter(date_formatter)
+        # rotate labels to avoid overlap
+        if self.flipxy: self.figure.autofmt_ydate()
+        else: self.figure.autofmt_xdate()
   
   def xLabel(self, xlabel, name=None, units=None):
     ''' format x-axis label '''

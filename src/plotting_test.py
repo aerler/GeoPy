@@ -156,22 +156,26 @@ class LinePlotTest(unittest.TestCase):
   def setUp(self):
     ''' create two test variables '''
     # create axis and variable instances (make *copies* of data and attributes!)
+    start_datetime, end_datetime = pd.to_datetime('1981-05-01'), pd.to_datetime('1981-05-16')
+    t1 = np.arange(start_datetime, end_datetime, dtype='datetime64[D]') 
+    tax1 = Axis(name='Time1-Axis', units='X Time', coord=t1) 
+    t2 = np.arange(start_datetime, end_datetime+np.timedelta64(3, 'D'), dtype='datetime64[D]').astype('datetime64[s]')
+    tax2 = Axis(name='Time2-Axis', units='X Time', coord=t2)
     x1 = np.linspace(0,10,15); 
+    xax1 = Axis(name='X1-Axis', units='X Units', coord=x1)
     x2 = np.linspace(2,8,18);
-    if self.ldatetime:
-        start_datetime, end_datetime = pd.to_datetime('1981-05-01'), pd.to_datetime('1981-05-16')
-        t1 = np.arange(start_datetime, end_datetime, dtype='datetime64[D]') 
-        xax1 = Axis(name='Time1-Axis', units='X Time', coord=t1) 
-        t2 = np.arange(start_datetime, end_datetime+np.timedelta64(3, 'D'), dtype='datetime64[D]')
-        xax2 = Axis(name='Time2-Axis', units='X Time', coord=t2)
-    else:
-        xax1 = Axis(name='X1-Axis', units='X Units', coord=x1)
-        xax2 = Axis(name='X2-Axis', units='X Units', coord=x2)
+    xax2 = Axis(name='X2-Axis', units='X Units', coord=x2)
     var0 = Variable(axes=(xax1,), data=np.sin(x1), atts=dict(name='relative', units=''))
     var1 = Variable(axes=(xax1,), data=x1.copy(), atts=dict(name='blue', units='units'))
-    self.var0 = var0; self.var1 = var1; self.xax1 = xax1
+    tvar0 = Variable(axes=(tax1,), data=np.sin(x1), atts=dict(name='relative', units=''))
+    tvar1 = Variable(axes=(tax1,), data=x1.copy(), atts=dict(name='blue', units='units'))
     var2 = Variable(name='purple',units='units',axes=(xax2,), data=(x2**2)/5.)
-    self.var2 = var2; self.xax2 = xax2
+    tvar2 = Variable(name='purple',units='units',axes=(tax2,), data=(x2**2)/5.)
+    if self.ldatetime:
+        var0 = tvar0; var1 = tvar1; var2 = tvar2; xax1 = tax1; xax2 = tax2
+    self.var0 = var0; self.var1 = var1; self.xax1 = xax1
+    self.tvar0 = tvar0; self.tvar1 = tvar1; self.tax1 = tax1
+    self.var2 = var2; self.xax2 = xax2; self.tvar2 = tvar2; self.tax2 = tax2
     # create error variables with random noise
     noise1 = np.random.rand(len(xax1))*var1.data_array.std()/2.
     err1 = Variable(axes=(xax1,), data=noise1, atts=dict(name='blue_std', units='units'))
@@ -180,14 +184,16 @@ class LinePlotTest(unittest.TestCase):
     self.err1 = err1; self.err2 = err2
     # add to list
     self.vars = [var1, var2]
+    self.tvars = [tvar1, tvar2]
     self.errs = [err1, err2]
     self.axes = [xax1, xax2]
+    self.taxes = [tax1, tax2]
         
   def tearDown(self):
     ''' clean up '''
-    for var in self.vars:     
+    for var in self.vars+self.tvars:     
       var.unload() # just to do something... free memory
-    for ax in self.axes:
+    for ax in self.axes+self.taxes:
       ax.unload()
     
   ## basic plotting tests
@@ -210,6 +216,24 @@ class LinePlotTest(unittest.TestCase):
     # add label
     ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
     
+  def testTimeAxisPlot(self):
+      ''' test a simple line plot with a datetime64 timeaxis'''    
+      fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
+      assert fig.__class__.__name__ == 'MyFigure'
+      assert fig.axes_class.__name__ == 'MyAxes'
+      assert not isinstance(ax,(list,tuple)) # should return a "naked" axes
+      tvar0 = self.tvar0; tvar1 = self.tvar1; tvar2 = self.tvar2
+      # create plot
+      vline = np.datetime64('1981-05-16')      
+      plts = ax.linePlot([tvar1, tvar2], ylabel='custom label [{UNITS:s}]', llabel=True, lprint=True,
+                         ylim=tvar1.limits(), legend=2, hline=2., vline=vline)
+      assert len(plts) == 2
+      # add rescaled plot
+      plts = ax.linePlot(tvar0, lrescale=True, scalefactor=2, offset=-1, llabel=True, legend=2, linestyle=':')
+      assert len(plts) == 1    
+      # add label
+      ax.addLabel(label=0, loc=4, lstroke=False, lalphabet=True, size=None, prop=None)
+  
   def testBasicErrorPlot(self):
     ''' test a simple errorbar plot with two lines and their standard deviations '''    
     fig,ax = getFigAx(1, name=sys._getframe().f_code.co_name[4:], **figargs) # use test method name as title
@@ -662,6 +686,7 @@ if __name__ == "__main__":
 #     specific_tests += ['LogSurfacePlot']
     # LinePlot
 #     specific_tests += ['BasicLinePlot']
+    specific_tests += ['TimeAxisPlot']
 #     specific_tests += ['BasicErrorPlot']
 #     specific_tests += ['FancyErrorPlot']
 #     specific_tests += ['FancyBandPlot']
@@ -671,7 +696,7 @@ if __name__ == "__main__":
 #     specific_tests += ['MeanAxisPlot']
     # DistPlot
 #     specific_tests += ['BasicHistogram']
-    specific_tests += ['WeightedHistogram']
+#     specific_tests += ['WeightedHistogram']
 #     specific_tests += ['BootstrapCI']
 #     specific_tests += ['SamplePlot']
     # PolarPlot
@@ -686,8 +711,8 @@ if __name__ == "__main__":
     tests = [] 
     # list of variable tests
 #     tests += ['SurfacePlot'] 
-#     tests += ['LinePlot'] 
-    tests += ['DistPlot']
+    tests += ['LinePlot'] 
+#     tests += ['DistPlot']
 #     tests += ['PolarPlot']
 #     tests += ['TaylorPlot']
     

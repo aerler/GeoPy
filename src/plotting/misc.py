@@ -199,7 +199,8 @@ def getPlotValues(var, checkunits=None, checkname=None, lsmooth=False, lperi=Fal
     if checkname is not None and varname != checkname: # only check plotname! 
       raise VariableError("Expected variable name '{}', found '{}'.".format(checkname,varname))
   else: varname = var.atts['name']
-  if np.issubdtype(var.dtype, np.datetime64): val = var.data_array.copy() # need to preserve dates
+  if np.issubdtype(var.dtype, np.datetime64): 
+      val = var.data_array.astype('O') # need to preserve original array and cast as datetime object array
   else: val = var.getArray(unmask=True, fillValue=np.NaN, dtype=np.float, copy=True) # the data to plot
   # N.B.: matplotlib does not understand masked arrays, therefor we have to convert masked values to NaN's
   #       (and convert the data to float in the process...)
