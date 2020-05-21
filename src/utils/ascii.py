@@ -9,6 +9,7 @@ A module to load ASCII raster data into numpy arrays.
 # external imports
 import numpy as np
 import numpy.ma as ma
+import pandas as pd
 import gzip, shutil, tempfile
 import os, gc
 # internal imports
@@ -23,8 +24,65 @@ if ramdisk and not os.path.exists(ramdisk):
   raise IOError(ramdisk)
 
 
-## functions to construct Variables and Datasets from ASCII raster data
+# helper function
+def samplingUnits(sampling):
+    ''' convert Pandas sampling letter to time units'''
+    if sampling == 's': units = 'seconds'
+    elif sampling == 'm': units = 'minutes'
+    elif sampling == 'D': units = 'days'
+    elif sampling == 'M': units = 'months'
+    elif sampling == 'Y': units = 'years'
+    else: 
+        raise NotImplementedError(sampling)
+    return units 
 
+## functions to convert a raster dataset to NetCDF (time-step by time-step)
+
+def convertRasterToNetCDF(filepath=None, raster_folder=None, raster_path_func=None, 
+                          start_date=None, end_date=None, sampling='M', atts=None, 
+                          vardefs=None, projection=None, griddef=None, lgzip=None, lgdal=True, lmask=True, fillValue=None, 
+                          lskipMissing=True, lgeolocator=True, lfeedback=True, **kwargs):
+    ''' function to load a set of raster variables that are stored in a systematic directory tree into a NetCDF dataset
+        Variables are defined as follows:
+          vardefs[varname] = dict(name=string, units=string, axes=tuple of strings, atts=dict, plot=dict, dtype=np.dtype, fillValue=value)
+        Currently, only the horizontal raster axes and a datetime axis are supported; the former are inferred from griddef and 
+        the latter is constructed from start_date, end_date and sampling and stored following CF convention. 
+        The path to raster files is constructed as raster_folder+raster_path, where raster_path is the output of 
+        raster_path_func(datetime, varname, **varatts), which has to be defined by the user.        
+    '''
+    # generate list of datetimes from end dates and frequency
+    datetime64_array = np.arange(start_date,end_date, dtype='datetime64[{}]'.format(sampling))
+    ## create NetCDF dataset
+    # setup dimensions and coordinate variables
+    
+    # create time dimension and coordinate variable
+    start_datetime = datetime64_array[0]
+    time_coord = ( ( datetime64_array - start_datetime ) / np.timedelta64(1,sampling) ).astype('int64')
+    time_units = samplingUnits(sampling) + ' since ' + str(start_datetime)
+    # add variables
+    
+    # add attributes
+    
+    ## loop over datetimes
+    for dt64 in datetime64_array:
+        
+        datetime = pd.to_datetime(dt64)
+        
+        ## loop over variables
+        for varname,varatts in vardefs.items():
+          
+            # construct file names
+            raster_path = raster_path_func(datetime, varname, **varatts)
+            raster_path = raster_folder + raster_path
+            print(raster_path)
+            # load raster data and save to NetCDF
+            
+            ## maybe compute some derived variables?
+
+    # close file
+    return filepath
+
+## functions to construct Variables and Datasets from ASCII raster data
 
 def rasterDataset(name=None, title=None, vardefs=None, axdefs=None, atts=None, projection=None, griddef=None,
                   lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, lgeolocator=True,
@@ -88,7 +146,7 @@ def rasterDataset(name=None, title=None, vardefs=None, axdefs=None, atts=None, p
         # create Variable object
         var = rasterVariable(projection=projection, griddef=griddef, file_pattern=file_pattern, lgzip=lgzip, lgdal=lgdal, 
                              lmask=lmask, lskipMissing=lskipMissing, axes=axes_list, path_params=path_params, 
-                             lfeedback=lfeedback, **vardef) 
+                             lfeedback=lfeedback, **vardef)
         # vardef components: name, units, atts, plot, dtype, fillValue
         varlist.append(var)
         # check that map axes are correct

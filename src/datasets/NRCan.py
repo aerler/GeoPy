@@ -102,6 +102,11 @@ clim_period = (1970,2000) # default time period for long-term means
 avgfolder = root_folder + 'nrcanavg/' 
 avgfile = 'nrcan{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'+resolution,'_'+period)
 tsfile = 'nrcan{0:s}_monthly.nc' # extend with grid type only
+# daily data
+daily_folder    = root_folder + dataset_name.lower()+'_daily/' 
+netcdf_filename = dataset_name.lower()+'_{:s}_daily.nc' # extend with variable name
+netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
+netcdf_settings = dict(chunksizes=(8,256,256))
 
 # function to load these files...
 def loadNRCan(name=dataset_name, title=dataset_name, resolution=None, period=clim_period, grid=None, varlist=None, 
@@ -208,7 +213,7 @@ def getSnowDensity(snow_class, lraise=True):
 ## functions to load ASCII data and generate complete GeoPy datasets
 
 # a universal load function for normals and historical timeseries; also computes some derived variables, and combines NA and CA grids
-def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=None, NA_grid=None, CA_grid=None, 
+def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=None, NA_grid=None, CA_grid=None, lskipNA=False,
                  merged_axis=None, time_axis='time', resolution=None, grid_defs=None, period=None, var_pattern=None, 
                  snow_density='maritime', grid_pattern=None, vardefs=None, axdefs=None, lfeedback=True):
     ''' load NRCan time-series data from ASCII files, merge CA and NA grids and compute some additional variables; return Dataset '''
@@ -244,35 +249,40 @@ def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=No
                                 lskipMissing=True, lgeolocator=True, time_axis=time_axis, lfeedback=lfeedback,
                                 file_pattern=grid_pattern.format(GRID=NA_grid,PRDSTR=prdstr)+var_pattern )    
     else:
-        raise NotImplementedError("North America grid '{}' not defined; could either skip or construct from pickle.".format(NA_grid))
+        if lskipNA:
+            dataset = None
+        else:
+            raise NotImplementedError("North America grid '{}' not defined; could either skip or construct from pickle.".format(NA_grid))
     # load CA grid
     if CA_vardefs:
         ca_ds = rasterDataset(name=name, title=title, vardefs=CA_vardefs, axdefs=axdefs, atts=atts, projection=None, 
                               griddef=grid_defs[CA_grid], lgzip=None, lgdal=True, lmask=True, fillValue=None, 
                               lskipMissing=True, lgeolocator=False, time_axis=time_axis, lfeedback=lfeedback,
                               file_pattern=grid_pattern.format(GRID=CA_grid,PRDSTR=prdstr)+var_pattern )
-        
-        # merge grids
-        naaxes = dataset.axes
-        nagt = dataset.geotransform; cagt = ca_ds.geotransform
-        assert nagt[2] == nagt[4] == cagt[2] == cagt[4] == 0
-        assert nagt[1] == cagt[1] and nagt[5] == cagt[5]
-        ios = int( ( cagt[0] - nagt[0] ) / nagt[1] )
-        jos = int( ( cagt[3] - nagt[3] ) / nagt[5] )
-        nashp = dataset.mapSize # mapSize has the correct axis order (y,x)
-        caje,caie = ca_ds.mapSize # axis order is (y,x)
-        # create new variables
-        for key,var in list(ca_ds.variables.items()):
-            # create new data array
-            assert var.shape[-2:] == (caje,caie)
-            data = np.ma.empty(var.shape[:-2]+nashp, dtype=var.dtype) # use the shape of the NA grid and other axes from the original
-            data[:] = np.ma.masked # everything that is not explicitly assigned, shall be masked
-            data[...,jos:jos+caje,ios:ios+caie] = var.data_array # assign partial data
-            # figure out axes and create Variable
-            axes = [naaxes[ax.name] for ax in var.axes]
-            newvar = Variable(name=key, units=var.units, axes=axes, data=data, atts=var.atts, plot=var.plot)
-            newvar = addGDALtoVar(newvar, griddef=dataset.griddef,)
-            dataset.addVariable(newvar, copy=False)
+        if dataset is None:
+            dataset = ca_ds
+        else:
+            # merge grids
+            naaxes = dataset.axes
+            nagt = dataset.geotransform; cagt = ca_ds.geotransform
+            assert nagt[2] == nagt[4] == cagt[2] == cagt[4] == 0
+            assert nagt[1] == cagt[1] and nagt[5] == cagt[5]
+            ios = int( ( cagt[0] - nagt[0] ) / nagt[1] )
+            jos = int( ( cagt[3] - nagt[3] ) / nagt[5] )
+            nashp = dataset.mapSize # mapSize has the correct axis order (y,x)
+            caje,caie = ca_ds.mapSize # axis order is (y,x)
+            # create new variables
+            for key,var in list(ca_ds.variables.items()):
+                # create new data array
+                assert var.shape[-2:] == (caje,caie)
+                data = np.ma.empty(var.shape[:-2]+nashp, dtype=var.dtype) # use the shape of the NA grid and other axes from the original
+                data[:] = np.ma.masked # everything that is not explicitly assigned, shall be masked
+                data[...,jos:jos+caje,ios:ios+caie] = var.data_array # assign partial data
+                # figure out axes and create Variable
+                axes = [naaxes[ax.name] for ax in var.axes]
+                newvar = Variable(name=key, units=var.units, axes=axes, data=data, atts=var.atts, plot=var.plot)
+                newvar = addGDALtoVar(newvar, griddef=dataset.griddef,)
+                dataset.addVariable(newvar, copy=False)
     else:
         pass # can be skipped - Canada doesn't matter ;-)
       
@@ -388,12 +398,12 @@ def loadASCII_TS(name=None, title=None, atts=None, derived_vars=None, varatts=No
 norm12_period = (1970,2000)
 norm12_defaults = dict(axes=('time',None,None), dtype=np.float32)
 norm12_vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.15, **norm12_defaults), # 2m maximum temperature, originally in degrees Celsius
-                    mint = dict(grid='NA12', name='Tmin', units='K', offset=273.15, **norm12_defaults), # 2m minimum temperature
-                    pcp  = dict(grid='NA12', name='precip', units='kg/m^2/month', transform=transformMonthly, **norm12_defaults), # total precipitation
-                    pet  = dict(grid='NA12', name='pet', units='kg/m^2/month', transform=transformMonthly, **norm12_defaults), # potential evapo-transpiration
-                    rrad = dict(grid='NA12', name='SWDNB', units='W/m^2', scalefactor=1e6/86400., **norm12_defaults), # solar radiation, originally in MJ/m^2/day
-                    rain = dict(grid='CA12', name='liqprec', units='kg/m^2/month', transform=transformMonthly, **norm12_defaults), # total precipitation
-                    snwd = dict(grid='CA12', name='snowh', units='m', scalefactor=1./100., **norm12_defaults), ) # snow depth
+                      mint = dict(grid='NA12', name='Tmin', units='K', offset=273.15, **norm12_defaults), # 2m minimum temperature
+                      pcp  = dict(grid='NA12', name='precip', units='kg/m^2/month', transform=transformMonthly, **norm12_defaults), # total precipitation
+                      pet  = dict(grid='NA12', name='pet', units='kg/m^2/month', transform=transformMonthly, **norm12_defaults), # potential evapo-transpiration
+                      rrad = dict(grid='NA12', name='SWDNB', units='W/m^2', scalefactor=1e6/86400., **norm12_defaults), # solar radiation, originally in MJ/m^2/day
+                      rain = dict(grid='CA12', name='liqprec', units='kg/m^2/month', transform=transformMonthly, **norm12_defaults), # total precipitation
+                      snwd = dict(grid='CA12', name='snowh', units='m', scalefactor=1./100., **norm12_defaults), ) # snow depth
 norm12_axdefs = dict(time = dict(name='time', units='month', coord=np.arange(1,13)),) # time coordinate
 norm12_derived = ('T2','solprec','snow','snwmlt','liqwatflx')
 norm12_grid_pattern = root_folder+'{GRID:s}_normals{PRDSTR:s}/' # dataset root folder
@@ -422,7 +432,7 @@ mons12_vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=27
 mons12_axdefs = dict(year = dict(name='year', units='year', coord=None), # yearly coordinate; select coordinate based on period
                      month = dict(name='month', units='month', coord=np.arange(1,13)),) # monthly coordinate
 # define merged time axis
-mons12_matts = dict(name='time', units='month', long_name='Month since 1979-01', merged_axes = ('year','month'))
+mons12_matts = dict(name='time', units='month', long_name='Months since 1979-01', merged_axes = ('year','month'))
 # N.B.: the time-series time offset has to be chose such that 1979 begins with the origin (time=0)
 mons12_derived = norm12_derived # same as for normals
 mons12_grid_pattern = root_folder+'{GRID:s}_hist/'
@@ -466,6 +476,47 @@ def loadASCII_Hist(name=dataset_name, title=mons12_title, atts=None, derived_var
                         snow_density=snow_density,
                         NA_grid=NA_grid, CA_grid=CA_grid, merged_axis=merged_axis, resolution=resolution, grid_defs=grid_defs, 
                         period=period, var_pattern=var_pattern, grid_pattern=grid_pattern, vardefs=vardefs, axdefs=axdefs)
+
+
+# daily transient at 1/12 degree resolution
+day12_period = (2011,2018) # SnoDAS period for southern Ontario
+day12_defaults = dict(axes=('year','day',None,None), dtype=np.float32)
+day12_vardefs = dict(maxt = dict(grid='CA12', name='Tmax', units='K', offset=273.15, **day12_defaults), # 2m maximum temperature, originally in degrees Celsius
+                     mint = dict(grid='CA12', name='Tmin', units='K', offset=273.15, **day12_defaults), # 2m minimum temperature
+                     pcp  = dict(grid='CA12', name='precip', units='kg/m^2/day', **day12_defaults),) # total precipitation
+# define original split and merged time axes
+day12_axdefs = dict(time = dict(name='time', units='day', coord=np.arange(1,366)),) # time coordinate
+day12_matts = dict(name='time', units='day', long_name='Days since 1979-01-01', merged_axes = ('year','day'))
+# N.B.: the time-series time offset has to be chose such that 1979 begins with the origin (time=0)
+day12_derived = ('T2',) # no snow or rain yet
+day12_grid_pattern = root_folder+'{GRID:s}_Daily/'
+day12_var_pattern = '{VAR:s}/{year:04d}/{VAR:s}{year:04d}_{day:d}.asc.gz'
+day12_title = 'NRCan Daily Gridded Time-series'
+
+
+def loadASCII_Daily(name=dataset_name, title=day12_title, atts=None, derived_vars=day12_derived, varatts=varatts, snow_density='maritime',
+                   NA_grid=None, CA_grid=None, resolution=12, grid_defs=None, period=day12_period, merged_axis=day12_matts,
+                   var_pattern=day12_var_pattern, grid_pattern=day12_grid_pattern, vardefs=day12_vardefs, axdefs=day12_axdefs):
+    ''' load historical NRCan timeseries from ASCII files, merge CA and NA grids and compute some additional variables; return Dataset '''
+    # figure out time period for merged time axis
+    for axname,axdef in list(axdefs.items()):
+        if 'coord' not in axdef or axdef['coord'] is None:
+            assert axdef['units'].lower() == 'year', axdef
+            axdef['coord'] = np.arange(period[0],period[1]+1)
+    if merged_axis:
+        if isinstance(merged_axis,dict) and period:
+            nlen = np.prod([len(axdefs[axname]['coord']) for axname in merged_axis['merged_axes']])
+            merged_axis = Axis(coord=np.arange(nlen), atts=merged_axis)
+            assert 'merged_axes' in merged_axis.atts
+            assert len(merged_axis) == nlen, (nlen,merged_axis.prettyPrint(short=True))
+        elif not isinstance(merged_axis,Axis):
+            raise TypeError(merged_axis)
+    # load ASCII data
+    return loadASCII_TS(name=name, title=title, atts=atts, derived_vars=derived_vars, varatts=varatts, time_axis='day', 
+                        snow_density=snow_density, lskipNA=True,
+                        NA_grid=NA_grid, CA_grid=CA_grid, merged_axis=merged_axis, resolution=resolution, grid_defs=grid_defs, 
+                        period=period, var_pattern=var_pattern, grid_pattern=grid_pattern, vardefs=vardefs, axdefs=axdefs)
+
 
 # Historical time-series
 CMC_period = (1998,2015)
@@ -591,7 +642,9 @@ if __name__ == '__main__':
 #     mode = 'test_point_timeseries'
 #     mode = 'convert_Normals'
 #     mode = 'convert_Historical'
-    mode = 'add_CMC'
+#     mode = 'convert_Daily'
+    mode = 'convert_to_netcdf';
+#     mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
 #     pntset = 'ecprecip'
@@ -610,7 +663,80 @@ if __name__ == '__main__':
      
     res = None; grid = None
     
-    if mode == 'test_climatology':
+    if mode == 'convert_to_netcdf':
+
+        from utils.ascii import convertRasterToNetCDF
+        # parameters for daily ascii
+        varlist = ['pcp']
+        vardefs = {varname:day12_vardefs[varname] for varname in varlist}
+        grid = 'CA12'
+        griddef = grid_def[grid]
+        # parameters for rasters
+        start_date = '2011-01-01'; end_date = '2011-01-15'; sampling = 'D'
+        raster_folder = root_folder + grid+'_Daily/'
+        def raster_path_func(datetime, varname, **varatts):
+            ''' determine path to appropriate raster for given datetime and variable'''
+            day = datetime.dayofyear
+            if not datetime.is_leap_year and day >= 60: day += 1
+            path = '{YEAR:04d}/{VAR:s}{YEAR:04d}_{DAY:d}.asc.gz'.format(YEAR=datetime.year, VAR=varname, DAY=day)
+            return path
+        # NetCDF definitions
+        nc_filepath = daily_folder + 'test_'+netcdf_filename.format(grid.lower())
+        atts = dict(start_date=start_date, end_date=end_date, sampling=sampling)
+        
+        convertRasterToNetCDF(filepath=nc_filepath, raster_folder=raster_folder, raster_path_func=raster_path_func, vardefs=vardefs, 
+                              start_date=start_date, end_date=end_date, sampling=sampling, atts=atts, griddef=griddef)
+        
+        assert os.path.exists(nc_filepath), nc_filepath
+    
+    elif mode == 'convert_Daily':
+        
+        # parameters
+#         snow_density = 'ephemeral'
+        snow_density = 'maritime'
+#         snow_density = 'prairies'
+        if not os.path.exists(daily_folder): os.mkdir(daily_folder)
+        # use actual, real values
+        # NA12 grid
+        title = day12_title; resolution = 12; grid_pattern  = day12_grid_pattern 
+        vardefs = day12_vardefs; var_pattern = day12_var_pattern; derived_vars = day12_derived
+        period = day12_period; split_axdefs = day12_axdefs; merged_atts = day12_matts         
+        # test values
+        varname = 'pcp'; period = (2014,2015); snow_density = None
+        split_axdefs = dict(year= dict(name='year', units='year', coord=np.arange(2014,2015)),
+                            day = dict(name='day', units='day', coord=np.arange(1,367)),) # time coordinate
+        merged_atts = dict(name='time', units='day', long_name='Days since 2014-01-01', merged_axes = ('year','day'))
+        vardefs = {varname:day12_vardefs[varname]}; derived_vars = None;
+        file_tag = day12_vardefs[varname]['name'] # use common variable name as file tag
+        file_tag += '_test'
+        # test values
+#         period = (1970,2000) # for production
+#         period = (1981,2010) # for production
+#         period = (1991,2000) # for testing
+#         vardefs = dict(maxt = dict(grid='NA12', name='Tmax', units='K', offset=273.15, **hist_defaults), # 2m maximum temperature, originally in degrees Celsius
+#                        mint = dict(grid='NA12', name='Tmin', units='K', offset=273.15, **hist_defaults), # 2m minimum temperature
+#                        snwd = dict(grid='CA12', name='snowh', units='m', scalefactor=1./100., **hist_defaults), # snow depth
+#                        pcp  = dict(grid='NA12', name='precip', units='kg/m^2/month', transform=transformMonthly, **hist_defaults),)
+#         derived_vars = ('T2',)
+        # load ASCII dataset with default values
+        dataset = loadASCII_Daily(title=title, resolution=resolution, grid_pattern=grid_pattern, 
+                                 vardefs=vardefs, var_pattern=var_pattern, derived_vars=derived_vars,                                  
+                                 period=period, axdefs=split_axdefs, merged_axis=merged_atts,
+                                 snow_density=snow_density, grid_defs=grid_def,)        
+        # test 
+        print(dataset)
+        print('')
+        print((dataset.precip))
+        print(("\nVariable Size in memory: {:f} MB".format(dataset.precip.data_array.nbytes/1024./1024.)))
+        # write to NetCDF
+        grdstr = '_na{:d}_{:s}'.format(resolution, file_tag)
+        ncfile = daily_folder + tsfile.format(grdstr)
+        print('')
+        writeNetCDF(dataset=dataset, ncfile=ncfile, ncformat='NETCDF4', zlib=True, writeData=True, overwrite=True, 
+                    skipUnloaded=False, feedback=True, close=True)
+        assert os.path.exists(ncfile), ncfile
+        
+    elif mode == 'test_climatology':
             
         # load averaged climatology file
         print('')

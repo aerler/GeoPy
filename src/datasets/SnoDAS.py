@@ -95,7 +95,7 @@ avgfolder = root_folder + dataset_name.lower()+'avg/'
 avgfile   = 'snodas{0:s}_clim{1:s}.nc' # the filename needs to be extended: biascorrection, grid and period
 tsfile    = 'snodas_{0:s}{1:s}{2:s}_monthly.nc' # extend with biascorrection, variable and grid type
 daily_folder    = root_folder + dataset_name.lower()+'_daily/' 
-netcdf_filename = 'snodas_{:s}_daily.nc' # extend with variable name
+netcdf_filename = dataset_name.lower()+'_{:s}_daily.nc' # extend with variable name
 netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
 netcdf_settings = dict(chunksizes=(8,snodas_shape2d[0]/16,snodas_shape2d[1]/32))
 
