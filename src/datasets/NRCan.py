@@ -480,9 +480,9 @@ def loadASCII_Hist(name=dataset_name, title=mons12_title, atts=None, derived_var
 
 # daily transient at 1/12 degree resolution
 day12_period = (2011,2018) # SnoDAS period for southern Ontario
-day12_defaults = dict(axes=('year','day',None,None), dtype=np.float32)
-day12_vardefs = dict(maxt = dict(grid='CA12', name='Tmax', units='K', offset=273.15, **day12_defaults), # 2m maximum temperature, originally in degrees Celsius
-                     mint = dict(grid='CA12', name='Tmin', units='K', offset=273.15, **day12_defaults), # 2m minimum temperature
+day12_defaults = dict(axes=('year','day',None,None), dtype=np.float32, fillValue=None)
+day12_vardefs = dict(maxt = dict(grid='CA12', name='Tmax', units='K', offset=273.15, alt_name='max', **day12_defaults), # 2m maximum temperature, originally in degrees Celsius
+                     mint = dict(grid='CA12', name='Tmin', units='K', offset=273.15, alt_name='min', **day12_defaults), # 2m minimum temperature
                      pcp  = dict(grid='CA12', name='precip', units='kg/m^2/day', **day12_defaults),) # total precipitation
 # define original split and merged time axes
 day12_axdefs = dict(time = dict(name='time', units='day', coord=np.arange(1,366)),) # time coordinate
@@ -666,28 +666,55 @@ if __name__ == '__main__':
     if mode == 'convert_to_netcdf':
 
         from utils.ascii import convertRasterToNetCDF
+        from time import time
+        
         # parameters for daily ascii
-        varlist = ['pcp']
-        vardefs = {varname:day12_vardefs[varname] for varname in varlist}
+#         varlist = ['pcp',]
+        varlist = day12_vardefs.keys()
         grid = 'CA12'
         griddef = grid_def[grid]
         # parameters for rasters
-        start_date = '2011-01-01'; end_date = '2011-01-15'; sampling = 'D'
+        start_date = '2011-01-01'; end_date = '2016-01-01'; sampling = 'D'
         raster_folder = root_folder + grid+'_Daily/'
         def raster_path_func(datetime, varname, **varatts):
             ''' determine path to appropriate raster for given datetime and variable'''
             day = datetime.dayofyear
             if not datetime.is_leap_year and day >= 60: day += 1
-            path = '{YEAR:04d}/{VAR:s}{YEAR:04d}_{DAY:d}.asc.gz'.format(YEAR=datetime.year, VAR=varname, DAY=day)
+            altname = varatts.get('alt_name',varname)
+            path = '{VAR:s}/{YEAR:04d}/{ALT:s}{YEAR:04d}_{DAY:d}.asc.gz'.format(YEAR=datetime.year, VAR=varname, ALT=altname, DAY=day)
             return path
         # NetCDF definitions
-        nc_filepath = daily_folder + 'test_'+netcdf_filename.format(grid.lower())
-        atts = dict(start_date=start_date, end_date=end_date, sampling=sampling)
+        ds_atts = dict(start_date=start_date, end_date=end_date, sampling=sampling)
+
+        # start operation
+        start = time()
         
-        convertRasterToNetCDF(filepath=nc_filepath, raster_folder=raster_folder, raster_path_func=raster_path_func, vardefs=vardefs, 
-                              start_date=start_date, end_date=end_date, sampling=sampling, atts=atts, griddef=griddef)
+        ## loop over variables (individual files)
+        for varname in varlist:
+            
+            print("\n   ***   Reading rasters for variable '{}' ('{}')   ***   \n".format(varname,day12_vardefs[varname]['name']))
+            
+            nc_filepath = daily_folder + netcdf_filename.format(varname+'_'+grid.lower())
+            vardef = {varname:day12_vardefs[varname]} # only one variable
+            # read rasters and write to NetCDF file
+            convertRasterToNetCDF(filepath=nc_filepath, raster_folder=raster_folder, raster_path_func=raster_path_func, vardefs=vardef, 
+                                  start_date=start_date, end_date=end_date, sampling=sampling, ds_atts=ds_atts, griddef=griddef,
+                                  loverwrite=True,)
+            
+            assert os.path.exists(nc_filepath), nc_filepath
+            print('\nSaving to NetCDF-4 file:\n '+nc_filepath+'\n')
         
-        assert os.path.exists(nc_filepath), nc_filepath
+        # print timing
+        end = time()
+        print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
+
+        
+        # inspect Dataset
+        import xarray as xr
+        xds = xr.open_dataset(nc_filepath, decode_cf=True, decode_times=True, decode_coords=True, use_cftime=True)
+        print(xds)
+        #print(ds.variables)
+        #print(xds['time'])
     
     elif mode == 'convert_Daily':
         

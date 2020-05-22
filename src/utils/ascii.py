@@ -9,7 +9,6 @@ A module to load ASCII raster data into numpy arrays.
 # external imports
 import numpy as np
 import numpy.ma as ma
-import pandas as pd
 import gzip, shutil, tempfile
 import os, gc
 # internal imports
@@ -17,6 +16,7 @@ from geodata.base import Variable, Axis, Dataset
 from geodata.gdal import addGDALtoDataset, addGDALtoVar, getAxes
 from geodata.misc import AxisError, ArgumentError
 from utils.misc import flip, expandArgumentList
+from utils.nctools import coerceAtts
 
 # the environment variable RAMDISK contains the path to the RAM disk
 ramdisk = os.getenv('RAMDISK', None)
@@ -38,10 +38,10 @@ def samplingUnits(sampling):
 
 ## functions to convert a raster dataset to NetCDF (time-step by time-step)
 
-def convertRasterToNetCDF(filepath=None, raster_folder=None, raster_path_func=None, 
-                          start_date=None, end_date=None, sampling='M', atts=None, 
-                          vardefs=None, projection=None, griddef=None, lgzip=None, lgdal=True, lmask=True, fillValue=None, 
-                          lskipMissing=True, lgeolocator=True, lfeedback=True, **kwargs):
+def convertRasterToNetCDF(filepath=None, raster_folder=None, raster_path_func=None, start_date=None, end_date=None, sampling='M', 
+                          ds_atts=None, vardefs=None, projection=None, geotransform=None, size=None,  griddef=None, 
+                          lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, lfeedback=True, 
+                          loverwrite=False, use_netcdf_tools=True, lzlib=True, **ncargs):
     ''' function to load a set of raster variables that are stored in a systematic directory tree into a NetCDF dataset
         Variables are defined as follows:
           vardefs[varname] = dict(name=string, units=string, axes=tuple of strings, atts=dict, plot=dict, dtype=np.dtype, fillValue=value)
@@ -50,36 +50,85 @@ def convertRasterToNetCDF(filepath=None, raster_folder=None, raster_path_func=No
         The path to raster files is constructed as raster_folder+raster_path, where raster_path is the output of 
         raster_path_func(datetime, varname, **varatts), which has to be defined by the user.        
     '''
+    import pandas as pd
+    import netCDF4 as nc
+    from utils.nctools import add_coord, add_var, coerceAtts
+
     # generate list of datetimes from end dates and frequency
     datetime64_array = np.arange(start_date,end_date, dtype='datetime64[{}]'.format(sampling))
+    
     ## create NetCDF dataset
-    # setup dimensions and coordinate variables
-    
-    # create time dimension and coordinate variable
-    start_datetime = datetime64_array[0]
-    time_coord = ( ( datetime64_array - start_datetime ) / np.timedelta64(1,sampling) ).astype('int64')
-    time_units = samplingUnits(sampling) + ' since ' + str(start_datetime)
+    if use_netcdf_tools:
+        from geospatial.netcdf_tools import createGeoNetCDF
+        ncds = createGeoNetCDF(filepath, atts=ds_atts, time=datetime64_array, varatts=None, # default atts 
+                               crs=projection, geotrans=geotransform, size=size, griddef=griddef, # probably griddef...
+                               nc_format=ncargs.get('format','NETCDF4'), zlib=lzlib, loverwrite=loverwrite)
+    else:
+        if 'format' not in ncargs: ncargs['format'] = 'NETCDF4'
+        ncargs['clobber'] = loverwrite
+        if loverwrite: ncargs['mode'] = 'w' 
+        if isinstance(filepath,str): 
+            if not loverwrite and os.path.exists(filepath):
+                raise IOError("File '{:s}' already exists; set 'clobber=True' to overwrite.".format(filepath))
+            ncds = nc.Dataset(filepath, **ncargs)
+        elif not isinstance(filepath,nc.Dataset): raise TypeError(filepath)
+        # setup horizontal dimensions and coordinate variables
+        xlon, ylat = (griddef.xlon, griddef.ylat)
+        for ax in (xlon, ylat):
+            add_coord(ncds, name=ax.name, data=ax.coord, atts=ax.atts, zlib=lzlib)
+        # create time dimension and coordinate variable
+        start_datetime = datetime64_array[0]
+        time_coord = ( ( datetime64_array - start_datetime ) / np.timedelta64(1,sampling) ).astype('int64')
+        time_units = samplingUnits(sampling) + ' since ' + str(start_datetime)
+        tatts = dict(units=time_units, long_name='time in days', sampling=sampling, start_date=start_date, end_date=end_date)
+        add_coord(ncds, name='time', data=time_coord, atts=tatts, zlib=lzlib)
+        # add attributes
+        if ds_atts is not None:
+            for key,value in coerceAtts(ds_atts).items(): 
+                ncds.setncattr(key,value)
+                
     # add variables
+    dimlist = ('time', ncds.ylat, ncds.xlon)
+    var_shp = tuple(len(ncds.dimensions[dim]) for dim in dimlist) # xlon is usually the innermost dimension
+    for varname,varatts in vardefs.items():
+        atts = dict(original_name=varname, units=varatts['units'])
+        add_var(ncds, name=varatts['name'], dims=dimlist, data=None, shape=var_shp, atts=atts, 
+                dtype=varatts['dtype'], zlib=lzlib, lusestr=True)
+    ncds.sync()
+    #print(filepath)
+    #print(ncds)
     
-    # add attributes
-    
+    if not lmask: 
+        raise NotImplementedError("Need to handle missing values without mask - use lna=True?")
+            
     ## loop over datetimes
-    for dt64 in datetime64_array:
+    for i,dt64 in enumerate(datetime64_array):
         
         datetime = pd.to_datetime(dt64)
         
         ## loop over variables
         for varname,varatts in vardefs.items():
           
+            nc_name = varatts.get('name',varname)
             # construct file names
             raster_path = raster_path_func(datetime, varname, **varatts)
             raster_path = raster_folder + raster_path
             print(raster_path)
             # load raster data and save to NetCDF
-            
-            ## maybe compute some derived variables?
+            if lgzip is None: # will only trigger once
+                lgzip = raster_path.endswith('.gz')
+            raster_data, geotrans = readASCIIraster(raster_path, lgzip=lgzip, lgdal=lgdal, dtype=varatts.get('dtype',np.float32), lmask=lmask, 
+                                                    fillValue=varatts.get('fillValue',None), lgeotransform=True, lna=False)
+            assert all(np.isclose(geotrans,griddef.geotransform)), geotrans
+            # scale, if appropriate
+            if 'scalefactor' in varatts: raster_data *= varatts['scalefactor']
+            if 'offset' in varatts: raster_data += varatts['offset']
+            # save data to NetCDF
+            ncds.variables[nc_name][i,:,:] = raster_data
+        ## maybe compute some derived variables?
 
     # close file
+    ncds.sync(); ncds.close()
     return filepath
 
 ## functions to construct Variables and Datasets from ASCII raster data
@@ -360,7 +409,12 @@ def readASCIIraster(filepath, lgzip=None, lgdal=True, dtype=np.float32, lmask=Tr
         os.environ.setdefault('GDAL_DATA','/usr/local/share/gdal') # set default environment variable to prevent problems in IPython Notebooks
         gdal.UseExceptions() # use exceptions (off by default)
           
+        if lgzip and not ( ramdisk and os.path.exists(ramdisk) ):
+            raise IOError("RAM disk '{}' not found; RAM disk is required to unzip raster files for GDAL.".format(ramdisk) + 
+                          "\nSet the RAM disk location using the RAMDISK environment variable.")
+              
         ## use GDAL to read raster and parse meta data
+        ds = tmp = None # for graceful exit
         try: 
           
             # if file is compressed, create temporary decompresse file
@@ -368,7 +422,6 @@ def readASCIIraster(filepath, lgzip=None, lgdal=True, dtype=np.float32, lmask=Tr
               with gzip.open(filepath, mode='rb') as gz, tempfile.NamedTemporaryFile(mode='wb', dir=ramdisk, delete=False) as tmp:
                 shutil.copyfileobj(gz, tmp)
               filepath = tmp.name # full path of the temporary file (must not be deleted upon close!)
-            else: tmp = None
               
             # open file as GDAL dataset and read raster band into Numpy array
             ds = gdal.Open(filepath)
@@ -395,14 +448,19 @@ def readASCIIraster(filepath, lgzip=None, lgdal=True, dtype=np.float32, lmask=Tr
               data = ma.masked_equal(data, value=na, copy=False)
               if fillValue is not None: data._fill_value = fillValue
             elif fillValue is not None: 
-              data[data == na] = fillValue # relplace original fill value 
+              data[data == na] = fillValue # replace original fill value 
+          
+        except Exception as e:
+          
+            raise e
           
         finally:
           
-            # clean-up
-            del ds, tmp # close GDAL dataset and temporary file
-            #print tmp.name # print full path of temporary file
-            if lgzip: os.remove(filepath) # remove temporary file
+            # clean-up 
+            del ds # neds to be deleted, before tmp-file can be deleted - Windows is very pedantic about this...
+            if lgzip and tmp is not None: 
+                os.remove(filepath) # remove temporary file
+            del tmp # close GDAL dataset and temporary file
   
     else:
         
