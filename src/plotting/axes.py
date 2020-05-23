@@ -60,6 +60,7 @@ class MyAxes(Axes):
   dateformatter       = '%Y-%m-%d'
   xoverlap           = False
   yoverlap           = False
+  edge_ticks         = False
   
   def __init__(self, *args, **kwargs):
     ''' constructor to initialize some variables / counters '''  
@@ -899,7 +900,7 @@ class MyAxes(Axes):
     pax.grid(b=False, which='both', axis='both')
     pax.set_xlim((-0.5,0.5)); pax.set_ylim(self.get_ylim())
     for ax in pax.xaxis,pax.yaxis: 
-      for tick in ax.get_ticklabels(): tick.set_visible(False)
+      for tick in ax.get_ticklabels(): tick.set_visible(self.edge_ticks)
     pax.set_xticks([])
     # copy some settings
     if self.get_yscale() == 'log': pax.set_yscale('log')
@@ -1180,7 +1181,7 @@ class MyAxes(Axes):
     if not loverlap and len(xticks) > 0 and (
         len(yticks) == 0 or not yticks[-1].get_visible() ):
         if len(xaxis.get_ticklocs()) == len(xticks):
-            xticks[0].set_visible(False)
+            xticks[0].set_visible(self.edge_ticks)
     return xticks
   def yTickLabels(self, yticks, n=None, loverlap=False):
     ''' format y-tick labels '''
@@ -1191,7 +1192,7 @@ class MyAxes(Axes):
     if not loverlap and len(yticks) > 0 and (
         len(xticks) == 0 or not xticks[-1].get_visible() ):
         if len(yaxis.get_ticklocs()) == len(yticks):
-            yticks[0].set_visible(False)
+            yticks[0].set_visible(self.edge_ticks)
     if not self.ldatetime or not self.flipxy:
         # tick label position
         if self.yright:
@@ -1217,7 +1218,7 @@ class MyAxes(Axes):
       ticklist = axis.get_ticklabels()
     elif ticks is False: 
       ticklist = axis.get_ticklabels()
-      for tick in ticklist: tick.set_visible(False)
+      for tick in ticklist: tick.set_visible(self.edge_ticks)
       ticklist = []
     elif isinstance(ticks,(list,tuple)): 
       axis.set_ticklabels(ticks)

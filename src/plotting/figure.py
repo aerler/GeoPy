@@ -359,7 +359,7 @@ class MyFigure(Figure):
 def getFigAx(subplot, name=None, title=None, title_font='x-large', title_height=None, figsize=None,
              variable_plotargs=None, dataset_plotargs=None, plot_labels=None, yright=False, xtop=False,
              sharex=None, sharey=None, lAxesGrid=False, ngrids=None, direction='row',
-             lPolarAxes=False, lTaylor = False, 
+             lPolarAxes=False, lTaylor = False, ledge_ticks=False,
              axes_pad = None, add_all=True, share_all=None, aspect=False, margins=None,
              label_mode='L', cbar_mode=None, cbar_location='right', lreduce=True,
              cbar_pad=None, cbar_size='5%', axes_class=None, axes_args=None,  stylesheet=None,
@@ -540,6 +540,7 @@ def getFigAx(subplot, name=None, title=None, title_font='x-large', title_height=
       ax.variable_plotargs = variable_plotargs
       ax.dataset_plotargs = dataset_plotargs
       ax.plot_labels = plot_labels
+      ax.edge_ticks = ledge_ticks
   else:
     axes.variable_plotargs = variable_plotargs
     axes.dataset_plotargs = dataset_plotargs

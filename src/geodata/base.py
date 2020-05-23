@@ -611,7 +611,8 @@ class Variable(object):
     else:
       # N.B.: don't pass name and units as they just link to atts anyway, and if passed directly, they overwrite user atts
       args = dict(axes=self.axes, data=self.data_array, dtype=self.dtype,
-                  mask=None, atts=self.atts.copy(), plot=self.plot.copy())
+                  mask=None, atts=self.atts.copy())
+      if self.plot: args['plot'] = self.plot.copy()
       if 'data' in newargs and newargs['data'] is not None: 
         newargs['dtype'] = newargs['data'].dtype
       args.update(newargs) # apply custom arguments (also arguments related to subclasses)      
@@ -3146,8 +3147,10 @@ class Dataset(object):
 
 
   def copy(self, axes=None, variables=None, varlist=None, varargs=None, axesdeep=True, varsdeep=False, 
-           **kwargs): # this methods will have to be overloaded, if class-specific behavior is desired
+           deepcopy=None, **kwargs): # this methods will have to be overloaded, if class-specific behavior is desired
     ''' A method to copy the Axes and Variables in a Dataset with just a link to the data arrays. '''
+    if deepcopy: # convenience
+        varsdeep = True; axesdeep = True
     # copy axes (shallow copy)    
     newaxes = {name:ax.copy(deepcopy=axesdeep) for name,ax in self.axes.items()}
     if axes is not None: # allow override
@@ -3361,6 +3364,8 @@ class Dataset(object):
     # add mask do dataset
     if laddMask and isinstance(mask,Variable) and not self.hasVariable(mask): 
         self.addVariable(mask)
+    # just return dataset (operation is inplace anyway0
+    return self
     
   def unmask(self, fillValue=None, **kwargs):
     ''' Unmask all Variables in the Dataset. '''

@@ -681,7 +681,10 @@ if __name__ == '__main__':
             day = datetime.dayofyear
             if not datetime.is_leap_year and day >= 60: day += 1
             altname = varatts.get('alt_name',varname)
-            path = '{VAR:s}/{YEAR:04d}/{ALT:s}{YEAR:04d}_{DAY:d}.asc.gz'.format(YEAR=datetime.year, VAR=varname, ALT=altname, DAY=day)
+            if varname in ('mint','maxt') and datetime.year in (2016,2017):
+                path = '{VAR:s}/{YEAR:04d}/{ALT:s}/{YEAR:04d}_{DAY:d}.asc.gz'.format(YEAR=datetime.year, VAR=varname, ALT=altname, DAY=day)
+            else:
+                path = '{VAR:s}/{YEAR:04d}/{ALT:s}{YEAR:04d}_{DAY:d}.asc.gz'.format(YEAR=datetime.year, VAR=varname, ALT=altname, DAY=day)
             return path
         # NetCDF definitions
         ds_atts = dict(start_date=start_date, end_date=end_date, sampling=sampling)
