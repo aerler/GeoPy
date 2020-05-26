@@ -744,7 +744,7 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
   elif isinstance(filetypes,list): filetypes = list(filetypes) # also make copy for modification
   else: raise TypeError
   if 'axes' in filetypes: del filetypes[filetypes.index('axes')] # remove axes - not a real filetype
-  if bias_correction: # optional filetype for bias-corrected data
+  if bias_correction and not ldaily: # optional filetype for bias-corrected data
       filetypes = [bias_correction.lower(),]+filetypes # add before others, so that bias-corrected variables are loaded
   atts = []; filelist = []; typelist = []; ignore_lists = []
   for filetype in filetypes: # last filetype in list has precedence
@@ -867,7 +867,10 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     if ldaily: # daily files are in subfolders (by grid)
         if grid: 
             folder = '{}/{}'.format(folder,grid)
-            if resampling: folder = '{}/{}'.format(folder,resampling)    
+            if resampling: folder = '{}/{}'.format(folder,resampling)
+        if bias_correction:
+            gridstr = '_'+bias_correction.lower()+gridstr # also works if no grid
+                   
     filenames = []
     for filetype,fileformat in zip(typelist,filelist):
       if lclim: filename = fileformat.format(domain,gridstr,periodstr) # insert domain number, grid, and period
@@ -895,12 +898,13 @@ def loadWRF_All(experiment=None, name=None, domains=None, grid=None, station=Non
     if ldaily:
         for tatt in atts: tatt.pop('time') # the default formatting is monthly; will be fixes below 
     try:
+      print(folder,filename)
       dataset = DatasetNetCDF(name=name, folder=folder, filelist=filenames, varlist=varlist, axes=axes, 
                               varatts=atts, multifile=False, ncformat='NETCDF4', ignore_list=ignore_lists, 
                               mode=ncmode, squeeze=True, check_override=check_override, check_vars=check_vars)
     except EmptyDatasetError:
       if lenc == 0: raise # allow loading of cosntants without other variables
-    if ltrimT and dataset.hasAxis('time') and len(dataset.time) > 180:
+    if ltrimT and lts and dataset.hasAxis('time') and len(dataset.time) > 180:
       if lwrite: raise ArgumentError("Cannot trim time-axis when NetCDF write mode is enabled!")
       dataset = dataset(time=slice(0,180), lidx=True)
       assert len(dataset.time) == 180, len(dataset.time) 
@@ -1345,13 +1349,13 @@ loadShapeTimeSeries = loadWRF_ShpTS # time-series without associated grid (e.g. 
 if __name__ == '__main__':
     
   
-#   mode = 'test_daily'
+  mode = 'test_daily'
 #   mode = 'test_xarray'  
 #   mode = 'test_climatology'
 #   mode = 'test_timeseries'
 #   mode = 'test_ensemble'
 #   mode = 'test_point_climatology'
-  mode = 'test_point_timeseries'
+#   mode = 'test_point_timeseries'
 #   mode = 'test_point_ensemble'
 #   mode = 'pickle_grid' 
   pntset = 'wcshp'
@@ -1373,7 +1377,7 @@ if __name__ == '__main__':
   if mode == 'test_daily':
     
       print('')
-      dataset = loadWRF_TS(experiment='max-ctrl', domains=2, mode='daily', grid='arb3',  
+      dataset = loadWRF_TS(experiment='max-ctrl', domains=2, mode='daily', grid='arb3', bias_correction='AABC',
                            varlist=['liqwatflx','pet'], filetypes=['hydro',], exps=WRF_exps)
   
       print(dataset)

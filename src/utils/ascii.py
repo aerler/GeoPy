@@ -14,7 +14,7 @@ import os, gc
 # internal imports
 from geodata.base import Variable, Axis, Dataset
 from geodata.gdal import addGDALtoDataset, addGDALtoVar, getAxes
-from geodata.misc import AxisError, ArgumentError
+from geodata.misc import AxisError, ArgumentError, NetCDFError
 from utils.misc import flip, expandArgumentList
 from utils.nctools import coerceAtts
 
@@ -40,7 +40,7 @@ def samplingUnits(sampling):
 
 def convertRasterToNetCDF(filepath=None, raster_folder=None, raster_path_func=None, start_date=None, end_date=None, sampling='M', 
                           ds_atts=None, vardefs=None, projection=None, geotransform=None, size=None,  griddef=None, 
-                          lgzip=None, lgdal=True, lmask=True, fillValue=None, lskipMissing=True, lfeedback=True, 
+                          lgzip=None, lgdal=True, lmask=True, lskipMissing=True, lfeedback=True, var_start_idx=None,
                           loverwrite=False, use_netcdf_tools=True, lzlib=True, **ncargs):
     ''' function to load a set of raster variables that are stored in a systematic directory tree into a NetCDF dataset
         Variables are defined as follows:
@@ -53,54 +53,124 @@ def convertRasterToNetCDF(filepath=None, raster_folder=None, raster_path_func=No
     import pandas as pd
     import netCDF4 as nc
     from utils.nctools import add_coord, add_var, coerceAtts
-
-    # generate list of datetimes from end dates and frequency
-    datetime64_array = np.arange(start_date,end_date, dtype='datetime64[{}]'.format(sampling))
+      
+    ## open NetCDF dataset
+    if isinstance(filepath,str) and ( loverwrite or not os.path.exists(filepath) ):
+          
+        # generate list of datetimes from end dates and frequency
+        datetime64_array = np.arange(start_date,end_date, dtype='datetime64[{}]'.format(sampling))
+        xlon, ylat = (griddef.xlon, griddef.ylat) # used for checking
     
-    ## create NetCDF dataset
-    if use_netcdf_tools:
-        from geospatial.netcdf_tools import createGeoNetCDF
-        ncds = createGeoNetCDF(filepath, atts=ds_atts, time=datetime64_array, varatts=None, # default atts 
-                               crs=projection, geotrans=geotransform, size=size, griddef=griddef, # probably griddef...
-                               nc_format=ncargs.get('format','NETCDF4'), zlib=lzlib, loverwrite=loverwrite)
-    else:
-        if 'format' not in ncargs: ncargs['format'] = 'NETCDF4'
-        ncargs['clobber'] = loverwrite
-        if loverwrite: ncargs['mode'] = 'w' 
-        if isinstance(filepath,str): 
-            if not loverwrite and os.path.exists(filepath):
-                raise IOError("File '{:s}' already exists; set 'clobber=True' to overwrite.".format(filepath))
+        if use_netcdf_tools:
+            from geospatial.netcdf_tools import createGeoNetCDF
+            ncds = createGeoNetCDF(filepath, atts=ds_atts, time=datetime64_array, varatts=None, # default atts 
+                                   crs=projection, geotrans=geotransform, size=size, griddef=griddef, # probably griddef...
+                                   nc_format=ncargs.get('format','NETCDF4'), zlib=lzlib, loverwrite=loverwrite)
+        else:
+            if 'format' not in ncargs: ncargs['format'] = 'NETCDF4'
+            ncargs['clobber'] = loverwrite
+            if loverwrite: ncargs['mode'] = 'w' 
             ncds = nc.Dataset(filepath, **ncargs)
-        elif not isinstance(filepath,nc.Dataset): raise TypeError(filepath)
-        # setup horizontal dimensions and coordinate variables
+            # setup horizontal dimensions and coordinate variables
+            for ax in (xlon, ylat):
+                add_coord(ncds, name=ax.name, data=ax.coord, atts=ax.atts, zlib=lzlib)
+            # create time dimension and coordinate variable
+            start_datetime = datetime64_array[0]
+            time_coord = ( ( datetime64_array - start_datetime ) / np.timedelta64(1,sampling) ).astype('int64')
+            time_units_name = samplingUnits(sampling)
+            time_units = time_units_name + ' since ' + str(start_datetime)
+            tatts = dict(units=time_units, long_name=time_units_name.title(), sampling=sampling, start_date=start_date, end_date=end_date)
+            add_coord(ncds, name='time', data=time_coord, atts=tatts, zlib=lzlib)
+            # add attributes
+            if ds_atts is not None:
+                for key,value in coerceAtts(ds_atts).items(): 
+                    ncds.setncattr(key,value)
+        
+    elif isinstance(filepath,nc.Dataset) or ( isinstance(filepath,str) and os.path.exists(filepath) ):
+        
+        assert not loverwrite, filepath
+        
+        if isinstance(filepath,str):
+            # open exising dataset
+            ncargs['clobber'] = False
+            ncargs['mode'] = 'a' # append 
+            ncds = nc.Dataset(filepath, **ncargs)                
+        else:
+            ncds = filepath 
+        
+        # check mapping stuff
+        if griddef is None:
+            raise NotImplementedError("Inferring GridDef from file is not implemented yet.")
+        assert griddef.isProjected == ncds.getncattr('is_projected'), griddef.projection.ExportToProj4()
         xlon, ylat = (griddef.xlon, griddef.ylat)
         for ax in (xlon, ylat):
-            add_coord(ncds, name=ax.name, data=ax.coord, atts=ax.atts, zlib=lzlib)
-        # create time dimension and coordinate variable
+            assert ax.name in ncds.dimensions, ax.name
+            assert len(ax) == len(ncds.dimensions[ax.name]), ax.name
+            assert ax.name in ncds.variables, ax.name
+        
+        # set time interval    
+        if start_date is not None:
+            print("Overwriting start date with NetCDF start date.")
+        start_date = ncds.getncattr('start_date')
+        if lfeedback: print("Setting start date to:",start_date)
+        start_date_dt = pd.to_datetime(start_date)
+        # check existing time axis
+        assert 'time' in ncds.dimensions, ncds.dimensions
+        assert 'time' in ncds.variables, ncds.variables
+        nc_end_date_dt = pd.to_datetime(ncds.getncattr('end_date'))
+        # check consistency of dates
+        days = (nc_end_date_dt - start_date_dt).days # timedelta
+        if sampling.upper() == 'D': time_len = days
+        else: raise NotImplementedError(sampling)
+        if time_len != len(ncds.dimensions['time']):
+            raise NetCDFError("Registered start and end dates are inconsistent with array length: {} != {}".format(time_len,len(ncds.dimensions['time'])))
+        
+        # generate list of datetimes from end dates and frequency
+        datetime64_array = np.arange(start_date,end_date, dtype='datetime64[{}]'.format(sampling))
+        # verify time coordinate
         start_datetime = datetime64_array[0]
         time_coord = ( ( datetime64_array - start_datetime ) / np.timedelta64(1,sampling) ).astype('int64')
         time_units = samplingUnits(sampling) + ' since ' + str(start_datetime)
-        tatts = dict(units=time_units, long_name='time in days', sampling=sampling, start_date=start_date, end_date=end_date)
-        add_coord(ncds, name='time', data=time_coord, atts=tatts, zlib=lzlib)
-        # add attributes
-        if ds_atts is not None:
-            for key,value in coerceAtts(ds_atts).items(): 
-                ncds.setncattr(key,value)
+        tvar = ncds.variables['time']
+        assert tvar.units == time_units, tvar
+        assert np.all(tvar[:time_len] == time_coord[:time_len]), time_coord
+        # update time coordinate
+        tvar[time_len:] = time_coord[time_len:]
+        # update time stamps
+        if 'time_stamp' in ncds.variables:
+            ncds.variables['time_stamp'][time_len:] = np.datetime_as_string(datetime64_array[time_len:], unit=sampling)
+        
+    else:
+        raise TypeError(filepath)
                 
     # add variables
+    if var_start_idx is None: var_start_idx = dict()
     dimlist = ('time', ncds.ylat, ncds.xlon)
-    var_shp = tuple(len(ncds.dimensions[dim]) for dim in dimlist) # xlon is usually the innermost dimension
+    shape = tuple(len(ncds.dimensions[dim]) for dim in dimlist) # xlon is usually the innermost dimension
+    var_shp = (None,)+shape[1:] # time dimension remains extendable
     for varname,varatts in vardefs.items():
-        atts = dict(original_name=varname, units=varatts['units'])
-        add_var(ncds, name=varatts['name'], dims=dimlist, data=None, shape=var_shp, atts=atts, 
-                dtype=varatts['dtype'], zlib=lzlib, lusestr=True)
+        nc_name = varatts.get('name',varname)
+        if nc_name in ncds.variables:
+            ncvar = ncds.variables[nc_name]
+            assert ncvar.shape == shape, shape # time dim is already updated/extended due to time coordinate
+            assert ncvar.dimensions == ('time',ylat.name,xlon.name), ('time',ylat.name,xlon.name)
+            if varname not in var_start_idx:
+                var_start_idx[varname] = time_len # where to start writing new data (can vary by variable)
+        else:
+            atts = dict(original_name=varname, units=varatts['units'])
+            add_var(ncds, name=nc_name, dims=dimlist, data=None, shape=var_shp, atts=atts, 
+                    dtype=varatts['dtype'], zlib=lzlib, lusestr=True)
+            var_start_idx[varname] = 0
     ncds.sync()
     #print(filepath)
     #print(ncds)
     
     if not lmask: 
         raise NotImplementedError("Need to handle missing values without mask - use lna=True?")
-            
+
+    # get fillValues
+    fillValues = {varname:varatts.get('fillValue',None) for varname,varatts in vardefs.items()}
+                
     ## loop over datetimes
     for i,dt64 in enumerate(datetime64_array):
         
@@ -109,22 +179,44 @@ def convertRasterToNetCDF(filepath=None, raster_folder=None, raster_path_func=No
         ## loop over variables
         for varname,varatts in vardefs.items():
           
-            nc_name = varatts.get('name',varname)
-            # construct file names
-            raster_path = raster_path_func(datetime, varname, **varatts)
-            raster_path = raster_folder + raster_path
-            print(raster_path)
-            # load raster data and save to NetCDF
-            if lgzip is None: # will only trigger once
-                lgzip = raster_path.endswith('.gz')
-            raster_data, geotrans = readASCIIraster(raster_path, lgzip=lgzip, lgdal=lgdal, dtype=varatts.get('dtype',np.float32), lmask=lmask, 
-                                                    fillValue=varatts.get('fillValue',None), lgeotransform=True, lna=False)
-            assert all(np.isclose(geotrans,griddef.geotransform)), geotrans
-            # scale, if appropriate
-            if 'scalefactor' in varatts: raster_data *= varatts['scalefactor']
-            if 'offset' in varatts: raster_data += varatts['offset']
-            # save data to NetCDF
-            ncds.variables[nc_name][i,:,:] = raster_data
+            i0 = var_start_idx[varname]
+            # skip existing data
+            if i >= i0:
+                # actually add data now
+                if i0 == i and i > 0 and lfeedback:
+                    print("{}: appending after {} timesteps.".format(varname,i))
+                nc_name = varatts.get('name',varname)
+                fillValue = fillValues[varname]
+                # construct file names
+                raster_path = raster_path_func(datetime, varname, **varatts)
+                raster_path = raster_folder + raster_path
+                if lfeedback: print(raster_path)
+                # load raster data and save to NetCDF
+                if lgzip is None: # will only trigger once
+                    lgzip = raster_path.endswith('.gz')
+                if os.path.exists(raster_path):
+                    raster_data, geotrans, nodata = readASCIIraster(raster_path, lgzip=lgzip, lgdal=lgdal, dtype=varatts.get('dtype',np.float32), 
+                                                                    lmask=lmask, fillValue=varatts.get('fillValue',None), lgeotransform=True, 
+                                                                    lna=True)
+                    assert all(np.isclose(geotrans,griddef.geotransform)), geotrans           
+                    if fillValue is None: 
+                        fillValues[varname] = nodata # remember for next field
+                    elif fillValue != nodata:
+                        raise NotImplementedError('No data/fill values need to be consistent: {} != {}'.format(fillValue,nodata)) 
+                    # scale, if appropriate
+                    if 'scalefactor' in varatts: raster_data *= varatts['scalefactor']
+                    if 'offset' in varatts: raster_data += varatts['offset']
+                elif lskipMissing:
+                    print("Skipping missing raster: '{}'".format(raster_path))  
+                    # create an array of missing data
+                    if lmask:
+                        raster_data = np.ma.masked_all(shape=var_shp[1:], dtype=varatts['dtype']) # no time dim; all masked
+                    elif fillValue is not None:
+                        raster_data = np.full(shape=var_shp[1:], fill_value=fillValue, dtype=varatts['dtype']) # no time dim; all filled
+                    else:
+                        NotImplementedError("Need to be able to generate missing data in order to skip missing raster.")
+                # save data to NetCDF
+                ncds.variables[nc_name][i,:,:] = raster_data
         ## maybe compute some derived variables?
 
     # close file

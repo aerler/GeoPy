@@ -674,7 +674,8 @@ if __name__ == '__main__':
         grid = 'CA12'
         griddef = grid_def[grid]
         # parameters for rasters
-        start_date = '2011-01-01'; end_date = '2016-01-01'; sampling = 'D'
+#         start_date = '2011-01-01'; end_date = '2011-01-09'; sampling = 'D'; loverwrite = True
+        start_date = '2011-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = False
         raster_folder = root_folder + grid+'_Daily/'
         def raster_path_func(datetime, varname, **varatts):
             ''' determine path to appropriate raster for given datetime and variable'''
@@ -702,7 +703,7 @@ if __name__ == '__main__':
             # read rasters and write to NetCDF file
             convertRasterToNetCDF(filepath=nc_filepath, raster_folder=raster_folder, raster_path_func=raster_path_func, vardefs=vardef, 
                                   start_date=start_date, end_date=end_date, sampling=sampling, ds_atts=ds_atts, griddef=griddef,
-                                  loverwrite=True,)
+                                  loverwrite=loverwrite,)
             
             assert os.path.exists(nc_filepath), nc_filepath
             print('\nSaving to NetCDF-4 file:\n '+nc_filepath+'\n')
@@ -720,6 +721,9 @@ if __name__ == '__main__':
         #print(xds['time'])
     
     elif mode == 'convert_Daily':
+        
+        ## N.B.: this processes the entire dataset in-memory, which is not really feasible for daily data;
+        #        use the convert_to_netcdf option above
         
         # parameters
 #         snow_density = 'ephemeral'

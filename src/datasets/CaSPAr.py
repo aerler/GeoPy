@@ -238,7 +238,7 @@ def loadCaSPAr_Raw(dataset=None, filelist=None, folder=raw_folder, grid=None, pe
 
 def loadCaSPAr_6hourly(varname=None, varlist=None, dataset=None, dataset_index=None, folder=folder_6hourly, 
                        lignore_missing=False, grid=None, biascorrection=None, lxarray=True, time_chunks=None, **kwargs):
-    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
+    ''' function to load 6-houly CaSPAr data from NetCDF-4 files using xarray and add some projection information '''
     if not lxarray: 
         raise NotImplementedError("Only loading via xarray is currently implemented.")
     if varname and varlist: raise ValueError(varname,varlist)
