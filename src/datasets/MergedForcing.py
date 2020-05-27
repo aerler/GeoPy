@@ -21,7 +21,8 @@ from collections import namedtuple
 # internal imports
 from datasets.common import getRootFolder
 # for georeferencing
-from geospatial.xarray_tools import addGeoReference, readCFCRS
+from geospatial.xarray_tools import addGeoReference, readCFCRS, loadXArray
+import geodata
 
 ## Meta-vardata
 
@@ -38,7 +39,7 @@ axes_varatts = dict(time = dict(name='time', units='hours', long_name='Days'), #
 axes_varlist = axes_varatts.keys()
 # merged/mixed variables
 varatts = dict(liqwatflx = dict(name='liqwatflx',units='kg/m^2/s',scalefactor=1., 
-                                       long_name='Liquid Water Flux'),)
+                                long_name='Liquid Water Flux'),)
 varlist = varatts.keys()
 ignore_list = []
 
@@ -46,28 +47,47 @@ ignore_list = []
 avgfolder = root_folder + dataset_name.lower()+'avg/' 
 avgfile   = '{DS:s}_{GRD:s}_clim_{PRD:s}.nc' # the filename needs to be extended: biascorrection, grid and period
 tsfile    = '{DS:s}_{GRD:s}_monthly.nc' # extend with biascorrection, variable and grid type
-folder_6hourly   = root_folder + dataset_name.lower()+'_6hourly/' 
-filename_6hourly = '{DS:s}_{VAR:s}_{GRD:s}_6hourly.nc' # dataset and variable name, grid name
 netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
-
-# source data
-raw_folder = root_folder + '{DS:s}/{GRD:s}/' 
-netcdf_filename = '{Y:04d}{M:02d}{D:02d}{H:02d}.nc' # original source file
 
 # list of available datasets/collections
 DSNT = namedtuple(typename='Dataset', field_names=['name','interval','start_date','end_date',])
-dataset_attributes = dict(SnoDAS = DSNT(name='SnoDAS',interval='1D', start_date=None, end_date=None,  ),                          
-                          NRCan  = DSNT(name='NRCan',  interval='1D', start_date=None, end_date=None, ), 
-                          NRCan  = DSNT(name='NRCan',  interval='1D', start_date='2017-09-11T12', end_date='2019-12-30T12', ),)
+dataset_attributes = dict(SnoDAS  = DSNT(name='SnoDAS',interval='1D', start_date=None, end_date=None,  ),                          
+                          NRCan   = DSNT(name='NRCan',  interval='1D', start_date=None, end_date=None, ), 
+                          CaSPAr  = DSNT(name='CaSPAr',  interval='6H', start_date='2017-09-11T12', end_date='2019-12-30T12', ),)
 dataset_list = list(dataset_attributes.keys())
 # N.B.: the effective start date for CaPA and all the rest is '2017-09-11T12'
 default_dataset_index = dict(precip='NRCan', T2='NRCan', Tmin='NRCan', Tmax='NRCan', 
                              snow='SnoDAS', dswe='SnoDAS')
 
 
-## load functions
+## functions to load NetCDF datasets (using xarray)
 
-def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_index=None, folder=folder_6hourly, 
+def loadSnoDAS_Daily(varname=None, varlist=None, folder=None, grid=None, biascorrection=None, resampling=None,
+                     lgeoref=True, chunks=None, time_chunks=8, geoargs=None, **kwargs):
+    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
+    from datasets.SnoDAS import daily_folder, netcdf_varlist, netcdf_filename, netcdf_settings
+    if folder is None: folder = daily_folder
+    xds = loadXArray(varname=varname, varlist=varlist, folder=folder, grid=grid, biascorrection=biascorrection, resolution=None,
+                      filename_pattern=netcdf_filename, default_varlist=netcdf_varlist, resampling=resampling, lgeoref=lgeoref, 
+                      geoargs=geoargs, chunks=chunks, time_chunks=time_chunks, netcdf_settings=netcdf_settings, **kwargs)
+    return xds
+
+
+def loadNRCan_Daily(varname=None, varlist=None, folder=None, grid=None, resolution='CA12', resampling=None,
+                    lgeoref=True, geoargs=None, **kwargs):
+    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
+    from datasets.NRCan import daily_folder, netcdf_filename, netcdf_settings
+    if folder is None: folder = daily_folder
+    if resolution == 'CA12':
+        from datasets.NRCan import day12_vardefs, day12_derived
+        default_varlist = list(day12_derived) + [atts['name'] for atts in day12_vardefs.values()]
+    xds = loadXArray(varname=varname, varlist=varlist, folder=folder, grid=grid, biascorrection=None, resolution=resolution,
+                      filename_pattern=netcdf_filename, default_varlist=default_varlist, resampling=resampling, lgeoref=lgeoref, 
+                      geoargs=geoargs, netcdf_settings=netcdf_settings, **kwargs)
+    return xds
+
+
+def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_index=None, folder=None, 
                             lignore_missing=False, grid=None, biascorrection=None, lxarray=True, time_chunks=None, **kwargs):
     ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
     if not lxarray: 
@@ -133,19 +153,27 @@ if __name__ == '__main__':
 #   dask.set_options(pool=ThreadPool(4))
 
   modes = []
+#   modes += ['print_grid']
+#   modes += ['load_NRCan']
 #   modes += ['load_Daily']
-  modes += ['compute_derived']  
-#   modes += ['compute_NRCan']
+#   modes += ['compute_derived']  
+  modes += ['compute_NRCan']
 
   # some settings
   grid = None
+  grid = 'hd1' # small Quebec grid
   period = ('2011-01-01','2018-01-01')
   
   # loop over modes 
   for mode in modes:
     
+    if mode == 'print_grid':
+        
+        from geodata.gdal import loadPickledGridDef
+        griddef = loadPickledGridDef(grid='on1')
+        print(griddef)
                              
-    if mode == 'load_Daily':
+    elif mode == 'load_Daily':
        
   #       varlist = netcdf_varlist
         varlist = ['liqwatflx',]
@@ -161,6 +189,90 @@ if __name__ == '__main__':
         print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
   
     
+    elif mode == 'load_NRCan':
+       
+        varlist = ['liqwatflx',]
+        xds = loadNRCan_Daily(varname='precip', grid=None, )
+        print(xds)
+        print('')
+        for varname,xv in xds.variables.items(): 
+            if xv.ndim == 3: break
+        xv = xds[varname] # get DataArray instead of Variable object
+        #xv = xv.sel(time=slice('2018-01-01','2018-02-01'),x=slice(-3500,4500),y=slice(-1000,2000))
+        xv = xv.loc['2011-01-01',:,:]
+        print(xv)
+        print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
+  
+        
+    elif mode == 'compute_NRCan':
+      
+        start = time.time()
+        
+        # settings
+        from datasets.NRCan import day12_vardefs, day12_derived, varatts, daily_folder
+        derived_varlist = day12_derived
+        resolution = 'CA12'
+        resampling = 'cubic_spline'
+        grid = 'son2'
+        ts_name = 'time_stamp'
+        
+        # load data
+        load_varlist = [atts['name'] for atts in day12_vardefs.values()]
+        xds = loadNRCan_Daily(varlist=load_varlist, grid=grid, resampling=resampling, resolution=resolution) # take all
+        # optional slicing (time slicing completed below)
+        start_date = None; end_date = None # auto-detect available data
+#         start_date = '2011-01-01'; end_date = '2011-02-01'
+        
+        # slice and load time coordinate
+        xds = xds.loc[{'time':slice(start_date,end_date),}]
+        tsvar = xds[ts_name].load()
+               
+        print(xds)
+        
+        # loop over variables
+        for varname in derived_varlist:
+
+            # compute values 
+            if varname == 'T2':
+                ref_var = 'Tmax'      
+                note = 'simple average of Tmin and Tmax'          
+                xvar = xds['Tmin'] + xds['Tmax']
+                xvar /= 2                
+            else:
+                raise NotImplementedError(varname)
+                
+            # define/copy metadata
+            xvar.rename(varname)
+            xvar.attrs = xds[ref_var].attrs.copy()
+            for att in ('name','units','long_name',):
+                if att in varatts: xvar.attrs[att] = varatts[att]
+            if 'original_name' in xvar.attrs: del xvar.attrs['original_name'] # does not apply
+            xvar.attrs['note'] = note
+            #xvar.chunk(chunks=chunk_settings)
+            print(xvar)
+                
+            # create a dataset for export to new file
+            nds = xr.Dataset({ts_name:tsvar, varname:xvar,}, attrs=xds.attrs.copy())
+            nds = addGeoReference(nds, proj4_string=xds.attrs['proj4'], )
+            print('\n')
+            print(nds)
+            # define variable file path
+            var_str = varname
+            if grid: var_str += '_'+grid
+            nc_filename = '{}_{}_{}_daily.nc'.format('NRCan',resolution,var_str).lower() # should be lower case
+            nc_folder = daily_folder + '{}/{}/'.format(grid,resampling)
+            nc_filepath = nc_folder + nc_filename
+            print("\nExporting to new NetCDF-4 file:\n '{}'".format(nc_filepath))
+            # write to NetCDF
+            var_enc = dict(zlib=True, complevel=1, ) # _FillValue=-9999, chunksizes=netcdf_settings['chunksizes']
+            nds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
+                          encoding={varname:var_enc,}, compute=True)
+
+        # print timing
+        end =  time.time()
+        print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
+      
+        
     elif mode == 'compute_variables':
        
         tic = time.time()
@@ -197,9 +309,6 @@ if __name__ == '__main__':
             if lderived:
                 datasets[dataset] = loadMergedForcing_Daily(grid=grid, varlist=derived_valist, 
                                                             dataset=dataset, lignore_missing=True)
-            else:
-                datasets[dataset] = loadCaSPAr_Raw(dataset=dataset, grid=grid, 
-                                                   period=period, drop_variables=drop_variables)
         ref_ds = datasets[reference_dataset]
         print(ref_ds)
         tsvar = ref_ds[ts_name].load()

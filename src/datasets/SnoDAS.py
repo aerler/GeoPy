@@ -92,10 +92,10 @@ snodas_shape2d = (SnoDAS_grid.size[1],SnoDAS_grid.size[0]) # 4096x8192
 binary_dtype = np.dtype('>i2') # big-endian 16-bit signed integer
 # settings for NetCDF-4 files
 avgfolder = root_folder + dataset_name.lower()+'avg/' 
-avgfile   = 'snodas{0:s}_clim{1:s}.nc' # the filename needs to be extended: biascorrection, grid and period
-tsfile    = 'snodas_{0:s}{1:s}{2:s}_monthly.nc' # extend with biascorrection, variable and grid type
+avgfile   = 'snodas{0:s}_clim{1:s}.nc' # the filename needs to be extended: bias_correction, grid and period
+tsfile    = 'snodas_{0:s}{1:s}{2:s}_monthly.nc' # extend with bias_correction, variable and grid type
 daily_folder    = root_folder + dataset_name.lower()+'_daily/' 
-netcdf_filename = dataset_name.lower()+'_{:s}_daily.nc' # extend with variable name
+netcdf_filename = dataset_name.lower()+'_{VAR:s}_daily.nc' # extend with variable name
 netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
 netcdf_settings = dict(chunksizes=(8,snodas_shape2d[0]/16,snodas_shape2d[1]/32))
 
@@ -298,7 +298,7 @@ def checkGeoReference(xds, geoargs=None, grid=None):
 
 ## functions to load NetCDF datasets (using xarray)
 
-def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, grid=None, biascorrection=None,
+def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, grid=None, bias_correction=None, resampling=None,
                      lxarray=True, lgeoref=True, chunks=None, time_chunks=8, geoargs=None, **kwargs):
     ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
     if not lxarray: 
@@ -309,22 +309,22 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, grid=None,
         chunks = dict(time=time_chunks,lat=cks[1],lon=cks[2])
     if grid: folder = '{}/{}'.format(folder,grid) # non-native grids are stored in sub-folders
     # load variables
+    if bias_correction is None and 'resolution' in kwargs: bias_correction = kwargs['resolution'] # allow backdoor
     if varname and varlist: raise ValueError(varname,varlist)
-    if biascorrection is None and 'resolution' in kwargs: biascorrection = kwargs['resolution'] # allow backdoor
     elif varname:
         # load a single variable
         if grid: varname = '{}_{}'.format(varname,grid) # also append non-native grid name to varname
-        if biascorrection: varname = '{}_{}'.format(biascorrection,varname) # prepend bias correction method
-        filepath = '{}/{}'.format(folder,netcdf_filename.format(varname))
+        if bias_correction: varname = '{}_{}'.format(bias_correction,varname) # prepend bias correction method
+        filepath = '{}/{}'.format(folder,netcdf_filename.format(VAR=varname).lower())
         xds = xr.open_dataset(filepath, chunks=chunks, **kwargs)
     else:
         if varlist is None: varlist = netcdf_varlist
         if grid: # also append non-native grid name to varnames
             varlist = ['{}_{}'.format(varname,grid) for varname in varlist]
-        if biascorrection: # prepend bias correction method to varnames
-            varlist = ['{}_{}'.format(biascorrection,varname) for varname in varlist]
+        if bias_correction: # prepend bias correction method to varnames
+            varlist = ['{}_{}'.format(bias_correction,varname) for varname in varlist]
         # load multifile dataset (variables are in different files
-        filepaths = ['{}/{}'.format(folder,netcdf_filename.format(varname)) for varname in varlist]
+        filepaths = ['{}/{}'.format(folder,netcdf_filename.format(VAR=varname).lower()) for varname in varlist]
         xds = xr.open_mfdataset(filepaths, chunks=chunks, **kwargs)
         #xds = xr.merge([xr.open_dataset(fp, chunks=chunks, **kwargs) for fp in filepaths])    
     # add projection
@@ -333,13 +333,13 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, grid=None,
 
 
 def loadSnoDAS_TS(varname=None, varlist=None, name=dataset_name, grid=None, folder=avgfolder, tsfile=tsfile, 
-                  biascorrection=None, lxarray=True, lgeoref=True, lmonthly=False, 
+                  bias_correction=None, lxarray=True, lgeoref=True, lmonthly=False, 
                   chunks=None, time_chunks=1, geoargs=None, **kwargs):
     ''' function to load gridded monthly transient SnoDAS data '''
     # resolve filename strings
     grid_str = '_'+grid if grid else ''
-    if biascorrection is None and 'resolution' in kwargs: biascorrection = kwargs['resolution'] # allow backdoor
-    bc_str = biascorrection+'_' if biascorrection else ''
+    if bias_correction is None and 'resolution' in kwargs: bias_correction = kwargs['resolution'] # allow backdoor
+    bc_str = bias_correction+'_' if bias_correction else ''
     # remove some common arguments that have no meaning
     for key in ('resolution',):
         if key in kwargs: del kwargs[key]
@@ -398,7 +398,7 @@ def loadSnoDAS_TS(varname=None, varlist=None, name=dataset_name, grid=None, fold
 
 
 def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfolder, avgfile=avgfile, 
-               biascorrection=None, lxarray=False, lgeoref=True, chunks=None, time_chunks=None, geoargs=None, 
+               bias_correction=None, lxarray=False, lgeoref=True, chunks=None, time_chunks=None, geoargs=None, 
                name=dataset_name, title=dataset_name, filemode='r', **kwargs):
     ''' function to load monthly SnoDAS climatology (gridded monthly normals) '''
     if time_chunks:
@@ -418,7 +418,7 @@ def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfol
     if lxarray:
         # set options
         grid_str = '_'+grid if grid else ''
-        if biascorrection: grid_str = '_'+biascorrection + grid_str
+        if bias_correction: grid_str = '_'+bias_correction + grid_str
         filepath = folder + avgfile.format(grid_str,prd_str)
         if varname and varlist: raise ValueError(varname,varlist)
         elif varname: varlist = [varname]
@@ -430,8 +430,8 @@ def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfol
         if lgeoref: dataset = checkGeoReference(dataset, geoargs=geoargs, grid=grid)
     else:
         # load standardized climatology dataset with NRCan-specific parameters
-        if biascorrection is None and 'resolution' in kwargs: biascorrection = kwargs['resolution'] # allow backdoor
-        dataset = loadObservations(name=name, folder=folder, projection=None, resolution=biascorrection, 
+        if bias_correction is None and 'resolution' in kwargs: bias_correction = kwargs['resolution'] # allow backdoor
+        dataset = loadObservations(name=name, folder=folder, projection=None, resolution=bias_correction, 
                                    filepattern=avgfile, period=period, grid=grid, varlist=varlist, varatts=None, 
                                    griddef=SnoDAS_grid, title=title, filelist=None, lautoregrid=False, 
                                    mode='climatology', filemode=filemode)
@@ -441,11 +441,11 @@ def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfol
 
 # function to load shape-averaged data
 def loadSnoDAS_Shp(name=dataset_name, title=dataset_name, period=None, shape=None, varlist=None, 
-                   grid=None, biascorrection=None, varatts=None, folder=avgfolder, filelist=None, 
+                   grid=None, bias_correction=None, varatts=None, folder=avgfolder, filelist=None, 
                    lencl=False):
   ''' Get the pre-processed monthly SnoDAS climatology averaged over regions as a DatasetNetCDF. '''
   # load standardized climatology dataset with PCIC-specific parameters  
-  dataset = loadObservations(name=name, folder=folder, resolution=biascorrection, shape=shape, 
+  dataset = loadObservations(name=name, folder=folder, resolution=bias_correction, shape=shape, 
                              lencl=lencl, grid=grid, title=title, varlist=varlist, varatts=varatts, 
                              filepattern=avgfile, filelist=filelist, lautoregrid=False, 
                              period=period, mode='climatology')
@@ -454,13 +454,13 @@ def loadSnoDAS_Shp(name=dataset_name, title=dataset_name, period=None, shape=Non
 
 # function to load shape-averaged data
 def loadSnoDAS_ShpTS(name=dataset_name, title=dataset_name, shape=None, varlist=None, 
-                     grid=None, biascorrection=None, varatts=None, folder=avgfolder, filelist=None, 
+                     grid=None, bias_correction=None, varatts=None, folder=avgfolder, filelist=None, 
                      lencl=False, lfixTime=True):
   ''' Get the pre-processed monthly SnoDAS time-series averaged over regions as a DatasetNetCDF. '''
   # load standardized climatology dataset with PCIC-specific parameters  
   shptsfile = 'snodas{0:s}_monthly.nc' # reduce arguments to one, since we don't have separate files for 
-  #                                    # for variables anymore, and biascorrection is handled differently
-  dataset = loadObservations(name=name, folder=folder, resolution=biascorrection, shape=shape, 
+  #                                    # for variables anymore, and bias_correction is handled differently
+  dataset = loadObservations(name=name, folder=folder, resolution=bias_correction, shape=shape, 
                              lencl=lencl, grid=grid, title=title, varlist=varlist, varatts=varatts, 
                              filepattern=shptsfile, filelist=filelist, lautoregrid=False, 
                              mode='time-series')
@@ -535,22 +535,22 @@ if __name__ == '__main__':
 #   modes += ['test_binary_reader'    ]
 #   modes += ['convert_binary'        ]
 #   modes += ['add_variables'         ]
-#   modes += ['load_Daily'            ]
-  modes += ['monthly_mean'          ]
-  modes += ['load_TimeSeries'       ]
-  modes += ['monthly_normal'        ]
-  modes += ['load_Climatology'      ]
+  modes += ['load_Daily'            ]
+#   modes += ['monthly_mean'          ]
+#   modes += ['load_TimeSeries'       ]
+#   modes += ['monthly_normal'        ]
+#   modes += ['load_Climatology'      ]
 
-  pntset = 'oncat'
+#   pntset = 'oncat'
 #   grid = None # native
 #   grid = 'grw1'
 #   grid = 'wc2_d01'
 #   grid = 'on1' # large Ontario domain
-#   grid = 'hd1' # large Ontario domain
-  grid = 'glb1_d01'
+  grid = 'hd1' # small Quebec domain
+#   grid = 'glb1_d01'
 
-  biascorrection = None # no bias correction
-#   biascorrection = 'rfbc' # random forest bias-correction
+  bias_correction = None # no bias correction
+#   bias_correction = 'rfbc' # random forest bias-correction
 
   # variable list
   varlist = netcdf_varlist
@@ -571,7 +571,7 @@ if __name__ == '__main__':
        
         
         lxarray = False
-        ds = loadSnoDAS(varlist=varlist, period=period, biascorrection=biascorrection, grid=grid, 
+        ds = loadSnoDAS(varlist=varlist, period=period, bias_correction=bias_correction, grid=grid, 
                         lxarray=lxarray) # load regular GeoPy dataset
         print(ds)
         print('')
@@ -628,7 +628,7 @@ if __name__ == '__main__':
         start = time.time()
             
         # load variables object (not data!)
-        xds   = loadSnoDAS_TS(varlist=varlist, biascorrection=biascorrection, grid=grid, lxarray=True) # need Dask!
+        xds   = loadSnoDAS_TS(varlist=varlist, bias_correction=bias_correction, grid=grid, lxarray=True) # need Dask!
         xds   = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
         ts_var = xds[ts_name].load()
         print(xds)
@@ -662,7 +662,7 @@ if __name__ == '__main__':
         
         # save resampled dataset
         grid_str = '' if grid is None else '_'+grid
-        if biascorrection: grid_str = '_'+biascorrection + grid_str
+        if bias_correction: grid_str = '_'+bias_correction + grid_str
         filepath = avgfolder+avgfile.format(grid_str,'_'+prdstr)
         # write to NetCDF
         var_enc = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=chunks)
@@ -696,7 +696,7 @@ if __name__ == '__main__':
         lpickle = False
         geoargs = dict(griddef=None, ) if lpickle else None
         varname = varlist[0]
-        xds = loadSnoDAS_TS(varlist=varlist, time_chunks=1, biascorrection=biascorrection, 
+        xds = loadSnoDAS_TS(varlist=varlist, time_chunks=1, bias_correction=bias_correction, 
                             grid=grid, lxarray=lxarray, geoargs=geoargs) # 32 time chunks may be possible
         print(xds)
         print('')
@@ -758,7 +758,7 @@ if __name__ == '__main__':
         for varname in varlist:
                  
             # load variables object (not data!)
-            xds   = loadSnoDAS_Daily(varname=varname, biascorrection=biascorrection, grid=grid, time_chunks=1)
+            xds   = loadSnoDAS_Daily(varname=varname, bias_correction=bias_correction, grid=grid, time_chunks=1)
             xds   = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
             #print(xds)
             #print('\n')
@@ -770,7 +770,7 @@ if __name__ == '__main__':
                   
             # save resampled dataset
             grid_str = '' if grid is None else '_'+grid
-            bc_str = biascorrection+'_' if biascorrection else ''
+            bc_str = bias_correction+'_' if bias_correction else ''
             filepath = avgfolder+tsfile.format(bc_str,varname,grid_str) # native grid...
             # write to NetCDF
             netcdf_encoding = dict(zlib=True, complevel=1, _FillValue=-9999, chunksizes=chunks)
@@ -807,9 +807,10 @@ if __name__ == '__main__':
             
   #       varlist = netcdf_varlist
 #         varlist = ['liqwatflx','precip','rho_snw']
+        varlist = ['snow']; grid = 'hd1'; bias_correction = 'rfbc'
         varname = varlist[0]
         xds = loadSnoDAS_Daily(varlist=varlist, time_chunks=time_chunks,
-                               biascorrection=biascorrection, grid=grid) # 32 may be possible
+                               bias_correction=bias_correction, grid=grid) # 32 may be possible
         print(xds)
         print('')
         xv = xds[varname]
@@ -843,7 +844,7 @@ if __name__ == '__main__':
         ts_name = 'time_stamp'
         derived_varlist = ['liqwatflx','precip','rho_snw',]
         xds = loadSnoDAS_Daily(varlist=binary_varlist, time_chunks=time_chunks,
-                               biascorrection=biascorrection, grid=grid)
+                               bias_correction=bias_correction, grid=grid)
         # N.B.: need to avoid loading derived variables, because they may not have been extended yet (time length)
         print(xds)
         
@@ -870,7 +871,7 @@ if __name__ == '__main__':
             if grid: 
                 varname = '{}_{}'.format(varname,grid) # also append non-native grid name to varname
                 folder = '{}/{}'.format(folder,grid)
-            if biascorrection: varname = '{}_{}'.format(biascorrection,varname) # prepend bias correction method
+            if bias_correction: varname = '{}_{}'.format(bias_correction,varname) # prepend bias correction method
             nc_filepath = '{}/{}'.format(folder,netcdf_filename.format(varname))
             if lappend_master and osp.exists(nc_filepath):
                 ncds = nc.Dataset(nc_filepath, mode='a')

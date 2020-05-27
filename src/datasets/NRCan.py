@@ -68,7 +68,6 @@ varlist = list(varatts.keys()) # also includes coordinate fields
 # variable and file lists settings
 nofile = ('T2','solprec','lat','lon','time') # variables that don't have their own files
 
-
 ## Functions to load different types of NRCan datasets 
 
 def checkGridRes(grid, resolution, snow_density=None, period=None, lclim=False):
@@ -104,7 +103,7 @@ avgfile = 'nrcan{0:s}_clim{1:s}.nc' # the filename needs to be extended by %('_'
 tsfile = 'nrcan{0:s}_monthly.nc' # extend with grid type only
 # daily data
 daily_folder    = root_folder + dataset_name.lower()+'_daily/' 
-netcdf_filename = dataset_name.lower()+'_{:s}_daily.nc' # extend with variable name
+netcdf_filename = dataset_name.lower()+'_{RES:s}_{VAR:s}_daily.nc' # extend with variable name
 netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
 netcdf_settings = dict(chunksizes=(8,256,256))
 
@@ -669,14 +668,14 @@ if __name__ == '__main__':
         from time import time
         
         # parameters for daily ascii
-#         varlist = ['pcp',]
-        varlist = day12_vardefs.keys()
-        grid = 'CA12'
-        griddef = grid_def[grid]
+        varlist = ['pcp',]
+#         varlist = day12_vardefs.keys()
+        grid_res = 'CA12'
+        griddef = grid_def[grid_res]
         # parameters for rasters
-#         start_date = '2011-01-01'; end_date = '2011-01-09'; sampling = 'D'; loverwrite = True
-        start_date = '2011-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = False
-        raster_folder = root_folder + grid+'_Daily/'
+        start_date = '2011-01-01'; end_date = '2011-02-01'; sampling = 'D'; loverwrite = True
+#         start_date = '2011-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = False
+        raster_folder = root_folder + grid_res+'_Daily/'
         def raster_path_func(datetime, varname, **varatts):
             ''' determine path to appropriate raster for given datetime and variable'''
             day = datetime.dayofyear
@@ -698,7 +697,8 @@ if __name__ == '__main__':
             
             print("\n   ***   Reading rasters for variable '{}' ('{}')   ***   \n".format(varname,day12_vardefs[varname]['name']))
             
-            nc_filepath = daily_folder + netcdf_filename.format(varname+'_'+grid.lower())
+            nc_name = day12_vardefs[varname]['name']
+            nc_filepath = daily_folder + netcdf_filename.format(VAR=nc_name, RES=grid_res).lower()
             vardef = {varname:day12_vardefs[varname]} # only one variable
             # read rasters and write to NetCDF file
             convertRasterToNetCDF(filepath=nc_filepath, raster_folder=raster_folder, raster_path_func=raster_path_func, vardefs=vardef, 
