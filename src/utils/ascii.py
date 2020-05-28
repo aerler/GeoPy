@@ -52,7 +52,7 @@ def convertRasterToNetCDF(filepath=None, raster_folder=None, raster_path_func=No
     '''
     import pandas as pd
     import netCDF4 as nc
-    from utils.nctools import add_coord, add_var, coerceAtts
+    from utils.nctools import add_coord, add_var, checkFillValue
       
     ## open NetCDF dataset
     if isinstance(filepath,str) and ( loverwrite or not os.path.exists(filepath) ):
@@ -196,8 +196,7 @@ def convertRasterToNetCDF(filepath=None, raster_folder=None, raster_path_func=No
                     lgzip = raster_path.endswith('.gz')
                 if os.path.exists(raster_path):
                     raster_data, geotrans, nodata = readASCIIraster(raster_path, lgzip=lgzip, lgdal=lgdal, dtype=varatts.get('dtype',np.float32), 
-                                                                    lmask=lmask, fillValue=varatts.get('fillValue',None), lgeotransform=True, 
-                                                                    lna=True)
+                                                                    lmask=lmask, fillValue=None, lgeotransform=True, lna=True)
                     assert all(np.isclose(geotrans,griddef.geotransform)), geotrans           
                     if fillValue is None: 
                         fillValues[varname] = nodata # remember for next field
@@ -216,8 +215,20 @@ def convertRasterToNetCDF(filepath=None, raster_folder=None, raster_path_func=No
                     else:
                         NotImplementedError("Need to be able to generate missing data in order to skip missing raster.")
                 # save data to NetCDF
+                if lmask:
+                    if fillValue is not None: raster_data = raster_data.filled(fillValue)
+                    else: raster_data = raster_data.filled() # hopefully default was set...
                 ncds.variables[nc_name][i,:,:] = raster_data
         ## maybe compute some derived variables?
+
+    # set missing value flags (fillValue may have to be inferred from ascii, hence set last)
+    for varname,fillValue in fillValues.items():
+        nc_name = vardefs[varname].get('name',varname)
+        ncvar = ncds.variables[nc_name] 
+            # make sure fillValue is OK (there have been problems...)    
+        fillValue = checkFillValue(fillValue, ncvar.dtype)
+        if fillValue is not None:
+            ncvar.setncattr('missing_value',fillValue) # I use fillValue and missing_value the same way
 
     # close file
     ncds.sync(); ncds.close()
@@ -539,6 +550,7 @@ def readASCIIraster(filepath, lgzip=None, lgdal=True, dtype=np.float32, lmask=Tr
             if lmask: 
               data = ma.masked_equal(data, value=na, copy=False)
               if fillValue is not None: data._fill_value = fillValue
+              else: data._fill_value = na
             elif fillValue is not None: 
               data[data == na] = fillValue # replace original fill value 
           

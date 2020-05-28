@@ -482,7 +482,7 @@ day12_period = (2011,2018) # SnoDAS period for southern Ontario
 day12_defaults = dict(axes=('year','day',None,None), dtype=np.float32, fillValue=None)
 day12_vardefs = dict(maxt = dict(grid='CA12', name='Tmax', units='K', offset=273.15, alt_name='max', **day12_defaults), # 2m maximum temperature, originally in degrees Celsius
                      mint = dict(grid='CA12', name='Tmin', units='K', offset=273.15, alt_name='min', **day12_defaults), # 2m minimum temperature
-                     pcp  = dict(grid='CA12', name='precip', units='kg/m^2/day', **day12_defaults),) # total precipitation
+                     pcp  = dict(grid='CA12', name='precip', units='kg/m^2/s', scalefactor=1./86400., **day12_defaults),) # total precipitation
 # define original split and merged time axes
 day12_axdefs = dict(time = dict(name='time', units='day', coord=np.arange(1,366)),) # time coordinate
 day12_matts = dict(name='time', units='day', long_name='Days since 1979-01-01', merged_axes = ('year','day'))
@@ -668,13 +668,15 @@ if __name__ == '__main__':
         from time import time
         
         # parameters for daily ascii
-        varlist = ['pcp',]
+#         varlist = ['pcp',]
 #         varlist = day12_vardefs.keys()
+        varlist = ['pcp', 'maxt', 'mint'] # order of importance...
         grid_res = 'CA12'
         griddef = grid_def[grid_res]
         # parameters for rasters
-        start_date = '2011-01-01'; end_date = '2011-02-01'; sampling = 'D'; loverwrite = True
+#         start_date = '2011-01-01'; end_date = '2011-02-01'; sampling = 'D'; loverwrite = True
 #         start_date = '2011-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = False
+        start_date = '2000-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = True
         raster_folder = root_folder + grid_res+'_Daily/'
         def raster_path_func(datetime, varname, **varatts):
             ''' determine path to appropriate raster for given datetime and variable'''
