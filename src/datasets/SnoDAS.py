@@ -919,7 +919,7 @@ if __name__ == '__main__':
                 for att in ('name','units','long_name',):
                     xvar.attrs[att] = var_atts[att]
                 xvar.attrs['note'] = note
-                xvar.chunk(chunks=chunk_settings)
+                xvar = xvar.chunk(chunks=chunk_settings)
                 print(xvar)
           
                 
