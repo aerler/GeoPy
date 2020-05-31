@@ -128,25 +128,47 @@ def loadNRCan_Daily(varname=None, varlist=None, folder=None, grid=None, resoluti
     return xds
 
 
-def loadMergedForcing_Daily(varname=None, varlist=None, dataset=None, dataset_index=None, folder=None, 
-                            lignore_missing=False, grid=None, bias_correction=None, lxarray=True, time_chunks=None, **kwargs):
-    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
-    if not lxarray: 
-        raise NotImplementedError("Only loading via xarray is currently implemented.")
+def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, dataset_args=None, time_slice=None, **kwargs):
+    ''' function to load and merge data from different high-resolution datasets (e.g. SnoDAS or NRCan) using xarray;
+        typical dataset-agnostic arguments: grid=str, lgeoref=True, geoargs=dict, chunks=dict, lautoChunk=False, 
+        typical dataset-specific arguments: folder=str, resolution=str, resampling=str '''
+    # figure out varlist
     if varname and varlist: raise ValueError(varname,varlist)
-    elif varname: varlist = [varname]
+    elif varname:
+        varlist = [varname] # load a single variable
     elif varlist is None:
-        if dataset is None:
-            raise ValueError("Please specify a 'dataset' value in order to load a default variable list.\n"
-                             "Supported datasets: {}".format(dataset_list))
-        varlist = dataset_attributes[dataset].varatts.keys()
-    # check dataset time intervals/timesteps
+        varlist = list(varatts.keys())   
+    if dataset_args is None: dataset_args = dict()# avoid errors
+    # assemble dataset list and arguments
     if dataset_index is None: dataset_index = default_dataset_index.copy()
+    dataset_varlists = dict()
     for varname in varlist:
-        ds_name = dataset_index.get(varname,'CaSPAr')
-        interval = dataset_attributes[ds_name].interval
-        if interval != '6H': 
-            raise ValueError(varname,ds_name,interval)
+        ds_name = dataset_index.get(varname,dataset_name) # default is native (global variable)
+        if ds_name not in dataset_varlists: dataset_varlists[ds_name] = [varname] 
+        else: dataset_varlists[ds_name].append(varname)         
+    ## load datasets
+    xds = xr.Dataset()
+    # NRCan
+    if 'NRCan' in dataset_varlists:
+        # prepare kwargs
+        ds_args = kwargs.copy(); 
+        if 'NRCan' in dataset_args: ds_args.update(dataset_args['NRCan'])
+        if 'resolution' not in ds_args: ds_args['resolution'] = 'CA12'
+        ds = loadNRCan_Daily(varlist=dataset_varlists['NRCan'], **ds_args)
+        if time_slice: ds = ds.loc[{'time':slice(*time_slice),}] # slice time - helps with merging!
+        xds.update(ds)
+    # SnoDAS
+    if 'SnoDAS' in dataset_varlists:
+        # prepare kwargs
+        ds_args = kwargs.copy(); 
+        if 'SnoDAS' in dataset_args: ds_args.update(dataset_args['SnoDAS'])
+        ds = loadSnoDAS_Daily(varlist=dataset_varlists['SnoDAS'], **ds_args)
+        if time_slice: ds = ds.loc[{'time':slice(*time_slice),}] # slice time
+        xds.update(ds)
+        
+    # TODO: function to auto-detect time slices and form subset - makes merging much quicker!
+    
+    # return merged dataset
     return xds
 loadDailyTimeSeries = loadMergedForcing_Daily
 
@@ -169,14 +191,15 @@ if __name__ == '__main__':
 
   modes = []
 #   modes += ['print_grid']
-  modes += ['compute_derived']
+#   modes += ['compute_derived']
 #   modes += ['load_NRCan']
-#   modes += ['load_Daily']
+  modes += ['load_Daily']
 #   modes += ['compute_PET']  
 
   # some settings
   grid = None
-  grid = 'hd1' # small Quebec grid
+#   grid = 'hd1' # small Quebec grid
+  grid = 'son2' # high-res Southern Ontario
   period = ('2011-01-01','2018-01-01')
   
   # loop over modes 
@@ -191,17 +214,19 @@ if __name__ == '__main__':
     elif mode == 'load_Daily':
        
   #       varlist = netcdf_varlist
-        varlist = ['liqwatflx',]
-        xds = loadMergedForcing_Daily(varlist=None, grid=grid, dataset='HRDPS', lignore_missing=True)
+        varlist = ['precip','snow']
+        dataset_args = dict(SnoDAS=dict(bias_correction='rfbc'))
+        time_slice = ('2011-01-01','2017-01-01')
+        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, dataset_args=dataset_args, time_slice=time_slice)
         print(xds)
         print('')
         for varname,xv in xds.variables.items(): 
             if xv.ndim == 3: break
         xv = xds[varname] # get DataArray instead of Variable object
-        xv = xv.sel(time=slice('2018-01-01','2018-02-01'),x=slice(-3500,4500),y=slice(-1000,2000))
+#         xv = xv.sel(time=slice('2018-01-01','2018-02-01'),x=slice(-3500,4500),y=slice(-1000,2000))
   #       xv = xv.loc['2011-01-01',:,:]
         print(xv)
-        print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
+#         print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
   
     
     elif mode == 'load_NRCan':
