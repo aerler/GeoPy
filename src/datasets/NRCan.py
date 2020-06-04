@@ -107,6 +107,25 @@ netcdf_filename = dataset_name.lower()+'_{RES:s}_{VAR:s}_daily.nc' # extend with
 netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
 netcdf_settings = dict(chunksizes=(8,256,256))
 
+
+
+def loadNRCan_Daily(varname=None, varlist=None, folder=None, grid=None, resolution='CA12', resampling=None, lgeoref=True,
+                    geoargs=None, chunks=None, lautoChunk=False, lxarray=True, lgeospatial=True, **kwargs):
+    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
+    if not ( lxarray and lgeospatial ): 
+        raise NotImplementedError("Only loading via geospatial.xarray_tools is currently implemented.")
+    from geospatial.xarray_tools import loadXArray
+    if folder is None: folder = daily_folder
+    if resolution is None: resolution = 'CA12' # default
+    if resolution == 'CA12':
+        default_varlist = list(day12_derived) + [atts['name'] for atts in day12_vardefs.values()]
+    xds = loadXArray(varname=varname, varlist=varlist, folder=folder, grid=grid, bias_correction=None, resolution=resolution,
+                      filename_pattern=netcdf_filename, default_varlist=default_varlist, resampling=resampling, lgeoref=lgeoref, 
+                      geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
+    xds.attrs['name'] = 'NRCan'; xds.attrs['title'] = xds.attrs['name']+' Daily Timeseries'
+    return xds
+
+
 # function to load these files...
 def loadNRCan(name=dataset_name, title=dataset_name, resolution=None, period=clim_period, grid=None, varlist=None, 
               snow_density=None, varatts=None, folder=avgfolder, filelist=None, lautoregrid=False, filemode='r'):
@@ -624,17 +643,19 @@ TS_grids += ['na12_tundra','na12_taiga','na12_maritime','na12_ephemeral','na12_p
 grid_res = {'NA12':1./12.,'NA60':1./60.,'CA12':1./12.,'CA24':1./24.} # no special name, since there is only one...
 default_grid = NRCan_NA12_grid
 # functions to access specific datasets
+loadDailyTimeSeries = loadNRCan_Daily # daily time-series data
 loadLongTermMean = loadNRCan # climatology provided by publisher
-loadTimeSeries = loadNRCan_TS # time-series data
-loadClimatology = loadNRCan # pre-processed, standardized climatology
+loadTimeSeries   = loadNRCan_TS # time-series data
+loadClimatology  = loadNRCan # pre-processed, standardized climatology
 loadStationClimatology = loadNRCan_Stn # climatologies without associated grid (e.g. stations) 
-loadStationTimeSeries = loadNRCan_StnTS # time-series without associated grid (e.g. stations)
+loadStationTimeSeries  = loadNRCan_StnTS # time-series without associated grid (e.g. stations)
 loadShapeClimatology = loadNRCan_Shp # climatologies without associated grid (e.g. provinces or basins) 
-loadShapeTimeSeries = loadNRCan_ShpTS # time-series without associated grid (e.g. provinces or basins)
+loadShapeTimeSeries  = loadNRCan_ShpTS # time-series without associated grid (e.g. provinces or basins)
 
 
 if __name__ == '__main__':
   
+    mode = 'test_daily'
 #     mode = 'test_climatology'
 #     mode = 'test_timeseries'
 #     mode = 'test_point_climatology'
@@ -642,7 +663,7 @@ if __name__ == '__main__':
 #     mode = 'convert_Normals'
 #     mode = 'convert_Historical'
 #     mode = 'convert_Daily'
-    mode = 'convert_to_netcdf';
+#     mode = 'convert_to_netcdf';
 #     mode = 'add_CMC'
 #     mode = 'test_CMC'
     pntset = 'glbshp' # 'ecprecip'
@@ -675,8 +696,8 @@ if __name__ == '__main__':
         griddef = grid_def[grid_res]
         # parameters for rasters
 #         start_date = '2011-01-01'; end_date = '2011-02-01'; sampling = 'D'; loverwrite = True
-#         start_date = '2011-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = False
-        start_date = '2000-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = True
+        start_date = '2011-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = False
+#         start_date = '2000-01-01'; end_date = '2018-01-01'; sampling = 'D'; loverwrite = True
         raster_folder = root_folder + grid_res+'_Daily/'
         def raster_path_func(datetime, varname, **varatts):
             ''' determine path to appropriate raster for given datetime and variable'''
@@ -772,6 +793,21 @@ if __name__ == '__main__':
                     skipUnloaded=False, feedback=True, close=True)
         assert os.path.exists(ncfile), ncfile
         
+    
+    elif mode == 'test_daily':
+       
+        varlist = ['liqwatflx',]
+        xds = loadNRCan_Daily(varname='precip', grid=None, lautoChunk=True)
+        print(xds)
+        print('')
+        for varname,xv in xds.variables.items(): 
+            if xv.ndim == 3: break
+        xv = xds[varname] # get DataArray instead of Variable object
+        #xv = xv.sel(time=slice('2018-01-01','2018-02-01'),x=slice(-3500,4500),y=slice(-1000,2000))
+        xv = xv.loc['2011-01-01',:,:]
+        print(xv)
+        print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
+    
     elif mode == 'test_climatology':
             
         # load averaged climatology file

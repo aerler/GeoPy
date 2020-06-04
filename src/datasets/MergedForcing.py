@@ -18,6 +18,8 @@ import numpy as np
 import netCDF4 as nc # netCDF4-python module
 import xarray as xr
 from collections import namedtuple
+from importlib import import_module
+import inspect
 # internal imports
 from datasets.common import getRootFolder
 # for georeferencing
@@ -101,38 +103,12 @@ def getFolderFileName(varname=None, dataset=None, grid=None, resampling=None, re
 
 ## functions to load NetCDF datasets (using xarray)
 
-def loadSnoDAS_Daily(varname=None, varlist=None, folder=None, grid=None, bias_correction=None, resampling=None,
-                     lgeoref=True, geoargs=None, chunks=None, lautoChunk=False, **kwargs):
-    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
-    from datasets.SnoDAS import daily_folder, netcdf_varlist, netcdf_filename
-    if folder is None: folder = daily_folder
-    xds = loadXArray(varname=varname, varlist=varlist, folder=folder, grid=grid, bias_correction=bias_correction, resolution=None,
-                      filename_pattern=netcdf_filename, default_varlist=netcdf_varlist, resampling=resampling, lgeoref=lgeoref, 
-                      geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
-    xds.attrs['name'] = 'SnoDAS'; xds.attrs['title'] = xds.attrs['name']+' Daily Timeseries' 
-    return xds
-
-
-def loadNRCan_Daily(varname=None, varlist=None, folder=None, grid=None, resolution='CA12', resampling=None,
-                    lgeoref=True, geoargs=None, chunks=None, lautoChunk=False, **kwargs):
-    ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
-    from datasets.NRCan import daily_folder, netcdf_filename
-    if folder is None: folder = daily_folder
-    if resolution == 'CA12':
-        from datasets.NRCan import day12_vardefs, day12_derived
-        default_varlist = list(day12_derived) + [atts['name'] for atts in day12_vardefs.values()]
-    xds = loadXArray(varname=varname, varlist=varlist, folder=folder, grid=grid, bias_correction=None, resolution=resolution,
-                      filename_pattern=netcdf_filename, default_varlist=default_varlist, resampling=resampling, lgeoref=lgeoref, 
-                      geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
-    xds.attrs['name'] = 'NRCan'; xds.attrs['title'] = xds.attrs['name']+' Daily Timeseries' 
-    return xds
-
 
 def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, dataset_args=None, time_slice=None, 
                             compat='override', join='inner', fill_value=None, **kwargs):
     ''' function to load and merge data from different high-resolution datasets (e.g. SnoDAS or NRCan) using xarray;
         typical dataset-agnostic arguments: grid=str, lgeoref=True, geoargs=dict, chunks=dict, lautoChunk=False, 
-        typical dataset-specific arguments: folder=str, resolution=str, resampling=str '''
+        typical dataset-specific arguments: folder=str, resampling=str, resolution=str, bias_correction=str '''
     # figure out varlist
     if varname and varlist: raise ValueError(varname,varlist)
     elif varname:
@@ -149,41 +125,34 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
         else: dataset_varlists[ds_name].append(varname)         
     ## load datasets
     ds_list = []
-    # Merged Forcing
-    if dataset_name in dataset_varlists:
+    for dataset,varlist in dataset_varlists.items():
         # prepare kwargs
         ds_args = kwargs.copy(); 
-        if dataset_name in dataset_args: ds_args.update(dataset_args[dataset_name])
-        ds = loadXArray(varlist=dataset_varlists[dataset_name], folder=daily_folder, 
-                        filename_pattern=netcdf_filename, default_varlist=None, **kwargs)
+        if dataset in dataset_args: ds_args.update(dataset_args[dataset])
+        if dataset.lower() == dataset_name.lower():
+            # native MergedForcing
+            ds_args.update(folder=daily_folder, filename_pattern=netcdf_filename)
+            loadFunction = loadXArray; argslist = ['grid', ] # specific arguments for merged dataset variables
+        else:
+            # daily data from other datasets
+            ds_mod = import_module('datasets.{0:s}'.format(dataset)) # import dataset module
+            loadFunction = ds_mod.loadDailyTimeSeries
+            argslist = inspect.getfullargspec(loadFunction); argslist = argslist.args # list of actual arguments
+        # remove some args that don't apply
+        for key in ('resolution','bias_correction'): # list of dataset-specific arguments that have to be controlled
+            if key not in argslist and key in ds_args: del ds_args[key]
+        # load time series and and apply some formatting to vars
+        ds = loadFunction(varlist=varlist, **ds_args)
         for var in ds.variables.values(): var.attrs['dataset_name'] = dataset_name
+        if 'resampling' in ds.attrs:
+            for var in ds.data_vars.values(): var.attrs['resampling'] = ds.attrs['resampling']
         if time_slice: ds = ds.loc[{'time':slice(*time_slice),}] # slice time
         ds_list.append(ds)
-    # SnoDAS
-    if 'SnoDAS' in dataset_varlists:
-        # prepare kwargs
-        ds_args = kwargs.copy()
-        if 'SnoDAS' in dataset_args: ds_args.update(dataset_args['SnoDAS'])
-        ds = loadSnoDAS_Daily(varlist=dataset_varlists['SnoDAS'], **ds_args)
-        for var in ds.variables.values(): var.attrs['dataset_name'] = 'SnoDAS'
-        if time_slice: ds = ds.loc[{'time':slice(*time_slice),}] # slice time
-        ds_list.append(ds)    
-    # NRCan
-    if 'NRCan' in dataset_varlists:
-        # prepare kwargs
-        ds_args = kwargs.copy(); 
-        if 'NRCan' in dataset_args: ds_args.update(dataset_args['NRCan'])
-        if 'resolution' not in ds_args: ds_args['resolution'] = 'CA12'
-        ds = loadNRCan_Daily(varlist=dataset_varlists['NRCan'], **ds_args)
-        for var in ds.variables.values(): var.attrs['dataset_name'] = 'NRCan'
-        if time_slice: ds = ds.loc[{'time':slice(*time_slice),}] # slice time - helps with merging!
-        ds_list.append(ds)
-    # TODO: in the future it may make sense to move the dataset load functions back into the original datasets and turn this load-
-    #       block into a generic loop and use impotlib to import the respective load functions as needed
     # merge datasets and attributed
     xds = xr.merge(ds_list, compat=compat, join=join, fill_value=fill_value)
     for ds in ds_list[::-1]: xds.attrs.update(ds.attrs) # we want MergedForcing to have precedence
     xds.attrs['name'] = 'MergedForcing'; xds.attrs['title'] = 'Merged Forcing Daily Timeseries'
+    if 'resampling' in xds.attrs: del xds.attrs['resampling'] # does not apply to a merged dataset
     # return merged dataset
     return xds
 loadDailyTimeSeries = loadMergedForcing_Daily
@@ -207,9 +176,8 @@ if __name__ == '__main__':
 
   modes = []
 #   modes += ['print_grid']
-#   modes += ['compute_derived']
-#   modes += ['load_NRCan']
-  modes += ['load_Daily']
+  modes += ['compute_derived']
+#   modes += ['load_Daily']
 #   modes += ['compute_PET']  
 
   # some settings
@@ -234,7 +202,7 @@ if __name__ == '__main__':
         dataset_args = dict(SnoDAS=dict(bias_correction='rfbc'))
         time_slice = ('2011-01-01','2017-01-01')
         time_slice = None
-        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, dataset_args=dataset_args, time_slice=time_slice)
+        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, time_slice=time_slice)
         print(xds)
         print('')
         print(xds.attrs)
@@ -243,21 +211,6 @@ if __name__ == '__main__':
         xv = xds[varname] # get DataArray instead of Variable object
 #         xv = xv.sel(time=slice('2018-01-01','2018-02-01'),x=slice(-3500,4500),y=slice(-1000,2000))
   #       xv = xv.loc['2011-01-01',:,:]
-        print(xv)
-        print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
-  
-    
-    elif mode == 'load_NRCan':
-       
-        varlist = ['liqwatflx',]
-        xds = loadNRCan_Daily(varname='precip', grid=None, lautoChunk=True)
-        print(xds)
-        print('')
-        for varname,xv in xds.variables.items(): 
-            if xv.ndim == 3: break
-        xv = xds[varname] # get DataArray instead of Variable object
-        #xv = xv.sel(time=slice('2018-01-01','2018-02-01'),x=slice(-3500,4500),y=slice(-1000,2000))
-        xv = xv.loc['2011-01-01',:,:]
         print(xv)
         print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
   
@@ -277,32 +230,26 @@ if __name__ == '__main__':
         #       !!! Chunking of size (12, 205, 197) requires ~13GB in order to compute T2 (three arrays total) !!!
 #         chunks = (9, 59, 59); lautoChunk = False
 #         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
-#         derived_varlist = ['T2']
-        derived_varlist = ['liqwatflx']
+        derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
+#         derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
         grid = 'son2'
         resolution = 'CA12'
         ts_name = 'time_stamp'
         
         # optional slicing (time slicing completed below)
-        start_date = None; end_date = None # auto-detect available data
-#         start_date = '2011-01-01'; end_date = '2012-01-01'
+#         start_date = None; end_date = None # auto-detect available data
+        start_date = '2011-01-01'; end_date = '2012-01-01'
         
-        # load NRCan data
-        from datasets.NRCan import day12_vardefs, varatts
-        load_varlist = [atts['name'] for atts in day12_vardefs.values()]
-        nrcan = loadNRCan_Daily(varname='precip', grid=grid, resampling='cubic_spline', resolution=resolution, 
-                                lautoChunk=lautoChunkLoad, chunks=load_chunks) # take all
-        nrcan = nrcan.loc[{'time':slice(start_date,end_date),}] # slice time
-        # load bias-corrected SnoDAS data
-        snodas = loadSnoDAS_Daily(varname='snow', grid=grid, resampling='bilinear', bias_correction='rfbc', 
-                                  lautoChunk=lautoChunkLoad, chunks=load_chunks) # take all
-        snodas = snodas.loc[{'time':slice(start_date,end_date),}] # slice time
+        # load datasets
+        time_slice = (start_date,end_date) # slice time
+        dataset = loadMergedForcing_Daily(varlist=load_list, grid=grid, resolution=resolution, bias_correction='rfbc', 
+                                          resampling='default', time_slice=time_slice, lautoChunk=lautoChunkLoad, chunks=load_chunks)
         
         
         # load time coordinate
-        tsvar = nrcan[ts_name].load()
+        tsvar = dataset[ts_name].load()
                
-        print(snodas)
+        print(dataset)
         
         # loop over variables
         for varname in derived_varlist:
@@ -310,21 +257,18 @@ if __name__ == '__main__':
             print("\n   ***   Processing Variable '{}'   ***   \n".format(varname))
             
             # compute values 
-            ref_ds = None # None means native to MergedForcing, i.e. derived from different products
             if varname == 'T2':
-                from datasets.NRCan import varatts as ref_varatts
-                ref_varatts = ref_varatts[varname]
-                ref_var = nrcan['Tmax']; ref_ds = nrcan
-                
+                from datasets.NRCan import varatts as default_varatts
+                default_varatts = default_varatts[varname]; ref_var = dataset['Tmax']
                 note = 'simple average of Tmin and Tmax'          
-                xvar = nrcan['Tmin'] + ref_var
+                xvar = dataset['Tmin'] + ref_var
                 xvar /= 2                
             elif varname == 'liqwatflx':
-                ref_varatts = varatts[varname]
-                ref_var = nrcan['precip']
+                default_varatts = varatts[varname]
+                ref_var = dataset['precip']
                 note = 'total precip (NRCan) - SWE changes from RFBC SnoDAS'
                 assert ref_var.attrs['units'] == 'kg/m^2/s', ref_var.attrs['units']
-                swe = snodas['snow'].fillna(0) # just pretend there is no snow...
+                swe = dataset['snow'].fillna(0) # just pretend there is no snow...
                 assert swe.attrs['units'] == 'kg/m^2', swe.attrs['units']
                 xvar = ref_var - swe.differentiate('time', datetime_unit='s')
                 xvar = xvar.clip(min=0,max=None) # remove negative values
@@ -332,10 +276,10 @@ if __name__ == '__main__':
                 raise NotImplementedError(varname)
                 
             # define/copy metadata
-            xvar.rename(varname)
             xvar.attrs = ref_var.attrs.copy()
+            xvar.rename(varname)
             for att in ('name','units','long_name',):
-                if att in ref_varatts: xvar.attrs[att] = ref_varatts[att]
+                if att in default_varatts: xvar.attrs[att] = default_varatts[att]
             if 'original_name' in xvar.attrs: del xvar.attrs['original_name'] # does not apply
             xvar.attrs['note'] = note
             # set chunking for operation
@@ -344,18 +288,21 @@ if __name__ == '__main__':
                 chunks = autoChunk(xvar.shape)
             if chunks: 
                 xvar = xvar.chunk(chunks=chunks)
-            print(xvar)
+            #print(xvar)
                 
             # create a dataset for export to new file
-            if ref_ds: 
-                ds_attrs = ref_ds.attrs.copy()
-                resampling = ds_attrs['resampling']
-                xvar.attrs['note'] = resampling
-                proj4_str = ds_attrs['proj4']
+            ds_attrs = dataset.attrs.copy()
+            if varname in default_dataset_index:
+                orig_ds_name = default_dataset_index[varname]
+                ds_attrs['name'] = orig_ds_name 
+                resampling = xvar.attrs['resampling']
+                ds_attrs['resampling'] = resampling
             else: 
-                ds_attrs = dict(name='MergedForcing')
+                ds_attrs['name'] = 'MergedForcing'
+                if 'resampling' in xvar.attrs: del xvar.attrs['resampling']
+                if 'resampling' in ds_attrs: del ds_attrs['resampling']
                 resampling = None
-                proj4_str = nrcan.attrs['proj4']
+            proj4_str = dataset.attrs['proj4']
             nds = xr.Dataset({ts_name:tsvar, varname:xvar,}, attrs=ds_attrs)
             nds = addGeoReference(nds, proj4_string=proj4_str, )
             print('\n')

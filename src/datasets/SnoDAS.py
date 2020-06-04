@@ -298,37 +298,45 @@ def checkGeoReference(xds, geoargs=None, grid=None):
 
 ## functions to load NetCDF datasets (using xarray)
 
-def loadSnoDAS_Daily(varname=None, varlist=None, folder=daily_folder, grid=None, bias_correction=None, resampling=None,
-                     lxarray=True, lgeoref=True, chunks=None, time_chunks=8, geoargs=None, **kwargs):
+
+def loadSnoDAS_Daily(varname=None, varlist=None, folder=None, grid=None, bias_correction=None, resampling=None, lgeoref=True, 
+                     geoargs=None, chunks=None, lautoChunk=False, time_chunks=None, lxarray=True, lgeospatial=True, **kwargs):
     ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''
     if not lxarray: 
         raise NotImplementedError("Only loading via xarray is currently implemented.")
-    if chunks is None and grid is None:
-        cks = netcdf_settings['chunksizes'] if chunks is None else chunks
-        # use default netCDF chunks or user chunks, but multiply time by time_chunks
-        chunks = dict(time=time_chunks,lat=cks[1],lon=cks[2])
-    if grid: folder = '{}/{}'.format(folder,grid) # non-native grids are stored in sub-folders
-    # load variables
-    if bias_correction is None and 'resolution' in kwargs: bias_correction = kwargs['resolution'] # allow backdoor
-    if varname and varlist: raise ValueError(varname,varlist)
-    elif varname:
-        # load a single variable
-        if grid: varname = '{}_{}'.format(varname,grid) # also append non-native grid name to varname
-        if bias_correction: varname = '{}_{}'.format(bias_correction,varname) # prepend bias correction method
-        filepath = '{}/{}'.format(folder,netcdf_filename.format(VAR=varname).lower())
-        xds = xr.open_dataset(filepath, chunks=chunks, **kwargs)
+    if folder is None: folder = daily_folder
+    if lgeospatial:
+        from geospatial.xarray_tools import loadXArray
+        xds = loadXArray(varname=varname, varlist=varlist, folder=folder, grid=grid, bias_correction=bias_correction, resolution=None,
+                         filename_pattern=netcdf_filename, default_varlist=netcdf_varlist, resampling=resampling, lgeoref=lgeoref, 
+                         geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
     else:
-        if varlist is None: varlist = netcdf_varlist
-        if grid: # also append non-native grid name to varnames
-            varlist = ['{}_{}'.format(varname,grid) for varname in varlist]
-        if bias_correction: # prepend bias correction method to varnames
-            varlist = ['{}_{}'.format(bias_correction,varname) for varname in varlist]
-        # load multifile dataset (variables are in different files
-        filepaths = ['{}/{}'.format(folder,netcdf_filename.format(VAR=varname).lower()) for varname in varlist]
-        xds = xr.open_mfdataset(filepaths, chunks=chunks, **kwargs)
-        #xds = xr.merge([xr.open_dataset(fp, chunks=chunks, **kwargs) for fp in filepaths])    
-    # add projection
-    if lgeoref: xds = checkGeoReference(xds, geoargs=geoargs, grid=grid)
+        warn('DEPRECATION WARNING: this is only for backwards compatibility and should not be used; use lgeospatial=True instead.')
+        if time_chunks: chunks = dict(time=time_chunks) # shorthand - only for backwards compatibility
+        if grid: folder = '{}/{}'.format(folder,grid) # non-native grids are stored in sub-folders
+        # load variables
+        if bias_correction is None and 'resolution' in kwargs: bias_correction = kwargs['resolution'] # allow backdoor
+        if varname and varlist: raise ValueError(varname,varlist)
+        elif varname:
+            # load a single variable
+            if grid: varname = '{}_{}'.format(varname,grid) # also append non-native grid name to varname
+            if bias_correction: varname = '{}_{}'.format(bias_correction,varname) # prepend bias correction method
+            filepath = '{}/{}'.format(folder,netcdf_filename.format(VAR=varname).lower())
+            xds = xr.open_dataset(filepath, chunks=chunks, **kwargs)
+        else:
+            if varlist is None: varlist = netcdf_varlist
+            if grid: # also append non-native grid name to varnames
+                varlist = ['{}_{}'.format(varname,grid) for varname in varlist]
+            if bias_correction: # prepend bias correction method to varnames
+                varlist = ['{}_{}'.format(bias_correction,varname) for varname in varlist]
+            # load multifile dataset (variables are in different files
+            filepaths = ['{}/{}'.format(folder,netcdf_filename.format(VAR=varname).lower()) for varname in varlist]
+            #xds = xr.open_mfdataset(filepaths, chunks=chunks, **kwargs) # tends to load everything into memory... not good...
+            xds = xr.merge([xr.open_dataset(fp, chunks=chunks, **kwargs) for fp in filepaths])    
+        # add projection
+        if lgeoref: xds = checkGeoReference(xds, geoargs=geoargs, grid=grid)
+    # add some labels... and return dataset
+    xds.attrs['name'] = 'SnoDAS'; xds.attrs['title'] = xds.attrs['name']+' Daily Timeseries'
     return xds
 
 
@@ -545,8 +553,8 @@ if __name__ == '__main__':
 #   grid = None # native
 #   grid = 'grw1'
 #   grid = 'wc2_d01'
-#   grid = 'on1' # large Ontario domain
-  grid = 'hd1' # small Quebec domain
+  grid = 'on1' # large Ontario domain
+#   grid = 'hd1' # small Quebec domain
 #   grid = 'glb1_d01'
 
   bias_correction = None # no bias correction
@@ -807,10 +815,9 @@ if __name__ == '__main__':
             
   #       varlist = netcdf_varlist
 #         varlist = ['liqwatflx','precip','rho_snw']
-        varlist = ['snow']; grid = 'hd1'; bias_correction = 'rfbc'
+        varlist = ['snow']; grid = 'son2'; bias_correction = 'rfbc'
         varname = varlist[0]
-        xds = loadSnoDAS_Daily(varlist=varlist, time_chunks=time_chunks,
-                               bias_correction=bias_correction, grid=grid) # 32 may be possible
+        xds = loadSnoDAS_Daily(varlist=varlist, bias_correction=bias_correction, grid=grid) # 32 may be possible
         print(xds)
         print('')
         xv = xds[varname]
