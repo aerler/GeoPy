@@ -39,9 +39,8 @@ axes_varatts = dict(time = dict(name='time', units='hours', long_name='Days'), #
                     x  = dict(name='x', units='m', long_name='Easting'),
                     y  = dict(name='y', units='m', long_name='Northing'),)
 axes_varlist = axes_varatts.keys()
-# merged/mixed variables
-varatts = dict(liqwatflx = dict(name='liqwatflx',units='kg/m^2/s',scalefactor=1., 
-                                long_name='Liquid Water Flux'),)
+# merged/mixed/derived variables
+varatts = dict(liqwatflx = dict(name='liqwatflx', units='kg/m^2/s', long_name='Liquid Water Flux'),)
 varlist = varatts.keys()
 ignore_list = []
 
@@ -58,7 +57,8 @@ netcdf_dtype    = np.dtype('<f4') # little-endian 32-bit float
 DSNT = namedtuple(typename='Dataset', field_names=['name','interval','start_date','end_date',])
 dataset_attributes = dict(SnoDAS  = DSNT(name='SnoDAS',interval='1D', start_date=None, end_date=None,  ),                          
                           NRCan   = DSNT(name='NRCan',  interval='1D', start_date=None, end_date=None, ), 
-                          CaSPAr  = DSNT(name='CaSPAr',  interval='6H', start_date='2017-09-11T12', end_date='2019-12-30T12', ),)
+                          #CaSPAr  = DSNT(name='CaSPAr',  interval='6H', start_date='2017-09-11T12', end_date='2019-12-30T12', ),
+                          )
 dataset_list = list(dataset_attributes.keys())
 # N.B.: the effective start date for CaPA and all the rest is '2017-09-11T12'
 default_dataset_index = dict(precip='NRCan', T2='NRCan', Tmin='NRCan', Tmax='NRCan', 
@@ -86,16 +86,19 @@ def getFolderFileName(varname=None, dataset=None, grid=None, resampling=None, re
     # construct filename
     gridstr = '_' + grid.lower() if grid else ''
     bcstr = '_' + bias_correction.lower() if bias_correction else ''
-    filename = '{}_{}_{}.nc'.format(ds_str_rs, bcstr + varname.lower() + gridstr, mode.lower())
+    if mode.lower() == 'daily': name_str = bcstr + '_' + varname.lower() + gridstr
+    else: name_str = bcstr + gridstr
+    filename = '{}{}_{}.nc'.format(ds_str_rs, name_str, mode.lower())
     # construct folder
     folder = getRootFolder(dataset_name=dataset, fallback_name='MergedForcing')
-    if mode.lower() == 'daily': folder += ds_str+'_daily'
+    if mode.lower() == 'daily':
+        folder += ds_str+'_daily'
+        if grid: 
+            folder = '{}/{}'.format(folder,grid) # non-native grids are stored in sub-folders
+            if resampling: 
+                folder = '{}/{}'.format(folder,resampling) # different resampling options are stored in subfolders
+                # could auto-detect resampling folders at a later point... 
     else: folder += ds_str+'avg'
-    if grid: 
-        folder = '{}/{}'.format(folder,grid) # non-native grids are stored in sub-folders
-        if resampling: 
-            folder = '{}/{}'.format(folder,resampling) # different resampling options are stored in subfolders
-            # could auto-detect resampling folders at a later point... 
     if folder[-1] != '/': folder += '/'       
     # return folder and filename
     return folder,filename
@@ -114,15 +117,18 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
     elif varname:
         varlist = [varname] # load a single variable
     elif varlist is None:
-        varlist = list(varatts.keys())   
+        varlist = list(varatts.keys())
     if dataset_args is None: dataset_args = dict()# avoid errors
     # assemble dataset list and arguments
-    if dataset_index is None: dataset_index = default_dataset_index.copy()
-    dataset_varlists = dict()
-    for varname in varlist:
-        ds_name = dataset_index.get(varname,dataset_name) # default is native (global variable)
-        if ds_name not in dataset_varlists: dataset_varlists[ds_name] = [varname] 
-        else: dataset_varlists[ds_name].append(varname)         
+    if isinstance(varlist,dict):
+        dataset_varlists = varlist
+    else:
+        if dataset_index is None: dataset_index = default_dataset_index.copy()
+        dataset_varlists = dict()
+        for varname in varlist:
+            ds_name = dataset_index.get(varname,dataset_name) # default is native (global variable)
+            if ds_name not in dataset_varlists: dataset_varlists[ds_name] = [varname] 
+            else: dataset_varlists[ds_name].append(varname)         
     ## load datasets
     ds_list = []
     for dataset,varlist in dataset_varlists.items():
@@ -132,7 +138,9 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
         if dataset.lower() == dataset_name.lower():
             # native MergedForcing
             ds_args.update(folder=daily_folder, filename_pattern=netcdf_filename)
-            loadFunction = loadXArray; argslist = ['grid', ] # specific arguments for merged dataset variables
+            argslist = ['grid', ] # specific arguments for merged dataset variables
+            if varlist is None: varlist = list(varatts.keys())
+            loadFunction = loadXArray
         else:
             # daily data from other datasets
             ds_mod = import_module('datasets.{0:s}'.format(dataset)) # import dataset module
@@ -143,9 +151,12 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
             if key not in argslist and key in ds_args: del ds_args[key]
         # load time series and and apply some formatting to vars
         ds = loadFunction(varlist=varlist, **ds_args)
+        # add some dataset attributes to variables, since we will be merging datasets
         for var in ds.variables.values(): var.attrs['dataset_name'] = dataset_name
         if 'resampling' in ds.attrs:
             for var in ds.data_vars.values(): var.attrs['resampling'] = ds.attrs['resampling']
+        if 'bias_correction' in ds_args:
+            for var in ds.data_vars.values(): var.attrs['bias_correction'] = ds_args['bias_correction']
         if time_slice: ds = ds.loc[{'time':slice(*time_slice),}] # slice time
         ds_list.append(ds)
     # merge datasets and attributed
@@ -175,9 +186,10 @@ if __name__ == '__main__':
 #   dask.set_options(pool=ThreadPool(4))
 
   modes = []
-#   modes += ['print_grid']
-  modes += ['compute_derived']
-#   modes += ['load_Daily']
+  modes += ['print_grid']
+  modes += ['load_Daily']
+#   modes += ['compute_monthly']
+#   modes += ['compute_derived']
 #   modes += ['compute_PET']  
 
   # some settings
@@ -192,8 +204,53 @@ if __name__ == '__main__':
     if mode == 'print_grid':
         
         from geodata.gdal import loadPickledGridDef
-        griddef = loadPickledGridDef(grid='on1')
+        griddef = loadPickledGridDef(grid='son2')
         print(griddef)
+        print(griddef.lat2D)
+        
+    
+    elif mode == 'compute_monthly':
+        
+        # settings
+#         lexec = True
+#         lexec = False
+        load_chunks = None; lautoChunkLoad = False  # chunking input should not be necessary, if the source files are chunked properly
+        chunks = None; lautoChunk = True # auto chunk output - this is necessary to maintain proper chunking!
+        time_slice = ('2011-01-01','2012-01-01')
+        #time_slice = None
+        varlist = {dataset:None for dataset in dataset_list} # None means all...
+        ts_name = 'time_stamp'
+        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True, 
+                                      lautoChunk=False, time_slice=time_slice)
+        print(xds)
+        print('')
+        
+        # start operation
+        start = time.time()
+        
+        # aggregate month
+        rds = xds.resample(time='MS',skipna=True,).mean()
+        #rds.chunk(chunks=chunk_settings)         
+        print(rds)
+        print('')
+        
+        # define destination file
+        nc_folder, nc_filename = getFolderFileName(dataset=dataset_name, grid=grid, bias_correction=None, mode='monthly')
+        nc_filepath = nc_folder + nc_filename
+        print("\nExporting to new NetCDF-4 file:\n '{}'".format(nc_filepath))
+        # write to NetCDF
+        var_enc = dict(chunksizes=chunks, zlib=True, complevel=1, _FillValue=np.NaN,) # should be float
+        enc_varlist = rds.data_vars.keys()
+        rds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
+                      encoding={vn:var_enc for vn in enc_varlist}, compute=True)
+        
+        # print timing
+        end = time.time()
+        print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
+  
+        # TODO: add time-stamps
+        raise NotImplementedError('add time-stamps')
+        
                              
     elif mode == 'load_Daily':
        
@@ -202,7 +259,8 @@ if __name__ == '__main__':
         dataset_args = dict(SnoDAS=dict(bias_correction='rfbc'))
         time_slice = ('2011-01-01','2017-01-01')
         time_slice = None
-        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, time_slice=time_slice)
+        xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=dataset_args, 
+                                      time_slice=time_slice)
         print(xds)
         print('')
         print(xds.attrs)
