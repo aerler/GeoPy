@@ -23,7 +23,7 @@ import inspect
 # internal imports
 from datasets.common import getRootFolder
 # for georeferencing
-from geospatial.netcdf_tools import autoChunk
+from geospatial.netcdf_tools import autoChunk, addTimeStamps
 from geospatial.xarray_tools import addGeoReference, readCFCRS, loadXArray
 
 ## Meta-vardata
@@ -186,9 +186,9 @@ if __name__ == '__main__':
 #   dask.set_options(pool=ThreadPool(4))
 
   modes = []
-  modes += ['print_grid']
-  modes += ['load_Daily']
-#   modes += ['compute_monthly']
+#   modes += ['print_grid']
+#   modes += ['load_Daily']
+  modes += ['compute_monthly']
 #   modes += ['compute_derived']
 #   modes += ['compute_PET']  
 
@@ -212,11 +212,9 @@ if __name__ == '__main__':
     elif mode == 'compute_monthly':
         
         # settings
-#         lexec = True
-#         lexec = False
         load_chunks = None; lautoChunkLoad = False  # chunking input should not be necessary, if the source files are chunked properly
         chunks = None; lautoChunk = True # auto chunk output - this is necessary to maintain proper chunking!
-        time_slice = ('2011-01-01','2012-01-01')
+        time_slice = ('2011-01-01','2011-02-01')
         #time_slice = None
         varlist = {dataset:None for dataset in dataset_list} # None means all...
         ts_name = 'time_stamp'
@@ -230,7 +228,7 @@ if __name__ == '__main__':
         
         # aggregate month
         rds = xds.resample(time='MS',skipna=True,).mean()
-        #rds.chunk(chunks=chunk_settings)         
+        #rds.chunk(chunks=chunk_settings)
         print(rds)
         print('')
         
@@ -243,13 +241,17 @@ if __name__ == '__main__':
         enc_varlist = rds.data_vars.keys()
         rds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
                       encoding={vn:var_enc for vn in enc_varlist}, compute=True)
-        
+        # add time-stamps
+        print("\nAdding human-readable time-stamp variable ('time_stamp')\n")
+        ncds = nc.Dataset(nc_filepath, mode='a')
+        ncts = addTimeStamps(ncds, units='month')
+        ncds.close()
         # print timing
         end = time.time()
         print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
   
-        # TODO: add time-stamps
-        raise NotImplementedError('add time-stamps')
+        # TODO: replace time coord with monthly values?
+        raise NotImplementedError('should we overwrite time coord as well?')
         
                              
     elif mode == 'load_Daily':
