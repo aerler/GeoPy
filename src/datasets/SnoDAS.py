@@ -86,6 +86,8 @@ netcdf_varatts = dict(# forcing variables
 # list of variables to load
 binary_varlist = list(binary_varatts.keys())
 netcdf_varlist = [varname for varname in list(netcdf_varatts.keys()) if varname not in ('time','time_stamp','lat','lon')]
+# varlist for bias-corrected variables
+bc_varlists = dict(rfbc=['snow'])
 # some SnoDAS settings
 missing_value = -9999 # missing data flag
 snodas_shape2d = (SnoDAS_grid.size[1],SnoDAS_grid.size[0]) # 4096x8192
@@ -307,6 +309,8 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=None, grid=None, bias_co
     if folder is None: folder = daily_folder
     if lgeospatial:
         from geospatial.xarray_tools import loadXArray
+        if varlist is None and varname is None: 
+            varlist = bc_varlists.get(bias_correction, netcdf_varlist) # only variables available with that bias correction
         xds = loadXArray(varname=varname, varlist=varlist, folder=folder, grid=grid, bias_correction=bias_correction, resolution=None,
                          filename_pattern=netcdf_filename, default_varlist=netcdf_varlist, resampling=resampling, lgeoref=lgeoref, 
                          geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
@@ -324,7 +328,8 @@ def loadSnoDAS_Daily(varname=None, varlist=None, folder=None, grid=None, bias_co
             filepath = '{}/{}'.format(folder,netcdf_filename.format(VAR=varname).lower())
             xds = xr.open_dataset(filepath, chunks=chunks, **kwargs)
         else:
-            if varlist is None: varlist = netcdf_varlist
+            if varlist is None: 
+                varlist = bc_varlists.get(bias_correction, netcdf_varlist)
             if grid: # also append non-native grid name to varnames
                 varlist = ['{}_{}'.format(varname,grid) for varname in varlist]
             if bias_correction: # prepend bias correction method to varnames
@@ -553,12 +558,13 @@ if __name__ == '__main__':
 #   grid = None # native
 #   grid = 'grw1'
 #   grid = 'wc2_d01'
-  grid = 'on1' # large Ontario domain
+#   grid = 'on1' # large Ontario domain
+  grid = 'son2' # smalller southern Ontario domain
 #   grid = 'hd1' # small Quebec domain
 #   grid = 'glb1_d01'
 
-  bias_correction = None # no bias correction
-#   bias_correction = 'rfbc' # random forest bias-correction
+#   bias_correction = None # no bias correction
+  bias_correction = 'rfbc' # random forest bias-correction
 
   # variable list
   varlist = netcdf_varlist
@@ -786,7 +792,6 @@ if __name__ == '__main__':
                           encoding={varname:netcdf_encoding}, compute=True)
             
             # add time-stamp (doesn't work properly with xarray)
-            ds = nc.Dataset(filepath, mode='a')
             atts = netcdf_varatts[ts_name]
             tsnc = add_var(ds, ts_name, dims=('time',), data=None, shape=(None,), 
                            atts=atts, dtype=str, zlib=True, fillValue=None, lusestr=True) # daily time-stamp
@@ -814,9 +819,8 @@ if __name__ == '__main__':
         chunk_settings = dict(time=chunks[0]*time_chunks,lat=chunks[1],lon=chunks[2])      
             
   #       varlist = netcdf_varlist
-#         varlist = ['liqwatflx','precip','rho_snw']
-        varlist = ['snow']; grid = 'son2'; bias_correction = 'rfbc'
-        varname = varlist[0]
+#         varlist = ['liqwatflx','precip','rho_snw']; varname = varlist[0]
+        varlist = None; grid = 'son2'; bias_correction = 'rfbc'; varname = 'snow'
         xds = loadSnoDAS_Daily(varlist=varlist, bias_correction=bias_correction, grid=grid) # 32 may be possible
         print(xds)
         print('')

@@ -120,8 +120,8 @@ def loadNRCan_Daily(varname=None, varlist=None, folder=None, grid=None, resoluti
     if resolution == 'CA12':
         default_varlist = list(day12_derived) + [atts['name'] for atts in day12_vardefs.values()]
     xds = loadXArray(varname=varname, varlist=varlist, folder=folder, grid=grid, bias_correction=None, resolution=resolution,
-                      filename_pattern=netcdf_filename, default_varlist=default_varlist, resampling=resampling, lgeoref=lgeoref, 
-                      geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
+                     filename_pattern=netcdf_filename, default_varlist=default_varlist, resampling=resampling, lgeoref=lgeoref, 
+                     geoargs=geoargs, chunks=chunks, lautoChunk=lautoChunk, **kwargs)
     xds.attrs['name'] = 'NRCan'; xds.attrs['title'] = xds.attrs['name']+' Daily Timeseries'
     return xds
 

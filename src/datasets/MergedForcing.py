@@ -68,7 +68,7 @@ default_dataset_index = dict(precip='NRCan', T2='NRCan', Tmin='NRCan', Tmax='NRC
 ## helper functions
 
 def getFolderFileName(varname=None, dataset=None, grid=None, resampling=None, resolution=None, bias_correction=None, 
-                      mode='Daily', period=None):
+                      mode='Daily', period=None, lcreateFolder=True):
     ''' function to provide the folder and filename for the requested dataset parameters '''
     if period is not None: raise NotImplementedError(period)
     # some default settings
@@ -99,7 +99,8 @@ def getFolderFileName(varname=None, dataset=None, grid=None, resampling=None, re
                 folder = '{}/{}'.format(folder,resampling) # different resampling options are stored in subfolders
                 # could auto-detect resampling folders at a later point... 
     else: folder += ds_str+'avg'
-    if folder[-1] != '/': folder += '/'       
+    if folder[-1] != '/': folder += '/'
+    if lcreateFolder: os.makedirs(folder, exist_ok=True)
     # return folder and filename
     return folder,filename
         
@@ -188,15 +189,15 @@ if __name__ == '__main__':
   modes = []
 #   modes += ['print_grid']
 #   modes += ['load_Daily']
+  modes += ['compute_derived']
   modes += ['compute_monthly']
-#   modes += ['compute_derived']
 #   modes += ['compute_PET']  
 
   # some settings
   grid = None
 #   grid = 'hd1' # small Quebec grid
   grid = 'son2' # high-res Southern Ontario
-  period = ('2011-01-01','2018-01-01')
+  period = ('2011-01-01','2011-03-01')
   
   # loop over modes 
   for mode in modes:
@@ -214,7 +215,7 @@ if __name__ == '__main__':
         # settings
         load_chunks = None; lautoChunkLoad = False  # chunking input should not be necessary, if the source files are chunked properly
         chunks = None; lautoChunk = True # auto chunk output - this is necessary to maintain proper chunking!
-        time_slice = ('2011-01-01','2011-02-01')
+        time_slice = ('2011-01-01','2018-01-01')
         #time_slice = None
         varlist = {dataset:None for dataset in dataset_list} # None means all...
         ts_name = 'time_stamp'
@@ -241,10 +242,10 @@ if __name__ == '__main__':
         enc_varlist = rds.data_vars.keys()
         rds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
                       encoding={vn:var_enc for vn in enc_varlist}, compute=True)
-        # add time-stamps
+        # update time information
         print("\nAdding human-readable time-stamp variable ('time_stamp')\n")
         ncds = nc.Dataset(nc_filepath, mode='a')
-        ncts = addTimeStamps(ncds, units='month')
+        ncts = addTimeStamps(ncds, units='month') # add time-stamps
         ncds.close()
         # print timing
         end = time.time()
@@ -257,9 +258,10 @@ if __name__ == '__main__':
     elif mode == 'load_Daily':
        
   #       varlist = netcdf_varlist
-        varlist = ['precip','snow','liqwatflx']
+#         varlist = ['precip','snow','liqwatflx']
+        varlist = {dataset:None for dataset in dataset_list} # None means all...
         dataset_args = dict(SnoDAS=dict(bias_correction='rfbc'))
-        time_slice = ('2011-01-01','2017-01-01')
+#         time_slice = ('2011-01-01','2017-01-01')
         time_slice = None
         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=dataset_args, 
                                       time_slice=time_slice)
@@ -297,13 +299,13 @@ if __name__ == '__main__':
         ts_name = 'time_stamp'
         
         # optional slicing (time slicing completed below)
-#         start_date = None; end_date = None # auto-detect available data
-        start_date = '2011-01-01'; end_date = '2012-01-01'
+        start_date = None; end_date = None # auto-detect available data
+#         start_date = '2011-01-01'; end_date = '2012-01-01'
         
         # load datasets
         time_slice = (start_date,end_date) # slice time
         dataset = loadMergedForcing_Daily(varlist=load_list, grid=grid, resolution=resolution, bias_correction='rfbc', 
-                                          resampling='default', time_slice=time_slice, lautoChunk=lautoChunkLoad, chunks=load_chunks)
+                                          resampling=None, time_slice=time_slice, lautoChunk=lautoChunkLoad, chunks=load_chunks)
         
         
         # load time coordinate
