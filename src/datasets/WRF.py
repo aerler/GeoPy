@@ -1276,6 +1276,7 @@ def loadWRF_XR(experiment=None, name=None, domain=None, grid=None, station=None,
         ds = xr.open_dataset(filepath, **xarray_kwargs)
         # clean up varlist
         for varname,variable in ds.data_vars.items():
+            # N.B.: this is essentially a custom implementation of updateVariableAttrs from geospatial.xarray_tools
             if varname in varatts_dict:
                 varatts = varatts_dict[varname]
                 new_name = varname # default

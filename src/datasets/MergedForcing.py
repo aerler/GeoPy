@@ -14,6 +14,7 @@ import datetime as dt
 import pandas as pd
 import os
 import os.path as osp
+from warnings import warn
 import numpy as np
 import netCDF4 as nc # netCDF4-python module
 import xarray as xr
@@ -21,10 +22,12 @@ from collections import namedtuple
 from importlib import import_module
 import inspect
 # internal imports
-from datasets.common import getRootFolder
+from datasets.common import getRootFolder, grid_folder
+from geodata.netcdf import DatasetNetCDF
+from geodata.gdal import addGDALtoDataset
 # for georeferencing
 from geospatial.netcdf_tools import autoChunk, addTimeStamps
-from geospatial.xarray_tools import addGeoReference, readCFCRS, loadXArray
+from geospatial.xarray_tools import addGeoReference, readCFCRS, loadXArray, updateVariableAttrs
 
 ## Meta-vardata
 
@@ -169,6 +172,57 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
     return xds
 loadDailyTimeSeries = loadMergedForcing_Daily
 
+
+def loadMergedForcing_TS(varname=None, varlist=None, name=dataset_name, varatts=None, grid=None,
+                         lxarray=True, lmonthly=False, lgeoref=True, geoargs=None, **kwargs):
+    ''' function to load gridded monthly transient merged forcing data '''
+    # resolve folder and filename
+    folder,filename = getFolderFileName(varname=None, dataset=dataset_name, grid=grid, resampling=None, resolution=None, 
+                      bias_correction=None, mode='monthly', period=None, lcreateFolder=False)
+    # remove some common arguments that have no meaning
+    for key in ('resolution','bias_correction'):
+        if key in kwargs: del kwargs[key]
+    if varname and varlist: raise ValueError(varname,varlist)
+    elif varname: varlist = [varname]
+    if lxarray: 
+        ## load as xarray dataset
+        # set options
+        if lmonthly: kwargs['decode_times'] = False
+        # load  dataset
+        xds = xr.open_dataset(folder+filename, **kwargs)
+        # update varatts and prune
+        xds = updateVariableAttrs(xds, varatts=varatts, varmap=None, varlist=varlist)
+        # some attributes
+        xds.attrs['name'] = name
+        # load time stamps (like coordinate variables)
+        if 'time_stamp' in xds: xds['time_stamp'].load()
+        # fix time axis (deprecated - should not be necessary anymore)
+        if lmonthly:
+            warn("'lmonthly=True' should only be used to convert simple monthly indices into 'datetime64' coordinates.")
+            # convert a monthly time index into a daily index, anchored at the first day of the month
+            tattrs = xds['time'].attrs.copy()
+            tattrs['long_name'] = 'Calendar Day'
+            tattrs['units'] = tattrs['units'].replace('months','days')
+            start_date = pd.to_datetime(' '.join(tattrs['units'].split()[2:]))
+            end_date = start_date + pd.Timedelta(len(xds['time'])+1, unit='M')
+            tdata = np.arange(start_date,end_date, dtype='datetime64[M]')
+            assert len(tdata) == len(xds['time'])
+            tvar = xr.DataArray(tdata, dims=('time'), name='time', attrs=tattrs)
+            xds = xds.assign_coords(time=tvar)        
+        # add projection
+        if lgeoref: xds = addGeoReference(xds, **geoargs)
+        dataset = xds
+    else:
+        ## load as GeoPy dataset
+        # load dataset
+        dataset = DatasetNetCDF(name=name, filelist=[folder+filename], varlist=varlist, multifile=False, **kwargs)
+        # add GDAL to dataset
+        default_geoargs = dict(griddef=grid, gridfolder=grid_folder)
+        if geoargs: default_geoargs.update(geoargs)
+        dataset = addGDALtoDataset(dataset, **default_geoargs)
+    return dataset
+
+
 ## abuse for testing
 if __name__ == '__main__':
   
@@ -188,9 +242,12 @@ if __name__ == '__main__':
 
   modes = []
 #   modes += ['print_grid']
-#   modes += ['load_Daily']
   modes += ['compute_derived']
-  modes += ['compute_monthly']
+  modes += ['load_Daily']
+  modes += ['monthly_mean'          ]
+  modes += ['load_TimeSeries'      ]
+#   modes += ['monthly_normal'        ]
+#   modes += ['load_Climatology'      ]
 #   modes += ['compute_PET']  
 
   # some settings
@@ -209,15 +266,26 @@ if __name__ == '__main__':
         print(griddef)
         print(griddef.lat2D)
         
+    elif mode == 'load_TimeSeries':
+       
+        lxarray = False
+        varname = 'liqwatflx'
+        xds = loadMergedForcing_TS(varlist=None, grid=grid, lxarray=lxarray)
+        print(xds)
+        print('')
+        xv = xds[varname]
+        print(xv)
+        if lxarray:
+            print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
     
-    elif mode == 'compute_monthly':
+    elif mode == 'monthly_mean':
         
         # settings
         load_chunks = None; lautoChunkLoad = False  # chunking input should not be necessary, if the source files are chunked properly
         chunks = None; lautoChunk = True # auto chunk output - this is necessary to maintain proper chunking!
-        time_slice = ('2011-01-01','2018-01-01')
-        #time_slice = None
-        varlist = {dataset:None for dataset in dataset_list} # None means all...
+#         time_slice = ('2011-01-01','2018-01-01')
+        time_slice = None
+        varlist = {dataset:None for dataset in dataset_list+[dataset_name]} # None means all...
         ts_name = 'time_stamp'
         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True, 
                                       lautoChunk=False, time_slice=time_slice)
@@ -251,15 +319,12 @@ if __name__ == '__main__':
         end = time.time()
         print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
   
-        # TODO: replace time coord with monthly values?
-        raise NotImplementedError('should we overwrite time coord as well?')
-        
                              
     elif mode == 'load_Daily':
        
   #       varlist = netcdf_varlist
 #         varlist = ['precip','snow','liqwatflx']
-        varlist = {dataset:None for dataset in dataset_list} # None means all...
+        varlist = {dataset:None for dataset in dataset_list+[dataset_name]} # None means all...
         dataset_args = dict(SnoDAS=dict(bias_correction='rfbc'))
 #         time_slice = ('2011-01-01','2017-01-01')
         time_slice = None
@@ -292,15 +357,17 @@ if __name__ == '__main__':
         #       !!! Chunking of size (12, 205, 197) requires ~13GB in order to compute T2 (three arrays total) !!!
 #         chunks = (9, 59, 59); lautoChunk = False
 #         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
-        derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
+#         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
+        derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
         grid = 'son2'
         resolution = 'CA12'
         ts_name = 'time_stamp'
         
         # optional slicing (time slicing completed below)
         start_date = None; end_date = None # auto-detect available data
-#         start_date = '2011-01-01'; end_date = '2012-01-01'
+        start_date = '2011-01-01'; end_date = '2018-01-01'
+        # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
         
         # load datasets
         time_slice = (start_date,end_date) # slice time
@@ -312,6 +379,8 @@ if __name__ == '__main__':
         tsvar = dataset[ts_name].load()
                
         print(dataset)
+        
+        assert chunks is None, chunks
         
         # loop over variables
         for varname in derived_varlist:
@@ -345,8 +414,7 @@ if __name__ == '__main__':
             if 'original_name' in xvar.attrs: del xvar.attrs['original_name'] # does not apply
             xvar.attrs['note'] = note
             # set chunking for operation
-            if lautoChunk:
-                assert chunks is None, chunks 
+            if lautoChunk:                 
                 chunks = autoChunk(xvar.shape)
             if chunks: 
                 xvar = xvar.chunk(chunks=chunks)
