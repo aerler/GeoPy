@@ -300,7 +300,6 @@ def checkGeoReference(xds, geoargs=None, grid=None):
 
 ## functions to load NetCDF datasets (using xarray)
 
-
 def loadSnoDAS_Daily(varname=None, varlist=None, folder=None, grid=None, bias_correction=None, resampling=None, lgeoref=True, 
                      geoargs=None, chunks=None, lautoChunk=False, time_chunks=None, lxarray=True, lgeospatial=True, **kwargs):
     ''' function to load daily SnoDAS data from NetCDF-4 files using xarray and add some projection information '''

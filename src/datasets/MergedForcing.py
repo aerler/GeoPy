@@ -26,8 +26,8 @@ from datasets.common import getRootFolder, grid_folder
 from geodata.netcdf import DatasetNetCDF
 from geodata.gdal import addGDALtoDataset
 # for georeferencing
-from geospatial.netcdf_tools import autoChunk, addTimeStamps
-from geospatial.xarray_tools import addGeoReference, readCFCRS, loadXArray, updateVariableAttrs
+from geospatial.netcdf_tools import autoChunk, addTimeStamps, addNameLengthMonth
+from geospatial.xarray_tools import addGeoReference, loadXArray, updateVariableAttrs, computeNormals
 
 ## Meta-vardata
 
@@ -71,9 +71,10 @@ default_dataset_index = dict(precip='NRCan', T2='NRCan', Tmin='NRCan', Tmax='NRC
 ## helper functions
 
 def getFolderFileName(varname=None, dataset=None, grid=None, resampling=None, resolution=None, bias_correction=None, 
-                      mode='Daily', period=None, lcreateFolder=True):
+                      mode=None, period=None, lcreateFolder=True):
     ''' function to provide the folder and filename for the requested dataset parameters '''
-    if period is not None: raise NotImplementedError(period)
+    if mode is None:
+        mode = 'clim' if period else 'daily'
     # some default settings
     if dataset is None: 
         dataset = default_dataset_index.get(varname,'MergedForcing')
@@ -91,7 +92,12 @@ def getFolderFileName(varname=None, dataset=None, grid=None, resampling=None, re
     bcstr = '_' + bias_correction.lower() if bias_correction else ''
     if mode.lower() == 'daily': name_str = bcstr + '_' + varname.lower() + gridstr
     else: name_str = bcstr + gridstr
-    filename = '{}{}_{}.nc'.format(ds_str_rs, name_str, mode.lower())
+    mode_str = mode.lower()
+    if period is None: pass
+    elif isinstance(period,str): mode_str += '_'+period
+    elif isinstance(period,(tuple,list)): mode_str += '_{}-{}'.format(*period)
+    else: raise NotImplementedError(period)
+    filename = '{}{}_{}.nc'.format(ds_str_rs, name_str, mode_str)
     # construct folder
     folder = getRootFolder(dataset_name=dataset, fallback_name='MergedForcing')
     if mode.lower() == 'daily':
@@ -174,7 +180,7 @@ loadDailyTimeSeries = loadMergedForcing_Daily
 
 
 def loadMergedForcing_TS(varname=None, varlist=None, name=dataset_name, varatts=None, grid=None,
-                         lxarray=True, lmonthly=False, lgeoref=True, geoargs=None, **kwargs):
+                         lxarray=True, lmonthly=False, lgeoref=False, geoargs=None, **kwargs):
     ''' function to load gridded monthly transient merged forcing data '''
     # resolve folder and filename
     folder,filename = getFolderFileName(varname=None, dataset=dataset_name, grid=grid, resampling=None, resolution=None, 
@@ -210,7 +216,9 @@ def loadMergedForcing_TS(varname=None, varlist=None, name=dataset_name, varatts=
             tvar = xr.DataArray(tdata, dims=('time'), name='time', attrs=tattrs)
             xds = xds.assign_coords(time=tvar)        
         # add projection
-        if lgeoref: xds = addGeoReference(xds, **geoargs)
+        if lgeoref:
+            if geoargs is None: geoargs = dict() 
+            xds = addGeoReference(xds, **geoargs)
         dataset = xds
     else:
         ## load as GeoPy dataset
@@ -242,11 +250,11 @@ if __name__ == '__main__':
 
   modes = []
 #   modes += ['print_grid']
-  modes += ['compute_derived']
-  modes += ['load_Daily']
-  modes += ['monthly_mean'          ]
-  modes += ['load_TimeSeries'      ]
-#   modes += ['monthly_normal'        ]
+#   modes += ['compute_derived']
+#   modes += ['load_Daily']
+#   modes += ['monthly_mean'          ]
+#   modes += ['load_TimeSeries'      ]
+  modes += ['monthly_normal'        ]
 #   modes += ['load_Climatology'      ]
 #   modes += ['compute_PET']  
 
@@ -254,8 +262,10 @@ if __name__ == '__main__':
   grid = None
 #   grid = 'hd1' # small Quebec grid
   grid = 'son2' # high-res Southern Ontario
-  period = ('2011-01-01','2011-03-01')
+ 
+  ts_name = 'time_stamp'
   
+ 
   # loop over modes 
   for mode in modes:
     
@@ -266,9 +276,63 @@ if __name__ == '__main__':
         print(griddef)
         print(griddef.lat2D)
         
+    elif mode == 'load_Climatology':
+       
+        lxarray = True
+        varname = 'liqwatflx'
+        period = (2011,2018)
+        xds = loadMergedForcing(varlist=None, grid=grid, lxarray=lxarray, period=period)
+        print(xds)
+        print('')
+        xv = xds[varname]
+        print(xv)
+        if lxarray:
+            print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
+    
+    elif mode == 'monthly_normal':
+  
+        # optional slicing (time slicing completed below)
+#         start_date = '2011-01'; end_date = '2011-12'; varlist = ['liqwatflx', ts_name]
+        start_date = '2011-01'; end_date = '2018-12'; varlist = None
+  
+        # start operation
+        start = time.time()
+            
+        # load variables object (not data!)
+        xds   = loadMergedForcing_TS(varlist=varlist, grid=grid, lxarray=True) # need Dask!
+        xds   = xds.loc[{'time':slice(start_date,end_date),}] # slice entire dataset
+        print(xds)
+        
+        # construct period string
+        print('\n')
+        cds = computeNormals(xds, aggregation='month', time_stamp=ts_name)
+        print(cds)
+        print('\n')
+        prdstr = cds.attrs['period']
+        print(prdstr)            
+        
+        # save resampled dataset
+        folder, filename = getFolderFileName(dataset=dataset_name, grid=grid, period=prdstr)
+        # write to NetCDF
+        var_enc = dict(zlib=True, complevel=1, _FillValue=-9999)
+        encoding = {varname:var_enc for varname in cds.data_vars.keys()}
+        cds.to_netcdf(folder+filename, mode='w', format='NETCDF4', unlimited_dims=[], engine='netcdf4',
+                      encoding=encoding, compute=True)
+        
+        # add name and length of month (doesn't work properly with xarray)
+        ds = nc.Dataset(folder+filename, mode='a')
+        ds = addNameLengthMonth(ds, time_dim='time')
+        # close NetCDF dataset
+        ds.close()
+        
+        # print timing
+        end = time.time()
+        print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
+  
+  
     elif mode == 'load_TimeSeries':
        
-        lxarray = False
+        lxarray = True
         varname = 'liqwatflx'
         xds = loadMergedForcing_TS(varlist=None, grid=grid, lxarray=lxarray)
         print(xds)
@@ -286,7 +350,6 @@ if __name__ == '__main__':
 #         time_slice = ('2011-01-01','2018-01-01')
         time_slice = None
         varlist = {dataset:None for dataset in dataset_list+[dataset_name]} # None means all...
-        ts_name = 'time_stamp'
         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True, 
                                       lautoChunk=False, time_slice=time_slice)
         print(xds)
@@ -362,7 +425,6 @@ if __name__ == '__main__':
         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
         grid = 'son2'
         resolution = 'CA12'
-        ts_name = 'time_stamp'
         
         # optional slicing (time slicing completed below)
         start_date = None; end_date = None # auto-detect available data
