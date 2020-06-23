@@ -143,14 +143,16 @@ def computeVaporDeficit(dataset):
   # return new variable
   return var
 
-def _getTemperatures(dataset, lmeans=False):
+def _getTemperatures(dataset, lmeans=False, lxarray=False):
     ''' helper functions to extract temperature variables '''
     # get diurnal min/max 2m temperatures
     if 'Tmin' in dataset: 
-        Tmin = dataset['Tmin'][:]; min_units = dataset['Tmin'].units
+        Tmin = dataset['Tmin']; min_units = dataset['Tmin'].units
+        Tmin = Tmin.data if lxarray else Tmin[:]
     else: raise VariableError("Cannot determine diurnal minimum 2m temperature for PET calculation.")
     if 'Tmax' in dataset: 
-        Tmax = dataset['Tmax'][:]; max_units = dataset['Tmax'].units
+        Tmax = dataset['Tmax']; max_units = dataset['Tmax'].units
+        Tmax = Tmax.data if lxarray else Tmax[:]
     else: raise VariableError("Cannot determine diurnal maximum 2m temperature for PET calculation.")
     assert max_units == min_units, (max_units,min_units)
     # get 2m mean temperature
@@ -319,14 +321,14 @@ def _inferElev(dataset, zs=None, name_list=None, latts=True, lunits=False):
 
 
 # compute potential evapo-transpiration
-def computePotEvapHog(dataset, lmeans=False, lq2=False, zs=None, **kwargs):
+def computePotEvapHog(dataset, lmeans=False, lq2=False, zs=None, lxarray=False, **kwargs):
   ''' function to compute potential evapotranspiration based on Hogg's simplified formula (1997):
       Hogg (1997, AgForMet): Temporal scaling of moisture and the forest-grassland boundary in western Canada
   '''
   # get surface elevation variables
   zs, zs_units = _inferElev(dataset, zs=zs, latts=True, lunits=True) 
   assert zs_units is None or zs_units == 'm', zs
-  T, Tmin, Tmax, t_units = _getTemperatures(dataset, lmeans=lmeans)
+  T, Tmin, Tmax, t_units = _getTemperatures(dataset, lmeans=lmeans, lxarray=lxarray)
   # make sure T is in Celsius
   if t_units == 'K':
       assert T.min() > 150, T

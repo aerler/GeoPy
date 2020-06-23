@@ -43,7 +43,8 @@ axes_varatts = dict(time = dict(name='time', units='hours', long_name='Days'), #
                     y  = dict(name='y', units='m', long_name='Northing'),)
 axes_varlist = axes_varatts.keys()
 # merged/mixed/derived variables
-varatts = dict(liqwatflx = dict(name='liqwatflx', units='kg/m^2/s', long_name='Liquid Water Flux'),)
+varatts = dict(liqwatflx = dict(name='liqwatflx', units='kg/m^2/s', long_name='Liquid Water Flux'),
+               pet_hog = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)'),)
 varlist = varatts.keys()
 ignore_list = []
 
@@ -179,12 +180,12 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
 loadDailyTimeSeries = loadMergedForcing_Daily
 
 
-def loadMergedForcing_TS(varname=None, varlist=None, name=dataset_name, varatts=None, grid=None,
-                         lxarray=True, lmonthly=False, lgeoref=False, geoargs=None, **kwargs):
+def loadMergedForcing_All(varname=None, varlist=None, name=dataset_name, varatts=None, grid=None, mode=None, period=None,
+                          lxarray=True, lmonthly=False, lgeoref=False, geoargs=None, **kwargs):
     ''' function to load gridded monthly transient merged forcing data '''
     # resolve folder and filename
     folder,filename = getFolderFileName(varname=None, dataset=dataset_name, grid=grid, resampling=None, resolution=None, 
-                      bias_correction=None, mode='monthly', period=None, lcreateFolder=False)
+                                        bias_correction=None, mode=mode, period=period, lcreateFolder=False)
     # remove some common arguments that have no meaning
     for key in ('resolution','bias_correction'):
         if key in kwargs: del kwargs[key]
@@ -231,6 +232,19 @@ def loadMergedForcing_TS(varname=None, varlist=None, name=dataset_name, varatts=
     return dataset
 
 
+def loadMergedForcing_TS(varname=None, varlist=None, name=dataset_name, varatts=None, grid=None,
+                         lxarray=True, lmonthly=False, lgeoref=False, geoargs=None, **kwargs):
+    ''' function to load gridded monthly transient merged forcing data '''
+    return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, varatts=varatts, grid=grid, mode='monthly', 
+                                 period=None, lxarray=lxarray, lmonthly=lmonthly, lgeoref=lgeoref, geoargs=geoargs, **kwargs)
+
+def loadMergedForcing(varname=None, varlist=None, name=dataset_name, varatts=None, grid=None, period=None,
+                      lxarray=True, lmonthly=False, lgeoref=False, geoargs=None, **kwargs):
+    ''' function to load gridded monthly normal merged forcing data '''
+    return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, varatts=varatts, grid=grid, mode='clim', period=period,
+                                 lxarray=lxarray, lmonthly=lmonthly, lgeoref=lgeoref, geoargs=geoargs, **kwargs)
+
+
 ## abuse for testing
 if __name__ == '__main__':
   
@@ -250,11 +264,11 @@ if __name__ == '__main__':
 
   modes = []
 #   modes += ['print_grid']
-#   modes += ['compute_derived']
+  modes += ['compute_derived']
 #   modes += ['load_Daily']
 #   modes += ['monthly_mean'          ]
 #   modes += ['load_TimeSeries'      ]
-  modes += ['monthly_normal'        ]
+#   modes += ['monthly_normal'        ]
 #   modes += ['load_Climatology'      ]
 #   modes += ['compute_PET']  
 
@@ -420,15 +434,17 @@ if __name__ == '__main__':
         #       !!! Chunking of size (12, 205, 197) requires ~13GB in order to compute T2 (three arrays total) !!!
 #         chunks = (9, 59, 59); lautoChunk = False
 #         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
+        derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
-        derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
+#         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
         grid = 'son2'
         resolution = 'CA12'
         
         # optional slicing (time slicing completed below)
-        start_date = None; end_date = None # auto-detect available data
-        start_date = '2011-01-01'; end_date = '2018-01-01'
+#         start_date = None; end_date = None # auto-detect available data
+#         start_date = '2011-01-01'; end_date = '2018-01-01'
+        start_date = '2011-01-01'; end_date = '2011-04-01'
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
         
         # load datasets
@@ -451,11 +467,17 @@ if __name__ == '__main__':
             
             # compute values 
             if varname == 'T2':
-                from datasets.NRCan import varatts as default_varatts
-                default_varatts = default_varatts[varname]; ref_var = dataset['Tmax']
+                from datasets.NRCan import varatts as ext_varatts
+                default_varatts = ext_varatts[varname]; ref_var = dataset['Tmax']
                 note = 'simple average of Tmin and Tmax'          
                 xvar = dataset['Tmin'] + ref_var
                 xvar /= 2                
+            elif varname == 'pet_hog':
+                from processing.newvars import computePotEvapHog
+                default_varatts = varatts[varname]; ref_var = dataset['Tmax']
+                note = 'PET based on the Hogg (1997) method using only Tmin and Tmax'          
+                gvar = computePotEvapHog(dataset, lmeans=False, lq2=None, zs=150, lxarray=True)
+                print(gvar)
             elif varname == 'liqwatflx':
                 default_varatts = varatts[varname]
                 ref_var = dataset['precip']
