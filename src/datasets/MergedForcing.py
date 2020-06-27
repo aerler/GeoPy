@@ -44,7 +44,8 @@ axes_varatts = dict(time = dict(name='time', units='hours', long_name='Days'), #
 axes_varlist = axes_varatts.keys()
 # merged/mixed/derived variables
 varatts = dict(liqwatflx = dict(name='liqwatflx', units='kg/m^2/s', long_name='Liquid Water Flux'),
-               pet_hog = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)'),)
+               #pet_hog = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)'),
+               )
 varlist = varatts.keys()
 ignore_list = []
 
@@ -402,6 +403,7 @@ if __name__ == '__main__':
   #       varlist = netcdf_varlist
 #         varlist = ['precip','snow','liqwatflx']
         varlist = {dataset:None for dataset in dataset_list+[dataset_name]} # None means all...
+#         varlist = {'NRCan':None}
         dataset_args = dict(SnoDAS=dict(bias_correction='rfbc'))
 #         time_slice = ('2011-01-01','2017-01-01')
         time_slice = None
@@ -410,13 +412,20 @@ if __name__ == '__main__':
         print(xds)
         print('')
         print(xds.attrs)
-        for varname,xv in xds.variables.items(): 
-            if xv.ndim == 3: break
-        xv = xds[varname] # get DataArray instead of Variable object
-#         xv = xv.sel(time=slice('2018-01-01','2018-02-01'),x=slice(-3500,4500),y=slice(-1000,2000))
-  #       xv = xv.loc['2011-01-01',:,:]
-        print(xv)
-        print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
+        print('')
+#         # check for zeros in temperature field... (Kelvin!)
+#         for varname in ('T2','Tmin','Tmax'):
+#             if varname in xds:
+#                 xvar = xds[varname]
+#                 zeros = xvar < 100
+#                 print(varname,zeros.data.sum())            
+#         for varname,xv in xds.variables.items(): 
+#             if xv.ndim == 3: break
+#         xv = xds[varname] # get DataArray instead of Variable object
+# #         xv = xv.sel(time=slice('2018-01-01','2018-02-01'),x=slice(-3500,4500),y=slice(-1000,2000))
+#   #       xv = xv.loc['2011-01-01',:,:]
+#         print(xv)
+#         print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
   
         
     elif mode == 'compute_derived':
@@ -434,7 +443,8 @@ if __name__ == '__main__':
         #       !!! Chunking of size (12, 205, 197) requires ~13GB in order to compute T2 (three arrays total) !!!
 #         chunks = (9, 59, 59); lautoChunk = False
 #         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
-        derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax']
+#         derived_varlist = ['dask_test']; load_list = ['T2']
+        derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
 #         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
 #         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
@@ -445,6 +455,7 @@ if __name__ == '__main__':
 #         start_date = None; end_date = None # auto-detect available data
 #         start_date = '2011-01-01'; end_date = '2018-01-01'
         start_date = '2011-01-01'; end_date = '2011-04-01'
+#         start_date = '2011-01-01'; end_date = '2013-01-01'
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
         
         # load datasets
@@ -458,15 +469,31 @@ if __name__ == '__main__':
                
         print(dataset)
         
-        assert chunks is None, chunks
-        
         # loop over variables
         for varname in derived_varlist:
             
             print("\n   ***   Processing Variable '{}'   ***   \n".format(varname))
             
             # compute values 
-            if varname == 'T2':
+            if varname == 'dask_test':
+                default_varatts = dict(name='dask_test', units='kg/m^2/s', long_name='Dask Test') 
+                ref_var = dataset['T2']
+                note = 'just to test some dask functionality'
+                def test_fct(xds, ref_var=None,):
+                    ''' dask test function '''
+                    ref_var = xds[ref_var]
+                    assert ref_var.min() > 100
+                    xvar = ref_var**2
+                    for i,date in enumerate(xds['time'].data):
+                        j = pd.to_datetime(date).dayofyear 
+                        #print(xr.where(ref_var.loc[date,:] < 100,1,0).sum()/(ref_var.shape[-2]*ref_var.shape[-1]))
+                        #print(j)
+                        xvar.loc[date,:] += ( j * ref_var.loc[date,:] )
+                    xvar.attrs = {}
+                    return xvar
+                xvar = xr.map_blocks(test_fct, dataset, kwargs=dict(ref_var='T2'))
+#                 print(xvar)
+            elif varname == 'T2':
                 from datasets.NRCan import varatts as ext_varatts
                 default_varatts = ext_varatts[varname]; ref_var = dataset['Tmax']
                 note = 'simple average of Tmin and Tmax'          
@@ -474,10 +501,11 @@ if __name__ == '__main__':
                 xvar /= 2                
             elif varname == 'pet_hog':
                 from processing.newvars import computePotEvapHog
-                default_varatts = varatts[varname]; ref_var = dataset['Tmax']
-                note = 'PET based on the Hogg (1997) method using only Tmin and Tmax'          
-                gvar = computePotEvapHog(dataset, lmeans=False, lq2=None, zs=150, lxarray=True)
-                print(gvar)
+                default_varatts = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)'); ref_var = dataset['Tmax']
+                note = 'PET based on the Hogg (1997) method using only Tmin and Tmax'
+                kwargs = dict(lmeans=False, lq2=None, zs=150, lxarray=True)      
+                xvar = xr.map_blocks(computePotEvapHog, dataset, kwargs=kwargs)
+#                 print(xvar)
             elif varname == 'liqwatflx':
                 default_varatts = varatts[varname]
                 ref_var = dataset['precip']
@@ -528,11 +556,14 @@ if __name__ == '__main__':
             print("\nExporting to new NetCDF-4 file:\n '{}'".format(nc_filepath))
             # write to NetCDF
             var_enc = dict(chunksizes=chunks, zlib=True, complevel=1, _FillValue=np.NaN, dtype=netcdf_dtype) # should be float
+            task = nds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
+                          encoding={varname:var_enc,}, compute=False)
             if lexec:
-                nds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4',
-                              encoding={varname:var_enc,}, compute=True)
+                task.compute()
             else:
                 print(var_enc)
+                print(task)
+                task.visualize(filename=nc_folder+'netcdf.svg')  # This file is never produced
 
         # print timing
         end =  time.time()

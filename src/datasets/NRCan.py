@@ -797,7 +797,7 @@ if __name__ == '__main__':
     elif mode == 'test_daily':
        
         varlist = ['liqwatflx',]
-        xds = loadNRCan_Daily(varname='precip', grid=None, lautoChunk=True)
+        xds = loadNRCan_Daily(varname='Tmin', grid=None, lautoChunk=True)
         print(xds)
         print('')
         for varname,xv in xds.variables.items(): 

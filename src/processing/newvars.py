@@ -325,6 +325,8 @@ def computePotEvapHog(dataset, lmeans=False, lq2=False, zs=None, lxarray=False, 
   ''' function to compute potential evapotranspiration based on Hogg's simplified formula (1997):
       Hogg (1997, AgForMet): Temporal scaling of moisture and the forest-grassland boundary in western Canada
   '''
+  if lxarray:
+      import xarray as xr
   # get surface elevation variables
   zs, zs_units = _inferElev(dataset, zs=zs, latts=True, lunits=True) 
   assert zs_units is None or zs_units == 'm', zs
@@ -354,16 +356,20 @@ def computePotEvapHog(dataset, lmeans=False, lq2=False, zs=None, lxarray=False, 
   refvar = dataset[refvar]
   # compute potential evapotranspiration based on temperature (Hogg 1997, Eq. 4)
   D = evaluate('(es - ea) * exp( zs/9300 ) / 1000.')
-  pet = np.where(TC>-5,evaluate('(6.2*TC + 31) * D'),0)
+  pet = np.where(np.isfinite(TC),0,np.NaN)
+  pet = np.where(TC>-5,evaluate('(6.2*TC + 31) * D'),pet)
   pet = np.where(TC>10,evaluate('93 * D'),pet)
   # for TC < -5, PET = 0
   # convert from mm/month to kg/m^2/s
   pet /= days_per_month.mean()*86400
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
-  if refvar.masked:
-      pet = np.ma.masked_array(pet, mask=refvar.data_array.mask)
   atts = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)')
-  pet = Variable(data=pet, axes=refvar.axes, atts=atts)
+  if lxarray:
+      pet = xr.DataArray(coords=refvar.coords, data=pet, name=atts['name'], attrs=atts)
+  else: 
+      if refvar.masked:
+          pet = np.ma.masked_array(pet, mask=refvar.data_array.mask)
+      pet = Variable(data=pet, axes=refvar.axes, atts=atts)
   assert 'liqwatflx' not in dataset or pet.units == dataset['liqwatflx'].units, pet
   assert 'precip' not in dataset or pet.units == dataset['precip'].units, pet
   # return new variable
