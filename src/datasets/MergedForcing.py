@@ -44,7 +44,8 @@ axes_varatts = dict(time = dict(name='time', units='hours', long_name='Days'), #
 axes_varlist = axes_varatts.keys()
 # merged/mixed/derived variables
 varatts = dict(liqwatflx = dict(name='liqwatflx', units='kg/m^2/s', long_name='Liquid Water Flux'),
-               #pet_hog = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)'),
+               pet_hog = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)'),
+               pet_har = dict(name='pet_har', units='kg/m^2/s', long_name='PET (Hargeaves)'),
                )
 varlist = varatts.keys()
 ignore_list = []
@@ -67,7 +68,8 @@ dataset_attributes = dict(SnoDAS  = DSNT(name='SnoDAS',interval='1D', start_date
 dataset_list = list(dataset_attributes.keys())
 # N.B.: the effective start date for CaPA and all the rest is '2017-09-11T12'
 default_dataset_index = dict(precip='NRCan', T2='NRCan', Tmin='NRCan', Tmax='NRCan', 
-                             snow='SnoDAS', dswe='SnoDAS')
+                             snow='SnoDAS', dswe='SnoDAS',
+                             lat2D='const', lon2D='const', zs='const')
 
 
 ## helper functions
@@ -140,7 +142,8 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
         for varname in varlist:
             ds_name = dataset_index.get(varname,dataset_name) # default is native (global variable)
             if ds_name not in dataset_varlists: dataset_varlists[ds_name] = [varname] 
-            else: dataset_varlists[ds_name].append(varname)         
+            else: dataset_varlists[ds_name].append(varname)
+    const_list = dataset_varlists.pop('const',[])
     ## load datasets
     ds_list = []
     for dataset,varlist in dataset_varlists.items():
@@ -176,6 +179,37 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
     for ds in ds_list[::-1]: xds.attrs.update(ds.attrs) # we want MergedForcing to have precedence
     xds.attrs['name'] = 'MergedForcing'; xds.attrs['title'] = 'Merged Forcing Daily Timeseries'
     if 'resampling' in xds.attrs: del xds.attrs['resampling'] # does not apply to a merged dataset
+    ## add additional fields
+    if const_list:
+        # find horizontal coordinates
+        dims = (xds.ylat,xds.xlon)
+        for rv in xds.data_vars.values():
+            if xds.ylat in rv.dims and xds.xlon in rv.dims: break
+        chunks = {dim:chk for dim,chk in zip(rv.dims, rv.encoding['chunksizes']) if dim in dims}
+        print(chunks)
+        # add constant variables
+        if 'lat2D' in const_list or 'lon2D' in const_list:
+            # add geographic coordinate fields 
+            grid = kwargs.get('grid',None)
+            if grid is None: 
+                raise NotImplementedError() # probably a rare case, since datasets need to be on a common grid
+            else:
+                from geodata.gdal import loadPickledGridDef
+                griddef = loadPickledGridDef(grid='son2')
+                # add local latitudes
+                if 'lat2D' in const_list:
+                    atts = dict(name='lat2d', long_name='Latitude', units='deg N')
+                    xvar = xr.DataArray(data=griddef.lat2D, attrs=atts, dims=dims)
+                    xvar = xvar.chunk(chunks=chunks)
+                    xds['lat2D'] = xvar
+                # add local longitudes
+                if 'lon2D' in const_list:
+                    atts = dict(name='lon2d', long_name='Longitude', units='deg E')
+                    xvar = xr.DataArray(data=griddef.lon2D, attrs=atts, dims=dims)
+                    xvar = xvar.chunk(chunks=chunks)
+                    xds['lon2D'] = xvar 
+        if 'zs' in const_list:
+            raise NotImplementedError()
     # return merged dataset
     return xds
 loadDailyTimeSeries = loadMergedForcing_Daily
@@ -266,11 +300,11 @@ if __name__ == '__main__':
   modes = []
 #   modes += ['print_grid']
   modes += ['compute_derived']
-#   modes += ['load_Daily']
-#   modes += ['monthly_mean'          ]
-#   modes += ['load_TimeSeries'      ]
-#   modes += ['monthly_normal'        ]
-#   modes += ['load_Climatology'      ]
+  modes += ['load_Daily']
+  modes += ['monthly_mean'          ]
+  modes += ['load_TimeSeries'      ]
+  modes += ['monthly_normal'        ]
+  modes += ['load_Climatology'      ]
 #   modes += ['compute_PET']  
 
   # some settings
@@ -348,7 +382,7 @@ if __name__ == '__main__':
     elif mode == 'load_TimeSeries':
        
         lxarray = True
-        varname = 'liqwatflx'
+        varname = 'pet_hog'
         xds = loadMergedForcing_TS(varlist=None, grid=grid, lxarray=lxarray)
         print(xds)
         print('')
@@ -403,12 +437,13 @@ if __name__ == '__main__':
   #       varlist = netcdf_varlist
 #         varlist = ['precip','snow','liqwatflx']
         varlist = {dataset:None for dataset in dataset_list+[dataset_name]} # None means all...
+        varlist['const'] = ['lat2D']
 #         varlist = {'NRCan':None}
         dataset_args = dict(SnoDAS=dict(bias_correction='rfbc'))
 #         time_slice = ('2011-01-01','2017-01-01')
         time_slice = None
         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=dataset_args, 
-                                      time_slice=time_slice)
+                                      time_slice=time_slice,)
         print(xds)
         print('')
         print(xds.attrs)
@@ -437,14 +472,15 @@ if __name__ == '__main__':
         # settings
         lexec = True
 #         lexec = False
-        load_chunks = None; lautoChunkLoad = False  # chunking input should not be necessary, if the source files are chunked properly
+        load_chunks = None; lautoChunkLoad = True  # chunking input should not be necessary, if the source files are chunked properly
         chunks = None; lautoChunk = True # auto chunk output - this is necessary to maintain proper chunking!
         # N.B.: 'lautChunk' is necessary for *loading* data in chunks - otherwise it loads the whole array at once...
         #       !!! Chunking of size (12, 205, 197) requires ~13GB in order to compute T2 (three arrays total) !!!
 #         chunks = (9, 59, 59); lautoChunk = False
 #         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
 #         derived_varlist = ['dask_test']; load_list = ['T2']
-        derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
+#         derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
+        derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
 #         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
 #         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
@@ -453,8 +489,9 @@ if __name__ == '__main__':
         
         # optional slicing (time slicing completed below)
 #         start_date = None; end_date = None # auto-detect available data
-#         start_date = '2011-01-01'; end_date = '2018-01-01'
-        start_date = '2011-01-01'; end_date = '2011-04-01'
+        start_date = '2011-01-01'; end_date = '2018-01-01'
+#         start_date = '2011-01-01'; end_date = '2011-04-01'
+#         start_date = '2011-12-01'; end_date = '2012-03-01'
 #         start_date = '2011-01-01'; end_date = '2013-01-01'
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
         
@@ -482,13 +519,12 @@ if __name__ == '__main__':
                 def test_fct(xds, ref_var=None,):
                     ''' dask test function '''
                     ref_var = xds[ref_var]
-                    assert ref_var.min() > 100
                     xvar = ref_var**2
-                    for i,date in enumerate(xds['time'].data):
-                        j = pd.to_datetime(date).dayofyear 
-                        #print(xr.where(ref_var.loc[date,:] < 100,1,0).sum()/(ref_var.shape[-2]*ref_var.shape[-1]))
-                        #print(j)
-                        xvar.loc[date,:] += ( j * ref_var.loc[date,:] )
+                    assert ref_var.dims[0] == 'time', ref_var.dims
+                    dt64 = xds['time'].data
+                    if not np.issubdtype(dt64.dtype,np.datetime64): raise NotImplementedError()
+                    J = 1 + ( ( dt64.astype('datetime64[D]') - dt64.astype('datetime64[Y]') ) / np.timedelta64(1,'D') )
+                    xvar += J.reshape(ref_var.shape[:1]+(1,)*(ref_var.ndim-1)) * ref_var
                     xvar.attrs = {}
                     return xvar
                 xvar = xr.map_blocks(test_fct, dataset, kwargs=dict(ref_var='T2'))
@@ -501,11 +537,17 @@ if __name__ == '__main__':
                 xvar /= 2                
             elif varname == 'pet_hog':
                 from processing.newvars import computePotEvapHog
-                default_varatts = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)'); ref_var = dataset['Tmax']
+                default_varatts = varatts[varname]; ref_var = dataset['Tmax']
                 note = 'PET based on the Hogg (1997) method using only Tmin and Tmax'
                 kwargs = dict(lmeans=False, lq2=None, zs=150, lxarray=True)      
                 xvar = xr.map_blocks(computePotEvapHog, dataset, kwargs=kwargs)
-#                 print(xvar)
+            elif varname == 'pet_har':                
+                from processing.newvars import computePotEvapHar
+                default_varatts = varatts[varname]; ref_var = dataset['Tmax']
+                note = 'PET based on the Hargreaves method using only Tmin and Tmax'
+                kwargs = dict(lmeans=False, lat=None, lAllen=False, l365=False, lxarray=True)      
+                xvar = xr.map_blocks(computePotEvapHar, dataset, kwargs=kwargs)
+                print(xvar)
             elif varname == 'liqwatflx':
                 default_varatts = varatts[varname]
                 ref_var = dataset['precip']
@@ -530,7 +572,7 @@ if __name__ == '__main__':
                 chunks = autoChunk(xvar.shape)
             if chunks: 
                 xvar = xvar.chunk(chunks=chunks)
-            #print(xvar)
+            print('Chunks:',xvar.chunks)
                 
             # create a dataset for export to new file
             ds_attrs = dataset.attrs.copy()
