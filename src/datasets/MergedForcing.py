@@ -46,6 +46,7 @@ axes_varlist = axes_varatts.keys()
 varatts = dict(liqwatflx = dict(name='liqwatflx', units='kg/m^2/s', long_name='Liquid Water Flux'),
                pet_hog = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)'),
                pet_har = dict(name='pet_har', units='kg/m^2/s', long_name='PET (Hargeaves)'),
+               pet_th  = dict(name='pet_th', units='kg/m^2/s', long_name='PET (Thornthwaite)'),
                )
 varlist = varatts.keys()
 ignore_list = []
@@ -116,7 +117,44 @@ def getFolderFileName(varname=None, dataset=None, grid=None, resampling=None, re
     if lcreateFolder: os.makedirs(folder, exist_ok=True)
     # return folder and filename
     return folder,filename
-        
+
+
+def addConstantFields(xds, const_list=None, grid=None):
+    ''' add constant auxiliary fields like topographic elevation and geographic coordinates to dataset '''
+    if const_list is None:
+        const_list = ['lat2D', 'lon2D']
+    # find horizontal coordinates
+    dims = (xds.ylat,xds.xlon)
+    for rv in xds.data_vars.values():
+        if xds.ylat in rv.dims and xds.xlon in rv.dims: break
+    if dask.is_dask_collection(rv):
+        chunks = {dim:chk for dim,chk in zip(rv.dims, rv.encoding['chunksizes']) if dim in dims}
+    else:
+        chunks = None # don't chunk if nothing else is chunked...
+    # add constant variables
+    if 'lat2D' in const_list or 'lon2D' in const_list:
+        # add geographic coordinate fields 
+        if grid is None: 
+            raise NotImplementedError() # probably a rare case, since datasets need to be on a common grid
+        else:
+            from geodata.gdal import loadPickledGridDef
+            griddef = loadPickledGridDef(grid='son2')
+            # add local latitudes
+            if 'lat2D' in const_list:
+                atts = dict(name='lat2d', long_name='Latitude', units='deg N')
+                xvar = xr.DataArray(data=griddef.lat2D, attrs=atts, dims=dims)
+                if chunks: xvar = xvar.chunk(chunks=chunks)
+                xds['lat2D'] = xvar
+            # add local longitudes
+            if 'lon2D' in const_list:
+                atts = dict(name='lon2d', long_name='Longitude', units='deg E')
+                xvar = xr.DataArray(data=griddef.lon2D, attrs=atts, dims=dims)
+                if chunks: xvar = xvar.chunk(chunks=chunks)
+                xds['lon2D'] = xvar 
+    if 'zs' in const_list:
+        print("Loading of surface/topographic elevation is not yet implemented")
+    return xds        
+
 
 ## functions to load NetCDF datasets (using xarray)
 
@@ -143,7 +181,7 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
             ds_name = dataset_index.get(varname,dataset_name) # default is native (global variable)
             if ds_name not in dataset_varlists: dataset_varlists[ds_name] = [varname] 
             else: dataset_varlists[ds_name].append(varname)
-    const_list = dataset_varlists.pop('const',[])
+    const_list = dataset_varlists.pop('const', [])
     ## load datasets
     ds_list = []
     for dataset,varlist in dataset_varlists.items():
@@ -180,48 +218,21 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
     xds.attrs['name'] = 'MergedForcing'; xds.attrs['title'] = 'Merged Forcing Daily Timeseries'
     if 'resampling' in xds.attrs: del xds.attrs['resampling'] # does not apply to a merged dataset
     ## add additional fields
-    if const_list:
-        # find horizontal coordinates
-        dims = (xds.ylat,xds.xlon)
-        for rv in xds.data_vars.values():
-            if xds.ylat in rv.dims and xds.xlon in rv.dims: break
-        chunks = {dim:chk for dim,chk in zip(rv.dims, rv.encoding['chunksizes']) if dim in dims}
-        print(chunks)
-        # add constant variables
-        if 'lat2D' in const_list or 'lon2D' in const_list:
-            # add geographic coordinate fields 
-            grid = kwargs.get('grid',None)
-            if grid is None: 
-                raise NotImplementedError() # probably a rare case, since datasets need to be on a common grid
-            else:
-                from geodata.gdal import loadPickledGridDef
-                griddef = loadPickledGridDef(grid='son2')
-                # add local latitudes
-                if 'lat2D' in const_list:
-                    atts = dict(name='lat2d', long_name='Latitude', units='deg N')
-                    xvar = xr.DataArray(data=griddef.lat2D, attrs=atts, dims=dims)
-                    xvar = xvar.chunk(chunks=chunks)
-                    xds['lat2D'] = xvar
-                # add local longitudes
-                if 'lon2D' in const_list:
-                    atts = dict(name='lon2d', long_name='Longitude', units='deg E')
-                    xvar = xr.DataArray(data=griddef.lon2D, attrs=atts, dims=dims)
-                    xvar = xvar.chunk(chunks=chunks)
-                    xds['lon2D'] = xvar 
-        if 'zs' in const_list:
-            raise NotImplementedError()
+    xds = addConstantFields(xds, const_list=const_list, grid=kwargs.get('grid',None))
     # return merged dataset
     return xds
 loadDailyTimeSeries = loadMergedForcing_Daily
 
 
-def loadMergedForcing_All(varname=None, varlist=None, name=dataset_name, varatts=None, grid=None, mode=None, period=None,
-                          lxarray=True, lmonthly=False, lgeoref=False, geoargs=None, **kwargs):
+def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None, 
+                          mode=None, period=None, lxarray=True, lmonthly=False, lgeoref=False, geoargs=None, **kwargs):
     ''' function to load gridded monthly transient merged forcing data '''
     # resolve folder and filename
-    folder,filename = getFolderFileName(varname=None, dataset=dataset_name, grid=grid, resampling=None, resolution=None, 
-                                        bias_correction=None, mode=mode, period=period, lcreateFolder=False)
+    file_args = {key:kwargs.pop(key,None) for key in ('resampling', 'resolution', 'bias_correction')}
+    folder,filename = getFolderFileName(varname=None, dataset=dataset_name, grid=grid, mode=mode, period=period, 
+                                        lcreateFolder=False, **file_args)
     # remove some common arguments that have no meaning
+    if name is None: name = dataset_name
     for key in ('resolution','bias_correction'):
         if key in kwargs: del kwargs[key]
     if varname and varlist: raise ValueError(varname,varlist)
@@ -267,17 +278,17 @@ def loadMergedForcing_All(varname=None, varlist=None, name=dataset_name, varatts
     return dataset
 
 
-def loadMergedForcing_TS(varname=None, varlist=None, name=dataset_name, varatts=None, grid=None,
+def loadMergedForcing_TS(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None,
                          lxarray=True, lmonthly=False, lgeoref=False, geoargs=None, **kwargs):
     ''' function to load gridded monthly transient merged forcing data '''
-    return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, varatts=varatts, grid=grid, mode='monthly', 
-                                 period=None, lxarray=lxarray, lmonthly=lmonthly, lgeoref=lgeoref, geoargs=geoargs, **kwargs)
+    return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, dataset_name=dataset_name, varatts=varatts, grid=grid, 
+                                 mode='monthly', period=None, lxarray=lxarray, lmonthly=lmonthly, lgeoref=lgeoref, geoargs=geoargs, **kwargs)
 
-def loadMergedForcing(varname=None, varlist=None, name=dataset_name, varatts=None, grid=None, period=None,
+def loadMergedForcing(varname=None, varlist=None, name=None, dataset_name=dataset_name, varatts=None, grid=None, period=None,
                       lxarray=True, lmonthly=False, lgeoref=False, geoargs=None, **kwargs):
     ''' function to load gridded monthly normal merged forcing data '''
-    return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, varatts=varatts, grid=grid, mode='clim', period=period,
-                                 lxarray=lxarray, lmonthly=lmonthly, lgeoref=lgeoref, geoargs=geoargs, **kwargs)
+    return loadMergedForcing_All(varname=varname, varlist=varlist, name=name, dataset_name=dataset_name, varatts=varatts, grid=grid, 
+                                 mode='clim', period=period, lxarray=lxarray, lmonthly=lmonthly, lgeoref=lgeoref, geoargs=geoargs, **kwargs)
 
 
 ## abuse for testing
@@ -300,11 +311,11 @@ if __name__ == '__main__':
   modes = []
 #   modes += ['print_grid']
   modes += ['compute_derived']
-  modes += ['load_Daily']
-  modes += ['monthly_mean'          ]
-  modes += ['load_TimeSeries'      ]
-  modes += ['monthly_normal'        ]
-  modes += ['load_Climatology'      ]
+#   modes += ['load_Daily']
+#   modes += ['monthly_mean'          ]
+#   modes += ['load_TimeSeries'      ]
+#   modes += ['monthly_normal'        ]
+#   modes += ['load_Climatology'      ]
 #   modes += ['compute_PET']  
 
   # some settings
@@ -328,9 +339,10 @@ if __name__ == '__main__':
     elif mode == 'load_Climatology':
        
         lxarray = True
-        varname = 'liqwatflx'
-        period = (2011,2018)
-        xds = loadMergedForcing(varlist=None, grid=grid, lxarray=lxarray, period=period)
+        varname = 'T2'
+        #period = (2011,2018); kwargs = dict()
+        period = (1980,2010); kwargs = dict(dataset_name='NRCan', resolution='NA12', varlist=[varname])
+        xds = loadMergedForcing(grid=grid, lxarray=lxarray, period=period, **kwargs)
         print(xds)
         print('')
         xv = xds[varname]
@@ -398,7 +410,7 @@ if __name__ == '__main__':
         chunks = None; lautoChunk = True # auto chunk output - this is necessary to maintain proper chunking!
 #         time_slice = ('2011-01-01','2018-01-01')
         time_slice = None
-        varlist = {dataset:None for dataset in dataset_list+[dataset_name]} # None means all...
+        varlist = {dataset:None for dataset in dataset_list+[dataset_name, 'const']} # None means all...
         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True, 
                                       lautoChunk=False, time_slice=time_slice)
         print(xds)
@@ -443,7 +455,7 @@ if __name__ == '__main__':
 #         time_slice = ('2011-01-01','2017-01-01')
         time_slice = None
         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=dataset_args, 
-                                      time_slice=time_slice,)
+                                      time_slice=time_slice, lautoChunk=True)
         print(xds)
         print('')
         print(xds.attrs)
@@ -454,13 +466,14 @@ if __name__ == '__main__':
 #                 xvar = xds[varname]
 #                 zeros = xvar < 100
 #                 print(varname,zeros.data.sum())            
-#         for varname,xv in xds.variables.items(): 
-#             if xv.ndim == 3: break
-#         xv = xds[varname] # get DataArray instead of Variable object
-# #         xv = xv.sel(time=slice('2018-01-01','2018-02-01'),x=slice(-3500,4500),y=slice(-1000,2000))
-#   #       xv = xv.loc['2011-01-01',:,:]
-#         print(xv)
-#         print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
+        for varname,xv in xds.variables.items(): 
+            if xv.ndim == 3: break
+        xv = xds[varname] # get DataArray instead of Variable object
+#         xv = xv.sel(time=slice('2018-01-01','2018-02-01'),x=slice(-3500,4500),y=slice(-1000,2000))
+  #       xv = xv.loc['2011-01-01',:,:]
+        print(xv)
+        print(xv.encoding)
+        print(('Size in Memory: {:6.1f} MB'.format(xv.nbytes/1024./1024.)))
   
         
     elif mode == 'compute_derived':
@@ -480,7 +493,8 @@ if __name__ == '__main__':
 #         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
 #         derived_varlist = ['dask_test']; load_list = ['T2']
 #         derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
-        derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
+#         derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
+        derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
 #         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
 #         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
@@ -489,9 +503,9 @@ if __name__ == '__main__':
         
         # optional slicing (time slicing completed below)
 #         start_date = None; end_date = None # auto-detect available data
-        start_date = '2011-01-01'; end_date = '2018-01-01'
+#         start_date = '2011-01-01'; end_date = '2018-01-01'
 #         start_date = '2011-01-01'; end_date = '2011-04-01'
-#         start_date = '2011-12-01'; end_date = '2012-03-01'
+        start_date = '2011-12-01'; end_date = '2012-03-01'
 #         start_date = '2011-01-01'; end_date = '2013-01-01'
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
         
@@ -547,6 +561,18 @@ if __name__ == '__main__':
                 note = 'PET based on the Hargreaves method using only Tmin and Tmax'
                 kwargs = dict(lmeans=False, lat=None, lAllen=False, l365=False, lxarray=True)      
                 xvar = xr.map_blocks(computePotEvapHar, dataset, kwargs=kwargs)
+            elif varname == 'pet_th':
+                default_varatts = varatts[varname]; ref_var = dataset['T2']
+                # load climatological temperature from NRCan
+                cds = loadMergedForcing(varname='T2', name='climT2', dataset_name='NRCan', period=(1980,2010), resolution='NA12', 
+                                        grid=grid, lxarray=True, lmonthly=False, lgeoref=False)
+                clim_chunks = {dim:cnk for dim,cnk in zip(ref_var.dims,ref_var.encoding['chunksizes']) if dim in (ref_var.xlon,ref_var.ylat)}
+                climT2 = cds['T2'].chunk(chunks=clim_chunks) # easier not to chunk time dim, since it is small
+                # process timeseries
+                from processing.newvars import computePotEvapTh
+                note = 'PET based on the Thornthwaite method using only T2'
+                kwargs = dict(climT2=climT2, lat=None, l365=False, p='center', lxarray=True)      
+                xvar = xr.map_blocks(computePotEvapTh, dataset, kwargs=kwargs)
                 print(xvar)
             elif varname == 'liqwatflx':
                 default_varatts = varatts[varname]

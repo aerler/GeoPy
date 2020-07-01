@@ -552,63 +552,83 @@ def heatIndex(T2, lKelvin=True, lkeepDims=True):
     return I
 
 # compute potential evapo-transpiration following Thornthwaite method; only requires T2 (monthly/daily and climatological)
-def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p='center', **kwargs):
-  ''' function to compute potential evapotranspiration according to Thornthwaite method
-      (Thornthwaite, 1948, Appendix 1 or https://en.wikipedia.org/wiki/Potential_evaporation) '''
-  # check prerequisites
-  if isinstance(dataset, Dataset):
-      if 'T2' not in dataset: 
-          raise VariableError("Prerequisite 'T2' for potential evapo-transpiration not found.")
-      else: T2 = dataset['T2'].load()
-  elif isinstance(dataset, Variable):
-      T2 = dataset.load()
-  else:
-      raise TypeError(dataset)
-  if not T2.hasAxis('time'): 
-      raise AxisError("Variable 'T2' needs to have a time coordinate for daylight calculation.")
-  else: time = T2.getAxis('time')
-  assert T2.axisIndex('time') == 0, T2
-  # infer latitude
-  lat = _inferLat(dataset, lat=lat, ldeg=True, latts=True, lunits=False)
-  # compute heat index
-  if climT2 is None:
-      climT2 = T2.climMean()
-  if isinstance(climT2,Variable):
-      lKelvin = ( climT2.units == 'K' )
-      climt = climT2.load()[:]
-      if lKelvin: assert climt.min() > 150, climt
-      else: assert climt.max() < 70, climt
-  else:
-      climt = climT2
-      lKelvin = ( climt.min() > 150 )
-  I = heatIndex(climt, lKelvin=lKelvin, lkeepDims=True)
-  # compute PET 
-  a = evaluate('6.75e-7*I**3 - 7.71e-5*I**2 + 1.792e-2*I + 0.49239')
-  if T2.units == 'K': t = T2[:] - 273.15
-  elif 'C' in T2.units: t = T2[:].copy()
-  else:
-      raise VariableError("Cannot infer temperature units from unit string",T2.units)
-  np.clip(t, a_min=0, a_max=None, out=t)
-  pet = evaluate('(16./30.) * ( 10. * t/I )**a') # in mm/day for 12 hours of daylight
-  # compute daylight hours
-  dlf = monthlyDaylight(time[:], lat, p=p, l365=l365, time_offset=time_offset, ldeg=True)
-  if dlf.ndim < pet.ndim:
-      nd = dlf.ndim
-      if dlf.shape == pet.shape[:nd]:
-          dlf = dlf.reshape(dlf.shape+(1,)*(pet.ndim-nd)) # usually the longitude axis will be expanded
-      else:
-          raise NotImplementedError((dlf.shape,pet.shape))
-  else:
-      assert dlf.shape == pet.shape, (dlf.shape,pet.shape)
-  pet *= 2*dlf/86400 # here 'unity' should corresponds to 12h, not 24h
-  # N.B.: we also need to convert from per day to per second!
-  if T2.masked:
-      pet = np.ma.masked_array(pet, mask=T2.data_array.mask)
-  # create a Variable instance
-  atts = dict(name='pet_th', units='kg/m^2/s', long_name='PET (Thornthwaite)')
-  var = Variable(data=pet, axes=T2.axes, atts=atts)
-  # return new variable
-  return var
+def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p='center', lxarray=False, **kwargs):
+    ''' function to compute potential evapotranspiration according to Thornthwaite method
+        (Thornthwaite, 1948, Appendix 1 or https://en.wikipedia.org/wiki/Potential_evaporation) '''
+    if lxarray:
+        import xarray as xr
+        if isinstance(dataset, xr.Dataset): T2 = dataset['T2']
+        elif isinstance(dataset, xr.DataArray): T2 = dataset
+        else: raise TypeError(dataset)
+        time = T2.coords['time'].data
+        assert T2.dims[0] == 'time', T2
+        t = T2.data
+    else:
+        # check prerequisites
+        if isinstance(dataset, Dataset): T2 = dataset['T2'].load()
+        elif isinstance(dataset, Variable): T2 = dataset.load()
+        else: raise TypeError(dataset)
+        time = T2.getAxis('time')[:]
+        assert T2.axisIndex('time') == 0, T2
+        t = T2[:]
+    # convert units
+    T2units = T2.units # same for xarray and geopy
+    if T2units.upper().startswith('K'):
+        t = t - 273.15
+    elif T2units.upper().startswith('C'):
+        t = t.copy() # will clip in place later
+    else:
+        raise VariableError("Cannot infer temperature units from unit string",T2units)
+    # check climatology
+    if lxarray:
+        if isinstance(climT2, xr.Dataset): climT2 = climT2['T2']
+        elif not isinstance(climT2, xr.DataArray): raise TypeError(climT2)
+        lKelvin = climT2.units.upper().startswith('K')
+        climT2 = climT2.data
+    else:
+        if climT2 is None:
+            climT2 = T2.climMean()
+        if isinstance(climT2,Variable):
+            lKelvin = ( climT2.units == 'K' )
+            climt = climT2.load()[:]
+            if lKelvin: assert climt.min() > 150, climt
+            else: assert climt.max() < 70, climt
+        else:
+            climt = climT2
+            lKelvin = ( climt.min() > 150 )
+    # compute heat index
+    I = heatIndex(climt, lKelvin=lKelvin, lkeepDims=True)
+    a = evaluate('6.75e-7*I**3 - 7.71e-5*I**2 + 1.792e-2*I + 0.49239')
+    # infer latitude
+    lat = _inferLat(dataset, lat=lat, ldeg=True, latts=True, lunits=False, lxarray=lxarray)
+    # compute PET 
+    np.clip(t, a_min=0, a_max=None, out=t)
+    pet = evaluate('(16./30.) * ( 10. * t/I )**a') # in mm/day for 12 hours of daylight
+    # compute daylight hours
+    dlf = monthlyDaylight(time, lat, p=p, l365=l365, time_offset=time_offset, ldeg=True)
+    if dlf.ndim < pet.ndim:
+        nd = dlf.ndim
+        if dlf.shape == pet.shape[:nd]:
+            dlf = dlf.reshape(dlf.shape+(1,)*(pet.ndim-nd)) # usually the longitude axis will be expanded
+        else:
+            raise NotImplementedError((dlf.shape,pet.shape))
+    else:
+        assert dlf.shape == pet.shape, (dlf.shape,pet.shape)
+    pet *= 2*dlf/86400 # here 'unity' should corresponds to 12h, not 24h
+    # N.B.: we also need to convert from per day to per second!
+    # create a DataArray/Variable instance
+    atts = dict(name='pet_th', units='kg/m^2/s', long_name='PET (Thornthwaite)')
+    if lxarray:
+        if pet.size == 0: pet = None
+        var = xr.DataArray(coords=T2.coords, data=pet, name=atts['name'], attrs=atts)
+    else: 
+        if T2.masked:
+            pet = np.ma.masked_array(pet, mask=T2.data_array.mask)
+        var = Variable(data=pet, axes=T2.axes, atts=atts)
+    assert 'liqwatflx' not in dataset or pet.units == dataset['liqwatflx'].units, pet
+    assert 'precip' not in dataset or pet.units == dataset['precip'].units, pet
+    # return new variable
+    return var
 
 # recompute total precip from solid and liquid precip
 def computeTotalPrecip(dataset):
