@@ -160,7 +160,7 @@ def addConstantFields(xds, const_list=None, grid=None):
 
 
 def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, dataset_args=None, time_slice=None, 
-                            compat='override', join='inner', fill_value=None, **kwargs):
+                            compat='override', join='inner', fill_value=None, ldebug=False, **kwargs):
     ''' function to load and merge data from different high-resolution datasets (e.g. SnoDAS or NRCan) using xarray;
         typical dataset-agnostic arguments: grid=str, lgeoref=True, geoargs=dict, chunks=dict, lautoChunk=False, 
         typical dataset-specific arguments: folder=str, resampling=str, resolution=str, bias_correction=str '''
@@ -185,6 +185,7 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
     ## load datasets
     ds_list = []
     for dataset,varlist in dataset_varlists.items():
+        if ldebug: print("Loading", dataset, '\n', varlist, '\n')
         # prepare kwargs
         ds_args = kwargs.copy(); 
         if dataset in dataset_args: ds_args.update(dataset_args[dataset])
@@ -213,11 +214,13 @@ def loadMergedForcing_Daily(varname=None, varlist=None, dataset_index=None, data
         if time_slice: ds = ds.loc[{'time':slice(*time_slice),}] # slice time
         ds_list.append(ds)
     # merge datasets and attributed
+    if ldebug: print("Merging Datasets:", compat, join, '\n')
     xds = xr.merge(ds_list, compat=compat, join=join, fill_value=fill_value)
     for ds in ds_list[::-1]: xds.attrs.update(ds.attrs) # we want MergedForcing to have precedence
     xds.attrs['name'] = 'MergedForcing'; xds.attrs['title'] = 'Merged Forcing Daily Timeseries'
     if 'resampling' in xds.attrs: del xds.attrs['resampling'] # does not apply to a merged dataset
     ## add additional fields
+    if ldebug: print("Adding Constants:", const_list, '\n',)
     xds = addConstantFields(xds, const_list=const_list, grid=kwargs.get('grid',None))
     # return merged dataset
     return xds
@@ -310,9 +313,9 @@ if __name__ == '__main__':
 
   modes = []
 #   modes += ['print_grid']
-  modes += ['compute_derived']
+#   modes += ['compute_derived']
 #   modes += ['load_Daily']
-#   modes += ['monthly_mean'          ]
+  modes += ['monthly_mean'          ]
 #   modes += ['load_TimeSeries'      ]
 #   modes += ['monthly_normal'        ]
 #   modes += ['load_Climatology'      ]
@@ -340,8 +343,8 @@ if __name__ == '__main__':
        
         lxarray = True
         varname = 'T2'
-        #period = (2011,2018); kwargs = dict()
-        period = (1980,2010); kwargs = dict(dataset_name='NRCan', resolution='NA12', varlist=[varname])
+        period = (2011,2018); kwargs = dict()
+#         period = (1980,2010); kwargs = dict(dataset_name='NRCan', resolution='NA12', varlist=[varname]) # load regular NRCan normals
         xds = loadMergedForcing(grid=grid, lxarray=lxarray, period=period, **kwargs)
         print(xds)
         print('')
@@ -354,7 +357,7 @@ if __name__ == '__main__':
   
         # optional slicing (time slicing completed below)
 #         start_date = '2011-01'; end_date = '2011-12'; varlist = ['liqwatflx', ts_name]
-        start_date = '2011-01'; end_date = '2018-12'; varlist = None
+        start_date = '2011-01'; end_date = '2017-12'; varlist = None # date ranges are inclusive
   
         # start operation
         start = time.time()
@@ -394,7 +397,7 @@ if __name__ == '__main__':
     elif mode == 'load_TimeSeries':
        
         lxarray = True
-        varname = 'pet_hog'
+        varname = 'pet_th'
         xds = loadMergedForcing_TS(varlist=None, grid=grid, lxarray=lxarray)
         print(xds)
         print('')
@@ -406,13 +409,13 @@ if __name__ == '__main__':
     elif mode == 'monthly_mean':
         
         # settings
-        load_chunks = None; lautoChunkLoad = False  # chunking input should not be necessary, if the source files are chunked properly
+        load_chunks = None; lautoChunkLoad = True  # chunking input should not be necessary, if the source files are chunked properly
         chunks = None; lautoChunk = True # auto chunk output - this is necessary to maintain proper chunking!
-#         time_slice = ('2011-01-01','2018-01-01')
-        time_slice = None
+        time_slice = ('2011-01-01','2011-12-31') # inclusive
+#         time_slice = None
         varlist = {dataset:None for dataset in dataset_list+[dataset_name, 'const']} # None means all...
         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True, 
-                                      lautoChunk=False, time_slice=time_slice)
+                                      lautoChunk=lautoChunkLoad, time_slice=time_slice, ldebug=True)
         print(xds)
         print('')
         
@@ -448,8 +451,7 @@ if __name__ == '__main__':
        
   #       varlist = netcdf_varlist
 #         varlist = ['precip','snow','liqwatflx']
-        varlist = {dataset:None for dataset in dataset_list+[dataset_name]} # None means all...
-        varlist['const'] = ['lat2D']
+        varlist = {dataset:None for dataset in dataset_list+[dataset_name, 'const']} # None means all...
 #         varlist = {'NRCan':None}
         dataset_args = dict(SnoDAS=dict(bias_correction='rfbc'))
 #         time_slice = ('2011-01-01','2017-01-01')
@@ -493,8 +495,8 @@ if __name__ == '__main__':
 #         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
 #         derived_varlist = ['dask_test']; load_list = ['T2']
 #         derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
-#         derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
-        derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
+        derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
+#         derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
 #         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
 #         derived_varlist = ['T2','liqwatflx']; load_list = ['Tmin','Tmax', 'precip','snow']
@@ -503,10 +505,10 @@ if __name__ == '__main__':
         
         # optional slicing (time slicing completed below)
 #         start_date = None; end_date = None # auto-detect available data
-#         start_date = '2011-01-01'; end_date = '2018-01-01'
+        start_date = '2011-01-01'; end_date = '2017-12-31' # inclusive
 #         start_date = '2011-01-01'; end_date = '2011-04-01'
-        start_date = '2011-12-01'; end_date = '2012-03-01'
-#         start_date = '2011-01-01'; end_date = '2013-01-01'
+#         start_date = '2011-12-01'; end_date = '2012-03-01'
+#         start_date = '2011-01-01'; end_date = '2012-12-31'
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
         
         # load datasets
@@ -567,11 +569,11 @@ if __name__ == '__main__':
                 cds = loadMergedForcing(varname='T2', name='climT2', dataset_name='NRCan', period=(1980,2010), resolution='NA12', 
                                         grid=grid, lxarray=True, lmonthly=False, lgeoref=False)
                 clim_chunks = {dim:cnk for dim,cnk in zip(ref_var.dims,ref_var.encoding['chunksizes']) if dim in (ref_var.xlon,ref_var.ylat)}
-                climT2 = cds['T2'].chunk(chunks=clim_chunks) # easier not to chunk time dim, since it is small
+                dataset['climT2'] = cds['T2'].chunk(chunks=clim_chunks).rename(time='month') # easier not to chunk time dim, since it is small
                 # process timeseries
                 from processing.newvars import computePotEvapTh
                 note = 'PET based on the Thornthwaite method using only T2'
-                kwargs = dict(climT2=climT2, lat=None, l365=False, p='center', lxarray=True)      
+                kwargs = dict(climT2='climT2', lat=None, l365=False, p='center', lxarray=True)      
                 xvar = xr.map_blocks(computePotEvapTh, dataset, kwargs=kwargs)
                 print(xvar)
             elif varname == 'liqwatflx':

@@ -539,7 +539,7 @@ def computePotEvapHar(dataset, lat=None, lmeans=False, l365=None, time_offset=0,
 # compute heat index for Thornthwaite PET formulation
 def heatIndex(T2, lKelvin=True, lkeepDims=True):
     ''' formula to compute heat index (Thornthwaite 1948) from monthly normal temperatures '''
-    if T2.shape[0] != 12: 
+    if T2.size > 0 and T2.shape[0] != 12: 
         raise ValueError(T2.shape)    
     t = T2[:].copy()
     if lKelvin: t -= 273.15 # convert temperatur
@@ -558,9 +558,10 @@ def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p
     if lxarray:
         import xarray as xr
         if isinstance(dataset, xr.Dataset): T2 = dataset['T2']
-        elif isinstance(dataset, xr.DataArray): T2 = dataset
-        else: raise TypeError(dataset)
-        time = T2.coords['time'].data
+        else: raise TypeError(dataset) # has to be a Dataset, so we can also pass climT2
+        time = T2.coords['time']
+        t_units = time.long_name
+        time = time.data
         assert T2.dims[0] == 'time', T2
         t = T2.data
     else:
@@ -568,7 +569,9 @@ def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p
         if isinstance(dataset, Dataset): T2 = dataset['T2'].load()
         elif isinstance(dataset, Variable): T2 = dataset.load()
         else: raise TypeError(dataset)
-        time = T2.getAxis('time')[:]
+        time = T2.getAxis('time')
+        t_units = time.units
+        time = time[:]
         assert T2.axisIndex('time') == 0, T2
         t = T2[:]
     # convert units
@@ -581,13 +584,19 @@ def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p
         raise VariableError("Cannot infer temperature units from unit string",T2units)
     # check climatology
     if lxarray:
-        if isinstance(climT2, xr.Dataset): climT2 = climT2['T2']
-        elif not isinstance(climT2, xr.DataArray): raise TypeError(climT2)
+        if not isinstance(climT2,str):
+            raise TypeError("If xarray is used, monthly normals have to be provided as a variable in the main dataet.")
+        climT2 = dataset[climT2]
         lKelvin = climT2.units.upper().startswith('K')
-        climT2 = climT2.data
+        climt = climT2.data
     else:
         if climT2 is None:
             climT2 = T2.climMean()
+        elif isinstance(climT2,str):
+            if isinstance(dataset, Dataset):
+                climT2 = dataset[climT2]
+            else:
+                raise TypeError("Providing climT2 as a string argument (Variable name) requires dataset to be an actual Dataset.")
         if isinstance(climT2,Variable):
             lKelvin = ( climT2.units == 'K' )
             climt = climT2.load()[:]
@@ -605,13 +614,16 @@ def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p
     np.clip(t, a_min=0, a_max=None, out=t)
     pet = evaluate('(16./30.) * ( 10. * t/I )**a') # in mm/day for 12 hours of daylight
     # compute daylight hours
-    dlf = monthlyDaylight(time, lat, p=p, l365=l365, time_offset=time_offset, ldeg=True)
+    lmonth = not lxarray and 'month' in t_units.lower()
+    dlf = monthlyDaylight(time, lat, p=p, l365=l365, time_offset=time_offset, ldeg=True, lmonth=lmonth)
     if dlf.ndim < pet.ndim:
         nd = dlf.ndim
         if dlf.shape == pet.shape[:nd]:
             dlf = dlf.reshape(dlf.shape+(1,)*(pet.ndim-nd)) # usually the longitude axis will be expanded
         else:
             raise NotImplementedError((dlf.shape,pet.shape))
+    elif pet.size == 0:
+        dlf = dlf.reshape(pet.shape) # to facilitate xarray output probing
     else:
         assert dlf.shape == pet.shape, (dlf.shape,pet.shape)
     pet *= 2*dlf/86400 # here 'unity' should corresponds to 12h, not 24h
