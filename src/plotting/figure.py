@@ -9,7 +9,6 @@ A custom Figure class that provides some specialized functions and uses a custom
 # external imports
 from warnings import warn
 from matplotlib.figure import Figure, SubplotBase, subplot_class_factory
-from mpl_toolkits.axes_grid1.axes_divider import LocatableAxes
 import numpy as np
 # internal imports
 from geodata.misc import isInt , ArgumentError
@@ -180,8 +179,7 @@ class MyFigure(Figure):
     self.subplots_adjust(**margins)
     # and now repair damage: restore axes
     for ax in self.axes:
-      if isinstance(ax,LocatableAxes):
-        warn('Adjusting subplots does not work with LocatableAxes')
+      # Adjusting subplots does not work with LocatableAxes, but that is depricated...
       ax.updateAxes(mode='adjust')
         
   # add common/shared legend to a multi-panel plot

@@ -11,7 +11,6 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib.colors import LogNorm, Normalize
 from matplotlib.axes import Axes
-from mpl_toolkits.axes_grid1.axes_divider import LocatableAxes
 from matplotlib.projections import PolarAxes
 from warnings import warn
 # internal imports
@@ -1267,9 +1266,17 @@ class MyAxes(Axes):
     if self.parasite_axes: self._positionParasiteAxes() 
 
     
+    
+# this has been removed in MPL 3.2.2 - not sure how to fix it!
+# # a new class that combines the new axes with LocatableAxes for use with AxesGrid 
+# class MyLocatableAxes(MyAxes,LocatableAxes):
+#     ''' A new Axes class that adds functionality from MyAxes to LocatableAxes for use in AxesGrid '''
+
 # a new class that combines the new axes with LocatableAxes for use with AxesGrid 
-class MyLocatableAxes(MyAxes,LocatableAxes):
+class MyLocatableAxes(MyAxes):
     ''' A new Axes class that adds functionality from MyAxes to LocatableAxes for use in AxesGrid '''
+    def __init__(self):
+        raise NotImplementedError("This was originally based on LocatableAxes, which was removed in MPL v3.2.2")
 
 
 # a new PolarAxes class that adds the new axes features to PolarAxes 
