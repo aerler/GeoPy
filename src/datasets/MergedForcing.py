@@ -297,7 +297,7 @@ def loadMergedForcing(varname=None, varlist=None, name=None, dataset_name=datase
 ## abuse for testing
 if __name__ == '__main__':
   
-  import dask, time, gc, shutil
+  import dask, time, gc
   from multiprocessing.pool import ThreadPool
   
   print('xarray version: '+xr.__version__+'\n')
@@ -315,10 +315,10 @@ if __name__ == '__main__':
 #   modes += ['print_grid']
 #   modes += ['compute_derived']
 #   modes += ['load_Daily']
-  modes += ['monthly_mean'          ]
+#   modes += ['monthly_mean'          ]
 #   modes += ['load_TimeSeries'      ]
 #   modes += ['monthly_normal'        ]
-#   modes += ['load_Climatology'      ]
+  modes += ['load_Climatology'      ]
 #   modes += ['compute_PET']  
 
   # some settings
