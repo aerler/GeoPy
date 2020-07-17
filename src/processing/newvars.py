@@ -72,18 +72,24 @@ def Delta(T):
   return evaluate('4098 * ( 610.8 * exp( 17.27 * (T - 273.15) / (T - 35.85) ) ) / (T - 35.85)**2')
 
 # saturation vapor pressure [Pa]
-def e_sat(T, Tmax=None):
-  ''' compute saturation vapor pressure [Pa] for given temperature [K]; average from Tmin & Tmax
+def e_sat(T, Tmax=None, lKelvin=True):
+  ''' compute saturation vapor pressure [Pa] for given temperature [K or Celsius]; average from Tmin & Tmax
       is also supported
       (Magnus Formula: http://www.fao.org/docrep/x0490e/x0490e07.htm#calculation%20procedures) 
   '''
   if Tmax is None: 
     # Magnus formula
     #warn('Using average 2m temperature; diurnal min/max 2m temperature is preferable due to strong nonlinearity.')
-    return evaluate('610.8 * exp( 17.27 * (T - 273.15) / (T - 35.85) )')
+    if lKelvin: 
+        return evaluate('610.8 * exp( 17.27 * (T - 273.15) / (T - 35.85) )')
+    else:
+        return evaluate('610.8 * exp( 17.27 * T / (T + 237.3) )')
   else:
     # use average of saturation pressure from Tmin and Tmax (because of nonlinearity)
-    return evaluate('305.4 * ( exp( 17.27 * (T - 273.15) / (T - 35.85) ) + exp( 17.625 * (Tmax - 273.15) / (Tmax - 35.85) ) )')
+    if lKelvin:
+        return evaluate('305.4 * ( exp( 17.27 * (T - 273.15) / (T - 35.85) ) + exp( 17.625 * (Tmax - 273.15) / (Tmax - 35.85) ) )')
+    else:
+        return evaluate('305.4 * ( exp( 17.27 * T / (T + 237.3) ) + exp( 17.625 * Tmax / (Tmax + 237.3) ) )')
 
 ## functions to compute relevant variables (from a dataset)
 
