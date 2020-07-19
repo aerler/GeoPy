@@ -30,11 +30,10 @@ def radiation_black(A, SW, LW, e, Ts, TSmax=None):
     # using min/max skin temperature to account for nonlinearity
     return evaluate('( ( 1 - A ) * SW ) + ( LW * e ) - ( e * sig * ( Ts**4 + TSmax**4 ) / 2 )')
 
-# net radiation balance using accumulated quantities
-def radiation(SWDN, LWDN, SWUP, LWUP, ):
-  ''' net radiation  [W/m^2] at the surface: downwelling long and short wave minus upwelling '''
-  # using min/max skin temperature to account for nonlinearity
-  return evaluate('SWDN + LWDN - SWUP - LWUP')
+# net longwave radiation (with estimate of atmospheric LW radiation)
+def net_longwave_radiation(Tmin, Tmax, ea, Rs, Rs0):
+  ''' estimate net longwave radiation based on FAO Eq. 39 (http://www.fao.org/3/X0490E/x0490e07.htm#radiation) '''
+  return evaluate('sig*0.5*(Tmin**4 + Tmax**4) * ( 0.35 - 0.14*ea**0.5 ) * ( 1.35*(Rs/Rs0) - 0.35 )')
 
 # 2m wind speed [m/s]
 def wind(u, v=None, z=10):
@@ -46,13 +45,15 @@ def wind(u, v=None, z=10):
   #       the mean of the compnents. This is because opposing directions average to zero.
   return evaluate('( u * 4.87 ) / log( 67.8 * z - 5.42 )')
 
-def computeSrfcPressure(dataset, zs=None, lpmsl=True):
+def computeSrfcPressure(dataset, zs=None, lpmsl=True, lxarray=False):
   ''' compute surface pressure [Pa] from elevation using Eq. 7 from FAO:
       http://www.fao.org/3/x0490e/x0490e07.htm#atmospheric%20pressure%20(p) 
   '''
-  zs, zs_units = _inferElev(dataset, zs=zs, latts=True, lunits=True) 
+  zs, zs_units = _inferElev(dataset, zs=zs, latts=True, lunits=True, lxarray=lxarray) 
   assert zs_units is None or zs_units == 'm', zs
-  pmsl = dataset['pmsl'][:] if lpmsl and 'pmsl' in dataset else 1013.
+  if lpmsl and 'pmsl' in dataset:
+      pmsl = dataset['pmsl'].data if lxarray else dataset['pmsl'][:]  
+  else: pmsl = 1013.
   p = evaluate('pmsl * ( 1 - ( 0.0065*zs/293 ) )**5.26 ')
   # return surface pressure estimate in Pa
   return p      
@@ -99,7 +100,9 @@ def computeNetRadiation(dataset, asVar=True, lA=True, lem=True, lrad=True, name=
       (http://www.fao.org/docrep/x0490e/x0490e07.htm#radiation)
   '''
   if lrad and 'SWDNB' in dataset and 'LWDNB' in dataset and 'SWUPB' in dataset and 'LWUPB' in dataset:
-    data = radiation(dataset['SWDNB'][:],dataset['LWDNB'][:],dataset['SWUPB'][:],dataset['LWUPB'][:]) # downward total net radiation
+    data = dataset['SWDNB'][:] + dataset['LWDNB'][:] - dataset['SWUPB'][:] - dataset['LWUPB'][:] # downward total net radiation
+  elif lrad and 'DNSW' in dataset and 'DNLW' in dataset and 'UPSW' in dataset and 'UPLW' in dataset:
+    data = dataset['DNSW'][:] + dataset['DNLW'][:] - dataset['UPSW'][:] - dataset['UPLW'][:] # downward total net radiation
   else:
     if not lem: em = 0.93 # average value for soil
     elif lem and 'e' in dataset: em = dataset['e'][:]
@@ -117,10 +120,12 @@ def computeNetRadiation(dataset, asVar=True, lA=True, lem=True, lrad=True, name=
     else: 
         raise VariableError("Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation.")
     if 'LWDNB' in dataset: GLW = dataset['LWDNB'][:]
+    elif 'DNLW' in dataset: GLW = dataset['DNLW'][:]
     elif 'GLW' in dataset: GLW = dataset['GLW'][:]
     else: 
         raise VariableError("Downwelling LW radiation is not available for radiation calculation.")
     if 'SWDNB' in dataset: SWD = dataset['SWDNB'][:]
+    elif 'DNSW' in dataset: SWD = dataset['DNSW'][:]
     elif 'SWD' in dataset: SWD = dataset['SWD'][:]
     else: 
         raise VariableError("Downwelling SW radiation is not available for radiation calculation.")
@@ -175,38 +180,41 @@ def _getTemperatures(dataset, lmeans=False, lxarray=False):
   
 
 # compute potential evapo-transpiration with all bells and whistles
-def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lgrdflx=True, lpmsl=True, lxarray=False, **kwargs):
+def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lA=True, lem=True, lgrdflx=True, lpmsl=True, lxarray=False, **kwargs):
   ''' function to compute potential evapotranspiration (according to Penman-Monteith method:
       https://en.wikipedia.org/wiki/Penman%E2%80%93Monteith_equation,
       http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
   '''
-  if lxarray: raise NotImplementedError()
+  if lxarray: import xarray as xr
   # get net radiation at surface
-  if 'netrad' in dataset: Rn = dataset['netrad'][:] # net radiation
-  if 'Rn' in dataset: Rn = dataset['Rn'][:] # alias
-  else: Rn = computeNetRadiation(dataset, lrad=lrad, asVar=False) # try to compute
+  if 'netrad' in dataset: Rn = dataset['netrad'].data if lxarray else dataset['netrad'][:] # net radiation
+  elif 'Rn' in dataset: Rn = dataset['Rn'].data if lxarray else dataset['Rn'][:] # alias
+  else: Rn = computeNetRadiation(dataset, lrad=lrad, lA=lA, lem=lem, asVar=False) # try to compute
   # heat flux in and out of the ground
   if lgrdflx:
-      if 'grdflx' in dataset: G = dataset['grdflx'][:] # heat release by the soil
+      if 'grdflx' in dataset: G = dataset['grdflx'].data if lxarray else dataset['grdflx'][:] # heat release by the soil
       else: raise VariableError("Cannot determine soil heat flux for PET calculation.")
   else: G = 0
   # get wind speed
-  if 'U2' in dataset: u2 = dataset['U2'][:]
-  elif lmeans and 'U10' in dataset: u2 = wind(dataset['U10'][:], z=10)
-  elif 'u10' in dataset and 'v10' in dataset: u2 = wind(u=dataset['u10'][:],v=dataset['v10'][:], z=10)
+  if 'U2' in dataset: u2 = dataset['U2'].data if lxarray else dataset['U2'][:]
+  elif lmeans and 'U10' in dataset: u2 = wind(dataset['U10'].data if lxarray else dataset['U10'][:], z=10)
+  elif 'u10' in dataset and 'v10' in dataset: 
+      u10 = dataset['u10'].data if lxarray else dataset['u10'][:]
+      v10 = dataset['v10'].data if lxarray else dataset['v10'][:]
+      u2 = wind(u=u10, v=v10, z=10)
   else: raise VariableError("Cannot determine 2m wind speed for PET calculation.")
   # get psychrometric variables
-  if 'ps' in dataset: p = dataset['ps'][:]
-  elif 'zs' in dataset: p = computeSrfcPressure(dataset, lpmsl=lpmsl)
-  else: raise VariableError("Cannot determine surface air pressure for PET calculation.")
+  if 'ps' in dataset: p = dataset['ps'].data if lxarray else dataset['ps'][:]
+  p = computeSrfcPressure(dataset, lpmsl=lpmsl, lxarray=lxarray)
+  #else: raise VariableError("Cannot determine surface air pressure for PET calculation.")
   g = gamma(p) # psychrometric constant (pressure-dependent)
-  if 'Q2' in dataset: ea = dataset['Q2'][:]
+  if 'Q2' in dataset: ea = dataset['Q2'].data if lxarray else dataset['Q2'][:]
   elif 'q2' in dataset:
-      q2 = dataset['q2'][:] 
+      q2 = dataset['q2'].data if lxarray else dataset['q2'][:] 
       ea =  evaluate('q2 * p * 28.96 / 18.02')
   else: raise VariableError("Cannot determine 2m water vapor pressure for PET calculation.")
   # get temperature
-  T, Tmin, Tmax, t_units = _getTemperatures(dataset, lmeans=lmeans)
+  T, Tmin, Tmax, t_units = _getTemperatures(dataset, lmeans=lmeans, lxarray=lxarray)
   assert t_units == 'K', t_units
   # get saturation water vapor
   if 'Tmin' in dataset and 'Tmax' in dataset: es = e_sat(Tmin,Tmax)
@@ -216,21 +224,32 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lgrdflx=True
   # determine reference variable (see what's available)
   for refvar in ('ps','T2','Tmax','Tmin','Q2','q2','U10','u10',):
       if refvar in dataset: break
+  refvar = dataset[refvar]
   # compute potential evapotranspiration according to Penman-Monteith method 
   # (http://www.fao.org/docrep/x0490e/x0490e06.htm#fao%20penman%20monteith%20equation)
   if lterms:
     Dgu = evaluate('( D + g * (1 + 0.34 * u2) ) * 86400') # common denominator
     rad = evaluate('0.0352512 * D * (Rn + G) / Dgu') # radiation term
     wnd = evaluate('g * u2 * (es - ea) * 0.9 / T / Dgu') # wind term (vapor deficit)
-    pet = evaluate('( 0.0352512 * D * (Rn + G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
-    assert np.allclose(pet, rad+wnd, equal_nan=True)
-    rad = Variable(data=rad, name='petrad', units='kg/m^2/s', axes=dataset[refvar].axes)
-    wnd = Variable(data=wnd, name='petwnd', units='kg/m^2/s', axes=dataset[refvar].axes)
+#     pet = evaluate('( 0.0352512 * D * (Rn + G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
+#     assert np.allclose(pet, rad+wnd, equal_nan=True)
+    pet = rad + wnd
+    if lxarray:
+        atts = dict(name='petrad', units='kg/m^2/s', long_name='Radiation Term of PET')
+        rad = xr.DataArray(coords=refvar.coords, data=rad, name=atts['name'], attrs=atts)
+        atts = dict(name='petwnd', units='kg/m^2/s', long_name='Wind Term of PET')
+        wnd = xr.DataArray(coords=refvar.coords, data=wnd, name=atts['name'], attrs=atts)
+    else: 
+        rad = Variable(data=rad, name='petrad', units='kg/m^2/s', axes=dataset[refvar].axes)
+        wnd = Variable(data=wnd, name='petwnd', units='kg/m^2/s', axes=dataset[refvar].axes)
   else:
     pet = evaluate('( 0.0352512 * D * (Rn + G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
   atts = dict(name='pet', units='kg/m^2/s', long_name='PET (Penman-Monteith)')
-  pet = Variable(data=pet, axes=dataset[refvar].axes, atts=atts)
+  if lxarray:
+      pet = xr.DataArray(coords=refvar.coords, data=pet, name=atts['name'], attrs=atts)
+  else: 
+      pet = Variable(data=pet, axes=refvar.axes, atts=atts)
   assert 'liqwatflx' not in dataset or pet.units == dataset['liqwatflx'].units, pet
   assert 'precip' not in dataset or pet.units == dataset['precip'].units, pet
   # return new variable(s)
@@ -327,10 +346,10 @@ def _extractVariable(dataset, var=None, name_list=None, latts=True, lunits=False
   return (var, units) if lunits else var
 
 # wrapper to extract elevation
-def _inferElev(dataset, zs=None, name_list=None, latts=True, lunits=False):
+def _inferElev(dataset, zs=None, name_list=None, latts=True, lunits=False, lxarray=False):
     ''' wrapper to extract elevation based on naem_list'''
     if name_list is None: name_list = ('zs', 'elev', 'stn_zs')
-    return _extractVariable(dataset, var=zs, name_list=name_list, latts=latts, lunits=lunits)   
+    return _extractVariable(dataset, var=zs, name_list=name_list, latts=latts, lunits=lunits, lxarray=lxarray)   
 
 
 # compute potential evapo-transpiration based on Tmin/Tmax only (and elevation)
@@ -498,6 +517,11 @@ def toa_rad(time, lat, lmonth=True, l365=False, time_offset=0, ldeg=True):
     Ra = evaluate('1366.67 * rr * ( ws*sin(lat)*sin(D) + cos(lat)*cos(D)*sin(ws) ) / pi')
     # return solar radiation at ToA
     return Ra
+  
+# function to estimate clear-sky radiation at the surface from ToA radiation and elevation
+def clearsky_rad(Ra, zs):
+    ''' clear-sky surface solar radiation, based on elevation [m] and ToA solar radiation [W/m^2] '''
+    return evaluate('(0.75 + zs*2e-5) * Ra')
 
 
 # compute potential evapotranspiration based on Hargreaves method; requires only Tmin/Tmax and ToA radiation (i.e. latitude and date)
