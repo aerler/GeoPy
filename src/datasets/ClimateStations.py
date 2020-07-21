@@ -23,7 +23,8 @@ import inspect
 from datasets.common import getRootFolder, grid_folder
 from geodata.netcdf import DatasetNetCDF
 from processing.newvars import e_sat, computeNetRadiation, computePotEvapPM, toa_rad, clearsky_rad,\
-  net_longwave_radiation
+  net_longwave_radiation, computePotEvapHog, computePotEvapHar, computePotEvapTh,\
+  computePotEvapPT
 # for georeferencing
 from geospatial.netcdf_tools import autoChunk, addTimeStamps, addNameLengthMonth
 from geospatial.xarray_tools import addGeoReference, loadXArray, updateVariableAttrs, computeNormals
@@ -75,6 +76,7 @@ varatts = dict(precip   = dict(name='precip', units='kg/m^2/s', long_name='Total
                netrad_raw = dict(name='netrad_raw', units='W/m^2', long_name='Net Downward Radiation (uncorrected)'), # radiation absorbed by the ground
                Ra       = dict(name='Ra', units='W/m^2', long_name='Extraterrestrial Solar Radiation'), # ToA radiation
                Rs0      = dict(name='Rs0', units='W/m^2', long_name='Clear-sky Solar Radiation'), # at the surface, based on elevation
+               netrad_lw  = dict(name='netrad_lw', units='W/m^2', long_name='Net Longwave Radiation'), # net LW radiation absorbed by the ground
                # axes
                time    = dict(name='time', units='days', long_name='Time in Days'), # time coordinate
                )
@@ -232,7 +234,7 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
     xds.attrs['lat'] = station.lat; xds.attrs['lon'] = station.lon; xds.attrs['zs'] = station.zs
     ## add complex variables related to FAO PET
     # compute Penman-Monteith PET (only works with xarray)
-    pet,pet_rad,pet_wnd = computePotEvapPM(xds, lterms=True, lrad=True, lgrdflx=False, lpmsl=False, lxarray=True)
+    pet,pet_rad,pet_wnd = computePotEvapPM(xds, lterms=True, lrad=True, lnetlw=False, lgrdflx=False, lpmsl=False, lxarray=True)
     xds['pet'] = pet; xds['pet_rad'] = pet_rad; xds['pet_wnd'] = pet_wnd
     # compute ToA and approximate clear-sky solar radiation
     Ra = toa_rad(time=xds['time'].data, lat=xds.attrs['lat'], lmonth=False, l365=False, time_offset=0, ldeg=True)
@@ -245,11 +247,22 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
     else:
         tmp_ds = xds.drop(['netrad','DNLW','UPSW','UPLW'])
     print(tmp_ds)
-    # compute net longwave radiation
+    # compute net longwave radiation and solar radiation-based PET
     netrad_lw = net_longwave_radiation(Tmin=tmp_ds['Tmin'], Tmax=tmp_ds['Tmax'], ea=tmp_ds['Q2'], Rs=tmp_ds['DNSW'], Rs0=tmp_ds['Rs0'])
-    tmp_ds['netrad_lw'] = xr.DataArray(coords=(tmp_ds.coords['time'],), data=Rs0, name='netrad_lw', attrs=varatts['netrad_lw'])
-    xds['netrad_lw'] = xr.DataArray(coords=(xds.coords['time'],), data=Rs0, name='netrad_lw', attrs=varatts['netrad_lw']) 
-    xds['pet_sol'] = computePotEvapPM(tmp_ds, lterms=False, lrad=False, lA=False, lem=False, lgrdflx=False, lpmsl=False, lxarray=True)       
+    tmp_ds['netrad_lw'] = xr.DataArray(coords=(tmp_ds.coords['time'],), data=netrad_lw, name='netrad_lw', attrs=varatts['netrad_lw'])
+    xds['netrad_lw'] = xr.DataArray(coords=(xds.coords['time'],), data=netrad_lw, name='netrad_lw', attrs=varatts['netrad_lw']) 
+    xds['pet_sol'] = computePotEvapPM(tmp_ds, lterms=False, lrad=False, lA=False, lnetlw=True, lgrdflx=False, lpmsl=False, lxarray=True)
+    # compute PET based on Priestly-Taylor
+    xds['pet_pt'] = computePotEvapPT(xds, lrad=True, lnetlw=False, lgrdflx=False, lpmsl=False, lxarray=True)
+    xds['pet_pts'] = computePotEvapPT(tmp_ds, lrad=False, lnetlw=True, lA=False, lgrdflx=False, lpmsl=False, lxarray=True)
+    # compute Hogg PET (based on Tmin & Tmax)
+    xds['pet_hog'] = computePotEvapHog(xds, lmeans=False, lq2=False, zs='zs', lxarray=True)
+    # compute Hargreaves PET (based on Tmin/Tmax and ToA/astronomical radiation)
+    xds['pet_har'] = computePotEvapHar(xds, lat='lat', lmeans=False, l365=False, time_offset=0, lAllen=False, lxarray=True)
+    # compute Thonthwaite PET, based on climatology and temperature
+    if not ldebug: # requires a full year for climatology
+        tmp_ds['climT2'] = computeNormals(xds['T2'], aggregation='month', time_stamp=False, lresample=True, time_name='month')
+        xds['pet_th'] = computePotEvapTh(tmp_ds, climT2='climT2', lat='lat', l365=False, time_offset=0, p='center', lxarray=True)
     # return properly formatted dataset
     return xds
 
@@ -261,8 +274,8 @@ if __name__ == '__main__':
     import time
     print('pandas version:',pd.__version__)
   
-    mode = 'load_source'
-#     mode = 'convert_stations'
+#     mode = 'load_source'
+    mode = 'convert_stations'
   
   
     if mode == 'load_source':
@@ -272,9 +285,6 @@ if __name__ == '__main__':
         print(xds)
         print(xds.attrs)
         print()
-        
-        # compute PET
-        pet = computePotEvapPM(xds, lterms=False, lmeans=True, lrad=False, lgrdflx=False, lpmsl=False, lxarray=True)
         
 #         var0 = next(iter(xds.data_vars.values()))
 #         print(var0)

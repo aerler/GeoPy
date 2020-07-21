@@ -33,7 +33,8 @@ def radiation_black(A, SW, LW, e, Ts, TSmax=None):
 # net longwave radiation (with estimate of atmospheric LW radiation)
 def net_longwave_radiation(Tmin, Tmax, ea, Rs, Rs0):
   ''' estimate net longwave radiation based on FAO Eq. 39 (http://www.fao.org/3/X0490E/x0490e07.htm#radiation) '''
-  return evaluate('sig*0.5*(Tmin**4 + Tmax**4) * ( 0.35 - 0.14*ea**0.5 ) * ( 1.35*(Rs/Rs0) - 0.35 )')
+  netrad_lw = evaluate('sig*0.5*(Tmin**4 + Tmax**4) * ( 0.35 - 0.14*(ea/1000)**0.5 ) * ( 0.35 - 1.35*(Rs/Rs0))')
+  return netrad_lw # note that the sign is reversed, i.e. pointing downward
 
 # 2m wind speed [m/s]
 def wind(u, v=None, z=10):
@@ -95,44 +96,78 @@ def e_sat(T, Tmax=None, lKelvin=True):
 ## functions to compute relevant variables (from a dataset)
 
 # compute net radiation (for PET)
-def computeNetRadiation(dataset, asVar=True, lA=True, lem=True, lrad=True, name='netrad'):
+def computeNetRadiation(dataset, asVar=True, lA=True, lem=True, lrad=True, lnetlw=False, name='netrad', lxarray=False):
   ''' function to compute net radiation at surface for Penman-Monteith equation
       (http://www.fao.org/docrep/x0490e/x0490e07.htm#radiation)
   '''
+  if lxarray: import xarray as xr
   if lrad and 'SWDNB' in dataset and 'LWDNB' in dataset and 'SWUPB' in dataset and 'LWUPB' in dataset:
-    data = dataset['SWDNB'][:] + dataset['LWDNB'][:] - dataset['SWUPB'][:] - dataset['LWUPB'][:] # downward total net radiation
-  elif lrad and 'DNSW' in dataset and 'DNLW' in dataset and 'UPSW' in dataset and 'UPLW' in dataset:
-    data = dataset['DNSW'][:] + dataset['DNLW'][:] - dataset['UPSW'][:] - dataset['UPLW'][:] # downward total net radiation
-  else:
-    if not lem: em = 0.93 # average value for soil
-    elif lem and 'e' in dataset: em = dataset['e'][:]
+    refvar = dataset['SWDNB']
+    if lxarray:
+        data = dataset['SWDNB'].data + dataset['LWDNB'].data - dataset['SWUPB'].data - dataset['LWUPB'].data # downward total net radiation
     else:
-        raise VariableError("Emissivity is not available for radiation calculation.")
+        data = dataset['SWDNB'][:] + dataset['LWDNB'][:] - dataset['SWUPB'][:] - dataset['LWUPB'][:] # downward total net radiation
+  elif lrad and 'DNSW' in dataset and 'DNLW' in dataset and 'UPSW' in dataset and 'UPLW' in dataset:
+    refvar = dataset['DNSW']
+    if lxarray:
+        data = dataset['DNSW'].data + dataset['DNLW'].data - dataset['UPSW'].data - dataset['UPLW'].data # downward total net radiation
+    else:
+        data = dataset['DNSW'][:] + dataset['DNLW'][:] - dataset['UPSW'][:] - dataset['UPLW'][:] # downward total net radiation
+  else:
     if not lA: A = 0.23 # reference Albedo for grass
-    elif lA and 'A' in dataset: A = dataset['A'][:]
+    elif lA and 'A' in dataset: A = dataset['A'].data if lxarray else dataset['A'][:]
     else: 
         raise VariableError("Actual Albedo is not available for radiation calculation.")
-    if 'TSmin' in dataset and 'TSmax' in dataset: Ts = dataset['TSmin'][:]; TSmax = dataset['TSmax'][:]
-    elif 'TSmean' in dataset: Ts = dataset['TSmean'][:]; TSmax = None
-    elif 'Ts' in dataset: Ts = dataset['Ts'][:]; TSmax = None
-    elif 'Tmin' in dataset and 'Tmax' in dataset: Ts = dataset['Tmin'][:]; TSmax = dataset['Tmax'][:]
-    elif 'T2' in dataset: Ts = dataset['T2'][:]; TSmax = None
-    else: 
-        raise VariableError("Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation.")
-    if 'LWDNB' in dataset: GLW = dataset['LWDNB'][:]
-    elif 'DNLW' in dataset: GLW = dataset['DNLW'][:]
-    elif 'GLW' in dataset: GLW = dataset['GLW'][:]
-    else: 
-        raise VariableError("Downwelling LW radiation is not available for radiation calculation.")
-    if 'SWDNB' in dataset: SWD = dataset['SWDNB'][:]
-    elif 'DNSW' in dataset: SWD = dataset['DNSW'][:]
-    elif 'SWD' in dataset: SWD = dataset['SWD'][:]
+    if 'SWDNB' in dataset: 
+        DNSW = dataset['SWDNB'].data if lxarray else dataset['SWDNB'][:]; refvar = dataset['SWDNB']
+    elif 'DNSW' in dataset: 
+        DNSW = dataset['DNSW'].data if lxarray else dataset['DNSW'][:]; refvar = dataset['DNSW']
+    elif 'SWD' in dataset: 
+        DNSW = dataset['SWD'].data if lxarray else dataset['SWD'][:]; refvar = dataset['SWD']
     else: 
         raise VariableError("Downwelling SW radiation is not available for radiation calculation.")
-    data = radiation_black(A,SWD,GLW,em,Ts,TSmax) # downward total net radiation
+    # decide what to do about atmospheric longwave radiation
+    DNLW = netrad_lw = None
+    if 'LWDNB' in dataset: DNLW = dataset['LWDNB'].data if lxarray else dataset['LWDNB'][:]
+    elif 'DNLW' in dataset: DNLW = dataset['DNLW'].data if lxarray else dataset['DNLW'][:]
+    elif 'GLW' in dataset: DNLW = dataset['GLW'].data if lxarray else dataset['GLW'][:]
+    if 'netrad_lw'  in dataset: netrad_lw = dataset['netrad_lw'].data if lxarray else dataset['netrad_lw'][:]
+    if lnetlw:
+        # compute using net longwave radiation
+        if netrad_lw is not None:
+            data = evaluate('(1-A)*DNSW + netrad_lw')
+        else: 
+            raise NotImplementedError("Net LW radiation needs to be pre-computed for radiation calculation.")
+    else:
+        # compute using atmospheric LW and surface black-body radiation
+        if not lem: em = 0.93 # average value for soil
+        elif lem and 'e' in dataset: em = dataset['e'].data if lxarray else dataset['e'][:]
+        else:
+            raise VariableError("Emissivity is not available for radiation calculation.")
+        if DNLW is not None:
+            if 'TSmin' in dataset and 'TSmax' in dataset: 
+                Ts = dataset['TSmin'].data if lxarray else dataset['TSmin'][:]
+                TSmax = dataset['TSmax'].data if lxarray else dataset['TSmax'][:]
+            elif 'TSmean' in dataset:
+                Ts = dataset['TSmean'].data if lxarray else dataset['TSmean'][:]; TSmax = None
+            elif 'Ts' in dataset: 
+                Ts = dataset['Ts'].data if lxarray else dataset['Ts'][:]; TSmax = None
+            elif 'Tmin' in dataset and 'Tmax' in dataset: 
+                Ts = dataset['Tmin'].data if lxarray else dataset['Tmin'][:]
+                TSmax = dataset['Tmax'].data if lxarray else dataset['Tmax'][:]
+            elif 'T2' in dataset: 
+                Ts = dataset['T2'].data if lxarray else dataset['T2'][:]; TSmax = None
+            else: 
+                raise VariableError("Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation.")
+            data = radiation_black(A,DNSW,DNLW,em,Ts,TSmax) # downward total net radiation
+        else: 
+            raise VariableError("Downwelling LW radiation is not available for radiation calculation.")
   # cast as Variable
   if asVar:
-    var = Variable(data=data, name=name, units='W/m^2', axes=dataset['SWD'].axes)
+      if lxarray:
+          var = xr.DataArray(data=data, name=name, attrs=dict(name=name, units='W/m^2'), coords=refvar.coords)
+      else:
+          var = Variable(data=data, name=name, units='W/m^2', axes=refvar.axes)
   else: var = data
   # return new variable
   return var
@@ -180,7 +215,8 @@ def _getTemperatures(dataset, lmeans=False, lxarray=False):
   
 
 # compute potential evapo-transpiration with all bells and whistles
-def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lA=True, lem=True, lgrdflx=True, lpmsl=True, lxarray=False, **kwargs):
+def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lA=True, lem=True, lnetlw=False, 
+                     lgrdflx=True, lpmsl=True, lxarray=False, **kwargs):
   ''' function to compute potential evapotranspiration (according to Penman-Monteith method:
       https://en.wikipedia.org/wiki/Penman%E2%80%93Monteith_equation,
       http://www.fao.org/docrep/x0490e/x0490e06.htm#formulation%20of%20the%20penman%20monteith%20equation)
@@ -189,7 +225,7 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lA=True, lem
   # get net radiation at surface
   if 'netrad' in dataset: Rn = dataset['netrad'].data if lxarray else dataset['netrad'][:] # net radiation
   elif 'Rn' in dataset: Rn = dataset['Rn'].data if lxarray else dataset['Rn'][:] # alias
-  else: Rn = computeNetRadiation(dataset, lrad=lrad, lA=lA, lem=lem, asVar=False) # try to compute
+  else: Rn = computeNetRadiation(dataset, lrad=lrad, lA=lA, lem=lem, lnetlw=lnetlw, asVar=False, lxarray=lxarray) # try to compute
   # heat flux in and out of the ground
   if lgrdflx:
       if 'grdflx' in dataset: G = dataset['grdflx'].data if lxarray else dataset['grdflx'][:] # heat release by the soil
@@ -205,8 +241,7 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lA=True, lem
   else: raise VariableError("Cannot determine 2m wind speed for PET calculation.")
   # get psychrometric variables
   if 'ps' in dataset: p = dataset['ps'].data if lxarray else dataset['ps'][:]
-  p = computeSrfcPressure(dataset, lpmsl=lpmsl, lxarray=lxarray)
-  #else: raise VariableError("Cannot determine surface air pressure for PET calculation.")
+  else: p = computeSrfcPressure(dataset, lpmsl=lpmsl, lxarray=lxarray)
   g = gamma(p) # psychrometric constant (pressure-dependent)
   if 'Q2' in dataset: ea = dataset['Q2'].data if lxarray else dataset['Q2'][:]
   elif 'q2' in dataset:
@@ -246,6 +281,9 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lA=True, lem
     pet = evaluate('( 0.0352512 * D * (Rn + G) + ( g * u2 * (es - ea) * 0.9 / T ) ) / ( D + g * (1 + 0.34 * u2) ) / 86400')
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
   atts = dict(name='pet', units='kg/m^2/s', long_name='PET (Penman-Monteith)')
+  if lnetlw: 
+      atts['note'] = 'based direct solar radiation and estimated net LW radiation'
+      atts['long_name'] = 'PET (Penman-Monteith, estimated LW)'
   if lxarray:
       pet = xr.DataArray(coords=refvar.coords, data=pet, name=atts['name'], attrs=atts)
   else: 
@@ -257,46 +295,51 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lA=True, lem
 
 
 # compute potential evapo-transpiration; this method requires radiative flux data and mean temperature
-def computePotEvapPT(dataset, alpha=1.26, lmeans=False, lrad=True, lgrdflx=True, lpmsl=True, lxarray=False, **kwargs):
+def computePotEvapPT(dataset, alpha=1.26, lmeans=False, lrad=True, lA=True, lem=True, lnetlw=False, 
+                     lgrdflx=True, lpmsl=True, lxarray=False, **kwargs):
   ''' function to compute potential evapotranspiration based on the Priestley-Taylor method (1972):
       Priestley & Taylor (1972, MWR): On the Assessment of Surface Heat Flux and Evaporation Using Large-Scale Parameters
       Note that different values for 'alpha' may be appropriate for different climates.
   '''
-  if lxarray: raise NotImplementedError()
+  if lxarray: import xarray as xr
   # get net radiation at surface
-  if 'netrad' in dataset: Rn = dataset['netrad'][:] # net radiation
-  elif 'Rn' in dataset: Rn = dataset['Rn'][:] # alias
-  else: Rn = computeNetRadiation(dataset, lrad=lrad, asVar=False) # try to compute
+  if 'netrad' in dataset: Rn = dataset['netrad'].data if lxarray else dataset['netrad'][:] # net radiation
+  elif 'Rn' in dataset: Rn = dataset['Rn'].data if lxarray else dataset['Rn'][:] # alias
+  else: Rn = computeNetRadiation(dataset, lrad=lrad, lA=lA, lem=lem, lnetlw=lnetlw, asVar=False, lxarray=lxarray) # try to compute
   # heat flux in and out of the ground
   if lgrdflx:
-      if 'grdflx' in dataset: G = dataset['grdflx'][:] # heat release by the soil
+      if 'grdflx' in dataset: G = dataset['grdflx'].data if lxarray else dataset['grdflx'][:] # heat release by the soil
       else: raise VariableError("Cannot determine soil heat flux for PET calculation.")
   else: G = 0
   # get psychrometric variables
-  if 'ps' in dataset: p = dataset['ps'][:]
-  else: p = computeSrfcPressure(dataset, lpmsl=lpmsl)
-#   elif 'zs' in dataset: p = computeSrfcPressure(dataset, lpmsl=lpmsl)
-#   else: 
-#       raise VariableError("Cannot determine surface air pressure for PET calculation.")
+  if 'ps' in dataset: p = dataset['ps'].data if lxarray else dataset['ps'][:]
+  else: p = computeSrfcPressure(dataset, lpmsl=lpmsl, lxarray=lxarray)
   g = gamma(p) # psychrometric constant (pressure-dependent)
   # get temperature
-  if lmeans and 'Tmean' in dataset: T = dataset['Tmean'][:]
-  elif 'T2' in dataset: T = dataset['T2'][:]
+  if lmeans and 'Tmean' in dataset: T = dataset['Tmean'].data if lxarray else dataset['Tmean'][:]
+  elif 'T2' in dataset: T = dataset['T2'].data if lxarray else dataset['T2'][:]
   else: raise VariableError("Cannot determine 2m mean temperature for PET calculation.")
   # get slope of saturation vapor pressure w.r.t. temperature
   D = Delta(T)
   # determine reference variable (see what's available)
-  for refvar in ('ps','T2','Tmean',):
+  for refvar in ('T2','Tmean','ps',):
       if refvar in dataset: break
+  refvar = dataset[refvar]
   # compute potential evapotranspiration according to Priestley-Taylor method (1972)
   pet = evaluate('alpha * D * (Rn + G) / ( D + g ) / lw') # Eq. 12, Stannard, 1993, WRR
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
   atts = dict(name='pet_pt', units='kg/m^2/s', long_name='PET (Priestley-Taylor)')
-  pet = Variable(data=pet, axes=dataset[refvar].axes, atts=atts)
-  assert 'liqwatflx' not in dataset or pet.units == dataset['liqwatflx'].units, pet
-  assert 'precip' not in dataset or pet.units == dataset['precip'].units, pet
+  if lnetlw: 
+      atts['note'] = 'based direct solar radiation and estimated net LW radiation'
+      atts['long_name'] = 'PET (Priestley-Taylor, estimated LW)'
+  if lxarray:
+      var = xr.DataArray(coords=refvar.coords, data=pet, name=atts['name'], attrs=atts)
+  else:
+      var = Variable(data=pet, axes=dataset[refvar].axes, atts=atts)
+  assert 'liqwatflx' not in dataset or var.units == dataset['liqwatflx'].units, var
+  assert 'precip' not in dataset or var.units == dataset['precip'].units, var
   # return new variable
-  return pet
+  return var
 
 
 # function to extract a variable from suitable options
@@ -331,10 +374,14 @@ def _extractVariable(dataset, var=None, name_list=None, latts=True, lunits=False
   elif isinstance(var,str):
       if var in dataset:
           variable = dataset[var] # select this field
+          units = variable.units
+          var = variable.data if lxarray else variable[:]
+      elif latts and lxarray and var in dataset.attrs:
+          var = dataset.attrs[var]
+      elif latts and not lxarray and var in dataset.atts:
+          var = dataset.atts[var]
       else:
           raise DatasetError("Variable '{}' not found in Dataset '{}'".format(var,dataset.name))
-      units = variable.units
-      var = variable.data if lxarray else variable[:]
   else:
       if isinstance(var,Variable):
           variable = var
@@ -359,7 +406,7 @@ def computePotEvapHog(dataset, lmeans=False, lq2=False, zs=None, lxarray=False, 
   '''
   if lxarray: import xarray as xr
   # get surface elevation variables
-  zs, zs_units = _inferElev(dataset, zs=zs, latts=True, lunits=True) 
+  zs, zs_units = _inferElev(dataset, zs=zs, latts=True, lunits=True, lxarray=lxarray) 
   assert zs_units is None or zs_units == 'm', zs
   T, Tmin, Tmax, t_units = _getTemperatures(dataset, lmeans=lmeans, lxarray=lxarray)
   # make sure T is in Celsius
@@ -398,8 +445,8 @@ def computePotEvapHog(dataset, lmeans=False, lq2=False, zs=None, lxarray=False, 
       if refvar.masked:
           pet = np.ma.masked_array(pet, mask=refvar.data_array.mask)
       var = Variable(data=pet, axes=refvar.axes, atts=atts)
-  assert 'liqwatflx' not in dataset or pet.units == dataset['liqwatflx'].units, pet
-  assert 'precip' not in dataset or pet.units == dataset['precip'].units, pet
+  assert 'liqwatflx' not in dataset or var.units == dataset['liqwatflx'].units, var
+  assert 'precip' not in dataset or var.units == dataset['precip'].units, var
   # return new variable
   return var
 
@@ -560,8 +607,8 @@ def computePotEvapHar(dataset, lat=None, lmeans=False, l365=None, time_offset=0,
         if refvar.masked:
             pet = np.ma.masked_array(pet, mask=refvar.data_array.mask)
         var = Variable(data=pet, axes=refvar.axes, atts=atts)
-    assert 'liqwatflx' not in dataset or pet.units == dataset['liqwatflx'].units, pet
-    assert 'precip' not in dataset or pet.units == dataset['precip'].units, pet
+    assert 'liqwatflx' not in dataset or var.units == dataset['liqwatflx'].units, var
+    assert 'precip' not in dataset or var.units == dataset['precip'].units, var
     # return new variable
     return var
 
@@ -590,7 +637,7 @@ def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p
         if isinstance(dataset, xr.Dataset): T2 = dataset['T2']
         else: raise TypeError(dataset) # has to be a Dataset, so we can also pass climT2
         time = T2.coords['time']
-        t_units = time.long_name
+        #t_units = time.long_name
         time = time.data
         assert T2.dims[0] == 'time', T2
         t = T2.data
@@ -667,8 +714,8 @@ def computePotEvapTh(dataset, climT2=None, lat=None, l365=None, time_offset=0, p
         if T2.masked:
             pet = np.ma.masked_array(pet, mask=T2.data_array.mask)
         var = Variable(data=pet, axes=T2.axes, atts=atts)
-    assert 'liqwatflx' not in dataset or pet.units == dataset['liqwatflx'].units, pet
-    assert 'precip' not in dataset or pet.units == dataset['precip'].units, pet
+    assert 'liqwatflx' not in dataset or var.units == dataset['liqwatflx'].units, var
+    assert 'precip' not in dataset or var.units == dataset['precip'].units, var
     # return new variable
     return var
 
