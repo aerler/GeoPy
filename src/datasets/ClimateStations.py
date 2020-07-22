@@ -151,16 +151,27 @@ meta = StationMeta(name='UTM', title='University of Toronto, Mississauga', regio
 ontario_station_list[meta.name] = meta
 
 
-def getFolderFileName(station=None, region='Ontario', mode='daily'):
+def getFolderFileName(station=None, region='Ontario', period=None, mode='daily'):
     ''' return folder and file name in standard format '''
+    mode = mode.lower()
     mode_str = mode
     mode_folder = 'stnavg'
-    if mode.lower() == 'daily': mode_folder = 'station_daily'
+    if mode == 'daily': mode_folder = 'station_daily'
+    elif mode in ('monthly','month'): pass # defaults
+    elif mode in ('clim','climatology','normals'):
+        if isinstance(period,str): prdstr = period
+        elif isinstance(period,(tuple,list)):
+            assert len(period) == 2
+            prdstr = '{:04d}-{:04d}'.format(*period)
+        else:
+            raise ValueError("To load climatologies, a period (string) has to be defined! (period={})".format(period))
+        mode_str = 'clim_'+prdstr
     else: raise NotImplementedError(mode)
     folder = '{:s}/{:s}/{:s}/'.format(root_folder,region,mode_folder)
     filename = "{:s}_{:s}.nc".format(station,mode_str).lower()
     # return
     return folder,filename
+
 
 ## functions to load station data from source files
 
@@ -269,18 +280,129 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
 
 ## functions to load station data (from daily NetCDF files)
 
+def loadClimateStation(station, region='Ontario', time_slice=None, period=None, mode=None, **kwargs):
+    ''' function to load formatted data from climate stations into xarray '''
+    # determine folder and filename
+    folder, filename = getFolderFileName(station=station, region=region, period=period, mode=mode)
+    # load dataset into xarray
+    xr_args = dict(decode_cf=True, mask_and_scale=True, decode_times=True, autoclose=True)
+    xr_args.update(kwargs)
+    xds = xr.open_dataset(folder+filename, **xr_args) # can load into memory
+    # apply time slice
+    if time_slice: xds = xds.loc[{'time':slice(*time_slice),}] # slice time
+    # return dataset
+    return xds
+
+
+def loadClimStn_Daily(station, region='Ontario', time_slice=None):
+    ''' wrapper to load daily station data '''
+    return loadClimateStation(station, region=region, time_slice=time_slice, mode='daily')
+
+def loadClimStn_TS(station, region='Ontario', time_slice=None):
+    ''' wrapper to load monthly transient station data '''
+    return loadClimateStation(station, region=region, time_slice=time_slice, mode='monthly')
+
+def loadClimStn(station, region='Ontario', period=None):
+    ''' wrapper to load monthly transient station data '''
+    return loadClimateStation(station, region=region, period=period, mode='clim')
+
+
 if __name__ == '__main__':
   
     import time
     print('pandas version:',pd.__version__)
   
+    mode = 'load_Normals'
+#     mode = 'load_Monthly'  
+#     mode = 'compute_monthly'
+#     mode = 'load_Daily'
 #     mode = 'load_source'
-    mode = 'convert_stations'
+#     mode = 'convert_stations'
+    
+    # settings
+    station = 'UTM'
+    region = 'Ontario'
+    time_slice = ('2011-01-01','2017-12-31')
   
-  
-    if mode == 'load_source':
+    if mode == 'load_Normals':
         
-        xds = loadStation_Src(station='UTM', region='Ontario', ldebug=True,)
+        xds = loadClimStn(station=station, region='Ontario', period=(2011,2018))
+        
+        print(xds)
+        print(xds.attrs)
+        print()
+        
+        var0 = next(iter(xds.data_vars.values()))
+        print(var0)
+        print(var0.attrs)
+        
+    elif mode == 'load_Monthly':
+        
+        xds = loadClimStn_TS(station=station, region='Ontario', time_slice=time_slice)
+        
+        print(xds)
+        print(xds.attrs)
+        print()
+        
+        var0 = next(iter(xds.data_vars.values()))
+        print(var0)
+        print(var0.attrs)
+        
+    elif mode == 'compute_monthly':
+        
+        # load data (into memory)
+        xds = loadClimStn_Daily(station=station, region='Ontario', time_slice=None)
+        
+        # aggregate month
+        rds = xds.resample(time='MS',skipna=True,).mean()
+        print(rds)
+        print('')
+        
+        ## save monthly timeseries
+        # define destination file
+        nc_folder, nc_filename = getFolderFileName(station=station, region=region, mode='monthly')
+        nc_filepath = nc_folder + nc_filename
+        print("\nExporting Monthly Timeseries to NetCDF-4 file:\n '{}'".format(nc_filepath))
+        # write to NetCDF
+        rds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4')
+        # update time information
+        print("\nAdding human-readable time-stamp variable ('time_stamp')\n")
+        ncds = nc.Dataset(nc_filepath, mode='a')
+        ncts = addTimeStamps(ncds, units='month') # add time-stamps
+        rds['time_stamp'] = xr.DataArray(data=ncts[:], coords=(rds.coords['time'],),)
+        ncds.close()              
+        
+        ## aggregate to normals and save
+        # trim
+        rds = rds.loc[{'time':slice(*time_slice),}]
+        # compute normals
+        cds = computeNormals(rds, aggregation='month', time_stamp='time_stamp', lresample=False, time_name='time')
+        print(cds)
+        print('')
+
+        # save normals
+        nc_folder, nc_filename = getFolderFileName(station=station, region=region, mode='clim', period=cds.period) # define destination file
+        nc_filepath = nc_folder + nc_filename
+        print("\nExporting Monthly Normals to NetCDF-4 file:\n '{}'".format(nc_filepath))
+        # write to NetCDF
+        cds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=None, engine='netcdf4')
+        
+
+    elif mode == 'load_Daily':
+        
+        xds = loadClimStn_Daily(station=station, region='Ontario', time_slice=time_slice)
+        
+        print(xds)
+        print(xds.attrs)
+        print()
+        
+        var0 = next(iter(xds.data_vars.values()))
+        print(var0)
+        print(var0.attrs)
+        
+    elif mode == 'load_source':
+        
+        xds = loadStation_Src(station=station, region='Ontario', ldebug=True,)
         
         print(xds)
         print(xds.attrs)
@@ -311,7 +433,5 @@ if __name__ == '__main__':
         # print timing
         end = time.time()
         print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
-
-        
-        
+ 
         
