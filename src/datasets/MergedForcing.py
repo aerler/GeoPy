@@ -13,11 +13,11 @@ a major secondary purpose of this module is also, to keep xarray dependencies ou
 import datetime as dt
 import pandas as pd
 import os
-import os.path as osp
 from warnings import warn
 import numpy as np
 import netCDF4 as nc # netCDF4-python module
 import xarray as xr
+import dask
 from collections import namedtuple
 from importlib import import_module
 import inspect
@@ -46,6 +46,7 @@ axes_varlist = axes_varatts.keys()
 varatts = dict(liqwatflx = dict(name='liqwatflx', units='kg/m^2/s', long_name='Liquid Water Flux'),
                pet_hog = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)'),
                pet_har = dict(name='pet_har', units='kg/m^2/s', long_name='PET (Hargeaves)'),
+               pet_haa = dict(name='pet_haa', units='kg/m^2/s', long_name='PET (Hargeaves&Allen)'),
                pet_th  = dict(name='pet_th', units='kg/m^2/s', long_name='PET (Thornthwaite)'),
                )
 varlist = varatts.keys()
@@ -297,7 +298,7 @@ def loadMergedForcing(varname=None, varlist=None, name=None, dataset_name=datase
 ## abuse for testing
 if __name__ == '__main__':
   
-  import dask, time, gc
+  import time, gc
   from multiprocessing.pool import ThreadPool
   
   print('xarray version: '+xr.__version__+'\n')
@@ -311,15 +312,15 @@ if __name__ == '__main__':
 #   from multiprocessing.pool import ThreadPool
 #   dask.set_options(pool=ThreadPool(4))
 
-  modes = []
-#   modes += ['print_grid']
-#   modes += ['compute_derived']
-#   modes += ['load_Daily']
-#   modes += ['monthly_mean'          ]
-#   modes += ['load_TimeSeries'      ]
-#   modes += ['monthly_normal'        ]
-  modes += ['load_Climatology'      ]
-#   modes += ['compute_PET']  
+  work_loads = []
+#   work_loads += ['print_grid']
+#   work_loads += ['compute_derived']
+#   work_loads += ['load_Daily']
+  work_loads += ['monthly_mean'          ]
+  work_loads += ['load_TimeSeries'      ]
+  work_loads += ['monthly_normal'        ]
+  work_loads += ['load_Climatology'      ]
+#   work_loads += ['compute_PET']  
 
   # some settings
   grid = None
@@ -330,7 +331,7 @@ if __name__ == '__main__':
   
  
   # loop over modes 
-  for mode in modes:
+  for mode in work_loads:
     
     if mode == 'print_grid':
         
@@ -411,11 +412,11 @@ if __name__ == '__main__':
         # settings
         load_chunks = None; lautoChunkLoad = True  # chunking input should not be necessary, if the source files are chunked properly
         chunks = None; lautoChunk = True # auto chunk output - this is necessary to maintain proper chunking!
-        time_slice = ('2011-01-01','2011-12-31') # inclusive
-#         time_slice = None
+#         time_slice = ('2011-01-01','2011-12-31') # inclusive
+        time_slice = None
         varlist = {dataset:None for dataset in dataset_list+[dataset_name, 'const']} # None means all...
         xds = loadMergedForcing_Daily(varlist=varlist, grid=grid, bias_correction='rfbc', dataset_args=None, lskip=True, 
-                                      lautoChunk=lautoChunkLoad, time_slice=time_slice, ldebug=True)
+                                      lautoChunk=lautoChunkLoad, time_slice=time_slice, ldebug=False)
         print(xds)
         print('')
         
@@ -495,7 +496,8 @@ if __name__ == '__main__':
 #         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
 #         derived_varlist = ['dask_test']; load_list = ['T2']
 #         derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
-        derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
+#         derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
+        derived_varlist = ['pet_haa']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # Hargreaves with Allen correction
 #         derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
 #         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
@@ -557,11 +559,14 @@ if __name__ == '__main__':
                 note = 'PET based on the Hogg (1997) method using only Tmin and Tmax'
                 kwargs = dict(lmeans=False, lq2=None, zs=150, lxarray=True)      
                 xvar = xr.map_blocks(computePotEvapHog, dataset, kwargs=kwargs)
-            elif varname == 'pet_har':                
+            elif varname == 'pet_har' or varname == 'pet_haa':                
                 from processing.newvars import computePotEvapHar
                 default_varatts = varatts[varname]; ref_var = dataset['Tmax']
-                note = 'PET based on the Hargreaves method using only Tmin and Tmax'
-                kwargs = dict(lmeans=False, lat=None, lAllen=False, l365=False, lxarray=True)      
+                if varname == 'pet_haa':
+                    note = 'PET based on the Hargreaves method with Allen correction using only Tmin and Tmax'; lAllen = True
+                else: 
+                    note = 'PET based on the Hargreaves method using only Tmin and Tmax'; lAllen = False
+                kwargs = dict(lmeans=False, lat=None, lAllen=lAllen, l365=False, lxarray=True)      
                 xvar = xr.map_blocks(computePotEvapHar, dataset, kwargs=kwargs)
             elif varname == 'pet_th':
                 default_varatts = varatts[varname]; ref_var = dataset['T2']

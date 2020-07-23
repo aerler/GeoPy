@@ -270,6 +270,7 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
     xds['pet_hog'] = computePotEvapHog(xds, lmeans=False, lq2=False, zs='zs', lxarray=True)
     # compute Hargreaves PET (based on Tmin/Tmax and ToA/astronomical radiation)
     xds['pet_har'] = computePotEvapHar(xds, lat='lat', lmeans=False, l365=False, time_offset=0, lAllen=False, lxarray=True)
+    xds['pet_haa'] = computePotEvapHar(xds, lat='lat', lmeans=False, l365=False, time_offset=0, lAllen=True, lxarray=True)
     # compute Thonthwaite PET, based on climatology and temperature
     if not ldebug: # requires a full year for climatology
         tmp_ds['climT2'] = computeNormals(xds['T2'], aggregation='month', time_stamp=False, lresample=True, time_name='month')
@@ -312,126 +313,129 @@ if __name__ == '__main__':
     import time
     print('pandas version:',pd.__version__)
   
-    mode = 'load_Normals'
-#     mode = 'load_Monthly'  
-#     mode = 'compute_monthly'
-#     mode = 'load_Daily'
-#     mode = 'load_source'
-#     mode = 'convert_stations'
+    work_list = []
+#     work_list += ['convert_stations']
+#     work_list += ['compute_monthly']
+    work_list += ['load_source']
+#     work_list += ['load_Daily']
+#     work_list += ['load_Monthly']
+#     work_list += ['load_Normals']
     
     # settings
     station = 'UTM'
     region = 'Ontario'
     time_slice = ('2011-01-01','2017-12-31')
-  
-    if mode == 'load_Normals':
-        
-        xds = loadClimStn(station=station, region='Ontario', period=(2011,2018))
-        
-        print(xds)
-        print(xds.attrs)
-        print()
-        
-        var0 = next(iter(xds.data_vars.values()))
-        print(var0)
-        print(var0.attrs)
-        
-    elif mode == 'load_Monthly':
-        
-        xds = loadClimStn_TS(station=station, region='Ontario', time_slice=time_slice)
-        
-        print(xds)
-        print(xds.attrs)
-        print()
-        
-        var0 = next(iter(xds.data_vars.values()))
-        print(var0)
-        print(var0.attrs)
-        
-    elif mode == 'compute_monthly':
-        
-        # load data (into memory)
-        xds = loadClimStn_Daily(station=station, region='Ontario', time_slice=None)
-        
-        # aggregate month
-        rds = xds.resample(time='MS',skipna=True,).mean()
-        print(rds)
-        print('')
-        
-        ## save monthly timeseries
-        # define destination file
-        nc_folder, nc_filename = getFolderFileName(station=station, region=region, mode='monthly')
-        nc_filepath = nc_folder + nc_filename
-        print("\nExporting Monthly Timeseries to NetCDF-4 file:\n '{}'".format(nc_filepath))
-        # write to NetCDF
-        rds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4')
-        # update time information
-        print("\nAdding human-readable time-stamp variable ('time_stamp')\n")
-        ncds = nc.Dataset(nc_filepath, mode='a')
-        ncts = addTimeStamps(ncds, units='month') # add time-stamps
-        rds['time_stamp'] = xr.DataArray(data=ncts[:], coords=(rds.coords['time'],),)
-        ncds.close()              
-        
-        ## aggregate to normals and save
-        # trim
-        rds = rds.loc[{'time':slice(*time_slice),}]
-        # compute normals
-        cds = computeNormals(rds, aggregation='month', time_stamp='time_stamp', lresample=False, time_name='time')
-        print(cds)
-        print('')
 
-        # save normals
-        nc_folder, nc_filename = getFolderFileName(station=station, region=region, mode='clim', period=cds.period) # define destination file
-        nc_filepath = nc_folder + nc_filename
-        print("\nExporting Monthly Normals to NetCDF-4 file:\n '{}'".format(nc_filepath))
-        # write to NetCDF
-        cds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=None, engine='netcdf4')
-        
-
-    elif mode == 'load_Daily':
-        
-        xds = loadClimStn_Daily(station=station, region='Ontario', time_slice=time_slice)
-        
-        print(xds)
-        print(xds.attrs)
-        print()
-        
-        var0 = next(iter(xds.data_vars.values()))
-        print(var0)
-        print(var0.attrs)
-        
-    elif mode == 'load_source':
-        
-        xds = loadStation_Src(station=station, region='Ontario', ldebug=True,)
-        
-        print(xds)
-        print(xds.attrs)
-        print()
-        
-#         var0 = next(iter(xds.data_vars.values()))
-#         print(var0)
-#         print(var0.attrs)
-        
-    elif mode == 'convert_stations':
-
-        # start operation
-        start = time.time()
-        
-        # load data        
-        print("\nLoading time-varying data from source file\n")
-        xds = loadStation_Src(station='UTM', region='Ontario', ldebug=False)
-        print(xds)
-        
-        # write NetCDF
-        nc_filepath = osp.join(*getFolderFileName(station=xds.attrs['name'], region=xds.attrs['region'], mode='daily'))
-        xds.to_netcdf(nc_filepath)
-        # add timestamp
-        print("\nAdding human-readable time-stamp variable ('time_stamp')\n")
-        ncds = nc.Dataset(nc_filepath, mode='a')
-        ncts = addTimeStamps(ncds, units='day') # add time-stamps
-        ncds.close()
-        # print timing
-        end = time.time()
-        print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
- 
-        
+    # loop over workloads
+    for mode in work_list:
+      
+        if mode == 'load_Normals':
+            
+            xds = loadClimStn(station=station, region='Ontario', period=(2011,2018))
+            
+            print(xds)
+            print(xds.attrs)
+            print()
+            
+            var0 = next(iter(xds.data_vars.values()))
+            print(var0)
+            print(var0.attrs)
+            
+        elif mode == 'load_Monthly':
+            
+            xds = loadClimStn_TS(station=station, region='Ontario', time_slice=time_slice)
+            
+            print(xds)
+            print(xds.attrs)
+            print()
+            
+            var0 = next(iter(xds.data_vars.values()))
+            print(var0)
+            print(var0.attrs)
+            
+        elif mode == 'compute_monthly':
+            
+            # load data (into memory)
+            xds = loadClimStn_Daily(station=station, region='Ontario', time_slice=None)
+            
+            # aggregate month
+            rds = xds.resample(time='MS',skipna=True,).mean()
+            print(rds)
+            print('')
+            
+            ## save monthly timeseries
+            # define destination file
+            nc_folder, nc_filename = getFolderFileName(station=station, region=region, mode='monthly')
+            nc_filepath = nc_folder + nc_filename
+            print("\nExporting Monthly Timeseries to NetCDF-4 file:\n '{}'".format(nc_filepath))
+            # write to NetCDF
+            rds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=['time'], engine='netcdf4')
+            # update time information
+            print("\nAdding human-readable time-stamp variable ('time_stamp')\n")
+            ncds = nc.Dataset(nc_filepath, mode='a')
+            ncts = addTimeStamps(ncds, units='month') # add time-stamps
+            rds['time_stamp'] = xr.DataArray(data=ncts[:], coords=(rds.coords['time'],),)
+            ncds.close()              
+            
+            ## aggregate to normals and save
+            # trim
+            rds = rds.loc[{'time':slice(*time_slice),}]
+            # compute normals
+            cds = computeNormals(rds, aggregation='month', time_stamp='time_stamp', lresample=False, time_name='time')
+            print(cds)
+            print('')
+    
+            # save normals
+            nc_folder, nc_filename = getFolderFileName(station=station, region=region, mode='clim', period=cds.period) # define destination file
+            nc_filepath = nc_folder + nc_filename
+            print("\nExporting Monthly Normals to NetCDF-4 file:\n '{}'".format(nc_filepath))
+            # write to NetCDF
+            cds.to_netcdf(nc_filepath, mode='w', format='NETCDF4', unlimited_dims=None, engine='netcdf4')
+            
+    
+        elif mode == 'load_Daily':
+            
+            xds = loadClimStn_Daily(station=station, region='Ontario', time_slice=time_slice)
+            
+            print(xds)
+            print(xds.attrs)
+            print()
+            
+            var0 = next(iter(xds.data_vars.values()))
+            print(var0)
+            print(var0.attrs)
+            
+        elif mode == 'load_source':
+            
+            xds = loadStation_Src(station=station, region='Ontario', ldebug=True,)
+            
+            print(xds)
+            print(xds.attrs)
+            print()
+            
+    #         var0 = next(iter(xds.data_vars.values()))
+    #         print(var0)
+    #         print(var0.attrs)
+            
+        elif mode == 'convert_stations':
+    
+            # start operation
+            start = time.time()
+            
+            # load data        
+            print("\nLoading time-varying data from source file\n")
+            xds = loadStation_Src(station='UTM', region='Ontario', ldebug=False)
+            print(xds)
+            
+            # write NetCDF
+            nc_filepath = osp.join(*getFolderFileName(station=xds.attrs['name'], region=xds.attrs['region'], mode='daily'))
+            xds.to_netcdf(nc_filepath)
+            # add timestamp
+            print("\nAdding human-readable time-stamp variable ('time_stamp')\n")
+            ncds = nc.Dataset(nc_filepath, mode='a')
+            ncts = addTimeStamps(ncds, units='day') # add time-stamps
+            ncds.close()
+            # print timing
+            end = time.time()
+            print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
+     

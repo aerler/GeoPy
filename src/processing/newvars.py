@@ -15,7 +15,7 @@ set_num_threads(1); set_vml_num_threads(1)
 # internal imports
 from geodata.base import Dataset, Variable, VariableError, AxisError
 from geodata.misc import days_per_month, days_per_month_365, DatasetError
-from utils.constants import sig, lw, pi # used in calculation for clack body radiation
+from utils.constants import sig, lw, pi # used in calculation for black body radiation
 
 ## helper functions
 
@@ -31,9 +31,15 @@ def radiation_black(A, SW, LW, e, Ts, TSmax=None):
     return evaluate('( ( 1 - A ) * SW ) + ( LW * e ) - ( e * sig * ( Ts**4 + TSmax**4 ) / 2 )')
 
 # net longwave radiation (with estimate of atmospheric LW radiation)
-def net_longwave_radiation(Tmin, Tmax, ea, Rs, Rs0):
+def net_longwave_radiation(Tmin, Tmax, Rs, Rs0, ea=None):
   ''' estimate net longwave radiation based on FAO Eq. 39 (http://www.fao.org/3/X0490E/x0490e07.htm#radiation) '''
-  netrad_lw = evaluate('sig*0.5*(Tmin**4 + Tmax**4) * ( 0.35 - 0.14*(ea/1000)**0.5 ) * ( 0.35 - 1.35*(Rs/Rs0))')
+  # need to clip ratio first
+  Rf = ( Rs/Rs0 ).clip(max=1) # this really only happens due to instrument error, but well...
+  #print("\nRs/Rs0 > 1:",(Rf.data>1).sum(),'\n') 
+  # estimate actual water vapor pressure from Tmin, if necessary
+  if ea is None:
+      ea = e_sat(Tmin - 2.5, lKelvin=True) # 2.5K below Tmin - about 85% at night
+  netrad_lw = evaluate('sig*0.5*(Tmin**4 + Tmax**4) * ( 0.35 - 0.14*(ea/1000)**0.5 ) * ( 0.35 - 1.35*Rf )')
   return netrad_lw # note that the sign is reversed, i.e. pointing downward
 
 # 2m wind speed [m/s]
@@ -95,6 +101,28 @@ def e_sat(T, Tmax=None, lKelvin=True):
 
 ## functions to compute relevant variables (from a dataset)
 
+def _extractMinimalTemperatures(dataset, lskinT=True, lmeans=True, lxarray=False):
+    ''' find various Tmin/Tmax variables; min/max are not available, Tmax will be None '''
+    # extract temperature values
+    if lskinT and 'TSmin' in dataset and 'TSmax' in dataset: 
+        Ts = dataset['TSmin'].data if lxarray else dataset['TSmin'][:]
+        TSmax = dataset['TSmax'].data if lxarray else dataset['TSmax'][:]
+    elif 'Tmin' in dataset and 'Tmax' in dataset: 
+        Ts = dataset['Tmin'].data if lxarray else dataset['Tmin'][:]
+        TSmax = dataset['Tmax'].data if lxarray else dataset['Tmax'][:]
+    elif lskinT and lmeans and 'TSmean' in dataset:
+        Ts = dataset['TSmean'].data if lxarray else dataset['TSmean'][:]; TSmax = None
+    elif lskinT and 'Ts' in dataset: 
+        Ts = dataset['Ts'].data if lxarray else dataset['Ts'][:]; TSmax = None
+    elif lmeans and 'Tmean' in dataset:
+        Ts = dataset['Tmean'].data if lxarray else dataset['Tmean'][:]; TSmax = None
+    elif 'T2' in dataset: 
+        Ts = dataset['T2'].data if lxarray else dataset['T2'][:]; TSmax = None
+    else: 
+        raise VariableError("Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation.")
+    return Ts, TSmax
+  
+
 # compute net radiation (for PET)
 def computeNetRadiation(dataset, asVar=True, lA=True, lem=True, lrad=True, lnetlw=False, name='netrad', lxarray=False):
   ''' function to compute net radiation at surface for Penman-Monteith equation
@@ -127,41 +155,34 @@ def computeNetRadiation(dataset, asVar=True, lA=True, lem=True, lrad=True, lnetl
     else: 
         raise VariableError("Downwelling SW radiation is not available for radiation calculation.")
     # decide what to do about atmospheric longwave radiation
-    DNLW = netrad_lw = None
-    if 'LWDNB' in dataset: DNLW = dataset['LWDNB'].data if lxarray else dataset['LWDNB'][:]
-    elif 'DNLW' in dataset: DNLW = dataset['DNLW'].data if lxarray else dataset['DNLW'][:]
-    elif 'GLW' in dataset: DNLW = dataset['GLW'].data if lxarray else dataset['GLW'][:]
-    if 'netrad_lw'  in dataset: netrad_lw = dataset['netrad_lw'].data if lxarray else dataset['netrad_lw'][:]
     if lnetlw:
+        if 'netrad_lw'  in dataset: 
+            netrad_lw = dataset['netrad_lw'].data if lxarray else dataset['netrad_lw'][:]
+        else:
+            Tmin, Tmax = _extractMinimalTemperatures(dataset, lskinT=False, lmeans=True, lxarray=lxarray)
+            if 'Q2' in dataset: ea = dataset['Q2'][:] # actual vapor pressure
+            elif 'q2' in dataset and 'ps' in dataset: # water vapor mixing ratio
+                ea = dataset['q2'][:] * dataset['ps'][:] * 28.96 / 18.02
+            else: ea = None # just assume Td = Tmin - 2.5K ~ 85% RH (done below)
+            # compute clear-sky radiation from date and location
+            Rs0 = computeClearskyRadiation(dataset, zs=None, lat=None, l365=None, time_offset=0, lxarray=lxarray)
+            # compute net longwave radiation
+            netrad_lw = net_longwave_radiation(Tmin, Tmax, DNSW, Rs0, ea=ea)
         # compute using net longwave radiation
-        if netrad_lw is not None:
-            data = evaluate('(1-A)*DNSW + netrad_lw')
-        else: 
-            raise NotImplementedError("Net LW radiation needs to be pre-computed for radiation calculation.")
+        data = evaluate('(1-A)*DNSW + netrad_lw')
     else:
         # compute using atmospheric LW and surface black-body radiation
+        if 'LWDNB' in dataset: DNLW = dataset['LWDNB'].data if lxarray else dataset['LWDNB'][:]
+        elif 'DNLW' in dataset: DNLW = dataset['DNLW'].data if lxarray else dataset['DNLW'][:]
+        elif 'GLW' in dataset: DNLW = dataset['GLW'].data if lxarray else dataset['GLW'][:]
+        else: 
+            raise VariableError("Downwelling LW radiation is not available for radiation calculation.")
         if not lem: em = 0.93 # average value for soil
         elif lem and 'e' in dataset: em = dataset['e'].data if lxarray else dataset['e'][:]
         else:
             raise VariableError("Emissivity is not available for radiation calculation.")
-        if DNLW is not None:
-            if 'TSmin' in dataset and 'TSmax' in dataset: 
-                Ts = dataset['TSmin'].data if lxarray else dataset['TSmin'][:]
-                TSmax = dataset['TSmax'].data if lxarray else dataset['TSmax'][:]
-            elif 'TSmean' in dataset:
-                Ts = dataset['TSmean'].data if lxarray else dataset['TSmean'][:]; TSmax = None
-            elif 'Ts' in dataset: 
-                Ts = dataset['Ts'].data if lxarray else dataset['Ts'][:]; TSmax = None
-            elif 'Tmin' in dataset and 'Tmax' in dataset: 
-                Ts = dataset['Tmin'].data if lxarray else dataset['Tmin'][:]
-                TSmax = dataset['Tmax'].data if lxarray else dataset['Tmax'][:]
-            elif 'T2' in dataset: 
-                Ts = dataset['T2'].data if lxarray else dataset['T2'][:]; TSmax = None
-            else: 
-                raise VariableError("Either 'Ts' or 'TSmean' are required to compute net radiation for PET calculation.")
-            data = radiation_black(A,DNSW,DNLW,em,Ts,TSmax) # downward total net radiation
-        else: 
-            raise VariableError("Downwelling LW radiation is not available for radiation calculation.")
+        TSmin, TSmax = _extractMinimalTemperatures(dataset, lskinT=True, lmeans=True, lxarray=lxarray)
+        data = radiation_black(A,DNSW,DNLW,em,TSmin,TSmax) # downward total net radiation
   # cast as Variable
   if asVar:
       if lxarray:
@@ -189,23 +210,40 @@ def computeVaporDeficit(dataset):
   # return new variable
   return var
 
-def _getTemperatures(dataset, lmeans=False, lxarray=False):
+def _getTemperatures(dataset, lmeans=False, lskinT=True, lxarray=False):
     ''' helper functions to extract temperature variables '''
-    # get diurnal min/max 2m temperatures
-    if 'Tmin' in dataset: 
-        Tmin = dataset['Tmin']; min_units = dataset['Tmin'].units
+    # define temperature options
+    if lskinT:
+        Tmin_list = ['TSmin','Tmin']; Tmax_list = ['TSmax','Tmax']
+        T_list = ['TSmean','Tmean','Ts','T2'] if lmeans else ['Ts','T2']
+    else:
+        Tmin_list = ['Tmin',]; Tmax_list = ['Tmax',]
+        T_list = ['Tmean','T2'] if lmeans else ['T2']
+    # find diurnal min/max 2m temperature variables
+    Tmin = Tmax = T = None
+    for topt in Tmin_list:
+        if topt in dataset:
+            Tmin = dataset[topt]; break
+    for topt in Tmax_list:
+        if topt in dataset:
+            Tmax = dataset[topt]; break
+    for topt in T_list:
+        if topt in dataset:
+            T = dataset[topt]; break
+    # extract values        
+    if Tmin is not None: 
+        min_units = Tmin.units
         Tmin = Tmin.data if lxarray else Tmin[:]
     else: raise VariableError("Cannot determine diurnal minimum 2m temperature for PET calculation.")
-    if 'Tmax' in dataset: 
-        Tmax = dataset['Tmax']; max_units = dataset['Tmax'].units
+    if Tmax is not None: 
+        max_units = Tmax.units
         Tmax = Tmax.data if lxarray else Tmax[:]
     else: raise VariableError("Cannot determine diurnal maximum 2m temperature for PET calculation.")
     assert max_units == min_units, (max_units,min_units)
     # get 2m mean temperature
-    if lmeans and 'Tmean' in dataset: 
-        T = dataset['Tmean'][:]; t_units = dataset['Tmean'].units
-    elif 'T2' in dataset: 
-        T = dataset['T2'][:]; t_units = dataset['T2'].units
+    if T is not None: 
+        t_units = T.units
+        T = T.data if lxarray else T[:]
     else:
         # estimate mean temperature as average of diurnal minimum and maximum
         T = (Tmax+Tmin)/2.; t_units = min_units
@@ -564,11 +602,33 @@ def toa_rad(time, lat, lmonth=True, l365=False, time_offset=0, ldeg=True):
     Ra = evaluate('1366.67 * rr * ( ws*sin(lat)*sin(D) + cos(lat)*cos(D)*sin(ws) ) / pi')
     # return solar radiation at ToA
     return Ra
+
+def computeToAradiation(dataset, lat=None, l365=None, time_offset=0, lxarray=False):
+    ''' estimate the ToA radiation based on date and latitude '''
+    # infer latitude
+    lat = _inferLat(dataset, lat=lat, ldeg=True, lunits=False, lxarray=lxarray)
+    # determine date
+    time = dataset['time'].data if lxarray else dataset.time[:]
+    lmonth = not lxarray and ('month' in time.units.lower()) # whether time axis is datetime or month index
+    # compute top-of-atmosphere solar radiation
+    Ra = toa_rad(time, lat=lat, lmonth=lmonth, ldeg=True, l365=l365, time_offset=time_offset)    
+    return Ra
   
 # function to estimate clear-sky radiation at the surface from ToA radiation and elevation
 def clearsky_rad(Ra, zs):
     ''' clear-sky surface solar radiation, based on elevation [m] and ToA solar radiation [W/m^2] '''
     return evaluate('(0.75 + zs*2e-5) * Ra')
+
+def computeClearskyRadiation(dataset, zs=None, lat=None, l365=None, time_offset=0, lxarray=False):
+    ''' add correction for atmospheric absorption to ToA radiation '''
+    # infer elevation
+    zs, zs_units = _inferElev(dataset, zs=zs, latts=True, lunits=True, lxarray=lxarray) 
+    assert zs_units is None or zs_units == 'm', zs
+    # compute ToA radiation
+    Ra = computeToAradiation(dataset, lat=lat, l365=l365, time_offset=time_offset, lxarray=lxarray)
+    # apply atmospheric correction
+    Rs0 = clearsky_rad(Ra, zs)
+    return Rs0
 
 
 # compute potential evapotranspiration based on Hargreaves method; requires only Tmin/Tmax and ToA radiation (i.e. latitude and date)
@@ -599,7 +659,8 @@ def computePotEvapHar(dataset, lat=None, lmeans=False, l365=None, time_offset=0,
         pet = evaluate('(0.0023/lw) * Ra * (TC + 17.8) * (Tmax - Tmin)**0.5')
     # create a DataArray/Variable instance
     refvar = dataset['Tmax']
-    atts = dict(name='pet_har', units='kg/m^2/s', long_name='PET (Hargreaves)')
+    author_str = '(Hargreaves & Allen)' if lAllen else '(Hargreaves)'
+    atts = dict(name='pet_har', units='kg/m^2/s', long_name='PET '+author_str)
     if lxarray:
         if pet.size == 0: pet = None
         var = xr.DataArray(coords=refvar.coords, data=pet, name=atts['name'], attrs=atts)
