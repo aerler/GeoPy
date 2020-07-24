@@ -44,9 +44,11 @@ axes_varatts = dict(time = dict(name='time', units='hours', long_name='Days'), #
 axes_varlist = axes_varatts.keys()
 # merged/mixed/derived variables
 varatts = dict(liqwatflx = dict(name='liqwatflx', units='kg/m^2/s', long_name='Liquid Water Flux'),
+               pet_pt = dict(name='pet_pt', units='kg/m^2/s', long_name='PET (Priestley-Taylor)'),
+               pet_pts = dict(name='pet_pts', units='kg/m^2/s', long_name='PET (Priestley-Taylor, approx. LW)'),
                pet_hog = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)'),
                pet_har = dict(name='pet_har', units='kg/m^2/s', long_name='PET (Hargeaves)'),
-               pet_haa = dict(name='pet_haa', units='kg/m^2/s', long_name='PET (Hargeaves&Allen)'),
+               pet_haa = dict(name='pet_haa', units='kg/m^2/s', long_name='PET (Hargeaves-Allen)'),
                pet_th  = dict(name='pet_th', units='kg/m^2/s', long_name='PET (Thornthwaite)'),
                )
 varlist = varatts.keys()
@@ -320,7 +322,6 @@ if __name__ == '__main__':
   work_loads += ['load_TimeSeries'      ]
   work_loads += ['monthly_normal'        ]
   work_loads += ['load_Climatology'      ]
-#   work_loads += ['compute_PET']  
 
   # some settings
   grid = None
@@ -495,9 +496,11 @@ if __name__ == '__main__':
 #         chunks = (9, 59, 59); lautoChunk = False
 #         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
 #         derived_varlist = ['dask_test']; load_list = ['T2']
+        derived_varlist = ['pet_pt']; load_list = ['T2']; clim_stn = 'UTM'
+#         derived_varlist = ['pet_pts']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']; clim_stn = 'UTM'
 #         derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
 #         derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
-        derived_varlist = ['pet_haa']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # Hargreaves with Allen correction
+#         derived_varlist = ['pet_haa']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # Hargreaves with Allen correction
 #         derived_varlist = ['pet_th']; load_list = ['T2', 'lat2D']
 #         derived_varlist = ['T2']; load_list = ['Tmin', 'Tmax']
 #         derived_varlist = ['liqwatflx']; load_list = ['precip','snow']
@@ -553,6 +556,25 @@ if __name__ == '__main__':
                 note = 'simple average of Tmin and Tmax'          
                 xvar = dataset['Tmin'] + ref_var
                 xvar /= 2                
+            elif varname == 'pet_pt' or varname == 'pet_pts':
+                default_varatts = varatts[varname]; ref_var = dataset['T2']
+                # load radiation data from climate station
+                from datasets.ClimateStations import loadClimStn_Daily
+                stn_ds = loadClimStn_Daily(station=clim_stn, time_slice=time_slice, lload=True)
+                clim_chunks = {dim:cnk for dim,cnk in zip(ref_var.dims,ref_var.encoding['chunksizes']) if dim in (ref_var.xlon,ref_var.ylat)}
+                # transfer 1D radiation timeseries to 3D dataset
+                if varname == 'pet_pts': 
+                    dataset['DNSW'] = stn_ds['DNSW']; lnetlw = True  # use only solar radiation and estimate net LW
+                else: 
+                    dataset['netrad'] = stn_ds['netrad']; lnetlw = False # use net radiation timeseries
+                dataset.attrs['zs'] = stn_ds.attrs['zs'] # also need approximate elevation - station elevation if fine...
+                # process timeseries
+                from processing.newvars import computePotEvapPT
+                note = 'PET based on the Thornthwaite method using only T2'
+                kwargs = dict(alpha=1.26, lmeans=False, lrad=True, lA=False, lem=False, lnetlw=lnetlw, 
+                              lgrdflx=False, lpmsl=False, lxarray=True,)      
+                xvar = xr.map_blocks(computePotEvapPT, dataset, kwargs=kwargs)
+                print(xvar)
             elif varname == 'pet_hog':
                 from processing.newvars import computePotEvapHog
                 default_varatts = varatts[varname]; ref_var = dataset['Tmax']
@@ -644,198 +666,3 @@ if __name__ == '__main__':
         end =  time.time()
         print(('\n   Required time:   {:.0f} seconds\n'.format(end-start)))
       
-        
-    elif mode == 'compute_PET':
-       
-        tic = time.time()
-        
-        # compute variable list
-#         load_variables = dict(CaPA=['precip']); compute_variables = dict(CaPA=['precip'])
-#         load_variables = dict(CaLDAS=['snowh','rho_snw']); compute_variables = dict(CaLDAS=['snow'])
-#         load_variables = dict(CaLDAS=['snowh','rho_snw'], CaPA=['precip'])
-#         compute_variables = dict(CaSPAr=['liqwatflx'])
-        load_variables = dict(HRDPS=None) # all
-        # HRDPS/PET variable lists
-        lderived = True
-        derived_valist = ['Rn', 'e_def', 'delta', 'u2', 'gamma', 'T2', 'pet_dgu', 'pet_wnd', 'pet_rad']
-#         compute_variables = dict(HRDPS=['Rn',]); lderived = False
-#         compute_variables = dict(HRDPS=['Rn', 'e_def', 'delta', 'u2', 'gamma', 'T2']) # 'RH', # first order variables
-#         compute_variables = dict(HRDPS=['pet_dgu', 'pet_rad', 'pet_wnd',]) # second order variables
-        # second order variables: denominator, radiation and wind terms, PET
-#         compute_variables = dict(HRDPS=['pet_dgu',]) # denominator
-#         compute_variables = dict(HRDPS=['pet_rad','pet_wnd']) # radiation and wind
-#         derived_valist = ['Rn', 'e_def', 'delta', 'u2', 'gamma', 'T2',]
-        compute_variables = dict(HRDPS=['pet']) # only PET
-        
-        drop_variables = 'default' # special keyword
-        reference_dataset = next(iter(load_variables)) # just first dataset...
-        
-        # settings
-        ts_name = 'time'
-#         period = ('2019-08-19T00','2019-08-19T06')
-        folder = folder_6hourly # CaSPAr/caspar_6hourly/
-        
-        # load multi-file dataset (no time slicing necessary)        
-        datasets = dict()
-        for dataset,varlist in load_variables.items():
-            if lderived:
-                datasets[dataset] = loadMergedForcing_Daily(grid=grid, varlist=derived_valist, 
-                                                            dataset=dataset, lignore_missing=True)
-        ref_ds = datasets[reference_dataset]
-        print(ref_ds)
-        tsvar = ref_ds[ts_name].load()
-#         print(tsvar)
-        
-        print("\n\n   ***   Computing Derived Variables   ***   ")
-        # loop over variables: compute and save to file
-        for dataset,varlist in compute_variables.items():
-            for varname in varlist:
-              
-                print('\n\n   ---   {} ({})   ---\n'.format(varname,dataset))
-                note = 'derived variable'
-                nvar = None; netcdf_dtype = np.dtype('<f4')
-                # compute variable
-                if dataset == 'CaSPAr':
-                    # derived variables 
-                    if varname == 'liqwatflx':
-                        caldas = datasets['CaLDAS']; capa = datasets['CaPA']
-                        ref_var = capa['precip']; ref_ds = capa
-                        # check that the data is 6=hourly
-                        dt = tsvar.diff(dim='time').values / np.timedelta64(1,'h')
-                        assert dt.min() == dt.max() == 6, (dt.min(),dt.max())
-                        note = 'total precipitation - SWE differences'
-                        swe = caldas['rho_snw'] * caldas['snowh'] 
-                        swe1 = xr.concat([swe[{'time':0}],swe], dim='time') # extend for differencing
-                        dswe = swe1.diff(dim='time') # the extension should yield correct time indexing
-                        dswe /= (6*3600.) # these are 6-hourly differences
-                        nvar = capa['precip'].fillna(0) - dswe.fillna(0)
-                        nvar = nvar.clip(min=0, max=None) # remove negative (unphysical)
-                        del dswe, swe1, swe
-                elif dataset == 'CaLDAS':
-                    ref_ds = datasets[dataset]
-                    # derived CaLDAS 
-                    if varname == 'snow':
-                        ref_var = ref_ds['snowh']
-                        note = 'snow depth x density'
-                        nvar = ref_ds['rho_snw'] * ref_ds['snowh']   
-                elif dataset == 'HRDPS':
-                    ref_ds = datasets[dataset]
-                    # derived HRDPS
-                    if varname == 'RH':
-                        # relative humidity
-                        ref_var = ref_ds['Q2']
-                        # actual water vapor pressure (from mixing ratio)
-                        e_vap = ref_ds['Q2'] * ref_ds['ps'] * ( 28.96 / 18.02 )
-                        # saturation vapor pressure (for temperature T2; Magnus Formula)
-                        e_sat = 610.8 * np.exp( 17.27 * (ref_ds['T2'] - 273.15) / (ref_ds['T2'] - 35.85) )
-                        note = 'e_vap / e_sat (using Magnus Formula)'
-                        nvar = e_vap / e_sat
-                        del e_sat, e_vap
-                    # first order PET variables
-                    elif varname == 'Rn':
-                        from utils.constants import sig
-                        # net radiation
-                        ref_var = ref_ds['DNSW']
-                        note = '0.23*DNSW + DNLW - 0.93*s*T2**4'
-                        nvar = (1-0.23)*ref_ds['DNSW'] + ref_ds['DNLW']- 0.93*sig*ref_ds['T2']**4
-                        # N.B.: Albedo 0.23 and emissivity 0.93 are approximate average values...
-                    elif varname == 'u2':
-                        # wind speed
-                        ref_var = ref_ds['U2']
-                        note = 'SQRT(U2**2 + V2**2)'
-                        nvar = np.sqrt(ref_ds['U2']**2 + ref_ds['V2']**2) # will still be delayed
-                    elif varname == 'e_def':
-                        # saturation deficit
-                        ref_var = ref_ds['Q2']
-                        # actual water vapor pressure (from mixing ratio)
-                        e_vap = ref_ds['Q2'] * ref_ds['ps'] * ( 28.96 / 18.02 )
-                        # saturation vapor pressure (for temperature T2; Magnus Formula)
-                        e_sat = 610.8 * np.exp( 17.27 * (ref_ds['T2'] - 273.15) / (ref_ds['T2'] - 35.85) )
-                        note = 'e_sat - e_vap (using Magnus Formula)'
-                        nvar = e_sat - e_vap
-                        del e_sat, e_vap
-                    # PET helper variables (still first order)
-                    elif varname == 'delta':
-                        # slope of saturation vapor pressure (w.r.t. temperature T2; Magnus Formula)
-                        ref_var = ref_ds['T2']
-                        note = 'd(e_sat)/dT2 (using Magnus Formula)'
-                        nvar = 4098 * ( 610.8 * np.exp( 17.27 * (ref_ds['T2'] - 273.15) / (ref_ds['T2'] - 35.85) ) ) / (ref_ds['T2'] - 35.85)**2
-                    elif varname == 'gamma':
-                        # psychometric constant
-                        ref_var = ref_ds['ps']
-                        note = '665.e-6 * ps'
-                        nvar = 665.e-6 * ref_ds['ps']   
-                    # second order PET variables (only depend on first order variables and T2)
-                    elif varname == 'pet_dgu':
-                        # common denominator for PET calculation
-                        ref_var = ref_ds['delta']
-                        note = '( D + g * (1 + 0.34 * u2) ) * 86400'
-                        nvar = ( ref_ds['delta'] + ref_ds['gamma'] * (1 + 0.34 * ref_ds['u2']) ) * 86400
-                    elif varname == 'pet_rad':
-                        # radiation term for PET calculation
-                        ref_var = ref_ds['Rn']
-                        note = '0.0352512 * D * Rn / Dgu'
-                        nvar = 0.0352512 * ref_ds['delta'] * ref_ds['Rn'] / ref_ds['pet_dgu']
-                    elif varname == 'pet_wnd':
-                        # wind/vapor deficit term for PET calculation
-                        ref_var = ref_ds['u2']
-                        note = 'g * u2 * (es - ea) * 0.9 / T / Dgu'
-                        nvar = ref_ds['gamma'] * ref_ds['u2'] * ref_ds['e_def'] * 0.9 / ref_ds['T2'] / ref_ds['pet_dgu']
-                    elif varname == 'pet':
-                        if 'pet_rad' in ref_ds and 'pet_wnd' in ref_ds:
-                            # full PET from individual terms
-                            ref_var = ref_ds['pet_rad']
-                            note = 'Penman-Monteith (pet_rad + pet_wnd)'
-                            nvar = ref_ds['pet_rad'] + ref_ds['pet_wnd']
-                        else:
-                            # or PET from original derived variables (no terms)
-                            ref_var = ref_ds['Rn']
-                            note = 'Penman-Monteith from derived variables'
-                            nvar = ( 0.0352512 * ref_ds['delta'] * ref_ds['Rn'] + ( ref_ds['gamma'] * ref_ds['u2'] * ref_ds['e_def'] * 0.9 / ref_ds['T2'] ) ) / ( ref_ds['delta'] + ref_ds['gamma'] * (1 + 0.34 * ref_ds['u2']) ) / 86400
-                    
-                        
-                
-                # fallback is to copy
-                if nvar is None: 
-                    if dataset in datasets:
-                        # generic operation
-                        ref_ds = datasets[dataset]
-                        if varname in ref_ds:
-                            # generic copy
-                            ref_var = ref_ds[varname]
-                            nvar = ref_ds[varname].copy()
-                        else:
-                            raise NotImplementedError("Variable '{}' not found in dataset '{}'".fomat(varname,dataset))
-                    else:
-                        raise NotImplementedError("No method to compute variable '{}' (dataset '{}')".format(varname,dataset))
-                
-                nvar = nvar.astype(netcdf_dtype)
-                # assign attributes
-                nvar.rename(varname)
-                nvar.attrs = ref_var.attrs.copy()
-                for srcname,varatts in dataset_attributes[dataset].varatts.items():
-                    if varatts['name'] == varname: break # use these varatts
-                for att in ('name','units','long_name',):
-                    nvar.attrs[att] = varatts[att]
-                nvar.attrs['note'] = note
-                #nvar.chunk(chunks=chunk_settings)
-                
-                print(nvar)
-                
-                # save to file            
-                nc_filename = filename_6hourly.format(DS=dataset,VAR=varname,GRD=grid)
-                nds = xr.Dataset({ts_name:tsvar, varname:nvar,}, attrs=ref_ds.attrs.copy()) # new dataset
-                # write to NetCDF
-                var_enc = dict(zlib=True, complevel=1, _FillValue=np.NaN,)
-                # N.B.: may add chunking for larger grids
-                nds.to_netcdf(folder+nc_filename, mode='w', format='NETCDF4', unlimited_dims=['time'], 
-                              engine='netcdf4', encoding={varname:var_enc,}, compute=True)
-                del nvar, nds, ref_var
-            
-        # clean up
-        gc.collect()            
-        
-        toc = time.time()
-        print("\n\nOverall Timing:",toc-tic)
-        
-  

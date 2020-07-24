@@ -33,6 +33,8 @@ def radiation_black(A, SW, LW, e, Ts, TSmax=None):
 # net longwave radiation (with estimate of atmospheric LW radiation)
 def net_longwave_radiation(Tmin, Tmax, Rs, Rs0, ea=None):
   ''' estimate net longwave radiation based on FAO Eq. 39 (http://www.fao.org/3/X0490E/x0490e07.htm#radiation) '''
+  # solar radiation can be a timeseries, but needs to be broadcast properly
+  if Rs.ndim == 1: Rs = Rs.reshape(Rs.shape + (1,)*(Rs0.ndim-1))
   # need to clip ratio first
   Rf = ( Rs/Rs0 ).clip(max=1) # this really only happens due to instrument error, but well...
   #print("\nRs/Rs0 > 1:",(Rf.data>1).sum(),'\n') 
@@ -164,12 +166,15 @@ def computeNetRadiation(dataset, asVar=True, lA=True, lem=True, lrad=True, lnetl
             elif 'q2' in dataset and 'ps' in dataset: # water vapor mixing ratio
                 ea = dataset['q2'][:] * dataset['ps'][:] * 28.96 / 18.02
             else: ea = None # just assume Td = Tmin - 2.5K ~ 85% RH (done below)
+            # solar radiation can be a timeseries, but needs to be broadcast properly
+            Rs = DNSW # just renaming for convention
+            if Rs.ndim == 1: Rs = Rs.reshape(Rs.shape + (1,)*(Tmin.ndim-1))
             # compute clear-sky radiation from date and location
             Rs0 = computeClearskyRadiation(dataset, zs=None, lat=None, l365=None, time_offset=0, lxarray=lxarray)
             # compute net longwave radiation
-            netrad_lw = net_longwave_radiation(Tmin, Tmax, DNSW, Rs0, ea=ea)
+            netrad_lw = net_longwave_radiation(Tmin, Tmax, Rs, Rs0, ea=ea)
         # compute using net longwave radiation
-        data = evaluate('(1-A)*DNSW + netrad_lw')
+        data = evaluate('(1-A)*Rs + netrad_lw')
     else:
         # compute using atmospheric LW and surface black-body radiation
         if 'LWDNB' in dataset: DNLW = dataset['LWDNB'].data if lxarray else dataset['LWDNB'][:]
@@ -363,6 +368,8 @@ def computePotEvapPT(dataset, alpha=1.26, lmeans=False, lrad=True, lA=True, lem=
   for refvar in ('T2','Tmean','ps',):
       if refvar in dataset: break
   refvar = dataset[refvar]
+  # radiative flux can be a timeseries, but needs to be broadcast properly
+  if Rn.ndim == 1: Rn = Rn.reshape(Rn.shape + (1,)*(T.ndim-1))
   # compute potential evapotranspiration according to Priestley-Taylor method (1972)
   pet = evaluate('alpha * D * (Rn + G) / ( D + g ) / lw') # Eq. 12, Stannard, 1993, WRR
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)

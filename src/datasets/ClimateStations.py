@@ -42,8 +42,11 @@ varatts = dict(precip   = dict(name='precip', units='kg/m^2/s', long_name='Total
                pet_dgu  = dict(name='pet_dgu', units='Pa/K', long_name='PET Denominator'),
                pet_rad  = dict(name='pet_rad', units='kg/m^2/s', long_name='PET Radiation Term'),
                pet_wnd  = dict(name='pet_wnd', units='kg/m^2/s', long_name='PET Wind Term'),
+               pet_pt   = dict(name='pet_pt', units='kg/m^2/s', long_name='PET (Priestley-Taylor)'),
+               pet_pts  = dict(name='pet_pts', units='kg/m^2/s', long_name='PET (Priestley-Taylor, approx. LW)'),
                pet_hog  = dict(name='pet_hog', units='kg/m^2/s', long_name='PET (Hogg 1997)'),
                pet_har  = dict(name='pet_har', units='kg/m^2/s', long_name='PET (Hargeaves)'),
+               pet_haa  = dict(name='pet_haa', units='kg/m^2/s', long_name='PET (Hargeaves-Allen)'),
                pet_th   = dict(name='pet_th', units='kg/m^2/s', long_name='PET (Thornthwaite)'),
                pmsl     = dict(name='pmsl', units='Pa', long_name='Mean Sea-level Pressure'), # sea-level pressure
                ps       = dict(name='ps', units='Pa', long_name='Surface Air Pressure'), # surface pressure
@@ -127,6 +130,24 @@ class StationMeta(object):
 # Ontario stations
 ontario_station_list = dict()
 # UTMMS station
+# Outages - Radiation Balance:
+#  2016-07-27 - 2018-04-05
+#  2012-12-01 - 2013-01-01
+#             - 2007-10-01
+# Outages - Wind:
+#  2009-02-26 - 2009-03-31
+#  2006-06-02 - 2006-07-04
+#  2000-11-09 - 2000-11-28
+# Outages - RelHum:
+#  2005-02-01 - 2005-02-09
+#  2002-03-28 - 2002-04-17
+# Outages - all: 
+#  2017-08-31 - 2017-11-21
+#  2006-06-26 - 2006-07-04
+#  2004-12-10 - 2004-12-14
+#  2003-12-19 - 2004-01-09
+#  2003-09-09 - 2003-10-16
+#  2000-05-02 - 2000-05-17
 stn_varatts = dict(temp_cel = dict(name='T2', offset=273.15),
                    rel_hum_pct = dict(name='RH',),
                    wind_spd_ms = dict(name='U2',),
@@ -281,31 +302,34 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
 
 ## functions to load station data (from daily NetCDF files)
 
-def loadClimateStation(station, region='Ontario', time_slice=None, period=None, mode=None, **kwargs):
+def loadClimateStation(station, region='Ontario', time_slice=None, period=None, mode=None, lload=True, **kwargs):
     ''' function to load formatted data from climate stations into xarray '''
     # determine folder and filename
     folder, filename = getFolderFileName(station=station, region=region, period=period, mode=mode)
     # load dataset into xarray
     xr_args = dict(decode_cf=True, mask_and_scale=True, decode_times=True, autoclose=True)
     xr_args.update(kwargs)
-    xds = xr.open_dataset(folder+filename, **xr_args) # can load into memory
+    if lload:
+        xds = xr.load_dataset(folder+filename, **xr_args) # load entire dataset into memory dirctly
+    else:
+        xds = xr.open_dataset(folder+filename, **xr_args) # open file and lazily load data into memory
     # apply time slice
     if time_slice: xds = xds.loc[{'time':slice(*time_slice),}] # slice time
     # return dataset
     return xds
 
 
-def loadClimStn_Daily(station, region='Ontario', time_slice=None):
+def loadClimStn_Daily(station, region='Ontario', time_slice=None, **kwargs):
     ''' wrapper to load daily station data '''
-    return loadClimateStation(station, region=region, time_slice=time_slice, mode='daily')
+    return loadClimateStation(station, region=region, time_slice=time_slice, mode='daily', **kwargs)
 
-def loadClimStn_TS(station, region='Ontario', time_slice=None):
+def loadClimStn_TS(station, region='Ontario', time_slice=None, **kwargs):
     ''' wrapper to load monthly transient station data '''
-    return loadClimateStation(station, region=region, time_slice=time_slice, mode='monthly')
+    return loadClimateStation(station, region=region, time_slice=time_slice, mode='monthly', **kwargs)
 
-def loadClimStn(station, region='Ontario', period=None):
+def loadClimStn(station, region='Ontario', period=None, **kwargs):
     ''' wrapper to load monthly transient station data '''
-    return loadClimateStation(station, region=region, period=period, mode='clim')
+    return loadClimateStation(station, region=region, period=period, mode='clim', **kwargs)
 
 
 if __name__ == '__main__':
@@ -316,8 +340,8 @@ if __name__ == '__main__':
     work_list = []
 #     work_list += ['convert_stations']
 #     work_list += ['compute_monthly']
-    work_list += ['load_source']
-#     work_list += ['load_Daily']
+#     work_list += ['load_source']
+    work_list += ['load_Daily']
 #     work_list += ['load_Monthly']
 #     work_list += ['load_Normals']
     
@@ -395,7 +419,7 @@ if __name__ == '__main__':
     
         elif mode == 'load_Daily':
             
-            xds = loadClimStn_Daily(station=station, region='Ontario', time_slice=time_slice)
+            xds = loadClimStn_Daily(station=station, region='Ontario', time_slice=time_slice, lload=True)
             
             print(xds)
             print(xds.attrs)
