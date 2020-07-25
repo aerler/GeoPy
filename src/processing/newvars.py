@@ -34,7 +34,7 @@ def radiation_black(A, SW, LW, e, Ts, TSmax=None):
 def net_longwave_radiation(Tmin, Tmax, Rs, Rs0, ea=None):
   ''' estimate net longwave radiation based on FAO Eq. 39 (http://www.fao.org/3/X0490E/x0490e07.htm#radiation) '''
   # solar radiation can be a timeseries, but needs to be broadcast properly
-  if Rs.ndim == 1: Rs = Rs.reshape(Rs.shape + (1,)*(Rs0.ndim-1))
+  if Rs.ndim == 1 and isinstance(Rs,np.ndarray): Rs = Rs.reshape(Rs.shape + (1,)*(Rs0.ndim-1))
   # need to clip ratio first
   Rf = ( Rs/Rs0 ).clip(max=1) # this really only happens due to instrument error, but well...
   #print("\nRs/Rs0 > 1:",(Rf.data>1).sum(),'\n') 
@@ -158,6 +158,7 @@ def computeNetRadiation(dataset, asVar=True, lA=True, lem=True, lrad=True, lnetl
         raise VariableError("Downwelling SW radiation is not available for radiation calculation.")
     # decide what to do about atmospheric longwave radiation
     if lnetlw:
+        Rs = DNSW # just renaming for convention
         if 'netrad_lw'  in dataset: 
             netrad_lw = dataset['netrad_lw'].data if lxarray else dataset['netrad_lw'][:]
         else:
@@ -167,8 +168,7 @@ def computeNetRadiation(dataset, asVar=True, lA=True, lem=True, lrad=True, lnetl
                 ea = dataset['q2'][:] * dataset['ps'][:] * 28.96 / 18.02
             else: ea = None # just assume Td = Tmin - 2.5K ~ 85% RH (done below)
             # solar radiation can be a timeseries, but needs to be broadcast properly
-            Rs = DNSW # just renaming for convention
-            if Rs.ndim == 1: Rs = Rs.reshape(Rs.shape + (1,)*(Tmin.ndim-1))
+            if Rs.ndim == 1 and isinstance(Rs,np.ndarray): Rs = Rs.reshape(Rs.shape + (1,)*(Tmin.ndim-1))
             # compute clear-sky radiation from date and location
             Rs0 = computeClearskyRadiation(dataset, zs=None, lat=None, l365=None, time_offset=0, lxarray=lxarray)
             # compute net longwave radiation

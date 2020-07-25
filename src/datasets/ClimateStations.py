@@ -37,6 +37,8 @@ root_folder = getRootFolder(dataset_name=dataset_name, fallback_name='HGS') # ge
 # attributes of variables in final collection
 varatts = dict(precip   = dict(name='precip', units='kg/m^2/s', long_name='Total Precipitation'),
                MaxPrecip_1h = dict(name='MaxPrecip_1h', units='kg/m^2/s', long_name='Maximum Hourly Precipitation'),
+               liqprec  = dict(name='liqprec', units='kg/m^2/s', long_name='Rainfall (tipping bucket)'),
+               snowfall = dict(name='snowfall', units='cm', long_name='Snowfall depth'),
                pet      = dict(name='pet', units='kg/m^2/s', long_name='PET (Penman-Monteith)'),
                pet_sol  = dict(name='pet_sol', units='kg/m^2/s', long_name='PET (solar radiation only)'),
                pet_dgu  = dict(name='pet_dgu', units='Pa/K', long_name='PET Denominator'),
@@ -171,6 +173,35 @@ meta = StationMeta(name='UTM', title='University of Toronto, Mississauga', regio
                    readargs=stn_readargs, varatts=stn_varatts, minmax=minmax_vars, sampling='h')
 ontario_station_list[meta.name] = meta
 
+# Elora Research Station (ERS) (University of Guelph)
+stn_varatts = dict(PRESS = dict(name='ps', scalefactor=1000),
+                   ATEMP_AV = dict(name='T2', offset=273.15),
+                   RH_AV = dict(name='RH',),
+                   # WS10_P5S, WS10_PT, and WS10_PDR refer to peak wind speed
+                   WS10_AV = dict(name='U10',),
+                   WS10_AVD = dict(name='U10_dir',),
+                   WS2_AV = dict(name='U2',),
+                   PRECIP = dict(name='precip', scalefactor=24.), # convert hourly accumulation to daily
+                   TBRG = dict(name='liqprec', scalefactor=24.), # tipping bucket rain gauge
+                   SNOWFALL = dict(name='snowfall', scalefactor=24.), # hourly snow fall in cm
+                   SNOW_GR = dict(name='snowh', scalefactor=0.01), # snow depth on the ground
+                   SOL_RAD = dict(name='DNSW', scalefactor=3.6e-3), # downwelling solar radiation
+                   LW_RAD = dict(name='DNLW', scalefactor=3.6e-3), # most likely downwelling LW radiation
+                   SUNSHINE = dict(name='sunfrac'),
+                   WATER = dict(name='d_gw', scalefactor=0.01), )
+def eloraDateParser():
+    raise NotImplementedError()
+stn_readargs = dict(header=0, index_col=0, usecols=['YEAR','JD','TIME'], date_parser=eloraDateParser, 
+                    parse_dates=True, na_values=[])
+minmax_vars = dict(T2=('Tmin','Tmax'), RH=('RHmin','RHmax'), Q2=('Q2min','Q2max'), liqprec=(None,'MaxLiqprec_1h'),
+                   precip=(None,'MaxPrecip_1h'), U2=(None,'U2max'),U10=(None,'U10max'))
+meta = StationMeta(name='Elora', title='Elora Research Station, Univ. Guelph', region='Ontario',
+                   lat=None, lon=None, zs=None, 
+                   testfile='ERS_weather_data_hourly_2003.csv',
+                   filelist=['ERS_weather_data_hourly_{:04d}.csv'.format(year) for year in range(2003,2019)], 
+                   readargs=stn_readargs, varatts=stn_varatts, minmax=minmax_vars, sampling='h')
+ontario_station_list[meta.name] = meta
+
 
 def getFolderFileName(station=None, region='Ontario', period=None, mode='daily'):
     ''' return folder and file name in standard format '''
@@ -197,14 +228,14 @@ def getFolderFileName(station=None, region='Ontario', period=None, mode='daily')
 ## functions to load station data from source files
 
 
-def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, varatts=varatts, lpet=True, **kwargs):
+def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, varatts=varatts, **kwargs):
     ''' load station data from original source into pandas dataframe '''
     # get station meta data
     if station_list is None:
         station_list = globals()[region.lower()+'_station_list']
     station = station_list[station]
     # figure out read parameters
-    if station.file_fmt == 'xls': readargs = dict() # default args
+    readargs = dict() # default args
     readargs.update(station.readargs); readargs.update(kwargs)
     # add column/variables
     if 'usecols' in readargs: readargs['usecols'].extend(station.varatts.keys())
@@ -217,6 +248,9 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
         if station.file_fmt == 'xls':
             if ldebug: print(readargs)
             df_list.append(pd.read_excel(filepath, **readargs))
+        elif station.file_fmt == 'csv':
+            if ldebug: print(readargs)
+            df_list.append(pd.read_csv(filepath, **readargs))
         else:
             raise NotImplementedError(station.file_fmt)
     # join dataframes
@@ -266,7 +300,8 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
     xds.attrs['lat'] = station.lat; xds.attrs['lon'] = station.lon; xds.attrs['zs'] = station.zs
     ## add complex variables related to FAO PET
     # compute Penman-Monteith PET (only works with xarray)
-    pet,pet_rad,pet_wnd = computePotEvapPM(xds, lterms=True, lrad=True, lnetlw=False, lgrdflx=False, lpmsl=False, lxarray=True)
+    pet,pet_rad,pet_wnd = computePotEvapPM(xds, lterms=True, lrad=True, lA=False, lem=False, 
+                                           lnetlw=False, lgrdflx=False, lpmsl=False, lxarray=True)
     xds['pet'] = pet; xds['pet_rad'] = pet_rad; xds['pet_wnd'] = pet_wnd
     # compute ToA and approximate clear-sky solar radiation
     Ra = toa_rad(time=xds['time'].data, lat=xds.attrs['lat'], lmonth=False, l365=False, time_offset=0, ldeg=True)
@@ -275,9 +310,9 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
     xds['Rs0'] = xr.DataArray(coords=(xds.coords['time'],), data=Rs0, name='Rs0', attrs=varatts['Rs0']) 
     # compute PET using only direct solar radiation (and estimated longwave radiation)
     if 'DNSW_alt' in xds:
-        tmp_ds = xds.drop(['netrad','DNSW','DNLW','UPSW','UPLW']).rename(dict(DNSW_alt='DNSW'))
+        tmp_ds = xds.drop(['netrad','DNSW','DNLW','UPSW','UPLW'], errors='ignore').rename(dict(DNSW_alt='DNSW'))
     else:
-        tmp_ds = xds.drop(['netrad','DNLW','UPSW','UPLW'])
+        tmp_ds = xds.drop(['netrad','DNLW','UPSW','UPLW'], errors='ignore')
     print(tmp_ds)
     # compute net longwave radiation and solar radiation-based PET
     netrad_lw = net_longwave_radiation(Tmin=tmp_ds['Tmin'], Tmax=tmp_ds['Tmax'], ea=tmp_ds['Q2'], Rs=tmp_ds['DNSW'], Rs0=tmp_ds['Rs0'])
@@ -285,7 +320,7 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
     xds['netrad_lw'] = xr.DataArray(coords=(xds.coords['time'],), data=netrad_lw, name='netrad_lw', attrs=varatts['netrad_lw']) 
     xds['pet_sol'] = computePotEvapPM(tmp_ds, lterms=False, lrad=False, lA=False, lnetlw=True, lgrdflx=False, lpmsl=False, lxarray=True)
     # compute PET based on Priestly-Taylor
-    xds['pet_pt'] = computePotEvapPT(xds, lrad=True, lnetlw=False, lgrdflx=False, lpmsl=False, lxarray=True)
+    xds['pet_pt'] = computePotEvapPT(xds, lrad=True, lnetlw=False, lA=False, lem=False, lgrdflx=False, lpmsl=False, lxarray=True)
     xds['pet_pts'] = computePotEvapPT(tmp_ds, lrad=False, lnetlw=True, lA=False, lgrdflx=False, lpmsl=False, lxarray=True)
     # compute Hogg PET (based on Tmin & Tmax)
     xds['pet_hog'] = computePotEvapHog(xds, lmeans=False, lq2=False, zs='zs', lxarray=True)
@@ -340,8 +375,8 @@ if __name__ == '__main__':
     work_list = []
 #     work_list += ['convert_stations']
 #     work_list += ['compute_monthly']
-#     work_list += ['load_source']
-    work_list += ['load_Daily']
+    work_list += ['load_source']
+#     work_list += ['load_Daily']
 #     work_list += ['load_Monthly']
 #     work_list += ['load_Normals']
     
@@ -431,7 +466,7 @@ if __name__ == '__main__':
             
         elif mode == 'load_source':
             
-            xds = loadStation_Src(station=station, region='Ontario', ldebug=True,)
+            xds = loadStation_Src(station='Elora', region='Ontario', ldebug=True,)
             
             print(xds)
             print(xds.attrs)
