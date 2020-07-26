@@ -189,15 +189,21 @@ stn_varatts = dict(PRESS = dict(name='ps', scalefactor=1000),
                    LW_RAD = dict(name='DNLW', scalefactor=3.6e-3), # most likely downwelling LW radiation
                    SUNSHINE = dict(name='sunfrac'),
                    WATER = dict(name='d_gw', scalefactor=0.01), )
-def eloraDateParser():
-    raise NotImplementedError()
-stn_readargs = dict(header=0, index_col=0, usecols=['YEAR','JD','TIME'], date_parser=eloraDateParser, 
-                    parse_dates=True, na_values=[])
+def eloraDateParser(arg):
+    args = arg.split()
+    year = int(args[0]); day = int(args[1]); hour = int(args[2])//100
+    datetime = dt.datetime(year, 1, 1,) + dt.timedelta(days=day-1, hours=hour)
+    # N.B.: for now we are ignoring timezones...
+    #print(arg, datetime)
+    return datetime
+stn_readargs = dict(header=0, index_col=0, usecols=['YEAR','JD','TIME'], na_values=[],
+                    parse_dates=[['YEAR','JD','TIME']], date_parser=eloraDateParser,)
 minmax_vars = dict(T2=('Tmin','Tmax'), RH=('RHmin','RHmax'), Q2=('Q2min','Q2max'), liqprec=(None,'MaxLiqprec_1h'),
                    precip=(None,'MaxPrecip_1h'), U2=(None,'U2max'),U10=(None,'U10max'))
 meta = StationMeta(name='Elora', title='Elora Research Station, Univ. Guelph', region='Ontario',
-                   lat=None, lon=None, zs=None, 
-                   testfile='ERS_weather_data_hourly_2003.csv',
+                   lat=43.64, lon=-80.4, zs=374,# elevation as per https://www.mapcoordinates.net/en
+#                    testfile='ERS_weather_data_hourly_2003.csv',
+                   testfile=['ERS_weather_data_hourly_{:04d}.csv'.format(year) for year in range(2003,2005)],
                    filelist=['ERS_weather_data_hourly_{:04d}.csv'.format(year) for year in range(2003,2019)], 
                    readargs=stn_readargs, varatts=stn_varatts, minmax=minmax_vars, sampling='h')
 ontario_station_list[meta.name] = meta
@@ -241,7 +247,10 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
     if 'usecols' in readargs: readargs['usecols'].extend(station.varatts.keys())
     else: readargs['usecols'] = station.varatts.keys()
     ## load file(s) in Pandas
-    filelist = [station.testfile] if ldebug else station.filelist 
+    if ldebug:
+        if isinstance(station.testfile, str): filelist = [station.testfile]
+        else: filelist = station.testfile
+    else: filelist = station.filelist 
     df_list = []
     for filename in filelist:
         filepath = osp.join(station.folder,filename)
