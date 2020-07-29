@@ -35,10 +35,11 @@ dataset_name = 'ClimateStations'
 root_folder = getRootFolder(dataset_name=dataset_name, fallback_name='HGS') # get dataset root folder based on environment variables
 
 # attributes of variables in final collection
-varatts = dict(precip   = dict(name='precip', units='kg/m^2/s', long_name='Total Precipitation'),
-               MaxPrecip_1h = dict(name='MaxPrecip_1h', units='kg/m^2/s', long_name='Maximum Hourly Precipitation'),
-               liqprec  = dict(name='liqprec', units='kg/m^2/s', long_name='Rainfall (tipping bucket)'),
-               snowfall = dict(name='snowfall', units='cm', long_name='Snowfall depth'),
+varatts = dict(precip   = dict(name='precip', units='kg/m^2/s', long_name='Total Precipitation', positive=1, limits=(0,0.0025)),
+               MaxPrecip_1h = dict(name='MaxPrecip_1h', units='kg/m^2/s', long_name='Maximum Hourly Precipitation', positive=1, limits=(0,0.01)),
+               liqprec  = dict(name='liqprec', units='kg/m^2/s', long_name='Rainfall (tipping bucket)', positive=1, limits=(0,0.0025)),
+               snowfall = dict(name='snowfall', units='cm', long_name='Snowfall Depth', positive=1, limits=(0,0.0025)),
+               snowh    = dict(name='snowh', units='m', long_name='Snow Depth', positive=1, limits=(0,2)),
                pet      = dict(name='pet', units='kg/m^2/s', long_name='PET (Penman-Monteith)'),
                pet_sol  = dict(name='pet_sol', units='kg/m^2/s', long_name='PET (solar radiation only)'),
                pet_dgu  = dict(name='pet_dgu', units='Pa/K', long_name='PET Denominator'),
@@ -50,38 +51,40 @@ varatts = dict(precip   = dict(name='precip', units='kg/m^2/s', long_name='Total
                pet_har  = dict(name='pet_har', units='kg/m^2/s', long_name='PET (Hargeaves)'),
                pet_haa  = dict(name='pet_haa', units='kg/m^2/s', long_name='PET (Hargeaves-Allen)'),
                pet_th   = dict(name='pet_th', units='kg/m^2/s', long_name='PET (Thornthwaite)'),
-               pmsl     = dict(name='pmsl', units='Pa', long_name='Mean Sea-level Pressure'), # sea-level pressure
-               ps       = dict(name='ps', units='Pa', long_name='Surface Air Pressure'), # surface pressure
-               Ts       = dict(name='Ts', units='K', long_name='Skin Temperature'), # average skin temperature
-               TSmin    = dict(name='TSmin', units='K', long_name='Minimum Skin Temperature'), # minimum skin temperature
-               TSmax    = dict(name='TSmax', units='K', long_name='Maximum Skin Temperature'), # maximum skin temperature
-               T2       = dict(name='T2', units='K', long_name='2m Temperature'), # 2m average temperature
-               Tmin     = dict(name='Tmin', units='K', long_name='Minimum 2m Temperature'), # 2m minimum temperature
-               Tmax     = dict(name='Tmax', units='K', long_name='Maximum 2m Temperature'), # 2m maximum temperature
-               Q2       = dict(name='Q2', units='Pa', long_name='Water Vapor Pressure'), # 2m water vapor pressure
-               Q2max    = dict(name='Q2max', units='Pa', long_name='Maximum Water Vapor Pressure'), # maximum diurnal water vapor pressure
-               Q2min    = dict(name='Q2min', units='Pa', long_name='minimum Water Vapor Pressure'), # minimum diurnal water vapor pressure
-               RH       = dict(name='RH', units='\%', long_name='Relative Humidity'), # 2m relative humidity
-               RHmax    = dict(name='RHmax', units='\%', long_name='Maximum Relative Humidity'), # 2m diurnal maximum relative humidity
-               RHmin    = dict(name='RHmin', units='\%', long_name='Minimum Relative Humidity'), # 2m diurnal minimum relative humidity
-               U2       = dict(name='U2', units='m/s', long_name='2m Wind Speed'), # 2m wind speed
-               U2_dir   = dict(name='U2_dir', units='deg', long_name='2m Wind Direction'), # 2m wind direction
-               U2max    = dict(name='U2max', units='m/s', long_name='2m Maximum Wind Speed'), # 2m maximum diurnal wind speed
-               U10      = dict(name='U10', units='m/s', long_name='10m Wind Speed'), # 2m wind speed
-               U10_dir  = dict(name='U10_dir', units='deg', long_name='10m Wind Direction'), # 10m wind direction
-               U10max   = dict(name='U10max', units='m/s', long_name='10m Maximum Wind Speed'), # 10m maximum diurnal wind speed
-               DNSW     = dict(name='DNSW', units='W/m^2', long_name='Downward Shortwave Radiation'),
-               UPSW     = dict(name='UPSW', units='W/m^2', long_name='Upward Shortwave Radiation'),
-               DNLW     = dict(name='DNLW', units='W/m^2', long_name='Downward Longwave Radiation'),
-               UPLW     = dict(name='UPLW', units='W/m^2', long_name='Upward Longwave Radiation'),
-               netrad   = dict(name='netrad', units='W/m^2', long_name='Net Downward Radiation'), # radiation absorbed by the ground
+               pmsl     = dict(name='pmsl', units='Pa', long_name='Mean Sea-level Pressure', positive=1, limits=(8e4,11e4)), # sea-level pressure
+               ps       = dict(name='ps', units='Pa', long_name='Surface Air Pressure', positive=1, limits=(7e4,11e4)), # surface pressure
+               Ts       = dict(name='Ts', units='K', long_name='Skin Temperature', positive=1, limits=(200,350)), # average skin temperature
+               TSmin    = dict(name='TSmin', units='K', long_name='Minimum Skin Temperature', positive=1, limits=(200,350)), # minimum skin temperature
+               TSmax    = dict(name='TSmax', units='K', long_name='Maximum Skin Temperature', positive=1, limits=(200,350)), # maximum skin temperature
+               T2       = dict(name='T2', units='K', long_name='2m Temperature', positive=1, limits=(220,340)), # 2m average temperature
+               Tmin     = dict(name='Tmin', units='K', long_name='Minimum 2m Temperature', positive=1, limits=(220,340)), # 2m minimum temperature
+               Tmax     = dict(name='Tmax', units='K', long_name='Maximum 2m Temperature', positive=1, limits=(220,340)), # 2m maximum temperature
+               Q2       = dict(name='Q2', units='Pa', long_name='Water Vapor Pressure (derived)', positive=1, limits=(0,5e3)), # 2m water vapor pressure
+               Q2max    = dict(name='Q2max', units='Pa', long_name='Maximum Water Vapor Pressure', positive=1, limits=(0,5e3)), # maximum diurnal water vapor pressure
+               Q2min    = dict(name='Q2min', units='Pa', long_name='minimum Water Vapor Pressure', positive=1, limits=(0,5e3)), # minimum diurnal water vapor pressure
+               RH       = dict(name='RH', units='\%', long_name='Relative Humidity', positive=1, limits=(0,110)), # 2m relative humidity
+               RHmax    = dict(name='RHmax', units='\%', long_name='Maximum Relative Humidity', positive=1, limits=(0,110)), # 2m diurnal maximum relative humidity
+               RHmin    = dict(name='RHmin', units='\%', long_name='Minimum Relative Humidity', positive=1, limits=(0,110)), # 2m diurnal minimum relative humidity
+               U2       = dict(name='U2', units='m/s', long_name='2m Wind Speed', positive=1, limits=(0,50)), # 2m wind speed
+               U2_dir   = dict(name='U2_dir', units='deg', long_name='2m Wind Direction', positive=1, limits=(0,360)), # 2m wind direction
+               U2max    = dict(name='U2max', units='m/s', long_name='2m Maximum Wind Speed', positive=1, limits=(0,50)), # 2m maximum diurnal wind speed
+               U10      = dict(name='U10', units='m/s', long_name='10m Wind Speed', positive=1, limits=(0,100)), # 2m wind speed
+               U10_dir  = dict(name='U10_dir', units='deg', long_name='10m Wind Direction', positive=1, limits=(0,360)), # 10m wind direction
+               U10max   = dict(name='U10max', units='m/s', long_name='10m Maximum Wind Speed', positive=1, limits=(0,150)), # 10m maximum diurnal wind speed
+               DNSW     = dict(name='DNSW', units='W/m^2', long_name='Downward Shortwave Radiation', positive=1, limits=(0,500)),
+               UPSW     = dict(name='UPSW', units='W/m^2', long_name='Upward Shortwave Radiation', positive=1, limits=(0,200)),
+               DNLW     = dict(name='DNLW', units='W/m^2', long_name='Downward Longwave Radiation', positive=1, limits=(100,500)),
+               UPLW     = dict(name='UPLW', units='W/m^2', long_name='Upward Longwave Radiation', positive=1, limits=(100,500)),
+               netrad   = dict(name='netrad', units='W/m^2', long_name='Net Downward Radiation', limits=(-100,400)), # radiation absorbed by the ground
+               netrad_lw  = dict(name='netrad_lw', units='W/m^2', long_name='Net Longwave Radiation'), # net LW radiation absorbed by the ground
                DNLW_raw   = dict(name='DNLW_raw', units='W/m^2', long_name='Downward Longwave Radiation (uncorrected)'),
                UPLW_raw   = dict(name='UPLW_raw', units='W/m^2', long_name='Upward Longwave Radiation (uncorrected)'),
-               DNSW_alt   = dict(name='DNSW_alt', units='W/m^2', long_name='Downward Shortwave Radiation (alternate)'),
+               DNSW_alt   = dict(name='DNSW_alt', units='W/m^2', long_name='Downward Shortwave Radiation (alternate)', positive=1, limits=(0,500)),
                netrad_raw = dict(name='netrad_raw', units='W/m^2', long_name='Net Downward Radiation (uncorrected)'), # radiation absorbed by the ground
                Ra       = dict(name='Ra', units='W/m^2', long_name='Extraterrestrial Solar Radiation'), # ToA radiation
                Rs0      = dict(name='Rs0', units='W/m^2', long_name='Clear-sky Solar Radiation'), # at the surface, based on elevation
-               netrad_lw  = dict(name='netrad_lw', units='W/m^2', long_name='Net Longwave Radiation'), # net LW radiation absorbed by the ground
+               sunfrac  = dict(name='sunfrac', units='\%', long_name='Fraction of Clear Sky', positive=1, limits=(0,100)), # direct observation... not sure how...
+               d_gw     = dict(name='d_gw', units='m', long_name='Depth to Groundwater Table', positive=1, limits=(0,10)), # Elora station...
                # axes
                time    = dict(name='time', units='days', long_name='Time in Days'), # time coordinate
                )
@@ -154,7 +157,7 @@ stn_varatts = dict(temp_cel = dict(name='T2', offset=273.15),
                    rel_hum_pct = dict(name='RH',),
                    wind_spd_ms = dict(name='U2',),
                    wind_dir_deg = dict(name='U2_dir',),
-                   precip_mm = dict(name='precip', scalefactor=24.), # convert hourly accumulation to daily
+                   precip_mm = dict(name='precip', scalefactor=24./86400), # convert hourly accumulation to daily
                    glb_rad_wm2 = dict(name='DNSW_alt',), # most likely downwelling solar radiation
                    cnr1_net_rad_total = dict(name='netrad_raw'),
                    cnr1_sw_in = dict(name='DNSW'),
@@ -181,12 +184,12 @@ stn_varatts = dict(PRESS = dict(name='ps', scalefactor=1000),
                    WS10_AV = dict(name='U10',),
                    WS10_AVD = dict(name='U10_dir',),
                    WS2_AV = dict(name='U2',),
-                   PRECIP = dict(name='precip', scalefactor=24.), # convert hourly accumulation to daily
-                   TBRG = dict(name='liqprec', scalefactor=24.), # tipping bucket rain gauge
-                   SNOWFALL = dict(name='snowfall', scalefactor=24.), # hourly snow fall in cm
+                   PRECIP = dict(name='precip', scalefactor=24./86400), # convert hourly accumulation to daily
+                   TBRG = dict(name='liqprec', scalefactor=24./86400), # tipping bucket rain gauge
+                   SNOWFALL = dict(name='snowfall', scalefactor=24./86400), # hourly snow fall in cm
                    SNOW_GR = dict(name='snowh', scalefactor=0.01), # snow depth on the ground
-                   SOL_RAD = dict(name='DNSW', scalefactor=3.6e-3), # downwelling solar radiation
-                   LW_RAD = dict(name='DNLW', scalefactor=3.6e-3), # most likely downwelling LW radiation
+                   SOL_RAD = dict(name='DNSW', scalefactor=1e3/3.6), # downwelling solar radiation
+                   LW_RAD = dict(name='DNLW', scalefactor=1e3/3.6), # most likely downwelling LW radiation
                    SUNSHINE = dict(name='sunfrac'),
                    WATER = dict(name='d_gw', scalefactor=0.01), )
 def eloraDateParser(arg):
@@ -196,14 +199,14 @@ def eloraDateParser(arg):
     # N.B.: for now we are ignoring timezones...
     #print(arg, datetime)
     return datetime
-stn_readargs = dict(header=0, index_col=0, usecols=['YEAR','JD','TIME'], na_values=[],
+stn_readargs = dict(header=0, index_col=0, usecols=['YEAR','JD','TIME'], na_values=['9999','6999'],
                     parse_dates=[['YEAR','JD','TIME']], date_parser=eloraDateParser,)
 minmax_vars = dict(T2=('Tmin','Tmax'), RH=('RHmin','RHmax'), Q2=('Q2min','Q2max'), liqprec=(None,'MaxLiqprec_1h'),
                    precip=(None,'MaxPrecip_1h'), U2=(None,'U2max'),U10=(None,'U10max'))
 meta = StationMeta(name='Elora', title='Elora Research Station, Univ. Guelph', region='Ontario',
                    lat=43.64, lon=-80.4, zs=374,# elevation as per https://www.mapcoordinates.net/en
 #                    testfile='ERS_weather_data_hourly_2003.csv',
-                   testfile=['ERS_weather_data_hourly_{:04d}.csv'.format(year) for year in range(2003,2005)],
+                   testfile=['ERS_weather_data_hourly_{:04d}.csv'.format(year) for year in range(2010,2011)],
                    filelist=['ERS_weather_data_hourly_{:04d}.csv'.format(year) for year in range(2003,2019)], 
                    readargs=stn_readargs, varatts=stn_varatts, minmax=minmax_vars, sampling='h')
 ontario_station_list[meta.name] = meta
@@ -263,10 +266,18 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
         else:
             raise NotImplementedError(station.file_fmt)
     # join dataframes
-    if len(df_list) == 1:
+    if len(df_list) == 1: 
         df = df_list[0]
     else:
-        raise NotImplementedError()
+        # remove overlapping dates between files
+        df = df_list[0]
+        for tdf in df_list[1:]:
+            enddate = df.index[-1]
+            i = 0 # find first date that is past the previous end date
+            while enddate >= tdf.index[i]: i += 1
+            if ldebug: print(enddate,tdf.index[i]) # diagnostic
+            tdf = tdf[i:]; tdf = tdf[~tdf.index.duplicated(keep='first')]
+            df = pd.concat([df,tdf], verify_integrity=True) # concat, but still check for duplicates
     # rename columns
     stn_varatts = station.varatts.copy()
     df = df.rename(columns={col:atts['name'] for col,atts in stn_varatts.items()}) # rename variables/columns
@@ -277,7 +288,7 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
     if ldebug: print(varlist)
     if 'Q2' not in varlist and 'T2' in varlist and 'RH' in varlist:
         lKelvin = stn_varatts[ravmap['T2']].get('offset',0) == 0
-        df['Q2'] = e_sat(df['T2'], lKelvin=lKelvin) * df['RH']/100.
+        df['Q2'] = e_sat(df['T2'], lKelvin=lKelvin) * df['RH'].clip(0,100)/100.
     ## aggregate to daily
     if station.sampling != 'D':
         rdf = df.resample('1D',)
@@ -292,14 +303,28 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
                         atts = stn_varatts[ravmap[var0]].copy() if var0 in ravmap else dict() 
                         atts['name'] = mvar
                         stn_varatts[mvar] = atts
-    # compute net radiation (linear, hence after aggregation)
-    if 'netrad' not in varlist and all(radvar in varlist for radvar in ('DNSW','UPSW','DNLW','UPLW')):
-        df['netrad'] = df['DNSW'] + df['DNLW'] - df['UPSW'] - df['UPLW']        
     ## format dataframe
     for atts in stn_varatts.values():
         varname = atts['name']; sf = atts.get('scalefactor',1); of = atts.get('offset',0)
         if sf != 1: df[varname] = df[varname] * sf
         if of != 0: df[varname] = df[varname] + of
+    # clip data
+    for varname,column in df.items():
+        #print(varname)
+        #print((column.values < 0).sum())
+        if varname in varatts:
+            atts = varatts[varname]
+            if atts.get('positive',False):
+                if ldebug: print(varname, (df[varname].values < 0).sum())
+                column = column.clip(0, None)
+            if 'limits' in atts:
+                amin,amax = atts['limits']
+                if amin is not None: column[column < amin] = np.NaN
+                if amax is not None: column[column > amax] = np.NaN
+            df[varname] = column
+    # compute net radiation (linear, hence after aggregation)
+    if 'netrad' not in varlist and all(radvar in varlist for radvar in ('DNSW','UPSW','DNLW','UPLW')):
+        df['netrad'] = df['DNSW'] + df['DNLW'] - df['UPSW'] - df['UPLW']        
     # convert to xarray and add attributes
     xds = df.to_xarray()
     for varname,variable in xds.data_vars.items():
@@ -346,21 +371,36 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
 
 ## functions to load station data (from daily NetCDF files)
 
-def loadClimateStation(station, region='Ontario', time_slice=None, period=None, mode=None, lload=True, **kwargs):
+def loadClimateStation(station, varlist=None, region='Ontario', name=None, time_slice=None, period=None, mode=None, 
+                       lload=True, lxarray=False, varatts=varatts, **kwargs):
     ''' function to load formatted data from climate stations into xarray '''
     # determine folder and filename
     folder, filename = getFolderFileName(station=station, region=region, period=period, mode=mode)
-    # load dataset into xarray
-    xr_args = dict(decode_cf=True, mask_and_scale=True, decode_times=True, autoclose=True)
-    xr_args.update(kwargs)
-    if lload:
-        xds = xr.load_dataset(folder+filename, **xr_args) # load entire dataset into memory dirctly
+    if name is None: name = station
+    # load data as xarray or GeoPy dataset
+    if lxarray:
+        ## load dataset into xarray
+        xr_args = dict(decode_cf=True, mask_and_scale=True, decode_times=True, autoclose=True)
+        xr_args.update(kwargs)
+        if lload:
+            xds = xr.load_dataset(folder+filename, **xr_args) # load entire dataset into memory dirctly
+        else:
+            xds = xr.open_dataset(folder+filename, **xr_args) # open file and lazily load data into memory
+        # update varatts and prune
+        xds = updateVariableAttrs(xds, varatts=varatts, varmap=None, varlist=varlist)
+        # apply time slice
+        if time_slice: xds = xds.loc[{'time':slice(*time_slice),}] # slice time
+        # some attributes
+        xds.attrs['name'] = name
+        # load time stamps (like coordinate variables)
+        if 'time_stamp' in xds: xds['time_stamp'].load()
+        dataset = xds
     else:
-        xds = xr.open_dataset(folder+filename, **xr_args) # open file and lazily load data into memory
-    # apply time slice
-    if time_slice: xds = xds.loc[{'time':slice(*time_slice),}] # slice time
+        ## load as GeoPy dataset
+        dataset = DatasetNetCDF(name=name, filelist=[folder+filename], varlist=varlist, multifile=False, **kwargs)
+        if lload: dataset.load()
     # return dataset
-    return xds
+    return dataset
 
 
 def loadClimStn_Daily(station, region='Ontario', time_slice=None, **kwargs):
@@ -382,49 +422,53 @@ if __name__ == '__main__':
     print('pandas version:',pd.__version__)
   
     work_list = []
-#     work_list += ['convert_stations']
-#     work_list += ['compute_monthly']
-    work_list += ['load_source']
+    work_list += ['convert_stations']
 #     work_list += ['load_Daily']
+    work_list += ['compute_monthly']
+#     work_list += ['load_source']
 #     work_list += ['load_Monthly']
-#     work_list += ['load_Normals']
+    work_list += ['load_Normals']
     
     # settings
     station = 'UTM'
+#     station = 'Elora'
     region = 'Ontario'
     time_slice = ('2011-01-01','2017-12-31')
+    lxarray = False
 
     # loop over workloads
     for mode in work_list:
       
         if mode == 'load_Normals':
             
-            xds = loadClimStn(station=station, region='Ontario', period=(2011,2018))
+            xds = loadClimStn(station=station, region='Ontario', period=(2011,2018), lxarray=lxarray)
             
             print(xds)
-            print(xds.attrs)
+            if lxarray: print(xds.attrs)
             print()
             
-            var0 = next(iter(xds.data_vars.values()))
+            if lxarray: var0 = next(iter(xds.data_vars.values()))
+            else: var0 = next(iter(xds.variables.values()))
             print(var0)
-            print(var0.attrs)
+            if lxarray: print(var0.attrs)
             
         elif mode == 'load_Monthly':
             
-            xds = loadClimStn_TS(station=station, region='Ontario', time_slice=time_slice)
+            xds = loadClimStn_TS(station=station, region='Ontario', time_slice=time_slice, lxarray=lxarray)
             
             print(xds)
-            print(xds.attrs)
+            if lxarray: print(xds.attrs)
             print()
             
-            var0 = next(iter(xds.data_vars.values()))
+            if lxarray: var0 = next(iter(xds.data_vars.values()))
+            else: var0 = next(iter(xds.variables.values()))
             print(var0)
-            print(var0.attrs)
+            if lxarray: print(var0.attrs)
             
         elif mode == 'compute_monthly':
             
             # load data (into memory)
-            xds = loadClimStn_Daily(station=station, region='Ontario', time_slice=None)
+            xds = loadClimStn_Daily(station=station, region='Ontario', time_slice=None, lxarray=True)
             
             # aggregate month
             rds = xds.resample(time='MS',skipna=True,).mean()
@@ -463,23 +507,29 @@ if __name__ == '__main__':
     
         elif mode == 'load_Daily':
             
-            xds = loadClimStn_Daily(station=station, region='Ontario', time_slice=time_slice, lload=True)
+            xds = loadClimStn_Daily(station=station, region='Ontario', time_slice=time_slice, lload=True, lxarray=lxarray)
             
             print(xds)
-            print(xds.attrs)
+            if lxarray: print(xds.attrs)
             print()
             
-            var0 = next(iter(xds.data_vars.values()))
+            if lxarray: var0 = next(iter(xds.data_vars.values()))
+            else: var0 = next(iter(xds.variables.values()))
             print(var0)
-            print(var0.attrs)
+            if lxarray: print(var0.attrs)
             
         elif mode == 'load_source':
             
-            xds = loadStation_Src(station='Elora', region='Ontario', ldebug=True,)
+            xds = loadStation_Src(station=station, region=region, ldebug=True,)
             
             print(xds)
             print(xds.attrs)
             print()
+
+            tax = xds.time
+            print(tax)
+            print(tax.attrs)
+            print(tax.data[100:130])
             
     #         var0 = next(iter(xds.data_vars.values()))
     #         print(var0)
@@ -492,7 +542,7 @@ if __name__ == '__main__':
             
             # load data        
             print("\nLoading time-varying data from source file\n")
-            xds = loadStation_Src(station='UTM', region='Ontario', ldebug=False)
+            xds = loadStation_Src(station=station, region=region, ldebug=False)
             print(xds)
             
             # write NetCDF

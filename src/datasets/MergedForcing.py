@@ -496,8 +496,8 @@ if __name__ == '__main__':
 #         chunks = (9, 59, 59); lautoChunk = False
 #         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
 #         derived_varlist = ['dask_test']; load_list = ['T2']
-        derived_varlist = ['pet_pt']; load_list = ['T2']; clim_stn = 'UTM'
-#         derived_varlist = ['pet_pts']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']; clim_stn = 'UTM'
+#         derived_varlist = ['pet_pt']; load_list = ['T2']; clim_stn = 'UTM'
+        derived_varlist = ['pet_pts']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']; clim_stns = ['UTM','Elora']
 #         derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
 #         derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
 #         derived_varlist = ['pet_haa']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # Hargreaves with Allen correction
@@ -512,6 +512,7 @@ if __name__ == '__main__':
 #         start_date = None; end_date = None # auto-detect available data
         start_date = '2011-01-01'; end_date = '2017-12-31' # inclusive
 #         start_date = '2011-01-01'; end_date = '2011-04-01'
+#         start_date = '2012-11-01'; end_date = '2013-01-31'
 #         start_date = '2011-12-01'; end_date = '2012-03-01'
 #         start_date = '2011-01-01'; end_date = '2012-12-31'
         # N.B.: it appears slicing is necessary to prevent some weird dtype error with time_stamp...
@@ -560,17 +561,34 @@ if __name__ == '__main__':
                 default_varatts = varatts[varname]; ref_var = dataset['T2']
                 # load radiation data from climate station
                 from datasets.ClimateStations import loadClimStn_Daily
-                stn_ds = loadClimStn_Daily(station=clim_stn, time_slice=time_slice, lload=True)
-                clim_chunks = {dim:cnk for dim,cnk in zip(ref_var.dims,ref_var.encoding['chunksizes']) if dim in (ref_var.xlon,ref_var.ylat)}
-                # transfer 1D radiation timeseries to 3D dataset
                 if varname == 'pet_pts': 
-                    dataset['DNSW'] = stn_ds['DNSW']; lnetlw = True  # use only solar radiation and estimate net LW
+                    radvar = 'DNSW'; lnetlw = True  # use only solar radiation and estimate net LW
                 else: 
-                    dataset['netrad'] = stn_ds['netrad']; lnetlw = False # use net radiation timeseries
-                dataset.attrs['zs'] = stn_ds.attrs['zs'] # also need approximate elevation - station elevation if fine...
+                    radvar = 'netrad'; lnetlw = False # use net radiation timeseries
+                stn_ens = [loadClimStn_Daily(station=clim_stn, time_slice=time_slice, lload=True) for clim_stn in clim_stns]
+                # transfer 1D radiation timeseries to 3D dataset
+                dataset.attrs['zs'] = np.mean([ds.attrs['zs'] for ds in stn_ens]) # also need approximate elevation - station elevation if fine...
+                rad_data = np.nanmean(np.stack([ds[radvar].values for ds in stn_ens], axis=1), axis=1)
+                rad_var = xr.DataArray(data=rad_data, coords=(stn_ens[0].time,), name=radvar, attrs=stn_ens[0][radvar].attrs)
+                dataset[radvar] = rad_var
+                # find missing data
+                mia_var = rad_var[np.isnan(rad_var.data)]
+                if len(mia_var) > 0:
+                    nc_folder,nc_filename = getFolderFileName(varname=varname, dataset='MergedForcing', resolution=resolution, grid=grid, resampling=None,)
+                    txt_filename = 'missing_timessteps '+nc_filename[:-3]+'.txt'
+                    print("\n   ***   Missing Timesteps   ***   \n   (for Radiation Data)")
+                    filepath = nc_folder+txt_filename
+                    with open(filepath, mode='w') as fh:
+                        for td in mia_var.time.values:
+                            line = pd.to_datetime(td).strftime('%Y-%m-%d') 
+                            fh.write(line+'\n')
+                            print(line)
+                        print("   ---   ")
+                    print("Wrote missing timesteps to file:\n '{}'".format(filepath))
                 # process timeseries
                 from processing.newvars import computePotEvapPT
-                note = 'PET based on the Thornthwaite method using only T2'
+                note = 'PET based on the Priestley-Taylor method using average solar radiation from stations: '
+                for stn in clim_stns: note += stn+', '
                 kwargs = dict(alpha=1.26, lmeans=False, lrad=True, lA=False, lem=False, lnetlw=lnetlw, 
                               lgrdflx=False, lpmsl=False, lxarray=True,)      
                 xvar = xr.map_blocks(computePotEvapPT, dataset, kwargs=kwargs)

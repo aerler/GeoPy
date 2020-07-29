@@ -62,7 +62,7 @@ def computeSrfcPressure(dataset, zs=None, lpmsl=True, lxarray=False):
   assert zs_units is None or zs_units == 'm', zs
   if lpmsl and 'pmsl' in dataset:
       pmsl = dataset['pmsl'].data if lxarray else dataset['pmsl'][:]  
-  else: pmsl = 1013.
+  else: pmsl = 101300. # Pa, not hPa!!!
   p = evaluate('pmsl * ( 1 - ( 0.0065*zs/293 ) )**5.26 ')
   # return surface pressure estimate in Pa
   return p      
@@ -276,7 +276,7 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lA=True, lem
   else: G = 0
   # get wind speed
   if 'U2' in dataset: u2 = dataset['U2'].data if lxarray else dataset['U2'][:]
-  elif lmeans and 'U10' in dataset: u2 = wind(dataset['U10'].data if lxarray else dataset['U10'][:], z=10)
+  elif 'U10' in dataset: u2 = wind(dataset['U10'].data if lxarray else dataset['U10'][:], z=10)
   elif 'u10' in dataset and 'v10' in dataset: 
       u10 = dataset['u10'].data if lxarray else dataset['u10'][:]
       v10 = dataset['v10'].data if lxarray else dataset['v10'][:]
