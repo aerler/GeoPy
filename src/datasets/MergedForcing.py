@@ -276,7 +276,11 @@ def loadMergedForcing_All(varname=None, varlist=None, name=None, dataset_name=da
     else:
         ## load as GeoPy dataset
         # load dataset
-        dataset = DatasetNetCDF(name=name, filelist=[folder+filename], varlist=varlist, multifile=False, **kwargs)
+        dataset = DatasetNetCDF(name=name, filelist=[folder+filename], varlist=varlist, multifile=False, 
+                                varatts=varatts, **kwargs)
+        # fix axes units:
+        for ax in ('x','y','lat','lon'):
+            if ax in dataset.axes: dataset.axes[ax].atts.update(axes_varatts[ax])
         # add GDAL to dataset
         default_geoargs = dict(griddef=grid, gridfolder=grid_folder)
         if geoargs: default_geoargs.update(geoargs)
@@ -318,8 +322,8 @@ if __name__ == '__main__':
 #   work_loads += ['print_grid']
 #   work_loads += ['compute_derived']
 #   work_loads += ['load_Daily']
-  work_loads += ['monthly_mean'          ]
-  work_loads += ['load_TimeSeries'      ]
+#   work_loads += ['monthly_mean'          ]
+#   work_loads += ['load_TimeSeries'      ]
   work_loads += ['monthly_normal'        ]
   work_loads += ['load_Climatology'      ]
 
@@ -343,7 +347,7 @@ if __name__ == '__main__':
         
     elif mode == 'load_Climatology':
        
-        lxarray = True
+        lxarray = False
         varname = 'T2'
         period = (2011,2018); kwargs = dict()
 #         period = (1980,2010); kwargs = dict(dataset_name='NRCan', resolution='NA12', varlist=[varname]) # load regular NRCan normals
@@ -442,7 +446,7 @@ if __name__ == '__main__':
         # update time information
         print("\nAdding human-readable time-stamp variable ('time_stamp')\n")
         ncds = nc.Dataset(nc_filepath, mode='a')
-        ncts = addTimeStamps(ncds, units='month') # add time-stamps
+        ncts = addTimeStamps(ncds, units='month') # add time-stamps        
         ncds.close()
         # print timing
         end = time.time()
@@ -496,8 +500,8 @@ if __name__ == '__main__':
 #         chunks = (9, 59, 59); lautoChunk = False
 #         load_chunks = dict(time=chunks[0], y=chunks[1], x=chunks[2])
 #         derived_varlist = ['dask_test']; load_list = ['T2']
-#         derived_varlist = ['pet_pt']; load_list = ['T2']; clim_stn = 'UTM'
-        derived_varlist = ['pet_pts']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']; clim_stns = ['UTM','Elora']
+        derived_varlist = ['pet_pt']; load_list = ['T2']; clim_stns = ['UTM','Elora']
+#         derived_varlist = ['pet_pts']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']; clim_stns = ['UTM','Elora']
 #         derived_varlist = ['pet_hog']; load_list = ['Tmin', 'Tmax', 'T2']
 #         derived_varlist = ['pet_har']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D']
 #         derived_varlist = ['pet_haa']; load_list = ['Tmin', 'Tmax', 'T2', 'lat2D'] # Hargreaves with Allen correction
@@ -565,7 +569,7 @@ if __name__ == '__main__':
                     radvar = 'DNSW'; lnetlw = True  # use only solar radiation and estimate net LW
                 else: 
                     radvar = 'netrad'; lnetlw = False # use net radiation timeseries
-                stn_ens = [loadClimStn_Daily(station=clim_stn, time_slice=time_slice, lload=True) for clim_stn in clim_stns]
+                stn_ens = [loadClimStn_Daily(station=clim_stn, time_slice=time_slice, lload=True, lxarray=True) for clim_stn in clim_stns]
                 # transfer 1D radiation timeseries to 3D dataset
                 dataset.attrs['zs'] = np.mean([ds.attrs['zs'] for ds in stn_ens]) # also need approximate elevation - station elevation if fine...
                 rad_data = np.nanmean(np.stack([ds[radvar].values for ds in stn_ens], axis=1), axis=1)

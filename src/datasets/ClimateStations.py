@@ -36,7 +36,8 @@ root_folder = getRootFolder(dataset_name=dataset_name, fallback_name='HGS') # ge
 
 # attributes of variables in final collection
 varatts = dict(precip   = dict(name='precip', units='kg/m^2/s', long_name='Total Precipitation', positive=1, limits=(0,0.0025)),
-               MaxPrecip_1h = dict(name='MaxPrecip_1h', units='kg/m^2/s', long_name='Maximum Hourly Precipitation', positive=1, limits=(0,0.01)),
+               MaxPrecip_1h  = dict(name='MaxPrecip_1h', units='kg/m^2/s', long_name='Maximum Hourly Precipitation', positive=1, limits=(0,0.01)),
+               MaxLiqprec_1h = dict(name='MaxLiqprec_1h', units='kg/m^2/s', long_name='Maximum Hourly Rain', positive=1, limits=(0,0.01)),
                liqprec  = dict(name='liqprec', units='kg/m^2/s', long_name='Rainfall (tipping bucket)', positive=1, limits=(0,0.0025)),
                snowfall = dict(name='snowfall', units='cm', long_name='Snowfall Depth', positive=1, limits=(0,0.0025)),
                snowh    = dict(name='snowh', units='m', long_name='Snow Depth', positive=1, limits=(0,2)),
@@ -62,9 +63,9 @@ varatts = dict(precip   = dict(name='precip', units='kg/m^2/s', long_name='Total
                Q2       = dict(name='Q2', units='Pa', long_name='Water Vapor Pressure (derived)', positive=1, limits=(0,5e3)), # 2m water vapor pressure
                Q2max    = dict(name='Q2max', units='Pa', long_name='Maximum Water Vapor Pressure', positive=1, limits=(0,5e3)), # maximum diurnal water vapor pressure
                Q2min    = dict(name='Q2min', units='Pa', long_name='minimum Water Vapor Pressure', positive=1, limits=(0,5e3)), # minimum diurnal water vapor pressure
-               RH       = dict(name='RH', units='\%', long_name='Relative Humidity', positive=1, limits=(0,110)), # 2m relative humidity
-               RHmax    = dict(name='RHmax', units='\%', long_name='Maximum Relative Humidity', positive=1, limits=(0,110)), # 2m diurnal maximum relative humidity
-               RHmin    = dict(name='RHmin', units='\%', long_name='Minimum Relative Humidity', positive=1, limits=(0,110)), # 2m diurnal minimum relative humidity
+               RH       = dict(name='RH', units='', long_name='Relative Humidity', positive=1, limits=(0,1.1)), # 2m relative humidity
+               RHmax    = dict(name='RHmax', units='', long_name='Maximum Relative Humidity', positive=1, limits=(0,1.1)), # 2m diurnal maximum relative humidity
+               RHmin    = dict(name='RHmin', units='', long_name='Minimum Relative Humidity', positive=1, limits=(0,1.1)), # 2m diurnal minimum relative humidity
                U2       = dict(name='U2', units='m/s', long_name='2m Wind Speed', positive=1, limits=(0,50)), # 2m wind speed
                U2_dir   = dict(name='U2_dir', units='deg', long_name='2m Wind Direction', positive=1, limits=(0,360)), # 2m wind direction
                U2max    = dict(name='U2max', units='m/s', long_name='2m Maximum Wind Speed', positive=1, limits=(0,50)), # 2m maximum diurnal wind speed
@@ -154,7 +155,7 @@ ontario_station_list = dict()
 #  2003-09-09 - 2003-10-16
 #  2000-05-02 - 2000-05-17
 stn_varatts = dict(temp_cel = dict(name='T2', offset=273.15),
-                   rel_hum_pct = dict(name='RH',),
+                   rel_hum_pct = dict(name='RH', scalefactor=0.01),
                    wind_spd_ms = dict(name='U2',),
                    wind_dir_deg = dict(name='U2_dir',),
                    precip_mm = dict(name='precip', scalefactor=24./86400), # convert hourly accumulation to daily
@@ -179,7 +180,7 @@ ontario_station_list[meta.name] = meta
 # Elora Research Station (ERS) (University of Guelph)
 stn_varatts = dict(PRESS = dict(name='ps', scalefactor=1000),
                    ATEMP_AV = dict(name='T2', offset=273.15),
-                   RH_AV = dict(name='RH',),
+                   RH_AV = dict(name='RH', scalefactor=0.01,),
                    # WS10_P5S, WS10_PT, and WS10_PDR refer to peak wind speed
                    WS10_AV = dict(name='U10',),
                    WS10_AVD = dict(name='U10_dir',),
@@ -288,7 +289,8 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
     if ldebug: print(varlist)
     if 'Q2' not in varlist and 'T2' in varlist and 'RH' in varlist:
         lKelvin = stn_varatts[ravmap['T2']].get('offset',0) == 0
-        df['Q2'] = e_sat(df['T2'], lKelvin=lKelvin) * df['RH'].clip(0,100)/100.
+        RH_scale = stn_varatts[ravmap['RH']].get('scalefactor',1) 
+        df['Q2'] = e_sat(df['T2'], lKelvin=lKelvin) * (df['RH']*RH_scale).clip(0,1)
     ## aggregate to daily
     if station.sampling != 'D':
         rdf = df.resample('1D',)
@@ -352,6 +354,11 @@ def loadStation_Src(station, region='Ontario', station_list=None, ldebug=False, 
     netrad_lw = net_longwave_radiation(Tmin=tmp_ds['Tmin'], Tmax=tmp_ds['Tmax'], ea=tmp_ds['Q2'], Rs=tmp_ds['DNSW'], Rs0=tmp_ds['Rs0'])
     tmp_ds['netrad_lw'] = xr.DataArray(coords=(tmp_ds.coords['time'],), data=netrad_lw, name='netrad_lw', attrs=varatts['netrad_lw'])
     xds['netrad_lw'] = xr.DataArray(coords=(xds.coords['time'],), data=netrad_lw, name='netrad_lw', attrs=varatts['netrad_lw']) 
+    if 'netrad' not in xds: 
+        netrad = (1-0.23)*xds['DNSW'] + xds['netrad_lw']
+        netrad.name = 'netrad'; netrad.attrs.update(varatts['netrad'])
+        netrad.attrs['long_name'] = netrad.attrs['long_name'] + ' (estimated)'
+        xds['netrad'] = netrad
     xds['pet_sol'] = computePotEvapPM(tmp_ds, lterms=False, lrad=False, lA=False, lnetlw=True, lgrdflx=False, lpmsl=False, lxarray=True)
     # compute PET based on Priestly-Taylor
     xds['pet_pt'] = computePotEvapPT(xds, lrad=True, lnetlw=False, lA=False, lem=False, lgrdflx=False, lpmsl=False, lxarray=True)
@@ -430,11 +437,11 @@ if __name__ == '__main__':
     work_list += ['load_Normals']
     
     # settings
-    station = 'UTM'
-#     station = 'Elora'
+#     station = 'UTM'
+    station = 'Elora'
     region = 'Ontario'
     time_slice = ('2011-01-01','2017-12-31')
-    lxarray = False
+    lxarray = True
 
     # loop over workloads
     for mode in work_list:
