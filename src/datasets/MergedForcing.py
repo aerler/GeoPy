@@ -320,7 +320,7 @@ if __name__ == '__main__':
 
   work_loads = []
 #   work_loads += ['print_grid']
-#   work_loads += ['compute_derived']
+  work_loads += ['compute_derived']
 #   work_loads += ['load_Daily']
 #   work_loads += ['monthly_mean'          ]
 #   work_loads += ['load_TimeSeries'      ]

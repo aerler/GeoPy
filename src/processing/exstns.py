@@ -202,10 +202,10 @@ if __name__ == '__main__':
     stations = config['stations']
   else:
 #     NP = 1 ; ldebug = True # for quick computations
-    NP = 1 ; ldebug = False # for quick computations
+    NP = 4 ; ldebug = False # for quick computations
     modes = ('time-series',) # 'climatology','time-series'
 #     modes = ('climatology',) # 'climatology','time-series'
-    loverwrite = True
+    loverwrite = False
     varlist = None
     periods = []
 #     periods += [1]
@@ -245,12 +245,15 @@ if __name__ == '__main__':
 #     WRF_experiments += ['g-ctrl-2050','g-ens-A-2050','g-ens-B-2050','g-ens-C-2050',]
 #     WRF_experiments += ['g-ctrl-2100','g-ens-A-2100','g-ens-B-2100','g-ens-C-2100',]
 #     WRF_experiments += ['ctrl-1','ctrl-2050','ctrl-2100',]
-#     WRF_experiments += ['max-ctrl','max-ens-A','max-ens-B','max-ens-C',][:1]
-#     WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
-#     WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        
+    WRF_experiments += ['max-ctrl',     'max-ens-A',     'max-ens-B',     'max-ens-C',]
+    WRF_experiments += ['max-ctrl-2050','max-ens-A-2050','max-ens-B-2050','max-ens-C-2050',]
+    WRF_experiments += ['max-ctrl-2100','max-ens-A-2100','max-ens-B-2100','max-ens-C-2100',]        
+    WRF_experiments += ['ctrl-1',   'ctrl-ens-A',     'ctrl-ens-B',     'ctrl-ens-C',]
+    WRF_experiments += ['ctrl-2050','ctrl-ens-A-2050','ctrl-ens-B-2050','ctrl-ens-C-2050',]
+    WRF_experiments += ['ctrl-2100','ctrl-ens-A-2100','ctrl-ens-B-2100','ctrl-ens-C-2100',]        
     # other WRF parameters 
     domains = None # domains to be processed
-    WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad','plev3d') # filetypes to be processed
+    WRF_filetypes = ('hydro','xtrm','srfc','lsm','rad','plev3d','aux') # filetypes to be processed
 #     WRF_filetypes = ('hydro',)
 #     WRF_filetypes = ('const',); periods = None
 #     grid = 'grw2'

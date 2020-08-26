@@ -776,7 +776,7 @@ def apply_test_suite(tests, index, dataset, axis):
 
 ## select a set of common stations for an ensemble, based on certain conditions
 def selectStations(datasets, stnaxis='station', master=None, linplace=False, lall=False, 
-                  lcheckVar=False, cluster_name='cluster_id', **kwcond):
+                   lcheckVar=False, cluster_name='cluster_id', **kwcond):
   ''' A wrapper for selectCoords that selects stations based on common criteria '''
   if linplace: raise NotImplementedError("Option 'linplace' does not work currently.")
   # pre-load NetCDF datasets
@@ -789,61 +789,67 @@ def selectStations(datasets, stnaxis='station', master=None, linplace=False, lal
   #loadlist =  (datasets[imaster],) if not lall and imaster is not None else datasets 
   # test definition
   varcheck = [True]*len(datasets)
+  varname = None
   for key,val in kwcond.items():
     key = key.lower()
-    if key == 'prov':
+    if key == 'fct':
+      # provide a function with the signature fct(index,dataset,axis): return bool
+      if not callable(val): TypeError(key)
+      tests.append(val)
+    elif key == 'prov':
       varname = 'stn_prov'
       if not isinstance(val,(tuple,list)): val = (val,)
       if not isinstance(val,tuple): val = tuple(val)
-      if not all(isinstance(prov,str) for prov in val): raise TypeError
+      if not all(isinstance(prov,str) for prov in val): raise TypeError(val)
       tests.append(functools.partial(test_prov, val))
     elif key == 'min_len':
       varname = 'stn_rec_len'
-      if not isNumber(val): raise TypeError
+      if not isNumber(val): raise TypeError(val)
       val = val*12 # units in dataset are month  
       tests.append(functools.partial(test_minlen, val))    
     elif key == 'begin_before':
       varname = 'stn_begin_date'
-      if not isNumber(val): raise TypeError
+      if not isNumber(val): raise TypeError(val)
       val = (val-1979.)*12. # units in dataset are month since Jan 1979  
       tests.append(functools.partial(test_begin, val))    
     elif key == 'end_after':
       varname = 'stn_end_date'
-      if not isNumber(val): raise TypeError
+      if not isNumber(val): raise TypeError(val)
       val = (val-1979.)*12. # units in dataset are month since Jan 1979  
       tests.append(functools.partial(test_end, val))    
     elif key == 'max_zerr':
       varname = 'zs_err'
-      if not isNumber(val): raise TypeError  
+      if not isNumber(val): raise TypeError(val)
       tests.append(functools.partial(test_maxzse, val, lcheckVar=lcheckVar))
     elif key == 'max_z':
       varname = 'stn_zs'
-      if not isNumber(val): raise TypeError  
+      if not isNumber(val): raise TypeError(val)
       tests.append(functools.partial(test_maxz, val, lcheckVar=lcheckVar))
     elif key == 'lat':
       varname = 'stn_lat'
-      if not isinstance(val,(list,tuple)) or len(val) != 2 or not all(isNumber(l) for l in val): raise TypeError  
+      if not isinstance(val,(list,tuple)) or len(val) != 2 or not all(isNumber(l) for l in val): raise TypeError(val)
       tests.append(functools.partial(test_lat, val))
     elif key == 'lon':
       varname = 'stn_lon'
-      if not isinstance(val,(list,tuple)) or len(val) != 2 or not all(isNumber(l) for l in val): raise TypeError  
+      if not isinstance(val,(list,tuple)) or len(val) != 2 or not all(isNumber(l) for l in val): raise TypeError(val)
       tests.append(functools.partial(test_lon, val))
     elif key == 'cluster':
       varname = cluster_name
-      if ( not isinstance(val,(list,tuple,np.ndarray)) or not all(isInt(l) for l in val)) and not isInt(val): raise TypeError  
+      if ( not isinstance(val,(list,tuple,np.ndarray)) or not all(isInt(l) for l in val)) and not isInt(val): raise TypeError(val)
       tests.append(functools.partial(test_cluster, val, cluster_name=cluster_name, lcheckVar=lcheckVar))
     elif key == 'name':
       varname = 'station_name'
       if not ( ( isinstance(val,(list,tuple)) and all(isinstance(v,str) for v in val) ) or 
-               isinstance(val,str) ): raise TypeError  
+               isinstance(val,str) ): raise TypeError(val)
       tests.append(functools.partial(test_name, val))
     else:
       raise NotImplementedError("Unknown condition/test: '{:s}'".format(key))
-    # record, which datasets have all variables 
-    varcheck = [dataset.hasVariable(varname) and vchk for dataset,vchk in zip(datasets,varcheck)]
-  if not all(varcheck): 
-    if lall and lcheckVar: raise DatasetError(varcheck)
-    else: warn("Some Datasets do not have all variables: {:s}".format(str(varcheck)))
+    # record, which datasets have all variables
+    if varname:
+        varcheck = [dataset.hasVariable(varname) for dataset in datasets]
+        if not all(varcheck): 
+          if lall and lcheckVar: raise DatasetError(varcheck)
+          else: warn("Some Datasets do not have all variables: {:s}".format(str(varcheck)))
   # define test function (all tests must pass)
   if len(tests) > 0:
     testFct = functools.partial(apply_test_suite, tests)
