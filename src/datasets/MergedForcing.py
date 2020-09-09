@@ -301,6 +301,31 @@ def loadMergedForcing(varname=None, varlist=None, name=None, dataset_name=datase
                                  mode='clim', period=period, lxarray=lxarray, lmonthly=lmonthly, lgeoref=lgeoref, geoargs=geoargs, **kwargs)
 
 
+## Dataset API
+
+dataset_name # dataset name
+root_folder # root folder of the dataset
+orig_file_pattern = netcdf_filename # filename pattern: variable name (daily)
+ts_file_pattern   = tsfile # filename pattern: variable name and grid
+clim_file_pattern = avgfile # filename pattern: grid and period
+data_folder       = avgfolder # folder for user data
+grid_def  = {'':None} # no special name, since there is only one...
+LTM_grids = [] # grids that have long-term mean data 
+TS_grids  = ['','rfbc'] # grids that have time-series data
+grid_res  = {res:0.00833333333333333 for res in TS_grids} # no special name, since there is only one...
+default_grid = None
+# functions to access specific datasets
+loadLongTermMean       = None # climatology provided by publisher
+loadDailyTimeSeries    = loadMergedForcing_Daily # daily time-series data
+# monthly time-series data for batch processing
+def loadTimeSeries(lxarray=False, **kwargs): return loadMergedForcing_TS(lxarray=lxarray, **kwargs)
+def loadClimatology(lxarray=False, **kwargs): return loadMergedForcing(lxarray=lxarray, **kwargs)
+loadStationClimatology = None # climatologies without associated grid (e.g. stations) 
+loadStationTimeSeries  = None # time-series without associated grid (e.g. stations)
+loadShapeClimatology   = None # climatologies without associated grid (e.g. provinces or basins) 
+loadShapeTimeSeries    = None # time-series without associated grid (e.g. provinces or basins)
+
+
 ## abuse for testing
 if __name__ == '__main__':
   
@@ -320,12 +345,12 @@ if __name__ == '__main__':
 
   work_loads = []
 #   work_loads += ['print_grid']
-  work_loads += ['compute_derived']
-#   work_loads += ['load_Daily']
+#   work_loads += ['compute_derived']
+  work_loads += ['load_Daily']
 #   work_loads += ['monthly_mean'          ]
 #   work_loads += ['load_TimeSeries'      ]
-  work_loads += ['monthly_normal'        ]
-  work_loads += ['load_Climatology'      ]
+#   work_loads += ['monthly_normal'        ]
+#   work_loads += ['load_Climatology'      ]
 
   # some settings
   grid = None

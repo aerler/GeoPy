@@ -410,7 +410,7 @@ def loadSnoDAS_TS(varname=None, varlist=None, name=dataset_name, grid=None, fold
 
 
 def loadSnoDAS(varname=None, varlist=None, grid=None, period=None, folder=avgfolder, avgfile=avgfile, 
-               bias_correction=None, lxarray=False, lgeoref=True, chunks=None, time_chunks=None, geoargs=None, 
+               bias_correction=None, lxarray=True, lgeoref=True, chunks=None, time_chunks=None, geoargs=None, 
                name=dataset_name, title=dataset_name, filemode='r', **kwargs):
     ''' function to load monthly SnoDAS climatology (gridded monthly normals) '''
     if time_chunks:
@@ -516,7 +516,7 @@ loadLongTermMean       = None # climatology provided by publisher
 loadDailyTimeSeries    = loadSnoDAS_Daily # daily time-series data
 # monthly time-series data for batch processing
 def loadTimeSeries(lxarray=False, **kwargs): return loadSnoDAS_TS(lxarray=lxarray, **kwargs)
-loadClimatology        = loadSnoDAS # pre-processed, standardized climatology
+def loadClimatology(lxarray=False, **kwargs): return loadSnoDAS(lxarray=lxarray, **kwargs)
 loadStationClimatology = None # climatologies without associated grid (e.g. stations) 
 loadStationTimeSeries  = None # time-series without associated grid (e.g. stations)
 loadShapeClimatology   = None # climatologies without associated grid (e.g. provinces or basins) 

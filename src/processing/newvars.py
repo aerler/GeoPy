@@ -325,7 +325,7 @@ def computePotEvapPM(dataset, lterms=True, lmeans=False, lrad=True, lA=True, lem
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
   atts = dict(name='pet', units='kg/m^2/s', long_name='PET (Penman-Monteith)')
   if lnetlw: 
-      atts['note'] = 'based direct solar radiation and estimated net LW radiation'
+      atts['note'] = 'based on direct solar radiation and estimated net LW radiation'
       atts['long_name'] = 'PET (Penman-Monteith, estimated LW)'
   if lxarray:
       pet = xr.DataArray(coords=refvar.coords, data=pet, name=atts['name'], attrs=atts)
@@ -375,7 +375,7 @@ def computePotEvapPT(dataset, alpha=1.26, lmeans=False, lrad=True, lA=True, lem=
   # N.B.: units have been converted to SI (mm/day -> 1/86400 kg/m^2/s, kPa -> 1000 Pa, and Celsius to K)
   atts = dict(name='pet_pt', units='kg/m^2/s', long_name='PET (Priestley-Taylor)')
   if lnetlw: 
-      atts['note'] = 'based direct solar radiation and estimated net LW radiation'
+      atts['note'] = 'based on direct solar radiation and estimated net LW radiation'
       atts['long_name'] = 'PET (Priestley-Taylor, estimated LW)'
   if lxarray:
       var = xr.DataArray(coords=refvar.coords, data=pet, name=atts['name'], attrs=atts)
